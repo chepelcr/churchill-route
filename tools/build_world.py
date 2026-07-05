@@ -92,8 +92,9 @@ DP_BUILDING_PX = 2.0
 DP_COAST_PX = 2.5
 MIN_BUILDING_AREA_PX2 = 24
 
-CLS_WATER, CLS_LAND, CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE = 0, 1, 2, 3, 4, 5
-CLASS_NAMES = ["water", "land", "beach", "road", "paseo", "bridge"]
+CLS_WATER, CLS_LAND, CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA = 0, 1, 2, 3, 4, 5, 6
+CLASS_NAMES = ["water", "land", "beach", "road", "paseo", "bridge", "acera"]
+ACERA_CELLS = 2                 # sidewalk depth: 2 cells = 8 px each side
 
 # probes for orientation / sanity (geo)
 PROBE_LAND = [(9.97769, -84.83487),   # Catedral
@@ -947,6 +948,35 @@ def trace_land_contours(grid):
     return out
 
 
+def acera_fringe(grid, depth_cells=ACERA_CELLS):
+    """Sidewalks: convert land cells bordering roads/paseo into acera."""
+    cur = [i for i in range(len(grid)) if grid[i] in (CLS_ROAD, CLS_PASEO)]
+    for _ in range(depth_cells):
+        nxt = []
+        for idx in cur:
+            r, c = divmod(idx, GRID_COLS)
+            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                if 0 <= nr < GRID_ROWS and 0 <= nc < GRID_COLS:
+                    nidx = nr * GRID_COLS + nc
+                    if grid[nidx] == CLS_LAND:
+                        grid[nidx] = CLS_ACERA
+                        nxt.append(nidx)
+        cur = nxt
+
+
+def stamp_pad(grid, x, y, r_px):
+    """Convert land to acera in a disc — plaza pads under POIs."""
+    rc = max(1, int(r_px // GRID_CELL))
+    c0, r0 = int(x // GRID_CELL), int(y // GRID_CELL)
+    for dr in range(-rc, rc + 1):
+        for dc in range(-rc, rc + 1):
+            if dc * dc + dr * dr > rc * rc:
+                continue
+            c, r = c0 + dc, r0 + dr
+            if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and grid[r * GRID_COLS + c] == CLS_LAND:
+                grid[r * GRID_COLS + c] = CLS_ACERA
+
+
 def beach_fringe(grid, depth_cells=3):
     """Mark land cells within depth of water as beach (natural sand fringe)."""
     cur = [i for i in range(len(grid)) if grid[i] == CLS_WATER]
@@ -1037,7 +1067,8 @@ def synth_buildings(grid, roads, real_bldgs, keepouts):
                     continue
                 wa0 = 14 + rng() * 16      # width along the street
                 dp0 = 11 + rng() * 13      # depth into the block
-                setback = road["w"] / 2 + 2 + rng() * 2
+                # houses front the acera (leave ~6px of visible sidewalk)
+                setback = road["w"] / 2 + 6 + rng() * 2
                 placed = None
                 # tight cuadras: retry with shallower row-house footprints
                 for (wa, dp) in ((wa0, dp0), (wa0 * 0.8, dp0 * 0.6), (wa0 * 0.7, 7)):
@@ -1048,7 +1079,7 @@ def synth_buildings(grid, roads, real_bldgs, keepouts):
                         corners.append((cxx + tx * u * wa / 2 + nx * v * dp / 2,
                                         cyy + ty * u * wa / 2 + ny * v * dp / 2))
                     samples = corners + [(cxx, cyy)]
-                    if any(cell(px, py) != CLS_LAND for (px, py) in samples):
+                    if any(cell(px, py) not in (CLS_LAND, CLS_ACERA) for (px, py) in samples):
                         continue
                     if any((cxx - kx) ** 2 + (cyy - ky) ** 2 < (kr + 14) ** 2
                            for (kx, ky, kr) in keepouts):
@@ -1229,7 +1260,18 @@ def main():
             return to_m(*spec["ll"]), "hand"
         return None, "missing"
 
-    def nudge_to_land(x, y, radius_px=POI_NUDGE_PX):
+    def near_drivable(c, r, reach=3):
+        """True if a street/beach cell is within `reach` cells (so a POI pad
+        stamped here will merge with the drivable network)."""
+        for dr in range(-reach, reach + 1):
+            for dc in range(-reach, reach + 1):
+                cc, rr = c + dc, r + dr
+                if 0 <= cc < GRID_COLS and 0 <= rr < GRID_ROWS and \
+                        grid[rr * GRID_COLS + cc] in (CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE):
+                    return True
+        return False
+
+    def nudge_to_land(x, y, radius_px=POI_NUDGE_PX, need_drivable=False):
         c0, r0 = int(x / GRID_CELL), int(y / GRID_CELL)
         best = None
         R = radius_px // GRID_CELL
@@ -1238,7 +1280,7 @@ def main():
                 c, r = c0 + dc, r0 + dr
                 if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and grid[r * GRID_COLS + c] != CLS_WATER:
                     d2 = dc * dc + dr * dr
-                    if best is None or d2 < best[0]:
+                    if (best is None or d2 < best[0]) and (not need_drivable or near_drivable(c, r)):
                         best = (d2, c, r)
         if best is None:
             return None
@@ -1253,7 +1295,7 @@ def main():
         x, y, _, _ = sp.project(pm)
         x += spec.get("dx", 0)
         y += spec.get("dy", 0)
-        pos = nudge_to_land(x, y)
+        pos = nudge_to_land(x, y, need_drivable=(spec["type"] == "kiosk"))
         if pos is None:
             failures.append(spec["id"] + "(water)")
             continue
@@ -1274,7 +1316,7 @@ def main():
     customers = []
     for spec in CUSTOMER_DEFS:
         x, y, _, _ = sp.project(to_m(*spec["ll"]))
-        pos = nudge_to_land(x, y)
+        pos = nudge_to_land(x, y, need_drivable=True)
         if pos is None:
             failures.append(spec["id"] + "(water)")
             continue
@@ -1292,7 +1334,7 @@ def main():
                     c, r = int(tx / GRID_CELL), int(ty / GRID_CELL)
                     if not (0 <= c < GRID_COLS and 0 <= r < GRID_ROWS):
                         continue
-                    if grid[r * GRID_COLS + c] == CLS_WATER:
+                    if grid[r * GRID_COLS + c] == CLS_WATER or not near_drivable(c, r):
                         continue
                     if spread_ok(tx, ty, customers):
                         cands.append((abs(tx - px) + abs(ty - py), tx, ty))
@@ -1340,6 +1382,18 @@ def main():
             break
     mlm["x"], mlm["y"] = pier["x"], round(pier_y0 - 16)
     print(f"[pier] muelle at x={pier['x']}, y {pier['y0']}..{pier['y1']}")
+
+    # --- aceras (sidewalks) + plaza pads: these define where you can drive
+    # off-street; everything left as CLS_LAND becomes solid cuadra interior
+    acera_fringe(grid)
+    for lm in landmarks:
+        stamp_pad(grid, lm["x"], lm["y"], 40 if lm["type"] == "kiosk" else 24)
+    for cu in customers:
+        stamp_pad(grid, cu["x"], cu["y"], 28)
+    faro_lm = next(l for l in landmarks if l["id"] == "faro")
+    stamp_pad(grid, faro_lm["x"], faro_lm["y"], 70)   # La Punta plaza
+    acera_cells = sum(1 for v in grid if v == CLS_ACERA)
+    print(f"[acera] {acera_cells} sidewalk cells")
 
     # --- synthetic frontage buildings (fill the cuadras)
     keepouts = []
@@ -1480,7 +1534,8 @@ def main():
     # --- debug renders
     if "--debug" in sys.argv or True:
         pal = {CLS_WATER: (42, 127, 168), CLS_LAND: (232, 213, 160), CLS_BEACH: (244, 215, 122),
-               CLS_ROAD: (58, 53, 64), CLS_PASEO: (240, 138, 93), CLS_BRIDGE: (140, 140, 140)}
+               CLS_ROAD: (58, 53, 64), CLS_PASEO: (240, 138, 93), CLS_BRIDGE: (140, 140, 140),
+               CLS_ACERA: (206, 199, 178)}
         bldg_overlay = bytearray(GRID_COLS * GRID_ROWS)
         for b in buildings:
             raster_fill_poly(bldg_overlay, [(b["pts"][i], b["pts"][i + 1])

@@ -11,6 +11,16 @@ game modes are live; the items below are what remains.
 - [x] `bridge=yes` OSM segments (Río Barranca at El Roble, estero arms on Vía 23) get a concrete deck render + bridge surface class.
 - [x] Muelle pier connected to the street grid (drivable network 99% reachable from spawn; the unreachable 1% is canvas-clipped fragments at the top edge outside the play area).
 
+## ✅ City-feel pass — done 2026-07-05 PM
+
+- [x] **Vehicle sprites per type** — bikes (bici/scooter) render as two-wheeler with rider + helmet; cars keep the body/roof/windshield box. Stretch remains: distinct silhouettes per car (tuktuk 3-wheel, pickup bed, cart canopy).
+- [x] **More zoom** — engine `ZOOM` 1.8 → 2.4, street-level city driving.
+- [x] **Aceras** — surface class 6: 8px sidewalk fringe on all roads in the grid + concrete band render (w+16) + 0.62 traction; synthesized houses front the acera leaving ~6px of visible sidewalk.
+- [x] **Solid cuadras** — class-1 land is now a wall with slide-along-edges physics. Drivable: streets/aceras/beach/paseo/bridges/pier + plaza pads stamped under every kiosk, customer, and the Faro plaza. Verified: all 6 kiosks + 18 customers reachable from spawn through the drivable network (97.9% connectivity, pier included).
+- [x] **Waiting customer figure** — the active delivery target now renders as a waving person on a concrete pad with a pulse ring (was an invisible point + arrow).
+- [ ] **Alive city (next)** — pedestrians walking aceras everywhere (not just the Paseo), parked cars in front of houses, dogs/cats crossing, street vendors.
+- Note: rendering pauses in hidden/minimized Chrome tabs (rAF throttling) — bring the window to front when eyeballing; not a game bug.
+
 ## 🎯 Gameplay gaps vs the GDD
 
 - [ ] **Audio** — no music or SFX anywhere in the codebase (no `Audio`/`AudioContext` usage). Needs: engine SFX (pickup, deliver, drop, splash, combo), ambient loop, weather layer.

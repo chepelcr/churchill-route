@@ -14,8 +14,9 @@
     turbo:   { name: "Turbo Churchill Kart", accel: 500, top: 540, turn: 3.2, grip: 0.62, melt: 1.3, color: "#ff3d80", roof: "#fff36b", w: 26, h: 16, kind:"car"  },
   };
 
-  // Speed multiplier per surface class (0 water, 1 land, 2 beach, 3 road, 4 paseo, 5 bridge)
-  const SURFACE_MUL = { 0: 0.35, 1: 0.78, 2: 0.7, 3: 1.0, 4: 0.55, 5: 1.0 };
+  // Speed multiplier per surface class: 0 water, 1 land (solid cuadra interior
+  // — blocked in update), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera
+  const SURFACE_MUL = { 0: 0.35, 1: 0.78, 2: 0.7, 3: 1.0, 4: 0.55, 5: 1.0, 6: 0.62 };
 
   // ----- State -------------------------------------------------------------
   const state = {
@@ -392,7 +393,20 @@
     const sp3 = Math.hypot(p.vx, p.vy);
     if (sp3 > top) { p.vx *= top / sp3; p.vy *= top / sp3; }
 
+    const prevX = p.x, prevY = p.y;
     p.x += p.vx * dt; p.y += p.vy * dt;
+    // Solid cuadras: block interiors (class 1) are walls — slide along edges.
+    if (W.surfaceAt(p.x, p.y) === 1) {
+      const okX = W.surfaceAt(p.x, prevY) !== 1;
+      const okY = W.surfaceAt(prevX, p.y) !== 1;
+      if (okX && !okY) { p.y = prevY; p.vy *= -0.2; }
+      else if (okY && !okX) { p.x = prevX; p.vx *= -0.2; }
+      else if (W.surfaceAt(prevX, prevY) !== 1) {
+        p.x = prevX; p.y = prevY; p.vx *= -0.25; p.vy *= -0.25;
+        state.cam.shake = Math.max(state.cam.shake, 3);
+      }
+      // else: spawned/teleported inside a block — let it drive out
+    }
     p.speed = Math.hypot(p.vx, p.vy);
 
     // Peninsula bounds: push back into land if we slid in water too far.
@@ -691,6 +705,14 @@
       visible.push(e);
     }
     ctx.lineJoin = "round"; ctx.lineCap = "round";
+    // Aceras: concrete sidewalk band under everything (matches the grid's
+    // 8px acera fringe on both sides)
+    ctx.strokeStyle = "#cec7b2";
+    for (const e of visible) {
+      if (e.r.bridge || e.r.cls === "bridge") continue;
+      ctx.lineWidth = e.r.w + 16;
+      ctx.stroke(e.path);
+    }
     // Bridge decks (bridge=yes segments, e.g. Río Barranca at El Roble):
     // pale concrete deck wider than the casing so it reads over water
     ctx.strokeStyle = "#cfc3a3";
@@ -1283,19 +1305,54 @@
     }
   }
 
+  // The active delivery target: a waiting customer on a concrete pad, waving.
+  function drawTargetCustomer(t) {
+    if (!state.carrying) return;
+    const c = state.carrying.customer;
+    ctx.fillStyle = "#cec7b2";                                 // pad
+    ctx.beginPath(); ctx.ellipse(c.x, c.y + 4, 16, 9, 0, 0, Math.PI * 2); ctx.fill();
+    const pulse = 10 + Math.sin(t * 0.005) * 3;                // pulse ring
+    ctx.strokeStyle = "rgba(255,61,128,0.8)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, pulse + 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "rgba(0,0,0,0.25)";                        // shadow
+    ctx.beginPath(); ctx.ellipse(c.x + 2, c.y + 6, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#3a6f8a";                                 // body
+    roundRect(ctx, c.x - 3, c.y - 6, 6, 11, 2, true, false);
+    ctx.fillStyle = "#e8b98a";                                 // head
+    ctx.beginPath(); ctx.arc(c.x, c.y - 9, 3.4, 0, Math.PI * 2); ctx.fill();
+    const wave = Math.sin(t * 0.012) * 3;                      // waving arm
+    ctx.strokeStyle = "#e8b98a"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(c.x + 3, c.y - 4); ctx.lineTo(c.x + 7, c.y - 10 - wave); ctx.stroke();
+  }
+
   function drawPlayer(p, veh) {
     ctx.save();
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.save(); ctx.translate(p.x + 4, p.y + 6); ctx.rotate(p.a); ctx.fillRect(-veh.w/2, -veh.h/2, veh.w, veh.h); ctx.restore();
     ctx.translate(p.x, p.y); ctx.rotate(p.a);
-    ctx.fillStyle = veh.color;
-    roundRect(ctx, -veh.w/2, -veh.h/2, veh.w, veh.h, 3, true, false);
-    ctx.fillStyle = veh.roof;
-    ctx.fillRect(-veh.w/2 + 2, -veh.h/2 + 2, veh.w - 4, veh.h * 0.5);
-    ctx.fillStyle = "rgba(20,40,60,0.6)";
-    ctx.fillRect(veh.w/2 - 7, -veh.h/2 + 2, 4, veh.h - 4);
-    ctx.fillStyle = "#fffbe8";
-    ctx.fillRect(veh.w/2 - 2, -veh.h/2 + 1, 2, 3); ctx.fillRect(veh.w/2 - 2, veh.h/2 - 4, 2, 3);
+    if (veh.kind === "bike") {
+      // two-wheeler: wheels, slim frame, rider with helmet
+      ctx.fillStyle = "#26222c";
+      ctx.beginPath(); ctx.ellipse(-veh.w/2 + 3, 0, 3.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(veh.w/2 - 3, 0, 3.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = veh.color;
+      roundRect(ctx, -veh.w/2 + 4, -2.5, veh.w - 8, 5, 2, true, false);
+      ctx.fillStyle = "rgba(20,40,60,0.6)";                  // handlebar
+      ctx.fillRect(veh.w/2 - 6, -veh.h/2 + 2, 2, veh.h - 4);
+      ctx.fillStyle = veh.roof;                               // rider helmet
+      ctx.beginPath(); ctx.arc(-1, 0, 3.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fffbe8";                              // headlight
+      ctx.fillRect(veh.w/2 - 2, -1.5, 2, 3);
+    } else {
+      ctx.fillStyle = veh.color;
+      roundRect(ctx, -veh.w/2, -veh.h/2, veh.w, veh.h, 3, true, false);
+      ctx.fillStyle = veh.roof;
+      ctx.fillRect(-veh.w/2 + 2, -veh.h/2 + 2, veh.w - 4, veh.h * 0.5);
+      ctx.fillStyle = "rgba(20,40,60,0.6)";
+      ctx.fillRect(veh.w/2 - 7, -veh.h/2 + 2, 4, veh.h - 4);
+      ctx.fillStyle = "#fffbe8";
+      ctx.fillRect(veh.w/2 - 2, -veh.h/2 + 1, 2, 3); ctx.fillRect(veh.w/2 - 2, veh.h/2 - 4, 2, 3);
+    }
     if (state.carrying) {
       const m = state.carrying.melt / state.carrying.total;
       ctx.fillStyle = "#fff"; ctx.fillRect(-3, -veh.h/2 - 6, 6, 8);
@@ -1390,7 +1447,7 @@
   // ---- Main render --------------------------------------------------------
   // Camera zoom: >1 pulls the camera closer so streets/buildings read at
   // city-exploration scale. World-space span shrinks accordingly.
-  const ZOOM = 1.8;
+  const ZOOM = 2.4;
 
   function render(t) {
     if (!ctx) return;
@@ -1453,7 +1510,8 @@
       ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    // Player
+    // Active delivery target, then player
+    drawTargetCustomer(t);
     drawPlayer(state.p, state.veh);
     // Gulls above
     for (const g of gulls) {

@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Stamp service worker cache version
+        run: python3 tools/build_world.py --stamp-only
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload site

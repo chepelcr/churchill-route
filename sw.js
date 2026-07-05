@@ -2,7 +2,7 @@
 // Strategy: network-first for same-origin files (the game updates often;
 // world-data.js must never go stale), falling back to cache offline.
 // CDN assets (React/Babel/fonts — versioned URLs) are cache-first.
-const CACHE = "churchill-v1";
+const CACHE = "churchill-99a91f7f30";
 const SHELL = [
   "./",
   "./index.html",

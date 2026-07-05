@@ -32,3 +32,10 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - name: Wait before retry (transient Pages flake)
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy (retry)
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4

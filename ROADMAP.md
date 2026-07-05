@@ -63,8 +63,10 @@ game modes are live; the items below are what remains.
 ## 🚀 Deployment
 
 - [x] GitHub Actions → GitHub Pages workflow (`.github/workflows/deploy.yml`), deploys on push to `main`.
-- [ ] Cache-busting for `world-data.js` (query-string hash) so map updates aren't stale behind CDN cache.
-- [ ] PWA manifest + offline cache for beach-wifi play.
+- [x] PWA: `manifest.webmanifest` (fullscreen landscape, es, generated churchill-cup icons 192/512) + `sw.js` service worker — network-first for game files (so `world-data.js` never goes stale — covers the cache-busting item), cache fallback offline, cache-first for versioned CDN assets.
+- [x] Touch controls CSS fix: hidden by `(pointer: fine)` instead of `min-width: 880px`, so landscape tablets get the joystick/pedals.
+- [ ] Mobile QA pass on real devices (iPhone/Android/tablet): touch feel, fullscreen/safe-area, frame rate.
+- [ ] Deploy flake: push-triggered `deploy-pages` sometimes fails with GitHub's transient "Deployment failed, try again later" (twice so far); manual re-dispatch always succeeds. Consider a retry step in the workflow.
 
 ## 🔁 How to regenerate the map (for any tool/session)
 

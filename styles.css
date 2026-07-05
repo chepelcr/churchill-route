@@ -234,7 +234,9 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 .pedal.gas { right: 30px; background: oklch(0.68 0.18 30 / 0.6); }
 .pedal.brake { right: 130px; background: rgba(255,255,255,0.18); }
-@media (min-width: 880px) { .touch-controls { display: none; } }
+/* Hide touch controls only for fine-pointer (mouse) devices — landscape
+   tablets are wider than 880px but still need the joystick/pedals. */
+@media (pointer: fine) { .touch-controls { display: none; } }
 
 /* ----- Combo flair ----- */
 .combo-badge {

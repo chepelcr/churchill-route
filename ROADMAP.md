@@ -42,12 +42,11 @@ game modes are live; the items below are what remains.
 - [ ] Touch controls double-gated (JS coarse-pointer check + CSS `min-width:880px` hide) — landscape tablets get a joystick that's attached but invisible.
 - [ ] Headless smoke harness lives in a session scratchpad — move `headless.js` into `tools/` and wire a CI check.
 
-## 🚧 In progress right now (continue here if this session stops)
+## ✅ Completed 2026-07-05 (was "in progress")
 
-- [ ] **Commit + push everything to `main`** (`Pacific-Code-Labs/churchill-route`). New/changed: `tools/build_world.py`, `world-data.js`, `world.js`, `engine.js`, `index.html`, `docs/`, `how-look-puntarenas/`, `.github/workflows/deploy.yml`, `.gitignore`, `ROADMAP.md`.
-- [ ] **Enable GitHub Pages** with build_type=workflow: `gh api repos/Pacific-Code-Labs/churchill-route/pages -X POST -f build_type=workflow` (PUT if it already exists), then verify the Actions run deploys and the game loads at the Pages URL (all asset paths are relative, so the `/churchill-route/` subpath works).
-- [ ] **Vehicle implementation check** — verify all 6 GDD vehicles (bici/scooter/tuktuk/cart/pickup/turbo) are selectable in the UI and their stats match the GDD table (engine.js VEHICLES matches per audit; confirm ui.jsx exposes all 6 in vehicle select).
-- [ ] **Customer/delivery placement spread** — deliveries must land at each customer's own spot, not cluster. Suspect: pipeline `nudge_to_land` may snap several nearby geo anchors to the same/adjacent cells, and hand geo anchors sit too close (e.g. c3/c4/c5 on the Paseo ~150 m apart). Verify actual `customers[]` spread in world-data.js, then space the `CUSTOMER_DEFS` geo anchors and add a min-separation assert (≥120 px between customers in the same district) in `tools/build_world.py`. Regenerate + retest.
+- [x] **Pushed to `main`** and deployed: https://churchill.jcampos.dev (GitHub Pages, build_type=workflow; the first run failed racing the legacy-mode switch — re-dispatch succeeded).
+- [x] **Vehicles verified** — all 6 GDD vehicles selectable in the UI (`ui.jsx:94` maps every `Game.VEHICLES` entry) with stats matching the GDD table. Only divergence: turbo boost is a ramp, not a one-shot ×1.35 (tracked above).
+- [x] **Customer/delivery spread enforced** — c3 was 64px from kiosk 1 (instant deliveries); the pipeline now guarantees every customer ≥150px from all kiosks and ≥120px from other customers (expanding-ring reposition on land within the customer's district), verified zero violations across all 18.
 
 ## 🚀 Deployment
 

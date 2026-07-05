@@ -14,6 +14,9 @@
     turbo:   { name: "Turbo Churchill Kart", accel: 500, top: 540, turn: 3.2, grip: 0.62, melt: 1.3, color: "#ff3d80", roof: "#fff36b", w: 26, h: 16, kind:"car"  },
   };
 
+  // Speed multiplier per surface class (0 water, 1 land, 2 beach, 3 road, 4 paseo, 5 bridge)
+  const SURFACE_MUL = { 0: 0.35, 1: 0.78, 2: 0.7, 3: 1.0, 4: 0.55, 5: 1.0 };
+
   // ----- State -------------------------------------------------------------
   const state = {
     running: false, paused: false, over: false, won: false,
@@ -72,10 +75,12 @@
       const d = W.DISTRICTS[i];
       if (state.progress.unlocked.includes(d.id)) continue;
       // place a barrier at the district's western edge
+      // required stage = the story stage whose clear unlocks this district
+      const unlockStage = W.STAGES.findIndex(s => s.unlock === d.id);
       state.barriers.push({
         x: d.x0 + 4,
         district: d.id,
-        requiredStage: i, // since unlocks are added per stage cleared
+        requiredStage: unlockStage >= 0 ? unlockStage + 1 : i,
       });
     }
   }
@@ -126,42 +131,67 @@
   const gulls = [];
   const boats = [];
 
+  // Place a traffic car at its road arclength position (+ lane offset)
+  function placeCar(t) {
+    const pt = W.roadPointAt(t.roadIdx, t.s);
+    const nx = -Math.sin(pt.ang), ny = Math.cos(pt.ang);
+    t.x = pt.x + nx * t.lane;
+    t.y = pt.y + ny * t.lane;
+    t.ang = t.dir > 0 ? pt.ang : pt.ang + Math.PI;
+  }
   function spawnTraffic() {
     traffic.length = 0;
     const palette = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
-    // Ruta 17 (main road) — densest
-    const ruta = W.AVENIDAS[1];
-    for (let x = 60; x < W.W; x += 140 + Math.random() * 120) {
-      const dir = Math.random() < 0.5 ? 1 : -1;
-      const lane = dir > 0 ? -10 : 10;
-      traffic.push({
-        x, y: W.avenidaYAt(ruta, x) + lane,
-        vx: dir * (100 + Math.random() * 60),
-        color: palette[Math.floor(Math.random() * palette.length)],
-        w: 30, h: 14, road: ruta, lane, dir,
-        kind: Math.random() < 0.18 ? "truck" : "car",
-      });
-    }
-    // Av 2 and Av 3 (lighter)
-    for (const av of [W.AVENIDAS[0], W.AVENIDAS[2]]) {
-      for (let x = 100; x < W.W; x += 260 + Math.random() * 200) {
-        if (W.botY(x) - W.topY(x) < 80) continue;
+    for (let ri = 0; ri < W.ROADS.length; ri++) {
+      const r = W.ROADS[ri];
+      const main = r.cls === "trunk" || r.cls === "trunk_link" || r.cls === "primary";
+      if (!main && r.cls !== "secondary") continue;
+      const len = W.roadLength(ri);
+      // density ∝ road length: main roads densest
+      const spacing = main ? 200 : 340;
+      const n = Math.floor(len / (spacing + Math.random() * 100));
+      for (let k = 0; k < n && traffic.length < 240; k++) {
         const dir = Math.random() < 0.5 ? 1 : -1;
-        traffic.push({
-          x, y: W.avenidaYAt(av, x),
-          vx: dir * (70 + Math.random() * 40),
+        const car = {
+          roadIdx: ri, s: Math.random() * len, dir,
+          lane: (dir > 0 ? 1 : -1) * Math.max(8, r.w * 0.22),
+          v: main ? 100 + Math.random() * 60 : 70 + Math.random() * 40,
           color: palette[Math.floor(Math.random() * palette.length)],
-          w: 26, h: 13, road: av, lane: 0, dir, kind: "car",
-        });
+          w: main ? 30 : 26, h: main ? 14 : 13,
+          kind: main && Math.random() < 0.18 ? "truck" : "car",
+          x: 0, y: 0, ang: 0,
+        };
+        placeCar(car);
+        traffic.push(car);
       }
     }
   }
+  // Pedestrians stroll the Paseo de los Turistas (paseo-class roads)
+  let paseoRoadIdxs = null;
+  function getPaseoRoads() {
+    if (!paseoRoadIdxs) {
+      paseoRoadIdxs = [];
+      for (let i = 0; i < W.ROADS.length; i++) if (W.ROADS[i].cls === "paseo") paseoRoadIdxs.push(i);
+    }
+    return paseoRoadIdxs;
+  }
   function spawnPedestrians() {
     pedestrians.length = 0;
-    const av4 = W.AVENIDAS[3];
-    for (let x = 1100; x < 3400; x += 30 + Math.random() * 50) {
-      const y = W.avenidaYAt(av4, x) + (Math.random() < 0.5 ? -6 : 14);
-      pedestrians.push({ x, y, vx: (Math.random() < 0.5 ? 1 : -1) * (16 + Math.random() * 14), hue: Math.floor(Math.random() * 360), ph: Math.random() * Math.PI * 2 });
+    for (const ri of getPaseoRoads()) {
+      const len = W.roadLength(ri);
+      for (let s = 20; s < len - 20; s += 30 + Math.random() * 50) {
+        const pe = {
+          roadIdx: ri, s,
+          v: (Math.random() < 0.5 ? 1 : -1) * (16 + Math.random() * 14),
+          off: (Math.random() < 0.5 ? -8 : 8),
+          hue: Math.floor(Math.random() * 360), ph: Math.random() * Math.PI * 2,
+          x: 0, y: 0,
+        };
+        const pt = W.roadPointAt(ri, s);
+        pe.x = pt.x - Math.sin(pt.ang) * pe.off;
+        pe.y = pt.y + Math.cos(pt.ang) * pe.off;
+        pedestrians.push(pe);
+      }
     }
   }
   function spawnGulls() {
@@ -185,22 +215,20 @@
   }
   function spawnBoats() {
     boats.length = 0;
-    // Ferries / pangas in Gulf and Estero
-    for (let i = 0; i < 6; i++) {
+    // Ferries / pangas — rejection-sample open water anywhere on the map
+    for (let i = 0; i < 11; i++) {
+      let x = 0, y = 0, ok = false;
+      for (let tries = 0; tries < 200 && !ok; tries++) {
+        x = 200 + Math.random() * (W.W - 400);
+        y = 40 + Math.random() * (W.H - 80);
+        ok = W.inWater(x, y) && W.inWater(x, y - 24) && W.inWater(x, y + 24);
+      }
+      if (!ok) continue;
       boats.push({
-        x: 400 + Math.random() * (W.W - 800),
-        y: W.botY(2000) + 80 + Math.random() * 200,
-        vx: (Math.random() < 0.5 ? 1 : -1) * (12 + Math.random() * 14),
+        x, y,
+        vx: (Math.random() < 0.5 ? 1 : -1) * (10 + Math.random() * 14),
         kind: i < 2 ? "ferry" : "panga",
         wake: 0,
-      });
-    }
-    for (let i = 0; i < 5; i++) {
-      boats.push({
-        x: 200 + Math.random() * (W.W - 400),
-        y: W.topY(2000) - 60 - Math.random() * 150,
-        vx: (Math.random() < 0.5 ? 1 : -1) * (8 + Math.random() * 10),
-        kind: "panga", wake: 0,
       });
     }
   }
@@ -256,7 +284,7 @@
     pushFloat(c.customer.x, c.customer.y - 22, c.customer.line.slice(0, 26), "#fff");
     state.carrying = null;
     state.storyTip = "¡Pura vida! Volvé al kiosco.";
-    if (state.mode === "arcade") state.timeLeft += meltPct < 0.4 ? 10 : 5;
+    if (state.mode === "arcade" || state.mode === "story") state.timeLeft += meltPct < 0.4 ? 10 : 5;
     if (state.mode === "explore") state.timeLeft += meltPct < 0.4 ? 12 : 6;
     // stage clear check
     if (state.stage && state.stageDeliveries >= state.stageTarget) {
@@ -280,6 +308,45 @@
   }
   function pushFloat(x, y, text, color) { state.floats.push({ x, y, text, color, t: 0, ttl: 1.6 }); }
 
+  // ----- Polygon collision helpers ------------------------------------------
+  function pointInPoly(x, y, pts) {
+    let inside = false;
+    for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
+      const xi = pts[i], yi = pts[i + 1], xj = pts[j], yj = pts[j + 1];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function nearestEdgePoint(x, y, pts) {
+    let bd = Infinity, bx = 0, by = 0;
+    for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
+      const x0 = pts[j], y0 = pts[j + 1], x1 = pts[i], y1 = pts[i + 1];
+      const dx = x1 - x0, dy = y1 - y0;
+      const l2 = dx * dx + dy * dy;
+      let t = l2 > 0 ? ((x - x0) * dx + (y - y0) * dy) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const qx = x0 + dx * t, qy = y0 + dy * t;
+      const d2 = (x - qx) * (x - qx) + (y - qy) * (y - qy);
+      if (d2 < bd) { bd = d2; bx = qx; by = qy; }
+    }
+    return { x: bx, y: by, d: Math.sqrt(bd) };
+  }
+  // Push the player out of a building polygon; returns true on hit.
+  function collideBuilding(p, b) {
+    const inside = pointInPoly(p.x, p.y, b.pts);
+    const q = nearestEdgePoint(p.x, p.y, b.pts);
+    if (!inside && q.d >= 9) return false;
+    let nx, ny;
+    if (q.d > 0.0001) {
+      nx = (p.x - q.x) / q.d; ny = (p.y - q.y) / q.d;
+      if (inside) { nx = -nx; ny = -ny; } // outward through the boundary point
+    } else { nx = 0; ny = -1; }
+    p.x = q.x + nx * 9; p.y = q.y + ny * 9;
+    const vn = p.vx * nx + p.vy * ny;
+    if (vn < 0) { p.vx -= vn * 1.25 * nx; p.vy -= vn * 1.25 * ny; } // reflect normal comp ×-0.25
+    return true;
+  }
+
   // ----- Update -------------------------------------------------------------
   let lastT = 0;
   function update(dt) {
@@ -287,11 +354,10 @@
     readInput(); pollGamepad();
 
     const p = state.p; const veh = state.veh;
-    const onRoad = W.onRoad(p.x, p.y);
-    const onPaseo = W.onPaseo(p.x, p.y);
-    const inWater = W.inWater(p.x, p.y);
-    const onBeach = W.onBeach(p.x, p.y);
-    const surfaceMul = inWater ? 0.35 : onRoad ? 1.0 : onPaseo ? 0.55 : onBeach ? 0.7 : 0.78;
+    const surf = W.surfaceAt(p.x, p.y);
+    const onRoad = surf === 3 || surf === 5; // road or bridge deck
+    const inWater = surf === 0;
+    const surfaceMul = SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
     const wetMul = state.weather === "storm" ? 0.85 : 1;
 
     // turning
@@ -329,25 +395,24 @@
     p.x += p.vx * dt; p.y += p.vy * dt;
     p.speed = Math.hypot(p.vx, p.vy);
 
-    // Peninsula bounds: push back into land if we slid in water too far
+    // Peninsula bounds: push back into land if we slid in water too far.
+    // Skip while on a drivable surface (road/paseo/bridge-pier deck) so the
+    // player can ride the Muelle out past the shoreline.
     const topY = W.topY(p.x), botY = W.botY(p.x);
-    if (p.y < topY - 30) { p.y = topY - 30; p.vy = Math.abs(p.vy) * 0.4; }
-    if (p.y > botY + 30) { p.y = botY + 30; p.vy = -Math.abs(p.vy) * 0.4; }
+    const surfNow = W.surfaceAt(p.x, p.y);
+    if (surfNow !== 3 && surfNow !== 4 && surfNow !== 5) {
+      if (p.y < topY - 30) { p.y = topY - 30; p.vy = Math.abs(p.vy) * 0.4; }
+      if (p.y > botY + 30) { p.y = botY + 30; p.vy = -Math.abs(p.vy) * 0.4; }
+    }
     if (p.x < 12) { p.x = 12; p.vx = Math.abs(p.vx) * 0.3; }
     if (p.x > W.W - 12) { p.x = W.W - 12; p.vx = -Math.abs(p.vx) * 0.3; }
     if (inWater && Math.random() < 0.1) state.cam.shake = Math.max(state.cam.shake, 4);
 
-    // Building collisions
-    for (const b of W.BUILDINGS) {
-      if (p.x > b.x - 8 && p.x < b.x + b.w + 8 && p.y > b.y - 6 && p.y < b.y + b.h + 6) {
-        const dxL = (p.x - b.x), dxR = (b.x + b.w) - p.x;
-        const dyT = (p.y - b.y), dyB = (b.y + b.h) - p.y;
-        const m = Math.min(dxL, dxR, dyT, dyB);
-        if (m === dxL) p.x = b.x - 9;
-        else if (m === dxR) p.x = b.x + b.w + 9;
-        else if (m === dyT) p.y = b.y - 7;
-        else p.y = b.y + b.h + 7;
-        p.vx *= -0.25; p.vy *= -0.25;
+    // Building collisions (polygon buildings via spatial hash)
+    for (const b of W.buildingsNear(p.x, p.y)) {
+      const a = b.aabb;
+      if (p.x < a.x0 - 9 || p.x > a.x1 + 9 || p.y < a.y0 - 9 || p.y > a.y1 + 9) continue;
+      if (collideBuilding(p, b)) {
         state.cam.shake = Math.max(state.cam.shake, 6);
         if (state.carrying && Math.random() < 0.06) dropChurchill();
       }
@@ -416,12 +481,13 @@
     for (const pt of state.particles) { pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.life -= dt; }
     state.particles = state.particles.filter(pt => pt.life > 0);
 
-    // Traffic
+    // Traffic — advance arclength along its road, wrap at the ends
     for (const t of traffic) {
-      t.x += t.vx * dt;
-      if (t.x < -60) t.x = W.W + 30;
-      if (t.x > W.W + 60) t.x = -30;
-      t.y = W.avenidaYAt(t.road, t.x) + (t.lane || 0);
+      const len = W.roadLength(t.roadIdx);
+      t.s += t.dir * t.v * dt;
+      if (t.s < 0) t.s += len;
+      if (t.s > len) t.s -= len;
+      placeCar(t);
       if (Math.abs(t.x - p.x) < 20 && Math.abs(t.y - p.y) < 14) {
         p.vx -= (t.x - p.x) * 0.8; p.vy -= (t.y - p.y) * 0.8;
         state.cam.shake = Math.max(state.cam.shake, 10);
@@ -429,17 +495,18 @@
       }
     }
 
-    // Pedestrians
+    // Pedestrians — stroll the paseo arclength, bounce at the ends
     for (const pe of pedestrians) {
-      pe.x += pe.vx * dt; pe.ph += dt * 6;
-      const av4y = W.avenidaYAt(W.AVENIDAS[3], pe.x);
-      if (pe.y < av4y - 16) pe.y += 8 * dt;
-      if (pe.y > av4y + 16) pe.y -= 8 * dt;
-      if (pe.x < 1080) pe.vx = Math.abs(pe.vx);
-      if (pe.x > 3400) pe.vx = -Math.abs(pe.vx);
+      const len = W.roadLength(pe.roadIdx);
+      pe.s += pe.v * dt; pe.ph += dt * 6;
+      if (pe.s < 10) { pe.s = 10; pe.v = Math.abs(pe.v); }
+      if (pe.s > len - 10) { pe.s = len - 10; pe.v = -Math.abs(pe.v); }
+      const pt = W.roadPointAt(pe.roadIdx, pe.s);
+      pe.x = pt.x - Math.sin(pt.ang) * pe.off;
+      pe.y = pt.y + Math.cos(pt.ang) * pe.off;
       if (Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
         for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
-        pe.x += (pe.x - p.x) * 0.3;
+        pe.off += (Math.random() < 0.5 ? -4 : 4); // stumble aside
       }
     }
 
@@ -525,176 +592,251 @@
     }
   }
 
+  // ---- Static geometry cache (Path2D per feature, built once) ----
+  // Mandatory for 60fps: ~2k roads and ~1.4k buildings get AABB-culled
+  // against the camera view and stroked/filled from prebuilt paths.
+  let RC = null;
+  function flatAABB(pts) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < pts.length; i += 2) {
+      if (pts[i] < x0) x0 = pts[i];
+      if (pts[i] > x1) x1 = pts[i];
+      if (pts[i + 1] < y0) y0 = pts[i + 1];
+      if (pts[i + 1] > y1) y1 = pts[i + 1];
+    }
+    return { x0, y0, x1, y1 };
+  }
+  function flatPath(pts, close) {
+    const path = new Path2D();
+    path.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) path.lineTo(pts[i], pts[i + 1]);
+    if (close) path.closePath();
+    return path;
+  }
+  // minor classes first so major roads paint on top
+  const ROAD_ORDER = {
+    service: 0, pedestrian: 1, residential: 2, unclassified: 3,
+    tertiary: 4, tertiary_link: 4, secondary: 5, primary_link: 6,
+    primary: 7, trunk_link: 8, trunk: 9, paseo: 10, bridge: 11,
+  };
+  function ensureRenderCache() {
+    if (RC) return RC;
+    RC = { land: [], beach: [], water: [], roads: [], buildings: [], landAll: new Path2D() };
+    for (const poly of W.LAND_POLYS) {
+      const path = flatPath(poly, true);
+      RC.land.push({ path, aabb: flatAABB(poly) });
+      RC.landAll.addPath(path);
+    }
+    for (const poly of W.BEACHES) RC.beach.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
+    for (const poly of W.WATERS) RC.water.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
+    for (let i = 0; i < W.ROADS.length; i++) {
+      const r = W.ROADS[i];
+      RC.roads.push({ i, r, path: flatPath(r.pts, false) });
+    }
+    RC.roads.sort((a, b) => (ROAD_ORDER[a.r.cls] || 0) - (ROAD_ORDER[b.r.cls] || 0));
+    for (const b of W.BUILDINGS) RC.buildings.push({ b, path: flatPath(b.pts, true) });
+    return RC;
+  }
+  function aabbInView(a, view, pad) {
+    return !(a.x1 + pad < view.x0 || a.x0 - pad > view.x1 || a.y1 + pad < view.y0 || a.y0 - pad > view.y1);
+  }
+
   function drawLand(view) {
+    ensureRenderCache();
     const C = weatherColors();
-    // Beach sand outline (slightly larger than land)
-    const xs = Math.max(0, view.x0 - 40);
-    const xe = Math.min(W.W, view.x1 + 40);
-    ctx.fillStyle = C.sand;
-    ctx.beginPath();
-    let started = false;
-    for (let x = xs; x <= xe; x += 6) {
-      const y = W.topY(x) - 12;
-      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    // Sand fringe: fat sand stroke of the coast under the land fill
+    ctx.strokeStyle = C.sand; ctx.lineWidth = 24; ctx.lineJoin = "round";
+    for (const e of RC.land) {
+      if (!aabbInView(e.aabb, view, 30)) continue;
+      ctx.stroke(e.path);
     }
-    for (let x = xe; x >= xs; x -= 6) {
-      const y = W.botY(x) + 12;
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
-    // Land polygon
+    // Land fill
     ctx.fillStyle = C.land;
-    ctx.beginPath();
-    started = false;
-    for (let x = xs; x <= xe; x += 6) {
-      const y = W.topY(x);
-      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    for (const e of RC.land) {
+      if (!aabbInView(e.aabb, view, 30)) continue;
+      ctx.fill(e.path);
     }
-    for (let x = xe; x >= xs; x -= 6) {
-      ctx.lineTo(x, W.botY(x));
+    // Beach polygons (real playa areas)
+    ctx.fillStyle = C.sand;
+    for (const e of RC.beach) {
+      if (!aabbInView(e.aabb, view, 10)) continue;
+      ctx.fill(e.path);
     }
-    ctx.closePath();
-    ctx.fill();
-    // Subtle district tone
+    // Subtle district tone (clipped to land)
+    ctx.save();
+    ctx.clip(RC.landAll);
+    ctx.globalAlpha = 0.12;
     for (const d of W.DISTRICTS) {
       if (d.x1 < view.x0 || d.x0 > view.x1) continue;
-      ctx.save();
-      ctx.beginPath();
-      const x0 = Math.max(xs, d.x0), x1 = Math.min(xe, d.x1);
-      let s = false;
-      for (let x = x0; x <= x1; x += 6) {
-        const y = W.topY(x);
-        if (!s) { ctx.moveTo(x, y); s = true; } else ctx.lineTo(x, y);
-      }
-      for (let x = x1; x >= x0; x -= 6) {
-        ctx.lineTo(x, W.botY(x));
-      }
-      ctx.closePath();
-      ctx.fillStyle = d.tone; ctx.globalAlpha = 0.12; ctx.fill();
-      ctx.restore();
+      const x0 = Math.max(d.x0, view.x0), x1 = Math.min(d.x1, view.x1);
+      ctx.fillStyle = d.tone;
+      ctx.fillRect(x0, view.y0, x1 - x0, view.y1 - view.y0);
     }
+    ctx.globalAlpha = 1;
+    ctx.restore();
     // Coastline stroke
     ctx.strokeStyle = "rgba(40,30,20,0.35)"; ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let x = xs; x <= xe; x += 6) {
-      const y = W.topY(x);
-      if (x === xs) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    for (const e of RC.land) {
+      if (!aabbInView(e.aabb, view, 10)) continue;
+      ctx.stroke(e.path);
     }
-    ctx.stroke();
-    ctx.beginPath();
-    for (let x = xs; x <= xe; x += 6) {
-      const y = W.botY(x);
-      if (x === xs) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
   }
 
   function drawStreets(view) {
-    // Avenidas
-    for (const av of W.AVENIDAS) {
-      const xs = Math.max(0, view.x0 - 20), xe = Math.min(W.W, view.x1 + 20);
-      ctx.fillStyle = av.paseo ? "#f4dca3" : "#3a3540";
-      ctx.beginPath();
-      let s = false;
-      for (let x = xs; x <= xe; x += 6) {
-        const y = W.avenidaYAt(av, x) - av.w / 2;
-        if (W.topY(x) > y - 4) continue;
-        if (!s) { ctx.moveTo(x, y); s = true; } else ctx.lineTo(x, y);
-      }
-      for (let x = xe; x >= xs; x -= 6) {
-        const y = W.avenidaYAt(av, x) + av.w / 2;
-        if (W.botY(x) < y + 4) continue;
-        ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      // Paseo: coral stripes
-      if (av.paseo) {
-        ctx.fillStyle = "rgba(232,93,117,0.22)";
-        for (let x = xs; x < xe; x += 50) {
-          const y = W.avenidaYAt(av, x);
-          ctx.fillRect(x, y - 10, 26, 4);
-          ctx.fillRect(x + 10, y + 6, 26, 4);
-        }
-      }
-      // Lane lines (primary)
-      if (av.primary) {
-        ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([18, 18]);
-        ctx.beginPath();
-        for (let x = xs; x <= xe; x += 6) {
-          const y = W.avenidaYAt(av, x);
-          if (W.topY(x) > y || W.botY(x) < y) continue;
-          if (x === xs) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.stroke(); ctx.setLineDash([]);
-      } else if (av.dashed) {
-        ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1; ctx.setLineDash([8, 14]);
-        ctx.beginPath();
-        for (let x = xs; x <= xe; x += 6) {
-          const y = W.avenidaYAt(av, x);
-          if (x === xs) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.stroke(); ctx.setLineDash([]);
-      }
+    ensureRenderCache();
+    // Collect visible roads once (already sorted minor → major)
+    const visible = [];
+    for (const e of RC.roads) {
+      if (!aabbInView(e.r.aabb, view, e.r.w + 6)) continue;
+      visible.push(e);
     }
-    // Calles
-    for (const c of W.CALLES) {
-      if (c.x + 20 < view.x0 || c.x - 20 > view.x1) continue;
-      const yT = W.topY(c.x) + 4;
-      const yB = W.botY(c.x) - 4;
-      ctx.fillStyle = "#3a3540";
-      ctx.fillRect(c.x - c.w / 2, yT, c.w, yB - yT);
-      // dashed center
-      ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([6, 10]);
-      ctx.beginPath(); ctx.moveTo(c.x, yT); ctx.lineTo(c.x, yB); ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    // Bridge decks (bridge=yes segments, e.g. Río Barranca at El Roble):
+    // pale concrete deck wider than the casing so it reads over water
+    ctx.strokeStyle = "#cfc3a3";
+    for (const e of visible) {
+      if (!e.r.bridge) continue;
+      ctx.lineWidth = e.r.w + 10;
+      ctx.stroke(e.path);
+    }
+    // Casing pass
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    for (const e of visible) {
+      ctx.lineWidth = e.r.w + 4;
+      ctx.stroke(e.path);
+    }
+    // Asphalt pass
+    for (const e of visible) {
+      ctx.strokeStyle = e.r.cls === "paseo" ? "#f4dca3" : "#3a3540";
+      ctx.lineWidth = e.r.w;
+      ctx.stroke(e.path);
+    }
+    // Center lines: yellow dashes on main routes, faint white on locals
+    for (const e of visible) {
+      const cls = e.r.cls;
+      if (cls === "trunk" || cls === "trunk_link" || cls === "primary" || cls === "primary_link") {
+        ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([18, 18]);
+      } else if (cls === "secondary" || cls === "tertiary" || cls === "tertiary_link" || cls === "residential" || cls === "unclassified") {
+        ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([6, 10]);
+      } else continue;
+      ctx.stroke(e.path);
+      ctx.setLineDash([]);
+    }
+    ctx.lineCap = "butt";
+    // Paseo: coral stripe decals along the tangent
+    ctx.fillStyle = "rgba(232,93,117,0.22)";
+    for (const e of visible) {
+      if (e.r.cls !== "paseo") continue;
+      for (let s = 20; s < e.r.len; s += 50) {
+        const pt = W.roadPointAt(e.i, s);
+        if (pt.x < view.x0 - 40 || pt.x > view.x1 + 40 || pt.y < view.y0 - 40 || pt.y > view.y1 + 40) continue;
+        ctx.save();
+        ctx.translate(pt.x, pt.y); ctx.rotate(pt.ang);
+        ctx.fillRect(-13, -10, 26, 4);
+        ctx.fillRect(-3, 6, 26, 4);
+        ctx.restore();
+      }
     }
   }
 
+  // Muelle Nacional — long straight concrete pier running south into the gulf
+  function drawPier(view) {
+    if (!W.PIER) return;
+    const P = W.PIER;
+    const hw = P.w / 2;
+    if (P.x + hw + 40 < view.x0 || P.x - hw - 40 > view.x1) return;
+    if (P.y1 + 10 < view.y0 || P.y0 - 20 > view.y1) return;
+    const len = P.y1 - P.y0;
+    // Shadow of the deck on the water (same offset trick as buildings)
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(P.x - hw + 3, P.y0 + 4, P.w, len);
+    // Concrete deck
+    ctx.fillStyle = "#cfcfc8";
+    ctx.fillRect(P.x - hw, P.y0, P.w, len);
+    // Plank seams across the deck
+    ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 1;
+    for (let yy = P.y0 + 14; yy < P.y1; yy += 14) {
+      if (yy < view.y0 - 14 || yy > view.y1 + 14) continue;
+      ctx.beginPath(); ctx.moveTo(P.x - hw + 1, yy); ctx.lineTo(P.x + hw - 1, yy); ctx.stroke();
+    }
+    // Darker cap at the sea end
+    ctx.fillStyle = "#b8b8b0";
+    ctx.fillRect(P.x - hw, P.y1 - 3, P.w, 3);
+    // Blue side railings
+    ctx.fillStyle = "#2f6fb8";
+    ctx.fillRect(P.x - hw, P.y0, 2, len);
+    ctx.fillRect(P.x + hw - 2, P.y0, 2, len);
+    // Yellow center line dashes
+    ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([12, 10]);
+    ctx.beginPath(); ctx.moveTo(P.x, P.y0 + 6); ctx.lineTo(P.x, P.y1 - 6); ctx.stroke();
+    ctx.setLineDash([]);
+    // Lamp posts — alternating sides, warm dot on a tiny grey pole
+    for (let yy = P.y0 + 24; yy < P.y1 - 8; yy += 46) {
+      if (yy < view.y0 - 10 || yy > view.y1 + 10) continue;
+      const side = (((yy / 46) | 0) % 2) ? 1 : -1;
+      const lx = P.x + side * (hw - 3);
+      ctx.fillStyle = "#8a8f96"; ctx.fillRect(lx - 0.75, yy - 6, 1.5, 6);
+      ctx.fillStyle = state.weather === "night" ? "#ffd98a" : "#f4e6c0";
+      ctx.beginPath(); ctx.arc(lx, yy - 7, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    // Guard hut at the shore entrance, offset to the west side of the deck
+    const hx = P.x - hw - 18, hy = P.y0 - 2;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath(); ctx.ellipse(hx + 8, hy + 13, 11, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f4f4ef"; ctx.fillRect(hx, hy, 14, 12);      // white body
+    ctx.fillStyle = "#3f7fc4";                                     // blue hip roof
+    ctx.beginPath();
+    ctx.moveTo(hx - 3, hy); ctx.lineTo(hx + 3, hy - 6);
+    ctx.lineTo(hx + 11, hy - 6); ctx.lineTo(hx + 17, hy);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(20,40,60,0.55)"; ctx.fillRect(hx + 5, hy + 4, 4, 8); // door
+  }
+
   function drawStreetLabels(view) {
+    ensureRenderCache();
     ctx.font = "bold 9px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
-    // Avenida names — place every ~1200px along its length
-    for (const av of W.AVENIDAS) {
-      const labelXs = [800, 2000, 3200, 4400, 5600];
-      for (const lx of labelXs) {
-        if (lx < view.x0 - 80 || lx > view.x1 + 80) continue;
-        if (W.botY(lx) - W.topY(lx) < 80) continue;
-        const ly = W.avenidaYAt(av, lx);
-        const lbl = av.name.split(" · ")[0];
-        const w = ctx.measureText(lbl).width + 10;
-        ctx.fillStyle = "rgba(20,16,40,0.78)"; ctx.fillRect(lx - w/2, ly - 6, w, 12);
-        ctx.fillStyle = "#fff"; ctx.fillText(lbl, lx, ly + 3);
+    // Named / ref'd roads get a pill every ~900px of arclength
+    for (const e of RC.roads) {
+      const lbl = e.r.name || e.r.ref;
+      if (!lbl) continue;
+      if (!aabbInView(e.r.aabb, view, 80)) continue;
+      for (let s = 450; s < e.r.len; s += 900) {
+        const pt = W.roadPointAt(e.i, s);
+        if (pt.x < view.x0 - 60 || pt.x > view.x1 + 60 || pt.y < view.y0 - 20 || pt.y > view.y1 + 20) continue;
+        label(pt.x, pt.y + 2, lbl, "#fff", "rgba(20,16,40,0.78)");
       }
-    }
-    // Calle names — only in centro (denser, like the real map)
-    for (const c of W.CALLES) {
-      if (c.x < view.x0 - 60 || c.x > view.x1 + 60) continue;
-      if (c.x < 2400 || c.x > 3600) continue;
-      const ly = W.botY(c.x) - 22;
-      const lbl = c.name;
-      const w = ctx.measureText(lbl).width + 8;
-      ctx.fillStyle = "rgba(20,16,40,0.65)"; ctx.fillRect(c.x - w/2, ly - 6, w, 12);
-      ctx.fillStyle = "#fff"; ctx.fillText(lbl, c.x, ly + 3);
     }
   }
 
   function drawBuildings(view) {
-    for (const b of W.BUILDINGS) {
-      if (b.x + b.w < view.x0 || b.x > view.x1) continue;
+    ensureRenderCache();
+    for (const e of RC.buildings) {
+      const a = e.b.aabb;
+      if (!aabbInView(a, view, 8)) continue;
+      const bw = a.x1 - a.x0, bh = a.y1 - a.y0;
+      // drop shadow
+      ctx.save();
+      ctx.translate(4, 4);
       ctx.fillStyle = "rgba(0,0,0,0.22)";
-      ctx.fillRect(b.x + 4, b.y + 4, b.w, b.h);
-      ctx.fillStyle = b.color;
-      ctx.fillRect(b.x, b.y, b.w, b.h);
-      ctx.fillStyle = b.roof;
-      ctx.fillRect(b.x, b.y, b.w, Math.max(3, b.h * 0.3));
-      if (b.wnd) {
+      ctx.fill(e.path);
+      ctx.restore();
+      // body
+      ctx.fillStyle = e.b.color;
+      ctx.fill(e.path);
+      // roof band + windows, clipped to the footprint
+      ctx.save();
+      ctx.clip(e.path);
+      ctx.fillStyle = e.b.roof;
+      ctx.fillRect(a.x0, a.y0, bw, Math.max(3, bh * 0.3));
+      if (e.b.wnd) {
         ctx.fillStyle = state.weather === "night" ? "rgba(255,220,140,0.7)" : "rgba(255,255,255,0.55)";
-        const wn = Math.max(1, Math.floor(b.w / 16));
-        for (let i = 0; i < wn; i++) ctx.fillRect(b.x + 4 + i * (b.w / wn), b.y + b.h * 0.55, 4, 3);
+        const wn = Math.max(1, Math.floor(bw / 16));
+        for (let i = 0; i < wn; i++) ctx.fillRect(a.x0 + 4 + i * (bw / wn), a.y0 + bh * 0.55, 4, 3);
       }
+      ctx.restore();
       ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 1;
-      ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
+      ctx.stroke(e.path);
     }
   }
 
@@ -726,6 +868,79 @@
     ctx.fillStyle = fg; ctx.fillText(text, x, y + 1);
   }
 
+  // Deterministic 0..1 hash for scene scatter (no Math.random in draw paths)
+  function hash01(n) {
+    const v = Math.sin(n) * 43758.5453;
+    return v - Math.floor(v);
+  }
+
+  // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
+  // water side, red crescent shade benches, palms and the red/white tower.
+  function drawFaroScene(lm) {
+    const x = lm.x, y = lm.y;
+    // Paved plaza
+    ctx.fillStyle = "#d9d4c8";
+    ctx.beginPath(); ctx.ellipse(x, y, 28, 18, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(x, y, 28, 18, 0, 0, Math.PI * 2); ctx.stroke();
+    // Riprap rock armor rimming the water (west) side of the point
+    for (let i = 0; i < 16; i++) {
+      const a = Math.PI * 0.5 + (i / 15) * Math.PI; // south → west → north arc
+      const rx = x + Math.cos(a) * (30 + hash01(lm.x + i * 3.7) * 6);
+      const ry = y + Math.sin(a) * (19 + hash01(lm.x * 1.7 + i * 5.1) * 5);
+      const r0 = 1.6 + hash01(lm.x * 7.13 + i * 12.9) * 2.2;
+      ctx.fillStyle = i % 3 ? "#4a4d52" : "#5a5e64";
+      ctx.beginPath();
+      ctx.ellipse(rx, ry, r0 + 1.4, r0, hash01(i * 9.4 + lm.x) * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Red crescent shade benches spaced along the walkway
+    ctx.strokeStyle = "#c8453a"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI * 0.7 + i * (Math.PI * 1.4 / 4);
+      const bx = x + Math.cos(a) * 22, by = y + Math.sin(a) * 13;
+      ctx.beginPath(); ctx.arc(bx, by, 4, a - 0.5, a + 2.3); ctx.stroke();
+    }
+    ctx.lineCap = "butt";
+    // A few palms by the plaza (static, same look as drawPalms)
+    const pxy = [[x + 22, y - 12], [x + 27, y + 11], [x - 4, y + 19]];
+    for (let i = 0; i < pxy.length; i++) {
+      const px = pxy[i][0], py = pxy[i][1], s = 0.8;
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.beginPath(); ctx.ellipse(px + 5, py + 4, 10 * s, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#7a4f2a"; ctx.lineWidth = 3 * s;
+      ctx.beginPath(); ctx.moveTo(px, py + 4); ctx.lineTo(px, py - 16 * s); ctx.stroke();
+      ctx.fillStyle = "#3aa45b";
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        const fx = px + Math.cos(a) * 11 * s;
+        const fy = py - 16 * s + Math.sin(a) * 5 * s;
+        ctx.beginPath(); ctx.ellipse(fx, fy, 9 * s, 3.2 * s, a, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = "#2e7d44";
+      ctx.beginPath(); ctx.arc(px, py - 16 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+    }
+    // Tower — white with red bands, slight taper, gallery ring, yellow lantern
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath(); ctx.ellipse(x + 5, y + 4, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
+    const tw = new Path2D();
+    tw.moveTo(x - 6, y + 2); tw.lineTo(x - 4, y - 34);
+    tw.lineTo(x + 4, y - 34); tw.lineTo(x + 6, y + 2);
+    tw.closePath();
+    ctx.fillStyle = "#fff"; ctx.fill(tw);
+    ctx.save();
+    ctx.clip(tw);
+    ctx.fillStyle = "#d63a30";
+    for (let i = 0; i < 3; i++) ctx.fillRect(x - 7, y - 29 + i * 11, 14, 5);
+    ctx.restore();
+    ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth = 1; ctx.stroke(tw);
+    // Gallery ring + lantern
+    ctx.fillStyle = "#3a3540"; ctx.fillRect(x - 6, y - 36, 12, 2.5);
+    ctx.fillStyle = "#ffe06b"; ctx.beginPath(); ctx.arc(x, y - 40, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#3a3540"; ctx.fillRect(x - 3, y - 45.5, 6, 2);
+    label(x, y - 52, "FARO", "#fff", "#3a3540");
+  }
+
   function drawLandmark(lm) {
     const x = lm.x, y = lm.y;
     ctx.fillStyle = "rgba(0,0,0,0.22)";
@@ -748,10 +963,7 @@
         label(x, y - 28, lm.type === "cruise" ? "MUELLE" : "FERRY", "#fff", "#3a6f8a"); break;
       }
       case "lighthouse": {
-        ctx.fillStyle = "#fff"; ctx.fillRect(x - 5, y - 32, 10, 34);
-        ctx.fillStyle = "#e85d75"; for (let i=0;i<4;i++) ctx.fillRect(x-5, y - 30 + i*9, 10, 4);
-        ctx.fillStyle = "#ffe06b"; ctx.beginPath(); ctx.arc(x, y - 34, 6, 0, Math.PI * 2); ctx.fill();
-        label(x, y - 46, "FARO", "#fff", "#3a3540"); break;
+        drawFaroScene(lm); break;
       }
       case "church":
       case "cathedral": {
@@ -875,10 +1087,13 @@
     ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(pe.x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
   }
   function drawCar(c) {
-    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(c.x - c.w/2 + 3, c.y - c.h/2 + 3, c.w, c.h);
-    ctx.fillStyle = c.color; ctx.fillRect(c.x - c.w/2, c.y - c.h/2, c.w, c.h);
-    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(c.x - c.w/2 + 4, c.y - c.h/2 + 2, c.w - 8, c.h - 4);
-    ctx.fillStyle = "#222"; ctx.fillRect(c.x - c.w/2, c.y - c.h/2 - 1, 3, c.h + 2); ctx.fillRect(c.x + c.w/2 - 3, c.y - c.h/2 - 1, 3, c.h + 2);
+    ctx.save();
+    ctx.translate(c.x, c.y); ctx.rotate(c.ang || 0);
+    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(-c.w/2 + 3, -c.h/2 + 3, c.w, c.h);
+    ctx.fillStyle = c.color; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(-c.w/2 + 4, -c.h/2 + 2, c.w - 8, c.h - 4);
+    ctx.fillStyle = "#222"; ctx.fillRect(-c.w/2, -c.h/2 - 1, 3, c.h + 2); ctx.fillRect(c.w/2 - 3, -c.h/2 - 1, 3, c.h + 2);
+    ctx.restore();
   }
   function drawGull(g) {
     ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(g.x, g.y + 14, 6, 1.4, 0, 0, Math.PI * 2); ctx.fill();
@@ -928,24 +1143,26 @@
     }
   }
 
-  // Mata de Limón mangrove lagoon — water body inside the land
+  // Inland water bodies (Estero Mata de Limón and friends) over the land
   function drawEstuary(view) {
-    if (!W.ESTUARY) return;
-    const E = W.ESTUARY;
-    if (E.cx + E.rx < view.x0 || E.cx - E.rx > view.x1) return;
+    ensureRenderCache();
+    if (!RC.water.length && !W.ESTUARY) return;
     const C = weatherColors();
-    const g = ctx.createRadialGradient(E.cx, E.cy, 10, E.cx, E.cy, Math.max(E.rx, E.ry));
+    const g = ctx.createLinearGradient(0, view.y0, 0, view.y1);
     g.addColorStop(0, C.waterTop); g.addColorStop(1, C.waterBot);
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.ellipse(E.cx, E.cy, E.rx, E.ry, 0, 0, Math.PI * 2); ctx.fill();
-    // ripples
-    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1;
-    for (let r = 24; r < E.rx; r += 24) {
-      ctx.beginPath(); ctx.ellipse(E.cx, E.cy, r, r * E.ry / E.rx, 0, 0, Math.PI * 2); ctx.stroke();
+    for (const e of RC.water) {
+      if (!aabbInView(e.aabb, view, 10)) continue;
+      ctx.fill(e.path);
     }
-    // inlet narrow channel connecting to gulf — draw small notch
-    ctx.fillStyle = C.waterBot;
-    ctx.fillRect(E.cx - 20, E.cy + E.ry - 6, 40, 30);
+    // ripples on the estuary's fitted ellipse
+    const E = W.ESTUARY;
+    if (E && E.rx > 0 && !(E.cx + E.rx < view.x0 || E.cx - E.rx > view.x1)) {
+      ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1;
+      for (let r = 24; r < E.rx; r += 24) {
+        ctx.beginPath(); ctx.ellipse(E.cx, E.cy, r, r * E.ry / E.rx, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
   }
 
   // Mangrove dots around the estuary
@@ -982,14 +1199,14 @@
     ctx.beginPath(); ctx.moveTo(B.x0 + 4, B.cy); ctx.lineTo(B.x1 - 4, B.cy); ctx.stroke();
     ctx.setLineDash([]);
     // Rails
-    ctx.fillStyle = "#a8b0b8";
+    ctx.fillStyle = "#b4bcc4";
     ctx.fillRect(B.x0, B.cy - B.deckW/2 - 2, B.x1 - B.x0, 2);
     ctx.fillRect(B.x0, B.cy + B.deckW/2, B.x1 - B.x0, 2);
     // Cables (catenary)
     const [tx0, tx1] = B.towers;
     const towerTop = B.cy - B.towerH;
     const sagY = B.cy - 14;
-    ctx.strokeStyle = "#d8dce0"; ctx.lineWidth = 2;
+    ctx.strokeStyle = "#e2e6ea"; ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(tx0, towerTop);
     ctx.quadraticCurveTo((tx0 + tx1) / 2, sagY, tx1, towerTop);
@@ -1001,23 +1218,29 @@
     ctx.stroke();
     // Vertical hangers
     ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(220,225,230,0.85)";
-    for (let xx = tx0 + 6; xx < tx1; xx += 8) {
+    ctx.strokeStyle = "rgba(228,233,238,0.9)";
+    for (let xx = tx0 + 6; xx < tx1; xx += 6) {
       const t = (xx - tx0) / (tx1 - tx0);
       const ty = (1-t)*(1-t)*towerTop + 2*t*(1-t)*sagY + t*t*towerTop;
       ctx.beginPath(); ctx.moveTo(xx, ty); ctx.lineTo(xx, B.cy - 4); ctx.stroke();
     }
-    // Towers
+    // Towers — slender silver lattice legs with X cross-bracing
     for (const tx of B.towers) {
-      ctx.fillStyle = "#9aa3ad";
+      ctx.fillStyle = "#aeb6c0";
       ctx.fillRect(tx - 4, towerTop, 3, B.towerH + 4);
       ctx.fillRect(tx + 1, towerTop, 3, B.towerH + 4);
-      ctx.fillStyle = "#6a737d";
+      ctx.fillStyle = "#7d8791";
       ctx.fillRect(tx - 6, towerTop - 4, 12, 4);
-      ctx.strokeStyle = "#6a737d"; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(tx - 4, B.cy - B.towerH * 0.5); ctx.lineTo(tx + 4, B.cy - B.towerH * 0.55);
-      ctx.stroke();
+      // lattice X braces between the legs, 4 panels up the height
+      ctx.strokeStyle = "#7d8791"; ctx.lineWidth = 1;
+      const seg = (B.towerH + 4) / 4;
+      for (let i = 0; i < 4; i++) {
+        const yA = towerTop + i * seg, yB = yA + seg;
+        ctx.beginPath();
+        ctx.moveTo(tx - 2.5, yA); ctx.lineTo(tx + 2.5, yB);
+        ctx.moveTo(tx + 2.5, yA); ctx.lineTo(tx - 2.5, yB);
+        ctx.stroke();
+      }
     }
     // Sign
     ctx.font = "bold 9px 'JetBrains Mono', monospace"; ctx.textAlign = "center";
@@ -1121,25 +1344,25 @@
     roundRect(ctx, mx, my, mw, mh, 10, true, false);
     // Water bg
     ctx.fillStyle = "#3a8a99"; ctx.fillRect(mx + 4, my + 4, mw - 8, mh - 8);
-    // Peninsula silhouette
+    // Peninsula silhouette — sampled land extents (same y mapping as the target dot)
     ctx.fillStyle = "#caa56a";
     ctx.beginPath();
     const innerW = mw - 12; const innerX = mx + 6;
     const innerY = my + mh / 2;
+    const yScale = (mh / 2 - 6) / 320;
+    const clampMapY = (sy) => Math.max(my + 4, Math.min(my + mh - 4, sy));
     for (let i = 0; i <= 60; i++) {
       const t = i / 60;
       const wx = t * W.W;
-      const hw = W.halfWidthAt(wx);
       const sx = innerX + t * innerW;
-      const sy = innerY - (hw / 320) * (mh / 2 - 6);
+      const sy = clampMapY(innerY + (W.topY(wx) - 700) * yScale);
       if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
     }
     for (let i = 60; i >= 0; i--) {
       const t = i / 60;
       const wx = t * W.W;
-      const hw = W.halfWidthAt(wx);
       const sx = innerX + t * innerW;
-      const sy = innerY + (hw / 320) * (mh / 2 - 6);
+      const sy = clampMapY(innerY + (W.botY(wx) - 700) * yScale);
       ctx.lineTo(sx, sy);
     }
     ctx.closePath();
@@ -1165,6 +1388,10 @@
   }
 
   // ---- Main render --------------------------------------------------------
+  // Camera zoom: >1 pulls the camera closer so streets/buildings read at
+  // city-exploration scale. World-space span shrinks accordingly.
+  const ZOOM = 1.8;
+
   function render(t) {
     if (!ctx) return;
     const cw = canvas.width, ch = canvas.height;
@@ -1176,10 +1403,13 @@
     const shake = state.cam.shake;
     const sx = (Math.random() - 0.5) * shake, sy = (Math.random() - 0.5) * shake;
     const cam = { x: state.cam.x + sx, y: state.cam.y + sy };
-    const view = { x0: cam.x - vw/2 - 40, x1: cam.x + vw/2 + 40, y0: cam.y - vh/2 - 40, y1: cam.y + vh/2 + 40 };
+    const wvw = vw / ZOOM, wvh = vh / ZOOM;
+    const view = { x0: cam.x - wvw/2 - 40, x1: cam.x + wvw/2 + 40, y0: cam.y - wvh/2 - 40, y1: cam.y + wvh/2 + 40 };
 
-    // World transform
-    ctx.translate(vw/2 - cam.x, vh/2 - cam.y);
+    // World transform (zoomed)
+    ctx.translate(vw/2, vh/2);
+    ctx.scale(ZOOM, ZOOM);
+    ctx.translate(-cam.x, -cam.y);
 
     // Sky/water everywhere (drawn in world coords across viewport)
     drawWaterAll(view, t);
@@ -1195,6 +1425,7 @@
     drawEstuary(view);
     drawMangroves(view);
     drawStreets(view);
+    drawPier(view);
     drawBridge(view);
     drawStreetLabels(view);
     drawPalms(view, t);
@@ -1306,7 +1537,8 @@
     state.carrying = null; state.pendingOrder = null;
     state.floats = []; state.particles = [];
     state.over = false; state.won = false; state.running = true; state.paused = false;
-    state.p = { x: 1500, y: 760, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+    const k0 = W.landmarkById("kios_paseo1");
+    state.p = { x: k0.x - 60, y: k0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
     state.cam = { x: state.p.x, y: state.p.y, shake: 0 };
     state.storyTip = "Modo Arcade: cantidad y velocidad. Combo no decae si seguís entregando.";
     state.barriers = [];
@@ -1328,7 +1560,8 @@
     state.floats = []; state.particles = [];
     state.over = false; state.won = false; state.running = true; state.paused = false;
     // Spawn at El Faro start
-    state.p = { x: 380, y: 700, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+    const f0 = W.landmarkById("faro");
+    state.p = { x: f0.x + 60, y: f0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
     state.cam = { x: state.p.x, y: state.p.y, shake: 0 };
     const unlockedNames = state.progress.unlocked.length;
     state.storyTip = `Modo Recorrer · ${unlockedNames} zonas desbloqueadas. Limpiá etapas para abrir más.`;

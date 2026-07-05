@@ -131,6 +131,9 @@
   const pedestrians = [];
   const gulls = [];
   const boats = [];
+  const parked = [];    // static cars along curbs
+  const vendors = [];   // street vendor carts on the aceras
+  const animals = [];   // dogs/cats wandering across streets
 
   // Place a traffic car at its road arclength position (+ lane offset)
   function placeCar(t) {
@@ -159,9 +162,14 @@
           v: main ? 100 + Math.random() * 60 : 70 + Math.random() * 40,
           color: palette[Math.floor(Math.random() * palette.length)],
           w: main ? 30 : 26, h: main ? 14 : 13,
-          kind: main && Math.random() < 0.18 ? "truck" : "car",
+          kind: "car",
           x: 0, y: 0, ang: 0,
         };
+        if (main) {
+          const roll = Math.random();
+          if (roll < 0.15) { car.kind = "truck"; car.w = 36; car.h = 14; }
+          else if (roll < 0.24) { car.kind = "bus"; car.w = 44; car.h = 15; car.color = "#e0762e"; car.v *= 0.85; }
+        }
         placeCar(car);
         traffic.push(car);
       }
@@ -178,20 +186,102 @@
   }
   function spawnPedestrians() {
     pedestrians.length = 0;
+    function addPed(ri, s, off) {
+      const pe = {
+        roadIdx: ri, s,
+        v: (Math.random() < 0.5 ? 1 : -1) * (16 + Math.random() * 14),
+        off,
+        hue: Math.floor(Math.random() * 360), ph: Math.random() * Math.PI * 2,
+        x: 0, y: 0,
+      };
+      const pt = W.roadPointAt(ri, s);
+      pe.x = pt.x - Math.sin(pt.ang) * pe.off;
+      pe.y = pt.y + Math.cos(pt.ang) * pe.off;
+      pedestrians.push(pe);
+    }
+    // Paseo promenade: dense crowd on the boulevard itself
     for (const ri of getPaseoRoads()) {
       const len = W.roadLength(ri);
       for (let s = 20; s < len - 20; s += 30 + Math.random() * 50) {
-        const pe = {
-          roadIdx: ri, s,
-          v: (Math.random() < 0.5 ? 1 : -1) * (16 + Math.random() * 14),
-          off: (Math.random() < 0.5 ? -8 : 8),
-          hue: Math.floor(Math.random() * 360), ph: Math.random() * Math.PI * 2,
-          x: 0, y: 0,
-        };
+        addPed(ri, s, Math.random() < 0.5 ? -8 : 8);
+      }
+    }
+    // Everywhere else: people walking the aceras of local streets
+    const SIDEWALK_CLS = { residential: 1, unclassified: 1, tertiary: 1, secondary: 1, living_street: 1 };
+    for (let ri = 0; ri < W.ROADS.length && pedestrians.length < 240; ri++) {
+      const r = W.ROADS[ri];
+      if (!SIDEWALK_CLS[r.cls]) continue;
+      const len = r.len;
+      for (let s = 30; s < len - 30; s += 150 + Math.random() * 160) {
+        const side = Math.random() < 0.5 ? -1 : 1;
+        addPed(ri, s, side * (r.w / 2 + 8)); // on the acera band
+      }
+    }
+    spawnAmbient();
+  }
+
+  // Ambient city life: parked cars along curbs, vendor carts, stray animals
+  function spawnAmbient() {
+    parked.length = 0; vendors.length = 0; animals.length = 0;
+    const palette = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
+    const kiosks = W.LANDMARKS.filter(l => l.type === "kiosk");
+    for (let ri = 0; ri < W.ROADS.length && parked.length < 220; ri++) {
+      const r = W.ROADS[ri];
+      if (r.cls !== "residential" && r.cls !== "unclassified" && r.cls !== "service") continue;
+      for (let s = 50; s < r.len - 50; s += 190 + Math.random() * 240) {
         const pt = W.roadPointAt(ri, s);
-        pe.x = pt.x - Math.sin(pt.ang) * pe.off;
-        pe.y = pt.y + Math.cos(pt.ang) * pe.off;
-        pedestrians.push(pe);
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const off = side * (r.w / 2 - 5); // hugging the curb
+        const x = pt.x - Math.sin(pt.ang) * off, y = pt.y + Math.cos(pt.ang) * off;
+        if (kiosks.some(k => Math.abs(k.x - x) < 70 && Math.abs(k.y - y) < 60)) continue;
+        parked.push({ x, y, ang: pt.ang, w: 22 + Math.random() * 6, h: 12,
+                      color: palette[Math.floor(Math.random() * palette.length)] });
+      }
+    }
+    // vendor carts: paseo boulevard + around every kiosk
+    for (const ri of getPaseoRoads()) {
+      for (let s = 80; s < W.roadLength(ri) - 80; s += 240 + Math.random() * 160) {
+        const pt = W.roadPointAt(ri, s);
+        const off = (Math.random() < 0.5 ? -1 : 1) * 16;
+        vendors.push({ x: pt.x - Math.sin(pt.ang) * off, y: pt.y + Math.cos(pt.ang) * off,
+                       hue: 10 + Math.floor(Math.random() * 160), ph: Math.random() * 6 });
+      }
+    }
+    for (const k of kiosks) {
+      vendors.push({ x: k.x + 34, y: k.y + 12, hue: 330, ph: Math.random() * 6 });
+    }
+    // animals: dogs/cats that amble across streets in town
+    for (let i = 0; i < 14; i++) {
+      const ri = Math.floor(Math.random() * W.ROADS.length);
+      const r = W.ROADS[ri];
+      if (!r || r.len < 100) { i--; continue; }
+      const s = 40 + Math.random() * (r.len - 80);
+      const pt = W.roadPointAt(ri, s);
+      animals.push({ x: pt.x, y: pt.y, tx: pt.x, ty: pt.y, roadIdx: ri, s,
+                     pause: Math.random() * 4, cat: Math.random() < 0.4,
+                     ph: Math.random() * 6 });
+    }
+  }
+
+  function updateAnimals(dt) {
+    for (const a of animals) {
+      a.ph += dt * 5;
+      if (a.pause > 0) { a.pause -= dt; continue; }
+      const dx = a.tx - a.x, dy = a.ty - a.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 2) {
+        // pick a new spot: cross the street or wander along it
+        const r = W.ROADS[a.roadIdx];
+        a.s = Math.max(20, Math.min(r.len - 20, a.s + (Math.random() - 0.5) * 120));
+        const pt = W.roadPointAt(a.roadIdx, a.s);
+        const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 6 + Math.random() * 8);
+        a.tx = pt.x - Math.sin(pt.ang) * off;
+        a.ty = pt.y + Math.cos(pt.ang) * off;
+        a.pause = 1 + Math.random() * 5;
+      } else {
+        const sp = a.cat ? 34 : 26;
+        a.x += (dx / d) * sp * dt;
+        a.y += (dy / d) * sp * dt;
       }
     }
   }
@@ -523,6 +613,8 @@
         pe.off += (Math.random() < 0.5 ? -4 : 4); // stumble aside
       }
     }
+
+    updateAnimals(dt);
 
     // Gulls
     for (const g of gulls) {
@@ -1112,8 +1204,21 @@
     ctx.save();
     ctx.translate(c.x, c.y); ctx.rotate(c.ang || 0);
     ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(-c.w/2 + 3, -c.h/2 + 3, c.w, c.h);
-    ctx.fillStyle = c.color; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
-    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(-c.w/2 + 4, -c.h/2 + 2, c.w - 8, c.h - 4);
+    if (c.kind === "truck") {
+      // cab + boxy trailer
+      ctx.fillStyle = c.color; ctx.fillRect(c.w/2 - 9, -c.h/2, 9, c.h);
+      ctx.fillStyle = "#e8e4da"; ctx.fillRect(-c.w/2, -c.h/2, c.w - 10, c.h);
+      ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(c.w/2 - 10, -c.h/2, 1.5, c.h);
+    } else if (c.kind === "bus") {
+      ctx.fillStyle = c.color; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      for (let wx = -c.w/2 + 4; wx < c.w/2 - 5; wx += 6) ctx.fillRect(wx, -c.h/2 + 2, 4, 3);
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      for (let wx = -c.w/2 + 4; wx < c.w/2 - 5; wx += 6) ctx.fillRect(wx, c.h/2 - 5, 4, 3);
+    } else {
+      ctx.fillStyle = c.color; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+      ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(-c.w/2 + 4, -c.h/2 + 2, c.w - 8, c.h - 4);
+    }
     ctx.fillStyle = "#222"; ctx.fillRect(-c.w/2, -c.h/2 - 1, 3, c.h + 2); ctx.fillRect(c.w/2 - 3, -c.h/2 - 1, 3, c.h + 2);
     ctx.restore();
   }
@@ -1305,6 +1410,37 @@
     }
   }
 
+  // Street vendor cart: box cart with a striped parasol
+  function drawVendor(vn, t) {
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath(); ctx.ellipse(vn.x + 2, vn.y + 5, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.fillRect(vn.x - 7, vn.y - 4, 14, 9);
+    ctx.fillStyle = `hsl(${vn.hue} 70% 55%)`; ctx.fillRect(vn.x - 7, vn.y - 4, 14, 3);
+    ctx.fillStyle = "#26222c";
+    ctx.beginPath(); ctx.arc(vn.x - 5, vn.y + 6, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(vn.x + 5, vn.y + 6, 1.6, 0, Math.PI * 2); ctx.fill();
+    // parasol with a gentle sway
+    const sway = Math.sin(t * 0.001 + vn.ph) * 1.2;
+    ctx.strokeStyle = "#8a7355"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(vn.x + 4, vn.y - 2); ctx.lineTo(vn.x + 4 + sway, vn.y - 14); ctx.stroke();
+    ctx.fillStyle = `hsl(${vn.hue} 75% 60%)`;
+    ctx.beginPath(); ctx.arc(vn.x + 4 + sway, vn.y - 14, 9, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.beginPath(); ctx.arc(vn.x + 4 + sway, vn.y - 14, 9, Math.PI + 0.5, Math.PI + 1.1); ctx.lineTo(vn.x + 4 + sway, vn.y - 14); ctx.fill();
+  }
+
+  // Stray dog / cat ambling around the streets
+  function drawAnimal(an) {
+    const bob = Math.sin(an.ph) * 0.8;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath(); ctx.ellipse(an.x + 1, an.y + 3, 4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = an.cat ? "#4a4046" : "#a5763f";
+    ctx.fillRect(an.x - 4, an.y - 2 + bob, 8, 4);                     // body
+    ctx.fillRect(an.x + 3, an.y - 4 + bob, 3.4, 3.4);                 // head
+    ctx.fillRect(an.x - 6, an.y - 3 + bob, 2, 2);                     // tail
+    if (an.cat) { ctx.fillRect(an.x + 3.4, an.y - 5.4 + bob, 1.2, 1.6); ctx.fillRect(an.x + 5.2, an.y - 5.4 + bob, 1.2, 1.6); } // ears
+  }
+
   // The active delivery target: a waiting customer on a concrete pad, waving.
   function drawTargetCustomer(t) {
     if (!state.carrying) return;
@@ -1330,19 +1466,78 @@
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.save(); ctx.translate(p.x + 4, p.y + 6); ctx.rotate(p.a); ctx.fillRect(-veh.w/2, -veh.h/2, veh.w, veh.h); ctx.restore();
     ctx.translate(p.x, p.y); ctx.rotate(p.a);
+    const key = state.vehicleKey;
     if (veh.kind === "bike") {
-      // two-wheeler: wheels, slim frame, rider with helmet
+      // two-wheeler: wheels, frame, rider with helmet
       ctx.fillStyle = "#26222c";
       ctx.beginPath(); ctx.ellipse(-veh.w/2 + 3, 0, 3.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(veh.w/2 - 3, 0, 3.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = veh.color;
-      roundRect(ctx, -veh.w/2 + 4, -2.5, veh.w - 8, 5, 2, true, false);
+      if (key === "scooter") {
+        roundRect(ctx, -veh.w/2 + 3, -3, veh.w - 6, 6, 2.5, true, false);   // deck + leg shield
+        ctx.fillRect(veh.w/2 - 7, -4, 3, 8);
+      } else {
+        roundRect(ctx, -veh.w/2 + 4, -1.5, veh.w - 8, 3, 1.5, true, false); // thin bici frame
+        ctx.fillStyle = "#e8e4da"; ctx.fillRect(-veh.w/2 + 2, -4, 5, 8);    // cooler box on the back
+      }
       ctx.fillStyle = "rgba(20,40,60,0.6)";                  // handlebar
       ctx.fillRect(veh.w/2 - 6, -veh.h/2 + 2, 2, veh.h - 4);
       ctx.fillStyle = veh.roof;                               // rider helmet
       ctx.beginPath(); ctx.arc(-1, 0, 3.6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#fffbe8";                              // headlight
       ctx.fillRect(veh.w/2 - 2, -1.5, 2, 3);
+    } else if (key === "tuktuk") {
+      // three-wheeler: single front wheel, cabin with canopy
+      ctx.fillStyle = "#26222c";
+      ctx.beginPath(); ctx.ellipse(veh.w/2 - 2, 0, 2.6, 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-veh.w/2 + 4, -veh.h/2 + 1, 2.6, 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-veh.w/2 + 4, veh.h/2 - 1, 2.6, 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = veh.color;
+      ctx.beginPath();                                        // teardrop body
+      ctx.moveTo(veh.w/2, 0);
+      ctx.quadraticCurveTo(veh.w/2 - 4, -veh.h/2, -veh.w/2 + 2, -veh.h/2 + 1);
+      ctx.lineTo(-veh.w/2 + 2, veh.h/2 - 1);
+      ctx.quadraticCurveTo(veh.w/2 - 4, veh.h/2, veh.w/2, 0);
+      ctx.fill();
+      ctx.fillStyle = veh.roof;                               // canopy
+      roundRect(ctx, -veh.w/2 + 3, -veh.h/2 + 2.5, veh.w * 0.6, veh.h - 5, 2, true, false);
+      ctx.fillStyle = "#fffbe8"; ctx.fillRect(veh.w/2 - 2, -1.5, 2, 3);
+    } else if (key === "cart") {
+      // ice-cream cart: white box, striped canopy, small wheels
+      ctx.fillStyle = "#26222c";
+      ctx.fillRect(-veh.w/2 + 3, -veh.h/2 - 1, 4, 2); ctx.fillRect(-veh.w/2 + 3, veh.h/2 - 1, 4, 2);
+      ctx.fillRect(veh.w/2 - 7, -veh.h/2 - 1, 4, 2); ctx.fillRect(veh.w/2 - 7, veh.h/2 - 1, 4, 2);
+      ctx.fillStyle = veh.color;
+      roundRect(ctx, -veh.w/2, -veh.h/2, veh.w, veh.h, 3, true, false);
+      for (let i = 0; i < 4; i++) {                           // striped canopy
+        ctx.fillStyle = i % 2 ? "#fff" : veh.roof;
+        ctx.fillRect(-veh.w/2 + 2 + i * (veh.w - 4) / 4, -veh.h/2 + 1, (veh.w - 4) / 4, veh.h * 0.45);
+      }
+      ctx.fillStyle = "#5fb0d6"; ctx.fillRect(-veh.w/2 + 4, veh.h/2 - 6, veh.w - 8, 3); // freezer lid
+    } else if (key === "pickup") {
+      // pickup: cab up front, open cargo bed behind
+      ctx.fillStyle = veh.color;
+      roundRect(ctx, -veh.w/2, -veh.h/2, veh.w, veh.h, 3, true, false);
+      ctx.fillStyle = veh.roof;                               // cab roof
+      ctx.fillRect(veh.w/2 - 14, -veh.h/2 + 2, 9, veh.h - 4);
+      ctx.fillStyle = "rgba(30,25,20,0.55)";                  // bed
+      ctx.fillRect(-veh.w/2 + 2, -veh.h/2 + 2, veh.w/2 + 2, veh.h - 4);
+      ctx.fillStyle = "#e8e4da";                              // cooler in the bed
+      ctx.fillRect(-veh.w/2 + 5, -3, 7, 6);
+      ctx.fillStyle = "#fffbe8";
+      ctx.fillRect(veh.w/2 - 2, -veh.h/2 + 1, 2, 3); ctx.fillRect(veh.w/2 - 2, veh.h/2 - 4, 2, 3);
+    } else if (key === "turbo") {
+      // kart: low body, exposed wheels, rear spoiler
+      ctx.fillStyle = "#26222c";
+      ctx.fillRect(-veh.w/2 + 1, -veh.h/2 - 2, 5, 3); ctx.fillRect(-veh.w/2 + 1, veh.h/2 - 1, 5, 3);
+      ctx.fillRect(veh.w/2 - 6, -veh.h/2 - 2, 5, 3); ctx.fillRect(veh.w/2 - 6, veh.h/2 - 1, 5, 3);
+      ctx.fillStyle = veh.color;                              // narrow hull
+      roundRect(ctx, -veh.w/2, -veh.h/2 + 3, veh.w, veh.h - 6, 3, true, false);
+      ctx.fillStyle = veh.roof;                               // driver
+      ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = veh.color;                              // spoiler
+      ctx.fillRect(-veh.w/2 - 2, -veh.h/2 + 1, 3, veh.h - 2);
+      ctx.fillStyle = "#fffbe8"; ctx.fillRect(veh.w/2 - 2, -1.5, 2, 3);
     } else {
       ctx.fillStyle = veh.color;
       roundRect(ctx, -veh.w/2, -veh.h/2, veh.w, veh.h, 3, true, false);
@@ -1498,6 +1693,18 @@
     for (const pe of pedestrians) {
       if (pe.x < view.x0 - 20 || pe.x > view.x1 + 20) continue;
       drawPed(pe);
+    }
+    for (const pk of parked) {
+      if (pk.x < view.x0 - 20 || pk.x > view.x1 + 20 || pk.y < view.y0 - 20 || pk.y > view.y1 + 20) continue;
+      drawCar(pk);
+    }
+    for (const vn of vendors) {
+      if (vn.x < view.x0 - 20 || vn.x > view.x1 + 20 || vn.y < view.y0 - 20 || vn.y > view.y1 + 20) continue;
+      drawVendor(vn, t);
+    }
+    for (const an of animals) {
+      if (an.x < view.x0 - 20 || an.x > view.x1 + 20 || an.y < view.y0 - 20 || an.y > view.y1 + 20) continue;
+      drawAnimal(an);
     }
     for (const car of traffic) {
       if (car.x < view.x0 - 20 || car.x > view.x1 + 20) continue;

@@ -1,8 +1,44 @@
 # La Ruta del Churchill — Roadmap
 
 Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementation.
-The OSM world pipeline (`tools/build_world.py` → `world-data.js`) and the three
+The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
+
+## 🚧 Modernization initiative (2026-07-06) — beautify, modularize, tool-up
+
+Goal: match the reference art (`how-look-puntarenas/…hhm9…png`), fix the small/
+uneven cuadras, and make the codebase maintainable. Guided by
+`docs/Librería Gráfica para Juego 2D (1).md` (concludes PixiJS/WebGL).
+Full plan lives in the approved plan file; status tracked here.
+
+- [x] **Milestone A — Tooling foundation** _(done 2026-07-06)_
+  - [x] pnpm + Vite build (npm React, drop CDN + in-browser Babel); scripts
+        `dev`/`build`/`preview`/`inventory`/`world:build`; `dist/` for Pages.
+  - [x] Split monolithic `engine.js`/`world.js`/`ui.jsx`/`tweaks-panel.jsx` into
+        ES modules: `src/game`, `src/world`, `src/render` (Renderer seam →
+        Canvas2D backend), `src/ui` (App + screen components + tweaks).
+  - [x] `pnpm inventory` → `inventory.json` (element catalogs + world counts +
+        `src/` module map) so elements are trackable without reading all code.
+  - [x] Deploy workflow builds with pnpm and publishes `dist/`; `public/sw.js`
+        rewritten for Vite hashed assets; `build_world.py` emits ESM data.
+  - [x] Verified: builds clean, runs under Vite with zero console errors,
+        deterministic `world:build` reproduces identical data.
+- [ ] **Milestone B — Cuadras fix** (topology-preserving) in `tools/build_world.py`
+  - [ ] Compute enclosed blocks from the road graph; merge sub-minimum sliver
+        blocks (`MIN_BLOCK_AREA_PX2`).
+  - [ ] Normalize each block's building fill to a uniform inset (`BLOCK_INSET`,
+        target fill) so blocks read evenly sized; raise synth caps for deep blocks.
+  - [ ] **Never move road nodes, intersections, bridge decks (El Roble Río
+        Barranca, estero arms) or the Muelle pier** — assert connectivity after.
+  - [ ] Rebuild `src/world/data.js`; re-run `pnpm inventory`.
+- [ ] **Milestone C — PixiJS / WebGL render backend** behind `src/render/Renderer.js`
+  - [ ] `PIXI.Application({ resolution: dpr, autoDensity })`, `NEAREST` scale +
+        CSS `image-rendering`, integer-multiple camera (kills jitter).
+  - [ ] Layered containers (water → land → blocks/roofs → roads → shadows →
+        landmarks → entities → weather → overlays); static world cached once.
+  - [ ] Water `DisplacementFilter` (+ optional `ReflectionFilter`); per-weather
+        `ColorMatrixFilter` grading; normal-map roof/Faro lighting (stretch).
+  - [ ] Match reference palette (terracotta/green roofs, turquoise gulf, sand).
 
 ## ✅ Fixed during this audit
 

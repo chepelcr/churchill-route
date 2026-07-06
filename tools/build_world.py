@@ -86,6 +86,10 @@ ROAD_WIDTH_PX = {
     "service": 18, "pedestrian": 20, "paseo": 42, "bridge": 36,
 }
 ROAD_CLASSES = set(ROAD_WIDTH_PX) - {"paseo", "bridge"}
+# Unify cuadras: minor alleys/paths are dropped so blocks read bigger and the
+# town feels like an exploration game (not every real street is represented).
+# The main grid + named streets + intersections + bridges are always kept.
+DROP_ROAD_CLASSES = {"service", "pedestrian"}
 SERVICE_MIN_PX = 40
 DP_ROAD_PX = 1.0
 DP_BUILDING_PX = 2.0
@@ -610,8 +614,13 @@ def extract_roads(sp, ways):
         if len(w["pts"]) < 2 or not way_in_corridor(sp, w["pts"]):
             continue
         cls = "bridge" if is_bridge else hw
+        # Paseo de los Turistas is a principal street (the beachfront main road),
+        # not a special pedestrian promenade — drive it at full speed.
         if "paseo de los turistas" in lname:
-            cls = "paseo"
+            cls = "primary"
+        # Drop minor alleys/paths to unify small cuadras into bigger blocks.
+        if cls in DROP_ROAD_CLASSES:
+            continue
         pts, _ = project_way_pts(sp, w["pts"])
         for piece in clip_polyline_to_rect(pts, CANVAS_W, CANVAS_H):
             piece = dp_simplify(piece, DP_ROAD_PX)
@@ -994,13 +1003,25 @@ def beach_fringe(grid, depth_cells=3):
 
 # ------------------------------------------------------- synthetic infill ---
 
-SYNTH_MAX_TOTAL = 1400          # cap on real + synthesized buildings
+SYNTH_MAX_TOTAL = 5000          # cap on real + synthesized buildings
 SYNTH_SEED = 77
+# Cuadra fill: uniform lots marched in rows from every road frontage into the
+# block interior until the row leaves the block (hits the opposite road/acera,
+# beach or water) or bumps another footprint. This packs each cuadra edge-to-
+# edge with evenly-sized roofs (like the reference art) instead of a single
+# sparse frontage row — while the road grid, intersections, bridges and pier
+# are untouched (blocks are still solid CLS_LAND you slide along).
+LOT_W = 18.0                    # target lot width along the street
+LOT_D = 14.0                    # target lot depth per row
+LOT_GAP = 2.5                   # spacing between lots along the street
+ROW_GAP = 2.5                   # spacing between successive rows into the block
+MAX_ROWS = 3                    # frontage band depth; cuadra interiors stay open
+SYNTH_GAP = 2.5                 # min spacing vs other footprints
 
 def synth_buildings(grid, roads, real_bldgs, keepouts):
-    """Fill the cuadras: place small buildings along road frontages wherever
-    the block interior is empty land, so the town reads as a real city.
-    Deterministic, collision-free vs roads (grid check), real footprints,
+    """Fill the cuadras: pack each block with uniform lots marched in rows from
+    the road frontages into the interior, so the town reads as a dense real
+    city. Deterministic, collision-free vs roads (grid check), real footprints,
     each other, and POI keep-out zones."""
     def cell(px, py):
         c, r = int(px // GRID_CELL), int(py // GRID_CELL)
@@ -1023,7 +1044,7 @@ def synth_buildings(grid, roads, real_bldgs, keepouts):
             for cy in range(int(a[1]) // CS, int(a[3]) // CS + 1):
                 bhash[(cx, cy)].append(idx)
 
-    def collides(a, gap=3):
+    def collides(a, gap=SYNTH_GAP):
         for cx in range(int(a[0]) // CS, int(a[2]) // CS + 1):
             for cy in range(int(a[1]) // CS, int(a[3]) // CS + 1):
                 for idx in bhash.get((cx, cy), ()):
@@ -1042,13 +1063,36 @@ def synth_buildings(grid, roads, real_bldgs, keepouts):
         seed = (seed * 9301 + 49297) % 233280
         return seed / 233280
 
+    def try_place(cxx, cyy, tx, ty, nx, ny, wa, dp):
+        """Return (flat, aabb) if a lot of size wa×dp centered at (cxx,cyy) fits
+        entirely on block land/acera, clear of keep-outs and other footprints;
+        else None. `hit_edge` (2nd return) is True when it left the block."""
+        corners = []
+        for (u, v) in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+            corners.append((cxx + tx * u * wa / 2 + nx * v * dp / 2,
+                            cyy + ty * u * wa / 2 + ny * v * dp / 2))
+        samples = corners + [(cxx, cyy)]
+        # Buildings sit only on cuadra land — never on aceras, streets, sand or
+        # water. Leaving the block land ends this frontage line.
+        if any(cell(px, py) != CLS_LAND for (px, py) in samples):
+            return None, True
+        if any((cxx - kx) ** 2 + (cyy - ky) ** 2 < (kr + 14) ** 2
+               for (kx, ky, kr) in keepouts):
+            return None, True   # POI plaza — stop this line
+        flat = [round(v) for c in corners for v in c]
+        a = flat_aabb(flat)
+        if collides(a):
+            return None, False  # bumped a footprint — skip this row, keep marching
+        return (flat, a), False
+
     out = []
+    PITCH = LOT_W + LOT_GAP
     for road in roads:
         if road["cls"] == "bridge":
             continue
         p = road["pts"]
         stations = []
-        acc, nxt = 0.0, 20.0 + rng() * 16
+        acc, nxt = 0.0, PITCH * 0.5 + rng() * PITCH
         for i in range(0, len(p) - 2, 2):
             x0, y0, x1, y1 = p[i], p[i + 1], p[i + 2], p[i + 3]
             seg = math.hypot(x1 - x0, y1 - y0)
@@ -1058,50 +1102,88 @@ def synth_buildings(grid, roads, real_bldgs, keepouts):
             while nxt <= acc + seg:
                 t = (nxt - acc) / seg
                 stations.append((x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, tx, ty))
-                nxt += 22.0 + rng() * 16
+                nxt += PITCH
             acc += seg
         for (sx, sy, tx, ty) in stations:
             nx, ny = -ty, tx
             for side in (1, -1):
-                if rng() < 0.2:            # organic gaps
+                if rng() < 0.05:           # a few organic gaps
                     continue
-                wa0 = 14 + rng() * 16      # width along the street
-                dp0 = 11 + rng() * 13      # depth into the block
-                # houses front the acera (leave ~6px of visible sidewalk)
-                setback = road["w"] / 2 + 6 + rng() * 2
-                placed = None
-                # tight cuadras: retry with shallower row-house footprints
-                for (wa, dp) in ((wa0, dp0), (wa0 * 0.8, dp0 * 0.6), (wa0 * 0.7, 7)):
-                    cxx = sx + nx * side * (setback + dp / 2)
-                    cyy = sy + ny * side * (setback + dp / 2)
-                    corners = []
-                    for (u, v) in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
-                        corners.append((cxx + tx * u * wa / 2 + nx * v * dp / 2,
-                                        cyy + ty * u * wa / 2 + ny * v * dp / 2))
-                    samples = corners + [(cxx, cyy)]
-                    if any(cell(px, py) not in (CLS_LAND, CLS_ACERA) for (px, py) in samples):
-                        continue
-                    if any((cxx - kx) ** 2 + (cyy - ky) ** 2 < (kr + 14) ** 2
-                           for (kx, ky, kr) in keepouts):
-                        break
-                    flat = [round(v) for c in corners for v in c]
-                    a = flat_aabb(flat)
-                    if collides(a):
-                        break
-                    placed = (flat, a)
-                    break
-                if placed is None:
-                    continue
-                add_box(placed[1])
-                out.append({
-                    "pts": placed[0],
-                    "color": BLDG_PALETTE[int(rng() * len(BLDG_PALETTE))],
-                    "roof": ROOF_PALETTE[int(rng() * len(ROOF_PALETTE))],
-                    "wnd": 1 if rng() < 0.7 else 0,
-                })
-                if len(out) + len(real_bldgs) >= SYNTH_MAX_TOTAL:
-                    return out
+                # March rows from the frontage into the block interior. Each lot
+                # is near-uniform (tight jitter) so the cuadra reads even; the
+                # row loop stops when it leaves the block or is fully packed.
+                # start beyond the acera band so footprints clear the sidewalk
+                base = road["w"] / 2 + ACERA_CELLS * GRID_CELL + 2
+                for row in range(MAX_ROWS):
+                    wa = LOT_W * (0.9 + rng() * 0.2)
+                    dp = LOT_D * (0.9 + rng() * 0.2)
+                    cxx = sx + nx * side * (base + dp / 2)
+                    cyy = sy + ny * side * (base + dp / 2)
+                    placed, hit_edge = try_place(cxx, cyy, tx, ty, nx, ny, wa, dp)
+                    if placed is None and hit_edge:
+                        break                       # left the cuadra — done
+                    if placed is not None:
+                        add_box(placed[1])
+                        out.append({
+                            "pts": placed[0],
+                            "color": BLDG_PALETTE[int(rng() * len(BLDG_PALETTE))],
+                            "roof": ROOF_PALETTE[int(rng() * len(ROOF_PALETTE))],
+                            "wnd": 1 if rng() < 0.7 else 0,
+                        })
+                        if len(out) + len(real_bldgs) >= SYNTH_MAX_TOTAL:
+                            return out
+                    base += dp + ROW_GAP            # step deeper into the block
     return out
+
+# ----------------------------------------------------- paseo palm median ----
+# The Paseo de los Turistas is a divided avenue: a dashed palm median runs down
+# the centerline as a solid (blocking) separator between the two sides, with
+# periodic gaps ("aperturas") where you can cross from one side to the other.
+PASEO_MEDIAN_W = 8.0            # median strip width (px) — leaves a lane each side
+PASEO_DASH = 110.0             # solid median run length (px)
+PASEO_GAP = 46.0               # crossing opening length (px)
+
+def paseo_roads(roads):
+    return [r for r in roads
+            if "paseo de los turistas" in (r.get("name") or "").lower()]
+
+def _resample_centerline(pts_flat, step):
+    """[(s, x, y), ...] sampled every ~step px along a flat polyline."""
+    pts = [(pts_flat[i], pts_flat[i + 1]) for i in range(0, len(pts_flat), 2)]
+    out, s = [], 0.0
+    for k in range(len(pts) - 1):
+        x0, y0 = pts[k]; x1, y1 = pts[k + 1]
+        seg = math.hypot(x1 - x0, y1 - y0)
+        if seg < 1e-6:
+            continue
+        n = max(1, int(seg / step))
+        for j in range(n):
+            t = j / n
+            out.append((s + t * seg, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
+        s += seg
+    if pts:
+        out.append((s, pts[-1][0], pts[-1][1]))
+    return out
+
+def _paseo_in_dash(s):
+    return (s % (PASEO_DASH + PASEO_GAP)) < PASEO_DASH
+
+def stamp_paseo_median(grid, roads):
+    """Stamp a dashed solid (CLS_LAND) median down the paseo centerline. Run
+    AFTER acera_fringe so the strip stays a blocking separator, not sidewalk."""
+    for r in paseo_roads(roads):
+        cur = []
+        for (s, x, y) in _resample_centerline(r["pts"], 4.0):
+            if _paseo_in_dash(s):
+                cur.append((x, y))
+            else:
+                if len(cur) >= 2:
+                    raster_stamp_polyline(grid, [v for c in cur for v in c],
+                                          PASEO_MEDIAN_W, CLS_LAND)
+                cur = []
+        if len(cur) >= 2:
+            raster_stamp_polyline(grid, [v for c in cur for v in c],
+                                  PASEO_MEDIAN_W, CLS_LAND)
 
 # ---------------------------------------------------------------- outputs ---
 
@@ -1395,6 +1477,9 @@ def main():
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
     print(f"[acera] {acera_cells} sidewalk cells")
 
+    # Paseo divided-avenue median (solid separator + crossing gaps)
+    stamp_paseo_median(grid, roads)
+
     # --- synthetic frontage buildings (fill the cuadras)
     keepouts = []
     for lm in landmarks:
@@ -1479,21 +1564,15 @@ def main():
             palms.append({"x": round(x), "y": round(topY[c] + 10 + rng() * 6),
                           "s": round(0.8 + rng() * 0.4, 2), "sway": round(rng() * 6.28, 2)})
         x += 70 + rng() * 60
-    for r in roads:
-        if r["cls"] != "paseo":
-            continue
-        p = r["pts"]
-        acc = 0.0
-        for i in range(0, len(p) - 2, 2):
-            seg = math.hypot(p[i + 2] - p[i], p[i + 3] - p[i + 1])
-            n = int((acc + seg) / 60) - int(acc / 60)
-            for k in range(n):
-                t = ((60 * (int(acc / 60) + k + 1)) - acc) / seg if seg else 0
-                t = max(0.0, min(1.0, t))
-                palms.append({"x": round(p[i] + (p[i + 2] - p[i]) * t),
-                              "y": round(p[i + 1] + (p[i + 3] - p[i + 1]) * t - 20),
+    # Paseo de los Turistas: palms on the median dashes (down the centerline),
+    # skipping the crossing gaps so trees only sit on the solid separator.
+    PALM_PITCH = 22
+    _period = PASEO_DASH + PASEO_GAP
+    for r in paseo_roads(roads):
+        for (s, x, y) in _resample_centerline(r["pts"], PALM_PITCH):
+            if (s % _period) < PASEO_DASH - 8:   # only on the solid median, not gaps
+                palms.append({"x": round(x), "y": round(y),
                               "s": 1.05, "sway": round(rng() * 6.28, 2)})
-            acc += seg
 
     mata_x0 = next(d["x0"] for d in districts if d["id"] == "mata")
     hills = [{"x0": mata_x0 - 400, "x1": CANVAS_W, "baseY": 250, "color": "#5e8a55"},

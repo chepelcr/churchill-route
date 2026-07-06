@@ -29,7 +29,7 @@ export function spawnTraffic() {
       const car = {
         roadIdx: ri, s: Math.random() * len, dir,
         lane: (dir > 0 ? 1 : -1) * Math.max(8, r.w * 0.22),
-        v: main ? 100 + Math.random() * 60 : 70 + Math.random() * 40,
+        v: main ? 70 + Math.random() * 40 : 48 + Math.random() * 28,
         color: palette[Math.floor(Math.random() * palette.length)],
         w: main ? 30 : 26, h: main ? 14 : 13,
         kind: "car",
@@ -46,23 +46,30 @@ export function spawnTraffic() {
   }
 }
 
-// Pedestrians stroll the Paseo de los Turistas (paseo-class roads)
+// The Paseo de los Turistas (matched by name — it is a principal street now,
+// no longer a special class). Used for the densest pedestrian + vendor life.
 let paseoRoadIdxs = null;
 export function getPaseoRoads() {
   if (!paseoRoadIdxs) {
     paseoRoadIdxs = [];
-    for (let i = 0; i < W.ROADS.length; i++) if (W.ROADS[i].cls === "paseo") paseoRoadIdxs.push(i);
+    for (let i = 0; i < W.ROADS.length; i++) {
+      if ((W.ROADS[i].name || "").toLowerCase().includes("paseo de los turistas")) paseoRoadIdxs.push(i);
+    }
   }
   return paseoRoadIdxs;
 }
 
+// Pedestrians walk the aceras (sidewalks) of the streets; some cross the road.
 export function spawnPedestrians() {
   pedestrians.length = 0;
-  function addPed(ri, s, off) {
+  function addPed(ri, s) {
+    const r = W.ROADS[ri];
+    const baseOff = r.w / 2 + 4;            // on the acera band beside the curb
+    const side = Math.random() < 0.5 ? -1 : 1;
     const pe = {
-      roadIdx: ri, s,
-      v: (Math.random() < 0.5 ? 1 : -1) * (16 + Math.random() * 14),
-      off,
+      roadIdx: ri, s, side, baseOff, off: side * baseOff,
+      v: (Math.random() < 0.5 ? 1 : -1) * (14 + Math.random() * 12),
+      crossing: false, crossPhase: 0,
       hue: Math.floor(Math.random() * 360), ph: Math.random() * Math.PI * 2,
       x: 0, y: 0,
     };
@@ -71,22 +78,19 @@ export function spawnPedestrians() {
     pe.y = pt.y + Math.cos(pt.ang) * pe.off;
     pedestrians.push(pe);
   }
-  // Paseo promenade: dense crowd on the boulevard itself
-  for (const ri of getPaseoRoads()) {
-    const len = W.roadLength(ri);
-    for (let s = 20; s < len - 20; s += 30 + Math.random() * 50) {
-      addPed(ri, s, Math.random() < 0.5 ? -8 : 8);
-    }
-  }
-  // Everywhere else: people walking the aceras of local streets
-  const SIDEWALK_CLS = { residential: 1, unclassified: 1, tertiary: 1, secondary: 1, living_street: 1 };
-  for (let ri = 0; ri < W.ROADS.length && pedestrians.length < 240; ri++) {
+  const WALK_CLS = {
+    residential: 1, unclassified: 1, living_street: 1,
+    tertiary: 1, tertiary_link: 1, secondary: 1,
+    primary: 1, primary_link: 1, trunk: 1, trunk_link: 1,
+  };
+  const paseo = new Set(getPaseoRoads());
+  for (let ri = 0; ri < W.ROADS.length && pedestrians.length < 260; ri++) {
     const r = W.ROADS[ri];
-    if (!SIDEWALK_CLS[r.cls]) continue;
-    const len = r.len;
-    for (let s = 30; s < len - 30; s += 150 + Math.random() * 160) {
-      const side = Math.random() < 0.5 ? -1 : 1;
-      addPed(ri, s, side * (r.w / 2 + 8)); // on the acera band
+    if (!WALK_CLS[r.cls] && !paseo.has(ri)) continue;
+    const dense = paseo.has(ri);              // busiest on the Paseo aceras
+    for (let s = 20; s < r.len - 20;) {
+      addPed(ri, s);
+      s += dense ? 22 + Math.random() * 20 : 130 + Math.random() * 150;
     }
   }
   spawnAmbient();
@@ -110,11 +114,12 @@ export function spawnAmbient() {
                     color: palette[Math.floor(Math.random() * palette.length)] });
     }
   }
-  // vendor carts: paseo boulevard + around every kiosk
+  // vendor carts with parasols: along the Paseo aceras + around every kiosk
   for (const ri of getPaseoRoads()) {
-    for (let s = 80; s < W.roadLength(ri) - 80; s += 240 + Math.random() * 160) {
+    const r = W.ROADS[ri];
+    for (let s = 60; s < r.len - 60; s += 120 + Math.random() * 90) {
       const pt = W.roadPointAt(ri, s);
-      const off = (Math.random() < 0.5 ? -1 : 1) * 16;
+      const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 6); // on the acera
       vendors.push({ x: pt.x - Math.sin(pt.ang) * off, y: pt.y + Math.cos(pt.ang) * off,
                      hue: 10 + Math.floor(Math.random() * 160), ph: Math.random() * 6 });
     }

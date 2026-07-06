@@ -1002,7 +1002,7 @@ import { nearestKiosk } from "../game/delivery.js";
   // ---- Main render --------------------------------------------------------
   // Camera zoom: >1 pulls the camera closer so streets/buildings read at
   // city-exploration scale. World-space span shrinks accordingly.
-  const ZOOM = 2.4;
+  const ZOOM = 3.2;
 
   function render(t) {
     if (!ctx) return;

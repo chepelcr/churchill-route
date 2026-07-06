@@ -43,7 +43,7 @@ function collideBuilding(p, b) {
   } else { nx = 0; ny = -1; }
   p.x = q.x + nx * 9; p.y = q.y + ny * 9;
   const vn = p.vx * nx + p.vy * ny;
-  if (vn < 0) { p.vx -= vn * 1.25 * nx; p.vy -= vn * 1.25 * ny; } // reflect normal comp ×-0.25
+  if (vn < 0) { p.vx -= vn * 0.95 * nx; p.vy -= vn * 0.95 * ny; } // absorb normal comp (gentle)
   return true;
 }
 
@@ -96,11 +96,13 @@ export function update(dt) {
   if (W.surfaceAt(p.x, p.y) === 1) {
     const okX = W.surfaceAt(p.x, prevY) !== 1;
     const okY = W.surfaceAt(prevX, p.y) !== 1;
-    if (okX && !okY) { p.y = prevY; p.vy *= -0.2; }
-    else if (okY && !okX) { p.x = prevX; p.vx *= -0.2; }
+    // Slide smoothly along the cuadra edge: kill only the blocked axis so the
+    // tangential velocity carries you along the wall (no jarring bounce).
+    if (okX && !okY) { p.y = prevY; p.vy = 0; }
+    else if (okY && !okX) { p.x = prevX; p.vx = 0; }
     else if (W.surfaceAt(prevX, prevY) !== 1) {
-      p.x = prevX; p.y = prevY; p.vx *= -0.25; p.vy *= -0.25;
-      state.cam.shake = Math.max(state.cam.shake, 3);
+      p.x = prevX; p.y = prevY; p.vx *= -0.1; p.vy *= -0.1;
+      state.cam.shake = Math.max(state.cam.shake, 2);
     }
     // else: spawned/teleported inside a block — let it drive out
   }
@@ -117,15 +119,15 @@ export function update(dt) {
   }
   if (p.x < 12) { p.x = 12; p.vx = Math.abs(p.vx) * 0.3; }
   if (p.x > W.W - 12) { p.x = W.W - 12; p.vx = -Math.abs(p.vx) * 0.3; }
-  if (inWater && Math.random() < 0.1) state.cam.shake = Math.max(state.cam.shake, 4);
+  if (inWater && Math.random() < 0.06) state.cam.shake = Math.max(state.cam.shake, 2);
 
   // Building collisions (polygon buildings via spatial hash)
   for (const b of W.buildingsNear(p.x, p.y)) {
     const a = b.aabb;
     if (p.x < a.x0 - 9 || p.x > a.x1 + 9 || p.y < a.y0 - 9 || p.y > a.y1 + 9) continue;
     if (collideBuilding(p, b)) {
-      state.cam.shake = Math.max(state.cam.shake, 6);
-      if (state.carrying && Math.random() < 0.06) dropChurchill();
+      state.cam.shake = Math.max(state.cam.shake, 3);
+      if (state.carrying && Math.random() < 0.04) dropChurchill();
     }
   }
 
@@ -200,24 +202,35 @@ export function update(dt) {
     if (t.s > len) t.s -= len;
     placeCar(t);
     if (Math.abs(t.x - p.x) < 20 && Math.abs(t.y - p.y) < 14) {
-      p.vx -= (t.x - p.x) * 0.8; p.vy -= (t.y - p.y) * 0.8;
-      state.cam.shake = Math.max(state.cam.shake, 10);
-      if (state.carrying && Math.random() < 0.18) dropChurchill();
+      p.vx -= (t.x - p.x) * 0.5; p.vy -= (t.y - p.y) * 0.5;
+      state.cam.shake = Math.max(state.cam.shake, 6);
+      if (state.carrying && Math.random() < 0.12) dropChurchill();
     }
   }
 
-  // Pedestrians — stroll the paseo arclength, bounce at the ends
+  // Pedestrians — walk the aceras; occasionally cross to the other sidewalk
   for (const pe of pedestrians) {
     const len = W.roadLength(pe.roadIdx);
-    pe.s += pe.v * dt; pe.ph += dt * 6;
-    if (pe.s < 10) { pe.s = 10; pe.v = Math.abs(pe.v); }
-    if (pe.s > len - 10) { pe.s = len - 10; pe.v = -Math.abs(pe.v); }
+    pe.ph += dt * 6;
+    if (pe.crossing) {
+      // slide the perpendicular offset from this acera, across the road, to the
+      // opposite acera over ~1.4s, then resume walking on that side
+      pe.crossPhase += dt * 0.72;
+      const tt = Math.min(1, pe.crossPhase);
+      pe.off = pe.side * pe.baseOff * (1 - 2 * tt);
+      if (tt >= 1) { pe.crossing = false; pe.side = -pe.side; pe.off = pe.side * pe.baseOff; }
+    } else {
+      pe.s += pe.v * dt;
+      if (pe.s < 10) { pe.s = 10; pe.v = Math.abs(pe.v); }
+      if (pe.s > len - 10) { pe.s = len - 10; pe.v = -Math.abs(pe.v); }
+      if (Math.random() < 0.0016) { pe.crossing = true; pe.crossPhase = 0; }
+    }
     const pt = W.roadPointAt(pe.roadIdx, pe.s);
     pe.x = pt.x - Math.sin(pt.ang) * pe.off;
     pe.y = pt.y + Math.cos(pt.ang) * pe.off;
     if (Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
       for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
-      pe.off += (Math.random() < 0.5 ? -4 : 4); // stumble aside
+      if (!pe.crossing) { pe.crossing = true; pe.crossPhase = 0; } // bolt across
     }
   }
 

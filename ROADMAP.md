@@ -68,12 +68,35 @@ game modes are live; the items below are what remains.
 - [ ] Mobile QA pass on real devices (iPhone/Android/tablet): touch feel, fullscreen/safe-area, frame rate.
 - [ ] Deploy flake: push-triggered `deploy-pages` sometimes fails with GitHub's transient "Deployment failed, try again later" (twice so far); manual re-dispatch always succeeds. Consider a retry step in the workflow.
 
+## 🧰 Toolchain (pnpm + Vite)
+
+The app is a Vite project (ES modules under `src/`, React via `@vitejs/plugin-react`).
+
+```
+pnpm install          # deps (Node 20+; pnpm via corepack)
+pnpm dev              # HMR dev server (http://localhost:8734)
+pnpm build            # -> dist/ (static; what GitHub Pages publishes)
+pnpm preview          # serve the production build
+pnpm inventory        # regenerate inventory.json (element catalog + module map)
+pnpm world:build      # rebuild src/world/data.js from docs/map.osm
+```
+
+`inventory.json` (repo root) is the machine-readable index of every game element
+(districts, stages, vehicles, landmarks, customers, surfaces) plus world counts
+and a map of `src/` modules with their exports — read it instead of the code.
+Refresh it with `pnpm inventory` after any world or module change.
+
+Source layout: `src/game/` (state, physics, input, spawns, delivery, modes),
+`src/world/` (data + accessor), `src/render/` (Renderer seam → Canvas2D backend;
+PixiJS backend lands here in Milestone C), `src/ui/` (React screens + tweaks).
+
 ## 🔁 How to regenerate the map (for any tool/session)
 
 ```
-python3 tools/build_world.py        # rebuilds world-data.js + tools/debug_map.png + debug_features.svg
-python3 -m http.server 8734         # serve; open http://localhost:8734
+pnpm world:build      # rebuilds src/world/data.js + tools/debug_map.png + debug_features.svg
+pnpm dev              # serve; open http://localhost:8734
 ```
 Knobs at the top of `tools/build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`, `ROAD_WIDTH_PX`,
 `BUILDING_SCALE`, `SYNTH_MAX_TOTAL`, `DISTRICT_BOUNDS_GEO`, `LANDMARK_DEFS`/`CUSTOMER_DEFS`
-(geo anchors; build fails listing unresolved POIs). Engine camera zoom: `ZOOM` const in engine.js.
+(geo anchors; build fails listing unresolved POIs). Engine camera zoom: `ZOOM` const in
+`src/render/canvas2d.js`.

@@ -1,0 +1,4 @@
+# pnpm settings. esbuild (Vite's bundler) needs its postinstall to fetch the
+# native binary, so allow it to run its build script.
+allowBuilds:
+  esbuild: true

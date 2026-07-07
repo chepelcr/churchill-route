@@ -31,14 +31,14 @@ export function spawnTraffic() {
         lane: (dir > 0 ? 1 : -1) * Math.max(8, r.w * 0.22),
         v: main ? 70 + Math.random() * 40 : 48 + Math.random() * 28,
         color: palette[Math.floor(Math.random() * palette.length)],
-        w: main ? 30 : 26, h: main ? 14 : 13,
+        w: main ? 38 : 32, h: main ? 18 : 16,
         kind: "car",
         x: 0, y: 0, ang: 0,
       };
       if (main) {
         const roll = Math.random();
-        if (roll < 0.15) { car.kind = "truck"; car.w = 36; car.h = 14; }
-        else if (roll < 0.24) { car.kind = "bus"; car.w = 44; car.h = 15; car.color = "#e0762e"; car.v *= 0.85; }
+        if (roll < 0.15) { car.kind = "truck"; car.w = 46; car.h = 18; }
+        else if (roll < 0.24) { car.kind = "bus"; car.w = 56; car.h = 19; car.color = "#e0762e"; car.v *= 0.85; }
       }
       placeCar(car);
       traffic.push(car);
@@ -98,22 +98,9 @@ export function spawnPedestrians() {
 
 // Ambient city life: parked cars along curbs, vendor carts, stray animals
 export function spawnAmbient() {
+  // No parked cars cluttering the streets — keep the driving lanes clear.
   parked.length = 0; vendors.length = 0; animals.length = 0;
-  const palette = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
   const kiosks = W.LANDMARKS.filter(l => l.type === "kiosk");
-  for (let ri = 0; ri < W.ROADS.length && parked.length < 220; ri++) {
-    const r = W.ROADS[ri];
-    if (r.cls !== "residential" && r.cls !== "unclassified" && r.cls !== "service") continue;
-    for (let s = 50; s < r.len - 50; s += 190 + Math.random() * 240) {
-      const pt = W.roadPointAt(ri, s);
-      const side = Math.random() < 0.5 ? -1 : 1;
-      const off = side * (r.w / 2 - 5); // hugging the curb
-      const x = pt.x - Math.sin(pt.ang) * off, y = pt.y + Math.cos(pt.ang) * off;
-      if (kiosks.some(k => Math.abs(k.x - x) < 70 && Math.abs(k.y - y) < 60)) continue;
-      parked.push({ x, y, ang: pt.ang, w: 22 + Math.random() * 6, h: 12,
-                    color: palette[Math.floor(Math.random() * palette.length)] });
-    }
-  }
   // vendor carts with parasols: along the Paseo aceras + around every kiosk
   for (const ri of getPaseoRoads()) {
     const r = W.ROADS[ri];

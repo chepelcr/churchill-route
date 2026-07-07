@@ -87,7 +87,8 @@ import { nearestKiosk } from "../game/delivery.js";
   };
   function ensureRenderCache() {
     if (RC) return RC;
-    RC = { land: [], beach: [], water: [], roads: [], buildings: [], landAll: new Path2D() };
+    RC = { land: [], beach: [], water: [], roads: [], buildings: [], medians: [], landAll: new Path2D() };
+    for (const m of W.MEDIANS) RC.medians.push({ path: flatPath(m.pts, false), w: m.w, aabb: flatAABB(m.pts) });
     for (const poly of W.LAND_POLYS) {
       const path = flatPath(poly, true);
       RC.land.push({ path, aabb: flatAABB(poly) });
@@ -211,6 +212,25 @@ import { nearestKiosk } from "../game/delivery.js";
         ctx.restore();
       }
     }
+  }
+
+  // Paseo divided-avenue median: a planted green strip down the centerline
+  // (the palms sit on top of it), with a darker soil/curb edge.
+  function drawMedians(view) {
+    ensureRenderCache();
+    if (!RC.medians.length) return;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = "#4f6f34"; // soil / curb edge
+    for (const m of RC.medians) {
+      if (!aabbInView(m.aabb, view, m.w + 6)) continue;
+      ctx.lineWidth = m.w + 5; ctx.stroke(m.path);
+    }
+    ctx.strokeStyle = "#79b45c"; // planted grass
+    for (const m of RC.medians) {
+      if (!aabbInView(m.aabb, view, m.w + 6)) continue;
+      ctx.lineWidth = m.w; ctx.stroke(m.path);
+    }
+    ctx.lineCap = "butt";
   }
 
   // Muelle Nacional — long straight concrete pier running south into the gulf
@@ -1002,7 +1022,7 @@ import { nearestKiosk } from "../game/delivery.js";
   // ---- Main render --------------------------------------------------------
   // Camera zoom: >1 pulls the camera closer so streets/buildings read at
   // city-exploration scale. World-space span shrinks accordingly.
-  const ZOOM = 3.2;
+  const ZOOM = 5.5;
 
   function render(t) {
     if (!ctx) return;
@@ -1037,6 +1057,7 @@ import { nearestKiosk } from "../game/delivery.js";
     drawEstuary(view);
     drawMangroves(view);
     drawStreets(view);
+    drawMedians(view);
     drawPier(view);
     drawBridge(view);
     drawStreetLabels(view);

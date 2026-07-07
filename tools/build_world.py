@@ -31,10 +31,13 @@ DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
 
 # ---------------------------------------------------------------- config ---
 
-CANVAS_W, CANVAS_H, CENTER_Y = 8800, 1400, 700
+CANVAS_W, CANVAS_H, CENTER_Y = 8800, 1640, 1070
 MARGIN_X = 120                  # water margin west of the Faro tip
 SPINE_TARGET_PX = 8560          # spine arclength maps onto this many px
-CROSS_EXAG = 1.55               # perpendicular exaggeration for gameplay room
+CROSS_EXAG = 1.95               # perpendicular exaggeration — spreads the N-S
+                                # street grid so cuadras read squarer and are
+                                # wide enough to hold their buildings (map
+                                # deforms a bit wider than real)
 CORRIDOR_HALF_M = 900           # keep features within this distance of spine
 GRID_CELL = 4
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
@@ -79,11 +82,14 @@ WARP_BLEND_M = 900.0            # smoothstep half-window around the split
 BUILDING_SCALE = 1.4            # match footprints to exaggerated road widths
 POI_NUDGE_PX = 200
 
+# Spacious streets: the city is driven at close zoom, so roads are wide enough
+# to swing around, pass traffic and pull up to kiosks (without eating so much
+# block room that cuadras can't hold their buildings).
 ROAD_WIDTH_PX = {
-    "trunk": 46, "trunk_link": 34, "primary": 40, "primary_link": 32,
-    "secondary": 34, "tertiary": 32, "tertiary_link": 28,
-    "residential": 30, "unclassified": 30, "living_street": 26,
-    "service": 18, "pedestrian": 20, "paseo": 42, "bridge": 36,
+    "trunk": 58, "trunk_link": 44, "primary": 52, "primary_link": 42,
+    "secondary": 46, "tertiary": 42, "tertiary_link": 38,
+    "residential": 40, "unclassified": 40, "living_street": 36,
+    "service": 18, "pedestrian": 20, "paseo": 52, "bridge": 48,
 }
 ROAD_CLASSES = set(ROAD_WIDTH_PX) - {"paseo", "bridge"}
 # Unify cuadras: minor alleys/paths are dropped so blocks read bigger and the
@@ -648,7 +654,7 @@ def extract_buildings(sp, ways, roads):
     segs = []
     for r in roads:
         p = r["pts"]
-        hw = max(4.0, r["w"] / 2 - 3)  # allow facades to touch the curb
+        hw = max(4.0, r["w"] / 2 + ACERA_CELLS * GRID_CELL - 2)  # clear road + acera
         for i in range(0, len(p) - 2, 2):
             segs.append((p[i], p[i + 1], p[i + 2], p[i + 3], hw))
     cellmap = defaultdict(list)
@@ -974,7 +980,9 @@ def acera_fringe(grid, depth_cells=ACERA_CELLS):
 
 
 def stamp_pad(grid, x, y, r_px):
-    """Convert land to acera in a disc — plaza pads under POIs."""
+    """Carve a drivable road apron (a disc) under a POI, punching through the
+    acera so you can pull off the street right up to the kiosk/customer even
+    though aceras are otherwise non-drivable curbs."""
     rc = max(1, int(r_px // GRID_CELL))
     c0, r0 = int(x // GRID_CELL), int(y // GRID_CELL)
     for dr in range(-rc, rc + 1):
@@ -982,8 +990,8 @@ def stamp_pad(grid, x, y, r_px):
             if dc * dc + dr * dr > rc * rc:
                 continue
             c, r = c0 + dc, r0 + dr
-            if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and grid[r * GRID_COLS + c] == CLS_LAND:
-                grid[r * GRID_COLS + c] = CLS_ACERA
+            if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and grid[r * GRID_COLS + c] in (CLS_LAND, CLS_ACERA):
+                grid[r * GRID_COLS + c] = CLS_ROAD
 
 
 def beach_fringe(grid, depth_cells=3):
@@ -1071,7 +1079,11 @@ def synth_buildings(grid, roads, real_bldgs, keepouts):
         for (u, v) in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
             corners.append((cxx + tx * u * wa / 2 + nx * v * dp / 2,
                             cyy + ty * u * wa / 2 + ny * v * dp / 2))
-        samples = corners + [(cxx, cyy)]
+        # Sample corners, edge midpoints and center — an edge must not cross a
+        # street/acera between corners.
+        mids = [((corners[i][0] + corners[(i + 1) % 4][0]) / 2,
+                 (corners[i][1] + corners[(i + 1) % 4][1]) / 2) for i in range(4)]
+        samples = corners + mids + [(cxx, cyy)]
         # Buildings sit only on cuadra land — never on aceras, streets, sand or
         # water. Leaving the block land ends this frontage line.
         if any(cell(px, py) != CLS_LAND for (px, py) in samples):
@@ -1169,21 +1181,24 @@ def _paseo_in_dash(s):
     return (s % (PASEO_DASH + PASEO_GAP)) < PASEO_DASH
 
 def stamp_paseo_median(grid, roads):
-    """Stamp a dashed solid (CLS_LAND) median down the paseo centerline. Run
-    AFTER acera_fringe so the strip stays a blocking separator, not sidewalk."""
+    """Stamp a dashed solid (CLS_LAND) median down the paseo centerline and
+    return the dash polylines (for rendering the planted strip). Run AFTER
+    acera_fringe so the strip stays a blocking separator, not sidewalk."""
+    dashes = []
+    def flush(cur):
+        if len(cur) >= 2:
+            flat = [v for c in cur for v in c]
+            raster_stamp_polyline(grid, flat, PASEO_MEDIAN_W, CLS_LAND)
+            dashes.append({"pts": [round(v) for v in flat], "w": round(PASEO_MEDIAN_W)})
     for r in paseo_roads(roads):
         cur = []
         for (s, x, y) in _resample_centerline(r["pts"], 4.0):
             if _paseo_in_dash(s):
                 cur.append((x, y))
             else:
-                if len(cur) >= 2:
-                    raster_stamp_polyline(grid, [v for c in cur for v in c],
-                                          PASEO_MEDIAN_W, CLS_LAND)
-                cur = []
-        if len(cur) >= 2:
-            raster_stamp_polyline(grid, [v for c in cur for v in c],
-                                  PASEO_MEDIAN_W, CLS_LAND)
+                flush(cur); cur = []
+        flush(cur)
+    return dashes
 
 # ---------------------------------------------------------------- outputs ---
 
@@ -1477,8 +1492,9 @@ def main():
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
     print(f"[acera] {acera_cells} sidewalk cells")
 
-    # Paseo divided-avenue median (solid separator + crossing gaps)
-    stamp_paseo_median(grid, roads)
+    # Paseo divided-avenue median (solid separator + crossing gaps); the dash
+    # polylines are emitted so the renderer can draw a planted green strip.
+    medians = stamp_paseo_median(grid, roads)
 
     # --- synthetic frontage buildings (fill the cuadras)
     keepouts = []
@@ -1593,6 +1609,7 @@ def main():
         "mangroves": mangroves,
         "palms": palms,
         "hills": hills,
+        "medians": medians,
         "districts": [{k: v for k, v in d.items()} for d in districts],
         "landmarks": landmarks,
         "customers": customers,

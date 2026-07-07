@@ -23,14 +23,16 @@ Full plan lives in the approved plan file; status tracked here.
         rewritten for Vite hashed assets; `build_world.py` emits ESM data.
   - [x] Verified: builds clean, runs under Vite with zero console errors,
         deterministic `world:build` reproduces identical data.
-- [ ] **Milestone B — Cuadras fix** (topology-preserving) in `tools/build_world.py`
-  - [ ] Compute enclosed blocks from the road graph; merge sub-minimum sliver
-        blocks (`MIN_BLOCK_AREA_PX2`).
-  - [ ] Normalize each block's building fill to a uniform inset (`BLOCK_INSET`,
-        target fill) so blocks read evenly sized; raise synth caps for deep blocks.
-  - [ ] **Never move road nodes, intersections, bridge decks (El Roble Río
-        Barranca, estero arms) or the Muelle pier** — assert connectivity after.
-  - [ ] Rebuild `src/world/data.js`; re-run `pnpm inventory`.
+- [x] **Milestone B — Cuadras, Paseo avenue & relaxed driving** _(done 2026-07-06)_
+  - [x] Unify cuadras: drop minor alleys/paths (service/pedestrian) so blocks
+        read bigger/explorable; main grid + intersections + El Roble bridge +
+        splits kept. Synth buildings only on cuadra land (never aceras/streets);
+        interiors may stay open (frontage band).
+  - [x] Paseo de los Turistas → principal street with a dashed **palm median**
+        (solid blocking separator + periodic crossing gaps).
+  - [x] Engine feel: zoom 2.4→3.2; slower higher-grip vehicles + slower traffic
+        (relaxed cruise); pedestrians walk aceras + cross streets; vendor carts
+        back on the Paseo aceras; smoother cuadra/building/traffic/water bumps.
 - [ ] **Milestone C — PixiJS / WebGL render backend** behind `src/render/Renderer.js`
   - [ ] `PIXI.Application({ resolution: dpr, autoDensity })`, `NEAREST` scale +
         CSS `image-rendering`, integer-multiple camera (kills jitter).

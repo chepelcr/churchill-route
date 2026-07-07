@@ -92,15 +92,16 @@ export function update(dt) {
 
   const prevX = p.x, prevY = p.y;
   p.x += p.vx * dt; p.y += p.vy * dt;
-  // Solid cuadras: block interiors (class 1) are walls — slide along edges.
-  if (W.surfaceAt(p.x, p.y) === 1) {
-    const okX = W.surfaceAt(p.x, prevY) !== 1;
-    const okY = W.surfaceAt(prevX, p.y) !== 1;
-    // Slide smoothly along the cuadra edge: kill only the blocked axis so the
-    // tangential velocity carries you along the wall (no jarring bounce).
+  // Solid cuadras + aceras: you drive only on the streets. Block interiors
+  // (class 1 land, class 6 acera/curb, and the paseo median) are walls you
+  // slide along — kill only the blocked axis so tangential motion carries you.
+  const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6; };
+  if (isWall(p.x, p.y)) {
+    const okX = !isWall(p.x, prevY);
+    const okY = !isWall(prevX, p.y);
     if (okX && !okY) { p.y = prevY; p.vy = 0; }
     else if (okY && !okX) { p.x = prevX; p.vx = 0; }
-    else if (W.surfaceAt(prevX, prevY) !== 1) {
+    else if (!isWall(prevX, prevY)) {
       p.x = prevX; p.y = prevY; p.vx *= -0.1; p.vy *= -0.1;
       state.cam.shake = Math.max(state.cam.shake, 2);
     }

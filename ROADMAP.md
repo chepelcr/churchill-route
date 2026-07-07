@@ -47,12 +47,16 @@ Full plan lives in the approved plan file; status tracked here.
   - **Streets**: secondary = **4 cuadrículas** (2 per lane); principal = **6
     cuadrículas** (3 per drive side).
   - **Cuadras (blocks)**: minimum **6×6 cuadrículas** of buildable land **+ 1
-    cuadrícula of acera on every side** (so ≥8×8 footprint). Enforce by pruning/
-    snapping parallel streets so none are closer than 8 cuadrículas apart.
+    cuadrícula of acera on every side** (so ≥8×8 footprint). A block **grows to
+    fit the summatory of its buildings' sizes** — buildings may differ in size
+    (each a whole number of cuadrículas), and the cuadra's dimensions are the
+    sum of its lots (+ gaps + the acera ring), snapped to the grid, never below
+    the 6×6 minimum.
+  - **Keep all OSM streets** (faithful map): the grid standardizes sizes by
+    **snapping streets/blocks to the cuadrícula**, not by dropping streets.
   - **Shapes preserved**: blocks are built from cuadrícula cells but keep
     organic shapes where the network makes them — squares, triangles,
-    trapeziums, rounds, and L-shapes (e.g. the L-cuadra at El Faro). Not every
-    real street is represented.
+    trapeziums, rounds, and L-shapes (e.g. the L-cuadra at El Faro).
   - **Buildings snap to the cuadrícula** inside each block, inset by the acera
     ring, so they never overlap aceras or streets and read uniform.
   - **Device standardization**: at most **12 cuadrículas per view**; the engine

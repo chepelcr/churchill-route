@@ -101,10 +101,10 @@ ROAD_WIDTH_PX = {
     "service": 18, "pedestrian": 20, "paseo": 52, "bridge": 48,
 }
 ROAD_CLASSES = set(ROAD_WIDTH_PX) - {"paseo", "bridge"}
-# Unify cuadras: minor alleys/paths are dropped so blocks read bigger and the
-# town feels like an exploration game (not every real street is represented).
-# The main grid + named streets + intersections + bridges are always kept.
-DROP_ROAD_CLASSES = {"service", "pedestrian"}
+# Keep every OSM street for a faithful map — the cuadrícula grid standardizes
+# cuadra/street sizes by snapping to the tile grid, so we no longer prune
+# streets to control block size.
+DROP_ROAD_CLASSES = set()
 SERVICE_MIN_PX = 40
 DP_ROAD_PX = 1.0
 DP_BUILDING_PX = 2.0

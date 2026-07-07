@@ -9,12 +9,22 @@ import { nearestKiosk } from "../game/delivery.js";
 
   // ----- Render -------------------------------------------------------------
   let canvas, ctx, dpr = 1;
+  // Cuadrícula-based responsive zoom: frame ~CUADS_PER_VIEW cuadrículas so every
+  // device shows the same amount of city. Clamped so small screens don't zoom
+  // out too far (they show fewer cuadrículas, more detail).
+  const CUAD = (W.META && W.META.cuad) || 20;
+  const CUADS_PER_VIEW = (W.META && W.META.cuadsPerView) || 12;
+  function computeZoom(wCss, hCss) {
+    const z = wCss / (CUADS_PER_VIEW * CUAD);
+    return Math.max(4.5, Math.min(9, z));
+  }
   function setupCanvas(c) {
     canvas = c; ctx = c.getContext("2d");
     const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = c.clientWidth, h = c.clientHeight;
       c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+      ZOOM = computeZoom(w, h);
     };
     resize(); window.addEventListener("resize", resize);
   }
@@ -1022,7 +1032,7 @@ import { nearestKiosk } from "../game/delivery.js";
   // ---- Main render --------------------------------------------------------
   // Camera zoom: >1 pulls the camera closer so streets/buildings read at
   // city-exploration scale. World-space span shrinks accordingly.
-  const ZOOM = 5.5;
+  let ZOOM = 5.5; // recomputed responsively per viewport in setupCanvas()
 
   function render(t) {
     if (!ctx) return;

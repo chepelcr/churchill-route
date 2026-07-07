@@ -42,6 +42,15 @@ CORRIDOR_HALF_M = 900           # keep features within this distance of spine
 GRID_CELL = 4
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 
+# Cuadrícula (tile) standardization: one CUAD is the base city tile. Streets and
+# cuadras are whole numbers of cuadrículas so sizes read uniform and identical
+# across devices. CUAD is a multiple of GRID_CELL so it aligns to the raster.
+#   street: secondary = 4 cuadrículas (2/lane), principal = 6 (3/side)
+#   cuadra: >= 6x6 cuadrículas of land + 1 cuadrícula of acera on every side
+#   view:   the engine frames at most CUADS_PER_VIEW cuadrículas (responsive zoom)
+CUAD = 20                       # px per cuadrícula (a lane ~= 2 cuadrículas)
+CUADS_PER_VIEW = 12             # max cuadrículas visible → device-consistent zoom
+
 # local equirectangular projection anchor (Faro de La Punta)
 LAT0, LON0 = 9.9770, -84.8512
 M_PER_DEG_LAT = 110540.0
@@ -1597,6 +1606,7 @@ def main():
     # --- emit
     data = {
         "meta": {"W": CANVAS_W, "H": CANVAS_H, "centerY": CENTER_Y, "cell": GRID_CELL,
+                 "cuad": CUAD, "cuadsPerView": CUADS_PER_VIEW,
                  "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
                  "spineLenM": round(sp.total), "builtAt": time.strftime("%Y-%m-%d %H:%M")},
         "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES, "rle": rle_encode(grid)},

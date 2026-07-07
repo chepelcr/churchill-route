@@ -33,6 +33,36 @@ Full plan lives in the approved plan file; status tracked here.
   - [x] Engine feel: zoom 2.4→3.2; slower higher-grip vehicles + slower traffic
         (relaxed cruise); pedestrians walk aceras + cross streets; vendor carts
         back on the Paseo aceras; smoother cuadra/building/traffic/water bumps.
+  - [x] Feel iteration (2026-07-07): wider "giant" streets; zoom →5.5; **aceras
+        non-drivable** (drive only the streets, slide along curbs); no parked
+        cars; bigger vehicles/traffic; **planted green Paseo median** (emitted
+        geometry + render); buildings never overlap street/acera; drivable POI
+        aprons. Map deformed wider (CROSS_EXAG 1.95, canvas 8800×1640). Verified
+        all 24 POIs reachable (97.6% connectivity).
+- [ ] **Milestone B★ — Cuadrícula standardization** _(in progress, 2026-07-07)_ —
+      make cuadra/street sizes uniform and identical across devices by laying
+      the city on a tile grid (a *cuadrícula* = one tile). Spec:
+  - **Cuadrícula unit** `CUAD` px, emitted in `meta.cuad`; everything is a
+    whole number of cuadrículas.
+  - **Streets**: secondary = **4 cuadrículas** (2 per lane); principal = **6
+    cuadrículas** (3 per drive side).
+  - **Cuadras (blocks)**: minimum **6×6 cuadrículas** of buildable land **+ 1
+    cuadrícula of acera on every side** (so ≥8×8 footprint). Enforce by pruning/
+    snapping parallel streets so none are closer than 8 cuadrículas apart.
+  - **Shapes preserved**: blocks are built from cuadrícula cells but keep
+    organic shapes where the network makes them — squares, triangles,
+    trapeziums, rounds, and L-shapes (e.g. the L-cuadra at El Faro). Not every
+    real street is represented.
+  - **Buildings snap to the cuadrícula** inside each block, inset by the acera
+    ring, so they never overlap aceras or streets and read uniform.
+  - **Device standardization**: at most **12 cuadrículas per view**; the engine
+    computes a **responsive zoom** = `viewportWidth / (cuadsPerView × CUAD)` so
+    every device shows the same amount of city (nice, surprising exploration).
+  - Care at **intersections** (grid-align crossings; don't orphan blocks).
+  - Steps: (1) emit `meta.cuad`/`cuadsPerView` + responsive zoom [done first];
+    (2) quantize acera to 1 cuadrícula + grid-snap building lots; (3) prune/snap
+    the road network to enforce min 6×6 blocks while preserving shapes; (4)
+    regen, verify connectivity + look, tune.
 - [ ] **Milestone C — PixiJS / WebGL render backend** behind `src/render/Renderer.js`
   - [ ] `PIXI.Application({ resolution: dpr, autoDensity })`, `NEAREST` scale +
         CSS `image-rendering`, integer-multiple camera (kills jitter).

@@ -53,7 +53,8 @@ export function getPaseoRoads() {
   if (!paseoRoadIdxs) {
     paseoRoadIdxs = [];
     for (let i = 0; i < W.ROADS.length; i++) {
-      if ((W.ROADS[i].name || "").toLowerCase().includes("paseo de los turistas")) paseoRoadIdxs.push(i);
+      const n = (W.ROADS[i].name || "").toLowerCase();
+      if (n.includes("paseo de los turistas") || n.includes("paseo león cortés")) paseoRoadIdxs.push(i);
     }
   }
   return paseoRoadIdxs;

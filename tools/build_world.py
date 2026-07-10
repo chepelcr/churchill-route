@@ -640,9 +640,10 @@ def extract_roads(sp, ways):
         if len(w["pts"]) < 2 or not way_in_corridor(sp, w["pts"]):
             continue
         cls = "bridge" if is_bridge else hw
-        # Paseo de los Turistas is a principal street (the beachfront main road),
-        # not a special pedestrian promenade — drive it at full speed.
-        if "paseo de los turistas" in lname:
+        # The beachfront avenue is a principal street driven at full speed —
+        # both its western half (Paseo de los Turistas) and its continuation
+        # past the kiosks (Paseo León Cortés Castro, OSM-tagged tertiary).
+        if "paseo de los turistas" in lname or "paseo león cortés" in lname:
             cls = "primary"
         # Drop minor alleys/paths to unify small cuadras into bigger blocks.
         if cls in DROP_ROAD_CLASSES:
@@ -1443,12 +1444,73 @@ def synth_buildings(blocks, cell_block, occ, n_real):
 # the centerline as a solid (blocking) separator between the two sides, with
 # periodic gaps ("aperturas") where you can cross from one side to the other.
 PASEO_MEDIAN_W = 2.0 * CUAD     # median: 2 cuadrículas of the 6-CUAD avenue
-PASEO_MIN_DASH = 3.0 * CUAD    # drop median slivers shorter than this
+PASEO_MIN_DASH = 2.0 * CUAD    # drop median slivers shorter than this
+                               # (short tree islands between close cross
+                               # streets are fine — the centro is dense)
 PASEO_GAP_MARGIN = CUAD        # extra turn room on each side of a crossing
+
+PASEO_NAMES = ("paseo de los turistas", "paseo león cortés")
+
+# Streets replaced by planted TREE LINES: where the beachfront approach reads
+# as 3 parallel carriles, the middle one (Avenida 2A, between the Paseo and
+# Avenida 2) becomes a tree-lined separator along its exact centerline — the
+# curve is preserved, the asphalt is not.
+TREELINE_ROADS = ("avenida 2a",)
 
 def paseo_roads(roads):
     return [r for r in roads
-            if "paseo de los turistas" in (r.get("name") or "").lower()]
+            if any(n in (r.get("name") or "").lower() for n in PASEO_NAMES)]
+
+def extract_treelines(roads):
+    """Pull TREELINE_ROADS out of the drivable network; their centerlines are
+    planted as tree separators instead (median stamp + trees)."""
+    lines = [r for r in roads
+             if (r.get("name") or "").lower() in TREELINE_ROADS]
+    if lines:
+        drop = set(map(id, lines))
+        roads[:] = [r for r in roads if id(r) not in drop]
+        names = sorted({r["name"] for r in lines})
+        print(f"[roads] {len(lines)} piece(s) replaced by tree lines: {names}")
+    return lines
+
+def dedupe_dual_carriageway(roads):
+    """OSM maps stretches of the beachfront avenue as two one-way ways (dual
+    carriageway). Stamped at cuadrícula width they overlap into a 3-lane slab
+    with two dash lines. Keep one centerline per avenue: drop any paseo piece
+    that lies entirely within a longer same-name piece's corridor."""
+    def plen(r):
+        p = r["pts"]
+        return sum(math.hypot(p[i + 2] - p[i], p[i + 3] - p[i + 1])
+                   for i in range(0, len(p) - 2, 2))
+
+    def max_dist_to(r, k):
+        p, kp = r["pts"], k["pts"]
+        far = 0.0
+        for i in range(0, len(p), 2):
+            px, py = p[i], p[i + 1]
+            best = 1e18
+            for j in range(0, len(kp) - 2, 2):
+                x0, y0, x1, y1 = kp[j], kp[j + 1], kp[j + 2], kp[j + 3]
+                dx, dy = x1 - x0, y1 - y0
+                L2 = dx * dx + dy * dy
+                t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+                d2 = (px - (x0 + t * dx)) ** 2 + (py - (y0 + t * dy)) ** 2
+                best = min(best, d2)
+            far = max(far, best)
+        return math.sqrt(far)
+
+    keep, dropped = [], set()
+    for r in sorted(paseo_roads(roads), key=plen, reverse=True):
+        dup = next((k for k in keep
+                    if (k.get("name") or "") == (r.get("name") or "")
+                    and max_dist_to(r, k) < r["w"] * 0.8), None)
+        if dup is not None:
+            dropped.add(id(r))
+        else:
+            keep.append(r)
+    if dropped:
+        roads[:] = [r for r in roads if id(r) not in dropped]
+        print(f"[roads] deduped {len(dropped)} dual-carriageway paseo piece(s)")
 
 def _resample_centerline(pts_flat, step):
     """[(s, x, y), ...] sampled every ~step px along a flat polyline."""
@@ -1468,14 +1530,14 @@ def _resample_centerline(pts_flat, step):
         out.append((s, pts[-1][0], pts[-1][1]))
     return out
 
-def paseo_median_runs(roads):
-    """Solid-median runs along each paseo piece, with gaps ALIGNED TO THE
-    CROSS STREETS: a gap opens wherever another street meets the paseo, wide
-    enough to turn into it (street width + PASEO_GAP_MARGIN per side).
-    Returns [(samples, [(k0, k1), ...])] — resampled centerline points and
-    index ranges of the solid runs. Used by both the median stamp and the
-    median palm planting so they always agree."""
-    paseo = paseo_roads(roads)
+def paseo_median_runs(roads, pieces=None):
+    """Solid-median runs along each avenue piece (default: the paseo), with
+    gaps ALIGNED TO THE CROSS STREETS: a gap opens wherever another street
+    meets the avenue, wide enough to turn into it (street width +
+    PASEO_GAP_MARGIN per side). Returns [(samples, [(k0, k1), ...])] —
+    resampled centerline points and index ranges of the solid runs. Used by
+    both the median stamp and the tree planting so they always agree."""
+    paseo = paseo_roads(roads) if pieces is None else pieces
     paseo_ids = set(map(id, paseo))
     segs = []
     for r in roads:
@@ -1584,6 +1646,8 @@ def main():
     sp = build_spine(ways, nodes)
 
     roads, bridge_road = extract_roads(sp, ways)
+    dedupe_dual_carriageway(roads)
+    treelines = extract_treelines(roads)
     n_by_cls = defaultdict(int)
     for r in roads:
         n_by_cls[r["cls"]] += 1
@@ -1841,6 +1905,8 @@ def main():
     # Paseo divided-avenue median (solid separator + crossing gaps); the dash
     # polylines are emitted so the renderer can draw a planted green strip.
     median_runs = paseo_median_runs(roads)
+    # tree-line separators (replaced streets) break at crossings the same way
+    median_runs += paseo_median_runs(roads, treelines)
     medians = stamp_paseo_median(grid, median_runs)
 
     # --- buildings on the cuadrícula: snap OSM footprints, then fill the
@@ -1937,20 +2003,21 @@ def main():
             palms.append({"x": round(x), "y": round(topY[c] + 10 + rng() * 6),
                           "s": round(0.8 + rng() * 0.4, 2), "sway": round(rng() * 6.28, 2)})
         x += 70 + rng() * 60
-    # Paseo de los Turistas: palms on the median dashes (down the centerline),
-    # planted inside the same street-aligned runs the median stamp uses so
-    # trees never stand in a crossing gap.
-    PALM_PITCH = 22
-    PALM_END_MARGIN = 10
+    # Paseo median: leafy trees (almendros/robles, NOT palms) on the planted
+    # separator, inside the same street-aligned runs the median stamp uses so
+    # no tree ever stands in a crossing gap.
+    TREE_PITCH = 26
+    TREE_END_MARGIN = 12
+    trees = []
     for samples, runs in median_runs:
         for (k0, k1) in runs:
-            s0, s1 = samples[k0][0] + PALM_END_MARGIN, samples[k1][0] - PALM_END_MARGIN
+            s0, s1 = samples[k0][0] + TREE_END_MARGIN, samples[k1][0] - TREE_END_MARGIN
             nxt = s0
             for (s, x, y) in samples[k0:k1 + 1]:
                 if s >= nxt and s <= s1:
-                    palms.append({"x": round(x), "y": round(y),
-                                  "s": 1.05, "sway": round(rng() * 6.28, 2)})
-                    nxt = s + PALM_PITCH
+                    trees.append({"x": round(x), "y": round(y),
+                                  "s": round(0.9 + rng() * 0.3, 2)})
+                    nxt = s + TREE_PITCH
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).
@@ -1981,6 +2048,7 @@ def main():
         "palms": palms,
         "hills": hills,
         "medians": medians,
+        "trees": trees,
         "plazas": plazas,
         "districts": [{k: v for k, v in d.items()} for d in districts],
         "landmarks": landmarks,

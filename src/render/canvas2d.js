@@ -369,6 +369,25 @@ import { nearestKiosk } from "../game/delivery.js";
     }
   }
 
+  // Leafy median trees (almendros) on the paseo separator — round canopies,
+  // distinct from the coconut palms on the shores.
+  function drawTrees(view) {
+    for (const tr of W.TREES) {
+      if (tr.x < view.x0 - 30 || tr.x > view.x1 + 30) continue;
+      if (tr.y < view.y0 - 30 || tr.y > view.y1 + 30) continue;
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.beginPath(); ctx.ellipse(tr.x + 5, tr.y + 4, 11 * tr.s, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#6a4426"; ctx.lineWidth = 2.5 * tr.s;
+      ctx.beginPath(); ctx.moveTo(tr.x, tr.y + 3); ctx.lineTo(tr.x, tr.y - 7 * tr.s); ctx.stroke();
+      ctx.fillStyle = "#2e7d44";
+      ctx.beginPath(); ctx.arc(tr.x, tr.y - 11 * tr.s, 9.5 * tr.s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#3aa45b";
+      ctx.beginPath(); ctx.arc(tr.x - 3 * tr.s, tr.y - 13 * tr.s, 6.5 * tr.s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#57c078";
+      ctx.beginPath(); ctx.arc(tr.x + 3.5 * tr.s, tr.y - 12 * tr.s, 4.5 * tr.s, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   function label(x, y, text, fg, bg) {
     ctx.font = "bold 9px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
@@ -1095,6 +1114,7 @@ import { nearestKiosk } from "../game/delivery.js";
     drawPier(view);
     drawBridge(view);
     drawStreetLabels(view);
+    drawTrees(view);
     drawPalms(view, t);
     drawBuildings(view);
     drawBarriers(view);

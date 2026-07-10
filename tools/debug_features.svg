@@ -41,7 +41,7 @@
 <path d="M23382,3082 L23398,3082 L23398,3138 L23382,3138 Z" fill="#997" opacity="0.7"/>
 <path d="M1982,3802 L2038,3802 L2038,3878 L1982,3878 Z" fill="#997" opacity="0.7"/>
 <path d="M2022,3882 L2038,3882 L2038,3898 L2022,3898 Z" fill="#997" opacity="0.7"/>
-<path d="M3602,4162 L3638,4162 L3638,4218 L3602,4218 Z" fill="#997" opacity="0.7"/>
+<path d="M3562,4162 L3598,4162 L3598,4218 L3562,4218 Z" fill="#997" opacity="0.7"/>
 <path d="M4282,3842 L4318,3842 L4318,3878 L4282,3878 Z" fill="#997" opacity="0.7"/>
 <path d="M8202,2222 L8238,2222 L8238,2258 L8202,2258 Z" fill="#997" opacity="0.7"/>
 <path d="M8242,2202 L8278,2202 L8278,2258 L8242,2258 Z" fill="#997" opacity="0.7"/>
@@ -8533,7 +8533,7 @@
 <line x1="24982" y1="0" x2="24982" y2="4920" stroke="#000" stroke-width="3" stroke-dasharray="8 10"/>
 <circle cx="122" cy="3330" r="12" fill="red"/><text x="136" y="3330" font-size="26">faro</text>
 <circle cx="326" cy="3174" r="12" fill="red"/><text x="340" y="3174" font-size="26">balneario</text>
-<circle cx="3542" cy="4350" r="12" fill="red"/><text x="3556" y="4350" font-size="26">muellecruc</text>
+<circle cx="4194" cy="4226" r="12" fill="red"/><text x="4208" y="4226" font-size="26">muellecruc</text>
 <circle cx="610" cy="2674" r="12" fill="red"/><text x="624" y="2674" font-size="26">ferrycr</text>
 <circle cx="1846" cy="3822" r="12" fill="red"/><text x="1860" y="3822" font-size="26">playa</text>
 <circle cx="1610" cy="3206" r="12" fill="red"/><text x="1624" y="3206" font-size="26">carmenig</text>

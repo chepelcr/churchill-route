@@ -160,7 +160,9 @@ LANDMARK_DEFS = [
     # Municipal pool inside the loop on the other side of the street.
     {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -10, "dy": 110},
     {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 190, "dy": -70},
-    {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "carmen",   "osm": "muelle de cruceros", "ll": (9.97450, -84.83450)},
+    # The cruise pier juts out from the END of Calle Central, right beside the
+    # churchill kiosks on the Paseo (dx nudges the geo anchor onto that street)
+    {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "centro",   "osm": "muelle de cruceros", "ll": (9.97450, -84.83450), "dx": 680},
     {"id": "ferrycr",     "name": "Terminal de Ferry",          "type": "ferry",        "district": "carmen",   "osm": "terminal de ferry puntarenas"},
     {"id": "playa",       "name": "Playa Puntarenas",           "type": "beachsign",    "district": "carmen",   "ll": (9.97500, -84.84300)},
     {"id": "carmenig",    "name": "Iglesia del Carmen",         "type": "church",       "district": "carmen",   "osm": "iglesia del carmen", "ll": (9.97650, -84.84400)},
@@ -2042,21 +2044,26 @@ def main():
             palms.append({"x": round(x), "y": round(topY[c] + 10 + rng() * 6),
                           "s": round(0.8 + rng() * 0.4, 2), "sway": round(rng() * 6.28, 2)})
         x += 70 + rng() * 60
-    # Paseo median: leafy trees (almendros/robles, NOT palms) on the planted
-    # separator, inside the same street-aligned runs the median stamp uses so
-    # no tree ever stands in a crossing gap.
+    # Median trees (almendros/robles, NOT palms) only along the stretch the
+    # real Paseo has them: from where the avenue's tree-line merge begins to
+    # Calle Central (the muelle street beside the churchill kiosks). Planted
+    # inside the same street-aligned runs the median stamp uses so no tree
+    # ever stands in a crossing gap.
     TREE_PITCH = 26
     TREE_END_MARGIN = 12
+    tz0 = min((min(r["pts"][0::2]) for r in treelines), default=0)
+    tz1 = mlm["x"] + CUAD
     trees = []
     for samples, runs in median_runs:
         for (k0, k1) in runs:
             s0, s1 = samples[k0][0] + TREE_END_MARGIN, samples[k1][0] - TREE_END_MARGIN
             nxt = s0
             for (s, x, y) in samples[k0:k1 + 1]:
-                if s >= nxt and s <= s1:
+                if s >= nxt and s <= s1 and tz0 <= x <= tz1:
                     trees.append({"x": round(x), "y": round(y),
                                   "s": round(0.9 + rng() * 0.3, 2)})
                     nxt = s + TREE_PITCH
+    print(f"[trees] {len(trees)} median trees in x[{round(tz0)}..{round(tz1)}]")
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).

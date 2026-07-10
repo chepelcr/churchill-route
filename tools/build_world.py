@@ -1451,26 +1451,65 @@ PASEO_GAP_MARGIN = CUAD        # extra turn room on each side of a crossing
 
 PASEO_NAMES = ("paseo de los turistas", "paseo león cortés")
 
-# Streets replaced by planted TREE LINES: where the beachfront approach reads
-# as 3 parallel carriles, the middle one (Avenida 2A, between the Paseo and
-# Avenida 2) becomes a tree-lined separator along its exact centerline — the
-# curve is preserved, the asphalt is not.
+# Streets partially replaced by planted TREE LINES: where the beachfront
+# approach reads as 3 parallel carriles (the middle street runs merged with
+# the paseo — no cuadra fits between), that stretch of the middle street
+# (Avenida 2A) becomes a tree-lined separator along its exact centerline.
+# Where it diverges from the paseo it stays a normal drivable street.
 TREELINE_ROADS = ("avenida 2a",)
+TREELINE_MERGE_DIST = 150       # centerline gap below which the carriles read
+                                # as one 3-lane slab (~2 cuadras of asphalt)
 
 def paseo_roads(roads):
     return [r for r in roads
             if any(n in (r.get("name") or "").lower() for n in PASEO_NAMES)]
 
 def extract_treelines(roads):
-    """Pull TREELINE_ROADS out of the drivable network; their centerlines are
-    planted as tree separators instead (median stamp + trees)."""
-    lines = [r for r in roads
-             if (r.get("name") or "").lower() in TREELINE_ROADS]
-    if lines:
-        drop = set(map(id, lines))
-        roads[:] = [r for r in roads if id(r) not in drop]
-        names = sorted({r["name"] for r in lines})
-        print(f"[roads] {len(lines)} piece(s) replaced by tree lines: {names}")
+    """Split TREELINE_ROADS by distance to the paseo: merged-parallel
+    stretches (< TREELINE_MERGE_DIST between centerlines) are pulled out of
+    the drivable network to be planted as tree separators; the diverging
+    stretches are kept as streets."""
+    targets = [r for r in roads
+               if (r.get("name") or "").lower() in TREELINE_ROADS]
+    if not targets:
+        return []
+    psegs = []
+    for r in paseo_roads(roads):
+        p = r["pts"]
+        for i in range(0, len(p) - 2, 2):
+            psegs.append((p[i], p[i + 1], p[i + 2], p[i + 3]))
+
+    def near_paseo(x, y):
+        best = 1e18
+        for (x0, y0, x1, y1) in psegs:
+            dx, dy = x1 - x0, y1 - y0
+            L2 = dx * dx + dy * dy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
+            d2 = (x - (x0 + t * dx)) ** 2 + (y - (y0 + t * dy)) ** 2
+            best = min(best, d2)
+        return best < TREELINE_MERGE_DIST * TREELINE_MERGE_DIST
+
+    lines, kept = [], []
+    for r in targets:
+        samples = _resample_centerline(r["pts"], 8.0)
+        merged = [near_paseo(x, y) for (_, x, y) in samples]
+        k = 0
+        while k < len(samples):
+            k0, state_m = k, merged[k]
+            while k < len(samples) and merged[k] == state_m:
+                k += 1
+            span = samples[k - 1][0] - samples[k0][0]
+            if k - k0 < 2 or span < 2 * CUAD:
+                continue                      # sliver stub — drop
+            piece = {**r, "pts": [round(v) for (_, x, y) in samples[k0:k]
+                                  for v in (x, y)]}
+            (lines if state_m else kept).append(piece)
+    drop = set(map(id, targets))
+    roads[:] = [r for r in roads if id(r) not in drop] + kept
+    def _span(rs):
+        return ", ".join(f"x{min(r['pts'][0::2])}-{max(r['pts'][0::2])}" for r in rs) or "none"
+    print(f"[roads] tree lines (3-carril merge): {_span(lines)}; "
+          f"kept as street: {_span(kept)}")
     return lines
 
 def dedupe_dual_carriageway(roads):

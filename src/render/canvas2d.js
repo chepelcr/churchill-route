@@ -26,8 +26,13 @@ import { nearestKiosk } from "../game/delivery.js";
       const w = c.clientWidth, h = c.clientHeight;
       c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
       ZOOM = computeZoom(w, h);
+      // publish the view transform for input (point-to-drive) + camera clamp
+      state.cam.zoom = ZOOM; state.cam.vw = w; state.cam.vh = h;
     };
     resize(); window.addEventListener("resize", resize);
+    // some mobile browsers report stale sizes at orientationchange time
+    window.addEventListener("orientationchange", () => setTimeout(resize, 120));
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", resize);
   }
 
   function weatherColors() {
@@ -990,21 +995,38 @@ import { nearestKiosk } from "../game/delivery.js";
     ctx.restore();
   }
 
-  function drawObjectiveArrow() {
+  // Objective compass: pinned at the top-center of the SCREEN (never lost
+  // off-view), rotating to point at the target. Screen angle = world angle
+  // (the camera transform is uniform scale + translate).
+  function drawCompass(vw, vh) {
     const p = state.p;
-    let target = state.carrying ? state.carrying.customer : nearestKiosk(p).lm;
+    const target = state.carrying ? state.carrying.customer : nearestKiosk(p).lm;
     if (!target) return;
     const dx = target.x - p.x, dy = target.y - p.y;
     const d = Math.hypot(dx, dy);
     if (d < 40) return;
     const a = Math.atan2(dy, dx);
-    const ax = p.x + Math.cos(a) * 40, ay = p.y + Math.sin(a) * 40;
+    const cx = vw / 2, cy = 92;
     ctx.save();
-    ctx.translate(ax, ay); ctx.rotate(a);
+    ctx.fillStyle = "rgba(20,16,40,0.78)";
+    ctx.beginPath(); ctx.arc(cx, cy, 24, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.translate(cx, cy); ctx.rotate(a);
     ctx.fillStyle = state.carrying ? "#ff3d80" : "#ffe06b";
-    ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-4, -6); ctx.lineTo(-4, 6); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(17, 0); ctx.lineTo(-9, -11); ctx.lineTo(-4, 0); ctx.lineTo(-9, 11);
+    ctx.closePath(); ctx.fill();
     ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.restore();
+    const meters = Math.round(d / ((W.META && W.META.pxPerMeter) || 1.3));
+    ctx.font = "bold 11px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(20,16,40,0.78)";
+    const label = `${meters} m`;
+    const lw = ctx.measureText(label).width + 10;
+    ctx.fillRect(cx - lw / 2, cy + 28, lw, 15);
+    ctx.fillStyle = state.carrying ? "#ff3d80" : "#ffe06b";
+    ctx.fillText(label, cx, cy + 39);
   }
 
   function drawRain(vw, vh, t) {
@@ -1160,7 +1182,6 @@ import { nearestKiosk } from "../game/delivery.js";
       if (g.x < view.x0 - 30 || g.x > view.x1 + 30) continue;
       drawGull(g);
     }
-    drawObjectiveArrow();
     // Floats
     for (const f of state.floats) {
       ctx.globalAlpha = Math.max(0, 1 - f.t / f.ttl);
@@ -1179,6 +1200,7 @@ import { nearestKiosk } from "../game/delivery.js";
     if (state.weather === "night") drawNightVignette(vw, vh);
 
     drawMinimap(vw, vh);
+    drawCompass(vw, vh);
 
     if (state.p.speed > 240) {
       ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1;

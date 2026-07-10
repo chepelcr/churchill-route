@@ -9,6 +9,7 @@ import ResultsScreen from "./screens/ResultsScreen.jsx";
 import StageBrief from "./screens/StageBrief.jsx";
 import TouchControls from "./TouchControls.jsx";
 import GameTweaks from "./GameTweaks.jsx";
+import { enterImmersive } from "./immersive.js";
 
 export default function App() {
   // screens: title | stagepick | brief | playing | paused | over
@@ -49,6 +50,7 @@ export default function App() {
   useEffect(() => { Game.state.paused = (screen === "paused"); }, [screen]);
 
   function pickMode(mode) {
+    enterImmersive();
     if (mode === "story") setScreen("stagepick");
     else if (mode === "explore") {
       Game.startExplore({ vehicleKey: Game.state.vehicleKey });
@@ -61,6 +63,7 @@ export default function App() {
   }
   function beginStage() {
     if (!pendingStage) return;
+    enterImmersive();
     Game.startStage(pendingStage.idx, pendingStage.vehicleKey);
     setScreen("playing");
   }
@@ -72,6 +75,7 @@ export default function App() {
     } else { setScreen("title"); }
   }
   function again() {
+    enterImmersive();
     if (Game.state.stage) Game.startStage(Game.state.stageIdx, Game.state.vehicleKey);
     else Game.startArcade({ vehicleKey: Game.state.vehicleKey });
     setScreen("playing");
@@ -90,6 +94,10 @@ export default function App() {
       {screen === "paused" && <><HUD /><PauseScreen onResume={() => setScreen("playing")} onQuit={quit} /></>}
       {screen === "over" && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen("title")} />}
       {(screen === "playing" || screen === "paused") && <GameTweaks />}
+      <div className="rotate-overlay">
+        <div className="rotate-icon">📱</div>
+        <p>Girá el teléfono — se juega en horizontal</p>
+      </div>
     </>
   );
 }

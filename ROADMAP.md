@@ -90,6 +90,34 @@ Full plan lives in the approved plan file; status tracked here.
         `ColorMatrixFilter` grading; normal-map roof/Faro lighting (stretch).
   - [ ] Match reference palette (terracotta/green roofs, turquoise gulf, sand).
 
+## ✅ City-feel + mobile pass — done 2026-07-10
+
+- [x] **Beachfront avenue separators (final layout, user-iterated)**:
+  - Paseo de los Turistas keeps its classic **palm median** — dashes with
+    crossing gaps aligned to the coming streets (`paseo_median_runs`).
+  - Two **continuous tree lines** (no gaps): the 3-carril merge stretch
+    (Avenida 2A's middle carril replaced along its exact curve,
+    `extract_treelines`) and the kiosks street (Paseo León Cortés, promoted
+    to principal; its dual-carriageway twin deduped) up to the muelle.
+  - Beyond the muelle street: normal streets, no separators. Beach palms
+    are a separate system and were never touched.
+- [x] **Muelle de Cruceros** moved to its real spot: the end of Calle Central
+      beside the kioscos; the entrance tail keeps only its LEFT carril
+      (2 CUAD) flush with the pier centerline (`narrow_muelle_approach`).
+- [x] **La Punta layout** per `how-look-puntarenas/faro.jpg`: lighthouse on
+      the rocky tip outside the road loop; **Balneario Municipal** pool added
+      inside the loop (new `pool` landmark type with lagoon render).
+- [x] **HUD minimap fixed** (still used the pre-OSM world's centerY=700 /
+      320px half-span — silhouette collapsed after the 3× scale).
+- [x] **Mobile overhaul**: point-to-drive touch controls (hold a finger where
+      you want to go; brake ✋ + turbo ⚡ pedals; multi-touch, safe-area
+      insets), fullscreen + landscape lock on play (`src/ui/immersive.js`),
+      CSS rotate-overlay for portrait, orientation-aware canvas resize.
+- [x] **Objective compass** pinned top-center of the screen (rotating arrow +
+      distance in meters) replacing the easily-lost in-world arrow; **camera
+      hard clamp** — the vehicle can never leave the middle of the screen
+      (lookahead now scales with the real view instead of a fixed 70px).
+
 ## ✅ Fixed during this audit
 
 - [x] Story-mode deliveries now extend the timer (+10 s / +5 s) as the GDD specifies — previously only Arcade/Recorrer got extensions.
@@ -137,7 +165,9 @@ Full plan lives in the approved plan file; status tracked here.
 - [ ] Dead state: `state.rainT`, `state.timeOfDay`, `boat.wake`, unused `Game.pause()` API (React drives pause directly).
 - [ ] `weatherColors()` allocated per-object per-frame (drawHills/drawLand/drawEstuary) — cache per frame.
 - [ ] `drawLandmark` has no `default:` case — a new landmark type would silently render only its shadow.
-- [ ] Touch controls double-gated (JS coarse-pointer check + CSS `min-width:880px` hide) — landscape tablets get a joystick that's attached but invisible.
+- [x] Touch controls double-gated — resolved 2026-07-10: the joystick is gone
+      (point-to-drive aims via the canvas on any device); the coarse-pointer
+      gate only controls the brake/turbo pedals.
 - [ ] Headless smoke harness lives in a session scratchpad — move `headless.js` into `tools/` and wire a CI check.
 
 ## ✅ Completed 2026-07-05 (was "in progress")

@@ -34,11 +34,17 @@ export default function TitleScreen({ onPickMode }) {
           </div>
 
           <div className="controls-hint">
-            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> manejar</span>
-            <span><kbd>Space</kbd> drift</span>
-            <span><kbd>X</kbd> turbo</span>
-            <span><kbd>P</kbd> pausa</span>
-            <span>controller / touch OK</span>
+            {typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches ? (
+              <span>Mantené el dedo donde querés ir · ✋ drift · ⚡ turbo</span>
+            ) : (
+              <>
+                <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> manejar</span>
+                <span><kbd>Space</kbd> drift</span>
+                <span><kbd>X</kbd> turbo</span>
+                <span><kbd>P</kbd> pausa</span>
+                <span>controller / touch OK</span>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -131,7 +131,9 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 
 /* ----- HUD ----- */
 .hud-top {
-  position: absolute; top: 18px; left: 18px;
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(18px, env(safe-area-inset-left));
   display: flex; align-items: stretch; gap: 10px;
 }
 .hud-card {
@@ -218,25 +220,36 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .btn.secondary { background: rgba(255,255,255,0.1); color: var(--paper); }
 .btn.gold { background: var(--gold); color: var(--ink); }
 
-/* ----- Touch controls ----- */
+/* ----- Touch controls (point-to-drive: steering is the held finger on the
+   play area; only brake + turbo need buttons) ----- */
 .touch-controls { position: absolute; inset: 0; pointer-events: none; }
-.joy {
-  position: absolute; bottom: 30px; left: 30px;
-  width: 110px; height: 110px; border-radius: 50%;
-  background: rgba(255,255,255,0.10); border: 2px solid rgba(255,255,255,0.25);
-  pointer-events: auto;
-}
 .pedal {
-  position: absolute; bottom: 30px; width: 84px; height: 84px; border-radius: 50%;
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: 92px; height: 92px; border-radius: 50%;
   background: rgba(255,255,255,0.10); border: 2px solid rgba(255,255,255,0.25);
   display: grid; place-items: center; font-family: "Bungee", sans-serif; color: #fff;
-  pointer-events: auto; font-size: 16px;
+  pointer-events: auto; font-size: 26px;
+  touch-action: none; -webkit-user-select: none; user-select: none;
 }
-.pedal.gas { right: 30px; background: oklch(0.68 0.18 30 / 0.6); }
-.pedal.brake { right: 130px; background: rgba(255,255,255,0.18); }
+.pedal.boost { right: max(24px, env(safe-area-inset-right)); background: oklch(0.68 0.18 30 / 0.6); }
+.pedal.brake { right: calc(max(24px, env(safe-area-inset-right)) + 108px); background: rgba(255,255,255,0.18); }
 /* Hide touch controls only for fine-pointer (mouse) devices — landscape
-   tablets are wider than 880px but still need the joystick/pedals. */
+   tablets still need the pedals. */
 @media (pointer: fine) { .touch-controls { display: none; } }
+
+/* ----- Rotate-your-device overlay (game is landscape-only on touch) ----- */
+.rotate-overlay { display: none; }
+@media (pointer: coarse) and (orientation: portrait) {
+  .rotate-overlay {
+    display: grid; place-items: center; align-content: center; gap: 14px;
+    position: fixed; inset: 0; z-index: 100; background: #0a0414;
+    text-align: center; color: var(--paper);
+    font-family: "Bungee", sans-serif; font-size: 15px; padding: 24px;
+  }
+  .rotate-overlay .rotate-icon { font-size: 60px; animation: rot-hint 1.6s ease-in-out infinite alternate; }
+  @keyframes rot-hint { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
+}
 
 /* ----- Combo flair ----- */
 .combo-badge {

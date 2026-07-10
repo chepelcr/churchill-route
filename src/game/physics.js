@@ -4,7 +4,7 @@
 import { WORLD as W } from "../world/index.js";
 import { state, traffic, pedestrians, gulls, boats } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
-import { input, readInput, pollGamepad } from "./input.js";
+import { input, readInput, pollGamepad, applyTouchAim } from "./input.js";
 import { placeCar, updateAnimals } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 
@@ -50,6 +50,7 @@ function collideBuilding(p, b) {
 export function update(dt) {
   if (state.paused || state.over) return;
   readInput(); pollGamepad();
+  applyTouchAim(state.cam, state.p);
 
   const p = state.p; const veh = state.veh;
   const surf = W.surfaceAt(p.x, p.y);
@@ -175,13 +176,21 @@ export function update(dt) {
     if (state.carrying.melt >= state.carrying.total) dropChurchill();
   }
 
-  // Camera follow with lookahead
-  const look = 70;
+  // Camera follow with lookahead scaled to the real view (a fixed 70px
+  // exceeded the vertical half-view on short screens), then a HARD clamp so
+  // the vehicle can never leave the middle of the screen.
+  const cam = state.cam;
+  const viewHw = cam.zoom ? (cam.vw / cam.zoom) * 0.5 : 160;
+  const viewHh = cam.zoom ? (cam.vh / cam.zoom) * 0.5 : 100;
+  const look = Math.min(40, viewHh * 0.35);
   const tx = p.x + Math.cos(p.a) * look;
   const ty = p.y + Math.sin(p.a) * look;
-  state.cam.x += (tx - state.cam.x) * Math.min(1, dt * 4);
-  state.cam.y += (ty - state.cam.y) * Math.min(1, dt * 4);
-  state.cam.shake = Math.max(0, state.cam.shake - dt * 22);
+  cam.x += (tx - cam.x) * Math.min(1, dt * 4);
+  cam.y += (ty - cam.y) * Math.min(1, dt * 4);
+  const maxOx = viewHw * 0.35, maxOy = viewHh * 0.35;
+  cam.x = Math.max(p.x - maxOx, Math.min(p.x + maxOx, cam.x));
+  cam.y = Math.max(p.y - maxOy, Math.min(p.y + maxOy, cam.y));
+  cam.shake = Math.max(0, cam.shake - dt * 22);
 
   // Combo decay
   if (state.combo > 1) {

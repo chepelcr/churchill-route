@@ -1460,9 +1460,28 @@ TREELINE_ROADS = ("avenida 2a",)
 TREELINE_MERGE_DIST = 150       # centerline gap below which the carriles read
                                 # as one 3-lane slab (~2 cuadras of asphalt)
 
+MUELLE_STREET = "calle central"
+
 def paseo_roads(roads):
     return [r for r in roads
             if any(n in (r.get("name") or "").lower() for n in PASEO_NAMES)]
+
+def narrow_muelle_approach(roads):
+    """The muelle entrance: the southernmost piece of Calle Central (avenue →
+    shore) keeps only its LEFT (west) carril — 2 CUAD wide, its left edge
+    flush with the full-width street north of the avenue — so it lines up
+    with the pier. Returns the entrance centerline x for the pier to match."""
+    pieces = [r for r in roads if (r.get("name") or "").lower() == MUELLE_STREET]
+    if not pieces:
+        return None
+    tail = max(pieces, key=lambda r: max(r["pts"][1::2]))
+    tail["w"] = 2 * CUAD
+    tail["pts"] = [v - CUAD if i % 2 == 0 else v
+                   for i, v in enumerate(tail["pts"])]
+    ys = tail["pts"][1::2]
+    x_end = tail["pts"][0::2][ys.index(max(ys))]
+    print(f"[roads] muelle entrance: Calle Central tail -> left carril only (x~{x_end})")
+    return x_end
 
 def extract_treelines(roads):
     """Split TREELINE_ROADS by distance to the paseo: merged-parallel
@@ -1686,6 +1705,7 @@ def main():
     roads, bridge_road = extract_roads(sp, ways)
     dedupe_dual_carriageway(roads)
     treelines = extract_treelines(roads)
+    muelle_axis = narrow_muelle_approach(roads)
     n_by_cls = defaultdict(int)
     for r in roads:
         n_by_cls[r["cls"]] += 1
@@ -1907,6 +1927,8 @@ def main():
 
     # --- Muelle (the long pier into the gulf, faithful to muelle-nacional)
     mlm = next(l for l in landmarks if l["id"] == "muellecruc")
+    if muelle_axis is not None:
+        mlm["x"] = round(muelle_axis)     # pier flush with the entrance carril
     pier_col = min(GRID_COLS - 1, max(0, int(mlm["x"] / GRID_CELL)))
     pier_y0 = botY[pier_col] - 6
     pier = {"x": mlm["x"], "y0": round(pier_y0),

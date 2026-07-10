@@ -8314,7 +8314,7 @@
 <path d="M4622,3105 L4373,3157 L4172,3195 L3963,3220 L3777,3236 L3601,3242 L3545,3240 L3139,3226 L2889,3212 L2773,3200 L2658,3196 L2547,3197 L2330,3191 L1889,3220 L1665,3259 L1450,3299 L1230,3353 L1011,3413 L790,3463 L568,3523 L385,3568" fill="none" stroke="#e80" stroke-width="120" stroke-linecap="round" opacity="0.85"/>
 <path d="M338,3581 L292,3534 L254,3483 L227,3435 L204,3386 L180,3329 L161,3277 L146,3220 L141,3176 L142,3116 L151,3064 L162,3027 L178,2996 L199,2968" fill="none" stroke="#aa0" stroke-width="80" stroke-linecap="round" opacity="0.85"/>
 <path d="M3122,2258 L3102,2043" fill="none" stroke="#666" stroke-width="80" stroke-linecap="round" opacity="0.85"/>
-<path d="M4220,4165 L4223,3999" fill="none" stroke="#666" stroke-width="80" stroke-linecap="round" opacity="0.85"/>
+<path d="M4200,4165 L4203,3999" fill="none" stroke="#666" stroke-width="40" stroke-linecap="round" opacity="0.85"/>
 <path d="M391,3630 L433,3671 L494,3723 L550,3771 L593,3802 L663,3850 L704,3875 L748,3901 L828,3945 L909,3972 L944,3981 L980,3986 L1045,3993 L1264,3990" fill="none" stroke="#e80" stroke-width="120" stroke-linecap="round" opacity="0.85"/>
 <path d="M25748,2967 L25710,2923 L25682,2916 L25654,2927 L25603,2970 L25576,2988 L25560,2988" fill="none" stroke="#bbb" stroke-width="40" stroke-linecap="round" opacity="0.85"/>
 <path d="M17160,1378 L17154,1364 L17151,1340 L17137,987" fill="none" stroke="#666" stroke-width="80" stroke-linecap="round" opacity="0.85"/>
@@ -8533,7 +8533,7 @@
 <line x1="24982" y1="0" x2="24982" y2="4920" stroke="#000" stroke-width="3" stroke-dasharray="8 10"/>
 <circle cx="122" cy="3330" r="12" fill="red"/><text x="136" y="3330" font-size="26">faro</text>
 <circle cx="326" cy="3174" r="12" fill="red"/><text x="340" y="3174" font-size="26">balneario</text>
-<circle cx="4194" cy="4226" r="12" fill="red"/><text x="4208" y="4226" font-size="26">muellecruc</text>
+<circle cx="4200" cy="4222" r="12" fill="red"/><text x="4214" y="4222" font-size="26">muellecruc</text>
 <circle cx="610" cy="2674" r="12" fill="red"/><text x="624" y="2674" font-size="26">ferrycr</text>
 <circle cx="1846" cy="3822" r="12" fill="red"/><text x="1860" y="3822" font-size="26">playa</text>
 <circle cx="1610" cy="3206" r="12" fill="red"/><text x="1624" y="3206" font-size="26">carmenig</text>

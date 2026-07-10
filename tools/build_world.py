@@ -155,7 +155,11 @@ DISTRICT_BOUNDS_GEO = [
 # case-insensitive substring matched against named OSM features (nearest to
 # "near" wins when multiple match); "ll" is a hand-placed fallback/override.
 LANDMARK_DEFS = [
-    {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta"},
+    # La Punta (see how-look-puntarenas/faro.jpg): the lighthouse stands on the
+    # rocky tip OUTSIDE the road loop (left of Calle 39), with the Balneario
+    # Municipal pool inside the loop on the other side of the street.
+    {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -10, "dy": 110},
+    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 190, "dy": -70},
     {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "carmen",   "osm": "muelle de cruceros", "ll": (9.97450, -84.83450)},
     {"id": "ferrycr",     "name": "Terminal de Ferry",          "type": "ferry",        "district": "carmen",   "osm": "terminal de ferry puntarenas"},
     {"id": "playa",       "name": "Playa Puntarenas",           "type": "beachsign",    "district": "carmen",   "ll": (9.97500, -84.84300)},
@@ -1439,8 +1443,8 @@ def synth_buildings(blocks, cell_block, occ, n_real):
 # the centerline as a solid (blocking) separator between the two sides, with
 # periodic gaps ("aperturas") where you can cross from one side to the other.
 PASEO_MEDIAN_W = 2.0 * CUAD     # median: 2 cuadrículas of the 6-CUAD avenue
-PASEO_DASH = 330.0             # solid median run length (px)
-PASEO_GAP = 3.0 * CUAD         # crossing opening length (px)
+PASEO_MIN_DASH = 3.0 * CUAD    # drop median slivers shorter than this
+PASEO_GAP_MARGIN = CUAD        # extra turn room on each side of a crossing
 
 def paseo_roads(roads):
     return [r for r in roads
@@ -1464,29 +1468,74 @@ def _resample_centerline(pts_flat, step):
         out.append((s, pts[-1][0], pts[-1][1]))
     return out
 
-def _paseo_in_dash(s):
-    return (s % (PASEO_DASH + PASEO_GAP)) < PASEO_DASH
+def paseo_median_runs(roads):
+    """Solid-median runs along each paseo piece, with gaps ALIGNED TO THE
+    CROSS STREETS: a gap opens wherever another street meets the paseo, wide
+    enough to turn into it (street width + PASEO_GAP_MARGIN per side).
+    Returns [(samples, [(k0, k1), ...])] — resampled centerline points and
+    index ranges of the solid runs. Used by both the median stamp and the
+    median palm planting so they always agree."""
+    paseo = paseo_roads(roads)
+    paseo_ids = set(map(id, paseo))
+    segs = []
+    for r in roads:
+        if id(r) in paseo_ids or r["cls"] == "bridge":
+            continue
+        p = r["pts"]
+        hw = r["w"] / 2 + PASEO_GAP_MARGIN
+        for i in range(0, len(p) - 2, 2):
+            segs.append((p[i], p[i + 1], p[i + 2], p[i + 3], hw))
+    CS = 256
+    cellmap = defaultdict(list)
+    for idx, s in enumerate(segs):
+        for cx in range(int(min(s[0], s[2]) - 200) // CS, int(max(s[0], s[2]) + 200) // CS + 1):
+            for cy in range(int(min(s[1], s[3]) - 200) // CS, int(max(s[1], s[3]) + 200) // CS + 1):
+                cellmap[(cx, cy)].append(idx)
 
-def stamp_paseo_median(grid, roads):
-    """Stamp a dashed solid median down the paseo centerline and return the
+    def in_crossing(px, py):
+        c0, r0 = int(px) // CS, int(py) // CS
+        for dc in (-1, 0, 1):
+            for dr in (-1, 0, 1):
+                for idx in cellmap.get((c0 + dc, r0 + dr), ()):
+                    x0, y0, x1, y1, hw = segs[idx]
+                    dx, dy = x1 - x0, y1 - y0
+                    L2 = dx * dx + dy * dy
+                    t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+                    if (px - (x0 + t * dx)) ** 2 + (py - (y0 + t * dy)) ** 2 <= hw * hw:
+                        return True
+        return False
+
+    out = []
+    for r in paseo:
+        samples = _resample_centerline(r["pts"], 4.0)
+        solid = [not in_crossing(x, y) for (_, x, y) in samples]
+        runs, k = [], 0
+        while k < len(samples):
+            if solid[k]:
+                k0 = k
+                while k < len(samples) and solid[k]:
+                    k += 1
+                if samples[k - 1][0] - samples[k0][0] >= PASEO_MIN_DASH:
+                    runs.append((k0, k - 1))
+            else:
+                k += 1
+        out.append((samples, runs))
+    return out
+
+def stamp_paseo_median(grid, median_runs):
+    """Stamp the solid median runs down the paseo centerline and return the
     dash polylines (for rendering the planted strip). Stamped as CLS_ACERA:
     equally blocking in physics (walls are land+acera) but invisible to block
     detection and building placement, which only consider CLS_LAND. Run AFTER
     acera_fringe so the strip stays a blocking separator, not sidewalk."""
     dashes = []
-    def flush(cur):
-        if len(cur) >= 2:
-            flat = [v for c in cur for v in c]
-            raster_stamp_polyline(grid, flat, PASEO_MEDIAN_W, CLS_ACERA)
-            dashes.append({"pts": [round(v) for v in flat], "w": round(PASEO_MEDIAN_W)})
-    for r in paseo_roads(roads):
-        cur = []
-        for (s, x, y) in _resample_centerline(r["pts"], 4.0):
-            if _paseo_in_dash(s):
-                cur.append((x, y))
-            else:
-                flush(cur); cur = []
-        flush(cur)
+    for samples, runs in median_runs:
+        for (k0, k1) in runs:
+            flat = [v for (_, x, y) in samples[k0:k1 + 1] for v in (x, y)]
+            if len(flat) >= 4:
+                raster_stamp_polyline(grid, flat, PASEO_MEDIAN_W, CLS_ACERA)
+                dashes.append({"pts": [round(v) for v in flat], "w": round(PASEO_MEDIAN_W)})
+    return dashes
     return dashes
 
 # ---------------------------------------------------------------- outputs ---
@@ -1791,7 +1840,8 @@ def main():
 
     # Paseo divided-avenue median (solid separator + crossing gaps); the dash
     # polylines are emitted so the renderer can draw a planted green strip.
-    medians = stamp_paseo_median(grid, roads)
+    median_runs = paseo_median_runs(roads)
+    medians = stamp_paseo_median(grid, median_runs)
 
     # --- buildings on the cuadrícula: snap OSM footprints, then fill the
     # cuadras' frontage bands with synth lots (shared occupancy, POI keepouts)
@@ -1888,14 +1938,19 @@ def main():
                           "s": round(0.8 + rng() * 0.4, 2), "sway": round(rng() * 6.28, 2)})
         x += 70 + rng() * 60
     # Paseo de los Turistas: palms on the median dashes (down the centerline),
-    # skipping the crossing gaps so trees only sit on the solid separator.
+    # planted inside the same street-aligned runs the median stamp uses so
+    # trees never stand in a crossing gap.
     PALM_PITCH = 22
-    _period = PASEO_DASH + PASEO_GAP
-    for r in paseo_roads(roads):
-        for (s, x, y) in _resample_centerline(r["pts"], PALM_PITCH):
-            if (s % _period) < PASEO_DASH - 8:   # only on the solid median, not gaps
-                palms.append({"x": round(x), "y": round(y),
-                              "s": 1.05, "sway": round(rng() * 6.28, 2)})
+    PALM_END_MARGIN = 10
+    for samples, runs in median_runs:
+        for (k0, k1) in runs:
+            s0, s1 = samples[k0][0] + PALM_END_MARGIN, samples[k1][0] - PALM_END_MARGIN
+            nxt = s0
+            for (s, x, y) in samples[k0:k1 + 1]:
+                if s >= nxt and s <= s1:
+                    palms.append({"x": round(x), "y": round(y),
+                                  "s": 1.05, "sway": round(rng() * 6.28, 2)})
+                    nxt = s + PALM_PITCH
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).

@@ -517,6 +517,23 @@ import { nearestKiosk } from "../game/delivery.js";
         ctx.fillStyle = "#fff"; ctx.fillRect(x - 4, y - 18, 2, 10); ctx.beginPath(); ctx.moveTo(x - 4, y - 18); ctx.lineTo(x + 6, y - 12); ctx.lineTo(x - 4, y - 8); ctx.fill();
         label(x, y - 24, "YACHT", "#fff", "#3a6f8a"); break;
       }
+      case "pool": {
+        // Balneario Municipal at La Punta — the lagoon-shaped public pool
+        // inside the road loop (see how-look-puntarenas/faro.jpg)
+        ctx.fillStyle = "#e8e2d2";                       // concrete deck
+        ctx.beginPath(); ctx.ellipse(x, y, 78, 48, -0.25, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(58,53,64,0.25)"; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = "#5fd3e0";                       // lagoon water
+        ctx.beginPath(); ctx.ellipse(x - 18, y + 4, 40, 26, -0.35, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + 28, y - 8, 26, 20, -0.15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#aeeaf2";                       // shallow end
+        ctx.beginPath(); ctx.ellipse(x - 26, y + 2, 16, 9, -0.35, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#f3c969";                       // kids slide
+        ctx.beginPath(); ctx.arc(x - 34, y + 12, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#6fbf99";                       // palm islet
+        ctx.beginPath(); ctx.arc(x + 30, y - 8, 7, 0, Math.PI * 2); ctx.fill();
+        label(x, y - 58, "BALNEARIO", "#fff", "#3a6f8a"); break;
+      }
       case "house": {
         ctx.fillStyle = "#c084d6"; ctx.fillRect(x - 14, y - 10, 28, 20);
         ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(x - 16, y - 10); ctx.lineTo(x, y - 22); ctx.lineTo(x + 16, y - 10); ctx.fill();
@@ -996,20 +1013,22 @@ import { nearestKiosk } from "../game/delivery.js";
     ctx.beginPath();
     const innerW = mw - 12; const innerX = mx + 6;
     const innerY = my + mh / 2;
-    const yScale = (mh / 2 - 6) / 320;
+    const centerY = (W.META && W.META.centerY) || W.H / 2;
+    const halfSpan = Math.max(centerY, W.H - centerY);
+    const yScale = (mh / 2 - 6) / halfSpan;
     const clampMapY = (sy) => Math.max(my + 4, Math.min(my + mh - 4, sy));
     for (let i = 0; i <= 60; i++) {
       const t = i / 60;
       const wx = t * W.W;
       const sx = innerX + t * innerW;
-      const sy = clampMapY(innerY + (W.topY(wx) - 700) * yScale);
+      const sy = clampMapY(innerY + (W.topY(wx) - centerY) * yScale);
       if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
     }
     for (let i = 60; i >= 0; i--) {
       const t = i / 60;
       const wx = t * W.W;
       const sx = innerX + t * innerW;
-      const sy = clampMapY(innerY + (W.botY(wx) - 700) * yScale);
+      const sy = clampMapY(innerY + (W.botY(wx) - centerY) * yScale);
       ctx.lineTo(sx, sy);
     }
     ctx.closePath();
@@ -1027,7 +1046,7 @@ import { nearestKiosk } from "../game/delivery.js";
     const tgt = state.carrying ? state.carrying.customer : nearestKiosk(state.p).lm;
     if (tgt) {
       const tx = innerX + (tgt.x / W.W) * innerW;
-      const ty = innerY + ((tgt.y - 700) / 320) * (mh / 2 - 6);
+      const ty = clampMapY(innerY + (tgt.y - centerY) * yScale);
       ctx.fillStyle = state.carrying ? "#ff3d80" : "#fff";
       ctx.beginPath(); ctx.arc(tx, ty, 4, 0, Math.PI * 2); ctx.fill();
     }

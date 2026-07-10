@@ -107,12 +107,21 @@ export function spawnAmbient() {
     for (let s = 60; s < r.len - 60; s += 120 + Math.random() * 90) {
       const pt = W.roadPointAt(ri, s);
       const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 10); // mid-acera
-      vendors.push({ x: pt.x - Math.sin(pt.ang) * off, y: pt.y + Math.cos(pt.ang) * off,
+      const vx = pt.x - Math.sin(pt.ang) * off, vy = pt.y + Math.cos(pt.ang) * off;
+      if (W.surfaceAt(vx, vy) !== 6) continue; // never in a crossing street
+      vendors.push({ x: vx, y: vy,
                      hue: 10 + Math.floor(Math.random() * 160), ph: Math.random() * 6 });
     }
   }
   for (const k of kiosks) {
-    vendors.push({ x: k.x + 34, y: k.y + 12, hue: 330, ph: Math.random() * 6 });
+    // park the cart on the kiosk apron/acera/beach — never in water
+    for (const [dx, dy] of [[34, 12], [-40, 12], [0, 44], [0, -44], [48, 0], [-48, 0]]) {
+      const surf = W.surfaceAt(k.x + dx, k.y + dy);
+      if (surf === 2 || surf === 3 || surf === 6) {
+        vendors.push({ x: k.x + dx, y: k.y + dy, hue: 330, ph: Math.random() * 6 });
+        break;
+      }
+    }
   }
   // animals: dogs/cats that amble across streets in town
   for (let i = 0; i < 14; i++) {

@@ -1445,10 +1445,8 @@ def synth_buildings(blocks, cell_block, occ, n_real):
 # The Paseo de los Turistas is a divided avenue: a dashed palm median runs down
 # the centerline as a solid (blocking) separator between the two sides, with
 # periodic gaps ("aperturas") where you can cross from one side to the other.
-PASEO_MEDIAN_W = 2.0 * CUAD     # median: 2 cuadrículas of the 6-CUAD avenue
+PASEO_MEDIAN_W = 2.0 * CUAD     # separator strips (palm median / tree line)
 PASEO_MIN_DASH = 2.0 * CUAD    # drop median slivers shorter than this
-                               # (short tree islands between close cross
-                               # streets are fine — the centro is dense)
 PASEO_GAP_MARGIN = CUAD        # extra turn room on each side of a crossing
 
 PASEO_NAMES = ("paseo de los turistas", "paseo león cortés")
@@ -1577,7 +1575,7 @@ def paseo_median_runs(roads, pieces=None):
     meets the avenue, wide enough to turn into it (street width +
     PASEO_GAP_MARGIN per side). Returns [(samples, [(k0, k1), ...])] —
     resampled centerline points and index ranges of the solid runs. Used by
-    both the median stamp and the tree planting so they always agree."""
+    both the median stamp and the palm planting so they always agree."""
     paseo = paseo_roads(roads) if pieces is None else pieces
     paseo_ids = set(map(id, paseo))
     segs = []
@@ -1626,8 +1624,8 @@ def paseo_median_runs(roads, pieces=None):
     return out
 
 def stamp_paseo_median(grid, median_runs):
-    """Stamp the solid median runs down the paseo centerline and return the
-    dash polylines (for rendering the planted strip). Stamped as CLS_ACERA:
+    """Stamp the separator strips (paseo palm median + tree line) and return
+    their polylines (for rendering the planted strip). Stamped as CLS_ACERA:
     equally blocking in physics (walls are land+acera) but invisible to block
     detection and building placement, which only consider CLS_LAND. Run AFTER
     acera_fringe so the strip stays a blocking separator, not sidewalk."""
@@ -1638,7 +1636,6 @@ def stamp_paseo_median(grid, median_runs):
             if len(flat) >= 4:
                 raster_stamp_polyline(grid, flat, PASEO_MEDIAN_W, CLS_ACERA)
                 dashes.append({"pts": [round(v) for v in flat], "w": round(PASEO_MEDIAN_W)})
-    return dashes
     return dashes
 
 # ---------------------------------------------------------------- outputs ---
@@ -1945,10 +1942,35 @@ def main():
 
     # Paseo divided-avenue median (solid separator + crossing gaps); the dash
     # polylines are emitted so the renderer can draw a planted green strip.
-    median_runs = paseo_median_runs(roads)
-    # tree-line separators (replaced streets) break at crossings the same way
-    median_runs += paseo_median_runs(roads, treelines)
-    medians = stamp_paseo_median(grid, median_runs)
+    # Two separator systems, planted differently:
+    # 1. The Paseo's own PALM median (dashes with crossing gaps), kept as
+    #    always — but only up to the muelle street; beyond it the avenue is
+    #    a normal street with no separation.
+    # 2. The tree line on the 3-carril merge stretch — ONE continuous strip
+    #    (no crossing gaps), trimmed at both tips so it doesn't poke into
+    #    the streets it meets.
+    tz1 = mlm["x"] + CUAD                       # muelle street (Calle Central)
+    palm_runs = []
+    for samples, runs in paseo_median_runs(roads):
+        kept_runs = []
+        for (k0, k1) in runs:
+            while k1 > k0 and samples[k1][1] > tz1:
+                k1 -= 1
+            if k1 > k0 and samples[k1][0] - samples[k0][0] >= PASEO_MIN_DASH \
+                    and samples[k0][1] <= tz1:
+                kept_runs.append((k0, k1))
+        if kept_runs:
+            palm_runs.append((samples, kept_runs))
+    TREELINE_TIP_TRIM = 4 * CUAD
+    tree_runs = []
+    for r in treelines:
+        samples = _resample_centerline(r["pts"], 4.0)
+        total = samples[-1][0]
+        ks = [k for k, (sv, _, _) in enumerate(samples)
+              if TREELINE_TIP_TRIM <= sv <= total - TREELINE_TIP_TRIM]
+        if len(ks) >= 2:
+            tree_runs.append((samples, [(ks[0], ks[-1])]))
+    medians = stamp_paseo_median(grid, palm_runs + tree_runs)
 
     # --- buildings on the cuadrícula: snap OSM footprints, then fill the
     # cuadras' frontage bands with synth lots (shared occupancy, POI keepouts)
@@ -2044,26 +2066,37 @@ def main():
             palms.append({"x": round(x), "y": round(topY[c] + 10 + rng() * 6),
                           "s": round(0.8 + rng() * 0.4, 2), "sway": round(rng() * 6.28, 2)})
         x += 70 + rng() * 60
-    # Median trees (almendros/robles, NOT palms) only along the stretch the
-    # real Paseo has them: from where the avenue's tree-line merge begins to
-    # Calle Central (the muelle street beside the churchill kiosks). Planted
-    # inside the same street-aligned runs the median stamp uses so no tree
-    # ever stands in a crossing gap.
+    # Paseo de los Turistas: PALMS on the median dashes, as always — planted
+    # inside the same street-aligned runs the median stamp uses.
+    PALM_PITCH = 22
+    PALM_END_MARGIN = 10
+    n_median_palms = 0
+    for samples, runs in palm_runs:
+        for (k0, k1) in runs:
+            s0, s1 = samples[k0][0] + PALM_END_MARGIN, samples[k1][0] - PALM_END_MARGIN
+            nxt = s0
+            for (s, x, y) in samples[k0:k1 + 1]:
+                if s >= nxt and s <= s1:
+                    palms.append({"x": round(x), "y": round(y),
+                                  "s": 1.05, "sway": round(rng() * 6.28, 2)})
+                    n_median_palms += 1
+                    nxt = s + PALM_PITCH
+    # Trees (almendros/robles, NOT palms) along the single continuous
+    # tree-line separator.
     TREE_PITCH = 26
     TREE_END_MARGIN = 12
-    tz0 = min((min(r["pts"][0::2]) for r in treelines), default=0)
-    tz1 = mlm["x"] + CUAD
     trees = []
-    for samples, runs in median_runs:
+    for samples, runs in tree_runs:
         for (k0, k1) in runs:
             s0, s1 = samples[k0][0] + TREE_END_MARGIN, samples[k1][0] - TREE_END_MARGIN
             nxt = s0
             for (s, x, y) in samples[k0:k1 + 1]:
-                if s >= nxt and s <= s1 and tz0 <= x <= tz1:
+                if s >= nxt and s <= s1:
                     trees.append({"x": round(x), "y": round(y),
                                   "s": round(0.9 + rng() * 0.3, 2)})
                     nxt = s + TREE_PITCH
-    print(f"[trees] {len(trees)} median trees in x[{round(tz0)}..{round(tz1)}]")
+    print(f"[median] {n_median_palms} palms on the paseo median, "
+          f"{len(trees)} trees on the tree line")
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).

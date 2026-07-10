@@ -9,15 +9,15 @@ import { nearestKiosk } from "../game/delivery.js";
 
   // ----- Render -------------------------------------------------------------
   let canvas, ctx, dpr = 1;
-  // Cuadrícula-based responsive zoom: frame ~CUADS_PER_VIEW cuadrículas so every
-  // device shows the same amount of city. Clamped so small screens don't zoom
-  // out too far (they show fewer cuadrículas, more detail).
+  // Cuadrícula-based responsive zoom: frame at most CUADS_PER_VIEW cuadrículas
+  // so every device shows the same amount of city. Only a floor is clamped —
+  // narrow screens show FEWER cuadrículas (more detail), never more than 12.
   const CUAD = (W.META && W.META.cuad) || 20;
   const CUADS_PER_VIEW = (W.META && W.META.cuadsPerView) || 12;
   const ACERA_PX = (W.META && W.META.aceraPx) || 8; // sidewalk depth per side
   function computeZoom(wCss, hCss) {
     const z = wCss / (CUADS_PER_VIEW * CUAD);
-    return Math.max(4.5, Math.min(9, z));
+    return Math.max(3.5, z);
   }
   function setupCanvas(c) {
     canvas = c; ctx = c.getContext("2d");

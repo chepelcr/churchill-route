@@ -31,9 +31,12 @@ DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
 
 # ---------------------------------------------------------------- config ---
 
-CANVAS_W, CANVAS_H, CENTER_Y = 8800, 1640, 1070
+# 3× world scale (Milestone B★): cuadrícula streets are 2-6 CUAD wide, far
+# wider than the faithful ~71px centro street spacing at the old scale — the
+# world is scaled up so real cuadras survive between them (46 blocks >= 6x6).
+CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
 MARGIN_X = 120                  # water margin west of the Faro tip
-SPINE_TARGET_PX = 8560          # spine arclength maps onto this many px
+SPINE_TARGET_PX = 25680         # spine arclength maps onto this many px
 CROSS_EXAG = 1.95               # perpendicular exaggeration — spreads the N-S
                                 # street grid so cuadras read squarer and are
                                 # wide enough to hold their buildings (map
@@ -92,7 +95,7 @@ TOWN_SPLIT_WP = 7               # waypoint index where the route leaves the spit
 WARP_BLEND_M = 900.0            # smoothstep half-window around the split
 
 BUILDING_SCALE = 1.4            # match footprints to exaggerated road widths
-POI_NUDGE_PX = 200
+POI_NUDGE_PX = 600
 
 # Street widths in whole cuadrículas (Milestone B★): principal = 6 CUAD
 # (3 per drive side), standard = 4 CUAD (2 per lane), minor = 2 CUAD.
@@ -109,11 +112,11 @@ ROAD_CLASSES = set(ROAD_WIDTH_PX) - {"paseo", "bridge"}
 # cuadra/street sizes by snapping to the tile grid, so we no longer prune
 # streets to control block size.
 DROP_ROAD_CLASSES = set()
-SERVICE_MIN_PX = 40
+SERVICE_MIN_PX = 120
 DP_ROAD_PX = 1.0
 DP_BUILDING_PX = 2.0
 DP_COAST_PX = 2.5
-MIN_BUILDING_AREA_PX2 = 24
+MIN_BUILDING_AREA_PX2 = 216
 
 CLS_WATER, CLS_LAND, CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA = 0, 1, 2, 3, 4, 5, 6
 CLASS_NAMES = ["water", "land", "beach", "road", "paseo", "bridge", "acera"]
@@ -1312,7 +1315,7 @@ def synth_buildings(grid, roads, real_bldgs, keepouts):
 # the centerline as a solid (blocking) separator between the two sides, with
 # periodic gaps ("aperturas") where you can cross from one side to the other.
 PASEO_MEDIAN_W = 2.0 * CUAD     # median: 2 cuadrículas of the 6-CUAD avenue
-PASEO_DASH = 110.0             # solid median run length (px)
+PASEO_DASH = 330.0             # solid median run length (px)
 PASEO_GAP = 3.0 * CUAD         # crossing opening length (px)
 
 def paseo_roads(roads):
@@ -1446,7 +1449,7 @@ def main():
     land_contours = trace_land_contours(grid)
     for b in beaches:
         raster_fill_poly(grid, [(b[i], b[i + 1]) for i in range(0, len(b), 2)], CLS_BEACH)
-    beach_fringe(grid, 3)
+    beach_fringe(grid, 9)
     for wpoly in waters:
         raster_fill_poly(grid, [(wpoly[i], wpoly[i + 1]) for i in range(0, len(wpoly), 2)], CLS_WATER)
     for r in roads:
@@ -1568,7 +1571,7 @@ def main():
                           "_how": how})
     # Customers: nudge to land, then ENFORCE spread so every delivery is a
     # real trip — ≥150px from any kiosk, ≥120px from every other customer.
-    MIN_FROM_KIOSK, MIN_BETWEEN = 150, 120
+    MIN_FROM_KIOSK, MIN_BETWEEN = 450, 360
     kiosk_pts = [(l["x"], l["y"]) for l in landmarks if l["type"] == "kiosk"]
     dist_edges = {d["id"]: (d["x0"], d["x1"]) for d in districts}
 
@@ -1588,7 +1591,7 @@ def main():
         if not spread_ok(px, py, customers):
             x0, x1 = dist_edges[spec["district"]]
             found = None
-            for rad in range(24, 640, 16):        # expanding ring, nearest wins
+            for rad in range(24, 1920, 16):       # expanding ring, nearest wins
                 cands = []
                 for a in range(0, 360, 20):
                     tx = px + rad * math.cos(math.radians(a))
@@ -1632,13 +1635,13 @@ def main():
     pier_col = min(GRID_COLS - 1, max(0, int(mlm["x"] / GRID_CELL)))
     pier_y0 = botY[pier_col] - 6
     pier = {"x": mlm["x"], "y0": round(pier_y0),
-            "y1": round(min(CANVAS_H - 30, pier_y0 + 210)), "w": 2 * CUAD}
+            "y1": round(min(CANVAS_H - 30, pier_y0 + 630)), "w": 2 * CUAD}
     raster_stamp_polyline(grid, [pier["x"], pier["y0"], pier["x"], pier["y1"]],
                           pier["w"], CLS_BRIDGE)
     # connect the pier base to the street grid (walk north to the first road)
     pc = int(pier["x"] // GRID_CELL)
     pr = int(pier_y0 // GRID_CELL)
-    for r in range(pr, max(0, pr - 40), -1):
+    for r in range(pr, max(0, pr - 120), -1):
         if grid[r * GRID_COLS + pc] in (CLS_ROAD, CLS_PASEO):
             raster_stamp_polyline(grid, [pier["x"], r * GRID_CELL,
                                          pier["x"], pier["y0"]], 2 * CUAD, CLS_ROAD)
@@ -1651,11 +1654,11 @@ def main():
     # off-street; everything left as CLS_LAND becomes solid cuadra interior
     acera_fringe(grid)
     for lm in landmarks:
-        stamp_pad(grid, lm["x"], lm["y"], 40 if lm["type"] == "kiosk" else 24)
+        stamp_pad(grid, lm["x"], lm["y"], 80 if lm["type"] == "kiosk" else 48)
     for cu in customers:
-        stamp_pad(grid, cu["x"], cu["y"], 28)
+        stamp_pad(grid, cu["x"], cu["y"], 56)
     faro_lm = next(l for l in landmarks if l["id"] == "faro")
-    stamp_pad(grid, faro_lm["x"], faro_lm["y"], 70)   # La Punta plaza
+    stamp_pad(grid, faro_lm["x"], faro_lm["y"], 140)  # La Punta plaza
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
     print(f"[acera] {acera_cells} sidewalk cells")
 
@@ -1666,10 +1669,10 @@ def main():
     # --- synthetic frontage buildings (fill the cuadras)
     keepouts = []
     for lm in landmarks:
-        keepouts.append((lm["x"], lm["y"], 50 if lm["type"] == "kiosk" else 34))
+        keepouts.append((lm["x"], lm["y"], 100 if lm["type"] == "kiosk" else 68))
     for cu in customers:
-        keepouts.append((cu["x"], cu["y"], 50))
-    keepouts.append((pier["x"], pier["y0"], 60))
+        keepouts.append((cu["x"], cu["y"], 100))
+    keepouts.append((pier["x"], pier["y0"], 120))
     synth = synth_buildings(grid, roads, buildings, keepouts)
     print(f"[buildings] +{len(synth)} synthesized along frontages "
           f"(total {len(buildings) + len(synth)})")
@@ -1690,8 +1693,8 @@ def main():
                       "pts": [round(bx0), round(bcy), round(bx1), round(bcy)]})
         raster_stamp_polyline(grid, roads[-1]["pts"], ROAD_WIDTH_PX["bridge"] + 6, CLS_BRIDGE)
     span = bx1 - bx0
-    bridge = {"x0": round(bx0), "x1": round(bx1), "cy": round(bcy), "deckW": 26,
-              "towers": [round(bx0 + span * 0.15), round(bx1 - span * 0.15)], "towerH": 70,
+    bridge = {"x0": round(bx0), "x1": round(bx1), "cy": round(bcy), "deckW": 60,
+              "towers": [round(bx0 + span * 0.15), round(bx1 - span * 0.15)], "towerH": 180,
               "pts": bridge_road["pts"] if bridge_road else roads[-1]["pts"]}
 
     # estuary ellipse from the largest water poly near the bridge
@@ -1699,7 +1702,7 @@ def main():
     for wp in waters:
         pts = [(wp[i], wp[i + 1]) for i in range(0, len(wp), 2)]
         cx, cy = poly_centroid(pts)
-        if abs(cx - (bx0 + bx1) / 2) < 900:
+        if abs(cx - (bx0 + bx1) / 2) < 2700:
             xs = [p[0] for p in pts]
             ys = [p[1] for p in pts]
             cand = {"cx": round(cx), "cy": round(cy),
@@ -1707,7 +1710,7 @@ def main():
             if est is None or cand["rx"] * cand["ry"] > est["rx"] * est["ry"]:
                 est = cand
     if est is None:
-        est = {"cx": round((bx0 + bx1) / 2 + 300), "cy": CENTER_Y - 120, "rx": 280, "ry": 70}
+        est = {"cx": round((bx0 + bx1) / 2 + 900), "cy": CENTER_Y - 360, "rx": 840, "ry": 210}
         print("[estuary] WARNING: no water poly near bridge; synthetic ellipse")
 
     # mangroves around the estuary
@@ -1718,11 +1721,11 @@ def main():
         return seed / 233280
     mangroves = []
     for a in [i * 0.12 for i in range(int(2 * math.pi / 0.12) + 1)]:
-        rx = est["rx"] + 20 + rng() * 26
-        ry = est["ry"] + 20 + rng() * 20
+        rx = est["rx"] + 60 + rng() * 78
+        ry = est["ry"] + 60 + rng() * 60
         mangroves.append({"x": round(est["cx"] + math.cos(a) * rx),
                           "y": round(est["cy"] + math.sin(a) * ry),
-                          "r": round(8 + rng() * 8)})
+                          "r": round(24 + rng() * 24)})
     for _ in range(10):
         ang = rng() * math.pi * 2
         rr = rng() * est["rx"] * 0.6
@@ -1765,8 +1768,8 @@ def main():
     block_census(grid)
 
     mata_x0 = next(d["x0"] for d in districts if d["id"] == "mata")
-    hills = [{"x0": mata_x0 - 400, "x1": CANVAS_W, "baseY": 250, "color": "#5e8a55"},
-             {"x0": mata_x0, "x1": CANVAS_W - 200, "baseY": 200, "color": "#4c7848"}]
+    hills = [{"x0": mata_x0 - 1200, "x1": CANVAS_W, "baseY": 750, "color": "#5e8a55"},
+             {"x0": mata_x0, "x1": CANVAS_W - 600, "baseY": 600, "color": "#4c7848"}]
 
     # --- emit
     data = {

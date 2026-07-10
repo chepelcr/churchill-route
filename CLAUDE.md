@@ -85,7 +85,8 @@ the game's contents without reading the code. Refresh after world/module changes
 - After changing the world or any module, run `pnpm inventory`.
 - Keep `src/game/vehicles.js` and `src/game/surfaces.js` free of DOM/`window` so
   Node (the inventory script) can import them.
-- The camera zoom lives as `const ZOOM` in `src/render/canvas2d.js`.
+- The camera zoom is responsive: `computeZoom` in `src/render/canvas2d.js`
+  frames at most `meta.cuadsPerView` (12) cuadrículas of `meta.cuad` (20) px.
 - Don't hand-edit `src/world/data.js` — regenerate with `pnpm world:build`.
 - Verify game changes by actually running the app (`pnpm dev` + browser), not
   just building — the render loop and physics have no unit tests.

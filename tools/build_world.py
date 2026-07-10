@@ -1914,7 +1914,7 @@ def main():
                  "cuad": CUAD, "cuadsPerView": CUADS_PER_VIEW,
                  "aceraPx": ACERA_CELLS * GRID_CELL,
                  "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
-                 "spineLenM": round(sp.total), "builtAt": time.strftime("%Y-%m-%d %H:%M")},
+                 "spineLenM": round(sp.total)},
         "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES, "rle": rle_encode(grid)},
         "topY": topY, "botY": botY,
         "roads": roads,

@@ -39,7 +39,7 @@ Full plan lives in the approved plan file; status tracked here.
         geometry + render); buildings never overlap street/acera; drivable POI
         aprons. Map deformed wider (CROSS_EXAG 1.95, canvas 8800×1640). Verified
         all 24 POIs reachable (97.6% connectivity).
-- [ ] **Milestone B★ — Cuadrícula standardization** _(in progress, 2026-07-07)_ —
+- [x] **Milestone B★ — Cuadrícula standardization** _(done 2026-07-10)_ —
       make cuadra/street sizes uniform and identical across devices by laying
       the city on a tile grid (a *cuadrícula* = one tile). Spec:
   - **Cuadrícula unit** `CUAD` px, emitted in `meta.cuad`; everything is a
@@ -67,6 +67,20 @@ Full plan lives in the approved plan file; status tracked here.
     (2) quantize acera to 1 cuadrícula + grid-snap building lots; (3) prune/snap
     the road network to enforce min 6×6 blocks while preserving shapes; (4)
     regen, verify connectivity + look, tune.
+  - **Shipped 2026-07-10** (decisions: keep OSM centerlines, quantize widths
+    only; undersized blocks pave to plaza; width tiers principal/standard/minor
+    = 6/4/2 CUAD): streets 120/80/40px + 1-CUAD aceras; **3× world scale**
+    (26400×4920 — at the old scale the corridors consumed the centro; 44 real
+    cuadras + 243 plazas + 122 green strips now); `detect_blocks()` three-way
+    classification preserves organic shapes; all 8000 buildings are whole-CUAD
+    rects placed inside one block each (overlap impossible by construction);
+    zoom = width/(12·CUAD), floor 3.5, no upper clamp; **build gate** fails on
+    any unreachable POI (flood-fill from spawn) + prints the block census.
+    Gate also fixed two pre-existing unreachable POIs (parquemar, matalimon).
+  - Follow-ups: **feel pass for the 3× world** — vehicle speeds/timers tuned
+    for longer trips, sprite scale vs 120px streets, traffic/ped spawn pitch;
+    `tools/headless-check.js` is stale (pre-Milestone-A file layout) — the
+    Python build gate replaces it for world checks.
 - [ ] **Milestone C — PixiJS / WebGL render backend** behind `src/render/Renderer.js`
   - [ ] `PIXI.Application({ resolution: dpr, autoDensity })`, `NEAREST` scale +
         CSS `image-rendering`, integer-multiple camera (kills jitter).
@@ -168,7 +182,9 @@ PixiJS backend lands here in Milestone C), `src/ui/` (React screens + tweaks).
 pnpm world:build      # rebuilds src/world/data.js + tools/debug_map.png + debug_features.svg
 pnpm dev              # serve; open http://localhost:8734
 ```
-Knobs at the top of `tools/build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`, `ROAD_WIDTH_PX`,
-`BUILDING_SCALE`, `SYNTH_MAX_TOTAL`, `DISTRICT_BOUNDS_GEO`, `LANDMARK_DEFS`/`CUSTOMER_DEFS`
-(geo anchors; build fails listing unresolved POIs). Engine camera zoom: `ZOOM` const in
-`src/render/canvas2d.js`.
+Knobs at the top of `tools/build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`, `ROAD_WIDTH_PX`
+(6/4/2 CUAD tiers), `CUAD`/`CUADS_PER_VIEW`, `BLOCK_MIN_CUADS`/`SLIVER_MAX_CUADS`,
+`SYNTH_MAX_TOTAL`/`FRONTAGE_DEPTH`, `BUILDING_SCALE`, `DISTRICT_BOUNDS_GEO`,
+`LANDMARK_DEFS`/`CUSTOMER_DEFS` (geo anchors; build fails listing unresolved POIs —
+and on any POI unreachable through the drivable network). Camera zoom is responsive
+(`computeZoom` in `src/render/canvas2d.js`, ≤12 cuadrículas per view).

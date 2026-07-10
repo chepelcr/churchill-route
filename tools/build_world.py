@@ -50,6 +50,9 @@ GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 #   view:   the engine frames at most CUADS_PER_VIEW cuadrículas (responsive zoom)
 CUAD = 20                       # px per cuadrícula (a lane ~= 2 cuadrículas)
 CUADS_PER_VIEW = 12             # max cuadrículas visible → device-consistent zoom
+CUAD_CELLS = CUAD // GRID_CELL  # raster cells per cuadrícula side
+assert CUAD % GRID_CELL == 0, "CUAD must align to the raster grid"
+assert CANVAS_W % CUAD == 0 and CANVAS_H % CUAD == 0, "canvas must be whole cuadrículas"
 
 # local equirectangular projection anchor (Faro de La Punta)
 LAT0, LON0 = 9.9770, -84.8512
@@ -1018,6 +1021,153 @@ def beach_fringe(grid, depth_cells=3):
                         nxt.append(nidx)
         cur = nxt
 
+# ------------------------------------------------------ verification gate ---
+
+# What physics lets you drive: streets/paseo/bridges plus beach (sand is slow
+# but not a wall — several POIs are beach-side and reached across the sand).
+DRIVABLE_CLS = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_BEACH)
+
+def largest_drivable_component(grid):
+    """Mask of the largest 4-connected component of drivable cells — 'the'
+    street network. POIs are placed relative to this so none ends up on a
+    stranded road/beach fragment (e.g. a stub clipped by estero water)."""
+    label = [0] * (GRID_COLS * GRID_ROWS)
+    best_id, best_n = 0, 0
+    nid = 0
+    for start in range(GRID_COLS * GRID_ROWS):
+        if label[start] or grid[start] not in DRIVABLE_CLS:
+            continue
+        nid += 1
+        n = 0
+        q = deque([start])
+        label[start] = nid
+        while q:
+            i = q.popleft()
+            n += 1
+            r, c = divmod(i, GRID_COLS)
+            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                if 0 <= nr < GRID_ROWS and 0 <= nc < GRID_COLS:
+                    ni = nr * GRID_COLS + nc
+                    if not label[ni] and grid[ni] in DRIVABLE_CLS:
+                        label[ni] = nid
+                        q.append(ni)
+        if n > best_n:
+            best_id, best_n = nid, n
+    return bytearray(1 if v == best_id else 0 for v in label)
+
+
+def verify_connectivity(grid, seed_xy, pois, reach):
+    """Flood-fill the drivable network from the spawn and require every POI to
+    have a reached cell within `reach` cells. Returns the ids of unreachable
+    POIs (build fails on any)."""
+    reached = bytearray(GRID_COLS * GRID_ROWS)
+    # seed: nearest drivable cell to the spawn point (expanding square rings)
+    sc, sr = int(seed_xy[0] // GRID_CELL), int(seed_xy[1] // GRID_CELL)
+    seed = None
+    for rad in range(0, 64):
+        for dr in range(-rad, rad + 1):
+            for dc in range(-rad, rad + 1):
+                if max(abs(dr), abs(dc)) != rad:
+                    continue
+                c, r = sc + dc, sr + dr
+                if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and \
+                        grid[r * GRID_COLS + c] in DRIVABLE_CLS:
+                    seed = (c, r)
+                    break
+            if seed:
+                break
+        if seed:
+            break
+    if seed is None:
+        return ["spawn(no drivable cell near seed)"]
+    q = deque([seed])
+    reached[seed[1] * GRID_COLS + seed[0]] = 1
+    n_reached = 1
+    while q:
+        c, r = q.popleft()
+        for nc, nr in ((c - 1, r), (c + 1, r), (c, r - 1), (c, r + 1)):
+            if 0 <= nc < GRID_COLS and 0 <= nr < GRID_ROWS:
+                nidx = nr * GRID_COLS + nc
+                if not reached[nidx] and grid[nidx] in DRIVABLE_CLS:
+                    reached[nidx] = 1
+                    n_reached += 1
+                    q.append((nc, nr))
+    total_driv = sum(1 for v in grid if v in DRIVABLE_CLS)
+    unreachable = []
+    for poi in pois:
+        pc, pr = int(poi["x"] // GRID_CELL), int(poi["y"] // GRID_CELL)
+        ok = False
+        for dr in range(-reach, reach + 1):
+            for dc in range(-reach, reach + 1):
+                c, r = pc + dc, pr + dr
+                if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and reached[r * GRID_COLS + c]:
+                    ok = True
+                    break
+            if ok:
+                break
+        if not ok:
+            unreachable.append(poi["id"])
+    pct = 100.0 * n_reached / max(1, total_driv)
+    print(f"[gate] drivable network: {n_reached}/{total_driv} cells reachable "
+          f"from spawn ({pct:.1f}%), {len(pois) - len(unreachable)}/{len(pois)} POIs ok")
+    return unreachable
+
+
+def block_census(grid, min_side=6):
+    """Cuadrícula-resolution census of buildable land: 4-connected components
+    of CUAD cells fully covered by CLS_LAND, with each component's area and
+    max inscribed square (DP). The tuning instrument for Milestone B★."""
+    ccols, crows = GRID_COLS // CUAD_CELLS, GRID_ROWS // CUAD_CELLS
+    buildable = bytearray(ccols * crows)
+    for cr in range(crows):
+        for cc in range(ccols):
+            ok = True
+            for r in range(cr * CUAD_CELLS, (cr + 1) * CUAD_CELLS):
+                row = r * GRID_COLS
+                for c in range(cc * CUAD_CELLS, (cc + 1) * CUAD_CELLS):
+                    if grid[row + c] != CLS_LAND:
+                        ok = False
+                        break
+                if not ok:
+                    break
+            buildable[cr * ccols + cc] = 1 if ok else 0
+    # max inscribed square DP (global; squares never straddle components)
+    dp = [0] * (ccols * crows)
+    for cr in range(crows):
+        for cc in range(ccols):
+            i = cr * ccols + cc
+            if buildable[i]:
+                dp[i] = 1 if (cr == 0 or cc == 0) else \
+                    min(dp[i - 1], dp[i - ccols], dp[i - ccols - 1]) + 1
+    # component labelling (4-connected)
+    label = [0] * (ccols * crows)
+    comps = []          # per component: [area, max_inscribed]
+    for start in range(ccols * crows):
+        if not buildable[start] or label[start]:
+            continue
+        cid = len(comps) + 1
+        comps.append([0, 0])
+        q = deque([start])
+        label[start] = cid
+        while q:
+            i = q.popleft()
+            comps[cid - 1][0] += 1
+            comps[cid - 1][1] = max(comps[cid - 1][1], dp[i])
+            r, c = divmod(i, ccols)
+            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                if 0 <= nr < crows and 0 <= nc < ccols:
+                    ni = nr * ccols + nc
+                    if buildable[ni] and not label[ni]:
+                        label[ni] = cid
+                        q.append(ni)
+    big = sorted((c for c in comps if c[0] >= 4), key=lambda c: -c[0])
+    n_ok = sum(1 for c in comps if c[1] >= min_side)
+    print(f"[census] {len(comps)} land components at CUAD resolution; "
+          f"{len(big)} with area>=4, {n_ok} with inscribed>={min_side}x{min_side}")
+    for area, insq in big[:20]:
+        print(f"[census]   area {area:>4} cuads   inscribed {insq}x{insq}")
+    return comps
+
 # ------------------------------------------------------- synthetic infill ---
 
 SYNTH_MAX_TOTAL = 5000          # cap on real + synthesized buildings
@@ -1366,14 +1516,17 @@ def main():
             return to_m(*spec["ll"]), "hand"
         return None, "missing"
 
+    main_net = largest_drivable_component(grid)
+
     def near_drivable(c, r, reach=3):
-        """True if a street/beach cell is within `reach` cells (so a POI pad
-        stamped here will merge with the drivable network)."""
+        """True if a MAIN-network street/beach cell is within `reach` cells (so
+        a POI pad stamped here merges with the network the player drives —
+        stranded road/beach fragments don't count)."""
         for dr in range(-reach, reach + 1):
             for dc in range(-reach, reach + 1):
                 cc, rr = c + dc, r + dr
                 if 0 <= cc < GRID_COLS and 0 <= rr < GRID_ROWS and \
-                        grid[rr * GRID_COLS + cc] in (CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE):
+                        main_net[rr * GRID_COLS + cc]:
                     return True
         return False
 
@@ -1401,7 +1554,9 @@ def main():
         x, y, _, _ = sp.project(pm)
         x += spec.get("dx", 0)
         y += spec.get("dy", 0)
-        pos = nudge_to_land(x, y, need_drivable=(spec["type"] == "kiosk"))
+        # every landmark must sit near the street network so its stamped pad
+        # merges with it (a pad enclosed by solid land is unreachable in-game)
+        pos = nudge_to_land(x, y, need_drivable=True)
         if pos is None:
             failures.append(spec["id"] + "(water)")
             continue
@@ -1598,6 +1753,13 @@ def main():
             if (s % _period) < PASEO_DASH - 8:   # only on the solid median, not gaps
                 palms.append({"x": round(x), "y": round(y),
                               "s": 1.05, "sway": round(rng() * 6.28, 2)})
+
+    # --- verification gate: every POI reachable through the drivable network
+    # from the Faro spawn, plus a cuadrícula block census (tuning instrument).
+    unreachable = verify_connectivity(grid, (faro_lm["x"], faro_lm["y"]),
+                                      landmarks + customers, reach=ACERA_CELLS + 1)
+    failures.extend("unreachable " + u for u in unreachable)
+    block_census(grid)
 
     mata_x0 = next(d["x0"] for d in districts if d["id"] == "mata")
     hills = [{"x0": mata_x0 - 400, "x1": CANVAS_W, "baseY": 250, "color": "#5e8a55"},

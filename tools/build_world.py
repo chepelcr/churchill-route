@@ -1950,15 +1950,27 @@ def main():
     #    (no crossing gaps), trimmed at both tips so it doesn't poke into
     #    the streets it meets.
     tz1 = mlm["x"] + CUAD                       # muelle street (Calle Central)
+    # the tree-line zone hosts ONLY the tree line — no palm dashes beside it
+    tlx0 = min((min(r["pts"][0::2]) for r in treelines), default=-1) - CUAD
+    tlx1 = max((max(r["pts"][0::2]) for r in treelines), default=-1) + CUAD
+
+    def palm_ok(x):
+        return x <= tz1 and not (tlx0 <= x <= tlx1)
+
     palm_runs = []
     for samples, runs in paseo_median_runs(roads):
         kept_runs = []
         for (k0, k1) in runs:
-            while k1 > k0 and samples[k1][1] > tz1:
-                k1 -= 1
-            if k1 > k0 and samples[k1][0] - samples[k0][0] >= PASEO_MIN_DASH \
-                    and samples[k0][1] <= tz1:
-                kept_runs.append((k0, k1))
+            k = k0
+            while k <= k1:
+                if palm_ok(samples[k][1]):
+                    ks = k
+                    while k <= k1 and palm_ok(samples[k][1]):
+                        k += 1
+                    if samples[k - 1][0] - samples[ks][0] >= PASEO_MIN_DASH:
+                        kept_runs.append((ks, k - 1))
+                else:
+                    k += 1
         if kept_runs:
             palm_runs.append((samples, kept_runs))
     TREELINE_TIP_TRIM = 4 * CUAD

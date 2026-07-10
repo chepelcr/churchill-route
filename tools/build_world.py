@@ -94,14 +94,15 @@ WARP_BLEND_M = 900.0            # smoothstep half-window around the split
 BUILDING_SCALE = 1.4            # match footprints to exaggerated road widths
 POI_NUDGE_PX = 200
 
-# Spacious streets: the city is driven at close zoom, so roads are wide enough
-# to swing around, pass traffic and pull up to kiosks (without eating so much
-# block room that cuadras can't hold their buildings).
+# Street widths in whole cuadrículas (Milestone B★): principal = 6 CUAD
+# (3 per drive side), standard = 4 CUAD (2 per lane), minor = 2 CUAD.
+W_PRINCIPAL, W_STANDARD, W_MINOR = 6 * CUAD, 4 * CUAD, 2 * CUAD
 ROAD_WIDTH_PX = {
-    "trunk": 58, "trunk_link": 44, "primary": 52, "primary_link": 42,
-    "secondary": 46, "tertiary": 42, "tertiary_link": 38,
-    "residential": 40, "unclassified": 40, "living_street": 36,
-    "service": 18, "pedestrian": 20, "paseo": 52, "bridge": 48,
+    "trunk": W_PRINCIPAL, "trunk_link": W_PRINCIPAL, "primary": W_PRINCIPAL,
+    "primary_link": W_PRINCIPAL, "paseo": W_PRINCIPAL, "bridge": W_PRINCIPAL,
+    "secondary": W_STANDARD, "tertiary": W_STANDARD, "tertiary_link": W_STANDARD,
+    "residential": W_STANDARD, "unclassified": W_STANDARD, "living_street": W_STANDARD,
+    "service": W_MINOR, "pedestrian": W_MINOR,
 }
 ROAD_CLASSES = set(ROAD_WIDTH_PX) - {"paseo", "bridge"}
 # Keep every OSM street for a faithful map — the cuadrícula grid standardizes
@@ -116,7 +117,7 @@ MIN_BUILDING_AREA_PX2 = 24
 
 CLS_WATER, CLS_LAND, CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA = 0, 1, 2, 3, 4, 5, 6
 CLASS_NAMES = ["water", "land", "beach", "road", "paseo", "bridge", "acera"]
-ACERA_CELLS = 2                 # sidewalk depth: 2 cells = 8 px each side
+ACERA_CELLS = CUAD_CELLS        # sidewalk depth: 1 cuadrícula (20 px) each side
 
 # probes for orientation / sanity (geo)
 PROBE_LAND = [(9.97769, -84.83487),   # Catedral
@@ -1310,9 +1311,9 @@ def synth_buildings(grid, roads, real_bldgs, keepouts):
 # The Paseo de los Turistas is a divided avenue: a dashed palm median runs down
 # the centerline as a solid (blocking) separator between the two sides, with
 # periodic gaps ("aperturas") where you can cross from one side to the other.
-PASEO_MEDIAN_W = 8.0            # median strip width (px) — leaves a lane each side
+PASEO_MEDIAN_W = 2.0 * CUAD     # median: 2 cuadrículas of the 6-CUAD avenue
 PASEO_DASH = 110.0             # solid median run length (px)
-PASEO_GAP = 46.0               # crossing opening length (px)
+PASEO_GAP = 3.0 * CUAD         # crossing opening length (px)
 
 def paseo_roads(roads):
     return [r for r in roads
@@ -1340,14 +1341,16 @@ def _paseo_in_dash(s):
     return (s % (PASEO_DASH + PASEO_GAP)) < PASEO_DASH
 
 def stamp_paseo_median(grid, roads):
-    """Stamp a dashed solid (CLS_LAND) median down the paseo centerline and
-    return the dash polylines (for rendering the planted strip). Run AFTER
+    """Stamp a dashed solid median down the paseo centerline and return the
+    dash polylines (for rendering the planted strip). Stamped as CLS_ACERA:
+    equally blocking in physics (walls are land+acera) but invisible to block
+    detection and building placement, which only consider CLS_LAND. Run AFTER
     acera_fringe so the strip stays a blocking separator, not sidewalk."""
     dashes = []
     def flush(cur):
         if len(cur) >= 2:
             flat = [v for c in cur for v in c]
-            raster_stamp_polyline(grid, flat, PASEO_MEDIAN_W, CLS_LAND)
+            raster_stamp_polyline(grid, flat, PASEO_MEDIAN_W, CLS_ACERA)
             dashes.append({"pts": [round(v) for v in flat], "w": round(PASEO_MEDIAN_W)})
     for r in paseo_roads(roads):
         cur = []
@@ -1518,7 +1521,7 @@ def main():
 
     main_net = largest_drivable_component(grid)
 
-    def near_drivable(c, r, reach=3):
+    def near_drivable(c, r, reach=ACERA_CELLS + 1):
         """True if a MAIN-network street/beach cell is within `reach` cells (so
         a POI pad stamped here merges with the network the player drives —
         stranded road/beach fragments don't count)."""
@@ -1629,7 +1632,7 @@ def main():
     pier_col = min(GRID_COLS - 1, max(0, int(mlm["x"] / GRID_CELL)))
     pier_y0 = botY[pier_col] - 6
     pier = {"x": mlm["x"], "y0": round(pier_y0),
-            "y1": round(min(CANVAS_H - 30, pier_y0 + 210)), "w": 16}
+            "y1": round(min(CANVAS_H - 30, pier_y0 + 210)), "w": 2 * CUAD}
     raster_stamp_polyline(grid, [pier["x"], pier["y0"], pier["x"], pier["y1"]],
                           pier["w"], CLS_BRIDGE)
     # connect the pier base to the street grid (walk north to the first road)
@@ -1638,7 +1641,7 @@ def main():
     for r in range(pr, max(0, pr - 40), -1):
         if grid[r * GRID_COLS + pc] in (CLS_ROAD, CLS_PASEO):
             raster_stamp_polyline(grid, [pier["x"], r * GRID_CELL,
-                                         pier["x"], pier["y0"]], 14, CLS_ROAD)
+                                         pier["x"], pier["y0"]], 2 * CUAD, CLS_ROAD)
             print(f"[pier] connector road to y={r * GRID_CELL}")
             break
     mlm["x"], mlm["y"] = pier["x"], round(pier_y0 - 16)
@@ -1769,6 +1772,7 @@ def main():
     data = {
         "meta": {"W": CANVAS_W, "H": CANVAS_H, "centerY": CENTER_Y, "cell": GRID_CELL,
                  "cuad": CUAD, "cuadsPerView": CUADS_PER_VIEW,
+                 "aceraPx": ACERA_CELLS * GRID_CELL,
                  "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
                  "spineLenM": round(sp.total), "builtAt": time.strftime("%Y-%m-%d %H:%M")},
         "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES, "rle": rle_encode(grid)},

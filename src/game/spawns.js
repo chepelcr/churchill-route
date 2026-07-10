@@ -64,7 +64,7 @@ export function spawnPedestrians() {
   pedestrians.length = 0;
   function addPed(ri, s) {
     const r = W.ROADS[ri];
-    const baseOff = r.w / 2 + 4;            // on the acera band beside the curb
+    const baseOff = r.w / 2 + 10;           // mid-acera (1 cuadrícula deep)
     const side = Math.random() < 0.5 ? -1 : 1;
     const pe = {
       roadIdx: ri, s, side, baseOff, off: side * baseOff,
@@ -106,7 +106,7 @@ export function spawnAmbient() {
     const r = W.ROADS[ri];
     for (let s = 60; s < r.len - 60; s += 120 + Math.random() * 90) {
       const pt = W.roadPointAt(ri, s);
-      const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 6); // on the acera
+      const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 10); // mid-acera
       vendors.push({ x: pt.x - Math.sin(pt.ang) * off, y: pt.y + Math.cos(pt.ang) * off,
                      hue: 10 + Math.floor(Math.random() * 160), ph: Math.random() * 6 });
     }
@@ -138,7 +138,7 @@ export function updateAnimals(dt) {
       const r = W.ROADS[a.roadIdx];
       a.s = Math.max(20, Math.min(r.len - 20, a.s + (Math.random() - 0.5) * 120));
       const pt = W.roadPointAt(a.roadIdx, a.s);
-      const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 6 + Math.random() * 8);
+      const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 6 + Math.random() * 12);
       a.tx = pt.x - Math.sin(pt.ang) * off;
       a.ty = pt.y + Math.cos(pt.ang) * off;
       a.pause = 1 + Math.random() * 5;

@@ -14,6 +14,7 @@ import { nearestKiosk } from "../game/delivery.js";
   // out too far (they show fewer cuadrículas, more detail).
   const CUAD = (W.META && W.META.cuad) || 20;
   const CUADS_PER_VIEW = (W.META && W.META.cuadsPerView) || 12;
+  const ACERA_PX = (W.META && W.META.aceraPx) || 8; // sidewalk depth per side
   function computeZoom(wCss, hCss) {
     const z = wCss / (CUADS_PER_VIEW * CUAD);
     return Math.max(4.5, Math.min(9, z));
@@ -169,11 +170,11 @@ import { nearestKiosk } from "../game/delivery.js";
     }
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     // Aceras: concrete sidewalk band under everything (matches the grid's
-    // 8px acera fringe on both sides)
+    // 1-cuadrícula acera fringe on both sides)
     ctx.strokeStyle = "#cec7b2";
     for (const e of visible) {
       if (e.r.bridge || e.r.cls === "bridge") continue;
-      ctx.lineWidth = e.r.w + 16;
+      ctx.lineWidth = e.r.w + 2 * ACERA_PX;
       ctx.stroke(e.path);
     }
     // Bridge decks (bridge=yes segments, e.g. Río Barranca at El Roble):

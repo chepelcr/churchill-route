@@ -149,6 +149,7 @@ export const WORLD = (function () {
   const STAGES = DATA.stages;
   const PALMS = DATA.palms;
   const MEDIANS = DATA.medians || []; // paseo planted-median dash polylines
+  const PLAZAS = DATA.plazas || [];   // paved-sliver rects [x,y,w,h] (cuadrícula)
   const MANGROVES = DATA.mangroves;
   const HILLS = DATA.hills;
   const ESTUARY = DATA.estuary;
@@ -166,7 +167,7 @@ export const WORLD = (function () {
   return {
     W, H, META,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    PALMS, MEDIANS, MANGROVES, HILLS, ESTUARY, BRIDGE, PIER,
+    PALMS, MEDIANS, PLAZAS, MANGROVES, HILLS, ESTUARY, BRIDGE, PIER,
     ROADS, BUILDINGS, LAND_POLYS, WATERS, BEACHES,
     topY, botY, halfWidthAt,
     surfaceAt, onRoad, onPaseo, inWater, onBeach,

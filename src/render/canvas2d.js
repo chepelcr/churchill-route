@@ -98,8 +98,9 @@ import { nearestKiosk } from "../game/delivery.js";
   };
   function ensureRenderCache() {
     if (RC) return RC;
-    RC = { land: [], beach: [], water: [], roads: [], buildings: [], medians: [], landAll: new Path2D() };
+    RC = { land: [], beach: [], water: [], roads: [], buildings: [], medians: [], landAll: new Path2D(), plazas: new Path2D() };
     for (const m of W.MEDIANS) RC.medians.push({ path: flatPath(m.pts, false), w: m.w, aabb: flatAABB(m.pts) });
+    for (const p of W.PLAZAS) RC.plazas.rect(p[0], p[1], p[2], p[3]);
     for (const poly of W.LAND_POLYS) {
       const path = flatPath(poly, true);
       RC.land.push({ path, aabb: flatAABB(poly) });
@@ -140,6 +141,9 @@ import { nearestKiosk } from "../game/delivery.js";
       if (!aabbInView(e.aabb, view, 10)) continue;
       ctx.fill(e.path);
     }
+    // Paved plazas: land slivers too small for a cuadra, poured as concrete
+    ctx.fillStyle = "#cec7b2";
+    ctx.fill(RC.plazas);
     // Subtle district tone (clipped to land)
     ctx.save();
     ctx.clip(RC.landAll);

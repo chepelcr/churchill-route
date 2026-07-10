@@ -996,18 +996,19 @@ def acera_fringe(grid, depth_cells=ACERA_CELLS):
 
 
 def stamp_pad(grid, x, y, r_px):
-    """Carve a drivable road apron (a disc) under a POI, punching through the
-    acera so you can pull off the street right up to the kiosk/customer even
-    though aceras are otherwise non-drivable curbs."""
-    rc = max(1, int(r_px // GRID_CELL))
-    c0, r0 = int(x // GRID_CELL), int(y // GRID_CELL)
-    for dr in range(-rc, rc + 1):
-        for dc in range(-rc, rc + 1):
-            if dc * dc + dr * dr > rc * rc:
-                continue
-            c, r = c0 + dc, r0 + dr
-            if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and grid[r * GRID_COLS + c] in (CLS_LAND, CLS_ACERA):
-                grid[r * GRID_COLS + c] = CLS_ROAD
+    """Carve a drivable road apron under a POI, punching through the acera so
+    you can pull off the street right up to the kiosk/customer even though
+    aceras are otherwise non-drivable curbs. Cuadrícula-aligned: the apron is
+    a whole-CUAD square centered on the POI's cuadrícula cell."""
+    side = max(2, round(2 * r_px / CUAD))          # side in cuadrículas
+    cc0 = int(x // CUAD) - (side - 1) // 2
+    cr0 = int(y // CUAD) - (side - 1) // 2
+    c0, r0 = cc0 * CUAD_CELLS, cr0 * CUAD_CELLS    # raster origin, on-lattice
+    for r in range(max(0, r0), min(GRID_ROWS, r0 + side * CUAD_CELLS)):
+        row = r * GRID_COLS
+        for c in range(max(0, c0), min(GRID_COLS, c0 + side * CUAD_CELLS)):
+            if grid[row + c] in (CLS_LAND, CLS_ACERA):
+                grid[row + c] = CLS_ROAD
 
 
 def beach_fringe(grid, depth_cells=3):
@@ -1171,6 +1172,127 @@ def block_census(grid, min_side=6):
     for area, insq in big[:20]:
         print(f"[census]   area {area:>4} cuads   inscribed {insq}x{insq}")
     return comps
+
+# ---------------------------------------------------- cuadrícula blocks -----
+
+BLOCK_MIN_CUADS = 6       # a real cuadra fits >= 6x6 buildable cuadrículas
+SLIVER_MAX_CUADS = 25.0   # smaller-and-thinner land paves to plaza concrete
+
+def detect_blocks(grid):
+    """Classify every CLS_LAND component (after roads/aceras/pads are stamped)
+    at cuadrícula resolution:
+      - block: fits a BLOCK_MIN_CUADS square of buildable CUAD cells somewhere
+        -> kept as solid cuadra; its organic CUAD cell set (L-shapes, triangle
+        and trapezoid arms included) is returned for building placement;
+      - sliver: nowhere near the minimum AND small -> paved to CLS_ACERA and
+        emitted as plaza rects (intersection corners, alley wedges);
+      - green: large but nowhere BLOCK_MIN_CUADS (thin coastal strips) ->
+        stays CLS_LAND with no buildings, never paved (no concrete oceans).
+    Returns (blocks, plazas): blocks = [{"cells": set[(cc, cr)]}], plazas =
+    flat [x, y, w, h] px rects for the renderer."""
+    from array import array
+    N = GRID_COLS * GRID_ROWS
+    label = array("i", [0]) * N
+    comp_n = [0]            # raster cell count per component id (1-based)
+    for start in range(N):
+        if grid[start] != CLS_LAND or label[start]:
+            continue
+        cid = len(comp_n)
+        comp_n.append(0)
+        q = deque([start])
+        label[start] = cid
+        n = 0
+        while q:
+            i = q.popleft()
+            n += 1
+            r, c = divmod(i, GRID_COLS)
+            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                if 0 <= nr < GRID_ROWS and 0 <= nc < GRID_COLS:
+                    ni = nr * GRID_COLS + nc
+                    if grid[ni] == CLS_LAND and not label[ni]:
+                        label[ni] = cid
+                        q.append(ni)
+        comp_n[cid] = n
+    n_comps = len(comp_n) - 1
+    # buildable CUAD cells (fully CLS_LAND — such a 5x5 is 4-connected, so it
+    # belongs to exactly one component) + max-inscribed-square DP per cell
+    ccols, crows = GRID_COLS // CUAD_CELLS, GRID_ROWS // CUAD_CELLS
+    bcomp = array("i", [0]) * (ccols * crows)      # component id per cuad cell
+    for cr in range(crows):
+        for cc in range(ccols):
+            ok = True
+            for r in range(cr * CUAD_CELLS, (cr + 1) * CUAD_CELLS):
+                row = r * GRID_COLS
+                for c in range(cc * CUAD_CELLS, (cc + 1) * CUAD_CELLS):
+                    if grid[row + c] != CLS_LAND:
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if ok:
+                bcomp[cr * ccols + cc] = label[cr * CUAD_CELLS * GRID_COLS + cc * CUAD_CELLS]
+    dp = [0] * (ccols * crows)
+    comp_ins = [0] * (len(comp_n))                 # max inscribed per component
+    comp_cells = defaultdict(set)
+    for cr in range(crows):
+        for cc in range(ccols):
+            i = cr * ccols + cc
+            cid = bcomp[i]
+            if not cid:
+                continue
+            dp[i] = 1 if (cr == 0 or cc == 0) else \
+                min(dp[i - 1], dp[i - ccols], dp[i - ccols - 1]) + 1
+            comp_ins[cid] = max(comp_ins[cid], dp[i])
+            comp_cells[cid].add((cc, cr))
+    # classify
+    blocks, paved_ids = [], set()
+    n_green = 0
+    for cid in range(1, len(comp_n)):
+        area_cuads = comp_n[cid] / (CUAD_CELLS * CUAD_CELLS)
+        if comp_ins[cid] >= BLOCK_MIN_CUADS:
+            blocks.append({"cells": comp_cells[cid]})
+        elif area_cuads <= SLIVER_MAX_CUADS:
+            paved_ids.add(cid)
+        else:
+            n_green += 1
+    # pave the slivers + collect plaza rects (merged raster row runs)
+    runs_by_comp = defaultdict(lambda: defaultdict(list))  # cid -> row -> runs
+    for i in range(N):
+        if label[i] in paved_ids:
+            grid[i] = CLS_ACERA
+            r, c = divmod(i, GRID_COLS)
+            rows = runs_by_comp[label[i]][r]
+            if rows and rows[-1][1] == c:              # extend current run
+                rows[-1][1] = c + 1
+            else:
+                rows.append([c, c + 1])
+    plazas = []
+    for cid, rows in runs_by_comp.items():
+        open_runs = {}                                  # (c0,c1) -> [y0, y1)
+        for r in sorted(rows):
+            cur = {tuple(run): None for run in rows[r]}
+            nxt = {}
+            for key in cur:
+                if key in open_runs and open_runs[key][1] == r:
+                    open_runs[key][1] = r + 1
+                    nxt[key] = open_runs[key]
+                else:
+                    if key in open_runs:
+                        y0, y1 = open_runs[key]
+                        plazas.append([key[0] * GRID_CELL, y0 * GRID_CELL,
+                                       (key[1] - key[0]) * GRID_CELL, (y1 - y0) * GRID_CELL])
+                    nxt[key] = [r, r + 1]
+            for key, span in open_runs.items():
+                if key not in nxt:
+                    plazas.append([key[0] * GRID_CELL, span[0] * GRID_CELL,
+                                   (key[1] - key[0]) * GRID_CELL, (span[1] - span[0]) * GRID_CELL])
+            open_runs = nxt
+        for key, span in open_runs.items():
+            plazas.append([key[0] * GRID_CELL, span[0] * GRID_CELL,
+                           (key[1] - key[0]) * GRID_CELL, (span[1] - span[0]) * GRID_CELL])
+    print(f"[blocks] {n_comps} land components -> {len(blocks)} cuadras, "
+          f"{len(paved_ids)} paved to plaza ({len(plazas)} rects), {n_green} green")
+    return blocks, plazas
 
 # ------------------------------------------------------- synthetic infill ---
 
@@ -1662,6 +1784,9 @@ def main():
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
     print(f"[acera] {acera_cells} sidewalk cells")
 
+    # --- cuadrícula blocks: classify land into cuadras / paved plazas / green
+    blocks, plazas = detect_blocks(grid)
+
     # Paseo divided-avenue median (solid separator + crossing gaps); the dash
     # polylines are emitted so the renderer can draw a planted green strip.
     medians = stamp_paseo_median(grid, roads)
@@ -1789,6 +1914,7 @@ def main():
         "palms": palms,
         "hills": hills,
         "medians": medians,
+        "plazas": plazas,
         "districts": [{k: v for k, v in d.items()} for d in districts],
         "landmarks": landmarks,
         "customers": customers,

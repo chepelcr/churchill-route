@@ -762,6 +762,39 @@ def propagate_barro_to_crossings(roads, reach=1.2 * CUAD):
     print(f"[barro] +{n} cross streets flagged barro (cross the Ferrocarril avenue)")
 
 
+def barro_leon_continuation(roads, corner_x=5520):
+    """Paseo León Cortés (principal) ends at the Parque Marino corner (~x5520);
+    its continuation east belongs to the Ferrocarril route, not the principal —
+    make it a narrow barro street instead of a wide asphalt avenue."""
+    n = 0
+    for r in roads:
+        if "león cortés" not in (r.get("name") or "").lower():
+            continue
+        xs = r["pts"][0::2]
+        if corner_x - 20 <= min(xs) < 7000:      # the piece(s) past the corner
+            r["barro"] = 1
+            r["w"] = W_STANDARD
+            r["cls"] = "residential"
+            n += 1
+    print(f"[roads] León Cortés continuation past Parque Marino -> barro: {n} piece(s)")
+
+
+def divide_cocal_carriageways(roads, x0=8139, x1=11921):
+    """The Cocal stretch of Avenida 1 (north) and Av. Alberto Echandi Montero
+    (south) is a divided avenue — two 6-cuadrícula carriageways that overlap
+    into one slab. Narrow each to the 2-lane standard width so a gap opens
+    between them (a planted median is added later)."""
+    n = 0
+    for r in roads:
+        if (r.get("name") or "") not in ("Avenida 1", "Avenida Alberto Echandi Montero"):
+            continue
+        xs = r["pts"][0::2]
+        if sum(1 for x in xs if x0 <= x <= x1) >= max(1, len(xs) // 2):
+            r["w"] = W_STANDARD
+            n += 1
+    print(f"[roads] divided {n} Cocal carriageway piece(s) to 2 lanes")
+
+
 def extract_buildings(sp, ways, roads):
     # road segments for overlap testing (subdivided, with per-class half width)
     segs = []
@@ -1761,7 +1794,9 @@ def main():
     sp = build_spine(ways, nodes)
 
     roads, bridge_road = extract_roads(sp, ways)
+    barro_leon_continuation(roads)
     propagate_barro_to_crossings(roads)
+    divide_cocal_carriageways(roads)
     rails = extract_rails(sp, ways)
     print(f"[rails] {len(rails)} rail pieces in corridor")
     dedupe_dual_carriageway(roads)
@@ -2245,8 +2280,27 @@ def main():
                 continue
             trees.append({"x": round(tx), "y": round(ty), "s": round(0.9 + rng() * 0.3, 2)})
             n_ferro_trees += 1
+    # Planted median down the middle of the divided Cocal avenue (between the
+    # two narrowed carriageways Avenida 1 / Alberto Echandi Montero).
+    def _centerline_pts(name, x0, x1):
+        out = []
+        for r in roads:
+            if (r.get("name") or "") == name:
+                out += [(x, y) for (_, x, y) in _resample_centerline(r["pts"], 10) if x0 <= x <= x1]
+        return sorted(out)
+    A = _centerline_pts("Avenida 1", 8139, 11921)
+    B = _centerline_pts("Avenida Alberto Echandi Montero", 8139, 11921)
+    n_dc = 0
+    if A and B:
+        for xs in range(8200, 11900, 40):
+            a = min(A, key=lambda p: abs(p[0] - xs))
+            b = min(B, key=lambda p: abs(p[0] - xs))
+            if abs(a[0] - xs) < 90 and abs(b[0] - xs) < 90 and abs(a[1] - b[1]) < 6 * CUAD:
+                trees.append({"x": xs, "y": round((a[1] + b[1]) / 2), "s": round(0.9 + rng() * 0.3, 2)})
+                n_dc += 1
     print(f"[median] {n_median_palms} palms on the paseo median dashes, "
-          f"{len(trees)} trees on the tree lines ({n_ferro_trees} on the Ferrocarril line)")
+          f"{len(trees)} trees on the tree lines ({n_ferro_trees} Ferrocarril, "
+          f"{n_dc} Cocal divided-avenue median)")
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).

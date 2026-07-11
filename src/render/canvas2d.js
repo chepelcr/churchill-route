@@ -1177,9 +1177,11 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    // Active delivery target, then player
-    drawTargetCustomer(t);
-    drawPlayer(state.p, state.veh);
+    // Active delivery target, then player (neither exists in attract mode)
+    if (!state.attract) {
+      drawTargetCustomer(t);
+      drawPlayer(state.p, state.veh);
+    }
     // Gulls above
     for (const g of gulls) {
       if (g.x < view.x0 - 30 || g.x > view.x1 + 30) continue;
@@ -1202,10 +1204,12 @@ import { nearestKiosk } from "../game/delivery.js";
     if (state.weather === "storm") drawRain(vw, vh, t);
     if (state.weather === "night") drawNightVignette(vw, vh);
 
-    drawMinimap(vw, vh);
-    drawCompass(vw, vh);
+    if (!state.attract) {
+      drawMinimap(vw, vh);
+      drawCompass(vw, vh);
+    }
 
-    if (state.p.speed > 240) {
+    if (!state.attract && state.p.speed > 240) {
       ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1;
       for (let i = 0; i < 12; i++) {
         const y = Math.random() * vh, len = 40 + Math.random() * 60;

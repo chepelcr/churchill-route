@@ -49,6 +49,18 @@ export default function App() {
 
   useEffect(() => { Game.state.paused = (screen === "paused"); }, [screen]);
 
+  // Menu screens show the live world drifting behind them (attract mode).
+  useEffect(() => { Game.setAttract(screen === "title" || screen === "stagepick"); }, [screen]);
+
+  // Auto-pause when the tab/app goes to the background mid-run.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden && screenRef.current === "playing") setScreen("paused");
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
   function pickMode(mode) {
     enterImmersive();
     if (mode === "story") setScreen("stagepick");
@@ -87,12 +99,16 @@ export default function App() {
   return (
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
-      {screen === "title" && <TitleScreen onPickMode={pickMode} />}
-      {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
-      {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
-      {screen === "playing" && <><HUD /><TouchControls /></>}
+      {(screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over") && (
+        <div className="screen-anim" key={screen}>
+          {screen === "title" && <TitleScreen onPickMode={pickMode} />}
+          {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
+          {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
+          {screen === "over" && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen("title")} />}
+        </div>
+      )}
+      {screen === "playing" && <><HUD onPause={() => setScreen("paused")} /><TouchControls /></>}
       {screen === "paused" && <><HUD /><PauseScreen onResume={() => setScreen("playing")} onQuit={quit} /></>}
-      {screen === "over" && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen("title")} />}
       {(screen === "playing" || screen === "paused") && <GameTweaks />}
       <div className="rotate-overlay">
         <div className="rotate-icon">📱</div>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useMenuNav } from "../useMenuNav.js";
 
 export const MODE_CARDS = [
   { id: "story",   name: "Historia",  swatch: "#ffe06b", tag: "7 etapas, de El Faro hasta el puerto de Caldera." },
@@ -7,12 +8,13 @@ export const MODE_CARDS = [
 ];
 
 export default function TitleScreen({ onPickMode }) {
+  const [idx, setIdx] = useMenuNav({
+    count: MODE_CARDS.length,
+    cols: MODE_CARDS.length,
+    onSelect: (i) => onPickMode(MODE_CARDS[i].id),
+  });
   return (
     <div className="title-bg">
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-        <div style={{ position: "absolute", left: "-40px", bottom: "-20px", fontSize: "240px", lineHeight: 1, opacity: 0.35 }}>🌴</div>
-        <div style={{ position: "absolute", right: "-30px", bottom: "-30px", fontSize: "300px", lineHeight: 1, opacity: 0.28 }}>🌴</div>
-      </div>
       <div className="title-shell">
         <div className="title-card">
           <span className="title-pill"><span className="dot"></span>PUNTARENAS · COSTA RICA · ARCADE 2026</span>
@@ -25,8 +27,9 @@ export default function TitleScreen({ onPickMode }) {
           </p>
 
           <div className="modes" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: 760, margin: "18px auto" }}>
-            {MODE_CARDS.map((m) => (
-              <button key={m.id} className="mode" onClick={() => onPickMode(m.id)}>
+            {MODE_CARDS.map((m, i) => (
+              <button key={m.id} className={"mode" + (idx === i ? " focused" : "")}
+                onMouseEnter={() => setIdx(i)} onClick={() => onPickMode(m.id)}>
                 <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{m.name}</div>
                 <div className="ms">{m.tag}</div>
               </button>

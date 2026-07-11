@@ -198,6 +198,28 @@ export function update(dt) {
     if (state.comboTimer <= 0) state.combo = 1;
   }
 
+  advanceEntities(dt, true);
+
+  if (state.weather === "storm") state.rainT += dt;
+
+  // Arcade timer (also stage timer)
+  if (state.mode === "arcade" || state.mode === "story") {
+    state.timeLeft -= dt;
+    if (state.timeLeft <= 0) { state.timeLeft = 0; state.over = true; state.won = false; }
+  }
+  if (state.mode === "explore") {
+    // Long, generous timer — encourages cruising
+    state.timeLeft -= dt;
+    if (state.timeLeft <= 0) state.timeLeft = 999;
+  }
+}
+
+// World-entity advancement (traffic, pedestrians, animals, gulls, boats,
+// floats/particles). Also drives the menu attract mode, where there is no
+// player: withPlayer=false skips every player-proximity interaction.
+export function advanceEntities(dt, withPlayer = true) {
+  const p = state.p;
+
   // Floats / particles
   for (const f of state.floats) { f.t += dt; f.y -= 16 * dt; }
   state.floats = state.floats.filter(f => f.t < f.ttl);
@@ -211,7 +233,7 @@ export function update(dt) {
     if (t.s < 0) t.s += len;
     if (t.s > len) t.s -= len;
     placeCar(t);
-    if (Math.abs(t.x - p.x) < 20 && Math.abs(t.y - p.y) < 14) {
+    if (withPlayer && Math.abs(t.x - p.x) < 20 && Math.abs(t.y - p.y) < 14) {
       p.vx -= (t.x - p.x) * 0.5; p.vy -= (t.y - p.y) * 0.5;
       state.cam.shake = Math.max(state.cam.shake, 6);
       if (state.carrying && Math.random() < 0.12) dropChurchill();
@@ -238,7 +260,7 @@ export function update(dt) {
     const pt = W.roadPointAt(pe.roadIdx, pe.s);
     pe.x = pt.x - Math.sin(pt.ang) * pe.off;
     pe.y = pt.y + Math.cos(pt.ang) * pe.off;
-    if (Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
+    if (withPlayer && Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
       for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
       if (!pe.crossing) { pe.crossing = true; pe.crossPhase = 0; } // bolt across
     }
@@ -252,7 +274,7 @@ export function update(dt) {
     if (g.x < 0) g.x = W.W; if (g.x > W.W) g.x = 0;
     const top2 = W.topY(g.x), bot = W.botY(g.x);
     if (g.y > top2 - 20 && g.y < bot + 20) g.vy = (g.y < (top2+bot)/2 ? -1 : 1) * Math.abs(g.vy || 20);
-    if (state.carrying && Math.hypot(g.x - p.x, g.y - p.y) < 70 && Math.random() < 0.005) {
+    if (withPlayer && state.carrying && Math.hypot(g.x - p.x, g.y - p.y) < 70 && Math.random() < 0.005) {
       if (Math.random() < 0.3) dropChurchill();
     }
   }
@@ -261,18 +283,5 @@ export function update(dt) {
     b.x += b.vx * dt; b.wake += dt;
     if (b.x < -120) b.x = W.W + 80;
     if (b.x > W.W + 120) b.x = -80;
-  }
-
-  if (state.weather === "storm") state.rainT += dt;
-
-  // Arcade timer (also stage timer)
-  if (state.mode === "arcade" || state.mode === "story") {
-    state.timeLeft -= dt;
-    if (state.timeLeft <= 0) { state.timeLeft = 0; state.over = true; state.won = false; }
-  }
-  if (state.mode === "explore") {
-    // Long, generous timer — encourages cruising
-    state.timeLeft -= dt;
-    if (state.timeLeft <= 0) state.timeLeft = 999;
   }
 }

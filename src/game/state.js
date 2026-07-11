@@ -5,6 +5,8 @@ import { VEHICLES } from "./vehicles.js";
 
 export const state = {
   running: false, paused: false, over: false, won: false,
+  attract: false,           // menu attract mode: world lives, no player
+
   mode: "arcade",           // arcade | story | explore
   stageIdx: 0,              // index into WORLD.STAGES
   weather: "sunny",

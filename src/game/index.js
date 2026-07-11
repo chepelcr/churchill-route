@@ -6,6 +6,7 @@ import { VEHICLES } from "./vehicles.js";
 import { startArcade, startStage, startExplore, setWeather, setVehicle } from "./modes.js";
 import { attachTouch, attachAim } from "./input.js";
 import { update } from "./physics.js";
+import { setAttract, attractTick } from "./attract.js";
 import { loadProgress, saveProgress, rebuildBarriers } from "./progress.js";
 import { setupCanvas, render } from "../render/Renderer.js";
 
@@ -18,6 +19,7 @@ function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000);
   lastT = t;
   if (state.running) update(dt);
+  else if (state.attract) attractTick(dt);
   render(t);
   requestAnimationFrame(loop);
 }
@@ -33,7 +35,7 @@ function attachCanvas(c) {
 
 export const Game = {
   state, VEHICLES, startArcade, startStage, startExplore, setWeather, setVehicle,
-  attachCanvas, attachTouch,
+  attachCanvas, attachTouch, setAttract,
   pause: () => { state.paused = !state.paused; },
   quit: () => { state.running = false; state.over = false; state.won = false; },
   resetProgress: () => {

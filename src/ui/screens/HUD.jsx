@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Game } from "../../game/index.js";
 import { WORLD } from "../../world/index.js";
 
-export default function HUD() {
+export default function HUD({ onPause }) {
   const s = Game.state;
   const district = WORLD.districtAt(s.p.x);
   const meltPct = s.carrying ? Math.min(1, s.carrying.melt / s.carrying.total) : 0;
@@ -48,6 +48,12 @@ export default function HUD() {
           </div>
         )}
       </div>
+
+      {onPause && (
+        <div className="hud-right">
+          <button className="hud-btn" onClick={onPause} aria-label="Pausa">⏸</button>
+        </div>
+      )}
 
       <div className="district-tab">
         <span className="sw" style={{ background: district.tone }}></span>

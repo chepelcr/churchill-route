@@ -140,7 +140,7 @@ export function update(dt) {
         if (p.x > br.x - 14 && p.x < br.x) {
           p.x = br.x - 14; p.vx = -Math.abs(p.vx) * 0.4;
           state.cam.shake = Math.max(state.cam.shake, 8);
-          state.storyTip = `Etapa ${br.requiredStage} requerida para entrar a ${br.district.toUpperCase()}.`;
+          state.storyTip = `${br.district.toUpperCase()} sigue cerrado — limpiá la Etapa ${br.requiredStage} para pasar.`;
         } else if (p.x > br.x && p.x < br.x + 14) {
           // can re-enter going west: allow
         }

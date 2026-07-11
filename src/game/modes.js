@@ -48,7 +48,7 @@ export function startArcade(opts = {}) {
   const k0 = W.landmarkById("kios_paseo1");
   state.p = { x: k0.x - 60, y: k0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam = { x: state.p.x, y: state.p.y, shake: 0 };
-  state.storyTip = "Modo Arcade: cantidad y velocidad. Combo no decae si seguís entregando.";
+  state.storyTip = "Tres minutos y todo el puerto. Si no dejás de entregar, el combo no se cae.";
   state.barriers = [];
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
@@ -71,8 +71,8 @@ export function startExplore(opts = {}) {
   const f0 = W.landmarkById("faro");
   state.p = { x: f0.x + 60, y: f0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam = { x: state.p.x, y: state.p.y, shake: 0 };
-  const unlockedNames = state.progress.unlocked.length;
-  state.storyTip = `Modo Recorrer · ${unlockedNames} zonas desbloqueadas. Limpiá etapas para abrir más.`;
+  const nUnlocked = state.progress.unlocked.length;
+  state.storyTip = `Tenés ${nUnlocked} zonas abiertas para recorrer. Limpiá etapas de Historia para abrir el resto.`;
   rebuildBarriers();
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();

@@ -55,7 +55,7 @@ export function deliverChurchill() {
   state.combo = Math.min(8, state.combo + (meltPct < 0.4 ? 1 : 0));
   state.comboTimer = 7;
   pushFloat(state.p.x, state.p.y - 24, `+${total}`, meltPct < 0.25 ? "#ffe06b" : "#fff");
-  if (meltPct < 0.25) pushFloat(state.p.x, state.p.y - 44, "PERFECTO!", "#ff3d80");
+  if (meltPct < 0.25) pushFloat(state.p.x, state.p.y - 44, "¡PERFECTO!", "#ff3d80");
   pushFloat(c.customer.x, c.customer.y - 22, c.customer.line.slice(0, 26), "#fff");
   state.carrying = null;
   state.storyTip = "¡Pura vida! Volvé al kiosco.";

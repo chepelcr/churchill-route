@@ -1,9 +1,9 @@
 import React from "react";
 
 export const MODE_CARDS = [
-  { id: "story",   name: "Historia",  swatch: "#ffe06b", tag: "7 etapas. De El Faro al Puente de Mata de Limón." },
-  { id: "explore", name: "Recorrer",  swatch: "#6fbf99", tag: "Mundo abierto. Distritos se desbloquean al limpiar etapas." },
-  { id: "arcade",  name: "Arcade",    swatch: "#ff3d80", tag: "3 minutos, peninsula libre, combo a tope." },
+  { id: "story",   name: "Historia",  swatch: "#ffe06b", tag: "7 etapas, de El Faro hasta el puerto de Caldera." },
+  { id: "explore", name: "Recorrer",  swatch: "#6fbf99", tag: "Mundo abierto. Limpiá etapas para abrir nuevos distritos." },
+  { id: "arcade",  name: "Arcade",    swatch: "#ff3d80", tag: "3 minutos, península libre, combo a tope." },
 ];
 
 export default function TitleScreen({ onPickMode }) {
@@ -17,11 +17,11 @@ export default function TitleScreen({ onPickMode }) {
         <div className="title-card">
           <span className="title-pill"><span className="dot"></span>PUNTARENAS · COSTA RICA · ARCADE 2026</span>
           <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
-          <div className="title-sub">¡PURA VIDA, MAE!</div>
+          <div className="title-sub">¡PURA VIDA!</div>
           <p className="title-tag">
             Sos repartidor de Churchills en El Puerto. Recogé en el kiosco rojo y blanco del{" "}
-            <em>Paseo de los Turistas</em>, llegá al cliente antes que el hielo se derrita. Drift, esquivá
-            gaviotas, atravesá Carmen, el Mercado, Las Playitas hasta Mata de Limón.
+            <em>Paseo de los Turistas</em> y llegá al cliente antes que el hielo se derrita. Hacé drift,
+            esquivá gaviotas y atravesá Carmen, el Mercado y Las Playitas hasta Mata de Limón.
           </p>
 
           <div className="modes" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: 760, margin: "18px auto" }}>

@@ -194,13 +194,13 @@ LANDMARK_DEFS = [
 ]
 
 CUSTOMER_DEFS = [
-    {"id": "c1",  "name": "Don Beto, pescador",     "district": "carmen",   "line": "¡Antes que se derrita, mae!",  "ll": (9.97700, -84.84700)},
+    {"id": "c1",  "name": "Don Beto, pescador",     "district": "carmen",   "line": "¡Antes que se derrita!",       "ll": (9.97700, -84.84700)},
     {"id": "c2",  "name": "Crucerista alemana",     "district": "carmen",   "line": "Eine Churchill, bitte!",       "ll": (9.97600, -84.84550)},
-    {"id": "c3",  "name": "Carnaval troupe",        "district": "paseo",    "line": "Para los muchachos del baile.", "ll": (9.97450, -84.83300)},
-    {"id": "c4",  "name": "Familia tica",           "district": "paseo",    "line": "Cuatro, con extra leche.",     "ll": (9.97470, -84.83100)},
+    {"id": "c3",  "name": "Carnaval troupe",        "district": "paseo",    "line": "Para toda la comparsa.",       "ll": (9.97450, -84.83300)},
+    {"id": "c4",  "name": "Familia tica",           "district": "paseo",    "line": "Cuatro, con leche extra.",     "ll": (9.97470, -84.83100)},
     {"id": "c5",  "name": "Surfista canadiense",    "district": "paseo",    "line": "Make it extra red, dude.",     "ll": (9.97420, -84.83550)},
     {"id": "c6",  "name": "Padre Ramírez",          "district": "centro",   "line": "Bendito churchill.",           "ll": (9.97760, -84.83470)},
-    {"id": "c7",  "name": "Vendedor de ceviche",    "district": "centro",   "line": "Cambio: ceviche x churchill.", "ll": (9.97700, -84.83100)},
+    {"id": "c7",  "name": "Vendedor de ceviche",    "district": "centro",   "line": "Te cambio uno por ceviche.",   "ll": (9.97700, -84.83100)},
     {"id": "c8",  "name": "Doña del mercado",       "district": "centro",   "line": "Rojito bien fuerte.",          "ll": (9.98000, -84.83100)},
     {"id": "c9",  "name": "Niño con bici",          "district": "centro",   "line": "¡El mío con piña!",            "ll": (9.97720, -84.82800)},
     {"id": "c10", "name": "Equipo de fútbol",       "district": "playitas", "line": "Once. Es broma. Tres.",        "ll": (9.97880, -84.82620)},
@@ -210,8 +210,8 @@ CUSTOMER_DEFS = [
     {"id": "c14", "name": "Camionero de Ruta 17",   "district": "cocal",    "line": "Rápido, voy pa' Caldera.",     "ll": (9.96800, -84.74400)},
     {"id": "c15", "name": "Pescadores del estero",  "district": "mata",     "line": "Justo antes de la lluvia.",    "ll": (9.92600, -84.71000)},
     {"id": "c16", "name": "Cocineros de Leda",      "district": "mata",     "line": "Postre para los clientes.",    "ll": (9.92350, -84.70780)},
-    {"id": "c17", "name": "Maquinista del tren",    "district": "caldera",  "line": "Salgo al amanecer, mae.",      "ll": (9.91450, -84.71550)},
-    {"id": "c18", "name": "Estibador del Puerto",   "district": "caldera",  "line": "Cargando contenedor.",         "ll": (9.91080, -84.71680)},
+    {"id": "c17", "name": "Maquinista del tren",    "district": "caldera",  "line": "El tren no espera a nadie.",   "ll": (9.91450, -84.71550)},
+    {"id": "c18", "name": "Estibador del Puerto",   "district": "caldera",  "line": "Rapidito, ando en turno.",     "ll": (9.91080, -84.71680)},
 ]
 
 # story stages — verbatim from the previous world.js (ids referenced by engine/ui)
@@ -221,19 +221,19 @@ STAGES = [
      "kiosks": ["kios_paseo1"], "targetDeliveries": 3, "timeLimit": 90, "weather": "sunny",
      "customers": ["c1", "c2"], "unlock": "paseo"},
     {"id": "s2", "num": 2, "name": "Paseo de los Turistas", "district": "paseo",
-     "brief": "El boulevard está lleno. Atravesá la peatonal, esquivá turistas y carnaval.",
+     "brief": "El boulevard está lleno. Atravesá la peatonal esquivando turistas y comparsas de carnaval.",
      "kiosks": ["kios_paseo1", "kios_paseo2"], "targetDeliveries": 4, "timeLimit": 120, "weather": "sunny",
      "customers": ["c3", "c4", "c5"], "unlock": "centro"},
     {"id": "s3", "num": 3, "name": "Mercado y Catedral", "district": "centro",
-     "brief": "Calles del centro angostas (C.1, C.3, C.5…). Tráfico, gatos, padre con hambre.",
+     "brief": "Las calles del centro son angostas y el tráfico no perdona. Ojo con los gatos — y el Padre Ramírez no es de esperar.",
      "kiosks": ["kios_paseo2", "kios_centro"], "targetDeliveries": 4, "timeLimit": 130, "weather": "sunny",
      "customers": ["c6", "c7", "c8", "c9"], "unlock": "playitas"},
     {"id": "s4", "num": 4, "name": "Atardecer en Las Playitas", "district": "playitas",
-     "brief": "Sunset sobre el Yacht Club. Velocidad sobre Ruta 17. Cuidado con el equipo de fútbol.",
+     "brief": "Atardece sobre el Yacht Club. Abrí gas por la Ruta 17, pero cuidado: el equipo de fútbol anda entrenando.",
      "kiosks": ["kios_centro", "kios_play"], "targetDeliveries": 5, "timeLimit": 140, "weather": "sunset",
      "customers": ["c10", "c11", "c12"], "unlock": "cocal"},
     {"id": "s5", "num": 5, "name": "Tormenta en El Cocal", "district": "cocal",
-     "brief": "Lluvia tropical, poca tracción. Llegá a la Ruta 17 antes que el aguacero te aguante.",
+     "brief": "Cayó el aguacero y el asfalto resbala. Llegá a la Ruta 17 antes de que la tormenta empeore.",
      "kiosks": ["kios_play", "kios_cocal"], "targetDeliveries": 5, "timeLimit": 160, "weather": "storm",
      "customers": ["c13", "c14"], "unlock": "mata"},
     {"id": "s6", "num": 6, "name": "Puente · Mata de Limón", "district": "mata",
@@ -241,7 +241,7 @@ STAGES = [
      "kiosks": ["kios_cocal", "kios_mata"], "targetDeliveries": 4, "timeLimit": 150, "weather": "night",
      "customers": ["c15", "c16"], "unlock": "mata"},
     {"id": "s7", "num": 7, "name": "Caldera · Final", "district": "caldera",
-     "brief": "Ruta 27 hasta el Puerto de Caldera. El amanecer pega fuerte — última entrega antes que termine el día.",
+     "brief": "Por la Ruta 27 hasta el Puerto de Caldera. Ya sale el sol — una última entrega y se acaba la jornada.",
      "kiosks": ["kios_mata"], "targetDeliveries": 4, "timeLimit": 170, "weather": "sunny",
      "customers": ["c17", "c18"], "unlock": "caldera"},
 ]
@@ -1453,16 +1453,8 @@ PASEO_TURISTAS = "paseo de los turistas"
 PASEO_LEON = "paseo león cortés"
 PASEO_NAMES = (PASEO_TURISTAS, PASEO_LEON)
 
-# Streets partially replaced by planted TREE LINES: where the beachfront
-# approach reads as 3 parallel carriles (the middle street runs merged with
-# the paseo — no cuadra fits between), that stretch of the middle street
-# (Avenida 2A) becomes a tree-lined separator along its exact centerline.
-# Where it diverges from the paseo it stays a normal drivable street.
-TREELINE_ROADS = ("avenida 2a",)
-TREELINE_MERGE_DIST = 150       # centerline gap below which the carriles read
-                                # as one 3-lane slab (~2 cuadras of asphalt)
-
 MUELLE_STREET = "calle central"
+LEON_END_STREET = "calle 20"    # the calle at the paseo's east end
 
 def paseo_roads(roads):
     return [r for r in roads
@@ -1485,53 +1477,28 @@ def narrow_muelle_approach(roads):
     print(f"[roads] muelle entrance: Calle Central tail -> left carril only (x~{x_end})")
     return x_end
 
-def extract_treelines(roads):
-    """Split TREELINE_ROADS by distance to the paseo: merged-parallel
-    stretches (< TREELINE_MERGE_DIST between centerlines) are pulled out of
-    the drivable network to be planted as tree separators; the diverging
-    stretches are kept as streets."""
-    targets = [r for r in roads
-               if (r.get("name") or "").lower() in TREELINE_ROADS]
-    if not targets:
-        return []
-    psegs = []
-    for r in paseo_roads(roads):
-        p = r["pts"]
-        for i in range(0, len(p) - 2, 2):
-            psegs.append((p[i], p[i + 1], p[i + 2], p[i + 3]))
-
-    def near_paseo(x, y):
-        best = 1e18
-        for (x0, y0, x1, y1) in psegs:
-            dx, dy = x1 - x0, y1 - y0
-            L2 = dx * dx + dy * dy
-            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
-            d2 = (x - (x0 + t * dx)) ** 2 + (y - (y0 + t * dy)) ** 2
-            best = min(best, d2)
-        return best < TREELINE_MERGE_DIST * TREELINE_MERGE_DIST
-
-    lines, kept = [], []
-    for r in targets:
-        samples = _resample_centerline(r["pts"], 8.0)
-        merged = [near_paseo(x, y) for (_, x, y) in samples]
-        k = 0
-        while k < len(samples):
-            k0, state_m = k, merged[k]
-            while k < len(samples) and merged[k] == state_m:
-                k += 1
-            span = samples[k - 1][0] - samples[k0][0]
-            if k - k0 < 2 or span < 2 * CUAD:
-                continue                      # sliver stub — drop
-            piece = {**r, "pts": [round(v) for (_, x, y) in samples[k0:k]
-                                  for v in (x, y)]}
-            (lines if state_m else kept).append(piece)
-    drop = set(map(id, targets))
-    roads[:] = [r for r in roads if id(r) not in drop] + kept
-    def _span(rs):
-        return ", ".join(f"x{min(r['pts'][0::2])}-{max(r['pts'][0::2])}" for r in rs) or "none"
-    print(f"[roads] tree lines (3-carril merge): {_span(lines)}; "
-          f"kept as street: {_span(kept)}")
-    return lines
+def connect_leon_calle20(roads):
+    """The east tip of Paseo León Cortés stops just short of Calle 20's foot,
+    leaving a sand wedge between them. Extend the tip along its own heading
+    until it clears the calle's corridor, so the calle T-junctions into it."""
+    leon = [r for r in paseo_roads(roads)
+            if PASEO_LEON in (r.get("name") or "").lower()]
+    calle = [r for r in roads if (r.get("name") or "").lower() == LEON_END_STREET]
+    if not leon or not calle:
+        return
+    tip_piece = max(leon, key=lambda r: max(r["pts"][0::2]))
+    p = tip_piece["pts"]
+    if p[0] > p[-2]:                             # east tip last
+        p = [v for i in range(len(p) - 2, -2, -2) for v in (p[i], p[i + 1])]
+    target_x = max(max(c["pts"][0::2]) + c["w"] / 2 for c in calle) + CUAD
+    hx, hy = p[-2] - p[-4], p[-1] - p[-3]
+    h = math.hypot(hx, hy)
+    if h < 1e-6 or hx <= 0 or p[-2] >= target_x:
+        return
+    t = (target_x - p[-2]) / (hx / h)
+    tip_piece["pts"] = p + [round(p[-2] + hx / h * t), round(p[-1] + hy / h * t)]
+    print(f"[roads] Paseo León Cortés tip extended to x{tip_piece['pts'][-2]} "
+          f"to meet {LEON_END_STREET}")
 
 def dedupe_dual_carriageway(roads):
     """OSM maps stretches of the beachfront avenue as two one-way ways (dual
@@ -1705,7 +1672,7 @@ def main():
 
     roads, bridge_road = extract_roads(sp, ways)
     dedupe_dual_carriageway(roads)
-    treelines = extract_treelines(roads)
+    connect_leon_calle20(roads)
     muelle_axis = narrow_muelle_approach(roads)
     n_by_cls = defaultdict(int)
     for r in roads:
@@ -1965,25 +1932,18 @@ def main():
 
     # The avenue's separators (final layout, user-iterated):
     # - Paseo de los Turistas: its classic PALM median — dashes with crossing
-    #   gaps aligned to the coming streets (paseo_median_runs) — except right
-    #   beside the 2A tree line, which owns that zone.
-    # - The 2A tree line (3-carril merge stretch): ONE continuous strip with
-    #   trees, tips trimmed so it never pokes into the streets it meets.
-    # - The kiosks street (Paseo León Cortés): ONE continuous tree strip up to
-    #   just before the muelle street; beyond the muelle, normal street.
-    TREELINE_TIP_TRIM = 4 * CUAD
-    tlx0 = min((min(r["pts"][0::2]) for r in treelines), default=-1) - CUAD
-    tlx1 = max((max(r["pts"][0::2]) for r in treelines), default=-1) + CUAD
+    #   gaps aligned to the coming streets (paseo_median_runs).
+    # - The kiosks street (Paseo León Cortés): ONE continuous tree strip from
+    #   the first cuadra's corner (the Turistas→León Cortés curve stays fully
+    #   drivable) up to just before the muelle street; beyond, normal street.
     tzx1 = mlm["x"] - 3 * CUAD          # stop clear of the muelle street
 
-    def continuous_runs(pieces, x0=None, x1=None, tip_trim=0.0):
+    def continuous_runs(pieces, x0=None, x1=None):
         out = []
         for r in pieces:
             samples = _resample_centerline(r["pts"], 4.0)
-            total = samples[-1][0]
-            ks = [k for k, (sv, x, _) in enumerate(samples)
-                  if tip_trim <= sv <= total - tip_trim
-                  and (x0 is None or x >= x0) and (x1 is None or x <= x1)]
+            ks = [k for k, (_, x, _) in enumerate(samples)
+                  if (x0 is None or x >= x0) and (x1 is None or x <= x1)]
             run = []
             for k in ks + [-99]:                 # sentinel flushes the tail
                 if run and k != run[-1] + 1:
@@ -1998,28 +1958,26 @@ def main():
     leon = [r for r in paseo_roads(roads)
             if PASEO_LEON in (r.get("name") or "").lower()]
 
-    def palm_ok(x):
-        return not (tlx0 <= x <= tlx1)   # the tree line owns its zone
+    # the tree strip starts at the SW corner of the first cuadra facing the
+    # León Cortés stretch — never inside the curve that leads into it
+    leon_cl = [(x, y) for r in leon
+               for (_, x, y) in _resample_centerline(r["pts"], 8.0)]
+    lx0, lx1 = min(x for x, _ in leon_cl), max(x for x, _ in leon_cl)
 
-    palm_runs = []
-    for samples, runs in paseo_median_runs(roads, turistas):
-        kept_runs = []
-        for (k0, k1) in runs:
-            k = k0
-            while k <= k1:
-                if palm_ok(samples[k][1]):
-                    ks = k
-                    while k <= k1 and palm_ok(samples[k][1]):
-                        k += 1
-                    if samples[k - 1][0] - samples[ks][0] >= PASEO_MIN_DASH:
-                        kept_runs.append((ks, k - 1))
-                else:
-                    k += 1
-        if kept_runs:
-            palm_runs.append((samples, kept_runs))
+    def _leon_y(x):
+        return min(leon_cl, key=lambda p: abs(p[0] - x))[1]
 
-    tree_runs = continuous_runs(treelines, tip_trim=TREELINE_TIP_TRIM)
-    tree_runs += continuous_runs(leon, x1=tzx1)
+    corner_xs = []
+    for b in blocks:
+        for (cc, cr) in b["cells"]:
+            bx, by = cc * CUAD, (cr + 1) * CUAD          # cell SW corner
+            if lx0 <= bx <= min(lx1, tzx1) and 0 < _leon_y(bx) - by <= 6 * CUAD:
+                corner_xs.append(bx)
+    tzx0 = min(corner_xs, default=lx0)
+    print(f"[median] León Cortés tree strip x{tzx0}-{tzx1} (cuadra corner start)")
+
+    palm_runs = paseo_median_runs(roads, turistas)
+    tree_runs = continuous_runs(leon, x0=tzx0, x1=tzx1)
     medians = stamp_paseo_median(grid, palm_runs + tree_runs)
 
     # --- buildings on the cuadrícula: snap OSM footprints, then fill the

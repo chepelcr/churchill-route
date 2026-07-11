@@ -208,9 +208,9 @@ LANDMARK_DEFS = [
 # acera, drawn as a raised curb median); `cuadra` = a solid block that closes
 # awkward empty junction space (stamped land, drawn as a cuadra).
 ISLAND_DEFS = [
-    # West Cocal split (by El Ancla): a triangle that separates the in/out
-    # streets, plus a cuadra closing the empty space beside the split street.
-    {"kind": "median", "pts": [(8139, 2379), (8300, 2395), (8300, 2350)]},
+    # The split triangles are auto-generated from the divided-carriageway forks
+    # (carriageway_gores). Hand-placed here: only the cuadra that closes the
+    # empty space beside the west Cocal split street.
     {"kind": "cuadra", "pts": [(8330, 2405), (8500, 2405), (8500, 2485), (8330, 2485)]},
 ]
 
@@ -777,6 +777,46 @@ def barro_leon_continuation(roads, corner_x=5520):
             r["cls"] = "residential"
             n += 1
     print(f"[roads] León Cortés continuation past Parque Marino -> barro: {n} piece(s)")
+
+
+def carriageway_gores(roads, a_name, b_name, x0, x1,
+                      min_gap=1.6 * CUAD, max_gap=5 * CUAD):
+    """Auto channelizing islands for a divided avenue: the gap between the two
+    carriageways' inner edges is ~0 where they run parallel and opens into a
+    triangular gore at each fork/intersection. Emit a median island per gore
+    (world-xy polygons), so the splits get clean separation without hand coords."""
+    def centerline(name):
+        pts = []
+        for r in roads:
+            if (r.get("name") or "") == name:
+                w = r.get("w", W_STANDARD)
+                pts += [(x, y, w) for (_, x, y) in _resample_centerline(r["pts"], 10)
+                        if x0 - 60 <= x <= x1 + 60]
+        return sorted(pts)
+    A, B = centerline(a_name), centerline(b_name)
+    if not A or not B:
+        return []
+    islands, top, bot = [], [], []
+    def flush():
+        if len(top) >= 3:
+            islands.append({"kind": "median", "pts": top + bot[::-1]})
+        top.clear(); bot.clear()
+    for xs in range(int(x0), int(x1), 10):
+        a = min(A, key=lambda p: abs(p[0] - xs))
+        b = min(B, key=lambda p: abs(p[0] - xs))
+        if abs(a[0] - xs) > 60 or abs(b[0] - xs) > 60:
+            flush(); continue
+        (ny, nw), (sy, sw) = ((a[1], a[2]), (b[1], b[2])) if a[1] < b[1] else ((b[1], b[2]), (a[1], a[2]))
+        inner_top, inner_bot = ny + nw / 2, sy - sw / 2
+        gap = inner_bot - inner_top
+        if gap < min_gap:
+            flush(); continue
+        if gap > max_gap:                       # cap so a wide fork stays an island
+            inner_bot = inner_top + max_gap
+        top.append((xs, inner_top)); bot.append((xs, inner_bot))
+    flush()
+    print(f"[islands] {len(islands)} auto gore island(s) at the {a_name}/{b_name} forks")
+    return islands
 
 
 def divide_cocal_carriageways(roads, x0=8139, x1=11921):
@@ -1797,6 +1837,18 @@ def main():
     barro_leon_continuation(roads)
     propagate_barro_to_crossings(roads)
     divide_cocal_carriageways(roads)
+    # Auto channelizing islands at the divided-avenue forks, and place El Ancla
+    # dynamically on the westmost gore — exactly where the separation begins.
+    gore_islands = carriageway_gores(roads, "Avenida 1", "Avenida Alberto Echandi Montero", 8139, 12200)
+    junction_islands = ISLAND_DEFS + gore_islands
+    if gore_islands:
+        west = min(gore_islands, key=lambda g: min(p[0] for p in g["pts"]))
+        minx = min(p[0] for p in west["pts"])
+        ys = [p[1] for p in west["pts"] if abs(p[0] - minx) < 14]     # leading edge
+        ax, ay = minx + 12, (sum(ys) / len(ys) if ys else west["pts"][0][1])
+        for d in LANDMARK_DEFS:
+            if d["id"] == "ancla":
+                d["xy"] = (round(ax), round(ay))
     rails = extract_rails(sp, ways)
     print(f"[rails] {len(rails)} rail pieces in corridor")
     dedupe_dual_carriageway(roads)
@@ -2063,10 +2115,10 @@ def main():
     stamp_pad(grid, faro_lm["x"], faro_lm["y"], 140)  # La Punta plaza
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
-    for isl in ISLAND_DEFS:
+    for isl in junction_islands:
         raster_fill_poly(grid, isl["pts"], CLS_ACERA if isl["kind"] == "median" else CLS_LAND)
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
-    print(f"[acera] {acera_cells} sidewalk cells; {len(ISLAND_DEFS)} junction islands")
+    print(f"[acera] {acera_cells} sidewalk cells; {len(junction_islands)} junction islands")
 
     # --- cuadrícula blocks: classify land into cuadras / paved plazas / green
     blocks, plazas = detect_blocks(grid)
@@ -2325,7 +2377,7 @@ def main():
         "roads": roads,
         "rails": rails,
         "islands": [{"kind": isl["kind"], "pts": [v for xy in isl["pts"] for v in xy]}
-                    for isl in ISLAND_DEFS],
+                    for isl in junction_islands],
         "buildings": buildings,
         "landPolys": land_contours,
         "beaches": beaches,

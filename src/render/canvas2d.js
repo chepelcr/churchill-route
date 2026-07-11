@@ -837,7 +837,7 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.fillStyle = "#ff3d80"; ctx.font = "bold 9px 'JetBrains Mono', monospace"; ctx.textAlign = "center";
       ctx.fillText("⛔ BLOQUEADO", br.x, sy - 3);
       ctx.fillStyle = "#fff";
-      ctx.fillText("ETAPA " + (br.requiredStage || "—"), br.x, sy + 9);
+      ctx.fillText("NIVEL " + (br.requiredStage || "—"), br.x, sy + 9);
       // cones
       for (let cy = yTop + 14; cy < yBot - 14; cy += 26) {
         ctx.fillStyle = "#ff8b3d"; ctx.beginPath();

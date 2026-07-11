@@ -40,7 +40,7 @@ export default function HUD({ onPause }) {
         )}
         {s.stage ? (
           <div className="hud-card">
-            <div className="lbl">Etapa {String(s.stage.num).padStart(2, "0")}</div>
+            <div className="lbl">Nivel {String(s.stage.num).padStart(2, "0")}</div>
             <div className="val">{s.stageDeliveries}/{s.stageTarget}</div>
           </div>
         ) : (

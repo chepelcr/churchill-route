@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+// Release signing: CI provides the keystore via env (decoded from the
+// ANDROID_KEYSTORE_B64 secret); locally android/keystore/ (gitignored)
+// holds the same keystore+pass so both produce identically-signed,
+// mutually-updatable APKs. VERSION_CODE comes from the CI run number.
+def ksFile = System.getenv("ANDROID_KEYSTORE_FILE") ?: "${rootDir}/keystore/churchill-release.keystore"
+def ksPassFile = file("${rootDir}/keystore/churchill-release.pass")
+def ksPass = System.getenv("ANDROID_KEYSTORE_PASS") ?: (ksPassFile.exists() ? ksPassFile.text.trim() : null)
+def canSign = file(ksFile).exists() && ksPass != null
+def verCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
+
 android {
     namespace = "dev.jcampos.churchill"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +17,8 @@ android {
         applicationId "dev.jcampos.churchill"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode verCode
+        versionName "2.0.${verCode}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +26,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (canSign) {
+                storeFile file(ksFile)
+                storePassword ksPass
+                keyAlias "churchill"
+                keyPassword ksPass
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (canSign) signingConfig signingConfigs.release
         }
     }
 }

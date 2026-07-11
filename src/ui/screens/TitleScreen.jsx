@@ -3,8 +3,8 @@ import { useMenuNav } from "../useMenuNav.js";
 import { sfx } from "../../game/audio.js";
 
 export const MODE_CARDS = [
-  { id: "story",   name: "Historia",  swatch: "#ffe06b", tag: "7 etapas, de El Faro hasta el puerto de Caldera." },
-  { id: "explore", name: "Recorrer",  swatch: "#6fbf99", tag: "Mundo abierto. Limpiá etapas para abrir nuevos distritos." },
+  { id: "story",   name: "Historia",  swatch: "#ffe06b", tag: "7 niveles, de El Faro hasta el puerto de Caldera." },
+  { id: "explore", name: "Recorrer",  swatch: "#6fbf99", tag: "Mundo abierto. Completá niveles para abrir nuevos distritos." },
   { id: "arcade",  name: "Arcade",    swatch: "#ff3d80", tag: "3 minutos, península libre, combo a tope." },
 ];
 

@@ -34,6 +34,32 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm build
+      # ---- Android APK (published with the site at /churchill.apk) --------
+      # Skipped with a warning until the ANDROID_KEYSTORE_B64 /
+      # ANDROID_KEYSTORE_PASS secrets exist — an unsigned APK can't install,
+      # and per-run debug keys would break updates (signature mismatch).
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build signed APK
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEYSTORE_FILE: ${{ github.workspace }}/android/keystore/churchill-release.keystore
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_B64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_B64 secret not set — skipping APK build"
+            exit 0
+          fi
+          mkdir -p android/keystore
+          echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$ANDROID_KEYSTORE_FILE"
+          npx cap sync android
+          (cd android && ./gradlew assembleRelease --no-daemon)
+          cp android/app/build/outputs/apk/release/app-release.apk dist/churchill.apk
+          echo "APK published as /churchill.apk ($(du -h dist/churchill.apk | cut -f1))"
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload site

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Game } from "../game/index.js";
 import { useTweaks, TweaksPanel, TweakSection, TweakSelect } from "./tweaks/TweaksPanel.jsx";
 
@@ -10,10 +10,13 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 
 export default function GameTweaks() {
   const [t, set] = useTweaks(TWEAK_DEFAULTS);
-  useEffect(() => { Game.setWeather(t.weather); }, [t.weather]);
-  useEffect(() => {
-    if (t.vehicle !== Game.state.vehicleKey) Game.setVehicle(t.vehicle);
-  }, [t.vehicle]);
+  // Apply only tweaks the user changes — NOT the defaults on mount, which
+  // would stomp the stage weather and the vehicle chosen in StageSelect
+  // every time the panel mounts on "playing".
+  const mounted = useRef(false);
+  useEffect(() => { if (mounted.current) Game.setWeather(t.weather); }, [t.weather]);
+  useEffect(() => { if (mounted.current) Game.setVehicle(t.vehicle); }, [t.vehicle]);
+  useEffect(() => { mounted.current = true; }, []);
   return (
     <TweaksPanel title="Tweaks">
       <TweakSection title="Mundo">

@@ -73,7 +73,7 @@ export function startExplore(opts = {}) {
   state.p = { x: f0.x + 60, y: f0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   const nUnlocked = state.progress.unlocked.length;
-  state.storyTip = `Tenés ${nUnlocked} zonas abiertas para recorrer. Limpiá etapas de Historia para abrir el resto.`;
+  state.storyTip = `Tenés ${nUnlocked} zonas abiertas para recorrer. Completá niveles de Historia para abrir el resto.`;
   rebuildBarriers();
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();

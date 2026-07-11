@@ -13,7 +13,7 @@ export default function ResultsScreen({ onAgain, onNext, onMenu }) {
     <div className="overlay">
       <div className="panel">
         <h2 style={{ color: won ? "var(--gold)" : "var(--hot)" }}>
-          {isStage ? (won ? `¡ETAPA ${s.stage.num} LIMPIA!` : "SE ACABÓ EL TIEMPO") : "RESULTADOS"}
+          {isStage ? (won ? `¡NIVEL ${s.stage.num} COMPLETADO!` : "SE ACABÓ EL TIEMPO") : "RESULTADOS"}
         </h2>
         {isStage && <div style={{ marginBottom: 10, color: "var(--paper)" }}>{s.stage.name}</div>}
         <div className="row"><span>Puntaje</span><span>{s.score.toLocaleString()}</span></div>
@@ -22,7 +22,7 @@ export default function ResultsScreen({ onAgain, onNext, onMenu }) {
         <div className="row"><span>Combo máximo</span><span>×{s.combo}</span></div>
         <div className="row"><span>Ranking</span><span style={{ color: "var(--gold)" }}>{rank}</span></div>
         <div className="btn-row">
-          {isStage && won && hasNext && <button className="btn gold" onClick={onNext}>▸ Siguiente etapa</button>}
+          {isStage && won && hasNext && <button className="btn gold" onClick={onNext}>▸ Siguiente nivel</button>}
           <button className={"btn " + (won && hasNext ? "secondary" : "gold")} onClick={onAgain}>↻ Repetir</button>
           <button className="btn secondary" onClick={onMenu}>Menú</button>
         </div>

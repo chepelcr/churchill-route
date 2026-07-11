@@ -34,6 +34,8 @@ export const state = {
   // and a transient "you entered X" title card ({ id, name, tone, t } or null).
   district: null,
   districtToast: null,
+  // Debug overlay: world-coordinate grid + live readout (persisted).
+  debug: (() => { try { return localStorage.getItem("churchill_debug") === "1"; } catch (e) { return false; } })(),
 };
 
 // ----- World entities (advanced by physics, drawn by the renderer) ----------

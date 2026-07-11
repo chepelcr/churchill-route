@@ -857,6 +857,36 @@ import { nearestKiosk } from "../game/delivery.js";
     }
   }
 
+  // Debug coordinate grid (world space). Minor lines every cuadrícula, bold
+  // labelled lines every 10 — so you can read off world (x,y) anywhere.
+  function drawDebugGrid(view, zoom) {
+    const minor = CUAD, major = CUAD * 10;
+    const x0 = Math.floor(view.x0 / minor) * minor, x1 = Math.ceil(view.x1 / minor) * minor;
+    const y0 = Math.floor(view.y0 / minor) * minor, y1 = Math.ceil(view.y1 / minor) * minor;
+    ctx.lineWidth = 1 / zoom;
+    // minor grid
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.beginPath();
+    for (let x = x0; x <= x1; x += minor) { ctx.moveTo(x, view.y0); ctx.lineTo(x, view.y1); }
+    for (let y = y0; y <= y1; y += minor) { ctx.moveTo(view.x0, y); ctx.lineTo(view.x1, y); }
+    ctx.stroke();
+    // major grid
+    ctx.strokeStyle = "rgba(120,220,255,0.28)";
+    ctx.beginPath();
+    for (let x = Math.ceil(x0 / major) * major; x <= x1; x += major) { ctx.moveTo(x, view.y0); ctx.lineTo(x, view.y1); }
+    for (let y = Math.ceil(y0 / major) * major; y <= y1; y += major) { ctx.moveTo(view.x0, y); ctx.lineTo(view.x1, y); }
+    ctx.stroke();
+    // labels at major intersections
+    ctx.fillStyle = "rgba(150,230,255,0.9)";
+    ctx.font = `${Math.round(9 / zoom * 10) / 10}px 'JetBrains Mono', monospace`;
+    ctx.textAlign = "left";
+    for (let x = Math.ceil(x0 / major) * major; x <= x1; x += major) {
+      for (let y = Math.ceil(y0 / major) * major; y <= y1; y += major) {
+        ctx.fillText(`${x},${y}`, x + 2 / zoom, y - 2 / zoom);
+      }
+    }
+  }
+
   // Street vendor cart: box cart with a striped parasol
   function drawVendor(vn, t) {
     ctx.fillStyle = "rgba(0,0,0,0.25)";
@@ -1210,6 +1240,9 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.fillText(f.text, f.x, f.y);
       ctx.globalAlpha = 1;
     }
+
+    // Debug coordinate grid (topmost world-space layer)
+    if (state.debug) drawDebugGrid(view, ZOOM);
 
     // Overlays
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

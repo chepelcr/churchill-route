@@ -3,10 +3,18 @@ import { Game } from "../../game/index.js";
 import { WORLD } from "../../world/index.js";
 import { sfx } from "../../game/audio.js";
 
+const SURF = ["agua", "cuadra", "playa", "calle", "paseo", "puente", "acera"];
+
 export default function HUD({ onPause }) {
   const [muted, setMuted] = useState(sfx.muted);
+  const [debug, setDebug] = useState(Game.state.debug);
   const s = Game.state;
   const district = WORLD.districtAt(s.p.x);
+  const toggleDebug = () => {
+    const v = !Game.state.debug;
+    Game.state.debug = v; setDebug(v);
+    try { localStorage.setItem("churchill_debug", v ? "1" : "0"); } catch (e) {}
+  };
   const toast = s.districtToast;
   // fade in over 0.3s, hold, fade out over the last 0.5s of the 2.6s life
   const toastOpacity = toast ? Math.max(0, Math.min(1, toast.t / 0.3, (2.6 - toast.t) / 0.5)) : 0;
@@ -56,9 +64,19 @@ export default function HUD({ onPause }) {
 
       {onPause && (
         <div className="hud-right">
+          <button className={"hud-btn" + (debug ? " on" : "")} onClick={toggleDebug}
+            aria-label="Coordenadas de depuración">📍</button>
           <button className="hud-btn" onClick={() => setMuted(sfx.toggleMuted())}
             aria-label={muted ? "Activar sonido" : "Silenciar"}>{muted ? "🔇" : "🔊"}</button>
           <button className="hud-btn" onClick={onPause} aria-label="Pausa">⏸</button>
+        </div>
+      )}
+
+      {debug && (
+        <div className="debug-coords">
+          x {Math.round(s.p.x)} · y {Math.round(s.p.y)}
+          <span className="sep"> | </span>{SURF[WORLD.surfaceAt(s.p.x, s.p.y)] || "?"}
+          <span className="sep"> | </span>{district.id}
         </div>
       )}
 

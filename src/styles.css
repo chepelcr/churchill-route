@@ -236,6 +236,16 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   cursor: pointer; touch-action: manipulation;
 }
 .hud-btn:active { transform: translateY(1px); background: rgba(40,32,70,0.85); }
+.hud-btn.on { background: rgba(120,220,255,0.28); border-color: rgba(150,230,255,0.7); }
+
+.debug-coords {
+  position: absolute; bottom: 10px; left: 12px;
+  font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 700;
+  color: #9be6ff; background: rgba(10,14,26,0.8);
+  border: 1px solid rgba(150,230,255,0.35); border-radius: 8px;
+  padding: 5px 10px; letter-spacing: 0.02em; pointer-events: none;
+}
+.debug-coords .sep { opacity: 0.4; }
 
 .district-tab {
   position: absolute; top: 18px; left: 50%; transform: translateX(-50%);

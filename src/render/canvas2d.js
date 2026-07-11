@@ -263,6 +263,30 @@ import { nearestKiosk } from "../game/delivery.js";
     }
   }
 
+  // Hand-placed junction islands: `median` = a raised curb triangle (channelizes
+  // the split), `cuadra` = a solid block closing empty junction space. Drawn
+  // over the asphalt so they read (a grid-only island would be an invisible wall).
+  function drawIslands(view) {
+    if (!W.ISLANDS || !W.ISLANDS.length) return;
+    for (const isl of W.ISLANDS) {
+      if (!aabbInView(isl.aabb, view, 8)) continue;
+      const p = isl.pts;
+      const path = () => { ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); ctx.closePath(); };
+      // raised drop-shadow
+      ctx.save(); ctx.translate(0, 2.5); ctx.fillStyle = "rgba(0,0,0,0.28)"; path(); ctx.fill(); ctx.restore();
+      if (isl.kind === "cuadra") {
+        path(); ctx.fillStyle = "#e8d5a0"; ctx.fill();            // sandy block
+        ctx.strokeStyle = "#cec7b2"; ctx.lineWidth = 2; ctx.stroke();
+      } else {
+        path(); ctx.fillStyle = "#cec7b2"; ctx.fill();            // concrete island
+        ctx.strokeStyle = "#8a8266"; ctx.lineWidth = 2; ctx.stroke();
+        let cx = 0, cy = 0, n = p.length / 2;                     // planted centre
+        for (let i = 0; i < p.length; i += 2) { cx += p[i]; cy += p[i + 1]; }
+        ctx.fillStyle = "#6fa06a"; ctx.beginPath(); ctx.arc(cx / n, cy / n, 3.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
   // The old Ferrocarril al Pacífico rail line: gravel ballast + wooden ties +
   // two steel rails. Decorative (not drivable), drawn on the ground.
   function drawRails(view) {
@@ -1271,6 +1295,7 @@ import { nearestKiosk } from "../game/delivery.js";
     drawStreets(view);
     drawRails(view);
     drawMedians(view);
+    drawIslands(view);
     drawPier(view);
     drawBridge(view);
     drawStreetLabels(view);

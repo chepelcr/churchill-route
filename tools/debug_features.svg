@@ -108,6 +108,7 @@
 <path d="M3842,2582 L3898,2582 L3898,2618 L3842,2618 Z" fill="#997" opacity="0.7"/>
 <path d="M3882,2622 L3898,2622 L3898,2658 L3882,2658 Z" fill="#997" opacity="0.7"/>
 <path d="M4062,3702 L4118,3702 L4118,3758 L4062,3758 Z" fill="#997" opacity="0.7"/>
+<path d="M8362,2442 L8378,2442 L8378,2478 L8362,2478 Z" fill="#997" opacity="0.7"/>
 <path d="M7462,1962 L7498,1962 L7498,2038 L7462,2038 Z" fill="#997" opacity="0.7"/>
 <path d="M4902,3122 L4938,3122 L4938,3158 L4902,3158 Z" fill="#997" opacity="0.7"/>
 <path d="M4502,3222 L4518,3222 L4518,3278 L4502,3278 Z" fill="#997" opacity="0.7"/>
@@ -8020,7 +8021,6 @@
 <path d="M20842,3042 L20858,3042 L20858,3078 L20842,3078 Z" fill="#997" opacity="0.7"/>
 <path d="M20862,3042 L20878,3042 L20878,3078 L20862,3078 Z" fill="#997" opacity="0.7"/>
 <path d="M20882,3042 L20898,3042 L20898,3058 L20882,3058 Z" fill="#997" opacity="0.7"/>
-<path d="M21182,3042 L21198,3042 L21198,3058 L21182,3058 Z" fill="#997" opacity="0.7"/>
 <path d="M25087,3282 L25072,3296 L25062,3299 L25055,3298 L25036,3291" fill="none" stroke="#d66" stroke-width="120" stroke-linecap="round" opacity="0.85"/>
 <path d="M25112,3219 L25093,3251 L25083,3261 L25069,3268 L25057,3270 L25046,3264 L25039,3256 L25031,3242 L25023,3212 L25023,3184 L25028,3152 L25046,3102" fill="none" stroke="#d66" stroke-width="120" stroke-linecap="round" opacity="0.85"/>
 <path d="M16577,2692 L16433,2707 L16140,2732 L16048,2741 L15849,2765 L15749,2788 L15359,2890 L14930,2978 L14765,3006 L14647,3030 L14500,3053 L14159,3111 L13695,3204 L13561,3238" fill="none" stroke="#e80" stroke-width="120" stroke-linecap="round" opacity="0.85"/>
@@ -8552,7 +8552,7 @@
 <circle cx="5238" cy="2650" r="12" fill="red"/><text x="5252" y="2650" font-size="26">estadio</text>
 <circle cx="7494" cy="2678" r="12" fill="red"/><text x="7508" y="2678" font-size="26">kios_play</text>
 <circle cx="11618" cy="3038" r="12" fill="red"/><text x="11632" y="3038" font-size="26">yatch</text>
-<circle cx="8139" cy="2379" r="12" fill="red"/><text x="8153" y="2379" font-size="26">ancla</text>
+<circle cx="8246" cy="2375" r="12" fill="red"/><text x="8260" y="2375" font-size="26">ancla</text>
 <circle cx="11858" cy="3462" r="12" fill="red"/><text x="11872" y="3462" font-size="26">cocal_park</text>
 <circle cx="12070" cy="3186" r="12" fill="red"/><text x="12084" y="3186" font-size="26">kios_cocal</text>
 <circle cx="20294" cy="2950" r="12" fill="red"/><text x="20308" y="2950" font-size="26">kios_cocal2</text>

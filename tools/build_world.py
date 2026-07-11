@@ -185,7 +185,7 @@ LANDMARK_DEFS = [
     {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "playitas", "osm": "yacht", "ll": (9.97900, -84.81200)},
     # anchor monument on the island where the road splits into the Cocal (west
     # side, not the estero end) — placed by world xy read off the 📍 overlay
-    {"id": "ancla",       "name": "Monumento El Ancla",         "type": "anchor",       "district": "playitas", "xy": (8139, 2379)},
+    {"id": "ancla",       "name": "Monumento El Ancla",         "type": "anchor",       "district": "playitas", "xy": (8246, 2375)},
     {"id": "cocal_park",  "name": "Parque El Cocal",            "type": "park",         "district": "cocal",    "ll": (9.97950, -84.79500)},
     {"id": "kios_cocal",  "name": "Kiosco El Cocal",            "type": "kiosk",        "district": "cocal",    "ll": (9.98100, -84.79400)},
     # far-east Cocal soda so Stage 5 has a pickup beside its Ruta 17 customers
@@ -201,6 +201,17 @@ LANDMARK_DEFS = [
     {"id": "puerto",      "name": "Puerto de Caldera",          "type": "port",         "district": "caldera",  "osm": "puerto internacional caldera"},
     {"id": "villach",     "name": "Villa Champán",              "type": "village",      "district": "caldera",  "ll": (9.91600, -84.71250)},
     {"id": "ruta27",      "name": "Ruta 27 · Autopista",        "type": "highway",      "district": "caldera",  "ll": (9.91000, -84.71000)},
+]
+
+# Hand-placed junction fixes, vertices in world xy (read off the in-game 📍
+# overlay). `median` = a non-drivable channelizing triangle/island (stamped
+# acera, drawn as a raised curb median); `cuadra` = a solid block that closes
+# awkward empty junction space (stamped land, drawn as a cuadra).
+ISLAND_DEFS = [
+    # West Cocal split (by El Ancla): a triangle that separates the in/out
+    # streets, plus a cuadra closing the empty space beside the split street.
+    {"kind": "median", "pts": [(8139, 2379), (8300, 2395), (8300, 2350)]},
+    {"kind": "cuadra", "pts": [(8330, 2405), (8500, 2405), (8500, 2485), (8330, 2485)]},
 ]
 
 CUSTOMER_DEFS = [
@@ -2015,8 +2026,12 @@ def main():
         stamp_pad(grid, cu["x"], cu["y"], 56)
     faro_lm = next(l for l in landmarks if l["id"] == "faro")
     stamp_pad(grid, faro_lm["x"], faro_lm["y"], 140)  # La Punta plaza
+    # Hand-placed junction islands: medians carve non-drivable acera, cuadras
+    # carve solid land — stamped last so they override the road/apron beneath.
+    for isl in ISLAND_DEFS:
+        raster_fill_poly(grid, isl["pts"], CLS_ACERA if isl["kind"] == "median" else CLS_LAND)
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
-    print(f"[acera] {acera_cells} sidewalk cells")
+    print(f"[acera] {acera_cells} sidewalk cells; {len(ISLAND_DEFS)} junction islands")
 
     # --- cuadrícula blocks: classify land into cuadras / paved plazas / green
     blocks, plazas = detect_blocks(grid)
@@ -2255,6 +2270,8 @@ def main():
         "topY": topY, "botY": botY,
         "roads": roads,
         "rails": rails,
+        "islands": [{"kind": isl["kind"], "pts": [v for xy in isl["pts"] for v in xy]}
+                    for isl in ISLAND_DEFS],
         "buildings": buildings,
         "landPolys": land_contours,
         "beaches": beaches,

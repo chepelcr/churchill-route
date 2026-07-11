@@ -87,6 +87,7 @@ export const WORLD = (function () {
     };
   });
   const RAILS = (DATA.rails || []).map((r) => ({ pts: r.pts, aabb: flatAABB(r.pts) }));
+  const ISLANDS = (DATA.islands || []).map((o) => ({ kind: o.kind, pts: o.pts, aabb: flatAABB(o.pts) }));
   // Raised avenue footprint (roads flagged `elev`, i.e. the Ferrocarril avenue
   // itself — NOT its ground-level barro cross streets) — segments with
   // half-width, so the sim knows when the car is up on the elevated avenue.
@@ -214,7 +215,7 @@ export const WORLD = (function () {
     W, H, META,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
     PALMS, MEDIANS, TREES, PLAZAS, MANGROVES, HILLS, ESTUARY, BRIDGE, PIER,
-    ROADS, RAILS, BUILDINGS, LAND_POLYS, WATERS, BEACHES,
+    ROADS, RAILS, ISLANDS, BUILDINGS, LAND_POLYS, WATERS, BEACHES,
     topY, botY, halfWidthAt,
     surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated,
     roadLength, roadPointAt, buildingsNear,

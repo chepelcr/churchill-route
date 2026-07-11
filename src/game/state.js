@@ -36,6 +36,9 @@ export const state = {
   districtToast: null,
   // Debug overlay: world-coordinate grid + live readout (persisted).
   debug: (() => { try { return localStorage.getItem("churchill_debug") === "1"; } catch (e) { return false; } })(),
+  // 0..1 how far the car has climbed onto the raised barro avenue (ramps at
+  // the intersections). Drives a visual lift in the renderer.
+  elev: 0,
 };
 
 // ----- World entities (advanced by physics, drawn by the renderer) ----------

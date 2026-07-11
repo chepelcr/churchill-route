@@ -1112,10 +1112,13 @@ import { nearestKiosk } from "../game/delivery.js";
   }
 
   function drawPlayer(p, veh) {
+    const lift = (state.elev || 0) * 7;   // the barro avenue rides ~1 m up
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.save(); ctx.translate(p.x + 4, p.y + 6); ctx.rotate(p.a); ctx.fillRect(-veh.w/2, -veh.h/2, veh.w, veh.h); ctx.restore();
-    ctx.translate(p.x, p.y); ctx.rotate(p.a);
+    // ground shadow — drops further behind + fades as the car climbs the ramp
+    ctx.save(); ctx.translate(p.x + 4 + lift * 0.6, p.y + 6 + lift); ctx.rotate(p.a);
+    ctx.fillStyle = `rgba(0,0,0,${(0.35 - lift * 0.02).toFixed(3)})`;
+    ctx.fillRect(-veh.w/2, -veh.h/2, veh.w, veh.h); ctx.restore();
+    ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
     paintVehicle(ctx, state.vehicleKey, veh);
     if (state.carrying) {
       const m = state.carrying.melt / state.carrying.total;

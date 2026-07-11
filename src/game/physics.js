@@ -164,6 +164,11 @@ export function update(dt) {
     if (state.districtToast.t > 2.6) state.districtToast = null;
   }
 
+  // Elevation ramp: the barro avenue rides ~1 m above the cross streets, so the
+  // car smoothly climbs onto it and ramps back down at each intersection.
+  const elevTarget = W.onBarro(p.x, p.y) ? 1 : 0;
+  state.elev += (elevTarget - state.elev) * Math.min(1, dt * 5);
+
   // Drift sparks
   if (p.drift > 0.4 && p.speed > 80) {
     state.particles.push({

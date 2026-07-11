@@ -2154,8 +2154,43 @@ def main():
                     trees.append({"x": round(x), "y": round(y),
                                   "s": round(0.9 + rng() * 0.3, 2)})
                     nxt = s + TREE_PITCH
+    # Tree line on the north shoulder of Avenida 2 del Ferrocarril (from
+    # x≈6892 to the avenue's end), separating it from the parallel Avenida
+    # Alberto Echandi Montero. Decorative trees (no blocking median → the barro
+    # avenue stays fully drivable), GAPPED at every cross street.
+    FERRO_TREE_X0 = 6892
+    ferro = [r for r in roads if "rrocarril" in (r.get("name") or "").lower()]
+    other_pts = [(x, y) for r in roads
+                 if "rrocarril" not in (r.get("name") or "").lower()
+                 for x, y in zip(r["pts"][0::2], r["pts"][1::2])]
+    def _near_crossing(px, py, rad=1.8 * CUAD):
+        rr = rad * rad
+        return any((px - ox) ** 2 + (py - oy) ** 2 < rr for ox, oy in other_pts)
+    n_ferro_trees = 0
+    for r in ferro:
+        samples = _resample_centerline(r["pts"], 26)
+        for i, (s, cx, cy) in enumerate(samples):
+            if cx < FERRO_TREE_X0:
+                continue
+            j = i + 1 if i + 1 < len(samples) else max(0, i - 1)
+            hx, hy = samples[j][1] - cx, samples[j][2] - cy
+            h = math.hypot(hx, hy) or 1.0
+            nx, ny = -hy / h, hx / h
+            off = r["w"] / 2 + 0.6 * CUAD
+            tx, ty = cx + nx * off, cy + ny * off
+            if ty > cy:                      # force the NORTH side (smaller y)
+                tx, ty = cx - nx * off, cy - ny * off
+            if _near_crossing(cx, cy):       # respect intersections (leave gaps)
+                continue
+            c, gr = int(tx / GRID_CELL), int(ty / GRID_CELL)
+            if not (0 <= c < GRID_COLS and 0 <= gr < GRID_ROWS):
+                continue
+            if grid[gr * GRID_COLS + c] == CLS_WATER:
+                continue
+            trees.append({"x": round(tx), "y": round(ty), "s": round(0.9 + rng() * 0.3, 2)})
+            n_ferro_trees += 1
     print(f"[median] {n_median_palms} palms on the paseo median dashes, "
-          f"{len(trees)} trees on the tree lines")
+          f"{len(trees)} trees on the tree lines ({n_ferro_trees} on the Ferrocarril line)")
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).

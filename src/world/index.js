@@ -87,6 +87,25 @@ export const WORLD = (function () {
     };
   });
   const RAILS = (DATA.rails || []).map((r) => ({ pts: r.pts, aabb: flatAABB(r.pts) }));
+  // Barro (raised dirt) avenue footprint — segments with half-width, so the
+  // sim can tell when the car is up on the elevated avenue (for the ramp feel).
+  const BARRO_SEGS = [];
+  for (const r of ROADS) {
+    if (!r.barro) continue;
+    const hw = r.w / 2 + 4, p = r.pts;
+    for (let i = 0; i + 3 < p.length; i += 2)
+      BARRO_SEGS.push({ x0: p[i], y0: p[i + 1], x1: p[i + 2], y1: p[i + 3], hw2: (r.w / 2 + 4) ** 2 });
+  }
+  function onBarro(x, y) {
+    for (const s of BARRO_SEGS) {
+      const dx = s.x1 - s.x0, dy = s.y1 - s.y0, l2 = dx * dx + dy * dy;
+      let t = l2 > 0 ? ((x - s.x0) * dx + (y - s.y0) * dy) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const qx = s.x0 + dx * t, qy = s.y0 + dy * t;
+      if ((x - qx) * (x - qx) + (y - qy) * (y - qy) <= s.hw2) return true;
+    }
+    return false;
+  }
   function roadLength(i) { return ROADS[i].len; }
   function roadPointAt(i, s) {
     const r = ROADS[i];
@@ -196,7 +215,7 @@ export const WORLD = (function () {
     PALMS, MEDIANS, TREES, PLAZAS, MANGROVES, HILLS, ESTUARY, BRIDGE, PIER,
     ROADS, RAILS, BUILDINGS, LAND_POLYS, WATERS, BEACHES,
     topY, botY, halfWidthAt,
-    surfaceAt, onRoad, onPaseo, inWater, onBeach,
+    surfaceAt, onRoad, onPaseo, inWater, onBeach, onBarro,
     roadLength, roadPointAt, buildingsNear,
     districtAt, landmarkById, customerById, reachablePointNear,
   };

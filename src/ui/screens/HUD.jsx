@@ -7,6 +7,9 @@ export default function HUD({ onPause }) {
   const [muted, setMuted] = useState(sfx.muted);
   const s = Game.state;
   const district = WORLD.districtAt(s.p.x);
+  const toast = s.districtToast;
+  // fade in over 0.3s, hold, fade out over the last 0.5s of the 2.6s life
+  const toastOpacity = toast ? Math.max(0, Math.min(1, toast.t / 0.3, (2.6 - toast.t) / 0.5)) : 0;
   const meltPct = s.carrying ? Math.min(1, s.carrying.melt / s.carrying.total) : 0;
   const quip = useMemo(() => {
     if (!s.carrying) return "";
@@ -63,6 +66,14 @@ export default function HUD({ onPause }) {
         <span className="sw" style={{ background: district.tone }}></span>
         <span className="nm">{district.name}</span>
       </div>
+
+      {toast && toastOpacity > 0 && (
+        <div className="district-toast" style={{ opacity: toastOpacity, borderColor: toast.tone }}>
+          <div className="dt-kicker" style={{ color: toast.tone }}>ENTRÁS A</div>
+          <div className="dt-name">{toast.name}</div>
+          <div className="dt-rule" style={{ background: toast.tone }}></div>
+        </div>
+      )}
 
       {s.storyTip && <div className="story-tip">↳ {s.storyTip}</div>}
 

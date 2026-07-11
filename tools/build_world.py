@@ -144,8 +144,8 @@ DISTRICT_DEFS = [
 DISTRICT_BOUNDS_GEO = [
     (9.97620, -84.84800),  # faro | carmen
     (9.97550, -84.84050),  # carmen | paseo
-    (9.97700, -84.83300),  # paseo | centro
-    (9.97820, -84.82400),  # centro | playitas
+    (9.97700, -84.83182),  # paseo | centro  (east so the Paseo boardwalk kiosks fall in paseo)
+    (9.97820, -84.82656),  # centro | playitas (west so the Estadio / c10 fall in playitas)
     (9.97950, -84.80800),  # playitas | cocal
     (9.93450, -84.72550),  # cocal | mata  (north of Playa Caldera)
     (9.91950, -84.71250),  # mata | caldera (between village and port)
@@ -160,6 +160,9 @@ LANDMARK_DEFS = [
     # Municipal pool inside the loop on the other side of the street.
     {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -10, "dy": 110},
     {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 190, "dy": -70},
+    # a churchill kiosk right at La Punta so Stage 1 opens beside the lighthouse
+    # (dropped on the road loop by the Balneario, not on the rocky tip)
+    {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 130, "dy": 20},
     # The cruise pier juts out from the END of Calle Central, right beside the
     # churchill kiosks on the Paseo (dx nudges the geo anchor onto that street)
     {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "centro",   "osm": "muelle de cruceros", "ll": (9.97450, -84.83450), "dx": 680},
@@ -182,11 +185,15 @@ LANDMARK_DEFS = [
     {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "playitas", "osm": "yacht", "ll": (9.97900, -84.81200)},
     {"id": "cocal_park",  "name": "Parque El Cocal",            "type": "park",         "district": "cocal",    "ll": (9.97950, -84.79500)},
     {"id": "kios_cocal",  "name": "Kiosco El Cocal",            "type": "kiosk",        "district": "cocal",    "ll": (9.98100, -84.79400)},
+    # far-east Cocal soda so Stage 5 has a pickup beside its Ruta 17 customers
+    {"id": "kios_cocal2", "name": "Soda Ruta 17",               "type": "kiosk",        "district": "cocal",    "ll": (9.96400, -84.74150)},
     {"id": "puente",      "name": "Puente de Mata de Limón",    "type": "bridge",       "district": "mata",     "osm": "puente colgante mata de limón"},
     {"id": "kios_mata",   "name": "Kiosco Mata de Limón",       "type": "kiosk",        "district": "mata",     "ll": (9.92250, -84.70850)},
     {"id": "leda",        "name": "Marisquería Leda",           "type": "restaurant",   "district": "mata",     "osm": "leda", "ll": (9.92350, -84.70780)},
     {"id": "matalimon",   "name": "Estero Mata de Limón",       "type": "estuary",      "district": "mata",     "osm": "estero mata de limón"},
     {"id": "caldera_blvd","name": "Caldera Bulevar",            "type": "sign",         "district": "caldera",  "ll": (9.91800, -84.71300)},
+    # a soda by the port so Stage 7 picks up beside its Caldera customers
+    {"id": "kios_caldera","name": "Soda del Puerto",            "type": "kiosk",        "district": "caldera",  "ll": (9.91300, -84.71600)},
     {"id": "tren",        "name": "Estación Tren Caldera",      "type": "trainstation", "district": "caldera",  "osm": "estación tren", "ll": (9.91500, -84.71500)},
     {"id": "puerto",      "name": "Puerto de Caldera",          "type": "port",         "district": "caldera",  "osm": "puerto internacional caldera"},
     {"id": "villach",     "name": "Villa Champán",              "type": "village",      "district": "caldera",  "ll": (9.91600, -84.71250)},
@@ -199,7 +206,7 @@ CUSTOMER_DEFS = [
     {"id": "c3",  "name": "Carnaval troupe",        "district": "paseo",    "line": "Para toda la comparsa.",       "ll": (9.97450, -84.83300)},
     {"id": "c4",  "name": "Familia tica",           "district": "paseo",    "line": "Cuatro, con leche extra.",     "ll": (9.97470, -84.83100)},
     {"id": "c5",  "name": "Surfista canadiense",    "district": "paseo",    "line": "Make it extra red, dude.",     "ll": (9.97420, -84.83550)},
-    {"id": "c6",  "name": "Padre Ramírez",          "district": "centro",   "line": "Bendito churchill.",           "ll": (9.97760, -84.83470)},
+    {"id": "c6",  "name": "Padre Ramírez",          "district": "centro",   "line": "Bendito churchill.",           "ll": (9.97760, -84.83128)},
     {"id": "c7",  "name": "Vendedor de ceviche",    "district": "centro",   "line": "Te cambio uno por ceviche.",   "ll": (9.97700, -84.83100)},
     {"id": "c8",  "name": "Doña del mercado",       "district": "centro",   "line": "Rojito bien fuerte.",          "ll": (9.98000, -84.83100)},
     {"id": "c9",  "name": "Niño con bici",          "district": "centro",   "line": "¡El mío con piña!",            "ll": (9.97720, -84.82800)},
@@ -218,7 +225,7 @@ CUSTOMER_DEFS = [
 STAGES = [
     {"id": "s1", "num": 1, "name": "El Faro", "district": "carmen",
      "brief": "Repartí el primer pedido del día. Llegan cruceros — los gringos quieren probar el dichoso Churchill.",
-     "kiosks": ["kios_paseo1"], "targetDeliveries": 3, "timeLimit": 90, "weather": "sunny",
+     "kiosks": ["kios_faro"], "targetDeliveries": 3, "timeLimit": 90, "weather": "sunny",
      "customers": ["c1", "c2"], "unlock": "paseo"},
     {"id": "s2", "num": 2, "name": "Paseo de los Turistas", "district": "paseo",
      "brief": "El boulevard está lleno. Atravesá la peatonal esquivando turistas y comparsas de carnaval.",
@@ -226,23 +233,23 @@ STAGES = [
      "customers": ["c3", "c4", "c5"], "unlock": "centro"},
     {"id": "s3", "num": 3, "name": "Mercado y Catedral", "district": "centro",
      "brief": "Las calles del centro son angostas y el tráfico no perdona. Ojo con los gatos — y el Padre Ramírez no es de esperar.",
-     "kiosks": ["kios_paseo2", "kios_centro"], "targetDeliveries": 4, "timeLimit": 130, "weather": "sunny",
+     "kiosks": ["kios_centro", "kios_paseo2"], "targetDeliveries": 4, "timeLimit": 130, "weather": "sunny",
      "customers": ["c6", "c7", "c8", "c9"], "unlock": "playitas"},
     {"id": "s4", "num": 4, "name": "Atardecer en Las Playitas", "district": "playitas",
      "brief": "Atardece sobre el Yacht Club. Abrí gas por la Ruta 17, pero cuidado: el equipo de fútbol anda entrenando.",
-     "kiosks": ["kios_centro", "kios_play"], "targetDeliveries": 5, "timeLimit": 140, "weather": "sunset",
+     "kiosks": ["kios_play", "kios_centro"], "targetDeliveries": 5, "timeLimit": 140, "weather": "sunset",
      "customers": ["c10", "c11", "c12"], "unlock": "cocal"},
     {"id": "s5", "num": 5, "name": "Tormenta en El Cocal", "district": "cocal",
      "brief": "Cayó el aguacero y el asfalto resbala. Llegá a la Ruta 17 antes de que la tormenta empeore.",
-     "kiosks": ["kios_play", "kios_cocal"], "targetDeliveries": 5, "timeLimit": 160, "weather": "storm",
+     "kiosks": ["kios_cocal2"], "targetDeliveries": 5, "timeLimit": 160, "weather": "storm",
      "customers": ["c13", "c14"], "unlock": "mata"},
     {"id": "s6", "num": 6, "name": "Puente · Mata de Limón", "district": "mata",
      "brief": "Cruzá el puente colgante sobre el estero. Llegá al kiosco de Mata de Limón y a la Marisquería Leda.",
-     "kiosks": ["kios_cocal", "kios_mata"], "targetDeliveries": 4, "timeLimit": 150, "weather": "night",
+     "kiosks": ["kios_mata"], "targetDeliveries": 4, "timeLimit": 150, "weather": "night",
      "customers": ["c15", "c16"], "unlock": "mata"},
     {"id": "s7", "num": 7, "name": "Caldera · Final", "district": "caldera",
      "brief": "Por la Ruta 27 hasta el Puerto de Caldera. Ya sale el sol — una última entrega y se acaba la jornada.",
-     "kiosks": ["kios_mata"], "targetDeliveries": 4, "timeLimit": 170, "weather": "sunny",
+     "kiosks": ["kios_caldera", "kios_mata"], "targetDeliveries": 4, "timeLimit": 170, "weather": "sunny",
      "customers": ["c17", "c18"], "unlock": "caldera"},
 ]
 

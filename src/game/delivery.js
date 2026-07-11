@@ -5,17 +5,25 @@ import { state, pushFloat } from "./state.js";
 import { markStageCleared, unlockDistrict } from "./progress.js";
 import { sfx } from "./audio.js";
 
+// In explore mode the world is gated by district barriers, so only offer
+// kiosks/customers whose band the player has actually unlocked — otherwise you
+// could be sent to pick up or deliver behind a locked wall.
+function reachable(x) {
+  return !state.progress || state.progress.unlocked.includes(W.districtAt(x).id);
+}
+
 export function activeKiosks() {
   // If stage is active, only those kiosks are valid
   if (state.stage) {
     return state.stage.kiosks.map(id => W.landmarkById(id)).filter(Boolean);
   }
-  return W.LANDMARKS.filter(l => l.type === "kiosk");
+  const kiosks = W.LANDMARKS.filter(l => l.type === "kiosk");
+  return state.mode === "explore" ? kiosks.filter(k => reachable(k.x)) : kiosks;
 }
 
 export function activeCustomers() {
   if (state.stage) return state.stage.customers.map(id => W.customerById(id)).filter(Boolean);
-  return W.CUSTOMERS;
+  return state.mode === "explore" ? W.CUSTOMERS.filter(c => reachable(c.x)) : W.CUSTOMERS;
 }
 
 export function nearestKiosk(p) {

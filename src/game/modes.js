@@ -29,6 +29,7 @@ export function startStage(stageIdx, vehicleKey) {
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = stg.brief;
   state.barriers = [];
+  state.district = null; state.districtToast = null;
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
 }
@@ -51,6 +52,7 @@ export function startArcade(opts = {}) {
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = "Tres minutos y todo el puerto. Si no dejás de entregar, el combo no se cae.";
   state.barriers = [];
+  state.district = null; state.districtToast = null;
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
 }
@@ -75,6 +77,7 @@ export function startExplore(opts = {}) {
   const nUnlocked = state.progress.unlocked.length;
   state.storyTip = `Tenés ${nUnlocked} zonas abiertas para recorrer. Completá niveles de Historia para abrir el resto.`;
   rebuildBarriers();
+  state.district = null; state.districtToast = null;
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
 }

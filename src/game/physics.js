@@ -149,6 +149,21 @@ export function update(dt) {
     }
   }
 
+  // District identity: fire a "you entered X" title card when the player
+  // crosses into a new band (free-roam modes only), and age out the card.
+  if (state.mode === "explore" || state.mode === "arcade") {
+    const d = W.districtAt(p.x);
+    if (d && d.id !== state.district) {
+      // suppress the very first assignment (spawn) so it doesn't pop on start
+      if (state.district !== null) state.districtToast = { id: d.id, name: d.name, tone: d.tone, t: 0 };
+      state.district = d.id;
+    }
+  }
+  if (state.districtToast) {
+    state.districtToast.t += dt;
+    if (state.districtToast.t > 2.6) state.districtToast = null;
+  }
+
   // Drift sparks
   if (p.drift > 0.4 && p.speed > 80) {
     state.particles.push({

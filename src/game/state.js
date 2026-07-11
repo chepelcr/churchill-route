@@ -30,6 +30,10 @@ export const state = {
   // Set at startup by game/index.js (loadProgress) and by mode starts.
   progress: null,
   barriers: [],
+  // Free-roam district identity: the id of the band the player is currently in,
+  // and a transient "you entered X" title card ({ id, name, tone, t } or null).
+  district: null,
+  districtToast: null,
 };
 
 // ----- World entities (advanced by physics, drawn by the renderer) ----------

@@ -829,15 +829,23 @@ import { nearestKiosk } from "../game/delivery.js";
         ctx.fillStyle = ((y / segH) | 0) % 2 ? "#f3c969" : "#3a3540";
         ctx.fillRect(br.x - 4, y, 8, segH);
       }
-      // sign
-      ctx.fillStyle = "rgba(20,16,40,0.85)";
-      const sw = 120;
+      // sign — names the zone it gates + the level that opens it
+      const dstr = W.DISTRICTS.find(d => d.id === br.district);
+      const dname = dstr ? dstr.name : br.district.toUpperCase();
+      ctx.fillStyle = "rgba(20,16,40,0.88)";
+      const sw = 138, sh = 40;
       const sy = (yTop + yBot) / 2;
-      ctx.fillRect(br.x - sw/2, sy - 14, sw, 28);
-      ctx.fillStyle = "#ff3d80"; ctx.font = "bold 9px 'JetBrains Mono', monospace"; ctx.textAlign = "center";
-      ctx.fillText("⛔ BLOQUEADO", br.x, sy - 3);
-      ctx.fillStyle = "#fff";
-      ctx.fillText("NIVEL " + (br.requiredStage || "—"), br.x, sy + 9);
+      ctx.fillRect(br.x - sw/2, sy - sh/2, sw, sh);
+      // tone accent bar keyed to the district color
+      ctx.fillStyle = dstr ? dstr.tone : "#f3c969";
+      ctx.fillRect(br.x - sw/2, sy - sh/2, sw, 4);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ff3d80"; ctx.font = "bold 9px 'JetBrains Mono', monospace";
+      ctx.fillText("⛔ BLOQUEADO", br.x, sy - 6);
+      ctx.fillStyle = "#fff"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
+      ctx.fillText(dname.slice(0, 20), br.x, sy + 5);
+      ctx.fillStyle = dstr ? dstr.tone : "#f3c969"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
+      ctx.fillText("NIVEL " + (br.requiredStage || "—"), br.x, sy + 15);
       // cones
       for (let cy = yTop + 14; cy < yBot - 14; cy += 26) {
         ctx.fillStyle = "#ff8b3d"; ctx.beginPath();

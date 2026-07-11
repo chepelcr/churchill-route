@@ -237,16 +237,27 @@ Full plan lives in the approved plan file; status tracked here.
         build) renders a raised packed-earth surface: drop-shadow bank (~1 m
         lift), dirt shoulders, no lane markings, sunlit curb highlight
         (`drawStreets` in `canvas2d.js`).
-  - [x] **Avenida Centenario flagged barro** — the in-corridor avenue over the
-        old rail bed (x≈338–5568) now renders as the raised dirt avenue. (The
-        real OSM "Avenida del Ferrocarril" is in Barranca, off-corridor — it
-        arrives with **Milestone D** / full 2-D map.)
+  - [x] **Correct barro avenue = Avenida 2 del Ferrocarril** (OSM-misspelled
+        "Farrocarril", x≈5568–8359) — flagged `barro` (match "rrocarril").
+        (Was wrongly Avenida Centenario; now un-flagged.) Paseo León Cortés
+        ends at x≈5565, right where the barro avenue begins.
+  - [x] **Tree line** on the north shoulder of Av. 2 del Ferrocarril
+        (x≈6892→end), separating it from Av. Alberto Echandi Montero;
+        decorative + gapped at cross streets (67 trees).
+  - [x] **Elevation ramp** — the raised barro avenue: `WORLD.onBarro()` +
+        `state.elev` lerp + `drawPlayer` lift so the car climbs on / ramps off
+        at intersections.
   - [x] **Rail line rendered** — `extract_rails()` + `drawRails()` draw the
         disused Ferrocarril al Pacífico (ballast + ties + steel rails) where it
         crosses the corridor (5 pieces, x≈5278–24433).
-  - [ ] **Tree-lined acera median (2 cuadrículas)** where Centenario converges
-        with the principal street (parallel-adjacency pass, reusing the
-        paseo-median machinery). Needs the convergence coords (📍 overlay).
+  - [x] **El Ancla monument** at the Cocal-split island (xy 8139,2379) via a new
+        `xy` landmark-placement option (direct world coords off the 📍 overlay).
+  - [ ] **Cocal-split dual carriageway** (x≈8139→11921, the split up to the
+        estero): the avenues should be **divided — 2 lanes each side**, not one
+        merged slab. Part of the road-stamping / separate-carriageway work
+        below; folds into **Milestone D**.
+  - [ ] **Real OSM "Avenida del Ferrocarril"** (Barranca) + full off-corridor
+        town — arrives with **Milestone D** / full 2-D map.
 - [ ] **Road-stamping / cuadra separation** — where OSM roads run close together
       `raster_stamp_polyline` floods the cuadra interior with road, so no solid
       `CLS_LAND` core survives → you can drive through blocks and junctions read

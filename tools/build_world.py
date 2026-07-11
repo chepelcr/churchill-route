@@ -669,9 +669,11 @@ def extract_roads(sp, ways):
                  "pts": [round(v) for p in piece for v in p]}
             if name:
                 r["name"] = name
-            # Avenida/Calle del Ferrocarril: a raised packed-earth (barro) street
-            # laid over the old rail bed — rendered as dirt, not asphalt.
-            if "ferrocarril" in lname:
+            # Avenida Centenario: the avenue laid over the old Ferrocarril al
+            # Pacífico rail bed — a raised packed-earth (barro) street, rendered
+            # as dirt, not asphalt. (The OSM "Avenida del Ferrocarril" itself is
+            # in Barranca, outside the corridor.)
+            if "centenario" in lname or "ferrocarril" in lname:
                 r["barro"] = 1
             if w["tags"].get("ref"):
                 r["ref"] = w["tags"]["ref"]

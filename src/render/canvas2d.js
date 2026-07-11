@@ -692,6 +692,27 @@ import { nearestKiosk } from "../game/delivery.js";
         ctx.fillText("27", x, y + 2);
         label(x, y - 18, "RUTA 27", "#fff", "#3a3540"); break;
       }
+      case "anchor": {
+        // nautical anchor monument on a low round plinth
+        ctx.fillStyle = "#b8b0a0";
+        ctx.beginPath(); ctx.ellipse(x, y + 6, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#4a5560"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
+        // shank
+        ctx.beginPath(); ctx.moveTo(x, y - 22); ctx.lineTo(x, y + 4); ctx.stroke();
+        // ring at the top
+        ctx.beginPath(); ctx.arc(x, y - 25, 3.5, 0, Math.PI * 2); ctx.stroke();
+        // stock (crossbar)
+        ctx.beginPath(); ctx.moveTo(x - 9, y - 16); ctx.lineTo(x + 9, y - 16); ctx.stroke();
+        // arms + curved flukes
+        ctx.beginPath();
+        ctx.moveTo(x - 11, y - 2); ctx.quadraticCurveTo(x - 12, y + 5, x - 4, y + 4);
+        ctx.moveTo(x + 11, y - 2); ctx.quadraticCurveTo(x + 12, y + 5, x + 4, y + 4);
+        ctx.moveTo(x, y + 4); ctx.lineTo(x - 11, y - 2);
+        ctx.moveTo(x, y + 4); ctx.lineTo(x + 11, y - 2);
+        ctx.stroke();
+        ctx.lineCap = "butt";
+        label(x, y - 32, "EL ANCLA", "#fff", "#4a5560"); break;
+      }
       case "bridge": {
         /* drawn separately by drawBridge */ break;
       }

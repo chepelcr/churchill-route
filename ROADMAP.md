@@ -132,6 +132,41 @@ Full plan lives in the approved plan file; status tracked here.
         `ColorMatrixFilter` grading; normal-map roof/Faro lighting (stretch).
   - [ ] Match reference palette (terracotta/green roofs, turquoise gulf, sand).
 
+- [ ] **Milestone D — Full 2-D real-Puntarenas map (transitable)** _(requirement,
+      2026-07-11; depends on Milestone C)_
+  **Objective:** the game must be traversable over the *real* Puntarenas, not just
+  the unrolled route strip. Today the world is a **corridor-unroll** (`x` =
+  arclength along the Faro→Caldera spine, `y` = exaggerated perpendicular offset)
+  clipped to a **~900 m half-width corridor** — so ~2,160 of 2,666 OSM streets
+  (Barranca, El Roble, Esparza, Chacarita, the north bank, the real *Avenida del
+  Ferrocarril*) are omitted **by design**. This milestone replaces that with a
+  true planar 2-D map of the whole OSM extent.
+  - **Can Pixi do it? Yes — Pixi is the enabler, not the whole job.** WebGL/Pixi
+    is what makes a full-town 2-D map viable at 60 fps (thousands of sprites,
+    tiled culling, free pan/zoom); the Canvas2D backend can't scale to it. But
+    the *heart* of the change is the **world projection**, independent of the
+    renderer.
+  - **Projection (`tools/build_world.py`)** — swap the corridor-unroll for a
+    **planar local projection** (ENU metres / Web-Mercator) of the full OSM
+    bounds. Keep it deterministic. Districts become **2-D polygonal regions**
+    (not `x`-bands); barriers become region borders.
+  - **World data / budget** — a full-town RLE surface grid + all roads/buildings
+    will blow the current 2 MB `data.js` budget → **chunk/stream** the world
+    (tiled grid + per-tile road/building lists) and load lazily.
+  - **Renderer (Pixi, Milestone C seam)** — tiled static-world containers with
+    viewport culling; **free 2-D camera** (pan/zoom), route-follow demoted to an
+    optional guided-story view; minimap becomes a real 2-D map.
+  - **Sim** — physics/collision already grid-based (`surfaceAt`), scales to 2-D;
+    `reachablePointNear`, `nearestKiosk`, delivery are already 2-D. Re-anchor
+    stages/kiosks/customers to 2-D geo. Traffic/ped spawns per-tile.
+  - **Migration path** — land the Pixi backend (C) first, then swap projection +
+    world-gen behind the `Renderer.js` seam so Canvas2D/corridor stays runnable
+    until D is verified.
+  - **Brings in for free:** the real Avenida del Ferrocarril, Cocal-entrance and
+    Chacarita/20-Nov street topology (the in-corridor "revoltijo" is partly an
+    unroll artifact), and true block shapes — several World-fidelity items below
+    fold into this.
+
 ## ✅ City-feel + mobile pass — done 2026-07-10
 
 - [x] **Beachfront avenue separators (final layout, user-iterated)**:
@@ -202,15 +237,16 @@ Full plan lives in the approved plan file; status tracked here.
         build) renders a raised packed-earth surface: drop-shadow bank (~1 m
         lift), dirt shoulders, no lane markings, sunlit curb highlight
         (`drawStreets` in `canvas2d.js`).
-  - [ ] **Point it at the right way.** The OSM "Avenida del Ferrocarril"
-        (`101353014`/`101353016`) and "Ferrocarril al Pacífico" rail line are
-        **outside the 900 m corridor** (Barranca / mainland), so they aren't in
-        the game. The in-corridor avenue the player sees is under a different
-        OSM name — candidate **Avenida Centenario** (x≈385–5568). Confirm the
-        exact street/coords (via the 📍 overlay), then flag it.
-  - [ ] **Tree-lined acera median (2 cuadrículas)** where it converges with the
-        principal street (parallel-adjacency pass, reusing the paseo-median
-        machinery). Needs the convergence coords.
+  - [x] **Avenida Centenario flagged barro** — the in-corridor avenue over the
+        old rail bed (x≈338–5568) now renders as the raised dirt avenue. (The
+        real OSM "Avenida del Ferrocarril" is in Barranca, off-corridor — it
+        arrives with **Milestone D** / full 2-D map.)
+  - [x] **Rail line rendered** — `extract_rails()` + `drawRails()` draw the
+        disused Ferrocarril al Pacífico (ballast + ties + steel rails) where it
+        crosses the corridor (5 pieces, x≈5278–24433).
+  - [ ] **Tree-lined acera median (2 cuadrículas)** where Centenario converges
+        with the principal street (parallel-adjacency pass, reusing the
+        paseo-median machinery). Needs the convergence coords (📍 overlay).
 - [ ] **Road-stamping / cuadra separation** — where OSM roads run close together
       `raster_stamp_polyline` floods the cuadra interior with road, so no solid
       `CLS_LAND` core survives → you can drive through blocks and junctions read

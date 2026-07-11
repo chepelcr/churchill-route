@@ -183,6 +183,9 @@ LANDMARK_DEFS = [
     {"id": "estadio",     "name": "Estadio Lito Pérez",         "type": "stadium",      "district": "playitas", "osm": "lito pérez", "ll": (9.97880, -84.82660)},
     {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97950, -84.81600)},
     {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "playitas", "osm": "yacht", "ll": (9.97900, -84.81200)},
+    # anchor monument on the island where the road splits into the Cocal (west
+    # side, not the estero end) — placed by world xy read off the 📍 overlay
+    {"id": "ancla",       "name": "Monumento El Ancla",         "type": "anchor",       "district": "playitas", "xy": (8139, 2379)},
     {"id": "cocal_park",  "name": "Parque El Cocal",            "type": "park",         "district": "cocal",    "ll": (9.97950, -84.79500)},
     {"id": "kios_cocal",  "name": "Kiosco El Cocal",            "type": "kiosk",        "district": "cocal",    "ll": (9.98100, -84.79400)},
     # far-east Cocal soda so Stage 5 has a pickup beside its Ruta 17 customers
@@ -669,11 +672,11 @@ def extract_roads(sp, ways):
                  "pts": [round(v) for p in piece for v in p]}
             if name:
                 r["name"] = name
-            # Avenida Centenario: the avenue laid over the old Ferrocarril al
-            # Pacífico rail bed — a raised packed-earth (barro) street, rendered
-            # as dirt, not asphalt. (The OSM "Avenida del Ferrocarril" itself is
-            # in Barranca, outside the corridor.)
-            if "centenario" in lname or "ferrocarril" in lname:
+            # Avenida 2 del Ferrocarril (OSM-misspelled "Farrocarril"): the
+            # avenue over the old rail bed — a raised packed-earth (barro)
+            # street, rendered as dirt, not asphalt. "rrocarril" matches both
+            # the misspelling and any real "…Ferrocarril" way.
+            if "rrocarril" in lname:
                 r["barro"] = 1
             if w["tags"].get("ref"):
                 r["ref"] = w["tags"]["ref"]
@@ -1856,6 +1859,15 @@ def main():
 
     landmarks, failures = [], []
     for spec in LANDMARK_DEFS:
+        # "xy": a direct world position (e.g. read off the in-game 📍 overlay) —
+        # placed exactly, no geo projection / drivable-nudge (decorative POIs
+        # like monuments may sit on a median island, not a street).
+        if "xy" in spec:
+            x, y = spec["xy"]
+            landmarks.append({"id": spec["id"], "name": spec["name"], "x": round(x),
+                              "y": round(y), "type": spec["type"], "district": spec["district"],
+                              "_how": "xy"})
+            continue
         pm, how = resolve(spec)
         if pm is None:
             failures.append(spec["id"])

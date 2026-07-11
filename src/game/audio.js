@@ -103,6 +103,19 @@ function noiseHit({ dur = 0.05, gain = 0.1, at = 0, band = null }) {
   s.start(t0); s.stop(t0 + dur + 0.02);
 }
 
+// Per-vehicle engine character: oscillator flavor, pitch range (base..base+span
+// Hz over the speed range), filter opening and loudness. The bici is nearly
+// silent — a freewheel whir, not a motor.
+const ENGINE_VOICES = {
+  bici:    { type: "triangle", base: 190, span: 150, filter: 1300, gain: 0.022, detune: 3 },
+  scooter: { type: "sawtooth", base: 68,  span: 110, filter: 720,  gain: 0.075, detune: 9 },
+  tuktuk:  { type: "square",   base: 36,  span: 50,  filter: 420,  gain: 0.06,  detune: 5 },
+  cart:    { type: "triangle", base: 55,  span: 70,  filter: 520,  gain: 0.05,  detune: 6 },
+  pickup:  { type: "sawtooth", base: 30,  span: 55,  filter: 380,  gain: 0.075, detune: 6 },
+  turbo:   { type: "sawtooth", base: 50,  span: 130, filter: 950,  gain: 0.085, detune: 12 },
+};
+const DEFAULT_VOICE = ENGINE_VOICES.scooter;
+
 const RECIPES = {
   menu_move:   () => tone({ from: 660, dur: 0.06, gain: 0.12 }),
   menu_select: () => { tone({ from: 523, dur: 0.07, gain: 0.14 }); tone({ from: 784, dur: 0.09, gain: 0.14, at: 0.07 }); },
@@ -130,15 +143,18 @@ export const sfx = {
   },
 
   // continuous voices — call every physics frame
-  engine(speedRatio, boosting) {
+  engine(speedRatio, boosting, vehicleKey) {
     if (!engineV || !ctx || ctx.state !== "running") return;
+    const v = ENGINE_VOICES[vehicleKey] || DEFAULT_VOICE;
     const r = Math.max(0, Math.min(1.2, speedRatio || 0));
-    const f = (42 + r * 68) * (boosting ? 1.3 : 1);
+    const f = (v.base + r * v.span) * (boosting ? 1.3 : 1);
     const t = ctx.currentTime;
+    if (engineV.oscA.type !== v.type) { engineV.oscA.type = v.type; engineV.oscB.type = v.type; }
+    engineV.oscB.detune.setTargetAtTime(v.detune, t, 0.1);
     engineV.oscA.frequency.setTargetAtTime(f, t, 0.08);
     engineV.oscB.frequency.setTargetAtTime(f, t, 0.08);
-    engineV.filter.frequency.setTargetAtTime(boosting ? 1100 : 500 + r * 300, t, 0.1);
-    engineV.gain.gain.setTargetAtTime(r > 0.02 ? 0.05 + r * 0.04 : 0, t, 0.09);
+    engineV.filter.frequency.setTargetAtTime(boosting ? v.filter * 2 : v.filter * 0.7 + r * v.filter * 0.6, t, 0.1);
+    engineV.gain.gain.setTargetAtTime(r > 0.02 ? v.gain * (0.6 + 0.5 * r) : 0, t, 0.09);
   },
   drift(amount) {
     if (!driftV || !ctx || ctx.state !== "running") return;

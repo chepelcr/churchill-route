@@ -900,12 +900,10 @@ import { nearestKiosk } from "../game/delivery.js";
     ctx.beginPath(); ctx.moveTo(c.x + 3, c.y - 4); ctx.lineTo(c.x + 7, c.y - 10 - wave); ctx.stroke();
   }
 
-  function drawPlayer(p, veh) {
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.save(); ctx.translate(p.x + 4, p.y + 6); ctx.rotate(p.a); ctx.fillRect(-veh.w/2, -veh.h/2, veh.w, veh.h); ctx.restore();
-    ctx.translate(p.x, p.y); ctx.rotate(p.a);
-    const key = state.vehicleKey;
+  // Vehicle sprite painter, reused by the in-game player draw and the UI
+  // vehicle preview (StageSelect). Draws centered at (0,0) facing +x.
+  function paintVehicle(g, key, veh) {
+    const ctx = g;
     if (veh.kind === "bike") {
       // two-wheeler: wheels, frame, rider with helmet
       ctx.fillStyle = "#26222c";
@@ -987,6 +985,14 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.fillStyle = "#fffbe8";
       ctx.fillRect(veh.w/2 - 2, -veh.h/2 + 1, 2, 3); ctx.fillRect(veh.w/2 - 2, veh.h/2 - 4, 2, 3);
     }
+  }
+
+  function drawPlayer(p, veh) {
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.save(); ctx.translate(p.x + 4, p.y + 6); ctx.rotate(p.a); ctx.fillRect(-veh.w/2, -veh.h/2, veh.w, veh.h); ctx.restore();
+    ctx.translate(p.x, p.y); ctx.rotate(p.a);
+    paintVehicle(ctx, state.vehicleKey, veh);
     if (state.carrying) {
       const m = state.carrying.melt / state.carrying.total;
       ctx.fillStyle = "#fff"; ctx.fillRect(-3, -veh.h/2 - 6, 6, 8);
@@ -1218,4 +1224,4 @@ import { nearestKiosk } from "../game/delivery.js";
     }
   }
 
-export { setupCanvas, render };
+export { setupCanvas, render, paintVehicle };

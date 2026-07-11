@@ -6,4 +6,6 @@
 //
 // Today that is the Canvas2D backend. Milestone C introduces a PixiJS/WebGL
 // backend; swapping it in is a one-line change here (re-export from ./pixi).
-export { setupCanvas, render } from "./canvas2d.js";
+//   paintVehicle(ctx, key, veh) — vehicle sprite at (0,0) facing +x, also
+//   used by the UI's vehicle preview card.
+export { setupCanvas, render, paintVehicle } from "./canvas2d.js";

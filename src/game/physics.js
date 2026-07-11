@@ -201,7 +201,7 @@ export function update(dt) {
 
   advanceEntities(dt, true);
 
-  sfx.engine(p.speed / (veh.top || 1), !!input.boost);
+  sfx.engine(p.speed / (veh.top || 1), !!input.boost, state.vehicleKey);
   sfx.drift(p.drift > 0.4 && p.speed > 80 ? p.drift : 0);
 
   if (state.weather === "storm") state.rainT += dt;

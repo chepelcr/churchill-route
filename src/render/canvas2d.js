@@ -262,6 +262,46 @@ import { nearestKiosk } from "../game/delivery.js";
     }
   }
 
+  // The old Ferrocarril al Pacífico rail line: gravel ballast + wooden ties +
+  // two steel rails. Decorative (not drivable), drawn on the ground.
+  function drawRails(view) {
+    if (!W.RAILS || !W.RAILS.length) return;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    for (const rl of W.RAILS) {
+      if (!aabbInView(rl.aabb, view, 12)) continue;
+      const p = rl.pts;
+      // ballast bed
+      ctx.strokeStyle = "rgba(120,104,84,0.5)"; ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+      for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+      ctx.stroke();
+      // ties
+      ctx.strokeStyle = "#5a4a38"; ctx.lineWidth = 1.6;
+      for (let i = 0; i + 3 < p.length; i += 2) {
+        const x0 = p[i], y0 = p[i + 1], dx = p[i + 2] - x0, dy = p[i + 3] - y0;
+        const len = Math.hypot(dx, dy); if (len < 0.001) continue;
+        const nx = -dy / len, ny = dx / len;
+        for (let s = 0; s < len; s += 7) {
+          const t = s / len, cx = x0 + dx * t, cy = y0 + dy * t;
+          ctx.beginPath();
+          ctx.moveTo(cx - nx * 5, cy - ny * 5); ctx.lineTo(cx + nx * 5, cy + ny * 5); ctx.stroke();
+        }
+      }
+      // two steel rails, offset either side of the centerline
+      ctx.strokeStyle = "#9aa0a6"; ctx.lineWidth = 1.4;
+      for (const sgn of [-3.2, 3.2]) {
+        ctx.beginPath();
+        for (let i = 0; i < p.length; i += 2) {
+          const ii = i + 2 < p.length ? i : (i >= 2 ? i - 2 : i);
+          const dx = (p[ii + 2] ?? p[ii]) - p[ii], dy = (p[ii + 3] ?? p[ii + 1]) - p[ii + 1];
+          const len = Math.hypot(dx, dy) || 1, nx = -dy / len * sgn, ny = dx / len * sgn;
+          if (i === 0) ctx.moveTo(p[i] + nx, p[i + 1] + ny); else ctx.lineTo(p[i] + nx, p[i + 1] + ny);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
   // Paseo divided-avenue median: a planted green strip down the centerline
   // (the palms sit on top of it), with a darker soil/curb edge.
   function drawMedians(view) {
@@ -1204,6 +1244,7 @@ import { nearestKiosk } from "../game/delivery.js";
     drawEstuary(view);
     drawMangroves(view);
     drawStreets(view);
+    drawRails(view);
     drawMedians(view);
     drawPier(view);
     drawBridge(view);

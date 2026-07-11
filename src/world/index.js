@@ -86,6 +86,7 @@ export const WORLD = (function () {
       pts, cum, len: cum[cum.length - 1], aabb: flatAABB(pts),
     };
   });
+  const RAILS = (DATA.rails || []).map((r) => ({ pts: r.pts, aabb: flatAABB(r.pts) }));
   function roadLength(i) { return ROADS[i].len; }
   function roadPointAt(i, s) {
     const r = ROADS[i];
@@ -193,7 +194,7 @@ export const WORLD = (function () {
     W, H, META,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
     PALMS, MEDIANS, TREES, PLAZAS, MANGROVES, HILLS, ESTUARY, BRIDGE, PIER,
-    ROADS, BUILDINGS, LAND_POLYS, WATERS, BEACHES,
+    ROADS, RAILS, BUILDINGS, LAND_POLYS, WATERS, BEACHES,
     topY, botY, halfWidthAt,
     surfaceAt, onRoad, onPaseo, inWater, onBeach,
     roadLength, roadPointAt, buildingsNear,

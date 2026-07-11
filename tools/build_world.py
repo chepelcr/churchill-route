@@ -685,6 +685,31 @@ def extract_roads(sp, ways):
     return roads, bridge_way
 
 
+def extract_rails(sp, ways):
+    """The old Ferrocarril al Pacífico line (mostly OSM `disused:railway=rail`)
+    that ran out the Puntarenas spit. Purely decorative — projected polylines
+    emitted as `rails`, drawn as a sleeper-and-track bed by the renderer."""
+    rails = []
+    for w in ways:
+        t = w["tags"]
+        is_rail = (t.get("railway") == "rail" or t.get("disused:railway") == "rail"
+                   or t.get("abandoned:railway") == "rail"
+                   or "ferrocarril al pac" in (t.get("name") or "").lower())
+        if not is_rail:
+            continue
+        if len(w["pts"]) < 2 or not way_in_corridor(sp, w["pts"]):
+            continue
+        pts, _ = project_way_pts(sp, w["pts"])
+        for piece in clip_polyline_to_rect(pts, CANVAS_W, CANVAS_H):
+            piece = dp_simplify(piece, DP_ROAD_PX)
+            if len(piece) < 2:
+                continue
+            if sum(dist(piece[i], piece[i + 1]) for i in range(len(piece) - 1)) < 24:
+                continue
+            rails.append({"pts": [round(v) for p in piece for v in p]})
+    return rails
+
+
 def extract_buildings(sp, ways, roads):
     # road segments for overlap testing (subdivided, with per-class half width)
     segs = []
@@ -1684,6 +1709,8 @@ def main():
     sp = build_spine(ways, nodes)
 
     roads, bridge_road = extract_roads(sp, ways)
+    rails = extract_rails(sp, ways)
+    print(f"[rails] {len(rails)} rail pieces in corridor")
     dedupe_dual_carriageway(roads)
     connect_leon_calle20(roads)
     muelle_axis = narrow_muelle_approach(roads)
@@ -2139,6 +2166,7 @@ def main():
         "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES, "rle": rle_encode(grid)},
         "topY": topY, "botY": botY,
         "roads": roads,
+        "rails": rails,
         "buildings": buildings,
         "landPolys": land_contours,
         "beaches": beaches,

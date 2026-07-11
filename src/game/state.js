@@ -11,6 +11,7 @@ export const state = {
   timeOfDay: 0.55,
   vehicleKey: "scooter", veh: VEHICLES.scooter,
   p: { x: 1500, y: 760, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 },
+  // the renderer publishes zoom/vw/vh on cam — mutate it, never replace it
   cam: { x: 1500, y: 760, shake: 0 },
   carrying: null,
   pendingOrder: null,

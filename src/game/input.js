@@ -35,9 +35,13 @@ export function readInput() {
 // transform is uniform scale+translate, so angles are preserved) — the car is
 // projected to screen because the camera leads it (lookahead ≠ center).
 export function applyTouchAim(cam, p) {
-  if (!touchAim.active || !cam.zoom) return;
-  const sx = (p.x - cam.x) * cam.zoom + cam.vw / 2;
-  const sy = (p.y - cam.y) * cam.zoom + cam.vh / 2;
+  if (!touchAim.active) return;
+  // fall back if the renderer hasn't published the view yet (same spirit as
+  // the camera clamp fallback in physics.js)
+  const zoom = cam.zoom || 5.5;
+  const vw = cam.vw || window.innerWidth, vh = cam.vh || window.innerHeight;
+  const sx = (p.x - cam.x) * zoom + vw / 2;
+  const sy = (p.y - cam.y) * zoom + vh / 2;
   const dx = touchAim.x - sx, dy = touchAim.y - sy;
   const d = Math.hypot(dx, dy);
   if (d < 24) return;                                  // dead zone: coast

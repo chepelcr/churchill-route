@@ -33,6 +33,9 @@ import { nearestKiosk } from "../game/delivery.js";
     // some mobile browsers report stale sizes at orientationchange time
     window.addEventListener("orientationchange", () => setTimeout(resize, 120));
     if (window.visualViewport) window.visualViewport.addEventListener("resize", resize);
+    // entering/leaving fullscreen doesn't fire resize on all mobile browsers
+    document.addEventListener("fullscreenchange", () => setTimeout(resize, 60));
+    document.addEventListener("webkitfullscreenchange", () => setTimeout(resize, 60));
   }
 
   function weatherColors() {

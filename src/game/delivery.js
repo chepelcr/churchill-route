@@ -37,7 +37,14 @@ export function nearestKiosk(p) {
 
 export function pickCustomer() {
   const pool = activeCustomers();
-  state.pendingOrder = pool[Math.floor(Math.random() * pool.length)];
+  if (!pool.length) { state.pendingOrder = null; return; }
+  const base = pool[Math.floor(Math.random() * pool.length)];
+  // Give this order a fresh, reachable spot near the customer's home anchor so
+  // repeat deliveries don't always land in the exact same place, and nobody is
+  // ever stranded on the beach / inside a cuadra. Clone so the canonical
+  // customer record is never mutated.
+  const pt = W.reachablePointNear(base.x, base.y);
+  state.pendingOrder = { ...base, x: Math.round(pt.x), y: Math.round(pt.y) };
 }
 
 export function pickUpChurchill(kioskLm) {

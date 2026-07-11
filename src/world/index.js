@@ -165,6 +165,29 @@ export const WORLD = (function () {
   function landmarkById(id) { return LANDMARKS.find(l => l.id === id); }
   function customerById(id) { return CUSTOMERS.find(c => c.id === id); }
 
+  // A drivable street point near (x,y): used to give each delivery a fresh,
+  // *reachable* spot (varies where a customer appears; keeps them off the beach
+  // / inside a solid cuadra). Randomised within `radius` for variety, with a
+  // growing-ring fallback to the nearest street; returns (x,y) if none found.
+  function reachablePointNear(x, y, radius = 480) {
+    const drivable = (px, py) => { const c = surfaceAt(px, py); return c === 3 || c === 5; };
+    const cands = [];
+    for (let k = 0; k < 220; k++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = Math.sqrt(Math.random()) * radius;   // area-uniform sampling
+      const px = x + Math.cos(ang) * rad, py = y + Math.sin(ang) * rad;
+      if (drivable(px, py)) cands.push({ x: px, y: py });
+    }
+    if (cands.length) return cands[(Math.random() * cands.length) | 0];
+    for (let r = 24; r <= 2000; r += 24) {           // fallback: nearest street
+      for (let a = 0; a < 360; a += 12) {
+        const px = x + Math.cos(a * Math.PI / 180) * r, py = y + Math.sin(a * Math.PI / 180) * r;
+        if (drivable(px, py)) return { x: px, y: py };
+      }
+    }
+    return { x, y };
+  }
+
   return {
     W, H, META,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
@@ -173,7 +196,7 @@ export const WORLD = (function () {
     topY, botY, halfWidthAt,
     surfaceAt, onRoad, onPaseo, inWater, onBeach,
     roadLength, roadPointAt, buildingsNear,
-    districtAt, landmarkById, customerById,
+    districtAt, landmarkById, customerById, reachablePointNear,
   };
 })();
 

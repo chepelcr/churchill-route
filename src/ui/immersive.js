@@ -5,6 +5,7 @@
 // handles portrait in the browser tab).
 export function enterImmersive() {
   if (typeof window === "undefined") return;
+  if (window.Capacitor) return; // native shell is already fullscreen+landscape
   if (!window.matchMedia("(pointer: coarse)").matches) return; // not on desktop
   const el = document.documentElement;
   const req = el.requestFullscreen || el.webkitRequestFullscreen;

@@ -2,3 +2,12 @@
 node_modules/
 dist/
 *.local
+
+# Android (Capacitor) build outputs — the android/ project itself is committed
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.keystore
+*.jks

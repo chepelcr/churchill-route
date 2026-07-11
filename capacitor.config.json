@@ -1,0 +1,8 @@
+{
+  "appId": "dev.jcampos.churchill",
+  "appName": "La Ruta del Churchill",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

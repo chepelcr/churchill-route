@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b2a63"/>
+      <stop offset="0.45" stop-color="#8a4a7d"/>
+      <stop offset="0.75" stop-color="#e85d75"/>
+      <stop offset="1" stop-color="#f3a04d"/>
+    </linearGradient>
+    <linearGradient id="rojo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff5d75"/>
+      <stop offset="1" stop-color="#d61f4e"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f6f80"/>
+      <stop offset="1" stop-color="#1d4a58"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="2732" height="2732" fill="url(#sky)"/>
+  <circle cx="1366" cy="1850" r="420" fill="#ffd76b" opacity="0.9"/>
+  <circle cx="1366" cy="1850" r="530" fill="#ffd76b" opacity="0.25"/>
+  <rect y="2000" width="2732" height="732" fill="url(#sea)"/>
+  <rect y="2000" width="2732" height="22" fill="#ffe9a8" opacity="0.55"/>
+
+  <!-- glass group: icon coordinates scaled 1.35 and centered -->
+  <g transform="translate(1366 1300) scale(1.35) translate(-512 -480)">
+    <g stroke-linecap="round">
+      <rect x="565" y="150" width="34" height="330" rx="17" fill="#fff" transform="rotate(14 582 315)"/>
+      <rect x="565" y="150" width="34" height="110" rx="17" fill="#e85d75" transform="rotate(14 582 315)"/>
+    </g>
+    <path d="M362 380
+             q -26 -60 30 -66 q 4 -46 58 -40 q 26 -44 78 -22 q 52 -22 78 22 q 54 -6 58 40 q 56 6 30 66 z"
+          fill="#fff6e8"/>
+    <path d="M368 392 L 656 392 L 622 812 Q 512 844 402 812 Z" fill="url(#rojo)"/>
+    <path d="M368 392 L 656 392 L 649 480
+             q -34 26 -68 2 q -34 30 -69 4 q -35 26 -69 -2 q -34 22 -68 -4 L 368 392 Z"
+          fill="#fff6e8" opacity="0.92"/>
+    <path d="M398 420 L 420 780 Q 428 792 442 796 L 424 416 Z" fill="#ffffff" opacity="0.35"/>
+    <path d="M360 384 L 664 384 L 660 404 L 364 404 Z" fill="#ffffff" opacity="0.5"/>
+    <circle cx="512" cy="290" r="34" fill="#c1173d"/>
+    <circle cx="500" cy="278" r="10" fill="#ff7d95"/>
+  </g>
+</svg>

@@ -2,3 +2,4 @@
 # native binary, so allow it to run its build script.
 allowBuilds:
   esbuild: true
+  sharp: true   # capacitor-assets icon/splash generation

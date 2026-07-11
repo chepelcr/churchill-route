@@ -82,22 +82,23 @@ export const WORLD = (function () {
     }
     return {
       cls: r.cls, w: r.w, name: r.name, ref: r.ref, bridge: r.bridge || 0,
-      barro: r.barro || 0,
+      barro: r.barro || 0, elev: r.elev || 0,
       pts, cum, len: cum[cum.length - 1], aabb: flatAABB(pts),
     };
   });
   const RAILS = (DATA.rails || []).map((r) => ({ pts: r.pts, aabb: flatAABB(r.pts) }));
-  // Barro (raised dirt) avenue footprint — segments with half-width, so the
-  // sim can tell when the car is up on the elevated avenue (for the ramp feel).
-  const BARRO_SEGS = [];
+  // Raised avenue footprint (roads flagged `elev`, i.e. the Ferrocarril avenue
+  // itself — NOT its ground-level barro cross streets) — segments with
+  // half-width, so the sim knows when the car is up on the elevated avenue.
+  const ELEV_SEGS = [];
   for (const r of ROADS) {
-    if (!r.barro) continue;
-    const hw = r.w / 2 + 4, p = r.pts;
+    if (!r.elev) continue;
+    const p = r.pts;
     for (let i = 0; i + 3 < p.length; i += 2)
-      BARRO_SEGS.push({ x0: p[i], y0: p[i + 1], x1: p[i + 2], y1: p[i + 3], hw2: (r.w / 2 + 4) ** 2 });
+      ELEV_SEGS.push({ x0: p[i], y0: p[i + 1], x1: p[i + 2], y1: p[i + 3], hw2: (r.w / 2 + 4) ** 2 });
   }
-  function onBarro(x, y) {
-    for (const s of BARRO_SEGS) {
+  function onElevated(x, y) {
+    for (const s of ELEV_SEGS) {
       const dx = s.x1 - s.x0, dy = s.y1 - s.y0, l2 = dx * dx + dy * dy;
       let t = l2 > 0 ? ((x - s.x0) * dx + (y - s.y0) * dy) / l2 : 0;
       t = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -215,7 +216,7 @@ export const WORLD = (function () {
     PALMS, MEDIANS, TREES, PLAZAS, MANGROVES, HILLS, ESTUARY, BRIDGE, PIER,
     ROADS, RAILS, BUILDINGS, LAND_POLYS, WATERS, BEACHES,
     topY, botY, halfWidthAt,
-    surfaceAt, onRoad, onPaseo, inWater, onBeach, onBarro,
+    surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated,
     roadLength, roadPointAt, buildingsNear,
     districtAt, landmarkById, customerById, reachablePointNear,
   };

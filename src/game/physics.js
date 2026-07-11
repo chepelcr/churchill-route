@@ -166,7 +166,7 @@ export function update(dt) {
 
   // Elevation ramp: the barro avenue rides ~1 m above the cross streets, so the
   // car smoothly climbs onto it and ramps back down at each intersection.
-  const elevTarget = W.onBarro(p.x, p.y) ? 1 : 0;
+  const elevTarget = W.onElevated(p.x, p.y) ? 1 : 0;
   state.elev += (elevTarget - state.elev) * Math.min(1, dt * 5);
 
   // Drift sparks

@@ -676,8 +676,11 @@ def extract_roads(sp, ways):
             # avenue over the old rail bed — a raised packed-earth (barro)
             # street, rendered as dirt, not asphalt. "rrocarril" matches both
             # the misspelling and any real "…Ferrocarril" way.
+            # both in-corridor Ferrocarril avenues (Av. 2 del Farrocarril, and
+            # the one near the Cocal) — "rrocarril" catches the OSM misspelling
             if "rrocarril" in lname:
-                r["barro"] = 1
+                r["barro"] = 1     # dirt surface
+                r["elev"] = 1      # AND the raised avenue (car ramps onto it)
             if w["tags"].get("ref"):
                 r["ref"] = w["tags"]["ref"]
             if w["tags"].get("bridge") == "yes" and cls != "bridge":
@@ -711,6 +714,41 @@ def extract_rails(sp, ways):
                 continue
             rails.append({"pts": [round(v) for p in piece for v in p]})
     return rails
+
+
+def propagate_barro_to_crossings(roads, reach=1.2 * CUAD):
+    """The dirt continues onto the calles that cross the elevated Ferrocarril
+    avenue — flag them `barro` too (dirt surface) but NOT `elev`: they stay at
+    ground level and ramp up to the raised avenue. Sourced only from the raised
+    avenue (`elev`), with both lines densified so a crossing is never missed
+    between sparse polyline vertices. Principal avenues are excluded, so their
+    asphalt (and their intersections) stay paved."""
+    ax0 = ay0 = 1e9; ax1 = ay1 = -1e9
+    elev_pts = []
+    for r in roads:
+        if not r.get("elev"):
+            continue
+        for (_, x, y) in _resample_centerline(r["pts"], 5):
+            elev_pts.append((x, y))
+            ax0, ay0, ax1, ay1 = min(ax0, x), min(ay0, y), max(ax1, x), max(ay1, y)
+    if not elev_pts:
+        return
+    rr = reach * reach
+    KEEP_ASPHALT = {"trunk", "trunk_link", "primary", "primary_link", "paseo", "bridge"}
+    n = 0
+    for r in roads:
+        if r.get("barro") or r.get("cls") in KEEP_ASPHALT:
+            continue
+        xs, ys = r["pts"][0::2], r["pts"][1::2]
+        if max(xs) < ax0 - reach or min(xs) > ax1 + reach or \
+           max(ys) < ay0 - reach or min(ys) > ay1 + reach:
+            continue
+        cand = [(x, y) for (_, x, y) in _resample_centerline(r["pts"], 6)]
+        if any((px - ox) ** 2 + (py - oy) ** 2 < rr
+               for px, py in cand for ox, oy in elev_pts):
+            r["barro"] = 1
+            n += 1
+    print(f"[barro] +{n} cross streets flagged barro (cross the Ferrocarril avenue)")
 
 
 def extract_buildings(sp, ways, roads):
@@ -1712,6 +1750,7 @@ def main():
     sp = build_spine(ways, nodes)
 
     roads, bridge_road = extract_roads(sp, ways)
+    propagate_barro_to_crossings(roads)
     rails = extract_rails(sp, ways)
     print(f"[rails] {len(rails)} rail pieces in corridor")
     dedupe_dual_carriageway(roads)
@@ -2159,9 +2198,11 @@ def main():
     # Alberto Echandi Montero. Decorative trees (no blocking median → the barro
     # avenue stays fully drivable), GAPPED at every cross street.
     FERRO_TREE_X0 = 6892
-    ferro = [r for r in roads if "rrocarril" in (r.get("name") or "").lower()]
+    # tree line only on Avenida 2 del Ferrocarril (not the Cocal-side avenue)
+    ferro = [r for r in roads if "2 del" in (r.get("name") or "").lower()
+             and "rrocarril" in (r.get("name") or "").lower()]
     other_pts = [(x, y) for r in roads
-                 if "rrocarril" not in (r.get("name") or "").lower()
+                 if r not in ferro
                  for x, y in zip(r["pts"][0::2], r["pts"][1::2])]
     def _near_crossing(px, py, rad=1.8 * CUAD):
         rr = rad * rad

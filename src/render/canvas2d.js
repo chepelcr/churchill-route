@@ -181,11 +181,12 @@ import { nearestKiosk } from "../game/delivery.js";
       visible.push(e);
     }
     ctx.lineJoin = "round"; ctx.lineCap = "round";
-    // Barro (dirt) streets ride raised on the old rail bed — a soft drop-shadow
-    // beneath the bank sells the ~1 m lift (drawn first, under everything).
+    // The elevated (Ferrocarril) avenue rides ~1 m up — a soft drop-shadow
+    // beneath the bank sells the lift (drawn first, under everything). Only the
+    // avenue itself (`elev`), not its ground-level barro cross streets.
     ctx.strokeStyle = "rgba(0,0,0,0.30)";
     for (const e of visible) {
-      if (!e.r.barro) continue;
+      if (!e.r.elev) continue;
       ctx.save(); ctx.translate(0, 3.5);
       ctx.lineWidth = e.r.w + 2 * ACERA_PX + 3;
       ctx.stroke(e.path); ctx.restore();
@@ -225,10 +226,10 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.lineWidth = e.r.w;
       ctx.stroke(e.path);
     }
-    // Barro curb highlight: a thin sunlit edge along the raised bank's top side
+    // Curb highlight: a thin sunlit edge along the raised avenue's top side
     ctx.strokeStyle = "rgba(226,206,166,0.55)";
     for (const e of visible) {
-      if (!e.r.barro) continue;
+      if (!e.r.elev) continue;
       ctx.save(); ctx.translate(0, -1.5);
       ctx.lineWidth = 1.5;
       ctx.stroke(e.path); ctx.restore();

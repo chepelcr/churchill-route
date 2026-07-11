@@ -669,6 +669,10 @@ def extract_roads(sp, ways):
                  "pts": [round(v) for p in piece for v in p]}
             if name:
                 r["name"] = name
+            # Avenida/Calle del Ferrocarril: a raised packed-earth (barro) street
+            # laid over the old rail bed — rendered as dirt, not asphalt.
+            if "ferrocarril" in lname:
+                r["barro"] = 1
             if w["tags"].get("ref"):
                 r["ref"] = w["tags"]["ref"]
             if w["tags"].get("bridge") == "yes" and cls != "bridge":

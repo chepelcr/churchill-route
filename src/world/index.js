@@ -82,6 +82,7 @@ export const WORLD = (function () {
     }
     return {
       cls: r.cls, w: r.w, name: r.name, ref: r.ref, bridge: r.bridge || 0,
+      barro: r.barro || 0,
       pts, cum, len: cum[cum.length - 1], aabb: flatAABB(pts),
     };
   });

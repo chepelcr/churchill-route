@@ -181,11 +181,27 @@ import { nearestKiosk } from "../game/delivery.js";
       visible.push(e);
     }
     ctx.lineJoin = "round"; ctx.lineCap = "round";
+    // Barro (dirt) streets ride raised on the old rail bed — a soft drop-shadow
+    // beneath the bank sells the ~1 m lift (drawn first, under everything).
+    ctx.strokeStyle = "rgba(0,0,0,0.30)";
+    for (const e of visible) {
+      if (!e.r.barro) continue;
+      ctx.save(); ctx.translate(0, 3.5);
+      ctx.lineWidth = e.r.w + 2 * ACERA_PX + 3;
+      ctx.stroke(e.path); ctx.restore();
+    }
     // Aceras: concrete sidewalk band under everything (matches the grid's
     // 1-cuadrícula acera fringe on both sides)
     ctx.strokeStyle = "#cec7b2";
     for (const e of visible) {
       if (e.r.bridge || e.r.cls === "bridge") continue;
+      ctx.lineWidth = e.r.w + 2 * ACERA_PX;
+      ctx.stroke(e.path);
+    }
+    // Barro shoulder: dirt banks instead of concrete curbs
+    ctx.strokeStyle = "#7d6242";
+    for (const e of visible) {
+      if (!e.r.barro) continue;
       ctx.lineWidth = e.r.w + 2 * ACERA_PX;
       ctx.stroke(e.path);
     }
@@ -203,14 +219,23 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.lineWidth = e.r.w + 4;
       ctx.stroke(e.path);
     }
-    // Asphalt pass
+    // Asphalt pass (barro streets get a packed-earth surface, not asphalt)
     for (const e of visible) {
-      ctx.strokeStyle = e.r.cls === "paseo" ? "#f4dca3" : "#3a3540";
+      ctx.strokeStyle = e.r.barro ? "#9c7a4f" : e.r.cls === "paseo" ? "#f4dca3" : "#3a3540";
       ctx.lineWidth = e.r.w;
       ctx.stroke(e.path);
     }
+    // Barro curb highlight: a thin sunlit edge along the raised bank's top side
+    ctx.strokeStyle = "rgba(226,206,166,0.55)";
+    for (const e of visible) {
+      if (!e.r.barro) continue;
+      ctx.save(); ctx.translate(0, -1.5);
+      ctx.lineWidth = 1.5;
+      ctx.stroke(e.path); ctx.restore();
+    }
     // Center lines: yellow dashes on main routes, faint white on locals
     for (const e of visible) {
+      if (e.r.barro) continue;   // dirt roads have no lane markings
       const cls = e.r.cls;
       if (cls === "trunk" || cls === "trunk_link" || cls === "primary" || cls === "primary_link") {
         ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([18, 18]);

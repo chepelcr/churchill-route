@@ -195,6 +195,38 @@ Full plan lives in the approved plan file; status tracked here.
 - [ ] **Estero de Puntarenas north bank** — mangrove/wetland texture band along the estero side of the spit (currently plain land).
 - [ ] **Named intersections** — El Roble junction and the Angostura narrows could carry signage landmarks like Caldera Bulevar does.
 
+### 🛠️ World-fidelity pass (2026-07-11, from playtest feedback)
+
+- [ ] **Ferrocarril avenue** (barro/dirt street) — _in progress_
+  - [x] **Barro rendering machinery** — a `barro` road flag (set in the world
+        build) renders a raised packed-earth surface: drop-shadow bank (~1 m
+        lift), dirt shoulders, no lane markings, sunlit curb highlight
+        (`drawStreets` in `canvas2d.js`).
+  - [ ] **Point it at the right way.** The OSM "Avenida del Ferrocarril"
+        (`101353014`/`101353016`) and "Ferrocarril al Pacífico" rail line are
+        **outside the 900 m corridor** (Barranca / mainland), so they aren't in
+        the game. The in-corridor avenue the player sees is under a different
+        OSM name — candidate **Avenida Centenario** (x≈385–5568). Confirm the
+        exact street/coords (via the 📍 overlay), then flag it.
+  - [ ] **Tree-lined acera median (2 cuadrículas)** where it converges with the
+        principal street (parallel-adjacency pass, reusing the paseo-median
+        machinery). Needs the convergence coords.
+- [ ] **Road-stamping / cuadra separation** — where OSM roads run close together
+      `raster_stamp_polyline` floods the cuadra interior with road, so no solid
+      `CLS_LAND` core survives → you can drive through blocks and junctions read
+      as one merged slab. Root cause of: collision gaps ("enter cuadras"), the
+      **Cocal entrance / CLUB DE LEONES** merge, and the **Chacarita / Barrio 20
+      de Noviembre** revoltijo. Fix: guarantee a minimum cuadra core between
+      parallel ways; split merged junctions.
+- [ ] **Mercado cuadra size** — the Mercado Central block renders as a tiny land
+      spot (below `BLOCK_MIN_CUADS`/small OSM footprint); should be a full ≥6×6
+      cuadra. Targeted block-classification fix.
+- [x] **Delivery targets** — customers were static POIs (same spot every time,
+      some stranded on the beach). Now each order snaps to a random reachable
+      street point near the customer's anchor (`WORLD.reachablePointNear`).
+- [x] **Debug coordinate overlay** — 📍 HUD toggle: world-coordinate grid +
+      live `x/y · surface · district` readout (persisted).
+
 ## 📔 GDD updates needed (implemented but undocumented)
 
 - [ ] Drivable **Muelle Nacional pier** (guard hut, lamps, blue rails; class-5 surface).

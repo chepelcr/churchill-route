@@ -10,6 +10,7 @@ export const MODE_CARDS = [
 
 export default function TitleScreen({ onPickMode }) {
   const [muted, setMuted] = useState(sfx.muted);
+  const [info, setInfo] = useState(false);
   const pick = (id) => { sfx.play("menu_select"); onPickMode(id); };
   const [idx, setIdx] = useMenuNav({
     count: MODE_CARDS.length,
@@ -21,17 +22,23 @@ export default function TitleScreen({ onPickMode }) {
       <div className="title-shell">
         <div className="title-card">
           <span className="title-pill"><span className="dot"></span>PUNTARENAS · COSTA RICA · ARCADE 2026</span>
-          <button className="mute-pill" onClick={() => setMuted(sfx.toggleMuted())}
-            aria-label={muted ? "Activar sonido" : "Silenciar"}>{muted ? "🔇" : "🔊"}</button>
+          <div className="title-tools">
+            <button className="tool-pill" onClick={() => { sfx.play("menu_move"); setInfo((v) => !v); }}
+              aria-label="Cómo se juega" aria-expanded={info}>{info ? "✕" : "ⓘ"}</button>
+            <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
+              aria-label={muted ? "Activar sonido" : "Silenciar"}>{muted ? "🔇" : "🔊"}</button>
+          </div>
           <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
           <div className="title-sub">¡PURA VIDA!</div>
-          <p className="title-tag">
-            Sos repartidor de Churchills en El Puerto. Recogé en el kiosco rojo y blanco del{" "}
-            <em>Paseo de los Turistas</em> y llegá al cliente antes que el hielo se derrita. Hacé drift,
-            esquivá gaviotas y atravesá Carmen, el Mercado y Las Playitas hasta Mata de Limón.
-          </p>
+          {info && (
+            <p className="title-tag">
+              Sos repartidor de Churchills en El Puerto. Recogé en el kiosco rojo y blanco del{" "}
+              <em>Paseo de los Turistas</em> y llegá al cliente antes que el hielo se derrita. Hacé drift,
+              esquivá gaviotas y atravesá Carmen, el Mercado y Las Playitas hasta Mata de Limón.
+            </p>
+          )}
 
-          <div className="modes" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: 760, margin: "18px auto" }}>
+          <div className="modes" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: 760, margin: "16px auto" }}>
             {MODE_CARDS.map((m, i) => (
               <button key={m.id} className={"mode" + (idx === i ? " focused" : "")}
                 onMouseEnter={() => setIdx(i)} onClick={() => pick(m.id)}>

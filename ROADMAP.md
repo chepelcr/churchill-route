@@ -4,6 +4,48 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Game-feel + mobile + APK pass — done 2026-07-10/11
+
+- [x] **Separator final fix** (Calle 21 zone): removed the 2A tree-line
+      conversion — Avenida 2A is a normal drivable street again and the
+      **palm median runs inline through the whole Paseo de los Turistas**;
+      León Cortés tree strip starts at the first cuadra corner (curve stays
+      drivable); `connect_leon_calle20()` extends the paseo tip so Calle 20
+      T-junctions instead of dying on sand. (`tools/build_world.py`)
+- [x] **Text pass**: removed every "mae"; humanized the telegraphic stage
+      briefs, customer lines and mode tips; player-facing wording is now
+      **"nivel" + "completá"** (was "etapa"/"limpiá") across title, HUD,
+      brief, results, barriers.
+- [x] **Mobile controls fix**: touch steering was dead on the first
+      fullscreen entry — mode starts replaced `state.cam`, wiping the
+      renderer-published `zoom/vw/vh`. Now the cam is mutated in place,
+      `setupCanvas` re-runs resize on `fullscreenchange`, and `applyTouchAim`
+      falls back to window size instead of bailing.
+- [x] **Pause button** (⏸) + mute (🔊) in the HUD; auto-pause when the tab/app
+      backgrounds. Touch players can finally pause.
+- [x] **Attract-mode menus**: the live world (sunset, traffic, gulls, boats)
+      drifts behind the title + level select instead of a flat gradient
+      (`src/game/attract.js`, `advanceEntities(dt, withPlayer)` extracted from
+      `physics.update`); animated screen transitions; keyboard + gamepad menu
+      navigation (`useMenuNav`); scrollbars/`confirm()` dialog removed.
+- [x] **Procedural WebAudio SFX** (`src/game/audio.js`, no asset files):
+      engine hum + drift, pickup/delivery/perfect/combo/melt-fail, menu blips;
+      **per-vehicle engine voices** (bici freewheel → turbo kart saw); mute
+      persisted to localStorage.
+- [x] **Level select redesign**: Geometry-Dash-style **carousel** — one big
+      readable level card with prev/next arrows + dots — beside a separate
+      **vehicle card** with a live in-game sprite preview (`paintVehicle`
+      exposed via the Renderer seam) and stat bars. Title screen's intro moved
+      behind an ⓘ toggle so mode buttons stay above the fold on mobile.
+- [x] **Self-hosted fonts** (`@fontsource`): Google Fonts links removed, game
+      renders fully offline; SW cache → `churchill-v3`.
+- [x] **Android APK (Capacitor)**: committed `android/` Gradle project
+      (`dev.jcampos.churchill`), landscape + sticky-immersive, SW/immersive
+      skipped in the WebView; new churchill-glass icon + splash. Release
+      signing via a persistent keystore (secrets), and the **Pages deploy
+      workflow now builds a signed APK published at `/churchill.apk`** on every
+      push to `main`.
+
 ## 🚧 Modernization initiative (2026-07-06) — beautify, modularize, tool-up
 
 Goal: match the reference art (`how-look-puntarenas/…hhm9…png`), fix the small/

@@ -3,6 +3,7 @@
 // pollGamepad only runs while state.running, so menus own the pad here —
 // with edge detection and a repeat gate, which driving input doesn't need.
 import { useState, useEffect, useRef } from "react";
+import { sfx } from "../game/audio.js";
 
 const REPEAT_MS = 220;
 
@@ -16,7 +17,7 @@ export function useMenuNav({ count, cols = 1, onSelect, onBack }) {
       const { idx, count, cols } = ref.current;
       const delta = dir === "left" ? -1 : dir === "right" ? 1 : dir === "up" ? -cols : cols;
       const next = Math.max(0, Math.min(count - 1, idx + delta));
-      if (next !== idx) setIdx(next);
+      if (next !== idx) { setIdx(next); sfx.play("menu_move"); }
       return next !== idx;
     };
 

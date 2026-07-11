@@ -3,6 +3,7 @@
 import { WORLD as W } from "../world/index.js";
 import { state, pushFloat } from "./state.js";
 import { markStageCleared, unlockDistrict } from "./progress.js";
+import { sfx } from "./audio.js";
 
 export function activeKiosks() {
   // If stage is active, only those kiosks are valid
@@ -39,6 +40,7 @@ export function pickUpChurchill(kioskLm) {
   state.pendingOrder = null;
   state.storyTip = `Llevale a ${state.carrying.customer.name}.`;
   pushFloat(kioskLm.x, kioskLm.y - 24, "+ CHURCHILL", "#fff");
+  sfx.play("pickup");
 }
 
 export function deliverChurchill() {
@@ -52,10 +54,13 @@ export function deliverChurchill() {
   state.deliveries += 1;
   state.stageDeliveries += 1;
   if (meltPct < 0.25) state.perfect += 1;
-  state.combo = Math.min(8, state.combo + (meltPct < 0.4 ? 1 : 0));
+  const comboUp = meltPct < 0.4;
+  state.combo = Math.min(8, state.combo + (comboUp ? 1 : 0));
   state.comboTimer = 7;
   pushFloat(state.p.x, state.p.y - 24, `+${total}`, meltPct < 0.25 ? "#ffe06b" : "#fff");
   if (meltPct < 0.25) pushFloat(state.p.x, state.p.y - 44, "¡PERFECTO!", "#ff3d80");
+  sfx.play(meltPct < 0.25 ? "perfect" : "delivery");
+  if (comboUp && state.combo > 1) sfx.play("combo", state.combo);
   pushFloat(c.customer.x, c.customer.y - 22, c.customer.line.slice(0, 26), "#fff");
   state.carrying = null;
   state.storyTip = "¡Pura vida! Volvé al kiosco.";
@@ -81,4 +86,5 @@ export function dropChurchill() {
   state.carrying = null;
   state.combo = 1;
   state.storyTip = "Volvé al kiosco por otro Churchill.";
+  sfx.play("melt_fail");
 }

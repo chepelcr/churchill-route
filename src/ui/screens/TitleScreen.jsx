@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { useMenuNav } from "../useMenuNav.js";
+import { sfx } from "../../game/audio.js";
 
 export const MODE_CARDS = [
   { id: "story",   name: "Historia",  swatch: "#ffe06b", tag: "7 etapas, de El Faro hasta el puerto de Caldera." },
@@ -8,16 +9,20 @@ export const MODE_CARDS = [
 ];
 
 export default function TitleScreen({ onPickMode }) {
+  const [muted, setMuted] = useState(sfx.muted);
+  const pick = (id) => { sfx.play("menu_select"); onPickMode(id); };
   const [idx, setIdx] = useMenuNav({
     count: MODE_CARDS.length,
     cols: MODE_CARDS.length,
-    onSelect: (i) => onPickMode(MODE_CARDS[i].id),
+    onSelect: (i) => pick(MODE_CARDS[i].id),
   });
   return (
     <div className="title-bg">
       <div className="title-shell">
         <div className="title-card">
           <span className="title-pill"><span className="dot"></span>PUNTARENAS · COSTA RICA · ARCADE 2026</span>
+          <button className="mute-pill" onClick={() => setMuted(sfx.toggleMuted())}
+            aria-label={muted ? "Activar sonido" : "Silenciar"}>{muted ? "🔇" : "🔊"}</button>
           <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
           <div className="title-sub">¡PURA VIDA!</div>
           <p className="title-tag">
@@ -29,7 +34,7 @@ export default function TitleScreen({ onPickMode }) {
           <div className="modes" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: 760, margin: "18px auto" }}>
             {MODE_CARDS.map((m, i) => (
               <button key={m.id} className={"mode" + (idx === i ? " focused" : "")}
-                onMouseEnter={() => setIdx(i)} onClick={() => onPickMode(m.id)}>
+                onMouseEnter={() => setIdx(i)} onClick={() => pick(m.id)}>
                 <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{m.name}</div>
                 <div className="ms">{m.tag}</div>
               </button>

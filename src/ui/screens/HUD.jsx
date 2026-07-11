@@ -1,8 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Game } from "../../game/index.js";
 import { WORLD } from "../../world/index.js";
+import { sfx } from "../../game/audio.js";
 
 export default function HUD({ onPause }) {
+  const [muted, setMuted] = useState(sfx.muted);
   const s = Game.state;
   const district = WORLD.districtAt(s.p.x);
   const meltPct = s.carrying ? Math.min(1, s.carrying.melt / s.carrying.total) : 0;
@@ -51,6 +53,8 @@ export default function HUD({ onPause }) {
 
       {onPause && (
         <div className="hud-right">
+          <button className="hud-btn" onClick={() => setMuted(sfx.toggleMuted())}
+            aria-label={muted ? "Activar sonido" : "Silenciar"}>{muted ? "🔇" : "🔊"}</button>
           <button className="hud-btn" onClick={onPause} aria-label="Pausa">⏸</button>
         </div>
       )}

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Game } from "../../game/index.js";
 import { WORLD } from "../../world/index.js";
 import { useMenuNav } from "../useMenuNav.js";
+import { sfx } from "../../game/audio.js";
 
 export default function StageSelect({ onStart, onBack }) {
   const stages = WORLD.STAGES;
@@ -27,11 +28,13 @@ export default function StageSelect({ onStart, onBack }) {
     count: BACK_I + 1,
     cols: 3,
     onSelect: (i) => {
-      if (i < stages.length) { if (!isLocked(i)) onStart(i, veh); }
-      else if (i < RESET_I) setVeh(vehKeys[i - stages.length]);
-      else if (i === RESET_I) confirming ? doReset() : setConfirming(true);
+      if (i < stages.length) {
+        if (isLocked(i)) { sfx.play("menu_denied"); return; }
+        sfx.play("menu_select"); onStart(i, veh);
+      } else if (i < RESET_I) { sfx.play("menu_select"); setVeh(vehKeys[i - stages.length]); }
+      else if (i === RESET_I) { sfx.play("menu_select"); confirming ? doReset() : setConfirming(true); }
       else if (confirming) setConfirming(false);
-      else onBack();
+      else { sfx.play("menu_select"); onBack(); }
     },
     onBack: () => (confirming ? setConfirming(false) : onBack()),
   });

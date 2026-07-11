@@ -7,6 +7,7 @@ import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouchAim } from "./input.js";
 import { placeCar, updateAnimals } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
+import { sfx } from "./audio.js";
 
 // ----- Polygon collision helpers ------------------------------------------
 function pointInPoly(x, y, pts) {
@@ -199,6 +200,9 @@ export function update(dt) {
   }
 
   advanceEntities(dt, true);
+
+  sfx.engine(p.speed / (veh.top || 1), !!input.boost);
+  sfx.drift(p.drift > 0.4 && p.speed > 80 ? p.drift : 0);
 
   if (state.weather === "storm") state.rainT += dt;
 

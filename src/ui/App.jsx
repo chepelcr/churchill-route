@@ -10,6 +10,7 @@ import StageBrief from "./screens/StageBrief.jsx";
 import TouchControls from "./TouchControls.jsx";
 import GameTweaks from "./GameTweaks.jsx";
 import { enterImmersive } from "./immersive.js";
+import { sfx } from "../game/audio.js";
 
 export default function App() {
   // screens: title | stagepick | brief | playing | paused | over
@@ -51,6 +52,9 @@ export default function App() {
 
   // Menu screens show the live world drifting behind them (attract mode).
   useEffect(() => { Game.setAttract(screen === "title" || screen === "stagepick"); }, [screen]);
+
+  // Engine/drift hum only while actually driving; menu blips stay available.
+  useEffect(() => { screen === "playing" ? sfx.resume() : sfx.quiet(); }, [screen]);
 
   // Auto-pause when the tab/app goes to the background mid-run.
   useEffect(() => {

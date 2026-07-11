@@ -2198,11 +2198,11 @@ def main():
     # Alberto Echandi Montero. Decorative trees (no blocking median → the barro
     # avenue stays fully drivable), GAPPED at every cross street.
     FERRO_TREE_X0 = 6892
-    # tree line only on Avenida 2 del Ferrocarril (not the Cocal-side avenue)
-    ferro = [r for r in roads if "2 del" in (r.get("name") or "").lower()
-             and "rrocarril" in (r.get("name") or "").lower()]
+    # tree line along the whole elevated barro route (Av. 2 del Ferrocarril AND
+    # the Cocal-side avenue) from x≈6892 to where it ends at the estero
+    ferro = [r for r in roads if r.get("elev")]
     other_pts = [(x, y) for r in roads
-                 if r not in ferro
+                 if not r.get("elev")
                  for x, y in zip(r["pts"][0::2], r["pts"][1::2])]
     def _near_crossing(px, py, rad=1.8 * CUAD):
         rr = rad * rad

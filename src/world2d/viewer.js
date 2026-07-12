@@ -1,139 +1,135 @@
-// Dev-only smoke viewer for the tiled planar world (Milestone D, Phase 2 verify).
-// Streams tiles via WORLD2D, renders the surface grid (per-tile cached canvas) +
-// roads/buildings/POIs with a free pan/zoom camera. NOT part of the shipped game
-// — open /world2d.html on the dev server to eyeball the 2-D world & streaming.
+// Dev-only smoke viewer for the tiled planar world (Milestone D, Phase 2/3/4
+// verify). Streams tiles via WORLD2D, renders the surface grid + roads/buildings/
+// POIs, and drives a car with the GAME's physics model against WORLD2D.surfaceAt
+// (proving the real 2-D Puntarenas is traversable). NOT part of the shipped game
+// — open /world2d.html on the dev server. Arrows/WASD drive · +/- or wheel zoom.
 import { WORLD2D as W } from "./index.js";
+import { SURFACE_MUL } from "../game/surfaces.js";
+import { VEHICLES } from "../game/vehicles.js";
 
 const CLASS_COLOR = {
-  0: "#2a7fa8", // water
-  1: "#e8d5a0", // land
-  2: "#f4d77a", // beach
-  3: "#3a3540", // road
-  4: "#f08a5d", // paseo
-  5: "#8c8c8c", // bridge
-  6: "#cec7b2", // acera
+  0: "#2a7fa8", 1: "#e8d5a0", 2: "#f4d77a", 3: "#3a3540",
+  4: "#f08a5d", 5: "#8c8c8c", 6: "#cec7b2",
 };
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
-
 function resize() {
-  canvas.width = Math.floor(window.innerWidth * devicePixelRatio);
-  canvas.height = Math.floor(window.innerHeight * devicePixelRatio);
+  canvas.width = Math.floor(innerWidth * devicePixelRatio);
+  canvas.height = Math.floor(innerHeight * devicePixelRatio);
 }
-resize();
-window.addEventListener("resize", resize);
+resize(); addEventListener("resize", resize);
 
-// camera: world point at screen center + pixels-per-world-unit zoom
-const faro = W.landmarkById("faro") || W.LANDMARKS[0];
-const cam = { x: faro ? faro.x : W.W / 2, y: faro ? faro.y : W.H / 2, zoom: 0.5 };
-window.__cam = cam; // exposed for dev driving / screenshots
+// spawn the car at the Faro kiosk (a reachable street point)
+const spawnLm = W.landmarkById("kios_faro") || W.landmarkById("faro") || W.LANDMARKS[0];
+const veh = VEHICLES.pickup;
+const car = { x: spawnLm.x, y: spawnLm.y, a: 0, vx: 0, vy: 0, speed: 0 };
+const cam = { x: car.x, y: car.y, zoom: 0.7 };
+window.__car = car; window.__cam = cam;
 
-// input
 const keys = new Set();
-addEventListener("keydown", (e) => keys.add(e.key.toLowerCase()));
+addEventListener("keydown", (e) => { keys.add(e.key.toLowerCase()); if (e.key.startsWith("Arrow")) e.preventDefault(); }, { passive: false });
 addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
 canvas.addEventListener("wheel", (e) => {
   e.preventDefault();
-  const f = Math.exp(-e.deltaY * 0.0012);
-  cam.zoom = Math.max(0.03, Math.min(6, cam.zoom * f));
+  cam.zoom = Math.max(0.03, Math.min(6, cam.zoom * Math.exp(-e.deltaY * 0.0012)));
 }, { passive: false });
-let mouse = { x: 0, y: 0 };
-canvas.addEventListener("mousemove", (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
 
-// per-tile cached surface canvas (cols×rows, 1px per cell), drawn scaled
+// per-tile cached surface canvas (cols×rows @1px/cell), blitted scaled
 const tileCanvas = new WeakMap();
 function surfaceCanvas(t) {
-  let cv = tileCanvas.get(t);
-  if (cv) return cv;
-  cv = document.createElement("canvas");
-  cv.width = t.cols; cv.height = t.rows;
-  const g = cv.getContext("2d");
-  const img = g.createImageData(t.cols, t.rows);
+  let cv = tileCanvas.get(t); if (cv) return cv;
+  cv = document.createElement("canvas"); cv.width = t.cols; cv.height = t.rows;
+  const g = cv.getContext("2d"), img = g.createImageData(t.cols, t.rows);
   for (let i = 0; i < t.grid.length; i++) {
     const c = CLASS_COLOR[t.grid[i]] || "#f0f";
-    const r = parseInt(c.slice(1, 3), 16), gg = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16);
-    img.data[i * 4] = r; img.data[i * 4 + 1] = gg; img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255;
+    img.data[i * 4] = parseInt(c.slice(1, 3), 16);
+    img.data[i * 4 + 1] = parseInt(c.slice(3, 5), 16);
+    img.data[i * 4 + 2] = parseInt(c.slice(5, 7), 16);
+    img.data[i * 4 + 3] = 255;
   }
-  g.putImageData(img, 0, 0);
-  tileCanvas.set(t, cv);
-  return cv;
+  g.putImageData(img, 0, 0); tileCanvas.set(t, cv); return cv;
+}
+
+// walls: solid cuadra (land), acera/curb, AND water — you stay on the streets /
+// peninsula (replaces the corridor topY/botY bounds with 2-D water-as-wall).
+const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0; };
+
+function drive(dt) {
+  const turning = (keys.has("arrowright") || keys.has("d") ? 1 : 0) - (keys.has("arrowleft") || keys.has("a") ? 1 : 0);
+  const throttle = (keys.has("arrowup") || keys.has("w") ? 1 : 0) - (keys.has("arrowdown") || keys.has("s") ? 1 : 0) * 0.6;
+  const brake = keys.has(" ");
+
+  const surf = W.surfaceAt(car.x, car.y);
+  const surfaceMul = SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
+  const turnRate = veh.turn * (0.4 + Math.min(1, Math.abs(car.speed) / veh.top) * 0.9);
+  car.a += turning * turnRate * dt * (brake ? 1.35 : 1);
+  car.vx += Math.cos(car.a) * veh.accel * throttle * dt;
+  car.vy += Math.sin(car.a) * veh.accel * throttle * dt;
+
+  const hx = Math.cos(car.a), hy = Math.sin(car.a);
+  const fwd = car.vx * hx + car.vy * hy, side = -car.vx * hy + car.vy * hx;
+  const grip = veh.grip * (brake ? 0.55 : 1);
+  const kept = side * (1 - Math.min(1, grip * dt * 6));
+  car.vx = hx * fwd - hy * kept; car.vy = hy * fwd + hx * kept;
+
+  const fric = throttle ? 0.4 : 1.8, sp = Math.hypot(car.vx, car.vy);
+  if (sp > 0.1) { const k = Math.max(0, sp - fric * (1 / surfaceMul) * dt * 60) / sp; car.vx *= k; car.vy *= k; }
+  const top = veh.top * surfaceMul, sp2 = Math.hypot(car.vx, car.vy);
+  if (sp2 > top) { car.vx *= top / sp2; car.vy *= top / sp2; }
+
+  const px = car.x, py = car.y;
+  car.x += car.vx * dt; car.y += car.vy * dt;
+  if (isWall(car.x, car.y)) {
+    const okX = !isWall(car.x, py), okY = !isWall(px, car.y);
+    if (okX && !okY) { car.y = py; car.vy = 0; }
+    else if (okY && !okX) { car.x = px; car.vx = 0; }
+    else if (!isWall(px, py)) { car.x = px; car.y = py; car.vx *= -0.1; car.vy *= -0.1; }
+  }
+  car.x = Math.max(12, Math.min(W.W - 12, car.x));
+  car.y = Math.max(12, Math.min(W.H - 12, car.y));
+  car.speed = Math.hypot(car.vx, car.vy);
 }
 
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  const pan = 700 / cam.zoom * dt;
-  if (keys.has("arrowleft") || keys.has("a")) cam.x -= pan;
-  if (keys.has("arrowright") || keys.has("d")) cam.x += pan;
-  if (keys.has("arrowup") || keys.has("w")) cam.y -= pan;
-  if (keys.has("arrowdown") || keys.has("s")) cam.y += pan;
-  cam.x = Math.max(0, Math.min(W.W, cam.x));
-  cam.y = Math.max(0, Math.min(W.H, cam.y));
-
+  if (keys.has("=") || keys.has("+")) cam.zoom = Math.min(6, cam.zoom * (1 + dt));
+  if (keys.has("-")) cam.zoom = Math.max(0.03, cam.zoom * (1 - dt));
+  drive(dt);
+  cam.x += (car.x - cam.x) * Math.min(1, dt * 6);
+  cam.y += (car.y - cam.y) * Math.min(1, dt * 6);
   W.update(cam.x, cam.y);
 
   const cw = canvas.width, ch = canvas.height, z = cam.zoom * devicePixelRatio;
-  // world→screen: sx = (wx - cam.x)*z + cw/2
-  const viewX0 = cam.x - cw / 2 / z, viewY0 = cam.y - ch / 2 / z;
-  const viewX1 = cam.x + cw / 2 / z, viewY1 = cam.y + ch / 2 / z;
-
-  ctx.fillStyle = "#12303e"; // out-of-tile backdrop
-  ctx.fillRect(0, 0, cw, ch);
-  ctx.imageSmoothingEnabled = false;
-
+  const vx0 = cam.x - cw / 2 / z, vy0 = cam.y - ch / 2 / z, vx1 = cam.x + cw / 2 / z, vy1 = cam.y + ch / 2 / z;
+  ctx.fillStyle = "#12303e"; ctx.fillRect(0, 0, cw, ch); ctx.imageSmoothingEnabled = false;
   const S = (wx, wy) => [(wx - cam.x) * z + cw / 2, (wy - cam.y) * z + ch / 2];
 
-  const vts = W.visibleTiles(viewX0, viewY0, viewX1, viewY1);
-  for (const t of vts) {
-    const [sx, sy] = S(t.x, t.y);
-    ctx.drawImage(surfaceCanvas(t), sx, sy, t.cols * W.CELL * z, t.rows * W.CELL * z);
-  }
-  // buildings
+  const vts = W.visibleTiles(vx0, vy0, vx1, vy1);
+  for (const t of vts) { const [sx, sy] = S(t.x, t.y); ctx.drawImage(surfaceCanvas(t), sx, sy, t.cols * W.CELL * z, t.rows * W.CELL * z); }
   ctx.fillStyle = "rgba(120,80,55,.85)";
-  for (const t of vts) for (const b of t.buildings) {
-    const p = b.pts; ctx.beginPath();
-    for (let i = 0; i < p.length; i += 2) { const [x, y] = S(p[i], p[i + 1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-    ctx.fill();
-  }
-  // roads (thin overlay so the grid class still reads)
-  ctx.strokeStyle = "rgba(20,18,24,.5)"; ctx.lineCap = "round";
-  for (const t of vts) for (const r of t.roads) {
-    const p = r.pts; if (p.length < 4) continue;
-    ctx.lineWidth = Math.max(1, r.w * z); ctx.beginPath();
-    for (let i = 0; i < p.length; i += 2) { const [x, y] = S(p[i], p[i + 1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-    ctx.stroke();
-  }
-  // POIs
-  for (const l of W.LANDMARKS) {
-    if (l.x < viewX0 || l.x > viewX1 || l.y < viewY0 || l.y > viewY1) continue;
-    const [x, y] = S(l.x, l.y);
-    ctx.fillStyle = l.type === "kiosk" ? "#ffd23f" : "#e84855";
-    ctx.beginPath(); ctx.arc(x, y, 5 * devicePixelRatio, 0, 7); ctx.fill();
-  }
-  for (const c of W.CUSTOMERS) {
-    if (c.x < viewX0 || c.x > viewX1 || c.y < viewY0 || c.y > viewY1) continue;
-    const [x, y] = S(c.x, c.y);
-    ctx.fillStyle = "#22d3ee"; ctx.beginPath(); ctx.arc(x, y, 4 * devicePixelRatio, 0, 7); ctx.fill();
-  }
+  for (const t of vts) for (const b of t.buildings) { const p = b.pts; ctx.beginPath(); for (let i = 0; i < p.length; i += 2) { const [x, y] = S(p[i], p[i + 1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.fill(); }
+  for (const l of W.LANDMARKS) { if (l.x < vx0 || l.x > vx1 || l.y < vy0 || l.y > vy1) continue; const [x, y] = S(l.x, l.y); ctx.fillStyle = l.type === "kiosk" ? "#ffd23f" : "#e84855"; ctx.beginPath(); ctx.arc(x, y, 5 * devicePixelRatio, 0, 7); ctx.fill(); }
+  for (const c of W.CUSTOMERS) { if (c.x < vx0 || c.x > vx1 || c.y < vy0 || c.y > vy1) continue; const [x, y] = S(c.x, c.y); ctx.fillStyle = "#22d3ee"; ctx.beginPath(); ctx.arc(x, y, 4 * devicePixelRatio, 0, 7); ctx.fill(); }
 
-  // cursor surface probe
-  const wx = (mouse.x * devicePixelRatio - cw / 2) / z + cam.x;
-  const wy = (mouse.y * devicePixelRatio - ch / 2) / z + cam.y;
-  const cls = W.surfaceAt(wx, wy);
-  const dist = W.districtAt(wx, wy);
-  let resident = 0; for (const _ of vts) resident++;
+  // car
+  const [csx, csy] = S(car.x, car.y);
+  ctx.save(); ctx.translate(csx, csy); ctx.rotate(car.a);
+  ctx.fillStyle = veh.color; const cwid = veh.w * z, chei = veh.h * z;
+  ctx.fillRect(-cwid / 2, -chei / 2, cwid, chei);
+  ctx.fillStyle = veh.roof; ctx.fillRect(-cwid * 0.15, -chei / 2, cwid * 0.4, chei);
+  ctx.restore();
+
+  const surf = W.surfaceAt(car.x, car.y), dist = W.districtAt(car.x, car.y);
   hud.textContent =
-    `world ${W.W}×${W.H}  tiles ${W.TCOLS}×${W.TROWS}\n` +
-    `cam ${cam.x | 0},${cam.y | 0}  zoom ${cam.zoom.toFixed(2)}\n` +
-    `cursor ${wx | 0},${wy | 0}  surf=${W.CLASSES[cls]}  ${dist ? dist.short || dist.id : "-"}\n` +
-    `visible tiles ${resident}   [WASD/arrows pan · wheel zoom]`;
-
+    `world ${W.W}×${W.H}  tiles ${W.TCOLS}×${W.TROWS}   visible ${vts.length}\n` +
+    `car ${car.x | 0},${car.y | 0}  speed ${car.speed | 0}  on=${W.CLASSES[surf]}  ${dist ? dist.short || dist.id : "-"}\n` +
+    `zoom ${cam.zoom.toFixed(2)}   [arrows/WASD drive · space brake · +/- or wheel zoom]`;
   requestAnimationFrame(frame);
 }
 
-(async () => {
-  await W.ready(cam.x, cam.y, 4000, 4000);
-  requestAnimationFrame(frame);
-})();
+// exposed for dev-driving verification (rAF is throttled in background tabs)
+window.__keys = keys; window.__step = drive;
+(async () => { await W.ready(car.x, car.y, 4000, 4000); requestAnimationFrame(frame); })();

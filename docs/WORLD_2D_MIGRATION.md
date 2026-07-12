@@ -108,13 +108,28 @@ roads are polylines, delivery/spawns are 2-D. Corridor coupling in the engine is
   **Verified in-browser** via a dev smoke viewer (`/world2d.html` + `src/world2d/viewer.js`,
   NOT shipped): streams the full 50820×31860 world (110 tiles resident at a whole-map zoom),
   `surfaceAt`/`districtAt`/POIs correct from Faro→Caldera, no console errors.
-- [ ] **Phase 3** — `pnpm add pixi.js`; `src/render/pixi/` behind `Renderer.js` seam
-  (`setupCanvas/render/paintVehicle`); layered containers + tile culling; free 2-D camera
-  (remove corridor clamp); port the `canvas2d.js` drawers.
-- [ ] **Phase 4** — sim decoupling: `physics.js` drop `topY/botY` peninsula bounds (~117-121,
-  299) → water push-back via `inWater`; `spawns.js` gulls/boats sample water not `topY/botY`;
-  `districtAt` calls (`delivery.js:12`, `physics.js:155`, `progress.js`) 2-D; barriers 2-D or
-  dropped.
+- [~] **Phase 3/4 groundwork — traversability PROVEN.** The smoke viewer now drives a car with
+  the game's real physics model (`src/game/physics.js` port: turn/accel/grip/friction +
+  axis-slide collision) against `WORLD2D.surfaceAt`, camera following. Verified in-browser:
+  the car drives on the real centro streets, stays **100% on drivable surface**, is blocked by
+  water/acera/land walls (water-as-wall replaces the corridor `topY/botY` bounds), and
+  `districtAt` updates as it moves. So the full 2-D Puntarenas is drivable end-to-end.
+  - **KEY FINDING — arcade street width vs vehicle scale (a design/tuning call).** At true
+    scale + `ARCADE_STREET_MUL=2.2`, centro cross-streets are only **24–44 px** drivable —
+    comparable to or narrower than the 44 px pickup. Collision is center-point so it's
+    *drivable*, but tight and the car visually overhangs. **Recommendation:** bump
+    `ARCADE_STREET_MUL` (~3.0–3.5) and/or add the planned **vehicle-scale** knob to shrink the
+    car, then re-tune against gore/cuadra survival (`detect_blocks`). This is the main feel
+    lever before wiring 2-D into the shipped game.
+- [ ] **Phase 3 (full) — PixiJS renderer.** The canvas2d smoke viewer already renders the
+  streamed world (per-tile cached surface canvas + vector roads/buildings/POIs) at interactive
+  rates for a gameplay-zoom view (~4–9 tiles). Pixi (`src/render/pixi/` behind the
+  `Renderer.js` seam) is the perf path for zoomed-out/whole-map views; port the `canvas2d.js`
+  drawers, layered containers + tile culling, free 2-D camera.
+- [ ] **Phase 4 (full) — wire 2-D into the shipped game.** Swap `WORLD`→`WORLD2D` behind the
+  world import, thread the async `ready()/update()` into app/mode init, `physics.js` water
+  push-back via `inWater` (done in the viewer port), `spawns.js` gulls/boats sample water not
+  `topY/botY`, `districtAt`→2-D (done: nearest-centroid), explore barriers 2-D or dropped.
 - [ ] **Phase 5** — minimap = real 2-D map; re-run POI-reachability gate; full compare vs
   `corridor-stable`.
 

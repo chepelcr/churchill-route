@@ -28,6 +28,9 @@ OSM_PATH = os.path.join(ROOT, "docs", "map.osm")
 OUT_PATH = os.path.join(ROOT, "src", "world", "data.js")
 DEBUG_PNG = os.path.join(ROOT, "tools", "debug_map.png")
 DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
+# planar (Milestone D) chunked output — a tiled world the src/world2d accessor
+# streams by camera region, instead of the single corridor src/world/data.js.
+WORLD2D_DIR = os.path.join(ROOT, "src", "world2d")
 
 # ---------------------------------------------------------------- config ---
 
@@ -55,6 +58,12 @@ CUAD = 20                       # px per cuadrícula (a lane ~= 2 cuadrículas)
 CUADS_PER_VIEW = 12             # max cuadrículas visible → device-consistent zoom
 CUAD_CELLS = CUAD // GRID_CELL  # raster cells per cuadrícula side
 assert CUAD % GRID_CELL == 0, "CUAD must align to the raster grid"
+# Planar tiling: the world is emitted as a grid of square tiles the accessor
+# streams by camera region. A tile is a whole number of cuadrículas (so it
+# aligns to CUAD and the raster grid) ~2000 px on a side.
+TILE_CUADS = 100                # 100 CUAD = 2000 px per tile side
+TILE_PX = TILE_CUADS * CUAD     # 2000
+TILE_CELLS = TILE_PX // GRID_CELL   # 500 raster cells per tile side
 assert CANVAS_W % CUAD == 0 and CANVAS_H % CUAD == 0, "canvas must be whole cuadrículas"
 
 # local equirectangular projection anchor (Faro de La Punta)
@@ -78,8 +87,14 @@ ROAD_WIDTH_M = {
     "residential": 7, "unclassified": 7, "living_street": 6,
     "service": 4.5, "pedestrian": 5, "paseo": 16, "bridge": 12,
 }
-# optional bbox clip "lon0,lat0,lon1,lat1" for a bounded smoke build
-PLANAR_BBOX = os.environ.get("PLANAR_BBOX")
+# optional bbox clip "lon0,lat0,lon1,lat1" for a bounded smoke build.
+# docs/map.osm actually spans ~85x92 km (stray inland highways / distant
+# villages far outside Puntarenas) — projecting it whole gives a 1.2-billion-cell,
+# 99.96%-water world. So planar defaults to the documented Puntarenas region
+# bbox (9.8539-10.0304 N, -84.9188--84.6328 E), clipping the outliers. Override
+# with PLANAR_BBOX (e.g. a small centro sub-bbox for a fast smoke).
+PLANAR_FULL_BBOX = "-84.9188,9.8539,-84.6328,10.0304"
+PLANAR_BBOX = os.environ.get("PLANAR_BBOX") or (PLANAR_FULL_BBOX if PLANAR else None)
 
 # Spine waypoints west->east->south: Faro tip, along the spit (Av. Central /
 # Ruta 17 axis), La Angostura, coast SSE along Ruta 23, Puente colgante,
@@ -693,6 +708,13 @@ def project_way_pts(sp, pts):
 
 
 def way_in_corridor(sp, pts, limit=CORRIDOR_HALF_M):
+    # Planar (Milestone D) has no corridor — include ALL OSM in the bbox. In
+    # planar sp.project_m returns the raw metre (mx,my), so `d` is a world
+    # y-coordinate, not a perpendicular offset; the abs(d)<=limit test would
+    # wrongly clip everything to a ~1800m latitude band (gutting water polys,
+    # southern roads and the coast barrier → the peninsula floods).
+    if PLANAR:
+        return True
     c = poly_centroid(pts)
     s, d, _ = sp.project_m(c)
     return abs(d) <= limit
@@ -1089,15 +1111,34 @@ def raster_stamp_polyline(grid, flat_pts, width, cls):
                         grid[base + col] = cls
 
 
+def _stamp_barrier(barrier, c, r):
+    """Set a barrier cell. In planar, thicken to a 3x3 block so sub-cell gaps
+    at coastline segment joints don't leak the sea flood into the land (the
+    single-cell supercover line can miss a diagonal where two chains meet)."""
+    rad = 1 if PLANAR else 0
+    n = 0
+    for dr in range(-rad, rad + 1):
+        for dc in range(-rad, rad + 1):
+            cc, rr = c + dc, r + dr
+            if 0 <= cc < GRID_COLS and 0 <= rr < GRID_ROWS and not barrier[rr * GRID_COLS + cc]:
+                barrier[rr * GRID_COLS + cc] = 1
+                n += 1
+    return n
+
+
 def raster_coast_barrier(grid_barrier, sp, chains, nodes):
-    """Rasterize coastline chains as 1-cell barriers (supercover lines)."""
+    """Rasterize coastline chains as barriers (supercover lines)."""
     drawn = 0
     for nds in chains:
         pts_m = [to_m(*nodes[r]) for r in nds if r in nodes]
         if len(pts_m) < 2:
             continue
-        # keep chains that come anywhere near the corridor
-        if not any(abs(sp.project_m(p)[1]) <= CORRIDOR_HALF_M + 600 for p in pts_m[:: max(1, len(pts_m) // 40)]):
+        # corridor: keep only chains near the spine. Planar has no corridor —
+        # ALL coastline must be rasterised or the flood leaks into the land
+        # (the estuary/south/inland shores project far from lat 9.977 and would
+        # otherwise be dropped, leaving the peninsula unenclosed).
+        if not PLANAR and not any(abs(sp.project_m(p)[1]) <= CORRIDOR_HALF_M + 600
+                                  for p in pts_m[:: max(1, len(pts_m) // 40)]):
             continue
         pts, _ = project_way_pts(sp, pts_m)
         for i in range(len(pts) - 1):
@@ -1110,9 +1151,35 @@ def raster_coast_barrier(grid_barrier, sp, chains, nodes):
                 y = y0 + (y1 - y0) * k / steps
                 c, r = int(x / GRID_CELL), int(y / GRID_CELL)
                 if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS:
-                    grid_barrier[r * GRID_COLS + c] = 1
-                    drawn += 1
+                    drawn += _stamp_barrier(grid_barrier, c, r)
     print(f"[coast] rasterized barrier cells: {drawn}")
+
+
+def raster_poly_barrier(barrier, polys):
+    """Rasterize closed polygon boundaries (flat px coords) as 1-cell flood
+    barriers. natural=water bodies are mapped by OSM as AREAS, not coastline —
+    notably the Estero de Puntarenas along the spit's north shore. Without their
+    outline as a barrier the sea flood leaks across that un-barriered shore and
+    drains the whole peninsula to water. Their interiors are stamped CLS_WATER
+    after the flood regardless, so bordering them only contains the flood."""
+    drawn = 0
+    for poly in polys:
+        pts = [(poly[i], poly[i + 1]) for i in range(0, len(poly), 2)]
+        if len(pts) < 3:
+            continue
+        pts.append(pts[0])
+        for i in range(len(pts) - 1):
+            x0, y0 = pts[i]
+            x1, y1 = pts[i + 1]
+            L = math.hypot(x1 - x0, y1 - y0)
+            steps = max(1, int(L / (GRID_CELL * 0.5)))
+            for k in range(steps + 1):
+                x = x0 + (x1 - x0) * k / steps
+                y = y0 + (y1 - y0) * k / steps
+                c, r = int(x / GRID_CELL), int(y / GRID_CELL)
+                if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS:
+                    drawn += _stamp_barrier(barrier, c, r)
+    return drawn
 
 
 def flood_water(grid, barrier, seeds_px):
@@ -1858,13 +1925,20 @@ def rle_encode(grid):
     return base64.b64encode(bytes(out)).decode("ascii")
 
 
-def write_png(path, w, h, get_rgb):
+def write_png(path, w, h, get_rgb, stride=1):
+    """Rasterise get_rgb(x,y) to a PNG. `stride` downsamples (samples every
+    `stride`-th cell on both axes) so a huge planar grid still yields a small,
+    fast eyeball render instead of a multi-minute per-pixel pass."""
+    xs = range(0, w, stride)
+    ys = range(0, h, stride)
+    ow, oh = len(xs), len(ys)
     rows = []
-    for y in range(h):
+    for y in ys:
         row = bytearray()
-        for x in range(w):
+        for x in xs:
             row.extend(get_rgb(x, y))
         rows.append(bytes(row))
+    w, h = ow, oh
     raw = b"".join(b"\x00" + r for r in rows)
     comp = zlib.compress(raw, 6)
 
@@ -1876,6 +1950,124 @@ def write_png(path, w, h, get_rgb):
         f.write(chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)))
         f.write(chunk(b"IDAT", comp))
         f.write(chunk(b"IEND", b""))
+
+
+def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms,
+                 mangroves, medians, plazas, islands, beaches, waters, land_polys,
+                 landmarks, customers, stages, bridge, estuary, pier, hills):
+    """Chunked planar emit (Milestone D): tile the world into
+    src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
+    features overlapping that tile) plus a small src/world2d/manifest.json (world
+    size, tiling, districts, POIs, backdrop polys). Replaces the single
+    src/world/data.js so the full-OSM world stays streamable instead of one huge
+    payload. A feature spanning a tile border is written into every tile its
+    bbox overlaps (the accessor culls/dedups by tile) — long roads are the only
+    notable duplication, still cheap. Backdrop polygons (coast/water/beach) stay
+    global in the manifest (few, and the per-cell RLE is the surface source of
+    truth for physics/rasterised render)."""
+    tiles_dir = os.path.join(WORLD2D_DIR, "tiles")
+    if os.path.isdir(tiles_dir):
+        for fn in os.listdir(tiles_dir):
+            if fn.endswith(".json"):
+                os.remove(os.path.join(tiles_dir, fn))
+    os.makedirs(tiles_dir, exist_ok=True)
+
+    tcols = (GRID_COLS + TILE_CELLS - 1) // TILE_CELLS
+    trows = (GRID_ROWS + TILE_CELLS - 1) // TILE_CELLS
+    buckets = defaultdict(lambda: defaultdict(list))    # (tc,tr) -> key -> [feat]
+
+    def tiles_for_bbox(x0, y0, x1, y1):
+        c0 = max(0, int(x0 // TILE_PX)); c1 = min(tcols - 1, int(x1 // TILE_PX))
+        r0 = max(0, int(y0 // TILE_PX)); r1 = min(trows - 1, int(y1 // TILE_PX))
+        return [(tc, tr) for tr in range(r0, r1 + 1) for tc in range(c0, c1 + 1)]
+
+    def add_flat(key, feats):                # features with pts=[x,y,x,y,...]
+        for f in feats:
+            p = f.get("pts") or []
+            if len(p) < 2:
+                continue
+            xs, ys = p[0::2], p[1::2]
+            for t in tiles_for_bbox(min(xs), min(ys), max(xs), max(ys)):
+                buckets[t][key].append(f)
+
+    def add_point(key, feats):               # features with {x,y,(r)}
+        for f in feats:
+            rr = f.get("r", 0)
+            for t in tiles_for_bbox(f["x"] - rr, f["y"] - rr, f["x"] + rr, f["y"] + rr):
+                buckets[t][key].append(f)
+
+    add_flat("roads", roads)
+    add_flat("rails", rails)
+    add_flat("medians", medians)
+    add_flat("buildings", buildings)
+    add_point("trees", trees)
+    add_point("palms", palms)
+    add_point("mangroves", mangroves)
+    # plazas are [x,y,w,h] rects; islands are {kind, pts:[[x,y],...]} pairs
+    for pz in plazas:
+        x, y, w, h = pz
+        for t in tiles_for_bbox(x, y, x + w, y + h):
+            buckets[t]["plazas"].append(pz)
+    for isl in islands:
+        pts = isl["pts"]
+        flat = [v for xy in pts for v in xy] if pts and isinstance(pts[0], (list, tuple)) else pts
+        xs, ys = flat[0::2], flat[1::2]
+        if not xs:
+            continue
+        for t in tiles_for_bbox(min(xs), min(ys), max(xs), max(ys)):
+            buckets[t]["islands"].append({"kind": isl["kind"], "pts": flat})
+
+    def tile_slab(tc, tr):
+        c0, r0 = tc * TILE_CELLS, tr * TILE_CELLS
+        cw = min(TILE_CELLS, GRID_COLS - c0)
+        ch = min(TILE_CELLS, GRID_ROWS - r0)
+        sub = bytearray(cw * ch)
+        for rr in range(ch):
+            s = (r0 + rr) * GRID_COLS + c0
+            sub[rr * cw:(rr + 1) * cw] = grid[s:s + cw]
+        return cw, ch, rle_encode(sub)
+
+    n_tiles = 0
+    for tr in range(trows):
+        for tc in range(tcols):
+            cw, ch, rle = tile_slab(tc, tr)
+            b = buckets.get((tc, tr), {})
+            tile = {"tc": tc, "tr": tr, "x": tc * TILE_PX, "y": tr * TILE_PX,
+                    "cols": cw, "rows": ch, "rle": rle}
+            for key, feats in b.items():
+                tile[key] = feats
+            with open(os.path.join(tiles_dir, f"{tc}_{tr}.json"), "w", encoding="utf-8") as f:
+                json.dump(tile, f, ensure_ascii=False, separators=(",", ":"))
+            n_tiles += 1
+
+    # districts as 2-D polys — planar arranges the barrios west→east along the
+    # spit, so the x-band edges become full-height rectangles (a working
+    # point-in-poly approximation; true 2-D rings are a later refinement).
+    dist_out = []
+    for d in districts:
+        x0, x1 = d["x0"], d["x1"]
+        dist_out.append({"id": d["id"], "name": d["name"], "short": d.get("short"),
+                         "tone": d["tone"], "x0": x0, "x1": x1,
+                         "poly": [x0, 0, x1, 0, x1, CANVAS_H, x0, CANVAS_H]})
+
+    manifest = {
+        "meta": {**meta, "tilePx": TILE_PX, "tileCells": TILE_CELLS,
+                 "tileCols": tcols, "tileRows": trows},
+        "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES},
+        "districts": dist_out,
+        "landmarks": landmarks, "customers": customers, "stages": stages,
+        "bridge": bridge, "estuary": estuary, "pier": pier, "hills": hills,
+        "beaches": beaches, "waters": waters, "landPolys": land_polys,
+    }
+    with open(os.path.join(WORLD2D_DIR, "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
+
+    total = os.path.getsize(os.path.join(WORLD2D_DIR, "manifest.json"))
+    total += sum(os.path.getsize(os.path.join(tiles_dir, fn))
+                 for fn in os.listdir(tiles_dir))
+    print(f"[emit] src/world2d/ — {tcols}x{trows}={n_tiles} tiles + manifest, "
+          f"{total/1024:.0f} KB total")
+
 
 # ------------------------------------------------------------------- main ---
 
@@ -1889,6 +2081,17 @@ def _planar_setup(ways):
         lo0, la0, lo1, la1 = (float(v) for v in PLANAR_BBOX.split(","))
         (a0, b0), (a1, b1) = to_m(la0, lo0), to_m(la1, lo1)
         clip = (min(a0, a1), min(b0, b1), max(a0, a1), max(b0, b1))
+        # Drop ways entirely outside the clip so stray inland geometry never
+        # inflates the bounds, gets rasterised at the world edge, or pollutes
+        # edge tiles. A way with ANY point inside (or crossing) the clip stays.
+        m = 300.0                                    # keep a small crossing margin
+        inside = lambda p: (clip[0] - m <= p[0] <= clip[2] + m and
+                            clip[1] - m <= p[1] <= clip[3] + m)
+        kept = [w for w in ways if any(inside(p) for p in w["pts"])]
+        dropped = len(ways) - len(kept)
+        ways[:] = kept
+        if dropped:
+            print(f"[planar] dropped {dropped} ways entirely outside the clip bbox")
     mxs, mys = [], []
     for w in ways:
         for (mx, my) in w["pts"]:
@@ -1966,8 +2169,25 @@ def main():
     chains = extract_coastlines(sp, ways)
     print(f"[coast] {len(chains)} stitched chains from natural=coastline")
     raster_coast_barrier(barrier, sp, chains, nodes)
-    sea_seeds = [sp.to_px(*sp.project_m(to_m(*p))[:2]) for p in PROBE_SEA]
-    sea_seeds += [(2, 2), (2, CANVAS_H - 2), (CANVAS_W - 2, 2)]
+    if PLANAR:
+        # water bodies (estuary) are areas, not coastline — barrier their edges
+        # too so the flood can't leak across an un-barriered shore into the land
+        nb = raster_poly_barrier(barrier, waters)
+        print(f"[coast] +{nb} water-outline barrier cells (planar)")
+    if PLANAR:
+        # 2-D world: flood ONLY the open outer gulf (the entire west bbox edge
+        # is deep gulf, west of La Punta). Do NOT seed the estuary/inner water
+        # or the world corners — those either sit on inland land (draining it to
+        # water) or pour the flood through the harbour mouth into the whole
+        # peninsula + eastern lowland. The inner waters (estuary, rivers,
+        # mangroves) are stamped CLS_WATER from their polygons after the flood,
+        # so they don't need to be flooded; everything the gulf can't reach past
+        # the coastline stays land.
+        sea_seeds = [(2, y) for y in range(2, CANVAS_H, 200)]
+        sea_seeds.append(sp.to_px(*sp.project_m(to_m(*PROBE_SEA[0]))[:2]))
+    else:
+        sea_seeds = [sp.to_px(*sp.project_m(to_m(*p))[:2]) for p in PROBE_SEA]
+        sea_seeds += [(2, 2), (2, CANVAS_H - 2), (CANVAS_W - 2, 2)]
     flood_water(grid, barrier, sea_seeds)
 
     # sanity probes before painting details
@@ -2047,7 +2267,16 @@ def main():
                     ref = to_m(*spec["ll"])
                 else:
                     ref = None
-                # prefer candidates inside the corridor, nearest to ref
+                if PLANAR:
+                    # no corridor in planar: take the osm match nearest the spec
+                    # anchor, or (no anchor) nearest the candidates' own centroid
+                    # so a far stray duplicate name can't win.
+                    if ref is None:
+                        cx = sum(c[1][0] for c in cands) / len(cands)
+                        cy = sum(c[1][1] for c in cands) / len(cands)
+                        ref = (cx, cy)
+                    return min(cands, key=lambda c: dist(c[1], ref))[1], "osm"
+                # corridor: prefer candidates inside the corridor, nearest to ref
                 def score(cand):
                     s, d, _ = sp.project_m(cand[1])
                     pen = 0 if abs(d) < CORRIDOR_HALF_M else 1e6
@@ -2095,6 +2324,12 @@ def main():
         # placed exactly, no geo projection / drivable-nudge (decorative POIs
         # like monuments may sit on a median island, not a street).
         if "xy" in spec:
+            # A raw world position is a CORRIDOR-only monument (e.g. El Ancla on
+            # the unrolled avenue's gore). It has no geo anchor, so it's
+            # meaningless in the planar map — skip it (junction islands there come
+            # from real geometry, not this hand placement).
+            if PLANAR:
+                continue
             x, y = spec["xy"]
             landmarks.append({"id": spec["id"], "name": spec["name"], "x": round(x),
                               "y": round(y), "type": spec["type"], "district": spec["district"],
@@ -2468,44 +2703,54 @@ def main():
              {"x0": mata_x0, "x1": CANVAS_W - 600, "baseY": 600, "color": "#4c7848"}]
 
     # --- emit
-    data = {
-        "meta": {"W": CANVAS_W, "H": CANVAS_H, "centerY": CENTER_Y, "cell": GRID_CELL,
-                 "cuad": CUAD, "cuadsPerView": CUADS_PER_VIEW,
-                 "aceraPx": ACERA_CELLS * GRID_CELL,
-                 "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
-                 "spineLenM": round(sp.total)},
-        "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES, "rle": rle_encode(grid)},
-        "topY": topY, "botY": botY,
-        "roads": roads,
-        "rails": rails,
-        "islands": [{"kind": isl["kind"], "pts": [v for xy in isl["pts"] for v in xy]}
-                    for isl in junction_islands],
-        "buildings": buildings,
-        "landPolys": land_contours,
-        "beaches": beaches,
-        "waters": waters,
-        "mangroves": mangroves,
-        "palms": palms,
-        "hills": hills,
-        "medians": medians,
-        "trees": trees,
-        "plazas": plazas,
-        "districts": [{k: v for k, v in d.items()} for d in districts],
-        "landmarks": landmarks,
-        "customers": customers,
-        "stages": STAGES,
-        "bridge": bridge,
-        "estuary": est,
-        "pier": pier,
-    }
-    js = "// GENERATED by tools/build_world.py — do not edit by hand.\n" \
-         "export const WORLD_DATA = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
-    with open(OUT_PATH, "w", encoding="utf-8") as f:
-        f.write(js)
-    size = os.path.getsize(OUT_PATH)
-    print(f"[emit] {OUT_PATH} — {size/1024:.0f} KB")
-    if size > 2 * 1024 * 1024:
-        print("[emit] WARNING: over 2 MB budget")
+    meta = {"W": CANVAS_W, "H": CANVAS_H, "centerY": CENTER_Y, "cell": GRID_CELL,
+            "cuad": CUAD, "cuadsPerView": CUADS_PER_VIEW,
+            "aceraPx": ACERA_CELLS * GRID_CELL,
+            "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
+            "spineLenM": round(sp.total)}
+    if PLANAR:
+        # chunked/tiled emit → src/world2d/ (streamable full-OSM world)
+        emit_world2d(grid, meta=meta, districts=districts, roads=roads, rails=rails,
+                     buildings=buildings, trees=trees, palms=palms, mangroves=mangroves,
+                     medians=medians, plazas=plazas, islands=junction_islands,
+                     beaches=beaches, waters=waters, land_polys=land_contours,
+                     landmarks=landmarks, customers=customers, stages=STAGES,
+                     bridge=bridge, estuary=est, pier=pier, hills=hills)
+    else:
+        data = {
+            "meta": meta,
+            "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES, "rle": rle_encode(grid)},
+            "topY": topY, "botY": botY,
+            "roads": roads,
+            "rails": rails,
+            "islands": [{"kind": isl["kind"], "pts": [v for xy in isl["pts"] for v in xy]}
+                        for isl in junction_islands],
+            "buildings": buildings,
+            "landPolys": land_contours,
+            "beaches": beaches,
+            "waters": waters,
+            "mangroves": mangroves,
+            "palms": palms,
+            "hills": hills,
+            "medians": medians,
+            "trees": trees,
+            "plazas": plazas,
+            "districts": [{k: v for k, v in d.items()} for d in districts],
+            "landmarks": landmarks,
+            "customers": customers,
+            "stages": STAGES,
+            "bridge": bridge,
+            "estuary": est,
+            "pier": pier,
+        }
+        js = "// GENERATED by tools/build_world.py — do not edit by hand.\n" \
+             "export const WORLD_DATA = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
+        with open(OUT_PATH, "w", encoding="utf-8") as f:
+            f.write(js)
+        size = os.path.getsize(OUT_PATH)
+        print(f"[emit] {OUT_PATH} — {size/1024:.0f} KB")
+        if size > 2 * 1024 * 1024:
+            print("[emit] WARNING: over 2 MB budget")
 
     # --- debug renders
     if "--debug" in sys.argv or True:
@@ -2538,8 +2783,10 @@ def main():
                 return (156, 102, 68)
             return pal[grid[y * GRID_COLS + x]]
 
-        write_png(DEBUG_PNG, GRID_COLS, GRID_ROWS, rgb)
-        print(f"[debug] {DEBUG_PNG}")
+        # downsample the eyeball PNG so a huge planar grid renders in seconds
+        dbg_stride = max(1, max(GRID_COLS, GRID_ROWS) // 2500)
+        write_png(DEBUG_PNG, GRID_COLS, GRID_ROWS, rgb, stride=dbg_stride)
+        print(f"[debug] {DEBUG_PNG} (stride {dbg_stride})")
 
         # svg: vector features
         cls_color = {"trunk": "#d33", "trunk_link": "#d66", "primary": "#e80",
@@ -2581,11 +2828,9 @@ def main():
     # Note: the service worker (public/sw.js) uses runtime caching with a manual
     # CACHE version now that Vite fingerprints assets — no build-time stamping.
     if failures:
-        msg = f"[poi] BUILD INCOMPLETE — unresolved: {failures}"
-        if PLANAR:
-            print("[WARN] " + msg + "  (planar build — non-fatal while iterating)")
-        else:
-            raise SystemExit(msg)
+        # planar now resolves all POIs + stages (52/52 reachable) — gate is
+        # fatal in both modes so a regression fails the build loudly.
+        raise SystemExit(f"[poi] BUILD INCOMPLETE — unresolved: {failures}")
 
 
 if __name__ == "__main__":

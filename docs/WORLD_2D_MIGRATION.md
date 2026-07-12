@@ -25,14 +25,16 @@ corridor-unroll. **Locked decisions (do not re-litigate):**
 
 ## How to build / test the planar world
 ```
-# bounded smoke (fast; a sub-bbox), lon0,lat0,lon1,lat1:
-WORLD_PROJECTION=planar PLANAR_BBOX="-84.845,9.974,-84.825,9.982" python3 tools/build_world.py
-# full OSM (heavy — needs chunking, see below):
+# full planar Puntarenas (default bbox, ~160s, 26x16=416 tiles):
 WORLD_PROJECTION=planar python3 tools/build_world.py
+# bounded smoke (fast; a sub-bbox override), lon0,lat0,lon1,lat1:
+WORLD_PROJECTION=planar PLANAR_BBOX="-84.845,9.974,-84.825,9.982" python3 tools/build_world.py
 # knobs (env): PLANAR_PX_PER_M (default 1.6), ARCADE_STREET_MUL (default 2.2)
 ```
-Outputs today still go to `src/world/data.js` + `tools/debug_map.png` (a raster of the grid —
-open it to eyeball the projection). The corridor build is the default (no env var).
+Planar output → `src/world2d/manifest.json` + `src/world2d/tiles/<tc>_<tr>.json` (NOT
+`src/world/data.js`, which stays the untouched corridor build). Eyeball `tools/debug_map.png`
+(stride-downsampled raster of the grid). The corridor build is still the default (no env var)
+and writes `src/world/data.js` as before.
 
 ## Architecture: where the projection lives
 The whole build threads a projection object `sp` with `.project(p_m)->(x,y,i,d)`,
@@ -54,16 +56,45 @@ roads are polylines, delivery/spawns are 2-D. Corridor coupling in the engine is
       `road_width_px` (arcade widths), main() skips corridor hacks, robustness guards.
       **Verified:** bounded centro smoke builds end-to-end; the debug render shows the real
       spit at true scale with the real street grid, real cuadras, beaches, muelle pier.
-- [ ] **Phase 1 (remaining):**
-  - **Chunked/tiled emit** — full OSM as one `data.js` is ~10 MB+. Tile the grid (e.g. 2048
-    px) → `src/world2d/tiles/<col>_<row>.json` (RLE slab + per-tile roads/buildings/features)
-    + `manifest.json` (world size, tile size, px_per_m, districts, POIs). Replace the single
-    emit at `main()`'s `data = {...}` block for planar.
-  - **2-D districts** — replace `DISTRICT_BOUNDS_GEO` x-bands with district **polygons**
-    (currently degenerate x-strips in planar). Emit `{id,name,tone,poly}`.
-  - **POI re-anchor at full scale** — POIs place from their `ll`; a few coastal ones need
-    the water-nudge (`nudge_to_land`). Gate is non-fatal in planar while iterating; re-tighten
-    once districts/POIs settle.
+- [x] **Phase 1 (remaining) — chunked/tiled emit** (`emit_world2d` in `build_world.py`).
+      Tiles are `TILE_CUADS=100` → 2000 px. Output: `src/world2d/manifest.json` (meta+tiling,
+      districts w/ polys, POIs, backdrop coast/water/beach polys) + `src/world2d/tiles/
+      <tc>_<tr>.json` (RLE surface slab + roads/rails/buildings/trees/palms/mangroves/medians/
+      plazas/islands whose bbox overlaps the tile; border features duplicated into each tile —
+      accessor culls/dedups). **Verified:** tile slabs decode and reassemble to the full grid.
+- [x] **Phase 1 (remaining) — 2-D districts.** `emit_world2d` emits `{id,name,short,tone,
+      x0,x1,poly}`; `poly` = full-height rectangle from the west→east x-band edges (planar
+      arranges the barrios W→E along the spit — a working point-in-poly approx; true 2-D rings
+      are a later refinement).
+- [x] **World-size fix (plan risk #1).** `docs/map.osm` actually spans ~85×92 km (stray inland
+      highways/villages), NOT the documented Puntarenas bbox — projecting it whole gave a
+      1.24-billion-cell, 99.96%-water, 37-min build. Planar now defaults to
+      `PLANAR_FULL_BBOX="-84.9188,9.8539,-84.6328,10.0304"` (override via `PLANAR_BBOX`), and
+      `_planar_setup` drops ways entirely outside the clip so outliers can't inflate bounds or
+      pollute edge tiles.
+- [x] **Phase 1 (remaining) — POI re-anchor at full scale.** Fixed `resolve()` for planar (the
+      corridor `abs(d)<CORRIDOR_HALF_M` gate rejected valid OSM matches since planar `d` is a
+      world y-coord, not a perpendicular offset) → planar takes the OSM match nearest the spec
+      anchor (or the candidates' centroid when no anchor). Coastal POIs still use
+      `nudge_to_land`. `El Ancla` (raw corridor `xy` monument) is skipped in planar. Result:
+      34 landmarks / 18 customers resolve, **all 7 stages satisfied, gate 52/52 reachable** —
+      the POI/reachability gate is now **fatal in planar too** (was non-fatal while iterating).
+- [x] **Land/water flooding fix (the big one).** After un-gutting extraction, the whole
+      peninsula + eastern lowland still flooded to water (land was ~1.7k cells). Root causes,
+      all corridor-era assumptions wrong in 2-D, now fixed:
+  - `raster_coast_barrier` had the **same** `abs(project_m()[1])<=CORRIDOR_HALF_M+600` filter →
+    dropped every coast chain off lat 9.977. Guarded off in planar (all coast rasterised).
+  - Coastline is many segments with sub-cell joint gaps → `_stamp_barrier` thickens the barrier
+    to 3×3 in planar so the 1-cell supercover line can't leak.
+  - The Estero de Puntarenas (spit's north shore) is an OSM **area**, not coastline →
+    `raster_poly_barrier` rasterises `waters` outlines as flood barriers too.
+  - **Seeds:** planar floods ONLY the open outer gulf (the whole west bbox edge + gulf-W probe).
+    NOT the estuary/inner water or world corners — those seed the flood inside inland land or
+    pour it through the harbour mouth into the whole peninsula. Inner waters (estuary, rivers,
+    mangroves) are stamped `CLS_WATER` from their polygons after the flood, so they don't need
+    flooding. Result: **land 41.8M cells, 169 cuadras, 1663 plazas** — a real true-scale spit.
+    (Benign leftover: the estuary PROBE_SEA point warns "sea probe is LAND" — expected, it's
+    stamped water from its polygon, not flooded.)
 - [ ] **Phase 2** — `src/world2d/index.js`: tiled accessor mirroring the WORLD API
   (`surfaceAt/roadPointAt/buildingsNear/landmarkById/customerById/reachablePointNear/
   onElevated`); lazy tile load by camera; `districtAt(x,y)` point-in-polygon

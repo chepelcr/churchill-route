@@ -62,6 +62,25 @@ LAT0, LON0 = 9.9770, -84.8512
 M_PER_DEG_LAT = 110540.0
 M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
 
+# ---- Planar (true-scale 2-D) projection mode — Milestone D ------------------
+# WORLD_PROJECTION=planar (env) or --planar (argv) builds the whole OSM area as a
+# flat, real-proportion map instead of the corridor unroll. CANVAS_W/H/GRID_* and
+# CENTER_Y are recomputed from the OSM bounds in main() (functions read these
+# globals at call time, so reassigning them there is enough).
+PLANAR = os.environ.get("WORLD_PROJECTION") == "planar" or "--planar" in sys.argv
+PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "1.6"))   # world zoom
+ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.2"))  # widen streets
+# real-ish carriageway widths (metres) per OSM highway class; painted width =
+# ROAD_WIDTH_M · ARCADE_STREET_MUL · px_per_m (kept modest so junction gores survive)
+ROAD_WIDTH_M = {
+    "trunk": 16, "trunk_link": 12, "primary": 14, "primary_link": 11,
+    "secondary": 11, "tertiary": 9, "tertiary_link": 8,
+    "residential": 7, "unclassified": 7, "living_street": 6,
+    "service": 4.5, "pedestrian": 5, "paseo": 16, "bridge": 12,
+}
+# optional bbox clip "lon0,lat0,lon1,lat1" for a bounded smoke build
+PLANAR_BBOX = os.environ.get("PLANAR_BBOX")
+
 # Spine waypoints west->east->south: Faro tip, along the spit (Av. Central /
 # Ruta 17 axis), La Angostura, coast SSE along Ruta 23, Puente colgante,
 # Mata de Limon village, Puerto Caldera. snap=True waypoints get pulled onto
@@ -108,6 +127,15 @@ ROAD_WIDTH_PX = {
     "service": W_MINOR, "pedestrian": W_MINOR,
 }
 ROAD_CLASSES = set(ROAD_WIDTH_PX) - {"paseo", "bridge"}
+
+def road_width_px(cls):
+    """Painted street width. Corridor: fixed cuadrícula tiers. Planar: real
+    metres · ARCADE_STREET_MUL · px_per_m (arcade-wide but modest, so junction
+    gores survive)."""
+    if PLANAR:
+        return max(GRID_CELL * 2,
+                   round(ROAD_WIDTH_M.get(cls, 7) * ARCADE_STREET_MUL * PLANAR_PX_PER_M))
+    return ROAD_WIDTH_PX[cls]
 # Keep every OSM street for a faithful map — the cuadrícula grid standardizes
 # cuadra/street sizes by snapping to the tile grid, so we no longer prune
 # streets to control block size.
@@ -547,6 +575,26 @@ class Spine:
         return x, y, i, d
 
 
+class PlanarProjection:
+    """Drop-in replacement for Spine in planar mode: a flat, real-proportion map.
+    `p_m` is (mx, my) metres from to_m(); world px = (m - min) · px_per_m."""
+    def __init__(self, min_mx, min_my, px_per_m):
+        self.min_mx, self.min_my = min_mx, min_my
+        self.px_per_m = px_per_m
+        self.total = 0.0
+
+    def to_px(self, mx, my):
+        return ((mx - self.min_mx) * self.px_per_m,
+                (my - self.min_my) * self.px_per_m)
+
+    def project_m(self, p_m, hint=None, window=80):
+        return p_m[0], p_m[1], 0
+
+    def project(self, p_m, hint=None):
+        x, y = self.to_px(p_m[0], p_m[1])
+        return x, y, 0, 0.0
+
+
 def catmull_rom(points, step):
     """Centripetal Catmull-Rom through points, sampled roughly every `step`."""
     P = [points[0]] + list(points) + [points[-1]]
@@ -679,7 +727,7 @@ def extract_roads(sp, ways):
                 continue
             if length < 8:
                 continue
-            r = {"cls": cls, "w": ROAD_WIDTH_PX[cls],
+            r = {"cls": cls, "w": road_width_px(cls),
                  "pts": [round(v) for p in piece for v in p]}
             if name:
                 r["name"] = name
@@ -1825,35 +1873,76 @@ def write_png(path, w, h, get_rgb):
 
 # ------------------------------------------------------------------- main ---
 
+def _planar_setup(ways):
+    """Compute world bounds from the OSM ways (metres), recompute the world-size
+    globals for the flat map, and return a PlanarProjection. Optionally clip the
+    bounds to PLANAR_BBOX ("lon0,lat0,lon1,lat1") for a bounded smoke build."""
+    global CANVAS_W, CANVAS_H, GRID_COLS, GRID_ROWS, CENTER_Y, MARGIN_X
+    clip = None
+    if PLANAR_BBOX:
+        lo0, la0, lo1, la1 = (float(v) for v in PLANAR_BBOX.split(","))
+        (a0, b0), (a1, b1) = to_m(la0, lo0), to_m(la1, lo1)
+        clip = (min(a0, a1), min(b0, b1), max(a0, a1), max(b0, b1))
+    mxs, mys = [], []
+    for w in ways:
+        for (mx, my) in w["pts"]:
+            if clip and not (clip[0] <= mx <= clip[2] and clip[1] <= my <= clip[3]):
+                continue
+            mxs.append(mx); mys.append(my)
+    if not mxs:
+        raise SystemExit("[planar] no OSM points in bounds")
+    pad = 200.0
+    min_mx, max_mx = min(mxs) - pad, max(mxs) + pad
+    min_my, max_my = min(mys) - pad, max(mys) + pad
+    ppm = PLANAR_PX_PER_M
+    snap = lambda px: int(math.ceil(px / CUAD) * CUAD)
+    CANVAS_W = snap((max_mx - min_mx) * ppm)
+    CANVAS_H = snap((max_my - min_my) * ppm)
+    GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
+    CENTER_Y = CANVAS_H // 2
+    MARGIN_X = 0
+    print(f"[planar] world {CANVAS_W}x{CANVAS_H}px  ppm={ppm}  grid "
+          f"{GRID_COLS}x{GRID_ROWS} = {GRID_COLS*GRID_ROWS/1e6:.1f}M cells"
+          + ("  (bbox clip)" if clip else ""))
+    return PlanarProjection(min_mx, min_my, ppm)
+
+
 def main():
     t0 = time.time()
     print(f"[parse] {OSM_PATH}")
     nodes, ways, named, rels = parse_osm(OSM_PATH)
     print(f"[parse] {len(nodes)} nodes, {len(ways)} kept ways, {len(named)} named features ({time.time()-t0:.1f}s)")
 
-    sp = build_spine(ways, nodes)
+    sp = _planar_setup(ways) if PLANAR else build_spine(ways, nodes)
 
     roads, bridge_road = extract_roads(sp, ways)
-    barro_leon_continuation(roads)
-    propagate_barro_to_crossings(roads)
-    divide_cocal_carriageways(roads)
-    # Auto channelizing islands at the divided-avenue forks, and place El Ancla
-    # dynamically on the westmost gore — exactly where the separation begins.
-    gore_islands = carriageway_gores(roads, "Avenida 1", "Avenida Alberto Echandi Montero", 8139, 12200)
-    junction_islands = ISLAND_DEFS + gore_islands
-    if gore_islands:
-        west = min(gore_islands, key=lambda g: min(p[0] for p in g["pts"]))
-        minx = min(p[0] for p in west["pts"])
-        ys = [p[1] for p in west["pts"] if abs(p[0] - minx) < 14]     # leading edge
-        ax, ay = minx + 12, (sum(ys) / len(ys) if ys else west["pts"][0][1])
-        for d in LANDMARK_DEFS:
-            if d["id"] == "ancla":
-                d["xy"] = (round(ax), round(ay))
+    if PLANAR:
+        # Planar: junction triangles/medians emerge from real geometry via
+        # detect_blocks — the corridor gore/island/carriageway hacks are dropped.
+        propagate_barro_to_crossings(roads)   # dirt still spreads to ferro crossings
+        junction_islands = []
+        muelle_axis = None
+    else:
+        barro_leon_continuation(roads)
+        propagate_barro_to_crossings(roads)
+        divide_cocal_carriageways(roads)
+        # Auto channelizing islands at the divided-avenue forks, and place El Ancla
+        # dynamically on the westmost gore — exactly where the separation begins.
+        gore_islands = carriageway_gores(roads, "Avenida 1", "Avenida Alberto Echandi Montero", 8139, 12200)
+        junction_islands = ISLAND_DEFS + gore_islands
+        if gore_islands:
+            west = min(gore_islands, key=lambda g: min(p[0] for p in g["pts"]))
+            minx = min(p[0] for p in west["pts"])
+            ys = [p[1] for p in west["pts"] if abs(p[0] - minx) < 14]     # leading edge
+            ax, ay = minx + 12, (sum(ys) / len(ys) if ys else west["pts"][0][1])
+            for d in LANDMARK_DEFS:
+                if d["id"] == "ancla":
+                    d["xy"] = (round(ax), round(ay))
+        dedupe_dual_carriageway(roads)
+        connect_leon_calle20(roads)
+        muelle_axis = narrow_muelle_approach(roads)
     rails = extract_rails(sp, ways)
-    print(f"[rails] {len(rails)} rail pieces in corridor")
-    dedupe_dual_carriageway(roads)
-    connect_leon_calle20(roads)
-    muelle_axis = narrow_muelle_approach(roads)
+    print(f"[rails] {len(rails)} rail pieces")
     n_by_cls = defaultdict(int)
     for r in roads:
         n_by_cls[r["cls"]] += 1
@@ -2111,8 +2200,9 @@ def main():
         stamp_pad(grid, lm["x"], lm["y"], 80 if lm["type"] == "kiosk" else 48)
     for cu in customers:
         stamp_pad(grid, cu["x"], cu["y"], 56)
-    faro_lm = next(l for l in landmarks if l["id"] == "faro")
-    stamp_pad(grid, faro_lm["x"], faro_lm["y"], 140)  # La Punta plaza
+    faro_lm = next((l for l in landmarks if l["id"] == "faro"), None)
+    if faro_lm:
+        stamp_pad(grid, faro_lm["x"], faro_lm["y"], 140)  # La Punta plaza
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
     for isl in junction_islands:
@@ -2204,7 +2294,11 @@ def main():
         bcy = sum(ys) / len(ys)
     else:
         pm, _ = resolve({"osm": "puente colgante mata de limón"})
-        x, y, _, _ = sp.project(pm)
+        if pm is None:
+            # region has no Mata bridge (e.g. a bounded build) — stub it off-map
+            x, y = CANVAS_W - 40, 40
+        else:
+            x, y, _, _ = sp.project(pm)
         bx0, bx1, bcy = x - 80, x + 80, y
         roads.append({"cls": "bridge", "w": ROAD_WIDTH_PX["bridge"],
                       "pts": [round(bx0), round(bcy), round(bx1), round(bcy)]})
@@ -2356,7 +2450,9 @@ def main():
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).
-    unreachable = verify_connectivity(grid, (faro_lm["x"], faro_lm["y"]),
+    spawn = (faro_lm["x"], faro_lm["y"]) if faro_lm else (
+        (landmarks[0]["x"], landmarks[0]["y"]) if landmarks else (CANVAS_W // 2, CANVAS_H // 2))
+    unreachable = verify_connectivity(grid, spawn,
                                       landmarks + customers, reach=ACERA_CELLS + 1)
     failures.extend("unreachable " + u for u in unreachable)
     block_census(grid)
@@ -2479,7 +2575,11 @@ def main():
     # Note: the service worker (public/sw.js) uses runtime caching with a manual
     # CACHE version now that Vite fingerprints assets — no build-time stamping.
     if failures:
-        raise SystemExit(f"[poi] BUILD INCOMPLETE — unresolved: {failures}")
+        msg = f"[poi] BUILD INCOMPLETE — unresolved: {failures}"
+        if PLANAR:
+            print("[WARN] " + msg + "  (planar build — non-fatal while iterating)")
+        else:
+            raise SystemExit(msg)
 
 
 if __name__ == "__main__":

@@ -182,10 +182,20 @@ Full plan lives in the approved plan file; status tracked here.
       (`/world2d.html`, not shipped) drives a car with the real physics against
       `WORLD2D.surfaceAt` — 100% on drivable surface, blocked by water/walls, districts
       update. Full 2-D Puntarenas is drivable.
-    - [ ] **NEXT (decided with user 2026-07-12):** (1) widen streets
-      `ARCADE_STREET_MUL 2.2→~3.2` (centro streets were 24–44px vs the 44px car — tight),
-      rebuild + re-verify gores/cuadras; (2) then build the **full PixiJS renderer**
-      (Milestone C seam) before wiring 2-D into the shipped game (modes/HUD/stages).
+    - [x] **Streets widened** `ARCADE_STREET_MUL 2.2→3.2` (`9be3c59`). Rebuilt (164s);
+      gores/cuadras survive (164 cuadras, 92.1% drivable, 52/52 POIs), residential 25→36px,
+      corridor median 72px. Re-verified: car drove 411px along-street at full speed.
+    - [x] **Phase 3 core — PixiJS/WebGL renderer** (`fa222ef`). `pixi.js` 8.19 +
+      `src/render/pixi/` (`World2DRenderer` camera-transformed layered containers, per-tile
+      surface `CanvasSource` textures, exact culling via `visibleTiles`) + shared
+      `src/world2d/drive.js`. Verified in `/world2d-pixi.html`: renders/drives/zoom-out.
+      Not behind the `Renderer.js` seam yet, so the shipped game is unchanged and `pixi.js`
+      stays out of the prod bundle.
+    - [ ] **NEXT:** (a) Pixi whole-map backdrop from manifest polys
+      (`LAND_POLYS/WATERS/BEACHES`) so extreme zoom-out isn't gapped by the ±3-tile window;
+      (b) **Phase 4 — wire `WORLD2D` into the shipped game** (modes/HUD/stages/delivery, async
+      `ready()/update()` in app init, physics water push-back, spawns sample water). Phase 4
+      changes the shipped game — checkpoint with user before starting.
 
 ## ✅ City-feel + mobile pass — done 2026-07-10
 

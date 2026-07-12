@@ -166,6 +166,26 @@ Full plan lives in the approved plan file; status tracked here.
     Chacarita/20-Nov street topology (the in-corridor "revoltijo" is partly an
     unroll artifact), and true block shapes — several World-fidelity items below
     fold into this.
+  - **PROGRESS (2026-07-12, branch `world-2d`; full log in `docs/WORLD_2D_MIGRATION.md`):**
+    - [x] **Phase 1 — planar world build.** `tools/build_world.py --planar` emits a
+      streamable tiled world → `src/world2d/manifest.json` + 416 `tiles/<tc>_<tr>.json`
+      (26×16 @2000px; world 50820×31860 @1.6px/m, ~160s). Real true-scale Puntarenas
+      (spit + Barranca/Esparza + Mata Limón/Caldera), 169 cuadras, all 7 stages, POI
+      gate 52/52. Corridor `src/world/data.js` untouched (still the shipped game).
+      Big fixes: `map.osm` spans ~85×92 km (clip to a Puntarenas bbox); a land-flooding
+      bug (corridor filters gutted 2-D extraction) — fixed via full-coastline + water-poly
+      flood barriers seeded only from the open gulf.
+    - [x] **Phase 2 — streaming accessor** `src/world2d/index.js` (`WORLD2D`): mirrors the
+      `WORLD` API, streams tiles by camera (`ready/update/visibleTiles`), `districtAt` by
+      nearest POI-centroid (x-strips can't separate N–S Mata/Caldera). Verified in-browser.
+    - [~] **Phase 3/4 groundwork — traversability PROVEN.** Dev smoke viewer
+      (`/world2d.html`, not shipped) drives a car with the real physics against
+      `WORLD2D.surfaceAt` — 100% on drivable surface, blocked by water/walls, districts
+      update. Full 2-D Puntarenas is drivable.
+    - [ ] **NEXT (decided with user 2026-07-12):** (1) widen streets
+      `ARCADE_STREET_MUL 2.2→~3.2` (centro streets were 24–44px vs the 44px car — tight),
+      rebuild + re-verify gores/cuadras; (2) then build the **full PixiJS renderer**
+      (Milestone C seam) before wiring 2-D into the shipped game (modes/HUD/stages).
 
 ## ✅ City-feel + mobile pass — done 2026-07-10
 

@@ -1,7 +1,10 @@
 // La Ruta del Churchill — Canvas2D render backend (extracted from engine.js).
-// Milestone C swaps this for a PixiJS backend behind render/Renderer.js.
+// Renders the streamed 2-D world (WORLD2D): a low-res backdrop (land/water/beach
+// silhouette) under per-tile surface blits + per-tile buildings, then the shared
+// entity/overlay drawers (player, traffic, peds, gulls, weather, minimap). The
+// Pixi backend (src/render/pixi) is the WebGL alternative behind Renderer.js.
 // The game loop (src/game/index.js) calls setupCanvas(canvas) then render(t).
-import { WORLD as W } from "../world/index.js";
+import { WORLD2D as W } from "../world2d/index.js";
 import {
   state, traffic, pedestrians, gulls, boats, parked, vendors, animals,
 } from "../game/state.js";
@@ -104,28 +107,57 @@ import { nearestKiosk } from "../game/delivery.js";
     tertiary: 4, tertiary_link: 4, secondary: 5, primary_link: 6,
     primary: 7, trunk_link: 8, trunk: 9, paseo: 10, bridge: 11,
   };
+  // Backdrop silhouette cache: land / inner water / beach polygons are global on
+  // WORLD2D (few, low-res). Drawn under the streamed surface tiles so unloaded /
+  // far areas still read as the real Puntarenas shape.
   function ensureRenderCache() {
     if (RC) return RC;
-    RC = { land: [], beach: [], water: [], roads: [], buildings: [], medians: [], landAll: new Path2D(), plazas: new Path2D() };
-    for (const m of W.MEDIANS) RC.medians.push({ path: flatPath(m.pts, false), w: m.w, aabb: flatAABB(m.pts) });
-    for (const p of W.PLAZAS) RC.plazas.rect(p[0], p[1], p[2], p[3]);
-    for (const poly of W.LAND_POLYS) {
-      const path = flatPath(poly, true);
-      RC.land.push({ path, aabb: flatAABB(poly) });
-      RC.landAll.addPath(path);
-    }
-    for (const poly of W.BEACHES) RC.beach.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
-    for (const poly of W.WATERS) RC.water.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
-    for (let i = 0; i < W.ROADS.length; i++) {
-      const r = W.ROADS[i];
-      RC.roads.push({ i, r, path: flatPath(r.pts, false) });
-    }
-    RC.roads.sort((a, b) => (ROAD_ORDER[a.r.cls] || 0) - (ROAD_ORDER[b.r.cls] || 0));
-    for (const b of W.BUILDINGS) RC.buildings.push({ b, path: flatPath(b.pts, true) });
+    RC = { land: [], beach: [], water: [] };
+    for (const poly of W.LAND_POLYS || []) if (poly.length >= 6) RC.land.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
+    for (const poly of W.BEACHES || []) if (poly.length >= 6) RC.beach.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
+    for (const poly of W.WATERS || []) if (poly.length >= 6) RC.water.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
     return RC;
   }
   function aabbInView(a, view, pad) {
     return !(a.x1 + pad < view.x0 || a.x0 - pad > view.x1 || a.y1 + pad < view.y0 || a.y0 - pad > view.y1);
+  }
+
+  // Per-tile surface grid -> a cached cols×rows canvas, blitted scaled (nearest).
+  const CLASS_COLOR = { 0: "#2a7fa8", 1: "#e8d5a0", 2: "#f4d77a", 3: "#3a3540", 4: "#f08a5d", 5: "#8c8c8c", 6: "#cec7b2" };
+  const _tileCanvas = new WeakMap();
+  function surfaceCanvas(t) {
+    let cv = _tileCanvas.get(t); if (cv) return cv;
+    cv = document.createElement("canvas"); cv.width = t.cols; cv.height = t.rows;
+    const g = cv.getContext("2d"), img = g.createImageData(t.cols, t.rows);
+    for (let i = 0; i < t.grid.length; i++) {
+      const c = CLASS_COLOR[t.grid[i]] || "#f0f";
+      img.data[i * 4] = parseInt(c.slice(1, 3), 16);
+      img.data[i * 4 + 1] = parseInt(c.slice(3, 5), 16);
+      img.data[i * 4 + 2] = parseInt(c.slice(5, 7), 16);
+      img.data[i * 4 + 3] = 255;
+    }
+    g.putImageData(img, 0, 0); _tileCanvas.set(t, cv); return cv;
+  }
+  // Backdrop (land/water/beach silhouette) for the whole visible span.
+  function drawBackdrop(view) {
+    const rc = ensureRenderCache();
+    ctx.fillStyle = "#e8d5a0"; for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
+    ctx.fillStyle = "#2a7fa8"; for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) ctx.fill(w.path);
+    ctx.fillStyle = "#f4d77a"; for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.fill(b.path);
+  }
+  // Streamed surface tiles + their buildings (only resident tiles in view).
+  function drawTiles(view) {
+    const prevSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    const vts = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
+    for (const t of vts) ctx.drawImage(surfaceCanvas(t), t.x, t.y, t.cols * W.CELL, t.rows * W.CELL);
+    ctx.imageSmoothingEnabled = prevSmoothing;
+    ctx.fillStyle = "rgba(120,80,55,.9)";
+    for (const t of vts) for (const b of t.buildings) {
+      const p = b.pts; ctx.beginPath();
+      for (let i = 0; i < p.length; i += 2) { i ? ctx.lineTo(p[i], p[i + 1]) : ctx.moveTo(p[i], p[i + 1]); }
+      ctx.fill();
+    }
   }
 
   function drawLand(view) {
@@ -933,7 +965,9 @@ import { nearestKiosk } from "../game/delivery.js";
     if (state.mode !== "explore" || !state.barriers) return;
     for (const br of state.barriers) {
       if (br.x < view.x0 - 30 || br.x > view.x1 + 30) continue;
-      const yTop = W.topY(br.x), yBot = W.botY(br.x);
+      // vertical wall spanning the visible height (the 2-D world has no corridor
+      // topY/botY; the peninsula runs west->east so an x-wall gates progression)
+      const yTop = view.y0, yBot = view.y1;
       // striped barrier sign + cones
       const segH = 12;
       for (let y = yTop + 6; y < yBot - 6; y += segH) {
@@ -1210,31 +1244,26 @@ import { nearestKiosk } from "../game/delivery.js";
     roundRect(ctx, mx, my, mw, mh, 10, true, false);
     // Water bg
     ctx.fillStyle = "#3a8a99"; ctx.fillRect(mx + 4, my + 4, mw - 8, mh - 8);
-    // Peninsula silhouette — sampled land extents (same y mapping as the target dot)
-    ctx.fillStyle = "#caa56a";
-    ctx.beginPath();
+    // Peninsula silhouette — real land polygons (WORLD2D backdrop), mapped with
+    // the same world->mini transform as the player/target dots.
     const innerW = mw - 12; const innerX = mx + 6;
     const innerY = my + mh / 2;
     const centerY = (W.META && W.META.centerY) || W.H / 2;
     const halfSpan = Math.max(centerY, W.H - centerY);
     const yScale = (mh / 2 - 6) / halfSpan;
     const clampMapY = (sy) => Math.max(my + 4, Math.min(my + mh - 4, sy));
-    for (let i = 0; i <= 60; i++) {
-      const t = i / 60;
-      const wx = t * W.W;
-      const sx = innerX + t * innerW;
-      const sy = clampMapY(innerY + (W.topY(wx) - centerY) * yScale);
-      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    const mapX = (wx) => innerX + (wx / W.W) * innerW;
+    const mapY = (wy) => clampMapY(innerY + (wy - centerY) * yScale);
+    ctx.fillStyle = "#caa56a";
+    for (const poly of W.LAND_POLYS || []) {
+      if (poly.length < 6) continue;
+      ctx.beginPath();
+      for (let i = 0; i < poly.length; i += 2) {
+        const sx = mapX(poly[i]), sy = mapY(poly[i + 1]);
+        i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy);
+      }
+      ctx.closePath(); ctx.fill();
     }
-    for (let i = 60; i >= 0; i--) {
-      const t = i / 60;
-      const wx = t * W.W;
-      const sx = innerX + t * innerW;
-      const sy = clampMapY(innerY + (W.botY(wx) - centerY) * yScale);
-      ctx.lineTo(sx, sy);
-    }
-    ctx.closePath();
-    ctx.fill();
     // district markers
     ctx.font = "8px 'JetBrains Mono', monospace"; ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.textAlign = "center";
     for (const d of W.DISTRICTS) {
@@ -1242,8 +1271,8 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.fillText(d.short.toUpperCase(), xa, my + mh - 6);
     }
     // player dot
-    const px = innerX + (state.p.x / W.W) * innerW;
-    ctx.fillStyle = "#ffe06b"; ctx.beginPath(); ctx.arc(px, innerY, 4, 0, Math.PI * 2); ctx.fill();
+    const px = mapX(state.p.x), py = mapY(state.p.y);
+    ctx.fillStyle = "#ffe06b"; ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
     // target
     const tgt = state.carrying ? state.carrying.customer : nearestKiosk(state.p).lm;
     if (tgt) {
@@ -1281,27 +1310,16 @@ import { nearestKiosk } from "../game/delivery.js";
 
     // Sky/water everywhere (drawn in world coords across viewport)
     drawWaterAll(view, t);
-    // Hills behind Mata de Limón mainland (over the water, before land)
-    drawHills(view);
+    // Real-Puntarenas backdrop silhouette (land/water/beach), under the tiles so
+    // far/unloaded areas still read correctly at any zoom.
+    drawBackdrop(view);
     // Boats (behind land)
     for (const b of boats) {
       if (b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
       drawBoat(b);
     }
-    drawLand(view);
-    // Estuary (water hole inside the mainland) + mangroves
-    drawEstuary(view);
-    drawMangroves(view);
-    drawStreets(view);
-    drawRails(view);
-    drawMedians(view);
-    drawIslands(view);
-    drawPier(view);
-    drawBridge(view);
-    drawStreetLabels(view);
-    drawTrees(view);
-    drawPalms(view, t);
-    drawBuildings(view);
+    // Streamed surface tiles (roads/cuadras/beach/paseo/pier) + buildings.
+    drawTiles(view);
     drawBarriers(view);
     // Landmarks (the bridge has its own drawer)
     for (const lm of W.LANDMARKS) {

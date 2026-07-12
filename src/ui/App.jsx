@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../game/index.js";
-import { WORLD } from "../world/index.js";
+import { WORLD2D as WORLD } from "../world2d/index.js";
 import TitleScreen from "./screens/TitleScreen.jsx";
 import StageSelect from "./screens/StageSelect.jsx";
 import HUD from "./screens/HUD.jsx";

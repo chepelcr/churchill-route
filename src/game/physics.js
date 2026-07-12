@@ -1,13 +1,17 @@
 // Per-frame simulation: driving physics, surface handling, collisions
 // (cuadras, buildings, barriers, traffic, pedestrians), delivery proximity,
 // melt, camera follow, and entity advancement.
-import { WORLD as W } from "../world/index.js";
+import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouchAim } from "./input.js";
-import { placeCar, updateAnimals } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
+
+// surface classes traffic drives on (road) and pedestrians walk on (acera/road)
+const TRAFFIC_CLS = [3];
+const PED_CLS = [6, 3];
 
 // ----- Polygon collision helpers ------------------------------------------
 function pointInPoly(x, y, pts) {
@@ -94,10 +98,12 @@ export function update(dt) {
 
   const prevX = p.x, prevY = p.y;
   p.x += p.vx * dt; p.y += p.vy * dt;
-  // Solid cuadras + aceras: you drive only on the streets. Block interiors
-  // (class 1 land, class 6 acera/curb, and the paseo median) are walls you
-  // slide along — kill only the blocked axis so tangential motion carries you.
-  const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6; };
+  // Solid cuadras + aceras + open water: you drive only on the streets /
+  // peninsula. Block interiors (class 1 land, class 6 acera/curb) AND water
+  // (class 0) are walls you slide along — kill only the blocked axis so
+  // tangential motion carries you. On the 2-D world, water-as-wall replaces the
+  // old corridor topY/botY bounds (the pier deck, class 5, stays drivable).
+  const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0; };
   if (isWall(p.x, p.y)) {
     const okX = !isWall(p.x, prevY);
     const okY = !isWall(prevX, p.y);
@@ -111,17 +117,13 @@ export function update(dt) {
   }
   p.speed = Math.hypot(p.vx, p.vy);
 
-  // Peninsula bounds: push back into land if we slid in water too far.
-  // Skip while on a drivable surface (road/paseo/bridge-pier deck) so the
-  // player can ride the Muelle out past the shoreline.
-  const topY = W.topY(p.x), botY = W.botY(p.x);
-  const surfNow = W.surfaceAt(p.x, p.y);
-  if (surfNow !== 3 && surfNow !== 4 && surfNow !== 5) {
-    if (p.y < topY - 30) { p.y = topY - 30; p.vy = Math.abs(p.vy) * 0.4; }
-    if (p.y > botY + 30) { p.y = botY + 30; p.vy = -Math.abs(p.vy) * 0.4; }
-  }
+  // On the 2-D world the coastline is enforced by water-as-wall above, so the
+  // old corridor peninsula push-back (topY/botY) is gone. Just clamp to the
+  // world rect as a final safety net.
   if (p.x < 12) { p.x = 12; p.vx = Math.abs(p.vx) * 0.3; }
   if (p.x > W.W - 12) { p.x = W.W - 12; p.vx = -Math.abs(p.vx) * 0.3; }
+  if (p.y < 12) { p.y = 12; p.vy = Math.abs(p.vy) * 0.3; }
+  if (p.y > W.H - 12) { p.y = W.H - 12; p.vy = -Math.abs(p.vy) * 0.3; }
   if (inWater && Math.random() < 0.06) state.cam.shake = Math.max(state.cam.shake, 2);
 
   // Building collisions (polygon buildings via spatial hash)
@@ -152,7 +154,7 @@ export function update(dt) {
   // District identity: fire a "you entered X" title card when the player
   // crosses into a new band (free-roam modes only), and age out the card.
   if (state.mode === "explore" || state.mode === "arcade") {
-    const d = W.districtAt(p.x);
+    const d = W.districtAt(p.x, p.y);
     if (d && d.id !== state.district) {
       // suppress the very first assignment (spawn) so it doesn't pop on start
       if (state.district !== null) state.districtToast = { id: d.id, name: d.name, tone: d.tone, t: 0 };
@@ -213,6 +215,11 @@ export function update(dt) {
   cam.y = Math.max(p.y - maxOy, Math.min(p.y + maxOy, cam.y));
   cam.shake = Math.max(0, cam.shake - dt * 22);
 
+  // Stream tiles around the camera and keep camera-local ambient life topped up.
+  W.update(cam.x, cam.y);
+  setSpawnCamera(cam.x, cam.y);
+  maintainStreaming();
+
   // Combo decay
   if (state.combo > 1) {
     state.comboTimer -= dt;
@@ -250,13 +257,12 @@ export function advanceEntities(dt, withPlayer = true) {
   for (const pt of state.particles) { pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.life -= dt; }
   state.particles = state.particles.filter(pt => pt.life > 0);
 
-  // Traffic — advance arclength along its road, wrap at the ends
+  // Traffic — drive along heading on the road grid (position-based; the streamed
+  // world has no global arclength). advanceOnSurface turns at corners / marks
+  // dead when boxed in, and maintainStreaming recycles it near the camera.
   for (const t of traffic) {
-    const len = W.roadLength(t.roadIdx);
-    t.s += t.dir * t.v * dt;
-    if (t.s < 0) t.s += len;
-    if (t.s > len) t.s -= len;
-    placeCar(t);
+    advanceOnSurface(t, dt, TRAFFIC_CLS, 0.008);
+    t.ang = Math.atan2(Math.sin(t.ang), Math.cos(t.ang));
     if (withPlayer && Math.abs(t.x - p.x) < 20 && Math.abs(t.y - p.y) < 14) {
       p.vx -= (t.x - p.x) * 0.5; p.vy -= (t.y - p.y) * 0.5;
       state.cam.shake = Math.max(state.cam.shake, 6);
@@ -264,29 +270,13 @@ export function advanceEntities(dt, withPlayer = true) {
     }
   }
 
-  // Pedestrians — walk the aceras; occasionally cross to the other sidewalk
+  // Pedestrians — walk the aceras / road edges; scatter from a speeding player
   for (const pe of pedestrians) {
-    const len = W.roadLength(pe.roadIdx);
     pe.ph += dt * 6;
-    if (pe.crossing) {
-      // slide the perpendicular offset from this acera, across the road, to the
-      // opposite acera over ~1.4s, then resume walking on that side
-      pe.crossPhase += dt * 0.72;
-      const tt = Math.min(1, pe.crossPhase);
-      pe.off = pe.side * pe.baseOff * (1 - 2 * tt);
-      if (tt >= 1) { pe.crossing = false; pe.side = -pe.side; pe.off = pe.side * pe.baseOff; }
-    } else {
-      pe.s += pe.v * dt;
-      if (pe.s < 10) { pe.s = 10; pe.v = Math.abs(pe.v); }
-      if (pe.s > len - 10) { pe.s = len - 10; pe.v = -Math.abs(pe.v); }
-      if (Math.random() < 0.0016) { pe.crossing = true; pe.crossPhase = 0; }
-    }
-    const pt = W.roadPointAt(pe.roadIdx, pe.s);
-    pe.x = pt.x - Math.sin(pt.ang) * pe.off;
-    pe.y = pt.y + Math.cos(pt.ang) * pe.off;
+    advanceOnSurface(pe, dt, PED_CLS, 0.03);
     if (withPlayer && Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
       for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
-      if (!pe.crossing) { pe.crossing = true; pe.crossPhase = 0; } // bolt across
+      pe.ang += Math.PI * (0.4 + Math.random() * 0.6); // bolt away
     }
   }
 
@@ -296,8 +286,8 @@ export function advanceEntities(dt, withPlayer = true) {
   for (const g of gulls) {
     g.x += g.vx * dt; g.y += g.vy * dt; g.ph += dt * 8;
     if (g.x < 0) g.x = W.W; if (g.x > W.W) g.x = 0;
-    const top2 = W.topY(g.x), bot = W.botY(g.x);
-    if (g.y > top2 - 20 && g.y < bot + 20) g.vy = (g.y < (top2+bot)/2 ? -1 : 1) * Math.abs(g.vy || 20);
+    // Gulls hover over open water; if one drifts over land, steer it back.
+    if (!W.inWater(g.x, g.y)) g.vy = -g.vy || 20;
     if (withPlayer && state.carrying && Math.hypot(g.x - p.x, g.y - p.y) < 70 && Math.random() < 0.005) {
       if (Math.random() < 0.3) dropChurchill();
     }

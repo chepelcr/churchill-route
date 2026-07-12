@@ -1,201 +1,154 @@
-// World-entity spawning: traffic, pedestrians, ambient life (parked cars,
-// vendor carts, stray animals), gulls and boats. Fills the shared arrays in
-// state.js; physics advances them each frame.
-import { WORLD as W } from "../world/index.js";
+// World-entity spawning for the streamed 2-D world (WORLD2D). Because only the
+// tiles around the camera are resident, ambient life (traffic, pedestrians,
+// vendors, animals, gulls, boats) is maintained *camera-local*: entities are
+// spawned near the camera on resident surfaces, advance by heading each frame,
+// and are recycled when they hit a wall or drift out of range. This replaces the
+// old global arclength model (place-once across the whole corridor via ROADS +
+// roadPointAt), which cannot work when most of the map isn't loaded.
+import { WORLD2D as W } from "../world2d/index.js";
 import { traffic, pedestrians, gulls, boats, parked, vendors, animals } from "./state.js";
 
-// Place a traffic car at its road arclength position (+ lane offset)
-export function placeCar(t) {
-  const pt = W.roadPointAt(t.roadIdx, t.s);
-  const nx = -Math.sin(pt.ang), ny = Math.cos(pt.ang);
-  t.x = pt.x + nx * t.lane;
-  t.y = pt.y + ny * t.lane;
-  t.ang = t.dir > 0 ? pt.ang : pt.ang + Math.PI;
-}
+// how far from the camera we keep life alive / spawn it (world px)
+const KEEP_R = 1400;
+const SPAWN_R = 1100;
+// target populations near the camera
+const TARGET = { traffic: 34, pedestrians: 48, vendors: 10, animals: 8, gulls: 16, boats: 6 };
+const CAR_PALETTE = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
 
-export function spawnTraffic() {
-  traffic.length = 0;
-  const palette = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
-  for (let ri = 0; ri < W.ROADS.length; ri++) {
-    const r = W.ROADS[ri];
-    const main = r.cls === "trunk" || r.cls === "trunk_link" || r.cls === "primary";
-    if (!main && r.cls !== "secondary") continue;
-    const len = W.roadLength(ri);
-    // density ∝ road length: main roads densest
-    const spacing = main ? 200 : 340;
-    const n = Math.floor(len / (spacing + Math.random() * 100));
-    for (let k = 0; k < n && traffic.length < 240; k++) {
-      const dir = Math.random() < 0.5 ? 1 : -1;
-      const car = {
-        roadIdx: ri, s: Math.random() * len, dir,
-        lane: (dir > 0 ? 1 : -1) * Math.max(8, r.w * 0.22),
-        v: main ? 70 + Math.random() * 40 : 48 + Math.random() * 28,
-        color: palette[Math.floor(Math.random() * palette.length)],
-        w: main ? 38 : 32, h: main ? 18 : 16,
-        kind: "car",
-        x: 0, y: 0, ang: 0,
-      };
-      if (main) {
-        const roll = Math.random();
-        if (roll < 0.15) { car.kind = "truck"; car.w = 46; car.h = 18; }
-        else if (roll < 0.24) { car.kind = "bus"; car.w = 56; car.h = 19; car.color = "#e0762e"; car.v *= 0.85; }
-      }
-      placeCar(car);
-      traffic.push(car);
-    }
-  }
-}
+// the camera the maintenance centres on (set each frame by physics)
+const _cam = { x: 0, y: 0 };
+export function setSpawnCamera(x, y) { _cam.x = x; _cam.y = y; }
 
-// The Paseo de los Turistas (matched by name — it is a principal street now,
-// no longer a special class). Used for the densest pedestrian + vendor life.
-let paseoRoadIdxs = null;
-export function getPaseoRoads() {
-  if (!paseoRoadIdxs) {
-    paseoRoadIdxs = [];
-    for (let i = 0; i < W.ROADS.length; i++) {
-      const n = (W.ROADS[i].name || "").toLowerCase();
-      if (n.includes("paseo de los turistas") || n.includes("paseo león cortés")) paseoRoadIdxs.push(i);
-    }
+// --- surface sampling among resident tiles -------------------------------
+// A random world point near (cx,cy) whose surface class is in `classes`.
+function sampleNear(cx, cy, classes, rMin, rMax) {
+  for (let i = 0; i < 48; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = rMin + Math.sqrt(Math.random()) * (rMax - rMin);
+    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    if (classes.includes(W.surfaceAt(x, y))) return { x, y };
   }
-  return paseoRoadIdxs;
+  return null;
 }
-
-// Pedestrians walk the aceras (sidewalks) of the streets; some cross the road.
-export function spawnPedestrians() {
-  pedestrians.length = 0;
-  function addPed(ri, s) {
-    const r = W.ROADS[ri];
-    const baseOff = r.w / 2 + 10;           // mid-acera (1 cuadrícula deep)
-    const side = Math.random() < 0.5 ? -1 : 1;
-    const pe = {
-      roadIdx: ri, s, side, baseOff, off: side * baseOff,
-      v: (Math.random() < 0.5 ? 1 : -1) * (14 + Math.random() * 12),
-      crossing: false, crossPhase: 0,
-      hue: Math.floor(Math.random() * 360), ph: Math.random() * Math.PI * 2,
-      x: 0, y: 0,
-    };
-    const pt = W.roadPointAt(ri, s);
-    pe.x = pt.x - Math.sin(pt.ang) * pe.off;
-    pe.y = pt.y + Math.cos(pt.ang) * pe.off;
-    pedestrians.push(pe);
+// Heading (radians) of the road/walkway through (x,y): the axis with the
+// longest continuous run of `cls`. Falls back to a random heading.
+function surfaceHeading(x, y, cls, reach = 60) {
+  let best = -1, bestA = Math.random() * Math.PI * 2;
+  for (let k = 0; k < 8; k++) {
+    const a = (k * Math.PI) / 8, dx = Math.cos(a), dy = Math.sin(a);
+    let run = 0;
+    for (let i = 1; i <= reach; i += 4) { if (W.surfaceAt(x + dx * i, y + dy * i) === cls) run++; else break; }
+    for (let i = 1; i <= reach; i += 4) { if (W.surfaceAt(x - dx * i, y - dy * i) === cls) run++; else break; }
+    if (run > best) { best = run; bestA = a; }
   }
-  const WALK_CLS = {
-    residential: 1, unclassified: 1, living_street: 1,
-    tertiary: 1, tertiary_link: 1, secondary: 1,
-    primary: 1, primary_link: 1, trunk: 1, trunk_link: 1,
+  return Math.random() < 0.5 ? bestA : bestA + Math.PI;
+}
+const far = (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R;
+
+// --- spawners (one entity, near the camera) ------------------------------
+function spawnOneCar() {
+  const pt = sampleNear(_cam.x, _cam.y, [3], 200, SPAWN_R); // roads only
+  if (!pt) return null;
+  const ang = surfaceHeading(pt.x, pt.y, 3);
+  const main = Math.random() < 0.45;
+  const car = {
+    x: pt.x, y: pt.y, ang,
+    v: main ? 70 + Math.random() * 40 : 48 + Math.random() * 28,
+    color: CAR_PALETTE[(Math.random() * CAR_PALETTE.length) | 0],
+    w: main ? 38 : 32, h: main ? 18 : 16, kind: "car",
   };
-  const paseo = new Set(getPaseoRoads());
-  for (let ri = 0; ri < W.ROADS.length && pedestrians.length < 260; ri++) {
-    const r = W.ROADS[ri];
-    if (!WALK_CLS[r.cls] && !paseo.has(ri)) continue;
-    const dense = paseo.has(ri);              // busiest on the Paseo aceras
-    for (let s = 20; s < r.len - 20;) {
-      addPed(ri, s);
-      s += dense ? 22 + Math.random() * 20 : 130 + Math.random() * 150;
-    }
+  if (main) {
+    const roll = Math.random();
+    if (roll < 0.15) { car.kind = "truck"; car.w = 46; car.h = 18; }
+    else if (roll < 0.24) { car.kind = "bus"; car.w = 56; car.h = 19; car.color = "#e0762e"; car.v *= 0.85; }
   }
-  spawnAmbient();
+  return car;
+}
+function spawnOnePed() {
+  const pt = sampleNear(_cam.x, _cam.y, [6, 3], 120, SPAWN_R); // acera or road edge
+  if (!pt) return null;
+  return {
+    x: pt.x, y: pt.y, ang: surfaceHeading(pt.x, pt.y, 6, 40),
+    v: 14 + Math.random() * 12,
+    hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
+  };
+}
+function spawnOneVendor() {
+  const pt = sampleNear(_cam.x, _cam.y, [6, 2], 150, SPAWN_R); // acera or beach apron
+  if (!pt) return null;
+  return { x: pt.x, y: pt.y, hue: 10 + ((Math.random() * 320) | 0), ph: Math.random() * 6 };
+}
+function spawnOneAnimal() {
+  const pt = sampleNear(_cam.x, _cam.y, [6, 3, 2], 120, SPAWN_R);
+  if (!pt) return null;
+  return { x: pt.x, y: pt.y, ang: Math.random() * Math.PI * 2, pause: Math.random() * 3,
+           cat: Math.random() < 0.4, ph: Math.random() * 6, v: 26 };
+}
+function spawnOneGull() {
+  const pt = sampleNear(_cam.x, _cam.y, [0], 200, KEEP_R); // open water
+  if (!pt) return null;
+  return { x: pt.x, y: pt.y, vx: (Math.random() < 0.5 ? 1 : -1) * (40 + Math.random() * 50),
+           vy: (Math.random() - 0.5) * 20, ph: Math.random() * Math.PI * 2 };
+}
+function spawnOneBoat() {
+  const pt = sampleNear(_cam.x, _cam.y, [0], 300, KEEP_R);
+  if (!pt) return null;
+  return { x: pt.x, y: pt.y, vx: (Math.random() < 0.5 ? 1 : -1) * (10 + Math.random() * 14),
+           kind: Math.random() < 0.2 ? "ferry" : "panga", wake: 0 };
 }
 
-// Ambient city life: parked cars along curbs, vendor carts, stray animals
-export function spawnAmbient() {
-  // No parked cars cluttering the streets — keep the driving lanes clear.
-  parked.length = 0; vendors.length = 0; animals.length = 0;
-  const kiosks = W.LANDMARKS.filter(l => l.type === "kiosk");
-  // vendor carts with parasols: along the Paseo aceras + around every kiosk
-  for (const ri of getPaseoRoads()) {
-    const r = W.ROADS[ri];
-    for (let s = 60; s < r.len - 60; s += 120 + Math.random() * 90) {
-      const pt = W.roadPointAt(ri, s);
-      const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 10); // mid-acera
-      const vx = pt.x - Math.sin(pt.ang) * off, vy = pt.y + Math.cos(pt.ang) * off;
-      if (W.surfaceAt(vx, vy) !== 6) continue; // never in a crossing street
-      vendors.push({ x: vx, y: vy,
-                     hue: 10 + Math.floor(Math.random() * 160), ph: Math.random() * 6 });
-    }
-  }
-  for (const k of kiosks) {
-    // park the cart on the kiosk apron/acera/beach — never in water
-    for (const [dx, dy] of [[34, 12], [-40, 12], [0, 44], [0, -44], [48, 0], [-48, 0]]) {
-      const surf = W.surfaceAt(k.x + dx, k.y + dy);
-      if (surf === 2 || surf === 3 || surf === 6) {
-        vendors.push({ x: k.x + dx, y: k.y + dy, hue: 330, ph: Math.random() * 6 });
-        break;
-      }
-    }
-  }
-  // animals: dogs/cats that amble across streets in town
-  for (let i = 0; i < 14; i++) {
-    const ri = Math.floor(Math.random() * W.ROADS.length);
-    const r = W.ROADS[ri];
-    if (!r || r.len < 100) { i--; continue; }
-    const s = 40 + Math.random() * (r.len - 80);
-    const pt = W.roadPointAt(ri, s);
-    animals.push({ x: pt.x, y: pt.y, tx: pt.x, ty: pt.y, roadIdx: ri, s,
-                   pause: Math.random() * 4, cat: Math.random() < 0.4,
-                   ph: Math.random() * 6 });
-  }
+// Recycle far/dead entities and top each pool back up near the camera. Called
+// each frame (cheap: a few samples). Arrays are the same shared state arrays.
+function topUp(arr, target, make, isDead) {
+  for (let i = arr.length - 1; i >= 0; i--) if (isDead(arr[i])) arr.splice(i, 1);
+  let guard = 0;
+  while (arr.length < target && guard++ < target * 3) { const e = make(); if (e) arr.push(e); }
+}
+export function maintainStreaming() {
+  topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || far(e));
+  topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || far(e));
+  topUp(vendors, TARGET.vendors, spawnOneVendor, far);
+  topUp(animals, TARGET.animals, spawnOneAnimal, (e) => e.dead || far(e));
+  topUp(gulls, TARGET.gulls, spawnOneGull, far);
+  topUp(boats, TARGET.boats, spawnOneBoat, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 400);
 }
 
+// Advance an entity along its heading, keeping it on one of `classes`. Turns at
+// walls (tries ±90°, then 180°); marks it dead (recycled next maintain) if
+// boxed in. Used by physics for traffic + pedestrians.
+export function advanceOnSurface(e, dt, classes, turnChance = 0.01) {
+  const step = e.v * dt;
+  const nx = e.x + Math.cos(e.ang) * step, ny = e.y + Math.sin(e.ang) * step;
+  if (classes.includes(W.surfaceAt(nx, ny))) {
+    e.x = nx; e.y = ny;
+    if (Math.random() < turnChance) e.ang += (Math.random() - 0.5) * 0.6;
+    return true;
+  }
+  for (const d of [Math.PI / 2, -Math.PI / 2, Math.PI]) {
+    const a = e.ang + d, mx = e.x + Math.cos(a) * step, my = e.y + Math.sin(a) * step;
+    if (classes.includes(W.surfaceAt(mx, my))) { e.ang = a; e.x = mx; e.y = my; return true; }
+  }
+  e.dead = true;
+  return false;
+}
+
+// Animals amble; recycled by maintainStreaming when far. Position-based now.
 export function updateAnimals(dt) {
   for (const a of animals) {
     a.ph += dt * 5;
     if (a.pause > 0) { a.pause -= dt; continue; }
-    const dx = a.tx - a.x, dy = a.ty - a.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 2) {
-      // pick a new spot: cross the street or wander along it
-      const r = W.ROADS[a.roadIdx];
-      a.s = Math.max(20, Math.min(r.len - 20, a.s + (Math.random() - 0.5) * 120));
-      const pt = W.roadPointAt(a.roadIdx, a.s);
-      const off = (Math.random() < 0.5 ? -1 : 1) * (r.w / 2 + 6 + Math.random() * 12);
-      a.tx = pt.x - Math.sin(pt.ang) * off;
-      a.ty = pt.y + Math.cos(pt.ang) * off;
-      a.pause = 1 + Math.random() * 5;
-    } else {
-      const sp = a.cat ? 34 : 26;
-      a.x += (dx / d) * sp * dt;
-      a.y += (dy / d) * sp * dt;
-    }
+    const nx = a.x + Math.cos(a.ang) * a.v * dt, ny = a.y + Math.sin(a.ang) * a.v * dt;
+    const c = W.surfaceAt(nx, ny);
+    if (c === 6 || c === 3 || c === 2) { a.x = nx; a.y = ny; if (Math.random() < 0.02) { a.ang += (Math.random() - 0.5); a.pause = Math.random() * 3; } }
+    else { a.ang += Math.PI * (0.5 + Math.random()); a.pause = 0.3 + Math.random(); }
   }
 }
 
-export function spawnGulls() {
-  gulls.length = 0;
-  for (let i = 0; i < 26; i++) {
-    gulls.push({
-      x: Math.random() * W.W,
-      y: (Math.random() < 0.5 ? -40 - Math.random() * 200 : W.H + Math.random() * 200),
-      vx: (Math.random() < 0.5 ? 1 : -1) * (40 + Math.random() * 50),
-      vy: (Math.random() - 0.5) * 20,
-      ph: Math.random() * Math.PI * 2,
-    });
-  }
-  // map them to actual water above/below peninsula at draw time
-  for (const g of gulls) {
-    const top = W.topY(g.x);
-    const bot = W.botY(g.x);
-    if (g.y < top) g.y = Math.max(0, top - 30 - Math.random() * 200);
-    else g.y = Math.min(W.H, bot + 30 + Math.random() * 200);
-  }
-}
-
-export function spawnBoats() {
-  boats.length = 0;
-  // Ferries / pangas — rejection-sample open water anywhere on the map
-  for (let i = 0; i < 11; i++) {
-    let x = 0, y = 0, ok = false;
-    for (let tries = 0; tries < 200 && !ok; tries++) {
-      x = 200 + Math.random() * (W.W - 400);
-      y = 40 + Math.random() * (W.H - 80);
-      ok = W.inWater(x, y) && W.inWater(x, y - 24) && W.inWater(x, y + 24);
-    }
-    if (!ok) continue;
-    boats.push({
-      x, y,
-      vx: (Math.random() < 0.5 ? 1 : -1) * (10 + Math.random() * 14),
-      kind: i < 2 ? "ferry" : "panga",
-      wake: 0,
-    });
-  }
-}
+// Mode-start hooks: clear the pools; maintainStreaming refills them near the
+// camera on the first frames. Kept as named exports so modes.js/index.js don't
+// need to change their call sites.
+export function spawnTraffic() { traffic.length = 0; }
+export function spawnPedestrians() { pedestrians.length = 0; spawnAmbient(); }
+export function spawnAmbient() { parked.length = 0; vendors.length = 0; animals.length = 0; }
+export function spawnGulls() { gulls.length = 0; }
+export function spawnBoats() { boats.length = 0; }

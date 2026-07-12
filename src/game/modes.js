@@ -1,5 +1,5 @@
 // Game-mode starts (story / arcade / explore) and world setters.
-import { WORLD as W } from "../world/index.js";
+import { WORLD2D as W } from "../world2d/index.js";
 import { state } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
@@ -30,6 +30,10 @@ export function startStage(stageIdx, vehicleKey) {
   state.storyTip = stg.brief;
   state.barriers = [];
   state.district = null; state.districtToast = null;
+  // prime the streamed world on the spawn area so surfaces are resident before
+  // the first physics/render frame (tiles keep loading via update() in the loop)
+  W.update(state.cam.x, state.cam.y);
+  W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
 }
@@ -53,6 +57,10 @@ export function startArcade(opts = {}) {
   state.storyTip = "Tres minutos y todo el puerto. Si no dejás de entregar, el combo no se cae.";
   state.barriers = [];
   state.district = null; state.districtToast = null;
+  // prime the streamed world on the spawn area so surfaces are resident before
+  // the first physics/render frame (tiles keep loading via update() in the loop)
+  W.update(state.cam.x, state.cam.y);
+  W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
 }
@@ -78,6 +86,10 @@ export function startExplore(opts = {}) {
   state.storyTip = `Tenés ${nUnlocked} zonas abiertas para recorrer. Completá niveles de Historia para abrir el resto.`;
   rebuildBarriers();
   state.district = null; state.districtToast = null;
+  // prime the streamed world on the spawn area so surfaces are resident before
+  // the first physics/render frame (tiles keep loading via update() in the loop)
+  W.update(state.cam.x, state.cam.y);
+  W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
 }

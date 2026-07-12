@@ -1,6 +1,6 @@
 // Core delivery loop: pick up a churchill at a kiosk, deliver it to a customer
 // before it melts. Scoring, combo, timer extensions and stage-clear checks.
-import { WORLD as W } from "../world/index.js";
+import { WORLD2D as W } from "../world2d/index.js";
 import { state, pushFloat } from "./state.js";
 import { markStageCleared, unlockDistrict } from "./progress.js";
 import { sfx } from "./audio.js";
@@ -8,8 +8,10 @@ import { sfx } from "./audio.js";
 // In explore mode the world is gated by district barriers, so only offer
 // kiosks/customers whose band the player has actually unlocked — otherwise you
 // could be sent to pick up or deliver behind a locked wall.
-function reachable(x) {
-  return !state.progress || state.progress.unlocked.includes(W.districtAt(x).id);
+function reachable(o) {
+  if (!state.progress) return true;
+  const d = W.districtAt(o.x, o.y);
+  return !d || state.progress.unlocked.includes(d.id);
 }
 
 export function activeKiosks() {
@@ -18,12 +20,12 @@ export function activeKiosks() {
     return state.stage.kiosks.map(id => W.landmarkById(id)).filter(Boolean);
   }
   const kiosks = W.LANDMARKS.filter(l => l.type === "kiosk");
-  return state.mode === "explore" ? kiosks.filter(k => reachable(k.x)) : kiosks;
+  return state.mode === "explore" ? kiosks.filter(k => reachable(k)) : kiosks;
 }
 
 export function activeCustomers() {
   if (state.stage) return state.stage.customers.map(id => W.customerById(id)).filter(Boolean);
-  return state.mode === "explore" ? W.CUSTOMERS.filter(c => reachable(c.x)) : W.CUSTOMERS;
+  return state.mode === "explore" ? W.CUSTOMERS.filter(c => reachable(c)) : W.CUSTOMERS;
 }
 
 export function nearestKiosk(p) {

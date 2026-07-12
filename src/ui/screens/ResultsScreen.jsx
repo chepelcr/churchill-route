@@ -1,6 +1,6 @@
 import React from "react";
 import { Game } from "../../game/index.js";
-import { WORLD } from "../../world/index.js";
+import { WORLD2D as WORLD } from "../../world2d/index.js";
 
 export default function ResultsScreen({ onAgain, onNext, onMenu }) {
   const s = Game.state;

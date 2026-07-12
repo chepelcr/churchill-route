@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Game } from "../../game/index.js";
-import { WORLD } from "../../world/index.js";
+import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 
 const SURF = ["agua", "cuadra", "playa", "calle", "paseo", "puente", "acera"];
@@ -9,7 +9,7 @@ export default function HUD({ onPause }) {
   const [muted, setMuted] = useState(sfx.muted);
   const [debug, setDebug] = useState(Game.state.debug);
   const s = Game.state;
-  const district = WORLD.districtAt(s.p.x);
+  const district = s.p ? WORLD.districtAt(s.p.x, s.p.y) : null;
   const toggleDebug = () => {
     const v = !Game.state.debug;
     Game.state.debug = v; setDebug(v);

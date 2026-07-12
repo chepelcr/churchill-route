@@ -1,5 +1,5 @@
 // Progression / unlocks — persisted in localStorage.
-import { WORLD as W } from "../world/index.js";
+import { WORLD2D as W } from "../world2d/index.js";
 import { state, pushFloat } from "./state.js";
 
 const STORAGE_KEY = "churchill_progress_v1";

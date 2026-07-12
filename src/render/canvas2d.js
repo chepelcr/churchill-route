@@ -122,41 +122,103 @@ import { nearestKiosk } from "../game/delivery.js";
     return !(a.x1 + pad < view.x0 || a.x0 - pad > view.x1 || a.y1 + pad < view.y0 || a.y0 - pad > view.y1);
   }
 
-  // Per-tile surface grid -> a cached cols×rows canvas, blitted scaled (nearest).
-  const CLASS_COLOR = { 0: "#2a7fa8", 1: "#e8d5a0", 2: "#f4d77a", 3: "#3a3540", 4: "#f08a5d", 5: "#8c8c8c", 6: "#cec7b2" };
-  const _tileCanvas = new WeakMap();
-  function surfaceCanvas(t) {
-    let cv = _tileCanvas.get(t); if (cv) return cv;
-    cv = document.createElement("canvas"); cv.width = t.cols; cv.height = t.rows;
-    const g = cv.getContext("2d"), img = g.createImageData(t.cols, t.rows);
-    for (let i = 0; i < t.grid.length; i++) {
-      const c = CLASS_COLOR[t.grid[i]] || "#f0f";
-      img.data[i * 4] = parseInt(c.slice(1, 3), 16);
-      img.data[i * 4 + 1] = parseInt(c.slice(3, 5), 16);
-      img.data[i * 4 + 2] = parseInt(c.slice(5, 7), 16);
-      img.data[i * 4 + 3] = 255;
+  // ---- Painterly render of the streamed 2-D world (WORLD2D) -----------------
+  // Instead of a flat per-cell blit, we draw the corridor's painterly style from
+  // the per-tile VECTOR features (land silhouette, road strokes with lane
+  // markings, buildings with roofs/windows, palms/trees). Only resident tiles in
+  // view contribute; a low-res land/water/beach backdrop covers unloaded gaps.
+  function roadPath(r) { return r._path || (r._path = flatPath(r.pts, false)); }
+
+  // Base land/beach/inner-water silhouette (weather-tinted), under the streets.
+  function drawLandBase(view) {
+    const rc = ensureRenderCache(), C = weatherColors();
+    ctx.fillStyle = C.land; for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
+    ctx.fillStyle = C.waterBot; for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) ctx.fill(w.path);
+    ctx.fillStyle = C.sand; for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.fill(b.path);
+  }
+
+  // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
+  // ported from the corridor renderer but fed per-tile road segments.
+  function paintRoads(roads) {
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    // elevated (barro/Ferrocarril) drop-shadow
+    ctx.strokeStyle = "rgba(0,0,0,0.30)";
+    for (const r of roads) { if (!r.elev) continue; ctx.save(); ctx.translate(0, 3.5); ctx.lineWidth = r.w + 2 * ACERA_PX + 3; ctx.stroke(roadPath(r)); ctx.restore(); }
+    // acera concrete band
+    ctx.strokeStyle = "#cec7b2";
+    for (const r of roads) { if (r.bridge || r.cls === "bridge") continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
+    // barro shoulder
+    ctx.strokeStyle = "#7d6242";
+    for (const r of roads) { if (!r.barro) continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
+    // bridge deck
+    ctx.strokeStyle = "#cfc3a3";
+    for (const r of roads) { if (!r.bridge) continue; ctx.lineWidth = r.w + 10; ctx.stroke(roadPath(r)); }
+    // casing
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    for (const r of roads) { ctx.lineWidth = r.w + 4; ctx.stroke(roadPath(r)); }
+    // asphalt / barro / paseo surface
+    for (const r of roads) { ctx.strokeStyle = r.barro ? "#9c7a4f" : r.cls === "paseo" ? "#f4dca3" : "#3a3540"; ctx.lineWidth = r.w; ctx.stroke(roadPath(r)); }
+    // lane markings: yellow dashes on arterials, faint white on locals
+    for (const r of roads) {
+      if (r.barro) continue;
+      const cls = r.cls;
+      if (cls === "trunk" || cls === "trunk_link" || cls === "primary" || cls === "primary_link") { ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([18, 18]); }
+      else if (cls === "secondary" || cls === "tertiary" || cls === "tertiary_link" || cls === "residential" || cls === "unclassified") { ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([6, 10]); }
+      else continue;
+      ctx.stroke(roadPath(r)); ctx.setLineDash([]);
     }
-    g.putImageData(img, 0, 0); _tileCanvas.set(t, cv); return cv;
+    ctx.lineCap = "butt";
   }
-  // Backdrop (land/water/beach silhouette) for the whole visible span.
-  function drawBackdrop(view) {
-    const rc = ensureRenderCache();
-    ctx.fillStyle = "#e8d5a0"; for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
-    ctx.fillStyle = "#2a7fa8"; for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) ctx.fill(w.path);
-    ctx.fillStyle = "#f4d77a"; for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.fill(b.path);
+
+  // One building: drop shadow, body, roof band + windows (clipped), outline.
+  function paintBuilding(b) {
+    const a = b.aabb, path = (b._path || (b._path = flatPath(b.pts, true)));
+    const bw = a.x1 - a.x0, bh = a.y1 - a.y0;
+    ctx.save(); ctx.translate(4, 4); ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fill(path); ctx.restore();
+    ctx.fillStyle = b.color || "#caa089"; ctx.fill(path);
+    ctx.save(); ctx.clip(path);
+    ctx.fillStyle = b.roof || "#8a6a4a"; ctx.fillRect(a.x0, a.y0, bw, Math.max(3, bh * 0.3));
+    if (b.wnd) {
+      ctx.fillStyle = state.weather === "night" ? "rgba(255,220,140,0.7)" : "rgba(255,255,255,0.55)";
+      const wn = Math.max(1, Math.floor(bw / 16));
+      for (let i = 0; i < wn; i++) ctx.fillRect(a.x0 + 4 + i * (bw / wn), a.y0 + bh * 0.55, 4, 3);
+    }
+    ctx.restore();
+    ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 1; ctx.stroke(path);
   }
-  // Streamed surface tiles + their buildings (only resident tiles in view).
-  function drawTiles(view) {
-    const prevSmoothing = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = false;
+
+  function paintPalm(pa, t) {
+    const sway = Math.sin(t * 0.001 + (pa.sway || 0)) * 2, s = pa.s || 1;
+    ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.beginPath(); ctx.ellipse(pa.x + 6, pa.y + 5, 12 * s, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#7a4f2a"; ctx.lineWidth = 3 * s; ctx.beginPath(); ctx.moveTo(pa.x, pa.y + 4); ctx.lineTo(pa.x + sway, pa.y - 16 * s); ctx.stroke();
+    ctx.fillStyle = "#3aa45b";
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + sway * 0.06; const fx = pa.x + sway + Math.cos(a) * 11 * s, fy = pa.y - 16 * s + Math.sin(a) * 5 * s; ctx.beginPath(); ctx.ellipse(fx, fy, 9 * s, 3.2 * s, a, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = "#2e7d44"; ctx.beginPath(); ctx.arc(pa.x + sway, pa.y - 16 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+  }
+  function paintTree(tr) {
+    const s = tr.s || 1;
+    ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.beginPath(); ctx.ellipse(tr.x + 5, tr.y + 4, 11 * s, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#6a4426"; ctx.lineWidth = 2.5 * s; ctx.beginPath(); ctx.moveTo(tr.x, tr.y + 3); ctx.lineTo(tr.x, tr.y - 7 * s); ctx.stroke();
+    ctx.fillStyle = "#2e7d44"; ctx.beginPath(); ctx.arc(tr.x, tr.y - 11 * s, 9.5 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#3aa45b"; ctx.beginPath(); ctx.arc(tr.x - 3 * s, tr.y - 13 * s, 6.5 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#57c078"; ctx.beginPath(); ctx.arc(tr.x + 3.5 * s, tr.y - 12 * s, 4.5 * s, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Orchestrate the painterly world from resident, in-view tiles.
+  function drawWorld2D(view, t) {
+    drawLandBase(view);
     const vts = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
-    for (const t of vts) ctx.drawImage(surfaceCanvas(t), t.x, t.y, t.cols * W.CELL, t.rows * W.CELL);
-    ctx.imageSmoothingEnabled = prevSmoothing;
-    ctx.fillStyle = "rgba(120,80,55,.9)";
-    for (const t of vts) for (const b of t.buildings) {
-      const p = b.pts; ctx.beginPath();
-      for (let i = 0; i < p.length; i += 2) { i ? ctx.lineTo(p[i], p[i + 1]) : ctx.moveTo(p[i], p[i + 1]); }
-      ctx.fill();
+    // roads: gather in-view segments across tiles, minor → major so arterials paint on top
+    const roads = [];
+    for (const tile of vts) for (const r of tile.roads) if (aabbInView(r.aabb, view, r.w + 6)) roads.push(r);
+    roads.sort((a, b) => (ROAD_ORDER[a.cls] || 0) - (ROAD_ORDER[b.cls] || 0));
+    paintRoads(roads);
+    // buildings
+    for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
+    // flora
+    for (const tile of vts) {
+      for (const tr of tile.trees) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
+      for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
     }
   }
 
@@ -1310,16 +1372,14 @@ import { nearestKiosk } from "../game/delivery.js";
 
     // Sky/water everywhere (drawn in world coords across viewport)
     drawWaterAll(view, t);
-    // Real-Puntarenas backdrop silhouette (land/water/beach), under the tiles so
-    // far/unloaded areas still read correctly at any zoom.
-    drawBackdrop(view);
     // Boats (behind land)
     for (const b of boats) {
       if (b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
       drawBoat(b);
     }
-    // Streamed surface tiles (roads/cuadras/beach/paseo/pier) + buildings.
-    drawTiles(view);
+    // Painterly 2-D world from resident tiles: land silhouette + road strokes +
+    // buildings + palms/trees (replaces the corridor's global-array drawers).
+    drawWorld2D(view, t);
     drawBarriers(view);
     // Landmarks (the bridge has its own drawer)
     for (const lm of W.LANDMARKS) {

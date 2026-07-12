@@ -130,10 +130,10 @@ roads are polylines, delivery/spawns are 2-D. Corridor coupling in the engine is
   Verified in **`world2d-pixi.html`**: surface + buildings + POIs render, drives (527 px
   along-street), whole-peninsula zoom-out. NOT yet behind the `Renderer.js` seam — the shipped
   game still uses canvas2d + corridor `WORLD` (`pixi.js` stays out of the prod bundle since the
-  viewer isn't a build entry). **Next for Pixi:** (a) draw the manifest backdrop polys
-  (`LAND_POLYS/WATERS/BEACHES`) as an always-visible low-res base so extreme zoom-out isn't
-  gapped by the ±3-tile streaming window; (b) port entity drawers (peds/gulls/boats/vendors) and
-  weather when wiring into the game.
+  viewer isn't a build entry). **Backdrop done:** a `backdropLayer` under the tiles draws a
+  full-world water rect + `LAND_POLYS`/`WATERS`/`BEACHES` polys once, so the whole-map zoom-out
+  is gap-free (the resident ±3-tile detail layers on top). **Next for Pixi:** port entity
+  drawers (peds/gulls/boats/vendors) and weather when wiring into the game.
 - [ ] **Phase 4 (full) — wire 2-D into the shipped game.** Swap `WORLD`→`WORLD2D` behind the
   world import, thread the async `ready()/update()` into app/mode init, `physics.js` water
   push-back via `inWater` (done in the viewer port), `spawns.js` gulls/boats sample water not

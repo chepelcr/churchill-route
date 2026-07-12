@@ -10,6 +10,8 @@ import { Application, Container, Sprite, Graphics } from "pixi.js";
 import { buildTileTexture } from "./tileTexture.js";
 
 const POI_COLOR = { kiosk: 0xffd23f, customer: 0x22d3ee, other: 0xe84855 };
+// backdrop fills (match the surface class palette): land / inner water / beach
+const BACKDROP = { land: 0xe8d5a0, water: 0x2a7fa8, beach: 0xf4d77a };
 
 export class World2DRenderer {
   constructor() {
@@ -34,17 +36,36 @@ export class World2DRenderer {
       preference: "webgl",
     });
 
-    // camera-transformed world; layered so draw order is stable
+    // camera-transformed world; layered so draw order is stable. The backdrop is
+    // a cheap always-visible land/water/beach silhouette (manifest polys) so the
+    // whole-map zoom-out isn't gapped by the ±3-tile streaming window; detailed
+    // surface tiles draw on top of it when resident.
     this.world = new Container();
+    this.backdropLayer = new Container();
     this.surfaceLayer = new Container();
     this.buildingLayer = new Container();
     this.poiLayer = new Container();
     this.entityLayer = new Container();
-    this.world.addChild(this.surfaceLayer, this.buildingLayer, this.poiLayer, this.entityLayer);
+    this.world.addChild(this.backdropLayer, this.surfaceLayer, this.buildingLayer, this.poiLayer, this.entityLayer);
     this.app.stage.addChild(this.world);
 
+    this._buildBackdrop();
     this._buildPOIs();
     return this;
+  }
+
+  // Low-res vector base drawn once (world coords). Order: land silhouette, then
+  // inner water bodies (estuary/rivers) carved back in, then beach rim on top.
+  _buildBackdrop() {
+    const g = new Graphics();
+    // full-world water base so the open gulf (not in WATERS polys) matches the
+    // resident water tiles instead of showing the dark out-of-world clear color.
+    g.rect(0, 0, this.W.W, this.W.H).fill(BACKDROP.water);
+    for (const poly of this.W.LAND_POLYS || []) if (poly.length >= 6) g.poly(poly).fill(BACKDROP.land);
+    for (const poly of this.W.WATERS || []) if (poly.length >= 6) g.poly(poly).fill(BACKDROP.water);
+    for (const poly of this.W.BEACHES || []) if (poly.length >= 6) g.poly(poly).fill(BACKDROP.beach);
+    this.backdropLayer.addChild(g);
+    this.backdrop = g;
   }
 
   // POIs are global (not tiled) and few (~52) — draw once as world-space dots.

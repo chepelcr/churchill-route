@@ -810,21 +810,27 @@ def propagate_barro_to_crossings(roads, reach=1.2 * CUAD):
     print(f"[barro] +{n} cross streets flagged barro (cross the Ferrocarril avenue)")
 
 
-def barro_leon_continuation(roads, corner_x=5520):
-    """Paseo León Cortés (principal) ends at the Parque Marino corner (~x5520);
-    its continuation east belongs to the Ferrocarril route, not the principal —
-    make it a narrow barro street instead of a wide asphalt avenue."""
+def barro_leon_continuation(roads):
+    """Paseo León Cortés (principal) ends at the Parque Marino corner where the
+    barro Ferrocarril avenue begins; its continuation east is that dirt route, not
+    the principal. Anchored to the Ferrocarril avenue's west end (the `elev`
+    roads) so it works in BOTH the corridor and the planar projection — flag the
+    León piece(s) that run east past that handoff as a narrow barro street."""
+    ferro_xs = [x for r in roads if r.get("elev") for x in r["pts"][0::2]]
+    if not ferro_xs:
+        return                                    # no Ferrocarril avenue in region
+    handoff = min(ferro_xs)
     n = 0
     for r in roads:
         if "león cortés" not in (r.get("name") or "").lower():
             continue
         xs = r["pts"][0::2]
-        if corner_x - 20 <= min(xs) < 7000:      # the piece(s) past the corner
+        if max(xs) > handoff + CUAD and min(xs) >= handoff - 3 * CUAD:
             r["barro"] = 1
-            r["w"] = W_STANDARD
+            r["w"] = road_width_px("residential")
             r["cls"] = "residential"
             n += 1
-    print(f"[roads] León Cortés continuation past Parque Marino -> barro: {n} piece(s)")
+    print(f"[roads] León Cortés continuation past the Ferrocarril handoff -> barro: {n} piece(s)")
 
 
 def carriageway_gores(roads, a_name, b_name, x0, x1,
@@ -1916,15 +1922,15 @@ def main():
     sp = _planar_setup(ways) if PLANAR else build_spine(ways, nodes)
 
     roads, bridge_road = extract_roads(sp, ways)
+    # Both modes (coordinate-agnostic): León Cortés end-barro + dirt cross streets.
+    barro_leon_continuation(roads)
+    propagate_barro_to_crossings(roads)
     if PLANAR:
         # Planar: junction triangles/medians emerge from real geometry via
         # detect_blocks — the corridor gore/island/carriageway hacks are dropped.
-        propagate_barro_to_crossings(roads)   # dirt still spreads to ferro crossings
         junction_islands = []
         muelle_axis = None
     else:
-        barro_leon_continuation(roads)
-        propagate_barro_to_crossings(roads)
         divide_cocal_carriageways(roads)
         # Auto channelizing islands at the divided-avenue forks, and place El Ancla
         # dynamically on the westmost gore — exactly where the separation begins.

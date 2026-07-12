@@ -29,7 +29,7 @@ corridor-unroll. **Locked decisions (do not re-litigate):**
 WORLD_PROJECTION=planar python3 tools/build_world.py
 # bounded smoke (fast; a sub-bbox override), lon0,lat0,lon1,lat1:
 WORLD_PROJECTION=planar PLANAR_BBOX="-84.845,9.974,-84.825,9.982" python3 tools/build_world.py
-# knobs (env): PLANAR_PX_PER_M (default 1.6), ARCADE_STREET_MUL (default 2.2)
+# knobs (env): PLANAR_PX_PER_M (default 1.6), ARCADE_STREET_MUL (default 3.2)
 ```
 Planar output → `src/world2d/manifest.json` + `src/world2d/tiles/<tc>_<tr>.json` (NOT
 `src/world/data.js`, which stays the untouched corridor build). Eyeball `tools/debug_map.png`
@@ -114,13 +114,13 @@ roads are polylines, delivery/spawns are 2-D. Corridor coupling in the engine is
   the car drives on the real centro streets, stays **100% on drivable surface**, is blocked by
   water/acera/land walls (water-as-wall replaces the corridor `topY/botY` bounds), and
   `districtAt` updates as it moves. So the full 2-D Puntarenas is drivable end-to-end.
-  - **KEY FINDING — arcade street width vs vehicle scale (a design/tuning call).** At true
-    scale + `ARCADE_STREET_MUL=2.2`, centro cross-streets are only **24–44 px** drivable —
-    comparable to or narrower than the 44 px pickup. Collision is center-point so it's
-    *drivable*, but tight and the car visually overhangs. **Recommendation:** bump
-    `ARCADE_STREET_MUL` (~3.0–3.5) and/or add the planned **vehicle-scale** knob to shrink the
-    car, then re-tune against gore/cuadra survival (`detect_blocks`). This is the main feel
-    lever before wiring 2-D into the shipped game.
+  - **RESOLVED — arcade street width widened.** At `ARCADE_STREET_MUL=2.2`, centro
+    cross-streets were only 24–44 px (≤ the 44 px pickup): drivable but tight. Bumped the
+    default to **`3.2`** and rebuilt (164s). Gores/cuadras survive (164 cuadras, 176 inscribed
+    ≥6×6, 92.1% drivable, 52/52 POIs) and streets widened to **residential 36 px / corridor
+    median 72 px** (was 25 px). Re-verified in the smoke viewer: a car drove 411 px along a
+    street at full road speed (300), on-road 240/240 frames. Vehicle-scale knob still available
+    later if needed, but the width call is settled.
 - [ ] **Phase 3 (full) — PixiJS renderer.** The canvas2d smoke viewer already renders the
   streamed world (per-tile cached surface canvas + vector roads/buildings/POIs) at interactive
   rates for a gameplay-zoom view (~4–9 tiles). Pixi (`src/render/pixi/` behind the

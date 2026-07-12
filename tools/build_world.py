@@ -78,7 +78,7 @@ M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
 # globals at call time, so reassigning them there is enough).
 PLANAR = os.environ.get("WORLD_PROJECTION") == "planar" or "--planar" in sys.argv
 PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "1.6"))   # world zoom
-ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.2"))  # widen streets
+ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "3.2"))  # widen streets
 # real-ish carriageway widths (metres) per OSM highway class; painted width =
 # ROAD_WIDTH_M · ARCADE_STREET_MUL · px_per_m (kept modest so junction gores survive)
 ROAD_WIDTH_M = {

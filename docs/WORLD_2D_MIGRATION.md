@@ -121,11 +121,19 @@ roads are polylines, delivery/spawns are 2-D. Corridor coupling in the engine is
     median 72 px** (was 25 px). Re-verified in the smoke viewer: a car drove 411 px along a
     street at full road speed (300), on-road 240/240 frames. Vehicle-scale knob still available
     later if needed, but the width call is settled.
-- [ ] **Phase 3 (full) — PixiJS renderer.** The canvas2d smoke viewer already renders the
-  streamed world (per-tile cached surface canvas + vector roads/buildings/POIs) at interactive
-  rates for a gameplay-zoom view (~4–9 tiles). Pixi (`src/render/pixi/` behind the
-  `Renderer.js` seam) is the perf path for zoomed-out/whole-map views; port the `canvas2d.js`
-  drawers, layered containers + tile culling, free 2-D camera.
+- [x] **Phase 3 (core) — PixiJS renderer.** `pixi.js` 8.19 added. `src/render/pixi/`:
+  `World2DRenderer` (WebGL `Application`, one camera-transformed `world` container with layered
+  sub-containers surface/building/poi/entity), `tileTexture.js` (per-tile surface grid →
+  `CanvasSource` texture, nearest-filtered, 1 texel = `CELL` world px). Per-tile sprite+building
+  cache with **exact culling** driven by `WORLD2D.visibleTiles` (48 visible ⇒ 48 tracked at
+  zoom 0.05). Shared `src/world2d/drive.js` (car + physics extracted from the canvas viewer).
+  Verified in **`world2d-pixi.html`**: surface + buildings + POIs render, drives (527 px
+  along-street), whole-peninsula zoom-out. NOT yet behind the `Renderer.js` seam — the shipped
+  game still uses canvas2d + corridor `WORLD` (`pixi.js` stays out of the prod bundle since the
+  viewer isn't a build entry). **Next for Pixi:** (a) draw the manifest backdrop polys
+  (`LAND_POLYS/WATERS/BEACHES`) as an always-visible low-res base so extreme zoom-out isn't
+  gapped by the ±3-tile streaming window; (b) port entity drawers (peds/gulls/boats/vendors) and
+  weather when wiring into the game.
 - [ ] **Phase 4 (full) — wire 2-D into the shipped game.** Swap `WORLD`→`WORLD2D` behind the
   world import, thread the async `ready()/update()` into app/mode init, `physics.js` water
   push-back via `inWater` (done in the viewer port), `spawns.js` gulls/boats sample water not

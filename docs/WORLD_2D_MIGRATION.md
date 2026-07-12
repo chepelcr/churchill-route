@@ -95,10 +95,19 @@ roads are polylines, delivery/spawns are 2-D. Corridor coupling in the engine is
     flooding. Result: **land 41.8M cells, 169 cuadras, 1663 plazas** — a real true-scale spit.
     (Benign leftover: the estuary PROBE_SEA point warns "sea probe is LAND" — expected, it's
     stamped water from its polygon, not flooded.)
-- [ ] **Phase 2** — `src/world2d/index.js`: tiled accessor mirroring the WORLD API
-  (`surfaceAt/roadPointAt/buildingsNear/landmarkById/customerById/reachablePointNear/
-  onElevated`); lazy tile load by camera; `districtAt(x,y)` point-in-polygon
-  (reuse `pointInPoly` in `src/game/physics.js`); drop `topY/botY`, add `inWater`.
+- [x] **Phase 2 — tiled accessor** (`src/world2d/index.js`, `WORLD2D`). Manifest loaded eager;
+  tiles streamed by camera via `import.meta.glob('./tiles/*.json')` (per-tile RLE grid decode +
+  road arclength tables + a local building hash). Lifecycle: `ready(x,y)` (await initial spawn
+  window), `update(x,y)` per frame (loads a ±3-tile window, evicts far tiles), `ensureView`,
+  `visibleTiles(aabb)` for the renderer. Queries mirror WORLD: `surfaceAt/onRoad/onPaseo/
+  inWater/onBeach/onElevated/buildingsNear/landmarkById/customerById/reachablePointNear`.
+  `topY/botY/halfWidthAt` are dropped; `inWater` replaces the silhouette.
+  **`districtAt(x,y)`**: the manifest polys are x-strips (can't separate Mata Limón / Caldera,
+  which stack N–S), so districtAt uses the **nearest district POI-centroid** instead — a proper
+  2-D assignment. (True per-barrio polygon rings remain a later refinement.)
+  **Verified in-browser** via a dev smoke viewer (`/world2d.html` + `src/world2d/viewer.js`,
+  NOT shipped): streams the full 50820×31860 world (110 tiles resident at a whole-map zoom),
+  `surfaceAt`/`districtAt`/POIs correct from Faro→Caldera, no console errors.
 - [ ] **Phase 3** — `pnpm add pixi.js`; `src/render/pixi/` behind `Renderer.js` seam
   (`setupCanvas/render/paintVehicle`); layered containers + tile culling; free 2-D camera
   (remove corridor clamp); port the `canvas2d.js` drawers.

@@ -40,6 +40,63 @@ hacer en consolas externas** antes del release de Play Store.
 4. **Target SDK ≥ 34** — verificar `android/variables.gradle` al armar el AAB
    (`bundleRelease`, no APK, para Play).
 
+## Formato de publicación: AAB (obligatorio)
+
+**Sí, Play Store exige `.aab`** para apps nuevas desde agosto 2021 — el `.apk`
+NO se puede subir a producción. El APK del sitio (`/churchill.apk`) sigue
+siendo válido para instalar por fuera de Play (sideload). Para Play:
+
+```
+pnpm build && npx cap sync android
+cd android && ./gradlew bundleRelease
+# -> android/app/build/outputs/bundle/release/app-release.aab
+```
+
+Firmado con el mismo keystore; al crear la app en Play Console conviene
+activar **Play App Signing** (Google guarda la clave de firma final y tu
+keystore pasa a ser la "upload key").
+
+## Checklist de cumplimiento — políticas de Google Play
+
+Estado a 2026-07 (verificar contra las políticas vigentes al momento del
+release en https://play.google.com/console → Policy Center):
+
+1. **Data Safety form (obligatoria)** — AdMob recolecta identificadores de
+   dispositivo (AAID) e info de diagnóstico aunque el juego no recolecte nada:
+   declarar "Device or other IDs" + "Advertising" como propósito, compartido
+   con terceros (Google). Sin esto la app se rechaza.
+2. **Política de privacidad (obligatoria, doblemente)** — Play la exige para
+   toda app con Data Safety, y AdMob la exige por contrato. URL pública (puede
+   vivir en churchill.jcampos.dev/privacy). Debe mencionar AdMob/identificadores
+   y el enlace a los ads settings de Google.
+3. **Consentimiento (GDPR/EEA + UMP)** — AdMob exige el **User Messaging
+   Platform (UMP)** para usuarios del EEE/UK: crear el mensaje de consentimiento
+   en AdMob → Privacy & messaging, y llamar `AdMob.requestConsentInfo()` /
+   `showConsentForm()` antes de cargar ads (el plugin `@capacitor-community/
+   admob` los expone). TODO en `ads.init()` cuando existan los IDs reales.
+4. **Ads policy** — cumplimos por diseño: interstitials solo entre partidas
+   (pantalla de resultados, nunca "unexpected"), cerrables, sin banners que
+   tapen gameplay, rewarded 100% opt-in con recompensa clara. NO mostrar ads
+   en el primer arranque (grace de 3 partidas lo garantiza).
+5. **Target audience & Families** — el juego es familiar visualmente; si se
+   declara audiencia que incluye <13, aplican las **Families Ads Policies**
+   (solo redes certificadas, sin AAID). Recomendación: declarar **13+** para
+   usar AdMob normal; el content rating (IARC) saldrá "Everyone" igualmente.
+6. **Content rating (IARC)** — cuestionario en Play Console; sin violencia
+   real/apuestas → rating bajo. Declarar que contiene ads y compras.
+7. **Target API level** — desde el **31-ago-2026** las apps NUEVAS deben
+   apuntar a **API 36** (Android 16); las existentes a ≥35. Nuestro
+   `android/variables.gradle` ya está en `targetSdkVersion = 36` ✓ (verificado
+   2026-07-16; extensión posible hasta nov-2026 si hiciera falta).
+8. **Cuenta nueva: pruebas cerradas** — **12 testers × 14 días continuos**
+   antes de pedir acceso a producción (política para cuentas personales
+   creadas después de nov-2023; Google la bajó de 20 a 12 en dic-2024 — el
+   plan original decía 20). No aplica a cuentas de organización.
+9. **Declaración de compras** — "Quitar anuncios" aparece en la ficha como
+   "In-app purchases"; el flujo IAP ya usa Google Play Billing (obligatorio;
+   pasarelas externas prohibidas para bienes digitales).
+10. **Sin login/cuentas** — no aplica la política de account deletion.
+
 ## Decisiones de diseño
 
 - El rewarded "continue" NO se bloquea con la compra de quitar anuncios —

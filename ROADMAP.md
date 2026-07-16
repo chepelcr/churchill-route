@@ -249,6 +249,30 @@ Full plan lives in the approved plan file; status tracked here.
       persistido; App ID de prueba en el AndroidManifest. Pendiente externo:
       cuenta AdMob + Play Console (producto, 20 testers × 14 días, target 34).
 
+## 🔮 Server-side (futuro — decidido 2026-07-16, sin código aún)
+
+Hoy la app es 100% estática (sin backend). Cuando el funding/monetización lo
+justifique, se necesita un pequeño servicio (API + panel admin) para el
+contenido patrocinado, de modo que NO haya que re-publicar la app por cada
+patrocinador:
+
+- [ ] **NPCs de supporters (ko-fi / Tier 2)** — mapear alrededor del mundo los
+      NPCs patrocinados: el supporter da nombre + rasgo + frase corta (≤26
+      chars, límite del float de entrega) y el juego los descarga de la API y
+      los mezcla con `CUSTOMER_DEFS` (respetando la regla de spread 450/360 y
+      el distrito elegido). Moderación previa en el panel.
+- [ ] **Gestión de lotes comerciales (Tier 3)** — inventario de "lotes"
+      (cuadras/vallas/landmarks) sobre el mapa real para que comercios reales
+      de Puntarenas entren al juego: reserva del lote, logo/nombre, vigencia
+      del patrocinio; el cliente los pinta como landmarks/decals. Requiere
+      catálogo de lotes disponible (derivable de `detect_blocks` + POIs).
+- [ ] **Página de agradecimientos (supporters)** — pantalla "Gracias" en el
+      juego + web, alimentada por la misma API (nombre + tier), con caché
+      offline para que el juego siga funcionando sin red.
+- Notas técnicas: la app debe seguir 100% jugable OFFLINE (el contenido
+  patrocinado es aditivo, cacheado con TTL); validación de compras IAP podría
+  moverse a este mismo backend cuando exista (hoy: entitlement local).
+
 ## ✅ City-feel + mobile pass — done 2026-07-10
 
 - [x] **Beachfront avenue separators (final layout, user-iterated)**:

@@ -47,8 +47,8 @@ export default function App() {
   }, []);
 
   // Interstitial cadence: count a finished run when the results screen shows
-  // (skipped automatically for the remove-ads purchase / on web).
-  useEffect(() => { if (screen === "over") ads.maybeShowInterstitial(); }, [screen]);
+  // (skipped for remove-ads owners, the first-runs grace, tutorial, web).
+  useEffect(() => { if (screen === "over") ads.maybeShowInterstitial(Game.state.mode); }, [screen]);
 
   useEffect(() => {
     const onKey = (e) => {

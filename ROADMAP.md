@@ -224,6 +224,31 @@ Full plan lives in the approved plan file; status tracked here.
         behind the wall are never offered; Historia stages 5–7 show "Próximamente" in the
         level select.
 
+## 🚧 Play-Store readiness pass (2026-07-16 PM) — tutorial, i18n, settings, monetización
+
+- [x] **Tutorial jugable** (`src/game/tutorial.js` + `startTutorial` en modes.js):
+      run guiado sin timer en el kiosco del Paseo — 7 pasos (girar, acelerar/
+      delimitar velocidad, turbo, freno/drift, recoger, entregar, cierre) con
+      instrucciones según plataforma (joystick táctil vs teclado) en un panel
+      del HUD; primera entrega = cliente más cercano (`pickCustomerNear`);
+      tarjeta "Tutorial" en el título (pulsa en el primer arranque,
+      `churchill_tutorial_done_v1`) + replay desde Ajustes.
+- [x] **i18n completo es/en** (`src/i18n/index.js`): tabla de strings + store
+      suscribible (`useT()`), idioma persistido y auto-detectado; traducidos
+      TODOS los textos instructivos (título, modos, HUD, pausa, resultados,
+      brief, level select, ajustes, tips de juego, carteles de barrera en el
+      canvas, tutorial) + nombres/briefs de niveles (overlay EN por stage id).
+      Las frases de clientes quedan en español a propósito (voz porteña).
+- [x] **Pantalla de Ajustes** (⚙ en título y pausa): idioma ES/EN, volumen
+      (slider + mute, `sfx.setVolume` con gain persistido), "Quitar anuncios"
+      (comprar/restaurar), replay del tutorial, borrar progreso, versión.
+- [x] **Monetización (scaffolding completo, IDs de prueba)** — ver
+      `docs/MONETIZATION.md`: AdMob (`@capacitor-community/admob@8`) con
+      interstitial cada 3 partidas + rewarded "Seguir +60s" al perder;
+      IAP `remove_ads` (`cordova-plugin-purchase@13`) con entitlement
+      persistido; App ID de prueba en el AndroidManifest. Pendiente externo:
+      cuenta AdMob + Play Console (producto, 20 testers × 14 días, target 34).
+
 ## ✅ City-feel + mobile pass — done 2026-07-10
 
 - [x] **Beachfront avenue separators (final layout, user-iterated)**:

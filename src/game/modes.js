@@ -3,8 +3,10 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
-import { pickCustomer } from "./delivery.js";
+import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers } from "./progress.js";
+import { initTutorial } from "./tutorial.js";
+import { t, stageBrief } from "../i18n/index.js";
 
 export function startStage(stageIdx, vehicleKey) {
   const stg = W.STAGES[stageIdx];
@@ -22,14 +24,16 @@ export function startStage(stageIdx, vehicleKey) {
   state.carrying = null; state.pendingOrder = null;
   state.floats = []; state.particles = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
+  state.usedAdContinue = false;
   // place player near first kiosk of stage
   const k = W.landmarkById(stg.kiosks[0]);
   state.p = { x: k.x - 60, y: k.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   // mutate cam, never replace: the renderer publishes zoom/vw/vh on it
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
-  state.storyTip = stg.brief;
+  state.storyTip = stageBrief(stg);
   rebuildBarriers(); // MVP wall (story has no progression barriers)
   state.district = null; state.districtToast = null;
+  state.tutorial = null;
   // prime the streamed world on the spawn area so surfaces are resident before
   // the first physics/render frame (tiles keep loading via update() in the loop)
   W.update(state.cam.x, state.cam.y);
@@ -51,12 +55,14 @@ export function startArcade(opts = {}) {
   state.carrying = null; state.pendingOrder = null;
   state.floats = []; state.particles = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
+  state.usedAdContinue = false;
   const k0 = W.landmarkById("kios_paseo1");
   state.p = { x: k0.x - 60, y: k0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
-  state.storyTip = "Tres minutos y todo el puerto. Si no dejás de entregar, el combo no se cae.";
+  state.storyTip = t("tip.arcade");
   rebuildBarriers(); // MVP wall (arcade has no progression barriers)
   state.district = null; state.districtToast = null;
+  state.tutorial = null;
   // prime the streamed world on the spawn area so surfaces are resident before
   // the first physics/render frame (tiles keep loading via update() in the loop)
   W.update(state.cam.x, state.cam.y);
@@ -78,20 +84,50 @@ export function startExplore(opts = {}) {
   state.carrying = null; state.pendingOrder = null;
   state.floats = []; state.particles = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
+  state.usedAdContinue = false;
   // Spawn at El Faro start
   const f0 = W.landmarkById("faro");
   state.p = { x: f0.x + 60, y: f0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
-  const nUnlocked = state.progress.unlocked.length;
-  state.storyTip = `Tenés ${nUnlocked} zonas abiertas para recorrer. Completá niveles de Historia para abrir el resto.`;
+  state.storyTip = t("tip.explore", { n: state.progress.unlocked.length });
   rebuildBarriers();
   state.district = null; state.districtToast = null;
+  state.tutorial = null;
   // prime the streamed world on the spawn area so surfaces are resident before
   // the first physics/render frame (tiles keep loading via update() in the loop)
   W.update(state.cam.x, state.cam.y);
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
+}
+
+// Tutorial: timerless guided run at the Paseo kiosk; the step machine in
+// tutorial.js drives the HUD instructions and ends the run when complete.
+export function startTutorial(opts = {}) {
+  state.stage = null;
+  state.stageIdx = 0;
+  state.mode = "tutorial";
+  state.weather = "sunny";
+  state.timeLeft = 999;
+  state.vehicleKey = opts.vehicleKey || state.vehicleKey;
+  state.veh = VEHICLES[state.vehicleKey];
+  state.score = 0; state.combo = 1; state.comboTimer = 0;
+  state.deliveries = 0; state.perfect = 0;
+  state.carrying = null; state.pendingOrder = null;
+  state.floats = []; state.particles = [];
+  state.over = false; state.won = false; state.running = true; state.paused = false;
+  state.usedAdContinue = false;
+  const k0 = W.landmarkById("kios_paseo1");
+  state.p = { x: k0.x - 60, y: k0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+  state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
+  state.storyTip = "";
+  rebuildBarriers();
+  state.district = null; state.districtToast = null;
+  W.update(state.cam.x, state.cam.y);
+  W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
+  spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
+  pickCustomerNear(k0.x, k0.y); // short, predictable first delivery
+  initTutorial();
 }
 
 export function setWeather(w) { state.weather = w; }

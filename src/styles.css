@@ -364,6 +364,46 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .screen-anim, .overlay .panel { animation: none; }
 }
 
+/* ----- Tutorial instruction panel (top-center, under the compass) ----- */
+.tut-panel {
+  position: absolute; top: 148px; left: 50%; transform: translateX(-50%);
+  max-width: min(520px, 86vw);
+  background: rgba(20, 16, 40, 0.88); border: 1px solid rgba(255,255,255,0.2);
+  border-left: 4px solid #5fb0d6;
+  border-radius: 10px; padding: 10px 14px;
+  pointer-events: none; z-index: 6;
+}
+.tut-step {
+  font: 10px "JetBrains Mono", monospace; color: #5fb0d6;
+  letter-spacing: 0.08em; margin-bottom: 4px;
+}
+.tut-text { font: 13px/1.45 "Space Grotesk", sans-serif; color: #fff; }
+
+/* ----- Settings screen ----- */
+.settings-card { max-width: 640px; }
+.settings-rows { display: grid; gap: 14px; margin: 18px auto 8px; max-width: 560px; text-align: left; }
+.set-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px; padding: 10px 14px;
+}
+.set-lbl { font: 12px "Bungee", sans-serif; color: var(--gold, #ffe06b); }
+.set-desc { font: 11px "JetBrains Mono", monospace; opacity: 0.75; }
+.lang-toggle, .vol-wrap, .iap-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vol-wrap input[type="range"] { width: 140px; accent-color: #ffe06b; }
+.vol-pct { font: 11px "JetBrains Mono", monospace; opacity: 0.8; min-width: 64px; }
+.iap-owned { font: 12px "JetBrains Mono", monospace; color: #6fbf99; }
+.settings-credits { margin-top: 14px; font: 10px "JetBrains Mono", monospace; opacity: 0.5; }
+
+/* first-run nudge on the tutorial mode card */
+.mode.pulse { animation: tut-pulse 1.6s ease-in-out infinite; }
+@keyframes tut-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(95, 176, 214, 0.0); }
+  50% { box-shadow: 0 0 0 4px rgba(95, 176, 214, 0.45); }
+}
+@media (prefers-reduced-motion: reduce) { .mode.pulse { animation: none; } }
+
 /* ----- Touch controls (one-finger joystick: angle steers, extension caps the
    speed, past the rim = turbo; only the brake needs a pedal) ----- */
 .touch-controls { position: absolute; inset: 0; pointer-events: none; }

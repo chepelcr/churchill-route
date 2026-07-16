@@ -4,6 +4,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, pushFloat } from "./state.js";
 import { markStageCleared, unlockDistrict, isMvpLocked } from "./progress.js";
 import { sfx } from "./audio.js";
+import { t } from "../i18n/index.js";
 
 // The world is gated by walls (the MVP wall in every mode + the explore
 // progression barriers), so only offer kiosks/customers on the open side —
@@ -37,6 +38,17 @@ export function nearestKiosk(p) {
   return { lm: best, d: bd };
 }
 
+// Tutorial wants a short, predictable first trip: the nearest active customer
+// to (x,y) instead of a random one.
+export function pickCustomerNear(x, y) {
+  const pool = activeCustomers();
+  if (!pool.length) { state.pendingOrder = null; return; }
+  const base = pool.reduce((a, b) =>
+    Math.hypot(a.x - x, a.y - y) <= Math.hypot(b.x - x, b.y - y) ? a : b);
+  const pt = W.reachablePointNear(base.x, base.y);
+  state.pendingOrder = { ...base, x: Math.round(pt.x), y: Math.round(pt.y) };
+}
+
 export function pickCustomer() {
   const pool = activeCustomers();
   if (!pool.length) { state.pendingOrder = null; return; }
@@ -55,8 +67,8 @@ export function pickUpChurchill(kioskLm) {
   const base = Math.max(18, dist / 110);
   state.carrying = { kioskId: kioskLm.id, customer: state.pendingOrder, melt: 0, total: base };
   state.pendingOrder = null;
-  state.storyTip = `Llevale a ${state.carrying.customer.name}.`;
-  pushFloat(kioskLm.x, kioskLm.y - 24, "+ CHURCHILL", "#fff");
+  state.storyTip = t("tip.deliverTo", { name: state.carrying.customer.name });
+  pushFloat(kioskLm.x, kioskLm.y - 24, t("float.pickup"), "#fff");
   sfx.play("pickup");
 }
 
@@ -75,12 +87,12 @@ export function deliverChurchill() {
   state.combo = Math.min(8, state.combo + (comboUp ? 1 : 0));
   state.comboTimer = 7;
   pushFloat(state.p.x, state.p.y - 24, `+${total}`, meltPct < 0.25 ? "#ffe06b" : "#fff");
-  if (meltPct < 0.25) pushFloat(state.p.x, state.p.y - 44, "¡PERFECTO!", "#ff3d80");
+  if (meltPct < 0.25) pushFloat(state.p.x, state.p.y - 44, t("float.perfect"), "#ff3d80");
   sfx.play(meltPct < 0.25 ? "perfect" : "delivery");
   if (comboUp && state.combo > 1) sfx.play("combo", state.combo);
   pushFloat(c.customer.x, c.customer.y - 22, c.customer.line.slice(0, 26), "#fff");
   state.carrying = null;
-  state.storyTip = "¡Pura vida! Volvé al kiosco.";
+  state.storyTip = t("tip.delivered");
   if (state.mode === "arcade" || state.mode === "story") state.timeLeft += meltPct < 0.4 ? 10 : 5;
   if (state.mode === "explore") state.timeLeft += meltPct < 0.4 ? 12 : 6;
   // stage clear check
@@ -99,9 +111,9 @@ export function deliverChurchill() {
 }
 
 export function dropChurchill() {
-  pushFloat(state.p.x, state.p.y - 18, "¡SE DERRITIÓ!", "#ff3d80");
+  pushFloat(state.p.x, state.p.y - 18, t("float.melted"), "#ff3d80");
   state.carrying = null;
   state.combo = 1;
-  state.storyTip = "Volvé al kiosco por otro Churchill.";
+  state.storyTip = t("tip.melted");
   sfx.play("melt_fail");
 }

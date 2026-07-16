@@ -3,12 +3,13 @@ import { Game } from "../../game/index.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { isMvpLocked } from "../../game/progress.js";
+import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import VehiclePreview from "../VehiclePreview.jsx";
 
-const WEATHER_ES = { sunny: "Soleado", sunset: "Atardecer", storm: "Tormenta", night: "Noche" };
 const WEATHER_ICON = { sunny: "☀", sunset: "🌅", storm: "⛈", night: "🌙" };
 
 export default function StageSelect({ onStart, onBack }) {
+  const t = useT();
   const stages = WORLD.STAGES;
   const vehicles = Game.VEHICLES;
   const vehKeys = Object.keys(vehicles);
@@ -97,10 +98,10 @@ export default function StageSelect({ onStart, onBack }) {
     <div className="title-bg">
       <div className="title-shell">
         <div className="stage-select-wrap">
-          <button className="btn secondary back-btn" onClick={onBack}>← Menú</button>
+          <button className="btn secondary back-btn" onClick={onBack}>{t("select.back")}</button>
 
           <div className="stage-head">
-            <span className="title-pill"><span className="dot"></span>MODO HISTORIA · ELEGÍ NIVEL</span>
+            <span className="title-pill"><span className="dot"></span>{t("select.pill")}</span>
             <h1 className="title-main stage-title">LA RUTA</h1>
           </div>
 
@@ -111,21 +112,21 @@ export default function StageSelect({ onStart, onBack }) {
               <div className={"stage-hero glass-card" + (locked ? " locked" : "") + (done ? " done" : "")}>
                 <div className="hero-top">
                   <span className="hero-num">{String(s.num).padStart(2, "0")}</span>
-                  <span className="hero-count">Nivel {s.num} / {stages.length}</span>
-                  {done && <span className="hero-badge ok">✓ COMPLETADO</span>}
-                  {locked && <span className="hero-badge no">{isMvp(cur) ? "🔜 PRÓXIMAMENTE" : "⛔ BLOQUEADO"}</span>}
+                  <span className="hero-count">{t("select.of", { n: s.num, total: stages.length })}</span>
+                  {done && <span className="hero-badge ok">{t("select.done")}</span>}
+                  {locked && <span className="hero-badge no">{isMvp(cur) ? t("select.soon") : t("select.locked")}</span>}
                 </div>
-                <div className="hero-name">{s.name}</div>
+                <div className="hero-name">{stageName(s)}</div>
                 <p className="hero-brief">{locked
-                  ? (isMvp(cur) ? "Este nivel llega en una próxima actualización." : `Completá el nivel ${s.num - 1} para desbloquear este.`)
-                  : s.brief}</p>
+                  ? (isMvp(cur) ? t("select.soonBrief") : t("select.lockedBrief", { n: s.num - 1 }))
+                  : stageBrief(s)}</p>
                 <div className="hero-meta">
-                  <span><b>{s.targetDeliveries}</b> entregas</span>
-                  <span><b>{s.timeLimit}s</b> tiempo</span>
-                  <span>{WEATHER_ICON[s.weather] || "☀"} {WEATHER_ES[s.weather] || "—"}</span>
+                  <span><b>{s.targetDeliveries}</b> {t("select.deliveries")}</span>
+                  <span><b>{s.timeLimit}s</b> {t("select.time")}</span>
+                  <span>{WEATHER_ICON[s.weather] || "☀"} {t(`weather.${s.weather}`)}</span>
                 </div>
                 <button className="btn gold hero-play" onClick={() => play(cur)} disabled={locked}>
-                  {locked ? (isMvp(cur) ? "Próximamente" : "Bloqueado") : "▸ Jugar"}
+                  {locked ? (isMvp(cur) ? t("select.playSoon") : t("select.playLocked")) : t("select.play")}
                 </button>
               </div>
 
@@ -133,7 +134,7 @@ export default function StageSelect({ onStart, onBack }) {
             </div>
 
             <div className="glass-card vehicle-card">
-              <div className="vehicle-card-title">TU VEHÍCULO</div>
+              <div className="vehicle-card-title">{t("select.vehicle")}</div>
               <VehiclePreview vehKey={veh} />
               <div className="vehicles-col">
                 {vehKeys.map((k) => (
@@ -146,12 +147,12 @@ export default function StageSelect({ onStart, onBack }) {
               <div className="reset-row">
                 {confirming ? (
                   <>
-                    <span>¿Borrar progreso?</span>
-                    <button className="btn" onClick={doReset}>Sí</button>
-                    <button className="btn secondary" onClick={() => setConfirming(false)}>No</button>
+                    <span>{t("select.resetQ")}</span>
+                    <button className="btn" onClick={doReset}>{t("select.yes")}</button>
+                    <button className="btn secondary" onClick={() => setConfirming(false)}>{t("select.no")}</button>
                   </>
                 ) : (
-                  <button className="btn secondary" onClick={() => setConfirming(true)}>↺ Resetear progreso</button>
+                  <button className="btn secondary" onClick={() => setConfirming(true)}>{t("select.reset")}</button>
                 )}
               </div>
             </div>
@@ -162,7 +163,7 @@ export default function StageSelect({ onStart, onBack }) {
               <button key={sg.id}
                 className={"dot" + (i === cur ? " on" : "") + (cleared.includes(sg.id) ? " cleared" : "") + (isLocked(i) ? " locked" : "")}
                 onClick={() => { if (i !== cur) { sfx.play("menu_move"); setCur(i); } }}
-                aria-label={`Nivel ${sg.num}`}></button>
+                aria-label={t("select.level", { n: sg.num })}></button>
             ))}
           </div>
         </div>

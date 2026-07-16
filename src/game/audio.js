@@ -6,6 +6,7 @@
 // drift voices are created once and steered with setTargetAtTime.
 
 const MUTE_KEY = "churchill_muted_v1";
+const VOL_KEY = "churchill_volume_v1";
 const BROWSER = typeof window !== "undefined";
 
 let ctx = null;         // AudioContext, created on first gesture
@@ -20,6 +21,15 @@ function loadMuted() {
 function saveMuted(m) {
   try { localStorage.setItem(MUTE_KEY, m ? "1" : "0"); } catch { /* private mode */ }
 }
+function loadVolume() {
+  try {
+    const v = parseFloat(localStorage.getItem(VOL_KEY));
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+  } catch { return 1; }
+}
+function saveVolume(v) {
+  try { localStorage.setItem(VOL_KEY, String(v)); } catch { /* private mode */ }
+}
 
 function unlock() {
   if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
@@ -27,7 +37,7 @@ function unlock() {
   if (!AC) return;
   ctx = new AC();
   master = ctx.createGain();
-  master.gain.value = sfx.muted ? 0 : 1;
+  master.gain.value = sfx.muted ? 0 : sfx.volume;
   master.connect(ctx.destination);
 
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -135,6 +145,14 @@ const RECIPES = {
 
 export const sfx = {
   muted: BROWSER ? loadMuted() : true,
+  volume: BROWSER ? loadVolume() : 1,
+
+  setVolume(v) {
+    this.volume = Math.max(0, Math.min(1, v));
+    saveVolume(this.volume);
+    if (master && ctx && !this.muted) master.gain.setTargetAtTime(this.volume, ctx.currentTime, 0.02);
+    return this.volume;
+  },
 
   play(name, arg) {
     if (!ctx || this.muted || ctx.state !== "running") return;
@@ -176,7 +194,7 @@ export const sfx = {
   toggleMuted() {
     this.muted = !this.muted;
     saveMuted(this.muted);
-    if (master && ctx) master.gain.setTargetAtTime(this.muted ? 0 : 1, ctx.currentTime, 0.02);
+    if (master && ctx) master.gain.setTargetAtTime(this.muted ? 0 : this.volume, ctx.currentTime, 0.02);
     return this.muted;
   },
 };

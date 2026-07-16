@@ -1,25 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useMenuNav } from "../useMenuNav.js";
 import { sfx } from "../../game/audio.js";
+import { tutorialDone } from "../../game/tutorial.js";
+import { useT } from "../../i18n/index.js";
 
 // Hide the APK download in the native app (only offer it on the web).
 const IS_NATIVE = typeof window !== "undefined" && !!window.Capacitor;
 
-export const MODE_CARDS = [
-  { id: "story",   name: "Historia",  swatch: "#ffe06b", tag: "7 niveles, de El Faro hasta el puerto de Caldera." },
-  { id: "explore", name: "Recorrer",  swatch: "#6fbf99", tag: "Mundo abierto. Completá niveles para abrir nuevos distritos." },
-  { id: "arcade",  name: "Arcade",    swatch: "#ff3d80", tag: "3 minutos, península libre, combo a tope." },
+const MODE_IDS = [
+  { id: "tutorial", swatch: "#5fb0d6" },
+  { id: "story",    swatch: "#ffe06b" },
+  { id: "explore",  swatch: "#6fbf99" },
+  { id: "arcade",   swatch: "#ff3d80" },
 ];
 
-export default function TitleScreen({ onPickMode }) {
+export default function TitleScreen({ onPickMode, onSettings }) {
+  const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [info, setInfo] = useState(false);
   const infoRef = useRef(null);
+  const firstRun = !tutorialDone();
   const pick = (id) => { sfx.play("menu_select"); onPickMode(id); };
   const [idx, setIdx] = useMenuNav({
-    count: MODE_CARDS.length,
-    cols: MODE_CARDS.length,
-    onSelect: (i) => pick(MODE_CARDS[i].id),
+    count: MODE_IDS.length,
+    cols: MODE_IDS.length,
+    onSelect: (i) => pick(MODE_IDS[i].id),
   });
 
   // close the info bubble on any click/tap outside it
@@ -30,58 +35,59 @@ export default function TitleScreen({ onPickMode }) {
     return () => document.removeEventListener("pointerdown", onDown);
   }, [info]);
 
+  const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
   return (
     <div className="title-bg">
       <div className="title-shell">
         <div className="title-card">
-          <span className="title-pill"><span className="dot"></span>PUNTARENAS · COSTA RICA · ARCADE 2026</span>
+          <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
           <div className="title-tools">
             <div className="info-wrap" ref={infoRef}>
               <button className="tool-pill" onClick={() => { sfx.play("menu_move"); setInfo((v) => !v); }}
-                aria-label="Cómo se juega" aria-expanded={info}>{info ? "✕" : "ⓘ"}</button>
+                aria-label={t("title.how.title")} aria-expanded={info}>{info ? "✕" : "ⓘ"}</button>
               {info && (
-                <div className="info-bubble" role="dialog" aria-label="Cómo se juega">
-                  <div className="info-bubble-title">CÓMO SE JUEGA</div>
-                  <p>
-                    Sos repartidor de Churchills en El Puerto. Recogé en el kiosco rojo y blanco del{" "}
-                    <em>Paseo de los Turistas</em> y llegá al cliente antes que el hielo se derrita. Hacé drift,
-                    esquivá gaviotas y atravesá Carmen, el Mercado y Las Playitas hasta Mata de Limón.
-                  </p>
+                <div className="info-bubble" role="dialog" aria-label={t("title.how.title")}>
+                  <div className="info-bubble-title">{t("title.how.title")}</div>
+                  <p>{t("title.how.body")}</p>
                 </div>
               )}
             </div>
+            <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSettings(); }}
+              aria-label={t("settings.title")}>⚙</button>
             <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
-              aria-label={muted ? "Activar sonido" : "Silenciar"}>{muted ? "🔇" : "🔊"}</button>
+              aria-label={muted ? "🔊" : "🔇"}>{muted ? "🔇" : "🔊"}</button>
           </div>
           <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
-          <div className="title-sub">¡PURA VIDA!</div>
+          <div className="title-sub">{t("title.sub")}</div>
 
-          <div className="modes" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: 760, margin: "16px auto" }}>
-            {MODE_CARDS.map((m, i) => (
-              <button key={m.id} className={"mode" + (idx === i ? " focused" : "")}
+          <div className="modes" style={{ gridTemplateColumns: `repeat(${MODE_IDS.length}, 1fr)`, maxWidth: 900, margin: "16px auto" }}>
+            {MODE_IDS.map((m, i) => (
+              <button key={m.id}
+                className={"mode" + (idx === i ? " focused" : "") + (m.id === "tutorial" && firstRun ? " pulse" : "")}
                 onMouseEnter={() => setIdx(i)} onClick={() => pick(m.id)}>
-                <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{m.name}</div>
-                <div className="ms">{m.tag}</div>
+                <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{t(`mode.${m.id}`)}</div>
+                <div className="ms">{t(`mode.${m.id}.tag`)}</div>
               </button>
             ))}
           </div>
 
           {!IS_NATIVE && (
             <a className="apk-btn" href="/churchill.apk" download>
-              <span aria-hidden="true">⬇</span> Descargar para Android
+              <span aria-hidden="true">⬇</span> {t("title.apk")}
             </a>
           )}
 
           <div className="controls-hint">
-            {typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches ? (
-              <span>Mantené el dedo donde querés ir · ✋ drift · ⚡ turbo</span>
+            {coarse ? (
+              <span>{t("title.hint.touch")}</span>
             ) : (
               <>
-                <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> manejar</span>
-                <span><kbd>Space</kbd> drift</span>
-                <span><kbd>X</kbd> turbo</span>
-                <span><kbd>P</kbd> pausa</span>
-                <span>controller / touch OK</span>
+                <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> {t("title.hint.drive")}</span>
+                <span><kbd>Space</kbd> {t("title.hint.drift")}</span>
+                <span><kbd>X</kbd> {t("title.hint.turbo")}</span>
+                <span><kbd>P</kbd> {t("title.hint.pause")}</span>
+                <span>{t("title.hint.pad")}</span>
               </>
             )}
           </div>

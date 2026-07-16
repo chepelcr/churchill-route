@@ -12,11 +12,13 @@
     "world:build": "python3 tools/build_world.py"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
     "@capacitor/android": "^8.4.1",
     "@capacitor/core": "^8.4.1",
     "@fontsource/bungee": "^5.2.7",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/space-grotesk": "^5.2.10",
+    "cordova-plugin-purchase": "^13.17.2",
     "pixi.js": "^8.19.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

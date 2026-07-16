@@ -3,7 +3,8 @@
 // facade onto window.Game for the dev tweaks/deck host and debugging.
 import { state } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
-import { startArcade, startStage, startExplore, setWeather, setVehicle } from "./modes.js";
+import { startArcade, startStage, startExplore, startTutorial, setWeather, setVehicle } from "./modes.js";
+import { tutorialDone, tutorialStepKey } from "./tutorial.js";
 import { attachTouch, attachJoystick } from "./input.js";
 import { update } from "./physics.js";
 import { setAttract, attractTick } from "./attract.js";
@@ -33,7 +34,8 @@ function attachCanvas(c) {
 }
 
 export const Game = {
-  state, VEHICLES, startArcade, startStage, startExplore, setWeather, setVehicle,
+  state, VEHICLES, startArcade, startStage, startExplore, startTutorial,
+  tutorialDone, tutorialStepKey, setWeather, setVehicle,
   attachCanvas, attachTouch, attachJoystick, setAttract,
   pause: () => { state.paused = !state.paused; },
   quit: () => { state.running = false; state.over = false; state.won = false; },

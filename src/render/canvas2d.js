@@ -9,6 +9,7 @@ import {
   state, traffic, pedestrians, gulls, boats, parked, vendors, animals,
 } from "../game/state.js";
 import { nearestKiosk } from "../game/delivery.js";
+import { t } from "../i18n/index.js";
 
   // ----- Render -------------------------------------------------------------
   let canvas, ctx, dpr = 1;
@@ -1141,11 +1142,11 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.fillRect(br.x - sw/2, sy - sh/2, sw, 4);
       ctx.textAlign = "center";
       ctx.fillStyle = "#ff3d80"; ctx.font = "bold 9px 'JetBrains Mono', monospace";
-      ctx.fillText("⛔ BLOQUEADO", br.x, sy - 6);
+      ctx.fillText(t("sign.blocked"), br.x, sy - 6);
       ctx.fillStyle = "#fff"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
       ctx.fillText(dname.slice(0, 20), br.x, sy + 5);
       ctx.fillStyle = dstr ? dstr.tone : "#f3c969"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
-      ctx.fillText(br.mvp ? "PRÓXIMAMENTE" : "NIVEL " + (br.requiredStage || "—"), br.x, sy + 15);
+      ctx.fillText(br.mvp ? t("sign.soon") : t("sign.level", { n: br.requiredStage || "—" }), br.x, sy + 15);
       // cones
       for (let cy = yTop + 14; cy < yBot - 14; cy += 26) {
         ctx.fillStyle = "#ff8b3d"; ctx.beginPath();

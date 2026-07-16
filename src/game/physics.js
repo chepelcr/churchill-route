@@ -8,6 +8,8 @@ import { input, readInput, pollGamepad, applyTouchJoystick } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advanceCarOnRoad } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
+import { t } from "../i18n/index.js";
+import { tutorialTick } from "./tutorial.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [6];
@@ -144,8 +146,8 @@ export function update(dt) {
           p.x = br.x - 14; p.vx = -Math.abs(p.vx) * 0.4;
           state.cam.shake = Math.max(state.cam.shake, 8);
           state.storyTip = br.mvp
-            ? "Hasta aquí llega el MVP — El Cocal y el resto del puerto llegan en una próxima actualización."
-            : `${br.district.toUpperCase()} sigue cerrado — completá el Nivel ${br.requiredStage} para pasar.`;
+            ? t("tip.mvpWall")
+            : t("tip.lockedDistrict", { district: br.district.toUpperCase(), n: br.requiredStage });
         } else if (p.x > br.x && p.x < br.x + 14) {
           // can re-enter going west: allow
         }
@@ -221,6 +223,9 @@ export function update(dt) {
   W.update(cam.x, cam.y);
   setSpawnCamera(cam.x, cam.y);
   maintainStreaming();
+
+  // Tutorial step machine (only set in tutorial mode)
+  if (state.tutorial) tutorialTick(dt);
 
   // Combo decay
   if (state.combo > 1) {

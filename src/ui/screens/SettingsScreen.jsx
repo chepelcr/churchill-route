@@ -6,7 +6,7 @@ import { iap } from "../../monetize/iap.js";
 
 // App config: language, volume/mute, remove-ads purchase, tutorial replay,
 // progress reset. Reachable from the title (⚙) and the pause menu.
-export default function SettingsScreen({ onBack, onTutorial }) {
+export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [vol, setVol] = useState(Math.round(sfx.volume * 100));
@@ -79,6 +79,13 @@ export default function SettingsScreen({ onBack, onTutorial }) {
               <span className="set-lbl">{t("mode.tutorial")}</span>
               <button className="btn secondary" onClick={onTutorial}>{t("settings.tutorial")}</button>
             </div>
+
+            {onSupporters && (
+              <div className="set-row">
+                <span className="set-lbl">{t("settings.supporters")}</span>
+                <button className="btn secondary" onClick={onSupporters}>❤ {t("sup.title")}</button>
+              </div>
+            )}
 
             <div className="set-row">
               <span className="set-lbl">{t("settings.reset")}</span>

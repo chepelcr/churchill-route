@@ -5,6 +5,7 @@ import { state, pushFloat } from "./state.js";
 import { markStageCleared, unlockDistrict, isMvpLocked } from "./progress.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
+import { content } from "../content/remote.js";
 
 // The world is gated by walls (the MVP wall in every mode + the explore
 // progression barriers), so only offer kiosks/customers on the open side —
@@ -24,9 +25,16 @@ export function activeKiosks() {
   return W.LANDMARKS.filter(l => l.type === "kiosk" && reachable(l));
 }
 
+// The customer pool: when the remote content provides NPCs they REPLACE the
+// bundled list (long-term: all NPCs are server-managed — supporters' NPCs
+// arrive without an app release). Story stages keep their scripted customers.
+function customerPool() {
+  return content.npcs.length ? content.npcs : W.CUSTOMERS;
+}
+
 export function activeCustomers() {
   if (state.stage) return state.stage.customers.map(id => W.customerById(id)).filter(Boolean);
-  return W.CUSTOMERS.filter(c => reachable(c));
+  return customerPool().filter(c => reachable(c));
 }
 
 export function nearestKiosk(p) {

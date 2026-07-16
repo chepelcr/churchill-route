@@ -2749,6 +2749,18 @@ def main():
             "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
             "spineLenM": round(sp.total)}
     if PLANAR:
+        # geo→world affine (planar projection is exactly linear in lon/lat):
+        # x = ax*lon + bx ; y = ay*lat + by. Lets the CLIENT place remote
+        # content (server NPCs / sponsored lotes) given real lat/lon, without
+        # shipping the projection code.
+        la0, lo0, la1, lo1 = 9.90, -84.90, 10.00, -84.70  # two reference points
+        xa, ya, _, _ = sp.project(to_m(la0, lo0))
+        xb, yb, _, _ = sp.project(to_m(la1, lo1))
+        ax = (xb - xa) / (lo1 - lo0); bx = xa - ax * lo0
+        ay = (yb - ya) / (la1 - la0); by = ya - ay * la0
+        meta["geo"] = {"ax": round(ax, 4), "bx": round(bx, 2),
+                       "ay": round(ay, 4), "by": round(by, 2)}
+    if PLANAR:
         # chunked/tiled emit → src/world2d/ (streamable full-OSM world)
         emit_world2d(grid, meta=meta, districts=districts, roads=roads, rails=rails,
                      buildings=buildings, trees=trees, palms=palms, mangroves=mangroves,

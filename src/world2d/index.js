@@ -244,6 +244,13 @@ export const WORLD2D = (function () {
     }
     return best;
   }
+  // Real lat/lon → world px via the manifest's geo affine (planar projection
+  // is linear in lon/lat). Lets remote content be authored in real coords.
+  function geoToWorld(lat, lon) {
+    const g = META.geo;
+    if (!g) return null;
+    return { x: g.ax * lon + g.bx, y: g.ay * lat + g.by };
+  }
   function landmarkById(id) { return LANDMARKS.find((l) => l.id === id); }
   function customerById(id) { return CUSTOMERS.find((c) => c.id === id); }
 
@@ -290,6 +297,7 @@ export const WORLD2D = (function () {
     // queries
     surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated,
     buildingsNear, districtAt, landmarkById, customerById, reachablePointNear,
+    geoToWorld,
   };
 })();
 

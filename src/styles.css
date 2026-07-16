@@ -396,6 +396,21 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .iap-owned { font: 12px "JetBrains Mono", monospace; color: #6fbf99; }
 .settings-credits { margin-top: 14px; font: 10px "JetBrains Mono", monospace; opacity: 0.5; }
 
+/* ----- Supporters / greetings ----- */
+.sup-groups { display: grid; gap: 12px; margin: 14px auto 0; max-width: 560px; text-align: left; }
+.sup-group {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px; padding: 10px 14px;
+}
+.sup-tier { font: 12px "Bungee", sans-serif; color: var(--gold, #ffe06b); margin-bottom: 6px; }
+.sup-group.tier-4 .sup-tier { color: #ff3d80; }
+.sup-names { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.sup-name {
+  font: 12px "JetBrains Mono", monospace; color: #fff;
+  background: rgba(255,255,255,0.08); border-radius: 8px; padding: 3px 8px;
+}
+.sup-empty { font: 12px "JetBrains Mono", monospace; opacity: 0.6; margin-top: 18px; }
+
 /* first-run nudge on the tutorial mode card */
 .mode.pulse { animation: tut-pulse 1.6s ease-in-out infinite; }
 @keyframes tut-pulse {

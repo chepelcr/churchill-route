@@ -251,27 +251,25 @@ Full plan lives in the approved plan file; status tracked here.
 
 ## 🔮 Server-side (futuro — decidido 2026-07-16, sin código aún)
 
-Hoy la app es 100% estática (sin backend). Cuando el funding/monetización lo
-justifique, se necesita un pequeño servicio (API + panel admin) para el
-contenido patrocinado, de modo que NO haya que re-publicar la app por cada
-patrocinador:
+**CLIENTE YA CABLEADO (2026-07-16, ver `docs/REMOTE_CONTENT.md`):** la app
+carga `https://churchill.jcampos.dev/content.json` (hoy = archivo estático
+`public/content.json`; mañana = API real en la misma URL y mismo esquema, sin
+tocar la app). `src/content/remote.js`: caché localStorage TTL 6h + fallback
+empacado — 100% jugable offline.
 
-- [ ] **NPCs de supporters (ko-fi / Tier 2)** — mapear alrededor del mundo los
-      NPCs patrocinados: el supporter da nombre + rasgo + frase corta (≤26
-      chars, límite del float de entrega) y el juego los descarga de la API y
-      los mezcla con `CUSTOMER_DEFS` (respetando la regla de spread 450/360 y
-      el distrito elegido). Moderación previa en el panel.
-- [ ] **Gestión de lotes comerciales (Tier 3)** — inventario de "lotes"
-      (cuadras/vallas/landmarks) sobre el mapa real para que comercios reales
-      de Puntarenas entren al juego: reserva del lote, logo/nombre, vigencia
-      del patrocinio; el cliente los pinta como landmarks/decals. Requiere
-      catálogo de lotes disponible (derivable de `detect_blocks` + POIs).
-- [ ] **Página de agradecimientos (supporters)** — pantalla "Gracias" en el
-      juego + web, alimentada por la misma API (nombre + tier), con caché
-      offline para que el juego siga funcionando sin red.
-- Notas técnicas: la app debe seguir 100% jugable OFFLINE (el contenido
-  patrocinado es aditivo, cacheado con TTL); validación de compras IAP podría
-  moverse a este mismo backend cuando exista (hoy: entitlement local).
+- [x] **NPCs del servidor** — si `content.npcs` no está vacío REEMPLAZA el
+      pool de clientes (regla: a largo plazo todos los NPCs vienen del
+      server); posiciones por lat/lon reales proyectadas con `meta.geo` del
+      manifest (`WORLD2D.geoToWorld`), distrito por `districtAt`, línea ≤26.
+- [x] **Lotes patrocinados** — `tools/gen_lotes.py` → `docs/lotes_catalog.json`
+      (709 parcelas candidatas con id estable + lat/lon en el área MVP); el
+      cliente pinta los lotes reclamados de `content.lotes` como valla o
+      frente de local con la marca. Alta de un negocio = 1 entrada JSON.
+- [x] **Página de agradecimientos** — `SupportersScreen` (❤ en el título +
+      Ajustes), tiers 1–4 del plan de funding, botón ko-fi de `content.meta`.
+- [ ] **Backend real (cuando el volumen lo pida):** API + panel admin con
+      moderación, reservas de lotes con vigencia, y sync de supporters desde
+      ko-fi; sirve el MISMO `content.json`. Validación IAP podría vivir ahí.
 
 ## ✅ City-feel + mobile pass — done 2026-07-10
 

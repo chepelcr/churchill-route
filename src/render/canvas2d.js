@@ -10,6 +10,7 @@ import {
 } from "../game/state.js";
 import { nearestKiosk } from "../game/delivery.js";
 import { t } from "../i18n/index.js";
+import { content } from "../content/remote.js";
 
   // ----- Render -------------------------------------------------------------
   let canvas, ctx, dpr = 1;
@@ -932,6 +933,30 @@ import { t } from "../i18n/index.js";
     }
   }
 
+  // Sponsored lotes (remote content): real Puntarenas businesses claim a spot
+  // and appear as a branded billboard or storefront — pure data, no release.
+  function drawLote(lo) {
+    const x = lo.x, y = lo.y;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath(); ctx.ellipse(x + 3, y + 6, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
+    if (lo.kind === "store") {
+      // small branded storefront: body, awning in the sponsor tone, label
+      ctx.fillStyle = "#f4f0e4"; ctx.fillRect(x - 16, y - 10, 32, 18);
+      for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? "#fff" : lo.tone; ctx.fillRect(x - 16 + i * 8, y - 15, 8, 5); }
+      ctx.fillStyle = "rgba(20,40,60,0.55)"; ctx.fillRect(x - 4, y - 2, 8, 10);   // door
+      ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillRect(x - 13, y - 6, 7, 5); // window
+      label(x, y - 22, lo.label, "#fff", lo.tone);
+    } else {
+      // billboard: two posts + panel in the sponsor tone with the label
+      ctx.strokeStyle = "#6a5a48"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x - 10, y + 4); ctx.lineTo(x - 10, y - 12);
+      ctx.moveTo(x + 10, y + 4); ctx.lineTo(x + 10, y - 12); ctx.stroke();
+      ctx.fillStyle = "#fff"; ctx.fillRect(x - 17, y - 26, 34, 15);
+      ctx.fillStyle = lo.tone; ctx.fillRect(x - 15, y - 24, 30, 11);
+      label(x, y - 30, lo.label, "#fff", "rgba(20,16,40,0.85)");
+    }
+  }
+
   function drawPed(pe) {
     const bob = Math.sin(pe.ph) * 1.4;
     ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
@@ -1480,6 +1505,11 @@ import { t } from "../i18n/index.js";
       if (lm.x < view.x0 - 60 || lm.x > view.x1 + 60) continue;
       if (lm.type === "bridge") continue;
       drawLandmark(lm);
+    }
+    // Sponsored lotes from the remote content (billboards / storefronts)
+    for (const lo of content.lotes) {
+      if (lo.x < view.x0 - 60 || lo.x > view.x1 + 60 || lo.y < view.y0 - 60 || lo.y > view.y1 + 60) continue;
+      drawLote(lo);
     }
     // Pedestrians, traffic
     for (const pe of pedestrians) {

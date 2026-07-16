@@ -8,6 +8,8 @@ import PauseScreen from "./screens/PauseScreen.jsx";
 import ResultsScreen from "./screens/ResultsScreen.jsx";
 import StageBrief from "./screens/StageBrief.jsx";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
+import SupportersScreen from "./screens/SupportersScreen.jsx";
+import { content } from "../content/remote.js";
 import TouchControls from "./TouchControls.jsx";
 import GameTweaks from "./GameTweaks.jsx";
 import { enterImmersive } from "./immersive.js";
@@ -18,7 +20,7 @@ import { iap } from "../monetize/iap.js";
 
 export default function App() {
   const t = useT();
-  // screens: title | stagepick | brief | playing | paused | over | settings
+  // screens: title | stagepick | brief | playing | paused | over | settings | supporters
   const [screen, setScreen] = useState("title");
   const [pendingStage, setPendingStage] = useState(null);
   const canvasRef = useRef(null);
@@ -33,8 +35,9 @@ export default function App() {
   // you'll spawn extra game loops every time the screen changes.
   useEffect(() => {
     Game.attachCanvas(canvasRef.current);
-    ads.init();   // no-ops on web
+    ads.init();     // no-ops on web
     iap.init();
+    content.load(); // supporters / server NPCs / lotes (cache-first, offline-safe)
     let raf;
     const tick = () => {
       tickRef.current += 1;
@@ -64,7 +67,7 @@ export default function App() {
   useEffect(() => { Game.state.paused = (screen === "paused" || (screen === "settings" && settingsFrom.current === "paused")); }, [screen]);
 
   // Menu screens show the live world drifting behind them (attract mode).
-  useEffect(() => { Game.setAttract(screen === "title" || screen === "stagepick" || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
+  useEffect(() => { Game.setAttract(screen === "title" || screen === "stagepick" || screen === "supporters" || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
 
   // Engine/drift hum only while actually driving; menu blips stay available.
   useEffect(() => { screen === "playing" ? sfx.resume() : sfx.quiet(); }, [screen]);
@@ -131,16 +134,18 @@ export default function App() {
   return (
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
-      {(screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over" || screen === "settings") && (
+      {(screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over" || screen === "settings" || screen === "supporters") && (
         <div className="screen-anim" key={screen}>
-          {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} />}
+          {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} />}
+          {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
           {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
           {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
           {screen === "over" && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen("title")} onContinue={continueRun} />}
           {screen === "settings" && (
             <SettingsScreen
               onBack={() => setScreen(settingsFrom.current === "paused" ? "paused" : "title")}
-              onTutorial={() => { Game.startTutorial({ vehicleKey: Game.state.vehicleKey }); setScreen("playing"); }} />
+              onTutorial={() => { Game.startTutorial({ vehicleKey: Game.state.vehicleKey }); setScreen("playing"); }}
+              onSupporters={settingsFrom.current === "title" ? () => setScreen("supporters") : null} />
           )}
         </div>
       )}

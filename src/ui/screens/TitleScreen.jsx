@@ -14,7 +14,7 @@ const MODE_IDS = [
   { id: "arcade",   swatch: "#ff3d80" },
 ];
 
-export default function TitleScreen({ onPickMode, onSettings }) {
+export default function TitleScreen({ onPickMode, onSettings, onSupporters }) {
   const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [info, setInfo] = useState(false);
@@ -53,6 +53,8 @@ export default function TitleScreen({ onPickMode, onSettings }) {
                 </div>
               )}
             </div>
+            <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSupporters(); }}
+              aria-label={t("sup.title")}>❤</button>
             <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSettings(); }}
               aria-label={t("settings.title")}>⚙</button>
             <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}

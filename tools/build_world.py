@@ -55,7 +55,7 @@ GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 #   cuadra: >= 6x6 cuadrículas of land + 1 cuadrícula of acera on every side
 #   view:   the engine frames at most CUADS_PER_VIEW cuadrículas (responsive zoom)
 CUAD = 20                       # px per cuadrícula (a lane ~= 2 cuadrículas)
-CUADS_PER_VIEW = 12             # max cuadrículas visible → device-consistent zoom
+CUADS_PER_VIEW = 16             # max cuadrículas visible → device-consistent zoom
 CUAD_CELLS = CUAD // GRID_CELL  # raster cells per cuadrícula side
 assert CUAD % GRID_CELL == 0, "CUAD must align to the raster grid"
 # Planar tiling: the world is emitted as a grid of square tiles the accessor
@@ -185,13 +185,28 @@ DISTRICT_DEFS = [
     {"id": "caldera",  "name": "CALDERA BULEVAR",       "short": "Caldera",    "tone": "#9bc4d4"},
 ]
 DISTRICT_BOUNDS_GEO = [
-    (9.97620, -84.84800),  # faro | carmen
+    (9.97620, -84.84930),  # faro | carmen (west of the ferry terminal, which is Carmen)
     (9.97550, -84.84050),  # carmen | paseo
     (9.97700, -84.83182),  # paseo | centro  (east so the Paseo boardwalk kiosks fall in paseo)
-    (9.97820, -84.82656),  # centro | playitas (west so the Estadio / c10 fall in playitas)
-    (9.97950, -84.80800),  # playitas | cocal
+    (9.97820, -84.82900),  # centro | playitas (west of the Playitas place node -84.8274 + Estadio)
+    (9.97900, -84.82200),  # playitas | cocal (between OSM nodes: Playitas -84.8274, El Cocal -84.8171)
     (9.93450, -84.72550),  # cocal | mata  (north of Playa Caldera)
     (9.91950, -84.71250),  # mata | caldera (between village and port)
+]
+
+# Inland barrios (planar map only — the corridor-unroll can't place them). Each
+# is a real OSM place node; `bbox` is a lat/lon rectangle used only to draw the
+# region + minimap label — classification (districtAt) is by nearest kiosk/POI
+# centroid, so exact rings aren't needed. West→east along Ruta 1 / the coast.
+INLAND_DISTRICT_DEFS = [
+    {"id": "chacarita", "name": "CHACARITA",      "short": "Chacarita", "tone": "#b0b483",
+     "geo": (9.98061, -84.77368), "bbox": (9.9690, -84.7900, 9.9930, -84.7580)},
+    {"id": "elroble",   "name": "EL ROBLE",       "short": "El Roble",  "tone": "#9ec4a0",
+     "geo": (9.98067, -84.73602), "bbox": (9.9700, -84.7560, 9.9930, -84.7250)},
+    {"id": "barranca",  "name": "BARRANCA",       "short": "Barranca",  "tone": "#c7b98a",
+     "geo": (9.98840, -84.71094), "bbox": (9.9640, -84.7250, 9.9990, -84.6960)},
+    {"id": "esparza",   "name": "ESPARZA",        "short": "Esparza",   "tone": "#d6a97e",
+     "geo": (9.99183, -84.66587), "bbox": (9.9760, -84.6860, 10.0120, -84.6440)},
 ]
 
 # landmarks: same ids as the GDD / previous world.js. Resolution: "osm" is a
@@ -216,7 +231,7 @@ LANDMARK_DEFS = [
     {"id": "kios_paseo1", "name": "Kiosco Doña Lela",           "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": -60},
     {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 60},
     {"id": "casafait",    "name": "Casa Fait",                  "type": "house",        "district": "paseo",    "osm": "casa fait", "ll": (9.97700, -84.82900)},
-    {"id": "parquemar",   "name": "Parque Marino del Pacífico", "type": "park",         "district": "paseo",    "osm": "parque marino", "ll": (9.97600, -84.82300)},
+    {"id": "parquemar",   "name": "Parque Marino del Pacífico", "type": "park",         "district": "playitas", "osm": "parque marino", "ll": (9.97600, -84.82300)},
     {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas"},
     {"id": "pali",        "name": "Supermercado Palí",          "type": "super",        "district": "centro",   "osm": "palí", "ll": (9.97650, -84.82900)},
     {"id": "catedral",    "name": "Catedral de Puntarenas",     "type": "cathedral",    "district": "centro",   "osm": "catedral", "near": (9.97769, -84.83487)},
@@ -224,8 +239,8 @@ LANDMARK_DEFS = [
     {"id": "museo",       "name": "Museo Histórico Marino",     "type": "museum",       "district": "centro",   "osm": "museo", "near": (9.97600, -84.83550), "ll": (9.97580, -84.83520)},
     {"id": "kios_centro", "name": "Kiosco La Porteña",          "type": "kiosk",        "district": "centro",   "ll": (9.97480, -84.83000)},
     {"id": "estadio",     "name": "Estadio Lito Pérez",         "type": "stadium",      "district": "playitas", "osm": "lito pérez", "ll": (9.97880, -84.82660)},
-    {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97950, -84.81600)},
-    {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "playitas", "osm": "yacht", "ll": (9.97900, -84.81200)},
+    {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97840, -84.82520)},
+    {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "cocal",    "osm": "yacht", "ll": (9.97900, -84.81200)},
     # anchor monument on the island where the road splits into the Cocal (west
     # side, not the estero end) — placed by world xy read off the 📍 overlay
     {"id": "ancla",       "name": "Monumento El Ancla",         "type": "anchor",       "district": "playitas", "xy": (8246, 2375)},
@@ -244,6 +259,12 @@ LANDMARK_DEFS = [
     {"id": "puerto",      "name": "Puerto de Caldera",          "type": "port",         "district": "caldera",  "osm": "puerto internacional caldera"},
     {"id": "villach",     "name": "Villa Champán",              "type": "village",      "district": "caldera",  "ll": (9.91600, -84.71250)},
     {"id": "ruta27",      "name": "Ruta 27 · Autopista",        "type": "highway",      "district": "caldera",  "ll": (9.91000, -84.71000)},
+    # inland barrio kiosks (planar full map) — pickups across the mainland towns.
+    # ll at each OSM place node; snapped to the nearest drivable road at build.
+    {"id": "kios_chac",   "name": "Soda Chacarita",             "type": "kiosk",        "district": "chacarita","ll": (9.98061, -84.77368), "snap_road": 1},
+    {"id": "kios_roble",  "name": "Churchill El Roble",         "type": "kiosk",        "district": "elroble",  "ll": (9.98067, -84.73602), "snap_road": 1},
+    {"id": "kios_barr",   "name": "Kiosco Barranca",            "type": "kiosk",        "district": "barranca", "ll": (9.98840, -84.71094), "snap_road": 1},
+    {"id": "kios_esp",    "name": "Churchill Esparza",          "type": "kiosk",        "district": "esparza",  "ll": (9.99183, -84.66587), "snap_road": 1},
 ]
 
 # Hand-placed junction fixes, vertices in world xy (read off the in-game 📍
@@ -266,10 +287,12 @@ CUSTOMER_DEFS = [
     {"id": "c6",  "name": "Padre Ramírez",          "district": "centro",   "line": "Bendito churchill.",           "ll": (9.97760, -84.83128)},
     {"id": "c7",  "name": "Vendedor de ceviche",    "district": "centro",   "line": "Te cambio uno por ceviche.",   "ll": (9.97700, -84.83100)},
     {"id": "c8",  "name": "Doña del mercado",       "district": "centro",   "line": "Rojito bien fuerte.",          "ll": (9.98000, -84.83100)},
-    {"id": "c9",  "name": "Niño con bici",          "district": "centro",   "line": "¡El mío con piña!",            "ll": (9.97720, -84.82800)},
+    {"id": "c9",  "name": "Niño con bici",          "district": "playitas", "line": "¡El mío con piña!",            "ll": (9.97720, -84.82800)},
     {"id": "c10", "name": "Equipo de fútbol",       "district": "playitas", "line": "Once. Es broma. Tres.",        "ll": (9.97880, -84.82620)},
-    {"id": "c11", "name": "Doña del rocking chair", "district": "playitas", "line": "Como en los años 80.",         "ll": (9.97700, -84.81800)},
-    {"id": "c12", "name": "Yatista gringo",         "district": "playitas", "line": "Best churchill ever, man.",    "ll": (9.97920, -84.81200)},
+    {"id": "c11", "name": "Doña del rocking chair", "district": "playitas", "line": "Como en los años 80.",         "ll": (9.97740, -84.82450)},
+    # el yatista espera cerca del ferry (Playitas quedó llena: banda angosta,
+    # kiosk+c9+c10 cubren todo el spread — no cabe un 4º cliente)
+    {"id": "c12", "name": "Yatista gringo",         "district": "carmen",   "line": "Best churchill ever, man.",    "ll": (9.97680, -84.84200)},
     {"id": "c13", "name": "Pareja en mirador",      "district": "cocal",    "line": "Para ver el atardecer.",       "ll": (9.96000, -84.73900)},
     {"id": "c14", "name": "Camionero de Ruta 17",   "district": "cocal",    "line": "Rápido, voy pa' Caldera.",     "ll": (9.96800, -84.74400)},
     {"id": "c15", "name": "Pescadores del estero",  "district": "mata",     "line": "Justo antes de la lluvia.",    "ll": (9.92600, -84.71000)},
@@ -1729,7 +1752,7 @@ def synth_buildings(blocks, cell_block, occ, n_real):
 # The Paseo de los Turistas is a divided avenue: a dashed palm median runs down
 # the centerline as a solid (blocking) separator between the two sides, with
 # periodic gaps ("aperturas") where you can cross from one side to the other.
-PASEO_MEDIAN_W = 2.0 * CUAD     # separator strips (palm median / tree lines)
+PASEO_MEDIAN_W = 0.5 * CUAD     # separator strips (palm median / tree lines) — ½ cuad planter
 PASEO_MIN_DASH = 2.0 * CUAD    # drop palm-median slivers shorter than this
 PASEO_GAP_MARGIN = CUAD        # extra turn room on each side of a crossing
 
@@ -2046,9 +2069,13 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
     dist_out = []
     for d in districts:
         x0, x1 = d["x0"], d["x1"]
+        # peninsula districts are full-height x-bands; inland barrios carry an
+        # explicit y0/y1 so they emit as a real 2-D bbox region (not full height).
+        y0 = d.get("y0", 0)
+        y1 = d.get("y1", CANVAS_H)
         dist_out.append({"id": d["id"], "name": d["name"], "short": d.get("short"),
-                         "tone": d["tone"], "x0": x0, "x1": x1,
-                         "poly": [x0, 0, x1, 0, x1, CANVAS_H, x0, CANVAS_H]})
+                         "tone": d["tone"], "x0": x0, "x1": x1, "y0": y0, "y1": y1,
+                         "poly": [x0, y0, x1, y0, x1, y1, x0, y1]})
 
     manifest = {
         "meta": {**meta, "tilePx": TILE_PX, "tileCells": TILE_CELLS,
@@ -2254,6 +2281,19 @@ def main():
     districts = []
     for i, d in enumerate(DISTRICT_DEFS):
         districts.append({**d, "x0": edges[i], "x1": edges[i + 1]})
+    # Inland barrios (planar only): real 2-D bbox regions off the peninsula. The
+    # corridor-unroll can't place them, so they're skipped there.
+    if PLANAR:
+        for d in INLAND_DISTRICT_DEFS:
+            la0, lo0, la1, lo1 = d["bbox"]
+            xa, ya, _, _ = sp.project(to_m(la0, lo0))
+            xb, yb, _, _ = sp.project(to_m(la1, lo1))
+            x0, x1 = sorted([round(xa), round(xb)])
+            y0, y1 = sorted([round(ya), round(yb)])
+            x0 = max(0, min(CANVAS_W, x0)); x1 = max(0, min(CANVAS_W, x1))
+            y0 = max(0, min(CANVAS_H, y0)); y1 = max(0, min(CANVAS_H, y1))
+            districts.append({"id": d["id"], "name": d["name"], "short": d["short"],
+                              "tone": d["tone"], "x0": x0, "x1": x1, "y0": y0, "y1": y1})
     print("[districts] " + ", ".join(f"{d['id']}:{d['x0']}-{d['x1']}" for d in districts))
 
     # --- POI resolution

@@ -45,27 +45,72 @@ function surfaceHeading(x, y, cls, reach = 60) {
 }
 const far = (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R;
 
-// --- spawners (one entity, near the camera) ------------------------------
+// --- traffic: lane-following along the road POLYLINES ---------------------
+// Cars ride the per-tile road centerlines (arclength advance + a lane offset
+// to their driving side) instead of wandering the surface grid, so they stay
+// aligned with the street and never cut across junctions diagonally.
+const MAIN_ROAD = new Set(["trunk", "trunk_link", "primary", "primary_link", "secondary"]);
+
+// Interpolated point + tangent angle at arclength s along a prepped road.
+function roadPointAt(r, s) {
+  const pts = r.pts, cum = r.cum;
+  let i = 1;
+  while (i < cum.length - 1 && cum[i] < s) i++;
+  const s0 = cum[i - 1], seg = cum[i] - s0 || 1;
+  const t = Math.max(0, Math.min(1, (s - s0) / seg));
+  const x0 = pts[(i - 1) * 2], y0 = pts[(i - 1) * 2 + 1];
+  const x1 = pts[i * 2], y1 = pts[i * 2 + 1];
+  return { x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t, ang: Math.atan2(y1 - y0, x1 - x0) };
+}
+// Place the car at its (road, s, dir, lane): right-hand side of travel.
+function placeCarOnRoad(c) {
+  const pt = roadPointAt(c.road, c.s);
+  const a = c.dir > 0 ? pt.ang : pt.ang + Math.PI;
+  c.x = pt.x + Math.cos(a + Math.PI / 2) * c.lane;
+  c.y = pt.y + Math.sin(a + Math.PI / 2) * c.lane;
+  c.ang = a;
+}
+// Advance along the polyline; recycled at either end (maintainStreaming
+// respawns it elsewhere near the camera).
+export function advanceCarOnRoad(c, dt) {
+  if (!c.road) { c.dead = true; return; }
+  c.s += c.v * dt * c.dir;
+  if (c.s <= 0 || c.s >= c.road.len) { c.dead = true; return; }
+  placeCarOnRoad(c);
+}
+
 function spawnOneCar() {
-  const pt = sampleNear(_cam.x, _cam.y, [3], 200, SPAWN_R); // roads only
-  if (!pt) return null;
-  const ang = surfaceHeading(pt.x, pt.y, 3);
-  const main = Math.random() < 0.45;
+  // candidate roads on resident tiles near the camera (skip footpaths/stubs)
+  const tiles = W.visibleTiles(_cam.x - SPAWN_R, _cam.y - SPAWN_R, _cam.x + SPAWN_R, _cam.y + SPAWN_R);
+  const cand = [];
+  for (const t of tiles)
+    for (const r of t.roads) {
+      if (r.cls === "pedestrian" || r.len < 140) continue;
+      cand.push(r);
+    }
+  if (!cand.length) return null;
+  const r = cand[(Math.random() * cand.length) | 0];
+  const main = MAIN_ROAD.has(r.cls);
   const car = {
-    x: pt.x, y: pt.y, ang,
+    road: r, s: 20 + Math.random() * (r.len - 40),
+    dir: Math.random() < 0.5 ? 1 : -1,
+    lane: r.w >= 30 ? r.w / 4 : 0, // wide street: keep to your side; narrow: center
     v: main ? 70 + Math.random() * 40 : 48 + Math.random() * 28,
     color: CAR_PALETTE[(Math.random() * CAR_PALETTE.length) | 0],
     w: main ? 38 : 32, h: main ? 18 : 16, kind: "car",
+    x: 0, y: 0, ang: 0,
   };
   if (main) {
     const roll = Math.random();
     if (roll < 0.15) { car.kind = "truck"; car.w = 46; car.h = 18; }
     else if (roll < 0.24) { car.kind = "bus"; car.w = 56; car.h = 19; car.color = "#e0762e"; car.v *= 0.85; }
   }
+  placeCarOnRoad(car);
+  if (Math.hypot(car.x - _cam.x, car.y - _cam.y) > SPAWN_R) return null; // road wandered off-range
   return car;
 }
 function spawnOnePed() {
-  const pt = sampleNear(_cam.x, _cam.y, [6, 3], 120, SPAWN_R); // acera or road edge
+  const pt = sampleNear(_cam.x, _cam.y, [6], 120, SPAWN_R); // aceras only
   if (!pt) return null;
   return {
     x: pt.x, y: pt.y, ang: surfaceHeading(pt.x, pt.y, 6, 40),

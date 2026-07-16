@@ -134,12 +134,84 @@ roads are polylines, delivery/spawns are 2-D. Corridor coupling in the engine is
   full-world water rect + `LAND_POLYS`/`WATERS`/`BEACHES` polys once, so the whole-map zoom-out
   is gap-free (the resident ±3-tile detail layers on top). **Next for Pixi:** port entity
   drawers (peds/gulls/boats/vendors) and weather when wiring into the game.
-- [ ] **Phase 4 (full) — wire 2-D into the shipped game.** Swap `WORLD`→`WORLD2D` behind the
-  world import, thread the async `ready()/update()` into app/mode init, `physics.js` water
-  push-back via `inWater` (done in the viewer port), `spawns.js` gulls/boats sample water not
-  `topY/botY`, `districtAt`→2-D (done: nearest-centroid), explore barriers 2-D or dropped.
-- [ ] **Phase 5** — minimap = real 2-D map; re-run POI-reachability gate; full compare vs
-  `corridor-stable`.
+- [x] **Phase 4 (full) — 2-D wired into the shipped game.** All game modules import `WORLD2D`;
+  `physics.js` uses water-as-wall (dropped `topY/botY`); async `ready()/update()` primed at mode
+  start + streamed each frame; `spawns.js` fully rewritten to **camera-local streaming** spawns
+  (traffic/peds/gulls/boats near the camera on resident tiles; `advanceOnSurface` keeps them on
+  roads/aceras); `districtAt(x,y)` fixed at all call sites; explore barriers stay x-walls (fine
+  for the west→east peninsula). Verified: all three modes run + drive on the 2-D map.
+- [x] **Painterly renderer** (`canvas2d.js` `drawWorld2D`, commit `d5acc73`) — the shipped game
+  renders the corridor's painterly art from WORLD2D per-tile vector features (land silhouette +
+  multi-pass road strokes w/ lane dashes + roofed buildings + palms/trees), not flat tiles. The
+  Pixi backend stays available behind `Renderer.js` but canvas2d is the game renderer.
+
+## DIRECTION (2026-07-12, decided with user): full 2-D map + painterly look
+The user prefers the corridor's *look* but wants the *full OSM coverage* — "all of the map,
+even Esparza, Barranca, El Roble, and ALL places across the OSM." The corridor-unroll can't
+place inland towns (they're km off the Faro→Caldera line), so the chosen path is the **planar
+full-OSM map rendered painterly** (done above). Now: map the elements across it "like before."
+
+## 2026-07-16 — MVP hardening pass (traffic/peds, rails/medians, zoom, joystick, barrios, MVP wall)
+- [x] **Traffic lane-following** (`spawns.js`): cars are spawned ON a per-tile road
+  polyline and advance by arclength with a right-hand lane offset (`roadPointAt`/
+  `placeCarOnRoad`/`advanceCarOnRoad`); recycled at piece ends. Replaces the grid-heading
+  wander (`advanceOnSurface`) which let cars cut junctions diagonally. **Peds walk aceras
+  only** (`PED_CLS=[6]`, spawn sample class 6 only).
+- [x] **Rails + separator grounds restored**: `drawWorld2D` now paints per-tile `rails`
+  (Ferrocarril ballast/ties/steel) and `medians` (planted strip under the paseo palms /
+  León Cortés trees) — they were emitted in the tiles but never drawn. Ground width
+  `PASEO_MEDIAN_W` 2 CUAD → **0.5 CUAD** (user: planter too big).
+- [x] **Zoom out**: `CUADS_PER_VIEW` 12 → **16** (builder meta + renderer fallback), floor
+  3.5 → 2.6.
+- [x] **Mobile controls v2** (`input.js`, `TouchControls.jsx`): one-finger dynamic-origin
+  joystick — angle steers toward the stick direction, extension sets `input.limit`
+  (speed delimiter multiplied into the top speed in `physics.js`), pushing past the rim
+  (96px) engages the turbo. Boost pedal removed; brake ✋ pedal stays. Point-to-drive
+  (`attachAim`/`applyTouchAim`) removed.
+- [x] **Barrio bounds audit vs OSM** (all 141 `place=*` nodes projected + every POI checked
+  against its tagged band): the spit's bands east of centro were shifted one barrio —
+  real **Las Playitas is at lon -84.8274** (just east of centro/Estadio) and **El Cocal at
+  -84.8171**; the game had playitas covering Cocal's ground. Fixed `DISTRICT_BOUNDS_GEO`
+  (centro|playitas -84.8290, playitas|cocal -84.8220, faro|carmen -84.8493 so the ferry
+  falls in Carmen) + moved kios_play/c11 to real Playitas, re-tagged yatch→cocal,
+  parquemar/c9→playitas, and **c12 → Carmen by the ferry** (the corrected Playitas band
+  is a narrow strip physically full at the 450/360 spread radii — the build gate said
+  "crowded", verified against the tile grid). **Known, accepted x-band limits** (fix =
+  Phase 5 polygon rings):
+  paseo↔centro (the Paseo is centro's southern shore strip) and mata↔caldera (the port is
+  WEST of Mata village by lon) interleave in x — centroid-based `districtAt` still names
+  them correctly in-game.
+- [x] **MVP gate (Play Store first release)**: `MVP_LOCKED` in `progress.js` fences
+  cocal/mata/caldera/chacarita/elroble/barranca/esparza behind a "PRÓXIMAMENTE" x-wall at
+  the playitas|cocal boundary in **every mode** (`rebuildBarriers` runs in story/arcade
+  too); `unlockDistrict` ignores gated ids; delivery only offers reachable POIs in all
+  modes; StageSelect shows stages 5–7 as "Próximamente"; barrier renderer no longer
+  explore-only. Playable MVP: Faro, Carmen, paseos, Centro (mercado), Playitas.
+
+## REMAINING WORK (this phase)
+- [~] **Water / rivers love** — `drawLandBase`/`paintWaterBody` give inland waters a gradient +
+  clipped shimmer + foam bank, and beaches a wet edge. **DONE in code; needs a visual pass.**
+- [~] **Districts / barrios everywhere** — added `INLAND_DISTRICT_DEFS` (Chacarita, El Roble,
+  Barranca, Esparza) with lat/lon `bbox` regions + one kiosk each in `LANDMARK_DEFS`
+  (`kios_chac/roble/barr/esp`), wired into the planar `districts` list with bbox `x0/x1/y0/y1`.
+  `districtAt` classifies by nearest kiosk centroid so no hand-drawn rings needed.
+  **TODO:** (1) finish `emit_world2d` to emit the bbox `poly` (respect `y0/y1`, not full-height)
+  + carry `y0/y1` into the manifest; (2) `nudge_to_land` auto-snaps kiosks to a drivable road —
+  verify the gate stays green; (3) rebuild planar (~160s) + verify Esparza labels "ESPARZA" not
+  "Mata"; (4) optionally draw the district region tint/label on the map. More barrios to add
+  later: Boca de Barranca, Macacona, Pitahaya, Chacarita-sur.
+- [ ] **Kiosks across the full map** — 4 inland kiosks added; add customers per inland barrio for
+  delivery variety (respect the spread rule) and consider new Arcade/Recorrer pickup coverage.
+- [ ] **Barranca / El Roble bridge (grade-separated overpass)** — the hard one. Ruta 1
+  (Costanera, Fiesta-hotel→Costanera) crosses OVER the Puntarenas→El Roble road, which passes
+  UNDER. Needs: mark the over-deck road segment as a bridge (class 5 / `bridge` flag), keep the
+  under-road drivable and NOT connected to the deck at the crossing (grade separation — no turn
+  between them there), and render the deck with a drop-shadow over the under-road. The flat
+  surface grid can't hold two levels at one cell, so the deck is a rendered overlay + a
+  physics rule that the two segments don't join at the crossing. Find the OSM overpass ways
+  (`bridge=yes` on Ruta 1 near El Roble) to drive it.
+- [ ] **Phase 5 polish** — minimap already uses the real 2-D silhouette; true 2-D district
+  rings (vs bbox/nearest-centroid); re-anchor Historia stages across the full map if desired.
 
 ## Preserving the Paseo detail (no dev regression)
 These are **OSM-rule-driven**, so they regenerate under planar (confirmed in the smoke: "46

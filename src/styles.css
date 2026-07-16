@@ -364,9 +364,28 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .screen-anim, .overlay .panel { animation: none; }
 }
 
-/* ----- Touch controls (point-to-drive: steering is the held finger on the
-   play area; only brake + turbo need buttons) ----- */
+/* ----- Touch controls (one-finger joystick: angle steers, extension caps the
+   speed, past the rim = turbo; only the brake needs a pedal) ----- */
 .touch-controls { position: absolute; inset: 0; pointer-events: none; }
+.joy-zone {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 55%;
+  pointer-events: auto; touch-action: none;
+  -webkit-user-select: none; user-select: none;
+}
+.joy-base { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 5; }
+.joy-ring {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 128px; height: 128px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.07);
+}
+.joy-knob {
+  position: absolute; left: 0; top: 0;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(255,255,255,0.45); border: 2px solid rgba(255,255,255,0.6);
+  transition: background 0.08s;
+}
+.joy-knob.turbo { background: oklch(0.68 0.18 30 / 0.85); box-shadow: 0 0 18px oklch(0.68 0.18 30 / 0.8); }
 .pedal {
   position: absolute;
   bottom: max(24px, env(safe-area-inset-bottom));
@@ -376,8 +395,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   pointer-events: auto; font-size: 26px;
   touch-action: none; -webkit-user-select: none; user-select: none;
 }
-.pedal.boost { right: max(24px, env(safe-area-inset-right)); background: oklch(0.68 0.18 30 / 0.6); }
-.pedal.brake { right: calc(max(24px, env(safe-area-inset-right)) + 108px); background: rgba(255,255,255,0.18); }
+.pedal.brake { right: max(24px, env(safe-area-inset-right)); background: rgba(255,255,255,0.18); }
 /* Hide touch controls only for fine-pointer (mouse) devices — landscape
    tablets still need the pedals. */
 @media (pointer: fine) { .touch-controls { display: none; } }

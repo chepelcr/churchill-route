@@ -4,14 +4,13 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
-import { input, readInput, pollGamepad, applyTouchAim } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface } from "./spawns.js";
+import { input, readInput, pollGamepad, applyTouchJoystick } from "./input.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advanceCarOnRoad } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
 
-// surface classes traffic drives on (road) and pedestrians walk on (acera/road)
-const TRAFFIC_CLS = [3];
-const PED_CLS = [6, 3];
+// surface classes pedestrians walk on (aceras only — never the road)
+const PED_CLS = [6];
 
 // ----- Polygon collision helpers ------------------------------------------
 function pointInPoly(x, y, pts) {
@@ -55,7 +54,7 @@ function collideBuilding(p, b) {
 export function update(dt) {
   if (state.paused || state.over) return;
   readInput(); pollGamepad();
-  applyTouchAim(state.cam, state.p);
+  applyTouchJoystick(state.p);
 
   const p = state.p; const veh = state.veh;
   const surf = W.surfaceAt(p.x, p.y);
@@ -92,7 +91,8 @@ export function update(dt) {
     const k = Math.max(0, sp2 - fric * (1 / surfaceMul) * dt * 60) / sp2;
     p.vx *= k; p.vy *= k;
   }
-  const top = veh.top * surfaceMul * (input.boost ? 1.35 : 1) * wetMul;
+  // `input.limit` is the joystick speed delimiter (1 for keyboard/gamepad)
+  const top = veh.top * surfaceMul * (input.boost ? 1.35 : 1) * wetMul * (input.limit || 1);
   const sp3 = Math.hypot(p.vx, p.vy);
   if (sp3 > top) { p.vx *= top / sp3; p.vy *= top / sp3; }
 
@@ -143,7 +143,9 @@ export function update(dt) {
         if (p.x > br.x - 14 && p.x < br.x) {
           p.x = br.x - 14; p.vx = -Math.abs(p.vx) * 0.4;
           state.cam.shake = Math.max(state.cam.shake, 8);
-          state.storyTip = `${br.district.toUpperCase()} sigue cerrado — completá el Nivel ${br.requiredStage} para pasar.`;
+          state.storyTip = br.mvp
+            ? "Hasta aquí llega el MVP — El Cocal y el resto del puerto llegan en una próxima actualización."
+            : `${br.district.toUpperCase()} sigue cerrado — completá el Nivel ${br.requiredStage} para pasar.`;
         } else if (p.x > br.x && p.x < br.x + 14) {
           // can re-enter going west: allow
         }
@@ -257,12 +259,10 @@ export function advanceEntities(dt, withPlayer = true) {
   for (const pt of state.particles) { pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.life -= dt; }
   state.particles = state.particles.filter(pt => pt.life > 0);
 
-  // Traffic — drive along heading on the road grid (position-based; the streamed
-  // world has no global arclength). advanceOnSurface turns at corners / marks
-  // dead when boxed in, and maintainStreaming recycles it near the camera.
+  // Traffic — lane-follows its road polyline (spawns.js); recycled at the
+  // piece ends by maintainStreaming.
   for (const t of traffic) {
-    advanceOnSurface(t, dt, TRAFFIC_CLS, 0.008);
-    t.ang = Math.atan2(Math.sin(t.ang), Math.cos(t.ang));
+    advanceCarOnRoad(t, dt);
     if (withPlayer && Math.abs(t.x - p.x) < 20 && Math.abs(t.y - p.y) < 14) {
       p.vx -= (t.x - p.x) * 0.5; p.vy -= (t.y - p.y) * 0.5;
       state.cam.shake = Math.max(state.cam.shake, 6);

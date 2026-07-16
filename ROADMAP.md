@@ -191,11 +191,38 @@ Full plan lives in the approved plan file; status tracked here.
       `src/world2d/drive.js`. Verified in `/world2d-pixi.html`: renders/drives/zoom-out.
       Not behind the `Renderer.js` seam yet, so the shipped game is unchanged and `pixi.js`
       stays out of the prod bundle.
-    - [ ] **NEXT:** (a) Pixi whole-map backdrop from manifest polys
-      (`LAND_POLYS/WATERS/BEACHES`) so extreme zoom-out isn't gapped by the ±3-tile window;
-      (b) **Phase 4 — wire `WORLD2D` into the shipped game** (modes/HUD/stages/delivery, async
-      `ready()/update()` in app init, physics water push-back, spawns sample water). Phase 4
-      changes the shipped game — checkpoint with user before starting.
+    - [x] **Pixi whole-map backdrop** (`0fad9f9`) — gap-free extreme zoom-out from the
+      manifest `LAND_POLYS/WATERS/BEACHES` polys under the ±3-tile detail window.
+    - [x] **Phase 4 — `WORLD2D` wired into the shipped game** (`296a928`): all game modules
+      on the streamed 2-D world; water-as-wall physics; camera-local streaming spawns;
+      `districtAt(x,y)` everywhere. All three modes run on the 2-D map.
+    - [x] **Painterly renderer for the 2-D map** (`d5acc73`): `drawWorld2D` in `canvas2d.js`
+      draws the corridor's art style from per-tile vector features (Pixi backend stays
+      available behind the seam).
+    - [x] **2026-07-16 session — MVP hardening pass:**
+      - **Traffic lane-following**: cars ride the road polylines (arclength + right-hand
+        lane offset, recycled at piece ends) instead of wandering the surface grid;
+        **pedestrians walk aceras only** (class 6, never the road).
+      - **Rails + paseo separators restored** in `drawWorld2D` (per-tile `rails`/`medians`
+        were emitted but never painted); separator ground narrowed 2 → **½ cuad**
+        (`PASEO_MEDIAN_W`).
+      - **Camera zoomed out**: `CUADS_PER_VIEW` 12 → 16 (floor 3.5 → 2.6).
+      - **Mobile controls v2**: one-finger virtual joystick — angle steers, extension is a
+        speed delimiter (`input.limit`), pushing past the rim engages the turbo; ⚡ pedal
+        removed, only brake ✋ remains. (Replaces point-to-drive.)
+      - **Barrio bounds audited vs OSM place nodes** (`scratchpad/audit_districts.py`
+        approach: calibrate lon/lat→x/y from the district edges, project all 141 `place=*`
+        nodes): Las Playitas (-84.8274) / El Cocal (-84.8171) bands were swapped one barrio
+        east — bounds + POI anchors fixed (kios_play/c11 moved to real Playitas, yatch
+        re-tagged cocal, parquemar/c9 → playitas, c12 → Carmen by the ferry — the corrected
+        Playitas strip is spread-full, ferry boundary nudged). Known x-band
+        limitations documented (paseo↔centro and mata↔caldera stack in 2-D; centroid-based
+        `districtAt` handles naming — true polygon rings remain Phase 5).
+      - **MVP gate for the Play Store release**: everything east of the playitas|cocal
+        boundary (El Cocal, Mata, Caldera + inland barrios) is fenced with a
+        "PRÓXIMAMENTE" wall in EVERY mode (`MVP_LOCKED` in `progress.js`); kiosks/customers
+        behind the wall are never offered; Historia stages 5–7 show "Próximamente" in the
+        level select.
 
 ## ✅ City-feel + mobile pass — done 2026-07-10
 
@@ -316,9 +343,10 @@ Full plan lives in the approved plan file; status tracked here.
 - [ ] Dead state: `state.rainT`, `state.timeOfDay`, `boat.wake`, unused `Game.pause()` API (React drives pause directly).
 - [ ] `weatherColors()` allocated per-object per-frame (drawHills/drawLand/drawEstuary) — cache per frame.
 - [ ] `drawLandmark` has no `default:` case — a new landmark type would silently render only its shadow.
-- [x] Touch controls double-gated — resolved 2026-07-10: the joystick is gone
-      (point-to-drive aims via the canvas on any device); the coarse-pointer
-      gate only controls the brake/turbo pedals.
+- [x] Touch controls double-gated — resolved 2026-07-10 (point-to-drive), then
+      superseded 2026-07-16: a one-finger virtual joystick (steer + speed
+      delimiter + rim-turbo) replaced point-to-drive; only the brake pedal
+      remains, gated by the coarse-pointer media query.
 - [ ] Headless smoke harness lives in a session scratchpad — move `headless.js` into `tools/` and wire a CI check.
 
 ## ✅ Completed 2026-07-05 (was "in progress")

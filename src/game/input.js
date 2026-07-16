@@ -1,15 +1,20 @@
 // Input: keyboard, gamepad and touch. Exposes the shared `input` axis object
-// that physics reads each frame. Touch is "point-to-drive": hold a finger on
-// the play area and the car steers toward it (attachAim + applyTouchAim),
-// plus on-screen brake/boost pedals (attachTouch).
+// that physics reads each frame. Touch is a one-finger virtual JOYSTICK
+// (attachJoystick): the stick angle steers, the stick extension is a speed
+// delimiter (short push = cruise, full push = top speed) and pushing PAST the
+// rim engages the turbo — so mobile needs no turbo button, only brake.
 
 export const keys = {};
-export const input = { up: 0, down: 0, left: 0, right: 0, brake: 0, boost: 0 };
+// `limit` caps the vehicle top speed (0..1); keyboard/gamepad leave it at 1,
+// the joystick lowers it with a short stick push.
+export const input = { up: 0, down: 0, left: 0, right: 0, brake: 0, boost: 0, limit: 1 };
 
-// One aim finger tracked by touch identifier so a second finger can hold the
-// brake/boost pedals at the same time. Coordinates are client (screen) px.
-const touchAim = { active: false, x: 0, y: 0, id: null };
-let touchBrake = false, touchBoost = false;
+// One joystick finger tracked by touch identifier so a second finger can hold
+// the brake pedal at the same time. Coordinates are client (screen) px.
+const joy = { active: false, id: null, ox: 0, oy: 0, dx: 0, dy: 0 };
+const JOY_R = 64;        // stick extension (css px) for full throttle
+const JOY_BOOST_R = 96;  // push past this to engage the turbo
+let touchBrake = false;
 
 if (typeof window !== "undefined") {
   window.addEventListener("keydown", (e) => {
@@ -26,33 +31,28 @@ export function readInput() {
   input.right = (keys.d || keys.arrowright) ? 1 : 0;
   input.brake = (keys[" "] || keys.shift) ? 1 : 0;
   input.boost = (keys.x) ? 1 : 0;
+  input.limit = 1;
   if (touchBrake) input.brake = 1;
-  if (touchBoost) input.boost = 1;
 }
 
-// Point-to-drive: steer the car toward the held finger. Runs after readInput
-// so it max-merges with keyboard/gamepad. Works in SCREEN space (the camera
-// transform is uniform scale+translate, so angles are preserved) — the car is
-// projected to screen because the camera leads it (lookahead ≠ center).
-export function applyTouchAim(cam, p) {
-  if (!touchAim.active) return;
-  // fall back if the renderer hasn't published the view yet (same spirit as
-  // the camera clamp fallback in physics.js)
-  const zoom = cam.zoom || 5.5;
-  const vw = cam.vw || window.innerWidth, vh = cam.vh || window.innerHeight;
-  const sx = (p.x - cam.x) * zoom + vw / 2;
-  const sy = (p.y - cam.y) * zoom + vh / 2;
-  const dx = touchAim.x - sx, dy = touchAim.y - sy;
-  const d = Math.hypot(dx, dy);
-  if (d < 24) return;                                  // dead zone: coast
-  let e = Math.atan2(dy, dx) - p.a;
+// Joystick → axes. Runs after readInput so it max-merges with keyboard/
+// gamepad. The stick works in SCREEN space, and the camera transform is a
+// uniform scale+translate, so a screen angle IS a world angle: steer the car
+// toward the stick direction.
+export function applyTouchJoystick(p) {
+  if (!joy.active) return;
+  const mag = Math.hypot(joy.dx, joy.dy);
+  if (mag < 10) return;                                // dead zone: coast
+  let e = Math.atan2(joy.dy, joy.dx) - p.a;
   e = Math.atan2(Math.sin(e), Math.cos(e));            // shortest angle diff
   const steer = Math.max(-1, Math.min(1, e / 0.35));   // full lock past ~20°
   if (steer > 0) input.right = Math.max(input.right, steer);
   else input.left = Math.max(input.left, -steer);
-  let thr = Math.max(0, Math.min(1, (d - 48) / 96));   // far finger = faster
-  thr *= 0.35 + 0.65 * Math.max(0, Math.cos(e));       // behind = slow U-turn
+  const m01 = Math.min(1, mag / JOY_R);                // stick extension 0..1
+  const thr = m01 * (0.35 + 0.65 * Math.max(0, Math.cos(e))); // behind = slow U-turn
   input.up = Math.max(input.up, thr);
+  input.limit = Math.min(input.limit, 0.45 + 0.55 * m01);     // finger = speed cap
+  if (mag > JOY_BOOST_R) input.boost = 1;                     // past the rim = turbo
 }
 
 export function pollGamepad() {
@@ -70,35 +70,52 @@ export function pollGamepad() {
   }
 }
 
-// Claim ONE finger on the play canvas as the aim finger; pedals keep their
-// own fingers (touches starting on a pedal never reach the canvas).
-export function attachAim(canvasEl) {
-  if (!canvasEl) return;
-  canvasEl.addEventListener("touchstart", (e) => {
+// Dynamic-origin joystick: the stick base appears where the finger lands in
+// the zone (left side of the screen), the knob follows the finger, clamped to
+// the boost rim. The zone claims ONE finger; the brake pedal keeps its own.
+export function attachJoystick(zoneEl, baseEl, knobEl) {
+  if (!zoneEl) return;
+  const paint = () => {
+    if (!baseEl) return;
+    baseEl.style.display = joy.active ? "" : "none";
+    baseEl.style.left = `${joy.ox}px`;
+    baseEl.style.top = `${joy.oy}px`;
+    if (knobEl) {
+      const mag = Math.hypot(joy.dx, joy.dy);
+      const k = mag > JOY_BOOST_R ? JOY_BOOST_R / mag : 1;
+      knobEl.style.transform = `translate(calc(${joy.dx * k}px - 50%), calc(${joy.dy * k}px - 50%))`;
+      knobEl.classList.toggle("turbo", mag > JOY_BOOST_R);
+    }
+  };
+  zoneEl.addEventListener("touchstart", (e) => {
     e.preventDefault();
-    if (touchAim.id === null && e.changedTouches.length) {
+    if (joy.id === null && e.changedTouches.length) {
       const t = e.changedTouches[0];
-      touchAim.id = t.identifier;
-      touchAim.active = true;
-      touchAim.x = t.clientX; touchAim.y = t.clientY;
+      joy.id = t.identifier; joy.active = true;
+      joy.ox = t.clientX; joy.oy = t.clientY; joy.dx = joy.dy = 0;
+      paint();
     }
   }, { passive: false });
   const track = (e) => {
     for (const t of e.changedTouches) {
-      if (t.identifier === touchAim.id) { touchAim.x = t.clientX; touchAim.y = t.clientY; }
+      if (t.identifier === joy.id) {
+        joy.dx = t.clientX - joy.ox; joy.dy = t.clientY - joy.oy;
+        paint();
+      }
     }
   };
   const release = (e) => {
     for (const t of e.changedTouches) {
-      if (t.identifier === touchAim.id) { touchAim.id = null; touchAim.active = false; }
+      if (t.identifier === joy.id) { joy.id = null; joy.active = false; joy.dx = joy.dy = 0; paint(); }
     }
   };
-  canvasEl.addEventListener("touchmove", track, { passive: true });
-  canvasEl.addEventListener("touchend", release);
-  canvasEl.addEventListener("touchcancel", release);
+  zoneEl.addEventListener("touchmove", track, { passive: true });
+  zoneEl.addEventListener("touchend", release);
+  zoneEl.addEventListener("touchcancel", release);
+  paint();
 }
 
-export function attachTouch(brakeEl, boostEl) {
+export function attachTouch(brakeEl) {
   const bind = (el, set) => {
     if (!el) return;
     el.addEventListener("touchstart", (e) => { e.preventDefault(); set(true); }, { passive: false });
@@ -106,5 +123,4 @@ export function attachTouch(brakeEl, boostEl) {
     el.addEventListener("touchcancel", () => set(false));
   };
   bind(brakeEl, (v) => { touchBrake = v; });
-  bind(boostEl, (v) => { touchBoost = v; });
 }

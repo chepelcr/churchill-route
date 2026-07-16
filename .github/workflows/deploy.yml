@@ -1,8 +1,10 @@
 name: Deploy to GitHub Pages
 
+# NOTE: world-2d deploys are TEMPORARY (testing the 2-D world on phones/APK);
+# remove it from the branch list when world-2d merges back into main.
 on:
   push:
-    branches: [main]
+    branches: [main, world-2d]
   workflow_dispatch:
 
 permissions:

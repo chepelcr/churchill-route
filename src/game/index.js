@@ -4,7 +4,7 @@
 import { state } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { startArcade, startStage, startExplore, setWeather, setVehicle } from "./modes.js";
-import { attachTouch, attachAim } from "./input.js";
+import { attachTouch, attachJoystick } from "./input.js";
 import { update } from "./physics.js";
 import { setAttract, attractTick } from "./attract.js";
 import { loadProgress, saveProgress, rebuildBarriers } from "./progress.js";
@@ -29,13 +29,12 @@ function attachCanvas(c) {
   if (attached) return;
   attached = true;
   setupCanvas(c);
-  attachAim(c);   // point-to-drive: hold a finger where you want to go
   requestAnimationFrame((t) => { lastT = t; loop(t); });
 }
 
 export const Game = {
   state, VEHICLES, startArcade, startStage, startExplore, setWeather, setVehicle,
-  attachCanvas, attachTouch, setAttract,
+  attachCanvas, attachTouch, attachJoystick, setAttract,
   pause: () => { state.paused = !state.paused; },
   quit: () => { state.running = false; state.over = false; state.won = false; },
   resetProgress: () => {

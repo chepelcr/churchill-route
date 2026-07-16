@@ -28,7 +28,7 @@ export function startStage(stageIdx, vehicleKey) {
   // mutate cam, never replace: the renderer publishes zoom/vw/vh on it
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = stg.brief;
-  state.barriers = [];
+  rebuildBarriers(); // MVP wall (story has no progression barriers)
   state.district = null; state.districtToast = null;
   // prime the streamed world on the spawn area so surfaces are resident before
   // the first physics/render frame (tiles keep loading via update() in the loop)
@@ -55,7 +55,7 @@ export function startArcade(opts = {}) {
   state.p = { x: k0.x - 60, y: k0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = "Tres minutos y todo el puerto. Si no dejás de entregar, el combo no se cae.";
-  state.barriers = [];
+  rebuildBarriers(); // MVP wall (arcade has no progression barriers)
   state.district = null; state.districtToast = null;
   // prime the streamed world on the spawn area so surfaces are resident before
   // the first physics/render frame (tiles keep loading via update() in the loop)

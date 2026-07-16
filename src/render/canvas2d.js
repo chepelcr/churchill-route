@@ -16,11 +16,11 @@ import { nearestKiosk } from "../game/delivery.js";
   // so every device shows the same amount of city. Only a floor is clamped —
   // narrow screens show FEWER cuadrículas (more detail), never more than 12.
   const CUAD = (W.META && W.META.cuad) || 20;
-  const CUADS_PER_VIEW = (W.META && W.META.cuadsPerView) || 12;
+  const CUADS_PER_VIEW = (W.META && W.META.cuadsPerView) || 16;
   const ACERA_PX = (W.META && W.META.aceraPx) || 8; // sidewalk depth per side
   function computeZoom(wCss, hCss) {
     const z = wCss / (CUADS_PER_VIEW * CUAD);
-    return Math.max(3.5, z);
+    return Math.max(2.6, z);
   }
   function setupCanvas(c) {
     canvas = c; ctx = c.getContext("2d");
@@ -129,12 +129,42 @@ import { nearestKiosk } from "../game/delivery.js";
   // view contribute; a low-res land/water/beach backdrop covers unloaded gaps.
   function roadPath(r) { return r._path || (r._path = flatPath(r.pts, false)); }
 
-  // Base land/beach/inner-water silhouette (weather-tinted), under the streets.
-  function drawLandBase(view) {
+  // One inland water body (estuary / river): gradient fill, animated shimmer
+  // clipped to its shape, and a soft foam bank where it meets the land.
+  function paintWaterBody(w, view, t) {
+    const C = weatherColors(), a = w.aabb;
+    const g = ctx.createLinearGradient(0, a.y0, 0, a.y1);
+    g.addColorStop(0, C.waterTop); g.addColorStop(1, C.waterBot);
+    ctx.fillStyle = g; ctx.fill(w.path);
+    // shimmer, clipped to the water
+    ctx.save(); ctx.clip(w.path);
+    ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 1;
+    const tt = t * 0.0006;
+    const y0 = Math.max(view.y0, a.y0), y1 = Math.min(view.y1, a.y1);
+    const x0 = Math.max(view.x0, a.x0), x1 = Math.min(view.x1, a.x1);
+    for (let yy = y0; yy < y1; yy += 22) {
+      ctx.beginPath();
+      for (let xx = x0; xx < x1; xx += 18) {
+        const yo = Math.sin(tt + xx * 0.05 + yy * 0.04) * 1.8;
+        xx === x0 ? ctx.moveTo(xx, yy + yo) : ctx.lineTo(xx, yy + yo);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    // foam bank: soft pale rim along the shoreline
+    ctx.strokeStyle = "rgba(226,240,238,0.35)"; ctx.lineWidth = 2.5; ctx.stroke(w.path);
+  }
+
+  // Base land + inland waters (with river love) + beach, under the streets.
+  function drawLandBase(view, t) {
     const rc = ensureRenderCache(), C = weatherColors();
     ctx.fillStyle = C.land; for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
-    ctx.fillStyle = C.waterBot; for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) ctx.fill(w.path);
+    ctx.lineJoin = "round";
+    for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) paintWaterBody(w, view, t);
+    // beach: sandy fill + a faint wet line along its seaward edge
     ctx.fillStyle = C.sand; for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.fill(b.path);
+    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1.5;
+    for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.stroke(b.path);
   }
 
   // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
@@ -187,6 +217,65 @@ import { nearestKiosk } from "../game/delivery.js";
     ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 1; ctx.stroke(path);
   }
 
+  // Per-tile Ferrocarril rail pieces: ballast bed + ties + two steel rails.
+  // Decorative (not drivable), drawn on the ground over the roads.
+  function paintTileRails(rails, view) {
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    for (const rl of rails) {
+      if (!rl.aabb) rl.aabb = flatAABB(rl.pts);
+      if (!aabbInView(rl.aabb, view, 12)) continue;
+      const p = rl.pts;
+      // ballast bed
+      ctx.strokeStyle = "rgba(120,104,84,0.5)"; ctx.lineWidth = 9;
+      ctx.stroke(rl._path || (rl._path = flatPath(p, false)));
+      // ties
+      ctx.strokeStyle = "#5a4a38"; ctx.lineWidth = 1.6;
+      for (let i = 0; i + 3 < p.length; i += 2) {
+        const x0 = p[i], y0 = p[i + 1], dx = p[i + 2] - x0, dy = p[i + 3] - y0;
+        const len = Math.hypot(dx, dy); if (len < 0.001) continue;
+        const nx = -dy / len, ny = dx / len;
+        for (let s = 0; s < len; s += 7) {
+          const t = s / len, cx = x0 + dx * t, cy = y0 + dy * t;
+          if (cx < view.x0 - 8 || cx > view.x1 + 8 || cy < view.y0 - 8 || cy > view.y1 + 8) continue;
+          ctx.beginPath();
+          ctx.moveTo(cx - nx * 5, cy - ny * 5); ctx.lineTo(cx + nx * 5, cy + ny * 5); ctx.stroke();
+        }
+      }
+      // two steel rails, offset either side of the centerline
+      ctx.strokeStyle = "#9aa0a6"; ctx.lineWidth = 1.4;
+      for (const sgn of [-3.2, 3.2]) {
+        ctx.beginPath();
+        for (let i = 0; i < p.length; i += 2) {
+          const ii = i + 2 < p.length ? i : (i >= 2 ? i - 2 : i);
+          const dx = (p[ii + 2] ?? p[ii]) - p[ii], dy = (p[ii + 3] ?? p[ii + 1]) - p[ii + 1];
+          const len = Math.hypot(dx, dy) || 1, nx = -dy / len * sgn, ny = dx / len * sgn;
+          if (i === 0) ctx.moveTo(p[i] + nx, p[i + 1] + ny); else ctx.lineTo(p[i] + nx, p[i + 1] + ny);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.lineCap = "butt";
+  }
+
+  // Per-tile paseo/León Cortés separator strips: the planted green ground the
+  // palms/almendros stand on, with a darker soil/curb edge.
+  function paintTileMedians(medians, view) {
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = "#4f6f34"; // soil / curb edge
+    for (const m of medians) {
+      if (!m.aabb) m.aabb = flatAABB(m.pts);
+      if (!aabbInView(m.aabb, view, m.w + 6)) continue;
+      ctx.lineWidth = m.w + 3;
+      ctx.stroke(m._path || (m._path = flatPath(m.pts, false)));
+    }
+    ctx.strokeStyle = "#79b45c"; // planted grass
+    for (const m of medians) {
+      if (!aabbInView(m.aabb, view, m.w + 6)) continue;
+      ctx.lineWidth = m.w; ctx.stroke(m._path);
+    }
+    ctx.lineCap = "butt";
+  }
+
   function paintPalm(pa, t) {
     const sway = Math.sin(t * 0.001 + (pa.sway || 0)) * 2, s = pa.s || 1;
     ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.beginPath(); ctx.ellipse(pa.x + 6, pa.y + 5, 12 * s, 4, 0, 0, Math.PI * 2); ctx.fill();
@@ -206,13 +295,17 @@ import { nearestKiosk } from "../game/delivery.js";
 
   // Orchestrate the painterly world from resident, in-view tiles.
   function drawWorld2D(view, t) {
-    drawLandBase(view);
+    drawLandBase(view, t);
     const vts = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
     // roads: gather in-view segments across tiles, minor → major so arterials paint on top
     const roads = [];
     for (const tile of vts) for (const r of tile.roads) if (aabbInView(r.aabb, view, r.w + 6)) roads.push(r);
     roads.sort((a, b) => (ROAD_ORDER[a.cls] || 0) - (ROAD_ORDER[b.cls] || 0));
     paintRoads(roads);
+    // rails (old Ferrocarril line) + paseo separator ground strips, on top of
+    // the asphalt but under buildings/flora
+    for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);
+    for (const tile of vts) if (tile.medians.length) paintTileMedians(tile.medians, view);
     // buildings
     for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
     // flora
@@ -1022,9 +1115,9 @@ import { nearestKiosk } from "../game/delivery.js";
     ctx.fillStyle = "#fff"; ctx.fillText(lbl, mx, B.cy + B.deckW/2 + 23);
   }
 
-  // District lock barriers (free-roam mode)
+  // Lock barriers: the MVP wall (every mode) + explore progression barriers
   function drawBarriers(view) {
-    if (state.mode !== "explore" || !state.barriers) return;
+    if (!state.barriers || !state.barriers.length) return;
     for (const br of state.barriers) {
       if (br.x < view.x0 - 30 || br.x > view.x1 + 30) continue;
       // vertical wall spanning the visible height (the 2-D world has no corridor
@@ -1052,7 +1145,7 @@ import { nearestKiosk } from "../game/delivery.js";
       ctx.fillStyle = "#fff"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
       ctx.fillText(dname.slice(0, 20), br.x, sy + 5);
       ctx.fillStyle = dstr ? dstr.tone : "#f3c969"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
-      ctx.fillText("NIVEL " + (br.requiredStage || "—"), br.x, sy + 15);
+      ctx.fillText(br.mvp ? "PRÓXIMAMENTE" : "NIVEL " + (br.requiredStage || "—"), br.x, sy + 15);
       // cones
       for (let cy = yTop + 14; cy < yBot - 14; cy += 26) {
         ctx.fillStyle = "#ff8b3d"; ctx.beginPath();

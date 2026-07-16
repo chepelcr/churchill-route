@@ -4,6 +4,18 @@ import { state, pushFloat } from "./state.js";
 
 const STORAGE_KEY = "churchill_progress_v1";
 
+// ---- MVP gate (first Play Store release) ----------------------------------
+// Only the Puntarenas spit up to Las Playitas is open: Faro, Carmen, the
+// paseos, Centro (market) and Playitas. Everything east of the playitas|cocal
+// boundary — El Cocal, Mata de Limón, Caldera and the inland barrios — is
+// fenced off in EVERY mode with a "PRÓXIMAMENTE" wall until a later release.
+export const MVP_LOCKED = ["cocal", "mata", "caldera", "chacarita", "elroble", "barranca", "esparza"];
+export function isMvpLocked(id) { return MVP_LOCKED.includes(id); }
+export function mvpWallX() {
+  const cocal = W.DISTRICTS.find((d) => d.id === "cocal");
+  return cocal ? cocal.x0 : Infinity;
+}
+
 export function loadProgress() {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
@@ -19,6 +31,7 @@ export function saveProgress() {
 }
 
 export function unlockDistrict(id) {
+  if (isMvpLocked(id)) return; // gated until a future release
   if (!state.progress.unlocked.includes(id)) {
     state.progress.unlocked.push(id);
     saveProgress();
@@ -32,12 +45,16 @@ export function markStageCleared(stageId, score) {
   saveProgress();
 }
 
-// build barrier list for explore mode based on locked districts
+// Build the barrier list: the MVP wall applies in EVERY mode; the progression
+// barriers (locked districts) only gate explore mode as before.
 export function rebuildBarriers() {
   state.barriers = [];
+  const wallX = mvpWallX();
+  if (isFinite(wallX)) state.barriers.push({ x: wallX + 4, district: "cocal", mvp: true });
   if (state.mode !== "explore") return;
   for (let i = 0; i < W.DISTRICTS.length; i++) {
     const d = W.DISTRICTS[i];
+    if (isMvpLocked(d.id)) continue; // already behind the MVP wall
     if (state.progress.unlocked.includes(d.id)) continue;
     // place a barrier at the district's western edge
     // required stage = the story stage whose clear unlocks this district

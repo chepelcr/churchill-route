@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../../game/index.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
+import { isMvpLocked } from "../../game/progress.js";
 import VehiclePreview from "../VehiclePreview.jsx";
 
 const WEATHER_ES = { sunny: "Soleado", sunset: "Atardecer", storm: "Tormenta", night: "Noche" };
@@ -12,9 +13,11 @@ export default function StageSelect({ onStart, onBack }) {
   const vehicles = Game.VEHICLES;
   const vehKeys = Object.keys(vehicles);
   const cleared = Game.state.progress.clearedStages;
-  const isLocked = (i) => i > 0 && !cleared.includes(stages[i - 1].id);
+  // MVP: stages set in the gated eastern districts ship in a later release
+  const isMvp = (i) => isMvpLocked(stages[i].district);
+  const isLocked = (i) => isMvp(i) || (i > 0 && !cleared.includes(stages[i - 1].id));
   // start on the first not-yet-cleared stage so you land on "where you are"
-  const firstOpen = Math.max(0, stages.findIndex((s) => !cleared.includes(s.id)));
+  const firstOpen = Math.max(0, stages.findIndex((s, i) => !cleared.includes(s.id) && !isMvp(i)));
 
   const [cur, setCur] = useState(firstOpen < 0 ? 0 : firstOpen);
   const [veh, setVeh] = useState(Game.state.vehicleKey || "scooter");
@@ -110,17 +113,19 @@ export default function StageSelect({ onStart, onBack }) {
                   <span className="hero-num">{String(s.num).padStart(2, "0")}</span>
                   <span className="hero-count">Nivel {s.num} / {stages.length}</span>
                   {done && <span className="hero-badge ok">✓ COMPLETADO</span>}
-                  {locked && <span className="hero-badge no">⛔ BLOQUEADO</span>}
+                  {locked && <span className="hero-badge no">{isMvp(cur) ? "🔜 PRÓXIMAMENTE" : "⛔ BLOQUEADO"}</span>}
                 </div>
                 <div className="hero-name">{s.name}</div>
-                <p className="hero-brief">{locked ? `Completá el nivel ${s.num - 1} para desbloquear este.` : s.brief}</p>
+                <p className="hero-brief">{locked
+                  ? (isMvp(cur) ? "Este nivel llega en una próxima actualización." : `Completá el nivel ${s.num - 1} para desbloquear este.`)
+                  : s.brief}</p>
                 <div className="hero-meta">
                   <span><b>{s.targetDeliveries}</b> entregas</span>
                   <span><b>{s.timeLimit}s</b> tiempo</span>
                   <span>{WEATHER_ICON[s.weather] || "☀"} {WEATHER_ES[s.weather] || "—"}</span>
                 </div>
                 <button className="btn gold hero-play" onClick={() => play(cur)} disabled={locked}>
-                  {locked ? "Bloqueado" : "▸ Jugar"}
+                  {locked ? (isMvp(cur) ? "Próximamente" : "Bloqueado") : "▸ Jugar"}
                 </button>
               </div>
 

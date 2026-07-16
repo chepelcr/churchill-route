@@ -59,16 +59,21 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
                 {iap.owned ? (
                   <span className="iap-owned">{t("settings.removeAds.owned")}</span>
                 ) : iap.isNative ? (
-                  <>
-                    <span className="set-desc">{t("settings.removeAds.desc")}</span>
-                    <button className="btn gold" disabled={!iap.available}
-                      onClick={() => iap.buy()}>
-                      {t("settings.buy")}{iap.price ? ` · ${iap.price}` : ""}
-                    </button>
-                    <button className="btn secondary" onClick={() => iap.restore()}>
-                      {t("settings.restore")}
-                    </button>
-                  </>
+                  iap.available ? (
+                    <>
+                      <span className="set-desc">{t("settings.removeAds.desc")}</span>
+                      <button className="btn gold" onClick={() => iap.buy()}>
+                        {t("settings.buy")}{iap.price ? ` · ${iap.price}` : ""}
+                      </button>
+                      <button className="btn secondary" onClick={() => iap.restore()}>
+                        {t("settings.restore")}
+                      </button>
+                    </>
+                  ) : (
+                    // sideloaded APK / product not live yet: Play Billing only
+                    // works for installs that came through Google Play
+                    <span className="set-desc">{t("settings.removeAds.play")}</span>
+                  )
                 ) : (
                   <span className="set-desc">{t("settings.removeAds.web")}</span>
                 )}

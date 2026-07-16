@@ -39,7 +39,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 .title-shell {
   position: relative; min-height: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
   padding: 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -48,9 +48,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   scrollbar-width: none;
 }
 .title-shell::-webkit-scrollbar { display: none; }
-@media (max-height: 800px) {
-  .title-shell { align-items: flex-start; padding-top: 32px; padding-bottom: 32px; }
-}
+/* margin:auto centers the card BOTH ways when it fits, and keeps the top
+   reachable (scroll from the start) when the card is taller than the screen
+   — unlike align-items:center, which clips the top on overflow. */
+.title-card, .stage-select-wrap { margin: auto; }
 .title-card {
   width: min(880px, 96vw);
   text-align: center;

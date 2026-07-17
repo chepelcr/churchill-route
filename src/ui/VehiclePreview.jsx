@@ -3,6 +3,7 @@
 import React, { useRef, useEffect } from "react";
 import { paintVehicle } from "../render/Renderer.js";
 import { VEHICLES } from "../game/vehicles.js";
+import { useT } from "../i18n/index.js";
 
 const STAT_RANGE = (() => {
   const vs = Object.values(VEHICLES);
@@ -11,9 +12,11 @@ const STAT_RANGE = (() => {
 })();
 const norm = ([lo, hi], v) => 0.15 + 0.85 * ((v - lo) / (hi - lo || 1));
 
-export default function VehiclePreview({ vehKey }) {
+export default function VehiclePreview({ vehKey, color = null }) {
+  const t = useT();
   const ref = useRef(null);
-  const veh = VEHICLES[vehKey];
+  // optional paint override (equipped shop color) — paintVehicle reads veh.color
+  const veh = VEHICLES[vehKey] && color ? { ...VEHICLES[vehKey], color } : VEHICLES[vehKey];
 
   useEffect(() => {
     const c = ref.current;
@@ -43,13 +46,13 @@ export default function VehiclePreview({ vehKey }) {
     g.scale(scale, scale);
     paintVehicle(g, vehKey, veh);
     g.restore();
-  }, [vehKey, veh]);
+  }, [vehKey, veh, color]);
 
   if (!veh) return null;
   const bars = [
-    ["Velocidad", norm(STAT_RANGE.top, veh.top), "var(--gold)"],
-    ["Arranque", norm(STAT_RANGE.accel, veh.accel), "var(--coral)"],
-    ["Agarre", norm(STAT_RANGE.grip, veh.grip), "var(--teal)"],
+    [t("veh.speed"), norm(STAT_RANGE.top, veh.top), "var(--gold)"],
+    [t("veh.accel"), norm(STAT_RANGE.accel, veh.accel), "var(--coral)"],
+    [t("veh.grip"), norm(STAT_RANGE.grip, veh.grip), "var(--teal)"],
   ];
   return (
     <div className="veh-preview">
@@ -63,7 +66,7 @@ export default function VehiclePreview({ vehKey }) {
           </div>
         ))}
         <div className="veh-stat">
-          <span className="lbl">Hielo</span>
+          <span className="lbl">{t("veh.ice")}</span>
           <span className="ice">{veh.melt <= 0.6 ? "❄❄❄" : veh.melt <= 0.9 ? "❄❄" : "❄"}</span>
         </div>
       </div>

@@ -40,6 +40,27 @@ hacer en consolas externas** antes del release de Play Store.
 4. **Target SDK ≥ 34** — verificar `android/variables.gradle` al armar el AAB
    (`bundleRelease`, no APK, para Play).
 
+## Economía de monedas Churchill (2026-07-16)
+
+- **Ganancia:** +3 por entrega, +2 extra si es "perfecta" (~10–15 por partida
+  honesta); rewarded ad opcional en resultados **duplica** las monedas de la
+  partida (1 vez por partida). El tutorial no paga.
+- **Sumideros:** vehículos (cart 350 / pickup 900 / turbo 1500 — bici, scooter
+  y tuktuk GRATIS), mejoras cooler/turbotank (200/500/1000 × 3 niveles),
+  boosts consumibles (icepack 60, headstart 40), colores (80 c/u).
+- **Productos de Play Console** (crear los 4):
+
+| Product ID  | Tipo           | Contenido        | Precio  |
+|-------------|----------------|------------------|---------|
+| remove_ads  | No consumible  | Sin anuncios     | ~$2.99  |
+| coins_500   | Consumible     | 500 monedas      | $0.99   |
+| coins_2000  | Consumible     | 2 000 monedas    | $2.99   |
+| coins_4000  | Consumible     | 4 000 monedas    | $4.99   |
+
+Código: `src/game/economy.js` (catálogo/wallet), `src/monetize/iap.js`
+(productos), `src/ui/screens/ShopScreen.jsx` (tienda). Los packs se acreditan
+en el evento `verified` y se consumen con `finish()`.
+
 ## Formato de publicación: AAB (obligatorio)
 
 **Sí, Play Store exige `.aab`** para apps nuevas desde agosto 2021 — el `.apk`

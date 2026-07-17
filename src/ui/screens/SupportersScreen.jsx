@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useT } from "../../i18n/index.js";
 import { content } from "../../content/remote.js";
+import FitScale from "../FitScale.jsx";
 
 // Greetings page — thanks the ko-fi supporters and sponsor businesses, fed by
 // the remote content (updates without an app release). Tiers 4→1.
@@ -17,6 +18,7 @@ export default function SupportersScreen({ onBack }) {
   return (
     <div className="title-bg">
       <div className="title-shell">
+        <FitScale>
         <div className="title-card settings-card">
           <button className="btn secondary back-btn" onClick={onBack}>{t("settings.back")}</button>
           <h1 className="title-main" style={{ fontSize: 32 }}>{t("sup.title")}</h1>
@@ -44,6 +46,7 @@ export default function SupportersScreen({ onBack }) {
             </a>
           )}
         </div>
+        </FitScale>
       </div>
     </div>
   );

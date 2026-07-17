@@ -6,7 +6,26 @@ import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns
 import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
+import { economy } from "./economy.js";
 import { t, stageBrief } from "../i18n/index.js";
+
+// Resolve the run vehicle: enforce ownership (fall back to scooter) and apply
+// the equipped paint by cloning — paintVehicle reads veh.color.
+function resolveVehicle(key) {
+  const k = economy.ownsVehicle(key) ? key : "scooter";
+  const col = economy.equippedColor(k);
+  return { key: k, veh: col ? { ...VEHICLES[k], color: col.hex } : VEHICLES[k] };
+}
+// Run-start economy state: reset the run wallet and consume any armed boosts
+// (picked in the vehicle picker; each is one use).
+function armRun() {
+  state.runCoins = 0;
+  state.icepackT = 0; state.headstartT = 0;
+  const armed = state.armedBoosts || {};
+  if (armed.icepack && economy.useBoost("icepack")) state.icepackT = 30;
+  if (armed.headstart && economy.useBoost("headstart")) state.headstartT = 5;
+  state.armedBoosts = null;
+}
 
 export function startStage(stageIdx, vehicleKey) {
   const stg = W.STAGES[stageIdx];
@@ -17,8 +36,9 @@ export function startStage(stageIdx, vehicleKey) {
   state.timeLeft = stg.timeLimit;
   state.stageDeliveries = 0;
   state.stageTarget = stg.targetDeliveries;
-  state.vehicleKey = vehicleKey || state.vehicleKey;
-  state.veh = VEHICLES[state.vehicleKey];
+  const rv = resolveVehicle(vehicleKey || state.vehicleKey);
+  state.vehicleKey = rv.key; state.veh = rv.veh;
+  armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
   state.deliveries = 0; state.perfect = 0;
   state.carrying = null; state.pendingOrder = null;
@@ -48,8 +68,9 @@ export function startArcade(opts = {}) {
   state.mode = "arcade";
   state.weather = opts.weather || "sunny";
   state.timeLeft = 180;
-  state.vehicleKey = opts.vehicleKey || state.vehicleKey;
-  state.veh = VEHICLES[state.vehicleKey];
+  const rv = resolveVehicle(opts.vehicleKey || state.vehicleKey);
+  state.vehicleKey = rv.key; state.veh = rv.veh;
+  armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
   state.deliveries = 0; state.perfect = 0;
   state.carrying = null; state.pendingOrder = null;
@@ -77,8 +98,9 @@ export function startExplore(opts = {}) {
   state.mode = "explore";
   state.weather = opts.weather || "sunny";
   state.timeLeft = 999;
-  state.vehicleKey = opts.vehicleKey || state.vehicleKey;
-  state.veh = VEHICLES[state.vehicleKey];
+  const rv = resolveVehicle(opts.vehicleKey || state.vehicleKey);
+  state.vehicleKey = rv.key; state.veh = rv.veh;
+  armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
   state.deliveries = 0; state.perfect = 0;
   state.carrying = null; state.pendingOrder = null;
@@ -109,8 +131,9 @@ export function startTutorial(opts = {}) {
   state.mode = "tutorial";
   state.weather = "sunny";
   state.timeLeft = 999;
-  state.vehicleKey = opts.vehicleKey || state.vehicleKey;
-  state.veh = VEHICLES[state.vehicleKey];
+  const rv = resolveVehicle(opts.vehicleKey || state.vehicleKey);
+  state.vehicleKey = rv.key; state.veh = rv.veh;
+  armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
   state.deliveries = 0; state.perfect = 0;
   state.carrying = null; state.pendingOrder = null;
@@ -131,4 +154,7 @@ export function startTutorial(opts = {}) {
 }
 
 export function setWeather(w) { state.weather = w; }
-export function setVehicle(k) { state.vehicleKey = k; state.veh = VEHICLES[k]; }
+export function setVehicle(k) {
+  const rv = resolveVehicle(k);
+  state.vehicleKey = rv.key; state.veh = rv.veh;
+}

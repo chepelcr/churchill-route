@@ -3,6 +3,25 @@
 // element-fullscreen API (the installed PWA covers that via the manifest's
 // display:fullscreen + orientation:landscape, and the CSS rotate overlay
 // handles portrait in the browser tab).
+// iPhone Safari (browser tab, not installed PWA / native shell) can never go
+// fullscreen — the only path is Add to Home Screen (the manifest already asks
+// for fullscreen+landscape). The Title screen shows a one-time hint for it.
+const IOS_HINT_KEY = "churchill_ios_hint_v1";
+export function needsIosFullscreenHint() {
+  if (typeof window === "undefined" || window.Capacitor) return false;
+  const ua = navigator.userAgent;
+  const isIos = /iPhone|iPad|iPod/.test(ua) || (ua.includes("Mac") && "ontouchend" in document);
+  const standalone = window.navigator.standalone === true
+    || window.matchMedia("(display-mode: fullscreen)").matches
+    || window.matchMedia("(display-mode: standalone)").matches;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem(IOS_HINT_KEY) === "1"; } catch { /* private */ }
+  return isIos && !standalone && !dismissed;
+}
+export function dismissIosFullscreenHint() {
+  try { localStorage.setItem(IOS_HINT_KEY, "1"); } catch { /* private */ }
+}
+
 export function enterImmersive() {
   if (typeof window === "undefined") return;
   if (window.Capacitor) return; // native shell is already fullscreen+landscape

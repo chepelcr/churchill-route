@@ -271,6 +271,29 @@ empacado — 100% jugable offline.
       moderación, reservas de lotes con vigencia, y sync de supporters desde
       ko-fi; sirve el MISMO `content.json`. Validación IAP podría vivir ahí.
 
+## ✅ Economía + Tienda + fixes móviles (2026-07-16 PM2)
+
+- [x] **Monedas Churchill** (`src/game/economy.js`): +3/entrega (+2 perfecta),
+      duplicador por rewarded ad en resultados; catálogo data-driven —
+      vehículos (cart 350/pickup 900/turbo 1500; bici+scooter+tuktuk gratis),
+      mejoras cooler/turbotank (3 niveles), boosts icepack/headstart por
+      corrida, 6 colores equipables por vehículo. Persistido en progress con
+      migración silenciosa.
+- [x] **Tienda** (🛒 en el título, con saldo): tabs Vehículos/Mejoras/Boosts/
+      Colores + packs de monedas IAP (coins_500/2000/4000, consumibles) —
+      ver tabla en `docs/MONETIZATION.md`.
+- [x] **Selector de vehículo para Arcade/Recorrer** (overlay pre-partida con
+      boosts armables); Historia mantiene su tarjeta (chips 🔒 para los no
+      comprados).
+- [x] **Menús scale-to-fit** (`FitScale.jsx`): las tarjetas se escalan enteras
+      al viewport — sin scroll ("sensación web") en pantallas chicas; arregla
+      además el traslape del selector de niveles.
+- [x] **Controles táctiles v3**: joystick FIJO abajo-izquierda (solo
+      dirección) + acelerador con el otro dedo por distancia al carro (lejos
+      = rápido, muy lejos = turbo); ✋ freno. Tutorial actualizado.
+- [x] **iPhone web**: layout 100dvh + aviso "Agregar a pantalla de inicio"
+      (Safari no tiene fullscreen API; la PWA instalada sí es fullscreen).
+
 ## ✅ City-feel + mobile pass — done 2026-07-10
 
 - [x] **Beachfront avenue separators (final layout, user-iterated)**:

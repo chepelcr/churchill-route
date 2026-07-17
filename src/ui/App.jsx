@@ -9,6 +9,8 @@ import ResultsScreen from "./screens/ResultsScreen.jsx";
 import StageBrief from "./screens/StageBrief.jsx";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import SupportersScreen from "./screens/SupportersScreen.jsx";
+import ShopScreen from "./screens/ShopScreen.jsx";
+import VehiclePicker from "./VehiclePicker.jsx";
 import { content } from "../content/remote.js";
 import TouchControls from "./TouchControls.jsx";
 import GameTweaks from "./GameTweaks.jsx";
@@ -20,9 +22,11 @@ import { iap } from "../monetize/iap.js";
 
 export default function App() {
   const t = useT();
-  // screens: title | stagepick | brief | playing | paused | over | settings | supporters
+  // screens: title | stagepick | brief | playing | paused | over | settings |
+  //          supporters | shop | vehpick (pre-run picker for arcade/explore)
   const [screen, setScreen] = useState("title");
   const [pendingStage, setPendingStage] = useState(null);
+  const [pendingMode, setPendingMode] = useState(null); // arcade | explore
   const canvasRef = useRef(null);
   const [, setTick] = useState(0);
   const tickRef = useRef(0);
@@ -67,7 +71,7 @@ export default function App() {
   useEffect(() => { Game.state.paused = (screen === "paused" || (screen === "settings" && settingsFrom.current === "paused")); }, [screen]);
 
   // Menu screens show the live world drifting behind them (attract mode).
-  useEffect(() => { Game.setAttract(screen === "title" || screen === "stagepick" || screen === "supporters" || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
+  useEffect(() => { Game.setAttract(["title", "stagepick", "supporters", "shop", "vehpick"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
 
   // Engine/drift hum only while actually driving; menu blips stay available.
   useEffect(() => { screen === "playing" ? sfx.resume() : sfx.quiet(); }, [screen]);
@@ -84,13 +88,20 @@ export default function App() {
   function pickMode(mode) {
     enterImmersive();
     if (mode === "story") setScreen("stagepick");
-    else if (mode === "explore") {
-      Game.startExplore({ vehicleKey: Game.state.vehicleKey });
-      setScreen("playing");
-    } else if (mode === "tutorial") {
+    else if (mode === "tutorial") {
       Game.startTutorial({ vehicleKey: Game.state.vehicleKey });
       setScreen("playing");
-    } else { Game.startArcade({ vehicleKey: Game.state.vehicleKey }); setScreen("playing"); }
+    } else {
+      // arcade / explore go through the pre-run vehicle picker
+      setPendingMode(mode);
+      setScreen("vehpick");
+    }
+  }
+  function beginFreeRun(vehicleKey, armedBoosts) {
+    Game.state.armedBoosts = armedBoosts;
+    if (pendingMode === "explore") Game.startExplore({ vehicleKey });
+    else Game.startArcade({ vehicleKey });
+    setScreen("playing");
   }
   function pickStage(idx, vehicleKey) {
     setPendingStage({ idx, vehicleKey });
@@ -134,10 +145,12 @@ export default function App() {
   return (
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
-      {(screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over" || screen === "settings" || screen === "supporters") && (
+      {(screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick") && (
         <div className="screen-anim" key={screen}>
-          {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} />}
+          {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => setScreen("shop")} />}
           {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
+          {screen === "shop" && <ShopScreen onBack={() => setScreen("title")} />}
+          {screen === "vehpick" && <VehiclePicker onGo={beginFreeRun} onShop={() => setScreen("shop")} onBack={() => setScreen("title")} />}
           {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
           {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
           {screen === "over" && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen("title")} onContinue={continueRun} />}

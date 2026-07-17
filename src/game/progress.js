@@ -1,7 +1,8 @@
-// Progression / unlocks — persisted in localStorage.
+// Progression / unlocks / wallet — persisted in localStorage.
 import { WORLD2D as W } from "../world2d/index.js";
 import { state, pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
+import { ensureEconomy } from "./economy.js";
 
 const STORAGE_KEY = "churchill_progress_v1";
 
@@ -20,11 +21,11 @@ export function mvpWallX() {
 export function loadProgress() {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
-    if (!s) return { unlocked: ["faro", "carmen"], clearedStages: [], best: 0 };
+    if (!s) return ensureEconomy({ unlocked: ["faro", "carmen"], clearedStages: [], best: 0 });
     const o = JSON.parse(s);
     if (!o.unlocked || !o.unlocked.length) o.unlocked = ["faro", "carmen"];
-    return o;
-  } catch (e) { return { unlocked: ["faro", "carmen"], clearedStages: [], best: 0 }; }
+    return ensureEconomy(o); // silently adds coins/owned/upgrades/… to old saves
+  } catch (e) { return ensureEconomy({ unlocked: ["faro", "carmen"], clearedStages: [], best: 0 }); }
 }
 
 export function saveProgress() {

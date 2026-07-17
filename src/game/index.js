@@ -5,7 +5,7 @@ import { state } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { startArcade, startStage, startExplore, startTutorial, setWeather, setVehicle } from "./modes.js";
 import { tutorialDone, tutorialStepKey } from "./tutorial.js";
-import { attachTouch, attachJoystick } from "./input.js";
+import { attachTouch, attachJoystick, attachThrottle } from "./input.js";
 import { update } from "./physics.js";
 import { setAttract, attractTick } from "./attract.js";
 import { loadProgress, saveProgress, rebuildBarriers } from "./progress.js";
@@ -30,6 +30,7 @@ function attachCanvas(c) {
   if (attached) return;
   attached = true;
   setupCanvas(c);
+  attachThrottle(c); // right-finger throttle: distance to the vehicle = speed
   requestAnimationFrame((t) => { lastT = t; loop(t); });
 }
 
@@ -40,7 +41,10 @@ export const Game = {
   pause: () => { state.paused = !state.paused; },
   quit: () => { state.running = false; state.over = false; state.won = false; },
   resetProgress: () => {
-    state.progress = { unlocked: ["faro", "carmen"], clearedStages: [], best: 0 };
+    // wipe the save and rebuild the fresh default (economy fields included
+    // via ensureEconomy inside loadProgress)
+    try { localStorage.removeItem("churchill_progress_v1"); } catch (e) {}
+    state.progress = loadProgress();
     saveProgress(); rebuildBarriers();
   },
 };

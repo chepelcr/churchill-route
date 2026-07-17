@@ -21,6 +21,11 @@ html, body {
   user-select: none;
 }
 canvas#game-canvas { touch-action: none; }
+/* iOS Safari: track the DYNAMIC viewport so the collapsing URL bar never
+   clips the game (there's no element-fullscreen API on iPhone). */
+@supports (height: 100dvh) {
+  html, body { height: 100dvh; }
+}
 
 #root, #game-root { position: fixed; inset: 0; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: auto; }
@@ -52,6 +57,12 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
    reachable (scroll from the start) when the card is taller than the screen
    — unlike align-items:center, which clips the top on overflow. */
 .title-card, .stage-select-wrap { margin: auto; }
+/* FitScale wrapper: the outer box adopts the SCALED size (so margin:auto
+   centering stays true); the inner box renders at natural size and shrinks
+   via transform so menus always fit whole — no scrolling, no web feel. */
+.fit-outer { margin: auto; display: grid; place-items: center; overflow: visible; }
+.fit-inner { transform-origin: center center; }
+.fit-inner > .title-card, .fit-inner > .stage-select-wrap { margin: 0; }
 .title-card {
   width: min(880px, 96vw);
   text-align: center;
@@ -397,6 +408,67 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .iap-owned { font: 12px "JetBrains Mono", monospace; color: #6fbf99; }
 .settings-credits { margin-top: 14px; font: 10px "JetBrains Mono", monospace; opacity: 0.5; }
 
+/* ----- Shop (Churchill coins) ----- */
+.shop-card { max-width: 760px; }
+.shop-head { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.coin-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(232,181,58,0.15); border: 1px solid rgba(232,181,58,0.5);
+  border-radius: 999px; padding: 5px 14px;
+  font: 14px "JetBrains Mono", monospace; color: #ffe06b;
+}
+.tool-pill.coin-tool { width: auto; padding: 0 10px; gap: 4px; display: inline-flex; align-items: center; font-size: 12px; }
+.shop-tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 12px 0; }
+.shop-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px; margin-top: 6px;
+}
+.shop-item {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px; padding: 12px;
+}
+.shop-item.owned { border-color: rgba(111,191,153,0.45); }
+.shop-state { font: 11px "JetBrains Mono", monospace; opacity: 0.85; }
+.shop-state.ok { color: #6fbf99; }
+.shop-hint { font: 10px "JetBrains Mono", monospace; opacity: 0.6; }
+.coin-price { display: inline-flex; align-items: center; gap: 3px; }
+.shop-rows { display: grid; gap: 10px; margin-top: 6px; text-align: left; }
+.shop-row {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px; padding: 10px 14px;
+}
+.shop-ico { font-size: 24px; }
+.shop-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.shop-desc { font: 11px "JetBrains Mono", monospace; opacity: 0.7; }
+.shop-count { color: #ffe06b; font-size: 12px; }
+.shop-lv { display: inline-flex; align-items: center; gap: 4px; font: 10px "JetBrains Mono", monospace; opacity: 0.8; }
+.lv-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); display: inline-block; }
+.lv-dot.on { background: #ffe06b; }
+.shop-colors { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.swatch {
+  position: relative; width: 46px; height: 46px; border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.3); cursor: pointer;
+  color: #fff; font-size: 16px;
+}
+.swatch.stock { background: repeating-linear-gradient(45deg, #555 0 6px, #777 6px 12px); }
+.swatch.equipped { border-color: #ffe06b; box-shadow: 0 0 10px rgba(255,224,107,0.5); }
+.swatch.locked { opacity: 0.75; }
+.swatch-price {
+  position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+  background: rgba(20,16,40,0.9); border-radius: 6px; padding: 1px 5px;
+  font: 9px "JetBrains Mono", monospace; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 2px;
+}
+.shop-packs { margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; }
+.shop-packs-title { font: 12px "Bungee", sans-serif; color: var(--gold, #ffe06b); margin-bottom: 6px; }
+.picker-panel { max-width: 560px; }
+.vehicles-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 10px 0; }
+.vchip.locked { opacity: 0.55; }
+.picker-boosts { margin-top: 8px; }
+
 /* ----- Supporters / greetings ----- */
 .sup-groups { display: grid; gap: 12px; margin: 14px auto 0; max-width: 560px; text-align: left; }
 .sup-group {
@@ -412,6 +484,15 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 .sup-empty { font: 12px "JetBrains Mono", monospace; opacity: 0.6; margin-top: 18px; }
 
+/* iOS add-to-home fullscreen hint (browser tab only, dismissible) */
+.ios-hint {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin: 10px auto 0; max-width: 560px;
+  background: rgba(95,176,214,0.14); border: 1px solid rgba(95,176,214,0.45);
+  border-radius: 10px; padding: 8px 12px;
+  font: 12px "Space Grotesk", sans-serif;
+}
+
 /* first-run nudge on the tutorial mode card */
 .mode.pulse { animation: tut-pulse 1.6s ease-in-out infinite; }
 @keyframes tut-pulse {
@@ -420,28 +501,29 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 @media (prefers-reduced-motion: reduce) { .mode.pulse { animation: none; } }
 
-/* ----- Touch controls (one-finger joystick: angle steers, extension caps the
-   speed, past the rim = turbo; only the brake needs a pedal) ----- */
+/* ----- Touch controls v3 (fixed joystick steers — direction only; a second
+   finger on the play area throttles by distance to the car; ✋ = brake) ----- */
 .touch-controls { position: absolute; inset: 0; pointer-events: none; }
-.joy-zone {
-  position: absolute; left: 0; top: 0; bottom: 0; width: 55%;
+.joy-fixed {
+  position: absolute;
+  left: max(20px, env(safe-area-inset-left));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  width: 132px; height: 132px;
   pointer-events: auto; touch-action: none;
   -webkit-user-select: none; user-select: none;
 }
-.joy-base { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 5; }
 .joy-ring {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 128px; height: 128px; border-radius: 50%;
+  position: absolute; inset: 0; border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.35);
-  background: rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.08);
 }
 .joy-knob {
-  position: absolute; left: 0; top: 0;
-  width: 56px; height: 56px; border-radius: 50%;
-  background: rgba(255,255,255,0.45); border: 2px solid rgba(255,255,255,0.6);
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 54px; height: 54px; border-radius: 50%;
+  background: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.6);
   transition: background 0.08s;
 }
-.joy-knob.turbo { background: oklch(0.68 0.18 30 / 0.85); box-shadow: 0 0 18px oklch(0.68 0.18 30 / 0.8); }
+.joy-knob.active { background: rgba(255,255,255,0.65); }
 .pedal {
   position: absolute;
   bottom: max(24px, env(safe-area-inset-bottom));

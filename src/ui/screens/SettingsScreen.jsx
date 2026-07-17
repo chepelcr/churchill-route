@@ -3,6 +3,7 @@ import { Game } from "../../game/index.js";
 import { sfx } from "../../game/audio.js";
 import { useT, getLang, setLang } from "../../i18n/index.js";
 import { iap } from "../../monetize/iap.js";
+import FitScale from "../FitScale.jsx";
 
 // App config: language, volume/mute, remove-ads purchase, tutorial replay,
 // progress reset. Reachable from the title (⚙) and the pause menu.
@@ -24,6 +25,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   return (
     <div className="title-bg">
       <div className="title-shell">
+        <FitScale>
         <div className="title-card settings-card">
           <button className="btn secondary back-btn" onClick={onBack}>{t("settings.back")}</button>
           <h1 className="title-main" style={{ fontSize: 34 }}>{t("settings.title")}</h1>
@@ -108,6 +110,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
 
           <div className="settings-credits">{t("settings.credits", { version })}</div>
         </div>
+        </FitScale>
       </div>
     </div>
   );

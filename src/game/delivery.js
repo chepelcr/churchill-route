@@ -6,6 +6,7 @@ import { markStageCleared, unlockDistrict, isMvpLocked } from "./progress.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { content } from "../content/remote.js";
+import { economy, COINS_PER_DELIVERY, COINS_PERFECT_BONUS } from "./economy.js";
 
 // The world is gated by walls (the MVP wall in every mode + the explore
 // progression barriers), so only offer kiosks/customers on the open side —
@@ -96,6 +97,13 @@ export function deliverChurchill() {
   state.comboTimer = 7;
   pushFloat(state.p.x, state.p.y - 24, `+${total}`, meltPct < 0.25 ? "#ffe06b" : "#fff");
   if (meltPct < 0.25) pushFloat(state.p.x, state.p.y - 44, t("float.perfect"), "#ff3d80");
+  // Churchill coins: the run's spending money (tutorial runs don't pay)
+  if (state.mode !== "tutorial") {
+    const earned = COINS_PER_DELIVERY + (meltPct < 0.25 ? COINS_PERFECT_BONUS : 0);
+    economy.addCoins(earned);
+    state.runCoins = (state.runCoins || 0) + earned;
+    pushFloat(state.p.x + 20, state.p.y - 34, `+${earned} ⛁`, "#f3c969");
+  }
   sfx.play(meltPct < 0.25 ? "perfect" : "delivery");
   if (comboUp && state.combo > 1) sfx.play("combo", state.combo);
   pushFloat(c.customer.x, c.customer.y - 22, c.customer.line.slice(0, 26), "#fff");

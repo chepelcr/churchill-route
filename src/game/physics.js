@@ -4,12 +4,13 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
-import { input, readInput, pollGamepad, applyTouchJoystick } from "./input.js";
+import { input, readInput, pollGamepad, applyTouch } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advanceCarOnRoad } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
+import { economy } from "./economy.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [6];
@@ -56,7 +57,7 @@ function collideBuilding(p, b) {
 export function update(dt) {
   if (state.paused || state.over) return;
   readInput(); pollGamepad();
-  applyTouchJoystick(state.p);
+  applyTouch(state.cam, state.p);
 
   const p = state.p; const veh = state.veh;
   const surf = W.surfaceAt(p.x, p.y);
@@ -70,11 +71,12 @@ export function update(dt) {
   const turnRate = veh.turn * (0.4 + Math.min(1, Math.abs(p.speed) / veh.top) * 0.9);
   p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
 
-  // acceleration
+  // acceleration (headstart consumable = free turbo for its first seconds)
+  const boosting = input.boost || (state.headstartT || 0) > 0;
   const throttle = input.up - input.down * 0.6;
   p.vx += Math.cos(p.a) * veh.accel * throttle * dt;
   p.vy += Math.sin(p.a) * veh.accel * throttle * dt;
-  if (input.boost) { p.vx *= 1 + 0.7 * dt; p.vy *= 1 + 0.7 * dt; }
+  if (boosting) { p.vx *= 1 + 0.7 * dt; p.vy *= 1 + 0.7 * dt; }
 
   // grip (kill lateral)
   const heading = { x: Math.cos(p.a), y: Math.sin(p.a) };
@@ -93,8 +95,8 @@ export function update(dt) {
     const k = Math.max(0, sp2 - fric * (1 / surfaceMul) * dt * 60) / sp2;
     p.vx *= k; p.vy *= k;
   }
-  // `input.limit` is the joystick speed delimiter (1 for keyboard/gamepad)
-  const top = veh.top * surfaceMul * (input.boost ? 1.35 : 1) * wetMul * (input.limit || 1);
+  // turbotank upgrade raises the boost speed cap (1.35 stock → up to 1.55)
+  const top = veh.top * surfaceMul * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul;
   const sp3 = Math.hypot(p.vx, p.vy);
   if (sp3 > top) { p.vx *= top / sp3; p.vy *= top / sp3; }
 
@@ -196,9 +198,14 @@ export function update(dt) {
     const dc = Math.hypot(p.x - c.x, p.y - c.y);
     if (dc < 36 && p.speed < 80) deliverChurchill();
   }
+  // consumable timers (armed at run start by modes.js)
+  if (state.headstartT > 0) state.headstartT = Math.max(0, state.headstartT - dt);
+  if (state.icepackT > 0 && state.carrying) state.icepackT = Math.max(0, state.icepackT - dt);
   if (state.carrying) {
     const heat = state.weather === "sunset" ? 0.9 : state.weather === "storm" ? 1.05 : state.weather === "night" ? 0.7 : 1.0;
-    const meltRate = state.veh.melt * (onRoad ? 1.0 : 1.25) * heat;
+    // cooler upgrade slows the melt; an active ice pack pauses it entirely
+    const meltRate = state.icepackT > 0 ? 0
+      : state.veh.melt * (onRoad ? 1.0 : 1.25) * heat * economy.upgradeEffect("cooler");
     state.carrying.melt += dt * meltRate;
     if (state.carrying.melt >= state.carrying.total) dropChurchill();
   }

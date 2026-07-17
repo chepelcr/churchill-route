@@ -3,8 +3,10 @@ import { Game } from "../../game/index.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { isMvpLocked } from "../../game/progress.js";
+import { economy } from "../../game/economy.js";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import VehiclePreview from "../VehiclePreview.jsx";
+import FitScale from "../FitScale.jsx";
 
 const WEATHER_ICON = { sunny: "☀", sunset: "🌅", storm: "⛈", night: "🌙" };
 
@@ -37,7 +39,12 @@ export default function StageSelect({ onStart, onBack }) {
     return n;
   });
   const moveVeh = (d) => setVeh((k) => {
-    const i = (vehKeys.indexOf(k) + d + vehKeys.length) % vehKeys.length;
+    // skip vehicles you don't own yet (they're bought in the Shop)
+    let i = vehKeys.indexOf(k);
+    for (let step = 0; step < vehKeys.length; step++) {
+      i = (i + d + vehKeys.length) % vehKeys.length;
+      if (economy.ownsVehicle(vehKeys[i])) break;
+    }
     sfx.play("menu_move");
     return vehKeys[i];
   });
@@ -97,6 +104,7 @@ export default function StageSelect({ onStart, onBack }) {
   return (
     <div className="title-bg">
       <div className="title-shell">
+        <FitScale>
         <div className="stage-select-wrap">
           <button className="btn secondary back-btn" onClick={onBack}>{t("select.back")}</button>
 
@@ -137,12 +145,15 @@ export default function StageSelect({ onStart, onBack }) {
               <div className="vehicle-card-title">{t("select.vehicle")}</div>
               <VehiclePreview vehKey={veh} />
               <div className="vehicles-col">
-                {vehKeys.map((k) => (
-                  <button key={k} className={"vchip " + (veh === k ? "active" : "")}
-                    onClick={() => { sfx.play("menu_select"); setVeh(k); }}>
-                    {vehicles[k].name}
-                  </button>
-                ))}
+                {vehKeys.map((k) => {
+                  const has = economy.ownsVehicle(k);
+                  return (
+                    <button key={k} className={"vchip " + (veh === k ? "active" : "") + (has ? "" : " locked")}
+                      onClick={() => { if (has) { sfx.play("menu_select"); setVeh(k); } else sfx.play("menu_denied"); }}>
+                      {has ? vehicles[k].name : <>🔒 {vehicles[k].name}</>}
+                    </button>
+                  );
+                })}
               </div>
               <div className="reset-row">
                 {confirming ? (
@@ -167,6 +178,7 @@ export default function StageSelect({ onStart, onBack }) {
             ))}
           </div>
         </div>
+        </FitScale>
       </div>
     </div>
   );

@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useMenuNav } from "../useMenuNav.js";
 import { sfx } from "../../game/audio.js";
 import { tutorialDone } from "../../game/tutorial.js";
+import { economy } from "../../game/economy.js";
+import { needsIosFullscreenHint, dismissIosFullscreenHint } from "../immersive.js";
 import { useT } from "../../i18n/index.js";
+import CoinIcon from "../CoinIcon.jsx";
+import FitScale from "../FitScale.jsx";
 
 // Hide the APK download in the native app (only offer it on the web).
 const IS_NATIVE = typeof window !== "undefined" && !!window.Capacitor;
@@ -14,10 +18,11 @@ const MODE_IDS = [
   { id: "arcade",   swatch: "#ff3d80" },
 ];
 
-export default function TitleScreen({ onPickMode, onSettings, onSupporters }) {
+export default function TitleScreen({ onPickMode, onSettings, onSupporters, onShop }) {
   const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [info, setInfo] = useState(false);
+  const [iosHint, setIosHint] = useState(needsIosFullscreenHint());
   const infoRef = useRef(null);
   const firstRun = !tutorialDone();
   const pick = (id) => { sfx.play("menu_select"); onPickMode(id); };
@@ -40,6 +45,7 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters }) {
   return (
     <div className="title-bg">
       <div className="title-shell">
+        <FitScale>
         <div className="title-card">
           <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
           <div className="title-tools">
@@ -53,6 +59,8 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters }) {
                 </div>
               )}
             </div>
+            <button className="tool-pill coin-tool" onClick={() => { sfx.play("menu_move"); onShop(); }}
+              aria-label={t("shop.title")}>🛒 <CoinIcon size={14} /> {economy.coins.toLocaleString()}</button>
             <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSupporters(); }}
               aria-label={t("sup.title")}>❤</button>
             <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSettings(); }}
@@ -62,6 +70,14 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters }) {
           </div>
           <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
           <div className="title-sub">{t("title.sub")}</div>
+
+          {iosHint && (
+            <div className="ios-hint">
+              <span>{t("ios.hint")}</span>
+              <button className="tool-pill" aria-label="✕"
+                onClick={() => { dismissIosFullscreenHint(); setIosHint(false); }}>✕</button>
+            </div>
+          )}
 
           <div className="modes" style={{ gridTemplateColumns: `repeat(${MODE_IDS.length}, 1fr)`, maxWidth: 900, margin: "16px auto" }}>
             {MODE_IDS.map((m, i) => (
@@ -94,6 +110,7 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters }) {
             )}
           </div>
         </div>
+        </FitScale>
       </div>
     </div>
   );

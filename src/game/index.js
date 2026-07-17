@@ -5,7 +5,7 @@ import { state } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { startArcade, startStage, startExplore, startTutorial, setWeather, setVehicle } from "./modes.js";
 import { tutorialDone, tutorialStepKey } from "./tutorial.js";
-import { attachTouch, attachJoystick, attachThrottle } from "./input.js";
+import { attachTouch, attachThrottle } from "./input.js";
 import { update } from "./physics.js";
 import { setAttract, attractTick } from "./attract.js";
 import { loadProgress, saveProgress, rebuildBarriers } from "./progress.js";
@@ -30,14 +30,14 @@ function attachCanvas(c) {
   if (attached) return;
   attached = true;
   setupCanvas(c);
-  attachThrottle(c); // right-finger throttle: distance to the vehicle = speed
+  attachThrottle(c); // one-finger point-to-drive: steer + distance throttle
   requestAnimationFrame((t) => { lastT = t; loop(t); });
 }
 
 export const Game = {
   state, VEHICLES, startArcade, startStage, startExplore, startTutorial,
   tutorialDone, tutorialStepKey, setWeather, setVehicle,
-  attachCanvas, attachTouch, attachJoystick, setAttract,
+  attachCanvas, attachTouch, setAttract,
   pause: () => { state.paused = !state.paused; },
   quit: () => { state.running = false; state.over = false; state.won = false; },
   resetProgress: () => {

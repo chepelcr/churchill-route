@@ -425,6 +425,16 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   animation: tut-hand-speed 2.2s ease-in-out infinite;
 }
 .tut-finger.turbo .tut-finger-hand { animation: tut-hand-turbo 1.6s ease-in-out infinite; }
+/* steer demo: the hand orbits the car — "the car goes where your finger is" */
+.tut-finger.steer .tut-finger-track { display: none; }
+.tut-finger.steer .tut-finger-hand { animation: tut-hand-steer 3s linear infinite; }
+@keyframes tut-hand-steer {
+  0%   { transform: translate(110px, 0); }
+  25%  { transform: translate(0, 80px); }
+  50%  { transform: translate(-110px, 0); }
+  75%  { transform: translate(0, -80px); }
+  100% { transform: translate(110px, 0); }
+}
 .tut-finger-flame { position: absolute; right: -8px; top: -30px; font-size: 24px; animation: tut-spot-pulse 0.8s infinite; }
 @keyframes tut-hand-speed {
   0%, 15% { transform: translateX(44px); }
@@ -453,16 +463,17 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   50% { transform: translateY(3px); border-bottom-width: 2px; }
 }
 
-/* instruction panel (top-center, part of the overlay) */
+/* instruction panel — BOTTOM center so it never covers the vehicle (the
+   camera leads the car, which sits near screen center) */
 .tut-panel {
-  position: absolute; top: 148px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: 112px; left: 50%; transform: translateX(-50%);
   max-width: min(520px, 86vw);
   background: rgba(20, 16, 40, 0.92); border: 1px solid rgba(255,255,255,0.2);
   border-left: 4px solid #5fb0d6;
   border-radius: 10px; padding: 10px 14px;
   pointer-events: none; z-index: 6;
 }
-.tut-panel.done { border-left-color: #6fbf99; top: 40%; }
+.tut-panel.done { border-left-color: #6fbf99; }
 .tut-step {
   font: 10px "JetBrains Mono", monospace; color: #5fb0d6;
   letter-spacing: 0.08em; margin-bottom: 4px;
@@ -586,29 +597,9 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 @media (prefers-reduced-motion: reduce) { .mode.pulse { animation: none; } }
 
-/* ----- Touch controls v3 (fixed joystick steers — direction only; a second
-   finger on the play area throttles by distance to the car; ✋ = brake) ----- */
+/* ----- Touch controls (one-finger point-to-drive: hold a finger on the play
+   area — the car steers toward it, distance = speed, far = turbo; ✋ = brake) */
 .touch-controls { position: absolute; inset: 0; pointer-events: none; }
-.joy-fixed {
-  position: absolute;
-  left: max(20px, env(safe-area-inset-left));
-  bottom: max(20px, env(safe-area-inset-bottom));
-  width: 132px; height: 132px;
-  pointer-events: auto; touch-action: none;
-  -webkit-user-select: none; user-select: none;
-}
-.joy-ring {
-  position: absolute; inset: 0; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.35);
-  background: rgba(255,255,255,0.08);
-}
-.joy-knob {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 54px; height: 54px; border-radius: 50%;
-  background: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.6);
-  transition: background 0.08s;
-}
-.joy-knob.active { background: rgba(255,255,255,0.65); }
 .pedal {
   position: absolute;
   bottom: max(24px, env(safe-area-inset-bottom));

@@ -24,7 +24,7 @@ function elRect(sel, pad = 12) {
 function stepSpec(step, vw, t) {
   if (COARSE) {
     switch (step) {
-      case 0: return { rect: elRect(".joy-fixed", 14), round: true };
+      case 0: return { finger: "steer" }; // hand orbits the car: it follows you
       case 1: return { finger: "speed" };
       case 2: return { finger: "turbo" };
       case 3: return { rect: elRect(".pedal.brake", 14), round: true };

@@ -1,23 +1,18 @@
 // Input: keyboard, gamepad and touch. Exposes the shared `input` axis object
-// that physics reads each frame. Touch scheme (v3, user-confirmed):
-//  - LEFT thumb: a FIXED joystick (always visible, bottom-left) that controls
-//    DIRECTION ONLY — the car steers toward the stick angle.
-//  - RIGHT finger: touch the play area (the canvas); the finger's screen
-//    DISTANCE to the vehicle is the throttle — near = slow, far = fast, and
-//    very far engages the TURBO (button-free), like the original
-//    point-to-drive throttle.
-//  - Brake ✋ stays a pedal.
+// that physics reads each frame. Touch is ONE-FINGER point-to-drive (the
+// original scheme, back by popular demand): hold a finger on the play area
+// and the car steers TOWARD it; the finger's distance to the vehicle is the
+// throttle — near = slow, far = fast, very far = TURBO. Brake ✋ is a pedal.
 
 export const keys = {};
 export const input = { up: 0, down: 0, left: 0, right: 0, brake: 0, boost: 0 };
 
-// throttle finger (canvas) — distance mapping in css px
-const THR_DEAD = 36;    // closer than this = coast
+// drive finger (canvas) — distance mapping in css px
+const THR_DEAD = 30;    // closer than this = coast
 const THR_FULL = 170;   // this far = full throttle
 const THR_TURBO = 235;  // beyond this = turbo
 
-const joy = { active: false, id: null, dx: 0, dy: 0, r: 56 }; // fixed stick
-const aim = { active: false, id: null, x: 0, y: 0 };          // throttle finger
+const aim = { active: false, id: null, x: 0, y: 0 };          // drive finger
 let touchBrake = false;
 
 if (typeof window !== "undefined") {
@@ -39,34 +34,28 @@ export function readInput() {
 }
 
 // Touch → axes, run after readInput (max-merges with keyboard/gamepad).
-// The camera transform is a uniform scale+translate, so a screen angle IS a
-// world angle: steer toward the joystick direction; throttle from the aim
-// finger's screen distance to the (projected) vehicle.
+// Point-to-drive: the camera transform is a uniform scale+translate, so a
+// screen angle IS a world angle — project the car to screen, steer toward
+// the finger, throttle by distance (behind-the-car damping keeps U-turns
+// controllable), turbo past the far threshold.
 export function applyTouch(cam, p) {
-  // steering: fixed joystick, direction only
-  if (joy.active) {
-    const mag = Math.hypot(joy.dx, joy.dy);
-    if (mag > 10) {
-      let e = Math.atan2(joy.dy, joy.dx) - p.a;
-      e = Math.atan2(Math.sin(e), Math.cos(e));          // shortest angle diff
-      const steer = Math.max(-1, Math.min(1, e / 0.35)); // full lock past ~20°
-      if (steer > 0) input.right = Math.max(input.right, steer);
-      else input.left = Math.max(input.left, -steer);
-    }
-  }
-  // throttle: aim finger distance to the vehicle on screen
-  if (aim.active) {
-    const zoom = cam.zoom || 5.5;
-    const vw = cam.vw || window.innerWidth, vh = cam.vh || window.innerHeight;
-    const sx = (p.x - cam.x) * zoom + vw / 2;
-    const sy = (p.y - cam.y) * zoom + vh / 2;
-    const d = Math.hypot(aim.x - sx, aim.y - sy);
-    if (d >= THR_DEAD) {
-      const thr = Math.min(1, (d - THR_DEAD) / (THR_FULL - THR_DEAD));
-      input.up = Math.max(input.up, thr);
-      if (d > THR_TURBO) input.boost = 1;               // far finger = turbo
-    }
-  }
+  if (!aim.active) return;
+  const zoom = cam.zoom || 5.5;
+  const vw = cam.vw || window.innerWidth, vh = cam.vh || window.innerHeight;
+  const sx = (p.x - cam.x) * zoom + vw / 2;
+  const sy = (p.y - cam.y) * zoom + vh / 2;
+  const dx = aim.x - sx, dy = aim.y - sy;
+  const d = Math.hypot(dx, dy);
+  if (d < THR_DEAD) return;                            // dead zone: coast
+  let e = Math.atan2(dy, dx) - p.a;
+  e = Math.atan2(Math.sin(e), Math.cos(e));            // shortest angle diff
+  const steer = Math.max(-1, Math.min(1, e / 0.35));   // full lock past ~20°
+  if (steer > 0) input.right = Math.max(input.right, steer);
+  else input.left = Math.max(input.left, -steer);
+  let thr = Math.min(1, (d - THR_DEAD) / (THR_FULL - THR_DEAD));
+  thr *= 0.35 + 0.65 * Math.max(0, Math.cos(e));       // behind = slow U-turn
+  input.up = Math.max(input.up, thr);
+  if (d > THR_TURBO && Math.cos(e) > 0.3) input.boost = 1; // far & ahead = turbo
 }
 
 export function pollGamepad() {
@@ -84,8 +73,8 @@ export function pollGamepad() {
   }
 }
 
-// The throttle finger lives on the play canvas (below all UI, exactly like
-// the original point-to-drive), so buttons/joystick never fight it.
+// The drive finger lives on the play canvas (below all UI), so HUD buttons
+// and the brake pedal never fight it.
 export function attachThrottle(canvasEl) {
   if (!canvasEl) return;
   canvasEl.addEventListener("touchstart", (e) => {
@@ -109,52 +98,6 @@ export function attachThrottle(canvasEl) {
   canvasEl.addEventListener("touchmove", track, { passive: true });
   canvasEl.addEventListener("touchend", release);
   canvasEl.addEventListener("touchcancel", release);
-}
-
-// Fixed joystick: the base never moves; the knob follows the finger clamped
-// to the ring radius. Direction only — extension is NOT speed.
-export function attachJoystick(baseEl, knobEl) {
-  if (!baseEl) return;
-  const paint = () => {
-    if (!knobEl) return;
-    const mag = Math.hypot(joy.dx, joy.dy);
-    const k = mag > joy.r ? joy.r / mag : 1;
-    knobEl.style.transform = `translate(calc(${joy.dx * k}px - 50%), calc(${joy.dy * k}px - 50%))`;
-    knobEl.classList.toggle("active", joy.active);
-  };
-  const center = () => {
-    const r = baseEl.getBoundingClientRect();
-    joy.r = r.width * 0.42;
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  };
-  baseEl.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    if (joy.id === null && e.changedTouches.length) {
-      const t = e.changedTouches[0], c = center();
-      joy.id = t.identifier; joy.active = true;
-      joy.dx = t.clientX - c.x; joy.dy = t.clientY - c.y;
-      paint();
-    }
-  }, { passive: false });
-  const track = (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === joy.id) {
-        const c = center();
-        joy.dx = t.clientX - c.x; joy.dy = t.clientY - c.y;
-        paint();
-      }
-    }
-  };
-  const release = (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === joy.id) { joy.id = null; joy.active = false; joy.dx = joy.dy = 0; paint(); }
-    }
-  };
-  // track/release on window so a finger sliding OFF the stick keeps steering
-  window.addEventListener("touchmove", track, { passive: true });
-  window.addEventListener("touchend", release);
-  window.addEventListener("touchcancel", release);
-  paint();
 }
 
 export function attachTouch(brakeEl) {

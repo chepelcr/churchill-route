@@ -49,6 +49,7 @@ export const boats = [];        // ferries + pangas offshore
 export const parked = [];       // static cars along curbs
 export const vendors = [];      // street vendor carts on the aceras
 export const animals = [];      // dogs/cats wandering across streets
+export const trains = [];       // the old Ferrocarril: loco + wagons on the rails
 
 export function pushFloat(x, y, text, color) {
   state.floats.push({ x, y, text, color, t: 0, ttl: 1.6 });

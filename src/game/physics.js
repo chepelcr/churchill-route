@@ -2,10 +2,10 @@
 // (cuadras, buildings, barriers, traffic, pedestrians), delivery proximity,
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
-import { state, traffic, pedestrians, gulls, boats } from "./state.js";
+import { state, traffic, pedestrians, gulls, boats, trains } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advanceCarOnRoad } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advanceCarOnRoad, advanceTrain } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
@@ -293,6 +293,10 @@ export function advanceEntities(dt, withPlayer = true) {
   }
 
   updateAnimals(dt);
+
+  // The heritage train ping-pongs its rail piece (decorative, no collision —
+  // the rails aren't drivable)
+  for (const tr of trains) advanceTrain(tr, dt);
 
   // Gulls
   for (const g of gulls) {

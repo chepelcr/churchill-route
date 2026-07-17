@@ -6,14 +6,14 @@
 // old global arclength model (place-once across the whole corridor via ROADS +
 // roadPointAt), which cannot work when most of the map isn't loaded.
 import { WORLD2D as W } from "../world2d/index.js";
-import { traffic, pedestrians, gulls, boats, parked, vendors, animals } from "./state.js";
+import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains } from "./state.js";
 
 // how far from the camera we keep life alive / spawn it (world px)
 const KEEP_R = 1400;
 const SPAWN_R = 1100;
 // target populations near the camera (tuned to the corridor build's feel:
 // sidewalks full of people, streets with light town traffic)
-const TARGET = { traffic: 20, pedestrians: 64, vendors: 10, animals: 8, gulls: 16, boats: 6 };
+const TARGET = { traffic: 20, pedestrians: 64, vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1 };
 const CAR_PALETTE = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
 
 // the camera the maintenance centres on (set each frame by physics)
@@ -137,6 +137,56 @@ function spawnOneAnimal() {
   return { x: pt.x, y: pt.y, ang: Math.random() * Math.PI * 2, pause: Math.random() * 3,
            cat: Math.random() < 0.4, ph: Math.random() * 6, v: 26 };
 }
+// --- trains on the old Ferrocarril rails ---------------------------------
+// A little heritage train (loco + 2 wagons) runs the disused rail line.
+// Rails are per-tile polylines without arclength tables — build them lazily.
+const WAGON_GAP = 40;
+function railPrep(rl) {
+  if (rl.cum) return rl;
+  const p = rl.pts, cum = [0];
+  for (let i = 2; i < p.length; i += 2) {
+    cum.push(cum[cum.length - 1] + Math.hypot(p[i] - p[i - 2], p[i + 1] - p[i - 1]));
+  }
+  rl.cum = cum; rl.len = cum[cum.length - 1];
+  return rl;
+}
+function spawnOneTrain() {
+  const tiles = W.visibleTiles(_cam.x - SPAWN_R, _cam.y - SPAWN_R, _cam.x + SPAWN_R, _cam.y + SPAWN_R);
+  const cand = [];
+  for (const t of tiles) for (const rl of t.rails || []) {
+    if (railPrep(rl).len > 500) cand.push(rl);
+  }
+  if (!cand.length) return null;
+  const rl = cand[(Math.random() * cand.length) | 0];
+  const tr = {
+    rail: rl,
+    s: WAGON_GAP * 2 + Math.random() * (rl.len - WAGON_GAP * 4),
+    dir: Math.random() < 0.5 ? 1 : -1,
+    v: 52 + Math.random() * 16,
+    cars: [], x: 0, y: 0,
+  };
+  poseTrain(tr);
+  if (Math.hypot(tr.x - _cam.x, tr.y - _cam.y) > SPAWN_R + 200) return null;
+  return tr;
+}
+function poseTrain(tr) {
+  tr.cars.length = 0;
+  for (let k = 0; k < 3; k++) {
+    const s = Math.max(0, Math.min(tr.rail.len, tr.s - tr.dir * WAGON_GAP * k));
+    const pt = roadPointAt(tr.rail, s);
+    tr.cars.push({ x: pt.x, y: pt.y, ang: tr.dir > 0 ? pt.ang : pt.ang + Math.PI });
+  }
+  tr.x = tr.cars[0].x; tr.y = tr.cars[0].y;
+}
+export function advanceTrain(tr, dt) {
+  tr.s += tr.v * dt * tr.dir;
+  if (tr.s >= tr.rail.len || tr.s <= 0) {
+    tr.dir *= -1;                       // ping-pong the line, never vanish mid-view
+    tr.s = Math.max(0, Math.min(tr.rail.len, tr.s));
+  }
+  poseTrain(tr);
+}
+
 function spawnOneGull() {
   const pt = sampleNear(_cam.x, _cam.y, [0], 200, KEEP_R); // open water
   if (!pt) return null;
@@ -159,6 +209,7 @@ function topUp(arr, target, make, isDead) {
 }
 export function maintainStreaming() {
   topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || far(e));
+  topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
   topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || far(e));
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);
   topUp(animals, TARGET.animals, spawnOneAnimal, (e) => e.dead || far(e));
@@ -200,7 +251,7 @@ export function updateAnimals(dt) {
 // Mode-start hooks: clear the pools; maintainStreaming refills them near the
 // camera on the first frames. Kept as named exports so modes.js/index.js don't
 // need to change their call sites.
-export function spawnTraffic() { traffic.length = 0; }
+export function spawnTraffic() { traffic.length = 0; trains.length = 0; }
 export function spawnPedestrians() { pedestrians.length = 0; spawnAmbient(); }
 export function spawnAmbient() { parked.length = 0; vendors.length = 0; animals.length = 0; }
 export function spawnGulls() { gulls.length = 0; }

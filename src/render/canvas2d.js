@@ -6,7 +6,7 @@
 // The game loop (src/game/index.js) calls setupCanvas(canvas) then render(t).
 import { WORLD2D as W } from "../world2d/index.js";
 import {
-  state, traffic, pedestrians, gulls, boats, parked, vendors, animals,
+  state, traffic, pedestrians, gulls, boats, parked, vendors, animals, trains,
 } from "../game/state.js";
 import { nearestKiosk } from "../game/delivery.js";
 import { t } from "../i18n/index.js";
@@ -1042,6 +1042,40 @@ import { content } from "../content/remote.js";
     ctx.fillStyle = "#222"; ctx.fillRect(-c.w/2, -c.h/2 - 1, 3, c.h + 2); ctx.fillRect(c.w/2 - 3, -c.h/2 - 1, 3, c.h + 2);
     ctx.restore();
   }
+  // The Ferrocarril heritage train: red loco + two cream wagons, each posed
+  // on the rail by spawns.js (tr.cars[0] = loco).
+  function drawTrain(tr, t) {
+    for (let k = tr.cars.length - 1; k >= 0; k--) {
+      const c = tr.cars[k];
+      ctx.save();
+      ctx.translate(c.x, c.y); ctx.rotate(c.ang);
+      ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(-17, -6, 34, 13);
+      if (k === 0) {
+        ctx.fillStyle = "#a83232"; ctx.fillRect(-18, -7, 36, 14);   // loco body
+        ctx.fillStyle = "#7d2424"; ctx.fillRect(-18, -7, 10, 14);   // cab
+        ctx.fillStyle = "#26222c"; ctx.fillRect(12, -4, 5, 8);      // smokebox
+        ctx.fillStyle = "#ffe06b"; ctx.fillRect(16, -2, 2, 4);      // lamp
+      } else {
+        ctx.fillStyle = "#e8dcc0"; ctx.fillRect(-16, -6, 32, 12);   // wagon
+        ctx.fillStyle = "#a83232"; ctx.fillRect(-16, -6, 32, 3);    // stripe
+        ctx.fillStyle = "rgba(20,40,60,0.5)";
+        for (let wx = -11; wx <= 9; wx += 7) ctx.fillRect(wx, -2, 4, 4); // windows
+      }
+      ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1;
+      ctx.strokeRect(k === 0 ? -18 : -16, k === 0 ? -7 : -6, k === 0 ? 36 : 32, k === 0 ? 14 : 12);
+      ctx.restore();
+    }
+    // chimney smoke puffs drifting off the loco
+    const l = tr.cars[0];
+    ctx.fillStyle = "rgba(230,230,230,0.35)";
+    for (let i = 0; i < 3; i++) {
+      const ph = (t * 0.0012 + i * 0.33) % 1;
+      ctx.beginPath();
+      ctx.arc(l.x + Math.cos(l.ang) * 14 - ph * 16, l.y + Math.sin(l.ang) * 14 - 8 - ph * 14, 2 + ph * 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   function drawGull(g) {
     ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(g.x, g.y + 14, 6, 1.4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
@@ -1475,17 +1509,16 @@ import { content } from "../content/remote.js";
     ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
   }
 
-  // NFS-style minimap: a circular, HEADING-UP dial of the streets around the
-  // car (resident tile road polylines), the player as a fixed arrow in the
-  // center, and the delivery target as a red blip (clamped to the rim with
-  // when it's beyond the dial's range).
+  // NFS-style minimap: a circular NORTH-UP dial of the streets around the
+  // car (resident tile road polylines), the player as a heading arrow in the
+  // center, and the delivery target as a red blip (clamped to the rim when
+  // it's beyond the dial's range).
   function drawMinimap(vw, vh, t) {
     const R = 76;                          // dial radius on screen (px)
     const cx = vw - R - 18, cy = R + 18;
     const RANGE = 640;                     // world px from car to dial edge
     const s = R / RANGE;
     const p = state.p;
-    const rot = -p.a - Math.PI / 2;        // travel direction points UP
 
     // dial background + clip
     ctx.save();
@@ -1494,14 +1527,12 @@ import { content } from "../content/remote.js";
     ctx.fill();
     ctx.clip();
 
-    // world → dial transform (rotate around the car, car at center)
+    // world → dial transform (north up, car at center)
     ctx.translate(cx, cy);
-    ctx.rotate(rot);
     ctx.scale(s, s);
     ctx.translate(-p.x, -p.y);
 
-    // streets around the car (generous cull box since the dial rotates)
-    const M = RANGE * 1.45;
+    const M = RANGE * 1.05;
     const mv = { x0: p.x - M, x1: p.x + M, y0: p.y - M, y1: p.y + M };
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     const vts = W.visibleTiles(mv.x0, mv.y0, mv.x1, mv.y1);
@@ -1517,12 +1548,11 @@ import { content } from "../content/remote.js";
     }
     ctx.restore();
 
-    // target blip in screen space (rotate the offset like the streets)
+    // target blip in screen space (north-up: plain scaled offset)
     const tgt = state.carrying ? state.carrying.customer : nearestKiosk(p).lm;
     if (tgt) {
-      const dx = tgt.x - p.x, dy = tgt.y - p.y;
-      let mx = (dx * Math.cos(rot) - dy * Math.sin(rot)) * s;
-      let my = (dx * Math.sin(rot) + dy * Math.cos(rot)) * s;
+      let mx = (tgt.x - p.x) * s;
+      let my = (tgt.y - p.y) * s;
       const d = Math.hypot(mx, my), lim = R - 9;
       if (d > lim) { mx *= lim / d; my *= lim / d; }   // pin to the rim when far
       const pulse = 3.4 + Math.sin(t * 0.006) * 1.1;
@@ -1532,9 +1562,10 @@ import { content } from "../content/remote.js";
       ctx.beginPath(); ctx.arc(cx + mx, cy + my, pulse, 0, Math.PI * 2); ctx.stroke();
     }
 
-    // the car: fixed gold arrow pointing up in the dial center
+    // the car: gold arrow in the center, rotated to the travel heading
     ctx.save();
     ctx.translate(cx, cy);
+    ctx.rotate(p.a + Math.PI / 2); // arrow art points up = -y
     ctx.fillStyle = "#ffe06b";
     ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -1618,6 +1649,10 @@ import { content } from "../content/remote.js";
     for (const car of traffic) {
       if (car.x < view.x0 - 20 || car.x > view.x1 + 20) continue;
       drawCar(car);
+    }
+    for (const tr of trains) {
+      if (tr.x < view.x0 - 140 || tr.x > view.x1 + 140 || tr.y < view.y0 - 140 || tr.y > view.y1 + 140) continue;
+      drawTrain(tr, t);
     }
     // Particles
     for (const pt of state.particles) {

@@ -85,7 +85,14 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   color: oklch(0.92 0.04 80);
 }
 .title-pill .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--gold); box-shadow: 0 0 12px var(--gold); }
-.title-tools { position: absolute; right: 14px; top: 14px; display: flex; gap: 8px; z-index: 5; }
+/* header row: pill left, tools right — a real flex row (the old absolute
+   top-right tools started overlapping the pill once the coin pill grew it) */
+.title-head-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 6px;
+}
+.title-tools { display: flex; gap: 8px; z-index: 5; flex-wrap: wrap; justify-content: flex-end; }
+.tool-pill.pulse { animation: tut-pulse 1.6s ease-in-out infinite; }
 .info-wrap { position: relative; }
 .tool-pill {
   background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18);
@@ -376,15 +383,86 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .screen-anim, .overlay .panel { animation: none; }
 }
 
-/* ----- Tutorial instruction panel (top-center, under the compass) ----- */
+/* ----- Tutorial coach-marks overlay (visual only, game plays through) ----- */
+.tut-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 8; overflow: hidden; }
+/* plain veil (steps without a spotlight target) */
+.tut-veil { position: absolute; inset: 0; background: rgba(14, 14, 24, 0.5); }
+/* spotlight: the hole stays clear; its huge box-shadow paints the veil */
+.tut-spot {
+  position: absolute; border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(14, 14, 24, 0.55);
+  border: 2px solid rgba(255, 224, 107, 0.9);
+  animation: tut-spot-pulse 1.4s ease-in-out infinite;
+}
+.tut-spot.round { border-radius: 50%; }
+@keyframes tut-spot-pulse {
+  0%, 100% { border-color: rgba(255,224,107,0.9); }
+  50% { border-color: rgba(255,224,107,0.35); }
+}
+.tut-arrow {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  color: #ffe06b; font-size: 26px; text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+}
+.tut-arrow.above { bottom: calc(100% + 6px); animation: tut-bounce-d 1s ease-in-out infinite; }
+.tut-arrow.below { top: calc(100% + 6px); animation: tut-bounce-u 1s ease-in-out infinite; }
+@keyframes tut-bounce-d { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 8px); } }
+@keyframes tut-bounce-u { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -8px); } }
+
+/* throttle-finger demo (mobile speed/turbo steps): the hand slides away from
+   the car along a dashed track on the right half of the screen */
+.tut-finger {
+  position: absolute; left: 50%; top: 50%;
+  width: min(38vw, 320px); height: 4px;
+}
+.tut-finger-track {
+  position: absolute; left: 34px; right: 0; top: 0; height: 0;
+  border-top: 3px dashed rgba(255, 224, 107, 0.8);
+}
+.tut-finger-car { position: absolute; left: 0; top: -16px; font-size: 26px; }
+.tut-finger-hand {
+  position: absolute; left: 0; top: -14px; font-size: 30px;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.7));
+  animation: tut-hand-speed 2.2s ease-in-out infinite;
+}
+.tut-finger.turbo .tut-finger-hand { animation: tut-hand-turbo 1.6s ease-in-out infinite; }
+.tut-finger-flame { position: absolute; right: -8px; top: -30px; font-size: 24px; animation: tut-spot-pulse 0.8s infinite; }
+@keyframes tut-hand-speed {
+  0%, 15% { transform: translateX(44px); }
+  60%, 85% { transform: translateX(min(24vw, 200px)); }
+  100% { transform: translateX(44px); }
+}
+@keyframes tut-hand-turbo {
+  0%, 10% { transform: translateX(90px); }
+  55%, 90% { transform: translateX(min(34vw, 290px)) scale(1.15); }
+  100% { transform: translateX(90px); }
+}
+
+/* PC keycaps (desktop steps map to the keyboard, not touch controls) */
+.tut-keys {
+  position: absolute; left: 50%; top: 56%; transform: translate(-50%, 0);
+  display: flex; gap: 10px;
+}
+.tut-key {
+  font: bold 20px "JetBrains Mono", monospace; color: #fff;
+  background: rgba(30, 26, 50, 0.95); border: 2px solid #ffe06b;
+  border-bottom-width: 5px; border-radius: 10px; padding: 10px 16px;
+  animation: tut-key-press 1.2s ease-in-out infinite;
+}
+@keyframes tut-key-press {
+  0%, 100% { transform: translateY(0); border-bottom-width: 5px; }
+  50% { transform: translateY(3px); border-bottom-width: 2px; }
+}
+
+/* instruction panel (top-center, part of the overlay) */
 .tut-panel {
   position: absolute; top: 148px; left: 50%; transform: translateX(-50%);
   max-width: min(520px, 86vw);
-  background: rgba(20, 16, 40, 0.88); border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(20, 16, 40, 0.92); border: 1px solid rgba(255,255,255,0.2);
   border-left: 4px solid #5fb0d6;
   border-radius: 10px; padding: 10px 14px;
   pointer-events: none; z-index: 6;
 }
+.tut-panel.done { border-left-color: #6fbf99; top: 40%; }
 .tut-step {
   font: 10px "JetBrains Mono", monospace; color: #5fb0d6;
   letter-spacing: 0.08em; margin-bottom: 4px;

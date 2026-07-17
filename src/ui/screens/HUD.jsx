@@ -29,9 +29,6 @@ export default function HUD({ onPause }) {
     return t("quip.melt");
   }, [meltPct, s.carrying, t]);
 
-  // tutorial instruction (step machine lives in game state)
-  const tutKey = s.tutorial ? Game.tutorialStepKey() : null;
-
   return (
     <div className="ui-layer">
       <div className="hud-top">
@@ -95,13 +92,6 @@ export default function HUD({ onPause }) {
           <div className="dt-kicker" style={{ color: toast.tone }}>{t("hud.enter")}</div>
           <div className="dt-name">{toast.name}</div>
           <div className="dt-rule" style={{ background: toast.tone }}></div>
-        </div>
-      )}
-
-      {tutKey && (
-        <div className="tut-panel">
-          <div className="tut-step">{t("tut.title")} · {t("tut.step", { n: Math.min(s.tutorial.step + 1, s.tutorial.total), total: s.tutorial.total })}</div>
-          <div className="tut-text">{t(tutKey)}</div>
         </div>
       )}
 

@@ -11,6 +11,7 @@ import SettingsScreen from "./screens/SettingsScreen.jsx";
 import SupportersScreen from "./screens/SupportersScreen.jsx";
 import ShopScreen from "./screens/ShopScreen.jsx";
 import VehiclePicker from "./VehiclePicker.jsx";
+import TutorialOverlay from "./TutorialOverlay.jsx";
 import { content } from "../content/remote.js";
 import TouchControls from "./TouchControls.jsx";
 import GameTweaks from "./GameTweaks.jsx";
@@ -162,7 +163,7 @@ export default function App() {
           )}
         </div>
       )}
-      {screen === "playing" && <><HUD onPause={() => setScreen("paused")} /><TouchControls /></>}
+      {screen === "playing" && <><HUD onPause={() => setScreen("paused")} /><TouchControls />{Game.state.tutorial && <TutorialOverlay />}</>}
       {screen === "paused" && <><HUD /><PauseScreen onResume={() => setScreen("playing")} onSettings={() => openSettings("paused")} onQuit={quit} /></>}
       {(screen === "playing" || screen === "paused") && <GameTweaks />}
       <div className="rotate-overlay">

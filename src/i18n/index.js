@@ -191,6 +191,7 @@ const STR = {
     "sup.tier4": "Leyenda Porteña",
     "settings.supporters": "Agradecimientos",
     // --- misc ---
+    "key.space": "ESPACIO",
     "ios.hint": "📱 En iPhone: Compartir → \"Agregar a pantalla de inicio\" para jugar a pantalla completa.",
     "rotate.body": "Girá el teléfono — se juega en horizontal",
     "meters": "{n} m",
@@ -365,6 +366,7 @@ const STR = {
     "sup.tier3": "Inversor de la Península",
     "sup.tier4": "Leyenda Porteña",
     "settings.supporters": "Supporters",
+    "key.space": "SPACE",
     "ios.hint": "📱 On iPhone: Share → \"Add to Home Screen\" to play fullscreen.",
     "rotate.body": "Rotate your phone — the game is landscape",
     "meters": "{n} m",

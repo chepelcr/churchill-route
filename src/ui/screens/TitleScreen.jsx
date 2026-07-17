@@ -12,7 +12,6 @@ import FitScale from "../FitScale.jsx";
 const IS_NATIVE = typeof window !== "undefined" && !!window.Capacitor;
 
 const MODE_IDS = [
-  { id: "tutorial", swatch: "#5fb0d6" },
   { id: "story",    swatch: "#ffe06b" },
   { id: "explore",  swatch: "#6fbf99" },
   { id: "arcade",   swatch: "#ff3d80" },
@@ -47,26 +46,30 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
       <div className="title-shell">
         <FitScale>
         <div className="title-card">
-          <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
-          <div className="title-tools">
-            <div className="info-wrap" ref={infoRef}>
-              <button className="tool-pill" onClick={() => { sfx.play("menu_move"); setInfo((v) => !v); }}
-                aria-label={t("title.how.title")} aria-expanded={info}>{info ? "✕" : "ⓘ"}</button>
-              {info && (
-                <div className="info-bubble" role="dialog" aria-label={t("title.how.title")}>
-                  <div className="info-bubble-title">{t("title.how.title")}</div>
-                  <p>{t("title.how.body")}</p>
-                </div>
-              )}
+          <div className="title-head-row">
+            <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
+            <div className="title-tools">
+              <div className="info-wrap" ref={infoRef}>
+                <button className="tool-pill" onClick={() => { sfx.play("menu_move"); setInfo((v) => !v); }}
+                  aria-label={t("title.how.title")} aria-expanded={info}>{info ? "✕" : "ⓘ"}</button>
+                {info && (
+                  <div className="info-bubble" role="dialog" aria-label={t("title.how.title")}>
+                    <div className="info-bubble-title">{t("title.how.title")}</div>
+                    <p>{t("title.how.body")}</p>
+                  </div>
+                )}
+              </div>
+              <button className={"tool-pill" + (firstRun ? " pulse" : "")}
+                onClick={() => pick("tutorial")} aria-label={t("mode.tutorial")}>🎓</button>
+              <button className="tool-pill coin-tool" onClick={() => { sfx.play("menu_move"); onShop(); }}
+                aria-label={t("shop.title")}>🛒 <CoinIcon size={14} /> {economy.coins.toLocaleString()}</button>
+              <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSupporters(); }}
+                aria-label={t("sup.title")}>❤</button>
+              <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSettings(); }}
+                aria-label={t("settings.title")}>⚙</button>
+              <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
+                aria-label={muted ? "🔊" : "🔇"}>{muted ? "🔇" : "🔊"}</button>
             </div>
-            <button className="tool-pill coin-tool" onClick={() => { sfx.play("menu_move"); onShop(); }}
-              aria-label={t("shop.title")}>🛒 <CoinIcon size={14} /> {economy.coins.toLocaleString()}</button>
-            <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSupporters(); }}
-              aria-label={t("sup.title")}>❤</button>
-            <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSettings(); }}
-              aria-label={t("settings.title")}>⚙</button>
-            <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
-              aria-label={muted ? "🔊" : "🔇"}>{muted ? "🔇" : "🔊"}</button>
           </div>
           <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
           <div className="title-sub">{t("title.sub")}</div>
@@ -79,10 +82,10 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
             </div>
           )}
 
-          <div className="modes" style={{ gridTemplateColumns: `repeat(${MODE_IDS.length}, 1fr)`, maxWidth: 900, margin: "16px auto" }}>
+          <div className="modes" style={{ gridTemplateColumns: `repeat(${MODE_IDS.length}, 1fr)`, maxWidth: 760, margin: "16px auto" }}>
             {MODE_IDS.map((m, i) => (
               <button key={m.id}
-                className={"mode" + (idx === i ? " focused" : "") + (m.id === "tutorial" && firstRun ? " pulse" : "")}
+                className={"mode" + (idx === i ? " focused" : "")}
                 onMouseEnter={() => setIdx(i)} onClick={() => pick(m.id)}>
                 <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{t(`mode.${m.id}`)}</div>
                 <div className="ms">{t(`mode.${m.id}.tag`)}</div>

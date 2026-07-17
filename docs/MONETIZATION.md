@@ -72,13 +72,34 @@ las MISMAS superficies suaves (interstitial cada 5ª partida + rewarded
 opcional). Mientras el sitio no esté aprobado, `adBreak` es un no-op
 silencioso y el juego sigue normal.
 
+**ads.txt — ✅ HECHO (2026-07-17):** AdSense exige el `ads.txt` en el
+**dominio raíz** (`jcampos.dev`), que no tenía registro DNS. Infra creada en
+AWS (cuenta PACIFIC-PROD, us-east-1):
+
+- S3 privado `jcampos-dev-apex-ads` con el `ads.txt`
+  (`google.com, pub-3090812928887940, DIRECT, f08c47fec0942fa0`), servido
+  solo vía CloudFront OAC.
+- CloudFront `E12PR4F6X0UGV7` con cert ACM para `jcampos.dev` y una CF
+  Function: `/ads.txt` → S3; cualquier otra ruta → 301 a
+  `https://www.jcampos.dev` (misma ruta).
+- Route53: A/AAAA alias del apex → la distribución (`www` sigue en GitHub
+  Pages, intacto). Verificado: `https://jcampos.dev/ads.txt` → 200.
+- El mismo `ads.txt` vive ahora en `public/ads.txt` → se publica en
+  `churchill.jcampos.dev/ads.txt` con el deploy (antes estaba en la raíz del
+  repo y Vite no lo publicaba).
+- Para actualizarlo: `aws s3 cp public/ads.txt s3://jcampos-dev-apex-ads/ads.txt
+  --profile PACIFIC-PROD` + invalidación de `/ads.txt` en la distribución.
+
 **Pasos pendientes (consola de AdSense, misma cuenta Google que AdMob):**
-1. https://adsense.google.com → Sitios → agregar `churchill.jcampos.dev` y
-   pasar la revisión (requiere la política de privacidad publicada).
-2. Habilitar **H5 Games Ads** (Ad Placement API) para el sitio.
-3. Configurar el mensaje de consentimiento EEA en AdSense (Privacy &
+1. **Política de privacidad publicada** — BLOQUEANTE para la revisión; aún no
+   existe página `/privacy` en el sitio (ver checklist Play #2: sirve la misma).
+2. https://adsense.google.com → Sitios → agregar `churchill.jcampos.dev`,
+   verificar el dominio raíz (el ads.txt de arriba ya responde) y pasar la
+   revisión.
+3. Habilitar **H5 Games Ads** (Ad Placement API) para el sitio.
+4. Configurar el mensaje de consentimiento EEA en AdSense (Privacy &
    messaging), igual que en AdMob.
-4. Para probar antes de la aprobación: agregar `data-adbreak-test="on"` al
+5. Para probar antes de la aprobación: agregar `data-adbreak-test="on"` al
    script en `initWebAds()` TEMPORALMENTE (nunca comitear activado).
 
 ## Formato de publicación: AAB (obligatorio)

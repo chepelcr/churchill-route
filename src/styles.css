@@ -60,11 +60,15 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 /* FitScale wrapper: the outer box adopts the SCALED size (so margin:auto
    centering stays true); the inner box renders at natural size and shrinks
    via transform so menus always fit whole — no scrolling, no web feel. */
-/* origin MUST be top-left: the outer box is sized to the SCALED dims, so a
-   top-left-scaled inner fills it exactly — center origin shifted the visual
-   content toward the bottom-right by half the natural/scaled difference. */
+/* Two invariants keep this correct:
+   1) .fit-inner is width:fit-content — it always measures the CARD's natural
+      size. (As a plain block it inherited the outer's width, which we set to
+      the SCALED size → re-measure → re-shrink → ratchet down to the floor.
+      That's why tall cards ended tiny in a corner while fitting ones were ok.)
+   2) transform-origin top-left — the scaled content fills the outer box
+      (sized to the scaled dims) exactly, so margin:auto centering is true. */
 .fit-outer { margin: auto; overflow: visible; }
-.fit-inner { transform-origin: top left; }
+.fit-inner { width: fit-content; transform-origin: top left; }
 .fit-inner > .title-card, .fit-inner > .stage-select-wrap { margin: 0; }
 .title-card {
   width: min(880px, 96vw);

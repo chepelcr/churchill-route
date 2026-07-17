@@ -63,6 +63,24 @@ Código: `src/game/economy.js` (catálogo/wallet), `src/monetize/iap.js`
 (productos), `src/ui/screens/ShopScreen.jsx` (tienda). Los packs se acreditan
 en el evento `verified` y se consumen con `finish()`.
 
+## Anuncios en la versión WEB (H5 Games Ads)
+
+AdMob es un SDK nativo — NO sirve anuncios en navegadores. La web usa
+**Google H5 Games Ads** (Ad Placement API de AdSense, `adBreak`), ya cableado
+en `src/monetize/ads.js` con el mismo publisher (`ca-pub-3090812928887940`) y
+las MISMAS superficies suaves (interstitial cada 5ª partida + rewarded
+opcional). Mientras el sitio no esté aprobado, `adBreak` es un no-op
+silencioso y el juego sigue normal.
+
+**Pasos pendientes (consola de AdSense, misma cuenta Google que AdMob):**
+1. https://adsense.google.com → Sitios → agregar `churchill.jcampos.dev` y
+   pasar la revisión (requiere la política de privacidad publicada).
+2. Habilitar **H5 Games Ads** (Ad Placement API) para el sitio.
+3. Configurar el mensaje de consentimiento EEA en AdSense (Privacy &
+   messaging), igual que en AdMob.
+4. Para probar antes de la aprobación: agregar `data-adbreak-test="on"` al
+   script en `initWebAds()` TEMPORALMENTE (nunca comitear activado).
+
 ## Formato de publicación: AAB (obligatorio)
 
 **Sí, Play Store exige `.aab`** para apps nuevas desde agosto 2021 — el `.apk`

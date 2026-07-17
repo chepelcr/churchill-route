@@ -1475,51 +1475,76 @@ import { content } from "../content/remote.js";
     ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
   }
 
-  function drawMinimap(vw, vh) {
-    const mw = 320, mh = 64;
-    const mx = vw - mw - 18, my = 18;
-    ctx.fillStyle = "rgba(20,16,40,0.78)";
-    roundRect(ctx, mx, my, mw, mh, 10, true, false);
-    // Water bg
-    ctx.fillStyle = "#3a8a99"; ctx.fillRect(mx + 4, my + 4, mw - 8, mh - 8);
-    // Peninsula silhouette — real land polygons (WORLD2D backdrop), mapped with
-    // the same world->mini transform as the player/target dots.
-    const innerW = mw - 12; const innerX = mx + 6;
-    const innerY = my + mh / 2;
-    const centerY = (W.META && W.META.centerY) || W.H / 2;
-    const halfSpan = Math.max(centerY, W.H - centerY);
-    const yScale = (mh / 2 - 6) / halfSpan;
-    const clampMapY = (sy) => Math.max(my + 4, Math.min(my + mh - 4, sy));
-    const mapX = (wx) => innerX + (wx / W.W) * innerW;
-    const mapY = (wy) => clampMapY(innerY + (wy - centerY) * yScale);
-    ctx.fillStyle = "#caa56a";
-    for (const poly of W.LAND_POLYS || []) {
-      if (poly.length < 6) continue;
-      ctx.beginPath();
-      for (let i = 0; i < poly.length; i += 2) {
-        const sx = mapX(poly[i]), sy = mapY(poly[i + 1]);
-        i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy);
+  // NFS-style minimap: a circular, HEADING-UP dial of the streets around the
+  // car (resident tile road polylines), the player as a fixed arrow in the
+  // center, and the delivery target as a red blip (clamped to the rim with
+  // when it's beyond the dial's range).
+  function drawMinimap(vw, vh, t) {
+    const R = 76;                          // dial radius on screen (px)
+    const cx = vw - R - 18, cy = R + 18;
+    const RANGE = 640;                     // world px from car to dial edge
+    const s = R / RANGE;
+    const p = state.p;
+    const rot = -p.a - Math.PI / 2;        // travel direction points UP
+
+    // dial background + clip
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(12,14,26,0.82)";
+    ctx.fill();
+    ctx.clip();
+
+    // world → dial transform (rotate around the car, car at center)
+    ctx.translate(cx, cy);
+    ctx.rotate(rot);
+    ctx.scale(s, s);
+    ctx.translate(-p.x, -p.y);
+
+    // streets around the car (generous cull box since the dial rotates)
+    const M = RANGE * 1.45;
+    const mv = { x0: p.x - M, x1: p.x + M, y0: p.y - M, y1: p.y + M };
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    const vts = W.visibleTiles(mv.x0, mv.y0, mv.x1, mv.y1);
+    for (const tile of vts) {
+      for (const r of tile.roads) {
+        if (!aabbInView(r.aabb, mv, r.w)) continue;
+        ctx.strokeStyle = r.cls === "paseo" ? "#c9a95e"
+          : (r.cls === "trunk" || r.cls === "primary" || r.cls === "secondary") ? "#aeb3c8"
+          : "#7e8298";
+        ctx.lineWidth = Math.max(r.w, 30);  // readable street ribbons at map scale
+        ctx.stroke(roadPath(r));
       }
-      ctx.closePath(); ctx.fill();
     }
-    // district markers
-    ctx.font = "8px 'JetBrains Mono', monospace"; ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.textAlign = "center";
-    for (const d of W.DISTRICTS) {
-      const xa = innerX + ((d.x0 + d.x1) / 2 / W.W) * innerW;
-      ctx.fillText(d.short.toUpperCase(), xa, my + mh - 6);
-    }
-    // player dot
-    const px = mapX(state.p.x), py = mapY(state.p.y);
-    ctx.fillStyle = "#ffe06b"; ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
-    // target
-    const tgt = state.carrying ? state.carrying.customer : nearestKiosk(state.p).lm;
+    ctx.restore();
+
+    // target blip in screen space (rotate the offset like the streets)
+    const tgt = state.carrying ? state.carrying.customer : nearestKiosk(p).lm;
     if (tgt) {
-      const tx = innerX + (tgt.x / W.W) * innerW;
-      const ty = clampMapY(innerY + (tgt.y - centerY) * yScale);
-      ctx.fillStyle = state.carrying ? "#ff3d80" : "#fff";
-      ctx.beginPath(); ctx.arc(tx, ty, 4, 0, Math.PI * 2); ctx.fill();
+      const dx = tgt.x - p.x, dy = tgt.y - p.y;
+      let mx = (dx * Math.cos(rot) - dy * Math.sin(rot)) * s;
+      let my = (dx * Math.sin(rot) + dy * Math.cos(rot)) * s;
+      const d = Math.hypot(mx, my), lim = R - 9;
+      if (d > lim) { mx *= lim / d; my *= lim / d; }   // pin to the rim when far
+      const pulse = 3.4 + Math.sin(t * 0.006) * 1.1;
+      ctx.fillStyle = state.carrying ? "#ff2d2d" : "#ff5050"; // NPC / target = red
+      ctx.beginPath(); ctx.arc(cx + mx, cy + my, pulse, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(cx + mx, cy + my, pulse, 0, Math.PI * 2); ctx.stroke();
     }
-    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1; roundRect(ctx, mx, my, mw, mh, 10, false, true);
+
+    // the car: fixed gold arrow pointing up in the dial center
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.fillStyle = "#ffe06b";
+    ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -8); ctx.lineTo(6, 7); ctx.lineTo(0, 3.5); ctx.lineTo(-6, 7);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    // rim
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
   }
 
   // ---- Main render --------------------------------------------------------
@@ -1632,7 +1657,7 @@ import { content } from "../content/remote.js";
     if (state.weather === "night") drawNightVignette(vw, vh);
 
     if (!state.attract) {
-      drawMinimap(vw, vh);
+      drawMinimap(vw, vh, t);
       drawCompass(vw, vh);
     }
 

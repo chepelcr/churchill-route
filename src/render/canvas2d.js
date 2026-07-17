@@ -172,14 +172,48 @@ import { content } from "../content/remote.js";
     for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.stroke(b.path);
   }
 
-  // Lane-dash path TRIMMED back from both polyline ends: OSM ways end at
-  // junctions, so cutting the last stretch keeps center lines out of the
-  // intersection box. Cached per road (null = piece too short to dash).
+  // ---- junction-aware lane dashes -----------------------------------------
+  // Per tile (once): intersect every road pair's segments to find the exact
+  // crossing arclengths. The dash path then skips a clearance around every
+  // crossing AND is trimmed at both ends — center lines never enter an
+  // intersection, with no cover-up discs needed.
+  function ensureTileCuts(tile) {
+    if (tile._cutsDone) return;
+    tile._cutsDone = true;
+    const roads = tile.roads;
+    for (const r of roads) if (!r._cutList) r._cutList = [];
+    for (let i = 0; i < roads.length; i++) {
+      const A = roads[i];
+      for (let j = i + 1; j < roads.length; j++) {
+        const B = roads[j];
+        const pad = (A.w + B.w) / 2;
+        if (A.aabb.x0 > B.aabb.x1 + pad || B.aabb.x0 > A.aabb.x1 + pad ||
+            A.aabb.y0 > B.aabb.y1 + pad || B.aabb.y0 > A.aabb.y1 + pad) continue;
+        const pa = A.pts, pb = B.pts;
+        for (let ia = 0; ia + 3 < pa.length; ia += 2) {
+          const ax = pa[ia], ay = pa[ia + 1], adx = pa[ia + 2] - ax, ady = pa[ia + 3] - ay;
+          for (let ib = 0; ib + 3 < pb.length; ib += 2) {
+            const bx = pb[ib], by = pb[ib + 1], bdx = pb[ib + 2] - bx, bdy = pb[ib + 3] - by;
+            const den = adx * bdy - ady * bdx;
+            if (Math.abs(den) < 1e-6) continue;                 // parallel
+            const t = ((bx - ax) * bdy - (by - ay) * bdx) / den;
+            const u = ((bx - ax) * ady - (by - ay) * adx) / den;
+            if (t < -0.02 || t > 1.02 || u < -0.02 || u > 1.02) continue;
+            A._cutList.push({ s: A.cum[ia / 2] + t * (A.cum[ia / 2 + 1] - A.cum[ia / 2]), c: B.w / 2 + 12 });
+            B._cutList.push({ s: B.cum[ib / 2] + u * (B.cum[ib / 2 + 1] - B.cum[ib / 2]), c: A.w / 2 + 12 });
+          }
+        }
+      }
+    }
+  }
+
+  // Dash path = the road minus end trims minus a clearance around every
+  // crossing (from ensureTileCuts). Cached per road.
   function dashPath(r) {
     if (r._dash !== undefined) return r._dash;
     const TRIM = Math.max(26, r.w * 0.8);
     if (!r.cum || r.len <= TRIM * 2 + 8) return (r._dash = null);
-    const p = r.pts, cum = r.cum, s0 = TRIM, s1 = r.len - TRIM;
+    const p = r.pts, cum = r.cum;
     const at = (s) => {
       let i = 1;
       while (i < cum.length - 1 && cum[i] < s) i++;
@@ -187,14 +221,30 @@ import { content } from "../content/remote.js";
       return [p[(i - 1) * 2] + (p[i * 2] - p[(i - 1) * 2]) * t,
               p[(i - 1) * 2 + 1] + (p[i * 2 + 1] - p[(i - 1) * 2 + 1]) * t];
     };
-    const path = new Path2D();
-    const [ax, ay] = at(s0);
-    path.moveTo(ax, ay);
-    for (let i = 0; i < cum.length; i++) {
-      if (cum[i] > s0 && cum[i] < s1) path.lineTo(p[i * 2], p[i * 2 + 1]);
+    // subtract the cut windows from [TRIM, len-TRIM]
+    let spans = [[TRIM, r.len - TRIM]];
+    for (const cut of r._cutList || []) {
+      const c0 = cut.s - cut.c, c1 = cut.s + cut.c;
+      const next = [];
+      for (const [s0, s1] of spans) {
+        if (c1 <= s0 || c0 >= s1) { next.push([s0, s1]); continue; }
+        if (c0 > s0) next.push([s0, c0]);
+        if (c1 < s1) next.push([c1, s1]);
+      }
+      spans = next;
     }
-    const [bx, by] = at(s1);
-    path.lineTo(bx, by);
+    let path = null;
+    for (const [s0, s1] of spans) {
+      if (s1 - s0 < 14) continue;                               // too short to read
+      path = path || new Path2D();
+      const [ax, ay] = at(s0);
+      path.moveTo(ax, ay);
+      for (let i = 0; i < cum.length; i++) {
+        if (cum[i] > s0 && cum[i] < s1) path.lineTo(p[i * 2], p[i * 2 + 1]);
+      }
+      const [bx, by] = at(s1);
+      path.lineTo(bx, by);
+    }
     return (r._dash = path);
   }
 
@@ -221,8 +271,20 @@ import { content } from "../content/remote.js";
     // casing
     ctx.strokeStyle = "rgba(0,0,0,0.35)";
     for (const r of roads) { ctx.lineWidth = r.w + 4; ctx.stroke(roadPath(r)); }
-    // asphalt / barro / paseo surface
-    for (const r of roads) { ctx.strokeStyle = r.barro ? "#9c7a4f" : r.cls === "paseo" ? "#f4dca3" : "#3a3540"; ctx.lineWidth = r.w; ctx.stroke(roadPath(r)); }
+    // asphalt / barro / paseo surface + SAME-COLOR joint discs at both piece
+    // ends: they invisibly weld chained pieces (keeps the León Cortés →
+    // Turistas curve smooth) and unify junction mouths, without the visible
+    // "mini circles" a contrasting eraser disc would leave.
+    for (const r of roads) {
+      const col = r.barro ? "#9c7a4f" : r.cls === "paseo" ? "#f4dca3" : "#3a3540";
+      ctx.strokeStyle = col; ctx.lineWidth = r.w; ctx.stroke(roadPath(r));
+      const p = r.pts, n = p.length, rad = r.w / 2 - 0.4;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(p[0] + rad, p[1]); ctx.arc(p[0], p[1], rad, 0, Math.PI * 2);
+      ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
     // lane markings: yellow dashes on arterials, faint white on locals —
     // drawn on the TRIMMED path so they stop short of the junctions
     for (const r of roads) {
@@ -234,27 +296,6 @@ import { content } from "../content/remote.js";
       const dp = dashPath(r);
       if (dp) ctx.stroke(dp);
       ctx.setLineDash([]);
-    }
-    // junction sweep: where a piece ENDS on a through road, the through
-    // road's own center line still crosses — stamp a small asphalt disc at
-    // every dashed-road endpoint to break it (skips paseo/bridge/barro
-    // neighborhoods so we never splat dark asphalt on a cream deck).
-    ctx.fillStyle = "#3a3540";
-    for (const r of roads) {
-      if (r.barro || r.bridge || r.cls === "paseo" || r.cls === "pedestrian" || r.cls === "service") continue;
-      const p = r.pts, n = p.length;
-      const rad = Math.min(r.w / 2, 22) + 2;
-      for (const [ex, ey] of [[p[0], p[1]], [p[n - 2], p[n - 1]]]) {
-        let nearSpecial = false;
-        for (const o of roads) {
-          if (!o.bridge && o.cls !== "paseo") continue;
-          const a = o.aabb, m = o.w;
-          if (ex < a.x0 - m || ex > a.x1 + m || ey < a.y0 - m || ey > a.y1 + m) continue;
-          nearSpecial = true; break; // cheap AABB check is enough here
-        }
-        if (nearSpecial) continue;
-        ctx.beginPath(); ctx.arc(ex, ey, rad, 0, Math.PI * 2); ctx.fill();
-      }
     }
     ctx.lineCap = "butt";
   }
@@ -358,7 +399,10 @@ import { content } from "../content/remote.js";
     const vts = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
     // roads: gather in-view segments across tiles, minor → major so arterials paint on top
     const roads = [];
-    for (const tile of vts) for (const r of tile.roads) if (aabbInView(r.aabb, view, r.w + 6)) roads.push(r);
+    for (const tile of vts) {
+      ensureTileCuts(tile); // one-time crossing detection for the dash gaps
+      for (const r of tile.roads) if (aabbInView(r.aabb, view, r.w + 6)) roads.push(r);
+    }
     roads.sort((a, b) => (ROAD_ORDER[a.cls] || 0) - (ROAD_ORDER[b.cls] || 0));
     paintRoads(roads);
     // rails (old Ferrocarril line) + paseo separator ground strips, on top of

@@ -21,7 +21,7 @@ const TOTAL_KEY = "churchill_runs_total_v1";
 const INTERSTITIAL_EVERY = 5;
 const GRACE_RUNS = 3; // no interstitials at all for the first runs ever
 
-const TEST_INTERSTITIAL = "ca-app-pub-3940256099942544/1033173712";
+const TEST_INTERSTITIAL = "ca-app-pub-3090812928887940/4457249161";
 const TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
 
 let AdMob = null;          // plugin module once loaded

@@ -102,12 +102,12 @@ export function update(dt) {
 
   const prevX = p.x, prevY = p.y;
   p.x += p.vx * dt; p.y += p.vy * dt;
-  // Solid cuadras + aceras + open water: you drive only on the streets /
-  // peninsula. Block interiors (class 1 land, class 6 acera/curb) AND water
-  // (class 0) are walls you slide along — kill only the blocked axis so
-  // tangential motion carries you. On the 2-D world, water-as-wall replaces the
-  // old corridor topY/botY bounds (the pier deck, class 5, stays drivable).
-  const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0; };
+  // Solid cuadras + aceras + beach + open water: you drive ONLY the streets
+  // (and the pier deck, class 5). Class 1 land, class 6 acera/curb, class 2
+  // beach and class 0 water are walls you slide along — kill only the blocked
+  // axis so tangential motion carries you. Beach became a wall on user
+  // request (beach-classed pockets also let you slip inside cuadras).
+  const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2; };
   if (isWall(p.x, p.y)) {
     const okX = !isWall(p.x, prevY);
     const okY = !isWall(prevX, p.y);

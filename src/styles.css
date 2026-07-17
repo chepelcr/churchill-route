@@ -503,24 +503,48 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .vol-pct { font: 11px "JetBrains Mono", monospace; opacity: 0.8; min-width: 64px; }
 .iap-owned { font: 12px "JetBrains Mono", monospace; color: #6fbf99; }
 .settings-credits { margin-top: 14px; font: 10px "JetBrains Mono", monospace; opacity: 0.5; }
-/* phone landscape: tighten the tall cards so FitScale barely has to shrink */
+/* phone landscape: tighten so the full-screen pages never need to scroll */
 @media (max-height: 500px) {
   .title-card { padding: 14px 18px; }
-  .settings-rows { gap: 8px; margin-top: 10px; }
-  .set-row { padding: 6px 10px; }
-  .shop-body { min-height: 240px; }
-  .settings-credits { margin-top: 8px; }
+  .settings-rows { gap: 6px; margin: 0; }
+  .set-row { padding: 5px 10px; }
+  .page-head { gap: 8px; }
+  .page-body { gap: 6px; }
 }
 
-/* ----- Shop (Churchill coins) ----- */
-/* fixed width + fixed-height body so the card never resizes between tabs */
-.shop-card { width: min(680px, 94vw); max-width: none; }
-.shop-body {
-  min-height: 330px;
-  display: flex; flex-direction: column; justify-content: center; gap: 8px;
+/* ----- Full-screen pages (Shop / Settings): edge to edge, no floating card,
+   no outer padding — header + tabs at the top, content centered below. ----- */
+.page-card {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: oklch(0.14 0.04 285 / 0.72);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  padding: max(10px, env(safe-area-inset-top)) clamp(12px, 3vw, 32px) max(10px, env(safe-area-inset-bottom));
+  text-align: center;
 }
+.page-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap;
+}
+.page-title { font-size: clamp(24px, 4.5vh, 34px); margin: 0; }
+.page-body {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  gap: 10px;
+}
+.page-body > * { width: 100%; max-width: 720px; }
+/* bigger, full-screen-worthy type on these pages */
+.page-card .set-lbl { font-size: 14px; }
+.page-card .set-desc, .page-card .shop-desc { font-size: 13px; }
+.page-card .vol-pct { font-size: 13px; }
+.page-card .btn { font-size: 14px; }
+.page-card .shop-info b { font-size: 16px; }
+.page-card .shop-lv { font-size: 12px; }
+
+/* ----- Shop (Churchill coins) ----- */
 .shop-carousel { display: flex; align-items: center; justify-content: center; gap: 12px; }
-.shop-item-hero { width: min(340px, 70vw); margin: 0 auto; }
+.shop-item-hero { width: min(360px, 70vw); margin: 0 auto; }
+.packs-rows .shop-row { padding: 14px 18px; }
 .shop-head { display: flex; align-items: center; justify-content: center; gap: 16px; }
 .coin-pill {
   display: inline-flex; align-items: center; gap: 6px;
@@ -573,8 +597,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   font: 9px "JetBrains Mono", monospace; white-space: nowrap;
   display: inline-flex; align-items: center; gap: 2px;
 }
-.shop-packs { margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; }
-.shop-packs-title { font: 12px "Bungee", sans-serif; color: var(--gold, #ffe06b); margin-bottom: 6px; }
 .picker-panel { max-width: 560px; }
 .vehicles-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 10px 0; }
 .vchip.locked { opacity: 0.55; }

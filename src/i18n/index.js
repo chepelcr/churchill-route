@@ -113,6 +113,7 @@ const STR = {
     "settings.resetQ": "¿Seguro? Se pierden niveles y récords.",
     "settings.back": "← Volver",
     "settings.credits": "Hecho en Costa Rica · {version}",
+    "settings.privacy": "Política de privacidad",
     // --- game tips (storyTips / floats) ---
     "tip.arcade": "Tres minutos y todo el puerto. Si no dejás de entregar, el combo no se cae.",
     "tip.explore": "Tenés {n} zonas abiertas para recorrer. Completá niveles de Historia para abrir el resto.",
@@ -295,6 +296,7 @@ const STR = {
     "settings.resetQ": "Sure? Levels and records will be lost.",
     "settings.back": "← Back",
     "settings.credits": "Made in Costa Rica · {version}",
+    "settings.privacy": "Privacy policy",
     "tip.arcade": "Three minutes and the whole port. Keep delivering and the combo never drops.",
     "tip.explore": "You have {n} zones open to roam. Clear story levels to open the rest.",
     "tip.deliverTo": "Take it to {name}.",

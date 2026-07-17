@@ -107,6 +107,13 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
               <button className="btn secondary" onClick={() => setConfirming(true)}>↺</button>
             )}
           </div>
+
+          <div className="set-row">
+            <span className="set-lbl">{t("settings.privacy")}</span>
+            {/* absolute URL so it also opens from the Android WebView build */}
+            <a className="btn secondary" href="https://churchill.jcampos.dev/privacy/"
+              target="_blank" rel="noopener noreferrer">{t("settings.privacy")}</a>
+          </div>
         </div>
       </div>
     </div>

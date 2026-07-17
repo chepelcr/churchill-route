@@ -90,16 +90,29 @@ AWS (cuenta PACIFIC-PROD, us-east-1):
 - Para actualizarlo: `aws s3 cp public/ads.txt s3://jcampos-dev-apex-ads/ads.txt
   --profile PACIFIC-PROD` + invalidación de `/ads.txt` en la distribución.
 
+**Política de privacidad — ✅ HECHO (2026-07-17):** páginas estáticas
+bilingües (ES/EN) publicadas en:
+- `https://churchill.jcampos.dev/privacy/` (`public/privacy/index.html` en
+  este repo) — cubre AdMob/AAID, AdSense web, Play Billing, UMP; enlazada
+  desde Ajustes (`settings.privacy`). Es la URL para la ficha de Play y la
+  Data Safety form.
+- `https://www.jcampos.dev/privacy/` (`client/public/privacy/index.html` en
+  chepelcr.github.io) — política del dominio raíz; en ese repo también se
+  movió `ads.txt` a `client/public/` (estaba en la raíz y Vite no lo
+  publicaba — daba 404).
+
+**Nota AdSense "sitio ya añadido":** AdSense gestiona sitios por DOMINIO
+RAÍZ. `jcampos.dev` ya figura en Sitios, y `churchill.jcampos.dev` queda
+cubierto como subdominio — no se puede (ni hace falta) añadir aparte. Lo que
+debe quedar aprobado/"Listo" es la entrada `jcampos.dev`.
+
 **Pasos pendientes (consola de AdSense, misma cuenta Google que AdMob):**
-1. **Política de privacidad publicada** — BLOQUEANTE para la revisión; aún no
-   existe página `/privacy` en el sitio (ver checklist Play #2: sirve la misma).
-2. https://adsense.google.com → Sitios → agregar `churchill.jcampos.dev`,
-   verificar el dominio raíz (el ads.txt de arriba ya responde) y pasar la
-   revisión.
-3. Habilitar **H5 Games Ads** (Ad Placement API) para el sitio.
-4. Configurar el mensaje de consentimiento EEA en AdSense (Privacy &
+1. En https://adsense.google.com → Sitios → entrada `jcampos.dev`: solicitar
+   la revisión (el ads.txt del dominio raíz y la política ya responden).
+2. Habilitar **H5 Games Ads** (Ad Placement API) para el sitio.
+3. Configurar el mensaje de consentimiento EEA en AdSense (Privacy &
    messaging), igual que en AdMob.
-5. Para probar antes de la aprobación: agregar `data-adbreak-test="on"` al
+4. Para probar antes de la aprobación: agregar `data-adbreak-test="on"` al
    script en `initWebAds()` TEMPORALMENTE (nunca comitear activado).
 
 ## Formato de publicación: AAB (obligatorio)

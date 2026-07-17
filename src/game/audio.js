@@ -67,10 +67,16 @@ function unlock() {
 }
 
 if (BROWSER) {
-  const once = () => { unlock(); };
-  window.addEventListener("pointerdown", once, { once: true });
-  window.addEventListener("touchstart", once, { once: true });
-  window.addEventListener("keydown", once, { once: true });
+  // PERSISTENT gesture listeners (not {once}): iOS Safari / mobile Chrome can
+  // keep (or re-put) the context "suspended" after creation, and resume() only
+  // works inside a user gesture — so every tap re-kicks it until it runs.
+  const kick = () => {
+    unlock();
+    if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+  };
+  window.addEventListener("pointerdown", kick);
+  window.addEventListener("touchend", kick); // iOS honors resume best on touchend
+  window.addEventListener("keydown", kick);
 }
 
 // ---- one-shot builders -----------------------------------------------------

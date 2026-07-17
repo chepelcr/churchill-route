@@ -60,8 +60,11 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 /* FitScale wrapper: the outer box adopts the SCALED size (so margin:auto
    centering stays true); the inner box renders at natural size and shrinks
    via transform so menus always fit whole — no scrolling, no web feel. */
-.fit-outer { margin: auto; display: grid; place-items: center; overflow: visible; }
-.fit-inner { transform-origin: center center; }
+/* origin MUST be top-left: the outer box is sized to the SCALED dims, so a
+   top-left-scaled inner fills it exactly — center origin shifted the visual
+   content toward the bottom-right by half the natural/scaled difference. */
+.fit-outer { margin: auto; overflow: visible; }
+.fit-inner { transform-origin: top left; }
 .fit-inner > .title-card, .fit-inner > .stage-select-wrap { margin: 0; }
 .title-card {
   width: min(880px, 96vw);
@@ -496,6 +499,14 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .vol-pct { font: 11px "JetBrains Mono", monospace; opacity: 0.8; min-width: 64px; }
 .iap-owned { font: 12px "JetBrains Mono", monospace; color: #6fbf99; }
 .settings-credits { margin-top: 14px; font: 10px "JetBrains Mono", monospace; opacity: 0.5; }
+/* phone landscape: tighten the tall cards so FitScale barely has to shrink */
+@media (max-height: 500px) {
+  .title-card { padding: 14px 18px; }
+  .settings-rows { gap: 8px; margin-top: 10px; }
+  .set-row { padding: 6px 10px; }
+  .shop-body { min-height: 240px; }
+  .settings-credits { margin-top: 8px; }
+}
 
 /* ----- Shop (Churchill coins) ----- */
 /* fixed width + fixed-height body so the card never resizes between tabs */

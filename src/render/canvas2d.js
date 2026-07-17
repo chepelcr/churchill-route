@@ -172,6 +172,32 @@ import { content } from "../content/remote.js";
     for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.stroke(b.path);
   }
 
+  // Lane-dash path TRIMMED back from both polyline ends: OSM ways end at
+  // junctions, so cutting the last stretch keeps center lines out of the
+  // intersection box. Cached per road (null = piece too short to dash).
+  function dashPath(r) {
+    if (r._dash !== undefined) return r._dash;
+    const TRIM = Math.max(26, r.w * 0.8);
+    if (!r.cum || r.len <= TRIM * 2 + 8) return (r._dash = null);
+    const p = r.pts, cum = r.cum, s0 = TRIM, s1 = r.len - TRIM;
+    const at = (s) => {
+      let i = 1;
+      while (i < cum.length - 1 && cum[i] < s) i++;
+      const t = (s - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1);
+      return [p[(i - 1) * 2] + (p[i * 2] - p[(i - 1) * 2]) * t,
+              p[(i - 1) * 2 + 1] + (p[i * 2 + 1] - p[(i - 1) * 2 + 1]) * t];
+    };
+    const path = new Path2D();
+    const [ax, ay] = at(s0);
+    path.moveTo(ax, ay);
+    for (let i = 0; i < cum.length; i++) {
+      if (cum[i] > s0 && cum[i] < s1) path.lineTo(p[i * 2], p[i * 2 + 1]);
+    }
+    const [bx, by] = at(s1);
+    path.lineTo(bx, by);
+    return (r._dash = path);
+  }
+
   // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
   // ported from the corridor renderer but fed per-tile road segments.
   function paintRoads(roads) {
@@ -188,19 +214,47 @@ import { content } from "../content/remote.js";
     // bridge deck
     ctx.strokeStyle = "#cfc3a3";
     for (const r of roads) { if (!r.bridge) continue; ctx.lineWidth = r.w + 10; ctx.stroke(roadPath(r)); }
+    // Casing + asphalt use BUTT caps: round caps bulge a half-circle past
+    // each piece's endpoint, smearing dark arcs onto the sidewalks at every
+    // junction ("little curves in the aceras"). Joins stay round for curves.
+    ctx.lineCap = "butt";
     // casing
     ctx.strokeStyle = "rgba(0,0,0,0.35)";
     for (const r of roads) { ctx.lineWidth = r.w + 4; ctx.stroke(roadPath(r)); }
     // asphalt / barro / paseo surface
     for (const r of roads) { ctx.strokeStyle = r.barro ? "#9c7a4f" : r.cls === "paseo" ? "#f4dca3" : "#3a3540"; ctx.lineWidth = r.w; ctx.stroke(roadPath(r)); }
-    // lane markings: yellow dashes on arterials, faint white on locals
+    // lane markings: yellow dashes on arterials, faint white on locals —
+    // drawn on the TRIMMED path so they stop short of the junctions
     for (const r of roads) {
       if (r.barro) continue;
       const cls = r.cls;
       if (cls === "trunk" || cls === "trunk_link" || cls === "primary" || cls === "primary_link") { ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([18, 18]); }
       else if (cls === "secondary" || cls === "tertiary" || cls === "tertiary_link" || cls === "residential" || cls === "unclassified") { ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([6, 10]); }
       else continue;
-      ctx.stroke(roadPath(r)); ctx.setLineDash([]);
+      const dp = dashPath(r);
+      if (dp) ctx.stroke(dp);
+      ctx.setLineDash([]);
+    }
+    // junction sweep: where a piece ENDS on a through road, the through
+    // road's own center line still crosses — stamp a small asphalt disc at
+    // every dashed-road endpoint to break it (skips paseo/bridge/barro
+    // neighborhoods so we never splat dark asphalt on a cream deck).
+    ctx.fillStyle = "#3a3540";
+    for (const r of roads) {
+      if (r.barro || r.bridge || r.cls === "paseo" || r.cls === "pedestrian" || r.cls === "service") continue;
+      const p = r.pts, n = p.length;
+      const rad = Math.min(r.w / 2, 22) + 2;
+      for (const [ex, ey] of [[p[0], p[1]], [p[n - 2], p[n - 1]]]) {
+        let nearSpecial = false;
+        for (const o of roads) {
+          if (!o.bridge && o.cls !== "paseo") continue;
+          const a = o.aabb, m = o.w;
+          if (ex < a.x0 - m || ex > a.x1 + m || ey < a.y0 - m || ey > a.y1 + m) continue;
+          nearSpecial = true; break; // cheap AABB check is enough here
+        }
+        if (nearSpecial) continue;
+        ctx.beginPath(); ctx.arc(ex, ey, rad, 0, Math.PI * 2); ctx.fill();
+      }
     }
     ctx.lineCap = "butt";
   }

@@ -11,8 +11,9 @@
 //    since it's a benefit the player asks for).
 //  - NO banners: they'd cover the road while driving.
 //
-// IDs are Google's PUBLIC TEST ids — replace with real AdMob unit ids (and
-// the APPLICATION_ID in AndroidManifest.xml) before the Play release.
+// PRODUCTION ad-unit ids (the matching APPLICATION_ID lives in
+// AndroidManifest.xml). For ad-debugging, register the device as a test
+// device in the AdMob console rather than re-adding initializeForTesting.
 import { iap } from "./iap.js";
 
 const NATIVE = typeof window !== "undefined" && !!window.Capacitor;
@@ -21,8 +22,8 @@ const TOTAL_KEY = "churchill_runs_total_v1";
 const INTERSTITIAL_EVERY = 5;
 const GRACE_RUNS = 3; // no interstitials at all for the first runs ever
 
-const TEST_INTERSTITIAL = "ca-app-pub-3090812928887940/4457249161";
-const TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
+const AD_INTERSTITIAL = "ca-app-pub-3090812928887940/4457249161";
+const AD_REWARDED = "ca-app-pub-3090812928887940/3168218225";
 
 let AdMob = null;          // plugin module once loaded
 let RewardAdPluginEvents = null;
@@ -35,7 +36,7 @@ export const ads = {
       const mod = await import("@capacitor-community/admob");
       AdMob = mod.AdMob;
       RewardAdPluginEvents = mod.RewardAdPluginEvents;
-      await AdMob.initialize({ initializeForTesting: true });
+      await AdMob.initialize();
       ready = true;
     } catch (e) {
       console.warn("[ads] init failed (plugin missing on this platform?)", e);
@@ -55,7 +56,7 @@ export const ads = {
     try { localStorage.setItem(COUNT_KEY, String(n % INTERSTITIAL_EVERY)); } catch { /* private */ }
     if (n < INTERSTITIAL_EVERY) return;
     try {
-      await AdMob.prepareInterstitial({ adId: TEST_INTERSTITIAL });
+      await AdMob.prepareInterstitial({ adId: AD_INTERSTITIAL });
       await AdMob.showInterstitial();
     } catch (e) { console.warn("[ads] interstitial failed", e); }
   },
@@ -75,7 +76,7 @@ export const ads = {
           for (const s of subs) s.remove();
           resolve(rewarded);
         }));
-        await AdMob.prepareRewardVideoAd({ adId: TEST_REWARDED });
+        await AdMob.prepareRewardVideoAd({ adId: AD_REWARDED });
         await AdMob.showRewardVideoAd();
       } catch (e) {
         console.warn("[ads] rewarded failed", e);

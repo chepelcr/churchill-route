@@ -27,11 +27,13 @@ hacer en consolas externas** antes del release de Play Store.
 
 ## Pendiente (consolas externas — no es código)
 
-1. **AdMob** (https://apps.admob.com): crear cuenta, registrar la app →
-   `App ID` real; crear 2 Ad Units (Interstitial + Rewarded). Reemplazar:
-   - `APPLICATION_ID` en `android/app/src/main/AndroidManifest.xml`
-   - `TEST_INTERSTITIAL` / `TEST_REWARDED` en `src/monetize/ads.js`
-   - Quitar `initializeForTesting` en `ads.init()`.
+1. **AdMob** — ✅ HECHO (2026-07-17): cuenta creada, App ID real en el
+   AndroidManifest y unidades reales Interstitial + Rewarded en
+   `src/monetize/ads.js` (`AD_INTERSTITIAL`/`AD_REWARDED`);
+   `initializeForTesting` eliminado. Para depurar anuncios, registrar el
+   dispositivo como test device EN LA CONSOLA de AdMob (no volver a poner el
+   flag). Ojo: los anuncios reales pueden tardar horas en servirse en una
+   app/unidad recién creada.
 2. **Play Console**: cuenta de desarrollador ($25), cuenta de mercader,
    producto gestionado **`remove_ads`**; **pruebas cerradas: 20 testers ×
    14 días** antes de producción (política para cuentas nuevas).

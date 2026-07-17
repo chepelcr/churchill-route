@@ -27,7 +27,7 @@
              src/monetize/ads.js). -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3090812928887940~1823467103ß"
+            android:value="ca-app-pub-3090812928887940~1823467103"
         />
 
         <provider

@@ -11,8 +11,9 @@ import { traffic, pedestrians, gulls, boats, parked, vendors, animals } from "./
 // how far from the camera we keep life alive / spawn it (world px)
 const KEEP_R = 1400;
 const SPAWN_R = 1100;
-// target populations near the camera
-const TARGET = { traffic: 34, pedestrians: 48, vendors: 10, animals: 8, gulls: 16, boats: 6 };
+// target populations near the camera (tuned to the corridor build's feel:
+// sidewalks full of people, streets with light town traffic)
+const TARGET = { traffic: 20, pedestrians: 64, vendors: 10, animals: 8, gulls: 16, boats: 6 };
 const CAR_PALETTE = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
 
 // the camera the maintenance centres on (set each frame by physics)
@@ -29,19 +30,6 @@ function sampleNear(cx, cy, classes, rMin, rMax) {
     if (classes.includes(W.surfaceAt(x, y))) return { x, y };
   }
   return null;
-}
-// Heading (radians) of the road/walkway through (x,y): the axis with the
-// longest continuous run of `cls`. Falls back to a random heading.
-function surfaceHeading(x, y, cls, reach = 60) {
-  let best = -1, bestA = Math.random() * Math.PI * 2;
-  for (let k = 0; k < 8; k++) {
-    const a = (k * Math.PI) / 8, dx = Math.cos(a), dy = Math.sin(a);
-    let run = 0;
-    for (let i = 1; i <= reach; i += 4) { if (W.surfaceAt(x + dx * i, y + dy * i) === cls) run++; else break; }
-    for (let i = 1; i <= reach; i += 4) { if (W.surfaceAt(x - dx * i, y - dy * i) === cls) run++; else break; }
-    if (run > best) { best = run; bestA = a; }
-  }
-  return Math.random() < 0.5 ? bestA : bestA + Math.PI;
 }
 const far = (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R;
 
@@ -109,14 +97,34 @@ function spawnOneCar() {
   if (Math.hypot(car.x - _cam.x, car.y - _cam.y) > SPAWN_R) return null; // road wandered off-range
   return car;
 }
+// Pedestrians walk the aceras ALONG the streets (the corridor build's model):
+// pick a road near the camera, offset to the mid-acera beside it, and walk
+// parallel to it. Random-point sampling can't find the thin acera fringe.
 function spawnOnePed() {
-  const pt = sampleNear(_cam.x, _cam.y, [6], 120, SPAWN_R); // aceras only
-  if (!pt) return null;
-  return {
-    x: pt.x, y: pt.y, ang: surfaceHeading(pt.x, pt.y, 6, 40),
-    v: 14 + Math.random() * 12,
-    hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
-  };
+  const tiles = W.visibleTiles(_cam.x - SPAWN_R, _cam.y - SPAWN_R, _cam.x + SPAWN_R, _cam.y + SPAWN_R);
+  const cand = [];
+  for (const t of tiles)
+    for (const r of t.roads) {
+      if (r.cls === "bridge" || r.len < 80) continue;
+      cand.push(r);
+    }
+  if (!cand.length) return null;
+  const r = cand[(Math.random() * cand.length) | 0];
+  const s = 20 + Math.random() * (r.len - 40);
+  const pt = roadPointAt(r, s);
+  const off = r.w / 2 + 10; // mid-acera (1 cuadrícula deep)
+  for (const side of Math.random() < 0.5 ? [1, -1] : [-1, 1]) {
+    const x = pt.x - Math.sin(pt.ang) * off * side;
+    const y = pt.y + Math.cos(pt.ang) * off * side;
+    if (W.surfaceAt(x, y) !== 6) continue; // that side has no sidewalk here
+    if (Math.hypot(x - _cam.x, y - _cam.y) > SPAWN_R) return null;
+    return {
+      x, y, ang: pt.ang + (Math.random() < 0.5 ? 0 : Math.PI), // walk the street
+      v: 14 + Math.random() * 12,
+      hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
+    };
+  }
+  return null;
 }
 function spawnOneVendor() {
   const pt = sampleNear(_cam.x, _cam.y, [6, 2], 150, SPAWN_R); // acera or beach apron

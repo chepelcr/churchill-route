@@ -15,6 +15,7 @@ const TABS = ["vehicles", "upgrades", "boosts", "colors"];
 export default function ShopScreen({ onBack }) {
   const t = useT();
   const [tab, setTab] = useState("vehicles");
+  const [vIdx, setVIdx] = useState(0);                 // vehicle carousel index
   const [colorVeh, setColorVeh] = useState("scooter"); // colors tab context
   const [, bump] = useState(0);
   useEffect(() => economy.onChange(() => bump((n) => n + 1)), []);
@@ -49,13 +50,17 @@ export default function ShopScreen({ onBack }) {
             ))}
           </div>
 
-          {tab === "vehicles" && (
-            <div className="shop-grid">
-              {vehKeys.map((k) => {
-                const owned = economy.ownsVehicle(k);
-                const p = VEHICLE_PRICES[k];
-                return (
-                  <div key={k} className={"shop-item" + (owned ? " owned" : "")}>
+          <div className="shop-body">
+          {tab === "vehicles" && (() => {
+            const k = vehKeys[vIdx];
+            const owned = economy.ownsVehicle(k);
+            const p = VEHICLE_PRICES[k];
+            const move = (d) => { setVIdx((i) => (i + d + vehKeys.length) % vehKeys.length); sfx.play("menu_move"); };
+            return (
+              <>
+                <div className="shop-carousel">
+                  <button className="carousel-arrow" onClick={() => move(-1)} aria-label="‹">‹</button>
+                  <div className={"shop-item shop-item-hero" + (owned ? " owned" : "")}>
                     <VehiclePreview vehKey={k} color={economy.equippedColor(k)?.hex || null} />
                     {owned ? (
                       <span className="shop-state ok">{p ? t("shop.owned") : t("shop.free")}</span>
@@ -69,10 +74,17 @@ export default function ShopScreen({ onBack }) {
                       <span className="shop-hint">{t("shop.needCoins", { n: p - economy.coins })} <CoinIcon size={12} /></span>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  <button className="carousel-arrow" onClick={() => move(1)} aria-label="›">›</button>
+                </div>
+                <div className="stage-dots">
+                  {vehKeys.map((vk, i) => (
+                    <button key={vk} className={"dot" + (i === vIdx ? " on" : "") + (economy.ownsVehicle(vk) ? " cleared" : "")}
+                      onClick={() => { setVIdx(i); sfx.play("menu_move"); }} aria-label={vk}></button>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
 
           {tab === "upgrades" && (
             <div className="shop-rows">
@@ -157,6 +169,8 @@ export default function ShopScreen({ onBack }) {
               </div>
             </div>
           )}
+
+          </div>{/* /shop-body */}
 
           <div className="shop-packs">
             <div className="shop-packs-title">{t("shop.packs")}</div>

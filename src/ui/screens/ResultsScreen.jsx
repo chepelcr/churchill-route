@@ -6,6 +6,7 @@ import { ads } from "../../monetize/ads.js";
 import { economy } from "../../game/economy.js";
 import { content } from "../../content/remote.js";
 import CoinIcon from "../CoinIcon.jsx";
+import Icon from "../Icon.jsx";
 
 export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
   const t = useT();
@@ -58,7 +59,7 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
             <span className="coins-lbl">{t("results.coins")}</span>
             {canDouble && (
               <button className="btn secondary" disabled={adBusy} onClick={doubleCoins}>
-                {t("results.doubleAd")}
+                <Icon name="ad" size={15} /> {t("results.doubleAd")}
               </button>
             )}
           </div>
@@ -66,7 +67,7 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
         <div className="btn-row">
           {canContinue && (
             <button className="btn gold" disabled={adBusy} onClick={watchAd}>
-              {t("results.continueAd")}
+              <Icon name="ad" size={15} /> {t("results.continueAd")}
             </button>
           )}
           {isStage && won && hasNext && <button className="btn gold" onClick={onNext}>{t("results.next")}</button>}
@@ -76,7 +77,7 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
         {!isTutorial && content.meta.kofi && (
           // gentle post-level nudge: the game is free — supporters keep it alive
           <a className="results-kofi" href={content.meta.kofi} target="_blank" rel="noopener noreferrer">
-            {t("sup.kofi")}
+            <Icon name="coffee" size={14} /> {t("sup.kofi")}
           </a>
         )}
       </div>

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useT } from "../../i18n/index.js";
 import { content } from "../../content/remote.js";
 import FitScale from "../FitScale.jsx";
+import Icon from "../Icon.jsx";
+
+const TIER_ICON = ["", "medal3", "medal2", "medal1", "crown"];
 
 // Greetings page — thanks the ko-fi supporters and sponsor businesses, fed by
 // the remote content (updates without an app release). Tiers 4→1.
@@ -29,7 +32,7 @@ export default function SupportersScreen({ onBack }) {
           <div className="sup-groups">
             {byTier.map(({ tier, list }) => (
               <div key={tier} className={`sup-group tier-${tier}`}>
-                <div className="sup-tier">{["", "🥉", "🥈", "🥇", "👑"][tier]} {t(`sup.tier${tier}`)}</div>
+                <div className="sup-tier"><Icon name={TIER_ICON[tier]} size={15} /> {t(`sup.tier${tier}`)}</div>
                 <div className="sup-names">
                   {list.map((s, i) => (
                     <span key={i} className="sup-name" title={s.msg || ""}>{s.name}</span>
@@ -42,7 +45,7 @@ export default function SupportersScreen({ onBack }) {
           {kofi && (
             <a className="btn gold" href={kofi} target="_blank" rel="noopener noreferrer"
               style={{ display: "inline-block", marginTop: 14 }}>
-              {t("sup.kofi")}
+              <Icon name="coffee" size={15} /> {t("sup.kofi")}
             </a>
           )}
         </div>

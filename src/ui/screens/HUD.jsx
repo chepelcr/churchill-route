@@ -3,6 +3,7 @@ import { Game } from "../../game/index.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { useT } from "../../i18n/index.js";
+import Icon from "../Icon.jsx";
 
 const SURF = ["agua", "cuadra", "playa", "calle", "paseo", "puente", "acera"];
 
@@ -67,10 +68,10 @@ export default function HUD({ onPause }) {
       {onPause && (
         <div className="hud-right">
           <button className={"hud-btn" + (debug ? " on" : "")} onClick={toggleDebug}
-            aria-label="debug">📍</button>
+            aria-label="debug"><Icon name="pin" size={20} /></button>
           <button className="hud-btn" onClick={() => setMuted(sfx.toggleMuted())}
-            aria-label={muted ? "🔊" : "🔇"}>{muted ? "🔇" : "🔊"}</button>
-          <button className="hud-btn" onClick={onPause} aria-label={t("pause.title")}>⏸</button>
+            aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} size={20} /></button>
+          <button className="hud-btn" onClick={onPause} aria-label={t("pause.title")}><Icon name="pause" size={20} /></button>
         </div>
       )}
 

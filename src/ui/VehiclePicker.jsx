@@ -6,6 +6,7 @@ import { sfx } from "../game/audio.js";
 import { useT } from "../i18n/index.js";
 import VehiclePreview from "./VehiclePreview.jsx";
 import CoinIcon from "./CoinIcon.jsx";
+import Icon from "./Icon.jsx";
 
 // Pre-run vehicle picker for Arcade / Recorrer (Historia keeps its inline
 // card in StageSelect). Locked vehicles deep-link to the Shop; owned boosts
@@ -48,14 +49,14 @@ export default function VehiclePicker({ onGo, onShop, onBack }) {
             return (
               <button key={k} className={"vchip " + (veh === k ? "active" : "") + (has ? "" : " locked")}
                 onClick={() => pick(k)}>
-                {has ? VEHICLES[k].name : <>🔒 {VEHICLES[k].name}</>}
+                {has ? VEHICLES[k].name : <><Icon name="lock" size={12} /> {VEHICLES[k].name}</>}
               </button>
             );
           })}
         </div>
         {!owned && (
           <button className="btn secondary" onClick={onShop}>
-            {t("picker.locked")} · <CoinIcon size={13} /> {VEHICLE_PRICES[veh]}
+            <Icon name="lock" size={13} /> {t("picker.locked")} · <CoinIcon size={13} /> {VEHICLE_PRICES[veh]}
           </button>
         )}
         {totalBoosts > 0 && (
@@ -66,7 +67,7 @@ export default function VehiclePicker({ onGo, onShop, onBack }) {
                 <button key={id} disabled={economy.boostCount(id) <= 0}
                   className={"btn " + (armed[id] ? "gold" : "secondary")}
                   onClick={() => toggleBoost(id)}>
-                  {BOOSTS[id].icon} {t(`shop.${id}.name`)} ×{economy.boostCount(id)}
+                  <Icon name={BOOSTS[id].icon} size={14} /> {t(`shop.${id}.name`)} ×{economy.boostCount(id)}
                 </button>
               ))}
             </div>

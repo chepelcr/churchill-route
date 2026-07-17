@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from "react";
 import { paintVehicle } from "../render/Renderer.js";
 import { VEHICLES } from "../game/vehicles.js";
 import { useT } from "../i18n/index.js";
+import Icon from "./Icon.jsx";
 
 const STAT_RANGE = (() => {
   const vs = Object.values(VEHICLES);
@@ -67,7 +68,8 @@ export default function VehiclePreview({ vehKey, color = null }) {
         ))}
         <div className="veh-stat">
           <span className="lbl">{t("veh.ice")}</span>
-          <span className="ice">{veh.melt <= 0.6 ? "❄❄❄" : veh.melt <= 0.9 ? "❄❄" : "❄"}</span>
+          <span className="ice">{Array.from({ length: veh.melt <= 0.6 ? 3 : veh.melt <= 0.9 ? 2 : 1 },
+            (_, i) => <Icon key={i} name="snow" size={13} />)}</span>
         </div>
       </div>
     </div>

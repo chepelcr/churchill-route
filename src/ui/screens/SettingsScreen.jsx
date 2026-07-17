@@ -3,6 +3,7 @@ import { Game } from "../../game/index.js";
 import { sfx } from "../../game/audio.js";
 import { useT, getLang, setLang } from "../../i18n/index.js";
 import { iap } from "../../monetize/iap.js";
+import Icon from "../Icon.jsx";
 
 // App config — a FULL-SCREEN page (edge to edge): language, volume/mute,
 // remove-ads purchase, tutorial replay, supporters, progress reset.
@@ -47,7 +48,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
             <span className="set-lbl">{t("settings.volume")}</span>
             <div className="vol-wrap">
               <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
-                aria-label={t("settings.muted")}>{muted ? "🔇" : "🔊"}</button>
+                aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} /></button>
               <input type="range" min="0" max="100" value={muted ? 0 : vol}
                 onChange={(e) => changeVol(+e.target.value)}
                 aria-label={t("settings.volume")} />
@@ -90,7 +91,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
           {onSupporters && (
             <div className="set-row">
               <span className="set-lbl">{t("settings.supporters")}</span>
-              <button className="btn secondary" onClick={onSupporters}>❤ {t("sup.title")}</button>
+              <button className="btn secondary" onClick={onSupporters}><Icon name="heart" size={14} /> {t("sup.title")}</button>
             </div>
           )}
 

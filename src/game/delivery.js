@@ -102,7 +102,9 @@ export function deliverChurchill() {
     const earned = COINS_PER_DELIVERY + (meltPct < 0.25 ? COINS_PERFECT_BONUS : 0);
     economy.addCoins(earned);
     state.runCoins = (state.runCoins || 0) + earned;
-    pushFloat(state.p.x + 20, state.p.y - 34, `+${earned} ⛁`, "#f3c969");
+    // ₡ (colón) instead of the old ⛁ glyph — U+26C1 has no glyph on many
+    // Android/WebView fonts, while the colón sign ships everywhere we run
+    pushFloat(state.p.x + 20, state.p.y - 34, `+₡${earned}`, "#f3c969");
   }
   sfx.play(meltPct < 0.25 ? "perfect" : "delivery");
   if (comboUp && state.combo > 1) sfx.play("combo", state.combo);

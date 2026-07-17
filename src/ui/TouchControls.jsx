@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { Game } from "../game/index.js";
+import Icon from "./Icon.jsx";
 
 // One-finger point-to-drive: steering + throttle come from holding a finger
 // on the play area (the canvas, attached by Game.attachCanvas) — the car
@@ -12,7 +13,7 @@ export default function TouchControls() {
   if (!coarse) return null;
   return (
     <div className="touch-controls">
-      <div ref={brakeRef} className="pedal brake">✋</div>
+      <div ref={brakeRef} className="pedal brake"><Icon name="hand" size={30} /></div>
     </div>
   );
 }

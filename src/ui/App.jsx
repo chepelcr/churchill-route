@@ -18,6 +18,7 @@ import GameTweaks from "./GameTweaks.jsx";
 import { enterImmersive } from "./immersive.js";
 import { sfx } from "../game/audio.js";
 import { useT } from "../i18n/index.js";
+import Icon from "./Icon.jsx";
 import { ads } from "../monetize/ads.js";
 import { iap } from "../monetize/iap.js";
 
@@ -167,7 +168,7 @@ export default function App() {
       {screen === "paused" && <><HUD /><PauseScreen onResume={() => setScreen("playing")} onSettings={() => openSettings("paused")} onQuit={quit} /></>}
       {(screen === "playing" || screen === "paused") && <GameTweaks />}
       <div className="rotate-overlay">
-        <div className="rotate-icon">📱</div>
+        <div className="rotate-icon"><Icon name="phone" size={60} /></div>
         <p>{t("rotate.body")}</p>
       </div>
     </>

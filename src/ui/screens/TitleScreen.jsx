@@ -7,6 +7,7 @@ import { needsIosFullscreenHint, dismissIosFullscreenHint } from "../immersive.j
 import { useT } from "../../i18n/index.js";
 import CoinIcon from "../CoinIcon.jsx";
 import FitScale from "../FitScale.jsx";
+import Icon from "../Icon.jsx";
 
 // Hide the APK download in the native app (only offer it on the web).
 const IS_NATIVE = typeof window !== "undefined" && !!window.Capacitor;
@@ -60,15 +61,15 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
                 )}
               </div>
               <button className={"tool-pill" + (firstRun ? " pulse" : "")}
-                onClick={() => pick("tutorial")} aria-label={t("mode.tutorial")}>🎓</button>
+                onClick={() => pick("tutorial")} aria-label={t("mode.tutorial")}><Icon name="cap" /></button>
               <button className="tool-pill coin-tool" onClick={() => { sfx.play("menu_move"); onShop(); }}
-                aria-label={t("shop.title")}>🛒 <CoinIcon size={14} /> {economy.coins.toLocaleString()}</button>
+                aria-label={t("shop.title")}><Icon name="cart" /> <CoinIcon size={14} /> {economy.coins.toLocaleString()}</button>
               <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSupporters(); }}
-                aria-label={t("sup.title")}>❤</button>
+                aria-label={t("sup.title")}><Icon name="heart" /></button>
               <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSettings(); }}
-                aria-label={t("settings.title")}>⚙</button>
+                aria-label={t("settings.title")}><Icon name="gear" /></button>
               <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
-                aria-label={muted ? "🔊" : "🔇"}>{muted ? "🔇" : "🔊"}</button>
+                aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} /></button>
             </div>
           </div>
           <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
@@ -76,7 +77,7 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
 
           {iosHint && (
             <div className="ios-hint">
-              <span>{t("ios.hint")}</span>
+              <span><Icon name="phone" size={14} /> {t("ios.hint")}</span>
               <button className="tool-pill" aria-label="✕"
                 onClick={() => { dismissIosFullscreenHint(); setIosHint(false); }}>✕</button>
             </div>
@@ -95,7 +96,7 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
 
           {!IS_NATIVE && (
             <a className="apk-btn" href="/churchill.apk" download>
-              <span aria-hidden="true">⬇</span> {t("title.apk")}
+              <span aria-hidden="true">↓</span> {t("title.apk")}
             </a>
           )}
 

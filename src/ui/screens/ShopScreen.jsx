@@ -6,6 +6,7 @@ import { sfx } from "../../game/audio.js";
 import { useT } from "../../i18n/index.js";
 import VehiclePreview from "../VehiclePreview.jsx";
 import CoinIcon from "../CoinIcon.jsx";
+import Icon from "../Icon.jsx";
 
 const TABS = ["vehicles", "upgrades", "boosts", "colors", "packs"];
 
@@ -92,7 +93,7 @@ export default function ShopScreen({ onBack }) {
               const next = economy.nextUpgradePrice(line);
               return (
                 <div key={line} className="shop-row">
-                  <span className="shop-ico">{u.icon}</span>
+                  <span className="shop-ico"><Icon name={u.icon} size={26} /></span>
                   <div className="shop-info">
                     <b>{t(`shop.${line}.name`)}</b>
                     <span className="shop-desc">{t(`shop.${line}.desc`)}</span>
@@ -119,7 +120,7 @@ export default function ShopScreen({ onBack }) {
               const b = BOOSTS[id];
               return (
                 <div key={id} className="shop-row">
-                  <span className="shop-ico">{b.icon}</span>
+                  <span className="shop-ico"><Icon name={b.icon} size={26} /></span>
                   <div className="shop-info">
                     <b>{t(`shop.${id}.name`)} <span className="shop-count">×{economy.boostCount(id)}</span></b>
                     <span className="shop-desc">{t(`shop.${id}.desc`)}</span>

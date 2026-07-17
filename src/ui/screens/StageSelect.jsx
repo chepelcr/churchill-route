@@ -7,8 +7,9 @@ import { economy } from "../../game/economy.js";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import VehiclePreview from "../VehiclePreview.jsx";
 import FitScale from "../FitScale.jsx";
+import Icon from "../Icon.jsx";
 
-const WEATHER_ICON = { sunny: "☀", sunset: "🌅", storm: "⛈", night: "🌙" };
+export const WEATHER_ICON = { sunny: "sun", sunset: "sunset", storm: "storm", night: "moon" };
 
 export default function StageSelect({ onStart, onBack }) {
   const t = useT();
@@ -122,7 +123,7 @@ export default function StageSelect({ onStart, onBack }) {
                   <span className="hero-num">{String(s.num).padStart(2, "0")}</span>
                   <span className="hero-count">{t("select.of", { n: s.num, total: stages.length })}</span>
                   {done && <span className="hero-badge ok">{t("select.done")}</span>}
-                  {locked && <span className="hero-badge no">{isMvp(cur) ? t("select.soon") : t("select.locked")}</span>}
+                  {locked && <span className="hero-badge no">{isMvp(cur) ? t("select.soon") : <><Icon name="lock" size={12} /> {t("select.locked")}</>}</span>}
                 </div>
                 <div className="hero-name">{stageName(s)}</div>
                 <p className="hero-brief">{locked
@@ -131,7 +132,7 @@ export default function StageSelect({ onStart, onBack }) {
                 <div className="hero-meta">
                   <span><b>{s.targetDeliveries}</b> {t("select.deliveries")}</span>
                   <span><b>{s.timeLimit}s</b> {t("select.time")}</span>
-                  <span>{WEATHER_ICON[s.weather] || "☀"} {t(`weather.${s.weather}`)}</span>
+                  <span><Icon name={WEATHER_ICON[s.weather] || "sun"} size={14} /> {t(`weather.${s.weather}`)}</span>
                 </div>
                 <button className="btn gold hero-play" onClick={() => play(cur)} disabled={locked}>
                   {locked ? (isMvp(cur) ? t("select.playSoon") : t("select.playLocked")) : t("select.play")}
@@ -150,7 +151,7 @@ export default function StageSelect({ onStart, onBack }) {
                   return (
                     <button key={k} className={"vchip " + (veh === k ? "active" : "") + (has ? "" : " locked")}
                       onClick={() => { if (has) { sfx.play("menu_select"); setVeh(k); } else sfx.play("menu_denied"); }}>
-                      {has ? vehicles[k].name : <>🔒 {vehicles[k].name}</>}
+                      {has ? vehicles[k].name : <><Icon name="lock" size={12} /> {vehicles[k].name}</>}
                     </button>
                   );
                 })}

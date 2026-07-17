@@ -1,6 +1,7 @@
 import React from "react";
 import { Game } from "../game/index.js";
 import { useT } from "../i18n/index.js";
+import Icon from "./Icon.jsx";
 
 // Tutorial coach-marks: a gray translucent veil over the whole screen with a
 // SPOTLIGHT cutout on the control the step needs (joystick, brake, compass,
@@ -69,13 +70,13 @@ export default function TutorialOverlay() {
       )}
 
       {spec.finger && (
-        // the throttle-finger demo: 🖐 slides away from the car (screen
+        // the throttle-finger demo: a hand slides away from the car (screen
         // center) along a dashed track — further = faster, furthest = turbo
         <div className={"tut-finger " + spec.finger}>
           <div className="tut-finger-track" />
-          <div className="tut-finger-hand">🖐</div>
-          <div className="tut-finger-car">🛵</div>
-          {spec.finger === "turbo" && <div className="tut-finger-flame">⚡</div>}
+          <div className="tut-finger-hand"><Icon name="hand" size={30} /></div>
+          <div className="tut-finger-car"><Icon name="car" size={26} /></div>
+          {spec.finger === "turbo" && <div className="tut-finger-flame"><Icon name="bolt" size={24} /></div>}
         </div>
       )}
 

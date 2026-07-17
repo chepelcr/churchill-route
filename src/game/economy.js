@@ -14,14 +14,14 @@ export const COINS_PERFECT_BONUS = 2;
 
 // upgrade lines: effect per level (level 0 = none)
 export const UPGRADES = {
-  cooler:    { name: "Cooler pro",   icon: "🧊", levels: [1, 0.9, 0.8, 0.7],     prices: [200, 500, 1000] }, // melt multiplier
-  turbotank: { name: "Turbo tank",   icon: "🔥", levels: [1.35, 1.42, 1.48, 1.55], prices: [200, 500, 1000] }, // boost top-speed cap
+  cooler:    { name: "Cooler pro",   icon: "cube",  levels: [1, 0.9, 0.8, 0.7],     prices: [200, 500, 1000] }, // melt multiplier
+  turbotank: { name: "Turbo tank",   icon: "flame", levels: [1.35, 1.42, 1.48, 1.55], prices: [200, 500, 1000] }, // boost top-speed cap
 };
 
 // consumable boosts (armed per run from the vehicle picker / shop)
 export const BOOSTS = {
-  icepack:   { name: "Ice pack",    icon: "❄️", price: 60, desc: "30s sin derretir" },
-  headstart: { name: "Head start",  icon: "🚀", price: 40, desc: "5s de turbo gratis" },
+  icepack:   { name: "Ice pack",    icon: "snow",   price: 60, desc: "30s sin derretir" },
+  headstart: { name: "Head start",  icon: "rocket", price: 40, desc: "5s de turbo gratis" },
 };
 
 // cosmetic paint colors (per-vehicle equip)

@@ -1,5 +1,7 @@
 import React from "react";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
+import Icon from "../Icon.jsx";
+import { WEATHER_ICON } from "./StageSelect.jsx";
 
 export default function StageBrief({ stage, onGo }) {
   const t = useT();
@@ -10,9 +12,9 @@ export default function StageBrief({ stage, onGo }) {
         <div style={{ font: "20px 'Bungee', sans-serif", color: "var(--gold)", marginBottom: 10 }}>{stageName(stage)}</div>
         <p style={{ opacity: 0.85, lineHeight: 1.5, fontSize: 13 }}>{stageBrief(stage)}</p>
         <div style={{ display: "flex", justifyContent: "space-around", margin: "14px 0", font: "12px 'JetBrains Mono', monospace", opacity: 0.85 }}>
-          <span>🎯 {stage.targetDeliveries} {t("select.deliveries")}</span>
-          <span>⏱ {stage.timeLimit}s</span>
-          <span>☀ {t(`weather.${stage.weather}`)}</span>
+          <span><Icon name="target" size={14} /> {stage.targetDeliveries} {t("select.deliveries")}</span>
+          <span><Icon name="clock" size={14} /> {stage.timeLimit}s</span>
+          <span><Icon name={WEATHER_ICON[stage.weather] || "sun"} size={14} /> {t(`weather.${stage.weather}`)}</span>
         </div>
         <div className="btn-row">
           <button className="btn gold" onClick={onGo}>{t("brief.go")}</button>

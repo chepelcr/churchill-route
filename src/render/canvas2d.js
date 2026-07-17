@@ -1499,6 +1499,11 @@ import { content } from "../content/remote.js";
     // Painterly 2-D world from resident tiles: land silhouette + road strokes +
     // buildings + palms/trees (replaces the corridor's global-array drawers).
     drawWorld2D(view, t);
+    // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
+    // Cruceros deck (its BRIDGE surface cells are drivable but not painted by
+    // the vector road pass) and the Mata de Limón suspension bridge.
+    drawPier(view);
+    drawBridge(view);
     drawBarriers(view);
     // Landmarks (the bridge has its own drawer)
     for (const lm of W.LANDMARKS) {

@@ -223,7 +223,9 @@ LANDMARK_DEFS = [
     {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 130, "dy": 20},
     # The cruise pier juts out from the END of Calle Central, right beside the
     # churchill kiosks on the Paseo (dx nudges the geo anchor onto that street)
-    {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "centro",   "osm": "muelle de cruceros", "ll": (9.97450, -84.83450), "dx": 680},
+    # dx 680 is a CORRIDOR-space nudge; the planar pier re-anchors to the real
+    # Calle Central south end (planar_muelle_axis), so it never sees this dx.
+    {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "paseo",    "osm": "muelle de cruceros", "ll": (9.97450, -84.83450), "dx": 680},
     {"id": "ferrycr",     "name": "Terminal de Ferry",          "type": "ferry",        "district": "carmen",   "osm": "terminal de ferry puntarenas"},
     {"id": "playa",       "name": "Playa Puntarenas",           "type": "beachsign",    "district": "carmen",   "ll": (9.97500, -84.84300)},
     {"id": "carmenig",    "name": "Iglesia del Carmen",         "type": "church",       "district": "carmen",   "osm": "iglesia del carmen", "ll": (9.97650, -84.84400)},
@@ -1807,6 +1809,26 @@ def connect_leon_calle20(roads):
     print(f"[roads] Paseo León Cortés tip extended to x{tip_piece['pts'][-2]} "
           f"to meet {LEON_END_STREET}")
 
+def planar_muelle_axis(roads, near_x, near_y, reach=1500):
+    """PLANAR pier anchor: the muelle juts south from the END of Calle Central,
+    the street at the Paseo de los Turistas east entry. Among road pieces named
+    'calle central' near the muelle geo anchor (the OSM name also exists in
+    Esparza/Barranca — hence the proximity filter), return the southernmost
+    point's x (and y) — i.e. the end of that road at the shore."""
+    best = None
+    for r in roads:
+        if (r.get("name") or "").lower() != MUELLE_STREET:
+            continue
+        p = r["pts"]
+        for i in range(0, len(p), 2):
+            x, y = p[i], p[i + 1]
+            if abs(x - near_x) > reach or abs(y - near_y) > reach:
+                continue
+            if best is None or y > best[1]:
+                best = (x, y)
+    return best
+
+
 def dedupe_dual_carriageway(roads):
     """OSM maps stretches of the beachfront avenue as two one-way ways (dual
     carriageway). Stamped at cuadrícula width they overlap into a 3-lane slab
@@ -2456,6 +2478,15 @@ def main():
     mlm = next(l for l in landmarks if l["id"] == "muellecruc")
     if muelle_axis is not None:
         mlm["x"] = round(muelle_axis)     # pier flush with the entrance carril
+    if PLANAR:
+        # anchor to the real Calle Central south end (the road at the Paseo's
+        # east entry) — the corridor dx-nudged OSM anchor lands too far east.
+        end = planar_muelle_axis(roads, mlm["x"], mlm["y"])
+        if end is not None:
+            mlm["x"] = round(end[0])
+            print(f"[pier] planar anchor: Calle Central south end at x={mlm['x']}")
+        else:
+            print("[pier] WARNING: Calle Central not found near the muelle anchor")
     pier_col = min(GRID_COLS - 1, max(0, int(mlm["x"] / GRID_CELL)))
     pier_y0 = botY[pier_col] - 6
     pier = {"x": mlm["x"], "y0": round(pier_y0),

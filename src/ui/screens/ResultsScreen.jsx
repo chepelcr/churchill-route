@@ -4,6 +4,7 @@ import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { useT, stageName } from "../../i18n/index.js";
 import { ads } from "../../monetize/ads.js";
 import { economy } from "../../game/economy.js";
+import { content } from "../../content/remote.js";
 import CoinIcon from "../CoinIcon.jsx";
 
 export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
@@ -48,18 +49,21 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
         <div className="row"><span>{t("results.deliveries")}</span><span>{isStage ? `${s.stageDeliveries}/${s.stageTarget}` : s.deliveries}</span></div>
         <div className="row"><span>{t("results.perfect")}</span><span>{s.perfect}</span></div>
         <div className="row"><span>{t("results.maxCombo")}</span><span>×{s.combo}</span></div>
+        {!isTutorial && <div className="row"><span>{t("results.rank")}</span><span style={{ color: "var(--gold)" }}>{rank}</span></div>}
         {!isTutorial && (s.runCoins || 0) > 0 && (
-          <div className="row"><span>{t("results.coins")}</span>
-            <span style={{ color: "var(--gold)" }}><CoinIcon size={14} /> +{(doubled ? s.runCoins * 2 : s.runCoins).toLocaleString()}</span>
+          // the level's coin haul, front and center before leaving the screen
+          <div className="coins-band">
+            <CoinIcon size={26} />
+            <span className="coins-amount">+{(doubled ? s.runCoins * 2 : s.runCoins).toLocaleString()}</span>
+            <span className="coins-lbl">{t("results.coins")}</span>
+            {canDouble && (
+              <button className="btn secondary" disabled={adBusy} onClick={doubleCoins}>
+                {t("results.doubleAd")}
+              </button>
+            )}
           </div>
         )}
-        {!isTutorial && <div className="row"><span>{t("results.rank")}</span><span style={{ color: "var(--gold)" }}>{rank}</span></div>}
         <div className="btn-row">
-          {canDouble && (
-            <button className="btn secondary" disabled={adBusy} onClick={doubleCoins}>
-              {t("results.doubleAd")}
-            </button>
-          )}
           {canContinue && (
             <button className="btn gold" disabled={adBusy} onClick={watchAd}>
               {t("results.continueAd")}
@@ -69,6 +73,12 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
           <button className={"btn " + ((won && hasNext) || canContinue ? "secondary" : "gold")} onClick={onAgain}>{t("results.again")}</button>
           <button className="btn secondary" onClick={onMenu}>{t("results.menu")}</button>
         </div>
+        {!isTutorial && content.meta.kofi && (
+          // gentle post-level nudge: the game is free — supporters keep it alive
+          <a className="results-kofi" href={content.meta.kofi} target="_blank" rel="noopener noreferrer">
+            {t("sup.kofi")}
+          </a>
+        )}
       </div>
     </div>
   );

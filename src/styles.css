@@ -617,6 +617,23 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 .sup-empty { font: 12px "JetBrains Mono", monospace; opacity: 0.6; margin-top: 18px; }
 
+/* results: the level's coin haul + the post-level ko-fi nudge */
+.coins-band {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 4px; padding: 10px 14px;
+  background: rgba(232,181,58,0.12); border: 1px solid rgba(232,181,58,0.55);
+  border-radius: 12px;
+}
+.coins-amount { font: 22px "Bungee", sans-serif; color: #ffe06b; }
+.coins-lbl { font: 11px "JetBrains Mono", monospace; opacity: 0.8; }
+.results-kofi {
+  display: block; margin-top: 12px;
+  font: 12px "JetBrains Mono", monospace; color: #5fb0d6;
+  text-decoration: none; opacity: 0.9;
+}
+.results-kofi:hover { text-decoration: underline; }
+
 /* iOS add-to-home fullscreen hint (browser tab only, dismissible) */
 .ios-hint {
   display: flex; align-items: center; justify-content: center; gap: 10px;

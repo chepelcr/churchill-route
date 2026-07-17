@@ -271,6 +271,43 @@ empacado — 100% jugable offline.
       moderación, reservas de lotes con vigencia, y sync de supporters desde
       ko-fi; sirve el MISMO `content.json`. Validación IAP podría vivir ahí.
 
+## ✅ Polish pass post-tienda (2026-07-16 PM3)
+
+- [x] **Muelle de Cruceros restaurado**: `drawPier`/`drawBridge` no se llamaban
+      en el render painterly (deck manejable pero invisible) + el ancla planar
+      usaba el nudge dx:680 de corredor → re-anclado al extremo sur de la
+      Calle Central real (`planar_muelle_axis`), junto a la entrada este del
+      Paseo. Gate 56/56.
+- [x] **Población como el original**: los peatones se generan A LO LARGO de las
+      calles en la media-acera (el muestreo aleatorio casi nunca caía en la
+      franja) — tráfico 20 / peatones 64 cerca de cámara.
+- [x] **Tienda estable + carrusel**: tarjeta de ancho/alto fijos entre tabs;
+      vehículos en carrusel centrado (flechas + dots) en vez de grilla.
+- [x] **Ícono redondo SOLO para el APK** (`how-look-puntarenas/Diseño sin
+      título (3).png`); favicon/PWA conservan el arte cuadrado neón.
+- [x] **Tutorial coach-marks**: velo gris translúcido + spotlight pulsante
+      sobre el control requerido (joystick/freno/brújula/barra de hielo) con
+      flecha; demo animada del dedo-acelerador en móvil (mano que se aleja del
+      carro); en PC teclas animadas (WASD/W/X/ESPACIO) — mapeo por plataforma.
+      Tutorial ahora es un pill 🎓 en la barra del título (no una tarjeta de
+      modo); fila del título en flex (el ⓘ ya no traslapa el pill).
+- [x] **Zoom −1 paso más**: el framing ahora vive en el RENDERER
+      (`CUADS_PER_VIEW = 20` en canvas2d, piso 2.2; `meta.cuadsPerView` queda
+      como referencia) — se ve más calle adelante al manejar.
+
+### 🔜 Trabajo restante (estado al 2026-07-16)
+- [ ] **QA en dispositivos** (usuario): joystick v3 + acelerador por distancia,
+      tutorial coach-marks, tienda/monedas, iPhone dvh + hint A2HS.
+- [ ] **Play Console**: cuenta, productos (remove_ads + 3 packs), AdMob real
+      (App ID + unidades + UMP consent), política de privacidad URL, ficha,
+      pruebas cerradas 12×14 — checklist completo en `docs/MONETIZATION.md`.
+- [ ] **Merge a main** cuando el MVP esté validado (quitar world-2d del
+      workflow de deploy al hacerlo).
+- [ ] **Post-MVP**: abrir El Cocal→Caldera (quitar `MVP_LOCKED`), anillos 2-D
+      de distritos (mata/caldera y paseo/centro se traslapan en x), puente a
+      desnivel Barranca/El Roble, backend de contenido (ko-fi webhook → NPCs,
+      reservas de lotes), Tier 4 (kiosco/vehículo brandeado).
+
 ## ✅ Economía + Tienda + fixes móviles (2026-07-16 PM2)
 
 - [x] **Monedas Churchill** (`src/game/economy.js`): +3/entrega (+2 perfecta),

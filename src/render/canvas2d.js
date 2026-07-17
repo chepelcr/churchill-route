@@ -18,11 +18,14 @@ import { content } from "../content/remote.js";
   // so every device shows the same amount of city. Only a floor is clamped —
   // narrow screens show FEWER cuadrículas (more detail), never more than 12.
   const CUAD = (W.META && W.META.cuad) || 20;
-  const CUADS_PER_VIEW = (W.META && W.META.cuadsPerView) || 16;
+  // Camera framing is a RENDERER concern (tuned by feel, not a world rebuild):
+  // frame ~20 cuadrículas across so the road ahead is visible while driving.
+  // meta.cuadsPerView is advisory only.
+  const CUADS_PER_VIEW = 20;
   const ACERA_PX = (W.META && W.META.aceraPx) || 8; // sidewalk depth per side
   function computeZoom(wCss, hCss) {
     const z = wCss / (CUADS_PER_VIEW * CUAD);
-    return Math.max(2.6, z);
+    return Math.max(2.2, z);
   }
   function setupCanvas(c) {
     canvas = c; ctx = c.getContext("2d");

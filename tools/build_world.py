@@ -55,7 +55,7 @@ GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 #   cuadra: >= 6x6 cuadrículas of land + 1 cuadrícula of acera on every side
 #   view:   the engine frames at most CUADS_PER_VIEW cuadrículas (responsive zoom)
 CUAD = 20                       # px per cuadrícula (a lane ~= 2 cuadrículas)
-CUADS_PER_VIEW = 16             # max cuadrículas visible → device-consistent zoom
+CUADS_PER_VIEW = 20             # advisory; the renderer owns the actual framing
 CUAD_CELLS = CUAD // GRID_CELL  # raster cells per cuadrícula side
 assert CUAD % GRID_CELL == 0, "CUAD must align to the raster grid"
 # Planar tiling: the world is emitted as a grid of square tiles the accessor

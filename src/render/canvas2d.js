@@ -1560,7 +1560,7 @@ import { content } from "../content/remote.js";
   function drawMinimap(vw, vh, t) {
     const R = 76;                          // dial radius on screen (px)
     const cx = vw - R - 18, cy = R + 18;
-    const RANGE = 640;                     // world px from car to dial edge
+    const RANGE = 460;                     // world px from car to dial edge
     const s = R / RANGE;
     const p = state.p;
 

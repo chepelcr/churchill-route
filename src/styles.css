@@ -246,10 +246,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
 
 .hud-right {
-  /* below the canvas-drawn minimap (320x64 at top-right, 18px margin) */
+  /* beside the circular minimap dial (r=76 at top-right, 18px margin) */
   position: absolute;
-  top: calc(max(18px, env(safe-area-inset-top)) + 74px);
-  right: max(18px, env(safe-area-inset-right));
+  top: max(18px, env(safe-area-inset-top));
+  right: calc(max(18px, env(safe-area-inset-right)) + 164px);
   display: flex; gap: 8px;
 }
 .hud-btn {

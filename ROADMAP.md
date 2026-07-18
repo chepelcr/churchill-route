@@ -4,6 +4,36 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Tráfico continuo + dificultad + game-feel (2026-07-17)
+
+- [x] **Tráfico que recorre el pueblo de verdad**: los carros ya no mueren al
+      final de su way OSM (siempre en pantalla con la vista de ~400 px) — hacen
+      **hand-off a una calle conectada en la intersección** (endpoints enteros
+      exactos, ε=3 px, dedup de copias por tile) y solo hacen U-turn en
+      callejones sin salida, como el tren; respawns con distancia mínima 300 px
+      (nunca se materializan a la vista); densidad 20 → 14. (`src/game/spawns.js`)
+- [x] **Colisión de cuerpo completo**: la pared se sondea con la caja orientada
+      del vehículo (4 esquinas a 0.8×) en vez del punto central — se acabó el
+      medio carro montado en la acera. (`src/game/physics.js`)
+- [x] **Snap-turn móvil**: levantar y volver a poner el dedo abre una ventana
+      de 0.6 s con giro completo a baja velocidad y steering más directo; el
+      dedo sostenido conserva EXACTAMENTE el feel de drift actual.
+      (`src/game/input.js`, `physics.js`)
+- [x] **Pase de dificultad** (frustración → paseo): presupuesto de derretido
+      `max(28, dist/80)` (antes `max(18, dist/110)`, break-even con manejo
+      perfecto); golpe de tráfico = **un solo roll de 35% con 1.5 s de
+      i-frames** (antes 12%/frame ≈ drop seguro); roce de edificio 4%→1%/frame;
+      esquinazo conserva ~45% del momentum (antes 10%); tormenta wetMul
+      0.85→0.92; caja de colisión de tráfico 17/12 acorde al nuevo tamaño.
+- [x] **Vehículos ~0.85×** (jugador en `vehicles.js` + tráfico IA en
+      `spawns.js`): las calles de 36 px vuelven a sentirse manejables tras el
+      zoom-out.
+- [x] **`src/render/vehicleShapes.js` — semilla Pixi (Milestone C)**: siluetas
+      de vehículos como trazos de path puros (verbos compartidos Canvas2D /
+      Pixi 8 Graphics, sin DOM ni fills); hoy dibuja la **sombra del jugador
+      con la forma real del cuerpo** (cápsula bici, gota tuktuk, casco kart) en
+      canvas2d; el backend Pixi la adopta al portar vehículos.
+
 ## ✅ Game-feel + mobile + APK pass — done 2026-07-10/11
 
 - [x] **Separator final fix** (Calle 21 zone): removed the 2A tree-line

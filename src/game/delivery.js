@@ -7,6 +7,7 @@ import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { content } from "../content/remote.js";
 import { economy, COINS_PER_DELIVERY, COINS_PERFECT_BONUS } from "./economy.js";
+import { analytics } from "../monetize/analytics.js";
 
 // The world is gated by walls (the MVP wall in every mode + the explore
 // progression barriers), so only offer kiosks/customers on the open side —
@@ -73,12 +74,15 @@ export function pickCustomer() {
 export function pickUpChurchill(kioskLm) {
   if (!state.pendingOrder) pickCustomer();
   const dist = Math.hypot(state.pendingOrder.x - kioskLm.x, state.pendingOrder.y - kioskLm.y);
-  const base = Math.max(18, dist / 110);
+  // Budget must leave headroom over the real (grid-inflated, ~150 px/s) travel
+  // time — dist/110 was break-even with a flawless run, so any mistake melted.
+  const base = Math.max(28, dist / 80);
   state.carrying = { kioskId: kioskLm.id, customer: state.pendingOrder, melt: 0, total: base };
   state.pendingOrder = null;
   state.storyTip = t("tip.deliverTo", { name: state.carrying.customer.name });
   pushFloat(kioskLm.x, kioskLm.y - 24, t("float.pickup"), "#fff");
   sfx.play("pickup");
+  analytics.track("pickup", { kiosk_id: kioskLm.id, mode: state.mode });
 }
 
 export function deliverChurchill() {
@@ -109,6 +113,15 @@ export function deliverChurchill() {
   sfx.play(meltPct < 0.25 ? "perfect" : "delivery");
   if (comboUp && state.combo > 1) sfx.play("combo", state.combo);
   pushFloat(c.customer.x, c.customer.y - 22, c.customer.line.slice(0, 26), "#fff");
+  // Per-business exposure: which named customer/district got this delivery
+  // (the stat sponsored spots are sold on).
+  analytics.track("delivery", {
+    customer_id: c.customer.id || "",
+    customer_name: c.customer.name,
+    district: c.customer.district || (W.districtAt(c.customer.x, c.customer.y) || {}).id || "",
+    mode: state.mode,
+    perfect: meltPct < 0.25 ? 1 : 0,
+  });
   state.carrying = null;
   state.storyTip = t("tip.delivered");
   if (state.mode === "arcade" || state.mode === "story") state.timeLeft += meltPct < 0.4 ? 10 : 5;
@@ -119,6 +132,7 @@ export function deliverChurchill() {
     state.over = true;
     // Unlock the next district + record progress
     markStageCleared(state.stage.id, state.score);
+    analytics.track("stage_clear", { stage_id: state.stage.id, score: state.score });
     if (state.stage.unlock) unlockDistrict(state.stage.unlock);
     // also unlock the next stage's district as a stretch
     const nextS = W.STAGES[state.stageIdx + 1];

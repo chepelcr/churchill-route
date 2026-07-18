@@ -5,7 +5,10 @@
 // throttle — near = slow, far = fast, very far = TURBO. Brake ✋ is a pedal.
 
 export const keys = {};
-export const input = { up: 0, down: 0, left: 0, right: 0, brake: 0, boost: 0 };
+// snapT: brief "go THERE now" window opened when the drive finger is lifted and
+// placed again — tighter steering + extra turn authority (physics reads it).
+// While the finger is merely held, the base drift feel is untouched.
+export const input = { up: 0, down: 0, left: 0, right: 0, brake: 0, boost: 0, snapT: 0 };
 
 // drive finger (canvas) — distance mapping in css px
 const THR_DEAD = 30;    // closer than this = coast
@@ -49,11 +52,14 @@ export function applyTouch(cam, p) {
   if (d < THR_DEAD) return;                            // dead zone: coast
   let e = Math.atan2(dy, dx) - p.a;
   e = Math.atan2(Math.sin(e), Math.cos(e));            // shortest angle diff
-  const steer = Math.max(-1, Math.min(1, e / 0.35));   // full lock past ~20°
+  const snap = input.snapT > 0;
+  if (snap && Math.abs(e) < 0.2) input.snapT = 0;      // facing the finger: snap done
+  const steer = Math.max(-1, Math.min(1, e / (snap ? 0.28 : 0.35))); // full lock past ~16°/20°
   if (steer > 0) input.right = Math.max(input.right, steer);
   else input.left = Math.max(input.left, -steer);
   let thr = Math.min(1, (d - THR_DEAD) / (THR_FULL - THR_DEAD));
-  thr *= 0.35 + 0.65 * Math.max(0, Math.cos(e));       // behind = slow U-turn
+  thr *= snap ? 0.55 + 0.45 * Math.max(0, Math.cos(e)) // snap: keep pace through the pivot
+              : 0.35 + 0.65 * Math.max(0, Math.cos(e)); // held: behind = slow U-turn (drift feel)
   input.up = Math.max(input.up, thr);
   if (d > THR_TURBO && Math.cos(e) > 0.3) input.boost = 1; // far & ahead = turbo
 }
@@ -83,6 +89,7 @@ export function attachThrottle(canvasEl) {
       const t = e.changedTouches[0];
       aim.id = t.identifier; aim.active = true;
       aim.x = t.clientX; aim.y = t.clientY;
+      input.snapT = 0.6; // fresh finger = snap-turn window
     }
   }, { passive: false });
   const track = (e) => {

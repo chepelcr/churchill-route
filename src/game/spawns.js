@@ -11,9 +11,10 @@ import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains } 
 // how far from the camera we keep life alive / spawn it (world px)
 const KEEP_R = 1400;
 const SPAWN_R = 1100;
+const SPAWN_MIN = 300; // keep spawns outside the visible view (half-diagonal ≈ 230)
 // target populations near the camera (tuned to the corridor build's feel:
 // sidewalks full of people, streets with light town traffic)
-const TARGET = { traffic: 20, pedestrians: 64, vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1 };
+const TARGET = { traffic: 14, pedestrians: 64, vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1 };
 const CAR_PALETTE = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
 
 // the camera the maintenance centres on (set each frame by physics)
@@ -58,12 +59,59 @@ function placeCarOnRoad(c) {
   c.y = pt.y + Math.sin(a + Math.PI / 2) * c.lane;
   c.ang = a;
 }
-// Advance along the polyline; recycled at either end (maintainStreaming
-// respawns it elsewhere near the camera).
+// Roads end at OSM way ends — i.e. intersections, which are constantly
+// on-screen (the view is only ~400 world px wide). Cars must never die there:
+// they hand off to a connecting way, or U-turn at a true dead end, and are
+// only ever recycled by the far() cull.
+const EPS_JOIN = 3; // ways share exact integer endpoints; min road spacing is 20px
+function roadEndpoint(r, atStart) {
+  const p = r.pts;
+  return atStart ? { x: p[0], y: p[1] } : { x: p[p.length - 2], y: p[p.length - 1] };
+}
+// A road spanning tiles is duplicated whole into each tile: same geometry,
+// distinct objects. Same length + same endpoints = the same way.
+function sameRoadGeometry(a, b) {
+  if (Math.abs(a.len - b.len) > EPS_JOIN) return false;
+  const a0 = roadEndpoint(a, true), a1 = roadEndpoint(a, false);
+  const b0 = roadEndpoint(b, true), b1 = roadEndpoint(b, false);
+  return Math.hypot(a0.x - b0.x, a0.y - b0.y) <= EPS_JOIN &&
+         Math.hypot(a1.x - b1.x, a1.y - b1.y) <= EPS_JOIN;
+}
+// Connecting ways at the endpoint the car is exiting through. No minimum
+// length here: short *_link stubs are exactly what joins roads up.
+function findNextRoad(c) {
+  const E = roadEndpoint(c.road, c.dir < 0);
+  const tiles = W.visibleTiles(E.x - 8, E.y - 8, E.x + 8, E.y + 8);
+  const cands = [];
+  const seen = (r2) => cands.some((k) => sameRoadGeometry(k.road, r2));
+  for (const t of tiles)
+    for (const r2 of t.roads) {
+      if (r2 === c.road || r2.cls === "pedestrian") continue;
+      if (sameRoadGeometry(r2, c.road) || seen(r2)) continue;
+      const b0 = roadEndpoint(r2, true), b1 = roadEndpoint(r2, false);
+      if (Math.hypot(b0.x - E.x, b0.y - E.y) <= EPS_JOIN) cands.push({ road: r2, dir: 1 });
+      else if (Math.hypot(b1.x - E.x, b1.y - E.y) <= EPS_JOIN) cands.push({ road: r2, dir: -1 });
+    }
+  if (!cands.length) return null;
+  return cands[(Math.random() * cands.length) | 0];
+}
 export function advanceCarOnRoad(c, dt) {
   if (!c.road) { c.dead = true; return; }
   c.s += c.v * dt * c.dir;
-  if (c.s <= 0 || c.s >= c.road.len) { c.dead = true; return; }
+  if (c.s <= 0 || c.s >= c.road.len) {
+    const over = c.s <= 0 ? -c.s : c.s - c.road.len;
+    const next = findNextRoad(c);
+    if (next) {
+      c.road = next.road; c.dir = next.dir;
+      c.s = next.dir > 0 ? Math.min(next.road.len, over)
+                         : Math.max(0, next.road.len - over);
+      c.lane = next.road.w >= 30 ? next.road.w / 4 : 0;
+      if (!MAIN_ROAD.has(next.road.cls) && c.v > 76) c.v = 48 + Math.random() * 28;
+    } else {
+      c.dir *= -1; // true dead end: ping-pong like the train
+      c.s = Math.max(0, Math.min(c.road.len, c.s));
+    }
+  }
   placeCarOnRoad(c);
 }
 
@@ -85,16 +133,18 @@ function spawnOneCar() {
     lane: r.w >= 30 ? r.w / 4 : 0, // wide street: keep to your side; narrow: center
     v: main ? 70 + Math.random() * 40 : 48 + Math.random() * 28,
     color: CAR_PALETTE[(Math.random() * CAR_PALETTE.length) | 0],
-    w: main ? 38 : 32, h: main ? 18 : 16, kind: "car",
+    w: main ? 32 : 27, h: main ? 15 : 14, kind: "car",
     x: 0, y: 0, ang: 0,
   };
   if (main) {
     const roll = Math.random();
-    if (roll < 0.15) { car.kind = "truck"; car.w = 46; car.h = 18; }
-    else if (roll < 0.24) { car.kind = "bus"; car.w = 56; car.h = 19; car.color = "#e0762e"; car.v *= 0.85; }
+    if (roll < 0.15) { car.kind = "truck"; car.w = 39; car.h = 15; }
+    else if (roll < 0.24) { car.kind = "bus"; car.w = 48; car.h = 16; car.color = "#e0762e"; car.v *= 0.85; }
   }
   placeCarOnRoad(car);
-  if (Math.hypot(car.x - _cam.x, car.y - _cam.y) > SPAWN_R) return null; // road wandered off-range
+  // Off-range OR on-screen (view half-diagonal ≈ 230): never materialize in view.
+  const d = Math.hypot(car.x - _cam.x, car.y - _cam.y);
+  if (d > SPAWN_R || d < SPAWN_MIN) return null;
   return car;
 }
 // Pedestrians walk the aceras ALONG the streets (the corridor build's model):

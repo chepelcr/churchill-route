@@ -11,6 +11,7 @@ import {
 import { nearestKiosk } from "../game/delivery.js";
 import { t } from "../i18n/index.js";
 import { content } from "../content/remote.js";
+import { traceVehicleSilhouette } from "./vehicleShapes.js";
 
   // ----- Render -------------------------------------------------------------
   let canvas, ctx, dpr = 1;
@@ -1489,10 +1490,11 @@ import { content } from "../content/remote.js";
   function drawPlayer(p, veh) {
     const lift = (state.elev || 0) * 7;   // the barro avenue rides ~1 m up
     ctx.save();
-    // ground shadow — drops further behind + fades as the car climbs the ramp
+    // ground shadow — the body's own silhouette, dropped further behind and
+    // faded as the car climbs the ramp
     ctx.save(); ctx.translate(p.x + 4 + lift * 0.6, p.y + 6 + lift); ctx.rotate(p.a);
     ctx.fillStyle = `rgba(0,0,0,${(0.35 - lift * 0.02).toFixed(3)})`;
-    ctx.fillRect(-veh.w/2, -veh.h/2, veh.w, veh.h); ctx.restore();
+    traceVehicleSilhouette(ctx, state.vehicleKey, veh); ctx.fill(); ctx.restore();
     ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
     paintVehicle(ctx, state.vehicleKey, veh);
     if (state.carrying) {

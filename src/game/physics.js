@@ -64,11 +64,18 @@ export function update(dt) {
   const onRoad = surf === 3 || surf === 5; // road or bridge deck
   const inWater = surf === 0;
   const surfaceMul = SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
-  const wetMul = state.weather === "storm" ? 0.85 : 1;
+  const wetMul = state.weather === "storm" ? 0.92 : 1;
+  // i-frames after a traffic hit so one collision can't roll the churchill
+  // drop every frame of contact
+  state.hitT = Math.max(0, (state.hitT || 0) - dt);
 
-  // turning
+  // turning — during a touch snap window (finger re-placed) the low-speed
+  // floor rises so the car pivots instead of trailer-arcing; the held-finger
+  // curve is untouched, and both meet at the same top-speed rate (1.3).
+  input.snapT = Math.max(0, input.snapT - dt);
   const turning = input.right - input.left;
-  const turnRate = veh.turn * (0.4 + Math.min(1, Math.abs(p.speed) / veh.top) * 0.9);
+  const spdFac = Math.min(1, Math.abs(p.speed) / veh.top);
+  const turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
   p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
 
   // acceleration (headstart consumable = free turbo for its first seconds)
@@ -108,13 +115,22 @@ export function update(dt) {
   // axis so tangential motion carries you. Beach became a wall on user
   // request (beach-classed pockets also let you slip inside cuadras).
   const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2; };
-  if (isWall(p.x, p.y)) {
-    const okX = !isWall(p.x, prevY);
-    const okY = !isWall(prevX, p.y);
+  // Probe the car's oriented box (0.8× extents for arcade forgiveness), not
+  // just its center — a center-only test let half the body sink into aceras.
+  const hw = veh.w * 0.5 * 0.8, hh = veh.h * 0.5 * 0.8;
+  const ca = Math.cos(p.a), sa = Math.sin(p.a);
+  const blockedAt = (x, y) =>
+    isWall(x + ca * hw - sa * hh, y + sa * hw + ca * hh) ||
+    isWall(x + ca * hw + sa * hh, y + sa * hw - ca * hh) ||
+    isWall(x - ca * hw - sa * hh, y - sa * hw + ca * hh) ||
+    isWall(x - ca * hw + sa * hh, y - sa * hw - ca * hh);
+  if (blockedAt(p.x, p.y)) {
+    const okX = !blockedAt(p.x, prevY);
+    const okY = !blockedAt(prevX, p.y);
     if (okX && !okY) { p.y = prevY; p.vy = 0; }
     else if (okY && !okX) { p.x = prevX; p.vx = 0; }
-    else if (!isWall(prevX, prevY)) {
-      p.x = prevX; p.y = prevY; p.vx *= -0.1; p.vy *= -0.1;
+    else if (!blockedAt(prevX, prevY)) {
+      p.x = prevX; p.y = prevY; p.vx *= -0.45; p.vy *= -0.45;
       state.cam.shake = Math.max(state.cam.shake, 2);
     }
     // else: spawned/teleported inside a block — let it drive out
@@ -136,7 +152,7 @@ export function update(dt) {
     if (p.x < a.x0 - 9 || p.x > a.x1 + 9 || p.y < a.y0 - 9 || p.y > a.y1 + 9) continue;
     if (collideBuilding(p, b)) {
       state.cam.shake = Math.max(state.cam.shake, 3);
-      if (state.carrying && Math.random() < 0.04) dropChurchill();
+      if (state.carrying && Math.random() < 0.01) dropChurchill();
     }
   }
 
@@ -271,14 +287,18 @@ export function advanceEntities(dt, withPlayer = true) {
   for (const pt of state.particles) { pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.life -= dt; }
   state.particles = state.particles.filter(pt => pt.life > 0);
 
-  // Traffic — lane-follows its road polyline (spawns.js); recycled at the
-  // piece ends by maintainStreaming.
+  // Traffic — lane-follows its road polylines (spawns.js), handing off to a
+  // connecting way at intersections; recycled only by the far cull.
   for (const t of traffic) {
     advanceCarOnRoad(t, dt);
-    if (withPlayer && Math.abs(t.x - p.x) < 20 && Math.abs(t.y - p.y) < 14) {
-      p.vx -= (t.x - p.x) * 0.5; p.vy -= (t.y - p.y) * 0.5;
+    if (withPlayer && Math.abs(t.x - p.x) < 17 && Math.abs(t.y - p.y) < 12) {
+      p.vx -= (t.x - p.x) * 0.35; p.vy -= (t.y - p.y) * 0.35;
       state.cam.shake = Math.max(state.cam.shake, 6);
-      if (state.carrying && Math.random() < 0.12) dropChurchill();
+      // one drop roll per collision event, not per frame of contact
+      if (state.hitT <= 0) {
+        state.hitT = 1.5;
+        if (state.carrying && Math.random() < 0.35) dropChurchill();
+      }
     }
   }
 

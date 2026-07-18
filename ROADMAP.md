@@ -6,6 +6,17 @@ game modes are live; the items below are what remains.
 
 ## ✅ Onboarding + pantallas full-screen + colisión sellada (2026-07-18)
 
+- [x] **Secuencia de arranque estilo Hill Climb** (`src/ui/screens/BootScreen.jsx`,
+      cada arranque): logo Pacific Code Labs sobre azul marino (fade) → pantalla
+      de carga con el arte de La Ruta del Churchill + barra dorada (tap salta).
+      Mientras corre, el attract mode ya streamea el mundo, así que la barra
+      cubre carga real. Después: menú (o intro de lore → tutorial en el primer
+      arranque). Assets en `public/branding/` (precacheados, SW `churchill-v6`).
+- [x] **Ícono APK con fondo transparente** (el usuario borró el BG): nueva
+      fuente `assets/icon.png` 1024² con alfa (arte redondo faro+churchill),
+      `capacitor-assets generate --android` con fondo adaptativo `#0b1a2e` —
+      100 recursos regenerados (mipmaps + splash).
+
 - [x] **Intro de lore al primer arranque** (`src/ui/screens/IntroScreen.jsx`):
       3 diapositivas (el churchill, el sol porteño, tu misión) sobre el mundo
       attract → directo al tutorial → al completar, al menú principal (ya no

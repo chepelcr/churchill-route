@@ -144,7 +144,8 @@ const STR = {
     "tut.pickup": "Andá al kiosco rojo y blanco (seguí la flecha) y frená al lado para recoger un Churchill.",
     "tut.deliver": "¡Rápido! Llevalo al cliente que saluda antes de que se derrita. La barra de abajo es el hielo.",
     "tut.done": "¡Eso es todo! Puntos por entregar rápido, combo por no fallar. ¡A recorrer el puerto!",
-    // --- first-run lore intro ---
+    // --- boot / first-run lore intro ---
+    "boot.loading": "CARGANDO EL PUERTO...",
     "intro.1": "Puntarenas, la Perla del Pacífico. Cuna del churchill: granizado con sirope, leche condensada y helado. Nadie lo prepara como los kioscos del Paseo.",
     "intro.2": "Pero hay un problema: el sol porteño no perdona. Cada churchill empieza a derretirse apenas sale del kiosco... y los clientes lo quieren PERFECTO.",
     "intro.3": "Ahí entrás vos. Subite, recorré el puerto y entregá churchills antes de que se derritan. De El Faro hasta Caldera, la ruta es tuya.",
@@ -332,6 +333,7 @@ const STR = {
     "tut.pickup": "Head to the red-and-white kiosk (follow the arrow) and stop next to it to pick up a Churchill.",
     "tut.deliver": "Hurry! Take it to the waving customer before it melts. The bar below is your ice.",
     "tut.done": "That's it! Points for fast deliveries, combo for not failing. Go explore the port!",
+    "boot.loading": "LOADING THE PORT...",
     "intro.1": "Puntarenas, the Pearl of the Pacific. Birthplace of the churchill: shaved ice with cola syrup, condensed milk and ice cream. Nobody makes it like the Paseo kiosks.",
     "intro.2": "One problem: the port sun forgives nothing. Every churchill starts melting the moment it leaves the kiosk... and the customers want it PERFECT.",
     "intro.3": "That's where you come in. Hop on, ride the port and deliver churchills before they melt. From El Faro to Caldera, the route is yours.",

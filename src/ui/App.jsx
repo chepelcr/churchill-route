@@ -7,6 +7,7 @@ import HUD from "./screens/HUD.jsx";
 import PauseScreen from "./screens/PauseScreen.jsx";
 import ResultsScreen from "./screens/ResultsScreen.jsx";
 import StageBrief from "./screens/StageBrief.jsx";
+import BootScreen from "./screens/BootScreen.jsx";
 import IntroScreen, { introSeen } from "./screens/IntroScreen.jsx";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import SupportersScreen from "./screens/SupportersScreen.jsx";
@@ -26,9 +27,9 @@ import { analytics } from "../monetize/analytics.js";
 
 export default function App() {
   const t = useT();
-  // screens: intro (first run only) | title | stagepick | brief | playing |
-  //          paused | over | settings | supporters | shop | vehpick
-  const [screen, setScreen] = useState(() => (introSeen() ? "title" : "intro"));
+  // screens: boot (every launch) | intro (first run only) | title | stagepick |
+  //          brief | playing | paused | over | settings | supporters | shop | vehpick
+  const [screen, setScreen] = useState("boot");
   const [pendingStage, setPendingStage] = useState(null);
   const [pendingMode, setPendingMode] = useState(null); // arcade | explore
   const canvasRef = useRef(null);
@@ -86,7 +87,7 @@ export default function App() {
   useEffect(() => { Game.state.paused = (screen === "paused" || (screen === "settings" && settingsFrom.current === "paused")); }, [screen]);
 
   // Menu screens show the live world drifting behind them (attract mode).
-  useEffect(() => { Game.setAttract(["intro", "title", "stagepick", "supporters", "shop", "vehpick"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
+  useEffect(() => { Game.setAttract(["boot", "intro", "title", "stagepick", "supporters", "shop", "vehpick"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
 
   // Engine/drift hum only while actually driving; menu blips stay available.
   useEffect(() => { screen === "playing" ? sfx.resume() : sfx.quiet(); }, [screen]);
@@ -167,6 +168,7 @@ export default function App() {
   return (
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
+      {screen === "boot" && <BootScreen onDone={() => setScreen(introSeen() ? "title" : "intro")} />}
       {(screen === "intro" || screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick") && (
         <div className="screen-anim" key={screen}>
           {screen === "intro" && <IntroScreen onDone={() => {

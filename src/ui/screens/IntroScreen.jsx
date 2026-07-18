@@ -30,8 +30,10 @@ export default function IntroScreen({ onDone }) {
     setTimeout(() => { setSlide((s) => s + 1); setLeaving(false); }, 260);
   };
 
+  // Slides advance ONLY via the buttons — no tap-anywhere (accidental taps
+  // were blowing through the story).
   return (
-    <div className="page-card intro-page" onClick={next}>
+    <div className="page-card intro-page">
       <div className="page-head" style={{ justifyContent: "center" }}>
         <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
       </div>
@@ -45,7 +47,7 @@ export default function IntroScreen({ onDone }) {
             <span key={i} className={"dot" + (i === slide ? " on" : "")}></span>
           ))}
         </div>
-        <div className="btn-row" style={{ marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
+        <div className="btn-row" style={{ marginTop: 6 }}>
           {!last && <button className="btn secondary" onClick={finish}>{t("intro.skip")}</button>}
           <button className="btn gold" onClick={next}>{last ? t("intro.go") : t("intro.next")}</button>
         </div>

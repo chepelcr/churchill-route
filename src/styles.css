@@ -558,7 +558,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .boot-screen {
   position: absolute; inset: 0; z-index: 30;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 18px; background: #0b1a2e; cursor: pointer;
+  gap: 18px; background: #0b1a2e;
 }
 /* the charge screen's glow lives in ::before so the background MORPHS in
    (gradients aren't transition-able; opacity is) */
@@ -616,9 +616,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   animation: boot-art-in 500ms ease-out 350ms both;
 }
 
-/* First-run lore intro: tap anywhere (or the button) to advance.
+/* First-run lore intro: the BUTTONS advance (no tap-anywhere).
    Slides glide: new one eases in from the right, the old one slips out left. */
-.intro-page { cursor: pointer; }
 .intro-page .intro-slide { animation: intro-slide-in 400ms cubic-bezier(0.2, 0.9, 0.25, 1) both; }
 @keyframes intro-slide-in { from { opacity: 0; transform: translateX(28px); } }
 .intro-page .intro-slide.leave { animation: intro-slide-out 260ms ease both; }

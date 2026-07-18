@@ -8,8 +8,9 @@ import { useT } from "../../i18n/index.js";
 //   phase 1 — La Ruta del Churchill art + charge bar with the muelle ferry
 //             riding the fill edge
 //   out     — the whole screen fades away, revealing the attract world
-// Tap advances a phase early. On mobile web the sequence HOLDS while the
-// rotate overlay is up (same media query) and starts fresh once rotated.
+// NOT skippable — the sequence always plays in full. On mobile web it HOLDS
+// while the rotate overlay is up (same media query) and starts fresh once
+// rotated.
 const HOLD_MQ = "(pointer: coarse) and (orientation: portrait)";
 const LOGO_MS = 2400;
 const LOAD_MS = 2600;
@@ -69,15 +70,11 @@ export default function BootScreen({ onDone }) {
     return () => clearTimeout(tm);
   }, [hold, phase, out]);
 
-  const skip = () => {
-    if (hold || out) return;
-    if (phase === 0) setPhase(1); else setOut(true);
-  };
-
   const barAnim = { animationDuration: (LOAD_MS - 350) + "ms", animationDelay: "300ms" };
 
+  // No click-skip: the sequence always plays in full.
   return (
-    <div className={"boot-screen" + (phase ? " load" : "") + (out ? " out" : "")} onClick={skip}>
+    <div className={"boot-screen" + (phase ? " load" : "") + (out ? " out" : "")}>
       <canvas ref={waterRef} className="boot-water" aria-hidden="true"></canvas>
       {!hold && (phase === 0 ? (
         <img className="boot-logo" src="/branding/pacific-code-labs.png" alt="Pacific Code Labs" />

@@ -4,7 +4,7 @@
 // trains, gulls, player). The canvas2d backend runs above it in overlay mode
 // for landmarks, pier/bridge, weather, particles/floats, compass and minimap.
 // New visual elements should land HERE, not in canvas2d.
-import { Application, Container, Sprite, Graphics, Texture } from "pixi.js";
+import { Application, Container, Sprite, Graphics, Texture, Text } from "pixi.js";
 import { buildTileTexture } from "./tileTexture.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import {
@@ -78,7 +78,40 @@ export class PixiScene {
     }
 
     this._buildStadium();
+    this._buildLandmarks();
     return this;
+  }
+
+  // Migrated landmarks (start of the canvas→Pixi landmark move). Static
+  // structures drawn once in world space; canvas2d suppresses these types.
+  // Pilot: the church/cathedral (was mis-placed on the street, now in its
+  // cuadra). More types follow the same pattern once validated.
+  _MIGRATED = new Set(["church", "cathedral"]);
+  _buildLandmarks() {
+    const g = new Graphics();
+    for (const lm of W.LANDMARKS) {
+      if (!this._MIGRATED.has(lm.type)) continue;
+      const x = lm.x, y = lm.y;
+      const big = lm.type === "cathedral";
+      const hw = big ? 24 : 20, hh = big ? 15 : 12;
+      g.ellipse(x + 4, y + 8, hw * 0.9, 5).fill({ color: 0x000000, alpha: 0.22 });     // shadow
+      g.rect(x - hw, y - hh, hw * 2, hh * 2).fill(0xcaa089);                             // nave
+      g.rect(x - hw, y - hh, hw * 2, 3).fill({ color: 0x000000, alpha: 0.12 });
+      g.moveTo(x - 7, y - hh); g.lineTo(x, y - hh - 16); g.lineTo(x + 7, y - hh);
+      g.fill(0x9e6f4a);                                                                  // roof gable
+      g.rect(x - 0.75, y - hh - 13, 1.6, 7).fill(0xffffff);                              // cross
+      g.rect(x - 3, y - hh - 10, 7, 1.6).fill(0xffffff);
+      const lbl = new Text({
+        text: big ? "CATEDRAL" : "IGLESIA",
+        style: { fontFamily: "Bungee, sans-serif", fontSize: 9, fill: 0xffffff,
+                 stroke: { color: 0x9e6f4a, width: 3 } },
+      });
+      lbl.anchor.set(0.5, 1);
+      lbl.position.set(x, y - hh - 18);
+      lbl.scale.set(0.7);
+      this.L.buildings.addChild(lbl);
+    }
+    this.L.buildings.addChild(g);
   }
 
   // Estadio Lito Pérez — the first landmark living fully in Pixi. Graderías

@@ -4,6 +4,24 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Estadio off + landmarks en cuadras + colisión sellada (2026-07-18 PM3)
+
+- [x] **Estadio desactivado** (crashea al acercarse; probablemente las ~180
+      Graphics del público en móvil). `STADIUM_ENABLED=False` en el build →
+      `manifest.stadium=null`; el código de estadio queda inerte tras el gate
+      `W.STADIUM`. Reactivar = flag + rebuild (y batchear el público antes).
+- [x] **Landmarks tipo edificio DENTRO de la cuadra** (la iglesia salía en la
+      calle): iglesia, catedral, mercado, súper, hotel, cívico, casa se
+      reubican a la celda INTERIOR del bloque más cercano (≥1 cuadrícula de
+      cualquier borde → libran la acera) — 7/7 ahora en `land`. Sin apron
+      manejable (escenografía) y excluidos del gate de alcance.
+- [x] **Colisión "entrar a la cuadra" corregida**: los nudges de desatasco
+      (shimmy + depenetración) saltaban hasta 24px a cualquier celda no-muro,
+      cruzando la acera. Ahora exigen CENTRO en calle manejable (clase 3/5) a
+      corto rango (≤12px); la pose libre solo se graba sobre calle.
+- [x] **Migración de landmarks a Pixi — piloto**: iglesia/catedral en la capa
+      Pixi (nave + techo + cruz + rótulo), canvas las suprime.
+
 ## ✅ Puerto vivo + backend Pixi híbrido (opt-in) + fixes móviles (2026-07-18 PM)
 
 - [x] **Cuadras llenas**: el tope de edificios (8000) se agotaba a mitad de mapa

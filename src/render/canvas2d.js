@@ -1697,6 +1697,9 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // gradas + tunnel roof); canvas2d then only paints their ground (césped).
   let PIXI_LANDMARKS = false;
   function setPixiLandmarks(v) { PIXI_LANDMARKS = !!v; }
+  // Landmark types the Pixi layer now owns (kept in sync with scene.js
+  // _MIGRATED) — canvas skips these when the Pixi layer is active.
+  const PIXI_MIGRATED = new Set(["church", "cathedral"]);
 
   function render(t) {
     if (!ctx) return;
@@ -1750,6 +1753,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       if (lm.x < view.x0 - 60 || lm.x > view.x1 + 60) continue;
       if (lm.type === "bridge") continue;
       if (lm.type === "stadium") continue; // the estadio draws itself (ground + Pixi gradas)
+      if (PIXI_LANDMARKS && PIXI_MIGRATED.has(lm.type)) continue; // Pixi draws these now
       drawLandmark(lm);
     }
     // Sponsored lotes from the remote content (billboards / storefronts)

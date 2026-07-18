@@ -92,18 +92,24 @@ export function update(dt) {
   const turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
   const prevA = p.a;
   p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
+  // A clear spot the car may be nudged to: its box must be unblocked AND its
+  // CENTER must be on a DRIVABLE street (class 3 road / 5 bridge). Requiring
+  // drivable-center is what makes unstick nudges safe — they can never place
+  // the car in a cuadra/acera/beach (that was the "entering cuadras" bug).
+  const clearSpot = (x, y) => { const c = W.surfaceAt(x, y); return (c === 3 || c === 5) && !blockedAt(x, y); };
+
   // Turning must never sweep the body INTO a wall (that penetration was the
   // pass-through bug). But a flat veto deadlocks narrow streets: with walls
   // on both sides every rotation penetrates, and touch has no reverse — the
-  // car locks facing a dead end. So first try SHIMMYING: small shifts that
-  // give the rotation room; only veto the turn if no clear pose exists.
+  // car locks facing a dead end. So first try a SMALL shimmy onto a drivable
+  // spot that gives the rotation room; only veto the turn if none exists.
   if (p.a !== prevA && blockedAt(p.x, p.y) && !blockedAt(p.x, p.y, prevA)) {
     let ok = false;
     for (let rr = 2; rr <= 8 && !ok; rr += 2) {
       for (let k = 0; k < 8; k++) {
         const aa = (k / 8) * Math.PI * 2;
         const nx = p.x + Math.cos(aa) * rr, ny = p.y + Math.sin(aa) * rr;
-        if (!blockedAt(nx, ny)) { p.x = nx; p.y = ny; ok = true; break; }
+        if (clearSpot(nx, ny)) { p.x = nx; p.y = ny; ok = true; break; }
       }
     }
     if (!ok) p.a = prevA;
@@ -163,15 +169,19 @@ export function update(dt) {
       if (p.freeA !== undefined) p.a = p.freeA;
     }
     // else: spawned/teleported inside a block — let it drive out
-  } else { p.freeX = p.x; p.freeY = p.y; p.freeA = p.a; } // last fully-clear pose
-  // Depenetration net: if the car is STILL wedged (stale/absent free pose),
-  // nudge it to the nearest clear spot instead of leaving it stuck.
+    // (record the free pose ONLY on drivable street, so a snap always lands
+    // back on the road, never on a paseo/acera edge — recompute, onRoad is
+    // from the pre-move surface sample)
+  } else if (W.onRoad(p.x, p.y)) { p.freeX = p.x; p.freeY = p.y; p.freeA = p.a; }
+  // Depenetration net: if the car is STILL wedged, nudge to the nearest
+  // DRIVABLE spot (short range, drivable-center) — never across an acera into
+  // a cuadra. Keeps the car unstuck without the old cuadra-entering jumps.
   if (blockedAt(p.x, p.y)) {
-    outer: for (let rr = 4; rr <= 24; rr += 4)
+    outer: for (let rr = 4; rr <= 12; rr += 4)
       for (let k = 0; k < 8; k++) {
         const a = (k / 8) * Math.PI * 2;
         const nx = p.x + Math.cos(a) * rr, ny = p.y + Math.sin(a) * rr;
-        if (!blockedAt(nx, ny)) { p.x = nx; p.y = ny; p.vx *= 0.3; p.vy *= 0.3; break outer; }
+        if (clearSpot(nx, ny)) { p.x = nx; p.y = ny; p.vx *= 0.3; p.vy *= 0.3; break outer; }
       }
   }
   p.speed = Math.hypot(p.vx, p.vy);

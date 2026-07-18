@@ -2383,6 +2383,44 @@ def main():
             return None
         return ((best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL)
 
+    # Building landmarks (church, market, hotel…) must sit INSIDE a cuadra, not
+    # on the street. From a drivable anchor, walk into the nearest block
+    # interior (CLS_LAND) so the footprint fronts the road it was next to.
+    BUILDING_LM = {"church", "cathedral", "market", "super", "hotel", "civic", "house"}
+    def _drivable_cell(c, r):
+        return 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and \
+            grid[r * GRID_COLS + c] in (CLS_ROAD, CLS_BRIDGE)
+    def snap_into_block(x, y, reach_px=160, inset_px=32):
+        # The anchor is on/next to a street; step into the nearest cuadra
+        # interior (CLS_LAND) and then a bit deeper (inset) so the footprint
+        # sits INSIDE the block fronting that street, not on the asphalt.
+        c0, r0 = int(x / GRID_CELL), int(y / GRID_CELL)
+        R = reach_px // GRID_CELL
+        best = None
+        for dr in range(-R, R + 1):
+            for dc in range(-R, R + 1):
+                c, r = c0 + dc, r0 + dr
+                if not (0 <= c < GRID_COLS and 0 <= r < GRID_ROWS):
+                    continue
+                if grid[r * GRID_COLS + c] != CLS_LAND:
+                    continue
+                d2 = dc * dc + dr * dr
+                if best is None or d2 < best[0]:
+                    best = (d2, c, r)
+        if best is None:
+            return None
+        _, bc, br = best
+        # push a couple cells further from the anchor (deeper into the block)
+        ins = inset_px // GRID_CELL
+        sc = 1 if bc >= c0 else -1
+        sr = 1 if br >= r0 else -1
+        for k in range(ins, 0, -1):
+            nc, nr = bc + sc * k, br + sr * k
+            if 0 <= nc < GRID_COLS and 0 <= nr < GRID_ROWS and grid[nr * GRID_COLS + nc] == CLS_LAND:
+                bc, br = nc, nr
+                break
+        return ((bc + 0.5) * GRID_CELL, (br + 0.5) * GRID_CELL)
+
     landmarks, failures = [], []
     for spec in LANDMARK_DEFS:
         # "xy": a direct world position (e.g. read off the in-game 📍 overlay) —
@@ -2413,6 +2451,9 @@ def main():
         if pos is None:
             failures.append(spec["id"] + "(water)")
             continue
+        # NB: building landmarks get repositioned INTO their cuadra later, once
+        # roads + aceras are rasterized into the grid (snap_into_block needs the
+        # final surface classes to find real block interior).
         landmarks.append({"id": spec["id"], "name": spec["name"], "x": round(pos[0]),
                           "y": round(pos[1]), "type": spec["type"], "district": spec["district"],
                           "_how": how})
@@ -2512,6 +2553,10 @@ def main():
     # off-street; everything left as CLS_LAND becomes solid cuadra interior
     acera_fringe(grid)
     for lm in landmarks:
+        # building landmarks are SCENERY inside a cuadra — no drivable apron
+        # (you see them from the street, never drive onto them)
+        if lm["type"] in BUILDING_LM:
+            continue
         stamp_pad(grid, lm["x"], lm["y"], 80 if lm["type"] == "kiosk" else 48)
     for cu in customers:
         stamp_pad(grid, cu["x"], cu["y"], 56)
@@ -2527,6 +2572,38 @@ def main():
 
     # --- cuadrícula blocks: classify land into cuadras / paved plazas / green
     blocks, plazas = detect_blocks(grid)
+
+    # Step each building landmark off its street anchor into a cuadra INTERIOR
+    # cell — nearest block, cell ≥1 cuadrícula from any edge so it clears the
+    # acera fringe and sits solidly inside the block (church-in-the-street fix).
+    def snap_into_block_cell(x, y):
+        ac, ar = int(x // CUAD), int(y // CUAD)
+        best = None
+        for b in blocks:
+            if b.get("green"):
+                continue
+            for (cc, cr) in b["cells"]:
+                d2 = (cc - ac) ** 2 + (cr - ar) ** 2
+                if best is None or d2 < best[0]:
+                    best = (d2, b["cells"])
+        if best is None:
+            return None
+        cells = best[1]
+        interior = [c for c in cells
+                    if all((c[0] + dx, c[1] + dy) in cells
+                           for dx in (-1, 0, 1) for dy in (-1, 0, 1))]
+        pool = interior if interior else list(cells)
+        tc, tr = min(pool, key=lambda c: (c[0] - ac) ** 2 + (c[1] - ar) ** 2)
+        return ((tc + 0.5) * CUAD, (tr + 0.5) * CUAD)
+    n_snap = 0
+    for lm in landmarks:
+        if lm["type"] not in BUILDING_LM:
+            continue
+        inb = snap_into_block_cell(lm["x"], lm["y"])
+        if inb is not None:
+            lm["x"], lm["y"] = round(inb[0]), round(inb[1])
+            n_snap += 1
+    print(f"[poi] {n_snap} building landmarks snapped into cuadra interiors")
 
     # The avenue's separators (final layout, user-iterated):
     # - Paseo de los Turistas: its classic PALM median — dashes with crossing
@@ -2594,8 +2671,11 @@ def main():
     # trees); the pitch + tunnel are stamped CLS_ROAD so you can drive in.
     # Geometry is emitted in the manifest; the Pixi renderer draws it.
     stadium = None
+    # Estadio temporarily disabled (crash-on-approach; being reworked). Flip
+    # to True and rebuild to re-enable the gradas/pitch/tunnel stamping.
+    STADIUM_ENABLED = False
     est = next((l for l in landmarks if l["id"] == "estadio"), None)
-    if est:
+    if est and STADIUM_ENABLED:
         ec = (int(est["x"] // CUAD), int(est["y"] // CUAD))
 
         def _cuad_cls0(cc, cr):
@@ -2923,8 +3003,11 @@ def main():
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).
     spawn = (faro_lm["x"], faro_lm["y"]) if faro_lm else (
         (landmarks[0]["x"], landmarks[0]["y"]) if landmarks else (CANVAS_W // 2, CANVAS_H // 2))
+    # building landmarks are scenery (no drivable pad) → not delivery targets,
+    # exclude them from the reachability gate
+    gate_pois = [l for l in landmarks if l["type"] not in BUILDING_LM] + customers
     unreachable = verify_connectivity(grid, spawn,
-                                      landmarks + customers, reach=ACERA_CELLS + 1)
+                                      gate_pois, reach=ACERA_CELLS + 1)
     failures.extend("unreachable " + u for u in unreachable)
     block_census(grid)
 

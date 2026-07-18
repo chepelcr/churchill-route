@@ -28,6 +28,12 @@ game modes are live; the items below are what remains.
       orientación + el siguiente toque lo garantiza (los navegadores piden
       gesto). **Intro/boot caben sin scroll** en teléfonos cortos
       (media query max-height 500px).
+- [x] **Pixi por DEFECTO** (validación del usuario en web + APK): escape
+      `?canvas` / localStorage churchill_renderer="canvas" + fallback
+      automático sin WebGL. Boot con **agua Pixi viva** (gradiente navy +
+      shimmer sinusoidal, misma receta que drawWaterAll) detrás del logo PCL,
+      y el **ferry del muelle** navegando el borde de la barra de carga
+      (mismo arte que drawBoat, con bamboleo).
 
 ## ✅ Onboarding + pantallas full-screen + colisión sellada (2026-07-18)
 

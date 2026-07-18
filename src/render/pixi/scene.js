@@ -233,8 +233,9 @@ export class PixiScene {
       const g = cv.getContext("2d");
       g.setTransform(S, 0, 0, S, cw / 2, chh / 2);
       paintVehicle(g, state.vehicleKey, veh);
-      this.playerSprite.texture?.destroy(true);
-      this.playerSprite.texture = Texture.from(cv);
+      if (this._playerTex) this._playerTex.destroy(true); // never destroy Texture.EMPTY
+      this._playerTex = Texture.from(cv);
+      this.playerSprite.texture = this._playerTex;
       this.playerSprite.scale.set(1 / S);
       this.playerShadow.clear();
       traceVehicleSilhouette(this.playerShadow, state.vehicleKey, veh);

@@ -5,20 +5,21 @@
 //   render(t)              — draw one frame for timestamp t (ms)
 //   paintVehicle(ctx, key, veh) — vehicle sprite at (0,0) facing +x (UI preview)
 //
-// Milestone C: the HYBRID stack — Pixi/WebGL draws the world (surfaces,
-// roads, buildings, greenery) and every moving entity, while canvas2d runs
-// above it in overlay mode (landmarks, pier/bridge, weather, particles/
-// floats, compass, minimap). OPT-IN while it stabilizes: `?pixi` in the URL
-// or localStorage churchill_renderer = "pixi"; default stays pure canvas2d.
+// Milestone C: the DEFAULT is the HYBRID stack — Pixi/WebGL draws the world
+// (surfaces, roads, buildings, greenery) and every moving entity, while
+// canvas2d runs above it in overlay mode (landmarks, pier/bridge, weather,
+// particles/floats, compass, minimap). Escape hatches back to pure canvas2d:
+// `?canvas` in the URL, or localStorage churchill_renderer = "canvas"
+// (plus the automatic no-WebGL fallback in setupCanvas).
 import { setupCanvas as c2dSetup, render as c2dRender, setOverlayMode, paintVehicle } from "./canvas2d.js";
 import { setupPixi, renderPixi } from "./pixi/index.js";
 
 const USE_PIXI = (() => {
   try {
-    if (new URLSearchParams(window.location.search).has("pixi")) return true;
-    if (localStorage.getItem("churchill_renderer") === "pixi") return true;
+    if (new URLSearchParams(window.location.search).has("canvas")) return false;
+    if (localStorage.getItem("churchill_renderer") === "canvas") return false;
   } catch { /* SSR/private mode */ }
-  return false;
+  return true;
 })();
 
 export { paintVehicle };

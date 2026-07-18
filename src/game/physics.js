@@ -332,7 +332,7 @@ export function advanceEntities(dt, withPlayer = true) {
   // Pedestrians — walk the aceras / road edges; scatter from a speeding player
   for (const pe of pedestrians) {
     pe.ph += dt * 6;
-    advanceOnSurface(pe, dt, PED_CLS, 0.03);
+    advanceOnSurface(pe, dt, pe.cls || PED_CLS, 0.03); // stadium peds roam the césped (cls [3])
     if (withPlayer && Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
       for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
       pe.ang += Math.PI * (0.4 + Math.random() * 0.6); // bolt away

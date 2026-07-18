@@ -257,8 +257,38 @@ function topUp(arr, target, make, isDead) {
   let guard = 0;
   while (arr.length < target && guard++ < target * 3) { const e = make(); if (e) arr.push(e); }
 }
+// A few porteños live INSIDE the estadio (kickabout on the césped) so the
+// stadium feels alive when you drive in. They walk surface class 3 (the
+// pitch + tunnel are stamped ROAD) with a leash back to the footprint.
+const STADIUM_PEDS = 8;
+function maintainStadiumPeds() {
+  const S = W.STADIUM;
+  if (!S) return;
+  if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) return;
+  let n = 0;
+  for (const pe of pedestrians) {
+    if (!pe.stadium) continue;
+    // leash: wandered out the tunnel → recycle next maintain
+    if (pe.x < S.x0 - 60 || pe.x > S.x1 + 60 || pe.y < S.y0 - 60 || pe.y > S.y1 + 60) pe.dead = true;
+    else n++;
+  }
+  const px0 = S.x0 + S.ring + 10, px1 = S.x1 - S.ring - 10;
+  const py0 = S.y0 + S.ring + 10, py1 = S.y1 - S.ring - 10;
+  let guard = 0;
+  while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 2) {
+    pedestrians.push({
+      x: px0 + Math.random() * (px1 - px0), y: py0 + Math.random() * (py1 - py0),
+      ang: Math.random() * Math.PI * 2, v: 12 + Math.random() * 12,
+      hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
+      stadium: true, cls: [3],
+    });
+    n++;
+  }
+}
+
 export function maintainStreaming() {
   topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || far(e));
+  maintainStadiumPeds();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
   topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || far(e));
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);

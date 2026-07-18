@@ -115,6 +115,37 @@ export class PixiScene {
     roof.rect(rx0, T.y0 - 2, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
     roof.rect(rx0, T.y1 - 1, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
     this.L.over.addChild(roof);
+
+    this._buildCrowd(S);
+  }
+
+  // Celebrating crowd on the gradas: dots in Puntarenas-FC orange/black/white
+  // doing la ola around the ring (phase follows the perimeter). Animated in
+  // render() — cheap: only positions move.
+  _buildCrowd(S) {
+    const { x0, y0, x1, y1, ring } = S;
+    const T = S.tunnel;
+    const PAL = [0xff8c2e, 0xff8c2e, 0xffffff, 0x26222c, 0xffd23f];
+    const c = new Container();
+    this.crowd = [];
+    let per = 0; // running perimeter distance → wave phase
+    const seat = (bx, by) => {
+      // keep the tunnel corridor clear of spectators
+      if (bx > T.x0 - 6 && bx < T.x1 + 6 && by > T.y0 - 6 && by < T.y1 + 6) return;
+      const g = new Graphics();
+      g.circle(0, 0, 2).fill(PAL[(Math.random() * PAL.length) | 0]);
+      g.position.set(bx, by);
+      c.addChild(g);
+      this.crowd.push({ g, bx, by, phase: per * 0.045, amp: 1.8 + Math.random() * 1.4 });
+    };
+    const rows = [ring * 0.3, ring * 0.7];
+    for (const r of rows) {
+      for (let x = x0 + 6; x < x1 - 6; x += 9) { seat(x, y0 + r); per += 9; }       // north
+      for (let y = y0 + 6; y < y1 - 6; y += 9) { seat(x1 - r, y); per += 9; }       // east
+      for (let x = x1 - 6; x > x0 + 6; x -= 9) { seat(x, y1 - r); per += 9; }       // south
+      for (let y = y1 - 6; y > y0 + 6; y -= 9) { seat(x0 + r, y); per += 9; }       // west
+    }
+    this.L.buildings.addChild(c);
   }
 
   // ----- tiles ---------------------------------------------------------------
@@ -312,7 +343,15 @@ export class PixiScene {
     this.world.scale.set(z);
     this.world.position.set(sw / 2 - camX * z, sh / 2 - camY * z);
 
-    if (this.landmarksOnly) return; // static structures: camera transform is all
+    // la ola: each spectator hops as the wave phase sweeps the perimeter
+    if (this.crowd) {
+      const tt = tms * 0.0035;
+      for (const s of this.crowd) {
+        s.g.position.y = s.by - Math.max(0, Math.sin(tt + s.phase)) * s.amp;
+      }
+    }
+
+    if (this.landmarksOnly) return; // structures + crowd: camera transform is all
 
     const hw = sw / 2 / z, hh = sh / 2 / z;
     const visible = W.visibleTiles(camX - hw, camY - hh, camX + hw, camY + hh);

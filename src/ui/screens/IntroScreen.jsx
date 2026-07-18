@@ -18,11 +18,16 @@ const SLIDES = 3;
 export default function IntroScreen({ onDone }) {
   const t = useT();
   const [slide, setSlide] = useState(0);
+  const [leaving, setLeaving] = useState(false);
   const last = slide === SLIDES - 1;
   const finish = () => { markSeen(); onDone(); };
   const next = () => {
+    if (leaving) return;
     sfx.play("menu_select");
-    if (last) finish(); else setSlide(slide + 1);
+    if (last) { finish(); return; }
+    // let the current slide glide out before the next one glides in
+    setLeaving(true);
+    setTimeout(() => { setSlide((s) => s + 1); setLeaving(false); }, 260);
   };
 
   return (
@@ -31,7 +36,7 @@ export default function IntroScreen({ onDone }) {
         <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
       </div>
       <div className="page-body">
-        <div className="intro-slide" key={slide}>
+        <div className={"intro-slide" + (leaving ? " leave" : "")} key={slide}>
           <p className="intro-text">{t(`intro.${slide + 1}`)}</p>
           {last && <p className="intro-support">{t("intro.support")}</p>}
         </div>

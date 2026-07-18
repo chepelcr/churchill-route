@@ -387,7 +387,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   from { opacity: 0; transform: scale(0.92); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .screen-anim, .overlay .panel { animation: none; }
+  .screen-anim, .overlay .panel,
+  .boot-logo, .boot-art, .boot-bar, .boot-loading, .intro-slide, .intro-support { animation: none; }
 }
 
 /* ----- Tutorial coach-marks overlay (visual only, game plays through) ----- */
@@ -559,20 +560,32 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 18px; background: #0b1a2e; cursor: pointer;
 }
-.boot-screen.load { background: radial-gradient(ellipse at 50% 42%, #123049 0%, #0b1a2e 72%); }
-.boot-logo { width: min(70vw, 520px); animation: boot-logo 2.2s ease-in-out both; }
-@keyframes boot-logo {
-  0% { opacity: 0; transform: scale(0.92); }
-  18% { opacity: 1; transform: scale(1); }
-  82% { opacity: 1; }
-  100% { opacity: 0; }
+/* the charge screen's glow lives in ::before so the background MORPHS in
+   (gradients aren't transition-able; opacity is) */
+.boot-screen::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 42%, #123049 0%, #0b1a2e 72%);
+  opacity: 0; transition: opacity 700ms ease;
 }
-.boot-art { width: min(86vw, 900px); max-height: 66vh; object-fit: contain; animation: boot-art-in 500ms ease-out both; }
-@keyframes boot-art-in { from { opacity: 0; transform: translateY(10px); } }
+.boot-screen.load::before { opacity: 1; }
+.boot-screen > * { position: relative; }
+/* whole screen fades away to reveal the attract world behind */
+.boot-screen.out { animation: boot-out 500ms ease both; }
+@keyframes boot-out { to { opacity: 0; } }
+.boot-logo { width: min(70vw, 520px); animation: boot-logo 2.4s ease-in-out both; }
+@keyframes boot-logo {
+  0% { opacity: 0; transform: scale(0.94); }
+  16% { opacity: 1; transform: scale(1); }
+  80% { opacity: 1; transform: scale(1.015); }
+  100% { opacity: 0; transform: scale(1.03); }
+}
+.boot-art { width: min(86vw, 900px); max-height: 66vh; object-fit: contain; animation: boot-art-in 600ms cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+@keyframes boot-art-in { from { opacity: 0; transform: translateY(14px) scale(0.985); } }
 .boot-bar {
   width: min(60vw, 420px); height: 10px; border-radius: 999px;
   background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
   overflow: hidden;
+  animation: boot-art-in 500ms ease-out 250ms both;
 }
 .boot-bar span {
   display: block; height: 100%; width: 0; border-radius: 999px;
@@ -580,19 +593,32 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   animation: boot-fill linear both;
 }
 @keyframes boot-fill { to { width: 100%; } }
-.boot-loading { font: 12px "JetBrains Mono", monospace; letter-spacing: 0.22em; opacity: 0.7; }
+.boot-loading {
+  font: 12px "JetBrains Mono", monospace; letter-spacing: 0.22em; opacity: 0.7;
+  animation: boot-art-in 500ms ease-out 350ms both;
+}
 
-/* First-run lore intro: tap anywhere (or the button) to advance */
+/* First-run lore intro: tap anywhere (or the button) to advance.
+   Slides glide: new one eases in from the right, the old one slips out left. */
 .intro-page { cursor: pointer; }
-.intro-page .intro-slide { animation: screen-in 320ms cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+.intro-page .intro-slide { animation: intro-slide-in 400ms cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+@keyframes intro-slide-in { from { opacity: 0; transform: translateX(28px); } }
+.intro-page .intro-slide.leave { animation: intro-slide-out 260ms ease both; }
+@keyframes intro-slide-out { to { opacity: 0; transform: translateX(-28px); } }
 .intro-page .intro-text {
   font: 17px/1.7 "JetBrains Mono", monospace;
   max-width: 620px; margin: 0 auto; text-align: center;
 }
-.intro-page .intro-support { font-size: 13px; opacity: 0.72; margin: 14px auto 0; max-width: 560px; }
+.intro-page .intro-support {
+  font-size: 13px; opacity: 0.72; margin: 14px auto 0; max-width: 560px;
+  animation: boot-art-in 500ms ease-out 400ms both;
+}
 .intro-dots { display: flex; gap: 8px; justify-content: center; }
-.intro-dots .dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.25); }
-.intro-dots .dot.on { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.intro-dots .dot {
+  width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.25);
+  transition: background 250ms, box-shadow 250ms, transform 250ms;
+}
+.intro-dots .dot.on { background: var(--gold); box-shadow: 0 0 10px var(--gold); transform: scale(1.3); }
 /* bigger, full-screen-worthy type on these pages */
 .page-card .set-lbl { font-size: 14px; }
 .page-card .set-desc, .page-card .shop-desc { font-size: 13px; }

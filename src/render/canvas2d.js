@@ -864,12 +864,13 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.beginPath(); ctx.ellipse(x + 4, y + 8, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
     switch (lm.type) {
       case "kiosk": {
+        // white + ORANGE kiosk (was red); the churchill drink stays red — it's the syrup
         ctx.fillStyle = "#fff"; ctx.fillRect(x - 16, y - 8, 32, 18);
-        for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? "#fff" : "#e85d75"; ctx.fillRect(x - 16 + i * 8, y - 14, 8, 6); }
+        for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? "#fff" : "#f08a5d"; ctx.fillRect(x - 16 + i * 8, y - 14, 8, 6); }
         ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fillRect(x - 4, y - 4, 8, 12);
         ctx.fillStyle = "#ff3d80"; ctx.fillRect(x - 4, y, 8, 6);
         ctx.fillStyle = "#fff"; ctx.fillRect(x - 4, y - 4, 8, 3);
-        label(x, y - 22, "CHURCHILL", "#fff", "#e85d75"); break;
+        label(x, y - 22, "CHURCHILL", "#fff", "#f08a5d"); break;
       }
       case "ferry":
       case "cruise": {

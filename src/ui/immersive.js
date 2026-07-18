@@ -1,11 +1,11 @@
 // Fullscreen + landscape lock for touch devices, called from user-gesture
 // handlers (mode buttons). Every failure is swallowed: iPhone Safari has no
 // element-fullscreen API (the installed PWA covers that via the manifest's
-// display:fullscreen + orientation:landscape, and the CSS rotate overlay
-// handles portrait in the browser tab).
+// display:standalone — iOS rejects "fullscreen"; Android gets fullscreen via
+// display_override — and the CSS rotate overlay handles portrait).
 // iPhone Safari (browser tab, not installed PWA / native shell) can never go
-// fullscreen — the only path is Add to Home Screen (the manifest already asks
-// for fullscreen+landscape). The Title screen shows a one-time hint for it.
+// fullscreen — the only path is Add to Home Screen. The Title screen shows a
+// one-time hint for it.
 const IOS_HINT_KEY = "churchill_ios_hint_v1";
 export function needsIosFullscreenHint() {
   if (typeof window === "undefined" || window.Capacitor) return false;

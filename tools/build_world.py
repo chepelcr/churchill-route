@@ -1605,7 +1605,8 @@ def detect_blocks(grid):
 # one block's cell set (never straddling aceras/streets, by construction).
 # A shared occupancy set keeps OSM + synth footprints disjoint.
 
-SYNTH_MAX_TOTAL = 8000          # cap on real + synthesized buildings
+SYNTH_MAX_TOTAL = 40000         # cap on real + synthesized buildings (8000 hit
+                                # the cap mid-map and left whole cuadras empty)
 SYNTH_SEED = 77
 BLDG_INSET = 2                  # px seam per side so adjacent roofs don't fuse
 FRONTAGE_DEPTH = 3              # buildable band (CUADs) from the block edge
@@ -2759,6 +2760,45 @@ def main():
     print(f"[median] {n_median_palms} palms on the paseo median dashes, "
           f"{len(trees)} trees on the tree lines ({n_ferro_trees} Ferrocarril, "
           f"{n_dc} Cocal divided-avenue median)")
+
+    # --- living puerto: trees in the cuadra patios (the open interiors behind
+    # the frontage band) and parks, plus coconut palms scattered on open beach.
+    # Deterministic: sorted block/cell order + the shared seeded rng.
+    n_patio = 0
+    PATIO_MAX = 45000
+    for bi in sorted(range(len(blocks)), key=lambda i: min(blocks[i]["cells"])):
+        b = blocks[bi]
+        green = b.get("green")
+        size = len(b["cells"])
+        p = 0.55 if green else 0.30
+        if size > 400:                       # huge rural blocks: bounded, not carpeted
+            p *= 400.0 / size
+        for (cc, cr) in sorted(b["cells"], key=lambda c: (c[1], c[0])):
+            if n_patio >= PATIO_MAX:
+                break
+            if (cc, cr) in occ:
+                continue
+            if rng() > p:
+                continue
+            trees.append({"x": round(cc * CUAD + CUAD / 2 + (rng() - 0.5) * 8),
+                          "y": round(cr * CUAD + CUAD / 2 + (rng() - 0.5) * 8),
+                          "s": round(0.85 + rng() * 0.4, 2)})
+            n_patio += 1
+    n_beach_palms = 0
+    _lat = 6                                     # 6 cells = 24 px lattice
+    for gr in range(0, GRID_ROWS, _lat):
+        row = gr * GRID_COLS
+        for gc in range(0, GRID_COLS, _lat):
+            if grid[row + gc] != CLS_BEACH:
+                continue
+            if rng() > 0.16:
+                continue
+            palms.append({"x": round(gc * GRID_CELL + (rng() - 0.5) * 18),
+                          "y": round(gr * GRID_CELL + (rng() - 0.5) * 18),
+                          "s": round(0.75 + rng() * 0.45, 2),
+                          "sway": round(rng() * 6.28, 2)})
+            n_beach_palms += 1
+    print(f"[verde] {n_patio} patio/park trees, {n_beach_palms} beach palms")
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).

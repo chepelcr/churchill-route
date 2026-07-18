@@ -85,6 +85,15 @@ export function attachThrottle(canvasEl) {
   if (!canvasEl) return;
   canvasEl.addEventListener("touchstart", (e) => {
     e.preventDefault();
+    // Stale claim? A finger that slid OFF the screen edge never fires
+    // touchend on the canvas, leaving aim.id pointing at a dead touch and
+    // ignoring every new finger ("car won't move anymore"). If the claimed
+    // id is no longer among the active touches, release it first.
+    if (aim.id !== null) {
+      let alive = false;
+      for (const t of e.touches) if (t.identifier === aim.id) alive = true;
+      if (!alive) { aim.id = null; aim.active = false; }
+    }
     if (aim.id === null && e.changedTouches.length) {
       const t = e.changedTouches[0];
       aim.id = t.identifier; aim.active = true;
@@ -105,6 +114,10 @@ export function attachThrottle(canvasEl) {
   canvasEl.addEventListener("touchmove", track, { passive: true });
   canvasEl.addEventListener("touchend", release);
   canvasEl.addEventListener("touchcancel", release);
+  // release also at the window level: end/cancel for a finger that left the
+  // viewport lands here, not on the canvas
+  window.addEventListener("touchend", release);
+  window.addEventListener("touchcancel", release);
 }
 
 export function attachTouch(brakeEl) {

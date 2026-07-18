@@ -1508,6 +1508,22 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.restore();
   }
 
+  // Hybrid overlay: Pixi owns the player body/shadow; this draws only the
+  // churchill melt bar riding above the car (game-critical UI, not bodywork).
+  function drawPlayerCarrying(p, veh) {
+    if (!state.carrying) return;
+    const lift = (state.elev || 0) * 7;
+    ctx.save();
+    ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
+    const m = state.carrying.melt / state.carrying.total;
+    ctx.fillStyle = "#fff"; ctx.fillRect(-3, -veh.h/2 - 6, 6, 8);
+    const hRed = 6 * (1 - m * 0.5);
+    ctx.fillStyle = `oklch(0.62 0.22 ${25 + m * 20})`;
+    ctx.fillRect(-3, -veh.h/2 - 6 + (6 - hRed), 6, hRed);
+    ctx.fillStyle = "#fff"; ctx.fillRect(-3, -veh.h/2 - 7, 6, 2);
+    ctx.restore();
+  }
+
   // Objective compass: pinned at the top-center of the SCREEN (never lost
   // off-view), rotating to point at the target. Screen angle = world angle
   // (the camera transform is uniform scale + translate).
@@ -1629,6 +1645,12 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // city-exploration scale. World-space span shrinks accordingly.
   let ZOOM = 5.5; // recomputed responsively per viewport in setupCanvas()
 
+  // Overlay mode (hybrid renderer): Pixi draws the world + entities below this
+  // canvas; here we skip those passes and only paint what Pixi doesn't own yet
+  // (landmarks, pier/bridge, weather, particles/floats, compass, minimap).
+  let OVERLAY = false;
+  function setOverlayMode(v) { OVERLAY = !!v; }
+
   function render(t) {
     if (!ctx) return;
     const cw = canvas.width, ch = canvas.height;
@@ -1636,9 +1658,11 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, vw, vh);
 
-    // Camera
+    // Camera — in overlay mode reuse the jitter Pixi computed this frame so
+    // both canvases shake in lockstep
     const shake = state.cam.shake;
-    const sx = (Math.random() - 0.5) * shake, sy = (Math.random() - 0.5) * shake;
+    const sx = OVERLAY && state.cam._sx !== undefined ? state.cam._sx : (Math.random() - 0.5) * shake;
+    const sy = OVERLAY && state.cam._sy !== undefined ? state.cam._sy : (Math.random() - 0.5) * shake;
     const cam = { x: state.cam.x + sx, y: state.cam.y + sy };
     const wvw = vw / ZOOM, wvh = vh / ZOOM;
     const view = { x0: cam.x - wvw/2 - 40, x1: cam.x + wvw/2 + 40, y0: cam.y - wvh/2 - 40, y1: cam.y + wvh/2 + 40 };
@@ -1648,16 +1672,18 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.scale(ZOOM, ZOOM);
     ctx.translate(-cam.x, -cam.y);
 
-    // Sky/water everywhere (drawn in world coords across viewport)
-    drawWaterAll(view, t);
-    // Boats (behind land)
-    for (const b of boats) {
-      if (b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
-      drawBoat(b);
+    if (!OVERLAY) {
+      // Sky/water everywhere (drawn in world coords across viewport)
+      drawWaterAll(view, t);
+      // Boats (behind land)
+      for (const b of boats) {
+        if (b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
+        drawBoat(b);
+      }
+      // Painterly 2-D world from resident tiles: land silhouette + road strokes +
+      // buildings + palms/trees (replaces the corridor's global-array drawers).
+      drawWorld2D(view, t);
     }
-    // Painterly 2-D world from resident tiles: land silhouette + road strokes +
-    // buildings + palms/trees (replaces the corridor's global-array drawers).
-    drawWorld2D(view, t);
     // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
     // Cruceros deck (its BRIDGE surface cells are drivable but not painted by
     // the vector road pass) and the Mata de Limón suspension bridge.
@@ -1675,30 +1701,32 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       if (lo.x < view.x0 - 60 || lo.x > view.x1 + 60 || lo.y < view.y0 - 60 || lo.y > view.y1 + 60) continue;
       drawLote(lo);
     }
-    // Pedestrians, traffic
-    for (const pe of pedestrians) {
-      if (pe.x < view.x0 - 20 || pe.x > view.x1 + 20) continue;
-      drawPed(pe);
-    }
-    for (const pk of parked) {
-      if (pk.x < view.x0 - 20 || pk.x > view.x1 + 20 || pk.y < view.y0 - 20 || pk.y > view.y1 + 20) continue;
-      drawCar(pk);
-    }
-    for (const vn of vendors) {
-      if (vn.x < view.x0 - 20 || vn.x > view.x1 + 20 || vn.y < view.y0 - 20 || vn.y > view.y1 + 20) continue;
-      drawVendor(vn, t);
-    }
-    for (const an of animals) {
-      if (an.x < view.x0 - 20 || an.x > view.x1 + 20 || an.y < view.y0 - 20 || an.y > view.y1 + 20) continue;
-      drawAnimal(an);
-    }
-    for (const car of traffic) {
-      if (car.x < view.x0 - 20 || car.x > view.x1 + 20) continue;
-      drawCar(car);
-    }
-    for (const tr of trains) {
-      if (tr.x < view.x0 - 140 || tr.x > view.x1 + 140 || tr.y < view.y0 - 140 || tr.y > view.y1 + 140) continue;
-      drawTrain(tr, t);
+    // Pedestrians, traffic (Pixi's in hybrid mode)
+    if (!OVERLAY) {
+      for (const pe of pedestrians) {
+        if (pe.x < view.x0 - 20 || pe.x > view.x1 + 20) continue;
+        drawPed(pe);
+      }
+      for (const pk of parked) {
+        if (pk.x < view.x0 - 20 || pk.x > view.x1 + 20 || pk.y < view.y0 - 20 || pk.y > view.y1 + 20) continue;
+        drawCar(pk);
+      }
+      for (const vn of vendors) {
+        if (vn.x < view.x0 - 20 || vn.x > view.x1 + 20 || vn.y < view.y0 - 20 || vn.y > view.y1 + 20) continue;
+        drawVendor(vn, t);
+      }
+      for (const an of animals) {
+        if (an.x < view.x0 - 20 || an.x > view.x1 + 20 || an.y < view.y0 - 20 || an.y > view.y1 + 20) continue;
+        drawAnimal(an);
+      }
+      for (const car of traffic) {
+        if (car.x < view.x0 - 20 || car.x > view.x1 + 20) continue;
+        drawCar(car);
+      }
+      for (const tr of trains) {
+        if (tr.x < view.x0 - 140 || tr.x > view.x1 + 140 || tr.y < view.y0 - 140 || tr.y > view.y1 + 140) continue;
+        drawTrain(tr, t);
+      }
     }
     // Particles
     for (const pt of state.particles) {
@@ -1707,13 +1735,15 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    // Active delivery target, then player (neither exists in attract mode)
+    // Active delivery target, then player (neither exists in attract mode).
+    // Hybrid: Pixi draws the player body/shadow; only the carrying bar stays.
     if (!state.attract) {
       drawTargetCustomer(t);
-      drawPlayer(state.p, state.veh);
+      if (OVERLAY) drawPlayerCarrying(state.p, state.veh);
+      else drawPlayer(state.p, state.veh);
     }
     // Gulls above
-    for (const g of gulls) {
+    if (!OVERLAY) for (const g of gulls) {
       if (g.x < view.x0 - 30 || g.x > view.x1 + 30) continue;
       drawGull(g);
     }
@@ -1751,4 +1781,4 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     }
   }
 
-export { setupCanvas, render, paintVehicle };
+export { setupCanvas, render, paintVehicle, setOverlayMode };

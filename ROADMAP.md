@@ -4,6 +4,31 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Puerto vivo + backend Pixi híbrido (opt-in) + fixes móviles (2026-07-18 PM)
+
+- [x] **Cuadras llenas**: el tope de edificios (8000) se agotaba a mitad de mapa
+      dejando cuadras de pura arena → 40000 (531 OSM + 39469 sintetizados en la
+      banda de frente, oeste→este, toda la zona MVP cubierta). Gate 56/56 OK.
+- [x] **Verde**: 15 817 árboles en los patios interiores de las cuadras y
+      parques (densidad acotada en bloques rurales gigantes) + 1 554 palmeras
+      cocoteras dispersas por la playa. Tiles totales 7.9 MB.
+- [x] **Backend Pixi HÍBRIDO** (`src/render/pixi/scene.js` + adapter):
+      Pixi/WebGL dibuja mundo (backdrop, tiles, calles vectoriales con acera,
+      edificios, árboles/palmeras) y TODAS las entidades (botes, peatones,
+      vendedores, animales, tráfico, trenes, gaviotas, jugador con sprite
+      rasterizado de paintVehicle + sombra de silueta); canvas2d queda encima
+      en modo overlay (landmarks, muelle/puente, clima, partículas, brújula,
+      minimapa, barra de derretido). **Opt-in mientras estabiliza**: `?pixi` o
+      localStorage churchill_renderer="pixi". Elementos nuevos → SIEMPRE al
+      backend Pixi.
+- [x] **Fix dedo fuera de pantalla**: el touchend nunca llegaba al canvas y el
+      dedo de manejo quedaba "reclamado" para siempre — ahora se libera a nivel
+      window y el touchstart re-reclama ids muertos.
+- [x] **Fullscreen al rotar** (web móvil): intento directo en el evento de
+      orientación + el siguiente toque lo garantiza (los navegadores piden
+      gesto). **Intro/boot caben sin scroll** en teléfonos cortos
+      (media query max-height 500px).
+
 ## ✅ Onboarding + pantallas full-screen + colisión sellada (2026-07-18)
 
 - [x] **Secuencia de arranque estilo Hill Climb** (`src/ui/screens/BootScreen.jsx`,

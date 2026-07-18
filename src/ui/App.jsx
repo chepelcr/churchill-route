@@ -101,6 +101,24 @@ export default function App() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
+  // Mobile web: rotating to landscape should land straight in fullscreen.
+  // Browsers only grant fullscreen with a user gesture, so try on the rotate
+  // event itself (works in some engines/PWA) AND on the next touch after it.
+  useEffect(() => {
+    if (!window.matchMedia("(pointer: coarse)").matches) return;
+    const landscape = window.matchMedia("(orientation: landscape)");
+    const tryFs = () => {
+      if (landscape.matches && !document.fullscreenElement) enterImmersive();
+    };
+    const onRotate = (e) => { if (e.matches) tryFs(); };
+    landscape.addEventListener("change", onRotate);
+    window.addEventListener("touchend", tryFs, { passive: true });
+    return () => {
+      landscape.removeEventListener("change", onRotate);
+      window.removeEventListener("touchend", tryFs);
+    };
+  }, []);
+
   function pickMode(mode) {
     enterImmersive();
     if (mode === "story") setScreen("stagepick");

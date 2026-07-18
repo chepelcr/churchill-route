@@ -4,6 +4,26 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Onboarding + pantallas full-screen + colisión sellada (2026-07-18)
+
+- [x] **Intro de lore al primer arranque** (`src/ui/screens/IntroScreen.jsx`):
+      3 diapositivas (el churchill, el sol porteño, tu misión) sobre el mundo
+      attract → directo al tutorial → al completar, al menú principal (ya no
+      pasa por resultados). La última diapositiva lleva la única línea de
+      apoyo ("el ❤ del menú te espera") — no intrusiva, decisión del usuario.
+- [x] **Tutorial sin velo gris**: se quitó `.tut-veil` y la sombra de 9999px
+      del spotlight; queda el anillo pulsante + flecha + panel inferior.
+- [x] **Pantallas full-screen** al estilo Ajustes/Tienda (`.page-card`):
+      Título, Resultados y Agradecimientos (con `.page-body.scrolly` +
+      `.center-stack` para centrar-o-scrollear).
+- [x] **Colisión acera SELLADA**: girar ya no puede meter las esquinas dentro
+      de la pared (guard que revierte el ángulo) — era el hueco que dejaba
+      atravesar la cuadra al pegarle dos veces al mismo punto; red extra:
+      snap a la última pose libre (<60px) en vez del fallback "drive out".
+- [x] **Vehículos 0.85× extra** (total ~0.72 del original) + hitbox tráfico
+      14/10; sombra de silueta también en los previews de tienda/menús
+      (`VehiclePreview.jsx` usaba fillRect).
+
 ## ✅ Tráfico continuo + dificultad + game-feel (2026-07-17)
 
 - [x] **Tráfico que recorre el pueblo de verdad**: los carros ya no mueren al

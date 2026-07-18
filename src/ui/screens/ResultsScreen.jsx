@@ -42,15 +42,18 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
     : isStage ? (won ? t("results.win", { n: s.stage.num }) : t("results.lose"))
     : s.mode === "arcade" && !won ? t("results.lose") : t("results.title");
   return (
-    <div className="overlay">
-      <div className="panel">
+    <div className="page-card">
+      <div className="page-body scrolly">
+        <div className="center-stack">
         <h2 style={{ color: won ? "var(--gold)" : "var(--hot)" }}>{title}</h2>
         {isStage && <div style={{ marginBottom: 10, color: "var(--paper)" }}>{stageName(s.stage)}</div>}
+        <div className="results-stats">
         <div className="row"><span>{t("results.score")}</span><span>{s.score.toLocaleString()}</span></div>
         <div className="row"><span>{t("results.deliveries")}</span><span>{isStage ? `${s.stageDeliveries}/${s.stageTarget}` : s.deliveries}</span></div>
         <div className="row"><span>{t("results.perfect")}</span><span>{s.perfect}</span></div>
         <div className="row"><span>{t("results.maxCombo")}</span><span>×{s.combo}</span></div>
         {!isTutorial && <div className="row"><span>{t("results.rank")}</span><span style={{ color: "var(--gold)" }}>{rank}</span></div>}
+        </div>
         {!isTutorial && (s.runCoins || 0) > 0 && (
           // the level's coin haul, front and center before leaving the screen
           <div className="coins-band">
@@ -80,6 +83,7 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
             <Icon name="coffee" size={14} /> {t("sup.kofi")}
           </a>
         )}
+        </div>
       </div>
     </div>
   );

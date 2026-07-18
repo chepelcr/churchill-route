@@ -3,11 +3,10 @@ import { Game } from "../game/index.js";
 import { useT } from "../i18n/index.js";
 import Icon from "./Icon.jsx";
 
-// Tutorial coach-marks: a gray translucent veil over the whole screen with a
-// SPOTLIGHT cutout on the control the step needs (joystick, brake, compass,
-// melt bar) plus a bouncing arrow — or, on desktop, big keycaps, since PC
-// plays with the keyboard. Purely visual (pointer-events: none) so the game
-// stays fully playable underneath.
+// Tutorial coach-marks: a pulsing SPOTLIGHT ring on the control the step
+// needs (brake, compass, melt bar) plus a bouncing arrow — or, on desktop,
+// big keycaps, since PC plays with the keyboard. No veil: the game stays
+// bright and fully playable underneath (pointer-events: none).
 const COARSE = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 
 // drawCompass pins itself at (vw/2, 92) with r=24 (+ the distance label)
@@ -59,14 +58,11 @@ export default function TutorialOverlay() {
 
   return (
     <div className="tut-overlay" aria-hidden="true">
-      {spec.rect ? (
-        // the spotlight's giant box-shadow IS the gray veil (hole stays clear)
+      {spec.rect && (
         <div className={"tut-spot" + (spec.round ? " round" : "")}
           style={{ left: spec.rect.left, top: spec.rect.top, width: spec.rect.width, height: spec.rect.height }}>
           <div className={"tut-arrow " + (arrowBelow ? "below" : "above")}>{arrowBelow ? "▲" : "▼"}</div>
         </div>
-      ) : (
-        <div className="tut-veil" />
       )}
 
       {spec.finger && (

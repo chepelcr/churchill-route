@@ -69,6 +69,19 @@ export function update(dt) {
   // drop every frame of contact
   state.hitT = Math.max(0, (state.hitT || 0) - dt);
 
+  // Full-body wall probe: the four corners of the car's oriented box (0.8×
+  // extents for arcade forgiveness) — a center-only test let half the body
+  // sink into aceras. Classes 1 land / 6 acera / 0 water / 2 beach are walls.
+  const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2; };
+  const hw = veh.w * 0.5 * 0.8, hh = veh.h * 0.5 * 0.8;
+  const blockedAt = (x, y, ang = p.a) => {
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    return isWall(x + ca * hw - sa * hh, y + sa * hw + ca * hh) ||
+           isWall(x + ca * hw + sa * hh, y + sa * hw - ca * hh) ||
+           isWall(x - ca * hw - sa * hh, y - sa * hw + ca * hh) ||
+           isWall(x - ca * hw + sa * hh, y - sa * hw - ca * hh);
+  };
+
   // turning — during a touch snap window (finger re-placed) the low-speed
   // floor rises so the car pivots instead of trailer-arcing; the held-finger
   // curve is untouched, and both meet at the same top-speed rate (1.3).
@@ -76,7 +89,13 @@ export function update(dt) {
   const turning = input.right - input.left;
   const spdFac = Math.min(1, Math.abs(p.speed) / veh.top);
   const turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
+  const prevA = p.a;
   p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
+  // Turning must never sweep the body INTO a wall: once a corner penetrated,
+  // both current and previous positions read blocked and the resolver's
+  // "drive out" fallback let the car sail straight through the cuadra
+  // (the hit-the-acera-twice pass-through bug).
+  if (p.a !== prevA && blockedAt(p.x, p.y) && !blockedAt(p.x, p.y, prevA)) p.a = prevA;
 
   // acceleration (headstart consumable = free turbo for its first seconds)
   const boosting = input.boost || (state.headstartT || 0) > 0;
@@ -114,16 +133,6 @@ export function update(dt) {
   // beach and class 0 water are walls you slide along — kill only the blocked
   // axis so tangential motion carries you. Beach became a wall on user
   // request (beach-classed pockets also let you slip inside cuadras).
-  const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2; };
-  // Probe the car's oriented box (0.8× extents for arcade forgiveness), not
-  // just its center — a center-only test let half the body sink into aceras.
-  const hw = veh.w * 0.5 * 0.8, hh = veh.h * 0.5 * 0.8;
-  const ca = Math.cos(p.a), sa = Math.sin(p.a);
-  const blockedAt = (x, y) =>
-    isWall(x + ca * hw - sa * hh, y + sa * hw + ca * hh) ||
-    isWall(x + ca * hw + sa * hh, y + sa * hw - ca * hh) ||
-    isWall(x - ca * hw - sa * hh, y - sa * hw + ca * hh) ||
-    isWall(x - ca * hw + sa * hh, y - sa * hw - ca * hh);
   if (blockedAt(p.x, p.y)) {
     const okX = !blockedAt(p.x, prevY);
     const okY = !blockedAt(prevX, p.y);
@@ -132,9 +141,14 @@ export function update(dt) {
     else if (!blockedAt(prevX, prevY)) {
       p.x = prevX; p.y = prevY; p.vx *= -0.45; p.vy *= -0.45;
       state.cam.shake = Math.max(state.cam.shake, 2);
+    } else if (p.freeX !== undefined && Math.hypot(p.x - p.freeX, p.y - p.freeY) < 60) {
+      // both ends blocked but we were clear a moment ago: snap back instead of
+      // the drive-out fallback (which would carry the car through the cuadra).
+      // The distance gate keeps stale positions from a previous run inert.
+      p.x = p.freeX; p.y = p.freeY; p.vx = 0; p.vy = 0;
     }
     // else: spawned/teleported inside a block — let it drive out
-  }
+  } else { p.freeX = p.x; p.freeY = p.y; } // last fully-clear pose
   p.speed = Math.hypot(p.vx, p.vy);
 
   // On the 2-D world the coastline is enforced by water-as-wall above, so the
@@ -291,7 +305,7 @@ export function advanceEntities(dt, withPlayer = true) {
   // connecting way at intersections; recycled only by the far cull.
   for (const t of traffic) {
     advanceCarOnRoad(t, dt);
-    if (withPlayer && Math.abs(t.x - p.x) < 17 && Math.abs(t.y - p.y) < 12) {
+    if (withPlayer && Math.abs(t.x - p.x) < 14 && Math.abs(t.y - p.y) < 10) {
       p.vx -= (t.x - p.x) * 0.35; p.vy -= (t.y - p.y) * 0.35;
       state.cam.shake = Math.max(state.cam.shake, 6);
       // one drop roll per collision event, not per frame of contact

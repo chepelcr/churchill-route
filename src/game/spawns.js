@@ -133,13 +133,13 @@ function spawnOneCar() {
     lane: r.w >= 30 ? r.w / 4 : 0, // wide street: keep to your side; narrow: center
     v: main ? 70 + Math.random() * 40 : 48 + Math.random() * 28,
     color: CAR_PALETTE[(Math.random() * CAR_PALETTE.length) | 0],
-    w: main ? 32 : 27, h: main ? 15 : 14, kind: "car",
+    w: main ? 27 : 23, h: main ? 13 : 12, kind: "car",
     x: 0, y: 0, ang: 0,
   };
   if (main) {
     const roll = Math.random();
-    if (roll < 0.15) { car.kind = "truck"; car.w = 39; car.h = 15; }
-    else if (roll < 0.24) { car.kind = "bus"; car.w = 48; car.h = 16; car.color = "#e0762e"; car.v *= 0.85; }
+    if (roll < 0.15) { car.kind = "truck"; car.w = 33; car.h = 13; }
+    else if (roll < 0.24) { car.kind = "bus"; car.w = 41; car.h = 14; car.color = "#e0762e"; car.v *= 0.85; }
   }
   placeCarOnRoad(car);
   // Off-range OR on-screen (view half-diagonal ≈ 230): never materialize in view.

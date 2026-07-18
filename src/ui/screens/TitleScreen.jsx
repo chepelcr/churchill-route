@@ -6,7 +6,6 @@ import { economy } from "../../game/economy.js";
 import { needsIosFullscreenHint, dismissIosFullscreenHint } from "../immersive.js";
 import { useT } from "../../i18n/index.js";
 import CoinIcon from "../CoinIcon.jsx";
-import FitScale from "../FitScale.jsx";
 import Icon from "../Icon.jsx";
 
 // Hide the APK download in the native app (only offer it on the web).
@@ -43,13 +42,10 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
   const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 
   return (
-    <div className="title-bg">
-      <div className="title-shell">
-        <FitScale>
-        <div className="title-card">
-          <div className="title-head-row">
-            <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
-            <div className="title-tools">
+    <div className="page-card title-page">
+      <div className="page-head">
+        <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
+        <div className="title-tools">
               <div className="info-wrap" ref={infoRef}>
                 <button className="tool-pill" onClick={() => { sfx.play("menu_move"); setInfo((v) => !v); }}
                   aria-label={t("title.how.title")} aria-expanded={info}>{info ? "✕" : "ⓘ"}</button>
@@ -68,10 +64,11 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
                 aria-label={t("sup.title")}><Icon name="heart" /></button>
               <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSettings(); }}
                 aria-label={t("settings.title")}><Icon name="gear" /></button>
-              <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
-                aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} /></button>
-            </div>
-          </div>
+          <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
+            aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} /></button>
+        </div>
+      </div>
+      <div className="page-body">
           <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
           <div className="title-sub">{t("title.sub")}</div>
 
@@ -113,8 +110,6 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
               </>
             )}
           </div>
-        </div>
-        </FitScale>
       </div>
     </div>
   );

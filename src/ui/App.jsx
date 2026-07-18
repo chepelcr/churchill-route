@@ -7,6 +7,7 @@ import HUD from "./screens/HUD.jsx";
 import PauseScreen from "./screens/PauseScreen.jsx";
 import ResultsScreen from "./screens/ResultsScreen.jsx";
 import StageBrief from "./screens/StageBrief.jsx";
+import IntroScreen, { introSeen } from "./screens/IntroScreen.jsx";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import SupportersScreen from "./screens/SupportersScreen.jsx";
 import ShopScreen from "./screens/ShopScreen.jsx";
@@ -25,9 +26,9 @@ import { analytics } from "../monetize/analytics.js";
 
 export default function App() {
   const t = useT();
-  // screens: title | stagepick | brief | playing | paused | over | settings |
-  //          supporters | shop | vehpick (pre-run picker for arcade/explore)
-  const [screen, setScreen] = useState("title");
+  // screens: intro (first run only) | title | stagepick | brief | playing |
+  //          paused | over | settings | supporters | shop | vehpick
+  const [screen, setScreen] = useState(() => (introSeen() ? "title" : "intro"));
   const [pendingStage, setPendingStage] = useState(null);
   const [pendingMode, setPendingMode] = useState(null); // arcade | explore
   const canvasRef = useRef(null);
@@ -50,7 +51,9 @@ export default function App() {
     const tick = () => {
       tickRef.current += 1;
       if (tickRef.current % 3 === 0) setTick(tickRef.current);
-      if (Game.state.over && screenRef.current === "playing") setScreen("over");
+      // tutorial runs return to the menu (it congratulates in-game already)
+      if (Game.state.over && screenRef.current === "playing")
+        setScreen(Game.state.mode === "tutorial" ? "title" : "over");
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -83,7 +86,7 @@ export default function App() {
   useEffect(() => { Game.state.paused = (screen === "paused" || (screen === "settings" && settingsFrom.current === "paused")); }, [screen]);
 
   // Menu screens show the live world drifting behind them (attract mode).
-  useEffect(() => { Game.setAttract(["title", "stagepick", "supporters", "shop", "vehpick"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
+  useEffect(() => { Game.setAttract(["intro", "title", "stagepick", "supporters", "shop", "vehpick"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
 
   // Engine/drift hum only while actually driving; menu blips stay available.
   useEffect(() => { screen === "playing" ? sfx.resume() : sfx.quiet(); }, [screen]);
@@ -164,8 +167,13 @@ export default function App() {
   return (
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
-      {(screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick") && (
+      {(screen === "intro" || screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick") && (
         <div className="screen-anim" key={screen}>
+          {screen === "intro" && <IntroScreen onDone={() => {
+            enterImmersive();
+            Game.startTutorial({ vehicleKey: Game.state.vehicleKey });
+            setScreen("playing");
+          }} />}
           {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => setScreen("shop")} />}
           {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
           {screen === "shop" && <ShopScreen onBack={() => setScreen("title")} />}

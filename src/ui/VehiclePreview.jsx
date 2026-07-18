@@ -2,6 +2,7 @@
 // the render backend), big, on a little asphalt swatch, plus stat bars.
 import React, { useRef, useEffect } from "react";
 import { paintVehicle } from "../render/Renderer.js";
+import { traceVehicleSilhouette } from "../render/vehicleShapes.js";
 import { VEHICLES } from "../game/vehicles.js";
 import { useT } from "../i18n/index.js";
 import Icon from "./Icon.jsx";
@@ -40,7 +41,7 @@ export default function VehiclePreview({ vehKey, color = null }) {
     g.save();
     g.translate(w / 2 + 3 * (scale / 5), h / 2 + 4 * (scale / 5));
     g.scale(scale, scale);
-    g.fillStyle = "rgba(0,0,0,0.35)"; g.fillRect(-veh.w / 2, -veh.h / 2, veh.w, veh.h);
+    g.fillStyle = "rgba(0,0,0,0.35)"; traceVehicleSilhouette(g, vehKey, veh); g.fill();
     g.restore();
     g.save();
     g.translate(w / 2, h / 2);

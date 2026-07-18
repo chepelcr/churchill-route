@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useT } from "../../i18n/index.js";
 import { content } from "../../content/remote.js";
-import FitScale from "../FitScale.jsx";
 import Icon from "../Icon.jsx";
 
 const TIER_ICON = ["", "medal3", "medal2", "medal1", "crown"];
@@ -19,13 +18,16 @@ export default function SupportersScreen({ onBack }) {
   const kofi = content.meta.kofi;
 
   return (
-    <div className="title-bg">
-      <div className="title-shell">
-        <FitScale>
-        <div className="title-card settings-card">
-          <button className="btn secondary back-btn" onClick={onBack}>{t("settings.back")}</button>
-          <h1 className="title-main" style={{ fontSize: 32 }}>{t("sup.title")}</h1>
-          <p style={{ opacity: 0.8, fontSize: 13 }}>{t("sup.body")}</p>
+    <div className="page-card">
+      <div className="page-head">
+        <button className="btn secondary" onClick={onBack}>{t("settings.back")}</button>
+        <h1 className="title-main page-title">{t("sup.title")}</h1>
+        <span style={{ minWidth: 40 }}></span>
+      </div>
+
+      <div className="page-body scrolly">
+        <div className="center-stack">
+          <p style={{ opacity: 0.8, fontSize: 13, margin: "4px 0" }}>{t("sup.body")}</p>
 
           {byTier.length === 0 && <p className="sup-empty">{t("sup.empty")}</p>}
 
@@ -44,12 +46,11 @@ export default function SupportersScreen({ onBack }) {
 
           {kofi && (
             <a className="btn gold" href={kofi} target="_blank" rel="noopener noreferrer"
-              style={{ display: "inline-block", marginTop: 14 }}>
+              style={{ display: "inline-block", marginTop: 8, width: "auto" }}>
               <Icon name="coffee" size={15} /> {t("sup.kofi")}
             </a>
           )}
         </div>
-        </FitScale>
       </div>
     </div>
   );

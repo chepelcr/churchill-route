@@ -120,23 +120,22 @@ export class PixiScene {
   }
 
   // Celebrating crowd on the gradas: dots in Puntarenas-FC orange/black/white
-  // doing la ola around the ring (phase follows the perimeter). Animated in
-  // render() — cheap: only positions move.
+  // doing la ola — a single crest laps the ring on a shared 24s wall clock (the
+  // game logic derives coin drops from the same clock). Animated in render().
   _buildCrowd(S) {
     const { x0, y0, x1, y1, ring } = S;
     const T = S.tunnel;
     const PAL = [0xff8c2e, 0xff8c2e, 0xffffff, 0x26222c, 0xffd23f];
     const c = new Container();
     this.crowd = [];
-    let per = 0; // running perimeter distance → wave phase
+    let per = 0; // running perimeter distance
     const seat = (bx, by) => {
-      // keep the tunnel corridor clear of spectators
-      if (bx > T.x0 - 6 && bx < T.x1 + 6 && by > T.y0 - 6 && by < T.y1 + 6) return;
+      if (bx > T.x0 - 6 && bx < T.x1 + 6 && by > T.y0 - 6 && by < T.y1 + 6) return; // keep tunnel clear
       const g = new Graphics();
       g.circle(0, 0, 2).fill(PAL[(Math.random() * PAL.length) | 0]);
       g.position.set(bx, by);
       c.addChild(g);
-      this.crowd.push({ g, bx, by, phase: per * 0.045, amp: 1.8 + Math.random() * 1.4 });
+      this.crowd.push({ g, bx, by, u: per, amp: 1.8 + Math.random() * 1.4 });
     };
     const rows = [ring * 0.3, ring * 0.7];
     for (const r of rows) {
@@ -145,7 +144,13 @@ export class PixiScene {
       for (let x = x1 - 6; x > x0 + 6; x -= 9) { seat(x, y1 - r); per += 9; }       // south
       for (let y = y1 - 6; y > y0 + 6; y -= 9) { seat(x0 + r, y); per += 9; }       // west
     }
+    this.crowdPer = per || 1;            // total perimeter → normalize the crest sweep
     this.L.buildings.addChild(c);
+
+    // coin pool on the césped (positions come from state.stadiumCoins)
+    this.coinLayer = new Container();
+    this.coinPool = new Map();
+    this.L.buildings.addChild(this.coinLayer);
   }
 
   // ----- tiles ---------------------------------------------------------------
@@ -343,15 +348,43 @@ export class PixiScene {
     this.world.scale.set(z);
     this.world.position.set(sw / 2 - camX * z, sh / 2 - camY * z);
 
-    // la ola: each spectator hops as the wave phase sweeps the perimeter
+    // la ola: a crest at normalized position `head` sweeps the perimeter on
+    // the same 24s clock the game uses; seats within the crest window hop.
     if (this.crowd) {
-      const tt = tms * 0.0035;
+      const WAVE_MS = 24000;
+      const head = (tms % WAVE_MS) / WAVE_MS;      // 0..1 around the ring
+      const party = (state.stadiumParty || 0) > 0; // post-lap eruption
       for (const s of this.crowd) {
-        s.g.position.y = s.by - Math.max(0, Math.sin(tt + s.phase)) * s.amp;
+        let d = (s.u / this.crowdPer) - head;      // signed distance behind the crest
+        d -= Math.round(d);                        // wrap to [-0.5, 0.5]
+        const inCrest = Math.max(0, 1 - Math.abs(d) / 0.06); // 6% crest window
+        const bounce = party ? 0.5 + 0.5 * Math.abs(Math.sin(tms * 0.02 + s.u)) : 0;
+        s.g.position.y = s.by - (inCrest * s.amp + bounce * s.amp);
+      }
+    }
+    // coins on the pitch: spin + bob, synced to state.stadiumCoins by identity
+    if (this.coinLayer) {
+      const list = state.stadiumCoins || [];
+      const live = new Set(list);
+      for (const c of list) {
+        let g = this.coinPool.get(c);
+        if (!g) {
+          g = new Graphics();
+          g.circle(0, 0, 5).fill(0xffd23f);
+          g.circle(0, 0, 5).stroke({ width: 1.4, color: 0xd99a1c });
+          g.rect(-1, -2.6, 2, 5.2).fill({ color: 0xd99a1c, alpha: 0.7 });
+          this.coinLayer.addChild(g); this.coinPool.set(c, g);
+        }
+        g.position.set(c.x, c.y - 2 - Math.abs(Math.sin(tms * 0.004 + c.x)) * 2);
+        g.scale.x = Math.cos(tms * 0.005 + c.y); // spin (edge-on flip)
+        g.alpha = c.t > 22 ? Math.max(0, (25 - c.t) / 3) : 1; // fade before expiry
+      }
+      for (const [c, g] of this.coinPool) {
+        if (!live.has(c)) { g.destroy(); this.coinPool.delete(c); }
       }
     }
 
-    if (this.landmarksOnly) return; // structures + crowd: camera transform is all
+    if (this.landmarksOnly) return; // structures + crowd + coins: camera transform is all
 
     const hw = sw / 2 / z, hh = sh / 2 / z;
     const visible = W.visibleTiles(camX - hw, camY - hh, camX + hw, camY + hh);

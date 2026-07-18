@@ -289,6 +289,44 @@ export function update(dt) {
   // Tutorial step machine (only set in tutorial mode)
   if (state.tutorial) tutorialTick(dt);
 
+  // Estadio: la ola laps the gradas every WAVE_MS (the Pixi crowd derives its
+  // crest from the same wall clock). Each lap finished while you're around,
+  // the crowd celebrates and throws coins onto the césped — drive over them.
+  const S = W.STADIUM;
+  if (S && !state.tutorial) {
+    if (!state.stadiumCoins) state.stadiumCoins = [];
+    const WAVE_MS = 24000;
+    const lap = Math.floor(performance.now() / WAVE_MS);
+    const near = p.x > S.x0 - 120 && p.x < S.x1 + 120 && p.y > S.y0 - 120 && p.y < S.y1 + 120;
+    if (state.waveLap === undefined || !near) state.waveLap = lap;
+    else if (lap !== state.waveLap) {
+      state.waveLap = lap;
+      state.stadiumParty = 3; // the Pixi crowd bounces harder for a beat
+      const n = 8 + ((Math.random() * 5) | 0);
+      for (let i = 0; i < n; i++) {
+        state.stadiumCoins.push({
+          x: S.x0 + S.ring + 14 + Math.random() * (S.x1 - S.x0 - 2 * S.ring - 28),
+          y: S.y0 + S.ring + 14 + Math.random() * (S.y1 - S.y0 - 2 * S.ring - 28),
+          t: 0,
+        });
+      }
+      pushFloat(S.cx, S.y0 + S.ring + 20, t("float.ola"), "#ffd23f");
+      sfx.play("combo", 4);
+    }
+    state.stadiumParty = Math.max(0, (state.stadiumParty || 0) - dt);
+    for (let i = state.stadiumCoins.length - 1; i >= 0; i--) {
+      const c = state.stadiumCoins[i];
+      c.t += dt;
+      if (c.t > 25) { state.stadiumCoins.splice(i, 1); continue; }
+      if (Math.hypot(p.x - c.x, p.y - c.y) < 18) {
+        economy.addCoins(1);
+        pushFloat(c.x, c.y - 10, "+1", "#ffd23f");
+        sfx.play("pickup");
+        state.stadiumCoins.splice(i, 1);
+      }
+    }
+  }
+
   // Combo decay
   if (state.combo > 1) {
     state.comboTimer -= dt;

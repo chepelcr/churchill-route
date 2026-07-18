@@ -36,6 +36,7 @@ export const WORLD2D = (function () {
   const BRIDGE = manifest.bridge || null;
   const ESTUARY = manifest.estuary || null;
   const PIER = manifest.pier || null;
+  const STADIUM = manifest.stadium || null;
 
   // ----- tile cache ----------------------------------------------------------
   // key = tr * TCOLS + tc. Value: { grid:Uint8Array, cols, rows, x, y, roads,
@@ -291,7 +292,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, STADIUM,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

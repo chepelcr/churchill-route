@@ -144,11 +144,24 @@ export function update(dt) {
     } else if (p.freeX !== undefined && Math.hypot(p.x - p.freeX, p.y - p.freeY) < 60) {
       // both ends blocked but we were clear a moment ago: snap back instead of
       // the drive-out fallback (which would carry the car through the cuadra).
-      // The distance gate keeps stale positions from a previous run inert.
+      // Restore the ANGLE too — the pose was recorded clear under freeA, and
+      // snapping position alone could leave rotated corners still inside the
+      // wall, deadlocking the car half-in half-out of the acera.
       p.x = p.freeX; p.y = p.freeY; p.vx = 0; p.vy = 0;
+      if (p.freeA !== undefined) p.a = p.freeA;
     }
     // else: spawned/teleported inside a block — let it drive out
-  } else { p.freeX = p.x; p.freeY = p.y; } // last fully-clear pose
+  } else { p.freeX = p.x; p.freeY = p.y; p.freeA = p.a; } // last fully-clear pose
+  // Depenetration net: if the car is STILL wedged (stale/absent free pose),
+  // nudge it to the nearest clear spot instead of leaving it stuck.
+  if (blockedAt(p.x, p.y)) {
+    outer: for (let rr = 4; rr <= 24; rr += 4)
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        const nx = p.x + Math.cos(a) * rr, ny = p.y + Math.sin(a) * rr;
+        if (!blockedAt(nx, ny)) { p.x = nx; p.y = ny; p.vx *= 0.3; p.vy *= 0.3; break outer; }
+      }
+  }
   p.speed = Math.hypot(p.vx, p.vy);
 
   // On the 2-D world the coastline is enforced by water-as-wall above, so the

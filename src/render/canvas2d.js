@@ -1525,6 +1525,48 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.restore();
   }
 
+  // Estadio Lito Pérez ground: césped + field lines + tunnel floor, painted
+  // UNDER entities so cars visibly drive onto the pitch. The gradas + tunnel
+  // roof live in the Pixi landmarks layer above; if Pixi is unavailable the
+  // stands are drawn here as a fallback (roof under entities — acceptable).
+  function drawStadium(view) {
+    const S = W.STADIUM;
+    if (!S) return;
+    if (S.x1 < view.x0 || S.x0 > view.x1 || S.y1 < view.y0 || S.y0 > view.y1) return;
+    const { x0, y0, x1, y1, ring } = S;
+    const px0 = x0 + ring, py0 = y0 + ring, px1 = x1 - ring, py1 = y1 - ring;
+    ctx.fillStyle = "#3f8f4f"; ctx.fillRect(px0, py0, px1 - px0, py1 - py0);
+    ctx.fillStyle = "rgba(74,156,89,0.6)";
+    for (let x = px0; x < px1; x += 40) ctx.fillRect(x, py0, 20, py1 - py0);
+    const inset = 8;
+    const fx0 = px0 + inset, fy0 = py0 + inset, fx1 = px1 - inset, fy1 = py1 - inset;
+    const cx = (fx0 + fx1) / 2, cy = (fy0 + fy1) / 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 2;
+    ctx.strokeRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+    ctx.beginPath(); ctx.moveTo(cx, fy0); ctx.lineTo(cx, fy1); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, Math.min(28, (fy1 - fy0) * 0.2), 0, Math.PI * 2); ctx.stroke();
+    const boxH = Math.min(60, (fy1 - fy0) * 0.5), boxW = 22;
+    ctx.strokeRect(fx0, cy - boxH / 2, boxW, boxH);
+    ctx.strokeRect(fx1 - boxW, cy - boxH / 2, boxW, boxH);
+    const T = S.tunnel;
+    ctx.fillStyle = "#4a4550"; ctx.fillRect(T.x0, T.y0, T.x1 - T.x0, T.y1 - T.y0);
+    if (!PIXI_LANDMARKS) drawStadiumStands(S);
+  }
+  function drawStadiumStands(S) {
+    const { x0, y0, x1, y1, ring } = S;
+    ctx.fillStyle = "#a9a396";
+    ctx.fillRect(x0, y0, x1 - x0, ring);                    // north
+    ctx.fillRect(x0, y1 - ring, x1 - x0, ring);             // south
+    ctx.fillRect(x0, y0 + ring, ring, y1 - y0 - 2 * ring);  // west
+    ctx.fillRect(x1 - ring, y0 + ring, ring, y1 - y0 - 2 * ring); // east
+    ctx.strokeStyle = "#8f897e"; ctx.lineWidth = 2;
+    ctx.strokeRect(x0 + 5, y0 + 5, x1 - x0 - 10, y1 - y0 - 10);
+    ctx.strokeRect(x0 + 12, y0 + 12, x1 - x0 - 24, y1 - y0 - 24);
+    const T = S.tunnel;
+    const rx0 = Math.max(T.x0, x0), rx1 = Math.min(T.x1, x1);
+    ctx.fillStyle = "#9d968a"; ctx.fillRect(rx0, T.y0 - 2, rx1 - rx0, T.y1 - T.y0 + 4);
+  }
+
   // Objective compass: pinned at the top-center of the SCREEN (never lost
   // off-view), rotating to point at the target. Screen angle = world angle
   // (the camera transform is uniform scale + translate).
@@ -1646,11 +1688,15 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // city-exploration scale. World-space span shrinks accordingly.
   let ZOOM = 5.5; // recomputed responsively per viewport in setupCanvas()
 
-  // Overlay mode (hybrid renderer): Pixi draws the world + entities below this
-  // canvas; here we skip those passes and only paint what Pixi doesn't own yet
-  // (landmarks, pier/bridge, weather, particles/floats, compass, minimap).
+  // Overlay mode (legacy full-hybrid experiment): Pixi draws the world +
+  // entities below this canvas. Kept for testing; the shipped balance is
+  // canvas2d world + a Pixi LANDMARKS layer above (see setPixiLandmarks).
   let OVERLAY = false;
   function setOverlayMode(v) { OVERLAY = !!v; }
+  // When true, the Pixi layer above draws landmark STRUCTURES (stadium
+  // gradas + tunnel roof); canvas2d then only paints their ground (césped).
+  let PIXI_LANDMARKS = false;
+  function setPixiLandmarks(v) { PIXI_LANDMARKS = !!v; }
 
   function render(t) {
     if (!ctx) return;
@@ -1659,11 +1705,15 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, vw, vh);
 
-    // Camera — in overlay mode reuse the jitter Pixi computed this frame so
-    // both canvases shake in lockstep
+    // Camera — publish the jitter so the Pixi landmarks layer above shakes in
+    // lockstep (in legacy overlay mode, reuse the jitter Pixi computed first)
     const shake = state.cam.shake;
-    const sx = OVERLAY && state.cam._sx !== undefined ? state.cam._sx : (Math.random() - 0.5) * shake;
-    const sy = OVERLAY && state.cam._sy !== undefined ? state.cam._sy : (Math.random() - 0.5) * shake;
+    let sx, sy;
+    if (OVERLAY && state.cam._sx !== undefined) { sx = state.cam._sx; sy = state.cam._sy; }
+    else {
+      sx = (Math.random() - 0.5) * shake; sy = (Math.random() - 0.5) * shake;
+      state.cam._sx = sx; state.cam._sy = sy;
+    }
     const cam = { x: state.cam.x + sx, y: state.cam.y + sy };
     const wvw = vw / ZOOM, wvh = vh / ZOOM;
     const view = { x0: cam.x - wvw/2 - 40, x1: cam.x + wvw/2 + 40, y0: cam.y - wvh/2 - 40, y1: cam.y + wvh/2 + 40 };
@@ -1684,6 +1734,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       // Painterly 2-D world from resident tiles: land silhouette + road strokes +
       // buildings + palms/trees (replaces the corridor's global-array drawers).
       drawWorld2D(view, t);
+      // Estadio Lito Pérez ground (césped + lines + tunnel floor). The gradas
+      // structure lives in the Pixi landmarks layer above (canvas fallback
+      // draws it here when Pixi is unavailable).
+      drawStadium(view);
     }
     // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
     // Cruceros deck (its BRIDGE surface cells are drivable but not painted by
@@ -1695,6 +1749,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     for (const lm of W.LANDMARKS) {
       if (lm.x < view.x0 - 60 || lm.x > view.x1 + 60) continue;
       if (lm.type === "bridge") continue;
+      if (lm.type === "stadium") continue; // the estadio draws itself (ground + Pixi gradas)
       drawLandmark(lm);
     }
     // Sponsored lotes from the remote content (billboards / storefronts)
@@ -1782,4 +1837,4 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     }
   }
 
-export { setupCanvas, render, paintVehicle, setOverlayMode };
+export { setupCanvas, render, paintVehicle, setOverlayMode, setPixiLandmarks };

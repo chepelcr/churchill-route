@@ -38,11 +38,16 @@ export class PixiScene {
     this.playerKey = null;       // vehicleKey+color of the rasterized sprite
   }
 
-  async init(canvas) {
+  async init(canvas, opts = {}) {
+    // landmarksOnly: the shipped balance — canvas2d paints the world below;
+    // this transparent layer above it carries only landmark STRUCTURES
+    // (stadium gradas + tunnel roof, more landmarks as they migrate).
+    this.landmarksOnly = !!opts.landmarksOnly;
     await this.app.init({
-      canvas, resizeTo: window, background: COL.water, antialias: true,
+      canvas, resizeTo: window, antialias: true,
       resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true,
       preference: "webgl",
+      ...(this.landmarksOnly ? { backgroundAlpha: 0 } : { background: COL.water }),
     });
     this.world = new Container();
     this.L = {
@@ -52,23 +57,64 @@ export class PixiScene {
       ground: new Container(),   // parked, peds, vendors, animals, traffic, trains
       player: new Container(),
       air: new Container(),      // gulls
+      over: new Container(),     // roofs the player drives UNDER (stadium tunnel)
     };
     this.world.addChild(this.L.backdrop, this.L.surface, this.L.roads, this.L.buildings,
-      this.L.green, this.L.sea, this.L.ground, this.L.player, this.L.air);
+      this.L.green, this.L.sea, this.L.ground, this.L.player, this.L.air, this.L.over);
     this.app.stage.addChild(this.world);
 
-    const g = new Graphics();
-    g.rect(0, 0, W.W, W.H).fill(COL.water);
-    for (const p of W.LAND_POLYS || []) if (p.length >= 6) g.poly(p).fill(COL.land);
-    for (const p of W.WATERS || []) if (p.length >= 6) g.poly(p).fill(COL.water);
-    for (const p of W.BEACHES || []) if (p.length >= 6) g.poly(p).fill(COL.beach);
-    this.L.backdrop.addChild(g);
+    if (!this.landmarksOnly) {
+      const g = new Graphics();
+      g.rect(0, 0, W.W, W.H).fill(COL.water);
+      for (const p of W.LAND_POLYS || []) if (p.length >= 6) g.poly(p).fill(COL.land);
+      for (const p of W.WATERS || []) if (p.length >= 6) g.poly(p).fill(COL.water);
+      for (const p of W.BEACHES || []) if (p.length >= 6) g.poly(p).fill(COL.beach);
+      this.L.backdrop.addChild(g);
 
-    this.playerShadow = new Graphics();
-    this.playerSprite = new Sprite();
-    this.playerSprite.anchor.set(0.5);
-    this.L.player.addChild(this.playerShadow, this.playerSprite);
+      this.playerShadow = new Graphics();
+      this.playerSprite = new Sprite();
+      this.playerSprite.anchor.set(0.5);
+      this.L.player.addChild(this.playerShadow, this.playerSprite);
+    }
+
+    this._buildStadium();
     return this;
+  }
+
+  // Estadio Lito Pérez — the first landmark living fully in Pixi. Graderías
+  // ring a drivable césped; the corner tunnel's roof goes in L.over so the
+  // player visibly drives UNDER the stands.
+  _buildStadium() {
+    const S = W.STADIUM;
+    if (!S) return;
+    const { x0, y0, x1, y1, ring } = S;
+    const T = S.tunnel;
+
+    // gradas STRUCTURE: a ring (pitch stays transparent — canvas2d paints the
+    // césped and the entities driving on it below this layer)
+    const g = new Graphics();
+    g.rect(x0, y0, x1 - x0, ring).fill(0xa9a396);                       // north
+    g.rect(x0, y1 - ring, x1 - x0, ring).fill(0xa9a396);                // south
+    g.rect(x0, y0 + ring, ring, y1 - y0 - 2 * ring).fill(0xa9a396);     // west
+    g.rect(x1 - ring, y0 + ring, ring, y1 - y0 - 2 * ring).fill(0xa9a396); // east
+    // grada steps (concentric seat rows)
+    g.roundRect(x0 + 4, y0 + 4, x1 - x0 - 8, y1 - y0 - 8, 6).stroke({ width: 2, color: 0x8f897e });
+    g.roundRect(x0 + 10, y0 + 10, x1 - x0 - 20, y1 - y0 - 20, 5).stroke({ width: 2, color: 0x8f897e });
+    g.roundRect(x0 + 16, y0 + 16, x1 - x0 - 32, y1 - y0 - 32, 4).stroke({ width: 2, color: 0x78726a });
+    // outer shadow rim for a bit of height
+    g.rect(x0, y1 - ring, x1 - x0, 4).fill({ color: 0x000000, alpha: 0.18 });
+    // tunnel walls darkening at the ring crossing (the mouths)
+    g.rect(T.x0, T.y0 - 2, T.x1 - T.x0, 2).fill({ color: 0x000000, alpha: 0.3 });
+    g.rect(T.x0, T.y1, T.x1 - T.x0, 2).fill({ color: 0x000000, alpha: 0.3 });
+    this.L.buildings.addChild(g);
+
+    // the grada roof over the tunnel — TOPMOST, the car disappears beneath it
+    const roof = new Graphics();
+    const rx0 = Math.max(T.x0, x0), rx1 = Math.min(T.x1, x1);
+    roof.rect(rx0, T.y0 - 2, rx1 - rx0, (T.y1 - T.y0) + 4).fill(0x9d968a);
+    roof.rect(rx0, T.y0 - 2, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
+    roof.rect(rx0, T.y1 - 1, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
+    this.L.over.addChild(roof);
   }
 
   // ----- tiles ---------------------------------------------------------------
@@ -253,15 +299,20 @@ export class PixiScene {
     if (!this.world) return;
     this._frame = tms;
 
-    // shared camera jitter so the canvas overlay shakes in lockstep
+    // shared camera jitter so both canvases shake in lockstep. In landmarks
+    // mode canvas2d renders first and publishes its jitter; reuse it here.
     const shake = state.cam.shake || 0;
-    state.cam._sx = (Math.random() - 0.5) * shake;
-    state.cam._sy = (Math.random() - 0.5) * shake;
+    if (!(this.landmarksOnly && state.cam._sx !== undefined)) {
+      state.cam._sx = (Math.random() - 0.5) * shake;
+      state.cam._sy = (Math.random() - 0.5) * shake;
+    }
     const camX = state.cam.x + state.cam._sx, camY = state.cam.y + state.cam._sy;
     const z = state.cam.zoom || 3;
     const sw = this.app.screen.width, sh = this.app.screen.height;
     this.world.scale.set(z);
     this.world.position.set(sw / 2 - camX * z, sh / 2 - camY * z);
+
+    if (this.landmarksOnly) return; // static structures: camera transform is all
 
     const hw = sw / 2 / z, hh = sh / 2 / z;
     const visible = W.visibleTiles(camX - hw, camY - hh, camX + hw, camY + hh);

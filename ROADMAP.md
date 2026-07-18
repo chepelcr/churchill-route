@@ -28,6 +28,25 @@ game modes are live; the items below are what remains.
       orientación + el siguiente toque lo garantiza (los navegadores piden
       gesto). **Intro/boot caben sin scroll** en teléfonos cortos
       (media query max-height 500px).
+- [x] **Balance de renderers (decisión del usuario)**: canvas2d vuelve a
+      pintar TODO el mundo painterly + entidades (la belleza original); Pixi
+      queda como **capa transparente de landmarks ENCIMA** del canvas
+      (pointer-events none): estructuras que canvas no luce — hoy las gradas
+      del estadio + el techo del túnel; los demás landmarks migran ahí.
+      `?canvas` desactiva la capa (canvas dibuja gradas fallback).
+- [x] **Estadio Lito Pérez jugable** (primer landmark en Pixi): cuadra en
+      Playitas descubierta desde el grid (el block-detection no la cubría) y
+      **expandida artificialmente a mínimo 12×9 cuads** (las calles que la
+      expansión traga se recortan de la red vectorial — 3 clipped). Graderías
+      = anillo bloqueado; césped MANEJABLE con líneas de cancha (canvas, bajo
+      entidades); **túnel de esquina SW bajo las gradas** (techo en la capa
+      Pixi superior — el carro desaparece al pasar debajo). Gate 56/56 OK.
+- [x] **Fix carro atascado en acera** (tras el fix de doble colisión): el
+      snap a la última pose libre restauraba solo x/y — si el ÁNGULO actual
+      metía esquinas en la pared, el carro quedaba clavado mitad calle mitad
+      acera. Ahora restaura también `freeA` + red de depenetración (nudge en
+      8 direcciones, radio 4-24px). Aplica igual a medianas del Paseo y línea
+      de árboles León Cortés (son CLS_ACERA — mismo muro).
 - [x] **Pixi por DEFECTO** (validación del usuario en web + APK): escape
       `?canvas` / localStorage churchill_renderer="canvas" + fallback
       automático sin WebGL. Boot con **agua Pixi viva** (gradiente navy +

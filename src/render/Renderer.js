@@ -5,16 +5,17 @@
 //   render(t)              — draw one frame for timestamp t (ms)
 //   paintVehicle(ctx, key, veh) — vehicle sprite at (0,0) facing +x (UI preview)
 //
-// Milestone C: the DEFAULT is the HYBRID stack — Pixi/WebGL draws the world
-// (surfaces, roads, buildings, greenery) and every moving entity, while
-// canvas2d runs above it in overlay mode (landmarks, pier/bridge, weather,
-// particles/floats, compass, minimap). Escape hatches back to pure canvas2d:
-// `?canvas` in the URL, or localStorage churchill_renderer = "canvas"
-// (plus the automatic no-WebGL fallback in setupCanvas).
-import { setupCanvas as c2dSetup, render as c2dRender, setOverlayMode, paintVehicle } from "./canvas2d.js";
+// The shipped balance (user call, 2026-07-18): canvas2d paints the WHOLE
+// painterly world + entities (the look we love), and a transparent Pixi
+// layer ABOVE it carries landmark structures that canvas can't do justice —
+// the estadio's gradas + the tunnel roof the player drives under. More
+// landmarks migrate into that layer over time. Escape hatch: `?canvas` or
+// localStorage churchill_renderer = "canvas" disables the Pixi layer
+// (canvas then draws fallback stands too, via setPixiLandmarks(false)).
+import { setupCanvas as c2dSetup, render as c2dRender, setPixiLandmarks, paintVehicle } from "./canvas2d.js";
 import { setupPixi, renderPixi } from "./pixi/index.js";
 
-const USE_PIXI = (() => {
+const PIXI_LM = (() => {
   try {
     if (new URLSearchParams(window.location.search).has("canvas")) return false;
     if (localStorage.getItem("churchill_renderer") === "canvas") return false;
@@ -26,13 +27,13 @@ export { paintVehicle };
 
 export function setupCanvas(canvasEl) {
   c2dSetup(canvasEl);
-  if (USE_PIXI) {
-    setOverlayMode(true);
-    setupPixi(canvasEl, () => setOverlayMode(false)); // no WebGL → full canvas2d
+  if (PIXI_LM) {
+    setPixiLandmarks(true);
+    setupPixi(canvasEl, () => setPixiLandmarks(false)); // no WebGL → canvas stands
   }
 }
 
 export function render(t) {
-  if (USE_PIXI) renderPixi(t);
   c2dRender(t);
+  if (PIXI_LM) renderPixi(t);
 }

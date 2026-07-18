@@ -2000,7 +2000,8 @@ def write_png(path, w, h, get_rgb, stride=1):
 
 def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms,
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
-                 landmarks, customers, stages, bridge, estuary, pier, hills):
+                 landmarks, customers, stages, bridge, estuary, pier, hills,
+                 stadium=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -2108,6 +2109,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         "landmarks": landmarks, "customers": customers, "stages": stages,
         "bridge": bridge, "estuary": estuary, "pier": pier, "hills": hills,
         "beaches": beaches, "waters": waters, "landPolys": land_polys,
+        "stadium": stadium,
     }
     with open(os.path.join(WORLD2D_DIR, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
@@ -2585,6 +2587,123 @@ def main():
         keepouts.append((cu["x"], cu["y"], 100))
     keepouts.append((pier["x"], pier["y0"], 120))
     cell_block, occ = _grid_placer(blocks, keepouts)
+
+    # --- Estadio Lito Pérez: its cuadra becomes a real stadium — graderías
+    # (blocked ring) around a drivable césped, entered through a corner tunnel
+    # under the stands. The block is claimed whole (no synth lots / no patio
+    # trees); the pitch + tunnel are stamped CLS_ROAD so you can drive in.
+    # Geometry is emitted in the manifest; the Pixi renderer draws it.
+    stadium = None
+    est = next((l for l in landmarks if l["id"] == "estadio"), None)
+    if est:
+        ec = (int(est["x"] // CUAD), int(est["y"] // CUAD))
+
+        def _cuad_cls0(cc, cr):
+            px = int((cc + 0.5) * CUAD // GRID_CELL); py = int((cr + 0.5) * CUAD // GRID_CELL)
+            if px < 0 or py < 0 or px >= GRID_COLS or py >= GRID_ROWS:
+                return CLS_WATER
+            return grid[py * GRID_COLS + px]
+
+        # The estadio anchor isn't covered by block detection, so find its
+        # cuadra straight from the surface grid: expand from the anchor until
+        # each direction hits a street (or water/beach), then inset the acera.
+        STOP = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_WATER, CLS_BEACH)
+        def _scan(dc, dr):
+            for k in range(1, 13):
+                if _cuad_cls0(ec[0] + dc * k, ec[1] + dr * k) in STOP:
+                    return k - 1
+            return 12
+        c0 = ec[0] - _scan(-1, 0) + 1; c1 = ec[0] + _scan(1, 0) - 1
+        r0 = ec[1] - _scan(0, -1) + 1; r1 = ec[1] + _scan(0, 1) - 1
+        RING = 2                                     # graderías thickness (cuads)
+        # A real stadium needs room: if the cuadra is too small, grow the
+        # footprint artificially (centered) — roads the expansion swallows are
+        # clipped out of the vector network below.
+        MIN_W, MIN_H = 12, 9
+        if c1 - c0 + 1 < MIN_W:
+            grow = MIN_W - (c1 - c0 + 1)
+            c0 -= grow // 2; c1 = c0 + MIN_W - 1
+        if r1 - r0 + 1 < MIN_H:
+            grow = MIN_H - (r1 - r0 + 1)
+            r0 -= grow // 2; r1 = r0 + MIN_H - 1
+        if True:
+            if True:
+                # claim the cuadra + fringe: no synth lots, no patio trees
+                for cr in range(r0 - 1, r1 + 2):
+                    for cc in range(c0 - 1, c1 + 2):
+                        occ.add((cc, cr))
+                # clip road polylines that cross the (possibly expanded)
+                # footprint so no street runs through the gradas
+                rx0, ry0 = c0 * CUAD, r0 * CUAD
+                rx1, ry1 = (c1 + 1) * CUAD, (r1 + 1) * CUAD
+                def _outside(x, y):
+                    return x < rx0 or x > rx1 or y < ry0 or y > ry1
+                clipped, n_clip = [], 0
+                for rd in roads:
+                    pts = rd["pts"]; runs = []; cur = []
+                    for i in range(0, len(pts), 2):
+                        if _outside(pts[i], pts[i + 1]):
+                            cur += [pts[i], pts[i + 1]]
+                        else:
+                            if len(cur) >= 4:
+                                runs.append(cur)
+                            cur = []
+                    if len(cur) >= 4:
+                        runs.append(cur)
+                    if len(runs) == 1 and len(runs[0]) == len(pts):
+                        clipped.append(rd)
+                    else:
+                        n_clip += 1
+                        for run in runs:
+                            clipped.append({**rd, "pts": run})
+                if n_clip:
+                    print(f"[estadio] clipped {n_clip} road(s) crossing the footprint")
+                roads[:] = clipped
+                def _stamp_px(px0, py0, px1, py1, cls):
+                    cc0 = max(0, int(px0 // GRID_CELL)); cc1 = min(GRID_COLS - 1, int((px1 - 1) // GRID_CELL))
+                    rr0 = max(0, int(py0 // GRID_CELL)); rr1 = min(GRID_ROWS - 1, int((py1 - 1) // GRID_CELL))
+                    for rr in range(rr0, rr1 + 1):
+                        base = rr * GRID_COLS
+                        for cc in range(cc0, cc1 + 1):
+                            grid[base + cc] = cls
+                def _cuad_cls(cc, cr):
+                    px = int((cc + 0.5) * CUAD // GRID_CELL); py = int((cr + 0.5) * CUAD // GRID_CELL)
+                    if px < 0 or py < 0 or px >= GRID_COLS or py >= GRID_ROWS:
+                        return CLS_WATER
+                    return grid[py * GRID_COLS + px]
+                # normalize the whole footprint: gradas ring = solid (blocked),
+                # then the pitch interior = drivable
+                _stamp_px(c0 * CUAD, r0 * CUAD, (c1 + 1) * CUAD, (r1 + 1) * CUAD, CLS_LAND)
+                _stamp_px((c0 + RING) * CUAD, (r0 + RING) * CUAD,
+                          (c1 + 1 - RING) * CUAD, (r1 + 1 - RING) * CUAD, CLS_ROAD)
+                # corner tunnel: pick the corner whose outward edge reaches a
+                # street soonest; carve 2 cuads tall/wide through ring + acera
+                best = None
+                for corner, side, rr in (("sw", "w", r1 - RING), ("nw", "w", r0 + RING - 1),
+                                          ("se", "e", r1 - RING), ("ne", "e", r0 + RING - 1)):
+                    scan = range(c0 - 1, c0 - 8, -1) if side == "w" else range(c1 + 1, c1 + 8)
+                    for k, cc in enumerate(scan):
+                        if _cuad_cls(cc, rr) == CLS_ROAD:
+                            if best is None or k < best[0]:
+                                best = (k, corner, side, rr, cc)
+                            break
+                if best is None:
+                    best = (3, "sw", "w", r1 - RING, c0 - 4)   # carve to the acera anyway
+                _, corner, side, trr, street_c = best
+                ty0 = (trr - 1) * CUAD; ty1 = (trr + 1) * CUAD          # 2 cuads tall
+                if side == "w":
+                    tx0 = street_c * CUAD; tx1 = (c0 + RING) * CUAD
+                else:
+                    tx0 = (c1 + 1 - RING) * CUAD; tx1 = (street_c + 1) * CUAD
+                _stamp_px(tx0, ty0, tx1, ty1, CLS_ROAD)
+                stadium = {"x0": c0 * CUAD, "y0": r0 * CUAD,
+                           "x1": (c1 + 1) * CUAD, "y1": (r1 + 1) * CUAD,
+                           "ring": RING * CUAD, "corner": corner,
+                           "tunnel": {"x0": tx0, "y0": ty0, "x1": tx1, "y1": ty1},
+                           "cx": (c0 + c1 + 1) * CUAD // 2, "cy": (r0 + r1 + 1) * CUAD // 2}
+                print(f"[estadio] Lito Pérez at cuads ({c0},{r0})-({c1},{r1}), "
+                      f"tunnel {corner} via x{tx0}-{tx1} y{ty0}-{ty1}")
+
     buildings = snap_osm_buildings(raw_bldgs, cell_block, occ)
     synth = synth_buildings([b for b in blocks if not b["green"]],
                             cell_block, occ, len(buildings))
@@ -2837,7 +2956,7 @@ def main():
                      buildings=buildings, trees=trees, palms=palms, mangroves=mangroves,
                      medians=medians, plazas=plazas, islands=junction_islands,
                      beaches=beaches, waters=waters, land_polys=land_contours,
-                     landmarks=landmarks, customers=customers, stages=STAGES,
+                     landmarks=landmarks, customers=customers, stages=STAGES, stadium=stadium,
                      bridge=bridge, estuary=est, pier=pier, hills=hills)
     else:
         data = {

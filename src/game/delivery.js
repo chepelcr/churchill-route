@@ -74,9 +74,10 @@ export function pickCustomer() {
 export function pickUpChurchill(kioskLm) {
   if (!state.pendingOrder) pickCustomer();
   const dist = Math.hypot(state.pendingOrder.x - kioskLm.x, state.pendingOrder.y - kioskLm.y);
-  // Budget must leave headroom over the real (grid-inflated, ~150 px/s) travel
-  // time — dist/110 was break-even with a flawless run, so any mistake melted.
-  const base = Math.max(28, dist / 80);
+  // Budget must leave headroom over the real (grid-inflated) travel time —
+  // dist/110 was break-even with a flawless run, so any mistake melted.
+  // dist/72 tracks the ~10% top-speed reduction (2026-07-18 playability pass).
+  const base = Math.max(28, dist / 72);
   state.carrying = { kioskId: kioskLm.id, customer: state.pendingOrder, melt: 0, total: base };
   state.pendingOrder = null;
   state.storyTip = t("tip.deliverTo", { name: state.carrying.customer.name });

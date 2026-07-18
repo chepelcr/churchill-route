@@ -61,8 +61,8 @@ export function tutorialTick(dt) {
     case 0: // steer: drive a bit and actually turn
       if (T.dist > 260 && T.turn > 1.6) advance(T);
       break;
-    case 1: // speed: hold near top speed for a beat
-      if (p.speed > 190) { T.fast += dt; if (T.fast > 0.8) advance(T); }
+    case 1: // speed: hold near top speed for a beat (tops lowered 2026-07-18)
+      if (p.speed > 170) { T.fast += dt; if (T.fast > 0.8) advance(T); }
       break;
     case 2: // turbo: hold boost (rim push / X / gamepad RB)
       if (input.boost) { T.boost += dt; if (T.boost > 0.6) advance(T); }

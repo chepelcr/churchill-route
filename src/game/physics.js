@@ -91,11 +91,22 @@ export function update(dt) {
   const turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
   const prevA = p.a;
   p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
-  // Turning must never sweep the body INTO a wall: once a corner penetrated,
-  // both current and previous positions read blocked and the resolver's
-  // "drive out" fallback let the car sail straight through the cuadra
-  // (the hit-the-acera-twice pass-through bug).
-  if (p.a !== prevA && blockedAt(p.x, p.y) && !blockedAt(p.x, p.y, prevA)) p.a = prevA;
+  // Turning must never sweep the body INTO a wall (that penetration was the
+  // pass-through bug). But a flat veto deadlocks narrow streets: with walls
+  // on both sides every rotation penetrates, and touch has no reverse — the
+  // car locks facing a dead end. So first try SHIMMYING: small shifts that
+  // give the rotation room; only veto the turn if no clear pose exists.
+  if (p.a !== prevA && blockedAt(p.x, p.y) && !blockedAt(p.x, p.y, prevA)) {
+    let ok = false;
+    for (let rr = 2; rr <= 8 && !ok; rr += 2) {
+      for (let k = 0; k < 8; k++) {
+        const aa = (k / 8) * Math.PI * 2;
+        const nx = p.x + Math.cos(aa) * rr, ny = p.y + Math.sin(aa) * rr;
+        if (!blockedAt(nx, ny)) { p.x = nx; p.y = ny; ok = true; break; }
+      }
+    }
+    if (!ok) p.a = prevA;
+  }
 
   // acceleration (headstart consumable = free turbo for its first seconds)
   const boosting = input.boost || (state.headstartT || 0) > 0;

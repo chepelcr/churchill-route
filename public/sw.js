@@ -6,7 +6,7 @@
 //     to the cached app shell ("/") when fully offline.
 //   - cross-origin (Google Fonts, versioned CDN): cache-first.
 // Bump CACHE to invalidate old entries on deploy.
-const CACHE = "churchill-v4";
+const CACHE = "churchill-v5";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
@@ -27,6 +27,11 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+
+  // Never intercept ad/analytics traffic: cache-first would answer beacons
+  // and ad requests from cache, so impressions/events would silently stop
+  // reaching Google. Let those hit the network directly.
+  if (/(^|\.)(google-analytics\.com|analytics\.google\.com|googletagmanager\.com|googlesyndication\.com|doubleclick\.net|googleadservices\.com)$/.test(url.hostname)) return;
 
   if (url.origin === self.location.origin) {
     // network-first: fresh assets when online, cache when offline

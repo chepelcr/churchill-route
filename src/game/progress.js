@@ -3,6 +3,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
 import { ensureEconomy } from "./economy.js";
+import { analytics } from "../monetize/analytics.js";
 
 const STORAGE_KEY = "churchill_progress_v1";
 
@@ -38,6 +39,7 @@ export function unlockDistrict(id) {
     state.progress.unlocked.push(id);
     saveProgress();
     pushFloat(state.p.x, state.p.y - 50, t("float.unlocked", { district: id.toUpperCase() }), "#ffe06b");
+    analytics.track("district_unlock", { district: id });
   }
 }
 

@@ -21,6 +21,7 @@ import { useT } from "../i18n/index.js";
 import Icon from "./Icon.jsx";
 import { ads } from "../monetize/ads.js";
 import { iap } from "../monetize/iap.js";
+import { analytics } from "../monetize/analytics.js";
 
 export default function App() {
   const t = useT();
@@ -43,6 +44,7 @@ export default function App() {
     Game.attachCanvas(canvasRef.current);
     ads.init();     // no-ops on web
     iap.init();
+    analytics.init(); // no-ops without VITE_GA_ID
     content.load(); // supporters / server NPCs / lotes (cache-first, offline-safe)
     let raf;
     const tick = () => {
@@ -57,7 +59,15 @@ export default function App() {
 
   // Interstitial cadence: count a finished run when the results screen shows
   // (skipped for remove-ads owners, the first-runs grace, tutorial, web).
-  useEffect(() => { if (screen === "over") ads.maybeShowInterstitial(Game.state.mode); }, [screen]);
+  useEffect(() => {
+    if (screen !== "over") return;
+    ads.maybeShowInterstitial(Game.state.mode);
+    const s = Game.state;
+    analytics.track("run_end", {
+      mode: s.mode, stage_id: s.stage?.id || "", won: s.won ? 1 : 0,
+      score: s.score, deliveries: s.deliveries, perfect: s.perfect,
+    });
+  }, [screen]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -136,7 +146,14 @@ export default function App() {
     Game.state.usedAdContinue = true;
     setScreen("playing");
   }
-  function quit() { Game.quit(); setScreen("title"); }
+  function quit() {
+    // abandoned runs never reach the results screen — count them here
+    if (Game.state.running && !Game.state.over) {
+      analytics.track("run_quit", { mode: Game.state.mode, score: Game.state.score, deliveries: Game.state.deliveries });
+    }
+    Game.quit();
+    setScreen("title");
+  }
   function openSettings(from) {
     settingsFrom.current = from;
     setScreen("settings");

@@ -8,6 +8,7 @@ import { rebuildBarriers } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
 import { economy } from "./economy.js";
 import { t, stageBrief } from "../i18n/index.js";
+import { analytics } from "../monetize/analytics.js";
 
 // Resolve the run vehicle: enforce ownership (fall back to scooter) and apply
 // the equipped paint by cloning — paintVehicle reads veh.color.
@@ -60,6 +61,7 @@ export function startStage(stageIdx, vehicleKey) {
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
+  analytics.track("run_start", { mode: "story", stage_id: stg.id, vehicle: state.vehicleKey });
 }
 
 export function startArcade(opts = {}) {
@@ -90,6 +92,7 @@ export function startArcade(opts = {}) {
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
+  analytics.track("run_start", { mode: "arcade", vehicle: state.vehicleKey });
 }
 
 export function startExplore(opts = {}) {
@@ -121,6 +124,7 @@ export function startExplore(opts = {}) {
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomer();
+  analytics.track("run_start", { mode: "explore", vehicle: state.vehicleKey });
 }
 
 // Tutorial: timerless guided run at the Paseo kiosk; the step machine in
@@ -151,6 +155,7 @@ export function startTutorial(opts = {}) {
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   pickCustomerNear(k0.x, k0.y); // short, predictable first delivery
   initTutorial();
+  analytics.track("run_start", { mode: "tutorial", vehicle: state.vehicleKey });
 }
 
 export function setWeather(w) { state.weather = w; }

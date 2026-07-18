@@ -5,6 +5,7 @@
 import { state } from "./state.js";
 import { input } from "./input.js";
 import { sfx } from "./audio.js";
+import { tuning } from "./tuning.js";
 
 const DONE_KEY = "churchill_tutorial_done_v1";
 export function tutorialDone() {
@@ -62,7 +63,7 @@ export function tutorialTick(dt) {
       if (T.dist > 260 && T.turn > 1.6) advance(T);
       break;
     case 1: // speed: hold near top speed for a beat (tops lowered 2026-07-18)
-      if (p.speed > 170) { T.fast += dt; if (T.fast > 0.8) advance(T); }
+      if (p.speed > 170 * tuning.speed) { T.fast += dt; if (T.fast > 0.8) advance(T); }
       break;
     case 2: // turbo: hold boost (rim push / X / gamepad RB)
       if (input.boost) { T.boost += dt; if (T.boost > 0.6) advance(T); }

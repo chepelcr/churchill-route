@@ -6,6 +6,7 @@ import { markStageCleared, unlockDistrict, isMvpLocked } from "./progress.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { content } from "../content/remote.js";
+import { tuning } from "./tuning.js";
 import { economy, COINS_PER_DELIVERY, COINS_PERFECT_BONUS } from "./economy.js";
 import { analytics } from "../monetize/analytics.js";
 
@@ -76,8 +77,10 @@ export function pickUpChurchill(kioskLm) {
   const dist = Math.hypot(state.pendingOrder.x - kioskLm.x, state.pendingOrder.y - kioskLm.y);
   // Budget must leave headroom over the real (grid-inflated) travel time —
   // dist/110 was break-even with a flawless run, so any mistake melted.
-  // dist/72 tracks the ~10% top-speed reduction (2026-07-18 playability pass).
-  const base = Math.max(28, dist / 72);
+  // dist/72 tracks the ~10% top-speed reduction (2026-07-18 playability
+  // pass), and the user's speed slider compensates here so changing speed
+  // changes feel, not difficulty.
+  const base = Math.max(28, dist / (72 * tuning.speed));
   state.carrying = { kioskId: kioskLm.id, customer: state.pendingOrder, melt: 0, total: base };
   state.pendingOrder = null;
   state.storyTip = t("tip.deliverTo", { name: state.carrying.customer.name });

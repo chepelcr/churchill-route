@@ -3,6 +3,7 @@ import { Game } from "../../game/index.js";
 import { sfx } from "../../game/audio.js";
 import { useT, getLang, setLang } from "../../i18n/index.js";
 import { iap } from "../../monetize/iap.js";
+import { tuning } from "../../game/tuning.js";
 import Icon from "../Icon.jsx";
 
 // App config — a FULL-SCREEN page (edge to edge): language, volume/mute,
@@ -11,6 +12,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [vol, setVol] = useState(Math.round(sfx.volume * 100));
+  const [spd, setSpd] = useState(Math.round(tuning.speed * 100));
   const [confirming, setConfirming] = useState(false);
   const [, bump] = useState(0);
   useEffect(() => iap.onChange(() => bump((n) => n + 1)), []);
@@ -53,6 +55,16 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
                 onChange={(e) => changeVol(+e.target.value)}
                 aria-label={t("settings.volume")} />
               <span className="vol-pct">{muted ? t("settings.muted") : `${vol}%`}</span>
+            </div>
+          </div>
+
+          <div className="set-row">
+            <span className="set-lbl">{t("settings.speed")}</span>
+            <div className="vol-wrap">
+              <input type="range" min="70" max="120" step="5" value={spd}
+                onChange={(e) => { const v = +e.target.value; setSpd(v); tuning.setSpeed(v / 100); }}
+                aria-label={t("settings.speed")} />
+              <span className="vol-pct">{spd}%</span>
             </div>
           </div>
 

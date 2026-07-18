@@ -11,6 +11,7 @@ import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
 import { economy } from "./economy.js";
+import { tuning } from "./tuning.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [6];
@@ -87,7 +88,7 @@ export function update(dt) {
   // curve is untouched, and both meet at the same top-speed rate (1.3).
   input.snapT = Math.max(0, input.snapT - dt);
   const turning = input.right - input.left;
-  const spdFac = Math.min(1, Math.abs(p.speed) / veh.top);
+  const spdFac = Math.min(1, Math.abs(p.speed) / (veh.top * tuning.speed));
   const turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
   const prevA = p.a;
   p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
@@ -111,8 +112,8 @@ export function update(dt) {
   // acceleration (headstart consumable = free turbo for its first seconds)
   const boosting = input.boost || (state.headstartT || 0) > 0;
   const throttle = input.up - input.down * 0.6;
-  p.vx += Math.cos(p.a) * veh.accel * throttle * dt;
-  p.vy += Math.sin(p.a) * veh.accel * throttle * dt;
+  p.vx += Math.cos(p.a) * veh.accel * tuning.speed * throttle * dt;
+  p.vy += Math.sin(p.a) * veh.accel * tuning.speed * throttle * dt;
   if (boosting) { p.vx *= 1 + 0.7 * dt; p.vy *= 1 + 0.7 * dt; }
 
   // grip (kill lateral)
@@ -133,7 +134,7 @@ export function update(dt) {
     p.vx *= k; p.vy *= k;
   }
   // turbotank upgrade raises the boost speed cap (1.35 stock → up to 1.55)
-  const top = veh.top * surfaceMul * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul;
+  const top = veh.top * tuning.speed * surfaceMul * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul;
   const sp3 = Math.hypot(p.vx, p.vy);
   if (sp3 > top) { p.vx *= top / sp3; p.vy *= top / sp3; }
 

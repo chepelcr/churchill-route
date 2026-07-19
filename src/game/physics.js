@@ -5,7 +5,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advanceCarOnRoad, advanceTrain } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceCarOnRoad, advanceTrain } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
@@ -14,7 +14,7 @@ import { economy } from "./economy.js";
 import { tuning } from "./tuning.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
-const PED_CLS = [6, 3]; // aceras + roads: walk the sidewalks, occasionally cross a street
+const PED_CLS = [6]; // fallback for free (stadium) peds; rail peds cross via advancePed
 
 // ----- Polygon collision helpers ------------------------------------------
 function pointInPoly(x, y, pts) {
@@ -402,13 +402,14 @@ export function advanceEntities(dt, withPlayer = true) {
     }
   }
 
-  // Pedestrians — walk the aceras / road edges; scatter from a speeding player
+  // Pedestrians — RAIL-BOUND to a road, walk the aceras + cross (main model);
+  // a speeding player makes them bolt across the street
   for (const pe of pedestrians) {
-    pe.ph += dt * 6;
-    advanceOnSurface(pe, dt, pe.cls || PED_CLS, 0.03); // stadium peds roam the césped (cls [3])
+    if (pe.road) advancePed(pe, dt);
+    else { pe.ph += dt * 6; advanceOnSurface(pe, dt, pe.cls || PED_CLS, 0.03); } // stadium peds (free)
     if (withPlayer && Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
       for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
-      pe.ang += Math.PI * (0.4 + Math.random() * 0.6); // bolt away
+      if (pe.road && !pe.crossing) { pe.crossing = true; pe.crossPhase = 0; } // bolt across
     }
   }
 

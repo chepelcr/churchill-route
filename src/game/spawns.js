@@ -150,6 +150,10 @@ function spawnOneCar() {
 // Pedestrians walk the aceras ALONG the streets (the corridor build's model):
 // pick a road near the camera, offset to the mid-acera beside it, and walk
 // parallel to it. Random-point sampling can't find the thin acera fringe.
+// Pedestrians are RAIL-BOUND to a road (main-branch model): they walk its
+// arclength at a fixed mid-acera offset and occasionally cross to the other
+// sidewalk. Position is always road + perpendicular offset, so they never
+// wander into a cuadra interior (the free-surface wander did).
 function spawnOnePed() {
   const tiles = W.visibleTiles(_cam.x - SPAWN_R, _cam.y - SPAWN_R, _cam.x + SPAWN_R, _cam.y + SPAWN_R);
   const cand = [];
@@ -162,19 +166,41 @@ function spawnOnePed() {
   const r = cand[(Math.random() * cand.length) | 0];
   const s = 20 + Math.random() * (r.len - 40);
   const pt = roadPointAt(r, s);
-  const off = r.w / 2 + 10; // mid-acera (1 cuadrícula deep)
+  const baseOff = r.w / 2 + 10; // mid-acera (1 cuadrícula deep)
   for (const side of Math.random() < 0.5 ? [1, -1] : [-1, 1]) {
-    const x = pt.x - Math.sin(pt.ang) * off * side;
-    const y = pt.y + Math.cos(pt.ang) * off * side;
+    const x = pt.x - Math.sin(pt.ang) * baseOff * side;
+    const y = pt.y + Math.cos(pt.ang) * baseOff * side;
     if (W.surfaceAt(x, y) !== 6) continue; // that side has no sidewalk here
     if (Math.hypot(x - _cam.x, y - _cam.y) > SPAWN_R) return null;
     return {
-      x, y, ang: pt.ang + (Math.random() < 0.5 ? 0 : Math.PI), // walk the street
-      v: 14 + Math.random() * 12,
-      hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
+      road: r, s, side, baseOff, off: side * baseOff,
+      v: (Math.random() < 0.5 ? 1 : -1) * (14 + Math.random() * 12),
+      crossing: false, crossPhase: 0,
+      x, y, hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
     };
   }
   return null;
+}
+// Advance a rail-bound pedestrian along its road (main-branch walk + cross).
+export function advancePed(pe, dt) {
+  const r = pe.road;
+  if (!r) { pe.dead = true; return; }
+  pe.ph += dt * 6;
+  if (pe.crossing) {
+    pe.crossPhase += dt * 0.72;
+    const tt = Math.min(1, pe.crossPhase);
+    pe.off = pe.side * pe.baseOff * (1 - 2 * tt); // slide across the road
+    if (tt >= 1) { pe.crossing = false; pe.side = -pe.side; pe.off = pe.side * pe.baseOff; }
+  } else {
+    pe.s += pe.v * dt;
+    if (pe.s < 10) { pe.s = 10; pe.v = Math.abs(pe.v); }
+    else if (pe.s > r.len - 10) { pe.s = r.len - 10; pe.v = -Math.abs(pe.v); }
+    if (Math.random() < 0.0016) { pe.crossing = true; pe.crossPhase = 0; }
+  }
+  const pt = roadPointAt(r, pe.s);
+  pe.x = pt.x - Math.sin(pt.ang) * pe.off;
+  pe.y = pt.y + Math.cos(pt.ang) * pe.off;
+  pe.ang = pe.v >= 0 ? pt.ang : pt.ang + Math.PI;
 }
 function spawnOneVendor() {
   const pt = sampleNear(_cam.x, _cam.y, [6, 2], 150, SPAWN_R); // acera or beach apron

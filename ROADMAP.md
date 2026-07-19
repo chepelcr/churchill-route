@@ -4,6 +4,22 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Peatones rail-bound (como main) + nombres de calle (2026-07-18 PM5)
+
+- [x] **Peatones como el main branch**: modelo RAIL-BOUND — cada peatón atado
+      a una calle, camina su arclength a un offset fijo de media-acera y cruza
+      con animación (`advancePed` en spawns.js). Ya NO deambulan la superficie
+      (advanceOnSurface) por el anillo de acera de la cuadra — se acabó el
+      "peatones dentro de la cuadra".
+- [x] **Nombres de calle** (regresan del main): pill cada ~900px de arclength
+      sobre calles con `name`/`ref`, deduplicado por nombre+celda para no
+      apilar copias por-tile (`drawStreetLabels2D` en canvas2d).
+- [ ] **Faro "vacío"**: el debug map muestra que el barrio del Faro SÍ tiene
+      edificios; la punta oeste es un espigón de arena (real) y el spawn está
+      en la plaza del faro (abierta). Pendiente: el usuario confirme
+      coordenadas 📍 del punto vacío (posible bug de render/streaming vs.
+      centros de bloques grandes solo-frente).
+
 ## ✅ Cuadras densas + feel de manejo + escenografía no-manejable (2026-07-18 PM4)
 
 - [x] **Cuadras densas** (centros vacíos): los bloques chicos de pueblo

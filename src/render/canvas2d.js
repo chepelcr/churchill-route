@@ -417,6 +417,39 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       for (const tr of tile.trees) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
       for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
     }
+    drawStreetLabels2D(roads, view);
+  }
+
+  // Interpolated point + tangent at arclength s along a prepped world-2d road.
+  function road2dPointAt(r, s) {
+    const pts = r.pts, cum = r.cum;
+    let i = 1;
+    while (i < cum.length - 1 && cum[i] < s) i++;
+    const s0 = cum[i - 1], seg = (cum[i] - s0) || 1;
+    const tt = Math.max(0, Math.min(1, (s - s0) / seg));
+    const x0 = pts[(i - 1) * 2], y0 = pts[(i - 1) * 2 + 1];
+    const x1 = pts[i * 2], y1 = pts[i * 2 + 1];
+    return { x: x0 + (x1 - x0) * tt, y: y0 + (y1 - y0) * tt, ang: Math.atan2(y1 - y0, x1 - x0) };
+  }
+  // Street names: a small pill every ~900px of arclength on named roads (the
+  // main-branch feature). Deduped by name+coarse-cell so tile-duplicated road
+  // copies don't stack labels.
+  function drawStreetLabels2D(roads, view) {
+    ctx.font = "bold 9px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    const seen = new Set();
+    for (const r of roads) {
+      const lbl = r.name || r.ref;
+      if (!lbl || r.len < 200 || r.cls === "pedestrian") continue;
+      for (let s = 220; s < r.len; s += 900) {
+        const pt = road2dPointAt(r, s);
+        if (pt.x < view.x0 - 40 || pt.x > view.x1 + 40 || pt.y < view.y0 - 20 || pt.y > view.y1 + 20) continue;
+        const key = lbl + "|" + ((pt.x / 120) | 0) + "|" + ((pt.y / 120) | 0);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        label(pt.x, pt.y + 2, lbl, "#fff", "rgba(20,16,40,0.78)");
+      }
+    }
   }
 
   function drawLand(view) {

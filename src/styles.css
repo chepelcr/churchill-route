@@ -470,16 +470,20 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   50% { transform: translateY(3px); border-bottom-width: 2px; }
 }
 
-/* instruction panel — BOTTOM center so it never covers the vehicle (the
-   camera leads the car, which sits near screen center) */
+/* instruction panel — docked to the RIGHT SIDE as a compact squared card so it
+   never covers the vehicle (the camera leads the car, which sits near screen
+   center) nor the compass (top-center) / joystick (bottom-left). */
 .tut-panel {
-  position: absolute; bottom: 112px; left: 50%; transform: translateX(-50%);
-  max-width: min(520px, 86vw);
-  background: rgba(20, 16, 40, 0.92); border: 1px solid rgba(255,255,255,0.2);
+  position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+  width: min(240px, 44vw);
+  background: rgba(20, 16, 40, 0.94); border: 1px solid rgba(255,255,255,0.2);
   border-left: 4px solid #5fb0d6;
-  border-radius: 10px; padding: 10px 14px;
+  border-radius: 12px; padding: 14px 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
   pointer-events: none; z-index: 6;
 }
+/* short landscape phones: keep the card clear of the bottom brake pedal */
+@media (max-height: 460px) { .tut-panel { top: 40%; width: min(200px, 40vw); padding: 10px 12px; } }
 .tut-panel.done { border-left-color: #6fbf99; }
 .tut-step {
   font: 10px "JetBrains Mono", monospace; color: #5fb0d6;

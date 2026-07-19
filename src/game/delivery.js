@@ -2,7 +2,7 @@
 // before it melts. Scoring, combo, timer extensions and stage-clear checks.
 import { WORLD2D as W } from "../world2d/index.js";
 import { state, pushFloat } from "./state.js";
-import { markStageCleared, unlockDistrict, isMvpLocked } from "./progress.js";
+import { markStageCleared, unlockDistrict, isMvpLocked, mvpWallX } from "./progress.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { content } from "../content/remote.js";
@@ -40,6 +40,24 @@ export function activeCustomers() {
   return customerPool().filter(c => reachable(c));
 }
 
+// Easternmost x the player can actually reach: the nearest wall to the east
+// (the MVP "PRÓXIMAMENTE" wall in every mode + explore progression barriers).
+// Delivery targets must stay west of it so NPCs never spawn past the gate.
+function openLimitX() {
+  const walls = (state.barriers || []).map(b => b.x);
+  const mvp = mvpWallX();
+  if (isFinite(mvp)) walls.push(mvp);
+  return walls.length ? Math.min(...walls) : Infinity;
+}
+
+// A fresh, reachable delivery spot near an anchor that is guaranteed to sit in
+// the open (unlocked) area — used by every order so repeat drops vary and no
+// customer ever lands on the beach, inside a cuadra, or behind a locked wall.
+function openReachablePoint(x, y) {
+  const limit = openLimitX() - 30;
+  return W.reachablePointNear(x, y, 480, isFinite(limit) ? (px) => px < limit : null);
+}
+
 export function nearestKiosk(p) {
   let best = null, bd = Infinity;
   for (const lm of activeKiosks()) {
@@ -56,19 +74,34 @@ export function pickCustomerNear(x, y) {
   if (!pool.length) { state.pendingOrder = null; return; }
   const base = pool.reduce((a, b) =>
     Math.hypot(a.x - x, a.y - y) <= Math.hypot(b.x - x, b.y - y) ? a : b);
-  const pt = W.reachablePointNear(base.x, base.y);
+  const pt = openReachablePoint(base.x, base.y);
+  state.lastCustomerId = base.id || base.name;
   state.pendingOrder = { ...base, x: Math.round(pt.x), y: Math.round(pt.y) };
 }
 
 export function pickCustomer() {
   const pool = activeCustomers();
   if (!pool.length) { state.pendingOrder = null; return; }
-  const base = pool[Math.floor(Math.random() * pool.length)];
+  // Keep orders inside the zone the active kiosks cover: prefer customers within
+  // a generous radius of a kiosk (so you deliver near where you pick up), and
+  // don't hand out the same NPC twice in a row — cuts down on repeats.
+  const kiosks = activeKiosks();
+  let choices = pool;
+  if (kiosks.length) {
+    const near = pool.filter(c => kiosks.some(k => Math.hypot(k.x - c.x, k.y - c.y) < 2600));
+    if (near.length) choices = near;
+  }
+  if (choices.length > 1 && state.lastCustomerId) {
+    const varied = choices.filter(c => (c.id || c.name) !== state.lastCustomerId);
+    if (varied.length) choices = varied;
+  }
+  const base = choices[Math.floor(Math.random() * choices.length)];
   // Give this order a fresh, reachable spot near the customer's home anchor so
-  // repeat deliveries don't always land in the exact same place, and nobody is
-  // ever stranded on the beach / inside a cuadra. Clone so the canonical
-  // customer record is never mutated.
-  const pt = W.reachablePointNear(base.x, base.y);
+  // repeat deliveries don't always land in the exact same place, nobody is ever
+  // stranded on the beach / inside a cuadra, and it stays in the open area.
+  // Clone so the canonical customer record is never mutated.
+  const pt = openReachablePoint(base.x, base.y);
+  state.lastCustomerId = base.id || base.name;
   state.pendingOrder = { ...base, x: Math.round(pt.x), y: Math.round(pt.y) };
 }
 

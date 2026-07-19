@@ -257,21 +257,29 @@ export const WORLD2D = (function () {
   function customerById(id) { return CUSTOMERS.find((c) => c.id === id); }
 
   // A drivable point near (x,y) among currently-resident tiles.
-  function reachablePointNear(x, y, radius = 480) {
-    const drivable = (px, py) => { const c = surfaceAt(px, py); return c === 3 || c === 5; };
+  // `accept(px,py)` (optional) further constrains candidates — e.g. delivery
+  // keeps orders west of the locked-area wall so NPCs never spawn past the gate.
+  function reachablePointNear(x, y, radius = 480, accept = null) {
+    const ok = (px, py) => {
+      const c = surfaceAt(px, py);
+      return (c === 3 || c === 5) && (!accept || accept(px, py));
+    };
     const cands = [];
     for (let k = 0; k < 220; k++) {
       const ang = Math.random() * Math.PI * 2;
       const rad = Math.sqrt(Math.random()) * radius;
       const px = x + Math.cos(ang) * rad, py = y + Math.sin(ang) * rad;
-      if (drivable(px, py)) cands.push({ x: px, y: py });
+      if (ok(px, py)) cands.push({ x: px, y: py });
     }
     if (cands.length) return cands[(Math.random() * cands.length) | 0];
     for (let r = 24; r <= 2000; r += 24)
       for (let a = 0; a < 360; a += 12) {
         const px = x + Math.cos((a * Math.PI) / 180) * r, py = y + Math.sin((a * Math.PI) / 180) * r;
-        if (drivable(px, py)) return { x: px, y: py };
+        if (ok(px, py)) return { x: px, y: py };
       }
+    // nothing satisfied the filter near here — fall back to the nearest drivable
+    // point (still better than dropping the order); ignore the accept filter.
+    if (accept) return reachablePointNear(x, y, radius, null);
     return { x, y };
   }
 

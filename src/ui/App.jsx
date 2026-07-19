@@ -52,9 +52,11 @@ export default function App() {
     const tick = () => {
       tickRef.current += 1;
       if (tickRef.current % 3 === 0) setTick(tickRef.current);
-      // tutorial runs return to the menu (it congratulates in-game already)
+      // every finished run — tutorial included — shows the results/confirmation
+      // screen (ResultsScreen renders a "¡Tutorial completado!" card) instead of
+      // snapping straight to the menu.
       if (Game.state.over && screenRef.current === "playing")
-        setScreen(Game.state.mode === "tutorial" ? "title" : "over");
+        setScreen("over");
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

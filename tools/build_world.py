@@ -217,10 +217,11 @@ LANDMARK_DEFS = [
     # rocky tip OUTSIDE the road loop (left of Calle 39), with the Balneario
     # Municipal pool inside the loop on the other side of the street.
     {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -10, "dy": 110},
-    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 190, "dy": -70},
-    # a churchill kiosk right at La Punta so Stage 1 opens beside the lighthouse
-    # (dropped on the road loop by the Balneario, not on the rocky tip)
-    {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 130, "dy": 20},
+    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 230, "dy": -40},
+    # a churchill kiosk right at La Punta so Stage 1 opens beside the lighthouse:
+    # anchored next to the faro (off the Balneario), then seated on the cuadra
+    # across the street from the pool by the frontage pass
+    {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 10, "dy": 70},
     # The cruise pier juts out from the END of Calle Central, right beside the
     # churchill kiosks on the Paseo (dx nudges the geo anchor onto that street)
     # dx 680 is a CORRIDOR-space nudge; the planar pier re-anchors to the real
@@ -241,7 +242,7 @@ LANDMARK_DEFS = [
     {"id": "museo",       "name": "Museo Histórico Marino",     "type": "museum",       "district": "centro",   "osm": "museo", "near": (9.97600, -84.83550), "ll": (9.97580, -84.83520)},
     {"id": "kios_centro", "name": "Kiosco La Porteña",          "type": "kiosk",        "district": "centro",   "ll": (9.97480, -84.83000)},
     {"id": "estadio",     "name": "Estadio Lito Pérez",         "type": "stadium",      "district": "playitas", "osm": "lito pérez", "ll": (9.97880, -84.82660)},
-    {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97840, -84.82520)},
+    {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97840, -84.82640)},
     {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "cocal",    "osm": "yacht", "ll": (9.97900, -84.81200)},
     # anchor monument on the island where the road splits into the Cocal (west
     # side, not the estero end) — placed by world xy read off the 📍 overlay
@@ -295,6 +296,14 @@ CUSTOMER_DEFS = [
     # el yatista espera cerca del ferry (Playitas quedó llena: banda angosta,
     # kiosk+c9+c10 cubren todo el spread — no cabe un 4º cliente)
     {"id": "c12", "name": "Yatista gringo",         "district": "carmen",   "line": "Best churchill ever, man.",    "ll": (9.97680, -84.84200)},
+    # --- extra porteño clientes so free-roam orders don't repeat (open area;
+    # placed in the roomier carmen/paseo bands — centro/playitas are tight) ---
+    {"id": "c19", "name": "Marinero del muelle",    "district": "carmen",   "line": "Con hielo bien menudito.",     "ll": (9.97700, -84.84780)},
+    {"id": "c20", "name": "Capitán del ferry",      "district": "carmen",   "line": "Uno para el capitán.",         "ll": (9.97560, -84.84520)},
+    {"id": "c21", "name": "Casera del barrio",      "district": "carmen",   "line": "El clásico de siempre.",       "ll": (9.97760, -84.84350)},
+    {"id": "c22", "name": "Bailarina de comparsa",  "district": "paseo",    "line": "¡La mía sin tanto rojo!",      "ll": (9.97400, -84.83680)},
+    {"id": "c23", "name": "Mesero del Kalúa",       "district": "paseo",    "line": "Para la mesa del rincón.",     "ll": (9.97430, -84.83380)},
+    {"id": "c24", "name": "Surfista italiano",      "district": "paseo",    "line": "Doble rojo, per favore.",      "ll": (9.97460, -84.83120)},
     {"id": "c13", "name": "Pareja en mirador",      "district": "cocal",    "line": "Para ver el atardecer.",       "ll": (9.96000, -84.73900)},
     {"id": "c14", "name": "Camionero de Ruta 17",   "district": "cocal",    "line": "Rápido, voy pa' Caldera.",     "ll": (9.96800, -84.74400)},
     {"id": "c15", "name": "Pescadores del estero",  "district": "mata",     "line": "Justo antes de la lluvia.",    "ll": (9.92600, -84.71000)},
@@ -1479,7 +1488,7 @@ def block_census(grid, min_side=6):
 BLOCK_MIN_CUADS = 6       # a real cuadra fits >= 6x6 buildable cuadrículas
 SLIVER_MAX_CUADS = 25.0   # smaller-and-thinner land paves to plaza concrete
 
-def detect_blocks(grid):
+def detect_blocks(grid, build_band_x1=None):
     """Classify every CLS_LAND component (after roads/aceras/pads are stamped)
     at cuadrícula resolution:
       - block: fits a BLOCK_MIN_CUADS square of buildable CUAD cells somewhere
@@ -1550,8 +1559,17 @@ def detect_blocks(grid):
     n_green = 0
     for cid in range(1, len(comp_n)):
         area_cuads = comp_n[cid] / (CUAD_CELLS * CUAD_CELLS)
+        cells = comp_cells[cid]
+        # Faro tip: the fine street grid makes cuadras below the 6x6 minimum, so
+        # they'd pave to green plazas. Keep the small coastal blocks BUILDABLE
+        # (whole component west of the band edge) so the barrio by the lighthouse
+        # has houses instead of a green patchwork.
+        in_band = (build_band_x1 is not None and cells and
+                   max(cc for cc, _ in cells) * CUAD < build_band_x1)
         if comp_ins[cid] >= BLOCK_MIN_CUADS:
-            blocks.append({"cells": comp_cells[cid], "green": False})
+            blocks.append({"cells": cells, "green": False})
+        elif in_band and comp_ins[cid] >= 2 and area_cuads >= 4:
+            blocks.append({"cells": cells, "green": False})
         elif area_cuads <= SLIVER_MAX_CUADS:
             paved_ids.add(cid)
         else:
@@ -2590,7 +2608,12 @@ def main():
             if best:
                 return ((best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL)
         return None
+    # BEACH kiosks: keep them on the sand and carve a drivable SAND PATH from the
+    # nearest street. TOWN kiosks are re-seated INSIDE a cuadra (on the frontage
+    # cell nearest a street) with a paved connector — done after block detection
+    # below, so nothing is left mid-lane.
     kiosk_paths = []
+    beach_kiosks = set()
     for lm in landmarks:
         if lm["type"] != "kiosk":
             continue
@@ -2600,26 +2623,24 @@ def main():
             tgt = _nearest_cell(kx, ky, (CLS_ROAD, CLS_BRIDGE), 260)
             if tgt:
                 raster_stamp_polyline(grid, [kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
-                kiosk_paths.append({"pts": [round(kx), round(ky), round(tgt[0]), round(tgt[1])]})
+                kiosk_paths.append({"pts": [round(kx), round(ky), round(tgt[0]), round(tgt[1])],
+                                    "surface": "sand"})
                 print(f"[kiosk] sand path {lm['id']} -> street ({round(tgt[0])},{round(tgt[1])})")
-        elif surf in (CLS_ROAD, CLS_BRIDGE):
-            # move to the cuadra FRONTAGE (land, the outer building side) so it
-            # sits on the sidewalk beside the street — never a central median
-            off = _nearest_cell(kx, ky, (CLS_LAND,), 34)
-            if off:
-                lm["x"], lm["y"] = round(off[0]), round(off[1])
-                print(f"[kiosk] {lm['id']} shifted to frontage ({lm['x']},{lm['y']})")
+            beach_kiosks.add(lm["id"])
 
     for lm in landmarks:
-        # scenery (buildings + green areas) gets NO drivable apron
-        if lm["type"] in NO_PAD_LM:
+        # scenery (buildings + green areas) gets NO drivable apron; kiosks get
+        # theirs in the cuadra-frontage pass after block detection
+        if lm["type"] in NO_PAD_LM or lm["type"] == "kiosk":
             continue
-        stamp_pad(grid, lm["x"], lm["y"], 80 if lm["type"] == "kiosk" else 48)
+        stamp_pad(grid, lm["x"], lm["y"], 48)
     for cu in customers:
         stamp_pad(grid, cu["x"], cu["y"], 56)
     faro_lm = next((l for l in landmarks if l["id"] == "faro"), None)
     if faro_lm:
-        stamp_pad(grid, faro_lm["x"], faro_lm["y"], 140)  # La Punta plaza
+        # La Punta plaza: hug the tip WEST of the last street so it never bleeds
+        # east into the town's cuadras/streets (which otherwise fragment to green).
+        stamp_pad(grid, faro_lm["x"] - 40, faro_lm["y"], 80)
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
     for isl in junction_islands:
@@ -2627,8 +2648,13 @@ def main():
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
     print(f"[acera] {acera_cells} sidewalk cells; {len(junction_islands)} junction islands")
 
-    # --- cuadrícula blocks: classify land into cuadras / paved plazas / green
-    blocks, plazas = detect_blocks(grid)
+    # --- cuadrícula blocks: classify land into cuadras / paved plazas / green.
+    # The Faro + Carmen barrios by the lighthouse have a fine street grid whose
+    # small cuadras would pave to green plazas — keep them BUILDABLE (houses)
+    # out to the east edge of Carmen so the tip reads as a town, not a lawn.
+    faro_band_x1 = next((d["x1"] for d in districts if d["id"] == "carmen"),
+                        next((d["x1"] for d in districts if d["id"] == "faro"), None))
+    blocks, plazas = detect_blocks(grid, build_band_x1=faro_band_x1)
 
     # Step each building landmark off its street anchor into a cuadra INTERIOR
     # cell — nearest block, cell ≥1 cuadrícula from any edge so it clears the
@@ -2661,6 +2687,130 @@ def main():
             lm["x"], lm["y"] = round(inb[0]), round(inb[1])
             n_snap += 1
     print(f"[poi] {n_snap} building landmarks snapped into cuadra interiors")
+
+    # Merge a block's CUAD cells into footprint-accurate [x,y,w,h] pixel rects
+    # (same row-run merge as the plaza emission) so parks/greens paint exactly on
+    # the block cells — never spilling onto streets, always following the block
+    # (and therefore the street-grid) shape.
+    def cuad_cells_to_rects(cells):
+        rows = defaultdict(list)
+        for (cc, cr) in cells:
+            rows[cr].append(cc)
+        runs_by_row = {}
+        for cr, ccs in rows.items():
+            ccs.sort(); runs = []
+            for cc in ccs:
+                if runs and runs[-1][1] == cc:
+                    runs[-1][1] = cc + 1
+                else:
+                    runs.append([cc, cc + 1])
+            runs_by_row[cr] = runs
+        rects = []; open_runs = {}
+        def _emit(key, span):
+            rects.append([key[0] * CUAD, span[0] * CUAD,
+                          (key[1] - key[0]) * CUAD, (span[1] - span[0]) * CUAD])
+        for cr in sorted(runs_by_row):
+            cur = {tuple(run) for run in runs_by_row[cr]}
+            nxt = {}
+            for key in cur:
+                if key in open_runs and open_runs[key][1] == cr:
+                    open_runs[key][1] = cr + 1; nxt[key] = open_runs[key]
+                else:
+                    if key in open_runs:
+                        _emit(key, open_runs[key])
+                    nxt[key] = [cr, cr + 1]
+            for key, span in open_runs.items():
+                if key not in nxt:
+                    _emit(key, span)
+            open_runs = nxt
+        for key, span in open_runs.items():
+            _emit(key, span)
+        return rects
+
+    def _block_containing(x, y):
+        ac, ar = int(x // CUAD), int(y // CUAD)
+        for bi, b in enumerate(blocks):
+            if (ac, ar) in b["cells"]:
+                return bi
+        return None
+
+    # --- TOWN kiosks: seat each on a NEARBY cuadra FRONTAGE cell (solid land next
+    # to a street, never the roadway/acera/median) and carve a short paved
+    # connector + apron to the nearest street. Bounded to a small radius so a
+    # kiosk with no cuadra beside it (e.g. on the Paseo boardwalk) stays put and
+    # just gets the pad+connector instead of teleporting to a far block.
+    KIOSK_SNAP_CUAD = 10                       # ≤ this many cuadrículas from anchor
+    nongreen_blocks = []
+    for b in blocks:
+        if b.get("green"):
+            continue
+        cs = b["cells"]
+        bc0 = min(c for c, _ in cs); bc1 = max(c for c, _ in cs)
+        br0 = min(r for _, r in cs); br1 = max(r for _, r in cs)
+        nongreen_blocks.append((bc0, bc1, br0, br1, cs))
+
+    def _road_adj(cc, cr):
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            px = int((cc + dc + 0.5) * CUAD // GRID_CELL)
+            py = int((cr + dr + 0.5) * CUAD // GRID_CELL)
+            if _cell_cls(px, py) in (CLS_ROAD, CLS_BRIDGE, CLS_PASEO, CLS_ACERA):
+                return True
+        return False
+
+    def _kiosk_frontage(x, y):
+        ac, ar = int(x // CUAD), int(y // CUAD)
+        m = KIOSK_SNAP_CUAD
+        best = None
+        for (bc0, bc1, br0, br1, cs) in nongreen_blocks:
+            if ac < bc0 - m or ac > bc1 + m or ar < br0 - m or ar > br1 + m:
+                continue
+            for (cc, cr) in cs:
+                if abs(cc - ac) > m or abs(cr - ar) > m:
+                    continue
+                d2 = (cc - ac) ** 2 + (cr - ar) ** 2
+                if best is None or d2 < best[0]:
+                    best = (d2, cc, cr, cs)
+        if best is None:
+            return None
+        cs = best[3]
+        near = [c for c in cs if abs(c[0] - ac) <= m and abs(c[1] - ar) <= m]
+        frontage = [c for c in near if _road_adj(*c)]
+        pool = frontage if frontage else near
+        if not pool:
+            return None
+        tc, tr = min(pool, key=lambda c: (c[0] - ac) ** 2 + (c[1] - ar) ** 2)
+        return ((tc + 0.5) * CUAD, (tr + 0.5) * CUAD)
+    for lm in landmarks:
+        if lm["type"] != "kiosk" or lm["id"] in beach_kiosks:
+            if lm["type"] == "kiosk":
+                stamp_pad(grid, lm["x"], lm["y"], 44)   # apron for the beach stand
+            continue
+        spot = _kiosk_frontage(lm["x"], lm["y"])
+        if spot:
+            lm["x"], lm["y"] = round(spot[0]), round(spot[1])
+        stamp_pad(grid, lm["x"], lm["y"], 44)            # drivable pocket
+        tgt = _nearest_cell(lm["x"], lm["y"], (CLS_ROAD, CLS_BRIDGE, CLS_PASEO), 60)
+        if tgt:
+            raster_stamp_polyline(grid, [lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
+            kiosk_paths.append({"pts": [round(lm["x"]), round(lm["y"]),
+                                        round(tgt[0]), round(tgt[1])], "surface": "paved"})
+            print(f"[kiosk] {lm['id']} -> cuadra frontage ({lm['x']},{lm['y']}), paved connector")
+
+    # OSM parks (parquemar, cocal_park): paint their green on the containing
+    # block's footprint too, and centre the fountain/label on that block.
+    for lm in landmarks:
+        if lm["type"] != "park":
+            continue
+        bi = _block_containing(lm["x"], lm["y"])
+        if bi is None:
+            continue
+        blocks[bi]["green"] = True
+        cells = blocks[bi]["cells"]
+        plazas.extend(cuad_cells_to_rects(cells))
+        bc0 = min(c for c, _ in cells); bc1 = max(c for c, _ in cells)
+        br0 = min(r for _, r in cells); br1 = max(r for _, r in cells)
+        lm["x"] = (bc0 + bc1 + 1) * CUAD // 2; lm["y"] = (br0 + br1 + 1) * CUAD // 2
+        lm["w"] = min(160, (bc1 - bc0 + 1) * CUAD); lm["h"] = min(140, (br1 - br0 + 1) * CUAD)
 
     # Synthetic parks: scatter green spaces (each with a fountain) across the
     # town so parks aren't rare. Pick well-sized cuadras clear of other POIs,
@@ -2698,10 +2848,12 @@ def main():
                 break
             cx, cy, bi, w, h = park_cands[j]
             blocks[bi]["green"] = True       # keep the interior open (no buildings)
+            # paint the park's green on the block footprint (never over streets)
+            plazas.extend(cuad_cells_to_rects(blocks[bi]["cells"]))
             landmarks.append({"id": f"park_syn_{n_park}", "name": "Parque",
                               "x": int(cx), "y": int(cy), "type": "park",
                               "district": _dcls(cx // CUAD, cy // CUAD),
-                              "w": int(w), "h": int(h)})
+                              "w": min(160, int(w)), "h": min(140, int(h))})
             _pts.append((cx, cy))
             n_park += 1
     print(f"[parks] +{n_park} synthetic parks scattered across the town")

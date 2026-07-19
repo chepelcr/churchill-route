@@ -424,23 +424,38 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     drawStreetLabels2D(roads, view);
   }
 
-  // Paved plazas rendered as GRASS (user request): green fill + mow stripes,
-  // a leafy tree on the bigger ones. Rects are [x, y, w, h].
+  // Paved plazas / park ground rendered as GRASS. The rects are the exact cell
+  // footprint of a block (merged row-runs), so they tile the block edge-to-edge:
+  // we draw SQUARE corners (adjacent rects merge into one lawn instead of a
+  // patchwork of rounded blobs) and a SUBTLE, world-grid-aligned mottle (no hard
+  // stripes, no tree in every patch — flora comes from the tile trees layer).
   function drawPlazaGreen(pz, view) {
     const [px, py, pw, ph] = pz;
     if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
     ctx.fillStyle = "#4f9d5b";
-    roundRect(ctx, px, py, pw, ph, Math.min(8, pw / 2, ph / 2), true, false);
+    ctx.fillRect(px, py, pw, ph);
+    // faint dapple keyed to WORLD coords so it lines up across neighbouring
+    // rects — reads as natural lawn texture, not crayon hatching.
     ctx.save();
-    roundRect(ctx, px, py, pw, ph, Math.min(8, pw / 2, ph / 2), false, false); ctx.clip();
-    ctx.fillStyle = "rgba(92,176,102,0.4)";
-    for (let sx = px; sx < px + pw; sx += 20) ctx.fillRect(sx, py, 10, ph);
+    ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+    const G = 26;
+    const gx0 = Math.floor(px / G) * G, gy0 = Math.floor(py / G) * G;
+    for (let gx = gx0; gx < px + pw; gx += G) {
+      for (let gy = gy0; gy < py + ph; gy += G) {
+        const hh = hash01(gx * 0.137 + gy * 0.713);
+        if (hh < 0.55) continue;                       // sparse — most cells bare
+        ctx.fillStyle = hh < 0.8 ? "rgba(92,176,102,0.16)" : "rgba(66,140,80,0.13)";
+        const s = 9 + hh * 7;
+        ctx.fillRect(gx + (hh * 7 | 0), gy + ((hh * 131) % 9 | 0), s, s * 0.7);
+      }
+    }
     ctx.restore();
-    if (pw > 44 && ph > 44) paintTree({ x: px + pw / 2, y: py + ph / 2, s: 1 });
   }
 
-  // Sand access paths (beach kiosk → nearest street): a packed-sand strip so
-  // the drivable corridor reads as a beach path, not asphalt.
+  // Kiosk access paths → nearest street (drivable). Beach kiosks get a packed
+  // SAND strip; town kiosks get a PAVED driveway (asphalt + concrete curb) so
+  // the connector reads as a real street to the stand, not a floating circle.
+  // (Entries without `surface` are legacy beach paths → sand.)
   function drawKioskPaths(view) {
     const paths = W.KIOSK_PATHS;
     if (!paths || !paths.length) return;
@@ -449,11 +464,18 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       const [x0, y0, x1, y1] = p.pts;
       if (Math.max(x0, x1) < view.x0 - 40 || Math.min(x0, x1) > view.x1 + 40 ||
           Math.max(y0, y1) < view.y0 - 40 || Math.min(y0, y1) > view.y1 + 40) continue;
-      ctx.strokeStyle = "#d8c290"; ctx.lineWidth = 30;               // packed sand
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      ctx.strokeStyle = "rgba(180,150,100,0.5)"; ctx.lineWidth = 30; // edge grain
-      ctx.setLineDash([2, 10]); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      ctx.setLineDash([]);
+      if (p.surface === "paved") {
+        ctx.strokeStyle = "#cec7b2"; ctx.lineWidth = 34;             // concrete curb apron
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        ctx.strokeStyle = "#3a3540"; ctx.lineWidth = 26;             // asphalt driveway
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      } else {
+        ctx.strokeStyle = "#d8c290"; ctx.lineWidth = 30;             // packed sand
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        ctx.strokeStyle = "rgba(180,150,100,0.5)"; ctx.lineWidth = 30; // edge grain
+        ctx.setLineDash([2, 10]); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
   }
 
@@ -934,15 +956,26 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // wall; this just paints it green instead of bare sand.
   function drawGreenSpace(lm, w, h, opts = {}) {
     const x = lm.x, y = lm.y;
+    // Parks (opts.ground === false): the green GROUND is painted by the block
+    // footprint (plaza-green) so it can never overlap streets and follows the
+    // block orientation — here we only add the fountain, a small tight tree
+    // cluster near the centre, and the label. Stadium/standalone keep the
+    // legacy self-drawn grass rect + pitch outline.
+    if (opts.ground === false) {
+      const r = Math.max(14, Math.min(w, h) / 3);
+      const n = Math.max(3, Math.round(r / 7));
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + hash01(i + lm.x) * 0.6;
+        const rr = r * (0.55 + hash01(i * 5 + lm.y) * 0.4);
+        paintTree({ x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr, s: 0.8 + hash01(i + lm.x) * 0.35 });
+      }
+      if (opts.fountain) drawFountain(x, y);
+      return;
+    }
     ctx.fillStyle = "rgba(0,0,0,0.18)";
     roundRect(ctx, x - w / 2 + 3, y - h / 2 + 4, w, h, 12, true, false); // soft shadow
     ctx.fillStyle = "#4f9d5b";
     roundRect(ctx, x - w / 2, y - h / 2, w, h, 12, true, false);         // grass
-    ctx.save();
-    roundRect(ctx, x - w / 2, y - h / 2, w, h, 12, false, false); ctx.clip();
-    ctx.fillStyle = "rgba(92,176,102,0.4)";                              // mow stripes
-    for (let sx = -w / 2; sx < w / 2; sx += 20) ctx.fillRect(x + sx, y - h / 2, 10, h);
-    ctx.restore();
     ctx.strokeStyle = "rgba(232,226,210,0.55)"; ctx.lineWidth = 3;       // gravel path border
     roundRect(ctx, x - w / 2 + 5, y - h / 2 + 5, w - 10, h - 10, 9, false, true);
     if (opts.pitch) {                                                    // sports pitch outline
@@ -995,6 +1028,11 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.beginPath(); ctx.ellipse(x + 4, y + 8, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
     switch (lm.type) {
       case "kiosk": {
+        // concrete apron under the stand (matches the drivable pocket carved by
+        // stamp_pad) so the kiosk reads as paved-in beside the street, not a
+        // box floating on asphalt.
+        ctx.fillStyle = "#c9c3b0";
+        roundRect(ctx, x - 30, y - 22, 60, 44, 6, true, false);
         // white + ORANGE kiosk (was red); the churchill drink stays red — it's the syrup
         ctx.fillStyle = "#fff"; ctx.fillRect(x - 16, y - 8, 32, 18);
         for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? "#fff" : "#f08a5d"; ctx.fillRect(x - 16 + i * 8, y - 14, 8, 6); }
@@ -1045,7 +1083,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       }
       case "park": {
         const pw = lm.w || 116, ph = lm.h || 90;
-        drawGreenSpace(lm, pw, ph, { fountain: true });
+        drawGreenSpace(lm, pw, ph, { fountain: true, ground: false });
         label(x, y - ph / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
       }
       case "stadium": {

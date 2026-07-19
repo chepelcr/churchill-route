@@ -12,3 +12,7 @@ android/.idea/
 *.keystore
 *.jks
 android/keystore/
+
+# Python bytecode cache (build tools)
+__pycache__/
+*.pyc

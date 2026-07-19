@@ -2009,7 +2009,7 @@ def write_png(path, w, h, get_rgb, stride=1):
 def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms,
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
-                 stadium=None):
+                 stadium=None, kiosk_paths=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -2118,6 +2118,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         "bridge": bridge, "estuary": estuary, "pier": pier, "hills": hills,
         "beaches": beaches, "waters": waters, "landPolys": land_polys,
         "stadium": stadium,
+        "kioskPaths": kiosk_paths or [],
     }
     with open(os.path.join(WORLD2D_DIR, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
@@ -2565,6 +2566,50 @@ def main():
     # --- aceras (sidewalks) + plaza pads: these define where you can drive
     # off-street; everything left as CLS_LAND becomes solid cuadra interior
     acera_fringe(grid)
+
+    # --- Kiosk placement: real aceras are respected everywhere (walls), so
+    #   (a) kiosks sitting mid-lane shift onto the adjacent sidewalk, and
+    #   (b) BEACH kiosks get a drivable SAND PATH from the nearest street so
+    #       you can actually reach them. Runs BEFORE the pad stamp so the apron
+    #       lands at the final position.
+    def _cell_cls(cc, cr):
+        if 0 <= cc < GRID_COLS and 0 <= cr < GRID_ROWS:
+            return grid[cr * GRID_COLS + cc]
+        return CLS_WATER
+    def _nearest_cell(x, y, classes, max_cells):
+        c0, r0 = int(x // GRID_CELL), int(y // GRID_CELL)
+        for rad in range(1, max_cells):
+            best = None
+            for a in range(0, 360, 6):
+                rc = c0 + int(round(math.cos(math.radians(a)) * rad))
+                rr = r0 + int(round(math.sin(math.radians(a)) * rad))
+                if _cell_cls(rc, rr) in classes:
+                    d2 = (rc - c0) ** 2 + (rr - r0) ** 2
+                    if best is None or d2 < best[0]:
+                        best = (d2, rc, rr)
+            if best:
+                return ((best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL)
+        return None
+    kiosk_paths = []
+    for lm in landmarks:
+        if lm["type"] != "kiosk":
+            continue
+        kx, ky = lm["x"], lm["y"]
+        surf = _cell_cls(int(kx // GRID_CELL), int(ky // GRID_CELL))
+        if surf == CLS_BEACH:
+            tgt = _nearest_cell(kx, ky, (CLS_ROAD, CLS_BRIDGE), 260)
+            if tgt:
+                raster_stamp_polyline(grid, [kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
+                kiosk_paths.append({"pts": [round(kx), round(ky), round(tgt[0]), round(tgt[1])]})
+                print(f"[kiosk] sand path {lm['id']} -> street ({round(tgt[0])},{round(tgt[1])})")
+        elif surf in (CLS_ROAD, CLS_BRIDGE):
+            # move to the cuadra FRONTAGE (land, the outer building side) so it
+            # sits on the sidewalk beside the street — never a central median
+            off = _nearest_cell(kx, ky, (CLS_LAND,), 34)
+            if off:
+                lm["x"], lm["y"] = round(off[0]), round(off[1])
+                print(f"[kiosk] {lm['id']} shifted to frontage ({lm['x']},{lm['y']})")
+
     for lm in landmarks:
         # scenery (buildings + green areas) gets NO drivable apron
         if lm["type"] in NO_PAD_LM:
@@ -3052,6 +3097,7 @@ def main():
                      medians=medians, plazas=plazas, islands=junction_islands,
                      beaches=beaches, waters=waters, land_polys=land_contours,
                      landmarks=landmarks, customers=customers, stages=STAGES, stadium=stadium,
+                     kiosk_paths=kiosk_paths,
                      bridge=bridge, estuary=est, pier=pier, hills=hills)
     else:
         data = {

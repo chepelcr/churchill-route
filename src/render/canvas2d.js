@@ -410,6 +410,8 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     // the asphalt but under buildings/flora
     for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);
     for (const tile of vts) if (tile.medians.length) paintTileMedians(tile.medians, view);
+    // sand access paths from beach kiosks to the nearest street (drivable)
+    drawKioskPaths(view);
     // buildings
     for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
     // flora
@@ -418,6 +420,24 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
     }
     drawStreetLabels2D(roads, view);
+  }
+
+  // Sand access paths (beach kiosk → nearest street): a packed-sand strip so
+  // the drivable corridor reads as a beach path, not asphalt.
+  function drawKioskPaths(view) {
+    const paths = W.KIOSK_PATHS;
+    if (!paths || !paths.length) return;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (const p of paths) {
+      const [x0, y0, x1, y1] = p.pts;
+      if (Math.max(x0, x1) < view.x0 - 40 || Math.min(x0, x1) > view.x1 + 40 ||
+          Math.max(y0, y1) < view.y0 - 40 || Math.min(y0, y1) > view.y1 + 40) continue;
+      ctx.strokeStyle = "#d8c290"; ctx.lineWidth = 30;               // packed sand
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.strokeStyle = "rgba(180,150,100,0.5)"; ctx.lineWidth = 30; // edge grain
+      ctx.setLineDash([2, 10]); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.setLineDash([]);
+    }
   }
 
   // Interpolated point + tangent at arclength s along a prepped world-2d road.

@@ -4,6 +4,20 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Kioscos alcanzables: fuera de la calzada + sendero de arena en playa (2026-07-18 PM7)
+
+- [x] **Kioscos en media calzada → frontage**: los que quedaban sobre el carril
+      (paseo León Cortés nivel-2, faro, play…) se corren a la celda de FRENTE
+      de cuadra (land, lado de los edificios — nunca la mediana), y su apron
+      los conecta a la calle. Ya no están en medio de la calle.
+- [x] **Kioscos de playa alcanzables**: los que estaban en la arena
+      (centro, cocal, cocal2 —antes sin calle a <200px—, caldera) reciben un
+      **sendero de arena manejable** (`raster_stamp_polyline` CLS_ROAD 1.4·cuad)
+      desde la calle más cercana; se emite `manifest.kioskPaths` y se dibuja
+      como franja de arena (`drawKioskPaths`). Física de acera respetada en
+      todo el mapa (todo lo demás sigue siendo muro). Los 13 kioscos ahora en
+      superficie manejable. Gate 43/43.
+
 ## ✅ Parques como áreas verdes con fuente + estadio verde no-transitable (2026-07-18 PM6)
 
 - [x] **Parques = áreas verdes**: césped con franjas de corte, anillo de

@@ -831,10 +831,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   }
 
   function label(x, y, text, fg, bg) {
-    ctx.font = "bold 9px 'JetBrains Mono', monospace";
+    ctx.font = "bold 10px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
-    const w = ctx.measureText(text).width + 8;
-    ctx.fillStyle = bg; ctx.fillRect(x - w/2, y - 8, w, 12);
+    const w = ctx.measureText(text).width + 10;
+    ctx.fillStyle = bg; roundRect(ctx, x - w / 2, y - 9, w, 14, 4, true, false);
     ctx.fillStyle = fg; ctx.fillText(text, x, y + 1);
   }
 
@@ -999,10 +999,15 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       }
       case "church":
       case "cathedral": {
-        ctx.fillStyle = "#caa089"; ctx.fillRect(x - 20, y - 12, 40, 24);
-        ctx.fillStyle = "#9e6f4a"; ctx.beginPath(); ctx.moveTo(x - 6, y - 12); ctx.lineTo(x, y - 26); ctx.lineTo(x + 6, y - 12); ctx.fill();
-        ctx.fillStyle = "#fff"; ctx.fillRect(x - 0.5, y - 22, 1.5, 6); ctx.fillRect(x - 3, y - 19, 7, 1.5);
-        label(x, y - 30, lm.type === "cathedral" ? "CATEDRAL" : "IGLESIA", "#fff", "#9e6f4a"); break;
+        ctx.fillStyle = "#e7ddc8"; ctx.fillRect(x - 20, y - 12, 40, 24);          // pale stucco nave
+        ctx.fillStyle = "#b98a5e"; ctx.fillRect(x - 20, y - 12, 40, 4);
+        // bell tower with a tall spire so it reads as a church, not a house
+        ctx.fillStyle = "#e7ddc8"; ctx.fillRect(x - 6, y - 30, 12, 20);
+        ctx.fillStyle = "#9e6f4a"; ctx.beginPath(); ctx.moveTo(x - 8, y - 28); ctx.lineTo(x, y - 40); ctx.lineTo(x + 8, y - 28); ctx.closePath(); ctx.fill();
+        // bold white cross on top
+        ctx.fillStyle = "#fff"; ctx.fillRect(x - 1.5, y - 50, 3, 11); ctx.fillRect(x - 5, y - 46, 10, 3);
+        ctx.fillStyle = "#7fa8c8"; ctx.fillRect(x - 3, y - 26, 6, 8);              // door
+        label(x, y - 54, lm.type === "cathedral" ? "CATEDRAL" : "IGLESIA", "#fff", "#9e6f4a"); break;
       }
       case "market": {
         ctx.fillStyle = "#f3c969"; ctx.fillRect(x - 24, y - 12, 48, 24);
@@ -1030,11 +1035,18 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         drawGreenSpace(lm, 156, 122, { pitch: true });
         label(x, y - 122 / 2 - 6, "ESTADIO", "#fff", "#2e7d44"); break;
       }
-      case "civic":
       case "museum": {
+        // neoclassical facade: portico columns + pediment
+        ctx.fillStyle = "#eae3d2"; ctx.fillRect(x - 22, y - 12, 44, 24);
+        ctx.fillStyle = "#d8cfb8"; ctx.beginPath(); ctx.moveTo(x - 24, y - 12); ctx.lineTo(x, y - 24); ctx.lineTo(x + 24, y - 12); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#c3b79a";
+        for (let i = 0; i < 5; i++) ctx.fillRect(x - 20 + i * 9, y - 10, 4, 20); // columns
+        label(x, y - 28, "MUSEO", "#fff", "#8a6f4a"); break;
+      }
+      case "civic": {
         ctx.fillStyle = "#6fbf99"; ctx.fillRect(x - 20, y - 10, 40, 22);
         ctx.fillStyle = "#fff"; ctx.fillRect(x - 6, y - 6, 12, 12);
-        label(x, y - 18, lm.type === "civic" ? "CULTURA" : "MUSEO", "#fff", "#2e7d44"); break;
+        label(x, y - 18, "CULTURA", "#fff", "#2e7d44"); break;
       }
       case "marina": {
         ctx.fillStyle = "#5fb0d6"; ctx.fillRect(x - 18, y - 8, 36, 16);
@@ -1894,8 +1906,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     // Landmarks (the bridge has its own drawer)
     for (const lm of W.LANDMARKS) {
       if (lm.x < view.x0 - 60 || lm.x > view.x1 + 60) continue;
-      if (lm.type === "bridge") continue;
-      if (lm.type === "stadium") continue; // the estadio draws itself (ground + Pixi gradas)
+      if (lm.type === "bridge") continue; // the Mata bridge has its own drawer (drawBridge)
       if (PIXI_LANDMARKS && PIXI_MIGRATED.has(lm.type)) continue; // Pixi draws these now
       drawLandmark(lm);
     }

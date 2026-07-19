@@ -1605,11 +1605,14 @@ def detect_blocks(grid):
 # one block's cell set (never straddling aceras/streets, by construction).
 # A shared occupancy set keeps OSM + synth footprints disjoint.
 
-SYNTH_MAX_TOTAL = 40000         # cap on real + synthesized buildings (8000 hit
-                                # the cap mid-map and left whole cuadras empty)
+SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so
+                                # fully-filled small cuadras don't exhaust it
+                                # mid-map and leave far blocks empty)
 SYNTH_SEED = 77
 BLDG_INSET = 2                  # px seam per side so adjacent roofs don't fuse
 FRONTAGE_DEPTH = 3              # buildable band (CUADs) from the block edge
+SMALL_BLOCK_CUADS = 120        # blocks ≤ this many cuadrículas fill completely
+                               # (dense town); bigger ones keep patio interiors
 OSM_MAX_CUADS = 4               # cap OSM footprints at 4x4 cuadrículas
 # weighted synth footprint mix (w x h in cuadrículas)
 SYNTH_LOTS = [((2, 2), 0.25), ((2, 1), 0.20), ((1, 2), 0.20),
@@ -1699,9 +1702,10 @@ def snap_osm_buildings(raws, cell_block, occ):
     return out
 
 def synth_buildings(blocks, cell_block, occ, n_real):
-    """Fill each cuadra's frontage band (cells within FRONTAGE_DEPTH of the
-    block edge) with whole-cuadrícula lots — interiors stay open like real
-    patios. Deterministic: sorted block/cell order + seeded rng."""
+    """Fill cuadras with whole-cuadrícula lots. Small town blocks fill
+    COMPLETELY (dense puerto — no empty centers); large blocks keep only a
+    frontage band so their interiors read as patios/parks. Deterministic:
+    sorted block/cell order + seeded rng."""
     rng = _make_rng(SYNTH_SEED)
     out = []
     for bi in sorted(range(len(blocks)), key=lambda i: min(blocks[i]["cells"])):
@@ -1719,7 +1723,11 @@ def synth_buildings(blocks, cell_block, occ, n_real):
                 if nb in cells and nb not in depth:
                     depth[nb] = depth[(cc, cr)] + 1
                     q.append(nb)
-        band = {c for c in cells if depth[c] <= FRONTAGE_DEPTH}
+        # small blocks: fill the whole cuadra; large blocks: frontage band only
+        if len(cells) <= SMALL_BLOCK_CUADS:
+            band = set(cells)
+        else:
+            band = {c for c in cells if depth[c] <= FRONTAGE_DEPTH}
         for cell0 in sorted(band, key=lambda c: (c[1], c[0])):
             if cell0 in occ:
                 continue
@@ -2386,7 +2394,12 @@ def main():
     # Building landmarks (church, market, hotel…) must sit INSIDE a cuadra, not
     # on the street. From a drivable anchor, walk into the nearest block
     # interior (CLS_LAND) so the footprint fronts the road it was next to.
-    BUILDING_LM = {"church", "cathedral", "market", "super", "hotel", "civic", "house"}
+    BUILDING_LM = {"church", "cathedral", "market", "super", "hotel", "civic",
+                   "house", "museum", "restaurant"}
+    # Scenery that must NOT get a drivable apron (you see it, never drive onto
+    # it): the buildings above + green areas (parks/pool). Excluded from the
+    # reachability gate too. Fixes driving into the Paseo's green yards.
+    NO_PAD_LM = BUILDING_LM | {"park", "pool"}
     def _drivable_cell(c, r):
         return 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and \
             grid[r * GRID_COLS + c] in (CLS_ROAD, CLS_BRIDGE)
@@ -2553,9 +2566,8 @@ def main():
     # off-street; everything left as CLS_LAND becomes solid cuadra interior
     acera_fringe(grid)
     for lm in landmarks:
-        # building landmarks are SCENERY inside a cuadra — no drivable apron
-        # (you see them from the street, never drive onto them)
-        if lm["type"] in BUILDING_LM:
+        # scenery (buildings + green areas) gets NO drivable apron
+        if lm["type"] in NO_PAD_LM:
             continue
         stamp_pad(grid, lm["x"], lm["y"], 80 if lm["type"] == "kiosk" else 48)
     for cu in customers:
@@ -3003,9 +3015,9 @@ def main():
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).
     spawn = (faro_lm["x"], faro_lm["y"]) if faro_lm else (
         (landmarks[0]["x"], landmarks[0]["y"]) if landmarks else (CANVAS_W // 2, CANVAS_H // 2))
-    # building landmarks are scenery (no drivable pad) → not delivery targets,
-    # exclude them from the reachability gate
-    gate_pois = [l for l in landmarks if l["type"] not in BUILDING_LM] + customers
+    # scenery landmarks (no drivable pad) aren't delivery targets → exclude
+    # them from the reachability gate
+    gate_pois = [l for l in landmarks if l["type"] not in NO_PAD_LM] + customers
     unreachable = verify_connectivity(grid, spawn,
                                       gate_pois, reach=ACERA_CELLS + 1)
     failures.extend("unreachable " + u for u in unreachable)

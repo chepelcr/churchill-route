@@ -1488,9 +1488,33 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     }
   }
 
+  // Wind swirl: arc streaks whipping around the car, in the direction it's
+  // turning, opacity/length scaled by angular speed — sells a fast pivot.
+  function drawTurnWind(p, veh, t) {
+    const w = Math.abs(p.av || 0);
+    if (w < 1.2) return;                       // only when whipping around
+    const dir = Math.sign(p.av);
+    const strength = Math.min(1, (w - 1.2) / 4);
+    const r = Math.max(veh.w, veh.h) * 0.75 + 6;
+    ctx.save();
+    ctx.translate(p.x, p.y - (state.elev || 0) * 7);
+    ctx.lineCap = "round";
+    for (let i = 0; i < 3; i++) {
+      const base = p.a + dir * (0.5 + i * 0.7) + t * 0.02 * dir;
+      const span = (0.7 + strength * 0.8);
+      ctx.beginPath();
+      ctx.arc(0, 0, r + i * 3, base, base + dir * span, dir < 0);
+      ctx.strokeStyle = `rgba(255,255,255,${(0.10 + strength * 0.22).toFixed(3)})`;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawPlayer(p, veh) {
     const lift = (state.elev || 0) * 7;   // the barro avenue rides ~1 m up
     ctx.save();
+    drawTurnWind(p, veh, lastT);
     // ground shadow — the body's own silhouette, dropped further behind and
     // faded as the car climbs the ramp
     ctx.save(); ctx.translate(p.x + 4 + lift * 0.6, p.y + 6 + lift); ctx.rotate(p.a);
@@ -1687,6 +1711,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // Camera zoom: >1 pulls the camera closer so streets/buildings read at
   // city-exploration scale. World-space span shrinks accordingly.
   let ZOOM = 5.5; // recomputed responsively per viewport in setupCanvas()
+  let lastT = 0;  // latest render timestamp (for effects drawn outside render's t scope)
 
   // Overlay mode (legacy full-hybrid experiment): Pixi draws the world +
   // entities below this canvas. Kept for testing; the shipped balance is
@@ -1698,11 +1723,14 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   let PIXI_LANDMARKS = false;
   function setPixiLandmarks(v) { PIXI_LANDMARKS = !!v; }
   // Landmark types the Pixi layer now owns (kept in sync with scene.js
-  // _MIGRATED) — canvas skips these when the Pixi layer is active.
-  const PIXI_MIGRATED = new Set(["church", "cathedral"]);
+  // _MIGRATED) — canvas skips these when the Pixi layer is active. Empty for
+  // now: the church→Pixi pilot wasn't visible, so canvas draws all landmarks
+  // until the Pixi landmark path is verified.
+  const PIXI_MIGRATED = new Set();
 
   function render(t) {
     if (!ctx) return;
+    lastT = t;
     const cw = canvas.width, ch = canvas.height;
     const vw = cw / dpr, vh = ch / dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

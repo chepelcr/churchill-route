@@ -86,7 +86,7 @@ export class PixiScene {
   // structures drawn once in world space; canvas2d suppresses these types.
   // Pilot: the church/cathedral (was mis-placed on the street, now in its
   // cuadra). More types follow the same pattern once validated.
-  _MIGRATED = new Set(["church", "cathedral"]);
+  _MIGRATED = new Set(); // church/cathedral pilot paused (not visible) — canvas draws them
   _buildLandmarks() {
     const g = new Graphics();
     for (const lm of W.LANDMARKS) {

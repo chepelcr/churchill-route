@@ -14,7 +14,7 @@ import { economy } from "./economy.js";
 import { tuning } from "./tuning.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
-const PED_CLS = [6];
+const PED_CLS = [6, 3]; // aceras + roads: walk the sidewalks, occasionally cross a street
 
 // ----- Polygon collision helpers ------------------------------------------
 function pointInPoly(x, y, pts) {
@@ -89,9 +89,17 @@ export function update(dt) {
   input.snapT = Math.max(0, input.snapT - dt);
   const turning = input.right - input.left;
   const spdFac = Math.min(1, Math.abs(p.speed) / (veh.top * tuning.speed));
-  const turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
+  let turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
+  // Pivot-in-place: when nearly stopped, spin fast toward the steer target so a
+  // tap turns the car ON ITS OWN AXIS immediately, then it drives off facing
+  // the finger (instead of arcing forward to turn). Fades out by ~60px/s.
+  const pivot = Math.max(0, 1 - Math.abs(p.speed) / 60);
+  turnRate += veh.turn * 1.5 * pivot;
   const prevA = p.a;
   p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
+  // angular velocity (rad/s) this frame — the renderer draws wind swirls around
+  // the car when it whips around, scaled by this
+  p.av = dt > 0 ? (p.a - prevA) / dt : 0;
   // A clear spot the car may be nudged to: its box must be unblocked AND its
   // CENTER must be on a DRIVABLE street (class 3 road / 5 bridge). Requiring
   // drivable-center is what makes unstick nudges safe — they can never place
@@ -154,11 +162,16 @@ export function update(dt) {
   if (blockedAt(p.x, p.y)) {
     const okX = !blockedAt(p.x, prevY);
     const okY = !blockedAt(prevX, p.y);
-    if (okX && !okY) { p.y = prevY; p.vy = 0; }
-    else if (okY && !okX) { p.x = prevX; p.vx = 0; }
+    if (okX && !okY) { p.y = prevY; p.vy = 0; }        // slide along X — smooth
+    else if (okY && !okX) { p.x = prevX; p.vx = 0; }   // slide along Y — smooth
     else if (!blockedAt(prevX, prevY)) {
-      p.x = prevX; p.y = prevY; p.vx *= -0.45; p.vy *= -0.45;
-      state.cam.shake = Math.max(state.cam.shake, 2);
+      // Dead-on corner: STOP smoothly at the last free spot and bleed off
+      // speed — no bounce (the old ×-0.45 kicked the car back into the wall
+      // every frame, which read as violent shaking). A tiny impact shake only
+      // on a genuinely fast hit, gated so grinding a curb never jitters.
+      const hitSpeed = Math.hypot(p.vx, p.vy);
+      p.x = prevX; p.y = prevY; p.vx *= 0.25; p.vy *= 0.25;
+      if (hitSpeed > 150) state.cam.shake = Math.max(state.cam.shake, Math.min(3, hitSpeed / 130));
     } else if (p.freeX !== undefined && Math.hypot(p.x - p.freeX, p.y - p.freeY) < 60) {
       // both ends blocked but we were clear a moment ago: snap back instead of
       // the drive-out fallback (which would carry the car through the cuadra).

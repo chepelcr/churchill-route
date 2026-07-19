@@ -4,6 +4,27 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Cuadras densas + feel de manejo + escenografía no-manejable (2026-07-18 PM4)
+
+- [x] **Cuadras densas** (centros vacíos): los bloques chicos de pueblo
+      (≤120 cuadrículas) se llenan COMPLETOS; los grandes conservan banda de
+      frente + patio/parque. Cap 40000→80000 (cubre todo el mapa incl.
+      Playitas). Tiles 7.9→11.8 MB (streaming por tile).
+- [x] **Museo (y restaurante) dentro de cuadra** + iglesia visible de nuevo
+      (piloto Pixi pausado — canvas dibuja todos los landmarks).
+- [x] **Paseo verde NO manejable**: parques/piscina ya no reciben apron
+      manejable (`NO_PAD_LM`) — se acabó entrar al jardín verde del Paseo.
+- [x] **Colisión suave**: el rebote ×-0.45 + shake por-frame contra la pared
+      (temblor "bravo") se reemplazó por freno suave (×0.25, sin rebote); el
+      shake de impacto solo en golpes rápidos (>150 px/s), escalado.
+- [x] **Giro sobre su eje**: al estar casi detenido, el carro pivota en el
+      lugar hacia el dedo (turnRate +1.5·veh.turn, se desvanece a ~60 px/s) y
+      arranca ya orientado, en vez de arquear manejando.
+- [x] **Viento al girar**: rachas en arco alrededor del carro en el sentido
+      del giro, opacidad/largo por velocidad angular (`p.av`).
+- [x] **Peatones**: clase [6,3] — caminan aceras y cruzan calles como en main
+      (el "dentro de la cuadra" era el efecto de centros vacíos, ya llenos).
+
 ## ✅ Estadio off + landmarks en cuadras + colisión sellada (2026-07-18 PM3)
 
 - [x] **Estadio desactivado** (crashea al acercarse; probablemente las ~180

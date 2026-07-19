@@ -4,6 +4,20 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Parques como áreas verdes con fuente + estadio verde no-transitable (2026-07-18 PM6)
+
+- [x] **Parques = áreas verdes**: césped con franjas de corte, anillo de
+      árboles y una **fuente central con agua viva** (basin de piedra, pozo
+      con ondas animadas, chorro que sube/baja + gotas) — `drawGreenSpace` +
+      `drawFountain` en canvas2d.
+- [x] **Sonido de agua**: voz `fountainV` (ruido filtrado paso-bajo con LFO
+      lento en el corte = burbujeo de agua) que sube al acercarse al parque
+      (`sfx.fountain`, más fuerte <60px, se desvanece a 220px).
+- [x] **Estadio = área verde NO transitable**: el landmark de estadio ahora
+      entra a `BUILDING_LM` → se ancla al interior de una cuadra (land = muro,
+      no manejable) y se dibuja como césped con líneas de cancha tenues (sin
+      fuente). Se acabó el estadio de arena manejable. Gate 43/43.
+
 ## ✅ Peatones rail-bound (como main) + nombres de calle (2026-07-18 PM5)
 
 - [x] **Peatones como el main branch**: modelo RAIL-BOUND — cada peatón atado

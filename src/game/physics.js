@@ -360,6 +360,14 @@ export function update(dt) {
 
   sfx.engine(p.speed / (veh.top || 1), !!input.boost, state.vehicleKey);
   sfx.drift(p.drift > 0.4 && p.speed > 80 ? p.drift : 0);
+  // Park fountains burble as you get near (loudest within ~60px, fades by 220)
+  let fdist = Infinity;
+  for (const lm of W.LANDMARKS) {
+    if (lm.type !== "park") continue;
+    const d = Math.hypot(lm.x - p.x, lm.y - p.y);
+    if (d < fdist) fdist = d;
+  }
+  sfx.fountain(fdist < 220 ? Math.max(0, Math.min(1, (220 - fdist) / 160)) : 0);
 
   if (state.weather === "storm") state.rainT += dt;
 

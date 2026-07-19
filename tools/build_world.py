@@ -2395,7 +2395,7 @@ def main():
     # on the street. From a drivable anchor, walk into the nearest block
     # interior (CLS_LAND) so the footprint fronts the road it was next to.
     BUILDING_LM = {"church", "cathedral", "market", "super", "hotel", "civic",
-                   "house", "museum", "restaurant"}
+                   "house", "museum", "restaurant", "stadium"}
     # Scenery that must NOT get a drivable apron (you see it, never drive onto
     # it): the buildings above + green areas (parks/pool). Excluded from the
     # reachability gate too. Fixes driving into the Paseo's green yards.

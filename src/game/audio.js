@@ -14,6 +14,7 @@ let master = null;      // master gain (mute = 0)
 let noiseBuf = null;    // shared 1s white-noise buffer
 let engineV = null;     // { oscA, oscB, filter, gain }
 let driftV = null;      // { src, filter, gain }
+let fountainV = null;   // { src, filter, gain } — park fountain water burble
 
 function loadMuted() {
   try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
@@ -64,6 +65,20 @@ function unlock() {
   src.connect(df); df.connect(dg); dg.connect(master);
   src.start();
   driftV = { src, filter: df, gain: dg };
+
+  // Fountain: gentle water burble — looped noise through a lowpass with a slow
+  // LFO wobble on the cutoff; silent until sfx.fountain(level) near a park.
+  const fs = ctx.createBufferSource();
+  fs.buffer = noiseBuf; fs.loop = true;
+  const ff = ctx.createBiquadFilter();
+  ff.type = "lowpass"; ff.frequency.value = 900; ff.Q.value = 0.7;
+  const lfo = ctx.createOscillator(); lfo.frequency.value = 3.2;
+  const lfoG = ctx.createGain(); lfoG.gain.value = 320;
+  lfo.connect(lfoG); lfoG.connect(ff.frequency);
+  const fg = ctx.createGain(); fg.gain.value = 0;
+  fs.connect(ff); ff.connect(fg); fg.connect(master);
+  fs.start(); lfo.start();
+  fountainV = { src: fs, filter: ff, gain: fg };
 }
 
 if (BROWSER) {
@@ -185,12 +200,19 @@ export const sfx = {
     driftV.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, amount)) * 0.12, ctx.currentTime, 0.06);
   },
 
+  // Fountain water: 0..1 by nearness to the closest park fountain.
+  fountain(amount) {
+    if (!fountainV || !ctx || ctx.state !== "running") return;
+    fountainV.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, amount)) * 0.10, ctx.currentTime, 0.12);
+  },
+
   // silence the continuous voices (menus, pause, results) but keep the
   // context alive so menu blips still play
   quiet() {
     if (!ctx) return;
     if (engineV) engineV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
     if (driftV) driftV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+    if (fountainV) fountainV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
   },
   // the OS/browser suspends the context in the background; revive it
   resume() {

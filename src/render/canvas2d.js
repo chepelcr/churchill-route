@@ -891,6 +891,67 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     label(x, y - 52, "FARO", "#fff", "#3a3540");
   }
 
+  // A green space (park / stadium field): grass with mow stripes, a ring of
+  // trees around the edge, and optionally a central fountain (animated water)
+  // or a faint sports-pitch outline. Non-drivable — the surface under it is a
+  // wall; this just paints it green instead of bare sand.
+  function drawGreenSpace(lm, w, h, opts = {}) {
+    const x = lm.x, y = lm.y;
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    roundRect(ctx, x - w / 2 + 3, y - h / 2 + 4, w, h, 12, true, false); // soft shadow
+    ctx.fillStyle = "#4f9d5b";
+    roundRect(ctx, x - w / 2, y - h / 2, w, h, 12, true, false);         // grass
+    ctx.save();
+    roundRect(ctx, x - w / 2, y - h / 2, w, h, 12, false, false); ctx.clip();
+    ctx.fillStyle = "rgba(92,176,102,0.4)";                              // mow stripes
+    for (let sx = -w / 2; sx < w / 2; sx += 20) ctx.fillRect(x + sx, y - h / 2, 10, h);
+    ctx.restore();
+    ctx.strokeStyle = "rgba(232,226,210,0.55)"; ctx.lineWidth = 3;       // gravel path border
+    roundRect(ctx, x - w / 2 + 5, y - h / 2 + 5, w - 10, h - 10, 9, false, true);
+    if (opts.pitch) {                                                    // sports pitch outline
+      ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
+      ctx.strokeRect(x - w / 2 + 16, y - h / 2 + 14, w - 32, h - 28);
+      ctx.beginPath(); ctx.moveTo(x, y - h / 2 + 14); ctx.lineTo(x, y + h / 2 - 14); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.stroke();
+    }
+    // tree ring around the perimeter (deterministic scatter)
+    const n = Math.round((w + h) / 24);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const rx = w / 2 - 10 - hash01(i * 3 + lm.x) * 8;
+      const ry = h / 2 - 10 - hash01(i * 7 + lm.y) * 8;
+      paintTree({ x: x + Math.cos(a) * rx, y: y + Math.sin(a) * ry, s: 0.8 + hash01(i + lm.x) * 0.4 });
+    }
+    if (opts.fountain) drawFountain(x, y);
+  }
+
+  // Central fountain with living (animated) water: stone basin, rippling pool,
+  // a bobbing central jet and droplets. Animated off lastT.
+  function drawFountain(x, y) {
+    const tt = lastT * 0.003;
+    ctx.fillStyle = "#b9b3a4"; ctx.beginPath(); ctx.arc(x, y, 17, 0, Math.PI * 2); ctx.fill(); // rim
+    ctx.fillStyle = "#d6d0c0"; ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = "#4fb4d6"; ctx.fillRect(x - 12, y - 12, 24, 24);                            // pool water
+    ctx.strokeStyle = "rgba(255,255,255,0.55)"; ctx.lineWidth = 1;                              // ripples
+    for (let k = 0; k < 3; k++) {
+      const rr = ((tt + k / 3) % 1) * 12;
+      ctx.globalAlpha = Math.max(0, 1 - rr / 12);
+      ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    const jh = 9 + Math.sin(tt * 6) * 2;                                                        // central jet
+    ctx.fillStyle = "rgba(206,236,246,0.9)";
+    ctx.beginPath(); ctx.ellipse(x, y - jh / 2, 2, jh / 2, 0, 0, Math.PI * 2); ctx.fill();
+    for (let d = 0; d < 5; d++) {                                                               // droplets
+      const a = (d / 5) * Math.PI * 2 + tt * 2;
+      const rr = 3 + ((tt * 22 + d * 2.5) % 9);
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * rr, y - jh + Math.sin(a) * 2, 1.2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   function drawLandmark(lm) {
     const x = lm.x, y = lm.y;
     ctx.fillStyle = "rgba(0,0,0,0.22)";
@@ -940,19 +1001,20 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         }
         label(x, y - 30, lm.name.split(" ")[1] ? lm.name.split(" ")[1].toUpperCase() : "HOTEL", "#fff", "#3a6f8a"); break;
       }
-      case "park":
+      case "park": {
+        drawGreenSpace(lm, 116, 90, { fountain: true });
+        label(x, y - 90 / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
+      }
+      case "stadium": {
+        // green space (grass) with a faint pitch outline — non-transitable
+        drawGreenSpace(lm, 156, 122, { pitch: true });
+        label(x, y - 122 / 2 - 6, "ESTADIO", "#fff", "#2e7d44"); break;
+      }
       case "civic":
       case "museum": {
         ctx.fillStyle = "#6fbf99"; ctx.fillRect(x - 20, y - 10, 40, 22);
         ctx.fillStyle = "#fff"; ctx.fillRect(x - 6, y - 6, 12, 12);
-        const tag = lm.type === "park" ? "PARQUE" : lm.type === "civic" ? "CULTURA" : "MUSEO";
-        label(x, y - 18, tag, "#fff", "#2e7d44"); break;
-      }
-      case "stadium": {
-        ctx.fillStyle = "#3a3540"; ctx.fillRect(x - 24, y - 14, 48, 26);
-        ctx.fillStyle = "#6fbf99"; ctx.fillRect(x - 22, y - 12, 44, 22);
-        ctx.strokeStyle = "#fff"; ctx.strokeRect(x - 18, y - 8, 36, 14);
-        label(x, y - 22, "ESTADIO", "#fff", "#3a3540"); break;
+        label(x, y - 18, lm.type === "civic" ? "CULTURA" : "MUSEO", "#fff", "#2e7d44"); break;
       }
       case "marina": {
         ctx.fillStyle = "#5fb0d6"; ctx.fillRect(x - 18, y - 8, 36, 16);

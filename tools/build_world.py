@@ -2662,6 +2662,50 @@ def main():
             n_snap += 1
     print(f"[poi] {n_snap} building landmarks snapped into cuadra interiors")
 
+    # Synthetic parks: scatter green spaces (each with a fountain) across the
+    # town so parks aren't rare. Pick well-sized cuadras clear of other POIs,
+    # mark them green (no synth buildings), and add a park landmark sized to
+    # the block. Spatially spread by sorting candidates on x.
+    _pts = [(l["x"], l["y"]) for l in landmarks] + [(c["x"], c["y"]) for c in customers]
+    def _dcls(cc, cr):
+        d = {d["id"]: (d["x0"], d["x1"]) for d in districts}
+        for did, (x0, x1) in d.items():
+            if x0 <= cc * CUAD < x1:
+                return did
+        return districts[0]["id"]
+    park_cands = []
+    for bi, b in enumerate(blocks):
+        if b.get("green"):
+            continue
+        cells = b["cells"]; sz = len(cells)
+        if sz < 6 or sz > 160:              # a small-to-mid cuadra (green render covers it)
+            continue
+        bc0 = min(c for c, _ in cells); bc1 = max(c for c, _ in cells)
+        br0 = min(r for _, r in cells); br1 = max(r for _, r in cells)
+        cx = (bc0 + bc1 + 1) * CUAD // 2; cy = (br0 + br1 + 1) * CUAD // 2
+        if any((cx - px) ** 2 + (cy - py) ** 2 < 220 ** 2 for px, py in _pts):
+            continue
+        w = min(300, (bc1 - bc0 + 1) * CUAD); h = min(240, (br1 - br0 + 1) * CUAD)
+        park_cands.append((cx, cy, bi, w, h))
+    print(f"[parks] {len(park_cands)} candidate blocks")
+    park_cands.sort()
+    TARGET_PARKS = 16
+    n_park = 0
+    if park_cands:
+        step = max(1, len(park_cands) // TARGET_PARKS)
+        for j in range(0, len(park_cands), step):
+            if n_park >= TARGET_PARKS:
+                break
+            cx, cy, bi, w, h = park_cands[j]
+            blocks[bi]["green"] = True       # keep the interior open (no buildings)
+            landmarks.append({"id": f"park_syn_{n_park}", "name": "Parque",
+                              "x": int(cx), "y": int(cy), "type": "park",
+                              "district": _dcls(cx // CUAD, cy // CUAD),
+                              "w": int(w), "h": int(h)})
+            _pts.append((cx, cy))
+            n_park += 1
+    print(f"[parks] +{n_park} synthetic parks scattered across the town")
+
     # The avenue's separators (final layout, user-iterated):
     # - Paseo de los Turistas: its classic PALM median — dashes with crossing
     #   gaps aligned to the coming streets (paseo_median_runs).

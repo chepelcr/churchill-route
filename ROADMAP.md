@@ -4,6 +4,20 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Más parques + fuentes + plazas verdes (2026-07-18 PM8)
+
+- [x] **16 parques sintéticos** repartidos por el puerto (antes solo 2 OSM →
+      18 total, x400..x47490): se eligen cuadras bien dimensionadas, lejos de
+      otros POIs, se marcan `green` (sin edificios) y se agrega un landmark
+      `park` con tamaño del bloque → área verde con árboles + **fuente con
+      agua viva y sonido**. Gate 43/43.
+- [x] **Plazas en verde** (petición): las plazas pavimentadas (que en world-2d
+      no se dibujaban y se veían como tierra) ahora se pintan como césped con
+      franjas de corte + un árbol en las grandes (`drawPlazaGreen`, sin
+      rebuild — el dato ya venía en los tiles).
+- [x] **Fix estadio invisible** + iglesia con cruz/campanario + museo con
+      fachada de columnas + tags de landmark más grandes (10px).
+
 ## ✅ Kioscos alcanzables: fuera de la calzada + sendero de arena en playa (2026-07-18 PM7)
 
 - [x] **Kioscos en media calzada → frontage**: los que quedaban sobre el carril

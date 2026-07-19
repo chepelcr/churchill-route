@@ -410,6 +410,8 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     // the asphalt but under buildings/flora
     for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);
     for (const tile of vts) if (tile.medians.length) paintTileMedians(tile.medians, view);
+    // paved plazas → grass green (user request): a ground layer under buildings
+    for (const tile of vts) for (const pz of tile.plazas || []) drawPlazaGreen(pz, view);
     // sand access paths from beach kiosks to the nearest street (drivable)
     drawKioskPaths(view);
     // buildings
@@ -420,6 +422,21 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
     }
     drawStreetLabels2D(roads, view);
+  }
+
+  // Paved plazas rendered as GRASS (user request): green fill + mow stripes,
+  // a leafy tree on the bigger ones. Rects are [x, y, w, h].
+  function drawPlazaGreen(pz, view) {
+    const [px, py, pw, ph] = pz;
+    if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
+    ctx.fillStyle = "#4f9d5b";
+    roundRect(ctx, px, py, pw, ph, Math.min(8, pw / 2, ph / 2), true, false);
+    ctx.save();
+    roundRect(ctx, px, py, pw, ph, Math.min(8, pw / 2, ph / 2), false, false); ctx.clip();
+    ctx.fillStyle = "rgba(92,176,102,0.4)";
+    for (let sx = px; sx < px + pw; sx += 20) ctx.fillRect(sx, py, 10, ph);
+    ctx.restore();
+    if (pw > 44 && ph > 44) paintTree({ x: px + pw / 2, y: py + ph / 2, s: 1 });
   }
 
   // Sand access paths (beach kiosk → nearest street): a packed-sand strip so
@@ -1027,8 +1044,9 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         label(x, y - 30, lm.name.split(" ")[1] ? lm.name.split(" ")[1].toUpperCase() : "HOTEL", "#fff", "#3a6f8a"); break;
       }
       case "park": {
-        drawGreenSpace(lm, 116, 90, { fountain: true });
-        label(x, y - 90 / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
+        const pw = lm.w || 116, ph = lm.h || 90;
+        drawGreenSpace(lm, pw, ph, { fountain: true });
+        label(x, y - ph / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
       }
       case "stadium": {
         // green space (grass) with a faint pitch outline — non-transitable

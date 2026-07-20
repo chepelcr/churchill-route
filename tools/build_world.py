@@ -219,7 +219,7 @@ LANDMARK_DEFS = [
     {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -10, "dy": 110},
     # the big lagoon pool sits IN FRONT of (just north of / town-side of) the
     # faro, inside the road loop — roughly aligned on x with the lighthouse
-    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": -5, "dy": -40},
+    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 110, "dy": 10},
     # a churchill kiosk beside the lighthouse plaza (east of the faro, clear of it)
     {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 85, "dy": 105},
     # The cruise pier juts out from the END of Calle Central, right beside the
@@ -2938,10 +2938,24 @@ def main():
     # tagged by type for the renderer's colour-by-type fill.
     def _tag(rects, typ):
         return [r + [typ] for r in rects]
+    def _nearest_block(x, y, min_cells=12):
+        ac, ar = int(x // CUAD), int(y // CUAD)
+        best = None
+        for bi, b in enumerate(blocks):
+            if b.get("green") or len(b["cells"]) < min_cells:
+                continue
+            cs = b["cells"]
+            cx = sum(c for c, _ in cs) / len(cs); cy = sum(r for _, r in cs) / len(cs)
+            d2 = (cx - ac) ** 2 + (cy - ar) ** 2
+            if best is None or d2 < best[0]:
+                best = (d2, bi)
+        return best[1] if best else None
     for lm in landmarks:
         if lm["type"] not in ("park", "pool"):
             continue
         bi = _block_containing(lm["x"], lm["y"])
+        if bi is None and lm["type"] == "pool":
+            bi = _nearest_block(lm["x"], lm["y"])   # the Balneario must sit IN a cuadra
         if bi is None:
             continue
         blocks[bi]["green"] = True
@@ -2949,9 +2963,12 @@ def main():
         bc0 = min(c for c, _ in cells); bc1 = max(c for c, _ in cells)
         br0 = min(r for _, r in cells); br1 = max(r for _, r in cells)
         if lm["type"] == "pool":
-            # the Balneario's cuadra becomes open ground (no buildings); the pool
-            # itself stays where its dx/dy put it (in front of the faro)
+            # the Balneario's WHOLE cuadra becomes open ground (no buildings) and
+            # the pool is centred on an interior cell of it (never a bbox hole)
             plazas.extend(_tag(cuad_cells_to_rects(cells), "plaza"))
+            ccx = sum(c for c, _ in cells) / len(cells); ccy = sum(r for _, r in cells) / len(cells)
+            tcx, tcy = min(cells, key=lambda c: (c[0] - ccx) ** 2 + (c[1] - ccy) ** 2)
+            lm["x"] = int((tcx + 0.5) * CUAD); lm["y"] = int((tcy + 0.5) * CUAD)
             continue
         marine = lm["id"] == "parquemar"     # Parque Marino fills its whole cuadra
         plazas.extend(_tag(cuad_cells_to_rects(cells), "marine" if marine else "park"))

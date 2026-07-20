@@ -1486,6 +1486,43 @@ def block_census(grid, min_side=6):
 
 # ---------------------------------------------------- cuadrícula blocks -----
 
+def cells_to_rects(cells, cell_px):
+    """Merge a set of (cc,cr) cells into axis-aligned [x,y,w,h] px rects
+    (row-run merge + vertical span merge). Footprint-accurate."""
+    rows = defaultdict(list)
+    for (cc, cr) in cells:
+        rows[cr].append(cc)
+    runs_by_row = {}
+    for cr, ccs in rows.items():
+        ccs.sort(); runs = []
+        for cc in ccs:
+            if runs and runs[-1][1] == cc:
+                runs[-1][1] = cc + 1
+            else:
+                runs.append([cc, cc + 1])
+        runs_by_row[cr] = runs
+    rects = []; open_runs = {}
+    def _emit(k, s):
+        rects.append([k[0] * cell_px, s[0] * cell_px,
+                      (k[1] - k[0]) * cell_px, (s[1] - s[0]) * cell_px])
+    for cr in sorted(runs_by_row):
+        cur = {tuple(r) for r in runs_by_row[cr]}; nxt = {}
+        for k in cur:
+            if k in open_runs and open_runs[k][1] == cr:
+                open_runs[k][1] = cr + 1; nxt[k] = open_runs[k]
+            else:
+                if k in open_runs:
+                    _emit(k, open_runs[k])
+                nxt[k] = [cr, cr + 1]
+        for k, s in open_runs.items():
+            if k not in nxt:
+                _emit(k, s)
+        open_runs = nxt
+    for k, s in open_runs.items():
+        _emit(k, s)
+    return rects
+
+
 BLOCK_MIN_CUADS = 6       # a real cuadra fits >= 6x6 buildable cuadrículas
 SLIVER_MAX_CUADS = 25.0   # smaller-and-thinner land paves to plaza concrete
 
@@ -2640,52 +2677,93 @@ def main():
         stamp_pad(grid, cu["x"], cu["y"], 56)
     faro_lm = next((l for l in landmarks if l["id"] == "faro"), None)
     faro_pier = None
+    faro_esp = None
     if faro_lm:
-        # La Punta plaza: artificially pave the point into a round esplanade
-        # (over beach + shallow water) so it reaches the sea and the muelle — the
-        # "complete approach" of the reference. Centred on the lighthouse.
-        fcc0, fcr0 = int(faro_lm["x"] // GRID_CELL), int(faro_lm["y"] // GRID_CELL)
-        R_ESP = 16                                       # ~64px radius
-        for cr in range(max(0, fcr0 - R_ESP), min(GRID_ROWS, fcr0 + R_ESP + 1)):
-            for cc in range(max(0, fcc0 - R_ESP), min(GRID_COLS, fcc0 + R_ESP + 1)):
-                if (cc - fcc0) ** 2 + (cr - fcr0) ** 2 <= R_ESP * R_ESP and \
-                        grid[cr * GRID_COLS + cc] in (CLS_WATER, CLS_BEACH, CLS_LAND, CLS_ACERA):
-                    grid[cr * GRID_COLS + cc] = CLS_ROAD
-        # Faro muelle: a boardwalk jutting WEST into the gulf FROM THE BEACH LINE
-        # (like the cruise pier starts at the shore) with the churchill kiosk at
-        # its sea end; the player spawns on the deck. The lighthouse sits to the
-        # RIGHT (east) of the muelle's auxiliary street.
         fx, fy = faro_lm["x"], faro_lm["y"]
-        fcr = int(fy // GRID_CELL)
-        shore_cc = int(fx // GRID_CELL)                 # walk WEST to the water's edge
-        for _ in range(40):
-            if _cell_cls(shore_cc - 1, fcr) == CLS_WATER:
+        fcc0, fcr0 = int(fx // GRID_CELL), int(fy // GRID_CELL)
+        # La Punta plaza: pave the SAND TIP following its NATURAL SHAPE (flood the
+        # beach around the faro, bounded so it never reaches the street), then
+        # VIRTUALLY EXTEND it a few cells into the sea so the shape is respected
+        # and the muelle starts at the extended edge. Emitted as a gray
+        # "esplanade" ground fill (single colour-by-type draw — no sand below).
+        esp = set()
+        seed = None
+        for rad in range(0, 16):
+            for a in range(0, 360, 15):
+                cc = fcc0 + int(round(math.cos(math.radians(a)) * rad))
+                cr = fcr0 + int(round(math.sin(math.radians(a)) * rad))
+                if _cell_cls(cc, cr) == CLS_BEACH:
+                    seed = (cc, cr); break
+            if seed:
+                break
+        Rc = 34                                            # bound the tip (~136px)
+        if seed:
+            q = deque([seed]); esp.add(seed)
+            while q:
+                cc, cr = q.popleft()
+                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nb = (cc + dc, cr + dr)
+                    if nb in esp or (nb[0] - fcc0) ** 2 + (nb[1] - fcr0) ** 2 > Rc * Rc:
+                        continue
+                    if _cell_cls(*nb) == CLS_BEACH:        # follow the SAND only
+                        esp.add(nb); q.append(nb)
+        esp.add((fcc0, fcr0))
+        for _ in range(7):                                 # dilate into the sea
+            add = set()
+            for (cc, cr) in esp:
+                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                    nb = (cc + dc, cr + dr)
+                    if nb not in esp and _cell_cls(*nb) == CLS_WATER:
+                        add.add(nb)
+            esp |= add
+        for (cc, cr) in esp:
+            if 0 <= cc < GRID_COLS and 0 <= cr < GRID_ROWS:
+                grid[cr * GRID_COLS + cc] = CLS_ROAD        # drivable; rects emitted post-blocks
+        faro_esp = esp
+        ecc0 = min(c for c, _ in esp); ecc1 = max(c for c, _ in esp)
+        ecr0 = min(r for _, r in esp); ecr1 = max(r for _, r in esp)
+        faro_lm["plaza"] = [ecc0 * GRID_CELL, ecr0 * GRID_CELL,
+                            (ecc1 - ecc0 + 1) * GRID_CELL, (ecr1 - ecr0 + 1) * GRID_CELL]
+        espl = sorted(esp)                                 # comma islands across the shape
+        faro_lm["commas"] = [[int((espl[(i * len(espl)) // 12][0] + 0.5) * GRID_CELL),
+                              int((espl[(i * len(espl)) // 12][1] + 0.5) * GRID_CELL)] for i in range(12)]
+        # Faro muelle: jut WEST from the (extended) esplanade edge into the gulf,
+        # kiosk at the sea end; the player spawns on the deck.
+        shore_cc = fcc0
+        for _ in range(60):
+            if _cell_cls(shore_cc - 1, fcr0) == CLS_WATER:
                 break
             shore_cc -= 1
-        shore_x = shore_cc * GRID_CELL                  # beach line (deck base)
-        end_x = shore_x - 9 * CUAD                       # jut ~180px west into the water
+        shore_x = shore_cc * GRID_CELL
+        end_x = shore_x - 9 * CUAD
         pw = 2 * CUAD
         raster_stamp_polyline(grid, [shore_x, fy, end_x, fy], pw, CLS_BRIDGE)
         faro_pier = {"x0": int(end_x), "y0": int(fy), "x1": int(shore_x), "y1": int(fy), "w": int(pw)}
-        # auxiliary street: NORTH from the base to the real loop road (past the
-        # plaza pad), drawn as asphalt like the cruise pier's connector. Vertical,
-        # so the lighthouse (east of shore_x) reads to its RIGHT.
-        ny = None
-        for k in range(3, 22):
-            yy = fy - k * CUAD
-            if yy < fy - 4 * CUAD and _cell_cls(shore_cc, int(yy // GRID_CELL)) in (CLS_ROAD, CLS_PASEO):
-                ny = yy
+        # aux street: tie the esplanade into the nearest loop road (drawn asphalt,
+        # only if there's a real gap), so the muelle is connected to the streets.
+        aux = None
+        for rad in range(4, 70):
+            for a in range(0, 360, 10):
+                cc = fcc0 + int(round(math.cos(math.radians(a)) * rad))
+                cr = fcr0 + int(round(math.sin(math.radians(a)) * rad))
+                if (cc, cr) not in esp and _cell_cls(cc, cr) in (CLS_ROAD, CLS_PASEO):
+                    aux = (cc, cr); break
+            if aux:
                 break
-        if ny is not None:
-            raster_stamp_polyline(grid, [shore_x, fy, shore_x, ny], 2 * CUAD, CLS_ROAD)
-            kiosk_paths.append({"pts": [int(shore_x), int(fy), int(shore_x), int(ny)], "surface": "paved"})
-            print(f"[pier] faro muelle aux street north -> y={ny}")
+        if aux:
+            near = min(esp, key=lambda c: (c[0] - aux[0]) ** 2 + (c[1] - aux[1]) ** 2)
+            nxp, nyp = (near[0] + 0.5) * GRID_CELL, (near[1] + 0.5) * GRID_CELL
+            axp, ayp = (aux[0] + 0.5) * GRID_CELL, (aux[1] + 0.5) * GRID_CELL
+            raster_stamp_polyline(grid, [nxp, nyp, axp, ayp], 2 * CUAD, CLS_ROAD)
+            if abs(nxp - axp) + abs(nyp - ayp) > 2 * CUAD:
+                kiosk_paths.append({"pts": [round(nxp), round(nyp), round(axp), round(ayp)], "surface": "paved"})
+                print(f"[pier] faro esplanade aux street -> ({round(axp)},{round(ayp)})")
         kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
         if kf:
             kf["x"], kf["y"] = int(end_x + CUAD), int(fy)     # kiosk at the sea (west) end
             kf["spawn"] = [int(end_x + 5 * CUAD), int(fy)]    # spawn on the deck
             beach_kiosks.add("kios_faro")                     # skip the frontage pass
-        print(f"[pier] faro muelle x{end_x}..{shore_x} (west) at beach line y={fy}")
+        print(f"[pier] faro muelle x{end_x}..{shore_x} (west); esplanade {len(esp)} cells")
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
     for isl in junction_islands:
@@ -2700,6 +2778,10 @@ def main():
     faro_band_x1 = next((d["x1"] for d in districts if d["id"] == "carmen"),
                         next((d["x1"] for d in districts if d["id"] == "faro"), None))
     blocks, plazas = detect_blocks(grid, build_band_x1=faro_band_x1)
+    # Faro esplanade: paint the paved sand-tip as a gray ground fill by TYPE
+    # (single draw — no sand shows under it; follows the sand, never the street).
+    if faro_esp:
+        plazas.extend([r + ["esplanade"] for r in cells_to_rects(faro_esp, GRID_CELL)])
 
     # Step each building landmark off its street anchor into a cuadra INTERIOR
     # cell — nearest block, cell ≥1 cuadrícula from any edge so it clears the

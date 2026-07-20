@@ -428,7 +428,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // civic plaza, a park lawn, or the marine park — instead of layering a
   // texture over the base terrain. Rects tile the block edge-to-edge, so a
   // single flat colour with square corners reads as one continuous area.
-  const GREEN_COLORS = { plaza: "#5ba362", park: "#4f9d5b", marine: "#46a98f" };
+  const GREEN_COLORS = { plaza: "#5ba362", park: "#4f9d5b", marine: "#46a98f", esplanade: "#cbc6ba" };
   function drawPlazaGreen(pz, view) {
     const [px, py, pw, ph] = pz;
     if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
@@ -900,35 +900,25 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // water side, red crescent shade benches, palms and the red/white tower.
   function drawFaroScene(lm) {
     const x = lm.x, y = lm.y;
-    // Big paved plaza at La Punta — a round GRAY esplanade (the point is
-    // artificially paved into the sea for a complete approach) with the
-    // decorative RED comma "islands" of the real Puntarenas plaza. Matches the
-    // ~64px paved disc from the world build.
-    const RP = 62;
-    ctx.fillStyle = "#cbc6ba";
-    ctx.beginPath(); ctx.arc(x, y, RP, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.14)"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(x, y, RP, 0, Math.PI * 2); ctx.stroke();
-    ctx.save();
-    ctx.beginPath(); ctx.arc(x, y, RP, 0, Math.PI * 2); ctx.clip();
-    ctx.strokeStyle = "rgba(0,0,0,0.05)"; ctx.lineWidth = 1;          // paving seams
-    for (let g = -56; g <= 56; g += 16) {
-      ctx.beginPath(); ctx.moveTo(x + g, y - RP); ctx.lineTo(x + g, y + RP); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x - RP, y + g); ctx.lineTo(x + RP, y + g); ctx.stroke();
+    // La Punta plaza: the GRAY esplanade GROUND is drawn by the tile plaza layer
+    // (an "esplanade" fill following the real sand shape — no circle, no sand
+    // under it). Here we only add the on-plaza decoration: riprap rimming the
+    // shape, the iconic RED comma "islands" (spread across the plaza by the
+    // build), palms and the tower.
+    const P = lm.plaza;   // [x0,y0,w,h] of the esplanade footprint
+    if (P) {
+      const cx = P[0] + P[2] / 2, cy = P[1] + P[3] / 2, ex = P[2] / 2 + 2, ey = P[3] / 2 + 2;
+      for (let i = 0; i < 40; i++) {                       // riprap around the edge
+        const a = (i / 40) * Math.PI * 2;
+        const rx = cx + Math.cos(a) * ex, ry = cy + Math.sin(a) * ey;
+        const r0 = 1.8 + hash01(lm.x * 7.13 + i * 12.9) * 2.4;
+        ctx.fillStyle = i % 3 ? "#4a4d52" : "#5a5e64";
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, r0 + 1.4, r0, hash01(i * 9.4 + lm.x) * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
-    ctx.restore();
-    // Riprap rock armor rimming the water edge of the paved point
-    for (let i = 0; i < 30; i++) {
-      const a = (i / 30) * Math.PI * 2;
-      const rx = x + Math.cos(a) * (RP + 1), ry = y + Math.sin(a) * (RP + 1);
-      const r0 = 1.8 + hash01(lm.x * 7.13 + i * 12.9) * 2.4;
-      ctx.fillStyle = i % 3 ? "#4a4d52" : "#5a5e64";
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, r0 + 1.4, r0, hash01(i * 9.4 + lm.x) * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Red comma "islands" fanned around the plaza (the iconic paving design)
-    const faroComma = (cx, cy, r, rot) => {
+    const faroComma = (cx, cy, r, rot) => {                // red comma paving inset
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
       ctx.fillStyle = "#c34a3c";
       ctx.beginPath();
@@ -937,10 +927,9 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       ctx.closePath(); ctx.fill();
       ctx.restore();
     };
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      faroComma(x + Math.cos(a) * 34, y + Math.sin(a) * 34, 7, a + Math.PI * 0.6);
-    }
+    const commas = lm.commas || [];
+    for (let i = 0; i < commas.length; i++)
+      faroComma(commas[i][0], commas[i][1], 7, hash01(i * 3.1 + lm.x) * Math.PI * 2);
     // A few palms by the plaza (static, same look as drawPalms)
     const pxy = [[x + 22, y - 12], [x + 27, y + 11], [x - 4, y + 19]];
     for (let i = 0; i < pxy.length; i++) {

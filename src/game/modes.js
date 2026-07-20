@@ -43,7 +43,7 @@ export function startStage(stageIdx, vehicleKey) {
   state.score = 0; state.combo = 1; state.comboTimer = 0;
   state.deliveries = 0; state.perfect = 0;
   state.carrying = null; state.pendingOrder = null;
-  state.floats = []; state.particles = [];
+  state.floats = []; state.particles = []; state.arcadeCoins = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
   // place player near first kiosk of stage (on the muelle deck if it has one)
@@ -77,7 +77,7 @@ export function startArcade(opts = {}) {
   state.score = 0; state.combo = 1; state.comboTimer = 0;
   state.deliveries = 0; state.perfect = 0;
   state.carrying = null; state.pendingOrder = null;
-  state.floats = []; state.particles = [];
+  state.floats = []; state.particles = []; state.arcadeCoins = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
   const k0 = W.landmarkById("kios_paseo1");
@@ -108,7 +108,7 @@ export function startExplore(opts = {}) {
   state.score = 0; state.combo = 1; state.comboTimer = 0;
   state.deliveries = 0; state.perfect = 0;
   state.carrying = null; state.pendingOrder = null;
-  state.floats = []; state.particles = [];
+  state.floats = []; state.particles = []; state.arcadeCoins = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
   // Spawn on the faro muelle (falls back to beside the lighthouse)
@@ -144,7 +144,7 @@ export function startTutorial(opts = {}) {
   state.score = 0; state.combo = 1; state.comboTimer = 0;
   state.deliveries = 0; state.perfect = 0;
   state.carrying = null; state.pendingOrder = null;
-  state.floats = []; state.particles = [];
+  state.floats = []; state.particles = []; state.arcadeCoins = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
   const k0 = W.landmarkById("kios_paseo1");

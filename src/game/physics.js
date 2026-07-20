@@ -2,7 +2,7 @@
 // (cuadras, buildings, barriers, traffic, pedestrians), delivery proximity,
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
-import { state, traffic, pedestrians, gulls, boats, trains } from "./state.js";
+import { state, traffic, pedestrians, gulls, boats, trains, pushFloat } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceCarOnRoad, advanceTrain } from "./spawns.js";
@@ -10,7 +10,7 @@ import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChur
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
-import { economy } from "./economy.js";
+import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
@@ -350,6 +350,9 @@ export function update(dt) {
     }
   }
 
+  // Arcade: collectable churchill coins scattered on the streets around you.
+  if (state.mode === "arcade" && !state.tutorial) maintainArcadeCoins(dt);
+
   // Combo decay
   if (state.combo > 1) {
     state.comboTimer -= dt;
@@ -381,6 +384,42 @@ export function update(dt) {
     // Long, generous timer — encourages cruising
     state.timeLeft -= dt;
     if (state.timeLeft <= 0) state.timeLeft = 999;
+  }
+}
+
+// Arcade collectable coins: little churchill coins scattered on the streets
+// AROUND the camera (camera-local streaming, like the ambient life). Drive over
+// one to bank COINS_PER_PICKUP; the pool tops itself back up and refreshes as
+// you roam, so the whole map feels dotted with coins to grab.
+const ACOIN_TARGET = 18;        // coins kept alive around the camera
+const ACOIN_SPAWN_MIN = 130;    // never drop one on top of the player
+const ACOIN_SPAWN_MAX = 1100;   // out to the streamed ring
+const ACOIN_KEEP = 1500;        // cull past this (fresh coins as you move on)
+const ACOIN_PICK_R = 22;        // grab radius
+function maintainArcadeCoins(dt) {
+  if (!state.arcadeCoins) state.arcadeCoins = [];
+  const arr = state.arcadeCoins, p = state.p, cam = state.cam;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const c = arr[i];
+    c.t += dt;                                   // spin/bob phase for the renderer
+    if (Math.hypot(p.x - c.x, p.y - c.y) < ACOIN_PICK_R) {
+      economy.addCoins(COINS_PER_PICKUP);
+      state.runCoins = (state.runCoins || 0) + COINS_PER_PICKUP;
+      pushFloat(c.x, c.y - 12, `+₡${COINS_PER_PICKUP}`, "#f3c969");
+      sfx.play("pickup");
+      arr.splice(i, 1); continue;
+    }
+    if (Math.hypot(c.x - cam.x, c.y - cam.y) > ACOIN_KEEP) arr.splice(i, 1);
+  }
+  let guard = 0;
+  while (arr.length < ACOIN_TARGET && guard++ < ACOIN_TARGET * 5) {
+    const a = Math.random() * Math.PI * 2;
+    const r = ACOIN_SPAWN_MIN + Math.sqrt(Math.random()) * (ACOIN_SPAWN_MAX - ACOIN_SPAWN_MIN);
+    const x = cam.x + Math.cos(a) * r, y = cam.y + Math.sin(a) * r;
+    const s = W.surfaceAt(x, y);
+    if (s !== 3 && s !== 5) continue;            // streets + pier deck only (drivable)
+    if (Math.hypot(x - p.x, y - p.y) < ACOIN_SPAWN_MIN) continue;
+    arr.push({ x, y, t: Math.random() * 6 });
   }
 }
 

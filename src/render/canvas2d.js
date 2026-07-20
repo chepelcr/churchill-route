@@ -398,6 +398,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   function drawWorld2D(view, t) {
     drawLandBase(view, t);
     const vts = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
+    // GREEN GROUND (plazas / parks / faro esplanade), colour-by-type, painted as
+    // part of the ground FIRST — so the roads + aceras below draw cleanly ON TOP
+    // (the cuadra is already green; nothing paints green over the sidewalks).
+    for (const tile of vts) for (const pz of tile.plazas || []) drawPlazaGreen(pz, view);
     // roads: gather in-view segments across tiles, minor → major so arterials paint on top
     const roads = [];
     for (const tile of vts) {
@@ -410,10 +414,8 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     // the asphalt but under buildings/flora
     for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);
     for (const tile of vts) if (tile.medians.length) paintTileMedians(tile.medians, view);
-    // paved plazas → grass green (user request): a ground layer under buildings
-    for (const tile of vts) for (const pz of tile.plazas || []) drawPlazaGreen(pz, view);
-    drawFaroCommas(view);   // faro plaza red "islands" — ground layer, under the trees
-    // sand access paths from beach kiosks to the nearest street (drivable)
+    drawFaroCommas(view);   // faro plaza red "islands" — under the trees
+    // asphalt access lanes from the kiosks to the nearest street (drivable)
     drawKioskPaths(view);
     // buildings
     for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
@@ -460,30 +462,42 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     }
   }
 
-  // Kiosk access paths → nearest street (drivable). Beach kiosks get a packed
-  // SAND strip; town kiosks get an ASPHALT stub the same colour as the streets
-  // (thin dark casing + asphalt fill) so it reads as a little street to the
-  // stand. (Entries without `surface` are legacy beach paths → sand.)
+  // A collectable churchill coin lying on the street (arcade): a gold disc that
+  // spins (squash on X) and bobs, with a shadow + ₡ mark so it reads as loot.
+  function drawArcadeCoin(c, t) {
+    const ph = (c.t || 0) + t * 0.004;
+    const sx = Math.abs(Math.cos(ph * 2.2));           // spin → horizontal squash
+    const bob = Math.sin(ph * 3) * 1.6;                // gentle hover
+    const R = 7;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath(); ctx.ellipse(c.x, c.y + 5, 6, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    const cy = c.y - bob;
+    ctx.fillStyle = "#c8992f";                          // rim
+    ctx.beginPath(); ctx.ellipse(c.x, cy, R * sx + 0.6, R + 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f3c969";                          // face
+    ctx.beginPath(); ctx.ellipse(c.x, cy, R * sx, R, 0, 0, Math.PI * 2); ctx.fill();
+    if (sx > 0.35) {                                    // ₡ mark only when facing us
+      ctx.fillStyle = "#a97b1e";
+      ctx.font = `bold ${Math.round(9 * sx + 3)}px 'Space Grotesk', sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("₡", c.x, cy + 0.5);
+      ctx.textBaseline = "alphabetic";
+    }
+  }
+
+  // Kiosk access lanes → nearest street (drivable): a plain ASPHALT stub the
+  // same colour as the streets (no black casing), so every churchill stand reads
+  // as connected by a little paved lane.
   function drawKioskPaths(view) {
     const paths = W.KIOSK_PATHS;
     if (!paths || !paths.length) return;
     ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#3a3540"; ctx.lineWidth = 28;                 // asphalt (as the streets)
     for (const p of paths) {
       const [x0, y0, x1, y1] = p.pts;
       if (Math.max(x0, x1) < view.x0 - 40 || Math.min(x0, x1) > view.x1 + 40 ||
           Math.max(y0, y1) < view.y0 - 40 || Math.min(y0, y1) > view.y1 + 40) continue;
-      if (p.surface === "paved") {
-        ctx.strokeStyle = "#2b2731"; ctx.lineWidth = 32;             // road casing
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-        ctx.strokeStyle = "#3a3540"; ctx.lineWidth = 28;             // asphalt (same as streets)
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      } else {
-        ctx.strokeStyle = "#d8c290"; ctx.lineWidth = 30;             // packed sand
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-        ctx.strokeStyle = "rgba(180,150,100,0.5)"; ctx.lineWidth = 30; // edge grain
-        ctx.setLineDash([2, 10]); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-        ctx.setLineDash([]);
-      }
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
     }
   }
 
@@ -2056,6 +2070,13 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       for (const tr of trains) {
         if (tr.x < view.x0 - 140 || tr.x > view.x1 + 140 || tr.y < view.y0 - 140 || tr.y > view.y1 + 140) continue;
         drawTrain(tr, t);
+      }
+    }
+    // Arcade collectable coins on the streets
+    if (!state.attract && state.arcadeCoins && state.arcadeCoins.length) {
+      for (const c of state.arcadeCoins) {
+        if (c.x < view.x0 - 20 || c.x > view.x1 + 20 || c.y < view.y0 - 20 || c.y > view.y1 + 20) continue;
+        drawArcadeCoin(c, t);
       }
     }
     // Particles

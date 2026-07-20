@@ -8,9 +8,12 @@ import { VEHICLES } from "./vehicles.js";
 
 export const FREE_VEHICLES = ["bici", "scooter", "tuktuk"];
 
-// Earn rates (approved economy: ~10-15 coins per honest run)
-export const COINS_PER_DELIVERY = 3;
-export const COINS_PERFECT_BONUS = 2;
+// Earn rates — generous so the shop is reachable in a few runs. A delivery
+// pays COINS_PER_DELIVERY (+bonus for a fresh, unmelted drop); in arcade the
+// coins scattered on the streets pay COINS_PER_PICKUP each.
+export const COINS_PER_DELIVERY = 50;
+export const COINS_PERFECT_BONUS = 25;
+export const COINS_PER_PICKUP = 10;
 
 // upgrade lines: effect per level (level 0 = none)
 export const UPGRADES = {

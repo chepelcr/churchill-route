@@ -2663,7 +2663,7 @@ def main():
             if tgt:
                 raster_stamp_polyline(grid, [kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
                 kiosk_paths.append({"pts": [round(kx), round(ky), round(tgt[0]), round(tgt[1])],
-                                    "surface": "sand"})
+                                    "surface": "paved"})
                 print(f"[kiosk] sand path {lm['id']} -> street ({round(tgt[0])},{round(tgt[1])})")
             beach_kiosks.add(lm["id"])
 
@@ -2760,20 +2760,26 @@ def main():
                 break
         if aux:
             axp, ayp = (aux[0] + 0.5) * GRID_CELL, (aux[1] + 0.5) * GRID_CELL
-            # L-shaped lane: east along the beach line, then up to the road — keeps
-            # the lane EAST of the lighthouse (the faro reads to its LEFT/west).
-            lw = round(1.6 * CUAD)
-            raster_stamp_polyline(grid, [sx, sy, axp, sy], lw, CLS_ROAD)
-            raster_stamp_polyline(grid, [axp, sy, axp, ayp], lw, CLS_ROAD)
-            kiosk_paths.append({"pts": [int(sx), int(sy), round(axp), int(sy)], "surface": "paved"})
-            kiosk_paths.append({"pts": [round(axp), int(sy), round(axp), round(ayp)], "surface": "paved"})
-            print(f"[pier] faro drivable lane (L) -> ({round(axp)},{round(ayp)})")
+            # straight lane from the muelle base to the road (the lighthouse sits
+            # to its left/west, over on the tip)
+            raster_stamp_polyline(grid, [sx, sy, axp, ayp], round(1.6 * CUAD), CLS_ROAD)
+            kiosk_paths.append({"pts": [int(sx), int(sy), round(axp), round(ayp)], "surface": "paved"})
+            print(f"[pier] faro drivable lane -> ({round(axp)},{round(ayp)})")
         kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
         if kf:
             kf["x"] = int(sx + 0.85 * (ex - sx)); kf["y"] = int(sy + 0.85 * (ey - sy))   # sea end
             kf["spawn"] = [int(sx + 0.4 * (ex - sx)), int(sy + 0.4 * (ey - sy))]         # on the deck
             beach_kiosks.add("kios_faro")                     # skip the frontage pass
-        print(f"[pier] faro muelle SW ({sx},{sy})->({ex},{ey}); esplanade {len(esp)} cells")
+        # Nudge the drawn lighthouse NORTH-WEST so the tower no longer sits on top
+        # of the drivable connection lane (which runs SW→NE). NW is perpendicular
+        # to that lane, so the faro clears it to the left; the esplanade / commas /
+        # rim / muelle geometry all stay put (already computed from the original
+        # anchor above). Kept modest so the faro stays within the reachability
+        # gate's acera reach of the lane (≤ ACERA_CELLS+1 cells from drivable).
+        faro_lm["x"] = int(faro_lm["x"] - 1.6 * CUAD)
+        faro_lm["y"] = int(faro_lm["y"] - 1.6 * CUAD)
+        print(f"[pier] faro muelle SW ({sx},{sy})->({ex},{ey}); esplanade {len(esp)} cells; "
+              f"faro icon -> ({faro_lm['x']},{faro_lm['y']})")
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
     for isl in junction_islands:

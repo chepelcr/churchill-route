@@ -3,7 +3,7 @@ import { Game } from "../../game/index.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { isMvpLocked } from "../../game/progress.js";
-import { economy } from "../../game/economy.js";
+import { economy, COLORS } from "../../game/economy.js";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import VehiclePreview from "../VehiclePreview.jsx";
 import FitScale from "../FitScale.jsx";
@@ -29,6 +29,11 @@ export default function StageSelect({ onStart, onBack }) {
   const [, bump] = useState(0);
 
   const doReset = () => { Game.resetProgress(); setConfirming(false); bump((n) => n + 1); };
+  // Equip a paint you own for the selected ride (unowned colours live in the Shop).
+  const pickColor = (id) => {
+    if (id && !economy.ownsColor(id)) { sfx.play("menu_denied"); return; }
+    economy.equipColor(veh, id); sfx.play("menu_move"); bump((n) => n + 1);
+  };
 
   // keep the latest values reachable from the mount-once key/pad handlers
   const st = useRef({});
@@ -144,7 +149,7 @@ export default function StageSelect({ onStart, onBack }) {
 
             <div className="glass-card vehicle-card">
               <div className="vehicle-card-title">{t("select.vehicle")}</div>
-              <VehiclePreview vehKey={veh} />
+              <VehiclePreview vehKey={veh} color={economy.equippedColor(veh)?.hex || null} />
               <div className="vehicles-col">
                 {vehKeys.map((k) => {
                   const has = economy.ownsVehicle(k);
@@ -152,6 +157,21 @@ export default function StageSelect({ onStart, onBack }) {
                     <button key={k} className={"vchip " + (veh === k ? "active" : "") + (has ? "" : " locked")}
                       onClick={() => { if (has) { sfx.play("menu_select"); setVeh(k); } else sfx.play("menu_denied"); }}>
                       {has ? vehicles[k].name : <><Icon name="lock" size={12} /> {vehicles[k].name}</>}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="veh-colors">
+                <button className={"swatch stock" + (!economy.equippedColor(veh) ? " equipped" : "")}
+                  title={t("shop.stock")} onClick={() => pickColor(null)}>↺</button>
+                {COLORS.map((c) => {
+                  const has = economy.ownsColor(c.id);
+                  const eq = economy.equippedColor(veh)?.id === c.id;
+                  return (
+                    <button key={c.id} className={"swatch" + (eq ? " equipped" : "") + (has ? "" : " locked")}
+                      style={{ background: c.hex }} title={`${c.name}${has ? "" : ` · ${c.price}`}`}
+                      onClick={() => pickColor(c.id)}>
+                      {!has && <Icon name="lock" size={10} />}{eq && "✓"}
                     </button>
                   );
                 })}

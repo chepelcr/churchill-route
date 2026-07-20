@@ -45,7 +45,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .title-shell {
   position: relative; min-height: 100%; height: 100%;
   display: flex;
-  padding: 24px;
+  /* safe-area aware so cards + carousel arrows never sit under the notch or the
+     home indicator when installed to the iOS home screen (standalone) */
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -233,6 +236,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   background: rgba(20,16,40,0.75);
   border: 1px solid rgba(255,255,255,0.12);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-radius: 12px; padding: 8px 12px;
   font-family: "JetBrains Mono", monospace; font-size: 12px;
   color: var(--paper);
@@ -256,6 +260,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   background: rgba(20,16,40,0.75);
   border: 1px solid rgba(255,255,255,0.12);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-radius: 12px;
   min-width: 44px; min-height: 44px;
   font-size: 20px; line-height: 1; color: var(--paper);
@@ -295,6 +300,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   border-radius: 14px; padding: 14px 34px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.45);
   backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 .district-toast .dt-kicker {
   font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
@@ -339,9 +345,17 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 
 /* ----- Pause / Results overlay ----- */
 .overlay {
-  position: absolute; inset: 0; display: grid; place-items: center;
-  background: rgba(8,4,20,0.7); backdrop-filter: blur(8px);
+  position: absolute; inset: 0;
+  /* flex + margin:auto centering that SCROLLS instead of clipping when a panel
+     is taller than a short landscape phone — the top stays reachable, unlike
+     place-items:center. Safe-area padded for iOS standalone. */
+  display: flex; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+           max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(8,4,20,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
+.overlay > * { margin: auto; }
 .panel {
   background: linear-gradient(180deg, oklch(0.22 0.05 280), oklch(0.14 0.04 280));
   border: 1px solid rgba(255,255,255,0.12);
@@ -523,7 +537,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   display: flex; flex-direction: column;
   background: oklch(0.14 0.04 285 / 0.72);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  padding: max(10px, env(safe-area-inset-top)) clamp(12px, 3vw, 32px) max(10px, env(safe-area-inset-bottom));
+  padding: max(10px, env(safe-area-inset-top))
+           max(clamp(12px, 3vw, 32px), env(safe-area-inset-right))
+           max(10px, env(safe-area-inset-bottom))
+           max(clamp(12px, 3vw, 32px), env(safe-area-inset-left));
   text-align: center;
 }
 .page-head {
@@ -716,12 +733,45 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   font: 9px "JetBrains Mono", monospace; white-space: nowrap;
   display: inline-flex; align-items: center; gap: 2px;
 }
-.picker-panel { max-width: 560px; }
 .vehicles-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 10px 0; }
 .vchip.locked { opacity: 0.55; }
-.picker-boosts { margin-top: 8px; }
-.picker-colors { margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.picker-colors .swatch { width: 38px; height: 38px; border-radius: 10px; }
+.picker-boosts { margin-top: 4px; }
+
+/* ----- Vehicle picker (Arcade / Recorrer): two scale-to-fit cards ----- */
+.picker-wrap {
+  width: min(1000px, 96vw);
+  display: flex; flex-direction: column; align-items: center;
+  gap: clamp(8px, 1.6vh, 16px); text-align: center;
+}
+.picker-title {
+  font-family: "Bungee", sans-serif; font-size: clamp(20px, 5vh, 34px);
+  color: var(--gold); margin: 0; letter-spacing: 0.04em;
+}
+.picker-layout { display: flex; gap: clamp(10px, 1.6vw, 16px); align-items: stretch; justify-content: center; }
+.picker-veh {
+  width: clamp(210px, 28vw, 290px); flex-shrink: 0;
+  display: flex; flex-direction: column; gap: clamp(6px, 1.2vh, 10px);
+}
+.picker-side {
+  width: clamp(230px, 32vw, 330px); flex-shrink: 0;
+  display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 12px); text-align: center;
+}
+.picker-side .swatches { justify-content: center; }
+.picker-side .swatch { width: clamp(30px, 4.4vh, 40px); height: clamp(30px, 4.4vh, 40px); border-radius: 10px; }
+.picker-getbtn { font-size: 12px; }
+.picker-actions { margin-top: auto; }
+/* narrow / very short: stack the two cards so the Go button always fits */
+@media (max-width: 700px), (max-height: 380px) {
+  .picker-layout { flex-direction: column; align-items: center; }
+  .picker-veh, .picker-side { width: min(92vw, 340px); }
+}
+
+/* compact paint row inside the Historia vehicle card */
+.veh-colors { display: flex; flex-wrap: wrap; gap: clamp(3px, 0.7vh, 5px); justify-content: center; }
+.veh-colors .swatch {
+  width: clamp(22px, 3.4vh, 30px); height: clamp(22px, 3.4vh, 30px);
+  border-radius: 8px; font-size: 12px;
+}
 
 /* ----- Purchase confirmation ----- */
 .confirm-panel { max-width: 360px; text-align: center; }
@@ -862,7 +912,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   color: var(--gold); font: 400 clamp(30px, 4vw, 48px) "Bungee", sans-serif;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: transform 0.1s, background 0.12s, border-color 0.12s;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
 .carousel-arrow:hover { background: oklch(0.2 0.06 285 / 0.7); border-color: var(--gold); transform: scale(1.05); }
 .carousel-arrow:active { transform: scale(0.96); }

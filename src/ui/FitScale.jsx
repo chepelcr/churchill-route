@@ -25,14 +25,25 @@ export default function FitScale({ children }) {
       outer.style.height = `${(h || 0) * s}px`;
     };
     apply();
+    // Re-measure after the things that change layout AFTER first paint —
+    // web-font swap, the iOS standalone chrome settling, a restored bfcache
+    // page — otherwise a stale first measure leaves the card mis-scaled
+    // (distorted / arrows off-screen) when installed to the home screen.
+    const raf = requestAnimationFrame(apply);
+    const timers = [setTimeout(apply, 120), setTimeout(apply, 400)];
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(apply).catch(() => {});
     const ro = new ResizeObserver(apply);
     ro.observe(inner);
     window.addEventListener("resize", apply);
     window.addEventListener("orientationchange", apply);
+    window.addEventListener("pageshow", apply);
     return () => {
+      cancelAnimationFrame(raf);
+      timers.forEach(clearTimeout);
       ro.disconnect();
       window.removeEventListener("resize", apply);
       window.removeEventListener("orientationchange", apply);
+      window.removeEventListener("pageshow", apply);
     };
   }, []);
 

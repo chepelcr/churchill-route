@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Game } from "../game/index.js";
 import { VEHICLES } from "../game/vehicles.js";
-import { economy, VEHICLE_PRICES, BOOSTS } from "../game/economy.js";
+import { economy, VEHICLE_PRICES, BOOSTS, COLORS } from "../game/economy.js";
 import { sfx } from "../game/audio.js";
 import { useT } from "../i18n/index.js";
 import VehiclePreview from "./VehiclePreview.jsx";
@@ -22,6 +22,13 @@ export default function VehiclePicker({ onGo, onShop, onBack }) {
   const vehKeys = Object.keys(VEHICLES);
   const owned = economy.ownsVehicle(veh);
   const totalBoosts = Object.keys(BOOSTS).reduce((s, id) => s + economy.boostCount(id), 0);
+  const equippedCol = economy.equippedColor(veh);
+  // Equip a paint you already own right here; unowned colours deep-link to the
+  // Shop (that's where they're bought).
+  const pickColor = (id) => {
+    if (!id || economy.ownsColor(id)) { economy.equipColor(veh, id); sfx.play("menu_move"); }
+    else { sfx.play("menu_denied"); onShop(); }
+  };
 
   const pick = (k) => {
     sfx.play(economy.ownsVehicle(k) ? "menu_move" : "menu_denied");
@@ -58,6 +65,27 @@ export default function VehiclePicker({ onGo, onShop, onBack }) {
           <button className="btn secondary" onClick={onShop}>
             <Icon name="lock" size={13} /> {t("picker.locked")} · <CoinIcon size={13} /> {VEHICLE_PRICES[veh]}
           </button>
+        )}
+        {owned && (
+          <div className="picker-colors">
+            <div className="shop-desc">{t("picker.color")}</div>
+            <div className="swatches">
+              <button className={"swatch stock" + (!equippedCol ? " equipped" : "")}
+                title={t("shop.stock")} onClick={() => pickColor(null)}>↺</button>
+              {COLORS.map((c) => {
+                const has = economy.ownsColor(c.id);
+                const eq = equippedCol?.id === c.id;
+                return (
+                  <button key={c.id} className={"swatch" + (eq ? " equipped" : "") + (has ? "" : " locked")}
+                    style={{ background: c.hex }} title={`${c.name}${has ? "" : ` · ${c.price}`}`}
+                    onClick={() => pickColor(c.id)}>
+                    {!has && <Icon name="lock" size={11} />}
+                    {eq && "✓"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
         {totalBoosts > 0 && (
           <div className="picker-boosts">

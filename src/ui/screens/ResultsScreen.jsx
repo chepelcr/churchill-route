@@ -4,6 +4,7 @@ import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { useT, stageName } from "../../i18n/index.js";
 import { ads } from "../../monetize/ads.js";
 import { economy } from "../../game/economy.js";
+import { isMvpLocked } from "../../game/progress.js";
 import { content } from "../../content/remote.js";
 import CoinIcon from "../CoinIcon.jsx";
 import Icon from "../Icon.jsx";
@@ -18,7 +19,10 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
   const isTutorial = s.mode === "tutorial";
   const won = s.won;
   const rank = s.score > 6000 ? t("rank.s") : s.score > 3500 ? t("rank.a") : s.score > 1800 ? t("rank.b") : s.score > 800 ? t("rank.c") : t("rank.d");
-  const hasNext = isStage && (s.stageIdx + 1) < stages.length;
+  // Offer "Next" only when the following stage is actually playable — never
+  // into a PRÓXIMAMENTE (MVP-locked / WIP) level that ships in a later release.
+  const nextStage = isStage ? stages[s.stageIdx + 1] : null;
+  const hasNext = !!nextStage && !isMvpLocked(nextStage.district);
   // rewarded "continue": a lost timed run, once per run, when an ad is ready
   const canContinue = !won && !isTutorial && (s.mode === "arcade" || s.mode === "story")
     && !s.usedAdContinue && ads.canOfferRewarded() && onContinue;

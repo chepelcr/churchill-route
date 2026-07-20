@@ -19,6 +19,7 @@ import TouchControls from "./TouchControls.jsx";
 import GameTweaks from "./GameTweaks.jsx";
 import { enterImmersive } from "./immersive.js";
 import { sfx } from "../game/audio.js";
+import { isMvpLocked } from "../game/progress.js";
 import { useT } from "../i18n/index.js";
 import Icon from "./Icon.jsx";
 import { ads } from "../monetize/ads.js";
@@ -143,15 +144,19 @@ export default function App() {
     setPendingStage({ idx, vehicleKey });
     setScreen("brief");
   }
-  function beginStage() {
+  function beginStage(armedBoosts) {
     if (!pendingStage) return;
     enterImmersive();
+    Game.state.armedBoosts = armedBoosts || null; // owned boosts armed on the brief
     Game.startStage(pendingStage.idx, pendingStage.vehicleKey);
     setScreen("playing");
   }
   function nextStage() {
     const next = Game.state.stageIdx + 1;
-    if (next < WORLD.STAGES.length) {
+    const stg = WORLD.STAGES[next];
+    // never advance into a PRÓXIMAMENTE (MVP-locked / WIP) level — those ship
+    // later; clearing the last open level returns to the menu instead.
+    if (stg && !isMvpLocked(stg.district)) {
       setPendingStage({ idx: next, vehicleKey: Game.state.vehicleKey });
       setScreen("brief");
     } else { setScreen("title"); }
@@ -212,7 +217,7 @@ export default function App() {
         </div>
       )}
       {screen === "playing" && <><HUD onPause={() => setScreen("paused")} /><TouchControls />{Game.state.tutorial && <TutorialOverlay />}</>}
-      {screen === "paused" && <><HUD /><PauseScreen onResume={() => setScreen("playing")} onSettings={() => openSettings("paused")} onQuit={quit} /></>}
+      {screen === "paused" && <><HUD /><PauseScreen onResume={() => setScreen("playing")} onRestart={Game.state.mode !== "tutorial" ? again : null} onSettings={() => openSettings("paused")} onQuit={quit} /></>}
       {(screen === "playing" || screen === "paused") && <GameTweaks />}
       <div className="rotate-overlay">
         <div className="rotate-icon"><Icon name="phone" size={60} /></div>

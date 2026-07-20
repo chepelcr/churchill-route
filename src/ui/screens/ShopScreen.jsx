@@ -19,11 +19,16 @@ export default function ShopScreen({ onBack }) {
   const [tab, setTab] = useState("vehicles");
   const [vIdx, setVIdx] = useState(0);                 // vehicle carousel index
   const [colorVeh, setColorVeh] = useState("scooter"); // colors tab context
+  const [pending, setPending] = useState(null);        // { label, price, fn } confirm gate
   const [, bump] = useState(0);
   useEffect(() => economy.onChange(() => bump((n) => n + 1)), []);
   useEffect(() => iap.onChange(() => bump((n) => n + 1)), []);
 
   const buy = (fn) => { if (fn()) sfx.play("delivery"); else sfx.play("menu_denied"); };
+  // Purchases are gated behind a confirm step so nothing is bought "sin querer".
+  const askBuy = (label, cost, fn) => { sfx.play("menu_move"); setPending({ label, price: cost, fn }); };
+  const confirmBuy = () => { if (pending) buy(pending.fn); setPending(null); };
+  const cancelBuy = () => { sfx.play("menu_move"); setPending(null); };
   const price = (n) => <span className="coin-price"><CoinIcon size={16} /> {n}</span>;
 
   const vehKeys = Object.keys(VEHICLES);
@@ -65,7 +70,7 @@ export default function ShopScreen({ onBack }) {
                     <span className="shop-state ok">{p ? t("shop.owned") : t("shop.free")}</span>
                   ) : (
                     <button className="btn gold" disabled={!economy.canAfford(p)}
-                      onClick={() => buy(() => economy.buyVehicle(k))}>
+                      onClick={() => askBuy(VEHICLES[k].name, p, () => economy.buyVehicle(k))}>
                       {t("shop.buy")} · {price(p)}
                     </button>
                   )}
@@ -104,7 +109,7 @@ export default function ShopScreen({ onBack }) {
                   </div>
                   {next !== null ? (
                     <button className="btn gold" disabled={!economy.canAfford(next)}
-                      onClick={() => buy(() => economy.buyUpgrade(line))}>
+                      onClick={() => askBuy(t(`shop.${line}.name`), next, () => economy.buyUpgrade(line))}>
                       {t("shop.buy")} · {price(next)}
                     </button>
                   ) : <span className="shop-state ok">{t("shop.max")}</span>}
@@ -126,7 +131,7 @@ export default function ShopScreen({ onBack }) {
                     <span className="shop-desc">{t(`shop.${id}.desc`)}</span>
                   </div>
                   <button className="btn gold" disabled={!economy.canAfford(b.price)}
-                    onClick={() => buy(() => economy.buyBoost(id))}>
+                    onClick={() => askBuy(t(`shop.${id}.name`), b.price, () => economy.buyBoost(id))}>
                     {t("shop.buy")} · {price(b.price)}
                   </button>
                 </div>
@@ -158,7 +163,7 @@ export default function ShopScreen({ onBack }) {
                     style={{ background: c.hex }} title={`${c.name}${owned ? "" : ` · ${c.price}`}`}
                     onClick={() => {
                       if (owned) { economy.equipColor(colorVeh, c.id); sfx.play("menu_move"); }
-                      else buy(() => economy.buyColor(c.id) && economy.equipColor(colorVeh, c.id));
+                      else askBuy(c.name, c.price, () => economy.buyColor(c.id) && economy.equipColor(colorVeh, c.id));
                     }}>
                     {!owned && <span className="swatch-price"><CoinIcon size={11} />{c.price}</span>}
                     {eq && "✓"}
@@ -189,6 +194,24 @@ export default function ShopScreen({ onBack }) {
           </div>
         )}
       </div>
+
+      {pending && (
+        <div className="overlay" onClick={cancelBuy}>
+          <div className="panel confirm-panel" onClick={(e) => e.stopPropagation()}>
+            <h2>{t("shop.confirmTitle")}</h2>
+            <div className="confirm-item">
+              <b>{pending.label}</b>
+              <span className="coin-price"><CoinIcon size={18} /> {pending.price}</span>
+            </div>
+            <div className="btn-row">
+              <button className="btn gold" disabled={!economy.canAfford(pending.price)} onClick={confirmBuy}>
+                {t("shop.confirmYes")}
+              </button>
+              <button className="btn secondary" onClick={cancelBuy}>{t("shop.confirmNo")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

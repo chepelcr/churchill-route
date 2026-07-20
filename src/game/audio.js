@@ -14,7 +14,7 @@ let master = null;      // master gain (mute = 0)
 let noiseBuf = null;    // shared 1s white-noise buffer
 let engineV = null;     // { oscA, oscB, filter, gain }
 let driftV = null;      // { src, filter, gain }
-let fountainV = null;   // { src, filter, gain } — park fountain water burble
+let fountainV = null;   // { spray, body, level } — park/pool water ambience
 
 function loadMuted() {
   try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
@@ -66,19 +66,26 @@ function unlock() {
   src.start();
   driftV = { src, filter: df, gain: dg };
 
-  // Fountain: gentle water burble — looped noise through a lowpass with a slow
-  // LFO wobble on the cutoff; silent until sfx.fountain(level) near a park.
-  const fs = ctx.createBufferSource();
-  fs.buffer = noiseBuf; fs.loop = true;
-  const ff = ctx.createBiquadFilter();
-  ff.type = "lowpass"; ff.frequency.value = 900; ff.Q.value = 0.7;
-  const lfo = ctx.createOscillator(); lfo.frequency.value = 3.2;
-  const lfoG = ctx.createGain(); lfoG.gain.value = 320;
-  lfo.connect(lfoG); lfoG.connect(ff.frequency);
-  const fg = ctx.createGain(); fg.gain.value = 0;
-  fs.connect(ff); ff.connect(fg); fg.connect(master);
-  fs.start(); lfo.start();
-  fountainV = { src: fs, filter: ff, gain: fg };
+  // Water ambience: a bright TRICKLE band (bandpass) + a soft BODY band
+  // (lowpass), both STEADY. The old voice used one 3.2 Hz LFO on a dark
+  // lowpass, whose regular "wub-wub" read as an idling motor — gone. The
+  // irregular droplet "plips" that actually make it sound like water are
+  // fired in sfx.fountain(). Silent until sfx.fountain(level) near a park/pool.
+  const wSpray = ctx.createBufferSource();
+  wSpray.buffer = noiseBuf; wSpray.loop = true;
+  const wSprayF = ctx.createBiquadFilter();
+  wSprayF.type = "bandpass"; wSprayF.frequency.value = 2400; wSprayF.Q.value = 0.6;
+  const wSprayG = ctx.createGain(); wSprayG.gain.value = 0;
+  wSpray.connect(wSprayF); wSprayF.connect(wSprayG); wSprayG.connect(master);
+  wSpray.start();
+  const wBody = ctx.createBufferSource();
+  wBody.buffer = noiseBuf; wBody.loop = true;
+  const wBodyF = ctx.createBiquadFilter();
+  wBodyF.type = "lowpass"; wBodyF.frequency.value = 620; wBodyF.Q.value = 0.5;
+  const wBodyG = ctx.createGain(); wBodyG.gain.value = 0;
+  wBody.connect(wBodyF); wBodyF.connect(wBodyG); wBodyG.connect(master);
+  wBody.start();
+  fountainV = { spray: wSprayG, body: wBodyG, level: 0 };
 }
 
 if (BROWSER) {
@@ -200,10 +207,26 @@ export const sfx = {
     driftV.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, amount)) * 0.12, ctx.currentTime, 0.06);
   },
 
-  // Fountain water: 0..1 by nearness to the closest park fountain.
+  // Water ambience: 0..1 by nearness to the closest park fountain / pool. A
+  // steady bright+body noise bed plus randomly-timed droplet "plips"; the
+  // irregular transients (not a periodic LFO) are what make it read as water.
   fountain(amount) {
     if (!fountainV || !ctx || ctx.state !== "running") return;
-    fountainV.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, amount)) * 0.10, ctx.currentTime, 0.12);
+    const a = Math.max(0, Math.min(1, amount));
+    fountainV.level = a;
+    fountainV.spray.gain.setTargetAtTime(a * 0.045, ctx.currentTime, 0.12);
+    fountainV.body.gain.setTargetAtTime(a * 0.06, ctx.currentTime, 0.12);
+    if (a > 0.05 && Math.random() < a * 0.22) {
+      // one droplet: random pitch + irregular timing = trickling water
+      if (Math.random() < 0.7) {
+        const f0 = 700 + Math.random() * 900;
+        tone({ type: "sine", from: f0, to: f0 * (0.45 + Math.random() * 0.2),
+               dur: 0.045 + Math.random() * 0.07, gain: 0.015 + a * 0.02, filterHz: 3200 });
+      } else {
+        noiseHit({ dur: 0.03 + Math.random() * 0.03, gain: 0.02 + a * 0.015,
+                   band: 2600 + Math.random() * 1400 });
+      }
+    }
   },
 
   // silence the continuous voices (menus, pause, results) but keep the
@@ -212,7 +235,10 @@ export const sfx = {
     if (!ctx) return;
     if (engineV) engineV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
     if (driftV) driftV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
-    if (fountainV) fountainV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+    if (fountainV) {
+      fountainV.spray.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+      fountainV.body.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+    }
   },
   // the OS/browser suspends the context in the background; revive it
   resume() {

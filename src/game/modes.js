@@ -46,9 +46,10 @@ export function startStage(stageIdx, vehicleKey) {
   state.floats = []; state.particles = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
-  // place player near first kiosk of stage
+  // place player near first kiosk of stage (on the muelle deck if it has one)
   const k = W.landmarkById(stg.kiosks[0]);
-  state.p = { x: k.x - 60, y: k.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+  const sp = k.spawn;
+  state.p = { x: sp ? sp[0] : k.x - 60, y: sp ? sp[1] : k.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   // mutate cam, never replace: the renderer publishes zoom/vw/vh on it
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = stageBrief(stg);
@@ -110,9 +111,11 @@ export function startExplore(opts = {}) {
   state.floats = []; state.particles = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
-  // Spawn at El Faro start
-  const f0 = W.landmarkById("faro");
-  state.p = { x: f0.x + 60, y: f0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+  // Spawn on the faro muelle (falls back to beside the lighthouse)
+  const kf = W.landmarkById("kios_faro"), f0 = W.landmarkById("faro");
+  const sp = kf && kf.spawn;
+  state.p = sp ? { x: sp[0], y: sp[1], a: 0, vx: 0, vy: 0, speed: 0, drift: 0 }
+               : { x: f0.x + 60, y: f0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = t("tip.explore", { n: state.progress.unlocked.length });
   rebuildBarriers();

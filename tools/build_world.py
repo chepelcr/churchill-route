@@ -217,11 +217,11 @@ LANDMARK_DEFS = [
     # rocky tip OUTSIDE the road loop (left of Calle 39), with the Balneario
     # Municipal pool inside the loop on the other side of the street.
     {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -10, "dy": 110},
-    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 230, "dy": -40},
-    # a churchill kiosk right at La Punta so Stage 1 opens beside the lighthouse:
-    # anchored next to the faro (off the Balneario), then seated on the cuadra
-    # across the street from the pool by the frontage pass
-    {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 10, "dy": 70},
+    # the big lagoon pool sits IN FRONT of (just north of / town-side of) the
+    # faro, inside the road loop — roughly aligned on x with the lighthouse
+    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": -5, "dy": -40},
+    # a churchill kiosk beside the lighthouse plaza (east of the faro, clear of it)
+    {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 85, "dy": 105},
     # The cruise pier juts out from the END of Calle Central, right beside the
     # churchill kiosks on the Paseo (dx nudges the geo anchor onto that street)
     # dx 680 is a CORRIDOR-space nudge; the planar pier re-anchors to the real
@@ -231,8 +231,9 @@ LANDMARK_DEFS = [
     {"id": "playa",       "name": "Playa Puntarenas",           "type": "beachsign",    "district": "carmen",   "ll": (9.97500, -84.84300)},
     {"id": "carmenig",    "name": "Iglesia del Carmen",         "type": "church",       "district": "carmen",   "osm": "iglesia del carmen", "ll": (9.97650, -84.84400)},
     {"id": "tioga",       "name": "Hotel Tioga",                "type": "hotel",        "district": "paseo",    "osm": "tioga", "ll": (9.97500, -84.83600)},
-    {"id": "kios_paseo1", "name": "Kiosco Doña Lela",           "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": -60},
-    {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 60},
+    # pushed SOUTH toward the beach so they sit on the sand front, not mid-street
+    {"id": "kios_paseo1", "name": "Kiosco Doña Lela",           "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": -60, "dy": 150},
+    {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 60, "dy": 150},
     {"id": "casafait",    "name": "Casa Fait",                  "type": "house",        "district": "paseo",    "osm": "casa fait", "ll": (9.97700, -84.82900)},
     {"id": "parquemar",   "name": "Parque Marino del Pacífico", "type": "park",         "district": "playitas", "osm": "parque marino", "ll": (9.97600, -84.82300)},
     {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas"},
@@ -289,7 +290,7 @@ CUSTOMER_DEFS = [
     {"id": "c5",  "name": "Surfista canadiense",    "district": "paseo",    "line": "Make it extra red, dude.",     "ll": (9.97420, -84.83550)},
     {"id": "c6",  "name": "Padre Ramírez",          "district": "centro",   "line": "Bendito churchill.",           "ll": (9.97760, -84.83128)},
     {"id": "c7",  "name": "Vendedor de ceviche",    "district": "centro",   "line": "Te cambio uno por ceviche.",   "ll": (9.97700, -84.83100)},
-    {"id": "c8",  "name": "Doña del mercado",       "district": "centro",   "line": "Rojito bien fuerte.",          "ll": (9.98000, -84.83100)},
+    {"id": "c8",  "name": "Doña del mercado",       "district": "centro",   "line": "Rojito bien fuerte.",          "ll": (9.97965, -84.82932)},
     {"id": "c9",  "name": "Niño con bici",          "district": "playitas", "line": "¡El mío con piña!",            "ll": (9.97720, -84.82800)},
     {"id": "c10", "name": "Equipo de fútbol",       "district": "playitas", "line": "Once. Es broma. Tres.",        "ll": (9.97880, -84.82620)},
     {"id": "c11", "name": "Doña del rocking chair", "district": "playitas", "line": "Como en los años 80.",         "ll": (9.97740, -84.82450)},
@@ -1603,16 +1604,16 @@ def detect_blocks(grid, build_band_x1=None):
                     if key in open_runs:
                         y0, y1 = open_runs[key]
                         plazas.append([key[0] * GRID_CELL, y0 * GRID_CELL,
-                                       (key[1] - key[0]) * GRID_CELL, (y1 - y0) * GRID_CELL])
+                                       (key[1] - key[0]) * GRID_CELL, (y1 - y0) * GRID_CELL, "plaza"])
                     nxt[key] = [r, r + 1]
             for key, span in open_runs.items():
                 if key not in nxt:
                     plazas.append([key[0] * GRID_CELL, span[0] * GRID_CELL,
-                                   (key[1] - key[0]) * GRID_CELL, (span[1] - span[0]) * GRID_CELL])
+                                   (key[1] - key[0]) * GRID_CELL, (span[1] - span[0]) * GRID_CELL, "plaza"])
             open_runs = nxt
         for key, span in open_runs.items():
             plazas.append([key[0] * GRID_CELL, span[0] * GRID_CELL,
-                           (key[1] - key[0]) * GRID_CELL, (span[1] - span[0]) * GRID_CELL])
+                           (key[1] - key[0]) * GRID_CELL, (span[1] - span[0]) * GRID_CELL, "plaza"])
     n_cuadras = sum(1 for b in blocks if not b["green"])
     print(f"[blocks] {n_comps} land components -> {n_cuadras} cuadras, "
           f"{len(paved_ids)} paved to plaza ({len(plazas)} rects), {n_green} green")
@@ -2027,7 +2028,7 @@ def write_png(path, w, h, get_rgb, stride=1):
 def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms,
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
-                 stadium=None, kiosk_paths=None):
+                 stadium=None, kiosk_paths=None, faro_pier=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -2076,9 +2077,9 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
     add_point("trees", trees)
     add_point("palms", palms)
     add_point("mangroves", mangroves)
-    # plazas are [x,y,w,h] rects; islands are {kind, pts:[[x,y],...]} pairs
+    # plazas are [x,y,w,h,type] rects; islands are {kind, pts:[[x,y],...]} pairs
     for pz in plazas:
-        x, y, w, h = pz
+        x, y, w, h = pz[:4]
         for t in tiles_for_bbox(x, y, x + w, y + h):
             buckets[t]["plazas"].append(pz)
     for isl in islands:
@@ -2137,6 +2138,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         "beaches": beaches, "waters": waters, "landPolys": land_polys,
         "stadium": stadium,
         "kioskPaths": kiosk_paths or [],
+        "faroPier": faro_pier,
     }
     with open(os.path.join(WORLD2D_DIR, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
@@ -2615,8 +2617,8 @@ def main():
     kiosk_paths = []
     beach_kiosks = set()
     for lm in landmarks:
-        if lm["type"] != "kiosk":
-            continue
+        if lm["type"] != "kiosk" or lm["id"] == "kios_faro":
+            continue                                    # kios_faro goes on the muelle below
         kx, ky = lm["x"], lm["y"]
         surf = _cell_cls(int(kx // GRID_CELL), int(ky // GRID_CELL))
         if surf == CLS_BEACH:
@@ -2637,10 +2639,53 @@ def main():
     for cu in customers:
         stamp_pad(grid, cu["x"], cu["y"], 56)
     faro_lm = next((l for l in landmarks if l["id"] == "faro"), None)
+    faro_pier = None
     if faro_lm:
-        # La Punta plaza: hug the tip WEST of the last street so it never bleeds
-        # east into the town's cuadras/streets (which otherwise fragment to green).
-        stamp_pad(grid, faro_lm["x"] - 40, faro_lm["y"], 80)
+        # La Punta plaza: artificially pave the point into a round esplanade
+        # (over beach + shallow water) so it reaches the sea and the muelle — the
+        # "complete approach" of the reference. Centred on the lighthouse.
+        fcc0, fcr0 = int(faro_lm["x"] // GRID_CELL), int(faro_lm["y"] // GRID_CELL)
+        R_ESP = 16                                       # ~64px radius
+        for cr in range(max(0, fcr0 - R_ESP), min(GRID_ROWS, fcr0 + R_ESP + 1)):
+            for cc in range(max(0, fcc0 - R_ESP), min(GRID_COLS, fcc0 + R_ESP + 1)):
+                if (cc - fcc0) ** 2 + (cr - fcr0) ** 2 <= R_ESP * R_ESP and \
+                        grid[cr * GRID_COLS + cc] in (CLS_WATER, CLS_BEACH, CLS_LAND, CLS_ACERA):
+                    grid[cr * GRID_COLS + cc] = CLS_ROAD
+        # Faro muelle: a boardwalk jutting WEST into the gulf FROM THE BEACH LINE
+        # (like the cruise pier starts at the shore) with the churchill kiosk at
+        # its sea end; the player spawns on the deck. The lighthouse sits to the
+        # RIGHT (east) of the muelle's auxiliary street.
+        fx, fy = faro_lm["x"], faro_lm["y"]
+        fcr = int(fy // GRID_CELL)
+        shore_cc = int(fx // GRID_CELL)                 # walk WEST to the water's edge
+        for _ in range(40):
+            if _cell_cls(shore_cc - 1, fcr) == CLS_WATER:
+                break
+            shore_cc -= 1
+        shore_x = shore_cc * GRID_CELL                  # beach line (deck base)
+        end_x = shore_x - 9 * CUAD                       # jut ~180px west into the water
+        pw = 2 * CUAD
+        raster_stamp_polyline(grid, [shore_x, fy, end_x, fy], pw, CLS_BRIDGE)
+        faro_pier = {"x0": int(end_x), "y0": int(fy), "x1": int(shore_x), "y1": int(fy), "w": int(pw)}
+        # auxiliary street: NORTH from the base to the real loop road (past the
+        # plaza pad), drawn as asphalt like the cruise pier's connector. Vertical,
+        # so the lighthouse (east of shore_x) reads to its RIGHT.
+        ny = None
+        for k in range(3, 22):
+            yy = fy - k * CUAD
+            if yy < fy - 4 * CUAD and _cell_cls(shore_cc, int(yy // GRID_CELL)) in (CLS_ROAD, CLS_PASEO):
+                ny = yy
+                break
+        if ny is not None:
+            raster_stamp_polyline(grid, [shore_x, fy, shore_x, ny], 2 * CUAD, CLS_ROAD)
+            kiosk_paths.append({"pts": [int(shore_x), int(fy), int(shore_x), int(ny)], "surface": "paved"})
+            print(f"[pier] faro muelle aux street north -> y={ny}")
+        kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
+        if kf:
+            kf["x"], kf["y"] = int(end_x + CUAD), int(fy)     # kiosk at the sea (west) end
+            kf["spawn"] = [int(end_x + 5 * CUAD), int(fy)]    # spawn on the deck
+            beach_kiosks.add("kios_faro")                     # skip the frontage pass
+        print(f"[pier] faro muelle x{end_x}..{shore_x} (west) at beach line y={fy}")
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
     for isl in junction_islands:
@@ -2796,21 +2841,44 @@ def main():
                                         round(tgt[0]), round(tgt[1])], "surface": "paved"})
             print(f"[kiosk] {lm['id']} -> cuadra frontage ({lm['x']},{lm['y']}), paved connector")
 
-    # OSM parks (parquemar, cocal_park): paint their green on the containing
-    # block's footprint too, and centre the fountain/label on that block.
+    # OSM parks (parquemar, cocal_park) + the Balneario pool: paint their green
+    # on the containing block's footprint so the cuadra is OPEN (no buildings),
+    # tagged by type for the renderer's colour-by-type fill.
+    def _tag(rects, typ):
+        return [r + [typ] for r in rects]
     for lm in landmarks:
-        if lm["type"] != "park":
+        if lm["type"] not in ("park", "pool"):
             continue
         bi = _block_containing(lm["x"], lm["y"])
         if bi is None:
             continue
         blocks[bi]["green"] = True
         cells = blocks[bi]["cells"]
-        plazas.extend(cuad_cells_to_rects(cells))
         bc0 = min(c for c, _ in cells); bc1 = max(c for c, _ in cells)
         br0 = min(r for _, r in cells); br1 = max(r for _, r in cells)
+        if lm["type"] == "pool":
+            # the Balneario's cuadra becomes open ground (no buildings); the pool
+            # itself stays where its dx/dy put it (in front of the faro)
+            plazas.extend(_tag(cuad_cells_to_rects(cells), "plaza"))
+            continue
+        marine = lm["id"] == "parquemar"     # Parque Marino fills its whole cuadra
+        plazas.extend(_tag(cuad_cells_to_rects(cells), "marine" if marine else "park"))
         lm["x"] = (bc0 + bc1 + 1) * CUAD // 2; lm["y"] = (br0 + br1 + 1) * CUAD // 2
-        lm["w"] = min(160, (bc1 - bc0 + 1) * CUAD); lm["h"] = min(140, (br1 - br0 + 1) * CUAD)
+        if marine:
+            lm["marine"] = True
+            lm["w"] = (bc1 - bc0 + 1) * CUAD; lm["h"] = (br1 - br0 + 1) * CUAD
+            # aquarium tanks on well-spread INTERIOR cells so they stay on the
+            # footprint (never on the streets around an irregular block)
+            inter = [c for c in cells if all((c[0] + dx, c[1] + dy) in cells
+                     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+            src = inter if len(inter) >= 5 else sorted(cells)
+            mcx = (bc0 + bc1) / 2; mcy = (br0 + br1) / 2
+            pts = [min(src, key=lambda c: (c[0] - mcx) ** 2 + (c[1] - mcy) ** 2)]
+            while len(pts) < 5 and len(pts) < len(src):
+                pts.append(max(src, key=lambda c: min((c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 for p in pts)))
+            lm["pools"] = [[int((c[0] + 0.5) * CUAD), int((c[1] + 0.5) * CUAD)] for c in pts]
+        else:
+            lm["w"] = min(160, (bc1 - bc0 + 1) * CUAD); lm["h"] = min(140, (br1 - br0 + 1) * CUAD)
 
     # Synthetic parks: scatter green spaces (each with a fountain) across the
     # town so parks aren't rare. Pick well-sized cuadras clear of other POIs,
@@ -2849,7 +2917,7 @@ def main():
             cx, cy, bi, w, h = park_cands[j]
             blocks[bi]["green"] = True       # keep the interior open (no buildings)
             # paint the park's green on the block footprint (never over streets)
-            plazas.extend(cuad_cells_to_rects(blocks[bi]["cells"]))
+            plazas.extend(_tag(cuad_cells_to_rects(blocks[bi]["cells"]), "park"))
             landmarks.append({"id": f"park_syn_{n_park}", "name": "Parque",
                               "x": int(cx), "y": int(cy), "type": "park",
                               "district": _dcls(cx // CUAD, cy // CUAD),
@@ -3254,8 +3322,10 @@ def main():
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).
-    spawn = (faro_lm["x"], faro_lm["y"]) if faro_lm else (
-        (landmarks[0]["x"], landmarks[0]["y"]) if landmarks else (CANVAS_W // 2, CANVAS_H // 2))
+    _kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
+    spawn = tuple(_kf["spawn"]) if (_kf and _kf.get("spawn")) else (
+        (faro_lm["x"], faro_lm["y"]) if faro_lm else (
+            (landmarks[0]["x"], landmarks[0]["y"]) if landmarks else (CANVAS_W // 2, CANVAS_H // 2)))
     # scenery landmarks (no drivable pad) aren't delivery targets → exclude
     # them from the reachability gate
     gate_pois = [l for l in landmarks if l["type"] not in NO_PAD_LM] + customers
@@ -3293,7 +3363,7 @@ def main():
                      medians=medians, plazas=plazas, islands=junction_islands,
                      beaches=beaches, waters=waters, land_polys=land_contours,
                      landmarks=landmarks, customers=customers, stages=STAGES, stadium=stadium,
-                     kiosk_paths=kiosk_paths,
+                     kiosk_paths=kiosk_paths, faro_pier=faro_pier,
                      bridge=bridge, estuary=est, pier=pier, hills=hills)
     else:
         data = {

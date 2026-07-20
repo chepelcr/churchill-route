@@ -36,6 +36,7 @@ export const WORLD2D = (function () {
   const BRIDGE = manifest.bridge || null;
   const ESTUARY = manifest.estuary || null;
   const PIER = manifest.pier || null;
+  const FAROPIER = manifest.faroPier || null;   // muelle at La Punta (kiosk at its end)
   const STADIUM = manifest.stadium || null;
   const KIOSK_PATHS = manifest.kioskPaths || []; // sand access paths to beach kiosks
 
@@ -301,7 +302,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, STADIUM, KIOSK_PATHS,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUM, KIOSK_PATHS,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

@@ -424,38 +424,22 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     drawStreetLabels2D(roads, view);
   }
 
-  // Paved plazas / park ground rendered as GRASS. The rects are the exact cell
-  // footprint of a block (merged row-runs), so they tile the block edge-to-edge:
-  // we draw SQUARE corners (adjacent rects merge into one lawn instead of a
-  // patchwork of rounded blobs) and a SUBTLE, world-grid-aligned mottle (no hard
-  // stripes, no tree in every patch — flora comes from the tile trees layer).
+  // Green ground: one FLAT fill whose colour is chosen BY TYPE (pz[4]) — a
+  // civic plaza, a park lawn, or the marine park — instead of layering a
+  // texture over the base terrain. Rects tile the block edge-to-edge, so a
+  // single flat colour with square corners reads as one continuous area.
+  const GREEN_COLORS = { plaza: "#5ba362", park: "#4f9d5b", marine: "#46a98f" };
   function drawPlazaGreen(pz, view) {
     const [px, py, pw, ph] = pz;
     if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
-    ctx.fillStyle = "#4f9d5b";
+    ctx.fillStyle = GREEN_COLORS[pz[4]] || "#4f9d5b";
     ctx.fillRect(px, py, pw, ph);
-    // faint dapple keyed to WORLD coords so it lines up across neighbouring
-    // rects — reads as natural lawn texture, not crayon hatching.
-    ctx.save();
-    ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
-    const G = 26;
-    const gx0 = Math.floor(px / G) * G, gy0 = Math.floor(py / G) * G;
-    for (let gx = gx0; gx < px + pw; gx += G) {
-      for (let gy = gy0; gy < py + ph; gy += G) {
-        const hh = hash01(gx * 0.137 + gy * 0.713);
-        if (hh < 0.55) continue;                       // sparse — most cells bare
-        ctx.fillStyle = hh < 0.8 ? "rgba(92,176,102,0.16)" : "rgba(66,140,80,0.13)";
-        const s = 9 + hh * 7;
-        ctx.fillRect(gx + (hh * 7 | 0), gy + ((hh * 131) % 9 | 0), s, s * 0.7);
-      }
-    }
-    ctx.restore();
   }
 
   // Kiosk access paths → nearest street (drivable). Beach kiosks get a packed
-  // SAND strip; town kiosks get a PAVED driveway (asphalt + concrete curb) so
-  // the connector reads as a real street to the stand, not a floating circle.
-  // (Entries without `surface` are legacy beach paths → sand.)
+  // SAND strip; town kiosks get an ASPHALT stub the same colour as the streets
+  // (thin dark casing + asphalt fill) so it reads as a little street to the
+  // stand. (Entries without `surface` are legacy beach paths → sand.)
   function drawKioskPaths(view) {
     const paths = W.KIOSK_PATHS;
     if (!paths || !paths.length) return;
@@ -465,9 +449,9 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       if (Math.max(x0, x1) < view.x0 - 40 || Math.min(x0, x1) > view.x1 + 40 ||
           Math.max(y0, y1) < view.y0 - 40 || Math.min(y0, y1) > view.y1 + 40) continue;
       if (p.surface === "paved") {
-        ctx.strokeStyle = "#cec7b2"; ctx.lineWidth = 34;             // concrete curb apron
+        ctx.strokeStyle = "#2b2731"; ctx.lineWidth = 32;             // road casing
         ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-        ctx.strokeStyle = "#3a3540"; ctx.lineWidth = 26;             // asphalt driveway
+        ctx.strokeStyle = "#3a3540"; ctx.lineWidth = 28;             // asphalt (same as streets)
         ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
       } else {
         ctx.strokeStyle = "#d8c290"; ctx.lineWidth = 30;             // packed sand
@@ -782,6 +766,35 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.fillStyle = "rgba(20,40,60,0.55)"; ctx.fillRect(hx + 5, hy + 4, 4, 8); // door
   }
 
+  // The faro muelle: a warm wooden boardwalk jetty jutting into the gulf, with
+  // the churchill kiosk at its sea end and the player spawn on it. Drawn along
+  // its segment (P = {x0,y0,x1,y1,w}); handles a west or south orientation.
+  function drawFaroPier(view) {
+    const P = W.FAROPIER;
+    if (!P || P.x0 === undefined) return;
+    const hw = P.w / 2;
+    const xa = Math.min(P.x0, P.x1), xb = Math.max(P.x0, P.x1);
+    const ya = Math.min(P.y0, P.y1), yb = Math.max(P.y0, P.y1);
+    const horiz = (xb - xa) >= (yb - ya);
+    const rx = horiz ? xa : P.x0 - hw, ry = horiz ? P.y0 - hw : ya;
+    const rw = horiz ? (xb - xa) : P.w, rh = horiz ? P.w : (yb - ya);
+    if (rx + rw + 40 < view.x0 || rx - 40 > view.x1 || ry + rh + 20 < view.y0 || ry - 20 > view.y1) return;
+    ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(rx + 3, ry + 4, rw, rh);   // deck shadow
+    ctx.fillStyle = "#b98a4e"; ctx.fillRect(rx, ry, rw, rh);                     // warm timber deck
+    ctx.strokeStyle = "rgba(60,40,20,0.35)"; ctx.lineWidth = 1;                  // plank seams
+    if (horiz) {
+      for (let xx = rx + 12; xx < rx + rw; xx += 12) { ctx.beginPath(); ctx.moveTo(xx, ry + 1); ctx.lineTo(xx, ry + rh - 1); ctx.stroke(); }
+      ctx.fillStyle = "#8a5f33"; ctx.fillRect(rx, ry, rw, 2); ctx.fillRect(rx, ry + rh - 2, rw, 2);
+      ctx.fillStyle = "#6a451f";
+      for (let xx = rx + 10; xx < rx + rw; xx += 34) { ctx.fillRect(xx, ry - 1, 3, 3); ctx.fillRect(xx, ry + rh - 2, 3, 3); }
+    } else {
+      for (let yy = ry + 12; yy < ry + rh; yy += 12) { ctx.beginPath(); ctx.moveTo(rx + 1, yy); ctx.lineTo(rx + rw - 1, yy); ctx.stroke(); }
+      ctx.fillStyle = "#8a5f33"; ctx.fillRect(rx, ry, 2, rh); ctx.fillRect(rx + rw - 2, ry, 2, rh);
+      ctx.fillStyle = "#6a451f";
+      for (let yy = ry + 10; yy < ry + rh; yy += 34) { ctx.fillRect(rx - 1, yy, 3, 3); ctx.fillRect(rx + rw - 2, yy, 3, 3); }
+    }
+  }
+
   function drawStreetLabels(view) {
     ensureRenderCache();
     ctx.font = "bold 9px 'JetBrains Mono', monospace";
@@ -887,30 +900,47 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // water side, red crescent shade benches, palms and the red/white tower.
   function drawFaroScene(lm) {
     const x = lm.x, y = lm.y;
-    // Paved plaza
-    ctx.fillStyle = "#d9d4c8";
-    ctx.beginPath(); ctx.ellipse(x, y, 28, 18, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.ellipse(x, y, 28, 18, 0, 0, Math.PI * 2); ctx.stroke();
-    // Riprap rock armor rimming the water (west) side of the point
-    for (let i = 0; i < 16; i++) {
-      const a = Math.PI * 0.5 + (i / 15) * Math.PI; // south → west → north arc
-      const rx = x + Math.cos(a) * (30 + hash01(lm.x + i * 3.7) * 6);
-      const ry = y + Math.sin(a) * (19 + hash01(lm.x * 1.7 + i * 5.1) * 5);
-      const r0 = 1.6 + hash01(lm.x * 7.13 + i * 12.9) * 2.2;
+    // Big paved plaza at La Punta — a round GRAY esplanade (the point is
+    // artificially paved into the sea for a complete approach) with the
+    // decorative RED comma "islands" of the real Puntarenas plaza. Matches the
+    // ~64px paved disc from the world build.
+    const RP = 62;
+    ctx.fillStyle = "#cbc6ba";
+    ctx.beginPath(); ctx.arc(x, y, RP, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.14)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, RP, 0, Math.PI * 2); ctx.stroke();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, RP, 0, Math.PI * 2); ctx.clip();
+    ctx.strokeStyle = "rgba(0,0,0,0.05)"; ctx.lineWidth = 1;          // paving seams
+    for (let g = -56; g <= 56; g += 16) {
+      ctx.beginPath(); ctx.moveTo(x + g, y - RP); ctx.lineTo(x + g, y + RP); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - RP, y + g); ctx.lineTo(x + RP, y + g); ctx.stroke();
+    }
+    ctx.restore();
+    // Riprap rock armor rimming the water edge of the paved point
+    for (let i = 0; i < 30; i++) {
+      const a = (i / 30) * Math.PI * 2;
+      const rx = x + Math.cos(a) * (RP + 1), ry = y + Math.sin(a) * (RP + 1);
+      const r0 = 1.8 + hash01(lm.x * 7.13 + i * 12.9) * 2.4;
       ctx.fillStyle = i % 3 ? "#4a4d52" : "#5a5e64";
       ctx.beginPath();
       ctx.ellipse(rx, ry, r0 + 1.4, r0, hash01(i * 9.4 + lm.x) * Math.PI, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Red crescent shade benches spaced along the walkway
-    ctx.strokeStyle = "#c8453a"; ctx.lineWidth = 3; ctx.lineCap = "round";
-    for (let i = 0; i < 5; i++) {
-      const a = -Math.PI * 0.7 + i * (Math.PI * 1.4 / 4);
-      const bx = x + Math.cos(a) * 22, by = y + Math.sin(a) * 13;
-      ctx.beginPath(); ctx.arc(bx, by, 4, a - 0.5, a + 2.3); ctx.stroke();
+    // Red comma "islands" fanned around the plaza (the iconic paving design)
+    const faroComma = (cx, cy, r, rot) => {
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
+      ctx.fillStyle = "#c34a3c";
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0.35, Math.PI * 1.5);
+      ctx.arc(r * 0.42, r * 0.08, r * 0.6, Math.PI * 1.5, 0.35, true);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    };
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      faroComma(x + Math.cos(a) * 34, y + Math.sin(a) * 34, 7, a + Math.PI * 0.6);
     }
-    ctx.lineCap = "butt";
     // A few palms by the plaza (static, same look as drawPalms)
     const pxy = [[x + 22, y - 12], [x + 27, y + 11], [x - 4, y + 19]];
     for (let i = 0; i < pxy.length; i++) {
@@ -1022,17 +1052,62 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     }
   }
 
+  // A landscaped pool: tiled concrete deck, animated shimmering water with
+  // moving highlights, a shallow end + slide. Reused for the Balneario and for
+  // the Parque Marino's aquarium tanks. `s` scales it; `palms` frames it.
+  function drawPool(x, y, rot, s = 1, palms = true) {
+    const tt = lastT * 0.0022;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
+    ctx.fillStyle = "#e8e2d2";                                  // concrete deck
+    ctx.beginPath(); ctx.ellipse(0, 0, 78, 48, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#ccc4ae"; ctx.lineWidth = 5;             // tiled coping ring
+    ctx.beginPath(); ctx.ellipse(0, 0, 72, 43, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.save();                                                 // clip to water
+    ctx.beginPath(); ctx.ellipse(0, 0, 66, 38, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = "#4fbdd8"; ctx.fillRect(-70, -42, 140, 84);
+    ctx.fillStyle = "rgba(40,120,160,0.35)";                    // deeper centre
+    ctx.beginPath(); ctx.ellipse(6, 4, 42, 24, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#aeeaf2";                                  // shallow end
+    ctx.beginPath(); ctx.ellipse(-42, 8, 22, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 2;   // moving shimmer
+    for (let i = 0; i < 4; i++) {
+      const yy = -28 + i * 15 + Math.sin(tt * 3 + i) * 3;
+      ctx.beginPath();
+      for (let xx = -66; xx <= 66; xx += 8) ctx.lineTo(xx, yy + Math.sin(xx * 0.08 + tt * 4 + i) * 2.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = "#f3c969"; ctx.beginPath(); ctx.arc(-54, 22, 6, 0, Math.PI * 2); ctx.fill(); // slide
+    ctx.restore();
+    if (palms) {
+      paintPalm({ x: x + 60 * s, y: y - 30 * s, s: 0.7 * Math.max(0.7, s) }, lastT);
+      paintPalm({ x: x - 62 * s, y: y - 22 * s, s: 0.7 * Math.max(0.7, s) }, lastT);
+    }
+  }
+
+  // Parque Marino del Pacífico: its green already fills the whole cuadra
+  // (footprint plaza-green). The build hands us interior pool points (lm.pools,
+  // guaranteed on the footprint so they never spill onto streets); we draw an
+  // aquarium tank + a leafy tree at each.
+  function drawMarinePark(lm) {
+    const pools = lm.pools || [];
+    for (let i = 0; i < pools.length; i++) {
+      const px = pools[i][0], py = pools[i][1];
+      if (i % 2) paintPalm({ x: px - 26, y: py + 12, s: 0.75 }, lastT);
+      else paintTree({ x: px - 24, y: py + 12, s: 0.85 });
+    }
+    for (let i = 0; i < pools.length; i++)
+      drawPool(pools[i][0], pools[i][1], i % 2 ? 0.18 : -0.14, 0.46, false);
+    label(lm.x, lm.y - (lm.h || 120) / 2 - 6, "PARQUE MARINO", "#fff", "#2e7d44");
+  }
+
   function drawLandmark(lm) {
     const x = lm.x, y = lm.y;
     ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath(); ctx.ellipse(x + 4, y + 8, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
     switch (lm.type) {
       case "kiosk": {
-        // concrete apron under the stand (matches the drivable pocket carved by
-        // stamp_pad) so the kiosk reads as paved-in beside the street, not a
-        // box floating on asphalt.
-        ctx.fillStyle = "#c9c3b0";
-        roundRect(ctx, x - 30, y - 22, 60, 44, 6, true, false);
         // white + ORANGE kiosk (was red); the churchill drink stays red — it's the syrup
         ctx.fillStyle = "#fff"; ctx.fillRect(x - 16, y - 8, 32, 18);
         for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? "#fff" : "#f08a5d"; ctx.fillRect(x - 16 + i * 8, y - 14, 8, 6); }
@@ -1083,6 +1158,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       }
       case "park": {
         const pw = lm.w || 116, ph = lm.h || 90;
+        if (lm.marine) { drawMarinePark(lm, pw, ph); break; }
         drawGreenSpace(lm, pw, ph, { fountain: true, ground: false });
         label(x, y - ph / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
       }
@@ -1110,20 +1186,9 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         label(x, y - 24, "YACHT", "#fff", "#3a6f8a"); break;
       }
       case "pool": {
-        // Balneario Municipal at La Punta — the lagoon-shaped public pool
-        // inside the road loop (see how-look-puntarenas/faro.jpg)
-        ctx.fillStyle = "#e8e2d2";                       // concrete deck
-        ctx.beginPath(); ctx.ellipse(x, y, 78, 48, -0.25, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "rgba(58,53,64,0.25)"; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = "#5fd3e0";                       // lagoon water
-        ctx.beginPath(); ctx.ellipse(x - 18, y + 4, 40, 26, -0.35, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(x + 28, y - 8, 26, 20, -0.15, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#aeeaf2";                       // shallow end
-        ctx.beginPath(); ctx.ellipse(x - 26, y + 2, 16, 9, -0.35, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#f3c969";                       // kids slide
-        ctx.beginPath(); ctx.arc(x - 34, y + 12, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#6fbf99";                       // palm islet
-        ctx.beginPath(); ctx.arc(x + 30, y - 8, 7, 0, Math.PI * 2); ctx.fill();
+        // Balneario Municipal at La Punta — a landscaped public pool with
+        // living water, in front of the faro (see how-look-puntarenas/faro.jpg)
+        drawPool(x, y, -0.25, 1);
         label(x, y - 58, "BALNEARIO", "#fff", "#3a6f8a"); break;
       }
       case "house": {
@@ -1957,6 +2022,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     // Cruceros deck (its BRIDGE surface cells are drivable but not painted by
     // the vector road pass) and the Mata de Limón suspension bridge.
     drawPier(view);
+    drawFaroPier(view);
     drawBridge(view);
     drawBarriers(view);
     // Landmarks (the bridge has its own drawer)

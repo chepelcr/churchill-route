@@ -2727,6 +2727,14 @@ def main():
         espl = sorted(esp)                                 # comma islands across the shape
         faro_lm["commas"] = [[int((espl[(i * len(espl)) // 12][0] + 0.5) * GRID_CELL),
                               int((espl[(i * len(espl)) // 12][1] + 0.5) * GRID_CELL)] for i in range(12)]
+        # riprap rim: only the esplanade cells that border the SEA (so the rocks
+        # follow the real sand/water edge, never a bbox circle into the town)
+        rim = [c for c in esp if any(_cell_cls(c[0] + dc, c[1] + dr) == CLS_WATER
+               for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)))]
+        rim.sort(key=lambda c: math.atan2(c[1] - fcr0, c[0] - fcc0))
+        rstep = max(1, len(rim) // 46)
+        faro_lm["rim"] = [[int((rim[i][0] + 0.5) * GRID_CELL), int((rim[i][1] + 0.5) * GRID_CELL)]
+                          for i in range(0, len(rim), rstep)]
         # Faro muelle: jut SOUTH-WEST from the beach line (the edge of the paved
         # tip) into the open water, kiosk at the sea end; the player spawns on it.
         scc, scr = fcc0, fcr0                              # walk SW to the water's edge
@@ -2752,9 +2760,14 @@ def main():
                 break
         if aux:
             axp, ayp = (aux[0] + 0.5) * GRID_CELL, (aux[1] + 0.5) * GRID_CELL
-            raster_stamp_polyline(grid, [sx, sy, axp, ayp], round(1.6 * CUAD), CLS_ROAD)
-            kiosk_paths.append({"pts": [int(sx), int(sy), round(axp), round(ayp)], "surface": "paved"})
-            print(f"[pier] faro drivable lane -> ({round(axp)},{round(ayp)})")
+            # L-shaped lane: east along the beach line, then up to the road — keeps
+            # the lane EAST of the lighthouse (the faro reads to its LEFT/west).
+            lw = round(1.6 * CUAD)
+            raster_stamp_polyline(grid, [sx, sy, axp, sy], lw, CLS_ROAD)
+            raster_stamp_polyline(grid, [axp, sy, axp, ayp], lw, CLS_ROAD)
+            kiosk_paths.append({"pts": [int(sx), int(sy), round(axp), int(sy)], "surface": "paved"})
+            kiosk_paths.append({"pts": [round(axp), int(sy), round(axp), round(ayp)], "surface": "paved"})
+            print(f"[pier] faro drivable lane (L) -> ({round(axp)},{round(ayp)})")
         kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
         if kf:
             kf["x"] = int(sx + 0.85 * (ex - sx)); kf["y"] = int(sy + 0.85 * (ey - sy))   # sea end

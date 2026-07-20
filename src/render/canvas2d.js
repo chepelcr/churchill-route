@@ -449,11 +449,13 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     for (let i = 0; i < commas.length; i++) {
       const cx = commas[i][0], cy = commas[i][1];
       if (cx < view.x0 - 20 || cx > view.x1 + 20 || cy < view.y0 - 20 || cy > view.y1 + 20) continue;
-      ctx.beginPath(); ctx.arc(cx, cy + r * 0.4, r * 0.7, 0, Math.PI * 2); ctx.fill();   // round head
-      ctx.beginPath();                                                                    // tail → north tip
-      ctx.moveTo(cx - r * 0.55, cy + r * 0.3);
-      ctx.quadraticCurveTo(cx - r * 0.15, cy - r * 0.55, cx, cy - r * 1.2);
-      ctx.quadraticCurveTo(cx + r * 0.15, cy - r * 0.55, cx + r * 0.55, cy + r * 0.3);
+      // a COMMA (round head + an asymmetric hooking tail to a NORTH tip), not a
+      // symmetric drop
+      ctx.beginPath(); ctx.arc(cx, cy + r * 0.5, r * 0.6, 0, Math.PI * 2); ctx.fill();    // head (ball)
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.45, cy + r * 0.4);
+      ctx.quadraticCurveTo(cx - r * 0.2, cy - r * 0.35, cx + r * 0.12, cy - r * 1.2);     // inner edge up to tip
+      ctx.quadraticCurveTo(cx + r * 0.72, cy - r * 0.35, cx + r * 0.55, cy + r * 0.4);    // outer edge (hook) down
       ctx.closePath(); ctx.fill();
     }
   }
@@ -920,12 +922,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     // under it). Here we only add the on-plaza decoration: riprap rimming the
     // shape, the iconic RED comma "islands" (spread across the plaza by the
     // build), palms and the tower.
-    const P = lm.plaza;   // [x0,y0,w,h] of the esplanade footprint
-    if (P) {
-      const cx = P[0] + P[2] / 2, cy = P[1] + P[3] / 2, ex = P[2] / 2 + 2, ey = P[3] / 2 + 2;
-      for (let i = 0; i < 40; i++) {                       // riprap around the edge
-        const a = (i / 40) * Math.PI * 2;
-        const rx = cx + Math.cos(a) * ex, ry = cy + Math.sin(a) * ey;
+    const rim = lm.rim;   // rocks only on the real sand/water edge (build-emitted)
+    if (rim) {
+      for (let i = 0; i < rim.length; i++) {
+        const rx = rim[i][0], ry = rim[i][1];
         const r0 = 1.8 + hash01(lm.x * 7.13 + i * 12.9) * 2.4;
         ctx.fillStyle = i % 3 ? "#4a4d52" : "#5a5e64";
         ctx.beginPath();

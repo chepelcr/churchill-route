@@ -163,7 +163,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   filter: drop-shadow(0 6px 0 rgba(0,0,0,0.22)) drop-shadow(0 12px 24px oklch(0.55 0.18 350 / 0.4));
 }
 /* the short "LA RUTA" header on the level-select stays on one line */
-.stage-title { white-space: nowrap; overflow-wrap: normal; }
+.shell-title { white-space: nowrap; overflow-wrap: normal; }
 .title-sub {
   font-family: "Bungee", monospace; font-size: clamp(20px, 4vw, 36px);
   letter-spacing: 0.06em;
@@ -561,6 +561,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
    same trick the old .title-shell used. */
 .page-body.scrolly {
   justify-content: flex-start;
+  /* keep a visible seam below the page-head nav even when content overflows */
+  padding-top: 14px;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -746,17 +748,16 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   display: flex; flex-direction: column; align-items: center;
   gap: clamp(8px, 1.6vh, 16px); text-align: center;
 }
-.picker-title {
-  font-family: "Bungee", sans-serif; font-size: clamp(20px, 5vh, 34px);
-  color: var(--gold); margin: 0; letter-spacing: 0.04em;
-}
 .picker-layout { display: flex; gap: clamp(10px, 1.6vw, 16px); align-items: stretch; justify-content: center; }
 .picker-veh {
   width: clamp(210px, 28vw, 290px); flex-shrink: 0;
   display: flex; flex-direction: column; gap: clamp(6px, 1.2vh, 10px);
 }
+/* the Go button sits centered at the card bottom */
+.picker-veh .hero-play { align-self: center; }
+/* the paint card hugs its swatch column — no dead space at the sides */
 .picker-side {
-  width: clamp(230px, 32vw, 330px); flex-shrink: 0;
+  width: auto; flex-shrink: 0;
   display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 12px); text-align: center;
 }
 /* vertical paint column so the side card carries no dead horizontal space */
@@ -870,16 +871,21 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 /* ----- Stage select: LA RUTA header + two separate glass cards, sized to
    the viewport (vh-clamped type/padding, rows that compress) — no scroll. */
 .stage-select-wrap {
-  width: min(1280px, 97vw);
+  width: min(980px, 97vw);
   max-height: 100%;
   display: flex; flex-direction: column;
   gap: clamp(8px, 1.6vh, 16px);
   position: relative;
   text-align: center;
 }
-.back-btn { position: absolute; left: 0; top: 0; z-index: 2; }
-.stage-head .title-pill { margin-bottom: 2px; }
-.stage-title { font-size: clamp(26px, 6vh, 56px); margin: 4px 0 0; }
+/* top nav shared by stage select + vehicle picker: back button left, title
+   centered, context (pill / shop) right — same shape as .page-head pages */
+.title-shell.shell-col { flex-direction: column; gap: 10px; }
+.shell-nav {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  z-index: 2; flex-wrap: wrap;
+}
+.shell-title { font-size: clamp(20px, 4.5vh, 32px); margin: 0; }
 
 .glass-card {
   background: oklch(0.14 0.04 285 / 0.6);
@@ -987,7 +993,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 /* very short landscape screens: tighten the header + hero */
 @media (max-height: 520px) {
-  .stage-title { font-size: clamp(18px, 5vh, 26px); }
+  .shell-title { font-size: clamp(16px, 4.5vh, 24px); }
   .hero-brief { -webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 }
 /* narrow/portrait */

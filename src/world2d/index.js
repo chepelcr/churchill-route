@@ -39,7 +39,8 @@ export const WORLD2D = (function () {
   const FAROPIER = manifest.faroPier || null;   // muelle at La Punta (kiosk at its end)
   const STADIUM = manifest.stadium || null;
   const KIOSK_PATHS = manifest.kioskPaths || []; // sand access paths to beach kiosks
-  const PLAZAS = manifest.plazas || [];   // [x,y,w,h,type] green/paved ground rects
+  const PLAZAS = manifest.plazas || [];   // [x,y,w,h,type] ground rects (esplanade)
+  const GREENS = manifest.greens || [];   // {pts:[x,y,...], type} park/plaza outline polys
 
   // ----- tile cache ----------------------------------------------------------
   // key = tr * TCOLS + tc. Value: { grid:Uint8Array, cols, rows, x, y, roads,
@@ -303,7 +304,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUM, KIOSK_PATHS, PLAZAS,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUM, KIOSK_PATHS, PLAZAS, GREENS,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

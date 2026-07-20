@@ -79,16 +79,14 @@ export default function StageSelect({ onStart, onBack }) {
 
   return (
     <div className="title-bg">
-      <div className="title-shell">
-        <FitScale>
+      <div className="title-shell shell-col">
+        <div className="shell-nav">
+          <button className="btn secondary" onClick={onBack}>{t("select.back")}</button>
+          <h1 className="title-main shell-title">LA RUTA</h1>
+          <span className="title-pill"><span className="dot"></span>{t("select.pill")}</span>
+        </div>
+        <FitScale pad={110}>
         <div className="stage-select-wrap">
-          <button className="btn secondary back-btn" onClick={onBack}>{t("select.back")}</button>
-
-          <div className="stage-head">
-            <span className="title-pill"><span className="dot"></span>{t("select.pill")}</span>
-            <h1 className="title-main stage-title">LA RUTA</h1>
-          </div>
-
           <div className="stage-layout">
             <div className="stage-carousel">
               <button className="carousel-arrow" onClick={() => moveStage(-1)} disabled={cur === 0} aria-label="Anterior">‹</button>

@@ -166,9 +166,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     const rc = ensureRenderCache(), C = weatherColors();
     ctx.fillStyle = C.land; for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
     // park / plaza cuadras: green IS their base ground colour (global manifest
-    // rects, so no sand flash before a tile streams in) — waters, beach wet
-    // line and streets all paint on top of it.
-    for (const pz of W.PLAZAS || []) drawPlazaGreen(pz, view);
+    // outline polys, so no sand flash before a tile streams in) — waters, beach
+    // wet line and streets all paint on top of it.
+    for (const gp of W.GREENS || []) drawGreenPoly(gp, view);
+    for (const pz of W.PLAZAS || []) drawPlazaGreen(pz, view);   // faro esplanade
     ctx.lineJoin = "round";
     for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) paintWaterBody(w, view, t);
     // beach: sandy fill + a faint wet line along its seaward edge
@@ -437,6 +438,38 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
     ctx.fillStyle = GREEN_COLORS[pz[4]] || "#4f9d5b";
     ctx.fillRect(px, py, pw, ph);
+  }
+
+  // Park/plaza lawn: ONE outline polygon per green cuadra (raster-traced in the
+  // build, so it follows the acera inner edge — curves included). The same-
+  // colour stroke dilates the fill outward: the raster sidewalk ring is 20 px
+  // deep but the painted acera band only 8 px, so without it a 12 px sand strip
+  // shows between lawn and sidewalk. 14 px of dilation tucks the lawn a couple
+  // px UNDER the band (painted later, so it wins) and rounds the cell steps.
+  const GREEN_DILATE = 28;
+  function drawGreenPoly(gp, view) {
+    let b = gp._aabb;
+    if (!b) {
+      const p = gp.pts;
+      b = gp._aabb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+      for (let i = 0; i < p.length; i += 2) {
+        if (p[i] < b.x0) b.x0 = p[i]; if (p[i] > b.x1) b.x1 = p[i];
+        if (p[i + 1] < b.y0) b.y0 = p[i + 1]; if (p[i + 1] > b.y1) b.y1 = p[i + 1];
+      }
+    }
+    const m = GREEN_DILATE;
+    if (b.x1 + m < view.x0 || b.x0 - m > view.x1 || b.y1 + m < view.y0 || b.y0 - m > view.y1) return;
+    if (!gp._path) {
+      const p = gp.pts, path = new Path2D();
+      path.moveTo(p[0], p[1]);
+      for (let i = 2; i < p.length; i += 2) path.lineTo(p[i], p[i + 1]);
+      path.closePath();
+      gp._path = path;
+    }
+    const col = GREEN_COLORS[gp.type] || "#4f9d5b";
+    ctx.fillStyle = col; ctx.fill(gp._path);
+    ctx.strokeStyle = col; ctx.lineWidth = GREEN_DILATE; ctx.lineJoin = "round";
+    ctx.stroke(gp._path);
   }
 
   // Faro plaza red comma "islands": all the SAME orientation, corner (tip)
@@ -1171,11 +1204,12 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         label(x, y - ph / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
       }
       case "stadium": {
-        // with manifest geometry the real footprint is drawn by drawStadium —
-        // the generic green rect would straddle streets on top of it
-        if (W.STADIUM) { label(x, y - (W.STADIUM.y1 - W.STADIUM.y0) / 2 - 6, "ESTADIO", "#fff", "#2e7d44"); break; }
-        drawGreenSpace(lm, 156, 122, { pitch: true });
-        label(x, y - 122 / 2 - 6, "ESTADIO", "#fff", "#2e7d44"); break;
+        // simple grass + white pitch lines (the look the estadio shipped
+        // with), sized to the real merged-cuadra footprint when it exists
+        const S = W.STADIUM;
+        const sw = S ? S.x1 - S.x0 : 156, sh = S ? S.y1 - S.y0 : 122;
+        drawGreenSpace(lm, sw, sh, { pitch: true });
+        label(x, y - sh / 2 - 6, "ESTADIO", "#fff", "#2e7d44"); break;
       }
       case "museum": {
         // neoclassical facade: portico columns + pediment
@@ -1807,50 +1841,6 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.restore();
   }
 
-  // Estadio Lito Pérez ground: césped + field lines + tunnel floor, painted
-  // UNDER entities so cars visibly drive onto the pitch. The gradas + tunnel
-  // roof live in the Pixi landmarks layer above; if Pixi is unavailable the
-  // stands are drawn here as a fallback (roof under entities — acceptable).
-  function drawStadium(view) {
-    const S = W.STADIUM;
-    if (!S) return;
-    if (S.x1 < view.x0 || S.x0 > view.x1 || S.y1 < view.y0 || S.y0 > view.y1) return;
-    const { x0, y0, x1, y1, ring } = S;
-    const px0 = x0 + ring, py0 = y0 + ring, px1 = x1 - ring, py1 = y1 - ring;
-    ctx.fillStyle = "#3f8f4f"; ctx.fillRect(px0, py0, px1 - px0, py1 - py0);
-    ctx.fillStyle = "rgba(74,156,89,0.6)";
-    for (let x = px0; x < px1; x += 40) ctx.fillRect(x, py0, 20, py1 - py0);
-    const inset = 8;
-    const fx0 = px0 + inset, fy0 = py0 + inset, fx1 = px1 - inset, fy1 = py1 - inset;
-    const cx = (fx0 + fx1) / 2, cy = (fy0 + fy1) / 2;
-    ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 2;
-    ctx.strokeRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
-    ctx.beginPath(); ctx.moveTo(cx, fy0); ctx.lineTo(cx, fy1); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, Math.min(28, (fy1 - fy0) * 0.2), 0, Math.PI * 2); ctx.stroke();
-    const boxH = Math.min(60, (fy1 - fy0) * 0.5), boxW = 22;
-    ctx.strokeRect(fx0, cy - boxH / 2, boxW, boxH);
-    ctx.strokeRect(fx1 - boxW, cy - boxH / 2, boxW, boxH);
-    const T = S.tunnel;   // walled stadium has none
-    if (T) { ctx.fillStyle = "#4a4550"; ctx.fillRect(T.x0, T.y0, T.x1 - T.x0, T.y1 - T.y0); }
-    if (!PIXI_LANDMARKS) drawStadiumStands(S);
-  }
-  function drawStadiumStands(S) {
-    const { x0, y0, x1, y1, ring } = S;
-    ctx.fillStyle = "#a9a396";
-    ctx.fillRect(x0, y0, x1 - x0, ring);                    // north
-    ctx.fillRect(x0, y1 - ring, x1 - x0, ring);             // south
-    ctx.fillRect(x0, y0 + ring, ring, y1 - y0 - 2 * ring);  // west
-    ctx.fillRect(x1 - ring, y0 + ring, ring, y1 - y0 - 2 * ring); // east
-    ctx.strokeStyle = "#8f897e"; ctx.lineWidth = 2;
-    ctx.strokeRect(x0 + 5, y0 + 5, x1 - x0 - 10, y1 - y0 - 10);
-    ctx.strokeRect(x0 + 12, y0 + 12, x1 - x0 - 24, y1 - y0 - 24);
-    const T = S.tunnel;
-    if (T) {
-      const rx0 = Math.max(T.x0, x0), rx1 = Math.min(T.x1, x1);
-      ctx.fillStyle = "#9d968a"; ctx.fillRect(rx0, T.y0 - 2, rx1 - rx0, T.y1 - T.y0 + 4);
-    }
-  }
-
   // Objective compass: pinned at the top-center of the SCREEN (never lost
   // off-view), rotating to point at the target. Screen angle = world angle
   // (the camera transform is uniform scale + translate).
@@ -2025,10 +2015,6 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       // Painterly 2-D world from resident tiles: land silhouette + road strokes +
       // buildings + palms/trees (replaces the corridor's global-array drawers).
       drawWorld2D(view, t);
-      // Estadio Lito Pérez ground (césped + lines + tunnel floor). The gradas
-      // structure lives in the Pixi landmarks layer above (canvas fallback
-      // draws it here when Pixi is unavailable).
-      drawStadium(view);
     }
     // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
     // Cruceros deck (its BRIDGE surface cells are drivable but not painted by

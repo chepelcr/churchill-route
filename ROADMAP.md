@@ -4,6 +4,64 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ⏳ Pendiente (reportado 2026-07-20, aún sin implementar)
+
+- [ ] **Colores por vehículo (bug reportado)**: en el Shop y el color picker
+      el color equipado se está aplicando UNIVERSALMENTE a todos los
+      vehículos y no por-carro. Hacer que `equipColor(veh, id)` / el picker
+      realmente persistan y apliquen la pintura por vehículo.
+- [ ] **Spawn de niveles en calle**: a veces el jugador aparece en la PLAYA
+      en vez de la calle manejable más cercana al punto de spawn del nivel —
+      snapear el spawn a la calle más cercana (como los kioscos con
+      `_nearest_cell`).
+- [ ] **Estadio: posición final**: el usuario enviará las coordenadas (📍
+      overlay x·y) de la cuadra correcta; anclar el footprint ahí y rebuild.
+
+## ✅ Navegación unificada + vehículo por página + parques con contorno real (2026-07-20)
+
+- [x] **Flujo Historia unificado**: la selección de vehículo salió de la
+      página de niveles a la MISMA página `vehpick` de Arcade/Recorrer
+      (title → niveles → vehículo → brief → jugar). En modo historia el
+      picker oculta boosts (el brief los arma) y el reset de progreso vive
+      solo en Ajustes.
+- [x] **Nav superior consistente** (stage select + vehicle picker): fila
+      `shell-nav` fija arriba — atrás izquierda, título centro, contexto
+      derecha (pill de modo / botón de Shop con monedas en el picker).
+      `FitScale` acepta `pad` para reservar el alto de la nav.
+- [x] **Picker**: ¡Vamos! centrado abajo de la card de vehículo; swatches de
+      color en columna vertical y card de color angosta (width:auto, sin
+      espacio muerto); Shop en la esquina superior derecha.
+- [x] **Ajustes**: `page-body scrolly` + `center-stack` (ya no se encima con
+      la nav; +14px de aire bajo el header). Pausa: 4 botones apilados en
+      columna (el Reiniciar desbordaba la card).
+- [x] **Parques con contorno real (adiós "pintura de niño")**: cada cuadra
+      verde se emite como UN polígono de contorno trazado a resolución raster
+      (4px, sigue el borde interior de la acera y las curvas) en
+      `manifest.greens`; el renderer lo rellena y lo dilata 14px con stroke
+      del mismo color para meterlo bajo la banda de acera pintada (8px vs
+      anillo raster de 20px = se acabó la franja de arena entre césped y
+      acera). Los slivers pavimentados YA NO se pintan de verde (eran las
+      cuñas parciales); cuadras o todo verde o todo arena. Pintado en
+      `drawLandBase` (primer paint, global — sin flash de arena al streamear
+      tiles).
+- [x] **Kioscos del Paseo a medio camino**: dy 150→80 (mitad entre Paseo y
+      arena) + `PINNED_KIOSKS` para que el pase de frontage no los recoloque
+      cruzando la calle; su conector puede apuntar al Paseo mismo.
+- [x] **Catedral / Casa de la Cultura / Museo en su cuadra**: anclas `ll/near`
+      corregidas a los nodos OSM reales (la de cultura apuntaba ~200m SW y
+      matcheaba el "Bulevar…"); y `snap_into_block_cell` ahora tiene radio
+      máximo (8 cuads) — antes, al no haber bloque edificable cerca (las
+      cuadras finas del centro clasifican sliver/green), TELETRANSPORTABA los
+      tres al mismo bloque lejano. Catedral oeste (x15034), cultura+museo
+      este (x15202/15222), misma fila de cuadra.
+- [x] **Estadio: footprint real E-O no-transitable** (posición pendiente de
+      coords): pase de estadio re-habilitado — rect 12x9 cuads, calle
+      interior clipeada (2 cuadras unificadas), todo CLS_LAND (muro), sin
+      túnel/crowd/coins/peds (el crowd Pixi per-frame era el crash que lo
+      tenía apagado). Dibujo = el look clásico simple `drawGreenSpace` con
+      líneas blancas de cancha, tamaño del footprint; capa Pixi del estadio
+      eliminada.
+
 ## ✅ Más parques + fuentes + plazas verdes (2026-07-18 PM8)
 
 - [x] **16 parques sintéticos** repartidos por el puerto (antes solo 2 OSM →

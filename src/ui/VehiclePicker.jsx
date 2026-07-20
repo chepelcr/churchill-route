@@ -53,11 +53,16 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false 
 
   return (
     <div className="title-bg">
-      <div className="title-shell">
-        <FitScale>
+      <div className="title-shell shell-col">
+        <div className="shell-nav">
+          <button className="btn secondary" onClick={onBack}>{t("select.back")}</button>
+          <h2 className="title-main shell-title">{t("picker.title")}</h2>
+          <button className="btn secondary" onClick={onShop}>
+            <Icon name="cart" size={14} /> <CoinIcon size={13} /> {economy.coins.toLocaleString()}
+          </button>
+        </div>
+        <FitScale pad={110}>
           <div className="picker-wrap">
-            <button className="btn secondary back-btn" onClick={onBack}>{t("select.back")}</button>
-            <h2 className="picker-title">{t("picker.title")}</h2>
             <div className="picker-layout">
               {/* vehicle card */}
               <div className="glass-card picker-veh">

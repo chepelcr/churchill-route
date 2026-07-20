@@ -77,7 +77,8 @@ export class PixiScene {
       this.L.player.addChild(this.playerShadow, this.playerSprite);
     }
 
-    this._buildStadium();
+    // NOTE: no Pixi stadium — the estadio draws in canvas2d as a simple green
+    // pitch with white lines (drawGreenSpace), the look the game shipped with.
     this._buildLandmarks();
     return this;
   }
@@ -112,85 +113,6 @@ export class PixiScene {
       this.L.buildings.addChild(lbl);
     }
     this.L.buildings.addChild(g);
-  }
-
-  // Estadio Lito Pérez — the first landmark living fully in Pixi. Graderías
-  // ring a drivable césped; the corner tunnel's roof goes in L.over so the
-  // player visibly drives UNDER the stands.
-  _buildStadium() {
-    const S = W.STADIUM;
-    if (!S) return;
-    const { x0, y0, x1, y1, ring } = S;
-    const T = S.tunnel;
-
-    // gradas STRUCTURE: a ring (pitch stays transparent — canvas2d paints the
-    // césped and the entities driving on it below this layer)
-    const g = new Graphics();
-    g.rect(x0, y0, x1 - x0, ring).fill(0xa9a396);                       // north
-    g.rect(x0, y1 - ring, x1 - x0, ring).fill(0xa9a396);                // south
-    g.rect(x0, y0 + ring, ring, y1 - y0 - 2 * ring).fill(0xa9a396);     // west
-    g.rect(x1 - ring, y0 + ring, ring, y1 - y0 - 2 * ring).fill(0xa9a396); // east
-    // grada steps (concentric seat rows)
-    g.roundRect(x0 + 4, y0 + 4, x1 - x0 - 8, y1 - y0 - 8, 6).stroke({ width: 2, color: 0x8f897e });
-    g.roundRect(x0 + 10, y0 + 10, x1 - x0 - 20, y1 - y0 - 20, 5).stroke({ width: 2, color: 0x8f897e });
-    g.roundRect(x0 + 16, y0 + 16, x1 - x0 - 32, y1 - y0 - 32, 4).stroke({ width: 2, color: 0x78726a });
-    // outer shadow rim for a bit of height
-    g.rect(x0, y1 - ring, x1 - x0, 4).fill({ color: 0x000000, alpha: 0.18 });
-    if (T) {
-      // tunnel walls darkening at the ring crossing (the mouths)
-      g.rect(T.x0, T.y0 - 2, T.x1 - T.x0, 2).fill({ color: 0x000000, alpha: 0.3 });
-      g.rect(T.x0, T.y1, T.x1 - T.x0, 2).fill({ color: 0x000000, alpha: 0.3 });
-    }
-    this.L.buildings.addChild(g);
-
-    if (T) {
-      // the grada roof over the tunnel — TOPMOST, the car disappears beneath it
-      const roof = new Graphics();
-      const rx0 = Math.max(T.x0, x0), rx1 = Math.min(T.x1, x1);
-      roof.rect(rx0, T.y0 - 2, rx1 - rx0, (T.y1 - T.y0) + 4).fill(0x9d968a);
-      roof.rect(rx0, T.y0 - 2, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
-      roof.rect(rx0, T.y1 - 1, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
-      this.L.over.addChild(roof);
-
-      // crowd + coins only make sense with a drivable pitch (tunnel entry);
-      // the walled stadium skips them — the ~180 per-frame crowd Graphics
-      // were the original crash-on-approach
-      this._buildCrowd(S);
-    }
-  }
-
-  // Celebrating crowd on the gradas: dots in Puntarenas-FC orange/black/white
-  // doing la ola — a single crest laps the ring on a shared 24s wall clock (the
-  // game logic derives coin drops from the same clock). Animated in render().
-  _buildCrowd(S) {
-    const { x0, y0, x1, y1, ring } = S;
-    const T = S.tunnel;
-    const PAL = [0xff8c2e, 0xff8c2e, 0xffffff, 0x26222c, 0xffd23f];
-    const c = new Container();
-    this.crowd = [];
-    let per = 0; // running perimeter distance
-    const seat = (bx, by) => {
-      if (bx > T.x0 - 6 && bx < T.x1 + 6 && by > T.y0 - 6 && by < T.y1 + 6) return; // keep tunnel clear
-      const g = new Graphics();
-      g.circle(0, 0, 2).fill(PAL[(Math.random() * PAL.length) | 0]);
-      g.position.set(bx, by);
-      c.addChild(g);
-      this.crowd.push({ g, bx, by, u: per, amp: 1.8 + Math.random() * 1.4 });
-    };
-    const rows = [ring * 0.3, ring * 0.7];
-    for (const r of rows) {
-      for (let x = x0 + 6; x < x1 - 6; x += 9) { seat(x, y0 + r); per += 9; }       // north
-      for (let y = y0 + 6; y < y1 - 6; y += 9) { seat(x1 - r, y); per += 9; }       // east
-      for (let x = x1 - 6; x > x0 + 6; x -= 9) { seat(x, y1 - r); per += 9; }       // south
-      for (let y = y1 - 6; y > y0 + 6; y -= 9) { seat(x0 + r, y); per += 9; }       // west
-    }
-    this.crowdPer = per || 1;            // total perimeter → normalize the crest sweep
-    this.L.buildings.addChild(c);
-
-    // coin pool on the césped (positions come from state.stadiumCoins)
-    this.coinLayer = new Container();
-    this.coinPool = new Map();
-    this.L.buildings.addChild(this.coinLayer);
   }
 
   // ----- tiles ---------------------------------------------------------------

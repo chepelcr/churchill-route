@@ -239,9 +239,12 @@ LANDMARK_DEFS = [
     {"id": "parquemar",   "name": "Parque Marino del Pacífico", "type": "park",         "district": "playitas", "osm": "parque marino", "ll": (9.97600, -84.82300)},
     {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas"},
     {"id": "pali",        "name": "Supermercado Palí",          "type": "super",        "district": "centro",   "osm": "palí", "ll": (9.97650, -84.82900)},
-    {"id": "catedral",    "name": "Catedral de Puntarenas",     "type": "cathedral",    "district": "centro",   "osm": "catedral", "near": (9.97769, -84.83487)},
-    {"id": "cultura",     "name": "Casa de la Cultura",         "type": "civic",        "district": "centro",   "osm": "casa de la cultura", "ll": (9.97600, -84.83550)},
-    {"id": "museo",       "name": "Museo Histórico Marino",     "type": "museum",       "district": "centro",   "osm": "museo", "near": (9.97600, -84.83550), "ll": (9.97580, -84.83520)},
+    # The civic block row between Av Central and Av 1 (calles 3-7): catedral on
+    # the west cuadra, Casa de la Cultura + museo on the east. Anchors = the
+    # real OSM building nodes so the name search can't drift to the Bulevar.
+    {"id": "catedral",    "name": "Catedral de Puntarenas",     "type": "cathedral",    "district": "centro",   "osm": "catedral", "near": (9.97762, -84.83486)},
+    {"id": "cultura",     "name": "Casa de la Cultura",         "type": "civic",        "district": "centro",   "osm": "casa de la cultura elsie", "near": (9.97765, -84.83404), "ll": (9.97765, -84.83404)},
+    {"id": "museo",       "name": "Museo Histórico Marino",     "type": "museum",       "district": "centro",   "osm": "museo", "near": (9.97766, -84.83383), "ll": (9.97766, -84.83383)},
     {"id": "kios_centro", "name": "Kiosco La Porteña",          "type": "kiosk",        "district": "centro",   "ll": (9.97480, -84.83000)},
     # dy lifts it one cuadra NORTH — it sat a block too close to the Paseo de los Turistas
     {"id": "estadio",     "name": "Estadio Lito Pérez",         "type": "stadium",      "district": "playitas", "osm": "lito pérez", "ll": (9.97880, -84.82660), "dy": -160},
@@ -1618,45 +1621,16 @@ def detect_blocks(grid, build_band_x1=None):
             if comp_cells[cid]:
                 blocks.append({"cells": comp_cells[cid], "green": True})
             n_green += 1
-    # pave the slivers + collect plaza rects (merged raster row runs)
-    runs_by_comp = defaultdict(lambda: defaultdict(list))  # cid -> row -> runs
+    # pave the slivers (concrete corners — deliberately NOT painted green: a
+    # sliver is a partial-cuadra shape, and partial green reads as a bad paint
+    # job; cuadras are all-green (parks) or all-ground)
     for i in range(N):
         if label[i] in paved_ids:
             grid[i] = CLS_ACERA
-            r, c = divmod(i, GRID_COLS)
-            rows = runs_by_comp[label[i]][r]
-            if rows and rows[-1][1] == c:              # extend current run
-                rows[-1][1] = c + 1
-            else:
-                rows.append([c, c + 1])
-    plazas = []
-    for cid, rows in runs_by_comp.items():
-        open_runs = {}                                  # (c0,c1) -> [y0, y1)
-        for r in sorted(rows):
-            cur = {tuple(run): None for run in rows[r]}
-            nxt = {}
-            for key in cur:
-                if key in open_runs and open_runs[key][1] == r:
-                    open_runs[key][1] = r + 1
-                    nxt[key] = open_runs[key]
-                else:
-                    if key in open_runs:
-                        y0, y1 = open_runs[key]
-                        plazas.append([key[0] * GRID_CELL, y0 * GRID_CELL,
-                                       (key[1] - key[0]) * GRID_CELL, (y1 - y0) * GRID_CELL, "plaza"])
-                    nxt[key] = [r, r + 1]
-            for key, span in open_runs.items():
-                if key not in nxt:
-                    plazas.append([key[0] * GRID_CELL, span[0] * GRID_CELL,
-                                   (key[1] - key[0]) * GRID_CELL, (span[1] - span[0]) * GRID_CELL, "plaza"])
-            open_runs = nxt
-        for key, span in open_runs.items():
-            plazas.append([key[0] * GRID_CELL, span[0] * GRID_CELL,
-                           (key[1] - key[0]) * GRID_CELL, (span[1] - span[0]) * GRID_CELL, "plaza"])
     n_cuadras = sum(1 for b in blocks if not b["green"])
     print(f"[blocks] {n_comps} land components -> {n_cuadras} cuadras, "
-          f"{len(paved_ids)} paved to plaza ({len(plazas)} rects), {n_green} green")
-    return blocks, plazas
+          f"{len(paved_ids)} paved slivers, {n_green} green")
+    return blocks, []
 
 # ------------------------------------------- cuadrícula building placement --
 # Every building is a whole-cuadrícula rect placed on the CUAD lattice inside
@@ -2067,7 +2041,7 @@ def write_png(path, w, h, get_rgb, stride=1):
 def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms,
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
-                 stadium=None, kiosk_paths=None, faro_pier=None):
+                 stadium=None, kiosk_paths=None, faro_pier=None, greens=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -2174,6 +2148,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         "bridge": bridge, "estuary": estuary, "pier": pier, "hills": hills,
         "beaches": beaches, "waters": waters, "landPolys": land_polys,
         "plazas": plazas,
+        "greens": greens or [],
         "stadium": stadium,
         "kioskPaths": kiosk_paths or [],
         "faroPier": faro_pier,
@@ -2813,7 +2788,7 @@ def main():
     # Step each building landmark off its street anchor into a cuadra INTERIOR
     # cell — nearest block, cell ≥1 cuadrícula from any edge so it clears the
     # acera fringe and sits solidly inside the block (church-in-the-street fix).
-    def snap_into_block_cell(x, y):
+    def snap_into_block_cell(x, y, max_d_cuads=8):
         ac, ar = int(x // CUAD), int(y // CUAD)
         best = None
         for b in blocks:
@@ -2823,7 +2798,11 @@ def main():
                 d2 = (cc - ac) ** 2 + (cr - ar) ** 2
                 if best is None or d2 < best[0]:
                     best = (d2, b["cells"])
-        if best is None:
+        # no buildable block nearby (fine-grained centro cuadras classify as
+        # slivers/green): KEEP the geo-true anchor instead of teleporting the
+        # building to a far block — this is what stacked catedral/cultura/museo
+        # onto one distant cell
+        if best is None or best[0] > max_d_cuads ** 2:
             return None
         cells = best[1]
         interior = [c for c in cells
@@ -2842,44 +2821,78 @@ def main():
             n_snap += 1
     print(f"[poi] {n_snap} building landmarks snapped into cuadra interiors")
 
-    # Merge a block's CUAD cells into footprint-accurate [x,y,w,h] pixel rects
-    # (same row-run merge as the plaza emission) so parks/greens paint exactly on
-    # the block cells — never spilling onto streets, always following the block
-    # (and therefore the street-grid) shape.
-    def cuad_cells_to_rects(cells):
-        rows = defaultdict(list)
+    # A green block's ground is emitted as ONE raster-resolution outline
+    # polygon (4 px cells, so it follows the acera inner edge — curves and
+    # diagonal streets included). The renderer fills it and dilates it a few px
+    # under the painted acera band, so lawns meet the sidewalks with no sand
+    # slivers and none of the blocky cuadrícula steps of the old rect fill.
+    def _block_raster_cells(cells):
+        out, seeds = set(), []
         for (cc, cr) in cells:
-            rows[cr].append(cc)
-        runs_by_row = {}
-        for cr, ccs in rows.items():
-            ccs.sort(); runs = []
-            for cc in ccs:
-                if runs and runs[-1][1] == cc:
-                    runs[-1][1] = cc + 1
-                else:
-                    runs.append([cc, cc + 1])
-            runs_by_row[cr] = runs
-        rects = []; open_runs = {}
-        def _emit(key, span):
-            rects.append([key[0] * CUAD, span[0] * CUAD,
-                          (key[1] - key[0]) * CUAD, (span[1] - span[0]) * CUAD])
-        for cr in sorted(runs_by_row):
-            cur = {tuple(run) for run in runs_by_row[cr]}
-            nxt = {}
-            for key in cur:
-                if key in open_runs and open_runs[key][1] == cr:
-                    open_runs[key][1] = cr + 1; nxt[key] = open_runs[key]
-                else:
-                    if key in open_runs:
-                        _emit(key, open_runs[key])
-                    nxt[key] = [cr, cr + 1]
-            for key, span in open_runs.items():
-                if key not in nxt:
-                    _emit(key, span)
-            open_runs = nxt
-        for key, span in open_runs.items():
-            _emit(key, span)
-        return rects
+            pc = cc * CUAD_CELLS + CUAD_CELLS // 2
+            pr = cr * CUAD_CELLS + CUAD_CELLS // 2
+            if 0 <= pc < GRID_COLS and 0 <= pr < GRID_ROWS and \
+                    grid[pr * GRID_COLS + pc] == CLS_LAND:
+                seeds.append((pc, pr))
+        for s in seeds:
+            if s in out:
+                continue
+            st = [s]
+            while st:
+                c, r = st.pop()
+                if (c, r) in out or not (0 <= c < GRID_COLS and 0 <= r < GRID_ROWS):
+                    continue
+                if grid[r * GRID_COLS + c] != CLS_LAND:
+                    continue
+                out.add((c, r))
+                st += ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1))
+        return out
+
+    def _outline_poly(cells):
+        """Outer boundary of a raster cell set as a flat [x,y,...] px polygon
+        (largest loop wins — interior holes are ignored; collinear runs merged)."""
+        edges = defaultdict(list)              # start vertex -> [end vertices]
+        for (c, r) in cells:
+            if (c, r - 1) not in cells: edges[(c, r)].append((c + 1, r))
+            if (c + 1, r) not in cells: edges[(c + 1, r)].append((c + 1, r + 1))
+            if (c, r + 1) not in cells: edges[(c + 1, r + 1)].append((c, r + 1))
+            if (c - 1, r) not in cells: edges[(c, r + 1)].append((c, r))
+        best, best_area = None, 0.0
+        while True:
+            start = next((v for v, outs in edges.items() if outs), None)
+            if start is None:
+                break
+            loop, v, closed = [start], start, False
+            while True:
+                outs = edges.get(v)
+                if not outs:
+                    break                       # pinch-point dead end: drop loop
+                v = outs.pop()
+                if v == start:
+                    closed = True; break
+                loop.append(v)
+            if not closed:
+                continue
+            area = 0.0
+            for i in range(len(loop)):
+                x0, y0 = loop[i]; x1, y1 = loop[(i + 1) % len(loop)]
+                area += x0 * y1 - x1 * y0
+            if abs(area) > best_area:
+                best_area, best = abs(area), loop
+        if not best:
+            return []
+        pts, n = [], len(best)
+        for i in range(n):
+            p0, p1, p2 = best[i - 1], best[i], best[(i + 1) % n]
+            if (p1[0] - p0[0]) * (p2[1] - p1[1]) == (p1[1] - p0[1]) * (p2[0] - p1[0]):
+                continue                        # collinear — drop the midpoint
+            pts += [p1[0] * GRID_CELL, p1[1] * GRID_CELL]
+        return pts
+
+    def _green_poly(cells, typ):
+        poly = _outline_poly(_block_raster_cells(cells))
+        return {"pts": poly, "type": typ} if poly else None
+    greens = []
 
     def _block_containing(x, y):
         ac, ar = int(x // CUAD), int(y // CUAD)
@@ -2953,8 +2966,6 @@ def main():
     # OSM parks (parquemar, cocal_park) + the Balneario pool: paint their green
     # on the containing block's footprint so the cuadra is OPEN (no buildings),
     # tagged by type for the renderer's colour-by-type fill.
-    def _tag(rects, typ):
-        return [r + [typ] for r in rects]
     def _nearest_block(x, y, min_cells=12):
         ac, ar = int(x // CUAD), int(y // CUAD)
         best = None
@@ -2982,13 +2993,15 @@ def main():
         if lm["type"] == "pool":
             # the Balneario's WHOLE cuadra becomes open ground (no buildings) and
             # the pool is centred on an interior cell of it (never a bbox hole)
-            plazas.extend(_tag(cuad_cells_to_rects(cells), "plaza"))
+            g = _green_poly(cells, "plaza")
+            if g: greens.append(g)
             ccx = sum(c for c, _ in cells) / len(cells); ccy = sum(r for _, r in cells) / len(cells)
             tcx, tcy = min(cells, key=lambda c: (c[0] - ccx) ** 2 + (c[1] - ccy) ** 2)
             lm["x"] = int((tcx + 0.5) * CUAD); lm["y"] = int((tcy + 0.5) * CUAD)
             continue
         marine = lm["id"] == "parquemar"     # Parque Marino fills its whole cuadra
-        plazas.extend(_tag(cuad_cells_to_rects(cells), "marine" if marine else "park"))
+        g = _green_poly(cells, "marine" if marine else "park")
+        if g: greens.append(g)
         lm["x"] = (bc0 + bc1 + 1) * CUAD // 2; lm["y"] = (br0 + br1 + 1) * CUAD // 2
         if marine:
             lm["marine"] = True
@@ -3043,7 +3056,8 @@ def main():
             cx, cy, bi, w, h = park_cands[j]
             blocks[bi]["green"] = True       # keep the interior open (no buildings)
             # paint the park's green on the block footprint (never over streets)
-            plazas.extend(_tag(cuad_cells_to_rects(blocks[bi]["cells"]), "park"))
+            g = _green_poly(blocks[bi]["cells"], "park")
+            if g: greens.append(g)
             landmarks.append({"id": f"park_syn_{n_park}", "name": "Parque",
                               "x": int(cx), "y": int(cy), "type": "park",
                               "district": _dcls(cx // CUAD, cy // CUAD),
@@ -3204,14 +3218,20 @@ def main():
                            "x1": (c1 + 1) * CUAD, "y1": (r1 + 1) * CUAD,
                            "ring": RING * CUAD, "corner": None, "tunnel": None,
                            "cx": (c0 + c1 + 1) * CUAD // 2, "cy": (r0 + r1 + 1) * CUAD // 2}
-                # green rects from earlier passes (sliver plazas / park tags)
-                # under the footprint would peek through the pitch — drop them
-                n_pz = len(plazas)
+                # green ground from earlier passes under the footprint would
+                # peek through the pitch — drop rects and outline polys alike
+                n_pz = len(plazas) + len(greens)
                 plazas[:] = [pz for pz in plazas
                              if pz[0] + pz[2] <= rx0 or pz[0] >= rx1 or
                                 pz[1] + pz[3] <= ry0 or pz[1] >= ry1]
-                if n_pz != len(plazas):
-                    print(f"[estadio] dropped {n_pz - len(plazas)} green rect(s) under the footprint")
+                def _poly_clear(g):
+                    xs, ys = g["pts"][0::2], g["pts"][1::2]
+                    return (not xs or max(xs) <= rx0 or min(xs) >= rx1 or
+                            max(ys) <= ry0 or min(ys) >= ry1)
+                greens[:] = [g for g in greens if _poly_clear(g)]
+                if n_pz != len(plazas) + len(greens):
+                    print(f"[estadio] dropped {n_pz - len(plazas) - len(greens)} "
+                          f"green fill(s) under the footprint")
                 # keep the landmark label centered on the real footprint
                 est["x"], est["y"] = stadium["cx"], stadium["cy"]
                 print(f"[estadio] Lito Pérez at cuads ({c0},{r0})-({c1},{r1}) "
@@ -3472,7 +3492,7 @@ def main():
         # chunked/tiled emit → src/world2d/ (streamable full-OSM world)
         emit_world2d(grid, meta=meta, districts=districts, roads=roads, rails=rails,
                      buildings=buildings, trees=trees, palms=palms, mangroves=mangroves,
-                     medians=medians, plazas=plazas, islands=junction_islands,
+                     medians=medians, plazas=plazas, greens=greens, islands=junction_islands,
                      beaches=beaches, waters=waters, land_polys=land_contours,
                      landmarks=landmarks, customers=customers, stages=STAGES, stadium=stadium,
                      kiosk_paths=kiosk_paths, faro_pier=faro_pier,

@@ -231,9 +231,10 @@ LANDMARK_DEFS = [
     {"id": "playa",       "name": "Playa Puntarenas",           "type": "beachsign",    "district": "carmen",   "ll": (9.97500, -84.84300)},
     {"id": "carmenig",    "name": "Iglesia del Carmen",         "type": "church",       "district": "carmen",   "osm": "iglesia del carmen", "ll": (9.97650, -84.84400)},
     {"id": "tioga",       "name": "Hotel Tioga",                "type": "hotel",        "district": "paseo",    "osm": "tioga", "ll": (9.97500, -84.83600)},
-    # pushed SOUTH toward the beach so they sit on the sand front, not mid-street
-    {"id": "kios_paseo1", "name": "Kiosco Doña Lela",           "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": -60, "dy": 150},
-    {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 60, "dy": 150},
+    # pushed SOUTH off the street to the MIDPOINT between the Paseo and the
+    # sand front (PINNED_KIOSKS keeps them there — no frontage re-seat)
+    {"id": "kios_paseo1", "name": "Kiosco Doña Lela",           "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": -60, "dy": 80},
+    {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 60, "dy": 80},
     {"id": "casafait",    "name": "Casa Fait",                  "type": "house",        "district": "paseo",    "osm": "casa fait", "ll": (9.97700, -84.82900)},
     {"id": "parquemar",   "name": "Parque Marino del Pacífico", "type": "park",         "district": "playitas", "osm": "parque marino", "ll": (9.97600, -84.82300)},
     {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas"},
@@ -242,7 +243,8 @@ LANDMARK_DEFS = [
     {"id": "cultura",     "name": "Casa de la Cultura",         "type": "civic",        "district": "centro",   "osm": "casa de la cultura", "ll": (9.97600, -84.83550)},
     {"id": "museo",       "name": "Museo Histórico Marino",     "type": "museum",       "district": "centro",   "osm": "museo", "near": (9.97600, -84.83550), "ll": (9.97580, -84.83520)},
     {"id": "kios_centro", "name": "Kiosco La Porteña",          "type": "kiosk",        "district": "centro",   "ll": (9.97480, -84.83000)},
-    {"id": "estadio",     "name": "Estadio Lito Pérez",         "type": "stadium",      "district": "playitas", "osm": "lito pérez", "ll": (9.97880, -84.82660)},
+    # dy lifts it one cuadra NORTH — it sat a block too close to the Paseo de los Turistas
+    {"id": "estadio",     "name": "Estadio Lito Pérez",         "type": "stadium",      "district": "playitas", "osm": "lito pérez", "ll": (9.97880, -84.82660), "dy": -160},
     {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97840, -84.82640)},
     {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "cocal",    "osm": "yacht", "ll": (9.97900, -84.81200)},
     # anchor monument on the island where the road splits into the Cocal (west
@@ -2114,11 +2116,9 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
     add_point("trees", trees)
     add_point("palms", palms)
     add_point("mangroves", mangroves)
-    # plazas are [x,y,w,h,type] rects; islands are {kind, pts:[[x,y],...]} pairs
-    for pz in plazas:
-        x, y, w, h = pz[:4]
-        for t in tiles_for_bbox(x, y, x + w, y + h):
-            buckets[t]["plazas"].append(pz)
+    # plazas ([x,y,w,h,type] rects) stay global in the manifest: they are ground
+    # colour, painted with the land base so parks are green before their tile
+    # streams in. islands are {kind, pts:[[x,y],...]} pairs
     for isl in islands:
         pts = isl["pts"]
         flat = [v for xy in pts for v in xy] if pts and isinstance(pts[0], (list, tuple)) else pts
@@ -2173,6 +2173,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         "landmarks": landmarks, "customers": customers, "stages": stages,
         "bridge": bridge, "estuary": estuary, "pier": pier, "hills": hills,
         "beaches": beaches, "waters": waters, "landPolys": land_polys,
+        "plazas": plazas,
         "stadium": stadium,
         "kioskPaths": kiosk_paths or [],
         "faroPier": faro_pier,
@@ -2452,12 +2453,15 @@ def main():
     # Building landmarks (church, market, hotel…) must sit INSIDE a cuadra, not
     # on the street. From a drivable anchor, walk into the nearest block
     # interior (CLS_LAND) so the footprint fronts the road it was next to.
+    # (the estadio is NOT a building landmark: its anchor must stay put so the
+    # dedicated stadium pass can grow the footprint from it — snapping it into
+    # a block interior is what left the fallback rect straddling streets)
     BUILDING_LM = {"church", "cathedral", "market", "super", "hotel", "civic",
-                   "house", "museum", "restaurant", "stadium"}
+                   "house", "museum", "restaurant"}
     # Scenery that must NOT get a drivable apron (you see it, never drive onto
-    # it): the buildings above + green areas (parks/pool). Excluded from the
-    # reachability gate too. Fixes driving into the Paseo's green yards.
-    NO_PAD_LM = BUILDING_LM | {"park", "pool"}
+    # it): the buildings above + green areas (parks/pool) + the walled stadium.
+    # Excluded from the reachability gate too.
+    NO_PAD_LM = BUILDING_LM | {"park", "pool", "stadium"}
     def _drivable_cell(c, r):
         return 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and \
             grid[r * GRID_COLS + c] in (CLS_ROAD, CLS_BRIDGE)
@@ -2653,18 +2657,25 @@ def main():
     # below, so nothing is left mid-lane.
     kiosk_paths = []
     beach_kiosks = set()
+    # Paseo stands stay pinned where their dy put them (between the Paseo and
+    # the sand) — treated like beach kiosks so the frontage pass never re-seats
+    # them across the street; their connector may target the Paseo itself.
+    PINNED_KIOSKS = {"kios_paseo1", "kios_paseo2"}
     for lm in landmarks:
         if lm["type"] != "kiosk" or lm["id"] == "kios_faro":
             continue                                    # kios_faro goes on the muelle below
         kx, ky = lm["x"], lm["y"]
         surf = _cell_cls(int(kx // GRID_CELL), int(ky // GRID_CELL))
-        if surf == CLS_BEACH:
-            tgt = _nearest_cell(kx, ky, (CLS_ROAD, CLS_BRIDGE), 260)
+        pinned = lm["id"] in PINNED_KIOSKS
+        if surf == CLS_BEACH or pinned:
+            classes = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE) if pinned else (CLS_ROAD, CLS_BRIDGE)
+            tgt = _nearest_cell(kx, ky, classes, 260)
             if tgt:
                 raster_stamp_polyline(grid, [kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
                 kiosk_paths.append({"pts": [round(kx), round(ky), round(tgt[0]), round(tgt[1])],
                                     "surface": "paved"})
-                print(f"[kiosk] sand path {lm['id']} -> street ({round(tgt[0])},{round(tgt[1])})")
+                print(f"[kiosk] {'pinned' if pinned else 'sand'} path {lm['id']} "
+                      f"(surf {surf}) -> street ({round(tgt[0])},{round(tgt[1])})")
             beach_kiosks.add(lm["id"])
 
     for lm in landmarks:
@@ -3101,15 +3112,14 @@ def main():
     keepouts.append((pier["x"], pier["y0"], 120))
     cell_block, occ = _grid_placer(blocks, keepouts)
 
-    # --- Estadio Lito Pérez: its cuadra becomes a real stadium — graderías
-    # (blocked ring) around a drivable césped, entered through a corner tunnel
-    # under the stands. The block is claimed whole (no synth lots / no patio
-    # trees); the pitch + tunnel are stamped CLS_ROAD so you can drive in.
-    # Geometry is emitted in the manifest; the Pixi renderer draws it.
+    # --- Estadio Lito Pérez: a real E-W rectangular stadium footprint that
+    # claims two merged cuadras (the street between them is clipped from the
+    # road network). NON-TRANSITABLE: the whole footprint stays CLS_LAND —
+    # no drivable pitch, no tunnel, and (crucially) no per-frame Pixi crowd,
+    # which was the crash-on-approach that had this pass disabled.
+    # Geometry is emitted in the manifest; the renderers draw gradas + pitch.
     stadium = None
-    # Estadio temporarily disabled (crash-on-approach; being reworked). Flip
-    # to True and rebuild to re-enable the gradas/pitch/tunnel stamping.
-    STADIUM_ENABLED = False
+    STADIUM_ENABLED = True
     est = next((l for l in landmarks if l["id"] == "estadio"), None)
     if est and STADIUM_ENABLED:
         ec = (int(est["x"] // CUAD), int(est["y"] // CUAD))
@@ -3134,14 +3144,19 @@ def main():
         RING = 2                                     # graderías thickness (cuads)
         # A real stadium needs room: if the cuadra is too small, grow the
         # footprint artificially (centered) — roads the expansion swallows are
-        # clipped out of the vector network below.
+        # clipped out of the vector network below. MIN_W > MIN_H keeps the
+        # rectangle oriented east-west, spanning two merged cuadras.
         MIN_W, MIN_H = 12, 9
+        MAX_H = MIN_H                                # E-W: never taller than wide
         if c1 - c0 + 1 < MIN_W:
             grow = MIN_W - (c1 - c0 + 1)
             c0 -= grow // 2; c1 = c0 + MIN_W - 1
         if r1 - r0 + 1 < MIN_H:
             grow = MIN_H - (r1 - r0 + 1)
             r0 -= grow // 2; r1 = r0 + MIN_H - 1
+        elif r1 - r0 + 1 > MAX_H:                    # tall natural block: crop centered
+            mid = (r0 + r1) // 2
+            r0 = mid - MAX_H // 2; r1 = r0 + MAX_H - 1
         if True:
             if True:
                 # claim the cuadra + fringe: no synth lots, no patio trees
@@ -3182,43 +3197,25 @@ def main():
                         base = rr * GRID_COLS
                         for cc in range(cc0, cc1 + 1):
                             grid[base + cc] = cls
-                def _cuad_cls(cc, cr):
-                    px = int((cc + 0.5) * CUAD // GRID_CELL); py = int((cr + 0.5) * CUAD // GRID_CELL)
-                    if px < 0 or py < 0 or px >= GRID_COLS or py >= GRID_ROWS:
-                        return CLS_WATER
-                    return grid[py * GRID_COLS + px]
-                # normalize the whole footprint: gradas ring = solid (blocked),
-                # then the pitch interior = drivable
+                # normalize the whole footprint to solid land: gradas + pitch
+                # are all NON-TRANSITABLE (the car bounces off the stadium)
                 _stamp_px(c0 * CUAD, r0 * CUAD, (c1 + 1) * CUAD, (r1 + 1) * CUAD, CLS_LAND)
-                _stamp_px((c0 + RING) * CUAD, (r0 + RING) * CUAD,
-                          (c1 + 1 - RING) * CUAD, (r1 + 1 - RING) * CUAD, CLS_ROAD)
-                # corner tunnel: pick the corner whose outward edge reaches a
-                # street soonest; carve 2 cuads tall/wide through ring + acera
-                best = None
-                for corner, side, rr in (("sw", "w", r1 - RING), ("nw", "w", r0 + RING - 1),
-                                          ("se", "e", r1 - RING), ("ne", "e", r0 + RING - 1)):
-                    scan = range(c0 - 1, c0 - 8, -1) if side == "w" else range(c1 + 1, c1 + 8)
-                    for k, cc in enumerate(scan):
-                        if _cuad_cls(cc, rr) == CLS_ROAD:
-                            if best is None or k < best[0]:
-                                best = (k, corner, side, rr, cc)
-                            break
-                if best is None:
-                    best = (3, "sw", "w", r1 - RING, c0 - 4)   # carve to the acera anyway
-                _, corner, side, trr, street_c = best
-                ty0 = (trr - 1) * CUAD; ty1 = (trr + 1) * CUAD          # 2 cuads tall
-                if side == "w":
-                    tx0 = street_c * CUAD; tx1 = (c0 + RING) * CUAD
-                else:
-                    tx0 = (c1 + 1 - RING) * CUAD; tx1 = (street_c + 1) * CUAD
-                _stamp_px(tx0, ty0, tx1, ty1, CLS_ROAD)
                 stadium = {"x0": c0 * CUAD, "y0": r0 * CUAD,
                            "x1": (c1 + 1) * CUAD, "y1": (r1 + 1) * CUAD,
-                           "ring": RING * CUAD, "corner": corner,
-                           "tunnel": {"x0": tx0, "y0": ty0, "x1": tx1, "y1": ty1},
+                           "ring": RING * CUAD, "corner": None, "tunnel": None,
                            "cx": (c0 + c1 + 1) * CUAD // 2, "cy": (r0 + r1 + 1) * CUAD // 2}
-                print(f"[estadio] Lito Pérez at cuads ({c0},{r0})-({c1},{r1}), "
-                      f"tunnel {corner} via x{tx0}-{tx1} y{ty0}-{ty1}")
+                # green rects from earlier passes (sliver plazas / park tags)
+                # under the footprint would peek through the pitch — drop them
+                n_pz = len(plazas)
+                plazas[:] = [pz for pz in plazas
+                             if pz[0] + pz[2] <= rx0 or pz[0] >= rx1 or
+                                pz[1] + pz[3] <= ry0 or pz[1] >= ry1]
+                if n_pz != len(plazas):
+                    print(f"[estadio] dropped {n_pz - len(plazas)} green rect(s) under the footprint")
+                # keep the landmark label centered on the real footprint
+                est["x"], est["y"] = stadium["cx"], stadium["cy"]
+                print(f"[estadio] Lito Pérez at cuads ({c0},{r0})-({c1},{r1}) "
+                      f"({(c1 - c0 + 1)}x{(r1 - r0 + 1)} cuads, walled)")
 
     buildings = snap_osm_buildings(raw_bldgs, cell_block, occ)
     synth = synth_buildings([b for b in blocks if not b["green"]],

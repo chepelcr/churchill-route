@@ -136,20 +136,27 @@ export class PixiScene {
     g.roundRect(x0 + 16, y0 + 16, x1 - x0 - 32, y1 - y0 - 32, 4).stroke({ width: 2, color: 0x78726a });
     // outer shadow rim for a bit of height
     g.rect(x0, y1 - ring, x1 - x0, 4).fill({ color: 0x000000, alpha: 0.18 });
-    // tunnel walls darkening at the ring crossing (the mouths)
-    g.rect(T.x0, T.y0 - 2, T.x1 - T.x0, 2).fill({ color: 0x000000, alpha: 0.3 });
-    g.rect(T.x0, T.y1, T.x1 - T.x0, 2).fill({ color: 0x000000, alpha: 0.3 });
+    if (T) {
+      // tunnel walls darkening at the ring crossing (the mouths)
+      g.rect(T.x0, T.y0 - 2, T.x1 - T.x0, 2).fill({ color: 0x000000, alpha: 0.3 });
+      g.rect(T.x0, T.y1, T.x1 - T.x0, 2).fill({ color: 0x000000, alpha: 0.3 });
+    }
     this.L.buildings.addChild(g);
 
-    // the grada roof over the tunnel — TOPMOST, the car disappears beneath it
-    const roof = new Graphics();
-    const rx0 = Math.max(T.x0, x0), rx1 = Math.min(T.x1, x1);
-    roof.rect(rx0, T.y0 - 2, rx1 - rx0, (T.y1 - T.y0) + 4).fill(0x9d968a);
-    roof.rect(rx0, T.y0 - 2, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
-    roof.rect(rx0, T.y1 - 1, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
-    this.L.over.addChild(roof);
+    if (T) {
+      // the grada roof over the tunnel — TOPMOST, the car disappears beneath it
+      const roof = new Graphics();
+      const rx0 = Math.max(T.x0, x0), rx1 = Math.min(T.x1, x1);
+      roof.rect(rx0, T.y0 - 2, rx1 - rx0, (T.y1 - T.y0) + 4).fill(0x9d968a);
+      roof.rect(rx0, T.y0 - 2, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
+      roof.rect(rx0, T.y1 - 1, rx1 - rx0, 3).fill({ color: 0x000000, alpha: 0.25 });
+      this.L.over.addChild(roof);
 
-    this._buildCrowd(S);
+      // crowd + coins only make sense with a drivable pitch (tunnel entry);
+      // the walled stadium skips them — the ~180 per-frame crowd Graphics
+      // were the original crash-on-approach
+      this._buildCrowd(S);
+    }
   }
 
   // Celebrating crowd on the gradas: dots in Puntarenas-FC orange/black/white

@@ -165,6 +165,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   function drawLandBase(view, t) {
     const rc = ensureRenderCache(), C = weatherColors();
     ctx.fillStyle = C.land; for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
+    // park / plaza cuadras: green IS their base ground colour (global manifest
+    // rects, so no sand flash before a tile streams in) — waters, beach wet
+    // line and streets all paint on top of it.
+    for (const pz of W.PLAZAS || []) drawPlazaGreen(pz, view);
     ctx.lineJoin = "round";
     for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) paintWaterBody(w, view, t);
     // beach: sandy fill + a faint wet line along its seaward edge
@@ -396,12 +400,8 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
 
   // Orchestrate the painterly world from resident, in-view tiles.
   function drawWorld2D(view, t) {
-    drawLandBase(view, t);
+    drawLandBase(view, t);   // includes the park/plaza green ground rects
     const vts = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
-    // GREEN GROUND (plazas / parks / faro esplanade), colour-by-type, painted as
-    // part of the ground FIRST — so the roads + aceras below draw cleanly ON TOP
-    // (the cuadra is already green; nothing paints green over the sidewalks).
-    for (const tile of vts) for (const pz of tile.plazas || []) drawPlazaGreen(pz, view);
     // roads: gather in-view segments across tiles, minor → major so arterials paint on top
     const roads = [];
     for (const tile of vts) {
@@ -1171,7 +1171,9 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         label(x, y - ph / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
       }
       case "stadium": {
-        // green space (grass) with a faint pitch outline — non-transitable
+        // with manifest geometry the real footprint is drawn by drawStadium —
+        // the generic green rect would straddle streets on top of it
+        if (W.STADIUM) { label(x, y - (W.STADIUM.y1 - W.STADIUM.y0) / 2 - 6, "ESTADIO", "#fff", "#2e7d44"); break; }
         drawGreenSpace(lm, 156, 122, { pitch: true });
         label(x, y - 122 / 2 - 6, "ESTADIO", "#fff", "#2e7d44"); break;
       }
@@ -1828,8 +1830,8 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     const boxH = Math.min(60, (fy1 - fy0) * 0.5), boxW = 22;
     ctx.strokeRect(fx0, cy - boxH / 2, boxW, boxH);
     ctx.strokeRect(fx1 - boxW, cy - boxH / 2, boxW, boxH);
-    const T = S.tunnel;
-    ctx.fillStyle = "#4a4550"; ctx.fillRect(T.x0, T.y0, T.x1 - T.x0, T.y1 - T.y0);
+    const T = S.tunnel;   // walled stadium has none
+    if (T) { ctx.fillStyle = "#4a4550"; ctx.fillRect(T.x0, T.y0, T.x1 - T.x0, T.y1 - T.y0); }
     if (!PIXI_LANDMARKS) drawStadiumStands(S);
   }
   function drawStadiumStands(S) {
@@ -1843,8 +1845,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.strokeRect(x0 + 5, y0 + 5, x1 - x0 - 10, y1 - y0 - 10);
     ctx.strokeRect(x0 + 12, y0 + 12, x1 - x0 - 24, y1 - y0 - 24);
     const T = S.tunnel;
-    const rx0 = Math.max(T.x0, x0), rx1 = Math.min(T.x1, x1);
-    ctx.fillStyle = "#9d968a"; ctx.fillRect(rx0, T.y0 - 2, rx1 - rx0, T.y1 - T.y0 + 4);
+    if (T) {
+      const rx0 = Math.max(T.x0, x0), rx1 = Math.min(T.x1, x1);
+      ctx.fillStyle = "#9d968a"; ctx.fillRect(rx0, T.y0 - 2, rx1 - rx0, T.y1 - T.y0 + 4);
+    }
   }
 
   // Objective compass: pinned at the top-center of the SCREEN (never lost

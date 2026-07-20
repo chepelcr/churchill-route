@@ -289,7 +289,9 @@ function topUp(arr, target, make, isDead) {
 const STADIUM_PEDS = 8;
 function maintainStadiumPeds() {
   const S = W.STADIUM;
-  if (!S) return;
+  // walled stadium (no tunnel): pitch is CLS_LAND, peds walking cls:[3] would
+  // insta-die and respawn-churn every maintain tick
+  if (!S || !S.tunnel) return;
   if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) return;
   let n = 0;
   for (const pe of pedestrians) {

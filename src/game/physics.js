@@ -316,7 +316,7 @@ export function update(dt) {
   // crest from the same wall clock). Each lap finished while you're around,
   // the crowd celebrates and throws coins onto the césped — drive over them.
   const S = W.STADIUM;
-  if (S && !state.tutorial) {
+  if (S && S.tunnel && !state.tutorial) {   // walled stadium: no reachable césped, no coin drops
     if (!state.stadiumCoins) state.stadiumCoins = [];
     const WAVE_MS = 24000;
     const lap = Math.floor(performance.now() / WAVE_MS);

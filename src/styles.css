@@ -368,6 +368,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 .panel .row, .page-card .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.15); font-family: "JetBrains Mono", monospace; font-size: 13px; }
 .panel .btn-row, .page-card .btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+/* pause menu: 4 nowrap Bungee buttons overflow a 520px row — stack them */
+.panel .btn-row.pause-actions { flex-direction: column; align-items: stretch; }
 .btn {
   background: var(--coral); color: #fff; border: none; padding: 10px 18px;
   border-radius: 10px; cursor: pointer; font: inherit;
@@ -739,6 +741,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 
 /* ----- Vehicle picker (Arcade / Recorrer): two scale-to-fit cards ----- */
 .picker-wrap {
+  position: relative;
   width: min(1000px, 96vw);
   display: flex; flex-direction: column; align-items: center;
   gap: clamp(8px, 1.6vh, 16px); text-align: center;
@@ -756,22 +759,17 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   width: clamp(230px, 32vw, 330px); flex-shrink: 0;
   display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 12px); text-align: center;
 }
-.picker-side .swatches { justify-content: center; }
+/* vertical paint column so the side card carries no dead horizontal space */
+.picker-side .swatches { flex-direction: column; flex-wrap: nowrap; align-items: center; justify-content: center; }
 .picker-side .swatch { width: clamp(30px, 4.4vh, 40px); height: clamp(30px, 4.4vh, 40px); border-radius: 10px; }
 .picker-getbtn { font-size: 12px; }
-.picker-actions { margin-top: auto; }
 /* narrow / very short: stack the two cards so the Go button always fits */
 @media (max-width: 700px), (max-height: 380px) {
   .picker-layout { flex-direction: column; align-items: center; }
   .picker-veh, .picker-side { width: min(92vw, 340px); }
+  .picker-side .swatches { flex-direction: row; flex-wrap: wrap; }
 }
 
-/* compact paint row inside the Historia vehicle card */
-.veh-colors { display: flex; flex-wrap: wrap; gap: clamp(3px, 0.7vh, 5px); justify-content: center; }
-.veh-colors .swatch {
-  width: clamp(22px, 3.4vh, 30px); height: clamp(22px, 3.4vh, 30px);
-  border-radius: 8px; font-size: 12px;
-}
 
 /* ----- Purchase confirmation ----- */
 .confirm-panel { max-width: 360px; text-align: center; }
@@ -966,12 +964,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .stage-dots .dot.locked { background: rgba(255,255,255,0.12); }
 .stage-dots .dot.on { background: var(--gold); transform: scale(1.4); box-shadow: 0 0 10px oklch(0.86 0.16 90 / 0.6); }
 
-/* vehicle card beside the carousel — its own panel, viewport-height aware */
-.vehicle-card {
-  width: clamp(210px, 21vw, 264px); flex-shrink: 0;
-  display: flex; flex-direction: column; gap: clamp(5px, 1.1vh, 10px);
-  overflow: hidden;
-}
 .vehicle-card-title {
   font: 700 11px "JetBrains Mono", monospace; letter-spacing: 0.18em;
   color: var(--gold); text-align: center;
@@ -993,22 +985,14 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   text-align: center; font-size: clamp(9.5px, 1.6vh, 11px); padding: clamp(4px, 0.9vh, 6px) 6px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.reset-row {
-  margin-top: auto; display: flex; gap: 6px; align-items: center;
-  justify-content: center; flex-wrap: wrap;
-  font: 11px "JetBrains Mono", monospace; opacity: 0.85;
-}
-.reset-row .btn { font-size: 10px; padding: 5px 10px; }
-
 /* very short landscape screens: tighten the header + hero */
 @media (max-height: 520px) {
   .stage-title { font-size: clamp(18px, 5vh, 26px); }
   .hero-brief { -webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 }
-/* narrow/portrait: stack the carousel above the vehicle card */
+/* narrow/portrait */
 @media (max-width: 760px) {
   .stage-layout { flex-direction: column; }
-  .vehicle-card { width: 100%; }
   .carousel-arrow { height: auto; align-self: stretch; }
 }
 

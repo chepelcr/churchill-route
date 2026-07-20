@@ -9,7 +9,7 @@ export default function PauseScreen({ onResume, onRestart, onSettings, onQuit })
       <div className="panel">
         <h2>{t("pause.title")}</h2>
         <p style={{ opacity: 0.7, marginTop: 0 }}>{t("pause.body")}</p>
-        <div className="btn-row">
+        <div className="btn-row pause-actions">
           <button className="btn gold" onClick={onResume}>{t("pause.resume")}</button>
           {onRestart && <button className="btn secondary" onClick={onRestart}>{t("pause.restart")}</button>}
           <button className="btn secondary" onClick={onSettings}><Icon name="gear" size={15} /> {t("pause.settings")}</button>

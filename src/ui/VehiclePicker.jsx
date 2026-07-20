@@ -9,17 +9,25 @@ import FitScale from "./FitScale.jsx";
 import CoinIcon from "./CoinIcon.jsx";
 import Icon from "./Icon.jsx";
 
-// Pre-run picker for Arcade / Recorrer (Historia keeps its inline card in
-// StageSelect). Two scale-to-fit cards side by side: the vehicle carousel and
-// an options card (paint colours you own + boosts to arm for this run). Locked
-// vehicles deep-link to the Shop; boosts are consumed at mode start by armRun.
-export default function VehiclePicker({ onGo, onShop, onBack }) {
+// Pre-run picker for every mode: Arcade / Recorrer arm boosts here too, while
+// Historia (storyMode) hides them — the StageBrief owns boost-arming there.
+// Two scale-to-fit cards side by side: the vehicle carousel and an options
+// card (paint colours you own + boosts to arm for this run). Locked vehicles
+// deep-link to the Shop; boosts are consumed at mode start by armRun.
+export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false }) {
   const t = useT();
   const startKey = economy.ownsVehicle(Game.state.vehicleKey) ? Game.state.vehicleKey : "scooter";
   const [veh, setVeh] = useState(startKey);
   const [armed, setArmed] = useState({});
   const [, bump] = useState(0);
   useEffect(() => economy.onChange(() => bump((n) => n + 1)), []);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape" || e.key === "Backspace") { e.preventDefault(); onBack(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const vehKeys = Object.keys(VEHICLES);
   const owned = economy.ownsVehicle(veh);
@@ -48,6 +56,7 @@ export default function VehiclePicker({ onGo, onShop, onBack }) {
       <div className="title-shell">
         <FitScale>
           <div className="picker-wrap">
+            <button className="btn secondary back-btn" onClick={onBack}>{t("select.back")}</button>
             <h2 className="picker-title">{t("picker.title")}</h2>
             <div className="picker-layout">
               {/* vehicle card */}
@@ -69,6 +78,7 @@ export default function VehiclePicker({ onGo, onShop, onBack }) {
                     <Icon name="lock" size={13} /> {t("picker.locked")} · <CoinIcon size={13} /> {VEHICLE_PRICES[veh]}
                   </button>
                 )}
+                <button className="btn gold hero-play" onClick={go} disabled={!owned}>{t("picker.go")}</button>
               </div>
 
               {/* options card: paint colours + boosts */}
@@ -89,7 +99,7 @@ export default function VehiclePicker({ onGo, onShop, onBack }) {
                     );
                   })}
                 </div>
-                {totalBoosts > 0 && (
+                {!storyMode && totalBoosts > 0 && (
                   <div className="picker-boosts">
                     <div className="vehicle-card-title">{t("picker.boosts", { n: totalBoosts })}</div>
                     <div className="shop-tabs" style={{ margin: "6px 0 0" }}>
@@ -103,10 +113,6 @@ export default function VehiclePicker({ onGo, onShop, onBack }) {
                     </div>
                   </div>
                 )}
-                <div className="btn-row picker-actions">
-                  <button className="btn gold" onClick={go} disabled={!owned}>{t("picker.go")}</button>
-                  <button className="btn secondary" onClick={onBack}>{t("select.back")}</button>
-                </div>
               </div>
             </div>
           </div>

@@ -3,9 +3,7 @@ import { Game } from "../../game/index.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { isMvpLocked } from "../../game/progress.js";
-import { economy, COLORS } from "../../game/economy.js";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
-import VehiclePreview from "../VehiclePreview.jsx";
 import FitScale from "../FitScale.jsx";
 import Icon from "../Icon.jsx";
 
@@ -14,8 +12,6 @@ export const WEATHER_ICON = { sunny: "sun", sunset: "sunset", storm: "storm", ni
 export default function StageSelect({ onStart, onBack }) {
   const t = useT();
   const stages = WORLD.STAGES;
-  const vehicles = Game.VEHICLES;
-  const vehKeys = Object.keys(vehicles);
   const cleared = Game.state.progress.clearedStages;
   // MVP: stages set in the gated eastern districts ship in a later release
   const isMvp = (i) => isMvpLocked(stages[i].district);
@@ -24,39 +20,19 @@ export default function StageSelect({ onStart, onBack }) {
   const firstOpen = Math.max(0, stages.findIndex((s, i) => !cleared.includes(s.id) && !isMvp(i)));
 
   const [cur, setCur] = useState(firstOpen < 0 ? 0 : firstOpen);
-  const [veh, setVeh] = useState(Game.state.vehicleKey || "scooter");
-  const [confirming, setConfirming] = useState(false);
-  const [, bump] = useState(0);
-
-  const doReset = () => { Game.resetProgress(); setConfirming(false); bump((n) => n + 1); };
-  // Equip a paint you own for the selected ride (unowned colours live in the Shop).
-  const pickColor = (id) => {
-    if (id && !economy.ownsColor(id)) { sfx.play("menu_denied"); return; }
-    economy.equipColor(veh, id); sfx.play("menu_move"); bump((n) => n + 1);
-  };
 
   // keep the latest values reachable from the mount-once key/pad handlers
   const st = useRef({});
-  st.current = { cur, veh };
+  st.current = { cur };
 
   const moveStage = (d) => setCur((c) => {
     const n = Math.max(0, Math.min(stages.length - 1, c + d));
     if (n !== c) sfx.play("menu_move");
     return n;
   });
-  const moveVeh = (d) => setVeh((k) => {
-    // skip vehicles you don't own yet (they're bought in the Shop)
-    let i = vehKeys.indexOf(k);
-    for (let step = 0; step < vehKeys.length; step++) {
-      i = (i + d + vehKeys.length) % vehKeys.length;
-      if (economy.ownsVehicle(vehKeys[i])) break;
-    }
-    sfx.play("menu_move");
-    return vehKeys[i];
-  });
   const play = (i) => {
     if (isLocked(i)) { sfx.play("menu_denied"); return; }
-    sfx.play("menu_select"); onStart(i, st.current.veh);
+    sfx.play("menu_select"); onStart(i);
   };
 
   useEffect(() => {
@@ -64,8 +40,6 @@ export default function StageSelect({ onStart, onBack }) {
       switch (e.key) {
         case "ArrowLeft": e.preventDefault(); moveStage(-1); break;
         case "ArrowRight": e.preventDefault(); moveStage(1); break;
-        case "ArrowUp": e.preventDefault(); moveVeh(-1); break;
-        case "ArrowDown": e.preventDefault(); moveVeh(1); break;
         case "Enter": case " ": e.preventDefault(); play(st.current.cur); break;
         case "Escape": case "Backspace": e.preventDefault(); onBack(); break;
         default: break;
@@ -79,15 +53,11 @@ export default function StageSelect({ onStart, onBack }) {
       if (p) {
         const now = performance.now();
         const pressed = (i) => !!(p.buttons[i] && p.buttons[i].pressed);
-        const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
-        const d = {
-          l: pressed(14) || ax < -0.5, r: pressed(15) || ax > 0.5,
-          u: pressed(12) || ay < -0.5, dn: pressed(13) || ay > 0.5,
-        };
+        const ax = p.axes[0] || 0;
+        const d = { l: pressed(14) || ax < -0.5, r: pressed(15) || ax > 0.5 };
         for (const k in d) {
           if (d[k] && (!prev[k] || now - last > 240)) {
-            if (k === "l") moveStage(-1); else if (k === "r") moveStage(1);
-            else if (k === "u") moveVeh(-1); else moveVeh(1);
+            k === "l" ? moveStage(-1) : moveStage(1);
             last = now;
           }
           prev[k] = d[k];
@@ -145,48 +115,6 @@ export default function StageSelect({ onStart, onBack }) {
               </div>
 
               <button className="carousel-arrow" onClick={() => moveStage(1)} disabled={cur === stages.length - 1} aria-label="Siguiente">›</button>
-            </div>
-
-            <div className="glass-card vehicle-card">
-              <div className="vehicle-card-title">{t("select.vehicle")}</div>
-              <VehiclePreview vehKey={veh} color={economy.equippedColor(veh)?.hex || null} />
-              <div className="vehicles-col">
-                {vehKeys.map((k) => {
-                  const has = economy.ownsVehicle(k);
-                  return (
-                    <button key={k} className={"vchip " + (veh === k ? "active" : "") + (has ? "" : " locked")}
-                      onClick={() => { if (has) { sfx.play("menu_select"); setVeh(k); } else sfx.play("menu_denied"); }}>
-                      {has ? vehicles[k].name : <><Icon name="lock" size={12} /> {vehicles[k].name}</>}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="veh-colors">
-                <button className={"swatch stock" + (!economy.equippedColor(veh) ? " equipped" : "")}
-                  title={t("shop.stock")} onClick={() => pickColor(null)}>↺</button>
-                {COLORS.map((c) => {
-                  const has = economy.ownsColor(c.id);
-                  const eq = economy.equippedColor(veh)?.id === c.id;
-                  return (
-                    <button key={c.id} className={"swatch" + (eq ? " equipped" : "") + (has ? "" : " locked")}
-                      style={{ background: c.hex }} title={`${c.name}${has ? "" : ` · ${c.price}`}`}
-                      onClick={() => pickColor(c.id)}>
-                      {!has && <Icon name="lock" size={10} />}{eq && "✓"}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="reset-row">
-                {confirming ? (
-                  <>
-                    <span>{t("select.resetQ")}</span>
-                    <button className="btn" onClick={doReset}>{t("select.yes")}</button>
-                    <button className="btn secondary" onClick={() => setConfirming(false)}>{t("select.no")}</button>
-                  </>
-                ) : (
-                  <button className="btn secondary" onClick={() => setConfirming(true)}>{t("select.reset")}</button>
-                )}
-              </div>
             </div>
           </div>
 

@@ -32,7 +32,7 @@ export default function App() {
   //          brief | playing | paused | over | settings | supporters | shop | vehpick
   const [screen, setScreen] = useState("boot");
   const [pendingStage, setPendingStage] = useState(null);
-  const [pendingMode, setPendingMode] = useState(null); // arcade | explore
+  const [pendingMode, setPendingMode] = useState(null); // story | arcade | explore
   const canvasRef = useRef(null);
   const [, setTick] = useState(0);
   const tickRef = useRef(0);
@@ -124,25 +124,31 @@ export default function App() {
 
   function pickMode(mode) {
     enterImmersive();
-    if (mode === "story") setScreen("stagepick");
-    else if (mode === "tutorial") {
+    if (mode === "tutorial") {
       Game.startTutorial({ vehicleKey: Game.state.vehicleKey });
       setScreen("playing");
     } else {
-      // arcade / explore go through the pre-run vehicle picker
       setPendingMode(mode);
-      setScreen("vehpick");
+      // story picks a level first; arcade / explore go straight to the picker
+      setScreen(mode === "story" ? "stagepick" : "vehpick");
     }
   }
-  function beginFreeRun(vehicleKey, armedBoosts) {
+  // vehicle picked on the vehpick page (every mode): story continues to the
+  // stage brief (which owns boost-arming there); arcade / explore start now
+  function beginFromPicker(vehicleKey, armedBoosts) {
+    if (pendingMode === "story") {
+      setPendingStage((s) => ({ ...s, vehicleKey }));
+      setScreen("brief");
+      return;
+    }
     Game.state.armedBoosts = armedBoosts;
     if (pendingMode === "explore") Game.startExplore({ vehicleKey });
     else Game.startArcade({ vehicleKey });
     setScreen("playing");
   }
-  function pickStage(idx, vehicleKey) {
-    setPendingStage({ idx, vehicleKey });
-    setScreen("brief");
+  function pickStage(idx) {
+    setPendingStage({ idx });
+    setScreen("vehpick");
   }
   function beginStage(armedBoosts) {
     if (!pendingStage) return;
@@ -204,7 +210,7 @@ export default function App() {
           {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => setScreen("shop")} />}
           {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
           {screen === "shop" && <ShopScreen onBack={() => setScreen("title")} />}
-          {screen === "vehpick" && <VehiclePicker onGo={beginFreeRun} onShop={() => setScreen("shop")} onBack={() => setScreen("title")} />}
+          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} onShop={() => setScreen("shop")} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
           {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
           {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
           {screen === "over" && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen("title")} onContinue={continueRun} />}

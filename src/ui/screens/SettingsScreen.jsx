@@ -32,7 +32,8 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
         <span className="settings-credits" style={{ margin: 0 }}>{t("settings.credits", { version })}</span>
       </div>
 
-      <div className="page-body">
+      <div className="page-body scrolly">
+        <div className="center-stack">
         <div className="settings-rows">
           <div className="set-row">
             <span className="set-lbl">{t("settings.language")}</span>
@@ -126,6 +127,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
             <a className="btn secondary" href="https://churchill.jcampos.dev/privacy/"
               target="_blank" rel="noopener noreferrer">{t("settings.privacy")}</a>
           </div>
+        </div>
         </div>
       </div>
     </div>

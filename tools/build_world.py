@@ -2718,7 +2718,7 @@ def main():
             esp |= add
         for (cc, cr) in esp:
             if 0 <= cc < GRID_COLS and 0 <= cr < GRID_ROWS:
-                grid[cr * GRID_COLS + cc] = CLS_ROAD        # drivable; rects emitted post-blocks
+                grid[cr * GRID_COLS + cc] = CLS_ACERA       # pedestrian plaza (NON-drivable)
         faro_esp = esp
         ecc0 = min(c for c, _ in esp); ecc1 = max(c for c, _ in esp)
         ecr0 = min(r for _, r in esp); ecr1 = max(r for _, r in esp)
@@ -2727,20 +2727,20 @@ def main():
         espl = sorted(esp)                                 # comma islands across the shape
         faro_lm["commas"] = [[int((espl[(i * len(espl)) // 12][0] + 0.5) * GRID_CELL),
                               int((espl[(i * len(espl)) // 12][1] + 0.5) * GRID_CELL)] for i in range(12)]
-        # Faro muelle: jut WEST from the (extended) esplanade edge into the gulf,
-        # kiosk at the sea end; the player spawns on the deck.
-        shore_cc = fcc0
+        # Faro muelle: jut SOUTH-WEST from the beach line (the edge of the paved
+        # tip) into the open water, kiosk at the sea end; the player spawns on it.
+        scc, scr = fcc0, fcr0                              # walk SW to the water's edge
         for _ in range(60):
-            if _cell_cls(shore_cc - 1, fcr0) == CLS_WATER:
+            if _cell_cls(scc - 1, scr + 1) == CLS_WATER:
                 break
-            shore_cc -= 1
-        shore_x = shore_cc * GRID_CELL
-        end_x = shore_x - 9 * CUAD
+            scc -= 1; scr += 1
+        sx, sy = scc * GRID_CELL, scr * GRID_CELL          # muelle base (beach line)
+        ex, ey = sx - 7 * CUAD, sy + 7 * CUAD              # SW sea end
         pw = 2 * CUAD
-        raster_stamp_polyline(grid, [shore_x, fy, end_x, fy], pw, CLS_BRIDGE)
-        faro_pier = {"x0": int(end_x), "y0": int(fy), "x1": int(shore_x), "y1": int(fy), "w": int(pw)}
-        # aux street: tie the esplanade into the nearest loop road (drawn asphalt,
-        # only if there's a real gap), so the muelle is connected to the streets.
+        raster_stamp_polyline(grid, [sx, sy, ex, ey], pw, CLS_BRIDGE)
+        faro_pier = {"x0": int(ex), "y0": int(ey), "x1": int(sx), "y1": int(sy), "w": int(pw)}
+        # ONE drivable lane tying the muelle base to the nearest loop road (the
+        # pedestrian plaza itself stays non-drivable); drawn asphalt.
         aux = None
         for rad in range(4, 70):
             for a in range(0, 360, 10):
@@ -2751,19 +2751,16 @@ def main():
             if aux:
                 break
         if aux:
-            near = min(esp, key=lambda c: (c[0] - aux[0]) ** 2 + (c[1] - aux[1]) ** 2)
-            nxp, nyp = (near[0] + 0.5) * GRID_CELL, (near[1] + 0.5) * GRID_CELL
             axp, ayp = (aux[0] + 0.5) * GRID_CELL, (aux[1] + 0.5) * GRID_CELL
-            raster_stamp_polyline(grid, [nxp, nyp, axp, ayp], 2 * CUAD, CLS_ROAD)
-            if abs(nxp - axp) + abs(nyp - ayp) > 2 * CUAD:
-                kiosk_paths.append({"pts": [round(nxp), round(nyp), round(axp), round(ayp)], "surface": "paved"})
-                print(f"[pier] faro esplanade aux street -> ({round(axp)},{round(ayp)})")
+            raster_stamp_polyline(grid, [sx, sy, axp, ayp], round(1.6 * CUAD), CLS_ROAD)
+            kiosk_paths.append({"pts": [int(sx), int(sy), round(axp), round(ayp)], "surface": "paved"})
+            print(f"[pier] faro drivable lane -> ({round(axp)},{round(ayp)})")
         kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
         if kf:
-            kf["x"], kf["y"] = int(end_x + CUAD), int(fy)     # kiosk at the sea (west) end
-            kf["spawn"] = [int(end_x + 5 * CUAD), int(fy)]    # spawn on the deck
+            kf["x"] = int(sx + 0.85 * (ex - sx)); kf["y"] = int(sy + 0.85 * (ey - sy))   # sea end
+            kf["spawn"] = [int(sx + 0.4 * (ex - sx)), int(sy + 0.4 * (ey - sy))]         # on the deck
             beach_kiosks.add("kios_faro")                     # skip the frontage pass
-        print(f"[pier] faro muelle x{end_x}..{shore_x} (west); esplanade {len(esp)} cells")
+        print(f"[pier] faro muelle SW ({sx},{sy})->({ex},{ey}); esplanade {len(esp)} cells")
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
     for isl in junction_islands:

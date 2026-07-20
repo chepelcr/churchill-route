@@ -412,6 +412,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     for (const tile of vts) if (tile.medians.length) paintTileMedians(tile.medians, view);
     // paved plazas → grass green (user request): a ground layer under buildings
     for (const tile of vts) for (const pz of tile.plazas || []) drawPlazaGreen(pz, view);
+    drawFaroCommas(view);   // faro plaza red "islands" — ground layer, under the trees
     // sand access paths from beach kiosks to the nearest street (drivable)
     drawKioskPaths(view);
     // buildings
@@ -434,6 +435,27 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
     ctx.fillStyle = GREEN_COLORS[pz[4]] || "#4f9d5b";
     ctx.fillRect(px, py, pw, ph);
+  }
+
+  // Faro plaza red comma "islands": all the SAME orientation, corner (tip)
+  // pointing NORTH, spread across the sand shape by the build (lm.commas). Drawn
+  // in the ground layer so the plaza's trees sit on top of them.
+  function drawFaroCommas(view) {
+    const lm = W.landmarkById ? W.landmarkById("faro") : null;
+    const commas = lm && lm.commas;
+    if (!commas || !commas.length) return;
+    ctx.fillStyle = "#c34a3c";
+    const r = 7;
+    for (let i = 0; i < commas.length; i++) {
+      const cx = commas[i][0], cy = commas[i][1];
+      if (cx < view.x0 - 20 || cx > view.x1 + 20 || cy < view.y0 - 20 || cy > view.y1 + 20) continue;
+      ctx.beginPath(); ctx.arc(cx, cy + r * 0.4, r * 0.7, 0, Math.PI * 2); ctx.fill();   // round head
+      ctx.beginPath();                                                                    // tail → north tip
+      ctx.moveTo(cx - r * 0.55, cy + r * 0.3);
+      ctx.quadraticCurveTo(cx - r * 0.15, cy - r * 0.55, cx, cy - r * 1.2);
+      ctx.quadraticCurveTo(cx + r * 0.15, cy - r * 0.55, cx + r * 0.55, cy + r * 0.3);
+      ctx.closePath(); ctx.fill();
+    }
   }
 
   // Kiosk access paths → nearest street (drivable). Beach kiosks get a packed
@@ -766,33 +788,26 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.fillStyle = "rgba(20,40,60,0.55)"; ctx.fillRect(hx + 5, hy + 4, 4, 8); // door
   }
 
-  // The faro muelle: a warm wooden boardwalk jetty jutting into the gulf, with
-  // the churchill kiosk at its sea end and the player spawn on it. Drawn along
-  // its segment (P = {x0,y0,x1,y1,w}); handles a west or south orientation.
+  // The faro muelle: a warm wooden boardwalk jetty jutting into the gulf (any
+  // direction — drawn as a rotated deck along its segment P={x0,y0,x1,y1,w}),
+  // with the churchill kiosk at its sea end and the player spawn on it.
   function drawFaroPier(view) {
     const P = W.FAROPIER;
     if (!P || P.x0 === undefined) return;
     const hw = P.w / 2;
-    const xa = Math.min(P.x0, P.x1), xb = Math.max(P.x0, P.x1);
-    const ya = Math.min(P.y0, P.y1), yb = Math.max(P.y0, P.y1);
-    const horiz = (xb - xa) >= (yb - ya);
-    const rx = horiz ? xa : P.x0 - hw, ry = horiz ? P.y0 - hw : ya;
-    const rw = horiz ? (xb - xa) : P.w, rh = horiz ? P.w : (yb - ya);
-    if (rx + rw + 40 < view.x0 || rx - 40 > view.x1 || ry + rh + 20 < view.y0 || ry - 20 > view.y1) return;
-    ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(rx + 3, ry + 4, rw, rh);   // deck shadow
-    ctx.fillStyle = "#b98a4e"; ctx.fillRect(rx, ry, rw, rh);                     // warm timber deck
-    ctx.strokeStyle = "rgba(60,40,20,0.35)"; ctx.lineWidth = 1;                  // plank seams
-    if (horiz) {
-      for (let xx = rx + 12; xx < rx + rw; xx += 12) { ctx.beginPath(); ctx.moveTo(xx, ry + 1); ctx.lineTo(xx, ry + rh - 1); ctx.stroke(); }
-      ctx.fillStyle = "#8a5f33"; ctx.fillRect(rx, ry, rw, 2); ctx.fillRect(rx, ry + rh - 2, rw, 2);
-      ctx.fillStyle = "#6a451f";
-      for (let xx = rx + 10; xx < rx + rw; xx += 34) { ctx.fillRect(xx, ry - 1, 3, 3); ctx.fillRect(xx, ry + rh - 2, 3, 3); }
-    } else {
-      for (let yy = ry + 12; yy < ry + rh; yy += 12) { ctx.beginPath(); ctx.moveTo(rx + 1, yy); ctx.lineTo(rx + rw - 1, yy); ctx.stroke(); }
-      ctx.fillStyle = "#8a5f33"; ctx.fillRect(rx, ry, 2, rh); ctx.fillRect(rx + rw - 2, ry, 2, rh);
-      ctx.fillStyle = "#6a451f";
-      for (let yy = ry + 10; yy < ry + rh; yy += 34) { ctx.fillRect(rx - 1, yy, 3, 3); ctx.fillRect(rx + rw - 2, yy, 3, 3); }
-    }
+    if (Math.max(P.x0, P.x1) + hw + 20 < view.x0 || Math.min(P.x0, P.x1) - hw - 20 > view.x1 ||
+        Math.max(P.y0, P.y1) + hw + 20 < view.y0 || Math.min(P.y0, P.y1) - hw - 20 > view.y1) return;
+    const len = Math.hypot(P.x1 - P.x0, P.y1 - P.y0), ang = Math.atan2(P.y1 - P.y0, P.x1 - P.x0);
+    ctx.save();
+    ctx.translate(P.x0, P.y0); ctx.rotate(ang);
+    ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(2, -hw + 4, len, P.w);      // deck shadow
+    ctx.fillStyle = "#b98a4e"; ctx.fillRect(0, -hw, len, P.w);                    // warm timber deck
+    ctx.strokeStyle = "rgba(60,40,20,0.35)"; ctx.lineWidth = 1;                   // plank seams
+    for (let s = 12; s < len; s += 12) { ctx.beginPath(); ctx.moveTo(s, -hw + 1); ctx.lineTo(s, hw - 1); ctx.stroke(); }
+    ctx.fillStyle = "#8a5f33"; ctx.fillRect(0, -hw, len, 2); ctx.fillRect(0, hw - 2, len, 2);   // rails
+    ctx.fillStyle = "#6a451f";                                                    // posts
+    for (let s = 10; s < len; s += 34) { ctx.fillRect(s, -hw - 1, 3, 3); ctx.fillRect(s, hw - 2, 3, 3); }
+    ctx.restore();
   }
 
   function drawStreetLabels(view) {
@@ -918,18 +933,8 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         ctx.fill();
       }
     }
-    const faroComma = (cx, cy, r, rot) => {                // red comma paving inset
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
-      ctx.fillStyle = "#c34a3c";
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0.35, Math.PI * 1.5);
-      ctx.arc(r * 0.42, r * 0.08, r * 0.6, Math.PI * 1.5, 0.35, true);
-      ctx.closePath(); ctx.fill();
-      ctx.restore();
-    };
-    const commas = lm.commas || [];
-    for (let i = 0; i < commas.length; i++)
-      faroComma(commas[i][0], commas[i][1], 7, hash01(i * 3.1 + lm.x) * Math.PI * 2);
+    // (the red comma "islands" are drawn in the GROUND layer — drawFaroCommas —
+    // so the trees sit on top of them, not the other way around)
     // A few palms by the plaza (static, same look as drawPalms)
     const pxy = [[x + 22, y - 12], [x + 27, y + 11], [x - 4, y + 19]];
     for (let i = 0; i < pxy.length; i++) {

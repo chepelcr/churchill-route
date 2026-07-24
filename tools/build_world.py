@@ -251,7 +251,8 @@ LANDMARK_DEFS = [
     # Lito Pérez at Calle 15-17 x Avenida 0-2; Las Playitas at Calle 6-8 x Avenida 1.
     # The ll anchors are only fallbacks if a street name fails to resolve.
     {"id": "estadio",         "name": "Estadio Lito Pérez",    "type": "stadium",      "district": "carmen",   "ll": (9.97680, -84.83880)},
-    {"id": "estadio_playitas","name": "Estadio Las Playitas",  "type": "stadium",      "district": "playitas", "ll": (9.97960, -84.82520)},
+    # Open green field, no graderías — it reads as a plaza, not a stadium
+    {"id": "estadio_playitas","name": "Plaza Las Playitas",    "type": "stadium",      "district": "playitas", "ll": (9.97960, -84.82520)},
     {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97840, -84.82640)},
     {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "cocal",    "osm": "yacht", "ll": (9.97900, -84.81200)},
     # anchor monument on the island where the road splits into the Cocal (west
@@ -3244,15 +3245,51 @@ def main():
                 return sum(vals) / len(vals)
         return None
 
-    def _cuadra_cells(px0, py0, px1, py1, classes):
+    def _street_edge(names, ref, span=700):
+        """A named street NEAR ref as an infinite LINE (px, py, ux, uy): the mean
+        of its samples plus its principal-axis direction. Used to bound a cuadra
+        along a street that STOPS short (Calle 8 dead-ends in the sand): the
+        block then ends on the street's straight line, extended, instead of
+        wrapping around the road's round end cap."""
+        rx, ry = ref
+        for name in ([names] if isinstance(names, str) else names):
+            pts = []
+            for r in roads:
+                if (r.get("name") or "") != name:
+                    continue
+                for (_, x, y) in _resample_centerline(r["pts"], 8):
+                    if abs(x - rx) <= span and abs(y - ry) <= span:
+                        pts.append((x, y))
+            if len(pts) >= 2:
+                n = len(pts)
+                mx = sum(p[0] for p in pts) / n; my = sum(p[1] for p in pts) / n
+                sxx = sum((p[0] - mx) ** 2 for p in pts)
+                syy = sum((p[1] - my) ** 2 for p in pts)
+                sxy = sum((p[0] - mx) * (p[1] - my) for p in pts)
+                theta = 0.5 * math.atan2(2 * sxy, sxx - syy)
+                return (mx, my, math.cos(theta), math.sin(theta))
+        return None
+
+    def _half_plane(line, anchor, gap):
+        """clip(px, py) keeping the ANCHOR's side of a street line, stopping
+        `gap` px short of its centreline (= the near kerb)."""
+        ex, ey, ux, uy = line
+        nx, ny = -uy, ux
+        if (anchor[0] - ex) * nx + (anchor[1] - ey) * ny > 0:   # point n at the street
+            nx, ny = -nx, -ny
+        return lambda px, py: (px - ex) * nx + (py - ey) * ny <= -gap
+
+    def _cuadra_cells(px0, py0, px1, py1, classes, clip=None):
         """The one cuadra under a street rect, as raster cells: the LARGEST
         connected component of `classes` inside the rect. Clipping to the rect
         is what keeps it local — the acera fringe is continuous along every
         street, so an unbounded flood would swallow the whole city — and the
-        rect runs centreline-to-centreline, so the far-side aceras stay out."""
+        rect runs centreline-to-centreline, so the far-side aceras stay out.
+        `clip(px, py) -> bool` adds a further half-plane test (see _half_plane)."""
         gc0 = max(0, int(px0 // GRID_CELL)); gc1 = min(GRID_COLS - 1, int(px1 // GRID_CELL))
         gr0 = max(0, int(py0 // GRID_CELL)); gr1 = min(GRID_ROWS - 1, int(py1 // GRID_CELL))
-        inside = lambda c, r: gc0 <= c <= gc1 and gr0 <= r <= gr1
+        inside = lambda c, r: (gc0 <= c <= gc1 and gr0 <= r <= gr1
+                               and (clip is None or clip(c * GRID_CELL, r * GRID_CELL)))
         member = lambda c, r: grid[r * GRID_COLS + c] in classes
         seen, best = set(), set()
         for r0 in range(gr0, gr1 + 1):
@@ -3389,7 +3426,19 @@ def main():
         # the sand, not at a street). `aceras: False`: no sidewalk ring — the
         # pitch IS the whole cuadra, so the block reads as one green field.
         classes = (CLS_LAND, CLS_ACERA) + ((CLS_BEACH,) if spec.get("beach") else ())
-        outer_cells = _cuadra_cells(xa, ylo, xb, yhi, classes)
+        # `edge`: bound the block on a street that STOPS SHORT. Calle 8 dead-ends
+        # in the sand, and its round end cap was what the block wrapped around —
+        # so the plaza's right-hand wall ended in a notch instead of running out
+        # to the shoreline. Clipping on the street's straight LINE, extended,
+        # gives a wall that reads as the street continuing.
+        clip = None
+        if spec.get("edge"):
+            line = _street_edge(spec["edge"], ref)
+            if line is None:
+                print(f"[estadio] WARN {spec['id']} edge street {spec['edge']} unresolved")
+            else:
+                clip = _half_plane(line, ((xa + xb) / 2, (ylo + yhi) / 2), spec.get("edge_gap", 18))
+        outer_cells = _cuadra_cells(xa, ylo, xb, yhi, classes, clip)
         inner_cells = (outer_cells if spec.get("aceras") is False
                        else _erode_cells(outer_cells, ACERA_CELLS)) if outer_cells else set()
         outline = _outline_poly(outer_cells) if outer_cells else None
@@ -3448,7 +3497,8 @@ def main():
          "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
          "ave_south": ["Avenida Centenario"],
          "beach": True,                      # the cuadra runs out to the sand
-         "aceras": False},                   # no sidewalk — the pitch fills the block
+         "aceras": False,                    # no sidewalk — the field fills the block
+         "edge": ["Calle 8"]},               # right wall on Calle 8's line, extended
     ):
         place_stadium(_sp)
 

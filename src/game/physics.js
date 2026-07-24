@@ -70,21 +70,34 @@ export function update(dt) {
   // drop every frame of contact
   state.hitT = Math.max(0, (state.hitT || 0) - dt);
 
-  // Full-body wall probe: the four corners of the car's oriented box (0.8×
-  // extents for arcade forgiveness) — a center-only test let half the body
-  // sink into aceras. Classes 1 land / 6 acera / 0 water / 2 beach are walls.
+  // Full-body wall probe. Classes 1 land / 6 acera / 0 water / 2 beach are walls.
   const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2; };
   // On a pier deck (class 5) the only wall is the surrounding water, so the
   // usual 20% overhang forgiveness reads as "half off the muelle" — probe at
   // near-full extents there so the body can't hang over the edge.
   const probeF = W.surfaceAt(p.x, p.y) === 5 ? 0.98 : 0.8;
   const hw = veh.w * 0.5 * probeF, hh = veh.h * 0.5 * probeF;
+  // BUBBLE (capsule) collider, not an oriented BOX. A box has four sharp
+  // corners, and on the wide vehicles (tuk-tuk, pickup) a corner would hook on
+  // a kerb cell and hold the car there — the "wheels catching on the acera".
+  // Two circles along the body axis, swept, can't hook anything: whatever the
+  // approach angle there's always a tangent to slide out along. BUBBLE_PAD
+  // keeps the drawn body a hair clear so the wheels never visibly touch.
+  const BUBBLE_PAD = 1.5;
+  const br = hh + BUBBLE_PAD;                 // bubble radius = half the body width
+  const bo = Math.max(0, hw - br);            // ± offset of the two bubble centres
   const blockedAt = (x, y, ang = p.a) => {
     const ca = Math.cos(ang), sa = Math.sin(ang);
-    return isWall(x + ca * hw - sa * hh, y + sa * hw + ca * hh) ||
-           isWall(x + ca * hw + sa * hh, y + sa * hw - ca * hh) ||
-           isWall(x - ca * hw - sa * hh, y - sa * hw + ca * hh) ||
-           isWall(x - ca * hw + sa * hh, y - sa * hw - ca * hh);
+    for (let e = -1; e <= 1; e += 2) {
+      const cx = x + ca * bo * e, cy = y + sa * bo * e;
+      if (isWall(cx, cy)) return true;
+      for (let k = 0; k < 8; k++) {
+        const a = ang + (k / 8) * Math.PI * 2;
+        if (isWall(cx + Math.cos(a) * br, cy + Math.sin(a) * br)) return true;
+      }
+      if (bo === 0) break;                    // one bubble covers a stubby body
+    }
+    return false;
   };
 
   // turning — during a touch snap window (finger re-placed) the low-speed
@@ -182,7 +195,7 @@ export function update(dt) {
     // Instead, estimate the wall's normal from the grid and slide along the
     // TANGENT, removing only the into-wall component of the velocity. Same
     // feel as the pier edge, on every surface.
-    const R = Math.max(hw, hh) + 3;
+    const R = bo + br + 3;                    // just outside the bubble hull
     let nx = 0, ny = 0;
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2, cs = Math.cos(a), sn = Math.sin(a);

@@ -85,10 +85,9 @@ function drawPlazaGreen(pz, view) {
 
 // Park/plaza lawn: ONE outline polygon per green cuadra (raster-traced in the
 // build, so it follows the acera inner edge — curves included). The same-
-// colour stroke dilates the fill outward: the raster sidewalk ring is 20 px
-// deep but the painted acera band only 8 px, so without it a 12 px sand strip
-// shows between lawn and sidewalk. 14 px of dilation tucks the lawn a couple
-// px UNDER the band (painted later, so it wins) and rounds the cell steps.
+// colour stroke dilates the fill outward so the lawn tucks a few px UNDER the
+// sidewalk band (painted later, so it wins) instead of leaving a bare sand
+// strip at the seam, and rounds off the 4 px raster steps.
 const GREEN_DILATE = 28;
 function drawGreenPoly(gp, view) {
   let b = gp._aabb;
@@ -100,11 +99,11 @@ function drawGreenPoly(gp, view) {
       if (p[i + 1] < b.y0) b.y0 = p[i + 1]; if (p[i + 1] > b.y1) b.y1 = p[i + 1];
     }
   }
-  // A stadium pitch only gets enough dilation to hide the 4 px raster steps:
-  // the 20 px outside it is the acera the graderías repaint, so a park-sized
-  // skirt would bury the stands in grass. The pool outline (unused now the
-  // Balneario is water) stays at its exact edge.
-  const m = gp.type === "pool" ? 0 : gp.type === "stadium" ? 4 : GREEN_DILATE;
+  // A stadium pitch stays at its exact edge — paintStadiumCuadras repaints it
+  // over the acera band anyway, and a park-sized skirt would spill grass onto
+  // the surrounding streets. Same for the pool outline (unused now the
+  // Balneario is water).
+  const m = (gp.type === "pool" || gp.type === "stadium") ? 0 : GREEN_DILATE;
   if (b.x1 + m < view.x0 || b.x0 - m > view.x1 || b.y1 + m < view.y0 || b.y0 - m > view.y1) return;
   if (!gp._path) {
     const p = gp.pts, path = new Path2D();

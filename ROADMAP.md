@@ -48,8 +48,10 @@ game modes are live; the items below are what remains.
 - [x] **Árboles de parque hacia el borde**: en `drawGreenSpace` los árboles
       forman anillo perimetral, ya no se amontonan sobre la fuente central.
 - [x] **Casa de la Cultura = el museo**: se eliminó el landmark `museo`
-      (mismo edificio). Nudge `_nudge_off_acera` para POIs cívicos (0 movidos:
-      ya estaban centrados en su cuadra).
+      (mismo edificio). `_nudge_off_acera` ahora corre para TODOS los landmarks
+      de edificio (`BUILDING_LM`, no solo cívicos) y busca la mayor holgura de
+      tierra disponible (±16→±8 px) — reubica los que caían sobre acera/calle;
+      los muelles/faro/marina/playa se dejan intactos.
 - [x] **Palmeras del Paseo centradas**: se planta la palmera 4px al norte para
       que el tronco quede sobre la isla (compensa el ancla base de `paintPalm`).
 - [x] **Balneario = ensenada de mar**: la cuadra del Balneario se vuelve agua

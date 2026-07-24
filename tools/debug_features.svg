@@ -119,7 +119,6 @@
 <path d="M12602,9742 L12618,9742 L12618,9778 L12602,9778 Z" fill="#997" opacity="0.7"/>
 <path d="M14582,9642 L14618,9642 L14618,9698 L14582,9698 Z" fill="#997" opacity="0.7"/>
 <path d="M18282,9022 L18318,9022 L18318,9078 L18282,9078 Z" fill="#997" opacity="0.7"/>
-<path d="M16202,9682 L16258,9682 L16258,9738 L16202,9738 Z" fill="#997" opacity="0.7"/>
 <path d="M15882,9702 L15898,9702 L15898,9758 L15882,9758 Z" fill="#997" opacity="0.7"/>
 <path d="M15822,9722 L15858,9722 L15858,9758 L15822,9758 Z" fill="#997" opacity="0.7"/>
 <path d="M12762,9722 L12798,9722 L12798,9758 L12762,9758 Z" fill="#997" opacity="0.7"/>
@@ -390,9 +389,6 @@
 <path d="M34222,10182 L34258,10182 L34258,10238 L34222,10238 Z" fill="#997" opacity="0.7"/>
 <path d="M33582,9802 L33618,9802 L33618,9858 L33582,9858 Z" fill="#997" opacity="0.7"/>
 <path d="M35062,9442 L35098,9442 L35098,9498 L35062,9498 Z" fill="#997" opacity="0.7"/>
-<path d="M16162,9742 L16218,9742 L16218,9798 L16162,9798 Z" fill="#997" opacity="0.7"/>
-<path d="M16162,9682 L16198,9682 L16198,9738 L16162,9738 Z" fill="#997" opacity="0.7"/>
-<path d="M16442,9662 L16498,9662 L16498,9718 L16442,9718 Z" fill="#997" opacity="0.7"/>
 <path d="M33742,9662 L33818,9662 L33818,9738 L33742,9738 Z" fill="#997" opacity="0.7"/>
 <path d="M31542,9462 L31618,9462 L31618,9518 L31542,9518 Z" fill="#997" opacity="0.7"/>
 <path d="M31862,9482 L31938,9482 L31938,9498 L31862,9498 Z" fill="#997" opacity="0.7"/>
@@ -576,7 +572,6 @@
 <path d="M15042,9482 L15058,9482 L15058,9498 L15042,9498 Z" fill="#997" opacity="0.7"/>
 <path d="M15082,9402 L15098,9402 L15098,9438 L15082,9438 Z" fill="#997" opacity="0.7"/>
 <path d="M15102,9442 L15118,9442 L15118,9458 L15102,9458 Z" fill="#997" opacity="0.7"/>
-<path d="M16622,9622 L16658,9622 L16658,9658 L16622,9658 Z" fill="#997" opacity="0.7"/>
 <path d="M33122,9482 L33198,9482 L33198,9518 L33122,9518 Z" fill="#997" opacity="0.7"/>
 <path d="M33222,9482 L33278,9482 L33278,9518 L33222,9518 Z" fill="#997" opacity="0.7"/>
 <path d="M33342,9482 L33418,9482 L33418,9518 L33342,9518 Z" fill="#997" opacity="0.7"/>
@@ -80047,6 +80042,15 @@
 <path d="M50782,20582 L50798,20582 L50798,20618 L50782,20618 Z" fill="#997" opacity="0.7"/>
 <path d="M43482,20602 L43518,20602 L43518,20638 L43482,20638 Z" fill="#997" opacity="0.7"/>
 <path d="M43542,20602 L43558,20602 L43558,20618 L43542,20618 Z" fill="#997" opacity="0.7"/>
+<path d="M44482,20602 L44498,20602 L44498,20618 L44482,20618 Z" fill="#997" opacity="0.7"/>
+<path d="M44522,20602 L44538,20602 L44538,20638 L44522,20638 Z" fill="#997" opacity="0.7"/>
+<path d="M44622,20602 L44658,20602 L44658,20618 L44622,20618 Z" fill="#997" opacity="0.7"/>
+<path d="M44662,20602 L44678,20602 L44678,20618 L44662,20618 Z" fill="#997" opacity="0.7"/>
+<path d="M45002,20602 L45038,20602 L45038,20618 L45002,20618 Z" fill="#997" opacity="0.7"/>
+<path d="M16223,9652 L16229,9697 L16311,9679 L16307,9643 Z" fill="#997" opacity="0.7"/>
+<path d="M16138,9749 L16166,9861 L16211,9850 L16183,9738 Z" fill="#997" opacity="0.7"/>
+<path d="M16283,9689 L16288,9718 L16196,9734 L16192,9713 L16178,9715 L16176,9703 L16204,9698 L16205,9703 Z" fill="#997" opacity="0.7"/>
+<path d="M16464,9721 L16456,9699 L16517,9679 L16525,9701 Z" fill="#997" opacity="0.7"/>
 <path d="M35620,6115 L35672,6165 L35691,6186 L35707,6213 L35712,6241 L35713,6270 L35707,6301 L35694,6349" fill="none" stroke="#d66" stroke-width="61" stroke-linecap="round" opacity="0.85"/>
 <path d="M46733,6027 L46878,5987 L47326,5857 L47480,5810 L47937,5678 L48069,5637 L48768,5436 L49163,5319 L49215,5306 L49795,5143 L50054,5066 L50324,4987 L50592,4907 L50820,4841" fill="none" stroke="#d33" stroke-width="82" stroke-linecap="round" opacity="0.85"/>
 <path d="M45774,6320 L46115,6409 L46322,6482 L46371,6497 L46442,6524 L46731,6604 L46918,6660 L46960,6668 L47063,6681 L47282,6671 L47453,6670 L47558,6672 L47633,6669 L48066,6567 L48156,6553" fill="none" stroke="#ca0" stroke-width="56" stroke-linecap="round" opacity="0.85"/>
@@ -82246,8 +82250,8 @@
 <circle cx="15641" cy="10110" r="12" fill="red"/><text x="15655" y="10110" font-size="26">muellecruc</text>
 <circle cx="12606" cy="9602" r="12" fill="red"/><text x="12620" y="9602" font-size="26">ferrycr</text>
 <circle cx="13618" cy="10118" r="12" fill="red"/><text x="13632" y="10118" font-size="26">playa</text>
-<circle cx="13430" cy="9950" r="12" fill="red"/><text x="13444" y="9950" font-size="26">carmenig</text>
-<circle cx="14010" cy="10050" r="12" fill="red"/><text x="14024" y="10050" font-size="26">tioga</text>
+<circle cx="13430" cy="9958" r="12" fill="red"/><text x="13444" y="9958" font-size="26">carmenig</text>
+<circle cx="14010" cy="10046" r="12" fill="red"/><text x="14024" y="10046" font-size="26">tioga</text>
 <circle cx="15414" cy="10154" r="12" fill="red"/><text x="15428" y="10154" font-size="26">kios_paseo1</text>
 <circle cx="15534" cy="10154" r="12" fill="red"/><text x="15548" y="10154" font-size="26">kios_paseo2</text>
 <circle cx="15194" cy="9310" r="12" fill="red"/><text x="15208" y="9310" font-size="26">casafait</text>
@@ -82257,8 +82261,8 @@
 <circle cx="15034" cy="9642" r="12" fill="red"/><text x="15048" y="9642" font-size="26">catedral</text>
 <circle cx="15202" cy="9662" r="12" fill="red"/><text x="15216" y="9662" font-size="26">cultura</text>
 <circle cx="15866" cy="10070" r="12" fill="red"/><text x="15880" y="10070" font-size="26">kios_centro</text>
-<circle cx="14332" cy="9869" r="12" fill="red"/><text x="14346" y="9869" font-size="26">estadio</text>
-<circle cx="16185" cy="9457" r="12" fill="red"/><text x="16199" y="9457" font-size="26">estadio_playitas</text>
+<circle cx="14326" cy="9873" r="12" fill="red"/><text x="14340" y="9873" font-size="26">estadio</text>
+<circle cx="16190" cy="9442" r="12" fill="red"/><text x="16204" y="9442" font-size="26">estadio_playitas</text>
 <circle cx="16530" cy="9518" r="12" fill="red"/><text x="16544" y="9518" font-size="26">kios_play</text>
 <circle cx="21822" cy="9018" r="12" fill="red"/><text x="21836" y="9018" font-size="26">yatch</text>
 <circle cx="22038" cy="9194" r="12" fill="red"/><text x="22052" y="9194" font-size="26">cocal_park</text>
@@ -82266,7 +82270,7 @@
 <circle cx="31878" cy="11974" r="12" fill="red"/><text x="31892" y="11974" font-size="26">kios_cocal2</text>
 <circle cx="36782" cy="18438" r="12" fill="red"/><text x="36796" y="18438" font-size="26">puente</text>
 <circle cx="37198" cy="19402" r="12" fill="red"/><text x="37212" y="19402" font-size="26">kios_mata</text>
-<circle cx="37166" cy="19570" r="12" fill="red"/><text x="37180" y="19570" font-size="26">leda</text>
+<circle cx="37226" cy="19518" r="12" fill="red"/><text x="37240" y="19518" font-size="26">leda</text>
 <circle cx="37934" cy="18594" r="12" fill="red"/><text x="37948" y="18594" font-size="26">matalimon</text>
 <circle cx="36422" cy="20198" r="12" fill="red"/><text x="36436" y="20198" font-size="26">caldera_blvd</text>
 <circle cx="35894" cy="21082" r="12" fill="red"/><text x="35908" y="21082" font-size="26">kios_caldera</text>

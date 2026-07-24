@@ -168,58 +168,83 @@ export function update(dt) {
   p.x += p.vx * dt; p.y += p.vy * dt;
   // Solid cuadras + aceras + beach + open water: you drive ONLY the streets
   // (and the pier deck, class 5). Class 1 land, class 6 acera/curb, class 2
-  // beach and class 0 water are walls you slide along — kill only the blocked
-  // axis so tangential motion carries you. Beach became a wall on user
-  // request (beach-classed pockets also let you slip inside cuadras).
+  // beach and class 0 water are walls you SLIDE ALONG. Beach became a wall on
+  // user request (beach-classed pockets also let you slip inside cuadras).
   if (blockedAt(p.x, p.y)) {
-    // Cushioned curb: keep the tangential motion, and instead of a dead stop
-    // remove a little more than the inward-normal velocity (×1.1) so a wall
-    // pushes back softly — a colchón, not an invisible slab. (nx,ny) is the
-    // direction of travel INTO the wall.
-    const cushion = (nx, ny) => {
-      const vn = p.vx * nx + p.vy * ny;
-      if (vn > 0) { p.vx -= vn * 1.1 * nx; p.vy -= vn * 1.1 * ny; }
-    };
+    // WALL-NORMAL SLIDE. The old response separated the two AXES: revert x or
+    // revert y, whichever was blocked. That only resolves against an
+    // axis-aligned wall — which is why the muelle (a perfectly vertical
+    // rectangle in open water) has always felt right while the city has felt
+    // sticky: against a DIAGONAL acera both axes are blocked at once, so every
+    // frame fell through to a full position revert plus a 28% speed bleed and
+    // the car ground to a halt on a wall it should have skated along.
+    //
+    // Instead, estimate the wall's normal from the grid and slide along the
+    // TANGENT, removing only the into-wall component of the velocity. Same
+    // feel as the pier edge, on every surface.
+    const R = Math.max(hw, hh) + 3;
+    let nx = 0, ny = 0;
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2, cs = Math.cos(a), sn = Math.sin(a);
+      if (isWall(p.x + cs * R, p.y + sn * R)) { nx -= cs; ny -= sn; }
+    }
     const dx = p.x - prevX, dy = p.y - prevY;
-    const okX = !blockedAt(p.x, prevY);
-    const okY = !blockedAt(prevX, p.y);
-    if (okX && !okY) { p.y = prevY; cushion(0, Math.sign(dy || p.vy) || 1); }        // slide along X — soft curb
-    else if (okY && !okX) { p.x = prevX; cushion(Math.sign(dx || p.vx) || 1, 0); }   // slide along Y — soft curb
-    else if (!blockedAt(prevX, prevY)) {
-      // Dead-on corner: return to the last free pose with the same cushioned
-      // response (no per-frame bounce back into the wall), retaining most of
-      // the speed so it feels padded; shake only on a genuinely fast hit.
+    const nl = Math.hypot(nx, ny);
+    if (nl > 1e-4) { nx /= nl; ny /= nl; }
+    else {                                    // boxed in (or dead centre): back out the way we came
+      const dl = Math.hypot(dx, dy) || 1;
+      nx = -dx / dl; ny = -dy / dl;
+    }
+    // slide: drop the into-wall part of this frame's movement, shortening the
+    // step until it fits (a long step can clip a corner the tangent misses)
+    const dn = dx * nx + dy * ny;
+    const tx = dx - dn * nx, ty = dy - dn * ny;
+    let placed = false;
+    for (const f of [1, 0.5, 0.25]) {
+      const sx = prevX + tx * f, sy = prevY + ty * f;
+      if (!blockedAt(sx, sy)) { p.x = sx; p.y = sy; placed = true; break; }
+    }
+    if (!placed) { p.x = prevX; p.y = prevY; }
+    // velocity: remove ONLY the into-wall component, so all the tangential
+    // speed carries — no blanket bleed. Shake still marks a genuinely fast hit.
+    const vn = p.vx * nx + p.vy * ny;
+    if (vn < 0) {
       const hitSpeed = Math.hypot(p.vx, p.vy);
-      p.x = prevX; p.y = prevY;
-      if (Math.abs(dx) > Math.abs(dy)) cushion(Math.sign(dx || p.vx) || 1, 0);
-      else cushion(0, Math.sign(dy || p.vy) || 1);
-      p.vx *= 0.72; p.vy *= 0.72;
-      if (hitSpeed > 180) state.cam.shake = Math.max(state.cam.shake, Math.min(2, hitSpeed / 180));
-    } else if (p.freeX !== undefined && Math.hypot(p.x - p.freeX, p.y - p.freeY) < 60) {
-      // both ends blocked but we were clear a moment ago: snap back instead of
-      // the drive-out fallback (which would carry the car through the cuadra).
-      // Restore the ANGLE too — the pose was recorded clear under freeA, and
-      // snapping position alone could leave rotated corners still inside the
-      // wall, deadlocking the car half-in half-out of the acera.
-      p.x = p.freeX; p.y = p.freeY; p.vx = 0; p.vy = 0;
-      if (p.freeA !== undefined) p.a = p.freeA;
+      p.vx -= vn * nx; p.vy -= vn * ny;
+      if (hitSpeed > 180 && !placed) state.cam.shake = Math.max(state.cam.shake, Math.min(2, hitSpeed / 180));
+    }
+    // Depenetration: push straight out along the normal (the old net scanned 8
+    // directions blindly and could shove the car sideways along the wall).
+    if (blockedAt(p.x, p.y)) {
+      let out = false;
+      for (let d = 3; d <= 12 && !out; d += 3) {
+        const px = p.x + nx * d, py = p.y + ny * d;
+        if (clearSpot(px, py)) { p.x = px; p.y = py; out = true; }
+      }
+      // ...and if the normal itself points nowhere useful (a pocket, a corner
+      // between two walls), fall back to the old blind ring scan rather than
+      // leave the car wedged.
+      if (!out) {
+        outer: for (let rr = 4; rr <= 12; rr += 4)
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
+            const px = p.x + Math.cos(a) * rr, py = p.y + Math.sin(a) * rr;
+            if (clearSpot(px, py)) { p.x = px; p.y = py; p.vx *= 0.3; p.vy *= 0.3; out = true; break outer; }
+          }
+      }
+      // Last resort — wedged with no way out at all: snap back to the last pose
+      // that was clear ON A STREET, angle included (position alone could leave
+      // rotated corners still buried, deadlocking the car half-in).
+      if (!out && p.freeX !== undefined && Math.hypot(p.x - p.freeX, p.y - p.freeY) < 60) {
+        p.x = p.freeX; p.y = p.freeY; p.vx = 0; p.vy = 0;
+        if (p.freeA !== undefined) p.a = p.freeA;
+      }
     }
     // else: spawned/teleported inside a block — let it drive out
     // (record the free pose ONLY on drivable street, so a snap always lands
     // back on the road, never on a paseo/acera edge — recompute, onRoad is
     // from the pre-move surface sample)
   } else if (W.onRoad(p.x, p.y)) { p.freeX = p.x; p.freeY = p.y; p.freeA = p.a; }
-  // Depenetration net: if the car is STILL wedged, nudge to the nearest
-  // DRIVABLE spot (short range, drivable-center) — never across an acera into
-  // a cuadra. Keeps the car unstuck without the old cuadra-entering jumps.
-  if (blockedAt(p.x, p.y)) {
-    outer: for (let rr = 4; rr <= 12; rr += 4)
-      for (let k = 0; k < 8; k++) {
-        const a = (k / 8) * Math.PI * 2;
-        const nx = p.x + Math.cos(a) * rr, ny = p.y + Math.sin(a) * rr;
-        if (clearSpot(nx, ny)) { p.x = nx; p.y = ny; p.vx *= 0.3; p.vy *= 0.3; break outer; }
-      }
-  }
   p.speed = Math.hypot(p.vx, p.vy);
 
   // On the 2-D world the coastline is enforced by water-as-wall above, so the

@@ -283,11 +283,11 @@ function topUp(arr, target, make, isDead) {
   let guard = 0;
   while (arr.length < target && guard++ < target * 3) { const e = make(); if (e) arr.push(e); }
 }
-// Stadium spectators (kind "fan") are CONTAINED on the graderías — they patrol
-// the ring just outside the pitch footprint, never spilling onto the pitch or
+// Stadium spectators (kind "fan") are CONTAINED on the touchline — they patrol
+// the ring just INSIDE the pitch footprint, never spilling onto the streets or
 // wandering the city like ordinary peds. Drawn like city peds (hue/ph).
 const STADIUM_PEDS = 12;
-const RING_OFF = 9;            // px outward from the footprint edge onto the stands
+const RING_OFF = -10;          // px INWARD from the footprint edge, onto the grass
 
 // Cache each stadium's footprint perimeter as edges with outward normals +
 // cumulative arclength, so a fan's `su` (distance around) maps to a ring point.

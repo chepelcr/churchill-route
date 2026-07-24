@@ -1032,13 +1032,15 @@ def extract_buildings(sp, ways, roads):
             continue
         # Raw record only: the footprint is snapped to whole cuadrículas later
         # (snap_osm_buildings), once the cuadra blocks are known. Target size
-        # comes from the pushed-out footprint's AABB × BUILDING_SCALE.
+        # comes from the pushed-out footprint's AABB × BUILDING_SCALE. `pts` is
+        # kept so a site that must read as ITSELF (the Parque Marino aquarium)
+        # can be emitted at its true shape instead of snapped to the lattice.
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         out.append({"cx": cx, "cy": cy,
                     "w": (max(xs) - min(xs)) * BUILDING_SCALE,
                     "h": (max(ys) - min(ys)) * BUILDING_SCALE,
-                    "id": int(w["id"])})
+                    "id": int(w["id"]), "pts": pts})
     print(f"[buildings] {len(out)} raw OSM footprints, dropped {dropped_road} on-road, {dropped_small} tiny")
     return out
 
@@ -2958,6 +2960,7 @@ def main():
     greens = []
     balneario = None          # sea-water inlet bbox (boat + swimmers spawn inside)
     balneario_cells = None    # its cuad cells → added to `occ` once that exists
+    marine_site = None        # Parque Marino: {lm, cells, raster} → real OSM footprints + tanks
 
     def _block_containing(x, y):
         ac, ar = int(x // CUAD), int(y // CUAD)
@@ -3097,16 +3100,12 @@ def main():
         if marine:
             lm["marine"] = True
             lm["w"] = (bc1 - bc0 + 1) * CUAD; lm["h"] = (br1 - br0 + 1) * CUAD
-            # aquarium tanks on well-spread INTERIOR cells so they stay on the
-            # footprint (never on the streets around an irregular block)
-            inter = [c for c in cells if all((c[0] + dx, c[1] + dy) in cells
-                     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
-            src = inter if len(inter) >= 5 else sorted(cells)
-            mcx = (bc0 + bc1) / 2; mcy = (br0 + br1) / 2
-            pts = [min(src, key=lambda c: (c[0] - mcx) ** 2 + (c[1] - mcy) ** 2)]
-            while len(pts) < 5 and len(pts) < len(src):
-                pts.append(max(src, key=lambda c: min((c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 for p in pts)))
-            lm["pools"] = [[int((c[0] + 0.5) * CUAD), int((c[1] + 0.5) * CUAD)] for c in pts]
+            # The aquarium is a REAL place: its own OSM buildings are kept at
+            # their true footprints (see marine_site below) instead of snapped
+            # into generic cuadrícula boxes, and the tanks are placed after them
+            # so a tank can never end up under a building or on the acera.
+            marine_site = {"lm": lm, "cells": set(cells),
+                           "raster": _block_raster_cells(cells)}
         else:
             lm["w"] = min(160, (bc1 - bc0 + 1) * CUAD); lm["h"] = min(140, (br1 - br0 + 1) * CUAD)
 
@@ -3245,35 +3244,32 @@ def main():
                 return sum(vals) / len(vals)
         return None
 
-    def _cuadra_cells(px0, py0, px1, py1):
-        """The one cuadra under a street rect, as raster cells: flood CLS_LAND +
-        CLS_ACERA from the rect centre, CLIPPED to the rect. Clipping is what
-        keeps the flood local — the acera fringe is continuous along every
-        street, so an unbounded flood would swallow the whole city. The rect
-        runs centreline-to-centreline, so the far-side aceras stay outside."""
+    def _cuadra_cells(px0, py0, px1, py1, classes):
+        """The one cuadra under a street rect, as raster cells: the LARGEST
+        connected component of `classes` inside the rect. Clipping to the rect
+        is what keeps it local — the acera fringe is continuous along every
+        street, so an unbounded flood would swallow the whole city — and the
+        rect runs centreline-to-centreline, so the far-side aceras stay out."""
         gc0 = max(0, int(px0 // GRID_CELL)); gc1 = min(GRID_COLS - 1, int(px1 // GRID_CELL))
         gr0 = max(0, int(py0 // GRID_CELL)); gr1 = min(GRID_ROWS - 1, int(py1 // GRID_CELL))
         inside = lambda c, r: gc0 <= c <= gc1 and gr0 <= r <= gr1
-        member = lambda c, r: grid[r * GRID_COLS + c] in (CLS_LAND, CLS_ACERA)
-        # seed on every member cell near the rect centre (the exact centre can
-        # land on an interior cross-street that hasn't been clipped)
-        mc, mr = (gc0 + gc1) // 2, (gr0 + gr1) // 2
-        seeds = [(c, r) for r in range(gr0, gr1 + 1) for c in range(gc0, gc1 + 1)
-                 if member(c, r) and abs(c - mc) <= 6 and abs(r - mr) <= 6]
-        if not seeds:
-            seeds = [(c, r) for r in range(gr0, gr1 + 1) for c in range(gc0, gc1 + 1) if member(c, r)]
-        out = set()
-        for s in seeds:
-            if s in out:
-                continue
-            st = [s]
-            while st:
-                c, r = st.pop()
-                if (c, r) in out or not inside(c, r) or not member(c, r):
+        member = lambda c, r: grid[r * GRID_COLS + c] in classes
+        seen, best = set(), set()
+        for r0 in range(gr0, gr1 + 1):
+            for c0 in range(gc0, gc1 + 1):
+                if (c0, r0) in seen or not member(c0, r0):
                     continue
-                out.add((c, r))
-                st += ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1))
-        return out
+                comp, st = set(), [(c0, r0)]
+                while st:
+                    c, r = st.pop()
+                    if (c, r) in comp or not inside(c, r) or not member(c, r):
+                        continue
+                    comp.add((c, r))
+                    st += ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1))
+                seen |= comp
+                if len(comp) > len(best):
+                    best = comp
+        return best
 
     def _erode_cells(cells, depth):
         """Morphological erosion by `depth` cells (BFS distance transform seeded
@@ -3298,6 +3294,55 @@ def main():
                     q.append(n)
         return {c for c in cells if dist.get(c, depth + 1) > depth}
 
+    # Aquarium tanks: farthest-point spread over grass cells that CLEAR both the
+    # acera and every aquarium building. drawPool paints a 78x48 ellipse at
+    # s=0.46 (~36x22 px) with a tree/palm at (px-26, py+12), so a tank needs
+    # TANK_CLEAR px of lawn all round or it spills onto the sidewalk.
+    TANK_CLEAR = 26
+    def _place_marine_pools(site, raws, want=5):
+        raster = site["raster"]                       # grass cells (CLS_LAND only)
+        # distance (in cells) from every grass cell to the nearest non-grass one
+        dist = {}
+        q = deque()
+        for cell in raster:
+            c, rr = cell
+            if any((c + dc, rr + dr) not in raster for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                dist[cell] = 1; q.append(cell)
+        while q:
+            c, rr = q.popleft()
+            d = dist[(c, rr)] + 1
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                n = (c + dc, rr + dr)
+                if n in raster and n not in dist:
+                    dist[n] = d; q.append(n)
+        boxes = []
+        for raw in raws:
+            xs = [p[0] for p in raw["pts"]]; ys = [p[1] for p in raw["pts"]]
+            boxes.append((min(xs) - TANK_CLEAR, min(ys) - TANK_CLEAR,
+                          max(xs) + TANK_CLEAR, max(ys) + TANK_CLEAR))
+        free = lambda px, py: not any(x0 <= px <= x1 and y0 <= py <= y1
+                                      for (x0, y0, x1, y1) in boxes)
+        # Relax the clearance until the lawn offers enough well-separated spots:
+        # this block is cut by interior paths, so a hard 26 px leaves one pocket
+        # and all five tanks pile up in it.
+        cand = []
+        for need in (TANK_CLEAR, 22, 18, 14, 10):
+            r = need / GRID_CELL
+            cand = [(c * GRID_CELL, rr * GRID_CELL) for (c, rr) in raster
+                    if dist.get((c, rr), 0) >= r and not (c % 3 or rr % 3)
+                    and free(c * GRID_CELL, rr * GRID_CELL)]
+            if len(cand) >= want * 8:
+                break
+        if not cand:
+            print("[marino] WARN no clear spot for the aquarium tanks"); return
+        print(f"[marino] {len(raster)} grass cells -> {len(cand)} tank candidates "
+              f"at >={round(need)}px clearance")
+        mx = sum(p[0] for p in cand) / len(cand); my = sum(p[1] for p in cand) / len(cand)
+        pts = [min(cand, key=lambda p: (p[0] - mx) ** 2 + (p[1] - my) ** 2)]
+        while len(pts) < want and len(pts) < len(cand):
+            pts.append(max(cand, key=lambda p: min((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 for q in pts)))
+        site["lm"]["pools"] = [[int(p[0]), int(p[1])] for p in pts]
+
     def place_stadium(spec):
         lm = next((l for l in landmarks if l["id"] == spec["id"]), None)
         if lm is None:
@@ -3319,10 +3364,11 @@ def main():
         # Resolve the stadium's street RECT, then trace the actual cuadra under
         # it straight from the grid (these blocks classify as green plazas, not
         # buildable blocks, so we don't rely on block detection). TWO polygons
-        # come out of the trace, and the ring between them is the block's REAL
-        # acera — which the renderer repaints as the graderías:
-        #   outline = cuadra + its acera ring (drivable, touches the streets)
-        #   footprint = outline eroded by the acera depth = the PITCH
+        # come out of the trace:
+        #   outline = the cuadra incl. its acera ring (all of it drivable, so it
+        #             touches the streets and the car drives straight in)
+        #   footprint = the PITCH — outline eroded by the acera depth, or the
+        #             whole outline when the spec says the block has no aceras
         # Both follow the manzana's true grid angles, exactly like a park green
         # (_green_poly) — never an axis rect slapped over the streets.
         cxa = _street_vals(spec["calles"][0], "x", ref)
@@ -3339,8 +3385,13 @@ def main():
             print(f"[estadio] WARN {spec['id']} street resolve failed; anchor fallback")
             xa, xb = ref[0] - 5 * CUAD, ref[0] + 5 * CUAD
             ylo, yhi = ref[1] - 6 * CUAD, ref[1] + 6 * CUAD
-        outer_cells = _cuadra_cells(xa, ylo, xb, yhi)
-        inner_cells = _erode_cells(outer_cells, ACERA_CELLS) if outer_cells else set()
+        # `beach`: let the cuadra run out to the shoreline (Las Playitas ends at
+        # the sand, not at a street). `aceras: False`: no sidewalk ring — the
+        # pitch IS the whole cuadra, so the block reads as one green field.
+        classes = (CLS_LAND, CLS_ACERA) + ((CLS_BEACH,) if spec.get("beach") else ())
+        outer_cells = _cuadra_cells(xa, ylo, xb, yhi, classes)
+        inner_cells = (outer_cells if spec.get("aceras") is False
+                       else _erode_cells(outer_cells, ACERA_CELLS)) if outer_cells else set()
         outline = _outline_poly(outer_cells) if outer_cells else None
         footprint = _outline_poly(inner_cells) if inner_cells else None
         if not outline or not footprint:
@@ -3374,16 +3425,15 @@ def main():
         cxpx = int(sum(fx) / len(fx)); cypx = int(sum(fy) / len(fy))
         lm["x"], lm["y"] = cxpx, cypx
         lm["footprint"] = footprint      # the pitch (grass + white markings)
-        lm["outline"] = outline          # pitch + acera ring (= the graderías band)
-        lm["stands"] = bool(spec.get("stands", True))
+        lm["outline"] = outline          # the whole drivable cuadra
         stadiums.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                          "cx": cxpx, "cy": cypx, "footprint": footprint,
-                         "outline": outline, "stands": lm["stands"]})
+                         "outline": outline})
         ox = outline[0::2]; oy = outline[1::2]
         print(f"[estadio] {spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
-              f"-> outline ({min(ox)},{min(oy)})-({max(ox)},{max(oy)})px {len(outline)//2}v, "
+              f"-> cuadra ({min(ox)},{min(oy)})-({max(ox)},{max(oy)})px {len(outline)//2}v, "
               f"pitch ({bx0},{by0})-({bx1},{by1})px {len(footprint)//2}v, "
-              f"stands={lm['stands']}, {len(outer_cells)} cells drivable")
+              f"{len(outer_cells)} cells drivable")
 
     # Calle/Avenida refs mapped to the OSM names actually present here (odd
     # calles are unnamed → fall back to the flanking even calle; the central
@@ -3392,16 +3442,32 @@ def main():
         {"id": "estadio",                    # Lito Pérez: Calle 15-17 x Avenida 0-2
          "calles": (["Calle 15 José Joaquín Escalante"], ["Calle 17"]),
          "ave_south": ["Avenida 2"],
-         "ave_north": ["Avenida Centenario", "Avenida 0"],
-         "stands": True},
-        {"id": "estadio_playitas",           # Las Playitas: Calle 6-8, between Av 1 and
-         "calles": (["Calle 6"], ["Calle 8"]),   # Av Centenario (north of Av1 is beach/sea)
+         "ave_north": ["Avenida Centenario", "Avenida 0"]},
+        {"id": "estadio_playitas",           # Las Playitas: Calle 6-8, between Av
+         "calles": (["Calle 6"], ["Calle 8"]),   # Centenario and the shoreline
          "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
          "ave_south": ["Avenida Centenario"],
-         "stands": False},                   # no graderías here — plain green pitch
+         "beach": True,                      # the cuadra runs out to the sand
+         "aceras": False},                   # no sidewalk — the pitch fills the block
     ):
         place_stadium(_sp)
 
+    # Parque Marino: the aquarium's own OSM ways stay at their TRUE footprints
+    # (a snapped pastel box reads as a generic house, not the theme park), and
+    # occ keeps every other building — OSM or synth — off the cuadra. green=True
+    # alone only excludes a block from synth_buildings, which is why generic
+    # buildings used to land on the lawn, one of them right on an aquarium tank.
+    marine_raw = []
+    if marine_site:
+        mc = marine_site["cells"]
+        keep = []
+        for raw in raw_bldgs:
+            if (int(raw["cx"] // CUAD), int(raw["cy"] // CUAD)) in mc and raw.get("pts"):
+                marine_raw.append(raw)
+            else:
+                keep.append(raw)
+        raw_bldgs = keep
+        occ.update(mc)
     buildings = snap_osm_buildings(raw_bldgs, cell_block, occ)
     synth = synth_buildings([b for b in blocks if not b["green"]],
                             cell_block, occ, len(buildings))
@@ -3414,6 +3480,20 @@ def main():
         for v in (min(xs), max(xs), min(ys), max(ys)):
             if v % CUAD not in (BLDG_INSET, CUAD - BLDG_INSET):
                 raise SystemExit(f"[gate] building edge off the cuadrícula: {v}")
+    if marine_site:
+        # after the gate: these are deliberately OFF the lattice. Muted
+        # aquarium palette so the site reads as one complex, not a row of
+        # houses in the random pastel mix.
+        MARINE_WALL = ["#8fb8b0", "#a8c6be", "#7fa9a6", "#b7c9bd"]
+        MARINE_ROOF = ["#3f5f63", "#4d6f70", "#35545a"]
+        for i, raw in enumerate(marine_raw):
+            flat = [round(v) for p in raw["pts"] for v in p]
+            buildings.append({"pts": flat,
+                              "color": MARINE_WALL[i % len(MARINE_WALL)],
+                              "roof": MARINE_ROOF[i % len(MARINE_ROOF)], "wnd": 0})
+        _place_marine_pools(marine_site, marine_raw)
+        print(f"[marino] {len(marine_raw)} aquarium buildings at their real OSM "
+              f"footprints, {len(marine_site['lm'].get('pools', []))} tanks placed clear")
 
     # --- bridge / estuary / decorations
     if bridge_road:

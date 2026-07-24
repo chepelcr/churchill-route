@@ -1,10 +1,37 @@
 // Screen-space overlays: the objective compass, minimap, rain, night vignette
-// and the debug coordinate grid.
+// and the debug coordinate grid + real-world POI names.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { nearestKiosk } from "../../game/delivery.js";
 import { roadPath } from "./cache.js";
 import { CUAD, aabbInView, ctx, label } from "./gfx.js";
+
+// Every named real place OSM knows about (1160 of them), drawn ONLY under the
+// debug toggle: at play zoom they'd be a wall of text, but flying over the map
+// with them on is how you check a business is where it really is in Puntarenas.
+// Colour by category so the kind of place reads at a glance.
+const POI_TONE = {
+  amenity: "#e8a33d", shop: "#5fb0d6", tourism: "#e85d75", leisure: "#4f9d5b",
+  office: "#9b8cd6", healthcare: "#4fc7b8", craft: "#c9a227", historic: "#b0895f",
+};
+function drawPoiNames(view, zoom) {
+  const pois = W.POIS;
+  if (!pois || !pois.length) return;
+  ctx.font = `${Math.round(80 / zoom) / 10}px 'JetBrains Mono', monospace`;
+  ctx.textAlign = "center";
+  const pad = 40;
+  for (const p of pois) {
+    if (p.x < view.x0 - pad || p.x > view.x1 + pad || p.y < view.y0 - pad || p.y > view.y1 + pad) continue;
+    const tone = POI_TONE[p.cat.split("=")[0]] || "#fff";
+    ctx.fillStyle = tone;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3 / zoom, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(10,8,20,0.72)";
+    const w = ctx.measureText(p.name).width + 6 / zoom;
+    ctx.fillRect(p.x - w / 2, p.y - 15 / zoom, w, 11 / zoom);
+    ctx.fillStyle = tone;
+    ctx.fillText(p.name, p.x, p.y - 7 / zoom);
+  }
+}
 
 // Debug coordinate grid (world space). Minor lines every cuadrícula, bold
 // labelled lines every 10 — so you can read off world (x,y) anywhere.
@@ -152,4 +179,4 @@ function drawMinimap(vw, vh, t) {
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
 }
 
-export { drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawRain };
+export { drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames, drawRain };

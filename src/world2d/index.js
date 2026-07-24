@@ -42,6 +42,9 @@ export const WORLD2D = (function () {
   const KIOSK_PATHS = manifest.kioskPaths || []; // sand access paths to beach kiosks
   const PLAZAS = manifest.plazas || [];   // [x,y,w,h,type] ground rects (esplanade)
   const GREENS = manifest.greens || [];   // {pts:[x,y,...], type} park/plaza outline polys
+  // Every named real-world POI OSM knows about {x,y,name,cat}. Debug overlay
+  // only for now — 1160 pills at play zoom would be a wall of text.
+  const POIS = manifest.pois || [];
 
   // ----- tile cache ----------------------------------------------------------
   // key = tr * TCOLS + tc. Value: { grid:Uint8Array, cols, rows, x, y, roads,
@@ -305,7 +308,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, POIS,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

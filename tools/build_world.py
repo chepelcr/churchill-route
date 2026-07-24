@@ -504,10 +504,24 @@ def clip_poly_to_rect(pts, w, h):
 
 # ----------------------------------------------------------------- parse ---
 
+# OSM keys that make an object a real-world POINT OF INTEREST (a business, a
+# civic building, a park...). Order matters: the first match names the category.
+POI_KEYS = ("amenity", "shop", "tourism", "leisure", "office", "healthcare",
+            "craft", "historic")
+
+def poi_category(tags):
+    """(key, value) of the first POI key on `tags`, or None if it isn't a POI."""
+    for k in POI_KEYS:
+        if k in tags:
+            return k, tags[k]
+    return None
+
+
 def parse_osm(path):
     nodes = {}
     ways = []
     named = []            # (lower_name, (mx,my), tags) for POI resolution
+    poi_nodes = []        # (ll, tags) for every NAMED standalone POI node
     rels = []
     keep_keys = {"highway", "building", "natural", "name", "amenity",
                  "man_made", "bridge", "ref", "wetland", "leisure"}
@@ -523,6 +537,8 @@ def parse_osm(path):
                         tags = {tt.get("k"): tt.get("v") for tt in el.findall("tag")}
             if tags and tags.get("name"):
                 named.append((tags["name"].lower(), to_m(*ll), tags))
+                if poi_category(tags):
+                    poi_nodes.append((ll, tags))
             el.clear()
         elif el.tag == "way":
             tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
@@ -543,7 +559,7 @@ def parse_osm(path):
         nm = w["tags"].get("name")
         if nm and pts:
             named.append((nm.lower(), poly_centroid(pts), w["tags"]))
-    return nodes, ways, named, rels
+    return nodes, ways, named, rels, poi_nodes
 
 # ----------------------------------------------------------------- spine ---
 
@@ -1038,11 +1054,63 @@ def extract_buildings(sp, ways, roads):
         # can be emitted at its true shape instead of snapped to the lattice.
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
-        out.append({"cx": cx, "cy": cy,
-                    "w": (max(xs) - min(xs)) * BUILDING_SCALE,
-                    "h": (max(ys) - min(ys)) * BUILDING_SCALE,
-                    "id": int(w["id"]), "pts": pts})
+        rec = {"cx": cx, "cy": cy,
+               "w": (max(xs) - min(xs)) * BUILDING_SCALE,
+               "h": (max(ys) - min(ys)) * BUILDING_SCALE,
+               "id": int(w["id"]), "pts": pts}
+        # A building that IS a named place (Hotel Tioga, Súper Salinas, the
+        # church…) keeps its real outline — snapping it to the cuadrícula turns
+        # a landmark you can recognise into one more anonymous pastel box.
+        if w["tags"].get("name") and poi_category(w["tags"]):
+            rec["name"] = w["tags"]["name"]
+            k, v = poi_category(w["tags"])
+            rec["cat"] = f"{k}={v}"
+        out.append(rec)
     print(f"[buildings] {len(out)} raw OSM footprints, dropped {dropped_road} on-road, {dropped_small} tiny")
+    return out
+
+
+def extract_pois(sp, ways, poi_nodes):
+    """Every NAMED real-world POI (business, church, school, park…) projected to
+    world px: {x, y, name, cat}. `cat` is "key=value" from POI_KEYS, so the
+    renderer can style or filter by kind. Standalone OSM nodes use their own
+    position; POI ways (a shop mapped as its building outline) use the polygon
+    centroid. Deduped by (name, 20px cell) — OSM often carries both a building
+    way and a point node for the same place."""
+    out, seen = [], set()
+
+    def add(name, tags, x, y):
+        if not (0 <= x < CANVAS_W and 0 <= y < CANVAS_H):
+            return
+        key = (name.lower(), int(x // CUAD), int(y // CUAD))
+        if key in seen:
+            return
+        seen.add(key)
+        k, v = poi_category(tags)
+        out.append({"x": round(x), "y": round(y), "name": name, "cat": f"{k}={v}"})
+
+    for (ll, tags) in poi_nodes:
+        if not way_in_corridor(sp, [to_m(*ll)]):
+            continue
+        x, y, _, _ = sp.project(to_m(*ll))
+        add(tags["name"], tags, x, y)
+    for w in ways:
+        tags = w["tags"]
+        name = tags.get("name")
+        if not name or not poi_category(tags) or len(w["pts"]) < 3:
+            continue
+        if not way_in_corridor(sp, w["pts"]):
+            continue
+        pts, _ = project_way_pts(sp, w["pts"])
+        if not pts:
+            continue
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        add(name, tags, cx, cy)
+    by_cat = defaultdict(int)
+    for p in out:
+        by_cat[p["cat"].split("=")[0]] += 1
+    print(f"[pois] {len(out)} named real-world POIs: {dict(sorted(by_cat.items()))}")
     return out
 
 
@@ -2054,7 +2122,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
                  stadiums=None, kiosk_paths=None, faro_pier=None, greens=None,
-                 balneario=None):
+                 balneario=None, pois=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -2166,6 +2234,9 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         "balneario": balneario,
         "kioskPaths": kiosk_paths or [],
         "faroPier": faro_pier,
+        # every named real-world POI (name + category + world px), for the
+        # debug overlay that validates the map against real Puntarenas
+        "pois": pois or [],
     }
     with open(os.path.join(WORLD2D_DIR, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
@@ -2227,7 +2298,7 @@ def _planar_setup(ways):
 def main():
     t0 = time.time()
     print(f"[parse] {OSM_PATH}")
-    nodes, ways, named, rels = parse_osm(OSM_PATH)
+    nodes, ways, named, rels, poi_nodes = parse_osm(OSM_PATH)
     print(f"[parse] {len(nodes)} nodes, {len(ways)} kept ways, {len(named)} named features ({time.time()-t0:.1f}s)")
 
     sp = _planar_setup(ways) if PLANAR else build_spine(ways, nodes)
@@ -2269,6 +2340,7 @@ def main():
 
     raw_bldgs = extract_buildings(sp, ways, roads)
     beaches, waters = extract_areas(sp, ways, rels)
+    pois = extract_pois(sp, ways, poi_nodes)
     print(f"[areas] {len(beaches)} beach, {len(waters)} water polys")
 
     # --- raster surface grid
@@ -3518,6 +3590,23 @@ def main():
                 keep.append(raw)
         raw_bldgs = keep
         occ.update(mc)
+    # Every OTHER building that is a NAMED place also keeps its real outline, for
+    # the same reason: Hotel Tioga, the Catedral, Súper Salinas et al. should be
+    # recognisable on the map, not another anonymous pastel rect. They bypass the
+    # cuadrícula snap, so claim the cuad cells they cover — otherwise a snapped
+    # or synthesised neighbour lands on top of them.
+    named_raw, keep = [], []
+    for raw in raw_bldgs:
+        if raw.get("name") and raw.get("pts"):
+            named_raw.append(raw)
+        else:
+            keep.append(raw)
+    raw_bldgs = keep
+    for raw in named_raw:
+        xs = [p[0] for p in raw["pts"]]; ys = [p[1] for p in raw["pts"]]
+        for cc in range(int(min(xs) // CUAD), int(max(xs) // CUAD) + 1):
+            for cr in range(int(min(ys) // CUAD), int(max(ys) // CUAD) + 1):
+                occ.add((cc, cr))
     buildings = snap_osm_buildings(raw_bldgs, cell_block, occ)
     synth = synth_buildings([b for b in blocks if not b["green"]],
                             cell_block, occ, len(buildings))
@@ -3530,9 +3619,9 @@ def main():
         for v in (min(xs), max(xs), min(ys), max(ys)):
             if v % CUAD not in (BLDG_INSET, CUAD - BLDG_INSET):
                 raise SystemExit(f"[gate] building edge off the cuadrícula: {v}")
+    # after the gate: real footprints are deliberately OFF the lattice
     if marine_site:
-        # after the gate: these are deliberately OFF the lattice. Muted
-        # aquarium palette so the site reads as one complex, not a row of
+        # Muted aquarium palette so the site reads as one complex, not a row of
         # houses in the random pastel mix.
         MARINE_WALL = ["#8fb8b0", "#a8c6be", "#7fa9a6", "#b7c9bd"]
         MARINE_ROOF = ["#3f5f63", "#4d6f70", "#35545a"]
@@ -3544,6 +3633,14 @@ def main():
         _place_marine_pools(marine_site, marine_raw)
         print(f"[marino] {len(marine_raw)} aquarium buildings at their real OSM "
               f"footprints, {len(marine_site['lm'].get('pools', []))} tanks placed clear")
+    for raw in named_raw:
+        rng = _make_rng(raw["id"])
+        buildings.append({"pts": [round(v) for p in raw["pts"] for v in p],
+                          "color": BLDG_PALETTE[int(rng() * len(BLDG_PALETTE))],
+                          "roof": ROOF_PALETTE[int(rng() * len(ROOF_PALETTE))],
+                          "wnd": 1 if rng() < 0.7 else 0,
+                          "name": raw["name"], "cat": raw.get("cat")})
+    print(f"[buildings] {len(named_raw)} NAMED buildings kept at their real OSM footprint")
 
     # --- bridge / estuary / decorations
     if bridge_road:
@@ -3802,7 +3899,7 @@ def main():
                      beaches=beaches, waters=waters, land_polys=land_contours,
                      landmarks=landmarks, customers=customers, stages=STAGES, stadiums=stadiums,
                      kiosk_paths=kiosk_paths, faro_pier=faro_pier, balneario=balneario,
-                     bridge=bridge, estuary=est, pier=pier, hills=hills)
+                     bridge=bridge, estuary=est, pier=pier, hills=hills, pois=pois)
     else:
         data = {
             "meta": meta,

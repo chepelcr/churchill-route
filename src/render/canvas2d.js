@@ -24,7 +24,8 @@ import {
   drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor, paintVehicle,
 } from "./c2d/entities.js";
 import {
-  drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawRain,
+  drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames,
+  drawRain,
 } from "./c2d/hud.js";
 
 // ---- Main render ----------------------------------------------------------
@@ -171,7 +172,7 @@ function render(t) {
   }
 
   // Debug coordinate grid (topmost world-space layer)
-  if (state.debug) drawDebugGrid(view, ZOOM);
+  if (state.debug) { drawDebugGrid(view, ZOOM); drawPoiNames(view, ZOOM); }
 
   // Overlays
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

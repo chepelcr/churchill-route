@@ -100,10 +100,11 @@ function drawGreenPoly(gp, view) {
       if (p[i + 1] < b.y0) b.y0 = p[i + 1]; if (p[i + 1] > b.y1) b.y1 = p[i + 1];
     }
   }
-  // Stadium pitches dilate like parks so the grass tucks under the sidewalk
-  // (no bare sand ring); only the pool outline (unused now the Balneario is
-  // water) stays at its exact edge.
-  const m = (gp.type === "pool") ? 0 : GREEN_DILATE;
+  // A stadium pitch only gets enough dilation to hide the 4 px raster steps:
+  // the 20 px outside it is the acera the graderías repaint, so a park-sized
+  // skirt would bury the stands in grass. The pool outline (unused now the
+  // Balneario is water) stays at its exact edge.
+  const m = gp.type === "pool" ? 0 : gp.type === "stadium" ? 4 : GREEN_DILATE;
   if (b.x1 + m < view.x0 || b.x0 - m > view.x1 || b.y1 + m < view.y0 || b.y0 - m > view.y1) return;
   if (!gp._path) {
     const p = gp.pts, path = new Path2D();

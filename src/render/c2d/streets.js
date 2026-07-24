@@ -6,9 +6,65 @@ import { t } from "../../i18n/index.js";
 import { dashPath, roadPath } from "./cache.js";
 import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, label } from "./gfx.js";
 
+// Estadios are NOT a structure drawn over the ground — they are a COLOUR
+// CHOICE inside the acera pass. The build traces each one as two organic
+// polygons from the real cuadra (outline = block + sidewalk, footprint = that
+// eroded by the acera depth = the pitch), so the 20 px ring between them is
+// literally the block's sidewalk: here it is simply repainted grey, in two
+// tiers, instead of the usual concrete. Drawn between the acera band and the
+// casing/asphalt, so (a) the asphalt pass paints over anything that reaches
+// the roadway and (b) street name pills, buildings and flora still land on
+// top — the stadium can never bury them the way a later layer did.
+function paintStadiumCuadras(view) {
+  const arr = W.STADIUMS;
+  if (!arr || !arr.length) return;
+  for (const S of arr) {
+    if (S.x1 + 40 < view.x0 || S.x0 - 40 > view.x1 || S.y1 + 40 < view.y0 || S.y0 - 40 > view.y1) continue;
+    if (!S.footprint || !S.outline) continue;
+    const pitch = S._pitch || (S._pitch = flatPath(S.footprint, true));
+    if (S.stands !== false) {
+      // The ring ONLY: outline and pitch as two subpaths of one even-odd clip,
+      // so nothing here can touch the grass (which stays the ground-layer green
+      // poly — no second grass draw) or the roadway outside the block.
+      let ring = S._ring;
+      if (!ring) {
+        ring = S._ring = new Path2D();
+        ring.addPath(flatPath(S.outline, true));
+        ring.addPath(pitch);
+      }
+      ctx.save();
+      ctx.clip(ring, "evenodd");
+      ctx.fillStyle = "#a8a190"; ctx.fill(ring, "evenodd");   // upper tier (outer 10 px)
+      // bevel, not round: a 20 px round join arcs over the cuadra's real
+      // corners and the ring reads as a smooth bowl, not the sidewalk it is
+      ctx.lineJoin = "bevel"; ctx.lineCap = "butt";
+      ctx.strokeStyle = "#cec7b2"; ctx.lineWidth = ACERA_PX;  // lower tier, acera grey
+      ctx.stroke(pitch);                                      // its inward half is clipped away
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.clip(pitch);
+    const w = S.x1 - S.x0, h = S.y1 - S.y0;
+    const cx = (S.x0 + S.x1) / 2, cy = (S.y0 + S.y1) / 2;
+    if (S.stands === false) {                              // mow stripes on the plain pitch
+      ctx.fillStyle = "rgba(30,88,50,0.16)";
+      for (let sy = S.y0; sy < S.y1; sy += 14) ctx.fillRect(S.x0, sy, w, 7);
+    }
+    const inset = Math.max(10, Math.min(w, h) * 0.12);
+    ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2;
+    ctx.strokeRect(S.x0 + inset, S.y0 + inset, w - 2 * inset, h - 2 * inset);
+    ctx.beginPath();
+    if (w >= h) { ctx.moveTo(cx, S.y0 + inset); ctx.lineTo(cx, S.y1 - inset); } // wide → vertical halfway line
+    else { ctx.moveTo(S.x0 + inset, cy); ctx.lineTo(S.x1 - inset, cy); }        // tall → horizontal halfway line
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, Math.min(w, h) * 0.13, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+}
+
 // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
 // ported from the corridor renderer but fed per-tile road segments.
-function paintRoads(roads) {
+function paintRoads(roads, view) {
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // elevated (barro/Ferrocarril) drop-shadow
   ctx.strokeStyle = "rgba(0,0,0,0.30)";
@@ -29,6 +85,10 @@ function paintRoads(roads) {
     ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
     ctx.fill();
   }
+  // estadios: the same sidewalk, repainted grey (after the fillets so the
+  // junction discs can't overwrite it, before the asphalt so the asphalt wins)
+  paintStadiumCuadras(view);
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
   // barro shoulder
   ctx.strokeStyle = "#7d6242";
   for (const r of roads) { if (!r.barro) continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }

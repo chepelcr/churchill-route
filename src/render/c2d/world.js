@@ -23,7 +23,7 @@ function drawWorld2D(view, t) {
     for (const r of tile.roads) if (aabbInView(r.aabb, view, r.w + 6)) roads.push(r);
   }
   roads.sort((a, b) => (ROAD_ORDER[a.cls] || 0) - (ROAD_ORDER[b.cls] || 0));
-  paintRoads(roads);
+  paintRoads(roads, view);
   // rails (old Ferrocarril line) + paseo separator ground strips, on top of
   // the asphalt but under buildings/flora
   for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);

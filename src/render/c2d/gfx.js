@@ -83,7 +83,9 @@ function flatPath(pts, close) {
   if (close) path.closePath();
   return path;
 }
-// minor classes first so major roads paint on top
+// Same as flatAABB but returning the bare rect callers destructure — kept
+// distinct so the render-cache entries keep their {aabb} shape.
+const polyBBox = flatAABB;
 
 function aabbInView(a, view, pad) {
   return !(a.x1 + pad < view.x0 || a.x0 - pad > view.x1 || a.y1 + pad < view.y0 || a.y0 - pad > view.y1);
@@ -98,6 +100,14 @@ function label(x, y, text, fg, bg) {
   ctx.fillStyle = fg; ctx.fillText(text, x, y + 1);
 }
 
+// Tag for an AREA landmark (park, estadio, balneario): the pill sits just
+// INSIDE the area's own bounds at the top, so it reads as belonging to the
+// place. Offsetting by half the block height instead — as every area drawer
+// used to — floated the tag a cuadra NORTH, over the street.
+function areaLabel(x0, y0, x1, y1, text, fg, bg) {
+  label((x0 + x1) / 2, Math.min(y0 + 12, (y0 + y1) / 2), text, fg, bg);
+}
+
 // Deterministic 0..1 hash for scene scatter (no Math.random in draw paths)
 function hash01(n) {
   const v = Math.sin(n) * 43758.5453;
@@ -105,7 +115,7 @@ function hash01(n) {
 }
 
 export {
-  ACERA_PX, CUAD, CUADS_PER_VIEW, aabbInView, canvas, computeZoom, ctx, dpr,
-  flatAABB, flatPath, hash01, label, lastT, roundRect, setLastT, setupCanvas,
-  weatherColors, ZOOM,
+  ACERA_PX, CUAD, CUADS_PER_VIEW, aabbInView, areaLabel, canvas, computeZoom,
+  ctx, dpr, flatAABB, flatPath, hash01, label, lastT, polyBBox, roundRect,
+  setLastT, setupCanvas, weatherColors, ZOOM,
 };

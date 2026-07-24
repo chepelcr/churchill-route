@@ -1,8 +1,7 @@
 // Landmark drawers: the faro scene, green spaces, the estadios, fountains,
 // pools, the Parque Marino and the sponsored lotes, behind drawLandmark().
 import { paintPalm, paintTree } from "./flora.js";
-import { ACERA_PX, ctx, hash01, label, lastT, roundRect } from "./gfx.js";
-import { GREEN_DILATE } from "./ground.js";
+import { areaLabel, ctx, hash01, label, lastT, polyBBox, roundRect } from "./gfx.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -112,63 +111,21 @@ function drawGreenSpace(lm, w, h, opts = {}) {
   if (opts.fountain) drawFountain(x, y);
 }
 
-// Estadio: white pitch markings clipped to the EXACT cuad footprint polygon
-// (the grass itself is the "stadium"-typed green poly painted in the ground
-// layer). The clip keeps the markings inside the real block even when its
-// sides are stepped/angled. Halfway line runs along the short axis so both a
-// wide (Lito Pérez) and a tall (Las Playitas) pitch read correctly.
+// Estadio — NAME PILL ONLY. The stadium itself (grey graderías on the block's
+// real sidewalk + the pitch and its markings) is painted inside the acera pass,
+// paintStadiumCuadras in ./streets.js: it's a colour choice on ground that
+// already exists, not a structure stacked on a later layer. Drawing it here is
+// what used to bury the street name pills under the block.
 function drawStadium(lm) {
   const pts = lm.footprint;
-  if (!pts || pts.length < 6) {
+  if (!pts || pts.length < 6) {                       // no traced cuadra: legacy rect
     const w = lm.w || 156, h = lm.h || 122;
     drawGreenSpace(lm, w, h, { pitch: true });
-    label(lm.x, lm.y - h / 2 - 6, "ESTADIO", "#fff", "#2e7d44");
+    areaLabel(lm.x - w / 2, lm.y - h / 2, lm.x + w / 2, lm.y + h / 2, "ESTADIO", "#fff", "#2e7d44");
     return;
   }
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  const path = new Path2D();
-  path.moveTo(pts[0], pts[1]);
-  for (let i = 2; i < pts.length; i += 2) path.lineTo(pts[i], pts[i + 1]);
-  path.closePath();
-  for (let i = 0; i < pts.length; i += 2) {
-    if (pts[i] < x0) x0 = pts[i]; if (pts[i] > x1) x1 = pts[i];
-    if (pts[i + 1] < y0) y0 = pts[i + 1]; if (pts[i + 1] > y1) y1 = pts[i + 1];
-  }
-  const w = x1 - x0, h = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  const inset = Math.max(10, Math.min(w, h) * 0.12);
-  // GRADERÍAS: the block's real acera ring becomes the grandstand — a
-  // dark-gray band hugging the pitch with a lighter tier line down its middle
-  // to fake a raised stand. Drawn in the LANDMARK pass (after the sidewalks)
-  // so it recolours the actual acera, and BEFORE the green pitch, whose fill
-  // then reclaims the inner half so only the outer stand shows. Follows the
-  // organic footprint (diagonal blocks included) — never a rect over streets.
-  const stands = lm.stands !== false;
-  if (stands) {
-    ctx.save();
-    ctx.lineJoin = "round"; ctx.lineCap = "round";
-    const bandW = 2 * (GREEN_DILATE + ACERA_PX); // cover the pitch's dilated skirt + sidewalk = stands
-    ctx.strokeStyle = "#40424a"; ctx.lineWidth = bandW; ctx.stroke(path);        // lower stand
-    ctx.strokeStyle = "#565963"; ctx.lineWidth = bandW * 0.56; ctx.stroke(path); // upper tier (step = altitude)
-    ctx.restore();
-  }
-  ctx.save();
-  ctx.clip(path);
-  ctx.fillStyle = "#4f9d5b";                                    // green pitch ground (like a park)
-  ctx.fill(path);
-  if (!stands) {                                                // subtle mow stripes on the plain pitch
-    ctx.fillStyle = "rgba(30,88,50,0.16)";
-    for (let sy = y0; sy < y1; sy += 14) ctx.fillRect(x0, sy, w, 7);
-  }
-  ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2; // pitch lines
-  ctx.strokeRect(x0 + inset, y0 + inset, w - 2 * inset, h - 2 * inset);
-  ctx.beginPath();
-  if (w >= h) { ctx.moveTo(cx, y0 + inset); ctx.lineTo(cx, y1 - inset); }  // wide → vertical halfway line
-  else { ctx.moveTo(x0 + inset, cy); ctx.lineTo(x1 - inset, cy); }         // tall → horizontal halfway line
-  ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy, Math.min(w, h) * 0.13, 0, Math.PI * 2); ctx.stroke();
-  ctx.restore();
-  if (!stands) { ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); } // curb edge (Playitas)
-  label(cx, y0 - 6, (lm.name || "Estadio").toUpperCase(), "#fff", "#2e7d44");
+  const b = polyBBox(pts);
+  areaLabel(b.x0, b.y0, b.x1, b.y1, (lm.name || "Estadio").toUpperCase(), "#fff", "#2e7d44");
 }
 
 // Central fountain with living (animated) water: stone basin, rippling pool,
@@ -245,7 +202,9 @@ function drawMarinePark(lm) {
   }
   for (let i = 0; i < pools.length; i++)
     drawPool(pools[i][0], pools[i][1], i % 2 ? 0.18 : -0.14, 0.46, false);
-  label(lm.x, lm.y - (lm.h || 120) / 2 - 6, "PARQUE MARINO", "#fff", "#2e7d44");
+  const mw = lm.w || 240, mh = lm.h || 120;
+  areaLabel(lm.x - mw / 2, lm.y - mh / 2, lm.x + mw / 2, lm.y + mh / 2,
+            "PARQUE MARINO", "#fff", "#2e7d44");
 }
 
 function drawLandmark(lm) {
@@ -306,7 +265,7 @@ function drawLandmark(lm) {
       const pw = lm.w || 116, ph = lm.h || 90;
       if (lm.marine) { drawMarinePark(lm, pw, ph); break; }
       drawGreenSpace(lm, pw, ph, { fountain: true, ground: false });
-      label(x, y - ph / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
+      areaLabel(x - pw / 2, y - ph / 2, x + pw / 2, y + ph / 2, "PARQUE", "#fff", "#2e7d44"); break;
     }
     case "stadium": {
       drawStadium(lm); break;
@@ -333,7 +292,8 @@ function drawLandmark(lm) {
       // Balneario Municipal at La Punta — a SEA-WATER inlet: the cuadra is
       // painted by the living-sea effect (its outline is in W.WATERS) with a
       // boat + swimmers inside; here we only tag it with a label.
-      label(x, y - (lm.h || 60) / 2 - 6, "BALNEARIO", "#fff", "#3a6f8a"); break;
+      const bw = lm.w || 120, bh = lm.h || 60;
+      areaLabel(x - bw / 2, y - bh / 2, x + bw / 2, y + bh / 2, "BALNEARIO", "#fff", "#3a6f8a"); break;
     }
     case "house": {
       ctx.fillStyle = "#c084d6"; ctx.fillRect(x - 14, y - 10, 28, 20);

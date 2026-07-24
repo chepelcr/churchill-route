@@ -2839,14 +2839,14 @@ def main():
             n_snap += 1
     print(f"[poi] {n_snap} building landmarks snapped into cuadra interiors")
 
-    # Civic-row POIs (catedral / iglesia / Casa de la Cultura) often keep their
-    # geo anchor (the fine centro cuadras classify as slivers, so the snap above
-    # returns None) and land right on the acera fringe — the icon then straddles
-    # the sidewalk. Pull each to the NEAREST grid point whose ±2-cell (~8 px)
-    # neighbourhood is all solid land, so the base clears the acera ring.
-    def _nudge_off_acera(x, y, reach_cells=12, pad=2):
+    # Building POIs often keep their geo anchor (dense/sliver cuadras make the
+    # snap above return None) and land on the acera fringe or a street — the icon
+    # then straddles the sidewalk. Pull each to the NEAREST grid point with as
+    # much solid-land clearance as its cuadra allows (±16 px if possible, down to
+    # ±8 px), so the icon sits inside the block, not on the sidewalk.
+    def _nudge_off_acera(x, y, reach_cells=16):
         cx0, cy0 = int(x / GRID_CELL), int(y / GRID_CELL)
-        def interior(c, r):
+        def interior(c, r, pad):
             for dc in range(-pad, pad + 1):
                 for dr in range(-pad, pad + 1):
                     cc, rr = c + dc, r + dr
@@ -2855,33 +2855,34 @@ def main():
                     if grid[rr * GRID_COLS + cc] != CLS_LAND:
                         return False
             return True
-        if interior(cx0, cy0):
-            return x, y
-        best = None
-        for rad in range(1, reach_cells + 1):
-            for dc in range(-rad, rad + 1):
-                for dr in range(-rad, rad + 1):
-                    if max(abs(dc), abs(dr)) != rad:
-                        continue
-                    c, r = cx0 + dc, cy0 + dr
-                    if interior(c, r):
-                        d2 = dc * dc + dr * dr
-                        if best is None or d2 < best[0]:
-                            best = (d2, c, r)
+        for pad in (4, 3, 2):                          # prefer the deepest clearance available
+            if interior(cx0, cy0, pad):
+                return x, y                            # already well inside its cuadra
+            best = None
+            for rad in range(1, reach_cells + 1):
+                for dc in range(-rad, rad + 1):
+                    for dr in range(-rad, rad + 1):
+                        if max(abs(dc), abs(dr)) != rad:
+                            continue
+                        c, r = cx0 + dc, cy0 + dr
+                        if interior(c, r, pad):
+                            d2 = dc * dc + dr * dr
+                            if best is None or d2 < best[0]:
+                                best = (d2, c, r)
+                if best is not None:
+                    break
             if best is not None:
-                break
-        if best is None:
-            return x, y
-        return (best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL
+                return (best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL
+        return x, y
     n_nudge = 0
     for lm in landmarks:
-        if lm["type"] not in ("church", "cathedral", "civic"):
+        if lm["type"] not in BUILDING_LM:             # all cuadra buildings, not just civic
             continue
         nx, ny = _nudge_off_acera(lm["x"], lm["y"])
         if round(nx) != lm["x"] or round(ny) != lm["y"]:
             lm["x"], lm["y"] = round(nx), round(ny)
             n_nudge += 1
-    print(f"[poi] {n_nudge} civic landmarks nudged off the acera fringe")
+    print(f"[poi] {n_nudge} building landmarks nudged off the acera fringe")
 
     # A green block's ground is emitted as ONE raster-resolution outline
     # polygon (4 px cells, so it follows the acera inner edge — curves and
@@ -3244,112 +3245,58 @@ def main():
                 return sum(vals) / len(vals)
         return None
 
-    def _clip_roads_rect(rx0, ry0, rx1, ry1):
-        def _outside(x, y):
-            return x < rx0 or x > rx1 or y < ry0 or y > ry1
-        clipped, n_clip = [], 0
-        for rd in roads:
-            pts = rd["pts"]; runs = []; cur = []
-            for i in range(0, len(pts), 2):
-                if _outside(pts[i], pts[i + 1]):
-                    cur += [pts[i], pts[i + 1]]
-                else:
-                    if len(cur) >= 4:
-                        runs.append(cur)
-                    cur = []
-            if len(cur) >= 4:
-                runs.append(cur)
-            if len(runs) == 1 and len(runs[0]) == len(pts):
-                clipped.append(rd)
-            else:
-                n_clip += 1
-                for run in runs:
-                    clipped.append({**rd, "pts": run})
-        roads[:] = clipped
-        return n_clip
-
-    def _stamp_px(px0, py0, px1, py1, cls):
-        cc0 = max(0, int(px0 // GRID_CELL)); cc1 = min(GRID_COLS - 1, int((px1 - 1) // GRID_CELL))
-        rr0 = max(0, int(py0 // GRID_CELL)); rr1 = min(GRID_ROWS - 1, int((py1 - 1) // GRID_CELL))
-        for rr in range(rr0, rr1 + 1):
-            base = rr * GRID_COLS
-            for cc in range(cc0, cc1 + 1):
-                grid[base + cc] = cls
-
-    def _street_line(names, ref, span=700):
-        """A named street NEAR ref as (px, py, ux, uy): a point on it plus its
-        principal-axis unit direction (so a diagonal calle keeps its slope)."""
-        rx, ry = ref
-        for name in ([names] if isinstance(names, str) else names):
-            pts = []
-            for r in roads:
-                if (r.get("name") or "") != name:
+    def _cuadra_cells(px0, py0, px1, py1):
+        """The one cuadra under a street rect, as raster cells: flood CLS_LAND +
+        CLS_ACERA from the rect centre, CLIPPED to the rect. Clipping is what
+        keeps the flood local — the acera fringe is continuous along every
+        street, so an unbounded flood would swallow the whole city. The rect
+        runs centreline-to-centreline, so the far-side aceras stay outside."""
+        gc0 = max(0, int(px0 // GRID_CELL)); gc1 = min(GRID_COLS - 1, int(px1 // GRID_CELL))
+        gr0 = max(0, int(py0 // GRID_CELL)); gr1 = min(GRID_ROWS - 1, int(py1 // GRID_CELL))
+        inside = lambda c, r: gc0 <= c <= gc1 and gr0 <= r <= gr1
+        member = lambda c, r: grid[r * GRID_COLS + c] in (CLS_LAND, CLS_ACERA)
+        # seed on every member cell near the rect centre (the exact centre can
+        # land on an interior cross-street that hasn't been clipped)
+        mc, mr = (gc0 + gc1) // 2, (gr0 + gr1) // 2
+        seeds = [(c, r) for r in range(gr0, gr1 + 1) for c in range(gc0, gc1 + 1)
+                 if member(c, r) and abs(c - mc) <= 6 and abs(r - mr) <= 6]
+        if not seeds:
+            seeds = [(c, r) for r in range(gr0, gr1 + 1) for c in range(gc0, gc1 + 1) if member(c, r)]
+        out = set()
+        for s in seeds:
+            if s in out:
+                continue
+            st = [s]
+            while st:
+                c, r = st.pop()
+                if (c, r) in out or not inside(c, r) or not member(c, r):
                     continue
-                for (_, x, y) in _resample_centerline(r["pts"], 8):
-                    if abs(x - rx) <= span and abs(y - ry) <= span:
-                        pts.append((x, y))
-            if len(pts) >= 2:
-                n = len(pts)
-                mx = sum(p[0] for p in pts) / n; my = sum(p[1] for p in pts) / n
-                sxx = sum((p[0] - mx) ** 2 for p in pts)
-                syy = sum((p[1] - my) ** 2 for p in pts)
-                sxy = sum((p[0] - mx) * (p[1] - my) for p in pts)
-                theta = 0.5 * math.atan2(2 * sxy, sxx - syy)
-                return (mx, my, math.cos(theta), math.sin(theta))
-        return None
-
-    def _iline(a, b):
-        """Intersection of two point+direction lines a,b = (px,py,ux,uy)."""
-        ax, ay, aux, auy = a; bx, by, bux, buy = b
-        den = aux * buy - auy * bux
-        if abs(den) < 1e-9:
-            return None
-        dx, dy = bx - ax, by - ay
-        t = (dx * buy - dy * bux) / den
-        return (ax + aux * t, ay + auy * t)
-
-    def _inset_poly(corners, d):
-        """Shrink a convex polygon inward by d px (edges offset toward centroid)."""
-        cx = sum(c[0] for c in corners) / len(corners)
-        cy = sum(c[1] for c in corners) / len(corners)
-        n = len(corners); lines = []
-        for i in range(n):
-            x0, y0 = corners[i]; x1, y1 = corners[(i + 1) % n]
-            dx, dy = x1 - x0, y1 - y0; L = math.hypot(dx, dy) or 1.0
-            nx, ny = -dy / L, dx / L
-            mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-            if (cx - mx) * nx + (cy - my) * ny < 0:     # point n toward centroid
-                nx, ny = -nx, -ny
-            lines.append((x0 + nx * d, y0 + ny * d, dx, dy))
-        out = []
-        for i in range(n):
-            p = _iline(lines[(i - 1) % n], lines[i])
-            out.append(p if p else corners[i])
+                out.add((c, r))
+                st += ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1))
         return out
 
-    def _clip_roads_poly(poly):
-        """Remove road polyline runs that fall INSIDE poly (interior cross
-        streets vanish; bounding streets on the edge survive)."""
-        clipped, n_clip = [], 0
-        for rd in roads:
-            pts = rd["pts"]; runs = []; cur = []
-            for i in range(0, len(pts), 2):
-                if not point_in_poly((pts[i], pts[i + 1]), poly):
-                    cur += [pts[i], pts[i + 1]]
-                else:
-                    if len(cur) >= 4:
-                        runs.append(cur)
-                    cur = []
-            if len(cur) >= 4:
-                runs.append(cur)
-            if len(runs) == 1 and len(runs[0]) == len(pts):
-                clipped.append(rd)
-            else:
-                n_clip += 1
-                for run in runs:
-                    clipped.append({**rd, "pts": run})
-        roads[:] = clipped
-        return n_clip
+    def _erode_cells(cells, depth):
+        """Morphological erosion by `depth` cells (BFS distance transform seeded
+        on the boundary). Applied to a cuadra+acera set it yields the pitch, so
+        the difference between the two IS the block's real acera ring."""
+        from collections import deque as _dq
+        dist = {}
+        q = _dq()
+        for (c, r) in cells:
+            if any((c + dc, r + dr) not in cells for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                dist[(c, r)] = 1
+                q.append((c, r))
+        while q:
+            c, r = q.popleft()
+            d = dist[(c, r)] + 1
+            if d > depth:
+                continue
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                n = (c + dc, r + dr)
+                if n in cells and n not in dist:
+                    dist[n] = d
+                    q.append(n)
+        return {c for c in cells if dist.get(c, depth + 1) > depth}
 
     def place_stadium(spec):
         lm = next((l for l in landmarks if l["id"] == spec["id"]), None)
@@ -3369,12 +3316,15 @@ def main():
                 for nm, v in sorted(near.items())}
         print(f"[estadio] {spec['id']} anchor {ref} nearby streets: {summ}")
 
-        # Resolve the stadium's street RECT, then trace the actual CLS_LAND
-        # cuadra under it straight from the grid (these blocks classify as green
-        # plazas, not buildable blocks, so we don't rely on block detection). The
-        # traced outline follows the manzana's true grid angles — like a park —
-        # instead of an axis rect slapped over the streets. Colour-switch, not a
-        # double draw: the cuadra becomes a `stadium` green (pitch) + drivable.
+        # Resolve the stadium's street RECT, then trace the actual cuadra under
+        # it straight from the grid (these blocks classify as green plazas, not
+        # buildable blocks, so we don't rely on block detection). TWO polygons
+        # come out of the trace, and the ring between them is the block's REAL
+        # acera — which the renderer repaints as the graderías:
+        #   outline = cuadra + its acera ring (drivable, touches the streets)
+        #   footprint = outline eroded by the acera depth = the PITCH
+        # Both follow the manzana's true grid angles, exactly like a park green
+        # (_green_poly) — never an axis rect slapped over the streets.
         cxa = _street_vals(spec["calles"][0], "x", ref)
         cxb = _street_vals(spec["calles"][1], "x", ref)
         ay = _street_vals(spec["ave_south"], "y", ref)
@@ -3389,55 +3339,51 @@ def main():
             print(f"[estadio] WARN {spec['id']} street resolve failed; anchor fallback")
             xa, xb = ref[0] - 5 * CUAD, ref[0] + 5 * CUAD
             ylo, yhi = ref[1] - 6 * CUAD, ref[1] + 6 * CUAD
-        # Trace the cuadra as the LAND+ACERA region inside the rect, bounded by
-        # the streets (CLS_ROAD). Its outline follows the diagonal street grid —
-        # true angles — and works even for small cuadras the 20px acera fringe
-        # would otherwise leave with no CLS_LAND interior.
-        gc0 = max(0, int(xa // GRID_CELL)); gc1 = min(GRID_COLS - 1, int(xb // GRID_CELL))
-        gr0 = max(0, int(ylo // GRID_CELL)); gr1 = min(GRID_ROWS - 1, int(yhi // GRID_CELL))
-        cuad_cells = set()
-        for rr in range(gr0, gr1 + 1):
-            base = rr * GRID_COLS
-            for cc in range(gc0, gc1 + 1):
-                if grid[base + cc] in (CLS_LAND, CLS_ACERA):
-                    cuad_cells.add((cc, rr))
-        poly = _outline_poly(cuad_cells) if cuad_cells else None
-        if not poly:
-            print(f"[estadio] WARN {spec['id']} no cuadra in rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)})"); return
-        footprint = poly
-        g = {"pts": poly, "type": "stadium"}
-        # no buildings on the pitch: occ (OSM) + green-flag any overlapping block (synth)
-        cc0, cc1 = int(xa // CUAD), int(xb // CUAD)
-        cr0, cr1 = int(ylo // CUAD), int(yhi // CUAD)
-        rect_cells = [(cc, cr) for cc in range(cc0, cc1 + 1) for cr in range(cr0, cr1 + 1)]
-        rc_set = set(rect_cells)
-        occ.update(rect_cells)
+        outer_cells = _cuadra_cells(xa, ylo, xb, yhi)
+        inner_cells = _erode_cells(outer_cells, ACERA_CELLS) if outer_cells else set()
+        outline = _outline_poly(outer_cells) if outer_cells else None
+        footprint = _outline_poly(inner_cells) if inner_cells else None
+        if not outline or not footprint:
+            print(f"[estadio] WARN {spec['id']} no cuadra in rect "
+                  f"({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)})"); return
+        g = {"pts": footprint, "type": "stadium"}
+        # no buildings on the block: occ (OSM) + green-flag it (synth). Use the
+        # cuad cells the traced cuadra actually covers, not the raw street rect.
+        cuad_cells = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in outer_cells}
+        occ.update(cuad_cells)
         for b in blocks:
-            if not b.get("green") and any(c in rc_set for c in b["cells"]):
+            if not b.get("green") and any(c in cuad_cells for c in b["cells"]):
                 b["green"] = True
-        # DRIVABLE: stamp the whole rect CLS_ROAD so the pitch overlaps the
-        # bounding streets and the car can enter (no acera wall around it).
-        _stamp_px(xa, ylo, xb, yhi, CLS_ROAD)
+        # DRIVABLE: stamp the traced cuadra (pitch + acera ring) CLS_ROAD — and
+        # ONLY that. The ring touches the bounding streets so the car can drive
+        # straight in with no acera wall, while everything outside the block
+        # keeps its own class: at Las Playitas the sea north of the pitch stays
+        # CLS_WATER (a wall) instead of becoming drivable asphalt.
+        for (c, r) in outer_cells:
+            grid[r * GRID_COLS + c] = CLS_ROAD
         fx = footprint[0::2]; fy = footprint[1::2]
         bx0, by0, bx1, by1 = min(fx), min(fy), max(fx), max(fy)
-        # drop any pre-existing green/plaza under this block, then add the pitch
-        plazas[:] = [pz for pz in plazas
-                     if pz[0] + pz[2] <= bx0 or pz[0] >= bx1 or
-                        pz[1] + pz[3] <= by0 or pz[1] >= by1]
+        # drop any pre-existing green/plaza whose CENTRE falls on this block,
+        # then add the pitch (a bbox-overlap test would also eat a neighbour)
+        _in = lambda x, y: bx0 <= x <= bx1 and by0 <= y <= by1
+        plazas[:] = [pz for pz in plazas if not _in(pz[0] + pz[2] / 2, pz[1] + pz[3] / 2)]
         greens[:] = [gg for gg in greens
-                     if max(gg["pts"][0::2]) <= bx0 or min(gg["pts"][0::2]) >= bx1 or
-                        max(gg["pts"][1::2]) <= by0 or min(gg["pts"][1::2]) >= by1]
+                     if not _in(sum(gg["pts"][0::2]) / (len(gg["pts"]) / 2),
+                                sum(gg["pts"][1::2]) / (len(gg["pts"]) / 2))]
         greens.append(g)
         cxpx = int(sum(fx) / len(fx)); cypx = int(sum(fy) / len(fy))
         lm["x"], lm["y"] = cxpx, cypx
-        lm["footprint"] = footprint
+        lm["footprint"] = footprint      # the pitch (grass + white markings)
+        lm["outline"] = outline          # pitch + acera ring (= the graderías band)
         lm["stands"] = bool(spec.get("stands", True))
         stadiums.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                          "cx": cxpx, "cy": cypx, "footprint": footprint,
-                         "stands": lm["stands"]})
+                         "outline": outline, "stands": lm["stands"]})
+        ox = outline[0::2]; oy = outline[1::2]
         print(f"[estadio] {spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
-              f"-> footprint ({bx0},{by0})-({bx1},{by1})px "
-              f"stands={lm['stands']}, drivable")
+              f"-> outline ({min(ox)},{min(oy)})-({max(ox)},{max(oy)})px {len(outline)//2}v, "
+              f"pitch ({bx0},{by0})-({bx1},{by1})px {len(footprint)//2}v, "
+              f"stands={lm['stands']}, {len(outer_cells)} cells drivable")
 
     # Calle/Avenida refs mapped to the OSM names actually present here (odd
     # calles are unnamed → fall back to the flanking even calle; the central

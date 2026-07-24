@@ -92,6 +92,7 @@ function render(t) {
   // Landmarks (the bridge has its own drawer)
   for (const lm of W.LANDMARKS) {
     if (lm.x < view.x0 - 60 || lm.x > view.x1 + 60) continue;
+    if (lm.y < view.y0 - 160 || lm.y > view.y1 + 160) continue; // X-only cull drew the whole vertical strip
     if (lm.type === "bridge") continue; // the Mata bridge has its own drawer (drawBridge)
     if (PIXI_LANDMARKS && PIXI_MIGRATED.has(lm.type)) continue; // Pixi draws these now
     drawLandmark(lm);

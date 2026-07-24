@@ -23,10 +23,11 @@ game modes are live; the items below are what remains.
       el bloque la-ola/`stadiumCoins` (dependía del estadio amurallado).
 - [x] **Dos estadios MANEJABLES ubicados por calles**: `place_stadium(spec)`
       resuelve el rect desde nombres de calle/avenida OSM (promedio de muestras
-      cerca del ancla, con lista de candidatos porque las calles impares no
-      existen y la central es "Avenida Centenario"). Lito Pérez = Calle 14-16 ×
-      Avenida Centenario-2 (tamaño real); Las Playitas = Calle 6-8, al norte de
-      Avenida 1, extendido al norte (vertical 9×13). Se recorta la calle
+      cerca del ancla, con lista de candidatos: la central es "Avenida
+      Centenario" y algunas calles llevan sufijo). Lito Pérez = Calle 15 José
+      Joaquín Escalante–Calle 17 × Avenida Centenario–2 (tamaño real, ~carmen);
+      Las Playitas = Calle 6-8, al norte de Avenida 1, extendido al norte
+      (vertical 9×13). Se recorta la calle
       interior, se marca `occ` (sin edificios), se estampa el interior a
       `CLS_ROAD` (manejable, INSET < medio ancho de calle para que conecte),
       y se emite `footprint` (polígono cuad) + un green tipo `stadium`.

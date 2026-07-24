@@ -249,7 +249,7 @@ LANDMARK_DEFS = [
     # Estadios: position comes from the named street grid at build (place_stadium):
     # Lito Pérez at Calle 15-17 x Avenida 0-2; Las Playitas at Calle 6-8 x Avenida 1.
     # The ll anchors are only fallbacks if a street name fails to resolve.
-    {"id": "estadio",         "name": "Estadio Lito Pérez",    "type": "stadium",      "district": "playitas", "osm": "lito pérez", "ll": (9.97880, -84.82660)},
+    {"id": "estadio",         "name": "Estadio Lito Pérez",    "type": "stadium",      "district": "carmen",   "ll": (9.97680, -84.83880)},
     {"id": "estadio_playitas","name": "Estadio Las Playitas",  "type": "stadium",      "district": "playitas", "ll": (9.97960, -84.82520)},
     {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97840, -84.82640)},
     {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "cocal",    "osm": "yacht", "ll": (9.97900, -84.81200)},
@@ -3226,7 +3226,7 @@ def main():
             if not nm:
                 continue
             for (_, x, y) in _resample_centerline(r["pts"], 12):
-                if abs(x - ref[0]) <= 500 and abs(y - ref[1]) <= 500:
+                if abs(x - ref[0]) <= 800 and abs(y - ref[1]) <= 500:
                     near.setdefault(nm, []).append((x, y))
         summ = {nm: (round(sum(p[0] for p in v) / len(v)), round(sum(p[1] for p in v) / len(v)))
                 for nm, v in sorted(near.items())}
@@ -3289,9 +3289,9 @@ def main():
     # avenue is "Avenida Centenario"). place_stadium prints the resolved rect.
     for _sp in (
         {"id": "estadio",                    # Lito Pérez: Calle 15-17 x Avenida 0-2
-         "calles": (["Calle 15", "Calle 14"], ["Calle 17", "Calle 16"]),
+         "calles": (["Calle 15 José Joaquín Escalante"], ["Calle 17"]),
          "ave_south": ["Avenida 2"],
-         "ave_north": ["Avenida 0", "Avenida Central", "Avenida Centenario"]},
+         "ave_north": ["Avenida Centenario", "Avenida 0"]},
         {"id": "estadio_playitas",           # Las Playitas: Calle 6-8, north of Avenida 1
          "calles": (["Calle 6"], ["Calle 8"]),
          "ave_south": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],

@@ -352,9 +352,56 @@ function maintainStadiumPeds() {
   }
 }
 
+// Balneario Municipal: a sea-water inlet. Swimmers (kind "swimmer") bob inside
+// its bbox and a leisure boat drifts back and forth — both CONTAINED, another
+// NPC type distinct from city walkers and stadium fans.
+const BALNEARIO_SWIMMERS = 6;
+function maintainBalneario() {
+  const B = W.BALNEARIO;
+  if (!B) return;
+  if (Math.hypot(B.cx - _cam.x, B.cy - _cam.y) > SPAWN_R + 400) return;
+  let n = 0;
+  for (const pe of pedestrians) if (pe.balneario) n++;
+  let guard = 0;
+  while (n < BALNEARIO_SWIMMERS && guard++ < BALNEARIO_SWIMMERS * 3) {
+    pedestrians.push({
+      x: B.x0 + 14 + Math.random() * Math.max(1, B.x1 - B.x0 - 28),
+      y: B.y0 + 14 + Math.random() * Math.max(1, B.y1 - B.y0 - 28),
+      ang: Math.random() * Math.PI * 2, v: 5 + Math.random() * 6,
+      hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
+      balneario: B, swim: true, kind: "swimmer",
+    });
+    n++;
+  }
+  let hasBoat = false;
+  for (const b of boats) if (b.balneario) hasBoat = true;
+  if (!hasBoat) {
+    boats.push({
+      x: (B.x0 + B.x1) / 2, y: (B.y0 + B.y1) / 2,
+      vx: (Math.random() < 0.5 ? 1 : -1) * (6 + Math.random() * 4), vy: 0,
+      kind: "panga", wake: 0, balneario: B, s: 0.7,
+    });
+  }
+}
+// Advance a swimmer: slow drift inside the inlet, bouncing off the edges.
+export function advanceSwimmer(pe, dt) {
+  const B = pe.balneario, m = 10;
+  pe.ph += dt * 4;
+  const nx = pe.x + Math.cos(pe.ang) * pe.v * dt;
+  const ny = pe.y + Math.sin(pe.ang) * pe.v * dt;
+  if (nx < B.x0 + m || nx > B.x1 - m) pe.ang = Math.PI - pe.ang;
+  else pe.x = nx;
+  if (ny < B.y0 + m || ny > B.y1 - m) pe.ang = -pe.ang;
+  else pe.y = ny;
+  pe.x = Math.max(B.x0 + m, Math.min(B.x1 - m, pe.x));
+  pe.y = Math.max(B.y0 + m, Math.min(B.y1 - m, pe.y));
+  if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.8;
+}
+
 export function maintainStreaming() {
   topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || far(e));
   maintainStadiumPeds();
+  maintainBalneario();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
   topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || far(e));
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);

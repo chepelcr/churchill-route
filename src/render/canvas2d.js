@@ -1315,10 +1315,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         label(x, y - 24, "YACHT", "#fff", "#3a6f8a"); break;
       }
       case "pool": {
-        // Balneario Municipal at La Punta — a landscaped public pool with
-        // living water, in front of the faro (see how-look-puntarenas/faro.jpg)
-        drawPool(x, y, -0.25, 1);
-        label(x, y - 58, "BALNEARIO", "#fff", "#3a6f8a"); break;
+        // Balneario Municipal at La Punta — a SEA-WATER inlet: the cuadra is
+        // painted by the living-sea effect (its outline is in W.WATERS) with a
+        // boat + swimmers inside; here we only tag it with a label.
+        label(x, y - (lm.h || 60) / 2 - 6, "BALNEARIO", "#fff", "#3a6f8a"); break;
       }
       case "house": {
         ctx.fillStyle = "#c084d6"; ctx.fillRect(x - 14, y - 10, 28, 20);
@@ -1438,10 +1438,23 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   }
 
   function drawPed(pe) {
+    if (pe.kind === "swimmer") { drawSwimmer(pe); return; }
     const bob = Math.sin(pe.ph) * 1.4;
     ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = `hsl(${pe.hue} 70% 60%)`; ctx.fillRect(pe.x - 2, pe.y - 3 + bob, 4, 6);
     ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(pe.x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
+  }
+  // A swimmer: a head just above the water with a ripple wake + stroking arms.
+  function drawSwimmer(pe) {
+    const t = pe.ph;
+    ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1;               // wake ring
+    ctx.beginPath(); ctx.ellipse(pe.x, pe.y + 1, 6 + Math.sin(t) * 1.5, 3, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = `hsl(${pe.hue} 55% 55%)`; ctx.lineWidth = 1.6;            // stroking arms
+    ctx.beginPath();
+    ctx.moveTo(pe.x - 3, pe.y + Math.sin(t) * 1.2);
+    ctx.lineTo(pe.x + 3, pe.y - Math.sin(t) * 1.2);
+    ctx.stroke();
+    ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(pe.x, pe.y, 2.3, 0, Math.PI * 2); ctx.fill(); // head
   }
   function drawCar(c) {
     ctx.save();

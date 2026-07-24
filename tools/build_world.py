@@ -2050,7 +2050,8 @@ def write_png(path, w, h, get_rgb, stride=1):
 def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms,
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
-                 stadiums=None, kiosk_paths=None, faro_pier=None, greens=None):
+                 stadiums=None, kiosk_paths=None, faro_pier=None, greens=None,
+                 balneario=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -2159,6 +2160,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         "plazas": plazas,
         "greens": greens or [],
         "stadiums": stadiums or [],
+        "balneario": balneario,
         "kioskPaths": kiosk_paths or [],
         "faroPier": faro_pier,
     }
@@ -2953,6 +2955,8 @@ def main():
         poly = _outline_poly(_block_raster_cells(cells))
         return {"pts": poly, "type": typ} if poly else None
     greens = []
+    balneario = None          # sea-water inlet bbox (boat + swimmers spawn inside)
+    balneario_cells = None    # its cuad cells → added to `occ` once that exists
 
     def _block_containing(x, y):
         ac, ar = int(x // CUAD), int(y // CUAD)
@@ -3064,15 +3068,26 @@ def main():
         bc0 = min(c for c, _ in cells); bc1 = max(c for c, _ in cells)
         br0 = min(r for _, r in cells); br1 = max(r for _, r in cells)
         if lm["type"] == "pool":
-            # the Balneario's WHOLE cuadra becomes open ground (no buildings) and
-            # the pool is centred on an interior cell of it (never a bbox hole).
-            # Typed "pool" so it draws as the exact cuad polygon (no dilation),
-            # in the pool water-green colour.
+            # The Balneario is a SEA-WATER inlet: the whole cuadra becomes open
+            # water (drawn with the living-sea effect, no pool graphic). Keep OSM
+            # buildings off it (occ, applied once occ exists), stamp the interior
+            # CLS_WATER, and emit its outline into `waters` so it renders exactly
+            # like the ocean. A boat + swimmers spawn inside its bbox
+            # (maintainBalneario).
+            balneario_cells = list(cells)
             g = _green_poly(cells, "pool")
-            if g: greens.append(g)
+            if g:
+                wp = g["pts"]
+                waters.append([round(v) for v in wp])
+                raster_fill_poly(grid, [(wp[i], wp[i + 1]) for i in range(0, len(wp), 2)], CLS_WATER)
             ccx = sum(c for c, _ in cells) / len(cells); ccy = sum(r for _, r in cells) / len(cells)
             tcx, tcy = min(cells, key=lambda c: (c[0] - ccx) ** 2 + (c[1] - ccy) ** 2)
             lm["x"] = int((tcx + 0.5) * CUAD); lm["y"] = int((tcy + 0.5) * CUAD)
+            px0, py0 = bc0 * CUAD, br0 * CUAD
+            px1, py1 = (bc1 + 1) * CUAD, (br1 + 1) * CUAD
+            lm["w"] = px1 - px0; lm["h"] = py1 - py0
+            balneario = {"x0": px0, "y0": py0, "x1": px1, "y1": py1,
+                         "cx": lm["x"], "cy": lm["y"]}
             continue
         marine = lm["id"] == "parquemar"     # Parque Marino fills its whole cuadra
         g = _green_poly(cells, "marine" if marine else "park")
@@ -3200,6 +3215,8 @@ def main():
         keepouts.append((cu["x"], cu["y"], 100))
     keepouts.append((pier["x"], pier["y0"], 120))
     cell_block, occ = _grid_placer(blocks, keepouts)
+    if balneario_cells:                 # keep OSM buildings off the Balneario water
+        occ.update(balneario_cells)
 
     # --- Estadios: DRIVABLE green pitches placed on a named street-grid cuadra.
     # Lito Pérez = the block bounded by Calle 15-17 x Avenida 0-2 (actual size);
@@ -3712,7 +3729,7 @@ def main():
                      medians=medians, plazas=plazas, greens=greens, islands=junction_islands,
                      beaches=beaches, waters=waters, land_polys=land_contours,
                      landmarks=landmarks, customers=customers, stages=STAGES, stadiums=stadiums,
-                     kiosk_paths=kiosk_paths, faro_pier=faro_pier,
+                     kiosk_paths=kiosk_paths, faro_pier=faro_pier, balneario=balneario,
                      bridge=bridge, estuary=est, pier=pier, hills=hills)
     else:
         data = {

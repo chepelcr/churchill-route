@@ -29,6 +29,12 @@ game modes are live; the items below are what remains.
       ya estaban centrados en su cuadra).
 - [x] **Palmeras del Paseo centradas**: se planta la palmera 4px al norte para
       que el tronco quede sobre la isla (compensa el ancla base de `paintPalm`).
+- [x] **Balneario = ensenada de mar**: la cuadra del Balneario se vuelve agua
+      abierta (`CLS_WATER` + su contorno a `waters` → efecto de mar vivo,
+      `paintWaterBody`). Sin gráfico de piscina (`case "pool"` solo rotula), sin
+      edificios (`occ`). Adentro nadan bañistas (`kind:"swimmer"`,
+      `advanceSwimmer`, rebote en la bbox) y navega una lancha de recreo
+      (`b.balneario`, contenida en el loop de botes). `W.BALNEARIO` (bbox).
 
 ## ✅ Estadios manejables en la grilla de calles + feel de colisión + coins en todo modo (2026-07-23)
 

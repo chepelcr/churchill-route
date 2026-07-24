@@ -148,9 +148,33 @@ buildings, set `blocks[bi]["green"]=True` (excluded from `synth_buildings`).
 
 **Coins + NPCs inside a drivable area**: coins (`maintainArcadeCoins`) spawn on
 any class-3/5 cell near the camera, so a `CLS_ROAD` pitch gets them for free in
-every mode. Free-wander NPCs: `maintainStadiumPeds` seeds peds with `cls:[3]`
-(advanced by `advanceOnSurface`, drawn like city peds via `hue`/`ph`), leashed
-to each `W.STADIUMS` bbox.
+every mode.
+
+**Organic stadium (graderías from the real acera)**: `place_stadium` builds each
+estadio as a `quad` that follows the street grid — a diagonal block resolves its
+left/right edges from the two calles' *lines* (`_street_line` = principal-axis
+fit) intersected with the south avenue (`_iline`), extended north; an axis block
+uses `_street_vals`. The OUTER quad is stamped `CLS_ROAD` (drivable, overlaps the
+bounding streets so you can enter — no acera wall); the DRAWN pitch is
+`draw_poly` = `_inset_poly(quad, ~0.9·CUAD)` so grass never paints over asphalt.
+`drawStadium(lm)` clips green + white lines to `lm.footprint` (= draw_poly) and,
+when `lm.stands`, strokes a dark two-tone band over the block's real acera ring
+in the LANDMARK pass (after sidewalks → recolours the actual acera; follows the
+organic/diagonal outline). Interior cross-streets clipped by `_clip_roads_poly`.
+
+**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of three
+advancers (branch in `physics.js`): rail-bound city walkers (`pe.road`,
+`advancePed`); stadium **fans** (`kind:"fan"`, `pe.ring`, `advanceRingPed`) that
+patrol the footprint perimeter via `su`/`sdir` arclength — CONTAINED on the
+graderías; balneario **swimmers** (`kind:"swimmer"`, `pe.swim`, `advanceSwimmer`)
+bouncing inside `W.BALNEARIO`. All drawn by `drawPed` (branches on `kind`).
+
+**Water cuadra (Balneario)**: a `type:"pool"` landmark's whole block becomes a
+SEA inlet — `occ.update(cells)` (no OSM buildings), stamp the interior
+`CLS_WATER`, and push its `_green_poly` outline into `waters` so it renders with
+the ocean effect (no pool graphic; `case "pool"` is label-only). Emit a
+`manifest.balneario` bbox (→ `W.BALNEARIO`) that `maintainBalneario` fills with
+swimmers + a penned leisure boat (`b.balneario`, contained in the boats loop).
 
 **Collision-vs-visual alignment gotchas** (piers, medians): `raster_stamp_polyline`
 adds a round cap of radius `w/2` PAST the last point — shorten the polyline at a

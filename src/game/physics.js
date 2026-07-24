@@ -5,7 +5,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains, pushFloat } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceRingPed, advanceCarOnRoad, advanceTrain } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceRingPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
@@ -443,6 +443,7 @@ export function advanceEntities(dt, withPlayer = true) {
   for (const pe of pedestrians) {
     if (pe.road) advancePed(pe, dt);
     else if (pe.ring) advanceRingPed(pe, dt);                                    // stadium fans on the graderías
+    else if (pe.swim) advanceSwimmer(pe, dt);                                    // balneario swimmers
     else { pe.ph += dt * 6; advanceOnSurface(pe, dt, pe.cls || PED_CLS, 0.03); } // free (surface) peds
     if (withPlayer && Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
       for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
@@ -468,7 +469,15 @@ export function advanceEntities(dt, withPlayer = true) {
   }
   // Boats drift
   for (const b of boats) {
-    b.x += b.vx * dt; b.wake += dt;
+    b.wake += dt;
+    if (b.balneario) {                        // leisure boat penned in the inlet
+      const B = b.balneario;
+      b.x += b.vx * dt;
+      if (b.x < B.x0 + 24) { b.x = B.x0 + 24; b.vx = Math.abs(b.vx); }
+      if (b.x > B.x1 - 24) { b.x = B.x1 - 24; b.vx = -Math.abs(b.vx); }
+      continue;
+    }
+    b.x += b.vx * dt;
     if (b.x < -120) b.x = W.W + 80;
     if (b.x > W.W + 120) b.x = -80;
   }

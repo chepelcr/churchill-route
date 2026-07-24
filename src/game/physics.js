@@ -151,6 +151,14 @@ export function update(dt) {
     const k = Math.max(0, sp2 - fric * (1 / surfaceMul) * dt * 60) / sp2;
     p.vx *= k; p.vy *= k;
   }
+  // Brake / stop button: an EXAGGERATED, snappy stop (arcade handbrake) — bleed
+  // the velocity hard so a tap kills momentum near-instantly instead of a slow
+  // coast, and clamp to a dead stop once slow.
+  if (input.brake) {
+    const decay = Math.max(0, 1 - 16 * dt);
+    p.vx *= decay; p.vy *= decay;
+    if (Math.hypot(p.vx, p.vy) < 12) { p.vx = 0; p.vy = 0; }
+  }
   // turbotank upgrade raises the boost speed cap (1.35 stock → up to 1.55)
   const top = veh.top * tuning.speed * surfaceMul * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul;
   const sp3 = Math.hypot(p.vx, p.vy);

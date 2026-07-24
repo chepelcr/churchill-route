@@ -3369,80 +3369,75 @@ def main():
                 for nm, v in sorted(near.items())}
         print(f"[estadio] {spec['id']} anchor {ref} nearby streets: {summ}")
 
-        # Build the stadium as an ORGANIC block polygon (`quad`) that follows the
-        # real street grid — diagonal blocks keep their slope, so the green pitch
-        # never floats as an axis rect over the streets.
-        quad = None
-        if spec.get("diagonal"):
-            la = _street_line(spec["calles"][0], ref)   # west calle
-            lb = _street_line(spec["calles"][1], ref)   # east calle
-            ls = _street_line(spec["ave_south"], ref)   # south avenue
-            if la and lb and ls:
-                sw = _iline(la, ls); se = _iline(lb, ls)
-                if sw and se:
-                    def _north(u):                      # orient a calle dir north (−y)
-                        ux, uy = u[2], u[3]
-                        return (-ux, -uy) if uy > 0 else (ux, uy)
-                    nau, nbu = _north(la), _north(lb)
-                    wid = math.hypot(se[0] - sw[0], se[1] - sw[1])
-                    L = spec.get("north_len") or max(wid * 1.4, 200)
-                    nw = (sw[0] + nau[0] * L, sw[1] + nau[1] * L)
-                    ne = (se[0] + nbu[0] * L, se[1] + nbu[1] * L)
-                    quad = [sw, se, ne, nw]
-        else:
-            cxa = _street_vals(spec["calles"][0], "x", ref)
-            cxb = _street_vals(spec["calles"][1], "x", ref)
-            ay = _street_vals(spec["ave_south"], "y", ref)
-            ayn = _street_vals(spec["ave_north"], "y", ref) if spec.get("ave_north") else None
-            if cxa is not None and cxb is not None and ay is not None:
-                xa, xb = min(cxa, cxb), max(cxa, cxb)
-                if ayn is not None:                     # bounded both sides (Lito Pérez)
-                    ys, yn = max(ay, ayn), min(ay, ayn)
-                else:                                   # extend NORTH -> vertical
-                    ys = ay; yn = ay - (xb - xa) * 1.35
-                quad = [(xa, ys), (xb, ys), (xb, yn), (xa, yn)]
-        if quad is None:
+        # Resolve the stadium's street RECT, then trace the actual CLS_LAND
+        # cuadra under it straight from the grid (these blocks classify as green
+        # plazas, not buildable blocks, so we don't rely on block detection). The
+        # traced outline follows the manzana's true grid angles — like a park —
+        # instead of an axis rect slapped over the streets. Colour-switch, not a
+        # double draw: the cuadra becomes a `stadium` green (pitch) + drivable.
+        cxa = _street_vals(spec["calles"][0], "x", ref)
+        cxb = _street_vals(spec["calles"][1], "x", ref)
+        ay = _street_vals(spec["ave_south"], "y", ref)
+        ayn = _street_vals(spec["ave_north"], "y", ref) if spec.get("ave_north") else None
+        if cxa is not None and cxb is not None and ay is not None:
+            xa, xb = min(cxa, cxb), max(cxa, cxb)
+            if ayn is not None:
+                ylo, yhi = min(ay, ayn), max(ay, ayn)
+            else:                                # extend NORTH from Avenida 1
+                yhi = ay; ylo = ay - abs(cxb - cxa) * 1.2
+        else:                                    # ll-anchor fallback rect
             print(f"[estadio] WARN {spec['id']} street resolve failed; anchor fallback")
-            ec = (lm["x"], lm["y"]); hw, hh = 5 * CUAD, 6 * CUAD
-            quad = [(ec[0] - hw, ec[1] + hh), (ec[0] + hw, ec[1] + hh),
-                    (ec[0] + hw, ec[1] - hh), (ec[0] - hw, ec[1] - hh)]
-
-        # DRIVABLE pitch = the OUTER quad stamped CLS_ROAD (overlaps the bounding
-        # streets so the car can enter — no acera wall around the pitch). The
-        # DRAWN green/lines use `draw_poly` (pulled off the asphalt) so the grass
-        # never paints over the streets; the ring between them is the graderías.
-        DRAW_INSET = int(0.9 * CUAD)
-        draw_poly = _inset_poly(quad, DRAW_INSET)
-        raster_fill_poly(grid, [(round(x), round(y)) for (x, y) in quad], CLS_ROAD)
-        n_clip = _clip_roads_poly(_inset_poly(quad, CUAD))   # interior cross-streets only
-        # suppress buildings on every cuad whose centre sits under the pitch
-        xs = [c[0] for c in quad]; ys = [c[1] for c in quad]
-        qx0, qx1 = min(xs), max(xs); qy0, qy1 = min(ys), max(ys)
-        for cr in range(int(qy0 // CUAD), int(qy1 // CUAD) + 1):
-            for cc in range(int(qx0 // CUAD), int(qx1 // CUAD) + 1):
-                if point_in_poly(((cc + 0.5) * CUAD, (cr + 0.5) * CUAD), quad):
-                    occ.add((cc, cr))
-        footprint = [round(v) for c in draw_poly for v in c]
-        cx = round(sum(c[0] for c in quad) / 4); cy = round(sum(c[1] for c in quad) / 4)
-        lm["x"], lm["y"] = cx, cy
+            xa, xb = ref[0] - 5 * CUAD, ref[0] + 5 * CUAD
+            ylo, yhi = ref[1] - 6 * CUAD, ref[1] + 6 * CUAD
+        # Trace the cuadra as the LAND+ACERA region inside the rect, bounded by
+        # the streets (CLS_ROAD). Its outline follows the diagonal street grid —
+        # true angles — and works even for small cuadras the 20px acera fringe
+        # would otherwise leave with no CLS_LAND interior.
+        gc0 = max(0, int(xa // GRID_CELL)); gc1 = min(GRID_COLS - 1, int(xb // GRID_CELL))
+        gr0 = max(0, int(ylo // GRID_CELL)); gr1 = min(GRID_ROWS - 1, int(yhi // GRID_CELL))
+        cuad_cells = set()
+        for rr in range(gr0, gr1 + 1):
+            base = rr * GRID_COLS
+            for cc in range(gc0, gc1 + 1):
+                if grid[base + cc] in (CLS_LAND, CLS_ACERA):
+                    cuad_cells.add((cc, rr))
+        poly = _outline_poly(cuad_cells) if cuad_cells else None
+        if not poly:
+            print(f"[estadio] WARN {spec['id']} no cuadra in rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)})"); return
+        footprint = poly
+        g = {"pts": poly, "type": "stadium"}
+        # no buildings on the pitch: occ (OSM) + green-flag any overlapping block (synth)
+        cc0, cc1 = int(xa // CUAD), int(xb // CUAD)
+        cr0, cr1 = int(ylo // CUAD), int(yhi // CUAD)
+        rect_cells = [(cc, cr) for cc in range(cc0, cc1 + 1) for cr in range(cr0, cr1 + 1)]
+        rc_set = set(rect_cells)
+        occ.update(rect_cells)
+        for b in blocks:
+            if not b.get("green") and any(c in rc_set for c in b["cells"]):
+                b["green"] = True
+        # DRIVABLE: stamp the whole rect CLS_ROAD so the pitch overlaps the
+        # bounding streets and the car can enter (no acera wall around it).
+        _stamp_px(xa, ylo, xb, yhi, CLS_ROAD)
+        fx = footprint[0::2]; fy = footprint[1::2]
+        bx0, by0, bx1, by1 = min(fx), min(fy), max(fx), max(fy)
+        # drop any pre-existing green/plaza under this block, then add the pitch
+        plazas[:] = [pz for pz in plazas
+                     if pz[0] + pz[2] <= bx0 or pz[0] >= bx1 or
+                        pz[1] + pz[3] <= by0 or pz[1] >= by1]
+        greens[:] = [gg for gg in greens
+                     if max(gg["pts"][0::2]) <= bx0 or min(gg["pts"][0::2]) >= bx1 or
+                        max(gg["pts"][1::2]) <= by0 or min(gg["pts"][1::2]) >= by1]
+        greens.append(g)
+        cxpx = int(sum(fx) / len(fx)); cypx = int(sum(fy) / len(fy))
+        lm["x"], lm["y"] = cxpx, cypx
         lm["footprint"] = footprint
         lm["stands"] = bool(spec.get("stands", True))
-        # drop any green/plaza ground under the block, then add the pitch grass
-        plazas[:] = [pz for pz in plazas
-                     if pz[0] + pz[2] <= qx0 or pz[0] >= qx1 or
-                        pz[1] + pz[3] <= qy0 or pz[1] >= qy1]
-        greens[:] = [g for g in greens
-                     if max(g["pts"][0::2]) <= qx0 or min(g["pts"][0::2]) >= qx1 or
-                        max(g["pts"][1::2]) <= qy0 or min(g["pts"][1::2]) >= qy1]
-        greens.append({"pts": footprint, "type": "stadium"})
-        fx0, fx1 = min(footprint[0::2]), max(footprint[0::2])
-        fy0, fy1 = min(footprint[1::2]), max(footprint[1::2])
-        stadiums.append({"x0": fx0, "y0": fy0, "x1": fx1, "y1": fy1,
-                         "cx": cx, "cy": cy, "footprint": footprint,
+        stadiums.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
+                         "cx": cxpx, "cy": cypx, "footprint": footprint,
                          "stands": lm["stands"]})
-        print(f"[estadio] {spec['id']} quad "
-              f"({round(qx0)},{round(qy0)})-({round(qx1)},{round(qy1)})px "
-              f"stands={lm['stands']}, clipped {n_clip} road(s), drivable")
+        print(f"[estadio] {spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
+              f"-> footprint ({bx0},{by0})-({bx1},{by1})px "
+              f"stands={lm['stands']}, drivable")
 
     # Calle/Avenida refs mapped to the OSM names actually present here (odd
     # calles are unnamed → fall back to the flanking even calle; the central
@@ -3453,10 +3448,11 @@ def main():
          "ave_south": ["Avenida 2"],
          "ave_north": ["Avenida Centenario", "Avenida 0"],
          "stands": True},
-        {"id": "estadio_playitas",           # Las Playitas: Calle 6-8, north of Avenida 1
-         "calles": (["Calle 6"], ["Calle 8"]),
-         "ave_south": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
-         "diagonal": True, "stands": True},
+        {"id": "estadio_playitas",           # Las Playitas: Calle 6-8, between Av 1 and
+         "calles": (["Calle 6"], ["Calle 8"]),   # Av Centenario (north of Av1 is beach/sea)
+         "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
+         "ave_south": ["Avenida Centenario"],
+         "stands": False},                   # no graderías here — plain green pitch
     ):
         place_stadium(_sp)
 

@@ -470,9 +470,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         if (p[i + 1] < b.y0) b.y0 = p[i + 1]; if (p[i + 1] > b.y1) b.y1 = p[i + 1];
       }
     }
-    // Pool + stadium outlines are their real cuadra edges (drawn as the exact
-    // cuad polygon) — do NOT dilate them over the surrounding aceras.
-    const m = (gp.type === "stadium" || gp.type === "pool") ? 0 : GREEN_DILATE;
+    // Stadium pitches dilate like parks so the grass tucks under the sidewalk
+    // (no bare sand ring); only the pool outline (unused now the Balneario is
+    // water) stays at its exact edge.
+    const m = (gp.type === "pool") ? 0 : GREEN_DILATE;
     if (b.x1 + m < view.x0 || b.x0 - m > view.x1 || b.y1 + m < view.y0 || b.y0 - m > view.y1) return;
     if (!gp._path) {
       const p = gp.pts, path = new Path2D();
@@ -1131,7 +1132,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     if (stands) {
       ctx.save();
       ctx.lineJoin = "round"; ctx.lineCap = "round";
-      const bandW = 2 * (ACERA_PX + 12);
+      const bandW = 2 * (GREEN_DILATE + ACERA_PX); // cover the pitch's dilated skirt + sidewalk = stands
       ctx.strokeStyle = "#40424a"; ctx.lineWidth = bandW; ctx.stroke(path);        // lower stand
       ctx.strokeStyle = "#565963"; ctx.lineWidth = bandW * 0.56; ctx.stroke(path); // upper tier (step = altitude)
       ctx.restore();
@@ -2105,9 +2106,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     if (!OVERLAY) {
       // Sky/water everywhere (drawn in world coords across viewport)
       drawWaterAll(view, t);
-      // Boats (behind land)
+      // Boats (behind land) — the Balneario boat is drawn LATER, above its
+      // inner-water fill (which drawWorld2D paints), or it'd be hidden.
       for (const b of boats) {
-        if (b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
+        if (b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
         drawBoat(b);
       }
       // Painterly 2-D world from resident tiles: land silhouette + road strokes +
@@ -2135,6 +2137,11 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     }
     // Pedestrians, traffic (Pixi's in hybrid mode)
     if (!OVERLAY) {
+      // Balneario boat: above the inlet water, below the swimmers.
+      for (const b of boats) {
+        if (!b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
+        drawBoat(b);
+      }
       for (const pe of pedestrians) {
         if (pe.x < view.x0 - 20 || pe.x > view.x1 + 20) continue;
         drawPed(pe);

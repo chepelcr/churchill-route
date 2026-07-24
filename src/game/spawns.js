@@ -341,11 +341,12 @@ function maintainStadiumPeds() {
     for (const pe of pedestrians) if (pe.stadium === S) n++;
     let guard = 0;
     while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 3) {
+      const su = Math.random() * P.total, q = ringPoint(P, su, RING_OFF);
       pedestrians.push({
-        x: 0, y: 0, ang: 0, v: 7 + Math.random() * 9,
+        x: q.x, y: q.y, ang: 0, v: 7 + Math.random() * 9,     // real pos NOW so far() can't cull it
         hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
         stadium: S, ring: true, kind: "fan",
-        su: Math.random() * P.total, sdir: Math.random() < 0.5 ? 1 : -1,
+        su, sdir: Math.random() < 0.5 ? 1 : -1,
       });
       n++;
     }
@@ -363,11 +364,12 @@ function maintainBalneario() {
   let n = 0;
   for (const pe of pedestrians) if (pe.balneario) n++;
   let guard = 0;
-  while (n < BALNEARIO_SWIMMERS && guard++ < BALNEARIO_SWIMMERS * 3) {
+  while (n < BALNEARIO_SWIMMERS && guard++ < BALNEARIO_SWIMMERS * 8) {
+    const x = B.x0 + 8 + Math.random() * Math.max(1, B.x1 - B.x0 - 16);
+    const y = B.y0 + 8 + Math.random() * Math.max(1, B.y1 - B.y0 - 16);
+    if (W.surfaceAt(x, y) !== 0) continue;    // only in the actual water, not the bbox corners
     pedestrians.push({
-      x: B.x0 + 14 + Math.random() * Math.max(1, B.x1 - B.x0 - 28),
-      y: B.y0 + 14 + Math.random() * Math.max(1, B.y1 - B.y0 - 28),
-      ang: Math.random() * Math.PI * 2, v: 5 + Math.random() * 6,
+      x, y, ang: Math.random() * Math.PI * 2, v: 5 + Math.random() * 6,
       hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
       balneario: B, swim: true, kind: "swimmer",
     });
@@ -375,26 +377,23 @@ function maintainBalneario() {
   }
   let hasBoat = false;
   for (const b of boats) if (b.balneario) hasBoat = true;
-  if (!hasBoat) {
+  if (!hasBoat && W.surfaceAt(B.cx, B.cy) === 0) {
     boats.push({
-      x: (B.x0 + B.x1) / 2, y: (B.y0 + B.y1) / 2,
+      x: B.cx, y: B.cy,
       vx: (Math.random() < 0.5 ? 1 : -1) * (6 + Math.random() * 4), vy: 0,
       kind: "panga", wake: 0, balneario: B, s: 0.7,
     });
   }
 }
-// Advance a swimmer: slow drift inside the inlet, bouncing off the edges.
+// Advance a swimmer: slow drift that stays on ACTUAL water (surface class 0),
+// so it follows the inlet's real shape instead of the rectangular bbox — no
+// more swimmers wandering onto the streets at the block corners.
 export function advanceSwimmer(pe, dt) {
-  const B = pe.balneario, m = 10;
   pe.ph += dt * 4;
   const nx = pe.x + Math.cos(pe.ang) * pe.v * dt;
   const ny = pe.y + Math.sin(pe.ang) * pe.v * dt;
-  if (nx < B.x0 + m || nx > B.x1 - m) pe.ang = Math.PI - pe.ang;
-  else pe.x = nx;
-  if (ny < B.y0 + m || ny > B.y1 - m) pe.ang = -pe.ang;
-  else pe.y = ny;
-  pe.x = Math.max(B.x0 + m, Math.min(B.x1 - m, pe.x));
-  pe.y = Math.max(B.y0 + m, Math.min(B.y1 - m, pe.y));
+  if (W.surfaceAt(nx, ny) === 0) { pe.x = nx; pe.y = ny; }
+  else pe.ang += Math.PI * (0.6 + Math.random() * 0.8);   // hit the shore → turn back into the water
   if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.8;
 }
 

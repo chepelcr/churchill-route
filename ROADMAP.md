@@ -4,6 +4,29 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Estadios: trazado orgánico real + fixes de NPCs/lancha (2026-07-24 b)
+
+- [x] **Ángulos correctos (trazado desde la grilla)**: `place_stadium` resuelve
+      el rect por calles y traza la cuadra como la región LAND+ACERA dentro del
+      rect, acotada por las calles (`_outline_poly`) → el contorno sigue los
+      ángulos reales del grid (diagonal), no un rect a eje. Funciona aunque la
+      cuadra sea chica (la acera de 20px se la comería para bloque). Se estampa
+      el rect `CLS_ROAD` (manejable/enterable). Lito Pérez y Las Playitas quedan
+      en su ubicación correcta (14332 / 16185).
+- [x] **Las Playitas: sin gradas + reubicado**: entre Avenida 1 y Avenida
+      Centenario (al norte de Av1 es playa/mar). `stands=False` → cancha verde
+      lisa, sin graderías.
+- [x] **Color-switch, no doble dibujo**: la cancha usa el green tipo `stadium`
+      (ahora dilata como parque, sin franja de arena); las graderías (solo Lito
+      Pérez) recolorean el anillo de acera en el pase de landmarks.
+- [x] **NPCs del estadio visibles (bug)**: los `fan` se creaban en (0,0) y el
+      `topUp(pedestrians)` los borraba por "far" antes de posicionarlos; ahora
+      nacen ya sobre el anillo (`ringPoint`).
+- [x] **Bañistas contenidos**: nadan solo sobre agua real (`surfaceAt===0`), no
+      la bbox → ya no se salen a la calle en las esquinas.
+- [x] **Lancha visible**: se dibuja después del `drawWorld2D` (sobre el agua del
+      balneario), antes la tapaba el relleno de agua interior.
+
 ## ✅ Estadios orgánicos (graderías desde la acera) + ajustes de mundo (2026-07-24)
 
 - [x] **Estadio orgánico, sin rect flotante**: `place_stadium` ahora arma el

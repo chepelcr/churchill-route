@@ -283,31 +283,69 @@ function topUp(arr, target, make, isDead) {
   let guard = 0;
   while (arr.length < target && guard++ < target * 3) { const e = make(); if (e) arr.push(e); }
 }
-// City NPCs wander INSIDE each drivable stadium pitch so the estadios feel
-// alive. They free-walk the pitch (surface class 3), leashed to the footprint,
-// and are drawn exactly like the pedestrians that walk the city (hue/ph).
-const STADIUM_PEDS = 8;
+// Stadium spectators (kind "fan") are CONTAINED on the graderías — they patrol
+// the ring just outside the pitch footprint, never spilling onto the pitch or
+// wandering the city like ordinary peds. Drawn like city peds (hue/ph).
+const STADIUM_PEDS = 12;
+const RING_OFF = 9;            // px outward from the footprint edge onto the stands
+
+// Cache each stadium's footprint perimeter as edges with outward normals +
+// cumulative arclength, so a fan's `su` (distance around) maps to a ring point.
+function stadiumPerimeter(S) {
+  if (S._peri) return S._peri;
+  const f = S.footprint;
+  if (!f || f.length < 6) { S._peri = null; return null; }
+  const pts = [];
+  for (let i = 0; i < f.length; i += 2) pts.push({ x: f[i], y: f[i + 1] });
+  let cx = 0, cy = 0;
+  for (const p of pts) { cx += p.x; cy += p.y; }
+  cx /= pts.length; cy /= pts.length;
+  const edges = []; let total = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    let nx = -dy / L, ny = dx / L;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    if ((mx - cx) * nx + (my - cy) * ny < 0) { nx = -nx; ny = -ny; } // outward
+    edges.push({ ax: a.x, ay: a.y, dx: dx / L, dy: dy / L, nx, ny, len: L, cum: total, ang: Math.atan2(dy, dx) });
+    total += L;
+  }
+  S._peri = { edges, total };
+  return S._peri;
+}
+function ringPoint(P, s, off) {
+  let e = P.edges[0];
+  for (const ed of P.edges) { if (s >= ed.cum && s < ed.cum + ed.len) { e = ed; break; } e = ed; }
+  const d = s - e.cum;
+  return { x: e.ax + e.dx * d + e.nx * off, y: e.ay + e.dy * d + e.ny * off, ang: e.ang };
+}
+// Advance a fan around the graderías ring (perimeter walk, occasional reverse).
+export function advanceRingPed(pe, dt) {
+  const P = stadiumPerimeter(pe.stadium);
+  if (!P) { pe.dead = true; return; }
+  pe.ph += dt * 6;
+  pe.su = (pe.su + pe.v * dt * pe.sdir + P.total) % P.total;
+  const q = ringPoint(P, pe.su, RING_OFF);
+  pe.x = q.x; pe.y = q.y;
+  pe.ang = q.ang + (pe.sdir < 0 ? Math.PI : 0);
+  if (Math.random() < 0.004) pe.sdir *= -1;
+}
 function maintainStadiumPeds() {
   const arr = W.STADIUMS;
   if (!arr || !arr.length) return;
   for (const S of arr) {
     if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;
+    const P = stadiumPerimeter(S);
+    if (!P) continue;
     let n = 0;
-    for (const pe of pedestrians) {
-      if (pe.stadium !== S) continue;
-      // leash: wandered off this pitch → recycle next maintain
-      if (pe.x < S.x0 - 40 || pe.x > S.x1 + 40 || pe.y < S.y0 - 40 || pe.y > S.y1 + 40) pe.dead = true;
-      else n++;
-    }
+    for (const pe of pedestrians) if (pe.stadium === S) n++;
     let guard = 0;
-    while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 12) {
-      const x = S.x0 + 10 + Math.random() * Math.max(1, S.x1 - S.x0 - 20);
-      const y = S.y0 + 10 + Math.random() * Math.max(1, S.y1 - S.y0 - 20);
-      if (W.surfaceAt(x, y) !== 3) continue; // stay on the pitch, never spill onto aceras/streets
+    while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 3) {
       pedestrians.push({
-        x, y, ang: Math.random() * Math.PI * 2, v: 12 + Math.random() * 12,
+        x: 0, y: 0, ang: 0, v: 7 + Math.random() * 9,
         hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
-        stadium: S, cls: [3],
+        stadium: S, ring: true, kind: "fan",
+        su: Math.random() * P.total, sdir: Math.random() < 0.5 ? 1 : -1,
       });
       n++;
     }

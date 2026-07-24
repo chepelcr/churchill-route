@@ -240,11 +240,12 @@ LANDMARK_DEFS = [
     {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas"},
     {"id": "pali",        "name": "Supermercado Palí",          "type": "super",        "district": "centro",   "osm": "palí", "ll": (9.97650, -84.82900)},
     # The civic block row between Av Central and Av 1 (calles 3-7): catedral on
-    # the west cuadra, Casa de la Cultura + museo on the east. Anchors = the
-    # real OSM building nodes so the name search can't drift to the Bulevar.
+    # the west cuadra, Casa de la Cultura on the east. Anchors = the real OSM
+    # building nodes so the name search can't drift to the Bulevar. (The Museo
+    # Histórico Marino IS the Casa de la Cultura building — one landmark, no
+    # separate "museo" icon.)
     {"id": "catedral",    "name": "Catedral de Puntarenas",     "type": "cathedral",    "district": "centro",   "osm": "catedral", "near": (9.97762, -84.83486)},
     {"id": "cultura",     "name": "Casa de la Cultura",         "type": "civic",        "district": "centro",   "osm": "casa de la cultura elsie", "near": (9.97765, -84.83404), "ll": (9.97765, -84.83404)},
-    {"id": "museo",       "name": "Museo Histórico Marino",     "type": "museum",       "district": "centro",   "osm": "museo", "near": (9.97766, -84.83383), "ll": (9.97766, -84.83383)},
     {"id": "kios_centro", "name": "Kiosco La Porteña",          "type": "kiosk",        "district": "centro",   "ll": (9.97480, -84.83000)},
     # Estadios: position comes from the named street grid at build (place_stadium):
     # Lito Pérez at Calle 15-17 x Avenida 0-2; Las Playitas at Calle 6-8 x Avenida 1.
@@ -2836,6 +2837,50 @@ def main():
             n_snap += 1
     print(f"[poi] {n_snap} building landmarks snapped into cuadra interiors")
 
+    # Civic-row POIs (catedral / iglesia / Casa de la Cultura) often keep their
+    # geo anchor (the fine centro cuadras classify as slivers, so the snap above
+    # returns None) and land right on the acera fringe — the icon then straddles
+    # the sidewalk. Pull each to the NEAREST grid point whose ±2-cell (~8 px)
+    # neighbourhood is all solid land, so the base clears the acera ring.
+    def _nudge_off_acera(x, y, reach_cells=12, pad=2):
+        cx0, cy0 = int(x / GRID_CELL), int(y / GRID_CELL)
+        def interior(c, r):
+            for dc in range(-pad, pad + 1):
+                for dr in range(-pad, pad + 1):
+                    cc, rr = c + dc, r + dr
+                    if not (0 <= cc < GRID_COLS and 0 <= rr < GRID_ROWS):
+                        return False
+                    if grid[rr * GRID_COLS + cc] != CLS_LAND:
+                        return False
+            return True
+        if interior(cx0, cy0):
+            return x, y
+        best = None
+        for rad in range(1, reach_cells + 1):
+            for dc in range(-rad, rad + 1):
+                for dr in range(-rad, rad + 1):
+                    if max(abs(dc), abs(dr)) != rad:
+                        continue
+                    c, r = cx0 + dc, cy0 + dr
+                    if interior(c, r):
+                        d2 = dc * dc + dr * dr
+                        if best is None or d2 < best[0]:
+                            best = (d2, c, r)
+            if best is not None:
+                break
+        if best is None:
+            return x, y
+        return (best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL
+    n_nudge = 0
+    for lm in landmarks:
+        if lm["type"] not in ("church", "cathedral", "civic"):
+            continue
+        nx, ny = _nudge_off_acera(lm["x"], lm["y"])
+        if round(nx) != lm["x"] or round(ny) != lm["y"]:
+            lm["x"], lm["y"] = round(nx), round(ny)
+            n_nudge += 1
+    print(f"[poi] {n_nudge} civic landmarks nudged off the acera fringe")
+
     # A green block's ground is emitted as ONE raster-resolution outline
     # polygon (4 px cells, so it follows the acera inner edge — curves and
     # diagonal streets included). The renderer fills it and dilates it a few px
@@ -3214,6 +3259,81 @@ def main():
             for cc in range(cc0, cc1 + 1):
                 grid[base + cc] = cls
 
+    def _street_line(names, ref, span=700):
+        """A named street NEAR ref as (px, py, ux, uy): a point on it plus its
+        principal-axis unit direction (so a diagonal calle keeps its slope)."""
+        rx, ry = ref
+        for name in ([names] if isinstance(names, str) else names):
+            pts = []
+            for r in roads:
+                if (r.get("name") or "") != name:
+                    continue
+                for (_, x, y) in _resample_centerline(r["pts"], 8):
+                    if abs(x - rx) <= span and abs(y - ry) <= span:
+                        pts.append((x, y))
+            if len(pts) >= 2:
+                n = len(pts)
+                mx = sum(p[0] for p in pts) / n; my = sum(p[1] for p in pts) / n
+                sxx = sum((p[0] - mx) ** 2 for p in pts)
+                syy = sum((p[1] - my) ** 2 for p in pts)
+                sxy = sum((p[0] - mx) * (p[1] - my) for p in pts)
+                theta = 0.5 * math.atan2(2 * sxy, sxx - syy)
+                return (mx, my, math.cos(theta), math.sin(theta))
+        return None
+
+    def _iline(a, b):
+        """Intersection of two point+direction lines a,b = (px,py,ux,uy)."""
+        ax, ay, aux, auy = a; bx, by, bux, buy = b
+        den = aux * buy - auy * bux
+        if abs(den) < 1e-9:
+            return None
+        dx, dy = bx - ax, by - ay
+        t = (dx * buy - dy * bux) / den
+        return (ax + aux * t, ay + auy * t)
+
+    def _inset_poly(corners, d):
+        """Shrink a convex polygon inward by d px (edges offset toward centroid)."""
+        cx = sum(c[0] for c in corners) / len(corners)
+        cy = sum(c[1] for c in corners) / len(corners)
+        n = len(corners); lines = []
+        for i in range(n):
+            x0, y0 = corners[i]; x1, y1 = corners[(i + 1) % n]
+            dx, dy = x1 - x0, y1 - y0; L = math.hypot(dx, dy) or 1.0
+            nx, ny = -dy / L, dx / L
+            mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+            if (cx - mx) * nx + (cy - my) * ny < 0:     # point n toward centroid
+                nx, ny = -nx, -ny
+            lines.append((x0 + nx * d, y0 + ny * d, dx, dy))
+        out = []
+        for i in range(n):
+            p = _iline(lines[(i - 1) % n], lines[i])
+            out.append(p if p else corners[i])
+        return out
+
+    def _clip_roads_poly(poly):
+        """Remove road polyline runs that fall INSIDE poly (interior cross
+        streets vanish; bounding streets on the edge survive)."""
+        clipped, n_clip = [], 0
+        for rd in roads:
+            pts = rd["pts"]; runs = []; cur = []
+            for i in range(0, len(pts), 2):
+                if not point_in_poly((pts[i], pts[i + 1]), poly):
+                    cur += [pts[i], pts[i + 1]]
+                else:
+                    if len(cur) >= 4:
+                        runs.append(cur)
+                    cur = []
+            if len(cur) >= 4:
+                runs.append(cur)
+            if len(runs) == 1 and len(runs[0]) == len(pts):
+                clipped.append(rd)
+            else:
+                n_clip += 1
+                for run in runs:
+                    clipped.append({**rd, "pts": run})
+        roads[:] = clipped
+        return n_clip
+
     def place_stadium(spec):
         lm = next((l for l in landmarks if l["id"] == spec["id"]), None)
         if lm is None:
@@ -3231,71 +3351,95 @@ def main():
         summ = {nm: (round(sum(p[0] for p in v) / len(v)), round(sum(p[1] for p in v) / len(v)))
                 for nm, v in sorted(near.items())}
         print(f"[estadio] {spec['id']} anchor {ref} nearby streets: {summ}")
-        cxa = _street_vals(spec["calles"][0], "x", ref)
-        cxb = _street_vals(spec["calles"][1], "x", ref)
-        rect = None
-        if cxa is not None and cxb is not None:
-            xa, xb = min(cxa, cxb), max(cxa, cxb)
+
+        # Build the stadium as an ORGANIC block polygon (`quad`) that follows the
+        # real street grid — diagonal blocks keep their slope, so the green pitch
+        # never floats as an axis rect over the streets.
+        quad = None
+        if spec.get("diagonal"):
+            la = _street_line(spec["calles"][0], ref)   # west calle
+            lb = _street_line(spec["calles"][1], ref)   # east calle
+            ls = _street_line(spec["ave_south"], ref)   # south avenue
+            if la and lb and ls:
+                sw = _iline(la, ls); se = _iline(lb, ls)
+                if sw and se:
+                    def _north(u):                      # orient a calle dir north (−y)
+                        ux, uy = u[2], u[3]
+                        return (-ux, -uy) if uy > 0 else (ux, uy)
+                    nau, nbu = _north(la), _north(lb)
+                    wid = math.hypot(se[0] - sw[0], se[1] - sw[1])
+                    L = spec.get("north_len") or max(wid * 1.4, 200)
+                    nw = (sw[0] + nau[0] * L, sw[1] + nau[1] * L)
+                    ne = (se[0] + nbu[0] * L, se[1] + nbu[1] * L)
+                    quad = [sw, se, ne, nw]
+        else:
+            cxa = _street_vals(spec["calles"][0], "x", ref)
+            cxb = _street_vals(spec["calles"][1], "x", ref)
             ay = _street_vals(spec["ave_south"], "y", ref)
             ayn = _street_vals(spec["ave_north"], "y", ref) if spec.get("ave_north") else None
-            if ay is not None:
-                # Inset LESS than a street half-width (~18px) so the pitch
-                # overlaps the bounding streets' asphalt and stays drivable
-                # (a bigger inset would fence it off behind the acera ring),
-                # but > 0 so the bounding centerlines aren't clipped away.
-                INSET = int(0.5 * CUAD)
-                x0 = xa + INSET; x1 = xb - INSET
+            if cxa is not None and cxb is not None and ay is not None:
+                xa, xb = min(cxa, cxb), max(cxa, cxb)
                 if ayn is not None:                     # bounded both sides (Lito Pérez)
-                    y0 = min(ay, ayn) + INSET; y1 = max(ay, ayn) - INSET
-                else:                                   # extend NORTH (smaller y) -> vertical
-                    y1 = ay - INSET; y0 = y1 - int((x1 - x0) * 1.35)
-                if x1 - x0 >= 3 * CUAD and y1 - y0 >= 3 * CUAD:
-                    rect = (x0, y0, x1, y1)
-        if rect is None:
+                    ys, yn = max(ay, ayn), min(ay, ayn)
+                else:                                   # extend NORTH -> vertical
+                    ys = ay; yn = ay - (xb - xa) * 1.35
+                quad = [(xa, ys), (xb, ys), (xb, yn), (xa, yn)]
+        if quad is None:
             print(f"[estadio] WARN {spec['id']} street resolve failed; anchor fallback")
-            ec = (int(lm["x"] // CUAD), int(lm["y"] // CUAD))
-            c0, c1, r0, r1 = ec[0] - 5, ec[0] + 5, ec[1] - 4, ec[1] + 4
-        else:
-            x0, y0, x1, y1 = rect
-            c0 = int(round(x0 / CUAD)); c1 = int(round(x1 / CUAD)) - 1
-            r0 = int(round(y0 / CUAD)); r1 = int(round(y1 / CUAD)) - 1
-        c0, c1 = min(c0, c1), max(c0, c1)
-        r0, r1 = min(r0, r1), max(r0, r1)
-        rx0, ry0 = c0 * CUAD, r0 * CUAD
-        rx1, ry1 = (c1 + 1) * CUAD, (r1 + 1) * CUAD
-        for cr in range(r0, r1 + 1):                    # no buildings on the pitch
-            for cc in range(c0, c1 + 1):
-                occ.add((cc, cr))
-        n_clip = _clip_roads_rect(rx0, ry0, rx1, ry1)   # remove interior cross-streets
-        _stamp_px(rx0, ry0, rx1, ry1, CLS_ROAD)         # DRIVABLE pitch (no aceras)
-        footprint = [rx0, ry0, rx1, ry0, rx1, ry1, rx0, ry1]
-        cx, cy = (rx0 + rx1) // 2, (ry0 + ry1) // 2
+            ec = (lm["x"], lm["y"]); hw, hh = 5 * CUAD, 6 * CUAD
+            quad = [(ec[0] - hw, ec[1] + hh), (ec[0] + hw, ec[1] + hh),
+                    (ec[0] + hw, ec[1] - hh), (ec[0] - hw, ec[1] - hh)]
+
+        # DRIVABLE pitch = the OUTER quad stamped CLS_ROAD (overlaps the bounding
+        # streets so the car can enter — no acera wall around the pitch). The
+        # DRAWN green/lines use `draw_poly` (pulled off the asphalt) so the grass
+        # never paints over the streets; the ring between them is the graderías.
+        DRAW_INSET = int(0.9 * CUAD)
+        draw_poly = _inset_poly(quad, DRAW_INSET)
+        raster_fill_poly(grid, [(round(x), round(y)) for (x, y) in quad], CLS_ROAD)
+        n_clip = _clip_roads_poly(_inset_poly(quad, CUAD))   # interior cross-streets only
+        # suppress buildings on every cuad whose centre sits under the pitch
+        xs = [c[0] for c in quad]; ys = [c[1] for c in quad]
+        qx0, qx1 = min(xs), max(xs); qy0, qy1 = min(ys), max(ys)
+        for cr in range(int(qy0 // CUAD), int(qy1 // CUAD) + 1):
+            for cc in range(int(qx0 // CUAD), int(qx1 // CUAD) + 1):
+                if point_in_poly(((cc + 0.5) * CUAD, (cr + 0.5) * CUAD), quad):
+                    occ.add((cc, cr))
+        footprint = [round(v) for c in draw_poly for v in c]
+        cx = round(sum(c[0] for c in quad) / 4); cy = round(sum(c[1] for c in quad) / 4)
         lm["x"], lm["y"] = cx, cy
         lm["footprint"] = footprint
-        # drop any green ground under the footprint, then add the pitch grass
+        lm["stands"] = bool(spec.get("stands", True))
+        # drop any green/plaza ground under the block, then add the pitch grass
         plazas[:] = [pz for pz in plazas
-                     if pz[0] + pz[2] <= rx0 or pz[0] >= rx1 or
-                        pz[1] + pz[3] <= ry0 or pz[1] >= ry1]
+                     if pz[0] + pz[2] <= qx0 or pz[0] >= qx1 or
+                        pz[1] + pz[3] <= qy0 or pz[1] >= qy1]
         greens[:] = [g for g in greens
-                     if max(g["pts"][0::2]) <= rx0 or min(g["pts"][0::2]) >= rx1 or
-                        max(g["pts"][1::2]) <= ry0 or min(g["pts"][1::2]) >= ry1]
+                     if max(g["pts"][0::2]) <= qx0 or min(g["pts"][0::2]) >= qx1 or
+                        max(g["pts"][1::2]) <= qy0 or min(g["pts"][1::2]) >= qy1]
         greens.append({"pts": footprint, "type": "stadium"})
-        stadiums.append({"x0": rx0, "y0": ry0, "x1": rx1, "y1": ry1, "cx": cx, "cy": cy})
-        print(f"[estadio] {spec['id']} at cuads ({c0},{r0})-({c1},{r1}) "
-              f"({c1 - c0 + 1}x{r1 - r0 + 1} cuads), clipped {n_clip} road(s), drivable")
+        fx0, fx1 = min(footprint[0::2]), max(footprint[0::2])
+        fy0, fy1 = min(footprint[1::2]), max(footprint[1::2])
+        stadiums.append({"x0": fx0, "y0": fy0, "x1": fx1, "y1": fy1,
+                         "cx": cx, "cy": cy, "footprint": footprint,
+                         "stands": lm["stands"]})
+        print(f"[estadio] {spec['id']} quad "
+              f"({round(qx0)},{round(qy0)})-({round(qx1)},{round(qy1)})px "
+              f"stands={lm['stands']}, clipped {n_clip} road(s), drivable")
 
     # Calle/Avenida refs mapped to the OSM names actually present here (odd
     # calles are unnamed → fall back to the flanking even calle; the central
-    # avenue is "Avenida Centenario"). place_stadium prints the resolved rect.
+    # avenue is "Avenida Centenario"). place_stadium prints the resolved quad.
     for _sp in (
         {"id": "estadio",                    # Lito Pérez: Calle 15-17 x Avenida 0-2
          "calles": (["Calle 15 José Joaquín Escalante"], ["Calle 17"]),
          "ave_south": ["Avenida 2"],
-         "ave_north": ["Avenida Centenario", "Avenida 0"]},
+         "ave_north": ["Avenida Centenario", "Avenida 0"],
+         "stands": True},
         {"id": "estadio_playitas",           # Las Playitas: Calle 6-8, north of Avenida 1
          "calles": (["Calle 6"], ["Calle 8"]),
          "ave_south": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
-         "ave_north": None},
+         "diagonal": True, "stands": True},
     ):
         place_stadium(_sp)
 
@@ -3399,7 +3543,11 @@ def main():
             nxt = s0
             for (s, x, y) in samples[k0:k1 + 1]:
                 if s >= nxt and s <= s1:
-                    palms.append({"x": round(x), "y": round(y),
+                    # paintPalm anchors the trunk base at y+4 (shadow at y+5), so
+                    # planting on the island centerline drops the visible palm to
+                    # the strip's lower edge. Lift by that base offset so the
+                    # trunk sits centered ON the median island.
+                    palms.append({"x": round(x), "y": round(y - 4),
                                   "s": 1.05, "sway": round(rng() * 6.28, 2)})
                     n_median_palms += 1
                     nxt = s + PALM_PITCH

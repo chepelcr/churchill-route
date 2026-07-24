@@ -4,6 +4,32 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Estadios orgánicos (graderías desde la acera) + ajustes de mundo (2026-07-24)
+
+- [x] **Estadio orgánico, sin rect flotante**: `place_stadium` ahora arma el
+      bloque como un polígono que sigue la grilla real. Las Playitas usa un
+      `quad` DIAGONAL (líneas de Calle 6/8 + Avenida 1 vía `_street_line`/
+      `_iline`), extendido al norte → encaja en la manzana sin montarse sobre
+      las calles. La cancha (`draw_poly`, inset del asfalto) es lo que se pinta;
+      el quad exterior se estampa `CLS_ROAD` (manejable, sin colisión, se puede
+      entrar). Recorte de calles interiores por polígono (`_clip_roads_poly`).
+- [x] **Graderías = la acera real**: `drawStadium` pinta una banda gris oscuro
+      con línea de grada (dos tonos) sobre el anillo de acera del bloque, en el
+      pase de landmarks (después de las aceras) → recolorea la acera de verdad,
+      siguiendo el contorno orgánico. Césped verde tipo parque + líneas blancas
+      dentro. Flag `lm.stands` por estadio.
+- [x] **NPCs de estadio contenidos en las graderías**: peatones `kind:"fan"`
+      patrullan el perímetro del footprint (`advanceRingPed`, `su`/`sdir` sobre
+      arclength) — no pisan la cancha ni deambulan la ciudad. Campo `kind` para
+      tipos de NPC (ciudad / fan / futuro swimmer/vendedor).
+- [x] **Árboles de parque hacia el borde**: en `drawGreenSpace` los árboles
+      forman anillo perimetral, ya no se amontonan sobre la fuente central.
+- [x] **Casa de la Cultura = el museo**: se eliminó el landmark `museo`
+      (mismo edificio). Nudge `_nudge_off_acera` para POIs cívicos (0 movidos:
+      ya estaban centrados en su cuadra).
+- [x] **Palmeras del Paseo centradas**: se planta la palmera 4px al norte para
+      que el tronco quede sobre la isla (compensa el ancla base de `paintPalm`).
+
 ## ✅ Estadios manejables en la grilla de calles + feel de colisión + coins en todo modo (2026-07-23)
 
 - [x] **Colores por vehículo (fix)**: el Shop abre en el carro correcto vía

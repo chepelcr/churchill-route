@@ -1062,12 +1062,14 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     // cluster near the centre, and the label. Stadium/standalone keep the
     // legacy self-drawn grass rect + pitch outline.
     if (opts.ground === false) {
-      const r = Math.max(14, Math.min(w, h) / 3);
-      const n = Math.max(3, Math.round(r / 7));
+      // Trees hug the park perimeter (well clear of the central fountain), so
+      // the ring reads as shade trees around the plaza, not a clump on the jet.
+      const rx = Math.max(20, w / 2 - 14), ry = Math.max(18, h / 2 - 14);
+      const n = Math.max(6, Math.round((w + h) / 26));
       for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2 + hash01(i + lm.x) * 0.6;
-        const rr = r * (0.55 + hash01(i * 5 + lm.y) * 0.4);
-        paintTree({ x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr, s: 0.8 + hash01(i + lm.x) * 0.35 });
+        const a = (i / n) * Math.PI * 2 + hash01(i + lm.x) * 0.35;
+        const f = 0.82 + hash01(i * 5 + lm.y) * 0.16;
+        paintTree({ x: x + Math.cos(a) * rx * f, y: y + Math.sin(a) * ry * f, s: 0.8 + hash01(i + lm.x) * 0.35 });
       }
       if (opts.fountain) drawFountain(x, y);
       return;
@@ -1119,11 +1121,30 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     }
     const w = x1 - x0, h = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
     const inset = Math.max(10, Math.min(w, h) * 0.12);
+    // GRADERÍAS: the block's real acera ring becomes the grandstand — a
+    // dark-gray band hugging the pitch with a lighter tier line down its middle
+    // to fake a raised stand. Drawn in the LANDMARK pass (after the sidewalks)
+    // so it recolours the actual acera, and BEFORE the green pitch, whose fill
+    // then reclaims the inner half so only the outer stand shows. Follows the
+    // organic footprint (diagonal blocks included) — never a rect over streets.
+    const stands = lm.stands !== false;
+    if (stands) {
+      ctx.save();
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      const bandW = 2 * (ACERA_PX + 12);
+      ctx.strokeStyle = "#40424a"; ctx.lineWidth = bandW; ctx.stroke(path);        // lower stand
+      ctx.strokeStyle = "#565963"; ctx.lineWidth = bandW * 0.56; ctx.stroke(path); // upper tier (step = altitude)
+      ctx.restore();
+    }
     ctx.save();
     ctx.clip(path);
-    ctx.fillStyle = "rgba(30,88,50,0.18)";                        // mow stripes
-    for (let sy = y0; sy < y1; sy += 14) ctx.fillRect(x0, sy, w, 7);
-    ctx.strokeStyle = "rgba(255,255,255,0.72)"; ctx.lineWidth = 2; // pitch lines
+    ctx.fillStyle = "#4f9d5b";                                    // green pitch ground (like a park)
+    ctx.fill(path);
+    if (!stands) {                                                // subtle mow stripes on the plain pitch
+      ctx.fillStyle = "rgba(30,88,50,0.16)";
+      for (let sy = y0; sy < y1; sy += 14) ctx.fillRect(x0, sy, w, 7);
+    }
+    ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2; // pitch lines
     ctx.strokeRect(x0 + inset, y0 + inset, w - 2 * inset, h - 2 * inset);
     ctx.beginPath();
     if (w >= h) { ctx.moveTo(cx, y0 + inset); ctx.lineTo(cx, y1 - inset); }  // wide → vertical halfway line
@@ -1131,7 +1152,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     ctx.stroke();
     ctx.beginPath(); ctx.arc(cx, cy, Math.min(w, h) * 0.13, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
-    ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); // curb edge
+    if (!stands) { ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); } // curb edge (Playitas)
     label(cx, y0 - 6, (lm.name || "Estadio").toUpperCase(), "#fff", "#2e7d44");
   }
 

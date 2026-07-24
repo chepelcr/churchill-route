@@ -40,10 +40,11 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false 
     sfx.play("menu_move");
     setArmed((a) => ({ ...a, [id]: !a[id] }));
   };
-  // Equip an owned paint inline; unowned colours deep-link to the Shop.
+  // Equip an owned paint inline; unowned colours deep-link to the Shop's
+  // colors tab WITH this car selected (so the buy equips to the right ride).
   const pickColor = (id) => {
     if (!id || economy.ownsColor(id)) { economy.equipColor(veh, id); sfx.play("menu_move"); }
-    else { sfx.play("menu_denied"); onShop(); }
+    else { sfx.play("menu_denied"); onShop({ tab: "colors", veh }); }
   };
   const go = () => {
     if (!owned) { sfx.play("menu_denied"); return; }
@@ -57,7 +58,7 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false 
         <div className="shell-nav">
           <button className="btn secondary" onClick={onBack}>{t("select.back")}</button>
           <h2 className="title-main shell-title">{t("picker.title")}</h2>
-          <button className="btn secondary" onClick={onShop}>
+          <button className="btn secondary" onClick={() => onShop({ veh })}>
             <Icon name="cart" size={14} /> <CoinIcon size={13} /> {economy.coins.toLocaleString()}
           </button>
         </div>
@@ -79,7 +80,7 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false 
                   })}
                 </div>
                 {!owned && (
-                  <button className="btn secondary picker-getbtn" onClick={onShop}>
+                  <button className="btn secondary picker-getbtn" onClick={() => onShop({ tab: "vehicles", veh })}>
                     <Icon name="lock" size={13} /> {t("picker.locked")} · <CoinIcon size={13} /> {VEHICLE_PRICES[veh]}
                   </button>
                 )}

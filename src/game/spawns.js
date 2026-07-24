@@ -283,34 +283,34 @@ function topUp(arr, target, make, isDead) {
   let guard = 0;
   while (arr.length < target && guard++ < target * 3) { const e = make(); if (e) arr.push(e); }
 }
-// A few porteños live INSIDE the estadio (kickabout on the césped) so the
-// stadium feels alive when you drive in. They walk surface class 3 (the
-// pitch + tunnel are stamped ROAD) with a leash back to the footprint.
+// City NPCs wander INSIDE each drivable stadium pitch so the estadios feel
+// alive. They free-walk the pitch (surface class 3), leashed to the footprint,
+// and are drawn exactly like the pedestrians that walk the city (hue/ph).
 const STADIUM_PEDS = 8;
 function maintainStadiumPeds() {
-  const S = W.STADIUM;
-  // walled stadium (no tunnel): pitch is CLS_LAND, peds walking cls:[3] would
-  // insta-die and respawn-churn every maintain tick
-  if (!S || !S.tunnel) return;
-  if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) return;
-  let n = 0;
-  for (const pe of pedestrians) {
-    if (!pe.stadium) continue;
-    // leash: wandered out the tunnel → recycle next maintain
-    if (pe.x < S.x0 - 60 || pe.x > S.x1 + 60 || pe.y < S.y0 - 60 || pe.y > S.y1 + 60) pe.dead = true;
-    else n++;
-  }
-  const px0 = S.x0 + S.ring + 10, px1 = S.x1 - S.ring - 10;
-  const py0 = S.y0 + S.ring + 10, py1 = S.y1 - S.ring - 10;
-  let guard = 0;
-  while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 2) {
-    pedestrians.push({
-      x: px0 + Math.random() * (px1 - px0), y: py0 + Math.random() * (py1 - py0),
-      ang: Math.random() * Math.PI * 2, v: 12 + Math.random() * 12,
-      hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
-      stadium: true, cls: [3],
-    });
-    n++;
+  const arr = W.STADIUMS;
+  if (!arr || !arr.length) return;
+  for (const S of arr) {
+    if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;
+    let n = 0;
+    for (const pe of pedestrians) {
+      if (pe.stadium !== S) continue;
+      // leash: wandered off this pitch → recycle next maintain
+      if (pe.x < S.x0 - 40 || pe.x > S.x1 + 40 || pe.y < S.y0 - 40 || pe.y > S.y1 + 40) pe.dead = true;
+      else n++;
+    }
+    let guard = 0;
+    while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 12) {
+      const x = S.x0 + 10 + Math.random() * Math.max(1, S.x1 - S.x0 - 20);
+      const y = S.y0 + 10 + Math.random() * Math.max(1, S.y1 - S.y0 - 20);
+      if (W.surfaceAt(x, y) !== 3) continue; // stay on the pitch, never spill onto aceras/streets
+      pedestrians.push({
+        x, y, ang: Math.random() * Math.PI * 2, v: 12 + Math.random() * 12,
+        hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
+        stadium: S, cls: [3],
+      });
+      n++;
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Game } from "../../game/index.js";
 import { VEHICLES } from "../../game/vehicles.js";
 import { economy, VEHICLE_PRICES, UPGRADES, BOOSTS, COLORS, COIN_PACKS } from "../../game/economy.js";
 import { iap } from "../../monetize/iap.js";
@@ -14,11 +15,19 @@ const TABS = ["vehicles", "upgrades", "boosts", "colors", "packs"];
 // card): header (back / title / balance), tab bar, and one tab of content
 // centered in the remaining space. Coin packs are their own tab so no tab
 // ever needs to scroll.
-export default function ShopScreen({ onBack }) {
+// `ctx` ({ tab?, veh? }) comes from deep-links (vehicle picker): it opens the
+// right tab AND selects the car being customized — colors always equip to
+// THAT car, never a hardcoded default.
+export default function ShopScreen({ onBack, ctx }) {
   const t = useT();
-  const [tab, setTab] = useState("vehicles");
-  const [vIdx, setVIdx] = useState(0);                 // vehicle carousel index
-  const [colorVeh, setColorVeh] = useState("scooter"); // colors tab context
+  const vehKeysAll = Object.keys(VEHICLES);
+  const [tab, setTab] = useState(ctx?.tab || "vehicles");
+  const [vIdx, setVIdx] = useState(() =>                // vehicle carousel index
+    Math.max(0, vehKeysAll.indexOf(ctx?.veh || Game.state.vehicleKey)));
+  const [colorVeh, setColorVeh] = useState(() => {      // colors tab context
+    const k = ctx?.veh || Game.state.vehicleKey;
+    return economy.ownsVehicle(k) ? k : "scooter";
+  });
   const [pending, setPending] = useState(null);        // { label, price, fn } confirm gate
   const [, bump] = useState(0);
   useEffect(() => economy.onChange(() => bump((n) => n + 1)), []);

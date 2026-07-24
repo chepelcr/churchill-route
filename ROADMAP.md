@@ -4,18 +4,54 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
-## ⏳ Pendiente (reportado 2026-07-20, aún sin implementar)
+## ✅ Estadios manejables en la grilla de calles + feel de colisión + coins en todo modo (2026-07-23)
 
-- [ ] **Colores por vehículo (bug reportado)**: en el Shop y el color picker
-      el color equipado se está aplicando UNIVERSALMENTE a todos los
-      vehículos y no por-carro. Hacer que `equipColor(veh, id)` / el picker
-      realmente persistan y apliquen la pintura por vehículo.
-- [ ] **Spawn de niveles en calle**: a veces el jugador aparece en la PLAYA
-      en vez de la calle manejable más cercana al punto de spawn del nivel —
-      snapear el spawn a la calle más cercana (como los kioscos con
-      `_nearest_cell`).
-- [ ] **Estadio: posición final**: el usuario enviará las coordenadas (📍
-      overlay x·y) de la cuadra correcta; anclar el footprint ahí y rebuild.
+- [x] **Colores por vehículo (fix)**: el Shop abre en el carro correcto vía
+      deep-link `ctx {tab, veh}` desde el picker; `equipColor(veh,id)` ya era
+      por-vehículo, faltaba que el Shop no cayera a `"scooter"` fijo.
+- [x] **Colisión acolchada (colchón)**: `physics.js` — al chocar cuadra/acera
+      se conserva la tangente y se amortigua la normal (`cushion`, rebote ×1.1)
+      en vez de frenón seco; esquina de frente conserva ~0.72 de velocidad. Se
+      acabó el temblor/rebote contra la pared.
+- [x] **Esquinas de acera redondeadas**: discos color acera (radio `w/2+ACERA_PX`)
+      en los extremos de cada tramo, en el pase de banda de acera (antes del
+      casing/asfalto), en `paintRoads` y el renderer global — las esquinas de
+      cruce ya no son ángulos rectos.
+- [x] **Coins en TODOS los modos**: `maintainArcadeCoins` se llama siempre
+      (Historia/Arcade/Recorrer/tutorial). Como solo aparecen en clase 3/5,
+      caen dentro del césped manejable del estadio sin código extra. Se quitó
+      el bloque la-ola/`stadiumCoins` (dependía del estadio amurallado).
+- [x] **Dos estadios MANEJABLES ubicados por calles**: `place_stadium(spec)`
+      resuelve el rect desde nombres de calle/avenida OSM (promedio de muestras
+      cerca del ancla, con lista de candidatos porque las calles impares no
+      existen y la central es "Avenida Centenario"). Lito Pérez = Calle 14-16 ×
+      Avenida Centenario-2 (tamaño real); Las Playitas = Calle 6-8, al norte de
+      Avenida 1, extendido al norte (vertical 9×13). Se recorta la calle
+      interior, se marca `occ` (sin edificios), se estampa el interior a
+      `CLS_ROAD` (manejable, INSET < medio ancho de calle para que conecte),
+      y se emite `footprint` (polígono cuad) + un green tipo `stadium`.
+      `manifest.stadiums` (array) reemplaza el `stadium` único → `W.STADIUMS`.
+- [x] **NPCs de ciudad dentro de los estadios**: `maintainStadiumPeds` itera
+      `W.STADIUMS`, siembra peatones normales (mismo modelo/hue) en celdas
+      clase 3 del footprint, con leash.
+- [x] **Dibujo del estadio**: `drawStadium(lm)` recorta a `lm.footprint`, pinta
+      líneas blancas de cancha (media cancha en el eje corto → sirve ancho y
+      alto), césped del green `stadium`. Sin capa Pixi de estadio.
+- [x] **Spawn de nivel en calle**: build snapea `lm["spawn"]` de cada kiosco a
+      la calle manejable más cercana (`_nearest_cell`); `modes.js spawnAtKiosk`
+      lo usa. Ya no se aparece en la playa.
+- [x] **Balneario como polígono cuad**: `_green_poly(cells, "pool")` (color
+      agua, sin dilatación); edificios de la cuadra ya suprimidos por `green`.
+- [x] **Muelles**: probe casi completo (0.98) al ir sobre el deck (clase 5) para
+      no colgar medio carro sobre el agua; el extremo de mar se estampa `w/2`
+      más corto para no dejar celdas manejables pasadas del deck dibujado.
+- [x] **Medianas (palmeras Paseo + León Cortés)**: el muro se estampa más ancho
+      que la curva dibujada (`PASEO_MEDIAN_W + 6`) para que el carro pare en el
+      verde y no se meta/atore en el cap redondo del extremo.
+- [x] **Línea de árboles del Ferrocarril/Cocal**: guard de clase — no se plantan
+      sobre calle/paseo/puente/agua, solo al lado del carril (antes se sentaban
+      sobre las calles del Cocal). La mediana del Cocal dividido es corridor-only
+      (inerte en planar).
 
 ## ✅ Navegación unificada + vehículo por página + parques con contorno real (2026-07-20)
 

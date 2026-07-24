@@ -264,6 +264,19 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     // acera concrete band
     ctx.strokeStyle = "#cec7b2";
     for (const r of roads) { if (r.bridge || r.cls === "bridge") continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
+    // acera corner fillets: acera-coloured joint discs at each piece endpoint,
+    // so perpendicular sidewalks meet ROUNDED at junctions instead of a hard
+    // angle (casing + asphalt paint over the disc centres below, leaving only
+    // the outer acera fillet visible).
+    ctx.fillStyle = "#cec7b2";
+    for (const r of roads) {
+      if (r.bridge || r.cls === "bridge") continue;
+      const p = r.pts, n = p.length, rad = r.w / 2 + ACERA_PX;
+      ctx.beginPath();
+      ctx.moveTo(p[0] + rad, p[1]); ctx.arc(p[0], p[1], rad, 0, Math.PI * 2);
+      ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
     // barro shoulder
     ctx.strokeStyle = "#7d6242";
     for (const r of roads) { if (!r.barro) continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
@@ -432,7 +445,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
   // civic plaza, a park lawn, or the marine park — instead of layering a
   // texture over the base terrain. Rects tile the block edge-to-edge, so a
   // single flat colour with square corners reads as one continuous area.
-  const GREEN_COLORS = { plaza: "#5ba362", park: "#4f9d5b", marine: "#46a98f", esplanade: "#cbc6ba" };
+  const GREEN_COLORS = { plaza: "#5ba362", park: "#4f9d5b", marine: "#46a98f", pool: "#5faec7", stadium: "#4f9d5b", esplanade: "#cbc6ba" };
   function drawPlazaGreen(pz, view) {
     const [px, py, pw, ph] = pz;
     if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
@@ -457,7 +470,9 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         if (p[i + 1] < b.y0) b.y0 = p[i + 1]; if (p[i + 1] > b.y1) b.y1 = p[i + 1];
       }
     }
-    const m = GREEN_DILATE;
+    // Pool + stadium outlines are their real cuadra edges (drawn as the exact
+    // cuad polygon) — do NOT dilate them over the surrounding aceras.
+    const m = (gp.type === "stadium" || gp.type === "pool") ? 0 : GREEN_DILATE;
     if (b.x1 + m < view.x0 || b.x0 - m > view.x1 || b.y1 + m < view.y0 || b.y0 - m > view.y1) return;
     if (!gp._path) {
       const p = gp.pts, path = new Path2D();
@@ -468,8 +483,10 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     }
     const col = GREEN_COLORS[gp.type] || "#4f9d5b";
     ctx.fillStyle = col; ctx.fill(gp._path);
-    ctx.strokeStyle = col; ctx.lineWidth = GREEN_DILATE; ctx.lineJoin = "round";
-    ctx.stroke(gp._path);
+    if (m) {
+      ctx.strokeStyle = col; ctx.lineWidth = m; ctx.lineJoin = "round";
+      ctx.stroke(gp._path);
+    }
   }
 
   // Faro plaza red comma "islands": all the SAME orientation, corner (tip)
@@ -636,6 +653,18 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
       if (e.r.bridge || e.r.cls === "bridge") continue;
       ctx.lineWidth = e.r.w + 2 * ACERA_PX;
       ctx.stroke(e.path);
+    }
+    // acera corner fillets: rounded sidewalk corners at junctions (casing +
+    // asphalt paint over the centres) — matches paintRoads.
+    ctx.fillStyle = "#cec7b2";
+    for (const e of visible) {
+      const r = e.r;
+      if (r.bridge || r.cls === "bridge") continue;
+      const p = r.pts, n = p.length, rad = r.w / 2 + ACERA_PX;
+      ctx.beginPath();
+      ctx.moveTo(p[0] + rad, p[1]); ctx.arc(p[0], p[1], rad, 0, Math.PI * 2);
+      ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
+      ctx.fill();
     }
     // Barro shoulder: dirt banks instead of concrete curbs
     ctx.strokeStyle = "#7d6242";
@@ -1066,6 +1095,46 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
     if (opts.fountain) drawFountain(x, y);
   }
 
+  // Estadio: white pitch markings clipped to the EXACT cuad footprint polygon
+  // (the grass itself is the "stadium"-typed green poly painted in the ground
+  // layer). The clip keeps the markings inside the real block even when its
+  // sides are stepped/angled. Halfway line runs along the short axis so both a
+  // wide (Lito Pérez) and a tall (Las Playitas) pitch read correctly.
+  function drawStadium(lm) {
+    const pts = lm.footprint;
+    if (!pts || pts.length < 6) {
+      const w = lm.w || 156, h = lm.h || 122;
+      drawGreenSpace(lm, w, h, { pitch: true });
+      label(lm.x, lm.y - h / 2 - 6, "ESTADIO", "#fff", "#2e7d44");
+      return;
+    }
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const path = new Path2D();
+    path.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) path.lineTo(pts[i], pts[i + 1]);
+    path.closePath();
+    for (let i = 0; i < pts.length; i += 2) {
+      if (pts[i] < x0) x0 = pts[i]; if (pts[i] > x1) x1 = pts[i];
+      if (pts[i + 1] < y0) y0 = pts[i + 1]; if (pts[i + 1] > y1) y1 = pts[i + 1];
+    }
+    const w = x1 - x0, h = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const inset = Math.max(10, Math.min(w, h) * 0.12);
+    ctx.save();
+    ctx.clip(path);
+    ctx.fillStyle = "rgba(30,88,50,0.18)";                        // mow stripes
+    for (let sy = y0; sy < y1; sy += 14) ctx.fillRect(x0, sy, w, 7);
+    ctx.strokeStyle = "rgba(255,255,255,0.72)"; ctx.lineWidth = 2; // pitch lines
+    ctx.strokeRect(x0 + inset, y0 + inset, w - 2 * inset, h - 2 * inset);
+    ctx.beginPath();
+    if (w >= h) { ctx.moveTo(cx, y0 + inset); ctx.lineTo(cx, y1 - inset); }  // wide → vertical halfway line
+    else { ctx.moveTo(x0 + inset, cy); ctx.lineTo(x1 - inset, cy); }         // tall → horizontal halfway line
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, Math.min(w, h) * 0.13, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); // curb edge
+    label(cx, y0 - 6, (lm.name || "Estadio").toUpperCase(), "#fff", "#2e7d44");
+  }
+
   // Central fountain with living (animated) water: stone basin, rippling pool,
   // a bobbing central jet and droplets. Animated off lastT.
   function drawFountain(x, y) {
@@ -1204,12 +1273,7 @@ import { traceVehicleSilhouette } from "./vehicleShapes.js";
         label(x, y - ph / 2 - 6, "PARQUE", "#fff", "#2e7d44"); break;
       }
       case "stadium": {
-        // simple grass + white pitch lines (the look the estadio shipped
-        // with), sized to the real merged-cuadra footprint when it exists
-        const S = W.STADIUM;
-        const sw = S ? S.x1 - S.x0 : 156, sh = S ? S.y1 - S.y0 : 122;
-        drawGreenSpace(lm, sw, sh, { pitch: true });
-        label(x, y - sh / 2 - 6, "ESTADIO", "#fff", "#2e7d44"); break;
+        drawStadium(lm); break;
       }
       case "museum": {
         // neoclassical facade: portico columns + pediment

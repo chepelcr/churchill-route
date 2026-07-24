@@ -74,7 +74,11 @@ export function update(dt) {
   // extents for arcade forgiveness) — a center-only test let half the body
   // sink into aceras. Classes 1 land / 6 acera / 0 water / 2 beach are walls.
   const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2; };
-  const hw = veh.w * 0.5 * 0.8, hh = veh.h * 0.5 * 0.8;
+  // On a pier deck (class 5) the only wall is the surrounding water, so the
+  // usual 20% overhang forgiveness reads as "half off the muelle" — probe at
+  // near-full extents there so the body can't hang over the edge.
+  const probeF = W.surfaceAt(p.x, p.y) === 5 ? 0.98 : 0.8;
+  const hw = veh.w * 0.5 * probeF, hh = veh.h * 0.5 * probeF;
   const blockedAt = (x, y, ang = p.a) => {
     const ca = Math.cos(ang), sa = Math.sin(ang);
     return isWall(x + ca * hw - sa * hh, y + sa * hw + ca * hh) ||
@@ -160,18 +164,29 @@ export function update(dt) {
   // axis so tangential motion carries you. Beach became a wall on user
   // request (beach-classed pockets also let you slip inside cuadras).
   if (blockedAt(p.x, p.y)) {
+    // Cushioned curb: keep the tangential motion, and instead of a dead stop
+    // remove a little more than the inward-normal velocity (×1.1) so a wall
+    // pushes back softly — a colchón, not an invisible slab. (nx,ny) is the
+    // direction of travel INTO the wall.
+    const cushion = (nx, ny) => {
+      const vn = p.vx * nx + p.vy * ny;
+      if (vn > 0) { p.vx -= vn * 1.1 * nx; p.vy -= vn * 1.1 * ny; }
+    };
+    const dx = p.x - prevX, dy = p.y - prevY;
     const okX = !blockedAt(p.x, prevY);
     const okY = !blockedAt(prevX, p.y);
-    if (okX && !okY) { p.y = prevY; p.vy = 0; }        // slide along X — smooth
-    else if (okY && !okX) { p.x = prevX; p.vx = 0; }   // slide along Y — smooth
+    if (okX && !okY) { p.y = prevY; cushion(0, Math.sign(dy || p.vy) || 1); }        // slide along X — soft curb
+    else if (okY && !okX) { p.x = prevX; cushion(Math.sign(dx || p.vx) || 1, 0); }   // slide along Y — soft curb
     else if (!blockedAt(prevX, prevY)) {
-      // Dead-on corner: STOP smoothly at the last free spot and bleed off
-      // speed — no bounce (the old ×-0.45 kicked the car back into the wall
-      // every frame, which read as violent shaking). A tiny impact shake only
-      // on a genuinely fast hit, gated so grinding a curb never jitters.
+      // Dead-on corner: return to the last free pose with the same cushioned
+      // response (no per-frame bounce back into the wall), retaining most of
+      // the speed so it feels padded; shake only on a genuinely fast hit.
       const hitSpeed = Math.hypot(p.vx, p.vy);
-      p.x = prevX; p.y = prevY; p.vx *= 0.25; p.vy *= 0.25;
-      if (hitSpeed > 150) state.cam.shake = Math.max(state.cam.shake, Math.min(3, hitSpeed / 130));
+      p.x = prevX; p.y = prevY;
+      if (Math.abs(dx) > Math.abs(dy)) cushion(Math.sign(dx || p.vx) || 1, 0);
+      else cushion(0, Math.sign(dy || p.vy) || 1);
+      p.vx *= 0.72; p.vy *= 0.72;
+      if (hitSpeed > 180) state.cam.shake = Math.max(state.cam.shake, Math.min(2, hitSpeed / 180));
     } else if (p.freeX !== undefined && Math.hypot(p.x - p.freeX, p.y - p.freeY) < 60) {
       // both ends blocked but we were clear a moment ago: snap back instead of
       // the drive-out fallback (which would carry the car through the cuadra).
@@ -312,46 +327,11 @@ export function update(dt) {
   // Tutorial step machine (only set in tutorial mode)
   if (state.tutorial) tutorialTick(dt);
 
-  // Estadio: la ola laps the gradas every WAVE_MS (the Pixi crowd derives its
-  // crest from the same wall clock). Each lap finished while you're around,
-  // the crowd celebrates and throws coins onto the césped — drive over them.
-  const S = W.STADIUM;
-  if (S && S.tunnel && !state.tutorial) {   // walled stadium: no reachable césped, no coin drops
-    if (!state.stadiumCoins) state.stadiumCoins = [];
-    const WAVE_MS = 24000;
-    const lap = Math.floor(performance.now() / WAVE_MS);
-    const near = p.x > S.x0 - 120 && p.x < S.x1 + 120 && p.y > S.y0 - 120 && p.y < S.y1 + 120;
-    if (state.waveLap === undefined || !near) state.waveLap = lap;
-    else if (lap !== state.waveLap) {
-      state.waveLap = lap;
-      state.stadiumParty = 3; // the Pixi crowd bounces harder for a beat
-      const n = 8 + ((Math.random() * 5) | 0);
-      for (let i = 0; i < n; i++) {
-        state.stadiumCoins.push({
-          x: S.x0 + S.ring + 14 + Math.random() * (S.x1 - S.x0 - 2 * S.ring - 28),
-          y: S.y0 + S.ring + 14 + Math.random() * (S.y1 - S.y0 - 2 * S.ring - 28),
-          t: 0,
-        });
-      }
-      pushFloat(S.cx, S.y0 + S.ring + 20, t("float.ola"), "#ffd23f");
-      sfx.play("combo", 4);
-    }
-    state.stadiumParty = Math.max(0, (state.stadiumParty || 0) - dt);
-    for (let i = state.stadiumCoins.length - 1; i >= 0; i--) {
-      const c = state.stadiumCoins[i];
-      c.t += dt;
-      if (c.t > 25) { state.stadiumCoins.splice(i, 1); continue; }
-      if (Math.hypot(p.x - c.x, p.y - c.y) < 18) {
-        economy.addCoins(1);
-        pushFloat(c.x, c.y - 10, "+1", "#ffd23f");
-        sfx.play("pickup");
-        state.stadiumCoins.splice(i, 1);
-      }
-    }
-  }
-
-  // Arcade: collectable churchill coins scattered on the streets around you.
-  if (state.mode === "arcade" && !state.tutorial) maintainArcadeCoins(dt);
+  // Collectable churchill coins belong to EVERY run (Historia, Arcade,
+  // Recorrer, tutorial). They stream around the player on drivable ground —
+  // including the open stadium pitches (class 3), so coins appear inside the
+  // estadios just like Recorrer, no special stadium-coin code needed.
+  maintainArcadeCoins(dt);
 
   // Combo decay
   if (state.combo > 1) {

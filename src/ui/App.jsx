@@ -33,6 +33,7 @@ export default function App() {
   const [screen, setScreen] = useState("boot");
   const [pendingStage, setPendingStage] = useState(null);
   const [pendingMode, setPendingMode] = useState(null); // story | arcade | explore
+  const [shopCtx, setShopCtx] = useState(null);         // { tab?, veh? } deep-link into the shop
   const canvasRef = useRef(null);
   const [, setTick] = useState(0);
   const tickRef = useRef(0);
@@ -207,10 +208,10 @@ export default function App() {
             Game.startTutorial({ vehicleKey: Game.state.vehicleKey });
             setScreen("playing");
           }} />}
-          {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => setScreen("shop")} />}
+          {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => { setShopCtx(null); setScreen("shop"); }} />}
           {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
-          {screen === "shop" && <ShopScreen onBack={() => setScreen("title")} />}
-          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} onShop={() => setScreen("shop")} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
+          {screen === "shop" && <ShopScreen ctx={shopCtx} onBack={() => { setShopCtx(null); setScreen("title"); }} />}
+          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} onShop={(ctx) => { setShopCtx(ctx || null); setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
           {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
           {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
           {screen === "over" && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen("title")} onContinue={continueRun} />}

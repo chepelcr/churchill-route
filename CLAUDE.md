@@ -104,6 +104,65 @@ Knobs at the top of `build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`,
 `ROAD_WIDTH_PX`, `BUILDING_SCALE`, `DISTRICT_BOUNDS_GEO`, `LANDMARK_DEFS` /
 `CUSTOMER_DEFS` (geo anchors — build fails listing unresolved POIs).
 
+**The shipped world is PLANAR** (`world:build` runs `--planar`): full-OSM 2-D
+map emitted to `src/world2d/` (per-tile RLE surface slabs + `manifest.json`),
+loaded by `src/world2d/index.js` (`WORLD2D`/`W`). `src/world/data.js` is the
+legacy corridor output. Corridor-only code lives in the `else` of `if PLANAR:`
+(e.g. `divide_cocal_carriageways`, `carriageway_gores`) and is INERT in the
+shipped game — don't "fix" it expecting a planar effect.
+
+## World structures — recipes (reusable patterns)
+
+**Place a structure on a named street-grid cuadra** (how the two estadios are
+positioned — `place_stadium` in `build_world.py`): OSM roads carry their raw
+`name` ("Calle 8", "Avenida Centenario") and a flat world-px `pts` list. To
+resolve a block from bounding streets, average a named street's samples NEAR an
+anchor: a *calle* → mean `pts[0::2]` (x), an *avenida* → mean `pts[1::2]` (y)
+(`_street_vals`). Pass a **list of candidate names** per edge — odd calles are
+often unnamed (fall back to the flanking even calle) and the central avenue is
+"Avenida Centenario", not "Avenida 0". Always `print` the resolved rect + the
+nearby-street diagnostic and eyeball the build log; if a name won't resolve,
+the user can give a `xy` anchor (like `ancla`).
+
+**Make a whole cuadra drivable and draw it as its cuad polygon** (stadiums):
+1. Resolve/clip: `_clip_roads_rect` removes road polylines crossing the rect so
+   interior cross-streets vanish (two cuadras merge cleanly).
+2. `occ.add(...)` every cuad cell → no synth/OSM buildings land there.
+3. Stamp the interior `CLS_ROAD` with `_stamp_px` → drivable. `acera_fringe`
+   ran EARLIER, so nothing re-rings it with sidewalks (that's the "no aceras").
+   **INSET the rect < a street half-width (~18px)** so the pitch overlaps the
+   bounding streets' asphalt and stays reachable — a bigger inset fences it off
+   behind the acera ring. INSET must still be > 0 so bounding centerlines
+   aren't clipped.
+4. Emit `lm["footprint"]` (flat cuad-aligned polygon) for the renderer's clip,
+   plus a `greens` entry `{"pts":…, "type":"stadium"}` for the grass fill, plus
+   a bbox into `manifest["stadiums"]` (array → `W.STADIUMS`).
+
+**Green cuadras (parks / plaza / pool / stadium)**: emitted as ONE raster-traced
+outline polygon per block in `manifest.greens` (`_green_poly` → `_block_raster_cells`
++ `_outline_poly`), painted in `drawLandBase` (first ground paint, global — no
+sand flash while tiles stream). Colour + dilation by type in `canvas2d.js`
+`GREEN_COLORS` / `drawGreenPoly`: parks dilate 28px (tuck under the acera band);
+`pool`/`stadium` use `m=0` (draw the EXACT cuad edge). To suppress a block's
+buildings, set `blocks[bi]["green"]=True` (excluded from `synth_buildings`).
+
+**Coins + NPCs inside a drivable area**: coins (`maintainArcadeCoins`) spawn on
+any class-3/5 cell near the camera, so a `CLS_ROAD` pitch gets them for free in
+every mode. Free-wander NPCs: `maintainStadiumPeds` seeds peds with `cls:[3]`
+(advanced by `advanceOnSurface`, drawn like city peds via `hue`/`ph`), leashed
+to each `W.STADIUMS` bbox.
+
+**Collision-vs-visual alignment gotchas** (piers, medians): `raster_stamp_polyline`
+adds a round cap of radius `w/2` PAST the last point — shorten the polyline at a
+free end to keep drivable cells flush with the drawn deck. The player wall-probe
+samples at 0.8 of the half-extents (~20% overhang forgiveness); raise it toward
+1.0 on a specific surface (e.g. bridge deck) to stop edge overhang. A stamped
+wall must be **≥ the drawn feature's width** (incl. its round cap) or the car
+slips into the drawn-but-unstamped rim and the both-ends-blocked snap-back traps
+it — medians stamp `PASEO_MEDIAN_W + 6` while rendering at `PASEO_MEDIAN_W`.
+Decorative tree lines need a surface-class guard (skip `CLS_ROAD/PASEO/BRIDGE`)
+so they sit beside the lane, not on it.
+
 ## inventory.json
 
 `pnpm inventory` writes a machine-readable index at repo root: world counts

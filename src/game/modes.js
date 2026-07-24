@@ -17,6 +17,13 @@ function resolveVehicle(key) {
   const col = economy.equippedColor(k);
   return { key: k, veh: col ? { ...VEHICLES[k], color: col.hex } : VEHICLES[k] };
 }
+// Player start beside a kiosk: use the build-authored `spawn` (snapped to the
+// nearest drivable street), never the kiosk's beach-facing icon position — that
+// dropped the car onto the sand beside sand kiosks.
+function spawnAtKiosk(k) {
+  const sp = k && k.spawn;
+  return sp ? { x: sp[0], y: sp[1] } : { x: k.x - 60, y: k.y };
+}
 // Run-start economy state: reset the run wallet and consume any armed boosts
 // (picked in the vehicle picker; each is one use).
 function armRun() {
@@ -46,10 +53,10 @@ export function startStage(stageIdx, vehicleKey) {
   state.floats = []; state.particles = []; state.arcadeCoins = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
-  // place player near first kiosk of stage (on the muelle deck if it has one)
+  // place player near first kiosk of stage (on its street-snapped spawn)
   const k = W.landmarkById(stg.kiosks[0]);
-  const sp = k.spawn;
-  state.p = { x: sp ? sp[0] : k.x - 60, y: sp ? sp[1] : k.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+  const sp = spawnAtKiosk(k);
+  state.p = { x: sp.x, y: sp.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   // mutate cam, never replace: the renderer publishes zoom/vw/vh on it
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = stageBrief(stg);
@@ -81,7 +88,7 @@ export function startArcade(opts = {}) {
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
   const k0 = W.landmarkById("kios_paseo1");
-  state.p = { x: k0.x - 60, y: k0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+  { const _sp = spawnAtKiosk(k0); state.p = { x: _sp.x, y: _sp.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 }; }
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = t("tip.arcade");
   rebuildBarriers(); // MVP wall (arcade has no progression barriers)
@@ -148,7 +155,7 @@ export function startTutorial(opts = {}) {
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
   const k0 = W.landmarkById("kios_paseo1");
-  state.p = { x: k0.x - 60, y: k0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+  { const _sp = spawnAtKiosk(k0); state.p = { x: _sp.x, y: _sp.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 }; }
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = "";
   rebuildBarriers();

@@ -32,6 +32,7 @@ the central avenue is "Avenida Centenario", not "Avenida 0".
 import math
 from collections import defaultdict
 
+from ..config import MUELLE_STREET
 from ..util.geometry import principal_axis
 
 
@@ -161,3 +162,23 @@ class StreetIndex:
         return {nm: (round(sum(p[0] for p in v) / len(v)),
                      round(sum(p[1] for p in v) / len(v)))
                 for nm, v in sorted(near.items())}
+
+
+def planar_muelle_axis(roads, near_x, near_y, reach=1500):
+    """PLANAR pier anchor: the muelle juts south from the END of Calle Central,
+    the street at the Paseo de los Turistas east entry. Among road pieces named
+    'calle central' near the muelle geo anchor (the OSM name also exists in
+    Esparza/Barranca — hence the proximity filter), return the southernmost
+    point's x (and y) — i.e. the end of that road at the shore."""
+    best = None
+    for r in roads:
+        if (r.get("name") or "").lower() != MUELLE_STREET:
+            continue
+        p = r["pts"]
+        for i in range(0, len(p), 2):
+            x, y = p[i], p[i + 1]
+            if abs(x - near_x) > reach or abs(y - near_y) > reach:
+                continue
+            if best is None or y > best[1]:
+                best = (x, y)
+    return best

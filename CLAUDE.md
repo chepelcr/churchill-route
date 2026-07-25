@@ -5,7 +5,7 @@ Guidance for Claude Code when working in this repo.
 ## What this is
 
 **La Ruta del Churchill** — a top-down arcade delivery game set on a faithful,
-corridor-unrolled recreation of the Puntarenas peninsula, Costa Rica. You drive a
+true-scale 2-D recreation of the Puntarenas peninsula, Costa Rica. You drive a
 vehicle, pick up a *churchill* (shaved-ice drink) at a kiosk, and deliver it to a
 customer before it melts. Three modes: **Historia** (7 stages), **Arcade** (3-min
 free roam), **Recorrer** (open world with unlockable districts).
@@ -23,7 +23,8 @@ pnpm dev            # HMR dev server (falls back off :8734 if taken)
 pnpm build          # -> dist/ (static; GitHub Pages publishes this)
 pnpm preview        # serve the production build
 pnpm inventory      # regenerate inventory.json
-pnpm world:build    # rebuild src/world/data.js from docs/map.osm (deterministic)
+pnpm world:build    # rebuild src/world2d/ from docs/map.osm (deterministic)
+python3 tools/world_snapshot.py verify   # emitted world unchanged?
 ```
 
 Deploy: push to `main` → `.github/workflows/deploy.yml` builds with pnpm and
@@ -78,8 +79,9 @@ renderer (the "view") lives behind a seam so backends can be swapped.
     `modes.js` (`startArcade`/`startStage`/`startExplore` + setters).
   - `index.js` — **Game facade** + main loop; exports `Game`, mirrors it to
     `window.Game` for the dev tweaks host + console debugging.
-- `src/world/` — `data.js` (**generated**, do not hand-edit) + `index.js` (the
-  `WORLD` accessor: RLE surface grid decode, `surfaceAt`, road arclength
+- `src/world2d/` — **generated**, do not hand-edit: `manifest.json` + 416
+  `tiles/*.json` from `tools/build_world.py`, plus `index.js` (the `WORLD2D`/`W`
+  accessor: per-tile RLE decode + streaming, `surfaceAt`, road arclength
   samplers, building spatial hash, silhouettes).
 - `src/render/` — `Renderer.js` (the seam: `setupCanvas`, `render`) →
   `canvas2d.js` (current Canvas2D backend, extracted from the old engine).
@@ -93,24 +95,29 @@ React state) — don't try to make the game state flow through React.
 
 ## World pipeline
 
-`tools/build_world.py` reads `docs/map.osm` and emits `src/world/data.js` (an ESM
-`export const WORLD_DATA`). It projects real geo onto an 8800×1400 world via a
-**corridor-unroll**: x = arclength along the Faro→Caldera spine, y = exaggerated
-perpendicular offset. Deterministic (no RNG) — same input → identical output.
+`tools/build_world.py` reads `docs/map.osm` and emits `src/world2d/` — per-tile
+RLE surface slabs + `manifest.json`, loaded by `src/world2d/index.js`
+(`WORLD2D`/`W`). The projection is **PLANAR**: world px = (metres − origin) ·
+`PLANAR_PX_PER_M`, true-scale, with a geo→world affine in `manifest.meta.geo`.
+Deterministic (no RNG) — same input → identical output, which
+`tools/world_snapshot.py` enforces (`save` / `verify` / `rebuild`): every
+refactor must keep the 417 emitted files byte-identical, and an INTENDED world
+change re-runs `save` in the same commit.
 
 Surface grid classes (see `src/game/surfaces.js`): `0 water, 1 land (solid cuadra
 interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera`.
 
-Knobs at the top of `build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`,
-`ROAD_WIDTH_PX`, `BUILDING_SCALE`, `DISTRICT_BOUNDS_GEO`, `LANDMARK_DEFS` /
-`CUSTOMER_DEFS` (geo anchors — build fails listing unresolved POIs).
+Knobs at the top of `build_world.py`: `PLANAR_PX_PER_M` (world zoom),
+`ARCADE_STREET_MUL` + `ROAD_WIDTH_M` (street widths), `PLANAR_FULL_BBOX` (the
+region clip; a smaller `PLANAR_BBOX` gives a fast smoke build), `CUAD`,
+`ACERA_CELLS` / `FIELD_ACERA_CELLS`, `BUILDING_SCALE`, `DISTRICT_BOUNDS_GEO`,
+`LANDMARK_DEFS` / `CUSTOMER_DEFS` (geo anchors — build fails listing unresolved
+POIs).
 
-**The shipped world is PLANAR** (`world:build` runs `--planar`): full-OSM 2-D
-map emitted to `src/world2d/` (per-tile RLE surface slabs + `manifest.json`),
-loaded by `src/world2d/index.js` (`WORLD2D`/`W`). `src/world/data.js` is the
-legacy corridor output. Corridor-only code lives in the `else` of `if PLANAR:`
-(e.g. `divide_cocal_carriageways`, `carriageway_gores`) and is INERT in the
-shipped game — don't "fix" it expecting a planar effect.
+The **corridor-unroll projection was deleted** (2026-07-25) along with
+`src/world/`: the spine, the x-warp, the hand-placed junction gores/islands and
+the `data.js` emitter. If you find a doc or comment describing arclength-along-a-
+spine coordinates, it predates that.
 
 ## World structures — recipes (reusable patterns)
 
@@ -123,7 +130,7 @@ anchor: a *calle* → mean `pts[0::2]` (x), an *avenida* → mean `pts[1::2]` (y
 often unnamed (fall back to the flanking even calle) and the central avenue is
 "Avenida Centenario", not "Avenida 0". Always `print` the resolved rect + the
 nearby-street diagnostic and eyeball the build log; if a name won't resolve,
-the user can give a `xy` anchor (like `ancla`).
+ask the user for a geo (`ll`) anchor.
 
 **Make a whole cuadra drivable and draw it as its cuad polygon** (stadiums):
 1. Resolve/clip: `_clip_roads_rect` removes road polylines crossing the rect so
@@ -240,7 +247,9 @@ the game's contents without reading the code. Refresh after world/module changes
   frames ~20 cuadrículas of `meta.cuad` (20) px across the viewport — the
   constant lives in the RENDERER (tune it there; `meta.cuadsPerView` is
   advisory, no world rebuild needed).
-- Don't hand-edit `src/world/data.js` — regenerate with `pnpm world:build`.
+- Don't hand-edit `src/world2d/` (manifest or tiles) — regenerate with
+  `pnpm world:build`, then `python3 tools/world_snapshot.py verify` (or `save`
+  if the change was intended).
 - Verify game changes by actually running the app (`pnpm dev` + browser), not
   just building — the render loop and physics have no unit tests.
 - Changelogs live in `docs/changelog/`, one file per release date, named

@@ -2,15 +2,17 @@
 # build_world.py — La Ruta del Churchill world builder.
 #
 # Parses docs/map.osm (real OpenStreetMap export of Puntarenas, Costa Rica)
-# and emits world-data.js: a faithful 2D game map of the peninsula from
-# El Faro to Caldera on a fixed 8800x1400 world-space canvas.
+# and emits src/world2d/: a faithful, TRUE-SCALE 2-D map of the peninsula from
+# El Faro to Caldera, as per-tile RLE surface slabs + a manifest the game
+# streams by camera region.
 #
-# Projection: "corridor unroll". The real route is L-shaped (~8 km E-W sand
-# spit + ~7.5 km SSE coast to Caldera), so we define a smoothed spine along
-# the route and map every feature to (x = arclength along spine,
-# y = 700 + signed perpendicular offset * CROSS_EXAG).
+# Projection: PLANAR. World px = (metres - origin) · PLANAR_PX_PER_M, so the
+# map keeps real proportions and a geo→world affine ships in the manifest.
+# (The old "corridor unroll" — a smoothed spine with x = arclength along it —
+# was removed once the planar world shipped; see docs/changelog/.)
 #
 # Stdlib only (no PIL/shapely). Usage:  python3 tools/build_world.py [--debug]
+# Every step must keep the output byte-identical: tools/world_snapshot.py.
 
 import xml.etree.ElementTree as ET
 import base64
@@ -25,26 +27,19 @@ from collections import defaultdict, deque
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OSM_PATH = os.path.join(ROOT, "docs", "map.osm")
-OUT_PATH = os.path.join(ROOT, "src", "world", "data.js")
 DEBUG_PNG = os.path.join(ROOT, "tools", "debug_map.png")
 DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
-# planar (Milestone D) chunked output — a tiled world the src/world2d accessor
-# streams by camera region, instead of the single corridor src/world/data.js.
+# chunked output — the tiled world the src/world2d accessor streams by camera
+# region (416 tiles + manifest.json).
 WORLD2D_DIR = os.path.join(ROOT, "src", "world2d")
 
 # ---------------------------------------------------------------- config ---
 
-# 3× world scale (Milestone B★): cuadrícula streets are 2-6 CUAD wide, far
-# wider than the faithful ~71px centro street spacing at the old scale — the
-# world is scaled up so real cuadras survive between them (46 blocks >= 6x6).
+# World size is COMPUTED from the OSM bounds by _planar_setup(), which rebinds
+# these globals before anything reads them (every function reads them at call
+# time). The values here are only a placeholder so the module imports.
 CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
-MARGIN_X = 120                  # water margin west of the Faro tip
-SPINE_TARGET_PX = 25680         # spine arclength maps onto this many px
-CROSS_EXAG = 1.95               # perpendicular exaggeration — spreads the N-S
-                                # street grid so cuadras read squarer and are
-                                # wide enough to hold their buildings (map
-                                # deforms a bit wider than real)
-CORRIDOR_HALF_M = 900           # keep features within this distance of spine
+CROSS_EXAG = 1.95               # emitted in meta.crossExag; nothing reads it
 GRID_CELL = 4
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 
@@ -71,12 +66,7 @@ LAT0, LON0 = 9.9770, -84.8512
 M_PER_DEG_LAT = 110540.0
 M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
 
-# ---- Planar (true-scale 2-D) projection mode — Milestone D ------------------
-# WORLD_PROJECTION=planar (env) or --planar (argv) builds the whole OSM area as a
-# flat, real-proportion map instead of the corridor unroll. CANVAS_W/H/GRID_* and
-# CENTER_Y are recomputed from the OSM bounds in main() (functions read these
-# globals at call time, so reassigning them there is enough).
-PLANAR = os.environ.get("WORLD_PROJECTION") == "planar" or "--planar" in sys.argv
+# ---- Planar (true-scale 2-D) projection -------------------------------------
 PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "1.6"))   # world zoom
 ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "3.2"))  # widen streets
 # real-ish carriageway widths (metres) per OSM highway class; painted width =
@@ -94,63 +84,18 @@ ROAD_WIDTH_M = {
 # bbox (9.8539-10.0304 N, -84.9188--84.6328 E), clipping the outliers. Override
 # with PLANAR_BBOX (e.g. a small centro sub-bbox for a fast smoke).
 PLANAR_FULL_BBOX = "-84.9188,9.8539,-84.6328,10.0304"
-PLANAR_BBOX = os.environ.get("PLANAR_BBOX") or (PLANAR_FULL_BBOX if PLANAR else None)
-
-# Spine waypoints west->east->south: Faro tip, along the spit (Av. Central /
-# Ruta 17 axis), La Angostura, coast SSE along Ruta 23, Puente colgante,
-# Mata de Limon village, Puerto Caldera. snap=True waypoints get pulled onto
-# the nearest big-road node so the spine follows real asphalt.
-SPINE_WAYPOINTS = [
-    {"ll": (9.97667, -84.85116), "snap": False},  # Faro de La Punta
-    {"ll": (9.97600, -84.84300), "snap": True},
-    {"ll": (9.97650, -84.83300), "snap": True},   # centro
-    {"ll": (9.97750, -84.82200), "snap": True},
-    {"ll": (9.97900, -84.81000), "snap": True},
-    {"ll": (9.98000, -84.79800), "snap": True},   # El Cocal
-    {"ll": (9.98100, -84.78600), "snap": True},   # La Angostura area
-    {"ll": (9.97700, -84.76800), "snap": True},   # leaving the spit
-    {"ll": (9.96800, -84.74800), "snap": True},
-    {"ll": (9.95500, -84.73500), "snap": True},   # Ruta 23 coast
-    {"ll": (9.94200, -84.72600), "snap": True},
-    {"ll": (9.93300, -84.72200), "snap": True},   # Playa Caldera
-    {"ll": (9.92796, -84.71093), "snap": False},  # Puente colgante Mata de Limon
-    {"ll": (9.92200, -84.70950), "snap": True},   # Mata de Limon village
-    {"ll": (9.91079, -84.71686), "snap": False},  # Puerto Caldera
-]
-SPINE_STEP_M = 25.0
-SNAP_RADIUS_M = 120.0
-
-# x-warp: the town spit gets more canvas than the rural coast leg so district
-# proportions match the GDD while every real feature stays present. The y
-# scale follows the LOCAL x scale (x CROSS_EXAG), so shapes stay locally
-# uniform in each region.
-TOWN_FRACTION = 0.68            # fraction of canvas for s in [0, s_split]
-TOWN_SPLIT_WP = 7               # waypoint index where the route leaves the spit
-WARP_BLEND_M = 900.0            # smoothstep half-window around the split
+PLANAR_BBOX = os.environ.get("PLANAR_BBOX") or PLANAR_FULL_BBOX
 
 BUILDING_SCALE = 1.4            # match footprints to exaggerated road widths
 POI_NUDGE_PX = 600
 
-# Street widths in whole cuadrículas (Milestone B★): principal = 6 CUAD
-# (3 per drive side), standard = 4 CUAD (2 per lane), minor = 2 CUAD.
-W_PRINCIPAL, W_STANDARD, W_MINOR = 6 * CUAD, 4 * CUAD, 2 * CUAD
-ROAD_WIDTH_PX = {
-    "trunk": W_PRINCIPAL, "trunk_link": W_PRINCIPAL, "primary": W_PRINCIPAL,
-    "primary_link": W_PRINCIPAL, "paseo": W_PRINCIPAL, "bridge": W_PRINCIPAL,
-    "secondary": W_STANDARD, "tertiary": W_STANDARD, "tertiary_link": W_STANDARD,
-    "residential": W_STANDARD, "unclassified": W_STANDARD, "living_street": W_STANDARD,
-    "service": W_MINOR, "pedestrian": W_MINOR,
-}
-ROAD_CLASSES = set(ROAD_WIDTH_PX) - {"paseo", "bridge"}
+ROAD_CLASSES = set(ROAD_WIDTH_M) - {"paseo", "bridge"}
 
 def road_width_px(cls):
-    """Painted street width. Corridor: fixed cuadrícula tiers. Planar: real
-    metres · ARCADE_STREET_MUL · px_per_m (arcade-wide but modest, so junction
-    gores survive)."""
-    if PLANAR:
-        return max(GRID_CELL * 2,
-                   round(ROAD_WIDTH_M.get(cls, 7) * ARCADE_STREET_MUL * PLANAR_PX_PER_M))
-    return ROAD_WIDTH_PX[cls]
+    """Painted street width: real metres · ARCADE_STREET_MUL · px_per_m —
+    arcade-wide but modest, so junction gores survive."""
+    return max(GRID_CELL * 2,
+               round(ROAD_WIDTH_M.get(cls, 7) * ARCADE_STREET_MUL * PLANAR_PX_PER_M))
 # Keep every OSM street for a faithful map — the cuadrícula grid standardizes
 # cuadra/street sizes by snapping to the tile grid, so we no longer prune
 # streets to control block size.
@@ -263,7 +208,6 @@ LANDMARK_DEFS = [
     {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "cocal",    "osm": "yacht", "ll": (9.97900, -84.81200)},
     # anchor monument on the island where the road splits into the Cocal (west
     # side, not the estero end) — placed by world xy read off the 📍 overlay
-    {"id": "ancla",       "name": "Monumento El Ancla",         "type": "anchor",       "district": "playitas", "xy": (8246, 2375)},
     {"id": "cocal_park",  "name": "Parque El Cocal",            "type": "park",         "district": "cocal",    "ll": (9.97950, -84.79500)},
     {"id": "kios_cocal",  "name": "Kiosco El Cocal",            "type": "kiosk",        "district": "cocal",    "ll": (9.98100, -84.79400)},
     # far-east Cocal soda so Stage 5 has a pickup beside its Ruta 17 customers
@@ -285,17 +229,6 @@ LANDMARK_DEFS = [
     {"id": "kios_roble",  "name": "Churchill El Roble",         "type": "kiosk",        "district": "elroble",  "ll": (9.98067, -84.73602), "snap_road": 1},
     {"id": "kios_barr",   "name": "Kiosco Barranca",            "type": "kiosk",        "district": "barranca", "ll": (9.98840, -84.71094), "snap_road": 1},
     {"id": "kios_esp",    "name": "Churchill Esparza",          "type": "kiosk",        "district": "esparza",  "ll": (9.99183, -84.66587), "snap_road": 1},
-]
-
-# Hand-placed junction fixes, vertices in world xy (read off the in-game 📍
-# overlay). `median` = a non-drivable channelizing triangle/island (stamped
-# acera, drawn as a raised curb median); `cuadra` = a solid block that closes
-# awkward empty junction space (stamped land, drawn as a cuadra).
-ISLAND_DEFS = [
-    # The split triangles are auto-generated from the divided-carriageway forks
-    # (carriageway_gores). Hand-placed here: only the cuadra that closes the
-    # empty space beside the west Cocal split street.
-    {"kind": "cuadra", "pts": [(8330, 2405), (8500, 2405), (8500, 2485), (8330, 2485)]},
 ]
 
 CUSTOMER_DEFS = [
@@ -569,94 +502,6 @@ def parse_osm(path):
 
 # ----------------------------------------------------------------- spine ---
 
-class Spine:
-    def __init__(self, pts_m, s_split=None):
-        self.pts = pts_m
-        self.seg = []
-        self.cum = [0.0]
-        for i in range(len(pts_m) - 1):
-            d = dist(pts_m[i], pts_m[i + 1])
-            self.seg.append(d)
-            self.cum.append(self.cum[-1] + d)
-        self.total = self.cum[-1]
-        self.side_sign = 1.0
-        self.px_per_m = SPINE_TARGET_PX / self.total
-        # x-warp tables: x(s) integrates a weight that gives the town spit
-        # TOWN_FRACTION of the canvas; xscale(s) = dx/ds drives the y scale too.
-        if s_split is None:
-            s_split = self.total * 0.5
-        w_town = TOWN_FRACTION * SPINE_TARGET_PX / max(s_split, 1)
-        w_coast = (1 - TOWN_FRACTION) * SPINE_TARGET_PX / max(self.total - s_split, 1)
-
-        def weight(s):
-            t = (s - s_split) / WARP_BLEND_M * 0.5 + 0.5
-            t = max(0.0, min(1.0, t))
-            t = t * t * (3 - 2 * t)
-            return w_town + (w_coast - w_town) * t
-
-        self.xs = [0.0]
-        for i in range(len(self.cum) - 1):
-            smid = (self.cum[i] + self.cum[i + 1]) / 2
-            self.xs.append(self.xs[-1] + weight(smid) * self.seg[i])
-        norm = SPINE_TARGET_PX / self.xs[-1]
-        self.xs = [v * norm for v in self.xs]
-        self.wscale = [weight(s) * norm for s in self.cum]
-
-    def x_of_s(self, s):
-        s = max(0.0, min(self.total, s))
-        # uniform SPINE_STEP_M sampling makes index lookup nearly direct
-        i = min(len(self.cum) - 2, max(0, int(s / SPINE_STEP_M)))
-        while i > 0 and self.cum[i] > s:
-            i -= 1
-        while i < len(self.cum) - 2 and self.cum[i + 1] < s:
-            i += 1
-        t = (s - self.cum[i]) / max(self.cum[i + 1] - self.cum[i], 1e-9)
-        return self.xs[i] + (self.xs[i + 1] - self.xs[i]) * t, \
-               self.wscale[i] + (self.wscale[i + 1] - self.wscale[i]) * t
-
-    def project_m(self, p, hint=None, window=80):
-        n = len(self.pts) - 1
-        if hint is None:
-            rng = range(n)
-        else:
-            rng = range(max(0, hint - window), min(n, hint + window))
-        best = (1e18, 0, 0.0)
-        for i in rng:
-            ax, ay = self.pts[i]
-            bx, by = self.pts[i + 1]
-            dx, dy = bx - ax, by - ay
-            L2 = dx * dx + dy * dy
-            if L2 == 0:
-                continue
-            t = ((p[0] - ax) * dx + (p[1] - ay) * dy) / L2
-            t = max(0.0, min(1.0, t))
-            fx, fy = ax + t * dx, ay + t * dy
-            d2 = (p[0] - fx) ** 2 + (p[1] - fy) ** 2
-            if d2 < best[0]:
-                best = (d2, i, t)
-        d2, i, t = best
-        ax, ay = self.pts[i]
-        bx, by = self.pts[i + 1]
-        dx, dy = bx - ax, by - ay
-        L = math.sqrt(dx * dx + dy * dy)
-        tx, ty = dx / L, dy / L
-        fx, fy = ax + t * dx, ay + t * dy
-        vx, vy = p[0] - fx, p[1] - fy
-        cross = tx * vy - ty * vx
-        d = math.sqrt(d2) * (1.0 if cross >= 0 else -1.0) * self.side_sign
-        s = self.cum[i] + t * L
-        return s, d, i
-
-    def to_px(self, s, d):
-        x, sc = self.x_of_s(s)
-        return (MARGIN_X + x, CENTER_Y + d * sc * CROSS_EXAG)
-
-    def project(self, p_m, hint=None):
-        s, d, i = self.project_m(p_m, hint)
-        x, y = self.to_px(s, d)
-        return x, y, i, d
-
-
 class PlanarProjection:
     """Drop-in replacement for Spine in planar mode: a flat, real-proportion map.
     `p_m` is (mx, my) metres from to_m(); world px = (m - min) · px_per_m."""
@@ -677,94 +522,6 @@ class PlanarProjection:
         return x, y, 0, 0.0
 
 
-def catmull_rom(points, step):
-    """Centripetal Catmull-Rom through points, sampled roughly every `step`."""
-    P = [points[0]] + list(points) + [points[-1]]
-    out = [points[0]]
-    for i in range(len(P) - 3):
-        p0, p1, p2, p3 = P[i], P[i + 1], P[i + 2], P[i + 3]
-        def tj(ti, pa, pb):
-            return ti + max(dist(pa, pb), 1e-6) ** 0.5
-        t0 = 0.0
-        t1 = tj(t0, p0, p1)
-        t2 = tj(t1, p1, p2)
-        t3 = tj(t2, p2, p3)
-        n = max(2, int(dist(p1, p2) / step) + 1)
-        for k in range(1, n + 1):
-            t = t1 + (t2 - t1) * k / n
-            def lerp(pa, pb, ta, tb):
-                if tb - ta < 1e-9:
-                    return pa
-                u = (t - ta) / (tb - ta)
-                return (pa[0] + (pb[0] - pa[0]) * u, pa[1] + (pb[1] - pa[1]) * u)
-            a1 = lerp(p0, p1, t0, t1)
-            a2 = lerp(p1, p2, t1, t2)
-            a3 = lerp(p2, p3, t2, t3)
-            b1 = lerp(a1, a2, t0, t2)
-            b2 = lerp(a2, a3, t1, t3)
-            c = lerp(b1, b2, t1, t2)
-            out.append(c)
-    # uniform arclength resample
-    res = [out[0]]
-    acc = 0.0
-    for i in range(1, len(out)):
-        d = dist(out[i - 1], out[i])
-        while acc + d >= step:
-            t = (step - acc) / d
-            p = (out[i - 1][0] + (out[i][0] - out[i - 1][0]) * t,
-                 out[i - 1][1] + (out[i][1] - out[i - 1][1]) * t)
-            res.append(p)
-            out[i - 1] = p
-            d = dist(out[i - 1], out[i])
-            acc = 0.0
-        acc += d
-    if dist(res[-1], out[-1]) > 1e-6:
-        res.append(out[-1])
-    return res
-
-
-def build_spine(ways, nodes):
-    # candidate snap nodes: nodes of big roads (the real asphalt axis)
-    snap_nodes = []
-    for w in ways:
-        hw = w["tags"].get("highway")
-        ref = w["tags"].get("ref", "")
-        if hw in ("trunk", "primary", "secondary") or ref in ("17", "23"):
-            snap_nodes.extend(w["pts"])
-    wp = []
-    moved = []
-    for spec in SPINE_WAYPOINTS:
-        p = to_m(*spec["ll"])
-        if spec["snap"] and snap_nodes:
-            best = min(snap_nodes, key=lambda q: (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2)
-            if dist(best, p) <= SNAP_RADIUS_M:
-                moved.append(round(dist(best, p)))
-                p = best
-            else:
-                moved.append(None)
-        else:
-            moved.append(0)
-        wp.append(p)
-    smooth = catmull_rom(wp, SPINE_STEP_M)
-    # arclength of the town/coast split (La Angostura waypoint)
-    split_pt = wp[TOWN_SPLIT_WP]
-    acc, s_split, best = 0.0, 0.0, 1e18
-    for i in range(len(smooth) - 1):
-        d2 = (smooth[i][0] - split_pt[0]) ** 2 + (smooth[i][1] - split_pt[1]) ** 2
-        if d2 < best:
-            best, s_split = d2, acc
-        acc += dist(smooth[i], smooth[i + 1])
-    sp = Spine(smooth, s_split)
-    # side calibration: Mercado (north shore of the spit) must land at y < CENTER_Y
-    s, d, _ = sp.project_m(to_m(9.98009, -84.83093))
-    if d > 0:
-        sp.side_sign = -1.0
-    print(f"[spine] {len(wp)} waypoints (snapped moves m: {moved}), "
-          f"length {sp.total:.0f} m, {1/sp.px_per_m:.2f} m/px")
-    return sp
-
-# ------------------------------------------------------------- extraction ---
-
 def project_way_pts(sp, pts):
     out, hint, dmax = [], None, 0.0
     for p in pts:
@@ -772,19 +529,6 @@ def project_way_pts(sp, pts):
         out.append((x, y))
         dmax = max(dmax, abs(d))
     return out, dmax
-
-
-def way_in_corridor(sp, pts, limit=CORRIDOR_HALF_M):
-    # Planar (Milestone D) has no corridor — include ALL OSM in the bbox. In
-    # planar sp.project_m returns the raw metre (mx,my), so `d` is a world
-    # y-coordinate, not a perpendicular offset; the abs(d)<=limit test would
-    # wrongly clip everything to a ~1800m latitude band (gutting water polys,
-    # southern roads and the coast barrier → the peninsula floods).
-    if PLANAR:
-        return True
-    c = poly_centroid(pts)
-    s, d, _ = sp.project_m(c)
-    return abs(d) <= limit
 
 
 def extract_roads(sp, ways):
@@ -797,7 +541,7 @@ def extract_roads(sp, ways):
         is_bridge = "puente colgante mata" in lname
         if not is_bridge and hw not in ROAD_CLASSES:
             continue
-        if len(w["pts"]) < 2 or not way_in_corridor(sp, w["pts"]):
+        if len(w["pts"]) < 2:
             continue
         cls = "bridge" if is_bridge else hw
         # The beachfront avenue is a principal street driven at full speed —
@@ -851,7 +595,7 @@ def extract_rails(sp, ways):
                    or "ferrocarril al pac" in (t.get("name") or "").lower())
         if not is_rail:
             continue
-        if len(w["pts"]) < 2 or not way_in_corridor(sp, w["pts"]):
+        if len(w["pts"]) < 2:
             continue
         pts, _ = project_way_pts(sp, w["pts"])
         for piece in clip_polyline_to_rect(pts, CANVAS_W, CANVAS_H):
@@ -922,62 +666,6 @@ def barro_leon_continuation(roads):
     print(f"[roads] León Cortés continuation past the Ferrocarril handoff -> barro: {n} piece(s)")
 
 
-def carriageway_gores(roads, a_name, b_name, x0, x1,
-                      min_gap=1.6 * CUAD, max_gap=5 * CUAD):
-    """Auto channelizing islands for a divided avenue: the gap between the two
-    carriageways' inner edges is ~0 where they run parallel and opens into a
-    triangular gore at each fork/intersection. Emit a median island per gore
-    (world-xy polygons), so the splits get clean separation without hand coords."""
-    def centerline(name):
-        pts = []
-        for r in roads:
-            if (r.get("name") or "") == name:
-                w = r.get("w", W_STANDARD)
-                pts += [(x, y, w) for (_, x, y) in _resample_centerline(r["pts"], 10)
-                        if x0 - 60 <= x <= x1 + 60]
-        return sorted(pts)
-    A, B = centerline(a_name), centerline(b_name)
-    if not A or not B:
-        return []
-    islands, top, bot = [], [], []
-    def flush():
-        if len(top) >= 3:
-            islands.append({"kind": "median", "pts": top + bot[::-1]})
-        top.clear(); bot.clear()
-    for xs in range(int(x0), int(x1), 10):
-        a = min(A, key=lambda p: abs(p[0] - xs))
-        b = min(B, key=lambda p: abs(p[0] - xs))
-        if abs(a[0] - xs) > 60 or abs(b[0] - xs) > 60:
-            flush(); continue
-        (ny, nw), (sy, sw) = ((a[1], a[2]), (b[1], b[2])) if a[1] < b[1] else ((b[1], b[2]), (a[1], a[2]))
-        inner_top, inner_bot = ny + nw / 2, sy - sw / 2
-        gap = inner_bot - inner_top
-        if gap < min_gap:
-            flush(); continue
-        if gap > max_gap:                       # cap so a wide fork stays an island
-            inner_bot = inner_top + max_gap
-        top.append((xs, inner_top)); bot.append((xs, inner_bot))
-    flush()
-    print(f"[islands] {len(islands)} auto gore island(s) at the {a_name}/{b_name} forks")
-    return islands
-
-
-def divide_cocal_carriageways(roads, x0=8139, x1=11921):
-    """The Cocal stretch of Avenida 1 (north) and Av. Alberto Echandi Montero
-    (south) is a divided avenue — two 6-cuadrícula carriageways that overlap
-    into one slab. Narrow each to the 2-lane standard width so a gap opens
-    between them (a planted median is added later)."""
-    n = 0
-    for r in roads:
-        if (r.get("name") or "") not in ("Avenida 1", "Avenida Alberto Echandi Montero"):
-            continue
-        xs = r["pts"][0::2]
-        if sum(1 for x in xs if x0 <= x <= x1) >= max(1, len(xs) // 2):
-            r["w"] = W_STANDARD
-            n += 1
-    print(f"[roads] divided {n} Cocal carriageway piece(s) to 2 lanes")
-
-
 def extract_buildings(sp, ways, roads):
     # road segments for overlap testing (subdivided, with per-class half width)
     segs = []
@@ -1020,8 +708,6 @@ def extract_buildings(sp, ways, roads):
     dropped_road, dropped_small = 0, 0
     for w in ways:
         if "building" not in w["tags"] or len(w["pts"]) < 4:
-            continue
-        if not way_in_corridor(sp, w["pts"]):
             continue
         pts, _ = project_way_pts(sp, w["pts"])
         if dist(pts[0], pts[-1]) < 1e-6:
@@ -1096,16 +782,12 @@ def extract_pois(sp, ways, poi_nodes):
         out.append({"x": round(x), "y": round(y), "name": name, "cat": f"{k}={v}"})
 
     for (ll, tags) in poi_nodes:
-        if not way_in_corridor(sp, [to_m(*ll)]):
-            continue
         x, y, _, _ = sp.project(to_m(*ll))
         add(tags["name"], tags, x, y)
     for w in ways:
         tags = w["tags"]
         name = tags.get("name")
         if not name or not poi_category(tags) or len(w["pts"]) < 3:
-            continue
-        if not way_in_corridor(sp, w["pts"]):
             continue
         pts, _ = project_way_pts(sp, w["pts"])
         if not pts:
@@ -1146,7 +828,7 @@ def extract_areas(sp, ways, rels):
     beaches, waters = [], []
     ways_by_id = {w["id"]: w for w in ways}
     def add_poly(target, pts_m):
-        if len(pts_m) < 3 or not way_in_corridor(sp, pts_m, CORRIDOR_HALF_M + 300):
+        if len(pts_m) < 3:
             return
         pts, _ = project_way_pts(sp, pts_m)
         pts = clip_poly_to_rect(pts, CANVAS_W, CANVAS_H)
@@ -1233,10 +915,10 @@ def raster_stamp_polyline(grid, flat_pts, width, cls):
 
 
 def _stamp_barrier(barrier, c, r):
-    """Set a barrier cell. In planar, thicken to a 3x3 block so sub-cell gaps
-    at coastline segment joints don't leak the sea flood into the land (the
+    """Set a barrier cell, thickened to a 3x3 block so sub-cell gaps at
+    coastline segment joints don't leak the sea flood into the land (the
     single-cell supercover line can miss a diagonal where two chains meet)."""
-    rad = 1 if PLANAR else 0
+    rad = 1
     n = 0
     for dr in range(-rad, rad + 1):
         for dc in range(-rad, rad + 1):
@@ -1254,13 +936,9 @@ def raster_coast_barrier(grid_barrier, sp, chains, nodes):
         pts_m = [to_m(*nodes[r]) for r in nds if r in nodes]
         if len(pts_m) < 2:
             continue
-        # corridor: keep only chains near the spine. Planar has no corridor —
-        # ALL coastline must be rasterised or the flood leaks into the land
-        # (the estuary/south/inland shores project far from lat 9.977 and would
-        # otherwise be dropped, leaving the peninsula unenclosed).
-        if not PLANAR and not any(abs(sp.project_m(p)[1]) <= CORRIDOR_HALF_M + 600
-                                  for p in pts_m[:: max(1, len(pts_m) // 40)]):
-            continue
+        # EVERY coastline chain is rasterised: the estuary/south/inland shores
+        # are far from the town, and dropping any of them leaves the peninsula
+        # unenclosed and the sea flood leaks inland.
         pts, _ = project_way_pts(sp, pts_m)
         for i in range(len(pts) - 1):
             x0, y0 = pts[i]
@@ -1891,46 +1569,6 @@ def paseo_roads(roads):
     return [r for r in roads
             if any(n in (r.get("name") or "").lower() for n in PASEO_NAMES)]
 
-def narrow_muelle_approach(roads):
-    """The muelle entrance: the southernmost piece of Calle Central (avenue →
-    shore) keeps only its LEFT (west) carril — 2 CUAD wide, its left edge
-    flush with the full-width street north of the avenue — so it lines up
-    with the pier. Returns the entrance centerline x for the pier to match."""
-    pieces = [r for r in roads if (r.get("name") or "").lower() == MUELLE_STREET]
-    if not pieces:
-        return None
-    tail = max(pieces, key=lambda r: max(r["pts"][1::2]))
-    tail["w"] = 2 * CUAD
-    tail["pts"] = [v - CUAD if i % 2 == 0 else v
-                   for i, v in enumerate(tail["pts"])]
-    ys = tail["pts"][1::2]
-    x_end = tail["pts"][0::2][ys.index(max(ys))]
-    print(f"[roads] muelle entrance: Calle Central tail -> left carril only (x~{x_end})")
-    return x_end
-
-def connect_leon_calle20(roads):
-    """The east tip of Paseo León Cortés stops just short of Calle 20's foot,
-    leaving a sand wedge between them. Extend the tip along its own heading
-    until it clears the calle's corridor, so the calle T-junctions into it."""
-    leon = [r for r in paseo_roads(roads)
-            if PASEO_LEON in (r.get("name") or "").lower()]
-    calle = [r for r in roads if (r.get("name") or "").lower() == LEON_END_STREET]
-    if not leon or not calle:
-        return
-    tip_piece = max(leon, key=lambda r: max(r["pts"][0::2]))
-    p = tip_piece["pts"]
-    if p[0] > p[-2]:                             # east tip last
-        p = [v for i in range(len(p) - 2, -2, -2) for v in (p[i], p[i + 1])]
-    target_x = max(max(c["pts"][0::2]) + c["w"] / 2 for c in calle) + CUAD
-    hx, hy = p[-2] - p[-4], p[-1] - p[-3]
-    h = math.hypot(hx, hy)
-    if h < 1e-6 or hx <= 0 or p[-2] >= target_x:
-        return
-    t = (target_x - p[-2]) / (hx / h)
-    tip_piece["pts"] = p + [round(p[-2] + hx / h * t), round(p[-1] + hy / h * t)]
-    print(f"[roads] Paseo León Cortés tip extended to x{tip_piece['pts'][-2]} "
-          f"to meet {LEON_END_STREET}")
-
 def planar_muelle_axis(roads, near_x, near_y, reach=1500):
     """PLANAR pier anchor: the muelle juts south from the END of Calle Central,
     the street at the Paseo de los Turistas east entry. Among road pieces named
@@ -1950,45 +1588,6 @@ def planar_muelle_axis(roads, near_x, near_y, reach=1500):
                 best = (x, y)
     return best
 
-
-def dedupe_dual_carriageway(roads):
-    """OSM maps stretches of the beachfront avenue as two one-way ways (dual
-    carriageway). Stamped at cuadrícula width they overlap into a 3-lane slab
-    with two dash lines. Keep one centerline per avenue: drop any paseo piece
-    that lies entirely within a longer same-name piece's corridor."""
-    def plen(r):
-        p = r["pts"]
-        return sum(math.hypot(p[i + 2] - p[i], p[i + 3] - p[i + 1])
-                   for i in range(0, len(p) - 2, 2))
-
-    def max_dist_to(r, k):
-        p, kp = r["pts"], k["pts"]
-        far = 0.0
-        for i in range(0, len(p), 2):
-            px, py = p[i], p[i + 1]
-            best = 1e18
-            for j in range(0, len(kp) - 2, 2):
-                x0, y0, x1, y1 = kp[j], kp[j + 1], kp[j + 2], kp[j + 3]
-                dx, dy = x1 - x0, y1 - y0
-                L2 = dx * dx + dy * dy
-                t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
-                d2 = (px - (x0 + t * dx)) ** 2 + (py - (y0 + t * dy)) ** 2
-                best = min(best, d2)
-            far = max(far, best)
-        return math.sqrt(far)
-
-    keep, dropped = [], set()
-    for r in sorted(paseo_roads(roads), key=plen, reverse=True):
-        dup = next((k for k in keep
-                    if (k.get("name") or "") == (r.get("name") or "")
-                    and max_dist_to(r, k) < r["w"] * 0.8), None)
-        if dup is not None:
-            dropped.add(id(r))
-        else:
-            keep.append(r)
-    if dropped:
-        roads[:] = [r for r in roads if id(r) not in dropped]
-        print(f"[roads] deduped {len(dropped)} dual-carriageway paseo piece(s)")
 
 def _resample_centerline(pts_flat, step):
     """[(s, x, y), ...] sampled every ~step px along a flat polyline."""
@@ -2310,34 +1909,15 @@ def main():
     nodes, ways, named, rels, poi_nodes = parse_osm(OSM_PATH)
     print(f"[parse] {len(nodes)} nodes, {len(ways)} kept ways, {len(named)} named features ({time.time()-t0:.1f}s)")
 
-    sp = _planar_setup(ways) if PLANAR else build_spine(ways, nodes)
+    sp = _planar_setup(ways)
 
     roads, bridge_road = extract_roads(sp, ways)
-    # Both modes (coordinate-agnostic): León Cortés end-barro + dirt cross streets.
+    # León Cortés end-barro + dirt cross streets (coordinate-agnostic).
     barro_leon_continuation(roads)
     propagate_barro_to_crossings(roads)
-    if PLANAR:
-        # Planar: junction triangles/medians emerge from real geometry via
-        # detect_blocks — the corridor gore/island/carriageway hacks are dropped.
-        junction_islands = []
-        muelle_axis = None
-    else:
-        divide_cocal_carriageways(roads)
-        # Auto channelizing islands at the divided-avenue forks, and place El Ancla
-        # dynamically on the westmost gore — exactly where the separation begins.
-        gore_islands = carriageway_gores(roads, "Avenida 1", "Avenida Alberto Echandi Montero", 8139, 12200)
-        junction_islands = ISLAND_DEFS + gore_islands
-        if gore_islands:
-            west = min(gore_islands, key=lambda g: min(p[0] for p in g["pts"]))
-            minx = min(p[0] for p in west["pts"])
-            ys = [p[1] for p in west["pts"] if abs(p[0] - minx) < 14]     # leading edge
-            ax, ay = minx + 12, (sum(ys) / len(ys) if ys else west["pts"][0][1])
-            for d in LANDMARK_DEFS:
-                if d["id"] == "ancla":
-                    d["xy"] = (round(ax), round(ay))
-        dedupe_dual_carriageway(roads)
-        connect_leon_calle20(roads)
-        muelle_axis = narrow_muelle_approach(roads)
+    # Junction triangles and medians EMERGE from the real geometry via
+    # detect_blocks — no hand-placed gores, islands or carriageway splits.
+    junction_islands = []
     rails = extract_rails(sp, ways)
     print(f"[rails] {len(rails)} rail pieces")
     n_by_cls = defaultdict(int)
@@ -2358,25 +1938,20 @@ def main():
     chains = extract_coastlines(sp, ways)
     print(f"[coast] {len(chains)} stitched chains from natural=coastline")
     raster_coast_barrier(barrier, sp, chains, nodes)
-    if PLANAR:
-        # water bodies (estuary) are areas, not coastline — barrier their edges
-        # too so the flood can't leak across an un-barriered shore into the land
-        nb = raster_poly_barrier(barrier, waters)
-        print(f"[coast] +{nb} water-outline barrier cells (planar)")
-    if PLANAR:
-        # 2-D world: flood ONLY the open outer gulf (the entire west bbox edge
-        # is deep gulf, west of La Punta). Do NOT seed the estuary/inner water
-        # or the world corners — those either sit on inland land (draining it to
-        # water) or pour the flood through the harbour mouth into the whole
-        # peninsula + eastern lowland. The inner waters (estuary, rivers,
-        # mangroves) are stamped CLS_WATER from their polygons after the flood,
-        # so they don't need to be flooded; everything the gulf can't reach past
-        # the coastline stays land.
-        sea_seeds = [(2, y) for y in range(2, CANVAS_H, 200)]
-        sea_seeds.append(sp.to_px(*sp.project_m(to_m(*PROBE_SEA[0]))[:2]))
-    else:
-        sea_seeds = [sp.to_px(*sp.project_m(to_m(*p))[:2]) for p in PROBE_SEA]
-        sea_seeds += [(2, 2), (2, CANVAS_H - 2), (CANVAS_W - 2, 2)]
+    # water bodies (estuary) are areas, not coastline — barrier their edges
+    # too so the flood can't leak across an un-barriered shore into the land
+    nb = raster_poly_barrier(barrier, waters)
+    print(f"[coast] +{nb} water-outline barrier cells (planar)")
+    # flood ONLY the open outer gulf (the entire west bbox edge
+    # is deep gulf, west of La Punta). Do NOT seed the estuary/inner water
+    # or the world corners — those either sit on inland land (draining it to
+    # water) or pour the flood through the harbour mouth into the whole
+    # peninsula + eastern lowland. The inner waters (estuary, rivers,
+    # mangroves) are stamped CLS_WATER from their polygons after the flood,
+    # so they don't need to be flooded; everything the gulf can't reach past
+    # the coastline stays land.
+    sea_seeds = [(2, y) for y in range(2, CANVAS_H, 200)]
+    sea_seeds.append(sp.to_px(*sp.project_m(to_m(*PROBE_SEA[0]))[:2]))
     flood_water(grid, barrier, sea_seeds)
 
     # sanity probes before painting details
@@ -2443,19 +2018,17 @@ def main():
     districts = []
     for i, d in enumerate(DISTRICT_DEFS):
         districts.append({**d, "x0": edges[i], "x1": edges[i + 1]})
-    # Inland barrios (planar only): real 2-D bbox regions off the peninsula. The
-    # corridor-unroll can't place them, so they're skipped there.
-    if PLANAR:
-        for d in INLAND_DISTRICT_DEFS:
-            la0, lo0, la1, lo1 = d["bbox"]
-            xa, ya, _, _ = sp.project(to_m(la0, lo0))
-            xb, yb, _, _ = sp.project(to_m(la1, lo1))
-            x0, x1 = sorted([round(xa), round(xb)])
-            y0, y1 = sorted([round(ya), round(yb)])
-            x0 = max(0, min(CANVAS_W, x0)); x1 = max(0, min(CANVAS_W, x1))
-            y0 = max(0, min(CANVAS_H, y0)); y1 = max(0, min(CANVAS_H, y1))
-            districts.append({"id": d["id"], "name": d["name"], "short": d["short"],
-                              "tone": d["tone"], "x0": x0, "x1": x1, "y0": y0, "y1": y1})
+    # Inland barrios: real 2-D bbox regions off the peninsula.
+    for d in INLAND_DISTRICT_DEFS:
+        la0, lo0, la1, lo1 = d["bbox"]
+        xa, ya, _, _ = sp.project(to_m(la0, lo0))
+        xb, yb, _, _ = sp.project(to_m(la1, lo1))
+        x0, x1 = sorted([round(xa), round(xb)])
+        y0, y1 = sorted([round(ya), round(yb)])
+        x0 = max(0, min(CANVAS_W, x0)); x1 = max(0, min(CANVAS_W, x1))
+        y0 = max(0, min(CANVAS_H, y0)); y1 = max(0, min(CANVAS_H, y1))
+        districts.append({"id": d["id"], "name": d["name"], "short": d["short"],
+                          "tone": d["tone"], "x0": x0, "x1": x1, "y0": y0, "y1": y1})
     print("[districts] " + ", ".join(f"{d['id']}:{d['x0']}-{d['x1']}" for d in districts))
 
     # --- POI resolution
@@ -2469,24 +2042,14 @@ def main():
                     ref = to_m(*spec["ll"])
                 else:
                     ref = None
-                if PLANAR:
-                    # no corridor in planar: take the osm match nearest the spec
-                    # anchor, or (no anchor) nearest the candidates' own centroid
-                    # so a far stray duplicate name can't win.
-                    if ref is None:
-                        cx = sum(c[1][0] for c in cands) / len(cands)
-                        cy = sum(c[1][1] for c in cands) / len(cands)
-                        ref = (cx, cy)
-                    return min(cands, key=lambda c: dist(c[1], ref))[1], "osm"
-                # corridor: prefer candidates inside the corridor, nearest to ref
-                def score(cand):
-                    s, d, _ = sp.project_m(cand[1])
-                    pen = 0 if abs(d) < CORRIDOR_HALF_M else 1e6
-                    return pen + (dist(cand[1], ref) if ref else abs(d))
-                pm = min(cands, key=score)[1]
-                s, d, _ = sp.project_m(pm)
-                if abs(d) < CORRIDOR_HALF_M:
-                    return pm, "osm"
+                # take the osm match nearest the spec anchor, or (no anchor)
+                # nearest the candidates' own centroid, so a far stray duplicate
+                # of the name can't win.
+                if ref is None:
+                    cx = sum(c[1][0] for c in cands) / len(cands)
+                    cy = sum(c[1][1] for c in cands) / len(cands)
+                    ref = (cx, cy)
+                return min(cands, key=lambda c: dist(c[1], ref))[1], "osm"
         if "ll" in spec:
             return to_m(*spec["ll"]), "hand"
         return None, "missing"
@@ -2568,21 +2131,6 @@ def main():
 
     landmarks, failures = [], []
     for spec in LANDMARK_DEFS:
-        # "xy": a direct world position (e.g. read off the in-game 📍 overlay) —
-        # placed exactly, no geo projection / drivable-nudge (decorative POIs
-        # like monuments may sit on a median island, not a street).
-        if "xy" in spec:
-            # A raw world position is a CORRIDOR-only monument (e.g. El Ancla on
-            # the unrolled avenue's gore). It has no geo anchor, so it's
-            # meaningless in the planar map — skip it (junction islands there come
-            # from real geometry, not this hand placement).
-            if PLANAR:
-                continue
-            x, y = spec["xy"]
-            landmarks.append({"id": spec["id"], "name": spec["name"], "x": round(x),
-                              "y": round(y), "type": spec["type"], "district": spec["district"],
-                              "_how": "xy"})
-            continue
         pm, how = resolve(spec)
         if pm is None:
             failures.append(spec["id"])
@@ -2665,17 +2213,14 @@ def main():
 
     # --- Muelle (the long pier into the gulf, faithful to muelle-nacional)
     mlm = next(l for l in landmarks if l["id"] == "muellecruc")
-    if muelle_axis is not None:
-        mlm["x"] = round(muelle_axis)     # pier flush with the entrance carril
-    if PLANAR:
-        # anchor to the real Calle Central south end (the road at the Paseo's
-        # east entry) — the corridor dx-nudged OSM anchor lands too far east.
-        end = planar_muelle_axis(roads, mlm["x"], mlm["y"])
-        if end is not None:
-            mlm["x"] = round(end[0])
-            print(f"[pier] planar anchor: Calle Central south end at x={mlm['x']}")
-        else:
-            print("[pier] WARNING: Calle Central not found near the muelle anchor")
+    # anchor to the real Calle Central south end (the road at the Paseo's
+    # east entry)
+    end = planar_muelle_axis(roads, mlm["x"], mlm["y"])
+    if end is not None:
+        mlm["x"] = round(end[0])
+        print(f"[pier] planar anchor: Calle Central south end at x={mlm['x']}")
+    else:
+        print("[pier] WARNING: Calle Central not found near the muelle anchor")
     pier_col = min(GRID_COLS - 1, max(0, int(mlm["x"] / GRID_CELL)))
     pier_y0 = botY[pier_col] - 6
     pier = {"x": mlm["x"], "y0": round(pier_y0),
@@ -4237,62 +3782,25 @@ def main():
             "aceraPx": ACERA_CELLS * GRID_CELL,
             "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
             "spineLenM": round(sp.total)}
-    if PLANAR:
-        # geo→world affine (planar projection is exactly linear in lon/lat):
-        # x = ax*lon + bx ; y = ay*lat + by. Lets the CLIENT place remote
-        # content (server NPCs / sponsored lotes) given real lat/lon, without
-        # shipping the projection code.
-        la0, lo0, la1, lo1 = 9.90, -84.90, 10.00, -84.70  # two reference points
-        xa, ya, _, _ = sp.project(to_m(la0, lo0))
-        xb, yb, _, _ = sp.project(to_m(la1, lo1))
-        ax = (xb - xa) / (lo1 - lo0); bx = xa - ax * lo0
-        ay = (yb - ya) / (la1 - la0); by = ya - ay * la0
-        meta["geo"] = {"ax": round(ax, 4), "bx": round(bx, 2),
-                       "ay": round(ay, 4), "by": round(by, 2)}
-    if PLANAR:
-        # chunked/tiled emit → src/world2d/ (streamable full-OSM world)
-        emit_world2d(grid, meta=meta, districts=districts, roads=roads, rails=rails,
-                     buildings=buildings, trees=trees, palms=palms, mangroves=mangroves,
-                     medians=medians, plazas=plazas, greens=greens, islands=junction_islands,
-                     beaches=beaches, waters=waters, land_polys=land_contours,
-                     landmarks=landmarks, customers=customers, stages=STAGES, stadiums=stadiums,
-                     kiosk_paths=kiosk_paths, faro_pier=faro_pier, balneario=balneario,
-                     bridge=bridge, estuary=est, pier=pier, hills=hills, pois=pois, parcels=parcels)
-    else:
-        data = {
-            "meta": meta,
-            "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES, "rle": rle_encode(grid)},
-            "topY": topY, "botY": botY,
-            "roads": roads,
-            "rails": rails,
-            "islands": [{"kind": isl["kind"], "pts": [v for xy in isl["pts"] for v in xy]}
-                        for isl in junction_islands],
-            "buildings": buildings,
-            "landPolys": land_contours,
-            "beaches": beaches,
-            "waters": waters,
-            "mangroves": mangroves,
-            "palms": palms,
-            "hills": hills,
-            "medians": medians,
-            "trees": trees,
-            "plazas": plazas,
-            "districts": [{k: v for k, v in d.items()} for d in districts],
-            "landmarks": landmarks,
-            "customers": customers,
-            "stages": STAGES,
-            "bridge": bridge,
-            "estuary": est,
-            "pier": pier,
-        }
-        js = "// GENERATED by tools/build_world.py — do not edit by hand.\n" \
-             "export const WORLD_DATA = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
-        with open(OUT_PATH, "w", encoding="utf-8") as f:
-            f.write(js)
-        size = os.path.getsize(OUT_PATH)
-        print(f"[emit] {OUT_PATH} — {size/1024:.0f} KB")
-        if size > 2 * 1024 * 1024:
-            print("[emit] WARNING: over 2 MB budget")
+    # geo→world affine (planar projection is exactly linear in lon/lat):
+    # x = ax*lon + bx ; y = ay*lat + by. Lets the CLIENT place remote
+    # content (server NPCs / sponsored lotes) given real lat/lon, without
+    # shipping the projection code.
+    la0, lo0, la1, lo1 = 9.90, -84.90, 10.00, -84.70  # two reference points
+    xa, ya, _, _ = sp.project(to_m(la0, lo0))
+    xb, yb, _, _ = sp.project(to_m(la1, lo1))
+    ax = (xb - xa) / (lo1 - lo0); bx = xa - ax * lo0
+    ay = (yb - ya) / (la1 - la0); by = ya - ay * la0
+    meta["geo"] = {"ax": round(ax, 4), "bx": round(bx, 2),
+                   "ay": round(ay, 4), "by": round(by, 2)}
+    # chunked/tiled emit → src/world2d/ (streamable full-OSM world)
+    emit_world2d(grid, meta=meta, districts=districts, roads=roads, rails=rails,
+                 buildings=buildings, trees=trees, palms=palms, mangroves=mangroves,
+                 medians=medians, plazas=plazas, greens=greens, islands=junction_islands,
+                 beaches=beaches, waters=waters, land_polys=land_contours,
+                 landmarks=landmarks, customers=customers, stages=STAGES, stadiums=stadiums,
+                 kiosk_paths=kiosk_paths, faro_pier=faro_pier, balneario=balneario,
+                 bridge=bridge, estuary=est, pier=pier, hills=hills, pois=pois, parcels=parcels)
 
     # --- debug renders
     if "--debug" in sys.argv or True:
@@ -4353,9 +3861,6 @@ def main():
             d = "M" + " L".join(f"{p[i]},{p[i+1]}" for i in range(0, len(p), 2))
             parts.append(f'<path d="{d}" fill="none" stroke="{cls_color[r["cls"]]}" '
                          f'stroke-width="{r["w"]}" stroke-linecap="round" opacity="0.85"/>')
-        spine_px = [sp.to_px(s, 0) for s in [i * 100 for i in range(int(sp.total / 100))]]
-        d = "M" + " L".join(f"{round(x)},{round(y)}" for x, y in spine_px)
-        parts.append(f'<path d="{d}" fill="none" stroke="red" stroke-width="4" stroke-dasharray="20 14"/>')
         for bx in bounds_x:
             parts.append(f'<line x1="{bx}" y1="0" x2="{bx}" y2="{CANVAS_H}" stroke="#000" stroke-width="3" stroke-dasharray="8 10"/>')
         for lm in landmarks:
@@ -4370,8 +3875,8 @@ def main():
     # Note: the service worker (public/sw.js) uses runtime caching with a manual
     # CACHE version now that Vite fingerprints assets — no build-time stamping.
     if failures:
-        # planar now resolves all POIs + stages (52/52 reachable) — gate is
-        # fatal in both modes so a regression fails the build loudly.
+        # every POI + stage must resolve (52/52 reachable) — the gate is fatal
+        # so a regression fails the build loudly.
         raise SystemExit(f"[poi] BUILD INCOMPLETE — unresolved: {failures}")
 
 

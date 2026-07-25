@@ -55,6 +55,9 @@ CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 
 from churchill.world.repository.world_json import JsonWorldRepository  # noqa: E402
+from churchill.world.service.street import (   # noqa: E402
+    StreetIndex, half_plane, resample_centerline,
+)
 from churchill.world.util.raster import (     # noqa: E402
     Raster, erode_cells, rle_encode,
 )
@@ -244,7 +247,7 @@ def propagate_barro_to_crossings(roads, reach=1.2 * CUAD):
     for r in roads:
         if not r.get("elev"):
             continue
-        for (_, x, y) in _resample_centerline(r["pts"], 5):
+        for (_, x, y) in resample_centerline(r["pts"], 5):
             elev_pts.append((x, y))
             ax0, ay0, ax1, ay1 = min(ax0, x), min(ay0, y), max(ax1, x), max(ay1, y)
     if not elev_pts:
@@ -259,7 +262,7 @@ def propagate_barro_to_crossings(roads, reach=1.2 * CUAD):
         if max(xs) < ax0 - reach or min(xs) > ax1 + reach or \
            max(ys) < ay0 - reach or min(ys) > ay1 + reach:
             continue
-        cand = [(x, y) for (_, x, y) in _resample_centerline(r["pts"], 6)]
+        cand = [(x, y) for (_, x, y) in resample_centerline(r["pts"], 6)]
         if any((px - ox) ** 2 + (py - oy) ** 2 < rr
                for px, py in cand for ox, oy in elev_pts):
             r["barro"] = 1
@@ -1134,24 +1137,6 @@ def planar_muelle_axis(roads, near_x, near_y, reach=1500):
     return best
 
 
-def _resample_centerline(pts_flat, step):
-    """[(s, x, y), ...] sampled every ~step px along a flat polyline."""
-    pts = [(pts_flat[i], pts_flat[i + 1]) for i in range(0, len(pts_flat), 2)]
-    out, s = [], 0.0
-    for k in range(len(pts) - 1):
-        x0, y0 = pts[k]; x1, y1 = pts[k + 1]
-        seg = math.hypot(x1 - x0, y1 - y0)
-        if seg < 1e-6:
-            continue
-        n = max(1, int(seg / step))
-        for j in range(n):
-            t = j / n
-            out.append((s + t * seg, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
-        s += seg
-    if pts:
-        out.append((s, pts[-1][0], pts[-1][1]))
-    return out
-
 def paseo_median_runs(roads, pieces):
     """Solid-median runs along the given avenue pieces, with gaps ALIGNED TO
     THE CROSS STREETS: a gap opens wherever another street meets the avenue,
@@ -1190,7 +1175,7 @@ def paseo_median_runs(roads, pieces):
 
     out = []
     for r in pieces:
-        samples = _resample_centerline(r["pts"], 4.0)
+        samples = resample_centerline(r["pts"], 4.0)
         solid = [not in_crossing(x, y) for (_, x, y) in samples]
         runs, k = [], 0
         while k < len(samples):
@@ -2320,7 +2305,7 @@ def main():
     def continuous_runs(pieces, x0=None, x1=None):
         out = []
         for r in pieces:
-            samples = _resample_centerline(r["pts"], 4.0)
+            samples = resample_centerline(r["pts"], 4.0)
             ks = [k for k, (_, x, _) in enumerate(samples)
                   if (x0 is None or x >= x0) and (x1 is None or x <= x1)]
             run = []
@@ -2340,7 +2325,7 @@ def main():
     # the tree strip starts at the SW corner of the first cuadra facing the
     # León Cortés stretch — never inside the curve that leads into it
     leon_cl = [(x, y) for r in leon
-               for (_, x, y) in _resample_centerline(r["pts"], 8.0)]
+               for (_, x, y) in resample_centerline(r["pts"], 8.0)]
     lx0, lx1 = min(x for x, _ in leon_cl), max(x for x, _ in leon_cl)
 
     def _leon_y(x):
@@ -2380,96 +2365,15 @@ def main():
     stadiums = []
     parcels = []        # named cuadra parts (church / plaza / sponsor lots)
 
-    def _street_vals(names, want, ref, span=700):
-        """Average axis coord (x for a calle, y for an avenida) of the FIRST of
-        `names` that has samples NEAR the reference point. A list lets the
-        user's grid ref map onto whatever OSM actually named the street here
-        (odd calles are missing; the central avenue is 'Avenida Centenario')."""
-        rx, ry = ref
-        for name in ([names] if isinstance(names, str) else names):
-            vals = []
-            for r in roads:
-                if (r.get("name") or "") != name:
-                    continue
-                for (_, x, y) in _resample_centerline(r["pts"], 10):
-                    if abs(x - rx) <= span and abs(y - ry) <= span:
-                        vals.append(x if want == "x" else y)
-            if vals:
-                return sum(vals) / len(vals)
-        return None
-
-    def _street_edge(names, ref, span=700):
-        """A named street NEAR ref as an infinite LINE (px, py, ux, uy): the mean
-        of its samples plus its principal-axis direction. Used to bound a cuadra
-        along a street that STOPS short (Calle 8 dead-ends in the sand): the
-        block then ends on the street's straight line, extended, instead of
-        wrapping around the road's round end cap."""
-        rx, ry = ref
-        for name in ([names] if isinstance(names, str) else names):
-            pts = []
-            for r in roads:
-                if (r.get("name") or "") != name:
-                    continue
-                for (_, x, y) in _resample_centerline(r["pts"], 8):
-                    if abs(x - rx) <= span and abs(y - ry) <= span:
-                        pts.append((x, y))
-            if len(pts) >= 2:
-                mx, my, theta = principal_axis(pts)
-                return (mx, my, math.cos(theta), math.sin(theta))
-        return None
-
-    def _street_dir(names, ref, axis, span=520):
-        """Unit direction of a named street NEAR ref, oriented along `axis`:
-        "x" for an avenida (pointing EAST), "y" for a calle (pointing SOUTH).
-        This is the honest source for a manzana's angle — see place_parcels: a
-        principal-axis fit of the block's own cells cannot recover the tilt of a
-        square-ish cuadra, and it can only ever return orthogonal axes, while
-        the real cuadrícula is a parallelogram (by Carmen the avenidas run at
-        -4.5° and the calles at 82°, 3.5° off square).
-
-        A direction that does NOT run along the expected axis is rejected: a
-        same-named stub crossing the reference (Calle 33 turns a corner two
-        cuadras south) would otherwise hand back the perpendicular."""
-        line = _street_edge(names, ref, span)
-        if not line:
-            return None
-        ux, uy = line[2], line[3]
-        if (abs(ux) < abs(uy)) if axis == "x" else (abs(uy) < abs(ux)):
-            return None
-        if (ux < 0) if axis == "x" else (uy < 0):
-            ux, uy = -ux, -uy
-        return (ux, uy)
-
-    def _half_plane(line, anchor, gap):
-        """clip(px, py) keeping the ANCHOR's side of a street line, stopping
-        `gap` px short of its centreline (= the near kerb)."""
-        ex, ey, ux, uy = line
-        nx, ny = -uy, ux
-        if (anchor[0] - ex) * nx + (anchor[1] - ey) * ny > 0:   # point n at the street
-            nx, ny = -nx, -ny
-        return lambda px, py: (px - ex) * nx + (py - ey) * ny <= -gap
-
-    def _street_at(names, want, ref, span=900):
-        """The axis coord of a named street AT the reference point — the sample
-        nearest in the OTHER axis, not an average. Avenida Centenario runs
-        diagonally for kilometres, so its MEAN y lands on a different cuadra
-        entirely; `_street_vals` is fine for a short straight calle but wrong
-        for anything long or slanted."""
-        rx, ry = ref
-        for name in ([names] if isinstance(names, str) else names):
-            best = None
-            for r in roads:
-                if (r.get("name") or "") != name:
-                    continue
-                for (_, x, y) in _resample_centerline(r["pts"], 6):
-                    if abs(x - rx) > span or abs(y - ry) > span:
-                        continue
-                    d = abs(y - ry) if want == "x" else abs(x - rx)
-                    if best is None or d < best[0]:
-                        best = (d, x if want == "x" else y)
-            if best is not None:
-                return best[1]
-        return None
+    # Streets by name — one index, four questions (see the service for which
+    # to use when: a MEAN coordinate, the coordinate AT a point, the street as
+    # an infinite line, or its direction).
+    streets = StreetIndex(roads)
+    _street_vals = streets.vals
+    _street_at = streets.at
+    _street_edge = streets.edge
+    _street_dir = lambda names, ref, axis, span=520: streets.direction(names, ref, axis, span)
+    _half_plane = half_plane
 
     def _cuadra_cells(px0, py0, px1, py1, classes, clip=None):
         """The one cuadra under a street rect, as raster cells: the LARGEST
@@ -2566,17 +2470,7 @@ def main():
             log("estadio", f"WARN landmark {spec['id']} missing"); return
         ref = (lm["x"], lm["y"])
         # DIAGNOSTIC: named streets near the anchor, to tune the grid refs
-        near = {}
-        for r in roads:
-            nm = r.get("name")
-            if not nm:
-                continue
-            for (_, x, y) in _resample_centerline(r["pts"], 12):
-                if abs(x - ref[0]) <= 800 and abs(y - ref[1]) <= 500:
-                    near.setdefault(nm, []).append((x, y))
-        summ = {nm: (round(sum(p[0] for p in v) / len(v)), round(sum(p[1] for p in v) / len(v)))
-                for nm, v in sorted(near.items())}
-        log("estadio", f"{spec['id']} anchor {ref} nearby streets: {summ}")
+        log("estadio", f"{spec['id']} anchor {ref} nearby streets: {streets.near(ref)}")
 
         # Resolve the stadium's street RECT, then trace the actual cuadra under
         # it straight from the grid (these blocks classify as green plazas, not
@@ -3156,7 +3050,7 @@ def main():
         return any((px - ox) ** 2 + (py - oy) ** 2 < rr for ox, oy in other_pts)
     n_ferro_trees = 0
     for r in ferro:
-        samples = _resample_centerline(r["pts"], 26)
+        samples = resample_centerline(r["pts"], 26)
         for i, (s, cx, cy) in enumerate(samples):
             if cx < FERRO_TREE_X0:
                 continue
@@ -3186,7 +3080,7 @@ def main():
         out = []
         for r in roads:
             if (r.get("name") or "") == name:
-                out += [(x, y) for (_, x, y) in _resample_centerline(r["pts"], 10) if x0 <= x <= x1]
+                out += [(x, y) for (_, x, y) in resample_centerline(r["pts"], 10) if x0 <= x <= x1]
         return sorted(out)
     A = _centerline_pts("Avenida 1", 8139, 11921)
     B = _centerline_pts("Avenida Alberto Echandi Montero", 8139, 11921)

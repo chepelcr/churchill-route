@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Application, Graphics } from "pixi.js";
 import { useT } from "../../i18n/index.js";
+import { sfx } from "../../game/audio.js";
 
 // Boot sequence (Hill-Climb style), shown on every launch:
 //   phase 0 — Pacific Code Labs logo over a LIVE PIXI WATER backdrop (the same
@@ -69,6 +70,33 @@ export default function BootScreen({ onDone }) {
       : setTimeout(() => (phase === 0 ? setPhase(1) : setOut(true)), phase === 0 ? LOGO_MS : LOAD_MS);
     return () => clearTimeout(tm);
   }, [hold, phase, out]);
+
+  // The ferry pulls out of the muelle as the puerto loads: one short blast,
+  // one long. Autoplay policy silently drops any sound before the first
+  // gesture, so if the context has not unlocked yet we arm it for the next
+  // tap/key — and only while THIS screen is up, so the horn can never honk
+  // later out of context.
+  useEffect(() => {
+    if (phase !== 1 || hold) return;
+    if (sfx.ready) { sfx.play("horn"); return; }
+    let done = false;
+    const onGesture = () => {
+      if (done) return;
+      done = true;
+      // the audio module's own listener unlocks on this same gesture; let it
+      // land first, then sound
+      setTimeout(() => sfx.play("horn"), 60);
+    };
+    window.addEventListener("pointerdown", onGesture);
+    window.addEventListener("touchend", onGesture);
+    window.addEventListener("keydown", onGesture);
+    return () => {
+      done = true;
+      window.removeEventListener("pointerdown", onGesture);
+      window.removeEventListener("touchend", onGesture);
+      window.removeEventListener("keydown", onGesture);
+    };
+  }, [phase, hold]);
 
   const barAnim = { animationDuration: (LOAD_MS - 350) + "ms", animationDelay: "300ms" };
 

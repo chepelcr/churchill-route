@@ -165,6 +165,23 @@ const RECIPES = {
     tone({ type: "triangle", from: 1046, dur: 0.16, gain: 0.18, at: 0.21 });
     tone({ type: "sine", from: 1052, dur: 0.16, gain: 0.08, at: 0.21 });
   },
+  // Ferry horn — the "chu… chuuu" of the Paquera boat pulling out of the
+  // muelle. A short blast then a long one, each a low pair beating slightly
+  // against itself (that beat is what makes a horn sound like a horn and not a
+  // bass note), under a lowpass so it reads as air, not as a synth.
+  horn: () => {
+    const blast = (at, dur, gain) => {
+      for (const f of [104, 156, 131]) {                    // root, fifth, third
+        tone({ type: "sawtooth", from: f, to: f * 0.97, dur, gain: gain * (f === 104 ? 1 : 0.5),
+               at, filterHz: 700 });
+        tone({ type: "sawtooth", from: f * 1.006, to: f * 0.976, dur, gain: gain * 0.35,
+               at, filterHz: 700 });                        // detuned twin → beating
+      }
+      noiseHit({ dur: dur * 0.5, gain: gain * 0.10, at, band: 500 });  // breath
+    };
+    blast(0, 0.42, 0.16);
+    blast(0.62, 1.15, 0.19);
+  },
   // Street coin: a bright two-note "ching" — distinct from `pickup` (the
   // churchill), so grabbing colones off the map reads as money, not a drink.
   coin:        () => {
@@ -247,6 +264,10 @@ export const sfx = {
       fountainV.body.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
     }
   },
+  // Has the AudioContext actually unlocked? A one-shot fired before the first
+  // gesture is silently dropped by the autoplay policy, so the boot horn needs
+  // to know whether to arm itself for the next tap instead.
+  get ready() { return !!ctx && ctx.state === "running"; },
   // the OS/browser suspends the context in the background; revive it
   resume() {
     if (ctx && ctx.state === "suspended") ctx.resume();

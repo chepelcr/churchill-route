@@ -178,13 +178,22 @@ export default function App() {
       setScreen("brief");
     } else { setScreen("title"); }
   }
+  // Restart THIS run. It has to dispatch on the actual mode: the old fallback
+  // sent anything that wasn't the tutorial or a story stage to startArcade, so
+  // "restart" in Recorrer silently dropped you into a 3-minute timed Arcade run
+  // instead of rebooting the open world.
   function again() {
     enterImmersive();
-    if (Game.state.mode === "tutorial") Game.startTutorial({ vehicleKey: Game.state.vehicleKey });
-    else if (Game.state.stage) Game.startStage(Game.state.stageIdx, Game.state.vehicleKey);
-    else Game.startArcade({ vehicleKey: Game.state.vehicleKey });
+    const k = Game.state.vehicleKey;
+    if (Game.state.mode === "tutorial") Game.startTutorial({ vehicleKey: k });
+    else if (Game.state.mode === "explore") Game.startExplore({ vehicleKey: k });
+    else if (Game.state.stage) Game.startStage(Game.state.stageIdx, k);
+    else Game.startArcade({ vehicleKey: k });
     setScreen("playing");
   }
+  // Recorrer has no level to restart — it is the open world, with no clock and
+  // no target — so it gets no restart button at all.
+  const canRestart = Game.state.mode !== "tutorial" && Game.state.mode !== "explore";
   // rewarded-ad continue: revive the lost run with extra time (once per run)
   function continueRun() {
     Game.state.timeLeft += 60;
@@ -237,7 +246,7 @@ export default function App() {
         </div>
       )}
       {screen === "playing" && <><HUD onPause={() => setScreen("paused")} /><TouchControls />{Game.state.tutorial && <TutorialOverlay />}</>}
-      {screen === "paused" && <><HUD /><PauseScreen onResume={() => setScreen("playing")} onRestart={Game.state.mode !== "tutorial" ? again : null} onSettings={() => openSettings("paused")} onQuit={quit} /></>}
+      {screen === "paused" && <><HUD /><PauseScreen onResume={() => setScreen("playing")} onRestart={canRestart ? again : null} onSettings={() => openSettings("paused")} onQuit={quit} /></>}
       {(screen === "playing" || screen === "paused") && <GameTweaks />}
       <div className="rotate-overlay">
         <div className="rotate-icon"><Icon name="phone" size={60} /></div>

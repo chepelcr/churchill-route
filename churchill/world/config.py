@@ -127,3 +127,18 @@ SYNTH_LOTS = [((2, 2), 0.25), ((2, 1), 0.20), ((1, 2), 0.20),
 # ---- cuadra detection --------------------------------------------------------
 BLOCK_MIN_CUADS = 6       # a real cuadra fits >= 6x6 buildable cuadrículas
 SLIVER_MAX_CUADS = 25.0   # smaller-and-thinner land paves to plaza concrete
+
+# ---- paseo separators --------------------------------------------------------
+# The Paseo de los Turistas is a divided avenue: a dashed palm median runs down
+# the centerline as a solid (blocking) separator between the two sides, with
+# periodic gaps ("aperturas") where you can cross.
+PASEO_MEDIAN_W = 0.5 * CUAD     # separator strips (palm median / tree lines) — ½ cuad planter
+PASEO_MIN_DASH = 2.0 * CUAD     # drop palm-median slivers shorter than this
+PASEO_GAP_MARGIN = CUAD         # extra turn room on each side of a crossing
+
+PASEO_TURISTAS = "paseo de los turistas"
+PASEO_LEON = "paseo león cortés"
+PASEO_NAMES = (PASEO_TURISTAS, PASEO_LEON)
+
+MUELLE_STREET = "calle central"
+LEON_END_STREET = "calle 20"    # the calle at the paseo's east end

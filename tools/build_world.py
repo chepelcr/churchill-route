@@ -25,279 +25,34 @@ import time
 import zlib
 from collections import defaultdict, deque
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OSM_PATH = os.path.join(ROOT, "docs", "map.osm")
-DEBUG_PNG = os.path.join(ROOT, "tools", "debug_map.png")
-DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
-# chunked output — the tiled world the src/world2d accessor streams by camera
-# region (416 tiles + manifest.json).
-WORLD2D_DIR = os.path.join(ROOT, "src", "world2d")
+# The knobs, the map content and the build log live in the package now — this
+# script is the CLI in front of them (and will shrink to just that as the
+# services land). sys.path shim: the repo root holds `churchill/`, and
+# `pnpm world:build` runs this file directly rather than an installed console
+# script.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# ---------------------------------------------------------------- config ---
+from churchill.world.config import (            # noqa: E402
+    ACERA_CELLS, ARCADE_STREET_MUL, BUILDING_SCALE, CLASS_NAMES,
+    CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER,
+    CROSS_EXAG, CUAD, CUADS_PER_VIEW, CUAD_CELLS, DEBUG_PNG, DEBUG_SVG,
+    DP_BUILDING_PX, DP_COAST_PX, DP_ROAD_PX, DROP_ROAD_CLASSES,
+    FIELD_ACERA_CELLS, GRID_CELL, LAT0, LON0, M_PER_DEG_LAT, M_PER_DEG_LON,
+    MIN_BUILDING_AREA_PX2, OSM_PATH, PLANAR_BBOX, PLANAR_PX_PER_M,
+    POI_NUDGE_PX, ROAD_CLASSES, ROAD_WIDTH_M, ROOT, SERVICE_MIN_PX,
+    TILE_CELLS, TILE_CUADS, TILE_PX, WORLD2D_DIR, road_width_px,
+)
+from churchill.world.content import (           # noqa: E402
+    BLDG_PALETTE, CUSTOMER_DEFS, DISTRICT_BOUNDS_GEO, DISTRICT_DEFS,
+    INLAND_DISTRICT_DEFS, LANDMARK_DEFS, PROBE_LAND, PROBE_SEA, ROOF_PALETTE,
+    STAGES,
+)
+from churchill.world.logging import log, warn   # noqa: E402
 
-# World size is COMPUTED from the OSM bounds by _planar_setup(), which rebinds
-# these globals before anything reads them (every function reads them at call
-# time). The values here are only a placeholder so the module imports.
+# World SIZE is computed from the OSM bounds by _planar_setup(), which rebinds
+# these before anything reads them (every function reads them at call time).
 CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
-CROSS_EXAG = 1.95               # emitted in meta.crossExag; nothing reads it
-GRID_CELL = 4
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
-
-# Cuadrícula (tile) standardization: one CUAD is the base city tile. Streets and
-# cuadras are whole numbers of cuadrículas so sizes read uniform and identical
-# across devices. CUAD is a multiple of GRID_CELL so it aligns to the raster.
-#   street: secondary = 4 cuadrículas (2/lane), principal = 6 (3/side)
-#   cuadra: >= 6x6 cuadrículas of land + 1 cuadrícula of acera on every side
-#   view:   the engine frames at most CUADS_PER_VIEW cuadrículas (responsive zoom)
-CUAD = 20                       # px per cuadrícula (a lane ~= 2 cuadrículas)
-CUADS_PER_VIEW = 20             # advisory; the renderer owns the actual framing
-CUAD_CELLS = CUAD // GRID_CELL  # raster cells per cuadrícula side
-assert CUAD % GRID_CELL == 0, "CUAD must align to the raster grid"
-# Planar tiling: the world is emitted as a grid of square tiles the accessor
-# streams by camera region. A tile is a whole number of cuadrículas (so it
-# aligns to CUAD and the raster grid) ~2000 px on a side.
-TILE_CUADS = 100                # 100 CUAD = 2000 px per tile side
-TILE_PX = TILE_CUADS * CUAD     # 2000
-TILE_CELLS = TILE_PX // GRID_CELL   # 500 raster cells per tile side
-assert CANVAS_W % CUAD == 0 and CANVAS_H % CUAD == 0, "canvas must be whole cuadrículas"
-
-# local equirectangular projection anchor (Faro de La Punta)
-LAT0, LON0 = 9.9770, -84.8512
-M_PER_DEG_LAT = 110540.0
-M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
-
-# ---- Planar (true-scale 2-D) projection -------------------------------------
-PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "1.6"))   # world zoom
-ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "3.2"))  # widen streets
-# real-ish carriageway widths (metres) per OSM highway class; painted width =
-# ROAD_WIDTH_M · ARCADE_STREET_MUL · px_per_m (kept modest so junction gores survive)
-ROAD_WIDTH_M = {
-    "trunk": 16, "trunk_link": 12, "primary": 14, "primary_link": 11,
-    "secondary": 11, "tertiary": 9, "tertiary_link": 8,
-    "residential": 7, "unclassified": 7, "living_street": 6,
-    "service": 4.5, "pedestrian": 5, "paseo": 16, "bridge": 12,
-}
-# optional bbox clip "lon0,lat0,lon1,lat1" for a bounded smoke build.
-# docs/map.osm actually spans ~85x92 km (stray inland highways / distant
-# villages far outside Puntarenas) — projecting it whole gives a 1.2-billion-cell,
-# 99.96%-water world. So planar defaults to the documented Puntarenas region
-# bbox (9.8539-10.0304 N, -84.9188--84.6328 E), clipping the outliers. Override
-# with PLANAR_BBOX (e.g. a small centro sub-bbox for a fast smoke).
-PLANAR_FULL_BBOX = "-84.9188,9.8539,-84.6328,10.0304"
-PLANAR_BBOX = os.environ.get("PLANAR_BBOX") or PLANAR_FULL_BBOX
-
-BUILDING_SCALE = 1.4            # match footprints to exaggerated road widths
-POI_NUDGE_PX = 600
-
-ROAD_CLASSES = set(ROAD_WIDTH_M) - {"paseo", "bridge"}
-
-def road_width_px(cls):
-    """Painted street width: real metres · ARCADE_STREET_MUL · px_per_m —
-    arcade-wide but modest, so junction gores survive."""
-    return max(GRID_CELL * 2,
-               round(ROAD_WIDTH_M.get(cls, 7) * ARCADE_STREET_MUL * PLANAR_PX_PER_M))
-# Keep every OSM street for a faithful map — the cuadrícula grid standardizes
-# cuadra/street sizes by snapping to the tile grid, so we no longer prune
-# streets to control block size.
-DROP_ROAD_CLASSES = set()
-SERVICE_MIN_PX = 120
-DP_ROAD_PX = 1.0
-DP_BUILDING_PX = 2.0
-DP_COAST_PX = 2.5
-MIN_BUILDING_AREA_PX2 = 216
-
-CLS_WATER, CLS_LAND, CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA = 0, 1, 2, 3, 4, 5, 6
-CLASS_NAMES = ["water", "land", "beach", "road", "paseo", "bridge", "acera"]
-ACERA_CELLS = CUAD_CELLS        # sidewalk depth: 1 cuadrícula (20 px) each side
-# A FIELD's ring is shallower than a block's. All it has to do is keep the
-# pitch's white lines off the asphalt, and every px of it is grass and markings
-# the player doesn't get: at full depth the Carmen plaza went from 84x92 to
-# 60x48. 8 px still reads as a kerb strip (the drawn sidewalk band is 20 px, so
-# the pitch tucks under most of it, exactly like a park's green skirt).
-FIELD_ACERA_CELLS = 2           # 8 px — estadio / plaza pitches
-
-# probes for orientation / sanity (geo)
-PROBE_LAND = [(9.97769, -84.83487),   # Catedral
-              (9.92272, -84.70911),   # Escuela Mata de Limon
-              (9.97600, -84.84500)]   # Carmen
-PROBE_SEA = [(9.95000, -84.87000),    # open gulf W
-             (9.96000, -84.80000),    # gulf S of the spit
-             (9.99500, -84.82000)]    # Estero de Puntarenas N of the spit
-
-# district boundaries as geo anchors (7 boundaries -> 8 districts, GDD order)
-DISTRICT_DEFS = [
-    {"id": "faro",     "name": "EL FARO",               "short": "Faro",       "tone": "#f4d77a"},
-    {"id": "carmen",   "name": "CARMEN",                "short": "Carmen",     "tone": "#e0b478"},
-    {"id": "paseo",    "name": "PASEO DE LOS TURISTAS", "short": "Paseo",      "tone": "#f0a37a"},
-    {"id": "centro",   "name": "CENTRO PUNTARENAS",     "short": "Centro",     "tone": "#e6c388"},
-    {"id": "playitas", "name": "BARRIO LAS PLAYITAS",   "short": "Playitas",   "tone": "#caa089"},
-    {"id": "cocal",    "name": "BARRIO EL COCAL",       "short": "Cocal",      "tone": "#a8b88a"},
-    {"id": "mata",     "name": "MATA DE LIMÓN",         "short": "Mata Limón", "tone": "#a0c894"},
-    {"id": "caldera",  "name": "CALDERA BULEVAR",       "short": "Caldera",    "tone": "#9bc4d4"},
-]
-DISTRICT_BOUNDS_GEO = [
-    (9.97620, -84.84930),  # faro | carmen (west of the ferry terminal, which is Carmen)
-    (9.97550, -84.84050),  # carmen | paseo
-    (9.97700, -84.83182),  # paseo | centro  (east so the Paseo boardwalk kiosks fall in paseo)
-    (9.97820, -84.82900),  # centro | playitas (west of the Playitas place node -84.8274 + Estadio)
-    (9.97900, -84.82200),  # playitas | cocal (between OSM nodes: Playitas -84.8274, El Cocal -84.8171)
-    (9.93450, -84.72550),  # cocal | mata  (north of Playa Caldera)
-    (9.91950, -84.71250),  # mata | caldera (between village and port)
-]
-
-# Inland barrios (planar map only — the corridor-unroll can't place them). Each
-# is a real OSM place node; `bbox` is a lat/lon rectangle used only to draw the
-# region + minimap label — classification (districtAt) is by nearest kiosk/POI
-# centroid, so exact rings aren't needed. West→east along Ruta 1 / the coast.
-INLAND_DISTRICT_DEFS = [
-    {"id": "chacarita", "name": "CHACARITA",      "short": "Chacarita", "tone": "#b0b483",
-     "geo": (9.98061, -84.77368), "bbox": (9.9690, -84.7900, 9.9930, -84.7580)},
-    {"id": "elroble",   "name": "EL ROBLE",       "short": "El Roble",  "tone": "#9ec4a0",
-     "geo": (9.98067, -84.73602), "bbox": (9.9700, -84.7560, 9.9930, -84.7250)},
-    {"id": "barranca",  "name": "BARRANCA",       "short": "Barranca",  "tone": "#c7b98a",
-     "geo": (9.98840, -84.71094), "bbox": (9.9640, -84.7250, 9.9990, -84.6960)},
-    {"id": "esparza",   "name": "ESPARZA",        "short": "Esparza",   "tone": "#d6a97e",
-     "geo": (9.99183, -84.66587), "bbox": (9.9760, -84.6860, 10.0120, -84.6440)},
-]
-
-# landmarks: same ids as the GDD / previous world.js. Resolution: "osm" is a
-# case-insensitive substring matched against named OSM features (nearest to
-# "near" wins when multiple match); "ll" is a hand-placed fallback/override.
-LANDMARK_DEFS = [
-    # La Punta (see how-look-puntarenas/faro.jpg): the lighthouse stands on the
-    # rocky tip OUTSIDE the road loop (left of Calle 39), with the Balneario
-    # Municipal pool inside the loop on the other side of the street.
-    {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -10, "dy": 110},
-    # the big lagoon pool sits IN FRONT of (just north of / town-side of) the
-    # faro, inside the road loop — roughly aligned on x with the lighthouse
-    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 110, "dy": 10},
-    # a churchill kiosk beside the lighthouse plaza (east of the faro, clear of it)
-    {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 85, "dy": 105},
-    # The cruise pier juts out from the END of Calle Central, right beside the
-    # churchill kiosks on the Paseo (dx nudges the geo anchor onto that street)
-    # dx 680 is a CORRIDOR-space nudge; the planar pier re-anchors to the real
-    # Calle Central south end (planar_muelle_axis), so it never sees this dx.
-    {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "paseo",    "osm": "muelle de cruceros", "ll": (9.97450, -84.83450), "dx": 680},
-    {"id": "ferrycr",     "name": "Terminal de Ferry",          "type": "ferry",        "district": "carmen",   "osm": "terminal de ferry puntarenas"},
-    {"id": "playa",       "name": "Playa Puntarenas",           "type": "beachsign",    "district": "carmen",   "ll": (9.97500, -84.84300)},
-    {"id": "carmenig",    "name": "Iglesia del Carmen",         "type": "church",       "district": "carmen",   "osm": "iglesia del carmen", "ll": (9.97650, -84.84400)},
-    {"id": "tioga",       "name": "Hotel Tioga",                "type": "hotel",        "district": "paseo",    "osm": "tioga", "ll": (9.97500, -84.83600)},
-    # pushed SOUTH off the street to the MIDPOINT between the Paseo and the
-    # sand front (PINNED_KIOSKS keeps them there — no frontage re-seat)
-    {"id": "kios_paseo1", "name": "Kiosco Doña Lela",           "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": -60, "dy": 80},
-    {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 60, "dy": 80},
-    {"id": "casafait",    "name": "Casa Fait",                  "type": "house",        "district": "paseo",    "osm": "casa fait", "ll": (9.97700, -84.82900)},
-    {"id": "parquemar",   "name": "Parque Marino del Pacífico", "type": "park",         "district": "playitas", "osm": "parque marino", "ll": (9.97600, -84.82300)},
-    {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas"},
-    {"id": "pali",        "name": "Supermercado Palí",          "type": "super",        "district": "centro",   "osm": "palí", "ll": (9.97650, -84.82900)},
-    # The civic block row between Av Central and Av 1 (calles 3-7): catedral on
-    # the west cuadra, Casa de la Cultura on the east. Anchors = the real OSM
-    # building nodes so the name search can't drift to the Bulevar. (The Museo
-    # Histórico Marino IS the Casa de la Cultura building — one landmark, no
-    # separate "museo" icon.)
-    {"id": "catedral",    "name": "Catedral de Puntarenas",     "type": "cathedral",    "district": "centro",   "osm": "catedral", "near": (9.97762, -84.83486)},
-    {"id": "cultura",     "name": "Casa de la Cultura",         "type": "civic",        "district": "centro",   "osm": "casa de la cultura elsie", "near": (9.97765, -84.83404), "ll": (9.97765, -84.83404)},
-    {"id": "kios_centro", "name": "Kiosco La Porteña",          "type": "kiosk",        "district": "centro",   "ll": (9.97480, -84.83000)},
-    # Estadios: position comes from the named street grid at build (place_stadium):
-    # Lito Pérez at Calle 15-17 x Avenida 0-2; Las Playitas at Calle 6-8 x Avenida 1.
-    # The ll anchors are only fallbacks if a street name fails to resolve.
-    {"id": "estadio",         "name": "Estadio Lito Pérez",    "type": "stadium",      "district": "carmen",   "ll": (9.97680, -84.83880)},
-    # Open green field, no graderías — it reads as a plaza, not a stadium
-    {"id": "estadio_playitas","name": "Plaza Las Playitas",    "type": "stadium",      "district": "playitas", "ll": (9.97960, -84.82520)},
-    {"id": "kios_play",   "name": "Kiosco Playitas",            "type": "kiosk",        "district": "playitas", "ll": (9.97840, -84.82640)},
-    {"id": "yatch",       "name": "Yacht Club",                 "type": "marina",       "district": "cocal",    "osm": "yacht", "ll": (9.97900, -84.81200)},
-    # anchor monument on the island where the road splits into the Cocal (west
-    # side, not the estero end) — placed by world xy read off the 📍 overlay
-    {"id": "cocal_park",  "name": "Parque El Cocal",            "type": "park",         "district": "cocal",    "ll": (9.97950, -84.79500)},
-    {"id": "kios_cocal",  "name": "Kiosco El Cocal",            "type": "kiosk",        "district": "cocal",    "ll": (9.98100, -84.79400)},
-    # far-east Cocal soda so Stage 5 has a pickup beside its Ruta 17 customers
-    {"id": "kios_cocal2", "name": "Soda Ruta 17",               "type": "kiosk",        "district": "cocal",    "ll": (9.96400, -84.74150)},
-    {"id": "puente",      "name": "Puente de Mata de Limón",    "type": "bridge",       "district": "mata",     "osm": "puente colgante mata de limón"},
-    {"id": "kios_mata",   "name": "Kiosco Mata de Limón",       "type": "kiosk",        "district": "mata",     "ll": (9.92250, -84.70850)},
-    {"id": "leda",        "name": "Marisquería Leda",           "type": "restaurant",   "district": "mata",     "osm": "leda", "ll": (9.92350, -84.70780)},
-    {"id": "matalimon",   "name": "Estero Mata de Limón",       "type": "estuary",      "district": "mata",     "osm": "estero mata de limón"},
-    {"id": "caldera_blvd","name": "Caldera Bulevar",            "type": "sign",         "district": "caldera",  "ll": (9.91800, -84.71300)},
-    # a soda by the port so Stage 7 picks up beside its Caldera customers
-    {"id": "kios_caldera","name": "Soda del Puerto",            "type": "kiosk",        "district": "caldera",  "ll": (9.91300, -84.71600)},
-    {"id": "tren",        "name": "Estación Tren Caldera",      "type": "trainstation", "district": "caldera",  "osm": "estación tren", "ll": (9.91500, -84.71500)},
-    {"id": "puerto",      "name": "Puerto de Caldera",          "type": "port",         "district": "caldera",  "osm": "puerto internacional caldera"},
-    {"id": "villach",     "name": "Villa Champán",              "type": "village",      "district": "caldera",  "ll": (9.91600, -84.71250)},
-    {"id": "ruta27",      "name": "Ruta 27 · Autopista",        "type": "highway",      "district": "caldera",  "ll": (9.91000, -84.71000)},
-    # inland barrio kiosks (planar full map) — pickups across the mainland towns.
-    # ll at each OSM place node; snapped to the nearest drivable road at build.
-    {"id": "kios_chac",   "name": "Soda Chacarita",             "type": "kiosk",        "district": "chacarita","ll": (9.98061, -84.77368), "snap_road": 1},
-    {"id": "kios_roble",  "name": "Churchill El Roble",         "type": "kiosk",        "district": "elroble",  "ll": (9.98067, -84.73602), "snap_road": 1},
-    {"id": "kios_barr",   "name": "Kiosco Barranca",            "type": "kiosk",        "district": "barranca", "ll": (9.98840, -84.71094), "snap_road": 1},
-    {"id": "kios_esp",    "name": "Churchill Esparza",          "type": "kiosk",        "district": "esparza",  "ll": (9.99183, -84.66587), "snap_road": 1},
-]
-
-CUSTOMER_DEFS = [
-    {"id": "c1",  "name": "Don Beto, pescador",     "district": "carmen",   "line": "¡Antes que se derrita!",       "ll": (9.97700, -84.84700)},
-    {"id": "c2",  "name": "Crucerista alemana",     "district": "carmen",   "line": "Eine Churchill, bitte!",       "ll": (9.97600, -84.84550)},
-    {"id": "c3",  "name": "Carnaval troupe",        "district": "paseo",    "line": "Para toda la comparsa.",       "ll": (9.97450, -84.83300)},
-    {"id": "c4",  "name": "Familia tica",           "district": "paseo",    "line": "Cuatro, con leche extra.",     "ll": (9.97470, -84.83100)},
-    {"id": "c5",  "name": "Surfista canadiense",    "district": "paseo",    "line": "Make it extra red, dude.",     "ll": (9.97420, -84.83550)},
-    {"id": "c6",  "name": "Padre Ramírez",          "district": "centro",   "line": "Bendito churchill.",           "ll": (9.97760, -84.83128)},
-    {"id": "c7",  "name": "Vendedor de ceviche",    "district": "centro",   "line": "Te cambio uno por ceviche.",   "ll": (9.97700, -84.83100)},
-    {"id": "c8",  "name": "Doña del mercado",       "district": "centro",   "line": "Rojito bien fuerte.",          "ll": (9.97965, -84.82932)},
-    {"id": "c9",  "name": "Niño con bici",          "district": "playitas", "line": "¡El mío con piña!",            "ll": (9.97720, -84.82800)},
-    {"id": "c10", "name": "Equipo de fútbol",       "district": "playitas", "line": "Once. Es broma. Tres.",        "ll": (9.97880, -84.82620)},
-    {"id": "c11", "name": "Doña del rocking chair", "district": "playitas", "line": "Como en los años 80.",         "ll": (9.97740, -84.82450)},
-    # el yatista espera cerca del ferry (Playitas quedó llena: banda angosta,
-    # kiosk+c9+c10 cubren todo el spread — no cabe un 4º cliente)
-    {"id": "c12", "name": "Yatista gringo",         "district": "carmen",   "line": "Best churchill ever, man.",    "ll": (9.97680, -84.84200)},
-    # --- extra porteño clientes so free-roam orders don't repeat (open area;
-    # placed in the roomier carmen/paseo bands — centro/playitas are tight) ---
-    {"id": "c19", "name": "Marinero del muelle",    "district": "carmen",   "line": "Con hielo bien menudito.",     "ll": (9.97700, -84.84780)},
-    {"id": "c20", "name": "Capitán del ferry",      "district": "carmen",   "line": "Uno para el capitán.",         "ll": (9.97560, -84.84520)},
-    {"id": "c21", "name": "Casera del barrio",      "district": "carmen",   "line": "El clásico de siempre.",       "ll": (9.97760, -84.84350)},
-    {"id": "c22", "name": "Bailarina de comparsa",  "district": "paseo",    "line": "¡La mía sin tanto rojo!",      "ll": (9.97400, -84.83680)},
-    {"id": "c23", "name": "Mesero del Kalúa",       "district": "paseo",    "line": "Para la mesa del rincón.",     "ll": (9.97430, -84.83380)},
-    {"id": "c24", "name": "Surfista italiano",      "district": "paseo",    "line": "Doble rojo, per favore.",      "ll": (9.97460, -84.83120)},
-    {"id": "c13", "name": "Pareja en mirador",      "district": "cocal",    "line": "Para ver el atardecer.",       "ll": (9.96000, -84.73900)},
-    {"id": "c14", "name": "Camionero de Ruta 17",   "district": "cocal",    "line": "Rápido, voy pa' Caldera.",     "ll": (9.96800, -84.74400)},
-    {"id": "c15", "name": "Pescadores del estero",  "district": "mata",     "line": "Justo antes de la lluvia.",    "ll": (9.92600, -84.71000)},
-    {"id": "c16", "name": "Cocineros de Leda",      "district": "mata",     "line": "Postre para los clientes.",    "ll": (9.92350, -84.70780)},
-    {"id": "c17", "name": "Maquinista del tren",    "district": "caldera",  "line": "El tren no espera a nadie.",   "ll": (9.91450, -84.71550)},
-    {"id": "c18", "name": "Estibador del Puerto",   "district": "caldera",  "line": "Rapidito, ando en turno.",     "ll": (9.91080, -84.71680)},
-]
-
-# story stages — verbatim from the previous world.js (ids referenced by engine/ui)
-STAGES = [
-    {"id": "s1", "num": 1, "name": "El Faro", "district": "carmen",
-     "brief": "Repartí el primer pedido del día. Llegan cruceros — los gringos quieren probar el dichoso Churchill.",
-     "kiosks": ["kios_faro"], "targetDeliveries": 3, "timeLimit": 90, "weather": "sunny",
-     "customers": ["c1", "c2"], "unlock": "paseo"},
-    {"id": "s2", "num": 2, "name": "Paseo de los Turistas", "district": "paseo",
-     "brief": "El boulevard está lleno. Atravesá la peatonal esquivando turistas y comparsas de carnaval.",
-     "kiosks": ["kios_paseo1", "kios_paseo2"], "targetDeliveries": 4, "timeLimit": 120, "weather": "sunny",
-     "customers": ["c3", "c4", "c5"], "unlock": "centro"},
-    {"id": "s3", "num": 3, "name": "Mercado y Catedral", "district": "centro",
-     "brief": "Las calles del centro son angostas y el tráfico no perdona. Ojo con los gatos — y el Padre Ramírez no es de esperar.",
-     "kiosks": ["kios_centro", "kios_paseo2"], "targetDeliveries": 4, "timeLimit": 130, "weather": "sunny",
-     "customers": ["c6", "c7", "c8", "c9"], "unlock": "playitas"},
-    {"id": "s4", "num": 4, "name": "Atardecer en Las Playitas", "district": "playitas",
-     "brief": "Atardece sobre el Yacht Club. Abrí gas por la Ruta 17, pero cuidado: el equipo de fútbol anda entrenando.",
-     "kiosks": ["kios_play", "kios_centro"], "targetDeliveries": 5, "timeLimit": 140, "weather": "sunset",
-     "customers": ["c10", "c11", "c12"], "unlock": "cocal"},
-    {"id": "s5", "num": 5, "name": "Tormenta en El Cocal", "district": "cocal",
-     "brief": "Cayó el aguacero y el asfalto resbala. Llegá a la Ruta 17 antes de que la tormenta empeore.",
-     "kiosks": ["kios_cocal2"], "targetDeliveries": 5, "timeLimit": 160, "weather": "storm",
-     "customers": ["c13", "c14"], "unlock": "mata"},
-    {"id": "s6", "num": 6, "name": "Puente · Mata de Limón", "district": "mata",
-     "brief": "Cruzá el puente colgante sobre el estero. Llegá al kiosco de Mata de Limón y a la Marisquería Leda.",
-     "kiosks": ["kios_mata"], "targetDeliveries": 4, "timeLimit": 150, "weather": "night",
-     "customers": ["c15", "c16"], "unlock": "mata"},
-    {"id": "s7", "num": 7, "name": "Caldera · Final", "district": "caldera",
-     "brief": "Por la Ruta 27 hasta el Puerto de Caldera. Ya sale el sol — una última entrega y se acaba la jornada.",
-     "kiosks": ["kios_caldera", "kios_mata"], "targetDeliveries": 4, "timeLimit": 170, "weather": "sunny",
-     "customers": ["c17", "c18"], "unlock": "caldera"},
-]
-
-BLDG_PALETTE = ["#f3c969", "#e85d75", "#6fbf99", "#5fb0d6", "#f08a5d",
-                "#c084d6", "#f4d77a", "#7ed6b5", "#e7a3b7", "#9bc4d4",
-                "#fff2cc", "#ffd8b1"]
-ROOF_PALETTE = ["#9e6f4a", "#3a3540", "#e85d75", "#6fbf99", "#f08a5d", "#3a6f8a"]
 
 # ------------------------------------------------------------ geo helpers ---
 
@@ -640,7 +395,7 @@ def propagate_barro_to_crossings(roads, reach=1.2 * CUAD):
                for px, py in cand for ox, oy in elev_pts):
             r["barro"] = 1
             n += 1
-    print(f"[barro] +{n} cross streets flagged barro (cross the Ferrocarril avenue)")
+    log("barro", f"+{n} cross streets flagged barro (cross the Ferrocarril avenue)")
 
 
 def barro_leon_continuation(roads):
@@ -663,7 +418,7 @@ def barro_leon_continuation(roads):
             r["w"] = road_width_px("residential")
             r["cls"] = "residential"
             n += 1
-    print(f"[roads] León Cortés continuation past the Ferrocarril handoff -> barro: {n} piece(s)")
+    log("roads", f"León Cortés continuation past the Ferrocarril handoff -> barro: {n} piece(s)")
 
 
 def extract_buildings(sp, ways, roads):
@@ -758,7 +513,7 @@ def extract_buildings(sp, ways, roads):
             k, v = poi_category(w["tags"])
             rec["cat"] = f"{k}={v}"
         out.append(rec)
-    print(f"[buildings] {len(out)} raw OSM footprints, dropped {dropped_road} on-road, {dropped_small} tiny")
+    log("buildings", f"{len(out)} raw OSM footprints, dropped {dropped_road} on-road, {dropped_small} tiny")
     return out
 
 
@@ -798,7 +553,7 @@ def extract_pois(sp, ways, poi_nodes):
     by_cat = defaultdict(int)
     for p in out:
         by_cat[p["cat"].split("=")[0]] += 1
-    print(f"[pois] {len(out)} named real-world POIs: {dict(sorted(by_cat.items()))}")
+    log("pois", f"{len(out)} named real-world POIs: {dict(sorted(by_cat.items()))}")
     return out
 
 
@@ -951,7 +706,7 @@ def raster_coast_barrier(grid_barrier, sp, chains, nodes):
                 c, r = int(x / GRID_CELL), int(y / GRID_CELL)
                 if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS:
                     drawn += _stamp_barrier(grid_barrier, c, r)
-    print(f"[coast] rasterized barrier cells: {drawn}")
+    log("coast", f"rasterized barrier cells: {drawn}")
 
 
 def raster_poly_barrier(barrier, polys):
@@ -1050,7 +805,7 @@ def trace_land_contours(grid):
         if len(simp) >= 3:
             out.append([round(v) for p in simp for v in p])
     out.sort(key=lambda fl: -abs(poly_area([(fl[i], fl[i + 1]) for i in range(0, len(fl), 2)])))
-    print(f"[coast] traced {len(out)} land contour loops")
+    log("coast", f"traced {len(out)} land contour loops")
     return out
 
 
@@ -1188,7 +943,7 @@ def verify_connectivity(grid, seed_xy, pois, reach):
         if not ok:
             unreachable.append(poi["id"])
     pct = 100.0 * n_reached / max(1, total_driv)
-    print(f"[gate] drivable network: {n_reached}/{total_driv} cells reachable "
+    log("gate", f"drivable network: {n_reached}/{total_driv} cells reachable "
           f"from spawn ({pct:.1f}%), {len(pois) - len(unreachable)}/{len(pois)} POIs ok")
     return unreachable
 
@@ -1242,10 +997,10 @@ def block_census(grid, min_side=6):
                         q.append(ni)
     big = sorted((c for c in comps if c[0] >= 4), key=lambda c: -c[0])
     n_ok = sum(1 for c in comps if c[1] >= min_side)
-    print(f"[census] {len(comps)} land components at CUAD resolution; "
+    log("census", f"{len(comps)} land components at CUAD resolution; "
           f"{len(big)} with area>=4, {n_ok} with inscribed>={min_side}x{min_side}")
     for area, insq in big[:20]:
-        print(f"[census]   area {area:>4} cuads   inscribed {insq}x{insq}")
+        log("census", f"  area {area:>4} cuads   inscribed {insq}x{insq}")
     return comps
 
 # ---------------------------------------------------- cuadrícula blocks -----
@@ -1387,7 +1142,7 @@ def detect_blocks(grid, build_band_x1=None):
         if label[i] in paved_ids:
             grid[i] = CLS_ACERA
     n_cuadras = sum(1 for b in blocks if not b["green"])
-    print(f"[blocks] {n_comps} land components -> {n_cuadras} cuadras, "
+    log("blocks", f"{n_comps} land components -> {n_cuadras} cuadras, "
           f"{len(paved_ids)} paved slivers, {n_green} green")
     return blocks, []
 
@@ -1489,7 +1244,7 @@ def snap_osm_buildings(raws, cell_block, occ):
         cc0, cr0, tw, th = placed
         _claim(occ, cc0, cr0, tw, th)
         out.append(_emit_rect(cc0, cr0, tw, th, _make_rng(raw["id"])))
-    print(f"[buildings] {len(out)} OSM snapped to the cuadrícula, {dropped} no-fit")
+    log("buildings", f"{len(out)} OSM snapped to the cuadrícula, {dropped} no-fit")
     return out
 
 def synth_buildings(blocks, cell_block, occ, n_real):
@@ -1852,7 +1607,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
     total = os.path.getsize(os.path.join(WORLD2D_DIR, "manifest.json"))
     total += sum(os.path.getsize(os.path.join(tiles_dir, fn))
                  for fn in os.listdir(tiles_dir))
-    print(f"[emit] src/world2d/ — {tcols}x{trows}={n_tiles} tiles + manifest, "
+    log("emit", f"src/world2d/ — {tcols}x{trows}={n_tiles} tiles + manifest, "
           f"{total/1024:.0f} KB total")
 
 
@@ -1862,7 +1617,7 @@ def _planar_setup(ways):
     """Compute world bounds from the OSM ways (metres), recompute the world-size
     globals for the flat map, and return a PlanarProjection. Optionally clip the
     bounds to PLANAR_BBOX ("lon0,lat0,lon1,lat1") for a bounded smoke build."""
-    global CANVAS_W, CANVAS_H, GRID_COLS, GRID_ROWS, CENTER_Y, MARGIN_X
+    global CANVAS_W, CANVAS_H, GRID_COLS, GRID_ROWS, CENTER_Y
     clip = None
     if PLANAR_BBOX:
         lo0, la0, lo1, la1 = (float(v) for v in PLANAR_BBOX.split(","))
@@ -1878,7 +1633,7 @@ def _planar_setup(ways):
         dropped = len(ways) - len(kept)
         ways[:] = kept
         if dropped:
-            print(f"[planar] dropped {dropped} ways entirely outside the clip bbox")
+            log("planar", f"dropped {dropped} ways entirely outside the clip bbox")
     mxs, mys = [], []
     for w in ways:
         for (mx, my) in w["pts"]:
@@ -1896,8 +1651,7 @@ def _planar_setup(ways):
     CANVAS_H = snap((max_my - min_my) * ppm)
     GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
     CENTER_Y = CANVAS_H // 2
-    MARGIN_X = 0
-    print(f"[planar] world {CANVAS_W}x{CANVAS_H}px  ppm={ppm}  grid "
+    log("planar", f"world {CANVAS_W}x{CANVAS_H}px  ppm={ppm}  grid "
           f"{GRID_COLS}x{GRID_ROWS} = {GRID_COLS*GRID_ROWS/1e6:.1f}M cells"
           + ("  (bbox clip)" if clip else ""))
     return PlanarProjection(min_mx, min_my, ppm)
@@ -1905,9 +1659,9 @@ def _planar_setup(ways):
 
 def main():
     t0 = time.time()
-    print(f"[parse] {OSM_PATH}")
+    log("parse", f"{OSM_PATH}")
     nodes, ways, named, rels, poi_nodes = parse_osm(OSM_PATH)
-    print(f"[parse] {len(nodes)} nodes, {len(ways)} kept ways, {len(named)} named features ({time.time()-t0:.1f}s)")
+    log("parse", f"{len(nodes)} nodes, {len(ways)} kept ways, {len(named)} named features ({time.time()-t0:.1f}s)")
 
     sp = _planar_setup(ways)
 
@@ -1919,29 +1673,29 @@ def main():
     # detect_blocks — no hand-placed gores, islands or carriageway splits.
     junction_islands = []
     rails = extract_rails(sp, ways)
-    print(f"[rails] {len(rails)} rail pieces")
+    log("rails", f"{len(rails)} rail pieces")
     n_by_cls = defaultdict(int)
     for r in roads:
         n_by_cls[r["cls"]] += 1
-    print(f"[roads] {len(roads)} pieces: {dict(n_by_cls)}")
+    log("roads", f"{len(roads)} pieces: {dict(n_by_cls)}")
     if bridge_road is None:
-        print("[roads] WARNING: Puente colgante way not found — synthesizing later")
+        warn("roads", "Puente colgante way not found — synthesizing later")
 
     raw_bldgs = extract_buildings(sp, ways, roads)
     beaches, waters = extract_areas(sp, ways, rels)
     pois = extract_pois(sp, ways, poi_nodes)
-    print(f"[areas] {len(beaches)} beach, {len(waters)} water polys")
+    log("areas", f"{len(beaches)} beach, {len(waters)} water polys")
 
     # --- raster surface grid
     grid = bytearray(GRID_COLS * GRID_ROWS)
     barrier = bytearray(GRID_COLS * GRID_ROWS)
     chains = extract_coastlines(sp, ways)
-    print(f"[coast] {len(chains)} stitched chains from natural=coastline")
+    log("coast", f"{len(chains)} stitched chains from natural=coastline")
     raster_coast_barrier(barrier, sp, chains, nodes)
     # water bodies (estuary) are areas, not coastline — barrier their edges
     # too so the flood can't leak across an un-barriered shore into the land
     nb = raster_poly_barrier(barrier, waters)
-    print(f"[coast] +{nb} water-outline barrier cells (planar)")
+    log("coast", f"+{nb} water-outline barrier cells (planar)")
     # flood ONLY the open outer gulf (the entire west bbox edge
     # is deep gulf, west of La Punta). Do NOT seed the estuary/inner water
     # or the world corners — those either sit on inland land (draining it to
@@ -1963,10 +1717,10 @@ def main():
         return -1
     for p in PROBE_LAND:
         if cls_at_geo(p) == CLS_WATER:
-            print(f"[WARN] land probe {p} is WATER — coastline leak or spine offset")
+            log("WARN", f"land probe {p} is WATER — coastline leak or spine offset")
     for p in PROBE_SEA:
         if cls_at_geo(p) == CLS_LAND:
-            print(f"[WARN] sea probe {p} is LAND")
+            log("WARN", f"sea probe {p} is LAND")
 
     land_contours = trace_land_contours(grid)
     for b in beaches:
@@ -1984,7 +1738,7 @@ def main():
     hist = defaultdict(int)
     for v in grid:
         hist[CLASS_NAMES[v]] += 1
-    print(f"[grid] class histogram: {dict(hist)}")
+    log("grid", f"class histogram: {dict(hist)}")
 
     # --- shore arrays (px) per grid column
     topY, botY = [], []
@@ -2029,7 +1783,7 @@ def main():
         y0 = max(0, min(CANVAS_H, y0)); y1 = max(0, min(CANVAS_H, y1))
         districts.append({"id": d["id"], "name": d["name"], "short": d["short"],
                           "tone": d["tone"], "x0": x0, "x1": x1, "y0": y0, "y1": y1})
-    print("[districts] " + ", ".join(f"{d['id']}:{d['x0']}-{d['x1']}" for d in districts))
+    log("districts", "" + ", ".join(f"{d['id']}:{d['x0']}-{d['x1']}" for d in districts))
 
     # --- POI resolution
     def resolve(spec):
@@ -2196,7 +1950,7 @@ def main():
         customers.append({"id": spec["id"], "name": spec["name"], "x": round(px),
                           "y": round(py), "district": spec["district"], "line": spec["line"]})
     if failures:
-        print(f"[poi] WARNING — unplaced (fix geo anchors): {failures}")
+        log("poi", f"WARNING — unplaced (fix geo anchors): {failures}")
     # assert stage refs exist
     lm_ids = {l["id"] for l in landmarks}
     cu_ids = {c["id"] for c in customers}
@@ -2209,7 +1963,7 @@ def main():
                 failures.append(f"stage {st['id']} customer {c}")
     for lm in landmarks:
         how = lm.pop("_how")
-        print(f"[poi] {lm['id']:<12} ({how:4}) -> {lm['x']},{lm['y']} [{lm['district']}]")
+        log("poi", f"{lm['id']:<12} ({how:4}) -> {lm['x']},{lm['y']} [{lm['district']}]")
 
     # --- Muelle (the long pier into the gulf, faithful to muelle-nacional)
     mlm = next(l for l in landmarks if l["id"] == "muellecruc")
@@ -2218,9 +1972,9 @@ def main():
     end = planar_muelle_axis(roads, mlm["x"], mlm["y"])
     if end is not None:
         mlm["x"] = round(end[0])
-        print(f"[pier] planar anchor: Calle Central south end at x={mlm['x']}")
+        log("pier", f"planar anchor: Calle Central south end at x={mlm['x']}")
     else:
-        print("[pier] WARNING: Calle Central not found near the muelle anchor")
+        warn("pier", "Calle Central not found near the muelle anchor")
     pier_col = min(GRID_COLS - 1, max(0, int(mlm["x"] / GRID_CELL)))
     pier_y0 = botY[pier_col] - 6
     pier = {"x": mlm["x"], "y0": round(pier_y0),
@@ -2237,10 +1991,10 @@ def main():
         if grid[r * GRID_COLS + pc] in (CLS_ROAD, CLS_PASEO):
             raster_stamp_polyline(grid, [pier["x"], r * GRID_CELL,
                                          pier["x"], pier["y0"]], 2 * CUAD, CLS_ROAD)
-            print(f"[pier] connector road to y={r * GRID_CELL}")
+            log("pier", f"connector road to y={r * GRID_CELL}")
             break
     mlm["x"], mlm["y"] = pier["x"], round(pier_y0 - 16)
-    print(f"[pier] muelle at x={pier['x']}, y {pier['y0']}..{pier['y1']}")
+    log("pier", f"muelle at x={pier['x']}, y {pier['y0']}..{pier['y1']}")
 
     # --- aceras (sidewalks) + plaza pads: these define where you can drive
     # off-street; everything left as CLS_LAND becomes solid cuadra interior
@@ -2292,7 +2046,7 @@ def main():
                 raster_stamp_polyline(grid, [kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
                 kiosk_paths.append({"pts": [round(kx), round(ky), round(tgt[0]), round(tgt[1])],
                                     "surface": "paved"})
-                print(f"[kiosk] {'pinned' if pinned else 'sand'} path {lm['id']} "
+                log("kiosk", f"{'pinned' if pinned else 'sand'} path {lm['id']} "
                       f"(surf {surf}) -> street ({round(tgt[0])},{round(tgt[1])})")
             beach_kiosks.add(lm["id"])
 
@@ -2397,7 +2151,7 @@ def main():
             # to its left/west, over on the tip)
             raster_stamp_polyline(grid, [sx, sy, axp, ayp], round(1.6 * CUAD), CLS_ROAD)
             kiosk_paths.append({"pts": [int(sx), int(sy), round(axp), round(ayp)], "surface": "paved"})
-            print(f"[pier] faro drivable lane -> ({round(axp)},{round(ayp)})")
+            log("pier", f"faro drivable lane -> ({round(axp)},{round(ayp)})")
         kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
         if kf:
             kf["x"] = int(sx + 0.85 * (ex - sx)); kf["y"] = int(sy + 0.85 * (ey - sy))   # sea end
@@ -2411,14 +2165,14 @@ def main():
         # gate's acera reach of the lane (≤ ACERA_CELLS+1 cells from drivable).
         faro_lm["x"] = int(faro_lm["x"] - 1.6 * CUAD)
         faro_lm["y"] = int(faro_lm["y"] - 1.6 * CUAD)
-        print(f"[pier] faro muelle SW ({sx},{sy})->({ex},{ey}); esplanade {len(esp)} cells; "
+        log("pier", f"faro muelle SW ({sx},{sy})->({ex},{ey}); esplanade {len(esp)} cells; "
               f"faro icon -> ({faro_lm['x']},{faro_lm['y']})")
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
     for isl in junction_islands:
         raster_fill_poly(grid, isl["pts"], CLS_ACERA if isl["kind"] == "median" else CLS_LAND)
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
-    print(f"[acera] {acera_cells} sidewalk cells; {len(junction_islands)} junction islands")
+    log("acera", f"{acera_cells} sidewalk cells; {len(junction_islands)} junction islands")
 
     # --- cuadrícula blocks: classify land into cuadras / paved plazas / green.
     # The Faro + Carmen barrios by the lighthouse have a fine street grid whose
@@ -2466,7 +2220,7 @@ def main():
         if inb is not None:
             lm["x"], lm["y"] = round(inb[0]), round(inb[1])
             n_snap += 1
-    print(f"[poi] {n_snap} building landmarks snapped into cuadra interiors")
+    log("poi", f"{n_snap} building landmarks snapped into cuadra interiors")
 
     # Building POIs often keep their geo anchor (dense/sliver cuadras make the
     # snap above return None) and land on the acera fringe or a street — the icon
@@ -2511,7 +2265,7 @@ def main():
         if round(nx) != lm["x"] or round(ny) != lm["y"]:
             lm["x"], lm["y"] = round(nx), round(ny)
             n_nudge += 1
-    print(f"[poi] {n_nudge} building landmarks nudged off the acera fringe")
+    log("poi", f"{n_nudge} building landmarks nudged off the acera fringe")
 
     # A green block's ground is emitted as ONE raster-resolution outline
     # polygon (4 px cells, so it follows the acera inner edge — curves and
@@ -2656,7 +2410,7 @@ def main():
             raster_stamp_polyline(grid, [lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
             kiosk_paths.append({"pts": [round(lm["x"]), round(lm["y"]),
                                         round(tgt[0]), round(tgt[1])], "surface": "paved"})
-            print(f"[kiosk] {lm['id']} -> cuadra frontage ({lm['x']},{lm['y']}), paved connector")
+            log("kiosk", f"{lm['id']} -> cuadra frontage ({lm['x']},{lm['y']}), paved connector")
 
     # Player spawn per kiosk: run starts place the player beside the run's first
     # kiosk. Snap that point to the nearest DRIVABLE street cell now (build time,
@@ -2669,7 +2423,7 @@ def main():
         if tgt:
             lm["spawn"] = [round(tgt[0]), round(tgt[1])]
         else:
-            print(f"[kiosk] WARN no street spawn near {lm['id']} ({lm['x']},{lm['y']})")
+            log("kiosk", f"WARN no street spawn near {lm['id']} ({lm['x']},{lm['y']})")
 
     # OSM parks (parquemar, cocal_park) + the Balneario pool: paint their green
     # on the containing block's footprint so the cuadra is OPEN (no buildings),
@@ -2761,7 +2515,7 @@ def main():
             continue
         w = min(300, (bc1 - bc0 + 1) * CUAD); h = min(240, (br1 - br0 + 1) * CUAD)
         park_cands.append((cx, cy, bi, w, h))
-    print(f"[parks] {len(park_cands)} candidate blocks")
+    log("parks", f"{len(park_cands)} candidate blocks")
     park_cands.sort()
     TARGET_PARKS = 16
     n_park = 0
@@ -2781,7 +2535,7 @@ def main():
                               "w": min(160, int(w)), "h": min(140, int(h))})
             _pts.append((cx, cy))
             n_park += 1
-    print(f"[parks] +{n_park} synthetic parks scattered across the town")
+    log("parks", f"+{n_park} synthetic parks scattered across the town")
 
     # The avenue's separators (final layout, user-iterated):
     # - Paseo de los Turistas: its classic PALM median — dashes with crossing
@@ -2827,7 +2581,7 @@ def main():
             if lx0 <= bx <= min(lx1, tzx1) and 0 < _leon_y(bx) - by <= 6 * CUAD:
                 corner_xs.append(bx)
     tzx0 = min(corner_xs, default=lx0)
-    print(f"[median] León Cortés tree strip x{tzx0}-{tzx1} (cuadra corner start)")
+    log("median", f"León Cortés tree strip x{tzx0}-{tzx1} (cuadra corner start)")
 
     palm_runs = paseo_median_runs(roads, turistas)
     tree_runs = continuous_runs(leon, x0=tzx0, x1=tzx1)
@@ -3060,8 +2814,8 @@ def main():
             if len(cand) >= want * 8:
                 break
         if not cand:
-            print("[marino] WARN no clear spot for the aquarium tanks"); return
-        print(f"[marino] {len(raster)} grass cells -> {len(cand)} tank candidates "
+            log("marino", "WARN no clear spot for the aquarium tanks"); return
+        log("marino", f"{len(raster)} grass cells -> {len(cand)} tank candidates "
               f"at >={round(need)}px clearance")
         mx = sum(p[0] for p in cand) / len(cand); my = sum(p[1] for p in cand) / len(cand)
         pts = [min(cand, key=lambda p: (p[0] - mx) ** 2 + (p[1] - my) ** 2)]
@@ -3072,7 +2826,7 @@ def main():
     def place_stadium(spec):
         lm = next((l for l in landmarks if l["id"] == spec["id"]), None)
         if lm is None:
-            print(f"[estadio] WARN landmark {spec['id']} missing"); return
+            log("estadio", f"WARN landmark {spec['id']} missing"); return
         ref = (lm["x"], lm["y"])
         # DIAGNOSTIC: named streets near the anchor, to tune the grid refs
         near = {}
@@ -3085,7 +2839,7 @@ def main():
                     near.setdefault(nm, []).append((x, y))
         summ = {nm: (round(sum(p[0] for p in v) / len(v)), round(sum(p[1] for p in v) / len(v)))
                 for nm, v in sorted(near.items())}
-        print(f"[estadio] {spec['id']} anchor {ref} nearby streets: {summ}")
+        log("estadio", f"{spec['id']} anchor {ref} nearby streets: {summ}")
 
         # Resolve the stadium's street RECT, then trace the actual cuadra under
         # it straight from the grid (these blocks classify as green plazas, not
@@ -3108,7 +2862,7 @@ def main():
             else:                                # extend NORTH from Avenida 1
                 yhi = ay; ylo = ay - abs(cxb - cxa) * 1.2
         else:                                    # ll-anchor fallback rect
-            print(f"[estadio] WARN {spec['id']} street resolve failed; anchor fallback")
+            log("estadio", f"WARN {spec['id']} street resolve failed; anchor fallback")
             xa, xb = ref[0] - 5 * CUAD, ref[0] + 5 * CUAD
             ylo, yhi = ref[1] - 6 * CUAD, ref[1] + 6 * CUAD
         # `beach`: let the cuadra run out to the shoreline (Las Playitas ends at
@@ -3127,7 +2881,7 @@ def main():
         if spec.get("edge"):
             line = _street_edge(spec["edge"], ref)
             if line is None:
-                print(f"[estadio] WARN {spec['id']} edge street {spec['edge']} unresolved")
+                log("estadio", f"WARN {spec['id']} edge street {spec['edge']} unresolved")
             else:
                 clip = _half_plane(line, ((xa + xb) / 2, (ylo + yhi) / 2), spec.get("edge_gap", 18))
         outer_cells = _cuadra_cells(xa, ylo, xb, yhi, classes, clip)
@@ -3136,7 +2890,7 @@ def main():
         outline = _outline_poly(outer_cells) if outer_cells else None
         footprint = _outline_poly(inner_cells) if inner_cells else None
         if not outline or not footprint:
-            print(f"[estadio] WARN {spec['id']} no cuadra in rect "
+            log("estadio", f"WARN {spec['id']} no cuadra in rect "
                   f"({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)})"); return
         g = {"pts": footprint, "type": "stadium"}
         # no buildings on the block: occ (OSM) + green-flag it (synth). Use the
@@ -3181,10 +2935,10 @@ def main():
                         "cx": cxpx, "cy": cypx,
                         "x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                         "slot": [int(cxpx - sw // 2), int(cypx - sh // 2), int(sw), int(sh)]})
-        print(f"[parcel] {spec['id']}_field (stadium, whole cuadra) "
+        log("parcel", f"{spec['id']}_field (stadium, whole cuadra) "
               f"slot[{int(cxpx - sw // 2)}, {int(cypx - sh // 2)}, {int(sw)}, {int(sh)}]")
         ox = outline[0::2]; oy = outline[1::2]
-        print(f"[estadio] {spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
+        log("estadio", f"{spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
               f"-> cuadra ({min(ox)},{min(oy)})-({max(ox)},{max(oy)})px {len(outline)//2}v, "
               f"pitch ({bx0},{by0})-({bx1},{by1})px {len(footprint)//2}v, "
               f"{len(outer_cells)} cells drivable")
@@ -3245,7 +2999,7 @@ def main():
     def _emit_parcel(spec_id, part, cells, keep_cells, ang=0.0):
         poly = _outline_poly(keep_cells) if keep_cells else None
         if not poly:
-            print(f"[parcel] WARN {part['id']} nothing left after erosion"); return None
+            log("parcel", f"WARN {part['id']} nothing left after erosion"); return None
         px = poly[0::2]; py = poly[1::2]
         x0, y0, x1, y1 = min(px), min(py), max(px), max(py)
         ay = y0 + (y1 - y0) // 4 if part.get("anchor") == "north" else (y0 + y1) // 2
@@ -3273,7 +3027,7 @@ def main():
         if part["use"] in ("plaza", "stadium"):   # drivable open field
             for (c, r) in cells:
                 grid[r * GRID_COLS + c] = CLS_ROAD
-        print(f"[parcel] {part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
+        log("parcel", f"{part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
               f"{len(poly)//2}v slot{slot}")
         return parcels[-1]
 
@@ -3301,12 +3055,12 @@ def main():
         ayn = _street_at(spec["ave_north"], "y", ref)
         ays = _street_at(spec["ave_south"], "y", ref)
         if None in (cxa, cxb, ayn, ays):
-            print(f"[parcel] WARN {spec['id']} street resolve failed "
+            log("parcel", f"WARN {spec['id']} street resolve failed "
                   f"(calles {cxa},{cxb} avenidas {ayn},{ays})"); return
         outer = _cuadra_cells(min(cxa, cxb), min(ayn, ays), max(cxa, cxb), max(ayn, ays),
                               (CLS_LAND, CLS_ACERA))
         if not outer:
-            print(f"[parcel] WARN {spec['id']} no cuadra in rect"); return
+            log("parcel", f"WARN {spec['id']} no cuadra in rect"); return
         # Erode ONCE, for the block. The acera ring is around the CUADRA, not
         # around every part of it: eroding per part also inset each one from the
         # internal split lines, which are not streets, and on a small block that
@@ -3335,11 +3089,11 @@ def main():
             nrow = (-av[1], av[0])                   # normal of the avenidas → row coord (south+)
             ncol = (cl[1], -cl[0])                   # normal of the calles   → col coord (east+)
         else:
-            print(f"[parcel] WARN {spec['id']} street direction unresolved "
+            log("parcel", f"WARN {spec['id']} street direction unresolved "
                   f"(avenida {av}, calle {cl}) — principal-axis fallback")
             ang = math.atan2(sa, ca)
             nrow, ncol = (-sa, ca), (ca, sa)
-        print(f"[parcel] {spec['id']} block frame {math.degrees(ang):+.1f}° "
+        log("parcel", f"{spec['id']} block frame {math.degrees(ang):+.1f}° "
               f"(avenida {av}, calle {cl}), {len(outer)} cells")
         uv = {c: ((c[0] - mx) * ncol[0] + (c[1] - my) * ncol[1],
                   (c[0] - mx) * nrow[0] + (c[1] - my) * nrow[1])
@@ -3370,7 +3124,7 @@ def main():
             # this block (it is a ribbon, not a rectangle) — fail loudly in the
             # log instead of quietly emitting a sliver out in the street.
             if len(own) < nominal * span * 0.35:
-                print(f"[parcel] WARN {part['id']} only {len(cells)} cells vs "
+                log("parcel", f"WARN {part['id']} only {len(cells)} cells vs "
                       f"{nominal * span:.0f} nominal — split does not suit this block"); continue
             _emit_parcel(spec["id"], part, own, cells, ang)
 
@@ -3444,7 +3198,7 @@ def main():
             keep.append(raw)
     raw_bldgs = keep
     if n_onroad:
-        print(f"[buildings] {n_onroad} named footprints overlapped a street — snapped instead")
+        log("buildings", f"{n_onroad} named footprints overlapped a street — snapped instead")
     for raw in named_raw:
         xs = [p[0] for p in raw["pts"]]; ys = [p[1] for p in raw["pts"]]
         for cc in range(int(min(xs) // CUAD), int(max(xs) // CUAD) + 1):
@@ -3453,7 +3207,7 @@ def main():
     buildings = snap_osm_buildings(raw_bldgs, cell_block, occ)
     synth = synth_buildings([b for b in blocks if not b["green"]],
                             cell_block, occ, len(buildings))
-    print(f"[buildings] +{len(synth)} synthesized in cuadra frontage bands "
+    log("buildings", f"+{len(synth)} synthesized in cuadra frontage bands "
           f"(total {len(buildings) + len(synth)})")
     buildings = buildings + synth
     # gate: every footprint sits on the cuadrícula (inset seam on each edge)
@@ -3474,7 +3228,7 @@ def main():
                               "color": MARINE_WALL[i % len(MARINE_WALL)],
                               "roof": MARINE_ROOF[i % len(MARINE_ROOF)], "wnd": 0})
         _place_marine_pools(marine_site, marine_raw)
-        print(f"[marino] {len(marine_raw)} aquarium buildings at their real OSM "
+        log("marino", f"{len(marine_raw)} aquarium buildings at their real OSM "
               f"footprints, {len(marine_site['lm'].get('pools', []))} tanks placed clear")
     for raw in named_raw:
         rng = _make_rng(raw["id"])
@@ -3483,7 +3237,7 @@ def main():
                           "roof": ROOF_PALETTE[int(rng() * len(ROOF_PALETTE))],
                           "wnd": 1 if rng() < 0.7 else 0,
                           "name": raw["name"], "cat": raw.get("cat")})
-    print(f"[buildings] {len(named_raw)} NAMED buildings kept at their real OSM footprint")
+    log("buildings", f"{len(named_raw)} NAMED buildings kept at their real OSM footprint")
     # The Balneario cuadra is a SEA inlet, so any building whose real footprint
     # lands inside it was floating on the water. Give each one a sand pad: a
     # dilated bbox emitted into `beaches` (painted AFTER the water, so it shows)
@@ -3497,7 +3251,7 @@ def main():
     def place_feature_parcels(spec):
         lm = next((l for l in landmarks if l["id"] == spec["lm"]), None)
         if lm is None:
-            print(f"[parcel] WARN feature block {spec['lm']} missing"); return
+            log("parcel", f"WARN feature block {spec['lm']} missing"); return
         hw = (lm.get("w") or 200) / 2 + spec.get("pad", 20)
         hh = (lm.get("h") or 160) / 2 + spec.get("pad", 20)
         bx0, by0, bx1, by1 = lm["x"] - hw, lm["y"] - hh, lm["x"] + hw, lm["y"] + hh
@@ -3519,7 +3273,7 @@ def main():
                 "built": True,          # the footprint IS a building; don't paint ground
             })
             n += 1
-        print(f"[parcel] {spec['id']}: {n} feature parcels from footprints inside "
+        log("parcel", f"{spec['id']}: {n} feature parcels from footprints inside "
               f"{spec['lm']} ({round(bx1-bx0)}x{round(by1-by0)}px)")
 
     for _fp in (
@@ -3543,7 +3297,7 @@ def main():
             raster_fill_poly(grid, [(px0, py0), (px1, py0), (px1, py1), (px0, py1)], CLS_BEACH)
             pads += 1
         if pads:
-            print(f"[balneario] {pads} buildings given a sand pad (were floating on the inlet)")
+            log("balneario", f"{pads} buildings given a sand pad (were floating on the inlet)")
 
     # --- bridge / estuary / decorations
     if bridge_road:
@@ -3560,9 +3314,10 @@ def main():
         else:
             x, y, _, _ = sp.project(pm)
         bx0, bx1, bcy = x - 80, x + 80, y
-        roads.append({"cls": "bridge", "w": ROAD_WIDTH_PX["bridge"],
+        bw = road_width_px("bridge")
+        roads.append({"cls": "bridge", "w": bw,
                       "pts": [round(bx0), round(bcy), round(bx1), round(bcy)]})
-        raster_stamp_polyline(grid, roads[-1]["pts"], ROAD_WIDTH_PX["bridge"] + 6, CLS_BRIDGE)
+        raster_stamp_polyline(grid, roads[-1]["pts"], bw + 6, CLS_BRIDGE)
     span = bx1 - bx0
     bridge = {"x0": round(bx0), "x1": round(bx1), "cy": round(bcy), "deckW": 60,
               "towers": [round(bx0 + span * 0.15), round(bx1 - span * 0.15)], "towerH": 180,
@@ -3582,7 +3337,7 @@ def main():
                 est = cand
     if est is None:
         est = {"cx": round((bx0 + bx1) / 2 + 900), "cy": CENTER_Y - 360, "rx": 840, "ry": 210}
-        print("[estuary] WARNING: no water poly near bridge; synthetic ellipse")
+        warn("estuary", "no water poly near bridge; synthetic ellipse")
 
     # mangroves around the estuary
     seed = 57
@@ -3715,7 +3470,7 @@ def main():
                         grid[gr * GRID_COLS + c] not in (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_WATER):
                     trees.append({"x": mx, "y": my, "s": round(0.9 + rng() * 0.3, 2)})
                     n_dc += 1
-    print(f"[median] {n_median_palms} palms on the paseo median dashes, "
+    log("median", f"{n_median_palms} palms on the paseo median dashes, "
           f"{len(trees)} trees on the tree lines ({n_ferro_trees} Ferrocarril, "
           f"{n_dc} Cocal divided-avenue median)")
 
@@ -3756,7 +3511,7 @@ def main():
                           "s": round(0.75 + rng() * 0.45, 2),
                           "sway": round(rng() * 6.28, 2)})
             n_beach_palms += 1
-    print(f"[verde] {n_patio} patio/park trees, {n_beach_palms} beach palms")
+    log("verde", f"{n_patio} patio/park trees, {n_beach_palms} beach palms")
 
     # --- verification gate: every POI reachable through the drivable network
     # from the Faro spawn, plus a cuadrícula block census (tuning instrument).
@@ -3836,7 +3591,7 @@ def main():
         # downsample the eyeball PNG so a huge planar grid renders in seconds
         dbg_stride = max(1, max(GRID_COLS, GRID_ROWS) // 2500)
         write_png(DEBUG_PNG, GRID_COLS, GRID_ROWS, rgb, stride=dbg_stride)
-        print(f"[debug] {DEBUG_PNG} (stride {dbg_stride})")
+        log("debug", f"{DEBUG_PNG} (stride {dbg_stride})")
 
         # svg: vector features
         cls_color = {"trunk": "#d33", "trunk_link": "#d66", "primary": "#e80",
@@ -3869,9 +3624,9 @@ def main():
         parts.append("</svg>")
         with open(DEBUG_SVG, "w", encoding="utf-8") as f:
             f.write("\n".join(parts))
-        print(f"[debug] {DEBUG_SVG}")
+        log("debug", f"{DEBUG_SVG}")
 
-    print(f"[done] total {time.time()-t0:.1f}s")
+    log("done", f"total {time.time()-t0:.1f}s")
     # Note: the service worker (public/sw.js) uses runtime caching with a manual
     # CACHE version now that Vite fingerprints assets — no build-time stamping.
     if failures:

@@ -107,12 +107,44 @@ change re-runs `save` in the same commit.
 Surface grid classes (see `src/game/surfaces.js`): `0 water, 1 land (solid cuadra
 interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera`.
 
-Knobs at the top of `build_world.py`: `PLANAR_PX_PER_M` (world zoom),
-`ARCADE_STREET_MUL` + `ROAD_WIDTH_M` (street widths), `PLANAR_FULL_BBOX` (the
-region clip; a smaller `PLANAR_BBOX` gives a fast smoke build), `CUAD`,
-`ACERA_CELLS` / `FIELD_ACERA_CELLS`, `BUILDING_SCALE`, `DISTRICT_BOUNDS_GEO`,
-`LANDMARK_DEFS` / `CUSTOMER_DEFS` (geo anchors — build fails listing unresolved
-POIs).
+### The `churchill/` package (Python)
+
+The builder is being split out of `tools/build_world.py` into a layered package
+at the repo root, shared with the future accounts/sync/management server:
+
+```
+churchill/world/
+  config.py      every tuning knob + paths  (PLANAR_PX_PER_M, ARCADE_STREET_MUL
+                 + ROAD_WIDTH_M, PLANAR_FULL_BBOX — a smaller PLANAR_BBOX gives
+                 a fast smoke build — CUAD, ACERA_CELLS / FIELD_ACERA_CELLS,
+                 BUILDING_SCALE)
+  content.py     the hand-authored map: DISTRICT_DEFS, LANDMARK_DEFS,
+                 CUSTOMER_DEFS, STAGES, probes  (geo anchors — the build FAILS
+                 listing unresolved POIs)
+  logging.py     log(tag, msg) / warn / die — the build log is the review
+                 surface, so keep a stage's lines factual and countable
+  dto/           PYDANTIC v2 models = the emitted JSON's schema (Manifest, Tile,
+                 Parcel, Landmark, Stage…). They VALIDATE the emit; they do not
+                 serialize it (key order is historical and varies per producer).
+                 The same models a FastAPI controller will return.
+  util/          pure functions: geometry.py (incl. principal_axis, whose
+                 docstring names its two failure modes) and raster.py (Raster:
+                 buffer + dims + fill_poly/stamp_polyline/flood/erode)
+  repository/    the ONLY code that touches storage — Protocols in base.py,
+                 JsonWorldRepository beside them
+  service/       domain ops: street.py (StreetIndex — name → position/line/
+                 direction; read its docstring before picking a method)
+```
+
+Nothing imports the layer above it. `tools/build_world.py` is the CLI in front
+of it and still holds `main()` — the remaining services (surface, block,
+building, poi, field, decoration, connectivity) and the pipeline stages come out
+of it next, via a WorldContext carrying the shared state those closures capture.
+
+**Every step of that refactor must keep the world byte-identical** — verify with
+`python3 tools/world_snapshot.py rebuild`, and diff the build log too (it is
+character-stable, so a diff of two runs catches a behaviour change the digest
+might not).
 
 The **corridor-unroll projection was deleted** (2026-07-25) along with
 `src/world/`: the spine, the x-warp, the hand-placed junction gores/islands and

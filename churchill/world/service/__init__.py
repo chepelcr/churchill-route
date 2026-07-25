@@ -3,9 +3,12 @@ repositories. A service takes what it needs as arguments (a raster, a road
 list, the collections it appends to); it does not reach for globals, which is
 what makes it callable from a stage, from a test, or later from an API route.
 """
-from .block import block_raster_cells, cuadra_cells, outline_poly
+from .block import (
+    block_raster_cells, cells_to_rects, cuadra_cells, detect_blocks, outline_poly,
+)
 from .building import make_rng, snap_osm_buildings, synth_buildings
 from .field import FieldService
+from .network import block_census, largest_drivable_component, verify_connectivity
 from .projection import PlanarProjection, project_way_pts
 from .street import StreetIndex, half_plane, resample_centerline
 from .surface import (
@@ -15,6 +18,8 @@ from .surface import (
 
 __all__ = [
     "FieldService", "PlanarProjection", "StreetIndex", "acera_fringe",
+    "block_census", "cells_to_rects", "detect_blocks",
+    "largest_drivable_component", "verify_connectivity",
     "beach_fringe", "block_raster_cells", "cuadra_cells", "half_plane",
     "make_rng", "outline_poly", "project_way_pts", "raster_coast_barrier",
     "raster_poly_barrier", "resample_centerline", "snap_osm_buildings",

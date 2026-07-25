@@ -123,3 +123,7 @@ OSM_MAX_CUADS = 4               # cap OSM footprints at 4x4 cuadrículas
 # weighted synth footprint mix (w x h in cuadrículas)
 SYNTH_LOTS = [((2, 2), 0.25), ((2, 1), 0.20), ((1, 2), 0.20),
               ((1, 1), 0.30), ((3, 2), 0.05)]
+
+# ---- cuadra detection --------------------------------------------------------
+BLOCK_MIN_CUADS = 6       # a real cuadra fits >= 6x6 buildable cuadrículas
+SLIVER_MAX_CUADS = 25.0   # smaller-and-thinner land paves to plaza concrete

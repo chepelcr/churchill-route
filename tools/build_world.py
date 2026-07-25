@@ -70,7 +70,10 @@ from churchill.world.service.surface import (   # noqa: E402
     stamp_pad, trace_land_contours,
 )
 from churchill.world.service.block import (    # noqa: E402
-    block_raster_cells, cuadra_cells, outline_poly,
+    block_raster_cells, cells_to_rects, cuadra_cells, detect_blocks, outline_poly,
+)
+from churchill.world.service.network import (  # noqa: E402
+    block_census, largest_drivable_component, verify_connectivity,
 )
 from churchill.world.service.street import (   # noqa: E402
     StreetIndex, half_plane, resample_centerline,
@@ -475,292 +478,6 @@ def extract_areas(sp, ways, rels):
 
 # ------------------------------------------------------------ raster grid ---
 
-DRIVABLE_CLS = DRIVABLE_CLASSES     # see enums.surface: sand is slow, not a wall
-
-def largest_drivable_component(grid):
-    """Mask of the largest 4-connected component of drivable cells — 'the'
-    street network. POIs are placed relative to this so none ends up on a
-    stranded road/beach fragment (e.g. a stub clipped by estero water)."""
-    label = [0] * (GRID_COLS * GRID_ROWS)
-    best_id, best_n = 0, 0
-    nid = 0
-    for start in range(GRID_COLS * GRID_ROWS):
-        if label[start] or grid[start] not in DRIVABLE_CLS:
-            continue
-        nid += 1
-        n = 0
-        q = deque([start])
-        label[start] = nid
-        while q:
-            i = q.popleft()
-            n += 1
-            r, c = divmod(i, GRID_COLS)
-            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
-                if 0 <= nr < GRID_ROWS and 0 <= nc < GRID_COLS:
-                    ni = nr * GRID_COLS + nc
-                    if not label[ni] and grid[ni] in DRIVABLE_CLS:
-                        label[ni] = nid
-                        q.append(ni)
-        if n > best_n:
-            best_id, best_n = nid, n
-    return bytearray(1 if v == best_id else 0 for v in label)
-
-
-def verify_connectivity(grid, seed_xy, pois, reach):
-    """Flood-fill the drivable network from the spawn and require every POI to
-    have a reached cell within `reach` cells. Returns the ids of unreachable
-    POIs (build fails on any)."""
-    reached = bytearray(GRID_COLS * GRID_ROWS)
-    # seed: nearest drivable cell to the spawn point (expanding square rings)
-    sc, sr = int(seed_xy[0] // GRID_CELL), int(seed_xy[1] // GRID_CELL)
-    seed = None
-    for rad in range(0, 64):
-        for dr in range(-rad, rad + 1):
-            for dc in range(-rad, rad + 1):
-                if max(abs(dr), abs(dc)) != rad:
-                    continue
-                c, r = sc + dc, sr + dr
-                if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and \
-                        grid[r * GRID_COLS + c] in DRIVABLE_CLS:
-                    seed = (c, r)
-                    break
-            if seed:
-                break
-        if seed:
-            break
-    if seed is None:
-        return ["spawn(no drivable cell near seed)"]
-    q = deque([seed])
-    reached[seed[1] * GRID_COLS + seed[0]] = 1
-    n_reached = 1
-    while q:
-        c, r = q.popleft()
-        for nc, nr in ((c - 1, r), (c + 1, r), (c, r - 1), (c, r + 1)):
-            if 0 <= nc < GRID_COLS and 0 <= nr < GRID_ROWS:
-                nidx = nr * GRID_COLS + nc
-                if not reached[nidx] and grid[nidx] in DRIVABLE_CLS:
-                    reached[nidx] = 1
-                    n_reached += 1
-                    q.append((nc, nr))
-    total_driv = sum(1 for v in grid if v in DRIVABLE_CLS)
-    unreachable = []
-    for poi in pois:
-        pc, pr = int(poi["x"] // GRID_CELL), int(poi["y"] // GRID_CELL)
-        ok = False
-        for dr in range(-reach, reach + 1):
-            for dc in range(-reach, reach + 1):
-                c, r = pc + dc, pr + dr
-                if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and reached[r * GRID_COLS + c]:
-                    ok = True
-                    break
-            if ok:
-                break
-        if not ok:
-            unreachable.append(poi["id"])
-    pct = 100.0 * n_reached / max(1, total_driv)
-    log("gate", f"drivable network: {n_reached}/{total_driv} cells reachable "
-          f"from spawn ({pct:.1f}%), {len(pois) - len(unreachable)}/{len(pois)} POIs ok")
-    return unreachable
-
-
-def block_census(grid, min_side=6):
-    """Cuadrícula-resolution census of buildable land: 4-connected components
-    of CUAD cells fully covered by CLS_LAND, with each component's area and
-    max inscribed square (DP). The tuning instrument for Milestone B★."""
-    ccols, crows = GRID_COLS // CUAD_CELLS, GRID_ROWS // CUAD_CELLS
-    buildable = bytearray(ccols * crows)
-    for cr in range(crows):
-        for cc in range(ccols):
-            ok = True
-            for r in range(cr * CUAD_CELLS, (cr + 1) * CUAD_CELLS):
-                row = r * GRID_COLS
-                for c in range(cc * CUAD_CELLS, (cc + 1) * CUAD_CELLS):
-                    if grid[row + c] != CLS_LAND:
-                        ok = False
-                        break
-                if not ok:
-                    break
-            buildable[cr * ccols + cc] = 1 if ok else 0
-    # max inscribed square DP (global; squares never straddle components)
-    dp = [0] * (ccols * crows)
-    for cr in range(crows):
-        for cc in range(ccols):
-            i = cr * ccols + cc
-            if buildable[i]:
-                dp[i] = 1 if (cr == 0 or cc == 0) else \
-                    min(dp[i - 1], dp[i - ccols], dp[i - ccols - 1]) + 1
-    # component labelling (4-connected)
-    label = [0] * (ccols * crows)
-    comps = []          # per component: [area, max_inscribed]
-    for start in range(ccols * crows):
-        if not buildable[start] or label[start]:
-            continue
-        cid = len(comps) + 1
-        comps.append([0, 0])
-        q = deque([start])
-        label[start] = cid
-        while q:
-            i = q.popleft()
-            comps[cid - 1][0] += 1
-            comps[cid - 1][1] = max(comps[cid - 1][1], dp[i])
-            r, c = divmod(i, ccols)
-            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
-                if 0 <= nr < crows and 0 <= nc < ccols:
-                    ni = nr * ccols + nc
-                    if buildable[ni] and not label[ni]:
-                        label[ni] = cid
-                        q.append(ni)
-    big = sorted((c for c in comps if c[0] >= 4), key=lambda c: -c[0])
-    n_ok = sum(1 for c in comps if c[1] >= min_side)
-    log("census", f"{len(comps)} land components at CUAD resolution; "
-          f"{len(big)} with area>=4, {n_ok} with inscribed>={min_side}x{min_side}")
-    for area, insq in big[:20]:
-        log("census", f"  area {area:>4} cuads   inscribed {insq}x{insq}")
-    return comps
-
-# ---------------------------------------------------- cuadrícula blocks -----
-
-def cells_to_rects(cells, cell_px):
-    """Merge a set of (cc,cr) cells into axis-aligned [x,y,w,h] px rects
-    (row-run merge + vertical span merge). Footprint-accurate."""
-    rows = defaultdict(list)
-    for (cc, cr) in cells:
-        rows[cr].append(cc)
-    runs_by_row = {}
-    for cr, ccs in rows.items():
-        ccs.sort(); runs = []
-        for cc in ccs:
-            if runs and runs[-1][1] == cc:
-                runs[-1][1] = cc + 1
-            else:
-                runs.append([cc, cc + 1])
-        runs_by_row[cr] = runs
-    rects = []; open_runs = {}
-    def _emit(k, s):
-        rects.append([k[0] * cell_px, s[0] * cell_px,
-                      (k[1] - k[0]) * cell_px, (s[1] - s[0]) * cell_px])
-    for cr in sorted(runs_by_row):
-        cur = {tuple(r) for r in runs_by_row[cr]}; nxt = {}
-        for k in cur:
-            if k in open_runs and open_runs[k][1] == cr:
-                open_runs[k][1] = cr + 1; nxt[k] = open_runs[k]
-            else:
-                if k in open_runs:
-                    _emit(k, open_runs[k])
-                nxt[k] = [cr, cr + 1]
-        for k, s in open_runs.items():
-            if k not in nxt:
-                _emit(k, s)
-        open_runs = nxt
-    for k, s in open_runs.items():
-        _emit(k, s)
-    return rects
-
-
-BLOCK_MIN_CUADS = 6       # a real cuadra fits >= 6x6 buildable cuadrículas
-SLIVER_MAX_CUADS = 25.0   # smaller-and-thinner land paves to plaza concrete
-
-def detect_blocks(grid, build_band_x1=None):
-    """Classify every CLS_LAND component (after roads/aceras/pads are stamped)
-    at cuadrícula resolution:
-      - block: fits a BLOCK_MIN_CUADS square of buildable CUAD cells somewhere
-        -> kept as solid cuadra; its organic CUAD cell set (L-shapes, triangle
-        and trapezoid arms included) is returned for building placement;
-      - sliver: nowhere near the minimum AND small -> paved to CLS_ACERA and
-        emitted as plaza rects (intersection corners, alley wedges);
-      - green: large but nowhere BLOCK_MIN_CUADS (thin coastal strips) ->
-        stays CLS_LAND with no buildings, never paved (no concrete oceans).
-    Returns (blocks, plazas): blocks = [{"cells": set[(cc, cr)]}], plazas =
-    flat [x, y, w, h] px rects for the renderer."""
-    from array import array
-    N = GRID_COLS * GRID_ROWS
-    label = array("i", [0]) * N
-    comp_n = [0]            # raster cell count per component id (1-based)
-    for start in range(N):
-        if grid[start] != CLS_LAND or label[start]:
-            continue
-        cid = len(comp_n)
-        comp_n.append(0)
-        q = deque([start])
-        label[start] = cid
-        n = 0
-        while q:
-            i = q.popleft()
-            n += 1
-            r, c = divmod(i, GRID_COLS)
-            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
-                if 0 <= nr < GRID_ROWS and 0 <= nc < GRID_COLS:
-                    ni = nr * GRID_COLS + nc
-                    if grid[ni] == CLS_LAND and not label[ni]:
-                        label[ni] = cid
-                        q.append(ni)
-        comp_n[cid] = n
-    n_comps = len(comp_n) - 1
-    # buildable CUAD cells (fully CLS_LAND — such a 5x5 is 4-connected, so it
-    # belongs to exactly one component) + max-inscribed-square DP per cell
-    ccols, crows = GRID_COLS // CUAD_CELLS, GRID_ROWS // CUAD_CELLS
-    bcomp = array("i", [0]) * (ccols * crows)      # component id per cuad cell
-    for cr in range(crows):
-        for cc in range(ccols):
-            ok = True
-            for r in range(cr * CUAD_CELLS, (cr + 1) * CUAD_CELLS):
-                row = r * GRID_COLS
-                for c in range(cc * CUAD_CELLS, (cc + 1) * CUAD_CELLS):
-                    if grid[row + c] != CLS_LAND:
-                        ok = False
-                        break
-                if not ok:
-                    break
-            if ok:
-                bcomp[cr * ccols + cc] = label[cr * CUAD_CELLS * GRID_COLS + cc * CUAD_CELLS]
-    dp = [0] * (ccols * crows)
-    comp_ins = [0] * (len(comp_n))                 # max inscribed per component
-    comp_cells = defaultdict(set)
-    for cr in range(crows):
-        for cc in range(ccols):
-            i = cr * ccols + cc
-            cid = bcomp[i]
-            if not cid:
-                continue
-            dp[i] = 1 if (cr == 0 or cc == 0) else \
-                min(dp[i - 1], dp[i - ccols], dp[i - ccols - 1]) + 1
-            comp_ins[cid] = max(comp_ins[cid], dp[i])
-            comp_cells[cid].add((cc, cr))
-    # classify
-    blocks, paved_ids = [], set()
-    n_green = 0
-    for cid in range(1, len(comp_n)):
-        area_cuads = comp_n[cid] / (CUAD_CELLS * CUAD_CELLS)
-        cells = comp_cells[cid]
-        # Faro tip: the fine street grid makes cuadras below the 6x6 minimum, so
-        # they'd pave to green plazas. Keep the small coastal blocks BUILDABLE
-        # (whole component west of the band edge) so the barrio by the lighthouse
-        # has houses instead of a green patchwork.
-        in_band = (build_band_x1 is not None and cells and
-                   max(cc for cc, _ in cells) * CUAD < build_band_x1)
-        if comp_ins[cid] >= BLOCK_MIN_CUADS:
-            blocks.append({"cells": cells, "green": False})
-        elif in_band and comp_ins[cid] >= 2 and area_cuads >= 4:
-            blocks.append({"cells": cells, "green": False})
-        elif area_cuads <= SLIVER_MAX_CUADS:
-            paved_ids.add(cid)
-        else:
-            # green strip: no synth fill, but real OSM buildings may still
-            # snap onto its buildable cells (rural villages on thin coast land)
-            if comp_cells[cid]:
-                blocks.append({"cells": comp_cells[cid], "green": True})
-            n_green += 1
-    # pave the slivers (concrete corners — deliberately NOT painted green: a
-    # sliver is a partial-cuadra shape, and partial green reads as a bad paint
-    # job; cuadras are all-green (parks) or all-ground)
-    for i in range(N):
-        if label[i] in paved_ids:
-            grid[i] = CLS_ACERA
-    n_cuadras = sum(1 for b in blocks if not b["green"])
-    log("blocks", f"{n_comps} land components -> {n_cuadras} cuadras, "
-          f"{len(paved_ids)} paved slivers, {n_green} green")
-    return blocks, []
-
 # ----------------------------------------------------- paseo palm median ----
 # The Paseo de los Turistas is a divided avenue: a dashed palm median runs down
 # the centerline as a solid (blocking) separator between the two sides, with
@@ -1076,7 +793,7 @@ def main():
             return to_m(*spec["ll"]), "hand"
         return None, "missing"
 
-    main_net = largest_drivable_component(grid)
+    main_net = largest_drivable_component(raster)
 
     def near_drivable(c, r, reach=ACERA_CELLS + 1):
         """True if a MAIN-network street/beach cell is within `reach` cells (so
@@ -1448,7 +1165,7 @@ def main():
     # out to the east edge of Carmen so the tip reads as a town, not a lawn.
     faro_band_x1 = next((d["x1"] for d in districts if d["id"] == "carmen"),
                         next((d["x1"] for d in districts if d["id"] == "faro"), None))
-    blocks, plazas = detect_blocks(grid, build_band_x1=faro_band_x1)
+    blocks, plazas = detect_blocks(raster, build_band_x1=faro_band_x1)
     # Faro esplanade: paint the paved sand-tip as a gray ground fill by TYPE
     # (single draw — no sand shows under it; follows the sand, never the street).
     if faro_esp:
@@ -2281,10 +1998,10 @@ def main():
     # scenery landmarks (no drivable pad) aren't delivery targets → exclude
     # them from the reachability gate
     gate_pois = [l for l in landmarks if l["type"] not in NO_PAD_LM] + customers
-    unreachable = verify_connectivity(grid, spawn,
+    unreachable = verify_connectivity(raster, spawn,
                                       gate_pois, reach=ACERA_CELLS + 1)
     failures.extend("unreachable " + u for u in unreachable)
-    block_census(grid)
+    block_census(raster)
 
     mata_x0 = next(d["x0"] for d in districts if d["id"] == "mata")
     hills = [{"x0": mata_x0 - 1200, "x1": CANVAS_W, "baseY": 750, "color": "#5e8a55"},

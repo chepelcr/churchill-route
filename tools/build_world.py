@@ -164,6 +164,12 @@ MIN_BUILDING_AREA_PX2 = 216
 CLS_WATER, CLS_LAND, CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA = 0, 1, 2, 3, 4, 5, 6
 CLASS_NAMES = ["water", "land", "beach", "road", "paseo", "bridge", "acera"]
 ACERA_CELLS = CUAD_CELLS        # sidewalk depth: 1 cuadrícula (20 px) each side
+# A FIELD's ring is shallower than a block's. All it has to do is keep the
+# pitch's white lines off the asphalt, and every px of it is grass and markings
+# the player doesn't get: at full depth the Carmen plaza went from 84x92 to
+# 60x48. 8 px still reads as a kerb strip (the drawn sidewalk band is 20 px, so
+# the pitch tucks under most of it, exactly like a park's green skirt).
+FIELD_ACERA_CELLS = 2           # 8 px — estadio / plaza pitches
 
 # probes for orientation / sanity (geo)
 PROBE_LAND = [(9.97769, -84.83487),   # Catedral
@@ -3581,7 +3587,7 @@ def main():
                 clip = _half_plane(line, ((xa + xb) / 2, (ylo + yhi) / 2), spec.get("edge_gap", 18))
         outer_cells = _cuadra_cells(xa, ylo, xb, yhi, classes, clip)
         inner_cells = (outer_cells if spec.get("aceras") is False
-                       else _erode_cells(outer_cells, ACERA_CELLS, STREET_CLASSES)) if outer_cells else set()
+                       else _erode_cells(outer_cells, FIELD_ACERA_CELLS, STREET_CLASSES)) if outer_cells else set()
         outline = _outline_poly(outer_cells) if outer_cells else None
         footprint = _outline_poly(inner_cells) if inner_cells else None
         if not outline or not footprint:
@@ -3762,6 +3768,10 @@ def main():
         # left 4px slivers. `aceras: True` therefore means "respect the block's
         # ring", and a part just takes its cells from the eroded set.
         inner = _erode_cells(outer, ACERA_CELLS, STREET_CLASSES)
+        # …and a shallower one for the open fields (see FIELD_ACERA_CELLS): a
+        # church must clear the whole sidewalk, a pitch only has to stop at the
+        # kerb, and on a small cuadra the difference is most of the plaza.
+        field = _erode_cells(outer, FIELD_ACERA_CELLS, STREET_CLASSES)
         # THE BLOCK'S FRAME COMES FROM ITS BOUNDING STREETS, not from a fit of
         # its own cells. A principal-axis fit (_cell_frame) is wrong here twice
         # over: on a square-ish cuadra sxx≈syy, the fit is degenerate and snaps
@@ -3801,7 +3811,8 @@ def main():
         for part in spec["parts"]:
             c0, c1 = rng(part.get("col", 0))
             r0, r1 = rng(part.get("row", 0))
-            src = inner if part.get("aceras") else outer
+            src = ((field if part["use"] in ("plaza", "stadium") else inner)
+                   if part.get("aceras") else outer)
             cells = {c for c in src
                      if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
             # cells the part OWNS on the block (for occ / drivability), which is

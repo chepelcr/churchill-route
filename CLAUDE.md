@@ -11,6 +11,7 @@ customer before it melts. Three modes: **Historia** (7 stages), **Arcade** (3-mi
 free roam), **Recorrer** (open world with unlockable districts).
 
 Design doc: `docs/GAME_DESIGN.md`. Roadmap + milestone tracker: `ROADMAP.md`.
+Release notes: `docs/changelog/YYYY-MM-DD.md`, one per release date.
 
 ## Toolchain
 
@@ -150,6 +151,28 @@ buildings, set `blocks[bi]["green"]=True` (excluded from `synth_buildings`).
 any class-3/5 cell near the camera, so a `CLS_ROAD` pitch gets them for free in
 every mode.
 
+**A CUADRA'S ANGLE COMES FROM ITS BOUNDING STREETS — never from a fit.** The
+cuadrícula is not square to the screen and is not even square to itself (by El
+Carmen the avenidas run at -5.4° and the calles at 82.3°, 3.5° out of square).
+`place_parcels` reads `_street_dir(names, ref, "x"|"y")` — the direction of a
+named avenida (east) / calle (south) near the block — and cuts **columns with
+lines parallel to the CALLES and rows with lines parallel to the AVENIDAS** (each
+cell projected on the *normal of the other family*, an affine frame that fits a
+parallelogram block). Two ways a principal-axis fit gets this WRONG, both seen on
+the Carmen block:
+- **degenerate on a square-ish block** — `sxx ≈ syy` makes `0.5·atan2(2sxy,
+  sxx−syy)` snap to ±45°, i.e. the CONTRARY diagonal to the manzana;
+- **orthogonal by construction** — it can never express the real grid's skew.
+`_cell_frame` survives only as the centre + a fallback axis (and `pitchFrame`'s
+old vertex fit is worse still: parcel/pitch polys are raster-TRACED, so their
+vertices are 4px staircase steps — fitting Plaza El Carmen's gives -67°).
+Each parcel therefore emits its block angle as `ang` (radians) into
+`manifest.parcels`, and everything the renderer draws ON it turns by that angle:
+`fieldFrame(S, ang)` → `paintField` (grass, mow stripes, fútbol markings — shared
+with the whole-cuadra estadios), `drawChurch(x, y, s, ang)`, the garden's tree
+scatter, the sponsor plate. Anything new drawn on a parcel must use `P.ang`; a
+`strokeRect` off `P.x0..P.x1` puts a square pitch on a slanted block.
+
 **Organic stadium (graderías from the real acera)**: `place_stadium` builds each
 estadio as a `quad` that follows the street grid — a diagonal block resolves its
 left/right edges from the two calles' *lines* (`_street_line` = principal-axis
@@ -207,3 +230,6 @@ the game's contents without reading the code. Refresh after world/module changes
 - Don't hand-edit `src/world/data.js` — regenerate with `pnpm world:build`.
 - Verify game changes by actually running the app (`pnpm dev` + browser), not
   just building — the render loop and physics have no unit tests.
+- Changelogs live in `docs/changelog/`, one file per release date, named
+  `YYYY-MM-DD.md` (nothing else) — Spanish, ready-to-post copy up top and a
+  `## 🧾 Changelog` section below it.

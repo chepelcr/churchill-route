@@ -224,7 +224,7 @@ function drawParcels(view) {
   if (!arr || !arr.length) return;
   for (const P of arr) {
     if (P.x1 + 60 < view.x0 || P.x0 - 60 > view.x1 || P.y1 + 60 < view.y0 || P.y0 - 60 > view.y1) continue;
-    if (P.use === "church") drawChurch(P.cx, P.cy, Math.min(1, (P.x1 - P.x0) / 44));
+    if (P.use === "church") drawChurch(P.cx, P.cy, Math.min(1, (P.x1 - P.x0) / 44), P.ang);
     if (P.use === "garden") drawGarden(P);
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
     if (lote) drawSponsorSlot(P, lote);
@@ -240,6 +240,9 @@ function drawParcels(view) {
 // can cover the street or dwarf the block.
 function drawSponsorSlot(P, lote) {
   const [sx, sy, sw, sh] = P.slot;
+  // the plate lies FLAT on the parcel, so it turns with the manzana too
+  ctx.save();
+  if (P.ang) { ctx.translate(sx + sw / 2, sy + sh / 2); ctx.rotate(P.ang); ctx.translate(-sx - sw / 2, -sy - sh / 2); }
   ctx.fillStyle = "rgba(12,10,22,0.55)";
   roundRect(ctx, sx, sy, sw, sh, 3, true, false);
   ctx.fillStyle = lote.tone || "#f3c969";
@@ -248,24 +251,31 @@ function drawSponsorSlot(P, lote) {
   ctx.font = `bold ${Math.max(5, Math.round(sh * 0.34))}px 'JetBrains Mono', monospace`;
   ctx.textAlign = "center";
   ctx.fillText((lote.label || lote.name || "").slice(0, 14), sx + sw / 2, sy + sh / 2 + sh * 0.12);
+  ctx.restore();
 }
 // A garden parcel: shade trees scattered across its grass, on a deterministic
-// hash so they never crawl between frames. Inset from the parcel edge so no
-// canopy hangs over the kerb.
+// hash so they never crawl between frames. Scattered in the parcel's OWN frame
+// (P.ang, the manzana's angle) and inset from its edge, so on a slanted cuadra
+// no canopy drifts off the corner that the bbox overshoots.
 function drawGarden(P) {
+  const ca = Math.cos(P.ang || 0), sa = Math.sin(P.ang || 0);
+  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
   const w = P.x1 - P.x0, h = P.y1 - P.y0;
   const n = Math.max(3, Math.round((w + h) / 26));
   for (let i = 0; i < n; i++) {
-    const fx = 0.18 + hash01(i * 3.7 + P.x0) * 0.64;
-    const fy = 0.22 + hash01(i * 8.1 + P.y0) * 0.56;
-    paintTree({ x: P.x0 + w * fx, y: P.y0 + h * fy, s: 0.7 + hash01(i + P.x0) * 0.35 });
+    const u = (hash01(i * 3.7 + P.x0) - 0.5) * w * 0.7;      // along the avenidas
+    const v = (hash01(i * 8.1 + P.y0) - 0.5) * h * 0.62;     // along the calles
+    paintTree({ x: cx + u * ca - v * sa, y: cy + u * sa + v * ca,
+                s: 0.7 + hash01(i + P.x0) * 0.35 });
   }
 }
 
 // Pale stucco nave, bell tower, spire and a white cross — the same silhouette
-// the `church` landmark type uses, drawn at an arbitrary point and scale.
-function drawChurch(x, y, s = 1) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+// the `church` landmark type uses, drawn at an arbitrary point, scale and ANGLE.
+// The Parroquia del Carmen faces its avenida, not the screen: `ang` is the
+// manzana's own angle, which the parcel carries from the build.
+function drawChurch(x, y, s = 1, ang = 0) {
+  ctx.save(); ctx.translate(x, y); if (ang) ctx.rotate(ang); ctx.scale(s, s);
   ctx.fillStyle = "rgba(0,0,0,0.22)";
   ctx.beginPath(); ctx.ellipse(4, 14, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = "#e7ddc8"; ctx.fillRect(-20, -12, 40, 24);

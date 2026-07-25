@@ -16,29 +16,86 @@ import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, label } from "./gfx.js";
 // the asphalt pass repaints anything that reached the roadway, and (b) street
 // name pills, buildings and flora still land on top, instead of being buried
 // the way they were when the stadium was a later layer.
-// Centre, tilt and half-extents of a pitch, from the principal axis of its own
-// polygon — so the markings follow the manzana's angle instead of the screen's.
-function pitchFrame(S) {
+// Centre, tilt and half-extents of a field. The TILT comes from the world when
+// it knows it (`ang`, the angle of the avenidas bounding the manzana — parcels
+// carry it); only the whole-cuadra estadios, which have no `ang`, fall back to
+// the principal axis of their own polygon. That fallback is not safe in general:
+// these polygons are RASTER-TRACED, so their vertices are 4 px staircase steps,
+// and fitting a square-ish one lands on the CONTRARY diagonal to the block
+// (Plaza El Carmen fits to -67°, its cuadra actually sits at -4.5°).
+function fieldFrame(S, ang) {
   if (S._frame) return S._frame;
-  const f = S.footprint;
+  const f = S.footprint || S.poly;
   let mx = 0, my = 0, n = 0;
   for (let i = 0; i < f.length; i += 2) { mx += f[i]; my += f[i + 1]; n++; }
   mx /= n; my /= n;
-  let sxx = 0, syy = 0, sxy = 0;
-  for (let i = 0; i < f.length; i += 2) {
-    const dx = f[i] - mx, dy = f[i + 1] - my;
-    sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+  let a = ang;
+  if (!Number.isFinite(a)) {
+    let sxx = 0, syy = 0, sxy = 0;
+    for (let i = 0; i < f.length; i += 2) {
+      const dx = f[i] - mx, dy = f[i + 1] - my;
+      sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+    }
+    a = 0.5 * Math.atan2(2 * sxy, sxx - syy);
   }
-  let ang = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-  const ca = Math.cos(ang), sa = Math.sin(ang);
+  const ca = Math.cos(a), sa = Math.sin(a);
   let hw = 0, hh = 0;
   for (let i = 0; i < f.length; i += 2) {
     const dx = f[i] - mx, dy = f[i + 1] - my;
     hw = Math.max(hw, Math.abs(dx * ca + dy * sa));
     hh = Math.max(hh, Math.abs(-dx * sa + dy * ca));
   }
-  if (hh > hw) { ang += Math.PI / 2; const t = hw; hw = hh; hh = t; }  // long axis = the pitch's length
-  return (S._frame = { cx: mx, cy: my, ang, hw, hh });
+  // long axis = the pitch's length; a quarter turn keeps the block's angle
+  if (hh > hw) { a += Math.PI / 2; const t = hw; hw = hh; hh = t; }
+  return (S._frame = { cx: mx, cy: my, ang: a, hw, hh });
+}
+
+const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one white
+// Grass, mow stripes and fútbol markings inside `path`, all drawn in the
+// FIELD's OWN frame rather than on screen axes — Las Playitas sits on the
+// diagonal street grid and Plaza El Carmen on a slanted manzana, and
+// axis-aligned stripes with a square white box on a tilted field read as a
+// mistake. Shared by the whole-cuadra estadios and by plaza/stadium parcels, so
+// a plaza gets exactly the estadio's field.
+function paintField(path, F) {
+  ctx.save();
+  ctx.clip(path);
+  ctx.fillStyle = "#4f9d5b"; ctx.fill(path);               // grass
+  ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
+  const hw = F.hw, hh = F.hh;
+  ctx.fillStyle = "rgba(30,88,50,0.16)";                   // mow stripes, along the pitch
+  for (let sy = -hh; sy < hh; sy += 14) ctx.fillRect(-hw, sy, hw * 2, 7);
+  // THE TOUCHLINE IS THE CUADRA'S OWN EDGE — there is no second boundary. A
+  // strokeRect off the frame's extents drew a rectangle INSIDE the traced
+  // outline: two white boundaries on every field, and the inner one the wrong
+  // shape on an organic or diagonal block. The one line left is the footprint
+  // itself, stroked once below.
+  //
+  // Everything else is drawn at FULL extent and trimmed by the clip, so a
+  // marking meets the touchline exactly instead of guessing where the edge is.
+  // Level of detail by size: a real penalty area shares its goal line with the
+  // touchline, so on a SMALL pitch its stroke lands on top of the boundary (and
+  // the goal box on top of that) and the whole end reads as doubled lines. Lito
+  // Pérez is 116 px across — below the threshold it keeps the clean set:
+  // halfway line and centre circle. La Plaza is nearly twice that.
+  const m = Math.max(6, Math.min(hw, hh) * 0.10);          // marking inset
+  ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.fillStyle = MARK;
+  ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(0, hh); ctx.stroke();       // halfway line
+  ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
+  if (hw >= 80 && hh >= 55) {
+    ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();          // centre spot
+    const bw = Math.min(hw * 0.28, hh * 0.9);              // penalty area depth
+    const bh = Math.max(12, Math.min(hh - m - 4, hh * 0.60));
+    for (const sd of [-1, 1]) {
+      const x0 = sd < 0 ? -hw + m : hw - m - bw;
+      ctx.strokeRect(x0, -bh, bw, bh * 2);                                     // penalty area
+      const gx = sd < 0 ? -hw + m : hw - m - bw * 0.38;
+      ctx.strokeRect(gx, -bh * 0.45, bw * 0.38, bh * 0.9);                     // goal box
+      ctx.beginPath(); ctx.arc(sd * (hw - m - bw * 0.72), 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
+  ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.stroke(path);   // touchline = kerb = the cuadra
 }
 
 function paintStadiumCuadras(view) {
@@ -48,48 +105,11 @@ function paintStadiumCuadras(view) {
     if (S.x1 + 40 < view.x0 || S.x0 - 40 > view.x1 || S.y1 + 40 < view.y0 || S.y0 - 40 > view.y1) continue;
     if (!S.footprint) continue;
     const pitch = S._pitch || (S._pitch = flatPath(S.footprint, true));
-    const P = pitchFrame(S);                               // centre + tilt + extents
     // 4 px of grass dilation first: the traced pitch steps in 4 px raster
     // increments, so its edge and the acera band don't meet exactly and a hair
     // of bare ground shows through at the seam.
     ctx.strokeStyle = "#4f9d5b"; ctx.lineWidth = 8; ctx.lineJoin = "round"; ctx.stroke(pitch);
-    ctx.save();
-    ctx.clip(pitch);
-    ctx.fillStyle = "#4f9d5b"; ctx.fill(pitch);            // grass
-    // Everything below is drawn in the PITCH's OWN frame, not screen axes: Las
-    // Playitas sits on the diagonal street grid, and axis-aligned mow stripes
-    // with a square white box on a tilted field read as a mistake.
-    ctx.translate(P.cx, P.cy); ctx.rotate(P.ang);
-    const hw = P.hw, hh = P.hh;
-    ctx.fillStyle = "rgba(30,88,50,0.16)";                 // mow stripes, along the pitch
-    for (let sy = -hh; sy < hh; sy += 14) ctx.fillRect(-hw, sy, hw * 2, 7);
-    // Fútbol markings, at a level of detail the pitch can carry. A real
-    // penalty area shares the goal line with the touchline, so on a SMALL
-    // pitch its stroke lands right on top of the touchline (and the goal box
-    // on top of that) and the whole end reads as doubled lines. Lito Pérez is
-    // 116 px across — below the threshold it gets the clean set it had before:
-    // touchline, halfway line, centre circle. La Plaza is nearly twice that
-    // and has the room for the full markings.
-    const m = Math.max(6, Math.min(hw, hh) * 0.10);        // touchline inset
-    ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2;
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.strokeRect(-hw + m, -hh + m, (hw - m) * 2, (hh - m) * 2);
-    ctx.beginPath(); ctx.moveTo(0, -hh + m); ctx.lineTo(0, hh - m); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
-    if (hw >= 80 && hh >= 55) {
-      ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();        // centre spot
-      const bw = Math.min(hw * 0.28, hh * 0.9);            // penalty area depth
-      const bh = Math.max(12, Math.min(hh - m - 4, hh * 0.60));
-      for (const sd of [-1, 1]) {
-        const x0 = sd < 0 ? -hw + m : hw - m - bw;
-        ctx.strokeRect(x0, -bh, bw, bh * 2);                                   // penalty area
-        const gx = sd < 0 ? -hw + m : hw - m - bw * 0.38;
-        ctx.strokeRect(gx, -bh * 0.45, bw * 0.38, bh * 0.9);                   // goal box
-        ctx.beginPath(); ctx.arc(sd * (hw - m - bw * 0.72), 0, 1.6, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-    ctx.restore();
-    ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(pitch); // curb
+    paintField(pitch, fieldFrame(S, S.ang));
   }
 }
 
@@ -113,18 +133,10 @@ function paintParcels(view) {
     ctx.lineWidth = 8; ctx.lineJoin = "round";
     ctx.strokeStyle = ctx.fillStyle; ctx.stroke(path);   // hide the 4px raster steps
     ctx.fill(path);
-    if (P.use === "plaza" || P.use === "stadium") {
-      ctx.save(); ctx.clip(path);
-      ctx.fillStyle = "rgba(30,88,50,0.16)";
-      for (let sy = P.y0; sy < P.y1; sy += 14) ctx.fillRect(P.x0, sy, P.x1 - P.x0, 7);
-      ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
-      const m = Math.max(5, Math.min(P.x1 - P.x0, P.y1 - P.y0) * 0.12);
-      ctx.strokeRect(P.x0 + m, P.y0 + m, P.x1 - P.x0 - 2 * m, P.y1 - P.y0 - 2 * m);
-      ctx.beginPath();
-      ctx.arc((P.x0 + P.x1) / 2, (P.y0 + P.y1) / 2, Math.min(P.x1 - P.x0, P.y1 - P.y0) * 0.18, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
+    // An open field gets the estadio's own painter, in the MANZANA's frame
+    // (P.ang) — the markings used to be strokeRect'd off the bbox, which put a
+    // square pitch on a slanted block.
+    if (P.use === "plaza" || P.use === "stadium") { paintField(path, fieldFrame(P, P.ang)); continue; }
     ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }
 }

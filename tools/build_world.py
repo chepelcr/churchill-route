@@ -3346,6 +3346,28 @@ def main():
                 return (mx, my, math.cos(theta), math.sin(theta))
         return None
 
+    def _street_dir(names, ref, axis, span=520):
+        """Unit direction of a named street NEAR ref, oriented along `axis`:
+        "x" for an avenida (pointing EAST), "y" for a calle (pointing SOUTH).
+        This is the honest source for a manzana's angle — see place_parcels: a
+        principal-axis fit of the block's own cells cannot recover the tilt of a
+        square-ish cuadra, and it can only ever return orthogonal axes, while
+        the real cuadrícula is a parallelogram (by Carmen the avenidas run at
+        -4.5° and the calles at 82°, 3.5° off square).
+
+        A direction that does NOT run along the expected axis is rejected: a
+        same-named stub crossing the reference (Calle 33 turns a corner two
+        cuadras south) would otherwise hand back the perpendicular."""
+        line = _street_edge(names, ref, span)
+        if not line:
+            return None
+        ux, uy = line[2], line[3]
+        if (abs(ux) < abs(uy)) if axis == "x" else (abs(uy) < abs(ux)):
+            return None
+        if (ux < 0) if axis == "x" else (uy < 0):
+            ux, uy = -ux, -uy
+        return (ux, uy)
+
     def _half_plane(line, anchor, gap):
         """clip(px, py) keeping the ANCHOR's side of a street line, stopping
         `gap` px short of its centreline (= the near kerb)."""
@@ -3624,10 +3646,12 @@ def main():
     #   aceras: False -> the part keeps the ring, filling the block edge to edge
     #                    (how Plaza Las Playitas reads as one open field).
     def _cell_frame(cells):
-        """Centre + principal axis of a cell set. A cuadra on the diagonal
-        street grid (Las Playitas sits at 37°) has to be split along ITS OWN
-        axes — a screen-axis cut through a tilted block yields wedges, not
-        halves."""
+        """Centre + principal axis of a cell set. The CENTRE is what parcels
+        want; the axis is only their FALLBACK for when a bounding street's
+        direction will not resolve (see _street_dir). It is not trustworthy on
+        its own: the fit is degenerate on a square-ish block (sxx≈syy snaps it
+        to ±45°, the contrary diagonal), and it is orthogonal by construction,
+        which the cuadrícula is not."""
         n = len(cells)
         mx = sum(c for c, _ in cells) / n; my = sum(r for _, r in cells) / n
         sxx = sum((c - mx) ** 2 for c, _ in cells)
@@ -3647,7 +3671,7 @@ def main():
         edges[-1] = hi + 1e-6
         return edges
 
-    def _emit_parcel(spec_id, part, cells, keep_cells):
+    def _emit_parcel(spec_id, part, cells, keep_cells, ang=0.0):
         poly = _outline_poly(keep_cells) if keep_cells else None
         if not poly:
             print(f"[parcel] WARN {part['id']} nothing left after erosion"); return None
@@ -3659,9 +3683,17 @@ def main():
         # street or dwarf the block.
         sw = max(24, (x1 - x0) // 3); sh = max(16, (y1 - y0) // 3)
         slot = [int((x0 + x1) // 2 - sw // 2), int((y0 + y1) // 2 - sh // 2), int(sw), int(sh)]
+        # `ang` = the BLOCK's angle (its avenidas' direction), radians. Whatever
+        # the renderer draws ON a parcel — mow stripes, pitch markings, the
+        # church, the sponsor plate — rotates by it, so nothing sits square to
+        # the screen on a manzana that is not. Do NOT re-derive this from the
+        # poly: a traced outline's vertices are staircase steps, and fitting
+        # them puts a square-ish parcel on the contrary diagonal (carmen_plaza
+        # fitted to -67°).
         parcels.append({"id": part["id"], "name": part["name"], "use": part["use"],
                         "poly": poly, "cx": int((x0 + x1) // 2), "cy": int(ay),
-                        "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot})
+                        "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot,
+                        "ang": round(ang, 4)})
         cuads = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in cells}
         occ.update(cuads)                        # no buildings inside a parcel
         for b in blocks:
@@ -3679,8 +3711,9 @@ def main():
     # drawn and a `slot` a sponsor can claim. The general form of what the
     # estadios do by hand: resolve the block, then hand out pieces of it.
     #
-    #   cols/rows  — an N×M subdivision, sized by optional weights, computed in
-    #                the block's OWN frame (see _cell_frame).
+    #   cols/rows  — an N×M subdivision, sized by optional weights, cut in the
+    #                block's OWN frame: columns along the calles, rows along the
+    #                avenidas (see _street_dir).
     #   aceras     — True erodes the part by the sidewalk depth, so what sits on
     #                it (a church) can never land on the acera; False keeps the
     #                ring so the part fills the block edge to edge.
@@ -3703,8 +3736,32 @@ def main():
         # left 4px slivers. `aceras: True` therefore means "respect the block's
         # ring", and a part just takes its cells from the eroded set.
         inner = _erode_cells(outer, ACERA_CELLS)
-        mx, my, ca, sa = _cell_frame(outer)
-        uv = {c: ((c[0] - mx) * ca + (c[1] - my) * sa, -(c[0] - mx) * sa + (c[1] - my) * ca)
+        # THE BLOCK'S FRAME COMES FROM ITS BOUNDING STREETS, not from a fit of
+        # its own cells. A principal-axis fit (_cell_frame) is wrong here twice
+        # over: on a square-ish cuadra sxx≈syy, the fit is degenerate and snaps
+        # to ±45°, cutting the parts along the CONTRARY diagonal to the manzana;
+        # and even when it lands, it can only return ORTHOGONAL axes, while the
+        # cuadrícula is a parallelogram. So COLUMNS are cut by lines parallel to
+        # the CALLES and ROWS by lines parallel to the AVENIDAS — each cell is
+        # projected on the NORMAL of the other family, an affine frame that fits
+        # a non-square block. `ang` (the avenida direction) rides into the
+        # manifest so the renderer draws on the block's angle too.
+        av = _street_dir(spec["ave_north"], ref, "x") or _street_dir(spec["ave_south"], ref, "x")
+        cl = _street_dir(spec["calles"][0], ref, "y") or _street_dir(spec["calles"][1], ref, "y")
+        mx, my, ca, sa = _cell_frame(outer)          # centre (+ fallback axes)
+        if av and cl:
+            ang = math.atan2(av[1], av[0])
+            nrow = (-av[1], av[0])                   # normal of the avenidas → row coord (south+)
+            ncol = (cl[1], -cl[0])                   # normal of the calles   → col coord (east+)
+        else:
+            print(f"[parcel] WARN {spec['id']} street direction unresolved "
+                  f"(avenida {av}, calle {cl}) — principal-axis fallback")
+            ang = math.atan2(sa, ca)
+            nrow, ncol = (-sa, ca), (ca, sa)
+        print(f"[parcel] {spec['id']} block frame {math.degrees(ang):+.1f}° "
+              f"(avenida {av}, calle {cl}), {len(outer)} cells")
+        uv = {c: ((c[0] - mx) * ncol[0] + (c[1] - my) * ncol[1],
+                  (c[0] - mx) * nrow[0] + (c[1] - my) * nrow[1])
               for c in outer}
         cw = spec.get("cols", [1]); rw = spec.get("rows", [1])
         ue = _bands([v[0] for v in uv.values()], cw)
@@ -3733,7 +3790,7 @@ def main():
             if len(own) < nominal * span * 0.35:
                 print(f"[parcel] WARN {part['id']} only {len(cells)} cells vs "
                       f"{nominal * span:.0f} nominal — split does not suit this block"); continue
-            _emit_parcel(spec["id"], part, own, cells)
+            _emit_parcel(spec["id"], part, own, cells, ang)
 
     for _pc in (
         {"id": "carmen", "at": (12620, 9755),      # Calle 35-33 x Av Centenario-Av 1

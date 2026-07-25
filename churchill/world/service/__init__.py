@@ -15,6 +15,11 @@ from .osm import (
 )
 from .network import block_census, largest_drivable_component, verify_connectivity
 from .projection import PlanarProjection, project_way_pts
+from .placement import (
+    block_containing, cell_class, drivable_cell, kiosk_frontage, near_drivable,
+    nearest_block, nearest_cell, nudge_off_acera, nudge_to_land, resolve_poi,
+    road_adj, snap_into_block, snap_into_block_cell,
+)
 from .street import StreetIndex, half_plane, resample_centerline
 from .surface import (
     acera_fringe, beach_fringe, raster_coast_barrier, raster_poly_barrier,
@@ -26,7 +31,10 @@ __all__ = [
     "barro_leon_continuation", "block_census", "cells_to_rects", "detect_blocks",
     "extract_areas", "extract_buildings", "extract_coastlines", "extract_pois",
     "extract_rails", "extract_roads", "paseo_median_runs",
-    "propagate_barro_to_crossings",
+    "propagate_barro_to_crossings", "block_containing", "cell_class",
+    "drivable_cell", "kiosk_frontage", "near_drivable", "nearest_block",
+    "nearest_cell", "nudge_off_acera", "nudge_to_land", "resolve_poi",
+    "road_adj", "snap_into_block", "snap_into_block_cell",
     "paseo_roads", "stamp_paseo_median",
     "largest_drivable_component", "verify_connectivity",
     "beach_fringe", "block_raster_cells", "cuadra_cells", "half_plane",

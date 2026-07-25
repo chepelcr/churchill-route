@@ -71,6 +71,17 @@ from churchill.world.service.surface import (   # noqa: E402
 from churchill.world.service.block import (    # noqa: E402
     block_raster_cells, cells_to_rects, cuadra_cells, detect_blocks, outline_poly,
 )
+from churchill.world.service.placement import (  # noqa: E402
+    block_containing, cell_class, drivable_cell, kiosk_frontage,
+    nearest_block, nearest_cell, resolve_poi, road_adj,
+)
+from churchill.world.service.placement import (  # noqa: E402
+    near_drivable as _near_drivable,
+    nudge_off_acera,
+    nudge_to_land as _nudge_to_land,
+    snap_into_block as _snap_into_block,
+    snap_into_block_cell as _snap_into_block_cell,
+)
 from churchill.world.service.osm import (      # noqa: E402
     barro_leon_continuation, extract_areas, extract_buildings,
     extract_coastlines, extract_pois, extract_rails, extract_roads,
@@ -256,56 +267,13 @@ def main():
     log("districts", "" + ", ".join(f"{d['id']}:{d['x0']}-{d['x1']}" for d in districts))
 
     # --- POI resolution
-    def resolve(spec):
-        if "osm" in spec:
-            cands = [(nm, pm) for nm, pm, tg in named if spec["osm"] in nm]
-            if cands:
-                if "near" in spec:
-                    ref = to_m(*spec["near"])
-                elif "ll" in spec:
-                    ref = to_m(*spec["ll"])
-                else:
-                    ref = None
-                # take the osm match nearest the spec anchor, or (no anchor)
-                # nearest the candidates' own centroid, so a far stray duplicate
-                # of the name can't win.
-                if ref is None:
-                    cx = sum(c[1][0] for c in cands) / len(cands)
-                    cy = sum(c[1][1] for c in cands) / len(cands)
-                    ref = (cx, cy)
-                return min(cands, key=lambda c: dist(c[1], ref))[1], "osm"
-        if "ll" in spec:
-            return to_m(*spec["ll"]), "hand"
-        return None, "missing"
+    resolve = lambda spec: resolve_poi(named, spec)
 
     main_net = largest_drivable_component(raster)
 
-    def near_drivable(c, r, reach=ACERA_CELLS + 1):
-        """True if a MAIN-network street/beach cell is within `reach` cells (so
-        a POI pad stamped here merges with the network the player drives —
-        stranded road/beach fragments don't count)."""
-        for dr in range(-reach, reach + 1):
-            for dc in range(-reach, reach + 1):
-                cc, rr = c + dc, r + dr
-                if 0 <= cc < GRID_COLS and 0 <= rr < GRID_ROWS and \
-                        main_net[rr * GRID_COLS + cc]:
-                    return True
-        return False
+    near_drivable = lambda c, r, reach=ACERA_CELLS + 1: _near_drivable(raster, main_net, c, r, reach)
 
-    def nudge_to_land(x, y, radius_px=POI_NUDGE_PX, need_drivable=False):
-        c0, r0 = int(x / GRID_CELL), int(y / GRID_CELL)
-        best = None
-        R = radius_px // GRID_CELL
-        for dr in range(-R, R + 1):
-            for dc in range(-R, R + 1):
-                c, r = c0 + dc, r0 + dr
-                if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and grid[r * GRID_COLS + c] != CLS_WATER:
-                    d2 = dc * dc + dr * dr
-                    if (best is None or d2 < best[0]) and (not need_drivable or near_drivable(c, r)):
-                        best = (d2, c, r)
-        if best is None:
-            return None
-        return ((best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL)
+    nudge_to_land = lambda x, y, radius_px=POI_NUDGE_PX, need_drivable=False: _nudge_to_land(raster, near_drivable, x, y, radius_px, need_drivable)
 
     # Building landmarks (church, market, hotel…) must sit INSIDE a cuadra, not
     # on the street. From a drivable anchor, walk into the nearest block
@@ -319,39 +287,8 @@ def main():
     # (parks/pool). The stadium is placed by place_stadium (its own drivable
     # pitch) so it gets no apron here either. Excluded from the reachability gate.
     NO_PAD_LM = BUILDING_LM | {"park", "pool", "stadium"}
-    def _drivable_cell(c, r):
-        return 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and \
-            grid[r * GRID_COLS + c] in (CLS_ROAD, CLS_BRIDGE)
-    def snap_into_block(x, y, reach_px=160, inset_px=32):
-        # The anchor is on/next to a street; step into the nearest cuadra
-        # interior (CLS_LAND) and then a bit deeper (inset) so the footprint
-        # sits INSIDE the block fronting that street, not on the asphalt.
-        c0, r0 = int(x / GRID_CELL), int(y / GRID_CELL)
-        R = reach_px // GRID_CELL
-        best = None
-        for dr in range(-R, R + 1):
-            for dc in range(-R, R + 1):
-                c, r = c0 + dc, r0 + dr
-                if not (0 <= c < GRID_COLS and 0 <= r < GRID_ROWS):
-                    continue
-                if grid[r * GRID_COLS + c] != CLS_LAND:
-                    continue
-                d2 = dc * dc + dr * dr
-                if best is None or d2 < best[0]:
-                    best = (d2, c, r)
-        if best is None:
-            return None
-        _, bc, br = best
-        # push a couple cells further from the anchor (deeper into the block)
-        ins = inset_px // GRID_CELL
-        sc = 1 if bc >= c0 else -1
-        sr = 1 if br >= r0 else -1
-        for k in range(ins, 0, -1):
-            nc, nr = bc + sc * k, br + sr * k
-            if 0 <= nc < GRID_COLS and 0 <= nr < GRID_ROWS and grid[nr * GRID_COLS + nc] == CLS_LAND:
-                bc, br = nc, nr
-                break
-        return ((bc + 0.5) * GRID_CELL, (br + 0.5) * GRID_CELL)
+    _drivable_cell = lambda c, r: drivable_cell(raster, c, r)
+    snap_into_block = lambda x, y, reach_px=160, inset_px=32: _snap_into_block(raster, x, y, reach_px, inset_px)
 
     landmarks, failures = [], []
     for spec in LANDMARK_DEFS:
@@ -475,24 +412,8 @@ def main():
     #   (b) BEACH kiosks get a drivable SAND PATH from the nearest street so
     #       you can actually reach them. Runs BEFORE the pad stamp so the apron
     #       lands at the final position.
-    def _cell_cls(cc, cr):
-        if 0 <= cc < GRID_COLS and 0 <= cr < GRID_ROWS:
-            return grid[cr * GRID_COLS + cc]
-        return CLS_WATER
-    def _nearest_cell(x, y, classes, max_cells):
-        c0, r0 = int(x // GRID_CELL), int(y // GRID_CELL)
-        for rad in range(1, max_cells):
-            best = None
-            for a in range(0, 360, 6):
-                rc = c0 + int(round(math.cos(math.radians(a)) * rad))
-                rr = r0 + int(round(math.sin(math.radians(a)) * rad))
-                if _cell_cls(rc, rr) in classes:
-                    d2 = (rc - c0) ** 2 + (rr - r0) ** 2
-                    if best is None or d2 < best[0]:
-                        best = (d2, rc, rr)
-            if best:
-                return ((best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL)
-        return None
+    _cell_cls = lambda cc, cr: cell_class(raster, cc, cr)
+    _nearest_cell = lambda x, y, classes, max_cells: nearest_cell(raster, x, y, classes, max_cells)
     # BEACH kiosks: keep them on the sand and carve a drivable SAND PATH from the
     # nearest street. TOWN kiosks are re-seated INSIDE a cuadra (on the frontage
     # cell nearest a street) with a paved connector — done after block detection
@@ -659,29 +580,7 @@ def main():
     # Step each building landmark off its street anchor into a cuadra INTERIOR
     # cell — nearest block, cell ≥1 cuadrícula from any edge so it clears the
     # acera fringe and sits solidly inside the block (church-in-the-street fix).
-    def snap_into_block_cell(x, y, max_d_cuads=8):
-        ac, ar = int(x // CUAD), int(y // CUAD)
-        best = None
-        for b in blocks:
-            if b.get("green"):
-                continue
-            for (cc, cr) in b["cells"]:
-                d2 = (cc - ac) ** 2 + (cr - ar) ** 2
-                if best is None or d2 < best[0]:
-                    best = (d2, b["cells"])
-        # no buildable block nearby (fine-grained centro cuadras classify as
-        # slivers/green): KEEP the geo-true anchor instead of teleporting the
-        # building to a far block — this is what stacked catedral/cultura/museo
-        # onto one distant cell
-        if best is None or best[0] > max_d_cuads ** 2:
-            return None
-        cells = best[1]
-        interior = [c for c in cells
-                    if all((c[0] + dx, c[1] + dy) in cells
-                           for dx in (-1, 0, 1) for dy in (-1, 0, 1))]
-        pool = interior if interior else list(cells)
-        tc, tr = min(pool, key=lambda c: (c[0] - ac) ** 2 + (c[1] - ar) ** 2)
-        return ((tc + 0.5) * CUAD, (tr + 0.5) * CUAD)
+    snap_into_block_cell = lambda x, y, max_d_cuads=8: _snap_into_block_cell(blocks, x, y, max_d_cuads)
     n_snap = 0
     for lm in landmarks:
         if lm["type"] not in BUILDING_LM:
@@ -697,36 +596,7 @@ def main():
     # then straddles the sidewalk. Pull each to the NEAREST grid point with as
     # much solid-land clearance as its cuadra allows (±16 px if possible, down to
     # ±8 px), so the icon sits inside the block, not on the sidewalk.
-    def _nudge_off_acera(x, y, reach_cells=16):
-        cx0, cy0 = int(x / GRID_CELL), int(y / GRID_CELL)
-        def interior(c, r, pad):
-            for dc in range(-pad, pad + 1):
-                for dr in range(-pad, pad + 1):
-                    cc, rr = c + dc, r + dr
-                    if not (0 <= cc < GRID_COLS and 0 <= rr < GRID_ROWS):
-                        return False
-                    if grid[rr * GRID_COLS + cc] != CLS_LAND:
-                        return False
-            return True
-        for pad in (4, 3, 2):                          # prefer the deepest clearance available
-            if interior(cx0, cy0, pad):
-                return x, y                            # already well inside its cuadra
-            best = None
-            for rad in range(1, reach_cells + 1):
-                for dc in range(-rad, rad + 1):
-                    for dr in range(-rad, rad + 1):
-                        if max(abs(dc), abs(dr)) != rad:
-                            continue
-                        c, r = cx0 + dc, cy0 + dr
-                        if interior(c, r, pad):
-                            d2 = dc * dc + dr * dr
-                            if best is None or d2 < best[0]:
-                                best = (d2, c, r)
-                if best is not None:
-                    break
-            if best is not None:
-                return (best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL
-        return x, y
+    _nudge_off_acera = lambda x, y, reach_cells=16: nudge_off_acera(raster, x, y, reach_cells)
     n_nudge = 0
     for lm in landmarks:
         if lm["type"] not in BUILDING_LM:             # all cuadra buildings, not just civic
@@ -753,12 +623,7 @@ def main():
     balneario_cells = None    # its cuad cells → added to `occ` once that exists
     marine_site = None        # Parque Marino: {lm, cells, grass} → real OSM footprints + tanks
 
-    def _block_containing(x, y):
-        ac, ar = int(x // CUAD), int(y // CUAD)
-        for bi, b in enumerate(blocks):
-            if (ac, ar) in b["cells"]:
-                return bi
-        return None
+    _block_containing = lambda x, y: block_containing(blocks, x, y)
 
     # --- TOWN kiosks: seat each on a NEARBY cuadra FRONTAGE cell (solid land next
     # to a street, never the roadway/acera/median) and carve a short paved
@@ -775,37 +640,9 @@ def main():
         br0 = min(r for _, r in cs); br1 = max(r for _, r in cs)
         nongreen_blocks.append((bc0, bc1, br0, br1, cs))
 
-    def _road_adj(cc, cr):
-        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            px = int((cc + dc + 0.5) * CUAD // GRID_CELL)
-            py = int((cr + dr + 0.5) * CUAD // GRID_CELL)
-            if _cell_cls(px, py) in (CLS_ROAD, CLS_BRIDGE, CLS_PASEO, CLS_ACERA):
-                return True
-        return False
+    _road_adj = lambda cc, cr: road_adj(raster, cc, cr)
 
-    def _kiosk_frontage(x, y):
-        ac, ar = int(x // CUAD), int(y // CUAD)
-        m = KIOSK_SNAP_CUAD
-        best = None
-        for (bc0, bc1, br0, br1, cs) in nongreen_blocks:
-            if ac < bc0 - m or ac > bc1 + m or ar < br0 - m or ar > br1 + m:
-                continue
-            for (cc, cr) in cs:
-                if abs(cc - ac) > m or abs(cr - ar) > m:
-                    continue
-                d2 = (cc - ac) ** 2 + (cr - ar) ** 2
-                if best is None or d2 < best[0]:
-                    best = (d2, cc, cr, cs)
-        if best is None:
-            return None
-        cs = best[3]
-        near = [c for c in cs if abs(c[0] - ac) <= m and abs(c[1] - ar) <= m]
-        frontage = [c for c in near if _road_adj(*c)]
-        pool = frontage if frontage else near
-        if not pool:
-            return None
-        tc, tr = min(pool, key=lambda c: (c[0] - ac) ** 2 + (c[1] - ar) ** 2)
-        return ((tc + 0.5) * CUAD, (tr + 0.5) * CUAD)
+    _kiosk_frontage = lambda x, y: kiosk_frontage(raster, nongreen_blocks, KIOSK_SNAP_CUAD, x, y)
     for lm in landmarks:
         if lm["type"] != "kiosk" or lm["id"] in beach_kiosks:
             if lm["type"] == "kiosk":
@@ -838,18 +675,7 @@ def main():
     # OSM parks (parquemar, cocal_park) + the Balneario pool: paint their green
     # on the containing block's footprint so the cuadra is OPEN (no buildings),
     # tagged by type for the renderer's colour-by-type fill.
-    def _nearest_block(x, y, min_cells=12):
-        ac, ar = int(x // CUAD), int(y // CUAD)
-        best = None
-        for bi, b in enumerate(blocks):
-            if b.get("green") or len(b["cells"]) < min_cells:
-                continue
-            cs = b["cells"]
-            cx = sum(c for c, _ in cs) / len(cs); cy = sum(r for _, r in cs) / len(cs)
-            d2 = (cx - ac) ** 2 + (cy - ar) ** 2
-            if best is None or d2 < best[0]:
-                best = (d2, bi)
-        return best[1] if best else None
+    _nearest_block = lambda x, y, min_cells=12: nearest_block(blocks, x, y, min_cells)
     for lm in landmarks:
         if lm["type"] not in ("park", "pool"):
             continue

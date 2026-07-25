@@ -54,6 +54,10 @@ from churchill.world.logging import log, warn   # noqa: E402
 
 
 from churchill.world.pipeline.emit import emit_world2d  # noqa: E402
+from churchill.world.pipeline.extract import extract_world  # noqa: E402
+from churchill.world.pipeline.finish import (  # noqa: E402
+    build_meta, verify, write_world,
+)
 from churchill.world.repository.debug_render import render_debug  # noqa: E402
 from churchill.world.repository.osm_file import OsmFileRepository  # noqa: E402
 from churchill.world.repository.world_json import JsonWorldRepository  # noqa: E402
@@ -132,42 +136,23 @@ def planar_muelle_axis(roads, near_x, near_y, reach=1500):
 
 def main():
     t0 = time.time()
-    log("parse", f"{OSM_PATH}")
-    nodes, ways, named, rels, poi_nodes = OsmFileRepository(OSM_PATH).load()
-    log("parse", f"{len(nodes)} nodes, {len(ways)} kept ways, {len(named)} named features ({time.time()-t0:.1f}s)")
-
-    # The world's size comes out of the projection setup — it is not a knob, and
-    # it is not a global: these are locals from here on.
-    sp, dims = planar_setup(ways)
+    ctx, raw_bldgs, bridge_road = extract_world(OsmFileRepository(OSM_PATH))
+    # The stage owns the context; these locals are the same objects, kept while
+    # the remaining phases still read them by their old names.
+    sp, dims = ctx.projection, ctx.dims
     CANVAS_W, CANVAS_H, CENTER_Y = dims.w, dims.h, dims.center_y
     GRID_COLS, GRID_ROWS = dims.cols, dims.rows
-
-    roads, bridge_road = extract_roads(sp, ways, CANVAS_W, CANVAS_H)
-    # León Cortés end-barro + dirt cross streets (coordinate-agnostic).
-    barro_leon_continuation(roads)
-    propagate_barro_to_crossings(roads)
-    # Junction triangles and medians EMERGE from the real geometry via
-    # detect_blocks — no hand-placed gores, islands or carriageway splits.
+    nodes, ways, named, rels, poi_nodes = (ctx.nodes, ctx.ways, ctx.named,
+                                           ctx.relations, ctx.poi_nodes)
+    roads, rails, pois = ctx.roads, ctx.rails, ctx.pois
+    beaches, waters = ctx.beaches, ctx.waters
     junction_islands = []
-    rails = extract_rails(sp, ways, CANVAS_W, CANVAS_H)
-    log("rails", f"{len(rails)} rail pieces")
-    n_by_cls = defaultdict(int)
-    for r in roads:
-        n_by_cls[r["cls"]] += 1
-    log("roads", f"{len(roads)} pieces: {dict(n_by_cls)}")
-    if bridge_road is None:
-        warn("roads", "Puente colgante way not found — synthesizing later")
-
-    raw_bldgs = extract_buildings(sp, ways, roads, CANVAS_W, CANVAS_H)
-    beaches, waters = extract_areas(sp, ways, rels, CANVAS_W, CANVAS_H)
-    pois = extract_pois(sp, ways, poi_nodes, CANVAS_W, CANVAS_H)
-    log("areas", f"{len(beaches)} beach, {len(waters)} water polys")
 
     # --- raster surface grid
     # ONE raster, and `grid` stays an alias of its buffer: the algorithms that
     # moved to util take the object, while everything still reading cells by
     # index keeps working until it moves to a service too.
-    raster = Raster(GRID_COLS, GRID_ROWS, GRID_CELL)
+    raster = ctx.raster
     grid = raster.buf
     barrier = bytearray(GRID_COLS * GRID_ROWS)
     chains = extract_coastlines(sp, ways)
@@ -1300,8 +1285,17 @@ def main():
             n_beach_palms += 1
     log("verde", f"{n_patio} patio/park trees, {n_beach_palms} beach palms")
 
-    # --- verification gate: every POI reachable through the drivable network
-    # from the Faro spawn, plus a cuadrícula block census (tuning instrument).
+    # --- verification gate + emit. The context is the world; these locals are
+    # the same objects the earlier phases filled.
+    ctx.districts, ctx.blocks, ctx.plazas, ctx.greens = districts, blocks, plazas, greens
+    ctx.landmarks, ctx.customers = landmarks, customers
+    ctx.buildings, ctx.stadiums, ctx.parcels = buildings, stadiums, parcels
+    ctx.kiosk_paths, ctx.trees, ctx.palms = kiosk_paths, trees, palms
+    ctx.mangroves, ctx.medians = mangroves, medians
+    ctx.bridge, ctx.estuary, ctx.pier = bridge, est, pier
+    ctx.faro_pier, ctx.balneario = faro_pier, balneario
+    ctx.failures = failures
+
     _kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
     spawn = tuple(_kf["spawn"]) if (_kf and _kf.get("spawn")) else (
         (faro_lm["x"], faro_lm["y"]) if faro_lm else (
@@ -1309,54 +1303,15 @@ def main():
     # scenery landmarks (no drivable pad) aren't delivery targets → exclude
     # them from the reachability gate
     gate_pois = [l for l in landmarks if l["type"] not in NO_PAD_LM] + customers
-    unreachable = verify_connectivity(raster, spawn,
-                                      gate_pois, reach=ACERA_CELLS + 1)
-    failures.extend("unreachable " + u for u in unreachable)
-    block_census(raster)
+    verify(ctx, spawn=spawn, gate_pois=gate_pois)
 
     mata_x0 = next(d["x0"] for d in districts if d["id"] == "mata")
-    hills = [{"x0": mata_x0 - 1200, "x1": CANVAS_W, "baseY": 750, "color": "#5e8a55"},
-             {"x0": mata_x0, "x1": CANVAS_W - 600, "baseY": 600, "color": "#4c7848"}]
+    ctx.hills = [{"x0": mata_x0 - 1200, "x1": CANVAS_W, "baseY": 750, "color": "#5e8a55"},
+                 {"x0": mata_x0, "x1": CANVAS_W - 600, "baseY": 600, "color": "#4c7848"}]
 
-    # --- emit
-    meta = {"W": CANVAS_W, "H": CANVAS_H, "centerY": CENTER_Y, "cell": GRID_CELL,
-            "cuad": CUAD, "cuadsPerView": CUADS_PER_VIEW,
-            "aceraPx": ACERA_CELLS * GRID_CELL,
-            "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
-            "spineLenM": round(sp.total)}
-    # geo→world affine (planar projection is exactly linear in lon/lat):
-    # x = ax*lon + bx ; y = ay*lat + by. Lets the CLIENT place remote
-    # content (server NPCs / sponsored lotes) given real lat/lon, without
-    # shipping the projection code.
-    la0, lo0, la1, lo1 = 9.90, -84.90, 10.00, -84.70  # two reference points
-    xa, ya, _, _ = sp.project(to_m(la0, lo0))
-    xb, yb, _, _ = sp.project(to_m(la1, lo1))
-    ax = (xb - xa) / (lo1 - lo0); bx = xa - ax * lo0
-    ay = (yb - ya) / (la1 - la0); by = ya - ay * la0
-    meta["geo"] = {"ax": round(ax, 4), "bx": round(bx, 2),
-                   "ay": round(ay, 4), "by": round(by, 2)}
-    # chunked/tiled emit → src/world2d/ (streamable full-OSM world)
-    emit_world2d(raster, JsonWorldRepository(WORLD2D_DIR), meta=meta, districts=districts, roads=roads, rails=rails,
-                 buildings=buildings, trees=trees, palms=palms, mangroves=mangroves,
-                 medians=medians, plazas=plazas, greens=greens, islands=junction_islands,
-                 beaches=beaches, waters=waters, land_polys=land_contours,
-                 landmarks=landmarks, customers=customers, stages=STAGES, stadiums=stadiums,
-                 kiosk_paths=kiosk_paths, faro_pier=faro_pier, balneario=balneario,
-                 bridge=bridge, estuary=est, pier=pier, hills=hills, pois=pois, parcels=parcels)
-
-    # --- debug renders
-    render_debug(raster=raster, buildings=buildings, landmarks=landmarks,
-                 customers=customers, roads=roads, land_contours=land_contours,
-                 waters=waters, bounds_x=bounds_x,
-                 png_path=DEBUG_PNG, svg_path=DEBUG_SVG)
-
-    log("done", f"total {time.time()-t0:.1f}s")
-    # Note: the service worker (public/sw.js) uses runtime caching with a manual
-    # CACHE version now that Vite fingerprints assets — no build-time stamping.
-    if failures:
-        # every POI + stage must resolve (52/52 reachable) — the gate is fatal
-        # so a regression fails the build loudly.
-        raise SystemExit(f"[poi] BUILD INCOMPLETE — unresolved: {failures}")
+    write_world(ctx, JsonWorldRepository(WORLD2D_DIR), meta=build_meta(ctx),
+                islands=junction_islands, land_polys=land_contours,
+                bounds_x=bounds_x, t0=t0)
 
 
 if __name__ == "__main__":

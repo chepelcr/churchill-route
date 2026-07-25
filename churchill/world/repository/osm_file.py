@@ -80,4 +80,5 @@ class OsmFileRepository:
         self.path = path
 
     def load(self):
+        log("parse", self.path)
         return parse_osm(self.path)

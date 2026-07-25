@@ -97,18 +97,22 @@ function paintStadiumCuadras(view) {
 // on ground that already exists, painted between the acera band and the
 // asphalt — so the asphalt repaints anything that reached the roadway, and
 // street pills, buildings and flora still land on top.
-const PARCEL_FILL = { plaza: "#4f9d5b", church: "#cfc7b4", lot: "#b9b2a0" };
+const PARCEL_FILL = { plaza: "#4f9d5b", stadium: "#4f9d5b", church: "#cfc7b4", lot: "#b9b2a0" };
 function paintParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;
   for (const P of arr) {
     if (P.x1 + 40 < view.x0 || P.x0 - 40 > view.x1 || P.y1 + 40 < view.y0 || P.y0 - 40 > view.y1) continue;
+    // `whole` = a full cuadra already painted by paintStadiumCuadras; `built` =
+    // the footprint IS a building. Either way the ground is not ours to paint,
+    // only the sponsor slot on top of it.
+    if (P.whole || P.built) continue;
     const path = P._path || (P._path = flatPath(P.poly, true));
     ctx.fillStyle = PARCEL_FILL[P.use] || "#b9b2a0";
     ctx.lineWidth = 8; ctx.lineJoin = "round";
     ctx.strokeStyle = ctx.fillStyle; ctx.stroke(path);   // hide the 4px raster steps
     ctx.fill(path);
-    if (P.use === "plaza") {
+    if (P.use === "plaza" || P.use === "stadium") {
       ctx.save(); ctx.clip(path);
       ctx.fillStyle = "rgba(30,88,50,0.16)";
       for (let sy = P.y0; sy < P.y1; sy += 14) ctx.fillRect(P.x0, sy, P.x1 - P.x0, 7);

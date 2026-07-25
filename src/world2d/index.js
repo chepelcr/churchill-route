@@ -54,7 +54,7 @@ export const WORLD2D = (function () {
   // new plaza gets both for free instead of needing to be a "stadium".
   const FIELDS = [
     ...STADIUMS,
-    ...PARCELS.filter((p) => p.use === "plaza").map((p) => ({
+    ...PARCELS.filter((p) => (p.use === "plaza" || p.use === "stadium") && !p.whole).map((p) => ({
       x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1,
       cx: (p.x0 + p.x1) / 2, cy: (p.y0 + p.y1) / 2,
       footprint: p.poly, outline: p.poly,      // plazas have no acera ring

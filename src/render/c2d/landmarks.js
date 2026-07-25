@@ -227,8 +227,11 @@ function drawParcels(view) {
     if (P.use === "church") drawChurch(P.cx, P.cy, Math.min(1, (P.x1 - P.x0) / 44));
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
     if (lote) drawSponsorSlot(P, lote);
-    areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(),
-              "#fff", P.use === "plaza" ? "#2e7d44" : "#8a6f4a");
+    // a whole-cuadra field already carries the estadio's own name pill
+    if (!P.whole) {
+      areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(), "#fff",
+                (P.use === "plaza" || P.use === "stadium") ? "#2e7d44" : "#8a6f4a");
+    }
   }
 }
 // A sponsor's art fills the parcel's slot: a plate with its name, sized and

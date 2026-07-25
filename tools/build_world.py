@@ -3576,6 +3576,19 @@ def main():
         stadiums.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                          "cx": cxpx, "cy": cypx, "footprint": footprint,
                          "outline": outline})
+        # …and as a sponsorable space. A stadium is a WHOLE cuadra, not a part
+        # of one, so `whole` tells the renderer its ground is already painted
+        # (by paintStadiumCuadras) and only the slot art belongs to the parcel.
+        # The slot is centred — the middle of the pitch is where a club crest
+        # goes.
+        sw = max(40, (bx1 - bx0) // 3); sh = max(28, (by1 - by0) // 3)
+        parcels.append({"id": f"{spec['id']}_field", "name": lm.get("name") or spec["id"],
+                        "use": "stadium", "whole": True, "poly": footprint,
+                        "cx": cxpx, "cy": cypx,
+                        "x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
+                        "slot": [int(cxpx - sw // 2), int(cypx - sh // 2), int(sw), int(sh)]})
+        print(f"[parcel] {spec['id']}_field (stadium, whole cuadra) "
+              f"slot[{int(cxpx - sw // 2)}, {int(cypx - sh // 2)}, {int(sw)}, {int(sh)}]")
         ox = outline[0::2]; oy = outline[1::2]
         print(f"[estadio] {spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
               f"-> cuadra ({min(ox)},{min(oy)})-({max(ox)},{max(oy)})px {len(outline)//2}v, "
@@ -3654,7 +3667,7 @@ def main():
         for b in blocks:
             if not b.get("green") and any(c in cuads for c in b["cells"]):
                 b["green"] = True
-        if part["use"] == "plaza":                # drivable open field
+        if part["use"] in ("plaza", "stadium"):   # drivable open field
             for (c, r) in cells:
                 grid[r * GRID_COLS + c] = CLS_ROAD
         print(f"[parcel] {part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
@@ -3714,7 +3727,7 @@ def main():
              {"id": "carmen_parroquia", "col": 0, "use": "church",
               "name": "Parroquia Nuestra Señora de El Carmen",
               "aceras": True, "anchor": "north"},
-             {"id": "carmen_plaza", "col": 1, "use": "plaza",
+             {"id": "carmen_plaza", "col": 1, "use": "stadium",
               "name": "Plaza Deportes El Carmen", "aceras": False},
          ]},
     ):

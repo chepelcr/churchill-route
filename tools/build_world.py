@@ -62,6 +62,13 @@ from churchill.world.service.field import FieldService  # noqa: E402
 from churchill.world.service.building import (  # noqa: E402
     _grid_placer, make_rng, snap_osm_buildings, synth_buildings,
 )
+from churchill.world.service.projection import (  # noqa: E402
+    PlanarProjection, project_way_pts,
+)
+from churchill.world.service.surface import (   # noqa: E402
+    acera_fringe, beach_fringe, raster_coast_barrier, raster_poly_barrier,
+    stamp_pad, trace_land_contours,
+)
 from churchill.world.service.block import (    # noqa: E402
     block_raster_cells, cuadra_cells, outline_poly,
 )
@@ -138,35 +145,6 @@ def parse_osm(path):
     return nodes, ways, named, rels, poi_nodes
 
 # ----------------------------------------------------------------- spine ---
-
-class PlanarProjection:
-    """Drop-in replacement for Spine in planar mode: a flat, real-proportion map.
-    `p_m` is (mx, my) metres from to_m(); world px = (m - min) · px_per_m."""
-    def __init__(self, min_mx, min_my, px_per_m):
-        self.min_mx, self.min_my = min_mx, min_my
-        self.px_per_m = px_per_m
-        self.total = 0.0
-
-    def to_px(self, mx, my):
-        return ((mx - self.min_mx) * self.px_per_m,
-                (my - self.min_my) * self.px_per_m)
-
-    def project_m(self, p_m, hint=None, window=80):
-        return p_m[0], p_m[1], 0
-
-    def project(self, p_m, hint=None):
-        x, y = self.to_px(p_m[0], p_m[1])
-        return x, y, 0, 0.0
-
-
-def project_way_pts(sp, pts):
-    out, hint, dmax = [], None, 0.0
-    for p in pts:
-        x, y, hint, d = sp.project(p, hint)
-        out.append((x, y))
-        dmax = max(dmax, abs(d))
-    return out, dmax
-
 
 def extract_roads(sp, ways):
     roads = []
@@ -497,172 +475,6 @@ def extract_areas(sp, ways, rels):
 
 # ------------------------------------------------------------ raster grid ---
 
-def _stamp_barrier(barrier, c, r):
-    """Set a barrier cell, thickened to a 3x3 block so sub-cell gaps at
-    coastline segment joints don't leak the sea flood into the land (the
-    single-cell supercover line can miss a diagonal where two chains meet)."""
-    rad = 1
-    n = 0
-    for dr in range(-rad, rad + 1):
-        for dc in range(-rad, rad + 1):
-            cc, rr = c + dc, r + dr
-            if 0 <= cc < GRID_COLS and 0 <= rr < GRID_ROWS and not barrier[rr * GRID_COLS + cc]:
-                barrier[rr * GRID_COLS + cc] = 1
-                n += 1
-    return n
-
-
-def raster_coast_barrier(grid_barrier, sp, chains, nodes):
-    """Rasterize coastline chains as barriers (supercover lines)."""
-    drawn = 0
-    for nds in chains:
-        pts_m = [to_m(*nodes[r]) for r in nds if r in nodes]
-        if len(pts_m) < 2:
-            continue
-        # EVERY coastline chain is rasterised: the estuary/south/inland shores
-        # are far from the town, and dropping any of them leaves the peninsula
-        # unenclosed and the sea flood leaks inland.
-        pts, _ = project_way_pts(sp, pts_m)
-        for i in range(len(pts) - 1):
-            x0, y0 = pts[i]
-            x1, y1 = pts[i + 1]
-            L = math.hypot(x1 - x0, y1 - y0)
-            steps = max(1, int(L / (GRID_CELL * 0.5)))
-            for k in range(steps + 1):
-                x = x0 + (x1 - x0) * k / steps
-                y = y0 + (y1 - y0) * k / steps
-                c, r = int(x / GRID_CELL), int(y / GRID_CELL)
-                if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS:
-                    drawn += _stamp_barrier(grid_barrier, c, r)
-    log("coast", f"rasterized barrier cells: {drawn}")
-
-
-def raster_poly_barrier(barrier, polys):
-    """Rasterize closed polygon boundaries (flat px coords) as 1-cell flood
-    barriers. natural=water bodies are mapped by OSM as AREAS, not coastline —
-    notably the Estero de Puntarenas along the spit's north shore. Without their
-    outline as a barrier the sea flood leaks across that un-barriered shore and
-    drains the whole peninsula to water. Their interiors are stamped CLS_WATER
-    after the flood regardless, so bordering them only contains the flood."""
-    drawn = 0
-    for poly in polys:
-        pts = [(poly[i], poly[i + 1]) for i in range(0, len(poly), 2)]
-        if len(pts) < 3:
-            continue
-        pts.append(pts[0])
-        for i in range(len(pts) - 1):
-            x0, y0 = pts[i]
-            x1, y1 = pts[i + 1]
-            L = math.hypot(x1 - x0, y1 - y0)
-            steps = max(1, int(L / (GRID_CELL * 0.5)))
-            for k in range(steps + 1):
-                x = x0 + (x1 - x0) * k / steps
-                y = y0 + (y1 - y0) * k / steps
-                c, r = int(x / GRID_CELL), int(y / GRID_CELL)
-                if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS:
-                    drawn += _stamp_barrier(barrier, c, r)
-    return drawn
-
-
-def trace_land_contours(grid):
-    """Marching-squares style: emit oriented boundary edges (land on left),
-    chain them into loops, return px-space polygons."""
-    edges = {}  # start -> end
-
-    def is_land(c, r):
-        if c < 0 or c >= GRID_COLS or r < 0 or r >= GRID_ROWS:
-            return False
-        return grid[r * GRID_COLS + c] != CLS_WATER
-
-    G = GRID_CELL
-    for r in range(GRID_ROWS):
-        for c in range(GRID_COLS):
-            if not is_land(c, r):
-                continue
-            x0, y0, x1, y1 = c * G, r * G, (c + 1) * G, (r + 1) * G
-            if not is_land(c + 1, r):
-                edges[(x1, y1)] = (x1, y0)
-            if not is_land(c - 1, r):
-                edges[(x0, y0)] = (x0, y1)
-            if not is_land(c, r - 1):
-                edges[(x1, y0)] = (x0, y0)
-            if not is_land(c, r + 1):
-                edges[(x0, y1)] = (x1, y1)
-    loops = []
-    while edges:
-        start, cur = next(iter(edges.items()))
-        loop = [start]
-        del edges[start]
-        while cur != start and cur in edges:
-            loop.append(cur)
-            nxt = edges[cur]
-            del edges[cur]
-            cur = nxt
-        if cur == start and len(loop) >= 8:
-            loops.append(loop)
-    out = []
-    for lp in loops:
-        if abs(poly_area(lp)) < 400:  # skip specks
-            continue
-        simp = dp_simplify(lp + [lp[0]], DP_COAST_PX)[:-1]
-        if len(simp) >= 3:
-            out.append([round(v) for p in simp for v in p])
-    out.sort(key=lambda fl: -abs(poly_area([(fl[i], fl[i + 1]) for i in range(0, len(fl), 2)])))
-    log("coast", f"traced {len(out)} land contour loops")
-    return out
-
-
-def acera_fringe(grid, depth_cells=ACERA_CELLS):
-    """Sidewalks: convert land cells bordering roads/paseo into acera."""
-    cur = [i for i in range(len(grid)) if grid[i] in (CLS_ROAD, CLS_PASEO)]
-    for _ in range(depth_cells):
-        nxt = []
-        for idx in cur:
-            r, c = divmod(idx, GRID_COLS)
-            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
-                if 0 <= nr < GRID_ROWS and 0 <= nc < GRID_COLS:
-                    nidx = nr * GRID_COLS + nc
-                    if grid[nidx] == CLS_LAND:
-                        grid[nidx] = CLS_ACERA
-                        nxt.append(nidx)
-        cur = nxt
-
-
-def stamp_pad(grid, x, y, r_px):
-    """Carve a drivable road apron under a POI, punching through the acera so
-    you can pull off the street right up to the kiosk/customer even though
-    aceras are otherwise non-drivable curbs. Cuadrícula-aligned: the apron is
-    a whole-CUAD square centered on the POI's cuadrícula cell."""
-    side = max(2, round(2 * r_px / CUAD))          # side in cuadrículas
-    cc0 = int(x // CUAD) - (side - 1) // 2
-    cr0 = int(y // CUAD) - (side - 1) // 2
-    c0, r0 = cc0 * CUAD_CELLS, cr0 * CUAD_CELLS    # raster origin, on-lattice
-    for r in range(max(0, r0), min(GRID_ROWS, r0 + side * CUAD_CELLS)):
-        row = r * GRID_COLS
-        for c in range(max(0, c0), min(GRID_COLS, c0 + side * CUAD_CELLS)):
-            if grid[row + c] in (CLS_LAND, CLS_ACERA):
-                grid[row + c] = CLS_ROAD
-
-
-def beach_fringe(grid, depth_cells=3):
-    """Mark land cells within depth of water as beach (natural sand fringe)."""
-    cur = [i for i in range(len(grid)) if grid[i] == CLS_WATER]
-    for _ in range(depth_cells):
-        nxt = []
-        for idx in cur:
-            r, c = divmod(idx, GRID_COLS)
-            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
-                if 0 <= nr < GRID_ROWS and 0 <= nc < GRID_COLS:
-                    nidx = nr * GRID_COLS + nc
-                    if grid[nidx] == CLS_LAND:
-                        grid[nidx] = CLS_BEACH
-                        nxt.append(nidx)
-        cur = nxt
-
-# ------------------------------------------------------ verification gate ---
-
-# What physics lets you drive: streets/paseo/bridges plus beach (sand is slow
-# but not a wall — several POIs are beach-side and reached across the sand).
 DRIVABLE_CLS = DRIVABLE_CLASSES     # see enums.surface: sand is slow, not a wall
 
 def largest_drivable_component(grid):
@@ -1147,10 +959,10 @@ def main():
     barrier = bytearray(GRID_COLS * GRID_ROWS)
     chains = extract_coastlines(sp, ways)
     log("coast", f"{len(chains)} stitched chains from natural=coastline")
-    raster_coast_barrier(barrier, sp, chains, nodes)
+    raster_coast_barrier(barrier, raster, sp, chains, nodes)
     # water bodies (estuary) are areas, not coastline — barrier their edges
     # too so the flood can't leak across an un-barriered shore into the land
-    nb = raster_poly_barrier(barrier, waters)
+    nb = raster_poly_barrier(barrier, raster, waters)
     log("coast", f"+{nb} water-outline barrier cells (planar)")
     # flood ONLY the open outer gulf (the entire west bbox edge
     # is deep gulf, west of La Punta). Do NOT seed the estuary/inner water
@@ -1178,10 +990,10 @@ def main():
         if cls_at_geo(p) == CLS_LAND:
             log("WARN", f"sea probe {p} is LAND")
 
-    land_contours = trace_land_contours(grid)
+    land_contours = trace_land_contours(raster)
     for b in beaches:
         raster.fill_poly([(b[i], b[i + 1]) for i in range(0, len(b), 2)], CLS_BEACH)
-    beach_fringe(grid, 9)
+    beach_fringe(raster, 9)
     for wpoly in waters:
         raster.fill_poly([(wpoly[i], wpoly[i + 1]) for i in range(0, len(wpoly), 2)], CLS_WATER)
     for r in roads:
@@ -1454,7 +1266,7 @@ def main():
 
     # --- aceras (sidewalks) + plaza pads: these define where you can drive
     # off-street; everything left as CLS_LAND becomes solid cuadra interior
-    acera_fringe(grid)
+    acera_fringe(raster)
 
     # --- Kiosk placement: real aceras are respected everywhere (walls), so
     #   (a) kiosks sitting mid-lane shift onto the adjacent sidewalk, and
@@ -1511,9 +1323,9 @@ def main():
         # theirs in the cuadra-frontage pass after block detection
         if lm["type"] in NO_PAD_LM or lm["type"] == "kiosk":
             continue
-        stamp_pad(grid, lm["x"], lm["y"], 48)
+        stamp_pad(raster, lm["x"], lm["y"], 48)
     for cu in customers:
-        stamp_pad(grid, cu["x"], cu["y"], 56)
+        stamp_pad(raster, cu["x"], cu["y"], 56)
     faro_lm = next((l for l in landmarks if l["id"] == "faro"), None)
     faro_pier = None
     faro_esp = None
@@ -1795,12 +1607,12 @@ def main():
     for lm in landmarks:
         if lm["type"] != "kiosk" or lm["id"] in beach_kiosks:
             if lm["type"] == "kiosk":
-                stamp_pad(grid, lm["x"], lm["y"], 44)   # apron for the beach stand
+                stamp_pad(raster, lm["x"], lm["y"], 44)   # apron for the beach stand
             continue
         spot = _kiosk_frontage(lm["x"], lm["y"])
         if spot:
             lm["x"], lm["y"] = round(spot[0]), round(spot[1])
-        stamp_pad(grid, lm["x"], lm["y"], 44)            # drivable pocket
+        stamp_pad(raster, lm["x"], lm["y"], 44)            # drivable pocket
         tgt = _nearest_cell(lm["x"], lm["y"], (CLS_ROAD, CLS_BRIDGE, CLS_PASEO), 60)
         if tgt:
             raster.stamp_polyline([lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)

@@ -6,10 +6,17 @@ what makes it callable from a stage, from a test, or later from an API route.
 from .block import block_raster_cells, cuadra_cells, outline_poly
 from .building import make_rng, snap_osm_buildings, synth_buildings
 from .field import FieldService
+from .projection import PlanarProjection, project_way_pts
 from .street import StreetIndex, half_plane, resample_centerline
+from .surface import (
+    acera_fringe, beach_fringe, raster_coast_barrier, raster_poly_barrier,
+    stamp_pad, trace_land_contours,
+)
 
 __all__ = [
-    "FieldService", "StreetIndex", "block_raster_cells", "cuadra_cells",
-    "half_plane", "make_rng", "outline_poly", "resample_centerline",
-    "snap_osm_buildings", "synth_buildings",
+    "FieldService", "PlanarProjection", "StreetIndex", "acera_fringe",
+    "beach_fringe", "block_raster_cells", "cuadra_cells", "half_plane",
+    "make_rng", "outline_poly", "project_way_pts", "raster_coast_barrier",
+    "raster_poly_barrier", "resample_centerline", "snap_osm_buildings",
+    "stamp_pad", "synth_buildings", "trace_land_contours",
 ]

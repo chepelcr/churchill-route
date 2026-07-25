@@ -55,6 +55,8 @@ from churchill.world.logging import log, warn   # noqa: E402
 CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 
+from churchill.world.pipeline.emit import emit_world2d  # noqa: E402
+from churchill.world.repository.debug_render import render_debug  # noqa: E402
 from churchill.world.repository.world_json import JsonWorldRepository  # noqa: E402
 from churchill.world.service.field import FieldService  # noqa: E402
 from churchill.world.service.block import (    # noqa: E402
@@ -1216,158 +1218,6 @@ def stamp_paseo_median(raster, median_runs):
     return dashes
 
 # ---------------------------------------------------------------- outputs ---
-
-def write_png(path, w, h, get_rgb, stride=1):
-    """Rasterise get_rgb(x,y) to a PNG. `stride` downsamples (samples every
-    `stride`-th cell on both axes) so a huge planar grid still yields a small,
-    fast eyeball render instead of a multi-minute per-pixel pass."""
-    xs = range(0, w, stride)
-    ys = range(0, h, stride)
-    ow, oh = len(xs), len(ys)
-    rows = []
-    for y in ys:
-        row = bytearray()
-        for x in xs:
-            row.extend(get_rgb(x, y))
-        rows.append(bytes(row))
-    w, h = ow, oh
-    raw = b"".join(b"\x00" + r for r in rows)
-    comp = zlib.compress(raw, 6)
-
-    def chunk(typ, data):
-        return struct.pack(">I", len(data)) + typ + data + struct.pack(">I", zlib.crc32(typ + data))
-
-    with open(path, "wb") as f:
-        f.write(b"\x89PNG\r\n\x1a\n")
-        f.write(chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)))
-        f.write(chunk(b"IDAT", comp))
-        f.write(chunk(b"IEND", b""))
-
-
-def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms,
-                 mangroves, medians, plazas, islands, beaches, waters, land_polys,
-                 landmarks, customers, stages, bridge, estuary, pier, hills,
-                 stadiums=None, kiosk_paths=None, faro_pier=None, greens=None,
-                 balneario=None, pois=None, parcels=None):
-    """Chunked planar emit (Milestone D): tile the world into
-    src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
-    features overlapping that tile) plus a small src/world2d/manifest.json (world
-    size, tiling, districts, POIs, backdrop polys). Replaces the single
-    src/world/data.js so the full-OSM world stays streamable instead of one huge
-    payload. A feature spanning a tile border is written into every tile its
-    bbox overlaps (the accessor culls/dedups by tile) — long roads are the only
-    notable duplication, still cheap. Backdrop polygons (coast/water/beach) stay
-    global in the manifest (few, and the per-cell RLE is the surface source of
-    truth for physics/rasterised render)."""
-    repo = JsonWorldRepository(WORLD2D_DIR)
-    repo.clear_tiles()
-
-    tcols = (GRID_COLS + TILE_CELLS - 1) // TILE_CELLS
-    trows = (GRID_ROWS + TILE_CELLS - 1) // TILE_CELLS
-    buckets = defaultdict(lambda: defaultdict(list))    # (tc,tr) -> key -> [feat]
-
-    def tiles_for_bbox(x0, y0, x1, y1):
-        c0 = max(0, int(x0 // TILE_PX)); c1 = min(tcols - 1, int(x1 // TILE_PX))
-        r0 = max(0, int(y0 // TILE_PX)); r1 = min(trows - 1, int(y1 // TILE_PX))
-        return [(tc, tr) for tr in range(r0, r1 + 1) for tc in range(c0, c1 + 1)]
-
-    def add_flat(key, feats):                # features with pts=[x,y,x,y,...]
-        for f in feats:
-            p = f.get("pts") or []
-            if len(p) < 2:
-                continue
-            xs, ys = p[0::2], p[1::2]
-            for t in tiles_for_bbox(min(xs), min(ys), max(xs), max(ys)):
-                buckets[t][key].append(f)
-
-    def add_point(key, feats):               # features with {x,y,(r)}
-        for f in feats:
-            rr = f.get("r", 0)
-            for t in tiles_for_bbox(f["x"] - rr, f["y"] - rr, f["x"] + rr, f["y"] + rr):
-                buckets[t][key].append(f)
-
-    add_flat("roads", roads)
-    add_flat("rails", rails)
-    add_flat("medians", medians)
-    add_flat("buildings", buildings)
-    add_point("trees", trees)
-    add_point("palms", palms)
-    add_point("mangroves", mangroves)
-    # plazas ([x,y,w,h,type] rects) stay global in the manifest: they are ground
-    # colour, painted with the land base so parks are green before their tile
-    # streams in. islands are {kind, pts:[[x,y],...]} pairs
-    for isl in islands:
-        pts = isl["pts"]
-        flat = [v for xy in pts for v in xy] if pts and isinstance(pts[0], (list, tuple)) else pts
-        xs, ys = flat[0::2], flat[1::2]
-        if not xs:
-            continue
-        for t in tiles_for_bbox(min(xs), min(ys), max(xs), max(ys)):
-            buckets[t]["islands"].append({"kind": isl["kind"], "pts": flat})
-
-    def tile_slab(tc, tr):
-        c0, r0 = tc * TILE_CELLS, tr * TILE_CELLS
-        cw = min(TILE_CELLS, GRID_COLS - c0)
-        ch = min(TILE_CELLS, GRID_ROWS - r0)
-        sub = bytearray(cw * ch)
-        for rr in range(ch):
-            s = (r0 + rr) * GRID_COLS + c0
-            sub[rr * cw:(rr + 1) * cw] = grid[s:s + cw]
-        return cw, ch, rle_encode(sub)
-
-    n_tiles = 0
-    for tr in range(trows):
-        for tc in range(tcols):
-            cw, ch, rle = tile_slab(tc, tr)
-            b = buckets.get((tc, tr), {})
-            tile = {"tc": tc, "tr": tr, "x": tc * TILE_PX, "y": tr * TILE_PX,
-                    "cols": cw, "rows": ch, "rle": rle}
-            for key, feats in b.items():
-                tile[key] = feats
-            repo.write_tile(tc, tr, tile)
-            n_tiles += 1
-
-    # districts as 2-D polys — planar arranges the barrios west→east along the
-    # spit, so the x-band edges become full-height rectangles (a working
-    # point-in-poly approximation; true 2-D rings are a later refinement).
-    dist_out = []
-    for d in districts:
-        x0, x1 = d["x0"], d["x1"]
-        # peninsula districts are full-height x-bands; inland barrios carry an
-        # explicit y0/y1 so they emit as a real 2-D bbox region (not full height).
-        y0 = d.get("y0", 0)
-        y1 = d.get("y1", CANVAS_H)
-        dist_out.append({"id": d["id"], "name": d["name"], "short": d.get("short"),
-                         "tone": d["tone"], "x0": x0, "x1": x1, "y0": y0, "y1": y1,
-                         "poly": [x0, y0, x1, y0, x1, y1, x0, y1]})
-
-    manifest = {
-        "meta": {**meta, "tilePx": TILE_PX, "tileCells": TILE_CELLS,
-                 "tileCols": tcols, "tileRows": trows},
-        "grid": {"cols": GRID_COLS, "rows": GRID_ROWS, "classes": CLASS_NAMES},
-        "districts": dist_out,
-        "landmarks": landmarks, "customers": customers, "stages": stages,
-        "bridge": bridge, "estuary": estuary, "pier": pier, "hills": hills,
-        "beaches": beaches, "waters": waters, "landPolys": land_polys,
-        "plazas": plazas,
-        "greens": greens or [],
-        "stadiums": stadiums or [],
-        "balneario": balneario,
-        "kioskPaths": kiosk_paths or [],
-        "faroPier": faro_pier,
-        # every named real-world POI (name + category + world px), for the
-        # debug overlay that validates the map against real Puntarenas
-        "pois": pois or [],
-        # named cuadra parts: {id,name,use,poly,cx,cy,slot} — `slot` is the rect
-        # a remote sponsor `lote` can claim, so its art has a real footprint
-        "parcels": parcels or [],
-    }
-    repo.write_manifest(manifest)
-
-    total = repo.total_bytes()
-    log("emit", f"src/world2d/ — {tcols}x{trows}={n_tiles} tiles + manifest, "
-          f"{total/1024:.0f} KB total")
-
 
 # ------------------------------------------------------------------- main ---
 
@@ -2802,7 +2652,7 @@ def main():
     meta["geo"] = {"ax": round(ax, 4), "bx": round(bx, 2),
                    "ay": round(ay, 4), "by": round(by, 2)}
     # chunked/tiled emit → src/world2d/ (streamable full-OSM world)
-    emit_world2d(grid, meta=meta, districts=districts, roads=roads, rails=rails,
+    emit_world2d(raster, JsonWorldRepository(WORLD2D_DIR), meta=meta, districts=districts, roads=roads, rails=rails,
                  buildings=buildings, trees=trees, palms=palms, mangroves=mangroves,
                  medians=medians, plazas=plazas, greens=greens, islands=junction_islands,
                  beaches=beaches, waters=waters, land_polys=land_contours,
@@ -2811,73 +2661,10 @@ def main():
                  bridge=bridge, estuary=est, pier=pier, hills=hills, pois=pois, parcels=parcels)
 
     # --- debug renders
-    if "--debug" in sys.argv or True:
-        pal = {CLS_WATER: (42, 127, 168), CLS_LAND: (232, 213, 160), CLS_BEACH: (244, 215, 122),
-               CLS_ROAD: (58, 53, 64), CLS_PASEO: (240, 138, 93), CLS_BRIDGE: (140, 140, 140),
-               CLS_ACERA: (206, 199, 178)}
-        overlay = Raster(GRID_COLS, GRID_ROWS, GRID_CELL)
-        bldg_overlay = overlay.buf
-        for b in buildings:
-            overlay.fill_poly(pairs(b["pts"]), 1)
-        marks = {}
-        for lm in landmarks:
-            marks[(int(lm["x"] / GRID_CELL), int(lm["y"] / GRID_CELL))] = (255, 0, 0)
-        for cu in customers:
-            marks[(int(cu["x"] / GRID_CELL), int(cu["y"] / GRID_CELL))] = (255, 0, 255)
-        ticks = set()
-        for bx in bounds_x:
-            ticks.add(int(bx / GRID_CELL))
-
-        def rgb(x, y):
-            if (x, y) in marks:
-                return marks[(x, y)]
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    if (x + dx, y + dy) in marks:
-                        return marks[(x + dx, y + dy)]
-            if x in ticks and y % 4 < 2:
-                return (0, 0, 0)
-            if bldg_overlay[y * GRID_COLS + x]:
-                return (156, 102, 68)
-            return pal[grid[y * GRID_COLS + x]]
-
-        # downsample the eyeball PNG so a huge planar grid renders in seconds
-        dbg_stride = max(1, max(GRID_COLS, GRID_ROWS) // 2500)
-        write_png(DEBUG_PNG, GRID_COLS, GRID_ROWS, rgb, stride=dbg_stride)
-        log("debug", f"{DEBUG_PNG} (stride {dbg_stride})")
-
-        # svg: vector features
-        cls_color = {"trunk": "#d33", "trunk_link": "#d66", "primary": "#e80",
-                     "primary_link": "#e80", "secondary": "#ca0", "tertiary": "#aa0",
-                     "tertiary_link": "#aa0", "residential": "#666", "unclassified": "#666",
-                     "living_street": "#888", "service": "#bbb", "pedestrian": "#3a3",
-                     "paseo": "#f08a5d", "bridge": "#a0f"}
-        parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CANVAS_W} {CANVAS_H}" '
-                 f'style="background:#2a7fa8">']
-        for lp in land_contours:
-            d = "M" + " L".join(f"{lp[i]},{lp[i+1]}" for i in range(0, len(lp), 2)) + " Z"
-            parts.append(f'<path d="{d}" fill="#e8d5a0" stroke="#8a6" stroke-width="3"/>')
-        for wp in waters:
-            d = "M" + " L".join(f"{wp[i]},{wp[i+1]}" for i in range(0, len(wp), 2)) + " Z"
-            parts.append(f'<path d="{d}" fill="#2a7fa8" opacity="0.9"/>')
-        for b in buildings:
-            p = b["pts"]
-            d = "M" + " L".join(f"{p[i]},{p[i+1]}" for i in range(0, len(p), 2)) + " Z"
-            parts.append(f'<path d="{d}" fill="#997" opacity="0.7"/>')
-        for r in roads:
-            p = r["pts"]
-            d = "M" + " L".join(f"{p[i]},{p[i+1]}" for i in range(0, len(p), 2))
-            parts.append(f'<path d="{d}" fill="none" stroke="{cls_color[r["cls"]]}" '
-                         f'stroke-width="{r["w"]}" stroke-linecap="round" opacity="0.85"/>')
-        for bx in bounds_x:
-            parts.append(f'<line x1="{bx}" y1="0" x2="{bx}" y2="{CANVAS_H}" stroke="#000" stroke-width="3" stroke-dasharray="8 10"/>')
-        for lm in landmarks:
-            parts.append(f'<circle cx="{lm["x"]}" cy="{lm["y"]}" r="12" fill="red"/>'
-                         f'<text x="{lm["x"]+14}" y="{lm["y"]}" font-size="26">{lm["id"]}</text>')
-        parts.append("</svg>")
-        with open(DEBUG_SVG, "w", encoding="utf-8") as f:
-            f.write("\n".join(parts))
-        log("debug", f"{DEBUG_SVG}")
+    render_debug(raster=raster, buildings=buildings, landmarks=landmarks,
+                 customers=customers, roads=roads, land_contours=land_contours,
+                 waters=waters, bounds_x=bounds_x,
+                 png_path=DEBUG_PNG, svg_path=DEBUG_SVG)
 
     log("done", f"total {time.time()-t0:.1f}s")
     # Note: the service worker (public/sw.js) uses runtime caching with a manual

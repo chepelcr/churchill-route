@@ -151,6 +151,19 @@ buildings, set `blocks[bi]["green"]=True` (excluded from `synth_buildings`).
 any class-3/5 cell near the camera, so a `CLS_ROAD` pitch gets them for free in
 every mode.
 
+**Aceras are DIRECTIONAL — a ring only where there is a street.** An open field
+(estadio, plaza) is two polygons: the *outline*, the whole cuadra stamped
+`CLS_ROAD` so the car drives straight in, and the *footprint*, the drawn pitch =
+outline eroded by `ACERA_CELLS`. `_erode_cells(cells, depth, facing)` seeds its
+distance transform ONLY from boundary cells whose outside neighbour is in
+`STREET_CLASSES`, so the pitch pulls back from the asphalt (its white lines stop
+at the kerb) and still runs edge to edge everywhere else: Las Playitas out into
+the sand on its north, the Carmen plaza flush against the parroquia on its west.
+For a parcel the erosion is the BLOCK's (`inner`), so `aceras: True` means
+"respect the cuadra's ring" and an internal split line is never eroded; the
+drivable stamp always uses the part's UN-eroded cells, so the ring is asphalt you
+can drive on, not a wall around the field. `aceras: False` opts out entirely.
+
 **A CUADRA'S ANGLE COMES FROM ITS BOUNDING STREETS — never from a fit.** The
 cuadrícula is not square to the screen and is not even square to itself (by El
 Carmen the avenidas run at -5.4° and the calles at 82.3°, 3.5° out of square).

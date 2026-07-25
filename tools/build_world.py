@@ -3428,17 +3428,35 @@ def main():
                     best = comp
         return best
 
-    def _erode_cells(cells, depth):
+    # An acera exists where there is a STREET to walk beside. A cuadra edge that
+    # faces the sea, the sand or another parcel has none — Las Playitas runs out
+    # to the beach on its north side, and the Carmen plaza's west edge is the
+    # parroquia next door, not a calle.
+    STREET_CLASSES = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA)
+
+    def _erode_cells(cells, depth, facing=None):
         """Morphological erosion by `depth` cells (BFS distance transform seeded
         on the boundary). Applied to a cuadra+acera set it yields the pitch, so
-        the difference between the two IS the block's real acera ring."""
+        the difference between the two IS the block's real acera ring.
+
+        `facing` (a tuple of surface classes) erodes DIRECTIONALLY: only the
+        boundary whose neighbour outside the set is one of those classes seeds
+        the transform, so the ring forms along the streets and the block still
+        runs edge to edge everywhere else."""
         from collections import deque as _dq
         dist = {}
         q = _dq()
         for (c, r) in cells:
-            if any((c + dc, r + dr) not in cells for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))):
-                dist[(c, r)] = 1
-                q.append((c, r))
+            out = [(c + dc, r + dr) for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                   if (c + dc, r + dr) not in cells]
+            if not out:
+                continue
+            if facing is not None and not any(
+                    0 <= n[0] < GRID_COLS and 0 <= n[1] < GRID_ROWS
+                    and grid[n[1] * GRID_COLS + n[0]] in facing for n in out):
+                continue
+            dist[(c, r)] = 1
+            q.append((c, r))
         while q:
             c, r = q.popleft()
             d = dist[(c, r)] + 1
@@ -3543,8 +3561,11 @@ def main():
             xa, xb = ref[0] - 5 * CUAD, ref[0] + 5 * CUAD
             ylo, yhi = ref[1] - 6 * CUAD, ref[1] + 6 * CUAD
         # `beach`: let the cuadra run out to the shoreline (Las Playitas ends at
-        # the sand, not at a street). `aceras: False`: no sidewalk ring — the
-        # pitch IS the whole cuadra, so the block reads as one green field.
+        # the sand, not at a street). `aceras: False`: no sidewalk ring at all —
+        # the pitch IS the whole cuadra. Left unset, the ring is DIRECTIONAL:
+        # it forms only along the block's street edges (see _erode_cells), which
+        # is what keeps the pitch's white lines off the asphalt while Las
+        # Playitas still runs into the sand on its north side.
         classes = (CLS_LAND, CLS_ACERA) + ((CLS_BEACH,) if spec.get("beach") else ())
         # `edge`: bound the block on a street that STOPS SHORT. Calle 8 dead-ends
         # in the sand, and its round end cap was what the block wrapped around —
@@ -3560,7 +3581,7 @@ def main():
                 clip = _half_plane(line, ((xa + xb) / 2, (ylo + yhi) / 2), spec.get("edge_gap", 18))
         outer_cells = _cuadra_cells(xa, ylo, xb, yhi, classes, clip)
         inner_cells = (outer_cells if spec.get("aceras") is False
-                       else _erode_cells(outer_cells, ACERA_CELLS)) if outer_cells else set()
+                       else _erode_cells(outer_cells, ACERA_CELLS, STREET_CLASSES)) if outer_cells else set()
         outline = _outline_poly(outer_cells) if outer_cells else None
         footprint = _outline_poly(inner_cells) if inner_cells else None
         if not outline or not footprint:
@@ -3630,7 +3651,6 @@ def main():
          "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
          "ave_south": ["Avenida Centenario"],
          "beach": True,                      # the cuadra runs out to the sand
-         "aceras": False,                    # no sidewalk — the field fills the block
          "edge": ["Calle 8"]},               # right wall on Calle 8's line, extended
     ):
         place_stadium(_sp)
@@ -3714,9 +3734,15 @@ def main():
     #   cols/rows  — an N×M subdivision, sized by optional weights, cut in the
     #                block's OWN frame: columns along the calles, rows along the
     #                avenidas (see _street_dir).
-    #   aceras     — True erodes the part by the sidewalk depth, so what sits on
-    #                it (a church) can never land on the acera; False keeps the
-    #                ring so the part fills the block edge to edge.
+    #   aceras     — True takes the part's cells from the block's ERODED set, so
+    #                what sits on it (a church, a pitch's white lines) can never
+    #                land on the acera; False keeps the ring so the part fills
+    #                the block edge to edge. The erosion is the BLOCK's and it is
+    #                directional, so a part only loses the edges that face a
+    #                street — the Carmen plaza keeps its west edge flush against
+    #                the parroquia next door. A `plaza`/`stadium` part is stamped
+    #                drivable on its UN-eroded cells either way, so the ring is
+    #                asphalt you can drive on, not a wall around the field.
     def place_parcels(spec):
         ref = spec["at"]
         cxa = _street_at(spec["calles"][0], "x", ref)
@@ -3735,7 +3761,7 @@ def main():
         # internal split lines, which are not streets, and on a small block that
         # left 4px slivers. `aceras: True` therefore means "respect the block's
         # ring", and a part just takes its cells from the eroded set.
-        inner = _erode_cells(outer, ACERA_CELLS)
+        inner = _erode_cells(outer, ACERA_CELLS, STREET_CLASSES)
         # THE BLOCK'S FRAME COMES FROM ITS BOUNDING STREETS, not from a fit of
         # its own cells. A principal-axis fit (_cell_frame) is wrong here twice
         # over: on a square-ish cuadra sxx≈syy, the fit is degenerate and snaps
@@ -3808,7 +3834,7 @@ def main():
               "name": "Jardín de la Parroquia", "aceras": True},
              # right column, spanning BOTH rows
              {"id": "carmen_plaza", "col": 1, "row": [0, 1], "use": "stadium",
-              "name": "Plaza Deportes El Carmen", "aceras": False},
+              "name": "Plaza Deportes El Carmen", "aceras": True},
          ]},
     ):
         place_parcels(_pc)

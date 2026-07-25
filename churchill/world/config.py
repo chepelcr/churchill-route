@@ -99,3 +99,17 @@ FIELD_ACERA_CELLS = 2           # 8 px — estadio / plaza pitches
 # beach on its north side, and the Carmen plaza's west edge is the parroquia
 # next door, not a calle. (Used as the `facing` set of the directional erosion.)
 STREET_CLASSES = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA)
+
+# ---- buildings on the cuadrícula --------------------------------------------
+SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so
+                                # fully-filled small cuadras don't exhaust it
+                                # mid-map and leave far blocks empty)
+SYNTH_SEED = 77
+BLDG_INSET = 2                  # px seam per side so adjacent roofs don't fuse
+FRONTAGE_DEPTH = 3              # buildable band (CUADs) from the block edge
+SMALL_BLOCK_CUADS = 120         # blocks <= this many cuadrículas fill completely
+                                # (dense town); bigger ones keep patio interiors
+OSM_MAX_CUADS = 4               # cap OSM footprints at 4x4 cuadrículas
+# weighted synth footprint mix (w x h in cuadrículas)
+SYNTH_LOTS = [((2, 2), 0.25), ((2, 1), 0.20), ((1, 2), 0.20),
+              ((1, 1), 0.30), ((3, 2), 0.05)]

@@ -443,7 +443,7 @@ const ACOIN_RAIN_TTL = 11;      // s a rain coin stays before it vanishes
 const ACOIN_RAIN_COOLDOWN = 20; // s of quiet after the last one goes
 // The stadium/plaza cuadra the point is inside, or null.
 function stadiumUnder(x, y) {
-  for (const S of W.STADIUMS || [])
+  for (const S of W.FIELDS || [])
     if (x >= S.x0 - 60 && x <= S.x1 + 60 && y >= S.y0 - 60 && y <= S.y1 + 60) return S;
   return null;
 }

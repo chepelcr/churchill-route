@@ -49,6 +49,17 @@ export const WORLD2D = (function () {
   // sponsor entry can claim, so its art has a real footprint in the world
   // instead of a floating pin.
   const PARCELS = manifest.parcels || [];
+  // Open fields = stadium pitches AND plaza parcels, normalised to one shape
+  // {x0,y0,x1,y1,cx,cy,footprint}. The crowd and the coin rain read THIS, so a
+  // new plaza gets both for free instead of needing to be a "stadium".
+  const FIELDS = [
+    ...STADIUMS,
+    ...PARCELS.filter((p) => p.use === "plaza").map((p) => ({
+      x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1,
+      cx: (p.x0 + p.x1) / 2, cy: (p.y0 + p.y1) / 2,
+      footprint: p.poly, outline: p.poly,      // plazas have no acera ring
+    })),
+  ];
 
   // ----- tile cache ----------------------------------------------------------
   // key = tr * TCOLS + tc. Value: { grid:Uint8Array, cols, rows, x, y, roads,
@@ -312,7 +323,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, POIS, PARCELS,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, POIS, PARCELS, FIELDS,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

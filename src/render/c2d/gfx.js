@@ -93,20 +93,36 @@ function aabbInView(a, view, pad) {
 }
 
 
-function label(x, y, text, fg, bg) {
-  ctx.font = "bold 10px 'JetBrains Mono', monospace";
+function label(x, y, text, fg, bg, size = 10) {
+  ctx.font = `bold ${size}px 'JetBrains Mono', monospace`;
   ctx.textAlign = "center";
-  const w = ctx.measureText(text).width + 10;
-  ctx.fillStyle = bg; roundRect(ctx, x - w / 2, y - 9, w, 14, 4, true, false);
-  ctx.fillStyle = fg; ctx.fillText(text, x, y + 1);
+  const w = ctx.measureText(text).width + size;
+  const h = size + 4;
+  ctx.fillStyle = bg; roundRect(ctx, x - w / 2, y - h * 0.64, w, h, 4, true, false);
+  ctx.fillStyle = fg; ctx.fillText(text, x, y + size * 0.1);
 }
 
-// Tag for an AREA landmark (park, estadio, balneario): the pill sits just
-// INSIDE the area's own bounds at the top, so it reads as belonging to the
-// place. Offsetting by half the block height instead — as every area drawer
-// used to — floated the tag a cuadra NORTH, over the street.
+// Tag for an AREA landmark (park, estadio, plaza, parcel). Three rules the
+// long real names forced: the type is SMALLER than a point-landmark pill (a
+// full "Parroquia Nuestra Señora de El Carmen" at pill size swamps its own
+// cuadra), a long name WRAPS to two lines at the space nearest its middle
+// rather than running off the block, and the stack sits nearer the centre of
+// the area than its top edge — pinned to the top it read as floating off.
+const AREA_WRAP = 15;          // chars before a name is split in two
 function areaLabel(x0, y0, x1, y1, text, fg, bg) {
-  label((x0 + x1) / 2, Math.min(y0 + 12, (y0 + y1) / 2), text, fg, bg);
+  const cx = (x0 + x1) / 2;
+  let lines = [text];
+  if (text.length > AREA_WRAP) {
+    // break at the space closest to the middle, so both lines read evenly
+    const mid = text.length / 2;
+    let best = -1;
+    for (let i = 0; i < text.length; i++)
+      if (text[i] === " " && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
+    if (best > 0) lines = [text.slice(0, best), text.slice(best + 1)];
+  }
+  const lh = 9;
+  const top = Math.min(y0 + (y1 - y0) * 0.30, (y0 + y1) / 2 - ((lines.length - 1) * lh) / 2);
+  for (let i = 0; i < lines.length; i++) label(cx, top + i * lh, lines[i], fg, bg, 7);
 }
 
 // Deterministic 0..1 hash for scene scatter (no Math.random in draw paths)

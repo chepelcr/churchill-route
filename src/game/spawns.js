@@ -373,7 +373,7 @@ export function advanceRingPed(pe, dt) {
   if (Math.random() < 0.004) pe.sdir *= -1;
 }
 function maintainStadiumPeds() {
-  const arr = W.STADIUMS;
+  const arr = W.FIELDS;
   if (!arr || !arr.length) return;
   for (const S of arr) {
     if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;

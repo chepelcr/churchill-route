@@ -3610,6 +3610,67 @@ def main():
     #                    sits on it (a church) never lands on the acera.
     #   aceras: False -> the part keeps the ring, filling the block edge to edge
     #                    (how Plaza Las Playitas reads as one open field).
+    def _cell_frame(cells):
+        """Centre + principal axis of a cell set. A cuadra on the diagonal
+        street grid (Las Playitas sits at 37°) has to be split along ITS OWN
+        axes — a screen-axis cut through a tilted block yields wedges, not
+        halves."""
+        n = len(cells)
+        mx = sum(c for c, _ in cells) / n; my = sum(r for _, r in cells) / n
+        sxx = sum((c - mx) ** 2 for c, _ in cells)
+        syy = sum((r - my) ** 2 for _, r in cells)
+        sxy = sum((c - mx) * (r - my) for c, r in cells)
+        ang = 0.5 * math.atan2(2 * sxy, sxx - syy)
+        return mx, my, math.cos(ang), math.sin(ang)
+
+    def _bands(vals, weights):
+        """Cut [min..max] into len(weights) bands sized by the weights."""
+        lo, hi = min(vals), max(vals)
+        total = sum(weights) or 1
+        edges, acc = [lo], 0.0
+        for w in weights:
+            acc += w
+            edges.append(lo + (hi - lo) * acc / total)
+        edges[-1] = hi + 1e-6
+        return edges
+
+    def _emit_parcel(spec_id, part, cells, keep_cells):
+        poly = _outline_poly(keep_cells) if keep_cells else None
+        if not poly:
+            print(f"[parcel] WARN {part['id']} nothing left after erosion"); return None
+        px = poly[0::2]; py = poly[1::2]
+        x0, y0, x1, y1 = min(px), min(py), max(px), max(py)
+        ay = y0 + (y1 - y0) // 4 if part.get("anchor") == "north" else (y0 + y1) // 2
+        # SPONSOR SLOT: a rect inside the parcel a remote `lote` can claim. The
+        # WORLD owns its place and size, so nothing a sponsor sends can cover a
+        # street or dwarf the block.
+        sw = max(24, (x1 - x0) // 3); sh = max(16, (y1 - y0) // 3)
+        slot = [int((x0 + x1) // 2 - sw // 2), int((y0 + y1) // 2 - sh // 2), int(sw), int(sh)]
+        parcels.append({"id": part["id"], "name": part["name"], "use": part["use"],
+                        "poly": poly, "cx": int((x0 + x1) // 2), "cy": int(ay),
+                        "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot})
+        cuads = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in cells}
+        occ.update(cuads)                        # no buildings inside a parcel
+        for b in blocks:
+            if not b.get("green") and any(c in cuads for c in b["cells"]):
+                b["green"] = True
+        if part["use"] == "plaza":                # drivable open field
+            for (c, r) in cells:
+                grid[r * GRID_COLS + c] = CLS_ROAD
+        print(f"[parcel] {part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
+              f"{len(poly)//2}v slot{slot}")
+        return parcels[-1]
+
+    # ---- PARCELS -----------------------------------------------------------
+    # A cuadra cut into named PARTS, each with a `use` that drives how it is
+    # drawn and a `slot` a sponsor can claim. The general form of what the
+    # estadios do by hand: resolve the block, then hand out pieces of it.
+    #
+    #   cols/rows  — an N×M subdivision, sized by optional weights, computed in
+    #                the block's OWN frame (see _cell_frame).
+    #   aceras     — True erodes the part by the sidewalk depth, so what sits on
+    #                it (a church) can never land on the acera; False keeps the
+    #                ring so the part fills the block edge to edge.
     def place_parcels(spec):
         ref = spec["at"]
         cxa = _street_at(spec["calles"][0], "x", ref)
@@ -3619,61 +3680,41 @@ def main():
         if None in (cxa, cxb, ayn, ays):
             print(f"[parcel] WARN {spec['id']} street resolve failed "
                   f"(calles {cxa},{cxb} avenidas {ayn},{ays})"); return
-        xa, xb = min(cxa, cxb), max(cxa, cxb)
-        ylo, yhi = min(ayn, ays), max(ayn, ays)
-        outer = _cuadra_cells(xa, ylo, xb, yhi, (CLS_LAND, CLS_ACERA))
+        outer = _cuadra_cells(min(cxa, cxb), min(ayn, ays), max(cxa, cxb), max(ayn, ays),
+                              (CLS_LAND, CLS_ACERA))
         if not outer:
             print(f"[parcel] WARN {spec['id']} no cuadra in rect"); return
-        ox = [c for (c, _) in outer]; oy = [r for (_, r) in outer]
-        # split line: halfway across the cuadra on the given axis
-        mid = (min(ox) + max(ox)) / 2 if spec.get("split", "x") == "x" else (min(oy) + max(oy)) / 2
+        mx, my, ca, sa = _cell_frame(outer)
+        uv = {c: ((c[0] - mx) * ca + (c[1] - my) * sa, -(c[0] - mx) * sa + (c[1] - my) * ca)
+              for c in outer}
+        cw = spec.get("cols", [1]); rw = spec.get("rows", [1])
+        ue = _bands([v[0] for v in uv.values()], cw)
+        ve = _bands([v[1] for v in uv.values()], rw)
+        nominal = len(outer) / (len(cw) * len(rw))
         for part in spec["parts"]:
-            if spec.get("split", "x") == "x":
-                cells = {c for c in outer if (c[0] <= mid) == (part["side"] == "left")}
-            else:
-                cells = {c for c in outer if (c[1] <= mid) == (part["side"] == "left")}
-            if not cells:
-                print(f"[parcel] WARN {part['id']} empty side"); continue
+            ci, ri = part.get("col", 0), part.get("row", 0)
+            cells = {c for c, (u, v) in uv.items()
+                     if ue[ci] <= u < ue[ci + 1] and ve[ri] <= v < ve[ri + 1]}
+            # A part that came out mostly EMPTY means the split does not suit
+            # this block (it is a ribbon, not a rectangle) — fail loudly in the
+            # log instead of quietly emitting a sliver out in the street.
+            if len(cells) < nominal * 0.35:
+                print(f"[parcel] WARN {part['id']} only {len(cells)} cells vs "
+                      f"{nominal:.0f} nominal — split does not suit this block"); continue
             keep = _erode_cells(cells, ACERA_CELLS) if part.get("aceras") else cells
-            poly = _outline_poly(keep) if keep else None
-            if not poly:
-                print(f"[parcel] WARN {part['id']} nothing left after erosion"); continue
-            px = poly[0::2]; py = poly[1::2]
-            x0, y0, x1, y1 = min(px), min(py), max(px), max(py)
-            # anchor: where the built thing sits inside the part
-            ax = (x0 + x1) // 2
-            ay = y0 + (y1 - y0) // 4 if part.get("anchor") == "north" else (y0 + y1) // 2
-            # SPONSOR SLOT: a rect inside the parcel a remote `lote` can claim.
-            # A defined footprint beats a floating pin — the art always has a
-            # known place and size. Kept to a third of the part, centred.
-            sw = max(24, (x1 - x0) // 3); sh = max(16, (y1 - y0) // 3)
-            slot = [int((x0 + x1) // 2 - sw // 2), int((y0 + y1) // 2 - sh // 2), int(sw), int(sh)]
-            parcels.append({"id": part["id"], "name": part["name"], "use": part["use"],
-                            "poly": poly, "cx": int(ax), "cy": int(ay),
-                            "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot})
-            # no buildings inside a parcel: it IS the use
-            cuads = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in cells}
-            occ.update(cuads)
-            for b in blocks:
-                if not b.get("green") and any(c in cuads for c in b["cells"]):
-                    b["green"] = True
-            if part["use"] == "plaza":       # drivable open field, like the plaza
-                for (c, r) in cells:
-                    grid[r * GRID_COLS + c] = CLS_ROAD
-            print(f"[parcel] {part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
-                  f"{len(poly)//2}v anchor({ax},{ay}) slot{slot}")
+            _emit_parcel(spec["id"], part, cells, keep)
 
     for _pc in (
         {"id": "carmen", "at": (12620, 9755),      # Calle 35-33 x Av Centenario-Av 1
          "calles": (["Calle 35"], ["Calle 33"]),
          "ave_north": ["Avenida Centenario", "Avenida 0"],
          "ave_south": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
-         "split": "x",
+         "cols": [1, 1],
          "parts": [
-             {"id": "carmen_parroquia", "side": "left", "use": "church",
+             {"id": "carmen_parroquia", "col": 0, "use": "church",
               "name": "Parroquia Nuestra Señora de El Carmen",
               "aceras": True, "anchor": "north"},
-             {"id": "carmen_plaza", "side": "right", "use": "plaza",
+             {"id": "carmen_plaza", "col": 1, "use": "plaza",
               "name": "Plaza Deportes El Carmen", "aceras": False},
          ]},
     ):
@@ -3772,6 +3813,46 @@ def main():
     # lands inside it was floating on the water. Give each one a sand pad: a
     # dilated bbox emitted into `beaches` (painted AFTER the water, so it shows)
     # and stamped CLS_BEACH so the ground under the building is solid too.
+    # ---- FEATURE PARCELS ---------------------------------------------------
+    # An irregular block cannot be quartered: Parque Marino fills 32% of its
+    # bbox and the Balneario 46%, so a grid cut would hand out parts that are
+    # mostly street or water. Their real parcels are the things already STANDING
+    # in them, so derive one parcel per building footprint inside the block.
+    # Same output shape, same sponsor slot — only the source differs.
+    def place_feature_parcels(spec):
+        lm = next((l for l in landmarks if l["id"] == spec["lm"]), None)
+        if lm is None:
+            print(f"[parcel] WARN feature block {spec['lm']} missing"); return
+        hw = (lm.get("w") or 200) / 2 + spec.get("pad", 20)
+        hh = (lm.get("h") or 160) / 2 + spec.get("pad", 20)
+        bx0, by0, bx1, by1 = lm["x"] - hw, lm["y"] - hh, lm["x"] + hw, lm["y"] + hh
+        n = 0
+        for b in buildings:
+            xs, ys = b["pts"][0::2], b["pts"][1::2]
+            cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
+            if not (bx0 <= cx <= bx1 and by0 <= cy <= by1):
+                continue
+            x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+            sw = max(20, int((x1 - x0) * 0.7)); sh = max(12, int((y1 - y0) * 0.55))
+            parcels.append({
+                "id": f"{spec['id']}_{n}", "use": spec.get("use", "lot"),
+                "name": b.get("name") or f"{spec['name']} {n + 1}",
+                "poly": [round(v) for v in b["pts"]],
+                "cx": int(cx), "cy": int(cy),
+                "x0": x0, "y0": y0, "x1": x1, "y1": y1,
+                "slot": [int(cx - sw / 2), int(cy - sh / 2), sw, sh],
+                "built": True,          # the footprint IS a building; don't paint ground
+            })
+            n += 1
+        print(f"[parcel] {spec['id']}: {n} feature parcels from footprints inside "
+              f"{spec['lm']} ({round(bx1-bx0)}x{round(by1-by0)}px)")
+
+    for _fp in (
+        {"id": "marino_lote", "lm": "parquemar", "name": "Parque Marino", "use": "lot"},
+        {"id": "balneario_lote", "lm": "balneario", "name": "Balneario", "use": "lot"},
+    ):
+        place_feature_parcels(_fp)
+
     if balneario:
         pads = 0
         for b in buildings:

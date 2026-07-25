@@ -4,6 +4,60 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Parcelas + patrocinio + colisiones correctas (2026-07-24 d)
+
+**Parcelas — el nuevo primitivo del mundo**
+- [x] Una cuadra se puede partir en **N×M** con pesos, y cada parte declara
+      `col`/`row` como entero o rango `[desde, hasta]`, así que no todas tienen
+      que medir lo mismo (El Carmen: una columna de dos —iglesia sobre jardín—
+      al lado de una columna que abarca las dos filas con la plaza). Esa es la
+      forma que permite mapear comercios de distintos tamaños en una cuadra.
+- [x] El corte se calcula en el **marco propio de la cuadra** (eje principal):
+      Las Playitas está a 37°, y un corte a eje de pantalla en un bloque
+      inclinado da cuñas, no mitades.
+- [x] La **erosión es del BLOQUE, no de cada parte**: el anillo de acera rodea
+      la cuadra, no cada pedazo. Al erosionar por parte también se metía 20px
+      desde las líneas internas de corte —que no son calles— y en un bloque
+      chico quedaban tiras de 4px. `aceras: True` ahora significa "respetá el
+      anillo de la cuadra".
+- [x] Guarda: una parte que sale casi vacía **avisa y se descarta** en vez de
+      emitir una tira en plena calle.
+- [x] Modo **`from: features`** para bloques que una grilla no puede cortar. Al
+      medirlos: Parque Marino llena **32%** de su bbox y el Balneario **46%** —
+      son cintas, no cuadras; cuartearlos reparte pedazos que son calle o agua.
+      Sus parcelas reales son lo que ya está parado ahí, así que se deriva una
+      por huella de edificio (6 y 5).
+- [x] Usos: `church` (Parroquia N.S. de El Carmen), `garden` (jardín con árboles
+      en hash determinista), `stadium`/`plaza`, `lot`.
+
+**Patrocinio**
+- [x] Cada parcela emite un **`slot`**: el rect donde un `lote` remoto pinta su
+      arte. El MUNDO manda la posición y el tamaño, así que nada que mande un
+      patrocinador puede tapar una calle ni comerse la cuadra — huella real en
+      vez del pin flotante que tenían los lotes.
+- [x] **16 espacios patrocinables** donde había 0: 3 canchas, 1 iglesia, 1
+      jardín, 11 lotes de edificio (con nombres reales del OSM).
+- [x] Lito Pérez y Las Playitas entran como parcelas de **cuadra completa**
+      (`whole: true`) con el slot al centro de la cancha — el escudo de un club
+      va ahí con una línea en `content.json`, sin rebuild.
+
+**Colisiones — reescritas con el método correcto**
+- [x] Se descubrió por los datos: el Muelle de Cruceros es `{x:15641, y0:10126,
+      y1:10756}` (vertical perfecto) y el del Faro va (12020,10080)→(12160,9940),
+      **45°**. Sumar las direcciones de las paredes cercanas para sacar una
+      normal SE CANCELA en un corredor, así que caía a un deslizamiento por ejes
+      —correcto para el vertical, incorrecto para el diagonal y para toda acera
+      diagonal. Ningún umbral separa esos dos casos: el método estaba mal, no
+      mal calibrado.
+- [x] Ahora: **cápsula contra AABB de celda por profundidad de penetración**.
+      Se clampea el centro en la caja para el punto más cercano `q`, de ahí
+      salen `n = normalizar(c-q)` y `profundidad = r-|c-q|`; se empuja por la
+      normal, se remide y se repite 4× tomando el contacto más profundo.
+      Verificado aparte: pared a la izquierda → n=(1,0); pared diagonal →
+      n=(0.45,-0.89); corredor → 6.00 contra 4.00, **gana la más cercana, no se
+      cancela**. Paredes a eje, diagonales, corredores y esquinas internas pasan
+      a ser un solo cálculo.
+
 ## ✅ Puntarenas real + refactor del render + feel de colisión (2026-07-24 c)
 
 **Render modularizado**

@@ -109,6 +109,9 @@ function label(x, y, text, fg, bg, size = 10) {
 // rather than running off the block, and the stack sits nearer the centre of
 // the area than its top edge — pinned to the top it read as floating off.
 const AREA_WRAP = 15;          // chars before a name is split in two
+const AREA_ALPHA = 0.62;       // semi-transparent: an area tag sits ON its own
+                               // artwork (the church, the garden trees), so it
+                               // has to be readable WITHOUT hiding what it names
 function areaLabel(x0, y0, x1, y1, text, fg, bg) {
   const cx = (x0 + x1) / 2;
   let lines = [text];
@@ -120,9 +123,12 @@ function areaLabel(x0, y0, x1, y1, text, fg, bg) {
       if (text[i] === " " && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
     if (best > 0) lines = [text.slice(0, best), text.slice(best + 1)];
   }
-  const lh = 9;
+  const lh = 7;
   const top = Math.min(y0 + (y1 - y0) * 0.30, (y0 + y1) / 2 - ((lines.length - 1) * lh) / 2);
-  for (let i = 0; i < lines.length; i++) label(cx, top + i * lh, lines[i], fg, bg, 7);
+  ctx.save();
+  ctx.globalAlpha = AREA_ALPHA;
+  for (let i = 0; i < lines.length; i++) label(cx, top + i * lh, lines[i], fg, bg, 5.5);
+  ctx.restore();
 }
 
 // Deterministic 0..1 hash for scene scatter (no Math.random in draw paths)

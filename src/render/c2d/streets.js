@@ -63,23 +63,30 @@ function paintStadiumCuadras(view) {
     const hw = P.hw, hh = P.hh;
     ctx.fillStyle = "rgba(30,88,50,0.16)";                 // mow stripes, along the pitch
     for (let sy = -hh; sy < hh; sy += 14) ctx.fillRect(-hw, sy, hw * 2, 7);
-    // real fútbol markings: touchlines, halfway line + centre circle and spot,
-    // and a penalty area with its goal box and spot at each end
+    // Fútbol markings, at a level of detail the pitch can carry. A real
+    // penalty area shares the goal line with the touchline, so on a SMALL
+    // pitch its stroke lands right on top of the touchline (and the goal box
+    // on top of that) and the whole end reads as doubled lines. Lito Pérez is
+    // 116 px across — below the threshold it gets the clean set it had before:
+    // touchline, halfway line, centre circle. La Plaza is nearly twice that
+    // and has the room for the full markings.
     const m = Math.max(6, Math.min(hw, hh) * 0.10);        // touchline inset
-    const bw = Math.min(hw * 0.40, hh * 1.1);              // penalty area depth
-    const bh = Math.max(12, Math.min(hh - m - 2, hh * 0.62));
     ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2;
     ctx.fillStyle = "rgba(255,255,255,0.75)";
     ctx.strokeRect(-hw + m, -hh + m, (hw - m) * 2, (hh - m) * 2);
     ctx.beginPath(); ctx.moveTo(0, -hh + m); ctx.lineTo(0, hh - m); ctx.stroke();
     ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();          // centre spot
-    for (const sd of [-1, 1]) {
-      const x0 = sd < 0 ? -hw + m : hw - m - bw;
-      ctx.strokeRect(x0, -bh, bw, bh * 2);                                     // penalty area
-      const gx = sd < 0 ? -hw + m : hw - m - bw * 0.38;
-      ctx.strokeRect(gx, -bh * 0.45, bw * 0.38, bh * 0.9);                     // goal box
-      ctx.beginPath(); ctx.arc(sd * (hw - m - bw * 0.72), 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    if (hw >= 80 && hh >= 55) {
+      ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();        // centre spot
+      const bw = Math.min(hw * 0.28, hh * 0.9);            // penalty area depth
+      const bh = Math.max(12, Math.min(hh - m - 4, hh * 0.60));
+      for (const sd of [-1, 1]) {
+        const x0 = sd < 0 ? -hw + m : hw - m - bw;
+        ctx.strokeRect(x0, -bh, bw, bh * 2);                                   // penalty area
+        const gx = sd < 0 ? -hw + m : hw - m - bw * 0.38;
+        ctx.strokeRect(gx, -bh * 0.45, bw * 0.38, bh * 0.9);                   // goal box
+        ctx.beginPath(); ctx.arc(sd * (hw - m - bw * 0.72), 0, 1.6, 0, Math.PI * 2); ctx.fill();
+      }
     }
     ctx.restore();
     ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(pitch); // curb

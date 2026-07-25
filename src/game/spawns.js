@@ -283,11 +283,53 @@ function topUp(arr, target, make, isDead) {
   let guard = 0;
   while (arr.length < target && guard++ < target * 3) { const e = make(); if (e) arr.push(e); }
 }
-// Stadium spectators (kind "fan") are CONTAINED on the touchline — they patrol
-// the ring just INSIDE the pitch footprint, never spilling onto the streets or
-// wandering the city like ordinary peds. Drawn like city peds (hue/ph).
+// Stadium spectators (kind "fan"), CONTAINED so they never spill onto the
+// streets or wander the city like ordinary peds. Two layouts:
+//   * an estadio has an acera ring around its pitch → fans PATROL that ring,
+//     which is the terrace; the pitch itself stays clear for the game.
+//   * an open plaza has no ring (the field IS the whole cuadra) → a ring of
+//     people around the edge just looks like a fence, so they WANDER the
+//     inside instead.
+// A stadium is "open field" when the build made footprint === outline, i.e.
+// the spec said `aceras: False` and no ring was eroded out.
 const STADIUM_PEDS = 12;
 const RING_OFF = -10;          // px INWARD from the footprint edge, onto the grass
+
+function openField(S) {
+  if (S._open === undefined) {
+    const f = S.footprint, o = S.outline;
+    S._open = !!(f && o && f.length === o.length && f.every((v, i) => v === o[i]));
+  }
+  return S._open;
+}
+// Point-in-polygon on a flat [x,y,...] ring.
+function inPoly(x, y, f) {
+  let inside = false;
+  for (let i = 0, j = f.length - 2; i < f.length; j = i, i += 2) {
+    const xi = f[i], yi = f[i + 1], xj = f[j], yj = f[j + 1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+// A random point INSIDE the footprint (rejection-sampled on its bbox).
+function fieldPoint(S) {
+  for (let i = 0; i < 30; i++) {
+    const x = S.x0 + Math.random() * (S.x1 - S.x0);
+    const y = S.y0 + Math.random() * (S.y1 - S.y0);
+    if (inPoly(x, y, S.footprint)) return { x, y };
+  }
+  return { x: S.cx, y: S.cy };
+}
+// Wander inside the field, turning back at the edge instead of leaving it.
+export function advanceFieldPed(pe, dt) {
+  const S = pe.stadium;
+  pe.ph += dt * 6;
+  const nx = pe.x + Math.cos(pe.ang) * pe.v * dt;
+  const ny = pe.y + Math.sin(pe.ang) * pe.v * dt;
+  if (inPoly(nx, ny, S.footprint)) { pe.x = nx; pe.y = ny; }
+  else pe.ang += Math.PI * (0.6 + Math.random() * 0.8);
+  if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.9;
+}
 
 // Cache each stadium's footprint perimeter as edges with outward normals +
 // cumulative arclength, so a fan's `su` (distance around) maps to a ring point.
@@ -340,12 +382,15 @@ function maintainStadiumPeds() {
     let n = 0;
     for (const pe of pedestrians) if (pe.stadium === S) n++;
     let guard = 0;
+    const open = openField(S);
     while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 3) {
-      const su = Math.random() * P.total, q = ringPoint(P, su, RING_OFF);
+      const su = Math.random() * P.total;
+      // real position NOW, or far() culls it before it is ever placed
+      const q = open ? fieldPoint(S) : ringPoint(P, su, RING_OFF);
       pedestrians.push({
-        x: q.x, y: q.y, ang: 0, v: 7 + Math.random() * 9,     // real pos NOW so far() can't cull it
+        x: q.x, y: q.y, ang: open ? Math.random() * Math.PI * 2 : 0, v: 7 + Math.random() * 9,
         hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
-        stadium: S, ring: true, kind: "fan",
+        stadium: S, ring: !open, field: open, kind: "fan",
         su, sdir: Math.random() < 0.5 ? 1 : -1,
       });
       n++;

@@ -5,7 +5,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains, pushFloat } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceRingPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceRingPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
@@ -447,6 +447,16 @@ function stadiumUnder(x, y) {
     if (x >= S.x0 - 60 && x <= S.x1 + 60 && y >= S.y0 - 60 && y <= S.y1 + 60) return S;
   return null;
 }
+function inFootprint(x, y, S) {
+  const f = S.footprint;
+  if (!f) return true;
+  let inside = false;
+  for (let i = 0, j = f.length - 2; i < f.length; j = i, i += 2) {
+    const xi = f[i], yi = f[i + 1], xj = f[j], yj = f[j + 1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
 function maintainArcadeCoins(dt) {
   if (!state.arcadeCoins) state.arcadeCoins = [];
   const arr = state.arcadeCoins, p = state.p, cam = state.cam;
@@ -476,8 +486,10 @@ function maintainArcadeCoins(dt) {
     while (made < n && g2++ < n * 8) {
       const x = pitch.x0 + Math.random() * (pitch.x1 - pitch.x0);
       const y = pitch.y0 + Math.random() * (pitch.y1 - pitch.y0);
-      const s = W.surfaceAt(x, y);
-      if (s !== 3 && s !== 5) continue;
+      // inside the POLYGON, not just its bbox — a diagonal plaza leaves the
+      // bbox corners out on the surrounding streets, and those are drivable
+      // too, so a surface test alone let the rain fall outside the field
+      if (!inFootprint(x, y, pitch)) continue;
       if (Math.hypot(x - p.x, y - p.y) < 60) continue;
       arr.push({ x, y, t: Math.random() * 6, rain: ACOIN_RAIN_TTL });
       made++;
@@ -527,6 +539,7 @@ export function advanceEntities(dt, withPlayer = true) {
   // a speeding player makes them bolt across the street
   for (const pe of pedestrians) {
     if (pe.road) advancePed(pe, dt);
+    else if (pe.field) advanceFieldPed(pe, dt);                                  // plaza crowd wandering the open field
     else if (pe.ring) advanceRingPed(pe, dt);                                    // stadium fans on the graderías
     else if (pe.swim) advanceSwimmer(pe, dt);                                    // balneario swimmers
     else { pe.ph += dt * 6; advanceOnSurface(pe, dt, pe.cls || PED_CLS, 0.03); } // free (surface) peds

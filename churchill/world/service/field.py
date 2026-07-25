@@ -29,6 +29,7 @@ from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_ROAD, CUAD, FIELD_ACERA_CELLS,
     GRID_CELL, STREET_CLASSES,
 )
+from ..enums import GreenType, ParcelUse
 from ..logging import log
 from ..util.geometry import principal_axis
 from ..util.raster import erode_cells
@@ -139,7 +140,7 @@ class FieldService:
         if not outline or not footprint:
             log("estadio", f"WARN {spec['id']} no cuadra in rect "
                   f"({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)})"); return
-        g = {"pts": footprint, "type": "stadium"}
+        g = {"pts": footprint, "type": GreenType.STADIUM}
         # no buildings on the block: occ (OSM) + green-flag it (synth). Use the
         # cuad cells the traced cuadra actually covers, not the raw street rect.
         cuad_cells = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in outer_cells}
@@ -178,7 +179,7 @@ class FieldService:
         # goes.
         sw = max(40, (bx1 - bx0) // 3); sh = max(28, (by1 - by0) // 3)
         self.parcels.append({"id": f"{spec['id']}_field", "name": lm.get("name") or spec["id"],
-                        "use": "stadium", "whole": True, "poly": footprint,
+                        "use": ParcelUse.STADIUM, "whole": True, "poly": footprint,
                         "cx": cxpx, "cy": cypx,
                         "x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                         "slot": [int(cxpx - sw // 2), int(cypx - sh // 2), int(sw), int(sh)]})
@@ -218,7 +219,7 @@ class FieldService:
         for b in self.blocks:
             if not b.get("green") and any(c in cuads for c in b["cells"]):
                 b["green"] = True
-        if part["use"] in ("plaza", "stadium"):   # drivable open field
+        if part["use"] in (ParcelUse.PLAZA, ParcelUse.STADIUM):   # drivable open field
             for (c, r) in cells:
                 self.raster.set(c, r, CLS_ROAD)
         log("parcel", f"{part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
@@ -304,7 +305,7 @@ class FieldService:
         for part in spec["parts"]:
             c0, c1 = rng(part.get("col", 0))
             r0, r1 = rng(part.get("row", 0))
-            src = ((field if part["use"] in ("plaza", "stadium") else inner)
+            src = ((field if part["use"] in (ParcelUse.PLAZA, ParcelUse.STADIUM) else inner)
                    if part.get("aceras") else outer)
             cells = {c for c in src
                      if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
@@ -342,7 +343,7 @@ class FieldService:
             x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
             sw = max(20, int((x1 - x0) * 0.7)); sh = max(12, int((y1 - y0) * 0.55))
             self.parcels.append({
-                "id": f"{spec['id']}_{n}", "use": spec.get("use", "lot"),
+                "id": f"{spec['id']}_{n}", "use": spec.get("use", ParcelUse.LOT),
                 "name": b.get("name") or f"{spec['name']} {n + 1}",
                 "poly": [round(v) for v in b["pts"]],
                 "cx": int(cx), "cy": int(cy),

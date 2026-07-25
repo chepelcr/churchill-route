@@ -18,10 +18,9 @@ Two rules they all follow:
   would rewrite every file. Normalising that is a deliberate world change, not
   a side effect of adding types — see tools/world_snapshot.py.
 """
-from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..enums import GreenType, LandmarkType, ParcelUse, PathSurface, Weather
 from .geo import FlatPoly, Rect
 
 
@@ -86,7 +85,7 @@ class Landmark(WorldModel):
     name: str
     x: int
     y: int
-    type: str
+    type: LandmarkType
     district: str
     w: int | None = None
     h: int | None = None
@@ -116,7 +115,7 @@ class Stage(WorldModel):
     kiosks: list[str]
     targetDeliveries: int
     timeLimit: int
-    weather: str
+    weather: Weather
     customers: list[str]
     unlock: str | None = None
 
@@ -131,7 +130,7 @@ class Parcel(WorldModel):
     """
     id: str
     name: str
-    use: Literal["church", "garden", "plaza", "stadium", "lot"]
+    use: ParcelUse
     poly: FlatPoly
     cx: int
     cy: int
@@ -162,13 +161,13 @@ class Stadium(WorldModel):
 
 class Green(WorldModel):
     pts: FlatPoly
-    type: str
+    type: GreenType
 
 
 class KioskPath(WorldModel):
     """The walk from a beach kiosk to the street it is reached from."""
     pts: FlatPoly
-    surface: str = Field(description='"paved" or "sand" — how the path is drawn')
+    surface: PathSurface
 
 
 class Poi(WorldModel):

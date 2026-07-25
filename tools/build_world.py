@@ -35,7 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from churchill.world.config import (            # noqa: E402
     ACERA_CELLS, ARCADE_STREET_MUL, BUILDING_SCALE, CLASS_NAMES,
     CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER,
-    BLDG_INSET, STREET_CLASSES, SYNTH_MAX_TOTAL,
+    BLDG_INSET, DRIVABLE_CLASSES, STREET_CLASSES, SYNTH_MAX_TOTAL,
     CROSS_EXAG, CUAD, CUADS_PER_VIEW, CUAD_CELLS, DEBUG_PNG, DEBUG_SVG,
     DP_BUILDING_PX, DP_COAST_PX, DP_ROAD_PX, DROP_ROAD_CLASSES,
     FIELD_ACERA_CELLS, GRID_CELL, LAT0, LON0, M_PER_DEG_LAT, M_PER_DEG_LON,
@@ -663,7 +663,7 @@ def beach_fringe(grid, depth_cells=3):
 
 # What physics lets you drive: streets/paseo/bridges plus beach (sand is slow
 # but not a wall — several POIs are beach-side and reached across the sand).
-DRIVABLE_CLS = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_BEACH)
+DRIVABLE_CLS = DRIVABLE_CLASSES     # see enums.surface: sand is slow, not a wall
 
 def largest_drivable_component(grid):
     """Mask of the largest 4-connected component of drivable cells — 'the'

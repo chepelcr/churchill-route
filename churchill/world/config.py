@@ -10,6 +10,10 @@ Changing any value here changes the emitted world, so pair the edit with
 import math
 import os
 
+# CLASS_NAMES is re-exported: the builder has always imported it from config.
+from .enums import CLASS_NAMES, Surface  # noqa: F401
+from .enums import surface as surface_enum
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OSM_PATH = os.path.join(ROOT, "docs", "map.osm")
 DEBUG_PNG = os.path.join(ROOT, "tools", "debug_map.png")
@@ -85,8 +89,15 @@ DP_BUILDING_PX = 2.0
 DP_COAST_PX = 2.5
 MIN_BUILDING_AREA_PX2 = 216
 
-CLS_WATER, CLS_LAND, CLS_BEACH, CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA = 0, 1, 2, 3, 4, 5, 6
-CLASS_NAMES = ["water", "land", "beach", "road", "paseo", "bridge", "acera"]
+# Surface classes come from the enum layer; these aliases are what the builder
+# has always called them (a member IS its int, so nothing else changes).
+CLS_WATER = Surface.WATER
+CLS_LAND = Surface.LAND
+CLS_BEACH = Surface.BEACH
+CLS_ROAD = Surface.ROAD
+CLS_PASEO = Surface.PASEO
+CLS_BRIDGE = Surface.BRIDGE
+CLS_ACERA = Surface.ACERA
 ACERA_CELLS = CUAD_CELLS        # sidewalk depth: 1 cuadrícula (20 px) each side
 # A FIELD's ring is shallower than a block's. All it has to do is keep the
 # pitch's white lines off the asphalt, and every px of it is grass and markings
@@ -94,11 +105,10 @@ ACERA_CELLS = CUAD_CELLS        # sidewalk depth: 1 cuadrícula (20 px) each sid
 # 60x48. 8 px still reads as a kerb strip (the drawn sidewalk band is 20 px, so
 # the pitch tucks under most of it, exactly like a park's green skirt).
 FIELD_ACERA_CELLS = 2           # 8 px — estadio / plaza pitches
-# An acera exists where there is a STREET to walk beside. A cuadra edge facing
-# the sea, the sand or another parcel has none — Las Playitas runs out to the
-# beach on its north side, and the Carmen plaza's west edge is the parroquia
-# next door, not a calle. (Used as the `facing` set of the directional erosion.)
-STREET_CLASSES = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA)
+# see enums.surface: an acera exists only where there is a street to walk beside
+STREET_CLASSES = surface_enum.STREET
+# what a vehicle may drive on (BEACH included: the sand is slow, not a wall)
+DRIVABLE_CLASSES = surface_enum.DRIVABLE
 
 # ---- buildings on the cuadrícula --------------------------------------------
 SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so

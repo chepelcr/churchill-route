@@ -51,10 +51,7 @@ from churchill.world.content import (           # noqa: E402
 )
 from churchill.world.logging import log, warn   # noqa: E402
 
-# World SIZE is computed from the OSM bounds by _planar_setup(), which rebinds
-# these before anything reads them (every function reads them at call time).
-CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
-GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
+
 
 from churchill.world.pipeline.emit import emit_world2d  # noqa: E402
 from churchill.world.repository.debug_render import render_debug  # noqa: E402
@@ -65,7 +62,7 @@ from churchill.world.service.building import (  # noqa: E402
     _grid_placer, make_rng, snap_osm_buildings, synth_buildings,
 )
 from churchill.world.service.projection import (  # noqa: E402
-    PlanarProjection, project_way_pts,
+    planar_setup, project_way_pts,
 )
 from churchill.world.service.surface import (   # noqa: E402
     acera_fringe, beach_fringe, raster_coast_barrier, raster_poly_barrier,
@@ -122,57 +119,17 @@ def planar_muelle_axis(roads, near_x, near_y, reach=1500):
     return best
 
 
-def _planar_setup(ways):
-    """Compute world bounds from the OSM ways (metres), recompute the world-size
-    globals for the flat map, and return a PlanarProjection. Optionally clip the
-    bounds to PLANAR_BBOX ("lon0,lat0,lon1,lat1") for a bounded smoke build."""
-    global CANVAS_W, CANVAS_H, GRID_COLS, GRID_ROWS, CENTER_Y
-    clip = None
-    if PLANAR_BBOX:
-        lo0, la0, lo1, la1 = (float(v) for v in PLANAR_BBOX.split(","))
-        (a0, b0), (a1, b1) = to_m(la0, lo0), to_m(la1, lo1)
-        clip = (min(a0, a1), min(b0, b1), max(a0, a1), max(b0, b1))
-        # Drop ways entirely outside the clip so stray inland geometry never
-        # inflates the bounds, gets rasterised at the world edge, or pollutes
-        # edge tiles. A way with ANY point inside (or crossing) the clip stays.
-        m = 300.0                                    # keep a small crossing margin
-        inside = lambda p: (clip[0] - m <= p[0] <= clip[2] + m and
-                            clip[1] - m <= p[1] <= clip[3] + m)
-        kept = [w for w in ways if any(inside(p) for p in w["pts"])]
-        dropped = len(ways) - len(kept)
-        ways[:] = kept
-        if dropped:
-            log("planar", f"dropped {dropped} ways entirely outside the clip bbox")
-    mxs, mys = [], []
-    for w in ways:
-        for (mx, my) in w["pts"]:
-            if clip and not (clip[0] <= mx <= clip[2] and clip[1] <= my <= clip[3]):
-                continue
-            mxs.append(mx); mys.append(my)
-    if not mxs:
-        raise SystemExit("[planar] no OSM points in bounds")
-    pad = 200.0
-    min_mx, max_mx = min(mxs) - pad, max(mxs) + pad
-    min_my, max_my = min(mys) - pad, max(mys) + pad
-    ppm = PLANAR_PX_PER_M
-    snap = lambda px: int(math.ceil(px / CUAD) * CUAD)
-    CANVAS_W = snap((max_mx - min_mx) * ppm)
-    CANVAS_H = snap((max_my - min_my) * ppm)
-    GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
-    CENTER_Y = CANVAS_H // 2
-    log("planar", f"world {CANVAS_W}x{CANVAS_H}px  ppm={ppm}  grid "
-          f"{GRID_COLS}x{GRID_ROWS} = {GRID_COLS*GRID_ROWS/1e6:.1f}M cells"
-          + ("  (bbox clip)" if clip else ""))
-    return PlanarProjection(min_mx, min_my, ppm)
-
-
 def main():
     t0 = time.time()
     log("parse", f"{OSM_PATH}")
     nodes, ways, named, rels, poi_nodes = OsmFileRepository(OSM_PATH).load()
     log("parse", f"{len(nodes)} nodes, {len(ways)} kept ways, {len(named)} named features ({time.time()-t0:.1f}s)")
 
-    sp = _planar_setup(ways)
+    # The world's size comes out of the projection setup — it is not a knob, and
+    # it is not a global: these are locals from here on.
+    sp, dims = planar_setup(ways)
+    CANVAS_W, CANVAS_H, CENTER_Y = dims.w, dims.h, dims.center_y
+    GRID_COLS, GRID_ROWS = dims.cols, dims.rows
 
     roads, bridge_road = extract_roads(sp, ways, CANVAS_W, CANVAS_H)
     # León Cortés end-barro + dirt cross streets (coordinate-agnostic).

@@ -54,6 +54,7 @@ from churchill.world.logging import log, warn   # noqa: E402
 CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 
+from churchill.world.repository.world_json import JsonWorldRepository  # noqa: E402
 from churchill.world.util.raster import (     # noqa: E402
     Raster, erode_cells, rle_encode,
 )
@@ -1268,12 +1269,8 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
     notable duplication, still cheap. Backdrop polygons (coast/water/beach) stay
     global in the manifest (few, and the per-cell RLE is the surface source of
     truth for physics/rasterised render)."""
-    tiles_dir = os.path.join(WORLD2D_DIR, "tiles")
-    if os.path.isdir(tiles_dir):
-        for fn in os.listdir(tiles_dir):
-            if fn.endswith(".json"):
-                os.remove(os.path.join(tiles_dir, fn))
-    os.makedirs(tiles_dir, exist_ok=True)
+    repo = JsonWorldRepository(WORLD2D_DIR)
+    repo.clear_tiles()
 
     tcols = (GRID_COLS + TILE_CELLS - 1) // TILE_CELLS
     trows = (GRID_ROWS + TILE_CELLS - 1) // TILE_CELLS
@@ -1337,8 +1334,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
                     "cols": cw, "rows": ch, "rle": rle}
             for key, feats in b.items():
                 tile[key] = feats
-            with open(os.path.join(tiles_dir, f"{tc}_{tr}.json"), "w", encoding="utf-8") as f:
-                json.dump(tile, f, ensure_ascii=False, separators=(",", ":"))
+            repo.write_tile(tc, tr, tile)
             n_tiles += 1
 
     # districts as 2-D polys — planar arranges the barrios west→east along the
@@ -1376,12 +1372,9 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         # a remote sponsor `lote` can claim, so its art has a real footprint
         "parcels": parcels or [],
     }
-    with open(os.path.join(WORLD2D_DIR, "manifest.json"), "w", encoding="utf-8") as f:
-        json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
+    repo.write_manifest(manifest)
 
-    total = os.path.getsize(os.path.join(WORLD2D_DIR, "manifest.json"))
-    total += sum(os.path.getsize(os.path.join(tiles_dir, fn))
-                 for fn in os.listdir(tiles_dir))
+    total = repo.total_bytes()
     log("emit", f"src/world2d/ — {tcols}x{trows}={n_tiles} tiles + manifest, "
           f"{total/1024:.0f} KB total")
 

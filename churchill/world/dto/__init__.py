@@ -6,6 +6,7 @@ churchill.world.dto.world for the two rules every model follows (extra="allow",
 and validate-don't-serialize).
 """
 from .geo import FlatPoly, Rect
+from .lote import Lote, LoteCatalog
 from .manifest import Manifest, Tile
 from .world import (
     Balneario, Bridge, Customer, District, Estuary, FaroPier, Geo, Green,
@@ -16,6 +17,7 @@ from .world import (
 __all__ = [
     "Balneario", "Bridge", "Customer", "District", "Estuary", "FaroPier",
     "FlatPoly", "Geo", "Green", "GridInfo", "Hill", "KioskPath", "Landmark",
+    "Lote", "LoteCatalog",
     "Manifest", "Meta", "Parcel", "Pier", "Poi", "Rect", "Stadium", "Stage",
     "Tile", "WorldModel",
 ]

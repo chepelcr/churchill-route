@@ -92,3 +92,22 @@ def planar_setup(ways, *, bbox=PLANAR_BBOX, ppm=PLANAR_PX_PER_M):
           f"{dims.cols}x{dims.rows} = {dims.cells/1e6:.1f}M cells"
           + ("  (bbox clip)" if clip else ""))
     return PlanarProjection(min_mx, min_my, ppm), dims
+
+
+def world_to_geo(geo, x, y):
+    """World px -> (lat, lon), inverting `manifest.meta.geo`.
+
+    The affine is exact (the projection is linear in lon/lat), so this is a
+    real inverse, not an approximation — which is what makes it safe for the
+    admin tools and, later, for a server matching a business's real address to
+    a lote.
+    """
+    lon = (x - geo["bx"]) / geo["ax"]
+    lat = (y - geo["by"]) / geo["ay"]
+    return round(lat, 6), round(lon, 6)
+
+
+def geo_to_world(geo, lat, lon):
+    """(lat, lon) -> world px. The direction the CLIENT uses to place remote
+    content it was given in real coordinates."""
+    return geo["ax"] * lon + geo["bx"], geo["ay"] * lat + geo["by"]

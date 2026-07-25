@@ -148,11 +148,26 @@ churchill/world/
   pipeline/      the stages: extract_world -> … -> verify -> write_world
 ```
 
-Nothing imports the layer above it. `tools/build_world.py` is the CLI: it calls
-`extract_world`, still holds the middle phases as `main()`, and hands the
-context to `verify`/`write_world`. Those middle phases (surface rasterising,
-districts, POI placement, kiosks, blocks, structures, decoration) are what is
-left to lift into stages.
+Nothing imports the layer above it. **`tools/build_world.py` is 19 lines** — a
+sys.path shim and a call to `churchill.world.pipeline.runner.main`, which reads
+as the ordered list of stages it is:
+
+```
+extract_world -> rasterise_surface -> resolve_districts -> place_pois
+  -> place_kiosks_and_blocks -> seat_town_kiosks -> place_structures
+  -> decorate -> verify -> write_world
+```
+
+Stages pass results explicitly rather than sharing a scope; where a value is
+handed along by name it is because two stages genuinely share it. Two ordering
+facts are load-bearing: `acera_fringe` runs before anything that must stay
+un-ringed (that is why a whole-cuadra pitch reads as one open surface), and
+`decorate` runs last because it reads the FINISHED surface to decide where a
+tree may stand.
+
+The other tools are consumers of the same layers: `tools/gen_lotes.py` reads
+through `JsonWorldRepository` and emits validated `Lote` models,
+`tools/gen-inventory.mjs` reads the manifest + tiles.
 
 **Every step of that refactor must keep the world byte-identical** — verify with
 `python3 tools/world_snapshot.py rebuild`, and diff the build log too (it is

@@ -207,10 +207,17 @@ function drawMarinePark(lm) {
             "PARQUE MARINO", "#fff", "#2e7d44");
 }
 
+// AREA landmarks draw no object at their anchor — the plaza, the pool and the
+// park ARE their ground. The generic drop shadow below would be a dark ellipse
+// floating in the middle of the grass / the water with nothing casting it.
+const NO_SHADOW = new Set(["stadium", "pool", "park"]);
+
 function drawLandmark(lm) {
   const x = lm.x, y = lm.y;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.beginPath(); ctx.ellipse(x + 4, y + 8, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+  if (!NO_SHADOW.has(lm.type)) {
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath(); ctx.ellipse(x + 4, y + 8, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+  }
   switch (lm.type) {
     case "kiosk": {
       // white + ORANGE kiosk (was red); the churchill drink stays red — it's the syrup

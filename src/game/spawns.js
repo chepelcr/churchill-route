@@ -367,7 +367,7 @@ function maintainBalneario() {
   while (n < BALNEARIO_SWIMMERS && guard++ < BALNEARIO_SWIMMERS * 8) {
     const x = B.x0 + 8 + Math.random() * Math.max(1, B.x1 - B.x0 - 16);
     const y = B.y0 + 8 + Math.random() * Math.max(1, B.y1 - B.y0 - 16);
-    if (W.surfaceAt(x, y) !== 0) continue;    // only in the actual water, not the bbox corners
+    if (!swimmerWater(x, y)) continue;        // in the water with the body clear of the kerb
     pedestrians.push({
       x, y, ang: Math.random() * Math.PI * 2, v: 5 + Math.random() * 6,
       hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
@@ -388,11 +388,19 @@ function maintainBalneario() {
 // Advance a swimmer: slow drift that stays on ACTUAL water (surface class 0),
 // so it follows the inlet's real shape instead of the rectangular bbox — no
 // more swimmers wandering onto the streets at the block corners.
+// A swimmer's BODY has to clear the kerb, not just its centre point — testing
+// the centre alone let them ride half-on the balneario's inner acera.
+const SWIM_R = 6;
+export function swimmerWater(x, y) {
+  return W.surfaceAt(x, y) === 0 &&
+         W.surfaceAt(x + SWIM_R, y) === 0 && W.surfaceAt(x - SWIM_R, y) === 0 &&
+         W.surfaceAt(x, y + SWIM_R) === 0 && W.surfaceAt(x, y - SWIM_R) === 0;
+}
 export function advanceSwimmer(pe, dt) {
   pe.ph += dt * 4;
   const nx = pe.x + Math.cos(pe.ang) * pe.v * dt;
   const ny = pe.y + Math.sin(pe.ang) * pe.v * dt;
-  if (W.surfaceAt(nx, ny) === 0) { pe.x = nx; pe.y = ny; }
+  if (swimmerWater(nx, ny)) { pe.x = nx; pe.y = ny; }
   else pe.ang += Math.PI * (0.6 + Math.random() * 0.8);   // hit the shore → turn back into the water
   if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.8;
 }

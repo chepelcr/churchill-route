@@ -25,7 +25,7 @@ import {
 } from "./c2d/entities.js";
 import {
   drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames,
-  drawRain,
+  drawPoiTags, drawRain,
 } from "./c2d/hud.js";
 
 // ---- Main render ----------------------------------------------------------
@@ -82,6 +82,7 @@ function render(t) {
     // Painterly 2-D world from resident tiles: land silhouette + road strokes +
     // buildings + palms/trees (replaces the corridor's global-array drawers).
     drawWorld2D(view, t);
+    drawPoiTags(view, ZOOM);   // real business names, small, over the ground
   }
   // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
   // Cruceros deck (its BRIDGE surface cells are drivable but not painted by

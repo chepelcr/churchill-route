@@ -3595,13 +3595,35 @@ def main():
     # recognisable on the map, not another anonymous pastel rect. They bypass the
     # cuadrícula snap, so claim the cuad cells they cover — otherwise a snapped
     # or synthesised neighbour lands on top of them.
-    named_raw, keep = [], []
+    # …but ONLY when the real outline is actually clear of the streets. Snapping
+    # guaranteed that (a snapped rect must fit inside one block); a raw OSM
+    # polygon does not, and a few were sitting across the auxiliary calles by
+    # the Paseo kiosks. Any that overlaps drivable ground goes back to the
+    # snapper rather than being drawn over a road.
+    def _poly_on_road(pts, step=4):
+        xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
+        for py in range(int(min(ys)), int(max(ys)) + 1, step):
+            for px in range(int(min(xs)), int(max(xs)) + 1, step):
+                if not (0 <= px < CANVAS_W and 0 <= py < CANVAS_H):
+                    return True
+                if not point_in_poly((px, py), pts):
+                    continue
+                if grid[(py // GRID_CELL) * GRID_COLS + (px // GRID_CELL)] in \
+                        (CLS_ROAD, CLS_PASEO, CLS_BRIDGE):
+                    return True
+        return False
+
+    named_raw, keep, n_onroad = [], [], 0
     for raw in raw_bldgs:
-        if raw.get("name") and raw.get("pts"):
+        if raw.get("name") and raw.get("pts") and not _poly_on_road(raw["pts"]):
             named_raw.append(raw)
         else:
+            if raw.get("name"):
+                n_onroad += 1
             keep.append(raw)
     raw_bldgs = keep
+    if n_onroad:
+        print(f"[buildings] {n_onroad} named footprints overlapped a street — snapped instead")
     for raw in named_raw:
         xs = [p[0] for p in raw["pts"]]; ys = [p[1] for p in raw["pts"]]
         for cc in range(int(min(xs) // CUAD), int(max(xs) // CUAD) + 1):
@@ -3641,6 +3663,26 @@ def main():
                           "wnd": 1 if rng() < 0.7 else 0,
                           "name": raw["name"], "cat": raw.get("cat")})
     print(f"[buildings] {len(named_raw)} NAMED buildings kept at their real OSM footprint")
+    # The Balneario cuadra is a SEA inlet, so any building whose real footprint
+    # lands inside it was floating on the water. Give each one a sand pad: a
+    # dilated bbox emitted into `beaches` (painted AFTER the water, so it shows)
+    # and stamped CLS_BEACH so the ground under the building is solid too.
+    if balneario:
+        pads = 0
+        for b in buildings:
+            xs, ys = b["pts"][0::2], b["pts"][1::2]
+            cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
+            if not (balneario["x0"] <= cx <= balneario["x1"] and
+                    balneario["y0"] <= cy <= balneario["y1"]):
+                continue
+            px0, py0 = min(xs) - 10, min(ys) - 10
+            px1, py1 = max(xs) + 10, max(ys) + 10
+            beaches.append([round(px0), round(py0), round(px1), round(py0),
+                            round(px1), round(py1), round(px0), round(py1)])
+            raster_fill_poly(grid, [(px0, py0), (px1, py0), (px1, py1), (px0, py1)], CLS_BEACH)
+            pads += 1
+        if pads:
+            print(f"[balneario] {pads} buildings given a sand pad (were floating on the inlet)")
 
     # --- bridge / estuary / decorations
     if bridge_road:

@@ -5,6 +5,7 @@
 // so the drawers can keep writing plain `ctx.fillStyle = ...`.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
+import { tuning } from "../../game/tuning.js";
 
 let canvas, ctx, dpr = 1;
 // Camera zoom: >1 pulls the camera closer so streets/buildings read at
@@ -25,7 +26,7 @@ const CUADS_PER_VIEW = 20;
 const ACERA_PX = (W.META && W.META.aceraPx) || 8; // sidewalk depth per side
 function computeZoom(wCss, hCss) {
   const z = wCss / (CUADS_PER_VIEW * CUAD);
-  return Math.max(2.2, z);
+  return Math.max(2.2, z) * tuning.zoom;   // player setting: 0.6 far … 1.4 close
 }
 
 function setupCanvas(c) {

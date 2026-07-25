@@ -16,6 +16,31 @@ import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, label } from "./gfx.js";
 // the asphalt pass repaints anything that reached the roadway, and (b) street
 // name pills, buildings and flora still land on top, instead of being buried
 // the way they were when the stadium was a later layer.
+// Centre, tilt and half-extents of a pitch, from the principal axis of its own
+// polygon — so the markings follow the manzana's angle instead of the screen's.
+function pitchFrame(S) {
+  if (S._frame) return S._frame;
+  const f = S.footprint;
+  let mx = 0, my = 0, n = 0;
+  for (let i = 0; i < f.length; i += 2) { mx += f[i]; my += f[i + 1]; n++; }
+  mx /= n; my /= n;
+  let sxx = 0, syy = 0, sxy = 0;
+  for (let i = 0; i < f.length; i += 2) {
+    const dx = f[i] - mx, dy = f[i + 1] - my;
+    sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+  }
+  let ang = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  const ca = Math.cos(ang), sa = Math.sin(ang);
+  let hw = 0, hh = 0;
+  for (let i = 0; i < f.length; i += 2) {
+    const dx = f[i] - mx, dy = f[i + 1] - my;
+    hw = Math.max(hw, Math.abs(dx * ca + dy * sa));
+    hh = Math.max(hh, Math.abs(-dx * sa + dy * ca));
+  }
+  if (hh > hw) { ang += Math.PI / 2; const t = hw; hw = hh; hh = t; }  // long axis = the pitch's length
+  return (S._frame = { cx: mx, cy: my, ang, hw, hh });
+}
+
 function paintStadiumCuadras(view) {
   const arr = W.STADIUMS;
   if (!arr || !arr.length) return;
@@ -23,8 +48,7 @@ function paintStadiumCuadras(view) {
     if (S.x1 + 40 < view.x0 || S.x0 - 40 > view.x1 || S.y1 + 40 < view.y0 || S.y0 - 40 > view.y1) continue;
     if (!S.footprint) continue;
     const pitch = S._pitch || (S._pitch = flatPath(S.footprint, true));
-    const w = S.x1 - S.x0, h = S.y1 - S.y0;
-    const cx = (S.x0 + S.x1) / 2, cy = (S.y0 + S.y1) / 2;
+    const P = pitchFrame(S);                               // centre + tilt + extents
     // 4 px of grass dilation first: the traced pitch steps in 4 px raster
     // increments, so its edge and the acera band don't meet exactly and a hair
     // of bare ground shows through at the seam.
@@ -32,16 +56,31 @@ function paintStadiumCuadras(view) {
     ctx.save();
     ctx.clip(pitch);
     ctx.fillStyle = "#4f9d5b"; ctx.fill(pitch);            // grass
-    ctx.fillStyle = "rgba(30,88,50,0.16)";                 // mow stripes
-    for (let sy = S.y0; sy < S.y1; sy += 14) ctx.fillRect(S.x0, sy, w, 7);
-    const inset = Math.max(10, Math.min(w, h) * 0.12);
+    // Everything below is drawn in the PITCH's OWN frame, not screen axes: Las
+    // Playitas sits on the diagonal street grid, and axis-aligned mow stripes
+    // with a square white box on a tilted field read as a mistake.
+    ctx.translate(P.cx, P.cy); ctx.rotate(P.ang);
+    const hw = P.hw, hh = P.hh;
+    ctx.fillStyle = "rgba(30,88,50,0.16)";                 // mow stripes, along the pitch
+    for (let sy = -hh; sy < hh; sy += 14) ctx.fillRect(-hw, sy, hw * 2, 7);
+    // real fútbol markings: touchlines, halfway line + centre circle and spot,
+    // and a penalty area with its goal box and spot at each end
+    const m = Math.max(6, Math.min(hw, hh) * 0.10);        // touchline inset
+    const bw = Math.min(hw * 0.40, hh * 1.1);              // penalty area depth
+    const bh = Math.max(12, Math.min(hh - m - 2, hh * 0.62));
     ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2;
-    ctx.strokeRect(S.x0 + inset, S.y0 + inset, w - 2 * inset, h - 2 * inset);
-    ctx.beginPath();
-    if (w >= h) { ctx.moveTo(cx, S.y0 + inset); ctx.lineTo(cx, S.y1 - inset); } // wide → vertical halfway line
-    else { ctx.moveTo(S.x0 + inset, cy); ctx.lineTo(S.x1 - inset, cy); }        // tall → horizontal halfway line
-    ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, Math.min(w, h) * 0.13, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.strokeRect(-hw + m, -hh + m, (hw - m) * 2, (hh - m) * 2);
+    ctx.beginPath(); ctx.moveTo(0, -hh + m); ctx.lineTo(0, hh - m); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();          // centre spot
+    for (const sd of [-1, 1]) {
+      const x0 = sd < 0 ? -hw + m : hw - m - bw;
+      ctx.strokeRect(x0, -bh, bw, bh * 2);                                     // penalty area
+      const gx = sd < 0 ? -hw + m : hw - m - bw * 0.38;
+      ctx.strokeRect(gx, -bh * 0.45, bw * 0.38, bh * 0.9);                     // goal box
+      ctx.beginPath(); ctx.arc(sd * (hw - m - bw * 0.72), 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
     ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(pitch); // curb
   }

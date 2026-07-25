@@ -528,8 +528,9 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .title-card { padding: 14px 18px; }
   .settings-rows { gap: 6px; margin: 0; }
   .set-row { padding: 5px 10px; }
-  .page-head { gap: 8px; }
+  .page-head { gap: 8px; padding-bottom: 8px; }
   .page-body { gap: 6px; }
+  .page-body.scrolly { padding-top: 12px; }
 }
 
 /* ----- Full-screen pages (Shop / Settings): edge to edge, no floating card,
@@ -545,9 +546,27 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
            max(clamp(12px, 3vw, 32px), env(safe-area-inset-left));
   text-align: center;
 }
+/* The nav band sits ABOVE the scrolling body and owns a seam of its own —
+   without it, rows scrolled up to the top read as overlapping the header. */
 .page-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   flex-wrap: wrap;
+  position: relative; z-index: 2;
+  padding-bottom: 12px;
+  border-bottom: 1px solid oklch(1 0 0 / 0.10);
+  box-shadow: 0 8px 12px -10px oklch(0 0 0 / 0.9);
+  /* opaque band of its own: .page-card's blur sits BEHIND the scrolling body,
+     so without this the rows scrolled to the top showed through the nav */
+  background: oklch(0.14 0.04 285 / 0.94);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  /* bleed to the card's edges (the card owns the safe-area padding) */
+  margin: calc(-1 * max(10px, env(safe-area-inset-top)))
+          calc(-1 * max(clamp(12px, 3vw, 32px), env(safe-area-inset-right)))
+          0
+          calc(-1 * max(clamp(12px, 3vw, 32px), env(safe-area-inset-left)));
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-left: max(clamp(12px, 3vw, 32px), env(safe-area-inset-left));
+  padding-right: max(clamp(12px, 3vw, 32px), env(safe-area-inset-right));
 }
 .page-title { font-size: clamp(24px, 4.5vh, 34px); margin: 0; }
 .page-body {
@@ -562,7 +581,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .page-body.scrolly {
   justify-content: flex-start;
   /* keep a visible seam below the page-head nav even when content overflows */
-  padding-top: 14px;
+  padding-top: 20px;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -1003,3 +1022,14 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 
 /* Sign in to play button hidden if not needed; remove if unused */
+
+/* Settings section headings: one scrolling page, grouped so GAMEPLAY / APP /
+   ACCOUNT read apart instead of as one long undifferentiated list. */
+.set-group {
+  margin: 14px 0 2px; align-self: flex-start;
+  font: 11px "JetBrains Mono", monospace; letter-spacing: 0.14em;
+  text-transform: uppercase; opacity: 0.55;
+}
+.set-group:first-child { margin-top: 0; }
+.drive-tuning { margin: 10px 0 4px; }
+.drive-tuning-hint { margin: 6px 0 0; opacity: 0.7; }

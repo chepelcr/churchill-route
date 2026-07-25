@@ -13,6 +13,8 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   const [muted, setMuted] = useState(sfx.muted);
   const [vol, setVol] = useState(Math.round(sfx.volume * 100));
   const [spd, setSpd] = useState(Math.round(tuning.speed * 100));
+  const [zoom, setZoom] = useState(Math.round(tuning.zoom * 100));
+  const [poi, setPoi] = useState(tuning.poiNames);
   const [confirming, setConfirming] = useState(false);
   const [, bump] = useState(0);
   useEffect(() => iap.onChange(() => bump((n) => n + 1)), []);
@@ -35,6 +37,8 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
       <div className="page-body scrolly">
         <div className="center-stack">
         <div className="settings-rows">
+          <h2 className="set-group">{t("settings.group.app")}</h2>
+
           <div className="set-row">
             <span className="set-lbl">{t("settings.language")}</span>
             <div className="lang-toggle">
@@ -59,6 +63,8 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
             </div>
           </div>
 
+          <h2 className="set-group">{t("settings.group.gameplay")}</h2>
+
           <div className="set-row">
             <span className="set-lbl">{t("settings.speed")}</span>
             <div className="vol-wrap">
@@ -68,6 +74,29 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
               <span className="vol-pct">{spd}%</span>
             </div>
           </div>
+
+          <div className="set-row">
+            <span className="set-lbl">{t("settings.zoom")}</span>
+            <div className="vol-wrap">
+              <input type="range" min="60" max="140" step="10" value={zoom}
+                onChange={(e) => { const v = +e.target.value; setZoom(v); tuning.setZoom(v / 100); }}
+                aria-label={t("settings.zoom")} />
+              <span className="vol-pct">{zoom}%</span>
+            </div>
+          </div>
+
+          <div className="set-row">
+            <span className="set-lbl">{t("settings.poiNames")}</span>
+            <div className="lang-toggle">
+              <span className="set-desc">{t("settings.poiNames.desc")}</span>
+              <button className={"btn " + (poi ? "gold" : "secondary")}
+                onClick={() => { const v = !poi; setPoi(v); tuning.setPoiNames(v); sfx.play("menu_select"); }}>
+                {poi ? t("select.yes") : t("select.no")}
+              </button>
+            </div>
+          </div>
+
+          <h2 className="set-group">{t("settings.group.account")}</h2>
 
           <div className="set-row">
             <span className="set-lbl">{t("settings.removeAds")}</span>

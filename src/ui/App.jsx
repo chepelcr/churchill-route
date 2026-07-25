@@ -7,6 +7,8 @@ import HUD from "./screens/HUD.jsx";
 import PauseScreen from "./screens/PauseScreen.jsx";
 import ResultsScreen from "./screens/ResultsScreen.jsx";
 import StageBrief from "./screens/StageBrief.jsx";
+import ModeBrief from "./screens/ModeBrief.jsx";
+import TutorialBrief from "./screens/TutorialBrief.jsx";
 import BootScreen from "./screens/BootScreen.jsx";
 import IntroScreen, { introSeen } from "./screens/IntroScreen.jsx";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
@@ -33,6 +35,7 @@ export default function App() {
   const [screen, setScreen] = useState("boot");
   const [pendingStage, setPendingStage] = useState(null);
   const [pendingMode, setPendingMode] = useState(null); // story | arcade | explore
+  const [pendingRun, setPendingRun] = useState(null);   // { vehicleKey, armedBoosts } awaiting the mode brief
   const [shopCtx, setShopCtx] = useState(null);         // { tab?, veh? } deep-link into the shop
   const canvasRef = useRef(null);
   const [, setTick] = useState(0);
@@ -91,7 +94,7 @@ export default function App() {
   useEffect(() => { Game.state.paused = (screen === "paused" || (screen === "settings" && settingsFrom.current === "paused")); }, [screen]);
 
   // Menu screens show the live world drifting behind them (attract mode).
-  useEffect(() => { Game.setAttract(["boot", "intro", "title", "stagepick", "supporters", "shop", "vehpick"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
+  useEffect(() => { Game.setAttract(["boot", "intro", "title", "stagepick", "supporters", "shop", "vehpick", "modebrief", "tutbrief"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
 
   // Engine/drift hum only while actually driving; menu blips stay available.
   useEffect(() => { screen === "playing" ? sfx.resume() : sfx.quiet(); }, [screen]);
@@ -126,8 +129,8 @@ export default function App() {
   function pickMode(mode) {
     enterImmersive();
     if (mode === "tutorial") {
-      Game.startTutorial({ vehicleKey: Game.state.vehicleKey });
-      setScreen("playing");
+      // set speed + zoom first, then teach (tutbrief owns the start)
+      setScreen("tutbrief");
     } else {
       setPendingMode(mode);
       // story picks a level first; arcade / explore go straight to the picker
@@ -142,9 +145,16 @@ export default function App() {
       setScreen("brief");
       return;
     }
-    Game.state.armedBoosts = armedBoosts;
-    if (pendingMode === "explore") Game.startExplore({ vehicleKey });
-    else Game.startArcade({ vehicleKey });
+    // arcade / explore get their own "what is this mode" card before starting
+    setPendingRun({ vehicleKey, armedBoosts });
+    setScreen("modebrief");
+  }
+  function beginMode() {
+    if (!pendingRun) return;
+    enterImmersive();
+    Game.state.armedBoosts = pendingRun.armedBoosts;
+    if (pendingMode === "explore") Game.startExplore({ vehicleKey: pendingRun.vehicleKey });
+    else Game.startArcade({ vehicleKey: pendingRun.vehicleKey });
     setScreen("playing");
   }
   function pickStage(idx) {
@@ -190,6 +200,11 @@ export default function App() {
     Game.quit();
     setScreen("title");
   }
+  function startTutorialRun() {
+    enterImmersive();
+    Game.startTutorial({ vehicleKey: Game.state.vehicleKey });
+    setScreen("playing");
+  }
   function openSettings(from) {
     settingsFrom.current = from;
     setScreen("settings");
@@ -201,24 +216,22 @@ export default function App() {
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
       {screen === "boot" && <BootScreen onDone={() => setScreen(introSeen() ? "title" : "intro")} />}
-      {(screen === "intro" || screen === "title" || screen === "stagepick" || screen === "brief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick") && (
+      {(screen === "intro" || screen === "title" || screen === "stagepick" || screen === "brief" || screen === "modebrief" || screen === "tutbrief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick") && (
         <div className="screen-anim" key={screen}>
-          {screen === "intro" && <IntroScreen onDone={() => {
-            enterImmersive();
-            Game.startTutorial({ vehicleKey: Game.state.vehicleKey });
-            setScreen("playing");
-          }} />}
+          {screen === "intro" && <IntroScreen onDone={() => setScreen("tutbrief")} />}
           {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => { setShopCtx(null); setScreen("shop"); }} />}
           {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
           {screen === "shop" && <ShopScreen ctx={shopCtx} onBack={() => { setShopCtx(null); setScreen("title"); }} />}
           {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} onShop={(ctx) => { setShopCtx(ctx || null); setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
           {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
           {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
+          {screen === "modebrief" && <ModeBrief mode={pendingMode} onGo={beginMode} />}
+          {screen === "tutbrief" && <TutorialBrief onGo={startTutorialRun} />}
           {screen === "over" && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen("title")} onContinue={continueRun} />}
           {screen === "settings" && (
             <SettingsScreen
               onBack={() => setScreen(settingsFrom.current === "paused" ? "paused" : "title")}
-              onTutorial={() => { Game.startTutorial({ vehicleKey: Game.state.vehicleKey }); setScreen("playing"); }}
+              onTutorial={() => setScreen("tutbrief")}
               onSupporters={settingsFrom.current === "title" ? () => setScreen("supporters") : null} />
           )}
         </div>

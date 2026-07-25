@@ -140,18 +140,33 @@ export function update(dt) {
     if (!ok) p.a = prevA;
   }
 
+  // WALL CONTACT from the previous frame (the collision response below records
+  // the kerb's normal). Sliding along a wall was still ending in a dead stop:
+  // the wall removes the into-wall velocity, which leaves the car moving
+  // SIDEWAYS relative to a heading that still points at the kerb — and grip
+  // then eats exactly that, every frame. So while in contact, thrust is
+  // redirected ALONG the kerb and grip is relaxed: you keep driving down the
+  // acera like you keep driving down the muelle, instead of stopping dead.
+  p.wallT = Math.max(0, (p.wallT || 0) - dt);
+  const onWall = p.wallT > 0;
+
   // acceleration (headstart consumable = free turbo for its first seconds)
   const boosting = input.boost || (state.headstartT || 0) > 0;
   const throttle = input.up - input.down * 0.6;
-  p.vx += Math.cos(p.a) * veh.accel * tuning.speed * throttle * dt;
-  p.vy += Math.sin(p.a) * veh.accel * tuning.speed * throttle * dt;
+  let ax = Math.cos(p.a), ay = Math.sin(p.a);
+  if (onWall) {
+    const an = ax * p.wallNX + ay * p.wallNY;   // wallN points AWAY from the wall
+    if (an < 0) { ax -= an * p.wallNX; ay -= an * p.wallNY; }
+  }
+  p.vx += ax * veh.accel * tuning.speed * throttle * dt;
+  p.vy += ay * veh.accel * tuning.speed * throttle * dt;
   if (boosting) { p.vx *= 1 + 0.7 * dt; p.vy *= 1 + 0.7 * dt; }
 
   // grip (kill lateral)
   const heading = { x: Math.cos(p.a), y: Math.sin(p.a) };
   const fwd = p.vx * heading.x + p.vy * heading.y;
   const side = -p.vx * heading.y + p.vy * heading.x;
-  const grip = veh.grip * (input.brake ? 0.55 : 1) * wetMul;
+  const grip = veh.grip * (input.brake ? 0.55 : 1) * wetMul * (onWall ? 0.15 : 1);
   const kept = side * (1 - Math.min(1, grip * dt * 6));
   p.vx = heading.x * fwd - heading.y * kept;
   p.vy = heading.y * fwd + heading.x * kept;
@@ -184,59 +199,76 @@ export function update(dt) {
   // beach and class 0 water are walls you SLIDE ALONG. Beach became a wall on
   // user request (beach-classed pockets also let you slip inside cuadras).
   if (blockedAt(p.x, p.y)) {
-    // WALL-NORMAL SLIDE. The old response separated the two AXES: revert x or
-    // revert y, whichever was blocked. That only resolves against an
-    // axis-aligned wall — which is why the muelle (a perfectly vertical
-    // rectangle in open water) has always felt right while the city has felt
-    // sticky: against a DIAGONAL acera both axes are blocked at once, so every
-    // frame fell through to a full position revert plus a 28% speed bleed and
-    // the car ground to a halt on a wall it should have skated along.
+    // Two wall shapes need two different answers, and using one for both is
+    // what has made this feel wrong in either the city or on the muelle:
     //
-    // Instead, estimate the wall's normal from the grid and slide along the
-    // TANGENT, removing only the into-wall component of the velocity. Same
-    // feel as the pier edge, on every surface.
-    const R = bo + br + 3;                    // just outside the bubble hull
+    //  * ONE wall (an acera edge, the shoreline) — estimate its NORMAL from
+    //    the grid and slide along the tangent, losing only the into-wall part
+    //    of the velocity. The old axis-separated response couldn't do this:
+    //    against a DIAGONAL acera both axes block at once, so it reverted the
+    //    whole step and bled 28% of the speed every frame, and the car ground
+    //    to a halt on a wall it should have skated along.
+    //
+    //  * A CORRIDOR (the muelle deck with water both sides, a narrow calle
+    //    between two aceras) — the opposing normals CANCEL, so there is no
+    //    normal to slide along. Here the axis-separated slide is exactly
+    //    right, and it's why the pier always felt good; forcing a normal on it
+    //    is what made the muelle worse.
+    //
+    // So: measure the normal, and pick the response its magnitude calls for.
+    const R = bo + br + 3;                     // just outside the bubble hull
     let nx = 0, ny = 0;
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2, cs = Math.cos(a), sn = Math.sin(a);
       if (isWall(p.x + cs * R, p.y + sn * R)) { nx -= cs; ny -= sn; }
     }
     const dx = p.x - prevX, dy = p.y - prevY;
+    const dl = Math.hypot(dx, dy) || 1;
     const nl = Math.hypot(nx, ny);
-    if (nl > 1e-4) { nx /= nl; ny /= nl; }
-    else {                                    // boxed in (or dead centre): back out the way we came
-      const dl = Math.hypot(dx, dy) || 1;
-      nx = -dx / dl; ny = -dy / dl;
-    }
-    // slide: drop the into-wall part of this frame's movement, shortening the
-    // step until it fits (a long step can clip a corner the tangent misses)
-    const dn = dx * nx + dy * ny;
-    const tx = dx - dn * nx, ty = dy - dn * ny;
+    const oneWall = nl >= 0.35;
+    if (oneWall) { nx /= nl; ny /= nl; } else { nx = -dx / dl; ny = -dy / dl; }
+
     let placed = false;
-    for (const f of [1, 0.5, 0.25]) {
-      const sx = prevX + tx * f, sy = prevY + ty * f;
-      if (!blockedAt(sx, sy)) { p.x = sx; p.y = sy; placed = true; break; }
+    if (oneWall) {
+      // slide along the tangent, shortening the step until it fits (a long
+      // step can clip a corner the tangent alone misses)
+      const dn = dx * nx + dy * ny;
+      const tx = dx - dn * nx, ty = dy - dn * ny;
+      for (const f of [1, 0.5, 0.25]) {
+        const sx = prevX + tx * f, sy = prevY + ty * f;
+        if (!blockedAt(sx, sy)) { p.x = sx; p.y = sy; placed = true; break; }
+      }
+      if (!placed) { p.x = prevX; p.y = prevY; }
+      // remember the kerb so the next frame's thrust pushes ALONG it and grip
+      // doesn't eat the slide (see onWall above) — that combination is what
+      // keeps you driving down an acera instead of stopping on it
+      p.wallNX = nx; p.wallNY = ny; p.wallT = 0.12;
+      // remove ONLY the into-wall component; all tangential speed carries
+      const vn = p.vx * nx + p.vy * ny;
+      if (vn < 0) {
+        const hitSpeed = Math.hypot(p.vx, p.vy);
+        p.vx -= vn * nx; p.vy -= vn * ny;
+        if (hitSpeed > 180 && !placed) state.cam.shake = Math.max(state.cam.shake, Math.min(2, hitSpeed / 180));
+      }
+    } else {
+      // corridor: kill the blocked axis only, keep the other one running
+      const okX = !blockedAt(p.x, prevY);
+      const okY = !blockedAt(prevX, p.y);
+      if (okX && !okY) { p.y = prevY; p.vy = 0; placed = true; }
+      else if (okY && !okX) { p.x = prevX; p.vx = 0; placed = true; }
+      else { p.x = prevX; p.y = prevY; p.vx *= 0.7; p.vy *= 0.7; }
+      p.wallT = 0;                             // no normal → no thrust redirect
     }
-    if (!placed) { p.x = prevX; p.y = prevY; }
-    // velocity: remove ONLY the into-wall component, so all the tangential
-    // speed carries — no blanket bleed. Shake still marks a genuinely fast hit.
-    const vn = p.vx * nx + p.vy * ny;
-    if (vn < 0) {
-      const hitSpeed = Math.hypot(p.vx, p.vy);
-      p.vx -= vn * nx; p.vy -= vn * ny;
-      if (hitSpeed > 180 && !placed) state.cam.shake = Math.max(state.cam.shake, Math.min(2, hitSpeed / 180));
-    }
-    // Depenetration: push straight out along the normal (the old net scanned 8
-    // directions blindly and could shove the car sideways along the wall).
+
     if (blockedAt(p.x, p.y)) {
+      // push straight out along the normal first (the old net scanned 8
+      // directions blindly and could shove the car sideways along the wall)…
       let out = false;
       for (let d = 3; d <= 12 && !out; d += 3) {
         const px = p.x + nx * d, py = p.y + ny * d;
         if (clearSpot(px, py)) { p.x = px; p.y = py; out = true; }
       }
-      // ...and if the normal itself points nowhere useful (a pocket, a corner
-      // between two walls), fall back to the old blind ring scan rather than
-      // leave the car wedged.
+      // …then the blind ring, for pockets the normal doesn't escape
       if (!out) {
         outer: for (let rr = 4; rr <= 12; rr += 4)
           for (let k = 0; k < 8; k++) {
@@ -245,11 +277,14 @@ export function update(dt) {
             if (clearSpot(px, py)) { p.x = px; p.y = py; p.vx *= 0.3; p.vy *= 0.3; out = true; break outer; }
           }
       }
-      // Last resort — wedged with no way out at all: snap back to the last pose
-      // that was clear ON A STREET, angle included (position alone could leave
-      // rotated corners still buried, deadlocking the car half-in).
+      // last resort — wedged with no way out: snap back to the last pose that
+      // was clear ON A STREET, angle included (position alone could leave
+      // rotated corners still buried, deadlocking the car half-in). Keep half
+      // the along-wall speed; a full stop here is the "car dies on the kerb".
       if (!out && p.freeX !== undefined && Math.hypot(p.x - p.freeX, p.y - p.freeY) < 60) {
-        p.x = p.freeX; p.y = p.freeY; p.vx = 0; p.vy = 0;
+        p.x = p.freeX; p.y = p.freeY;
+        const vt = p.vx * -ny + p.vy * nx;
+        p.vx = -ny * vt * 0.5; p.vy = nx * vt * 0.5;
         if (p.freeA !== undefined) p.a = p.freeA;
       }
     }
@@ -422,6 +457,13 @@ const ACOIN_SPAWN_MIN = 130;    // never drop one on top of the player
 const ACOIN_SPAWN_MAX = 1100;   // out to the streamed ring
 const ACOIN_KEEP = 1500;        // cull past this (fresh coins as you move on)
 const ACOIN_PICK_R = 22;        // grab radius
+const ACOIN_PITCH_BONUS = 22;   // extra coins raining inside a stadium/plaza cuadra
+// The stadium/plaza cuadra the point is inside, or null.
+function stadiumUnder(x, y) {
+  for (const S of W.STADIUMS || [])
+    if (x >= S.x0 - 60 && x <= S.x1 + 60 && y >= S.y0 - 60 && y <= S.y1 + 60) return S;
+  return null;
+}
 function maintainArcadeCoins(dt) {
   if (!state.arcadeCoins) state.arcadeCoins = [];
   const arr = state.arcadeCoins, p = state.p, cam = state.cam;
@@ -436,6 +478,22 @@ function maintainArcadeCoins(dt) {
       arr.splice(i, 1); continue;
     }
     if (Math.hypot(c.x - cam.x, c.y - cam.y) > ACOIN_KEEP) arr.splice(i, 1);
+  }
+  // COIN RAIN on the estadio / la plaza: those cuadras are wide open drivable
+  // ground with a crowd around them, so they get their own denser pool sprayed
+  // ACROSS the pitch (the street spawner only ever drops coins on the ring
+  // road) — the reward for going in there and doing donuts.
+  const pitch = stadiumUnder(cam.x, cam.y);
+  if (pitch) {
+    let g2 = 0;
+    while (arr.length < ACOIN_TARGET + ACOIN_PITCH_BONUS && g2++ < ACOIN_PITCH_BONUS * 6) {
+      const x = pitch.x0 + Math.random() * (pitch.x1 - pitch.x0);
+      const y = pitch.y0 + Math.random() * (pitch.y1 - pitch.y0);
+      const s = W.surfaceAt(x, y);
+      if (s !== 3 && s !== 5) continue;
+      if (Math.hypot(x - p.x, y - p.y) < 60) continue;
+      arr.push({ x, y, t: Math.random() * 6 });
+    }
   }
   let guard = 0;
   while (arr.length < ACOIN_TARGET && guard++ < ACOIN_TARGET * 5) {

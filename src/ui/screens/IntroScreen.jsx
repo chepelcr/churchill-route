@@ -47,8 +47,9 @@ export default function IntroScreen({ onDone }) {
             <span key={i} className={"dot" + (i === slide ? " on" : "")}></span>
           ))}
         </div>
+        {/* No skip: the lore is three short beats and it's the only place the
+            game explains itself — blowing through it left players lost. */}
         <div className="btn-row" style={{ marginTop: 6 }}>
-          {!last && <button className="btn secondary" onClick={finish}>{t("intro.skip")}</button>}
           <button className="btn gold" onClick={next}>{last ? t("intro.go") : t("intro.next")}</button>
         </div>
       </div>

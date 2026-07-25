@@ -29,10 +29,23 @@ function drawArcadeCoin(c, t) {
 
 function drawPed(pe) {
   if (pe.kind === "swimmer") { drawSwimmer(pe); return; }
-  const bob = Math.sin(pe.ph) * 1.4;
+  // FANS celebrate: a bigger, faster bounce plus a side-to-side shake and two
+  // raised arms, so the crowd around the estadio and la plaza reads as a crowd
+  // rather than commuters who happen to be walking in a circle.
+  const fan = pe.kind === "fan";
+  const bob = fan ? Math.abs(Math.sin(pe.ph * 1.7)) * -3.2 : Math.sin(pe.ph) * 1.4;
+  const sway = fan ? Math.sin(pe.ph * 2.3) * 1.1 : 0;
+  const x = pe.x + sway;
   ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = `hsl(${pe.hue} 70% 60%)`; ctx.fillRect(pe.x - 2, pe.y - 3 + bob, 4, 6);
-  ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(pe.x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = `hsl(${pe.hue} 70% 60%)`; ctx.fillRect(x - 2, pe.y - 3 + bob, 4, 6);
+  if (fan) {                                       // arms up
+    ctx.strokeStyle = "#f1c8a4"; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x - 2, pe.y - 2 + bob); ctx.lineTo(x - 4, pe.y - 6 + bob);
+    ctx.moveTo(x + 2, pe.y - 2 + bob); ctx.lineTo(x + 4, pe.y - 6 + bob);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
 }
 // A swimmer: a head just above the water with a ripple wake + stroking arms.
 function drawSwimmer(pe) {

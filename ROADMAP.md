@@ -4,6 +4,74 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
 game modes are live; the items below are what remains.
 
+## ✅ Puntarenas real + refactor del render + feel de colisión (2026-07-24 c)
+
+**Render modularizado**
+- [x] `src/render/canvas2d.js` (2230 líneas) partido en `src/render/c2d/*`
+      (gfx, cache, ground, streets, structures, flora, landmarks, entities,
+      hud, world); `canvas2d.js` queda como compositor de ~200 líneas. `gfx.js`
+      expone `ctx/canvas/dpr/ZOOM/lastT` como **live bindings** de ESM, así que
+      ningún `ctx.fillStyle` cambió.
+- [x] Borrado el pintor de corredor MUERTO (12 drawers sin llamadas desde que el
+      mundo es planar: `drawLand`, `drawStreets`, `drawBuildings`, `drawPalms`,
+      `drawTrees`, `drawRails`, `drawMedians`, `drawIslands`, `drawHills`,
+      `drawEstuary`, `drawMangroves`, `drawStreetLabels`) — ~380 líneas y dos
+      copias del mismo pase (`drawBuildings` era `paintBuilding` verbatim).
+
+**Puntarenas de verdad**
+- [x] `extract_pois` saca **1160 POIs con nombre real** del OSM (amenity/shop/
+      tourism/leisure/office/…) a `manifest.pois`, deduplicados por (nombre,
+      cuadrícula). Hotel El Turista, Soda La Esquina, Banco Popular, Terminal
+      Puntarenas–Quepos, Iglesia Cristiana…
+- [x] **308 edificios con nombre conservan su huella OSM real** en vez de
+      snapearse a la cuadrícula. Los que se montaban sobre una calle (137)
+      vuelven al snapper — eso era el rect sobre las calles auxiliares del Paseo.
+- [x] Rótulos en juego a 8px de pantalla + toggle **Nombres de negocios** en
+      Ajustes; overlay de debug con punto y color por categoría para validar.
+- [x] Parque Marino: `occ` deja la cuadra limpia, sus 4 edificios OSM van con
+      huella real y paleta de acuario, y los 5 tanques se colocan por transformada
+      de distancia libres de acera y de edificio.
+
+**Estadios / Plaza**
+- [x] La cuadra se traza por *flood* + erosión: `outline` (cuadra + acera) y
+      `footprint` (la cancha). Solo se estampan CLS_ROAD las celdas trazadas →
+      **ya no se maneja sobre el mar** al norte de Las Playitas.
+- [x] Las Playitas pasa a **Plaza Las Playitas**: sin gradas, sin aceras (llena
+      la cuadra), llega hasta la línea de playa, y su pared derecha sigue la
+      LÍNEA de Calle 8 extendida (antes se recortaba contra el cap redondo de la
+      calle). Marcas de **fútbol rotadas al eje real de la plaza** (áreas, punto
+      de penal, círculo central).
+- [x] Lito Pérez sin gradas. El estadio se pinta DENTRO del pase de aceras, no
+      como capa encima → los rótulos de calle vuelven a quedar arriba.
+- [x] Fuera las sombras huérfanas en el centro de la plaza y del balneario.
+- [x] Bañistas del balneario contenidos con margen de cuerpo (ya no pisan la
+      acera interior); los edificios que flotaban en la ensenada tienen banco de
+      arena.
+- [x] Lluvia de monedas dentro de la cuadra del estadio/plaza + hinchada que
+      salta y levanta los brazos.
+
+**Colisiones**
+- [x] Colisionador de **burbuja (cápsula)** en vez de caja orientada: la caja
+      enganchaba una esquina en el cordón y ahí se quedaba (las ruedas del
+      tuk-tuk). Una cápsula no tiene esquina que enganchar y barre más angosto
+      que la diagonal de la caja, así que girar en calle angosta es más fácil.
+- [x] Respuesta doble: con **una** pared se estima la normal y se desliza por la
+      tangente (perdiendo solo la componente contra la pared) + el empuje se
+      redirige a lo largo del cordón y el agarre se relaja, para que el carro
+      SIGA andando en vez de morir contra la acera. En **corredor** (el muelle
+      con agua a los dos lados, una calle angosta) las normales se cancelan, así
+      que se usa el deslizamiento por ejes de siempre — que es justo lo que hacía
+      que el muelle se sintiera bien.
+
+**UI**
+- [x] Intro de lore **no saltable**.
+- [x] Pantalla previa al tutorial con **velocidad + zoom** y aviso de que se
+      cambian después en Ajustes.
+- [x] **Zoom configurable** (60–140%) y Ajustes agrupado en JUEGO / APLICACIÓN /
+      CUENTA, con la barra de navegación opaca (las filas ya no se ven debajo).
+- [x] Pantalla de modo para **Recorrer** y **Arcade**, como el brief de Historia.
+- [x] Tutorial: el paso del freno describe el **alto en seco** actual.
+
 ## ✅ Estadios: trazado orgánico real + fixes de NPCs/lancha (2026-07-24 b)
 
 - [x] **Ángulos correctos (trazado desde la grilla)**: `place_stadium` resuelve

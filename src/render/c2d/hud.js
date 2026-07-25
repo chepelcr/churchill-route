@@ -4,6 +4,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { nearestKiosk } from "../../game/delivery.js";
 import { roadPath } from "./cache.js";
+import { tuning } from "../../game/tuning.js";
 import { CUAD, aabbInView, ctx, label } from "./gfx.js";
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
@@ -14,6 +15,25 @@ const POI_TONE = {
   amenity: "#e8a33d", shop: "#5fb0d6", tourism: "#e85d75", leisure: "#4f9d5b",
   office: "#9b8cd6", healthcare: "#4fc7b8", craft: "#c9a227", historic: "#b0895f",
 };
+// In-game POI tags: the real business names, at a SCREEN-CONSTANT 8px so the
+// puerto reads as the real place without the labels competing with driving.
+// No pill, just a hairline-shadowed name above the spot.
+function drawPoiTags(view, zoom) {
+  const pois = W.POIS;
+  if (!pois || !pois.length || !tuning.poiNames) return;
+  ctx.font = `${(8 / zoom).toFixed(2)}px 'JetBrains Mono', monospace`;
+  ctx.textAlign = "center";
+  ctx.lineWidth = 2 / zoom;
+  ctx.strokeStyle = "rgba(12,10,22,0.75)";
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  for (const p of pois) {
+    if (p.x < view.x0 || p.x > view.x1 || p.y < view.y0 || p.y > view.y1) continue;
+    const ty = p.y - 6 / zoom;
+    ctx.strokeText(p.name, p.x, ty);
+    ctx.fillText(p.name, p.x, ty);
+  }
+}
+
 function drawPoiNames(view, zoom) {
   const pois = W.POIS;
   if (!pois || !pois.length) return;
@@ -179,4 +199,4 @@ function drawMinimap(vw, vh, t) {
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
 }
 
-export { drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames, drawRain };
+export { drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames, drawPoiTags, drawRain };

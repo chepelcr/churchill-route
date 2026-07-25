@@ -2122,7 +2122,7 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
                  stadiums=None, kiosk_paths=None, faro_pier=None, greens=None,
-                 balneario=None, pois=None):
+                 balneario=None, pois=None, parcels=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -2237,6 +2237,9 @@ def emit_world2d(grid, *, meta, districts, roads, rails, buildings, trees, palms
         # every named real-world POI (name + category + world px), for the
         # debug overlay that validates the map against real Puntarenas
         "pois": pois or [],
+        # named cuadra parts: {id,name,use,poly,cx,cy,slot} — `slot` is the rect
+        # a remote sponsor `lote` can claim, so its art has a real footprint
+        "parcels": parcels or [],
     }
     with open(os.path.join(WORLD2D_DIR, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, separators=(",", ":"))
@@ -3298,6 +3301,7 @@ def main():
     # stream inside like Recorrer), interior cross-streets are clipped, and the
     # cuad footprint polygon + a "stadium" green poly are emitted for drawing.
     stadiums = []
+    parcels = []        # named cuadra parts (church / plaza / sponsor lots)
 
     def _street_vals(names, want, ref, span=700):
         """Average axis coord (x for a calle, y for an avenida) of the FIRST of
@@ -3350,6 +3354,28 @@ def main():
         if (anchor[0] - ex) * nx + (anchor[1] - ey) * ny > 0:   # point n at the street
             nx, ny = -nx, -ny
         return lambda px, py: (px - ex) * nx + (py - ey) * ny <= -gap
+
+    def _street_at(names, want, ref, span=900):
+        """The axis coord of a named street AT the reference point — the sample
+        nearest in the OTHER axis, not an average. Avenida Centenario runs
+        diagonally for kilometres, so its MEAN y lands on a different cuadra
+        entirely; `_street_vals` is fine for a short straight calle but wrong
+        for anything long or slanted."""
+        rx, ry = ref
+        for name in ([names] if isinstance(names, str) else names):
+            best = None
+            for r in roads:
+                if (r.get("name") or "") != name:
+                    continue
+                for (_, x, y) in _resample_centerline(r["pts"], 6):
+                    if abs(x - rx) > span or abs(y - ry) > span:
+                        continue
+                    d = abs(y - ry) if want == "x" else abs(x - rx)
+                    if best is None or d < best[0]:
+                        best = (d, x if want == "x" else y)
+            if best is not None:
+                return best[1]
+        return None
 
     def _cuadra_cells(px0, py0, px1, py1, classes, clip=None):
         """The one cuadra under a street rect, as raster cells: the LARGEST
@@ -3573,6 +3599,85 @@ def main():
          "edge": ["Calle 8"]},               # right wall on Calle 8's line, extended
     ):
         place_stadium(_sp)
+
+    # ---- PARCELS -----------------------------------------------------------
+    # A cuadra split into named PARTS, each with a `use` that drives how it is
+    # drawn, and each carrying a `slot` rect a sponsor can paint a logo into.
+    # This is the general form of what the estadios do by hand: resolve the
+    # block from its bounding streets, then hand out pieces of it.
+    #
+    #   aceras: True  -> the part is eroded by the sidewalk depth, so whatever
+    #                    sits on it (a church) never lands on the acera.
+    #   aceras: False -> the part keeps the ring, filling the block edge to edge
+    #                    (how Plaza Las Playitas reads as one open field).
+    def place_parcels(spec):
+        ref = spec["at"]
+        cxa = _street_at(spec["calles"][0], "x", ref)
+        cxb = _street_at(spec["calles"][1], "x", ref)
+        ayn = _street_at(spec["ave_north"], "y", ref)
+        ays = _street_at(spec["ave_south"], "y", ref)
+        if None in (cxa, cxb, ayn, ays):
+            print(f"[parcel] WARN {spec['id']} street resolve failed "
+                  f"(calles {cxa},{cxb} avenidas {ayn},{ays})"); return
+        xa, xb = min(cxa, cxb), max(cxa, cxb)
+        ylo, yhi = min(ayn, ays), max(ayn, ays)
+        outer = _cuadra_cells(xa, ylo, xb, yhi, (CLS_LAND, CLS_ACERA))
+        if not outer:
+            print(f"[parcel] WARN {spec['id']} no cuadra in rect"); return
+        ox = [c for (c, _) in outer]; oy = [r for (_, r) in outer]
+        # split line: halfway across the cuadra on the given axis
+        mid = (min(ox) + max(ox)) / 2 if spec.get("split", "x") == "x" else (min(oy) + max(oy)) / 2
+        for part in spec["parts"]:
+            if spec.get("split", "x") == "x":
+                cells = {c for c in outer if (c[0] <= mid) == (part["side"] == "left")}
+            else:
+                cells = {c for c in outer if (c[1] <= mid) == (part["side"] == "left")}
+            if not cells:
+                print(f"[parcel] WARN {part['id']} empty side"); continue
+            keep = _erode_cells(cells, ACERA_CELLS) if part.get("aceras") else cells
+            poly = _outline_poly(keep) if keep else None
+            if not poly:
+                print(f"[parcel] WARN {part['id']} nothing left after erosion"); continue
+            px = poly[0::2]; py = poly[1::2]
+            x0, y0, x1, y1 = min(px), min(py), max(px), max(py)
+            # anchor: where the built thing sits inside the part
+            ax = (x0 + x1) // 2
+            ay = y0 + (y1 - y0) // 4 if part.get("anchor") == "north" else (y0 + y1) // 2
+            # SPONSOR SLOT: a rect inside the parcel a remote `lote` can claim.
+            # A defined footprint beats a floating pin — the art always has a
+            # known place and size. Kept to a third of the part, centred.
+            sw = max(24, (x1 - x0) // 3); sh = max(16, (y1 - y0) // 3)
+            slot = [int((x0 + x1) // 2 - sw // 2), int((y0 + y1) // 2 - sh // 2), int(sw), int(sh)]
+            parcels.append({"id": part["id"], "name": part["name"], "use": part["use"],
+                            "poly": poly, "cx": int(ax), "cy": int(ay),
+                            "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot})
+            # no buildings inside a parcel: it IS the use
+            cuads = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in cells}
+            occ.update(cuads)
+            for b in blocks:
+                if not b.get("green") and any(c in cuads for c in b["cells"]):
+                    b["green"] = True
+            if part["use"] == "plaza":       # drivable open field, like the plaza
+                for (c, r) in cells:
+                    grid[r * GRID_COLS + c] = CLS_ROAD
+            print(f"[parcel] {part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
+                  f"{len(poly)//2}v anchor({ax},{ay}) slot{slot}")
+
+    for _pc in (
+        {"id": "carmen", "at": (12620, 9755),      # Calle 35-33 x Av Centenario-Av 1
+         "calles": (["Calle 35"], ["Calle 33"]),
+         "ave_north": ["Avenida Centenario", "Avenida 0"],
+         "ave_south": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
+         "split": "x",
+         "parts": [
+             {"id": "carmen_parroquia", "side": "left", "use": "church",
+              "name": "Parroquia Nuestra Señora de El Carmen",
+              "aceras": True, "anchor": "north"},
+             {"id": "carmen_plaza", "side": "right", "use": "plaza",
+              "name": "Plaza Deportes El Carmen", "aceras": False},
+         ]},
+    ):
+        place_parcels(_pc)
 
     # Parque Marino: the aquarium's own OSM ways stay at their TRUE footprints
     # (a snapped pastel box reads as a generic house, not the theme park), and
@@ -3941,7 +4046,7 @@ def main():
                      beaches=beaches, waters=waters, land_polys=land_contours,
                      landmarks=landmarks, customers=customers, stages=STAGES, stadiums=stadiums,
                      kiosk_paths=kiosk_paths, faro_pier=faro_pier, balneario=balneario,
-                     bridge=bridge, estuary=est, pier=pier, hills=hills, pois=pois)
+                     bridge=bridge, estuary=est, pier=pier, hills=hills, pois=pois, parcels=parcels)
     else:
         data = {
             "meta": meta,

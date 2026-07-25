@@ -1,6 +1,8 @@
 // Landmark drawers: the faro scene, green spaces, the estadios, fountains,
 // pools, the Parque Marino and the sponsored lotes, behind drawLandmark().
 import { paintPalm, paintTree } from "./flora.js";
+import { WORLD2D as W } from "../../world2d/index.js";
+import { content } from "../../content/remote.js";
 import { areaLabel, ctx, hash01, label, lastT, polyBBox, roundRect } from "./gfx.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
@@ -212,6 +214,52 @@ function drawMarinePark(lm) {
 // floating in the middle of the grass / the water with nothing casting it.
 const NO_SHADOW = new Set(["stadium", "pool", "park"]);
 
+// PARCEL structures + the sponsor slot. The ground is painted in the acera
+// pass (paintParcels); here we add what STANDS on it — the Parroquia's nave and
+// tower — and, if a remote `lote` has claimed this parcel by id, its art inside
+// the parcel's own `slot` rect. A defined footprint means a sponsor's logo
+// always has a known place and size instead of floating over the map.
+function drawParcels(view) {
+  const arr = W.PARCELS;
+  if (!arr || !arr.length) return;
+  for (const P of arr) {
+    if (P.x1 + 60 < view.x0 || P.x0 - 60 > view.x1 || P.y1 + 60 < view.y0 || P.y0 - 60 > view.y1) continue;
+    if (P.use === "church") drawChurch(P.cx, P.cy, Math.min(1, (P.x1 - P.x0) / 44));
+    const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
+    if (lote) drawSponsorSlot(P, lote);
+    areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(),
+              "#fff", P.use === "plaza" ? "#2e7d44" : "#8a6f4a");
+  }
+}
+// A sponsor's art fills the parcel's slot: a plate with its name, sized and
+// placed by the WORLD, not by the content entry — so nothing a sponsor sends
+// can cover the street or dwarf the block.
+function drawSponsorSlot(P, lote) {
+  const [sx, sy, sw, sh] = P.slot;
+  ctx.fillStyle = "rgba(12,10,22,0.55)";
+  roundRect(ctx, sx, sy, sw, sh, 3, true, false);
+  ctx.fillStyle = lote.tone || "#f3c969";
+  roundRect(ctx, sx + 2, sy + 2, sw - 4, sh - 4, 2, true, false);
+  ctx.fillStyle = "#26222c";
+  ctx.font = `bold ${Math.max(5, Math.round(sh * 0.34))}px 'JetBrains Mono', monospace`;
+  ctx.textAlign = "center";
+  ctx.fillText((lote.label || lote.name || "").slice(0, 14), sx + sw / 2, sy + sh / 2 + sh * 0.12);
+}
+// Pale stucco nave, bell tower, spire and a white cross — the same silhouette
+// the `church` landmark type uses, drawn at an arbitrary point and scale.
+function drawChurch(x, y, s = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath(); ctx.ellipse(4, 14, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#e7ddc8"; ctx.fillRect(-20, -12, 40, 24);
+  ctx.fillStyle = "#b98a5e"; ctx.fillRect(-20, -12, 40, 4);
+  ctx.fillStyle = "#e7ddc8"; ctx.fillRect(-6, -30, 12, 20);
+  ctx.fillStyle = "#9e6f4a";
+  ctx.beginPath(); ctx.moveTo(-8, -28); ctx.lineTo(0, -40); ctx.lineTo(8, -28); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.fillRect(-1.5, -50, 3, 11); ctx.fillRect(-5, -46, 10, 3);
+  ctx.restore();
+}
+
 function drawLandmark(lm) {
   const x = lm.x, y = lm.y;
   if (!NO_SHADOW.has(lm.type)) {
@@ -419,4 +467,4 @@ function drawLote(lo) {
   }
 }
 
-export { drawFaroScene, drawFountain, drawGreenSpace, drawLandmark, drawLote, drawMarinePark, drawPool, drawStadium };
+export { drawParcels, drawFaroScene, drawFountain, drawGreenSpace, drawLandmark, drawLote, drawMarinePark, drawPool, drawStadium };

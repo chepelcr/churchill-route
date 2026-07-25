@@ -93,6 +93,37 @@ function paintStadiumCuadras(view) {
   }
 }
 
+// Parcel ground. Same reasoning as the estadios: a parcel is a colour choice
+// on ground that already exists, painted between the acera band and the
+// asphalt — so the asphalt repaints anything that reached the roadway, and
+// street pills, buildings and flora still land on top.
+const PARCEL_FILL = { plaza: "#4f9d5b", church: "#cfc7b4", lot: "#b9b2a0" };
+function paintParcels(view) {
+  const arr = W.PARCELS;
+  if (!arr || !arr.length) return;
+  for (const P of arr) {
+    if (P.x1 + 40 < view.x0 || P.x0 - 40 > view.x1 || P.y1 + 40 < view.y0 || P.y0 - 40 > view.y1) continue;
+    const path = P._path || (P._path = flatPath(P.poly, true));
+    ctx.fillStyle = PARCEL_FILL[P.use] || "#b9b2a0";
+    ctx.lineWidth = 8; ctx.lineJoin = "round";
+    ctx.strokeStyle = ctx.fillStyle; ctx.stroke(path);   // hide the 4px raster steps
+    ctx.fill(path);
+    if (P.use === "plaza") {
+      ctx.save(); ctx.clip(path);
+      ctx.fillStyle = "rgba(30,88,50,0.16)";
+      for (let sy = P.y0; sy < P.y1; sy += 14) ctx.fillRect(P.x0, sy, P.x1 - P.x0, 7);
+      ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
+      const m = Math.max(5, Math.min(P.x1 - P.x0, P.y1 - P.y0) * 0.12);
+      ctx.strokeRect(P.x0 + m, P.y0 + m, P.x1 - P.x0 - 2 * m, P.y1 - P.y0 - 2 * m);
+      ctx.beginPath();
+      ctx.arc((P.x0 + P.x1) / 2, (P.y0 + P.y1) / 2, Math.min(P.x1 - P.x0, P.y1 - P.y0) * 0.18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); // curb
+  }
+}
+
 // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
 // ported from the corridor renderer but fed per-tile road segments.
 function paintRoads(roads, view) {
@@ -119,6 +150,7 @@ function paintRoads(roads, view) {
   // estadios: the same sidewalk, repainted grey (after the fillets so the
   // junction discs can't overwrite it, before the asphalt so the asphalt wins)
   paintStadiumCuadras(view);
+  paintParcels(view);
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // barro shoulder
   ctx.strokeStyle = "#7d6242";
@@ -295,4 +327,4 @@ function drawBarriers(view) {
   }
 }
 
-export { drawBarriers, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };
+export { drawBarriers, paintParcels, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };

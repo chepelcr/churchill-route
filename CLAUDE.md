@@ -310,6 +310,9 @@ the game's contents without reading the code. Refresh after world/module changes
 - Don't hand-edit `src/world2d/` (manifest or tiles) — regenerate with
   `pnpm world:build`, then `python3 tools/world_snapshot.py verify` (or `save`
   if the change was intended).
+- After a world rebuild, refresh BOTH derived artifacts: `pnpm inventory` and
+  `python3 tools/gen_lotes.py`. The lote catalog went stale for a week once —
+  it listed sponsorable footprints that no longer existed.
 - Verify game changes by actually running the app (`pnpm dev` + browser), not
   just building — the render loop and physics have no unit tests.
 - Changelogs live in `docs/changelog/`, one file per release date, named

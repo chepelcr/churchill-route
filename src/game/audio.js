@@ -165,6 +165,13 @@ const RECIPES = {
     tone({ type: "triangle", from: 1046, dur: 0.16, gain: 0.18, at: 0.21 });
     tone({ type: "sine", from: 1052, dur: 0.16, gain: 0.08, at: 0.21 });
   },
+  // Street coin: a bright two-note "ching" — distinct from `pickup` (the
+  // churchill), so grabbing colones off the map reads as money, not a drink.
+  coin:        () => {
+    tone({ type: "square", from: 988, dur: 0.05, gain: 0.10 });
+    tone({ type: "square", from: 1319, dur: 0.11, gain: 0.09, at: 0.045 });
+    tone({ type: "sine", from: 2637, dur: 0.09, gain: 0.035, at: 0.045 });
+  },
   combo:       (n = 2) => tone({ from: 520 * (1 + 0.09 * Math.min(8, n)), dur: 0.08, gain: 0.14 }),
   melt_fail:   () => { tone({ type: "sawtooth", from: 300, to: 80, dur: 0.4, gain: 0.18, filterHz: 900 }); noiseHit({ dur: 0.25, gain: 0.07, at: 0.05, band: 300 }); },
 };

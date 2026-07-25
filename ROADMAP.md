@@ -50,18 +50,30 @@ game modes are live; the items below are what remains.
 - [x] Lluvia de monedas dentro de la cuadra del estadio/plaza + hinchada que
       salta y levanta los brazos.
 
-**Colisiones**
-- [x] Colisionador de **burbuja (cápsula)** en vez de caja orientada: la caja
-      enganchaba una esquina en el cordón y ahí se quedaba (las ruedas del
-      tuk-tuk). Una cápsula no tiene esquina que enganchar y barre más angosto
-      que la diagonal de la caja, así que girar en calle angosta es más fácil.
-- [x] Respuesta doble: con **una** pared se estima la normal y se desliza por la
-      tangente (perdiendo solo la componente contra la pared) + el empuje se
-      redirige a lo largo del cordón y el agarre se relaja, para que el carro
-      SIGA andando en vez de morir contra la acera. En **corredor** (el muelle
-      con agua a los dos lados, una calle angosta) las normales se cancelan, así
-      que se usa el deslizamiento por ejes de siempre — que es justo lo que hacía
-      que el muelle se sintiera bien.
+**Colisiones — reescritas con el método correcto**
+- [x] El cuerpo es una **cápsula** (dos círculos barridos) y cada celda-pared es
+      un AABB de 4px. El contacto círculo↔AABB es exacto y barato: se clampea el
+      centro dentro de la caja para hallar el punto más cercano `q`, y de ahí
+      salen la normal `(c-q)` y la profundidad `r-|c-q|`. Resolver = empujar por
+      la normal esa profundidad y quitar solo la velocidad que entra a la pared.
+      Se itera 4 veces tomando el contacto MÁS PROFUNDO, así una esquina interna
+      se acomoda sola sin caso especial.
+- [x] Esto reemplaza heurísticas que no podían funcionar: la caja orientada
+      enganchaba las esquinas en el cordón (las ruedas del tuk-tuk); **sumar las
+      direcciones** de las paredes cercanas para sacar una normal SE CANCELA en
+      un corredor (agua a los dos lados de un muelle, aceras a los dos lados de
+      una calle); y la prueba de "¿corredor?" que caía al deslizamiento por ejes
+      acertaba en el Muelle de Cruceros (**vertical**) y fallaba en el Muelle del
+      Faro (**45°**) y en toda acera diagonal — no hay umbral que distinga esos
+      dos casos por magnitud de normal. Tomar **la superficie más cercana** en
+      vez de una suma elimina la distinción: pared a eje, diagonal, corredor y
+      esquina interna son el mismo cálculo.
+- [x] Ya no se revierte la posición ni se acorta el paso ni hay barrido ciego ni
+      teletransporte de rescate; el cuerpo simplemente se mueve a la pose legal
+      más cercana, que es lo que lo mantiene andando A LO LARGO de la pared.
+- [x] Mientras hay contacto, el empuje se redirige a lo largo del cordón y el
+      agarre se relaja, para que mantener el dedo contra una pared te haga
+      manejar por ella en vez de frenar en seco.
 
 **UI**
 - [x] Intro de lore **no saltable**.

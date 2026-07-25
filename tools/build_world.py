@@ -58,6 +58,7 @@ GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 
 from churchill.world.pipeline.emit import emit_world2d  # noqa: E402
 from churchill.world.repository.debug_render import render_debug  # noqa: E402
+from churchill.world.repository.osm_file import OsmFileRepository  # noqa: E402
 from churchill.world.repository.world_json import JsonWorldRepository  # noqa: E402
 from churchill.world.service.field import FieldService  # noqa: E402
 from churchill.world.service.building import (  # noqa: E402
@@ -72,6 +73,11 @@ from churchill.world.service.surface import (   # noqa: E402
 )
 from churchill.world.service.block import (    # noqa: E402
     block_raster_cells, cells_to_rects, cuadra_cells, detect_blocks, outline_poly,
+)
+from churchill.world.service.osm import (      # noqa: E402
+    barro_leon_continuation, extract_areas, extract_buildings,
+    extract_coastlines, extract_pois, extract_rails, extract_roads,
+    propagate_barro_to_crossings,
 )
 from churchill.world.service.decoration import (  # noqa: E402
     paseo_median_runs, paseo_roads, stamp_paseo_median,
@@ -96,392 +102,6 @@ from churchill.world.util.geometry import (   # noqa: E402
 
 # OSM keys that make an object a real-world POINT OF INTEREST (a business, a
 # civic building, a park...). Order matters: the first match names the category.
-POI_KEYS = ("amenity", "shop", "tourism", "leisure", "office", "healthcare",
-            "craft", "historic")
-
-def poi_category(tags):
-    """(key, value) of the first POI key on `tags`, or None if it isn't a POI."""
-    for k in POI_KEYS:
-        if k in tags:
-            return k, tags[k]
-    return None
-
-
-def parse_osm(path):
-    nodes = {}
-    ways = []
-    named = []            # (lower_name, (mx,my), tags) for POI resolution
-    poi_nodes = []        # (ll, tags) for every NAMED standalone POI node
-    rels = []
-    keep_keys = {"highway", "building", "natural", "name", "amenity",
-                 "man_made", "bridge", "ref", "wetland", "leisure"}
-    for ev, el in ET.iterparse(path, events=("end",)):
-        if el.tag == "node":
-            nid = el.get("id")
-            ll = (float(el.get("lat")), float(el.get("lon")))
-            nodes[nid] = ll
-            tags = None
-            for t in el.findall("tag"):
-                if t.get("k") == "name" or t.get("k") in ("man_made", "amenity"):
-                    if tags is None:
-                        tags = {tt.get("k"): tt.get("v") for tt in el.findall("tag")}
-            if tags and tags.get("name"):
-                named.append((tags["name"].lower(), to_m(*ll), tags))
-                if poi_category(tags):
-                    poi_nodes.append((ll, tags))
-            el.clear()
-        elif el.tag == "way":
-            tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
-            if tags.keys() & keep_keys:
-                nds = [n.get("ref") for n in el.findall("nd")]
-                ways.append({"id": el.get("id"), "nds": nds, "tags": tags})
-            el.clear()
-        elif el.tag == "relation":
-            tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
-            if tags.get("type") == "multipolygon" and tags.get("natural") in ("water", "wetland", "beach"):
-                members = [(m.get("ref"), m.get("role")) for m in el.findall("member") if m.get("type") == "way"]
-                rels.append({"tags": tags, "members": members})
-            el.clear()
-    # resolve way coords in meters; register named ways too
-    for w in ways:
-        pts = [to_m(*nodes[r]) for r in w["nds"] if r in nodes]
-        w["pts"] = pts
-        nm = w["tags"].get("name")
-        if nm and pts:
-            named.append((nm.lower(), poly_centroid(pts), w["tags"]))
-    return nodes, ways, named, rels, poi_nodes
-
-# ----------------------------------------------------------------- spine ---
-
-def extract_roads(sp, ways):
-    roads = []
-    bridge_way = None
-    for w in ways:
-        hw = w["tags"].get("highway")
-        name = (w["tags"].get("name") or "")
-        lname = name.lower()
-        is_bridge = "puente colgante mata" in lname
-        if not is_bridge and hw not in ROAD_CLASSES:
-            continue
-        if len(w["pts"]) < 2:
-            continue
-        cls = "bridge" if is_bridge else hw
-        # The beachfront avenue is a principal street driven at full speed —
-        # both its western half (Paseo de los Turistas) and its continuation
-        # past the kiosks (Paseo León Cortés Castro, OSM-tagged tertiary).
-        if "paseo de los turistas" in lname or "paseo león cortés" in lname:
-            cls = "primary"
-        # Drop minor alleys/paths to unify small cuadras into bigger blocks.
-        if cls in DROP_ROAD_CLASSES:
-            continue
-        pts, _ = project_way_pts(sp, w["pts"])
-        for piece in clip_polyline_to_rect(pts, CANVAS_W, CANVAS_H):
-            piece = dp_simplify(piece, DP_ROAD_PX)
-            length = sum(dist(piece[i], piece[i + 1]) for i in range(len(piece) - 1))
-            if cls == "service" and length < SERVICE_MIN_PX:
-                continue
-            if length < 8:
-                continue
-            r = {"cls": cls, "w": road_width_px(cls),
-                 "pts": [round(v) for p in piece for v in p]}
-            if name:
-                r["name"] = name
-            # Avenida 2 del Ferrocarril (OSM-misspelled "Farrocarril"): the
-            # avenue over the old rail bed — a raised packed-earth (barro)
-            # street, rendered as dirt, not asphalt. "rrocarril" matches both
-            # the misspelling and any real "…Ferrocarril" way.
-            # both in-corridor Ferrocarril avenues (Av. 2 del Farrocarril, and
-            # the one near the Cocal) — "rrocarril" catches the OSM misspelling
-            if "rrocarril" in lname:
-                r["barro"] = 1     # dirt surface
-                r["elev"] = 1      # AND the raised avenue (car ramps onto it)
-            if w["tags"].get("ref"):
-                r["ref"] = w["tags"]["ref"]
-            if w["tags"].get("bridge") == "yes" and cls != "bridge":
-                r["bridge"] = 1  # e.g. Río Barranca bridge at El Roble
-            roads.append(r)
-            if cls == "bridge":
-                bridge_way = r
-    return roads, bridge_way
-
-
-def extract_rails(sp, ways):
-    """The old Ferrocarril al Pacífico line (mostly OSM `disused:railway=rail`)
-    that ran out the Puntarenas spit. Purely decorative — projected polylines
-    emitted as `rails`, drawn as a sleeper-and-track bed by the renderer."""
-    rails = []
-    for w in ways:
-        t = w["tags"]
-        is_rail = (t.get("railway") == "rail" or t.get("disused:railway") == "rail"
-                   or t.get("abandoned:railway") == "rail"
-                   or "ferrocarril al pac" in (t.get("name") or "").lower())
-        if not is_rail:
-            continue
-        if len(w["pts"]) < 2:
-            continue
-        pts, _ = project_way_pts(sp, w["pts"])
-        for piece in clip_polyline_to_rect(pts, CANVAS_W, CANVAS_H):
-            piece = dp_simplify(piece, DP_ROAD_PX)
-            if len(piece) < 2:
-                continue
-            if sum(dist(piece[i], piece[i + 1]) for i in range(len(piece) - 1)) < 24:
-                continue
-            rails.append({"pts": [round(v) for p in piece for v in p]})
-    return rails
-
-
-def propagate_barro_to_crossings(roads, reach=1.2 * CUAD):
-    """The dirt continues onto the calles that cross the elevated Ferrocarril
-    avenue — flag them `barro` too (dirt surface) but NOT `elev`: they stay at
-    ground level and ramp up to the raised avenue. Sourced only from the raised
-    avenue (`elev`), with both lines densified so a crossing is never missed
-    between sparse polyline vertices. Principal avenues are excluded, so their
-    asphalt (and their intersections) stay paved."""
-    ax0 = ay0 = 1e9; ax1 = ay1 = -1e9
-    elev_pts = []
-    for r in roads:
-        if not r.get("elev"):
-            continue
-        for (_, x, y) in resample_centerline(r["pts"], 5):
-            elev_pts.append((x, y))
-            ax0, ay0, ax1, ay1 = min(ax0, x), min(ay0, y), max(ax1, x), max(ay1, y)
-    if not elev_pts:
-        return
-    rr = reach * reach
-    KEEP_ASPHALT = {"trunk", "trunk_link", "primary", "primary_link", "paseo", "bridge"}
-    n = 0
-    for r in roads:
-        if r.get("barro") or r.get("cls") in KEEP_ASPHALT:
-            continue
-        xs, ys = r["pts"][0::2], r["pts"][1::2]
-        if max(xs) < ax0 - reach or min(xs) > ax1 + reach or \
-           max(ys) < ay0 - reach or min(ys) > ay1 + reach:
-            continue
-        cand = [(x, y) for (_, x, y) in resample_centerline(r["pts"], 6)]
-        if any((px - ox) ** 2 + (py - oy) ** 2 < rr
-               for px, py in cand for ox, oy in elev_pts):
-            r["barro"] = 1
-            n += 1
-    log("barro", f"+{n} cross streets flagged barro (cross the Ferrocarril avenue)")
-
-
-def barro_leon_continuation(roads):
-    """Paseo León Cortés (principal) ends at the Parque Marino corner where the
-    barro Ferrocarril avenue begins; its continuation east is that dirt route, not
-    the principal. Anchored to the Ferrocarril avenue's west end (the `elev`
-    roads) so it works in BOTH the corridor and the planar projection — flag the
-    León piece(s) that run east past that handoff as a narrow barro street."""
-    ferro_xs = [x for r in roads if r.get("elev") for x in r["pts"][0::2]]
-    if not ferro_xs:
-        return                                    # no Ferrocarril avenue in region
-    handoff = min(ferro_xs)
-    n = 0
-    for r in roads:
-        if "león cortés" not in (r.get("name") or "").lower():
-            continue
-        xs = r["pts"][0::2]
-        if max(xs) > handoff + CUAD and min(xs) >= handoff - 3 * CUAD:
-            r["barro"] = 1
-            r["w"] = road_width_px("residential")
-            r["cls"] = "residential"
-            n += 1
-    log("roads", f"León Cortés continuation past the Ferrocarril handoff -> barro: {n} piece(s)")
-
-
-def extract_buildings(sp, ways, roads):
-    # road segments for overlap testing (subdivided, with per-class half width)
-    segs = []
-    for r in roads:
-        p = r["pts"]
-        hw = max(4.0, r["w"] / 2 + ACERA_CELLS * GRID_CELL - 2)  # clear road + acera
-        for i in range(0, len(p) - 2, 2):
-            segs.append((p[i], p[i + 1], p[i + 2], p[i + 3], hw))
-    cellmap = defaultdict(list)
-    CS = 64
-    for idx, s in enumerate(segs):
-        x0, y0, x1, y1 = s[0], s[1], s[2], s[3]
-        for cx in range(int(min(x0, x1)) // CS, int(max(x0, x1)) // CS + 1):
-            for cy in range(int(min(y0, y1)) // CS, int(max(y0, y1)) // CS + 1):
-                cellmap[(cx, cy)].append(idx)
-
-    def nearest_road(px, py):
-        """(gap, hw, qx, qy) for the road segment whose buffer the point is
-        deepest inside / closest to; checks the 3x3 cell neighborhood."""
-        best = None
-        c0, r0 = int(px) // CS, int(py) // CS
-        for dc in (-1, 0, 1):
-            for dr in (-1, 0, 1):
-                for idx in cellmap.get((c0 + dc, r0 + dr), ()):
-                    x0, y0, x1, y1, hw = segs[idx]
-                    dx, dy = x1 - x0, y1 - y0
-                    L2 = dx * dx + dy * dy
-                    t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
-                    qx, qy = x0 + t * dx, y0 + t * dy
-                    d = math.hypot(px - qx, py - qy)
-                    if best is None or d - hw < best[0]:
-                        best = (d - hw, hw, qx, qy, d)
-        return best
-
-    def near_road(px, py):
-        b = nearest_road(px, py)
-        return b is not None and b[0] <= 0
-
-    out = []
-    dropped_road, dropped_small = 0, 0
-    for w in ways:
-        if "building" not in w["tags"] or len(w["pts"]) < 4:
-            continue
-        pts, _ = project_way_pts(sp, w["pts"])
-        if dist(pts[0], pts[-1]) < 1e-6:
-            pts = pts[:-1]
-        pts = clip_poly_to_rect(pts, CANVAS_W, CANVAS_H)
-        if len(pts) < 3:
-            continue
-        pts = dp_simplify(pts + [pts[0]], DP_BUILDING_PX)[:-1]
-        if len(pts) < 3 or abs(poly_area(pts)) < MIN_BUILDING_AREA_PX2:
-            dropped_small += 1
-            continue
-        # Buildings line the streets: push the footprint out of any widened
-        # road corridor (like a house set back from the curb), then shrink
-        # step-by-step until it fits its block.
-        cx, cy = poly_centroid(pts)
-        ok = True
-        for _ in range(4):
-            b = nearest_road(cx, cy)
-            if b is None or b[0] > 2:
-                break
-            gap, hw, qx, qy, d = b
-            if d < 1e-6:
-                ok = False
-                break
-            ux, uy = (cx - qx) / d, (cy - qy) / d
-            shift = (hw + 4 - d)
-            cx, cy = cx + ux * shift, cy + uy * shift
-            pts = [(px + ux * shift, py + uy * shift) for px, py in pts]
-        if not ok or near_road(cx, cy):
-            dropped_road += 1
-            continue
-        # Raw record only: the footprint is snapped to whole cuadrículas later
-        # (snap_osm_buildings), once the cuadra blocks are known. Target size
-        # comes from the pushed-out footprint's AABB × BUILDING_SCALE. `pts` is
-        # kept so a site that must read as ITSELF (the Parque Marino aquarium)
-        # can be emitted at its true shape instead of snapped to the lattice.
-        xs = [p[0] for p in pts]
-        ys = [p[1] for p in pts]
-        rec = {"cx": cx, "cy": cy,
-               "w": (max(xs) - min(xs)) * BUILDING_SCALE,
-               "h": (max(ys) - min(ys)) * BUILDING_SCALE,
-               "id": int(w["id"]), "pts": pts}
-        # A building that IS a named place (Hotel Tioga, Súper Salinas, the
-        # church…) keeps its real outline — snapping it to the cuadrícula turns
-        # a landmark you can recognise into one more anonymous pastel box.
-        if w["tags"].get("name") and poi_category(w["tags"]):
-            rec["name"] = w["tags"]["name"]
-            k, v = poi_category(w["tags"])
-            rec["cat"] = f"{k}={v}"
-        out.append(rec)
-    log("buildings", f"{len(out)} raw OSM footprints, dropped {dropped_road} on-road, {dropped_small} tiny")
-    return out
-
-
-def extract_pois(sp, ways, poi_nodes):
-    """Every NAMED real-world POI (business, church, school, park…) projected to
-    world px: {x, y, name, cat}. `cat` is "key=value" from POI_KEYS, so the
-    renderer can style or filter by kind. Standalone OSM nodes use their own
-    position; POI ways (a shop mapped as its building outline) use the polygon
-    centroid. Deduped by (name, 20px cell) — OSM often carries both a building
-    way and a point node for the same place."""
-    out, seen = [], set()
-
-    def add(name, tags, x, y):
-        if not (0 <= x < CANVAS_W and 0 <= y < CANVAS_H):
-            return
-        key = (name.lower(), int(x // CUAD), int(y // CUAD))
-        if key in seen:
-            return
-        seen.add(key)
-        k, v = poi_category(tags)
-        out.append({"x": round(x), "y": round(y), "name": name, "cat": f"{k}={v}"})
-
-    for (ll, tags) in poi_nodes:
-        x, y, _, _ = sp.project(to_m(*ll))
-        add(tags["name"], tags, x, y)
-    for w in ways:
-        tags = w["tags"]
-        name = tags.get("name")
-        if not name or not poi_category(tags) or len(w["pts"]) < 3:
-            continue
-        pts, _ = project_way_pts(sp, w["pts"])
-        if not pts:
-            continue
-        cx = sum(p[0] for p in pts) / len(pts)
-        cy = sum(p[1] for p in pts) / len(pts)
-        add(name, tags, cx, cy)
-    by_cat = defaultdict(int)
-    for p in out:
-        by_cat[p["cat"].split("=")[0]] += 1
-    log("pois", f"{len(out)} named real-world POIs: {dict(sorted(by_cat.items()))}")
-    return out
-
-
-def extract_coastlines(sp, ways):
-    """Stitch natural=coastline ways by endpoint node id, project chains."""
-    coast = [w for w in ways if w["tags"].get("natural") == "coastline" and len(w["nds"]) >= 2]
-    by_first = defaultdict(list)
-    for w in coast:
-        by_first[w["nds"][0]].append(w)
-    used, chains = set(), []
-    for w in coast:
-        if w["id"] in used:
-            continue
-        used.add(w["id"])
-        nds = list(w["nds"])
-        while True:
-            nxt = next((c for c in by_first.get(nds[-1], []) if c["id"] not in used), None)
-            if nxt is None:
-                break
-            used.add(nxt["id"])
-            nds.extend(nxt["nds"][1:])
-        chains.append(nds)
-    return chains  # node-id chains; resolved by caller
-
-
-def extract_areas(sp, ways, rels):
-    beaches, waters = [], []
-    ways_by_id = {w["id"]: w for w in ways}
-    def add_poly(target, pts_m):
-        if len(pts_m) < 3:
-            return
-        pts, _ = project_way_pts(sp, pts_m)
-        pts = clip_poly_to_rect(pts, CANVAS_W, CANVAS_H)
-        if len(pts) < 3:
-            return
-        pts = dp_simplify(pts + [pts[0]], DP_COAST_PX)[:-1]
-        if len(pts) >= 3:
-            target.append([round(v) for p in pts for v in p])
-
-    for w in ways:
-        nat = w["tags"].get("natural")
-        if nat == "beach":
-            add_poly(beaches, w["pts"])
-        elif nat == "water" or (nat == "wetland" and w["tags"].get("wetland") == "mangrove"):
-            add_poly(waters, w["pts"])
-        elif nat == "wetland" and "estero mata" in (w["tags"].get("name") or "").lower():
-            add_poly(waters, w["pts"])
-    for rel in rels:
-        for ref, role in rel["members"]:
-            if role != "outer" or ref not in ways_by_id:
-                continue
-            w = ways_by_id[ref]
-            if len(w["pts"]) >= 3:
-                if rel["tags"].get("natural") == "beach":
-                    add_poly(beaches, w["pts"])
-                else:
-                    add_poly(waters, w["pts"])
-    return beaches, waters
-
-# ------------------------------------------------------------ raster grid ---
-
 def planar_muelle_axis(roads, near_x, near_y, reach=1500):
     """PLANAR pier anchor: the muelle juts south from the END of Calle Central,
     the street at the Paseo de los Turistas east entry. Among road pieces named
@@ -549,19 +169,19 @@ def _planar_setup(ways):
 def main():
     t0 = time.time()
     log("parse", f"{OSM_PATH}")
-    nodes, ways, named, rels, poi_nodes = parse_osm(OSM_PATH)
+    nodes, ways, named, rels, poi_nodes = OsmFileRepository(OSM_PATH).load()
     log("parse", f"{len(nodes)} nodes, {len(ways)} kept ways, {len(named)} named features ({time.time()-t0:.1f}s)")
 
     sp = _planar_setup(ways)
 
-    roads, bridge_road = extract_roads(sp, ways)
+    roads, bridge_road = extract_roads(sp, ways, CANVAS_W, CANVAS_H)
     # León Cortés end-barro + dirt cross streets (coordinate-agnostic).
     barro_leon_continuation(roads)
     propagate_barro_to_crossings(roads)
     # Junction triangles and medians EMERGE from the real geometry via
     # detect_blocks — no hand-placed gores, islands or carriageway splits.
     junction_islands = []
-    rails = extract_rails(sp, ways)
+    rails = extract_rails(sp, ways, CANVAS_W, CANVAS_H)
     log("rails", f"{len(rails)} rail pieces")
     n_by_cls = defaultdict(int)
     for r in roads:
@@ -570,9 +190,9 @@ def main():
     if bridge_road is None:
         warn("roads", "Puente colgante way not found — synthesizing later")
 
-    raw_bldgs = extract_buildings(sp, ways, roads)
-    beaches, waters = extract_areas(sp, ways, rels)
-    pois = extract_pois(sp, ways, poi_nodes)
+    raw_bldgs = extract_buildings(sp, ways, roads, CANVAS_W, CANVAS_H)
+    beaches, waters = extract_areas(sp, ways, rels, CANVAS_W, CANVAS_H)
+    pois = extract_pois(sp, ways, poi_nodes, CANVAS_W, CANVAS_H)
     log("areas", f"{len(beaches)} beach, {len(waters)} water polys")
 
     # --- raster surface grid

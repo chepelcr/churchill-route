@@ -9,6 +9,10 @@ from .block import (
 from .building import make_rng, snap_osm_buildings, synth_buildings
 from .decoration import paseo_median_runs, paseo_roads, stamp_paseo_median
 from .field import FieldService
+from .osm import (
+    barro_leon_continuation, extract_areas, extract_buildings, extract_coastlines,
+    extract_pois, extract_rails, extract_roads, propagate_barro_to_crossings,
+)
 from .network import block_census, largest_drivable_component, verify_connectivity
 from .projection import PlanarProjection, project_way_pts
 from .street import StreetIndex, half_plane, resample_centerline
@@ -19,7 +23,10 @@ from .surface import (
 
 __all__ = [
     "FieldService", "PlanarProjection", "StreetIndex", "acera_fringe",
-    "block_census", "cells_to_rects", "detect_blocks", "paseo_median_runs",
+    "barro_leon_continuation", "block_census", "cells_to_rects", "detect_blocks",
+    "extract_areas", "extract_buildings", "extract_coastlines", "extract_pois",
+    "extract_rails", "extract_roads", "paseo_median_runs",
+    "propagate_barro_to_crossings",
     "paseo_roads", "stamp_paseo_median",
     "largest_drivable_component", "verify_connectivity",
     "beach_fringe", "block_raster_cells", "cuadra_cells", "half_plane",

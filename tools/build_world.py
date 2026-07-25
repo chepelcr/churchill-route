@@ -54,147 +54,15 @@ from churchill.world.logging import log, warn   # noqa: E402
 CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 
-# ------------------------------------------------------------ geo helpers ---
+from churchill.world.util.raster import (     # noqa: E402
+    Raster, erode_cells, rle_encode,
+)
+from churchill.world.util.geometry import (   # noqa: E402
+    clip_poly_to_rect, clip_polyline_to_rect, dist, dp_simplify, flat_bbox,
+    flat_centroid, pairs, point_in_poly, poly_area, poly_centroid,
+    principal_axis, to_m,
+)
 
-def to_m(lat, lon):
-    return ((lon - LON0) * M_PER_DEG_LON, -(lat - LAT0) * M_PER_DEG_LAT)
-
-def dist(a, b):
-    return math.hypot(a[0] - b[0], a[1] - b[1])
-
-def poly_centroid(pts):
-    return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
-
-def poly_area(pts):
-    s = 0.0
-    for i in range(len(pts)):
-        x0, y0 = pts[i]
-        x1, y1 = pts[(i + 1) % len(pts)]
-        s += x0 * y1 - x1 * y0
-    return s / 2.0
-
-def point_in_poly(pt, pts):
-    x, y = pt
-    inside = False
-    j = len(pts) - 1
-    for i in range(len(pts)):
-        xi, yi = pts[i]
-        xj, yj = pts[j]
-        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
-            inside = not inside
-        j = i
-    return inside
-
-def dp_simplify(pts, tol):
-    if len(pts) < 3:
-        return list(pts)
-    keep = [False] * len(pts)
-    keep[0] = keep[-1] = True
-    stack = [(0, len(pts) - 1)]
-    while stack:
-        a, b = stack.pop()
-        ax, ay = pts[a]
-        bx, by = pts[b]
-        dx, dy = bx - ax, by - ay
-        seg2 = dx * dx + dy * dy
-        worst, wi = -1.0, -1
-        for i in range(a + 1, b):
-            px, py = pts[i]
-            if seg2 == 0:
-                d = math.hypot(px - ax, py - ay)
-            else:
-                t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / seg2))
-                d = math.hypot(px - (ax + t * dx), py - (ay + t * dy))
-            if d > worst:
-                worst, wi = d, i
-        if worst > tol:
-            keep[wi] = True
-            stack.append((a, wi))
-            stack.append((wi, b))
-    return [p for p, k in zip(pts, keep) if k]
-
-def clip_polyline_to_rect(pts, w, h):
-    """Liang-Barsky per segment; returns list of polyline pieces inside rect."""
-    pieces, cur = [], []
-
-    def clip_seg(p0, p1):
-        x0, y0 = p0
-        x1, y1 = p1
-        t0, t1 = 0.0, 1.0
-        dx, dy = x1 - x0, y1 - y0
-        for p, q in ((-dx, x0), (dx, w - x0), (-dy, y0), (dy, h - y0)):
-            if p == 0:
-                if q < 0:
-                    return None
-            else:
-                r = q / p
-                if p < 0:
-                    if r > t1:
-                        return None
-                    if r > t0:
-                        t0 = r
-                else:
-                    if r < t0:
-                        return None
-                    if r < t1:
-                        t1 = r
-        return ((x0 + t0 * dx, y0 + t0 * dy), (x0 + t1 * dx, y0 + t1 * dy), t0, t1)
-
-    for i in range(len(pts) - 1):
-        res = clip_seg(pts[i], pts[i + 1])
-        if res is None:
-            if cur:
-                pieces.append(cur)
-                cur = []
-            continue
-        a, b, t0, t1 = res
-        if not cur:
-            cur = [a]
-        elif dist(cur[-1], a) > 1e-6:
-            pieces.append(cur)
-            cur = [a]
-        cur.append(b)
-        if t1 < 1.0:
-            pieces.append(cur)
-            cur = []
-    if cur:
-        pieces.append(cur)
-    return [p for p in pieces if len(p) >= 2]
-
-def clip_poly_to_rect(pts, w, h):
-    """Sutherland-Hodgman against canvas rect."""
-    def clip_edge(poly, inside, intersect):
-        out = []
-        for i in range(len(poly)):
-            cur, prev = poly[i], poly[i - 1]
-            ci, pi = inside(cur), inside(prev)
-            if ci:
-                if not pi:
-                    out.append(intersect(prev, cur))
-                out.append(cur)
-            elif pi:
-                out.append(intersect(prev, cur))
-        return out
-
-    def ix(p0, p1, x):
-        t = (x - p0[0]) / (p1[0] - p0[0])
-        return (x, p0[1] + t * (p1[1] - p0[1]))
-
-    def iy(p0, p1, y):
-        t = (y - p0[1]) / (p1[1] - p0[1])
-        return (p0[0] + t * (p1[0] - p0[0]), y)
-
-    poly = list(pts)
-    for inside, inter in (
-        (lambda p: p[0] >= 0, lambda a, b: ix(a, b, 0)),
-        (lambda p: p[0] <= w, lambda a, b: ix(a, b, w)),
-        (lambda p: p[1] >= 0, lambda a, b: iy(a, b, 0)),
-        (lambda p: p[1] <= h, lambda a, b: iy(a, b, h)),
-    ):
-        poly = clip_edge(poly, inside, inter)
-        if len(poly) < 3:
-            return []
-    return poly
 
 # ----------------------------------------------------------------- parse ---
 
@@ -615,60 +483,6 @@ def extract_areas(sp, ways, rels):
 
 # ------------------------------------------------------------ raster grid ---
 
-def raster_fill_poly(grid, pts, cls):
-    """Even-odd scanline fill of a polygon given px coords onto the cell grid."""
-    ys = [p[1] for p in pts]
-    r0 = max(0, int(min(ys)) // GRID_CELL)
-    r1 = min(GRID_ROWS - 1, int(max(ys)) // GRID_CELL)
-    n = len(pts)
-    for row in range(r0, r1 + 1):
-        y = (row + 0.5) * GRID_CELL
-        xs = []
-        for i in range(n):
-            x0, y0 = pts[i]
-            x1, y1 = pts[(i + 1) % n]
-            if (y0 > y) != (y1 > y):
-                xs.append(x0 + (y - y0) / (y1 - y0) * (x1 - x0))
-        xs.sort()
-        base = row * GRID_COLS
-        for k in range(0, len(xs) - 1, 2):
-            c0 = max(0, int(xs[k] / GRID_CELL + 0.5))
-            c1 = min(GRID_COLS - 1, int(xs[k + 1] / GRID_CELL - 0.5))
-            for c in range(c0, c1 + 1):
-                grid[base + c] = cls
-
-
-def raster_stamp_polyline(grid, flat_pts, width, cls):
-    """Stamp a stroked polyline (round caps) onto the grid."""
-    hw = width / 2.0
-    pts = [(flat_pts[i], flat_pts[i + 1]) for i in range(0, len(flat_pts), 2)]
-    for i in range(len(pts) - 1):
-        x0, y0 = pts[i]
-        x1, y1 = pts[i + 1]
-        # subdivide long segments to keep bboxes tight
-        L = math.hypot(x1 - x0, y1 - y0)
-        steps = max(1, int(L / 28))
-        for k in range(steps):
-            ax = x0 + (x1 - x0) * k / steps
-            ay = y0 + (y1 - y0) * k / steps
-            bx = x0 + (x1 - x0) * (k + 1) / steps
-            by = y0 + (y1 - y0) * (k + 1) / steps
-            c0 = max(0, int((min(ax, bx) - hw) / GRID_CELL))
-            c1 = min(GRID_COLS - 1, int((max(ax, bx) + hw) / GRID_CELL))
-            r0 = max(0, int((min(ay, by) - hw) / GRID_CELL))
-            r1 = min(GRID_ROWS - 1, int((max(ay, by) + hw) / GRID_CELL))
-            dx, dy = bx - ax, by - ay
-            L2 = dx * dx + dy * dy
-            for row in range(r0, r1 + 1):
-                py = (row + 0.5) * GRID_CELL
-                base = row * GRID_COLS
-                for col in range(c0, c1 + 1):
-                    px = (col + 0.5) * GRID_CELL
-                    t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L2))
-                    if (px - (ax + t * dx)) ** 2 + (py - (ay + t * dy)) ** 2 <= hw * hw:
-                        grid[base + col] = cls
-
-
 def _stamp_barrier(barrier, c, r):
     """Set a barrier cell, thickened to a 3x3 block so sub-cell gaps at
     coastline segment joints don't leak the sea flood into the land (the
@@ -734,31 +548,6 @@ def raster_poly_barrier(barrier, polys):
                 if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS:
                     drawn += _stamp_barrier(barrier, c, r)
     return drawn
-
-
-def flood_water(grid, barrier, seeds_px):
-    """BFS flood from sea seeds; barrier cells stop the flood (they stay land)."""
-    water = bytearray(GRID_COLS * GRID_ROWS)
-    dq = deque()
-    for (x, y) in seeds_px:
-        c, r = int(x / GRID_CELL), int(y / GRID_CELL)
-        if 0 <= c < GRID_COLS and 0 <= r < GRID_ROWS and not barrier[r * GRID_COLS + c]:
-            idx = r * GRID_COLS + c
-            if not water[idx]:
-                water[idx] = 1
-                dq.append(idx)
-    while dq:
-        idx = dq.popleft()
-        r, c = divmod(idx, GRID_COLS)
-        for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
-            if 0 <= nr < GRID_ROWS and 0 <= nc < GRID_COLS:
-                nidx = nr * GRID_COLS + nc
-                if not water[nidx] and not barrier[nidx]:
-                    water[nidx] = 1
-                    dq.append(nidx)
-    for i in range(len(grid)):
-        grid[i] = CLS_WATER if water[i] else CLS_LAND
-    return water
 
 
 def trace_land_contours(grid):
@@ -1415,7 +1204,7 @@ def paseo_median_runs(roads, pieces):
         out.append((samples, runs))
     return out
 
-def stamp_paseo_median(grid, median_runs):
+def stamp_paseo_median(raster, median_runs):
     """Stamp the separator strips (paseo palm median + tree lines) and return
     their polylines (for rendering the planted strip). Stamped as CLS_ACERA:
     equally blocking in physics (walls are land+acera) but invisible to block
@@ -1431,25 +1220,11 @@ def stamp_paseo_median(grid, median_runs):
                 # visual green and can't slip into a drawn-but-unstamped round
                 # cap corner (that trapped it half-in). Manifest `w` stays the
                 # drawn value, so rendering is unchanged.
-                raster_stamp_polyline(grid, flat, PASEO_MEDIAN_W + 6, CLS_ACERA)
+                raster.stamp_polyline(flat, PASEO_MEDIAN_W + 6, CLS_ACERA)
                 dashes.append({"pts": [round(v) for v in flat], "w": round(PASEO_MEDIAN_W)})
     return dashes
 
 # ---------------------------------------------------------------- outputs ---
-
-def rle_encode(grid):
-    out = bytearray()
-    i, n = 0, len(grid)
-    while i < n:
-        v = grid[i]
-        j = i
-        while j < n and grid[j] == v and j - i < 255:
-            j += 1
-        out.append(j - i)
-        out.append(v)
-        i = j
-    return base64.b64encode(bytes(out)).decode("ascii")
-
 
 def write_png(path, w, h, get_rgb, stride=1):
     """Rasterise get_rgb(x,y) to a PNG. `stride` downsamples (samples every
@@ -1687,7 +1462,11 @@ def main():
     log("areas", f"{len(beaches)} beach, {len(waters)} water polys")
 
     # --- raster surface grid
-    grid = bytearray(GRID_COLS * GRID_ROWS)
+    # ONE raster, and `grid` stays an alias of its buffer: the algorithms that
+    # moved to util take the object, while everything still reading cells by
+    # index keeps working until it moves to a service too.
+    raster = Raster(GRID_COLS, GRID_ROWS, GRID_CELL)
+    grid = raster.buf
     barrier = bytearray(GRID_COLS * GRID_ROWS)
     chains = extract_coastlines(sp, ways)
     log("coast", f"{len(chains)} stitched chains from natural=coastline")
@@ -1706,7 +1485,7 @@ def main():
     # the coastline stays land.
     sea_seeds = [(2, y) for y in range(2, CANVAS_H, 200)]
     sea_seeds.append(sp.to_px(*sp.project_m(to_m(*PROBE_SEA[0]))[:2]))
-    flood_water(grid, barrier, sea_seeds)
+    raster.flood_water(barrier, sea_seeds, CLS_WATER, CLS_LAND)
 
     # sanity probes before painting details
     def cls_at_geo(ll):
@@ -1724,16 +1503,16 @@ def main():
 
     land_contours = trace_land_contours(grid)
     for b in beaches:
-        raster_fill_poly(grid, [(b[i], b[i + 1]) for i in range(0, len(b), 2)], CLS_BEACH)
+        raster.fill_poly([(b[i], b[i + 1]) for i in range(0, len(b), 2)], CLS_BEACH)
     beach_fringe(grid, 9)
     for wpoly in waters:
-        raster_fill_poly(grid, [(wpoly[i], wpoly[i + 1]) for i in range(0, len(wpoly), 2)], CLS_WATER)
+        raster.fill_poly([(wpoly[i], wpoly[i + 1]) for i in range(0, len(wpoly), 2)], CLS_WATER)
     for r in roads:
         cls = CLS_PASEO if r["cls"] == "paseo" else \
               CLS_BRIDGE if r.get("bridge") else CLS_ROAD
-        raster_stamp_polyline(grid, r["pts"], r["w"], cls)
+        raster.stamp_polyline(r["pts"], r["w"], cls)
     if bridge_road:
-        raster_stamp_polyline(grid, bridge_road["pts"], bridge_road["w"] + 6, CLS_BRIDGE)
+        raster.stamp_polyline(bridge_road["pts"], bridge_road["w"] + 6, CLS_BRIDGE)
 
     hist = defaultdict(int)
     for v in grid:
@@ -1982,14 +1761,14 @@ def main():
     # Stamp the drivable strip flush with the DRAWN deck: raster_stamp_polyline
     # adds a round cap of radius w/2 past the last point, so pull the sea end
     # back by w/2 — otherwise ~20px of drivable cells sit past the visible deck.
-    raster_stamp_polyline(grid, [pier["x"], pier["y0"], pier["x"], pier["y1"] - pier["w"] / 2],
+    raster.stamp_polyline([pier["x"], pier["y0"], pier["x"], pier["y1"] - pier["w"] / 2],
                           pier["w"], CLS_BRIDGE)
     # connect the pier base to the street grid (walk north to the first road)
     pc = int(pier["x"] // GRID_CELL)
     pr = int(pier_y0 // GRID_CELL)
     for r in range(pr, max(0, pr - 120), -1):
         if grid[r * GRID_COLS + pc] in (CLS_ROAD, CLS_PASEO):
-            raster_stamp_polyline(grid, [pier["x"], r * GRID_CELL,
+            raster.stamp_polyline([pier["x"], r * GRID_CELL,
                                          pier["x"], pier["y0"]], 2 * CUAD, CLS_ROAD)
             log("pier", f"connector road to y={r * GRID_CELL}")
             break
@@ -2043,7 +1822,7 @@ def main():
             classes = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE) if pinned else (CLS_ROAD, CLS_BRIDGE)
             tgt = _nearest_cell(kx, ky, classes, 260)
             if tgt:
-                raster_stamp_polyline(grid, [kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
+                raster.stamp_polyline([kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
                 kiosk_paths.append({"pts": [round(kx), round(ky), round(tgt[0]), round(tgt[1])],
                                     "surface": "paved"})
                 log("kiosk", f"{'pinned' if pinned else 'sand'} path {lm['id']} "
@@ -2132,7 +1911,7 @@ def main():
         # drivable cells past the drawn deck (car can't drive off the sea end)
         _pl = math.hypot(ex - sx, ey - sy) or 1.0
         _sex = ex - (ex - sx) / _pl * (pw / 2); _sey = ey - (ey - sy) / _pl * (pw / 2)
-        raster_stamp_polyline(grid, [sx, sy, _sex, _sey], pw, CLS_BRIDGE)
+        raster.stamp_polyline([sx, sy, _sex, _sey], pw, CLS_BRIDGE)
         faro_pier = {"x0": int(ex), "y0": int(ey), "x1": int(sx), "y1": int(sy), "w": int(pw)}
         # ONE drivable lane tying the muelle base to the nearest loop road (the
         # pedestrian plaza itself stays non-drivable); drawn asphalt.
@@ -2149,7 +1928,7 @@ def main():
             axp, ayp = (aux[0] + 0.5) * GRID_CELL, (aux[1] + 0.5) * GRID_CELL
             # straight lane from the muelle base to the road (the lighthouse sits
             # to its left/west, over on the tip)
-            raster_stamp_polyline(grid, [sx, sy, axp, ayp], round(1.6 * CUAD), CLS_ROAD)
+            raster.stamp_polyline([sx, sy, axp, ayp], round(1.6 * CUAD), CLS_ROAD)
             kiosk_paths.append({"pts": [int(sx), int(sy), round(axp), round(ayp)], "surface": "paved"})
             log("pier", f"faro drivable lane -> ({round(axp)},{round(ayp)})")
         kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
@@ -2170,7 +1949,7 @@ def main():
     # Hand-placed junction islands: medians carve non-drivable acera, cuadras
     # carve solid land — stamped last so they override the road/apron beneath.
     for isl in junction_islands:
-        raster_fill_poly(grid, isl["pts"], CLS_ACERA if isl["kind"] == "median" else CLS_LAND)
+        raster.fill_poly(isl["pts"], CLS_ACERA if isl["kind"] == "median" else CLS_LAND)
     acera_cells = sum(1 for v in grid if v == CLS_ACERA)
     log("acera", f"{acera_cells} sidewalk cells; {len(junction_islands)} junction islands")
 
@@ -2341,7 +2120,7 @@ def main():
     greens = []
     balneario = None          # sea-water inlet bbox (boat + swimmers spawn inside)
     balneario_cells = None    # its cuad cells → added to `occ` once that exists
-    marine_site = None        # Parque Marino: {lm, cells, raster} → real OSM footprints + tanks
+    marine_site = None        # Parque Marino: {lm, cells, grass} → real OSM footprints + tanks
 
     def _block_containing(x, y):
         ac, ar = int(x // CUAD), int(y // CUAD)
@@ -2407,7 +2186,7 @@ def main():
         stamp_pad(grid, lm["x"], lm["y"], 44)            # drivable pocket
         tgt = _nearest_cell(lm["x"], lm["y"], (CLS_ROAD, CLS_BRIDGE, CLS_PASEO), 60)
         if tgt:
-            raster_stamp_polyline(grid, [lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
+            raster.stamp_polyline([lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
             kiosk_paths.append({"pts": [round(lm["x"]), round(lm["y"]),
                                         round(tgt[0]), round(tgt[1])], "surface": "paved"})
             log("kiosk", f"{lm['id']} -> cuadra frontage ({lm['x']},{lm['y']}), paved connector")
@@ -2464,7 +2243,7 @@ def main():
             if g:
                 wp = g["pts"]
                 waters.append([round(v) for v in wp])
-                raster_fill_poly(grid, [(wp[i], wp[i + 1]) for i in range(0, len(wp), 2)], CLS_WATER)
+                raster.fill_poly([(wp[i], wp[i + 1]) for i in range(0, len(wp), 2)], CLS_WATER)
             ccx = sum(c for c, _ in cells) / len(cells); ccy = sum(r for _, r in cells) / len(cells)
             tcx, tcy = min(cells, key=lambda c: (c[0] - ccx) ** 2 + (c[1] - ccy) ** 2)
             lm["x"] = int((tcx + 0.5) * CUAD); lm["y"] = int((tcy + 0.5) * CUAD)
@@ -2486,7 +2265,7 @@ def main():
             # into generic cuadrícula boxes, and the tanks are placed after them
             # so a tank can never end up under a building or on the acera.
             marine_site = {"lm": lm, "cells": set(cells),
-                           "raster": _block_raster_cells(cells)}
+                           "grass": _block_raster_cells(cells)}
         else:
             lm["w"] = min(160, (bc1 - bc0 + 1) * CUAD); lm["h"] = min(140, (br1 - br0 + 1) * CUAD)
 
@@ -2585,7 +2364,7 @@ def main():
 
     palm_runs = paseo_median_runs(roads, turistas)
     tree_runs = continuous_runs(leon, x0=tzx0, x1=tzx1)
-    medians = stamp_paseo_median(grid, palm_runs + tree_runs)
+    medians = stamp_paseo_median(raster, palm_runs + tree_runs)
 
     # --- buildings on the cuadrícula: snap OSM footprints, then fill the
     # cuadras' frontage bands with synth lots (shared occupancy, POI keepouts)
@@ -2642,12 +2421,7 @@ def main():
                     if abs(x - rx) <= span and abs(y - ry) <= span:
                         pts.append((x, y))
             if len(pts) >= 2:
-                n = len(pts)
-                mx = sum(p[0] for p in pts) / n; my = sum(p[1] for p in pts) / n
-                sxx = sum((p[0] - mx) ** 2 for p in pts)
-                syy = sum((p[1] - my) ** 2 for p in pts)
-                sxy = sum((p[0] - mx) * (p[1] - my) for p in pts)
-                theta = 0.5 * math.atan2(2 * sxy, sxx - syy)
+                mx, my, theta = principal_axis(pts)
                 return (mx, my, math.cos(theta), math.sin(theta))
         return None
 
@@ -2739,40 +2513,10 @@ def main():
     # parroquia next door, not a calle.
     STREET_CLASSES = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA)
 
+    # Erosion lives in util now; this binds it to THIS build's raster so the
+    # directional test can read the class outside a boundary cell.
     def _erode_cells(cells, depth, facing=None):
-        """Morphological erosion by `depth` cells (BFS distance transform seeded
-        on the boundary). Applied to a cuadra+acera set it yields the pitch, so
-        the difference between the two IS the block's real acera ring.
-
-        `facing` (a tuple of surface classes) erodes DIRECTIONALLY: only the
-        boundary whose neighbour outside the set is one of those classes seeds
-        the transform, so the ring forms along the streets and the block still
-        runs edge to edge everywhere else."""
-        from collections import deque as _dq
-        dist = {}
-        q = _dq()
-        for (c, r) in cells:
-            out = [(c + dc, r + dr) for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))
-                   if (c + dc, r + dr) not in cells]
-            if not out:
-                continue
-            if facing is not None and not any(
-                    0 <= n[0] < GRID_COLS and 0 <= n[1] < GRID_ROWS
-                    and grid[n[1] * GRID_COLS + n[0]] in facing for n in out):
-                continue
-            dist[(c, r)] = 1
-            q.append((c, r))
-        while q:
-            c, r = q.popleft()
-            d = dist[(c, r)] + 1
-            if d > depth:
-                continue
-            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                n = (c + dc, r + dr)
-                if n in cells and n not in dist:
-                    dist[n] = d
-                    q.append(n)
-        return {c for c in cells if dist.get(c, depth + 1) > depth}
+        return erode_cells(cells, depth, facing, raster.at)
 
     # Aquarium tanks: farthest-point spread over grass cells that CLEAR both the
     # acera and every aquarium building. drawPool paints a 78x48 ellipse at
@@ -2780,20 +2524,20 @@ def main():
     # TANK_CLEAR px of lawn all round or it spills onto the sidewalk.
     TANK_CLEAR = 26
     def _place_marine_pools(site, raws, want=5):
-        raster = site["raster"]                       # grass cells (CLS_LAND only)
+        grass = site["grass"]                         # grass cells (CLS_LAND only)
         # distance (in cells) from every grass cell to the nearest non-grass one
         dist = {}
         q = deque()
-        for cell in raster:
+        for cell in grass:
             c, rr = cell
-            if any((c + dc, rr + dr) not in raster for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+            if any((c + dc, rr + dr) not in grass for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 dist[cell] = 1; q.append(cell)
         while q:
             c, rr = q.popleft()
             d = dist[(c, rr)] + 1
             for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 n = (c + dc, rr + dr)
-                if n in raster and n not in dist:
+                if n in grass and n not in dist:
                     dist[n] = d; q.append(n)
         boxes = []
         for raw in raws:
@@ -2808,14 +2552,14 @@ def main():
         cand = []
         for need in (TANK_CLEAR, 22, 18, 14, 10):
             r = need / GRID_CELL
-            cand = [(c * GRID_CELL, rr * GRID_CELL) for (c, rr) in raster
+            cand = [(c * GRID_CELL, rr * GRID_CELL) for (c, rr) in grass
                     if dist.get((c, rr), 0) >= r and not (c % 3 or rr % 3)
                     and free(c * GRID_CELL, rr * GRID_CELL)]
             if len(cand) >= want * 8:
                 break
         if not cand:
             log("marino", "WARN no clear spot for the aquarium tanks"); return
-        log("marino", f"{len(raster)} grass cells -> {len(cand)} tank candidates "
+        log("marino", f"{len(grass)} grass cells -> {len(cand)} tank candidates "
               f"at >={round(need)}px clearance")
         mx = sum(p[0] for p in cand) / len(cand); my = sum(p[1] for p in cand) / len(cand)
         pts = [min(cand, key=lambda p: (p[0] - mx) ** 2 + (p[1] - my) ** 2)]
@@ -2977,12 +2721,7 @@ def main():
         its own: the fit is degenerate on a square-ish block (sxx≈syy snaps it
         to ±45°, the contrary diagonal), and it is orthogonal by construction,
         which the cuadrícula is not."""
-        n = len(cells)
-        mx = sum(c for c, _ in cells) / n; my = sum(r for _, r in cells) / n
-        sxx = sum((c - mx) ** 2 for c, _ in cells)
-        syy = sum((r - my) ** 2 for _, r in cells)
-        sxy = sum((c - mx) * (r - my) for c, r in cells)
-        ang = 0.5 * math.atan2(2 * sxy, sxx - syy)
+        mx, my, ang = principal_axis(list(cells))
         return mx, my, math.cos(ang), math.sin(ang)
 
     def _bands(vals, weights):
@@ -3294,7 +3033,7 @@ def main():
             px1, py1 = max(xs) + 10, max(ys) + 10
             beaches.append([round(px0), round(py0), round(px1), round(py0),
                             round(px1), round(py1), round(px0), round(py1)])
-            raster_fill_poly(grid, [(px0, py0), (px1, py0), (px1, py1), (px0, py1)], CLS_BEACH)
+            raster.fill_poly([(px0, py0), (px1, py0), (px1, py1), (px0, py1)], CLS_BEACH)
             pads += 1
         if pads:
             log("balneario", f"{pads} buildings given a sand pad (were floating on the inlet)")
@@ -3317,7 +3056,7 @@ def main():
         bw = road_width_px("bridge")
         roads.append({"cls": "bridge", "w": bw,
                       "pts": [round(bx0), round(bcy), round(bx1), round(bcy)]})
-        raster_stamp_polyline(grid, roads[-1]["pts"], bw + 6, CLS_BRIDGE)
+        raster.stamp_polyline(roads[-1]["pts"], bw + 6, CLS_BRIDGE)
     span = bx1 - bx0
     bridge = {"x0": round(bx0), "x1": round(bx1), "cy": round(bcy), "deckW": 60,
               "towers": [round(bx0 + span * 0.15), round(bx1 - span * 0.15)], "towerH": 180,
@@ -3562,10 +3301,10 @@ def main():
         pal = {CLS_WATER: (42, 127, 168), CLS_LAND: (232, 213, 160), CLS_BEACH: (244, 215, 122),
                CLS_ROAD: (58, 53, 64), CLS_PASEO: (240, 138, 93), CLS_BRIDGE: (140, 140, 140),
                CLS_ACERA: (206, 199, 178)}
-        bldg_overlay = bytearray(GRID_COLS * GRID_ROWS)
+        overlay = Raster(GRID_COLS, GRID_ROWS, GRID_CELL)
+        bldg_overlay = overlay.buf
         for b in buildings:
-            raster_fill_poly(bldg_overlay, [(b["pts"][i], b["pts"][i + 1])
-                                            for i in range(0, len(b["pts"]), 2)], 1)
+            overlay.fill_poly(pairs(b["pts"]), 1)
         marks = {}
         for lm in landmarks:
             marks[(int(lm["x"] / GRID_CELL), int(lm["y"] / GRID_CELL))] = (255, 0, 0)

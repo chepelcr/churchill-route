@@ -127,19 +127,32 @@ churchill/world/
                  Parcel, Landmark, Stage…). They VALIDATE the emit; they do not
                  serialize it (key order is historical and varies per producer).
                  The same models a FastAPI controller will return.
+  enums/         the world's VOCABULARY and the lowest layer: Surface (IntEnum,
+                 the bytes in the RLE) + ParcelUse/GreenType/LandmarkType/
+                 PathSurface/Weather/RoadClass. The value IS the wire format;
+                 each enum names the client file that must agree with it
+  context.py     WorldDims (computed, frozen) + WorldContext — the state stages
+                 hand each other. Collections are MUTATED IN PLACE, never
+                 rebound, or a service holding one stops seeing new entries
   util/          pure functions: geometry.py (incl. principal_axis, whose
                  docstring names its two failure modes) and raster.py (Raster:
                  buffer + dims + fill_poly/stamp_polyline/flood/erode)
   repository/    the ONLY code that touches storage — Protocols in base.py,
-                 JsonWorldRepository beside them
-  service/       domain ops: street.py (StreetIndex — name → position/line/
-                 direction; read its docstring before picking a method)
+                 osm_file.py (in), world_json.py + debug_render.py (out)
+  service/       domain ops, each taking what it needs rather than reaching for
+                 globals: street (StreetIndex — read its docstring before
+                 picking a method), block, field (estadios + parcels), building,
+                 surface (the stamping ORDER matters), network (the gate),
+                 placement (why a POI has to be nudged at all), osm, decoration,
+                 projection
+  pipeline/      the stages: extract_world -> … -> verify -> write_world
 ```
 
-Nothing imports the layer above it. `tools/build_world.py` is the CLI in front
-of it and still holds `main()` — the remaining services (surface, block,
-building, poi, field, decoration, connectivity) and the pipeline stages come out
-of it next, via a WorldContext carrying the shared state those closures capture.
+Nothing imports the layer above it. `tools/build_world.py` is the CLI: it calls
+`extract_world`, still holds the middle phases as `main()`, and hands the
+context to `verify`/`write_world`. Those middle phases (surface rasterising,
+districts, POI placement, kiosks, blocks, structures, decoration) are what is
+left to lift into stages.
 
 **Every step of that refactor must keep the world byte-identical** — verify with
 `python3 tools/world_snapshot.py rebuild`, and diff the build log too (it is

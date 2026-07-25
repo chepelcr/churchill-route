@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from churchill.world.config import (            # noqa: E402
     ACERA_CELLS, ARCADE_STREET_MUL, BUILDING_SCALE, CLASS_NAMES,
     CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER,
+    STREET_CLASSES,
     CROSS_EXAG, CUAD, CUADS_PER_VIEW, CUAD_CELLS, DEBUG_PNG, DEBUG_SVG,
     DP_BUILDING_PX, DP_COAST_PX, DP_ROAD_PX, DROP_ROAD_CLASSES,
     FIELD_ACERA_CELLS, GRID_CELL, LAT0, LON0, M_PER_DEG_LAT, M_PER_DEG_LON,
@@ -55,6 +56,10 @@ CANVAS_W, CANVAS_H, CENTER_Y = 26400, 4920, 3220
 GRID_COLS, GRID_ROWS = CANVAS_W // GRID_CELL, CANVAS_H // GRID_CELL
 
 from churchill.world.repository.world_json import JsonWorldRepository  # noqa: E402
+from churchill.world.service.field import FieldService  # noqa: E402
+from churchill.world.service.block import (    # noqa: E402
+    block_raster_cells, cuadra_cells, outline_poly,
+)
 from churchill.world.service.street import (   # noqa: E402
     StreetIndex, half_plane, resample_centerline,
 )
@@ -2029,68 +2034,8 @@ def main():
     # diagonal streets included). The renderer fills it and dilates it a few px
     # under the painted acera band, so lawns meet the sidewalks with no sand
     # slivers and none of the blocky cuadrícula steps of the old rect fill.
-    def _block_raster_cells(cells):
-        out, seeds = set(), []
-        for (cc, cr) in cells:
-            pc = cc * CUAD_CELLS + CUAD_CELLS // 2
-            pr = cr * CUAD_CELLS + CUAD_CELLS // 2
-            if 0 <= pc < GRID_COLS and 0 <= pr < GRID_ROWS and \
-                    grid[pr * GRID_COLS + pc] == CLS_LAND:
-                seeds.append((pc, pr))
-        for s in seeds:
-            if s in out:
-                continue
-            st = [s]
-            while st:
-                c, r = st.pop()
-                if (c, r) in out or not (0 <= c < GRID_COLS and 0 <= r < GRID_ROWS):
-                    continue
-                if grid[r * GRID_COLS + c] != CLS_LAND:
-                    continue
-                out.add((c, r))
-                st += ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1))
-        return out
-
-    def _outline_poly(cells):
-        """Outer boundary of a raster cell set as a flat [x,y,...] px polygon
-        (largest loop wins — interior holes are ignored; collinear runs merged)."""
-        edges = defaultdict(list)              # start vertex -> [end vertices]
-        for (c, r) in cells:
-            if (c, r - 1) not in cells: edges[(c, r)].append((c + 1, r))
-            if (c + 1, r) not in cells: edges[(c + 1, r)].append((c + 1, r + 1))
-            if (c, r + 1) not in cells: edges[(c + 1, r + 1)].append((c, r + 1))
-            if (c - 1, r) not in cells: edges[(c, r + 1)].append((c, r))
-        best, best_area = None, 0.0
-        while True:
-            start = next((v for v, outs in edges.items() if outs), None)
-            if start is None:
-                break
-            loop, v, closed = [start], start, False
-            while True:
-                outs = edges.get(v)
-                if not outs:
-                    break                       # pinch-point dead end: drop loop
-                v = outs.pop()
-                if v == start:
-                    closed = True; break
-                loop.append(v)
-            if not closed:
-                continue
-            area = 0.0
-            for i in range(len(loop)):
-                x0, y0 = loop[i]; x1, y1 = loop[(i + 1) % len(loop)]
-                area += x0 * y1 - x1 * y0
-            if abs(area) > best_area:
-                best_area, best = abs(area), loop
-        if not best:
-            return []
-        pts, n = [], len(best)
-        for i in range(n):
-            p0, p1, p2 = best[i - 1], best[i], best[(i + 1) % n]
-            if (p1[0] - p0[0]) * (p2[1] - p1[1]) == (p1[1] - p0[1]) * (p2[0] - p1[0]):
-                continue                        # collinear — drop the midpoint
-            pts += [p1[0] * GRID_CELL, p1[1] * GRID_CELL]
-        return pts
+    _block_raster_cells = lambda cells: block_raster_cells(raster, cells, CUAD_CELLS, CLS_LAND)
+    _outline_poly = lambda cells: outline_poly(cells, GRID_CELL)
 
     def _green_poly(cells, typ):
         poly = _outline_poly(_block_raster_cells(cells))
@@ -2375,40 +2320,8 @@ def main():
     _street_dir = lambda names, ref, axis, span=520: streets.direction(names, ref, axis, span)
     _half_plane = half_plane
 
-    def _cuadra_cells(px0, py0, px1, py1, classes, clip=None):
-        """The one cuadra under a street rect, as raster cells: the LARGEST
-        connected component of `classes` inside the rect. Clipping to the rect
-        is what keeps it local — the acera fringe is continuous along every
-        street, so an unbounded flood would swallow the whole city — and the
-        rect runs centreline-to-centreline, so the far-side aceras stay out.
-        `clip(px, py) -> bool` adds a further half-plane test (see _half_plane)."""
-        gc0 = max(0, int(px0 // GRID_CELL)); gc1 = min(GRID_COLS - 1, int(px1 // GRID_CELL))
-        gr0 = max(0, int(py0 // GRID_CELL)); gr1 = min(GRID_ROWS - 1, int(py1 // GRID_CELL))
-        inside = lambda c, r: (gc0 <= c <= gc1 and gr0 <= r <= gr1
-                               and (clip is None or clip(c * GRID_CELL, r * GRID_CELL)))
-        member = lambda c, r: grid[r * GRID_COLS + c] in classes
-        seen, best = set(), set()
-        for r0 in range(gr0, gr1 + 1):
-            for c0 in range(gc0, gc1 + 1):
-                if (c0, r0) in seen or not member(c0, r0):
-                    continue
-                comp, st = set(), [(c0, r0)]
-                while st:
-                    c, r = st.pop()
-                    if (c, r) in comp or not inside(c, r) or not member(c, r):
-                        continue
-                    comp.add((c, r))
-                    st += ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1))
-                seen |= comp
-                if len(comp) > len(best):
-                    best = comp
-        return best
-
-    # An acera exists where there is a STREET to walk beside. A cuadra edge that
-    # faces the sea, the sand or another parcel has none — Las Playitas runs out
-    # to the beach on its north side, and the Carmen plaza's west edge is the
-    # parroquia next door, not a calle.
-    STREET_CLASSES = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA)
+    _cuadra_cells = lambda px0, py0, px1, py1, classes, clip=None: cuadra_cells(
+        raster, px0, py0, px1, py1, classes, clip)
 
     # Erosion lives in util now; this binds it to THIS build's raster so the
     # directional test can read the class outside a boundary cell.
@@ -2464,115 +2377,10 @@ def main():
             pts.append(max(cand, key=lambda p: min((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 for q in pts)))
         site["lm"]["pools"] = [[int(p[0]), int(p[1])] for p in pts]
 
-    def place_stadium(spec):
-        lm = next((l for l in landmarks if l["id"] == spec["id"]), None)
-        if lm is None:
-            log("estadio", f"WARN landmark {spec['id']} missing"); return
-        ref = (lm["x"], lm["y"])
-        # DIAGNOSTIC: named streets near the anchor, to tune the grid refs
-        log("estadio", f"{spec['id']} anchor {ref} nearby streets: {streets.near(ref)}")
-
-        # Resolve the stadium's street RECT, then trace the actual cuadra under
-        # it straight from the grid (these blocks classify as green plazas, not
-        # buildable blocks, so we don't rely on block detection). TWO polygons
-        # come out of the trace:
-        #   outline = the cuadra incl. its acera ring (all of it drivable, so it
-        #             touches the streets and the car drives straight in)
-        #   footprint = the PITCH — outline eroded by the acera depth, or the
-        #             whole outline when the spec says the block has no aceras
-        # Both follow the manzana's true grid angles, exactly like a park green
-        # (_green_poly) — never an axis rect slapped over the streets.
-        cxa = _street_vals(spec["calles"][0], "x", ref)
-        cxb = _street_vals(spec["calles"][1], "x", ref)
-        ay = _street_vals(spec["ave_south"], "y", ref)
-        ayn = _street_vals(spec["ave_north"], "y", ref) if spec.get("ave_north") else None
-        if cxa is not None and cxb is not None and ay is not None:
-            xa, xb = min(cxa, cxb), max(cxa, cxb)
-            if ayn is not None:
-                ylo, yhi = min(ay, ayn), max(ay, ayn)
-            else:                                # extend NORTH from Avenida 1
-                yhi = ay; ylo = ay - abs(cxb - cxa) * 1.2
-        else:                                    # ll-anchor fallback rect
-            log("estadio", f"WARN {spec['id']} street resolve failed; anchor fallback")
-            xa, xb = ref[0] - 5 * CUAD, ref[0] + 5 * CUAD
-            ylo, yhi = ref[1] - 6 * CUAD, ref[1] + 6 * CUAD
-        # `beach`: let the cuadra run out to the shoreline (Las Playitas ends at
-        # the sand, not at a street). `aceras: False`: no sidewalk ring at all —
-        # the pitch IS the whole cuadra. Left unset, the ring is DIRECTIONAL:
-        # it forms only along the block's street edges (see _erode_cells), which
-        # is what keeps the pitch's white lines off the asphalt while Las
-        # Playitas still runs into the sand on its north side.
-        classes = (CLS_LAND, CLS_ACERA) + ((CLS_BEACH,) if spec.get("beach") else ())
-        # `edge`: bound the block on a street that STOPS SHORT. Calle 8 dead-ends
-        # in the sand, and its round end cap was what the block wrapped around —
-        # so the plaza's right-hand wall ended in a notch instead of running out
-        # to the shoreline. Clipping on the street's straight LINE, extended,
-        # gives a wall that reads as the street continuing.
-        clip = None
-        if spec.get("edge"):
-            line = _street_edge(spec["edge"], ref)
-            if line is None:
-                log("estadio", f"WARN {spec['id']} edge street {spec['edge']} unresolved")
-            else:
-                clip = _half_plane(line, ((xa + xb) / 2, (ylo + yhi) / 2), spec.get("edge_gap", 18))
-        outer_cells = _cuadra_cells(xa, ylo, xb, yhi, classes, clip)
-        inner_cells = (outer_cells if spec.get("aceras") is False
-                       else _erode_cells(outer_cells, FIELD_ACERA_CELLS, STREET_CLASSES)) if outer_cells else set()
-        outline = _outline_poly(outer_cells) if outer_cells else None
-        footprint = _outline_poly(inner_cells) if inner_cells else None
-        if not outline or not footprint:
-            log("estadio", f"WARN {spec['id']} no cuadra in rect "
-                  f"({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)})"); return
-        g = {"pts": footprint, "type": "stadium"}
-        # no buildings on the block: occ (OSM) + green-flag it (synth). Use the
-        # cuad cells the traced cuadra actually covers, not the raw street rect.
-        cuad_cells = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in outer_cells}
-        occ.update(cuad_cells)
-        for b in blocks:
-            if not b.get("green") and any(c in cuad_cells for c in b["cells"]):
-                b["green"] = True
-        # DRIVABLE: stamp the traced cuadra (pitch + acera ring) CLS_ROAD — and
-        # ONLY that. The ring touches the bounding streets so the car can drive
-        # straight in with no acera wall, while everything outside the block
-        # keeps its own class: at Las Playitas the sea north of the pitch stays
-        # CLS_WATER (a wall) instead of becoming drivable asphalt.
-        for (c, r) in outer_cells:
-            grid[r * GRID_COLS + c] = CLS_ROAD
-        fx = footprint[0::2]; fy = footprint[1::2]
-        bx0, by0, bx1, by1 = min(fx), min(fy), max(fx), max(fy)
-        # drop any pre-existing green/plaza whose CENTRE falls on this block,
-        # then add the pitch (a bbox-overlap test would also eat a neighbour)
-        _in = lambda x, y: bx0 <= x <= bx1 and by0 <= y <= by1
-        plazas[:] = [pz for pz in plazas if not _in(pz[0] + pz[2] / 2, pz[1] + pz[3] / 2)]
-        greens[:] = [gg for gg in greens
-                     if not _in(sum(gg["pts"][0::2]) / (len(gg["pts"]) / 2),
-                                sum(gg["pts"][1::2]) / (len(gg["pts"]) / 2))]
-        greens.append(g)
-        cxpx = int(sum(fx) / len(fx)); cypx = int(sum(fy) / len(fy))
-        lm["x"], lm["y"] = cxpx, cypx
-        lm["footprint"] = footprint      # the pitch (grass + white markings)
-        lm["outline"] = outline          # the whole drivable cuadra
-        stadiums.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
-                         "cx": cxpx, "cy": cypx, "footprint": footprint,
-                         "outline": outline})
-        # …and as a sponsorable space. A stadium is a WHOLE cuadra, not a part
-        # of one, so `whole` tells the renderer its ground is already painted
-        # (by paintStadiumCuadras) and only the slot art belongs to the parcel.
-        # The slot is centred — the middle of the pitch is where a club crest
-        # goes.
-        sw = max(40, (bx1 - bx0) // 3); sh = max(28, (by1 - by0) // 3)
-        parcels.append({"id": f"{spec['id']}_field", "name": lm.get("name") or spec["id"],
-                        "use": "stadium", "whole": True, "poly": footprint,
-                        "cx": cxpx, "cy": cypx,
-                        "x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
-                        "slot": [int(cxpx - sw // 2), int(cypx - sh // 2), int(sw), int(sh)]})
-        log("parcel", f"{spec['id']}_field (stadium, whole cuadra) "
-              f"slot[{int(cxpx - sw // 2)}, {int(cypx - sh // 2)}, {int(sw)}, {int(sh)}]")
-        ox = outline[0::2]; oy = outline[1::2]
-        log("estadio", f"{spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
-              f"-> cuadra ({min(ox)},{min(oy)})-({max(ox)},{max(oy)})px {len(outline)//2}v, "
-              f"pitch ({bx0},{by0})-({bx1},{by1})px {len(footprint)//2}v, "
-              f"{len(outer_cells)} cells drivable")
+    # Estadios and parcels: one service over the world under construction.
+    fields = FieldService(raster=raster, streets=streets, landmarks=landmarks,
+                          blocks=blocks, greens=greens, plazas=plazas,
+                          stadiums=stadiums, parcels=parcels, occ=occ)
 
     # Calle/Avenida refs mapped to the OSM names actually present here (odd
     # calles are unnamed → fall back to the flanking even calle; the central
@@ -2589,7 +2397,7 @@ def main():
          "beach": True,                      # the cuadra runs out to the sand
          "edge": ["Calle 8"]},               # right wall on Calle 8's line, extended
     ):
-        place_stadium(_sp)
+        fields.place_stadium(_sp)
 
     # ---- PARCELS -----------------------------------------------------------
     # A cuadra split into named PARTS, each with a `use` that drives how it is
@@ -2601,159 +2409,6 @@ def main():
     #                    sits on it (a church) never lands on the acera.
     #   aceras: False -> the part keeps the ring, filling the block edge to edge
     #                    (how Plaza Las Playitas reads as one open field).
-    def _cell_frame(cells):
-        """Centre + principal axis of a cell set. The CENTRE is what parcels
-        want; the axis is only their FALLBACK for when a bounding street's
-        direction will not resolve (see _street_dir). It is not trustworthy on
-        its own: the fit is degenerate on a square-ish block (sxx≈syy snaps it
-        to ±45°, the contrary diagonal), and it is orthogonal by construction,
-        which the cuadrícula is not."""
-        mx, my, ang = principal_axis(list(cells))
-        return mx, my, math.cos(ang), math.sin(ang)
-
-    def _bands(vals, weights):
-        """Cut [min..max] into len(weights) bands sized by the weights."""
-        lo, hi = min(vals), max(vals)
-        total = sum(weights) or 1
-        edges, acc = [lo], 0.0
-        for w in weights:
-            acc += w
-            edges.append(lo + (hi - lo) * acc / total)
-        edges[-1] = hi + 1e-6
-        return edges
-
-    def _emit_parcel(spec_id, part, cells, keep_cells, ang=0.0):
-        poly = _outline_poly(keep_cells) if keep_cells else None
-        if not poly:
-            log("parcel", f"WARN {part['id']} nothing left after erosion"); return None
-        px = poly[0::2]; py = poly[1::2]
-        x0, y0, x1, y1 = min(px), min(py), max(px), max(py)
-        ay = y0 + (y1 - y0) // 4 if part.get("anchor") == "north" else (y0 + y1) // 2
-        # SPONSOR SLOT: a rect inside the parcel a remote `lote` can claim. The
-        # WORLD owns its place and size, so nothing a sponsor sends can cover a
-        # street or dwarf the block.
-        sw = max(24, (x1 - x0) // 3); sh = max(16, (y1 - y0) // 3)
-        slot = [int((x0 + x1) // 2 - sw // 2), int((y0 + y1) // 2 - sh // 2), int(sw), int(sh)]
-        # `ang` = the BLOCK's angle (its avenidas' direction), radians. Whatever
-        # the renderer draws ON a parcel — mow stripes, pitch markings, the
-        # church, the sponsor plate — rotates by it, so nothing sits square to
-        # the screen on a manzana that is not. Do NOT re-derive this from the
-        # poly: a traced outline's vertices are staircase steps, and fitting
-        # them puts a square-ish parcel on the contrary diagonal (carmen_plaza
-        # fitted to -67°).
-        parcels.append({"id": part["id"], "name": part["name"], "use": part["use"],
-                        "poly": poly, "cx": int((x0 + x1) // 2), "cy": int(ay),
-                        "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot,
-                        "ang": round(ang, 4)})
-        cuads = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in cells}
-        occ.update(cuads)                        # no buildings inside a parcel
-        for b in blocks:
-            if not b.get("green") and any(c in cuads for c in b["cells"]):
-                b["green"] = True
-        if part["use"] in ("plaza", "stadium"):   # drivable open field
-            for (c, r) in cells:
-                grid[r * GRID_COLS + c] = CLS_ROAD
-        log("parcel", f"{part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
-              f"{len(poly)//2}v slot{slot}")
-        return parcels[-1]
-
-    # ---- PARCELS -----------------------------------------------------------
-    # A cuadra cut into named PARTS, each with a `use` that drives how it is
-    # drawn and a `slot` a sponsor can claim. The general form of what the
-    # estadios do by hand: resolve the block, then hand out pieces of it.
-    #
-    #   cols/rows  — an N×M subdivision, sized by optional weights, cut in the
-    #                block's OWN frame: columns along the calles, rows along the
-    #                avenidas (see _street_dir).
-    #   aceras     — True takes the part's cells from the block's ERODED set, so
-    #                what sits on it (a church, a pitch's white lines) can never
-    #                land on the acera; False keeps the ring so the part fills
-    #                the block edge to edge. The erosion is the BLOCK's and it is
-    #                directional, so a part only loses the edges that face a
-    #                street — the Carmen plaza keeps its west edge flush against
-    #                the parroquia next door. A `plaza`/`stadium` part is stamped
-    #                drivable on its UN-eroded cells either way, so the ring is
-    #                asphalt you can drive on, not a wall around the field.
-    def place_parcels(spec):
-        ref = spec["at"]
-        cxa = _street_at(spec["calles"][0], "x", ref)
-        cxb = _street_at(spec["calles"][1], "x", ref)
-        ayn = _street_at(spec["ave_north"], "y", ref)
-        ays = _street_at(spec["ave_south"], "y", ref)
-        if None in (cxa, cxb, ayn, ays):
-            log("parcel", f"WARN {spec['id']} street resolve failed "
-                  f"(calles {cxa},{cxb} avenidas {ayn},{ays})"); return
-        outer = _cuadra_cells(min(cxa, cxb), min(ayn, ays), max(cxa, cxb), max(ayn, ays),
-                              (CLS_LAND, CLS_ACERA))
-        if not outer:
-            log("parcel", f"WARN {spec['id']} no cuadra in rect"); return
-        # Erode ONCE, for the block. The acera ring is around the CUADRA, not
-        # around every part of it: eroding per part also inset each one from the
-        # internal split lines, which are not streets, and on a small block that
-        # left 4px slivers. `aceras: True` therefore means "respect the block's
-        # ring", and a part just takes its cells from the eroded set.
-        inner = _erode_cells(outer, ACERA_CELLS, STREET_CLASSES)
-        # …and a shallower one for the open fields (see FIELD_ACERA_CELLS): a
-        # church must clear the whole sidewalk, a pitch only has to stop at the
-        # kerb, and on a small cuadra the difference is most of the plaza.
-        field = _erode_cells(outer, FIELD_ACERA_CELLS, STREET_CLASSES)
-        # THE BLOCK'S FRAME COMES FROM ITS BOUNDING STREETS, not from a fit of
-        # its own cells. A principal-axis fit (_cell_frame) is wrong here twice
-        # over: on a square-ish cuadra sxx≈syy, the fit is degenerate and snaps
-        # to ±45°, cutting the parts along the CONTRARY diagonal to the manzana;
-        # and even when it lands, it can only return ORTHOGONAL axes, while the
-        # cuadrícula is a parallelogram. So COLUMNS are cut by lines parallel to
-        # the CALLES and ROWS by lines parallel to the AVENIDAS — each cell is
-        # projected on the NORMAL of the other family, an affine frame that fits
-        # a non-square block. `ang` (the avenida direction) rides into the
-        # manifest so the renderer draws on the block's angle too.
-        av = _street_dir(spec["ave_north"], ref, "x") or _street_dir(spec["ave_south"], ref, "x")
-        cl = _street_dir(spec["calles"][0], ref, "y") or _street_dir(spec["calles"][1], ref, "y")
-        mx, my, ca, sa = _cell_frame(outer)          # centre (+ fallback axes)
-        if av and cl:
-            ang = math.atan2(av[1], av[0])
-            nrow = (-av[1], av[0])                   # normal of the avenidas → row coord (south+)
-            ncol = (cl[1], -cl[0])                   # normal of the calles   → col coord (east+)
-        else:
-            log("parcel", f"WARN {spec['id']} street direction unresolved "
-                  f"(avenida {av}, calle {cl}) — principal-axis fallback")
-            ang = math.atan2(sa, ca)
-            nrow, ncol = (-sa, ca), (ca, sa)
-        log("parcel", f"{spec['id']} block frame {math.degrees(ang):+.1f}° "
-              f"(avenida {av}, calle {cl}), {len(outer)} cells")
-        uv = {c: ((c[0] - mx) * ncol[0] + (c[1] - my) * ncol[1],
-                  (c[0] - mx) * nrow[0] + (c[1] - my) * nrow[1])
-              for c in outer}
-        cw = spec.get("cols", [1]); rw = spec.get("rows", [1])
-        ue = _bands([v[0] for v in uv.values()], cw)
-        ve = _bands([v[1] for v in uv.values()], rw)
-        nominal = len(outer) / (len(cw) * len(rw))
-        # `col`/`row` take an int or an inclusive [from, to] SPAN, so parts do
-        # not all have to be the same size: the Carmen block is one column of
-        # two (church over garden) beside one column spanning both rows (the
-        # plaza). That is what lets a cuadra hold commerce of different sizes.
-        rng = lambda v: (v, v) if isinstance(v, int) else (v[0], v[1])
-        for part in spec["parts"]:
-            c0, c1 = rng(part.get("col", 0))
-            r0, r1 = rng(part.get("row", 0))
-            src = ((field if part["use"] in ("plaza", "stadium") else inner)
-                   if part.get("aceras") else outer)
-            cells = {c for c in src
-                     if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
-            # cells the part OWNS on the block (for occ / drivability), which is
-            # the un-eroded slice — the ring in front of a church is still its
-            # frontage, no building may land there
-            own = {c for c in outer
-                   if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
-            span = (c1 - c0 + 1) * (r1 - r0 + 1)
-            # A part that came out mostly EMPTY means the split does not suit
-            # this block (it is a ribbon, not a rectangle) — fail loudly in the
-            # log instead of quietly emitting a sliver out in the street.
-            if len(own) < nominal * span * 0.35:
-                log("parcel", f"WARN {part['id']} only {len(cells)} cells vs "
-                      f"{nominal * span:.0f} nominal — split does not suit this block"); continue
-            _emit_parcel(spec["id"], part, own, cells, ang)
-
     for _pc in (
         {"id": "carmen", "at": (12620, 9755),      # Calle 35-33 x Av Centenario-Av 1
          "calles": (["Calle 35"], ["Calle 33"]),
@@ -2773,7 +2428,7 @@ def main():
               "name": "Plaza Deportes El Carmen", "aceras": True},
          ]},
     ):
-        place_parcels(_pc)
+        fields.place_parcels(_pc)
 
     # Parque Marino: the aquarium's own OSM ways stay at their TRUE footprints
     # (a snapped pastel box reads as a generic house, not the theme park), and
@@ -2874,39 +2529,11 @@ def main():
     # mostly street or water. Their real parcels are the things already STANDING
     # in them, so derive one parcel per building footprint inside the block.
     # Same output shape, same sponsor slot — only the source differs.
-    def place_feature_parcels(spec):
-        lm = next((l for l in landmarks if l["id"] == spec["lm"]), None)
-        if lm is None:
-            log("parcel", f"WARN feature block {spec['lm']} missing"); return
-        hw = (lm.get("w") or 200) / 2 + spec.get("pad", 20)
-        hh = (lm.get("h") or 160) / 2 + spec.get("pad", 20)
-        bx0, by0, bx1, by1 = lm["x"] - hw, lm["y"] - hh, lm["x"] + hw, lm["y"] + hh
-        n = 0
-        for b in buildings:
-            xs, ys = b["pts"][0::2], b["pts"][1::2]
-            cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
-            if not (bx0 <= cx <= bx1 and by0 <= cy <= by1):
-                continue
-            x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
-            sw = max(20, int((x1 - x0) * 0.7)); sh = max(12, int((y1 - y0) * 0.55))
-            parcels.append({
-                "id": f"{spec['id']}_{n}", "use": spec.get("use", "lot"),
-                "name": b.get("name") or f"{spec['name']} {n + 1}",
-                "poly": [round(v) for v in b["pts"]],
-                "cx": int(cx), "cy": int(cy),
-                "x0": x0, "y0": y0, "x1": x1, "y1": y1,
-                "slot": [int(cx - sw / 2), int(cy - sh / 2), sw, sh],
-                "built": True,          # the footprint IS a building; don't paint ground
-            })
-            n += 1
-        log("parcel", f"{spec['id']}: {n} feature parcels from footprints inside "
-              f"{spec['lm']} ({round(bx1-bx0)}x{round(by1-by0)}px)")
-
     for _fp in (
         {"id": "marino_lote", "lm": "parquemar", "name": "Parque Marino", "use": "lot"},
         {"id": "balneario_lote", "lm": "balneario", "name": "Balneario", "use": "lot"},
     ):
-        place_feature_parcels(_fp)
+        fields.place_feature_parcels(_fp, buildings)
 
     if balneario:
         pads = 0

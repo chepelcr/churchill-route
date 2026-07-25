@@ -94,3 +94,8 @@ ACERA_CELLS = CUAD_CELLS        # sidewalk depth: 1 cuadrícula (20 px) each sid
 # 60x48. 8 px still reads as a kerb strip (the drawn sidewalk band is 20 px, so
 # the pitch tucks under most of it, exactly like a park's green skirt).
 FIELD_ACERA_CELLS = 2           # 8 px — estadio / plaza pitches
+# An acera exists where there is a STREET to walk beside. A cuadra edge facing
+# the sea, the sand or another parcel has none — Las Playitas runs out to the
+# beach on its north side, and the Carmen plaza's west edge is the parroquia
+# next door, not a calle. (Used as the `facing` set of the directional erosion.)
+STREET_CLASSES = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_ACERA)

@@ -3697,6 +3697,12 @@ def main():
                               (CLS_LAND, CLS_ACERA))
         if not outer:
             print(f"[parcel] WARN {spec['id']} no cuadra in rect"); return
+        # Erode ONCE, for the block. The acera ring is around the CUADRA, not
+        # around every part of it: eroding per part also inset each one from the
+        # internal split lines, which are not streets, and on a small block that
+        # left 4px slivers. `aceras: True` therefore means "respect the block's
+        # ring", and a part just takes its cells from the eroded set.
+        inner = _erode_cells(outer, ACERA_CELLS)
         mx, my, ca, sa = _cell_frame(outer)
         uv = {c: ((c[0] - mx) * ca + (c[1] - my) * sa, -(c[0] - mx) * sa + (c[1] - my) * ca)
               for c in outer}
@@ -3704,30 +3710,47 @@ def main():
         ue = _bands([v[0] for v in uv.values()], cw)
         ve = _bands([v[1] for v in uv.values()], rw)
         nominal = len(outer) / (len(cw) * len(rw))
+        # `col`/`row` take an int or an inclusive [from, to] SPAN, so parts do
+        # not all have to be the same size: the Carmen block is one column of
+        # two (church over garden) beside one column spanning both rows (the
+        # plaza). That is what lets a cuadra hold commerce of different sizes.
+        rng = lambda v: (v, v) if isinstance(v, int) else (v[0], v[1])
         for part in spec["parts"]:
-            ci, ri = part.get("col", 0), part.get("row", 0)
-            cells = {c for c, (u, v) in uv.items()
-                     if ue[ci] <= u < ue[ci + 1] and ve[ri] <= v < ve[ri + 1]}
+            c0, c1 = rng(part.get("col", 0))
+            r0, r1 = rng(part.get("row", 0))
+            src = inner if part.get("aceras") else outer
+            cells = {c for c in src
+                     if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
+            # cells the part OWNS on the block (for occ / drivability), which is
+            # the un-eroded slice — the ring in front of a church is still its
+            # frontage, no building may land there
+            own = {c for c in outer
+                   if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
+            span = (c1 - c0 + 1) * (r1 - r0 + 1)
             # A part that came out mostly EMPTY means the split does not suit
             # this block (it is a ribbon, not a rectangle) — fail loudly in the
             # log instead of quietly emitting a sliver out in the street.
-            if len(cells) < nominal * 0.35:
+            if len(own) < nominal * span * 0.35:
                 print(f"[parcel] WARN {part['id']} only {len(cells)} cells vs "
-                      f"{nominal:.0f} nominal — split does not suit this block"); continue
-            keep = _erode_cells(cells, ACERA_CELLS) if part.get("aceras") else cells
-            _emit_parcel(spec["id"], part, cells, keep)
+                      f"{nominal * span:.0f} nominal — split does not suit this block"); continue
+            _emit_parcel(spec["id"], part, own, cells)
 
     for _pc in (
         {"id": "carmen", "at": (12620, 9755),      # Calle 35-33 x Av Centenario-Av 1
          "calles": (["Calle 35"], ["Calle 33"]),
          "ave_north": ["Avenida Centenario", "Avenida 0"],
          "ave_south": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
-         "cols": [1, 1],
+         "cols": [1, 1], "rows": [1, 1],
          "parts": [
-             {"id": "carmen_parroquia", "col": 0, "use": "church",
+             # left column, split in two: the church up top…
+             {"id": "carmen_parroquia", "col": 0, "row": 0, "use": "church",
               "name": "Parroquia Nuestra Señora de El Carmen",
               "aceras": True, "anchor": "north"},
-             {"id": "carmen_plaza", "col": 1, "use": "stadium",
+             # …and its garden below it
+             {"id": "carmen_jardin", "col": 0, "row": 1, "use": "garden",
+              "name": "Jardín de la Parroquia", "aceras": True},
+             # right column, spanning BOTH rows
+             {"id": "carmen_plaza", "col": 1, "row": [0, 1], "use": "stadium",
               "name": "Plaza Deportes El Carmen", "aceras": False},
          ]},
     ):

@@ -12,10 +12,14 @@ export default function ModeBrief({ mode, onGo }) {
   return (
     <div className="overlay">
       <div className="panel">
-        <h2>{t(`modebrief.${mode}.kicker`)}</h2>
-        <div style={{ font: "20px 'Bungee', sans-serif", color: "var(--gold)", marginBottom: 10 }}>
-          {t(`modebrief.${mode}.title`)}
-        </div>
+        {/* the MODE is the title — "MODO" alone read as the heading, with the
+            mode itself demoted to a subtitle under it */}
+        <h2 style={{ marginBottom: 10 }}>
+          {t(`modebrief.${mode}.kicker`)}{" "}
+          <span style={{ font: "20px 'Bungee', sans-serif", color: "var(--gold)" }}>
+            {t(`modebrief.${mode}.title`)}
+          </span>
+        </h2>
         <p style={{ opacity: 0.85, lineHeight: 1.5, fontSize: 13 }}>{t(`modebrief.${mode}.body`)}</p>
         <div style={{ display: "flex", justifyContent: "space-around", margin: "14px 0", font: "12px 'JetBrains Mono', monospace", opacity: 0.85 }}>
           <span><Icon name={MODE_ICON[mode] || "target"} size={14} /> {t(`modebrief.${mode}.rule1`)}</span>

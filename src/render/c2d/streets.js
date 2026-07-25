@@ -97,7 +97,8 @@ function paintStadiumCuadras(view) {
 // on ground that already exists, painted between the acera band and the
 // asphalt — so the asphalt repaints anything that reached the roadway, and
 // street pills, buildings and flora still land on top.
-const PARCEL_FILL = { plaza: "#4f9d5b", stadium: "#4f9d5b", church: "#cfc7b4", lot: "#b9b2a0" };
+const PARCEL_FILL = { plaza: "#4f9d5b", stadium: "#4f9d5b", garden: "#5ba362",
+                      church: "#cfc7b4", lot: "#b9b2a0" };
 function paintParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;

@@ -225,6 +225,7 @@ function drawParcels(view) {
   for (const P of arr) {
     if (P.x1 + 60 < view.x0 || P.x0 - 60 > view.x1 || P.y1 + 60 < view.y0 || P.y0 - 60 > view.y1) continue;
     if (P.use === "church") drawChurch(P.cx, P.cy, Math.min(1, (P.x1 - P.x0) / 44));
+    if (P.use === "garden") drawGarden(P);
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
     if (lote) drawSponsorSlot(P, lote);
     // a whole-cuadra field already carries the estadio's own name pill
@@ -248,6 +249,19 @@ function drawSponsorSlot(P, lote) {
   ctx.textAlign = "center";
   ctx.fillText((lote.label || lote.name || "").slice(0, 14), sx + sw / 2, sy + sh / 2 + sh * 0.12);
 }
+// A garden parcel: shade trees scattered across its grass, on a deterministic
+// hash so they never crawl between frames. Inset from the parcel edge so no
+// canopy hangs over the kerb.
+function drawGarden(P) {
+  const w = P.x1 - P.x0, h = P.y1 - P.y0;
+  const n = Math.max(3, Math.round((w + h) / 26));
+  for (let i = 0; i < n; i++) {
+    const fx = 0.18 + hash01(i * 3.7 + P.x0) * 0.64;
+    const fy = 0.22 + hash01(i * 8.1 + P.y0) * 0.56;
+    paintTree({ x: P.x0 + w * fx, y: P.y0 + h * fy, s: 0.7 + hash01(i + P.x0) * 0.35 });
+  }
+}
+
 // Pale stucco nave, bell tower, spire and a white cross — the same silhouette
 // the `church` landmark type uses, drawn at an arbitrary point and scale.
 function drawChurch(x, y, s = 1) {

@@ -146,6 +146,8 @@ const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
 // The muelles keep the material they are drawn in out in the world, so the dial
 // and the map agree: the Muelle Nacional is concrete, the faro jetty is timber,
 // and a bridge deck is the pale deck base its asphalt is laid on.
+const MINI_BARRO  = "#9c7a4f";   // calle de barro / terraplén del Ferrocarril
+const MINI_RAIL   = "#8a7660";   // the Ferrocarril's ballast bed
 const MINI_PIER   = "#cfcfc8";   // Muelle Nacional — concrete (structures.js)
 const MINI_JETTY  = "#b98a4e";   // muelle del Faro — warm timber
 const MINI_BRIDGE = "#cfc3a3";   // bridge / causeway deck base
@@ -178,6 +180,20 @@ function miniTerrain(mv) {
   for (const l of rc.land) if (aabbInView(l.aabb, mv, 4)) ctx.fill(l.path);
   ctx.fillStyle = MINI_WATER;
   for (const w of rc.water) if (aabbInView(w.aabb, mv, 4)) ctx.fill(w.path);
+}
+// The FERROCARRIL's track. Not drivable and not a road — it is its own per-tile
+// geometry — so the dial had nothing where the heritage line runs. Drawn as the
+// ballast bed alone: at this scale the ties and the two steel rails the world
+// draws would be one smudge, and the brown ribbon is what makes the line read.
+function miniRails(vts, mv) {
+  ctx.strokeStyle = MINI_RAIL; ctx.lineWidth = 14; ctx.lineCap = "round";
+  for (const tile of vts) {
+    for (const rl of tile.rails || []) {
+      if (!rl._mpath) { rl._mpath = flatPath(rl.pts, false); rl._mbb = polyBBox(rl.pts); }
+      if (!aabbInView(rl._mbb, mv, 14)) continue;
+      ctx.stroke(rl._mpath);
+    }
+  }
 }
 // The Paseo's palm median: planted ground down the middle of the boulevard and
 // a WALL in physics, with periodic gaps to cross. Drawn on top of the paseo
@@ -334,8 +350,18 @@ function drawMinimap(vw, vh, t) {
   for (const b of ribbons) { ctx.lineWidth = b.w + 10; ctx.stroke(b.p); }
   ctx.strokeStyle = MINI_STREET;
   for (const b of ribbons) { ctx.lineWidth = b.w; ctx.stroke(b.p); }
+  // A calle de BARRO keeps the brown it is paved with in the world — the
+  // unsurfaced streets and the Ferrocarril's embankment roads. Its own FULL
+  // pass after the grey fill, like the paseo and the decks, so nothing cuts
+  // into it the way the old colour-by-class-in-one-pass did.
+  ctx.strokeStyle = MINI_BARRO;
+  for (const r of roads) {
+    if (!r.barro) continue;
+    ctx.lineWidth = Math.max(r.w, 26); ctx.stroke(roadPath(r));
+  }
   miniBoulevards(mv);                           // calles peatonales, into the network
   miniMuelles(mv, roads);                       // decks, over the streets
+  miniRails(vts, mv);                           // the Ferrocarril, over the ground
   // the Paseo is the one street that keeps a colour of its own, and it goes
   // LAST so nothing can cross back over it
   ctx.strokeStyle = MINI_PASEO;

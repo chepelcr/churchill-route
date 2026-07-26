@@ -6,6 +6,9 @@ and the three game modes are live; the items below are what remains.
 
 ## ✅ La cuadra de la Catedral + tres arreglos de juego (2026-07-25)
 
+Publicación: [La cuadra de la Catedral](docs/changelog/2026-07-25-catedral.md).
+
+
 **La manzana civil, repartida a mano** (`centro` en `place_parcels`)
 - [x] Calle 7 → Bulevar de la Casa de la Cultura, Avenida 1 → Avenida
       Centenario: una sola manzana (Calle 5 solo existe al sur de Centenario),

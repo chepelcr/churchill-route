@@ -12,7 +12,7 @@ no drivable pad and was never a delivery target.
 import time
 
 from ..config import (
-    ACERA_CELLS, CROSS_EXAG, CUAD, CUADS_PER_VIEW, DEBUG_PNG, DEBUG_SVG,
+    ACERA_CELLS, CUAD, CUADS_PER_VIEW, DEBUG_PNG, DEBUG_SVG,
     GRID_CELL,
 )
 from ..content import STAGES
@@ -43,8 +43,7 @@ def build_meta(ctx):
     meta = {"W": dims.w, "H": dims.h, "centerY": dims.center_y, "cell": GRID_CELL,
             "cuad": CUAD, "cuadsPerView": CUADS_PER_VIEW,
             "aceraPx": ACERA_CELLS * GRID_CELL,
-            "pxPerMeter": round(sp.px_per_m, 5), "crossExag": CROSS_EXAG,
-            "spineLenM": round(sp.total)}
+            "pxPerMeter": round(sp.px_per_m, 5)}
     meta["geo"] = geo_affine(sp)
     return meta
 

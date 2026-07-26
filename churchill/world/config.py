@@ -23,8 +23,7 @@ DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
 WORLD2D_DIR = os.path.join(ROOT, "src", "world2d")
 
 # World SIZE is not a knob: it is computed from the OSM bounds at build time
-# (see _planar_setup) and lives with the grid, not here.
-CROSS_EXAG = 1.95               # emitted in meta.crossExag; nothing reads it
+# (see planar_setup) and lives with the grid, not here.
 GRID_CELL = 4                   # raster cell size in world px
 
 # Cuadrícula (tile) standardization: one CUAD is the base city tile. Streets and

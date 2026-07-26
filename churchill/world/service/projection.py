@@ -6,10 +6,10 @@ linearity is worth protecting — it is what lets the manifest ship a four-numbe
 geo→world affine (`meta.geo`) so a CLIENT can place remote content from real
 lat/lon without any of this code.
 
-The `project()/project_m()` shape (returning a 4-tuple with a hint and a
-distance) is inherited from the corridor-unroll projection this replaced, where
-projecting a point meant searching along a spine. Here nothing needs a hint, so
-the extra slots are constant — kept because every caller passes and unpacks them.
+`project()` still returns a 4-tuple whose last two slots are always zero: that
+shape is inherited from the corridor projection this replaced, where projecting
+a point meant searching along a spine with a hint. Every caller unpacks four
+values, so the slots stay until someone wants to touch all of them.
 """
 import math
 
@@ -25,14 +25,14 @@ class PlanarProjection:
     def __init__(self, min_mx, min_my, px_per_m):
         self.min_mx, self.min_my = min_mx, min_my
         self.px_per_m = px_per_m
-        self.total = 0.0          # legacy: the corridor's spine arclength
 
     def to_px(self, mx, my):
         return ((mx - self.min_mx) * self.px_per_m,
                 (my - self.min_my) * self.px_per_m)
 
-    def project_m(self, p_m, hint=None, window=80):
-        return p_m[0], p_m[1], 0
+    def project_m(self, p_m):
+        """Identity: in a planar world the 'projected' metres ARE the metres."""
+        return p_m
 
     def project(self, p_m, hint=None):
         x, y = self.to_px(p_m[0], p_m[1])

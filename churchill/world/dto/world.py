@@ -49,8 +49,6 @@ class Meta(WorldModel):
     cuadsPerView: int = Field(description="advisory; the renderer owns the framing")
     aceraPx: int
     pxPerMeter: float
-    crossExag: float = Field(default=1.95, description="legacy; nothing reads it")
-    spineLenM: int = Field(default=0, description="legacy corridor arclength; always 0")
     geo: Geo | None = None
     tilePx: int
     tileCells: int

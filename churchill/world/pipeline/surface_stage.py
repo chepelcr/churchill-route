@@ -63,7 +63,7 @@ def rasterise_surface(ctx, *, sp, ways, nodes, roads, beaches, waters, bridge_ro
     # so they don't need to be flooded; everything the gulf can't reach past
     # the coastline stays land.
     sea_seeds = [(2, y) for y in range(2, CANVAS_H, 200)]
-    sea_seeds.append(sp.to_px(*sp.project_m(to_m(*PROBE_SEA[0]))[:2]))
+    sea_seeds.append(sp.to_px(*sp.project_m(to_m(*PROBE_SEA[0]))))
     raster.flood_water(barrier, sea_seeds, CLS_WATER, CLS_LAND)
 
     # sanity probes before painting details

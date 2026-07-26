@@ -37,6 +37,7 @@ from ..service.building import (
 from ..service.decoration import (
     paseo_median_runs, paseo_roads, stamp_paseo_median,
 )
+from ..service.ferry import stern_at_rest
 from ..service.field import FieldService
 from ..service.placement import (
     cell_class, kiosk_frontage, nearest_block, nearest_cell, road_adj,
@@ -97,6 +98,25 @@ def seat_town_kiosks(ctx, *, landmarks, customers, districts, roads, waters, blo
             lm["spawn"] = [round(tgt[0]), round(tgt[1])]
         else:
             log("kiosk", f"WARN no street spawn near {lm['id']} ({lm['x']},{lm['y']})")
+
+    # FERRY RAMPS. The berths sit over water with a strip of sand between them
+    # and the terminal road, and sand is a WALL to the car — so without this you
+    # could see both ferries and never board one. Same recipe as a beach kiosk's
+    # connector: pave from the berth to the nearest street and emit the segment
+    # so it is DRAWN as asphalt too. Paving without emitting would leave a strip
+    # of invisible drivable sea, which is worse than the wall.
+    for fy in ctx.ferries:
+        sx, sy = stern_at_rest(fy)
+        tgt = _nearest_cell(sx, sy, (CLS_ROAD, CLS_BRIDGE, CLS_PASEO), 260)
+        if not tgt:
+            log("ferry", f"WARN no street near the {fy['id']} berth to ramp to"); continue
+        # 2 cuadrículas wide — a shade under the deck, so the ramp is as wide as
+        # the door you drive through rather than a footpath to it
+        raster.stamp_polyline([sx, sy, tgt[0], tgt[1]], 2.0 * CUAD, CLS_ROAD)
+        kiosk_paths.append({"pts": [round(sx), round(sy), round(tgt[0]), round(tgt[1])],
+                            "surface": "paved"})
+        log("ferry", f"{fy['id']} ramp stern ({round(sx)},{round(sy)}) -> street "
+            f"({round(tgt[0])},{round(tgt[1])}), {round(dist((sx, sy), tgt))}px")
 
     # OSM parks (parquemar, cocal_park) + the Balneario pool: paint their green
     # on the containing block's footprint so the cuadra is OPEN (no buildings),

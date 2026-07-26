@@ -48,6 +48,21 @@ Publicación: [La cuadra de la Catedral](docs/changelog/2026-07-25-catedral.md).
       kioscos** y del muelle del Faro, **el bulevar** en piedra clara y la
       **mediana del Paseo** encima del Paseo.
 
+**Los ferris (huevo de pascua)**
+- [x] Dos ferris manejables en los atracaderos reales de **Paquera** y **Playa
+      Naranjo**, con las rutas `route=ferry` de OSM orientadas y cortadas a un
+      tramo corto (~1800 px, ~45 s ida y vuelta). 7 s encima y zarpa; **una vez
+      por partida**.
+- [x] La cubierta es el **único suelo móvil** del juego: `deckAt()` antes del
+      ráster (las barandas salen gratis, el agua alrededor ya es muro),
+      `carry()` en posición Y rumbo, y `used` para que no vuelva a salir.
+- [x] Rampa pavimentada desde la **popa en reposo** hasta la calle — sin ella la
+      arena (muro) dejaba dos ferris visibles e inalcanzables. Emitida además
+      como segmento para que se dibuje, no como mar manejable invisible.
+- [x] `deck` y `dockS` viven en el MUNDO: el build necesita los mismos números
+      para saber dónde cae la popa, y dos copias se desincronizan en silencio.
+- [x] Durante la travesía el churchill no se derrite y el mar suena a tope.
+
 **Tres arreglos de juego**
 - [x] El **mapa del menú** recorre una polilínea por el pueblo en vez de una
       recta Faro→Caldera que se salía al golfo.

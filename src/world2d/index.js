@@ -49,6 +49,10 @@ export const WORLD2D = (function () {
   // sponsor entry can claim, so its art has a real footprint in the world
   // instead of a floating pin.
   const PARCELS = manifest.parcels || [];
+  // The two ferry berths + the truncated real sailing routes (OSM
+  // amenity=ferry_terminal and route=ferry). src/game/ferries.js turns these
+  // into the only MOVING ground in the game.
+  const FERRIES = manifest.ferries || [];
   // Open fields = stadium pitches AND plaza parcels, normalised to one shape
   // {x0,y0,x1,y1,cx,cy,footprint}. The crowd and the coin rain read THIS, so a
   // new plaza gets both for free instead of needing to be a "stadium".
@@ -323,7 +327,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, POIS, PARCELS, FIELDS,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, POIS, PARCELS, FERRIES, FIELDS,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

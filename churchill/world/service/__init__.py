@@ -9,6 +9,7 @@ from .block import (
 from .building import make_rng, snap_osm_buildings, synth_buildings
 from .decoration import paseo_median_runs, paseo_roads, stamp_paseo_median
 from .field import FieldService
+from .ferry import extract_ferries
 from .osm import (
     barro_leon_continuation, extract_areas, extract_buildings, extract_coastlines,
     extract_pois, extract_rails, extract_roads, propagate_barro_to_crossings,
@@ -29,7 +30,8 @@ from .surface import (
 __all__ = [
     "FieldService", "PlanarProjection", "StreetIndex", "acera_fringe",
     "barro_leon_continuation", "block_census", "cells_to_rects", "detect_blocks",
-    "extract_areas", "extract_buildings", "extract_coastlines", "extract_pois",
+    "extract_areas", "extract_buildings", "extract_coastlines", "extract_ferries",
+    "extract_pois",
     "extract_rails", "extract_roads", "paseo_median_runs",
     "propagate_barro_to_crossings", "block_containing", "cell_class",
     "drivable_cell", "kiosk_frontage", "near_drivable", "nearest_block",

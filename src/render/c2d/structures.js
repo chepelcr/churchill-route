@@ -2,7 +2,8 @@
 // suspension bridge. The painterly tile pass doesn't cover these.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
-import { ctx, flatPath } from "./gfx.js";
+import { ctx, flatPath, label } from "./gfx.js";
+import { DECK_L, DECK_W, ferries } from "../../game/ferries.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
@@ -171,4 +172,69 @@ function drawBridge(view) {
   ctx.fillStyle = "#fff"; ctx.fillText(lbl, mx, B.cy + B.deckW/2 + 23);
 }
 
-export { drawBridge, drawFaroPier, drawPier, paintBuilding };
+// The two ferries and their berths. Everything is drawn in the ferry's own
+// frame, so a berth on a diagonal quay and a hull mid-crossing are the same
+// code — and the DECK RECT drawn here is exactly the rect `deckAt` tests, which
+// is what keeps "looks like I am on it" and "am I on it" the same thing.
+function drawFerry(f, view) {
+  const R = DECK_L / 2 + 40;
+  if (f.x + R < view.x0 || f.x - R > view.x1 || f.y + R < view.y0 || f.y - R > view.y1) return;
+  const L = DECK_L / 2, B = DECK_W / 2;
+  ctx.save();
+  ctx.translate(f.x, f.y); ctx.rotate(f.a);
+  // wake: it only exists while she is making way
+  if (f.phase === "out" || f.phase === "back") {
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    ctx.beginPath();
+    ctx.moveTo(-L, -B * 0.7); ctx.lineTo(-L - 70, -B * 1.5);
+    ctx.lineTo(-L - 70, B * 1.5); ctx.lineTo(-L, B * 0.7);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = "rgba(0,0,0,0.24)";           // hull shadow on the water
+  ctx.fillRect(-L + 3, -B + 5, L * 2, B * 2);
+  // hull: a blunt bow forward (+u), a square stern with the ramp aft
+  ctx.fillStyle = "#2f4f68";
+  ctx.beginPath();
+  ctx.moveTo(L, 0); ctx.lineTo(L - 22, -B); ctx.lineTo(-L, -B);
+  ctx.lineTo(-L, B); ctx.lineTo(L - 22, B);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#d7d2c4";                    // the DECK — the drivable rect
+  ctx.fillRect(-L + 3, -B + 4, L * 2 - 26, B * 2 - 8);
+  ctx.strokeStyle = "#f4d77a"; ctx.lineWidth = 1.5;   // lane guides down the deck
+  ctx.setLineDash([9, 9]);
+  ctx.beginPath(); ctx.moveTo(-L + 8, 0); ctx.lineTo(L - 26, 0); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#b7402f";                    // rails, both sides
+  ctx.fillRect(-L + 2, -B + 1, L * 2 - 24, 3);
+  ctx.fillRect(-L + 2, B - 4, L * 2 - 24, 3);
+  ctx.fillStyle = "#8a7f6a";                    // stern ramp (how you get on)
+  ctx.fillRect(-L - 9, -B + 8, 11, B * 2 - 16);
+  ctx.fillStyle = "#eee8d8";                    // wheelhouse forward
+  ctx.fillRect(L - 44, -B + 7, 20, B * 2 - 14);
+  ctx.fillStyle = "#3a6f8a";
+  ctx.fillRect(L - 41, -B + 10, 14, B * 2 - 20);
+  ctx.fillStyle = "#e85d75";                    // funnel
+  ctx.beginPath(); ctx.arc(L - 54, 0, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  label(f.x, f.y - DECK_W / 2 - 14, f.name.toUpperCase().replace("FERRY A ", ""),
+        "#fff", "#2f4f68");
+}
+// The berth she sails from: a concrete apron at the quay, so an empty berth
+// still reads as a place a ferry belongs rather than a gap in the sea wall.
+function drawBerth(f, view) {
+  const bx = f.pts[0].x, by = f.pts[0].y;
+  if (bx + 90 < view.x0 || bx - 90 > view.x1 || by + 90 < view.y0 || by - 90 > view.y1) return;
+  ctx.save();
+  ctx.translate(bx, by); ctx.rotate(f.pts.length > 1
+    ? Math.atan2(f.pts[1].y - by, f.pts[1].x - bx) : 0);
+  ctx.fillStyle = "#b6b1a2";
+  ctx.fillRect(-14, -DECK_W / 2 - 6, 46, DECK_W + 12);
+  ctx.fillStyle = "#8f8a7c";
+  for (let v = -DECK_W / 2; v < DECK_W / 2; v += 12) ctx.fillRect(-14, v, 46, 2);
+  ctx.restore();
+}
+function drawFerries(view) {
+  for (const f of ferries()) { drawBerth(f, view); drawFerry(f, view); }
+}
+
+export { drawBridge, drawFaroPier, drawFerries, drawPier, paintBuilding };

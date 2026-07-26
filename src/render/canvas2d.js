@@ -17,7 +17,7 @@ import {
 import { drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
 import { drawBarriers } from "./c2d/streets.js";
-import { drawBridge, drawFaroPier, drawPier } from "./c2d/structures.js";
+import { drawBridge, drawFaroPier, drawFerries, drawPier } from "./c2d/structures.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import {
   drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed, drawPlayer,
@@ -90,6 +90,7 @@ function render(t) {
   drawPier(view);
   drawFaroPier(view);
   drawBridge(view);
+  drawFerries(view);   // the two ferries + their berths, over the water
   drawBarriers(view);
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
   // Landmarks (the bridge has its own drawer)

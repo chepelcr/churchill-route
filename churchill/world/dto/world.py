@@ -153,6 +153,21 @@ class Parcel(WorldModel):
         return bool(self.slot)
 
 
+class Ferry(WorldModel):
+    """A ferry berth and the line it sails.
+
+    Both come straight out of OSM — the `amenity=ferry_terminal` node and the
+    `route=ferry` way — with the route ORIENTED to start at the berth and cut to
+    a short scenic loop. The real crossing ends on the Nicoya side, where this
+    world has no shore to arrive at.
+    """
+    id: str
+    name: str
+    berth: list[int]
+    ang: float = Field(default=0.0, description="heading out of the berth, radians")
+    route: FlatPoly
+
+
 class Stadium(WorldModel):
     x0: int
     y0: int
@@ -170,7 +185,10 @@ class Green(WorldModel):
 
 
 class KioskPath(WorldModel):
-    """The walk from a beach kiosk to the street it is reached from."""
+    """A short paved connector from something standing on the sand to the street
+    it is reached from: a beach kiosk, or a ferry berth. Both exist for the same
+    reason — sand is a wall to the car, so without a ramp the thing is visible
+    and unreachable."""
     pts: FlatPoly
     surface: PathSurface
 

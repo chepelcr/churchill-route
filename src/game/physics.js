@@ -12,6 +12,7 @@ import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
+import { advanceFerries, carry, deckAt } from "./ferries.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [6]; // fallback for free (stadium) peds; rail peds cross via advancePed
@@ -88,10 +89,31 @@ export function update(dt) {
   applyTouch(state.cam, state.p);
 
   const p = state.p; const veh = state.veh;
+  // FERRIES first, before anything reads the ground. The deck is the only
+  // moving surface in the game, so the player has to be carried by it BEFORE
+  // the collider runs — otherwise the solver spends the frame pushing them out
+  // of the sea the ferry just sailed them into.
+  const aboard = deckAt(p.x, p.y);
+  advanceFerries(dt, aboard);
+  if (aboard) carry(aboard, p);
+  state.aboard = aboard ? aboard.id : null;
+  // at sea, not just standing on a docked deck — the melt and the surf both
+  // key off this, and both are declared up here so neither reads it before it
+  // exists (it used to be defined 60 lines below the melt that consumed it)
+  const crossing = !!aboard && aboard.phase !== "docked";
+  // Cast-off / arrival are the only moments the ride has, and without a word
+  // for them a ferry leaving under you reads as a bug rather than as the
+  // Easter egg firing. The flags are one-shot, cleared as they are consumed.
+  for (const f of [aboard]) {
+    if (!f) continue;
+    if (f.justSailed) { f.justSailed = false; pushFloat(p.x, p.y - 50, "⛴️ " + f.name.toUpperCase(), "#9fd7ef"); }
+    if (f.justHome) { f.justHome = false; pushFloat(p.x, p.y - 50, "⚓ PUNTARENAS", "#9fd7ef"); }
+  }
   const surf = W.surfaceAt(p.x, p.y);
   const onRoad = surf === 3 || surf === 5; // road or bridge deck
   const inWater = surf === 0;
-  const surfaceMul = SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
+  const surfaceMul = aboard ? 1.0                       // steel deck
+    : SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
   const wetMul = state.weather === "storm" ? 0.92 : 1;
   // i-frames after a traffic hit so one collision can't roll the churchill
   // drop every frame of contact
@@ -117,11 +139,19 @@ export function update(dt) {
   // Taking the NEAREST surface instead of a sum removes the whole distinction —
   // axis walls, diagonals, corridors and inside corners are one computation.
   const CELL = (W.META && W.META.cell) || 4;
-  const isWall = (x, y) => { const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2; };
+  // A point ON a ferry deck is never a wall, whatever the raster says under it
+  // — and the water one pixel outside the deck still is, which is what gives
+  // the rails for free instead of needing a fence of their own.
+  // UNCONDITIONAL, not `aboard && …`: gating it on already being aboard is a
+  // chicken-and-egg, since the ramp you board across is itself deck.
+  const isWall = (x, y) => {
+    if (deckAt(x, y)) return false;
+    const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2;
+  };
   // On a pier deck (class 5) the only wall is the surrounding water, so the
   // usual 20% overhang forgiveness reads as "half off the muelle" — probe at
   // near-full extents there so the body can't hang over the edge.
-  const probeF = W.surfaceAt(p.x, p.y) === 5 ? 0.98 : 0.8;
+  const probeF = (aboard || W.surfaceAt(p.x, p.y) === 5) ? 0.98 : 0.8;
   const hw = veh.w * 0.5 * probeF, hh = veh.h * 0.5 * probeF;
   const BUBBLE_PAD = 1.5;                     // keeps the drawn body off the kerb
   const br = hh + BUBBLE_PAD;                 // bubble radius = half the body width
@@ -183,7 +213,10 @@ export function update(dt) {
   // CENTER must be on a DRIVABLE street (class 3 road / 5 bridge). Requiring
   // drivable-center is what makes unstick nudges safe — they can never place
   // the car in a cuadra/acera/beach (that was the "entering cuadras" bug).
-  const clearSpot = (x, y) => { const c = W.surfaceAt(x, y); return (c === 3 || c === 5) && !blockedAt(x, y); };
+  const clearSpot = (x, y) => {
+    if (deckAt(x, y)) return !blockedAt(x, y);
+    const c = W.surfaceAt(x, y); return (c === 3 || c === 5) && !blockedAt(x, y);
+  };
 
   // Turning must never sweep the body INTO a wall (that penetration was the
   // pass-through bug). But a flat veto deadlocks narrow streets: with walls
@@ -381,8 +414,10 @@ export function update(dt) {
   if (state.icepackT > 0 && state.carrying) state.icepackT = Math.max(0, state.icepackT - dt);
   if (state.carrying) {
     const heat = state.weather === "sunset" ? 0.9 : state.weather === "storm" ? 1.05 : state.weather === "night" ? 0.7 : 1.0;
-    // cooler upgrade slows the melt; an active ice pack pauses it entirely
-    const meltRate = state.icepackT > 0 ? 0
+    // cooler upgrade slows the melt; an active ice pack pauses it entirely —
+    // and so does a ferry crossing. The whole point of the Easter egg is a
+    // break, and a 45 s break that costs you the delivery is not one.
+    const meltRate = (state.icepackT > 0 || crossing) ? 0
       : state.veh.melt * (onRoad ? 1.0 : 1.25) * heat * economy.upgradeEffect("cooler");
     state.carrying.melt += dt * meltRate;
     if (state.carrying.melt >= state.carrying.total) dropChurchill();
@@ -441,7 +476,9 @@ export function update(dt) {
   }
   sfx.fountain(fdist < 220 ? Math.max(0, Math.min(1, (220 - fdist) / 160)) : 0);
   sfx.pool(pdist < 340 ? Math.max(0, Math.min(1, (340 - pdist) / 240)) : 0);
-  sfx.waves(surfLevel(p, surf));
+  // OLAS: out on a muelle, and the whole time you are at sea on a ferry — the
+  // crossing IS the calm moment, so it gets the loudest surf on the map.
+  sfx.waves(crossing ? 1 : surfLevel(p, surf));
 
   if (state.weather === "storm") state.rainT += dt;
 

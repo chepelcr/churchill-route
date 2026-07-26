@@ -3,6 +3,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
+import { resetFerries } from "./ferries.js";
 import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
@@ -68,6 +69,7 @@ export function startStage(stageIdx, vehicleKey) {
   W.update(state.cam.x, state.cam.y);
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
+  resetFerries();   // both ferries home and available again every run
   pickCustomer();
   analytics.track("run_start", { mode: "story", stage_id: stg.id, vehicle: state.vehicleKey });
 }
@@ -99,6 +101,7 @@ export function startArcade(opts = {}) {
   W.update(state.cam.x, state.cam.y);
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
+  resetFerries();   // both ferries home and available again every run
   pickCustomer();
   analytics.track("run_start", { mode: "arcade", vehicle: state.vehicleKey });
 }
@@ -133,6 +136,7 @@ export function startExplore(opts = {}) {
   W.update(state.cam.x, state.cam.y);
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
+  resetFerries();   // both ferries home and available again every run
   pickCustomer();
   analytics.track("run_start", { mode: "explore", vehicle: state.vehicleKey });
 }
@@ -163,6 +167,7 @@ export function startTutorial(opts = {}) {
   W.update(state.cam.x, state.cam.y);
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
+  resetFerries();   // both ferries home and available again every run
   pickCustomerNear(k0.x, k0.y); // short, predictable first delivery
   initTutorial();
   analytics.track("run_start", { mode: "tutorial", vehicle: state.vehicleKey });

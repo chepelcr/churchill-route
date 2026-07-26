@@ -72,6 +72,7 @@ class WorldContext:
     waters: list = field(default_factory=list)
     land_polys: list = field(default_factory=list)
     pois: list = field(default_factory=list)
+    ferries: list = field(default_factory=list)   # berths + sailing routes
 
     # ---- the street grid, once the surface is rasterised --------------------
     streets: object = None             # service.street.StreetIndex

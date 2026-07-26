@@ -9,8 +9,8 @@ from pydantic import Field
 
 from .geo import FlatPoly
 from .world import (
-    Balneario, Bridge, Customer, District, Estuary, FaroPier, Green, GridInfo,
-    Hill, KioskPath, Landmark, Meta, Parcel, Pier, Poi, Stadium, Stage,
+    Balneario, Bridge, Customer, District, Estuary, FaroPier, Ferry, Green,
+    GridInfo, Hill, KioskPath, Landmark, Meta, Parcel, Pier, Poi, Stadium, Stage,
     WorldModel,
 )
 
@@ -39,6 +39,7 @@ class Manifest(WorldModel):
     faroPier: FaroPier | None = None
     pois: list[Poi] = Field(default_factory=list)
     parcels: list[Parcel] = Field(default_factory=list)
+    ferries: list[Ferry] = Field(default_factory=list)
 
     def parcel(self, parcel_id: str) -> Parcel | None:
         return next((p for p in self.parcels if p.id == parcel_id), None)

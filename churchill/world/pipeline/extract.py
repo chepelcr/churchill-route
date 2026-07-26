@@ -14,6 +14,7 @@ from collections import defaultdict
 
 from ..context import WorldContext
 from ..logging import log, warn
+from ..service.ferry import extract_ferries
 from ..service.osm import (
     barro_leon_continuation, extract_areas, extract_buildings, extract_pois,
     extract_rails, extract_roads, propagate_barro_to_crossings,
@@ -55,5 +56,10 @@ def extract_world(osm_source):
     raw_bldgs = extract_buildings(sp, ways, roads, dims.w, dims.h)
     ctx.beaches, ctx.waters = extract_areas(sp, ways, relations, dims.w, dims.h)
     ctx.pois = extract_pois(sp, ways, poi_nodes, dims.w, dims.h)
+    # The ferry berths and their sailing lines. It reads `pois` for the two
+    # ferry_terminal nodes, so it has to run after them — and it is here, in
+    # EXTRACT, because every part of it comes straight out of the OSM file;
+    # nothing about it depends on the raster or on where the blocks landed.
+    ctx.ferries = extract_ferries(sp, ways, ctx.pois, dims.w, dims.h)
     log("areas", f"{len(ctx.beaches)} beach, {len(ctx.waters)} water polys")
     return ctx, raw_bldgs, bridge_road

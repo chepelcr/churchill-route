@@ -6,6 +6,7 @@ import { nearestKiosk } from "../../game/delivery.js";
 import { ensureRenderCache, roadPath } from "./cache.js";
 import { tuning } from "../../game/tuning.js";
 import { CUAD, aabbInView, ctx, flatPath, label, polyBBox } from "./gfx.js";
+import { DECK_L, DECK_W, ferries } from "../../game/ferries.js";
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
 // debug toggle: at play zoom they'd be a wall of text, but flying over the map
@@ -149,6 +150,7 @@ const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
 // and a bridge deck is the pale deck base its asphalt is laid on.
 const MINI_BARRO  = "#9c7a4f";   // calle de barro / terraplén del Ferrocarril
 const MINI_RAIL   = "#8a7660";   // the Ferrocarril's ballast bed
+const MINI_FERRY  = "#d7d2c4";   // a ferry deck — the same ink as the muelles
 const MINI_PIER   = "#cfcfc8";   // Muelle Nacional — concrete (structures.js)
 const MINI_JETTY  = "#b98a4e";   // muelle del Faro — warm timber
 const MINI_BRIDGE = "#cfc3a3";   // bridge / causeway deck base
@@ -270,6 +272,18 @@ function miniMuelles(mv, roads) {
   if (B && B.pts && aabbInView(polyBBox(B.pts), mv, B.deckW)) {
     ctx.lineWidth = B.deckW;
     ctx.stroke(miniShape(B, B.pts)._mpath);
+  }
+  // the two ferries: deck-coloured, wherever they happen to be. Out mid-gulf
+  // that little rectangle is the only thing on the dial that is not sea, which
+  // is exactly the information you want while you are standing on it.
+  ctx.fillStyle = MINI_FERRY;
+  for (const f of ferries()) {
+    const R = DECK_L / 2 + 8;
+    if (!aabbInView({ x0: f.x - R, x1: f.x + R, y0: f.y - R, y1: f.y + R }, mv, 4)) continue;
+    ctx.save();
+    ctx.translate(f.x, f.y); ctx.rotate(f.a);
+    ctx.fillRect(-DECK_L / 2, -DECK_W / 2, DECK_L, DECK_W);
+    ctx.restore();
   }
   // …then the two muelles proper, each in its own material
   const P = W.PIER;

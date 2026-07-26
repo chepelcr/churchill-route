@@ -140,6 +140,7 @@ const MINI_PASEO  = "#c9a95e";   // the Paseo de los Turistas, drawn last
 const MINI_PARK   = "#2f6b3e";   // a green cuadra you cannot drive into
 const MINI_FIELD  = "#4f9d5b";   // an estadio / plaza you CAN — brighter on purpose
 const MINI_MUELLE = "#cdc2ab";   // pier and bridge decks, over the water
+const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
 
 // A flat [x,y,…] ring, cached as a Path2D + AABB on the object it came from.
 // `_m*` keys of its own so nothing collides with the world painter's caches:
@@ -169,6 +170,24 @@ function miniGreens(mv) {
     ctx.fillStyle = MINI_FIELD;
     ctx.fill(P._mpath);
   }
+}
+// The calles peatonales. A bulevar is NOT in the road list — it is a parcel —
+// but it is part of the network you can drive, so it gets the same casing +
+// fill the streets get, in the lightest ink on the dial: stone, so it reads as
+// paving rather than as another calle. Drawn after the street fill so the
+// junction where it meets the avenida is clean.
+function miniBoulevards(mv) {
+  const arr = (W.PARCELS || []).filter((P) => P.use === "boulevard");
+  if (!arr.length) return;
+  const vis = [];
+  for (const P of arr) {
+    miniShape(P, P.poly);
+    if (aabbInView(P._mbb, mv, 8)) vis.push(P);
+  }
+  ctx.strokeStyle = MINI_CASING; ctx.lineWidth = 10;
+  for (const P of vis) ctx.stroke(P._mpath);
+  ctx.fillStyle = MINI_BULE;
+  for (const P of vis) ctx.fill(P._mpath);
 }
 // MUELLES over the streets, because a deck is the one road that runs out over
 // water: the Muelle Nacional (an axis rect), the faro jetty (a rotated deck
@@ -244,6 +263,7 @@ function drawMinimap(vw, vh, t) {
   for (const r of roads) { ctx.lineWidth = mw(r) + 10; ctx.stroke(roadPath(r)); }
   ctx.strokeStyle = MINI_STREET;
   for (const r of roads) { ctx.lineWidth = mw(r); ctx.stroke(roadPath(r)); }
+  miniBoulevards(mv);                           // calles peatonales, into the network
   miniMuelles(mv, roads);                       // decks, over the streets
   // the Paseo is the one street that keeps a colour of its own, and it goes
   // LAST so nothing can cross back over it

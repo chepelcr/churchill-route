@@ -219,6 +219,13 @@ const NO_SHADOW = new Set(["stadium", "pool", "park"]);
 // tower — and, if a remote `lote` has claimed this parcel by id, its art inside
 // the parcel's own `slot` rect. A defined footprint means a sponsor's logo
 // always has a known place and size instead of floating over the map.
+// A parcel whose whole point is the GROUND gets no name pill: the parks beside
+// the catedral, the parroquia's garden and the two arms of the calle peatonal
+// are read by what is drawn on them — the river and its footbridge, the Virgen,
+// the tree scatter, the stone paving — and a caption sitting in the middle of
+// each one covered exactly that. Buildings and the sports plazas keep theirs;
+// they are places you are sent to, so their name is the point.
+const UNLABELLED_USES = new Set(["park", "garden", "boulevard"]);
 function drawParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;
@@ -236,9 +243,10 @@ function drawParcels(view) {
     if (P.bus) drawBusStop(P);
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
     if (lote) drawSponsorSlot(P, lote);
-    // a whole-cuadra field already carries the estadio's own name pill, and so
-    // does a parcel that IS a landmark (`P.lm` — the landmark pass draws it)
-    if (!P.whole && !P.lm) {
+    // a whole-cuadra field already carries the estadio's own name pill, a
+    // parcel that IS a landmark gets one from the landmark pass (`P.lm`), and
+    // a parcel that is pure GROUND gets none at all — see UNLABELLED_USES
+    if (!P.whole && !P.lm && !UNLABELLED_USES.has(P.use)) {
       areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(), "#fff",
                 (P.use === "plaza" || P.use === "stadium") ? "#2e7d44" : "#8a6f4a");
     }

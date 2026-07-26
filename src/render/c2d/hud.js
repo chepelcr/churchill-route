@@ -5,7 +5,7 @@ import { state } from "../../game/state.js";
 import { nearestKiosk } from "../../game/delivery.js";
 import { roadPath } from "./cache.js";
 import { tuning } from "../../game/tuning.js";
-import { CUAD, aabbInView, ctx, label } from "./gfx.js";
+import { CUAD, aabbInView, ctx, flatPath, label, polyBBox } from "./gfx.js";
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
 // debug toggle: at play zoom they'd be a wall of text, but flying over the map
@@ -137,6 +137,69 @@ function drawNightVignette(vw, vh) {
 const MINI_CASING = "#39405a";   // outline under every road, one tone
 const MINI_STREET = "#98a0bb";   // the whole network, calles and avenidas alike
 const MINI_PASEO  = "#c9a95e";   // the Paseo de los Turistas, drawn last
+const MINI_PARK   = "#2f6b3e";   // a green cuadra you cannot drive into
+const MINI_FIELD  = "#4f9d5b";   // an estadio / plaza you CAN — brighter on purpose
+const MINI_MUELLE = "#cdc2ab";   // pier and bridge decks, over the water
+
+// A flat [x,y,…] ring, cached as a Path2D + AABB on the object it came from.
+// `_m*` keys of its own so nothing collides with the world painter's caches:
+// the same polygon is drawn at two very different scales.
+function miniShape(o, pts) {
+  if (!o._mpath) { o._mpath = flatPath(pts, true); o._mbb = polyBBox(pts); }
+  return o;
+}
+// GREEN SPACES first, under the streets: parks and the marine park as dark
+// green, the estadios and the open plazas brighter, because those you drive
+// into and the dial should say so. A field's cuadra has no cross-streets left
+// (the build clips them), so nothing paints over it afterwards.
+function miniGreens(mv) {
+  for (const g of W.GREENS || []) {
+    miniShape(g, g.pts);
+    if (!aabbInView(g._mbb, mv, 8)) continue;
+    ctx.fillStyle = g.type === "stadium" ? MINI_FIELD : MINI_PARK;
+    ctx.fill(g._mpath);
+  }
+  // …and the fields that are PARTS of a cuadra rather than the whole of it
+  // (Plaza Deportes El Carmen), which live in `parcels`, not in `greens`.
+  for (const P of W.PARCELS || []) {
+    if (P.use !== "plaza" && P.use !== "stadium") continue;
+    if (P.whole) continue;                      // already in GREENS as its cuadra
+    miniShape(P, P.poly);
+    if (!aabbInView(P._mbb, mv, 8)) continue;
+    ctx.fillStyle = MINI_FIELD;
+    ctx.fill(P._mpath);
+  }
+}
+// MUELLES over the streets, because a deck is the one road that runs out over
+// water: the Muelle Nacional (an axis rect), the faro jetty (a rotated deck
+// along its segment), the Mata de Limón bridge, and every road the build
+// flagged as a deck.
+function miniMuelles(mv, roads) {
+  ctx.strokeStyle = MINI_MUELLE;
+  ctx.fillStyle = MINI_MUELLE;
+  const P = W.PIER;
+  if (P && P.x !== undefined &&
+      aabbInView({ x0: P.x - P.w / 2, x1: P.x + P.w / 2, y0: P.y0, y1: P.y1 }, mv, 8))
+    ctx.fillRect(P.x - P.w / 2, P.y0, P.w, P.y1 - P.y0);
+  const F = W.FAROPIER;
+  if (F && F.x0 !== undefined &&
+      aabbInView({ x0: Math.min(F.x0, F.x1), x1: Math.max(F.x0, F.x1),
+                   y0: Math.min(F.y0, F.y1), y1: Math.max(F.y0, F.y1) }, mv, F.w)) {
+    ctx.lineWidth = F.w;
+    ctx.beginPath(); ctx.moveTo(F.x0, F.y0); ctx.lineTo(F.x1, F.y1); ctx.stroke();
+  }
+  const B = W.BRIDGE;
+  if (B && B.pts && aabbInView(polyBBox(B.pts), mv, B.deckW)) {
+    ctx.lineWidth = B.deckW;
+    ctx.stroke(miniShape(B, B.pts)._mpath);
+  }
+  for (const r of roads) {
+    if (!r.bridge && r.cls !== "bridge") continue;
+    ctx.lineWidth = Math.max(r.w, 26);
+    ctx.stroke(roadPath(r));
+  }
+}
+
 function drawMinimap(vw, vh, t) {
   const R = 76;                          // dial radius on screen (px)
   const cx = vw - R - 18, cy = R + 18;
@@ -176,10 +239,12 @@ function drawMinimap(vw, vh, t) {
   // a crossing invisible; the HIERARCHY rides on WIDTH, which is what it means
   // on a map anyway.
   const mw = (r) => Math.max(r.w, 26);          // readable ribbons at map scale
+  miniGreens(mv);                               // green ground, under the streets
   ctx.strokeStyle = MINI_CASING;
   for (const r of roads) { ctx.lineWidth = mw(r) + 10; ctx.stroke(roadPath(r)); }
   ctx.strokeStyle = MINI_STREET;
   for (const r of roads) { ctx.lineWidth = mw(r); ctx.stroke(roadPath(r)); }
+  miniMuelles(mv, roads);                       // decks, over the streets
   // the Paseo is the one street that keeps a colour of its own, and it goes
   // LAST so nothing can cross back over it
   ctx.strokeStyle = MINI_PASEO;

@@ -262,6 +262,23 @@ class FieldService:
             # fields, so it meets the bounding streets and you can turn into it.
             for (c, r) in cells:
                 self.raster.set(c, r, CLS_BOULEVARD)
+            # …PLUS one cell of dilation. This is the mismatch CLAUDE.md warns
+            # about, seen from the other side: `paintParcels` strokes the drawn
+            # slab's outline at lineWidth 8 to hide the trace's 4 px staircase,
+            # so the STONE YOU SEE is 4 px wider than the cells you may drive
+            # on, and the car stops against an invisible wall while it still
+            # looks to be on the pavement. The drivable stamp has to be >= the
+            # drawn feature. Only LAND/ACERA is taken — never a street, the sea
+            # or the sand.
+            edge = set()
+            for (c, r) in cells:
+                for n in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
+                    if n in cells or n in edge:
+                        continue
+                    if self.raster.at(*n) in (CLS_LAND, CLS_ACERA):
+                        edge.add(n)
+            for (c, r) in edge:
+                self.raster.set(c, r, CLS_BOULEVARD)
         log("parcel", f"{part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
               f"{len(poly)//2}v slot{slot}")
         return self.parcels[-1]

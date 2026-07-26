@@ -139,8 +139,13 @@ const MINI_STREET = "#98a0bb";   // the whole network, calles and avenidas alike
 const MINI_PASEO  = "#c9a95e";   // the Paseo de los Turistas, drawn last
 const MINI_PARK   = "#2f6b3e";   // a green cuadra you cannot drive into
 const MINI_FIELD  = "#4f9d5b";   // an estadio / plaza you CAN — brighter on purpose
-const MINI_MUELLE = "#cdc2ab";   // pier and bridge decks, over the water
 const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
+// The muelles keep the material they are drawn in out in the world, so the dial
+// and the map agree: the Muelle Nacional is concrete, the faro jetty is timber,
+// and a bridge deck is the pale deck base its asphalt is laid on.
+const MINI_PIER   = "#cfcfc8";   // Muelle Nacional — concrete (structures.js)
+const MINI_JETTY  = "#b98a4e";   // muelle del Faro — warm timber
+const MINI_BRIDGE = "#cfc3a3";   // bridge / causeway deck base
 
 // A flat [x,y,…] ring, cached as a Path2D + AABB on the object it came from.
 // `_m*` keys of its own so nothing collides with the world painter's caches:
@@ -194,29 +199,54 @@ function miniBoulevards(mv) {
 // along its segment), the Mata de Limón bridge, and every road the build
 // flagged as a deck.
 function miniMuelles(mv, roads) {
-  ctx.strokeStyle = MINI_MUELLE;
-  ctx.fillStyle = MINI_MUELLE;
-  const P = W.PIER;
-  if (P && P.x !== undefined &&
-      aabbInView({ x0: P.x - P.w / 2, x1: P.x + P.w / 2, y0: P.y0, y1: P.y1 }, mv, 8))
-    ctx.fillRect(P.x - P.w / 2, P.y0, P.w, P.y1 - P.y0);
-  const F = W.FAROPIER;
-  if (F && F.x0 !== undefined &&
-      aabbInView({ x0: Math.min(F.x0, F.x1), x1: Math.max(F.x0, F.x1),
-                   y0: Math.min(F.y0, F.y1), y1: Math.max(F.y0, F.y1) }, mv, F.w)) {
-    ctx.lineWidth = F.w;
-    ctx.beginPath(); ctx.moveTo(F.x0, F.y0); ctx.lineTo(F.x1, F.y1); ctx.stroke();
+  // decks that carry the street network first: the causeways and the Mata de
+  // Limón bridge, pale under the traffic they take
+  ctx.strokeStyle = MINI_BRIDGE;
+  for (const r of roads) {
+    if (!r.bridge && r.cls !== "bridge") continue;
+    ctx.lineWidth = Math.max(r.w, 26);
+    ctx.stroke(roadPath(r));
   }
   const B = W.BRIDGE;
   if (B && B.pts && aabbInView(polyBBox(B.pts), mv, B.deckW)) {
     ctx.lineWidth = B.deckW;
     ctx.stroke(miniShape(B, B.pts)._mpath);
   }
-  for (const r of roads) {
-    if (!r.bridge && r.cls !== "bridge") continue;
-    ctx.lineWidth = Math.max(r.w, 26);
-    ctx.stroke(roadPath(r));
+  // …then the two muelles proper, each in its own material
+  const P = W.PIER;
+  if (P && P.x !== undefined &&
+      aabbInView({ x0: P.x - P.w / 2, x1: P.x + P.w / 2, y0: P.y0, y1: P.y1 }, mv, 8)) {
+    ctx.fillStyle = MINI_PIER;
+    ctx.fillRect(P.x - P.w / 2, P.y0, P.w, P.y1 - P.y0);
   }
+  const F = W.FAROPIER;
+  if (F && F.x0 !== undefined &&
+      aabbInView({ x0: Math.min(F.x0, F.x1), x1: Math.max(F.x0, F.x1),
+                   y0: Math.min(F.y0, F.y1), y1: Math.max(F.y0, F.y1) }, mv, F.w)) {
+    ctx.strokeStyle = MINI_JETTY; ctx.lineWidth = F.w;
+    ctx.beginPath(); ctx.moveTo(F.x0, F.y0); ctx.lineTo(F.x1, F.y1); ctx.stroke();
+  }
+}
+// Every drivable RIBBON on the dial, as one list, so the casing and the fill
+// stay two full passes over all of them — which is the whole reason crossings
+// look clean.
+//
+// It is not just the road polylines. The build also carves a short paved
+// connector from each churchill stand, and from the end of the faro muelle,
+// out to the nearest street (`kioskPaths`). Those are stamped drivable but are
+// not roads, so the dial had them missing: every kiosk — the thing you are
+// actually being sent to — looked cut off from the network.
+function miniRibbons(mv, roads) {
+  const out = [];
+  for (const r of roads) out.push({ p: roadPath(r), w: Math.max(r.w, 26) });
+  for (const kp of W.KIOSK_PATHS || []) {
+    const [x0, y0, x1, y1] = kp.pts;
+    if (!aabbInView({ x0: Math.min(x0, x1), x1: Math.max(x0, x1),
+                      y0: Math.min(y0, y1), y1: Math.max(y0, y1) }, mv, 30)) continue;
+    if (!kp._mpath) kp._mpath = flatPath(kp.pts, false);
+    out.push({ p: kp._mpath, w: 28 });         // 28 = the width the world paves
+  }
+  return out;
 }
 
 function drawMinimap(vw, vh, t) {
@@ -257,12 +287,12 @@ function drawMinimap(vw, vh, t) {
   // and array order, so the avenue came out dashed. Same ink everywhere makes
   // a crossing invisible; the HIERARCHY rides on WIDTH, which is what it means
   // on a map anyway.
-  const mw = (r) => Math.max(r.w, 26);          // readable ribbons at map scale
   miniGreens(mv);                               // green ground, under the streets
+  const ribbons = miniRibbons(mv, roads);       // roads + kiosk access paths
   ctx.strokeStyle = MINI_CASING;
-  for (const r of roads) { ctx.lineWidth = mw(r) + 10; ctx.stroke(roadPath(r)); }
+  for (const b of ribbons) { ctx.lineWidth = b.w + 10; ctx.stroke(b.p); }
   ctx.strokeStyle = MINI_STREET;
-  for (const r of roads) { ctx.lineWidth = mw(r); ctx.stroke(roadPath(r)); }
+  for (const b of ribbons) { ctx.lineWidth = b.w; ctx.stroke(b.p); }
   miniBoulevards(mv);                           // calles peatonales, into the network
   miniMuelles(mv, roads);                       // decks, over the streets
   // the Paseo is the one street that keeps a colour of its own, and it goes
@@ -270,7 +300,7 @@ function drawMinimap(vw, vh, t) {
   ctx.strokeStyle = MINI_PASEO;
   for (const r of roads) {
     if (r.cls !== "paseo") continue;
-    ctx.lineWidth = mw(r); ctx.stroke(roadPath(r));
+    ctx.lineWidth = Math.max(r.w, 26); ctx.stroke(roadPath(r));
   }
   ctx.restore();
 

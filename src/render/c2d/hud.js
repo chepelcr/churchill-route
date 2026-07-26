@@ -139,6 +139,7 @@ const MINI_STREET = "#98a0bb";   // the whole network, calles and avenidas alike
 const MINI_PASEO  = "#c9a95e";   // the Paseo de los Turistas, drawn last
 const MINI_WATER  = "#20496b";   // the gulf, the estero and the balneario inlet
 const MINI_LAND   = "#1b2035";   // the peninsula itself, under the street network
+const MINI_SAND   = "#a89a72";   // the beach — drivable, so it is not land-dark
 const MINI_PARK   = "#2f6b3e";   // a green cuadra you cannot drive into
 const MINI_MEDIAN = "#79b45c";   // the Paseo's palm median — planted, and a WALL
 const MINI_FIELD  = "#4f9d5b";   // an estadio / plaza you CAN — brighter on purpose
@@ -178,6 +179,8 @@ function miniTerrain(mv) {
   ctx.fillRect(mv.x0, mv.y0, mv.x1 - mv.x0, mv.y1 - mv.y0);
   ctx.fillStyle = MINI_LAND;
   for (const l of rc.land) if (aabbInView(l.aabb, mv, 4)) ctx.fill(l.path);
+  ctx.fillStyle = MINI_SAND;                    // the sand fringe, over the land
+  for (const b of rc.beach) if (aabbInView(b.aabb, mv, 4)) ctx.fill(b.path);
   ctx.fillStyle = MINI_WATER;
   for (const w of rc.water) if (aabbInView(w.aabb, mv, 4)) ctx.fill(w.path);
 }
@@ -292,16 +295,36 @@ function miniMuelles(mv, roads) {
 // out to the nearest street (`kioskPaths`). Those are stamped drivable but are
 // not roads, so the dial had them missing: every kiosk — the thing you are
 // actually being sent to — looked cut off from the network.
+// Each ribbon carries a RANK, and the fill pass walks them in rank order. That
+// is what decides who wins a crossing, and it has to be importance — not tile
+// order, and not "whoever is drawn last". A calle de barro painted after the
+// grey fill put a brown bite through every avenida it crossed, which is the
+// same bug the per-class single pass had, just with a nicer colour.
+const RIBBON_RANK = {
+  service: 1, pedestrian: 1, living_street: 1,
+  residential: 2, unclassified: 2,
+  tertiary: 3, tertiary_link: 3, secondary: 3,
+  primary: 4, primary_link: 4, trunk: 5, trunk_link: 5,
+};
 function miniRibbons(mv, roads) {
   const out = [];
-  for (const r of roads) out.push({ p: roadPath(r), w: Math.max(r.w, 26) });
+  for (const r of roads) {
+    out.push({
+      p: roadPath(r), w: Math.max(r.w, 26),
+      // barro sits BELOW every paved street: a dirt calle never cuts an avenida
+      rank: r.barro ? 0 : (RIBBON_RANK[r.cls] || 2),
+      col: r.barro ? MINI_BARRO : MINI_STREET,
+    });
+  }
   for (const kp of W.KIOSK_PATHS || []) {
     const [x0, y0, x1, y1] = kp.pts;
     if (!aabbInView({ x0: Math.min(x0, x1), x1: Math.max(x0, x1),
                       y0: Math.min(y0, y1), y1: Math.max(y0, y1) }, mv, 30)) continue;
     if (!kp._mpath) kp._mpath = flatPath(kp.pts, false);
-    out.push({ p: kp._mpath, w: 28 });         // 28 = the width the world paves
+    // a connector is a spur off the street it joins, so it goes under it
+    out.push({ p: kp._mpath, w: 28, rank: 1, col: MINI_STREET });
   }
+  out.sort((a, b) => a.rank - b.rank);
   return out;
 }
 
@@ -348,16 +371,12 @@ function drawMinimap(vw, vh, t) {
   const ribbons = miniRibbons(mv, roads);       // roads + kiosk access paths
   ctx.strokeStyle = MINI_CASING;
   for (const b of ribbons) { ctx.lineWidth = b.w + 10; ctx.stroke(b.p); }
-  ctx.strokeStyle = MINI_STREET;
-  for (const b of ribbons) { ctx.lineWidth = b.w; ctx.stroke(b.p); }
-  // A calle de BARRO keeps the brown it is paved with in the world — the
-  // unsurfaced streets and the Ferrocarril's embankment roads. Its own FULL
-  // pass after the grey fill, like the paseo and the decks, so nothing cuts
-  // into it the way the old colour-by-class-in-one-pass did.
-  ctx.strokeStyle = MINI_BARRO;
-  for (const r of roads) {
-    if (!r.barro) continue;
-    ctx.lineWidth = Math.max(r.w, 26); ctx.stroke(roadPath(r));
+  // …then ONE fill pass, walked in RANK order: a barro calle lays down first
+  // and the avenida it crosses paints over it, instead of the other way round.
+  let col = null;
+  for (const b of ribbons) {
+    if (b.col !== col) { col = b.col; ctx.strokeStyle = col; }
+    ctx.lineWidth = b.w; ctx.stroke(b.p);
   }
   miniBoulevards(mv);                           // calles peatonales, into the network
   miniMuelles(mv, roads);                       // decks, over the streets

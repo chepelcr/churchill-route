@@ -15,6 +15,7 @@ let noiseBuf = null;    // shared 1s white-noise buffer
 let engineV = null;     // { oscA, oscB, filter, gain }
 let driftV = null;      // { src, filter, gain }
 let fountainV = null;   // { spray, body, level } — park/pool water ambience
+let wavesV = null;      // { swell, foam, lfo*, level } — surf out on the muelles
 
 function loadMuted() {
   try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
@@ -86,6 +87,36 @@ function unlock() {
   wBody.connect(wBodyF); wBodyF.connect(wBodyG); wBodyG.connect(master);
   wBody.start();
   fountainV = { spray: wSprayG, body: wBodyG, level: 0 };
+
+  // OLAS — the surf under a muelle. Same idea as the fountain (two noise beds,
+  // silent until sfx.waves(level)), but the shape of the sound is the opposite:
+  // a fountain is constant and busy, surf BREATHES. So a very slow LFO (0.11 Hz
+  // ~ a nine-second swell) is summed into both gains, which is what turns a
+  // noise bed into waves instead of static. It is meant to be a calm moment out
+  // over the water, so it stays quiet.
+  const sSwell = ctx.createBufferSource();
+  sSwell.buffer = noiseBuf; sSwell.loop = true;
+  const sSwellF = ctx.createBiquadFilter();
+  sSwellF.type = "lowpass"; sSwellF.frequency.value = 380; sSwellF.Q.value = 0.4;
+  const sSwellG = ctx.createGain(); sSwellG.gain.value = 0;
+  sSwell.connect(sSwellF); sSwellF.connect(sSwellG); sSwellG.connect(master);
+  sSwell.start();
+  const sFoam = ctx.createBufferSource();
+  sFoam.buffer = noiseBuf; sFoam.loop = true;
+  const sFoamF = ctx.createBiquadFilter();
+  sFoamF.type = "bandpass"; sFoamF.frequency.value = 1500; sFoamF.Q.value = 0.5;
+  const sFoamG = ctx.createGain(); sFoamG.gain.value = 0;
+  sFoam.connect(sFoamF); sFoamF.connect(sFoamG); sFoamG.connect(master);
+  sFoam.start();
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine"; lfo.frequency.value = 0.11;
+  const lfoSwell = ctx.createGain(); lfoSwell.gain.value = 0;
+  const lfoFoam = ctx.createGain(); lfoFoam.gain.value = 0;
+  lfo.connect(lfoSwell); lfo.connect(lfoFoam);
+  lfoSwell.connect(sSwellG.gain);      // summed onto the base gain, not replacing it
+  lfoFoam.connect(sFoamG.gain);
+  lfo.start();
+  wavesV = { swell: sSwellG, foam: sFoamG, lfoSwell, lfoFoam, level: 0 };
 }
 
 if (BROWSER) {
@@ -251,6 +282,22 @@ export const sfx = {
                    band: 2600 + Math.random() * 1400 });
       }
     }
+  },
+
+  // OLAS: 0..1, the surf you hear once you are out over the water on a muelle.
+  // A long ramp (1.4 s) on purpose — the point is a calm moment, and a surf bed
+  // that snapped on at the kerb would read as a sound effect instead of as the
+  // sea having been there all along. The LFO depth rides the level too, so the
+  // swell gets deeper the further out you are rather than just louder.
+  waves(amount) {
+    if (!wavesV || !ctx || ctx.state !== "running") return;
+    const a = Math.max(0, Math.min(1, amount));
+    wavesV.level = a;
+    const now = ctx.currentTime;
+    wavesV.swell.gain.setTargetAtTime(a * 0.05, now, 1.4);
+    wavesV.foam.gain.setTargetAtTime(a * 0.022, now, 1.4);
+    wavesV.lfoSwell.gain.setTargetAtTime(a * 0.034, now, 1.4);
+    wavesV.lfoFoam.gain.setTargetAtTime(a * 0.018, now, 1.4);
   },
 
   // silence the continuous voices (menus, pause, results) but keep the

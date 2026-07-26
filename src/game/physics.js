@@ -55,6 +55,33 @@ function collideBuilding(p, b) {
   return true;
 }
 
+// OLAS on the muelles. You are out over the gulf on a deck with water on both
+// sides, so the surf should be the loudest thing there — it is the one calm
+// spot on the map, and it is worth making it feel like one.
+//
+// Deck class alone is not enough: class 5 is also the Mata de Limón bridge and
+// the causeway, which are over an estuary, not the sea. So the level comes from
+// how far ALONG a muelle you are: 0 at the landward end, full out at the sea
+// end, which also gives the ramp something to do as you drive out.
+function surfLevel(p, surf) {
+  if (surf !== 5) return 0;
+  let best = 0;
+  const P = W.PIER;
+  if (P && P.x !== undefined && Math.abs(p.x - P.x) < P.w) {
+    const t = (p.y - P.y0) / Math.max(1, P.y1 - P.y0);
+    if (t >= -0.1 && t <= 1.1) best = Math.max(best, Math.min(1, Math.max(0, t)));
+  }
+  const F = W.FAROPIER;
+  if (F && F.x0 !== undefined) {
+    const dx = F.x1 - F.x0, dy = F.y1 - F.y0, l2 = dx * dx + dy * dy || 1;
+    const t = ((p.x - F.x0) * dx + (p.y - F.y0) * dy) / l2;
+    const qx = F.x0 + dx * t, qy = F.y0 + dy * t;
+    if (t >= -0.1 && t <= 1.1 && Math.hypot(p.x - qx, p.y - qy) < F.w)
+      best = Math.max(best, Math.min(1, Math.max(0, t)));
+  }
+  return best;
+}
+
 export function update(dt) {
   if (state.paused || state.over) return;
   readInput(); pollGamepad();
@@ -410,6 +437,7 @@ export function update(dt) {
     if (d < fdist) fdist = d;
   }
   sfx.fountain(fdist < 220 ? Math.max(0, Math.min(1, (220 - fdist) / 160)) : 0);
+  sfx.waves(surfLevel(p, surf));
 
   if (state.weather === "storm") state.rainT += dt;
 

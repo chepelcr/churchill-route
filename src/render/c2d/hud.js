@@ -3,7 +3,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { nearestKiosk } from "../../game/delivery.js";
-import { roadPath } from "./cache.js";
+import { ensureRenderCache, roadPath } from "./cache.js";
 import { tuning } from "../../game/tuning.js";
 import { CUAD, aabbInView, ctx, flatPath, label, polyBBox } from "./gfx.js";
 
@@ -137,7 +137,10 @@ function drawNightVignette(vw, vh) {
 const MINI_CASING = "#39405a";   // outline under every road, one tone
 const MINI_STREET = "#98a0bb";   // the whole network, calles and avenidas alike
 const MINI_PASEO  = "#c9a95e";   // the Paseo de los Turistas, drawn last
+const MINI_WATER  = "#20496b";   // the gulf, the estero and the balneario inlet
+const MINI_LAND   = "#1b2035";   // the peninsula itself, under the street network
 const MINI_PARK   = "#2f6b3e";   // a green cuadra you cannot drive into
+const MINI_MEDIAN = "#79b45c";   // the Paseo's palm median — planted, and a WALL
 const MINI_FIELD  = "#4f9d5b";   // an estadio / plaza you CAN — brighter on purpose
 const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
 // The muelles keep the material they are drawn in out in the world, so the dial
@@ -153,6 +156,43 @@ const MINI_BRIDGE = "#cfc3a3";   // bridge / causeway deck base
 function miniShape(o, pts) {
   if (!o._mpath) { o._mpath = flatPath(pts, true); o._mbb = polyBBox(pts); }
   return o;
+}
+// TERRAIN at the very bottom, so the dial says where the peninsula ENDS —
+// until now land and sea were both the dial's dark backdrop, and the street
+// network just stopped at the coast with nothing to say why.
+//
+// The composition is the world's, not the reverse of it: THE SEA IS THE
+// BACKGROUND (`drawWaterAll` fills the whole view) and `landPolys` are the
+// traced land contours drawn on top of it. `waters` is not the gulf — it is
+// the INLAND bodies, the estero and the balneario inlet, which go back on top
+// of the land. Filling `waters` alone, as the first cut of this did, painted
+// the lagoons and left the gulf the same colour as the town.
+//
+// The paths come from the world's own render cache: that mainland contour is
+// 15152 vertices and there is no reason to hold a second Path2D for it.
+function miniTerrain(mv) {
+  const rc = ensureRenderCache();
+  ctx.fillStyle = MINI_WATER;
+  ctx.fillRect(mv.x0, mv.y0, mv.x1 - mv.x0, mv.y1 - mv.y0);
+  ctx.fillStyle = MINI_LAND;
+  for (const l of rc.land) if (aabbInView(l.aabb, mv, 4)) ctx.fill(l.path);
+  ctx.fillStyle = MINI_WATER;
+  for (const w of rc.water) if (aabbInView(w.aabb, mv, 4)) ctx.fill(w.path);
+}
+// The Paseo's palm median: planted ground down the middle of the boulevard and
+// a WALL in physics, with periodic gaps to cross. Drawn on top of the paseo
+// ribbon, because what it tells you is exactly that the paseo is two one-way
+// halves and you cannot turn across it wherever you like.
+function miniMedians(vts, mv) {
+  ctx.strokeStyle = MINI_MEDIAN; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  for (const tile of vts) {
+    for (const m of tile.medians || []) {
+      if (!m._mpath) { m._mpath = flatPath(m.pts, false); m._mbb = polyBBox(m.pts); }
+      if (!aabbInView(m._mbb, mv, m.w + 6)) continue;
+      ctx.lineWidth = Math.max(m.w, 14);      // thin by nature; readable at dial scale
+      ctx.stroke(m._mpath);
+    }
+  }
 }
 // GREEN SPACES first, under the streets: parks and the marine park as dark
 // green, the estadios and the open plazas brighter, because those you drive
@@ -287,6 +327,7 @@ function drawMinimap(vw, vh, t) {
   // and array order, so the avenue came out dashed. Same ink everywhere makes
   // a crossing invisible; the HIERARCHY rides on WIDTH, which is what it means
   // on a map anyway.
+  miniTerrain(mv);                              // sea + land, under everything
   miniGreens(mv);                               // green ground, under the streets
   const ribbons = miniRibbons(mv, roads);       // roads + kiosk access paths
   ctx.strokeStyle = MINI_CASING;
@@ -302,6 +343,7 @@ function drawMinimap(vw, vh, t) {
     if (r.cls !== "paseo") continue;
     ctx.lineWidth = Math.max(r.w, 26); ctx.stroke(roadPath(r));
   }
+  miniMedians(vts, mv);                         // …and the palm median splitting it
   ctx.restore();
 
   // target blip in screen space (north-up: plain scaled offset)

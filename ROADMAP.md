@@ -31,6 +31,20 @@ and the three game modes are live; the items below are what remains.
 - [x] `clear_buildings`: 13 footprints de OSM quitados de la cuadra (los
       edificios con nombre se conservan siempre, así que quedaban en el parque).
 
+**El minimapa, de calles a mapa**
+- [x] **Una tinta, dos pasadas** (contorno de todas las cintas, relleno de
+      todas). Pintar por clase dentro de una sola pasada hacía que cada calle
+      le mordiera un pedazo a la avenida que cruzaba; la jerarquía la lleva el
+      ancho.
+- [x] **Mar y tierra**: el mar es el fondo y `landPolys` los contornos encima —
+      la composición del mundo, no su inversa (`waters` son las aguas
+      INTERIORES, no el golfo). Se reusan los Path2D del render cache: el
+      contorno de tierra firme tiene 15152 vértices.
+- [x] **Verdes** (parque oscuro / cancha clara, porque a la cancha se entra
+      manejando), **muelles** con el material de cada uno, **entraditas de los
+      kioscos** y del muelle del Faro, **el bulevar** en piedra clara y la
+      **mediana del Paseo** encima del Paseo.
+
 **Tres arreglos de juego**
 - [x] El **mapa del menú** recorre una polilínea por el pueblo en vez de una
       recta Faro→Caldera que se salía al golfo.

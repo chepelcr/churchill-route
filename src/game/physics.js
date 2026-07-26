@@ -428,15 +428,19 @@ export function update(dt) {
 
   sfx.engine(p.speed / (veh.top || 1), !!input.boost, state.vehicleKey);
   sfx.drift(p.drift > 0.4 && p.speed > 80 ? p.drift : 0);
-  // Park fountains + the Balneario pool trickle as you get near (loudest
-  // within ~60px, fades by 220)
-  let fdist = Infinity;
+  // Water ambience, by WHAT the water is. A park fountain and the Balneario
+  // used to share one voice, which meant a sea-water inlet with swimmers in it
+  // trickled like a garden jet. Two distances, two beds:
+  //   park  → fountain (jet, splash, droplets), audible from ~220px
+  //   pool  → pool (lapping + swimmers), audible further out because it is a
+  //           whole cuadra of water, not a basin you have to stand next to
+  let fdist = Infinity, pdist = Infinity;
   for (const lm of W.LANDMARKS) {
-    if (lm.type !== "park" && lm.type !== "pool") continue;
-    const d = Math.hypot(lm.x - p.x, lm.y - p.y);
-    if (d < fdist) fdist = d;
+    if (lm.type === "park") fdist = Math.min(fdist, Math.hypot(lm.x - p.x, lm.y - p.y));
+    else if (lm.type === "pool") pdist = Math.min(pdist, Math.hypot(lm.x - p.x, lm.y - p.y));
   }
   sfx.fountain(fdist < 220 ? Math.max(0, Math.min(1, (220 - fdist) / 160)) : 0);
+  sfx.pool(pdist < 340 ? Math.max(0, Math.min(1, (340 - pdist) / 240)) : 0);
   sfx.waves(surfLevel(p, surf));
 
   if (state.weather === "storm") state.rainT += dt;

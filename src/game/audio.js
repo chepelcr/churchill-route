@@ -14,7 +14,8 @@ let master = null;      // master gain (mute = 0)
 let noiseBuf = null;    // shared 1s white-noise buffer
 let engineV = null;     // { oscA, oscB, filter, gain }
 let driftV = null;      // { src, filter, gain }
-let fountainV = null;   // { spray, body, level } — park/pool water ambience
+let fountainV = null;   // { jet, spray, body, level } — a PARK fountain
+let poolV = null;       // { lap, edge, level }        — the Balneario
 let wavesV = null;      // { swell, foam, lfo*, level } — surf out on the muelles
 
 function loadMuted() {
@@ -67,11 +68,20 @@ function unlock() {
   src.start();
   driftV = { src, filter: df, gain: dg };
 
-  // Water ambience: a bright TRICKLE band (bandpass) + a soft BODY band
-  // (lowpass), both STEADY. The old voice used one 3.2 Hz LFO on a dark
-  // lowpass, whose regular "wub-wub" read as an idling motor — gone. The
-  // irregular droplet "plips" that actually make it sound like water are
-  // fired in sfx.fountain(). Silent until sfx.fountain(level) near a park/pool.
+  // FUENTE — a park fountain. THREE noise beds, because that is what separates
+  // a fountain from generic water: the JET (a narrow, resonant hiss where the
+  // stream leaves the nozzle), the SPLASH the jet makes landing in the basin,
+  // and the basin's own BODY. The old voice had only the last two and read as
+  // shower noise. On top of them go the irregular droplet "plips" fired in
+  // sfx.fountain() — irregular TIMING is what the ear reads as water, which is
+  // why none of this is on a periodic LFO the way the surf is.
+  const wJet = ctx.createBufferSource();
+  wJet.buffer = noiseBuf; wJet.loop = true;
+  const wJetF = ctx.createBiquadFilter();
+  wJetF.type = "bandpass"; wJetF.frequency.value = 5200; wJetF.Q.value = 2.2;
+  const wJetG = ctx.createGain(); wJetG.gain.value = 0;
+  wJet.connect(wJetF); wJetF.connect(wJetG); wJetG.connect(master);
+  wJet.start();
   const wSpray = ctx.createBufferSource();
   wSpray.buffer = noiseBuf; wSpray.loop = true;
   const wSprayF = ctx.createBiquadFilter();
@@ -86,7 +96,42 @@ function unlock() {
   const wBodyG = ctx.createGain(); wBodyG.gain.value = 0;
   wBody.connect(wBodyF); wBodyF.connect(wBodyG); wBodyG.connect(master);
   wBody.start();
-  fountainV = { spray: wSprayG, body: wBodyG, level: 0 };
+  // …and the one periodic thing a fountain DOES have: the jet flutters. Fast
+  // and shallow (2.6 Hz, tiny depth) — enough that the bed is not frozen, far
+  // from the 3.2 Hz wobble on a dark lowpass that used to read as an engine.
+  const jetLfo = ctx.createOscillator();
+  jetLfo.type = "sine"; jetLfo.frequency.value = 2.6;
+  const jetLfoG = ctx.createGain(); jetLfoG.gain.value = 0;
+  jetLfo.connect(jetLfoG); jetLfoG.connect(wJetG.gain);
+  jetLfo.start();
+  fountainV = { jet: wJetG, jetLfo: jetLfoG, spray: wSprayG, body: wBodyG, level: 0 };
+
+  // PISCINA — the Balneario. It is not a fountain and it should not sound like
+  // one: nothing is falling. It is a body of SEA WATER in a cuadra, lapping at
+  // its kerb, with people in it. So a dark lap bed on a slow LFO (0.35 Hz — a
+  // pool slops faster than the open gulf breathes but far slower than a jet
+  // flutters), a quiet bright edge for the wet-tile shimmer, and the splashes
+  // that make it a balneario fired as one-shots in sfx.pool().
+  const pLap = ctx.createBufferSource();
+  pLap.buffer = noiseBuf; pLap.loop = true;
+  const pLapF = ctx.createBiquadFilter();
+  pLapF.type = "lowpass"; pLapF.frequency.value = 520; pLapF.Q.value = 0.7;
+  const pLapG = ctx.createGain(); pLapG.gain.value = 0;
+  pLap.connect(pLapF); pLapF.connect(pLapG); pLapG.connect(master);
+  pLap.start();
+  const pEdge = ctx.createBufferSource();
+  pEdge.buffer = noiseBuf; pEdge.loop = true;
+  const pEdgeF = ctx.createBiquadFilter();
+  pEdgeF.type = "bandpass"; pEdgeF.frequency.value = 1800; pEdgeF.Q.value = 1.1;
+  const pEdgeG = ctx.createGain(); pEdgeG.gain.value = 0;
+  pEdge.connect(pEdgeF); pEdgeF.connect(pEdgeG); pEdgeG.connect(master);
+  pEdge.start();
+  const lapLfo = ctx.createOscillator();
+  lapLfo.type = "sine"; lapLfo.frequency.value = 0.35;
+  const lapLfoG = ctx.createGain(); lapLfoG.gain.value = 0;
+  lapLfo.connect(lapLfoG); lapLfoG.connect(pLapG.gain);
+  lapLfo.start();
+  poolV = { lap: pLapG, lapLfo: lapLfoG, edge: pEdgeG, level: 0 };
 
   // OLAS — the surf under a muelle. Same idea as the fountain (two noise beds,
   // silent until sfx.waves(level)), but the shape of the sound is the opposite:
@@ -262,25 +307,58 @@ export const sfx = {
     driftV.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, amount)) * 0.12, ctx.currentTime, 0.06);
   },
 
-  // Water ambience: 0..1 by nearness to the closest park fountain / pool. A
-  // steady bright+body noise bed plus randomly-timed droplet "plips"; the
-  // irregular transients (not a periodic LFO) are what make it read as water.
+  // FUENTE: 0..1 by nearness to the closest PARK fountain. Jet + splash + basin
+  // body, plus randomly-timed droplet "plips" — the irregular transients, not a
+  // periodic LFO, are what make it read as water.
   fountain(amount) {
     if (!fountainV || !ctx || ctx.state !== "running") return;
     const a = Math.max(0, Math.min(1, amount));
     fountainV.level = a;
-    fountainV.spray.gain.setTargetAtTime(a * 0.045, ctx.currentTime, 0.12);
-    fountainV.body.gain.setTargetAtTime(a * 0.06, ctx.currentTime, 0.12);
-    if (a > 0.05 && Math.random() < a * 0.22) {
+    const now = ctx.currentTime;
+    fountainV.jet.gain.setTargetAtTime(a * 0.016, now, 0.12);
+    fountainV.jetLfo.gain.setTargetAtTime(a * 0.006, now, 0.12);
+    fountainV.spray.gain.setTargetAtTime(a * 0.04, now, 0.12);
+    fountainV.body.gain.setTargetAtTime(a * 0.055, now, 0.12);
+    if (a > 0.05 && Math.random() < a * 0.26) {
       // one droplet: random pitch + irregular timing = trickling water
-      if (Math.random() < 0.7) {
+      const roll = Math.random();
+      if (roll < 0.6) {
         const f0 = 700 + Math.random() * 900;
         tone({ type: "sine", from: f0, to: f0 * (0.45 + Math.random() * 0.2),
                dur: 0.045 + Math.random() * 0.07, gain: 0.015 + a * 0.02, filterHz: 3200 });
-      } else {
+      } else if (roll < 0.85) {
         noiseHit({ dur: 0.03 + Math.random() * 0.03, gain: 0.02 + a * 0.015,
                    band: 2600 + Math.random() * 1400 });
+      } else {
+        // an occasional deeper "bloop" — a bigger drop into the basin. Without
+        // it every plip lives in the same octave and the trickle sounds fake.
+        const f0 = 240 + Math.random() * 200;
+        tone({ type: "sine", from: f0 * 1.7, to: f0,
+               dur: 0.10 + Math.random() * 0.06, gain: 0.012 + a * 0.014, filterHz: 1400 });
       }
+    }
+  },
+
+  // PISCINA: 0..1 by nearness to the Balneario. Its own voice, NOT the
+  // fountain's — nothing there is falling, so a jet and droplets are the wrong
+  // sound entirely. A slow dark lap against the kerb, a faint bright edge, and
+  // occasional SPLASHES: a swimmer moving, which is a broadband hit that decays
+  // downward, not a droplet that decays upward.
+  pool(amount) {
+    if (!poolV || !ctx || ctx.state !== "running") return;
+    const a = Math.max(0, Math.min(1, amount));
+    poolV.level = a;
+    const now = ctx.currentTime;
+    poolV.lap.gain.setTargetAtTime(a * 0.05, now, 0.5);
+    poolV.lapLfo.gain.setTargetAtTime(a * 0.03, now, 0.5);
+    poolV.edge.gain.setTargetAtTime(a * 0.012, now, 0.5);
+    if (a > 0.08 && Math.random() < a * 0.05) {
+      // a splash: two overlapping noise hits, the second darker and longer, so
+      // it reads as the water closing over rather than as a single click
+      noiseHit({ dur: 0.09 + Math.random() * 0.07, gain: 0.030 + a * 0.02,
+                 band: 1500 + Math.random() * 900 });
+      noiseHit({ dur: 0.16 + Math.random() * 0.10, gain: 0.020 + a * 0.015,
+                 at: 0.03 + Math.random() * 0.03, band: 520 + Math.random() * 300 });
     }
   },
 

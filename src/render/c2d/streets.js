@@ -118,7 +118,8 @@ function paintStadiumCuadras(view) {
 // asphalt — so the asphalt repaints anything that reached the roadway, and
 // street pills, buildings and flora still land on top.
 const PARCEL_FILL = { plaza: "#4f9d5b", stadium: "#4f9d5b", garden: "#5ba362",
-                      church: "#cfc7b4", lot: "#b9b2a0" };
+                      park: "#5ba362", church: "#cfc7b4", cathedral: "#cfc7b4",
+                      boulevard: "#d9d6cd", civic: "#c9c2b2", lot: "#b9b2a0" };
 function paintParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;
@@ -137,8 +138,40 @@ function paintParcels(view) {
     // (P.ang) — the markings used to be strokeRect'd off the bbox, which put a
     // square pitch on a slanted block.
     if (P.use === "plaza" || P.use === "stadium") { paintField(path, fieldFrame(P, P.ang)); continue; }
+    if (P.use === "boulevard") { paintStone(path, P); continue; }
     ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }
+}
+
+// A calle peatonal: light-grey paving in a running-bond stone pattern, laid in
+// the MANZANA's frame so the courses run with the block, not with the screen.
+// It is a colour choice on ground the road pass already laid, exactly like the
+// estadio pitches — the surface underneath is Surface.BOULEVARD (transitable),
+// and the asphalt pass still repaints anything that reached the roadway.
+const STONE = 11;                                  // px per paving stone course
+function paintStone(path, P) {
+  ctx.save();
+  ctx.clip(path);
+  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  const R = Math.hypot(P.x1 - P.x0, P.y1 - P.y0) / 2 + STONE * 2;
+  ctx.translate(cx, cy); ctx.rotate(P.ang || 0);
+  ctx.strokeStyle = "rgba(120,116,106,0.38)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let v = -R; v <= R; v += STONE) {           // courses along the avenidas
+    ctx.moveTo(-R, v); ctx.lineTo(R, v);
+  }
+  // running bond: every other course offset half a stone, so the joints stagger
+  let row = 0;
+  for (let v = -R; v <= R; v += STONE, row++) {
+    const off = row % 2 ? STONE : 0;
+    for (let u = -R + off; u <= R; u += STONE * 2) {
+      ctx.moveTo(u, v); ctx.lineTo(u, v + STONE);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+  // kerb: a touch darker than the paving so the calle reads as a defined space
+  ctx.strokeStyle = "rgba(150,146,136,0.75)"; ctx.lineWidth = 2; ctx.stroke(path);
 }
 
 // Multi-pass road styling (acera band → casing → asphalt → lane dashes),

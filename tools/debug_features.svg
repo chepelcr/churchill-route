@@ -80053,7 +80053,6 @@
 <path d="M16464,9721 L16456,9699 L16517,9679 L16525,9701 Z" fill="#997" opacity="0.7"/>
 <path d="M32812,9669 L32807,9626 L32823,9625 L32828,9654 L32821,9655 L32822,9668 Z" fill="#997" opacity="0.7"/>
 <path d="M35016,8659 L35034,8680 L35065,8654 L35047,8633 Z" fill="#997" opacity="0.7"/>
-<path d="M15186,9642 L15188,9675 L15225,9674 L15224,9641 Z" fill="#997" opacity="0.7"/>
 <path d="M21528,8926 L21522,8986 L21574,8992 L21581,8932 Z" fill="#997" opacity="0.7"/>
 <path d="M44344,7194 L44372,7205 L44386,7173 L44381,7171 L44384,7162 L44349,7148 L44337,7180 L44349,7184 Z" fill="#997" opacity="0.7"/>
 <path d="M35252,8322 L35269,8272 L35408,8320 L35402,8337 L35280,8294 L35274,8311 L35438,8368 L35432,8385 Z" fill="#997" opacity="0.7"/>
@@ -80316,7 +80315,6 @@
 <path d="M13788,10065 L13788,10097 L13806,10097 L13806,10086 L13810,10086 L13810,10080 L13805,10080 L13804,10065 Z" fill="#997" opacity="0.7"/>
 <path d="M44904,7050 L44897,7065 L44916,7072 L44922,7057 Z" fill="#997" opacity="0.7"/>
 <path d="M45035,7341 L45074,7356 L45068,7373 L45036,7361 L45040,7351 L45032,7348 Z" fill="#997" opacity="0.7"/>
-<path d="M15118,9660 L15122,9659 L15121,9651 L15140,9650 L15142,9682 L15123,9682 L15122,9673 L15119,9673 Z" fill="#997" opacity="0.7"/>
 <path d="M30866,8525 L30873,8575 L30895,8572 L30890,8532 L30894,8531 L30893,8521 Z" fill="#997" opacity="0.7"/>
 <path d="M35108,8621 L35097,8609 L35127,8583 L35138,8595 Z" fill="#997" opacity="0.7"/>
 <path d="M44968,24517 L44977,24532 L44941,24552 L44932,24535 Z" fill="#997" opacity="0.7"/>
@@ -80356,7 +80354,6 @@
 <path d="M14619,10170 L14622,10197 L14652,10194 L14649,10168 Z" fill="#997" opacity="0.7"/>
 <path d="M15709,9943 L15714,9968 L15736,9964 L15731,9940 Z" fill="#997" opacity="0.7"/>
 <path d="M15215,10007 L15256,10004 L15258,10032 L15217,10034 Z" fill="#997" opacity="0.7"/>
-<path d="M15230,9575 L15231,9595 L15201,9597 L15200,9576 Z" fill="#997" opacity="0.7"/>
 <path d="M39222,3360 L39226,3401 L39198,3404 L39193,3364 Z" fill="#997" opacity="0.7"/>
 <path d="M44436,7214 L44432,7225 L44450,7232 L44455,7221 Z" fill="#997" opacity="0.7"/>
 <path d="M35620,6115 L35672,6165 L35691,6186 L35707,6213 L35712,6241 L35713,6270 L35707,6301 L35694,6349" fill="none" stroke="#d66" stroke-width="61" stroke-linecap="round" opacity="0.85"/>
@@ -82565,8 +82562,8 @@
 <circle cx="16380" cy="9730" r="12" fill="red"/><text x="16394" y="9730" font-size="26">parquemar</text>
 <circle cx="15734" cy="9218" r="12" fill="red"/><text x="15748" y="9218" font-size="26">mercado</text>
 <circle cx="15478" cy="9470" r="12" fill="red"/><text x="15492" y="9470" font-size="26">pali</text>
-<circle cx="15034" cy="9642" r="12" fill="red"/><text x="15048" y="9642" font-size="26">catedral</text>
-<circle cx="15202" cy="9662" r="12" fill="red"/><text x="15216" y="9662" font-size="26">cultura</text>
+<circle cx="15072" cy="9632" r="12" fill="red"/><text x="15086" y="9632" font-size="26">catedral</text>
+<circle cx="15200" cy="9662" r="12" fill="red"/><text x="15214" y="9662" font-size="26">cultura</text>
 <circle cx="15866" cy="10070" r="12" fill="red"/><text x="15880" y="10070" font-size="26">kios_centro</text>
 <circle cx="14327" cy="9874" r="12" fill="red"/><text x="14341" y="9874" font-size="26">estadio</text>
 <circle cx="16184" cy="9432" r="12" fill="red"/><text x="16198" y="9432" font-size="26">estadio_playitas</text>

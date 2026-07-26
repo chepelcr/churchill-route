@@ -26,8 +26,8 @@ you drive in over, never a wall around the field.
 import math
 
 from ..config import (
-    ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_ROAD, CUAD, FIELD_ACERA_CELLS,
-    GRID_CELL, STREET_CLASSES,
+    ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD,
+    FIELD_ACERA_CELLS, GRID_CELL, STREET_CLASSES,
 )
 from ..enums import GreenType, ParcelUse
 from ..logging import log
@@ -210,10 +210,38 @@ class FieldService:
         # poly: a traced outline's vertices are staircase steps, and fitting
         # them puts a square-ish parcel on the contrary diagonal (carmen_plaza
         # fitted to -67°).
-        self.parcels.append({"id": part["id"], "name": part["name"], "use": part["use"],
-                        "poly": poly, "cx": int((x0 + x1) // 2), "cy": int(ay),
-                        "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot,
-                        "ang": round(ang, 4)})
+        rec = {"id": part["id"], "name": part["name"], "use": part["use"],
+               "poly": poly, "cx": int((x0 + x1) // 2), "cy": int(ay),
+               "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot,
+               "ang": round(ang, 4)}
+        # DECORATION the renderer draws ON this parcel, declared by the part and
+        # passed through untouched (`river`, `statue`, `bus`…). The world says
+        # WHICH parcel has a river; the client owns what a river looks like.
+        for k in ("river", "statue"):
+            if part.get(k):
+                rec[k] = part[k]
+        # `bus: "south"|"north"` — a paradita at the parcel's own edge, aligned
+        # with its centre, on the side that faces the avenida. INSIDE the edge,
+        # not past it: the road pass paints its 20 px acera band OVER the block
+        # edge, so a shelter tucked just inside lands on the drawn sidewalk,
+        # while anything past it stands in the roadway.
+        side = part.get("bus")
+        if side in ("south", "north"):
+            bw, bh = 46, 14
+            by = (y1 - bh * 0.6) if side == "south" else (y0 + bh * 0.6)
+            rec["bus"] = [int((x0 + x1) // 2 - bw // 2), int(by - bh // 2), bw, bh]
+        # `lm`: re-anchor a landmark onto the parcel that now IS it. The POI was
+        # placed from its geo anchor long before the block was laid out, so its
+        # label and its minimap pin would otherwise sit a few metres off the
+        # thing they name.
+        if part.get("lm"):
+            lm = next((l for l in self.landmarks if l["id"] == part["lm"]), None)
+            if lm is None:
+                log("parcel", f"WARN {part['id']} landmark {part['lm']} missing")
+            else:
+                lm["x"], lm["y"] = rec["cx"], rec["cy"]
+                log("parcel", f"{part['id']} re-anchored {part['lm']} to ({rec['cx']},{rec['cy']})")
+        self.parcels.append(rec)
         cuads = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in cells}
         self.occ.update(cuads)                        # no buildings inside a parcel
         for b in self.blocks:
@@ -222,6 +250,13 @@ class FieldService:
         if part["use"] in (ParcelUse.PLAZA, ParcelUse.STADIUM):   # drivable open field
             for (c, r) in cells:
                 self.raster.set(c, r, CLS_ROAD)
+        elif part["use"] == ParcelUse.BOULEVARD:
+            # A calle peatonal is its OWN surface class, not asphalt: transitable
+            # (Surface.DRIVABLE) but slow, and the client paints it as stone
+            # instead of road. Stamped on the UN-eroded cells like the open
+            # fields, so it meets the bounding streets and you can turn into it.
+            for (c, r) in cells:
+                self.raster.set(c, r, CLS_BOULEVARD)
         log("parcel", f"{part['id']} ({part['use']}) ({x0},{y0})-({x1},{y1})px "
               f"{len(poly)//2}v slot{slot}")
         return self.parcels[-1]
@@ -243,6 +278,43 @@ class FieldService:
     #                the parroquia next door. A `plaza`/`stadium` part is stamped
     #                drivable on its UN-eroded cells either way, so the ring is
     #                asphalt you can drive on, not a wall around the field.
+    def _reclaim(self, spec_id, rx0, ry0, rx1, ry1):
+        """Give a hand-laid manzana its interior back before tracing it.
+
+        `cuadra_cells` looks for LAND/ACERA, and by this point in the build the
+        block may be neither. Two earlier stages pave right through a cuadra
+        and neither knows a parcel plan is coming:
+
+          * `stamp_pad` carves a 6-cuadrícula CLS_ROAD apron under every kiosk
+            and customer so you can pull off the street to it. One customer
+            seated on the civic block cut it clean in half — the trace then
+            returned the biggest surviving fragment, an L of sidewalk, and the
+            parts came out as 8x16 px slivers.
+          * `detect_blocks` paves a cuadra that fits no 6x6 square of buildable
+            cells to CLS_ACERA as a "sliver". A short, wide manzana like this
+            one qualifies.
+
+        The rect runs centreline to centreline, so what tells the interior from
+        the bounding calles is not geometry but the ROAD LIST: any cell inside
+        it that no real centreline paints goes back to CLS_LAND. That follows a
+        diagonal avenida exactly, which an inset rect cannot.
+        """
+        raster = self.raster
+        cell = raster.cell
+        c0, c1 = int(rx0 // cell), int(rx1 // cell)
+        r0, r1 = int(ry0 // cell), int(ry1 // cell)
+        n = 0
+        for r in range(max(0, r0), min(raster.rows, r1 + 1)):
+            for c in range(max(0, c0), min(raster.cols, c1 + 1)):
+                if raster.buf[r * raster.cols + c] not in (CLS_ROAD, CLS_ACERA):
+                    continue
+                if self.streets.on_street(c * cell + cell / 2, r * cell + cell / 2):
+                    continue
+                raster.set(c, r, CLS_LAND)
+                n += 1
+        log("parcel", f"{spec_id} reclaimed {n} cells inside the manzana "
+            f"(POI aprons + sliver paving) back to land")
+
     def place_parcels(self, spec):
         ref = spec["at"]
         cxa = self.streets.at(spec["calles"][0], "x", ref)
@@ -251,11 +323,14 @@ class FieldService:
         ays = self.streets.at(spec["ave_south"], "y", ref)
         if None in (cxa, cxb, ayn, ays):
             log("parcel", f"WARN {spec['id']} street resolve failed "
-                  f"(calles {cxa},{cxb} avenidas {ayn},{ays})"); return
-        outer = cuadra_cells(self.raster, min(cxa, cxb), min(ayn, ays), max(cxa, cxb), max(ayn, ays),
-                              (CLS_LAND, CLS_ACERA))
+                  f"(calles {cxa},{cxb} avenidas {ayn},{ays})"); return set()
+        rx0, ry0 = min(cxa, cxb), min(ayn, ays)
+        rx1, ry1 = max(cxa, cxb), max(ayn, ays)
+        if spec.get("reclaim"):
+            self._reclaim(spec["id"], rx0, ry0, rx1, ry1)
+        outer = cuadra_cells(self.raster, rx0, ry0, rx1, ry1, (CLS_LAND, CLS_ACERA))
         if not outer:
-            log("parcel", f"WARN {spec['id']} no cuadra in rect"); return
+            log("parcel", f"WARN {spec['id']} no cuadra in rect"); return set()
         # Erode ONCE, for the block. The acera ring is around the CUADRA, not
         # around every part of it: eroding per part also inset each one from the
         # internal split lines, which are not streets, and on a small block that
@@ -302,6 +377,7 @@ class FieldService:
         # two (church over garden) beside one column spanning both rows (the
         # plaza). That is what lets a cuadra hold commerce of different sizes.
         rng = lambda v: (v, v) if isinstance(v, int) else (v[0], v[1])
+        claimed = set()
         for part in spec["parts"]:
             c0, c1 = rng(part.get("col", 0))
             r0, r1 = rng(part.get("row", 0))
@@ -322,6 +398,12 @@ class FieldService:
                 log("parcel", f"WARN {part['id']} only {len(cells)} cells vs "
                       f"{nominal * span:.0f} nominal — split does not suit this block"); continue
             self._emit_parcel(spec["id"], part, own, cells, ang)
+            claimed |= own
+        # The CUAD cells the block's parts took. A caller that is laying a whole
+        # cuadra out by hand uses this to clear the OSM footprints standing on
+        # it: named buildings are kept at their real outline unconditionally, so
+        # without this the parroquia's capilla ends up in the middle of a park.
+        return {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in claimed}
 
     def place_feature_parcels(self, spec, buildings):
         # `buildings` is an ARGUMENT, not state: the feature parcels are derived

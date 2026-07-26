@@ -97,6 +97,7 @@ CLS_ROAD = Surface.ROAD
 CLS_PASEO = Surface.PASEO
 CLS_BRIDGE = Surface.BRIDGE
 CLS_ACERA = Surface.ACERA
+CLS_BOULEVARD = Surface.BOULEVARD
 ACERA_CELLS = CUAD_CELLS        # sidewalk depth: 1 cuadrícula (20 px) each side
 # A FIELD's ring is shallower than a block's. All it has to do is keep the
 # pitch's white lines off the asphalt, and every px of it is grass and markings

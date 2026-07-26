@@ -199,7 +199,7 @@ export const WORLD2D = (function () {
   }
 
   // ----- surface grid --------------------------------------------------------
-  // 0 water, 1 land, 2 beach, 3 road, 4 paseo, 5 bridge, 6 acera.
+  // 0 water, 1 land, 2 beach, 3 road, 4 paseo, 5 bridge, 6 acera, 7 boulevard.
   function surfaceAt(x, y) {
     if (x < 0 || y < 0 || x >= W || y >= H) return 0;
     const tc = (x / TILE_PX) | 0, tr = (y / TILE_PX) | 0;

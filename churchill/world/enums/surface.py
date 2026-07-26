@@ -21,6 +21,7 @@ class Surface(IntEnum):
     PASEO = 4
     BRIDGE = 5   # bridge deck and pier deck
     ACERA = 6    # sidewalk
+    BOULEVARD = 7  # sub-auxiliary calle peatonal: stone paving, transitable
 
     @property
     def label(self) -> str:
@@ -32,13 +33,16 @@ class Surface(IntEnum):
 CLASS_NAMES = [s.label for s in Surface]
 
 #: What a vehicle may drive on. BEACH is included on purpose — the sand is
-#: slow (see SURFACE_MUL on the client), not a wall.
-DRIVABLE = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.BEACH)
+#: slow (see SURFACE_MUL on the client), not a wall. So is BOULEVARD: a calle
+#: peatonal here is paving you may cross, not a barrier — you just crawl.
+DRIVABLE = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.BEACH,
+            Surface.BOULEVARD)
 
 #: What counts as "a street is on the other side of this edge" when eroding an
 #: acera. A cuadra edge facing the sea, the sand or the next parcel has no
 #: sidewalk — see the directional erosion in util.raster.
-STREET = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.ACERA)
+STREET = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.ACERA,
+          Surface.BOULEVARD)
 
 #: Blocks the car: the cuadra interiors and the sidewalks around them.
 WALL = (Surface.LAND, Surface.ACERA)

@@ -14,9 +14,13 @@ class ParcelUse(StrEnum):
     """A named piece of a cuadra. Drawn by `paintParcels`/`drawParcels` in
     src/render/c2d/ — and `PARCEL_FILL` there must have a colour for each."""
     CHURCH = "church"
+    CATHEDRAL = "cathedral"  # stone, grey and much larger than a parish church
     GARDEN = "garden"
+    PARK = "park"            # a garden with civic furniture (river, statue…)
     PLAZA = "plaza"
     STADIUM = "stadium"      # an open field: gets the estadio's own pitch painter
+    BOULEVARD = "boulevard"  # calle peatonal: stone paving, transitable (Surface.BOULEVARD)
+    CIVIC = "civic"          # a public building drawn to fill the parcel
     LOT = "lot"              # a feature parcel derived from a real footprint
 
 

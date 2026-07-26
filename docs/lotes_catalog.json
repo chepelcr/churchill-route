@@ -1,7 +1,7 @@
 {
  "generated_from": "src/world2d tiles",
  "playable_max_x": 17300,
- "count": 811,
+ "count": 809,
  "lotes": [
   {
    "id": "L-5759ca15",
@@ -6154,16 +6154,6 @@
    "district": "paseo"
   },
   {
-   "id": "L-a13eb869",
-   "x": 15130,
-   "y": 9666,
-   "lat": 9.977553,
-   "lon": -84.83437,
-   "w": 24,
-   "h": 32,
-   "district": "paseo"
-  },
-  {
    "id": "L-98505196",
    "x": 15160,
    "y": 20,
@@ -6221,16 +6211,6 @@
    "lon": -84.834076,
    "w": 43,
    "h": 33,
-   "district": "paseo"
-  },
-  {
-   "id": "L-84113abf",
-   "x": 15206,
-   "y": 9658,
-   "lat": 9.977598,
-   "lon": -84.833939,
-   "w": 39,
-   "h": 34,
    "district": "paseo"
   },
   {

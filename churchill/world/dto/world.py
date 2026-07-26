@@ -140,6 +140,12 @@ class Parcel(WorldModel):
     ang: float = Field(default=0.0, description="manzana angle in radians")
     whole: bool | None = Field(default=None, description="a whole cuadra; ground already painted")
     built: bool | None = Field(default=None, description="the footprint IS a building")
+    # Civic furniture the renderer draws ON the parcel. The world only says
+    # WHICH parcel has one and roughly where; what a river or a statue looks
+    # like belongs to src/render/c2d/landmarks.js.
+    river: bool | None = Field(default=None, description="a stream + footbridge crosses this park")
+    statue: str | None = Field(default=None, description="statue kind, e.g. 'virgen'")
+    bus: Rect | None = Field(default=None, description="[x, y, w, h] bus stop on the acera outside this parcel")
 
     @property
     def sponsorable(self) -> bool:

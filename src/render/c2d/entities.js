@@ -4,23 +4,29 @@ import { state } from "../../game/state.js";
 import { traceVehicleSilhouette } from "../vehicleShapes.js";
 import { ctx, lastT, roundRect } from "./gfx.js";
 
-// A collectable churchill coin lying on the street (arcade): a gold disc that
-// spins (squash on X) and bobs, with a shadow + ₡ mark so it reads as loot.
+// A collectable churchill coin lying on the street (arcade): a disc that spins
+// (squash on X) and bobs, with a shadow + ₡ mark so it reads as loot.
+// GOLD is the ordinary street coin. SILVER is the estadio coin rain — bigger,
+// worth many times a street coin, and a different metal so the player can tell
+// at a glance that the burst on the pitch is not just more of the same.
+const COIN_GOLD   = { rim: "#c8992f", face: "#f3c969", mark: "#a97b1e", r: 7 };
+const COIN_SILVER = { rim: "#8e9bab", face: "#dfe6ef", mark: "#5b6675", r: 9 };
 function drawArcadeCoin(c, t) {
   const ph = (c.t || 0) + t * 0.004;
   const sx = Math.abs(Math.cos(ph * 2.2));           // spin → horizontal squash
   const bob = Math.sin(ph * 3) * 1.6;                // gentle hover
-  const R = 7;
+  const M = c.silver ? COIN_SILVER : COIN_GOLD;
+  const R = M.r;
   ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.beginPath(); ctx.ellipse(c.x, c.y + 5, 6, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(c.x, c.y + 5, R - 1, R * 0.34, 0, 0, Math.PI * 2); ctx.fill();
   const cy = c.y - bob;
-  ctx.fillStyle = "#c8992f";                          // rim
+  ctx.fillStyle = M.rim;
   ctx.beginPath(); ctx.ellipse(c.x, cy, R * sx + 0.6, R + 0.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#f3c969";                          // face
+  ctx.fillStyle = M.face;
   ctx.beginPath(); ctx.ellipse(c.x, cy, R * sx, R, 0, 0, Math.PI * 2); ctx.fill();
   if (sx > 0.35) {                                    // ₡ mark only when facing us
-    ctx.fillStyle = "#a97b1e";
-    ctx.font = `bold ${Math.round(9 * sx + 3)}px 'Space Grotesk', sans-serif`;
+    ctx.fillStyle = M.mark;
+    ctx.font = `bold ${Math.round((c.silver ? 11 : 9) * sx + 3)}px 'Space Grotesk', sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("₡", c.x, cy + 0.5);
     ctx.textBaseline = "alphabetic";

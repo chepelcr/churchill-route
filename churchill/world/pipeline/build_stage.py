@@ -395,8 +395,69 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
              {"id": "carmen_plaza", "col": 1, "row": [0, 1], "use": "stadium",
               "name": "Plaza Deportes El Carmen", "aceras": True},
          ]},
+        # THE CIVIC SUPERBLOCK of Puntarenas: Calle 7 -> Bulevar de la Casa de
+        # la Cultura, Avenida 1 (north) -> Avenida Centenario (south). No calle
+        # crosses it — Calle 5 only exists SOUTH of Centenario — so the catedral,
+        # the parks and the Casa de la Cultura share one manzana, and the thing
+        # that organises them is a T of calle peatonal:
+        #
+        #     Av 1  ┌──────────────┬──┬───────────────┐  Bulevar
+        #           │ parque río   │▓▓│  biblioteca   │
+        #     Calle │──────────────│▓▓├───────────────┤
+        #       7   │ ⛪ CATEDRAL  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│ ← arm, ends at the Bulevar
+        #           │──────────────│▓▓├───────────────┤
+        #           │ parque virgen│▓▓│ Casa Cultura  │
+        #    Av Cent└──────[bus]───┴──┴───────────────┘
+        #
+        # The N-S bar runs avenida to avenida in FRONT of (east of) the catedral;
+        # the E-W arm leaves that bar on the catedral's own axis and finishes at
+        # the Bulevar. Both are `boulevard` parts: stamped Surface.BOULEVARD, so
+        # they are transitable but slow, and drawn as stone rather than asphalt.
+        {"id": "centro", "at": (15121, 9636),
+         "calles": (["Calle 7"], ["Bulevar de la Casa de la Cultura", "Calle 3 Francisco de Paula Amador"]),
+         "ave_north": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
+         "ave_south": ["Avenida Centenario", "Avenida 0"],
+         # the catedral row is the widest so the stone church can be as big as
+         # the manzana allows; the bar is wide enough to read as a calle
+         "cols": [4.4, 1.8, 3.8], "rows": [2.8, 3.8, 2.8],
+         # the manzana was NOT land by this point: a customer's apron cut it in
+         # half and detect_blocks had paved the rest as a sliver
+         "reclaim": True,
+         "clear_buildings": True,   # the parroquia's own OSM footprints stood here
+         "parts": [
+             # the parks keep the acera ring (`aceras: False`): a green tucks
+             # UNDER the sidewalk band the road pass paints, exactly like the
+             # block greens, and at 2.8 rows of a 120px manzana the erosion
+             # would have left a 16px sliver
+             {"id": "centro_parque_norte", "col": 0, "row": 0, "use": "park",
+              "name": "Parque del Río", "aceras": False, "river": True},
+             {"id": "centro_catedral", "col": 0, "row": 1, "use": "cathedral",
+              "name": "Catedral de Puntarenas", "aceras": True, "lm": "catedral"},
+             # the virgen stands at this park's NORTH edge, beside the catedral
+             {"id": "centro_parque_sur", "col": 0, "row": 2, "use": "park",
+              "name": "Parque de la Virgen", "aceras": False,
+              "statue": "virgen", "bus": "south"},
+             {"id": "centro_bulevar", "col": 1, "row": [0, 2], "use": "boulevard",
+              "name": "Bulevar de la Catedral", "aceras": False},
+             {"id": "centro_bulevar_este", "col": 2, "row": 1, "use": "boulevard",
+              "name": "Bulevar de la Casa de la Cultura", "aceras": False},
+             {"id": "centro_biblioteca", "col": 2, "row": 0, "use": "civic",
+              "name": "Biblioteca Pública", "aceras": False},
+             {"id": "centro_cultura", "col": 2, "row": 2, "use": "civic",
+              "name": "Casa de la Cultura", "aceras": False, "lm": "cultura"},
+         ]},
     ):
-        fields.place_parcels(_pc)
+        claimed = fields.place_parcels(_pc)
+        # A hand-laid cuadra owns its ground. Named OSM footprints are kept at
+        # their real outline unconditionally (see `named_raw` below), so without
+        # this the capilla, the curia and the parroquia's offices would still be
+        # standing in the middle of the parks and across the calle peatonal.
+        if _pc.get("clear_buildings") and claimed:
+            before = len(raw_bldgs)
+            raw_bldgs = [b for b in raw_bldgs
+                         if (int(b["cx"] // CUAD), int(b["cy"] // CUAD)) not in claimed]
+            log("parcel", f"{_pc['id']}: cleared {before - len(raw_bldgs)} OSM "
+                f"footprints off the {len(claimed)} cuad cells the block claimed")
 
     # Parque Marino: the aquarium's own OSM ways stay at their TRUE footprints
     # (a snapped pastel box reads as a generic house, not the theme park), and

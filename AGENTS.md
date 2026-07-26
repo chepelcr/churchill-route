@@ -98,7 +98,8 @@ React state) — don't try to make the game state flow through React.
 perpendicular offset. Deterministic (no RNG) — same input → identical output.
 
 Surface grid classes (see `src/game/surfaces.js`): `0 water, 1 land (solid cuadra
-interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera`.
+interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera,
+7 boulevard (calle peatonal: stone paving, transitable but slow)`.
 
 Knobs at the top of `build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`,
 `ROAD_WIDTH_PX`, `BUILDING_SCALE`, `DISTRICT_BOUNDS_GEO`, `LANDMARK_DEFS` /

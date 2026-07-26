@@ -4,6 +4,42 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
 and the three game modes are live; the items below are what remains.
 
+## ✅ La cuadra de la Catedral + tres arreglos de juego (2026-07-25)
+
+**La manzana civil, repartida a mano** (`centro` en `place_parcels`)
+- [x] Calle 7 → Bulevar de la Casa de la Cultura, Avenida 1 → Avenida
+      Centenario: una sola manzana (Calle 5 solo existe al sur de Centenario),
+      cortada 3x3 en el marco de sus propias calles (-5.6°).
+- [x] **Catedral de piedra gris**, 80x56 px — lo más grande que da la manzana —
+      en la fila del medio, mirando al este; naves, crucero, cúpula, ábside y
+      dos campanarios sobre la fachada del atrio.
+- [x] **Bulevar en T**: barra norte-sur de avenida a avenida enfrente de la
+      catedral (44x120) + brazo este que termina en el Bulevar de la Casa de la
+      Cultura (88x56). Piedra clara con aparejo a soga, **transitable**.
+- [x] **Parque del Río** (arroyo en S + puente de piedra) arriba, **Parque de la
+      Virgen** (estatua junto a la iglesia) abajo, **parada de bus** sobre la
+      Avenida Centenario alineada con la catedral.
+- [x] **Casa de la Cultura** al sur y **Biblioteca Pública** al norte del brazo,
+      como parcelas `civic` que dibujan su propio edificio.
+- [x] `Surface.BOULEVARD` (7) — primera clase de superficie nueva desde que
+      existe el ráster. Agregada AL FINAL (el valor es el formato que viaja) y
+      espejada en `src/game/surfaces.js`; `DRIVABLE` y `STREET` la incluyen.
+- [x] `reclaim`: una cuadra puesta a mano recupera su interior de los aprons de
+      POI y del pavimento de *sliver*. Quién decide qué es calle es la **lista
+      de calles** (`StreetIndex.on_street`), no un rect con márgenes — así sigue
+      exacta una avenida diagonal.
+- [x] `clear_buildings`: 13 footprints de OSM quitados de la cuadra (los
+      edificios con nombre se conservan siempre, así que quedaban en el parque).
+
+**Tres arreglos de juego**
+- [x] El **mapa del menú** recorre una polilínea por el pueblo en vez de una
+      recta Faro→Caldera que se salía al golfo.
+- [x] La **gente de los estadios** deambula por el gramado con 26 px de despeje
+      real al borde, en vez de patrullar el perímetro y leerse como acera.
+- [x] La **lluvia de monedas** es una moneda **por aficionado**, de **plata** y
+      del mismo valor total: menos monedas, más dispersas, distinguibles de las
+      de oro de la calle.
+
 ## ✅ Canchas derechas + el builder en capas (2026-07-25)
 
 **Las tres canchas, alineadas con su manzana**

@@ -105,7 +105,8 @@ refactor must keep the 417 emitted files byte-identical, and an INTENDED world
 change re-runs `save` in the same commit.
 
 Surface grid classes (see `src/game/surfaces.js`): `0 water, 1 land (solid cuadra
-interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera`.
+interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera,
+7 boulevard (calle peatonal: stone paving, transitable but slow)`.
 
 ### The `churchill/` package (Python)
 
@@ -252,6 +253,28 @@ Each parcel therefore emits its block angle as `ang` (radians) into
 with the whole-cuadra estadios), `drawChurch(x, y, s, ang)`, the garden's tree
 scatter, the sponsor plate. Anything new drawn on a parcel must use `P.ang`; a
 `strokeRect` off `P.x0..P.x1` puts a square pitch on a slanted block.
+
+**Lay a whole cuadra out by hand** (the civic block: `centro` in `build_stage`).
+Two things have already happened to a manzana by the time `place_parcels` runs,
+and both make `cuadra_cells` return garbage — it looks for LAND/ACERA, and the
+block may be neither:
+- `stamp_pad` carved a 6-cuadrícula `CLS_ROAD` apron under every kiosk and
+  customer. ONE customer seated on the block cuts it in half, and the trace then
+  returns the largest surviving fragment (an L of sidewalk → 8x16 px parts);
+- `detect_blocks` paved the cuadra to `CLS_ACERA` as a *sliver* if it fits no
+  6x6 square of buildable cells. A short, wide manzana qualifies.
+
+`"reclaim": True` fixes both: every cell in the rect that **no road centreline
+paints** (`StreetIndex.on_street`, which reads the ROAD LIST, not the raster)
+goes back to `CLS_LAND`. Use the road list, never an inset rect — the rect runs
+centreline to centreline and a diagonal avenida cuts across any margin you pick.
+`"clear_buildings": True` then drops the OSM footprints on the claimed cuad
+cells: NAMED buildings are kept at their real outline unconditionally, so
+without it the capilla and the curia stand in the middle of the new park.
+A part may also carry `"lm": "<id>"` (re-anchor that landmark to the parcel
+centre), `"river"/"statue"/"bus"` (civic furniture the renderer draws — the
+world says only which parcel has one), and `"use": "boulevard"`, which stamps
+`Surface.BOULEVARD` (7): transitable but slow, painted as stone by `paintStone`.
 
 **Organic stadium (graderías from the real acera)**: `place_stadium` builds each
 estadio as a `quad` that follows the street grid — a diagonal block resolves its

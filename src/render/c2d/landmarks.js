@@ -225,7 +225,15 @@ function drawParcels(view) {
   for (const P of arr) {
     if (P.x1 + 60 < view.x0 || P.x0 - 60 > view.x1 || P.y1 + 60 < view.y0 || P.y0 - 60 > view.y1) continue;
     if (P.use === "church") drawChurch(P.cx, P.cy, Math.min(1, (P.x1 - P.x0) / 44), P.ang);
-    if (P.use === "garden") drawGarden(P);
+    if (P.use === "cathedral") drawCathedral(P);
+    if (P.use === "civic") drawCivicBuilding(P);
+    if (P.use === "garden" || P.use === "park") drawGarden(P);
+    // Civic furniture the WORLD declared on this parcel. The build only says
+    // which parcel has a river / a statue / a paradita and roughly where; what
+    // each looks like is here.
+    if (P.river) drawParkRiver(P);
+    if (P.statue) drawStatue(P);
+    if (P.bus) drawBusStop(P);
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
     if (lote) drawSponsorSlot(P, lote);
     // a whole-cuadra field already carries the estadio's own name pill
@@ -284,6 +292,167 @@ function drawChurch(x, y, s = 1, ang = 0) {
   ctx.fillStyle = "#9e6f4a";
   ctx.beginPath(); ctx.moveTo(-8, -28); ctx.lineTo(0, -40); ctx.lineTo(8, -28); ctx.closePath(); ctx.fill();
   ctx.fillStyle = "#fff"; ctx.fillRect(-1.5, -50, 3, 11); ctx.fillRect(-5, -46, 10, 3);
+  ctx.restore();
+}
+
+// The CATEDRAL de Puntarenas — stone, not stucco, and as big as its parcel
+// allows. It is a placeholder for a proper mockup, so everything is derived
+// from the parcel rather than hard-coded: it is drawn in the manzana's own
+// frame (P.ang), sized off the parcel's half-extents, and FACES EAST onto the
+// calle peatonal in front of it, which is where its towers and steps go.
+//
+// The 0.86 on the half-extents is the bbox overshoot: a parcel poly is
+// raster-traced on a block that is not square to the screen, so its bbox is
+// slightly larger than the block in the block's own frame.
+const STONE_WALL = "#a9a49b";
+const STONE_DARK = "#8b867d";
+const STONE_LITE = "#c2bcb1";
+function drawCathedral(P) {
+  const hw = ((P.x1 - P.x0) / 2) * 0.86, hh = ((P.y1 - P.y0) / 2) * 0.86;
+  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  ctx.save();
+  ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
+  // +u is EAST (the facade, onto the bulevar), +v is SOUTH
+  const L = hw, W2 = Math.min(hh, hw * 0.62);       // nave half-length / half-width
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  roundRect(ctx, -L + 3, -W2 + 5, L * 2, W2 * 2, 4, true, false);
+  // nave
+  ctx.fillStyle = STONE_WALL;
+  roundRect(ctx, -L, -W2, L * 2, W2 * 2, 3, true, false);
+  // transept: the cross arms, a third of the way back from the facade
+  const tx = L * 0.05, tw = Math.max(10, L * 0.26), th = Math.min(hh, W2 * 1.45);
+  roundRect(ctx, tx - tw, -th, tw * 2, th * 2, 3, true, false);
+  // roof ridges (a lighter stone strip down the nave and across the transept)
+  ctx.fillStyle = STONE_LITE;
+  ctx.fillRect(-L + 2, -W2 * 0.30, L * 2 - 4, W2 * 0.60);
+  ctx.fillRect(tx - tw * 0.34, -th + 2, tw * 0.68, th * 2 - 4);
+  // crossing dome
+  ctx.fillStyle = STONE_DARK;
+  ctx.beginPath(); ctx.arc(tx, 0, Math.min(W2 * 0.72, tw * 0.9), 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = STONE_LITE;
+  ctx.beginPath(); ctx.arc(tx, 0, Math.min(W2 * 0.72, tw * 0.9) * 0.62, 0, Math.PI * 2); ctx.fill();
+  // apse: a rounded end at the WEST (the back)
+  ctx.fillStyle = STONE_WALL;
+  ctx.beginPath(); ctx.arc(-L, 0, W2 * 0.9, 0, Math.PI * 2); ctx.fill();
+  // EAST facade: two bell towers flanking the door, onto the calle peatonal
+  const tr = Math.max(5, W2 * 0.42);
+  for (const s of [-1, 1]) {
+    ctx.fillStyle = STONE_DARK;
+    ctx.beginPath(); ctx.arc(L - tr * 0.5, s * (W2 - tr * 0.7), tr, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = STONE_LITE;
+    ctx.beginPath(); ctx.arc(L - tr * 0.5, s * (W2 - tr * 0.7), tr * 0.55, 0, Math.PI * 2); ctx.fill();
+  }
+  // atrio: pale steps spilling out of the door toward the bulevar
+  ctx.fillStyle = "rgba(232,226,210,0.85)";
+  roundRect(ctx, L - 1, -W2 * 0.42, Math.max(6, L * 0.12), W2 * 0.84, 2, true, false);
+  // the cross on the roof ridge, at the crossing
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(tx - 1, -W2 * 0.14, 2, W2 * 0.28);
+  ctx.fillRect(tx - W2 * 0.11, -1, W2 * 0.22, 2);
+  ctx.restore();
+}
+
+// A `civic` parcel IS a public building — the Casa de la Cultura, the
+// Biblioteca. The block was laid out by hand, which cleared the OSM footprints
+// that used to stand on it, so the parcel has to draw its own: a colonnaded
+// front on the calle peatonal, inset from the parcel edge so the acera band
+// still shows around it.
+function drawCivicBuilding(P) {
+  const hw = ((P.x1 - P.x0) / 2) * 0.86, hh = ((P.y1 - P.y0) / 2) * 0.86;
+  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  ctx.save();
+  ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
+  const w = hw * 2 - 8, h = hh * 2 - 8;
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  roundRect(ctx, -w / 2 + 3, -h / 2 + 4, w, h, 3, true, false);
+  ctx.fillStyle = "#e7ddc8";                         // stucco body
+  roundRect(ctx, -w / 2, -h / 2, w, h, 3, true, false);
+  ctx.fillStyle = "#b98a5e";                         // tile roof band
+  ctx.fillRect(-w / 2, -h / 2, w, Math.max(3, h * 0.16));
+  // portico columns along the WEST face (the calle peatonal side)
+  ctx.fillStyle = STONE_LITE;
+  const n = Math.max(3, Math.round(h / 12));
+  for (let i = 0; i < n; i++) {
+    const v = -h / 2 + h * ((i + 0.5) / n);
+    ctx.fillRect(-w / 2 + 2, v - 1.6, 4, 3.2);
+  }
+  ctx.restore();
+}
+
+// A stream crossing a park, with a stone footbridge over its middle. Drawn in
+// the parcel's frame: the water runs across the SHORT axis so a wide, shallow
+// park still reads as "a park with a river through it".
+function drawParkRiver(P) {
+  const hw = ((P.x1 - P.x0) / 2) * 0.86, hh = ((P.y1 - P.y0) / 2) * 0.86;
+  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  ctx.save();
+  ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
+  ctx.lineCap = "round";
+  const w = Math.max(7, Math.min(13, hh * 0.34));
+  // a lazy S across the park, from the west edge to the east edge
+  const bed = new Path2D();
+  bed.moveTo(-hw, -hh * 0.42);
+  bed.bezierCurveTo(-hw * 0.3, hh * 0.55, hw * 0.3, -hh * 0.55, hw, hh * 0.42);
+  ctx.strokeStyle = "#7d8f6a"; ctx.lineWidth = w + 5; ctx.stroke(bed);   // damp bank
+  ctx.strokeStyle = "#4f86a8"; ctx.lineWidth = w; ctx.stroke(bed);       // water
+  ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = w * 0.28; ctx.stroke(bed);
+  // stone footbridge over the middle of the stream, across the flow
+  const bw = w + 12, bh = Math.max(5, w * 0.55);
+  ctx.fillStyle = "rgba(0,0,0,0.20)";
+  roundRect(ctx, -bh / 2 + 1, -bw / 2 + 2, bh, bw, 2, true, false);
+  ctx.fillStyle = STONE_LITE;
+  roundRect(ctx, -bh / 2, -bw / 2, bh, bw, 2, true, false);
+  ctx.fillStyle = STONE_DARK;
+  ctx.fillRect(-bh / 2, -bw / 2, bh, 1.6);
+  ctx.fillRect(-bh / 2, bw / 2 - 1.6, bh, 1.6);
+  ctx.restore();
+}
+
+// A statue on a plinth. `P.statue` names the kind; the Virgen stands at the
+// park's edge NEAREST the catedral (its north edge), not in the middle.
+function drawStatue(P) {
+  const cx = (P.x0 + P.x1) / 2;
+  const y = P.y0 + (P.y1 - P.y0) * 0.20;
+  ctx.save();
+  ctx.translate(cx, y); if (P.ang) ctx.rotate(P.ang);
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath(); ctx.ellipse(1, 5, 9, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = STONE_DARK;                       // plinth
+  roundRect(ctx, -7, -2, 14, 9, 1.5, true, false);
+  ctx.fillStyle = STONE_LITE;
+  roundRect(ctx, -5.5, -4, 11, 3, 1, true, false);
+  ctx.fillStyle = "#eef1f5";                        // the figure: robe + mantle
+  ctx.beginPath();
+  ctx.moveTo(-4, -4); ctx.lineTo(-2.4, -14); ctx.lineTo(2.4, -14); ctx.lineTo(4, -4);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#9fc0e8";
+  ctx.beginPath();
+  ctx.moveTo(-3.2, -6); ctx.lineTo(-2, -14.5); ctx.lineTo(2, -14.5); ctx.lineTo(3.2, -6);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#eef1f5";
+  ctx.beginPath(); ctx.arc(0, -16, 2.4, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#f4d77a"; ctx.lineWidth = 1;   // halo
+  ctx.beginPath(); ctx.arc(0, -16, 3.6, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+// A paradita de bus on the acera outside the parcel: shelter roof, bench and
+// the ₡ post. `P.bus` is [x, y, w, h] in world px, placed by the build.
+function drawBusStop(P) {
+  const [bx, by, bw, bh] = P.bus;
+  ctx.save();
+  ctx.translate(bx + bw / 2, by + bh / 2); if (P.ang) ctx.rotate(P.ang);
+  ctx.fillStyle = "rgba(0,0,0,0.24)";
+  roundRect(ctx, -bw / 2 + 2, -bh / 2 + 3, bw, bh, 2, true, false);
+  ctx.fillStyle = "#3a6f8a";                         // shelter roof
+  roundRect(ctx, -bw / 2, -bh / 2, bw, bh, 2, true, false);
+  ctx.fillStyle = "#5b9ec2";
+  roundRect(ctx, -bw / 2 + 2, -bh / 2 + 2, bw - 4, bh - 6, 1.5, true, false);
+  ctx.fillStyle = "#e7ddc8";                         // bench
+  ctx.fillRect(-bw / 2 + 4, bh / 2 - 4, bw - 8, 2.5);
+  ctx.fillStyle = "#f08a5d";                         // post + sign
+  ctx.fillRect(bw / 2 - 3, -bh / 2 - 5, 1.6, 6);
+  roundRect(ctx, bw / 2 - 6, -bh / 2 - 9, 6, 5, 1, true, false);
   ctx.restore();
 }
 

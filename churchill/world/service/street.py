@@ -72,6 +72,7 @@ class StreetIndex:
 
     def __init__(self, roads):
         self.roads = roads
+        self._boxed = None          # (road, aabb) pairs, built on first on_street
         self._by_name = defaultdict(list)
         for r in roads:
             name = r.get("name")
@@ -145,6 +146,37 @@ class StreetIndex:
         if (ux < 0) if axis == "x" else (uy < 0):
             ux, uy = -ux, -uy
         return (ux, uy)
+
+    def on_street(self, px, py, pad=2.0, reach=60.0):
+        """Is (px, py) under the painted width of a real road centreline?
+
+        The surface raster cannot answer this: a POI apron (`stamp_pad`) and a
+        cuadra paved as a sliver are both CLS_ROAD/CLS_ACERA, and neither is a
+        street. Asking the ROAD LIST instead is what lets a hand-laid manzana
+        reclaim its own interior without eating the calles that bound it —
+        including a diagonal avenida, which no axis rect can follow.
+        """
+        if self._boxed is None:
+            self._boxed = [(r, (min(r["pts"][0::2]), min(r["pts"][1::2]),
+                                max(r["pts"][0::2]), max(r["pts"][1::2])))
+                           for r in self.roads if r.get("pts")]
+        for r, (bx0, by0, bx1, by1) in self._boxed:
+            p = r["pts"]
+            hw = r.get("w", 8) / 2 + pad
+            # AABB of the WHOLE polyline, not its endpoints: Avenida Centenario
+            # crosses the map, so an endpoint test would skip the one street
+            # most likely to bound the block being reclaimed.
+            if px < bx0 - reach or px > bx1 + reach or py < by0 - reach or py > by1 + reach:
+                continue
+            for i in range(0, len(p) - 2, 2):
+                ax, ay, bx, by = p[i], p[i + 1], p[i + 2], p[i + 3]
+                dx, dy = bx - ax, by - ay
+                l2 = dx * dx + dy * dy
+                t = 0.0 if l2 <= 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / l2))
+                qx, qy = ax + dx * t, ay + dy * t
+                if (px - qx) ** 2 + (py - qy) ** 2 <= hw * hw:
+                    return True
+        return False
 
     def near(self, ref, span_x=800, span_y=500, step=12):
         """{name: (mean x, mean y)} of every named street near ref — the

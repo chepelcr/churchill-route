@@ -5,7 +5,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains, pushFloat } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceRingPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
@@ -438,7 +438,13 @@ const ACOIN_PICK_R = 22;        // grab radius
 // one burst worth at most ACOIN_RAIN_VALUE, each coin fades after
 // ACOIN_RAIN_TTL, and the next burst only comes ACOIN_RAIN_COOLDOWN after the
 // last one is gone. Without those three it just printed money.
-const ACOIN_RAIN_VALUE = 300;   // ₡ per burst (cap)
+//
+// ONE COIN PER FAN, thrown by the crowd. The burst used to be 30 coins sprayed
+// over the bbox, which read as a carpet — a dozen well-spaced SILVER coins,
+// each worth many times a street coin, is the same money and looks like a
+// celebration. Silver is the tell: gold = ₡10 off the street, silver = loot.
+const ACOIN_RAIN_VALUE = 300;   // ₡ per burst (cap, split across the fans)
+const ACOIN_RAIN_SPREAD = 34;   // px a coin lands from the fan who threw it
 const ACOIN_RAIN_TTL = 11;      // s a rain coin stays before it vanishes
 const ACOIN_RAIN_COOLDOWN = 20; // s of quiet after the last one goes
 // The stadium/plaza cuadra the point is inside, or null.
@@ -468,30 +474,35 @@ function maintainArcadeCoins(dt) {
       if (c.rain <= 0) { arr.splice(i, 1); continue; }
     }
     if (Math.hypot(p.x - c.x, p.y - c.y) < ACOIN_PICK_R) {
-      economy.addCoins(COINS_PER_PICKUP);
-      state.runCoins = (state.runCoins || 0) + COINS_PER_PICKUP;
-      pushFloat(c.x, c.y - 12, `+₡${COINS_PER_PICKUP}`, "#f3c969");
+      const val = c.v || COINS_PER_PICKUP;
+      economy.addCoins(val);
+      state.runCoins = (state.runCoins || 0) + val;
+      pushFloat(c.x, c.y - 12, `+₡${val}`, c.silver ? "#dfe6ef" : "#f3c969");
       sfx.play("coin");
       arr.splice(i, 1); continue;
     }
     if (Math.hypot(c.x - cam.x, c.y - cam.y) > ACOIN_KEEP) arr.splice(i, 1);
   }
-  // one burst at a time, sprayed ACROSS the pitch (the street spawner only ever
-  // drops coins on the ring road) — the reward for going in there to do donuts
+  // one burst at a time, ONE COIN PER FAN on the pitch (the street spawner only
+  // ever drops coins on the ring road) — the reward for going in there to do
+  // donuts. The fans already wander the grass well inside the footprint, so
+  // throwing from them scatters the burst without a rejection loop.
   state.rainWait = Math.max(0, (state.rainWait || 0) - dt);
   const pitch = stadiumUnder(cam.x, cam.y);
   if (pitch && !state.rainWait && !arr.some((c) => c.rain)) {
-    const n = Math.floor(ACOIN_RAIN_VALUE / COINS_PER_PICKUP);
-    let g2 = 0, made = 0;
-    while (made < n && g2++ < n * 8) {
-      const x = pitch.x0 + Math.random() * (pitch.x1 - pitch.x0);
-      const y = pitch.y0 + Math.random() * (pitch.y1 - pitch.y0);
+    const fans = pedestrians.filter((pe) => pe.stadium === pitch);
+    const val = Math.max(COINS_PER_PICKUP,
+                         Math.round(ACOIN_RAIN_VALUE / Math.max(1, fans.length)));
+    let made = 0;
+    for (const fan of fans) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * ACOIN_RAIN_SPREAD;
+      const x = fan.x + Math.cos(a) * r, y = fan.y + Math.sin(a) * r;
       // inside the POLYGON, not just its bbox — a diagonal plaza leaves the
       // bbox corners out on the surrounding streets, and those are drivable
       // too, so a surface test alone let the rain fall outside the field
       if (!inFootprint(x, y, pitch)) continue;
       if (Math.hypot(x - p.x, y - p.y) < 60) continue;
-      arr.push({ x, y, t: Math.random() * 6, rain: ACOIN_RAIN_TTL });
+      arr.push({ x, y, t: Math.random() * 6, rain: ACOIN_RAIN_TTL, v: val, silver: true });
       made++;
     }
     if (made) state.rainWait = ACOIN_RAIN_TTL + ACOIN_RAIN_COOLDOWN;
@@ -502,7 +513,7 @@ function maintainArcadeCoins(dt) {
     const r = ACOIN_SPAWN_MIN + Math.sqrt(Math.random()) * (ACOIN_SPAWN_MAX - ACOIN_SPAWN_MIN);
     const x = cam.x + Math.cos(a) * r, y = cam.y + Math.sin(a) * r;
     const s = W.surfaceAt(x, y);
-    if (s !== 3 && s !== 5) continue;            // streets + pier deck only (drivable)
+    if (s !== 3 && s !== 5 && s !== 7) continue; // streets, pier deck, calle peatonal
     if (Math.hypot(x - p.x, y - p.y) < ACOIN_SPAWN_MIN) continue;
     arr.push({ x, y, t: Math.random() * 6 });
   }
@@ -539,8 +550,7 @@ export function advanceEntities(dt, withPlayer = true) {
   // a speeding player makes them bolt across the street
   for (const pe of pedestrians) {
     if (pe.road) advancePed(pe, dt);
-    else if (pe.field) advanceFieldPed(pe, dt);                                  // plaza crowd wandering the open field
-    else if (pe.ring) advanceRingPed(pe, dt);                                    // stadium fans on the graderías
+    else if (pe.field) advanceFieldPed(pe, dt);                                  // estadio/plaza crowd wandering the pitch
     else if (pe.swim) advanceSwimmer(pe, dt);                                    // balneario swimmers
     else { pe.ph += dt * 6; advanceOnSurface(pe, dt, pe.cls || PED_CLS, 0.03); } // free (surface) peds
     if (withPlayer && Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {

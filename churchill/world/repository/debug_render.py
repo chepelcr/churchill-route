@@ -13,7 +13,8 @@ import struct
 import zlib
 
 from ..config import (
-    CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER,
+    CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_BRIDGE, CLS_LAND, CLS_PASEO,
+    CLS_ROAD, CLS_WATER,
     GRID_CELL,
 )
 from ..logging import log
@@ -57,7 +58,7 @@ def render_debug(*, raster, buildings, landmarks, customers, roads,
     DEBUG_PNG, DEBUG_SVG = png_path, svg_path
     pal = {CLS_WATER: (42, 127, 168), CLS_LAND: (232, 213, 160), CLS_BEACH: (244, 215, 122),
            CLS_ROAD: (58, 53, 64), CLS_PASEO: (240, 138, 93), CLS_BRIDGE: (140, 140, 140),
-           CLS_ACERA: (206, 199, 178)}
+           CLS_ACERA: (206, 199, 178), CLS_BOULEVARD: (216, 212, 200)}
     overlay = Raster(GRID_COLS, GRID_ROWS, GRID_CELL)
     bldg_overlay = overlay.buf
     for b in buildings:

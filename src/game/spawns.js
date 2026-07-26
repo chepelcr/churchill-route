@@ -284,24 +284,16 @@ function topUp(arr, target, make, isDead) {
   while (arr.length < target && guard++ < target * 3) { const e = make(); if (e) arr.push(e); }
 }
 // Stadium spectators (kind "fan"), CONTAINED so they never spill onto the
-// streets or wander the city like ordinary peds. Two layouts:
-//   * an estadio has an acera ring around its pitch → fans PATROL that ring,
-//     which is the terrace; the pitch itself stays clear for the game.
-//   * an open plaza has no ring (the field IS the whole cuadra) → a ring of
-//     people around the edge just looks like a fence, so they WANDER the
-//     inside instead.
-// A stadium is "open field" when the build made footprint === outline, i.e.
-// the spec said `aceras: False` and no ring was eroded out.
+// streets or wander the city like ordinary peds. They WANDER THE PITCH, well
+// inside it — never the perimeter.
+//
+// The perimeter walk this replaced looked like the fans were standing on the
+// sidewalk: a field's ring is only FIELD_ACERA_CELLS deep (8 px), so a ring
+// point 10 px further in still sat under the 20 px acera band the renderer
+// paints over the block edge. FIELD_INSET is measured from the footprint edge
+// and is wider than that band, so a fan is always visibly on the grass.
 const STADIUM_PEDS = 12;
-const RING_OFF = -10;          // px INWARD from the footprint edge, onto the grass
-
-function openField(S) {
-  if (S._open === undefined) {
-    const f = S.footprint, o = S.outline;
-    S._open = !!(f && o && f.length === o.length && f.every((v, i) => v === o[i]));
-  }
-  return S._open;
-}
+const FIELD_INSET = 26;        // px of clearance from the pitch edge
 // Point-in-polygon on a flat [x,y,...] ring.
 function inPoly(x, y, f) {
   let inside = false;
@@ -311,87 +303,70 @@ function inPoly(x, y, f) {
   }
   return inside;
 }
-// A random point INSIDE the footprint (rejection-sampled on its bbox).
+// Distance from (x,y) to the nearest edge of a flat [x,y,…] ring. A traced
+// pitch is a staircase of many short segments, so "inside by `m` px" has to be
+// a real distance test — shrinking the bbox would not follow a diagonal cuadra.
+function distToPoly(x, y, f) {
+  let best = Infinity;
+  for (let i = 0, j = f.length - 2; i < f.length; j = i, i += 2) {
+    const ax = f[j], ay = f[j + 1], bx = f[i], by = f[i + 1];
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1;
+    let t = ((x - ax) * dx + (y - ay) * dy) / L2;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const d = Math.hypot(x - (ax + dx * t), y - (ay + dy * t));
+    if (d < best) best = d;
+  }
+  return best;
+}
+// True when the point is inside the pitch AND at least `m` px clear of its edge.
+function deepInside(x, y, f, m) {
+  return inPoly(x, y, f) && distToPoly(x, y, f) >= m;
+}
+// A random point WELL INSIDE the footprint (rejection-sampled on its bbox).
+// Falls back through shallower insets so a small pitch still gets its crowd.
 function fieldPoint(S) {
-  for (let i = 0; i < 30; i++) {
-    const x = S.x0 + Math.random() * (S.x1 - S.x0);
-    const y = S.y0 + Math.random() * (S.y1 - S.y0);
-    if (inPoly(x, y, S.footprint)) return { x, y };
+  for (const m of [FIELD_INSET, FIELD_INSET / 2, 0]) {
+    for (let i = 0; i < 40; i++) {
+      const x = S.x0 + Math.random() * (S.x1 - S.x0);
+      const y = S.y0 + Math.random() * (S.y1 - S.y0);
+      if (deepInside(x, y, S.footprint, m)) return { x, y };
+    }
   }
   return { x: S.cx, y: S.cy };
 }
-// Wander inside the field, turning back at the edge instead of leaving it.
+// Wander inside the field, turning back at the edge instead of leaving it. The
+// turn-back happens at FIELD_INSET, not at the outline, so a fan never walks
+// out onto the acera band the renderer draws over the block edge.
 export function advanceFieldPed(pe, dt) {
   const S = pe.stadium;
   pe.ph += dt * 6;
   const nx = pe.x + Math.cos(pe.ang) * pe.v * dt;
   const ny = pe.y + Math.sin(pe.ang) * pe.v * dt;
-  if (inPoly(nx, ny, S.footprint)) { pe.x = nx; pe.y = ny; }
+  if (deepInside(nx, ny, S.footprint, pe.inset || 0)) { pe.x = nx; pe.y = ny; }
   else pe.ang += Math.PI * (0.6 + Math.random() * 0.8);
   if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.9;
 }
 
-// Cache each stadium's footprint perimeter as edges with outward normals +
-// cumulative arclength, so a fan's `su` (distance around) maps to a ring point.
-function stadiumPerimeter(S) {
-  if (S._peri) return S._peri;
-  const f = S.footprint;
-  if (!f || f.length < 6) { S._peri = null; return null; }
-  const pts = [];
-  for (let i = 0; i < f.length; i += 2) pts.push({ x: f[i], y: f[i + 1] });
-  let cx = 0, cy = 0;
-  for (const p of pts) { cx += p.x; cy += p.y; }
-  cx /= pts.length; cy /= pts.length;
-  const edges = []; let total = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
-    let nx = -dy / L, ny = dx / L;
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    if ((mx - cx) * nx + (my - cy) * ny < 0) { nx = -nx; ny = -ny; } // outward
-    edges.push({ ax: a.x, ay: a.y, dx: dx / L, dy: dy / L, nx, ny, len: L, cum: total, ang: Math.atan2(dy, dx) });
-    total += L;
-  }
-  S._peri = { edges, total };
-  return S._peri;
-}
-function ringPoint(P, s, off) {
-  let e = P.edges[0];
-  for (const ed of P.edges) { if (s >= ed.cum && s < ed.cum + ed.len) { e = ed; break; } e = ed; }
-  const d = s - e.cum;
-  return { x: e.ax + e.dx * d + e.nx * off, y: e.ay + e.dy * d + e.ny * off, ang: e.ang };
-}
-// Advance a fan around the graderías ring (perimeter walk, occasional reverse).
-export function advanceRingPed(pe, dt) {
-  const P = stadiumPerimeter(pe.stadium);
-  if (!P) { pe.dead = true; return; }
-  pe.ph += dt * 6;
-  pe.su = (pe.su + pe.v * dt * pe.sdir + P.total) % P.total;
-  const q = ringPoint(P, pe.su, RING_OFF);
-  pe.x = q.x; pe.y = q.y;
-  pe.ang = q.ang + (pe.sdir < 0 ? Math.PI : 0);
-  if (Math.random() < 0.004) pe.sdir *= -1;
-}
 function maintainStadiumPeds() {
   const arr = W.FIELDS;
   if (!arr || !arr.length) return;
   for (const S of arr) {
     if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;
-    const P = stadiumPerimeter(S);
-    if (!P) continue;
+    if (!S.footprint || S.footprint.length < 6) continue;
     let n = 0;
     for (const pe of pedestrians) if (pe.stadium === S) n++;
     let guard = 0;
-    const open = openField(S);
     while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 3) {
-      const su = Math.random() * P.total;
       // real position NOW, or far() culls it before it is ever placed
-      const q = open ? fieldPoint(S) : ringPoint(P, su, RING_OFF);
+      const q = fieldPoint(S);
+      // the inset a fan RESPECTS is the one it actually spawned at — on a
+      // small pitch fieldPoint falls back to a shallower one, and holding it
+      // to FIELD_INSET afterwards would freeze it on the spot
+      const inset = Math.min(FIELD_INSET, distToPoly(q.x, q.y, S.footprint));
       pedestrians.push({
-        x: q.x, y: q.y, ang: open ? Math.random() * Math.PI * 2 : 0, v: 7 + Math.random() * 9,
+        x: q.x, y: q.y, ang: Math.random() * Math.PI * 2, v: 7 + Math.random() * 9,
         hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
-        stadium: S, ring: !open, field: open, kind: "fan",
-        su, sdir: Math.random() < 0.5 ? 1 : -1,
+        stadium: S, field: true, inset, kind: "fan",
       });
       n++;
     }

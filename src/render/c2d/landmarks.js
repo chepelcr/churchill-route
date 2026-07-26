@@ -236,8 +236,9 @@ function drawParcels(view) {
     if (P.bus) drawBusStop(P);
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
     if (lote) drawSponsorSlot(P, lote);
-    // a whole-cuadra field already carries the estadio's own name pill
-    if (!P.whole) {
+    // a whole-cuadra field already carries the estadio's own name pill, and so
+    // does a parcel that IS a landmark (`P.lm` — the landmark pass draws it)
+    if (!P.whole && !P.lm) {
       areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(), "#fff",
                 (P.use === "plaza" || P.use === "stadium") ? "#2e7d44" : "#8a6f4a");
     }
@@ -456,7 +457,29 @@ function drawBusStop(P) {
   ctx.restore();
 }
 
+// A parcel that carries `lm` IS that landmark: the block layout already drew
+// the building (drawCathedral / drawCivicBuilding) at the parcel's own size and
+// angle. The landmark pass must not draw its generic art on top — that is what
+// put a 40 px stucco church in the middle of the stone catedral, and a green
+// civic box in the middle of the Casa de la Cultura. What the landmark still
+// owns is its NAME PILL, which a parcel has no equivalent for.
+let _ownedByParcel = null;
+function ownedByParcel() {
+  if (_ownedByParcel) return _ownedByParcel;
+  _ownedByParcel = new Map();
+  for (const P of W.PARCELS || []) if (P.lm) _ownedByParcel.set(P.lm, P);
+  return _ownedByParcel;
+}
+const PARCEL_PILL = { cathedral: ["CATEDRAL", "#9e6f4a"], church: ["IGLESIA", "#9e6f4a"],
+                      civic: ["CULTURA", "#2e7d44"] };
+function drawParcelLandmarkPill(lm, P) {
+  const [txt, tone] = PARCEL_PILL[lm.type] || [(lm.name || "").toUpperCase(), "#8a6f4a"];
+  label(lm.x, P.y0 - 10, txt, "#fff", tone);   // above the parcel, clear of the roof
+}
+
 function drawLandmark(lm) {
+  const owner = ownedByParcel().get(lm.id);
+  if (owner) { drawParcelLandmarkPill(lm, owner); return; }
   const x = lm.x, y = lm.y;
   if (!NO_SHADOW.has(lm.type)) {
     ctx.fillStyle = "rgba(0,0,0,0.22)";

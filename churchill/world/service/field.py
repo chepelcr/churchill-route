@@ -234,12 +234,17 @@ class FieldService:
         # placed from its geo anchor long before the block was laid out, so its
         # label and its minimap pin would otherwise sit a few metres off the
         # thing they name.
+        # It also rides into the manifest, because the two now draw the SAME
+        # thing: the parcel owns the building, so the landmark pass must skip
+        # its own art and contribute only the name pill. Without it the catedral
+        # got a small stucco church stamped on the middle of the stone one.
         if part.get("lm"):
             lm = next((l for l in self.landmarks if l["id"] == part["lm"]), None)
             if lm is None:
                 log("parcel", f"WARN {part['id']} landmark {part['lm']} missing")
             else:
                 lm["x"], lm["y"] = rec["cx"], rec["cy"]
+                rec["lm"] = part["lm"]
                 log("parcel", f"{part['id']} re-anchored {part['lm']} to ({rec['cx']},{rec['cy']})")
         self.parcels.append(rec)
         cuads = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in cells}

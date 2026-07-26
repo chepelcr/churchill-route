@@ -146,6 +146,7 @@ class Parcel(WorldModel):
     river: bool | None = Field(default=None, description="a stream + footbridge crosses this park")
     statue: str | None = Field(default=None, description="statue kind, e.g. 'virgen'")
     bus: Rect | None = Field(default=None, description="[x, y, w, h] bus stop on the acera outside this parcel")
+    lm: str | None = Field(default=None, description="landmark id this parcel IS; the landmark pass draws only its pill")
 
     @property
     def sponsorable(self) -> bool:

@@ -1,8 +1,69 @@
 # La Ruta del Churchill — Roadmap
 
 Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementation.
-The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
-game modes are live; the items below are what remains.
+The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
+and the three game modes are live; the items below are what remains.
+
+## ✅ Canchas derechas + el builder en capas (2026-07-25)
+
+**Las tres canchas, alineadas con su manzana**
+- [x] **El ángulo de una cuadra sale de sus calles**, no de un ajuste sobre sus
+      propias celdas: `_street_dir` lee la dirección de la avenida (este) y de
+      la calle (sur) junto al bloque, y el corte es **afín** — columnas
+      paralelas a las calles, filas paralelas a las avenidas. La cuadrícula de
+      El Carmen está 3.5° fuera de escuadra (avenidas -5.4°, calles 82.3°), así
+      que unos ejes ortogonales nunca la iban a describir.
+- [x] Por qué el ajuste anterior fallaba, escrito en el código para que no
+      vuelva: es **degenerado** en un bloque casi cuadrado (`sxx≈syy` lo pega a
+      ±45°, la diagonal contraria) y solo devuelve ejes ortogonales. Ajustar el
+      polígono trazado es peor todavía: sus vértices son escalones de 4px, y la
+      Plaza El Carmen daba **-67°**.
+- [x] Cada parcela emite su ángulo (`ang`) al manifest, y todo lo que se dibuja
+      encima gira con él: césped y marcas, la parroquia, los árboles del jardín,
+      la placa del patrocinador.
+- [x] **Una sola línea de cal**: la línea de banda ES el borde de la cuadra,
+      dibujado una vez. Antes había dos bordes blancos y el de adentro tenía la
+      forma equivocada. Las demás marcas se dibujan a extensión completa y las
+      recorta el contorno.
+- [x] **Aceras direccionales**: el anillo se forma solo en el borde que da a una
+      calle. Las Playitas sigue saliendo a la arena por el norte; la plaza de El
+      Carmen sigue pegada a la parroquia por el oeste.
+- [x] La acera de una cancha es de **8px, no 20**: solo tiene que parar las
+      líneas antes del asfalto. Lito Pérez 116x60 → **144x88**, Las Playitas
+      176x144 → **184x160**, El Carmen 60x48 → **76x76**.
+- [x] La Plaza Deportes El Carmen usa **el mismo pintor de cancha que los
+      estadios** (`paintField`): una plaza nueva hereda césped, franjas y marcas
+      sin copiar código.
+
+**El builder, en capas (`churchill/`)**
+- [x] Borrada la **proyección corridor-unroll** entera (espina, x-warp, islas de
+      cruce a mano, emisor `data.js`) y `src/world/`. `pnpm world:build`
+      construye el mundo que se juega: le faltaba `--planar`, así que
+      reconstruía el viejo.
+- [x] `tools/build_world.py`: **4379 → 19 líneas**. El build es
+      `churchill/world/pipeline/runner.py` y se lee como su lista de etapas.
+- [x] Capas: `enums` (el valor ES el formato de cable), `config`, `content`,
+      `context`, `dto` (Pydantic v2), `util`, `repository` (Protocols),
+      `service` (10 módulos), `pipeline`. **41 módulos, 5748 líneas.**
+- [x] `tools/world_snapshot.py` es el contrato: **salida byte a byte idéntica**
+      (417 archivos) en cada paso, más el log del build idéntico carácter por
+      carácter. 28 builds de verificación, cero deriva.
+- [x] Fuera los restos del corredor en el manifest emitido: `meta.crossExag` y
+      `meta.spineLenM` (nadie los leía) — cambio de mundo intencional, con el
+      digest re-guardado en el mismo commit.
+
+**Encontrado por el camino (bugs reales, no del refactor)**
+- [x] `inventory.json` se generaba de `src/world/data.js`, que el juego ya no
+      leía: describía un mundo que nadie jugaba (178 calles). Ahora lee el
+      manifest + los tiles: **2150 calles, 80310 edificios, 16 parcelas**.
+- [x] `docs/lotes_catalog.json` estaba viejo desde el 16 de julio: listaba **47
+      locales patrocinables que ya no existen** y le faltaban **149**.
+      Regenerado (811). Ninguno estaba reclamado, así que no se rompió nada.
+- [x] `NameError` esperando en el puente sintetizado (`ROAD_WIDTH_PX` borrado
+      con los tiers del corredor); solo corre si falta el puente en el OSM.
+- [x] Al escribir los modelos contra el mundo real: `landmark.spawn` no es una
+      bandera sino el punto de aparición `[x,y]` pegado a calle, y
+      `kioskPath.surface` es `"paved"`/`"sand"`, no un entero.
 
 ## ✅ Parcelas + patrocinio + colisiones correctas (2026-07-24 d)
 

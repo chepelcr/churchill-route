@@ -134,6 +134,9 @@ function drawNightVignette(vw, vh) {
 // car (resident tile road polylines), the player as a heading arrow in the
 // center, and the delivery target as a red blip (clamped to the rim when
 // it's beyond the dial's range).
+const MINI_CASING = "#39405a";   // outline under every road, one tone
+const MINI_STREET = "#98a0bb";   // the whole network, calles and avenidas alike
+const MINI_PASEO  = "#c9a95e";   // the Paseo de los Turistas, drawn last
 function drawMinimap(vw, vh, t) {
   const R = 76;                          // dial radius on screen (px)
   const cx = vw - R - 18, cy = R + 18;
@@ -157,15 +160,32 @@ function drawMinimap(vw, vh, t) {
   const mv = { x0: p.x - M, x1: p.x + M, y0: p.y - M, y1: p.y + M };
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   const vts = W.visibleTiles(mv.x0, mv.y0, mv.x1, mv.y1);
-  for (const tile of vts) {
-    for (const r of tile.roads) {
-      if (!aabbInView(r.aabb, mv, r.w)) continue;
-      ctx.strokeStyle = r.cls === "paseo" ? "#c9a95e"
-        : (r.cls === "trunk" || r.cls === "primary" || r.cls === "secondary") ? "#aeb3c8"
-        : "#7e8298";
-      ctx.lineWidth = Math.max(r.w, 30);  // readable street ribbons at map scale
-      ctx.stroke(roadPath(r));
-    }
+  const roads = [];
+  for (const tile of vts)
+    for (const r of tile.roads)
+      if (aabbInView(r.aabb, mv, r.w)) roads.push(r);
+  // ONE colour for the whole street network, in two FULL passes — a casing for
+  // every road, then a fill for every road — the same multi-pass shape the
+  // world painter uses.
+  //
+  // Colouring by class inside a single pass is what looked broken: an avenida
+  // was drawn lighter than a calle, and every calle drawn AFTER it cut a notch
+  // out of it at the crossing. At dial scale a 36 px residential ribbon over a
+  // 72 px primary is a visible bite, and the order it happens in is just tile
+  // and array order, so the avenue came out dashed. Same ink everywhere makes
+  // a crossing invisible; the HIERARCHY rides on WIDTH, which is what it means
+  // on a map anyway.
+  const mw = (r) => Math.max(r.w, 26);          // readable ribbons at map scale
+  ctx.strokeStyle = MINI_CASING;
+  for (const r of roads) { ctx.lineWidth = mw(r) + 10; ctx.stroke(roadPath(r)); }
+  ctx.strokeStyle = MINI_STREET;
+  for (const r of roads) { ctx.lineWidth = mw(r); ctx.stroke(roadPath(r)); }
+  // the Paseo is the one street that keeps a colour of its own, and it goes
+  // LAST so nothing can cross back over it
+  ctx.strokeStyle = MINI_PASEO;
+  for (const r of roads) {
+    if (r.cls !== "paseo") continue;
+    ctx.lineWidth = mw(r); ctx.stroke(roadPath(r));
   }
   ctx.restore();
 

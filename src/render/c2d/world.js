@@ -23,7 +23,14 @@ function drawWorld2D(view, t) {
     for (const r of tile.roads) if (aabbInView(r.aabb, view, r.w + 6)) roads.push(r);
   }
   roads.sort((a, b) => (ROAD_ORDER[a.cls] || 0) - (ROAD_ORDER[b.cls] || 0));
-  paintRoads(roads, view);
+  // esquina fillets, gathered the same way: the build solved where each corner
+  // of each junction is (kerb.py) because a per-tile road list cannot see one
+  const corners = [];
+  for (const tile of vts)
+    for (const c of tile.corners)
+      if (c.x > view.x0 - c.r - 4 && c.x < view.x1 + c.r + 4 &&
+          c.y > view.y0 - c.r - 4 && c.y < view.y1 + c.r + 4) corners.push(c);
+  paintRoads(roads, view, corners);
   // rails (old Ferrocarril line) + paseo separator ground strips, on top of
   // the asphalt but under buildings/flora
   for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);

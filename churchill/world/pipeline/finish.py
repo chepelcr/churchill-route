@@ -18,6 +18,7 @@ from ..config import (
 from ..content import STAGES
 from ..logging import log
 from ..repository.debug_render import render_debug
+from ..service.kerb import derive_corners
 from ..service.network import block_census, verify_connectivity
 from ..util.geometry import to_m
 from .emit import emit_world2d
@@ -57,6 +58,10 @@ def verify(ctx, *, spawn, gate_pois):
 
 
 def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
+    # The esquinas, last: the road list is only final once the estadios have
+    # clipped the cross-streets out of their cuadras, and a fillet on a road
+    # that no longer exists would hang in the middle of a pitch.
+    corners = derive_corners(ctx.roads, meta["aceraPx"])
     emit_world2d(ctx.raster, sink, meta=meta, districts=ctx.districts,
                  roads=ctx.roads, rails=ctx.rails, buildings=ctx.buildings,
                  trees=ctx.trees, palms=ctx.palms, mangroves=ctx.mangroves,
@@ -67,7 +72,8 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
                  kiosk_paths=ctx.kiosk_paths, faro_pier=ctx.faro_pier,
                  balneario=ctx.balneario, bridge=ctx.bridge, estuary=ctx.estuary,
                  pier=ctx.pier, hills=ctx.hills, pois=ctx.pois,
-                 parcels=ctx.parcels, ferries=ctx.ferries, signs=ctx.signs)
+                 parcels=ctx.parcels, ferries=ctx.ferries, signs=ctx.signs,
+                 corners=corners)
     render_debug(raster=ctx.raster, buildings=ctx.buildings,
                  landmarks=ctx.landmarks, customers=ctx.customers,
                  roads=ctx.roads, land_contours=land_polys, waters=ctx.waters,

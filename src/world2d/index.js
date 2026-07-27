@@ -142,6 +142,9 @@ export const WORLD2D = (function () {
       buildings, bhash,
       trees: raw.trees || [], palms: raw.palms || [],
       medians: raw.medians || [], plazas: raw.plazas || [],
+      // {x,y,r} acera fillets at the esquinas of this tile (see churchill/world/
+      // service/kerb.py — the renderer cannot find a junction on its own)
+      corners: raw.corners || [],
       islands: raw.islands || [],
     };
   }

@@ -146,7 +146,8 @@ churchill/world/
                  sites), building,
                  surface (the stamping ORDER matters), network (the gate),
                  placement (why a POI has to be nudged at all), osm, decoration,
-                 projection
+                 projection, signs (street furniture + seating the paradas),
+                 kerb (the esquinas — read WHY the renderer cannot find them)
   pipeline/      the stages: extract_world -> … -> verify -> write_world
 ```
 
@@ -328,13 +329,31 @@ when `lm.stands`, strokes a dark two-tone band over the block's real acera ring
 in the LANDMARK pass (after sidewalks → recolours the actual acera; follows the
 organic/diagonal outline). Interior cross-streets clipped by `_clip_roads_poly`.
 
-**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of four
+**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of five
 advancers (branch in `physics.js`): rail-bound city walkers (`pe.road`,
 `advancePed`); stadium **fans** (`kind:"fan"`, `pe.field`, `advanceFieldPed`)
 wandering the pitch, CONTAINED well inside the footprint; balneario **swimmers**
 (`kind:"swimmer"`, `pe.swim`, `advanceSwimmer`) bouncing inside `W.BALNEARIO`;
-and **players** (`kind:"player"`, `pe.match`), which the MATCH moves, not the
-ped loop. All drawn by `drawPed` (branches on `kind`).
+**players** (`kind:"player"`, `pe.match`), which the MATCH moves, not the
+ped loop; and bus **passengers** (`pe.bus`, `advancePassenger`), which are
+TEMPORARY — an alighting one is handed to `advancePed` the moment it reaches the
+acera, so a person who got off a bus simply IS a person walking. All drawn by
+`drawPed` (branches on `kind`).
+
+**Buses that stop** (`src/game/buses.js`). A bus stays in `traffic` — same
+vehicle, same road network, same collision — and all this module adds is what
+happens at the kerb: brake, dwell, alight, board. Two things are load-bearing:
+- **The paradas come from the world, already seated.** `seat_bus_stops`
+  (`service/signs.py`) snaps each of the 87 OSM `bus_stop` nodes to its nearest
+  carriageway and pushes it onto the acera with the road's angle and side, so
+  the caseta can be drawn in the STREET's frame and the bus has a kerb to pull
+  into. A stop drawn where the surveyor stood is often in the roadway.
+- **How many buses run is a FLOOR, not a probability.** At the old 9 % roll on
+  main-road spawns the paradas went unvisited for minutes at a time.
+
+**A word on emitted point features**: `corners` (the esquina fillets) are TILED,
+not in the manifest — there are ~3600 of them. `signs` stay global because there
+are only ~470 and the bus logic wants to index them once.
 
 **A match on a cancha** (`src/game/match.js`, `state.matches`). Any field with a
 `sport` and room for one holds a game instead of a crowd: two teams, a keeper, a
@@ -358,6 +377,29 @@ SEA inlet — `occ.update(cells)` (no OSM buildings), stamp the interior
 the ocean effect (no pool graphic; `case "pool"` is label-only). Emit a
 `manifest.balneario` bbox (→ `W.BALNEARIO`) that `maintainBalneario` fills with
 swimmers + a penned leisure boat (`b.balneario`, contained in the boats loop).
+
+**An esquina is a BUILD product, not a render one** (`service/kerb.py` →
+`manifest`-less tiled `corners` → the fillet pass in `paintRoads`). The renderer
+draws roads PER TILE and has only a list of polylines; it cannot see a junction,
+which is why the acera-coloured disc it used to put at each polyline end was
+inscribed in the junction's plus and rounded nothing. The build has the whole
+road list, so it solves the corners once. Three things it gets right that a
+naive version does not:
+- **every VERTEX is a junction candidate, not just the ends.** A junction in OSM
+  is a SHARED NODE and only sometimes an endpoint — one calle runs the length of
+  the peninsula and crosses a dozen avenidas at interior vertices of itself.
+  Endpoints alone find 759 junctions here; all vertices find 1759, and the 128
+  crossings that genuinely share no node are not worth chasing.
+- **the gap between two consecutive outgoing directions is the whole filter.**
+  ~180° is a street continuing straight (no corner), ~0° is the same way twice.
+  So a T-junction yields TWO corners, not three: the side with no cross street
+  keeps its straight kerb.
+- **the corner point is where the two aceras' OUTER EDGES cross**, solved as two
+  lines — right for a diagonal avenida meeting a calle at 84°, which a fixed
+  diagonal offset is not.
+The caño (the kerb gutter) is renderer-only: a darker band stroked AFTER the
+casing and BEFORE the asphalt, with butt caps, so it stops at the esquina the
+way the real one stops at the tragante.
 
 **Collision-vs-visual alignment gotchas** (piers, medians): `raster_stamp_polyline`
 adds a round cap of radius `w/2` PAST the last point — shorten the polyline at a

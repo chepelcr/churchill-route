@@ -58,6 +58,10 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     # kiosk with no cuadra beside it (e.g. on the Paseo boardwalk) stays put and
     # just gets the pad+connector instead of teleporting to a far block.
     KIOSK_SNAP_CUAD = 10                       # ≤ this many cuadrículas from anchor
+    # How far the paved connector will reach for a street. In CUADRÍCULAS, not
+    # px: a frontage cell is against its cuadra's edge, so the asphalt is half a
+    # street plus the acera away — a distance that grows with the world's scale.
+    KIOSK_LINK_R = 6 * CUAD
     nongreen_blocks = []
     for b in blocks:
         if b.get("green"):
@@ -78,8 +82,18 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         spot = _kiosk_frontage(lm["x"], lm["y"])
         if spot:
             lm["x"], lm["y"] = round(spot[0]), round(spot[1])
+        # WHERE THE STREET IS — asked BEFORE the apron is stamped. `stamp_pad`
+        # paints a 44 px CLS_ROAD pocket around the kiosk, so asking afterwards
+        # finds the POCKET ITSELF: the "connector" comes out a 4 px stub from a
+        # cell to its neighbour, and the pad stays an island ringed by acera,
+        # which the car cannot cross. Five of the fourteen town kiosks shipped
+        # with a stub like that; they only played because the pad happened to
+        # overlap the asphalt. Rescaling the world moved the cuadras apart and
+        # Kiosco Playitas stopped touching its calle — which is the failure the
+        # gate then caught.
+        tgt = _nearest_cell(lm["x"], lm["y"], (CLS_ROAD, CLS_BRIDGE, CLS_PASEO),
+                            KIOSK_LINK_R)
         stamp_pad(raster, lm["x"], lm["y"], 44)            # drivable pocket
-        tgt = _nearest_cell(lm["x"], lm["y"], (CLS_ROAD, CLS_BRIDGE, CLS_PASEO), 60)
         if tgt:
             raster.stamp_polyline([lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
             kiosk_paths.append({"pts": [round(lm["x"]), round(lm["y"]),
@@ -358,7 +372,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     #   aceras: False -> the part keeps the ring, filling the block edge to edge
     #                    (how Plaza Las Playitas reads as one open field).
     for _pc in (
-        {"id": "carmen", "at": (12620, 9755),      # Calle 35-33 x Av Centenario-Av 1
+        {"id": "carmen", "at": (15775, 12194),      # Calle 35-33 x Av Centenario-Av 1
          "calles": (["Calle 35"], ["Calle 33"]),
          "ave_north": ["Avenida Centenario", "Avenida 0"],
          "ave_south": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
@@ -393,7 +407,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         # the E-W arm leaves that bar on the catedral's own axis and finishes at
         # the Bulevar. Both are `boulevard` parts: stamped Surface.BOULEVARD, so
         # they are transitable but slow, and drawn as stone rather than asphalt.
-        {"id": "centro", "at": (15121, 9636),
+        {"id": "centro", "at": (18901, 12045),
          "calles": (["Calle 7"], ["Bulevar de la Casa de la Cultura", "Calle 3 Francisco de Paula Amador"]),
          "ave_north": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
          "ave_south": ["Avenida Centenario", "Avenida 0"],

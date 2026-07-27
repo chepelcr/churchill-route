@@ -103,6 +103,72 @@ Publicación: [La ciudad de verdad](docs/changelog/2026-07-27-parcelas.md).
 - [x] Minimapa: las parcelas `park`/`garden` salen en verde oscuro junto a las
       canchas en verde claro.
 
+## ✅ El puerto a su tamaño: cuadras grandes, esquinas y ruta urbana (2026-07-27)
+
+Publicación: [El puerto, a su tamaño](docs/changelog/2026-07-27-calles.md).
+
+**El mundo creció, las calles no**
+- [x] `PLANAR_PX_PER_M` 1.6 → **2.0** y `ARCADE_STREET_MUL` 3.2 → **2.56**. Los
+      dos se mueven juntos: el ancho pintado es
+      `ROAD_WIDTH_M · ARCADE_STREET_MUL · PLANAR_PX_PER_M`, así que la calle
+      queda idéntica en px y la CUADRA crece un 25 %. A 1.6/3.2 una calle de
+      7 m se pintaba 22 m de asfalto y se comía los edificios de al lado (al
+      Parque Marino, los suyos propios).
+- [x] **187 → 244 cuadras**, **263 → 308** edificios de OSM conservados a su
+      contorno real, **78 → 63** descartados por caer sobre la calzada,
+      **380 → 423** sitios de OSM como parcela.
+- [x] Las manzanas hechas a mano se resuelven en fracciones de su propio
+      rectángulo, así que escalaron solas: Parroquia de El Carmen 56x24 →
+      **80x48**, Catedral 80x56 → **112x76**, Casa de la Cultura 88x44 →
+      **116x60**.
+- [x] Los tramos de búsqueda de `StreetIndex` pasaron de **px a METROS**
+      (`STREET_SPAN_M` y compañía). Eran constantes ajustadas a 1.6 px/m y al
+      reescalar quedaron cortas sin avisar — la Calle 6 a 744 px de Las
+      Playitas, apenas fuera de un tramo de 700, tumbó el estadio a su
+      rectángulo de respaldo.
+
+**El bug que la compuerta encontró**
+- [x] `seat_town_kiosks` buscaba la calle **después** de estampar el parqueo del
+      propio kiosco, así que se encontraba a sí mismo: conector de 4 px y
+      parqueo de isla rodeado de acera. **Cinco de los catorce kioscos de
+      pueblo** venían así y solo jugaban de casualidad; Kiosco Playitas dejó de
+      tocar su calle al crecer la cuadra y la compuerta lo cazó. La calle se
+      busca ahora **antes**, con alcance en cuadrículas. **49/49 POIs**.
+
+**Las esquinas doblan** (`churchill/world/service/kerb.py`, nuevo)
+- [x] El render pinta por tile y nunca ve un cruce, así que las esquinas las
+      resuelve el build: **cada vértice es candidato**, no solo las puntas —
+      un cruce en OSM es un nodo compartido y solo a veces una punta. Indexando
+      puntas salían 759 cruces; indexando vértices salen **1759**.
+- [x] El **hueco entre dos direcciones consecutivas** es el filtro: ~180° es una
+      calle que sigue de largo, ~0° la misma vía repetida. Una T saca dos
+      esquinas, no tres.
+- [x] El punto es **dónde se cruzan los bordes exteriores de las dos aceras**,
+      resuelto como dos rectas (correcto para una avenida diagonal), y el radio
+      se recorta a la acera más angosta. **3626 esquinas**, emitidas por tile.
+
+**El caño**
+- [x] La franja exterior de la acera en concreto más oscuro (3.2 px por lado),
+      pintada entre el casing y el asfalto con tapas rectas — **se corta en la
+      esquina**, como el de verdad en el tragante.
+
+**La ruta urbana** (`src/game/buses.js`, nuevo)
+- [x] `seat_bus_stops` sienta las **87/87 paradas** en la acera de su calle y
+      las orienta con el cordón; la caseta se dibuja en el marco de la CALLE.
+- [x] El bus frena, se detiene 2.6–4.4 s, **baja 0–2 pasajeros y sube a los que
+      esperaban**. Sigue viviendo en `traffic` (mismo vehículo, misma red vial);
+      lo nuevo es lo que pasa en el cordón. Dos buses cerca de la cámara es un
+      **piso**, no un dado al 9 %.
+- [x] Los pasajeros son peatones normales: al bajarse, `joinTheSidewalk` los
+      entrega al andar rail-bound de siempre. Cuánta gente espera sale de las
+      coordenadas de la parada, no de un dado.
+
+**Y de paso**
+- [x] Los **ALTO** ya no caen sobre el asfalto: la separación se mide desde la
+      calzada (la que cruza y la propia), no con un número plano de 18 px que el
+      Paseo de los Turistas —71 px de ancho— se tragaba.
+- [x] La **Escuela de Biología Marina de la UNA** mira al oeste de su calle.
+
 ## ✅ La cuadra de la Catedral + tres arreglos de juego (2026-07-25)
 
 Publicación: [La cuadra de la Catedral](docs/changelog/2026-07-25-catedral.md).

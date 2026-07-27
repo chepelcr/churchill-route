@@ -60,25 +60,25 @@ LANDMARK_DEFS = [
     # La Punta (see how-look-puntarenas/faro.jpg): the lighthouse stands on the
     # rocky tip OUTSIDE the road loop (left of Calle 39), with the Balneario
     # Municipal pool inside the loop on the other side of the street.
-    {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -10, "dy": 110},
+    {"id": "faro",        "name": "El Faro",                    "type": "lighthouse",   "district": "faro",     "osm": "faro de la punta", "dx": -12, "dy": 138},
     # the big lagoon pool sits IN FRONT of (just north of / town-side of) the
     # faro, inside the road loop — roughly aligned on x with the lighthouse
-    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 110, "dy": 10},
+    {"id": "balneario",   "name": "Balneario Municipal",        "type": "pool",         "district": "faro",     "osm": "faro de la punta", "dx": 138, "dy": 12},
     # a churchill kiosk beside the lighthouse plaza (east of the faro, clear of it)
-    {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 85, "dy": 105},
+    {"id": "kios_faro",   "name": "Churchill La Punta",         "type": "kiosk",        "district": "faro",     "osm": "faro de la punta", "dx": 106, "dy": 131},
     # The cruise pier juts out from the END of Calle Central, right beside the
     # churchill kiosks on the Paseo (dx nudges the geo anchor onto that street)
     # dx 680 is a CORRIDOR-space nudge; the planar pier re-anchors to the real
     # Calle Central south end (planar_muelle_axis), so it never sees this dx.
-    {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "paseo",    "osm": "muelle de cruceros", "ll": (9.97450, -84.83450), "dx": 680},
+    {"id": "muellecruc",  "name": "Muelle de Cruceros",         "type": "cruise",       "district": "paseo",    "osm": "muelle de cruceros", "ll": (9.97450, -84.83450), "dx": 850},
     {"id": "ferrycr",     "name": "Terminal de Ferry",          "type": "ferry",        "district": "carmen",   "osm": "terminal de ferry puntarenas"},
     {"id": "playa",       "name": "Playa Puntarenas",           "type": "beachsign",    "district": "carmen",   "ll": (9.97500, -84.84300)},
     {"id": "carmenig",    "name": "Iglesia del Carmen",         "type": "church",       "district": "carmen",   "osm": "iglesia del carmen", "ll": (9.97650, -84.84400)},
     {"id": "tioga",       "name": "Hotel Tioga",                "type": "hotel",        "district": "paseo",    "osm": "tioga", "ll": (9.97500, -84.83600)},
     # pushed SOUTH off the street to the MIDPOINT between the Paseo and the
     # sand front (PINNED_KIOSKS keeps them there — no frontage re-seat)
-    {"id": "kios_paseo1", "name": "Kiosco Doña Lela",           "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": -60, "dy": 80},
-    {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 60, "dy": 80},
+    {"id": "kios_paseo1", "name": "Kiosco Doña Lela",           "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": -75, "dy": 100},
+    {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 75, "dy": 100},
     {"id": "casafait",    "name": "Casa Fait",                  "type": "house",        "district": "paseo",    "osm": "casa fait", "ll": (9.97700, -84.82900)},
     {"id": "parquemar",   "name": "Parque Marino del Pacífico", "type": "park",         "district": "playitas", "osm": "parque marino", "ll": (9.97600, -84.82300)},
     {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas"},
@@ -203,6 +203,9 @@ SITE_DECOR = {
     # south-west corner. `rect` is in fractions of the fitted rect (u east,
     # v south), so this is "the west 84%, the south 38%".
     "osm_school_263127078": {"rect": (0.0, 0.84, 0.62, 1.0)},
+    # The Escuela de Biología Marina (UNA) sits on the WEST side of its calle;
+    # the OSM area spans the block and put it along the north edge instead.
+    "osm_campus_232386868": {"rect": (0.0, 0.52, 0.0, 1.0)},
 }
 
 BLDG_PALETTE = ["#f3c969", "#e85d75", "#6fbf99", "#5fb0d6", "#f08a5d",

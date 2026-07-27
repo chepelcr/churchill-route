@@ -7,6 +7,7 @@ import { advanceMatch, carHitsMatch } from "./match.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
+import { advanceBus, advancePassenger, maintainBusStops } from "./buses.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
@@ -444,6 +445,10 @@ export function update(dt) {
   W.update(cam.x, cam.y);
   setSpawnCamera(cam.x, cam.y);
   maintainStreaming();
+  // the paradas near the camera keep their gente esperando (buses.js). Called
+  // here rather than from maintainStreaming so spawns.js stays the module the
+  // bus logic depends on, and not the other way round as well.
+  maintainBusStops(cam.x, cam.y, dt);
 
   // Tutorial step machine (only set in tutorial mode)
   if (state.tutorial) tutorialTick(dt);
@@ -610,7 +615,8 @@ export function advanceEntities(dt, withPlayer = true) {
   // Traffic — lane-follows its road polylines (spawns.js), handing off to a
   // connecting way at intersections; recycled only by the far cull.
   for (const t of traffic) {
-    advanceCarOnRoad(t, dt);
+    // a bus is the same vehicle on the same road network — it just stops
+    if (t.kind === "bus") advanceBus(t, dt); else advanceCarOnRoad(t, dt);
     if (withPlayer && Math.abs(t.x - p.x) < 14 && Math.abs(t.y - p.y) < 10) {
       p.vx -= (t.x - p.x) * 0.35; p.vy -= (t.y - p.y) * 0.35;
       state.cam.shake = Math.max(state.cam.shake, 6);
@@ -637,6 +643,7 @@ export function advanceEntities(dt, withPlayer = true) {
   // a speeding player makes them bolt across the street
   for (const pe of pedestrians) {
     if (pe.match) { /* a player: the match moves it */ }
+    else if (pe.bus) advancePassenger(pe, dt);                                   // waiting at / boarding / leaving a parada
     else if (pe.road) advancePed(pe, dt);
     else if (pe.field) advanceFieldPed(pe, dt);                                  // estadio/plaza crowd wandering the pitch
     else if (pe.swim) advanceSwimmer(pe, dt);                                    // balneario swimmers

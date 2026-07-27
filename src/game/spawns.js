@@ -16,6 +16,8 @@ const SPAWN_MIN = 300; // keep spawns outside the visible view (half-diagonal â‰
 // target populations near the camera (tuned to the corridor build's feel:
 // sidewalks full of people, streets with light town traffic)
 const TARGET = { traffic: 14, pedestrians: 64, vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1 };
+// how many of that traffic are buses on the ruta urbana (see buses.js)
+const BUSES_WANTED = 2;
 const CAR_PALETTE = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
 
 // the camera the maintenance centres on (set each frame by physics)
@@ -138,9 +140,15 @@ function spawnOneCar() {
     x: 0, y: 0, ang: 0,
   };
   if (main) {
+    // The ruta urbana is a FLOOR, not a dice roll: at 9% of main-road spawns a
+    // bus was rare enough that the paradas it now serves (buses.js) would go
+    // unvisited for minutes at a time. Keep two on the streets near the camera,
+    // and roll for the rest of the heavy traffic as before.
+    let nbus = 0;
+    for (const t of traffic) if (t.kind === "bus") nbus++;
     const roll = Math.random();
-    if (roll < 0.15) { car.kind = "truck"; car.w = 33; car.h = 13; }
-    else if (roll < 0.24) { car.kind = "bus"; car.w = 41; car.h = 14; car.color = "#e0762e"; car.v *= 0.85; }
+    if (nbus < BUSES_WANTED) { car.kind = "bus"; car.w = 41; car.h = 14; car.color = "#e0762e"; car.v *= 0.85; }
+    else if (roll < 0.15) { car.kind = "truck"; car.w = 33; car.h = 13; }
   }
   placeCarOnRoad(car);
   // Off-range OR on-screen (view half-diagonal â‰ˆ 230): never materialize in view.

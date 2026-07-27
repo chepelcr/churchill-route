@@ -25,7 +25,8 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
                  stadiums=None, kiosk_paths=None, faro_pier=None, greens=None,
-                 balneario=None, pois=None, parcels=None, ferries=None, signs=None):
+                 balneario=None, pois=None, parcels=None, ferries=None, signs=None,
+                 corners=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -67,6 +68,10 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
     add_flat("rails", rails)
     add_flat("medians", medians)
     add_flat("buildings", buildings)
+    # acera fillets at the esquinas: point features, tiled with the roads they
+    # round (there are thousands, and the renderer only ever draws the ones in
+    # view — the manifest is not the place for them)
+    add_point("corners", corners or [])
     add_point("trees", trees)
     add_point("palms", palms)
     add_point("mangroves", mangroves)

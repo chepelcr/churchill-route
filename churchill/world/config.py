@@ -49,8 +49,19 @@ M_PER_DEG_LAT = 110540.0
 M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
 
 # ---- Planar (true-scale 2-D) projection -------------------------------------
-PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "1.6"))   # world zoom
-ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "3.2"))  # widen streets
+# THESE TWO MOVE TOGETHER. The painted width of a street is
+# ROAD_WIDTH_M · ARCADE_STREET_MUL · PLANAR_PX_PER_M, so raising the scale while
+# lowering the multiplier by the same factor leaves every street exactly the
+# width it was in px — and makes the CUADRAS bigger, which is the whole point.
+#
+# At 1.6 / 3.2 a 7 m residential street was painted 36 px, i.e. 22 m wide, and it
+# ate into the buildings beside it: the Parque Marino's own footprints, kept at
+# their true outline, came out overlapping the roadway. At 2.0 / 2.56 the street
+# is still 36 px and the block around it is 25 % bigger, so the same footprint
+# clears it. Anything measured in px against a STREET (a car, a sign, a ped)
+# keeps its proportions; anything measured against a BLOCK gains room.
+PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "2.0"))   # world zoom
+ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.56"))  # widen streets
 # real-ish carriageway widths (metres) per OSM highway class; painted width =
 # ROAD_WIDTH_M · ARCADE_STREET_MUL · px_per_m (kept modest so junction gores survive)
 ROAD_WIDTH_M = {
@@ -68,8 +79,26 @@ ROAD_WIDTH_M = {
 PLANAR_FULL_BBOX = "-84.9188,9.8539,-84.6328,10.0304"
 PLANAR_BBOX = os.environ.get("PLANAR_BBOX") or PLANAR_FULL_BBOX
 
+# StreetIndex search spans, in METRES, converted to px at build time.
+#
+# These were px constants tuned at px_per_m 1.6, and the rescale broke them
+# silently: Calle 6 sits 744 px from the Las Playitas anchor at 2.0, just past a
+# 700 px span that used to reach it — so the estadio fell back to its anchor
+# rect and took Kiosco Playitas out of the drivable network with it. A distance
+# that means "about half a manzana away" belongs in metres.
+STREET_SPAN_M = 440             # vals() / edge(): samples near a reference
+STREET_AT_SPAN_M = 560          # at(): the coordinate AT a point
+STREET_DIR_SPAN_M = 325         # direction(): a manzana's angle
+STREET_NEAR_SPAN_M = (500, 315)  # near(): the build-log diagnostic
+
+
+def street_span_px(metres):
+    """A street-search span in world px, whatever the world's scale is."""
+    return round(metres * PLANAR_PX_PER_M)
+
+
 BUILDING_SCALE = 1.4            # match footprints to exaggerated road widths
-POI_NUDGE_PX = 600
+POI_NUDGE_PX = 750
 
 ROAD_CLASSES = set(ROAD_WIDTH_M) - {"paseo", "bridge"}
 
@@ -82,7 +111,7 @@ def road_width_px(cls):
 # cuadra/street sizes by snapping to the tile grid, so we no longer prune
 # streets to control block size.
 DROP_ROAD_CLASSES = set()
-SERVICE_MIN_PX = 120
+SERVICE_MIN_PX = 150
 DP_ROAD_PX = 1.0
 DP_BUILDING_PX = 2.0
 DP_COAST_PX = 2.5
@@ -117,7 +146,7 @@ SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so
 SYNTH_SEED = 77
 BLDG_INSET = 2                  # px seam per side so adjacent roofs don't fuse
 FRONTAGE_DEPTH = 3              # buildable band (CUADs) from the block edge
-SMALL_BLOCK_CUADS = 120         # blocks <= this many cuadrículas fill completely
+SMALL_BLOCK_CUADS = 188         # blocks <= this many cuadrículas fill completely
                                 # (dense town); bigger ones keep patio interiors
 OSM_MAX_CUADS = 4               # cap OSM footprints at 4x4 cuadrículas
 # weighted synth footprint mix (w x h in cuadrículas)

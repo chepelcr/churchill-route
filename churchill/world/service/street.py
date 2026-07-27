@@ -32,7 +32,10 @@ the central avenue is "Avenida Centenario", not "Avenida 0".
 import math
 from collections import defaultdict
 
-from ..config import CUAD, MUELLE_STREET
+from ..config import (
+    CUAD, MUELLE_STREET, STREET_AT_SPAN_M, STREET_DIR_SPAN_M,
+    STREET_NEAR_SPAN_M, STREET_SPAN_M, street_span_px,
+)
 from ..util.geometry import principal_axis
 
 
@@ -97,16 +100,18 @@ class StreetIndex:
                 return name, pts
         return None, []
 
-    def vals(self, names, want, ref, span=700):
+    def vals(self, names, want, ref, span=None):
         """Average axis coord (x for a calle, y for an avenida) near ref."""
+        span = span if span is not None else street_span_px(STREET_SPAN_M)
         _, pts = self._samples(names, ref, span, 10)
         if not pts:
             return None
         i = 0 if want == "x" else 1
         return sum(p[i] for p in pts) / len(pts)
 
-    def at(self, names, want, ref, span=900):
+    def at(self, names, want, ref, span=None):
         """The axis coord AT ref — the sample nearest in the OTHER axis."""
+        span = span if span is not None else street_span_px(STREET_AT_SPAN_M)
         rx, ry = ref
         for _name, roads in self.named(names):
             best = None
@@ -121,15 +126,16 @@ class StreetIndex:
                 return best[1]
         return None
 
-    def edge(self, names, ref, span=700):
+    def edge(self, names, ref, span=None):
         """The street near ref as an infinite line (px, py, ux, uy)."""
+        span = span if span is not None else street_span_px(STREET_SPAN_M)
         _, pts = self._samples(names, ref, span, 8)
         if len(pts) < 2:
             return None
         mx, my, theta = principal_axis(pts)
         return (mx, my, math.cos(theta), math.sin(theta))
 
-    def direction(self, names, ref, axis, span=520):
+    def direction(self, names, ref, axis, span=None):
         """Unit direction near ref, oriented along `axis`: "x" for an avenida
         (pointing EAST), "y" for a calle (pointing SOUTH).
 
@@ -137,6 +143,7 @@ class StreetIndex:
         same-named stub crossing the reference (Calle 33 turns a corner two
         cuadras south) would otherwise hand back the perpendicular.
         """
+        span = span if span is not None else street_span_px(STREET_DIR_SPAN_M)
         line = self.edge(names, ref, span)
         if not line:
             return None
@@ -236,10 +243,12 @@ class StreetIndex:
                     return True
         return False
 
-    def near(self, ref, span_x=800, span_y=500, step=12):
+    def near(self, ref, span_x=None, span_y=None, step=12):
         """{name: (mean x, mean y)} of every named street near ref — the
         diagnostic the placement recipes print so a failed resolve can be read
         off the build log."""
+        span_x = span_x if span_x is not None else street_span_px(STREET_NEAR_SPAN_M[0])
+        span_y = span_y if span_y is not None else street_span_px(STREET_NEAR_SPAN_M[1])
         rx, ry = ref
         near = defaultdict(list)
         for r in self.roads:

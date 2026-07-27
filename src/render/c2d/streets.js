@@ -32,6 +32,10 @@ function fieldFrame(S) {
 
 // Poured concrete, the colour the aceras actually are in the port.
 const ACERA_GREY = "#b8b6b0";
+// …and the caño: the drainage channel at the kerb, cast in the same concrete
+// but permanently damp and stained, so it reads a full step darker.
+const CANO_GREY = "#8b8981";
+const CANO_PX = 3.2;                     // depth of the gutter, per side
 const PARCEL_ROUND = 7;                  // px of kerb radius on a parcel corner
 const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one white
 // Grass, mow stripes and fútbol markings inside `path`, all drawn in the
@@ -203,7 +207,7 @@ function paintStone(path, P) {
 
 // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
 // ported from the corridor renderer but fed per-tile road segments.
-function paintRoads(roads, view) {
+function paintRoads(roads, view, corners) {
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // elevated (barro/Ferrocarril) drop-shadow
   ctx.strokeStyle = "rgba(0,0,0,0.30)";
@@ -213,10 +217,9 @@ function paintRoads(roads, view) {
   // whole town read as one colour.
   ctx.strokeStyle = ACERA_GREY;
   for (const r of roads) { if (r.bridge || r.cls === "bridge") continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
-  // acera corner fillets: acera-coloured joint discs at each piece endpoint,
-  // so perpendicular sidewalks meet ROUNDED at junctions instead of a hard
-  // angle (casing + asphalt paint over the disc centres below, leaving only
-  // the outer acera fillet visible).
+  // acera joint discs at each piece endpoint: they weld chained pieces so the
+  // band has no seam. Inscribed in the junction's plus, so they round NOTHING
+  // — the esquinas are the pass below.
   ctx.fillStyle = ACERA_GREY;
   for (const r of roads) {
     if (r.bridge || r.cls === "bridge") continue;
@@ -226,6 +229,13 @@ function paintRoads(roads, view) {
     ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
     ctx.fill();
   }
+  // THE ESQUINAS. A junction of two bands is a plus, and a plus has four sharp
+  // corners where the manzana pokes into the crossing; a real kerb turns
+  // through a radius and the acera follows it round. The build solved the
+  // corner POINTS (churchill/world/service/kerb.py) because a per-tile road
+  // list cannot see a junction — filling a disc on each is all a rounded
+  // corner is from above, and the asphalt pass below keeps the roadway square.
+  if (corners) for (const c of corners) { ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill(); }
   // estadios: the same sidewalk, repainted grey (after the fillets so the
   // junction discs can't overwrite it, before the asphalt so the asphalt wins)
   paintStadiumCuadras(view);
@@ -244,6 +254,17 @@ function paintRoads(roads, view) {
   // casing
   ctx.strokeStyle = "rgba(0,0,0,0.35)";
   for (const r of roads) { ctx.lineWidth = r.w + 4; ctx.stroke(roadPath(r)); }
+  // EL CAÑO: the open gutter between the kerb and the asphalt, which in
+  // Puntarenas is a real, visible channel running the length of every calle —
+  // it is how the town drains in the aguaceros. Drawn as the outer strip of the
+  // acera in a darker concrete, with BUTT caps (inherited above) so it stops at
+  // the esquina exactly like the real one does at the tragante, instead of
+  // sweeping a dark arc across the junction mouth.
+  ctx.strokeStyle = CANO_GREY;
+  for (const r of roads) {
+    if (r.bridge || r.cls === "bridge" || r.barro) continue;
+    ctx.lineWidth = r.w + 2 * CANO_PX; ctx.stroke(roadPath(r));
+  }
   // asphalt / barro / paseo surface + SAME-COLOR joint discs at both piece
   // ends: they invisibly weld chained pieces (keeps the León Cortés →
   // Turistas curve smooth) and unify junction mouths, without the visible
@@ -478,14 +499,31 @@ function drawSign(s) {
       ctx.restore();
       break;
     }
-    case "bus": {                                      // parada: a small shelter
-      ctx.fillStyle = "rgba(0,0,0,0.22)";
-      ctx.fillRect(x - 4, y - 1, 9, 4);
-      ctx.fillStyle = "#3f6f8a";
-      ctx.fillRect(x - 5, y - 5, 10, 3.2);              // roof
-      ctx.strokeStyle = SIGN_POST; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x - 4.4, y - 2); ctx.lineTo(x - 4.4, y + 2.6);
-      ctx.moveTo(x + 4.4, y - 2); ctx.lineTo(x + 4.4, y + 2.6); ctx.stroke();
+    case "bus": {
+      // LA PARADA. The build seats it on the acera beside its street and turns
+      // it along the kerb (`seat_bus_stops`), so the caseta is drawn in the
+      // STREET's frame: roof over the sidewalk, bench against the back wall,
+      // and the sign out at the kerb where the driver can see it. A shelter
+      // drawn square to the screen on a diagonal avenida reads as a mistake,
+      // the same way an axis-aligned pitch does on a slanted cuadra.
+      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
+      const side = s.side || 1;                         // which way the street is
+      ctx.fillStyle = "rgba(0,0,0,0.20)";
+      ctx.fillRect(-7, -4 * side, 14, 8);
+      ctx.fillStyle = "#cfc7b4";                        // the concrete slab
+      ctx.fillRect(-7, -4.5 * side - (side > 0 ? 0 : 4.5), 14, 4.5);
+      ctx.fillStyle = "#3f6f8a";                        // zinc roof
+      ctx.fillRect(-7.5, -5.6 * side - (side > 0 ? 0 : 2.4), 15, 2.4);
+      ctx.strokeStyle = SIGN_POST; ctx.lineWidth = 0.9; // the two posts
+      ctx.beginPath();
+      ctx.moveTo(-6.6, -5 * side); ctx.lineTo(-6.6, -0.4 * side);
+      ctx.moveTo(6.6, -5 * side); ctx.lineTo(6.6, -0.4 * side);
+      ctx.stroke();
+      ctx.fillStyle = "#8a6a4a";                        // banca
+      ctx.fillRect(-5.4, -4.2 * side - (side > 0 ? 0 : 1.4), 10.8, 1.4);
+      ctx.fillStyle = "#d8452f";                        // the route sign at the kerb
+      ctx.fillRect(6.2, -1.4, 2.6, 2.8);
+      ctx.restore();
       break;
     }
     default: break;                                    // unknown kind: draw nothing

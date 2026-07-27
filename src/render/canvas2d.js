@@ -9,7 +9,6 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import {
   state, traffic, pedestrians, gulls, boats, parked, vendors, animals, trains,
-  matches,
 } from "../game/state.js";
 import { content } from "../content/remote.js";
 import {

@@ -441,8 +441,14 @@ the game's contents without reading the code. Refresh after world/module changes
 - After a world rebuild, refresh BOTH derived artifacts: `pnpm inventory` and
   `python3 tools/gen_lotes.py`. The lote catalog went stale for a week once —
   it listed sponsorable footprints that no longer existed.
-- Verify game changes by actually running the app (`pnpm dev` + browser), not
-  just building — the render loop and physics have no unit tests.
+- Verify game changes by actually running the app, not just building. The
+  render loop is one try-less call chain, so ONE ReferenceError in it kills the
+  frame and everything after the throw silently vanishes — car, HUD, debug
+  overlay — while the last painted frame stays on screen. It reads as a freeze
+  and `pnpm build` cannot see it (Rollup only WARNS about an import of a deleted
+  export). `node tools/smoke.mjs http://localhost:8799/` against a
+  `vite preview` boots the game, drives it and fails on any page error; it has
+  caught this exact class of bug three times.
 - Changelogs live in `docs/changelog/`, one file per release date, named
   `YYYY-MM-DD.md` (nothing else) — Spanish, ready-to-post copy up top and a
   `## 🧾 Changelog` section below it.

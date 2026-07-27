@@ -54,6 +54,27 @@ function drawPed(pe) {
   }
   ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
 }
+// Somebody at a parada. The whole point of the type is the WAITING: standing
+// still with a bag, looking down the street the bus comes from, which is what
+// tells you at a glance that the caseta is in use. Once they are moving — to
+// the door, or off it and down the acera — they are drawn as the walker they
+// are about to become, so the handover to `advancePed` has no visible seam.
+// This branch is TEMPORARY per person: `joinTheSidewalk` drops the kind.
+function drawPassenger(pe) {
+  const waiting = pe.phase === "wait";
+  const bob = waiting ? Math.sin(pe.ph) * 0.5 : Math.sin(pe.ph) * 1.4;
+  const y = pe.y + bob;
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = `hsl(${pe.hue} 70% 60%)`;
+  ctx.fillRect(pe.x - 2, y - 3, 4, 6);
+  if (waiting) {                                   // the bolso, held at the hip
+    ctx.fillStyle = "#7a5c3a";
+    ctx.fillRect(pe.x + 2, y + 0.6, 2.2, 2.6);
+  }
+  ctx.fillStyle = "#f1c8a4";
+  ctx.beginPath(); ctx.arc(pe.x, y - 5, 2.2, 0, Math.PI * 2); ctx.fill();
+}
 // A swimmer: a head just above the water with a ripple wake + stroking arms.
 function drawSwimmer(pe) {
   const t = pe.ph;

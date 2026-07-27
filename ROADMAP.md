@@ -46,6 +46,49 @@ Publicación: [La ciudad de verdad](docs/changelog/2026-07-27-parcelas.md).
 - [x] Los que no entran quedan en el log con la razón y los números, uno por
       línea. Un lote de mentira en media calle es peor que no tenerlo.
 
+**Las parcelas, trazadas como pedazos de cuadra**
+- [x] Una parcela de OSM es ahora un **RECTÁNGULO en el marco de su manzana**,
+      como las partes del bloque de la Catedral. El trazado del contorno daba
+      manchones: 257 de 377 con más de 8 vértices, 109 con menos del 60 % de
+      relleno. Las **380 son de 4 vértices**, y el manifest baja a 574 KB.
+- [x] El rectángulo se ajusta por **percentil**, no por mín/máx: un brazo
+      delgado del contorno del mapeador estiraba el lote entero sobre la calle,
+      y un encogido iterativo se comía un campus de 883 celdas hasta 12x10 px.
+- [x] **Las aceras volvieron**: 42 parcelas no tenían ninguna. El criterio ya no
+      es cuánta ÁREA sobrevive a la erosión —un rectángulo erosionado por sus
+      cuatro lados pierde legítimamente la mayor parte de un lote chico— sino si
+      lo que queda sigue siendo un lote. Las degradadas pasaron de 169 a 90.
+- [x] `hw`/`hh` (medias extensiones sobre `ang`) viajan en cada parcela y en los
+      dos estadios: todo lo que se dibuja encima se medía del bbox alineado a la
+      pantalla, que en una parcela girada es más grande que la parcela.
+
+**Se fueron los rectángulos blancos vacíos**
+- [x] `drawSchool` trazaba un `strokeRect` blanco como "patio" en las 85
+      escuelas. Un patio es suelo, no un contorno.
+- [x] `paintField` pintaba marcas de fútbol en las 79 canchas — **27 miden menos
+      de 60 px de lado corto y 21 son de basket**. Ahora hay **dibujo por
+      deporte** (`sport` desde OSM) y **nivel de detalle**: el basket con su
+      llave, círculo y aros sobre concreto; el fútbol con lo suyo; y la cancha
+      muy chica con gramado y kerb, sin marcas que no caben.
+
+**Partido en la cancha, y el gol paga**
+- [x] **Jugadores en vez de hinchada** en toda cancha con deporte y espacio, los
+      dos estadios incluidos: dos equipos con portero, una bola que se dribla,
+      se tira a la esquina y rebota en las bandas.
+- [x] La **lluvia de monedas sale del gol**, no de un reloj. Se mantiene todo lo
+      que la hacía premio y no salario (tope repartido, desvanecido, guardia de
+      footprint, enfriamiento).
+- [x] **El carro juega**: empuja la bola con la fuerza de su velocidad y los
+      jugadores se apartan. Se puede anotar manejando.
+- [x] **Cada cuánto se anota es una perilla**, no una propiedad emergente: una
+      cancha mide 60 px y el Lito Pérez 210, y con los mismos números una
+      anotaba cada 6 s y otra nunca. El portero ataja todo hasta que se cumple
+      el reloj; el siguiente ataque entra.
+- [x] `src/game/match.js` no importa nada (como `vehicles.js`), así que
+      `tools/match_check.mjs` lo corre **bajo Node contra las canchas reales**:
+      la bola nunca sale del gramado, las 58 jugables anotan cada 26–60 s y el
+      carro puede anotar. Es la prueba que si no habría que hacer a ojo.
+
 **Iglesias y escuelas dibujadas como lo que son**
 - [x] Una vía de `place_of_worship` **es** el edificio: su footprint se quita
       (como `clear_buildings` en la manzana civil) y la parcela dibuja la

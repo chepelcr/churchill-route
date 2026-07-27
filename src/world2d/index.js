@@ -56,11 +56,15 @@ export const WORLD2D = (function () {
   // Open fields = stadium pitches AND plaza parcels, normalised to one shape
   // {x0,y0,x1,y1,cx,cy,footprint}. The crowd and the coin rain read THIS, so a
   // new plaza gets both for free instead of needing to be a "stadium".
+  // `ang`/`hw`/`hh`/`sport` ride along: the match sim places the goals off the
+  // field's own frame, and the renderer draws the markings in it — neither
+  // should be re-deriving a frame from a raster-traced polygon.
   const FIELDS = [
     ...STADIUMS,
     ...PARCELS.filter((p) => (p.use === "plaza" || p.use === "stadium") && !p.whole).map((p) => ({
       x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1,
       cx: (p.x0 + p.x1) / 2, cy: (p.y0 + p.y1) / 2,
+      ang: p.ang || 0, hw: p.hw, hh: p.hh, sport: p.sport,
       footprint: p.poly, outline: p.poly,      // plazas have no acera ring
     })),
   ];

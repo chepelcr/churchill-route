@@ -3,7 +3,7 @@
 import { paintPalm, paintTree } from "./flora.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { content } from "../../content/remote.js";
-import { areaLabel, ctx, hash01, label, lastT, polyBBox, roundRect } from "./gfx.js";
+import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -235,7 +235,7 @@ function drawParcels(view) {
   if (!arr || !arr.length) return;
   for (const P of arr) {
     if (P.x1 + 60 < view.x0 || P.x0 - 60 > view.x1 || P.y1 + 60 < view.y0 || P.y0 - 60 > view.y1) continue;
-    if (P.use === "church") drawChurch(P.cx, P.cy, Math.min(1, (P.x1 - P.x0) / 44), P.ang);
+    if (P.use === "church") { const F = parcelFrame(P); drawChurch(F.cx, F.cy, Math.min(1, F.hw / 22), F.ang); }
     if (P.use === "cathedral") drawCathedral(P);
     if (P.use === "civic") drawCivicBuilding(P);
     if (P.use === "school" || P.use === "kinder" || P.use === "campus") drawSchool(P);
@@ -244,6 +244,7 @@ function drawParcels(view) {
     // which parcel has a river / a statue / a paradita and roughly where; what
     // each looks like is here.
     if (P.river) drawParkRiver(P);
+    if (P.kiosco) drawKiosco(P);
     if (P.statue) drawStatue(P);
     if (P.bus) drawBusStop(P);
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
@@ -280,9 +281,10 @@ function drawSponsorSlot(P, lote) {
 // (P.ang, the manzana's angle) and inset from its edge, so on a slanted cuadra
 // no canopy drifts off the corner that the bbox overshoots.
 function drawGarden(P) {
-  const ca = Math.cos(P.ang || 0), sa = Math.sin(P.ang || 0);
-  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
-  const w = P.x1 - P.x0, h = P.y1 - P.y0;
+  const F = parcelFrame(P);
+  const ca = Math.cos(F.ang), sa = Math.sin(F.ang);
+  const cx = F.cx, cy = F.cy;
+  const w = F.hw * 2, h = F.hh * 2;
   const n = Math.max(3, Math.round((w + h) / 26));
   for (let i = 0; i < n; i++) {
     const u = (hash01(i * 3.7 + P.x0) - 0.5) * w * 0.7;      // along the avenidas
@@ -322,8 +324,9 @@ const STONE_WALL = "#a9a49b";
 const STONE_DARK = "#8b867d";
 const STONE_LITE = "#c2bcb1";
 function drawCathedral(P) {
-  const hw = ((P.x1 - P.x0) / 2) * 0.86, hh = ((P.y1 - P.y0) / 2) * 0.86;
-  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  const F = parcelFrame(P);
+  const hw = F.hw * 0.86, hh = F.hh * 0.86;
+  const cx = F.cx, cy = F.cy;
   ctx.save();
   ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
   // +u is EAST (the facade, onto the bulevar), +v is SOUTH
@@ -372,8 +375,9 @@ function drawCathedral(P) {
 // front on the calle peatonal, inset from the parcel edge so the acera band
 // still shows around it.
 function drawCivicBuilding(P) {
-  const hw = ((P.x1 - P.x0) / 2) * 0.86, hh = ((P.y1 - P.y0) / 2) * 0.86;
-  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  const F = parcelFrame(P);
+  const hw = F.hw * 0.86, hh = F.hh * 0.86;
+  const cx = F.cx, cy = F.cy;
   ctx.save();
   ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
   const w = hw * 2 - 8, h = hh * 2 - 8;
@@ -405,21 +409,31 @@ function drawCivicBuilding(P) {
 const SCHOOL_WALL = { school: "#f0e4c4", kinder: "#f6dcc0", campus: "#e6e0cb" };
 const SCHOOL_ROOF = { school: "#7f93a6", kinder: "#c98a6a", campus: "#6f8496" };
 function drawSchool(P) {
-  const w = (P.x1 - P.x0), h = (P.y1 - P.y0);
-  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  const F = parcelFrame(P);
   const wall = SCHOOL_WALL[P.use] || SCHOOL_WALL.school;
   const roof = SCHOOL_ROOF[P.use] || SCHOOL_ROOF.school;
   // pavilions run along the parcel's LONG axis, so a narrow lot gets a narrow
   // block rather than one that spills over its own kerb
-  const along = w >= h;
-  const L = (along ? w : h) * 0.82, D = (along ? h : w) * 0.34;
+  const along = F.hw >= F.hh;
+  const L = (along ? F.hw : F.hh) * 1.64, D = (along ? F.hh : F.hw) * 0.62;
   const n = P.use === "campus" ? Math.max(2, Math.min(4, Math.round(L / 46))) : 1;
   ctx.save();
-  ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
+  ctx.translate(F.cx, F.cy); if (F.ang) ctx.rotate(F.ang);
   if (!along) ctx.rotate(Math.PI / 2);               // work in "along x" space
-  // patio markings: a faint court on the open half, so the yard reads as a yard
-  ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 1;
-  ctx.strokeRect(-L * 0.32, D * 0.35, L * 0.64, Math.max(4, D * 0.9));
+  // THE PATIO IS GROUND, NOT AN OUTLINE. This used to stroke an empty white
+  // rectangle over every school on the map — 85 of them — which is exactly the
+  // stray white box the map was showing. A yard is swept concrete with a court
+  // painted on it, and only when there is room for one.
+  const py0 = -D * 0.10, ph = D * 0.95;
+  ctx.fillStyle = "rgba(214,206,180,0.55)";
+  ctx.fillRect(-L * 0.42, py0, L * 0.84, ph);        // the swept patio
+  if (L > 70 && ph > 22) {                           // a marked court fits
+    ctx.strokeStyle = "rgba(240,238,230,0.55)"; ctx.lineWidth = 1;
+    const cw = L * 0.52, ch = ph * 0.62, cy0 = py0 + (ph - ch) / 2;
+    ctx.strokeRect(-cw / 2, cy0, cw, ch);
+    ctx.beginPath(); ctx.moveTo(0, cy0); ctx.lineTo(0, cy0 + ch); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, cy0 + ch / 2, Math.min(cw, ch) * 0.2, 0, Math.PI * 2); ctx.stroke();
+  }
   const bw = (L - (n - 1) * 6) / n;
   for (let i = 0; i < n; i++) {
     const x = -L / 2 + i * (bw + 6);
@@ -438,18 +452,52 @@ function drawSchool(P) {
   }
   // the flagpole, at the yard's edge
   ctx.strokeStyle = "rgba(240,238,230,0.85)"; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(L * 0.42, D * 0.2); ctx.lineTo(L * 0.42, -D * 0.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(L * 0.44, D * 0.2); ctx.lineTo(L * 0.44, -D * 0.5); ctx.stroke();
   ctx.fillStyle = "#e85d75";
-  ctx.fillRect(L * 0.42, -D * 0.5, Math.max(3, L * 0.05), 2.6);
+  ctx.fillRect(L * 0.44, -D * 0.5, Math.max(3, L * 0.05), 2.6);
   ctx.restore();
+}
+
+// The old round KIOSCO of a parque central: stepped base, a ring of columns,
+// a conical zinc roof and a finial. Declared by the world (content.SITE_DECOR)
+// on the parcels that have one — OSM records the park, not what stands in it.
+function drawKiosco(P) {
+  const F = parcelFrame(P);
+  const r = Math.max(7, Math.min(15, Math.min(F.hw, F.hh) * 0.42));
+  const x = F.cx, y = F.cy;
+  ctx.fillStyle = "rgba(0,0,0,0.20)";                                   // shadow
+  ctx.beginPath(); ctx.ellipse(x + 2, y + r * 0.5, r * 1.12, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#cfc7b4";                                            // stepped base
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.3, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#e7ddc8";
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.16, r * 0.9, r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#b9b2a0"; ctx.lineWidth = 1.4;                     // columns
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const cxp = x + Math.cos(a) * r * 0.78, cyp = y + Math.sin(a) * r * 0.34;
+    ctx.beginPath(); ctx.moveTo(cxp, cyp); ctx.lineTo(cxp, cyp - r * 0.62); ctx.stroke();
+  }
+  ctx.fillStyle = "#7f6a52";                                            // conical roof
+  ctx.beginPath();
+  ctx.moveTo(x, y - r * 1.35);
+  ctx.lineTo(x + r * 1.05, y - r * 0.5);
+  ctx.lineTo(x - r * 1.05, y - r * 0.5);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.18)";                             // lit side
+  ctx.beginPath();
+  ctx.moveTo(x, y - r * 1.35); ctx.lineTo(x + r * 1.05, y - r * 0.5); ctx.lineTo(x, y - r * 0.5);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#5d5040"; ctx.lineWidth = 1;                       // finial
+  ctx.beginPath(); ctx.moveTo(x, y - r * 1.35); ctx.lineTo(x, y - r * 1.7); ctx.stroke();
 }
 
 // A stream crossing a park, with a stone footbridge over its middle. Drawn in
 // the parcel's frame: the water runs across the SHORT axis so a wide, shallow
 // park still reads as "a park with a river through it".
 function drawParkRiver(P) {
-  const hw = ((P.x1 - P.x0) / 2) * 0.86, hh = ((P.y1 - P.y0) / 2) * 0.86;
-  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  const F = parcelFrame(P);
+  const hw = F.hw * 0.86, hh = F.hh * 0.86;
+  const cx = F.cx, cy = F.cy;
   ctx.save();
   ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
   ctx.lineCap = "round";

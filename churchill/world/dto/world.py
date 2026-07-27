@@ -138,6 +138,12 @@ class Parcel(WorldModel):
     y1: int
     slot: Rect
     ang: float = Field(default=0.0, description="manzana angle in radians")
+    # Half-extents in the parcel's OWN frame. Everything drawn on a parcel used
+    # to size itself off the axis-aligned bbox, which on a turned parcel is
+    # bigger than the parcel — so the art spilled over its own kerb.
+    hw: float | None = Field(default=None, description="half-width along ang")
+    hh: float | None = Field(default=None, description="half-height along ang")
+    sport: str | None = Field(default=None, description="a cancha's sport, from OSM")
     whole: bool | None = Field(default=None, description="a whole cuadra; ground already painted")
     built: bool | None = Field(default=None, description="the footprint IS a building")
     # Civic furniture the renderer draws ON the parcel. The world only says
@@ -145,6 +151,7 @@ class Parcel(WorldModel):
     # like belongs to src/render/c2d/landmarks.js.
     river: bool | None = Field(default=None, description="a stream + footbridge crosses this park")
     statue: str | None = Field(default=None, description="statue kind, e.g. 'virgen'")
+    kiosco: bool | None = Field(default=None, description="the old round bandstand of a parque central")
     bus: Rect | None = Field(default=None, description="[x, y, w, h] bus stop on the acera outside this parcel")
     lm: str | None = Field(default=None, description="landmark id this parcel IS; the landmark pass draws only its pill")
 
@@ -177,6 +184,12 @@ class Stadium(WorldModel):
     cy: int
     footprint: FlatPoly = Field(description="the drawn pitch")
     outline: FlatPoly = Field(description="the whole drivable cuadra")
+    # The pitch's own frame. The match sim places the goals off it, and the
+    # renderer draws the markings in it instead of fitting the traced polygon.
+    ang: float = Field(default=0.0, description="pitch angle in radians")
+    hw: float | None = Field(default=None, description="half-width along ang")
+    hh: float | None = Field(default=None, description="half-height along ang")
+    sport: str | None = Field(default=None, description="drives the markings + the match")
 
 
 class Green(WorldModel):

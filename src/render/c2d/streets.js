@@ -4,7 +4,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { t } from "../../i18n/index.js";
 import { dashPath, roadPath } from "./cache.js";
-import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, label } from "./gfx.js";
+import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, label, parcelFrame } from "./gfx.js";
 
 // Estadios are NOT a structure drawn over the ground — they are a COLOUR
 // CHOICE inside the acera pass. The build traces each one from the real cuadra
@@ -16,38 +16,18 @@ import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, label } from "./gfx.js";
 // the asphalt pass repaints anything that reached the roadway, and (b) street
 // name pills, buildings and flora still land on top, instead of being buried
 // the way they were when the stadium was a later layer.
-// Centre, tilt and half-extents of a field. The TILT comes from the world when
-// it knows it (`ang`, the angle of the avenidas bounding the manzana — parcels
-// carry it); only the whole-cuadra estadios, which have no `ang`, fall back to
-// the principal axis of their own polygon. That fallback is not safe in general:
-// these polygons are RASTER-TRACED, so their vertices are 4 px staircase steps,
-// and fitting a square-ish one lands on the CONTRARY diagonal to the block
-// (Plaza El Carmen fits to -67°, its cuadra actually sits at -4.5°).
-function fieldFrame(S, ang) {
+// Centre, tilt and half-extents of a field, all of them now from the WORLD:
+// every parcel and both estadios emit `ang`, `hw` and `hh`. The principal-axis
+// fallback this used to carry is gone — these polygons are RASTER-TRACED, so
+// their vertices are 4 px staircase steps, and fitting a square-ish one lands
+// on the CONTRARY diagonal to the block (Plaza El Carmen fitted to -67°, its
+// cuadra actually sits at -4.5°). See `parcelFrame`.
+function fieldFrame(S) {
   if (S._frame) return S._frame;
-  const f = S.footprint || S.poly;
-  let mx = 0, my = 0, n = 0;
-  for (let i = 0; i < f.length; i += 2) { mx += f[i]; my += f[i + 1]; n++; }
-  mx /= n; my /= n;
-  let a = ang;
-  if (!Number.isFinite(a)) {
-    let sxx = 0, syy = 0, sxy = 0;
-    for (let i = 0; i < f.length; i += 2) {
-      const dx = f[i] - mx, dy = f[i + 1] - my;
-      sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
-    }
-    a = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-  }
-  const ca = Math.cos(a), sa = Math.sin(a);
-  let hw = 0, hh = 0;
-  for (let i = 0; i < f.length; i += 2) {
-    const dx = f[i] - mx, dy = f[i + 1] - my;
-    hw = Math.max(hw, Math.abs(dx * ca + dy * sa));
-    hh = Math.max(hh, Math.abs(-dx * sa + dy * ca));
-  }
+  let { cx, cy, ang, hw, hh } = parcelFrame(S);
   // long axis = the pitch's length; a quarter turn keeps the block's angle
-  if (hh > hw) { a += Math.PI / 2; const t = hw; hw = hh; hh = t; }
-  return (S._frame = { cx: mx, cy: my, ang: a, hw, hh });
+  if (hh > hw) { ang += Math.PI / 2; const t = hw; hw = hh; hh = t; }
+  return (S._frame = { cx, cy, ang, hw, hh });
 }
 
 const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one white
@@ -57,14 +37,29 @@ const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one wh
 // axis-aligned stripes with a square white box on a tilted field read as a
 // mistake. Shared by the whole-cuadra estadios and by plaza/stadium parcels, so
 // a plaza gets exactly the estadio's field.
-function paintField(path, F) {
+function paintField(path, F, sport) {
   ctx.save();
   ctx.clip(path);
-  ctx.fillStyle = "#4f9d5b"; ctx.fill(path);               // grass
+  const court = sport === "basketball" || sport === "skateboard";
+  // A basketball court is CONCRETE, not grass. Painting 21 of them green with
+  // a halfway line and a centre circle is what made them read as stray white
+  // rectangles on the map.
+  ctx.fillStyle = court ? "#9a9c93" : "#4f9d5b"; ctx.fill(path);
   ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
   const hw = F.hw, hh = F.hh;
+  if (court) { paintCourt(hw, hh); ctx.restore();
+    ctx.strokeStyle = "rgba(240,238,230,0.5)"; ctx.lineWidth = 2; ctx.stroke(path); return; }
   ctx.fillStyle = "rgba(30,88,50,0.16)";                   // mow stripes, along the pitch
   for (let sy = -hh; sy < hh; sy += 14) ctx.fillRect(-hw, sy, hw * 2, 7);
+  // LEVEL OF DETAIL. 27 of the map's canchas are under 60 px on their short
+  // side; a halfway line and a centre circle on a 16x28 px pitch is not a
+  // football pitch, it is two white marks and an outline. Below the threshold
+  // the grass and the kerb say everything.
+  if (Math.min(hw, hh) < 22) {
+    ctx.restore();
+    ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.stroke(path);
+    return;
+  }
   // THE TOUCHLINE IS THE CUADRA'S OWN EDGE — there is no second boundary. A
   // strokeRect off the frame's extents drew a rectangle INSIDE the traced
   // outline: two white boundaries on every field, and the inner one the wrong
@@ -98,6 +93,29 @@ function paintField(path, F) {
   ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.stroke(path);   // touchline = kerb = the cuadra
 }
 
+// A cancha multiuso: the key at each end, the centre circle and the two hoops,
+// drawn in the court's own frame (already translated/rotated by the caller).
+// Same level-of-detail rule as the pitch — a court too small for its markings
+// gets the plain slab.
+function paintCourt(hw, hh) {
+  if (Math.min(hw, hh) < 14) return;
+  ctx.strokeStyle = "rgba(240,238,230,0.72)"; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(0, hh); ctx.stroke();   // halfway
+  ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
+  const kw = Math.min(hw * 0.30, hh * 0.85), kh = Math.min(hh * 0.52, hw * 0.5);
+  for (const sd of [-1, 1]) {
+    const x0 = sd < 0 ? -hw + 2 : hw - 2 - kw;
+    ctx.strokeRect(x0, -kh, kw, kh * 2);                                  // the key
+    ctx.beginPath(); ctx.arc(sd < 0 ? x0 + kw : x0, 0, kh * 0.55, 0, Math.PI * 2); ctx.stroke();
+    // the hoop: backboard on the end line with the ring in front of it
+    ctx.fillStyle = "rgba(240,238,230,0.9)";
+    ctx.fillRect(sd < 0 ? -hw + 1 : hw - 3, -3.2, 2, 6.4);
+    ctx.strokeStyle = "#e07a42"; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(sd * (hw - 5), 0, 2.4, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "rgba(240,238,230,0.72)"; ctx.lineWidth = 1.6;
+  }
+}
+
 function paintStadiumCuadras(view) {
   const arr = W.STADIUMS;
   if (!arr || !arr.length) return;
@@ -109,7 +127,7 @@ function paintStadiumCuadras(view) {
     // increments, so its edge and the acera band don't meet exactly and a hair
     // of bare ground shows through at the seam.
     ctx.strokeStyle = "#4f9d5b"; ctx.lineWidth = 8; ctx.lineJoin = "round"; ctx.stroke(pitch);
-    paintField(pitch, fieldFrame(S, S.ang));
+    paintField(pitch, fieldFrame(S), S.sport);
   }
 }
 
@@ -141,7 +159,7 @@ function paintParcels(view) {
     // An open field gets the estadio's own painter, in the MANZANA's frame
     // (P.ang) — the markings used to be strokeRect'd off the bbox, which put a
     // square pitch on a slanted block.
-    if (P.use === "plaza" || P.use === "stadium") { paintField(path, fieldFrame(P, P.ang)); continue; }
+    if (P.use === "plaza" || P.use === "stadium") { paintField(path, fieldFrame(P), P.sport); continue; }
     if (P.use === "boulevard") { paintStone(path, P); continue; }
     ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }
@@ -156,9 +174,9 @@ const STONE = 11;                                  // px per paving stone course
 function paintStone(path, P) {
   ctx.save();
   ctx.clip(path);
-  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
-  const R = Math.hypot(P.x1 - P.x0, P.y1 - P.y0) / 2 + STONE * 2;
-  ctx.translate(cx, cy); ctx.rotate(P.ang || 0);
+  const F = parcelFrame(P);
+  const R = Math.hypot(F.hw, F.hh) + STONE * 2;
+  ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
   ctx.strokeStyle = "rgba(120,116,106,0.38)"; ctx.lineWidth = 1;
   ctx.beginPath();
   for (let v = -R; v <= R; v += STONE) {           // courses along the avenidas

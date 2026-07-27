@@ -369,8 +369,13 @@ def extract_sites(sp, ways, canvas_w, canvas_h):
         if len(pts) < 3 or abs(poly_area(pts)) < MIN_SITE_AREA_PX2:
             dropped_small += 1
             continue
+        # `sport` decides how a cancha is DRAWN — a basketball court is not a
+        # small football pitch, and 21 of them were being painted with a halfway
+        # line and a centre circle. Normalised to the two the renderer knows.
+        sport = (w["tags"].get("sport") or "").split(";")[0].split(",")[0].strip()
         out.append({"id": int(w["id"]), "kind": kind,
                     "name": w["tags"].get("name"), "pts": pts,
+                    "sport": sport or None,
                     "cathedral": w["tags"].get("building") == "cathedral"})
     out.sort(key=lambda s: s["id"])
     by_kind = defaultdict(int)

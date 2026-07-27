@@ -187,6 +187,19 @@ STAGES = [
      "customers": ["c17", "c18"], "unlock": "caldera"},
 ]
 
+# Civic furniture on the parcels the MAP produces. `place_osm_sites` derives one
+# parcel per OSM ground site, and OSM records the site but not what stands in it:
+# there is no node for the old round kiosco in the middle of Parque Victoria, the
+# way every parque central in the country has one. So it is declared here by
+# parcel id — the same thing the civic block does inline with `river`, `statue`
+# and `bus`, for a block whose parts are not hand-written.
+#
+# The id is `osm_<kind>_<osm way id>`, which is stable across rebuilds because
+# the OSM id is.
+SITE_DECOR = {
+    "osm_park_232389752": {"kiosco": True},      # Parque Victoria
+}
+
 BLDG_PALETTE = ["#f3c969", "#e85d75", "#6fbf99", "#5fb0d6", "#f08a5d",
                 "#c084d6", "#f4d77a", "#7ed6b5", "#e7a3b7", "#9bc4d4",
                 "#fff2cc", "#ffd8b1"]

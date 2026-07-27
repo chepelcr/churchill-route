@@ -131,6 +131,42 @@ function areaLabel(x0, y0, x1, y1, text, fg, bg) {
   ctx.restore();
 }
 
+// A parcel's or a field's OWN frame: {cx, cy, ang, hw, hh}.
+//
+// The world emits `hw`/`hh` — the real half-extents along `ang` — for every
+// parcel it lays out as a rectangle, and for the two estadios. Use them.
+// Deriving the size from the AXIS-ALIGNED bbox (P.x1 - P.x0) is wrong on any
+// turned parcel: the bbox of a rotated rectangle is bigger than the rectangle,
+// so the church, the schoolyard and the sponsor plate all came out oversized
+// and spilled over their own kerb.
+//
+// The fallback is for shapes with no emitted frame — the hand-authored cuadras,
+// whose polygons are raster-traced. It fits the polygon's extent along `ang`,
+// which is honest; what it must never do is fit the ANGLE from those vertices
+// (4 px staircase steps: a square-ish parcel lands on the contrary diagonal).
+function parcelFrame(P) {
+  if (P._pframe) return P._pframe;
+  const ang = P.ang || 0;
+  const cx = P.cx !== undefined ? P.cx : (P.x0 + P.x1) / 2;
+  const cy = P.cy !== undefined ? P.cy : (P.y0 + P.y1) / 2;
+  let hw = P.hw, hh = P.hh;
+  if (hw === undefined || hw === null) {
+    const f = P.footprint || P.poly;
+    hw = 0; hh = 0;
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    if (f) {
+      for (let i = 0; i < f.length; i += 2) {
+        const dx = f[i] - cx, dy = f[i + 1] - cy;
+        hw = Math.max(hw, Math.abs(dx * ca + dy * sa));
+        hh = Math.max(hh, Math.abs(-dx * sa + dy * ca));
+      }
+    } else {
+      hw = (P.x1 - P.x0) / 2; hh = (P.y1 - P.y0) / 2;
+    }
+  }
+  return (P._pframe = { cx, cy, ang, hw, hh });
+}
+
 // Deterministic 0..1 hash for scene scatter (no Math.random in draw paths)
 function hash01(n) {
   const v = Math.sin(n) * 43758.5453;
@@ -139,6 +175,6 @@ function hash01(n) {
 
 export {
   ACERA_PX, CUAD, CUADS_PER_VIEW, aabbInView, areaLabel, canvas, computeZoom,
-  ctx, dpr, flatAABB, flatPath, hash01, label, lastT, polyBBox, roundRect,
-  setLastT, setupCanvas, weatherColors, ZOOM,
+  ctx, dpr, flatAABB, flatPath, hash01, label, lastT, parcelFrame, polyBBox,
+  roundRect, setLastT, setupCanvas, weatherColors, ZOOM,
 };

@@ -2,7 +2,8 @@
 // (cuadras, buildings, barriers, traffic, pedestrians), delivery proximity,
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
-import { state, traffic, pedestrians, gulls, boats, trains, pushFloat } from "./state.js";
+import { state, traffic, pedestrians, gulls, boats, trains, matches, pushFloat } from "./state.js";
+import { advanceMatch, carHitsMatch } from "./match.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
@@ -532,6 +533,32 @@ function inFootprint(x, y, S) {
   }
   return inside;
 }
+// SOMEBODY SCORED. One silver coin per player, thrown from where they stand —
+// which is the whole reason to park on a cancha and watch. Everything that
+// makes this a treat rather than an income stream is unchanged from when the
+// burst was on a timer: the value cap split across the throwers, the fade, the
+// footprint guard, and a cooldown so a flurry of goals cannot farm it.
+function rainOnGoal(m) {
+  if (!state.arcadeCoins) state.arcadeCoins = [];
+  const arr = state.arcadeCoins, p = state.p;
+  if (state.rainWait > 0) return;
+  const val = Math.max(COINS_PER_PICKUP,
+                       Math.round(ACOIN_RAIN_VALUE / Math.max(1, m.players.length)));
+  let made = 0;
+  for (const pl of m.players) {
+    const a = Math.random() * Math.PI * 2, r = Math.random() * ACOIN_RAIN_SPREAD;
+    const x = pl.x + Math.cos(a) * r, y = pl.y + Math.sin(a) * r;
+    // inside the POLYGON, not just its bbox — a diagonal plaza leaves the bbox
+    // corners out on the surrounding streets, and those are drivable too, so a
+    // surface test alone let the rain fall outside the field
+    if (m.field.footprint && !inFootprint(x, y, m.field)) continue;
+    if (Math.hypot(x - p.x, y - p.y) < 40) continue;
+    arr.push({ x, y, t: Math.random() * 6, rain: ACOIN_RAIN_TTL, v: val, silver: true });
+    made++;
+  }
+  if (made) state.rainWait = ACOIN_RAIN_TTL + ACOIN_RAIN_COOLDOWN;
+}
+
 function maintainArcadeCoins(dt) {
   if (!state.arcadeCoins) state.arcadeCoins = [];
   const arr = state.arcadeCoins, p = state.p, cam = state.cam;
@@ -552,30 +579,10 @@ function maintainArcadeCoins(dt) {
     }
     if (Math.hypot(c.x - cam.x, c.y - cam.y) > ACOIN_KEEP) arr.splice(i, 1);
   }
-  // one burst at a time, ONE COIN PER FAN on the pitch (the street spawner only
-  // ever drops coins on the ring road) — the reward for going in there to do
-  // donuts. The fans already wander the grass well inside the footprint, so
-  // throwing from them scatters the burst without a rejection loop.
+  // The burst is no longer on a clock — see `rainOnGoal`, called when somebody
+  // scores. What is left here is the timer that keeps a flurry of goals from
+  // printing money.
   state.rainWait = Math.max(0, (state.rainWait || 0) - dt);
-  const pitch = stadiumUnder(cam.x, cam.y);
-  if (pitch && !state.rainWait && !arr.some((c) => c.rain)) {
-    const fans = pedestrians.filter((pe) => pe.stadium === pitch);
-    const val = Math.max(COINS_PER_PICKUP,
-                         Math.round(ACOIN_RAIN_VALUE / Math.max(1, fans.length)));
-    let made = 0;
-    for (const fan of fans) {
-      const a = Math.random() * Math.PI * 2, r = Math.random() * ACOIN_RAIN_SPREAD;
-      const x = fan.x + Math.cos(a) * r, y = fan.y + Math.sin(a) * r;
-      // inside the POLYGON, not just its bbox — a diagonal plaza leaves the
-      // bbox corners out on the surrounding streets, and those are drivable
-      // too, so a surface test alone let the rain fall outside the field
-      if (!inFootprint(x, y, pitch)) continue;
-      if (Math.hypot(x - p.x, y - p.y) < 60) continue;
-      arr.push({ x, y, t: Math.random() * 6, rain: ACOIN_RAIN_TTL, v: val, silver: true });
-      made++;
-    }
-    if (made) state.rainWait = ACOIN_RAIN_TTL + ACOIN_RAIN_COOLDOWN;
-  }
   let guard = 0;
   while (arr.length < ACOIN_TARGET && guard++ < ACOIN_TARGET * 5) {
     const a = Math.random() * Math.PI * 2;
@@ -615,16 +622,37 @@ export function advanceEntities(dt, withPlayer = true) {
     }
   }
 
+  // The canchas: two teams and a ball. A goal pays in silver — that IS the coin
+  // rain now. The players move themselves, so they are skipped by the ped loop.
+  for (const m of matches) {
+    const goal = advanceMatch(m, dt);
+    if (!goal) continue;
+    rainOnGoal(m);
+    pushFloat(goal.x, goal.y - 14,
+              m.sport === "basketball" ? "¡CANASTA!" : "¡GOL!", "#f3c969");
+    if (withPlayer) sfx.play("coin");
+  }
+
   // Pedestrians — RAIL-BOUND to a road, walk the aceras + cross (main model);
   // a speeding player makes them bolt across the street
   for (const pe of pedestrians) {
-    if (pe.road) advancePed(pe, dt);
+    if (pe.match) { /* a player: the match moves it */ }
+    else if (pe.road) advancePed(pe, dt);
     else if (pe.field) advanceFieldPed(pe, dt);                                  // estadio/plaza crowd wandering the pitch
     else if (pe.swim) advanceSwimmer(pe, dt);                                    // balneario swimmers
     else { pe.ph += dt * 6; advanceOnSurface(pe, dt, pe.cls || PED_CLS, 0.03); } // free (surface) peds
     if (withPlayer && Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
       for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
       if (pe.road && !pe.crossing) { pe.crossing = true; pe.crossPhase = 0; } // bolt across
+    }
+  }
+  // …and the car plays too: it knocks the ball on (you can score with it, rain
+  // included) and the players near it break away instead of being driven through.
+  if (withPlayer) {
+    for (const m of matches) {
+      if (Math.abs(m.field.cx - p.x) > 900 || Math.abs(m.field.cy - p.y) > 900) continue;
+      carHitsMatch(m, p.x, p.y, p.vx || Math.cos(p.ang) * p.speed,
+                   p.vy || Math.sin(p.ang) * p.speed);
     }
   }
 

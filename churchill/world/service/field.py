@@ -30,9 +30,10 @@ from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD,
     FIELD_ACERA_CELLS, GRID_CELL, STREET_CLASSES,
 )
+from ..content import SITE_DECOR
 from ..enums import GreenType, ParcelUse
 from ..logging import log
-from ..util.geometry import dp_simplify, flat, pairs, point_in_poly, principal_axis
+from ..util.geometry import point_in_poly, principal_axis
 from ..util.raster import erode_cells
 from .block import cuadra_cells, outline_poly
 from .street import half_plane
@@ -72,6 +73,76 @@ def _largest_part(cells):
         if len(part) > len(best):
             best = part
     return best
+
+
+def fit_block_rect(cells, ang, cell_px, trim=0.02):
+    """The RECTANGLE `cells` occupy in the block's frame.
+
+    A parcel is a piece of a manzana, so its shape is a rectangle turned to the
+    manzana's angle — that is what the hand-authored cuadras are, and what a
+    raster trace of an OSM outline is not.
+
+    The extent is a PERCENTILE, not a min/max. The mapper's outline regularly
+    grows a thin arm — a driveway, a strip along the kerb, the bit of a park
+    that runs between two houses — and one such cell would stretch the whole
+    rectangle out over the street. Trimming `trim` off each end of each axis
+    keeps the rect on the body of the site and cannot collapse it, which an
+    iterative shrink very much can (it ate an 883-cell campus down to 12x10 px).
+
+    Returns (u0, u1, v0, v1, cu, cv) — frame extents in px about the centroid,
+    which is also in px — or None.
+    """
+    if not cells:
+        return None
+    ca, sa = math.cos(ang), math.sin(ang)
+    mx = sum(c for c, _ in cells) / len(cells)
+    my = sum(r for _, r in cells) / len(cells)
+    us = sorted((c - mx) * ca + (r - my) * sa for (c, r) in cells)
+    vs = sorted(-(c - mx) * sa + (r - my) * ca for (c, r) in cells)
+    k = int(len(us) * trim)
+    lo, hi = k, len(us) - 1 - k
+    if hi <= lo:
+        lo, hi = 0, len(us) - 1
+    # +0.5 cell each side: a cell's frame coord is its CENTRE, so the extent of
+    # the cells is half a cell short of the ground they actually cover.
+    return ((us[lo] - 0.5) * cell_px, (us[hi] + 0.5) * cell_px,
+            (vs[lo] - 0.5) * cell_px, (vs[hi] + 0.5) * cell_px,
+            mx * cell_px, my * cell_px)
+
+
+def _frame_extent(flat_poly, cx, cy, ang):
+    """(hw, hh) — half-extents of a flat polygon about (cx, cy), along `ang`."""
+    ca, sa = math.cos(ang), math.sin(ang)
+    hw = hh = 0.0
+    for i in range(0, len(flat_poly), 2):
+        dx, dy = flat_poly[i] - cx, flat_poly[i + 1] - cy
+        hw = max(hw, abs(dx * ca + dy * sa))
+        hh = max(hh, abs(-dx * sa + dy * ca))
+    return round(hw, 1), round(hh, 1)
+
+
+def rect_poly(rect, ang):
+    """The four corners of a frame rect as a flat world-px polygon."""
+    u0, u1, v0, v1, cu, cv = rect
+    ca, sa = math.cos(ang), math.sin(ang)
+    out = []
+    for u, v in ((u0, v0), (u1, v0), (u1, v1), (u0, v1)):
+        out += [round(cu + u * ca - v * sa), round(cv + u * sa + v * ca)]
+    return out
+
+
+def rect_cells(cells, rect, ang, cell_px):
+    """The subset of `cells` that falls inside a frame rect."""
+    u0, u1, v0, v1, cu, cv = rect
+    ca, sa = math.cos(ang), math.sin(ang)
+    keep = set()
+    for (c, r) in cells:
+        dx, dy = c * cell_px - cu, r * cell_px - cv
+        u = dx * ca + dy * sa
+        v = -dx * sa + dy * ca
+        if u0 <= u <= u1 and v0 <= v <= v1:
+            keep.add((c, r))
+    return keep
 
 
 def _bands(vals, weights):
@@ -204,9 +275,18 @@ class FieldService:
         lm["x"], lm["y"] = cxpx, cypx
         lm["footprint"] = footprint      # the pitch (grass + white markings)
         lm["outline"] = outline          # the whole drivable cuadra
+        # The pitch's own FRAME, not just its bbox. The match sim places the two
+        # goals off it, and it is the same thing the renderer's `fieldFrame` was
+        # re-deriving from the polygon every time — badly, since a raster-traced
+        # outline's principal axis lands on the contrary diagonal.
+        sang = self.streets.direction(spec["ave_north"], ref, "x") or \
+            self.streets.direction(spec["ave_south"], ref, "x")
+        sa = math.atan2(sang[1], sang[0]) if sang else 0.0
+        shw, shh = _frame_extent(footprint, cxpx, cypx, sa)
         self.stadiums.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                          "cx": cxpx, "cy": cypx, "footprint": footprint,
-                         "outline": outline})
+                         "outline": outline, "ang": round(sa, 4),
+                         "hw": shw, "hh": shh, "sport": "soccer"})
         # …and as a sponsorable space. A stadium is a WHOLE cuadra, not a part
         # of one, so `whole` tells the renderer its ground is already painted
         # (by paintStadiumCuadras) and only the slot art belongs to the parcel.
@@ -226,20 +306,16 @@ class FieldService:
               f"pitch ({bx0},{by0})-({bx1},{by1})px {len(footprint)//2}v, "
               f"{len(outer_cells)} cells drivable")
 
-    def _emit_parcel(self, spec_id, part, cells, keep_cells, ang=0.0):
-        poly = outline_poly(keep_cells, GRID_CELL) if keep_cells else None
+    def _emit_parcel(self, spec_id, part, cells, keep_cells, ang=0.0, poly=None):
+        # `poly` given = the caller already knows the shape. A site parcel is a
+        # RECTANGLE in the manzana's frame (four corners), which is what a piece
+        # of a cuadra actually is; a raster trace of the mapper's outline is not,
+        # and 257 of 377 came out as blobs of 8+ vertices. The hand-authored
+        # cuadras still trace, because they are cut from the block itself.
+        if poly is None:
+            poly = outline_poly(keep_cells, GRID_CELL) if keep_cells else None
         if not poly:
             log("parcel", f"WARN {part['id']} nothing left after erosion"); return None
-        # `simplify`: drop the trace's 4 px staircase, the way every other real
-        # outline in the build is simplified (DP_BUILDING_PX, DP_COAST_PX). The
-        # renderer already strokes a parcel's outline at lineWidth 8 to hide
-        # those steps, so a chord this small is under the stroke — and with
-        # hundreds of site parcels the vertices are most of the manifest's
-        # growth. The hand-authored cuadras do NOT ask for it: they are a dozen
-        # polygons that were tuned against the block by eye.
-        if part.get("simplify"):
-            ring = pairs(poly)
-            poly = flat(dp_simplify(ring + [ring[0]], part["simplify"])[:-1])
         px = poly[0::2]; py = poly[1::2]
         x0, y0, x1, y1 = min(px), min(py), max(px), max(py)
         ay = y0 + (y1 - y0) // 4 if part.get("anchor") == "north" else (y0 + y1) // 2
@@ -259,10 +335,17 @@ class FieldService:
                "poly": poly, "cx": int((x0 + x1) // 2), "cy": int(ay),
                "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot,
                "ang": round(ang, 4)}
+        # HALF-EXTENTS in the parcel's OWN frame. Every drawer used to size
+        # itself off the AXIS-ALIGNED bbox (P.x1 - P.x0), which on a turned
+        # parcel is bigger than the parcel — so the church, the schoolyard and
+        # the sponsor plate all came out oversized and spilled over their kerb.
+        # `hw`/`hh` are the real half-width and half-height along `ang`.
+        if part.get("hw") is not None:
+            rec["hw"], rec["hh"] = part["hw"], part["hh"]
         # DECORATION the renderer draws ON this parcel, declared by the part and
-        # passed through untouched (`river`, `statue`, `bus`…). The world says
+        # passed through untouched (`river`, `statue`, `kiosco`…). The world says
         # WHICH parcel has a river; the client owns what a river looks like.
-        for k in ("river", "statue"):
+        for k in ("river", "statue", "kiosco", "sport"):
             if part.get(k):
                 rec[k] = part[k]
         # `bus: "south"|"north"` — a paradita at the parcel's own edge, aligned
@@ -509,23 +592,16 @@ class FieldService:
     #: Parque del Muellero is 855x297 px of mostly Paseo asphalt.
     SITE_MIN_KEPT = 0.25
     SITE_MIN_CELLS = 12
-    #: …and the acera ring may not eat more than this much of the plot. A
-    #: hand-authored part is a quarter of a manzana and can afford a 20 px ring
-    #: on every side; a 30-cell chapel cannot, and eroding it anyway leaves a
-    #: 4 px sliver where a church should be.
-    SITE_MIN_LEFT = 0.45
     #: …and it has to be a PLOT: at least this many cells on its SHORT side.
+    #: This is also what decides whether a plot can afford its acera ring — a
+    #: hand-authored part is a quarter of a manzana and takes 20 px on every
+    #: side without noticing; a 30-cell chapel would be eroded out of existence.
     #: 3 cells = 12 px, under which the trace is a smear, not a lot.
     SITE_MIN_SIDE = 3
     #: a site covering this much of the cuadra it touches OWNS it — the block
     #: goes green and its synth houses go away. Below it the site is a piece of
     #: a live manzana and the neighbours keep their buildings.
     SITE_OWNS_BLOCK = 0.6
-    #: Douglas-Peucker tolerance on a site's traced outline, in px. Same order
-    #: as DP_BUILDING_PX, and under the 8 px stroke `paintParcels` already draws
-    #: to hide the raster staircase. `manifest.json` is the EAGER half of the
-    #: world, and 300+ traced outlines at 4 px steps is most of its growth.
-    SITE_DP_PX = 3.0
 
     def place_osm_sites(self, sites):
         """Turn each OSM ground site into a parcel on the cuadra under it.
@@ -589,6 +665,22 @@ class FieldService:
                        f"(street, sand or water)"))
                 skipped["already-claimed" if claimed else "not-on-a-cuadra"] += 1
                 continue
+            # THE PARCEL IS A RECTANGLE IN THE MANZANA'S FRAME. `own` is the
+            # mapper's outline clipped to real ground, which wanders; a piece of
+            # a cuadra does not. Fit the rect first, then everything after works
+            # on a regular shape — which is also why the acera survives below:
+            # eroding a ragged set destroys its thin arms, and the graded
+            # fallback was dropping 169 of 377 rings to save the parcel.
+            ang = self.streets.angle_at(
+                sum(c for c, _ in own) / len(own) * cell,
+                sum(r for _, r in own) / len(own) * cell)
+            rect = fit_block_rect(own, ang, cell)
+            own = rect_cells(own, rect, ang, cell) if rect else set()
+            if len(own) < self.SITE_MIN_CELLS:
+                skipped["too-thin"] += 1
+                log("site", f"skip {site['id']} {site['kind']} "
+                    f"{(site['name'] or '—')[:34]}: no rectangle fits its ground")
+                continue
             cuads = {(c * cell // CUAD, r * cell // CUAD) for (c, r) in own}
             # An acera exists where there is a street: a building plot pulls back
             # the full sidewalk, an open field only far enough to keep its white
@@ -599,32 +691,42 @@ class FieldService:
             # nothing at all. So the depth is graded: take the deepest ring the
             # plot can actually afford. A small plot is already deep inside its
             # cuadra — it is the block that fronts the street, not the chapel.
+            # The ring the plot can AFFORD, deepest first. The test is whether
+            # what survives is still a plot — not how many cells it kept: a
+            # rectangle eroded by 5 cells on each of four sides legitimately
+            # loses most of a small lot, and judging it by area was cutting the
+            # sidewalk off 21 of 26 parcels that had room for a full one.
+            #
+            # Re-fit the rect to what the erosion left. The erosion is
+            # DIRECTIONAL, so a side facing the sand or the neighbour keeps its
+            # edge while the ones facing a street pull back; refitting keeps the
+            # answer a rectangle instead of a nibbled trace.
             deep = FIELD_ACERA_CELLS if use in (ParcelUse.PARK, ParcelUse.STADIUM) else ACERA_CELLS
-            floor = max(self.SITE_MIN_CELLS, int(len(own) * self.SITE_MIN_LEFT))
-            keep, used = set(), 0
+            keep, krect, used = set(), None, 0
             for depth in [d for d in (deep, FIELD_ACERA_CELLS, 1, 0) if d <= deep]:
                 used = depth
                 keep = _largest_part(erode_cells(own, depth, STREET_CLASSES, raster.at)
                                      if depth else own)
-                if len(keep) >= floor:
+                krect = fit_block_rect(keep, ang, cell) if keep else None
+                if krect and len(keep) >= self.SITE_MIN_CELLS and min(
+                        (krect[1] - krect[0]) / cell + 1,
+                        (krect[3] - krect[2]) / cell + 1) >= self.SITE_MIN_SIDE:
                     break
             # …and what is left has to be a PLOT, not a ribbon. A 12-cell strip
-            # traces to an 8 px-wide parcel, which draws as a smear rather than
-            # as the church or the cancha it is supposed to be.
-            kw = max(c for c, _ in keep) - min(c for c, _ in keep) + 1 if keep else 0
-            kh = max(r for _, r in keep) - min(r for _, r in keep) + 1 if keep else 0
-            if len(keep) < self.SITE_MIN_CELLS or min(kw, kh) < self.SITE_MIN_SIDE:
+            # is an 8 px-wide parcel, which draws as a smear rather than as the
+            # church or the cancha it is supposed to be.
+            kw = (krect[1] - krect[0]) / cell + 1 if krect else 0
+            kh = (krect[3] - krect[2]) / cell + 1 if krect else 0
+            if not krect or len(keep) < self.SITE_MIN_CELLS or min(kw, kh) < self.SITE_MIN_SIDE:
                 skipped["too-thin"] += 1
                 log("site", f"skip {site['id']} {site['kind']} "
-                    f"{(site['name'] or '—')[:34]}: {kw}x{kh} cells left after the "
-                    f"acera ring — too thin to draw")
+                    f"{(site['name'] or '—')[:34]}: {round(kw)}x{round(kh)} cells left "
+                    f"after the acera ring — too thin to draw")
                 continue
             if used != deep:
                 log("site", f"{site['id']} {(site['name'] or '—')[:34]}: acera ring "
                     f"{used} cells, not {deep} — a {len(own)}-cell plot has no room "
                     f"for it (kept {len(keep)})")
-            cx = sum(c for c, _ in own) / len(own) * cell
-            cy = sum(r for _, r in own) / len(own) * cell
             # Does this site OWN its cuadra, or is it a piece of one? A park
             # that fills the manzana should clear the manzana's houses; a small
             # cancha in a residential block must not. Measured against the
@@ -632,11 +734,18 @@ class FieldService:
             touched = [b for b in self.blocks if any(c in cuads for c in b["cells"])]
             block_cells = sum(len(b["cells"]) for b in touched)
             owns_block = bool(touched) and len(cuads) >= block_cells * self.SITE_OWNS_BLOCK
-            part = {"id": f"osm_{site['kind']}_{site['id']}", "use": use,
+            pid = f"osm_{site['kind']}_{site['id']}"
+            part = {"id": pid, "use": use,
                     "name": site["name"] or self.SITE_FALLBACK_NAME[site["kind"]],
-                    "green": owns_block, "simplify": self.SITE_DP_PX}
-            if self._emit_parcel("osm", part, own, keep,
-                                 self.streets.angle_at(cx, cy)) is None:
+                    "green": owns_block, "sport": site.get("sport"),
+                    "hw": round((krect[1] - krect[0]) / 2, 1),
+                    "hh": round((krect[3] - krect[2]) / 2, 1)}
+            # Anything a real place has that OSM does not record — the old round
+            # kiosco in the middle of Parque Victoria — is declared by parcel id
+            # in content.SITE_DECOR and rides through untouched.
+            part.update(SITE_DECOR.get(pid, {}))
+            if self._emit_parcel("osm", part, own, keep, ang,
+                                 poly=rect_poly(krect, ang)) is None:
                 skipped["no-outline"] += 1; continue
             if site["kind"] in self.SITE_BUILT:
                 built_cuads |= cuads

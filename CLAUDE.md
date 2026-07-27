@@ -256,7 +256,7 @@ scatter, the sponsor plate. Anything new drawn on a parcel must use `P.ang`; a
 `strokeRect` off `P.x0..P.x1` puts a square pitch on a slanted block.
 
 **A parcel straight from OSM** (`extract_sites` + `FieldService.place_osm_sites`
-— 377 of the world's 400 parcels). A closed OSM area tagged as a park, cancha,
+— 380 of the world's 403 parcels). A closed OSM area tagged as a park, cancha,
 escuela, jardín de niños, campus or iglesia is the GROUND a place occupies, and
 becomes a parcel on the cuadra under it. The parts that are load-bearing:
 - **Keep only `CLS_LAND`/`CLS_ACERA` under the outline.** Testing the SURFACE is
@@ -265,10 +265,24 @@ becomes a parcel on the cuadra under it. The parts that are load-bearing:
   fails `SITE_MIN_KEPT` is a ribbon along a street, not a place: log it and skip.
 - **Ground already handed out is measured CELL BY CELL** (`claimed_cells`), not
   by CUAD: at 20 px two sites either side of the same calle share a cell.
-- **The acera ring is GRADED** (`ACERA_CELLS` → `FIELD_ACERA_CELLS` → 1 → 0),
-  measured against the LARGEST CONNECTED COMPONENT of what survives. An erosion
-  does not just shrink a lot, it breaks it, and `outline_poly` keeps only the
-  biggest loop — so without measuring, a chapel comes out a 4 px sliver.
+- **THE PARCEL IS A RECTANGLE IN THE BLOCK'S FRAME** (`fit_block_rect` →
+  `rect_poly`), because a piece of a cuadra is — that is what the hand-authored
+  civic block's parts are. Tracing the mapper's outline gave blobs: 257 of 377
+  over 8 vertices, 109 under 60% fill of their own rotated bbox. The extent is a
+  PERCENTILE (2% off each end), never min/max: one cell of a thin arm — a
+  driveway, a strip along the kerb — stretches the whole rect over the street,
+  and an iterative shrink ate an 883-cell campus down to 12x10 px.
+- **The acera ring is GRADED** (`ACERA_CELLS` → `FIELD_ACERA_CELLS` → 1 → 0) and
+  the rect is RE-FITTED to what the erosion left, so a side facing the sand
+  keeps its edge while the ones facing a street pull back. Judge the depth by
+  whether what survives is still a PLOT (`SITE_MIN_SIDE`), never by how much
+  AREA it kept: a rectangle eroded on four sides legitimately loses most of a
+  small lot, and the area test was cutting the sidewalk off 21 of 26 parcels
+  that had room for a full one.
+- **Emit `hw`/`hh`** (half-extents along `ang`). Everything drawn on a parcel
+  used to size itself off the axis-aligned bbox, which on a turned parcel is
+  bigger than the parcel — so the art spilled over its own kerb. `parcelFrame`
+  in `src/render/c2d/gfx.js` is the one place that reads them.
 - **`ang` comes from `StreetIndex.angle_at`** — the nearest centreline, folded
   into the avenida family (-45°, 45°]. Its `reach` is measured from the parcel's
   CENTRE, so it must clear half a manzana plus the street (12·CUAD; at 3·CUAD a
@@ -314,12 +328,29 @@ when `lm.stands`, strokes a dark two-tone band over the block's real acera ring
 in the LANDMARK pass (after sidewalks → recolours the actual acera; follows the
 organic/diagonal outline). Interior cross-streets clipped by `_clip_roads_poly`.
 
-**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of three
+**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of four
 advancers (branch in `physics.js`): rail-bound city walkers (`pe.road`,
-`advancePed`); stadium **fans** (`kind:"fan"`, `pe.ring`, `advanceRingPed`) that
-patrol the footprint perimeter via `su`/`sdir` arclength — CONTAINED on the
-graderías; balneario **swimmers** (`kind:"swimmer"`, `pe.swim`, `advanceSwimmer`)
-bouncing inside `W.BALNEARIO`. All drawn by `drawPed` (branches on `kind`).
+`advancePed`); stadium **fans** (`kind:"fan"`, `pe.field`, `advanceFieldPed`)
+wandering the pitch, CONTAINED well inside the footprint; balneario **swimmers**
+(`kind:"swimmer"`, `pe.swim`, `advanceSwimmer`) bouncing inside `W.BALNEARIO`;
+and **players** (`kind:"player"`, `pe.match`), which the MATCH moves, not the
+ped loop. All drawn by `drawPed` (branches on `kind`).
+
+**A match on a cancha** (`src/game/match.js`, `state.matches`). Any field with a
+`sport` and room for one holds a game instead of a crowd: two teams, a keeper, a
+ball, and a coin rain when somebody scores (`rainOnGoal` in `physics.js` — the
+burst used to be on a CLOCK). Two things to know before touching it:
+- **HOW OFTEN SOMEBODY SCORES IS A DIAL** (`GOAL_EVERY`), not an emergent
+  property, and it has to be. A cancha here is 60 px across and Lito Pérez 210,
+  while a touch radius and a keeper's reach are absolute — with one set of
+  numbers a field scored every 6 s and another never did in fifteen minutes. The
+  keeper saves everything until the clock is up; then the next attack goes in.
+- **It imports NOTHING**, like `vehicles.js` and `surfaces.js`, and for a
+  sharper reason: `src/world2d/index.js` uses `import.meta.glob` (Vite only), so
+  anything importing it cannot run under Node. That is what lets
+  `tools/match_check.mjs` tick real fields out of the manifest and check the
+  ball stays on the pitch, the goal interval, and that the car can score —
+  the one part of this that a browser would otherwise have to judge.
 
 **Water cuadra (Balneario)**: a `type:"pool"` landmark's whole block becomes a
 SEA inlet — `occ.update(cells)` (no OSM buildings), stamp the interior

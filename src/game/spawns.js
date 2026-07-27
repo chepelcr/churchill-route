@@ -6,7 +6,8 @@
 // old global arclength model (place-once across the whole corridor via ROADS +
 // roadPointAt), which cannot work when most of the map isn't loaded.
 import { WORLD2D as W } from "../world2d/index.js";
-import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains } from "./state.js";
+import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, matches } from "./state.js";
+import { createMatch, playable } from "./match.js";
 
 // how far from the camera we keep life alive / spawn it (world px)
 const KEEP_R = 1400;
@@ -347,12 +348,37 @@ export function advanceFieldPed(pe, dt) {
   if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.9;
 }
 
+// A cancha with a sport and room to play holds a MATCH — two teams and a ball —
+// instead of a crowd. Created and culled by the same camera proximity that
+// governs the peds, so at most a couple of fields are ever live. Everything the
+// match does is in match.js, which imports nothing from the world.
+function maintainMatches() {
+  const arr = W.FIELDS;
+  if (!arr) return;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i];
+    if (Math.hypot(m.field.cx - _cam.x, m.field.cy - _cam.y) > SPAWN_R + 600) {
+      for (let k = pedestrians.length - 1; k >= 0; k--)
+        if (pedestrians[k].match === m) pedestrians.splice(k, 1);
+      matches.splice(i, 1);
+    }
+  }
+  for (const S of arr) {
+    if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;
+    if (!playable(S) || matches.some((m) => m.field === S)) continue;
+    const m = createMatch(S);
+    matches.push(m);
+    for (const p of m.players) pedestrians.push(p);
+  }
+}
+
 function maintainStadiumPeds() {
   const arr = W.FIELDS;
   if (!arr || !arr.length) return;
   for (const S of arr) {
     if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;
     if (!S.footprint || S.footprint.length < 6) continue;
+    if (playable(S)) continue;          // this one has a match, not a crowd
     let n = 0;
     for (const pe of pedestrians) if (pe.stadium === S) n++;
     let guard = 0;
@@ -427,6 +453,7 @@ export function advanceSwimmer(pe, dt) {
 
 export function maintainStreaming() {
   topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || far(e));
+  maintainMatches();
   maintainStadiumPeds();
   maintainBalneario();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);

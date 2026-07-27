@@ -116,8 +116,10 @@ function render(t) {
       if (!b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
       drawBoat(b);
     }
-    // the ball goes under the players, so a foot can be over it
+    // the ball goes under the players, so a foot can be over it — and it is
+    // OFF the pitch while the goal is being celebrated (see `startCheer`)
     for (const m of matches) {
+      if (m.cheer) continue;
       if (m.ball.x < view.x0 - 20 || m.ball.x > view.x1 + 20) continue;
       drawBall(m);
     }

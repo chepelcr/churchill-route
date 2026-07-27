@@ -163,6 +163,22 @@ Publicación: [El puerto, a su tamaño](docs/changelog/2026-07-27-calles.md).
       entrega al andar rail-bound de siempre. Cuánta gente espera sale de las
       coordenadas de la parada, no de un dado.
 
+**El gol se celebra mientras cae la plata** (`startCheer` en `match.js`)
+- [x] La celebración dura **exactamente lo que dura la plata en la cancha**
+      (`ACOIN_RAIN_TTL`, 11 s): la bola sale del campo y los jugadores se
+      dibujan como los NPC que celebran, hasta que se apaga la última moneda.
+- [x] Son **los mismos cuerpos**, solo dibujados distinto — sacarlos del arreglo
+      y meter un gentío es la forma del bug que ya dejó una bola jugando sola.
+      Y las monedas **salen de los jugadores**: si desaparecieran, la lluvia
+      caería de un campo vacío.
+- [x] Manda la duración quien manda la lluvia, y **solo si la ráfaga ocurrió**:
+      un gol dentro del enfriamiento anti-farmeo no paga y no para el partido.
+- [x] El jugador lleva `hue` además del tono de equipo — el ramal de los que
+      celebran pinta desde `hue`, y sin él la cancha celebraba de un solo color.
+- [x] `tools/match_check.mjs` cubre el ciclo entero: empieza, sigue a la mitad
+      con los jugadores animándose, termina, vuelven a ser jugadores y la bola
+      queda en el centro.
+
 **Y de paso**
 - [x] Los **ALTO** ya no caen sobre el asfalto: la separación se mide desde la
       calzada (la que cruza y la propia), no con un número plano de 18 px que el

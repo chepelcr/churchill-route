@@ -366,6 +366,14 @@ burst used to be on a CLOCK). Two things to know before touching it:
   while a touch radius and a keeper's reach are absolute — with one set of
   numbers a field scored every 6 s and another never did in fifteen minutes. The
   keeper saves everything until the clock is up; then the next attack goes in.
+- **A GOAL STOPS THE MATCH FOR AS LONG AS THE SILVER LASTS** (`startCheer`).
+  The ball comes off the pitch and every player is drawn by the FAN branch —
+  which is why a player carries a `hue` as well as a `team` tone. They are the
+  SAME BODIES throughout, only drawn differently: splicing players out and
+  pushing a crowd in is the shape of the bug that once left a ball playing by
+  itself. The CALLER owns the duration (physics passes `ACOIN_RAIN_TTL`) and
+  only starts it when the burst actually happened — a goal inside the anti-farm
+  cooldown pays nothing and gets the short `RESET_PAUSE` instead.
 - **It imports NOTHING**, like `vehicles.js` and `surfaces.js`, and for a
   sharper reason: `src/world2d/index.js` uses `import.meta.glob` (Vite only), so
   anything importing it cannot run under Node. That is what lets

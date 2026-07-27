@@ -3,7 +3,7 @@
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains, matches, pushFloat } from "./state.js";
-import { advanceMatch, carHitsMatch } from "./match.js";
+import { advanceMatch, carHitsMatch, startCheer } from "./match.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
@@ -546,7 +546,7 @@ function inFootprint(x, y, S) {
 function rainOnGoal(m) {
   if (!state.arcadeCoins) state.arcadeCoins = [];
   const arr = state.arcadeCoins, p = state.p;
-  if (state.rainWait > 0) return;
+  if (state.rainWait > 0) return false;
   const val = Math.max(COINS_PER_PICKUP,
                        Math.round(ACOIN_RAIN_VALUE / Math.max(1, m.players.length)));
   let made = 0;
@@ -562,6 +562,7 @@ function rainOnGoal(m) {
     made++;
   }
   if (made) state.rainWait = ACOIN_RAIN_TTL + ACOIN_RAIN_COOLDOWN;
+  return made > 0;
 }
 
 function maintainArcadeCoins(dt) {
@@ -633,7 +634,11 @@ export function advanceEntities(dt, withPlayer = true) {
   for (const m of matches) {
     const goal = advanceMatch(m, dt);
     if (!goal) continue;
-    rainOnGoal(m);
+    // The celebration lasts exactly as long as the silver does — but only when
+    // there WAS silver. A goal inside the anti-farm cooldown pays nothing, and
+    // stopping the match dead for eleven seconds over nothing would just read
+    // as the game hanging.
+    if (rainOnGoal(m)) startCheer(m, ACOIN_RAIN_TTL);
     pushFloat(goal.x, goal.y - 14,
               m.sport === "basketball" ? "¡CANASTA!" : "¡GOL!", "#f3c969");
     if (withPlayer) sfx.play("coin");

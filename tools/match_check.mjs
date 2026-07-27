@@ -11,7 +11,7 @@
 // Asserts, per field: the ball never leaves the pitch, goals land in a sane
 // band, and the car can score. Exits non-zero on any failure.
 import fs from "node:fs";
-import { advanceMatch, carHitsMatch, createMatch, playable, toFrame, toWorld }
+import { advanceMatch, carHitsMatch, createMatch, playable, startCheer, toFrame, toWorld }
   from "../src/game/match.js";
 
 const manifest = JSON.parse(fs.readFileSync(new URL("../src/world2d/manifest.json", import.meta.url)));
@@ -100,6 +100,37 @@ check(gapsPerField.every(({ gap }) => gap >= 15 && gap <= 90),
   }
   check(scored, "the car could not score in 60s of shoving the ball");
   console.log(`car scoring on ${F.name || F.sport}: ${scored ? "ok" : "NO"}`);
+}
+
+// The celebration: while the coins are on the grass the ball is off the pitch
+// and every player is drawn as a celebrating fan; when it lapses, both come
+// back and play restarts from the centre. This is the part a screenshot cannot
+// show, so it is checked here.
+{
+  const F = play.find((f) => f.sport === "soccer");
+  const rnd = rng(11);
+  const m = createMatch(F, rnd);
+  const CHEER = 11;                       // physics passes its ACOIN_RAIN_TTL
+  let scored = false;
+  for (let t = 0; t < 240 && !scored; t += DT) if (advanceMatch(m, DT, rnd)) scored = true;
+  check(scored, "no goal in 240s, cannot test the celebration");
+  startCheer(m, CHEER);
+  check(m.cheer === true, "the cheer did not start");
+  check(m.players.every((p) => p.kind === "fan"), "a player is still a player mid-cheer");
+  check(m.players.every((p) => p.hue !== undefined), "a celebrating player has no hue to wear");
+  // half way through: still celebrating, nobody has kicked off
+  for (let t = 0; t < CHEER / 2; t += DT) advanceMatch(m, DT, rnd);
+  check(m.cheer === true, `the cheer ended early (pause ${m.pause.toFixed(2)})`);
+  const phMoved = m.players.some((p) => p.ph > 0);
+  check(phMoved, "the celebrating players are not animating");
+  // …and out the far side. Stop on the frame it lapses: the kickoff happens on
+  // that same frame, and a moment later the ball is in play and moving again.
+  let t2 = 0;
+  while (m.cheer && t2 < CHEER * 2) { advanceMatch(m, DT, rnd); t2 += DT; }
+  check(m.cheer === false, "the cheer never ended");
+  check(m.players.every((p) => p.kind === "player"), "a player never came back");
+  check(Math.hypot(m.ball.x - F.cx, m.ball.y - F.cy) < 1, "the ball did not return to the centre");
+  console.log(`celebration on ${F.name || F.sport}: ${CHEER}s, ball back at kickoff`);
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall match checks passed");

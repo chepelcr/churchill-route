@@ -105,6 +105,11 @@ export function createMatch(F, rnd = Math.random) {
       m.players.push({
         x, y, team, ang: rnd() * Math.PI * 2, v: PLAYER_V, ph: rnd() * Math.PI * 2,
         kind: "player", match: m, scatter: 0,
+        // The team's colour as a HUE as well as a tone: when the goal goes in
+        // the player is drawn by the FAN branch (`startCheer`), and that one
+        // colours the shirt from `hue`. Without it the celebration turns the
+        // whole cancha into one colour.
+        hue: team ? 220 : 6,
         // One keeper a side. Without one the match is an unopposed shuttle —
         // whoever wins the ball walks it in, and every field scored every 5 s.
         // A keeper is both the honest fix and the one that looks right.
@@ -137,6 +142,7 @@ export function advanceMatch(m, dt, rnd = Math.random) {
     if (m.pause <= 0) {
       b.x = F.cx; b.y = F.cy; b.vx = 0; b.vy = 0;
       m.clock = GOAL_EVERY[0] + rnd() * (GOAL_EVERY[1] - GOAL_EVERY[0]);
+      endCheer(m);
     }
     return null;
   }
@@ -267,6 +273,38 @@ export function advanceMatch(m, dt, rnd = Math.random) {
   if (bv < -hv || bv > hv) { b.vy = -b.vy * 0.6; b.vx *= 0.8; bv = Math.max(-hv, Math.min(hv, bv)); }
   [b.x, b.y] = toWorld(F, bu, bv);
   return null;
+}
+
+/**
+ * The goal turned into a CELEBRATION that lasts as long as the coin rain.
+ *
+ * A goal already paused play for `RESET_PAUSE` before the kickoff; this widens
+ * that pause to the life of the silver on the grass and changes what is on the
+ * pitch while it lasts: the ball goes away, and every player is drawn by the
+ * FAN branch instead — arms up, bouncing on the spot. So the burst you drive
+ * into is a crowd celebrating a goal rather than a match carrying on underneath
+ * a shower of coins.
+ *
+ * The players are the SAME BODIES throughout, only drawn differently. Splicing
+ * them out and pushing a crowd in is the shape of the bug that once left a ball
+ * playing by itself — `matches` and `pedestrians` fell out of step and the
+ * players were orphaned for good. It also happens to be the truer picture: the
+ * coins are thrown FROM the players (`rainOnGoal`), so if they vanished the
+ * rain would be falling out of an empty field.
+ *
+ * The CALLER owns the duration, because the caller owns the rain: physics
+ * passes its own `ACOIN_RAIN_TTL`, and only when the burst actually happened —
+ * a goal inside the anti-farm cooldown pays nothing and gets the short pause.
+ */
+export function startCheer(m, secs) {
+  m.pause = Math.max(m.pause, secs);
+  m.cheer = true;
+  for (const p of m.players) p.kind = "fan";
+}
+function endCheer(m) {
+  if (!m.cheer) return;
+  m.cheer = false;
+  for (const p of m.players) p.kind = "player";
 }
 
 /**

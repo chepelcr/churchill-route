@@ -202,21 +202,23 @@ Publicación: [El puerto, a su tamaño](docs/changelog/2026-07-27-calles.md).
       Las dos usan ahora `drawParada` en `gfx.js`; lo único que difiere es el
       tamaño, porque solo el bloque cívico trae uno.
 
-**El gol se celebra mientras cae la plata** (`startCheer` en `match.js`)
-- [x] La celebración dura **exactamente lo que dura la plata en la cancha**
-      (`ACOIN_RAIN_TTL`, 11 s): la bola sale del campo y los jugadores se
-      dibujan como los NPC que celebran, hasta que se apaga la última moneda.
-- [x] Son **los mismos cuerpos**, solo dibujados distinto — sacarlos del arreglo
-      y meter un gentío es la forma del bug que ya dejó una bola jugando sola.
-      Y las monedas **salen de los jugadores**: si desaparecieran, la lluvia
-      caería de un campo vacío.
-- [x] Manda la duración quien manda la lluvia, y **solo si la ráfaga ocurrió**:
-      un gol dentro del enfriamiento anti-farmeo no paga y no para el partido.
-- [x] El jugador lleva `hue` además del tono de equipo — el ramal de los que
-      celebran pinta desde `hue`, y sin él la cancha celebraba de un solo color.
-- [x] `tools/match_check.mjs` cubre el ciclo entero: empieza, sigue a la mitad
-      con los jugadores animándose, termina, vuelven a ser jugadores y la bola
-      queda en el centro.
+**Las canchas vuelven al gentío (revertido el partido)**
+- [x] El partido —dos equipos, portero, bola, gol con lluvia de monedas— se
+      revirtió por pedido: los jugadores no se veían bien en juego y el gentío
+      que había antes se leía mejor. `src/game/match.js` y
+      `tools/match_check.mjs` salen; queda en el historial por si vuelve.
+- [x] La lluvia de monedas vuelve al **reloj**: parqueá en una cancha y la
+      hinchada tira su ráfaga de plata, una cada `ACOIN_RAIN_COOLDOWN`.
+- [x] **Cuánta gente es función de la cancha**, no una constante: una de barrio
+      mide 60 px y el Lito Pérez 210, y doce personas es un tumulto en la
+      primera y nada en el segundo. `crowdSize` da una persona por caja de
+      `FAN_GAP`.
+- [x] **La separación se aplica DOS veces**, y una no alcanza: `fieldPoint`
+      rechaza un lugar a menos de `FAN_GAP` de un vecino (bajando el margen
+      antes que dejar la cancha vacía) y `advanceFieldPed` separa cada cuadro a
+      los que se encimaron — son caminatas al azar sobre una misma cancha, así
+      que por bien puestos que estén se van a encontrar.
+
 
 **Y de paso**
 - [x] Los **ALTO** ya no caen sobre el asfalto: la separación se mide desde la

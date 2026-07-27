@@ -333,7 +333,24 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
             if aux:
                 break
         if aux:
-            axp, ayp = (aux[0] + 0.5) * GRID_CELL, (aux[1] + 0.5) * GRID_CELL
+            # AIM INTO THE ROADWAY, not at its first cell. `aux` is the first
+            # drivable cell the outward scan meets, i.e. the near KERB, so a
+            # lane ending there meets the road at a shallow angle and leaves a
+            # wedge of acera between the two — the grey gap where the faro's
+            # auxiliary street looked like it stopped short of the road. Walking
+            # on to the far kerb and taking the middle puts the lane's end
+            # inside the carriageway, where the two surfaces simply merge.
+            ux = aux[0] - fcc0; uy = aux[1] - fcr0
+            ul = math.hypot(ux, uy) or 1.0
+            ux /= ul; uy /= ul
+            far = aux
+            for k in range(1, 13):
+                cc = aux[0] + int(round(ux * k)); cr = aux[1] + int(round(uy * k))
+                if _cell_cls(cc, cr) not in (CLS_ROAD, CLS_PASEO):
+                    break
+                far = (cc, cr)
+            mid = ((aux[0] + far[0]) / 2, (aux[1] + far[1]) / 2)
+            axp, ayp = (mid[0] + 0.5) * GRID_CELL, (mid[1] + 0.5) * GRID_CELL
             # straight lane from the muelle base to the road (the lighthouse sits
             # to its left/west, over on the tip)
             raster.stamp_polyline([sx, sy, axp, ayp], round(1.6 * CUAD), CLS_ROAD)

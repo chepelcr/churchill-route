@@ -44,6 +44,9 @@ JUNCTION_R = 1.3 * CUAD     # px: how close two road ends count as a junction
 # end of the Paseo in the middle of the asphalt.
 ALTO_SIDE_PAD = 0.45 * CUAD   # px beyond the minor road's own kerb
 ALTO_BACK_PAD = 0.6 * CUAD    # px beyond the major road's kerb, back down the approach
+#: No two derived ALTOs stand closer than this. Where several ways end at the
+#: same esquina they each earn a sign, and the result is a thicket.
+ALTO_MIN_GAP = 2.2 * CUAD
 
 
 #: How deep into the acera a parada's caseta sits, measured from the kerb.
@@ -86,8 +89,20 @@ def _snap_to_road(x, y, roads, reach):
     return best[1:] if best else None
 
 
+#: Furniture that OSM maps ON the carriageway because that is where the node
+#: belongs for routing, but that STANDS at the kerb in the world: a parada and a
+#: semáforo. Both get seated on the acera beside their street.
+SEATED_KINDS = ("bus", "semaforo")
+
+
 def seat_bus_stops(stops, roads):
-    """Put every parada on the acera beside its street, facing the traffic."""
+    """Put every parada (and semáforo) on the acera beside its street, facing
+    the traffic.
+
+    A traffic light in OSM is a node ON the centreline — that is how routing
+    reads it — so left alone every one of the six stands in the middle of the
+    asphalt. It is the same problem the paradas have and it has the same
+    answer, so they share the seating pass rather than each growing a rule.""" 
     seated = 0
     for s in stops:
         hit = _snap_to_road(s["x"], s["y"], roads, STOP_SNAP_R)
@@ -120,11 +135,11 @@ def extract_node_signs(sp, nodes_with_tags, canvas_w, canvas_h, roads=()):
         if not (0 <= x < canvas_w and 0 <= y < canvas_h):
             continue
         out.append({"x": round(x), "y": round(y), "kind": kind, "ang": 0.0})
-    stops = [s for s in out if s["kind"] == "bus"]
+    stops = [s for s in out if s["kind"] in SEATED_KINDS]
     if stops and roads:
         seated = seat_bus_stops(stops, roads)
-        log("signs", f"{seated}/{len(stops)} paradas sentadas en la acera de su "
-            f"calle (las demas quedan donde OSM las puso)")
+        log("signs", f"{seated}/{len(stops)} paradas y semáforos sentados en la "
+            f"acera de su calle (los demas quedan donde OSM los puso)")
     return out
 
 
@@ -191,9 +206,22 @@ def derive_altos(roads, limit=None):
             out.append({"x": round(bx + math.cos(ang + math.pi / 2) * side),
                         "y": round(by + math.sin(ang + math.pi / 2) * side),
                         "kind": "alto", "ang": round(ang, 3)})
-    # Deterministic order and a cap: 2000 minor roads with two ends each is a
-    # lot of signage, and the map should read as a town, not a sign shop.
+    # ONE ALTO PER CORNER, not one per approach that happens to end near it.
+    # Where the Paseo, Avenida Centenario and the faro street all converge, a
+    # dozen short ways end within a few metres of each other and each claimed
+    # its own sign — a thicket of ALTOs at the mouth of the junction. Thinning
+    # by distance is the honest filter: a driver reads one sign per approach,
+    # and two signs a few px apart are the same instruction twice.
     out.sort(key=lambda s: (s["x"], s["y"]))
+    thinned = []
+    gap2 = ALTO_MIN_GAP * ALTO_MIN_GAP
+    for s in out:
+        if any((s["x"] - k["x"]) ** 2 + (s["y"] - k["y"]) ** 2 < gap2 for k in thinned):
+            continue
+        thinned.append(s)
+    out = thinned
+    # …and a cap: 2000 minor roads with two ends each is a lot of signage, and
+    # the map should read as a town, not a sign shop.
     if limit and len(out) > limit:
         step = len(out) / limit
         out = [out[int(i * step)] for i in range(limit)]

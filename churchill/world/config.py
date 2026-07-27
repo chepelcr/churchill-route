@@ -148,10 +148,11 @@ CLS_BOULEVARD = Surface.BOULEVARD
 # of the 306 real named footprints on top of their own acera: a building mapped
 # at its true property line has nowhere else to be once the painted roadway and
 # a ten-metre kerb strip have both eaten inward from the centreline.
-# 4 cells = 16 px = 8 m: still generous (an arcade sidewalk has to be walkable
-# and visible at game zoom), but it hands 4 px per side back to the manzana,
-# which is where the wider carriageway above is paid from.
-ACERA_CELLS = 4                 # sidewalk depth: 16 px each side
+# 3 cells = 12 px = 6 m. Still wider than a real Puntarenas sidewalk, because an
+# arcade one has to be walkable and legible at game zoom, but every cell taken
+# off it is a cell of cuadra INTERIOR handed back — 8 px per street, on all four
+# sides of every manzana, which is what makes the blocks read as blocks.
+ACERA_CELLS = 3                 # sidewalk depth: 12 px each side
 # A FIELD's ring is shallower than a block's. All it has to do is keep the
 # pitch's white lines off the asphalt, and every px of it is grass and markings
 # the player doesn't get: at full depth the Carmen plaza went from 84x92 to

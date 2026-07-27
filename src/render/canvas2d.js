@@ -21,7 +21,7 @@ import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFaroPier, drawFerries, drawPier } from "./c2d/structures.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import {
-  drawAnimal, drawArcadeCoin, drawBall, drawBoat, drawCar, drawGull, drawPed,
+  drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
   paintVehicle,
 } from "./c2d/entities.js";
@@ -115,13 +115,6 @@ function render(t) {
     for (const b of boats) {
       if (!b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
       drawBoat(b);
-    }
-    // the ball goes under the players, so a foot can be over it — and it is
-    // OFF the pitch while the goal is being celebrated (see `startCheer`)
-    for (const m of matches) {
-      if (m.cheer) continue;
-      if (m.ball.x < view.x0 - 20 || m.ball.x > view.x1 + 20) continue;
-      drawBall(m);
     }
     for (const pe of pedestrians) {
       if (pe.x < view.x0 - 20 || pe.x > view.x1 + 20) continue;

@@ -13,13 +13,14 @@ import time
 
 from ..config import (
     ACERA_CELLS, CUAD, CUADS_PER_VIEW, DEBUG_PNG, DEBUG_SVG,
-    GRID_CELL,
+    DRIVABLE_CLASSES, GRID_CELL,
 )
 from ..content import STAGES
 from ..logging import log
 from ..repository.debug_render import render_debug
 from ..service.kerb import derive_corners
 from ..service.network import block_census, verify_connectivity
+from ..service.street import StreetIndex
 from ..util.geometry import to_m
 from .emit import emit_world2d
 
@@ -49,12 +50,74 @@ def build_meta(ctx):
     return meta
 
 
+#: How close to drivable ground a POI must be to count as reachable, in cells.
+#: NOT `ACERA_CELLS + 1`, which is what it used to be: that tied the GATE's
+#: strictness to a cosmetic knob, so narrowing the sidewalk quietly tightened
+#: the test and a build failed on the faro — a landmark nothing about had
+#: changed. What "reachable" means is a property of the game, not of how deep
+#: the pavement is drawn.
+GATE_REACH_CELLS = 6            # 24 px
+
+
 def verify(ctx, *, spawn, gate_pois):
     """The build's gate. Appends to ctx.failures; the runner raises on any."""
     unreachable = verify_connectivity(ctx.raster, spawn, gate_pois,
-                                      reach=ACERA_CELLS + 1)
+                                      reach=GATE_REACH_CELLS)
     ctx.failures.extend("unreachable " + u for u in unreachable)
     block_census(ctx.raster)
+
+
+#: Furniture that BELONGS on the asphalt: a zebra and a tope are painted on it.
+ON_THE_ROAD_OK = ("crossing", "tope")
+
+
+def clear_the_roadway(raster, signs, roads):
+    """Get every sign out of the carriageway — by moving it, or failing that by
+    dropping it.
+
+    `derive_altos` offsets each sign from the road it stops for, which is right
+    but cannot be sufficient: it measures against the NEAREST major road, and
+    where three of them converge — the Paseo, Avenida Centenario and the faro
+    street all meet at the end of the point — the one it measured against is not
+    the one the sign lands on. No offset rule fixes that, because the rule only
+    ever sees one road.
+
+    The finished raster does see all of them, so the last word belongs to it: if
+    a post is standing on drivable ground, it is not street furniture, it is an
+    obstacle in the lane. This runs after `decorate` for the same reason that
+    stage does — the surface is only final once everything has stamped.
+
+    A sign in the way is NUDGED before it is deleted. The first cut of this just
+    dropped them, and took all six of the map's semáforos and nineteen paradas
+    with it — real, mapped furniture that only needed to step back onto the
+    kerb. Deleting a thing because it is a few px off is losing information the
+    world had; moving it is not.
+    """
+    si = StreetIndex(roads)
+    kept, moved, dropped = [], 0, 0
+    for s in signs:
+        if s["kind"] in ON_THE_ROAD_OK or raster.at_px(s["x"], s["y"]) not in DRIVABLE_CLASSES:
+            kept.append(s)
+            continue
+        n = si.nearest_normal(s["x"], s["y"])
+        placed = False
+        if n:
+            for k in range(1, 13):                      # up to 48 px off the road
+                x = round(s["x"] + n[0] * k * GRID_CELL)
+                y = round(s["y"] + n[1] * k * GRID_CELL)
+                if raster.at_px(x, y) not in DRIVABLE_CLASSES:
+                    s["x"], s["y"] = x, y
+                    moved += 1
+                    placed = True
+                    break
+        if placed:
+            kept.append(s)
+        else:
+            dropped += 1
+    if moved or dropped:
+        log("signs", f"{moved} señales corridas fuera de la calzada, {dropped} "
+            f"sin acera donde pararse (la superficie terminada manda)")
+    return kept
 
 
 def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
@@ -62,6 +125,7 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
     # clipped the cross-streets out of their cuadras, and a fillet on a road
     # that no longer exists would hang in the middle of a pitch.
     corners = derive_corners(ctx.roads)
+    ctx.signs[:] = clear_the_roadway(ctx.raster, ctx.signs, ctx.roads)
     emit_world2d(ctx.raster, sink, meta=meta, districts=ctx.districts,
                  roads=ctx.roads, rails=ctx.rails, buildings=ctx.buildings,
                  trees=ctx.trees, palms=ctx.palms, mangroves=ctx.mangroves,

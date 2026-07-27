@@ -1,7 +1,6 @@
 // Moving things + the player: peds, swimmers, traffic, trains, gulls, boats,
 // vendors, animals, the delivery target, arcade coins and the vehicle sprite.
 import { state } from "../../game/state.js";
-import { TEAM_TONES } from "../../game/match.js";
 import { traceVehicleSilhouette } from "../vehicleShapes.js";
 import { ctx, lastT, roundRect } from "./gfx.js";
 
@@ -36,7 +35,6 @@ function drawArcadeCoin(c, t) {
 
 function drawPed(pe) {
   if (pe.kind === "swimmer") { drawSwimmer(pe); return; }
-  if (pe.kind === "player") { drawFieldPlayer(pe); return; }
   if (pe.kind === "passenger") { drawPassenger(pe); return; }
   // FANS celebrate: a bigger, faster bounce plus a side-to-side shake and two
   // raised arms, so the crowd around the estadio and la plaza reads as a crowd
@@ -55,68 +53,6 @@ function drawPed(pe) {
     ctx.stroke();
   }
   ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
-}
-// A PLAYER: a jersey in the team's colour and legs that actually run, so the
-// cancha reads as a game rather than a dozen people celebrating nothing (which
-// is what the fans on every field looked like). The lean follows the heading,
-// so a team breaking for the goal reads as a team breaking for the goal.
-function drawFieldPlayer(pe) {
-  const t = pe.ph;
-  const stride = Math.sin(t) * 1.8;
-  const bob = Math.abs(Math.cos(t)) * -0.9;
-  const x = pe.x, y = pe.y + bob;
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#e7c9a6"; ctx.lineWidth = 1.2; ctx.lineCap = "round";   // legs
-  ctx.beginPath();
-  ctx.moveTo(x, y + 2); ctx.lineTo(x - stride, y + 5);
-  ctx.moveTo(x, y + 2); ctx.lineTo(x + stride, y + 5);
-  ctx.stroke();
-  ctx.fillStyle = TEAM_TONES[pe.team] || TEAM_TONES[0];                      // jersey
-  ctx.fillRect(x - 2, y - 3, 4, 5);
-  ctx.strokeStyle = "#f1c8a4"; ctx.lineWidth = 1.1;                          // arms, pumping
-  ctx.beginPath();
-  ctx.moveTo(x - 2, y - 2); ctx.lineTo(x - 3.4, y + stride * 0.5);
-  ctx.moveTo(x + 2, y - 2); ctx.lineTo(x + 3.4, y - stride * 0.5);
-  ctx.stroke();
-  ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(x, y - 5, 2.1, 0, Math.PI * 2); ctx.fill();
-}
-// Somebody at a parada. The whole point of the type is the WAITING: standing
-// still with a bag, looking down the street the bus comes from, which is what
-// tells you at a glance that the caseta is in use. Once they are moving — to
-// the door, or off it and down the acera — they are drawn as the walker they
-// are about to become, so the handover to `advancePed` has no visible seam.
-// This branch is TEMPORARY per person: `joinTheSidewalk` drops the kind.
-function drawPassenger(pe) {
-  const waiting = pe.phase === "wait";
-  const bob = waiting ? Math.sin(pe.ph) * 0.5 : Math.sin(pe.ph) * 1.4;
-  const y = pe.y + bob;
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = `hsl(${pe.hue} 70% 60%)`;
-  ctx.fillRect(pe.x - 2, y - 3, 4, 6);
-  if (waiting) {                                   // the bolso, held at the hip
-    ctx.fillStyle = "#7a5c3a";
-    ctx.fillRect(pe.x + 2, y + 0.6, 2.2, 2.6);
-  }
-  ctx.fillStyle = "#f1c8a4";
-  ctx.beginPath(); ctx.arc(pe.x, y - 5, 2.2, 0, Math.PI * 2); ctx.fill();
-}
-// The ball. Orange and lined for basket, white with its panels for fútbol.
-function drawBall(m) {
-  const b = m.ball, court = m.sport === "basketball";
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.beginPath(); ctx.ellipse(b.x + 1, b.y + 3, 3.2, 1.4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = court ? "#e07a42" : "#f4f1e8";
-  ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = court ? "rgba(90,50,25,0.8)" : "rgba(50,48,60,0.75)";
-  ctx.lineWidth = 0.8;
-  if (court) {
-    ctx.beginPath(); ctx.moveTo(b.x - 3, b.y); ctx.lineTo(b.x + 3, b.y);
-    ctx.moveTo(b.x, b.y - 3); ctx.lineTo(b.x, b.y + 3); ctx.stroke();
-  } else {
-    ctx.beginPath(); ctx.arc(b.x, b.y, 1.2, 0, Math.PI * 2); ctx.stroke();
-  }
 }
 // A swimmer: a head just above the water with a ripple wake + stroking arms.
 function drawSwimmer(pe) {
@@ -407,4 +343,4 @@ function drawPlayerCarrying(p, veh) {
   ctx.restore();
 }
 
-export { drawAnimal, drawArcadeCoin, drawBall, drawBoat, drawCar, drawFieldPlayer, drawGull, drawPed, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintVehicle };
+export { drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintVehicle };

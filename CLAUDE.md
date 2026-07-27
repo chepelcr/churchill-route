@@ -329,13 +329,12 @@ when `lm.stands`, strokes a dark two-tone band over the block's real acera ring
 in the LANDMARK pass (after sidewalks → recolours the actual acera; follows the
 organic/diagonal outline). Interior cross-streets clipped by `_clip_roads_poly`.
 
-**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of five
+**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of four
 advancers (branch in `physics.js`): rail-bound city walkers (`pe.road`,
 `advancePed`); stadium **fans** (`kind:"fan"`, `pe.field`, `advanceFieldPed`)
 wandering the pitch, CONTAINED well inside the footprint; balneario **swimmers**
 (`kind:"swimmer"`, `pe.swim`, `advanceSwimmer`) bouncing inside `W.BALNEARIO`;
-**players** (`kind:"player"`, `pe.match`), which the MATCH moves, not the
-ped loop; and bus **passengers** (`kind:"passenger"`, `pe.bus`,
+and bus **passengers** (`kind:"passenger"`, `pe.bus`,
 `advancePassenger`), which are the one TEMPORARY kind — `joinTheSidewalk` drops
 BOTH the flag and the `kind` when an alighting one reaches the acera, so a person
 who got off a bus simply IS a person walking, drawn like one. All drawn by
@@ -357,29 +356,21 @@ happens at the kerb: brake, dwell, alight, board. Two things are load-bearing:
 not in the manifest — there are ~3600 of them. `signs` stay global because there
 are only ~470 and the bus logic wants to index them once.
 
-**A match on a cancha** (`src/game/match.js`, `state.matches`). Any field with a
-`sport` and room for one holds a game instead of a crowd: two teams, a keeper, a
-ball, and a coin rain when somebody scores (`rainOnGoal` in `physics.js` — the
-burst used to be on a CLOCK). Two things to know before touching it:
-- **HOW OFTEN SOMEBODY SCORES IS A DIAL** (`GOAL_EVERY`), not an emergent
-  property, and it has to be. A cancha here is 60 px across and Lito Pérez 210,
-  while a touch radius and a keeper's reach are absolute — with one set of
-  numbers a field scored every 6 s and another never did in fifteen minutes. The
-  keeper saves everything until the clock is up; then the next attack goes in.
-- **A GOAL STOPS THE MATCH FOR AS LONG AS THE SILVER LASTS** (`startCheer`).
-  The ball comes off the pitch and every player is drawn by the FAN branch —
-  which is why a player carries a `hue` as well as a `team` tone. They are the
-  SAME BODIES throughout, only drawn differently: splicing players out and
-  pushing a crowd in is the shape of the bug that once left a ball playing by
-  itself. The CALLER owns the duration (physics passes `ACOIN_RAIN_TTL`) and
-  only starts it when the burst actually happened — a goal inside the anti-farm
-  cooldown pays nothing and gets the short `RESET_PAUSE` instead.
-- **It imports NOTHING**, like `vehicles.js` and `surfaces.js`, and for a
-  sharper reason: `src/world2d/index.js` uses `import.meta.glob` (Vite only), so
-  anything importing it cannot run under Node. That is what lets
-  `tools/match_check.mjs` tick real fields out of the manifest and check the
-  ball stays on the pitch, the goal interval, and that the car can score —
-  the one part of this that a browser would otherwise have to judge.
+**A crowd on a cancha** (`maintainStadiumPeds` + `advanceFieldPed` in
+`spawns.js`). Every field with a footprint holds a wandering crowd of
+`kind:"fan"`, and the coin rain is a CLOCK: park on a pitch and the fans throw a
+silver burst, once per `ACOIN_RAIN_COOLDOWN`. A match sim with players and a
+ball lived here for a day and was reverted — it is in the history if it is ever
+wanted again. Two things the crowd has to get right:
+- **HOW MANY is a function of the field, not a constant.** A cancha de barrio is
+  60 px across and Lito Pérez 210; twelve people is a scrum on the first and
+  nothing on the second. `crowdSize` gives one person per `FAN_GAP` box of area.
+- **SPACING IS ENFORCED TWICE**, and once is not enough. `fieldPoint` rejects a
+  spawn within `FAN_GAP` of a neighbour (falling back to a smaller gap, then
+  none, so a tiny pitch still gets somebody), and `advanceFieldPed` shoves
+  overlapping pairs apart every frame — they are random walks on one pitch, so
+  however well they are placed they will meet.
+
 
 **Water cuadra (Balneario)**: a `type:"pool"` landmark's whole block becomes a
 SEA inlet — `occ.update(cells)` (no OSM buildings), stamp the interior

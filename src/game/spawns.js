@@ -6,9 +6,11 @@
 // old global arclength model (place-once across the whole corridor via ROADS +
 // roadPointAt), which cannot work when most of the map isn't loaded.
 import { WORLD2D as W } from "../world2d/index.js";
-import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, matches } from "./state.js";
-import { createMatch, playable } from "./match.js";
+import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains } from "./state.js";
 
+// The sidewalk's depth is a WORLD knob (ACERA_CELLS), read from the manifest
+// rather than hardcoded — the game may not import the renderer's copy.
+const ACERA_PX = (W.META && W.META.aceraPx) || 12;
 // how far from the camera we keep life alive / spawn it (world px)
 const KEEP_R = 1400;
 const SPAWN_R = 1100;
@@ -175,7 +177,9 @@ function spawnOnePed() {
   const r = cand[(Math.random() * cand.length) | 0];
   const s = 20 + Math.random() * (r.len - 40);
   const pt = roadPointAt(r, s);
-  const baseOff = r.w / 2 + 10; // mid-acera (1 cuadrícula deep)
+  // MID-acera, whatever the acera is: the depth is a world knob (ACERA_CELLS)
+  // and a hardcoded 10 px put walkers on the outer edge once it narrowed.
+  const baseOff = r.w / 2 + Math.max(4, ACERA_PX * 0.5);
   for (const side of Math.random() < 0.5 ? [1, -1] : [-1, 1]) {
     const x = pt.x - Math.sin(pt.ang) * baseOff * side;
     const y = pt.y + Math.cos(pt.ang) * baseOff * side;
@@ -303,6 +307,13 @@ function topUp(arr, target, make, isDead) {
 // and is wider than that band, so a fan is always visibly on the grass.
 const STADIUM_PEDS = 12;
 const FIELD_INSET = 26;        // px of clearance from the pitch edge
+// HOW FAR APART A CROWD STANDS. A fan is drawn ~9 px wide with its shadow, so
+// two of them within this read as one smudge — which is what a crowd packed
+// onto a small cancha looked like. It is enforced twice, because once is not
+// enough: at SPAWN time (a candidate point too near a neighbour is rejected)
+// and while they WANDER, where they would otherwise drift into each other
+// however well they were placed.
+const FAN_GAP = 17;
 // Point-in-polygon on a flat [x,y,...] ring.
 function inPoly(x, y, f) {
   let inside = false;
@@ -331,17 +342,41 @@ function distToPoly(x, y, f) {
 function deepInside(x, y, f, m) {
   return inPoly(x, y, f) && distToPoly(x, y, f) >= m;
 }
-// A random point WELL INSIDE the footprint (rejection-sampled on its bbox).
-// Falls back through shallower insets so a small pitch still gets its crowd.
+// A random point WELL INSIDE the footprint (rejection-sampled on its bbox) and
+// clear of everyone already standing there. Falls back through shallower insets
+// AND a shrinking gap, so a small pitch still gets its crowd rather than none:
+// the spacing is what a field can afford, not an absolute.
 function fieldPoint(S) {
   for (const m of [FIELD_INSET, FIELD_INSET / 2, 0]) {
-    for (let i = 0; i < 40; i++) {
-      const x = S.x0 + Math.random() * (S.x1 - S.x0);
-      const y = S.y0 + Math.random() * (S.y1 - S.y0);
-      if (deepInside(x, y, S.footprint, m)) return { x, y };
+    for (const gap of [FAN_GAP, FAN_GAP * 0.6, 0]) {
+      for (let i = 0; i < 40; i++) {
+        const x = S.x0 + Math.random() * (S.x1 - S.x0);
+        const y = S.y0 + Math.random() * (S.y1 - S.y0);
+        if (!deepInside(x, y, S.footprint, m)) continue;
+        if (gap && crowded(x, y, S, gap)) continue;
+        return { x, y };
+      }
     }
   }
   return { x: S.cx, y: S.cy };
+}
+// Is somebody already standing within `gap` of here, on this field?
+function crowded(x, y, S, gap) {
+  const g2 = gap * gap;
+  for (const pe of pedestrians) {
+    if (pe.stadium !== S) continue;
+    const dx = pe.x - x, dy = pe.y - y;
+    if (dx * dx + dy * dy < g2) return true;
+  }
+  return false;
+}
+// HOW MANY a field holds. A cancha de barrio is 60 px across and Lito Pérez
+// 210: twelve people on the first is a scrum and on the second is empty. The
+// count comes from the room there actually is, at one person per FAN_GAP box.
+function crowdSize(S) {
+  const area = Math.max(1, (S.x1 - S.x0) * (S.y1 - S.y0));
+  const room = Math.floor(area / (FAN_GAP * FAN_GAP * 6));
+  return Math.max(3, Math.min(STADIUM_PEDS, room));
 }
 // Wander inside the field, turning back at the edge instead of leaving it. The
 // turn-back happens at FIELD_INSET, not at the outline, so a fan never walks
@@ -354,31 +389,21 @@ export function advanceFieldPed(pe, dt) {
   if (deepInside(nx, ny, S.footprint, pe.inset || 0)) { pe.x = nx; pe.y = ny; }
   else pe.ang += Math.PI * (0.6 + Math.random() * 0.8);
   if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.9;
+  // KEEP APART. Spacing them at spawn is not enough — they wander, and two
+  // random walks on one pitch meet. A gentle shove along the line between them
+  // keeps the crowd legible without making it look choreographed.
+  for (const other of pedestrians) {
+    if (other === pe || other.stadium !== S) continue;
+    const dx = pe.x - other.x, dy = pe.y - other.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 >= FAN_GAP * FAN_GAP || d2 < 1e-6) continue;
+    const d = Math.sqrt(d2), push = (FAN_GAP - d) * 0.5;
+    const px = pe.x + (dx / d) * push, py = pe.y + (dy / d) * push;
+    if (deepInside(px, py, S.footprint, pe.inset || 0)) { pe.x = px; pe.y = py; }
+    else pe.ang = Math.atan2(-dy, -dx);   // pinned against the edge: turn away
+  }
 }
 
-// A cancha with a sport and room to play holds a MATCH — two teams and a ball —
-// instead of a crowd. Created and culled by the same camera proximity that
-// governs the peds, so at most a couple of fields are ever live. Everything the
-// match does is in match.js, which imports nothing from the world.
-function maintainMatches() {
-  const arr = W.FIELDS;
-  if (!arr) return;
-  for (let i = matches.length - 1; i >= 0; i--) {
-    const m = matches[i];
-    if (Math.hypot(m.field.cx - _cam.x, m.field.cy - _cam.y) > SPAWN_R + 600) {
-      for (let k = pedestrians.length - 1; k >= 0; k--)
-        if (pedestrians[k].match === m) pedestrians.splice(k, 1);
-      matches.splice(i, 1);
-    }
-  }
-  for (const S of arr) {
-    if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;
-    if (!playable(S) || matches.some((m) => m.field === S)) continue;
-    const m = createMatch(S);
-    matches.push(m);
-    for (const p of m.players) pedestrians.push(p);
-  }
-}
 
 function maintainStadiumPeds() {
   const arr = W.FIELDS;
@@ -386,11 +411,11 @@ function maintainStadiumPeds() {
   for (const S of arr) {
     if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;
     if (!S.footprint || S.footprint.length < 6) continue;
-    if (playable(S)) continue;          // this one has a match, not a crowd
     let n = 0;
     for (const pe of pedestrians) if (pe.stadium === S) n++;
+    const want = crowdSize(S);
     let guard = 0;
-    while (n < STADIUM_PEDS && guard++ < STADIUM_PEDS * 3) {
+    while (n < want && guard++ < want * 3) {
       // real position NOW, or far() culls it before it is ever placed
       const q = fieldPoint(S);
       // the inset a fan RESPECTS is the one it actually spawned at — on a
@@ -461,7 +486,6 @@ export function advanceSwimmer(pe, dt) {
 
 export function maintainStreaming() {
   topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || far(e));
-  maintainMatches();
   maintainStadiumPeds();
   maintainBalneario();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
@@ -507,12 +531,7 @@ export function updateAnimals(dt) {
 // camera on the first frames. Kept as named exports so modes.js/index.js don't
 // need to change their call sites.
 export function spawnTraffic() { traffic.length = 0; trains.length = 0; }
-// A match OWNS its players and they live in `pedestrians` — so clearing the peds
-// without clearing the matches orphans them: the ball goes on being advanced and
-// drawn while the players are gone from the draw list for good, because
-// `maintainMatches` sees the field already has a match and never rebuilds it.
-// That is exactly what a mode start looked like: a ball playing by itself.
-export function spawnPedestrians() { pedestrians.length = 0; matches.length = 0; spawnAmbient(); }
+export function spawnPedestrians() { pedestrians.length = 0; spawnAmbient(); }
 export function spawnAmbient() { parked.length = 0; vendors.length = 0; animals.length = 0; }
 export function spawnGulls() { gulls.length = 0; }
 export function spawnBoats() { boats.length = 0; }

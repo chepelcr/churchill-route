@@ -14,6 +14,12 @@ from ..logging import log
 from ..util.geometry import poly_centroid, to_m
 
 
+#: Node tags that are STREET FURNITURE rather than a place — a semáforo has no
+#: name and no amenity, so the POI collector below never sees it. Kept as its
+#: own pass because the sign service needs the tags, not a name.
+SIGN_KEYS = {"highway": ("traffic_signals", "crossing", "bus_stop"),
+             "traffic_calming": ("bump", "hump")}
+
 #: OSM tag keys that make a way or node a POI worth naming on the map
 POI_KEYS = ("amenity", "shop", "tourism", "leisure", "office", "healthcare",
             "craft", "historic")
@@ -31,6 +37,7 @@ def parse_osm(path):
     ways = []
     named = []            # (lower_name, (mx,my), tags) for POI resolution
     poi_nodes = []        # (ll, tags) for every NAMED standalone POI node
+    sign_nodes = []       # (ll, tags) for street furniture (semáforo, parada…)
     rels = []
     keep_keys = {"highway", "building", "natural", "name", "amenity",
                  "man_made", "bridge", "ref", "wetland", "leisure", "landuse"}
@@ -41,9 +48,13 @@ def parse_osm(path):
             nodes[nid] = ll
             tags = None
             for t in el.findall("tag"):
-                if t.get("k") == "name" or t.get("k") in ("man_made", "amenity"):
+                k = t.get("k")
+                if k == "name" or k in ("man_made", "amenity") or \
+                        t.get("v") in SIGN_KEYS.get(k, ()):
                     if tags is None:
                         tags = {tt.get("k"): tt.get("v") for tt in el.findall("tag")}
+            if tags and any(tags.get(k) in vs for k, vs in SIGN_KEYS.items()):
+                sign_nodes.append((ll, tags))
             if tags and tags.get("name"):
                 named.append((tags["name"].lower(), to_m(*ll), tags))
                 if poi_category(tags):
@@ -68,7 +79,7 @@ def parse_osm(path):
         nm = w["tags"].get("name")
         if nm and pts:
             named.append((nm.lower(), poly_centroid(pts), w["tags"]))
-    return nodes, ways, named, rels, poi_nodes
+    return nodes, ways, named, rels, poi_nodes, sign_nodes
 
 # ----------------------------------------------------------------- spine ---
 

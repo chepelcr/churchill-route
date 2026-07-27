@@ -4,7 +4,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { t } from "../../i18n/index.js";
 import { dashPath, roadPath } from "./cache.js";
-import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, label, parcelFrame } from "./gfx.js";
+import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, flatRoundPath, label, parcelFrame, roundRect } from "./gfx.js";
 
 // Estadios are NOT a structure drawn over the ground — they are a COLOUR
 // CHOICE inside the acera pass. The build traces each one from the real cuadra
@@ -30,6 +30,9 @@ function fieldFrame(S) {
   return (S._frame = { cx, cy, ang, hw, hh });
 }
 
+// Poured concrete, the colour the aceras actually are in the port.
+const ACERA_GREY = "#b8b6b0";
+const PARCEL_ROUND = 7;                  // px of kerb radius on a parcel corner
 const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one white
 // Grass, mow stripes and fútbol markings inside `path`, all drawn in the
 // FIELD's OWN frame rather than on screen axes — Las Playitas sits on the
@@ -122,7 +125,7 @@ function paintStadiumCuadras(view) {
   for (const S of arr) {
     if (S.x1 + 40 < view.x0 || S.x0 - 40 > view.x1 || S.y1 + 40 < view.y0 || S.y0 - 40 > view.y1) continue;
     if (!S.footprint) continue;
-    const pitch = S._pitch || (S._pitch = flatPath(S.footprint, true));
+    const pitch = S._pitch || (S._pitch = flatRoundPath(S.footprint, PARCEL_ROUND));
     // 4 px of grass dilation first: the traced pitch steps in 4 px raster
     // increments, so its edge and the acera band don't meet exactly and a hair
     // of bare ground shows through at the seam.
@@ -141,7 +144,8 @@ function paintStadiumCuadras(view) {
 const PARCEL_FILL = { plaza: "#4f9d5b", stadium: "#4f9d5b", garden: "#5ba362",
                       park: "#5ba362", church: "#cfc7b4", cathedral: "#cfc7b4",
                       boulevard: "#d9d6cd", civic: "#c9c2b2", lot: "#b9b2a0",
-                      school: "#c8bb96", kinder: "#d3b98f", campus: "#bfb894" };
+                      school: "#c8bb96", kinder: "#d3b98f", campus: "#bfb894",
+                      fuel: "#8e9299" };
 function paintParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;
@@ -151,7 +155,8 @@ function paintParcels(view) {
     // the footprint IS a building. Either way the ground is not ours to paint,
     // only the sponsor slot on top of it.
     if (P.whole || P.built) continue;
-    const path = P._path || (P._path = flatPath(P.poly, true));
+    // ROUNDED CORNERS: a manzana turns its kerb, it does not come to a point.
+    const path = P._path || (P._path = flatRoundPath(P.poly, PARCEL_ROUND));
     ctx.fillStyle = PARCEL_FILL[P.use] || "#b9b2a0";
     ctx.lineWidth = 8; ctx.lineJoin = "round";
     ctx.strokeStyle = ctx.fillStyle; ctx.stroke(path);   // hide the 4px raster steps
@@ -203,14 +208,16 @@ function paintRoads(roads, view) {
   // elevated (barro/Ferrocarril) drop-shadow
   ctx.strokeStyle = "rgba(0,0,0,0.30)";
   for (const r of roads) { if (!r.elev) continue; ctx.save(); ctx.translate(0, 3.5); ctx.lineWidth = r.w + 2 * ACERA_PX + 3; ctx.stroke(roadPath(r)); ctx.restore(); }
-  // acera concrete band
-  ctx.strokeStyle = "#cec7b2";
+  // acera concrete band. GREY, not the sandy cream it used to be: the aceras in
+  // Puntarenas are poured concrete, and a warm band beside warm ground made the
+  // whole town read as one colour.
+  ctx.strokeStyle = ACERA_GREY;
   for (const r of roads) { if (r.bridge || r.cls === "bridge") continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
   // acera corner fillets: acera-coloured joint discs at each piece endpoint,
   // so perpendicular sidewalks meet ROUNDED at junctions instead of a hard
   // angle (casing + asphalt paint over the disc centres below, leaving only
   // the outer acera fillet visible).
-  ctx.fillStyle = "#cec7b2";
+  ctx.fillStyle = ACERA_GREY;
   for (const r of roads) {
     if (r.bridge || r.cls === "bridge") continue;
     const p = r.pts, n = p.length, rad = r.w / 2 + ACERA_PX;
@@ -399,4 +406,98 @@ function drawBarriers(view) {
   }
 }
 
-export { drawBarriers, paintParcels, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };
+export { drawBarriers, drawSigns, paintParcels, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };
+
+// ---------------------------------------------------------------- signs ----
+// Street furniture, drawn on top of the asphalt. Costa Rica signs to the Manual
+// Centroamericano de Dispositivos Uniformes, so these are the real shapes: the
+// ALTO is a red OCTAGON carrying the word (not "STOP"), a CEDA EL PASO is an
+// inverted white triangle with a red border, and a tope is the yellow-hatched
+// hump every calle de barrio has.
+//
+// Sizes are in world px at the game's framing (~20 cuadrículas across), so a
+// sign reads at a glance without swallowing the lane it stands beside.
+const SIGN_POST = "#8b8f96";
+function drawSignPost(x, y, h) {
+  ctx.strokeStyle = SIGN_POST; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y); ctx.stroke();
+}
+function polyN(x, y, r, n, rot) {
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = rot + (i / n) * Math.PI * 2;
+    const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+    if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+}
+function drawSign(s) {
+  const x = s.x, y = s.y;
+  switch (s.kind) {
+    case "alto": {
+      drawSignPost(x, y, 5);
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      polyN(x + 0.8, y + 0.8, 4.6, 8, Math.PI / 8); ctx.fill();
+      ctx.fillStyle = "#c0392b";                       // the octagon
+      polyN(x, y, 4.6, 8, Math.PI / 8); ctx.fill();
+      ctx.strokeStyle = "#f4f1e8"; ctx.lineWidth = 0.7;
+      polyN(x, y, 3.5, 8, Math.PI / 8); ctx.stroke();
+      ctx.fillStyle = "#f4f1e8";                       // the word, at this size a bar
+      ctx.fillRect(x - 2.6, y - 0.7, 5.2, 1.4);
+      break;
+    }
+    case "ceda": {
+      drawSignPost(x, y, 5);
+      ctx.fillStyle = "#f4f1e8";                       // inverted triangle
+      ctx.beginPath();
+      ctx.moveTo(x - 4.6, y - 3.6); ctx.lineTo(x + 4.6, y - 3.6); ctx.lineTo(x, y + 4.2);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#c0392b"; ctx.lineWidth = 1.4; ctx.stroke();
+      break;
+    }
+    case "semaforo": {
+      drawSignPost(x, y, 7);
+      ctx.fillStyle = "#2b2f36";
+      roundRect(ctx, x - 2, y - 7, 4, 9, 1.2, true, false);
+      ctx.fillStyle = "#e0483a"; ctx.beginPath(); ctx.arc(x, y - 5.2, 1.05, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#f0c44a"; ctx.beginPath(); ctx.arc(x, y - 2.6, 1.05, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#4fbf6a"; ctx.beginPath(); ctx.arc(x, y + 0.0, 1.05, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case "crossing": {                                 // zebra, across the lane
+      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
+      ctx.fillStyle = "rgba(244,241,232,0.82)";
+      for (let i = -2; i <= 2; i++) ctx.fillRect(i * 3.4 - 1.1, -7, 2.2, 14);
+      ctx.restore();
+      break;
+    }
+    case "tope": {                                     // hump, yellow hatching
+      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
+      ctx.fillStyle = "rgba(240,196,74,0.85)";
+      for (let i = -2; i <= 2; i++) ctx.fillRect(i * 3.2 - 1.0, -6, 2.0, 12);
+      ctx.restore();
+      break;
+    }
+    case "bus": {                                      // parada: a small shelter
+      ctx.fillStyle = "rgba(0,0,0,0.22)";
+      ctx.fillRect(x - 4, y - 1, 9, 4);
+      ctx.fillStyle = "#3f6f8a";
+      ctx.fillRect(x - 5, y - 5, 10, 3.2);              // roof
+      ctx.strokeStyle = SIGN_POST; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x - 4.4, y - 2); ctx.lineTo(x - 4.4, y + 2.6);
+      ctx.moveTo(x + 4.4, y - 2); ctx.lineTo(x + 4.4, y + 2.6); ctx.stroke();
+      break;
+    }
+    default: break;                                    // unknown kind: draw nothing
+  }
+}
+// One pass over the furniture in view. `W.SIGNS` is eager in the manifest (it
+// is small), so this culls by bbox rather than by tile.
+function drawSigns(view) {
+  const arr = W.SIGNS;
+  if (!arr || !arr.length) return;
+  for (const s of arr) {
+    if (s.x < view.x0 - 20 || s.x > view.x1 + 20 || s.y < view.y0 - 20 || s.y > view.y1 + 20) continue;
+    drawSign(s);
+  }
+}

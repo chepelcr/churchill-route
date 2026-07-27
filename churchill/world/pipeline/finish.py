@@ -67,7 +67,7 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
                  kiosk_paths=ctx.kiosk_paths, faro_pier=ctx.faro_pier,
                  balneario=ctx.balneario, bridge=ctx.bridge, estuary=ctx.estuary,
                  pier=ctx.pier, hills=ctx.hills, pois=ctx.pois,
-                 parcels=ctx.parcels, ferries=ctx.ferries)
+                 parcels=ctx.parcels, ferries=ctx.ferries, signs=ctx.signs)
     render_debug(raster=ctx.raster, buildings=ctx.buildings,
                  landmarks=ctx.landmarks, customers=ctx.customers,
                  roads=ctx.roads, land_contours=land_polys, waters=ctx.waters,

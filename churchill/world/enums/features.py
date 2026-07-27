@@ -25,6 +25,7 @@ class ParcelUse(StrEnum):
     SCHOOL = "school"        # escuela / liceo: a yard with a building along one edge
     KINDER = "kinder"        # jardín de niños / CEN-CINAI: a small school with a patio
     CAMPUS = "campus"        # colegio / universidad: several pavilions on open grounds
+    FUEL = "fuel"            # gasolinera: a canopy over its islands, with the pumps
 
 
 class GreenType(StrEnum):

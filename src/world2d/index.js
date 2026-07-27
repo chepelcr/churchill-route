@@ -45,6 +45,7 @@ export const WORLD2D = (function () {
   // Every named real-world POI OSM knows about {x,y,name,cat}. Debug overlay
   // only for now — 1160 pills at play zoom would be a wall of text.
   const POIS = manifest.pois || [];
+  const SIGNS = manifest.signs || [];
   // Named cuadra parts {id,name,use,poly,cx,cy,slot}. `slot` is a rect a
   // sponsor entry can claim, so its art has a real footprint in the world
   // instead of a floating pin.
@@ -331,7 +332,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, POIS, PARCELS, FERRIES, FIELDS,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, POIS, PARCELS, FERRIES, FIELDS, SIGNS,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

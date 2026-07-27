@@ -10,7 +10,7 @@ from .lote import Lote, LoteCatalog
 from .manifest import Manifest, Tile
 from .world import (
     Balneario, Bridge, Customer, District, Estuary, FaroPier, Geo, Green,
-    Ferry, GridInfo, Hill, KioskPath, Landmark, Meta, Parcel, Pier, Poi, Stadium,
+    Ferry, GridInfo, Hill, KioskPath, Landmark, Meta, Parcel, Pier, Sign, Poi, Sign, Stadium,
     Stage, WorldModel,
 )
 

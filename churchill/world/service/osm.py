@@ -313,6 +313,7 @@ KINDER_NAMES = ("jardín de niños", "jardin de ninos", "cen-cinai", "cen cinai"
 #: matches wins, so a church mapped as `building=church` is worship, not a
 #: nameless footprint, and a school with a pitch inside it stays a school.
 SITE_KINDS = (
+    ("fuel",    lambda t: t.get("amenity") == "fuel"),
     ("worship", lambda t: t.get("amenity") == "place_of_worship"
                 or t.get("building") in ("church", "chapel", "cathedral")),
     ("kinder",  lambda t: t.get("amenity") in ("kindergarten", "childcare")

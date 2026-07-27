@@ -580,13 +580,15 @@ class FieldService:
     #: STAMPED DRIVABLE by _emit_parcel; the rest are buildings on a plot.
     SITE_USE = {"park": ParcelUse.PARK, "pitch": ParcelUse.STADIUM,
                 "worship": ParcelUse.CHURCH, "school": ParcelUse.SCHOOL,
-                "kinder": ParcelUse.KINDER, "campus": ParcelUse.CAMPUS}
+                "kinder": ParcelUse.KINDER, "campus": ParcelUse.CAMPUS,
+                "fuel": ParcelUse.FUEL}
     #: the kinds whose parcel replaces a BUILDING: their OSM footprints have to
     #: be cleared, or a pastel box lands on top of the drawn church/school.
-    SITE_BUILT = ("worship", "school", "kinder", "campus")
+    SITE_BUILT = ("worship", "school", "kinder", "campus", "fuel")
     SITE_FALLBACK_NAME = {"park": "Parque", "pitch": "Plaza de Deportes",
                           "worship": "Iglesia", "school": "Escuela",
-                          "kinder": "Jardín de Niños", "campus": "Centro Educativo"}
+                          "kinder": "Jardín de Niños", "campus": "Centro Educativo",
+                          "fuel": "Gasolinera"}
     #: a site has to keep this much of its outline as real cuadra ground, and
     #: this many cells, or it is a ribbon along a street rather than a place.
     #: Parque del Muellero is 855x297 px of mostly Paseo asphalt.
@@ -634,13 +636,21 @@ class FieldService:
             # ground. Testing the SURFACE is what keeps a parcel out of the
             # roadway and lets it follow a diagonal avenida exactly — the same
             # move `_reclaim` makes, from the other side.
+            # A GASOLINERA'S GROUND IS PAVED. Every other site is a plot cut out
+            # of a cuadra, so LAND/ACERA is the test that keeps it off the road —
+            # but a forecourt is by definition open to the street, and testing it
+            # the same way rejected all 12 stations on the map (the Delta at
+            # 6/40 cells). It is not stamped, so the asphalt still wins the
+            # ground; only the canopy and the pumps draw on top.
+            ground = ((CLS_LAND, CLS_ACERA, CLS_ROAD) if site["kind"] == "fuel"
+                      else (CLS_LAND, CLS_ACERA))
             under, own = set(), set()
             for r in range(max(0, r0), min(raster.rows, r1 + 1)):
                 for c in range(max(0, c0), min(raster.cols, c1 + 1)):
                     if not point_in_poly((c * cell + cell / 2, r * cell + cell / 2), pts):
                         continue
                     under.add((c, r))
-                    if raster.at(c, r) in (CLS_LAND, CLS_ACERA):
+                    if raster.at(c, r) in ground:
                         own.add((c, r))
             if not under:
                 skipped["off-grid"] += 1; continue
@@ -701,7 +711,9 @@ class FieldService:
             # DIRECTIONAL, so a side facing the sand or the neighbour keeps its
             # edge while the ones facing a street pull back; refitting keeps the
             # answer a rectangle instead of a nibbled trace.
-            deep = FIELD_ACERA_CELLS if use in (ParcelUse.PARK, ParcelUse.STADIUM) else ACERA_CELLS
+            deep = (FIELD_ACERA_CELLS
+                    if use in (ParcelUse.PARK, ParcelUse.STADIUM, ParcelUse.FUEL)
+                    else ACERA_CELLS)
             keep, krect, used = set(), None, 0
             for depth in [d for d in (deep, FIELD_ACERA_CELLS, 1, 0) if d <= deep]:
                 used = depth
@@ -743,7 +755,27 @@ class FieldService:
             # Anything a real place has that OSM does not record — the old round
             # kiosco in the middle of Parque Victoria — is declared by parcel id
             # in content.SITE_DECOR and rides through untouched.
-            part.update(SITE_DECOR.get(pid, {}))
+            decor = dict(SITE_DECOR.get(pid, {}))
+            # `rect`: (u0, u1, v0, v1) as FRACTIONS of the fitted rect — the one
+            # override that shapes the parcel rather than decorating it. The
+            # mapper's outline is the ground a place is ON, which is not always
+            # the ground it USES: the Escuela Delia Urbina is drawn tall over a
+            # whole manzana in OSM and is really a wide building on its
+            # south-west corner. u runs along the avenidas (east +), v along the
+            # calles (south +), so (0, .85, .65, 1) is "the west 85%, the south
+            # 35%" — the SW corner, landscape.
+            fr = decor.pop("rect", None)
+            part.update(decor)
+            if fr:
+                u0, u1, v0, v1, cu, cv = krect
+                du, dv = u1 - u0, v1 - v0
+                krect = (u0 + du * fr[0], u0 + du * fr[1],
+                         v0 + dv * fr[2], v0 + dv * fr[3], cu, cv)
+                part["hw"] = round((krect[1] - krect[0]) / 2, 1)
+                part["hh"] = round((krect[3] - krect[2]) / 2, 1)
+                own = rect_cells(own, krect, ang, cell) or own
+                log("site", f"{pid}: rect overridden to {fr} -> "
+                    f"{part['hw'] * 2:.0f}x{part['hh'] * 2:.0f}px")
             if self._emit_parcel("osm", part, own, keep, ang,
                                  poly=rect_poly(krect, ang)) is None:
                 skipped["no-outline"] += 1; continue

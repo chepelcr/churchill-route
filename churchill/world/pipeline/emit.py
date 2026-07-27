@@ -25,7 +25,7 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
                  stadiums=None, kiosk_paths=None, faro_pier=None, greens=None,
-                 balneario=None, pois=None, parcels=None, ferries=None):
+                 balneario=None, pois=None, parcels=None, ferries=None, signs=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -139,6 +139,7 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
         # named cuadra parts: {id,name,use,poly,cx,cy,slot} — `slot` is the rect
         # a remote sponsor `lote` can claim, so its art has a real footprint
         "parcels": parcels or [],
+        "signs": signs or [],
         # the two ferry berths and the truncated real routes they sail — the
         # Easter egg: park on one, wait, and it takes you out over the gulf
         "ferries": ferries or [],

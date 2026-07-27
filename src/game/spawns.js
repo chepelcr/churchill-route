@@ -499,7 +499,12 @@ export function updateAnimals(dt) {
 // camera on the first frames. Kept as named exports so modes.js/index.js don't
 // need to change their call sites.
 export function spawnTraffic() { traffic.length = 0; trains.length = 0; }
-export function spawnPedestrians() { pedestrians.length = 0; spawnAmbient(); }
+// A match OWNS its players and they live in `pedestrians` — so clearing the peds
+// without clearing the matches orphans them: the ball goes on being advanced and
+// drawn while the players are gone from the draw list for good, because
+// `maintainMatches` sees the field already has a match and never rebuilds it.
+// That is exactly what a mode start looked like: a ball playing by itself.
+export function spawnPedestrians() { pedestrians.length = 0; matches.length = 0; spawnAmbient(); }
 export function spawnAmbient() { parked.length = 0; vendors.length = 0; animals.length = 0; }
 export function spawnGulls() { gulls.length = 0; }
 export function spawnBoats() { boats.length = 0; }

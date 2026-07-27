@@ -239,6 +239,7 @@ function drawParcels(view) {
     if (P.use === "cathedral") drawCathedral(P);
     if (P.use === "civic") drawCivicBuilding(P);
     if (P.use === "school" || P.use === "kinder" || P.use === "campus") drawSchool(P);
+    if (P.use === "fuel") drawFuel(P);
     if (P.use === "garden" || P.use === "park") drawGarden(P);
     // Civic furniture the WORLD declared on this parcel. The build only says
     // which parcel has a river / a statue / a paradita and roughly where; what
@@ -286,9 +287,23 @@ function drawGarden(P) {
   const cx = F.cx, cy = F.cy;
   const w = F.hw * 2, h = F.hh * 2;
   const n = Math.max(3, Math.round((w + h) / 26));
+  // KEEP THE MIDDLE CLEAR for whatever the world put there. A kiosco, a statue
+  // or a fountain stands at the parcel centre, and a canopy dropped on top of it
+  // hides the thing the park is known for — the Parque Victoria's bandstand had
+  // trees growing through its roof.
+  const clear = (P.kiosco || P.statue || P.fountain)
+    ? Math.max(14, Math.min(F.hw, F.hh) * 0.62) : 0;
   for (let i = 0; i < n; i++) {
-    const u = (hash01(i * 3.7 + P.x0) - 0.5) * w * 0.7;      // along the avenidas
-    const v = (hash01(i * 8.1 + P.y0) - 0.5) * h * 0.62;     // along the calles
+    let u = (hash01(i * 3.7 + P.x0) - 0.5) * w * 0.7;        // along the avenidas
+    let v = (hash01(i * 8.1 + P.y0) - 0.5) * h * 0.62;       // along the calles
+    if (clear) {
+      // push it out of the clear zone along its own bearing, so the scatter
+      // still reads as scattered instead of collapsing onto a ring
+      const d = Math.hypot(u, v) || 1;
+      if (d < clear) { u = u / d * clear; v = v / d * clear; }
+      // …and if that pushed it off the lot, drop the tree rather than clip it
+      if (Math.abs(u) > F.hw * 0.92 || Math.abs(v) > F.hh * 0.92) continue;
+    }
     paintTree({ x: cx + u * ca - v * sa, y: cy + u * sa + v * ca,
                 s: 0.7 + hash01(i + P.x0) * 0.35 });
   }
@@ -455,6 +470,45 @@ function drawSchool(P) {
   ctx.beginPath(); ctx.moveTo(L * 0.44, D * 0.2); ctx.lineTo(L * 0.44, -D * 0.5); ctx.stroke();
   ctx.fillStyle = "#e85d75";
   ctx.fillRect(L * 0.44, -D * 0.5, Math.max(3, L * 0.05), 2.6);
+  ctx.restore();
+}
+
+// A GASOLINERA: the canopy over the islands, a pump on each, and the shop off
+// to one side. Every one of the map's 12 stations is a real OSM `amenity=fuel`
+// area — they used to reach the client as a name on a pastel box.
+function drawFuel(P) {
+  const F = parcelFrame(P);
+  const along = F.hw >= F.hh;
+  const L = (along ? F.hw : F.hh) * 2, D = (along ? F.hh : F.hw) * 2;
+  ctx.save();
+  ctx.translate(F.cx, F.cy); if (F.ang) ctx.rotate(F.ang);
+  if (!along) ctx.rotate(Math.PI / 2);
+  // the shop, along the back edge
+  const sw = L * 0.34, sh = D * 0.30;
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  roundRect(ctx, -L / 2 + 2, -D / 2 + 2, sw, sh, 2, true, false);
+  ctx.fillStyle = "#e9e3d4";
+  roundRect(ctx, -L / 2 + 1, -D / 2 + 1, sw, sh, 2, true, false);
+  ctx.fillStyle = "#d94f3d";                                  // the fascia band
+  ctx.fillRect(-L / 2 + 1, -D / 2 + 1, sw, Math.max(1.6, sh * 0.30));
+  // the canopy: a slab on four posts, over the islands
+  const cw = L * 0.56, ch = D * 0.56;
+  const cx0 = L / 2 - cw - 2, cy0 = -ch / 2;
+  ctx.fillStyle = "rgba(0,0,0,0.20)";
+  roundRect(ctx, cx0 + 2, cy0 + 2.5, cw, ch, 2, true, false);
+  ctx.fillStyle = "#f0efe9";
+  roundRect(ctx, cx0, cy0, cw, ch, 2, true, false);
+  ctx.fillStyle = "#d94f3d";
+  ctx.fillRect(cx0, cy0, cw, Math.max(1.4, ch * 0.18));       // the branded edge
+  ctx.fillStyle = "#9aa0a8";                                   // posts
+  for (const px of [cx0 + 2.5, cx0 + cw - 3.5])
+    for (const py of [cy0 + 2, cy0 + ch - 3]) ctx.fillRect(px, py, 1.6, 1.6);
+  ctx.fillStyle = "#5c6169";                                   // the pumps
+  const n = Math.max(1, Math.min(3, Math.round(cw / 16)));
+  for (let i = 0; i < n; i++) {
+    const px = cx0 + cw * ((i + 0.5) / n) - 1.4;
+    ctx.fillRect(px, cy0 + ch * 0.42, 2.8, Math.max(2.4, ch * 0.2));
+  }
   ctx.restore();
 }
 

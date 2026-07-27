@@ -20,6 +20,7 @@ from ..service.osm import (
     extract_rails, extract_roads, extract_sites, propagate_barro_to_crossings,
 )
 from ..service.projection import planar_setup
+from ..service.signs import build_signs
 from ..util.raster import Raster
 
 
@@ -28,7 +29,7 @@ def extract_world(osm_source):
     plus the raw building footprints (which are placed by a later stage, not
     kept on the context: they are consumed, not shared)."""
     t0 = time.time()
-    nodes, ways, named, relations, poi_nodes = osm_source.load()
+    nodes, ways, named, relations, poi_nodes, sign_nodes = osm_source.load()
     log("parse", f"{len(nodes)} nodes, {len(ways)} kept ways, "
                  f"{len(named)} named features ({time.time()-t0:.1f}s)")
 
@@ -36,6 +37,7 @@ def extract_world(osm_source):
     ctx = WorldContext(dims=dims, projection=sp)
     ctx.nodes, ctx.ways, ctx.named = nodes, ways, named
     ctx.relations, ctx.poi_nodes = relations, poi_nodes
+    ctx.sign_nodes = sign_nodes
     ctx.raster = Raster(dims.cols, dims.rows, dims.cell)
 
     roads, bridge_road = extract_roads(sp, ways, dims.w, dims.h)
@@ -60,6 +62,10 @@ def extract_world(osm_source):
     ctx.sites = extract_sites(sp, ways, dims.w, dims.h)
     ctx.beaches, ctx.waters = extract_areas(sp, ways, relations, dims.w, dims.h)
     ctx.pois = extract_pois(sp, ways, poi_nodes, dims.w, dims.h)
+    # Street furniture: the semáforos, paradas, crossings and topes OSM records,
+    # plus the ALTOs derived from the street network — OSM has not one mapped
+    # `highway=stop` on this map, and an esquina without one reads as unfinished.
+    ctx.signs = build_signs(sp, sign_nodes, roads, dims.w, dims.h)
     # The ferry berths and their sailing lines. It reads `pois` for the two
     # ferry_terminal nodes, so it has to run after them — and it is here, in
     # EXTRACT, because every part of it comes straight out of the OSM file;

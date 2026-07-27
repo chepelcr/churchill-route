@@ -76,6 +76,9 @@ class WorldContext:
     #: OSM ground sites (parks, canchas, escuelas, iglesias) at their real
     #: outline — turned into parcels once the cuadras are known.
     sites: list = field(default_factory=list)
+    #: street furniture (ALTO, semáforo, parada, crossing, tope) in world px
+    signs: list = field(default_factory=list)
+    sign_nodes: list = field(default_factory=list)
 
     # ---- the street grid, once the surface is rasterised --------------------
     streets: object = None             # service.street.StreetIndex

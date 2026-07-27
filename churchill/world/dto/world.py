@@ -192,6 +192,15 @@ class Stadium(WorldModel):
     sport: str | None = Field(default=None, description="drives the markings + the match")
 
 
+class Sign(WorldModel):
+    """A piece of street furniture. `kind` drives `drawSign` in
+    src/render/c2d/streets.js — an unknown kind draws nothing."""
+    x: int
+    y: int
+    kind: str
+    ang: float = 0.0
+
+
 class Green(WorldModel):
     pts: FlatPoly
     type: GreenType

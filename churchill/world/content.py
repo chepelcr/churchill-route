@@ -198,6 +198,11 @@ STAGES = [
 # the OSM id is.
 SITE_DECOR = {
     "osm_park_232389752": {"kiosco": True},      # Parque Victoria
+    # The Escuela Delia Urbina de Guevara is mapped in OSM as the whole tall
+    # manzana it stands on; the school itself is a WIDE building on the block's
+    # south-west corner. `rect` is in fractions of the fitted rect (u east,
+    # v south), so this is "the west 84%, the south 38%".
+    "osm_school_263127078": {"rect": (0.0, 0.84, 0.62, 1.0)},
 }
 
 BLDG_PALETTE = ["#f3c969", "#e85d75", "#6fbf99", "#5fb0d6", "#f08a5d",

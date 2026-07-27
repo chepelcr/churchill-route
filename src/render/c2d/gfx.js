@@ -84,6 +84,32 @@ function flatPath(pts, close) {
   if (close) path.closePath();
   return path;
 }
+// A closed flat polygon with its CORNERS ROUNDED — the same path `flatPath`
+// builds, with an arc of radius `r` cut into every vertex.
+//
+// A real manzana does not come to a point: the kerb turns a corner. Square
+// corners on 400 parcels are what made the map read as a diagram rather than a
+// town, and the radius is clamped to a third of the shortest adjoining edge so
+// a small lot rounds proportionally instead of collapsing into a lozenge.
+function flatRoundPath(pts, r) {
+  const n = pts.length / 2;
+  if (n < 3) return flatPath(pts, true);
+  const P = (i) => [pts[((i % n) + n) % n * 2], pts[((i % n) + n) % n * 2 + 1]];
+  const path = new Path2D();
+  for (let i = 0; i < n; i++) {
+    const [x0, y0] = P(i - 1), [x1, y1] = P(i), [x2, y2] = P(i + 1);
+    const d0 = Math.hypot(x1 - x0, y1 - y0) || 1;
+    const d2 = Math.hypot(x2 - x1, y2 - y1) || 1;
+    const rr = Math.min(r, d0 / 3, d2 / 3);
+    const ax = x1 + (x0 - x1) / d0 * rr, ay = y1 + (y0 - y1) / d0 * rr;
+    const bx = x1 + (x2 - x1) / d2 * rr, by = y1 + (y2 - y1) / d2 * rr;
+    if (i === 0) path.moveTo(ax, ay); else path.lineTo(ax, ay);
+    path.quadraticCurveTo(x1, y1, bx, by);
+  }
+  path.closePath();
+  return path;
+}
+
 // Same as flatAABB but returning the bare rect callers destructure — kept
 // distinct so the render-cache entries keep their {aabb} shape.
 const polyBBox = flatAABB;
@@ -175,6 +201,6 @@ function hash01(n) {
 
 export {
   ACERA_PX, CUAD, CUADS_PER_VIEW, aabbInView, areaLabel, canvas, computeZoom,
-  ctx, dpr, flatAABB, flatPath, hash01, label, lastT, parcelFrame, polyBBox,
-  roundRect, setLastT, setupCanvas, weatherColors, ZOOM,
+  ctx, dpr, flatAABB, flatPath, flatRoundPath, hash01, label, lastT,
+  parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, weatherColors, ZOOM,
 };

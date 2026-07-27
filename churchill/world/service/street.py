@@ -212,6 +212,45 @@ class StreetIndex:
             ang += math.pi / 2
         return ang
 
+    def nearest_normal(self, px, py, reach=None):
+        """Unit vector pointing from the nearest street centreline TOWARD
+        (px, py) — i.e. straight back off the road.
+
+        A footprint that has to be moved off the asphalt has exactly one right
+        direction to move in, and it is not "up" or "toward the block centre":
+        it is away from the calle it is on, whatever angle that calle runs at.
+        Returns None when nothing is within `reach` (nothing to move away from).
+        """
+        reach = reach if reach is not None else 8 * CUAD
+        if self._boxed is None:
+            self._boxed = [(r, (min(r["pts"][0::2]), min(r["pts"][1::2]),
+                                max(r["pts"][0::2]), max(r["pts"][1::2])))
+                           for r in self.roads if r.get("pts")]
+        best = None
+        for r, (bx0, by0, bx1, by1) in self._boxed:
+            if px < bx0 - reach or px > bx1 + reach or py < by0 - reach or py > by1 + reach:
+                continue
+            p = r["pts"]
+            for i in range(0, len(p) - 2, 2):
+                ax, ay, bx, by = p[i], p[i + 1], p[i + 2], p[i + 3]
+                dx, dy = bx - ax, by - ay
+                l2 = dx * dx + dy * dy
+                if l2 <= 0:
+                    continue
+                t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / l2))
+                qx, qy = ax + dx * t, ay + dy * t
+                d2 = (px - qx) ** 2 + (py - qy) ** 2
+                key = (d2, ax, ay, bx, by)
+                if best is None or key < best[0]:
+                    best = (key, qx, qy)
+        if best is None or best[0][0] > reach * reach:
+            return None
+        vx, vy = px - best[1], py - best[2]
+        d = math.hypot(vx, vy)
+        if d < 1e-6:
+            return None                     # dead on the centreline: no way out
+        return (vx / d, vy / d)
+
     def on_street(self, px, py, pad=2.0, reach=60.0):
         """Is (px, py) under the painted width of a real road centreline?
 

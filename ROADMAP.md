@@ -163,6 +163,45 @@ Publicación: [El puerto, a su tamaño](docs/changelog/2026-07-27-calles.md).
       entrega al andar rail-bound de siempre. Cuánta gente espera sale de las
       coordenadas de la parada, no de un dado.
 
+**Las calles más anchas, pagadas con la acera**
+- [x] `ARCADE_STREET_MUL` **2.56 → 2.9** (una calle de 7 m: 36 → **41 px**) y
+      `ACERA_CELLS` **5 → 4 celdas** (20 → 16 px). El corredor baja de 76 a
+      73 px y la parte que es ASFALTO sube del **47 % al 56 %**.
+- [x] 3.1 fue un paso de más: a 43 px la calzada dejó sin sitio a 254 edificios
+      con nombre, que perdieron su contorno real contra el ajustador.
+
+**Los edificios ya no se paran encima de la acera**
+- [x] Medido antes de tocar nada: **245 de 306 edificios con nombre** estaban
+      dibujados mayormente sobre su propia acera, 93 % la tocaban.
+- [x] `_poly_on_road` solo probaba la CALZADA — un contorno que pisaba solo la
+      acera se guardaba tal cual. Y la acera medía **diez metros** a esta
+      escala, tallados hacia adentro de la cuadra.
+- [x] Ahora el edificio se **empuja** recto hacia atrás por la normal de la
+      calle más cercana (`StreetIndex.nearest_normal`, nuevo), hasta 40 px, y
+      conserva su contorno real. Solo el que no encuentra sitio cae al ajustador.
+
+**El faro no es un destino**
+- [x] La compuerta probaba el faro, parado en su propia explanada peatonal sin
+      apron manejable; pasaba solo porque el alcance es `ACERA_CELLS + 1`.
+      `lighthouse` y `beachsign` entran en `NO_PAD_LM`, que es lo que el
+      docstring de `finish.py` decía desde siempre.
+
+**La esquina que se redondea es la del carro**
+- [x] La primera versión resolvía el cruce de los **bordes exteriores de las
+      aceras** — la esquina de la manzana — así que curvaba la esquina de atrás
+      y dejaba en ángulo recto el cordón que el carro recorta.
+- [x] El punto es ahora donde se cruzan **los dos CORDONES**, y lo dibujado es un
+      **filete tangente**, no un disco: un disco se abultaría hacia la manzana,
+      que es lo contrario de una esquina redondeada. El build emite las dos
+      direcciones de calle porque el render las necesita.
+- [x] El **caño** dobla con ella (mismo filete, un canal más ancho, debajo del
+      de asfalto) y se ve más: `#807e77` a 4 px.
+
+**Una parada es una parada**
+- [x] Había dos dibujos del mismo objeto — la del bloque cívico y las 87 de OSM.
+      Las dos usan ahora `drawParada` en `gfx.js`; lo único que difiere es el
+      tamaño, porque solo el bloque cívico trae uno.
+
 **El gol se celebra mientras cae la plata** (`startCheer` en `match.js`)
 - [x] La celebración dura **exactamente lo que dura la plata en la cancha**
       (`ACOIN_RAIN_TTL`, 11 s): la bola sale del campo y los jugadores se

@@ -404,9 +404,14 @@ naive version does not:
   ~180° is a street continuing straight (no corner), ~0° is the same way twice.
   So a T-junction yields TWO corners, not three: the side with no cross street
   keeps its straight kerb.
-- **the corner point is where the two aceras' OUTER EDGES cross**, solved as two
-  lines — right for a diagonal avenida meeting a calle at 84°, which a fixed
-  diagonal offset is not.
+- **the corner point is where the two KERBS cross**, solved as two lines —
+  right for a diagonal avenida meeting a calle at 84°, which a fixed diagonal
+  offset is not. WHICH corner is the thing to get right: the first cut solved
+  the two ACERAS' outer edges instead, so the manzana's back corner curved
+  while the kerb the driver actually cuts stayed square. What is drawn is a
+  TANGENT FILLET (the curvilinear triangle between the sharp corner and an arc
+  touching both kerbs), never a disc — a disc bulges outward into the block,
+  which is a bump-out, the opposite of a rounded corner.
 The caño (the kerb gutter) is renderer-only: a darker band stroked AFTER the
 casing and BEFORE the asphalt, with butt caps, so it stops at the esquina the
 way the real one stops at the tragante.

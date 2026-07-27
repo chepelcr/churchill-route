@@ -60,8 +60,23 @@ M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
 # is still 36 px and the block around it is 25 % bigger, so the same footprint
 # clears it. Anything measured in px against a STREET (a car, a sign, a ped)
 # keeps its proportions; anything measured against a BLOCK gains room.
+#
+# THE STREET IS ALSO A WIDTH ON SCREEN, and holding it fixed through the rescale
+# left it looking thin against the bigger manzanas — the corridor read as a lane
+# between two large blocks rather than as a calle. So the multiplier goes back
+# up: 2.56 -> 2.9 puts a 7 m residential street at 41 px instead of 36.
+#
+# It is paid for out of the ACERA, not out of the cuadra — see ACERA_CELLS,
+# which drops from 5 cells to 4 in the same breath. The street corridor (asphalt
+# + both sidewalks) goes from 76 px to 73, and the ASPHALT's share of it from
+# 47 % to 56 %, which is the part that reads as "a calle" rather than "a lane".
+#
+# 3.1 was one step too far. Every px of roadway is a px a real OSM footprint
+# beside it has to be pushed out of, and at 43 px the push ran out of room for
+# 254 named buildings — which then lost their real outlines to the snapper, and
+# the outline is the entire reason a named building is kept.
 PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "2.0"))   # world zoom
-ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.56"))  # widen streets
+ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.9"))  # widen streets
 # real-ish carriageway widths (metres) per OSM highway class; painted width =
 # ROAD_WIDTH_M · ARCADE_STREET_MUL · px_per_m (kept modest so junction gores survive)
 ROAD_WIDTH_M = {
@@ -127,7 +142,16 @@ CLS_PASEO = Surface.PASEO
 CLS_BRIDGE = Surface.BRIDGE
 CLS_ACERA = Surface.ACERA
 CLS_BOULEVARD = Surface.BOULEVARD
-ACERA_CELLS = CUAD_CELLS        # sidewalk depth: 1 cuadrícula (20 px) each side
+# Sidewalk depth per side, in raster cells. It is carved INTO the cuadra, so
+# every cell of it is block frontage the town does not get — and at 5 cells the
+# ring was 20 px, which at 2 px/m is a TEN METRE sidewalk. That is what put 245
+# of the 306 real named footprints on top of their own acera: a building mapped
+# at its true property line has nowhere else to be once the painted roadway and
+# a ten-metre kerb strip have both eaten inward from the centreline.
+# 4 cells = 16 px = 8 m: still generous (an arcade sidewalk has to be walkable
+# and visible at game zoom), but it hands 4 px per side back to the manzana,
+# which is where the wider carriageway above is paid from.
+ACERA_CELLS = 4                 # sidewalk depth: 16 px each side
 # A FIELD's ring is shallower than a block's. All it has to do is keep the
 # pitch's white lines off the asphalt, and every px of it is grass and markings
 # the player doesn't get: at full depth the Carmen plaza went from 84x92 to

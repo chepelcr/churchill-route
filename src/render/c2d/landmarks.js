@@ -3,7 +3,7 @@
 import { paintPalm, paintTree } from "./flora.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { content } from "../../content/remote.js";
-import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
+import { areaLabel, ctx, drawParada, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -603,24 +603,14 @@ function drawStatue(P) {
   ctx.restore();
 }
 
-// A paradita de bus on the acera outside the parcel: shelter roof, bench and
-// the ₡ post. `P.bus` is [x, y, w, h] in world px, placed by the build.
+// The paradita on the acera outside the parcel. `P.bus` is [x, y, w, h] in
+// world px, placed by the build — the only thing this stop has that a mapped
+// one does not is its own size. The caseta itself is `drawParada` in gfx.js,
+// shared with the 87 stops that come from OSM: which list a parada came out of
+// is not something the player can see.
 function drawBusStop(P) {
   const [bx, by, bw, bh] = P.bus;
-  ctx.save();
-  ctx.translate(bx + bw / 2, by + bh / 2); if (P.ang) ctx.rotate(P.ang);
-  ctx.fillStyle = "rgba(0,0,0,0.24)";
-  roundRect(ctx, -bw / 2 + 2, -bh / 2 + 3, bw, bh, 2, true, false);
-  ctx.fillStyle = "#3a6f8a";                         // shelter roof
-  roundRect(ctx, -bw / 2, -bh / 2, bw, bh, 2, true, false);
-  ctx.fillStyle = "#5b9ec2";
-  roundRect(ctx, -bw / 2 + 2, -bh / 2 + 2, bw - 4, bh - 6, 1.5, true, false);
-  ctx.fillStyle = "#e7ddc8";                         // bench
-  ctx.fillRect(-bw / 2 + 4, bh / 2 - 4, bw - 8, 2.5);
-  ctx.fillStyle = "#f08a5d";                         // post + sign
-  ctx.fillRect(bw / 2 - 3, -bh / 2 - 5, 1.6, 6);
-  roundRect(ctx, bw / 2 - 6, -bh / 2 - 9, 6, 5, 1, true, false);
-  ctx.restore();
+  drawParada(bx + bw / 2, by + bh / 2, P.ang || 0, bw, bh);
 }
 
 // A parcel that carries `lm` IS that landmark: the block layout already drew

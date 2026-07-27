@@ -68,7 +68,14 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     # Scenery that must NOT get a drivable apron: buildings above + green areas
     # (parks/pool). The stadium is placed by place_stadium (its own drivable
     # pitch) so it gets no apron here either. Excluded from the reachability gate.
-    NO_PAD_LM = BUILDING_LM | {"park", "pool", "stadium"}
+    # `lighthouse` and `beachsign` belong here and never were: the faro stands
+    # in the middle of its own 1485-cell pedestrian esplanade and the beach sign
+    # on the sand, neither has a drivable apron, and no stage has ever targeted
+    # either (stage 1 is called "El Faro" but delivers from `kios_faro`, which
+    # is a kiosk and is gated on its own). The faro passed the gate only because
+    # the reach happened to be a cuadrícula wide; narrowing the acera by one
+    # cell narrowed the reach with it and the build failed on a lighthouse.
+    NO_PAD_LM = BUILDING_LM | {"park", "pool", "stadium", "lighthouse", "beachsign"}
     _drivable_cell = lambda c, r: drivable_cell(raster, c, r)
     snap_into_block = lambda x, y, reach_px=160, inset_px=32: _snap_into_block(raster, x, y, reach_px, inset_px)
 

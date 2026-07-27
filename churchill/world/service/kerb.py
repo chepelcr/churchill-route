@@ -14,21 +14,30 @@ nothing. That is why the corners still read as closed angles.
 
 So the build finds them once, where the whole road list exists:
 
-  * road ends that share a point are a junction (OSM splits its ways there, and
-    the traffic AI already relies on it — see `findNextRoad` in spawns.js);
+  * a junction is a point two DIFFERENT ways pass through, at any vertex —
+    not just at their ends (see `_outgoing`);
   * the outgoing directions are sorted by angle, and each pair of CONSECUTIVE
     ones is a candidate corner. The gap between them is the filter, and it is
     the whole trick: ~180° is a street continuing straight through (no corner),
     ~0° is the same way duplicated, and what is left in between is a real
     esquina. A T-junction therefore gets two corners and not three — the side
     with no cross street keeps its straight kerb;
-  * the corner POINT is where the two aceras' outer edges cross, solved as two
-    lines, so it is right for a diagonal avenida meeting a calle at 84° as well
-    as for a square crossing.
+  * the corner POINT is where the two KERBS cross, solved as two lines, so it is
+    right for a diagonal avenida meeting a calle at 84° as well as for a square
+    crossing.
 
-`r` is how far the kerb turns through, clamped so the fillet can never be wider
-than the sidewalk it is rounding. The renderer fills a disc there in the acera's
-colour, which — seen from above — is all a rounded corner is.
+WHICH CORNER, exactly, is the thing to get right. The first cut of this solved
+the crossing of the two ACERAS' OUTER edges — the corner of the manzana, a
+sidewalk's width further out — and rounded that. The result was a block whose
+back corner curved while the kerb the driver actually cuts stayed a right angle:
+the wrong corner, and the one nobody is looking at.
+
+What is emitted per corner is the kerb crossing `x, y`, the two leg directions
+`a` and `b`, and the radius `r` the kerb turns through, capped against the
+narrower of the two carriageways. The renderer needs the legs because the shape
+is a TANGENT FILLET, not a disc — the curvilinear triangle between the sharp
+corner and an arc touching both kerbs. A disc centred on the corner would bulge
+outward into the block, which is a bump-out, the opposite of a rounded corner.
 """
 import math
 from collections import defaultdict
@@ -43,11 +52,13 @@ CORNER_MAX = math.radians(168)
 CORNER_MIN = math.radians(28)
 #: How far a kerb turns through, in px. Puntarenas' esquinas are generous.
 KERB_R = 0.55 * CUAD
-#: A fillet never eats more than this fraction of the narrower acera.
+#: A fillet never turns through more than this fraction of the narrower
+#: CARRIAGEWAY's half-width — a service alley meeting an avenida gets a corner
+#: the alley can pay for.
 KERB_MAX_FRAC = 0.8
 
 
-def _outgoing(roads, acera_px):
+def _outgoing(roads):
     """{(x, y): [(ux, uy, half_width), …]} — every street leaving a junction.
 
     The direction points AWAY from the junction, down the way, so two ways that
@@ -69,7 +80,12 @@ def _outgoing(roads, acera_px):
         p = r.get("pts") or []
         if len(p) < 4 or r.get("bridge"):
             continue
-        hw = r.get("w", 36) / 2 + acera_px
+        # The Paseo and the barro roads are painted their own colour, and a
+        # fillet is a patch of ASPHALT — one laid at the mouth of the Paseo
+        # would be a dark bite out of its sand. They keep their square corner.
+        if r.get("cls") == "paseo" or r.get("barro"):
+            continue
+        hw = r.get("w", 36) / 2          # THE KERB, not the acera's back edge
         n = len(p) // 2
         for i in range(n):
             ex, ey = p[i * 2], p[i * 2 + 1]
@@ -87,9 +103,16 @@ def _outgoing(roads, acera_px):
 
 
 def _fillet(ux1, uy1, h1, ux2, uy2, h2):
-    """Where the two aceras' outer edges cross, as (x, y) relative to the
-    junction — the intersection of two lines, one offset h from each
-    centreline toward the other street."""
+    """Where the two KERBS cross, as (x, y) relative to the junction — the
+    intersection of two lines, one offset h from each centreline toward the
+    other street.
+
+    This is the corner the CAR turns around, and it is the one that has to be
+    rounded. The first cut of this solved the crossing of the two aceras' OUTER
+    edges instead — the corner of the manzana, a sidewalk's width further out —
+    so the sidewalk's back edge came out round while the kerb the driver
+    actually cuts stayed a right angle.
+    """
     # normal of each street pointing at the OTHER one: that is the side the
     # corner is on
     n1x, n1y = -uy1, ux1
@@ -108,10 +131,10 @@ def _fillet(ux1, uy1, h1, ux2, uy2, h2):
     return (t * ux1 + h1 * n1x, t * uy1 + h1 * n1y)
 
 
-def derive_corners(roads, acera_px):
-    """[{x, y, r}] — one acera fillet per real street corner in the world."""
+def derive_corners(roads):
+    """[{x, y, a, b, r}] — one kerb fillet per real street corner in the world."""
     out = []
-    for (jx, jy), legs in _outgoing(roads, acera_px).items():
+    for (jx, jy), legs in _outgoing(roads).items():
         if len(legs) < 2:
             continue
         legs = sorted(legs, key=lambda l: math.atan2(l[1], l[0]))
@@ -146,10 +169,18 @@ def derive_corners(roads, acera_px):
             fil = _fillet(ux1, uy1, h1, ux2, uy2, h2)
             if fil is None:
                 continue
-            rad = min(KERB_R, KERB_MAX_FRAC * min(h1 - acera_px, h2 - acera_px))
+            # A kerb never turns through more than it has room for: the radius
+            # is capped against the NARROWER of the two carriageways, so a
+            # service alley meeting an avenida gets the alley's corner.
+            rad = min(KERB_R, KERB_MAX_FRAC * min(h1, h2))
             if rad < 2:
                 continue
+            # The two leg directions ride along, because a fillet is not a disc:
+            # the renderer needs them to place the tangent points and the arc
+            # centre, and it has no other way to know which way the streets run.
             out.append({"x": round(jx + fil[0]), "y": round(jy + fil[1]),
+                        "a": round(math.atan2(uy1, ux1), 3),
+                        "b": round(math.atan2(uy2, ux2), 3),
                         "r": round(rad, 1)})
     # deterministic order, and one fillet per point (two junctions a pixel apart
     # would otherwise stack discs on the same corner)
@@ -161,5 +192,5 @@ def derive_corners(roads, acera_px):
         seen.add(k)
         uniq_out.append(c)
     log("kerb", f"{len(uniq_out)} esquinas redondeadas "
-        f"(radio {KERB_R:.0f} px, recortado a la acera mas angosta)")
+        f"(radio {KERB_R:.0f} px, recortado a la calzada mas angosta)")
     return uniq_out

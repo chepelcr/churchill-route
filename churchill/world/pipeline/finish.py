@@ -61,7 +61,7 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
     # The esquinas, last: the road list is only final once the estadios have
     # clipped the cross-streets out of their cuadras, and a fillet on a road
     # that no longer exists would hang in the middle of a pitch.
-    corners = derive_corners(ctx.roads, meta["aceraPx"])
+    corners = derive_corners(ctx.roads)
     emit_world2d(ctx.raster, sink, meta=meta, districts=ctx.districts,
                  roads=ctx.roads, rails=ctx.rails, buildings=ctx.buildings,
                  trees=ctx.trees, palms=ctx.palms, mangroves=ctx.mangroves,

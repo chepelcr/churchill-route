@@ -534,7 +534,8 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     # polygon does not, and a few were sitting across the auxiliary calles by
     # the Paseo kiosks. Any that overlaps drivable ground goes back to the
     # snapper rather than being drawn over a road.
-    def _poly_on_road(pts, step=4):
+    def _poly_over(pts, classes, step=4):
+        """Does the polygon cover any cell of these surface classes?"""
         xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
         for py in range(int(min(ys)), int(max(ys)) + 1, step):
             for px in range(int(min(xs)), int(max(xs)) + 1, step):
@@ -542,22 +543,76 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
                     return True
                 if not point_in_poly((px, py), pts):
                     continue
-                if grid[(py // GRID_CELL) * GRID_COLS + (px // GRID_CELL)] in \
-                        (CLS_ROAD, CLS_PASEO, CLS_BRIDGE):
+                if grid[(py // GRID_CELL) * GRID_COLS + (px // GRID_CELL)] in classes:
                     return True
         return False
 
-    named_raw, keep, n_onroad = [], [], 0
+    ROADISH = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE)
+    STREETISH = ROADISH + (CLS_ACERA,)
+
+    # THE SIDEWALK IS NOT SOMEWHERE A BUILDING MAY STAND, and until now only the
+    # ROADWAY was checked — so a named footprint overlapping just the acera was
+    # kept at its real outline and drawn straight over the sidewalk. That was
+    # 245 of the 306 named buildings sitting mostly on their own acera, which is
+    # most of the recognisable buildings on the map.
+    #
+    # It is not the mapper's fault and it is not fixable by testing harder: the
+    # painted roadway is ~3x a real carriageway and the acera is carved INWARD
+    # from it, so the game's building line stands metres inside the true
+    # property line. A footprint drawn where it really is has to overlap.
+    #
+    # So it gets PUSHED — straight back off the street, along the normal of the
+    # nearest centreline, in whole cells until it clears. That keeps the real
+    # outline, which is the whole point of a named building; only when the push
+    # cannot find room does it fall through to the cuadrícula snapper.
+    # How far the push may go. It has to cover the whole lie: the painted
+    # roadway is ~3x a real carriageway, so on a 7 m calle the game's kerb sits
+    # ~13 px inside the true one, and the acera adds 16 more — a footprint flush
+    # with its real property line starts about 29 px over. At 24 px the push
+    # could not clear that and 254 named buildings fell through to the snapper,
+    # which is worse: snapping loses the real outline, and the outline is the
+    # entire reason a named building is kept. Beyond 40 px it would be a lie of
+    # a different kind, and those go to the snapper on purpose.
+    PUSH_STEP = GRID_CELL
+    PUSH_MAX = 10 * GRID_CELL         # 40 px
+
+    def _push_off_street(raw):
+        pts = raw["pts"]
+        if not _poly_over(pts, STREETISH):
+            return pts                      # already clear
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        hit = streets.nearest_normal(cx, cy)   # unit normal AWAY from the street
+        if hit is None:
+            return None
+        nx, ny = hit
+        for k in range(1, PUSH_MAX // PUSH_STEP + 1):
+            d = k * PUSH_STEP
+            moved = [(p[0] + nx * d, p[1] + ny * d) for p in pts]
+            if not _poly_over(moved, STREETISH):
+                return moved
+        return None
+
+    named_raw, keep, n_onroad, n_pushed = [], [], 0, 0
     for raw in raw_bldgs:
-        if raw.get("name") and raw.get("pts") and not _poly_on_road(raw["pts"]):
-            named_raw.append(raw)
-        else:
-            if raw.get("name"):
-                n_onroad += 1
+        if not (raw.get("name") and raw.get("pts")):
             keep.append(raw)
+            continue
+        moved = _push_off_street(raw)
+        if moved is None:
+            n_onroad += 1
+            keep.append(raw)                # the snapper will find it a block
+            continue
+        if moved is not raw["pts"]:
+            n_pushed += 1
+            raw = {**raw, "pts": moved}
+        named_raw.append(raw)
     raw_bldgs = keep
     if n_onroad:
-        log("buildings", f"{n_onroad} named footprints overlapped a street — snapped instead")
+        log("buildings", f"{n_onroad} named footprints had no room off the street — snapped instead")
+    if n_pushed:
+        log("buildings", f"{n_pushed} named footprints pushed back off the acera "
+            f"(up to {PUSH_MAX} px, along the nearest street's normal)")
     for raw in named_raw:
         xs = [p[0] for p in raw["pts"]]; ys = [p[1] for p in raw["pts"]]
         for cc in range(int(min(xs) // CUAD), int(max(xs) // CUAD) + 1):

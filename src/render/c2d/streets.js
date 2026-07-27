@@ -4,7 +4,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { t } from "../../i18n/index.js";
 import { dashPath, roadPath } from "./cache.js";
-import { ACERA_PX, aabbInView, ctx, flatAABB, flatPath, flatRoundPath, label, parcelFrame, roundRect } from "./gfx.js";
+import { ACERA_PX, aabbInView, ctx, drawParada, flatAABB, flatPath, flatRoundPath, label, parcelFrame, roundRect } from "./gfx.js";
 
 // Estadios are NOT a structure drawn over the ground — they are a COLOUR
 // CHOICE inside the acera pass. The build traces each one from the real cuadra
@@ -34,8 +34,67 @@ function fieldFrame(S) {
 const ACERA_GREY = "#b8b6b0";
 // …and the caño: the drainage channel at the kerb, cast in the same concrete
 // but permanently damp and stained, so it reads a full step darker.
-const CANO_GREY = "#8b8981";
-const CANO_PX = 3.2;                     // depth of the gutter, per side
+const CANO_GREY = "#807e77";
+const CANO_PX = 4;                       // depth of the gutter, per side
+
+// LA ESQUINA — the corner the CAR turns around, cut to a kerb radius.
+//
+// A junction of two painted streets is a plus sign, and a plus has four sharp
+// re-entrant corners where the manzana pokes into the crossing. A real kerb
+// does not: it curves from one calle into the other, which is why you can take
+// an esquina at all. The build solves where each corner is and which way its
+// two streets run (churchill/world/service/kerb.py), because the renderer draws
+// roads PER TILE and never sees a junction.
+//
+// The shape is a proper TANGENT FILLET, not a disc: the little curvilinear
+// triangle between the sharp corner and an arc of radius `rho` that touches
+// both kerbs. A disc centred on the corner would bulge OUTWARD into the block —
+// a bump-out, the opposite of a rounded corner. Filling this patch is the
+// roadway GAINING the corner, which is exactly what a kerb radius is.
+//
+// `rho` is a parameter so the caño can be drawn as the same fillet one gutter
+// wider: fill it in gutter grey first, then the asphalt one on top, and the
+// channel follows the kerb round the corner instead of stopping dead at it.
+function cornerFillet(c, rho) {
+  const u1x = Math.cos(c.a), u1y = Math.sin(c.a);
+  const u2x = Math.cos(c.b), u2y = Math.sin(c.b);
+  let cosT = u1x * u2x + u1y * u2y;
+  cosT = cosT < -1 ? -1 : cosT > 1 ? 1 : cosT;
+  const half = Math.acos(cosT) / 2;
+  const sh = Math.sin(half);
+  if (sh < 0.08) return null;                    // legs almost in line: no corner
+  const t = rho / Math.tan(half);                // corner → tangent point
+  let bx = u1x + u2x, by = u1y + u2y;            // bisector, into the block
+  const bl = Math.hypot(bx, by) || 1;
+  bx /= bl; by /= bl;
+  const cx = c.x + bx * (rho / sh), cy = c.y + by * (rho / sh);
+  const t1x = c.x + u1x * t, t1y = c.y + u1y * t;
+  const t2x = c.x + u2x * t, t2y = c.y + u2y * t;
+  // The arc spans (pi - theta) — always the SHORT way from one tangent point to
+  // the other. Taking the long way would sweep a disc across the whole junction
+  // instead of cutting its corner, and which way is short depends on the angle
+  // the two calles cross at, so it is measured rather than assumed.
+  const s2 = Math.atan2(t2y - cy, t2x - cx), s1 = Math.atan2(t1y - cy, t1x - cx);
+  let sweep = s1 - s2;
+  while (sweep > Math.PI) sweep -= Math.PI * 2;
+  while (sweep < -Math.PI) sweep += Math.PI * 2;
+  const p = new Path2D();
+  p.moveTo(t1x, t1y);
+  p.lineTo(c.x, c.y);
+  p.lineTo(t2x, t2y);
+  p.arc(cx, cy, rho, s2, s1, sweep < 0);
+  p.closePath();
+  return p;
+}
+function paintCorners(corners, colour, grow) {
+  if (!corners || !corners.length) return;
+  ctx.fillStyle = colour;
+  for (const c of corners) {
+    const key = grow ? "_cano" : "_asf";
+    const path = c[key] || (c[key] = cornerFillet(c, c.r + grow));
+    if (path) ctx.fill(path);
+  }
+}
 const PARCEL_ROUND = 7;                  // px of kerb radius on a parcel corner
 const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one white
 // Grass, mow stripes and fútbol markings inside `path`, all drawn in the
@@ -229,13 +288,6 @@ function paintRoads(roads, view, corners) {
     ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
     ctx.fill();
   }
-  // THE ESQUINAS. A junction of two bands is a plus, and a plus has four sharp
-  // corners where the manzana pokes into the crossing; a real kerb turns
-  // through a radius and the acera follows it round. The build solved the
-  // corner POINTS (churchill/world/service/kerb.py) because a per-tile road
-  // list cannot see a junction — filling a disc on each is all a rounded
-  // corner is from above, and the asphalt pass below keeps the roadway square.
-  if (corners) for (const c of corners) { ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill(); }
   // estadios: the same sidewalk, repainted grey (after the fillets so the
   // junction discs can't overwrite it, before the asphalt so the asphalt wins)
   paintStadiumCuadras(view);
@@ -265,6 +317,9 @@ function paintRoads(roads, view, corners) {
     if (r.bridge || r.cls === "bridge" || r.barro) continue;
     ctx.lineWidth = r.w + 2 * CANO_PX; ctx.stroke(roadPath(r));
   }
+  // …and round the esquina, one gutter wider than the kerb, so the channel
+  // turns the corner with the street instead of stopping dead at the mouth.
+  paintCorners(corners, CANO_GREY, CANO_PX);
   // asphalt / barro / paseo surface + SAME-COLOR joint discs at both piece
   // ends: they invisibly weld chained pieces (keeps the León Cortés →
   // Turistas curve smooth) and unify junction mouths, without the visible
@@ -279,6 +334,9 @@ function paintRoads(roads, view, corners) {
     ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
     ctx.fill();
   }
+  // THE KERB RADIUS ITSELF: the roadway takes the corner, over the gutter
+  // fillet laid down above, which leaves the caño as a band following it round.
+  paintCorners(corners, "#3a3540", 0);
   // lane markings: yellow dashes on arterials, faint white on locals —
   // drawn on the TRIMMED path so they stop short of the junctions
   for (const r of roads) {
@@ -439,6 +497,9 @@ export { drawBarriers, drawSigns, paintParcels, drawStreetLabels2D, paintRoads, 
 // Sizes are in world px at the game's framing (~20 cuadrículas across), so a
 // sign reads at a glance without swallowing the lane it stands beside.
 const SIGN_POST = "#8b8f96";
+// A mapped parada has no size of its own (the civic block's does, from the
+// build). These are the caseta's, in world px at the game's framing.
+const PARADA_W = 34, PARADA_H = 12;
 function drawSignPost(x, y, h) {
   ctx.strokeStyle = SIGN_POST; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y); ctx.stroke();
@@ -500,30 +561,16 @@ function drawSign(s) {
       break;
     }
     case "bus": {
-      // LA PARADA. The build seats it on the acera beside its street and turns
-      // it along the kerb (`seat_bus_stops`), so the caseta is drawn in the
-      // STREET's frame: roof over the sidewalk, bench against the back wall,
-      // and the sign out at the kerb where the driver can see it. A shelter
-      // drawn square to the screen on a diagonal avenida reads as a mistake,
-      // the same way an axis-aligned pitch does on a slanted cuadra.
-      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
-      const side = s.side || 1;                         // which way the street is
-      ctx.fillStyle = "rgba(0,0,0,0.20)";
-      ctx.fillRect(-7, -4 * side, 14, 8);
-      ctx.fillStyle = "#cfc7b4";                        // the concrete slab
-      ctx.fillRect(-7, -4.5 * side - (side > 0 ? 0 : 4.5), 14, 4.5);
-      ctx.fillStyle = "#3f6f8a";                        // zinc roof
-      ctx.fillRect(-7.5, -5.6 * side - (side > 0 ? 0 : 2.4), 15, 2.4);
-      ctx.strokeStyle = SIGN_POST; ctx.lineWidth = 0.9; // the two posts
-      ctx.beginPath();
-      ctx.moveTo(-6.6, -5 * side); ctx.lineTo(-6.6, -0.4 * side);
-      ctx.moveTo(6.6, -5 * side); ctx.lineTo(6.6, -0.4 * side);
-      ctx.stroke();
-      ctx.fillStyle = "#8a6a4a";                        // banca
-      ctx.fillRect(-5.4, -4.2 * side - (side > 0 ? 0 : 1.4), 10.8, 1.4);
-      ctx.fillStyle = "#d8452f";                        // the route sign at the kerb
-      ctx.fillRect(6.2, -1.4, 2.6, 2.8);
-      ctx.restore();
+      // LA PARADA — the SAME caseta the civic block's stop uses (`drawParada`
+      // in gfx.js). Which list a parada came out of, the hand-authored manzana
+      // or the 87 mapped `highway=bus_stop` nodes, is not something the player
+      // can see, so it must not change what it looks like; a second drawing of
+      // the same object is just an inconsistency with extra steps.
+      // The build seats it on the acera and turns it along the kerb
+      // (`seat_bus_stops`), and `side` says which way the roadway is — a stop
+      // on the far kerb turns a half-circle more so it still opens onto it.
+      drawParada(x, y, (s.ang || 0) + ((s.side || 1) < 0 ? Math.PI : 0),
+                 PARADA_W, PARADA_H);
       break;
     }
     default: break;                                    // unknown kind: draw nothing

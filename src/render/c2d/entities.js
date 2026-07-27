@@ -37,6 +37,7 @@ function drawArcadeCoin(c, t) {
 function drawPed(pe) {
   if (pe.kind === "swimmer") { drawSwimmer(pe); return; }
   if (pe.kind === "player") { drawFieldPlayer(pe); return; }
+  if (pe.kind === "passenger") { drawPassenger(pe); return; }
   // FANS celebrate: a bigger, faster bounce plus a side-to-side shake and two
   // raised arms, so the crowd around the estadio and la plaza reads as a crowd
   // rather than commuters who happen to be walking in a circle.
@@ -79,6 +80,27 @@ function drawFieldPlayer(pe) {
   ctx.moveTo(x + 2, y - 2); ctx.lineTo(x + 3.4, y - stride * 0.5);
   ctx.stroke();
   ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(x, y - 5, 2.1, 0, Math.PI * 2); ctx.fill();
+}
+// Somebody at a parada. The whole point of the type is the WAITING: standing
+// still with a bag, looking down the street the bus comes from, which is what
+// tells you at a glance that the caseta is in use. Once they are moving — to
+// the door, or off it and down the acera — they are drawn as the walker they
+// are about to become, so the handover to `advancePed` has no visible seam.
+// This branch is TEMPORARY per person: `joinTheSidewalk` drops the kind.
+function drawPassenger(pe) {
+  const waiting = pe.phase === "wait";
+  const bob = waiting ? Math.sin(pe.ph) * 0.5 : Math.sin(pe.ph) * 1.4;
+  const y = pe.y + bob;
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = `hsl(${pe.hue} 70% 60%)`;
+  ctx.fillRect(pe.x - 2, y - 3, 4, 6);
+  if (waiting) {                                   // the bolso, held at the hip
+    ctx.fillStyle = "#7a5c3a";
+    ctx.fillRect(pe.x + 2, y + 0.6, 2.2, 2.6);
+  }
+  ctx.fillStyle = "#f1c8a4";
+  ctx.beginPath(); ctx.arc(pe.x, y - 5, 2.2, 0, Math.PI * 2); ctx.fill();
 }
 // The ball. Orange and lined for basket, white with its panels for fútbol.
 function drawBall(m) {

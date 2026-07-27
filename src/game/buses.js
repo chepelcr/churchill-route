@@ -135,7 +135,7 @@ function serveStop(b, stop) {
   const n = Math.random() < 0.55 ? 1 + ((Math.random() * ALIGHT_MAX) | 0) : 0;
   for (let i = 0; i < n; i++) {
     pedestrians.push({
-      x: door.x, y: door.y, bus: true, phase: "alight",
+      x: door.x, y: door.y, kind: "passenger", bus: true, phase: "alight",
       tx: stop.x + (Math.random() - 0.5) * 10, ty: stop.y + (Math.random() - 0.5) * 10,
       stop, v: 16 + Math.random() * 8,
       hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2, ang: 0,
@@ -166,7 +166,7 @@ export function maintainBusStops(cx, cy, dt = 0) {
       const t = (n - (want - 1) / 2) * 6;
       pedestrians.push({
         x: s.x + Math.cos(s.ang || 0) * t, y: s.y + Math.sin(s.ang || 0) * t,
-        bus: true, phase: "wait", stop: s, v: 15,
+        kind: "passenger", bus: true, phase: "wait", stop: s, v: 15,
         hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
         ang: (s.ang || 0) + Math.PI / 2,
       });
@@ -225,7 +225,10 @@ function joinTheSidewalk(pe) {
     }
   if (!best) { pe.dead = true; return; }
   const baseOff = (s && s.hw ? s.hw : best.road.w / 2) + 10;
-  delete pe.bus; delete pe.phase; delete pe.tx; delete pe.ty; delete pe.stop;
+  // `kind` goes with the rest: what makes this an ordinary ped is that NOTHING
+  // marks it as a passenger any more, drawing included.
+  delete pe.kind; delete pe.bus; delete pe.phase; delete pe.tx; delete pe.ty;
+  delete pe.stop;
   pe.road = best.road;
   pe.s = Math.max(10, Math.min(best.road.len - 10, best.s));
   pe.side = best.side; pe.baseOff = baseOff; pe.off = best.side * baseOff;

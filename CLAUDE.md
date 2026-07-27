@@ -335,10 +335,12 @@ advancers (branch in `physics.js`): rail-bound city walkers (`pe.road`,
 wandering the pitch, CONTAINED well inside the footprint; balneario **swimmers**
 (`kind:"swimmer"`, `pe.swim`, `advanceSwimmer`) bouncing inside `W.BALNEARIO`;
 **players** (`kind:"player"`, `pe.match`), which the MATCH moves, not the
-ped loop; and bus **passengers** (`pe.bus`, `advancePassenger`), which are
-TEMPORARY — an alighting one is handed to `advancePed` the moment it reaches the
-acera, so a person who got off a bus simply IS a person walking. All drawn by
-`drawPed` (branches on `kind`).
+ped loop; and bus **passengers** (`kind:"passenger"`, `pe.bus`,
+`advancePassenger`), which are the one TEMPORARY kind — `joinTheSidewalk` drops
+BOTH the flag and the `kind` when an alighting one reaches the acera, so a person
+who got off a bus simply IS a person walking, drawn like one. All drawn by
+`drawPed` (branches on `kind`); a new NPC type that skips `kind` silently
+inherits the default walker.
 
 **Buses that stop** (`src/game/buses.js`). A bus stays in `traffic` — same
 vehicle, same road network, same collision — and all this module adds is what

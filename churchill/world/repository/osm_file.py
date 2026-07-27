@@ -33,7 +33,7 @@ def parse_osm(path):
     poi_nodes = []        # (ll, tags) for every NAMED standalone POI node
     rels = []
     keep_keys = {"highway", "building", "natural", "name", "amenity",
-                 "man_made", "bridge", "ref", "wetland", "leisure"}
+                 "man_made", "bridge", "ref", "wetland", "leisure", "landuse"}
     for ev, el in ET.iterparse(path, events=("end",)):
         if el.tag == "node":
             nid = el.get("id")

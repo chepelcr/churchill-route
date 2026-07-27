@@ -226,6 +226,10 @@ const NO_SHADOW = new Set(["stadium", "pool", "park"]);
 // each one covered exactly that. Buildings and the sports plazas keep theirs;
 // they are places you are sent to, so their name is the point.
 const UNLABELLED_USES = new Set(["park", "garden", "boulevard"]);
+// Pill tone by use, so a name reads as what it names: green for a field, blue
+// for a school, and the default brown for everything built.
+const LABEL_TONE = { plaza: "#2e7d44", stadium: "#2e7d44", school: "#3a6f8a",
+                     kinder: "#3a6f8a", campus: "#3a6f8a" };
 function drawParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;
@@ -234,6 +238,7 @@ function drawParcels(view) {
     if (P.use === "church") drawChurch(P.cx, P.cy, Math.min(1, (P.x1 - P.x0) / 44), P.ang);
     if (P.use === "cathedral") drawCathedral(P);
     if (P.use === "civic") drawCivicBuilding(P);
+    if (P.use === "school" || P.use === "kinder" || P.use === "campus") drawSchool(P);
     if (P.use === "garden" || P.use === "park") drawGarden(P);
     // Civic furniture the WORLD declared on this parcel. The build only says
     // which parcel has a river / a statue / a paradita and roughly where; what
@@ -248,7 +253,7 @@ function drawParcels(view) {
     // a parcel that is pure GROUND gets none at all — see UNLABELLED_USES
     if (!P.whole && !P.lm && !UNLABELLED_USES.has(P.use)) {
       areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(), "#fff",
-                (P.use === "plaza" || P.use === "stadium") ? "#2e7d44" : "#8a6f4a");
+                LABEL_TONE[P.use] || "#8a6f4a");
     }
   }
 }
@@ -385,6 +390,57 @@ function drawCivicBuilding(P) {
     const v = -h / 2 + h * ((i + 0.5) / n);
     ctx.fillRect(-w / 2 + 2, v - 1.6, 4, 3.2);
   }
+  ctx.restore();
+}
+
+// A SCHOOL parcel: the pavilion along the parcel's back edge, the patio in
+// front of it, and the flagpole every escuela in the port has by its gate.
+// Drawn in the manzana's frame (P.ang) like everything else on a parcel — the
+// cuadrícula is not square to the screen, so a strokeRect off P.x0..P.x1 would
+// put a straight school on a slanted block.
+//
+// `kinder` (jardín de niños / CEN-CINAI) is the same building at a smaller
+// scale with a play patio; `campus` (colegio / universidad) is several
+// pavilions on open grounds instead of one.
+const SCHOOL_WALL = { school: "#f0e4c4", kinder: "#f6dcc0", campus: "#e6e0cb" };
+const SCHOOL_ROOF = { school: "#7f93a6", kinder: "#c98a6a", campus: "#6f8496" };
+function drawSchool(P) {
+  const w = (P.x1 - P.x0), h = (P.y1 - P.y0);
+  const cx = (P.x0 + P.x1) / 2, cy = (P.y0 + P.y1) / 2;
+  const wall = SCHOOL_WALL[P.use] || SCHOOL_WALL.school;
+  const roof = SCHOOL_ROOF[P.use] || SCHOOL_ROOF.school;
+  // pavilions run along the parcel's LONG axis, so a narrow lot gets a narrow
+  // block rather than one that spills over its own kerb
+  const along = w >= h;
+  const L = (along ? w : h) * 0.82, D = (along ? h : w) * 0.34;
+  const n = P.use === "campus" ? Math.max(2, Math.min(4, Math.round(L / 46))) : 1;
+  ctx.save();
+  ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
+  if (!along) ctx.rotate(Math.PI / 2);               // work in "along x" space
+  // patio markings: a faint court on the open half, so the yard reads as a yard
+  ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 1;
+  ctx.strokeRect(-L * 0.32, D * 0.35, L * 0.64, Math.max(4, D * 0.9));
+  const bw = (L - (n - 1) * 6) / n;
+  for (let i = 0; i < n; i++) {
+    const x = -L / 2 + i * (bw + 6);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    roundRect(ctx, x + 2, -D - 1, bw, D, 2, true, false);
+    ctx.fillStyle = wall;
+    roundRect(ctx, x, -D - 3, bw, D, 2, true, false);
+    ctx.fillStyle = roof;                            // zinc roof band
+    ctx.fillRect(x, -D - 3, bw, Math.max(2, D * 0.28));
+    // classroom doors along the corridor
+    ctx.fillStyle = "rgba(90,80,60,0.45)";
+    const doors = Math.max(1, Math.round(bw / 11));
+    for (let d = 0; d < doors; d++) {
+      ctx.fillRect(x + bw * ((d + 0.5) / doors) - 1.4, -3 - D * 0.34, 2.8, D * 0.3);
+    }
+  }
+  // the flagpole, at the yard's edge
+  ctx.strokeStyle = "rgba(240,238,230,0.85)"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(L * 0.42, D * 0.2); ctx.lineTo(L * 0.42, -D * 0.5); ctx.stroke();
+  ctx.fillStyle = "#e85d75";
+  ctx.fillRect(L * 0.42, -D * 0.5, Math.max(3, L * 0.05), 2.6);
   ctx.restore();
 }
 

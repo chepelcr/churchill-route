@@ -17,7 +17,7 @@ from ..logging import log, warn
 from ..service.ferry import extract_ferries
 from ..service.osm import (
     barro_leon_continuation, extract_areas, extract_buildings, extract_pois,
-    extract_rails, extract_roads, propagate_barro_to_crossings,
+    extract_rails, extract_roads, extract_sites, propagate_barro_to_crossings,
 )
 from ..service.projection import planar_setup
 from ..util.raster import Raster
@@ -54,6 +54,10 @@ def extract_world(osm_source):
         warn("roads", "Puente colgante way not found — synthesizing later")
 
     raw_bldgs = extract_buildings(sp, ways, roads, dims.w, dims.h)
+    # The GROUND a place occupies (a park, a schoolyard, a church's plot) as
+    # opposed to a building standing on it. Placed much later, once the cuadras
+    # exist — here it is still the mapper's outline, same as a building.
+    ctx.sites = extract_sites(sp, ways, dims.w, dims.h)
     ctx.beaches, ctx.waters = extract_areas(sp, ways, relations, dims.w, dims.h)
     ctx.pois = extract_pois(sp, ways, poi_nodes, dims.w, dims.h)
     # The ferry berths and their sailing lines. It reads `pois` for the two

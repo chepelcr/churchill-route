@@ -142,7 +142,8 @@ churchill/world/
                  osm_file.py (in), world_json.py + debug_render.py (out)
   service/       domain ops, each taking what it needs rather than reaching for
                  globals: street (StreetIndex — read its docstring before
-                 picking a method), block, field (estadios + parcels), building,
+                 picking a method), block, field (estadios + parcels + the OSM
+                 sites), building,
                  surface (the stamping ORDER matters), network (the gate),
                  placement (why a POI has to be nudged at all), osm, decoration,
                  projection
@@ -253,6 +254,31 @@ Each parcel therefore emits its block angle as `ang` (radians) into
 with the whole-cuadra estadios), `drawChurch(x, y, s, ang)`, the garden's tree
 scatter, the sponsor plate. Anything new drawn on a parcel must use `P.ang`; a
 `strokeRect` off `P.x0..P.x1` puts a square pitch on a slanted block.
+
+**A parcel straight from OSM** (`extract_sites` + `FieldService.place_osm_sites`
+— 377 of the world's 400 parcels). A closed OSM area tagged as a park, cancha,
+escuela, jardín de niños, campus or iglesia is the GROUND a place occupies, and
+becomes a parcel on the cuadra under it. The parts that are load-bearing:
+- **Keep only `CLS_LAND`/`CLS_ACERA` under the outline.** Testing the SURFACE is
+  what keeps a parcel out of the roadway and lets it follow a diagonal avenida
+  exactly — the same move `_reclaim` makes, from the other side. A site that
+  fails `SITE_MIN_KEPT` is a ribbon along a street, not a place: log it and skip.
+- **Ground already handed out is measured CELL BY CELL** (`claimed_cells`), not
+  by CUAD: at 20 px two sites either side of the same calle share a cell.
+- **The acera ring is GRADED** (`ACERA_CELLS` → `FIELD_ACERA_CELLS` → 1 → 0),
+  measured against the LARGEST CONNECTED COMPONENT of what survives. An erosion
+  does not just shrink a lot, it breaks it, and `outline_poly` keeps only the
+  biggest loop — so without measuring, a chapel comes out a 4 px sliver.
+- **`ang` comes from `StreetIndex.angle_at`** — the nearest centreline, folded
+  into the avenida family (-45°, 45°]. Its `reach` is measured from the parcel's
+  CENTRE, so it must clear half a manzana plus the street (12·CUAD; at 3·CUAD a
+  third of the sites fell back to 0.0 and drew square to the screen).
+- **`green: False` unless the site owns ≥60% of its cuadra.** The block-green
+  flag kills the WHOLE manzana's synth buildings; `occ` already keeps them off
+  the parcel's own cells, which is all a small cancha needs.
+- A `worship`/`school`/`kinder`/`campus` parcel DRAWS the building, so its OSM
+  footprints are cleared (named footprints bypass `occ`), and its duplicate POI
+  dot is dropped — but a park keeps its dot, since parks carry no name pill.
 
 **Lay a whole cuadra out by hand** (the civic block: `centro` in `build_stage`).
 Two things have already happened to a manzana by the time `place_parcels` runs,

@@ -4,6 +4,62 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
 and the three game modes are live; the items below are what remains.
 
+## ✅ La ciudad real: parques, escuelas e iglesias desde OSM (2026-07-27)
+
+Publicación: [La ciudad de verdad](docs/changelog/2026-07-27-parcelas.md).
+
+**Se acabaron los parques inventados**
+- [x] Eliminado el esparcido de **16 cuadras verdes sintéticas** (`park_syn_*`,
+      todas con el nombre "Parque") en `seat_town_kiosks`. Era un relleno de
+      antes de que existiera el sistema de parcelas, y es lo que se veía.
+- [x] Los verdes que sí venían de un lugar real —Parque Marino, Parque El Cocal,
+      Balneario— siguen igual: los pinta la pasada de landmarks.
+
+**`extract_sites` — el SUELO que ocupa un lugar** (`service/osm.py`)
+- [x] Hermana de `extract_buildings`: las **áreas cerradas** de OSM que son
+      suelo, no edificio. Seis familias en orden, gana la primera:
+      `worship` / `kinder` / `school` / `campus` / `pitch` / `park`.
+- [x] Solo **vías cerradas** (una vía abierta es una cerca), ordenadas **por id
+      de OSM**: el orden del emit no puede depender del orden del archivo.
+- [x] Un *jardín de niños* o un *CEN-CINAI* etiquetado `amenity=school` se
+      reclasifica **por su nombre** — es un patio con aulas, no una escuela.
+- [x] `landuse` entra en `keep_keys` del parser.
+
+**`place_osm_sites` — de un contorno de OSM a una parcela** (`service/field.py`)
+- [x] El caso general de lo que `place_parcels` hace a mano. Celdas bajo el
+      contorno → **solo las que son suelo de cuadra** (`LAND`/`ACERA`), que es
+      lo que mantiene la parcela fuera de la calzada y le hace seguir exacta una
+      avenida diagonal.
+- [x] El suelo ya repartido gana, medido **celda por celda** (no por CUAD: a
+      20 px dos sitios a lado y lado de la misma calle comparten celda, y la
+      Iglesia de Las Playitas salía "reclamada" por el estadio de enfrente).
+- [x] **Anillo de acera graduado** (5 → 2 → 1 → 0 celdas): una parte hecha a
+      mano es un cuarto de manzana y aguanta 20 px por lado; una capilla de
+      33x40 px no. Medido contra el **componente conexo más grande** — una
+      erosión no solo encoge un lote, lo parte, y `outline_poly` se queda con el
+      lazo más grande.
+- [x] El ángulo sale de la **calle más cercana** (`StreetIndex.angle_at`),
+      plegado a la familia de las avenidas (-45°, 45°]. Nunca de un ajuste de
+      las celdas de la propia parcela.
+- [x] Una cancha chiquita **ya no borra su barrio**: un sitio marca su cuadra
+      verde (sin casas sintéticas) solo si ocupa ≥60 % de ella.
+- [x] Los que no entran quedan en el log con la razón y los números, uno por
+      línea. Un lote de mentira en media calle es peor que no tenerlo.
+
+**Iglesias y escuelas dibujadas como lo que son**
+- [x] Una vía de `place_of_worship` **es** el edificio: su footprint se quita
+      (como `clear_buildings` en la manzana civil) y la parcela dibuja la
+      silueta — nave, campanario, aguja y cruz, en el ángulo de su cuadra.
+- [x] Tres usos nuevos en `ParcelUse`: `school`, `kinder`, `campus`, con su
+      color de patio en `PARCEL_FILL` y `drawSchool` en `drawParcels` —
+      pabellón contra el fondo del lote, puertas de las aulas en fila, patio con
+      su cancha y el asta de la bandera. `campus` reparte hasta 4 pabellones.
+- [x] **Un solo nombre por lugar**: donde la parcela lleva pastilla se quita el
+      punto de POI duplicado. Los parques conservan el suyo (van sin pastilla a
+      propósito, para no tapar el arbolado).
+- [x] Minimapa: las parcelas `park`/`garden` salen en verde oscuro junto a las
+      canchas en verde claro.
+
 ## ✅ La cuadra de la Catedral + tres arreglos de juego (2026-07-25)
 
 Publicación: [La cuadra de la Catedral](docs/changelog/2026-07-25-catedral.md).

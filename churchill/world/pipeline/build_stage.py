@@ -48,7 +48,7 @@ from ..util.geometry import dist, pairs, point_in_poly, poly_centroid, to_m
 from ..util.raster import erode_cells
 
 
-def seat_town_kiosks(ctx, *, landmarks, customers, districts, roads, waters, blocks, greens, kiosk_paths, beach_kiosks, mlm, pier, balneario, balneario_cells, marine_site, _nearest_cell, _block_containing, _block_raster_cells, _green_poly):
+def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens, kiosk_paths, beach_kiosks, mlm, pier, balneario, balneario_cells, marine_site, _nearest_cell, _block_containing, _block_raster_cells, _green_poly):
     raster = ctx.raster
     grid = raster.buf
     GRID_COLS, GRID_ROWS = ctx.dims.cols, ctx.dims.rows
@@ -172,52 +172,12 @@ def seat_town_kiosks(ctx, *, landmarks, customers, districts, roads, waters, blo
         else:
             lm["w"] = min(160, (bc1 - bc0 + 1) * CUAD); lm["h"] = min(140, (br1 - br0 + 1) * CUAD)
 
-    # Synthetic parks: scatter green spaces (each with a fountain) across the
-    # town so parks aren't rare. Pick well-sized cuadras clear of other POIs,
-    # mark them green (no synth buildings), and add a park landmark sized to
-    # the block. Spatially spread by sorting candidates on x.
-    _pts = [(l["x"], l["y"]) for l in landmarks] + [(c["x"], c["y"]) for c in customers]
-    def _dcls(cc, cr):
-        d = {d["id"]: (d["x0"], d["x1"]) for d in districts}
-        for did, (x0, x1) in d.items():
-            if x0 <= cc * CUAD < x1:
-                return did
-        return districts[0]["id"]
-    park_cands = []
-    for bi, b in enumerate(blocks):
-        if b.get("green"):
-            continue
-        cells = b["cells"]; sz = len(cells)
-        if sz < 6 or sz > 160:              # a small-to-mid cuadra (green render covers it)
-            continue
-        bc0 = min(c for c, _ in cells); bc1 = max(c for c, _ in cells)
-        br0 = min(r for _, r in cells); br1 = max(r for _, r in cells)
-        cx = (bc0 + bc1 + 1) * CUAD // 2; cy = (br0 + br1 + 1) * CUAD // 2
-        if any((cx - px) ** 2 + (cy - py) ** 2 < 220 ** 2 for px, py in _pts):
-            continue
-        w = min(300, (bc1 - bc0 + 1) * CUAD); h = min(240, (br1 - br0 + 1) * CUAD)
-        park_cands.append((cx, cy, bi, w, h))
-    log("parks", f"{len(park_cands)} candidate blocks")
-    park_cands.sort()
-    TARGET_PARKS = 16
-    n_park = 0
-    if park_cands:
-        step = max(1, len(park_cands) // TARGET_PARKS)
-        for j in range(0, len(park_cands), step):
-            if n_park >= TARGET_PARKS:
-                break
-            cx, cy, bi, w, h = park_cands[j]
-            blocks[bi]["green"] = True       # keep the interior open (no buildings)
-            # paint the park's green on the block footprint (never over streets)
-            g = _green_poly(blocks[bi]["cells"], "park")
-            if g: greens.append(g)
-            landmarks.append({"id": f"park_syn_{n_park}", "name": "Parque",
-                              "x": int(cx), "y": int(cy), "type": "park",
-                              "district": _dcls(cx // CUAD, cy // CUAD),
-                              "w": min(160, int(w)), "h": min(140, int(h))})
-            _pts.append((cx, cy))
-            n_park += 1
-    log("parks", f"+{n_park} synthetic parks scattered across the town")
+    # The town's parks are NOT invented here any more. Until 2026-07-27 this
+    # stage scattered 16 synthetic green cuadras (`park_syn_*`, all named
+    # "Parque") over whatever mid-sized block happened to be free — a stand-in
+    # from before the parcel system existed. The map carries 205 real park areas
+    # of its own; they are placed as parcels by `FieldService.place_osm_sites`
+    # (place_structures), on the ground the mapper actually drew.
 
     # The avenue's separators (final layout, user-iterated):
     # - Paseo de los Turistas: its classic PALM median — dashes with crossing
@@ -280,7 +240,7 @@ def seat_town_kiosks(ctx, *, landmarks, customers, districts, roads, waters, blo
     return balneario, balneario_cells, marine_site, keepouts, medians, palm_runs, tree_runs
 
 
-def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, balneario, balneario_cells, marine_site, keepouts, streets, raw_bldgs, _green_poly, _block_raster_cells):
+def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, balneario, balneario_cells, marine_site, keepouts, streets, raw_bldgs, sites, _green_poly, _block_raster_cells):
     raster = ctx.raster
     grid = raster.buf
     CANVAS_W, CANVAS_H = ctx.dims.w, ctx.dims.h
@@ -478,6 +438,61 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
                          if (int(b["cx"] // CUAD), int(b["cy"] // CUAD)) not in claimed]
             log("parcel", f"{_pc['id']}: cleared {before - len(raw_bldgs)} OSM "
                 f"footprints off the {len(claimed)} cuad cells the block claimed")
+
+    # ---- OSM SITES ---------------------------------------------------------
+    # …and now the same primitive, driven by the MAP instead of by the table
+    # above: every park, cancha, escuela, jardín de niños, campus and iglesia
+    # that docs/map.osm draws as a closed area becomes a parcel on the cuadra
+    # under it. Runs AFTER the hand-laid blocks so those always win their
+    # ground, and BEFORE the building passes so a claimed site is already off
+    # limits to the snapper and the synthesiser.
+    #
+    # The Parque Marino and the Balneario are claimed here too: their cuadras
+    # are a real aquarium and a sea inlet, and both carry OSM areas that would
+    # otherwise re-derive a plain park parcel on top of them. Expanded from CUAD
+    # cells to RASTER cells, because that is the resolution the site test works
+    # at — a CUAD-coarse claim is 20 px, which merges a site with whatever is
+    # across the street from it.
+    _cpc = CUAD // GRID_CELL
+    for _cc, _cr in list(marine_site["cells"] if marine_site else ()) + list(balneario_cells or ()):
+        fields.claimed_cells.update(
+            (_cc * _cpc + dc, _cr * _cpc + dr)
+            for dc in range(_cpc) for dr in range(_cpc))
+    n_before = len(parcels)
+    site_cuads = fields.place_osm_sites(sites)
+    # The SAME OSM way is also a named POI dot (extract_pois reads every named
+    # feature with an amenity/leisure tag). Where the new parcel carries a name
+    # PILL — a church, a school, a cancha — the dot is a second copy of the same
+    # label sitting on top of the first, and the parcel is the better one: it is
+    # the shape of the real place, not a point in the middle of it.
+    #
+    # A park keeps its dot. `UNLABELLED_USES` in the renderer leaves parks,
+    # gardens and bulevares unlabelled on purpose (a caption in the middle of a
+    # lawn covers exactly the tree scatter that makes it read as a park), so
+    # dropping their dot would leave Parque Victoria with no name at all.
+    PILLED = {ParcelUse.CHURCH, ParcelUse.CATHEDRAL, ParcelUse.STADIUM,
+              ParcelUse.SCHOOL, ParcelUse.KINDER, ParcelUse.CAMPUS}
+    site_names = {(p["name"], p["x0"], p["y0"], p["x1"], p["y1"])
+                  for p in parcels[n_before:] if p["use"] in PILLED}
+    if site_names:
+        before = len(ctx.pois)
+        ctx.pois[:] = [poi for poi in ctx.pois
+                       if not any(poi["name"] == nm and x0 <= poi["x"] <= x1
+                                  and y0 <= poi["y"] <= y1
+                                  for (nm, x0, y0, x1, y1) in site_names)]
+        log("site", f"{before - len(ctx.pois)} POI dots dropped — their parcel "
+            f"now carries the name")
+    # A site whose parcel DRAWS the building (a church, a school) owns its
+    # ground the same way a hand-laid manzana does. `occ` is not enough: NAMED
+    # footprints bypass it (that is why the capilla used to stand in the middle
+    # of a park), and a worship way IS the church — left standing it puts a
+    # pastel box on top of the drawn church.
+    if site_cuads:
+        before = len(raw_bldgs)
+        raw_bldgs = [b for b in raw_bldgs
+                     if (int(b["cx"] // CUAD), int(b["cy"] // CUAD)) not in site_cuads]
+        log("site", f"cleared {before - len(raw_bldgs)} OSM footprints off the "
+            f"{len(site_cuads)} cuad cells the built sites claimed")
 
     # Parque Marino: the aquarium's own OSM ways stay at their TRUE footprints
     # (a snapped pastel box reads as a generic house, not the theme park), and

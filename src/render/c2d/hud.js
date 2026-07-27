@@ -226,14 +226,18 @@ function miniGreens(mv) {
     ctx.fillStyle = g.type === "stadium" ? MINI_FIELD : MINI_PARK;
     ctx.fill(g._mpath);
   }
-  // …and the fields that are PARTS of a cuadra rather than the whole of it
-  // (Plaza Deportes El Carmen), which live in `parcels`, not in `greens`.
+  // …and the greens that are PARTS of a cuadra rather than the whole of it,
+  // which live in `parcels`, not in `greens`: the canchas (Plaza Deportes El
+  // Carmen and every OSM "Plaza Deportes") bright, because you drive into
+  // them, and the real parks — Parque Victoria, Mora y Cañas — dark, like the
+  // block greens they sit beside.
   for (const P of W.PARCELS || []) {
-    if (P.use !== "plaza" && P.use !== "stadium") continue;
+    const field = P.use === "plaza" || P.use === "stadium";
+    if (!field && P.use !== "park" && P.use !== "garden") continue;
     if (P.whole) continue;                      // already in GREENS as its cuadra
     miniShape(P, P.poly);
     if (!aabbInView(P._mbb, mv, 8)) continue;
-    ctx.fillStyle = MINI_FIELD;
+    ctx.fillStyle = field ? MINI_FIELD : MINI_PARK;
     ctx.fill(P._mpath);
   }
 }

@@ -32,7 +32,7 @@ the central avenue is "Avenida Centenario", not "Avenida 0".
 import math
 from collections import defaultdict
 
-from ..config import MUELLE_STREET
+from ..config import CUAD, MUELLE_STREET
 from ..util.geometry import principal_axis
 
 
@@ -146,6 +146,64 @@ class StreetIndex:
         if (ux < 0) if axis == "x" else (uy < 0):
             ux, uy = -ux, -uy
         return (ux, uy)
+
+    def angle_at(self, px, py, reach=12 * CUAD):
+        """The manzana angle at a point, taken from the NEAREST street.
+
+        `direction()` answers the same question from a NAME, which is what a
+        hand-authored cuadra has. A parcel derived from an OSM outline does not:
+        it knows where it is and nothing about which calle bounds it. So take
+        the nearest real centreline segment and fold its direction into the
+        AVENIDA family — a result in (-45°, 45°] — because a calle is the same
+        grid turned a quarter, and everything drawn on a parcel (mow stripes,
+        pitch markings, a church, the sponsor plate) is symmetric under that
+        quarter turn.
+
+        Still "the angle comes from the streets", which is the rule that matters
+        (see CLAUDE.md): what it must never be is a fit of the parcel's own
+        traced cells, whose vertices are 4 px staircase steps and whose
+        principal axis snaps to ±45° on a square-ish block.
+
+        Returns radians; 0.0 when no street is within `reach` (a site out in the
+        countryside has no grid to align to).
+
+        `reach` is measured from the parcel's CENTRE, so it has to clear half a
+        manzana plus the street: at 3·CUAD a whole-cuadra park was further from
+        every centreline than the reach and fell back to 0.0 — 126 of 377 sites
+        came out square to the screen on a grid that is not. 12·CUAD (two
+        cuadras) leaves 8, all of them genuinely out in the countryside.
+        """
+        if self._boxed is None:
+            self._boxed = [(r, (min(r["pts"][0::2]), min(r["pts"][1::2]),
+                                max(r["pts"][0::2]), max(r["pts"][1::2])))
+                           for r in self.roads if r.get("pts")]
+        best = None
+        for r, (bx0, by0, bx1, by1) in self._boxed:
+            if px < bx0 - reach or px > bx1 + reach or py < by0 - reach or py > by1 + reach:
+                continue
+            p = r["pts"]
+            for i in range(0, len(p) - 2, 2):
+                ax, ay, bx, by = p[i], p[i + 1], p[i + 2], p[i + 3]
+                dx, dy = bx - ax, by - ay
+                l2 = dx * dx + dy * dy
+                if l2 <= 0:
+                    continue
+                t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / l2))
+                qx, qy = ax + dx * t, ay + dy * t
+                d2 = (px - qx) ** 2 + (py - qy) ** 2
+                # ties broken by the segment's own start, so two roads at the
+                # same distance always resolve the same way across rebuilds
+                key = (d2, ax, ay, bx, by)
+                if best is None or key < best[0]:
+                    best = (key, dx, dy)
+        if best is None or best[0][0] > reach * reach:
+            return 0.0
+        ang = math.atan2(best[2], best[1])
+        while ang > math.pi / 4:
+            ang -= math.pi / 2
+        while ang <= -math.pi / 4:
+            ang += math.pi / 2
+        return ang
 
     def on_street(self, px, py, pad=2.0, reach=60.0):
         """Is (px, py) under the painted width of a real road centreline?

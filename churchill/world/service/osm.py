@@ -303,6 +303,84 @@ def extract_pois(sp, ways, poi_nodes, canvas_w, canvas_h):
     return out
 
 
+#: A jardín de niños or a CEN-CINAI is sometimes tagged `amenity=school` like
+#: any other MEP centre (Jardín de Niños Riojalandia is), and it is not one: it
+#: is a handful of aulas around a patio, not an escuela. The NAME is what the
+#: place is called on its own wall, so it decides.
+KINDER_NAMES = ("jardín de niños", "jardin de ninos", "cen-cinai", "cen cinai")
+#: OSM area families that become PARCELS — the ground a place occupies, as
+#: opposed to a building standing on it. Ordered: the first predicate that
+#: matches wins, so a church mapped as `building=church` is worship, not a
+#: nameless footprint, and a school with a pitch inside it stays a school.
+SITE_KINDS = (
+    ("worship", lambda t: t.get("amenity") == "place_of_worship"
+                or t.get("building") in ("church", "chapel", "cathedral")),
+    ("kinder",  lambda t: t.get("amenity") in ("kindergarten", "childcare")
+                or (t.get("amenity") == "school"
+                    and any(k in t.get("name", "").lower() for k in KINDER_NAMES))),
+    ("school",  lambda t: t.get("amenity") == "school"),
+    ("campus",  lambda t: t.get("amenity") in ("college", "university")),
+    ("pitch",   lambda t: t.get("leisure") in ("pitch", "sports_centre", "recreation_ground")
+                or t.get("landuse") == "recreation_ground"),
+    ("park",    lambda t: t.get("leisure") in ("park", "garden", "common")
+                or t.get("landuse") == "village_green"),
+)
+#: a site smaller than this is a mapping artifact, not a place you can stand in
+MIN_SITE_AREA_PX2 = 400
+
+
+def site_kind(tags):
+    """The site family `tags` belongs to, or None. First match wins."""
+    for kind, pred in SITE_KINDS:
+        if pred(tags):
+            return kind
+    return None
+
+
+def extract_sites(sp, ways, canvas_w, canvas_h):
+    """Parks, sports plazas, schools, kindergartens, campuses and churches as
+    projected GROUND polygons: {id, kind, name, pts}.
+
+    Sibling of `extract_buildings` and one level below it in ambition: this does
+    not decide where anything goes either. It hands the placement stage the real
+    OSM outline of each site, and `FieldService.place_osm_sites` intersects that
+    with the cuadra the surface pass actually produced.
+
+    Only CLOSED ways qualify — an open way is a fence or a path, not an area —
+    and the result is sorted by OSM id so the emit order never depends on
+    dict/file ordering. Determinism is the contract.
+    """
+    out = []
+    dropped_open, dropped_small = 0, 0
+    for w in ways:
+        kind = site_kind(w["tags"])
+        if kind is None or len(w["pts"]) < 4:
+            continue
+        if w["nds"][0] != w["nds"][-1]:
+            dropped_open += 1
+            continue
+        pts, _ = project_way_pts(sp, w["pts"])
+        if dist(pts[0], pts[-1]) < 1e-6:
+            pts = pts[:-1]
+        pts = clip_poly_to_rect(pts, canvas_w, canvas_h)
+        if len(pts) < 3:
+            continue
+        pts = dp_simplify(pts + [pts[0]], DP_BUILDING_PX)[:-1]
+        if len(pts) < 3 or abs(poly_area(pts)) < MIN_SITE_AREA_PX2:
+            dropped_small += 1
+            continue
+        out.append({"id": int(w["id"]), "kind": kind,
+                    "name": w["tags"].get("name"), "pts": pts,
+                    "cathedral": w["tags"].get("building") == "cathedral"})
+    out.sort(key=lambda s: s["id"])
+    by_kind = defaultdict(int)
+    for s in out:
+        by_kind[s["kind"]] += 1
+    log("sites", f"{len(out)} OSM ground sites: {dict(sorted(by_kind.items()))} "
+        f"(dropped {dropped_open} open ways, {dropped_small} tiny)")
+    return out
+
+
 def extract_coastlines(sp, ways):
     """Stitch natural=coastline ways by endpoint node id, project chains."""
     coast = [w for w in ways if w["tags"].get("natural") == "coastline" and len(w["nds"]) >= 2]

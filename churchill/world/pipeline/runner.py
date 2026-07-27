@@ -68,7 +68,7 @@ def main():
         if _outline_poly(_block_raster_cells(cells)) else None)
     (balneario, balneario_cells, marine_site, keepouts, medians, palm_runs,
      tree_runs) = seat_town_kiosks(
-        ctx, landmarks=landmarks, customers=customers, districts=districts,
+        ctx, landmarks=landmarks, customers=customers,
         roads=roads, waters=waters, blocks=blocks, greens=greens,
         kiosk_paths=kiosk_paths, beach_kiosks=beach_kiosks, mlm=mlm, pier=pier,
         balneario=balneario, balneario_cells=balneario_cells,
@@ -81,7 +81,8 @@ def main():
         plazas=plazas, beaches=beaches, balneario=balneario,
         balneario_cells=balneario_cells, marine_site=marine_site,
         keepouts=keepouts, streets=StreetIndex(roads), raw_bldgs=raw_bldgs,
-        _green_poly=_green_poly, _block_raster_cells=_block_raster_cells)
+        sites=ctx.sites, _green_poly=_green_poly,
+        _block_raster_cells=_block_raster_cells)
 
     bridge, est, trees, palms, mangroves = decorate(
         ctx, sp=sp, roads=roads, blocks=blocks, occ=occ, waters=waters,

@@ -22,6 +22,9 @@ class ParcelUse(StrEnum):
     BOULEVARD = "boulevard"  # calle peatonal: stone paving, transitable (Surface.BOULEVARD)
     CIVIC = "civic"          # a public building drawn to fill the parcel
     LOT = "lot"              # a feature parcel derived from a real footprint
+    SCHOOL = "school"        # escuela / liceo: a yard with a building along one edge
+    KINDER = "kinder"        # jardín de niños / CEN-CINAI: a small school with a patio
+    CAMPUS = "campus"        # colegio / universidad: several pavilions on open grounds
 
 
 class GreenType(StrEnum):

@@ -24,6 +24,7 @@ The drivable stamp always uses a part's UN-eroded cells, so the ring is asphalt
 you drive in over, never a wall around the field.
 """
 import math
+from collections import defaultdict
 
 from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD,
@@ -31,7 +32,7 @@ from ..config import (
 )
 from ..enums import GreenType, ParcelUse
 from ..logging import log
-from ..util.geometry import principal_axis
+from ..util.geometry import dp_simplify, flat, pairs, point_in_poly, principal_axis
 from ..util.raster import erode_cells
 from .block import cuadra_cells, outline_poly
 from .street import half_plane
@@ -46,6 +47,32 @@ def _cell_frame(cells):
     which the cuadrícula is not."""
     mx, my, ang = principal_axis(list(cells))
     return mx, my, math.cos(ang), math.sin(ang)
+
+def _largest_part(cells):
+    """The biggest 4-connected component of a cell set.
+
+    An erosion does not just shrink a plot, it can BREAK it: a school yard
+    pinched by two aceras comes back as a handful of crumbs. `outline_poly`
+    already keeps only the largest loop, so the choice is being made either
+    way — making it here means the caller can MEASURE what survived and back
+    the ring off when the answer is a 4 px sliver.
+    """
+    seen, best = set(), set()
+    for seed in sorted(cells):
+        if seed in seen:
+            continue
+        part, stack = set(), [seed]
+        seen.add(seed)
+        while stack:
+            c, r = stack.pop()
+            part.add((c, r))
+            for n in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
+                if n in cells and n not in seen:
+                    seen.add(n); stack.append(n)
+        if len(part) > len(best):
+            best = part
+    return best
+
 
 def _bands(vals, weights):
     """Cut [min..max] into len(weights) bands sized by the weights."""
@@ -80,6 +107,13 @@ class FieldService:
         self.stadiums = stadiums
         self.parcels = parcels
         self.occ = occ
+        # RASTER cells this service has already handed to a field or a parcel.
+        # `occ` cannot answer that question — it also holds the POI keep-outs,
+        # so a park next to a customer would read as taken — and it is CUAD
+        # coarse, which at 20 px merges a site with its neighbour across the
+        # street. Used by `place_osm_sites`: hand-authored ground wins, and two
+        # OSM sites never share the same ground.
+        self.claimed_cells = set()
 
     def place_stadium(self, spec):
         lm = next((l for l in self.landmarks if l["id"] == spec["id"]), None)
@@ -145,6 +179,7 @@ class FieldService:
         # cuad cells the traced cuadra actually covers, not the raw street rect.
         cuad_cells = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in outer_cells}
         self.occ.update(cuad_cells)
+        self.claimed_cells |= outer_cells
         for b in self.blocks:
             if not b.get("green") and any(c in cuad_cells for c in b["cells"]):
                 b["green"] = True
@@ -195,6 +230,16 @@ class FieldService:
         poly = outline_poly(keep_cells, GRID_CELL) if keep_cells else None
         if not poly:
             log("parcel", f"WARN {part['id']} nothing left after erosion"); return None
+        # `simplify`: drop the trace's 4 px staircase, the way every other real
+        # outline in the build is simplified (DP_BUILDING_PX, DP_COAST_PX). The
+        # renderer already strokes a parcel's outline at lineWidth 8 to hide
+        # those steps, so a chord this small is under the stroke — and with
+        # hundreds of site parcels the vertices are most of the manifest's
+        # growth. The hand-authored cuadras do NOT ask for it: they are a dozen
+        # polygons that were tuned against the block by eye.
+        if part.get("simplify"):
+            ring = pairs(poly)
+            poly = flat(dp_simplify(ring + [ring[0]], part["simplify"])[:-1])
         px = poly[0::2]; py = poly[1::2]
         x0, y0, x1, y1 = min(px), min(py), max(px), max(py)
         ay = y0 + (y1 - y0) // 4 if part.get("anchor") == "north" else (y0 + y1) // 2
@@ -249,9 +294,19 @@ class FieldService:
         self.parcels.append(rec)
         cuads = {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in cells}
         self.occ.update(cuads)                        # no buildings inside a parcel
-        for b in self.blocks:
-            if not b.get("green") and any(c in cuads for c in b["cells"]):
-                b["green"] = True
+        self.claimed_cells |= set(cells)
+        # `green` on a BLOCK excludes the WHOLE cuadra from synth_buildings, and
+        # a hand-laid manzana is laid out part by part, so every part of it says
+        # yes. An OSM site is a different animal: a 27-cell cancha can sit in the
+        # middle of a residential block, and blanking that block's houses over it
+        # would empty half the barrio. `occ` already keeps buildings off the
+        # parcel's own cuad cells at cell granularity — the block flag is only
+        # for a parcel that IS most of its cuadra, which is what `green: False`
+        # (set by place_osm_sites) opts out of.
+        if part.get("green", True):
+            for b in self.blocks:
+                if not b.get("green") and any(c in cuads for c in b["cells"]):
+                    b["green"] = True
         if part["use"] in (ParcelUse.PLAZA, ParcelUse.STADIUM):   # drivable open field
             for (c, r) in cells:
                 self.raster.set(c, r, CLS_ROAD)
@@ -426,6 +481,169 @@ class FieldService:
         # it: named buildings are kept at their real outline unconditionally, so
         # without this the parroquia's capilla ends up in the middle of a park.
         return {(c * GRID_CELL // CUAD, r * GRID_CELL // CUAD) for (c, r) in claimed}
+
+    # ---- OSM SITES ----------------------------------------------------------
+    # The general case of what `place_parcels` does by hand, driven by the map
+    # instead of by a table: `extract_sites` finds 438 of them on this map —
+    # 205 parks, 85 canchas, 68 escuelas y jardines, 63 iglesias, 17 campus —
+    # and until now none of them was ground. They reached the client as a name
+    # dot, while the player looked at 16 SYNTHETIC parks scattered on whatever
+    # cuadra happened to be free.
+    #
+    # A hand-authored block names its bounding streets and cuts itself into
+    # parts. A site does neither: it arrives as one real outline, and the only
+    # question is which of the cells under it are actually its ground.
+    #: use per site kind. Open ground (park/pitch) is drawn as a field and
+    #: STAMPED DRIVABLE by _emit_parcel; the rest are buildings on a plot.
+    SITE_USE = {"park": ParcelUse.PARK, "pitch": ParcelUse.STADIUM,
+                "worship": ParcelUse.CHURCH, "school": ParcelUse.SCHOOL,
+                "kinder": ParcelUse.KINDER, "campus": ParcelUse.CAMPUS}
+    #: the kinds whose parcel replaces a BUILDING: their OSM footprints have to
+    #: be cleared, or a pastel box lands on top of the drawn church/school.
+    SITE_BUILT = ("worship", "school", "kinder", "campus")
+    SITE_FALLBACK_NAME = {"park": "Parque", "pitch": "Plaza de Deportes",
+                          "worship": "Iglesia", "school": "Escuela",
+                          "kinder": "Jardín de Niños", "campus": "Centro Educativo"}
+    #: a site has to keep this much of its outline as real cuadra ground, and
+    #: this many cells, or it is a ribbon along a street rather than a place.
+    #: Parque del Muellero is 855x297 px of mostly Paseo asphalt.
+    SITE_MIN_KEPT = 0.25
+    SITE_MIN_CELLS = 12
+    #: …and the acera ring may not eat more than this much of the plot. A
+    #: hand-authored part is a quarter of a manzana and can afford a 20 px ring
+    #: on every side; a 30-cell chapel cannot, and eroding it anyway leaves a
+    #: 4 px sliver where a church should be.
+    SITE_MIN_LEFT = 0.45
+    #: …and it has to be a PLOT: at least this many cells on its SHORT side.
+    #: 3 cells = 12 px, under which the trace is a smear, not a lot.
+    SITE_MIN_SIDE = 3
+    #: a site covering this much of the cuadra it touches OWNS it — the block
+    #: goes green and its synth houses go away. Below it the site is a piece of
+    #: a live manzana and the neighbours keep their buildings.
+    SITE_OWNS_BLOCK = 0.6
+    #: Douglas-Peucker tolerance on a site's traced outline, in px. Same order
+    #: as DP_BUILDING_PX, and under the 8 px stroke `paintParcels` already draws
+    #: to hide the raster staircase. `manifest.json` is the EAGER half of the
+    #: world, and 300+ traced outlines at 4 px steps is most of its growth.
+    SITE_DP_PX = 3.0
+
+    def place_osm_sites(self, sites):
+        """Turn each OSM ground site into a parcel on the cuadra under it.
+
+        `self.claimed` already holds the CUAD cells the hand-authored blocks,
+        the estadios and the feature blocks own — hand-authored ground always
+        wins, so the Carmen parroquia, the Catedral's manzana and Plaza Las
+        Playitas are never re-derived from OSM on top of themselves. It grows as
+        this runs, so two OSM sites mapped over each other resolve by OSM id:
+        the lower id takes the ground, deterministically.
+
+        Returns the CUAD cells claimed by BUILDING sites, for the caller's
+        footprint clear (see `SITE_BUILT`).
+        """
+        raster = self.raster
+        cell = raster.cell
+        built_cuads = set()
+        placed, skipped = 0, defaultdict(int)
+        for site in sites:                       # sorted by OSM id upstream
+            use = self.SITE_USE.get(site["kind"])
+            if use is None:
+                continue
+            if use == ParcelUse.CHURCH and site.get("cathedral"):
+                use = ParcelUse.CATHEDRAL
+            pts = site["pts"]
+            xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
+            c0, c1 = int(min(xs) // cell), int(max(xs) // cell)
+            r0, r1 = int(min(ys) // cell), int(max(ys) // cell)
+            # cells under the outline, then ONLY the ones that are real cuadra
+            # ground. Testing the SURFACE is what keeps a parcel out of the
+            # roadway and lets it follow a diagonal avenida exactly — the same
+            # move `_reclaim` makes, from the other side.
+            under, own = set(), set()
+            for r in range(max(0, r0), min(raster.rows, r1 + 1)):
+                for c in range(max(0, c0), min(raster.cols, c1 + 1)):
+                    if not point_in_poly((c * cell + cell / 2, r * cell + cell / 2), pts):
+                        continue
+                    under.add((c, r))
+                    if raster.at(c, r) in (CLS_LAND, CLS_ACERA):
+                        own.add((c, r))
+            if not under:
+                skipped["off-grid"] += 1; continue
+            # Ground already handed out is not available — measured CELL BY
+            # CELL. At CUAD granularity two sites on opposite sides of the same
+            # calle share the 20 px cell the street runs through, and the
+            # Iglesia de Las Playitas came out "claimed" by the estadio across
+            # the road. Here a church inside a school yard still yields (the
+            # school owns those cells) while the one next door keeps its lot.
+            # `taken` counts ALL the cells under the outline that are spoken for,
+            # not just the buildable ones: an estadio's cuadra was stamped
+            # drivable when it was placed, so a site on top of it would otherwise
+            # be reported as "in the street" when the real reason is the estadio.
+            taken = under & self.claimed_cells
+            own -= taken
+            if len(own) < self.SITE_MIN_CELLS or len(own) < len(under) * self.SITE_MIN_KEPT:
+                claimed = len(taken) >= len(under) * self.SITE_MIN_KEPT
+                log("site", f"skip {site['id']} {site['kind']} "
+                    f"{(site['name'] or '—')[:34]}: "
+                    + (f"{len(taken)}/{len(under)} cells already claimed" if claimed else
+                       f"{len(own)}/{len(under)} cells are cuadra ground "
+                       f"(street, sand or water)"))
+                skipped["already-claimed" if claimed else "not-on-a-cuadra"] += 1
+                continue
+            cuads = {(c * cell // CUAD, r * cell // CUAD) for (c, r) in own}
+            # An acera exists where there is a street: a building plot pulls back
+            # the full sidewalk, an open field only far enough to keep its white
+            # lines off the asphalt (the split place_parcels makes).
+            #
+            # …but a hand-authored parcel is a QUARTER OF A MANZANA and a site
+            # can be a 33x40 px chapel, where a 20 px ring on every side leaves
+            # nothing at all. So the depth is graded: take the deepest ring the
+            # plot can actually afford. A small plot is already deep inside its
+            # cuadra — it is the block that fronts the street, not the chapel.
+            deep = FIELD_ACERA_CELLS if use in (ParcelUse.PARK, ParcelUse.STADIUM) else ACERA_CELLS
+            floor = max(self.SITE_MIN_CELLS, int(len(own) * self.SITE_MIN_LEFT))
+            keep, used = set(), 0
+            for depth in [d for d in (deep, FIELD_ACERA_CELLS, 1, 0) if d <= deep]:
+                used = depth
+                keep = _largest_part(erode_cells(own, depth, STREET_CLASSES, raster.at)
+                                     if depth else own)
+                if len(keep) >= floor:
+                    break
+            # …and what is left has to be a PLOT, not a ribbon. A 12-cell strip
+            # traces to an 8 px-wide parcel, which draws as a smear rather than
+            # as the church or the cancha it is supposed to be.
+            kw = max(c for c, _ in keep) - min(c for c, _ in keep) + 1 if keep else 0
+            kh = max(r for _, r in keep) - min(r for _, r in keep) + 1 if keep else 0
+            if len(keep) < self.SITE_MIN_CELLS or min(kw, kh) < self.SITE_MIN_SIDE:
+                skipped["too-thin"] += 1
+                log("site", f"skip {site['id']} {site['kind']} "
+                    f"{(site['name'] or '—')[:34]}: {kw}x{kh} cells left after the "
+                    f"acera ring — too thin to draw")
+                continue
+            if used != deep:
+                log("site", f"{site['id']} {(site['name'] or '—')[:34]}: acera ring "
+                    f"{used} cells, not {deep} — a {len(own)}-cell plot has no room "
+                    f"for it (kept {len(keep)})")
+            cx = sum(c for c, _ in own) / len(own) * cell
+            cy = sum(r for _, r in own) / len(own) * cell
+            # Does this site OWN its cuadra, or is it a piece of one? A park
+            # that fills the manzana should clear the manzana's houses; a small
+            # cancha in a residential block must not. Measured against the
+            # blocks the parcel actually touches.
+            touched = [b for b in self.blocks if any(c in cuads for c in b["cells"])]
+            block_cells = sum(len(b["cells"]) for b in touched)
+            owns_block = bool(touched) and len(cuads) >= block_cells * self.SITE_OWNS_BLOCK
+            part = {"id": f"osm_{site['kind']}_{site['id']}", "use": use,
+                    "name": site["name"] or self.SITE_FALLBACK_NAME[site["kind"]],
+                    "green": owns_block, "simplify": self.SITE_DP_PX}
+            if self._emit_parcel("osm", part, own, keep,
+                                 self.streets.angle_at(cx, cy)) is None:
+                skipped["no-outline"] += 1; continue
+            if site["kind"] in self.SITE_BUILT:
+                built_cuads |= cuads
+            placed += 1
+        log("site", f"{placed} OSM sites placed as parcels, "
+            f"{sum(skipped.values())} skipped: {dict(sorted(skipped.items()))}")
+        return built_cuads
 
     def place_feature_parcels(self, spec, buildings):
         # `buildings` is an ARGUMENT, not state: the feature parcels are derived

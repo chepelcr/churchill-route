@@ -117,9 +117,13 @@ function paintStadiumCuadras(view) {
 // on ground that already exists, painted between the acera band and the
 // asphalt — so the asphalt repaints anything that reached the roadway, and
 // street pills, buildings and flora still land on top.
+// A school's ground is its PATIO, not a lawn: the swept concrete-and-earth
+// yard every escuela in the port has, so it reads as a schoolyard beside the
+// green of a park rather than as one more park.
 const PARCEL_FILL = { plaza: "#4f9d5b", stadium: "#4f9d5b", garden: "#5ba362",
                       park: "#5ba362", church: "#cfc7b4", cathedral: "#cfc7b4",
-                      boulevard: "#d9d6cd", civic: "#c9c2b2", lot: "#b9b2a0" };
+                      boulevard: "#d9d6cd", civic: "#c9c2b2", lot: "#b9b2a0",
+                      school: "#c8bb96", kinder: "#d3b98f", campus: "#bfb894" };
 function paintParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;

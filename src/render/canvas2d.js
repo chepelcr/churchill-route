@@ -97,8 +97,12 @@ function render(t) {
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
   // Landmarks (the bridge has its own drawer)
   for (const lm of W.LANDMARKS) {
-    if (lm.x < view.x0 - 60 || lm.x > view.x1 + 60) continue;
-    if (lm.y < view.y0 - 160 || lm.y > view.y1 + 160) continue; // X-only cull drew the whole vertical strip
+    // Area landmarks can span well beyond their anchor (Parque Marino's exact
+    // residual is multi-component). Cull their emitted extent, not only the
+    // label point, or a valid pool disappears while its lawn is still visible.
+    const lhw = (lm.w || 0) / 2, lhh = (lm.h || 0) / 2;
+    if (lm.x + lhw < view.x0 - 60 || lm.x - lhw > view.x1 + 60) continue;
+    if (lm.y + lhh < view.y0 - 160 || lm.y - lhh > view.y1 + 160) continue;
     if (lm.type === "bridge") continue; // the Mata bridge has its own drawer (drawBridge)
     if (PIXI_LANDMARKS && PIXI_MIGRATED.has(lm.type)) continue; // Pixi draws these now
     drawLandmark(lm);

@@ -124,6 +124,29 @@ LANDMARK_DEFS = [
     {"id": "kios_esp",    "name": "Churchill Esparza",          "type": "kiosk",        "district": "esparza",  "ll": (9.99183, -84.66587), "snap_road": 1},
 ]
 
+# Parque Marino source identity + facility labels. The exact park polygon and
+# its eight building footprints come from OSM, but none of those buildings has
+# a `name`; only 911250911 is typed `building=train_station`. Never number them
+# by enumeration again: that order changes whenever a footprint is added.
+#
+# The public labels below are real on-site facilities documented by the
+# Fundación PMP / UNA (La Gaceta 2007LA-000001-FPMP; current UNA Acuario, CRRAM
+# and LABM pages). OSM has no footprint-level names, so their assignment is an
+# explicit, stable map interpretation keyed to OSM IDs—not a claim that OSM
+# supplied those names, and never an enumeration-dependent "Parque Marino N".
+MARINE_SITE_OSM_ID = 316422305
+MARINE_BUILDING_NAMES = {
+    911250909: "Módulo Productivo · LABM",
+    911250910: "Recepción de Visitantes",
+    911250911: "Antigua Estación del Ferrocarril",
+    911250912: "Acuario · Sala de Exhibiciones Temporales",
+    911250913: "Centro de Rescate · CRRAM",
+    911250914: "Boletería",
+    911250915: "Servicios Sanitarios",
+    911250916: "Oficinas Administrativas",
+}
+
+
 CUSTOMER_DEFS = [
     {"id": "c1",  "name": "Don Beto, pescador",     "district": "carmen",   "line": "¡Antes que se derrita!",       "ll": (9.97700, -84.84700)},
     {"id": "c2",  "name": "Crucerista alemana",     "district": "carmen",   "line": "Eine Churchill, bitte!",       "ll": (9.97600, -84.84550)},

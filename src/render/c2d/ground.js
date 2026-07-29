@@ -2,7 +2,7 @@
 // plaza commas and the kiosk access lanes. Painted before roads.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { ensureRenderCache } from "./cache.js";
-import { aabbInView, ctx, weatherColors } from "./gfx.js";
+import { aabbInView, ctx, flatMultiPath, weatherColors } from "./gfx.js";
 
 function drawWaterAll(view, t) {
   // Full background = water
@@ -83,37 +83,33 @@ function drawPlazaGreen(pz, view) {
   ctx.fillRect(px, py, pw, ph);
 }
 
-// Park/plaza lawn: ONE outline polygon per green cuadra (raster-traced in the
-// build, so it follows the acera inner edge — curves included). The same-
-// colour stroke dilates the fill outward so the lawn tucks a few px UNDER the
-// sidewalk band (painted later, so it wins) instead of leaving a bare sand
-// strip at the seam, and rounds off the 4 px raster steps.
+// Park/plaza lawn: one or more outline rings per green cuadra (raster-traced in
+// the build, so they follow the acera inner edge and preserve parcel holes).
+// The same-colour stroke dilates ordinary greens outward so the lawn tucks a
+// few px UNDER the sidewalk band (painted later, so it wins) instead of leaving
+// a bare sand strip at the seam, and rounds off the 4 px raster steps.
 const GREEN_DILATE = 28;
 function drawGreenPoly(gp, view) {
+  const polys = gp.polys && gp.polys.length ? gp.polys : [gp.pts];
   let b = gp._aabb;
   if (!b) {
-    const p = gp.pts;
     b = gp._aabb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
-    for (let i = 0; i < p.length; i += 2) {
-      if (p[i] < b.x0) b.x0 = p[i]; if (p[i] > b.x1) b.x1 = p[i];
-      if (p[i + 1] < b.y0) b.y0 = p[i + 1]; if (p[i + 1] > b.y1) b.y1 = p[i + 1];
+    for (const p of polys) {
+      for (let i = 0; i < p.length; i += 2) {
+        if (p[i] < b.x0) b.x0 = p[i]; if (p[i] > b.x1) b.x1 = p[i];
+        if (p[i + 1] < b.y0) b.y0 = p[i + 1]; if (p[i + 1] > b.y1) b.y1 = p[i + 1];
+      }
     }
   }
   // A stadium pitch stays at its exact edge — paintStadiumCuadras repaints it
   // over the acera band anyway, and a park-sized skirt would spill grass onto
-  // the surrounding streets. Same for the pool outline (unused now the
-  // Balneario is water).
-  const m = (gp.type === "pool" || gp.type === "stadium") ? 0 : GREEN_DILATE;
+  // the surrounding streets. The marine park also stays exact: dilating all
+  // its rings would paint green back into the facility-parcel holes.
+  const m = (gp.type === "marine" || gp.type === "pool" || gp.type === "stadium") ? 0 : GREEN_DILATE;
   if (b.x1 + m < view.x0 || b.x0 - m > view.x1 || b.y1 + m < view.y0 || b.y0 - m > view.y1) return;
-  if (!gp._path) {
-    const p = gp.pts, path = new Path2D();
-    path.moveTo(p[0], p[1]);
-    for (let i = 2; i < p.length; i += 2) path.lineTo(p[i], p[i + 1]);
-    path.closePath();
-    gp._path = path;
-  }
+  if (!gp._path) gp._path = flatMultiPath(polys);
   const col = GREEN_COLORS[gp.type] || "#4f9d5b";
-  ctx.fillStyle = col; ctx.fill(gp._path);
+  ctx.fillStyle = col; ctx.fill(gp._path, "evenodd");
   if (m) {
     ctx.strokeStyle = col; ctx.lineWidth = m; ctx.lineJoin = "round";
     ctx.stroke(gp._path);

@@ -75,6 +75,32 @@ def to_m(lat, lon):
 def dist(a, b):
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
+def point_segment_dist(p, a, b):
+    """Shortest Euclidean distance from point `p` to closed segment a→b."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    seg2 = dx * dx + dy * dy
+    if seg2 == 0:
+        return dist(p, a)
+    t = max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / seg2))
+    return math.hypot(p[0] - (a[0] + t * dx),
+                      p[1] - (a[1] + t * dy))
+
+def point_polyline_dist(p, pts):
+    """Shortest distance from point `p` to a polyline; infinity if empty."""
+    if len(pts) == 1:
+        return dist(p, pts[0])
+    return min((point_segment_dist(p, a, b)
+                for a, b in zip(pts, pts[1:])), default=math.inf)
+
+def point_polygon_dist(p, pts):
+    """Shortest distance to a closed polygon; zero for a point inside it."""
+    if not pts:
+        return math.inf
+    if point_in_poly(p, pts):
+        return 0.0
+    return min(point_segment_dist(p, pts[i], pts[(i + 1) % len(pts)])
+               for i in range(len(pts)))
+
 def poly_centroid(pts):
     return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
 

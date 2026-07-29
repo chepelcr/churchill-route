@@ -17,19 +17,25 @@ reads the finished surface to decide where a tree can stand, and a tree line
 that ignored the surface class would plant palms down the middle of a lane.
 """
 import math
-from collections import defaultdict, deque
+from collections import defaultdict
 
 from ..config import (
     ACERA_CELLS, BLDG_INSET, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND,
     CLS_PASEO, CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL,
-    LEON_END_STREET, PASEO_LEON, PASEO_MEDIAN_W, PASEO_TURISTAS, STREET_CLASSES,
-    SYNTH_MAX_TOTAL, road_width_px,
+    LEON_END_STREET, MARINE_POOL_GROUND_CLEAR_PX, MARINE_POOL_RAIL_CLEAR_PX,
+    MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_SCALE,
+    MARINE_STRUCTURE_PARCEL_PAD_PX, PASEO_LEON, PASEO_MEDIAN_W, PASEO_TURISTAS,
+    STREET_CLASSES, SYNTH_MAX_TOTAL, road_width_px,
 )
-from ..content import BLDG_PALETTE, LANDMARK_DEFS, ROOF_PALETTE
+from ..content import (
+    BLDG_PALETTE, LANDMARK_DEFS, MARINE_BUILDING_NAMES, MARINE_SITE_OSM_ID,
+    ROOF_PALETTE,
+)
 from ..enums import GreenType, LandmarkType, ParcelUse
 from ..logging import log, warn
 from ..service.block import (
     block_raster_cells, cells_to_rects, cuadra_cells, outline_poly,
+    outline_polys,
 )
 from ..service.building import (
     _grid_placer, make_rng, snap_osm_buildings, synth_buildings,
@@ -38,14 +44,18 @@ from ..service.decoration import (
     paseo_median_runs, paseo_roads, stamp_paseo_median,
 )
 from ..service.ferry import stern_at_rest
-from ..service.field import FieldService
+from ..service.field import FieldService, _largest_part
+from ..service.projection import project_way_pts
 from ..service.placement import (
     cell_class, kiosk_frontage, nearest_block, nearest_cell, road_adj,
 )
 from ..service.street import StreetIndex, half_plane, resample_centerline
 from ..service.surface import stamp_pad
-from ..util.geometry import dist, pairs, point_in_poly, poly_centroid, to_m
-from ..util.raster import erode_cells
+from ..util.geometry import (
+    dist, pairs, point_in_poly, point_polygon_dist, point_polyline_dist,
+    poly_centroid, to_m,
+)
+from ..util.raster import disk_has_only, disk_within_cells, erode_cells
 
 
 def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens, kiosk_paths, beach_kiosks, mlm, pier, balneario, balneario_cells, marine_site, _nearest_cell, _block_containing, _block_raster_cells, _green_poly):
@@ -139,10 +149,19 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     for lm in landmarks:
         if lm["type"] not in ("park", "pool"):
             continue
+        marine = lm["id"] == "parquemar"     # Parque Marino fills its whole cuadra
         bi = _block_containing(lm["x"], lm["y"])
-        if bi is None and lm["type"] == "pool":
-            bi = _nearest_block(lm["x"], lm["y"])   # the Balneario must sit IN a cuadra
+        if bi is None and (lm["type"] == "pool" or marine):
+            # These two landmarks ARE their cuadra. After the acera resize the
+            # Parque Marino anchor landed on a mixed LAND/ACERA cell just
+            # outside detect_blocks, so exact containment silently deleted its
+            # lawn, aquarium metadata and tanks. The intended block is the
+            # immediately adjacent one; use the same explicit fallback that
+            # already keeps the Balneario inside its inlet.
+            bi = _nearest_block(lm["x"], lm["y"])
         if bi is None:
+            if marine:
+                raise RuntimeError("Parque Marino has no resolvable cuadra")
             continue
         blocks[bi]["green"] = True
         cells = blocks[bi]["cells"]
@@ -170,9 +189,13 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
             balneario = {"x0": px0, "y0": py0, "x1": px1, "y1": py1,
                          "cx": lm["x"], "cy": lm["y"]}
             continue
-        marine = lm["id"] == "parquemar"     # Parque Marino fills its whole cuadra
+        # Ordinary parks can paint their cuadra now. Parque Marino cannot: its
+        # final lawn is the RESIDUAL after the UNA campus, all OSM building
+        # lots, and the station's eastern parcel claim their cells. It is traced
+        # later by `_partition_marine_cuadra`.
         g = _green_poly(cells, "marine" if marine else "park")
-        if g: greens.append(g)
+        if g and not marine:
+            greens.append(g)
         lm["x"] = (bc0 + bc1 + 1) * CUAD // 2; lm["y"] = (br0 + br1 + 1) * CUAD // 2
         if marine:
             lm["marine"] = True
@@ -290,59 +313,226 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     def _erode_cells(cells, depth, facing=None):
         return erode_cells(cells, depth, facing, raster.at)
 
-    # Aquarium tanks: farthest-point spread over grass cells that CLEAR both the
-    # acera and every aquarium building. drawPool paints a 78x48 ellipse at
-    # s=0.46 (~36x22 px) with a tree/palm at (px-26, py+12), so a tank needs
-    # TANK_CLEAR px of lawn all round or it spills onto the sidewalk.
-    TANK_CLEAR = 26
+    # Aquarium tanks: best-of-all-seeds farthest-point spread over the FINAL
+    # park residual. A centre on LAND is insufficient: campus, building lots,
+    # station and park are all the same surface class, so the complete ownership
+    # disk must stay in `grass` as well. All five belong WEST (screen-left) of
+    # the station parcel and clear the decorative rail centreline.
     def _place_marine_pools(site, raws, want=5):
-        grass = site["grass"]                         # grass cells (CLS_LAND only)
-        # distance (in cells) from every grass cell to the nearest non-grass one
-        dist = {}
-        q = deque()
-        for cell in grass:
-            c, rr = cell
-            if any((c + dc, rr + dr) not in grass for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1))):
-                dist[cell] = 1; q.append(cell)
-        while q:
-            c, rr = q.popleft()
-            d = dist[(c, rr)] + 1
-            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                n = (c + dc, rr + dr)
-                if n in grass and n not in dist:
-                    dist[n] = d; q.append(n)
-        boxes = []
-        for raw in raws:
-            xs = [p[0] for p in raw["pts"]]; ys = [p[1] for p in raw["pts"]]
-            boxes.append((min(xs) - TANK_CLEAR, min(ys) - TANK_CLEAR,
-                          max(xs) + TANK_CLEAR, max(ys) + TANK_CLEAR))
-        free = lambda px, py: not any(x0 <= px <= x1 and y0 <= py <= y1
-                                      for (x0, y0, x1, y1) in boxes)
-        # Relax the clearance until the lawn offers enough well-separated spots:
-        # this block is cut by interior paths, so a hard 26 px leaves one pocket
-        # and all five tanks pile up in it.
+        grass = site["grass"]                 # residual park cells (CLS_LAND only)
+        rail_lines = [pairs(rail["pts"]) for rail in ctx.rails
+                      if len(rail.get("pts", [])) >= 4]
+        station = next((raw for raw in raws
+                        if raw.get("building") == "train_station"), None)
+        if station is None:
+            raise RuntimeError("Parque Marino has no OSM train-station footprint")
+        station_x0 = min(p[0] for p in station["pts"])
+        structure_polys = [raw["pts"] for raw in raws]
+        ground_clear = lambda px, py: (
+            disk_has_only(
+                raster, px, py, MARINE_POOL_GROUND_CLEAR_PX, (CLS_LAND,))
+            and disk_within_cells(
+                raster, px, py, MARINE_POOL_GROUND_CLEAR_PX, grass))
+        structure_clear = lambda px, py: all(
+            point_polygon_dist((px, py), poly) >= MARINE_POOL_GROUND_CLEAR_PX
+            for poly in structure_polys)
+        rail_clear = lambda px, py: all(
+            point_polyline_dist((px, py), line) >= MARINE_POOL_RAIL_CLEAR_PX
+            for line in rail_lines)
+        left_of_station = lambda px: (
+            px + MARINE_POOL_GROUND_CLEAR_PX <= station_x0)
         cand = []
-        for need in (TANK_CLEAR, 22, 18, 14, 10):
-            r = need / GRID_CELL
-            cand = [(c * GRID_CELL, rr * GRID_CELL) for (c, rr) in grass
-                    if dist.get((c, rr), 0) >= r and not (c % 3 or rr % 3)
-                    and free(c * GRID_CELL, rr * GRID_CELL)]
-            if len(cand) >= want * 8:
-                break
-        if not cand:
-            log("marino", "WARN no clear spot for the aquarium tanks"); return
+        for c, rr in sorted(grass):
+            px, py = int((c + 0.5) * GRID_CELL), int((rr + 0.5) * GRID_CELL)
+            if (left_of_station(px) and ground_clear(px, py)
+                    and structure_clear(px, py) and rail_clear(px, py)):
+                cand.append((px, py))
+        if len(cand) < want:
+            raise RuntimeError(
+                f"Parque Marino has only {len(cand)} tank spots clear of "
+                "station, OSM structures, acera and rail")
         log("marino", f"{len(grass)} grass cells -> {len(cand)} tank candidates "
-              f"at >={round(need)}px clearance")
-        mx = sum(p[0] for p in cand) / len(cand); my = sum(p[1] for p in cand) / len(cand)
-        pts = [min(cand, key=lambda p: (p[0] - mx) ** 2 + (p[1] - my) ** 2)]
-        while len(pts) < want and len(pts) < len(cand):
-            pts.append(max(cand, key=lambda p: min((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 for q in pts)))
+            f"west of station x={station_x0:.1f}, "
+            f">={MARINE_POOL_GROUND_CLEAR_PX}px ground/structure and "
+            f">={MARINE_POOL_RAIL_CLEAR_PX}px rail clearance")
+        # One centroid seed is not enough on a residual with parcel-shaped
+        # notches: it chose a locally attractive centre and forced the fifth
+        # tank into another. Try every legal seed, grow by farthest insertion,
+        # and keep the deterministic layout with the best minimum separation.
+        best_pts, best_sep2 = None, -1.0
+        for seed in cand:
+            trial = [seed]
+            while len(trial) < want:
+                trial.append(max(
+                    cand,
+                    key=lambda p: (
+                        min((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2
+                            for q in trial),
+                        -p[0], -p[1])))
+            sep2 = min((
+                (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2
+                for i, p in enumerate(trial) for q in trial[:i]
+            ), default=math.inf)
+            if (sep2 > best_sep2
+                    or (sep2 == best_sep2
+                        and tuple(trial) < tuple(best_pts or trial))):
+                best_pts, best_sep2 = trial, sep2
+        pts = best_pts or []
+        nearest_tank = min((
+            dist(p, q) for i, p in enumerate(pts) for q in pts[:i]
+        ), default=math.inf)
+        if nearest_tank < MARINE_POOL_MIN_SPACING_PX:
+            raise RuntimeError(
+                f"Parque Marino tanks only spread {nearest_tank:.1f}px "
+                f"(<{MARINE_POOL_MIN_SPACING_PX}px)")
         site["lm"]["pools"] = [[int(p[0]), int(p[1])] for p in pts]
+        site["lm"]["poolScale"] = MARINE_POOL_SCALE
+        nearest_rail = min(
+            (point_polyline_dist(p, line) for p in pts for line in rail_lines),
+            default=math.inf)
+        if math.isfinite(nearest_rail):
+            log("marino", f"nearest tank is {nearest_rail:.1f}px from the rail "
+                f"centreline (>={MARINE_POOL_RAIL_CLEAR_PX}px)")
 
     # Estadios and parcels: one service over the world under construction.
     fields = FieldService(raster=raster, streets=streets, landmarks=landmarks,
                           blocks=blocks, greens=greens, plazas=plazas,
                           stadiums=stadiums, parcels=parcels, occ=occ)
+
+    def _partition_marine_cuadra(site, park_raw, block_raw):
+        """Hand the shared cuadra to its real occupants, then keep the residual.
+
+        OSM supplies footprints, not cadastral lot lines. Each non-station
+        footprint therefore owns the nearest LAND cells in an 8 px band; close
+        neighbours split that band by distance. Existing OSM ground parcels
+        (most importantly the UNA campus and Iglesia Cristiana) already sit in
+        `fields.claimed_cells` and win first. The train station then takes every
+        remaining cell east of its west wall. What remains to the west is the
+        Parque Marino lawn and the only legal pool ground.
+        """
+        grass = set(site["grass"])
+        available = grass - fields.claimed_cells
+        park_ids = {raw["id"] for raw in park_raw}
+        station = next((raw for raw in park_raw
+                        if raw.get("building") == "train_station"), None)
+        if station is None:
+            raise RuntimeError("Parque Marino has no station for its east parcel")
+        station_x0 = min(p[0] for p in station["pts"])
+
+        def raw_name(raw):
+            return (raw.get("osm_name")
+                    or MARINE_BUILDING_NAMES.get(raw["id"])
+                    or raw.get("name"))
+
+        non_station = [raw for raw in block_raw if raw is not station]
+        assigned = {raw["id"]: set() for raw in non_station}
+        for cell in sorted(available):
+            px = (cell[0] + 0.5) * GRID_CELL
+            py = (cell[1] + 0.5) * GRID_CELL
+            near = []
+            for raw in non_station:
+                d = point_polygon_dist((px, py), raw["pts"])
+                if d <= MARINE_STRUCTURE_PARCEL_PAD_PX:
+                    near.append((d, raw["id"]))
+            if near:
+                assigned[min(near)[1]].add(cell)
+
+        lot_cells = set()
+        for raw in sorted(non_station, key=lambda b: b["id"]):
+            cells = _largest_part(assigned[raw["id"]])
+            if not cells:
+                raise RuntimeError(
+                    f"OSM building {raw['id']} has no LAND parcel in Marino cuadra")
+            name = raw_name(raw)
+            is_park = raw["id"] in park_ids
+            part = {
+                "id": (f"marino_lote_{raw['id']}" if is_park
+                       else f"marino_cuadra_{raw['id']}"),
+                "name": name or "Estructura de la cuadra",
+                "use": ParcelUse.LOT,
+                "label": bool(name),
+                "osmId": raw["id"],
+            }
+            if is_park:
+                part["marine"] = 1
+            polys = outline_polys(cells, GRID_CELL)
+            part["polys"] = polys
+            fields._emit_parcel(
+                "marino", part, cells, cells,
+                poly=polys[0] if polys else None)
+            lot_cells |= cells
+
+        remaining = available - lot_cells
+        station_cells = {
+            cell for cell in remaining
+            if (cell[0] + 0.5) * GRID_CELL >= station_x0
+        }
+        station_cells = _largest_part(station_cells)
+        if not station_cells:
+            raise RuntimeError("Parque Marino station east parcel has no LAND")
+        station_part = {
+            "id": f"marino_lote_{station['id']}",
+            "name": raw_name(station) or "Antigua Estación del Ferrocarril",
+            "use": ParcelUse.LOT,
+            "label": True,
+            "osmId": station["id"],
+            "marine": 1,
+        }
+        station_polys = outline_polys(station_cells, GRID_CELL)
+        station_part["polys"] = station_polys
+        fields._emit_parcel(
+            "marino", station_part, station_cells, station_cells,
+            poly=station_polys[0] if station_polys else None)
+
+        park_cells = remaining - station_cells
+        east_leak = {
+            cell for cell in park_cells
+            if (cell[0] + 0.5) * GRID_CELL >= station_x0
+        }
+        if east_leak:
+            raise RuntimeError(
+                f"Parque Marino residual leaked {len(east_leak)} cells east "
+                "of the station parcel")
+        park_polys = outline_polys(park_cells, GRID_CELL)
+        if not park_polys:
+            raise RuntimeError("Parque Marino residual has no drawable lawn")
+        park_poly = park_polys[0]
+        greens.append({
+            "pts": park_poly, "polys": park_polys, "type": "marine",
+        })
+        park_rec = fields._emit_parcel(
+            "marino",
+            {"id": "marino_parque", "name": "Parque Marino del Pacífico",
+             "use": ParcelUse.PARK, "label": False, "whole": True,
+             "marine": 1, "decor": False, "polys": park_polys},
+            park_cells, park_cells, poly=park_poly)
+
+        # The landmark frames every residual component.  Pools are selected
+        # from this exact same cell set, so a tank in a legitimate detached
+        # lawn is still rendered and represented by the park geometry.
+        park_coords = [coord for ring in park_polys for coord in ring]
+        px, py = park_coords[0::2], park_coords[1::2]
+        lm = site["lm"]
+        lm["x"], lm["y"] = int((min(px) + max(px)) / 2), int((min(py) + max(py)) / 2)
+        lm["w"], lm["h"] = max(px) - min(px), max(py) - min(py)
+        lm["parkCells"] = len(park_cells)
+        site["grass"] = park_cells
+        site["stationCells"] = station_cells
+        site["lotCells"] = lot_cells
+
+        campus = next((p for p in parcels
+                       if p["id"] == "osm_campus_232386868"), None)
+        campus_area = (abs(sum(
+            campus["poly"][i] * campus["poly"][(i + 3) % len(campus["poly"])]
+            - campus["poly"][(i + 2) % len(campus["poly"])]
+              * campus["poly"][i + 1]
+            for i in range(0, len(campus["poly"]), 2))) / 2
+                       if campus else 0)
+        log("marino", f"cuadra partition: UNA {campus_area:.0f}px², "
+            f"{len(non_station)} building lots {len(lot_cells)} cells, "
+            f"station-east {len(station_cells)} cells, "
+            f"park-west {len(park_cells)} cells")
+        return park_rec
 
     # Calle/Avenida refs mapped to the OSM names actually present here (odd
     # calles are unnamed → fall back to the flanking even calle; the central
@@ -377,6 +567,11 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
          "ave_north": ["Avenida Centenario", "Avenida 0"],
          "ave_south": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
          "cols": [1, 1], "rows": [1, 1],
+         # Customer c19's pull-off apron is stamped before parcels and lands in
+         # this manzana's NW quarter. Restore non-street cells before tracing,
+         # or the parroquia disappears and the remaining two parts are sized
+         # against the three-quarter fragment instead of the whole cuadra.
+         "reclaim": True,
          "parts": [
              # left column, split in two: the church up top…
              {"id": "carmen_parroquia", "col": 0, "row": 0, "use": "church",
@@ -461,14 +656,18 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     # ground, and BEFORE the building passes so a claimed site is already off
     # limits to the snapper and the synthesiser.
     #
-    # The Parque Marino and the Balneario are claimed here too: their cuadras
-    # are a real aquarium and a sea inlet, and both carry OSM areas that would
-    # otherwise re-derive a plain park parcel on top of them. Expanded from CUAD
-    # cells to RASTER cells, because that is the resolution the site test works
-    # at — a CUAD-coarse claim is 20 px, which merges a site with whatever is
-    # across the street from it.
+    # The Balneario is claimed here: its cuadra is a sea inlet and must not be
+    # re-derived as an ordinary OSM site. Parque Marino deliberately is NOT.
+    # The Escuela de Biología Marina is a mapped campus in the same cuadra; when
+    # the whole marine block was pre-claimed, its 21,272 px² source parcel was
+    # starved down to 836 px² and two tanks landed on it. OSM sites take their
+    # ground first; the aquarium receives only the residual later.
+    #
+    # Expanded from CUAD cells to RASTER cells, because that is the resolution
+    # the site test works at — a CUAD-coarse claim is 20 px, which merges a site
+    # with whatever is across the street from it.
     _cpc = CUAD // GRID_CELL
-    for _cc, _cr in list(marine_site["cells"] if marine_site else ()) + list(balneario_cells or ()):
+    for _cc, _cr in list(balneario_cells or ()):
         fields.claimed_cells.update(
             (_cc * _cpc + dc, _cr * _cpc + dr)
             for dc in range(_cpc) for dr in range(_cpc))
@@ -508,22 +707,55 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         log("site", f"cleared {before - len(raw_bldgs)} OSM footprints off the "
             f"{len(site_cuads)} cuad cells the built sites claimed")
 
-    # Parque Marino: the aquarium's own OSM ways stay at their TRUE footprints
-    # (a snapped pastel box reads as a generic house, not the theme park), and
-    # occ keeps every other building — OSM or synth — off the cuadra. green=True
-    # alone only excludes a block from synth_buildings, which is why generic
-    # buildings used to land on the lawn, one of them right on an aquarium tank.
-    marine_raw = []
+    # Parque Marino: exact OSM membership decides WHICH structures belong to
+    # the aquarium and receive facility names. The surrounding CUADRA decides
+    # which additional real buildings need their own ordinary lot before the
+    # residual becomes park. Keeping those two questions separate fixes both
+    # old failures: a block/AABB must not rename Plaza Centenario or Max Outlet
+    # "Parque Marino", but neither may disappear under the lawn.
+    marine_raw, marine_neighbour_raw, marine_block_raw = [], [], []
     if marine_site:
+        marine_way = next((way for way in ctx.ways
+                           if int(way["id"]) == MARINE_SITE_OSM_ID), None)
+        if marine_way is None:
+            raise RuntimeError(
+                f"Parque Marino OSM boundary {MARINE_SITE_OSM_ID} is missing")
+        marine_boundary, _ = project_way_pts(ctx.projection, marine_way["pts"])
+        if len(marine_boundary) > 1 and dist(marine_boundary[0], marine_boundary[-1]) < 1e-6:
+            marine_boundary = marine_boundary[:-1]
+        marine_site["boundary"] = marine_boundary
+        block_flat = outline_poly(marine_site["grass"], GRID_CELL)
+        block_boundary = pairs(block_flat)
+        if not block_boundary:
+            raise RuntimeError("Parque Marino cuadra has no raster boundary")
         mc = marine_site["cells"]
         keep = []
         for raw in raw_bldgs:
-            if (int(raw["cx"] // CUAD), int(raw["cy"] // CUAD)) in mc and raw.get("pts"):
+            pts = raw.get("pts")
+            if pts and point_in_poly(poly_centroid(pts), marine_boundary):
                 marine_raw.append(raw)
+            elif pts and (
+                    point_in_poly(poly_centroid(pts), block_boundary)
+                    or any(point_in_poly(p, block_boundary) for p in pts)):
+                marine_neighbour_raw.append(raw)
             else:
                 keep.append(raw)
+        marine_raw.sort(key=lambda raw: raw["id"])
+        marine_neighbour_raw.sort(key=lambda raw: raw["id"])
+        marine_block_raw = sorted(
+            marine_raw + marine_neighbour_raw, key=lambda raw: raw["id"])
         raw_bldgs = keep
         occ.update(mc)
+        log("marino", f"{len(marine_raw)} OSM buildings inside exact park "
+            f"boundary way {MARINE_SITE_OSM_ID}")
+        if marine_neighbour_raw:
+            log("marino", f"{len(marine_neighbour_raw)} neighbouring cuadra "
+                "buildings keep ordinary named lots: "
+                + ", ".join(
+                    f"{raw['id']} {raw.get('osm_name') or raw.get('name') or '—'}"
+                    for raw in marine_neighbour_raw))
+        _partition_marine_cuadra(
+            marine_site, marine_raw, marine_block_raw)
     # Every OTHER building that is a NAMED place also keeps its real outline, for
     # the same reason: Hotel Tioga, the Catedral, Súper Salinas et al. should be
     # recognisable on the map, not another anonymous pastel rect. They bypass the
@@ -631,19 +863,50 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             if v % CUAD not in (BLDG_INSET, CUAD - BLDG_INSET):
                 raise SystemExit(f"[gate] building edge off the cuadrícula: {v}")
     # after the gate: real footprints are deliberately OFF the lattice
+    marine_buildings, marine_cuadra_buildings = [], []
     if marine_site:
         # Muted aquarium palette so the site reads as one complex, not a row of
-        # houses in the random pastel mix.
+        # houses in the random pastel mix. Neighbouring businesses keep the
+        # ordinary deterministic building palette and their own OSM names.
         MARINE_WALL = ["#8fb8b0", "#a8c6be", "#7fa9a6", "#b7c9bd"]
         MARINE_ROOF = ["#3f5f63", "#4d6f70", "#35545a"]
-        for i, raw in enumerate(marine_raw):
+        park_ids = {raw["id"] for raw in marine_raw}
+        for i, raw in enumerate(marine_block_raw):
             flat = [round(v) for p in raw["pts"] for v in p]
-            buildings.append({"pts": flat,
-                              "color": MARINE_WALL[i % len(MARINE_WALL)],
-                              "roof": MARINE_ROOF[i % len(MARINE_ROOF)], "wnd": 0})
-        _place_marine_pools(marine_site, marine_raw)
+            if raw["id"] in park_ids:
+                real_name = (raw.get("osm_name")
+                             or MARINE_BUILDING_NAMES.get(raw["id"]))
+                if not real_name:
+                    raise RuntimeError(
+                        f"Parque Marino OSM building {raw['id']} has no real label")
+                building = {
+                    "pts": flat,
+                    "color": MARINE_WALL[i % len(MARINE_WALL)],
+                    "roof": MARINE_ROOF[i % len(MARINE_ROOF)], "wnd": 0,
+                    "osmId": raw["id"], "building": raw.get("building"),
+                    "marine": 1, "marineBlock": 1,
+                    "name": real_name, "label": True,
+                }
+                marine_buildings.append(building)
+            else:
+                rng = make_rng(raw["id"])
+                real_name = raw.get("osm_name") or raw.get("name")
+                building = {
+                    "pts": flat,
+                    "color": BLDG_PALETTE[int(rng() * len(BLDG_PALETTE))],
+                    "roof": ROOF_PALETTE[int(rng() * len(ROOF_PALETTE))],
+                    "wnd": 1 if rng() < 0.7 else 0,
+                    "osmId": raw["id"], "building": raw.get("building"),
+                    "name": real_name or "Estructura de la cuadra",
+                    "label": bool(real_name), "cat": raw.get("cat"),
+                    "marineBlock": 1,
+                }
+                marine_cuadra_buildings.append(building)
+            buildings.append(building)
+        _place_marine_pools(marine_site, marine_block_raw)
         log("marino", f"{len(marine_raw)} aquarium buildings at their real OSM "
-              f"footprints, {len(marine_site['lm'].get('pools', []))} tanks placed clear")
+              f"footprints + {len(marine_cuadra_buildings)} named neighbours, "
+              f"{len(marine_site['lm'].get('pools', []))} tanks placed clear")
     for raw in named_raw:
         rng = make_rng(raw["id"])
         buildings.append({"pts": [round(v) for p in raw["pts"] for v in p],
@@ -657,16 +920,14 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     # dilated bbox emitted into `beaches` (painted AFTER the water, so it shows)
     # and stamped CLS_BEACH so the ground under the building is solid too.
     # ---- FEATURE PARCELS ---------------------------------------------------
-    # An irregular block cannot be quartered: Parque Marino fills 32% of its
-    # bbox and the Balneario 46%, so a grid cut would hand out parts that are
-    # mostly street or water. Their real parcels are the things already STANDING
-    # in them, so derive one parcel per building footprint inside the block.
-    # Same output shape, same sponsor slot — only the source differs.
-    for _fp in (
-        {"id": "marino_lote", "lm": "parquemar", "name": "Parque Marino", "use": "lot"},
-        {"id": "balneario_lote", "lm": "balneario", "name": "Balneario", "use": "lot"},
-    ):
-        fields.place_feature_parcels(_fp, buildings)
+    # Marino was already partitioned from raster cells above: its records are
+    # real ground lots, not aliases of the building footprints. Balneario still
+    # uses the generic footprint-derived form because its irregular block is a
+    # water inlet rather than shared cadastral ground.
+    fields.place_feature_parcels(
+        {"id": "balneario_lote", "lm": "balneario", "name": "Balneario",
+         "use": "lot"},
+        buildings)
 
     if balneario:
         pads = 0

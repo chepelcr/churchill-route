@@ -132,6 +132,25 @@ DP_BUILDING_PX = 2.0
 DP_COAST_PX = 2.5
 MIN_BUILDING_AREA_PX2 = 216
 
+# Parque Marino is the RESIDUAL of its cuadra after the UNA campus and every
+# mapped building lot have taken their ground. Five 0.38-scale tanks no longer
+# fit that honest remainder without one entering a parcel. At 0.32 the 78 px
+# source deck has a 25.0 px major radius. A 28 px ownership disk includes the
+# raster cell's 2.83 px half-diagonal quantisation margin, so the rendered deck
+# stays inside marine ground; 72 px between centres leaves a visible gap. The
+# disk also defines "entirely west of the station parcel".
+MARINE_POOL_SCALE = 0.32
+MARINE_POOL_GROUND_CLEAR_PX = 28
+MARINE_POOL_MIN_SPACING_PX = 72
+# A building lot owns an 8 px band around its mapped footprint. Close structures
+# divide shared cells by nearest-footprint distance, so parcels never overlap.
+MARINE_STRUCTURE_PARCEL_PAD_PX = 8
+# The Ferrocarril's longest ties reach ~6 px from its centreline. Keep the
+# established conservative rail envelope: these are WORLD constraints, not
+# renderer nudges, so a later projection/acera resize cannot silently put a
+# tank back on the tracks.
+MARINE_POOL_RAIL_CLEAR_PX = 52
+
 # Surface classes come from the enum layer; these aliases are what the builder
 # has always called them (a member IS its int, so nothing else changes).
 CLS_WATER = Surface.WATER

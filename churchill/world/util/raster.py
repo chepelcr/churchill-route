@@ -21,6 +21,54 @@ from collections import deque
 NEIGHBOURS4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
 
+def disk_has_only(raster, x, y, radius, allowed):
+    """Whether every raster-cell centre inside a world-px disk is `allowed`.
+
+    This deliberately tests the finished surface, not a source polygon. It is
+    the right gate for rendered objects with a radius: a centre on LAND is not
+    enough when the visible object can still cover the neighbouring ACERA.
+    """
+    cell = raster.cell
+    c0 = math.floor((x - radius) / cell)
+    c1 = math.ceil((x + radius) / cell)
+    r0 = math.floor((y - radius) / cell)
+    r1 = math.ceil((y + radius) / cell)
+    radius2 = radius * radius
+    allowed = set(allowed)
+    for r in range(r0, r1 + 1):
+        py = (r + 0.5) * cell
+        for c in range(c0, c1 + 1):
+            px = (c + 0.5) * cell
+            if (px - x) ** 2 + (py - y) ** 2 > radius2:
+                continue
+            if raster.at(c, r) not in allowed:
+                return False
+    return True
+
+
+def disk_within_cells(raster, x, y, radius, cells):
+    """Whether every raster-cell centre inside a world-px disk is in `cells`.
+
+    Surface class alone cannot express parcel ownership: a campus lot and the
+    neighbouring park are both LAND. Parque Marino uses this stricter test so a
+    tank's complete deck stays inside the park's residual cells instead of
+    crossing into an adjacent building/UNA/station parcel.
+    """
+    cell = raster.cell
+    c0 = math.floor((x - radius) / cell)
+    c1 = math.ceil((x + radius) / cell)
+    r0 = math.floor((y - radius) / cell)
+    r1 = math.ceil((y + radius) / cell)
+    radius2 = radius * radius
+    for r in range(r0, r1 + 1):
+        py = (r + 0.5) * cell
+        for c in range(c0, c1 + 1):
+            px = (c + 0.5) * cell
+            if (px - x) ** 2 + (py - y) ** 2 <= radius2 and (c, r) not in cells:
+                return False
+    return True
+
+
 class Raster:
     __slots__ = ("buf", "cols", "rows", "cell")
 

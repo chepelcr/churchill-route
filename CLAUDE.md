@@ -266,20 +266,22 @@ becomes a parcel on the cuadra under it. The parts that are load-bearing:
   fails `SITE_MIN_KEPT` is a ribbon along a street, not a place: log it and skip.
 - **Ground already handed out is measured CELL BY CELL** (`claimed_cells`), not
   by CUAD: at 20 px two sites either side of the same calle share a cell.
-- **THE PARCEL IS A RECTANGLE IN THE BLOCK'S FRAME** (`fit_block_rect` →
-  `rect_poly`), because a piece of a cuadra is — that is what the hand-authored
-  civic block's parts are. Tracing the mapper's outline gave blobs: 257 of 377
-  over 8 vertices, 109 under 60% fill of their own rotated bbox. The extent is a
-  PERCENTILE (2% off each end), never min/max: one cell of a thin arm — a
-  driveway, a strip along the kerb — stretches the whole rect over the street,
-  and an iterative shrink ate an 883-cell campus down to 12x10 px.
-- **The acera ring is GRADED** (`ACERA_CELLS` → `FIELD_ACERA_CELLS` → 1 → 0) and
-  the rect is RE-FITTED to what the erosion left, so a side facing the sand
-  keeps its edge while the ones facing a street pull back. Judge the depth by
-  whether what survives is still a PLOT (`SITE_MIN_SIDE`), never by how much
-  AREA it kept: a rectangle eroded on four sides legitimately loses most of a
-  small lot, and the area test was cutting the sidewalk off 21 of 26 parcels
-  that had room for a full one.
+- **THE PARCEL IS A RECTANGLE THAT CANNOT CROSS A STREET.** The mapper's
+  outline is regularised with the percentile `fit_block_rect` (2% off each end,
+  so one driveway arm cannot stretch the whole site). ACERA is valid parcel
+  frontage and keeps that established fit. If the rectangle covers ROAD, PASEO,
+  BRIDGE or BOULEVARD, `fit_inscribed_rect` replaces it with the largest
+  rectangle in this site's own sidewalk-eroded LAND mask. A bounding
+  rectangle is not containment: on a skewed site it can bridge an intervening
+  street — Parque Mora y Cañas grew from its ~84 px cuadra width to 162 px and
+  covered 540 ROAD cells that way. The inscribed fallback is rechecked at
+  raster-cell centres before `rect_poly` emits it; already-safe sites keep their
+  established percentile geometry.
+- **The acera ring is GRADED** (`ACERA_CELLS` → `FIELD_ACERA_CELLS` → 1 → 0).
+  A hard-surface-spilling rect is INSCRIBED in strict LAND from what the erosion
+  left; an ACERA-only fit keeps the frontage the site already owns. Judge the
+  depth by whether what survives is still a PLOT (`SITE_MIN_SIDE`), never by how
+  much AREA it kept.
 - **Emit `hw`/`hh`** (half-extents along `ang`). Everything drawn on a parcel
   used to size itself off the axis-aligned bbox, which on a turned parcel is
   bigger than the parcel — so the art spilled over its own kerb. `parcelFrame`
@@ -352,9 +354,9 @@ happens at the kerb: brake, dwell, alight, board. Two things are load-bearing:
 - **How many buses run is a FLOOR, not a probability.** At the old 9 % roll on
   main-road spawns the paradas went unvisited for minutes at a time.
 
-**A word on emitted point features**: `corners` (the esquina fillets) are TILED,
-not in the manifest — there are ~3600 of them. `signs` stay global because there
-are only ~470 and the bus logic wants to index them once.
+**A word on emitted point features**: `signs` stay global because there are only
+~470 and the bus logic wants to index them once. Cuadra corners are not emitted
+as separate features: the square raster and source polygons are the geometry.
 
 **A crowd on a cancha** (`maintainStadiumPeds` + `advanceFieldPed` in
 `spawns.js`). Every field with a footprint holds a wandering crowd of
@@ -379,33 +381,48 @@ the ocean effect (no pool graphic; `case "pool"` is label-only). Emit a
 `manifest.balneario` bbox (→ `W.BALNEARIO`) that `maintainBalneario` fills with
 swimmers + a penned leisure boat (`b.balneario`, contained in the boats loop).
 
-**An esquina is a BUILD product, not a render one** (`service/kerb.py` →
-`manifest`-less tiled `corners` → the fillet pass in `paintRoads`). The renderer
-draws roads PER TILE and has only a list of polylines; it cannot see a junction,
-which is why the acera-coloured disc it used to put at each polyline end was
-inscribed in the junction's plus and rounded nothing. The build has the whole
-road list, so it solves the corners once. Three things it gets right that a
-naive version does not:
-- **every VERTEX is a junction candidate, not just the ends.** A junction in OSM
-  is a SHARED NODE and only sometimes an endpoint — one calle runs the length of
-  the peninsula and crosses a dozen avenidas at interior vertices of itself.
-  Endpoints alone find 759 junctions here; all vertices find 1759, and the 128
-  crossings that genuinely share no node are not worth chasing.
-- **the gap between two consecutive outgoing directions is the whole filter.**
-  ~180° is a street continuing straight (no corner), ~0° is the same way twice.
-  So a T-junction yields TWO corners, not three: the side with no cross street
-  keeps its straight kerb.
-- **the corner point is where the two KERBS cross**, solved as two lines —
-  right for a diagonal avenida meeting a calle at 84°, which a fixed diagonal
-  offset is not. WHICH corner is the thing to get right: the first cut solved
-  the two ACERAS' outer edges instead, so the manzana's back corner curved
-  while the kerb the driver actually cuts stayed square. What is drawn is a
-  TANGENT FILLET (the curvilinear triangle between the sharp corner and an arc
-  touching both kerbs), never a disc — a disc bulges outward into the block,
-  which is a bump-out, the opposite of a rounded corner.
-The caño (the kerb gutter) is renderer-only: a darker band stroked AFTER the
-casing and BEFORE the asphalt, with butt caps, so it stops at the esquina the
-way the real one stops at the tragante.
+**Parque Marino is a parcel PARTITION, not a bbox paint.** OSM theme-park way
+`316422305` decides which eight footprints belong to the aquarium; the resolved
+cuadra decides which neighbouring structures also need ground. Existing OSM
+sites win first (especially Escuela de Biología Marina–UNA and Iglesia
+Cristiana), then every remaining building gets a non-overlapping 8 px lot
+(including the ordinary named Plaza Centenario and Max Outlet lots), the
+`building=train_station` footprint owns the large eastern remainder, and only
+the western residual becomes Parque Marino. Every shared-cuadra building carries
+`marineBlock:1`; `finish.verify` requires its OSM ID to have exactly one
+`marino_lote_*`/`marino_cuadra_*` parcel, so another structure cannot silently
+disappear under the lawn.
+
+The eight aquarium footprints retain stable OSM IDs and receive the externally
+verified facility labels in `MARINE_BUILDING_NAMES`; the local OSM ways do not
+carry those individual names, so never infer a new footprint/name assignment
+from list order or reintroduce “Parque Marino N”. The park residual can have
+detached pieces and holes around lots: emit every loop with `outline_polys` in
+`polys` (keep largest `poly` for old clients), and fill it with Canvas
+`"evenodd"`. Painting only the largest loop loses real ownership; painting its
+outer ring solid covers the building parcels. Marine greens must not use the
+normal dilation stroke for the same reason.
+
+Tank placement is also a world invariant: all five rendered disks must be
+wholly inside those residual cells, at least
+`MARINE_POOL_GROUND_CLEAR_PX` from every OSM structure/acera, completely west
+of the station footprint, and at least `MARINE_POOL_RAIL_CLEAR_PX` from every
+Ferrocarril segment. `MARINE_POOL_SCALE` includes the raster-cell quantisation
+margin, and tanks also keep `MARINE_POOL_MIN_SPACING_PX` between centres.
+`finish.verify` mirrors the renderer's multi-ring even-odd membership and
+rechecks all rules after the full build.
+
+**Cuadra corners stay SQUARE and exact.** The raster and emitted parcel/stadium
+polygons already contain the complete mapped space. Do not cut their vertices
+with a render-only rounded path, and do not overlay derived asphalt fillets at
+junctions: only some street classes/junction shapes can be derived, so that
+approach produced a mix of round and square corners and painted roadway over
+solid collision cells. `paintParcels` and `paintStadiumCuadras` therefore use
+`flatPath(..., true)`, matching the minimap and the surface grid. Road endpoint
+discs still weld adjoining centreline pieces; they are inscribed in the
+junction and do not remove cuadra ground. The caño remains renderer-only: a
+darker band stroked after the casing and before the asphalt, with butt caps so
+it stops square at the intersection mouth.
 
 **Collision-vs-visual alignment gotchas** (piers, medians): `raster_stamp_polyline`
 adds a round cap of radius `w/2` PAST the last point — shorten the polyline at a

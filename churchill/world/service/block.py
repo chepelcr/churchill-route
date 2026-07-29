@@ -6,7 +6,7 @@ the same three questions, so they live here:
 
     cuadra_cells()      which cells ARE this block, from its bounding streets
     block_raster_cells() the LAND inside a block's cuad cells (no acera ring)
-    outline_poly()      those cells back as a drawable polygon
+    outline_poly[s]()   those cells back as drawable polygon ring(s)
 
 The polygon is raster-TRACED, not fitted: it follows the manzana's real angles,
 including a diagonal one, which is the whole reason the estadios and parcels
@@ -82,46 +82,107 @@ def block_raster_cells(raster, cuad_cells, cuad_cells_per_side, land_cls):
     return out
 
 
-def outline_poly(cells, cell_px):
-    """Outer boundary of a raster cell set as a flat [x, y, …] px polygon
-    (largest loop wins — interior holes are ignored; collinear runs merged)."""
-    edges = defaultdict(list)                  # start vertex -> [end vertices]
-    for (c, r) in cells:
-        if (c, r - 1) not in cells: edges[(c, r)].append((c + 1, r))
-        if (c + 1, r) not in cells: edges[(c + 1, r)].append((c + 1, r + 1))
-        if (c, r + 1) not in cells: edges[(c + 1, r + 1)].append((c, r + 1))
-        if (c - 1, r) not in cells: edges[(c, r + 1)].append((c, r))
-    best, best_area = None, 0.0
-    while True:
-        start = next((v for v, outs in edges.items() if outs), None)
-        if start is None:
-            break
-        loop, v, closed = [start], start, False
-        while True:
-            outs = edges.get(v)
-            if not outs:
-                break                          # pinch-point dead end: drop loop
-            v = outs.pop()
-            if v == start:
-                closed = True; break
-            loop.append(v)
-        if not closed:
-            continue
-        area = 0.0
-        for i in range(len(loop)):
-            x0, y0 = loop[i]; x1, y1 = loop[(i + 1) % len(loop)]
-            area += x0 * y1 - x1 * y0
-        if abs(area) > best_area:
-            best_area, best = abs(area), loop
-    if not best:
+def outline_polys(cells, cell_px):
+    """Every boundary ring of a raster cell set as flat ``[x, y, …]`` polys.
+
+    A cell set can contain disconnected pieces and holes.  Returning only its
+    largest loop silently changes ownership: the raster may say a detached
+    lawn belongs to a park while the manifest polygon says it belongs to
+    nothing, and a filled outer loop paints straight across any lots punched
+    through it.  Rings keep their directed raster orientation (outer loops and
+    holes are opposite) and are sorted largest-first for deterministic output.
+
+    At a diagonal pinch two directed boundaries share one vertex.  Following
+    the right-most available turn keeps the filled cell on the right and closes
+    the two real loops separately instead of making a figure-eight.
+    """
+    if not cells:
         return []
-    pts, n = [], len(best)
-    for i in range(n):
-        p0, p1, p2 = best[i - 1], best[i], best[(i + 1) % n]
-        if (p1[0] - p0[0]) * (p2[1] - p1[1]) == (p1[1] - p0[1]) * (p2[0] - p1[0]):
-            continue                           # collinear — drop the midpoint
-        pts += [p1[0] * cell_px, p1[1] * cell_px]
-    return pts
+    boundary = set()
+    for c, r in sorted(cells):
+        if (c, r - 1) not in cells:
+            boundary.add(((c, r), (c + 1, r)))
+        if (c + 1, r) not in cells:
+            boundary.add(((c + 1, r), (c + 1, r + 1)))
+        if (c, r + 1) not in cells:
+            boundary.add(((c + 1, r + 1), (c, r + 1)))
+        if (c - 1, r) not in cells:
+            boundary.add(((c, r + 1), (c, r)))
+
+    outgoing = defaultdict(list)
+    for start, end in sorted(boundary):
+        outgoing[start].append(end)
+
+    directions = ((1, 0), (0, 1), (-1, 0), (0, -1))
+    direction_index = {d: i for i, d in enumerate(directions)}
+    remaining, traced = set(boundary), []
+    while remaining:
+        start_edge = min(remaining)
+        start, vertex = start_edge
+        previous = start
+        loop = [start]
+        remaining.remove(start_edge)
+        while vertex != start:
+            loop.append(vertex)
+            incoming = (
+                vertex[0] - previous[0],
+                vertex[1] - previous[1],
+            )
+            incoming_i = direction_index[incoming]
+            # Screen coordinates run y-down: +1 is the right turn.
+            preferred = (
+                (incoming_i + 1) % 4,
+                incoming_i,
+                (incoming_i - 1) % 4,
+                (incoming_i + 2) % 4,
+            )
+            candidates = [
+                end for end in outgoing.get(vertex, ())
+                if (vertex, end) in remaining
+            ]
+            if not candidates:
+                raise RuntimeError(
+                    f"open raster boundary at {vertex} while tracing {len(cells)} cells")
+            next_vertex = min(
+                candidates,
+                key=lambda end: (
+                    preferred.index(direction_index[(
+                        end[0] - vertex[0], end[1] - vertex[1])]),
+                    end,
+                ),
+            )
+            remaining.remove((vertex, next_vertex))
+            previous, vertex = vertex, next_vertex
+
+        simple, n = [], len(loop)
+        for i in range(n):
+            p0, p1, p2 = loop[i - 1], loop[i], loop[(i + 1) % n]
+            if ((p1[0] - p0[0]) * (p2[1] - p1[1])
+                    == (p1[1] - p0[1]) * (p2[0] - p1[0])):
+                continue                       # collinear — drop the midpoint
+            simple.append(p1)
+        if len(simple) < 3:
+            continue
+        area2 = sum(
+            simple[i][0] * simple[(i + 1) % len(simple)][1]
+            - simple[(i + 1) % len(simple)][0] * simple[i][1]
+            for i in range(len(simple))
+        )
+        flat = [
+            coord * cell_px
+            for point in simple
+            for coord in point
+        ]
+        traced.append((abs(area2), flat))
+
+    traced.sort(key=lambda item: (-item[0], item[1]))
+    return [flat for _, flat in traced]
+
+
+def outline_poly(cells, cell_px):
+    """Largest boundary ring of ``cells`` (backward-compatible helper)."""
+    polys = outline_polys(cells, cell_px)
+    return polys[0] if polys else []
 
 
 def cells_to_rects(cells, cell_px):

@@ -5,7 +5,7 @@ import { state } from "../../game/state.js";
 import { nearestKiosk } from "../../game/delivery.js";
 import { ensureRenderCache, roadPath } from "./cache.js";
 import { tuning } from "../../game/tuning.js";
-import { CUAD, aabbInView, ctx, flatPath, label, polyBBox } from "./gfx.js";
+import { CUAD, aabbInView, ctx, flatMultiPath, flatPath, label, polyBBox } from "./gfx.js";
 import { DECK_L, DECK_W, ferries } from "../../game/ferries.js";
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
@@ -155,11 +155,22 @@ const MINI_PIER   = "#cfcfc8";   // Muelle Nacional — concrete (structures.js)
 const MINI_JETTY  = "#b98a4e";   // muelle del Faro — warm timber
 const MINI_BRIDGE = "#cfc3a3";   // bridge / causeway deck base
 
-// A flat [x,y,…] ring, cached as a Path2D + AABB on the object it came from.
-// `_m*` keys of its own so nothing collides with the world painter's caches:
-// the same polygon is drawn at two very different scales.
+// One or more flat [x,y,…] rings, cached as a Path2D + union AABB on the object
+// they came from. `_m*` keys of their own so nothing collides with the world
+// painter's caches: the same polygon is drawn at two very different scales.
 function miniShape(o, pts) {
-  if (!o._mpath) { o._mpath = flatPath(pts, true); o._mbb = polyBBox(pts); }
+  if (!o._mpath) {
+    const polys = o.polys && o.polys.length ? o.polys : [pts];
+    o._mpath = flatMultiPath(polys);
+    o._mbb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    for (const p of polys) {
+      const b = polyBBox(p);
+      if (b.x0 < o._mbb.x0) o._mbb.x0 = b.x0;
+      if (b.y0 < o._mbb.y0) o._mbb.y0 = b.y0;
+      if (b.x1 > o._mbb.x1) o._mbb.x1 = b.x1;
+      if (b.y1 > o._mbb.y1) o._mbb.y1 = b.y1;
+    }
+  }
   return o;
 }
 // TERRAIN at the very bottom, so the dial says where the peninsula ENDS —
@@ -224,7 +235,7 @@ function miniGreens(mv) {
     miniShape(g, g.pts);
     if (!aabbInView(g._mbb, mv, 8)) continue;
     ctx.fillStyle = g.type === "stadium" ? MINI_FIELD : MINI_PARK;
-    ctx.fill(g._mpath);
+    ctx.fill(g._mpath, "evenodd");
   }
   // …and the greens that are PARTS of a cuadra rather than the whole of it,
   // which live in `parcels`, not in `greens`: the canchas (Plaza Deportes El
@@ -238,7 +249,7 @@ function miniGreens(mv) {
     miniShape(P, P.poly);
     if (!aabbInView(P._mbb, mv, 8)) continue;
     ctx.fillStyle = field ? MINI_FIELD : MINI_PARK;
-    ctx.fill(P._mpath);
+    ctx.fill(P._mpath, "evenodd");
   }
 }
 // The calles peatonales. A bulevar is NOT in the road list — it is a parcel —
@@ -257,7 +268,7 @@ function miniBoulevards(mv) {
   ctx.strokeStyle = MINI_CASING; ctx.lineWidth = 10;
   for (const P of vis) ctx.stroke(P._mpath);
   ctx.fillStyle = MINI_BULE;
-  for (const P of vis) ctx.fill(P._mpath);
+  for (const P of vis) ctx.fill(P._mpath, "evenodd");
 }
 // MUELLES over the streets, because a deck is the one road that runs out over
 // water: the Muelle Nacional (an axis rect), the faro jetty (a rotated deck

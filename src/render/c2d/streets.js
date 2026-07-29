@@ -4,7 +4,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { t } from "../../i18n/index.js";
 import { dashPath, roadPath } from "./cache.js";
-import { ACERA_PX, aabbInView, ctx, drawParada, flatAABB, flatPath, flatRoundPath, label, parcelFrame, roundRect } from "./gfx.js";
+import { ACERA_PX, aabbInView, ctx, drawParada, flatAABB, flatMultiPath, flatPath, label, parcelFrame, roundRect } from "./gfx.js";
 
 // Estadios are NOT a structure drawn over the ground — they are a COLOUR
 // CHOICE inside the acera pass. The build traces each one from the real cuadra
@@ -37,65 +37,6 @@ const ACERA_GREY = "#b8b6b0";
 const CANO_GREY = "#807e77";
 const CANO_PX = 4;                       // depth of the gutter, per side
 
-// LA ESQUINA — the corner the CAR turns around, cut to a kerb radius.
-//
-// A junction of two painted streets is a plus sign, and a plus has four sharp
-// re-entrant corners where the manzana pokes into the crossing. A real kerb
-// does not: it curves from one calle into the other, which is why you can take
-// an esquina at all. The build solves where each corner is and which way its
-// two streets run (churchill/world/service/kerb.py), because the renderer draws
-// roads PER TILE and never sees a junction.
-//
-// The shape is a proper TANGENT FILLET, not a disc: the little curvilinear
-// triangle between the sharp corner and an arc of radius `rho` that touches
-// both kerbs. A disc centred on the corner would bulge OUTWARD into the block —
-// a bump-out, the opposite of a rounded corner. Filling this patch is the
-// roadway GAINING the corner, which is exactly what a kerb radius is.
-//
-// `rho` is a parameter so the caño can be drawn as the same fillet one gutter
-// wider: fill it in gutter grey first, then the asphalt one on top, and the
-// channel follows the kerb round the corner instead of stopping dead at it.
-function cornerFillet(c, rho) {
-  const u1x = Math.cos(c.a), u1y = Math.sin(c.a);
-  const u2x = Math.cos(c.b), u2y = Math.sin(c.b);
-  let cosT = u1x * u2x + u1y * u2y;
-  cosT = cosT < -1 ? -1 : cosT > 1 ? 1 : cosT;
-  const half = Math.acos(cosT) / 2;
-  const sh = Math.sin(half);
-  if (sh < 0.08) return null;                    // legs almost in line: no corner
-  const t = rho / Math.tan(half);                // corner → tangent point
-  let bx = u1x + u2x, by = u1y + u2y;            // bisector, into the block
-  const bl = Math.hypot(bx, by) || 1;
-  bx /= bl; by /= bl;
-  const cx = c.x + bx * (rho / sh), cy = c.y + by * (rho / sh);
-  const t1x = c.x + u1x * t, t1y = c.y + u1y * t;
-  const t2x = c.x + u2x * t, t2y = c.y + u2y * t;
-  // The arc spans (pi - theta) — always the SHORT way from one tangent point to
-  // the other. Taking the long way would sweep a disc across the whole junction
-  // instead of cutting its corner, and which way is short depends on the angle
-  // the two calles cross at, so it is measured rather than assumed.
-  const s2 = Math.atan2(t2y - cy, t2x - cx), s1 = Math.atan2(t1y - cy, t1x - cx);
-  let sweep = s1 - s2;
-  while (sweep > Math.PI) sweep -= Math.PI * 2;
-  while (sweep < -Math.PI) sweep += Math.PI * 2;
-  const p = new Path2D();
-  p.moveTo(t1x, t1y);
-  p.lineTo(c.x, c.y);
-  p.lineTo(t2x, t2y);
-  p.arc(cx, cy, rho, s2, s1, sweep < 0);
-  p.closePath();
-  return p;
-}
-function paintCorners(corners, colour, grow) {
-  if (!corners || !corners.length) return;
-  ctx.fillStyle = colour;
-  for (const c of corners) {
-    const key = grow ? "_cano" : "_asf";
-    const path = c[key] || (c[key] = cornerFillet(c, c.r + grow));
-    if (path) ctx.fill(path);
-  }
-}
-const PARCEL_ROUND = 7;                  // px of kerb radius on a parcel corner
 const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one white
 // Grass, mow stripes and fútbol markings inside `path`, all drawn in the
 // FIELD's OWN frame rather than on screen axes — Las Playitas sits on the
@@ -105,12 +46,12 @@ const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one wh
 // a plaza gets exactly the estadio's field.
 function paintField(path, F, sport) {
   ctx.save();
-  ctx.clip(path);
+  ctx.clip(path, "evenodd");
   const court = sport === "basketball" || sport === "skateboard";
   // A basketball court is CONCRETE, not grass. Painting 21 of them green with
   // a halfway line and a centre circle is what made them read as stray white
   // rectangles on the map.
-  ctx.fillStyle = court ? "#9a9c93" : "#4f9d5b"; ctx.fill(path);
+  ctx.fillStyle = court ? "#9a9c93" : "#4f9d5b"; ctx.fill(path, "evenodd");
   ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
   const hw = F.hw, hh = F.hh;
   if (court) { paintCourt(hw, hh); ctx.restore();
@@ -188,11 +129,11 @@ function paintStadiumCuadras(view) {
   for (const S of arr) {
     if (S.x1 + 40 < view.x0 || S.x0 - 40 > view.x1 || S.y1 + 40 < view.y0 || S.y0 - 40 > view.y1) continue;
     if (!S.footprint) continue;
-    const pitch = S._pitch || (S._pitch = flatRoundPath(S.footprint, PARCEL_ROUND));
+    const pitch = S._pitch || (S._pitch = flatPath(S.footprint, true));
     // 4 px of grass dilation first: the traced pitch steps in 4 px raster
     // increments, so its edge and the acera band don't meet exactly and a hair
     // of bare ground shows through at the seam.
-    ctx.strokeStyle = "#4f9d5b"; ctx.lineWidth = 8; ctx.lineJoin = "round"; ctx.stroke(pitch);
+    ctx.strokeStyle = "#4f9d5b"; ctx.lineWidth = 8; ctx.lineJoin = "miter"; ctx.stroke(pitch);
     paintField(pitch, fieldFrame(S), S.sport);
   }
 }
@@ -218,12 +159,18 @@ function paintParcels(view) {
     // the footprint IS a building. Either way the ground is not ours to paint,
     // only the sponsor slot on top of it.
     if (P.whole || P.built) continue;
-    // ROUNDED CORNERS: a manzana turns its kerb, it does not come to a point.
-    const path = P._path || (P._path = flatRoundPath(P.poly, PARCEL_ROUND));
+    // Preserve the exact emitted polygon. Rounding only parcels (not ordinary
+    // cuadras) cut visible space from their corners and made the world layer
+    // disagree with both the minimap and the square collision raster.
+    const hasPolys = P.polys && P.polys.length;
+    const path = P._path || (P._path = hasPolys ? flatMultiPath(P.polys) : flatPath(P.poly, true));
     ctx.fillStyle = PARCEL_FILL[P.use] || "#b9b2a0";
-    ctx.lineWidth = 8; ctx.lineJoin = "round";
-    ctx.strokeStyle = ctx.fillStyle; ctx.stroke(path);   // hide the 4px raster steps
-    ctx.fill(path);
+    ctx.lineJoin = "miter";
+    if (!hasPolys) {
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = ctx.fillStyle; ctx.stroke(path); // hide the 4px raster steps
+    }
+    ctx.fill(path, "evenodd");
     // An open field gets the estadio's own painter, in the MANZANA's frame
     // (P.ang) — the markings used to be strokeRect'd off the bbox, which put a
     // square pitch on a slanted block.
@@ -241,7 +188,7 @@ function paintParcels(view) {
 const STONE = 11;                                  // px per paving stone course
 function paintStone(path, P) {
   ctx.save();
-  ctx.clip(path);
+  ctx.clip(path, "evenodd");
   const F = parcelFrame(P);
   const R = Math.hypot(F.hw, F.hh) + STONE * 2;
   ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
@@ -266,7 +213,7 @@ function paintStone(path, P) {
 
 // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
 // ported from the corridor renderer but fed per-tile road segments.
-function paintRoads(roads, view, corners) {
+function paintRoads(roads, view) {
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // elevated (barro/Ferrocarril) drop-shadow
   ctx.strokeStyle = "rgba(0,0,0,0.30)";
@@ -278,7 +225,7 @@ function paintRoads(roads, view, corners) {
   for (const r of roads) { if (r.bridge || r.cls === "bridge") continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
   // acera joint discs at each piece endpoint: they weld chained pieces so the
   // band has no seam. Inscribed in the junction's plus, so they round NOTHING
-  // — the esquinas are the pass below.
+  // and leave the cuadras' square corner geometry untouched.
   ctx.fillStyle = ACERA_GREY;
   for (const r of roads) {
     if (r.bridge || r.cls === "bridge") continue;
@@ -288,8 +235,8 @@ function paintRoads(roads, view, corners) {
     ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
     ctx.fill();
   }
-  // estadios: the same sidewalk, repainted grey (after the fillets so the
-  // junction discs can't overwrite it, before the asphalt so the asphalt wins)
+  // estadios: the same sidewalk, repainted grey after the acera bands and
+  // joint discs, before the asphalt so the asphalt wins
   paintStadiumCuadras(view);
   paintParcels(view);
   ctx.lineJoin = "round"; ctx.lineCap = "round";
@@ -317,9 +264,6 @@ function paintRoads(roads, view, corners) {
     if (r.bridge || r.cls === "bridge" || r.barro) continue;
     ctx.lineWidth = r.w + 2 * CANO_PX; ctx.stroke(roadPath(r));
   }
-  // …and round the esquina, one gutter wider than the kerb, so the channel
-  // turns the corner with the street instead of stopping dead at the mouth.
-  paintCorners(corners, CANO_GREY, CANO_PX);
   // asphalt / barro / paseo surface + SAME-COLOR joint discs at both piece
   // ends: they invisibly weld chained pieces (keeps the León Cortés →
   // Turistas curve smooth) and unify junction mouths, without the visible
@@ -334,9 +278,6 @@ function paintRoads(roads, view, corners) {
     ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
     ctx.fill();
   }
-  // THE KERB RADIUS ITSELF: the roadway takes the corner, over the gutter
-  // fillet laid down above, which leaves the caño as a band following it round.
-  paintCorners(corners, "#3a3540", 0);
   // lane markings: yellow dashes on arterials, faint white on locals —
   // drawn on the TRIMMED path so they stop short of the junctions
   for (const r of roads) {

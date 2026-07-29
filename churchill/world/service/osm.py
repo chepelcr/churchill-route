@@ -251,6 +251,14 @@ def extract_buildings(sp, ways, roads, canvas_w, canvas_h):
                "w": (max(xs) - min(xs)) * BUILDING_SCALE,
                "h": (max(ys) - min(ys)) * BUILDING_SCALE,
                "id": int(w["id"]), "pts": pts}
+        # Source identity survives placement. Most buildings only need their
+        # outline, but feature complexes such as Parque Marino must distinguish
+        # a train-station footprint from an anonymous shed and keep any future
+        # OSM proper name without relying on unstable enumeration order.
+        rec["building"] = w["tags"].get("building")
+        for source_key in ("name", "operator", "brand"):
+            if w["tags"].get(source_key):
+                rec[f"osm_{source_key}"] = w["tags"][source_key]
         # A building that IS a named place (Hotel Tioga, Súper Salinas, the
         # church…) keeps its real outline — snapping it to the cuadrícula turns
         # a landmark you can recognise into one more anonymous pastel box.

@@ -191,19 +191,15 @@ function drawPool(x, y, rot, s = 1, palms = true) {
   }
 }
 
-// Parque Marino del Pacífico: its green already fills the whole cuadra
-// (footprint plaza-green). The build hands us interior pool points (lm.pools,
-// guaranteed on the footprint so they never spill onto streets); we draw an
-// aquarium tank + a leafy tree at each.
+// Parque Marino del Pacífico: its green is the cuadra's RESIDUAL after the UNA
+// campus, every mapped building lot and the eastern station parcel take their
+// space. The build hands us pool points whose complete ownership disks stay in
+// that residual and clear of streets and the rail corridor.
 function drawMarinePark(lm) {
   const pools = lm.pools || [];
-  for (let i = 0; i < pools.length; i++) {
-    const px = pools[i][0], py = pools[i][1];
-    if (i % 2) paintPalm({ x: px - 26, y: py + 12, s: 0.75 }, lastT);
-    else paintTree({ x: px - 24, y: py + 12, s: 0.85 });
-  }
+  const poolScale = lm.poolScale || 0.32;
   for (let i = 0; i < pools.length; i++)
-    drawPool(pools[i][0], pools[i][1], i % 2 ? 0.18 : -0.14, 0.46, false);
+    drawPool(pools[i][0], pools[i][1], i % 2 ? 0.18 : -0.14, poolScale, false);
   const mw = lm.w || 240, mh = lm.h || 120;
   areaLabel(lm.x - mw / 2, lm.y - mh / 2, lm.x + mw / 2, lm.y + mh / 2,
             "PARQUE MARINO", "#fff", "#2e7d44");
@@ -240,7 +236,8 @@ function drawParcels(view) {
     if (P.use === "civic") drawCivicBuilding(P);
     if (P.use === "school" || P.use === "kinder" || P.use === "campus") drawSchool(P);
     if (P.use === "fuel") drawFuel(P);
-    if (P.use === "garden" || P.use === "park") drawGarden(P);
+    if ((P.use === "garden" || P.use === "park") &&
+        P.decor !== false && !P.whole) drawGarden(P);
     // Civic furniture the WORLD declared on this parcel. The build only says
     // which parcel has a river / a statue / a paradita and roughly where; what
     // each looks like is here.
@@ -253,7 +250,7 @@ function drawParcels(view) {
     // a whole-cuadra field already carries the estadio's own name pill, a
     // parcel that IS a landmark gets one from the landmark pass (`P.lm`), and
     // a parcel that is pure GROUND gets none at all — see UNLABELLED_USES
-    if (!P.whole && !P.lm && !UNLABELLED_USES.has(P.use)) {
+    if (P.label !== false && !P.whole && !P.lm && !UNLABELLED_USES.has(P.use)) {
       areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(), "#fff",
                 LABEL_TONE[P.use] || "#8a6f4a");
     }

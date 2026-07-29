@@ -38,6 +38,8 @@ from ..util.raster import erode_cells
 from .block import cuadra_cells, outline_poly
 from .street import half_plane
 
+HARD_STREET_CLASSES = tuple(cls for cls in STREET_CLASSES if cls != CLS_ACERA)
+
 
 def _cell_frame(cells):
     """Centre + principal axis of a cell set. The CENTRE is what parcels
@@ -110,6 +112,113 @@ def fit_block_rect(cells, ang, cell_px, trim=0.02):
             mx * cell_px, my * cell_px)
 
 
+def _largest_mask_rect(mask):
+    """Largest all-true rectangle in a row-major boolean mask.
+
+    Returns (col0, row0, col1, row1), with the far edges exclusive. The
+    histogram stack makes this O(rows * cols); deterministic tie-breaking
+    prefers the less ribbon-like answer, then the north-west one.
+    """
+    if not mask or not mask[0]:
+        return None
+    cols = len(mask[0])
+    heights = [0] * cols
+    best_key = None
+    best = None
+    for row, values in enumerate(mask):
+        for col, value in enumerate(values):
+            heights[col] = heights[col] + 1 if value else 0
+        stack = []
+        for col in range(cols + 1):
+            height = heights[col] if col < cols else 0
+            start = col
+            while stack and stack[-1][1] > height:
+                left, popped = stack.pop()
+                start = left
+                if not popped:
+                    continue
+                width = col - left
+                top = row - popped + 1
+                key = (width * popped, min(width, popped), -top, -left)
+                if best_key is None or key > best_key:
+                    best_key = key
+                    best = (left, top, col, row + 1)
+            if height and (not stack or stack[-1][1] < height):
+                stack.append((start, height))
+    return best
+
+
+def fit_inscribed_rect(cells, ang, cell_px):
+    """Largest `ang`-aligned rectangle contained in raster `cells`.
+
+    `fit_block_rect` is an oriented BOUNDING rectangle. That is useful for
+    regularising a mapper's outline, but unsafe as the final parcel: a skewed
+    outline can make the fitted corners bridge a street. Here the already
+    sidewalk-eroded cells become a mask in the street frame and the largest
+    all-safe rectangle is selected. A final exact raster check feeds any
+    rotation-alias misses back into the mask before accepting the rectangle.
+    """
+    if not cells:
+        return None
+    ca, sa = math.cos(ang), math.sin(ang)
+    centres = [((c + 0.5) * cell_px, (r + 0.5) * cell_px) for c, r in cells]
+    us = [x * ca + y * sa for x, y in centres]
+    vs = [-x * sa + y * ca for x, y in centres]
+    iu0, iu1 = math.floor(min(us) / cell_px), math.ceil(max(us) / cell_px)
+    iv0, iv1 = math.floor(min(vs) / cell_px), math.ceil(max(vs) / cell_px)
+    if iu1 <= iu0 or iv1 <= iv0:
+        return None
+
+    mask = []
+    for iv in range(iv0, iv1):
+        row = []
+        v = (iv + 0.5) * cell_px
+        for iu in range(iu0, iu1):
+            u = (iu + 0.5) * cell_px
+            x, y = u * ca - v * sa, u * sa + v * ca
+            row.append((math.floor(x / cell_px), math.floor(y / cell_px)) in cells)
+        mask.append(row)
+
+    # A frame-cell centre sample can miss a source raster cell at a rotated
+    # edge. Validate the actual world-cell centres covered by the rounded
+    # polygon; each offender invalidates its frame bin and the maximum is
+    # recomputed. In practice this converges in one or two passes.
+    for _ in range(12):
+        hit = _largest_mask_rect(mask)
+        if hit is None:
+            return None
+        c0, r0, c1, r1 = hit
+        rect = ((iu0 + c0) * cell_px, (iu0 + c1) * cell_px,
+                (iv0 + r0) * cell_px, (iv0 + r1) * cell_px, 0.0, 0.0)
+        poly = rect_poly(rect, ang)
+        poly_pairs = list(zip(poly[0::2], poly[1::2]))
+        xs, ys = poly[0::2], poly[1::2]
+        bad = []
+        for r in range(math.floor(min(ys) / cell_px),
+                       math.ceil(max(ys) / cell_px) + 1):
+            for c in range(math.floor(min(xs) / cell_px),
+                           math.ceil(max(xs) / cell_px) + 1):
+                p = ((c + 0.5) * cell_px, (r + 0.5) * cell_px)
+                if point_in_poly(p, poly_pairs) and (c, r) not in cells:
+                    bad.append(p)
+        if not bad:
+            return rect
+        changed = False
+        for x, y in bad:
+            iu = math.floor((x * ca + y * sa) / cell_px) - iu0
+            iv = math.floor((-x * sa + y * ca) / cell_px) - iv0
+            for dv in (-1, 0, 1):
+                for du in (-1, 0, 1):
+                    rr, cc = iv + dv, iu + du
+                    if (0 <= rr < len(mask) and 0 <= cc < len(mask[0])
+                            and mask[rr][cc]):
+                        mask[rr][cc] = False
+                        changed = True
+        if not changed:
+            return None
+    return None
+
+
 def _frame_extent(flat_poly, cx, cy, ang):
     """(hw, hh) — half-extents of a flat polygon about (cx, cy), along `ang`."""
     ca, sa = math.cos(ang), math.sin(ang)
@@ -143,6 +252,61 @@ def rect_cells(cells, rect, ang, cell_px):
         if u0 <= u <= u1 and v0 <= v <= v1:
             keep.add((c, r))
     return keep
+
+
+def cells_in_poly(cells, flat_poly, cell_px):
+    """Subset whose raster-cell CENTRES fall inside `flat_poly`."""
+    poly = list(zip(flat_poly[0::2], flat_poly[1::2]))
+    return {c for c in cells
+            if point_in_poly(((c[0] + 0.5) * cell_px,
+                              (c[1] + 0.5) * cell_px), poly)}
+
+
+def grow_cells(cells, allowed, steps):
+    """Dilate `cells` by `steps` cardinal cells, never leaving `allowed`."""
+    out = set(cells)
+    edge = set(cells)
+    for _ in range(steps):
+        nxt = set()
+        for c, r in edge:
+            for n in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
+                if n in allowed and n not in out:
+                    nxt.add(n)
+        if not nxt:
+            break
+        out |= nxt
+        edge = nxt
+    return out
+
+
+def poly_surface_count(flat_poly, raster, classes):
+    """Raster-cell centres inside `flat_poly` whose surface is in `classes`."""
+    return len(raster_cells_in_poly(flat_poly, raster, classes))
+
+
+def raster_cells_in_poly(flat_poly, raster, classes, excluded=()):
+    """Raster cells in `classes` whose centres fall inside `flat_poly`.
+
+    The mapper's site outline is deliberately regularised to a rectangle, so
+    this samples the finished surface rather than intersecting the rectangle
+    back with that irregular outline. That distinction matters for a park
+    spanning two manzanas: the largest safe rectangle must be able to fill one
+    whole manzana, while the intervening street remains a hard gap.
+    """
+    poly = list(zip(flat_poly[0::2], flat_poly[1::2]))
+    xs, ys = flat_poly[0::2], flat_poly[1::2]
+    cell = raster.cell
+    excluded = set(excluded)
+    found = set()
+    for r in range(max(0, math.floor(min(ys) / cell)),
+                   min(raster.rows, math.ceil(max(ys) / cell) + 1)):
+        for c in range(max(0, math.floor(min(xs) / cell)),
+                       min(raster.cols, math.ceil(max(xs) / cell) + 1)):
+            p = ((c + 0.5) * cell, (r + 0.5) * cell)
+            if ((c, r) not in excluded and point_in_poly(p, poly)
+                    and raster.at(c, r) in classes):
+                found.add((c, r))
+    return found
 
 
 def _bands(vals, weights):
@@ -316,7 +480,12 @@ class FieldService:
             poly = outline_poly(keep_cells, GRID_CELL) if keep_cells else None
         if not poly:
             log("parcel", f"WARN {part['id']} nothing left after erosion"); return None
-        px = poly[0::2]; py = poly[1::2]
+        # A residual parcel can have detached components and holes around lots.
+        # `poly` remains the largest ring for old clients; `polys` is the exact
+        # even-odd ownership geometry used by current renderers.
+        geometry = part.get("polys") or [poly]
+        coords = [coord for ring in geometry for coord in ring]
+        px = coords[0::2]; py = coords[1::2]
         x0, y0, x1, y1 = min(px), min(py), max(px), max(py)
         ay = y0 + (y1 - y0) // 4 if part.get("anchor") == "north" else (y0 + y1) // 2
         # SPONSOR SLOT: a rect inside the parcel a remote `lote` can claim. The
@@ -335,6 +504,13 @@ class FieldService:
                "poly": poly, "cx": int((x0 + x1) // 2), "cy": int(ay),
                "x0": x0, "y0": y0, "x1": x1, "y1": y1, "slot": slot,
                "ang": round(ang, 4)}
+        # Stable/source identity and drawing semantics used by feature blocks.
+        # A marine structure's parcel is real GROUND around its OSM footprint,
+        # while the residual park is already painted by `greens` (`whole`).
+        for k in ("label", "osmId", "marine", "whole", "built", "decor",
+                  "polys"):
+            if k in part:
+                rec[k] = part[k]
         # HALF-EXTENTS in the parcel's OWN frame. Every drawer used to size
         # itself off the AXIS-ALIGNED bbox (P.x1 - P.x0), which on a turned
         # parcel is bigger than the parcel — so the church, the schoolyard and
@@ -622,6 +798,7 @@ class FieldService:
         cell = raster.cell
         built_cuads = set()
         placed, skipped = 0, defaultdict(int)
+
         for site in sites:                       # sorted by OSM id upstream
             use = self.SITE_USE.get(site["kind"])
             if use is None:
@@ -647,7 +824,8 @@ class FieldService:
             under, own = set(), set()
             for r in range(max(0, r0), min(raster.rows, r1 + 1)):
                 for c in range(max(0, c0), min(raster.cols, c1 + 1)):
-                    if not point_in_poly((c * cell + cell / 2, r * cell + cell / 2), pts):
+                    if not point_in_poly(
+                            (c * cell + cell / 2, r * cell + cell / 2), pts):
                         continue
                     under.add((c, r))
                     if raster.at(c, r) in ground:
@@ -691,7 +869,6 @@ class FieldService:
                 log("site", f"skip {site['id']} {site['kind']} "
                     f"{(site['name'] or '—')[:34]}: no rectangle fits its ground")
                 continue
-            cuads = {(c * cell // CUAD, r * cell // CUAD) for (c, r) in own}
             # An acera exists where there is a street: a building plot pulls back
             # the full sidewalk, an open field only far enough to keep its white
             # lines off the asphalt (the split place_parcels makes).
@@ -707,10 +884,11 @@ class FieldService:
             # loses most of a small lot, and judging it by area was cutting the
             # sidewalk off 21 of 26 parcels that had room for a full one.
             #
-            # Re-fit the rect to what the erosion left. The erosion is
-            # DIRECTIONAL, so a side facing the sand or the neighbour keeps its
-            # edge while the ones facing a street pull back; refitting keeps the
-            # answer a rectangle instead of a nibbled trace.
+            # Keep the established percentile fit while it covers only the
+            # site's LAND + ACERA frontage. If that BOUNDING rect would cover a
+            # hard surface, inscribe a strict-LAND rectangle in the site's own
+            # safe cells. Mora y Cañas was the regression — 162x262 px including
+            # 540 ROAD cells — while its safe manzana is ~84x250 px.
             deep = (FIELD_ACERA_CELLS
                     if use in (ParcelUse.PARK, ParcelUse.STADIUM, ParcelUse.FUEL)
                     else ACERA_CELLS)
@@ -720,15 +898,49 @@ class FieldService:
                 keep = _largest_part(erode_cells(own, depth, STREET_CLASSES, raster.at)
                                      if depth else own)
                 krect = fit_block_rect(keep, ang, cell) if keep else None
+                candidate_poly = rect_poly(krect, ang) if krect else None
+                hard_spill = (poly_surface_count(
+                    candidate_poly, raster, HARD_STREET_CLASSES)
+                    if candidate_poly and site["kind"] != "fuel" else 0)
+                if hard_spill:
+                    # Stay inside THIS mapped site's source-supported LAND.
+                    # Its hard-surface holes are what prevent the maximum
+                    # rectangle from bridging into a neighbouring manzana.
+                    land_keep = _largest_part({
+                        c for c in keep
+                        if c not in self.claimed_cells and raster.at(*c) == CLS_LAND
+                    })
+                    inscribed = fit_inscribed_rect(land_keep, ang, cell)
+                    if inscribed:
+                        inscribed_keep = cells_in_poly(
+                            land_keep, rect_poly(inscribed, ang), cell)
+                        iw = (inscribed[1] - inscribed[0]) / cell + 1
+                        ih = (inscribed[3] - inscribed[2]) / cell + 1
+                        if (len(inscribed_keep) >= self.SITE_MIN_CELLS
+                                and min(iw, ih) >= self.SITE_MIN_SIDE):
+                            keep, krect = inscribed_keep, inscribed
+                            log("site", f"{site['id']} "
+                                f"{(site['name'] or '—')[:34]}: bounding rect "
+                                f"crossed {hard_spill} hard-surface cells; "
+                                f"using inscribed land rect")
+                        else:
+                            krect = None
+                    else:
+                        krect = None
+                # Both fitters return physical edge-to-edge extents. Preserve
+                # the established SITE_MIN_SIDE convention (+1) so switching
+                # fitters does not delete an 8 px-deep mapped chapel.
+                side_pad = 1
                 if krect and len(keep) >= self.SITE_MIN_CELLS and min(
-                        (krect[1] - krect[0]) / cell + 1,
-                        (krect[3] - krect[2]) / cell + 1) >= self.SITE_MIN_SIDE:
+                        (krect[1] - krect[0]) / cell + side_pad,
+                        (krect[3] - krect[2]) / cell + side_pad) >= self.SITE_MIN_SIDE:
                     break
             # …and what is left has to be a PLOT, not a ribbon. A 12-cell strip
             # is an 8 px-wide parcel, which draws as a smear rather than as the
             # church or the cancha it is supposed to be.
-            kw = (krect[1] - krect[0]) / cell + 1 if krect else 0
-            kh = (krect[3] - krect[2]) / cell + 1 if krect else 0
+            side_pad = 1
+            kw = (krect[1] - krect[0]) / cell + side_pad if krect else 0
+            kh = (krect[3] - krect[2]) / cell + side_pad if krect else 0
             if not krect or len(keep) < self.SITE_MIN_CELLS or min(kw, kh) < self.SITE_MIN_SIDE:
                 skipped["too-thin"] += 1
                 log("site", f"skip {site['id']} {site['kind']} "
@@ -739,17 +951,10 @@ class FieldService:
                 log("site", f"{site['id']} {(site['name'] or '—')[:34]}: acera ring "
                     f"{used} cells, not {deep} — a {len(own)}-cell plot has no room "
                     f"for it (kept {len(keep)})")
-            # Does this site OWN its cuadra, or is it a piece of one? A park
-            # that fills the manzana should clear the manzana's houses; a small
-            # cancha in a residential block must not. Measured against the
-            # blocks the parcel actually touches.
-            touched = [b for b in self.blocks if any(c in cuads for c in b["cells"])]
-            block_cells = sum(len(b["cells"]) for b in touched)
-            owns_block = bool(touched) and len(cuads) >= block_cells * self.SITE_OWNS_BLOCK
             pid = f"osm_{site['kind']}_{site['id']}"
             part = {"id": pid, "use": use,
                     "name": site["name"] or self.SITE_FALLBACK_NAME[site["kind"]],
-                    "green": owns_block, "sport": site.get("sport"),
+                    "sport": site.get("sport"),
                     "hw": round((krect[1] - krect[0]) / 2, 1),
                     "hh": round((krect[3] - krect[2]) / 2, 1)}
             # Anything a real place has that OSM does not record — the old round
@@ -773,11 +978,35 @@ class FieldService:
                          v0 + dv * fr[2], v0 + dv * fr[3], cu, cv)
                 part["hw"] = round((krect[1] - krect[0]) / 2, 1)
                 part["hh"] = round((krect[3] - krect[2]) / 2, 1)
-                own = rect_cells(own, krect, ang, cell) or own
                 log("site", f"{pid}: rect overridden to {fr} -> "
                     f"{part['hw'] * 2:.0f}x{part['hh'] * 2:.0f}px")
-            if self._emit_parcel("osm", part, own, keep, ang,
-                                 poly=rect_poly(krect, ang)) is None:
+            # Ownership, collision and any open-field surface stamp follow the
+            # accepted rectangle too. Keeping the pre-fit `own` here would fix
+            # the drawing while leaving an invisible drivable/occupied spill.
+            accepted_poly = rect_poly(krect, ang)
+            parcel_keep = cells_in_poly(keep, accepted_poly, cell)
+            # The polygon is the eroded building/pitch footprint, but ownership
+            # includes the local frontage ring. Open fields stamp that ring
+            # drivable so the acera is an entrance, not a wall; grow only within
+            # this site's un-eroded source cells, never back across a road.
+            parcel_own = grow_cells(
+                cells_in_poly(own, accepted_poly, cell), own, used)
+            if not parcel_own or len(parcel_keep) < self.SITE_MIN_CELLS:
+                skipped["too-thin"] += 1
+                log("site", f"skip {site['id']} {site['kind']} "
+                    f"{(site['name'] or '—')[:34]}: inscribed rectangle has no ground")
+                continue
+            cuads = {(c * cell // CUAD, r * cell // CUAD) for (c, r) in parcel_own}
+            # Does this site OWN its cuadra, or is it a piece of one? A park
+            # that fills the manzana should clear the manzana's houses; a small
+            # cancha in a residential block must not. Measured against the
+            # blocks the accepted rectangle actually touches.
+            touched = [b for b in self.blocks if any(c in cuads for c in b["cells"])]
+            block_cells = sum(len(b["cells"]) for b in touched)
+            part["green"] = (bool(touched)
+                             and len(cuads) >= block_cells * self.SITE_OWNS_BLOCK)
+            if self._emit_parcel("osm", part, parcel_own, parcel_keep, ang,
+                                 poly=accepted_poly) is None:
                 skipped["no-outline"] += 1; continue
             if site["kind"] in self.SITE_BUILT:
                 built_cuads |= cuads
@@ -805,16 +1034,24 @@ class FieldService:
                 continue
             x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
             sw = max(20, int((x1 - x0) * 0.7)); sh = max(12, int((y1 - y0) * 0.55))
+            source_id = b.get("osmId")
+            suffix = (source_id if spec.get("stable_osm_ids")
+                      and source_id is not None else n)
+            fallback = (f"{spec['name']} {n + 1}"
+                        if spec.get("numbered_fallback", True) else spec["name"])
+            name = b.get("name") or fallback
             self.parcels.append({
-                "id": f"{spec['id']}_{n}", "use": spec.get("use", ParcelUse.LOT),
-                "name": b.get("name") or f"{spec['name']} {n + 1}",
+                "id": f"{spec['id']}_{suffix}",
+                "use": spec.get("use", ParcelUse.LOT),
+                "name": name, "label": b.get("label", bool(name)),
                 "poly": [round(v) for v in b["pts"]],
                 "cx": int(cx), "cy": int(cy),
                 "x0": x0, "y0": y0, "x1": x1, "y1": y1,
                 "slot": [int(cx - sw / 2), int(cy - sh / 2), sw, sh],
                 "built": True,          # the footprint IS a building; don't paint ground
             })
+            if source_id is not None:
+                self.parcels[-1]["osmId"] = source_id
             n += 1
         log("parcel", f"{spec['id']}: {n} feature parcels from footprints inside "
               f"{spec['lm']} ({round(bx1-bx0)}x{round(by1-by0)}px)")
-

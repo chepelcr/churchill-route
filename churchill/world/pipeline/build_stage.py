@@ -547,7 +547,10 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
          "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
          "ave_south": ["Avenida Centenario"],
          "beach": True,                      # the cuadra runs out to the sand
-         "edge": ["Calle 8"]},               # right wall on Calle 8's line, extended
+         "edge": ["Calle 8"],                # right wall on Calle 8's line, extended
+         # Its west boundary is a long diagonal. Three raster cells remove the
+         # residual short shoulders so it renders as one direct side.
+         "straighten_cells": 3},
     ):
         fields.place_stadium(_sp)
 
@@ -582,7 +585,11 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
               "name": "Jardín de la Parroquia", "aceras": True},
              # right column, spanning BOTH rows
              {"id": "carmen_plaza", "col": 1, "row": [0, 1], "use": "stadium",
-              "name": "Plaza Deportes El Carmen", "aceras": True},
+              "name": "Plaza Deportes El Carmen", "aceras": False,
+              # The cancha occupies its whole half-cuadra. Two raster cells of
+              # vector tolerance collapse the north/east staircase shoulders
+              # into the four direct sides of the street-aligned parallelogram.
+              "straighten_cells": 2},
          ]},
         # THE CIVIC SUPERBLOCK of Puntarenas: Calle 7 -> Bulevar de la Casa de
         # la Cultura, Avenida 1 (north) -> Avenida Centenario (south). No calle

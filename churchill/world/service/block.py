@@ -24,7 +24,7 @@ from ..logging import log
 from ..util.geometry import dp_simplify
 
 
-def _straighten_raster_ring(flat, cell_px):
+def _straighten_raster_ring(flat, cell_px, tolerance_px=None):
     """Replace a raster boundary's one-cell stairs with direct line segments.
 
     The cell trace is still exact internally.  This only regularises the
@@ -36,7 +36,10 @@ def _straighten_raster_ring(flat, cell_px):
     points = list(zip(flat[0::2], flat[1::2]))
     if len(points) <= 4:
         return flat
-    simplified = dp_simplify(points + [points[0]], cell_px)[:-1]
+    simplified = dp_simplify(
+        points + [points[0]],
+        cell_px if tolerance_px is None else tolerance_px,
+    )[:-1]
     if len(simplified) < 3:
         return flat
     return [coord for point in simplified for coord in point]
@@ -101,7 +104,7 @@ def block_raster_cells(raster, cuad_cells, cuad_cells_per_side, land_cls):
     return out
 
 
-def outline_polys(cells, cell_px):
+def outline_polys(cells, cell_px, tolerance_px=None):
     """Every boundary ring of a raster cell set as flat ``[x, y, …]`` polys.
 
     A cell set can contain disconnected pieces and holes.  Returning only its
@@ -191,16 +194,16 @@ def outline_polys(cells, cell_px):
             coord * cell_px
             for point in simple
             for coord in point
-        ], cell_px)
+        ], cell_px, tolerance_px)
         traced.append((abs(area2), flat))
 
     traced.sort(key=lambda item: (-item[0], item[1]))
     return [flat for _, flat in traced]
 
 
-def outline_poly(cells, cell_px):
+def outline_poly(cells, cell_px, tolerance_px=None):
     """Largest boundary ring of ``cells`` (backward-compatible helper)."""
-    polys = outline_polys(cells, cell_px)
+    polys = outline_polys(cells, cell_px, tolerance_px)
     return polys[0] if polys else []
 
 

@@ -404,8 +404,13 @@ class FieldService:
         outer_cells = cuadra_cells(self.raster, xa, ylo, xb, yhi, classes, clip)
         inner_cells = (outer_cells if spec.get("aceras") is False
                        else erode_cells(outer_cells, FIELD_ACERA_CELLS, STREET_CLASSES, self.raster.at)) if outer_cells else set()
-        outline = outline_poly(outer_cells, GRID_CELL) if outer_cells else None
-        footprint = outline_poly(inner_cells, GRID_CELL) if inner_cells else None
+        # A whole-cuadra field can request a slightly stronger display-only
+        # simplification when a long raster edge still contains shoulders after
+        # the default one-cell pass. Ownership and drivability remain the exact
+        # cell sets above.
+        tolerance = GRID_CELL * spec.get("straighten_cells", 1)
+        outline = outline_poly(outer_cells, GRID_CELL, tolerance) if outer_cells else None
+        footprint = outline_poly(inner_cells, GRID_CELL, tolerance) if inner_cells else None
         if not outline or not footprint:
             log("estadio", f"WARN {spec['id']} no cuadra in rect "
                   f"({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)})"); return
@@ -478,7 +483,12 @@ class FieldService:
         # cuadras still trace because they are cut from the block itself, but
         # outline_poly straightens their one-cell stairs into direct diagonals.
         if poly is None:
-            poly = outline_poly(keep_cells, GRID_CELL) if keep_cells else None
+            # Most raster outlines use a one-cell tolerance. A deliberately
+            # quadrilateral field can ask for two cells: that removes the last
+            # half-side kinks left by the raster trace without changing the
+            # cells that own or drive the parcel.
+            tolerance = GRID_CELL * part.get("straighten_cells", 1)
+            poly = outline_poly(keep_cells, GRID_CELL, tolerance) if keep_cells else None
         if not poly:
             log("parcel", f"WARN {part['id']} nothing left after erosion"); return None
         # A residual parcel can have detached components and holes around lots.

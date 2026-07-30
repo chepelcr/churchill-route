@@ -231,7 +231,9 @@ function paintVehicle(g, key, veh) {
       ctx.fillRect(veh.w/2 - 7, -4, 3, 8);
     } else {
       roundRect(ctx, -veh.w/2 + 4, -1.5, veh.w - 8, 3, 1.5, true, false); // thin bici frame
-      ctx.fillStyle = "#e8e4da"; ctx.fillRect(-veh.w/2 + 2, -4, 5, 8);    // cooler box on the back
+      ctx.strokeStyle = "rgba(38,34,44,0.72)";              // empty rear cargo rack
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-veh.w/2 + 2, -3.5, 5, 7);
     }
     ctx.fillStyle = "rgba(20,40,60,0.6)";                  // handlebar
     ctx.fillRect(veh.w/2 - 6, -veh.h/2 + 2, 2, veh.h - 4);
@@ -303,6 +305,84 @@ function paintVehicle(g, key, veh) {
   }
 }
 
+// Insulated delivery backpacks for the courier-style vehicles. Coordinates are
+// in vehicle-local space (+x is the nose). On the two-wheelers and kart the
+// straps reach forward over the rider, so the bag reads as worn rather than as
+// a box bolted onto the chassis. The tuk-tuk carries the same bag in its rear
+// passenger compartment.
+const DELIVERY_BAG_MOUNTS = {
+  bici:    { x: -4.2, y: 0, scale: 0.72, straps: true },
+  scooter: { x: -4.6, y: 0, scale: 0.76, straps: true },
+  tuktuk:  { x: -7.0, y: 0, scale: 0.92, straps: false },
+  turbo:   { x: -4.5, y: 0, scale: 0.72, straps: true },
+};
+
+function drawDeliveryBag(g, mount, carrying) {
+  const m = Math.max(0, Math.min(1, carrying.melt / carrying.total));
+  g.save();
+  g.translate(mount.x, mount.y);
+  g.scale(mount.scale, mount.scale);
+  if (mount.straps) {
+    g.strokeStyle = "#171820";
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(2.5, -2.4); g.lineTo(6, -2);
+    g.moveTo(2.5,  2.4); g.lineTo(6,  2);
+    g.stroke();
+  }
+  g.fillStyle = "#20242b";
+  roundRect(g, -4, -4, 8, 8, 1.5, true, false);
+  g.strokeStyle = "#67d39a";
+  g.lineWidth = 1;
+  g.strokeRect(-3.5, -3.5, 7, 7);
+  g.fillStyle = "#67d39a";                              // insulated lid seam
+  g.fillRect(-3.5, -3.5, 1.2, 7);
+  g.fillStyle = `oklch(0.66 0.20 ${30 + m * 18})`;       // Churchill badge
+  g.fillRect(-1.4, -2.2, 2.8, 3.4);
+  g.fillStyle = "#fff";
+  g.fillRect(-1.4, -2.8, 2.8, 1);
+  g.restore();
+}
+
+function drawPickupCooler(g, carrying) {
+  const m = Math.max(0, Math.min(1, carrying.melt / carrying.total));
+  const hRed = 6 * (1 - m * 0.5);
+  g.save();
+  g.translate(-8, 0);
+  g.fillStyle = "#fff";
+  g.fillRect(-3, -4, 6, 8);
+  g.fillStyle = `oklch(0.62 0.22 ${25 + m * 20})`;
+  g.fillRect(-3, -4 + (6 - hRed), 6, hRed);
+  g.fillStyle = "#fff";
+  g.fillRect(-3, -5, 6, 2);
+  g.restore();
+}
+
+function drawCartFreezerLoad(g, veh, carrying) {
+  const m = Math.max(0, Math.min(1, carrying.melt / carrying.total));
+  const x = -veh.w / 2 + 4;
+  const y = veh.h / 2 - 6;
+  const w = veh.w - 8;
+  g.fillStyle = "#dff7ff";                              // open, icy freezer lid
+  roundRect(g, x, y, w, 3, 1, true, false);
+  g.fillStyle = `oklch(0.68 0.18 ${210 - m * 170})`;     // cold-to-melting gauge
+  g.fillRect(x + 1, y + 1, Math.max(2, (w - 2) * (1 - m * 0.55)), 1);
+  g.fillStyle = "#31576a";                              // recessed lid handle
+  g.fillRect(-2, y - 0.8, 4, 1);
+}
+
+function drawCarriedCargo(g, key, veh, carrying) {
+  if (key === "pickup") {
+    drawPickupCooler(g, carrying);
+  } else if (key === "cart") {
+    drawCartFreezerLoad(g, veh, carrying);
+  } else {
+    const mount = DELIVERY_BAG_MOUNTS[key] ||
+      { x: -veh.w * 0.2, y: 0, scale: 0.8, straps: false };
+    drawDeliveryBag(g, mount, carrying);
+  }
+}
+
 // Wind swirl: arc streaks whipping around the car, in the direction it's
 // turning, opacity/length scaled by angular speed — sells a fast pivot.
 function drawTurnWind(p, veh, t) {
@@ -337,30 +417,18 @@ function drawPlayer(p, veh) {
   traceVehicleSilhouette(ctx, state.vehicleKey, veh); ctx.fill(); ctx.restore();
   ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
   paintVehicle(ctx, state.vehicleKey, veh);
-  if (state.carrying) {
-    const m = state.carrying.melt / state.carrying.total;
-    ctx.fillStyle = "#fff"; ctx.fillRect(-3, -veh.h/2 - 6, 6, 8);
-    const hRed = 6 * (1 - m * 0.5);
-    ctx.fillStyle = `oklch(0.62 0.22 ${25 + m * 20})`;
-    ctx.fillRect(-3, -veh.h/2 - 6 + (6 - hRed), 6, hRed);
-    ctx.fillStyle = "#fff"; ctx.fillRect(-3, -veh.h/2 - 7, 6, 2);
-  }
+  if (state.carrying) drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();
 }
 
 // Hybrid overlay: Pixi owns the player body/shadow; this draws only the
-// churchill melt bar riding above the car (game-critical UI, not bodywork).
+// carried delivery bag / cooler / freezer state (game-critical UI, not bodywork).
 function drawPlayerCarrying(p, veh) {
   if (!state.carrying) return;
   const lift = (state.elev || 0) * 7;
   ctx.save();
   ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
-  const m = state.carrying.melt / state.carrying.total;
-  ctx.fillStyle = "#fff"; ctx.fillRect(-3, -veh.h/2 - 6, 6, 8);
-  const hRed = 6 * (1 - m * 0.5);
-  ctx.fillStyle = `oklch(0.62 0.22 ${25 + m * 20})`;
-  ctx.fillRect(-3, -veh.h/2 - 6 + (6 - hRed), 6, hRed);
-  ctx.fillStyle = "#fff"; ctx.fillRect(-3, -veh.h/2 - 7, 6, 2);
+  drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();
 }
 

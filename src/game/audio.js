@@ -17,6 +17,7 @@ let driftV = null;      // { src, filter, gain }
 let fountainV = null;   // { jet, spray, body, level } — a PARK fountain
 let poolV = null;       // { lap, edge, level }        — the Balneario
 let wavesV = null;      // { swell, foam, lfo*, level } — surf out on the muelles
+let iceCreamV = null;   // { gain, nextAt } — cart melody while carrying
 
 function loadMuted() {
   try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
@@ -162,6 +163,15 @@ function unlock() {
   lfoFoam.connect(sFoamG.gain);
   lfo.start();
   wavesV = { swell: sSwellG, foam: sFoamG, lfoSwell, lfoFoam, level: 0 };
+
+  // ICE-CREAM CART — its music-box speaker is silent unless the cart is
+  // carrying a churchill. Notes are scheduled into this dedicated gain so a
+  // delivery, spill, pause or vehicle swap can silence an in-flight phrase
+  // immediately instead of waiting for the last scheduled note to finish.
+  const iceCreamG = ctx.createGain();
+  iceCreamG.gain.value = 0;
+  iceCreamG.connect(master);
+  iceCreamV = { gain: iceCreamG, nextAt: 0 };
 }
 
 if (BROWSER) {
@@ -179,7 +189,7 @@ if (BROWSER) {
 
 // ---- one-shot builders -----------------------------------------------------
 
-function tone({ type = "square", from = 440, to = null, dur = 0.08, gain = 0.15, at = 0, filterHz = null }) {
+function tone({ type = "square", from = 440, to = null, dur = 0.08, gain = 0.15, at = 0, filterHz = null, destination = null }) {
   const t0 = ctx.currentTime + at;
   const o = ctx.createOscillator();
   o.type = type;
@@ -196,7 +206,7 @@ function tone({ type = "square", from = 440, to = null, dur = 0.08, gain = 0.15,
     f.frequency.exponentialRampToValueAtTime(120, t0 + dur);
     o.connect(f); head = f;
   }
-  head.connect(g); g.connect(master);
+  head.connect(g); g.connect(destination || master);
   o.start(t0); o.stop(t0 + dur + 0.02);
 }
 
@@ -307,6 +317,34 @@ export const sfx = {
     driftV.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, amount)) * 0.12, ctx.currentTime, 0.06);
   },
 
+  // A short original music-box phrase, repeated with breathing room like a
+  // neighborhood ice-cream cart. It is active only for the cart + churchill
+  // combination; calling with false also cuts off already-scheduled notes.
+  iceCream(active) {
+    if (!iceCreamV || !ctx || ctx.state !== "running") return;
+    const now = ctx.currentTime;
+    if (!active) {
+      iceCreamV.gain.gain.setTargetAtTime(0, now, 0.035);
+      iceCreamV.nextAt = now;
+      return;
+    }
+    iceCreamV.gain.gain.setTargetAtTime(1, now, 0.12);
+    if (now < iceCreamV.nextAt) return;
+    const phrase = [
+      [659, 0.00, 0.22], [784, 0.25, 0.22], [988, 0.50, 0.34],
+      [784, 0.88, 0.22], [698, 1.14, 0.22], [880, 1.40, 0.34],
+      [587, 1.84, 0.22], [698, 2.10, 0.22], [880, 2.36, 0.22],
+      [784, 2.62, 0.42],
+    ];
+    for (const [f, at, dur] of phrase) {
+      tone({ type: "sine", from: f, dur, gain: 0.055, at: at + 0.04,
+             destination: iceCreamV.gain });
+      tone({ type: "triangle", from: f * 2, dur: dur * 0.72, gain: 0.016,
+             at: at + 0.04, destination: iceCreamV.gain });
+    }
+    iceCreamV.nextAt = now + 7.2;
+  },
+
   // FUENTE: 0..1 by nearness to the closest PARK fountain. Jet + splash + basin
   // body, plus randomly-timed droplet "plips" — the irregular transients, not a
   // periodic LFO, are what make it read as water.
@@ -384,6 +422,10 @@ export const sfx = {
     if (!ctx) return;
     if (engineV) engineV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
     if (driftV) driftV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+    if (iceCreamV) {
+      iceCreamV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+      iceCreamV.nextAt = ctx.currentTime;
+    }
     if (fountainV) {
       fountainV.spray.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
       fountainV.body.gain.setTargetAtTime(0, ctx.currentTime, 0.03);

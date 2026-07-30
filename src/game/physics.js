@@ -468,6 +468,7 @@ export function update(dt) {
 
   sfx.engine(p.speed / (veh.top || 1), !!input.boost, state.vehicleKey);
   sfx.drift(p.drift > 0.4 && p.speed > 80 ? p.drift : 0);
+  sfx.iceCream(state.vehicleKey === "cart" && !!state.carrying);
   // Water ambience, by WHAT the water is. A park fountain and the Balneario
   // used to share one voice, which meant a sea-water inlet with swimmers in it
   // trickled like a garden jet. Two distances, two beds:

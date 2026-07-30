@@ -4,7 +4,7 @@
 // arcade values, so driving the puerto feels smooth and unhurried rather than
 // frenetic. accel/top in px/s, turn in rad/s, grip 0..1, melt = melt-rate mult.
 export const VEHICLES = {
-  bici:    { name: "Bicicleta + cooler",  accel: 170, top: 180, turn: 3.4, grip: 0.90, melt: 0.7, color: "#2e8bd6", roof: "#ffe6b3", w: 20, h: 13, kind: "bike" },
+  bici:    { name: "Bicicleta repartidora", accel: 170, top: 180, turn: 3.4, grip: 0.90, melt: 0.7, color: "#2e8bd6", roof: "#ffe6b3", w: 20, h: 13, kind: "bike" },
   scooter: { name: "Scooter retro",        accel: 225, top: 230, turn: 3.05, grip: 0.85, melt: 1.0, color: "#e85d75", roof: "#fff",   w: 22, h: 13, kind: "bike" },
   tuktuk:  { name: "Tuk-tuk porteño",      accel: 202, top: 212, turn: 2.8, grip: 0.82, melt: 0.9, color: "#f3c969", roof: "#3a3a48", w: 26, h: 17, kind: "car"  },
   cart:    { name: "Mini carrito helado",  accel: 184, top: 194, turn: 2.55, grip: 0.80, melt: 0.55, color: "#fff",  roof: "#e85d75", w: 27, h: 17, kind: "car"  },

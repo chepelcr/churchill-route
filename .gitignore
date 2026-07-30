@@ -1,7 +1,11 @@
 .DS_Store
 node_modules/
+.pnpm-store/
 dist/
 *.local
+
+# Separate private visual world editor (owns its own Git repository)
+/world-editor/
 
 # Android (Capacitor) build outputs — the android/ project itself is committed
 android/.gradle/

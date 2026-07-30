@@ -221,6 +221,11 @@ STAGES = [
 # the OSM id is.
 SITE_DECOR = {
     "osm_park_232389752": {"kiosco": True},      # Parque Victoria
+    # Mora y Cañas spans an angled cuadra. The generic safety fallback kept it
+    # off the roadway by inscribing a rectangle, but that cut away the west
+    # corner and flattened the diagonal north edge. Keep its source-supported
+    # cuadra cells and emit their straightened contour instead.
+    "osm_park_232390078": {"trace": True},
     # The Escuela Delia Urbina de Guevara is mapped in OSM as the whole tall
     # manzana it stands on; the school itself is a WIDE building on the block's
     # south-west corner. `rect` is in fractions of the fitted rect (u east,

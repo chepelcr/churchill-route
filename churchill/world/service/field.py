@@ -475,7 +475,8 @@ class FieldService:
         # RECTANGLE in the manzana's frame (four corners), which is what a piece
         # of a cuadra actually is; a raster trace of the mapper's outline is not,
         # and 257 of 377 came out as blobs of 8+ vertices. The hand-authored
-        # cuadras still trace, because they are cut from the block itself.
+        # cuadras still trace because they are cut from the block itself, but
+        # outline_poly straightens their one-cell stairs into direct diagonals.
         if poly is None:
             poly = outline_poly(keep_cells, GRID_CELL) if keep_cells else None
         if not poly:
@@ -853,6 +854,13 @@ class FieldService:
                        f"(street, sand or water)"))
                 skipped["already-claimed" if claimed else "not-on-a-cuadra"] += 1
                 continue
+            pid = f"osm_{site['kind']}_{site['id']}"
+            # Most mapped sites are regularised into safe rectangles. A rare
+            # site whose real identity is its angled cuadra edge can opt into
+            # the source-supported raster contour; gameplay still uses those
+            # exact cells and outline_poly only straightens their vector edge.
+            decor = dict(SITE_DECOR.get(pid, {}))
+            trace = bool(decor.pop("trace", False))
             # THE PARCEL IS A RECTANGLE IN THE MANZANA'S FRAME. `own` is the
             # mapper's outline clipped to real ground, which wanders; a piece of
             # a cuadra does not. Fit the rect first, then everything after works
@@ -862,12 +870,15 @@ class FieldService:
             ang = self.streets.angle_at(
                 sum(c for c, _ in own) / len(own) * cell,
                 sum(r for _, r in own) / len(own) * cell)
-            rect = fit_block_rect(own, ang, cell)
-            own = rect_cells(own, rect, ang, cell) if rect else set()
+            if trace:
+                own = _largest_part(own)
+            else:
+                rect = fit_block_rect(own, ang, cell)
+                own = rect_cells(own, rect, ang, cell) if rect else set()
             if len(own) < self.SITE_MIN_CELLS:
                 skipped["too-thin"] += 1
                 log("site", f"skip {site['id']} {site['kind']} "
-                    f"{(site['name'] or '—')[:34]}: no rectangle fits its ground")
+                    f"{(site['name'] or '—')[:34]}: no drawable ground fits")
                 continue
             # An acera exists where there is a street: a building plot pulls back
             # the full sidewalk, an open field only far enough to keep its white
@@ -901,7 +912,7 @@ class FieldService:
                 candidate_poly = rect_poly(krect, ang) if krect else None
                 hard_spill = (poly_surface_count(
                     candidate_poly, raster, HARD_STREET_CLASSES)
-                    if candidate_poly and site["kind"] != "fuel" else 0)
+                    if candidate_poly and site["kind"] != "fuel" and not trace else 0)
                 if hard_spill:
                     # Stay inside THIS mapped site's source-supported LAND.
                     # Its hard-surface holes are what prevent the maximum
@@ -951,7 +962,6 @@ class FieldService:
                 log("site", f"{site['id']} {(site['name'] or '—')[:34]}: acera ring "
                     f"{used} cells, not {deep} — a {len(own)}-cell plot has no room "
                     f"for it (kept {len(keep)})")
-            pid = f"osm_{site['kind']}_{site['id']}"
             part = {"id": pid, "use": use,
                     "name": site["name"] or self.SITE_FALLBACK_NAME[site["kind"]],
                     "sport": site.get("sport"),
@@ -960,7 +970,6 @@ class FieldService:
             # Anything a real place has that OSM does not record — the old round
             # kiosco in the middle of Parque Victoria — is declared by parcel id
             # in content.SITE_DECOR and rides through untouched.
-            decor = dict(SITE_DECOR.get(pid, {}))
             # `rect`: (u0, u1, v0, v1) as FRACTIONS of the fitted rect — the one
             # override that shapes the parcel rather than decorating it. The
             # mapper's outline is the ground a place is ON, which is not always
@@ -983,18 +992,26 @@ class FieldService:
             # Ownership, collision and any open-field surface stamp follow the
             # accepted rectangle too. Keeping the pre-fit `own` here would fix
             # the drawing while leaving an invisible drivable/occupied spill.
-            accepted_poly = rect_poly(krect, ang)
-            parcel_keep = cells_in_poly(keep, accepted_poly, cell)
-            # The polygon is the eroded building/pitch footprint, but ownership
-            # includes the local frontage ring. Open fields stamp that ring
-            # drivable so the acera is an entrance, not a wall; grow only within
-            # this site's un-eroded source cells, never back across a road.
-            parcel_own = grow_cells(
-                cells_in_poly(own, accepted_poly, cell), own, used)
+            if trace:
+                accepted_poly = outline_poly(keep, cell)
+                parcel_keep = keep
+                parcel_own = grow_cells(keep, own, used)
+                log("site", f"{site['id']} "
+                    f"{(site['name'] or '—')[:34]}: preserving angled cuadra contour "
+                    f"({len(accepted_poly) // 2} vertices)")
+            else:
+                accepted_poly = rect_poly(krect, ang)
+                parcel_keep = cells_in_poly(keep, accepted_poly, cell)
+                # The polygon is the eroded building/pitch footprint, but
+                # ownership includes the local frontage ring. Open fields stamp
+                # that ring drivable so the acera is an entrance, not a wall;
+                # grow only inside this site's source cells, never across a road.
+                parcel_own = grow_cells(
+                    cells_in_poly(own, accepted_poly, cell), own, used)
             if not parcel_own or len(parcel_keep) < self.SITE_MIN_CELLS:
                 skipped["too-thin"] += 1
                 log("site", f"skip {site['id']} {site['kind']} "
-                    f"{(site['name'] or '—')[:34]}: inscribed rectangle has no ground")
+                    f"{(site['name'] or '—')[:34]}: accepted shape has no ground")
                 continue
             cuads = {(c * cell // CUAD, r * cell // CUAD) for (c, r) in parcel_own}
             # Does this site OWN its cuadra, or is it a piece of one? A park

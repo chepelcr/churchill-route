@@ -209,13 +209,16 @@ ask the user for a geo (`ll`) anchor.
    plus a `greens` entry `{"pts":…, "type":"stadium"}` for the grass fill, plus
    a bbox into `manifest["stadiums"]` (array → `W.STADIUMS`).
 
-**Green cuadras (parks / plaza / pool / stadium)**: emitted as ONE raster-traced
-outline polygon per block in `manifest.greens` (`_green_poly` → `_block_raster_cells`
-+ `_outline_poly`), painted in `drawLandBase` (first ground paint, global — no
-sand flash while tiles stream). Colour + dilation by type in `canvas2d.js`
-`GREEN_COLORS` / `drawGreenPoly`: parks dilate 28px (tuck under the acera band);
-`pool`/`stadium` use `m=0` (draw the EXACT cuad edge). To suppress a block's
-buildings, set `blocks[bi]["green"]=True` (excluded from `synth_buildings`).
+**Green cuadras (parks / plaza / pool / stadium)**: emitted as ONE outline
+polygon per block in `manifest.greens` (`_green_poly` →
+`_block_raster_cells` + `_outline_poly`). `outline_polys` first traces the exact
+cell boundary, then straightens one-cell stair runs into their direct diagonal;
+the cells remain authoritative for collision and ownership. It is painted in
+`drawLandBase` (first ground paint, global — no sand flash while tiles stream).
+Colour + dilation by type in `canvas2d.js` `GREEN_COLORS` / `drawGreenPoly`:
+parks dilate 28px (tuck under the acera band); `pool`/`stadium` use `m=0`. To
+suppress a block's buildings, set `blocks[bi]["green"]=True` (excluded from
+`synth_buildings`).
 
 **Coins + NPCs inside a drivable area**: coins (`maintainArcadeCoins`) spawn on
 any class-3/5 cell near the camera, so a `CLS_ROAD` pitch gets them for free in
@@ -296,6 +299,12 @@ becomes a parcel on the cuadra under it. The parts that are load-bearing:
 - A `worship`/`school`/`kinder`/`campus` parcel DRAWS the building, so its OSM
   footprints are cleared (named footprints bypass `occ`), and its duplicate POI
   dot is dropped — but a park keeps its dot, since parks carry no name pill.
+- `SITE_DECOR[parcel_id]["trace"]` is the narrow exception for a place whose
+  identity is the angled cuadra contour rather than a rectangular lot. It keeps
+  the largest source-supported ground component, applies the normal directional
+  acera erosion, and emits `outline_poly`; Parque Mora y Cañas uses it so its
+  west corner and diagonal north edge survive without restoring the old
+  hard-surface spill.
 
 **Lay a whole cuadra out by hand** (the civic block: `centro` in `build_stage`).
 Two things have already happened to a manzana by the time `place_parcels` runs,
@@ -412,17 +421,19 @@ margin, and tanks also keep `MARINE_POOL_MIN_SPACING_PX` between centres.
 `finish.verify` mirrors the renderer's multi-ring even-odd membership and
 rechecks all rules after the full build.
 
-**Cuadra corners stay SQUARE and exact.** The raster and emitted parcel/stadium
-polygons already contain the complete mapped space. Do not cut their vertices
-with a render-only rounded path, and do not overlay derived asphalt fillets at
-junctions: only some street classes/junction shapes can be derived, so that
-approach produced a mix of round and square corners and painted roadway over
-solid collision cells. `paintParcels` and `paintStadiumCuadras` therefore use
-`flatPath(..., true)`, matching the minimap and the surface grid. Road endpoint
-discs still weld adjoining centreline pieces; they are inscribed in the
-junction and do not remove cuadra ground. The caño remains renderer-only: a
-darker band stroked after the casing and before the asphalt, with butt caps so
-it stops square at the intersection mouth.
+**Cuadra corners stay SQUARE; diagonal runs stay direct.** The raster cells
+contain the complete mapped space and remain authoritative. `outline_polys`
+may simplify only within one raster cell, joining the endpoints of a 4 px stair
+run into the diagonal it represents; it falls back to the exact trace if a tiny
+ring would collapse. Do not cut vertices with a render-only rounded path, and
+do not overlay derived asphalt fillets at junctions: only some street
+classes/junction shapes can be derived, so that approach produced a mix of
+round and square corners and painted roadway over solid collision cells.
+`paintParcels` and `paintStadiumCuadras` use `flatPath(..., true)` with the
+emitted vector. Road endpoint discs still weld adjoining centreline pieces;
+they are inscribed in the junction and do not remove cuadra ground. The caño
+remains renderer-only: a darker band stroked after the casing and before the
+asphalt, with butt caps so it stops square at the intersection mouth.
 
 **Collision-vs-visual alignment gotchas** (piers, medians): `raster_stamp_polyline`
 adds a round cap of radius `w/2` PAST the last point — shorten the polyline at a

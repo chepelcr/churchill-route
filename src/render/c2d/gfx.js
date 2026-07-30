@@ -155,9 +155,9 @@ function areaLabel(x0, y0, x1, y1, text, fg, bg) {
 // and spilled over their own kerb.
 //
 // The fallback is for shapes with no emitted frame — the hand-authored cuadras,
-// whose polygons are raster-traced. It fits the polygon's extent along `ang`,
-// which is honest; what it must never do is fit the ANGLE from those vertices
-// (4 px staircase steps: a square-ish parcel lands on the contrary diagonal).
+// whose polygons are raster-traced and vector-straightened. It fits the
+// polygon's extent along `ang`, which is honest; what it must never do is fit
+// the ANGLE from those vertices (a square-ish parcel is still degenerate).
 function parcelFrame(P) {
   if (P._pframe) return P._pframe;
   const ang = P.ang || 0;

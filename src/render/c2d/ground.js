@@ -83,8 +83,8 @@ function drawPlazaGreen(pz, view) {
   ctx.fillRect(px, py, pw, ph);
 }
 
-// Park/plaza lawn: one or more outline rings per green cuadra (raster-traced in
-// the build, so they follow the acera inner edge and preserve parcel holes).
+// Park/plaza lawn: one or more outline rings per green cuadra (raster-traced,
+// then vector-straightened in the build so diagonal acera edges are direct).
 // The same-colour stroke dilates ordinary greens outward so the lawn tucks a
 // few px UNDER the sidewalk band (painted later, so it wins) instead of leaving
 // a bare sand strip at the seam, and rounds off the 4 px raster steps.

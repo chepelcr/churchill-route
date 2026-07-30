@@ -8,11 +8,11 @@ the same three questions, so they live here:
     block_raster_cells() the LAND inside a block's cuad cells (no acera ring)
     outline_poly[s]()   those cells back as drawable polygon ring(s)
 
-The polygon is raster-TRACED, not fitted: it follows the manzana's real angles,
-including a diagonal one, which is the whole reason the estadios and parcels
-read as part of the city instead of boxes dropped on it. It also means the
-vertices are 4 px staircase steps — never fit an angle from them (see
-util.geometry.principal_axis).
+The polygon starts as an exact raster trace, then its one-cell stair steps are
+straightened into the diagonal they describe.  The raster cells remain the
+source of truth for collision and ownership; the emitted vector is the clean
+map line, like the vector streets and aceras.  Never fit an angle from the
+traced vertices (see util.geometry.principal_axis).
 """
 from collections import defaultdict, deque
 
@@ -21,6 +21,25 @@ from ..config import (
     SLIVER_MAX_CUADS,
 )
 from ..logging import log
+from ..util.geometry import dp_simplify
+
+
+def _straighten_raster_ring(flat, cell_px):
+    """Replace a raster boundary's one-cell stairs with direct line segments.
+
+    The cell trace is still exact internally.  This only regularises the
+    drawable vector: Douglas-Peucker at one raster cell joins the endpoints of
+    a diagonal run while preserving corners and larger notches.  Tiny rings can
+    collapse to fewer than three vertices at that tolerance, so those retain
+    their exact square trace.
+    """
+    points = list(zip(flat[0::2], flat[1::2]))
+    if len(points) <= 4:
+        return flat
+    simplified = dp_simplify(points + [points[0]], cell_px)[:-1]
+    if len(simplified) < 3:
+        return flat
+    return [coord for point in simplified for coord in point]
 
 
 def cuadra_cells(raster, px0, py0, px1, py1, classes, clip=None):
@@ -168,11 +187,11 @@ def outline_polys(cells, cell_px):
             - simple[(i + 1) % len(simple)][0] * simple[i][1]
             for i in range(len(simple))
         )
-        flat = [
+        flat = _straighten_raster_ring([
             coord * cell_px
             for point in simple
             for coord in point
-        ]
+        ], cell_px)
         traced.append((abs(area2), flat))
 
     traced.sort(key=lambda item: (-item[0], item[1]))

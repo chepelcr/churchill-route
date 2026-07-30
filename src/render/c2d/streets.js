@@ -25,7 +25,9 @@ import { ACERA_PX, aabbInView, ctx, drawParada, flatAABB, flatMultiPath, flatPat
 function fieldFrame(S) {
   if (S._frame) return S._frame;
   let { cx, cy, ang, hw, hh } = parcelFrame(S);
-  // long axis = the pitch's length; a quarter turn keeps the block's angle
+  // Long axis = the scoring axis. Lito Pérez and Las Playitas therefore put
+  // their goals at the west/east centres; El Carmen's taller parcel takes this
+  // quarter turn and puts its smaller goals at the north/south centres.
   if (hh > hw) { ang += Math.PI / 2; const t = hw; hw = hh; hh = t; }
   return (S._frame = { cx, cy, ang, hw, hh });
 }
@@ -84,6 +86,7 @@ function paintField(path, F, sport) {
   ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.fillStyle = MARK;
   ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(0, hh); ctx.stroke();       // halfway line
   ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
+  paintGoals(hw, hh);
   if (hw >= 80 && hh >= 55) {
     ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();          // centre spot
     const bw = Math.min(hw * 0.28, hh * 0.9);              // penalty area depth
@@ -98,6 +101,28 @@ function paintField(path, F, sport) {
   }
   ctx.restore();
   ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.stroke(path);   // touchline = kerb = the cuadra
+}
+
+// Goal frames sit at the centre of the two scoring ends. Their mouth and depth
+// come from the pitch's short side, so El Carmen gets recognisably smaller
+// porterías than the two full-size stadiums instead of a copied fixed graphic.
+// The frame opens toward the touchline and stays inside the field clip.
+function paintGoals(hw, hh) {
+  const mouth = Math.max(5, Math.min(18, hh * 0.24));
+  const depth = Math.max(3, Math.min(8, mouth * 0.42));
+  ctx.strokeStyle = "rgba(255,255,255,0.92)";
+  ctx.lineWidth = Math.max(1.4, Math.min(2.4, hh * 0.035));
+  ctx.lineJoin = "miter";
+  for (const side of [-1, 1]) {
+    const x = side * hw;
+    const inner = x - side * depth;
+    ctx.beginPath();
+    ctx.moveTo(x, -mouth);
+    ctx.lineTo(inner, -mouth);
+    ctx.lineTo(inner, mouth);
+    ctx.lineTo(x, mouth);
+    ctx.stroke();
+  }
 }
 
 // A cancha multiuso: the key at each end, the centre circle and the two hoops,
@@ -159,9 +184,9 @@ function paintParcels(view) {
     // the footprint IS a building. Either way the ground is not ours to paint,
     // only the sponsor slot on top of it.
     if (P.whole || P.built) continue;
-    // Preserve the exact emitted polygon. Rounding only parcels (not ordinary
-    // cuadras) cut visible space from their corners and made the world layer
-    // disagree with both the minimap and the square collision raster.
+    // Preserve the emitted polygon. Raster-owned parcels are vector-straightened
+    // by the build (their exact cells still own collision and occupancy), so a
+    // diagonal manzana reads as one direct edge instead of 4 px stair steps.
     const hasPolys = P.polys && P.polys.length;
     const path = P._path || (P._path = hasPolys ? flatMultiPath(P.polys) : flatPath(P.poly, true));
     ctx.fillStyle = PARCEL_FILL[P.use] || "#b9b2a0";

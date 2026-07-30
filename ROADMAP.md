@@ -4,6 +4,20 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
 and the three game modes are live; the items below are what remains.
 
+## ✅ Parcelas diagonales + porterías centradas (2026-07-29)
+
+- [x] Los contornos derivados del ráster conservan sus celdas exactas para
+      colisión/ocupación, pero el vector emitido une directamente los extremos
+      de una diagonal. Catedral, parques y estructuras cívicas ya no muestran
+      escaleritas de 4 px.
+- [x] Parque Mora y Cañas conserva el contorno seguro de su cuadra en vez del
+      rectángulo inscrito: vuelve a la esquina oeste y sigue el borde diagonal
+      norte sin pintar sobre la calle.
+- [x] Porterías centradas en los extremos oeste/este de Lito Pérez y Las
+      Playitas; Plaza Deportes El Carmen usa norte/sur. Boca y fondo escalan con
+      el lado corto de cada cancha, así que la plaza chica lleva porterías
+      proporcionalmente menores.
+
 ## ✅ La ciudad real: parques, escuelas e iglesias desde OSM (2026-07-27)
 
 Publicación: [La ciudad de verdad](docs/changelog/2026-07-27-parcelas.md).

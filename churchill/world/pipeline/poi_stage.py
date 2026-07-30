@@ -420,11 +420,11 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
             n_nudge += 1
     log("poi", f"{n_nudge} building landmarks nudged off the acera fringe")
 
-    # A green block's ground is emitted as ONE raster-resolution outline
-    # polygon (4 px cells, so it follows the acera inner edge — curves and
-    # diagonal streets included). The renderer fills it and dilates it a few px
-    # under the painted acera band, so lawns meet the sidewalks with no sand
-    # slivers and none of the blocky cuadrícula steps of the old rect fill.
+    # A green block's ground is emitted as ONE outline from the 4 px raster
+    # cells, straightened within one cell so diagonals become direct lines while
+    # still following the acera inner edge. The renderer fills it and dilates it
+    # a few px under the painted acera band, so lawns meet the sidewalks with no
+    # sand slivers and none of the old blocky steps.
     _block_raster_cells = lambda cells: block_raster_cells(raster, cells, CUAD_CELLS, CLS_LAND)
     _outline_poly = lambda cells: outline_poly(cells, GRID_CELL)
 

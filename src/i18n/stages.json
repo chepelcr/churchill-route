@@ -1,0 +1,32 @@
+{
+  "en": {
+    "s1": {
+      "name": "The Lighthouse",
+      "brief": "Deliver the first order of the day. Cruise ships are in — the gringos want to try the famous Churchill."
+    },
+    "s2": {
+      "name": "Paseo de los Turistas",
+      "brief": "The boardwalk is packed. Cross the promenade dodging tourists and carnival troupes."
+    },
+    "s3": {
+      "name": "Market & Cathedral",
+      "brief": "Downtown streets are narrow and traffic is unforgiving. Watch the cats — and Father Ramírez doesn't like waiting."
+    },
+    "s4": {
+      "name": "Sunset at Las Playitas",
+      "brief": "The sun sets over the Yacht Club. Open the throttle on Route 17 — but careful, the football team is out training."
+    },
+    "s5": {
+      "name": "Storm at El Cocal",
+      "brief": "The downpour hit and the asphalt is slick. Reach Route 17 before the storm gets worse."
+    },
+    "s6": {
+      "name": "Bridge · Mata de Limón",
+      "brief": "Cross the suspension bridge over the estuary. Reach the Mata de Limón kiosk and the Leda seafood house."
+    },
+    "s7": {
+      "name": "Caldera · Finale",
+      "brief": "Down Route 27 to the Port of Caldera. The sun is coming up — one last delivery and the shift is done."
+    }
+  }
+}

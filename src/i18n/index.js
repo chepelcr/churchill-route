@@ -1,497 +1,80 @@
-// i18n — es/en string table + a tiny subscribable language store.
-// `t("key", {vars})` everywhere a player-facing string is produced (React UI,
-// game storyTips/floats, canvas barrier signs). React components re-render on
-// language change via useT() (useSyncExternalStore). Customer flavor "line"
-// quotes intentionally stay in Spanish — they're the port's voice — but every
-// instructional string is translated.
+// i18n — the string catalogs are DATA (`src/i18n/<lang>.json`); this module is
+// only the registry, the language store and the lookup. `t("key", {vars})`
+// everywhere a player-facing string is produced (React UI, game storyTips/
+// floats, canvas barrier signs). React components re-render on language change
+// via useT() (useSyncExternalStore). Customer flavor "line" quotes intentionally
+// stay in Spanish — they're the port's voice — but every instructional string is
+// translated.
+//
+// ADDING A LANGUAGE IS A DATA OPERATION: drop `xx.json` beside this file, import
+// it into CATALOG, and add one LANGUAGES entry. Nothing else in the game
+// changes. Stage names and briefs live in the generated world data (Spanish);
+// `stages.json` holds the per-language overlay keyed by stage id.
 import { useSyncExternalStore } from "react";
+import es from "./es.json";
+import en from "./en.json";
+import stageOverlay from "./stages.json";
 
 const LANG_KEY = "churchill_lang_v1";
 
-const STR = {
-  es: {
-    // --- title ---
-    "title.pill": "PUNTARENAS · COSTA RICA · ARCADE 2026",
-    "title.sub": "¡PURA VIDA!",
-    "title.how.title": "CÓMO SE JUEGA",
-    "title.how.body": "Sos repartidor de Churchills en El Puerto. Recogé en el kiosco naranja y blanco del Paseo de los Turistas y llegá al cliente antes que el hielo se derrita. Hacé drift, esquivá gaviotas y recorré del Faro a Las Playitas.",
-    "title.apk": "Descargar para Android",
-    "mode.story": "Historia",
-    "mode.story.tag": "7 niveles, de El Faro hasta el puerto de Caldera.",
-    "mode.explore": "Recorrer",
-    "mode.explore.tag": "Mundo abierto. Completá niveles para abrir nuevos distritos.",
-    "mode.arcade": "Arcade",
-    "mode.arcade.tag": "3 minutos, península libre, combo a tope.",
-    "mode.tutorial": "Tutorial",
-    "mode.tutorial.tag": "Aprendé a manejar y a entregar en 2 minutos.",
-    "title.hint.touch": "Un dedo en la pantalla: el carro va hacia tu dedo · lejos = rápido, bien lejos = turbo · freno = drift",
-    "title.hint.drive": "manejar",
-    "title.hint.drift": "drift",
-    "title.hint.turbo": "turbo",
-    "title.hint.pause": "pausa",
-    "title.hint.pad": "controller / touch OK",
-    // --- HUD ---
-    "hud.score": "Puntos",
-    "hud.combo": "Combo",
-    "hud.mode": "Modo",
-    "hud.explore": "RECORRER",
-    "hud.tutorial": "TUTORIAL",
-    "hud.time": "Tiempo",
-    "hud.level": "Nivel {n}",
-    "hud.deliveries": "Entregas",
-    "hud.enter": "ENTRÁS A",
-    "hud.ice": "% hielo",
-    "quip.cold": "Helado todavía — pura vida.",
-    "quip.warm": "Empieza a sudar la copa…",
-    "quip.hot": "¡La leche se está aguando!",
-    "quip.melt": "¡Acelerá! ¡Se derrite!",
-    // --- pause ---
-    "pause.title": "PAUSA",
-    "pause.body": "Tomate un respiro. El puerto no se va a ningún lado.",
-    "pause.resume": "▸ Continuar",
-    "pause.restart": "↻ Reiniciar nivel",
-    "pause.settings": "Ajustes",
-    "pause.quit": "Salir al menú",
-    // --- results ---
-    "results.title": "RESULTADOS",
-    "results.win": "¡NIVEL {n} COMPLETADO!",
-    "results.lose": "SE ACABÓ EL TIEMPO",
-    "results.tutorial": "¡TUTORIAL COMPLETADO!",
-    "results.score": "Puntaje",
-    "results.deliveries": "Entregas",
-    "results.perfect": "Perfectas",
-    "results.maxCombo": "Combo máximo",
-    "results.rank": "Ranking",
-    "results.next": "▸ Siguiente nivel",
-    "results.again": "↻ Repetir",
-    "results.menu": "Menú",
-    "results.continueAd": "+60s",
-    "rank.s": "S — LEYENDA PORTEÑA",
-    "rank.a": "A — Maestro Churchillero",
-    "rank.b": "B — Repartidor del Paseo",
-    "rank.c": "C — Aprendiz del kiosco",
-    "rank.d": "D — Se te derritió todo",
-    // --- stage select / brief ---
-    "select.pill": "MODO HISTORIA · ELEGÍ NIVEL",
-    "select.level": "Nivel {n}",
-    "select.of": "Nivel {n} / {total}",
-    "select.done": "✓ COMPLETADO",
-    "select.locked": "BLOQUEADO",
-    "select.soon": "PRÓXIMAMENTE",
-    "select.lockedBrief": "Completá el nivel {n} para desbloquear este.",
-    "select.soonBrief": "Este nivel llega en una próxima actualización.",
-    "select.deliveries": "entregas",
-    "select.time": "tiempo",
-    "select.play": "▸ Jugar",
-    "select.playLocked": "Bloqueado",
-    "select.playSoon": "Próximamente",
-    "select.yes": "Sí",
-    "select.no": "No",
-    "select.back": "← Menú",
-    "brief.level": "NIVEL {n}",
-    "brief.go": "▸ ¡Vamos!",
-    "weather.sunny": "Soleado",
-    "weather.sunset": "Atardecer",
-    "weather.storm": "Tormenta",
-    "weather.night": "Noche",
-    // --- settings ---
-    "settings.title": "AJUSTES",
-    "settings.language": "Idioma",
-    "settings.volume": "Volumen",
-    "settings.speed": "Velocidad del carro",
-    "settings.zoom": "Zoom de la cámara",
-    "settings.poiNames": "Nombres de negocios",
-    "settings.poiNames.desc": "Mostrar los rótulos reales sobre el mapa",
-    "settings.group.gameplay": "Juego",
-    "settings.group.app": "Aplicación",
-    "settings.group.account": "Cuenta",
-    "tuning.later": "Podés cambiar esto cuando querás en Ajustes.",
-    "tutbrief.kicker": "ANTES DE ARRANCAR",
-    "tutbrief.title": "¿Cómo querés manejar?",
-    "tutbrief.body": "Ajustá qué tan rápido va el carro y cuánta ciudad ves. Después te enseñamos los controles.",
-    "modebrief.explore.kicker": "MODO",
-    "modebrief.explore.title": "Recorrer",
-    "modebrief.explore.body": "Mundo abierto, sin reloj. Recogé churchills en los kioscos y entregalos por todo el puerto. Completá niveles de Historia para abrir nuevos distritos.",
-    "modebrief.explore.rule1": "Sin límite de tiempo",
-    "modebrief.explore.rule2": "Entregas libres",
-    "modebrief.arcade.kicker": "MODO",
-    "modebrief.arcade.title": "Arcade",
-    "modebrief.arcade.body": "Tres minutos en la península. Encadená entregas sin que se te derrita el churchill para subir el combo y hacer el puntaje más alto.",
-    "modebrief.arcade.rule1": "3 minutos",
-    "modebrief.arcade.rule2": "Combo a tope",
-    "settings.muted": "Silenciado",
-    "settings.removeAds": "Quitar anuncios",
-    "settings.removeAds.desc": "Pago único. Sin anuncios para siempre.",
-    "settings.removeAds.owned": "✓ Anuncios eliminados — ¡gracias!",
-    "settings.removeAds.web": "Disponible en la app de Android.",
-    "settings.removeAds.play": "Se activa cuando la app esté instalada desde Google Play.",
-    "settings.buy": "Comprar",
-    "settings.restore": "Restaurar compras",
-    "settings.tutorial": "Volver a jugar el tutorial",
-    "settings.reset": "Borrar progreso",
-    "settings.resetQ": "¿Seguro? Se pierden niveles y récords.",
-    "settings.back": "← Volver",
-    "settings.credits": "Hecho en Costa Rica · {version}",
-    "settings.privacy": "Política de privacidad",
-    // --- game tips (storyTips / floats) ---
-    "tip.arcade": "Tres minutos y todo el puerto. Si no dejás de entregar, el combo no se cae.",
-    "tip.explore": "Tenés {n} zonas abiertas para recorrer. Completá niveles de Historia para abrir el resto.",
-    "tip.deliverTo": "Llevale a {name}.",
-    "tip.delivered": "¡Pura vida! Volvé al kiosco.",
-    "tip.melted": "Volvé al kiosco por otro Churchill.",
-    "tip.lockedDistrict": "{district} sigue cerrado — completá el Nivel {n} para pasar.",
-    "tip.mvpWall": "Hasta aquí llega el MVP — El Cocal y el resto del puerto llegan en una próxima actualización.",
-    "float.pickup": "+ CHURCHILL",
-    "float.ola": "¡LA OLA! MONEDAS EN LA CANCHA",
-    "float.melted": "¡SE DERRITIÓ!",
-    "float.perfect": "¡PERFECTO!",
-    "float.unlocked": "¡{district} DESBLOQUEADO!",
-    // --- canvas signs ---
-    "sign.blocked": "BLOQUEADO",
-    "sign.level": "NIVEL {n}",
-    "sign.soon": "PRÓXIMAMENTE",
-    // --- tutorial ---
-    "tut.title": "TUTORIAL",
-    "tut.step": "Paso {n}/{total}",
-    "tut.steer.touch": "Mantené UN dedo en la pantalla: el carro va hacia tu dedo. Movelo alrededor y da una vuelta.",
-    "tut.steer.keys": "Manejá con WASD o las flechas. Da una vuelta.",
-    "tut.speed.touch": "La distancia es la velocidad: dedo cerca del carro = despacio, lejos = a fondo.",
-    "tut.speed.keys": "Mantené W para acelerar a fondo.",
-    "tut.turbo.touch": "¡TURBO! Poné el dedo BIEN LEJOS del carro (hacia adelante) y mantenelo.",
-    "tut.turbo.keys": "¡TURBO! Mantené X mientras acelerás.",
-    "tut.brake.touch": "Con velocidad, tocá el botón de la MANO con el otro dedo: es un alto en seco. Soltá el dedo guía y el carro se queda.",
-    "tut.brake.keys": "Con velocidad, mantené ESPACIO: es un alto en seco, el carro se detiene casi de una.",
-    "tut.pickup": "Andá al kiosco naranja y blanco (seguí la flecha) y frená al lado para recoger un Churchill.",
-    "tut.deliver": "¡Rápido! Llevalo al cliente que saluda antes de que se derrita. La barra de abajo es el hielo.",
-    "tut.done": "¡Eso es todo! Puntos por entregar rápido, combo por no fallar. ¡A recorrer el puerto!",
-    // --- boot / first-run lore intro ---
-    "boot.loading": "CARGANDO EL PUERTO...",
-    "intro.1": "Puntarenas, la Perla del Pacífico. Cuna del churchill: granizado con sirope, leche condensada y helado. Nadie lo prepara como los kioscos del Paseo.",
-    "intro.2": "Pero hay un problema: el sol porteño no perdona. Cada churchill empieza a derretirse apenas sale del kiosco... y los clientes lo quieren PERFECTO.",
-    "intro.3": "Ahí entrás vos. Subite, recorré el puerto y entregá churchills antes de que se derritan. De El Faro hasta Caldera, la ruta es tuya.",
-    "intro.support": "La Ruta del Churchill es gratis y hecha con amor porteño — si algún día querés apoyar el proyecto, el ❤ del menú te espera.",
-    "intro.skip": "Saltar intro",
-    "intro.next": "Siguiente",
-    "intro.go": "¡Aprender a manejar!",
-    // --- shop / economy ---
-    "shop.title": "TIENDA",
-    "shop.tab.vehicles": "Vehículos",
-    "shop.tab.upgrades": "Mejoras",
-    "shop.tab.boosts": "Boosts",
-    "shop.tab.colors": "Colores",
-    "shop.tab.packs": "Monedas",
-    "shop.buy": "Comprar",
-    "shop.confirmTitle": "¿Confirmar compra?",
-    "shop.confirmYes": "Comprar",
-    "shop.confirmNo": "Cancelar",
-    "shop.owned": "✓ Tuyo",
-    "shop.free": "Gratis",
-    "shop.equip": "Equipar",
-    "shop.equipped": "✓ Equipado",
-    "shop.stock": "Original",
-    "shop.level": "Nivel {n}/{max}",
-    "shop.max": "MÁXIMO",
-    "shop.needCoins": "Te faltan {n}",
-    "shop.have": "Tenés {n}",
-    "shop.packs": "Paquetes de monedas",
-    "shop.packsWeb": "Los paquetes se compran en la app de Google Play.",
-    "shop.packsPlay": "Se activan cuando la app esté instalada desde Google Play.",
-    "shop.cooler.name": "Cooler pro",
-    "shop.cooler.desc": "El churchill se derrite más lento",
-    "shop.turbotank.name": "Turbo tank",
-    "shop.turbotank.desc": "El turbo alcanza más velocidad",
-    "shop.icepack.name": "Ice pack",
-    "shop.icepack.desc": "30s sin derretir (1 corrida)",
-    "shop.headstart.name": "Head start",
-    "shop.headstart.desc": "5s de turbo gratis al arrancar",
-    "veh.speed": "Velocidad",
-    "veh.accel": "Arranque",
-    "veh.grip": "Agarre",
-    "veh.ice": "Hielo",
-    "results.coins": "Monedas ganadas",
-    "results.doubleAd": "×2",
-    "picker.title": "ELEGÍ TU VEHÍCULO",
-    "picker.boosts": "Boosts para esta corrida ({n} disponibles)",
-    "picker.go": "▸ ¡Vamos!",
-    "picker.locked": "Conseguilo en la Tienda",
-    "picker.color": "Color",
-    // --- supporters / greetings ---
-    "sup.title": "AGRADECIMIENTOS",
-    "sup.body": "Estas personas y negocios hacen posible La Ruta del Churchill.",
-    "sup.empty": "Sé la primera persona en apoyar el proyecto.",
-    "sup.kofi": "Apoyá el proyecto",
-    "sup.tier1": "Aprendiz Churchillero",
-    "sup.tier2": "Habitante del Puerto",
-    "sup.tier3": "Inversor de la Península",
-    "sup.tier4": "Leyenda Porteña",
-    "settings.supporters": "Agradecimientos",
-    // --- misc ---
-    "key.space": "ESPACIO",
-    "ios.hint": "En iPhone: Compartir → \"Agregar a pantalla de inicio\" para jugar a pantalla completa.",
-    "rotate.body": "Girá el teléfono — se juega en horizontal",
-    "meters": "{n} m",
-  },
-  en: {
-    "title.pill": "PUNTARENAS · COSTA RICA · ARCADE 2026",
-    "title.sub": "PURA VIDA!",
-    "title.how.title": "HOW TO PLAY",
-    "title.how.body": "You deliver Churchills around the port. Pick up at the orange-and-white kiosk on the Paseo de los Turistas and reach the customer before the ice melts. Drift, dodge seagulls and ride from the lighthouse to Las Playitas.",
-    "title.apk": "Download for Android",
-    "mode.story": "Story",
-    "mode.story.tag": "7 levels, from El Faro to the port of Caldera.",
-    "mode.explore": "Free Roam",
-    "mode.explore.tag": "Open world. Clear story levels to unlock new districts.",
-    "mode.arcade": "Arcade",
-    "mode.arcade.tag": "3 minutes, the whole peninsula, max combo.",
-    "mode.tutorial": "Tutorial",
-    "mode.tutorial.tag": "Learn to drive and deliver in 2 minutes.",
-    "title.hint.touch": "One finger on screen: the car drives toward it · far = fast, very far = turbo · brake = drift",
-    "title.hint.drive": "drive",
-    "title.hint.drift": "drift",
-    "title.hint.turbo": "turbo",
-    "title.hint.pause": "pause",
-    "title.hint.pad": "controller / touch OK",
-    "hud.score": "Score",
-    "hud.combo": "Combo",
-    "hud.mode": "Mode",
-    "hud.explore": "FREE ROAM",
-    "hud.tutorial": "TUTORIAL",
-    "hud.time": "Time",
-    "hud.level": "Level {n}",
-    "hud.deliveries": "Deliveries",
-    "hud.enter": "ENTERING",
-    "hud.ice": "% ice",
-    "quip.cold": "Still frozen — pura vida.",
-    "quip.warm": "The cup is starting to sweat…",
-    "quip.hot": "The milk is going watery!",
-    "quip.melt": "Floor it! It's melting!",
-    "pause.title": "PAUSED",
-    "pause.body": "Take a breath. The port isn't going anywhere.",
-    "pause.resume": "▸ Resume",
-    "pause.restart": "↻ Restart level",
-    "pause.settings": "Settings",
-    "pause.quit": "Quit to menu",
-    "results.title": "RESULTS",
-    "results.win": "LEVEL {n} COMPLETE!",
-    "results.lose": "TIME'S UP",
-    "results.tutorial": "TUTORIAL COMPLETE!",
-    "results.score": "Score",
-    "results.deliveries": "Deliveries",
-    "results.perfect": "Perfect",
-    "results.maxCombo": "Max combo",
-    "results.rank": "Rank",
-    "results.next": "▸ Next level",
-    "results.again": "↻ Retry",
-    "results.menu": "Menu",
-    "results.continueAd": "+60s",
-    "rank.s": "S — PORT LEGEND",
-    "rank.a": "A — Churchill Master",
-    "rank.b": "B — Paseo Courier",
-    "rank.c": "C — Kiosk Apprentice",
-    "rank.d": "D — It all melted",
-    "select.pill": "STORY MODE · PICK A LEVEL",
-    "select.level": "Level {n}",
-    "select.of": "Level {n} / {total}",
-    "select.done": "✓ COMPLETE",
-    "select.locked": "LOCKED",
-    "select.soon": "COMING SOON",
-    "select.lockedBrief": "Clear level {n} to unlock this one.",
-    "select.soonBrief": "This level arrives in a future update.",
-    "select.deliveries": "deliveries",
-    "select.time": "time",
-    "select.play": "▸ Play",
-    "select.playLocked": "Locked",
-    "select.playSoon": "Coming soon",
-    "select.yes": "Yes",
-    "select.no": "No",
-    "select.back": "← Menu",
-    "brief.level": "LEVEL {n}",
-    "brief.go": "▸ Let's go!",
-    "weather.sunny": "Sunny",
-    "weather.sunset": "Sunset",
-    "weather.storm": "Storm",
-    "weather.night": "Night",
-    "settings.title": "SETTINGS",
-    "settings.language": "Language",
-    "settings.volume": "Volume",
-    "settings.speed": "Vehicle speed",
-    "settings.zoom": "Camera zoom",
-    "settings.poiNames": "Business names",
-    "settings.poiNames.desc": "Show the real signs over the map",
-    "settings.group.gameplay": "Gameplay",
-    "settings.group.app": "App",
-    "settings.group.account": "Account",
-    "tuning.later": "You can change this any time in Settings.",
-    "tutbrief.kicker": "BEFORE YOU START",
-    "tutbrief.title": "How do you want to drive?",
-    "tutbrief.body": "Set how fast the car goes and how much of the city you see. Then we'll teach you the controls.",
-    "modebrief.explore.kicker": "MODE",
-    "modebrief.explore.title": "Recorrer",
-    "modebrief.explore.body": "Open world, no clock. Pick up churchills at the kiosks and deliver them across the port. Clear Historia levels to unlock new districts.",
-    "modebrief.explore.rule1": "No time limit",
-    "modebrief.explore.rule2": "Free deliveries",
-    "modebrief.arcade.kicker": "MODE",
-    "modebrief.arcade.title": "Arcade",
-    "modebrief.arcade.body": "Three minutes on the peninsula. Chain deliveries before the churchill melts to build your combo and set the high score.",
-    "modebrief.arcade.rule1": "3 minutes",
-    "modebrief.arcade.rule2": "Max combo",
-    "settings.muted": "Muted",
-    "settings.removeAds": "Remove ads",
-    "settings.removeAds.desc": "One-time purchase. No ads, forever.",
-    "settings.removeAds.owned": "✓ Ads removed — thank you!",
-    "settings.removeAds.web": "Available in the Android app.",
-    "settings.removeAds.play": "Activates once the app is installed from Google Play.",
-    "settings.buy": "Buy",
-    "settings.restore": "Restore purchases",
-    "settings.tutorial": "Replay the tutorial",
-    "settings.reset": "Erase progress",
-    "settings.resetQ": "Sure? Levels and records will be lost.",
-    "settings.back": "← Back",
-    "settings.credits": "Made in Costa Rica · {version}",
-    "settings.privacy": "Privacy policy",
-    "tip.arcade": "Three minutes and the whole port. Keep delivering and the combo never drops.",
-    "tip.explore": "You have {n} zones open to roam. Clear story levels to open the rest.",
-    "tip.deliverTo": "Take it to {name}.",
-    "tip.delivered": "Pura vida! Back to the kiosk.",
-    "tip.melted": "Back to the kiosk for another Churchill.",
-    "tip.lockedDistrict": "{district} is still closed — clear Level {n} to pass.",
-    "tip.mvpWall": "The MVP ends here — El Cocal and the rest of the port arrive in a future update.",
-    "float.pickup": "+ CHURCHILL",
-    "float.ola": "THE WAVE! COINS ON THE PITCH",
-    "float.melted": "IT MELTED!",
-    "float.perfect": "PERFECT!",
-    "float.unlocked": "{district} UNLOCKED!",
-    "sign.blocked": "CLOSED",
-    "sign.level": "LEVEL {n}",
-    "sign.soon": "COMING SOON",
-    "tut.title": "TUTORIAL",
-    "tut.step": "Step {n}/{total}",
-    "tut.steer.touch": "Hold ONE finger on the screen: the car drives toward it. Move it around and take a lap.",
-    "tut.steer.keys": "Drive with WASD or the arrow keys. Take a lap.",
-    "tut.speed.touch": "Distance is your throttle: finger near the car = slow, far = full speed.",
-    "tut.speed.keys": "Hold W to go full speed.",
-    "tut.turbo.touch": "TURBO! Hold your finger VERY FAR from the car (ahead of it).",
-    "tut.turbo.keys": "TURBO! Hold X while accelerating.",
-    "tut.brake.touch": "At speed, tap the HAND button with your other finger: it is a hard stop. Let go of the steering finger and the car stays put.",
-    "tut.brake.keys": "At speed, hold SPACE: it is a hard stop, the car kills its momentum almost instantly.",
-    "tut.pickup": "Head to the orange-and-white kiosk (follow the arrow) and stop next to it to pick up a Churchill.",
-    "tut.deliver": "Hurry! Take it to the waving customer before it melts. The bar below is your ice.",
-    "tut.done": "That's it! Points for fast deliveries, combo for not failing. Go explore the port!",
-    "boot.loading": "LOADING THE PORT...",
-    "intro.1": "Puntarenas, the Pearl of the Pacific. Birthplace of the churchill: shaved ice with cola syrup, condensed milk and ice cream. Nobody makes it like the Paseo kiosks.",
-    "intro.2": "One problem: the port sun forgives nothing. Every churchill starts melting the moment it leaves the kiosk... and the customers want it PERFECT.",
-    "intro.3": "That's where you come in. Hop on, ride the port and deliver churchills before they melt. From El Faro to Caldera, the route is yours.",
-    "intro.support": "La Ruta del Churchill is free, made with porteño love — if you ever feel like supporting the project, the ❤ in the menu is waiting.",
-    "intro.skip": "Skip intro",
-    "intro.next": "Next",
-    "intro.go": "Learn to drive!",
-    "shop.title": "SHOP",
-    "shop.tab.vehicles": "Vehicles",
-    "shop.tab.upgrades": "Upgrades",
-    "shop.tab.boosts": "Boosts",
-    "shop.tab.colors": "Colors",
-    "shop.tab.packs": "Coins",
-    "shop.buy": "Buy",
-    "shop.confirmTitle": "Confirm purchase?",
-    "shop.confirmYes": "Buy",
-    "shop.confirmNo": "Cancel",
-    "shop.owned": "✓ Yours",
-    "shop.free": "Free",
-    "shop.equip": "Equip",
-    "shop.equipped": "✓ Equipped",
-    "shop.stock": "Stock",
-    "shop.level": "Level {n}/{max}",
-    "shop.max": "MAXED",
-    "shop.needCoins": "You need {n} more",
-    "shop.have": "You have {n}",
-    "shop.packs": "Coin packs",
-    "shop.packsWeb": "Packs are purchased in the Google Play app.",
-    "shop.packsPlay": "Activates once the app is installed from Google Play.",
-    "shop.cooler.name": "Pro cooler",
-    "shop.cooler.desc": "The churchill melts slower",
-    "shop.turbotank.name": "Turbo tank",
-    "shop.turbotank.desc": "Turbo reaches a higher top speed",
-    "shop.icepack.name": "Ice pack",
-    "shop.icepack.desc": "30s of zero melt (1 run)",
-    "shop.headstart.name": "Head start",
-    "shop.headstart.desc": "5s of free turbo at launch",
-    "veh.speed": "Speed",
-    "veh.accel": "Pickup",
-    "veh.grip": "Grip",
-    "veh.ice": "Ice",
-    "results.coins": "Coins earned",
-    "results.doubleAd": "×2",
-    "picker.title": "PICK YOUR RIDE",
-    "picker.boosts": "Boosts for this run ({n} available)",
-    "picker.go": "▸ Let's go!",
-    "picker.locked": "Get it in the Shop",
-    "picker.color": "Color",
-    "sup.title": "SUPPORTERS",
-    "sup.body": "These people and businesses make La Ruta del Churchill possible.",
-    "sup.empty": "Be the first to support the project.",
-    "sup.kofi": "Support the project",
-    "sup.tier1": "Aprendiz Churchillero",
-    "sup.tier2": "Habitante del Puerto",
-    "sup.tier3": "Inversor de la Península",
-    "sup.tier4": "Leyenda Porteña",
-    "settings.supporters": "Supporters",
-    "key.space": "SPACE",
-    "ios.hint": "On iPhone: Share → \"Add to Home Screen\" to play fullscreen.",
-    "rotate.body": "Rotate your phone — the game is landscape",
-    "meters": "{n} m",
-  },
-};
+// The order here is the order a language picker shows.
+export const LANGUAGES = [
+  { id: "es", label: "Español" },
+  { id: "en", label: "English" },
+];
 
-// Stage names/briefs live in the generated world data (Spanish). English
-// overlay keyed by stage id; Spanish falls through to the manifest strings.
-const STAGE_EN = {
-  s1: { name: "The Lighthouse", brief: "Deliver the first order of the day. Cruise ships are in — the gringos want to try the famous Churchill." },
-  s2: { name: "Paseo de los Turistas", brief: "The boardwalk is packed. Cross the promenade dodging tourists and carnival troupes." },
-  s3: { name: "Market & Cathedral", brief: "Downtown streets are narrow and traffic is unforgiving. Watch the cats — and Father Ramírez doesn't like waiting." },
-  s4: { name: "Sunset at Las Playitas", brief: "The sun sets over the Yacht Club. Open the throttle on Route 17 — but careful, the football team is out training." },
-  s5: { name: "Storm at El Cocal", brief: "The downpour hit and the asphalt is slick. Reach Route 17 before the storm gets worse." },
-  s6: { name: "Bridge · Mata de Limón", brief: "Cross the suspension bridge over the estuary. Reach the Mata de Limón kiosk and the Leda seafood house." },
-  s7: { name: "Caldera · Finale", brief: "Down Route 27 to the Port of Caldera. The sun is coming up — one last delivery and the shift is done." },
-};
+const CATALOG = { es, en };
+
+// Spanish is the source of truth: a key missing from another catalog falls back
+// to it before falling back to the raw key. FALLBACK_LANG is what a browser in
+// some third language gets.
+const BASE_LANG = "es";
+const FALLBACK_LANG = "en";
+
+const isKnown = (id) => Object.prototype.hasOwnProperty.call(CATALOG, id);
+
+export function languageIds() {
+  return LANGUAGES.map((entry) => entry.id);
+}
 
 // ---- store -----------------------------------------------------------------
 function defaultLang() {
   try {
     const saved = localStorage.getItem(LANG_KEY);
-    if (saved === "es" || saved === "en") return saved;
+    if (saved && isKnown(saved)) return saved;
   } catch { /* private mode */ }
-  const nav = (typeof navigator !== "undefined" && (navigator.language || "")) || "es";
-  return nav.toLowerCase().startsWith("es") ? "es" : "en";
+  const nav = ((typeof navigator !== "undefined" && (navigator.language || "")) || BASE_LANG).toLowerCase();
+  return languageIds().find((id) => nav.startsWith(id)) || FALLBACK_LANG;
 }
 
-let lang = typeof window !== "undefined" ? defaultLang() : "es";
+let lang = typeof window !== "undefined" ? defaultLang() : BASE_LANG;
 const listeners = new Set();
 
 export function getLang() { return lang; }
 export function setLang(l) {
-  if (l !== "es" && l !== "en") return;
+  if (!isKnown(l)) return;
   lang = l;
   try { localStorage.setItem(LANG_KEY, l); } catch { /* private mode */ }
   for (const fn of listeners) fn();
 }
 
 export function t(key, vars) {
-  let s = STR[lang][key] ?? STR.es[key] ?? key;
+  let s = CATALOG[lang]?.[key] ?? CATALOG[BASE_LANG][key] ?? key;
   if (vars) for (const k in vars) s = s.replaceAll(`{${k}}`, vars[k]);
   return s;
 }
 
 export function stageName(stage) {
-  return (lang === "en" && STAGE_EN[stage.id]?.name) || stage.name;
+  return stageOverlay[lang]?.[stage.id]?.name || stage.name;
 }
 export function stageBrief(stage) {
-  return (lang === "en" && STAGE_EN[stage.id]?.brief) || stage.brief;
+  return stageOverlay[lang]?.[stage.id]?.brief || stage.brief;
 }
 
 // React: re-render on language change. Returns t (stable semantics — reads
 // the current language at call time).
 const subscribe = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
 export function useT() {
-  useSyncExternalStore(subscribe, getLang, () => "es");
+  useSyncExternalStore(subscribe, getLang, () => BASE_LANG);
   return t;
 }

@@ -100,6 +100,7 @@ class WorldContext:
     #: milestone.
     editor_features: list = field(default_factory=list)
     editor_ui: dict = field(default_factory=dict)
+    editor_content: dict = field(default_factory=dict)
     editor_patch_meta: object = None
     cuadras: list = field(default_factory=list)
     surface_styles: list = field(default_factory=list)

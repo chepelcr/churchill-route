@@ -56,6 +56,7 @@ export function ensureEconomy(p) {
   if (!p.boosts || typeof p.boosts !== "object") p.boosts = {};
   if (!p.colors || typeof p.colors !== "object") p.colors = {};
   if (!Array.isArray(p.ownedColors)) p.ownedColors = [];
+  if (!Array.isArray(p.ownedItems)) p.ownedItems = [];
   return p;
 }
 
@@ -140,6 +141,15 @@ export const economy = {
     if (colorId && !this.ownsColor(colorId)) return false;
     if (colorId) state.progress.colors[vehKey] = colorId;
     else delete state.progress.colors[vehKey]; // back to stock paint
+    emit();
+    return true;
+  },
+
+  // --- editor-authored generic parts/cosmetics ---
+  ownsItem(id) { return state.progress.ownedItems.includes(id); },
+  buyItem(item) {
+    if (!item?.id || this.ownsItem(item.id) || !this.spend(Number(item.price) || 0)) return false;
+    state.progress.ownedItems.push(item.id);
     emit();
     return true;
   },

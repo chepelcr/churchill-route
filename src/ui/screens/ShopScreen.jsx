@@ -8,8 +8,9 @@ import { useT } from "../../i18n/index.js";
 import VehiclePreview from "../VehiclePreview.jsx";
 import CoinIcon from "../CoinIcon.jsx";
 import Icon from "../Icon.jsx";
+import { SHOP_ITEMS, SHOP_TABS } from "../../game/editorContent.js";
 
-const TABS = ["vehicles", "upgrades", "boosts", "colors", "packs"];
+const STANDARD_TABS = new Set(["vehicles", "upgrades", "boosts", "colors", "packs"]);
 
 // The Churchill-coins shop — a FULL-SCREEN page (edge to edge, no floating
 // card): header (back / title / balance), tab bar, and one tab of content
@@ -43,6 +44,10 @@ export default function ShopScreen({ onBack, ctx }) {
   const vehKeys = Object.keys(VEHICLES);
   const ownedVehs = vehKeys.filter((k) => economy.ownsVehicle(k));
   const equippedCol = economy.equippedColor(colorVeh);
+  const tabs = SHOP_TABS.filter((item) => item.enabled !== false);
+  const authoredItems = SHOP_ITEMS.filter((item) => (
+    item.tab === tab && !["vehicle", "boost", "upgrade", "color", "coin-pack"].includes(item.kind)
+  ));
 
   return (
     <div className="page-card">
@@ -55,10 +60,11 @@ export default function ShopScreen({ onBack, ctx }) {
       </div>
 
       <div className="shop-tabs">
-        {TABS.map((id) => (
+        {tabs.map(({ id, label }) => (
           <button key={id} className={"btn " + (tab === id ? "gold" : "secondary")}
             onClick={() => { setTab(id); sfx.play("menu_move"); }}>
-            {id === "packs" ? <><CoinIcon size={13} /> {t(`shop.tab.${id}`)}</> : t(`shop.tab.${id}`)}
+            {id === "packs" ? <><CoinIcon size={13} /> {t(`shop.tab.${id}`)}</>
+              : STANDARD_TABS.has(id) ? t(`shop.tab.${id}`) : label}
           </button>
         ))}
       </div>
@@ -109,8 +115,8 @@ export default function ShopScreen({ onBack, ctx }) {
                 <div key={line} className="shop-row">
                   <span className="shop-ico"><Icon name={u.icon} size={26} /></span>
                   <div className="shop-info">
-                    <b>{t(`shop.${line}.name`)}</b>
-                    <span className="shop-desc">{t(`shop.${line}.desc`)}</span>
+                    <b>{u.editorItem ? u.name : t(`shop.${line}.name`)}</b>
+                    <span className="shop-desc">{u.editorItem ? u.desc : t(`shop.${line}.desc`)}</span>
                     <span className="shop-lv">
                       {[1, 2, 3].map((i) => <i key={i} className={"lv-dot" + (lv >= i ? " on" : "")}></i>)}
                       {" "}{t("shop.level", { n: lv, max: 3 })}
@@ -118,7 +124,7 @@ export default function ShopScreen({ onBack, ctx }) {
                   </div>
                   {next !== null ? (
                     <button className="btn gold" disabled={!economy.canAfford(next)}
-                      onClick={() => askBuy(t(`shop.${line}.name`), next, () => economy.buyUpgrade(line))}>
+                      onClick={() => askBuy(u.editorItem ? u.name : t(`shop.${line}.name`), next, () => economy.buyUpgrade(line))}>
                       {t("shop.buy")} · {price(next)}
                     </button>
                   ) : <span className="shop-state ok">{t("shop.max")}</span>}
@@ -136,11 +142,11 @@ export default function ShopScreen({ onBack, ctx }) {
                 <div key={id} className="shop-row">
                   <span className="shop-ico"><Icon name={b.icon} size={26} /></span>
                   <div className="shop-info">
-                    <b>{t(`shop.${id}.name`)} <span className="shop-count">×{economy.boostCount(id)}</span></b>
-                    <span className="shop-desc">{t(`shop.${id}.desc`)}</span>
+                    <b>{b.editorItem ? b.name : t(`shop.${id}.name`)} <span className="shop-count">×{economy.boostCount(id)}</span></b>
+                    <span className="shop-desc">{b.editorItem ? b.desc : t(`shop.${id}.desc`)}</span>
                   </div>
                   <button className="btn gold" disabled={!economy.canAfford(b.price)}
-                    onClick={() => askBuy(t(`shop.${id}.name`), b.price, () => economy.buyBoost(id))}>
+                    onClick={() => askBuy(b.editorItem ? b.name : t(`shop.${id}.name`), b.price, () => economy.buyBoost(id))}>
                     {t("shop.buy")} · {price(b.price)}
                   </button>
                 </div>
@@ -200,6 +206,30 @@ export default function ShopScreen({ onBack, ctx }) {
                 ))
               ) : <span className="set-desc">{t("shop.packsPlay")}</span>
             ) : <span className="set-desc">{t("shop.packsWeb")}</span>}
+          </div>
+        )}
+
+        {authoredItems.length > 0 && (
+          <div className="shop-rows">
+            {authoredItems.map((item) => {
+              const owned = economy.ownsItem(item.id);
+              return (
+                <div key={item.id} className="shop-row">
+                  <span className="shop-ico"><Icon name={item.config?.icon || "cube"} size={26} /></span>
+                  <div className="shop-info">
+                    <b>{item.name}</b>
+                    <span className="shop-desc">{item.description}</span>
+                    {item.config?.appliesTo && <span className="shop-lv">Para: {item.config.appliesTo}</span>}
+                  </div>
+                  {owned ? <span className="shop-state ok">{t("shop.owned")}</span> : (
+                    <button className="btn gold" disabled={!economy.canAfford(item.price)}
+                      onClick={() => askBuy(item.name, item.price, () => economy.buyItem(item))}>
+                      {t("shop.buy")} · {price(item.price)}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

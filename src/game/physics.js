@@ -15,6 +15,7 @@ import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt } from "./ferries.js";
 import { updateEditorTriggers } from "./editorGameplay.js";
+import { activeEditorBoost, tickEditorBoosts } from "./editorContent.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [6]; // fallback for free (stadium) peds; rail peds cross via advancePed
@@ -87,6 +88,7 @@ function surfLevel(p, surf) {
 
 export function update(dt) {
   if (state.paused || state.over) return;
+  tickEditorBoosts(dt, state);
   readInput(); pollGamepad();
   applyTouch(state.cam, state.p);
 
@@ -148,6 +150,7 @@ export function update(dt) {
   // chicken-and-egg, since the ramp you board across is itself deck.
   const isWall = (x, y) => {
     if (deckAt(x, y)) return false;
+    if (W.driveUnderAt(x, y)) return false;
     const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2;
   };
   // On a pier deck (class 5) the only wall is the surrounding water, so the
@@ -248,7 +251,7 @@ export function update(dt) {
   const onWall = p.wallT > 0;
 
   // acceleration (headstart consumable = free turbo for its first seconds)
-  const boosting = input.boost || (state.headstartT || 0) > 0;
+  const boosting = input.boost || (state.headstartT || 0) > 0 || Boolean(activeEditorBoost(state, "turbo"));
   const throttle = input.up - input.down * 0.6;
   let ax = Math.cos(p.a), ay = Math.sin(p.a);
   if (onWall) {
@@ -263,7 +266,8 @@ export function update(dt) {
   const heading = { x: Math.cos(p.a), y: Math.sin(p.a) };
   const fwd = p.vx * heading.x + p.vy * heading.y;
   const side = -p.vx * heading.y + p.vy * heading.x;
-  const grip = veh.grip * (input.brake ? 0.55 : 1) * wetMul * (onWall ? 0.15 : 1);
+  const gripBoost = activeEditorBoost(state, "grip-multiplier")?.value || 1;
+  const grip = veh.grip * gripBoost * (input.brake ? 0.55 : 1) * wetMul * (onWall ? 0.15 : 1);
   const kept = side * (1 - Math.min(1, grip * dt * 6));
   p.vx = heading.x * fwd - heading.y * kept;
   p.vy = heading.y * fwd + heading.x * kept;
@@ -285,7 +289,8 @@ export function update(dt) {
     if (Math.hypot(p.vx, p.vy) < 12) { p.vx = 0; p.vy = 0; }
   }
   // turbotank upgrade raises the boost speed cap (1.35 stock → up to 1.55)
-  const top = veh.top * tuning.speed * surfaceMul * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul;
+  const speedBoost = activeEditorBoost(state, "speed-multiplier")?.value || 1;
+  const top = veh.top * speedBoost * tuning.speed * surfaceMul * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul;
   const sp3 = Math.hypot(p.vx, p.vy);
   if (sp3 > top) { p.vx *= top / sp3; p.vy *= top / sp3; }
 
@@ -419,7 +424,7 @@ export function update(dt) {
     // cooler upgrade slows the melt; an active ice pack pauses it entirely —
     // and so does a ferry crossing. The whole point of the Easter egg is a
     // break, and a 45 s break that costs you the delivery is not one.
-    const meltRate = (state.icepackT > 0 || crossing) ? 0
+    const meltRate = (state.icepackT > 0 || crossing || activeEditorBoost(state, "melt-freeze")) ? 0
       : state.veh.melt * (onRoad ? 1.0 : 1.25) * heat * economy.upgradeEffect("cooler");
     state.carrying.melt += dt * meltRate;
     if (state.carrying.melt >= state.carrying.total) dropChurchill();
@@ -544,7 +549,11 @@ function inFootprint(x, y, S) {
 
 function maintainArcadeCoins(dt) {
   if (!state.arcadeCoins) state.arcadeCoins = [];
+  if (!state.editorCoinCooldown) state.editorCoinCooldown = {};
   const arr = state.arcadeCoins, p = state.p, cam = state.cam;
+  for (const id of Object.keys(state.editorCoinCooldown)) {
+    state.editorCoinCooldown[id] = Math.max(0, state.editorCoinCooldown[id] - dt);
+  }
   for (let i = arr.length - 1; i >= 0; i--) {
     const c = arr[i];
     c.t += dt;                                   // spin/bob phase for the renderer
@@ -558,10 +567,12 @@ function maintainArcadeCoins(dt) {
       state.runCoins = (state.runCoins || 0) + val;
       pushFloat(c.x, c.y - 12, `+₡${val}`, c.silver ? "#dfe6ef" : "#f3c969");
       sfx.play("coin");
+      if (c.editorSpawnId) state.editorCoinCooldown[c.editorSpawnId] = c.respawn || 5;
       arr.splice(i, 1); continue;
     }
-    if (Math.hypot(c.x - cam.x, c.y - cam.y) > ACOIN_KEEP) arr.splice(i, 1);
+    if (!c.persistent && Math.hypot(c.x - cam.x, c.y - cam.y) > ACOIN_KEEP) arr.splice(i, 1);
   }
+  syncEditorCoinSpawns(arr, cam);
   // ONE BURST AT A TIME, one coin per fan on the pitch (the street spawner only
   // ever drops coins on the ring road) — the reward for going in there to do
   // donuts. The fans already wander the grass well inside the footprint, so
@@ -595,6 +606,59 @@ function maintainArcadeCoins(dt) {
     if (s !== 3 && s !== 5 && s !== 7) continue; // streets, pier deck, calle peatonal
     if (Math.hypot(x - p.x, y - p.y) < ACOIN_SPAWN_MIN) continue;
     arr.push({ x, y, t: Math.random() * 6 });
+  }
+}
+
+function editorSpawnPoint(feature) {
+  if (feature.geometry.kind === "point") return feature.geometry.point;
+  const points = feature.geometry.points;
+  return [
+    points.reduce((sum, point) => sum + point[0], 0) / points.length,
+    points.reduce((sum, point) => sum + point[1], 0) / points.length,
+  ];
+}
+function pointInEditorSpawn(x, y, points) {
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const [xi, yi] = points[i], [xj, yj] = points[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-9) + xi) inside = !inside;
+  }
+  return inside;
+}
+function randomEditorCoinPoint(feature, radius) {
+  const center = editorSpawnPoint(feature);
+  if (feature.geometry.kind === "point") {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius;
+    return [center[0] + Math.cos(a) * r, center[1] + Math.sin(a) * r];
+  }
+  const points = feature.geometry.points;
+  const xs = points.map((point) => point[0]), ys = points.map((point) => point[1]);
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const x = Math.min(...xs) + Math.random() * (Math.max(...xs) - Math.min(...xs));
+    const y = Math.min(...ys) + Math.random() * (Math.max(...ys) - Math.min(...ys));
+    if (pointInEditorSpawn(x, y, points)) return [x, y];
+  }
+  return center;
+}
+function syncEditorCoinSpawns(arr, cam) {
+  for (const feature of W.COIN_SPAWNS || []) {
+    const properties = feature.properties || {};
+    const center = editorSpawnPoint(feature);
+    if (Math.hypot(center[0] - cam.x, center[1] - cam.y) > ACOIN_KEEP) continue;
+    if ((state.editorCoinCooldown[feature.id] || 0) > 0) continue;
+    const wanted = Math.max(1, Math.min(100, Number(properties.count) || 1));
+    const live = arr.filter((coin) => coin.editorSpawnId === feature.id).length;
+    for (let index = live; index < wanted; index++) {
+      const [x, y] = randomEditorCoinPoint(feature, Number(properties.spawnRadius) || 24);
+      arr.push({
+        x, y, t: Math.random() * 6,
+        v: Math.max(1, Number(properties.coinValue) || COINS_PER_PICKUP),
+        coinType: properties.coinType || "gold",
+        editorSpawnId: feature.id,
+        respawn: Math.max(0.25, Number(properties.respawnSeconds) || 5),
+        persistent: true,
+      });
+    }
   }
 }
 
@@ -632,7 +696,9 @@ export function advanceEntities(dt, withPlayer = true) {
   // Pedestrians — RAIL-BOUND to a road, walk the aceras + cross (main model);
   // a speeding player makes them bolt across the street
   for (const pe of pedestrians) {
-    if (pe.bus) advancePassenger(pe, dt);                                   // waiting at / boarding / leaving a parada
+    if (pe.editorRoute) { advanceEditorRoute(pe, dt); pe.ph += dt * 6; }
+    else if (pe.stationary) pe.ph += dt * 2;
+    else if (pe.bus) advancePassenger(pe, dt);                                   // waiting at / boarding / leaving a parada
     else if (pe.road) advancePed(pe, dt);
     else if (pe.field) advanceFieldPed(pe, dt);                                  // estadio/plaza crowd wandering the pitch
     else if (pe.swim) advanceSwimmer(pe, dt);                                    // balneario swimmers

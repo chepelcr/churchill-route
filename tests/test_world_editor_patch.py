@@ -67,6 +67,8 @@ class WorldEditorPatchTests(unittest.TestCase):
                 "id": "test", "x0": 0, "x1": 1000, "y0": 0, "y1": 800,
             }],
             editor_features=[],
+            editor_ui={},
+            editor_content={},
             editor_patch_meta=None,
         )
 
@@ -136,6 +138,13 @@ class WorldEditorPatchTests(unittest.TestCase):
                     },
                 },
             },
+            "content": {
+                "shop": {
+                    "tabs": [{"id": "parts", "label": "Parts", "enabled": True}],
+                    "items": [{"id": "roof_rack", "kind": "vehicle-part", "tab": "parts"}],
+                },
+                "world": {"weather": {"default": "sunset"}},
+            },
         }
         session = self.session(payload)
 
@@ -155,6 +164,8 @@ class WorldEditorPatchTests(unittest.TestCase):
         ])
         self.assertEqual(ctx.editor_ui["screens"]["title"]["title"],
                          "Churchill Editor Test")
+        self.assertEqual(ctx.editor_content["shop"]["items"][0]["id"], "roof_rack")
+        self.assertEqual(ctx.editor_content["world"]["weather"]["default"], "sunset")
         self.assertEqual(ctx.editor_patch_meta["overrides"], 2)
         self.assertEqual(ctx.editor_patch_meta["additions"], 3)
         self.assertEqual(ctx.editor_patch_meta["deletions"], 1)

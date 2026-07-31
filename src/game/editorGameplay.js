@@ -5,6 +5,8 @@ import { state, pushFloat } from "./state.js";
 
 const active = new Set();
 const fired = new Set();
+let activeWeatherZone = null;
+let baseWeather = "sunny";
 
 function insidePolygon(x, y, points) {
   let inside = false;
@@ -51,9 +53,26 @@ function runAction(feature) {
 export function resetEditorTriggers() {
   active.clear();
   fired.clear();
+  activeWeatherZone = null;
+  baseWeather = state.weather;
+  state.weatherIntensity = 1;
 }
 
 export function updateEditorTriggers() {
+  const weatherZone = (W.WEATHER_ZONES || []).find((feature) => (
+    insidePolygon(state.p.x, state.p.y, feature.geometry.points)
+  )) || null;
+  if (weatherZone?.id !== activeWeatherZone?.id) {
+    if (!activeWeatherZone) baseWeather = state.weather;
+    activeWeatherZone = weatherZone;
+    if (weatherZone) {
+      state.weather = weatherZone.properties?.weather || "sunny";
+      state.weatherIntensity = Math.max(0, Number(weatherZone.properties?.weatherIntensity) || 1);
+    } else {
+      state.weather = baseWeather;
+      state.weatherIntensity = 1;
+    }
+  }
   for (const feature of W.EDITOR_FEATURES) {
     if (feature.type !== "trigger" || feature.geometry?.kind !== "polygon") continue;
     const isInside = insidePolygon(state.p.x, state.p.y, feature.geometry.points);

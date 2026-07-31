@@ -512,6 +512,40 @@ function drawSign(s) {
       ctx.fillStyle = "#4fbf6a"; ctx.beginPath(); ctx.arc(x, y + 0.0, 1.05, 0, Math.PI * 2); ctx.fill();
       break;
     }
+    case "semaforo_centered":
+    case "semaforo_overhead": {
+      // Gantry-mounted LATAM signal: pole at the edge, horizontal arm over the
+      // street, with the signal head centered above the lanes.
+      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
+      const span = s.kind === "semaforo_overhead" ? 34 : 24;
+      ctx.strokeStyle = "#596066"; ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(-span / 2, 7); ctx.lineTo(-span / 2, -9); ctx.lineTo(span / 2, -9);
+      ctx.stroke();
+      for (const hx of s.kind === "semaforo_overhead" ? [-span * .2, span * .28] : [0]) {
+        ctx.fillStyle = "#2b2f36";
+        roundRect(ctx, hx - 2, -9, 4, 9, 1.2, true, false);
+        for (const [dy, color] of [[2, "#e0483a"], [4.6, "#f0c44a"], [7.2, "#4fbf6a"]]) {
+          ctx.fillStyle = color; ctx.beginPath(); ctx.arc(hx, -9 + dy, 1.05, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      ctx.restore();
+      break;
+    }
+    case "speed_limit": {
+      // Costa Rican/LatAm pavement marking: white numerals inside a white ring,
+      // aligned to the authored lane heading.
+      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
+      ctx.strokeStyle = "rgba(244,241,232,.82)"; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "rgba(244,241,232,.9)";
+      ctx.font = "bold 7px 'JetBrains Mono', monospace";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(s.value || 40), 0, 0);
+      ctx.textBaseline = "alphabetic";
+      ctx.restore();
+      break;
+    }
     case "crossing": {                                 // zebra, across the lane
       ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
       ctx.fillStyle = "rgba(244,241,232,0.82)";

@@ -119,8 +119,9 @@ function drawCompass(vw, vh) {
 }
 
 function drawRain(vw, vh, t) {
-  ctx.strokeStyle = "rgba(180,210,240,0.5)"; ctx.lineWidth = 1;
-  for (let i = 0; i < 240; i++) {
+  const intensity = Math.max(0.1, Math.min(2, state.weatherIntensity || 1));
+  ctx.strokeStyle = `rgba(180,210,240,${Math.min(0.8, 0.28 + intensity * 0.22)})`; ctx.lineWidth = 1;
+  for (let i = 0; i < Math.round(240 * intensity); i++) {
     const x = (i * 73 + t * 0.4) % vw, y = (i * 137 + t * 0.9) % vh;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 6, y + 10); ctx.stroke();
   }

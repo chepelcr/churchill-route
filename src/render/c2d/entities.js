@@ -11,11 +11,17 @@ import { ctx, lastT, roundRect } from "./gfx.js";
 // at a glance that the burst on the pitch is not just more of the same.
 const COIN_GOLD   = { rim: "#c8992f", face: "#f3c969", mark: "#a97b1e", r: 7 };
 const COIN_SILVER = { rim: "#8e9bab", face: "#dfe6ef", mark: "#5b6675", r: 9 };
+const COIN_TYPES = {
+  gold: COIN_GOLD,
+  silver: COIN_SILVER,
+  bonus: { rim: "#7b3fc6", face: "#c58cff", mark: "#5d259f", r: 9 },
+  frozen: { rim: "#4a9fbd", face: "#a9edff", mark: "#24738f", r: 8 },
+};
 function drawArcadeCoin(c, t) {
   const ph = (c.t || 0) + t * 0.004;
   const sx = Math.abs(Math.cos(ph * 2.2));           // spin → horizontal squash
   const bob = Math.sin(ph * 3) * 1.6;                // gentle hover
-  const M = c.silver ? COIN_SILVER : COIN_GOLD;
+  const M = c.palette || COIN_TYPES[c.coinType] || (c.silver ? COIN_SILVER : COIN_GOLD);
   const R = M.r;
   ctx.fillStyle = "rgba(0,0,0,0.22)";
   ctx.beginPath(); ctx.ellipse(c.x, c.y + 5, R - 1, R * 0.34, 0, 0, Math.PI * 2); ctx.fill();
@@ -36,6 +42,7 @@ function drawArcadeCoin(c, t) {
 function drawPed(pe) {
   if (pe.kind === "swimmer") { drawSwimmer(pe); return; }
   if (pe.kind === "passenger") { drawPassenger(pe); return; }
+  if (pe.editorNpc) { drawEditorNpc(pe); return; }
   // FANS celebrate: a bigger, faster bounce plus a side-to-side shake and two
   // raised arms, so the crowd around the estadio and la plaza reads as a crowd
   // rather than commuters who happen to be walking in a circle.
@@ -53,6 +60,36 @@ function drawPed(pe) {
     ctx.stroke();
   }
   ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawEditorNpc(pe) {
+  const scale = pe.scale || 1;
+  const bob = pe.stationary ? Math.sin(pe.ph) * 0.35 : Math.sin(pe.ph) * 1.2;
+  ctx.save();
+  ctx.translate(pe.x, pe.y + bob);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath(); ctx.ellipse(1, 5, 4.5, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+  if (pe.drawStyle === "mascot") {
+    ctx.fillStyle = pe.color;
+    ctx.beginPath(); ctx.arc(0, -1, 5.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(-1.7, -2, 1, 0, Math.PI * 2); ctx.arc(1.7, -2, 1, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.fillStyle = pe.color;
+    if (pe.drawStyle === "vendor") {
+      roundRect(ctx, -4, -3, 8, 7, 1.5, true, false);
+      ctx.fillStyle = "#f4d77a"; ctx.fillRect(-5, -5, 10, 2);
+    } else {
+      ctx.fillRect(-2.5, -3, 5, 7);
+      if (pe.drawStyle === "worker") {
+        ctx.fillStyle = "#f4d77a"; ctx.fillRect(-3.2, -6.5, 6.4, 1.6);
+      }
+    }
+    ctx.fillStyle = "#e8b98a";
+    ctx.beginPath(); ctx.arc(0, -5.2, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
 }
 // Somebody at a parada. The whole point of the type is the WAITING: standing
 // still with a bag, looking down the street the bus comes from, which is what

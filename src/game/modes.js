@@ -11,13 +11,15 @@ import { economy } from "./economy.js";
 import { t, stageBrief } from "../i18n/index.js";
 import { analytics } from "../monetize/analytics.js";
 import { resetEditorTriggers } from "./editorGameplay.js";
+import { applyOwnedShopEffects, consumeEditorBoosts } from "./editorContent.js";
 
 // Resolve the run vehicle: enforce ownership (fall back to scooter) and apply
 // the equipped paint by cloning — paintVehicle reads veh.color.
 function resolveVehicle(key) {
   const k = economy.ownsVehicle(key) ? key : "scooter";
   const col = economy.equippedColor(k);
-  return { key: k, veh: col ? { ...VEHICLES[k], color: col.hex } : VEHICLES[k] };
+  const painted = col ? { ...VEHICLES[k], color: col.hex } : VEHICLES[k];
+  return { key: k, veh: applyOwnedShopEffects(k, painted, state.progress) };
 }
 // Player start beside a kiosk: use the build-authored `spawn` (snapped to the
 // nearest drivable street), never the kiosk's beach-facing icon position — that
@@ -46,6 +48,9 @@ function authoredSpawn(mode, fallback, explicit = null) {
 function authoredVehicle(mode, requested) {
   return requested || editorPlayer(mode)?.properties?.vehicleKey || state.vehicleKey;
 }
+function authoredWeather(fallback = "sunny") {
+  return W.EDITOR_CONTENT?.world?.weather?.default || fallback;
+}
 // Run-start economy state: reset the run wallet and consume any armed boosts
 // (picked in the vehicle picker; each is one use).
 function armRun() {
@@ -54,6 +59,11 @@ function armRun() {
   const armed = state.armedBoosts || {};
   if (armed.icepack && economy.useBoost("icepack")) state.icepackT = 30;
   if (armed.headstart && economy.useBoost("headstart")) state.headstartT = 5;
+  consumeEditorBoosts(
+    Object.fromEntries(Object.entries(armed).filter(([id]) => id !== "icepack" && id !== "headstart")),
+    economy,
+    state,
+  );
   state.armedBoosts = null;
 }
 
@@ -100,7 +110,7 @@ export function startArcade(opts = {}) {
   state.stage = null;
   state.stageIdx = 0;
   state.mode = "arcade";
-  state.weather = opts.weather || "sunny";
+  state.weather = opts.weather || authoredWeather();
   state.timeLeft = 180;
   const rv = resolveVehicle(authoredVehicle("arcade", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
@@ -133,7 +143,7 @@ export function startExplore(opts = {}) {
   state.stage = null;
   state.stageIdx = 0;
   state.mode = "explore";
-  state.weather = opts.weather || "sunny";
+  state.weather = opts.weather || authoredWeather();
   state.timeLeft = 999;
   const rv = resolveVehicle(authoredVehicle("explore", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;

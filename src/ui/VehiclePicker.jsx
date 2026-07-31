@@ -113,7 +113,7 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false 
                         <button key={id} disabled={economy.boostCount(id) <= 0}
                           className={"btn " + (armed[id] ? "gold" : "secondary")}
                           onClick={() => toggleBoost(id)}>
-                          <Icon name={BOOSTS[id].icon} size={14} /> {t(`shop.${id}.name`)} ×{economy.boostCount(id)}
+                          <Icon name={BOOSTS[id].icon} size={14} /> {BOOSTS[id].editorItem ? BOOSTS[id].name : t(`shop.${id}.name`)} ×{economy.boostCount(id)}
                         </button>
                       ))}
                     </div>

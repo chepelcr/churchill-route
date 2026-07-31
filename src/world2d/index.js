@@ -25,11 +25,37 @@ export const WORLD2D = (function () {
   const CLASSES = manifest.grid.classes; // ["water","land","beach",...]
 
   // ----- backdrop + POIs (small, eager from the manifest) --------------------
-  const DISTRICTS = manifest.districts;   // {id,name,short,tone,x0,x1,poly}
   const LANDMARKS = manifest.landmarks;
   const EDITOR_FEATURES = manifest.editorFeatures || []; // authored gameplay/world entities
   const EDITOR_UI = manifest.editorUI || {}; // screen copy/theme authored in the editor
+  const EDITOR_CONTENT = manifest.editorContent || {}; // shop/catalog content authored in the editor
   const editorPoint = (feature) => feature.geometry?.kind === "point" ? feature.geometry.point : [0, 0];
+  const pointInEditorPolygon = (x, y, points) => {
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const [xi, yi] = points[i], [xj, yj] = points[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-9) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  const AUTHORED_DISTRICTS = EDITOR_FEATURES
+    .filter((feature) => feature.type === "district" && feature.geometry?.kind === "polygon")
+    .map((feature) => {
+      const points = feature.geometry.points;
+      const xs = points.map((point) => point[0]), ys = points.map((point) => point[1]);
+      const properties = feature.properties || {};
+      return {
+        id: properties.districtId || feature.id,
+        name: feature.name || feature.id,
+        short: properties.short || feature.name || feature.id,
+        tone: feature.style?.color || properties.tone || "#f3c969",
+        x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys),
+        poly: points.flat(),
+        editorPoly: points,
+        editorId: feature.id,
+      };
+    });
+  const DISTRICTS = [...manifest.districts, ...AUTHORED_DISTRICTS]; // generated + exact editor polygons
   const CUSTOMERS = [
     ...manifest.customers,
     ...EDITOR_FEATURES.filter((feature) => feature.type === "delivery").map((feature) => {
@@ -81,7 +107,44 @@ export const WORLD2D = (function () {
   // Every named real-world POI OSM knows about {x,y,name,cat}. Debug overlay
   // only for now — 1160 pills at play zoom would be a wall of text.
   const POIS = manifest.pois || [];
-  const SIGNS = manifest.signs || [];
+  const AUTHORED_SIGNS = EDITOR_FEATURES
+    .filter((feature) => (
+      ["sign", "traffic-sign", "traffic-light", "road-marking"].includes(feature.type)
+      && feature.geometry?.kind === "point"
+    ))
+    .map((feature) => {
+      const properties = feature.properties || {};
+      const [x, y] = feature.geometry.point;
+      let kind = properties.signKind || "alto";
+      if (feature.type === "traffic-light") {
+        const signalStyle = properties.signalStyle || "roadside";
+        kind = signalStyle === "roadside" ? "semaforo" : `semaforo_${signalStyle}`;
+      } else if (feature.type === "road-marking") {
+        kind = properties.markingKind || "speed_limit";
+      }
+      return {
+        id: feature.id, name: feature.name, x, y, kind,
+        ang: (Number(properties.angle) || 0) * Math.PI / 180,
+        value: properties.speedLimit || properties.value || properties.actionValue || "",
+        signalStyle: properties.signalStyle || "roadside",
+        editorId: feature.id,
+      };
+    });
+  const SIGNS = [...(manifest.signs || []), ...AUTHORED_SIGNS];
+  const LIGHTS = EDITOR_FEATURES.filter((feature) => (
+    ["light", "street-light"].includes(feature.type) && feature.geometry?.kind === "point"
+  ));
+  const ROOFS = EDITOR_FEATURES.filter((feature) => (
+    ["roof", "covered-lane", "grandstand"].includes(feature.type)
+    && feature.geometry?.kind === "polygon" && feature.properties?.roof
+  ));
+  const NPCS = EDITOR_FEATURES.filter((feature) => feature.type === "npc" && feature.geometry?.kind === "point");
+  const COIN_SPAWNS = EDITOR_FEATURES.filter((feature) => (
+    feature.type === "coin-spawn" && ["point", "polygon"].includes(feature.geometry?.kind)
+  ));
+  const WEATHER_ZONES = EDITOR_FEATURES.filter((feature) => (
+    feature.type === "weather-zone" && feature.geometry?.kind === "polygon"
+  ));
   // Named cuadra parts {id,name,use,poly,cx,cy,slot}. `slot` is a rect a
   // sponsor entry can claim, so its art has a real footprint in the world
   // instead of a floating pin.
@@ -258,6 +321,14 @@ export const WORLD2D = (function () {
   function onPaseo(x, y) { return surfaceAt(x, y) === 4; }
   function inWater(x, y) { return surfaceAt(x, y) === 0; }
   function onBeach(x, y) { return surfaceAt(x, y) === 2; }
+  function driveUnderAt(x, y) {
+    for (const feature of ROOFS) {
+      const properties = feature.properties || {};
+      if (!properties.driveUnder && properties.collisionMode !== "drivable") continue;
+      if (pointInEditorPolygon(x, y, feature.geometry.points)) return true;
+    }
+    return false;
+  }
 
   function onElevated(x, y) {
     const t = decodedTile((x / TILE_PX) | 0, (y / TILE_PX) | 0);
@@ -306,6 +377,12 @@ export const WORLD2D = (function () {
     });
   })();
   function districtAt(x, y) {
+    // Exact authored neighborhood polygons take priority over the generated
+    // nearest-centroid fallback and may overlap a broader generated district.
+    for (let i = AUTHORED_DISTRICTS.length - 1; i >= 0; i--) {
+      const district = AUTHORED_DISTRICTS[i];
+      if (pointInEditorPolygon(x, y, district.editorPoly)) return district;
+    }
     let best = DISTRICTS[0], bd = Infinity;
     for (const { d, cx, cy } of DIST_CENTROID) {
       const dd = (x - cx) ** 2 + (y - cy) ** 2;
@@ -367,12 +444,12 @@ export const WORLD2D = (function () {
 
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
-    DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS,
+    DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries
-    surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated,
+    surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated, driveUnderAt,
     buildingsNear, districtAt, landmarkById, customerById, reachablePointNear,
     geoToWorld,
   };

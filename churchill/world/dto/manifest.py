@@ -47,6 +47,7 @@ class Manifest(WorldModel):
     editorPatch: dict | None = None
     editorFeatures: list[dict] = Field(default_factory=list)
     editorUI: dict = Field(default_factory=dict)
+    editorContent: dict = Field(default_factory=dict)
     cuadras: list[dict] = Field(default_factory=list)
     surfaceStyles: list[dict] = Field(default_factory=list)
 

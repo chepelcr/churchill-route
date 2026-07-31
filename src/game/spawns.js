@@ -508,11 +508,11 @@ export function advanceSwimmer(pe, dt) {
 }
 
 export function maintainStreaming() {
-  topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || far(e));
+  topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || (!e.persistent && far(e)));
   maintainStadiumPeds();
   maintainBalneario();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
-  topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || far(e));
+  topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || (!e.persistent && far(e)));
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);
   topUp(animals, TARGET.animals, spawnOneAnimal, (e) => e.dead || far(e));
   topUp(gulls, TARGET.gulls, spawnOneGull, far);
@@ -568,6 +568,7 @@ export function spawnAmbient() {
     const vehicle = VEHICLES[properties.vehicleKey] || VEHICLES.scooter;
     const record = {
       editorId: feature.id,
+      persistent: true,
       x: feature.geometry.point[0],
       y: feature.geometry.point[1],
       ang: (Number(properties.angle) || 0) * Math.PI / 180,
@@ -592,6 +593,35 @@ export function spawnAmbient() {
     } else {
       parked.push(record);
     }
+  }
+  for (const feature of W.NPCS || []) {
+    const properties = feature.properties || {};
+    const movement = properties.npcMovement || "stationary";
+    const route = routes.get(properties.routeId);
+    const npc = {
+      editorId: feature.id,
+      persistent: true,
+      x: feature.geometry.point[0],
+      y: feature.geometry.point[1],
+      ang: (Number(properties.angle) || 0) * Math.PI / 180,
+      v: movement === "stationary" ? 0 : Number(properties.speed) || 18,
+      hue: Number(properties.hue) || 28,
+      ph: Math.random() * Math.PI * 2,
+      cls: Array.isArray(properties.surfaceClasses) ? properties.surfaceClasses : [3, 4, 6, 7],
+      editorNpc: true,
+      npcType: properties.npcType || "resident",
+      drawStyle: properties.drawStyle || "person",
+      color: feature.style?.color || properties.color || "#e85d75",
+      scale: Number(properties.scale) || 1,
+      stationary: movement === "stationary",
+    };
+    if (movement === "route" && route?.length >= 2) {
+      npc.x = route[0][0]; npc.y = route[0][1];
+      npc.editorRoute = route;
+      npc.routeIndex = 1;
+      npc.routeLoop = properties.routeLoop !== false;
+    }
+    pedestrians.push(npc);
   }
   vendors.length = 0;
   animals.length = 0;

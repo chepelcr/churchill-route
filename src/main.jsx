@@ -10,8 +10,10 @@ import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/600.css";
 import "./game/index.js";   // side-effect: builds the engine, sets window.Game
 import App from "./ui/App.jsx";
+import { applyEditorContent } from "./game/editorContent.js";
 import "./styles.css";
 
+applyEditorContent();
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 
 // Register the offline service worker (served from the site root). Inside the

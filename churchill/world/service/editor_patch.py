@@ -217,6 +217,8 @@ class WorldPatchSession:
                 raise WorldPatchError(f"patch.{key} must be an array")
         if "ui" in self.payload and not isinstance(self.payload["ui"], dict):
             raise WorldPatchError("patch.ui must be an object")
+        if "content" in self.payload and not isinstance(self.payload["content"], dict):
+            raise WorldPatchError("patch.content must be an object")
 
         feature_ids = set()
         source_refs = set()
@@ -357,6 +359,7 @@ class WorldPatchSession:
     def apply_final(self, ctx):
         """Apply every family generated after surface rasterisation."""
         ctx.editor_ui = deepcopy(self.payload.get("ui") or {})
+        ctx.editor_content = deepcopy(self.payload.get("content") or {})
         # A road first seen here was synthesized/stamped by a later stage.  It
         # cannot be moved or deleted safely without restoring its old cells.
         # Phase 2's surface operations provide that explicit replacement.

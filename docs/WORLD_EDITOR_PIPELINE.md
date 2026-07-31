@@ -70,7 +70,23 @@ meant would make human and agent changes non-deterministic.
 | Player/vehicles/routes/triggers | Yes | — | — | Runtime consumes `editorFeatures` |
 | Stages/deliveries/spawns | Yes | — | — | Runtime catalogs merge them |
 | Screen/UI configuration | Yes | Yes | Yes | Emitted as `editorUI` |
+| Shop/content catalogs | Yes | Yes | Yes | Emitted as `editorContent` |
+| Lights/signals/road markings | Yes | — | — | Typed Canvas2D infrastructure |
+| NPCs/coin spawns | Yes | — | — | Runtime movement, drawing, economy |
+| District/weather zones | Yes | — | — | Exact lookup + local weather |
+| Roof/covered-lane polygons | Yes | — | — | Over-player draw + traversal toggle |
 | Future structures/entities | Preserved | — | — | Never silently dropped |
+
+`editorContent.shop` supports tabs, vehicles, upgrades, boosts, colors, coin
+packs, vehicle parts, and custom catalog entries. Enabled definitions merge
+into the real economy and vehicle picker during game boot.
+
+Layered runtime features include typed/intensity-controlled lights,
+roadside/centered/gantry semáforos, LatAm speed markings, NPC movement/draw
+definitions, controlled coin spawns, exact district polygons, and weather
+zones. A roof with `driveUnder: true` or `collisionMode: "drivable"` overrides
+blocked raster cells inside its polygon while remaining visible above the
+player in the roof render layer.
 
 ## Human and agent entry points
 

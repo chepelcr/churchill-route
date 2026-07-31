@@ -28,6 +28,7 @@ import {
   drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames,
   drawPoiTags, drawRain,
 } from "./c2d/hud.js";
+import { drawEditorWorld } from "./c2d/editorWorld.js";
 
 // ---- Main render ----------------------------------------------------------
 // Overlay mode (legacy full-hybrid experiment): Pixi draws the world +
@@ -83,6 +84,7 @@ function render(t) {
     // Painterly 2-D world from resident tiles: land silhouette + road strokes +
     // buildings + palms/trees (replaces the corridor's global-array drawers).
     drawWorld2D(view, t);
+    drawEditorWorld(view, "districts");
     drawPoiTags(view, ZOOM);   // real business names, small, over the ground
   }
   // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
@@ -94,6 +96,7 @@ function render(t) {
   drawFerries(view);   // the two ferries + their berths, over the water
   drawBarriers(view);
   drawSigns(view);      // ALTO, semáforos, paradas, zebras, topes
+  drawEditorWorld(view, "elements");
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
   // Landmarks (the bridge has its own drawer)
   for (const lm of W.LANDMARKS) {
@@ -165,6 +168,9 @@ function render(t) {
     if (OVERLAY) drawPlayerCarrying(state.p, state.veh);
     else drawPlayer(state.p, state.veh);
   }
+  // True over-player layer. Covered lanes and stadium roofs live here while
+  // physics independently decides whether the vehicle may drive below them.
+  drawEditorWorld(view, "roofs");
   // Gulls above
   if (!OVERLAY) for (const g of gulls) {
     if (g.x < view.x0 - 30 || g.x > view.x1 + 30) continue;

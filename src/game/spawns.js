@@ -7,6 +7,7 @@
 // roadPointAt), which cannot work when most of the map isn't loaded.
 import { WORLD2D as W } from "../world2d/index.js";
 import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains } from "./state.js";
+import { VEHICLES } from "./vehicles.js";
 
 // The sidewalk's depth is a WORLD knob (ACERA_CELLS), read from the manifest
 // rather than hardcoded — the game may not import the renderer's copy.
@@ -118,6 +119,28 @@ export function advanceCarOnRoad(c, dt) {
     }
   }
   placeCarOnRoad(c);
+}
+
+// Semantic editor routes are deliberately simpler than the OSM road graph:
+// an authored vehicle walks the exact polyline and optionally loops it.
+export function advanceEditorRoute(c, dt) {
+  const points = c.editorRoute;
+  if (!Array.isArray(points) || points.length < 2) return;
+  let target = points[c.routeIndex || 1];
+  const dx = target[0] - c.x, dy = target[1] - c.y;
+  const d = Math.hypot(dx, dy);
+  const step = c.v * dt;
+  if (d <= Math.max(1, step)) {
+    c.x = target[0]; c.y = target[1];
+    c.routeIndex = (c.routeIndex || 1) + 1;
+    if (c.routeIndex >= points.length) c.routeIndex = c.routeLoop === false ? points.length - 1 : 0;
+    target = points[c.routeIndex];
+  }
+  const ndx = target[0] - c.x, ndy = target[1] - c.y;
+  const nd = Math.hypot(ndx, ndy) || 1;
+  c.ang = Math.atan2(ndy, ndx);
+  c.x += ndx / nd * Math.min(step, nd);
+  c.y += ndy / nd * Math.min(step, nd);
 }
 
 function spawnOneCar() {
@@ -532,6 +555,46 @@ export function updateAnimals(dt) {
 // need to change their call sites.
 export function spawnTraffic() { traffic.length = 0; trains.length = 0; }
 export function spawnPedestrians() { pedestrians.length = 0; spawnAmbient(); }
-export function spawnAmbient() { parked.length = 0; vendors.length = 0; animals.length = 0; }
+export function spawnAmbient() {
+  parked.length = 0;
+  const routes = new Map(
+    W.EDITOR_FEATURES
+      .filter((feature) => feature.type === "route" && feature.geometry?.kind === "line")
+      .map((feature) => [feature.id, feature.geometry.points]),
+  );
+  for (const feature of W.EDITOR_FEATURES) {
+    if (feature.type !== "placed-vehicle" || feature.geometry?.kind !== "point") continue;
+    const properties = feature.properties || {};
+    const vehicle = VEHICLES[properties.vehicleKey] || VEHICLES.scooter;
+    const record = {
+      editorId: feature.id,
+      x: feature.geometry.point[0],
+      y: feature.geometry.point[1],
+      ang: (Number(properties.angle) || 0) * Math.PI / 180,
+      color: feature.style?.color || vehicle.color,
+      roof: vehicle.roof,
+      w: vehicle.w,
+      h: vehicle.h,
+      kind: vehicle.kind,
+      vehicleKey: properties.vehicleKey || "scooter",
+    };
+    if (properties.vehicleBehavior === "traffic" && routes.has(properties.routeId)) {
+      const route = routes.get(properties.routeId);
+      traffic.push({
+        ...record,
+        x: route[0][0],
+        y: route[0][1],
+        v: Number(properties.speed) || Math.min(vehicle.top, 90),
+        editorRoute: route,
+        routeIndex: 1,
+        routeLoop: properties.routeLoop !== false,
+      });
+    } else {
+      parked.push(record);
+    }
+  }
+  vendors.length = 0;
+  animals.length = 0;
+}
 export function spawnGulls() { gulls.length = 0; }
 export function spawnBoats() { boats.length = 0; }

@@ -25,7 +25,9 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, pier, hills,
                  stadiums=None, kiosk_paths=None, faro_pier=None, greens=None,
-                 balneario=None, pois=None, parcels=None, ferries=None, signs=None):
+                 balneario=None, pois=None, parcels=None, ferries=None, signs=None,
+                 editor_features=None, editor_patch=None, cuadras=None,
+                 surface_styles=None, editor_ui=None):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -143,7 +145,13 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
         # the two ferry berths and the truncated real routes they sail — the
         # Easter egg: park on one, wait, and it takes you out over the gulf
         "ferries": ferries or [],
+        "cuadras": cuadras or [],
+        "surfaceStyles": surface_styles or [],
     }
+    if editor_patch:
+        manifest["editorPatch"] = editor_patch
+        manifest["editorFeatures"] = editor_features or []
+        manifest["editorUI"] = editor_ui or {}
     repo.write_manifest(manifest)
 
     total = repo.total_bytes()

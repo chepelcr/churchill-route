@@ -8,6 +8,7 @@
   --teal: oklch(0.62 0.12 220);
   --ink: oklch(0.18 0.03 280);
   --paper: oklch(0.96 0.02 80);
+  --editor-screen-bg: #17141f;
 }
 
 * { box-sizing: border-box; }
@@ -538,7 +539,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .page-card {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  background: oklch(0.14 0.04 285 / 0.72);
+  background: color-mix(in srgb, var(--editor-screen-bg) 76%, transparent);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   padding: max(10px, env(safe-area-inset-top))
            max(clamp(12px, 3vw, 32px), env(safe-area-inset-right))

@@ -55,6 +55,7 @@ function scanTiles() {
   };
 }
 const tiles = scanTiles();
+const distinct = (arr, key) => [...new Set((arr || []).map((item) => item[key]).filter(Boolean))].sort();
 
 // ---- Source-module map: filename -> { lines, exports[] } --------------------
 function listFiles(dir) {
@@ -114,6 +115,8 @@ const inventory = {
     landPolys: (M.landPolys || []).length,
     beaches: (M.beaches || []).length,
     waters: (M.waters || []).length,
+    cuadras: (M.cuadras || []).length,
+    surfaceStyles: (M.surfaceStyles || []).length,
     greens: (M.greens || []).length,
     hills: (M.hills || []).length,
     landmarks: M.landmarks.length,
@@ -122,6 +125,12 @@ const inventory = {
     parcelsByUse: tally(M.parcels, "use"),
     stadiums: (M.stadiums || []).length,
     pois: (M.pois || []).length,
+    poisByCategory: tally(M.pois, "cat"),
+    signs: (M.signs || []).length,
+    signsByKind: tally(M.signs, "kind"),
+    ferries: (M.ferries || []).length,
+    plazas: (M.plazas || []).length,
+    editorFeatures: (M.editorFeatures || []).length,
     customers: M.customers.length,
     districts: M.districts.length,
     stages: M.stages.length,
@@ -144,6 +153,47 @@ const inventory = {
     id: p.id, use: p.use, name: p.name, ang: p.ang, slot: p.slot,
   })),
   customers: M.customers.map((c) => ({ id: c.id, name: c.name, district: c.district })),
+  catalogs: {
+    // Shared human/agent type contract. Feature instances remain streamed from
+    // the manifest and tiles instead of ballooning this file to 80k records.
+    worldEntities: [
+      { type: "cuadra", label: "Cuadra", category: "ground", geometry: "polygon", layer: "parcels", source: "manifest", count: (M.cuadras || []).length, editable: true },
+      { type: "surface-region", label: "Surface region", category: "ground", geometry: "polygon", layer: "surfaces", source: "patch", count: (M.surfaceStyles || []).length, editable: true },
+      { type: "water", label: "Water", category: "ground", geometry: "polygon", layer: "surfaces", source: "manifest", count: (M.waters || []).length, editable: true },
+      { type: "beach", label: "Beach", category: "ground", geometry: "polygon", layer: "surfaces", source: "manifest", count: (M.beaches || []).length, editable: true },
+      { type: "hill", label: "Hill", category: "ground", geometry: "polygon", layer: "surfaces", source: "manifest", count: (M.hills || []).length, editable: true },
+      { type: "road", label: "Road", category: "transport", geometry: "line", layer: "roads", source: "tile", count: tiles.roads, editable: true },
+      { type: "boulevard", label: "Boulevard", category: "transport", geometry: "line", layer: "roads", source: "tile", count: tiles.roadsByClass.pedestrian || 0, editable: true },
+      { type: "rail", label: "Rail", category: "transport", geometry: "line", layer: "roads", source: "generator", count: 22, editable: true },
+      { type: "ferry-route", label: "Ferry route", category: "transport", geometry: "line", layer: "roads", source: "manifest", count: (M.ferries || []).length, editable: true },
+      { type: "building", label: "Building", category: "structures", geometry: "polygon", layer: "buildings", source: "tile", count: tiles.buildings, editable: true },
+      { type: "parcel", label: "Parcel", category: "structures", geometry: "polygon", layer: "parcels", source: "manifest", count: (M.parcels || []).length, editable: true },
+      { type: "stadium", label: "Stadium / cancha", category: "structures", geometry: "polygon", layer: "parcels", source: "manifest", count: (M.stadiums || []).length, editable: true },
+      { type: "park", label: "Park / green", category: "structures", geometry: "polygon", layer: "parcels", source: "manifest", count: (M.greens || []).length, editable: true },
+      { type: "landmark", label: "Landmark", category: "places", geometry: "point", layer: "landmarks", source: "manifest", count: (M.landmarks || []).length, editable: true },
+      { type: "kiosk", label: "Churchill kiosk", category: "places", geometry: "point", layer: "landmarks", source: "manifest", count: (M.landmarks || []).filter((item) => item.type === "kiosk").length, editable: true },
+      { type: "poi", label: "OSM place", category: "places", geometry: "point", layer: "landmarks", source: "manifest", count: (M.pois || []).length, editable: true },
+      { type: "sign", label: "Street furniture / sign", category: "places", geometry: "point", layer: "landmarks", source: "manifest", count: (M.signs || []).length, editable: true },
+      { type: "tree", label: "Tree", category: "vegetation", geometry: "point", layer: "vegetation", source: "tile", count: tiles.trees, editable: true },
+      { type: "palm", label: "Palm", category: "vegetation", geometry: "point", layer: "vegetation", source: "tile", count: tiles.palms, editable: true },
+      { type: "tree-line", label: "Tree line", category: "vegetation", geometry: "line", layer: "vegetation", source: "patch", count: 0, editable: true },
+      { type: "mangrove", label: "Mangrove", category: "vegetation", geometry: "point", layer: "vegetation", source: "tile", count: tiles.mangroves, editable: true },
+      { type: "player", label: "Player start", category: "gameplay", geometry: "point", layer: "drafts", source: "patch", count: (M.editorFeatures || []).filter((item) => item.type === "player").length, editable: true },
+      { type: "placed-vehicle", label: "Placed vehicle", category: "gameplay", geometry: "point", layer: "drafts", source: "patch", count: (M.editorFeatures || []).filter((item) => item.type === "placed-vehicle").length, editable: true },
+      { type: "spawn", label: "Spawn / checkpoint", category: "gameplay", geometry: "point", layer: "drafts", source: "patch", count: (M.editorFeatures || []).filter((item) => item.type === "spawn").length, editable: true },
+      { type: "delivery", label: "Delivery target", category: "gameplay", geometry: "point", layer: "drafts", source: "patch", count: (M.editorFeatures || []).filter((item) => item.type === "delivery").length, editable: true },
+      { type: "route", label: "Authored route", category: "gameplay", geometry: "line", layer: "drafts", source: "patch", count: (M.editorFeatures || []).filter((item) => item.type === "route").length, editable: true },
+      { type: "trigger", label: "Trigger zone", category: "gameplay", geometry: "polygon", layer: "drafts", source: "patch", count: (M.editorFeatures || []).filter((item) => item.type === "trigger").length, editable: true },
+      { type: "stage", label: "Story stage", category: "gameplay", geometry: "point", layer: "drafts", source: "patch", count: (M.editorFeatures || []).filter((item) => item.type === "stage").length, editable: true },
+    ],
+    roadClasses: Object.keys(tiles.roadsByClass).sort(),
+    parcelUses: distinct(M.parcels, "use"),
+    landmarkTypes: distinct(M.landmarks, "type"),
+    poiCategories: distinct(M.pois, "cat"),
+    signKinds: distinct(M.signs, "kind"),
+    treeKinds: ["tree", "palm", "mangrove"],
+    groundPresets: ["cuadra", "park", "plaza", "stadium", "water", "balneario", "beach"],
+  },
   modules,
 };
 

@@ -27,8 +27,42 @@ export const WORLD2D = (function () {
   // ----- backdrop + POIs (small, eager from the manifest) --------------------
   const DISTRICTS = manifest.districts;   // {id,name,short,tone,x0,x1,poly}
   const LANDMARKS = manifest.landmarks;
-  const CUSTOMERS = manifest.customers;
-  const STAGES = manifest.stages;
+  const EDITOR_FEATURES = manifest.editorFeatures || []; // authored gameplay/world entities
+  const EDITOR_UI = manifest.editorUI || {}; // screen copy/theme authored in the editor
+  const editorPoint = (feature) => feature.geometry?.kind === "point" ? feature.geometry.point : [0, 0];
+  const CUSTOMERS = [
+    ...manifest.customers,
+    ...EDITOR_FEATURES.filter((feature) => feature.type === "delivery").map((feature) => {
+      const [x, y] = editorPoint(feature), properties = feature.properties || {};
+      return {
+        id: properties.customerId || feature.id,
+        name: feature.name || feature.id,
+        x, y,
+        district: properties.district || "paseo",
+        line: properties.deliveryLine || "",
+        editorId: feature.id,
+      };
+    }),
+  ];
+  const STAGES = [
+    ...manifest.stages,
+    ...EDITOR_FEATURES.filter((feature) => feature.type === "stage").map((feature, index) => {
+      const properties = feature.properties || {};
+      return {
+        num: properties.stageNumber || manifest.stages.length + index + 1,
+        id: properties.stageId || feature.id,
+        name: feature.name || feature.id,
+        district: properties.district || "paseo",
+        weather: properties.weather || "sunny",
+        targetDeliveries: Number(properties.targetDeliveries) || 1,
+        timeLimit: Number(properties.timeLimit) || 180,
+        unlock: properties.unlock || null,
+        kiosks: properties.kioskIds || ["kios_paseo1"],
+        customers: properties.customerIds || CUSTOMERS.filter((item) => item.editorId).map((item) => item.id),
+        editorId: feature.id,
+      };
+    }),
+  ];
   const WATERS = manifest.waters || [];
   const BEACHES = manifest.beaches || [];
   const LAND_POLYS = manifest.landPolys || [];
@@ -42,6 +76,8 @@ export const WORLD2D = (function () {
   const KIOSK_PATHS = manifest.kioskPaths || []; // sand access paths to beach kiosks
   const PLAZAS = manifest.plazas || [];   // [x,y,w,h,type] ground rects (esplanade)
   const GREENS = manifest.greens || [];   // {pts:[x,y,...], type} park/plaza outline polys
+  const CUADRAS = manifest.cuadras || []; // selectable generated block interiors
+  const SURFACE_STYLES = manifest.surfaceStyles || []; // per-region ground/acera materials
   // Every named real-world POI OSM knows about {x,y,name,cat}. Debug overlay
   // only for now — 1160 pills at play zoom would be a wall of text.
   const POIS = manifest.pois || [];
@@ -331,8 +367,8 @@ export const WORLD2D = (function () {
 
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
-    DISTRICTS, LANDMARKS, CUSTOMERS, STAGES,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, POIS, PARCELS, FERRIES, FIELDS, SIGNS,
+    DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

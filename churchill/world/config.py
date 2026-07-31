@@ -16,6 +16,7 @@ from .enums import surface as surface_enum
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OSM_PATH = os.path.join(ROOT, "docs", "map.osm")
+EDITOR_PATCH_PATH = os.path.join(ROOT, "docs", "world-editor.patch.json")
 DEBUG_PNG = os.path.join(ROOT, "tools", "debug_map.png")
 DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
 # chunked output — the tiled world the src/world2d accessor streams by camera

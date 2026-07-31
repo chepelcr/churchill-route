@@ -21,6 +21,9 @@ from ..config import (
 from ..repository.osm_file import OsmFileRepository
 from ..repository.world_json import JsonWorldRepository
 from ..service.block import block_raster_cells, outline_poly
+from ..service.editor_patch import (
+    WorldPatchError, WorldPatchSession, build_cuadra_catalog,
+)
 from ..service.placement import block_containing, nearest_cell
 from ..service.street import StreetIndex
 from .build_stage import decorate, place_structures, seat_town_kiosks
@@ -43,6 +46,12 @@ def main():
     roads, rails, pois = ctx.roads, ctx.rails, ctx.pois
     beaches, waters = ctx.beaches, ctx.waters
     junction_islands = []
+    try:
+        editor_patch = WorldPatchSession.discover(ctx.dims)
+        if editor_patch:
+            editor_patch.apply_pre_surface(ctx)
+    except WorldPatchError as error:
+        raise SystemExit(f"[editor] {error}") from error
 
     grid, land_contours, topY, botY = rasterise_surface(
         ctx, sp=sp, ways=ways, nodes=nodes, roads=roads, beaches=beaches,
@@ -98,6 +107,12 @@ def main():
     ctx.bridge, ctx.estuary, ctx.pier = bridge, est, pier
     ctx.faro_pier, ctx.balneario = faro_pier, balneario
     ctx.failures = failures
+    ctx.cuadras = build_cuadra_catalog(ctx.raster, blocks)
+    if editor_patch:
+        try:
+            editor_patch.apply_final(ctx)
+        except WorldPatchError as error:
+            raise SystemExit(f"[editor] {error}") from error
 
     _kf = next((l for l in landmarks if l["id"] == "kios_faro"), None)
     spawn = tuple(_kf["spawn"]) if (_kf and _kf.get("spawn")) else (

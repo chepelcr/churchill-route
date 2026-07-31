@@ -53,6 +53,15 @@ export default function App() {
     iap.init();
     analytics.init(); // no-ops without VITE_GA_ID
     content.load(); // supporters / server NPCs / lotes (cache-first, offline-safe)
+    const launch = new URLSearchParams(window.location.search);
+    if (launch.get("editorPlay") === "1") {
+      const x = Number(launch.get("x"));
+      const y = Number(launch.get("y"));
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        Game.startExplore({ x, y });
+        setScreen("playing");
+      }
+    }
     let raf;
     const tick = () => {
       tickRef.current += 1;
@@ -92,6 +101,15 @@ export default function App() {
   }, [screen]);
 
   useEffect(() => { Game.state.paused = (screen === "paused" || (screen === "settings" && settingsFrom.current === "paused")); }, [screen]);
+
+  // World-editor screen contract: each main screen can override the shared
+  // accent/backdrop, while individual screens opt into copy fields below.
+  useEffect(() => {
+    const ui = WORLD.EDITOR_UI?.screens?.[screen] || {};
+    document.documentElement.style.setProperty("--editor-screen-bg", ui.background || "#17141f");
+    document.documentElement.style.setProperty("--gold", ui.accent || "oklch(0.86 0.16 90)");
+    document.body.dataset.gameScreen = screen;
+  }, [screen]);
 
   // Menu screens show the live world drifting behind them (attract mode).
   useEffect(() => { Game.setAttract(["boot", "intro", "title", "stagepick", "supporters", "shop", "vehpick", "modebrief", "tutbrief"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
@@ -228,7 +246,7 @@ export default function App() {
       {(screen === "intro" || screen === "title" || screen === "stagepick" || screen === "brief" || screen === "modebrief" || screen === "tutbrief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick") && (
         <div className="screen-anim" key={screen}>
           {screen === "intro" && <IntroScreen onDone={() => setScreen("tutbrief")} />}
-          {screen === "title" && <TitleScreen onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => { setShopCtx(null); setScreen("shop"); }} />}
+          {screen === "title" && <TitleScreen editorConfig={WORLD.EDITOR_UI?.screens?.title} onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => { setShopCtx(null); setScreen("shop"); }} />}
           {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
           {screen === "shop" && <ShopScreen ctx={shopCtx} onBack={() => { setShopCtx(null); setScreen("title"); }} />}
           {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} onShop={(ctx) => { setShopCtx(ctx || null); setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}

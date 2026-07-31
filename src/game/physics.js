@@ -5,7 +5,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains, pushFloat } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceTrain } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceEditorRoute, advanceTrain } from "./spawns.js";
 import { advanceBus, advancePassenger, maintainBusStops } from "./buses.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
@@ -14,6 +14,7 @@ import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt } from "./ferries.js";
+import { updateEditorTriggers } from "./editorGameplay.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [6]; // fallback for free (stadium) peds; rail peds cross via advancePed
@@ -424,6 +425,8 @@ export function update(dt) {
     if (state.carrying.melt >= state.carrying.total) dropChurchill();
   }
 
+  updateEditorTriggers();
+
   // Camera follow with lookahead scaled to the real view (a fixed 70px
   // exceeded the vertical half-view on short screens), then a HARD clamp so
   // the vehicle can never leave the middle of the screen.
@@ -611,7 +614,9 @@ export function advanceEntities(dt, withPlayer = true) {
   // connecting way at intersections; recycled only by the far cull.
   for (const t of traffic) {
     // a bus is the same vehicle on the same road network — it just stops
-    if (t.kind === "bus") advanceBus(t, dt); else advanceCarOnRoad(t, dt);
+    if (t.editorRoute) advanceEditorRoute(t, dt);
+    else if (t.kind === "bus") advanceBus(t, dt);
+    else advanceCarOnRoad(t, dt);
     if (withPlayer && Math.abs(t.x - p.x) < 14 && Math.abs(t.y - p.y) < 10) {
       p.vx -= (t.x - p.x) * 0.35; p.vy -= (t.y - p.y) * 0.35;
       state.cam.shake = Math.max(state.cam.shake, 6);

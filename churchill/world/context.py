@@ -94,6 +94,15 @@ class WorldContext:
     parcels: list = field(default_factory=list)
     kiosk_paths: list = field(default_factory=list)
     buildings: list = field(default_factory=list)
+    #: Semantic additions the current runtime does not render yet. Preserving
+    #: them in the manifest is part of the editor contract: no valid edit is
+    #: silently dropped merely because its entity catalog lands in a later
+    #: milestone.
+    editor_features: list = field(default_factory=list)
+    editor_ui: dict = field(default_factory=dict)
+    editor_patch_meta: object = None
+    cuadras: list = field(default_factory=list)
+    surface_styles: list = field(default_factory=list)
 
     # ---- decoration ---------------------------------------------------------
     trees: list = field(default_factory=list)

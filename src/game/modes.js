@@ -10,6 +10,7 @@ import { initTutorial } from "./tutorial.js";
 import { economy } from "./economy.js";
 import { t, stageBrief } from "../i18n/index.js";
 import { analytics } from "../monetize/analytics.js";
+import { resetEditorTriggers } from "./editorGameplay.js";
 
 // Resolve the run vehicle: enforce ownership (fall back to scooter) and apply
 // the equipped paint by cloning — paintVehicle reads veh.color.
@@ -24,6 +25,26 @@ function resolveVehicle(key) {
 function spawnAtKiosk(k) {
   const sp = k && k.spawn;
   return sp ? { x: sp[0], y: sp[1] } : { x: k.x - 60, y: k.y };
+}
+function editorPlayer(mode) {
+  return W.EDITOR_FEATURES.find((feature) => {
+    if (!["player", "spawn"].includes(feature.type) || feature.geometry?.kind !== "point") return false;
+    const playerMode = feature.properties?.playerMode || "all";
+    return playerMode === "all" || playerMode === mode;
+  }) || null;
+}
+function authoredSpawn(mode, fallback, explicit = null) {
+  if (explicit && Number.isFinite(explicit.x) && Number.isFinite(explicit.y)) return explicit;
+  const feature = editorPlayer(mode);
+  if (!feature) return fallback;
+  return {
+    x: feature.geometry.point[0],
+    y: feature.geometry.point[1],
+    a: (Number(feature.properties?.angle) || 0) * Math.PI / 180,
+  };
+}
+function authoredVehicle(mode, requested) {
+  return requested || editorPlayer(mode)?.properties?.vehicleKey || state.vehicleKey;
 }
 // Run-start economy state: reset the run wallet and consume any armed boosts
 // (picked in the vehicle picker; each is one use).
@@ -45,7 +66,7 @@ export function startStage(stageIdx, vehicleKey) {
   state.timeLeft = stg.timeLimit;
   state.stageDeliveries = 0;
   state.stageTarget = stg.targetDeliveries;
-  const rv = resolveVehicle(vehicleKey || state.vehicleKey);
+  const rv = resolveVehicle(authoredVehicle("story", vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
@@ -56,8 +77,8 @@ export function startStage(stageIdx, vehicleKey) {
   state.usedAdContinue = false;
   // place player near first kiosk of stage (on its street-snapped spawn)
   const k = W.landmarkById(stg.kiosks[0]);
-  const sp = spawnAtKiosk(k);
-  state.p = { x: sp.x, y: sp.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
+  const sp = authoredSpawn("story", spawnAtKiosk(k));
+  state.p = { x: sp.x, y: sp.y, a: sp.a || 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   // mutate cam, never replace: the renderer publishes zoom/vw/vh on it
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = stageBrief(stg);
@@ -70,6 +91,7 @@ export function startStage(stageIdx, vehicleKey) {
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   resetFerries();   // both ferries home and available again every run
+  resetEditorTriggers();
   pickCustomer();
   analytics.track("run_start", { mode: "story", stage_id: stg.id, vehicle: state.vehicleKey });
 }
@@ -80,7 +102,7 @@ export function startArcade(opts = {}) {
   state.mode = "arcade";
   state.weather = opts.weather || "sunny";
   state.timeLeft = 180;
-  const rv = resolveVehicle(opts.vehicleKey || state.vehicleKey);
+  const rv = resolveVehicle(authoredVehicle("arcade", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
@@ -90,7 +112,7 @@ export function startArcade(opts = {}) {
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
   const k0 = W.landmarkById("kios_paseo1");
-  { const _sp = spawnAtKiosk(k0); state.p = { x: _sp.x, y: _sp.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 }; }
+  { const _sp = authoredSpawn("arcade", spawnAtKiosk(k0)); state.p = { x: _sp.x, y: _sp.y, a: _sp.a || 0, vx: 0, vy: 0, speed: 0, drift: 0 }; }
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = t("tip.arcade");
   rebuildBarriers(); // MVP wall (arcade has no progression barriers)
@@ -102,6 +124,7 @@ export function startArcade(opts = {}) {
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   resetFerries();   // both ferries home and available again every run
+  resetEditorTriggers();
   pickCustomer();
   analytics.track("run_start", { mode: "arcade", vehicle: state.vehicleKey });
 }
@@ -112,7 +135,7 @@ export function startExplore(opts = {}) {
   state.mode = "explore";
   state.weather = opts.weather || "sunny";
   state.timeLeft = 999;
-  const rv = resolveVehicle(opts.vehicleKey || state.vehicleKey);
+  const rv = resolveVehicle(authoredVehicle("explore", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
@@ -121,10 +144,15 @@ export function startExplore(opts = {}) {
   state.floats = []; state.particles = []; state.arcadeCoins = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
-  // Spawn on the faro muelle (falls back to beside the lighthouse)
+  // Spawn on the faro muelle by default. The world editor may provide an exact
+  // generated-world point for a one-click playtest.
+  const editorSpawn = Number.isFinite(opts.x) && Number.isFinite(opts.y)
+    ? { x: opts.x, y: opts.y }
+    : null;
   const kf = W.landmarkById("kios_faro"), f0 = W.landmarkById("faro");
-  const sp = kf && kf.spawn;
-  state.p = sp ? { x: sp[0], y: sp[1], a: 0, vx: 0, vy: 0, speed: 0, drift: 0 }
+  const fallback = (kf && kf.spawn) ? { x: kf.spawn[0], y: kf.spawn[1] } : null;
+  const sp = authoredSpawn("explore", fallback, editorSpawn);
+  state.p = sp ? { x: sp.x ?? sp[0], y: sp.y ?? sp[1], a: sp.a ?? opts.angle ?? 0, vx: 0, vy: 0, speed: 0, drift: 0 }
                : { x: f0.x + 60, y: f0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = t("tip.explore", { n: state.progress.unlocked.length });
@@ -137,6 +165,7 @@ export function startExplore(opts = {}) {
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   resetFerries();   // both ferries home and available again every run
+  resetEditorTriggers();
   pickCustomer();
   analytics.track("run_start", { mode: "explore", vehicle: state.vehicleKey });
 }
@@ -149,7 +178,7 @@ export function startTutorial(opts = {}) {
   state.mode = "tutorial";
   state.weather = "sunny";
   state.timeLeft = 999;
-  const rv = resolveVehicle(opts.vehicleKey || state.vehicleKey);
+  const rv = resolveVehicle(authoredVehicle("tutorial", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
@@ -159,7 +188,7 @@ export function startTutorial(opts = {}) {
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
   const k0 = W.landmarkById("kios_paseo1");
-  { const _sp = spawnAtKiosk(k0); state.p = { x: _sp.x, y: _sp.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 }; }
+  { const _sp = authoredSpawn("tutorial", spawnAtKiosk(k0)); state.p = { x: _sp.x, y: _sp.y, a: _sp.a || 0, vx: 0, vy: 0, speed: 0, drift: 0 }; }
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
   state.storyTip = "";
   rebuildBarriers();
@@ -168,6 +197,7 @@ export function startTutorial(opts = {}) {
   W.ready(state.cam.x, state.cam.y, state.cam.vw || 1600, state.cam.vh || 1000);
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   resetFerries();   // both ferries home and available again every run
+  resetEditorTriggers();
   pickCustomerNear(k0.x, k0.y); // short, predictable first delivery
   initTutorial();
   analytics.track("run_start", { mode: "tutorial", vehicle: state.vehicleKey });

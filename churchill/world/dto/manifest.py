@@ -41,6 +41,14 @@ class Manifest(WorldModel):
     parcels: list[Parcel] = Field(default_factory=list)
     ferries: list[Ferry] = Field(default_factory=list)
     signs: list[Sign] = Field(default_factory=list)
+    # Present only when a semantic editor patch participated in the build.
+    # Unknown/future entity kinds are retained here until their runtime catalog
+    # knows how to consume them.
+    editorPatch: dict | None = None
+    editorFeatures: list[dict] = Field(default_factory=list)
+    editorUI: dict = Field(default_factory=dict)
+    cuadras: list[dict] = Field(default_factory=list)
+    surfaceStyles: list[dict] = Field(default_factory=list)
 
     def parcel(self, parcel_id: str) -> Parcel | None:
         return next((p for p in self.parcels if p.id == parcel_id), None)

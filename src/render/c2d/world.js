@@ -8,7 +8,9 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
 import { paintPalm, paintTree } from "./flora.js";
 import { aabbInView } from "./gfx.js";
-import { drawFaroCommas, drawKioskPaths, drawLandBase } from "./ground.js";
+import {
+  drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
+} from "./ground.js";
 import { drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
 import { paintBuilding } from "./structures.js";
 
@@ -24,6 +26,7 @@ function drawWorld2D(view, t) {
   }
   roads.sort((a, b) => (ROAD_ORDER[a.cls] || 0) - (ROAD_ORDER[b.cls] || 0));
   paintRoads(roads, view);
+  drawSurfaceStyleAceras(view);
   // rails (old Ferrocarril line) + paseo separator ground strips, on top of
   // the asphalt but under buildings/flora
   for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);

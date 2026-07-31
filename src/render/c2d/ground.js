@@ -62,6 +62,7 @@ function drawLandBase(view, t) {
   // wet line and streets all paint on top of it.
   for (const gp of W.GREENS || []) drawGreenPoly(gp, view);
   for (const pz of W.PLAZAS || []) drawPlazaGreen(pz, view);   // faro esplanade
+  drawSurfaceStyleGround(view);
   ctx.lineJoin = "round";
   for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) paintWaterBody(w, view, t);
   // beach: sandy fill + a faint wet line along its seaward edge
@@ -116,6 +117,56 @@ function drawGreenPoly(gp, view) {
   }
 }
 
+const SURFACE_PRESET_COLORS = {
+  cuadra: "#e8d5a0",
+  park: "#4f9d5b",
+  plaza: "#cbc6ba",
+  stadium: "#4f9d5b",
+  balneario: "#2a7fa8",
+  water: "#2a7fa8",
+  beach: "#f4d77a",
+};
+
+function surfaceStylePath(style) {
+  if (!style._path) style._path = flatMultiPath([style.pts]);
+  if (!style._aabb) {
+    const xs = style.pts.filter((_, i) => i % 2 === 0);
+    const ys = style.pts.filter((_, i) => i % 2 === 1);
+    style._aabb = { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+  }
+  return style._path;
+}
+
+// Semantic region material painted by the editor. Water itself is already in
+// W.WATERS; this fill handles land/park/plaza custom materials.
+function drawSurfaceStyleGround(view) {
+  for (const style of W.SURFACE_STYLES || []) {
+    const path = surfaceStylePath(style);
+    if (!aabbInView(style._aabb, view, 4)) continue;
+    if (style.groundPreset === "water" || style.groundPreset === "balneario") continue;
+    ctx.fillStyle = style.groundColor || SURFACE_PRESET_COLORS[style.groundPreset] || SURFACE_PRESET_COLORS.cuadra;
+    ctx.fill(path, "evenodd");
+  }
+}
+
+// Repaint only the INSIDE band of a styled cuadra. Clipping to its polygon
+// keeps the material off the street while a 2× stroke gives the requested
+// width entirely on the inner side.
+function drawSurfaceStyleAceras(view) {
+  for (const style of W.SURFACE_STYLES || []) {
+    if (!style.aceraColor || !style.aceraWidthCells) continue;
+    const path = surfaceStylePath(style);
+    if (!aabbInView(style._aabb, view, style.aceraWidthCells * W.CELL)) continue;
+    ctx.save();
+    ctx.clip(path, "evenodd");
+    ctx.strokeStyle = style.aceraColor;
+    ctx.lineWidth = style.aceraWidthCells * W.CELL * 2;
+    ctx.lineJoin = "round";
+    ctx.stroke(path);
+    ctx.restore();
+  }
+}
+
 // Faro plaza red comma "islands": all the SAME orientation, corner (tip)
 // pointing NORTH, spread across the sand shape by the build (lm.commas). Drawn
 // in the ground layer so the plaza's trees sit on top of them.
@@ -155,4 +206,8 @@ function drawKioskPaths(view) {
   }
 }
 
-export { GREEN_COLORS, GREEN_DILATE, drawFaroCommas, drawGreenPoly, drawKioskPaths, drawLandBase, drawPlazaGreen, drawWaterAll, paintWaterBody };
+export {
+  GREEN_COLORS, GREEN_DILATE, drawFaroCommas, drawGreenPoly, drawKioskPaths,
+  drawLandBase, drawPlazaGreen, drawSurfaceStyleAceras, drawSurfaceStyleGround,
+  drawWaterAll, paintWaterBody,
+};

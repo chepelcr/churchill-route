@@ -17,7 +17,7 @@ const MODE_IDS = [
   { id: "arcade",   swatch: "#ff3d80" },
 ];
 
-export default function TitleScreen({ onPickMode, onSettings, onSupporters, onShop }) {
+export default function TitleScreen({ editorConfig, onPickMode, onSettings, onSupporters, onShop }) {
   const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [info, setInfo] = useState(false);
@@ -69,8 +69,8 @@ export default function TitleScreen({ onPickMode, onSettings, onSupporters, onSh
         </div>
       </div>
       <div className="page-body">
-          <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
-          <div className="title-sub">{t("title.sub")}</div>
+          <h1 className="title-main">{editorConfig?.title || "LA RUTA DEL CHURCHILL"}</h1>
+          <div className="title-sub">{editorConfig?.subtitle || t("title.sub")}</div>
 
           {iosHint && (
             <div className="ios-hint">

@@ -154,6 +154,15 @@ function paintStadiumCuadras(view) {
   for (const S of arr) {
     if (S.x1 + 40 < view.x0 || S.x0 - 40 > view.x1 || S.y1 + 40 < view.y0 || S.y0 - 40 > view.y1) continue;
     if (!S.footprint) continue;
+    // The builder emits two real polygons: `outline` is the entire stadium
+    // cuadra and `footprint` is the cancha inset by FIELD_ACERA_CELLS. Paint
+    // the full outer shape first; the pitch below covers its centre and leaves
+    // precisely the generated acera ring visible around it.
+    if (S.outline && S.aceras !== false) {
+      const acera = S._acera || (S._acera = flatPath(S.outline, true));
+      ctx.fillStyle = S.aceraColor || ACERA_GREY;
+      ctx.fill(acera, "evenodd");
+    }
     const pitch = S._pitch || (S._pitch = flatPath(S.footprint, true));
     // 4 px of grass dilation first: the traced pitch steps in 4 px raster
     // increments, so its edge and the acera band don't meet exactly and a hair

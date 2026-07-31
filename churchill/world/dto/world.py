@@ -190,6 +190,7 @@ class Stadium(WorldModel):
     hw: float | None = Field(default=None, description="half-width along ang")
     hh: float | None = Field(default=None, description="half-height along ang")
     sport: str | None = Field(default=None, description="drives the markings + the match")
+    aceras: bool = Field(default=True, description="pitch is inset from a visible sidewalk ring")
 
 
 class Sign(WorldModel):

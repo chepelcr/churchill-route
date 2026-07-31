@@ -541,11 +541,13 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         {"id": "estadio",                    # Lito Pérez: Calle 15-17 x Avenida 0-2
          "calles": (["Calle 15 José Joaquín Escalante"], ["Calle 17"]),
          "ave_south": ["Avenida 2"],
-         "ave_north": ["Avenida Centenario", "Avenida 0"]},
+         "ave_north": ["Avenida Centenario", "Avenida 0"],
+         "aceras": True},                    # keep the real sidewalk ring visible
         {"id": "estadio_playitas",           # Las Playitas: Calle 6-8, between Av
          "calles": (["Calle 6"], ["Calle 8"]),   # Centenario and the shoreline
          "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
          "ave_south": ["Avenida Centenario"],
+         "aceras": True,
          "beach": True,                      # the cuadra runs out to the sand
          "edge": ["Calle 8"],                # right wall on Calle 8's line, extended
          # Its west boundary is a long diagonal. Three raster cells remove the

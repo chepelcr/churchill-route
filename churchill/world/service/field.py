@@ -455,7 +455,8 @@ class FieldService:
         self.stadiums.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                          "cx": cxpx, "cy": cypx, "footprint": footprint,
                          "outline": outline, "ang": round(sa, 4),
-                         "hw": shw, "hh": shh, "sport": "soccer"})
+                         "hw": shw, "hh": shh, "sport": "soccer",
+                         "aceras": spec.get("aceras", True)})
         # …and as a sponsorable space. A stadium is a WHOLE cuadra, not a part
         # of one, so `whole` tells the renderer its ground is already painted
         # (by paintStadiumCuadras) and only the slot art belongs to the parcel.

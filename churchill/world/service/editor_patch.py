@@ -4,8 +4,9 @@ The visual editor never rewrites generated tiles.  It exports a small semantic
 patch whose source references name features in the generated world.  This
 module is the bridge back into the build:
 
-* road edits run before surface rasterisation, so blocks and collision see the
-  edited street network;
+* road and ferry edits run before surface rasterisation, so blocks and
+  collision see the edited street network and the boarding ramp is paved to the
+  berth the editor moved, not the one OSM shipped;
 * placed/vector content runs after the normal generator has finished, so OSM
   placement remains deterministic and an override replaces its final result;
 * feature kinds that the runtime does not consume yet are preserved in
@@ -340,14 +341,32 @@ class WorldPatchSession:
         collection[:] = rebuilt
 
     def apply_pre_surface(self, ctx):
-        """Apply road sources/additions before the raster and blocks exist."""
+        """Apply road and ferry sources/additions before the raster exists.
+
+        FERRIES ARE EDITED HERE, not in ``apply_final``, and the reason is the
+        boarding ramp: ``seat_town_kiosks`` paves from ``stern_at_rest`` to the
+        nearest street, and the stern is a function of the berth, the heading
+        and the deck. Applied later, a moved berth would keep the ramp the
+        generator paved to where the ferry USED to be — a ferry you can see and
+        cannot board, which is exactly the failure the world already documents.
+        """
         self._apply_collection(
             ctx.roads,
             kind="road",
             id_for=lambda road, _index: road_source_id(road),
             replace=self._road_record,
         )
+        self._apply_collection(
+            ctx.ferries,
+            kind="ferry",
+            id_for=lambda ferry, index: ferry.get("id") or f"ferry_{index}",
+            replace=self._ferry_record,
+        )
         for feature in self.additions:
+            if feature["type"] == "ferry":
+                ctx.ferries.append(self._ferry_record({}, feature))
+                self.applied_additions.add(feature["id"])
+                continue
             if feature["type"] not in ("road", "boulevard"):
                 continue
             if feature["geometry"]["kind"] != "line":
@@ -500,6 +519,61 @@ class WorldPatchSession:
         if feature.get("name"):
             record["name"] = feature["name"]
         record["editorId"] = feature["id"]
+        return record
+
+    @staticmethod
+    def _ferry_record(source, feature):
+        """A ferry, authored as ONE line: its first point is the berth and the
+        whole line is the route she sails.
+
+        That is not a convention invented for the editor — it is how
+        ``extract_ferries`` already emits her, because the ferry has to leave
+        from where she is drawn. Keeping it means moving the berth and redrawing
+        the crossing are the same gesture, and the heading follows the first leg
+        the same way the generator derives it.
+
+        ``ang`` is in RADIANS, named for the manifest field it becomes; a UI
+        that prefers degrees converts on the way in. Deck size and the docked
+        offset are properties, in world px.
+        """
+        record = deepcopy(source or _source_snapshot(feature))
+        properties = feature.get("properties") or {}
+        if feature["geometry"]["kind"] != "line":
+            raise WorldPatchError(
+                f"{feature['id']}: a ferry needs line geometry — the first point"
+                " is the berth, the line is the route she sails")
+        points = _feature_points(feature)
+        deck = record.get("deck") or [124, 46]
+        deck_l = float(properties.get("deckLength") or deck[0])
+        deck_w = float(properties.get("deckWidth") or deck[1])
+        dock_s = float(properties.get("dockS") if properties.get("dockS") is not None
+                       else record.get("dockS", 28))
+        if deck_l <= 0 or deck_w <= 0:
+            raise WorldPatchError(f"{feature['id']}: deck size must be positive")
+        # She lies `dockS` seaward of the berth node and her stern is half a deck
+        # astern of that, so the ramp is paved to (deck_l/2 - dock_s) px LANDWARD
+        # of the node. Let dockS reach half the deck and the stern lands in the
+        # water, where `nearest_cell` has no street to ramp to.
+        if not 0 <= dock_s < deck_l / 2:
+            raise WorldPatchError(
+                f"{feature['id']}: dockS must be at least 0 and less than half the"
+                f" deck length ({deck_l / 2:g}), or the stern lies seaward of the"
+                " berth and the boarding ramp cannot reach the street")
+        if properties.get("ang") is not None:
+            ang = float(properties["ang"])
+        else:
+            (bx, by), (nx, ny) = points[0], points[1]
+            ang = math.atan2(ny - by, nx - bx)
+        record.update({
+            "id": record.get("id") or feature["id"],
+            "name": feature.get("name") or record.get("name") or feature["id"],
+            "berth": [round(points[0][0]), round(points[0][1])],
+            "ang": round(ang, 4),
+            "deck": [round(deck_l), round(deck_w)],
+            "dockS": round(dock_s),
+            "route": _flat(points),
+            "editorId": feature["id"],
+        })
         return record
 
     @staticmethod

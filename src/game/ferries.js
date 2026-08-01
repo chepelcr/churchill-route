@@ -25,11 +25,13 @@ const SPEED = 82;               // px/s — 1800 px out and back is ~44 s
 // from constants here. The build needs the same three numbers: the boarding
 // ramp it paves has to reach the stern at rest, and where the stern is at rest
 // is a function of all of them. Two copies of that would drift, and the failure
-// is silent — a ferry you can see and cannot board. The fallbacks are only for
-// a manifest built before the fields existed.
-export const DECK_L = (W.FERRIES && W.FERRIES[0] && W.FERRIES[0].deck?.[0]) || 124;
-export const DECK_W = (W.FERRIES && W.FERRIES[0] && W.FERRIES[0].deck?.[1]) || 46;
-const DOCK_S = (W.FERRIES && W.FERRIES[0] && W.FERRIES[0].dockS) || 28;
+// is silent — a ferry you can see and cannot board. The fallbacks below are
+// only for a manifest built before the fields existed.
+//
+// They are PER FERRY. Reading them off FERRIES[0] worked only while both boats
+// were the same size, and the editor can now give one of them her own deck —
+// at which point a global would collide the player against the other's.
+const DEF_DECK_L = 124, DEF_DECK_W = 46, DEF_DOCK_S = 28;
 
 let _ferries = null;
 
@@ -40,10 +42,12 @@ function build() {
     const cum = [0];
     for (let i = 1; i < pts.length; i++)
       cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+    const dock = f.dockS ?? DEF_DOCK_S;
     return {
       id: f.id, name: f.name, pts, cum, total: cum[cum.length - 1] || 1,
       x: f.berth[0], y: f.berth[1], a: f.ang,
-      s: DOCK_S, phase: "docked", wait: 0, used: false, dx: 0, dy: 0, da: 0,
+      dl: f.deck?.[0] || DEF_DECK_L, dw: f.deck?.[1] || DEF_DECK_W, dock,
+      s: dock, phase: "docked", wait: 0, used: false, dx: 0, dy: 0, da: 0,
     };
   });
 }
@@ -54,9 +58,9 @@ export function ferries() {
 // Every run starts with both ferries home and available again.
 export function resetFerries() {
   for (const f of ferries()) {
-    f.s = DOCK_S; f.phase = "docked"; f.wait = 0; f.used = false;
+    f.s = f.dock; f.phase = "docked"; f.wait = 0; f.used = false;
     f.dx = f.dy = f.da = 0;
-    const q = routePoint(f, DOCK_S);
+    const q = routePoint(f, f.dock);
     f.x = q.x; f.y = q.y; f.a = q.a;
   }
 }
@@ -80,7 +84,7 @@ export function deckAt(x, y) {
     const ca = Math.cos(-f.a), sa = Math.sin(-f.a);
     const rx = x - f.x, ry = y - f.y;
     const u = rx * ca - ry * sa, v = rx * sa + ry * ca;
-    if (Math.abs(u) <= DECK_L / 2 && Math.abs(v) <= DECK_W / 2) return f;
+    if (Math.abs(u) <= f.dl / 2 && Math.abs(v) <= f.dw / 2) return f;
   }
   return null;
 }
@@ -100,7 +104,7 @@ export function advanceFerries(dt, aboard) {
       if (f.s >= f.total) { f.s = f.total; f.phase = "back"; }
     } else if (f.phase === "back") {
       f.s -= SPEED * dt;
-      if (f.s <= DOCK_S) { f.s = DOCK_S; f.phase = "docked"; f.used = true; f.justHome = true; }
+      if (f.s <= f.dock) { f.s = f.dock; f.phase = "docked"; f.used = true; f.justHome = true; }
     }
     const q = routePoint(f, f.s);
     f.x = q.x; f.y = q.y;

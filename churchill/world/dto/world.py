@@ -167,11 +167,18 @@ class Ferry(WorldModel):
     `route=ferry` way — with the route ORIENTED to start at the berth and cut to
     a short scenic loop. The real crossing ends on the Nicoya side, where this
     world has no shore to arrive at.
+
+    `deck` and `dockS` are here because THE BUILD NEEDS THEM TOO: the boarding
+    ramp has to reach the stern at rest, and where the stern is at rest is a
+    function of all three (service/ferry.py `stern_at_rest`). The client reads
+    them back off the manifest instead of keeping a second copy.
     """
     id: str
     name: str
     berth: list[int]
     ang: float = Field(default=0.0, description="heading out of the berth, radians")
+    deck: list[int] = Field(default=[124, 46], description="[length, width] in world px")
+    dockS: float = Field(default=28.0, description="px seaward of the berth node she lies")
     route: FlatPoly
 
 

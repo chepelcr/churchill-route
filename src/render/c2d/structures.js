@@ -3,7 +3,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ctx, flatPath, label } from "./gfx.js";
-import { DECK_L, DECK_W, ferries } from "../../game/ferries.js";
+import { ferries } from "../../game/ferries.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
@@ -177,9 +177,9 @@ function drawBridge(view) {
 // code — and the DECK RECT drawn here is exactly the rect `deckAt` tests, which
 // is what keeps "looks like I am on it" and "am I on it" the same thing.
 function drawFerry(f, view) {
-  const R = DECK_L / 2 + 40;
+  const R = f.dl / 2 + 40;
   if (f.x + R < view.x0 || f.x - R > view.x1 || f.y + R < view.y0 || f.y - R > view.y1) return;
-  const L = DECK_L / 2, B = DECK_W / 2;
+  const L = f.dl / 2, B = f.dw / 2;
   ctx.save();
   ctx.translate(f.x, f.y); ctx.rotate(f.a);
   // wake: it only exists while she is making way
@@ -216,7 +216,7 @@ function drawFerry(f, view) {
   ctx.fillStyle = "#e85d75";                    // funnel
   ctx.beginPath(); ctx.arc(L - 54, 0, 5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  label(f.x, f.y - DECK_W / 2 - 14, f.name.toUpperCase().replace("FERRY A ", ""),
+  label(f.x, f.y - f.dw / 2 - 14, f.name.toUpperCase().replace("FERRY A ", ""),
         "#fff", "#2f4f68");
 }
 // The berth she sails from: a concrete apron at the quay, so an empty berth
@@ -228,9 +228,9 @@ function drawBerth(f, view) {
   ctx.translate(bx, by); ctx.rotate(f.pts.length > 1
     ? Math.atan2(f.pts[1].y - by, f.pts[1].x - bx) : 0);
   ctx.fillStyle = "#b6b1a2";
-  ctx.fillRect(-14, -DECK_W / 2 - 6, 46, DECK_W + 12);
+  ctx.fillRect(-14, -f.dw / 2 - 6, 46, f.dw + 12);
   ctx.fillStyle = "#8f8a7c";
-  for (let v = -DECK_W / 2; v < DECK_W / 2; v += 12) ctx.fillRect(-14, v, 46, 2);
+  for (let v = -f.dw / 2; v < f.dw / 2; v += 12) ctx.fillRect(-14, v, 46, 2);
   ctx.restore();
 }
 function drawFerries(view) {

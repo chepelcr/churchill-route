@@ -51,6 +51,7 @@ class WorldEditorPatchTests(unittest.TestCase):
         return SimpleNamespace(
             dims=WorldDims.of(1000, 800, 4),
             roads=[],
+            ferries=[],
             buildings=[],
             trees=[],
             palms=[],
@@ -267,6 +268,107 @@ class WorldEditorPatchTests(unittest.TestCase):
         self.assertEqual(ctx.waters[-1], [
             200, 200, 320, 200, 320, 300, 200, 300,
         ])
+
+    @staticmethod
+    def ferry():
+        return {
+            "id": "paquera", "name": "Ferry a Paquera",
+            "berth": [500, 400], "ang": 0.0,
+            "deck": [124, 46], "dockS": 28,
+            "route": [500, 400, 600, 400, 700, 460],
+        }
+
+    def ferry_feature(self, **properties):
+        return feature(
+            "move_ferry", "ferry",
+            {"kind": "line", "points": [[520, 380], [620, 380], [720, 440]]},
+            operation="modify",
+            source_ref={"kind": "ferry", "id": "paquera"},
+            source_snapshot=self.ferry(),
+            properties=properties,
+        )
+
+    def test_ferry_override_moves_the_berth_before_the_ramp_is_paved(self):
+        # The berth is the first route point, and the whole edit lands in
+        # apply_pre_surface — the stage that runs BEFORE seat_town_kiosks paves
+        # the boarding ramp from the stern at rest.
+        ctx = self.context()
+        ctx.ferries.append(self.ferry())
+        session = self.session({
+            "schemaVersion": 1,
+            "overrides": [self.ferry_feature(deckLength=140, deckWidth=52, dockS=30)],
+            "additions": [], "deletions": [],
+        })
+        session.apply_pre_surface(ctx)
+
+        edited = ctx.ferries[0]
+        self.assertEqual(edited["berth"], [520, 380])
+        self.assertEqual(edited["deck"], [140, 52])
+        self.assertEqual(edited["dockS"], 30)
+        self.assertEqual(edited["route"], [520, 380, 620, 380, 720, 440])
+        # Heading follows the first leg, the way extract_ferries derives it.
+        self.assertEqual(edited["ang"], 0.0)
+        self.assertEqual(edited["name"], "Move Ferry")
+
+    def test_ferry_heading_can_be_pinned(self):
+        ctx = self.context()
+        ctx.ferries.append(self.ferry())
+        session = self.session({
+            "schemaVersion": 1,
+            "overrides": [self.ferry_feature(ang=-3.1099)],
+            "additions": [], "deletions": [],
+        })
+        session.apply_pre_surface(ctx)
+        self.assertEqual(ctx.ferries[0]["ang"], -3.1099)
+
+    def test_a_stern_over_water_is_refused(self):
+        # dockS at half the deck puts the stern seaward of the berth node, where
+        # nearest_cell has no street to ramp to: a ferry you can see and cannot
+        # board. The editor and its API refuse the same number.
+        ctx = self.context()
+        ctx.ferries.append(self.ferry())
+        session = self.session({
+            "schemaVersion": 1,
+            "overrides": [self.ferry_feature(deckLength=100, dockS=50)],
+            "additions": [], "deletions": [],
+        })
+        with self.assertRaisesRegex(WorldPatchError, "half the deck length"):
+            session.apply_pre_surface(ctx)
+
+    def test_a_ferry_needs_line_geometry(self):
+        ctx = self.context()
+        ctx.ferries.append(self.ferry())
+        session = self.session({
+            "schemaVersion": 1,
+            "overrides": [],
+            "additions": [feature(
+                "new_ferry", "ferry",
+                {"kind": "point", "point": [500, 400]},
+            )],
+            "deletions": [],
+        })
+        with self.assertRaisesRegex(WorldPatchError, "needs line geometry"):
+            session.apply_pre_surface(ctx)
+
+    def test_a_ferry_can_be_added_and_deleted(self):
+        ctx = self.context()
+        ctx.ferries.append(self.ferry())
+        session = self.session({
+            "schemaVersion": 1,
+            "overrides": [],
+            "additions": [feature(
+                "naranjo_2", "ferry",
+                {"kind": "line", "points": [[100, 100], [100, 300]]},
+                properties={"deckLength": 90, "deckWidth": 30, "dockS": 20},
+            )],
+            "deletions": ["ferry:paquera"],
+        })
+        session.apply_pre_surface(ctx)
+        self.assertEqual([f["id"] for f in ctx.ferries], ["naranjo_2"])
+        added = ctx.ferries[0]
+        self.assertEqual(added["berth"], [100, 100])
+        self.assertEqual(added["deck"], [90, 30])
+        self.assertAlmostEqual(added["ang"], 1.5708, places=3)
 
     def test_invalid_geometry_is_rejected(self):
         invalid = feature(

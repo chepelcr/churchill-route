@@ -370,6 +370,58 @@ class WorldEditorPatchTests(unittest.TestCase):
         self.assertEqual(added["deck"], [90, 30])
         self.assertAlmostEqual(added["ang"], 1.5708, places=3)
 
+    def npc_session(self, npc_type, host=None):
+        properties = {"npcType": npc_type}
+        if host:
+            properties["host"] = host
+        return self.session({
+            "schemaVersion": 1,
+            "overrides": [],
+            "additions": [feature(
+                "crowd_1", "npc", {"kind": "point", "point": [500, 400]},
+                properties=properties,
+            )],
+            "deletions": [],
+        })
+
+    def test_an_npc_must_stand_where_its_type_is_allowed(self):
+        # The editor checks the SHAPE of an authored NPC; only the build has the
+        # raster, so only the build can catch a swimmer standing on asphalt.
+        ctx = self.context()
+        for col in range(120, 130):
+            for row in range(95, 105):
+                ctx.raster.set(col, row, Surface.ROAD)
+        with self.assertRaisesRegex(WorldPatchError, "may not stand on road"):
+            self.npc_session("swimmer").apply_final(ctx)
+
+        ctx = self.context()
+        for col in range(120, 130):
+            for row in range(95, 105):
+                ctx.raster.set(col, row, Surface.WATER)
+        self.npc_session("swimmer").apply_final(ctx)
+        self.assertEqual(len(ctx.editor_features), 1)
+
+    def test_an_npc_may_belong_to_a_parcel_instead_of_a_surface(self):
+        # A fan is allowed on `parcel:stadium`, and the ground under a pitch is
+        # ROAD — so the host reference is what makes the placement legal.
+        ctx = self.context()
+        ctx.parcels.append({"id": "cancha_1", "use": "stadium"})
+        for col in range(120, 130):
+            for row in range(95, 105):
+                ctx.raster.set(col, row, Surface.LAND)
+        self.npc_session("fan", {"kind": "parcel", "id": "cancha_1"}).apply_final(ctx)
+        self.assertEqual(len(ctx.editor_features), 1)
+
+        ctx = self.context()
+        ctx.parcels.append({"id": "jardin_1", "use": "garden"})
+        with self.assertRaisesRegex(WorldPatchError, "may not stand on"):
+            self.npc_session("fan", {"kind": "parcel", "id": "jardin_1"}).apply_final(ctx)
+
+    def test_an_unknown_npc_type_is_refused(self):
+        ctx = self.context()
+        with self.assertRaisesRegex(WorldPatchError, "unknown npcType"):
+            self.npc_session("astronaut").apply_final(ctx)
+
     def test_invalid_geometry_is_rejected(self):
         invalid = feature(
             "bad_water", "water",

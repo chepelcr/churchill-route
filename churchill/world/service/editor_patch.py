@@ -32,6 +32,7 @@ from ..enums import Surface
 from ..logging import log
 from ..util.geometry import point_in_poly
 from .block import block_raster_cells, outline_poly
+from .npc import load_npc_types, may_stand
 
 
 class WorldPatchError(ValueError):
@@ -183,6 +184,7 @@ class WorldPatchSession:
         self.applied_overrides = set()
         self.applied_additions = set()
         self.applied_deletions = set()
+        self._npc_type_cache = None
         self._validate()
 
     @classmethod
@@ -466,6 +468,9 @@ class WorldPatchSession:
                 self._apply_surface_feature(ctx, feature)
             elif feature_type in ("surface-region", "cuadra", "water", "beach"):
                 self._apply_surface_feature(ctx, feature)
+            elif feature_type == "npc":
+                self._check_npc_placement(ctx, feature)
+                ctx.editor_features.append(deepcopy(feature))
             else:
                 # Roofs, entrances, lights, water regions and future entity
                 # types survive the import even before their runtime catalog
@@ -520,6 +525,47 @@ class WorldPatchSession:
             record["name"] = feature["name"]
         record["editorId"] = feature["id"]
         return record
+
+    def _check_npc_placement(self, ctx, feature):
+        """WHERE MAY THIS ONE STAND? The question only the build can answer.
+
+        The editor validates the shape of an authored NPC; the raster is here,
+        so this is where "a swimmer on the asphalt" is caught. An unknown type
+        is refused outright — a typo in `npcType` would otherwise place somebody
+        the registry has no rules for, which is how a crowd ends up in the sea.
+        """
+        types = self._npc_types()
+        if not types:
+            return
+        properties = feature.get("properties") or {}
+        type_id = properties.get("npcType") or "resident"
+        npc_type = types.get(type_id)
+        if npc_type is None:
+            raise WorldPatchError(
+                f"{feature['id']}: unknown npcType {type_id!r}; "
+                f"src/game/npcTypes.json defines {', '.join(sorted(types))}")
+        x, y = _feature_points(feature)[0]
+        surface = ctx.raster.at_px(x, y)
+        host = properties.get("host") or {}
+        host_kind = host.get("kind")
+        host_use = None
+        if host_kind == "parcel":
+            parcel = next((p for p in ctx.parcels if p.get("id") == host.get("id")), None)
+            if parcel is None:
+                raise WorldPatchError(
+                    f"{feature['id']}: host parcel {host.get('id')!r} does not exist")
+            host_use = parcel.get("use")
+        ok, allowed = may_stand(npc_type, surface, host_kind, host_use)
+        if not ok:
+            here = Surface(surface).label if surface is not None else "off-world"
+            raise WorldPatchError(
+                f"{feature['id']}: a {type_id} may not stand on {here} at "
+                f"({round(x)}, {round(y)}); it belongs on {', '.join(allowed)}")
+
+    def _npc_types(self):
+        if self._npc_type_cache is None:
+            self._npc_type_cache = load_npc_types()
+        return self._npc_type_cache
 
     @staticmethod
     def _ferry_record(source, feature):

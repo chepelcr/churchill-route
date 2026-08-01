@@ -40,13 +40,20 @@ function drawArcadeCoin(c, t) {
 }
 
 function drawPed(pe) {
-  if (pe.kind === "swimmer") { drawSwimmer(pe); return; }
-  if (pe.kind === "passenger") { drawPassenger(pe); return; }
-  if (pe.editorNpc) { drawEditorNpc(pe); return; }
+  // The ART, not the kind. `npcTypes.json` lets an authored type choose an
+  // existing look (`art`), which is what makes the registry worth having —
+  // picking a built-in art means accepting the built-in drawing, colour and
+  // all, and the four person styles keep the authored colour/scale.
+  const art = pe.editorNpc ? (pe.drawStyle || "person") : (pe.kind || "walker");
+  if (art === "swimmer") { drawSwimmer(pe); return; }
+  if (art === "passenger") { drawPassenger(pe); return; }
+  if (pe.editorNpc && ["person", "vendor", "worker", "mascot"].includes(art)) {
+    drawEditorNpc(pe); return;
+  }
   // FANS celebrate: a bigger, faster bounce plus a side-to-side shake and two
   // raised arms, so the crowd around the estadio and la plaza reads as a crowd
   // rather than commuters who happen to be walking in a circle.
-  const fan = pe.kind === "fan";
+  const fan = art === "fan";
   const bob = fan ? Math.abs(Math.sin(pe.ph * 1.7)) * -3.2 : Math.sin(pe.ph) * 1.4;
   const sway = fan ? Math.sin(pe.ph * 2.3) * 1.1 : 0;
   const x = pe.x + sway;

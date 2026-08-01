@@ -8,6 +8,7 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
+import { npcCrowdSize, npcMayStand, npcSpeed, npcSurfaceClasses, npcType } from "./npcs.js";
 
 // The sidewalk's depth is a WORLD knob (ACERA_CELLS), read from the manifest
 // rather than hardcoded — the game may not import the renderer's copy.
@@ -18,7 +19,11 @@ const SPAWN_R = 1100;
 const SPAWN_MIN = 300; // keep spawns outside the visible view (half-diagonal ≈ 230)
 // target populations near the camera (tuned to the corridor build's feel:
 // sidewalks full of people, streets with light town traffic)
-const TARGET = { traffic: 14, pedestrians: 64, vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1 };
+// The walker count comes from the REGISTRY (npcTypes.json), because "how many
+// people are on the sidewalk" is a thing the editor is meant to be able to
+// change; the rest are still tuned here.
+const TARGET = { traffic: 14, pedestrians: npcType("walker").density?.target || 64,
+                 vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1 };
 // how many of that traffic are buses on the ruta urbana (see buses.js)
 const BUSES_WANTED = 2;
 const CAR_PALETTE = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
@@ -210,7 +215,7 @@ function spawnOnePed() {
     if (Math.hypot(x - _cam.x, y - _cam.y) > SPAWN_R) return null;
     return {
       road: r, s, side, baseOff, off: side * baseOff,
-      v: (Math.random() < 0.5 ? 1 : -1) * (14 + Math.random() * 12),
+      v: (Math.random() < 0.5 ? 1 : -1) * npcSpeed("walker"),
       crossing: false, crossPhase: 0,
       x, y, hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
     };
@@ -328,15 +333,15 @@ function topUp(arr, target, make, isDead) {
 // point 10 px further in still sat under the 20 px acera band the renderer
 // paints over the block edge. FIELD_INSET is measured from the footprint edge
 // and is wider than that band, so a fan is always visibly on the grass.
-const STADIUM_PEDS = 12;
-const FIELD_INSET = 26;        // px of clearance from the pitch edge
+const FAN = npcType("fan");
+const FIELD_INSET = FAN.inset ?? 26;   // px of clearance from the pitch edge
 // HOW FAR APART A CROWD STANDS. A fan is drawn ~9 px wide with its shadow, so
 // two of them within this read as one smudge — which is what a crowd packed
 // onto a small cancha looked like. It is enforced twice, because once is not
 // enough: at SPAWN time (a candidate point too near a neighbour is rejected)
 // and while they WANDER, where they would otherwise drift into each other
 // however well they were placed.
-const FAN_GAP = 17;
+const FAN_GAP = FAN.gap ?? 17;
 // Point-in-polygon on a flat [x,y,...] ring.
 function inPoly(x, y, f) {
   let inside = false;
@@ -397,9 +402,7 @@ function crowded(x, y, S, gap) {
 // 210: twelve people on the first is a scrum and on the second is empty. The
 // count comes from the room there actually is, at one person per FAN_GAP box.
 function crowdSize(S) {
-  const area = Math.max(1, (S.x1 - S.x0) * (S.y1 - S.y0));
-  const room = Math.floor(area / (FAN_GAP * FAN_GAP * 6));
-  return Math.max(3, Math.min(STADIUM_PEDS, room));
+  return npcCrowdSize("fan", (S.x1 - S.x0) * (S.y1 - S.y0));
 }
 // Wander inside the field, turning back at the edge instead of leaving it. The
 // turn-back happens at FIELD_INSET, not at the outline, so a fan never walks
@@ -446,7 +449,7 @@ function maintainStadiumPeds() {
       // to FIELD_INSET afterwards would freeze it on the spot
       const inset = Math.min(FIELD_INSET, distToPoly(q.x, q.y, S.footprint));
       pedestrians.push({
-        x: q.x, y: q.y, ang: Math.random() * Math.PI * 2, v: 7 + Math.random() * 9,
+        x: q.x, y: q.y, ang: Math.random() * Math.PI * 2, v: npcSpeed("fan"),
         hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
         stadium: S, field: true, inset, kind: "fan",
       });
@@ -458,7 +461,7 @@ function maintainStadiumPeds() {
 // Balneario Municipal: a sea-water inlet. Swimmers (kind "swimmer") bob inside
 // its bbox and a leisure boat drifts back and forth — both CONTAINED, another
 // NPC type distinct from city walkers and stadium fans.
-const BALNEARIO_SWIMMERS = 6;
+const BALNEARIO_SWIMMERS = npcCrowdSize("swimmer", 0);
 function maintainBalneario() {
   const B = W.BALNEARIO;
   if (!B) return;
@@ -471,7 +474,7 @@ function maintainBalneario() {
     const y = B.y0 + 8 + Math.random() * Math.max(1, B.y1 - B.y0 - 16);
     if (!swimmerWater(x, y)) continue;        // in the water with the body clear of the kerb
     pedestrians.push({
-      x, y, ang: Math.random() * Math.PI * 2, v: 5 + Math.random() * 6,
+      x, y, ang: Math.random() * Math.PI * 2, v: npcSpeed("swimmer"),
       hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
       balneario: B, swim: true, kind: "swimmer",
     });
@@ -492,7 +495,7 @@ function maintainBalneario() {
 // more swimmers wandering onto the streets at the block corners.
 // A swimmer's BODY has to clear the kerb, not just its centre point — testing
 // the centre alone let them ride half-on the balneario's inner acera.
-const SWIM_R = 6;
+const SWIM_R = npcType("swimmer").radius ?? 6;
 export function swimmerWater(x, y) {
   return W.surfaceAt(x, y) === 0 &&
          W.surfaceAt(x + SWIM_R, y) === 0 && W.surfaceAt(x - SWIM_R, y) === 0 &&
@@ -596,21 +599,33 @@ export function spawnAmbient() {
   }
   for (const feature of W.NPCS || []) {
     const properties = feature.properties || {};
-    const movement = properties.npcMovement || "stationary";
+    const type = npcType(properties.npcType || "resident");
+    // WHERE IT MAY STAND, checked once more at spawn. The build already refused
+    // an impossible placement, but the world can be rebuilt under an authored
+    // point — a cuadra becomes water, a parcel changes use — and a swimmer
+    // standing on asphalt is worse than one who never appeared.
+    const [x0, y0] = feature.geometry.point;
+    const standing = npcMayStand(type.id, W.surfaceAt(x0, y0), properties.host);
+    if (!standing.ok) continue;
+    // The MOVEMENT is the type's; the feature may still say "this particular
+    // one is standing still" by choosing the stationary movement itself.
+    const movement = properties.npcMovement || type.movement || "stationary";
     const route = routes.get(properties.routeId);
     const npc = {
       editorId: feature.id,
       persistent: true,
-      x: feature.geometry.point[0],
-      y: feature.geometry.point[1],
+      x: x0,
+      y: y0,
       ang: (Number(properties.angle) || 0) * Math.PI / 180,
-      v: movement === "stationary" ? 0 : Number(properties.speed) || 18,
+      v: movement === "stationary" ? 0 : Number(properties.speed) || npcSpeed(type.id),
       hue: Number(properties.hue) || 28,
       ph: Math.random() * Math.PI * 2,
-      cls: Array.isArray(properties.surfaceClasses) ? properties.surfaceClasses : [3, 4, 6, 7],
+      // WHERE IT MAY WANDER is where it may STAND: the type's surface hosts,
+      // so a vecino placed on the acera cannot drift into the road.
+      cls: Array.isArray(properties.surfaceClasses) ? properties.surfaceClasses : npcSurfaceClasses(type.id),
       editorNpc: true,
-      npcType: properties.npcType || "resident",
-      drawStyle: properties.drawStyle || "person",
+      npcType: type.id,
+      drawStyle: properties.drawStyle || type.art || "person",
       color: feature.style?.color || properties.color || "#e85d75",
       scale: Number(properties.scale) || 1,
       stationary: movement === "stationary",

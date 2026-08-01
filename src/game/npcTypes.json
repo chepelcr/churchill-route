@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "note": "The world's NPC registry. WHICH type uses which movement, how many of them, how fast and WHERE THEY MAY STAND is data; the movements themselves stay code, because they are physics. Edited by the world editor (source id npc-types) and read by src/game/npcs.js.",
+  "movements": {
+    "rail": "walks a road's arclength at a fixed acera offset, crossing now and then (advancePed)",
+    "bounded-random": "random walk contained by an area, turning back at its edge (advanceFieldPed / advanceSwimmer)",
+    "route": "follows an authored polyline (advanceEditorRoute), or a bus (advancePassenger)",
+    "stationary": "stands where it was placed"
+  },
+  "hostVocabulary": "A hosts entry is either a SURFACE class name from src/game/surfaces.js (water, land, beach, road, paseo, bridge, acera, boulevard) or a host reference kind:use (parcel:pool, parcel:stadium, cuadra, landmark). The surface entries are checked against the raster; the host entries against properties.host.",
+  "types": [
+    {
+      "id": "walker",
+      "name": "Peatón",
+      "movement": "rail",
+      "hosts": ["acera"],
+      "density": { "target": 64 },
+      "speed": [14, 26],
+      "art": "walker",
+      "builtin": true,
+      "note": "The city's ambient crowd. Rail-bound to a road so it can never wander into a cuadra interior."
+    },
+    {
+      "id": "fan",
+      "name": "Aficionado",
+      "movement": "bounded-random",
+      "hosts": ["parcel:stadium", "parcel:plaza", "road"],
+      "density": { "perBox": 17, "boxes": 6, "min": 3, "max": 12 },
+      "speed": [7, 16],
+      "art": "fan",
+      "gap": 17,
+      "inset": 26,
+      "builtin": true,
+      "note": "The crowd on a cancha. gap is enforced twice — at spawn and every frame — because two random walks on one pitch meet. inset keeps it off the acera band the renderer paints over the block edge."
+    },
+    {
+      "id": "swimmer",
+      "name": "Bañista",
+      "movement": "bounded-random",
+      "hosts": ["water"],
+      "density": { "count": 6 },
+      "speed": [5, 11],
+      "art": "swimmer",
+      "radius": 6,
+      "builtin": true,
+      "note": "radius is the body clearance from the kerb: testing the centre alone let them ride half-on the balneario's inner acera."
+    },
+    {
+      "id": "passenger",
+      "name": "Pasajero",
+      "movement": "route",
+      "hosts": ["acera"],
+      "speed": [14, 22],
+      "art": "passenger",
+      "temporary": true,
+      "builtin": true,
+      "note": "The one TEMPORARY kind: joinTheSidewalk drops both the flag and the type when an alighting passenger reaches the acera, so a person who got off a bus simply IS a person walking."
+    },
+    {
+      "id": "resident",
+      "name": "Vecino",
+      "movement": "stationary",
+      "hosts": ["acera", "boulevard", "paseo", "beach", "parcel", "cuadra"],
+      "speed": [0, 0],
+      "art": "person"
+    },
+    {
+      "id": "tourist",
+      "name": "Turista",
+      "movement": "route",
+      "hosts": ["acera", "boulevard", "paseo", "beach"],
+      "speed": [16, 22],
+      "art": "person"
+    },
+    {
+      "id": "vendor",
+      "name": "Vendedor",
+      "movement": "stationary",
+      "hosts": ["acera", "beach", "boulevard", "paseo", "parcel"],
+      "speed": [0, 0],
+      "art": "vendor"
+    },
+    {
+      "id": "worker",
+      "name": "Trabajador",
+      "movement": "route",
+      "hosts": ["acera", "road", "boulevard", "paseo"],
+      "speed": [14, 20],
+      "art": "worker"
+    },
+    {
+      "id": "supporter",
+      "name": "Hincha",
+      "movement": "bounded-random",
+      "hosts": ["parcel:stadium", "parcel:plaza", "acera"],
+      "density": { "perBox": 20, "boxes": 6, "min": 2, "max": 10 },
+      "speed": [8, 15],
+      "art": "fan"
+    },
+    {
+      "id": "mascot",
+      "name": "Mascota",
+      "movement": "stationary",
+      "hosts": ["parcel:stadium", "parcel:plaza", "acera", "beach"],
+      "speed": [0, 0],
+      "art": "mascot"
+    }
+  ]
+}

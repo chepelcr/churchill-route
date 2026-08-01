@@ -4,63 +4,75 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
 and the three game modes are live; the items below are what remains.
 
-## 🔜 La travesía del estero: minijuego, manglar y menú de minijuegos
+## 🔜 La Travesía del Estero — un NIVEL, no un minijuego
 
-Diseño acordado 2026-08-01, a ejecutar después del lote de accesos/lancha.
-La lancha a Pitahaya ya cruza (19 waypoints derivados del agua, 6.92 km, 74 s),
-y ahora mismo la travesía es **tiempo muerto**: uno se estaciona y espera. Esto
-la convierte en el minijuego.
+Diseño cerrado 2026-08-01. La lancha a Pitahaya ya cruza sola (19 waypoints
+derivados del agua, 6.92 km, 74 s). Hoy la travesía es tiempo muerto: uno se
+estaciona y espera. Se convierte en **un nivel propio**, para que el juego
+principal no se vuelva repetitivo.
 
-### 1. El minijuego: *Travesía del Estero*
+**Dónde vive.** Sólo en **Recorrer** y en su entrada de menú. En Historia y en
+Arcade la lancha se queda amarrada — un `state.mode === "explore"` en el
+abordaje, nada más.
 
-**Qué es.** Setenta y cuatro segundos manejando la lancha por el canal, esquivando
-lo que hay en el estero. No es un carril: la lancha se conduce, el canal tiene
-ancho, y salirse tiene costo.
+**No hay transformación.** Uno se sube CON el carro, como al ferry de Paquera:
+el carro va en cubierta y uno toma el timón. Abordar ya es consentimiento
+(estacionarse y sostener la posición 7 s), así que no hace falta ningún modal;
+zarpar automáticamente al tocar el muelle sería una trampa.
 
-- [ ] **La lancha se maneja durante la travesía.** Hoy `carry()` mueve al jugador
-      con la cubierta y la lancha sigue su ruta sola. En el minijuego el timón es
-      del jugador: avance sobre la polilínea (`s`), desvío lateral libre dentro
-      del canal, y el ráster de agua manda — tocar tierra o manglar frena y
-      cuesta.
-- [ ] **Tres obstáculos, cada uno con su comportamiento** (nada de un solo
-      "choque genérico"):
-      - **Pangas de pescadores** — estáticas o a la deriva lenta, con NPC
-        pescador a bordo (`npcTypes.json`: tipo `fisher`, movimiento
-        `stationary`, arte propio). Chocar = frenón y pérdida de tiempo.
-      - **Bancos de peces** — mancha que se mueve en cardumen bajo el agua.
-        NO son daño: pasarles por encima da **monedas/tiempo** si se atraviesa el
-        centro. Son la razón para desviarse.
-      - **Hordas de gaviotas** — bandada que cruza el canal en diagonal y tapa la
-        vista un instante. Ni premio ni golpe duro: presión visual.
-- [ ] **Raíces de mangle bajo el agua** en los bordes del canal — obstáculo
-      semisumergido que no se ve hasta que se está encima. Es lo que castiga
-      cortar la curva por dentro.
-- [ ] **Marcador**: tiempo de travesía + peces recogidos, con récord por ruta.
-      Llegar rápido no puede ser lo único: el récord premia limpio + rápido.
-- [ ] **La travesía sigue siendo saltable**: quien sólo quiere cruzar deja el
-      acelerador quieto y la lancha navega sola, como hoy.
+**Recorrer y Nivel se diferencian en el timón:**
 
-### 2. El manglar: el estero deja de tener playa
+| | Recorrer | Nivel |
+|---|---|---|
+| entrada | abordar en el muelle | menú de niveles / minijuegos |
+| timón | libre: se puede virar a media travesía y volver a amarrar | una sola dirección |
+| golpes | cuestan tiempo | **barra de daño: tres golpes y al agua** |
+| final | cualquiera de las dos orillas | llegada, con tiempo + peces |
 
-- [ ] **Sin línea de arena en el estero.** La orilla del estero es **manglar**,
-      no playa: verde hasta el agua. Hoy `beach_fringe` pinta arena en todo
-      contorno de agua sin distinguir mar abierto de estero.
+### 1. El canal se lee en el agua — boyas + corriente
+
+- [ ] **Boyas rojas y verdes** por toda la ruta, rojo a babor y verde a
+      estribor, cada ~300 px y más juntas en las curvas. Se derivan de la
+      polilínea de la lancha EN EL CLIENTE (no hacen falta datos nuevos: la ruta
+      ya está en `manifest.ferries[].route`), cabecean, y de noche parpadean.
+- [ ] **Corriente**: el agua DENTRO del canal se dibuja más calma y un tono más
+      clara, con estelas corriendo a lo largo de la ruta. El canal se lee de
+      cerca (boyas) y de lejos (agua).
+- [ ] Nada de flecha en el HUD: el estero son 7 km de agua abierta y la
+      navegación tiene que ser diegética.
+
+### 2. Los obstáculos — tres, cada uno con su conducta
+
+- [ ] **Pangas de pescadores** — fondeadas o a la deriva lenta, con NPC pescador
+      a bordo (tipo `fisher` en `npcTypes.json`, movimiento `stationary`).
+      Golpe = frenón y **un punto de daño**.
+- [ ] **Bancos de peces** — cardumen que se mueve bajo el agua. NO son daño:
+      cruzar el centro da monedas. Son la razón para salirse de la línea.
+- [ ] **Hordas de gaviotas** — bandada que cruza en diagonal y tapa la vista un
+      instante. Presión visual, sin golpe.
+- [ ] **Raíces de mangle** semisumergidas pegadas a la orilla: no se ven hasta
+      estar encima, y son lo que cobra cortar la curva por dentro. **Un punto de
+      daño.**
+- [ ] **Tres golpes y se hunde**: vuelta al muelle de salida. En Recorrer el
+      golpe sólo cuesta tiempo.
+
+### 3. El manglar: el estero deja de tener playa
+
+- [ ] **Sin línea de arena en el estero.** Hoy `beach_fringe` pinta arena en
+      todo contorno de agua sin distinguir mar abierto de estero. La ribera del
+      estero es **manglar**: verde hasta el agua.
 - [ ] **Árboles hasta la orilla** — los mangles ya existen (`ctx.mangroves`, 66
-      registros alrededor del estuario); extenderlos a toda la ribera del canal.
-- [ ] **Raíces sobre el agua**: franja de raíces dibujada en la orilla, que es a
-      la vez la señal visual del obstáculo del minijuego.
-- [ ] Es un cambio de ráster: rebuild + `world_snapshot.py save` en el mismo
-      commit.
+      registros); extenderlos a toda la ribera del canal.
+- [ ] **Raíces sobre el agua** dibujadas en la orilla, que son a la vez la señal
+      visual del obstáculo.
+- [ ] Cambio de ráster: rebuild + `world_snapshot.py save` en el mismo commit.
 
-### 3. Menú de minijuegos
+### 4. Entrada de menú
 
-- [ ] **Sección nueva en el menú principal** (`TitleScreen` → `minigames`), con
-      su pantalla de selección: por ahora *Travesía del Estero*, preparada para
-      más.
-- [ ] Se puede jugar **suelta** (desde el menú, sin manejar hasta el muelle) y
-      **en el mundo** (subiéndose a la lancha, como ahora).
+- [ ] **Sección de Minijuegos/Niveles** en el menú principal, con su pantalla de
+      selección; por ahora *Travesía del Estero*.
 - [ ] Copy en `src/i18n/<lang>.json` — nada de texto suelto en JSX.
-- [ ] Récords en `progress.js`, junto a los de etapas.
+- [ ] Récords (mejor tiempo, peces) en `progress.js`, junto a los de etapas.
 
 ## ✅ Parcelas diagonales + porterías centradas (2026-07-29)
 

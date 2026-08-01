@@ -97,10 +97,17 @@ export function deckAt(x, y) {
 
 // Advance both ferries. `aboard` is the ferry the player is standing on this
 // frame (or null) — a ferry only counts down while someone is actually on it.
-export function advanceFerries(dt, aboard) {
+export function advanceFerries(dt, aboard, steeredId = null) {
   for (const f of ferries()) {
     const px = f.x, py = f.y, pa = f.a;
-    if (f.phase === "docked") {
+    // WHILE SHE IS STEERED the crossing owns her arclength: it is the player's
+    // throttle, not a constant. Everything else — the pose, the deltas carry()
+    // reads, the arrival — still happens here, so there is one place a ferry
+    // moves however she is driven.
+    if (f.id === steeredId) {
+      if (f.s >= f.total) { f.s = f.total; f.phase = "docked"; f.far = true; f.justLanded = true; }
+      else if (f.s <= f.dock && f.far) { f.s = f.dock; f.phase = "docked"; f.far = false; f.justHome = true; }
+    } else if (f.phase === "docked") {
       // the countdown RESETS if you leave: a ferry that sailed because you
       // drove past it eight seconds ago is a trap, not an Easter egg
       f.wait = (aboard === f && !f.used) ? f.wait + dt : 0;

@@ -205,5 +205,13 @@
   "key.space": "SPACE",
   "ios.hint": "On iPhone: Share → \"Add to Home Screen\" to play fullscreen.",
   "rotate.body": "Rotate your phone — the game is landscape",
-  "meters": "{n} m"
+  "meters": "{n} m",
+  "crossing.hit.panga": "Panga!",
+  "crossing.hit.roots": "Roots!",
+  "crossing.title": "Estuary Crossing",
+  "crossing.fish": "Fish",
+  "crossing.hull": "Hull",
+  "crossing.swamped": "The lancha swamped",
+  "crossing.landed": "You made Pitahaya!",
+  "crossing.returned": "Back in Puntarenas"
 }

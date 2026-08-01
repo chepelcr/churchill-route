@@ -205,5 +205,13 @@
   "key.space": "ESPACIO",
   "ios.hint": "En iPhone: Compartir → \"Agregar a pantalla de inicio\" para jugar a pantalla completa.",
   "rotate.body": "Girá el teléfono — se juega en horizontal",
-  "meters": "{n} m"
+  "meters": "{n} m",
+  "crossing.hit.panga": "¡Panga!",
+  "crossing.hit.roots": "¡Raíces!",
+  "crossing.title": "Travesía del Estero",
+  "crossing.fish": "Peces",
+  "crossing.hull": "Casco",
+  "crossing.swamped": "Se hundió la lancha",
+  "crossing.landed": "¡Llegaste a Pitahaya!",
+  "crossing.returned": "De vuelta en Puntarenas"
 }

@@ -18,6 +18,7 @@ import { drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
 import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
+import { drawChannel, drawEstero } from "./c2d/estero.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import {
   drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed,
@@ -25,7 +26,7 @@ import {
   paintVehicle,
 } from "./c2d/entities.js";
 import {
-  drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames,
+  drawCompass, drawCrossingHud, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames,
   drawPoiTags, drawRain,
 } from "./c2d/hud.js";
 import { drawEditorWorld } from "./c2d/editorWorld.js";
@@ -90,9 +91,11 @@ function render(t) {
   // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
   // Cruceros deck (its BRIDGE surface cells are drivable but not painted by
   // the vector road pass) and the Mata de Limón suspension bridge.
+  drawChannel(view, t); // la corriente + las boyas: the estero's navigable lane
   drawPiers(view);      // the muelles, each a polyline deck over the water
   drawBridge(view);
   drawFerries(view);   // the two ferries + their berths, over the water
+  drawEstero(view, t); // pangas, cardúmenes, gaviotas y raíces — sólo en travesía
   drawBarriers(view);
   drawSigns(view);      // ALTO, semáforos, paradas, zebras, topes
   drawEditorWorld(view, "elements");
@@ -201,6 +204,7 @@ function render(t) {
   if (!state.attract) {
     drawMinimap(vw, vh, t);
     drawCompass(vw, vh);
+    drawCrossingHud(vw, vh);
   }
 
   if (!state.attract && state.p.speed > 240) {

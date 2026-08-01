@@ -7,6 +7,7 @@ import { ensureRenderCache, roadPath } from "./cache.js";
 import { tuning } from "../../game/tuning.js";
 import { CUAD, aabbInView, ctx, flatMultiPath, flatPath, label, polyBBox } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
+import { t as tr } from "../../i18n/index.js";
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
 // debug toggle: at play zoom they'd be a wall of text, but flying over the map
@@ -378,6 +379,33 @@ function miniRibbons(mv, roads) {
   return out;
 }
 
+// The crossing's own readout: hull, fish and elapsed. Screen-space, beside the
+// dial, and only while a travesía is running — the delivery HUD keeps its
+// corner, because you are still carrying a churchill.
+function drawCrossingHud(vw, vh) {
+  const c = state.crossing;
+  if (!c?.active) return;
+  const w = 132, h = 44, x = vw - w - 18, y = 108;
+  ctx.fillStyle = "rgba(12,20,26,0.72)";
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
+  ctx.fillStyle = "#9fd7ef";
+  ctx.font = "600 9px 'Space Mono', monospace";
+  ctx.fillText(tr("crossing.title").toUpperCase(), x + 10, y + 15);
+  // hull: three pips, one per knock left. In Recorrer there is no damage, so
+  // the pips simply do not appear.
+  if (c.level) {
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = i < 3 - c.knocks ? "#6fbf99" : "rgba(232,93,117,0.55)";
+      ctx.beginPath(); ctx.arc(x + 14 + i * 12, y + 30, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.fillStyle = "#f4d77a";
+  ctx.font = "600 11px 'Space Mono', monospace";
+  ctx.fillText(`${c.fish} 🐟`, x + (c.level ? 58 : 12), y + 34);
+  ctx.fillStyle = "#dfe7e3";
+  ctx.fillText(`${c.t.toFixed(0)}s`, x + w - 34, y + 34);
+}
+
 function drawMinimap(vw, vh, t) {
   const R = 76;                          // dial radius on screen (px)
   const cx = vw - R - 18, cy = R + 18;
@@ -471,4 +499,4 @@ function drawMinimap(vw, vh, t) {
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
 }
 
-export { drawCompass, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames, drawPoiTags, drawRain };
+export { drawCompass, drawCrossingHud, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames, drawPoiTags, drawRain };

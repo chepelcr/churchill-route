@@ -14,6 +14,9 @@ import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt } from "./ferries.js";
+import {
+  advanceCrossing, advanceEstero, crossingState, endCrossing, startCrossing,
+} from "./crossing.js";
 import { updateEditorTriggers } from "./editorGameplay.js";
 import { activeEditorBoost, tickEditorBoosts } from "./editorContent.js";
 
@@ -106,8 +109,39 @@ export function update(dt) {
   // the collider runs — otherwise the solver spends the frame pushing them out
   // of the sea the ferry just sailed them into.
   const aboard = deckAt(p.x, p.y);
-  advanceFerries(dt, aboard);
+  // THE TRAVESÍA. A one-way boat casting off with somebody aboard is a level,
+  // not a ride — but only in Recorrer: in a stage or an arcade run she stays
+  // tied up, so the delivery game never turns into a boat game by accident.
+  const cross = crossingState();
+  // ARMED BY HER PHASE, not by `justSailed`: that flag is set by advanceFerries
+  // (below) and consumed by the message loop in the same frame, so a check up
+  // here never saw it true. Under way + somebody aboard IS the crossing.
+  if (aboard?.oneWay && aboard.phase !== "docked" && state.mode === "explore" && !cross.active) {
+    startCrossing(aboard, { level: false });
+  }
+  if (cross.active) {
+    advanceCrossing(dt, {
+      steer: input.right - input.left,
+      throttle: input.up - input.down * 0.6,
+    });
+  }
+  advanceFerries(dt, aboard, cross.active ? cross.ferry.id : null);
   if (aboard) carry(aboard, p);
+  if (cross.active) {
+    // The lateral offset is the boat's, so the car rides it: she crabs across
+    // the channel and the deck takes the player with her.
+    const f = cross.ferry;
+    const nx = -Math.sin(f.a) * cross.offset, ny = Math.cos(f.a) * cross.offset;
+    p.x += nx - (cross.lastNx || 0);
+    p.y += ny - (cross.lastNy || 0);
+    f.x += nx - (cross.lastNx || 0);
+    f.y += ny - (cross.lastNy || 0);
+    cross.lastNx = nx; cross.lastNy = ny;
+    advanceEstero(dt, f);
+    if (f.justLanded || f.justHome) endCrossing(f.justLanded ? "landed" : "returned");
+    if (!aboard) endCrossing("abandoned");    // you drove off her mid-channel
+  }
+  state.gullBlind = Math.max(0, (state.gullBlind || 0) - dt);
   state.aboard = aboard ? aboard.id : null;
   // at sea, not just standing on a docked deck — the melt and the surf both
   // key off this, and both are declared up here so neither reads it before it

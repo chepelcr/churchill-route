@@ -454,6 +454,21 @@ element catalogs (vehicles, surfaces, districts, stages, landmarks, customers),
 and a **module map** (`src/` file → exports + line count). Read it to understand
 the game's contents without reading the code. Refresh after world/module changes.
 
+## The world editor (private, separate repo)
+
+`world-editor/` is a separate Vite app and Git repository, ignored here. It is
+becoming the authoring tool for everything the game shows: world, screens, copy,
+translations, assets. Its roadmap **carries its own state** in
+`world-editor/docs/ENGINE_PLAN.md` — take the first `NEXT` row and move it in the
+same commit; `world-editor/CLAUDE.md` holds the rules for working there.
+
+What it already authors from this repo's side: `src/i18n/<lang>.json` (catalogs
+are data; adding a language is a JSON file plus one `LANGUAGES` entry),
+`src/ui/themeTokens.json` (the design-token registry the editor builds its form
+from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
+`strings` → overrides layered over i18n). `pnpm smoke:theme` and
+`pnpm smoke:sponsor` guard those paths.
+
 ## Conventions
 
 - After changing the world or any module, run `pnpm inventory`.

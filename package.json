@@ -11,7 +11,8 @@
     "inventory": "node tools/gen-inventory.mjs",
     "world:build": "python3 tools/build_world.py",
     "smoke": "node tools/smoke.mjs",
-    "smoke:theme": "node tools/smoke-theme.mjs"
+    "smoke:theme": "node tools/smoke-theme.mjs",
+    "smoke:sponsor": "node tools/smoke-sponsor.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",

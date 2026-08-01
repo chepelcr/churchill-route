@@ -87,9 +87,16 @@ function sanitize(body) {
     out.npcs.push({ id: `srv_${n.id}`, name: String(n.name).slice(0, 26), line: String(n.line || "¡Pura vida!").slice(0, 26), x: pt.x, y: pt.y, district: d ? d.id : null });
   }
   for (const l of body.lotes || []) {
-    const pt = l && toWorld(l);
-    if (!pt || !l.id || !l.name) continue;
-    out.lotes.push({ id: String(l.id), kind: l.kind === "store" ? "store" : "billboard", name: String(l.name).slice(0, 30), label: String(l.label || l.name).slice(0, 14).toUpperCase(), x: pt.x, y: pt.y, tone: l.tone || "#f3c969" });
+    if (!l || !l.id || !l.name) continue;
+    // A lote either STANDS somewhere (x/y or lat/lon) or CLAIMS A PARCEL by id,
+    // in which case the world's own `slot` rect supplies position and size —
+    // that is how a sponsor's plate lands inside the Lito Pérez pitch instead
+    // of floating over the map. drawParcels() matches on `parcel`, so dropping
+    // the field here made every parcel sponsor unreachable.
+    const parcel = l.parcel ? String(l.parcel) : null;
+    const pt = toWorld(l);
+    if (!pt && !parcel) continue;
+    out.lotes.push({ id: String(l.id), kind: l.kind === "store" ? "store" : "billboard", name: String(l.name).slice(0, 30), label: String(l.label || l.name).slice(0, 14).toUpperCase(), x: pt ? pt.x : null, y: pt ? pt.y : null, parcel, tone: l.tone || "#f3c969" });
   }
   return out;
 }

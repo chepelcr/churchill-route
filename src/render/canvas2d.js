@@ -110,8 +110,11 @@ function render(t) {
     if (PIXI_LANDMARKS && PIXI_MIGRATED.has(lm.type)) continue; // Pixi draws these now
     drawLandmark(lm);
   }
-  // Sponsored lotes from the remote content (billboards / storefronts)
+  // Sponsored lotes from the remote content (billboards / storefronts).
+  // A lote that claims a PARCEL has no coordinates of its own — drawParcels
+  // paints it inside that parcel's slot, so it must not also be drawn here.
   for (const lo of content.lotes) {
+    if (lo.parcel) continue;
     if (lo.x < view.x0 - 60 || lo.x > view.x1 + 60 || lo.y < view.y0 - 60 || lo.y > view.y1 + 60) continue;
     drawLote(lo);
   }

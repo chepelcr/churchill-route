@@ -4,6 +4,64 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
 and the three game modes are live; the items below are what remains.
 
+## 🔜 La travesía del estero: minijuego, manglar y menú de minijuegos
+
+Diseño acordado 2026-08-01, a ejecutar después del lote de accesos/lancha.
+La lancha a Pitahaya ya cruza (19 waypoints derivados del agua, 6.92 km, 74 s),
+y ahora mismo la travesía es **tiempo muerto**: uno se estaciona y espera. Esto
+la convierte en el minijuego.
+
+### 1. El minijuego: *Travesía del Estero*
+
+**Qué es.** Setenta y cuatro segundos manejando la lancha por el canal, esquivando
+lo que hay en el estero. No es un carril: la lancha se conduce, el canal tiene
+ancho, y salirse tiene costo.
+
+- [ ] **La lancha se maneja durante la travesía.** Hoy `carry()` mueve al jugador
+      con la cubierta y la lancha sigue su ruta sola. En el minijuego el timón es
+      del jugador: avance sobre la polilínea (`s`), desvío lateral libre dentro
+      del canal, y el ráster de agua manda — tocar tierra o manglar frena y
+      cuesta.
+- [ ] **Tres obstáculos, cada uno con su comportamiento** (nada de un solo
+      "choque genérico"):
+      - **Pangas de pescadores** — estáticas o a la deriva lenta, con NPC
+        pescador a bordo (`npcTypes.json`: tipo `fisher`, movimiento
+        `stationary`, arte propio). Chocar = frenón y pérdida de tiempo.
+      - **Bancos de peces** — mancha que se mueve en cardumen bajo el agua.
+        NO son daño: pasarles por encima da **monedas/tiempo** si se atraviesa el
+        centro. Son la razón para desviarse.
+      - **Hordas de gaviotas** — bandada que cruza el canal en diagonal y tapa la
+        vista un instante. Ni premio ni golpe duro: presión visual.
+- [ ] **Raíces de mangle bajo el agua** en los bordes del canal — obstáculo
+      semisumergido que no se ve hasta que se está encima. Es lo que castiga
+      cortar la curva por dentro.
+- [ ] **Marcador**: tiempo de travesía + peces recogidos, con récord por ruta.
+      Llegar rápido no puede ser lo único: el récord premia limpio + rápido.
+- [ ] **La travesía sigue siendo saltable**: quien sólo quiere cruzar deja el
+      acelerador quieto y la lancha navega sola, como hoy.
+
+### 2. El manglar: el estero deja de tener playa
+
+- [ ] **Sin línea de arena en el estero.** La orilla del estero es **manglar**,
+      no playa: verde hasta el agua. Hoy `beach_fringe` pinta arena en todo
+      contorno de agua sin distinguir mar abierto de estero.
+- [ ] **Árboles hasta la orilla** — los mangles ya existen (`ctx.mangroves`, 66
+      registros alrededor del estuario); extenderlos a toda la ribera del canal.
+- [ ] **Raíces sobre el agua**: franja de raíces dibujada en la orilla, que es a
+      la vez la señal visual del obstáculo del minijuego.
+- [ ] Es un cambio de ráster: rebuild + `world_snapshot.py save` en el mismo
+      commit.
+
+### 3. Menú de minijuegos
+
+- [ ] **Sección nueva en el menú principal** (`TitleScreen` → `minigames`), con
+      su pantalla de selección: por ahora *Travesía del Estero*, preparada para
+      más.
+- [ ] Se puede jugar **suelta** (desde el menú, sin manejar hasta el muelle) y
+      **en el mundo** (subiéndose a la lancha, como ahora).
+- [ ] Copy en `src/i18n/<lang>.json` — nada de texto suelto en JSX.
+- [ ] Récords en `progress.js`, junto a los de etapas.
+
 ## ✅ Parcelas diagonales + porterías centradas (2026-07-29)
 
 - [x] Los contornos derivados del ráster conservan sus celdas exactas para

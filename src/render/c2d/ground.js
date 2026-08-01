@@ -125,6 +125,11 @@ const SURFACE_PRESET_COLORS = {
   balneario: "#2a7fa8",
   water: "#2a7fa8",
   beach: "#f4d77a",
+  // The unpaved ground types. They are the same browns the road vectors use,
+  // so an authored patch of barro and the calle de barro beside it are the
+  // same surface to the eye as well as to the car.
+  barro: "#9c7a4f",
+  gravel: "#a99d8b",
 };
 
 function surfaceStylePath(style) {

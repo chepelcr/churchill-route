@@ -21,7 +21,7 @@ from collections import defaultdict
 
 from ..config import (
     ACERA_CELLS, BLDG_INSET, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND,
-    CLS_PASEO, CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL,
+    CARRIAGEWAY_CLASSES, CLS_PASEO, CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL,
     LEON_END_STREET, MARINE_POOL_GROUND_CLEAR_PX, MARINE_POOL_RAIL_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_SCALE,
     MARINE_STRUCTURE_PARCEL_PAD_PX, PASEO_LEON, PASEO_MEDIAN_W, PASEO_TURISTAS,
@@ -102,8 +102,7 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         # overlap the asphalt. Rescaling the world moved the cuadras apart and
         # Kiosco Playitas stopped touching its calle — which is the failure the
         # gate then caught.
-        tgt = _nearest_cell(lm["x"], lm["y"], (CLS_ROAD, CLS_BRIDGE, CLS_PASEO),
-                            KIOSK_LINK_R)
+        tgt = _nearest_cell(lm["x"], lm["y"], CARRIAGEWAY_CLASSES, KIOSK_LINK_R)
         stamp_pad(raster, lm["x"], lm["y"], 44)            # drivable pocket
         if tgt:
             raster.stamp_polyline([lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
@@ -118,7 +117,7 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     for lm in landmarks:
         if lm["type"] != "kiosk" or lm.get("spawn"):
             continue
-        tgt = _nearest_cell(lm["x"], lm["y"], (CLS_ROAD, CLS_BRIDGE, CLS_PASEO), 260)
+        tgt = _nearest_cell(lm["x"], lm["y"], CARRIAGEWAY_CLASSES, 260)
         if tgt:
             lm["spawn"] = [round(tgt[0]), round(tgt[1])]
         else:
@@ -143,7 +142,7 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     # pier deck the moment it left the street.
     for fy in ctx.ferries:
         sx, sy = stern_at_rest(fy)
-        tgt = _nearest_cell(sx, sy, (CLS_ROAD, CLS_BRIDGE, CLS_PASEO), 260)
+        tgt = _nearest_cell(sx, sy, CARRIAGEWAY_CLASSES, 260)
         if not tgt:
             log("ferry", f"WARN no street near the {fy['id']} berth to ramp to"); continue
         # 2 cuadrículas wide — a shade under the deck, so the ramp is as wide as
@@ -803,7 +802,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
                     return True
         return False
 
-    ROADISH = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE)
+    ROADISH = CARRIAGEWAY_CLASSES
     STREETISH = ROADISH + (CLS_ACERA,)
 
     # THE SIDEWALK IS NOT SOMEWHERE A BUILDING MAY STAND, and until now only the
@@ -1123,7 +1122,7 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
             # only BESIDE the lane: never on the drivable lane (or a cross
             # street / paseo / bridge / water) — this is the Cocal-side tree
             # line the user saw sitting on top of streets.
-            if grid[gr * GRID_COLS + c] in (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_WATER):
+            if grid[gr * GRID_COLS + c] in CARRIAGEWAY_CLASSES + (CLS_WATER,):
                 continue
             trees.append({"x": round(tx), "y": round(ty), "s": round(0.9 + rng() * 0.3, 2)})
             n_ferro_trees += 1
@@ -1146,7 +1145,7 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                 mx, my = xs, round((a[1] + b[1]) / 2)
                 c, gr = int(mx / GRID_CELL), int(my / GRID_CELL)
                 if 0 <= c < GRID_COLS and 0 <= gr < GRID_ROWS and \
-                        grid[gr * GRID_COLS + c] not in (CLS_ROAD, CLS_PASEO, CLS_BRIDGE, CLS_WATER):
+                        grid[gr * GRID_COLS + c] not in CARRIAGEWAY_CLASSES + (CLS_WATER,):
                     trees.append({"x": mx, "y": my, "s": round(0.9 + rng() * 0.3, 2)})
                     n_dc += 1
     log("median", f"{n_median_palms} palms on the paseo median dashes, "

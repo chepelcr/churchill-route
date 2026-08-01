@@ -162,6 +162,8 @@ CLS_PASEO = Surface.PASEO
 CLS_BRIDGE = Surface.BRIDGE
 CLS_ACERA = Surface.ACERA
 CLS_BOULEVARD = Surface.BOULEVARD
+CLS_BARRO = Surface.BARRO
+CLS_GRAVEL = Surface.GRAVEL
 # Sidewalk depth per side, in raster cells. It is carved INTO the cuadra, so
 # every cell of it is block frontage the town does not get — and at 5 cells the
 # ring was 20 px, which at 2 px/m is a TEN METRE sidewalk. That is what put 245
@@ -183,6 +185,8 @@ FIELD_ACERA_CELLS = 2           # 8 px — estadio / plaza pitches
 STREET_CLASSES = surface_enum.STREET
 # what a vehicle may drive on (BEACH included: the sand is slow, not a wall)
 DRIVABLE_CLASSES = surface_enum.DRIVABLE
+CARRIAGEWAY_CLASSES = surface_enum.CARRIAGEWAY
+CALLE_CLASSES = surface_enum.CALLE
 
 # ---- buildings on the cuadrícula --------------------------------------------
 SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so

@@ -106,7 +106,14 @@ change re-runs `save` in the same commit.
 
 Surface grid classes (see `src/game/surfaces.js`): `0 water, 1 land (solid cuadra
 interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera,
-7 boulevard (calle peatonal: stone paving, transitable but slow)`.
+7 boulevard (calle peatonal: stone paving, transitable but slow), 8 barro (packed
+earth — the dirt calles, 0.82 of asphalt), 9 gravel (lastre, 0.9)`. The VALUES
+are the wire format: append, never renumber. A new drivable class has to join
+`DRIVABLE`, `STREET` and usually `CALLE` in `churchill/world/enums/surface.py` —
+leaving barro out of the acera seeds silently stripped the sidewalk from 8,204
+cells of cuadra frontage, and out of `CALLE` would point every "nearest street"
+search past it. `CARRIAGEWAY` includes the muelle decks; `CALLE` does not,
+because a deck is something you drive on, not a street to link to.
 
 ### The `churchill/` package (Python)
 

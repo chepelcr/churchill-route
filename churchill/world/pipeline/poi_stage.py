@@ -20,7 +20,8 @@ from collections import defaultdict, deque
 
 from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_PASEO,
-    CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL, POI_NUDGE_PX,
+    CALLE_CLASSES, CARRIAGEWAY_CLASSES, CLS_BARRO, CLS_GRAVEL, CLS_ROAD, CLS_WATER, CUAD,
+    CUAD_CELLS, GRID_CELL, POI_NUDGE_PX,
 )
 from ..content import CUSTOMER_DEFS, LANDMARK_DEFS, STAGES
 from ..enums import GreenType, LandmarkType
@@ -189,7 +190,7 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     pc = int(pier_x // GRID_CELL)
     pr = int(pier_y0 // GRID_CELL)
     for r in range(pr, max(0, pr - 120), -1):
-        if grid[r * GRID_COLS + pc] in (CLS_ROAD, CLS_PASEO):
+        if grid[r * GRID_COLS + pc] in CALLE_CLASSES:
             raster.stamp_polyline([pier_x, r * GRID_CELL,
                                          pier_x, pier_y0], 2 * CUAD, CLS_ROAD)
             log("pier", f"connector road to y={r * GRID_CELL}")
@@ -232,7 +233,7 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
         surf = _cell_cls(int(kx // GRID_CELL), int(ky // GRID_CELL))
         pinned = lm["id"] in PINNED_KIOSKS
         if surf == CLS_BEACH or pinned:
-            classes = (CLS_ROAD, CLS_PASEO, CLS_BRIDGE) if pinned else (CLS_ROAD, CLS_BRIDGE)
+            classes = CARRIAGEWAY_CLASSES if pinned else (CLS_ROAD, CLS_BRIDGE, CLS_BARRO, CLS_GRAVEL)
             tgt = _nearest_cell(kx, ky, classes, 260)
             if tgt:
                 raster.stamp_polyline([kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
@@ -334,7 +335,7 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
             for a in range(0, 360, 10):
                 cc = fcc0 + int(round(math.cos(math.radians(a)) * rad))
                 cr = fcr0 + int(round(math.sin(math.radians(a)) * rad))
-                if (cc, cr) not in esp and _cell_cls(cc, cr) in (CLS_ROAD, CLS_PASEO):
+                if (cc, cr) not in esp and _cell_cls(cc, cr) in CALLE_CLASSES:
                     aux = (cc, cr); break
             if aux:
                 break
@@ -352,7 +353,7 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
             far = aux
             for k in range(1, 13):
                 cc = aux[0] + int(round(ux * k)); cr = aux[1] + int(round(uy * k))
-                if _cell_cls(cc, cr) not in (CLS_ROAD, CLS_PASEO):
+                if _cell_cls(cc, cr) not in CALLE_CLASSES:
                     break
                 far = (cc, cr)
             mid = ((aux[0] + far[0]) / 2, (aux[1] + far[1]) / 2)

@@ -22,8 +22,9 @@ import math
 from collections import deque
 
 from ..config import (
-    ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_PASEO,
-    CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL, POI_NUDGE_PX,
+    ACERA_CELLS, CARRIAGEWAY_CLASSES, CLS_ACERA, CLS_BEACH, CLS_BRIDGE,
+    CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL,
+    POI_NUDGE_PX,
 )
 from ..util.geometry import dist, to_m
 
@@ -195,7 +196,7 @@ def road_adj(raster, cc, cr):
     for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         px = int((cc + dc + 0.5) * CUAD // GRID_CELL)
         py = int((cr + dr + 0.5) * CUAD // GRID_CELL)
-        if cell_class(raster, px, py) in (CLS_ROAD, CLS_BRIDGE, CLS_PASEO, CLS_ACERA):
+        if cell_class(raster, px, py) in CARRIAGEWAY_CLASSES + (CLS_ACERA,):
             return True
     return False
 

@@ -18,7 +18,8 @@ import math
 from collections import deque
 
 from ..config import (
-    ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER,
+    ACERA_CELLS, CALLE_CLASSES, CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_PASEO,
+    CLS_ROAD, CLS_WATER,
     CUAD, CUAD_CELLS, DP_COAST_PX, GRID_CELL,
 )
 from ..logging import log
@@ -145,9 +146,13 @@ def trace_land_contours(raster):
 
 
 def acera_fringe(raster, depth_cells=ACERA_CELLS):
-    """Sidewalks: convert land cells bordering roads/paseo into acera."""
+    """Sidewalks: convert land cells bordering a carriageway into acera."""
     cols, rows, grid = raster.cols, raster.rows, raster.buf
-    cur = [i for i in range(len(grid)) if grid[i] in (CLS_ROAD, CLS_PASEO)]
+    # A sidewalk grows beside any street at street level, including the unpaved
+    # calles — they are ordinary streets that happen to be made of earth.
+    # Leaving barro out took the acera off 8,204 cells of real cuadra frontage
+    # the moment dirt became a class of its own.
+    cur = [i for i in range(len(grid)) if grid[i] in CALLE_CLASSES]
     for _ in range(depth_cells):
         nxt = []
         for idx in cur:

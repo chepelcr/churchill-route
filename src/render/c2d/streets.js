@@ -276,7 +276,7 @@ function paintRoads(roads, view) {
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // barro shoulder
   ctx.strokeStyle = "#7d6242";
-  for (const r of roads) { if (!r.barro) continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
+  for (const r of roads) { if (!r.barro && !r.gravel) continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
   // bridge deck
   ctx.strokeStyle = "#cfc3a3";
   for (const r of roads) { if (!r.bridge) continue; ctx.lineWidth = r.w + 10; ctx.stroke(roadPath(r)); }
@@ -295,7 +295,8 @@ function paintRoads(roads, view) {
   // sweeping a dark arc across the junction mouth.
   ctx.strokeStyle = CANO_GREY;
   for (const r of roads) {
-    if (r.bridge || r.cls === "bridge" || r.barro) continue;
+    // no caño on an unpaved street: there is no kerb to run one along
+    if (r.bridge || r.cls === "bridge" || r.barro || r.gravel) continue;
     ctx.lineWidth = r.w + 2 * CANO_PX; ctx.stroke(roadPath(r));
   }
   // asphalt / barro / paseo surface + SAME-COLOR joint discs at both piece
@@ -303,7 +304,8 @@ function paintRoads(roads, view) {
   // Turistas curve smooth) and unify junction mouths, without the visible
   // "mini circles" a contrasting eraser disc would leave.
   for (const r of roads) {
-    const col = r.barro ? "#9c7a4f" : r.cls === "paseo" ? "#f4dca3" : "#3a3540";
+    const col = r.barro ? "#9c7a4f" : r.gravel ? "#a99d8b"
+      : r.cls === "paseo" ? "#f4dca3" : "#3a3540";
     ctx.strokeStyle = col; ctx.lineWidth = r.w; ctx.stroke(roadPath(r));
     const p = r.pts, n = p.length, rad = r.w / 2 - 0.4;
     ctx.fillStyle = col;
@@ -315,7 +317,7 @@ function paintRoads(roads, view) {
   // lane markings: yellow dashes on arterials, faint white on locals —
   // drawn on the TRIMMED path so they stop short of the junctions
   for (const r of roads) {
-    if (r.barro) continue;
+    if (r.barro || r.gravel) continue;   // nobody paints lines on lastre
     const cls = r.cls;
     if (cls === "trunk" || cls === "trunk_link" || cls === "primary" || cls === "primary_link") { ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([18, 18]); }
     else if (cls === "secondary" || cls === "tertiary" || cls === "tertiary_link" || cls === "residential" || cls === "unclassified") { ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([6, 10]); }

@@ -22,6 +22,11 @@ class Surface(IntEnum):
     BRIDGE = 5   # bridge deck and pier deck
     ACERA = 6    # sidewalk
     BOULEVARD = 7  # sub-auxiliary calle peatonal: stone paving, transitable
+    # Unpaved streets, appended in that order because these VALUES ARE THE WIRE
+    # FORMAT. A calle de barro was drawn brown and driven like asphalt for a
+    # year: the look was in the road vector, the feel was not anywhere.
+    BARRO = 8    # packed earth — the dirt calles and the Ferrocarril terraplén
+    GRAVEL = 9   # lastre — loose stone, the surface OSM tags `gravel`
 
     @property
     def label(self) -> str:
@@ -34,15 +39,29 @@ CLASS_NAMES = [s.label for s in Surface]
 
 #: What a vehicle may drive on. BEACH is included on purpose — the sand is
 #: slow (see SURFACE_MUL on the client), not a wall. So is BOULEVARD: a calle
-#: peatonal here is paving you may cross, not a barrier — you just crawl.
+#: peatonal here is paving you may cross, not a barrier — you just crawl. BARRO
+#: and GRAVEL are ordinary streets that are simply slower.
 DRIVABLE = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.BEACH,
-            Surface.BOULEVARD)
+            Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL)
 
 #: What counts as "a street is on the other side of this edge" when eroding an
 #: acera. A cuadra edge facing the sea, the sand or the next parcel has no
 #: sidewalk — see the directional erosion in util.raster.
 STREET = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.ACERA,
-          Surface.BOULEVARD)
+          Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL)
+
+#: What a car drives ALONG, as opposed to across: the carriageway classes. Not
+#: BEACH (sand is crossable, not a street) and not ACERA (that is the kerb).
+#: This is the list every "find the nearest street" search wants — a kiosk on a
+#: calle de barro has to link to the calle it is actually on.
+CARRIAGEWAY = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.BARRO,
+               Surface.GRAVEL)
+
+#: The street classes PROPER — asphalt, paseo, barro, lastre. A carriageway
+#: minus the decks, because a muelle is something you drive on, not a street to
+#: link something to: pointing the faro's access lane at one connected the
+#: muelle to itself and left the spawn on an island of 559 cells.
+CALLE = (Surface.ROAD, Surface.PASEO, Surface.BARRO, Surface.GRAVEL)
 
 #: Blocks the car: the cuadra interiors and the sidewalks around them.
 WALL = (Surface.LAND, Surface.ACERA)

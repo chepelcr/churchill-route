@@ -150,6 +150,7 @@ const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
 // and the map agree: the Muelle Nacional is concrete, the faro jetty is timber,
 // and a bridge deck is the pale deck base its asphalt is laid on.
 const MINI_BARRO  = "#9c7a4f";   // calle de barro / terraplén del Ferrocarril
+const MINI_LASTRE = "#a99d8b";   // calle de lastre (gravel)
 const MINI_RAIL   = "#8a7660";   // the Ferrocarril's ballast bed
 const MINI_FERRY  = "#d7d2c4";   // a ferry deck — the same ink as the muelles
 const MINI_PIER   = "#cfcfc8";   // Muelle Nacional — concrete (structures.js)
@@ -347,9 +348,9 @@ function miniRibbons(mv, roads) {
   for (const r of roads) {
     out.push({
       p: roadPath(r), w: Math.max(r.w, 26),
-      // barro sits BELOW every paved street: a dirt calle never cuts an avenida
-      rank: r.barro ? 0 : (RIBBON_RANK[r.cls] || 2),
-      col: r.barro ? MINI_BARRO : MINI_STREET,
+      // unpaved sits BELOW every paved street: a dirt calle never cuts an avenida
+      rank: (r.barro || r.gravel) ? 0 : (RIBBON_RANK[r.cls] || 2),
+      col: r.barro ? MINI_BARRO : r.gravel ? MINI_LASTRE : MINI_STREET,
     });
   }
   for (const kp of W.KIOSK_PATHS || []) {

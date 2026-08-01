@@ -19,7 +19,8 @@ from collections import defaultdict
 
 from ..config import (
     CLASS_NAMES,
-    CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER,
+    CLS_ACERA, CLS_BARRO, CLS_BEACH, CLS_BRIDGE, CLS_GRAVEL, CLS_LAND,
+    CLS_PASEO, CLS_ROAD, CLS_WATER,
     CUAD, GRID_CELL,
 )
 from ..content import (
@@ -86,9 +87,15 @@ def rasterise_surface(ctx, *, sp, ways, nodes, roads, beaches, waters, bridge_ro
     beach_fringe(raster, 9)
     for wpoly in waters:
         raster.fill_poly([(wpoly[i], wpoly[i + 1]) for i in range(0, len(wpoly), 2)], CLS_WATER)
+    # WHAT THE STREET IS MADE OF, in the raster. A paseo and a bridge deck come
+    # first because they are structures; then the mapper's surface tag, which is
+    # what makes a calle de barro drive like one (SURFACE_MUL on the client)
+    # rather than merely look like one.
     for r in roads:
         cls = CLS_PASEO if r["cls"] == "paseo" else \
-              CLS_BRIDGE if r.get("bridge") else CLS_ROAD
+              CLS_BRIDGE if r.get("bridge") else \
+              CLS_BARRO if r.get("barro") else \
+              CLS_GRAVEL if r.get("gravel") else CLS_ROAD
         raster.stamp_polyline(r["pts"], r["w"], cls)
     if bridge_road:
         raster.stamp_polyline(bridge_road["pts"], bridge_road["w"] + 6, CLS_BRIDGE)

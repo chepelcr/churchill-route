@@ -74,6 +74,16 @@ def extract_roads(sp, ways, canvas_w, canvas_h):
             if "rrocarril" in lname:
                 r["barro"] = 1     # dirt surface
                 r["elev"] = 1      # AND the raised avenue (car ramps onto it)
+            # WHAT THE MAPPER SAID THE STREET IS MADE OF. It was read as a
+            # colour and nothing else until barro and lastre became surface
+            # classes of their own; now it decides what the raster stamps, so a
+            # calle de barro is slower than the avenida beside it instead of
+            # merely browner. Everything not named here is asphalt.
+            surface = (w["tags"].get("surface") or "").lower()
+            if surface in ("unpaved", "ground", "dirt", "earth", "mud", "soil"):
+                r["barro"] = 1
+            elif surface in ("gravel", "fine_gravel", "compacted", "pebblestone"):
+                r["gravel"] = 1
             if w["tags"].get("ref"):
                 r["ref"] = w["tags"]["ref"]
             if w["tags"].get("bridge") == "yes" and cls != "bridge":

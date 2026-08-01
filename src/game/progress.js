@@ -8,15 +8,19 @@ import { analytics } from "../monetize/analytics.js";
 const STORAGE_KEY = "churchill_progress_v1";
 
 // ---- MVP gate (first Play Store release) ----------------------------------
-// Only the Puntarenas spit up to Las Playitas is open: Faro, Carmen, the
-// paseos, Centro (market) and Playitas. Everything east of the playitas|cocal
-// boundary — El Cocal, Mata de Limón, Caldera and the inland barrios — is
-// fenced off in EVERY mode with a "PRÓXIMAMENTE" wall until a later release.
-export const MVP_LOCKED = ["cocal", "mata", "caldera", "chacarita", "elroble", "barranca", "esparza"];
+// The wall used to stand at the playitas|cocal boundary, closing everything
+// east of Las Playitas. It has MOVED EAST to the inland barrios: the coast road
+// out through El Cocal, Mata de Limón and Caldera is open, which is what the
+// beach accesses and the lancha to the north shore are for. Chacarita, El
+// Roble, Barranca and Esparza stay closed — they are inland grids with no
+// kiosks, customers or stages, so opening them would be empty driving.
+export const MVP_LOCKED = ["chacarita", "elroble", "barranca", "esparza"];
 export function isMvpLocked(id) { return MVP_LOCKED.includes(id); }
 export function mvpWallX() {
-  const cocal = W.DISTRICTS.find((d) => d.id === "cocal");
-  return cocal ? cocal.x0 : Infinity;
+  // The wall stands at the westernmost locked district — read from the world,
+  // never hardcoded, so moving a district boundary moves the wall with it.
+  const locked = W.DISTRICTS.filter((d) => isMvpLocked(d.id));
+  return locked.length ? Math.min(...locked.map((d) => d.x0)) : Infinity;
 }
 
 export function loadProgress() {
@@ -54,7 +58,7 @@ export function markStageCleared(stageId, score) {
 export function rebuildBarriers() {
   state.barriers = [];
   const wallX = mvpWallX();
-  if (isFinite(wallX)) state.barriers.push({ x: wallX + 4, district: "cocal", mvp: true });
+  if (isFinite(wallX)) state.barriers.push({ x: wallX + 4, district: "chacarita", mvp: true });
   if (state.mode !== "explore") return;
   for (let i = 0; i < W.DISTRICTS.length; i++) {
     const d = W.DISTRICTS[i];

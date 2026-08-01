@@ -236,6 +236,52 @@ SITE_DECOR = {
     "osm_campus_232386868": {"rect": (0.0, 0.52, 0.0, 1.0)},
 }
 
+# ---------------------------------------------------------------------------
+# LANCHAS. The gulf ferries sail OUT AND BACK because the real crossing ends on
+# the Nicoya side, where this world has no shore to arrive at. The estero has
+# one: Pitahaya, on the north coast, whose streets the build already emits and
+# which no road on the spit can reach — it is a 160k-cell island in the
+# reachability gate. A lancha is how you get there, which is how you get there
+# in life too.
+#
+# Only the two ENDS are authored. The sailing line is derived at build time by
+# a flood over the water raster, so the boat can never cross land and the route
+# follows the coastline it is actually given.
+LANCHA_DEFS = [
+    {
+        "id": "pitahaya",
+        "name": "Lancha a Pitahaya",
+        "berth": (9.97992, -84.82987),      # spit north coast, behind el Centro
+        "landing": (10.02539, -84.82923),   # Calle Pitahaya, on the far shore
+        "deck": (86, 34),                   # smaller than a ferry: one car deep
+        "dockS": 20,
+        # ~7.1 km of estero at 150 px/s is a 76 s crossing. The ferry's 82 px/s
+        # would make it 2 min 18 s of open water with nothing to do.
+        "speed": 150,
+    },
+]
+
+# ---------------------------------------------------------------------------
+# BEACH ACCESSES. The sand is drivable (`Surface.DRIVABLE` has always said so),
+# but a cuadra's acera ring is a wall, so a beach with a sidewalk between it and
+# the street can be seen and never entered. Each of these paves a short apron
+# THROUGH that ring — the same recipe as a kiosk connector — so there is a way
+# down onto the sand you can find without hunting for a gap.
+BEACH_ACCESS_DEFS = [
+    {"id": "muelle_oeste", "name": "Bajada Muelle Oeste",
+     "at": (9.97481, -84.83187), "w": 34},   # west of the Muelle de Cruceros
+    {"id": "muelle_este", "name": "Bajada Muelle Este",
+     "at": (9.97481, -84.83105), "w": 34},   # east of it
+    # Playa Caldera. Calle 0A Este runs 180 px of solar and acera short of the
+    # sand — the longest wall between a street and a beach anywhere east of the
+    # spit, which is exactly what an access is for.
+    {"id": "caldera_playa", "name": "Bajada Playa Caldera",
+     "at": (9.92983, -84.71084), "w": 30},
+    # Playa Tivives, at the south end of the bulevar.
+    {"id": "tivives", "name": "Bajada Tivives",
+     "at": (9.85763, -84.69860), "w": 30},
+]
+
 BLDG_PALETTE = ["#f3c969", "#e85d75", "#6fbf99", "#5fb0d6", "#f08a5d",
                 "#c084d6", "#f4d77a", "#7ed6b5", "#e7a3b7", "#9bc4d4",
                 "#fff2cc", "#ffd8b1"]

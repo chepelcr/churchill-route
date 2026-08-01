@@ -47,7 +47,13 @@ function build() {
       id: f.id, name: f.name, pts, cum, total: cum[cum.length - 1] || 1,
       x: f.berth[0], y: f.berth[1], a: f.ang,
       dl: f.deck?.[0] || DEF_DECK_L, dw: f.deck?.[1] || DEF_DECK_W, dock,
-      s: dock, phase: "docked", wait: 0, used: false, dx: 0, dy: 0, da: 0,
+      // A CROSSING, not a scenic loop: the lancha over the estero LANDS you on
+      // the far shore and waits there. The two ferries sail out and come home
+      // because the real crossing ends on the Nicoya side, where this world has
+      // no shore to arrive at; the estero has one, so `oneWay` says so.
+      oneWay: !!f.oneWay, v: f.speed || SPEED,
+      s: dock, phase: "docked", wait: 0, used: false, far: false,
+      dx: 0, dy: 0, da: 0,
     };
   });
 }
@@ -58,7 +64,7 @@ export function ferries() {
 // Every run starts with both ferries home and available again.
 export function resetFerries() {
   for (const f of ferries()) {
-    f.s = f.dock; f.phase = "docked"; f.wait = 0; f.used = false;
+    f.s = f.dock; f.phase = "docked"; f.wait = 0; f.used = false; f.far = false;
     f.dx = f.dy = f.da = 0;
     const q = routePoint(f, f.dock);
     f.x = q.x; f.y = q.y; f.a = q.a;
@@ -98,18 +104,33 @@ export function advanceFerries(dt, aboard) {
       // the countdown RESETS if you leave: a ferry that sailed because you
       // drove past it eight seconds ago is a trap, not an Easter egg
       f.wait = (aboard === f && !f.used) ? f.wait + dt : 0;
-      if (f.wait >= BOARD_WAIT) { f.phase = "out"; f.wait = 0; f.justSailed = true; }
+      if (f.wait >= BOARD_WAIT) {
+        // A one-way boat sitting at the far shore sails BACK when you board her
+        // there. She is transport, so she is never `used` up — the two gulf
+        // ferries are the ride you get once.
+        f.phase = f.far ? "back" : "out";
+        f.wait = 0; f.justSailed = true;
+      }
     } else if (f.phase === "out") {
-      f.s += SPEED * dt;
-      if (f.s >= f.total) { f.s = f.total; f.phase = "back"; }
+      f.s += f.v * dt;
+      if (f.s >= f.total) {
+        f.s = f.total;
+        if (f.oneWay) { f.phase = "docked"; f.far = true; f.justLanded = true; }
+        else f.phase = "back";
+      }
     } else if (f.phase === "back") {
-      f.s -= SPEED * dt;
-      if (f.s <= f.dock) { f.s = f.dock; f.phase = "docked"; f.used = true; f.justHome = true; }
+      f.s -= f.v * dt;
+      if (f.s <= f.dock) {
+        f.s = f.dock; f.phase = "docked"; f.far = false;
+        f.used = !f.oneWay; f.justHome = true;
+      }
     }
     const q = routePoint(f, f.s);
     f.x = q.x; f.y = q.y;
-    // sailing home it runs the route backwards, so it points the other way
-    f.a = f.phase === "back" ? q.a + Math.PI : q.a;
+    // sailing home it runs the route backwards, so it points the other way —
+    // and a one-way boat berthed at the far shore keeps that heading while she
+    // waits, or she would sit facing the water she just crossed
+    f.a = (f.phase === "back" || (f.far && f.phase === "docked")) ? q.a + Math.PI : q.a;
     f.dx = f.x - px; f.dy = f.y - py;
     let da = f.a - pa;
     while (da > Math.PI) da -= Math.PI * 2;

@@ -44,6 +44,7 @@ from ..service.decoration import (
     paseo_median_runs, paseo_roads, stamp_paseo_median,
 )
 from ..service.ferry import stern_at_rest
+from ..service.lancha import place_beach_accesses, place_lanchas
 from ..service.pier import make_pier, stamp as stamp_pier
 from ..service.field import FieldService, _largest_part
 from ..service.projection import project_way_pts
@@ -154,6 +155,15 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         ctx.pier_restores[ramp["id"]] = stamp_pier(raster, ramp)
         log("ferry", f"{fy['id']} ramp stern ({round(sx)},{round(sy)}) -> street "
             f"({round(tgt[0])},{round(tgt[1])}), {round(dist((sx, sy), tgt))}px")
+
+    # THE LANCHA over the estero, and the ways down onto the sand. Both come
+    # after the ferry ramps because both use the same apron recipe, and both
+    # need the street grid to already be stamped: an access that finds no road
+    # is a ramp to nowhere.
+    _ll_px = lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2]
+    _street_near = lambda x, y, reach: _nearest_cell(x, y, CARRIAGEWAY_CLASSES, reach)
+    place_lanchas(ctx, _ll_px, _street_near)
+    place_beach_accesses(ctx, _ll_px, _street_near)
 
     # OSM parks (parquemar, cocal_park) + the Balneario pool: paint their green
     # on the containing block's footprint so the cuadra is OPEN (no buildings),

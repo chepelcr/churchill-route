@@ -123,6 +123,7 @@ export function update(dt) {
   }
   const surf = W.surfaceAt(p.x, p.y);
   const onRoad = surf === 3 || surf === 5; // road or bridge deck
+  const onSand = surf === 2;
   const inWater = surf === 0;
   const surfaceMul = aboard ? 1.0                       // steel deck
     : SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
@@ -159,7 +160,12 @@ export function update(dt) {
   const isWall = (x, y) => {
     if (deckAt(x, y)) return false;
     if (W.driveUnderAt(x, y)) return false;
-    const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0 || c === 2;
+    // BEACH IS NOT A WALL. The world has always said so — `DRIVABLE` in
+    // churchill/world/enums/surface.py includes it, and SURFACE_MUL[2] = 0.7 is
+    // a speed for driving on sand — but the collider walled it off, so 78,830
+    // cells of beach were drivable in the build's own reachability gate and
+    // untouchable in the game. The sand is slow and loose, not a barrier.
+    const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0;
   };
   // On a pier deck (class 5) the only wall is the surrounding water, so the
   // usual 20% overhang forgiveness reads as "half off the muelle" — probe at
@@ -275,7 +281,11 @@ export function update(dt) {
   const fwd = p.vx * heading.x + p.vy * heading.y;
   const side = -p.vx * heading.y + p.vy * heading.x;
   const gripBoost = activeEditorBoost(state, "grip-multiplier")?.value || 1;
-  const grip = veh.grip * gripBoost * (input.brake ? 0.55 : 1) * wetMul * (onWall ? 0.15 : 1);
+  // SAND FIGHTS BACK. It is slow through SURFACE_MUL, but a beach that only
+  // capped the top speed would drive like a narrow road: the loose surface is
+  // what makes it a shortcut you take on purpose rather than by accident.
+  const grip = veh.grip * gripBoost * (input.brake ? 0.55 : 1) * wetMul
+    * (onWall ? 0.15 : 1) * (onSand ? 0.62 : 1);
   const kept = side * (1 - Math.min(1, grip * dt * 6));
   p.vx = heading.x * fwd - heading.y * kept;
   p.vy = heading.y * fwd + heading.x * kept;

@@ -213,5 +213,18 @@
   "crossing.hull": "Casco",
   "crossing.swamped": "Se hundió la lancha",
   "crossing.landed": "¡Llegaste a Pitahaya!",
-  "crossing.returned": "De vuelta en Puntarenas"
+  "crossing.returned": "De vuelta en Puntarenas",
+  "picker.buyboost": "Comprar por {price} ₡",
+  "sky.sunny": "Amanece",
+  "sky.sunset": "Atardecer",
+  "sky.night": "Cae la noche",
+  "sky.storm": "Viene un aguacero",
+  "sky.clearing": "Escampó",
+  "arcade.sky": "Cielo",
+  "arcade.cycle": "Ciclo día/noche",
+  "sky.pick.sunny": "Soleado",
+  "sky.pick.sunset": "Atardecer",
+  "sky.pick.night": "Noche",
+  "sky.pick.storm": "Aguacero",
+  "explore.cycle": "El día corre: amanece, atardece y a veces cae un aguacero."
 }

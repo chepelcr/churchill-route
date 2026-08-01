@@ -29,6 +29,10 @@ import { ads } from "../monetize/ads.js";
 import { iap } from "../monetize/iap.js";
 import { analytics } from "../monetize/analytics.js";
 
+//: how loud the gulf is behind a menu. Under the driving level on purpose: it
+//: is a room tone, not a beach.
+const MENU_SEA = 0.55;
+
 export default function App() {
   const t = useT();
   // screens: boot (every launch) | intro (first run only) | title | stagepick |
@@ -121,7 +125,17 @@ export default function App() {
   useEffect(() => { Game.setAttract(["boot", "intro", "title", "stagepick", "supporters", "shop", "vehpick", "modebrief", "tutbrief"].includes(screen) || (screen === "settings" && settingsFrom.current === "title")); }, [screen]);
 
   // Engine/drift hum only while actually driving; menu blips stay available.
-  useEffect(() => { screen === "playing" ? sfx.resume() : sfx.quiet(); }, [screen]);
+  // AND THE SEA UNDER THE MENUS. Puntarenas is a sandbar four blocks wide —
+  // you can hear the gulf from anywhere on it, so the title, the shop and the
+  // level list get the same swell the beach does, a shade below the level the
+  // driving sets. `quiet()` deliberately leaves the wave voice alone; it is the
+  // one continuous sound that belongs everywhere.
+  useEffect(() => {
+    if (screen === "playing") { sfx.resume(); return; }
+    sfx.quiet();
+    sfx.resume();          // no-op until the first gesture unlocks the context
+    sfx.waves(MENU_SEA);
+  }, [screen]);
 
   // Auto-pause when the tab/app goes to the background mid-run.
   useEffect(() => {
@@ -173,12 +187,13 @@ export default function App() {
     setPendingRun({ vehicleKey, armedBoosts });
     setScreen("modebrief");
   }
-  function beginMode() {
+  function beginMode(opts = {}) {
     if (!pendingRun) return;
     enterImmersive();
     Game.state.armedBoosts = pendingRun.armedBoosts;
+    // Recorrer turns its own day; Arcade takes the sky the brief picked.
     if (pendingMode === "explore") Game.startExplore({ vehicleKey: pendingRun.vehicleKey });
-    else Game.startArcade({ vehicleKey: pendingRun.vehicleKey });
+    else Game.startArcade({ vehicleKey: pendingRun.vehicleKey, weather: opts.weather });
     setScreen("playing");
   }
   function pickStage(idx) {

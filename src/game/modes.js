@@ -5,6 +5,7 @@ import { VEHICLES } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
 import { ferries, resetFerries } from "./ferries.js";
 import { startCrossing } from "./crossing.js";
+import { setDayCycle } from "./daynight.js";
 import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
@@ -74,6 +75,7 @@ export function startStage(stageIdx, vehicleKey) {
   state.stageIdx = stageIdx;
   state.mode = "story";
   state.weather = stg.weather;
+  setDayCycle(false);          // a stage's sky is part of its brief
   state.timeLeft = stg.timeLimit;
   state.stageDeliveries = 0;
   state.stageTarget = stg.targetDeliveries;
@@ -131,7 +133,11 @@ export function startArcade(opts = {}) {
   state.stage = null;
   state.stageIdx = 0;
   state.mode = "arcade";
+  // ARCADE PICKS ITS SKY. Three minutes is shorter than any phase of the day,
+  // so a cycle here would either never turn or strobe; the run says what it
+  // wants and keeps it. `cycle` is offered for anyone who wants the turn.
   state.weather = opts.weather || authoredWeather();
+  setDayCycle(Boolean(opts.cycle), opts.dayAt ?? 0);
   state.timeLeft = 180;
   const rv = resolveVehicle(authoredVehicle("arcade", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
@@ -164,7 +170,12 @@ export function startExplore(opts = {}) {
   state.stage = null;
   state.stageIdx = 0;
   state.mode = "explore";
+  // RECORRER GETS A DAY. Ten real minutes for a full turn — sunny, atardecer,
+  // night, amanecer — with a storm rolling in now and then and handing the sky
+  // back where it left off. An explicit `weather` still wins: asking for one
+  // and getting a cycle would be a bug, not a feature.
   state.weather = opts.weather || authoredWeather();
+  setDayCycle(!opts.weather, Math.random());
   state.timeLeft = 999;
   const rv = resolveVehicle(authoredVehicle("explore", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;

@@ -213,5 +213,18 @@
   "crossing.hull": "Hull",
   "crossing.swamped": "The lancha swamped",
   "crossing.landed": "You made Pitahaya!",
-  "crossing.returned": "Back in Puntarenas"
+  "crossing.returned": "Back in Puntarenas",
+  "picker.buyboost": "Buy for {price} ₡",
+  "sky.sunny": "Daybreak",
+  "sky.sunset": "Sunset",
+  "sky.night": "Nightfall",
+  "sky.storm": "A squall is coming",
+  "sky.clearing": "It cleared",
+  "arcade.sky": "Sky",
+  "arcade.cycle": "Day/night cycle",
+  "sky.pick.sunny": "Sunny",
+  "sky.pick.sunset": "Sunset",
+  "sky.pick.night": "Night",
+  "sky.pick.storm": "Storm",
+  "explore.cycle": "The day runs: dawn, dusk, and the odd squall."
 }

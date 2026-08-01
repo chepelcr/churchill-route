@@ -46,6 +46,14 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false 
     if (!id || economy.ownsColor(id)) { economy.equipColor(veh, id); sfx.play("menu_move"); }
     else { sfx.play("menu_denied"); onShop({ tab: "colors", veh }); }
   };
+  // Buy a boost without leaving the picker. The economy owns the transaction —
+  // this only asks it, and arms what it just bought, which is what somebody
+  // pressing a boost's price meant.
+  const buyBoost = (id) => {
+    if (!economy.buyBoost(id)) { sfx.play("menu_denied"); return; }
+    sfx.play("menu_ok");
+    setArmed((a) => ({ ...a, [id]: true }));
+  };
   const go = () => {
     if (!owned) { sfx.play("menu_denied"); return; }
     sfx.play("menu_select");
@@ -105,21 +113,40 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false 
                     );
                   })}
                 </div>
-                {!storyMode && totalBoosts > 0 && (
-                  <div className="picker-boosts">
-                    <div className="vehicle-card-title">{t("picker.boosts", { n: totalBoosts })}</div>
-                    <div className="shop-tabs" style={{ margin: "6px 0 0" }}>
-                      {Object.keys(BOOSTS).map((id) => (
-                        <button key={id} disabled={economy.boostCount(id) <= 0}
-                          className={"btn " + (armed[id] ? "gold" : "secondary")}
-                          onClick={() => toggleBoost(id)}>
-                          <Icon name={BOOSTS[id].icon} size={14} /> {BOOSTS[id].editorItem ? BOOSTS[id].name : t(`shop.${id}.name`)} ×{economy.boostCount(id)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {/* BOOSTS GET THEIR OWN COLUMN. Stacked under the paint swatches
+                  they made one tall, ragged card; side by side the picker reads
+                  as three decisions — the ride, its paint, what you take with
+                  you. And an EMPTY slot is not hidden: it shows its price and
+                  buys in place, because sending somebody to the shop and back
+                  to arm a boost is three screens for one tap. */}
+              {!storyMode && (
+                <div className="glass-card picker-boostcol">
+                  <div className="vehicle-card-title">{t("picker.boosts", { n: totalBoosts })}</div>
+                  <div className="boost-list">
+                    {Object.keys(BOOSTS).map((id) => {
+                      const n = economy.boostCount(id);
+                      const b = BOOSTS[id];
+                      const name = b.editorItem ? b.name : t(`shop.${id}.name`);
+                      const afford = economy.coins >= b.price;
+                      return (
+                        <button key={id}
+                          className={"btn boost-row " + (n > 0 ? (armed[id] ? "gold" : "secondary") : "secondary empty")}
+                          onClick={() => (n > 0 ? toggleBoost(id) : buyBoost(id))}
+                          disabled={n <= 0 && !afford}
+                          title={n > 0 ? name : t("picker.buyboost", { price: b.price })}>
+                          <Icon name={b.icon} size={14} />
+                          <span className="boost-name">{name}</span>
+                          {n > 0
+                            ? <span className="boost-n">×{n}</span>
+                            : <span className="boost-buy">{b.price} ₡</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </FitScale>

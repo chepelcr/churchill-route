@@ -17,6 +17,7 @@ import { advanceFerries, carry, deckAt } from "./ferries.js";
 import {
   advanceCrossing, advanceEstero, crossingState, endCrossing, startCrossing,
 } from "./crossing.js";
+import { updateDayCycle } from "./daynight.js";
 import { updateEditorTriggers } from "./editorGameplay.js";
 import { activeEditorBoost, tickEditorBoosts } from "./editorContent.js";
 
@@ -156,6 +157,7 @@ export function update(dt) {
     if (f.justSailed) { f.justSailed = false; pushFloat(p.x, p.y - 50, "⛴️ " + f.name.toUpperCase(), "#9fd7ef"); }
     if (f.justHome) { f.justHome = false; pushFloat(p.x, p.y - 50, "⚓ PUNTARENAS", "#9fd7ef"); }
   }
+  updateDayCycle(dt);          // the sky, when the mode asked for a clock
   const surf = W.surfaceAt(p.x, p.y);
   const onRoad = surf === 3 || surf === 5; // road or bridge deck
   const onSand = surf === 2;

@@ -25,6 +25,12 @@ export const LANGUAGES = [
 
 const CATALOG = { es, en };
 
+// Runtime overrides from the authored content block (see src/ui/theme.js).
+// They sit ON TOP of the catalogs so a wording fix ships without an app
+// release, and they are keyed the same way, so authored copy and translations
+// never become two different things.
+let overrides = {};
+
 // Spanish is the source of truth: a key missing from another catalog falls back
 // to it before falling back to the raw key. FALLBACK_LANG is what a browser in
 // some third language gets.
@@ -49,17 +55,34 @@ function defaultLang() {
 
 let lang = typeof window !== "undefined" ? defaultLang() : BASE_LANG;
 const listeners = new Set();
+// useSyncExternalStore re-renders only when the SNAPSHOT changes. Using the
+// language alone meant an authored copy override applied silently: the strings
+// changed underneath React and nothing re-rendered. The revision covers both.
+let revision = 0;
+const storeSnapshot = () => `${lang}#${revision}`;
 
 export function getLang() { return lang; }
 export function setLang(l) {
   if (!isKnown(l)) return;
   lang = l;
+  revision += 1;
   try { localStorage.setItem(LANG_KEY, l); } catch { /* private mode */ }
   for (const fn of listeners) fn();
 }
 
+/** Replace the runtime override layer and re-render every subscriber. */
+export function setOverrides(next) {
+  overrides = next && typeof next === "object" ? next : {};
+  revision += 1;
+  for (const fn of listeners) fn();
+}
+
 export function t(key, vars) {
-  let s = CATALOG[lang]?.[key] ?? CATALOG[BASE_LANG][key] ?? key;
+  let s = overrides[lang]?.[key]
+    ?? CATALOG[lang]?.[key]
+    ?? overrides[BASE_LANG]?.[key]
+    ?? CATALOG[BASE_LANG][key]
+    ?? key;
   if (vars) for (const k in vars) s = s.replaceAll(`{${k}}`, vars[k]);
   return s;
 }
@@ -75,6 +98,6 @@ export function stageBrief(stage) {
 // the current language at call time).
 const subscribe = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
 export function useT() {
-  useSyncExternalStore(subscribe, getLang, () => BASE_LANG);
+  useSyncExternalStore(subscribe, storeSnapshot, () => `${BASE_LANG}#0`);
   return t;
 }

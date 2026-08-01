@@ -17,6 +17,7 @@ import ShopScreen from "./screens/ShopScreen.jsx";
 import VehiclePicker from "./VehiclePicker.jsx";
 import TutorialOverlay from "./TutorialOverlay.jsx";
 import { content } from "../content/remote.js";
+import { applyUiContent, applyScreen } from "./theme.js";
 import TouchControls from "./TouchControls.jsx";
 import GameTweaks from "./GameTweaks.jsx";
 import { enterImmersive } from "./immersive.js";
@@ -53,6 +54,13 @@ export default function App() {
     iap.init();
     analytics.init(); // no-ops without VITE_GA_ID
     content.load(); // supporters / server NPCs / lotes (cache-first, offline-safe)
+    // Authored theme + copy ride the same document, so they apply on the cached
+    // copy first and again when the network answers.
+    applyUiContent(content.ui);
+    const stopUi = content.onChange(() => {
+      applyUiContent(content.ui);
+      applyScreen(screenRef.current, { manifestUi: WORLD.EDITOR_UI, contentUi: content.ui });
+    });
     const launch = new URLSearchParams(window.location.search);
     if (launch.get("editorPlay") === "1") {
       const x = Number(launch.get("x"));
@@ -74,7 +82,7 @@ export default function App() {
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => { stopUi(); cancelAnimationFrame(raf); };
   }, []);
 
   // Interstitial cadence: count a finished run when the results screen shows
@@ -105,9 +113,7 @@ export default function App() {
   // World-editor screen contract: each main screen can override the shared
   // accent/backdrop, while individual screens opt into copy fields below.
   useEffect(() => {
-    const ui = WORLD.EDITOR_UI?.screens?.[screen] || {};
-    document.documentElement.style.setProperty("--editor-screen-bg", ui.background || "#17141f");
-    document.documentElement.style.setProperty("--gold", ui.accent || "oklch(0.86 0.16 90)");
+    applyScreen(screen, { manifestUi: WORLD.EDITOR_UI, contentUi: content.ui });
     document.body.dataset.gameScreen = screen;
   }, [screen]);
 

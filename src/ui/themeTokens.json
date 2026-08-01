@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "note": "The game's design tokens. This file is DATA so the world editor can build its theme form from it instead of hardcoding a list — add a token here and both sides learn about it. `css` is the custom property applied to :root; `default` must match src/styles.css so an empty theme renders exactly as today.",
+  "tokens": [
+    { "id": "warm", "css": "--warm", "label": "Warm sand", "group": "Palette", "type": "color", "default": "oklch(0.85 0.08 70)", "hint": "Panels and warm surfaces" },
+    { "id": "coral", "css": "--coral", "label": "Coral", "group": "Palette", "type": "color", "default": "oklch(0.68 0.18 30)", "hint": "Primary accent" },
+    { "id": "kola", "css": "--kola", "label": "Kola", "group": "Palette", "type": "color", "default": "oklch(0.62 0.22 25)", "hint": "Deep accent / danger" },
+    { "id": "hot", "css": "--hot", "label": "Hot pink", "group": "Palette", "type": "color", "default": "oklch(0.66 0.25 0)", "hint": "Highlights and combo" },
+    { "id": "gold", "css": "--gold", "label": "Gold", "group": "Palette", "type": "color", "default": "oklch(0.86 0.16 90)", "hint": "Coins and rewards" },
+    { "id": "teal", "css": "--teal", "label": "Teal", "group": "Palette", "type": "color", "default": "oklch(0.62 0.12 220)", "hint": "Water and cool accents" },
+    { "id": "ink", "css": "--ink", "label": "Ink", "group": "Palette", "type": "color", "default": "oklch(0.18 0.03 280)", "hint": "Text on light surfaces" },
+    { "id": "paper", "css": "--paper", "label": "Paper", "group": "Palette", "type": "color", "default": "oklch(0.96 0.02 80)", "hint": "Text on dark surfaces" },
+    { "id": "editorScreenBg", "css": "--editor-screen-bg", "label": "Screen backdrop", "group": "Screens", "type": "color", "default": "#17141f", "hint": "Backdrop behind authored screens" }
+  ]
+}

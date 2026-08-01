@@ -1,7 +1,13 @@
 {
   "version": 1,
-  "meta": { "kofi": "https://ko-fi.com/churchillroute" },
+  "meta": {
+    "kofi": "https://ko-fi.com/churchillroute"
+  },
   "supporters": [],
   "npcs": [],
-  "lotes": []
+  "lotes": [],
+  "ui": {
+    "theme": {},
+    "strings": {}
+  }
 }

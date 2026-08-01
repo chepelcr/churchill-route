@@ -2,14 +2,16 @@
   "name": "churchill-route",
   "version": "2.0.0",
   "private": true,
-  "description": "La Ruta del Churchill — Puntarenas arcade delivery game",
+  "description": "La Ruta del Churchill \u2014 Puntarenas arcade delivery game",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "inventory": "node tools/gen-inventory.mjs",
-    "world:build": "python3 tools/build_world.py"
+    "world:build": "python3 tools/build_world.py",
+    "smoke": "node tools/smoke.mjs",
+    "smoke:theme": "node tools/smoke-theme.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
@@ -27,6 +29,7 @@
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.4.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "playwright": "^1.62.1",
     "vite": "^6.0.7"
   },
   "packageManager": "pnpm@11.10.0"

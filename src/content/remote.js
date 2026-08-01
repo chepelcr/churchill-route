@@ -53,9 +53,30 @@ function toWorld(item) {
   return { x: Math.round(x), y: Math.round(y) };
 }
 
+// The authored UI block: design tokens and copy overrides. Values are strings
+// applied to CSS custom properties and to the i18n layer, so anything that is
+// not a string is dropped rather than trusted.
+function sanitizeUi(ui) {
+  if (!ui || typeof ui !== "object") return {};
+  const theme = {};
+  for (const [id, value] of Object.entries(ui.theme || {})) {
+    if (typeof value === "string" && value.trim()) theme[id] = value.trim().slice(0, 120);
+  }
+  const strings = {};
+  for (const [langId, table] of Object.entries(ui.strings || {})) {
+    if (!table || typeof table !== "object") continue;
+    const clean = {};
+    for (const [key, text] of Object.entries(table)) {
+      if (typeof text === "string") clean[key] = text.slice(0, 400);
+    }
+    if (Object.keys(clean).length) strings[langId] = clean;
+  }
+  return { theme, strings };
+}
+
 function sanitize(body) {
   if (!body || typeof body !== "object" || (body.version | 0) < 1) return null;
-  const out = { version: body.version | 0, meta: body.meta || {}, supporters: [], npcs: [], lotes: [] };
+  const out = { version: body.version | 0, meta: body.meta || {}, supporters: [], npcs: [], lotes: [], ui: sanitizeUi(body.ui) };
   for (const s of body.supporters || []) {
     if (s && s.name) out.supporters.push({ name: String(s.name).slice(0, 40), tier: Math.min(4, Math.max(1, s.tier | 0 || 1)), msg: s.msg ? String(s.msg).slice(0, 80) : null });
   }
@@ -78,6 +99,7 @@ export const content = {
   get npcs() { return data.npcs; },
   get lotes() { return data.lotes; },
   get meta() { return data.meta || {}; },
+  get ui() { return data.ui || {}; },
   onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 
   // Call once at app start. Serves cache immediately, then refreshes from the

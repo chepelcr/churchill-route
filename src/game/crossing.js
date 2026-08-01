@@ -230,6 +230,22 @@ function spawnEstero(ch) {
       taken: false, r: kind === "panga" ? 26 : kind === "fish" ? 34 : 40,
     });
   }
+  // REMOLINOS — only in a storm. The estero turns when the weather does, and a
+  // whirlpool is the one obstacle that does not wait to be hit: it PULLS, so
+  // the line you were holding stops being the line you are on. Mid-channel on
+  // purpose, because a hazard hugging the bank would just be roots again.
+  if (state.weather === "storm") {
+    for (let s = 700; s < ch.total - 500; s += 520) {
+      const q = at(ch.pts, ch.cum, s);
+      const off = (r() - 0.5) * LANE_HW * 1.1;
+      esteroThings.push({
+        kind: "remolino", s, off, ph: r() * Math.PI * 2, drift: 0, r: 52,
+        x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a,
+        pull: (r() < 0.5 ? -1 : 1) * (26 + r() * 22), taken: false,
+      });
+    }
+  }
+
   // The roots: they hug the bank, so they are only in the way of a boat that
   // cuts the corner. Placed just outside the lane, on both sides.
   for (let s = 380; s < ch.total - 300; s += 190) {
@@ -249,13 +265,25 @@ export function advanceEstero(dt, ferry) {
   if (!_crossing.active) return;
   const ch = _crossing.channel;
   for (const e of esteroThings) {
-    if (e.kind !== "roots") e.ph += dt * (e.kind === "gulls" ? 3.2 : 1.4);
+    if (e.kind === "remolino") e.ph += dt * 1.9;
+    else if (e.kind !== "roots") e.ph += dt * (e.kind === "gulls" ? 3.2 : 1.4);
     if (e.drift) {
       e.off += e.drift * dt * 12;
       if (Math.abs(e.off) > LANE_HW * 0.95) e.drift *= -1;
       const q = at(ch.pts, ch.cum, e.s);
       e.x = q.x - Math.sin(q.a) * e.off;
       e.y = q.y + Math.cos(q.a) * e.off;
+    }
+    // A remolino is not a collision: it is a current. It keeps working on you
+    // the whole time you are in it, and it is never "taken".
+    if (e.kind === "remolino") {
+      const d = Math.hypot(e.x - ferry.x, e.y - ferry.y);
+      if (d < e.r + ferry.dl / 2) {
+        const grip = 1 - Math.min(1, d / (e.r + ferry.dl / 2));
+        _crossing.offset += e.pull * grip * dt;
+        _crossing.spin = (_crossing.spin || 0) + e.pull * grip * dt * 0.02;
+      }
+      continue;
     }
     if (e.taken) continue;
     // The boat's own footprint, not the player's: you are ON her.

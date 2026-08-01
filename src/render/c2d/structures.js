@@ -2,7 +2,7 @@
 // suspension bridge. The painterly tile pass doesn't cover these.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
-import { ctx, flatPath, label } from "./gfx.js";
+import { ctx, flatPath, label, roundRect } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
@@ -234,31 +234,50 @@ function drawFerry(f, view) {
     ctx.lineTo(-L - 70, B * 1.5); ctx.lineTo(-L, B * 0.7);
     ctx.closePath(); ctx.fill();
   }
-  ctx.fillStyle = "rgba(0,0,0,0.24)";           // hull shadow on the water
-  ctx.fillRect(-L + 3, -B + 5, L * 2, B * 2);
-  // hull: a blunt bow forward (+u), a square stern with the ramp aft
-  ctx.fillStyle = "#2f4f68";
+  // THE HULL IS A CURVE, not a box with a notch. Everything else that moves in
+  // this game is drawn round and warm — the scooter, the pangas, the churchill
+  // itself — and the ferry was the one square thing on the water. A quadratic
+  // bow and a flared quarter give her the same line, and the DECK still ends
+  // exactly where `deckAt` says it does, so what you see is what you stand on.
+  ctx.fillStyle = "rgba(0,0,0,0.26)";           // hull shadow on the water
   ctx.beginPath();
-  ctx.moveTo(L, 0); ctx.lineTo(L - 22, -B); ctx.lineTo(-L, -B);
-  ctx.lineTo(-L, B); ctx.lineTo(L - 22, B);
+  ctx.moveTo(L + 4, 3); ctx.quadraticCurveTo(L - 8, -B + 8, L - 30, -B + 5);
+  ctx.lineTo(-L + 8, -B + 5); ctx.quadraticCurveTo(-L - 2, 3, -L + 8, B + 5);
+  ctx.lineTo(L - 30, B + 5); ctx.quadraticCurveTo(L - 8, B + 5, L + 4, 3);
   ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#2f4f68";                    // hull
+  ctx.beginPath();
+  ctx.moveTo(L + 2, 0);
+  ctx.quadraticCurveTo(L - 6, -B, L - 30, -B);  // flared bow
+  ctx.lineTo(-L + 6, -B);
+  ctx.quadraticCurveTo(-L - 3, 0, -L + 6, B);   // rounded quarter aft
+  ctx.lineTo(L - 30, B);
+  ctx.quadraticCurveTo(L - 6, B, L + 2, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#3f6d8c";                    // boot-top stripe along the sheer
+  ctx.fillRect(-L + 6, -B + 2, L * 2 - 36, 2);
+  ctx.fillRect(-L + 6, B - 4, L * 2 - 36, 2);
   ctx.fillStyle = "#d7d2c4";                    // the DECK — the drivable rect
-  ctx.fillRect(-L + 3, -B + 4, L * 2 - 26, B * 2 - 8);
+  roundRect(ctx, -L + 4, -B + 5, L * 2 - 30, B * 2 - 10, 5, true, false);
   ctx.strokeStyle = "#f4d77a"; ctx.lineWidth = 1.5;   // lane guides down the deck
   ctx.setLineDash([9, 9]);
-  ctx.beginPath(); ctx.moveTo(-L + 8, 0); ctx.lineTo(L - 26, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-L + 9, 0); ctx.lineTo(L - 30, 0); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = "#b7402f";                    // rails, both sides
-  ctx.fillRect(-L + 2, -B + 1, L * 2 - 24, 3);
-  ctx.fillRect(-L + 2, B - 4, L * 2 - 24, 3);
+  ctx.fillRect(-L + 4, -B + 2, L * 2 - 32, 3);
+  ctx.fillRect(-L + 4, B - 5, L * 2 - 32, 3);
   ctx.fillStyle = "#8a7f6a";                    // stern ramp (how you get on)
-  ctx.fillRect(-L - 9, -B + 8, 11, B * 2 - 16);
-  ctx.fillStyle = "#eee8d8";                    // wheelhouse forward
-  ctx.fillRect(L - 44, -B + 7, 20, B * 2 - 14);
+  roundRect(ctx, -L - 9, -B + 9, 12, B * 2 - 18, 3, true, false);
+  ctx.fillStyle = "#eee8d8";                    // wheelhouse forward, with a roof
+  roundRect(ctx, L - 48, -B + 8, 22, B * 2 - 16, 5, true, false);
   ctx.fillStyle = "#3a6f8a";
-  ctx.fillRect(L - 41, -B + 10, 14, B * 2 - 20);
-  ctx.fillStyle = "#e85d75";                    // funnel
-  ctx.beginPath(); ctx.arc(L - 54, 0, 5, 0, Math.PI * 2); ctx.fill();
+  roundRect(ctx, L - 45, -B + 11, 16, B * 2 - 22, 4, true, false);
+  ctx.fillStyle = "#f4d77a";                    // a warm light in the window
+  ctx.fillRect(L - 42, -3, 10, 6);
+  ctx.fillStyle = "#e85d75";                    // funnel, with a black cap
+  ctx.beginPath(); ctx.arc(L - 58, 0, 5.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#2b2b33";
+  ctx.beginPath(); ctx.arc(L - 58, 0, 5.5, Math.PI * 1.15, Math.PI * 1.85); ctx.fill();
   ctx.restore();
   label(f.x, f.y - f.dw / 2 - 14, f.name.toUpperCase().replace("FERRY A ", ""),
         "#fff", "#2f4f68");

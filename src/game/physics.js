@@ -117,8 +117,11 @@ export function update(dt) {
   // ARMED BY HER PHASE, not by `justSailed`: that flag is set by advanceFerries
   // (below) and consumed by the message loop in the same frame, so a check up
   // here never saw it true. Under way + somebody aboard IS the crossing.
+  // ARCADE MAY SAIL TOO. The three minutes are yours to spend, and spending
+  // them on the estero is a choice worth having; only Historia's delivery
+  // stages keep her tied up, so a stage's clock is never eaten by a boat.
   if (aboard?.oneWay && aboard.phase !== "docked" && !cross.active
-      && (state.mode === "explore" || state.stage?.kind === "crossing")) {
+      && (state.mode !== "story" || state.stage?.kind === "crossing")) {
     startCrossing(aboard, { level: false });
   }
   if (cross.active) {

@@ -161,6 +161,32 @@ function drawRoots(e, view, t) {
   ctx.restore();
 }
 
+// A remolino: rings of foam turning around a dark eye. Read at a distance by
+// the ring, and up close by which WAY it turns — which is the information you
+// need, because that is the side it will put you on.
+function drawRemolino(e, view, t) {
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(e.ph + t * (e.pull > 0 ? 0.9 : -0.9));
+  ctx.fillStyle = "rgba(18,34,44,0.34)";
+  ctx.beginPath(); ctx.arc(0, 0, e.r * 0.42, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.42)";
+  ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const rr = e.r * (0.5 + i * 0.22);
+    ctx.lineWidth = 2.4 - i * 0.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, rr, i * 1.7, i * 1.7 + Math.PI * 1.25);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  for (let i = 0; i < 6; i++) {
+    const a = i * 1.05, rr = e.r * (0.55 + (i % 3) * 0.16);
+    ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, 1.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
 /** The channel itself — drawn under the boats, over the water. */
 export function drawChannel(view, t) {
   for (const channel of channels().values()) {
@@ -181,5 +207,6 @@ export function drawEstero(view, t) {
     else if (e.kind === "fish") drawFish(e, view, t);
     else if (e.kind === "gulls" && !e.taken) drawGulls(e, view, t);
     else if (e.kind === "roots") drawRoots(e, view, t);
+    else if (e.kind === "remolino") drawRemolino(e, view, t);
   }
 }

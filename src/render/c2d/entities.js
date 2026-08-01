@@ -195,18 +195,57 @@ function drawGull(g) {
   ctx.moveTo(g.x - 7, g.y + f); ctx.quadraticCurveTo(g.x - 3, g.y - 3 + f, g.x, g.y + f);
   ctx.quadraticCurveTo(g.x + 3, g.y - 3 + f, g.x + 7, g.y + f); ctx.stroke();
 }
+// The boats on the water. Both were flat rectangles seen from directly above,
+// which is not how anything else in this game is drawn: the loading screen's
+// little lancha has a white hull, a red boot-top and a cabin, and that is the
+// boat people expect to find when they get out on the gulf. This is that boat,
+// at world scale — a curved hull, a stripe at the waterline, a wake that knows
+// which way she is going.
 function drawBoat(b) {
-  ctx.fillStyle = "rgba(255,255,255,0.4)";
-  ctx.fillRect(b.x - 40 - Math.sign(b.vx) * 12, b.y + 4, 32, 2);
-  if (b.kind === "ferry") {
-    ctx.fillStyle = "#fff"; ctx.fillRect(b.x - 28, b.y - 6, 56, 10);
-    ctx.fillStyle = "#3a3540"; ctx.fillRect(b.x - 28, b.y + 2, 56, 4);
-    ctx.fillStyle = "#e85d75"; ctx.fillRect(b.x - 4, b.y - 14, 6, 10);
+  const dir = Math.sign(b.vx) || 1;
+  const t = lastT * 0.001;
+  const bob = Math.sin(t * 1.5 + (b.x + b.y) * 0.01) * 1.2;
+  ctx.save();
+  ctx.translate(b.x, b.y + bob);
+  ctx.scale(dir, 1);                       // she faces the way she is travelling
+  const big = b.kind === "ferry";
+  const L = big ? 30 : 15, H = big ? 8 : 5;
+  // wake: a widening V behind her, brighter the faster she runs
+  ctx.fillStyle = "rgba(255,255,255,0.30)";
+  ctx.beginPath();
+  ctx.moveTo(-L, -H * 0.5); ctx.lineTo(-L - 26, -H * 1.6);
+  ctx.lineTo(-L - 26, H * 1.6); ctx.lineTo(-L, H * 0.5);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.20)";      // hull shadow on the water
+  ctx.beginPath();
+  ctx.ellipse(1, H * 0.7, L * 0.95, H * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#f6f2e8";               // white hull, sheer curving to the bow
+  ctx.beginPath();
+  ctx.moveTo(L, 0);
+  ctx.quadraticCurveTo(L * 0.55, -H, -L * 0.7, -H * 0.9);
+  ctx.quadraticCurveTo(-L, -H * 0.5, -L, 0);
+  ctx.quadraticCurveTo(-L, H * 0.6, -L * 0.7, H * 0.9);
+  ctx.quadraticCurveTo(L * 0.55, H, L, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#e2503f";               // the red boot-top at the waterline
+  ctx.beginPath();
+  ctx.moveTo(L * 0.92, 0);
+  ctx.quadraticCurveTo(L * 0.5, H, -L * 0.7, H * 0.88);
+  ctx.quadraticCurveTo(-L, H * 0.55, -L, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#3a6f8a";               // cabin
+  roundRect(ctx, -L * 0.35, -H * 0.85, L * (big ? 0.5 : 0.42), H * 1.2, 2, true, false);
+  ctx.fillStyle = "#f4d77a";
+  ctx.fillRect(-L * 0.28, -H * 0.35, L * (big ? 0.34 : 0.26), 2);
+  if (big) {
+    ctx.fillStyle = "#e85d75";             // funnel on the bigger one
+    ctx.beginPath(); ctx.arc(-L * 0.6, -H * 0.2, 3.2, 0, Math.PI * 2); ctx.fill();
   } else {
-    ctx.fillStyle = "#caa089"; ctx.beginPath();
-    ctx.moveTo(b.x - 14, b.y); ctx.lineTo(b.x + 14, b.y);
-    ctx.lineTo(b.x + 10, b.y + 4); ctx.lineTo(b.x - 10, b.y + 4); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#8a5f33";           // an outboard on the panga
+    ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-L + 1, -1); ctx.lineTo(-L - 3, 3); ctx.stroke();
   }
+  ctx.restore();
 }
 
 // Street vendor cart: box cart with a striped parasol

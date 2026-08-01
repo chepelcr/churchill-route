@@ -9,7 +9,7 @@ from pydantic import Field
 
 from .geo import FlatPoly
 from .world import (
-    Balneario, Bridge, Customer, District, Estuary, FaroPier, Ferry, Green,
+    Balneario, Bridge, Customer, District, Estuary, Ferry, Green,
     GridInfo, Hill, KioskPath, Landmark, Meta, Parcel, Pier, Poi, Sign, Stadium,
     Stage, WorldModel,
 )
@@ -24,7 +24,7 @@ class Manifest(WorldModel):
     stages: list[Stage]
     bridge: Bridge | None = None
     estuary: Estuary | None = None
-    pier: Pier | None = None
+    piers: list[Pier] = Field(default_factory=list)
     hills: list[Hill] = Field(default_factory=list)
     beaches: list[FlatPoly] = Field(default_factory=list)
     waters: list[FlatPoly] = Field(default_factory=list)
@@ -36,7 +36,6 @@ class Manifest(WorldModel):
     stadiums: list[Stadium] = Field(default_factory=list)
     balneario: Balneario | None = None
     kioskPaths: list[KioskPath] = Field(default_factory=list)
-    faroPier: FaroPier | None = None
     pois: list[Poi] = Field(default_factory=list)
     parcels: list[Parcel] = Field(default_factory=list)
     ferries: list[Ferry] = Field(default_factory=list)

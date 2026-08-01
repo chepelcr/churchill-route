@@ -31,7 +31,7 @@ from ..content import (
     BLDG_PALETTE, LANDMARK_DEFS, MARINE_BUILDING_NAMES, MARINE_SITE_OSM_ID,
     ROOF_PALETTE,
 )
-from ..enums import GreenType, LandmarkType, ParcelUse
+from ..enums import GreenType, LandmarkType, ParcelUse, Surface
 from ..logging import log, warn
 from ..service.block import (
     block_raster_cells, cells_to_rects, cuadra_cells, outline_poly,
@@ -44,6 +44,7 @@ from ..service.decoration import (
     paseo_median_runs, paseo_roads, stamp_paseo_median,
 )
 from ..service.ferry import stern_at_rest
+from ..service.pier import make_pier, stamp as stamp_pier
 from ..service.field import FieldService, _largest_part
 from ..service.projection import project_way_pts
 from ..service.placement import (
@@ -123,12 +124,23 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         else:
             log("kiosk", f"WARN no street spawn near {lm['id']} ({lm['x']},{lm['y']})")
 
-    # FERRY RAMPS. The berths sit over water with a strip of sand between them
-    # and the terminal road, and sand is a WALL to the car — so without this you
-    # could see both ferries and never board one. Same recipe as a beach kiosk's
-    # connector: pave from the berth to the nearest street and emit the segment
-    # so it is DRAWN as asphalt too. Paving without emitting would leave a strip
-    # of invisible drivable sea, which is worse than the wall.
+    # FERRY RAMPS — piers, like the two muelles, and for the same reason: a deck
+    # you drive on that leaves the land. The berths sit over water with a strip
+    # of sand between them and the terminal road, and sand is a WALL to the car,
+    # so without this you could see both ferries and never board one.
+    #
+    # ONE THING IS THE OPPOSITE OF A MUELLE'S, and it is why `seaEnd` is a field
+    # and not an assumption. A muelle's free end must NOT overhang: there is
+    # nothing past it but water, and drivable cells past the drawn deck are
+    # where the both-ends-blocked snap-back traps you. A ferry ramp's end MUST
+    # overhang, because what is past it is the ferry — `stamp_polyline`'s round
+    # cap is the 20 px of overlap you drive across onto a deck the raster does
+    # not know about (deckAt answers for that). Pull this one back and the
+    # boarding gap becomes open sea.
+    #
+    # They stay CLS_ROAD rather than the muelles' CLS_BRIDGE: the terminal is
+    # asphalt, and `surfLevel` would otherwise start lifting the car onto a
+    # pier deck the moment it left the street.
     for fy in ctx.ferries:
         sx, sy = stern_at_rest(fy)
         tgt = _nearest_cell(sx, sy, (CLS_ROAD, CLS_BRIDGE, CLS_PASEO), 260)
@@ -136,9 +148,11 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
             log("ferry", f"WARN no street near the {fy['id']} berth to ramp to"); continue
         # 2 cuadrículas wide — a shade under the deck, so the ramp is as wide as
         # the door you drive through rather than a footpath to it
-        raster.stamp_polyline([sx, sy, tgt[0], tgt[1]], 2.0 * CUAD, CLS_ROAD)
-        kiosk_paths.append({"pts": [round(sx), round(sy), round(tgt[0]), round(tgt[1])],
-                            "surface": "paved"})
+        ramp = make_pier(f"ramp_{fy['id']}", f"Rampa {fy['name']}",
+                         [sx, sy, tgt[0], tgt[1]], 2.0 * CUAD,
+                         style="apron", surface=Surface.ROAD, sea_end=None)
+        ctx.piers.append(ramp)
+        ctx.pier_restores[ramp["id"]] = stamp_pier(raster, ramp)
         log("ferry", f"{fy['id']} ramp stern ({round(sx)},{round(sy)}) -> street "
             f"({round(tgt[0])},{round(tgt[1])}), {round(dist((sx, sy), tgt))}px")
 
@@ -273,7 +287,8 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         keepouts.append((lm["x"], lm["y"], 100 if lm["type"] == "kiosk" else 68))
     for cu in customers:
         keepouts.append((cu["x"], cu["y"], 100))
-    keepouts.append((pier["x"], pier["y0"], 120))
+    # the muelle's shore end: nothing synthesised on the apron in front of it
+    keepouts.append((pier["pts"][0], pier["pts"][1], 120))
     return balneario, balneario_cells, marine_site, keepouts, medians, palm_runs, tree_runs
 
 

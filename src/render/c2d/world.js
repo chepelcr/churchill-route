@@ -12,7 +12,7 @@ import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
 } from "./ground.js";
 import { drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
-import { paintBuilding } from "./structures.js";
+import { drawPiers, paintBuilding } from "./structures.js";
 
 // Orchestrate the painterly world from resident, in-view tiles.
 function drawWorld2D(view, t) {
@@ -32,8 +32,10 @@ function drawWorld2D(view, t) {
   for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);
   for (const tile of vts) if (tile.medians.length) paintTileMedians(tile.medians, view);
   drawFaroCommas(view);   // faro plaza red "islands" — under the trees
-  // asphalt access lanes from the kiosks to the nearest street (drivable)
+  // asphalt access lanes from the kiosks to the nearest street (drivable), and
+  // the ferry ramps, which are piers drawn at ground level for the same reason
   drawKioskPaths(view);
+  drawPiers(view, true);
   // buildings
   for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
   // flora

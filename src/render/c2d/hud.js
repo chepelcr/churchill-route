@@ -301,19 +301,25 @@ function miniMuelles(mv, roads) {
     ctx.fillRect(-f.dl / 2, -f.dw / 2, f.dl, f.dw);
     ctx.restore();
   }
-  // …then the two muelles proper, each in its own material
-  const P = W.PIER;
-  if (P && P.x !== undefined &&
-      aabbInView({ x0: P.x - P.w / 2, x1: P.x + P.w / 2, y0: P.y0, y1: P.y1 }, mv, 8)) {
-    ctx.fillStyle = MINI_PIER;
-    ctx.fillRect(P.x - P.w / 2, P.y0, P.w, P.y1 - P.y0);
-  }
-  const F = W.FAROPIER;
-  if (F && F.x0 !== undefined &&
-      aabbInView({ x0: Math.min(F.x0, F.x1), x1: Math.max(F.x0, F.x1),
-                   y0: Math.min(F.y0, F.y1), y1: Math.max(F.y0, F.y1) }, mv, F.w)) {
-    ctx.strokeStyle = MINI_JETTY; ctx.lineWidth = F.w;
-    ctx.beginPath(); ctx.moveTo(F.x0, F.y0); ctx.lineTo(F.x1, F.y1); ctx.stroke();
+  // …then the muelles proper, each stroked in its own material. They are
+  // polylines, so one loop covers both — and any the editor adds.
+  for (const P of W.PIERS) {
+    const pts = P.pts;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < pts.length; i += 2) {
+      x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]);
+      y0 = Math.min(y0, pts[i + 1]); y1 = Math.max(y1, pts[i + 1]);
+    }
+    if (!aabbInView({ x0, x1, y0, y1 }, mv, P.w)) continue;
+    // An apron is a piece of the street network, not a muelle: on the dial it
+    // belongs to the ribbons, which have already been drawn.
+    if (P.style === "apron") continue;
+    ctx.strokeStyle = P.style === "timber" ? MINI_JETTY : MINI_PIER;
+    ctx.lineWidth = P.w; ctx.lineCap = "butt"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+    ctx.stroke();
   }
 }
 // Every drivable RIBBON on the dial, as one list, so the casing and the fill
@@ -353,6 +359,19 @@ function miniRibbons(mv, roads) {
     if (!kp._mpath) kp._mpath = flatPath(kp.pts, false);
     // a connector is a spur off the street it joins, so it goes under it
     out.push({ p: kp._mpath, w: 28, rank: 1, col: MINI_STREET });
+  }
+  // The ferry ramps are the same kind of spur, and are piers now.
+  for (const P of W.PIERS) {
+    if (P.style !== "apron") continue;
+    const pts = P.pts;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < pts.length; i += 2) {
+      x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]);
+      y0 = Math.min(y0, pts[i + 1]); y1 = Math.max(y1, pts[i + 1]);
+    }
+    if (!aabbInView({ x0, x1, y0, y1 }, mv, P.w)) continue;
+    if (!P._mpath) P._mpath = flatPath(pts, false);
+    out.push({ p: P._mpath, w: P.w, rank: 1, col: MINI_STREET });
   }
   out.sort((a, b) => a.rank - b.rank);
   return out;

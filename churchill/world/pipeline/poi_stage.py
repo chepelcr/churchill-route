@@ -27,6 +27,7 @@ from ..enums import GreenType, LandmarkType
 from ..logging import log, warn
 from ..service.block import block_raster_cells, cells_to_rects, detect_blocks, outline_poly
 from ..service.network import largest_drivable_component
+from ..service.pier import log_pier, make_pier, stamp as stamp_pier
 from ..service.placement import (
     block_containing, cell_class, drivable_cell, kiosk_frontage, nearest_block,
     nearest_cell, resolve_poi, road_adj,
@@ -173,24 +174,28 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
         warn("pier", "Calle Central not found near the muelle anchor")
     pier_col = min(GRID_COLS - 1, max(0, int(mlm["x"] / GRID_CELL)))
     pier_y0 = botY[pier_col] - 6
-    pier = {"x": mlm["x"], "y0": round(pier_y0),
-            "y1": round(min(CANVAS_H - 30, pier_y0 + 630)), "w": 2 * CUAD}
-    # Stamp the drivable strip flush with the DRAWN deck: raster_stamp_polyline
-    # adds a round cap of radius w/2 past the last point, so pull the sea end
-    # back by w/2 — otherwise ~20px of drivable cells sit past the visible deck.
-    raster.stamp_polyline([pier["x"], pier["y0"], pier["x"], pier["y1"] - pier["w"] / 2],
-                          pier["w"], CLS_BRIDGE)
+    pier_y1 = round(min(CANVAS_H - 30, pier_y0 + 630))
+    # A PIER IS A POLYLINE, like a road that is allowed to leave the land. The
+    # service owns the one rule both muelles need — the stamp's round cap is
+    # pulled back at the sea end so no drivable cell sits past the drawn deck.
+    pier = make_pier("muelle_nacional", "Muelle Nacional",
+                     [mlm["x"], round(pier_y0), mlm["x"], pier_y1], 2 * CUAD,
+                     style="concrete")
+    ctx.piers.append(pier)
+    ctx.pier_restores[pier["id"]] = stamp_pier(raster, pier)
+    log_pier(pier)
     # connect the pier base to the street grid (walk north to the first road)
-    pc = int(pier["x"] // GRID_CELL)
+    pier_x = pier["pts"][0]
+    pc = int(pier_x // GRID_CELL)
     pr = int(pier_y0 // GRID_CELL)
     for r in range(pr, max(0, pr - 120), -1):
         if grid[r * GRID_COLS + pc] in (CLS_ROAD, CLS_PASEO):
-            raster.stamp_polyline([pier["x"], r * GRID_CELL,
-                                         pier["x"], pier["y0"]], 2 * CUAD, CLS_ROAD)
+            raster.stamp_polyline([pier_x, r * GRID_CELL,
+                                         pier_x, pier_y0], 2 * CUAD, CLS_ROAD)
             log("pier", f"connector road to y={r * GRID_CELL}")
             break
-    mlm["x"], mlm["y"] = pier["x"], round(pier_y0 - 16)
-    log("pier", f"muelle at x={pier['x']}, y {pier['y0']}..{pier['y1']}")
+    mlm["x"], mlm["y"] = pier_x, round(pier_y0 - 16)
+    log("pier", f"muelle at x={pier_x}, y {round(pier_y0)}..{pier_y1}")
 
     return landmarks, customers, failures, mlm, pier, BUILDING_LM, NO_PAD_LM, resolve
 
@@ -315,12 +320,13 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
         sx, sy = scc * GRID_CELL, scr * GRID_CELL          # muelle base (beach line)
         ex, ey = sx - 7 * CUAD, sy + 7 * CUAD              # SW sea end
         pw = 2 * CUAD
-        # pull the stamped sea end back by w/2 so its round cap doesn't leave
-        # drivable cells past the drawn deck (car can't drive off the sea end)
-        _pl = math.hypot(ex - sx, ey - sy) or 1.0
-        _sex = ex - (ex - sx) / _pl * (pw / 2); _sey = ey - (ey - sy) / _pl * (pw / 2)
-        raster.stamp_polyline([sx, sy, _sex, _sey], pw, CLS_BRIDGE)
-        faro_pier = {"x0": int(ex), "y0": int(ey), "x1": int(sx), "y1": int(sy), "w": int(pw)}
+        # Shore end first, sea end last — the service pulls the stamp back at
+        # the free end so the round cap leaves no drivable cell past the deck.
+        faro_pier = make_pier("muelle_faro", "Muelle del Faro",
+                              [sx, sy, ex, ey], pw, style="timber")
+        ctx.piers.append(faro_pier)
+        ctx.pier_restores[faro_pier["id"]] = stamp_pier(raster, faro_pier)
+        log_pier(faro_pier)
         # ONE drivable lane tying the muelle base to the nearest loop road (the
         # pedestrian plaza itself stays non-drivable); drawn asphalt.
         aux = None
@@ -438,4 +444,4 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
 
     _block_containing = lambda x, y: block_containing(blocks, x, y)
 
-    return blocks, plazas, greens, kiosk_paths, beach_kiosks, faro_lm, faro_pier, balneario, balneario_cells, marine_site
+    return blocks, plazas, greens, kiosk_paths, beach_kiosks, faro_lm, balneario, balneario_cells, marine_site

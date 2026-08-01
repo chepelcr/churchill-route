@@ -17,7 +17,7 @@ import {
 import { drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
 import { drawBarriers, drawSigns } from "./c2d/streets.js";
-import { drawBridge, drawFaroPier, drawFerries, drawPier } from "./c2d/structures.js";
+import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import {
   drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed,
@@ -90,8 +90,7 @@ function render(t) {
   // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
   // Cruceros deck (its BRIDGE surface cells are drivable but not painted by
   // the vector road pass) and the Mata de Limón suspension bridge.
-  drawPier(view);
-  drawFaroPier(view);
+  drawPiers(view);      // the muelles, each a polyline deck over the water
   drawBridge(view);
   drawFerries(view);   // the two ferries + their berths, over the water
   drawBarriers(view);

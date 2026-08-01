@@ -257,10 +257,20 @@ class Estuary(WorldModel):
 
 
 class Pier(WorldModel):
-    x: int
-    y0: int
-    y1: int
+    """A muelle: a polyline the car may drive on, over open water.
+
+    It is shaped like a road on purpose — `pts` + `w` — because that is what
+    makes it authorable: move it, extend it, or draw a third one. `seaEnd` names
+    the end that hangs over the water, which is the end whose stamp has to be
+    pulled back by w/2 (service/pier.py explains why).
+    """
+    id: str
+    name: str
+    pts: FlatPoly
     w: int
+    style: str = Field(default="concrete", description="which deck the renderer draws")
+    surface: PathSurface | str = Field(default="bridge", description="stamped surface class")
+    seaEnd: str | None = Field(default="last", description="'first', 'last' or null")
 
 
 class Balneario(WorldModel):
@@ -272,9 +282,4 @@ class Balneario(WorldModel):
     cy: int
 
 
-class FaroPier(WorldModel):
-    x0: int
-    y0: int
-    x1: int
-    y1: int
-    w: int
+

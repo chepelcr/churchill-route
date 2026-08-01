@@ -95,8 +95,8 @@ export const WORLD2D = (function () {
   const HILLS = manifest.hills || [];
   const BRIDGE = manifest.bridge || null;
   const ESTUARY = manifest.estuary || null;
-  const PIER = manifest.pier || null;
-  const FAROPIER = manifest.faroPier || null;   // muelle at La Punta (kiosk at its end)
+  // Every muelle, each a polyline deck over the water {id,name,pts,w,style}.
+  const PIERS = manifest.piers || [];
   const STADIUMS = manifest.stadiums || []; // drivable pitch bboxes {x0,y0,x1,y1,cx,cy}
   const BALNEARIO = manifest.balneario || null; // sea-water inlet bbox {x0,y0,x1,y1,cx,cy}
   const KIOSK_PATHS = manifest.kioskPaths || []; // sand access paths to beach kiosks
@@ -445,7 +445,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIER, FAROPIER, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

@@ -23,8 +23,8 @@ from ..util.raster import rle_encode
 
 def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, trees, palms,
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
-                 landmarks, customers, stages, bridge, estuary, pier, hills,
-                 stadiums=None, kiosk_paths=None, faro_pier=None, greens=None,
+                 landmarks, customers, stages, bridge, estuary, piers, hills,
+                 stadiums=None, kiosk_paths=None, greens=None,
                  balneario=None, pois=None, parcels=None, ferries=None, signs=None,
                  editor_features=None, editor_patch=None, cuadras=None,
                  surface_styles=None, editor_ui=None, editor_content=None):
@@ -127,14 +127,17 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
         "grid": {"cols": cols, "rows": rows, "classes": CLASS_NAMES},
         "districts": dist_out,
         "landmarks": landmarks, "customers": customers, "stages": stages,
-        "bridge": bridge, "estuary": estuary, "pier": pier, "hills": hills,
+        "bridge": bridge, "estuary": estuary, "hills": hills,
         "beaches": beaches, "waters": waters, "landPolys": land_polys,
         "plazas": plazas,
         "greens": greens or [],
         "stadiums": stadiums or [],
         "balneario": balneario,
         "kioskPaths": kiosk_paths or [],
-        "faroPier": faro_pier,
+        # THE MUELLES. Each is a polyline with a width, a stamped surface class
+        # and a style the renderer draws it in — a road that is allowed to
+        # leave the land. The two the map has are the first two records.
+        "piers": piers or [],
         # every named real-world POI (name + category + world px), for the
         # debug overlay that validates the map against real Puntarenas
         "pois": pois or [],

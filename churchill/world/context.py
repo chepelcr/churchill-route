@@ -114,8 +114,13 @@ class WorldContext:
     # ---- singletons ---------------------------------------------------------
     bridge: object = None
     estuary: object = None
-    pier: object = None
-    faro_pier: object = None
+    #: every muelle, as a polyline record (service/pier.py). The two the map
+    #: has are the first two entries; the editor can add more.
+    piers: list = field(default_factory=list)
+    #: pier id -> the cells its deck covered and what they were. BUILD-ONLY
+    #: bookkeeping, never emitted: it is the exact undo an edit needs to move a
+    #: muelle without leaving a strip of drivable sea behind.
+    pier_restores: dict = field(default_factory=dict)
     balneario: object = None
     hills: list = field(default_factory=list)
 

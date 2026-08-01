@@ -25,79 +25,123 @@ function paintBuilding(b) {
 // Per-tile Ferrocarril rail pieces: ballast bed + ties + two steel rails.
 // Decorative (not drivable), drawn on the ground over the roads.
 
-// Muelle Nacional — long straight concrete pier running south into the gulf
-function drawPier(view) {
-  if (!W.PIER) return;
-  const P = W.PIER;
-  const hw = P.w / 2;
-  if (P.x + hw + 40 < view.x0 || P.x - hw - 40 > view.x1) return;
-  if (P.y1 + 10 < view.y0 || P.y0 - 20 > view.y1) return;
-  const len = P.y1 - P.y0;
-  // Shadow of the deck on the water (same offset trick as buildings)
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.fillRect(P.x - hw + 3, P.y0 + 4, P.w, len);
-  // Concrete deck
-  ctx.fillStyle = "#cfcfc8";
-  ctx.fillRect(P.x - hw, P.y0, P.w, len);
-  // Plank seams across the deck
-  ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 1;
-  for (let yy = P.y0 + 14; yy < P.y1; yy += 14) {
-    if (yy < view.y0 - 14 || yy > view.y1 + 14) continue;
-    ctx.beginPath(); ctx.moveTo(P.x - hw + 1, yy); ctx.lineTo(P.x + hw - 1, yy); ctx.stroke();
+// MUELLES. A pier is a polyline with a width and a style — a road that is
+// allowed to leave the land (churchill/world/service/pier.py) — so both the
+// Muelle Nacional and the faro's wooden jetty are drawn by the same pass, each
+// segment in its own frame. That is what lets the editor bend one, extend it,
+// or draw a third without a new draw function.
+const PIER_STYLES = {
+  concrete: { deck: "#cfcfc8", seam: "rgba(0,0,0,0.1)", seamGap: 14, cap: "#b8b8b0",
+              rail: "#2f6fb8", centre: "#f8d76b", lamps: 46, hut: true },
+  timber:   { deck: "#b98a4e", seam: "rgba(60,40,20,0.35)", seamGap: 12, cap: null,
+              rail: "#8a5f33", centre: null, posts: 34 },
+  // The ferry ramps: asphalt, the same colour as the streets they leave, with
+  // no rails or lamps — a terminal apron, not a promenade. Drawn at the deck's
+  // REAL width, which is the width the raster stamped: on the muelles the two
+  // have to agree, and there is no reason for the ramps to be the exception.
+  apron:    { deck: "#3a3540", seam: null, seamGap: 0, cap: null, rail: null,
+              centre: null, round: true, ground: true },
+};
+
+function pierInView(P, view) {
+  const pts = P.pts, m = P.w / 2 + 40;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < pts.length; i += 2) {
+    x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]);
+    y0 = Math.min(y0, pts[i + 1]); y1 = Math.max(y1, pts[i + 1]);
   }
-  // Darker cap at the sea end
-  ctx.fillStyle = "#b8b8b0";
-  ctx.fillRect(P.x - hw, P.y1 - 3, P.w, 3);
-  // Blue side railings
-  ctx.fillStyle = "#2f6fb8";
-  ctx.fillRect(P.x - hw, P.y0, 2, len);
-  ctx.fillRect(P.x + hw - 2, P.y0, 2, len);
-  // Yellow center line dashes
-  ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([12, 10]);
-  ctx.beginPath(); ctx.moveTo(P.x, P.y0 + 6); ctx.lineTo(P.x, P.y1 - 6); ctx.stroke();
-  ctx.setLineDash([]);
-  // Lamp posts — alternating sides, warm dot on a tiny grey pole
-  for (let yy = P.y0 + 24; yy < P.y1 - 8; yy += 46) {
-    if (yy < view.y0 - 10 || yy > view.y1 + 10) continue;
-    const side = (((yy / 46) | 0) % 2) ? 1 : -1;
-    const lx = P.x + side * (hw - 3);
-    ctx.fillStyle = "#8a8f96"; ctx.fillRect(lx - 0.75, yy - 6, 1.5, 6);
-    ctx.fillStyle = state.weather === "night" ? "#ffd98a" : "#f4e6c0";
-    ctx.beginPath(); ctx.arc(lx, yy - 7, 1.6, 0, Math.PI * 2); ctx.fill();
-  }
-  // Guard hut at the shore entrance, offset to the west side of the deck
-  const hx = P.x - hw - 18, hy = P.y0 - 2;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.beginPath(); ctx.ellipse(hx + 8, hy + 13, 11, 3, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#f4f4ef"; ctx.fillRect(hx, hy, 14, 12);      // white body
-  ctx.fillStyle = "#3f7fc4";                                     // blue hip roof
-  ctx.beginPath();
-  ctx.moveTo(hx - 3, hy); ctx.lineTo(hx + 3, hy - 6);
-  ctx.lineTo(hx + 11, hy - 6); ctx.lineTo(hx + 17, hy);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "rgba(20,40,60,0.55)"; ctx.fillRect(hx + 5, hy + 4, 4, 8); // door
+  return !(x1 + m < view.x0 || x0 - m > view.x1 || y1 + m < view.y0 || y0 - m > view.y1);
 }
 
-// The faro muelle: a warm wooden boardwalk jetty jutting into the gulf (any
-// direction — drawn as a rotated deck along its segment P={x0,y0,x1,y1,w}),
-// with the churchill kiosk at its sea end and the player spawn on it.
-function drawFaroPier(view) {
-  const P = W.FAROPIER;
-  if (!P || P.x0 === undefined) return;
-  const hw = P.w / 2;
-  if (Math.max(P.x0, P.x1) + hw + 20 < view.x0 || Math.min(P.x0, P.x1) - hw - 20 > view.x1 ||
-      Math.max(P.y0, P.y1) + hw + 20 < view.y0 || Math.min(P.y0, P.y1) - hw - 20 > view.y1) return;
-  const len = Math.hypot(P.x1 - P.x0, P.y1 - P.y0), ang = Math.atan2(P.y1 - P.y0, P.x1 - P.x0);
+function drawPier(P, view) {
+  if (!pierInView(P, view)) return;
+  const style = PIER_STYLES[P.style] || PIER_STYLES.concrete;
+  const hw = P.w / 2, pts = P.pts;
+  let run = 0;                       // arclength so far, so seams and lamps
+  for (let i = 0; i < pts.length - 2; i += 2) {   // never restart at a bend
+    const ax = pts[i], ay = pts[i + 1], bx = pts[i + 2], by = pts[i + 3];
+    const len = Math.hypot(bx - ax, by - ay);
+    const last = i === pts.length - 4;
+    ctx.save();
+    ctx.translate(ax, ay); ctx.rotate(Math.atan2(by - ay, bx - ax));
+    if (!style.round) {                          // decks cast a shadow on the sea;
+      ctx.fillStyle = "rgba(0,0,0,0.22)";        // an apron lies on the ground
+      ctx.fillRect(3, -hw + 4, len, P.w);
+    }
+    ctx.fillStyle = style.deck;
+    if (style.round) {                           // round ends, like every other
+      ctx.beginPath();                           // paved connector on the sand
+      ctx.arc(0, 0, hw, 0, Math.PI * 2); ctx.arc(len, 0, hw, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillRect(0, -hw, len, P.w);
+    if (style.seam) {
+      ctx.strokeStyle = style.seam; ctx.lineWidth = 1;                        // planks across
+      for (let s = style.seamGap - (run % style.seamGap); s < len; s += style.seamGap) {
+        ctx.beginPath(); ctx.moveTo(s, -hw + 1); ctx.lineTo(s, hw - 1); ctx.stroke();
+      }
+    }
+    if (style.cap && last) { ctx.fillStyle = style.cap; ctx.fillRect(len - 3, -hw, 3, P.w); }
+    if (style.rail) {                                                         // rails, both sides
+      ctx.fillStyle = style.rail;
+      ctx.fillRect(0, -hw, len, 2); ctx.fillRect(0, hw - 2, len, 2);
+    }
+    if (style.centre) {                                                       // lane dashes
+      ctx.strokeStyle = style.centre; ctx.lineWidth = 2; ctx.setLineDash([12, 10]);
+      ctx.beginPath(); ctx.moveTo(run ? 0 : 6, 0); ctx.lineTo(last ? len - 6 : len, 0); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (style.posts) {
+      ctx.fillStyle = "#6a451f";
+      for (let s = 10 - (run % style.posts); s < len; s += style.posts) {
+        ctx.fillRect(s, -hw - 1, 3, 3); ctx.fillRect(s, hw - 2, 3, 3);
+      }
+    }
+    if (style.lamps) {                        // warm dot on a pole, alternating
+      for (let s = 24 - (run % style.lamps); s < len - 8; s += style.lamps) {
+        const side = ((((run + s) / style.lamps) | 0) % 2) ? 1 : -1;
+        const lv = side * (hw - 3);
+        ctx.fillStyle = "#8a8f96"; ctx.fillRect(-0.75 + s, lv - 6, 1.5, 6);
+        ctx.fillStyle = state.weather === "night" ? "#ffd98a" : "#f4e6c0";
+        ctx.beginPath(); ctx.arc(s, lv - 7, 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+    run += len;
+  }
+  if (style.hut) drawPierHut(P, hw);
+}
+
+// The guard hut at the shore entrance, beside the deck — drawn in the pier's
+// frame so it follows a muelle that was moved or turned.
+function drawPierHut(P, hw) {
+  const [ax, ay, bx, by] = P.pts;
   ctx.save();
-  ctx.translate(P.x0, P.y0); ctx.rotate(ang);
-  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(2, -hw + 4, len, P.w);      // deck shadow
-  ctx.fillStyle = "#b98a4e"; ctx.fillRect(0, -hw, len, P.w);                    // warm timber deck
-  ctx.strokeStyle = "rgba(60,40,20,0.35)"; ctx.lineWidth = 1;                   // plank seams
-  for (let s = 12; s < len; s += 12) { ctx.beginPath(); ctx.moveTo(s, -hw + 1); ctx.lineTo(s, hw - 1); ctx.stroke(); }
-  ctx.fillStyle = "#8a5f33"; ctx.fillRect(0, -hw, len, 2); ctx.fillRect(0, hw - 2, len, 2);   // rails
-  ctx.fillStyle = "#6a451f";                                                    // posts
-  for (let s = 10; s < len; s += 34) { ctx.fillRect(s, -hw - 1, 3, 3); ctx.fillRect(s, hw - 2, 3, 3); }
+  ctx.translate(ax, ay); ctx.rotate(Math.atan2(by - ay, bx - ax));
+  const hx = -2, hy = hw + 18;
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath(); ctx.ellipse(hx + 13, hy - 8, 3, 11, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#f4f4ef"; ctx.fillRect(hx, hy - 14, 12, 14);
+  ctx.fillStyle = "#3f7fc4";
+  ctx.beginPath();
+  ctx.moveTo(hx, hy); ctx.lineTo(hx - 6, hy - 6);
+  ctx.lineTo(hx - 6, hy - 14); ctx.lineTo(hx, hy - 20);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(20,40,60,0.55)"; ctx.fillRect(hx + 4, hy - 9, 8, 4);
   ctx.restore();
+}
+
+// Two passes, because a muelle and a ramp sit at different heights in the
+// frame. A deck over the sea is drawn with the set pieces, above the water; an
+// APRON is asphalt lying on the ground, so it goes down with the other paved
+// connectors — before the buildings and the flora, or the terminal's palms
+// would end up underneath it.
+function drawPiers(view, ground = false) {
+  for (const P of W.PIERS) {
+    const style = PIER_STYLES[P.style] || PIER_STYLES.concrete;
+    if (Boolean(style.ground) !== ground) continue;
+    drawPier(P, view);
+  }
 }
 
 // Suspension bridge — towers, cables, deck, rails
@@ -237,4 +281,4 @@ function drawFerries(view) {
   for (const f of ferries()) { drawBerth(f, view); drawFerry(f, view); }
 }
 
-export { drawBridge, drawFaroPier, drawFerries, drawPier, paintBuilding };
+export { drawBridge, drawFerries, drawPiers, paintBuilding };

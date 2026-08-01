@@ -60,7 +60,7 @@ def main():
     raster = ctx.raster
     landmarks, customers, failures, mlm, pier, BUILDING_LM, NO_PAD_LM, resolve = place_pois(
         ctx, sp=sp, roads=roads, named=named, districts=districts, botY=botY)
-    (blocks, plazas, greens, kiosk_paths, beach_kiosks, faro_lm, faro_pier,
+    (blocks, plazas, greens, kiosk_paths, beach_kiosks, faro_lm,
      balneario, balneario_cells, marine_site) = place_kiosks_and_blocks(
         ctx, landmarks=landmarks, customers=customers, districts=districts,
         junction_islands=junction_islands, BUILDING_LM=BUILDING_LM,
@@ -104,8 +104,7 @@ def main():
     ctx.buildings, ctx.stadiums, ctx.parcels = buildings, stadiums, parcels
     ctx.kiosk_paths, ctx.trees, ctx.palms = kiosk_paths, trees, palms
     ctx.mangroves, ctx.medians = mangroves, medians
-    ctx.bridge, ctx.estuary, ctx.pier = bridge, est, pier
-    ctx.faro_pier, ctx.balneario = faro_pier, balneario
+    ctx.bridge, ctx.estuary, ctx.balneario = bridge, est, balneario
     ctx.failures = failures
     ctx.cuadras = build_cuadra_catalog(ctx.raster, blocks)
     if editor_patch:

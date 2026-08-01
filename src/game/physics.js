@@ -70,18 +70,26 @@ function collideBuilding(p, b) {
 function surfLevel(p, surf) {
   if (surf !== 5) return 0;
   let best = 0;
-  const P = W.PIER;
-  if (P && P.x !== undefined && Math.abs(p.x - P.x) < P.w) {
-    const t = (p.y - P.y0) / Math.max(1, P.y1 - P.y0);
-    if (t >= -0.1 && t <= 1.1) best = Math.max(best, Math.min(1, Math.max(0, t)));
-  }
-  const F = W.FAROPIER;
-  if (F && F.x0 !== undefined) {
-    const dx = F.x1 - F.x0, dy = F.y1 - F.y0, l2 = dx * dx + dy * dy || 1;
-    const t = ((p.x - F.x0) * dx + (p.y - F.y0) * dy) / l2;
-    const qx = F.x0 + dx * t, qy = F.y0 + dy * t;
-    if (t >= -0.1 && t <= 1.1 && Math.hypot(p.x - qx, p.y - qy) < F.w)
-      best = Math.max(best, Math.min(1, Math.max(0, t)));
+  // ARCLENGTH ALONG THE MUELLE, whichever one you are on and however it bends:
+  // 0 at the shore end, 1 at the sea end. Both piers are polylines now, so this
+  // is the same projection per segment rather than one case per singleton.
+  for (const P of W.PIERS) {
+    const pts = P.pts;
+    let run = 0, total = 0;
+    for (let i = 0; i < pts.length - 2; i += 2) {
+      total += Math.hypot(pts[i + 2] - pts[i], pts[i + 3] - pts[i + 1]);
+    }
+    for (let i = 0; i < pts.length - 2; i += 2) {
+      const ax = pts[i], ay = pts[i + 1], bx = pts[i + 2], by = pts[i + 3];
+      const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1;
+      const t = ((p.x - ax) * dx + (p.y - ay) * dy) / l2;
+      const qx = ax + dx * t, qy = ay + dy * t;
+      if (t >= -0.1 && t <= 1.1 && Math.hypot(p.x - qx, p.y - qy) < P.w) {
+        const along = (run + Math.max(0, Math.min(1, t)) * Math.sqrt(l2)) / Math.max(1, total);
+        best = Math.max(best, Math.min(1, Math.max(0, along)));
+      }
+      run += Math.sqrt(l2);
+    }
   }
   return best;
 }

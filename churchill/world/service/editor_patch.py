@@ -33,6 +33,7 @@ from ..logging import log
 from ..util.geometry import point_in_poly
 from .block import block_raster_cells, outline_poly
 from .npc import load_npc_types, may_stand
+from .pier import log_pier, restore, stamp as stamp_pier
 
 
 class WorldPatchError(ValueError):
@@ -400,6 +401,9 @@ class WorldPatchSession:
                     "generated road edits require an explicit replacement surface: "
                     + ", ".join(late))
 
+        # The muelles first: moving one restores the raster it covered, and
+        # anything stamped after must land on the NEW ground, not the old deck.
+        self._apply_piers(ctx)
         self._apply_collection(
             ctx.buildings,
             kind="building",
@@ -468,6 +472,8 @@ class WorldPatchSession:
                 self._apply_surface_feature(ctx, feature)
             elif feature_type in ("surface-region", "cuadra", "water", "beach"):
                 self._apply_surface_feature(ctx, feature)
+            elif feature_type == "pier":
+                self._add_pier(ctx, feature)
             elif feature_type == "npc":
                 self._check_npc_placement(ctx, feature)
                 ctx.editor_features.append(deepcopy(feature))
@@ -525,6 +531,84 @@ class WorldPatchSession:
             record["name"] = feature["name"]
         record["editorId"] = feature["id"]
         return record
+
+    def _pier_record(self, source, feature):
+        """A muelle, authored as a polyline with a width — the same shape a road
+        has, because that is what a pier is: a deck you drive on that is allowed
+        to leave the land.
+
+        `seaEnd` matters and is not cosmetic. `stamp_polyline` adds a round cap
+        of radius w/2 past the last point, so the free end's stamp is pulled
+        back; get it wrong and there are drivable cells past the drawn deck,
+        which is where the both-ends-blocked snap-back traps the car.
+        """
+        if feature["geometry"]["kind"] != "line":
+            raise WorldPatchError(f"{feature['id']}: a pier needs line geometry")
+        properties = feature.get("properties") or {}
+        record = deepcopy(source or _source_snapshot(feature))
+        width = int(properties.get("width") or record.get("w") or 40)
+        if width < 8:
+            raise WorldPatchError(
+                f"{feature['id']}: a {width}px muelle is narrower than the car; "
+                "give it at least 8px")
+        sea_end = properties.get("seaEnd", record.get("seaEnd", "last"))
+        if sea_end not in ("first", "last", None):
+            raise WorldPatchError(
+                f"{feature['id']}: seaEnd must be 'first', 'last' or null")
+        surface = properties.get("surfaceClass") or record.get("surface") or "bridge"
+        try:
+            Surface[surface.upper()]
+        except KeyError as error:
+            raise WorldPatchError(
+                f"{feature['id']}: unknown pier surface {surface!r}") from error
+        record.update({
+            "id": record.get("id") or feature["id"],
+            "name": feature.get("name") or record.get("name") or feature["id"],
+            "pts": _flat(_feature_points(feature)),
+            "w": width,
+            "style": properties.get("style") or record.get("style") or "concrete",
+            "surface": surface,
+            "seaEnd": sea_end,
+            "editorId": feature["id"],
+        })
+        return record
+
+    def _add_pier(self, ctx, feature):
+        pier = self._pier_record({}, feature)
+        ctx.piers.append(pier)
+        ctx.pier_restores[pier["id"]] = stamp_pier(ctx.raster, pier)
+        log_pier(pier)
+
+    def _apply_piers(self, ctx):
+        """Move/replace the generated muelles.
+
+        A moved pier is the one edit that MUST undo itself. Its deck is stamped
+        into the raster, and leaving the old cells drivable would put a strip of
+        invisible road over open water — worse than the wall it replaced. Every
+        stamp recorded what it covered, so the restore is exact rather than a
+        guess about what used to be sand.
+        """
+        overrides = self._override_for("pier")
+        deletions = self._deletions_for("pier")
+        if not overrides and not deletions:
+            return
+        rebuilt = []
+        for index, pier in enumerate(ctx.piers):
+            pier_id = pier.get("id") or f"pier_{index}"
+            feature = overrides.get(pier_id)
+            if pier_id in deletions or feature:
+                restore(ctx.raster, ctx.pier_restores.get(pier_id) or [])
+            if pier_id in deletions:
+                self.applied_deletions.add(deletions[pier_id])
+                log("pier", f"{pier_id} removed; its deck went back to the sea")
+                continue
+            if feature:
+                pier = self._pier_record(pier, feature)
+                ctx.pier_restores[pier["id"]] = stamp_pier(ctx.raster, pier)
+                self.applied_overrides.add(feature["id"])
+                log_pier(pier)
+            rebuilt.append(pier)
+        ctx.piers[:] = rebuilt
 
     def _check_npc_placement(self, ctx, feature):
         """WHERE MAY THIS ONE STAND? The question only the build can answer.

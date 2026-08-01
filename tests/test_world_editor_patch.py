@@ -14,6 +14,7 @@ from churchill.world.service.editor_patch import (
     stable_hash,
     tree_source_id,
 )
+from churchill.world.service.pier import make_pier, stamp as stamp_pier
 from churchill.world.util.raster import Raster
 
 
@@ -52,6 +53,8 @@ class WorldEditorPatchTests(unittest.TestCase):
             dims=WorldDims.of(1000, 800, 4),
             roads=[],
             ferries=[],
+            piers=[],
+            pier_restores={},
             buildings=[],
             trees=[],
             palms=[],
@@ -369,6 +372,85 @@ class WorldEditorPatchTests(unittest.TestCase):
         self.assertEqual(added["berth"], [100, 100])
         self.assertEqual(added["deck"], [90, 30])
         self.assertAlmostEqual(added["ang"], 1.5708, places=3)
+
+    def test_moving_a_pier_puts_back_the_sea_it_covered(self):
+        # The one edit that MUST undo itself: a moved deck whose old cells stay
+        # drivable is a strip of invisible road over open water.
+        ctx = self.context()
+        pier = make_pier("muelle_test", "Muelle", [200, 200, 200, 400], 40)
+        ctx.piers.append(pier)
+        ctx.pier_restores[pier["id"]] = stamp_pier(ctx.raster, pier)
+        self.assertEqual(ctx.raster.at_px(200, 300), Surface.BRIDGE)
+
+        session = self.session({
+            "schemaVersion": 1,
+            "overrides": [feature(
+                "move_muelle", "pier",
+                {"kind": "line", "points": [[600, 200], [600, 400]]},
+                operation="modify",
+                source_ref={"kind": "pier", "id": "muelle_test"},
+                source_snapshot=pier,
+                properties={"width": 48, "style": "timber", "seaEnd": "last"},
+            )],
+            "additions": [], "deletions": [],
+        })
+        session.apply_final(ctx)
+
+        self.assertEqual(ctx.raster.at_px(200, 300), Surface.WATER)   # the old deck is sea again
+        self.assertEqual(ctx.raster.at_px(600, 300), Surface.BRIDGE)  # the new one is drivable
+        self.assertEqual(ctx.piers[0]["pts"], [600, 200, 600, 400])
+        self.assertEqual(ctx.piers[0]["w"], 48)
+        self.assertEqual(ctx.piers[0]["style"], "timber")
+
+    def test_the_sea_end_is_the_end_that_is_pulled_back(self):
+        # stamp_polyline adds a round cap of radius w/2 past the last point. At
+        # a muelle's free end that cap is drivable cells past the drawn deck;
+        # at a ferry ramp's it is the overlap you board across.
+        ctx = self.context()
+        muelle = make_pier("m", "M", [400, 200, 400, 400], 40, sea_end="last")
+        stamp_pier(ctx.raster, muelle)
+        self.assertEqual(ctx.raster.at_px(400, 396), Surface.BRIDGE)
+        self.assertEqual(ctx.raster.at_px(400, 412), Surface.WATER)   # cap pulled back
+
+        ctx = self.context()
+        ramp = make_pier("r", "R", [400, 200, 400, 400], 40, sea_end=None)
+        stamp_pier(ctx.raster, ramp)
+        self.assertEqual(ctx.raster.at_px(400, 412), Surface.BRIDGE)  # cap kept
+
+    def test_a_pier_narrower_than_the_car_is_refused(self):
+        ctx = self.context()
+        session = self.session({
+            "schemaVersion": 1,
+            "overrides": [],
+            "additions": [feature(
+                "new_muelle", "pier",
+                {"kind": "line", "points": [[100, 100], [100, 300]]},
+                properties={"width": 4},
+            )],
+            "deletions": [],
+        })
+        with self.assertRaisesRegex(WorldPatchError, "narrower than the car"):
+            session.apply_final(ctx)
+
+    def test_a_pier_can_be_drawn_and_removed(self):
+        ctx = self.context()
+        pier = make_pier("old_muelle", "Old", [200, 200, 200, 400], 40)
+        ctx.piers.append(pier)
+        ctx.pier_restores[pier["id"]] = stamp_pier(ctx.raster, pier)
+        session = self.session({
+            "schemaVersion": 1,
+            "overrides": [],
+            "additions": [feature(
+                "new_muelle", "pier",
+                {"kind": "line", "points": [[700, 100], [700, 320]]},
+                properties={"width": 40, "style": "timber"},
+            )],
+            "deletions": ["pier:old_muelle"],
+        })
+        session.apply_final(ctx)
+        self.assertEqual([p["id"] for p in ctx.piers], ["new_muelle"])
+        self.assertEqual(ctx.raster.at_px(200, 300), Surface.WATER)
+        self.assertEqual(ctx.raster.at_px(700, 200), Surface.BRIDGE)
 
     def npc_session(self, npc_type, host=None):
         properties = {"npcType": npc_type}

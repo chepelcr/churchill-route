@@ -9,13 +9,13 @@ from .geo import FlatPoly, Rect
 from .lote import Lote, LoteCatalog
 from .manifest import Manifest, Tile
 from .world import (
-    Balneario, Bridge, Customer, District, Estuary, FaroPier, Geo, Green,
+    Balneario, Bridge, Customer, District, Estuary, Geo, Green,
     Ferry, GridInfo, Hill, KioskPath, Landmark, Meta, Parcel, Pier, Sign, Poi, Sign, Stadium,
     Stage, WorldModel,
 )
 
 __all__ = [
-    "Balneario", "Bridge", "Customer", "District", "Estuary", "FaroPier",
+    "Balneario", "Bridge", "Customer", "District", "Estuary",
     "FlatPoly", "Geo", "Green", "GridInfo", "Hill", "KioskPath", "Landmark",
     "Lote", "LoteCatalog",
     "Ferry", "Manifest", "Meta", "Parcel", "Pier", "Poi", "Rect", "Stadium", "Stage",

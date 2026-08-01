@@ -2,6 +2,9 @@
 node_modules/
 .pnpm-store/
 dist/
+# unminified debug builds (`vite build --minify false --outDir dist-dbg`),
+# used to read a production-only stack trace. Never committed.
+dist-dbg/
 *.local
 
 # Separate private visual world editor (owns its own Git repository)

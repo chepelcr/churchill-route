@@ -16,7 +16,7 @@ from ..config import (
     DRIVABLE_CLASSES, GRID_CELL, MARINE_POOL_GROUND_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
 )
-from ..content import MARINE_BUILDING_NAMES, STAGES
+from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, STAGES
 from ..logging import log
 from ..repository.debug_render import render_debug
 from ..service.network import block_census, verify_connectivity
@@ -297,7 +297,8 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
                  medians=ctx.medians, plazas=ctx.plazas, greens=ctx.greens,
                  islands=islands, beaches=ctx.beaches, waters=ctx.waters,
                  land_polys=land_polys, landmarks=ctx.landmarks,
-                 customers=ctx.customers, stages=STAGES, stadiums=ctx.stadiums,
+                 customers=ctx.customers, stages=STAGES + CROSSING_STAGES,
+                 stadiums=ctx.stadiums,
                  kiosk_paths=ctx.kiosk_paths,
                  balneario=ctx.balneario, bridge=ctx.bridge, estuary=ctx.estuary,
                  piers=ctx.piers, hills=ctx.hills, pois=ctx.pois,

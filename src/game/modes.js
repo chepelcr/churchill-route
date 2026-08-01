@@ -3,7 +3,8 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
-import { resetFerries } from "./ferries.js";
+import { ferries, resetFerries } from "./ferries.js";
+import { startCrossing } from "./crossing.js";
 import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
@@ -85,9 +86,21 @@ export function startStage(stageIdx, vehicleKey) {
   state.floats = []; state.particles = []; state.arcadeCoins = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
-  // place player near first kiosk of stage (on its street-snapped spawn)
-  const k = W.landmarkById(stg.kiosks[0]);
-  const sp = authoredSpawn("story", spawnAtKiosk(k));
+  // A CROSSING STAGE STARTS ABOARD. There is no kiosk to spawn beside and no
+  // delivery to make: the level is the estero, so the player begins parked on
+  // the lancha's deck with her already under way, under level rules (one
+  // direction, three knocks and she swamps).
+  const crossingFerry = stg.kind === "crossing"
+    ? ferries().find((f) => f.id === stg.ferry) : null;
+  let sp;
+  if (crossingFerry) {
+    const q = { x: crossingFerry.x, y: crossingFerry.y, a: crossingFerry.a };
+    sp = authoredSpawn("story", q);
+  } else {
+    // place player near first kiosk of stage (on its street-snapped spawn)
+    const k = W.landmarkById(stg.kiosks[0]);
+    sp = authoredSpawn("story", spawnAtKiosk(k));
+  }
   state.p = { x: sp.x, y: sp.y, a: sp.a || 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   // mutate cam, never replace: the renderer publishes zoom/vw/vh on it
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
@@ -102,7 +115,15 @@ export function startStage(stageIdx, vehicleKey) {
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   resetFerries();   // both ferries home and available again every run
   resetEditorTriggers();
-  pickCustomer();
+  if (crossingFerry) {
+    // She is already sailing: the level is the passage, not the wait for it.
+    crossingFerry.phase = "out";
+    state.p.x = crossingFerry.x; state.p.y = crossingFerry.y; state.p.a = crossingFerry.a;
+    state.cam.x = state.p.x; state.cam.y = state.p.y;
+    startCrossing(crossingFerry, { level: true });
+  } else {
+    pickCustomer();
+  }
   analytics.track("run_start", { mode: "story", stage_id: stg.id, vehicle: state.vehicleKey });
 }
 

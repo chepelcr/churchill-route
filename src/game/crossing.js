@@ -219,7 +219,13 @@ function spawnEstero(ch) {
     const off = (0.25 + r() * 0.75) * LANE_HW * side;
     const kind = roll < 0.42 ? "panga" : roll < 0.78 ? "fish" : "gulls";
     esteroThings.push({
-      kind, s, off, ph: r() * Math.PI * 2, drift: (r() - 0.5) * 0.4,
+      // PANGAS MOVE. A moored obstacle is a slalom; one working its way across
+      // the channel — like the balneario's panga — is something you have to
+      // read. Fish and gulls keep their own drift.
+      kind, s, off,
+      ph: r() * Math.PI * 2,
+      drift: kind === "panga" ? (r() < 0.5 ? -1 : 1) * (0.7 + r() * 0.8)
+        : (r() - 0.5) * 0.4,
       x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a,
       taken: false, r: kind === "panga" ? 26 : kind === "fish" ? 34 : 40,
     });

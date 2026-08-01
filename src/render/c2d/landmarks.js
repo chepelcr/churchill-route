@@ -648,13 +648,19 @@ function drawLandmark(lm) {
       ctx.fillStyle = "#fff"; ctx.fillRect(x - 4, y - 4, 8, 3);
       label(x, y - 22, "CHURCHILL", "#fff", "#f08a5d"); break;
     }
-    case "ferry":
+    case "ferry": {
+      // THE TERMINAL IS A PLACE, NOT A BOAT. This used to paint a hull in the
+      // middle of the terminal's own streets — a second, fake ferry parked on
+      // the asphalt beside the two real ones you can actually drive onto. The
+      // landmark keeps its name pill and nothing else.
+      label(x, y - 12, "TERMINAL FERRY", "#fff", "#3a6f8a"); break;
+    }
     case "cruise": {
-      ctx.fillStyle = lm.type === "cruise" ? "#fff" : "#3a6f8a";
+      ctx.fillStyle = "#fff";
       ctx.fillRect(x - 28, y - 10, 56, 22);
       ctx.fillStyle = "#f4d77a"; ctx.fillRect(x - 28, y - 14, 56, 4);
       ctx.fillStyle = "#fff"; ctx.fillRect(x - 6, y - 22, 12, 8);
-      label(x, y - 28, lm.type === "cruise" ? "MUELLE" : "FERRY", "#fff", "#3a6f8a"); break;
+      label(x, y - 28, "MUELLE", "#fff", "#3a6f8a"); break;
     }
     case "lighthouse": {
       drawFaroScene(lm); break;

@@ -105,6 +105,9 @@ class Customer(WorldModel):
 
 
 class Stage(WorldModel):
+    """A level. `kind` is what it ASKS of you: a delivery stage (the default)
+    or a `crossing`, which has no kiosks and no customers because the level is
+    the passage itself."""
     id: str
     num: int
     name: str
@@ -116,6 +119,8 @@ class Stage(WorldModel):
     weather: Weather
     customers: list[str]
     unlock: str | None = None
+    kind: str = Field(default="delivery", description="delivery | crossing")
+    ferry: str | None = Field(default=None, description="which boat a crossing sails")
 
 
 class Parcel(WorldModel):

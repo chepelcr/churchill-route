@@ -247,6 +247,23 @@ SITE_DECOR = {
 # Only the two ENDS are authored. The sailing line is derived at build time by
 # a flood over the water raster, so the boat can never cross land and the route
 # follows the coastline it is actually given.
+# ---------------------------------------------------------------------------
+# The crossing is a STAGE, not a side mode: it lives in the level list so the
+# game has something other than a delivery in it, and so it is unlocked, briefed
+# and scored like everything else. `kind` is what makes it one — no kiosks, no
+# customers, no deliveries; the level is the passage itself.
+CROSSING_STAGES = [
+    {
+        "id": "s8", "num": 8, "kind": "crossing", "ferry": "pitahaya",
+        "name": "Travesía del Estero", "district": "centro",
+        "brief": ("Llevá la lancha hasta Pitahaya. Esquivá las pangas de los "
+                  "pescadores y las raíces del manglar — tres golpes y se hunde. "
+                  "Cruzá los cardúmenes: el que llega con peces, llega mejor."),
+        "kiosks": [], "customers": [], "targetDeliveries": 0,
+        "timeLimit": 180, "weather": "sunny", "unlock": None,
+    },
+]
+
 LANCHA_DEFS = [
     {
         "id": "pitahaya",

@@ -969,6 +969,36 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         if pads:
             log("balneario", f"{pads} buildings given a sand pad (were floating on the inlet)")
 
+    # WHAT STANDS ON WHAT. The world computed this pairing every build and threw
+    # it away: a parcel knew its ground, a building knew its outline, and
+    # nothing said the school building belongs to the school's plot. Written
+    # down, "assign this building to that parcel" becomes an edit instead of a
+    # guess, and the editor can show a parcel's contents without a spatial
+    # search over 80k footprints.
+    #
+    # Bucketed by cuadra, not brute-forced: 80k buildings against 421 parcels is
+    # 34M point-in-polygons, and this runs on every build.
+    by_cuad = defaultdict(list)
+    for parcel in parcels:
+        for cc in range(int(parcel["x0"] // CUAD), int(parcel["x1"] // CUAD) + 1):
+            for cr in range(int(parcel["y0"] // CUAD), int(parcel["y1"] // CUAD) + 1):
+                by_cuad[(cc, cr)].append(parcel)
+    linked = 0
+    for b in buildings:
+        xs, ys = b["pts"][0::2], b["pts"][1::2]
+        cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
+        for parcel in by_cuad.get((int(cx // CUAD), int(cy // CUAD)), ()):
+            if not (parcel["x0"] <= cx <= parcel["x1"]
+                    and parcel["y0"] <= cy <= parcel["y1"]):
+                continue
+            if not point_in_poly((cx, cy), list(zip(parcel["poly"][0::2],
+                                                    parcel["poly"][1::2]))):
+                continue
+            b["parcelId"] = parcel["id"]
+            linked += 1
+            break
+    log("parcel", f"{linked} buildings linked to the parcel they stand on")
+
     return buildings, occ, stadiums, parcels
 
 

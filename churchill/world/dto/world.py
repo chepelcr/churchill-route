@@ -154,6 +154,9 @@ class Parcel(WorldModel):
     kiosco: bool | None = Field(default=None, description="the old round bandstand of a parque central")
     bus: Rect | None = Field(default=None, description="[x, y, w, h] bus stop on the acera outside this parcel")
     lm: str | None = Field(default=None, description="landmark id this parcel IS; the landmark pass draws only its pill")
+    # WHAT STANDS ON THIS GROUND. The world computed the pairing every build and
+    # threw it away; written down, assigning a building to a plot is an edit.
+    buildingRef: str | None = Field(default=None, description="content-addressed id of the building this parcel IS")
 
     @property
     def sponsorable(self) -> bool:

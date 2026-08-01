@@ -34,6 +34,7 @@ from ..util.geometry import point_in_poly
 from .block import block_raster_cells, outline_poly
 from .npc import load_npc_types, may_stand
 from .pier import log_pier, restore, stamp as stamp_pier
+from .street import StreetIndex
 
 
 class WorldPatchError(ValueError):
@@ -186,6 +187,7 @@ class WorldPatchSession:
         self.applied_additions = set()
         self.applied_deletions = set()
         self._npc_type_cache = None
+        self._streets = None
         self._validate()
 
     @classmethod
@@ -425,6 +427,9 @@ class WorldPatchSession:
             id_for=lambda parcel, index: parcel.get("id") or f"parcel_{index}",
             replace=self._parcel_record,
         )
+        for parcel in ctx.parcels:
+            if parcel.get("editorId"):
+                self._inherit_angle(ctx, parcel)
         self._apply_collection(
             ctx.greens,
             kind="green",
@@ -464,7 +469,9 @@ class WorldPatchSession:
             elif feature_type == "kiosk":
                 ctx.landmarks.append(self._landmark_record({}, feature, ctx=ctx))
             elif feature_type == "parcel":
-                ctx.parcels.append(self._parcel_record({}, feature))
+                parcel = self._parcel_record({}, feature)
+                self._inherit_angle(ctx, parcel)
+                ctx.parcels.append(parcel)
             elif feature_type in ("stadium", "pitch"):
                 ctx.stadiums.append(self._stadium_record({}, feature))
             elif feature_type in ("park", "marine-park"):
@@ -609,6 +616,21 @@ class WorldPatchSession:
                 log_pier(pier)
             rebuilt.append(pier)
         ctx.piers[:] = rebuilt
+
+    def _inherit_angle(self, ctx, parcel):
+        """A parcel with no stated angle takes the STREETS'.
+
+        Not a fit of its own outline: the cuadrícula is not square to the screen
+        and not even square to itself, and a principal-axis fit on a square-ish
+        block snaps to the contrary diagonal. `angle_at` folds the nearest real
+        centreline into the avenida family, which is the same rule the 380
+        OSM-derived parcels already follow.
+        """
+        if parcel.get("ang") is not None or not ctx.roads:
+            return
+        if self._streets is None:
+            self._streets = StreetIndex(ctx.roads)
+        parcel["ang"] = round(self._streets.angle_at(parcel["cx"], parcel["cy"]), 4)
 
     def _check_npc_placement(self, ctx, feature):
         """WHERE MAY THIS ONE STAND? The question only the build can answer.
@@ -816,12 +838,33 @@ class WorldPatchSession:
 
     @staticmethod
     def _parcel_record(source, feature):
+        """A parcel, with the three things authoring it actually needs.
+
+        `ang` IS THE MANZANA'S ANGLE, never a fit. Everything the renderer draws
+        on a parcel turns by it (`parcelFrame`), and the cuadrícula is not square
+        to the screen or even to itself, so a fitted axis puts a square pitch on
+        a slanted block — the game's CLAUDE.md documents both ways that fit
+        fails. An edit therefore INHERITS the angle unless a human states one.
+
+        `slot` is the rect a sponsor's art fills. The world owns it so nothing a
+        sponsor sends can cover a street or dwarf the block, which only holds
+        while the slot stays inside the parcel — so it is clamped here rather
+        than trusted.
+        """
         record = deepcopy(source or _source_snapshot(feature))
         points = _feature_points(feature)
         flat = _flat(points)
         x0, y0, x1, y1 = _bbox(points)
         cx, cy = _centroid(points)
         properties = feature.get("properties") or {}
+        slot = properties.get("slot") or record.get("slot")
+        if isinstance(slot, (list, tuple)) and len(slot) == 4 and all(_finite(v) for v in slot):
+            sx = min(max(round(slot[0]), x0), x1)
+            sy = min(max(round(slot[1]), y0), y1)
+            slot = [sx, sy, max(1, min(round(slot[2]), x1 - sx)),
+                    max(1, min(round(slot[3]), y1 - sy))]
+        else:
+            slot = [x0, y0, max(1, x1 - x0), max(1, y1 - y0)]
         record.update({
             "id": record.get("id") or feature["id"],
             "name": feature.get("name") or record.get("name") or feature["id"],
@@ -829,9 +872,13 @@ class WorldPatchSession:
             "poly": flat,
             "cx": cx, "cy": cy,
             "x0": x0, "y0": y0, "x1": x1, "y1": y1,
-            "slot": [x0, y0, max(1, x1 - x0), max(1, y1 - y0)],
+            "slot": slot,
             "editorId": feature["id"],
         })
+        if properties.get("ang") is not None:
+            record["ang"] = round(float(properties["ang"]), 4)
+        if properties.get("buildingRef"):
+            record["buildingRef"] = properties["buildingRef"]
         record.pop("polys", None)
         return record
 

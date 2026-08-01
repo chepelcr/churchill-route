@@ -33,6 +33,7 @@ from ..config import (
 from ..content import SITE_DECOR
 from ..enums import GreenType, ParcelUse
 from ..logging import log
+from .editor_patch import building_source_id
 from ..util.geometry import point_in_poly, principal_axis
 from ..util.raster import erode_cells
 from .block import cuadra_cells, outline_poly
@@ -1077,6 +1078,10 @@ class FieldService:
                 "x0": x0, "y0": y0, "x1": x1, "y1": y1,
                 "slot": [int(cx - sw / 2), int(cy - sh / 2), sw, sh],
                 "built": True,          # the footprint IS a building; don't paint ground
+                # THE LINK, written down. This parcel IS that footprint, and
+                # the id is the content-addressed one the editor and the patch
+                # already use — an OSM id would name something they cannot find.
+                "buildingRef": building_source_id(b),
             })
             if source_id is not None:
                 self.parcels[-1]["osmId"] = source_id

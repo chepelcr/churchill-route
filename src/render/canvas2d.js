@@ -8,7 +8,7 @@
 // The game loop (src/game/index.js) calls setupCanvas(canvas) then render(t).
 import { WORLD2D as W } from "../world2d/index.js";
 import {
-  state, traffic, pedestrians, gulls, boats, parked, vendors, animals, trains,
+  state, traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools,
 } from "../game/state.js";
 import { content } from "../content/remote.js";
 import {
@@ -21,7 +21,7 @@ import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawChannel, drawEstero } from "./c2d/estero.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import {
-  drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed,
+  drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
   paintVehicle,
 } from "./c2d/entities.js";
@@ -83,6 +83,15 @@ function render(t) {
     for (const b of boats) {
       if (b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
       drawBoat(b);
+    }
+    // LOS BANCOS DE ATÚN, with the land pass: a school works the surface out in
+    // the gulf and the pangas that found it turn around its edge. They sit here
+    // with the ambient boats because they are the same kind of thing — offshore
+    // life on open water, behind the coastline.
+    for (const sc of schools) {
+      if (sc.x < view.x0 - 240 || sc.x > view.x1 + 240
+        || sc.y < view.y0 - 240 || sc.y > view.y1 + 240) continue;
+      drawSchool(sc, t);
     }
     // Painterly 2-D world from resident tiles: land silhouette + road strokes +
     // buildings + palms/trees (replaces the corridor's global-array drawers).

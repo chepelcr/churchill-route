@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Game } from "../../game/index.js";
-import { VEHICLES } from "../../game/vehicles.js";
+import { VEHICLES, vehicleMedium } from "../../game/vehicles.js";
 import { economy, VEHICLE_PRICES, UPGRADES, BOOSTS, COLORS, COIN_PACKS } from "../../game/economy.js";
 import { iap } from "../../monetize/iap.js";
 import { sfx } from "../../game/audio.js";
@@ -10,7 +10,50 @@ import CoinIcon from "../CoinIcon.jsx";
 import Icon from "../Icon.jsx";
 import { SHOP_ITEMS, SHOP_TABS } from "../../game/editorContent.js";
 
-const STANDARD_TABS = new Set(["vehicles", "upgrades", "boosts", "colors", "packs"]);
+const STANDARD_TABS = new Set(["vehicles", "boats", "upgrades", "boosts", "colors", "packs"]);
+
+// ONE carousel for every vehicle tab. Carros and lanchas are the same product
+// with the same card, the same preview and the same confirm gate — the tab only
+// says which `medium` it lists (SHOP_TABS), so this takes the keys and nothing
+// else knows the difference. VehiclePreview already normalises its stat bars
+// per medium, so a hull draws its own scale.
+function VehicleCarousel({ keys, startKey, askBuy, price, t }) {
+  const [idx, setIdx] = useState(() => Math.max(0, keys.indexOf(startKey)));
+  const i = Math.min(idx, keys.length - 1);
+  const k = keys[i];
+  if (!k) return null;
+  const owned = economy.ownsVehicle(k);
+  const p = VEHICLE_PRICES[k];
+  const move = (d) => { setIdx((n) => (n + d + keys.length) % keys.length); sfx.play("menu_move"); };
+  return (
+    <>
+      <div className="shop-carousel">
+        <button className="carousel-arrow" onClick={() => move(-1)} aria-label="‹">‹</button>
+        <div className={"shop-item shop-item-hero" + (owned ? " owned" : "")}>
+          <VehiclePreview vehKey={k} color={economy.equippedColor(k)?.hex || null} />
+          {owned ? (
+            <span className="shop-state ok">{p ? t("shop.owned") : t("shop.free")}</span>
+          ) : (
+            <button className="btn gold" disabled={!economy.canAfford(p)}
+              onClick={() => askBuy(VEHICLES[k].name, p, () => economy.buyVehicle(k))}>
+              {t("shop.buy")} · {price(p)}
+            </button>
+          )}
+          {!owned && !economy.canAfford(p) && (
+            <span className="shop-hint">{t("shop.needCoins", { n: p - economy.coins })} <CoinIcon size={12} /></span>
+          )}
+        </div>
+        <button className="carousel-arrow" onClick={() => move(1)} aria-label="›">›</button>
+      </div>
+      <div className="stage-dots">
+        {keys.map((vk, n) => (
+          <button key={vk} className={"dot" + (n === i ? " on" : "") + (economy.ownsVehicle(vk) ? " cleared" : "")}
+            onClick={() => { setIdx(n); sfx.play("menu_move"); }} aria-label={vk}></button>
+        ))}
+      </div>
+    </>
+  );
+}
 
 // The Churchill-coins shop — a FULL-SCREEN page (edge to edge, no floating
 // card): header (back / title / balance), tab bar, and one tab of content
@@ -19,12 +62,24 @@ const STANDARD_TABS = new Set(["vehicles", "upgrades", "boosts", "colors", "pack
 // `ctx` ({ tab?, veh? }) comes from deep-links (vehicle picker): it opens the
 // right tab AND selects the car being customized — colors always equip to
 // THAT car, never a hardcoded default.
+// The picker only ever asks for `tab: "vehicles"` for a locked ride (it has no
+// idea the vehicle tabs were split by medium), so a deep-link that names a
+// VEHICLE re-resolves the vehicle tab from that vehicle's own medium — a locked
+// lancha opens on Lanchas, not on an empty carousel of carros.
+const vehicleTabs = () => SHOP_TABS.filter((x) => x.medium && x.enabled !== false);
+
 export default function ShopScreen({ onBack, ctx }) {
   const t = useT();
-  const vehKeysAll = Object.keys(VEHICLES);
-  const [tab, setTab] = useState(ctx?.tab || "vehicles");
-  const [vIdx, setVIdx] = useState(() =>                // vehicle carousel index
-    Math.max(0, vehKeysAll.indexOf(ctx?.veh || Game.state.vehicleKey)));
+  const [tab, setTab] = useState(() => {
+    const want = ctx?.tab;
+    const isVehTab = !want || vehicleTabs().some((x) => x.id === want);
+    if (ctx?.veh && isVehTab) {
+      const m = vehicleMedium(ctx.veh);
+      const hit = vehicleTabs().find((x) => x.medium === m);
+      if (hit) return hit.id;
+    }
+    return want || "vehicles";
+  });
   const [colorVeh, setColorVeh] = useState(() => {      // colors tab context
     const k = ctx?.veh || Game.state.vehicleKey;
     return economy.ownsVehicle(k) ? k : "scooter";
@@ -70,39 +125,13 @@ export default function ShopScreen({ onBack, ctx }) {
       </div>
 
       <div className="page-body">
-        {tab === "vehicles" && (() => {
-          const k = vehKeys[vIdx];
-          const owned = economy.ownsVehicle(k);
-          const p = VEHICLE_PRICES[k];
-          const move = (d) => { setVIdx((i) => (i + d + vehKeys.length) % vehKeys.length); sfx.play("menu_move"); };
-          return (
-            <>
-              <div className="shop-carousel">
-                <button className="carousel-arrow" onClick={() => move(-1)} aria-label="‹">‹</button>
-                <div className={"shop-item shop-item-hero" + (owned ? " owned" : "")}>
-                  <VehiclePreview vehKey={k} color={economy.equippedColor(k)?.hex || null} />
-                  {owned ? (
-                    <span className="shop-state ok">{p ? t("shop.owned") : t("shop.free")}</span>
-                  ) : (
-                    <button className="btn gold" disabled={!economy.canAfford(p)}
-                      onClick={() => askBuy(VEHICLES[k].name, p, () => economy.buyVehicle(k))}>
-                      {t("shop.buy")} · {price(p)}
-                    </button>
-                  )}
-                  {!owned && !economy.canAfford(p) && (
-                    <span className="shop-hint">{t("shop.needCoins", { n: p - economy.coins })} <CoinIcon size={12} /></span>
-                  )}
-                </div>
-                <button className="carousel-arrow" onClick={() => move(1)} aria-label="›">›</button>
-              </div>
-              <div className="stage-dots">
-                {vehKeys.map((vk, i) => (
-                  <button key={vk} className={"dot" + (i === vIdx ? " on" : "") + (economy.ownsVehicle(vk) ? " cleared" : "")}
-                    onClick={() => { setVIdx(i); sfx.play("menu_move"); }} aria-label={vk}></button>
-                ))}
-              </div>
-            </>
-          );
+        {(() => {
+          const vt = tabs.find((x) => x.id === tab && x.medium);
+          if (!vt) return null;
+          const keys = vehKeys.filter((k) => vehicleMedium(k) === vt.medium);
+          const wanted = [ctx?.veh, Game.state.vehicleKey].find((k) => keys.includes(k));
+          return <VehicleCarousel key={vt.id} keys={keys} startKey={wanted || keys[0]}
+            askBuy={askBuy} price={price} t={t} />;
         })()}
 
         {tab === "upgrades" && (

@@ -2,7 +2,7 @@
 // vendors, animals, the delivery target, arcade coins and the vehicle sprite.
 import { state } from "../../game/state.js";
 import { traceVehicleSilhouette } from "../vehicleShapes.js";
-import { ctx, lastT, roundRect } from "./gfx.js";
+import { ctx, hash01, lastT, roundRect } from "./gfx.js";
 
 // THE HULL EVERY BOAT IN THIS PORT IS DRAWN FROM. It used to live inside
 // `drawBoat`, which meant the estero's pangas were a second, hand-drawn boat —
@@ -377,6 +377,64 @@ function drawBoat(b) {
   ctx.restore();
 }
 
+// UN BANCO DE ATÚN. Out in the gulf a school working the surface is visible
+// from a long way off: the water boils, the birds pile in over it, and every
+// panga within sight converges on the edge of it. All three are one entity in
+// `state.schools`, so they are drawn together here — the shoal, then the boats
+// turning around it with their fishers aboard.
+//
+// The shoal itself is NOT drawn as fish. From above, a school on the surface is
+// disturbed water — a pale, seething patch — and painting individual bodies at
+// this zoom reads as confetti. Silver flashes inside it are what sells it, and
+// they are keyed off `hash01` + the entity's own phase, never `Math.random`.
+function drawSchool(sc, t) {
+  const boil = sc.r;
+  ctx.save();
+  // the boil: a soft pale disc with a broken, breathing rim
+  ctx.fillStyle = "rgba(226,244,252,0.16)";
+  ctx.beginPath(); ctx.arc(sc.x, sc.y, boil, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.30)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 7; i++) {
+    const h = hash01(i * 7.13 + sc.ph);
+    const a0 = sc.ph * 0.5 + i * 0.9 + Math.sin(t * 0.0009 + i) * 0.2;
+    ctx.beginPath();
+    ctx.arc(sc.x, sc.y, boil * (0.82 + h * 0.16), a0, a0 + 0.5 + h * 0.4);
+    ctx.stroke();
+  }
+  // the fish, as flashes: short bright slivers turning inside the boil
+  for (let i = 0; i < 22; i++) {
+    const h1 = hash01(i * 12.9898 + sc.ph), h2 = hash01(i * 78.233 + sc.ph);
+    const a = h1 * Math.PI * 2 + t * 0.0011 * (h2 > 0.5 ? 1 : -1);
+    const rr = boil * (0.15 + h2 * 0.72);
+    const x = sc.x + Math.cos(a) * rr, y = sc.y + Math.sin(a) * rr;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(a + Math.PI / 2);
+    ctx.fillStyle = `rgba(238,250,255,${(0.3 + h1 * 0.5).toFixed(2)})`;
+    ctx.beginPath(); ctx.ellipse(0, 0, 1.2 + h2, 3.4 + h1 * 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+  // …and the fleet on the edge of it, each with somebody working
+  for (const b of sc.fleet) {
+    if (b.x === undefined) continue;             // not advanced yet this frame
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.a || 0);
+    paintHull(ctx, 15, 5);
+    ctx.fillStyle = "#3a6f8a";                   // the console
+    roundRect(ctx, -5, -3, 8, 6, 2, true, false);
+    ctx.strokeStyle = "#8a5f33";                 // the outboard on her transom
+    ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-18, 0); ctx.stroke();
+    ctx.restore();
+    // the fisher rides in WORLD space, not the hull's frame: `drawFisher` draws
+    // himself upright with his line going into the water, and rotating him with
+    // a boat that is circling would spin him upside down at the far side.
+    drawFisher({ x: b.x, y: b.y - 1, ph: b.ph || 0, hue: b.hue });
+  }
+}
+
 // Street vendor cart: box cart with a striped parasol
 function drawVendor(vn, t) {
   ctx.fillStyle = "rgba(0,0,0,0.25)";
@@ -739,4 +797,4 @@ function drawPlayerCarrying(p, veh) {
   ctx.restore();
 }
 
-export { drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle };
+export { drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawSchool, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle };

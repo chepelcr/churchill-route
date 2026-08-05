@@ -23,6 +23,7 @@ import GameTweaks from "./GameTweaks.jsx";
 import { enterImmersive } from "./immersive.js";
 import { sfx } from "../game/audio.js";
 import { isMvpLocked } from "../game/progress.js";
+import { vehicleMedium } from "../game/vehicles.js";
 import { useT } from "../i18n/index.js";
 import Icon from "./Icon.jsx";
 import { ads } from "../monetize/ads.js";
@@ -227,8 +228,16 @@ export default function App() {
     // never advance into a PRÓXIMAMENTE (MVP-locked / WIP) level — those ship
     // later; clearing the last open level returns to the menu instead.
     if (stg && !isMvpLocked(stg.district)) {
-      setPendingStage({ idx: next, vehicleKey: Game.state.vehicleKey });
-      setScreen("brief");
+      // "Next level" reuses the ride you just drove — a convenience worth
+      // keeping — but ONLY while it is still a legal ride. Stage 4 is the
+      // Travesía, so coming out of stage 3 in a scooter would carry a car into
+      // a water stage: `resolveVehicle` would quietly swap in the free panga
+      // and the player would never have been asked. When the medium changes,
+      // the picker is not optional.
+      const carried = Game.state.vehicleKey;
+      const sameMedium = vehicleMedium(carried) === (stg.kind === "crossing" ? "water" : "land");
+      setPendingStage({ idx: next, vehicleKey: sameMedium ? carried : undefined });
+      setScreen(sameMedium ? "brief" : "vehpick");
     } else { setScreen("title"); }
   }
   // Restart THIS run. It has to dispatch on the actual mode: the old fallback

@@ -11,7 +11,11 @@ import {
 } from "./economy.js";
 
 export const SHOP_TABS = [
-  { id: "vehicles", label: "Vehículos", enabled: true },
+  // `medium` scopes a vehicle tab to the ground its rides live on
+  // (vehicles.js `medium`): the carros and the lanchas share one card and one
+  // buy flow, and differ only in which keys they list.
+  { id: "vehicles", label: "Vehículos", enabled: true, medium: "land" },
+  { id: "boats", label: "Lanchas", enabled: true, medium: "water" },
   { id: "upgrades", label: "Mejoras", enabled: true },
   { id: "boosts", label: "Boosts", enabled: true },
   { id: "colors", label: "Colores", enabled: true },
@@ -34,6 +38,7 @@ export function applyEditorContent() {
       label: tab.label || tab.name || tab.id,
       enabled: tab.enabled !== false,
     };
+    if (tab.medium) normalized.medium = tab.medium;
     if (index >= 0) SHOP_TABS[index] = { ...SHOP_TABS[index], ...normalized };
     else SHOP_TABS.push(normalized);
   }

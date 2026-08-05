@@ -65,6 +65,7 @@
   "select.lockedBrief": "Completá el nivel {n} para desbloquear este.",
   "select.soonBrief": "Este nivel llega en una próxima actualización.",
   "select.deliveries": "entregas",
+  "select.gates": "boyas",
   "select.time": "tiempo",
   "select.play": "▸ Jugar",
   "select.playLocked": "Bloqueado",

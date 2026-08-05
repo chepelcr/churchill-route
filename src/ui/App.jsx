@@ -48,6 +48,7 @@ export default function App() {
   const screenRef = useRef(screen);
   // where Settings returns to (opened from title or from pause)
   const settingsFrom = useRef("title");
+  const shopFrom = useRef("title");
   useEffect(() => { screenRef.current = screen; }, [screen]);
 
   // Single render-tick + canvas attach. DO NOT depend on `screen` here or
@@ -83,6 +84,11 @@ export default function App() {
       // snapping straight to the menu.
       if (Game.state.over && screenRef.current === "playing")
         setScreen("over");
+      // THE MUELLE'S OFFER. The sim raises `lanchaOffer` when the car is parked
+      // at a berth; the pick is the UI's, so pause and show the boats. Only
+      // from "playing" — an offer standing while the pause menu is open must
+      // not shove a picker in front of it.
+      if (Game.state.lanchaOffer && screenRef.current === "playing") setScreen("lanchapick");
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -112,7 +118,15 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [screen]);
 
-  useEffect(() => { Game.state.paused = (screen === "paused" || (screen === "settings" && settingsFrom.current === "paused")); }, [screen]);
+  // THE ONE PLACE THAT OWNS `paused`. It recomputes on every screen change, so
+  // anything that pauses by writing the flag directly is undone the moment the
+  // screen it opened lands here. The muelle picker (and a shop trip out of it)
+  // suspends the world the same way the pause menu does.
+  useEffect(() => {
+    Game.state.paused = screen === "paused" || screen === "lanchapick"
+      || (screen === "settings" && settingsFrom.current === "paused")
+      || (screen === "shop" && shopFrom.current === "lanchapick");
+  }, [screen]);
 
   // World-editor screen contract: each main screen can override the shared
   // accent/backdrop, while individual screens opt into copy fields below.
@@ -264,16 +278,24 @@ export default function App() {
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
       {screen === "boot" && <BootScreen onDone={() => setScreen(introSeen() ? "title" : "intro")} />}
-      {(screen === "intro" || screen === "title" || screen === "stagepick" || screen === "brief" || screen === "modebrief" || screen === "tutbrief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick") && (
+      {(screen === "intro" || screen === "title" || screen === "stagepick" || screen === "brief" || screen === "modebrief" || screen === "tutbrief" || screen === "over" || screen === "settings" || screen === "supporters" || screen === "shop" || screen === "vehpick" || screen === "lanchapick") && (
         <div className="screen-anim" key={screen}>
           {screen === "intro" && <IntroScreen onDone={() => setScreen("tutbrief")} />}
-          {screen === "title" && <TitleScreen editorConfig={WORLD.EDITOR_UI?.screens?.title} onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => { setShopCtx(null); setScreen("shop"); }} />}
+          {screen === "title" && <TitleScreen editorConfig={WORLD.EDITOR_UI?.screens?.title} onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => { setShopCtx(null); shopFrom.current = "title"; setScreen("shop"); }} />}
           {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
-          {screen === "shop" && <ShopScreen ctx={shopCtx} onBack={() => { setShopCtx(null); setScreen("title"); }} />}
+          {screen === "shop" && <ShopScreen ctx={shopCtx} onBack={() => { setShopCtx(null); const back = shopFrom.current; shopFrom.current = "title"; setScreen(back); }} />}
           {/* The medium the pending run needs: a crossing stage is sailed, so
               the picker must offer boats and only boats. Every other mode is
               driven — Recorrer swaps to a boat at the muelle, not in the menu. */}
-          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} medium={briefStage?.kind === "crossing" ? "water" : "land"} onShop={(ctx) => { setShopCtx(ctx || null); setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
+          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} medium={briefStage?.kind === "crossing" ? "water" : "land"} onShop={(ctx) => { setShopCtx(ctx || null); shopFrom.current = "vehpick"; setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
+          {/* Which hull you cross in is a real choice — the three lanchas
+              handle differently enough that it is the difficulty setting — so
+              arriving at the muelle opens the same picker a run does, scoped to
+              boats. Backing out declines until you drive away. */}
+          {screen === "lanchapick" && <VehiclePicker storyMode medium="water"
+            onGo={(vehicleKey) => { Game.acceptLancha(vehicleKey); setScreen("playing"); }}
+            onShop={(ctx) => { setShopCtx(ctx || null); shopFrom.current = "lanchapick"; setScreen("shop"); }}
+            onBack={() => { Game.declineLancha(); setScreen("playing"); }} />}
           {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
           {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
           {screen === "modebrief" && <ModeBrief mode={pendingMode} onGo={beginMode} />}

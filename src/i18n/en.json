@@ -65,6 +65,7 @@
   "select.lockedBrief": "Clear level {n} to unlock this one.",
   "select.soonBrief": "This level arrives in a future update.",
   "select.deliveries": "deliveries",
+  "select.gates": "buoys",
   "select.time": "time",
   "select.play": "▸ Play",
   "select.playLocked": "Locked",

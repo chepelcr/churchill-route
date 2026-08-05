@@ -6,6 +6,8 @@ import { isMvpLocked } from "../../game/progress.js";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import FitScale from "../FitScale.jsx";
 import Icon from "../Icon.jsx";
+import { gateCount, crossingCondition } from "../../game/crossing.js";
+import { crossingRuns } from "../../game/progress.js";
 
 export const WEATHER_ICON = { sunny: "sun", sunset: "sunset", storm: "storm", night: "moon" };
 
@@ -102,10 +104,22 @@ export default function StageSelect({ onStart, onBack }) {
                 <p className="hero-brief">{locked
                   ? (isMvp(cur) ? t("select.soonBrief") : t("select.lockedBrief", { n: s.num - 1 }))
                   : stageBrief(s)}</p>
+                {/* A CROSSING HAS NO DELIVERIES AND NO FIXED SKY. The carousel
+                    described s8 as "0 deliveries · Sunny" — the same two wrong
+                    facts the brief used to show, and the first thing a player
+                    reads about the level. Gates come from the lancha's own
+                    route; the weather is whichever of the four conditions this
+                    attempt will actually be sailed in. */}
                 <div className="hero-meta">
-                  <span><b>{s.targetDeliveries}</b> {t("select.deliveries")}</span>
+                  {s.kind === "crossing"
+                    ? <span><b>{gateCount(s)}</b> {t("select.gates")}</span>
+                    : <span><b>{s.targetDeliveries}</b> {t("select.deliveries")}</span>}
                   <span><b>{s.timeLimit}s</b> {t("select.time")}</span>
-                  <span><Icon name={WEATHER_ICON[s.weather] || "sun"} size={14} /> {t(`weather.${s.weather}`)}</span>
+                  {(() => {
+                    const w = s.kind === "crossing"
+                      ? crossingCondition(crossingRuns(s.id)).weather : s.weather;
+                    return <span><Icon name={WEATHER_ICON[w] || "sun"} size={14} /> {t(`weather.${w}`)}</span>;
+                  })()}
                 </div>
                 <button className="btn gold hero-play" onClick={() => play(cur)} disabled={locked}>
                   {locked ? (isMvp(cur) ? t("select.playSoon") : t("select.playLocked")) : t("select.play")}

@@ -73,10 +73,10 @@ function startAtBerth(f) {
 // and you get your car back. That is why the car key is STASHED rather than
 // re-derived: a player who drove out in a bought pickup must not come home in
 // the free scooter.
-export function takeTheLancha(ferry) {
+export function takeTheLancha(ferry, vehicleKey = null) {
   if (!ferry) return false;
   state.landVehicleKey = state.vehicleKey;
-  const rv = resolveVehicle(bestOwnedBoat(), "water");
+  const rv = resolveVehicle(vehicleKey || bestOwnedBoat(), "water");
   state.vehicleKey = rv.key; state.veh = rv.veh;
   const q = startAtBerth(ferry);
   state.p.x = q.x; state.p.y = q.y; state.p.a = q.a;
@@ -99,10 +99,38 @@ export function leaveTheLancha() {
   state.p.vx = 0; state.p.vy = 0; state.p.speed = 0; state.p.drift = 0;
 }
 
-//: the best boat the player actually owns. There is no water slot in the
-//: picker for Recorrer — you did not come here to choose a hull, you came here
-//: by road — so "your lancha" is the most expensive one you have bought, which
-//: is the one you would have picked.
+// ---- the offer at the muelle ------------------------------------------------
+// Parking at the berth used to put you straight into a boat the game chose for
+// you. It picks the hull now, which is the same decision every other run in the
+// game gets to make — and it matters more here than in a menu, because the
+// three lanchas handle so differently that "which one am I crossing in" IS the
+// difficulty setting.
+//
+// Physics only RAISES the offer; the UI owns the rest. The sim must not know
+// what a screen is, and the player must not be dropped into a picker by driving
+// past — hence the decline, which stands until they leave the berth.
+
+/** The ferry currently being offered, or null. */
+export function offeredLancha() {
+  return ferries().find((f) => f.id === state.lanchaOffer) || null;
+}
+
+/** Take the offered lancha in `vehicleKey` (or the best one owned). */
+export function acceptLancha(vehicleKey = null) {
+  const f = offeredLancha();
+  state.lanchaOffer = null;
+  return f ? takeTheLancha(f, vehicleKey) : false;
+}
+
+/** "Not now" — remembered so the offer does not reopen on the next frame while
+ *  the car is still sitting on the muelle. Cleared when they drive away. */
+export function declineLancha() {
+  state.lanchaDeclined = state.lanchaOffer;
+  state.lanchaOffer = null;
+}
+
+//: the best boat the player actually owns — the default the picker opens on,
+//: and what a caller that does not care gets.
 function bestOwnedBoat() {
   const boats = Object.keys(VEHICLES)
     .filter((k) => vehicleMedium(k) === "water" && economy.ownsVehicle(k))

@@ -15,7 +15,7 @@ import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt, ferries, routePoint } from "./ferries.js";
 import { advanceCrossing, advanceEstero, catchFish, crossingState } from "./crossing.js";
-import { takeTheLancha, leaveTheLancha } from "./modes.js";
+import { leaveTheLancha } from "./modes.js";
 import { updateDayCycle } from "./daynight.js";
 import { updateTide } from "./tides.js";
 import { updateEditorTriggers } from "./editorGameplay.js";
@@ -40,17 +40,24 @@ const LANCHA_TAKE_SPEED = 40;
 function maintainLanchaSwap(p, veh, cross) {
   const afloatNow = veh.medium === "water";
   if (!cross.active && !afloatNow && !state.landVehicleKey) {
+    // The nearest one-way berth within reach, if any. Resolved as ONE answer
+    // rather than a loop with side effects, because leaving the berth has to
+    // clear both the offer and the decline, and a `continue` per ferry cannot
+    // tell "no berth near me" from "not this berth".
+    let at = null;
     for (const f of ferries()) {
       if (!f.oneWay) continue;
       const b = routePoint(f, 0);
-      if (Math.hypot(p.x - b.x, p.y - b.y) > LANCHA_TAKE_R) continue;
-      if (p.speed > LANCHA_TAKE_SPEED) {
-        state.storyTip = t("crossing.take");
-        continue;                       // rolling past is not consent
-      }
-      takeTheLancha(f);
-      return;
+      if (Math.hypot(p.x - b.x, p.y - b.y) <= LANCHA_TAKE_R) { at = f; break; }
     }
+    if (!at) { state.lanchaOffer = null; state.lanchaDeclined = null; return; }
+    // Parking is the consent: driving PAST a muelle must never put you in a
+    // boat, and neither must having said no thirty frames ago.
+    if (p.speed > LANCHA_TAKE_SPEED) { state.storyTip = t("crossing.take"); return; }
+    if (state.lanchaDeclined === at.id) return;
+    // RAISE THE OFFER AND STOP. `acceptLancha` / `declineLancha` are the UI's,
+    // because which hull you cross in is a choice and the sim has no screens.
+    state.lanchaOffer = at.id;
     return;
   }
   // Ashore again: the crossing ended (landed, or she was sailed home) and the

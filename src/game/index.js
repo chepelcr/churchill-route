@@ -3,7 +3,8 @@
 // facade onto window.Game for the dev tweaks/deck host and debugging.
 import { state, traffic, pedestrians, gulls, boats, schools } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
-import { startArcade, startStage, startExplore, startTutorial, setWeather, setVehicle } from "./modes.js";
+import { startArcade, startStage, startExplore, startTutorial, setWeather, setVehicle,
+  acceptLancha, declineLancha, offeredLancha } from "./modes.js";
 import { tutorialDone, tutorialStepKey } from "./tutorial.js";
 import { attachTouch, attachThrottle } from "./input.js";
 import { update } from "./physics.js";
@@ -47,6 +48,8 @@ export const Game = {
   // check in tools/ — can otherwise see whether they are populated at all.
   pools: () => ({ traffic, pedestrians, gulls, boats, schools }),
   tutorialDone, tutorialStepKey, setWeather, setVehicle, setTide,
+  // the muelle offer: raised by the sim, answered by the UI
+  acceptLancha, declineLancha, offeredLancha,
   attachCanvas, attachTouch, setAttract,
   pause: () => { state.paused = !state.paused; },
   quit: () => { state.running = false; state.over = false; state.won = false; },

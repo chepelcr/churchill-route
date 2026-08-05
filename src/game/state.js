@@ -12,6 +12,10 @@ export const state = {
   weather: "sunny",
   timeOfDay: 0.55,
   vehicleKey: "scooter", veh: VEHICLES.scooter,
+  // The muelle's offer, and the "not now" that keeps it from reopening every
+  // frame while the car is still parked on the deck. Physics raises them; the
+  // UI clears them — see `offeredLancha` / `acceptLancha` / `declineLancha`.
+  lanchaOffer: null, lanchaDeclined: null, landVehicleKey: null,
   p: { x: 1500, y: 760, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 },
   // the renderer publishes zoom/vw/vh on cam — mutate it, never replace it
   cam: { x: 1500, y: 760, shake: 0 },

@@ -114,20 +114,41 @@ function drawPier(P, view) {
 
 // The guard hut at the shore entrance, beside the deck — drawn in the pier's
 // frame so it follows a muelle that was moved or turned.
+// LA CASETA at the muelle's landward end.
+//
+// It used to be drawn INSIDE the pier's rotation, so on the Muelle Nacional —
+// which runs due south — the whole building was laid on its side: a roof facing
+// west and a box that read as a house knocked over. Everything else built in
+// this world is drawn axis-aligned from above (see `paintBuilding`), because
+// that is what "seen from the sky" looks like; only the POSITION should come
+// from the pier.
+//
+// So: the pier gives us where to stand it — at the landward end, pushed off the
+// deck by its own normal — and the caseta itself is drawn upright in world
+// axes, with its door on the side that faces the deck.
 function drawPierHut(P, hw) {
   const [ax, ay, bx, by] = P.pts;
+  const a = Math.atan2(by - ay, bx - ax);
+  const ux = Math.cos(a), uy = Math.sin(a);        // along the pier, seaward
+  const nx = -Math.sin(a), ny = Math.cos(a);       // off the deck, to one side
+  const cx = ax + nx * (hw + 13) + ux * 18;
+  const cy = ay + ny * (hw + 13) + uy * 18;
+  const W2 = 9, H2 = 7;                            // half extents, world px
   ctx.save();
-  ctx.translate(ax, ay); ctx.rotate(Math.atan2(by - ay, bx - ax));
-  const hx = -2, hy = hw + 18;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.beginPath(); ctx.ellipse(hx + 13, hy - 8, 3, 11, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#f4f4ef"; ctx.fillRect(hx, hy - 14, 12, 14);
-  ctx.fillStyle = "#3f7fc4";
+  ctx.fillStyle = "rgba(0,0,0,0.24)";              // its shadow on the deck
   ctx.beginPath();
-  ctx.moveTo(hx, hy); ctx.lineTo(hx - 6, hy - 6);
-  ctx.lineTo(hx - 6, hy - 14); ctx.lineTo(hx, hy - 20);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "rgba(20,40,60,0.55)"; ctx.fillRect(hx + 4, hy - 9, 8, 4);
+  ctx.ellipse(cx + 2, cy + 4, W2 + 1, H2 * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#f4f4ef";                       // the walls
+  roundRect(ctx, cx - W2, cy - H2, W2 * 2, H2 * 2, 2, true, false);
+  ctx.fillStyle = "#3f7fc4";                       // the roof, with a ridge
+  roundRect(ctx, cx - W2 - 1.5, cy - H2 - 1.5, W2 * 2 + 3, H2 * 2 + 3, 2.5, true, false);
+  ctx.strokeStyle = "rgba(255,255,255,0.30)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - W2 - 1, cy); ctx.lineTo(cx + W2 + 1, cy); ctx.stroke();
+  // la puerta, on the side that looks at the deck
+  ctx.fillStyle = "rgba(20,40,60,0.62)";
+  ctx.fillRect(cx - nx * (H2 + 0.5) - 2.2, cy - ny * (H2 + 0.5) - 2.2, 4.4, 4.4);
   ctx.restore();
 }
 

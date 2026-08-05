@@ -254,9 +254,20 @@ SITE_DECOR = {
 # game has something other than a delivery in it, and so it is unlocked, briefed
 # and scored like everything else. `kind` is what makes it one — no kiosks, no
 # customers, no deliveries; the level is the passage itself.
+#
+# `after` IS WHERE IT SITS IN THE LADDER, and it is authored because appending
+# it put the one level that is not a delivery behind all seven that are — nobody
+# saw it without finishing the game. It follows `s3` (Mercado y Catedral)
+# because that is the CENTRO stage, and the lancha leaves from the Muelle de
+# Pitahaya at the foot of Calle Central, in centro: you learn the district, then
+# you sail out of it.
+#
+# `num` is NOT authored. It is the position in the final order, computed at
+# emit — a hand-written number is one insertion away from disagreeing with the
+# list it labels.
 CROSSING_STAGES = [
     {
-        "id": "s8", "num": 8, "kind": "crossing", "ferry": "pitahaya",
+        "id": "s8", "after": "s3", "kind": "crossing", "ferry": "pitahaya",
         "name": "Travesía del Estero", "district": "centro",
         "brief": ("Llevá la lancha hasta Pitahaya. Esquivá las pangas de los "
                   "pescadores y las raíces del manglar — tres golpes y se hunde. "

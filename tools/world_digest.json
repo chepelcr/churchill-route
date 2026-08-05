@@ -1,7 +1,7 @@
 {
  "files": 641,
  "sha256": {
-  "manifest.json": "fdf8042fd7e48c77c07fd3f8acbc8e1cb00fd5294755096f982e545c5b01ee70",
+  "manifest.json": "8c2b006d4a3b9ef8de105ca0768eeaeaa77ca039c3e08306039e8c082884ae94",
   "tiles/0_0.json": "e13a4d1dc78743f72bf21b839f9f420194e6f5d0f35bcbecae81d8d6718d9ae6",
   "tiles/0_1.json": "5fc135307524ad0a6aec702e6cacb56b9a16d24385df3b4d7637819f55b26295",
   "tiles/0_10.json": "4efc03b524319122e80b1e2aff06a4e9925a78708a184d699d4b6e0a6bc7dc00",
@@ -643,5 +643,5 @@
   "tiles/9_8.json": "3302f44671208650defb4f4f4d30aeb1dcb6de14aae2ec28fa75b45f8edaff2f",
   "tiles/9_9.json": "af7a30ef074fb6534217354dd130de3f94be79be3b09e373c00a66250d23e1f4"
  },
- "world": "3889c002c1cc61911e8bbb5784d11439fd9b3e0d6d66457db516282fff3fba23"
+ "world": "8f6d9cbe50dd3bde92374de6db64e84958aa74a4c4bac441389dd57bd544669f"
 }

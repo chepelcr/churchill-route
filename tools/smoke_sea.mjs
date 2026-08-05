@@ -44,12 +44,17 @@ if (!(await page.evaluate(() => !!window.Game))) { fail("window.Game never appea
 // ---- 1. the crossing: conditions rotate, banks dry out, she runs aground ----
 const tide = await page.evaluate(async () => {
   const G = window.Game;
+  // FIND THE CROSSING BY KIND, never by index. It used to be the last stage and
+  // this said `startStage(7)`; it now sits at position 4, and the hardcoded
+  // index quietly started a delivery in Caldera instead — every assertion below
+  // then failed for a reason that had nothing to do with the sea.
+  const CROSS = window.WORLD2D.STAGES.findIndex((s) => s.kind === "crossing");
   G.setAttract(false);
   G.state.progress.crossings = {};                 // rotation from the top
   const rotation = [];
   for (let n = 0; n < 5; n++) {
     G.setAttract(false);
-    G.startStage(7, "panga");
+    G.startStage(CROSS, "panga");
     // ONE FRAME, THEN READ. `state.tide` is published by `updateTide` inside
     // the sim tick, so it does not exist yet the instant a stage starts — but
     // read it much later and a harness artefact spoils it: leaving the UI on a
@@ -60,7 +65,7 @@ const tide = await page.evaluate(async () => {
     G.state.over = true;
   }
   G.setAttract(false);
-  G.startStage(7, "panga");
+  G.startStage(CROSS, "panga");
   await new Promise((r) => setTimeout(r, 700));
   const bancos = G.crossingThings().filter((e) => e.kind === "banco");
   const exposedAt = (lvl) => bancos.filter((e) => lvl < e.depth).length;

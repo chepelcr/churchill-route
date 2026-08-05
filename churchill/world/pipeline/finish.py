@@ -17,6 +17,26 @@ from ..config import (
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
 )
 from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, STAGES
+
+
+def ordered_stages():
+    """The level list, in play order, with `num` derived from the position.
+
+    A crossing names the stage it FOLLOWS (`after`) instead of being appended:
+    concatenating put the one level that is not a delivery behind all seven that
+    are, so nobody met it without finishing the game. `s8` follows `s3` because
+    that is the centro stage and the lancha leaves from centro's own muelle.
+
+    `num` is computed here rather than authored. It is the label on a position,
+    and an authored one is a single insertion away from disagreeing with the
+    list it labels — which is exactly the bug this function exists to avoid.
+    """
+    out = list(STAGES)
+    for spec in CROSSING_STAGES:
+        after = spec.get("after")
+        at = next((i + 1 for i, s in enumerate(out) if s["id"] == after), len(out))
+        out.insert(at, spec)
+    return [dict(s, num=i + 1) for i, s in enumerate(out)]
 from ..logging import log
 from ..repository.debug_render import render_debug
 from ..service.network import block_census, verify_connectivity
@@ -297,7 +317,7 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
                  medians=ctx.medians, plazas=ctx.plazas, greens=ctx.greens,
                  islands=islands, beaches=ctx.beaches, waters=ctx.waters,
                  land_polys=land_polys, landmarks=ctx.landmarks,
-                 customers=ctx.customers, stages=STAGES + CROSSING_STAGES,
+                 customers=ctx.customers, stages=ordered_stages(),
                  stadiums=ctx.stadiums,
                  kiosk_paths=ctx.kiosk_paths,
                  balneario=ctx.balneario, bridge=ctx.bridge, estuary=ctx.estuary,

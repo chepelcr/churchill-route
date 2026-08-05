@@ -15,8 +15,17 @@
 //     progress, gates, the finish, sailing the wrong way — is that one number.
 //   * WHAT HAVE I PASSED THROUGH?  The buoys already come in PAIRS, one per
 //     side at the same arclength, so a gate costs no new geometry: it is a pair
-//     promoted. That is why the course is readable with no HUD arrow, which was
-//     the original design rule and is still the best thing about the level.
+//     promoted.
+//
+//     THIS FILE USED TO REFUSE A HUD ARROW — "el estero son 7 km de agua
+//     abierta y la navegación tiene que ser diegética". That rule was written
+//     when the boat was on a rail and could not get lost. Freed, the same 7 km
+//     of open water stopped reading as a place to explore and started reading
+//     as a corridor you were being shoved down, because the only thing telling
+//     you where the channel was were the marks themselves and a drag that
+//     punished you for missing them. The arrow REPLACES the drag: point at the
+//     next pair of buoys and the estero can be open water again, because you
+//     can leave the line and find your way back.
 //   * WHAT HAVE I HIT?  `advanceEstero` resolves the four obstacle behaviours
 //     against the PLAYER now, not against a ferry that is no longer steering.
 //   * IS IT OVER?  `endCrossing` — see the note on the win path below.
@@ -407,7 +416,8 @@ export function advanceCrossing(dt, p) {
   // proximity check: at 340 px/s a fast hull covers 5 px a frame and a radius
   // test around a 210 px gate mouth either misses her or fires when she passes
   // OUTSIDE the pair, which is the one thing a gate must never reward.
-  for (const g of ch.gates) {
+  // Gates are the LEVEL's, not Recorrer's.
+  for (const g of _crossing.level ? ch.gates : []) {
     if (g.taken) continue;
     if (segmentsCross(p.prevX ?? p.x, p.prevY ?? p.y, p.x, p.y, g.ax, g.ay, g.bx, g.by)) {
       g.taken = true;
@@ -437,26 +447,17 @@ export function advanceCrossing(dt, p) {
   // to do it for a while without noticing.
   if (_crossing.wrongWay) state.storyTip = t("crossing.wrongWay");
 
-  // THE SHALLOWS, AND THE TIDE MOVES THEM. Past the navigable water the estero
-  // thins and the mangrove roots start. She is a free body now, so this cannot
-  // be a subtraction from an arclength she no longer owns — it is DRAG on her
-  // actual velocity, which she feels as the boat going heavy the moment she
-  // leaves the water that is there today.
+  // NO DRAG FOR LEAVING THE LINE. This used to bleed your speed the moment you
+  // left the navigable band, and that one rule is what made 7 km of open
+  // estuary feel like a fenced corridor: the water outside the marks was
+  // rendered, reachable and pointless, so the level was a ride between two
+  // hedges. The compass (`crossingTarget`) replaces it — you can go anywhere on
+  // the water, and the arrow brings you back to the next pair of buoys.
   //
-  // THE BUOYS DO NOT MOVE. They mark the CHANNEL, which is a surveyed thing;
-  // the water inside it is what comes and goes. So at bajamar you are threading
-  // a lane visibly narrower than the marks describe, and reading that gap is
-  // the pilotage the level is actually about.
-  const laneHW = LANE_HW * navigableFraction();
-  // …and it EASES IN. A drag that bit at full strength one pixel outside the
-  // line punished a boat that was still essentially on it; the shallows should
-  // be felt as the water going thin, over a few boat-lengths, not as a wall.
-  const out = Math.abs(near.offset) - laneHW;
-  if (out > 0) {
-    const ramp = Math.min(1, out / 90);            // full bite ~90 px out
-    const k = Math.max(0, 1 - Math.min(0.9, ramp * ramp * dt * 2.6));
-    p.vx *= k; p.vy *= k;
-  }
+  // The estuary still costs you for being off the line, but through the WORLD
+  // rather than through a rule: the banks are mangrove you have to go round,
+  // the roots are out there, and at low water the bancos de arena are real
+  // ground you can strand on. Those are places, not a penalty field.
 
   // The finish is the far end of the route, not a landing collision: the apron
   // at Pitahaya is stamped ROAD and therefore a WALL to a hull, so waiting for
@@ -591,6 +592,33 @@ function spawnEstero(ch) {
       taken: false, aground: false,
     });
   }
+}
+
+/**
+ * Where the next pair of buoys is — the crossing's objective, for the compass.
+ *
+ * The MOUTH of the gate, not a buoy: aiming at one mark would steer you into
+ * it, and what you actually want is the water between them. Falls through to
+ * the landing once every gate is behind you, so the arrow never goes blank on
+ * the last leg.
+ *
+ * ONLY IN THE LEVEL. In Recorrer the estero is somewhere you went, not a course
+ * you are running: no gates, no arrow, no objective — take the lancha out and
+ * go wherever the water goes, including out to the gulf.
+ */
+export function crossingTarget() {
+  if (!_crossing.active || !_crossing.level) return null;
+  const ch = _crossing.channel;
+  if (!ch) return null;
+  for (const g of ch.gates) {
+    if (g.taken) continue;
+    return {
+      x: (g.ax + g.bx) / 2, y: (g.ay + g.by) / 2,
+      gate: g.index + 1, gates: ch.gates.length,
+    };
+  }
+  const end = at(ch.pts, ch.cum, ch.total);
+  return { x: end.x, y: end.y, gate: ch.gates.length, gates: ch.gates.length, finish: true };
 }
 
 /**

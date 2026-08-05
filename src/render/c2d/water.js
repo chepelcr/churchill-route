@@ -435,10 +435,16 @@ function drawShoreBreak(view, t) {
     if (!cache || !aabbInView(cache.aabb, view, 40)) continue;
     const sh = shores[i] || buildShore(i, poly, rc);
     if (!sh.runs.length) continue;
-    const s = swash(t / cfg.run + sh.phase);
+    // SECONDS, not milliseconds. `t` is the rAF timestamp in ms and `cfg.run`
+    // is a wave PERIOD in seconds (~3-5 s, which is what a swash actually
+    // takes), so dividing the raw value ran the swash at ~200 cycles a second:
+    // the foam strobed every frame and averaged into a static smear, which is
+    // why the beach looked like it had no waves at all.
+    const T = t * 0.001;
+    const s = swash(T / cfg.run + sh.phase);
     const reach = tideOff - runUp * s;                       // negative = up the sand
     const band = 4 + 5 * s + storm * 5;
-    const s2 = swash(t / cfg.run + sh.phase + 0.52);          // the wave outside it
+    const s2 = swash(T / cfg.run + sh.phase + 0.52);          // the wave outside it
     for (const run of sh.runs) {
       if (!aabbInView(run.aabb, view, 60)) continue;
       // la arena mojada — clipped to the sand, so it can never wash into the sea

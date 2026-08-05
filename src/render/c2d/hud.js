@@ -7,6 +7,7 @@ import { ensureRenderCache, roadPath } from "./cache.js";
 import { tuning } from "../../game/tuning.js";
 import { CUAD, aabbInView, ctx, flatMultiPath, flatPath, hash01, label, polyBBox } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
+import { crossingTarget } from "../../game/crossing.js";
 import { tideName } from "../../game/tides.js";
 import { t as tr } from "../../i18n/index.js";
 
@@ -91,7 +92,19 @@ function drawDebugGrid(view, zoom) {
 // (the camera transform is uniform scale + translate).
 function drawCompass(vw, vh) {
   const p = state.p;
-  const target = state.carrying ? state.carrying.customer : nearestKiosk(p).lm;
+  // ON THE ESTERO THE ARROW POINTS AT THE NEXT PAIR OF BUOYS. The crossing used
+  // to refuse a compass on principle — the estuary was meant to be read
+  // diegetically, off the marks and the water — and that held while the boat
+  // was on a rail. Freed, the same 7 km read as a corridor, because the only
+  // thing keeping you on the channel was a drag that punished you for leaving
+  // it. The drag is gone and this took its place: you can wander the whole
+  // estuary and still find your way back to the line.
+  //
+  // It aims at the MOUTH of the gate, never at a buoy — steering at a mark
+  // steers you into it. In Recorrer `crossingTarget()` answers null, because
+  // there the estero is a place, not a course.
+  const cross = crossingTarget();
+  const target = cross || (state.carrying ? state.carrying.customer : nearestKiosk(p).lm);
   if (!target) return;
   const dx = target.x - p.x, dy = target.y - p.y;
   const d = Math.hypot(dx, dy);
@@ -103,7 +116,7 @@ function drawCompass(vw, vh) {
   ctx.beginPath(); ctx.arc(cx, cy, 24, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1; ctx.stroke();
   ctx.translate(cx, cy); ctx.rotate(a);
-  ctx.fillStyle = state.carrying ? "#ff3d80" : "#ffe06b";
+  ctx.fillStyle = cross ? "#9fd7ef" : state.carrying ? "#ff3d80" : "#ffe06b";
   ctx.beginPath();
   ctx.moveTo(17, 0); ctx.lineTo(-9, -11); ctx.lineTo(-4, 0); ctx.lineTo(-9, 11);
   ctx.closePath(); ctx.fill();
@@ -113,10 +126,15 @@ function drawCompass(vw, vh) {
   ctx.font = "bold 11px 'JetBrains Mono', monospace";
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(20,16,40,0.78)";
-  const label = `${meters} m`;
+  // On the water the distance is worth less than WHICH MARK you are running to,
+  // so the label carries the gate number and the metres together.
+  const label = cross
+    ? (cross.finish ? `${tr("crossing.finish")} · ${meters} m`
+      : `${cross.gate}/${cross.gates} · ${meters} m`)
+    : `${meters} m`;
   const lw = ctx.measureText(label).width + 10;
   ctx.fillRect(cx - lw / 2, cy + 28, lw, 15);
-  ctx.fillStyle = state.carrying ? "#ff3d80" : "#ffe06b";
+  ctx.fillStyle = cross ? "#9fd7ef" : state.carrying ? "#ff3d80" : "#ffe06b";
   ctx.fillText(label, cx, cy + 39);
 }
 

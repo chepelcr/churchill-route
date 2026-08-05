@@ -17,7 +17,13 @@ export default function StageSelect({ onStart, onBack }) {
   const cleared = Game.state.progress.clearedStages;
   // MVP: stages set in the gated eastern districts ship in a later release
   const isMvp = (i) => isMvpLocked(stages[i].district);
-  const isLocked = (i) => isMvp(i) || (i > 0 && !cleared.includes(stages[i - 1].id));
+  // A CROSSING IS ALWAYS OPEN. The delivery stages are a ladder — each one
+  // unlocks the district the next is set in — but the Travesía unlocks nothing
+  // (`unlock: null`), needs no kiosk, no customer and no district, and is the
+  // one level in the game that is not a delivery. Gating it behind the whole
+  // ladder hid the showcase from anybody who had not finished the game.
+  const isLocked = (i) => isMvp(i)
+    || (stages[i].kind !== "crossing" && i > 0 && !cleared.includes(stages[i - 1].id));
   // start on the first not-yet-cleared stage so you land on "where you are"
   const firstOpen = Math.max(0, stages.findIndex((s, i) => !cleared.includes(s.id) && !isMvp(i)));
 

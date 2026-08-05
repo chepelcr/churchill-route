@@ -479,15 +479,39 @@ export function update(dt) {
   }
 
   // Barrier collisions (explore mode locked districts)
+  // TWO SHAPES OF BARRIER, because they fence two different things.
+  //
+  // A PROGRESSION barrier is a LINE at a district's western edge: the districts
+  // run west to east along the spit, so "you have not opened this one yet" is
+  // genuinely a wall across the road, and you may always come back west.
+  //
+  // The MVP gate is a BOX, one per closed barrio. It used to be a line too —
+  // the westernmost locked district's x0 — and that is the wrong shape in a
+  // 2-D world: the closed barrios are INLAND and their x-ranges overlap the
+  // coastal ones, so the line stood across the costanera and shut El Cocal,
+  // Mata de Limón and Caldera, which ship today and hold three of the stages.
   if (state.barriers && state.barriers.length) {
     for (const br of state.barriers) {
+      if (br.x0 !== undefined) {
+        // Inside a closed barrio: push out by the SHORTEST way back out, so a
+        // player who reaches a corner is returned the way they came rather
+        // than flung along the box.
+        if (p.x < br.x0 || p.x > br.x1 || p.y < br.y0 || p.y > br.y1) continue;
+        const dl = p.x - br.x0, dr = br.x1 - p.x, dt = p.y - br.y0, db = br.y1 - p.y;
+        const m = Math.min(dl, dr, dt, db);
+        if (m === dl) { p.x = br.x0 - 14; p.vx = -Math.abs(p.vx) * 0.4; }
+        else if (m === dr) { p.x = br.x1 + 14; p.vx = Math.abs(p.vx) * 0.4; }
+        else if (m === dt) { p.y = br.y0 - 14; p.vy = -Math.abs(p.vy) * 0.4; }
+        else { p.y = br.y1 + 14; p.vy = Math.abs(p.vy) * 0.4; }
+        state.cam.shake = Math.max(state.cam.shake, 8);
+        state.storyTip = t("tip.mvpWall");
+        continue;
+      }
       if (Math.abs(p.x - br.x) < 14) {
         if (p.x > br.x - 14 && p.x < br.x) {
           p.x = br.x - 14; p.vx = -Math.abs(p.vx) * 0.4;
           state.cam.shake = Math.max(state.cam.shake, 8);
-          state.storyTip = br.mvp
-            ? t("tip.mvpWall")
-            : t("tip.lockedDistrict", { district: br.district.toUpperCase(), n: br.requiredStage });
+          state.storyTip = t("tip.lockedDistrict", { district: br.district.toUpperCase(), n: br.requiredStage });
         } else if (p.x > br.x && p.x < br.x + 14) {
           // can re-enter going west: allow
         }

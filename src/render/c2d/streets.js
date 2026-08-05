@@ -421,9 +421,44 @@ function drawStreetLabels2D(roads, view) {
 }
 
 // Lock barriers: the MVP wall (every mode) + explore progression barriers
+// A CLOSED BARRIO IS A PERIMETER, not a line across the road. The MVP gate is
+// four inland boxes now, so it is fenced on the edge you actually approach —
+// drawing it as an x-wall put a striped barrier across the costanera, which is
+// open, and none at all along the barrio's own boundary.
+function drawMvpBox(br, view) {
+  const x0 = Math.max(br.x0, view.x0 - 30), x1 = Math.min(br.x1, view.x1 + 30);
+  const y0 = Math.max(br.y0, view.y0 - 30), y1 = Math.min(br.y1, view.y1 + 30);
+  if (x1 <= x0 || y1 <= y0) return;
+  const dstr = W.DISTRICTS.find((d) => d.id === br.district);
+  ctx.save();
+  ctx.setLineDash([14, 10]);
+  ctx.strokeStyle = "#f3c969";
+  ctx.lineWidth = 5;
+  ctx.strokeRect(br.x0, br.y0, br.x1 - br.x0, br.y1 - br.y0);
+  ctx.setLineDash([]);
+  // the sign sits where the fence is ON SCREEN, so it is readable from
+  // whichever edge you drove up to rather than at a fixed corner
+  const sx = Math.min(Math.max((view.x0 + view.x1) / 2, br.x0 + 80), br.x1 - 80);
+  const sy = Math.min(Math.max((view.y0 + view.y1) / 2, br.y0 + 30), br.y1 - 30);
+  const sw = 138, sh = 40;
+  ctx.fillStyle = "rgba(20,16,40,0.88)";
+  ctx.fillRect(sx - sw / 2, sy - sh / 2, sw, sh);
+  ctx.fillStyle = dstr ? dstr.tone : "#f3c969";
+  ctx.fillRect(sx - sw / 2, sy - sh / 2, sw, 4);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ff3d80"; ctx.font = "bold 9px 'JetBrains Mono', monospace";
+  ctx.fillText(t("sign.blocked"), sx, sy - 6);
+  ctx.fillStyle = "#fff"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
+  ctx.fillText((dstr ? dstr.name : br.district.toUpperCase()).slice(0, 20), sx, sy + 5);
+  ctx.fillStyle = dstr ? dstr.tone : "#f3c969"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
+  ctx.fillText(t("sign.soon"), sx, sy + 15);
+  ctx.restore();
+}
+
 function drawBarriers(view) {
   if (!state.barriers || !state.barriers.length) return;
   for (const br of state.barriers) {
+    if (br.x0 !== undefined) { drawMvpBox(br, view); continue; }
     if (br.x < view.x0 - 30 || br.x > view.x1 + 30) continue;
     // vertical wall spanning the visible height (the 2-D world has no corridor
     // topY/botY; the peninsula runs west->east so an x-wall gates progression)

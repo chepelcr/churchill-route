@@ -16,11 +16,34 @@ const STORAGE_KEY = "churchill_progress_v1";
 // kiosks, customers or stages, so opening them would be empty driving.
 export const MVP_LOCKED = ["chacarita", "elroble", "barranca", "esparza"];
 export function isMvpLocked(id) { return MVP_LOCKED.includes(id); }
+/**
+ * The MVP gate, as the BARRIOS THEMSELVES rather than a line.
+ *
+ * This used to be one `x` — the westernmost locked district's `x0` — and in a
+ * 2-D world that is simply the wrong shape. The four closed barrios are INLAND
+ * and their x-ranges OVERLAP the coastal districts: Chacarita starts at 28642,
+ * which is a third of the way into El Cocal (21625..42785). So the "wall" stood
+ * across the coast road and fenced off El Cocal, Mata de Limón and Caldera —
+ * the exact three districts the comment above says are open, and the three that
+ * stages 6, 7 and 8 are set in. Driving east past Las Playitas met
+ * "PRÓXIMAMENTE" for a place that ships today.
+ *
+ * The districts carry `y0/y1` too, and the barrios are narrow bands inland
+ * (y 4467..15079) while the coastal ones span the whole map height. Fencing the
+ * boxes closes what is meant to be closed and leaves the costanera open.
+ */
+export function mvpBarrierBoxes() {
+  return W.DISTRICTS.filter((d) => isMvpLocked(d.id)).map((d) => ({
+    district: d.id, mvp: true, x0: d.x0, x1: d.x1, y0: d.y0, y1: d.y1,
+  }));
+}
+
+/** The old single-line gate. Kept ONLY for `delivery.js`'s "keep orders west of
+ *  the gate" clamp, which wants one conservative number rather than a shape —
+ *  and Infinity is the honest answer now that the barrios are fenced as boxes:
+ *  there is no x beyond which the map is closed. */
 export function mvpWallX() {
-  // The wall stands at the westernmost locked district — read from the world,
-  // never hardcoded, so moving a district boundary moves the wall with it.
-  const locked = W.DISTRICTS.filter((d) => isMvpLocked(d.id));
-  return locked.length ? Math.min(...locked.map((d) => d.x0)) : Infinity;
+  return Infinity;
 }
 
 export function loadProgress() {
@@ -81,8 +104,8 @@ export function bumpCrossingRuns(stageId) {
 // barriers (locked districts) only gate explore mode as before.
 export function rebuildBarriers() {
   state.barriers = [];
-  const wallX = mvpWallX();
-  if (isFinite(wallX)) state.barriers.push({ x: wallX + 4, district: "chacarita", mvp: true });
+  // The MVP gate applies in EVERY mode, as boxes around the closed barrios.
+  for (const box of mvpBarrierBoxes()) state.barriers.push(box);
   if (state.mode !== "explore") return;
   for (let i = 0; i < W.DISTRICTS.length; i++) {
     const d = W.DISTRICTS[i];

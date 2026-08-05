@@ -333,15 +333,6 @@ function drawRipples(view, body) {
 const shores = [];
 const PROBE = 11;
 
-function insideAny(list, x, y) {
-  for (const e of list) {
-    const a = e.aabb;
-    if (x < a.x0 || x > a.x1 || y < a.y0 || y > a.y1) continue;
-    if (ctx.isPointInPath(e.path, x, y)) return true;
-  }
-  return false;
-}
-
 function buildShore(i, poly, rc) {
   const n = poly.length / 2;
   const segs = [];
@@ -352,7 +343,14 @@ function buildShore(i, poly, rc) {
     if (L < 1) { segs.push(null); continue; }
     let nx = -dy / L, ny = dx / L;
     const mx = (ax + bx) / 2, my = (ay + by) / 2;
-    const land = (px, py) => insideAny(rc.land, px, py) || insideAny(rc.beach, px, py);
+    // ASK THE RASTER, NOT THE CANVAS. This was `isPointInPath` against the
+    // cached land/beach Path2Ds, and it answered false for every probe on every
+    // one of the 29 beaches — 370 passes, zero runs, so the whole shore break
+    // silently drew nothing. `isPointInPath` measures against the CURRENT
+    // transform, and this runs deep inside the camera transform with the paths
+    // in world space; the surface grid is the authoritative answer to "is this
+    // point sea", it is what physics uses, and it costs a tile lookup.
+    const land = (px, py) => W.surfaceAt(px, py) !== 0;
     const outA = !land(mx + nx * PROBE, my + ny * PROBE);
     const outB = !land(mx - nx * PROBE, my - ny * PROBE);
     if (outA === outB) { segs.push(null); continue; }   // both sea or both land: not a shoreline
@@ -382,7 +380,14 @@ function buildShore(i, poly, rc) {
     cur.y0 = Math.min(cur.y0, ay, by); cur.y1 = Math.max(cur.y1, ay, by);
   }
   for (const r of runs) { r.aabb = { x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 }; }
-  return (shores[i] = { runs, phase: hash01(i * 12.9 + 3.1) });
+  const built = { runs, phase: hash01(i * 12.9 + 3.1) };
+  // DO NOT CACHE AN EMPTY SHORE. `surfaceAt` answers 0 for a tile that has not
+  // streamed in, so a beach traced before its tile was resident reads as all
+  // sea and yields no runs — cached, that beach would stay breakless for the
+  // rest of the session. Leaving it uncached costs one retrace per frame until
+  // the ground is really there.
+  if (runs.length) shores[i] = built;
+  return built;
 }
 
 //: the run as a polyline pushed `off` px toward the sea (negative = up the sand)
@@ -567,6 +572,16 @@ function paintBalneario(body, view, t, bodyIndex) {
   };
   if (box.x1 <= box.x0 || box.y1 <= box.y0) return;
   const P = seaPalette();
+  // THE BODY FILL IS OURS. This pass REPLACES `paintWaterBody` rather than
+  // layering over it — the whole point is that a 320x260 px inlet people stand
+  // in should not get the shimmer sized for a 7 km estuary — so if we do not
+  // lay the water down, nothing does, and the balneario draws as whatever is
+  // underneath it. It rendered as bare sand with a boat and six swimmers
+  // sitting on it until this was put back.
+  const C = weatherColors();
+  const g = ctx.createLinearGradient(0, a.y0, 0, a.y1);
+  g.addColorStop(0, C.waterTop); g.addColorStop(1, C.waterBot);
+  ctx.fillStyle = g; ctx.fill(body.path);
   ctx.save();
   ctx.clip(body.path);
   balnRipples(box, t);

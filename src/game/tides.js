@@ -112,5 +112,11 @@ export function tideName(level = tide.level) {
  * a crossing you cannot make is not a difficulty setting.
  */
 export function navigableFraction(level = tide.level) {
-  return 0.55 + 0.45 * level;
+  // THE MARKED CHANNEL HAS TO STAY MOSTLY SAILABLE. At 0.55 a bajamar left the
+  // navigable water at 58 px against buoys set at 105, so a boat steering dead
+  // centre between the marks was still in the shallows and dragging — the level
+  // read as "the boat is slow", not as "you are off the line", which is the
+  // opposite of what a channel is for. The floor is the width of the promise
+  // the buoys make; the tide narrows it enough to be felt, not enough to lie.
+  return 0.72 + 0.28 * level;
 }

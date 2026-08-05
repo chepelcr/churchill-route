@@ -448,9 +448,13 @@ export function advanceCrossing(dt, p) {
   // a lane visibly narrower than the marks describe, and reading that gap is
   // the pilotage the level is actually about.
   const laneHW = LANE_HW * navigableFraction();
+  // …and it EASES IN. A drag that bit at full strength one pixel outside the
+  // line punished a boat that was still essentially on it; the shallows should
+  // be felt as the water going thin, over a few boat-lengths, not as a wall.
   const out = Math.abs(near.offset) - laneHW;
   if (out > 0) {
-    const k = Math.max(0, 1 - Math.min(0.9, (out / (SHALLOW_HW * 2)) * dt * 2.2));
+    const ramp = Math.min(1, out / 90);            // full bite ~90 px out
+    const k = Math.max(0, 1 - Math.min(0.9, ramp * ramp * dt * 2.6));
     p.vx *= k; p.vy *= k;
   }
 

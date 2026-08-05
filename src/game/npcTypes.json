@@ -57,6 +57,16 @@
       "note": "The one TEMPORARY kind: joinTheSidewalk drops both the flag and the type when an alighting passenger reaches the acera, so a person who got off a bus simply IS a person walking."
     },
     {
+      "id": "fisher",
+      "name": "Pescador",
+      "movement": "stationary",
+      "hosts": ["water"],
+      "speed": [0, 0],
+      "art": "fisher",
+      "builtin": true,
+      "note": "He is seated in HIS BOAT'S frame, not standing on a surface: the estero's pangas draw him inside their own transform so he leans and bobs with the hull. That is why his host is water — the ground under him is the panga, and the only thing the world can check is that she is floating."
+    },
+    {
       "id": "resident",
       "name": "Vecino",
       "movement": "stationary",

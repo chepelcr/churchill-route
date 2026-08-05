@@ -71,8 +71,11 @@ export function resetFerries() {
   }
 }
 
-// Pose at arclength `s` along the route.
-function routePoint(f, s) {
+// Pose at arclength `s` along the route. Exported because the crossing needs
+// the same walk to put the PLAYER's boat on the start line: two copies of an
+// arclength sampler over one polyline is exactly the kind of duplication that
+// drifts silently when the route changes.
+export function routePoint(f, s) {
   const { pts, cum, total } = f;
   const u = Math.max(0, Math.min(total, s));
   let i = 1;

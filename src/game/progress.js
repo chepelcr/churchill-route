@@ -53,6 +53,13 @@ export function markStageCleared(stageId, score) {
   saveProgress();
 }
 
+/** Best time and best catch for a crossing stage, or null if never finished.
+ *  Kept beside the stage records in the same save; `crossings` is added to old
+ *  saves lazily by the writer, so a missing key here is "never sailed it". */
+export function crossingRecord(stageId) {
+  return (state.progress && state.progress.crossings && state.progress.crossings[stageId]) || null;
+}
+
 // Build the barrier list: the MVP wall applies in EVERY mode; the progression
 // barriers (locked districts) only gate explore mode as before.
 export function rebuildBarriers() {

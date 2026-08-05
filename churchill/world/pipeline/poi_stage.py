@@ -198,6 +198,69 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     mlm["x"], mlm["y"] = pier_x, round(pier_y0 - 16)
     log("pier", f"muelle at x={pier_x}, y {round(pier_y0)}..{pier_y1}")
 
+    # --- Muelle de Pitahaya (the twin pier north into the estero)
+    #
+    # ONE AXIS, BY CONSTRUCTION. The twin reuses the Nacional's own resolved x
+    # instead of re-resolving Calle Central's other end: the street bends ~120
+    # px west as it crosses town, so two independent lookups put the two piers
+    # three lane-widths apart, which is precisely what "aligned" is not.
+    pitahaya_x = pier_x
+    pitahaya_col = min(GRID_COLS - 1, max(0, int(pitahaya_x / GRID_CELL)))
+    # THE ESTERO SHORE IS NOT `topY`, and that is the whole difficulty here.
+    # `botY[col]` works for the Nacional because the spit IS the southernmost
+    # land in its column, so botY is its Pacific shore. There is no mirror:
+    # `topY[col]` is the first land in the WHOLE column, which this far north
+    # is the mainland at Pitahaya, ~11 km away across the estuary. The spit's
+    # own north shore is an INTERIOR coastline that neither array records.
+    #
+    # So walk for it, north from the Nacional's base — a cell known to be on
+    # the spit — and take the first water. The walk is bounded because an
+    # unbounded one that misses the shore silently returns the top of the map,
+    # which is how the first attempt put this pier at y=6 and left the lancha
+    # with no navigable water to start from.
+    MAX_SPIT_WALK = 4000                       # px; the spit is ~1100 px here
+    start_row = int(pier_y0 // GRID_CELL)
+    limit_row = max(0, start_row - int(MAX_SPIT_WALK / GRID_CELL))
+    shore_row = None
+    r = start_row
+    while r > limit_row:
+        if grid[r * GRID_COLS + pitahaya_col] == CLS_WATER:
+            shore_row = r
+            break
+        r -= 1
+    if shore_row is None:
+        warn("pier", f"muelle_pitahaya: no estero shore within {MAX_SPIT_WALK}px "
+             f"north of the spit at x={pitahaya_x} — pier skipped")
+        return landmarks, customers, failures, mlm, pier, BUILDING_LM, NO_PAD_LM, resolve
+    shore_y = (shore_row + 1) * GRID_CELL
+    log("pier", f"estero shore at x={pitahaya_x}, y={round(shore_y)} "
+        f"({round(pier_y0 - shore_y)}px north of the Muelle Nacional base)")
+    # Base a few px inside the land, then run NORTH into the estero. Far
+    # shorter than the Nacional's 630: the channel is close on this side, and
+    # a deck that overshoots it is a wall across the water the boat needs.
+    PITAHAYA_LEN = 260
+    pitahaya_y0 = shore_y + 6
+    pitahaya_y1 = round(max(30, pitahaya_y0 - PITAHAYA_LEN))
+    pitahaya_pier = make_pier(
+        "muelle_pitahaya", "Muelle de Pitahaya",
+        [pitahaya_x, round(pitahaya_y0), pitahaya_x, pitahaya_y1], 2 * CUAD,
+        style="concrete",
+    )
+    ctx.piers.append(pitahaya_pier)
+    ctx.pier_restores[pitahaya_pier["id"]] = stamp_pier(raster, pitahaya_pier)
+    log_pier(pitahaya_pier)
+    # connect the pier base to the street grid (walk south to the first road)
+    pc = int(pitahaya_x // GRID_CELL)
+    pr = int(pitahaya_y0 // GRID_CELL)
+    for r in range(pr, min(GRID_ROWS, pr + 120)):
+        if grid[r * GRID_COLS + pc] in CALLE_CLASSES:
+            raster.stamp_polyline([pitahaya_x, r * GRID_CELL,
+                                   pitahaya_x, pitahaya_y0], 2 * CUAD, CLS_ROAD)
+            log("pier", f"connector road to y={r * GRID_CELL}")
+            break
+    log("pier", f"muelle_pitahaya at x={pitahaya_x}, "
+        f"y {round(pitahaya_y0)}..{pitahaya_y1}")
+
     return landmarks, customers, failures, mlm, pier, BUILDING_LM, NO_PAD_LM, resolve
 
 

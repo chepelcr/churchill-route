@@ -244,9 +244,11 @@ SITE_DECOR = {
 # reachability gate. A lancha is how you get there, which is how you get there
 # in life too.
 #
-# Only the two ENDS are authored. The sailing line is derived at build time by
-# a flood over the water raster, so the boat can never cross land and the route
-# follows the coastline it is actually given.
+# The far landing is geo-authored. The Puntarenas berth names its generated
+# pier instead: the lancha service resolves the pier's sea end after placement,
+# keeping the crossing on Calle Central's axis. The sailing line is then derived
+# by a flood over the water raster, so the boat can never cross land and the
+# route follows the coastline it is actually given.
 # ---------------------------------------------------------------------------
 # The crossing is a STAGE, not a side mode: it lives in the level list so the
 # game has something other than a delivery in it, and so it is unlocked, briefed
@@ -268,7 +270,7 @@ LANCHA_DEFS = [
     {
         "id": "pitahaya",
         "name": "Lancha a Pitahaya",
-        "berth": (9.97992, -84.82987),      # spit north coast, behind el Centro
+        "berth_pier": "muelle_pitahaya",
         "landing": (10.02539, -84.82923),   # Calle Pitahaya, on the far shore
         "deck": (86, 34),                   # smaller than a ferry: one car deep
         "dockS": 20,

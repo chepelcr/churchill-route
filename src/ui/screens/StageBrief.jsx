@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import { economy, BOOSTS } from "../../game/economy.js";
+import { gateCount } from "../../game/crossing.js";
 import { sfx } from "../../game/audio.js";
 import Icon from "../Icon.jsx";
 import { WEATHER_ICON } from "./StageSelect.jsx";
@@ -16,6 +17,13 @@ export default function StageBrief({ stage, onGo }) {
     sfx.play("menu_move");
     setArmed((a) => ({ ...a, [id]: !a[id] }));
   };
+  // A crossing stage (s8, la Travesía) has no deliveries — its objective is the
+  // gated run down the channel, so briefing it as "0 entregas" was both wrong
+  // and the least appealing possible description of the level. The gate count
+  // is DERIVED from the lancha's route, exactly like the buoys that mark it, so
+  // the number here cannot disagree with the number in the water.
+  const isCrossing = stage.kind === "crossing";
+  const gates = gateCount(stage);
   return (
     <div className="overlay">
       <div className="panel">
@@ -23,7 +31,9 @@ export default function StageBrief({ stage, onGo }) {
         <div style={{ font: "20px 'Bungee', sans-serif", color: "var(--gold)", marginBottom: 10 }}>{stageName(stage)}</div>
         <p style={{ opacity: 0.85, lineHeight: 1.5, fontSize: 13 }}>{stageBrief(stage)}</p>
         <div style={{ display: "flex", justifyContent: "space-around", margin: "14px 0", font: "12px 'JetBrains Mono', monospace", opacity: 0.85 }}>
-          <span><Icon name="target" size={14} /> {stage.targetDeliveries} {t("select.deliveries")}</span>
+          {isCrossing
+            ? <span><Icon name="pin" size={14} /> {t("brief.gates", { n: gates })}</span>
+            : <span><Icon name="target" size={14} /> {stage.targetDeliveries} {t("select.deliveries")}</span>}
           <span><Icon name="clock" size={14} /> {stage.timeLimit}s</span>
           <span><Icon name={WEATHER_ICON[stage.weather] || "sun"} size={14} /> {t(`weather.${stage.weather}`)}</span>
         </div>

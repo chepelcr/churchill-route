@@ -79,7 +79,7 @@ renderer (the "view") lives behind a seam so backends can be swapped.
     `modes.js` (`startArcade`/`startStage`/`startExplore` + setters).
   - `index.js` — **Game facade** + main loop; exports `Game`, mirrors it to
     `window.Game` for the dev tweaks host + console debugging.
-- `src/world2d/` — **generated**, do not hand-edit: `manifest.json` + 416
+- `src/world2d/` — **generated**, do not hand-edit: `manifest.json` + 640
   `tiles/*.json` from `tools/build_world.py`, plus `index.js` (the `WORLD2D`/`W`
   accessor: per-tile RLE decode + streaming, `surfaceAt`, road arclength
   samplers, building spatial hash, silhouettes).
@@ -101,7 +101,8 @@ RLE surface slabs + `manifest.json`, loaded by `src/world2d/index.js`
 `PLANAR_PX_PER_M`, true-scale, with a geo→world affine in `manifest.meta.geo`.
 Deterministic (no RNG) — same input → identical output, which
 `tools/world_snapshot.py` enforces (`save` / `verify` / `rebuild`): every
-refactor must keep the 417 emitted files byte-identical, and an INTENDED world
+refactor must keep every emitted file (`manifest.json` + each `tiles/*.json`;
+641 today, per `tools/world_digest.json`) byte-identical, and an INTENDED world
 change re-runs `save` in the same commit.
 
 Surface grid classes (see `src/game/surfaces.js`): `0 water, 1 land (solid cuadra

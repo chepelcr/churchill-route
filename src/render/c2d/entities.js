@@ -4,6 +4,38 @@ import { state } from "../../game/state.js";
 import { traceVehicleSilhouette } from "../vehicleShapes.js";
 import { ctx, lastT, roundRect } from "./gfx.js";
 
+// THE HULL EVERY BOAT IN THIS PORT IS DRAWN FROM. It used to live inside
+// `drawBoat`, which meant the estero's pangas were a second, hand-drawn boat —
+// a flat trapezoid — and a panga you met on the gulf and a panga you met in the
+// channel were visibly different objects for no reason a player could name.
+// One helper, one boat: a soft shadow on the water, a white sheer curving to
+// the bow, and the red boot-top at the waterline. Drawn at the origin, bow to
+// +x, in whatever transform the caller has already set up — so she leans and
+// bobs with her owner. The caller adds what makes her HERS: a wake if she is
+// travelling, a fisher if she is working, a funnel if she is a ferry.
+function traceHull(g, L, H) {
+  g.beginPath();
+  g.moveTo(L, 0);
+  g.quadraticCurveTo(L * 0.55, -H, -L * 0.7, -H * 0.9);
+  g.quadraticCurveTo(-L, -H * 0.5, -L, 0);
+  g.quadraticCurveTo(-L, H * 0.6, -L * 0.7, H * 0.9);
+  g.quadraticCurveTo(L * 0.55, H, L, 0);
+  g.closePath();
+}
+function paintHull(g, L, H, topsides = "#f6f2e8") {
+  g.fillStyle = "rgba(0,0,0,0.20)";        // hull shadow on the water
+  g.beginPath();
+  g.ellipse(1, H * 0.7, L * 0.95, H * 0.8, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = topsides;                  // white hull, sheer curving to the bow
+  traceHull(g, L, H); g.fill();
+  g.fillStyle = "#e2503f";                 // the red boot-top at the waterline
+  g.beginPath();
+  g.moveTo(L * 0.92, 0);
+  g.quadraticCurveTo(L * 0.5, H, -L * 0.7, H * 0.88);
+  g.quadraticCurveTo(-L, H * 0.55, -L, 0);
+  g.closePath(); g.fill();
+}
+
 // A collectable churchill coin lying on the street (arcade): a disc that spins
 // (squash on X) and bobs, with a shadow + ₡ mark so it reads as loot.
 // GOLD is the ordinary street coin. SILVER is the estadio coin rain — bigger,
@@ -47,6 +79,7 @@ function drawPed(pe) {
   const art = pe.editorNpc ? (pe.drawStyle || "person") : (pe.kind || "walker");
   if (art === "swimmer") { drawSwimmer(pe); return; }
   if (art === "passenger") { drawPassenger(pe); return; }
+  if (art === "fisher") { drawFisher(pe); return; }
   if (pe.editorNpc && ["person", "vendor", "worker", "mascot"].includes(art)) {
     drawEditorNpc(pe); return;
   }
@@ -118,6 +151,56 @@ function drawPassenger(pe) {
   }
   ctx.fillStyle = "#f1c8a4";
   ctx.beginPath(); ctx.arc(pe.x, y - 5, 2.2, 0, Math.PI * 2); ctx.fill();
+}
+// EL PESCADOR. He is the same person as everyone else in the puerto — the same
+// narrow body in his own `hue`, the same 2.2 px head, the same soft shadow —
+// SITTING DOWN: the body is shorter and the head rides lower, because he is on
+// a thwart and not on his feet. What makes him a fisher is only what he carries:
+// the sombrero against the sun (from above you see the hat first and the back of
+// his head behind it), the caña out over the bow, and a line whose ripple ring
+// moves with the swell.
+//
+// He is drawn in HIS BOAT'S FRAME, not on a surface — the panga leans and bobs
+// and he goes with her — which is why his registry host is `water` and his
+// movement `stationary`. `pe.x`/`pe.y` are therefore boat-local when the estero
+// draws him, and world coordinates when he is an authored NPC; the drawing is
+// the same either way, and the caller owns the transform.
+function drawFisher(pe) {
+  const hue = Number.isFinite(pe.hue) ? pe.hue : 28;
+  const x = pe.x, y = pe.y;
+  const ph = pe.ph || 0;
+  const bob = Math.sin(ph) * 0.5;                     // seated: he barely moves
+  const dip = Math.sin(ph * 0.8) * 1.6;               // where the line breaks the surface
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath(); ctx.ellipse(x + 1, y + 4, 3.6, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.30)";         // the ring the line makes
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.ellipse(x + 15, y + 5 + dip, 3 + Math.sin(ph) * 0.8, 1.4, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.45)";         // the line, into the water
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(x + 10, y - 5.5);
+  ctx.quadraticCurveTo(x + 13.6, y - 1, x + 15, y + 5 + dip);
+  ctx.stroke();
+  ctx.fillStyle = `hsl(${hue} 70% 60%)`;              // the body, seated
+  ctx.fillRect(x - 2, y - 2 + bob, 4, 5);
+  ctx.strokeStyle = "#f1c8a4";                        // the arm on the caña
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(x + 1.4, y - 1 + bob); ctx.lineTo(x + 3.4, y - 2.6 + bob); ctx.stroke();
+  ctx.strokeStyle = "#8a5f33";                        // la caña
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x + 2.4, y - 1.4 + bob); ctx.lineTo(x + 10, y - 5.5); ctx.stroke();
+  ctx.fillStyle = "#f1c8a4";                          // the head
+  ctx.beginPath(); ctx.arc(x, y - 4.2 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#e0cf9e";                          // el sombrero: brim, tipped forward
+  ctx.beginPath(); ctx.ellipse(x + 0.7, y - 4.4 + bob, 3.5, 2.7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#f4d77a";                          // …and its crown
+  ctx.beginPath(); ctx.arc(x + 0.5, y - 4.7 + bob, 1.7, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }
 // A swimmer: a head just above the water with a ripple wake + stroking arms.
 function drawSwimmer(pe) {
@@ -216,23 +299,7 @@ function drawBoat(b) {
   ctx.moveTo(-L, -H * 0.5); ctx.lineTo(-L - 26, -H * 1.6);
   ctx.lineTo(-L - 26, H * 1.6); ctx.lineTo(-L, H * 0.5);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "rgba(0,0,0,0.20)";      // hull shadow on the water
-  ctx.beginPath();
-  ctx.ellipse(1, H * 0.7, L * 0.95, H * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#f6f2e8";               // white hull, sheer curving to the bow
-  ctx.beginPath();
-  ctx.moveTo(L, 0);
-  ctx.quadraticCurveTo(L * 0.55, -H, -L * 0.7, -H * 0.9);
-  ctx.quadraticCurveTo(-L, -H * 0.5, -L, 0);
-  ctx.quadraticCurveTo(-L, H * 0.6, -L * 0.7, H * 0.9);
-  ctx.quadraticCurveTo(L * 0.55, H, L, 0);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#e2503f";               // the red boot-top at the waterline
-  ctx.beginPath();
-  ctx.moveTo(L * 0.92, 0);
-  ctx.quadraticCurveTo(L * 0.5, H, -L * 0.7, H * 0.88);
-  ctx.quadraticCurveTo(-L, H * 0.55, -L, 0);
-  ctx.closePath(); ctx.fill();
+  paintHull(ctx, L, H);                    // shadow + white sheer + red boot-top
   ctx.fillStyle = "#3a6f8a";               // cabin
   roundRect(ctx, -L * 0.35, -H * 0.85, L * (big ? 0.5 : 0.42), H * 1.2, 2, true, false);
   ctx.fillStyle = "#f4d77a";
@@ -299,11 +366,58 @@ function drawTargetCustomer(t) {
   ctx.beginPath(); ctx.moveTo(c.x + 3, c.y - 4); ctx.lineTo(c.x + 7, c.y - 10 - wave); ctx.stroke();
 }
 
+// The player's lancha, drawn from the same parts as the port's own boats
+// (drawBoat above): a white sheer curving to the bow, the red boot-top at the
+// waterline, a cabin or console, an outboard on the transom. What differs is
+// that the HULL takes veh.color, because the paint swatches have to read at a
+// glance — so the boot-top and the trim stay constant and carry the boat idiom
+// while the topsides carry the player's choice.
+function paintBoat(ctx, key, veh) {
+  const L = veh.w / 2, H = veh.h / 2;
+  ctx.fillStyle = "rgba(255,255,255,0.22)";           // bow wave off the stem
+  ctx.beginPath();
+  ctx.moveTo(L, 0); ctx.lineTo(L - 5, -H - 3); ctx.lineTo(L + 5, 0); ctx.lineTo(L - 5, H + 3);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = veh.color;                          // topsides
+  ctx.beginPath();
+  ctx.moveTo(L, 0);
+  ctx.quadraticCurveTo(L * 0.2, -H, -L + 2, -H + 1);
+  ctx.lineTo(-L, -H + 1); ctx.lineTo(-L, H - 1); ctx.lineTo(-L + 2, H - 1);
+  ctx.quadraticCurveTo(L * 0.2, H, L, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#e2503f";                          // the boot-top, always red
+  ctx.beginPath();
+  ctx.moveTo(L * 0.94, 0);
+  ctx.quadraticCurveTo(L * 0.2, H, -L + 2, H - 1);
+  ctx.lineTo(-L, H - 1); ctx.lineTo(-L, H - 3);
+  ctx.quadraticCurveTo(L * 0.2, H - 2.5, L * 0.94, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.5)";            // the sheer highlight
+  ctx.fillRect(-L + 3, -H + 1.5, veh.w - 7, 1);
+  if (key === "deslizador") {
+    ctx.fillStyle = veh.roof;                         // low wraparound screen
+    ctx.beginPath();
+    ctx.moveTo(L * 0.34, -H + 2); ctx.lineTo(L * 0.06, -H + 2);
+    ctx.lineTo(L * 0.06, H - 2); ctx.lineTo(L * 0.34, H - 2);
+    ctx.closePath(); ctx.fill();
+  } else {
+    ctx.fillStyle = veh.roof;                         // console / cabin
+    roundRect(ctx, -L * 0.2, -H + 2, veh.w * (key === "panga" ? 0.26 : 0.3), veh.h - 4, 2, true, false);
+  }
+  ctx.strokeStyle = "#8a5f33";                        // the outboard on her transom
+  ctx.lineWidth = 1.8; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-L + 1, 0); ctx.lineTo(-L - 3.5, 0); ctx.stroke();
+  ctx.fillStyle = "#26222c";
+  ctx.beginPath(); ctx.arc(-L - 4, 0, 1.8, 0, Math.PI * 2); ctx.fill();
+}
+
 // Vehicle sprite painter, reused by the in-game player draw and the UI
 // vehicle preview (StageSelect). Draws centered at (0,0) facing +x.
 function paintVehicle(g, key, veh) {
   const ctx = g;
-  if (veh.kind === "bike") {
+  if (veh.kind === "boat") {
+    paintBoat(ctx, key, veh);
+  } else if (veh.kind === "bike") {
     // two-wheeler: wheels, frame, rider with helmet
     ctx.fillStyle = "#26222c";
     ctx.beginPath(); ctx.ellipse(-veh.w/2 + 3, 0, 3.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
@@ -489,14 +603,49 @@ function drawTurnWind(p, veh, t) {
   ctx.restore();
 }
 
+// The player's wake: a widening V astern, longer and brighter the faster she
+// runs. It replaces the wind swirls on the water — swirls read as air whipping
+// past a kart, and the thing a boat actually leaves behind is her wash. Drawn
+// in WORLD space (before the body's rotate) so it trails her heading.
+function drawWake(p, veh) {
+  const sp = Math.min(1, (p.speed || 0) / 260);
+  if (sp < 0.08) return;
+  const L = veh.w / 2, spread = veh.h * (0.7 + sp * 1.1), len = 14 + sp * 46;
+  ctx.save();
+  ctx.translate(p.x, p.y); ctx.rotate(p.a);
+  ctx.fillStyle = `rgba(255,255,255,${(0.10 + sp * 0.22).toFixed(3)})`;
+  ctx.beginPath();
+  ctx.moveTo(-L, -veh.h * 0.4);
+  ctx.lineTo(-L - len, -spread);
+  ctx.lineTo(-L - len, spread);
+  ctx.lineTo(-L, veh.h * 0.4);
+  ctx.closePath(); ctx.fill();
+  // the churn right at the transom, where the outboard is actually working
+  ctx.fillStyle = `rgba(255,255,255,${(0.18 + sp * 0.3).toFixed(3)})`;
+  const ph = lastT * 0.012;
+  for (let i = 0; i < 4; i++) {
+    const d = 3 + i * 5 + (ph % 5);
+    ctx.beginPath();
+    ctx.arc(-L - d, Math.sin(ph + i * 1.7) * veh.h * 0.3, 2.2 - i * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawPlayer(p, veh) {
   const lift = (state.elev || 0) * 7;   // the barro avenue rides ~1 m up
+  const afloat = veh.medium === "water";
   ctx.save();
-  drawTurnWind(p, veh, lastT);
+  if (afloat) drawWake(p, veh);
+  else drawTurnWind(p, veh, lastT);
   // ground shadow — the body's own silhouette, dropped further behind and
-  // faded as the car climbs the ramp
-  ctx.save(); ctx.translate(p.x + 4 + lift * 0.6, p.y + 6 + lift); ctx.rotate(p.a);
-  ctx.fillStyle = `rgba(0,0,0,${(0.35 - lift * 0.02).toFixed(3)})`;
+  // faded as the car climbs the ramp. A HULL SITS IN THE WATER, so hers is
+  // tucked almost underneath and much softer: the same offset that reads as a
+  // car above tarmac reads as a boat flying above the sea.
+  const sx = afloat ? 1.5 : 4 + lift * 0.6, sy = afloat ? 2 : 6 + lift;
+  ctx.save(); ctx.translate(p.x + sx, p.y + sy); ctx.rotate(p.a);
+  ctx.fillStyle = afloat ? "rgba(12,40,58,0.28)"
+    : `rgba(0,0,0,${(0.35 - lift * 0.02).toFixed(3)})`;
   traceVehicleSilhouette(ctx, state.vehicleKey, veh); ctx.fill(); ctx.restore();
   ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
   paintVehicle(ctx, state.vehicleKey, veh);
@@ -515,4 +664,4 @@ function drawPlayerCarrying(p, veh) {
   ctx.restore();
 }
 
-export { drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintVehicle };
+export { drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle };

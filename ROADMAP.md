@@ -31,30 +31,59 @@ zarpar automáticamente al tocar el muelle sería una trampa.
 
 ### 1. El canal se lee en el agua — boyas + corriente
 
-- [ ] **Boyas rojas y verdes** por toda la ruta, rojo a babor y verde a
+- [x] **Boyas rojas y verdes** por toda la ruta, rojo a babor y verde a
       estribor, cada ~300 px y más juntas en las curvas. Se derivan de la
       polilínea de la lancha EN EL CLIENTE (no hacen falta datos nuevos: la ruta
       ya está en `manifest.ferries[].route`), cabecean, y de noche parpadean.
-- [ ] **Corriente**: el agua DENTRO del canal se dibuja más calma y un tono más
+- [x] **Redibujadas en planta** (2026-08-04): estaban dibujadas de PERFIL —
+      un mástil y una lámpara subiendo por la pantalla— dentro de un juego
+      cenital, que es por lo que se leían como un asset ajeno. Ahora llevan la
+      sombra, el anillo de espuma y el borde oscuro del resto del agua, y el
+      tope dice la forma además del color (cuadro a babor, círculo a estribor).
+- [x] **Corriente**: el agua DENTRO del canal se dibuja más calma y un tono más
       clara, con estelas corriendo a lo largo de la ruta. El canal se lee de
       cerca (boyas) y de lejos (agua).
-- [ ] Nada de flecha en el HUD: el estero son 7 km de agua abierta y la
+- [x] Nada de flecha en el HUD: el estero son 7 km de agua abierta y la
       navegación tiene que ser diegética.
 
-### 2. Los obstáculos — tres, cada uno con su conducta
+### 2. Los obstáculos — cada uno con su conducta
 
-- [ ] **Pangas de pescadores** — fondeadas o a la deriva lenta, con NPC pescador
-      a bordo (tipo `fisher` en `npcTypes.json`, movimiento `stationary`).
-      Golpe = frenón y **un punto de daño**.
-- [ ] **Bancos de peces** — cardumen que se mueve bajo el agua. NO son daño:
-      cruzar el centro da monedas. Son la razón para salirse de la línea.
-- [ ] **Hordas de gaviotas** — bandada que cruza en diagonal y tapa la vista un
-      instante. Presión visual, sin golpe.
-- [ ] **Raíces de mangle** semisumergidas pegadas a la orilla: no se ven hasta
-      estar encima, y son lo que cobra cortar la curva por dentro. **Un punto de
-      daño.**
-- [ ] **Tres golpes y se hunde**: vuelta al muelle de salida. En Recorrer el
-      golpe sólo cuesta tiempo.
+- [x] **Pangas de pescadores** con NPC pescador a bordo (tipo `fisher` en
+      `npcTypes.json`, movimiento `stationary`). Golpe = empujón y **un punto de
+      daño**. Se **mueven** cruzando el canal como la lancha del balneario: un
+      obstáculo fondeado se aprende una vez, uno que trabaja hay que leerlo.
+- [x] Una sola panga en todo el puerto: se sacó el casco de `drawBoat` a
+      `traceHull`/`paintHull` y el estero dejó de tener su propio bote dibujado
+      aparte.
+- [x] **Bancos de peces** — cardumen bajo el agua. NO son daño: son la razón
+      para salirse de la línea.
+- [x] **Hordas de gaviotas** — tapan la vista un instante. `state.gullBlind`
+      llevaba desde que se escribió sin que NADIE lo dibujara; ahora se ve.
+- [x] **Raíces de mangle** pegadas a la orilla: cobran cortar la curva por
+      dentro. **Un punto de daño.**
+- [x] **Remolinos en toda travesía**, no sólo en tormenta — era el único
+      obstáculo con un verbo distinto (jala) y faltaba del nivel normal. Ahora
+      además TUERCE el rumbo: `_crossing.spin` se calculaba y nadie lo leía.
+- [x] **Tres golpes y se hunde**: vuelta a la última boya-compuerta. En Recorrer
+      el golpe sólo cuesta tiempo.
+
+### 2b. Se maneja la lancha (2026-08-04)
+
+- [x] **La lancha es un VEHÍCULO**, no una plataforma con el carro encima:
+      `medium: "water"` en `vehicles.js` y el colisionador se invierte — el agua
+      es el suelo y todo lo demás es pared. Tres cascos comprables (Panga de
+      trabajo gratis, Lancha taxi ₡600, Deslizador ₡1400) con los mismos
+      swatches de pintura que los carros.
+- [x] **Se acabó el riel.** `crossing.js` dejó de manejar el bote: ahora
+      `projectToRoute` recupera dónde va uno sobre la ruta, y de ahí salen el
+      avance, las compuertas, la meta y el "vas al revés".
+- [x] **Compuertas cronometradas**: cada 4 pares de boyas es una compuerta —
+      +6 s y punto de control. No costó geometría nueva, las boyas ya venían de
+      a dos.
+- [x] **EL NIVEL SE PODÍA PERDER PERO NO GANAR.** `endCrossing("landed")`
+      escribía `_crossing.done` y **nadie lo leía**: el único `state.won` del
+      juego estaba en `delivery.js` y s8 no tiene entregas. Llegar a Pitahaya y
+      hundirse eran el mismo final. Arreglado, con récord de tiempo y de peces.
 
 ### 3. El manglar: el estero deja de tener playa
 
@@ -70,9 +99,14 @@ zarpar automáticamente al tocar el muelle sería una trampa.
 ### 4. Entrada de menú
 
 - [ ] **Sección de Minijuegos/Niveles** en el menú principal, con su pantalla de
-      selección; por ahora *Travesía del Estero*.
-- [ ] Copy en `src/i18n/<lang>.json` — nada de texto suelto en JSX.
-- [ ] Récords (mejor tiempo, peces) en `progress.js`, junto a los de etapas.
+      selección; por ahora *Travesía del Estero*. (Sigue pendiente: hoy se entra
+      por el carrusel de Historia, en el puesto 8.)
+- [x] Copy en `src/i18n/<lang>.json` — nada de texto suelto en JSX. Incluye el
+      `s8` que le faltaba a `stages.json`: en inglés se veía el brief en
+      español.
+- [x] Récords (mejor tiempo, peces) en `progress.js`, junto a los de etapas, y
+      mostrados en la pantalla de resultados — que además deja de reportar
+      "0/0 entregas" y "×1 combo" después de cruzar 7 km de estero.
 
 ## ✅ Parcelas diagonales + porterías centradas (2026-07-29)
 

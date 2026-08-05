@@ -1,33 +1,127 @@
 // Game-mode starts (story / arcade / explore) and world setters.
 import { WORLD2D as W } from "../world2d/index.js";
-import { state } from "./state.js";
-import { VEHICLES } from "./vehicles.js";
+import { state, pushFloat } from "./state.js";
+import { VEHICLES, vehicleMedium } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
-import { ferries, resetFerries } from "./ferries.js";
+import { ferries, resetFerries, routePoint } from "./ferries.js";
 import { startCrossing } from "./crossing.js";
 import { setDayCycle } from "./daynight.js";
 import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
-import { economy } from "./economy.js";
+import { economy, FREE_VEHICLES, VEHICLE_PRICES } from "./economy.js";
 import { t, stageBrief } from "../i18n/index.js";
 import { analytics } from "../monetize/analytics.js";
 import { resetEditorTriggers } from "./editorGameplay.js";
 import { applyOwnedShopEffects, consumeEditorBoosts } from "./editorContent.js";
 
-// Resolve the run vehicle: enforce ownership (fall back to scooter) and apply
-// the equipped paint by cloning — paintVehicle reads veh.color.
-function resolveVehicle(key) {
-  const k = economy.ownsVehicle(key) ? key : "scooter";
+// Resolve the run vehicle: enforce ownership and apply the equipped paint by
+// cloning — paintVehicle reads veh.color.
+//
+// THE FALLBACK IS PER MEDIUM, and that is not a nicety. It used to be the bare
+// string "scooter", which is the right answer for every delivery in the game and
+// the catastrophic one for the estero: a player who has not bought a boat would
+// start the Travesía on a moped, inside a wall, in the middle of the water.
+// FREE_VEHICLES is guaranteed to hold at least one entry per medium.
+function freeVehicleFor(medium) {
+  return FREE_VEHICLES.find((k) => vehicleMedium(k) === medium)
+    || (medium === "water" ? "panga" : "scooter");
+}
+function resolveVehicle(key, medium = "land") {
+  const owned = economy.ownsVehicle(key) && vehicleMedium(key) === medium;
+  const k = owned ? key : freeVehicleFor(medium);
   const col = economy.equippedColor(k);
   const painted = col ? { ...VEHICLES[k], color: col.hex } : VEHICLES[k];
   return { key: k, veh: applyOwnedShopEffects(k, painted, state.progress) };
+}
+//: the medium a run demands. A crossing stage is sailed; everything else driven.
+export function stageMedium(stg) {
+  return stg?.kind === "crossing" ? "water" : "land";
+}
+
+//: how far along the route the player's boat starts.
+//: NOT at the berth cell itself: the berth is the SHORELINE — the last water
+//: cell before the sand, chosen by the build so a ferry could lie alongside —
+//: so starting exactly on it puts half the hull in a wall and the solver spends
+//: the opening second shoving her off the beach. A little way out is clear
+//: water on a line the build already proved navigable.
+const START_OUT_PX = 70;
+
+/** The player's pose on the start line of a crossing, or null if there is no
+ *  route to start on.
+ *
+ *  NULL IS A REAL ANSWER, not a defensive habit. A lancha only reaches the
+ *  manifest if the build's water flood found a navigable line between her two
+ *  ends; when it does not, `place_lanchas` warns and emits no ferry at all. So
+ *  a crossing stage can legitimately ship pointing at a boat that is not there,
+ *  and reading `.x` off the undefined it resolves to threw a TypeError inside
+ *  `startStage` — which is the freeze-shaped failure this codebase keeps
+ *  getting bitten by, from a world change nobody would think to re-test the UI
+ *  against. */
+function startAtBerth(f) {
+  if (!f || !f.pts || f.pts.length < 2) return null;
+  const q = routePoint(f, START_OUT_PX);
+  return { x: q.x, y: q.y, a: q.a };
+}
+
+// ---- Recorrer: taking the lancha -------------------------------------------
+// In a stage the crossing IS the level, so the boat is what you picked in the
+// menu. In Recorrer you arrive by road, and the muelle is a place where the
+// road runs out — so the swap happens there, in the world, rather than in a
+// screen. Park on the pier, and you get into your own lancha; land at Pitahaya,
+// and you get your car back. That is why the car key is STASHED rather than
+// re-derived: a player who drove out in a bought pickup must not come home in
+// the free scooter.
+export function takeTheLancha(ferry) {
+  if (!ferry) return false;
+  state.landVehicleKey = state.vehicleKey;
+  const rv = resolveVehicle(bestOwnedBoat(), "water");
+  state.vehicleKey = rv.key; state.veh = rv.veh;
+  const q = startAtBerth(ferry);
+  state.p.x = q.x; state.p.y = q.y; state.p.a = q.a;
+  state.p.vx = 0; state.p.vy = 0; state.p.speed = 0; state.p.drift = 0;
+  pushFloatSafe(t("crossing.take"));
+  startCrossing(ferry, { level: false });
+  return true;
+}
+
+/** Back onto the road at whichever shore she was left at. */
+export function leaveTheLancha() {
+  const key = state.landVehicleKey || "scooter";
+  const rv = resolveVehicle(key, "land");
+  state.vehicleKey = rv.key; state.veh = rv.veh;
+  state.landVehicleKey = null;
+  // The apron at either end is stamped ROAD, so the nearest drivable cell IS
+  // the ramp the build paved — no separate landing point has to be authored.
+  const spot = W.reachablePointNear(state.p.x, state.p.y, 320);
+  state.p.x = spot.x; state.p.y = spot.y;
+  state.p.vx = 0; state.p.vy = 0; state.p.speed = 0; state.p.drift = 0;
+}
+
+//: the best boat the player actually owns. There is no water slot in the
+//: picker for Recorrer — you did not come here to choose a hull, you came here
+//: by road — so "your lancha" is the most expensive one you have bought, which
+//: is the one you would have picked.
+function bestOwnedBoat() {
+  const boats = Object.keys(VEHICLES)
+    .filter((k) => vehicleMedium(k) === "water" && economy.ownsVehicle(k))
+    .sort((a, b) => (VEHICLE_PRICES[b] || 0) - (VEHICLE_PRICES[a] || 0));
+  return boats[0] || "panga";
+}
+
+function pushFloatSafe(text) {
+  pushFloat(state.p.x, state.p.y - 44, text, "#9fd7ef");
 }
 // Player start beside a kiosk: use the build-authored `spawn` (snapped to the
 // nearest drivable street), never the kiosk's beach-facing icon position — that
 // dropped the car onto the sand beside sand kiosks.
 function spawnAtKiosk(k) {
-  const sp = k && k.spawn;
+  // NULL IS REACHABLE. A crossing stage carries `kiosks: []`, so if its ferry
+  // fails to resolve the fallback path arrives here with `landmarkById(undefined)`
+  // — and the old `{ x: k.x - 60 }` threw a TypeError out of `startStage`
+  // itself, which is the freeze-shaped failure this codebase keeps meeting.
+  if (!k) return null;
+  const sp = k.spawn;
   return sp ? { x: sp[0], y: sp[1] } : { x: k.x - 60, y: k.y };
 }
 function editorPlayer(mode) {
@@ -79,7 +173,7 @@ export function startStage(stageIdx, vehicleKey) {
   state.timeLeft = stg.timeLimit;
   state.stageDeliveries = 0;
   state.stageTarget = stg.targetDeliveries;
-  const rv = resolveVehicle(authoredVehicle("story", vehicleKey));
+  const rv = resolveVehicle(authoredVehicle("story", vehicleKey), stageMedium(stg));
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
@@ -88,10 +182,11 @@ export function startStage(stageIdx, vehicleKey) {
   state.floats = []; state.particles = []; state.arcadeCoins = [];
   state.over = false; state.won = false; state.running = true; state.paused = false;
   state.usedAdContinue = false;
-  // A CROSSING STAGE STARTS ABOARD. There is no kiosk to spawn beside and no
-  // delivery to make: the level is the estero, so the player begins parked on
-  // the lancha's deck with her already under way, under level rules (one
-  // direction, three knocks and she swamps).
+  // A CROSSING STAGE STARTS AT THE BERTH, AS THE BOAT. There is no kiosk to
+  // spawn beside and no delivery to make: the level is the estero, and the
+  // player IS the lancha — a water-medium vehicle out of the picker, not a car
+  // parked on somebody else's deck. The berth and the heading still come from
+  // the world's ferry record, because that is where the build put the muelle.
   const crossingFerry = stg.kind === "crossing"
     ? ferries().find((f) => f.id === stg.ferry) : null;
   let sp;
@@ -100,9 +195,12 @@ export function startStage(stageIdx, vehicleKey) {
     sp = authoredSpawn("story", q);
   } else {
     // place player near first kiosk of stage (on its street-snapped spawn)
-    const k = W.landmarkById(stg.kiosks[0]);
+    const k = W.landmarkById((stg.kiosks || [])[0]);
     sp = authoredSpawn("story", spawnAtKiosk(k));
   }
+  // Last resort: a stage that resolved neither a boat nor a kiosk still has to
+  // put the player SOMEWHERE, because everything below dereferences the pose.
+  if (!sp) sp = { x: state.p?.x || W.W * 0.5, y: state.p?.y || W.H * 0.5, a: 0 };
   state.p = { x: sp.x, y: sp.y, a: sp.a || 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   // mutate cam, never replace: the renderer publishes zoom/vw/vh on it
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
@@ -118,11 +216,26 @@ export function startStage(stageIdx, vehicleKey) {
   resetFerries();   // both ferries home and available again every run
   resetEditorTriggers();
   if (crossingFerry) {
-    // She is already sailing: the level is the passage, not the wait for it.
-    crossingFerry.phase = "out";
-    state.p.x = crossingFerry.x; state.p.y = crossingFerry.y; state.p.a = crossingFerry.a;
-    state.cam.x = state.p.x; state.cam.y = state.p.y;
+    // THE LANCHA HERSELF IS SENT AWAY. She used to be the thing you rode, and
+    // leaving her sitting on the start line would put a 86x34 px hull on top of
+    // the player's own boat — she is scenery at the far shore now, where the
+    // real one waits between passages.
+    crossingFerry.phase = "docked";
+    crossingFerry.far = true;
+    crossingFerry.s = crossingFerry.total;   // advanceFerries re-poses her there
+    const nudge = startAtBerth(crossingFerry);
+    if (nudge) {
+      state.p.x = nudge.x; state.p.y = nudge.y; state.p.a = nudge.a;
+      state.cam.x = state.p.x; state.cam.y = state.p.y;
+    }
     startCrossing(crossingFerry, { level: true });
+  } else if (stg.kind === "crossing") {
+    // The stage says "sail to Pitahaya" and the world shipped no boat to sail:
+    // the build could not find navigable water between the two ends and warned
+    // instead of emitting a ferry. Say so, once, where somebody will see it —
+    // and leave the run standing rather than throwing out of the mode start.
+    console.warn(`[crossing] stage ${stg.id} wants ferry '${stg.ferry}', which this world does not contain`);
+    state.storyTip = stageBrief(stg);
   } else {
     pickCustomer();
   }
@@ -247,6 +360,8 @@ export function startTutorial(opts = {}) {
 
 export function setWeather(w) { state.weather = w; }
 export function setVehicle(k) {
-  const rv = resolveVehicle(k);
+  // Honour the medium the KEY asks for, not the run's: this is the picker and
+  // the console setter, and both are choosing a vehicle rather than a stage.
+  const rv = resolveVehicle(k, vehicleMedium(k));
   state.vehicleKey = rv.key; state.veh = rv.veh;
 }

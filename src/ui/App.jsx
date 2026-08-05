@@ -270,7 +270,10 @@ export default function App() {
           {screen === "title" && <TitleScreen editorConfig={WORLD.EDITOR_UI?.screens?.title} onPickMode={pickMode} onSettings={() => openSettings("title")} onSupporters={() => setScreen("supporters")} onShop={() => { setShopCtx(null); setScreen("shop"); }} />}
           {screen === "supporters" && <SupportersScreen onBack={() => setScreen("title")} />}
           {screen === "shop" && <ShopScreen ctx={shopCtx} onBack={() => { setShopCtx(null); setScreen("title"); }} />}
-          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} onShop={(ctx) => { setShopCtx(ctx || null); setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
+          {/* The medium the pending run needs: a crossing stage is sailed, so
+              the picker must offer boats and only boats. Every other mode is
+              driven — Recorrer swaps to a boat at the muelle, not in the menu. */}
+          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} medium={briefStage?.kind === "crossing" ? "water" : "land"} onShop={(ctx) => { setShopCtx(ctx || null); setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
           {screen === "stagepick" && <StageSelect onStart={pickStage} onBack={() => setScreen("title")} />}
           {screen === "brief" && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
           {screen === "modebrief" && <ModeBrief mode={pendingMode} onGo={beginMode} />}

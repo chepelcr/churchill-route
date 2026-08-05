@@ -15,7 +15,8 @@
 //   * las boyas — red to port, green to starboard, bobbing, blinking at night.
 //     That is what you steer by up close, and what makes a bend legible before
 //     you are in it.
-import { ctx } from "./gfx.js";
+import { ctx, hash01, roundRect } from "./gfx.js";
+import { drawFisher, paintHull } from "./entities.js";
 import { state } from "../../game/state.js";
 import { LANE_HW, channels, crossingState, esteroThings } from "../../game/crossing.js";
 
@@ -57,50 +58,103 @@ function drawCurrent(channel, view, t) {
   ctx.restore();
 }
 
+// LAS BOYAS, FROM ABOVE. This buoy used to be drawn in ELEVATION — a float, a
+// mast climbing up the screen, a lamp on top of it — inside a game where
+// everything else on this water is seen looking straight down, and that is why
+// it read as somebody else's asset floating next to our boats. From directly
+// above, a channel buoy is a coloured disc in a ring of foam, with its radar
+// reflector crossed over the top, leaning as the current takes it.
+//
+// The two are not only different COLOURS, because colour alone is the one thing
+// a player may not be able to tell apart: port is a CAN (flat top — a square
+// topmark) and starboard a NUN (conical — a round one), the shapes they really
+// carry. Red to port and green to starboard on the outbound passage, which is
+// real navigation and the thing this level asks you to read.
 function drawBuoy(b, view, t) {
   if (!inView(b.x, b.y, view, 24)) return;
-  const bob = Math.sin(t * 1.6 + b.ph) * 1.6;
-  const y = b.y + bob;
-  ctx.fillStyle = "rgba(0,0,0,0.20)";
-  ctx.beginPath(); ctx.ellipse(b.x + 2, b.y + 5, 7, 2.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = b.red ? RED : GREEN;                    // the float
-  ctx.beginPath(); ctx.ellipse(b.x, y, 6, 5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.75)";               // waterline band
-  ctx.fillRect(b.x - 6, y - 1, 12, 1.6);
-  ctx.fillStyle = b.red ? "#f0806f" : "#6fd097";          // the mast
-  ctx.fillRect(b.x - 1, y - 13, 2, 8);
-  // at night they blink, out of phase with each other
+  const swell = Math.sin(t * 1.6 + b.ph);
+  // she does not BOUNCE UP THE SCREEN — seen from above, the swell shows as the
+  // body sliding inside its own ring of foam, and as the ring breathing.
+  const lx = Math.cos(t * 0.7 + b.ph) * 2.2;
+  const ly = Math.sin(t * 0.5 + b.ph * 1.7) * 1.4;
+  const x = b.x + lx, y = b.y + ly;
+  const R = 6 + swell * 0.25;
+  const col = b.red ? RED : GREEN;
+  const rim = b.red ? "#a8341f" : "#25764c";
+  const pale = b.red ? "#f4a294" : "#9fdcbb";
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.20)";                     // her shadow on the water
+  ctx.beginPath(); ctx.ellipse(b.x + 2, b.y + 5, R + 0.5, (R + 0.5) * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.40)";             // foam at the waterline
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.ellipse(b.x, b.y + 1, R + 3.4 + swell * 0.9, (R + 3.4) * 0.58, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = rim;                                    // the can, rim first
+  ctx.beginPath(); ctx.arc(x, y, R + 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.45)";               // where the sun lands on her
+  ctx.beginPath();
+  ctx.ellipse(x - R * 0.36, y - R * 0.42, R * 0.34, R * 0.22, -0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";              // the radar reflector's plates
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(x - R * 0.95, y); ctx.lineTo(x - R * 0.42, y);
+  ctx.moveTo(x + R * 0.42, y); ctx.lineTo(x + R * 0.95, y);
+  ctx.moveTo(x, y - R * 0.95); ctx.lineTo(x, y - R * 0.42);
+  ctx.moveTo(x, y + R * 0.42); ctx.lineTo(x, y + R * 0.95);
+  ctx.stroke();
+  ctx.strokeStyle = pale;                                 // el tope: square to port…
+  ctx.lineWidth = 1.2;
+  if (b.red) ctx.strokeRect(x - R * 0.4, y - R * 0.4, R * 0.8, R * 0.8);
+  else {                                                  // …conical to starboard
+    ctx.beginPath(); ctx.arc(x, y, R * 0.44, 0, Math.PI * 2); ctx.stroke();
+  }
+  // at night they blink, out of phase with each other — the lantern is the one
+  // thing you see of her, so it gets a halo on the water.
   const lit = state.weather === "night" && Math.sin(t * 2.4 + b.ph * 3) > 0.2;
-  ctx.fillStyle = lit ? (b.red ? "#ff9d8a" : "#8ff0b6") : "rgba(255,255,255,0.5)";
-  ctx.beginPath(); ctx.arc(b.x, y - 14, lit ? 2.6 : 1.5, 0, Math.PI * 2); ctx.fill();
+  if (lit) {
+    ctx.fillStyle = b.red ? "rgba(255,157,138,0.26)" : "rgba(143,240,182,0.26)";
+    ctx.beginPath(); ctx.arc(x, y, R + 7, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = lit ? (b.red ? "#ff9d8a" : "#8ff0b6") : "rgba(255,255,255,0.55)";
+  ctx.beginPath(); ctx.arc(x, y, lit ? 2.6 : 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }
 
-// A moored panga with its fisher: she does NOT move out of your way, which is
-// the whole reason she is an obstacle and not scenery.
+// A panga working the channel, with her fisher aboard. She is drawn from
+// `paintHull` — the SAME hull the port's own boats are drawn from — because she
+// is the same boat: a panga you meet in the estero and a panga you meet off the
+// Paseo have no business looking like different objects. What she does not have
+// is a wake: she is working, not travelling, and she does NOT move out of your
+// way, which is the whole reason she is an obstacle and not scenery.
 function drawPanga(e, view, t) {
   const bob = Math.sin(t * 1.2 + e.ph) * 1.2;
+  const L = 17, H = 6;
   ctx.save();
   ctx.translate(e.x, e.y + bob);
   ctx.rotate(e.a + Math.sin(t * 0.6 + e.ph) * 0.06);
-  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(-17, -5, 34, 12);
-  ctx.fillStyle = "#e6e2d6";                                    // hull
-  ctx.beginPath();
-  ctx.moveTo(19, 0); ctx.lineTo(9, -7); ctx.lineTo(-16, -6);
-  ctx.lineTo(-16, 6); ctx.lineTo(9, 7);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#3a6f8a"; ctx.fillRect(-14, -4, 26, 2);      // gunwale stripe
-  ctx.fillStyle = "#8a5f33"; ctx.fillRect(-8, -3, 7, 6);        // thwart
+  paintHull(ctx, L, H);
+  ctx.fillStyle = "#3a6f8a";                                // the console, forward
+  roundRect(ctx, L * 0.24, -H * 0.55, L * 0.3, H * 1.1, 1.5, true, false);
+  ctx.fillStyle = "#8a5f33";                                // the thwart he sits on
+  ctx.fillRect(-L * 0.42, -H * 0.72, 2.6, H * 1.44);
+  ctx.strokeStyle = "#8a5f33";                              // the outboard, on her transom
+  ctx.lineWidth = 1.6; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-L + 1, 0); ctx.lineTo(-L - 3.5, 0); ctx.stroke();
+  ctx.fillStyle = "#26222c";
+  ctx.beginPath(); ctx.arc(-L - 4, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+  // El pescador rides HER FRAME — after the hull, still inside her transform,
+  // so he leans and bobs with her instead of hovering over the spot she was.
+  // His hue comes off the entity's own phase (hash01, never Math.random: the
+  // frame has to be the same frame every time it is drawn).
+  drawFisher({
+    x: -L * 0.36, y: 0,
+    hue: Math.round(hash01(e.ph * 12.9898 + 4.1) * 320),
+    ph: t * 1.4 + e.ph,
+  });
   ctx.restore();
-  // el pescador, with his line in the water
-  const fx = e.x - Math.cos(e.a) * 4, fy = e.y - Math.sin(e.a) * 4 + bob;
-  ctx.fillStyle = "#f4d77a"; ctx.fillRect(fx - 2, fy - 8, 4, 6);
-  ctx.fillStyle = "#e8b98a";
-  ctx.beginPath(); ctx.arc(fx, fy - 10, 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(fx + 2, fy - 9);
-  ctx.lineTo(fx + 13, fy + 6 + Math.sin(t * 2 + e.ph) * 1.5);
-  ctx.stroke();
 }
 
 // A banco de peces: a shoal under the surface. Silver flashes, no wake.
@@ -167,7 +221,11 @@ function drawRoots(e, view, t) {
 function drawRemolino(e, view, t) {
   ctx.save();
   ctx.translate(e.x, e.y);
-  ctx.rotate(e.ph + t * (e.pull > 0 ? 0.9 : -0.9));
+  // WHICH WAY she turns is the information you need, because that is the side
+  // she will put you on. `pull` is the sim's, and is not one of the fields a
+  // drawer may count on, so the sign falls back to the entity's own phase.
+  const spin = e.pull !== undefined ? Math.sign(e.pull) || 1 : (hash01(e.ph) < 0.5 ? -1 : 1);
+  ctx.rotate(e.ph + t * 0.9 * spin);
   ctx.fillStyle = "rgba(18,34,44,0.34)";
   ctx.beginPath(); ctx.arc(0, 0, e.r * 0.42, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = "rgba(255,255,255,0.42)";

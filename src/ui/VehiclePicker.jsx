@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Game } from "../game/index.js";
-import { VEHICLES } from "../game/vehicles.js";
+import { VEHICLES, vehicleMedium } from "../game/vehicles.js";
 import { economy, VEHICLE_PRICES, BOOSTS, COLORS } from "../game/economy.js";
 import { sfx } from "../game/audio.js";
 import { useT } from "../i18n/index.js";
@@ -14,9 +14,15 @@ import Icon from "./Icon.jsx";
 // Two scale-to-fit cards side by side: the vehicle carousel and an options
 // card (paint colours you own + boosts to arm for this run). Locked vehicles
 // deep-link to the Shop; boosts are consumed at mode start by armRun.
-export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false }) {
+export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false, medium = "land" }) {
   const t = useT();
-  const startKey = economy.ownsVehicle(Game.state.vehicleKey) ? Game.state.vehicleKey : "scooter";
+  // THE CAROUSEL IS SCOPED TO THE RUN'S MEDIUM. Offering a scooter for the
+  // Travesía is not a cosmetic mistake — modes.js would refuse it and swap in
+  // the panga, so the player would pick one boat and start in another.
+  const inMedium = (k) => vehicleMedium(k) === medium;
+  const fallbackKey = medium === "water" ? "panga" : "scooter";
+  const startKey = economy.ownsVehicle(Game.state.vehicleKey) && inMedium(Game.state.vehicleKey)
+    ? Game.state.vehicleKey : fallbackKey;
   const [veh, setVeh] = useState(startKey);
   const [armed, setArmed] = useState({});
   const [, bump] = useState(0);
@@ -29,7 +35,7 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false 
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const vehKeys = Object.keys(VEHICLES);
+  const vehKeys = Object.keys(VEHICLES).filter(inMedium);
   const owned = economy.ownsVehicle(veh);
   const totalBoosts = Object.keys(BOOSTS).reduce((s, id) => s + economy.boostCount(id), 0);
   const equippedCol = economy.equippedColor(veh);

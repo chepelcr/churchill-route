@@ -6,7 +6,10 @@ import { state } from "./state.js";
 import { saveProgress } from "./progress.js";
 import { VEHICLES } from "./vehicles.js";
 
-export const FREE_VEHICLES = ["bici", "scooter", "tuktuk"];
+// EVERY MEDIUM NEEDS A FREE ENTRY. The ownership fallback in modes.js picks the
+// first free vehicle of the medium a run requires, so a player who owns no boat
+// still gets the panga on the estero instead of a scooter in the sea.
+export const FREE_VEHICLES = ["bici", "scooter", "tuktuk", "panga"];
 
 // Earn rates — generous so the shop is reachable in a few runs. A delivery
 // pays COINS_PER_DELIVERY (+bonus for a fresh, unmelted drop); in arcade the
@@ -37,7 +40,10 @@ export const COLORS = [
   { id: "col_dorado",  name: "Dorado leyenda", hex: "#e8b53a", price: 80 },
 ];
 
-export const VEHICLE_PRICES = { cart: 350, pickup: 900, turbo: 1500 };
+export const VEHICLE_PRICES = {
+  cart: 350, pickup: 900, turbo: 1500,
+  lanchataxi: 600, deslizador: 1400,
+};
 
 // IAP coin packs (Play Billing CONSUMABLE product ids → coin amounts)
 export const COIN_PACKS = [

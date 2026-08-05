@@ -5,7 +5,7 @@ import { state } from "../../game/state.js";
 import { nearestKiosk } from "../../game/delivery.js";
 import { ensureRenderCache, roadPath } from "./cache.js";
 import { tuning } from "../../game/tuning.js";
-import { CUAD, aabbInView, ctx, flatMultiPath, flatPath, label, polyBBox } from "./gfx.js";
+import { CUAD, aabbInView, ctx, flatMultiPath, flatPath, hash01, label, polyBBox } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
 import { t as tr } from "../../i18n/index.js";
 
@@ -126,6 +126,44 @@ function drawRain(vw, vh, t) {
     const x = (i * 73 + t * 0.4) % vw, y = (i * 137 + t * 0.9) % vh;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 6, y + 10); ctx.stroke();
   }
+}
+// LA HORDA DE GAVIOTAS, from where the pilot is sitting. The flock in the
+// estero is supposed to "take the view away for a moment without touching you",
+// and until now nothing drew it: `crossing.js` set `state.gullBlind`, physics
+// decayed it, and the player never saw a bird. This is that second — a flurry
+// of wings across the CAMERA, not across the world, because these are the birds
+// that went OVER you, not birds you are looking at.
+//
+// The timer runs ~1.1s → 0, and it is read here and never written: whoever owns
+// the sim owns the clock. Wing positions come off `hash01`, never `Math.random`,
+// so the same instant of the pass draws the same frame.
+function drawGullBlind(vw, vh, t) {
+  const left = state.gullBlind || 0;
+  if (left <= 0) return;
+  const k = Math.min(1, left / 1.1);            // 1 as they cross, 0 as it clears
+  const pass = 1 - k;                            // how far through the frame they are
+  ctx.save();
+  ctx.fillStyle = `rgba(18,28,38,${(0.13 * k).toFixed(3)})`;   // the flock's shadow
+  ctx.fillRect(0, 0, vw, vh);
+  ctx.strokeStyle = `rgba(255,255,255,${(0.55 + k * 0.4).toFixed(3)})`;
+  ctx.lineCap = "round";
+  const n = 14 + Math.round(k * 12);
+  for (let i = 0; i < n; i++) {
+    const h1 = hash01(i * 12.9898 + 1.7), h2 = hash01(i * 78.233 + 4.1);
+    // they cross on a diagonal and are gone by the time the timer is
+    const p = pass + h1 * 0.6;
+    const x = (h1 * 1.3 - 0.15 + p * 0.7) * vw;
+    const y = (h2 * 1.3 - 0.2 - p * 0.45) * vh;
+    const s = 12 + h2 * 30;
+    const flap = Math.sin(t * 0.022 + i * 1.7) * s * 0.4;
+    ctx.lineWidth = 1.6 + h1 * 2.4;
+    ctx.beginPath();
+    ctx.moveTo(x - s, y + flap);
+    ctx.quadraticCurveTo(x - s * 0.42, y - s * 0.34 + flap, x, y);
+    ctx.quadraticCurveTo(x + s * 0.42, y - s * 0.34 + flap, x + s, y + flap);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 function drawNightVignette(vw, vh) {
   const g = ctx.createRadialGradient(vw/2, vh/2, vh*0.15, vw/2, vh/2, vh*0.8);
@@ -382,15 +420,50 @@ function miniRibbons(mv, roads) {
 // The crossing's own readout: hull, fish and elapsed. Screen-space, beside the
 // dial, and only while a travesía is running — the delivery HUD keeps its
 // corner, because you are still carrying a churchill.
+// A GATE COUNT AND A PROGRESS BAR ARE OPTIONAL. The crossing is becoming a
+// gated race, and its state grows `gates` / `gateIndex` / `progress` on its own
+// schedule — so each is read defensively and a field that is ABSENT draws
+// nothing at all. The card even keeps its old height until there is a bar to
+// put in it, so this is correct before and after the sim catches up.
+function crossingRace(c) {
+  const gates = Array.isArray(c.gates) ? c.gates.length
+    : Number.isFinite(c.gates) ? c.gates : null;
+  const gate = Number.isFinite(c.gateIndex) ? Math.max(0, c.gateIndex) : null;
+  const prog = Number.isFinite(c.progress) ? Math.max(0, Math.min(1, c.progress)) : null;
+  return { gates, gate, prog };
+}
+
 function drawCrossingHud(vw, vh) {
   const c = state.crossing;
   if (!c?.active) return;
-  const w = 132, h = 44, x = vw - w - 18, y = 108;
+  const { gates, gate, prog } = crossingRace(c);
+  ctx.save();
+  // the alignment is OURS: drawCompass leaves it centred, and it returns early
+  // when there is no target, so without this the card's text moved on its own.
+  ctx.textAlign = "left";
+  // THE CARD IS SIZED TO ITS CONTENTS, not to a constant. At a fixed 132 px the
+  // title and the gate counter overlapped into "ESTUARY CROSSING2" — and the
+  // number that would have made it fit in English is the wrong number in
+  // Spanish, where the same title is "TRAVESÍA DEL ESTERO", three characters
+  // longer. Measure both, then lay the card out around them.
+  const title = tr("crossing.title").toUpperCase();
+  const counter = gates !== null ? `${Math.min(gate ?? 0, gates)}/${gates} ⛵` : "";
+  ctx.font = "600 9px 'Space Mono', monospace";
+  const titleW = ctx.measureText(title).width;
+  const counterW = counter ? ctx.measureText(counter).width : 0;
+  const PAD = 10, GAP = 12;
+  const w = Math.max(132, PAD + titleW + (counter ? GAP + counterW : 0) + PAD);
+  const h = 44 + (prog !== null ? 10 : 0), x = vw - w - 18, y = 108;
   ctx.fillStyle = "rgba(12,20,26,0.72)";
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
   ctx.fillStyle = "#9fd7ef";
-  ctx.font = "600 9px 'Space Mono', monospace";
-  ctx.fillText(tr("crossing.title").toUpperCase(), x + 10, y + 15);
+  ctx.fillText(title, x + PAD, y + 15);
+  if (counter) {                           // …y por cuál boya vas
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#f4d77a";
+    ctx.fillText(counter, x + w - PAD, y + 15);
+    ctx.textAlign = "left";
+  }
   // hull: three pips, one per knock left. In Recorrer there is no damage, so
   // the pips simply do not appear.
   if (c.level) {
@@ -404,6 +477,14 @@ function drawCrossingHud(vw, vh) {
   ctx.fillText(`${c.fish} 🐟`, x + (c.level ? 58 : 12), y + 34);
   ctx.fillStyle = "#dfe7e3";
   ctx.fillText(`${c.t.toFixed(0)}s`, x + w - 34, y + 34);
+  if (prog !== null) {                     // how much estero is left, as a track
+    const bx = x + 10, by = y + h - 9, bw = w - 20;
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.beginPath(); ctx.roundRect(bx, by, bw, 4, 2); ctx.fill();
+    ctx.fillStyle = "#6fbf99";
+    ctx.beginPath(); ctx.roundRect(bx, by, Math.max(3, bw * prog), 4, 2); ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawMinimap(vw, vh, t) {
@@ -499,4 +580,4 @@ function drawMinimap(vw, vh, t) {
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
 }
 
-export { drawCompass, drawCrossingHud, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames, drawPoiTags, drawRain };
+export { drawCompass, drawCrossingHud, drawDebugGrid, drawGullBlind, drawMinimap, drawNightVignette, drawPoiNames, drawPoiTags, drawRain };

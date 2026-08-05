@@ -235,12 +235,28 @@ def _shoreline(raster, x, y):
 
 
 def place_lanchas(ctx, project_ll, nearest_cell):
-    """Berth, land and route each authored lancha; ramp both ends."""
+    """Berth, land and route each authored lancha; ramp ends without a pier."""
     for spec in LANCHA_DEFS:
-        # BOTH ENDS SNAP TO THE WATER'S EDGE. An anchor twenty metres inland
-        # puts the deck on the sand and the ramp three pixels long; the boat
-        # has to lie alongside, which means the berth is the shoreline cell.
-        berth = _shoreline(ctx.raster, *project_ll(*spec["berth"]))
+        # A named berth pier already ends in the water and already connects to
+        # the street. Otherwise the authored anchor snaps to the water's edge:
+        # an anchor twenty metres inland puts the deck on sand, while the boat
+        # has to lie alongside the shoreline.
+        berth_pier_id = spec.get("berth_pier")
+        if berth_pier_id:
+            berth_pier = next((p for p in ctx.piers if p["id"] == berth_pier_id), None)
+            if berth_pier is None:
+                warn("lancha", f"{spec['id']}: berth pier {berth_pier_id} not found")
+                continue
+            sea_end = berth_pier.get("seaEnd", "last")
+            if sea_end == "last":
+                berth = tuple(berth_pier["pts"][-2:])
+            elif sea_end == "first":
+                berth = tuple(berth_pier["pts"][:2])
+            else:
+                warn("lancha", f"{spec['id']}: berth pier {berth_pier_id} has no sea end")
+                continue
+        else:
+            berth = _shoreline(ctx.raster, *project_ll(*spec["berth"]))
         landing = _shoreline(ctx.raster, *project_ll(*spec["landing"]))
         if berth is None or landing is None:
             warn("lancha", f"{spec['id']}: berth or landing is nowhere near water")
@@ -263,8 +279,11 @@ def place_lanchas(ctx, project_ll, nearest_cell):
             "oneWay": True, "speed": int(spec.get("speed", 150)),
         })
         # Both ends need a way onto the street, and the far one needs it most:
-        # landing on a beach with no road out is a boat ride to a wall.
+        # landing on a beach with no road out is a boat ride to a wall. A berth
+        # pier is already its own ramp and connector, so only emit the landing.
         for label, (px, py) in (("berth", berth), ("landing", landing)):
+            if label == "berth" and berth_pier_id:
+                continue
             target = nearest_cell(px, py, 260)
             if not target:
                 warn("lancha", f"{spec['id']}: no street near the {label}")

@@ -8,7 +8,19 @@
 export function traceVehicleSilhouette(g, key, veh) {
   const w = veh.w, h = veh.h;
   g.beginPath();
-  if (veh.kind === "bike") {
+  if (veh.kind === "boat") {
+    // A HULL, not a box: pointed at the bow, full amidships, square at the
+    // transom. Traced with the same two-quadratic sheer the ambient pangas use
+    // (drawBoat in c2d/entities.js), so the player's boat and the port's boats
+    // cast the same silhouette. quadraticCurveTo only — Pixi shares this path.
+    g.moveTo(w / 2, 0);
+    g.quadraticCurveTo(w * 0.1, -h / 2, -w / 2 + 2, -h / 2 + 1);
+    g.lineTo(-w / 2, -h / 2 + 1);
+    g.lineTo(-w / 2, h / 2 - 1);
+    g.lineTo(-w / 2 + 2, h / 2 - 1);
+    g.quadraticCurveTo(w * 0.1, h / 2, w / 2, 0);
+    g.closePath();
+  } else if (veh.kind === "bike") {
     // slim capsule from rear wheel to front wheel (frame + rider, not the
     // full bounding box — bikes are much narrower than veh.h)
     g.roundRect(-w / 2 - 1, -5, w + 2, 10, 5);

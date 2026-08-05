@@ -26,8 +26,8 @@ import {
   paintVehicle,
 } from "./c2d/entities.js";
 import {
-  drawCompass, drawCrossingHud, drawDebugGrid, drawMinimap, drawNightVignette, drawPoiNames,
-  drawPoiTags, drawRain,
+  drawCompass, drawCrossingHud, drawDebugGrid, drawGullBlind, drawMinimap,
+  drawNightVignette, drawPoiNames, drawPoiTags, drawRain,
 } from "./c2d/hud.js";
 import { drawEditorWorld } from "./c2d/editorWorld.js";
 
@@ -200,6 +200,10 @@ function render(t) {
   ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
   if (state.weather === "storm") drawRain(vw, vh, t);
   if (state.weather === "night") drawNightVignette(vw, vh);
+  // The estero's gulls go over the CAMERA, so they belong up here with the
+  // weather and not in the world pass — a bird that crossed you is between you
+  // and everything, including the boat.
+  drawGullBlind(vw, vh, t);
 
   if (!state.attract) {
     drawMinimap(vw, vh, t);

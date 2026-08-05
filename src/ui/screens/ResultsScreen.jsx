@@ -4,7 +4,7 @@ import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { useT, stageName } from "../../i18n/index.js";
 import { ads } from "../../monetize/ads.js";
 import { economy } from "../../game/economy.js";
-import { isMvpLocked } from "../../game/progress.js";
+import { isMvpLocked, crossingRecord } from "../../game/progress.js";
 import { content } from "../../content/remote.js";
 import CoinIcon from "../CoinIcon.jsx";
 import Icon from "../Icon.jsx";
@@ -42,6 +42,13 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
     setAdBusy(false);
     if (rewarded) { economy.addCoins(s.runCoins); setDoubled(true); }
   };
+  // The Travesía reports itself: fish, gates and the clock, not deliveries.
+  const isCrossing = isStage && s.stage.kind === "crossing";
+  const cross = s.crossing || null;
+  const fish = cross ? cross.fish : 0;
+  const gatesTaken = cross ? cross.gateIndex : 0;
+  const gatesTotal = cross ? cross.gates : 0;
+  const record = isCrossing ? crossingRecord(s.stage.id) : null;
   const title = isTutorial ? t("results.tutorial")
     : isStage ? (won ? t("results.win", { n: s.stage.num }) : t("results.lose"))
     : s.mode === "arcade" && !won ? t("results.lose") : t("results.title");
@@ -53,9 +60,26 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
         {isStage && <div style={{ marginBottom: 10, color: "var(--paper)" }}>{stageName(s.stage)}</div>}
         <div className="results-stats">
         <div className="row"><span>{t("results.score")}</span><span>{s.score.toLocaleString()}</span></div>
-        <div className="row"><span>{t("results.deliveries")}</span><span>{isStage ? `${s.stageDeliveries}/${s.stageTarget}` : s.deliveries}</span></div>
-        <div className="row"><span>{t("results.perfect")}</span><span>{s.perfect}</span></div>
-        <div className="row"><span>{t("results.maxCombo")}</span><span>×{s.combo}</span></div>
+        {/* A CROSSING HAS NO DELIVERIES AND NO COMBO. Showing "0/0 entregas"
+            and "×1" after a 7 km run down the channel describes a delivery the
+            player never attempted; what they actually earned is the fish they
+            caught, the gates they held and the time it took. The records come
+            from the same save as the stage clears. */}
+        {isCrossing ? <>
+          <div className="row"><span>{t("crossing.fish")}</span><span>{fish}</span></div>
+          <div className="row"><span>{t("crossing.gate")
+            .replace("{n}", String(gatesTaken)).replace("{total}", String(gatesTotal))}</span><span /></div>
+          {record?.bestTime != null && (
+            <div className="row"><span>{t("crossing.bestTime")}</span><span>{record.bestTime}s</span></div>
+          )}
+          {record?.bestFish > 0 && (
+            <div className="row"><span>{t("crossing.bestFish")}</span><span>{record.bestFish}</span></div>
+          )}
+        </> : <>
+          <div className="row"><span>{t("results.deliveries")}</span><span>{isStage ? `${s.stageDeliveries}/${s.stageTarget}` : s.deliveries}</span></div>
+          <div className="row"><span>{t("results.perfect")}</span><span>{s.perfect}</span></div>
+          <div className="row"><span>{t("results.maxCombo")}</span><span>×{s.combo}</span></div>
+        </>}
         {!isTutorial && <div className="row"><span>{t("results.rank")}</span><span style={{ color: "var(--gold)" }}>{rank}</span></div>}
         </div>
         {!isTutorial && (s.runCoins || 0) > 0 && (

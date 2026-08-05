@@ -13,16 +13,49 @@ import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
-import { advanceFerries, carry, deckAt } from "./ferries.js";
-import {
-  advanceCrossing, advanceEstero, crossingState, endCrossing, startCrossing,
-} from "./crossing.js";
+import { advanceFerries, carry, deckAt, ferries, routePoint } from "./ferries.js";
+import { advanceCrossing, advanceEstero, crossingState } from "./crossing.js";
+import { takeTheLancha, leaveTheLancha } from "./modes.js";
 import { updateDayCycle } from "./daynight.js";
 import { updateEditorTriggers } from "./editorGameplay.js";
 import { activeEditorBoost, tickEditorBoosts } from "./editorContent.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [6]; // fallback for free (stadium) peds; rail peds cross via advancePed
+
+//: how close to the berth, and how slow, before the lancha is offered. Parking
+//: is the consent: driving PAST a muelle must never put you in a boat.
+const LANCHA_TAKE_R = 90;
+const LANCHA_TAKE_SPEED = 40;
+
+/**
+ * The Recorrer swap, both ways.
+ *
+ * Kept out of `update` proper because it is a MODE's rule rather than physics,
+ * and because both halves are one-shot: without the `landVehicleKey` guard the
+ * board test fires again on the frame after landing and puts you straight back
+ * out to sea.
+ */
+function maintainLanchaSwap(p, veh, cross) {
+  const afloatNow = veh.medium === "water";
+  if (!cross.active && !afloatNow && !state.landVehicleKey) {
+    for (const f of ferries()) {
+      if (!f.oneWay) continue;
+      const b = routePoint(f, 0);
+      if (Math.hypot(p.x - b.x, p.y - b.y) > LANCHA_TAKE_R) continue;
+      if (p.speed > LANCHA_TAKE_SPEED) {
+        state.storyTip = t("crossing.take");
+        continue;                       // rolling past is not consent
+      }
+      takeTheLancha(f);
+      return;
+    }
+    return;
+  }
+  // Ashore again: the crossing ended (landed, or she was sailed home) and the
+  // car is still stashed. `leaveTheLancha` finds the apron the build paved.
+  if (!cross.active && afloatNow && state.landVehicleKey) leaveTheLancha();
+}
 
 // ----- Polygon collision helpers ------------------------------------------
 function pointInPoly(x, y, pts) {
@@ -110,48 +143,25 @@ export function update(dt) {
   // the collider runs — otherwise the solver spends the frame pushing them out
   // of the sea the ferry just sailed them into.
   const aboard = deckAt(p.x, p.y);
-  // THE TRAVESÍA. A one-way boat casting off with somebody aboard is a level,
-  // not a ride — but only in Recorrer: in a stage or an arcade run she stays
-  // tied up, so the delivery game never turns into a boat game by accident.
+  // THE TWO GULF FERRIES ARE UNTOUCHED. Park on the Paquera or Playa Naranjo
+  // deck, wait, and she still sails you out and home with the car on board —
+  // that Easter egg is the reason `deckAt`/`carry` exist and none of the race
+  // below has anything to do with it.
   const cross = crossingState();
-  // ARMED BY HER PHASE, not by `justSailed`: that flag is set by advanceFerries
-  // (below) and consumed by the message loop in the same frame, so a check up
-  // here never saw it true. Under way + somebody aboard IS the crossing.
-  // ARCADE MAY SAIL TOO. The three minutes are yours to spend, and spending
-  // them on the estero is a choice worth having; only Historia's delivery
-  // stages keep her tied up, so a stage's clock is never eaten by a boat.
-  if (aboard?.oneWay && aboard.phase !== "docked" && !cross.active
-      && (state.mode !== "story" || state.stage?.kind === "crossing")) {
-    startCrossing(aboard, { level: false });
-  }
-  if (cross.active) {
-    advanceCrossing(dt, {
-      steer: input.right - input.left,
-      throttle: input.up - input.down * 0.6,
-    });
-  }
-  advanceFerries(dt, aboard, cross.active ? cross.ferry.id : null);
+  advanceFerries(dt, aboard, null);
   if (aboard) carry(aboard, p);
-  if (cross.active) {
-    // The lateral offset is the boat's, so the car rides it: she crabs across
-    // the channel and the deck takes the player with her.
-    const f = cross.ferry;
-    const nx = -Math.sin(f.a) * cross.offset, ny = Math.cos(f.a) * cross.offset;
-    p.x += nx - (cross.lastNx || 0);
-    p.y += ny - (cross.lastNy || 0);
-    f.x += nx - (cross.lastNx || 0);
-    f.y += ny - (cross.lastNy || 0);
-    cross.lastNx = nx; cross.lastNy = ny;
-    advanceEstero(dt, f);
-    if (f.justLanded || f.justHome) endCrossing(f.justLanded ? "landed" : "returned");
-    if (!aboard) endCrossing("abandoned");    // you drove off her mid-channel
-  }
+  // THE TRAVESÍA IS NO LONGER A RIDE ON A DECK. You sail it yourself, in a
+  // water-medium vehicle, so the crossing is armed by BEING A BOAT IN THE
+  // ESTERO rather than by standing on a hull that is under way. `modes.js`
+  // starts it for the crossing stage; in Recorrer, swapping to a lancha at the
+  // muelle is what arms it (see `takeTheLancha`).
   state.gullBlind = Math.max(0, (state.gullBlind || 0) - dt);
   state.aboard = aboard ? aboard.id : null;
-  // at sea, not just standing on a docked deck — the melt and the surf both
-  // key off this, and both are declared up here so neither reads it before it
-  // exists (it used to be defined 60 lines below the melt that consumed it)
-  const crossing = !!aboard && aboard.phase !== "docked";
+  // AT SEA. The melt and the surf both key off this, and both are declared up
+  // here so neither reads it before it exists (it used to be defined 60 lines
+  // below the melt that consumed it). Two ways to be at sea now: riding a gulf
+  // ferry under way, or sailing the estero yourself.
+  const crossing = (!!aboard && aboard.phase !== "docked") || cross.active;
   // Cast-off / arrival are the only moments the ride has, and without a word
   // for them a ferry leaving under you reads as a bug rather than as the
   // Easter egg firing. The flags are one-shot, cleared as they are consumed.
@@ -165,7 +175,12 @@ export function update(dt) {
   const onRoad = surf === 3 || surf === 5; // road or bridge deck
   const onSand = surf === 2;
   const inWater = surf === 0;
+  // A BOAT'S GOOD SURFACE IS THE ONE A CAR DROWNS IN. SURFACE_MUL[0] = 0.35
+  // stays exactly what it is — it describes a CAR in the sea, and a car can
+  // still end up there off a deck — but for a hull the estero is the road.
+  const afloat = veh.medium === "water";
   const surfaceMul = aboard ? 1.0                       // steel deck
+    : afloat ? (surf === 0 ? 1.0 : 0.5)                 // aground: she barely moves
     : SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
   const wetMul = state.weather === "storm" ? 0.92 : 1;
   // i-frames after a traffic hit so one collision can't roll the churchill
@@ -205,12 +220,23 @@ export function update(dt) {
     // a speed for driving on sand — but the collider walled it off, so 78,830
     // cells of beach were drivable in the build's own reachability gate and
     // untouchable in the game. The sand is slow and loose, not a barrier.
-    const c = W.surfaceAt(x, y); return c === 1 || c === 6 || c === 0;
+    const c = W.surfaceAt(x, y);
+    // A BOAT'S WORLD IS THE INVERSE OF A CAR'S. Water is the only ground she
+    // has, and everything else is a wall — including the muelle deck (5),
+    // because a pier is something a hull goes AROUND, not a ramp she climbs.
+    // Inverting the test rather than listing water's complement is deliberate:
+    // the surface classes are append-only, so a class added later is a wall to
+    // a boat by default, which is the safe direction to be wrong in.
+    if (afloat) return c !== 0;
+    return c === 1 || c === 6 || c === 0;
   };
   // On a pier deck (class 5) the only wall is the surrounding water, so the
   // usual 20% overhang forgiveness reads as "half off the muelle" — probe at
-  // near-full extents there so the body can't hang over the edge.
-  const probeF = (aboard || W.surfaceAt(p.x, p.y) === 5) ? 0.98 : 0.8;
+  // near-full extents there so the body can't hang over the edge. A HULL WANTS
+  // THE FORGIVENESS BACK: that 0.98 exists for a kerb you can see, and the
+  // estero's wall is mangrove that reads as ragged, so a boat brushing it
+  // should slide rather than stop.
+  const probeF = !afloat && (aboard || W.surfaceAt(p.x, p.y) === 5) ? 0.98 : 0.8;
   const hw = veh.w * 0.5 * probeF, hh = veh.h * 0.5 * probeF;
   const BUBBLE_PAD = 1.5;                     // keeps the drawn body off the kerb
   const br = hh + BUBBLE_PAD;                 // bubble radius = half the body width
@@ -261,8 +287,15 @@ export function update(dt) {
   // Pivot-in-place: when nearly stopped, spin fast toward the steer target so a
   // tap turns the car ON ITS OWN AXIS immediately, then it drives off facing
   // the finger (instead of arcing forward to turn). Fades out by ~60px/s.
-  const pivot = Math.max(0, 1 - Math.abs(p.speed) / 60);
+  // NOTHING ON WATER PIVOTS. A hull with no way on has no steerage — the rudder
+  // is a wing and it needs flow. Leaving the pivot term in was the single thing
+  // that made a lancha feel like a kart: she spun on the spot at the muelle and
+  // every correction mid-channel snapped instead of carving.
+  const pivot = afloat ? 0 : Math.max(0, 1 - Math.abs(p.speed) / 60);
   turnRate += veh.turn * 1.5 * pivot;
+  // …and instead she answers the tiller in PROPORTION to her way: no flow, no
+  // turn, which is what makes carrying speed through a bend the skill.
+  if (afloat) turnRate *= 0.25 + 0.75 * spdFac;
   const prevA = p.a;
   p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
   // angular velocity (rad/s) this frame — the renderer draws wind swirls around
@@ -272,9 +305,15 @@ export function update(dt) {
   // CENTER must be on a DRIVABLE street (class 3 road / 5 bridge). Requiring
   // drivable-center is what makes unstick nudges safe — they can never place
   // the car in a cuadra/acera/beach (that was the "entering cuadras" bug).
+  // For a boat the same rule reads the other way round: the only safe centre is
+  // open water. Leaving the street test in place gave a hull NO legal nudge
+  // anywhere in the estero, so the shimmy below never fired and she locked
+  // against the mangrove exactly like the dead end this guard exists to avoid.
   const clearSpot = (x, y) => {
     if (deckAt(x, y)) return !blockedAt(x, y);
-    const c = W.surfaceAt(x, y); return (c === 3 || c === 5) && !blockedAt(x, y);
+    const c = W.surfaceAt(x, y);
+    if (afloat) return c === 0 && !blockedAt(x, y);
+    return (c === 3 || c === 5) && !blockedAt(x, y);
   };
 
   // Turning must never sweep the body INTO a wall (that penetration was the
@@ -332,19 +371,26 @@ export function update(dt) {
   p.drift = Math.abs(side) > 60 ? Math.min(1, p.drift + dt * 3) : Math.max(0, p.drift - dt * 2);
 
   // rolling friction
+  // `drag` is why a boat coasts. Friction is DIVIDED by the surface multiplier,
+  // and on open water at mul 1.0 a car's rolling friction stops a hull dead in
+  // her own length — which reads as driving through treacle, not as sailing.
   const fric = (input.up || input.down) ? 0.4 : 1.8;
   const sp2 = Math.hypot(p.vx, p.vy);
   if (sp2 > 0.1) {
-    const k = Math.max(0, sp2 - fric * (1 / surfaceMul) * dt * 60) / sp2;
+    const k = Math.max(0, sp2 - fric * (veh.drag || 1) * (1 / surfaceMul) * dt * 60) / sp2;
     p.vx *= k; p.vy *= k;
   }
   // Brake / stop button: an EXAGGERATED, snappy stop (arcade handbrake) — bleed
   // the velocity hard so a tap kills momentum near-instantly instead of a slow
   // coast, and clamp to a dead stop once slow.
+  // A BOAT HAS NO BRAKES. The arcade handbrake is a tyre on tarmac; the same
+  // button on a hull is astern thrust, which bleeds way rather than killing it,
+  // and there is no dead-stop clamp — a lancha that stopped in her own length
+  // would make the whole channel trivial to hold.
   if (input.brake) {
-    const decay = Math.max(0, 1 - 16 * dt);
+    const decay = Math.max(0, 1 - (afloat ? 3.2 : 16) * dt);
     p.vx *= decay; p.vy *= decay;
-    if (Math.hypot(p.vx, p.vy) < 12) { p.vx = 0; p.vy = 0; }
+    if (!afloat && Math.hypot(p.vx, p.vy) < 12) { p.vx = 0; p.vy = 0; }
   }
   // turbotank upgrade raises the boost speed cap (1.35 stock → up to 1.55)
   const speedBoost = activeEditorBoost(state, "speed-multiplier")?.value || 1;
@@ -394,7 +440,11 @@ export function update(dt) {
     }
     // (record the free pose ONLY on drivable street, so a fallback always lands
     // back on the road, never on a paseo/acera edge)
-  } else if (W.onRoad(p.x, p.y)) { p.freeX = p.x; p.freeY = p.y; p.freeA = p.a; }
+    // — and for a hull the drivable street IS the water, or the pose is never
+    // recorded at all and the pocket fallback above can never fire.
+  } else if (afloat ? W.surfaceAt(p.x, p.y) === 0 : W.onRoad(p.x, p.y)) {
+    p.freeX = p.x; p.freeY = p.y; p.freeA = p.a;
+  }
   p.speed = Math.hypot(p.vx, p.vy);
 
   // On the 2-D world the coastline is enforced by water-as-wall above, so the
@@ -404,7 +454,10 @@ export function update(dt) {
   if (p.x > W.W - 12) { p.x = W.W - 12; p.vx = -Math.abs(p.vx) * 0.3; }
   if (p.y < 12) { p.y = 12; p.vy = Math.abs(p.vy) * 0.3; }
   if (p.y > W.H - 12) { p.y = W.H - 12; p.vy = -Math.abs(p.vy) * 0.3; }
-  if (inWater && Math.random() < 0.06) state.cam.shake = Math.max(state.cam.shake, 2);
+  // The sea shakes a CAR because a car in the sea is a mistake. For a boat it is
+  // simply where she lives, and shaking every frame she is afloat would make the
+  // whole crossing unreadable.
+  if (inWater && !afloat && Math.random() < 0.06) state.cam.shake = Math.max(state.cam.shake, 2);
 
   // Building collisions (polygon buildings via spatial hash)
   for (const b of W.buildingsNear(p.x, p.y)) {
@@ -432,6 +485,21 @@ export function update(dt) {
       }
     }
   }
+
+  // THE RACE, read AFTER the solver. `advanceCrossing` recovers where she got
+  // to by projecting onto the route, so it has to see the pose she actually
+  // ended the frame at — running it before the collider would score her at a
+  // position the collision resolution was about to take back, and a gate could
+  // be credited for a line she never held.
+  if (cross.active) {
+    advanceCrossing(dt, p);
+    advanceEstero(dt, p, veh);
+  }
+  // RECORRER: the muelle is where the road runs out and the lancha starts.
+  // Park on the pier and you take your own boat; land at the far shore and you
+  // get your car back. Only in explore — in a stage the crossing IS the level,
+  // and in arcade a three-minute clock should not be spent on a 7 km passage.
+  if (state.mode === "explore") maintainLanchaSwap(p, veh, cross);
 
   // District identity: fire a "you entered X" title card when the player
   // crosses into a new band (free-roam modes only), and age out the card.

@@ -5,12 +5,15 @@ Guidance for Codex when working in this repo.
 ## What this is
 
 **La Ruta del Churchill** — a top-down arcade delivery game set on a faithful,
-corridor-unrolled recreation of the Puntarenas peninsula, Costa Rica. You drive a
+true-scale 2-D recreation of the Puntarenas peninsula, Costa Rica. You drive a
 vehicle, pick up a *churchill* (shaved-ice drink) at a kiosk, and deliver it to a
 customer before it melts. Three modes: **Historia** (7 stages), **Arcade** (3-min
 free roam), **Recorrer** (open world with unlockable districts).
 
 Design doc: `docs/GAME_DESIGN.md`. Roadmap + milestone tracker: `ROADMAP.md`.
+Release notes: `docs/changelog/YYYY-MM-DD.md`, one file per release date
+(nothing else) — Spanish, ready-to-post copy up top and a `## 🧾 Changelog`
+section below it.
 
 ## Toolchain
 
@@ -22,7 +25,8 @@ pnpm dev            # HMR dev server (falls back off :8734 if taken)
 pnpm build          # -> dist/ (static; GitHub Pages publishes this)
 pnpm preview        # serve the production build
 pnpm inventory      # regenerate inventory.json
-pnpm world:build    # rebuild src/world/data.js from docs/map.osm (deterministic)
+pnpm world:build    # rebuild src/world2d/ from docs/map.osm (deterministic)
+python3 tools/world_snapshot.py verify   # emitted world unchanged?
 ```
 
 Deploy: push to `main` → `.github/workflows/deploy.yml` builds with pnpm and
@@ -74,36 +78,134 @@ renderer (the "view") lives behind a seam so backends can be swapped.
   - `input.js` (keyboard/gamepad/touch), `spawns.js`, `delivery.js` (pickup/
     deliver loop + scoring), `physics.js` (`update(dt)`: driving, collisions,
     entity advancement), `progress.js` (localStorage unlocks/barriers),
-    `modes.js` (`startArcade`/`startStage`/`startExplore` + setters).
+    `modes.js` (`startArcade`/`startStage`/`startExplore` + setters),
+    `buses.js` (what a bus does at the kerb: brake, dwell, alight, board).
   - `index.js` — **Game facade** + main loop; exports `Game`, mirrors it to
     `window.Game` for the dev tweaks host + console debugging.
-- `src/world/` — `data.js` (**generated**, do not hand-edit) + `index.js` (the
-  `WORLD` accessor: RLE surface grid decode, `surfaceAt`, road arclength
-  samplers, building spatial hash, silhouettes).
-- `src/render/` — `Renderer.js` (the seam: `setupCanvas`, `render`) →
-  `canvas2d.js` (current Canvas2D backend, extracted from the old engine).
-  **Milestone C adds a `pixi/` backend and swaps the one line in `Renderer.js`.**
+- `src/world2d/` — **generated, do not hand-edit**: `manifest.json` + the
+  `tiles/*.json` slabs from `tools/build_world.py`, plus `index.js` (the
+  `WORLD2D`/`W` accessor: per-tile RLE decode + streaming, `surfaceAt`, road
+  arclength samplers, building spatial hash, silhouettes).
+- `src/render/` — `Renderer.js` is the seam (`setupCanvas`, `render`,
+  `paintVehicle`). Behind it, `canvas2d.js` + `src/render/c2d/*` (ground,
+  streets, structures, landmarks, entities, flora, estero, hud, gfx, cache)
+  paint the whole painterly world, and a transparent `src/render/pixi/` layer
+  above it carries the landmark structures canvas can't do justice (the
+  estadio's gradas, the tunnel roof). Escape hatch: `?canvas` or
+  `localStorage.churchill_renderer = "canvas"` disables the Pixi layer.
 - `src/ui/` — React: `App.jsx` (screen state machine), `screens/*`
   (Title, StageSelect, HUD, Pause, Results, StageBrief), `TouchControls.jsx`,
   `GameTweaks.jsx`, `tweaks/TweaksPanel.jsx` (reusable dev panel + host bridge).
+- `src/i18n/<lang>.json` — string catalogs are data; adding a language is a JSON
+  file plus one `LANGUAGES` entry.
 
 The UI polls `Game.state` on a rAF tick (state is a live mutable singleton, not
 React state) — don't try to make the game state flow through React.
 
 ## World pipeline
 
-`tools/build_world.py` reads `docs/map.osm` and emits `src/world/data.js` (an ESM
-`export const WORLD_DATA`). It projects real geo onto an 8800×1400 world via a
-**corridor-unroll**: x = arclength along the Faro→Caldera spine, y = exaggerated
-perpendicular offset. Deterministic (no RNG) — same input → identical output.
+`tools/build_world.py` reads `docs/map.osm` and emits `src/world2d/` — per-tile
+RLE surface slabs + `manifest.json`, loaded by `src/world2d/index.js`
+(`WORLD2D`/`W`). The projection is **PLANAR**: world px = (metres − origin) ·
+`PLANAR_PX_PER_M`, true-scale, with a geo→world affine in `manifest.meta.geo`.
 
-Surface grid classes (see `src/game/surfaces.js`): `0 water, 1 land (solid cuadra
-interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera,
-7 boulevard (calle peatonal: stone paving, transitable but slow)`.
+The **corridor-unroll projection was deleted** (2026-07-25) along with
+`src/world/`: the spine, the x-warp, the hand-placed junction gores/islands and
+the `data.js` emitter. There is no arclength-along-a-spine coordinate, no
+`WORLD_DATA` ESM module and no `CROSS_EXAG`. If you find a doc or comment
+describing any of those, it predates the deletion — do not act on it.
 
-Knobs at the top of `build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`,
-`ROAD_WIDTH_PX`, `BUILDING_SCALE`, `DISTRICT_BOUNDS_GEO`, `LANDMARK_DEFS` /
-`CUSTOMER_DEFS` (geo anchors — build fails listing unresolved POIs).
+Surface grid classes (see `src/game/surfaces.js` and
+`churchill/world/enums/surface.py`): `0 water, 1 land (solid cuadra interior —
+blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera,
+7 boulevard (calle peatonal: stone paving, transitable but slow), 8 barro
+(packed earth — the dirt calles, 0.82 of asphalt), 9 gravel (lastre, 0.9)`.
+**The VALUES are the wire format: append, never renumber.** A new drivable class
+has to join `DRIVABLE`, `STREET` and usually `CALLE` — leaving barro out of the
+acera seeds silently stripped the sidewalk from 8,204 cells of cuadra frontage,
+and out of `CALLE` would point every "nearest street" search past it.
+`CARRIAGEWAY` includes the muelle decks; `CALLE` does not, because a deck is
+something you drive on, not a street to link to.
+
+### The `churchill/` package (Python)
+
+**`tools/build_world.py` is 19 lines** — a sys.path shim and a call to
+`churchill.world.pipeline.runner.main`. The builder itself is a layered package
+at the repo root, shared with the future accounts/sync/management server:
+
+```
+churchill/world/
+  config.py      every tuning knob + paths (PLANAR_PX_PER_M, ROAD_WIDTH_M,
+                 ARCADE_STREET_MUL, PLANAR_FULL_BBOX — a smaller PLANAR_BBOX
+                 gives a fast smoke build — CUAD, ACERA_CELLS /
+                 FIELD_ACERA_CELLS, BUILDING_SCALE)
+  content.py     the hand-authored map: DISTRICT_DEFS, LANDMARK_DEFS,
+                 CUSTOMER_DEFS, STAGES, probes (geo anchors — the build FAILS
+                 listing unresolved POIs)
+  logging.py     log(tag, msg) / warn / die — the build log is the review
+                 surface, so keep a stage's lines factual and countable
+  dto/           PYDANTIC v2 models = the emitted JSON's schema (Manifest, Tile,
+                 Parcel, Landmark, Stage…). They VALIDATE the emit; they do not
+                 serialize it (key order is historical, per producer)
+  enums/         the world's VOCABULARY and the lowest layer: Surface (IntEnum,
+                 the bytes in the RLE) + ParcelUse/GreenType/LandmarkType/
+                 PathSurface/Weather/RoadClass. Each enum names the client file
+                 that must agree with it
+  context.py     WorldDims (computed, frozen) + WorldContext — the state stages
+                 hand each other. Collections are MUTATED IN PLACE, never
+                 rebound, or a service holding one stops seeing new entries
+  util/          pure functions: geometry.py + raster.py (Raster: buffer + dims
+                 + fill_poly/stamp_polyline/flood/erode)
+  repository/    the ONLY code that touches storage — Protocols in base.py,
+                 osm_file.py (in), world_json.py + debug_render.py (out)
+  service/       domain ops, each taking what it needs rather than reaching for
+                 globals: street (StreetIndex — read its docstring before
+                 picking a method), block, field, building, surface (the
+                 stamping ORDER matters), network, placement, osm, decoration,
+                 projection, signs, kerb
+  pipeline/      the stages, in order
+```
+
+Nothing imports the layer above it. `runner.main` reads as the ordered list of
+stages it is:
+
+```
+extract_world -> rasterise_surface -> resolve_districts -> place_pois
+  -> place_kiosks_and_blocks -> seat_town_kiosks -> place_structures
+  -> decorate -> verify -> write_world
+```
+
+Stages pass results explicitly rather than sharing a scope. Two ordering facts
+are load-bearing: `acera_fringe` runs before anything that must stay un-ringed
+(that is why a whole-cuadra pitch reads as one open surface), and `decorate`
+runs last because it reads the FINISHED surface to decide where a tree may
+stand.
+
+The other tools are consumers of the same layers: `tools/gen_lotes.py` reads
+through `JsonWorldRepository` and emits validated `Lote` models;
+`tools/gen-inventory.mjs` reads the manifest + tiles.
+
+### The `world_snapshot.py` contract
+
+The build is deterministic — no RNG, same `docs/map.osm` in, byte-identical
+world out — and `tools/world_snapshot.py` is what enforces it. This is the most
+important rule for anyone touching the builder:
+
+```
+python3 tools/world_snapshot.py verify    # emitted world unchanged?
+python3 tools/world_snapshot.py rebuild   # build, then verify
+python3 tools/world_snapshot.py save      # accept a new world as the baseline
+```
+
+- **Every refactor must keep the emitted world byte-identical.** The digest in
+  `tools/world_digest.json` covers every emitted file (`manifest.json` + each
+  `tiles/*.json`). A refactor that changes one byte is a behaviour change, not
+  a refactor.
+- **An INTENDED world change re-runs `save` in the same commit**, so the diff
+  shows the new world and the new baseline together.
+- **Diff the build log too.** It is character-stable, so a diff of two runs
+  catches a behaviour change the digest might not — and it is the review
+  surface, which is why a stage's log lines have to stay factual and countable.
 
 ## inventory.json
 
@@ -122,6 +224,19 @@ the game's contents without reading the code. Refresh after world/module changes
   frames ~20 cuadrículas of `meta.cuad` (20) px across the viewport — the
   constant lives in the RENDERER (tune it there; `meta.cuadsPerView` is
   advisory, no world rebuild needed).
-- Don't hand-edit `src/world/data.js` — regenerate with `pnpm world:build`.
-- Verify game changes by actually running the app (`pnpm dev` + browser), not
-  just building — the render loop and physics have no unit tests.
+- Don't hand-edit `src/world2d/` (manifest or tiles) — regenerate with
+  `pnpm world:build`, then `python3 tools/world_snapshot.py verify` (or `save`
+  if the change was intended).
+- After a world rebuild, refresh BOTH derived artifacts: `pnpm inventory` and
+  `python3 tools/gen_lotes.py`. The lote catalog went stale for a week once —
+  it listed sponsorable footprints that no longer existed.
+- **Verify game changes by actually running the app, not just building.** The
+  render loop is one try-less call chain, so ONE ReferenceError in it kills the
+  frame and everything after the throw silently vanishes — car, HUD, debug
+  overlay — while the last painted frame stays on screen. It reads as a freeze,
+  and `pnpm build` cannot see it (Rollup only WARNS about an import of a deleted
+  export). `node tools/smoke.mjs http://localhost:8799/` against a
+  `vite preview` boots the game, drives it and fails on any page error; it has
+  caught this exact class of bug three times.
+- Changelogs live in `docs/changelog/`, one file per release date, named
+  `YYYY-MM-DD.md` (nothing else).

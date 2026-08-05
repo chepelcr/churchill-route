@@ -1,4 +1,5 @@
-"""The separator strips down the middle of the paseos.
+"""The plantings: the separator strips down the middle of the paseos, and the
+mangrove line along the estero.
 
 Two different plantings, and mixing them up is a mistake we have already made:
 the Paseo de los Turistas carries a DASHED PALM MEDIAN — solid blocking
@@ -19,9 +20,11 @@ PASEO_MEDIAN_W + 6 while the renderer draws PASEO_MEDIAN_W.
 from collections import defaultdict
 
 from ..config import (
-    CLS_ACERA, CUAD, PASEO_GAP_MARGIN, PASEO_MEDIAN_W, PASEO_MIN_DASH,
-    PASEO_NAMES,
+    CARRIAGEWAY_CLASSES, CLS_ACERA, CLS_WATER, CUAD, MANGROVE_PITCH_PX,
+    MANGROVE_R_MAX, MANGROVE_R_MIN, MANGROVE_SEED, PASEO_GAP_MARGIN,
+    PASEO_MEDIAN_W, PASEO_MIN_DASH, PASEO_NAMES,
 )
+from ..logging import log
 from .street import resample_centerline
 
 
@@ -107,3 +110,54 @@ def stamp_paseo_median(raster, median_runs):
                 raster.stamp_polyline(flat, PASEO_MEDIAN_W + 6, CLS_ACERA)
                 dashes.append({"pts": [round(v) for v in flat], "w": round(PASEO_MEDIAN_W)})
     return dashes
+
+
+def mangrove_line(raster, band, pitch_px=MANGROVE_PITCH_PX, seed=MANGROVE_SEED):
+    """Mangrove clumps ALONG THE ESTUARY WATERLINE (`{x, y, r}` each).
+
+    This is the other half of the estero having no beach: the bank the sand
+    fringe now leaves alone is mangrove, and this plants it. It walks the shore
+    instead of scattering in a bbox — the scatter it replaces ringed an ellipse
+    fitted to the largest water polygon near the Mata de Limón bridge, which put
+    every clump in open ground kilometres from any bank.
+
+    EVERY water/land boundary inside `band` (see service.surface.estero_band) is
+    a bank: the spit's north shore, the estuary's far shore, and both sides of
+    each island between them. The clump is centred on the WATER cell at the
+    edge, standing in the water the way a mangrove does, so it can never end up
+    on a street and its canopy reads as overhanging the bank.
+
+    Deterministic: a fixed column stride and the seeded `rng` — no `random`.
+    """
+    cols, rows, cell, grid = raster.cols, raster.rows, raster.cell, raster.buf
+    step = max(1, pitch_px // cell)
+    state = seed
+
+    def rng():
+        nonlocal state
+        state = (state * 9301 + 49297) % 233280
+        return state / 233280
+
+    out = []
+    for c in range(0, min(cols, len(band)), step):
+        seg = band[c]
+        if seg is None:
+            continue
+        top, bot = seg
+        col = grid[c::cols]
+        was_water = col[max(0, top - 1)] == CLS_WATER
+        for r in range(max(1, top), min(rows, bot + 2)):
+            is_water = col[r] == CLS_WATER
+            if is_water == was_water:
+                continue
+            was_water = is_water
+            edge = r if is_water else r - 1     # always the water side of the bank
+            # a muelle deck is an edge too, and nothing grows on one
+            if col[r - 1 if is_water else r] in CARRIAGEWAY_CLASSES:
+                continue
+            out.append({"x": round(c * cell + cell / 2 + (rng() - 0.5) * cell * 2),
+                        "y": round(edge * cell + cell / 2 + (rng() - 0.5) * cell * 2),
+                        "r": round(MANGROVE_R_MIN + rng() * (MANGROVE_R_MAX - MANGROVE_R_MIN))})
+    log("manglar", f"{len(out)} mangrove clumps along the estero waterline "
+        f"(every {pitch_px}px of shore)")
+    return out

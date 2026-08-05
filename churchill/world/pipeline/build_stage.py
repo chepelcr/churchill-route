@@ -41,7 +41,7 @@ from ..service.building import (
     _grid_placer, make_rng, snap_osm_buildings, synth_buildings,
 )
 from ..service.decoration import (
-    paseo_median_runs, paseo_roads, stamp_paseo_median,
+    mangrove_line, paseo_median_runs, paseo_roads, stamp_paseo_median,
 )
 from ..service.ferry import stern_at_rest
 from ..service.lancha import place_beach_accesses, place_lanchas
@@ -1057,29 +1057,20 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
         est = {"cx": round((bx0 + bx1) / 2 + 900), "cy": CENTER_Y - 360, "rx": 840, "ry": 210}
         warn("estuary", "no water poly near bridge; synthetic ellipse")
 
-    # mangroves around the estuary
-    seed = 57
-    def rng():
-        nonlocal seed
-        seed = (seed * 9301 + 49297) % 233280
-        return seed / 233280
-    mangroves = []
-    for a in [i * 0.12 for i in range(int(2 * math.pi / 0.12) + 1)]:
-        rx = est["rx"] + 60 + rng() * 78
-        ry = est["ry"] + 60 + rng() * 60
-        mangroves.append({"x": round(est["cx"] + math.cos(a) * rx),
-                          "y": round(est["cy"] + math.sin(a) * ry),
-                          "r": round(24 + rng() * 24)})
-    for _ in range(10):
-        ang = rng() * math.pi * 2
-        rr = rng() * est["rx"] * 0.6
-        mangroves.append({"x": round(est["cx"] + math.cos(ang) * rr),
-                          "y": round(est["cy"] + math.sin(ang) * rr * est["ry"] / max(est["rx"], 1)),
-                          "r": round(4 + rng() * 4)})
+    # EL MANGLAR. The mangroves used to ring this estuary ELLIPSE, which is a
+    # bbox by another name: it is fitted to the largest water polygon near the
+    # bridge, so its rim ran through open ground kilometres from any bank. They
+    # follow the real waterline now — the same estero band that keeps the sand
+    # fringe off the north shore (see service.surface.estero_band).
+    mangroves = mangrove_line(raster, ctx.estero)
 
     # palms: along shores where land is present, plus along the paseo road
     palms = []
     seed = 33
+    def rng():
+        nonlocal seed
+        seed = (seed * 9301 + 49297) % 233280
+        return seed / 233280
     x = 140.0
     while x < CANVAS_W - 60:
         c = int(x / GRID_CELL)

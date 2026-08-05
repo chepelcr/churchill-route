@@ -188,6 +188,30 @@ DRIVABLE_CLASSES = surface_enum.DRIVABLE
 CARRIAGEWAY_CLASSES = surface_enum.CARRIAGEWAY
 CALLE_CLASSES = surface_enum.CALLE
 
+# ---- the estero vs the open sea ---------------------------------------------
+# Puntarenas is a sand spit: SOUTH of it is the Pacific and the sand really is a
+# beach; NORTH of it is the Estero de Puntarenas, which is mangrove down to the
+# waterline. `estero_band` derives that split from the raster instead of an
+# authored bbox, by tracing the ONE landform that has water on both sides — the
+# spit — and calling everything north of its north shore estuary.
+SPIT_MAX_WIDTH_PX = 4000        # a land run wider than this in its column is the
+                                # mainland, not the spit (the spit is ~1100 px at
+                                # the Muelle Nacional, 2200 at its widest)
+SPIT_SHORE_TOL_PX = 200         # column-to-column jump the spit's Pacific shore
+                                # may make and still be the same shore; a bigger
+                                # jump is a different landmass (the tip)
+ESTERO_MAINLAND_PX = 4000       # walking north from the spit, a land run this
+                                # wide is the estuary's FAR shore — stop there.
+                                # Anything narrower is an island in the estero,
+                                # whose own shores are mangrove too.
+MANGROVE_PITCH_PX = 56          # column stride of the mangrove clumps along the
+                                # waterline: a touch under the mean clump
+                                # DIAMETER, so the bank reads as one dense
+                                # fringe rather than a dotted line
+MANGROVE_R_MIN = 16             # clump radius range (px)
+MANGROVE_R_MAX = 40
+MANGROVE_SEED = 57              # deterministic scatter (jitter + radius)
+
 # ---- buildings on the cuadrícula --------------------------------------------
 SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so
                                 # fully-filled small cuadras don't exhaust it

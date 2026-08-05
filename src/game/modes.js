@@ -4,10 +4,11 @@ import { state, pushFloat } from "./state.js";
 import { VEHICLES, vehicleMedium } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
 import { ferries, resetFerries, routePoint } from "./ferries.js";
-import { startCrossing } from "./crossing.js";
+import { startCrossing, crossingCondition, resetCrossing } from "./crossing.js";
+import { setTide } from "./tides.js";
 import { setDayCycle } from "./daynight.js";
 import { pickCustomer, pickCustomerNear } from "./delivery.js";
-import { rebuildBarriers } from "./progress.js";
+import { rebuildBarriers, bumpCrossingRuns } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
 import { economy, FREE_VEHICLES, VEHICLE_PRICES } from "./economy.js";
 import { t, stageBrief } from "../i18n/index.js";
@@ -164,12 +165,27 @@ function armRun() {
 }
 
 export function startStage(stageIdx, vehicleKey) {
+  resetCrossing();
   const stg = W.STAGES[stageIdx];
   state.stage = stg;
   state.stageIdx = stageIdx;
   state.mode = "story";
   state.weather = stg.weather;
   setDayCycle(false);          // a stage's sky is part of its brief
+  // …EXCEPT THE TRAVESÍA, whose sky and tide ARE the brief. The estero is a
+  // different course at bajamar than at pleamar and a different one again in an
+  // aguacero, so the crossing rotates through its four conditions by attempt
+  // rather than naming one in the world. The day clock still stays off: a
+  // three-minute run that cycled the whole day would strobe, and the point is
+  // that this run has an hour, not that it has all of them.
+  const crossCond = stg.kind === "crossing"
+    ? crossingCondition(bumpCrossingRuns(stg.id)) : null;
+  if (crossCond) {
+    state.weather = crossCond.weather;
+    setTide(crossCond.tide);
+  } else {
+    setTide(0.5);
+  }
   state.timeLeft = stg.timeLimit;
   state.stageDeliveries = 0;
   state.stageTarget = stg.targetDeliveries;
@@ -243,6 +259,7 @@ export function startStage(stageIdx, vehicleKey) {
 }
 
 export function startArcade(opts = {}) {
+  resetCrossing();
   state.stage = null;
   state.stageIdx = 0;
   state.mode = "arcade";
@@ -280,6 +297,7 @@ export function startArcade(opts = {}) {
 }
 
 export function startExplore(opts = {}) {
+  resetCrossing();
   state.stage = null;
   state.stageIdx = 0;
   state.mode = "explore";
@@ -328,6 +346,7 @@ export function startExplore(opts = {}) {
 // Tutorial: timerless guided run at the Paseo kiosk; the step machine in
 // tutorial.js drives the HUD instructions and ends the run when complete.
 export function startTutorial(opts = {}) {
+  resetCrossing();
   state.stage = null;
   state.stageIdx = 0;
   state.mode = "tutorial";

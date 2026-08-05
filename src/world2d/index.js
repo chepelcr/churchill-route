@@ -171,7 +171,7 @@ export const WORLD2D = (function () {
 
   // ----- tile cache ----------------------------------------------------------
   // key = tr * TCOLS + tc. Value: { grid:Uint8Array, cols, rows, x, y, roads,
-  // buildings, trees, palms, medians, plazas, bhash } once decoded, or the
+  // buildings, trees, palms, mangroves, medians, plazas, bhash } once decoded, or the
   // in-flight Promise while loading.
   const tiles = new Map();
   const tileKey = (tc, tr) => tr * TCOLS + tc;
@@ -239,7 +239,10 @@ export const WORLD2D = (function () {
       tc, tr, x: raw.x, y: raw.y, cols: raw.cols, rows: raw.rows, grid,
       roads: prepRoads(raw.roads), rails: raw.rails || [],
       buildings, bhash,
-      trees: raw.trees || [], palms: raw.palms || [],
+      // mangroves are {x,y,r} clumps along the estero waterline — the builder
+      // has emitted them into the tiles all along; nothing decoded them, so
+      // nothing could draw them.
+      trees: raw.trees || [], palms: raw.palms || [], mangroves: raw.mangroves || [],
       medians: raw.medians || [], plazas: raw.plazas || [],
       islands: raw.islands || [],
     };

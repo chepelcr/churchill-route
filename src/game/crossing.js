@@ -38,6 +38,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
 import { markStageCleared, unlockDistrict } from "./progress.js";
+import { navigableFraction, tideLevel } from "./tides.js";
 
 // ---- the lane -------------------------------------------------------------
 //: half-width of the navigable channel, in world px. Wider than the boat by a
@@ -122,6 +123,37 @@ export function channels() {
 
 export function channelOf(ferry) {
   return channels().get(ferry?.id) || null;
+}
+
+// ---- the conditions a crossing is sailed in --------------------------------
+// THE ESTERO IS NOT THE SAME PLACE TWICE, and the four rows below are the level
+// design. Weather and tide are ONE choice, not two, because they interact: a
+// storm piles the water up, so the hard run is not the one with the least water
+// but the one with the most. Sailing the same 7 km at bajamar and at pleamar in
+// an aguacero are two different courses on one polyline, which is the cheapest
+// real variety this level can have.
+//
+// THE ROTATION IS BY ATTEMPT, NOT RANDOM. You meet all four in your first four
+// crossings, in an order that teaches them — the calm low water first, where
+// the banks are visible and the channel explains itself, and the storm last.
+// Random would hand a beginner the aguacero and call it bad luck.
+export const CROSSING_CONDITIONS = [
+  // bajamar: the banks are OUT, the lane is a thread, and the water is flat.
+  { id: "bajamar", weather: "sunny", tide: 0.08 },
+  // media marea al atardecer: the postcard, and an honest middle.
+  { id: "atardecer", weather: "sunset", tide: 0.45 },
+  // pleamar de noche: everything is covered, so the lane is wide — and you
+  // cannot see any of it. The buoys are lit, which is suddenly the point.
+  { id: "pleamar", weather: "night", tide: 0.9 },
+  // aguacero: high water AND a surge on top. Wide, black, and all of it moving.
+  { id: "aguacero", weather: "storm", tide: 0.7 },
+];
+
+/** The conditions the nth attempt at a crossing is sailed in. */
+export function crossingCondition(n = 0) {
+  const i = ((n % CROSSING_CONDITIONS.length) + CROSSING_CONDITIONS.length)
+    % CROSSING_CONDITIONS.length;
+  return CROSSING_CONDITIONS[i];
 }
 
 /** How many gates a crossing stage has, for the brief.
@@ -253,6 +285,32 @@ export function endCrossing(reason) {
 }
 
 /**
+ * Forget the crossing entirely. Called by every mode start.
+ *
+ * A CROSSING OUTLIVES THE RUN IT BELONGED TO otherwise, and nothing else clears
+ * it: `endCrossing` only fires on landing, sinking or sailing home, so quitting
+ * the Travesía from the pause menu and starting Recorrer left `active` true.
+ * The estero then kept ticking over the top of the new run — obstacles resolved
+ * against a player nowhere near them, the lane dragged on open road, and a
+ * shoal of tuna in the gulf paid into a fish counter for a level that was no
+ * longer being played, which is how this was found.
+ */
+export function resetCrossing() {
+  _crossing.active = false;
+  _crossing.done = null;
+  _crossing.ferry = null;
+  _crossing.channel = null;
+  _crossing.knocks = 0;
+  _crossing.fish = 0;
+  _crossing.t = 0;
+  _crossing.gateIndex = 0;
+  _crossing.progress = 0;
+  _crossing.checkpoint = null;
+  esteroThings.length = 0;
+  state.crossing = _crossing;
+}
+
+/**
  * The race is over and she made it.
  *
  * THIS IS THE PATH THAT DID NOT EXIST. Everything here mirrors what
@@ -329,6 +387,11 @@ export function advanceCrossing(dt, p) {
   const ch = _crossing.channel;
   _crossing.t += dt;
 
+  // published for the HUD and the renderer: both want the tide the CROSSING is
+  // being sailed at, and neither should have to import the tide module to
+  // learn it while a crossing is the only place it changes the gameplay.
+  _crossing.tide = tideLevel();
+  _crossing.laneFrac = navigableFraction();
   const prevS = _crossing.s;
   const near = projectToRoute(ch, p.x, p.y);
   _crossing.s = near.s;
@@ -374,11 +437,18 @@ export function advanceCrossing(dt, p) {
   // to do it for a while without noticing.
   if (_crossing.wrongWay) state.storyTip = t("crossing.wrongWay");
 
-  // THE SHALLOWS. Past the lane the water thins and the mangrove roots start.
-  // She is a free body now, so this cannot be a subtraction from an arclength
-  // she no longer owns — it is DRAG, applied to her actual velocity, which she
-  // feels as the boat going heavy the moment she leaves the marked water.
-  const out = Math.abs(near.offset) - LANE_HW;
+  // THE SHALLOWS, AND THE TIDE MOVES THEM. Past the navigable water the estero
+  // thins and the mangrove roots start. She is a free body now, so this cannot
+  // be a subtraction from an arclength she no longer owns — it is DRAG on her
+  // actual velocity, which she feels as the boat going heavy the moment she
+  // leaves the water that is there today.
+  //
+  // THE BUOYS DO NOT MOVE. They mark the CHANNEL, which is a surveyed thing;
+  // the water inside it is what comes and goes. So at bajamar you are threading
+  // a lane visibly narrower than the marks describe, and reading that gap is
+  // the pilotage the level is actually about.
+  const laneHW = LANE_HW * navigableFraction();
+  const out = Math.abs(near.offset) - laneHW;
   if (out > 0) {
     const k = Math.max(0, 1 - Math.min(0.9, (out / (SHALLOW_HW * 2)) * dt * 2.2));
     p.vx *= k; p.vy *= k;
@@ -484,6 +554,60 @@ function spawnEstero(ch) {
       });
     }
   }
+
+  // LOS BANCOS DE ARENA — the tide's own obstacle, and the only one that is
+  // not always there. Each carries the water level it dries out at (`depth`),
+  // so a bajamar crossing is threading a channel full of them and a pleamar one
+  // sails straight over. They are placed EVERY time and hidden by the tide
+  // rather than spawned by it: the estero is the same estero at every hour, and
+  // a bank you grounded on last run has to be in the same place this run even
+  // if today you float over it.
+  //
+  // Grounding is its own verb. A panga is a collision and roots are damage; a
+  // bank is the boat stopping being a boat for a moment — she drags to a crawl
+  // and you have to work her off. That is why it does not cost a knock unless
+  // you drive onto it hard.
+  for (let s = 620; s < ch.total - 420; s += 330) {
+    const q = at(ch.pts, ch.cum, s);
+    const side = r() < 0.5 ? -1 : 1;
+    // KEPT NEAR THE CENTRELINE. Out at 0.95 of the lane a bank sat where the
+    // estero often is not — the marked channel is wider than the water beside
+    // el Centro — and it is also the least interesting place to put one: a
+    // hazard against the bank is just the shallows again, while one you have to
+    // go round is a decision. `bancoExposed` still has the final say.
+    const off = (0.15 + r() * 0.45) * LANE_HW * side;
+    esteroThings.push({
+      kind: "banco", s, off, ph: r() * Math.PI * 2, drift: 0,
+      // the shallowest sit high and are out at almost any tide; the deepest
+      // only show at a real bajamar, which is what makes low water read as a
+      // different course rather than the same one with more scenery
+      depth: 0.28 + r() * 0.5,
+      r: 34 + r() * 30,
+      x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a,
+      taken: false, aground: false,
+    });
+  }
+}
+
+/**
+ * Is this bank out of the water at the current tide?
+ *
+ * IT ALSO HAS TO BE IN THE WATER AT ALL. `LANE_HW` is 105 px, so the marked
+ * channel is 210 px wide — wider than the estero itself in the reach beside
+ * Puntarenas — and `spawnEstero` scatters banks across most of that. Without
+ * this test a bajamar painted sand on top of a cuadra of buildings, and the sim
+ * grounded you on it, which is the worse half: a bank you cannot see but can
+ * hit. Renderer and collision both come through here, so they cannot disagree.
+ *
+ * TESTED LAZILY, NOT AT SPAWN, because of streaming: `surfaceAt` answers 0 for
+ * a tile that is not resident yet, so a bank vetted at `startCrossing` — when
+ * only the berth's tiles are loaded — would pass on faith and turn out to be
+ * sitting on a beach by the time you got there. Asked at the moment it matters,
+ * the tile under it is always loaded.
+ */
+export function bancoExposed(e, level = tideLevel()) {
+  if (e.kind !== "banco" || level >= e.depth) return false;
+  return W.surfaceAt(e.x, e.y) === 0;
 }
 
 /**
@@ -521,6 +645,32 @@ export function advanceEstero(dt, p, veh) {
         p.vx += nx * e.pull * grip * dt * 6;
         p.vy += ny * e.pull * grip * dt * 6;
         p.a += Math.sign(e.pull) * grip * dt * 1.1;
+      }
+      continue;
+    }
+    // A BANK IS GROUND, NOT AN IMPACT — and it is only there at low water.
+    // It is never "taken": you can sit on it, work her off, and put her back on
+    // it two seconds later, which is exactly what running aground is like.
+    if (e.kind === "banco") {
+      const exposed = bancoExposed(e);
+      const d = Math.hypot(e.x - p.x, e.y - p.y);
+      const on = exposed && d < e.r + reach;
+      if (on) {
+        const speed = Math.hypot(p.vx, p.vy);
+        // She drags to a crawl: the sand takes the way off her fast, and the
+        // deeper she is into the bank the worse it grips.
+        const bite = 1 - Math.min(0.92, (1 - d / (e.r + reach)) * 3.2 * dt);
+        p.vx *= bite; p.vy *= bite;
+        if (!e.aground) {
+          e.aground = true;
+          pushFloat(p.x, p.y - 40, t("crossing.aground"), "#e8c07a");
+          state.cam.shake = Math.max(state.cam.shake, 2);
+          // Driving ONTO a bank at speed is a different event from drifting
+          // onto one: that is a grounding hard enough to open her up.
+          if (_crossing.level && speed > 220 && knock("banco")) return;
+        }
+      } else if (e.aground && (!exposed || d > e.r + reach + 12)) {
+        e.aground = false;                     // off it — hysteresis, not a flicker
       }
       continue;
     }

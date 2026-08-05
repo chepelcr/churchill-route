@@ -13,9 +13,16 @@
       "id": "walker",
       "name": "Peatón",
       "movement": "rail",
-      "hosts": ["acera"],
-      "density": { "target": 64 },
-      "speed": [14, 26],
+      "hosts": [
+        "acera"
+      ],
+      "density": {
+        "target": 64
+      },
+      "speed": [
+        14,
+        26
+      ],
       "art": "walker",
       "builtin": true,
       "note": "The city's ambient crowd. Rail-bound to a road so it can never wander into a cuadra interior."
@@ -24,9 +31,21 @@
       "id": "fan",
       "name": "Aficionado",
       "movement": "bounded-random",
-      "hosts": ["parcel:stadium", "parcel:plaza", "road"],
-      "density": { "perBox": 17, "boxes": 6, "min": 3, "max": 12 },
-      "speed": [7, 16],
+      "hosts": [
+        "parcel:stadium",
+        "parcel:plaza",
+        "road"
+      ],
+      "density": {
+        "perBox": 17,
+        "boxes": 6,
+        "min": 3,
+        "max": 12
+      },
+      "speed": [
+        7,
+        16
+      ],
       "art": "fan",
       "gap": 17,
       "inset": 26,
@@ -37,9 +56,16 @@
       "id": "swimmer",
       "name": "Bañista",
       "movement": "bounded-random",
-      "hosts": ["water"],
-      "density": { "count": 6 },
-      "speed": [5, 11],
+      "hosts": [
+        "water"
+      ],
+      "density": {
+        "count": 6
+      },
+      "speed": [
+        5,
+        11
+      ],
       "art": "swimmer",
       "radius": 6,
       "builtin": true,
@@ -49,8 +75,13 @@
       "id": "passenger",
       "name": "Pasajero",
       "movement": "route",
-      "hosts": ["acera"],
-      "speed": [14, 22],
+      "hosts": [
+        "acera"
+      ],
+      "speed": [
+        14,
+        22
+      ],
       "art": "passenger",
       "temporary": true,
       "builtin": true,
@@ -60,59 +91,135 @@
       "id": "fisher",
       "name": "Pescador",
       "movement": "stationary",
-      "hosts": ["water"],
-      "speed": [0, 0],
+      "hosts": [
+        "water"
+      ],
+      "speed": [
+        0,
+        0
+      ],
       "art": "fisher",
       "builtin": true,
       "note": "He is seated in HIS BOAT'S frame, not standing on a surface: the estero's pangas draw him inside their own transform so he leans and bobs with the hull. That is why his host is water — the ground under him is the panga, and the only thing the world can check is that she is floating."
     },
     {
+      "id": "muellero",
+      "name": "Pescador de muelle",
+      "movement": "stationary",
+      "hosts": [
+        "bridge"
+      ],
+      "speed": [
+        0,
+        0
+      ],
+      "art": "muellero",
+      "builtin": true,
+      "gap": 46,
+      "note": "People used to fish off the Muelle de Cruceros and do not any more; this is that, kept. He STANDS on the deck (host `bridge` — class 5 is the pier), unlike `fisher`, who is seated in a boat, so he carries the side of the muelle he is leaning over: the caña has to go out over the water, and which way that is depends on which edge he picked."
+    },
+    {
       "id": "resident",
       "name": "Vecino",
       "movement": "stationary",
-      "hosts": ["acera", "boulevard", "paseo", "beach", "parcel", "cuadra"],
-      "speed": [0, 0],
+      "hosts": [
+        "acera",
+        "boulevard",
+        "paseo",
+        "beach",
+        "parcel",
+        "cuadra"
+      ],
+      "speed": [
+        0,
+        0
+      ],
       "art": "person"
     },
     {
       "id": "tourist",
       "name": "Turista",
       "movement": "route",
-      "hosts": ["acera", "boulevard", "paseo", "beach"],
-      "speed": [16, 22],
+      "hosts": [
+        "acera",
+        "boulevard",
+        "paseo",
+        "beach"
+      ],
+      "speed": [
+        16,
+        22
+      ],
       "art": "person"
     },
     {
       "id": "vendor",
       "name": "Vendedor",
       "movement": "stationary",
-      "hosts": ["acera", "beach", "boulevard", "paseo", "parcel"],
-      "speed": [0, 0],
+      "hosts": [
+        "acera",
+        "beach",
+        "boulevard",
+        "paseo",
+        "parcel"
+      ],
+      "speed": [
+        0,
+        0
+      ],
       "art": "vendor"
     },
     {
       "id": "worker",
       "name": "Trabajador",
       "movement": "route",
-      "hosts": ["acera", "road", "boulevard", "paseo"],
-      "speed": [14, 20],
+      "hosts": [
+        "acera",
+        "road",
+        "boulevard",
+        "paseo"
+      ],
+      "speed": [
+        14,
+        20
+      ],
       "art": "worker"
     },
     {
       "id": "supporter",
       "name": "Hincha",
       "movement": "bounded-random",
-      "hosts": ["parcel:stadium", "parcel:plaza", "acera"],
-      "density": { "perBox": 20, "boxes": 6, "min": 2, "max": 10 },
-      "speed": [8, 15],
+      "hosts": [
+        "parcel:stadium",
+        "parcel:plaza",
+        "acera"
+      ],
+      "density": {
+        "perBox": 20,
+        "boxes": 6,
+        "min": 2,
+        "max": 10
+      },
+      "speed": [
+        8,
+        15
+      ],
       "art": "fan"
     },
     {
       "id": "mascot",
       "name": "Mascota",
       "movement": "stationary",
-      "hosts": ["parcel:stadium", "parcel:plaza", "acera", "beach"],
-      "speed": [0, 0],
+      "hosts": [
+        "parcel:stadium",
+        "parcel:plaza",
+        "acera",
+        "beach"
+      ],
+      "speed": [
+        0,
+        0
+      ],
       "art": "mascot"
     }
   ]

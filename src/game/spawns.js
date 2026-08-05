@@ -6,7 +6,7 @@
 // old global arclength model (place-once across the whole corridor via ROADS +
 // roadPointAt), which cannot work when most of the map isn't loaded.
 import { WORLD2D as W } from "../world2d/index.js";
-import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains } from "./state.js";
+import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { npcCrowdSize, npcMayStand, npcSpeed, npcSurfaceClasses, npcType } from "./npcs.js";
 
@@ -23,7 +23,11 @@ const SPAWN_MIN = 300; // keep spawns outside the visible view (half-diagonal �
 // people are on the sidewalk" is a thing the editor is meant to be able to
 // change; the rest are still tuned here.
 const TARGET = { traffic: 14, pedestrians: npcType("walker").density?.target || 64,
-                 vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1 };
+                 vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1,
+                 // A banco de atún is an EVENT, not scenery: two of them in
+                 // sight at once and the gulf stops being empty water with
+                 // something happening in it.
+                 schools: 2 };
 // how many of that traffic are buses on the ruta urbana (see buses.js)
 const BUSES_WANTED = 2;
 const CAR_PALETTE = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
@@ -316,6 +320,123 @@ function spawnOneBoat() {
   return { x: pt.x, y: pt.y, vx: (Math.random() < 0.5 ? 1 : -1) * (10 + Math.random() * 14),
            kind: Math.random() < 0.2 ? "ferry" : "panga", wake: 0 };
 }
+// UN BANCO DE ATÚN. Out in the gulf a school working the surface is visible
+// from a long way off — the water boils, the birds pile in above it, and every
+// panga within sight converges on it. That whole picture is one entity here:
+// the shoal drifts, the boats turn around its EDGE (nobody drives through the
+// fish), and the gulls belong to it rather than to the ambient flock, so the
+// three things can never drift apart into a school with no boats and boats
+// circling nothing.
+function spawnOneSchool() {
+  const pt = sampleNear(_cam.x, _cam.y, [0], 520, KEEP_R);
+  if (!pt) return null;
+  // …and it has to be OPEN water, not a slot between two piers: sample the
+  // ring around it before committing, or a school lands in the harbour and its
+  // fleet orbits through the muelle.
+  const r = 46 + Math.random() * 46;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    if (W.surfaceAt(pt.x + Math.cos(a) * (r + 70), pt.y + Math.sin(a) * (r + 70)) !== 0) return null;
+  }
+  const fleet = [];
+  const n = 2 + ((Math.random() * 2) | 0);
+  for (let i = 0; i < n; i++) {
+    fleet.push({
+      ang: Math.random() * Math.PI * 2,
+      rad: r + 26 + Math.random() * 30,
+      v: (Math.random() < 0.5 ? -1 : 1) * (0.16 + Math.random() * 0.16),
+      hue: 20 + Math.random() * 40,
+      ph: Math.random() * Math.PI * 2,
+    });
+  }
+  return {
+    x: pt.x, y: pt.y, r, ph: Math.random() * Math.PI * 2,
+    vx: (Math.random() - 0.5) * 9, vy: (Math.random() - 0.5) * 9,
+    fleet, taken: false,
+  };
+}
+
+// LOS MUELLEROS — the people who used to fish off the Muelle de Cruceros.
+//
+// They are an EASTER EGG, not ambience: drive out to the end of the muelle and
+// they are there, leaning on the rail with a caña over the side, the way the
+// muelle was used before it was closed to it. That is the whole reason the
+// pier is 630 px long and has nothing on it.
+//
+// Seeded per pier and only while the camera is near, like the balneario's
+// swimmers — there are two muelles in the world and no reason to carry their
+// people across the other 60 km of it.
+const PIER_FISHER_GAP = 46;          // px of deck between them
+//: aprons and ramps are not muelles. A bajada is a slope onto the sand and the
+//: lancha's berth is a working pier; the two the people fish off are the ones
+//: with a rail to lean on, which is exactly the styles that draw one.
+const FISHABLE_PIER = new Set(["concrete", "timber"]);
+
+function maintainPierFishers() {
+  for (const P of W.PIERS || []) {
+    if (!FISHABLE_PIER.has(P.style)) continue;
+    const pts = P.pts;
+    const mx = (pts[0] + pts[pts.length - 2]) / 2;
+    const my = (pts[1] + pts[pts.length - 1]) / 2;
+    const near = Math.hypot(mx - _cam.x, my - _cam.y) < SPAWN_R + 700;
+    const seeded = pedestrians.some((pe) => pe.pier === P.id);
+    if (near && !seeded) seedPierFishers(P);
+    else if (!near && seeded) {
+      for (let i = pedestrians.length - 1; i >= 0; i--) {
+        if (pedestrians[i].pier === P.id) pedestrians.splice(i, 1);
+      }
+    }
+  }
+}
+
+function seedPierFishers(P) {
+  const pts = P.pts, half = P.w / 2;
+  // Walk the deck's arclength so a muelle that bends (the faro's does, at 45°)
+  // spaces them along the deck rather than along the screen.
+  let side = 1;
+  for (let i = 0; i + 3 < pts.length; i += 2) {
+    const ax = pts[i], ay = pts[i + 1], bx = pts[i + 2], by = pts[i + 3];
+    const seg = Math.hypot(bx - ax, by - ay);
+    if (seg < 1) continue;
+    const ux = (bx - ax) / seg, uy = (by - ay) / seg;
+    // THE LANDWARD END IS THE BUSY END OF A PIER IN A GAME — but it is also
+    // where the connector road and the apron are, so start clear of it and let
+    // them thin out toward the sea end, which is where you are heading.
+    for (let s = 90; s < seg - 40; s += PIER_FISHER_GAP) {
+      side = -side;
+      const t = s / seg;
+      // out to the edge, but inside the rail
+      const ex = -uy * side * (half - 7), ey = ux * side * (half - 7);
+      const x = ax + ux * s + ex, y = ay + uy * s + ey;
+      if (W.surfaceAt(x, y) !== 5) continue;         // still on the deck
+      pedestrians.push({
+        x, y, ang: 0, v: 0,
+        hue: 20 + ((s * 7) % 40),
+        ph: (s * 0.13) % (Math.PI * 2),
+        kind: "muellero", stationary: true, pier: P.id,
+        // which way the caña goes: outboard, away from the deck's centreline
+        face: side, nx: -uy * side, ny: ux * side,
+      });
+    }
+  }
+}
+
+/** Drift a school and turn its fleet around it. */
+export function advanceSchool(sc, dt) {
+  sc.ph += dt * 1.1;
+  sc.x += sc.vx * dt; sc.y += sc.vy * dt;
+  // A shoal that drifted onto the beach would be a shoal on the beach. Turn it
+  // back at the shore instead of letting the pool cull it — the school is rare
+  // enough that losing one to the coastline reads as them never existing.
+  if (W.surfaceAt(sc.x + sc.vx, sc.y + sc.vy) !== 0) { sc.vx *= -1; sc.vy *= -1; }
+  for (const b of sc.fleet) {
+    b.ang += b.v * dt;
+    b.x = sc.x + Math.cos(b.ang) * b.rad;
+    b.y = sc.y + Math.sin(b.ang) * b.rad;
+    // tangent, so she is drawn going the way she is actually turning
+    b.a = b.ang + (b.v > 0 ? Math.PI / 2 : -Math.PI / 2);
+  }
+}
 
 // Recycle far/dead entities and top each pool back up near the camera. Called
 // each frame (cheap: a few samples). Arrays are the same shared state arrays.
@@ -514,12 +635,14 @@ export function maintainStreaming() {
   topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || (!e.persistent && far(e)));
   maintainStadiumPeds();
   maintainBalneario();
+  maintainPierFishers();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
   topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || (!e.persistent && far(e)));
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);
   topUp(animals, TARGET.animals, spawnOneAnimal, (e) => e.dead || far(e));
   topUp(gulls, TARGET.gulls, spawnOneGull, far);
   topUp(boats, TARGET.boats, spawnOneBoat, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 400);
+  topUp(schools, TARGET.schools, spawnOneSchool, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
 }
 
 // Advance an entity along its heading, keeping it on one of `classes`. Turns at

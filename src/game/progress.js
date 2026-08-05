@@ -60,6 +60,23 @@ export function crossingRecord(stageId) {
   return (state.progress && state.progress.crossings && state.progress.crossings[stageId]) || null;
 }
 
+/** How many times this crossing has been STARTED. Drives the condition
+ *  rotation, so it counts attempts rather than clears — meeting the storm
+ *  should not require beating the night first. */
+export function crossingRuns(stageId) {
+  return crossingRecord(stageId)?.runs || 0;
+}
+
+export function bumpCrossingRuns(stageId) {
+  const p = state.progress;
+  if (!p) return 0;
+  if (!p.crossings || typeof p.crossings !== "object") p.crossings = {};
+  const rec = p.crossings[stageId] || (p.crossings[stageId] = {});
+  rec.runs = (rec.runs || 0) + 1;
+  saveProgress();
+  return rec.runs - 1;      // the index this run is sailed at
+}
+
 // Build the barrier list: the MVP wall applies in EVERY mode; the progression
 // barriers (locked districts) only gate explore mode as before.
 export function rebuildBarriers() {

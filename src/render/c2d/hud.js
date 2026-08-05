@@ -7,6 +7,7 @@ import { ensureRenderCache, roadPath } from "./cache.js";
 import { tuning } from "../../game/tuning.js";
 import { CUAD, aabbInView, ctx, flatMultiPath, flatPath, hash01, label, polyBBox } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
+import { tideName } from "../../game/tides.js";
 import { t as tr } from "../../i18n/index.js";
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
@@ -433,10 +434,57 @@ function crossingRace(c) {
   return { gates, gate, prog };
 }
 
+// LA MAREA, on the card. Two things a pilot wants and the number alone gives
+// neither: whether the bancos are OUT (a level, read against the bed) and which
+// way the water is going (a rising tide covers the bar you are looking at, a
+// falling one is about to hand you another). So the gauge is drawn as the
+// estuary in section — a sandy column with the water standing in it — and the
+// arrow beside the name says which way it is moving.
+//
+// The level comes off the CROSSING when there is one, because that is the tide
+// the race is being sailed at, and off `state` otherwise. Never recomputed.
+const TIDE_ROW_H = 24;
+const TIDE_GW = 6, TIDE_GH = 20;
+function crossingTide(c) {
+  const level = Number.isFinite(c.tide) ? c.tide
+    : Number.isFinite(state.tide) ? state.tide : null;
+  if (level === null) return null;
+  const v = Math.max(0, Math.min(1, level));
+  return { level: v, rising: !!state.tideRising, name: tr(`tide.${tideName(v)}`) };
+}
+
+function drawTideGauge(x, y, tide) {
+  const gx = x, gy = y, gw = TIDE_GW, gh = TIDE_GH;
+  // el fondo: the bed the water stands on — what is showing IS the sand
+  ctx.fillStyle = "#c39d6b";
+  ctx.beginPath(); ctx.roundRect(gx, gy, gw, gh, 3); ctx.fill();
+  const wh = Math.max(1.5, gh * tide.level);
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(gx, gy, gw, gh, 3); ctx.clip();
+  ctx.fillStyle = "#3f95b8";
+  ctx.fillRect(gx, gy + gh - wh, gw, wh);
+  ctx.fillStyle = "rgba(255,255,255,0.75)";               // the waterline itself
+  ctx.fillRect(gx, gy + gh - wh, gw, 1.2);
+  ctx.restore();
+  ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(gx + 0.5, gy + 0.5, gw - 1, gh - 1, 3); ctx.stroke();
+}
+
+// A filled triangle rather than a glyph: an arrow that depends on the font
+// having ▲ is an arrow that can come out as a box on somebody's phone.
+function tideArrow(x, y, rising, col) {
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  if (rising) { ctx.moveTo(x + 3.5, y - 6); ctx.lineTo(x + 7, y - 0.5); ctx.lineTo(x, y - 0.5); }
+  else { ctx.moveTo(x + 3.5, y - 0.5); ctx.lineTo(x + 7, y - 6); ctx.lineTo(x, y - 6); }
+  ctx.closePath(); ctx.fill();
+}
+
 function drawCrossingHud(vw, vh) {
   const c = state.crossing;
   if (!c?.active) return;
   const { gates, gate, prog } = crossingRace(c);
+  const tide = crossingTide(c);
   ctx.save();
   // the alignment is OURS: drawCompass leaves it centred, and it returns early
   // when there is no target, so without this the card's text moved on its own.
@@ -452,8 +500,22 @@ function drawCrossingHud(vw, vh) {
   const titleW = ctx.measureText(title).width;
   const counterW = counter ? ctx.measureText(counter).width : 0;
   const PAD = 10, GAP = 12;
-  const w = Math.max(132, PAD + titleW + (counter ? GAP + counterW : 0) + PAD);
-  const h = 44 + (prog !== null ? 10 : 0), x = vw - w - 18, y = 108;
+  // the tide row is measured the same way the title row is: its own two strings,
+  // in their own two sizes, so "Marea bajando" cannot run out of the card in one
+  // language while it fits in another.
+  const tideCap = tide ? tr("crossing.tide").toUpperCase() : "";
+  let tideW = 0;
+  if (tide) {
+    ctx.font = "600 7px 'Space Mono', monospace";
+    const capW = ctx.measureText(tideCap).width;
+    ctx.font = "600 9px 'Space Mono', monospace";
+    const nameW = ctx.measureText(tide.name).width;
+    tideW = PAD + TIDE_GW + 7 + Math.max(capW, 11 + nameW) + PAD;
+    ctx.font = "600 9px 'Space Mono', monospace";
+  }
+  const w = Math.max(132, PAD + titleW + (counter ? GAP + counterW : 0) + PAD, tideW);
+  const h = 44 + (tide ? TIDE_ROW_H : 0) + (prog !== null ? 10 : 0);
+  const x = vw - w - 18, y = 108;
   ctx.fillStyle = "rgba(12,20,26,0.72)";
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
   ctx.fillStyle = "#9fd7ef";
@@ -477,6 +539,21 @@ function drawCrossingHud(vw, vh) {
   ctx.fillText(`${c.fish} 🐟`, x + (c.level ? 58 : 12), y + 34);
   ctx.fillStyle = "#dfe7e3";
   ctx.fillText(`${c.t.toFixed(0)}s`, x + w - 34, y + 34);
+  // LA MAREA: the gauge, then the name of the hour and which way it is going.
+  // Sandy while the banks are out, because that is when the level is news.
+  if (tide) {
+    const gy = y + 42;
+    drawTideGauge(x + PAD, gy, tide);
+    const tx = x + PAD + TIDE_GW + 7;
+    const col = tide.level < 0.35 ? "#e8c07a" : "#9fd7ef";
+    ctx.font = "600 7px 'Space Mono', monospace";
+    ctx.fillStyle = "rgba(223,231,227,0.55)";
+    ctx.fillText(tideCap, tx, gy + 6);
+    tideArrow(tx, gy + 18, tide.rising, col);
+    ctx.font = "600 9px 'Space Mono', monospace";
+    ctx.fillStyle = col;
+    ctx.fillText(tide.name, tx + 11, gy + 18);
+  }
   if (prog !== null) {                     // how much estero is left, as a track
     const bx = x + 10, by = y + h - 9, bw = w - 20;
     ctx.fillStyle = "rgba(255,255,255,0.14)";

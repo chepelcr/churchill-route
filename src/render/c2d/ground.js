@@ -1,8 +1,13 @@
 // Ground layer: sea/inland water, the land base + park/plaza greens, the faro
 // plaza commas and the kiosk access lanes. Painted before roads.
 import { WORLD2D as W } from "../../world2d/index.js";
+import { state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
-import { aabbInView, ctx, flatMultiPath, weatherColors } from "./gfx.js";
+import { aabbInView, ctx, flatMultiPath, hash01, weatherColors } from "./gfx.js";
+import {
+  drawCurrents, drawRipples, drawShoreBreak, drawSwell, isBalneario,
+  paintBalneario, updateWater,
+} from "./water.js";
 
 function drawWaterAll(view, t) {
   // Full background = water
@@ -11,19 +16,15 @@ function drawWaterAll(view, t) {
   g.addColorStop(0, C.waterTop); g.addColorStop(1, C.waterBot);
   ctx.fillStyle = g;
   ctx.fillRect(view.x0, view.y0, view.x1 - view.x0, view.y1 - view.y0);
-  // Shimmer lines
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
-  ctx.lineWidth = 1;
-  const tt = t * 0.0006;
-  for (let yy = view.y0; yy < view.y1; yy += 26) {
-    ctx.beginPath();
-    for (let xx = view.x0; xx < view.x1; xx += 20) {
-      const yo = Math.sin(tt + xx * 0.04 + yy * 0.03) * 2.2;
-      if (xx === view.x0) ctx.moveTo(xx, yy + yo);
-      else ctx.lineTo(xx, yy + yo);
-    }
-    ctx.stroke();
-  }
+  // EL OLEAJE, replacing the flat shimmer rows that used to live here. They
+  // ran dead horizontal at a fixed spacing, so the gulf read as a striped
+  // surface rather than as water going somewhere.
+  updateWater(t, view);
+  drawSwell(view, t);
+  drawCurrents(view, t);
+  // …and the rings on the open sea, which belong UNDER the land pass: body -1
+  // is the gulf, and anything inland is clipped inside its own body instead.
+  drawRipples(view, -1);
 }
 
 
@@ -55,6 +56,7 @@ function paintWaterBody(w, view, t) {
 
 // Base land + inland waters (with river love) + beach, under the streets.
 function drawLandBase(view, t) {
+  const _pt0 = performance.now();
   const rc = ensureRenderCache(), C = weatherColors();
   ctx.fillStyle = C.land; for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
   // park / plaza cuadras: green IS their base ground colour (global manifest
@@ -64,11 +66,23 @@ function drawLandBase(view, t) {
   for (const pz of W.PLAZAS || []) drawPlazaGreen(pz, view);   // faro esplanade
   drawSurfaceStyleGround(view);
   ctx.lineJoin = "round";
-  for (const w of rc.water) if (aabbInView(w.aabb, view, 4)) paintWaterBody(w, view, t);
+  for (let i = 0; i < rc.water.length; i++) {
+    const w = rc.water[i];
+    if (!aabbInView(w.aabb, view, 4)) continue;
+    // THE BALNEARIO IS NOT THE ESTUARY. It is a city block of penned sea with
+    // people standing in it, and the generic inland treatment — one gradient
+    // and a shimmer sized for a 7 km channel — is what made it read as a flat
+    // blue rectangle.
+    if (isBalneario(i)) { paintBalneario(w, view, t, i); continue; }
+    paintWaterBody(w, view, t);
+    ctx.save(); ctx.clip(w.path); drawRipples(view, i); ctx.restore();
+  }
   // beach: sandy fill + a faint wet line along its seaward edge
   ctx.fillStyle = C.sand; for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.fill(b.path);
-  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1.5;
-  for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.stroke(b.path);
+  // LA ROMPIENTE, over the sand and under the streets: the swash runs up the
+  // beach and back, and where it reaches is a function of the tide.
+  drawShoreBreak(view, t);
+  if (window.__prof) window.__prof.land += performance.now() - _pt0;
 }
 
 
@@ -115,6 +129,105 @@ function drawGreenPoly(gp, view) {
     ctx.strokeStyle = col; ctx.lineWidth = m; ctx.lineJoin = "round";
     ctx.stroke(gp._path);
   }
+}
+
+// EL MANGLAR — the frame of the estero, and the only plant in this world that
+// stands in the water rather than beside it.
+//
+// From above a mangle is not a tree with a trunk (that is `paintTree`, and it is
+// what a tree looks like on dry land): it is a dense dark-green mass with a
+// ragged edge, sitting on a tangle of prop roots that the water goes through.
+// So it is built the way the flora already is — a couple of stacked blobs in
+// three greens over a shadow — with the roots and a mud apron UNDER the canopy
+// instead of a trunk.
+//
+// THE TIDE TOUCHES IT, quietly. At pleamar the roots are under water: they show
+// as a short dark blur and the canopy sits right down on the waterline. At
+// bajamar half the root cage and a band of mud are out. It is scenery, not the
+// subject — the reason it moves at all is that a mangrove whose roots never
+// changed would be the one thing in the estero the tide did not reach.
+const MANGROVE_R = 26;                       // when the world emits no radius
+
+// A ragged closed blob, stable for a given seed (never Math.random in a frame).
+function manglePath(cx, cy, R, seed, wob = 0.22, n = 13) {
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + seed * 0.7;
+    const rr = R * (1 - wob + wob * 2 * hash01(seed * 91.7 + i * 3.13));
+    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * 0.86;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function paintMangrove(m, tide, t) {
+  const R = m.r || MANGROVE_R;
+  const seed = hash01(m.x * 0.0173 + m.y * 0.0131);
+  const wet = Math.max(0, Math.min(1, tide));
+  const sway = Math.sin(t * 0.0004 + seed * 6.3) * 1.2;
+  // el fango: the mud the roots stand in, out only at low water
+  if (wet < 0.85) {
+    ctx.fillStyle = `rgba(84,68,44,${(0.34 * (1 - wet)).toFixed(3)})`;
+    manglePath(m.x, m.y + 1, R * 1.3, seed + 0.4, 0.18); ctx.fill();
+  }
+  ctx.fillStyle = "rgba(0,0,0,0.22)";                    // her shadow on the water
+  manglePath(m.x + 3, m.y + 4, R * 0.95, seed, 0.2); ctx.fill();
+  // las raíces zancudas: a cage of arching prop roots at the waterline. They
+  // shorten and go dim as the water comes up over them.
+  const legs = 7 + Math.round(hash01(seed * 13.7) * 4);
+  const lr = R * (0.42 + 0.34 * (1 - wet));
+  ctx.strokeStyle = `rgba(52,38,24,${(0.85 - 0.42 * wet).toFixed(3)})`;
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = "round";
+  for (let i = 0; i < legs; i++) {
+    const a = (i / legs) * Math.PI * 2 + seed * 2.1;
+    const rr = lr * (0.72 + hash01(seed * 5.1 + i * 1.9) * 0.5);
+    ctx.beginPath();
+    ctx.moveTo(m.x + Math.cos(a) * R * 0.34, m.y + Math.sin(a) * R * 0.3);
+    ctx.quadraticCurveTo(
+      m.x + Math.cos(a) * rr * 0.8, m.y + Math.sin(a) * rr * 0.6,
+      m.x + Math.cos(a) * rr, m.y + Math.sin(a) * rr * 0.88,
+    );
+    ctx.stroke();
+  }
+  ctx.strokeStyle = `rgba(226,240,238,${(0.16 + 0.16 * wet).toFixed(3)})`;  // waterline
+  ctx.lineWidth = 1.1;
+  manglePath(m.x, m.y + 1, R * (0.78 + 0.1 * wet), seed + 1.7, 0.14); ctx.stroke();
+  // la copa: dense, dark, ragged — and lower on the water when the tide is in
+  const cr = R * (0.82 + 0.12 * wet);
+  const cy = m.y - R * 0.16 * (1 - wet);
+  ctx.fillStyle = "#1e5b39";
+  manglePath(m.x + sway * 0.4, cy, cr, seed, 0.24); ctx.fill();
+  ctx.fillStyle = "#2e7d44";
+  manglePath(m.x - cr * 0.16 + sway * 0.6, cy - cr * 0.16, cr * 0.66, seed + 2.3, 0.26); ctx.fill();
+  ctx.fillStyle = "#48a05d";
+  manglePath(m.x + cr * 0.24 + sway, cy - cr * 0.22, cr * 0.4, seed + 5.1, 0.28); ctx.fill();
+}
+
+// The mangrove banks. The world emits them as points ({x, y, r}); the accessor
+// is optional on purpose, so this file is correct both before and after the
+// build starts publishing them.
+// PER TILE, like the trees and the palms beside them — not off a global array.
+// The build distributes mangroves through `add_point`, so they arrive in the
+// streamed tiles (1225 of them along the estero), and a flat `W.MANGROVES`
+// would have to concatenate every resident tile's list on every frame to
+// produce something the world never actually stores.
+function drawMangroves(view, t) {
+  const tiles = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
+  if (!tiles.length) return;
+  const tide = Number.isFinite(state.tide) ? state.tide : 0.5;
+  ctx.save();
+  ctx.lineJoin = "round";
+  for (const tile of tiles) {
+    const list = tile.mangroves;
+    if (!list || !list.length) continue;
+    for (const m of list) {
+      const R = (m.r || MANGROVE_R) * 1.6;
+      if (m.x + R < view.x0 || m.x - R > view.x1 || m.y + R < view.y0 || m.y - R > view.y1) continue;
+      paintMangrove(m, tide, t);
+    }
+  }
+  ctx.restore();
 }
 
 const SURFACE_PRESET_COLORS = {
@@ -213,6 +326,6 @@ function drawKioskPaths(view) {
 
 export {
   GREEN_COLORS, GREEN_DILATE, drawFaroCommas, drawGreenPoly, drawKioskPaths,
-  drawLandBase, drawPlazaGreen, drawSurfaceStyleAceras, drawSurfaceStyleGround,
-  drawWaterAll, paintWaterBody,
+  drawLandBase, drawMangroves, drawPlazaGreen, drawSurfaceStyleAceras,
+  drawSurfaceStyleGround, drawWaterAll, paintWaterBody,
 };

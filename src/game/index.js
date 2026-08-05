@@ -1,13 +1,15 @@
 // Game facade + main loop. Wires the simulation (physics) to the render
 // backend and exposes the public API the React UI drives. Also mirrors the
 // facade onto window.Game for the dev tweaks/deck host and debugging.
-import { state } from "./state.js";
+import { state, traffic, pedestrians, gulls, boats, schools } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { startArcade, startStage, startExplore, startTutorial, setWeather, setVehicle } from "./modes.js";
 import { tutorialDone, tutorialStepKey } from "./tutorial.js";
 import { attachTouch, attachThrottle } from "./input.js";
 import { update } from "./physics.js";
 import { setAttract, attractTick } from "./attract.js";
+import { esteroThings } from "./crossing.js";
+import { setTide } from "./tides.js";
 import { loadProgress, saveProgress, rebuildBarriers } from "./progress.js";
 import { setupCanvas, render } from "../render/Renderer.js";
 
@@ -36,7 +38,15 @@ function attachCanvas(c) {
 
 export const Game = {
   state, VEHICLES, startArcade, startStage, startExplore, startTutorial,
-  tutorialDone, tutorialStepKey, setWeather, setVehicle,
+  // The estero's contents, for the console and for the checks in tools/. The
+  // obstacles are a module array rather than state, so without this the only
+  // way to assert anything about the tide is to infer it from the boat.
+  crossingThings: () => esteroThings,
+  // The ambient pools. They are module arrays rather than fields on `state`,
+  // which is right for the sim and means nothing outside it — a console, a
+  // check in tools/ — can otherwise see whether they are populated at all.
+  pools: () => ({ traffic, pedestrians, gulls, boats, schools }),
+  tutorialDone, tutorialStepKey, setWeather, setVehicle, setTide,
   attachCanvas, attachTouch, setAttract,
   pause: () => { state.paused = !state.paused; },
   quit: () => { state.running = false; state.over = false; state.won = false; },

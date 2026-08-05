@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import { economy, BOOSTS } from "../../game/economy.js";
-import { gateCount } from "../../game/crossing.js";
+import { gateCount, crossingCondition } from "../../game/crossing.js";
+import { crossingRuns } from "../../game/progress.js";
 import { sfx } from "../../game/audio.js";
 import Icon from "../Icon.jsx";
 import { WEATHER_ICON } from "./StageSelect.jsx";
@@ -24,6 +25,12 @@ export default function StageBrief({ stage, onGo }) {
   // the number here cannot disagree with the number in the water.
   const isCrossing = stage.kind === "crossing";
   const gates = gateCount(stage);
+  // THE BRIEF PROMISES THE CONDITIONS THE RUN WILL ACTUALLY HAVE. The crossing
+  // rotates through four of them by attempt, so `stage.weather` — a single word
+  // baked into the world — would be a lie three times out of four. Read the
+  // same rotation `startStage` is about to read, at the same index.
+  const cond = isCrossing ? crossingCondition(crossingRuns(stage.id)) : null;
+  const weather = cond ? cond.weather : stage.weather;
   return (
     <div className="overlay">
       <div className="panel">
@@ -35,8 +42,16 @@ export default function StageBrief({ stage, onGo }) {
             ? <span><Icon name="pin" size={14} /> {t("brief.gates", { n: gates })}</span>
             : <span><Icon name="target" size={14} /> {stage.targetDeliveries} {t("select.deliveries")}</span>}
           <span><Icon name="clock" size={14} /> {stage.timeLimit}s</span>
-          <span><Icon name={WEATHER_ICON[stage.weather] || "sun"} size={14} /> {t(`weather.${stage.weather}`)}</span>
+          <span><Icon name={WEATHER_ICON[weather] || "sun"} size={14} /> {t(`weather.${weather}`)}</span>
         </div>
+        {cond && (
+          // Named, because "Bajamar despejada" and "Aguacero con marea alta"
+          // are two different levels and the player should know which one they
+          // are about to sail before they pick a hull for it.
+          <div style={{ marginTop: -6, marginBottom: 10, font: "12px 'JetBrains Mono', monospace", color: "var(--teal)" }}>
+            {t(`cond.${cond.id}`)}
+          </div>
+        )}
         {totalBoosts > 0 && (
           <div className="picker-boosts">
             <div className="shop-desc">{t("picker.boosts", { n: totalBoosts })}</div>

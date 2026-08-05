@@ -30,8 +30,8 @@ from ..content import (
 from ..logging import log, warn
 from ..service.osm import extract_coastlines
 from ..service.surface import (
-    acera_fringe, beach_fringe, raster_coast_barrier, raster_poly_barrier,
-    trace_land_contours,
+    acera_fringe, beach_fringe, estero_band, raster_coast_barrier,
+    raster_poly_barrier, trace_land_contours,
 )
 from ..util.geometry import pairs, to_m
 
@@ -84,7 +84,13 @@ def rasterise_surface(ctx, *, sp, ways, nodes, roads, beaches, waters, bridge_ro
     land_contours = trace_land_contours(raster)
     for b in beaches:
         raster.fill_poly([(b[i], b[i + 1]) for i in range(0, len(b), 2)], CLS_BEACH)
-    beach_fringe(raster, 9)
+    # WHICH SEA a shore faces decides whether it is sand. South of the spit is
+    # the Pacific and the Paseo de los Turistas really is a beach; north of it
+    # is the estero, mangrove down to the waterline. The band is traced from the
+    # landform (see service.surface.estero_band) and taken out of the sand seed,
+    # and the same band seeds the mangroves in `decorate`.
+    ctx.estero = estero_band(raster)
+    beach_fringe(raster, 9, band=ctx.estero)
     for wpoly in waters:
         raster.fill_poly([(wpoly[i], wpoly[i + 1]) for i in range(0, len(wpoly), 2)], CLS_WATER)
     # WHAT THE STREET IS MADE OF, in the raster. A paseo and a bridge deck come

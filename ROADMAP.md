@@ -87,20 +87,29 @@ zarpar automáticamente al tocar el muelle sería una trampa.
 
 ### 3. El manglar: el estero deja de tener playa
 
-- [ ] **Sin línea de arena en el estero.** Hoy `beach_fringe` pinta arena en
-      todo contorno de agua sin distinguir mar abierto de estero. La ribera del
-      estero es **manglar**: verde hasta el agua.
-- [ ] **Árboles hasta la orilla** — los mangles ya existen (`ctx.mangroves`, 66
-      registros); extenderlos a toda la ribera del canal.
-- [ ] **Raíces sobre el agua** dibujadas en la orilla, que son a la vez la señal
-      visual del obstáculo.
-- [ ] Cambio de ráster: rebuild + `world_snapshot.py save` en el mismo commit.
+- [x] **Sin línea de arena en el estero.** `beach_fringe` ya distingue el mar
+      abierto del estuario. Nada en el OSM dice cuál agua es cuál, así que se
+      DERIVA de la forma de la tierra: la lengüeta se traza (columnas con agua a
+      los dos lados, encadenadas mientras la costa del Pacífico se mueve poco, y
+      gana la cadena más larga — 19.7 km contra 1.6 km del segundo, así que no
+      es una decisión reñida). Desde ahí se camina al norte: agua es estuario, y
+      una tira de tierra angosta es una isla dentro de él, no la otra orilla.
+      `topY[col]` NO servía: a esa altura la primera tierra de la columna es el
+      continente, a 11 km.
+- [x] **Mangles en toda la ribera** — **1225 registros** repartidos en 24 tiles
+      (antes había 66, alrededor del estuario de Mata de Limón, y **no llegaban
+      a ningún lado**: el manifest los emitía vacíos y ningún renderer los
+      dibujaba). Se leen POR TILE, como los árboles y las palmeras.
+- [x] **Raíces sobre el agua**: el mangle se dibuja parado sobre sus raíces
+      zancudas, con el barro descubierto en bajamar y sumergido en pleamar.
+- [x] Cambio de ráster: rebuild + `world_snapshot.py save` en el mismo commit.
 
 ### 4. Entrada de menú
 
-- [ ] **Sección de Minijuegos/Niveles** en el menú principal, con su pantalla de
-      selección; por ahora *Travesía del Estero*. (Sigue pendiente: hoy se entra
-      por el carrusel de Historia, en el puesto 8.)
+- [x] ~~Sección de Minijuegos/Niveles~~ — **descartado por decisión de diseño
+      (2026-08-05)**. La Travesía es una ETAPA de Historia, la número 8, y se
+      entra por el mismo carrusel que las otras siete. Una pantalla aparte para
+      un solo nivel era un menú buscándose contenido.
 - [x] Copy en `src/i18n/<lang>.json` — nada de texto suelto en JSX. Incluye el
       `s8` que le faltaba a `stages.json`: en inglés se veía el brief en
       español.

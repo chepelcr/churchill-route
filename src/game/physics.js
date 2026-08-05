@@ -2,10 +2,10 @@
 // (cuadras, buildings, barriers, traffic, pedestrians), delivery proximity,
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
-import { state, traffic, pedestrians, gulls, boats, trains, pushFloat } from "./state.js";
+import { state, traffic, pedestrians, gulls, boats, trains, schools, pushFloat } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceEditorRoute, advanceTrain } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceEditorRoute, advanceTrain, advanceSchool } from "./spawns.js";
 import { advanceBus, advancePassenger, maintainBusStops } from "./buses.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
@@ -14,9 +14,10 @@ import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt, ferries, routePoint } from "./ferries.js";
-import { advanceCrossing, advanceEstero, crossingState } from "./crossing.js";
+import { advanceCrossing, advanceEstero, catchFish, crossingState } from "./crossing.js";
 import { takeTheLancha, leaveTheLancha } from "./modes.js";
 import { updateDayCycle } from "./daynight.js";
+import { updateTide } from "./tides.js";
 import { updateEditorTriggers } from "./editorGameplay.js";
 import { activeEditorBoost, tickEditorBoosts } from "./editorContent.js";
 
@@ -171,6 +172,7 @@ export function update(dt) {
     if (f.justHome) { f.justHome = false; pushFloat(p.x, p.y - 50, "⚓ PUNTARENAS", "#9fd7ef"); }
   }
   updateDayCycle(dt);          // the sky, when the mode asked for a clock
+  updateTide(dt);              // …and the water under it, always
   const surf = W.surfaceAt(p.x, p.y);
   const onRoad = surf === 3 || surf === 5; // road or bridge deck
   const onSand = surf === 2;
@@ -521,13 +523,17 @@ export function update(dt) {
   const elevTarget = W.onElevated(p.x, p.y) ? 1 : 0;
   state.elev += (elevTarget - state.elev) * Math.min(1, dt * 5);
 
-  // Drift sparks
+  // Drift sparks — dust off a sliding tyre, and SPRAY off a hull that is
+  // crabbing. Same emitter, different material: the sandy tan that reads as
+  // grit kicked off the barro reads as nothing at all on open water.
   if (p.drift > 0.4 && p.speed > 80) {
     state.particles.push({
       x: p.x - Math.cos(p.a) * 10 + (Math.random() - 0.5) * 6,
       y: p.y - Math.sin(p.a) * 10 + (Math.random() - 0.5) * 6,
       vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30,
-      life: 0.9, r: 5 + Math.random() * 4, c: "rgba(240,220,180,0.55)",
+      life: afloat ? 0.55 : 0.9,
+      r: afloat ? 3 + Math.random() * 4 : 5 + Math.random() * 4,
+      c: afloat ? "rgba(226,244,252,0.62)" : "rgba(240,220,180,0.55)",
     });
   }
 
@@ -864,5 +870,24 @@ export function advanceEntities(dt, withPlayer = true) {
     b.x += b.vx * dt;
     if (b.x < -120) b.x = W.W + 80;
     if (b.x > W.W + 120) b.x = -80;
+  }
+  // Los bancos de atún: the shoal drifts, its fleet turns around it, and a boat
+  // that runs through the middle gets paid. Only a BOAT — a car cannot reach
+  // open water, and a churchill delivery has no business scoring fish.
+  const afloatNow = state.veh?.medium === "water";
+  for (const sc of schools) {
+    advanceSchool(sc, dt);
+    if (sc.taken || !afloatNow) continue;
+    if (Math.hypot(sc.x - p.x, sc.y - p.y) > sc.r) continue;
+    sc.taken = true;
+    // In the crossing it feeds the level's own fish count; out in the gulf in
+    // Recorrer there is no crossing to score, so it pays coins instead.
+    if (crossingState().active) catchFish(6);
+    else {
+      const coins = 40;
+      economy.addCoins(coins);
+      state.runCoins = (state.runCoins || 0) + coins;
+      pushFloat(p.x, p.y - 40, `+${coins} 🐟`, "#9fd7ef");
+    }
   }
 }

@@ -50,6 +50,11 @@ export const parked = [];       // static cars along curbs
 export const vendors = [];      // street vendor carts on the aceras
 export const animals = [];      // dogs/cats wandering across streets
 export const trains = [];       // the old Ferrocarril: loco + wagons on the rails
+// Bancos de atún: a school working the surface out in the gulf with the pangas
+// that found it turning around the edge of it. One entity, not two — a school
+// and its fleet are the same event, they drift together, and splitting them
+// into a shoal pool and a boat pool would let the boats wander off the fish.
+export const schools = [];
 
 export function pushFloat(x, y, text, color) {
   state.floats.push({ x, y, text, color, t: 0, ttl: 1.6 });

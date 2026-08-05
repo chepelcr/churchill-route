@@ -80,6 +80,7 @@ function drawPed(pe) {
   if (art === "swimmer") { drawSwimmer(pe); return; }
   if (art === "passenger") { drawPassenger(pe); return; }
   if (art === "fisher") { drawFisher(pe); return; }
+  if (art === "muellero") { drawMuellero(pe); return; }
   if (pe.editorNpc && ["person", "vendor", "worker", "mascot"].includes(art)) {
     drawEditorNpc(pe); return;
   }
@@ -202,6 +203,67 @@ function drawFisher(pe) {
   ctx.beginPath(); ctx.arc(x + 0.5, y - 4.7 + bob, 1.7, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
+// EL MUELLERO. People used to fish off the Muelle de Cruceros and do not any
+// more, and this is that, kept — drive to the end of the muelle and they are
+// leaning on the rail with a caña over the side.
+//
+// He is the SAME PERSON as everyone else in the port: the walker's body, head
+// and hue, standing rather than seated (which is the whole difference from
+// `fisher`, who rides a panga). What he adds is the lean and the tackle — and
+// the direction of both comes from `nx,ny`, the outboard normal of the deck
+// edge he picked, so a muelle that runs north-south and one that runs at 45°
+// both get people facing the water instead of facing screen-right.
+function drawMuellero(pe) {
+  const hue = Number.isFinite(pe.hue) ? pe.hue : 28;
+  const nx = pe.nx || 1, ny = pe.ny || 0;
+  const ph = pe.ph || 0;
+  const sway = Math.sin(ph * 0.7) * 0.5;              // waiting, not fidgeting
+  const dip = Math.sin(ph * 0.8) * 1.8;               // the float, working
+  const x = pe.x + nx * sway, y = pe.y + ny * sway;
+  // rod tip and where the line meets the water, both OUTBOARD
+  const tipX = x + nx * 11, tipY = y + ny * 11 - 6;
+  const hitX = x + nx * 19, hitY = y + ny * 19 + 4 + dip;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.fillStyle = "rgba(0,0,0,0.30)";                 // his shadow on the deck
+  ctx.beginPath(); ctx.ellipse(x + 1, y + 5, 3.8, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.28)";         // the ring where it lands
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.ellipse(hitX, hitY, 3 + Math.sin(ph) * 0.8, 1.3, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.42)";         // the line
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.quadraticCurveTo((tipX + hitX) / 2, (tipY + hitY) / 2 - 1, hitX, hitY);
+  ctx.stroke();
+  // el balde, on the deck behind him — the reason he is out here
+  ctx.fillStyle = "#4f8ea8";
+  ctx.fillRect(x - nx * 6 - 2, y - ny * 6 + 1, 4, 3.4);
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillRect(x - nx * 6 - 2, y - ny * 6 + 1, 4, 1);
+  ctx.fillStyle = `hsl(${hue} 70% 60%)`;              // standing body
+  ctx.fillRect(x - 2, y - 4, 4, 7);
+  ctx.strokeStyle = "#f1c8a4";                        // arms out over the rail
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x + nx * 1.2, y + ny * 1.2 - 2.4);
+  ctx.lineTo(x + nx * 4, y + ny * 4 - 3.6);
+  ctx.stroke();
+  ctx.strokeStyle = "#8a5f33";                        // la caña
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + nx * 2.6, y + ny * 2.6 - 3.2);
+  ctx.lineTo(tipX, tipY);
+  ctx.stroke();
+  ctx.fillStyle = "#f1c8a4";                          // head
+  ctx.beginPath(); ctx.arc(x, y - 6.2, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#e0cf9e";                          // la gorra, peak to seaward
+  ctx.beginPath(); ctx.arc(x, y - 6.6, 2.5, Math.PI, 0); ctx.fill();
+  ctx.fillRect(x + Math.min(0, nx * 3.4), y - 7.0, Math.abs(nx * 3.4) + 0.6, 1.1);
+  ctx.restore();
+}
+
 // A swimmer: a head just above the water with a ripple wake + stroking arms.
 function drawSwimmer(pe) {
   const t = pe.ph;
@@ -648,6 +710,19 @@ function drawPlayer(p, veh) {
     : `rgba(0,0,0,${(0.35 - lift * 0.02).toFixed(3)})`;
   traceVehicleSilhouette(ctx, state.vehicleKey, veh); ctx.fill(); ctx.restore();
   ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
+  // SHE HEELS, AND SHE BOBS. A car is a rigid body on a flat plane and looks
+  // right as a rotated sprite; a hull that only rotated read as a boat-shaped
+  // car. From directly above, heel shows as the deck foreshortening — so the
+  // beam squashes toward the inside of the turn and the whole body shifts a
+  // little that way, driven by the angular velocity the renderer already has.
+  // The bob is the swell, and it never stops, which is what keeps her alive
+  // sitting still at the muelle.
+  if (veh.medium === "water") {
+    const heel = Math.max(-1, Math.min(1, (p.av || 0) / 2.2));
+    const swell = Math.sin(lastT * 0.0016 + (p.x + p.y) * 0.004);
+    ctx.translate(0, heel * veh.h * 0.16 + swell * 0.7);
+    ctx.scale(1, 1 - Math.abs(heel) * 0.16 + swell * 0.02);
+  }
   paintVehicle(ctx, state.vehicleKey, veh);
   if (state.carrying) drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();

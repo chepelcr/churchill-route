@@ -14,7 +14,7 @@ import { content } from "../content/remote.js";
 import {
   canvas, ctx, dpr, ZOOM, setLastT, setupCanvas, weatherColors,
 } from "./c2d/gfx.js";
-import { drawWaterAll } from "./c2d/ground.js";
+import { drawMangroves, drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
 import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
@@ -75,7 +75,9 @@ function render(t) {
 
   if (!OVERLAY) {
     // Sky/water everywhere (drawn in world coords across viewport)
+    const _pt0 = performance.now();
     drawWaterAll(view, t);
+    if (window.__prof) { window.__prof.water += performance.now() - _pt0; window.__prof.n++; }
     // Boats (behind land) — the Balneario boat is drawn LATER, above its
     // inner-water fill (which drawWorld2D paints), or it'd be hidden.
     for (const b of boats) {
@@ -91,6 +93,10 @@ function render(t) {
   // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
   // Cruceros deck (its BRIDGE surface cells are drivable but not painted by
   // the vector road pass) and the Mata de Limón suspension bridge.
+  // El manglar: ground, so it goes with the world pass — over the land
+  // silhouette (it grows out of the bank, not behind it) and under the channel,
+  // the boats and everything the crossing floats on top of them.
+  drawMangroves(view, t);
   drawChannel(view, t); // la corriente + las boyas: the estero's navigable lane
   drawPiers(view);      // the muelles, each a polyline deck over the water
   drawBridge(view);

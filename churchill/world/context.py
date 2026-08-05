@@ -81,6 +81,11 @@ class WorldContext:
     sign_nodes: list = field(default_factory=list)
 
     # ---- the street grid, once the surface is rasterised --------------------
+    #: Per raster column, the rows the ESTUARY occupies (or None where the spit
+    #: does not exist), from service.surface.estero_band. It is what tells the
+    #: mangrove side of the world from the Pacific side: no sand fringe here,
+    #: and this is the waterline the mangroves are planted along.
+    estero: list = field(default_factory=list)
     streets: object = None             # service.street.StreetIndex
     blocks: list = field(default_factory=list)
     plazas: list = field(default_factory=list)

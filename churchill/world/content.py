@@ -33,8 +33,17 @@ DISTRICT_BOUNDS_GEO = [
     (9.97550, -84.84050),  # carmen | paseo
     (9.97700, -84.83182),  # paseo | centro  (east so the Paseo boardwalk kiosks fall in paseo)
     (9.97820, -84.82900),  # centro | playitas (west of the Playitas place node -84.8274 + Estadio)
-    (9.97900, -84.82200),  # playitas | cocal (between OSM nodes: Playitas -84.8274, El Cocal -84.8171)
-    (9.93450, -84.72550),  # cocal | mata  (north of Playa Caldera)
+    # EL COCAL EMPIEZA DONDE SE ACABA EL ASFALTO. Its west edge used to sit at
+    # -84.82200 (x 21625), a block or so east of where the town actually stops:
+    # the westernmost barro street is x 20936, and Calle 14 — the last paved
+    # calle, and the one that joins the Paseo to Avenida Centenario — stands at
+    # x 20957. Moving the seam onto that line is what makes the barrio read as
+    # the unpaved one, and it is where the closure sign now stands.
+    (9.97900, -84.82512),  # playitas | cocal (the barro seam at Calle 14, x≈20940)
+    # …Y SE ACABA EN LA ANGOSTURA. It used to run to -84.72550 (x 42785), a
+    # 21,000 px band that swallowed Chacarita and El Roble whole — El Cocal is a
+    # BARRIO, not a third of the map. See COCAL_END_X for the measurement.
+    (9.96000, -84.79293),  # cocal | mata (the Angostura, x≈28000)
     (9.91950, -84.71250),  # mata | caldera (between village and port)
 ]
 
@@ -115,7 +124,14 @@ LANDMARK_DEFS = [
     {"id": "cocal_park",  "name": "Parque El Cocal",            "type": "park",         "district": "cocal",    "ll": (9.97950, -84.79500)},
     {"id": "kios_cocal",  "name": "Kiosco El Cocal",            "type": "kiosk",        "district": "cocal",    "ll": (9.98100, -84.79400)},
     # far-east Cocal soda so Stage 5 has a pickup beside its Ruta 17 customers
-    {"id": "kios_cocal2", "name": "Soda Ruta 17",               "type": "kiosk",        "district": "cocal",    "ll": (9.96400, -84.74150)},
+    # EN EL COCAL, NO EN EL ROBLE. This sat at -84.74150 (x 39850) — 12,000 px
+    # past the Angostura, on the mainland — and it was only ever tagged `cocal`
+    # because the barrio's band used to reach that far. Two things went wrong
+    # from it: `districtAt` averages a district's POIs, so El Cocal's centroid
+    # was dragged to x≈33500, and stage 6 spawns at this kiosk, which is why
+    # "Tormenta en El Cocal" dropped you next to El Roble. It stands on Ruta 17
+    # inside the barrio now, where the name always said it was.
+    {"id": "kios_cocal2", "name": "Soda Ruta 17",               "type": "kiosk",        "district": "cocal",    "ll": (9.98109, -84.81390)},
     {"id": "puente",      "name": "Puente de Mata de Limón",    "type": "bridge",       "district": "mata",     "osm": "puente colgante mata de limón"},
     {"id": "kios_mata",   "name": "Kiosco Mata de Limón",       "type": "kiosk",        "district": "mata",     "ll": (9.92250, -84.70850)},
     {"id": "leda",        "name": "Marisquería Leda",           "type": "restaurant",   "district": "mata",     "osm": "leda", "ll": (9.92350, -84.70780)},
@@ -181,8 +197,9 @@ CUSTOMER_DEFS = [
     {"id": "c22", "name": "Bailarina de comparsa",  "district": "paseo",    "line": "¡La mía sin tanto rojo!",      "ll": (9.97400, -84.83680)},
     {"id": "c23", "name": "Mesero del Kalúa",       "district": "paseo",    "line": "Para la mesa del rincón.",     "ll": (9.97430, -84.83380)},
     {"id": "c24", "name": "Surfista italiano",      "district": "paseo",    "line": "Doble rojo, per favore.",      "ll": (9.97460, -84.83120)},
-    {"id": "c13", "name": "Pareja en mirador",      "district": "cocal",    "line": "Para ver el atardecer.",       "ll": (9.96000, -84.73900)},
-    {"id": "c14", "name": "Camionero de Ruta 17",   "district": "cocal",    "line": "Rápido, voy pa' Caldera.",     "ll": (9.96800, -84.74400)},
+    # stage 6's two customers, moved into El Cocal with its kiosk — same reason
+    {"id": "c13", "name": "Pareja en mirador",      "district": "cocal",    "line": "Para ver el atardecer.",       "ll": (9.98028, -84.81846)},
+    {"id": "c14", "name": "Camionero de Ruta 17",   "district": "cocal",    "line": "Rápido, voy pa' Caldera.",     "ll": (9.98154, -84.80387)},
     {"id": "c15", "name": "Pescadores del estero",  "district": "mata",     "line": "Justo antes de la lluvia.",    "ll": (9.92600, -84.71000)},
     {"id": "c16", "name": "Cocineros de Leda",      "district": "mata",     "line": "Postre para los clientes.",    "ll": (9.92350, -84.70780)},
     {"id": "c17", "name": "Maquinista del tren",    "district": "caldera",  "line": "El tren no espera a nadie.",   "ll": (9.91450, -84.71550)},

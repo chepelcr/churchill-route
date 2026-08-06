@@ -41,6 +41,14 @@ const PIER_STYLES = {
   // have to agree, and there is no reason for the ramps to be the exception.
   apron:    { deck: "#3a3540", seam: null, seamGap: 0, cap: null, rail: null,
               centre: null, round: true, ground: true },
+  // The muelle's OWN access street. It lies on the ground like an apron, but it
+  // is the landward continuation of a CONCRETE deck, so it is paved in the
+  // muelle's grey and scored with the same slab seams — you drive off the
+  // asphalt of Calle 2 onto the muelle's concrete and then out over the water
+  // without the surface changing under you. Drawn without rails, lamps or a
+  // hut: it is a calzada, not a promenade.
+  calzada:  { deck: "#c6c6bf", seam: "rgba(0,0,0,0.09)", seamGap: 18, cap: null,
+              rail: null, centre: null, round: true, ground: true },
 };
 
 function pierInView(P, view) {

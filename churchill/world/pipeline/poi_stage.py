@@ -322,14 +322,18 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     # THE WAY IN IS A STREET, not a stub. The calle ends short of the water —
     # the last block before the estero is the shore itself — so the pier's base
     # and the end of Calle 2 are joined by a real auxiliary calle at street
-    # width, emitted as a pier so it is DRAWN as asphalt (an `apron`, the same
-    # record the ferry ramps and the bajadas use) instead of being invisible
-    # drivable cells.
+    # width, emitted as a pier (the same record the ferry ramps and the bajadas
+    # use) instead of being invisible drivable cells.
+    #
+    # `calzada`, not `apron`: it is DRAWN IN THE MUELLE'S GREY CONCRETE rather
+    # than in street asphalt, so the surface under the car does not change
+    # between the calle and the deck. The muelles themselves are already
+    # concrete; this is the piece that was still black.
     aux_len = round(street_y - pitahaya_y0)
     calle_muelle = make_pier(
         "calle_muelle_pitahaya", "Calle del Muelle de Pitahaya",
         [pitahaya_x, round(street_y), pitahaya_x, round(pitahaya_y0)], 2 * CUAD,
-        style="apron", surface=Surface.ROAD, sea_end=None,
+        style="calzada", surface=Surface.ROAD, sea_end=None,
     )
     ctx.piers.append(calle_muelle)
     ctx.pier_restores[calle_muelle["id"]] = stamp_pier(raster, calle_muelle)

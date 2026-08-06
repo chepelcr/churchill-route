@@ -250,3 +250,14 @@ MUELLE_STREET = "calle central"
 # can see and never drive onto. Calle 2 runs to the estero on its own.
 PITAHAYA_STREET = "calle 2 presbíterio florencio del castillo"
 LEON_END_STREET = "calle 20"    # the calle at the paseo's east end
+
+# LA ANGOSTURA — where the spit runs out and El Cocal with it. Measured off the
+# finished raster rather than guessed: the peninsula's land run in the y band
+# 10500..13800 falls from 1256 px at the centro to ~210 px (about 100 m) around
+# x 27200..27600, then widens again into the mainland past x 30400. That neck is
+# the barrio's east end, and the Cocal POIs — the Yacht Club (27266), the parque
+# (27550) and the kiosco (27766) — sit right against it.
+#
+# It is also the cutoff for anything that must stay INSIDE the town: promoting a
+# street by name matches namesakes in Chacarita and Barranca otherwise.
+COCAL_END_X = 28000

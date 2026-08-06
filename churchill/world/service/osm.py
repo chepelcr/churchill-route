@@ -18,9 +18,9 @@ import math
 from collections import defaultdict
 
 from ..config import (
-    ACERA_CELLS, BUILDING_SCALE, CUAD, DP_BUILDING_PX, DP_COAST_PX, DP_ROAD_PX,
-    DROP_ROAD_CLASSES, GRID_CELL, MIN_BUILDING_AREA_PX2, ROAD_CLASSES,
-    SERVICE_MIN_PX, road_width_px,
+    ACERA_CELLS, BUILDING_SCALE, COCAL_END_X, CUAD, DP_BUILDING_PX, DP_COAST_PX,
+    DP_ROAD_PX, DROP_ROAD_CLASSES, GRID_CELL, MIN_BUILDING_AREA_PX2,
+    ROAD_CLASSES, SERVICE_MIN_PX, road_width_px,
 )
 from ..logging import log
 from ..repository.osm_file import poi_category
@@ -54,6 +54,22 @@ def extract_roads(sp, ways, canvas_w, canvas_h):
         if cls in DROP_ROAD_CLASSES:
             continue
         pts, _ = project_way_pts(sp, w["pts"])
+        # …and so is THE CALLE THAT JOINS THE TWO SPINES. The Paseo runs the
+        # south shore and Avenida Centenario runs the middle of town, and they
+        # meet nowhere: the Paseo ends at x 21434, the avenida at x 20960. The
+        # one street that touches both is Calle 14 (x≈20957) — every trip from
+        # the beachfront to the centro goes through it — and OSM has it tertiary,
+        # which drew it as a side street and drove it like one. It is the town's
+        # last paved calle before the barro of El Cocal, which is exactly why it
+        # carries the traffic it does.
+        #
+        # BY GEOMETRY, NOT BY NAME ALONE. There are three Calle 14s on this map
+        # — this one, one in Chacarita (x≈32800) and one in Barranca (x≈42500)
+        # — so the test runs AFTER projection and keeps the promotion west of
+        # the Angostura. A name match on its own would have made a principal
+        # street of two residential calles in towns the player cannot reach.
+        if lname.startswith("calle 14") and pts and max(p[0] for p in pts) < COCAL_END_X:
+            cls = "primary"
         for piece in clip_polyline_to_rect(pts, canvas_w, canvas_h):
             piece = dp_simplify(piece, DP_ROAD_PX)
             length = sum(dist(piece[i], piece[i + 1]) for i in range(len(piece) - 1))

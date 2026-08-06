@@ -116,9 +116,26 @@ def _rings_area(rings):
 
 def verify(ctx, *, spawn, gate_pois):
     """The build's gate. Appends to ctx.failures; the runner raises on any."""
-    unreachable = verify_connectivity(ctx.raster, spawn, gate_pois,
-                                      reach=GATE_REACH_CELLS)
+    unreachable, reached = verify_connectivity(ctx.raster, spawn, gate_pois,
+                                               reach=GATE_REACH_CELLS)
     ctx.failures.extend("unreachable " + u for u in unreachable)
+    # A MUELLE THE PLAYER CANNOT DRIVE ONTO IS DECORATION. The POI gate does not
+    # cover the piers — they are not landmarks — and that is exactly how the
+    # Muelle de Pitahaya spent a release standing off the end of every street,
+    # its "connector" a 38 px stub paved to nothing. So take each pier's
+    # LANDWARD end and require it on the drivable component the spawn reaches.
+    cols, cell = ctx.raster.cols, ctx.raster.cell
+    for pier in ctx.piers:
+        if pier.get("style") == "apron":
+            continue                 # a ramp IS the connection, not a place
+        pts = pier["pts"]
+        bx, by = (pts[0], pts[1]) if pier.get("seaEnd", "last") == "last" else (pts[-2], pts[-1])
+        c, r = int(bx // cell), int(by // cell)
+        ok = bool(ctx.raster.in_bounds(c, r) and reached[r * cols + c])
+        log("gate", f"{pier['id']:<16} landward base ({round(bx)},{round(by)}) "
+            f"{'IS' if ok else 'is NOT'} on the drivable network reached from the spawn")
+        if not ok:
+            ctx.failures.append(f"unreachable pier {pier['id']}(landward base)")
     marine = next((lm for lm in ctx.landmarks if lm["id"] == "parquemar"), None)
     marine_greens = [g for g in ctx.greens if g.get("type") == "marine"]
     if (marine is None or not marine.get("marine")

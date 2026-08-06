@@ -6,12 +6,12 @@
 // low-res land/water/beach backdrop covers unloaded gaps.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
-import { paintPalm, paintTree } from "./flora.js";
+import { paintPalm, paintRoadsideTrees, paintTree, tileTrees } from "./flora.js";
 import { aabbInView } from "./gfx.js";
 import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
 } from "./ground.js";
-import { drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
+import { drawStreetLabels2D, medianPairs, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
 import { drawPiers, paintBuilding } from "./structures.js";
 
 // Orchestrate the painterly world from resident, in-view tiles.
@@ -30,7 +30,7 @@ function drawWorld2D(view, t) {
   // rails (old Ferrocarril line) + paseo separator ground strips, on top of
   // the asphalt but under buildings/flora
   for (const tile of vts) if (tile.rails.length) paintTileRails(tile.rails, view);
-  for (const tile of vts) if (tile.medians.length) paintTileMedians(tile.medians, view);
+  for (const tile of vts) if (tile.medians.length) paintTileMedians(tile, view);
   drawFaroCommas(view);   // faro plaza red "islands" — under the trees
   // asphalt access lanes from the kiosks to the nearest street (drivable), and
   // the ferry ramps, which are piers drawn at ground level for the same reason
@@ -38,9 +38,13 @@ function drawWorld2D(view, t) {
   drawPiers(view, true);
   // buildings
   for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
-  // flora
+  // flora. The street trees go down FIRST: they line the acera, so a crown that
+  // meets the world's own planting on the cuadra behind it should pass under
+  // it, not over. `tileTrees` is the tile's own planting with a double-anchor
+  // median's two interleaved rows merged onto its centre (see flora.js).
+  paintRoadsideTrees(roads, view);
   for (const tile of vts) {
-    for (const tr of tile.trees) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
+    for (const tr of tileTrees(tile, medianPairs(tile).pairs)) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
     for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
   }
   drawStreetLabels2D(roads, view);

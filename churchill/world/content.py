@@ -81,7 +81,18 @@ LANDMARK_DEFS = [
     {"id": "kios_paseo2", "name": "Churchill El Mariachi",      "type": "kiosk",        "district": "paseo",    "osm": "kioscos paseo de los turistas", "dx": 75, "dy": 100},
     {"id": "casafait",    "name": "Casa Fait",                  "type": "house",        "district": "paseo",    "osm": "casa fait", "ll": (9.97700, -84.82900)},
     {"id": "parquemar",   "name": "Parque Marino del Pacífico", "type": "park",         "district": "playitas", "osm": "parque marino", "ll": (9.97600, -84.82300)},
-    {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas"},
+    # THE MERCADO'S MANZANA, BY NAME. The OSM node sits on Calle 2's kerb, and
+    # the generic "step a building landmark into the nearest cuadra interior"
+    # then carried it 170 px SOUTH-WEST, across the calle into the next block:
+    # the market's own manzana is esplanade, acera and fish muelle rather than
+    # cuadra interior, so the snapper looked straight past it. `block` names the
+    # four streets that bound it instead (the "place a structure on a named
+    # street-grid cuadra" recipe) and seats the POI on that ground; a landmark
+    # that carries one is exempt from the snap, its cuadra being already known.
+    {"id": "mercado",     "name": "Mercado Central",            "type": "market",       "district": "centro",   "osm": "mercado municipal de puntarenas",
+     "block": {"calles": (["Calle 2 Presbíterio Florencio del Castillo", "Calle 2"], ["Calle 4"]),
+               "ave_north": ["Avenida 5"],
+               "ave_south": ["Avenida 3 Filiberto Sinfontes", "Avenida 3"]}},
     {"id": "pali",        "name": "Supermercado Palí",          "type": "super",        "district": "centro",   "osm": "palí", "ll": (9.97650, -84.82900)},
     # The civic block row between Av Central and Av 1 (calles 3-7): catedral on
     # the west cuadra, Casa de la Cultura on the east. Anchors = the real OSM
@@ -246,7 +257,9 @@ SITE_DECOR = {
 #
 # The far landing is geo-authored. The Puntarenas berth names its generated
 # pier instead: the lancha service resolves the pier's sea end after placement,
-# keeping the crossing on Calle Central's axis. The sailing line is then derived
+# so the berth MOVES WITH THE MUELLE — when the pier went from Calle Central's
+# (wrong) axis to the north end of Calle 2, the crossing re-derived itself and
+# nothing here had to change. The sailing line is likewise derived
 # by a flood over the water raster, so the boat can never cross land and the
 # route follows the coastline it is actually given.
 # ---------------------------------------------------------------------------

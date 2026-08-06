@@ -4,6 +4,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { t } from "../../i18n/index.js";
 import { dashPath, roadPath } from "./cache.js";
+import { nearestOnPoly } from "./flora.js";
 import { ACERA_PX, aabbInView, ctx, drawParada, flatAABB, flatMultiPath, flatPath, label, parcelFrame, roundRect } from "./gfx.js";
 
 // Estadios are NOT a structure drawn over the ground — they are a COLOUR
@@ -371,20 +372,109 @@ function paintTileRails(rails, view) {
 
 // Per-tile paseo/León Cortés separator strips: the planted green ground the
 // palms/almendros stand on, with a darker soil/curb edge.
-function paintTileMedians(medians, view) {
+//
+// TWO STRIPS SIDE BY SIDE ARE ONE MEDIAN. Paseo León Cortés is a dual
+// carriageway, so the world emits its separator once per carriageway: two
+// parallel strips 11 px apart, each drawn with its own kerb and planted with
+// its own row of trees. That reads as two thin medians with a seam down the
+// middle, which is not what is there — it is one divider anchored on two rails.
+// `medianPairs` finds such a pair and `paintMergedMedian` draws it as a single
+// planted band with its two rails marked on it.
+//
+// This is NOT the Paseo de los Turistas' palm median. That one is a SINGLE
+// dashed strip down a single carriageway; it never has a partner within
+// PAIR_MAX, so `medianPairs` leaves it alone and it is drawn exactly as before.
+//
+// WIDTH IS BOUNDED BY THE STAMP. Each strip's collision wall is stamped
+// PASEO_MEDIAN_W + 6 (16 px) about its own centreline, so the pair's stamped
+// walls overlap into one continuous 27 px wall (11 px apart, ±8 px each). The
+// merged band is drawn at sep + m.w (21 px) with a 3 px soil edge — 24 px,
+// exactly the union the two 13 px kerbs already covered, and inside the stamp.
+// Do not widen it past the stamp: the car would reach drawn-but-unstamped rim
+// and the both-ends-blocked snap-back traps it there.
+const PAIR_MAX = 26;          // px between the two rails of one divider
+const MEDIAN_SOIL = "#4f6f34";
+const MEDIAN_GRASS = "#79b45c";
+const MEDIAN_RAIL = "rgba(58,84,40,0.62)";
+
+// Pair up a tile's median strips. Cached on the tile's median list, since it is
+// pure geometry off emitted data. Returns { pairs, singles }; `pairs` carry the
+// merged centreline the flora pass plants on.
+function medianPairs(tile) {
+  if (tile._medPairs) return tile._medPairs;
+  const ms = tile.medians || [];
+  const taken = new Set(), pairs = [], singles = [];
+  for (let i = 0; i < ms.length; i++) {
+    if (taken.has(i)) continue;
+    for (let j = i + 1; j < ms.length; j++) {
+      if (taken.has(j)) continue;
+      const sep = railSeparation(ms[i], ms[j]);
+      if (sep === null) continue;
+      taken.add(i); taken.add(j);
+      pairs.push({ a: ms[i], b: ms[j], sep, w: ms[i].w, centre: midPoly(ms[i].pts, ms[j].pts) });
+      break;
+    }
+    if (!taken.has(i)) singles.push(ms[i]);
+  }
+  return (tile._medPairs = { pairs, singles });
+}
+
+// Two strips are one divider only if they run PARALLEL AND CLOSE the whole way:
+// sampled across A, every offset to B must be small AND consistent. A pair of
+// unrelated strips that happen to touch at one end fails the consistency test.
+function railSeparation(A, B) {
+  const pts = A.pts, n = pts.length / 2;
+  if (n < 3 || B.pts.length < 6) return null;
+  let lo = Infinity, hi = 0, sum = 0, k = 0;
+  for (let f = 0; f <= 4; f++) {
+    const i = Math.min(n - 1, Math.round((f / 4) * (n - 1))) * 2;
+    const d = nearestOnPoly(B.pts, pts[i], pts[i + 1]).d;
+    if (d > PAIR_MAX || d < 2) return null;
+    lo = Math.min(lo, d); hi = Math.max(hi, d); sum += d; k++;
+  }
+  return hi - lo > 8 ? null : sum / k;
+}
+
+// The centreline between two rails: every vertex of A pushed halfway to B.
+function midPoly(a, b) {
+  const out = [];
+  for (let i = 0; i + 1 < a.length; i += 2) {
+    const n = nearestOnPoly(b, a[i], a[i + 1]);
+    out.push((a[i] + n.x) / 2, (a[i + 1] + n.y) / 2);
+  }
+  return out;
+}
+
+// One divider: a single planted band between the two rails, with the rails
+// themselves marked on it as a double anchor line.
+function paintMergedMedian(P, view) {
+  if (!P._aabb) P._aabb = flatAABB(P.centre);
+  const band = P.sep + P.w;
+  if (!aabbInView(P._aabb, view, band + 6)) return;
+  const path = P._path || (P._path = flatPath(P.centre, false));
+  ctx.strokeStyle = MEDIAN_SOIL; ctx.lineWidth = band + 3; ctx.stroke(path);
+  ctx.strokeStyle = MEDIAN_GRASS; ctx.lineWidth = band; ctx.stroke(path);
+  // the two anchors, on the carriageway centrelines the world actually emitted
+  ctx.strokeStyle = MEDIAN_RAIL; ctx.lineWidth = 2;
+  for (const m of [P.a, P.b]) ctx.stroke(m._path || (m._path = flatPath(m.pts, false)));
+}
+
+function paintTileMedians(tile, view) {
+  const { pairs, singles } = medianPairs(tile);
   ctx.lineJoin = "round"; ctx.lineCap = "round";
-  ctx.strokeStyle = "#4f6f34"; // soil / curb edge
-  for (const m of medians) {
+  ctx.strokeStyle = MEDIAN_SOIL; // soil / curb edge
+  for (const m of singles) {
     if (!m.aabb) m.aabb = flatAABB(m.pts);
     if (!aabbInView(m.aabb, view, m.w + 6)) continue;
     ctx.lineWidth = m.w + 3;
     ctx.stroke(m._path || (m._path = flatPath(m.pts, false)));
   }
-  ctx.strokeStyle = "#79b45c"; // planted grass
-  for (const m of medians) {
+  ctx.strokeStyle = MEDIAN_GRASS; // planted grass
+  for (const m of singles) {
     if (!aabbInView(m.aabb, view, m.w + 6)) continue;
     ctx.lineWidth = m.w; ctx.stroke(m._path);
   }
+  for (const P of pairs) paintMergedMedian(P, view);
   ctx.lineCap = "butt";
 }
 
@@ -420,84 +510,137 @@ function drawStreetLabels2D(roads, view) {
   }
 }
 
-// Lock barriers: the MVP wall (every mode) + explore progression barriers
-// A CLOSED BARRIO IS A PERIMETER, not a line across the road. The MVP gate is
-// four inland boxes now, so it is fenced on the edge you actually approach —
-// drawing it as an x-wall put a striped barrier across the costanera, which is
-// open, and none at all along the barrio's own boundary.
-function drawMvpBox(br, view) {
-  const x0 = Math.max(br.x0, view.x0 - 30), x1 = Math.min(br.x1, view.x1 + 30);
-  const y0 = Math.max(br.y0, view.y0 - 30), y1 = Math.min(br.y1, view.y1 + 30);
-  if (x1 <= x0 || y1 <= y0) return;
-  const dstr = W.DISTRICTS.find((d) => d.id === br.district);
+// ------------------------------------------------------------ barriers ----
+// A CLOSURE IS BARRICADES ACROSS THE ROADWAY, NOT A CURTAIN ACROSS THE WORLD.
+//
+// This used to paint a striped wall down the whole visible height at the
+// barrier's x, with cones the entire length: the stripe ran through buildings,
+// sand and open sea alike, and read as a screen-door hung over the map. What a
+// closed barrio actually looks like is a barricade at the east end of each
+// calle that meets the boundary, and nothing at all in between — you can see
+// the ground on the far side, you just cannot drive onto it.
+//
+// So both barrier SHAPES resolve to the same thing: a set of boundary segments
+// (a progression barrier is one LINE at `br.x`; the MVP gate is a BOX, and any
+// of its four edges may be the one you drove up to), each intersected with the
+// roads in view. One barricade per crossing, turned to the street it blocks.
+const CONE = "#ff8b3d";
+const TAPE_A = "#f3c969", TAPE_B = "#3a3540";
+
+// Where two segments cross, or null. Used to find the calles that reach the
+// boundary; everything else about a barrier is drawn from these points.
+function segCross(ax, ay, bx, by, cx, cy, dx, dy) {
+  const r1 = bx - ax, r2 = by - ay, s1 = dx - cx, s2 = dy - cy;
+  const den = r1 * s2 - r2 * s1;
+  if (!den) return null;
+  const tt = ((cx - ax) * s2 - (cy - ay) * s1) / den;
+  const uu = ((cx - ax) * r2 - (cy - ay) * r1) / den;
+  if (tt < 0 || tt > 1 || uu < 0 || uu > 1) return null;
+  return { x: ax + r1 * tt, y: ay + r2 * tt };
+}
+
+// Every road piece crossing the boundary segment, with the point, the street's
+// heading there and its width. Deduped on a coarse cell: a road that straddles
+// a tile edge is stored in BOTH tiles, and two barricades stacked on the same
+// calle read as a smear.
+function roadCrossings(ax, ay, bx, by, view) {
+  const out = [], seen = new Set();
+  for (const tile of W.visibleTiles(view.x0, view.y0, view.x1, view.y1)) {
+    for (const r of tile.roads) {
+      if (!aabbInView(r.aabb, view, r.w + 8)) continue;
+      const p = r.pts;
+      for (let i = 0; i + 3 < p.length; i += 2) {
+        const hit = segCross(p[i], p[i + 1], p[i + 2], p[i + 3], ax, ay, bx, by);
+        if (!hit) continue;
+        const key = ((hit.x / 10) | 0) + "|" + ((hit.y / 10) | 0);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ x: hit.x, y: hit.y, w: r.w,
+                   ang: Math.atan2(p[i + 3] - p[i + 1], p[i + 2] - p[i]) });
+      }
+    }
+  }
+  return out;
+}
+
+// One barricade: the striped bar laid ACROSS the lane it closes (drawn in the
+// street's own frame, so it turns with a diagonal avenida) and a cone standing
+// off each kerb.
+function drawBarricade(c) {
   ctx.save();
-  ctx.setLineDash([14, 10]);
-  ctx.strokeStyle = "#f3c969";
-  ctx.lineWidth = 5;
-  ctx.strokeRect(br.x0, br.y0, br.x1 - br.x0, br.y1 - br.y0);
-  ctx.setLineDash([]);
-  // the sign sits where the fence is ON SCREEN, so it is readable from
-  // whichever edge you drove up to rather than at a fixed corner
-  const sx = Math.min(Math.max((view.x0 + view.x1) / 2, br.x0 + 80), br.x1 - 80);
-  const sy = Math.min(Math.max((view.y0 + view.y1) / 2, br.y0 + 30), br.y1 - 30);
+  ctx.translate(c.x, c.y);
+  ctx.rotate(c.ang);                       // +x runs with the street
+  const hw = c.w / 2 + 2;                  // just past each kerb
+  const segH = 11;
+  for (let v = -hw, k = 0; v < hw; v += segH, k++) {
+    ctx.fillStyle = k % 2 ? TAPE_A : TAPE_B;
+    ctx.fillRect(-4, v, 8, Math.min(segH, hw - v));
+  }
+  for (const sd of [-1, 1]) {
+    const cy = sd * (hw + 4);
+    ctx.fillStyle = CONE;
+    ctx.beginPath();
+    ctx.moveTo(-6, cy + 3 * sd); ctx.lineTo(0, cy - 3 * sd); ctx.lineTo(6, cy + 3 * sd);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.fillRect(-2, cy - 0.5, 4, 1.4);
+  }
+  ctx.restore();
+}
+
+// The sign — the ONLY thing that tells the player why the calle is shut, so it
+// stays. One per barrier, on the barricade nearest the middle of the view (so
+// it is readable from whichever street you drove up), standing just short of
+// the bar on the approach side.
+function drawBarrierSign(br, c, view) {
+  const dstr = W.DISTRICTS.find((d) => d.id === br.district);
+  const dname = dstr ? dstr.name : br.district.toUpperCase();
   const sw = 138, sh = 40;
+  const sx = c.x, sy = c.y - c.w / 2 - 6 - sh / 2;
   ctx.fillStyle = "rgba(20,16,40,0.88)";
   ctx.fillRect(sx - sw / 2, sy - sh / 2, sw, sh);
-  ctx.fillStyle = dstr ? dstr.tone : "#f3c969";
+  ctx.fillStyle = dstr ? dstr.tone : TAPE_A;
   ctx.fillRect(sx - sw / 2, sy - sh / 2, sw, 4);
   ctx.textAlign = "center";
   ctx.fillStyle = "#ff3d80"; ctx.font = "bold 9px 'JetBrains Mono', monospace";
   ctx.fillText(t("sign.blocked"), sx, sy - 6);
   ctx.fillStyle = "#fff"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
-  ctx.fillText((dstr ? dstr.name : br.district.toUpperCase()).slice(0, 20), sx, sy + 5);
-  ctx.fillStyle = dstr ? dstr.tone : "#f3c969"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
-  ctx.fillText(t("sign.soon"), sx, sy + 15);
-  ctx.restore();
+  ctx.fillText(dname.slice(0, 20), sx, sy + 5);
+  ctx.fillStyle = dstr ? dstr.tone : TAPE_A; ctx.font = "bold 8px 'JetBrains Mono', monospace";
+  ctx.fillText(br.mvp ? t("sign.soon") : t("sign.level", { n: br.requiredStage || "—" }), sx, sy + 15);
+}
+
+// The boundary of one barrier as segments, clipped to the view.
+function barrierEdges(br, view) {
+  if (br.x0 === undefined) {                       // a progression LINE
+    if (br.x < view.x0 - 30 || br.x > view.x1 + 30) return [];
+    return [[br.x, view.y0, br.x, view.y1]];
+  }
+  if (br.x1 < view.x0 - 30 || br.x0 > view.x1 + 30) return [];
+  if (br.y1 < view.y0 - 30 || br.y0 > view.y1 + 30) return [];
+  const { x0, y0, x1, y1 } = br;                   // the MVP BOX: all four sides
+  return [[x0, y0, x0, y1], [x1, y0, x1, y1], [x0, y0, x1, y0], [x0, y1, x1, y1]];
 }
 
 function drawBarriers(view) {
   if (!state.barriers || !state.barriers.length) return;
+  const mid = (view.x0 + view.x1) / 2, midY = (view.y0 + view.y1) / 2;
   for (const br of state.barriers) {
-    if (br.x0 !== undefined) { drawMvpBox(br, view); continue; }
-    if (br.x < view.x0 - 30 || br.x > view.x1 + 30) continue;
-    // vertical wall spanning the visible height (the 2-D world has no corridor
-    // topY/botY; the peninsula runs west->east so an x-wall gates progression)
-    const yTop = view.y0, yBot = view.y1;
-    // striped barrier sign + cones
-    const segH = 12;
-    for (let y = yTop + 6; y < yBot - 6; y += segH) {
-      ctx.fillStyle = ((y / segH) | 0) % 2 ? "#f3c969" : "#3a3540";
-      ctx.fillRect(br.x - 4, y, 8, segH);
+    const crossings = [];
+    for (const [ax, ay, bx, by] of barrierEdges(br, view)) {
+      for (const c of roadCrossings(ax, ay, bx, by, view)) crossings.push(c);
     }
-    // sign — names the zone it gates + the level that opens it
-    const dstr = W.DISTRICTS.find(d => d.id === br.district);
-    const dname = dstr ? dstr.name : br.district.toUpperCase();
-    ctx.fillStyle = "rgba(20,16,40,0.88)";
-    const sw = 138, sh = 40;
-    const sy = (yTop + yBot) / 2;
-    ctx.fillRect(br.x - sw/2, sy - sh/2, sw, sh);
-    // tone accent bar keyed to the district color
-    ctx.fillStyle = dstr ? dstr.tone : "#f3c969";
-    ctx.fillRect(br.x - sw/2, sy - sh/2, sw, 4);
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#ff3d80"; ctx.font = "bold 9px 'JetBrains Mono', monospace";
-    ctx.fillText(t("sign.blocked"), br.x, sy - 6);
-    ctx.fillStyle = "#fff"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
-    ctx.fillText(dname.slice(0, 20), br.x, sy + 5);
-    ctx.fillStyle = dstr ? dstr.tone : "#f3c969"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
-    ctx.fillText(br.mvp ? t("sign.soon") : t("sign.level", { n: br.requiredStage || "—" }), br.x, sy + 15);
-    // cones
-    for (let cy = yTop + 14; cy < yBot - 14; cy += 26) {
-      ctx.fillStyle = "#ff8b3d"; ctx.beginPath();
-      ctx.moveTo(br.x - 16, cy + 6); ctx.lineTo(br.x - 13, cy - 6); ctx.lineTo(br.x - 10, cy + 6); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.fillRect(br.x - 15, cy - 2, 4, 1.5);
-      ctx.fillStyle = "#ff8b3d"; ctx.beginPath();
-      ctx.moveTo(br.x + 10, cy + 6); ctx.lineTo(br.x + 13, cy - 6); ctx.lineTo(br.x + 16, cy + 6); ctx.closePath(); ctx.fill();
+    if (!crossings.length) continue;               // no calle reaches it here
+    for (const c of crossings) drawBarricade(c);
+    let best = crossings[0], bd = Infinity;
+    for (const c of crossings) {
+      const d = Math.hypot(c.x - mid, c.y - midY);
+      if (d < bd) { bd = d; best = c; }
     }
+    drawBarrierSign(br, best, view);
   }
 }
 
-export { drawBarriers, drawSigns, paintParcels, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };
+export { drawBarriers, drawSigns, medianPairs, paintParcels, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };
 
 // ---------------------------------------------------------------- signs ----
 // Street furniture, drawn on top of the asphalt. Costa Rica signs to the Manual

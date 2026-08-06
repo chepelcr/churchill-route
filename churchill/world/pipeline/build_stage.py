@@ -621,27 +621,33 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         # la Cultura, Avenida 1 (north) -> Avenida Centenario (south). No calle
         # crosses it — Calle 5 only exists SOUTH of Centenario — so the catedral,
         # the parks and the Casa de la Cultura share one manzana, and the thing
-        # that organises them is a T of calle peatonal:
+        # that organises them is an H of calle peatonal:
         #
-        #     Av 1  ┌──────────────┬──┬───────────────┐  Bulevar
-        #           │ parque río   │▓▓│  biblioteca   │
-        #     Calle │──────────────│▓▓├───────────────┤
-        #       7   │ ⛪ CATEDRAL  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│ ← arm, ends at the Bulevar
-        #           │──────────────│▓▓├───────────────┤
-        #           │ parque virgen│▓▓│ Casa Cultura  │
-        #    Av Cent└──────[bus]───┴──┴───────────────┘
+        #     Av 1  ┌──────────────┬──┬────────────┬─┐  Bulevar
+        #           │ parque río   │▓▓│ biblioteca │▓│
+        #     Calle │──────────────│▓▓├────────────┤▓│
+        #       7   │ ⛪ CATEDRAL  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│ ← arm, ends at the frontage
+        #           │──────────────│▓▓├────────────┤▓│
+        #           │ parque virgen│▓▓│ Casa Cultur│▓│
+        #    Av Cent└──────[bus]───┴──┴────────────┴─┘
+        #                                           ↑ FRONTAGE, avenida to avenida
         #
         # The N-S bar runs avenida to avenida in FRONT of (east of) the catedral;
-        # the E-W arm leaves that bar on the catedral's own axis and finishes at
-        # the Bulevar. Both are `boulevard` parts: stamped Surface.BOULEVARD, so
-        # they are transitable but slow, and drawn as stone rather than asphalt.
+        # the E-W arm leaves that bar on the catedral's own axis; and the EAST
+        # FRONTAGE is the stretch the BIBLIOTECA PÚBLICA and the CASA DE LA
+        # CULTURA actually face — the block's Bulevar edge, avenida to avenida,
+        # so the calle peatonal runs past both doors instead of stopping in the
+        # gap between them. All three are `boulevard` parts: stamped
+        # Surface.BOULEVARD, so they are transitable but slow, and drawn as
+        # stone rather than asphalt.
         {"id": "centro", "at": (18901, 12045),
          "calles": (["Calle 7"], ["Bulevar de la Casa de la Cultura", "Calle 3 Francisco de Paula Amador"]),
          "ave_north": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
          "ave_south": ["Avenida Centenario", "Avenida 0"],
          # the catedral row is the widest so the stone church can be as big as
-         # the manzana allows; the bar is wide enough to read as a calle
-         "cols": [4.4, 1.8, 3.8], "rows": [2.8, 3.8, 2.8],
+         # the manzana allows; the bar is wide enough to read as a calle, and
+         # the frontage column takes its width off the civic column beside it
+         "cols": [4.4, 1.8, 2.5, 1.3], "rows": [2.8, 3.8, 2.8],
          # the manzana was NOT land by this point: a customer's apron cut it in
          # half and detect_blocks had paved the rest as a sliver
          "reclaim": True,
@@ -667,6 +673,13 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
               "name": "Biblioteca Pública", "aceras": False},
              {"id": "centro_cultura", "col": 2, "row": 2, "use": "civic",
               "name": "Casa de la Cultura", "aceras": False, "lm": "cultura"},
+             # …and the stretch in front of them both. `aceras: False` on
+             # purpose: the un-eroded column reaches the cuadra's own kerb, so
+             # the stone meets the Bulevar's asphalt and you can turn onto it
+             # rather than looking at it over a sidewalk.
+             {"id": "centro_bulevar_frente", "col": 3, "row": [0, 2],
+              "use": "boulevard", "aceras": False,
+              "name": "Bulevar frente a la Casa de la Cultura"},
          ]},
     ):
         claimed = fields.place_parcels(_pc)

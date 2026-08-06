@@ -1,7 +1,7 @@
 {
  "generated_from": "src/world2d tiles",
  "playable_max_x": 21625,
- "count": 1160,
+ "count": 1161,
  "lotes": [
   {
    "id": "L-dd6a8b11",
@@ -1828,6 +1828,16 @@
    "x": 19760,
    "y": 7780,
    "lat": 9.997014,
+   "lon": -84.830505,
+   "w": 36,
+   "h": 36,
+   "district": "centro"
+  },
+  {
+   "id": "L-d976428b",
+   "x": 19760,
+   "y": 11680,
+   "lat": 9.979374,
    "lon": -84.830505,
    "w": 36,
    "h": 36,

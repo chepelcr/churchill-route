@@ -243,4 +243,10 @@ PASEO_LEON = "paseo león cortés"
 PASEO_NAMES = (PASEO_TURISTAS, PASEO_LEON)
 
 MUELLE_STREET = "calle central"
+# The estero pier gets its OWN street, and it has to: Calle Central SLANTS
+# (x 19429..19552 over y 11507..12619), so its north end is 122 px west of the
+# south end the Muelle Nacional stands on. Anchoring the twin to the Nacional's
+# x put it off the end of every calle, on ground no road reaches — a pier you
+# can see and never drive onto. Calle 2 runs to the estero on its own.
+PITAHAYA_STREET = "calle 2 presbíterio florencio del castillo"
 LEON_END_STREET = "calle 20"    # the calle at the paseo's east end

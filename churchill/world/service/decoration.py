@@ -20,9 +20,9 @@ PASEO_MEDIAN_W + 6 while the renderer draws PASEO_MEDIAN_W.
 from collections import defaultdict
 
 from ..config import (
-    CARRIAGEWAY_CLASSES, CLS_ACERA, CLS_WATER, CUAD, MANGROVE_PITCH_PX,
+    CLS_ACERA, CLS_WATER, MANGROVE_PITCH_PX,
     MANGROVE_R_MAX, MANGROVE_R_MIN, MANGROVE_SEED, PASEO_GAP_MARGIN,
-    PASEO_MEDIAN_W, PASEO_MIN_DASH, PASEO_NAMES,
+    PASEO_MEDIAN_W, PASEO_MIN_DASH, PASEO_NAMES, STREET_CLASSES,
 )
 from ..logging import log
 from .street import resample_centerline
@@ -113,21 +113,37 @@ def stamp_paseo_median(raster, median_runs):
 
 
 def mangrove_line(raster, band, pitch_px=MANGROVE_PITCH_PX, seed=MANGROVE_SEED):
-    """Mangrove clumps ALONG THE ESTUARY WATERLINE (`{x, y, r}` each).
+    """Mangrove clumps standing IN THE ESTUARY, at its waterline (`{x, y, r}`).
 
     This is the other half of the estero having no beach: the bank the sand
-    fringe now leaves alone is mangrove, and this plants it. It walks the shore
+    fringe leaves alone is mangrove, and this plants it. It walks the shore
     instead of scattering in a bbox — the scatter it replaces ringed an ellipse
     fitted to the largest water polygon near the Mata de Limón bridge, which put
     every clump in open ground kilometres from any bank.
 
     EVERY water/land boundary inside `band` (see service.surface.estero_band) is
-    a bank: the spit's north shore, the estuary's far shore, and both sides of
-    each island between them. The clump is centred on the WATER cell at the
-    edge, standing in the water the way a mangrove does, so it can never end up
-    on a street and its canopy reads as overhanging the bank.
+    a candidate bank: the spit's north shore, the estuary's far shore, and both
+    sides of each island between them. Three rules then decide whether a
+    mangrove may actually stand there, and each one was learned from a clump the
+    player found in a street:
 
-    Deterministic: a fixed column stride and the seeded `rng` — no `random`.
+      * IT GROWS IN THE ESTUARY. `band` is the only thing on this map that tells
+        estuary water from open sea, so the walk stays inside it — the same rule
+        that keeps the sand fringe off this shore, reused rather than
+        re-derived.
+      * THE BANK IS NATURAL GROUND. A water/land edge whose LANDWARD cell is
+        road, acera, paseo, deck, boulevard, barro or lastre is not a bank: it
+        is a sea wall, an esplanade or a muelle. The faro's paved sand tip alone
+        was planting a dozen clumps on its own pedestrian plaza.
+      * THE CANOPY CLEARS THE TOWN. A clump is 16–40 px of drawn root and leaf,
+        so a centre one cell off the asphalt still paints tentacles across the
+        lane. The whole disc has to be clear of built surface — and the centre
+        has to be WATER, which the ±1 cell jitter is quite capable of undoing on
+        its own, so a jitter that lands ashore is dropped rather than the clump.
+
+    Deterministic: a fixed column stride and the seeded `rng` — no `random`. A
+    candidate draws its three numbers BEFORE it can be rejected, so the sequence
+    does not depend on how many survive.
     """
     cols, rows, cell, grid = raster.cols, raster.rows, raster.cell, raster.buf
     step = max(1, pitch_px // cell)
@@ -138,7 +154,24 @@ def mangrove_line(raster, band, pitch_px=MANGROVE_PITCH_PX, seed=MANGROVE_SEED):
         state = (state * 9301 + 49297) % 233280
         return state / 233280
 
+    def canopy_clear(px, py, radius):
+        """No street, sidewalk or deck anywhere under the drawn clump."""
+        c0, c1 = int((px - radius) // cell), int((px + radius) // cell)
+        r0, r1 = int((py - radius) // cell), int((py + radius) // cell)
+        rr2 = radius * radius
+        for r in range(max(0, r0), min(rows, r1 + 1)):
+            row = r * cols
+            dy = (r + 0.5) * cell - py
+            for c in range(max(0, c0), min(cols, c1 + 1)):
+                if grid[row + c] not in STREET_CLASSES:
+                    continue
+                dx = (c + 0.5) * cell - px
+                if dx * dx + dy * dy <= rr2:
+                    return False
+        return True
+
     out = []
+    n_built_bank = n_unjittered = n_over_street = 0
     for c in range(0, min(cols, len(band)), step):
         seg = band[c]
         if seg is None:
@@ -152,12 +185,32 @@ def mangrove_line(raster, band, pitch_px=MANGROVE_PITCH_PX, seed=MANGROVE_SEED):
                 continue
             was_water = is_water
             edge = r if is_water else r - 1     # always the water side of the bank
-            # a muelle deck is an edge too, and nothing grows on one
-            if col[r - 1 if is_water else r] in CARRIAGEWAY_CLASSES:
+            if col[r - 1 if is_water else r] in STREET_CLASSES:
+                n_built_bank += 1               # sea wall, esplanade or muelle
                 continue
-            out.append({"x": round(c * cell + cell / 2 + (rng() - 0.5) * cell * 2),
-                        "y": round(edge * cell + cell / 2 + (rng() - 0.5) * cell * 2),
-                        "r": round(MANGROVE_R_MIN + rng() * (MANGROVE_R_MAX - MANGROVE_R_MIN))})
+            x = c * cell + cell / 2 + (rng() - 0.5) * cell * 2
+            y = edge * cell + cell / 2 + (rng() - 0.5) * cell * 2
+            rad = MANGROVE_R_MIN + rng() * (MANGROVE_R_MAX - MANGROVE_R_MIN)
+            # THE JITTER MAY NOT PUT IT ASHORE. It is a ±1 cell nudge, there to
+            # break the line up, and on a bank one cell wide that is enough to
+            # stand the mangrove on the mud instead of in the water — a quarter
+            # of them were. Fall back to the edge cell's own centre, which is
+            # water by construction; dropping the clump instead just thinned the
+            # fringe the pitch was chosen to keep dense.
+            cc, cr = int(x // cell), int(y // cell)
+            if not (0 <= cc < cols and 0 <= cr < rows) or grid[cr * cols + cc] != CLS_WATER:
+                x, y = c * cell + cell / 2, edge * cell + cell / 2
+                n_unjittered += 1
+            if not canopy_clear(x, y, rad):
+                n_over_street += 1
+                continue
+            out.append({"x": round(x), "y": round(y), "r": round(rad)})
+    xs = [m["x"] for m in out]
+    ys = [m["y"] for m in out]
     log("manglar", f"{len(out)} mangrove clumps along the estero waterline "
-        f"(every {pitch_px}px of shore)")
+        f"(every {pitch_px}px of shore), "
+        + (f"x {min(xs)}..{max(xs)}, y {min(ys)}..{max(ys)}" if out else "none placed"))
+    log("manglar", f"rejected {n_built_bank} built banks (esplanade/muelle/calle) "
+        f"+ {n_over_street} canopies reaching a street; "
+        f"{n_unjittered} re-centred on their water cell")
     return out

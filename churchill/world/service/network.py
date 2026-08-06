@@ -52,8 +52,15 @@ def largest_drivable_component(raster):
 
 def verify_connectivity(raster, seed_xy, pois, reach):
     """Flood-fill the drivable network from the spawn and require every POI to
-    have a reached cell within `reach` cells. Returns the ids of unreachable
-    POIs (build fails on any)."""
+    have a reached cell within `reach` cells.
+
+    Returns `(unreachable ids, reached mask)`. The MASK is the drivable
+    component the player is actually standing on — the seeded twin of
+    `largest_drivable_component`, and the stronger statement of the two, since
+    it names the component rather than assuming the biggest one is the right
+    one. It is handed back because the gate is not only about POIs: a muelle's
+    landward base has to be on it too, or the pier is decoration.
+    """
     cols, rows, grid = raster.cols, raster.rows, raster.buf
     reached = bytearray(cols * rows)
     # seed: nearest drivable cell to the spawn point (expanding square rings)
@@ -74,7 +81,7 @@ def verify_connectivity(raster, seed_xy, pois, reach):
         if seed:
             break
     if seed is None:
-        return ["spawn(no drivable cell near seed)"]
+        return ["spawn(no drivable cell near seed)"], reached
     q = deque([seed])
     reached[seed[1] * cols + seed[0]] = 1
     n_reached = 1
@@ -105,7 +112,7 @@ def verify_connectivity(raster, seed_xy, pois, reach):
     pct = 100.0 * n_reached / max(1, total_driv)
     log("gate", f"drivable network: {n_reached}/{total_driv} cells reachable "
           f"from spawn ({pct:.1f}%), {len(pois) - len(unreachable)}/{len(pois)} POIs ok")
-    return unreachable
+    return unreachable, reached
 
 
 def block_census(raster, min_side=6):

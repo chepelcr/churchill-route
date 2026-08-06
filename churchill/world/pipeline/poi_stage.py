@@ -21,10 +21,10 @@ from collections import defaultdict, deque
 from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_PASEO,
     CALLE_CLASSES, CARRIAGEWAY_CLASSES, CLS_BARRO, CLS_GRAVEL, CLS_ROAD, CLS_WATER, CUAD,
-    CUAD_CELLS, GRID_CELL, POI_NUDGE_PX,
+    CUAD_CELLS, GRID_CELL, PITAHAYA_STREET, POI_NUDGE_PX,
 )
 from ..content import CUSTOMER_DEFS, LANDMARK_DEFS, STAGES
-from ..enums import GreenType, LandmarkType
+from ..enums import GreenType, LandmarkType, Surface
 from ..logging import log, warn
 from ..service.block import block_raster_cells, cells_to_rects, detect_blocks, outline_poly
 from ..service.network import largest_drivable_component
@@ -40,9 +40,59 @@ from ..service.placement import (
     snap_into_block as _snap_into_block,
     snap_into_block_cell as _snap_into_block_cell,
 )
-from ..service.street import planar_muelle_axis
+from ..service.street import StreetIndex, block_rect, planar_muelle_axis, street_end
 from ..service.surface import acera_fringe, stamp_pad
 from ..util.geometry import dist, to_m
+
+
+#: Landmarks whose manzana is named in `content.LANDMARK_DEFS["block"]`. Their
+#: cuadra is already resolved from its four bounding streets, so they skip the
+#: "step into the nearest cuadra interior" snap and the acera nudge — both of
+#: those look for CLS_LAND and will happily cross a calle to find it.
+BLOCK_SEATED = {s["id"] for s in LANDMARK_DEFS if "block" in s}
+
+
+def seat_on_block(raster, streets, spec, ref):
+    """Seat a landmark on the cuadra its `block` spec names.
+
+    The rect runs centreline to centreline, so the seat is the ground cell
+    nearest its centre — CLS_LAND (cuadra interior) if the manzana has any,
+    else CLS_ACERA, which on a market esplanade is all the ground there is.
+    Logs the resolved rect AND the nearby-street diagnostic, because that log
+    line is the only place a bad name resolve is visible (CLAUDE.md).
+    """
+    rect, parts = block_rect(streets, spec["block"], ref)
+    if rect is None:
+        log("poi", f"WARN {spec['id']} block resolve failed "
+            f"(calles {parts[0]},{parts[1]} avenidas {parts[2]},{parts[3]}); "
+            f"near {streets.near(ref)}")
+        return None
+    x0, y0, x1, y1 = rect
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    cell = raster.cell
+    c0, c1 = int(x0 // cell), int(x1 // cell)
+    r0, r1 = int(y0 // cell), int(y1 // cell)
+    best = {}
+    for r in range(max(0, r0), min(raster.rows, r1 + 1)):
+        for c in range(max(0, c0), min(raster.cols, c1 + 1)):
+            cls = raster.at(c, r)
+            if cls not in (CLS_LAND, CLS_ACERA):
+                continue
+            px, py = (c + 0.5) * cell, (r + 0.5) * cell
+            key = ((px - cx) ** 2 + (py - cy) ** 2, px, py)
+            if cls not in best or key < best[cls]:
+                best[cls] = key
+    ground = CLS_LAND if CLS_LAND in best else CLS_ACERA
+    seat = best.get(ground)
+    log("poi", f"{spec['id']} block ({round(x0)},{round(y0)})-({round(x1)},{round(y1)})px "
+        f"from calles {round(parts[0])}/{round(parts[1])}, avenidas "
+        f"{round(parts[2])}/{round(parts[3])}; near {streets.near(ref)}")
+    if seat is None:
+        log("poi", f"WARN {spec['id']} no land or acera inside its block")
+        return None
+    log("poi", f"{spec['id']} seated at ({round(seat[1])},{round(seat[2])}) on "
+        f"{'land' if ground == CLS_LAND else 'acera'}")
+    return seat[1], seat[2]
 
 
 def place_pois(ctx, *, sp, roads, named, districts, botY):
@@ -80,6 +130,7 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     NO_PAD_LM = BUILDING_LM | {"park", "pool", "stadium", "lighthouse", "beachsign"}
     _drivable_cell = lambda c, r: drivable_cell(raster, c, r)
     snap_into_block = lambda x, y, reach_px=160, inset_px=32: _snap_into_block(raster, x, y, reach_px, inset_px)
+    streets = StreetIndex(roads)
 
     landmarks, failures = [], []
     for spec in LANDMARK_DEFS:
@@ -90,6 +141,10 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
         x, y, _, _ = sp.project(pm)
         x += spec.get("dx", 0)
         y += spec.get("dy", 0)
+        if "block" in spec:
+            seat = seat_on_block(raster, streets, spec, (x, y))
+            if seat is not None:
+                x, y = seat
         # every landmark must sit near the street network so its stamped pad
         # merges with it (a pad enclosed by solid land is unreachable in-game)
         pos = nudge_to_land(x, y, need_drivable=True)
@@ -200,11 +255,25 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
 
     # --- Muelle de Pitahaya (the twin pier north into the estero)
     #
-    # ONE AXIS, BY CONSTRUCTION. The twin reuses the Nacional's own resolved x
-    # instead of re-resolving Calle Central's other end: the street bends ~120
-    # px west as it crosses town, so two independent lookups put the two piers
-    # three lane-widths apart, which is precisely what "aligned" is not.
-    pitahaya_x = pier_x
+    # IT STANDS AT THE END OF ITS OWN CALLE, and it has to. The twin used to
+    # reuse the Nacional's resolved x on the theory that one axis kept the two
+    # piers aligned — but CALLE CENTRAL SLANTS (x 19429..19552 over
+    # y 11507..12619), so its NORTH end is 122 px west of the south end the
+    # Nacional stands on, and the twin ended up off the end of every street.
+    # The connector loop below then "found" a calle cell 38 px away and paved a
+    # stub to nothing: a pier you could see and never drive onto.
+    #
+    # Calle 2 Presbíterio Florencio del Castillo runs to the estero on its own,
+    # so resolve ITS north end and put the pier there.
+    pit_end = street_end(roads, PITAHAYA_STREET, mlm["x"], mlm["y"], "north")
+    if pit_end is None:
+        warn("pier", f"muelle_pitahaya: {PITAHAYA_STREET} not found near the "
+             f"muelle anchor — pier skipped")
+        return landmarks, customers, failures, mlm, pier, BUILDING_LM, NO_PAD_LM, resolve
+    pitahaya_x = round(pit_end[0])
+    street_y = pit_end[1]
+    log("pier", f"planar anchor: {PITAHAYA_STREET.title()} north end at "
+        f"x={pitahaya_x}, y={round(street_y)}")
     pitahaya_col = min(GRID_COLS - 1, max(0, int(pitahaya_x / GRID_CELL)))
     # THE ESTERO SHORE IS NOT `topY`, and that is the whole difficulty here.
     # `botY[col]` works for the Nacional because the spit IS the southernmost
@@ -213,13 +282,14 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     # is the mainland at Pitahaya, ~11 km away across the estuary. The spit's
     # own north shore is an INTERIOR coastline that neither array records.
     #
-    # So walk for it, north from the Nacional's base — a cell known to be on
-    # the spit — and take the first water. The walk is bounded because an
-    # unbounded one that misses the shore silently returns the top of the map,
-    # which is how the first attempt put this pier at y=6 and left the lancha
-    # with no navigable water to start from.
+    # So walk for it, north from the calle's own end — a cell known to be on
+    # the spit, and now in the pier's OWN column rather than the Nacional's —
+    # and take the first water. The walk is bounded because an unbounded one
+    # that misses the shore silently returns the top of the map, which is how
+    # the first attempt put this pier at y=6 and left the lancha with no
+    # navigable water to start from.
     MAX_SPIT_WALK = 4000                       # px; the spit is ~1100 px here
-    start_row = int(pier_y0 // GRID_CELL)
+    start_row = int(street_y // GRID_CELL)
     limit_row = max(0, start_row - int(MAX_SPIT_WALK / GRID_CELL))
     shore_row = None
     r = start_row
@@ -234,7 +304,7 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
         return landmarks, customers, failures, mlm, pier, BUILDING_LM, NO_PAD_LM, resolve
     shore_y = (shore_row + 1) * GRID_CELL
     log("pier", f"estero shore at x={pitahaya_x}, y={round(shore_y)} "
-        f"({round(pier_y0 - shore_y)}px north of the Muelle Nacional base)")
+        f"({round(street_y - shore_y)}px north of the calle's end)")
     # Base a few px inside the land, then run NORTH into the estero. Far
     # shorter than the Nacional's 630: the channel is close on this side, and
     # a deck that overshoots it is a wall across the water the boat needs.
@@ -249,15 +319,36 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     ctx.piers.append(pitahaya_pier)
     ctx.pier_restores[pitahaya_pier["id"]] = stamp_pier(raster, pitahaya_pier)
     log_pier(pitahaya_pier)
-    # connect the pier base to the street grid (walk south to the first road)
-    pc = int(pitahaya_x // GRID_CELL)
-    pr = int(pitahaya_y0 // GRID_CELL)
-    for r in range(pr, min(GRID_ROWS, pr + 120)):
-        if grid[r * GRID_COLS + pc] in CALLE_CLASSES:
-            raster.stamp_polyline([pitahaya_x, r * GRID_CELL,
-                                   pitahaya_x, pitahaya_y0], 2 * CUAD, CLS_ROAD)
-            log("pier", f"connector road to y={r * GRID_CELL}")
-            break
+    # THE WAY IN IS A STREET, not a stub. The calle ends short of the water —
+    # the last block before the estero is the shore itself — so the pier's base
+    # and the end of Calle 2 are joined by a real auxiliary calle at street
+    # width, emitted as a pier so it is DRAWN as asphalt (an `apron`, the same
+    # record the ferry ramps and the bajadas use) instead of being invisible
+    # drivable cells.
+    aux_len = round(street_y - pitahaya_y0)
+    calle_muelle = make_pier(
+        "calle_muelle_pitahaya", "Calle del Muelle de Pitahaya",
+        [pitahaya_x, round(street_y), pitahaya_x, round(pitahaya_y0)], 2 * CUAD,
+        style="apron", surface=Surface.ROAD, sea_end=None,
+    )
+    ctx.piers.append(calle_muelle)
+    ctx.pier_restores[calle_muelle["id"]] = stamp_pier(raster, calle_muelle)
+    log_pier(calle_muelle)
+    log("pier", f"muelle_pitahaya auxiliary street {aux_len}px from the pier "
+        f"base to the north end of {PITAHAYA_STREET.title()} "
+        f"({pitahaya_x},{round(street_y)})")
+    # …and PROVE the calle it joins is the one the player is on. `main_net` is
+    # the largest drivable component of the raster as it stood when this stage
+    # began — i.e. the street network — so a base whose calle is not in it is a
+    # pier on an island, which is exactly the failure this move repairs. The
+    # deck itself is re-checked against the spawn's own flood in `finish.verify`.
+    scol = min(GRID_COLS - 1, max(0, int(pitahaya_x / GRID_CELL)))
+    srow = min(GRID_ROWS - 1, max(0, int(street_y / GRID_CELL)))
+    on_net = bool(main_net[srow * GRID_COLS + scol])
+    log("pier", f"muelle_pitahaya landward calle ({pitahaya_x},{round(street_y)}) "
+        f"{'IS' if on_net else 'is NOT'} on the main drivable network")
+    if not on_net:
+        failures.append("muelle_pitahaya(landward calle off the street network)")
     log("pier", f"muelle_pitahaya at x={pitahaya_x}, "
         f"y {round(pitahaya_y0)}..{pitahaya_y1}")
 
@@ -466,7 +557,7 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
     snap_into_block_cell = lambda x, y, max_d_cuads=8: _snap_into_block_cell(blocks, x, y, max_d_cuads)
     n_snap = 0
     for lm in landmarks:
-        if lm["type"] not in BUILDING_LM:
+        if lm["type"] not in BUILDING_LM or lm["id"] in BLOCK_SEATED:
             continue
         inb = snap_into_block_cell(lm["x"], lm["y"])
         if inb is not None:
@@ -482,8 +573,8 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
     _nudge_off_acera = lambda x, y, reach_cells=16: nudge_off_acera(raster, x, y, reach_cells)
     n_nudge = 0
     for lm in landmarks:
-        if lm["type"] not in BUILDING_LM:             # all cuadra buildings, not just civic
-            continue
+        if lm["type"] not in BUILDING_LM or lm["id"] in BLOCK_SEATED:
+            continue                                  # all cuadra buildings, not just civic
         nx, ny = _nudge_off_acera(lm["x"], lm["y"])
         if round(nx) != lm["x"] or round(ny) != lm["y"]:
             lm["x"], lm["y"] = round(nx), round(ny)

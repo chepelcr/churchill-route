@@ -302,21 +302,61 @@ class StreetIndex:
                 for nm, v in sorted(near.items())}
 
 
-def planar_muelle_axis(roads, near_x, near_y, reach=1500):
-    """PLANAR pier anchor: the muelle juts south from the END of Calle Central,
-    the street at the Paseo de los Turistas east entry. Among road pieces named
-    'calle central' near the muelle geo anchor (the OSM name also exists in
-    Esparza/Barranca — hence the proximity filter), return the southernmost
-    point's x (and y) — i.e. the end of that road at the shore."""
+def street_end(roads, name, near_x, near_y, end="south", reach=1500):
+    """(x, y) of a named street's SOUTHERN or NORTHERN extreme near an anchor.
+
+    A muelle stands at the end of a calle, and which end matters twice over:
+    once because that is where the shore is, and once because THE CALLES SLANT.
+    Calle Central runs x 19429..19552 over y 11507..12619, so its two ends are
+    122 px apart in x — a pier anchored to the wrong end of it lands off the
+    end of every street, and the connector loop then "finds" a calle cell a few
+    px away and paves a stub to nothing.
+
+    The proximity filter is not optional: 'Calle Central' also exists in
+    Esparza and Barranca, and 'Calle 2' exists in half the cantons on the map.
+    """
     best = None
+    key = name.lower()
     for r in roads:
-        if (r.get("name") or "").lower() != MUELLE_STREET:
+        if (r.get("name") or "").lower() != key:
             continue
         p = r["pts"]
         for i in range(0, len(p), 2):
             x, y = p[i], p[i + 1]
             if abs(x - near_x) > reach or abs(y - near_y) > reach:
                 continue
-            if best is None or y > best[1]:
+            if best is None or (y > best[1] if end == "south" else y < best[1]):
                 best = (x, y)
     return best
+
+
+def planar_muelle_axis(roads, near_x, near_y, reach=1500):
+    """PLANAR pier anchor: the Muelle Nacional juts south from the END of Calle
+    Central, the street at the Paseo de los Turistas east entry — i.e. the
+    southernmost point of that road, where it meets the shore."""
+    return street_end(roads, MUELLE_STREET, near_x, near_y, "south", reach)
+
+
+def block_rect(index, spec, ref):
+    """The rect of a cuadra named by its four bounding streets.
+
+    `spec` carries a LIST OF CANDIDATES per edge, because the real grid is
+    patchy — `{"calles": ([west…], [east…]), "ave_north": […], "ave_south": […]}`.
+    Each edge is resolved with `at()`, the coordinate AT the anchor, never
+    `vals()`: an avenida that crosses the peninsula has a mean y on a different
+    cuadra entirely.
+
+    Returns `((x0, y0, x1, y1) or None, the four resolved edges)`. The edges
+    come back either way BECAUSE the caller has to log them: CLAUDE.md's recipe
+    is that a placement prints its resolved rect and the nearby-street
+    diagnostic, and a failed resolve is only readable if you can see WHICH of
+    the four names is the None.
+    """
+    cxa = index.at(spec["calles"][0], "x", ref)
+    cxb = index.at(spec["calles"][1], "x", ref)
+    ayn = index.at(spec["ave_north"], "y", ref)
+    ays = index.at(spec["ave_south"], "y", ref)
+    if None in (cxa, cxb, ayn, ays):
+        return None, (cxa, cxb, ayn, ays)
+    return (min(cxa, cxb), min(ayn, ays), max(cxa, cxb), max(ayn, ays)), \
+           (cxa, cxb, ayn, ays)

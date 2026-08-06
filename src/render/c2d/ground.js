@@ -3,6 +3,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
+import { CANOPY, canopyPath } from "./flora.js";
 import { aabbInView, ctx, flatMultiPath, hash01, weatherColors } from "./gfx.js";
 import {
   drawCurrents, drawRipples, drawShoreBreak, drawSwell, isBalneario,
@@ -148,17 +149,11 @@ function drawGreenPoly(gp, view) {
 // changed would be the one thing in the estero the tide did not reach.
 const MANGROVE_R = 26;                       // when the world emits no radius
 
-// A ragged closed blob, stable for a given seed (never Math.random in a frame).
-function manglePath(cx, cy, R, seed, wob = 0.22, n = 13) {
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2 + seed * 0.7;
-    const rr = R * (1 - wob + wob * 2 * hash01(seed * 91.7 + i * 3.13));
-    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * 0.86;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-}
+// The canopy blob is the ARBOLEDA'S, not the manglar's: `canopyPath` in
+// flora.js is the one construction every crown in this world is built from, so
+// a mangle and an almendro are the same hand at two scales. It used to be a
+// private copy here, which is how the two drifted apart.
+const manglePath = canopyPath;
 
 function paintMangrove(m, tide, t) {
   const R = m.r || MANGROVE_R;
@@ -190,17 +185,24 @@ function paintMangrove(m, tide, t) {
     );
     ctx.stroke();
   }
-  ctx.strokeStyle = `rgba(226,240,238,${(0.16 + 0.16 * wet).toFixed(3)})`;  // waterline
-  ctx.lineWidth = 1.1;
-  manglePath(m.x, m.y + 1, R * (0.78 + 0.1 * wet), seed + 1.7, 0.14); ctx.stroke();
+  // EL AGUA SE ARRIMA, NO SE DIBUJA. The waterline used to be a pale ring
+  // stroked round the clump at 0.78 R — but the crown sits higher than that
+  // ring and is only 0.82 R wide, so the ring came out from under it and read
+  // as a WHITE OUTLINE drawn round every tree in the manglar. It is a FILL now:
+  // a soft, slightly wider disc of shallow water under the canopy, which is
+  // what the tide actually leaves there and has no edge to read as a line.
+  ctx.fillStyle = `rgba(214,235,232,${(0.10 + 0.10 * wet).toFixed(3)})`;
+  manglePath(m.x, m.y + 1, R * (0.84 + 0.1 * wet), seed + 1.7, 0.14); ctx.fill();
   // la copa: dense, dark, ragged — and lower on the water when the tide is in
   const cr = R * (0.82 + 0.12 * wet);
   const cy = m.y - R * 0.16 * (1 - wet);
-  ctx.fillStyle = "#1e5b39";
+  // …in the ARBOLEDA's palette, from its dark end: a mangle is the darkest
+  // green in this world, but it is the same ramp as every other crown.
+  ctx.fillStyle = CANOPY[0];
   manglePath(m.x + sway * 0.4, cy, cr, seed, 0.24); ctx.fill();
-  ctx.fillStyle = "#2e7d44";
+  ctx.fillStyle = CANOPY[1];
   manglePath(m.x - cr * 0.16 + sway * 0.6, cy - cr * 0.16, cr * 0.66, seed + 2.3, 0.26); ctx.fill();
-  ctx.fillStyle = "#48a05d";
+  ctx.fillStyle = CANOPY[2];
   manglePath(m.x + cr * 0.24 + sway, cy - cr * 0.22, cr * 0.4, seed + 5.1, 0.28); ctx.fill();
 }
 

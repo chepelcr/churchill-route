@@ -102,6 +102,12 @@ export const WORLD2D = (function () {
   const KIOSK_PATHS = manifest.kioskPaths || []; // sand access paths to beach kiosks
   const PLAZAS = manifest.plazas || [];   // [x,y,w,h,type] ground rects (esplanade)
   const GREENS = manifest.greens || [];   // {pts:[x,y,...], type} park/plaza outline polys
+  // El malecón: the paved sea front of the Paseo de los Turistas, one entry per
+  // contiguous band {polys, ang, x0..y1}. Surface class 10 under it.
+  const MALECON = manifest.malecon || [];
+  // La feria del malecón: the rides + DJ Urtech {id,name,kind,x,y,r}. Drawn and
+  // heard, never stamped — nothing here blocks the car.
+  const ATTRACTIONS = manifest.attractions || [];
   const CUADRAS = manifest.cuadras || []; // selectable generated block interiors
   const SURFACE_STYLES = manifest.surfaceStyles || []; // per-region ground/acera materials
   // Every named real-world POI OSM knows about {x,y,name,cat}. Debug overlay
@@ -310,7 +316,8 @@ export const WORLD2D = (function () {
   }
 
   // ----- surface grid --------------------------------------------------------
-  // 0 water, 1 land, 2 beach, 3 road, 4 paseo, 5 bridge, 6 acera, 7 boulevard.
+  // 0 water, 1 land, 2 beach, 3 road, 4 paseo, 5 bridge, 6 acera, 7 boulevard,
+  // 8 barro, 9 gravel, 10 malecón.
   function surfaceAt(x, y) {
     if (x < 0 || y < 0 || x >= W || y >= H) return 0;
     const tc = (x / TILE_PX) | 0, tr = (y / TILE_PX) | 0;
@@ -448,7 +455,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, loadTile,
     // queries

@@ -7,7 +7,7 @@
     "route": "follows an authored polyline (advanceEditorRoute), or a bus (advancePassenger)",
     "stationary": "stands where it was placed"
   },
-  "hostVocabulary": "A hosts entry is either a SURFACE class name from src/game/surfaces.js (water, land, beach, road, paseo, bridge, acera, boulevard) or a host reference kind:use (parcel:pool, parcel:stadium, cuadra, landmark). The surface entries are checked against the raster; the host entries against properties.host.",
+  "hostVocabulary": "A hosts entry is either a SURFACE class name from src/game/surfaces.js (water, land, beach, road, paseo, bridge, acera, boulevard, barro, gravel, malecon) or a host reference kind:use (parcel:pool, parcel:stadium, cuadra, landmark). The surface entries are checked against the raster; the host entries against properties.host.",
   "types": [
     {
       "id": "walker",
@@ -88,6 +88,65 @@
       "note": "The one TEMPORARY kind: joinTheSidewalk drops both the flag and the type when an alighting passenger reaches the acera, so a person who got off a bus simply IS a person walking."
     },
     {
+      "id": "playero",
+      "name": "Playero",
+      "movement": "bounded-random",
+      "hosts": [
+        "beach"
+      ],
+      "density": {
+        "target": 16
+      },
+      "speed": [
+        6,
+        14
+      ],
+      "art": "playero",
+      "builtin": true,
+      "note": "The people on the sand: walking down to the water, standing in the shallows, lying on a towel. Hosted on the BEACH class, so they follow the real playa wherever it is — Playitas and Caldera get them exactly like the Paseo does. A third of them are stationary (the towels)."
+    },
+    {
+      "id": "jugador",
+      "name": "Jugador de playa",
+      "movement": "bounded-random",
+      "hosts": [
+        "beach"
+      ],
+      "density": {
+        "perBox": 22,
+        "boxes": 5,
+        "min": 4,
+        "max": 8
+      },
+      "speed": [
+        14,
+        26
+      ],
+      "art": "jugador",
+      "gap": 20,
+      "builtin": true,
+      "note": "A mejenga on the sand. Unlike a fan, a jugador is not wandering: the game owns a BALL and everyone runs at it, which is what makes a cluster read as a game rather than as a crowd standing on a beach."
+    },
+    {
+      "id": "paseante",
+      "name": "Paseante",
+      "movement": "bounded-random",
+      "hosts": [
+        "malecon",
+        "boulevard"
+      ],
+      "density": {
+        "target": 22
+      },
+      "speed": [
+        10,
+        20
+      ],
+      "art": "paseante",
+      "builtin": true,
+      "note": "The malecón's own crowd: families, couples, somebody with a churchill. Hosted on the promenade classes, so they exist wherever there is paving to stroll — the sea front and the centro's bulevar."
+    },
+    {
       "id": "fisher",
       "name": "Pescador",
       "movement": "stationary",
@@ -125,6 +184,7 @@
       "hosts": [
         "acera",
         "boulevard",
+        "malecon",
         "paseo",
         "beach",
         "parcel",
@@ -143,6 +203,7 @@
       "hosts": [
         "acera",
         "boulevard",
+        "malecon",
         "paseo",
         "beach"
       ],
@@ -160,6 +221,7 @@
         "acera",
         "beach",
         "boulevard",
+        "malecon",
         "paseo",
         "parcel"
       ],
@@ -177,6 +239,7 @@
         "acera",
         "road",
         "boulevard",
+        "malecon",
         "paseo"
       ],
       "speed": [

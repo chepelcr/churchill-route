@@ -21,7 +21,7 @@ from ..config import (
     CLASS_NAMES,
     CLS_ACERA, CLS_BARRO, CLS_BEACH, CLS_BRIDGE, CLS_GRAVEL, CLS_LAND,
     CLS_PASEO, CLS_ROAD, CLS_WATER,
-    CUAD, GRID_CELL,
+    CUAD, GRID_CELL, PLANAR_PX_PER_M, SHORE_RECLAIM_CELLS, SHORE_RECLAIM_REACH_M,
 )
 from ..content import (
     DISTRICT_BOUNDS_GEO, DISTRICT_DEFS, INLAND_DISTRICT_DEFS, PROBE_LAND,
@@ -29,9 +29,10 @@ from ..content import (
 )
 from ..logging import log, warn
 from ..service.osm import extract_coastlines
+from ..service.malecon import paseo_frontage_roads
 from ..service.surface import (
     acera_fringe, beach_fringe, estero_band, raster_coast_barrier,
-    raster_poly_barrier, trace_land_contours,
+    raster_poly_barrier, reclaim_shore, trace_land_contours,
 )
 from ..util.geometry import pairs, to_m
 
@@ -81,7 +82,6 @@ def rasterise_surface(ctx, *, sp, ways, nodes, roads, beaches, waters, bridge_ro
         if cls_at_geo(p) == CLS_LAND:
             log("WARN", f"sea probe {p} is LAND")
 
-    land_contours = trace_land_contours(raster)
     for b in beaches:
         raster.fill_poly([(b[i], b[i + 1]) for i in range(0, len(b), 2)], CLS_BEACH)
     # WHICH SEA a shore faces decides whether it is sand. South of the spit is
@@ -91,6 +91,28 @@ def rasterise_surface(ctx, *, sp, ways, nodes, roads, beaches, waters, bridge_ro
     # and the same band seeds the mangroves in `decorate`.
     ctx.estero = estero_band(raster)
     beach_fringe(raster, 9, band=ctx.estero)
+    # …and then the other direction: the waterline is pushed OUT, so the playa
+    # is wide enough to be a place at play zoom. The estuary is masked out of
+    # it, exactly as it is out of the fringe — and it is bounded to the
+    # waterfront the two paseos run along, which is the beach the game is ever
+    # played on. Widening all 60 km of coast doubled the world's sand to widen
+    # a playa nobody visits.
+    front = paseo_frontage_roads(roads)
+    if front:
+        xs = [v for r in front for v in r["pts"][0::2]]
+        ys = [v for r in front for v in r["pts"][1::2]]
+        pad = SHORE_RECLAIM_REACH_M * PLANAR_PX_PER_M
+        reclaim_shore(raster, ctx.estero, SHORE_RECLAIM_CELLS,
+                      corridor=(min(xs) - pad, min(ys) - pad,
+                                max(xs) + pad, max(ys) + pad))
+    else:
+        log("beach", "no paseo frontage — the coast keeps its true waterline")
+    # THE SILHOUETTE IS TRACED AFTER THE COAST IS FINAL. It used to be traced
+    # before the sand was even stamped, which was harmless while nothing moved
+    # the waterline — `beach_fringe` only ever converted land. `reclaim_shore`
+    # moves it, so a contour traced earlier would draw the drowned coast under
+    # the new one.
+    land_contours = trace_land_contours(raster)
     for wpoly in waters:
         raster.fill_poly([(wpoly[i], wpoly[i + 1]) for i in range(0, len(wpoly), 2)], CLS_WATER)
     # WHAT THE STREET IS MADE OF, in the raster. A paseo and a bridge deck come

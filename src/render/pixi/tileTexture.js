@@ -21,6 +21,7 @@ const CLASS_RGB = {
   7: [0xd9, 0xd6, 0xcd], // boulevard (stone paving)
   8: [0x9c, 0x7a, 0x4f], // barro — the same dirt the road vector is drawn in
   9: [0xa9, 0x9d, 0x8b], // gravel / lastre
+  10: [0xe4, 0xd2, 0xae], // malecón — warm pavers, a shade off the sand it edges
 };
 const FALLBACK = [0xff, 0x00, 0xff];
 

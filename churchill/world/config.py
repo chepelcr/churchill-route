@@ -76,8 +76,26 @@ M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
 # beside it has to be pushed out of, and at 43 px the push ran out of room for
 # 254 named buildings — which then lost their real outlines to the snapper, and
 # the outline is the entire reason a named building is kept.
-PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "2.0"))   # world zoom
-ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.9"))  # widen streets
+#
+# 2.0 / 2.9 -> 2.5 / 2.32, the same move again and for the same reason. The
+# question it answers is "why is anything standing on the acera at all", and the
+# answer is arithmetic: a 7 m calle painted 41 px is 20.5 m of asphalt, and the
+# sidewalk is then carved 6 m INTO the manzana — so the game's building line
+# stood 12.8 m inside the true property line, on all four sides of every block,
+# and a footprint drawn where it really is HAD to overlap. Nothing about the
+# fitting was wrong.
+#
+# Raising the scale and lowering the multiplier by the same factor leaves every
+# street exactly the width it was ON SCREEN while shrinking the exaggeration in
+# METRES: the same 41 px of asphalt is now 16.4 m, the same 12 px of sidewalk is
+# 4.8 m, and the encroachment drops to 9.5 m. The manzana's interior grows ~37 %,
+# which is the room the push actually needs.
+#
+# What it costs: the raster goes from 158M cells to 247M (build ~15 min, ~22 MB
+# emitted), and since speed is px/s a delivery is a longer drive in seconds —
+# measure before touching the stage timers, do not assume.
+PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "2.5"))   # world zoom
+ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.32"))  # widen streets
 # real-ish carriageway widths (metres) per OSM highway class; painted width =
 # ROAD_WIDTH_M · ARCADE_STREET_MUL · px_per_m (kept modest so junction gores survive)
 ROAD_WIDTH_M = {
@@ -131,7 +149,26 @@ SERVICE_MIN_PX = 150
 DP_ROAD_PX = 1.0
 DP_BUILDING_PX = 2.0
 DP_COAST_PX = 2.5
+# The DRAWN sand is traced from the raster (service.surface.sand_outlines), not
+# from the OSM beach polygons — that disagreement is what put two tones on the
+# playa. 12 px keeps the shape and costs ~120 KB of manifest; the raster cells
+# stay authoritative for physics either way.
+DP_SAND_PX = 12.0
 MIN_BUILDING_AREA_PX2 = 216
+
+# ---- the coast, widened on purpose ------------------------------------------
+# The one deliberate lie this map tells about its own geography. Puntarenas'
+# playa is 15-40 m of sand, and the camera frames twenty cuadrículas — so at
+# true scale the beach is a stripe you cross, not a place you are at, and the
+# malecón beside it has nothing to be beside. Twenty metres of reclaimed sea
+# makes the playa read at play zoom; the spit does not visibly fatten, and the
+# ESTUARY gains nothing (it is mangrove down to the waterline, by design).
+SHORE_RECLAIM_M = 20
+# …and how far around the paseos' own waterfront it is allowed to reach. This
+# is the beach the camera is ever pointed at — Las Playitas is inside it, the
+# 60 km of coast east of the spit is not.
+SHORE_RECLAIM_REACH_M = 600
+SHORE_RECLAIM_CELLS = int(round(SHORE_RECLAIM_M * PLANAR_PX_PER_M / GRID_CELL))
 
 # Parque Marino is the RESIDUAL of its cuadra after the UNA campus and every
 # mapped building lot have taken their ground. Five 0.38-scale tanks no longer
@@ -164,6 +201,7 @@ CLS_ACERA = Surface.ACERA
 CLS_BOULEVARD = Surface.BOULEVARD
 CLS_BARRO = Surface.BARRO
 CLS_GRAVEL = Surface.GRAVEL
+CLS_MALECON = Surface.MALECON
 # Sidewalk depth per side, in raster cells. It is carved INTO the cuadra, so
 # every cell of it is block frontage the town does not get — and at 5 cells the
 # ring was 20 px, which at 2 px/m is a TEN METRE sidewalk. That is what put 245
@@ -238,7 +276,56 @@ PASEO_MEDIAN_W = 0.5 * CUAD     # separator strips (palm median / tree lines) �
 PASEO_MIN_DASH = 2.0 * CUAD     # drop palm-median slivers shorter than this
 PASEO_GAP_MARGIN = CUAD         # extra turn room on each side of a crossing
 
+# ---- el malecón: the paved sea front of the Paseo de los Turistas -----------
+# Depth in METRES, on purpose. Every constant on this coast that was tuned in px
+# broke at the 1.6 -> 2.0 rescale (see STREET_SPAN_M above and the faro's
+# esplanade radius), and this one describes a promenade, which is a real width.
+MALECON_BAND_M = 30             # ~60 px at 2.0 px/m = 3 cuadrículas of paving
+MALECON_SHOULDER_M = 30         # how far past the kerb to look for the sand
+# THE SAND HAS A VETO. The beach is 88-150 px wide along most of the Paseo and
+# ~28 px by the faro; taking a flat band would pave the playa away at that end.
+MALECON_MIN_SAND_PX = 24        # sand that must survive seaward of the paving
+MALECON_MIN_TAKE_PX = 12        # below this the cross-section gets no promenade
+MALECON_ENTRADA_W = 1.2 * CUAD  # the ramp down at each opening of the median
+# By the faro the sea is on BOTH sides of the Paseo, so the sand rule finds a
+# few dozen cells of "sea front" on the estero side too. A patch this small is a
+# square of paving in the middle of a beach, not a promenade: it goes back to
+# sand rather than being quietly left out of the emit (see stamp_malecon).
+MALECON_MIN_PATCH_CELLS = 120   # ~45x45 px — below this it is raster noise
+
+# A CHURCHILL STAND IS 32 px WIDE and throws a shadow 22 px to its right, so a
+# kiosk 14 px from open water is drawn half in the gulf — which is exactly where
+# the rescale put three of them. What has to clear the sea is the ART, not the
+# anchor the build nudged onto land once and never re-checked.
+# `kios_faro` is exempt: it stands on the Muelle del Faro's deck on purpose.
+KIOSK_WATER_CLEAR_PX = 30
+
+# ---- La Punta: the faro's plazoleta ----------------------------------------
+# How far the paved sand tip reaches from the lighthouse, IN METRES. It was 34
+# raster cells — 136 px, tuned at 1.6 px/m — so the rescale to 2.0 shrank the
+# plaza from 85 m to 68 m while the loop road around it moved outward, and the
+# sand left between the two is the yellow ring the player sees against the grey.
+# Radial probes put the road at ~200 px from the flood origin on the east side.
+FARO_ESP_R_M = 120
+# The flood follows SAND, and sand runs the length of the coast. If the tip's
+# beach ever joins the playa, the plazoleta stops being a plazoleta — so a flood
+# this big is a leak, and the radius falls back with a warning rather than
+# paving the Paseo. (~2400 cells is the tip; the whole beach is 400k.)
+FARO_ESP_MAX_CELLS = 6000
+# …and the other half of the same fix. The ring of sand the player sees between
+# the grey plaza and the loop road is not the flood stopping short: it is sand
+# the plaza and the street CLOSED AROUND, which the flood can never reach. A
+# pocket of beach with no way to the sea is a hole in the esplanade, and gets
+# paved with it — up to this size, so that a rebuild which opens a path to the
+# playa cannot quietly pave the coast.
+FARO_POCKET_MAX_CELLS = 400
+
 PASEO_TURISTAS = "paseo de los turistas"
+# THE TWO PASEOS ARE ONE WATERFRONT. Turistas runs the spit from the faro to
+# x≈19099 and León Cortés Castro picks up at that exact point and carries on
+# east past the Muelle de Cruceros to the Parque Marino — both facing the
+# PACIFIC. (The estuary is the other shore of the spit and neither of them is
+# on it; a comment in service/malecon.py claimed otherwise for a while.)
 PASEO_LEON = "paseo león cortés"
 PASEO_NAMES = (PASEO_TURISTAS, PASEO_LEON)
 

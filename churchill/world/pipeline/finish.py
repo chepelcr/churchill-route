@@ -13,7 +13,8 @@ import time
 
 from ..config import (
     ACERA_CELLS, CLS_LAND, CUAD, CUADS_PER_VIEW, DEBUG_PNG, DEBUG_SVG,
-    DRIVABLE_CLASSES, GRID_CELL, MARINE_POOL_GROUND_CLEAR_PX,
+    DRIVABLE_CLASSES, GRID_CELL, KIOSK_WATER_CLEAR_PX,
+    MARINE_POOL_GROUND_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
 )
 from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, STAGES
@@ -40,6 +41,8 @@ def ordered_stages():
 from ..logging import log
 from ..repository.debug_render import render_debug
 from ..service.network import block_census, verify_connectivity
+from ..service.placement import water_within
+from ..service.surface import sand_outlines
 from ..service.street import StreetIndex
 from ..util.geometry import (
     pairs, point_in_poly, point_polygon_dist, point_polyline_dist, poly_area,
@@ -126,8 +129,12 @@ def verify(ctx, *, spawn, gate_pois):
     # LANDWARD end and require it on the drivable component the spawn reaches.
     cols, cell = ctx.raster.cols, ctx.raster.cell
     for pier in ctx.piers:
-        if pier.get("style") == "apron":
-            continue                 # a ramp IS the connection, not a place
+        # A RAMP IS THE CONNECTION, NOT A PLACE. `apron` is the ferry/lancha
+        # ramp; `malecon` is a bajada down to the sand, paved as promenade. Both
+        # are the last few metres of a street, and neither is a muelle standing
+        # out over the water with something at the end of it.
+        if pier.get("style") in ("apron", "malecon"):
+            continue
         pts = pier["pts"]
         bx, by = (pts[0], pts[1]) if pier.get("seaEnd", "last") == "last" else (pts[-2], pts[-1])
         c, r = int(bx // cell), int(by // cell)
@@ -136,6 +143,17 @@ def verify(ctx, *, spawn, gate_pois):
             f"{'IS' if ok else 'is NOT'} on the drivable network reached from the spawn")
         if not ok:
             ctx.failures.append(f"unreachable pier {pier['id']}(landward base)")
+    # NO KIOSK STANDS IN THE GULF. The stand is 32 px of art with a 22 px
+    # shadow, and the build only ever tested its geo ANCHOR for water — which is
+    # how the 1.6 -> 2.0 rescale left three of them drawn half in the sea and
+    # nothing said a word. This is the rule that makes the next rescale say it.
+    # `kios_faro` is exempt by design: it stands on the Muelle del Faro's deck.
+    for lm in ctx.landmarks:
+        if lm["type"] != "kiosk" or lm["id"] == "kios_faro":
+            continue
+        if water_within(ctx.raster, lm["x"], lm["y"], KIOSK_WATER_CLEAR_PX):
+            ctx.failures.append(f"{lm['id']}(in the sea: water within "
+                                f"{KIOSK_WATER_CLEAR_PX}px of the stand)")
     marine = next((lm for lm in ctx.landmarks if lm["id"] == "parquemar"), None)
     marine_greens = [g for g in ctx.greens if g.get("type") == "marine"]
     if (marine is None or not marine.get("marine")
@@ -269,7 +287,12 @@ def verify(ctx, *, spawn, gate_pois):
 
 
 #: Furniture that BELONGS on the asphalt: a zebra and a tope are painted on it.
-ON_THE_ROAD_OK = ("crossing", "tope")
+#: A `banca` is here for the opposite reason — it is not on the asphalt at all,
+#: it is on the malecón, which is drivable ground because a promenade you may
+#: cross is still a promenade. Without this the sweep would push all of them
+#: inland off the sea front they exist to look at, and drop the ones with
+#: nowhere to go.
+ON_THE_ROAD_OK = ("crossing", "tope", "banca")
 
 
 def clear_the_roadway(raster, signs, roads):
@@ -328,6 +351,13 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
         # contract literal during local iteration.
         raise SystemExit(f"[poi] BUILD INCOMPLETE — unresolved: {ctx.failures}")
     ctx.signs[:] = clear_the_roadway(ctx.raster, ctx.signs, ctx.roads)
+    # THE DRAWN SAND IS THE SAND. `ctx.beaches` are the raw OSM `natural=beach`
+    # outlines the surface stage stamped from; the raster's sand is those plus
+    # nine rings of fringe, minus everything stamped over it since — which is
+    # why the playa had two tones. Traced HERE because here is the only place
+    # the surface is finished. (The Balneario's floating-building pads stamp
+    # CLS_BEACH, so they come along for free.)
+    ctx.beaches[:] = sand_outlines(ctx.raster)
     emit_world2d(ctx.raster, sink, meta=meta, districts=ctx.districts,
                  roads=ctx.roads, rails=ctx.rails, buildings=ctx.buildings,
                  trees=ctx.trees, palms=ctx.palms, mangroves=ctx.mangroves,
@@ -335,7 +365,8 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
                  islands=islands, beaches=ctx.beaches, waters=ctx.waters,
                  land_polys=land_polys, landmarks=ctx.landmarks,
                  customers=ctx.customers, stages=ordered_stages(),
-                 stadiums=ctx.stadiums,
+                 stadiums=ctx.stadiums, malecon=ctx.malecon,
+                 attractions=ctx.attractions,
                  kiosk_paths=ctx.kiosk_paths,
                  balneario=ctx.balneario, bridge=ctx.bridge, estuary=ctx.estuary,
                  piers=ctx.piers, hills=ctx.hills, pois=ctx.pois,

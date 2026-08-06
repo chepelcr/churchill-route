@@ -20,8 +20,10 @@ import math
 from collections import defaultdict
 
 from ..config import (
-    ACERA_CELLS, BLDG_INSET, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND,
+    ACERA_CELLS, BLDG_INSET, CLS_ACERA, CLS_BARRO, CLS_BEACH, CLS_BRIDGE,
+    CLS_GRAVEL, CLS_LAND, CLS_MALECON,
     CARRIAGEWAY_CLASSES, CLS_PASEO, CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL,
+    KIOSK_WATER_CLEAR_PX,
     LEON_END_STREET, MARINE_POOL_GROUND_CLEAR_PX, MARINE_POOL_RAIL_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_SCALE,
     MARINE_STRUCTURE_PARCEL_PAD_PX, PASEO_LEON, PASEO_MEDIAN_W, PASEO_TURISTAS,
@@ -33,12 +35,14 @@ from ..content import (
 )
 from ..enums import GreenType, LandmarkType, ParcelUse, Surface
 from ..logging import log, warn
+from ..service.attraction import place_attractions
 from ..service.block import (
     block_raster_cells, cells_to_rects, cuadra_cells, outline_poly,
     outline_polys,
 )
 from ..service.building import (
-    _grid_placer, make_rng, snap_osm_buildings, synth_buildings,
+    _grid_placer, fit_manzana_contents, make_rng, snap_osm_buildings,
+    synth_buildings,
 )
 from ..service.decoration import (
     mangrove_line, paseo_median_runs, paseo_roads, stamp_paseo_median,
@@ -49,7 +53,8 @@ from ..service.pier import make_pier, stamp as stamp_pier
 from ..service.field import FieldService, _largest_part
 from ..service.projection import project_way_pts
 from ..service.placement import (
-    cell_class, kiosk_frontage, nearest_block, nearest_cell, road_adj,
+    cell_class, kiosk_frontage, nearest_block, nearest_cell, nudge_off_water,
+    road_adj,
 )
 from ..service.street import StreetIndex, half_plane, resample_centerline
 from ..service.surface import stamp_pad
@@ -86,14 +91,54 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     _road_adj = lambda cc, cr: road_adj(raster, cc, cr)
 
     _kiosk_frontage = lambda x, y: kiosk_frontage(raster, nongreen_blocks, KIOSK_SNAP_CUAD, x, y)
+
+    # A KIOSK MUST CLEAR THE SEA, and the anchor is not what has to: the stand is
+    # 32 px of drawn art with a shadow reaching 22 px to its right. The build
+    # tests for water exactly once, on the geo anchor, and never again after a
+    # reseat — so the 1.6 -> 2.0 rescale left three of them (Paseo 2, Centro,
+    # Mata de Limón) standing 14 px from open water, drawn half in the gulf.
+    # Checked AFTER the frontage seat, since that is what moves them last, and
+    # BEFORE the apron, so the pad follows the kiosk rather than the other way
+    # round. `kios_faro` is exempt: it is seated on the timber deck on purpose.
+    KIOSK_STAND = (CLS_LAND, CLS_ACERA, CLS_ROAD, CLS_BEACH, CLS_MALECON,
+                   CLS_BARRO, CLS_GRAVEL)
+    n_dry = 0
+
+    def keep_off_the_sea(lm):
+        nonlocal n_dry
+        if lm["id"] == "kios_faro":
+            return
+        # A STAND KEEPS ITS OWN GROUND. Pushing it away from the water must not
+        # also push it off the surface the build deliberately seated it on —
+        # the first cut of this took Kioscos Paseo 1 off the malecón it had just
+        # been placed on and left it eight px away, standing on the sand.
+        here = cell_class(raster, lm["x"] // GRID_CELL, lm["y"] // GRID_CELL)
+        stand = (here,) if here in KIOSK_STAND else KIOSK_STAND
+        dry = nudge_off_water(raster, lm["x"], lm["y"], KIOSK_WATER_CLEAR_PX, stand)
+        if dry is None and stand is not KIOSK_STAND:
+            dry = nudge_off_water(raster, lm["x"], lm["y"], KIOSK_WATER_CLEAR_PX, KIOSK_STAND)
+        if dry is None:
+            warn("kiosk", f"{lm['id']} ({lm['x']},{lm['y']}) has no dry ground within "
+                 f"{KIOSK_WATER_CLEAR_PX}px — it will be drawn over the water")
+            return
+        if round(dry[0]) == lm["x"] and round(dry[1]) == lm["y"]:
+            return
+        log("kiosk", f"{lm['id']} pushed off the sea "
+            f"({lm['x']},{lm['y']}) -> ({round(dry[0])},{round(dry[1])})")
+        lm["x"], lm["y"] = round(dry[0]), round(dry[1])
+        n_dry += 1
+
     for lm in landmarks:
-        if lm["type"] != "kiosk" or lm["id"] in beach_kiosks:
-            if lm["type"] == "kiosk":
-                stamp_pad(raster, lm["x"], lm["y"], 44)   # apron for the beach stand
+        if lm["type"] != "kiosk":
+            continue
+        if lm["id"] in beach_kiosks:
+            keep_off_the_sea(lm)
+            stamp_pad(raster, lm["x"], lm["y"], 44)   # apron for the beach stand
             continue
         spot = _kiosk_frontage(lm["x"], lm["y"])
         if spot:
             lm["x"], lm["y"] = round(spot[0]), round(spot[1])
+        keep_off_the_sea(lm)
         # WHERE THE STREET IS — asked BEFORE the apron is stamped. `stamp_pad`
         # paints a 44 px CLS_ROAD pocket around the kiosk, so asking afterwards
         # finds the POCKET ITSELF: the "connector" comes out a 4 px stub from a
@@ -110,6 +155,8 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
             kiosk_paths.append({"pts": [round(lm["x"]), round(lm["y"]),
                                         round(tgt[0]), round(tgt[1])], "surface": "paved"})
             log("kiosk", f"{lm['id']} -> cuadra frontage ({lm['x']},{lm['y']}), paved connector")
+    log("kiosk", f"{n_dry} kiosk(s) pushed clear of the water "
+        f"({KIOSK_WATER_CLEAR_PX}px of dry ground around the stand)")
 
     # Player spawn per kiosk: run starts place the player beside the run's first
     # kiosk. Snap that point to the nearest DRIVABLE street cell now (build time,
@@ -421,7 +468,8 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     # Estadios and parcels: one service over the world under construction.
     fields = FieldService(raster=raster, streets=streets, landmarks=landmarks,
                           blocks=blocks, greens=greens, plazas=plazas,
-                          stadiums=stadiums, parcels=parcels, occ=occ)
+                          stadiums=stadiums, parcels=parcels, occ=occ,
+                          project_ll=lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2])
 
     def _partition_marine_cuadra(site, park_raw, block_raw):
         """Hand the shared cuadra to its real occupants, then keep the residual.
@@ -591,7 +639,14 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     #   aceras: False -> the part keeps the ring, filling the block edge to edge
     #                    (how Plaza Las Playitas reads as one open field).
     for _pc in (
-        {"id": "carmen", "at": (15775, 12194),      # Calle 35-33 x Av Centenario-Av 1
+        # THE ANCHOR IS GEO, like every other anchor in this world. These two
+        # were the last WORLD-PIXEL anchors left anywhere in the build, tuned at
+        # 1.6 px/m and carried forward — so the 2.0 -> 2.5 rescale moved the real
+        # manzana 4 000 px away from them, all four bounding streets resolved to
+        # None, and the entire civic block stopped existing: no Parroquia del
+        # Carmen, no Jardín, no Plaza Deportes El Carmen, no Catedral, no Casa de
+        # la Cultura, no Biblioteca. The only sign was two WARN lines.
+        {"id": "carmen", "ll": (9.97705, -84.84868),  # Calle 35-33 x Av Centenario-Av 1
          "calles": (["Calle 35"], ["Calle 33"]),
          "ave_north": ["Avenida Centenario", "Avenida 0"],
          "ave_south": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
@@ -640,7 +695,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         # gap between them. All three are `boulevard` parts: stamped
         # Surface.BOULEVARD, so they are transitable but slow, and drawn as
         # stone rather than asphalt.
-        {"id": "centro", "at": (18901, 12045),
+        {"id": "centro", "ll": (9.97772, -84.83442),
          "calles": (["Calle 7"], ["Bulevar de la Casa de la Cultura", "Calle 3 Francisco de Paula Amador"]),
          "ave_north": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
          "ave_south": ["Avenida Centenario", "Avenida 0"],
@@ -683,6 +738,15 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
          ]},
     ):
         claimed = fields.place_parcels(_pc)
+        # A HAND-LAID CUADRA THAT RESOLVES TO NOTHING FAILS THE BUILD. It used
+        # to log a WARN and carry on, and that is how the Catedral, the Casa de
+        # la Cultura, the Biblioteca, the Parroquia del Carmen and the Plaza
+        # Deportes El Carmen all quietly stopped existing when a px anchor went
+        # stale — the whole civic centre of the game, gone, and two lines in a
+        # 900-line log to say so. Somebody sat down and drew these blocks; the
+        # build does not get to decide they are optional.
+        if not claimed:
+            ctx.failures.append(f"hand-laid cuadra {_pc['id']} resolved to nothing")
         # A hand-laid cuadra owns its ground. Named OSM footprints are kept at
         # their real outline unconditionally (see `named_raw` below), so without
         # this the capilla, the curia and the parroquia's offices would still be
@@ -753,55 +817,6 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         log("site", f"cleared {before - len(raw_bldgs)} OSM footprints off the "
             f"{len(site_cuads)} cuad cells the built sites claimed")
 
-    # Parque Marino: exact OSM membership decides WHICH structures belong to
-    # the aquarium and receive facility names. The surrounding CUADRA decides
-    # which additional real buildings need their own ordinary lot before the
-    # residual becomes park. Keeping those two questions separate fixes both
-    # old failures: a block/AABB must not rename Plaza Centenario or Max Outlet
-    # "Parque Marino", but neither may disappear under the lawn.
-    marine_raw, marine_neighbour_raw, marine_block_raw = [], [], []
-    if marine_site:
-        marine_way = next((way for way in ctx.ways
-                           if int(way["id"]) == MARINE_SITE_OSM_ID), None)
-        if marine_way is None:
-            raise RuntimeError(
-                f"Parque Marino OSM boundary {MARINE_SITE_OSM_ID} is missing")
-        marine_boundary, _ = project_way_pts(ctx.projection, marine_way["pts"])
-        if len(marine_boundary) > 1 and dist(marine_boundary[0], marine_boundary[-1]) < 1e-6:
-            marine_boundary = marine_boundary[:-1]
-        marine_site["boundary"] = marine_boundary
-        block_flat = outline_poly(marine_site["grass"], GRID_CELL)
-        block_boundary = pairs(block_flat)
-        if not block_boundary:
-            raise RuntimeError("Parque Marino cuadra has no raster boundary")
-        mc = marine_site["cells"]
-        keep = []
-        for raw in raw_bldgs:
-            pts = raw.get("pts")
-            if pts and point_in_poly(poly_centroid(pts), marine_boundary):
-                marine_raw.append(raw)
-            elif pts and (
-                    point_in_poly(poly_centroid(pts), block_boundary)
-                    or any(point_in_poly(p, block_boundary) for p in pts)):
-                marine_neighbour_raw.append(raw)
-            else:
-                keep.append(raw)
-        marine_raw.sort(key=lambda raw: raw["id"])
-        marine_neighbour_raw.sort(key=lambda raw: raw["id"])
-        marine_block_raw = sorted(
-            marine_raw + marine_neighbour_raw, key=lambda raw: raw["id"])
-        raw_bldgs = keep
-        occ.update(mc)
-        log("marino", f"{len(marine_raw)} OSM buildings inside exact park "
-            f"boundary way {MARINE_SITE_OSM_ID}")
-        if marine_neighbour_raw:
-            log("marino", f"{len(marine_neighbour_raw)} neighbouring cuadra "
-                "buildings keep ordinary named lots: "
-                + ", ".join(
-                    f"{raw['id']} {raw.get('osm_name') or raw.get('name') or '—'}"
-                    for raw in marine_neighbour_raw))
-        _partition_marine_cuadra(
-            marine_site, marine_raw, marine_block_raw)
     # Every OTHER building that is a NAMED place also keeps its real outline, for
     # the same reason: Hotel Tioga, the Catedral, Súper Salinas et al. should be
     # recognisable on the map, not another anonymous pastel rect. They bypass the
@@ -871,16 +886,148 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
                 return moved
         return None
 
-    named_raw, keep, n_onroad, n_pushed = [], [], 0, 0
+    # …and when the straight push has nowhere to go, LOOK AROUND rather than
+    # give up. The push only ever tries ONE direction — straight back off the
+    # nearest centreline — so a footprint on a corner, or one whose retreat is
+    # blocked by the far kerb of a second street, fails even when there is real
+    # cuadra land a few px to the side. It then went to the snapper, which finds
+    # it a lattice rect and THROWS THE REAL OUTLINE AWAY; that outline is the
+    # entire reason a named building is kept. 217 of them ended up there.
+    #
+    # In a real port there are no buildings standing on the sidewalk, so what a
+    # footprint with no room needs is a piece of ground INSIDE its manzana. This
+    # walks a ring of offsets out to RESEAT_MAX and takes the nearest one where
+    # the whole outline stands on cuadra interior — same shape, same size, same
+    # name, just moved off the pavement.
+    RESEAT_MAX = 3 * CUAD
+    RESEAT_STEP = GRID_CELL
+
+    def _reseat_in_block(raw):
+        pts = raw["pts"]
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        for rad in range(RESEAT_STEP, RESEAT_MAX + 1, RESEAT_STEP):
+            best = None
+            for a in range(0, 360, 15):
+                dx = rad * math.cos(math.radians(a))
+                dy = rad * math.sin(math.radians(a))
+                moved = [(p[0] + dx, p[1] + dy) for p in pts]
+                if _poly_over(moved, STREETISH):
+                    continue
+                cc, cr = int((cx + dx) // CUAD), int((cy + dy) // CUAD)
+                if cell_block.get((cc, cr)) is None:
+                    continue            # not inside a detected cuadra at all
+                key = (abs(dx) + abs(dy), round(dx), round(dy))
+                if best is None or key < best[0]:
+                    best = (key, moved)
+            if best:
+                return best[1]
+        return None
+
+
+    # Parque Marino: exact OSM membership decides WHICH structures belong to
+    # the aquarium and receive facility names. The surrounding CUADRA decides
+    # which additional real buildings need their own ordinary lot before the
+    # residual becomes park. Keeping those two questions separate fixes both
+    # old failures: a block/AABB must not rename Plaza Centenario or Max Outlet
+    # "Parque Marino", but neither may disappear under the lawn.
+    marine_raw, marine_neighbour_raw, marine_block_raw = [], [], []
+    if marine_site:
+        marine_way = next((way for way in ctx.ways
+                           if int(way["id"]) == MARINE_SITE_OSM_ID), None)
+        if marine_way is None:
+            raise RuntimeError(
+                f"Parque Marino OSM boundary {MARINE_SITE_OSM_ID} is missing")
+        marine_boundary, _ = project_way_pts(ctx.projection, marine_way["pts"])
+        if len(marine_boundary) > 1 and dist(marine_boundary[0], marine_boundary[-1]) < 1e-6:
+            marine_boundary = marine_boundary[:-1]
+        marine_site["boundary"] = marine_boundary
+        block_flat = outline_poly(marine_site["grass"], GRID_CELL)
+        block_boundary = pairs(block_flat)
+        if not block_boundary:
+            raise RuntimeError("Parque Marino cuadra has no raster boundary")
+        mc = marine_site["cells"]
+        keep = []
+        for raw in raw_bldgs:
+            pts = raw.get("pts")
+            if pts and point_in_poly(poly_centroid(pts), marine_boundary):
+                marine_raw.append(raw)
+            elif pts and (
+                    point_in_poly(poly_centroid(pts), block_boundary)
+                    or any(point_in_poly(p, block_boundary) for p in pts)):
+                marine_neighbour_raw.append(raw)
+            else:
+                keep.append(raw)
+        marine_raw.sort(key=lambda raw: raw["id"])
+        marine_neighbour_raw.sort(key=lambda raw: raw["id"])
+        marine_block_raw = sorted(
+            marine_raw + marine_neighbour_raw, key=lambda raw: raw["id"])
+        # THE MARINE BLOCK GETS THE SAME PUSH AS EVERY OTHER NAMED FOOTPRINT.
+        # It never did: these are lifted OUT of `raw_bldgs` right here, and the
+        # push loop below only ever walked what was left — so the one cuadra
+        # whose buildings are all kept at their real outline was the one cuadra
+        # where nothing was checked against the street. Max Outlet Puntarenas
+        # was 49 % on the roadway and the acera, the LABM módulo 17 %, Plaza
+        # Centenario 13 %.
+        #
+        # It has to happen HERE, before `_partition_marine_cuadra`: the lots are
+        # cut from these footprints, so a building moved afterwards would leave
+        # its own parcel behind on the asphalt.
+        # NOT the group fit, on this one block. The Parque Marino's cuadra is
+        # partitioned by hand — every structure's OSM id must end up owning
+        # exactly one lot, and `finish.verify` fails the build if one does not.
+        # Scaling the group toward the block's centre moved 911250915 off the
+        # last LAND under it and the partition raised. The per-building push is
+        # enough here: it already takes all ten to zero overlap.
+        n_marine_moved = 0
+        for raw in marine_block_raw:
+            moved = _push_off_street(raw) or _reseat_in_block(raw)
+            if moved is None or moved is raw["pts"]:
+                continue
+            raw["pts"] = moved
+            n_marine_moved += 1
+        log("marino", f"{n_marine_moved} of {len(marine_block_raw)} block footprints "
+            f"pushed clear of the calzada/acera — BEFORE the lots are cut, or a "
+            f"building would leave its own parcel behind on the asphalt")
+        raw_bldgs = keep
+        occ.update(mc)
+        log("marino", f"{len(marine_raw)} OSM buildings inside exact park "
+            f"boundary way {MARINE_SITE_OSM_ID}")
+        if marine_neighbour_raw:
+            log("marino", f"{len(marine_neighbour_raw)} neighbouring cuadra "
+                "buildings keep ordinary named lots: "
+                + ", ".join(
+                    f"{raw['id']} {raw.get('osm_name') or raw.get('name') or '—'}"
+                    for raw in marine_neighbour_raw))
+        _partition_marine_cuadra(
+            marine_site, marine_raw, marine_block_raw)
+    # THE MANZANA IS A CONTAINER: fit its contents to it, as ONE GROUP, before
+    # anything is shoved individually. See service/building.fit_manzana_contents
+    # for why this is the operation and the per-feature push was not.
+    _named_now = [b for b in raw_bldgs if b.get("name") and b.get("pts")]
+    n_fit, n_nofit, _scales = fit_manzana_contents(
+        raster, blocks, cell_block, _named_now, streets,
+        lambda cells: block_raster_cells(raster, cells, CUAD_CELLS, CLS_LAND),
+        erode_cells, ACERA_CELLS, STREET_CLASSES)
+    log("buildings", f"{n_fit} named footprints fitted into their own manzana "
+        f"(median scale {sorted(_scales)[len(_scales) // 2]:.2f} over {len(_scales)} "
+        f"blocks that needed one); {n_nofit} manzanas left to the push"
+        if _scales else
+        f"{n_fit} named footprints already fitted their manzana; {n_nofit} left to the push")
+
+    named_raw, keep, n_onroad, n_pushed, n_reseat = [], [], 0, 0, 0
     for raw in raw_bldgs:
         if not (raw.get("name") and raw.get("pts")):
             keep.append(raw)
             continue
         moved = _push_off_street(raw)
         if moved is None:
-            n_onroad += 1
-            keep.append(raw)                # the snapper will find it a block
-            continue
+            moved = _reseat_in_block(raw)
+            if moved is None:
+                n_onroad += 1
+                keep.append(raw)            # the snapper will find it a block
+                continue
+            n_reseat += 1
         if moved is not raw["pts"]:
             n_pushed += 1
             raw = {**raw, "pts": moved}
@@ -891,6 +1038,9 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     if n_pushed:
         log("buildings", f"{n_pushed} named footprints pushed back off the acera "
             f"(up to {PUSH_MAX} px, along the nearest street's normal)")
+    if n_reseat:
+        log("buildings", f"{n_reseat} named footprints reseated onto cuadra land "
+            f"(the straight push had nowhere to go; the real outline is kept)")
     for raw in named_raw:
         xs = [p[0] for p in raw["pts"]]; ys = [p[1] for p in raw["pts"]]
         for cc in range(int(min(xs) // CUAD), int(max(xs) // CUAD) + 1):
@@ -1030,6 +1180,12 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
     grid = raster.buf
     CANVAS_W, CENTER_Y = ctx.dims.w, ctx.dims.center_y
     GRID_COLS, GRID_ROWS = ctx.dims.cols, ctx.dims.rows
+    # LA FERIA DEL MALECÓN — seated here, in the stage that runs last, for the
+    # same reason everything else in it is: the rides snap onto the FINISHED
+    # promenade, and the DJ onto the frontage of a building that only exists
+    # once place_structures has run.
+    ctx.attractions.extend(place_attractions(
+        ctx, lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2], buildings))
     # --- bridge / estuary / decorations
     if bridge_road:
         bp = bridge_road["pts"]
@@ -1233,6 +1389,89 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                           "s": round(0.75 + rng() * 0.45, 2),
                           "sway": round(rng() * 6.28, 2)})
             n_beach_palms += 1
-    log("verde", f"{n_patio} patio/park trees, {n_beach_palms} beach palms")
+    # LA ARBOLEDA DEL MALECÓN. The beach sampler above looks for CLS_BEACH, so
+    # the moment the sea front became its own class it stopped being planted —
+    # and a promenade that is only paving is a slab, not a paseo. Two rows, and
+    # which row a tree joins is decided by what the cell BORDERS, so both follow
+    # the band's real wandering edge instead of a fitted line:
+    #   * a PALMA where the paving meets the sand — the row you see against the
+    #     sea from anywhere on the Paseo;
+    #   * an ALMENDRO where it meets the street, the shade side, where the
+    #     benches and the stands are.
+    # Spacing is enforced on a coarse lattice rather than by probability: at
+    # 0.16 per cell the band came out a thicket at its wide points and bare at
+    # the narrow ones, because the roll does not know how much promenade is
+    # there. Deterministic — the shared seeded rng, walked in sorted order.
+    # HOW FAR APART, MEASURED IN CROWNS. A palm is drawn ~26 px across at play
+    # zoom, and the camera frames 20 cuadrículas — so a lattice of 30 px, which
+    # is what this had first, put one plant every 15 px along the band's
+    # wandering edge and turned the whole sea front into one canopy with the
+    # paving invisible under it. A row of palms is a row: you have to see
+    # between them.
+    n_mal_palms, n_mal_trees = 0, 0
+    PLANT_GAP = {"palma": 110, "almendro": 150}
+    placed = {"palma": [], "almendro": []}
+
+    def _room(kind, px, py):
+        gap2 = PLANT_GAP[kind] ** 2
+        for (qx, qy) in placed[kind]:
+            if (px - qx) ** 2 + (py - qy) ** 2 < gap2:
+                return False
+        placed[kind].append((px, py))
+        return True
+
+    def malecon_cells():
+        """The band's own cells, bounded to its bbox — the grid is 158M cells."""
+        for band in ctx.malecon:
+            c0, r0 = int(band["x0"] // GRID_CELL), int(band["y0"] // GRID_CELL)
+            c1, r1 = int(band["x1"] // GRID_CELL) + 1, int(band["y1"] // GRID_CELL) + 1
+            for gr in range(max(0, r0), min(GRID_ROWS, r1)):
+                for gc in range(max(0, c0), min(GRID_COLS, c1)):
+                    if grid[gr * GRID_COLS + gc] == CLS_MALECON:
+                        yield gc, gr, band
+
+    # LAS BANCAS. Emitted as street furniture, like the paradas: the world says
+    # where one is and which way it looks, the renderer draws it. A bench on a
+    # sea front faces the SEA, which is the whole reason it carries an angle —
+    # the coast wanders, so "seaward" is the band's own normal, its sign taken
+    # from the side the sand is actually on at that cell.
+    n_bancas, bancas = 0, set()
+    BANCA_GAP = 96                                 # px between two bancas
+    for gc, gr, band in malecon_cells():
+        row = gr * GRID_COLS
+        nbs = {(1, 0): grid[row + gc + 1] if gc + 1 < GRID_COLS else CLS_WATER,
+               (-1, 0): grid[row + gc - 1] if gc else CLS_WATER,
+               (0, 1): grid[row + GRID_COLS + gc] if gr + 1 < GRID_ROWS else CLS_WATER,
+               (0, -1): grid[row - GRID_COLS + gc] if gr else CLS_WATER}
+        px = gc * GRID_CELL + GRID_CELL / 2
+        py = gr * GRID_CELL + GRID_CELL / 2
+        sand = [d for d, v in nbs.items() if v == CLS_BEACH]
+        if sand:
+            if _room("palma", px, py):
+                palms.append({"x": round(px + (rng() - 0.5) * 8),
+                              "y": round(py + (rng() - 0.5) * 8),
+                              "s": round(0.85 + rng() * 0.35, 2),
+                              "sway": round(rng() * 6.28, 2)})
+                n_mal_palms += 1
+            key = (int(px // BANCA_GAP), int(py // BANCA_GAP))
+            if key not in bancas:
+                bancas.add(key)
+                a = band.get("ang", 0.0)
+                nx, ny = -math.sin(a), math.cos(a)      # the band's normal
+                if nx * sand[0][0] + ny * sand[0][1] < 0:
+                    nx, ny = -nx, -ny                   # …pointed at the sand
+                ctx.signs.append({"x": round(px - nx * 6), "y": round(py - ny * 6),
+                                  "kind": "banca", "ang": round(math.atan2(ny, nx), 3)})
+                n_bancas += 1
+        elif any(v in (CLS_ROAD, CLS_ACERA) for v in nbs.values()):
+            if _room("almendro", px, py):
+                trees.append({"x": round(px + (rng() - 0.5) * 8),
+                              "y": round(py + (rng() - 0.5) * 8),
+                              "s": round(0.8 + rng() * 0.35, 2)})
+                n_mal_trees += 1
+    if n_bancas:
+        log("malecon", f"{n_bancas} bancas facing the sea")
+    log("verde", f"{n_patio} patio/park trees, {n_beach_palms} beach palms, "
+        f"{n_mal_palms} palmas + {n_mal_trees} almendros on the malecón")
 
     return bridge, est, trees, palms, mangroves

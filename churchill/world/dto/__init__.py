@@ -10,14 +10,14 @@ from .lote import Lote, LoteCatalog
 from .manifest import Manifest, Tile
 from .world import (
     Balneario, Bridge, Customer, District, Estuary, Geo, Green,
-    Ferry, GridInfo, Hill, KioskPath, Landmark, Meta, Parcel, Pier, Sign, Poi, Sign, Stadium,
-    Stage, WorldModel,
+    Ferry, GridInfo, Hill, KioskPath, Landmark, MaleconBand, Meta, Parcel, Pier,
+    Sign, Poi, Stadium, Stage, WorldModel,
 )
 
 __all__ = [
     "Balneario", "Bridge", "Customer", "District", "Estuary",
     "FlatPoly", "Geo", "Green", "GridInfo", "Hill", "KioskPath", "Landmark",
-    "Lote", "LoteCatalog",
-    "Ferry", "Manifest", "Meta", "Parcel", "Pier", "Poi", "Rect", "Stadium", "Stage",
-    "Tile", "WorldModel",
+    "Lote", "LoteCatalog", "MaleconBand",
+    "Ferry", "Manifest", "Meta", "Parcel", "Pier", "Poi", "Rect", "Sign",
+    "Stadium", "Stage", "Tile", "WorldModel",
 ]

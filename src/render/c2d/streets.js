@@ -253,6 +253,26 @@ function paintRoads(roads, view) {
   // elevated (barro/Ferrocarril) drop-shadow
   ctx.strokeStyle = "rgba(0,0,0,0.30)";
   for (const r of roads) { if (!r.elev) continue; ctx.save(); ctx.translate(0, 3.5); ctx.lineWidth = r.w + 2 * ACERA_PX + 3; ctx.stroke(roadPath(r)); ctx.restore(); }
+  // THE PARCELS GO DOWN BEFORE THE SIDEWALK, NOT AFTER.
+  //
+  // A parcel is a colour choice on ground somebody else painted, and it used to
+  // be painted OVER the acera band — so a park whose plot reaches the kerb put
+  // its lawn on the pavement, and the walkers, who are rail-bound to acera
+  // cells, walked up a strip of grass. 57 plots still reach it: they are the
+  // mapped chapels, escuelas and gasolineras with no land of their own, and the
+  // world tried DELETING them once to keep the kerb clear — four escuelas, four
+  // gasolineras and the INA went with it. The order is the cheaper answer: the
+  // sidewalk is painted last of the two, so every acera in the town reads clean
+  // and nothing has to stop existing. The asphalt still wins over both.
+  //
+  // THE ESTADIOS ARE THE EXCEPTION, and they have to be: a whole-cuadra field
+  // is stamped drivable over its own manzana, so it has no acera in the raster
+  // at all — `paintStadiumCuadras` IS its sidewalk, painted grey from the
+  // emitted cuadra outline with the pitch inset inside it. Moved up here with
+  // the parcels it stopped being a sidewalk and started being something the
+  // road's band painted over. It goes back below.
+  paintParcels(view);
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
   // acera concrete band. GREY, not the sandy cream it used to be: the aceras in
   // Puntarenas are poured concrete, and a warm band beside warm ground made the
   // whole town read as one colour.
@@ -270,10 +290,9 @@ function paintRoads(roads, view) {
     ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
     ctx.fill();
   }
-  // estadios: the same sidewalk, repainted grey after the acera bands and
-  // joint discs, before the asphalt so the asphalt wins
+  // estadios: their own sidewalk, repainted grey after the acera bands and
+  // joint discs, before the asphalt so the asphalt still wins
   paintStadiumCuadras(view);
-  paintParcels(view);
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // barro shoulder
   ctx.strokeStyle = "#7d6242";
@@ -681,6 +700,25 @@ function drawSign(s) {
       polyN(x, y, 3.5, 8, Math.PI / 8); ctx.stroke();
       ctx.fillStyle = "#f4f1e8";                       // the word, at this size a bar
       ctx.fillRect(x - 2.6, y - 0.7, 5.2, 1.4);
+      break;
+    }
+    case "banca": {
+      // LA BANCA DEL MALECÓN. `ang` is the direction it LOOKS — the world takes
+      // the sea's side of the promenade's own normal, so on a wandering coast
+      // every bench still faces the water. Backrest behind the seat, which is
+      // the only thing that makes a 10 px bench read as a bench from above.
+      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
+      ctx.fillStyle = "rgba(0,0,0,0.22)";
+      ctx.fillRect(-2.4, -5.4, 6, 11);
+      ctx.fillStyle = "#8a6a45";                       // respaldo, on the land side
+      ctx.fillRect(-3.4, -6, 1.8, 12);
+      ctx.fillStyle = "#c69a63";                       // el asiento
+      ctx.fillRect(-1.6, -6, 4.6, 12);
+      ctx.strokeStyle = "rgba(90,66,40,0.55)"; ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(-1.6, -2); ctx.lineTo(3, -2); ctx.moveTo(-1.6, 2); ctx.lineTo(3, 2);
+      ctx.stroke();
+      ctx.restore();
       break;
     }
     case "ceda": {

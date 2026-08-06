@@ -27,6 +27,13 @@ class Surface(IntEnum):
     # year: the look was in the road vector, the feel was not anywhere.
     BARRO = 8    # packed earth — the dirt calles and the Ferrocarril terraplén
     GRAVEL = 9   # lastre — loose stone, the surface OSM tags `gravel`
+    # El malecón: the paved promenade between the Paseo de los Turistas and the
+    # sand. Its own class and not BOULEVARD, because the two are not the same
+    # place — a bulevar is a calle the cars were taken out of, a malecón is the
+    # sea front people come to. Mirrored in `src/game/surfaces.js` (SURFACE_MUL,
+    # SURFACE_CLASSES), `src/render/pixi/tileTexture.js` and the host vocabulary
+    # in `src/game/npcTypes.json`.
+    MALECON = 10
 
     @property
     def label(self) -> str:
@@ -40,18 +47,23 @@ CLASS_NAMES = [s.label for s in Surface]
 #: What a vehicle may drive on. BEACH is included on purpose — the sand is
 #: slow (see SURFACE_MUL on the client), not a wall. So is BOULEVARD: a calle
 #: peatonal here is paving you may cross, not a barrier — you just crawl. BARRO
-#: and GRAVEL are ordinary streets that are simply slower.
+#: and GRAVEL are ordinary streets that are simply slower. MALECON is the same
+#: bargain as BOULEVARD: paving you cross at a crawl, among people.
 DRIVABLE = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.BEACH,
-            Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL)
+            Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL, Surface.MALECON)
 
 #: What counts as "a street is on the other side of this edge" when eroding an
 #: acera. A cuadra edge facing the sea, the sand or the next parcel has no
-#: sidewalk — see the directional erosion in util.raster.
+#: sidewalk — see the directional erosion in util.raster. This doubles as the
+#: BUILT-SURFACE list (a mangrove may not root in one, service.decoration), and
+#: a malecón is built surface by any reading: it is an esplanade.
 STREET = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.ACERA,
-          Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL)
+          Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL, Surface.MALECON)
 
 #: What a car drives ALONG, as opposed to across: the carriageway classes. Not
-#: BEACH (sand is crossable, not a street) and not ACERA (that is the kerb).
+#: BEACH (sand is crossable, not a street), not ACERA (that is the kerb) and not
+#: MALECON — a promenade is a PLACE, and a "nearest street" search that could
+#: return one would aim every kiosk connector and access lane at the sea front.
 #: This is the list every "find the nearest street" search wants — a kiosk on a
 #: calle de barro has to link to the calle it is actually on.
 CARRIAGEWAY = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.BARRO,

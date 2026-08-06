@@ -9,7 +9,8 @@ The RNG is a seeded LCG, not `random`: the build must be deterministic, and a
 process-wide generator would make placement depend on how many random numbers
 some earlier stage happened to draw.
 """
-from collections import deque
+import math
+from collections import defaultdict, deque
 
 from ..config import BLDG_INSET, CUAD, FRONTAGE_DEPTH, OSM_MAX_CUADS, SMALL_BLOCK_CUADS, SYNTH_LOTS, SYNTH_MAX_TOTAL, SYNTH_SEED
 from ..content import BLDG_PALETTE, ROOF_PALETTE
@@ -158,3 +159,102 @@ def synth_buildings(blocks, cell_block, occ, n_real):
             if n_real + len(out) >= SYNTH_MAX_TOTAL:
                 return out
     return out
+
+
+# ---------------------------------------------------------------------------
+# LA MANZANA ES UN RECIPIENTE, y lo que va adentro se ajusta a ella.
+#
+# This is the answer to a question that had been answered five different wrong
+# ways: why is anything standing on the acera?
+#
+# THE ARITHMETIC. A 7 m calle is real-world 18 px at this scale, and the game
+# needs a corridor of 65 — two cars have to pass on it (a car is 19 px across)
+# and it has to read as a street at play zoom. The other 47 px come out of the
+# manzanas on either side, 24 px each. Measured over 59 centro blocks, the build
+# keeps 81 % of the ground the street grid implies, and 72 % on the small ones.
+# So a footprint drawn at its true size, within 24 px of its centreline, HAS
+# nowhere to be. Nothing about the fitting was ever wrong.
+#
+# WHAT A MAP APP DOES, and why it does not help directly. Mapbox, OSM Carto and
+# Google keep the geometry TRUE and draw roads as STROKES over the basemap: at
+# z16 the casing is far wider than 7 m and it covers the buildings beside it,
+# and nobody minds, because the road is paint and the data underneath is
+# untouched. That option is closed here — the player drives on this, so the
+# roadway has to be real ground, and real ground has to come from somewhere.
+#
+# WHAT CARTOGRAPHY DOES WHEN SYMBOLS GENUINELY COLLIDE is a named toolkit:
+# displacement, aggregation, typification, exaggeration, elimination. The part
+# this build kept getting wrong is that displacement is applied to a GROUP,
+# preserving its structure — never as a greedy per-feature shove, which is
+# exactly why pushing each footprint along its street normal failed on corners
+# and on dense rows and left 217 of them to be flattened onto the lattice.
+#
+# So: take the manzana's real footprints as ONE GROUP and fit that group into
+# the manzana's own land, inside the acera ring. One isotropic scale about the
+# group's centre, per block. Everything keeps its shape, everything keeps its
+# position RELATIVE to its neighbours, the block reads correctly because it all
+# shrank together, and nothing has to be pushed, snapped or deleted.
+def fit_manzana_contents(raster, blocks, cell_block, named, streets,
+                         block_cells, erode, acera_cells, street_classes,
+                         min_scale=0.55):
+    """Fit each manzana's named footprints inside its own acera ring.
+
+    Mutates `raw["pts"]`. Returns (fitted, skipped, scales) — `skipped` are the
+    blocks whose group could not be made to fit above `min_scale`; those are
+    left for the per-building push, because a 0.4 scale is not a building any
+    more, it is a model of one.
+    """
+    groups = defaultdict(list)
+    for raw in named:
+        pts = raw.get("pts")
+        if not pts:
+            continue
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        bi = cell_block.get((int(cx // CUAD), int(cy // CUAD)))
+        if bi is not None:
+            groups[bi].append(raw)
+
+    fitted, skipped, scales = 0, 0, []
+    for bi in sorted(groups):
+        group = groups[bi]
+        inner = erode(block_cells(blocks[bi]["cells"]), acera_cells,
+                      street_classes, raster.at)
+        if not inner:
+            skipped += 1
+            continue
+        cell = raster.cell
+        bx = [(c + 0.5) * cell for c, _ in inner]
+        by = [(r + 0.5) * cell for _, r in inner]
+        ang = streets.angle_at(sum(bx) / len(bx), sum(by) / len(by))
+        ca, sa = math.cos(ang), math.sin(ang)
+
+        def frame(xs, ys):
+            us = [x * ca + y * sa for x, y in zip(xs, ys)]
+            vs = [-x * sa + y * ca for x, y in zip(xs, ys)]
+            return min(us), max(us), min(vs), max(vs)
+
+        bu0, bu1, bv0, bv1 = frame(bx, by)
+        gx = [p[0] for raw in group for p in raw["pts"]]
+        gy = [p[1] for raw in group for p in raw["pts"]]
+        gu0, gu1, gv0, gv1 = frame(gx, gy)
+        du, dv = max(1e-6, gu1 - gu0), max(1e-6, gv1 - gv0)
+        scale = min(1.0, (bu1 - bu0) / du, (bv1 - bv0) / dv)
+        if scale < min_scale:
+            skipped += 1
+            continue
+        # the group's centre in the block frame -> the block's own centre
+        gcu, gcv = (gu0 + gu1) / 2, (gv0 + gv1) / 2
+        bcu, bcv = (bu0 + bu1) / 2, (bv0 + bv1) / 2
+        for raw in group:
+            moved = []
+            for (x, y) in raw["pts"]:
+                u, v = x * ca + y * sa, -x * sa + y * ca
+                u = bcu + (u - gcu) * scale
+                v = bcv + (v - gcv) * scale
+                moved.append((u * ca - v * sa, u * sa + v * ca))
+            raw["pts"] = moved
+        fitted += len(group)
+        if scale < 0.999:
+            scales.append(scale)
+    return fitted, skipped, scales

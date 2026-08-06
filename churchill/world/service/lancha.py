@@ -219,10 +219,11 @@ def _nearest_class(raster, x, y, wanted, reach=SNAP_PX):
     return None
 
 
-def _apron(ctx, pier_id, name, x0, y0, x1, y1, width):
+def _apron(ctx, pier_id, name, x0, y0, x1, y1, width,
+           style="apron", surface=Surface.ROAD):
     """A short paved deck between two points, stamped and emitted as a pier."""
     pier = make_pier(pier_id, name, [x0, y0, x1, y1], width,
-                     style="apron", surface=Surface.ROAD, sea_end=None)
+                     style=style, surface=surface, sea_end=None)
     ctx.piers.append(pier)
     ctx.pier_restores[pier["id"]] = stamp_pier(ctx.raster, pier)
     log_pier(pier)
@@ -297,7 +298,15 @@ def place_lanchas(ctx, project_ll, nearest_cell):
 
 
 def place_beach_accesses(ctx, project_ll, nearest_cell):
-    """Pave a way through the acera ring onto the sand."""
+    """Pave a way through the acera ring onto the sand.
+
+    THE BAJADAS ARE THE WAY IN. Now that the kiosks on the Paseo no longer have
+    asphalt lanes stamped across the beach to reach them, these four are the
+    only marked ways down to the water — so they are paved as PROMENADE
+    (`Surface.MALECON`, drawn in the malecón's own pavers) rather than as the
+    grey terminal apron a ferry ramp is. A bajada is a place you walk down, not
+    a place a truck reverses onto.
+    """
     raster = ctx.raster
     for spec in BEACH_ACCESS_DEFS:
         ax, ay = project_ll(*spec["at"])
@@ -319,6 +328,7 @@ def place_beach_accesses(ctx, project_ll, nearest_cell):
                 f"({round(gap)}px) — no access needed")
             continue
         _apron(ctx, f"bajada_{spec['id']}", spec["name"],
-               x, y, target[0], target[1], spec.get("w", 30))
+               x, y, target[0], target[1], spec.get("w", 30),
+               style="malecon", surface=Surface.MALECON)
         log("beach", f"{spec['id']}: sand ({round(x)},{round(y)}) -> street "
             f"({round(target[0])},{round(target[1])}), {round(gap)}px")

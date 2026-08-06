@@ -40,6 +40,11 @@ from .block import cuadra_cells, outline_poly
 from .street import half_plane
 
 HARD_STREET_CLASSES = tuple(cls for cls in STREET_CLASSES if cls != CLS_ACERA)
+#: How much of a parcel may sit on the ACERA before it is re-fitted inside
+#: strict land. Not zero: the rect is fitted in the manzana's frame against a
+#: 4 px raster, so a cell or two of overlap is quantisation, not a park on the
+#: pavement. Past this it is the pavement, and the walkers are rail-bound to it.
+PARCEL_ACERA_MAX = 0.10
 
 
 def _cell_frame(cells):
@@ -333,8 +338,11 @@ class FieldService:
     """
 
     def __init__(self, *, raster, streets, landmarks, blocks, greens, plazas,
-                 stadiums, parcels, occ):
+                 stadiums, parcels, occ, project_ll=None):
         self.raster = raster
+        #: geo -> world px, so a hand-authored block can be anchored the way
+        #: every other place in this world is (see place_parcels).
+        self.project_ll = project_ll or (lambda lat, lon: (0, 0))
         self.streets = streets
         self.landmarks = landmarks
         self.blocks = blocks
@@ -403,8 +411,16 @@ class FieldService:
             else:
                 clip = half_plane(line, ((xa + xb) / 2, (ylo + yhi) / 2), spec.get("edge_gap", 18))
         outer_cells = cuadra_cells(self.raster, xa, ylo, xb, yhi, classes, clip)
+        # A WHOLE-CUADRA ESTADIO GETS THE BLOCK'S SIDEWALK, NOT A FIELD'S.
+        # `FIELD_ACERA_CELLS` (8 px) is the shallow ring a PARCEL takes — it
+        # only has to stop the white lines before the asphalt, and every px of
+        # it is grass the player does not get. But this cuadra is stamped
+        # drivable over its own manzana, so the ring drawn here is the ONLY
+        # acera the block has, and at 8 px it read as a seam rather than as the
+        # 12 px sidewalk every other manzana in the port has. Lito Pérez had
+        # `aceras: True` and no sidewalk anybody could see.
         inner_cells = (outer_cells if spec.get("aceras") is False
-                       else erode_cells(outer_cells, FIELD_ACERA_CELLS, STREET_CLASSES, self.raster.at)) if outer_cells else set()
+                       else erode_cells(outer_cells, ACERA_CELLS, STREET_CLASSES, self.raster.at)) if outer_cells else set()
         # A whole-cuadra field can request a slightly stronger display-only
         # simplification when a long raster edge still contains shoulders after
         # the default one-cell pass. Ownership and drivability remain the exact
@@ -665,7 +681,10 @@ class FieldService:
             f"(POI aprons + sliver paving) back to land")
 
     def place_parcels(self, spec):
-        ref = spec["at"]
+        # `ll` is the anchor; `at` is the legacy world-px one and is only still
+        # read so an old spec fails loudly rather than silently. A px anchor
+        # does not survive a rescale — see the comment on the carmen block.
+        ref = self.project_ll(*spec["ll"]) if spec.get("ll") else spec["at"]
         cxa = self.streets.at(spec["calles"][0], "x", ref)
         cxb = self.streets.at(spec["calles"][1], "x", ref)
         ayn = self.streets.at(spec["ave_north"], "y", ref)
@@ -922,10 +941,38 @@ class FieldService:
                                      if depth else own)
                 krect = fit_block_rect(keep, ang, cell) if keep else None
                 candidate_poly = rect_poly(krect, ang) if krect else None
+                # An AUTHORED rect is exempt from both spill tests. The safety
+                # re-fit exists for rectangles nobody looked at; `SITE_DECOR`
+                # fractions are somebody's decision about one specific place,
+                # applied further down to whatever rect survives here — so a
+                # re-fit does not correct them, it compounds with them. The
+                # Escuela de Biología Marina came out at 2 324 px² that way, and
+                # failed the build's own marine gate.
+                authored = trace or bool(decor.get("rect"))
                 hard_spill = (poly_surface_count(
                     candidate_poly, raster, HARD_STREET_CLASSES)
-                    if candidate_poly and site["kind"] != "fuel" and not trace else 0)
-                if hard_spill:
+                    if candidate_poly and site["kind"] != "fuel" and not authored else 0)
+                # THE SIDEWALK IS NOT PARCEL GROUND EITHER. It used to be — an
+                # acera-only fit was accepted as "the frontage the site already
+                # owns" — and the result was 69 parcels sitting more than a
+                # quarter on the acera and a dozen sitting entirely on it, a
+                # park's lawn painted over the pavement the walkers are rail-
+                # bound to. A few cells of overlap are raster quantisation and
+                # are left alone; past PARCEL_ACERA_MAX the plot is re-fitted
+                # inside strict LAND, exactly like a hard-surface spill.
+                #
+                # …but ONLY AS AN IMPROVEMENT. A hard spill that cannot be
+                # re-fitted is dropped, because a park over the ROADWAY is worse
+                # than no park. A sidewalk one is not: the first cut of this
+                # deleted 61 mapped places — four escuelas, four gasolineras,
+                # the INA and a dozen iglesias — for the crime of having no land
+                # of their own. So when the inscribe finds nothing, an
+                # acera-only spill keeps the fit it already had.
+                acera_spill = (poly_surface_count(candidate_poly, raster, (CLS_ACERA,))
+                               if candidate_poly and not authored else 0)
+                acera_only = (not hard_spill
+                              and acera_spill > PARCEL_ACERA_MAX * max(1, len(keep)))
+                if hard_spill or acera_only:
                     # Stay inside THIS mapped site's source-supported LAND.
                     # Its hard-surface holes are what prevent the maximum
                     # rectangle from bridging into a neighbouring manzana.
@@ -943,12 +990,13 @@ class FieldService:
                                 and min(iw, ih) >= self.SITE_MIN_SIDE):
                             keep, krect = inscribed_keep, inscribed
                             log("site", f"{site['id']} "
-                                f"{(site['name'] or '—')[:34]}: bounding rect "
-                                f"crossed {hard_spill} hard-surface cells; "
-                                f"using inscribed land rect")
-                        else:
+                                f"{(site['name'] or '—')[:34]}: rect crossed "
+                                f"{hard_spill or acera_spill} "
+                                f"{'hard-surface' if hard_spill else 'acera'} "
+                                f"cells; using inscribed land rect")
+                        elif hard_spill:
                             krect = None
-                    else:
+                    elif hard_spill:
                         krect = None
                 # Both fitters return physical edge-to-edge extents. Preserve
                 # the established SITE_MIN_SIDE convention (+1) so switching

@@ -9,6 +9,7 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import {
   state, traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools,
+  beachGames,
 } from "../game/state.js";
 import { content } from "../content/remote.js";
 import {
@@ -20,8 +21,9 @@ import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawChannel, drawEstero } from "./c2d/estero.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
+import { drawAttractions } from "./c2d/attractions.js";
 import {
-  drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawGull, drawPed, drawSchool,
+  drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
   paintVehicle,
 } from "./c2d/entities.js";
@@ -115,6 +117,9 @@ function render(t) {
   drawSigns(view);      // ALTO, semáforos, paradas, zebras, topes
   drawEditorWorld(view, "elements");
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
+  // La feria del malecón — the rides and DJ Urtech, with the landmarks because
+  // that is what they are: things standing on ground somebody else painted.
+  drawAttractions(view, t);
   // Landmarks (the bridge has its own drawer)
   for (const lm of W.LANDMARKS) {
     // Area landmarks can span well beyond their anchor (Parque Marino's exact
@@ -145,6 +150,11 @@ function render(t) {
     for (const pe of pedestrians) {
       if (pe.x < view.x0 - 20 || pe.x > view.x1 + 20) continue;
       drawPed(pe);
+    }
+    // …and the ball each mejenga is played with, among its players
+    for (const G of beachGames) {
+      if (G.ball.x < view.x0 - 20 || G.ball.x > view.x1 + 20) continue;
+      drawBeachBall(G);
     }
     for (const pk of parked) {
       if (pk.x < view.x0 - 20 || pk.x > view.x1 + 20 || pk.y < view.y0 - 20 || pk.y > view.y1 + 20) continue;

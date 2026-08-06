@@ -24,7 +24,8 @@ from ..util.raster import rle_encode
 def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, trees, palms,
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, piers, hills,
-                 stadiums=None, kiosk_paths=None, greens=None,
+                 stadiums=None, kiosk_paths=None, greens=None, malecon=None,
+                 attractions=None,
                  balneario=None, pois=None, parcels=None, ferries=None, signs=None,
                  editor_features=None, editor_patch=None, cuadras=None,
                  surface_styles=None, editor_ui=None, editor_content=None):
@@ -131,6 +132,12 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
         "beaches": beaches, "waters": waters, "landPolys": land_polys,
         "plazas": plazas,
         "greens": greens or [],
+        # el malecón: the paved sea front, one entry per contiguous band. Global
+        # like the other backdrop geometry — it is painted under the streets, so
+        # a tile-local version would flash sand while the tile streamed in.
+        "malecon": malecon or [],
+        # the turno on the sea front: rides + the DJ, drawn, never stamped
+        "attractions": attractions or [],
         "stadiums": stadiums or [],
         "balneario": balneario,
         "kioskPaths": kiosk_paths or [],

@@ -4,6 +4,74 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
 and the three game modes are live; the items below are what remains.
 
+## ✅ El malecón del Paseo de los Turistas (2026-08-06)
+
+La franja de arena entre la calle y la playa pasa a ser **superficie propia**
+(`Surface.MALECON`, clase 10): baldosa transitable pero lenta, con su arboleda,
+sus bancas, su feria y su gente. Cierra además cuatro cosas que el reescalado
+1.6 → 2.0 había dejado rotas en silencio.
+
+- [x] **Veinte metros ganados al mar** (`reclaim_shore`), sólo en el frente de
+      los dos paseos: la playa pasa de 88-150 px a 128-190. Acotada por corredor
+      (a lo ancho del mapa duplicaba la arena del mundo) y por un rayo que se
+      niega a cerrar un canal.
+- [x] **Las aceras se leen limpias**: las parcelas se pintan ANTES de la banda
+      de acera, y la que tiene tierra donde mudarse se re-encaja dentro de ella
+      (`PARCEL_ACERA_MAX`) — como mejora, nunca como motivo de borrado.
+- [x] **El Lito Pérez tiene acera**: el anillo del estadio de cuadra completa
+      pasa a la profundidad de una MANZANA (12 px, no los 8 de una parcela) y se
+      dibuja después de la banda de la calle, no antes. Es la única acera que
+      ese bloque tiene.
+- [x] **El malecón** (`churchill/world/service/malecon.py`). Ancho en METROS,
+      con veto de la arena (siempre sobrevive playa del lado del mar), sólo
+      convierte `CLS_BEACH`, reserva los sitios de OSM que ya están al frente
+      (parques, canchas) y abre entradas en los huecos del camellón. Emite
+      `manifest.malecon` (contornos del ráster + el ángulo del Paseo).
+- [x] **Ningún kiosco dentro del mar.** `nudge_off_water` +
+      `KIOSK_WATER_CLEAR_PX`, aplicado tras el reasiento y verificado en
+      `finish.verify` — lo que tiene que librar el agua es el DIBUJO del
+      chinamo (32 px + sombra), no su ancla.
+- [x] **Se acabó el asfalto sobre la arena.** Los kioscos del Paseo se paran en
+      el malecón; las bajadas del muelle quedan como único acceso marcado a la
+      playa, pavimentadas como paseo (`style="malecon"`).
+- [x] **Un solo color de arena.** `sand_outlines` traza la playa del ráster
+      terminado: lo dibujado es exactamente lo que uno pisa.
+- [x] **La plazoleta del Faro llega a la calle** — las bolsas de arena
+      encerradas se pavimentan con la explanada.
+- [x] **El Parque del Muellero existe** (`trace: True`, como Mora y Cañas).
+- [x] **Vida**: `playero`, `jugador` (con mejenga y bola) y `paseante`.
+- [x] **Feria**: carrusel, rueda de Chicago, chocones, tómbola y **DJ Urtech**
+      frente a La Takería, con música procedimental cuya DISTANCIA ES UN FILTRO.
+
+### ✅ Las manzanas como recipientes (2026-08-06, segunda pasada)
+
+- [x] **Reescalado 2.0 → 2.5 px/m** con `ARCADE_STREET_MUL` 2.9 → 2.32: cada
+      calle conserva su ancho EXACTO en pantalla y todo lo medido en metros
+      crece. Lo que el corredor le quita a cada manzana baja de 12.8 m a 9.5.
+- [x] **`fit_manzana_contents`**: las huellas de cada manzana se ajustan EN
+      GRUPO a su propia tierra, dentro del anillo de acera. 228 encajadas,
+      mediana 0.78 sobre 26 manzanas. 130 de 60 304 celdas con nombre tocan
+      calle o acera (3 calzada). 413 edificios conservan su contorno real.
+- [x] **Toda ancla es geo**, y una cuadra hecha a mano que resuelve a nada
+      REPRUEBA el build — así no se vuelve a perder el centro cívico en
+      silencio.
+- [x] Relojes de etapa escalados con el mundo.
+
+### 🔜 Lo que sigue en el malecón
+
+- [ ] Son 7 bandas y sólo 2 tocan la calzada. Las otras 5 son tramos del frente
+      de León Cortés separados por el muelle y sus aprons; falta decidir si se
+      les abre entrada o si se dejan como frente peatonal.
+- [ ] El malecón se corta entre el Faro y x≈15500 porque entre el Paseo y la
+      arena hay solares mapeados hasta la punta. Falta decidir si el paseo
+      peatonal sigue por detrás de ellos o si termina honestamente ahí.
+- [ ] Las atracciones no bloquean (la banda mide 60 px y es el único camino a
+      los kioscos del Paseo). Si alguna vez la banda se ensancha, valdría
+      estamparlas como el camellón.
+- [ ] Quedan 36 parcelas pisando >25 % de acera — las capillas, escuelas y
+      gasolineras mapeadas que no tienen tierra propia. Se ven bien porque la
+      acera se pinta encima, pero el lote sigue estando ahí.
+
 ## 🔜 La Travesía del Estero — un NIVEL, no un minijuego
 
 Diseño cerrado 2026-08-01. La lancha a Pitahaya ya cruza sola (19 waypoints

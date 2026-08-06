@@ -5,7 +5,7 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains, schools, pushFloat } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
-import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceCarOnRoad, advanceEditorRoute, advanceTrain, advanceSchool } from "./spawns.js";
+import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceBeachGames, advanceBeachPlayer, advanceCarOnRoad, advanceEditorRoute, advanceTrain, advanceSchool } from "./spawns.js";
 import { advanceBus, advancePassenger, maintainBusStops } from "./buses.js";
 import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
 import { sfx } from "./audio.js";
@@ -112,6 +112,22 @@ function collideBuilding(p, b) {
 // the causeway, which are over an estuary, not the sea. So the level comes from
 // how far ALONG a muelle you are: 0 at the landward end, full out at the sea
 // end, which also gives the ramp something to do as you drive out.
+// DJ URTECH. How loud his set is where the player is standing: 1 at the booth,
+// 0 past DJ_REACH. Much further than the pool's 340 px on purpose — a sound
+// system carries down the whole Paseo, and hearing it before you can see it is
+// the point. The curve is squared so the last block is where it really lands.
+const DJ_REACH = 640;
+function djLevel(p) {
+  let best = 0;
+  for (const A of W.ATTRACTIONS || []) {
+    if (A.kind !== "dj") continue;
+    const d = Math.hypot(A.x - p.x, A.y - p.y);
+    if (d >= DJ_REACH) continue;
+    best = Math.max(best, ((DJ_REACH - d) / DJ_REACH) ** 2);
+  }
+  return best;
+}
+
 function surfLevel(p, surf) {
   if (surf !== 5) return 0;
   let best = 0;
@@ -408,10 +424,11 @@ export function update(dt) {
   if (sp3 > top) { p.vx *= top / sp3; p.vy *= top / sp3; }
 
   p.x += p.vx * dt; p.y += p.vy * dt;
-  // Solid cuadras + aceras + beach + open water: you drive ONLY the streets
-  // (and the pier deck, class 5). Class 1 land, class 6 acera/curb, class 2
-  // beach and class 0 water are walls you slide along. Beach became a wall on
-  // user request (beach-classed pockets also let you slip inside cuadras).
+  // Solid cuadras + aceras + open water: class 1 land, class 6 acera/curb and
+  // class 0 water are the walls you slide along. THE SAND IS NOT ONE — see
+  // `isWall` above: beach is drivable, slow and loose, and the malecón (10)
+  // beside it is drivable paving. What keeps you off the beach is that nothing
+  // leads there any more except the bajadas, not a wall.
   const hit0 = contactAt(p.x, p.y);
   if (hit0) {
     // RESOLVE: push out along the contact normal by the penetration depth,
@@ -656,6 +673,11 @@ export function update(dt) {
   // OLAS: out on a muelle, and the whole time you are at sea on a ferry — the
   // crossing IS the calm moment, so it gets the loudest surf on the map.
   sfx.waves(crossing ? 1 : surfLevel(p, surf));
+  // DJ URTECH, frente a La Takería. Audible much further out than the pool
+  // is — because that is what a sound system on the Paseo does — and the level
+  // opens his lowpass as well as his gain, so from down the street you get the
+  // kick and only up close the whole set.
+  sfx.dj(djLevel(p));
 
   if (state.weather === "storm") state.rainT += dt;
 
@@ -766,7 +788,8 @@ function maintainArcadeCoins(dt) {
     const r = ACOIN_SPAWN_MIN + Math.sqrt(Math.random()) * (ACOIN_SPAWN_MAX - ACOIN_SPAWN_MIN);
     const x = cam.x + Math.cos(a) * r, y = cam.y + Math.sin(a) * r;
     const s = W.surfaceAt(x, y);
-    if (s !== 3 && s !== 5 && s !== 7) continue; // streets, pier deck, calle peatonal
+    // streets, pier deck, calle peatonal, malecón
+    if (s !== 3 && s !== 5 && s !== 7 && s !== 10) continue;
     if (Math.hypot(x - p.x, y - p.y) < ACOIN_SPAWN_MIN) continue;
     arr.push({ x, y, t: Math.random() * 6 });
   }
@@ -865,6 +888,7 @@ export function advanceEntities(dt, withPlayer = true) {
     else if (pe.road) advancePed(pe, dt);
     else if (pe.field) advanceFieldPed(pe, dt);                                  // estadio/plaza crowd wandering the pitch
     else if (pe.swim) advanceSwimmer(pe, dt);                                    // balneario swimmers
+    else if (pe.game) advanceBeachPlayer(pe, dt);                                // la mejenga on the sand
     else { pe.ph += dt * 6; advanceOnSurface(pe, dt, pe.cls || PED_CLS, 0.03); } // free (surface) peds
     if (withPlayer && Math.abs(pe.x - p.x) < 14 && Math.abs(pe.y - p.y) < 12 && p.speed > 40) {
       for (let i = 0; i < 6; i++) state.particles.push({ x: pe.x, y: pe.y, vx: (Math.random()-0.5)*180, vy: (Math.random()-0.5)*180, life: 0.7, r: 3, c: "#fff" });
@@ -873,6 +897,7 @@ export function advanceEntities(dt, withPlayer = true) {
   }
 
   updateAnimals(dt);
+  advanceBeachGames(dt);       // the ball each mejenga is played with
 
   // The heritage train ping-pongs its rail piece (decorative, no collision —
   // the rails aren't drivable)

@@ -81,14 +81,20 @@ function drawPed(pe) {
   if (art === "passenger") { drawPassenger(pe); return; }
   if (art === "fisher") { drawFisher(pe); return; }
   if (art === "muellero") { drawMuellero(pe); return; }
+  if (art === "playero") { drawPlayero(pe); return; }
+  if (art === "jugador") { drawJugador(pe); return; }
   if (pe.editorNpc && ["person", "vendor", "worker", "mascot"].includes(art)) {
     drawEditorNpc(pe); return;
   }
   // FANS celebrate: a bigger, faster bounce plus a side-to-side shake and two
   // raised arms, so the crowd around the estadio and la plaza reads as a crowd
   // rather than commuters who happen to be walking in a circle.
+  // A PASEANTE IS A WALKER WHO IS NOT GOING TO WORK. Same silhouette — the
+  // malecón's crowd is the town's crowd, on a Sunday — but the one seated on a
+  // banca barely moves, so its bob is a breath rather than a stride.
   const fan = art === "fan";
-  const bob = fan ? Math.abs(Math.sin(pe.ph * 1.7)) * -3.2 : Math.sin(pe.ph) * 1.4;
+  const bob = fan ? Math.abs(Math.sin(pe.ph * 1.7)) * -3.2
+    : pe.stationary ? Math.sin(pe.ph) * 0.5 : Math.sin(pe.ph) * 1.4;
   const sway = fan ? Math.sin(pe.ph * 2.3) * 1.1 : 0;
   const x = pe.x + sway;
   ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
@@ -101,6 +107,76 @@ function drawPed(pe) {
     ctx.stroke();
   }
   ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
+}
+
+// EL PLAYERO. A person on the sand is a person in a swimsuit, and from above
+// that is two things: bare skin instead of a shirt, and a towel under whoever
+// is not walking. The sunbather is drawn LYING DOWN — a standing figure that
+// happens not to move reads as somebody waiting for a bus on the beach.
+function drawPlayero(pe) {
+  const skin = "#f1c8a4";
+  if (pe.stationary) {
+    ctx.save(); ctx.translate(pe.x, pe.y); ctx.rotate(pe.ang || 0);
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    ctx.fillRect(-7, -3.5, 15, 8);
+    ctx.fillStyle = `hsl(${pe.hue} 72% 62%)`;              // la toalla
+    ctx.fillRect(-7, -4, 14, 7);
+    ctx.fillStyle = skin;                                   // tendido encima
+    ctx.fillRect(-4, -1.6, 8, 3.2);
+    ctx.beginPath(); ctx.arc(5.2, 0, 1.9, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
+  }
+  const bob = Math.sin(pe.ph) * 1.2;
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = skin;                                     // torso, sin camisa
+  ctx.fillRect(pe.x - 1.9, pe.y - 3 + bob, 3.8, 4);
+  ctx.fillStyle = `hsl(${pe.hue} 78% 58%)`;                 // el traje de baño
+  ctx.fillRect(pe.x - 1.9, pe.y + 0.6 + bob, 3.8, 2.2);
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(pe.x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
+}
+
+// EL JUGADOR. Leaning into the run, arms out for balance, facing the ball —
+// `ang` is set by the advancer every frame, which is what makes a mejenga read
+// as a game: eight people all looking at the same point.
+function drawJugador(pe) {
+  const stride = Math.sin(pe.ph * 1.6);
+  const lean = stride * 0.22;
+  ctx.save(); ctx.translate(pe.x, pe.y); ctx.rotate(lean);
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath(); ctx.ellipse(1, 5, 4.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = `hsl(${pe.hue} 76% 58%)`;                 // la camiseta
+  ctx.fillRect(-2, -3, 4, 5.4);
+  ctx.strokeStyle = "#f1c8a4"; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+  ctx.beginPath();                                          // brazos abiertos
+  ctx.moveTo(-2, -1.6); ctx.lineTo(-4.4, 0.4 + stride);
+  ctx.moveTo(2, -1.6); ctx.lineTo(4.4, 0.4 - stride);
+  ctx.moveTo(-1, 2.4); ctx.lineTo(-1.6, 5 + stride * 1.4);  // …y las piernas
+  ctx.moveTo(1, 2.4); ctx.lineTo(1.6, 5 - stride * 1.4);
+  ctx.stroke();
+  ctx.fillStyle = "#f1c8a4";
+  ctx.beginPath(); ctx.arc(0, -5, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// LA BOLA. One per mejenga, drawn in the ped pass so it sits among the players
+// rather than under the whole world. The panels turn with `ph`, which the game
+// advances by how far the ball has actually rolled.
+function drawBeachBall(G) {
+  const b = G.ball;
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath(); ctx.ellipse(b.x + 1, b.y + 3, 3.2, 1.3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#f6f2e6";
+  ctx.beginPath(); ctx.arc(b.x, b.y, 3.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#2f3540";
+  for (let i = 0; i < 3; i++) {
+    const a = b.ph + (i / 3) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(b.x + Math.cos(a) * 1.5, b.y + Math.sin(a) * 1.5, 0.85, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawEditorNpc(pe) {
@@ -797,4 +873,4 @@ function drawPlayerCarrying(p, veh) {
   ctx.restore();
 }
 
-export { drawAnimal, drawArcadeCoin, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawSchool, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle };
+export { drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawSchool, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle };

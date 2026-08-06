@@ -108,7 +108,9 @@ change re-runs `save` in the same commit.
 Surface grid classes (see `src/game/surfaces.js`): `0 water, 1 land (solid cuadra
 interior — blocked in physics), 2 beach, 3 road, 4 paseo, 5 bridge/pier, 6 acera,
 7 boulevard (calle peatonal: stone paving, transitable but slow), 8 barro (packed
-earth — the dirt calles, 0.82 of asphalt), 9 gravel (lastre, 0.9)`. The VALUES
+earth — the dirt calles, 0.82 of asphalt), 9 gravel (lastre, 0.9), 10 malecón
+(the paved sea front of the Paseo de los Turistas: transitable, 0.55 — you crawl
+among people)`. The VALUES
 are the wire format: append, never renumber. A new drivable class has to join
 `DRIVABLE`, `STREET` and usually `CALLE` in `churchill/world/enums/surface.py` —
 leaving barro out of the acera seeds silently stripped the sidewalk from 8,204
@@ -348,9 +350,15 @@ when `lm.stands`, strokes a dark two-tone band over the block's real acera ring
 in the LANDMARK pass (after sidewalks → recolours the actual acera; follows the
 organic/diagonal outline). Interior cross-streets clipped by `_clip_roads_poly`.
 
-**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of four
+**NPC types (`kind` field, extensible)**: peds carry a `kind` and one of several
 advancers (branch in `physics.js`): rail-bound city walkers (`pe.road`,
-`advancePed`); stadium **fans** (`kind:"fan"`, `pe.field`, `advanceFieldPed`)
+`advancePed`); **surface crowds** (`playero` on the sand, `paseante` on the
+malecón/bulevar) which carry `pe.cls` from `npcSurfaceClasses(kind)` and fall
+through to the generic `advanceOnSurface` — so where a type may stand is REGISTRY
+data and they appear on every playa in the world, not only the Paseo's; the
+`jugador` of a beach **mejenga** (`pe.game`, `advanceBeachPlayer`), whose game is
+one entity in `beachGames` carrying its own ball; stadium **fans**
+(`kind:"fan"`, `pe.field`, `advanceFieldPed`)
 wandering the pitch, CONTAINED well inside the footprint; balneario **swimmers**
 (`kind:"swimmer"`, `pe.swim`, `advanceSwimmer`) bouncing inside `W.BALNEARIO`;
 and bus **passengers** (`kind:"passenger"`, `pe.bus`,
@@ -371,6 +379,18 @@ happens at the kerb: brake, dwell, alight, board. Two things are load-bearing:
 - **How many buses run is a FLOOR, not a probability.** At the old 9 % roll on
   main-road spawns the paradas went unvisited for minutes at a time.
 
+**La feria del malecón + DJ Urtech** (`ATTRACTION_DEFS` in `content.py`,
+`service/attraction.py`, `src/render/c2d/attractions.js`). Rides are geo-anchored
+like every other POI and snapped onto whatever promenade the build produced, and
+they are **drawn, never stamped**: the band is 60 px deep and it is the only way
+the two Paseo kiosks are reached, so a 40 px carrusel stamped blocking would take
+a delivery target off the network. The DJ is seated on the FRONTAGE of the real
+OSM building he plays outside (`host: "La Takería"`), not on a coordinate. His
+sound is a fourth continuous voice in `src/game/audio.js` beside
+`fountain`/`pool`/`waves` — and **distance is a FILTER, not a fader**:
+`sfx.dj(level)` opens the lowpass from 260 Hz to ~4 kHz as well as the gain, so
+from down the Paseo you get the kick and only at the booth the whole set.
+
 **A word on emitted point features**: `signs` stay global because there are only
 ~470 and the bus logic wants to index them once. Cuadra corners are not emitted
 as separate features: the square raster and source polygons are the geometry.
@@ -390,6 +410,115 @@ wanted again. Two things the crowd has to get right:
   overlapping pairs apart every frame — they are random walks on one pitch, so
   however well they are placed they will meet.
 
+
+**THE TWO PASEOS ARE ONE WATERFRONT.** Paseo de los Turistas runs the spit from
+the faro to x≈19099; **Paseo León Cortés Castro picks up at that exact point and
+carries on east past the Muelle de Cruceros to the Parque Marino**, and both
+face the PACIFIC. (Comments in this repo claimed León Cortés was the estero
+side. It is not — the estuary is the spit's other shore.) `PASEO_NAMES` is the
+pair, and anything about the sea front should use it, not `PASEO_TURISTAS`.
+
+**The coast is 20 m wider than the real one, on purpose** (`reclaim_shore`,
+`SHORE_RECLAIM_M`). The real playa is 15–40 m and the camera frames twenty
+cuadrículas, so at true scale the beach is a stripe you cross rather than a
+place. It is the exact inverse of `beach_fringe` and reuses the same estuary
+mask (the estero is mangrove to the waterline and gains nothing). Two bounds,
+both learned by leaving them out: it is confined to the **corridor** around the
+paseos — run world-wide it doubled the world's sand, doubled the beach palms
+and stranded 300k drivable cells — and each candidate casts a **ray** in the
+growth direction, so it can never close a channel narrower than twice the depth.
+`trace_land_contours` must run AFTER it, or the drawn silhouette keeps the
+drowned coast.
+
+**The malecón** (`churchill/world/service/malecon.py`, stamped in
+`place_kiosks_and_blocks` after `acera_fringe` and before the faro esplanade).
+The sand between the paseos and the playa is `Surface.MALECON`.
+Four rules, each one measured on this coast:
+- **the width is METRES** (`MALECON_BAND_M`) — every px constant here broke at
+  the 1.6 → 2.0 rescale;
+- **the sand has a veto**: per cross-section the take is capped so
+  `MALECON_MIN_SAND_PX` of playa survives seaward, and where nothing is left
+  worth paving there is simply no malecón;
+- **only `CLS_BEACH` is converted**, which is what lets the band follow the real
+  wandering line without one hand-placed vertex — and what makes the OSM sites
+  already on the front (Parque El Planché, the canchas) survive: their cells are
+  reserved, so the paving goes AROUND them;
+- **a patch under `MALECON_MIN_PATCH_CELLS` goes back to the sand**, not merely
+  out of the emit — a class-10 cell nobody draws is a hole in the beach.
+It emits `manifest.malecon` (outline rings + the Paseo's `ang`), painted by
+`src/render/c2d/malecon.js` between the land base and the roads so the acera
+band and the asphalt still cover anything that reached the kerb.
+
+**The drawn sand IS the sand.** `beaches` used to ship the raw OSM
+`natural=beach` outlines while the raster's sand is those plus nine rings of
+`beach_fringe` — so 8.5 % of the beach cells were painted with the land tan and
+the seam read as a straight line down the playa. `service.surface.sand_outlines`
+traces the FINISHED raster instead (run last, after the malecón, the esplanade,
+the pads and the bajadas take their cells).
+
+**THE MANZANA IS A CONTAINER, AND ITS CONTENTS ARE FITTED TO IT.** This is the
+answer to "why is anything standing on the acera", and it had been answered five
+different wrong ways before it was answered once. The arithmetic: a 7 m calle is
+18 px of real width and the game's corridor is 65 — two cars must pass (a car is
+19 px across) and it has to read as a street at play zoom. The other 47 px come
+out of the manzanas, 24 px per side. Measured over 59 centro blocks the build
+keeps 81 % of the ground the street grid implies, 72 % on the small ones. A
+footprint at its true size within 24 px of its centreline HAS nowhere to be.
+Nothing about the fitting was ever wrong.
+
+A map app does not have this problem: Mapbox/Carto/Google keep geometry TRUE and
+draw roads as STROKES over the basemap, so the casing covers the buildings and
+nobody minds — the road is paint. That is closed here, because the player drives
+on it. And when symbols genuinely collide, cartographic generalisation displaces
+them as a GROUP, preserving structure; never as a greedy per-feature shove,
+which is exactly why pushing each footprint along its street normal failed on
+corners and dense rows.
+
+So `service/building.fit_manzana_contents` takes each manzana's named footprints
+as ONE GROUP and fits it inside the block's own land, inside the acera ring —
+one isotropic scale about the group's centre, in the manzana's frame (median
+0.78 on the blocks that need one). Shapes and relative arrangement are kept, the
+block reads right because it all shrank together, and the per-building push is
+only the FALLBACK for footprints belonging to no detected block. Result: 130 of
+60 304 named-footprint cells touch street or acera, 3 of them road.
+The Parque Marino is exempt — its cuadra is partitioned by hand and scaling the
+group toward the centre cost one structure the land its lot is cut from.
+
+**The acera is painted AFTER the parcels, and a parcel is never deleted to keep
+it clear.** A parcel is a colour choice on ground somebody else painted; painted
+over the acera band it put a park's lawn on the pavement the walkers are
+rail-bound to. So `paintParcels` moved ahead of the band in `paintRoads` — the
+asphalt still wins over both. **`paintStadiumCuadras` stays AFTER it**, and that
+is not an inconsistency: a whole-cuadra estadio is stamped drivable over its own
+manzana, so it has no acera in the raster at all and that grey ring IS its
+sidewalk — moving it up with the parcels is what erased it. For the same reason
+the ring is eroded by `ACERA_CELLS` (a manzana's 12 px) and not by
+`FIELD_ACERA_CELLS` (a parcel's 8): Lito Pérez shipped with `aceras: True` and
+no sidewalk anybody could see. On the build side
+`PARCEL_ACERA_MAX` re-fits a plot inside strict LAND when it spills onto the
+sidewalk, but **only as an improvement**: a HARD spill that cannot be re-fitted
+is dropped (a park over the roadway is worse than no park), an acera one keeps
+the fit it had. Dropping them cost four escuelas, four gasolineras, the INA and
+a dozen iglesias the first time. Buildings were never the problem —
+`_push_off_street` already pushes named footprints off the acera.
+
+**EVERY ANCHOR IS GEO.** The last two world-px anchors in the build were the
+hand-laid `carmen` and `centro` cuadra specs, and the 2.0 -> 2.5 rescale moved
+the real manzanas 4 000 px away from them: all four bounding streets resolved to
+`None` and the entire civic centre — Catedral, Casa de la Cultura, Biblioteca,
+Parque de la Virgen, Parroquia del Carmen, Jardín, Plaza Deportes El Carmen —
+stopped existing, with two WARN lines to say so. A hand-laid cuadra that
+resolves to nothing now FAILS the build. Same rule for tools: `tools/smoke.mjs`
+drove from a hardcoded px too, and after the rescale it "passed" on drift with a
+top speed of 0.
+
+**A kiosk must clear the sea by its ART, not its anchor.** The build tests for
+water once, at the geo anchor, and never again after a reseat — which left three
+stands 14 px from open water after the rescale, drawn half in the gulf.
+`placement.nudge_off_water` + `KIOSK_WATER_CLEAR_PX` run after the frontage seat
+and before the apron (and keep the kiosk on its OWN surface class), and
+`finish.verify` fails the build on any kiosk with water inside that radius.
+`kios_faro` is exempt: it stands on the Muelle del Faro's deck on purpose.
 
 **Water cuadra (Balneario)**: a `type:"pool"` landmark's whole block becomes a
 SEA inlet — `occ.update(cells)` (no OSM buildings), stamp the interior

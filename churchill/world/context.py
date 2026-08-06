@@ -91,6 +91,10 @@ class WorldContext:
     plazas: list = field(default_factory=list)
     greens: list = field(default_factory=list)
     districts: list = field(default_factory=list)
+    #: the paved sea front of the Paseo de los Turistas, one entry per
+    #: contiguous band: outline rings traced straight off the raster, plus the
+    #: street's angle so the renderer lays its courses with the coast.
+    malecon: list = field(default_factory=list)
 
     # ---- placed content -----------------------------------------------------
     landmarks: list = field(default_factory=list)
@@ -98,6 +102,8 @@ class WorldContext:
     stadiums: list = field(default_factory=list)
     parcels: list = field(default_factory=list)
     kiosk_paths: list = field(default_factory=list)
+    #: the turno on the malecón: carrusel, rueda, chocones, tómbola and the DJ
+    attractions: list = field(default_factory=list)
     buildings: list = field(default_factory=list)
     #: Semantic additions the current runtime does not render yet. Preserving
     #: them in the manifest is part of the editor contract: no valid edit is

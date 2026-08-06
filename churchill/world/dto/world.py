@@ -222,6 +222,39 @@ class Green(WorldModel):
     type: GreenType
 
 
+class MaleconBand(WorldModel):
+    """One contiguous piece of the paved sea front (`Surface.MALECON`).
+
+    `polys` is every boundary ring straight off the raster — a band can have
+    holes where a bajada or a kiosk pad interrupts it — so the renderer fills it
+    even-odd and the drawn paving is exactly the paving you drive on. `ang` is
+    the Paseo's own angle at the band's centre, which is what lets the courses
+    run with the coast instead of with the screen.
+    """
+    polys: list[FlatPoly]
+    ang: float = 0.0
+    x0: int
+    y0: int
+    x1: int
+    y1: int
+    cells: int = 0
+
+
+class Attraction(WorldModel):
+    """A ride on the malecón — or the DJ outside La Takería.
+
+    `kind` drives a `switch` in src/render/c2d/attractions.js, and an unknown
+    one draws nothing rather than a generic pin: a feria is art, not a marker.
+    Nothing here is stamped into the raster, so `r` is a DRAWN radius only.
+    """
+    id: str
+    name: str
+    kind: str
+    x: int
+    y: int
+    r: int = 24
+
+
 class KioskPath(WorldModel):
     """A short paved connector from something standing on the sand to the street
     it is reached from: a beach kiosk, or a ferry berth. Both exist for the same

@@ -135,6 +135,58 @@ def nudge_to_land(raster, near_drivable, x, y, radius_px=POI_NUDGE_PX, need_driv
         return None
     return ((best[1] + 0.5) * GRID_CELL, (best[2] + 0.5) * GRID_CELL)
 
+def water_within(raster, x, y, clear_px):
+    """Is there a water cell within `clear_px` of this point?
+
+    The test a KIOSK has to pass. A landmark is placed once, at its geo anchor,
+    and `nudge_to_land` only asks whether that one CELL is dry — but a kiosk is
+    32 px of drawn stand with a shadow reaching 22 px to its right, and the
+    1.6 -> 2.0 rescale moved three of them to within 14 px of open water, where
+    the stand is drawn half in the gulf. What has to clear the sea is the ART,
+    not the anchor.
+    """
+    cc, cr = int(x // GRID_CELL), int(y // GRID_CELL)
+    R = int(math.ceil(clear_px / GRID_CELL))
+    r2 = (clear_px / GRID_CELL) ** 2
+    for dr in range(-R, R + 1):
+        for dc in range(-R, R + 1):
+            if dc * dc + dr * dr > r2:
+                continue
+            if cell_class(raster, cc + dc, cr + dr) == CLS_WATER:
+                return True
+    return False
+
+
+def nudge_off_water(raster, x, y, clear_px, classes, max_cells=40):
+    """The nearest point with `clear_px` of dry ground around it, or None.
+
+    Expanding rings like `nearest_cell`, and for the same reason: the answer
+    wanted is the SMALLEST move that works, so the kiosk stays on the frontage
+    the rest of the build seated it on. `classes` is what the kiosk may stand on
+    — its own surface, so a stand on the malecón does not get pushed onto the
+    asphalt to escape the sea.
+    """
+    if not water_within(raster, x, y, clear_px):
+        return (x, y)
+    c0, r0 = int(x // GRID_CELL), int(y // GRID_CELL)
+    for rad in range(1, max_cells):
+        best = None
+        for a in range(0, 360, 6):
+            cc = c0 + int(round(math.cos(math.radians(a)) * rad))
+            cr = r0 + int(round(math.sin(math.radians(a)) * rad))
+            if cell_class(raster, cc, cr) not in classes:
+                continue
+            px, py = (cc + 0.5) * GRID_CELL, (cr + 0.5) * GRID_CELL
+            if water_within(raster, px, py, clear_px):
+                continue
+            d2 = (cc - c0) ** 2 + (cr - r0) ** 2
+            if best is None or d2 < best[0]:
+                best = (d2, px, py)
+        if best:
+            return (best[1], best[2])
+    return None
+
+
 def near_drivable(raster, main_net, c, r, reach=ACERA_CELLS + 1):
     """True if a MAIN-network street/beach cell is within `reach` cells (so
     a POI pad stamped here merges with the network the player drives —

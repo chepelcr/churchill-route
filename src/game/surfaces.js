@@ -6,17 +6,19 @@
 //   3 road, 4 paseo, 5 bridge/pier, 6 acera, 7 boulevard (calle peatonal:
 //   transitable stone paving, slower than the paseo — you crawl over it),
 //   8 barro (packed earth: a real calle, just loose and slower than asphalt),
-//   9 gravel (lastre: firmer than barro, still not asphalt)
+//   9 gravel (lastre: firmer than barro, still not asphalt),
+//   10 malecón (the paved sea front of the Paseo de los Turistas: you may drive
+//      it, but it is a promenade full of people, so you crawl)
 //
 // THIS TABLE IS THE DRIVING MODEL OF A SURFACE. A calle de barro was drawn
 // brown and driven like asphalt until barro became a class of its own: the look
 // lived in the road vector and the feel lived nowhere.
 export const SURFACE_MUL = {
   0: 0.35, 1: 0.78, 2: 0.7, 3: 1.0, 4: 0.55, 5: 1.0, 6: 0.62, 7: 0.5,
-  8: 0.82, 9: 0.9,
+  8: 0.82, 9: 0.9, 10: 0.55,
 };
 
 // Human-readable names, index = surface class id. Mirrors
 // churchill/world/enums/surface.py — append, never renumber: these values are
 // the bytes inside every tile's RLE.
-export const SURFACE_CLASSES = ["water", "land", "beach", "road", "paseo", "bridge", "acera", "boulevard", "barro", "gravel"];
+export const SURFACE_CLASSES = ["water", "land", "beach", "road", "paseo", "bridge", "acera", "boulevard", "barro", "gravel", "malecon"];

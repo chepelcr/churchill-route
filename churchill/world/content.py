@@ -210,23 +210,23 @@ CUSTOMER_DEFS = [
 STAGES = [
     {"id": "s1", "num": 1, "name": "El Faro", "district": "carmen",
      "brief": "Repartí el primer pedido del día. Llegan cruceros — los gringos quieren probar el dichoso Churchill.",
-     "kiosks": ["kios_faro"], "targetDeliveries": 3, "timeLimit": 90, "weather": "sunny",
+     "kiosks": ["kios_faro"], "targetDeliveries": 3, "timeLimit": 115, "weather": "sunny",
      "customers": ["c1", "c2"], "unlock": "paseo"},
     {"id": "s2", "num": 2, "name": "Paseo de los Turistas", "district": "paseo",
      "brief": "El boulevard está lleno. Atravesá la peatonal esquivando turistas y comparsas de carnaval.",
-     "kiosks": ["kios_paseo1", "kios_paseo2"], "targetDeliveries": 4, "timeLimit": 120, "weather": "sunny",
+     "kiosks": ["kios_paseo1", "kios_paseo2"], "targetDeliveries": 4, "timeLimit": 150, "weather": "sunny",
      "customers": ["c3", "c4", "c5"], "unlock": "centro"},
     {"id": "s3", "num": 3, "name": "Mercado y Catedral", "district": "centro",
      "brief": "Las calles del centro son angostas y el tráfico no perdona. Ojo con los gatos — y el Padre Ramírez no es de esperar.",
-     "kiosks": ["kios_centro", "kios_paseo2"], "targetDeliveries": 4, "timeLimit": 130, "weather": "sunny",
+     "kiosks": ["kios_centro", "kios_paseo2"], "targetDeliveries": 4, "timeLimit": 165, "weather": "sunny",
      "customers": ["c6", "c7", "c8", "c9"], "unlock": "playitas"},
     {"id": "s4", "num": 4, "name": "Atardecer en Las Playitas", "district": "playitas",
      "brief": "Atardece sobre el Yacht Club. Abrí gas por la Ruta 17, pero cuidado: el equipo de fútbol anda entrenando.",
-     "kiosks": ["kios_play", "kios_centro"], "targetDeliveries": 5, "timeLimit": 140, "weather": "sunset",
+     "kiosks": ["kios_play", "kios_centro"], "targetDeliveries": 5, "timeLimit": 175, "weather": "sunset",
      "customers": ["c10", "c11", "c12"], "unlock": "cocal"},
     {"id": "s5", "num": 5, "name": "Tormenta en El Cocal", "district": "cocal",
      "brief": "Cayó el aguacero y el asfalto resbala. Llegá a la Ruta 17 antes de que la tormenta empeore.",
-     "kiosks": ["kios_cocal2"], "targetDeliveries": 5, "timeLimit": 160, "weather": "storm",
+     "kiosks": ["kios_cocal2"], "targetDeliveries": 5, "timeLimit": 200, "weather": "storm",
      "customers": ["c13", "c14"], "unlock": "mata"},
     {"id": "s6", "num": 6, "name": "Puente · Mata de Limón", "district": "mata",
      "brief": "Cruzá el puente colgante sobre el estero. Llegá al kiosco de Mata de Limón y a la Marisquería Leda.",
@@ -234,7 +234,7 @@ STAGES = [
      "customers": ["c15", "c16"], "unlock": "mata"},
     {"id": "s7", "num": 7, "name": "Caldera · Final", "district": "caldera",
      "brief": "Por la Ruta 27 hasta el Puerto de Caldera. Ya sale el sol — una última entrega y se acaba la jornada.",
-     "kiosks": ["kios_caldera", "kios_mata"], "targetDeliveries": 4, "timeLimit": 170, "weather": "sunny",
+     "kiosks": ["kios_caldera", "kios_mata"], "targetDeliveries": 4, "timeLimit": 215, "weather": "sunny",
      "customers": ["c17", "c18"], "unlock": "caldera"},
 ]
 
@@ -254,6 +254,13 @@ SITE_DECOR = {
     # corner and flattened the diagonal north edge. Keep its source-supported
     # cuadra cells and emit their straightened contour instead.
     "osm_park_232390078": {"trace": True},
+    # El Parque del Muellero (OSM "Parque 164") is a 1100 px DIAGONAL RIBBON of
+    # waterfront between the Paseo and the muelle, 40-70 px wide — a shape no
+    # rectangle in the manzana frame can hold, so the percentile fit landed on
+    # the roadway, the inscribed fallback found nothing that was still a plot,
+    # and the park simply did not exist in the world. Same remedy as Mora y
+    # Cañas: keep its own source-supported ground and straighten the contour.
+    "osm_park_270515697": {"trace": True},
     # The Escuela Delia Urbina de Guevara is mapped in OSM as the whole tall
     # manzana it stands on; the school itself is a WIDE building on the block's
     # south-west corner. `rect` is in fractions of the fitted rect (u east,
@@ -303,7 +310,7 @@ CROSSING_STAGES = [
                   "pescadores y las raíces del manglar — tres golpes y se hunde. "
                   "Cruzá los cardúmenes: el que llega con peces, llega mejor."),
         "kiosks": [], "customers": [], "targetDeliveries": 0,
-        "timeLimit": 180, "weather": "sunny", "unlock": None,
+        "timeLimit": 225, "weather": "sunny", "unlock": None,
     },
 ]
 
@@ -327,6 +334,39 @@ LANCHA_DEFS = [
 # the street can be seen and never entered. Each of these paves a short apron
 # THROUGH that ring — the same recipe as a kiosk connector — so there is a way
 # down onto the sand you can find without hunting for a gap.
+# ---------------------------------------------------------------------------
+# LAS ATRACCIONES DEL MALECÓN — the turno that lives on the Paseo.
+#
+# Geo-anchored like every other POI (a px anchor on this coast survives exactly
+# until the next rescale), and snapped onto whatever promenade the build
+# actually produced. `r` is the drawn radius; nothing here is stamped as a wall,
+# because the band is 60 px deep and it is the only way to the Paseo kiosks.
+#
+# `dj` is the odd one out: it is not seated on the malecón but on the FRONTAGE
+# of the restaurant it plays outside, and `host` names that real OSM building.
+# ---------------------------------------------------------------------------
+# WHERE THE SEA FRONT ENDS. The malecón follows both paseos east, and the
+# Parque Marino's cuadra is where the waterfront stops being one: past it León
+# Cortés turns inland and becomes an ordinary avenida. Geo-anchored like every
+# other limit on this coast, so a rescale cannot walk it up the beach — only
+# the LONGITUDE is read.
+MALECON_EAST_LL = (9.97747, -84.82532)
+
+ATTRACTION_DEFS = [
+    {"id": "carrusel", "name": "El Carrusel", "kind": "carrusel",
+     "at": (9.97431, -84.84537), "r": 26},
+    {"id": "chocones", "name": "Los Chocones", "kind": "chocones",
+     "at": (9.97431, -84.84264), "r": 30},
+    {"id": "rueda", "name": "La Rueda de Chicago", "kind": "rueda",
+     "at": (9.97431, -84.83990), "r": 34},
+    {"id": "tombola", "name": "La Tómbola", "kind": "tombola",
+     "at": (9.97435, -84.83716), "r": 18},
+    # DJ Urtech, en vivo frente a La Takería. The sound is procedural and
+    # proximity-driven (sfx.dj), so this is the point the music comes from.
+    {"id": "dj_urtech", "name": "DJ Urtech", "kind": "dj",
+     "at": (9.97495, -84.84405), "r": 20, "host": "La Takería"},
+]
+
 BEACH_ACCESS_DEFS = [
     {"id": "muelle_oeste", "name": "Bajada Muelle Oeste",
      "at": (9.97481, -84.83187), "w": 34},   # west of the Muelle de Cruceros

@@ -9,9 +9,9 @@ from pydantic import Field
 
 from .geo import FlatPoly
 from .world import (
-    Balneario, Bridge, Customer, District, Estuary, Ferry, Green,
-    GridInfo, Hill, KioskPath, Landmark, Meta, Parcel, Pier, Poi, Sign, Stadium,
-    Stage, WorldModel,
+    Attraction, Balneario, Bridge, Customer, District, Estuary, Ferry, Green,
+    GridInfo, Hill, KioskPath, Landmark, MaleconBand, Meta, Parcel, Pier, Poi,
+    Sign, Stadium, Stage, WorldModel,
 )
 
 
@@ -33,6 +33,8 @@ class Manifest(WorldModel):
     # green before its tile arrives
     plazas: list[list] = Field(default_factory=list)
     greens: list[Green] = Field(default_factory=list)
+    malecon: list[MaleconBand] = Field(default_factory=list)
+    attractions: list[Attraction] = Field(default_factory=list)
     stadiums: list[Stadium] = Field(default_factory=list)
     balneario: Balneario | None = None
     kioskPaths: list[KioskPath] = Field(default_factory=list)

@@ -18,6 +18,7 @@ let fountainV = null;   // { jet, spray, body, level } — a PARK fountain
 let poolV = null;       // { lap, edge, level }        — the Balneario
 let wavesV = null;      // { swell, foam, lfo*, level } — surf out on the muelles
 let iceCreamV = null;   // { gain, nextAt } — cart melody while carrying
+let djV = null;         // { gain, filter, nextAt, bar } — DJ Urtech on the Paseo
 
 function loadMuted() {
   try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
@@ -163,6 +164,24 @@ function unlock() {
   lfoFoam.connect(sFoamG.gain);
   lfo.start();
   wavesV = { swell: sSwellG, foam: sFoamG, lfoSwell, lfoFoam, level: 0 };
+
+  // DJ URTECH — the set outside La Takería, on the Paseo.
+  //
+  // Everything else in this file is AMBIENCE; this is MUSIC, and the difference
+  // is that music has a clock. So the voice owns a bar counter and schedules a
+  // bar at a time (like `iceCream`, and for the same reason: a scheduled note
+  // must be droppable the instant the player drives away). What it is: a
+  // four-on-the-floor kick, an offbeat hat, and a filtered saw bassline.
+  //
+  // DISTANCE IS A FILTER, NOT A FADER. A sound system heard from two blocks
+  // away is not quieter techno, it is the kick and nothing else — so the level
+  // opens `djF`'s cutoff as well as the gain, and the bass and hats arrive as
+  // you get close. That is what makes driving toward it feel like arriving.
+  const djG = ctx.createGain(); djG.gain.value = 0;
+  const djF = ctx.createBiquadFilter();
+  djF.type = "lowpass"; djF.frequency.value = 260; djF.Q.value = 0.9;
+  djF.connect(djG); djG.connect(master);
+  djV = { gain: djG, filter: djF, nextAt: 0, bar: 0, level: 0 };
 
   // ICE-CREAM CART — its music-box speaker is silent unless the cart is
   // carrying a churchill. Notes are scheduled into this dedicated gain so a
@@ -416,6 +435,47 @@ export const sfx = {
     wavesV.lfoFoam.gain.setTargetAtTime(a * 0.018, now, 1.4);
   },
 
+  // DJ URTECH: 0..1 by distance, called every physics frame.
+  //
+  // The level does two things at once. It rides the GAIN, as every other voice
+  // does — and it opens the LOWPASS from 260 Hz to ~4 kHz, which is what turns
+  // "quieter" into "closer": from down the Paseo you get the kick through the
+  // wall of the night, and only at the booth do the hats and the bassline
+  // arrive. One bar is scheduled at a time so driving away silences the set on
+  // the next beat instead of playing out whatever was queued.
+  dj(amount) {
+    if (!djV || !ctx || ctx.state !== "running") return;
+    const a = Math.max(0, Math.min(1, amount));
+    djV.level = a;
+    const now = ctx.currentTime;
+    djV.gain.gain.setTargetAtTime(a * 0.5, now, 0.25);
+    djV.filter.frequency.setTargetAtTime(260 + a * a * 3800, now, 0.3);
+    if (a <= 0.01) { djV.nextAt = Math.max(djV.nextAt, now); return; }
+    const BPM = 128, beat = 60 / BPM, bar = beat * 4;
+    if (now < djV.nextAt - bar * 0.5) return;      // this bar is already queued
+    const t0 = Math.max(now + 0.05, djV.nextAt);
+    const bass = [55, 55, 82.4, 55, 65.4, 55, 73.4, 82.4];   // A1 … a two-bar walk
+    for (let i = 0; i < 4; i++) {
+      // el bombo — a pitch-swept sine is a kick; a click on top is the beater
+      tone({ type: "sine", from: 130, to: 44, dur: 0.20, gain: 0.42,
+             at: t0 - now + i * beat, destination: djV.filter });
+      tone({ type: "square", from: 1100, to: 240, dur: 0.02, gain: 0.10,
+             at: t0 - now + i * beat, destination: djV.filter });
+      // el hi-hat, a contratiempo
+      tone({ type: "square", from: 8200, to: 7000, dur: 0.035, gain: 0.06,
+             at: t0 - now + i * beat + beat / 2, destination: djV.filter });
+      // el bajo, dos notas por tiempo
+      for (const half of [0, 0.5]) {
+        const n = bass[(djV.bar * 4 + i * 2 + half * 2) % bass.length];
+        tone({ type: "sawtooth", from: n, dur: beat * 0.42, gain: 0.16,
+               at: t0 - now + (i + half) * beat, filterHz: 900,
+               destination: djV.filter });
+      }
+    }
+    djV.bar = (djV.bar + 1) % 2;
+    djV.nextAt = t0 + bar;
+  },
+
   // silence the continuous voices (menus, pause, results) but keep the
   // context alive so menu blips still play
   quiet() {
@@ -429,6 +489,10 @@ export const sfx = {
     if (fountainV) {
       fountainV.spray.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
       fountainV.body.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+    }
+    if (djV) {
+      djV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+      djV.nextAt = ctx.currentTime;
     }
   },
   // Has the AudioContext actually unlocked? A one-shot fired before the first

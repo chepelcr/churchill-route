@@ -59,6 +59,11 @@ export const trains = [];       // the old Ferrocarril: loco + wagons on the rai
 // and its fleet are the same event, they drift together, and splitting them
 // into a shoal pool and a boat pool would let the boats wander off the fish.
 export const schools = [];
+// La mejenga: a game of fútbol playa on the sand. ONE entity per game rather
+// than a pool of players and a pool of balls, for the same reason a school and
+// its pangas are one — the players exist because the ball does, and splitting
+// them would let a ball roll away from the game it belongs to.
+export const beachGames = [];
 
 export function pushFloat(x, y, text, color) {
   state.floats.push({ x, y, text, color, t: 0, ttl: 1.6 });

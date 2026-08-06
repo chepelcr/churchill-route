@@ -11,12 +11,16 @@ import { aabbInView } from "./gfx.js";
 import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
 } from "./ground.js";
+import { drawMalecon } from "./malecon.js";
 import { drawStreetLabels2D, medianPairs, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
 import { drawPiers, paintBuilding } from "./structures.js";
 
 // Orchestrate the painterly world from resident, in-view tiles.
 function drawWorld2D(view, t) {
   drawLandBase(view, t);   // includes the park/plaza green ground rects
+  // el malecón, over the sand and under the streets: the acera band and the
+  // asphalt still paint over anything of its paving that reached the kerb.
+  drawMalecon(view);
   const vts = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
   // roads: gather in-view segments across tiles, minor → major so arterials paint on top
   const roads = [];

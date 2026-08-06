@@ -20,11 +20,12 @@ from collections import deque
 from ..config import (
     ACERA_CELLS, CALLE_CLASSES, CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_PASEO,
     CLS_ROAD, CLS_WATER,
-    CUAD, CUAD_CELLS, DP_COAST_PX, ESTERO_MAINLAND_PX, GRID_CELL,
+    CUAD, CUAD_CELLS, DP_COAST_PX, DP_SAND_PX, ESTERO_MAINLAND_PX, GRID_CELL,
     SPIT_MAX_WIDTH_PX, SPIT_SHORE_TOL_PX,
 )
 from ..logging import log
 from ..util.geometry import dp_simplify, poly_area, to_m
+from .block import outline_polys
 from .projection import project_way_pts
 
 
@@ -348,6 +349,135 @@ def beach_fringe(raster, depth_cells=3, band=None):
         f"{n_kept} cells of estuary bank stayed land (mangrove, not sand); "
         f"{grid.count(CLS_BEACH)} beach cells in total")
     return n_sand
+
+
+def reclaim_shore(raster, band, depth_cells, corridor=None):
+    """Push the WATERLINE OUT: grow the sand `depth_cells` rings into the sea.
+
+    The one deliberate lie this map tells about its own coast, and it is told on
+    purpose. Puntarenas' playa is 15-40 m of sand; the camera frames twenty
+    cuadrículas, so at true scale the beach is a stripe you cross rather than a
+    place, and the malecón beside it has nothing to be beside. Twenty metres of
+    reclaimed sea (SHORE_RECLAIM_M) makes the playa read at play zoom without
+    the spit visibly fattening.
+
+    It is the exact inverse of `beach_fringe` — that one grows sand INLAND out
+    of the land, this one grows it SEAWARD out of the water — and it borrows the
+    same estuary mask for the same reason: the estero is mangrove down to the
+    waterline and must not gain a metre of beach. Run it right after the fringe,
+    and BEFORE `trace_land_contours`, or the drawn coast silhouette keeps the
+    old waterline while the raster has the new one.
+
+    Two things bound it, and both were learned by leaving them out:
+
+    * THE CORRIDOR. Run over the whole map it reclaimed 490 384 cells — it more
+      than DOUBLED the world's sand, doubled the beach palms with it, and left
+      300 000 more drivable cells stranded off the network, all to widen a beach
+      nobody plays on. `corridor` is the waterfront the paseos run along, which
+      is the beach the camera is ever pointed at.
+    * THE CHANNEL. A ring grown blindly closes any water narrower than twice the
+      depth — it walled off a sea probe on the first run. So each candidate
+      casts the growth direction forward: if the far shore is within reach, this
+      is a channel, not the open gulf, and it keeps its water.
+    """
+    if depth_cells <= 0:
+        return 0
+    cols, rows, grid = raster.cols, raster.rows, raster.buf
+    water, hidden = bytes([CLS_WATER]), bytes([_NOT_SEA])
+    masked = []
+    for c, seg in enumerate(band or ()):
+        if seg is None:
+            continue
+        top, bot = seg
+        sl = slice(top * cols + c, bot * cols + c + 1, cols)
+        grid[sl] = grid[sl].replace(water, hidden)
+        masked.append(sl)
+    cell = raster.cell
+    c0, r0, c1, r1 = 0, 0, cols - 1, rows - 1
+    if corridor:
+        c0 = max(0, int(corridor[0] // cell)); r0 = max(0, int(corridor[1] // cell))
+        c1 = min(cols - 1, int(corridor[2] // cell)); r1 = min(rows - 1, int(corridor[3] // cell))
+
+    def open_water(c, r, dc, dr):
+        """Is there still sea past this cell, or is the far shore right there?"""
+        for k in range(1, depth_cells + 2):
+            cc, rr = c + dc * k, r + dr * k
+            if not (0 <= cc < cols and 0 <= rr < rows):
+                return True                 # the map edge is open gulf
+            if grid[rr * cols + cc] != CLS_WATER:
+                return False
+        return True
+
+    cur = [r * cols + c
+           for r in range(r0, r1 + 1)
+           for c in range(c0, c1 + 1)
+           if grid[r * cols + c] == CLS_BEACH]
+    gained, blocked = 0, 0
+    for _ in range(depth_cells):
+        nxt = []
+        for idx in cur:
+            r, c = divmod(idx, cols)
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if not (r0 <= nr <= r1 and c0 <= nc <= c1):
+                    continue
+                nidx = nr * cols + nc
+                if grid[nidx] != CLS_WATER:
+                    continue
+                if not open_water(nc, nr, dc, dr):
+                    blocked += 1
+                    continue
+                grid[nidx] = CLS_BEACH
+                nxt.append(nidx)
+        gained += len(nxt)
+        cur = nxt
+    for sl in masked:                       # the estuary is water again
+        grid[sl] = grid[sl].replace(hidden, water)
+    log("beach", f"{gained} cells of sea reclaimed as sand ({depth_cells} rings "
+        f"= {depth_cells * cell}px along the paseos' waterfront); {blocked} cells "
+        f"left as water because the far shore was within reach")
+    return gained
+
+
+def sand_outlines(raster, tolerance_px=DP_SAND_PX):
+    """The DRAWN sand, traced from the sand you actually drive on.
+
+    THIS IS WHY THE BEACH HAD TWO COLOURS. `beaches` used to ship the raw OSM
+    `natural=beach` outlines — 29 polygons, 366 points — while the raster's sand
+    is those polygons PLUS nine rings of `beach_fringe` grown inland from the
+    water. Along the Paseo, 8.5 % of the beach cells fell outside the drawn
+    polygons and were painted with the land tan under them instead of with sand,
+    and because the polygon edge is a long simplified chord the seam read as a
+    hard straight line down the playa.
+
+    Tracing the finished raster removes the disagreement instead of papering
+    over it: what is drawn as sand is exactly what is sand. Run LAST, after
+    every stamp — the malecón, the faro's esplanade, the pads and the bajadas
+    all take cells out of the beach, and a sand outline that predates them draws
+    over the lot.
+
+    Cheap, measured on this world: 407 355 cells -> 212 rings, 9 318 points,
+    ~120 KB of manifest, ~3 s.
+    """
+    cells = set()
+    cols, rows, grid = raster.cols, raster.rows, raster.buf
+    for r in range(rows):
+        row = grid[r * cols:(r + 1) * cols]
+        if CLS_BEACH not in row:
+            continue
+        for c in range(cols):
+            if row[c] == CLS_BEACH:
+                cells.add((c, r))
+    polys = []
+    for flat in outline_polys(cells, raster.cell):
+        pts = [(flat[i], flat[i + 1]) for i in range(0, len(flat), 2)]
+        pts = dp_simplify(pts + [pts[0]], tolerance_px)[:-1]
+        if len(pts) >= 3:
+            polys.append([round(v) for p in pts for v in p])
+    log("beach", f"{len(cells)} sand cells traced into {len(polys)} outlines, "
+        f"{sum(len(p) // 2 for p in polys)} points (DP {tolerance_px}px) — the "
+        f"drawn playa is now exactly the playa")
+    return polys
 
 # ------------------------------------------------------ verification gate ---
 

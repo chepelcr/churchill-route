@@ -204,6 +204,7 @@ const MINI_PARK   = "#2f6b3e";   // a green cuadra you cannot drive into
 const MINI_MEDIAN = "#79b45c";   // the Paseo's palm median — planted, and a WALL
 const MINI_FIELD  = "#4f9d5b";   // an estadio / plaza you CAN — brighter on purpose
 const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
+const MINI_MALECON = "#efdcb4";  // the sea front: warm baldosa, not town stone
 // The muelles keep the material they are drawn in out in the world, so the dial
 // and the map agree: the Muelle Nacional is concrete, the faro jetty is timber,
 // and a bridge deck is the pale deck base its asphalt is laid on.
@@ -329,6 +330,22 @@ function miniBoulevards(mv) {
   for (const P of vis) ctx.stroke(P._mpath);
   ctx.fillStyle = MINI_BULE;
   for (const P of vis) ctx.fill(P._mpath, "evenodd");
+}
+// EL MALECÓN, drawn with the bulevares and for the same reason: it is ground
+// you drive that is not in the road list. Warmer than the stone, because on a
+// dial the one line the player is looking for down there is the sea front.
+function miniMalecon(mv) {
+  const arr = W.MALECON || [];
+  if (!arr.length) return;
+  const vis = [];
+  for (const B of arr) {
+    miniShape(B, B.poly);
+    if (aabbInView(B._mbb, mv, 8)) vis.push(B);
+  }
+  ctx.strokeStyle = MINI_CASING; ctx.lineWidth = 8;
+  for (const B of vis) ctx.stroke(B._mpath);
+  ctx.fillStyle = MINI_MALECON;
+  for (const B of vis) ctx.fill(B._mpath, "evenodd");
 }
 // MUELLES over the streets, because a deck is the one road that runs out over
 // water: the Muelle Nacional (an axis rect), the faro jetty (a rotated deck
@@ -633,6 +650,7 @@ function drawMinimap(vw, vh, t) {
     ctx.lineWidth = b.w; ctx.stroke(b.p);
   }
   miniBoulevards(mv);                           // calles peatonales, into the network
+  miniMalecon(mv);                              // …and the sea front beside them
   miniMuelles(mv, roads);                       // decks, over the streets
   miniRails(vts, mv);                           // the Ferrocarril, over the ground
   // the Paseo is the one street that keeps a colour of its own, and it goes

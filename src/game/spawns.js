@@ -6,7 +6,7 @@
 // old global arclength model (place-once across the whole corridor via ROADS +
 // roadPointAt), which cannot work when most of the map isn't loaded.
 import { WORLD2D as W } from "../world2d/index.js";
-import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools } from "./state.js";
+import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools, beachGames } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { npcCrowdSize, npcMayStand, npcSpeed, npcSurfaceClasses, npcType } from "./npcs.js";
 
@@ -631,11 +631,122 @@ export function advanceSwimmer(pe, dt) {
   if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.8;
 }
 
+// ---- LA VIDA DE LA PLAYA Y DEL MALECÓN -----------------------------------
+//
+// Three crowds that all live on a SURFACE rather than inside a footprint, so
+// they share one maintainer: where a type may stand comes from the registry
+// (`npcSurfaceClasses`), and the sampler finds that ground near the camera the
+// same way the vendors and the animals already do. That is what makes them
+// world-wide for free — playeros turn up on Playitas and Caldera, not only on
+// the Paseo, because the rule is "sand", not "the Paseo's sand".
+const TAU = Math.PI * 2;
+const SURFACE_CROWDS = [
+  // kind, how many near the camera, how many of them are sitting still
+  ["playero", npcType("playero").density?.target ?? 16, 0.34],
+  ["paseante", npcType("paseante").density?.target ?? 22, 0.22],
+];
+function maintainSurfaceCrowds() {
+  for (const [kind, target, sitting] of SURFACE_CROWDS) {
+    let n = 0;
+    for (const pe of pedestrians) if (pe.kind === kind) n++;
+    if (n >= target) continue;
+    const classes = npcSurfaceClasses(kind);
+    let guard = 0;
+    while (n < target && guard++ < target * 3) {
+      const p = sampleNear(_cam.x, _cam.y, classes, SPAWN_MIN, SPAWN_R);
+      if (!p) break;          // no such ground near the camera: nowhere to be
+      // A THIRD OF THEM ARE NOT GOING ANYWHERE. A beach where everybody is
+      // walking reads as a corridor; the towels and the people sitting on the
+      // bancas are what make it read as a place people are AT.
+      const still = Math.random() < sitting;
+      pedestrians.push({
+        x: p.x, y: p.y, ang: Math.random() * TAU,
+        v: still ? 0 : npcSpeed(kind),
+        hue: (Math.random() * 360) | 0, ph: Math.random() * TAU,
+        kind, cls: classes, stationary: still,
+      });
+      n++;
+    }
+  }
+}
+
+// LA MEJENGA. A cluster of `jugador` on the sand around a ball, and the ball is
+// the point: fans wander, and a group of people wandering on a beach is a
+// crowd, not a game. Everyone runs at the ball and whoever reaches it kicks it
+// somewhere else, which is enough to read as fútbol playa from above.
+const GAME_R = 90;                       // px: the pitch they mark out
+const GAMES_WANTED = 1;                  // one game in sight is an event; three is a tournament
+function maintainBeachGames() {
+  for (let i = beachGames.length - 1; i >= 0; i--) {
+    const G = beachGames[i];
+    if (Math.hypot(G.x - _cam.x, G.y - _cam.y) <= KEEP_R) continue;
+    G.dead = true;                       // …and its players go with it
+    for (const pe of pedestrians) if (pe.game === G) pe.dead = true;
+    beachGames.splice(i, 1);
+  }
+  if (beachGames.length >= GAMES_WANTED) return;
+  const p = sampleNear(_cam.x, _cam.y, [2], SPAWN_MIN, SPAWN_R);
+  if (!p) return;
+  // THE WHOLE PITCH HAS TO BE SAND. A game started on a 20 px spit of beach
+  // spends its life with the ball in the sea and the players against the kerb.
+  for (const [dx, dy] of [[GAME_R, 0], [-GAME_R, 0], [0, GAME_R], [0, -GAME_R]]) {
+    if (W.surfaceAt(p.x + dx, p.y + dy) !== 2) return;
+  }
+  const G = { x: p.x, y: p.y, r: GAME_R, ball: { x: p.x, y: p.y, vx: 0, vy: 0, ph: 0 } };
+  beachGames.push(G);
+  const n = npcCrowdSize("jugador", Math.PI * GAME_R * GAME_R);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU, d = GAME_R * (0.35 + Math.random() * 0.5);
+    pedestrians.push({
+      x: G.x + Math.cos(a) * d, y: G.y + Math.sin(a) * d, ang: a + Math.PI,
+      v: npcSpeed("jugador"), hue: (Math.random() * 360) | 0,
+      ph: Math.random() * TAU, kind: "jugador", game: G,
+    });
+  }
+}
+// One player: run at the ball, and kick it when you get there. Contained by the
+// game's own circle rather than by the sand, so a mejenga never drifts into the
+// sea one player at a time.
+export function advanceBeachPlayer(pe, dt) {
+  const G = pe.game;
+  if (!G || G.dead) { pe.dead = true; return; }
+  pe.ph += dt * 8;
+  const b = G.ball;
+  const dx = b.x - pe.x, dy = b.y - pe.y;
+  const d = Math.hypot(dx, dy) || 1;
+  pe.ang = Math.atan2(dy, dx);
+  if (d > 14) {
+    const nx = pe.x + (dx / d) * pe.v * dt, ny = pe.y + (dy / d) * pe.v * dt;
+    if (Math.hypot(nx - G.x, ny - G.y) < G.r) { pe.x = nx; pe.y = ny; }
+  } else if (Math.random() < 0.3) {
+    const a = Math.random() * TAU, kick = 90 + Math.random() * 70;
+    b.vx = Math.cos(a) * kick; b.vy = Math.sin(a) * kick;
+  }
+}
+// The ball itself, per game — it is not a pedestrian and has no advancer of its
+// own in the ped loop.
+export function advanceBeachGames(dt) {
+  for (const G of beachGames) {
+    const b = G.ball;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    const k = Math.max(0, 1 - 2.2 * dt);      // sand stops a ball fast
+    b.vx *= k; b.vy *= k;
+    const dx = b.x - G.x, dy = b.y - G.y, d = Math.hypot(dx, dy) || 1;
+    if (d > G.r * 0.9) {
+      b.x = G.x + (dx / d) * G.r * 0.9; b.y = G.y + (dy / d) * G.r * 0.9;
+      b.vx = -b.vx * 0.6; b.vy = -b.vy * 0.6;
+    }
+    b.ph += Math.hypot(b.vx, b.vy) * dt * 0.06;
+  }
+}
+
 export function maintainStreaming() {
   topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || (!e.persistent && far(e)));
   maintainStadiumPeds();
   maintainBalneario();
   maintainPierFishers();
+  maintainSurfaceCrowds();
+  maintainBeachGames();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
   topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || (!e.persistent && far(e)));
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);

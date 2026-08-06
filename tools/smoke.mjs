@@ -61,22 +61,35 @@ await page.waitForTimeout(1500);
 // ticking and the car answers the throttle, which a dead frame cannot fake.
 const drive = await page.evaluate(async () => {
   const p = window.Game.state.p;
-  p.x = 17944; p.y = 12240; p.a = 0; p.vx = 0; p.vy = 0; p.speed = 0;  // Avenida Centenario
-  const from = { x: p.x, y: p.y };
-  window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
-  let top = 0;
-  for (let i = 0; i < 18; i++) {
-    await new Promise((r) => setTimeout(r, 300));
-    top = Math.max(top, p.speed || 0);
+  // WHEREVER THE MODE PUT US, AND WHICHEVER WAY IS OPEN. This used to teleport
+  // to a hardcoded world px (17944, 12240 — Avenida Centenario) and drive east,
+  // and a world rescale moved that avenue out from under it: the car woke up
+  // off the network and the run still "passed" on drift alone, reporting a top
+  // speed of 0. The run's own spawn is the better test — if THAT is not
+  // drivable the game is broken — but a spawn is an apron, so east is not
+  // necessarily open. Try the four headings and keep the best.
+  let best = { travelled: 0, top: 0 };
+  for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    const from = { x: p.x, y: p.y };
+    p.a = a; p.vx = 0; p.vy = 0; p.speed = 0;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    let top = 0;
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      top = Math.max(top, p.speed || 0);
+    }
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
+    const travelled = Math.round(Math.hypot(p.x - from.x, p.y - from.y));
+    if (travelled > best.travelled) best = { travelled, top: Math.round(top) };
+    await new Promise((r) => setTimeout(r, 200));
   }
-  window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
-  return { travelled: Math.round(Math.hypot(p.x - from.x, p.y - from.y)), top: Math.round(top) };
+  return best;
 });
 
-if (drive.travelled < 300) { fail(`the car only moved ${drive.travelled} px in 5 s — the loop is dead or it is walled in`); bad++; }
+if (drive.travelled < 150) { fail(`the car only moved ${drive.travelled} px in 2 s on its best heading — the loop is dead or it is walled in`); bad++; }
 if (errors.length) { fail(`${errors.length} page error(s)`); bad++; }
 for (const e of errors.slice(0, 8)) console.log("   " + e);
 
 await browser.close();
-if (!bad) console.log(`[smoke] ok — drove ${drive.travelled} px, top speed ${drive.top}, no page errors`);
+if (!bad) console.log(`[smoke] ok — drove ${drive.travelled} px in 2 s, top speed ${drive.top}, no page errors`);
 process.exit(bad ? 1 : 0);

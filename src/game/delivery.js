@@ -44,9 +44,20 @@ export function activeCustomers() {
 // (the MVP "PRÓXIMAMENTE" wall in every mode + explore progression barriers).
 // Delivery targets must stay west of it so NPCs never spawn past the gate.
 function openLimitX() {
-  const walls = (state.barriers || []).map(b => b.x);
+  // A BARRIER IS EITHER A LINE OR A BOX. The progression ones are a line at a
+  // district's west edge (`x`); the MVP gate is boxes around the closed
+  // districts (`x0..x1`, `y0..y1`). Reading `.x` off a box gave `undefined`,
+  // `Math.min` turned that into NaN, `isFinite(NaN)` was false, and the clamp
+  // switched itself OFF — so orders could be placed inside a closed district
+  // with no wall complaining. A box's western edge is its wall for this
+  // purpose: the easternmost x an order may still sit at.
+  const walls = [];
+  for (const b of state.barriers || []) {
+    const x = b.x0 !== undefined ? b.x0 : b.x;
+    if (Number.isFinite(x)) walls.push(x);
+  }
   const mvp = mvpWallX();
-  if (isFinite(mvp)) walls.push(mvp);
+  if (Number.isFinite(mvp)) walls.push(mvp);
   return walls.length ? Math.min(...walls) : Infinity;
 }
 

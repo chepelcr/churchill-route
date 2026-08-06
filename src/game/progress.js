@@ -14,7 +14,20 @@ const STORAGE_KEY = "churchill_progress_v1";
 // beach accesses and the lancha to the north shore are for. Chacarita, El
 // Roble, Barranca and Esparza stay closed — they are inland grids with no
 // kiosks, customers or stages, so opening them would be empty driving.
-export const MVP_LOCKED = ["chacarita", "elroble", "barranca", "esparza"];
+// EL COCAL Y LO QUE SIGUE VUELVEN A CERRARSE. Those three districts hold
+// stages 6, 7 and 8, and those levels are not designed yet — so they ship as
+// PRÓXIMAMENTE rather than as something half-built you can walk into. The line
+// lands where the pavement ends and the barro streets of El Cocal begin (the
+// westernmost barro road is x≈20957, at the Playitas/Cocal seam), which is the
+// same place the map stops being the town you can actually play.
+//
+// This is a SCOPE decision, not a geometry one: reopening them is adding the
+// district back to this list, and the wall, the stage cards and the delivery
+// clamp all follow from it.
+export const MVP_LOCKED = [
+  "cocal", "mata", "caldera",
+  "chacarita", "elroble", "barranca", "esparza",
+];
 export function isMvpLocked(id) { return MVP_LOCKED.includes(id); }
 /**
  * The MVP gate, as the BARRIOS THEMSELVES rather than a line.

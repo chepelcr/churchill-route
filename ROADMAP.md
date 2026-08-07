@@ -4,6 +4,35 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
 and the three game modes are live; the items below are what remains.
 
+## ✅ El Mercado Municipal ocupa su manzana (2026-08-07)
+
+Un sitio de OSM cuyo contorno **es** una manzana ahora se arma como los estadios:
+la cuadra es su suelo (`"cuadra": True`, `FieldService._manzana_ground`).
+
+- [x] **El Mercado existe.** Centroide a **1.7 px** de la vía de OSM proyectada,
+      rumbos a ~1° de la cuadrícula real, los 4 vértices mapeados, **99.4 % land**
+      bajo la parcela (3 celdas de calle + 1 de acera = cuantización del ráster).
+- [x] **El delantal ya no parte la manzana.** El apron de `stamp_pad` bajo el
+      propio punto del Mercado se reclama a tierra: red manejable 90.4 %,
+      **47/47 POIs ok**, 267 celdas menos (exactamente el delantal).
+- [x] **Landmark ↔ sitio unidos** (`osmRef == "way/<id>"`), rótulo re-anclado al
+      centro de la parcela.
+
+Pendiente, y **no** lo arregla este cambio (ver `docs/RESCALE.md`):
+
+- [ ] **`BLOCK_MIN_CUADS = 6` rechaza manzanas reales.** Medido: **61 %** de las
+      componentes de tierra mayores a 4 cuadrículas quedan bajo la barra de 6x6
+      — 417 cuadras contra 569 verdes y 984 slivers pavimentados. Una manzana
+      normal de Puntarenas da un cuadrado inscrito de **4.6** cuadrículas contra
+      una barra de 6: la barra está por encima de lo que este pueblo puede dar.
+      Arreglo de una línea (bajarla a 4, o expresarla en metros), independiente
+      del reescalado — no dejar que lo justifique.
+- [ ] **El reescalado del mundo** — `docs/RESCALE.md` lo mapea completo: por qué
+      ninguna proyección lo arregla (el carro mide 7.6 m de ancho), las tres
+      variantes con sus números medidos, el piso de zoom que en teléfono decide
+      el encuadre en lugar de `CUADS_PER_VIEW`, y retirar la cuadrícula como
+      unidad de PANTALLA (paso 0, deja el mundo byte-idéntico).
+
 ## ✅ El malecón del Paseo de los Turistas (2026-08-06)
 
 La franja de arena entre la calle y la playa pasa a ser **superficie propia**

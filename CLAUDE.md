@@ -510,7 +510,36 @@ a mapped area LINKS instead of minting a second record. `osmRef` on a landmark
 ("node/123") is the PROVENANCE of its anchor, not an identity: faro, balneario
 and kios_faro share one. The join is a point-in-polygon plus
 `FieldService.SITE_TWIN_TYPES`; by id it could never fire, because landmarks
-resolve against named nodes and sites are closed ways.
+resolve against named nodes and sites are closed ways. `is_twin` also accepts
+`osmRef == "way/<site id>"`, which is the one test that reaches the Mercado:
+`seat_on_block` moves a landmark onto the nearest cuadra ground, so a market
+hall mapped over an esplanade ends up outside its own outline and containment
+alone says no.
+
+**A SITE WHOSE OUTLINE *IS* A MANZANA GETS THE WHOLE CUADRA** (`"cuadra": True`
+in `SITE_DECOR`, `FieldService._manzana_ground`; implies `trace`). The Mercado
+Municipal's mapped way runs calle to calle — Calle 0B to Calle 2A, Avenida 5 to
+Avenida 3 Filiberto Sinfontes, its own `addr:street`. Clipping such an outline
+to "ground that is not street" asks the wrong question and fails SILENTLY: the
+carriageways eat the block centreline to centreline, so ~1 300 cells of market
+hall come back as the 266-cell acera fringe they did not reach, and the manzana
+seat then does the right thing with the wrong shape — a 110 px strip does not
+fit its own block's 59 px interior, so the Mercado was seated 250 px away in the
+neighbour's. Two things this recipe gets right that cost a build each:
+- **The block list cannot answer it, and that is not a detection bug.**
+  `detect_blocks` paves a cuadra holding no 6x6 square of buildable cells as an
+  acera SLIVER, which a short wide manzana is — so NO detected block covers the
+  Mercado. Ask the ROAD LIST, the move `"reclaim": True` already makes.
+- **The test is the CENTRELINES, never the surface.** The asphalt splitting this
+  manzana measured 70 px from the nearest centreline: it was the Mercado's own
+  `stamp_pad` apron. Adding a `HARD_STREET_CLASSES` surface filter "for safety"
+  re-excluded exactly those cells, split the ground 1022 -> 491 and left the
+  market on a 44 px ribbon east of its own pad. The surface cannot tell a pad
+  from a calle; `on_street` can, and that is why it exists.
+The accepted lot is then RECLAIMED to `CLS_LAND` — sliver acera and apron
+asphalt both — and only the accepted shape is stamped, so what stays acera is
+the ring the market stands back from. A `cuadra` site skips the manzana seat: it
+is inside its manzana by construction.
 
 **EVERY ANCHOR IS GEO.** The last two world-px anchors in the build were the
 hand-laid `carmen` and `centro` cuadra specs, and the 2.0 -> 2.5 rescale moved

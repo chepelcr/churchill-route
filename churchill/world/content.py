@@ -261,6 +261,12 @@ SITE_DECOR = {
     # and the park simply did not exist in the world. Same remedy as Mora y
     # Cañas: keep its own source-supported ground and straighten the contour.
     "osm_park_270515697": {"trace": True},
+    # El Mercado Municipal OCCUPIES ITS MANZANA — the mapped outline runs
+    # Calle 0B to Calle 2A, Avenida 5 to Avenida 3 Filiberto Sinfontes (its own
+    # addr:street). It is a cuadra, like an estadio, not a lot inside one, so
+    # clipping it to the LAND our carriageways left kept a 266-cell frontage
+    # fringe of the 1 300-cell hall. `cuadra` implies `trace`.
+    "osm_market_1077016901": {"cuadra": True},
     # The Escuela Delia Urbina de Guevara is mapped in OSM as the whole tall
     # manzana it stands on; the school itself is a WIDE building on the block's
     # south-west corner. `rect` is in fractions of the fitted rect (u east,

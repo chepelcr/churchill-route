@@ -32,7 +32,7 @@ from ..config import (
 )
 from ..content import SITE_DECOR
 from ..enums import GreenType, ParcelUse
-from ..logging import log
+from ..logging import log, warn
 from .editor_patch import building_source_id
 from ..util.geometry import point_in_poly, principal_axis
 from ..util.raster import erode_cells
@@ -789,14 +789,17 @@ class FieldService:
     SITE_USE = {"park": ParcelUse.PARK, "pitch": ParcelUse.STADIUM,
                 "worship": ParcelUse.CHURCH, "school": ParcelUse.SCHOOL,
                 "kinder": ParcelUse.KINDER, "campus": ParcelUse.CAMPUS,
-                "fuel": ParcelUse.FUEL}
+                "fuel": ParcelUse.FUEL, "market": ParcelUse.MARKET}
     #: the kinds whose parcel replaces a BUILDING: their OSM footprints have to
     #: be cleared, or a pastel box lands on top of the drawn church/school.
-    SITE_BUILT = ("worship", "school", "kinder", "campus", "fuel")
+    # `market` is here because the parcel IS the market hall's own outline —
+    # the same OSM way — so leaving the footprint would stack a pastel box on
+    # top of the exact shape it was traced from.
+    SITE_BUILT = ("worship", "school", "kinder", "campus", "fuel", "market")
     SITE_FALLBACK_NAME = {"park": "Parque", "pitch": "Plaza de Deportes",
                           "worship": "Iglesia", "school": "Escuela",
                           "kinder": "Jardín de Niños", "campus": "Centro Educativo",
-                          "fuel": "Gasolinera"}
+                          "fuel": "Gasolinera", "market": "Mercado"}
     #: a site has to keep this much of its outline as real cuadra ground, and
     #: this many cells, or it is a ribbon along a street rather than a place.
     #: Parque del Muellero is 855x297 px of mostly Paseo asphalt.
@@ -812,6 +815,94 @@ class FieldService:
     #: goes green and its synth houses go away. Below it the site is a piece of
     #: a live manzana and the neighbours keep their buildings.
     SITE_OWNS_BLOCK = 0.6
+
+    def _manzana_ground(self, under, cell):
+        """The whole cuadra a site FILLS, as that site's ground.
+
+        A few mapped places are not a plot inside a manzana — they ARE the
+        manzana. The Mercado Municipal's outline runs calle to calle (Calle 0B
+        to Calle 2A, Avenida 5 to Avenida 3 Filiberto Sinfontes, which is its
+        own `addr:street`), exactly like an estadio's.
+
+        Clipping such an outline to LAND is the wrong question, and it fails
+        QUIETLY: the 65 px carriageways eat the block centreline to centreline,
+        so 1 300 cells of market hall come back as the 266-cell acera fringe
+        they did not reach. Everything downstream then works on a frontage
+        strip — and because a 110 px strip does not fit the 59 px interior of
+        its OWN block, the manzana seat slid the Mercado 250 px into a
+        neighbour's. Shape preserved, place wrong.
+
+        THE BLOCK LIST CANNOT ANSWER THIS EITHER, and that is not a detection
+        bug: `detect_blocks` paves a cuadra that holds no 6x6 square of
+        buildable cells as an acera SLIVER, which a short wide manzana like
+        this one is — so no detected block covers the Mercado at all. Asking
+        the ROAD LIST is the move `"reclaim": True` already makes for a
+        hand-laid cuadra, and `on_street` exists for exactly this: the surface
+        raster says "acera" for both a sliver and a real sidewalk, while the
+        centrelines know which cells are actually calle.
+
+        So: the cells inside the mapper's own outline that no road centreline
+        paints. The outline IS the manzana, so this cannot reach across a
+        street into a neighbour, and it follows a diagonal avenida exactly.
+        The cells keep their acera class here; the accepted lot is RECLAIMED to
+        CLS_LAND at the end (see the `cuadra` stamp below), which leaves the
+        eroded-away frontage as the acera ring the market stands back from.
+
+        THE TEST IS THE CENTRELINES, NOT THE SURFACE, and the difference is the
+        whole point. Measured here: the asphalt splitting this manzana is 70 px
+        from the nearest centreline — it is the Mercado's OWN POI apron from
+        `stamp_pad`, and Calle 0B to Calle 2A is 176 px of which 41 is
+        carriageway, so the block is a comfortable 135 px. Adding a
+        `HARD_STREET_CLASSES` surface filter "for safety" re-excluded exactly
+        those apron cells, split the ground 1022 → 491 and left the market on a
+        44 px ribbon east of its own pad. The surface cannot tell a pad from a
+        calle; the road list can. That is why `on_street` exists.
+
+        Returns those cells, or None when the outline is all roadway.
+        """
+        ground = _largest_part({
+            (c, r) for (c, r) in under
+            if (c, r) not in self.claimed_cells
+            and not self.streets.on_street(c * cell + cell / 2, r * cell + cell / 2)
+        })
+        return ground or None
+
+    def _slide_cells_into(self, keep, ang, cell, reach=44):
+        """Slide a plot into its manzana WITHOUT changing its shape.
+
+        The rect seat below is right for a plot whose outline was never the
+        point; a `trace` site's outline IS the point. So this looks for a whole
+        -cell TRANSLATION that puts every cell of the shape on real cuadra
+        ground inside the acera ring, and takes the smallest one — the Mercado
+        Municipal keeps its four mapped vertices and simply steps off the
+        esplanade. Rigid: no scale, no re-fit, so the contour that comes out is
+        the contour that went in.
+
+        Returns (cells, None) — no rect, because a traced parcel is emitted from
+        its cells, not from a frame rect — or None when nothing fits.
+        """
+        cx = sum(c for c, _ in keep) / len(keep) * cell
+        cy = sum(r for _, r in keep) / len(keep) * cell
+        block = min((b for b in self.blocks if not b.get("green")),
+                    key=lambda b: min((cc * CUAD + CUAD / 2 - cx) ** 2
+                                      + (cr * CUAD + CUAD / 2 - cy) ** 2
+                                      for cc, cr in b["cells"]),
+                    default=None)
+        if block is None:
+            return None
+        inner = erode_cells(
+            block_raster_cells(self.raster, block["cells"], CUAD // cell, CLS_LAND),
+            ACERA_CELLS, STREET_CLASSES, self.raster.at) - self.claimed_cells
+        if not inner:
+            return None
+        shape = sorted(keep)
+        for radius in range(0, reach + 1):          # smallest move first
+            for dc in range(-radius, radius + 1):
+                for dr in (-radius, radius) if abs(dc) < radius else range(-radius, radius + 1):
+                    moved = {(c + dc, r + dr) for (c, r) in shape}
+                    if moved <= inner:
+                        return moved, None
+        return None
 
     def _seat_site_in_manzana(self, keep, krect, ang, cell):
         """Put a plot that is still on the sidewalk INSIDE its manzana.
@@ -869,7 +960,8 @@ class FieldService:
     #: mapped to something loosely related.
     SITE_TWIN_TYPES = {"worship": ("church", "cathedral"),
                        "park": ("park",),
-                       "pitch": ("stadium",)}
+                       "pitch": ("stadium",),
+                       "market": ("market",)}
 
     #: Landmark types that stand on a plot of their own. A kiosk does not (it is
     #: a chinamo on the acera), and neither does a pier, a beach sign or a
@@ -1000,17 +1092,42 @@ class FieldService:
             # is that the point lies INSIDE it — plus a type check, so the
             # cathedral does not adopt the park it stands beside.
             owned = {p.get("lm") for p in self.parcels if p.get("lm")}
-            twin = next(
-                (l for l in self.landmarks
-                 if l["id"] not in owned
-                 and l["type"] in self.SITE_TWIN_TYPES.get(site["kind"], ())
-                 and point_in_poly((l["x"], l["y"]), site["pts"])), None)
+            ok_types = self.SITE_TWIN_TYPES.get(site["kind"], ())
+            way_ref = f"way/{site['id']}"
+
+            def is_twin(l):
+                if l["id"] in owned or l["type"] not in ok_types:
+                    return False
+                # The landmark RESOLVED TO THIS VERY WAY. Rare but exact, and
+                # the only test that works for the Mercado: `seat_on_block`
+                # moves a landmark onto the nearest cuadra ground, which for a
+                # market hall on an esplanade is a block east of its own
+                # outline — so containment alone says no.
+                if l.get("osmRef") == way_ref:
+                    return True
+                return point_in_poly((l["x"], l["y"]), site["pts"])
+            twin = next((l for l in self.landmarks if is_twin(l)), None)
             # Most mapped sites are regularised into safe rectangles. A rare
             # site whose real identity is its angled cuadra edge can opt into
             # the source-supported raster contour; gameplay still uses those
             # exact cells and outline_poly only straightens their vector edge.
             decor = dict(SITE_DECOR.get(pid, {}))
             trace = bool(decor.pop("trace", False))
+            # `cuadra`: this place OCCUPIES the whole block (see
+            # `_manzana_ground`). It implies `trace`, because the contour of
+            # the manzana — skewed to the real grid — is the shape.
+            cuadra = bool(decor.pop("cuadra", False))
+            if cuadra:
+                whole = self._manzana_ground(under, cell)
+                if whole:
+                    log("site", f"{site['id']} {(site['name'] or '—')[:34]}: "
+                        f"occupies its cuadra — {len(own)} cells of ground under "
+                        f"the outline replaced by the manzana's {len(whole)}")
+                    own, trace = whole, True
+                else:
+                    cuadra = False
+                    warn("site", f"{pid}: 'cuadra' asked for, but the outline is all "
+                         f"roadway — kept the ordinary plot fit")
             # THE PARCEL IS A RECTANGLE IN THE MANZANA'S FRAME. `own` is the
             # mapper's outline clipped to real ground, which wanders; a piece of
             # a cuadra does not. Fit the rect first, then everything after works
@@ -1132,11 +1249,29 @@ class FieldService:
             # homeless — it is content of a block, exactly like a building — so
             # the last resort is the same one: put it inside the manzana, at its
             # own size, as near as the block allows to where it really is.
-            if krect and keep:
+            # A TRACED SITE MOVES WITH ITS SHAPE, it does not get an exemption.
+            # `trace` means the real outline is the point of this place — but
+            # "the real outline, standing on the sidewalk" is not the objective,
+            # it is the bug. So a traced plot is TRANSLATED into its manzana as
+            # a rigid shape (see `_slide_cells_into`), and only if no whole-shape
+            # placement fits does it fall back to the rect seat.
+            #
+            # A `cuadra` site is exempt, and this one is not a rationalisation:
+            # the seat's whole purpose is "put this plot inside its manzana",
+            # and the cuadra path did that already, from the manzana's side. Its
+            # cells read as acera only because the block was paved as a sliver.
+            if krect and keep and not cuadra:
                 on_acera = sum(1 for c in keep if raster.at(*c) == CLS_ACERA)
                 if on_acera > PARCEL_ACERA_MAX * len(keep):
-                    moved = self._seat_site_in_manzana(keep, krect, ang, cell)
+                    moved = (self._slide_cells_into(keep, ang, cell) if trace else None) \
+                        or self._seat_site_in_manzana(keep, krect, ang, cell)
                     if moved:
+                        # A rigid slide returns no rect — a traced parcel is
+                        # emitted from its CELLS — so re-measure the bounding
+                        # rect off the moved shape for the size checks and the
+                        # half-extents. The polygon still comes from the cells.
+                        if moved[1] is None:
+                            moved = (moved[0], fit_block_rect(moved[0], ang, cell))
                         # OWNERSHIP MOVES WITH THE PLOT. `own` is the site's
                         # original ground, and everything downstream intersects
                         # the accepted shape with it — so a parcel that moved
@@ -1216,6 +1351,26 @@ class FieldService:
                 # grow only inside this site's source cells, never across a road.
                 parcel_own = grow_cells(
                     cells_in_poly(own, accepted_poly, cell), own, used)
+            if cuadra:
+                # RECLAIM THE LOT TO REAL GROUND — the move `"reclaim": True`
+                # makes for a hand-laid cuadra. These cells read as CLS_ACERA
+                # only because `detect_blocks` paved this short wide manzana as
+                # a sliver; left that way the Mercado's lot IS pavement, drawn
+                # as sidewalk and indistinguishable from the ring the erosion
+                # just cut for it. Stamping ONLY the accepted shape is what
+                # makes that ring mean something: what stays acera is the
+                # market's own frontage, which is where the walkers belong.
+                # ACERA *and* the pad's ROAD: the apron `stamp_pad` laid under
+                # this site's own POI dot is asphalt inside the lot, and leaving
+                # it drivable would let the player cut through the market hall.
+                # Safe because no customer or kiosk depends on it — the network
+                # gate in `finish.verify` is the check that keeps it that way.
+                for (c, r) in parcel_keep:
+                    if raster.at(c, r) != CLS_LAND:
+                        raster.set(c, r, CLS_LAND)
+                log("site", f"{site['id']} {(site['name'] or '—')[:34]}: "
+                    f"{len(parcel_keep)} cells reclaimed to cuadra ground, "
+                    f"{len(parcel_own) - len(parcel_keep)} left as its acera ring")
             if not parcel_own or len(parcel_keep) < self.SITE_MIN_CELLS:
                 skipped["too-thin"] += 1
                 log("site", f"skip {site['id']} {site['kind']} "

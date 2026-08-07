@@ -348,6 +348,13 @@ KINDER_NAMES = ("jardín de niños", "jardin de ninos", "cen-cinai", "cen cinai"
 #: nameless footprint, and a school with a pitch inside it stays a school.
 SITE_KINDS = (
     ("fuel",    lambda t: t.get("amenity") == "fuel"),
+    # A MARKETPLACE IS GROUND, not a building with a name on it. The Mercado
+    # Municipal is `amenity=marketplace` + `building=yes`, and while it was only
+    # the latter it went down the named-building path — where 61 % of its real
+    # outline sits on the game's inflated roadway, so it was pushed, failed,
+    # snapped, failed, and dropped. It has never been drawn. As a SITE it keeps
+    # its own mapped contour, exactly like a church or a cancha.
+    ("market",  lambda t: t.get("amenity") == "marketplace"),
     ("worship", lambda t: t.get("amenity") == "place_of_worship"
                 or t.get("building") in ("church", "chapel", "cathedral")),
     ("kinder",  lambda t: t.get("amenity") in ("kindergarten", "childcare")

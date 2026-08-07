@@ -85,6 +85,11 @@ class Landmark(WorldModel):
     y: int
     type: LandmarkType
     district: str
+    # WHICH NAMED OSM FEATURE THIS LANDMARK'S ANCHOR RESOLVED TO, as
+    # "node/123" or "way/456". PROVENANCE, not identity — three landmarks can
+    # share one (faro, balneario and kios_faro all hang off the same node with
+    # different offsets). Absent when the landmark was placed from a hand `ll`.
+    osmRef: str | None = None
     w: int | None = None
     h: int | None = None
     # NOT a flag: the build-authored player start [x, y], snapped to the

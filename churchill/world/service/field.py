@@ -36,7 +36,7 @@ from ..logging import log
 from .editor_patch import building_source_id
 from ..util.geometry import point_in_poly, principal_axis
 from ..util.raster import erode_cells
-from .block import cuadra_cells, outline_poly
+from .block import block_raster_cells, cuadra_cells, outline_poly
 from .street import half_plane
 
 HARD_STREET_CLASSES = tuple(cls for cls in STREET_CLASSES if cls != CLS_ACERA)
@@ -813,6 +813,105 @@ class FieldService:
     #: a live manzana and the neighbours keep their buildings.
     SITE_OWNS_BLOCK = 0.6
 
+    def _seat_site_in_manzana(self, keep, krect, ang, cell):
+        """Put a plot that is still on the sidewalk INSIDE its manzana.
+
+        Same principle as `fit_manzana_contents` does for buildings, one plot at
+        a time: the block is the container. The site keeps the SIZE its own fit
+        gave it (clamped to what the manzana can hold) and is placed as near as
+        the block allows to where the mapper actually drew it — so a chapel does
+        not teleport across the barrio, it steps off the kerb.
+
+        Returns (cells, rect) or None when the block has no room for a plot.
+        """
+        cx = sum(c for c, _ in keep) / len(keep) * cell
+        cy = sum(r for _, r in keep) / len(keep) * cell
+        block = min(
+            (b for b in self.blocks if not b.get("green")),
+            key=lambda b: min((cc * CUAD + CUAD / 2 - cx) ** 2
+                              + (cr * CUAD + CUAD / 2 - cy) ** 2
+                              for cc, cr in b["cells"]),
+            default=None)
+        if block is None:
+            return None
+        inner = erode_cells(
+            block_raster_cells(self.raster, block["cells"], CUAD // cell, CLS_LAND),
+            ACERA_CELLS, STREET_CLASSES, self.raster.at)
+        inner -= self.claimed_cells        # …and not on top of another parcel
+        if not inner:
+            return None
+        room = fit_inscribed_rect(inner, ang, cell)
+        if not room:
+            return None
+        ru0, ru1, rv0, rv1, rcu, rcv = room
+        # the plot's own size, but never larger than the manzana's usable rect
+        hw = min((krect[1] - krect[0]) / 2, (ru1 - ru0) / 2)
+        hh = min((krect[3] - krect[2]) / 2, (rv1 - rv0) / 2)
+        if min(hw, hh) * 2 / cell + 1 < self.SITE_MIN_SIDE:
+            return None
+        # …centred where it really is, clamped into the room it has. A rect is
+        # (u0, u1, v0, v1) about a WORLD anchor (cu, cv), so the site's own
+        # centre goes into the room's frame, gets clamped there, and comes back.
+        ca, sa = math.cos(ang), math.sin(ang)
+        dx, dy = cx - rcu, cy - rcv
+        u = min(max(dx * ca + dy * sa, ru0 + hw), ru1 - hw)
+        v = min(max(-dx * sa + dy * ca, rv0 + hh), rv1 - hh)
+        seat = (-hw, hw, -hh, hh,
+                rcu + u * ca - v * sa, rcv + u * sa + v * ca)
+        cells = cells_in_poly(inner, rect_poly(seat, ang), cell)
+        if len(cells) < self.SITE_MIN_CELLS:
+            return None
+        return cells, seat
+
+    #: Which landmark types an OSM site of each kind can BE. A worship area is
+    #: the church landmark standing in it; a pitch is the estadio. A school or a
+    #: gasolinera has no landmark counterpart, so it is absent rather than
+    #: mapped to something loosely related.
+    SITE_TWIN_TYPES = {"worship": ("church", "cathedral"),
+                       "park": ("park",),
+                       "pitch": ("stadium",)}
+
+    #: Landmark types that stand on a plot of their own. A kiosk does not (it is
+    #: a chinamo on the acera), and neither does a pier, a beach sign or a
+    #: lighthouse — those ARE their ground already.
+    LOT_LANDMARKS = ("church", "cathedral", "market", "super", "hotel", "civic",
+                     "house", "museum", "restaurant")
+    #: How big a landmark's lot is when nothing else says. The drawn art is
+    #: ~56x44 px, and the lot is the ground it stands on plus a little yard.
+    LOT_SIZE = (76, 60)
+
+    def place_landmark_lots(self, landmarks):
+        """Give every building landmark a PLOT, not just an icon on the ground.
+
+        A landmark used to be a point with a drawing at it — so it had no
+        ground, could not be sponsored, and nothing could tell you whether the
+        Hotel Tioga was on the manzana or on the pavement. Here it becomes what
+        it is on the map: a piece of a block. Anything already carried by a
+        hand-laid part or an OSM site keeps that (they are better geometry, cut
+        from the real outline); this only fills in the rest.
+        """
+        have = {p.get("lm") for p in self.parcels if p.get("lm")}
+        made = 0
+        for lm in self.landmarks:
+            if lm["type"] not in self.LOT_LANDMARKS or lm["id"] in have:
+                continue
+            cell = self.raster.cell
+            hw, hh = self.LOT_SIZE[0] / 2, self.LOT_SIZE[1] / 2
+            seed = {(int(lm["x"] // cell), int(lm["y"] // cell))}
+            seat = self._seat_site_in_manzana(seed, (-hw, hw, -hh, hh, 0, 0),
+                                              self.streets.angle_at(lm["x"], lm["y"]), cell)
+            if seat is None:
+                continue
+            cells, rect = seat
+            part = {"id": f"lote_{lm['id']}", "use": ParcelUse.LOT,
+                    "name": lm["name"], "lm": lm["id"]}
+            ang = self.streets.angle_at(lm["x"], lm["y"])
+            if self._emit_parcel(part["id"], part, cells, cells, ang,
+                                 poly=rect_poly(rect, ang)):
+                made += 1
+        log("parcel", f"{made} landmark lots — a landmark is a piece of a "
+            f"manzana now, not a drawing floating on one")
+
     def place_osm_sites(self, sites):
         """Turn each OSM ground site into a parcel on the cuadra under it.
 
@@ -886,6 +985,26 @@ class FieldService:
                 skipped["already-claimed" if claimed else "not-on-a-cuadra"] += 1
                 continue
             pid = f"osm_{site['kind']}_{site['id']}"
+            # THE JOIN. A landmark and an OSM site are regularly the SAME place
+            # — the Iglesia del Carmen is `carmenig` in content.py and a
+            # `worship` area in OSM — and there was no way to say so, which is
+            # how one church could end up with two unrelated records.
+            #
+            # It is CONTAINMENT, not id equality, and the first cut of this got
+            # that wrong: a landmark resolves against NAMED features, which are
+            # overwhelmingly nodes, while a site is a closed way — disjoint id
+            # spaces, so nothing ever matched. Worse, the id is not an identity
+            # at all: `faro`, `balneario` and `kios_faro` all carry the same one
+            # because all three anchor off the "faro de la punta" node with
+            # different offsets. What actually relates a POI to its area in OSM
+            # is that the point lies INSIDE it — plus a type check, so the
+            # cathedral does not adopt the park it stands beside.
+            owned = {p.get("lm") for p in self.parcels if p.get("lm")}
+            twin = next(
+                (l for l in self.landmarks
+                 if l["id"] not in owned
+                 and l["type"] in self.SITE_TWIN_TYPES.get(site["kind"], ())
+                 and point_in_poly((l["x"], l["y"]), site["pts"])), None)
             # Most mapped sites are regularised into safe rectangles. A rare
             # site whose real identity is its angled cuadra edge can opt into
             # the source-supported raster contour; gameplay still uses those
@@ -1006,6 +1125,28 @@ class FieldService:
                         (krect[1] - krect[0]) / cell + side_pad,
                         (krect[3] - krect[2]) / cell + side_pad) >= self.SITE_MIN_SIDE:
                     break
+            # A PLOT STILL ON THE PAVEMENT MOVES INTO ITS MANZANA. Everything
+            # above works on the site's OWN cells, so a chapel or an escuela the
+            # mapper drew where the game's acera now runs has no land to be
+            # re-fitted into and keeps its place on the sidewalk. But it is not
+            # homeless — it is content of a block, exactly like a building — so
+            # the last resort is the same one: put it inside the manzana, at its
+            # own size, as near as the block allows to where it really is.
+            if krect and keep:
+                on_acera = sum(1 for c in keep if raster.at(*c) == CLS_ACERA)
+                if on_acera > PARCEL_ACERA_MAX * len(keep):
+                    moved = self._seat_site_in_manzana(keep, krect, ang, cell)
+                    if moved:
+                        # OWNERSHIP MOVES WITH THE PLOT. `own` is the site's
+                        # original ground, and everything downstream intersects
+                        # the accepted shape with it — so a parcel that moved
+                        # and left `own` behind came out with "no ground" and
+                        # was skipped. 39 of them, the first time.
+                        keep, krect = moved
+                        own = set(keep)
+                        log("site", f"{site['id']} {(site['name'] or '—')[:34]}: "
+                            f"{on_acera}/{len(keep)} cells were sidewalk — seated "
+                            f"inside its manzana instead")
             # …and what is left has to be a PLOT, not a ribbon. A 12-cell strip
             # is an 8 px-wide parcel, which draws as a smear rather than as the
             # church or the cancha it is supposed to be.
@@ -1025,8 +1166,15 @@ class FieldService:
             part = {"id": pid, "use": use,
                     "name": site["name"] or self.SITE_FALLBACK_NAME[site["kind"]],
                     "sport": site.get("sport"),
+                    "osmId": int(site["id"]),
                     "hw": round((krect[1] - krect[0]) / 2, 1),
                     "hh": round((krect[3] - krect[2]) / 2, 1)}
+            if twin is not None:
+                # …and this site IS that landmark. `lm` re-anchors the POI onto
+                # the ground and tells the renderer the two are one thing.
+                part["lm"] = twin["id"]
+                log("site", f"{pid} is the landmark {twin['id']} "
+                    f"({twin['name']}) — joined on OSM id {site['id']}")
             # Anything a real place has that OSM does not record — the old round
             # kiosco in the middle of Parque Victoria — is declared by parcel id
             # in content.SITE_DECOR and rides through untouched.

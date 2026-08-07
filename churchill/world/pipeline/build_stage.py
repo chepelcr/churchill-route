@@ -695,6 +695,24 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         # gap between them. All three are `boulevard` parts: stamped
         # Surface.BOULEVARD, so they are transitable but slow, and drawn as
         # stone rather than asphalt.
+        # EL MERCADO CENTRAL OCUPA SU MANZANA, como un estadio. It was only a
+        # landmark icon seated on a resolved block — no parcel, so no ground of
+        # its own and no acera ring, and nothing for a mercado asset to be
+        # painted onto later. The four bounding streets are the ones its
+        # landmark already names in content.py; `reclaim` because this manzana
+        # is market esplanade and fish muelle rather than cuadra interior, which
+        # is exactly why the generic snapper looked straight past it.
+        {"id": "mercado", "ll": (9.98003, -84.83044),
+         "calles": (["Calle 2 Presbíterio Florencio del Castillo", "Calle 2"],
+                    ["Calle 4"]),
+         "ave_north": ["Avenida 5"],
+         "ave_south": ["Avenida 3 Filiberto Sinfontes", "Avenida 3"],
+         "cols": [1], "rows": [1],
+         "reclaim": True,
+         "parts": [
+             {"id": "centro_mercado", "col": 0, "row": 0, "use": "market",
+              "name": "Mercado Central", "aceras": True, "lm": "mercado"},
+         ]},
         {"id": "centro", "ll": (9.97772, -84.83442),
          "calles": (["Calle 7"], ["Bulevar de la Casa de la Cultura", "Calle 3 Francisco de Paula Amador"]),
          "ave_north": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
@@ -783,6 +801,10 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             for dc in range(_cpc) for dr in range(_cpc))
     n_before = len(parcels)
     site_cuads = fields.place_osm_sites(sites)
+    # …and the landmarks that neither a hand-laid part nor an OSM site gave
+    # ground to. Runs AFTER both, so it only fills in what is left and never
+    # overrides the better geometry.
+    fields.place_landmark_lots(landmarks)
     # The SAME OSM way is also a named POI dot (extract_pois reads every named
     # feature with an amenity/leisure tag). Where the new parcel carries a name
     # PILL — a church, a school, a cancha — the dot is a second copy of the same
@@ -1194,7 +1216,7 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
         bx0, bx1 = min(xs), max(xs)
         bcy = sum(ys) / len(ys)
     else:
-        pm, _ = resolve({"osm": "puente colgante mata de limón"})
+        pm, _, _ = resolve({"osm": "puente colgante mata de limón"})
         if pm is None:
             # region has no Mata bridge (e.g. a bounded build) — stub it off-map
             x, y = CANVAS_W - 40, 40

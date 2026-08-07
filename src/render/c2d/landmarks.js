@@ -624,15 +624,30 @@ function ownedByParcel() {
   return _ownedByParcel;
 }
 const PARCEL_PILL = { cathedral: ["CATEDRAL", "#9e6f4a"], church: ["IGLESIA", "#9e6f4a"],
-                      civic: ["CULTURA", "#2e7d44"] };
+                      civic: ["CULTURA", "#2e7d44"], market: ["MERCADO", "#3a3540"] };
 function drawParcelLandmarkPill(lm, P) {
   const [txt, tone] = PARCEL_PILL[lm.type] || [(lm.name || "").toUpperCase(), "#8a6f4a"];
   label(lm.x, P.y0 - 10, txt, "#fff", tone);   // above the parcel, clear of the roof
 }
 
+// A parcel that DRAWS THE BUILDING replaces the landmark's own art; a parcel
+// that is only its GROUND does not. Every building landmark owns a lot now
+// (`place_landmark_lots`), and suppressing the icon for all of them would have
+// deleted the hotel, the súper and the mercado from the map and left three name
+// pills on bare plots. So: the church/cathedral/civic/market parcels draw their
+// own building and keep the early return; a `lot` is ground, and the landmark
+// still stands on it.
+// `market` is deliberately NOT here yet: the Mercado owns its manzana now, but
+// `drawParcels` has no market building to put on it, so suppressing the
+// landmark art would leave bare ground under a MERCADO pill. Add a
+// `drawMercado(P)` case beside drawChurch/drawCivicBuilding and move it in —
+// that is the hook the mercado's own style or asset plugs into.
+const PARCEL_DRAWS_BUILDING = new Set(["church", "cathedral", "civic"]);
 function drawLandmark(lm) {
   const owner = ownedByParcel().get(lm.id);
-  if (owner) { drawParcelLandmarkPill(lm, owner); return; }
+  if (owner && PARCEL_DRAWS_BUILDING.has(owner.use)) {
+    drawParcelLandmarkPill(lm, owner); return;
+  }
   const x = lm.x, y = lm.y;
   if (!NO_SHADOW.has(lm.type)) {
     ctx.fillStyle = "rgba(0,0,0,0.22)";

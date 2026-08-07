@@ -35,7 +35,9 @@ def poi_category(tags):
 def parse_osm(path):
     nodes = {}
     ways = []
-    named = []            # (lower_name, (mx,my), tags) for POI resolution
+    named = []            # (lower_name, (mx,my), tags, osm_id) for POI resolution
+                          # — the ID is what lets a landmark and the OSM
+                          # SITE of the same place be joined later
     poi_nodes = []        # (ll, tags) for every NAMED standalone POI node
     sign_nodes = []       # (ll, tags) for street furniture (semáforo, parada…)
     rels = []
@@ -56,7 +58,7 @@ def parse_osm(path):
             if tags and any(tags.get(k) in vs for k, vs in SIGN_KEYS.items()):
                 sign_nodes.append((ll, tags))
             if tags and tags.get("name"):
-                named.append((tags["name"].lower(), to_m(*ll), tags))
+                named.append((tags["name"].lower(), to_m(*ll), tags, ("node", el.get("id"))))
                 if poi_category(tags):
                     poi_nodes.append((ll, tags))
             el.clear()
@@ -78,7 +80,7 @@ def parse_osm(path):
         w["pts"] = pts
         nm = w["tags"].get("name")
         if nm and pts:
-            named.append((nm.lower(), poly_centroid(pts), w["tags"]))
+            named.append((nm.lower(), poly_centroid(pts), w["tags"], ("way", w["id"])))
     return nodes, ways, named, rels, poi_nodes, sign_nodes
 
 # ----------------------------------------------------------------- spine ---

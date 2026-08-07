@@ -137,7 +137,7 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
 
     landmarks, failures = [], []
     for spec in LANDMARK_DEFS:
-        pm, how = resolve(spec)
+        pm, how, osm_id = resolve(spec)
         if pm is None:
             failures.append(spec["id"])
             continue
@@ -157,9 +157,12 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
         # NB: building landmarks get repositioned INTO their cuadra later, once
         # roads + aceras are rasterized into the grid (snap_into_block needs the
         # final surface classes to find real block interior).
-        landmarks.append({"id": spec["id"], "name": spec["name"], "x": round(pos[0]),
-                          "y": round(pos[1]), "type": spec["type"], "district": spec["district"],
-                          "_how": how})
+        rec = {"id": spec["id"], "name": spec["name"], "x": round(pos[0]),
+               "y": round(pos[1]), "type": spec["type"], "district": spec["district"],
+               "_how": how}
+        if osm_id is not None:
+            rec["osmRef"] = osm_id     # "node/123" — provenance of the anchor
+        landmarks.append(rec)
     # Customers: nudge to land, then ENFORCE spread so every delivery is a
     # real trip — ≥150px from any kiosk, ≥120px from every other customer.
     MIN_FROM_KIOSK, MIN_BETWEEN = 450, 360

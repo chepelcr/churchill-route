@@ -184,6 +184,11 @@ const PARCEL_FILL = { plaza: "#4f9d5b", stadium: "#4f9d5b", garden: "#5ba362",
                       park: "#5ba362", church: "#cfc7b4", cathedral: "#cfc7b4",
                       boulevard: "#d9d6cd", civic: "#c9c2b2", lot: "#b9b2a0",
                       school: "#c8bb96", kinder: "#d3b98f", campus: "#bfb894",
+                      // EL MERCADO: swept concrete, its own manzana. A flat
+                      // ground colour on purpose — the mercado is meant to take
+                      // a style or an asset of its own later, and this is the
+                      // plot it will be painted onto.
+                      market: "#c2b49a",
                       fuel: "#8e9299" };
 function paintParcels(view) {
   const arr = W.PARCELS;

@@ -277,8 +277,16 @@ def kiosk_frontage(raster, nongreen_blocks, snap_cuad, x, y):
     return ((tc + 0.5) * CUAD, (tr + 0.5) * CUAD)
 
 def resolve_poi(named, spec):
+    """(point_m, how, osm_ref) where `osm_ref` is "node/123" or "way/456".
+
+    The reference is PROVENANCE, not identity: it says which named feature this
+    landmark's anchor resolved to, and three landmarks can legitimately share
+    one (faro, balneario and kios_faro all hang off the "faro de la punta"
+    node with different offsets). Relating a landmark to the OSM SITE that is
+    the same place is containment, not this — see FieldService.SITE_TWIN_TYPES.
+    """
     if "osm" in spec:
-        cands = [(nm, pm) for nm, pm, tg in named if spec["osm"] in nm]
+        cands = [(nm, pm, oid) for nm, pm, tg, oid in named if spec["osm"] in nm]
         if cands:
             if "near" in spec:
                 ref = to_m(*spec["near"])
@@ -293,7 +301,9 @@ def resolve_poi(named, spec):
                 cx = sum(c[1][0] for c in cands) / len(cands)
                 cy = sum(c[1][1] for c in cands) / len(cands)
                 ref = (cx, cy)
-            return min(cands, key=lambda c: dist(c[1], ref))[1], "osm"
+            best = min(cands, key=lambda c: dist(c[1], ref))
+            kind, oid = best[2]
+            return best[1], "osm", f"{kind}/{oid}"
     if "ll" in spec:
-        return to_m(*spec["ll"]), "hand"
-    return None, "missing"
+        return to_m(*spec["ll"]), "hand", None
+    return None, "missing", None

@@ -502,6 +502,16 @@ the fit it had. Dropping them cost four escuelas, four gasolineras, the INA and
 a dozen iglesias the first time. Buildings were never the problem —
 `_push_off_street` already pushes named footprints off the acera.
 
+**A LANDMARK AND AN OSM SITE ARE RELATED BY CONTAINMENT, NOT BY ID.** Measured:
+the 38 landmarks and the 429 sites are DISJOINT sets of places here (the nearest
+compatible site to `parquemar`/`estadio`/`cocal_park` is 588–4 593 px away), so
+there is nothing to merge today — the link exists so a landmark added on top of
+a mapped area LINKS instead of minting a second record. `osmRef` on a landmark
+("node/123") is the PROVENANCE of its anchor, not an identity: faro, balneario
+and kios_faro share one. The join is a point-in-polygon plus
+`FieldService.SITE_TWIN_TYPES`; by id it could never fire, because landmarks
+resolve against named nodes and sites are closed ways.
+
 **EVERY ANCHOR IS GEO.** The last two world-px anchors in the build were the
 hand-laid `carmen` and `centro` cuadra specs, and the 2.0 -> 2.5 rescale moved
 the real manzanas 4 000 px away from them: all four bounding streets resolved to

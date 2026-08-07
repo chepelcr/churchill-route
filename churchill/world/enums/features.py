@@ -26,6 +26,7 @@ class ParcelUse(StrEnum):
     KINDER = "kinder"        # jardín de niños / CEN-CINAI: a small school with a patio
     CAMPUS = "campus"        # colegio / universidad: several pavilions on open grounds
     FUEL = "fuel"            # gasolinera: a canopy over its islands, with the pumps
+    MARKET = "market"        # el Mercado Central: its own manzana, like an estadio
 
 
 class GreenType(StrEnum):

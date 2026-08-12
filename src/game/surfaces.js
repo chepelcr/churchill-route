@@ -1,24 +1,34 @@
-// Surface classes — pure data (also imported by tools/gen-inventory.mjs).
-// Mirrors churchill/world/enums/surface.py; the VALUES are the wire format
-// (they are the bytes in each tile's RLE), so append, never renumber.
-// Speed multiplier per surface class:
-//   0 water, 1 land (solid cuadra interior — blocked in update), 2 beach,
-//   3 road, 4 paseo, 5 bridge/pier, 6 acera, 7 boulevard (calle peatonal:
-//   transitable stone paving, slower than the paseo — you crawl over it),
-//   8 barro (packed earth: a real calle, just loose and slower than asphalt),
-//   9 gravel (lastre: firmer than barro, still not asphalt),
-//   10 malecón (the paved sea front of the Paseo de los Turistas: you may drive
-//      it, but it is a promenade full of people, so you crawl)
+// The DRIVING MODEL of every surface class — pure data (also imported by
+// tools/gen-inventory.mjs), browser-free like `vehicles.js`.
 //
-// THIS TABLE IS THE DRIVING MODEL OF A SURFACE. A calle de barro was drawn
-// brown and driven like asphalt until barro became a class of its own: the look
-// lived in the road vector and the feel lived nowhere.
-export const SURFACE_MUL = {
-  0: 0.35, 1: 0.78, 2: 0.7, 3: 1.0, 4: 0.55, 5: 1.0, 6: 0.62, 7: 0.5,
-  8: 0.82, 9: 0.9, 10: 0.55,
-};
+// The class ids and names are NOT authored here any more: they are the wire
+// format, so they come from `src/domain/vocabulary.generated.js`, which
+// `tools/gen_vocabulary.py` writes from `churchill/world/enums/surface.py`.
+// This file used to keep a handwritten mirror of the list, and a mirror is a
+// thing that drifts — the audit found the editor still knew 8 of the 11 classes
+// and `malecon` missing from two palettes.
+//
+// What stays authored here is the one thing the world does not know: how each
+// surface FEELS to drive on. A calle de barro was drawn brown and driven like
+// asphalt for a year — the look lived in the road vector and the feel lived
+// nowhere. Numbers measured in the running game, same car, same throttle.
+import { SURFACE, SURFACE_CLASSES } from "../domain/vocabulary.generated.js";
 
-// Human-readable names, index = surface class id. Mirrors
-// churchill/world/enums/surface.py — append, never renumber: these values are
-// the bytes inside every tile's RLE.
-export const SURFACE_CLASSES = ["water", "land", "beach", "road", "paseo", "bridge", "acera", "boulevard", "barro", "gravel", "malecon"];
+export { SURFACE, SURFACE_CLASSES };
+
+// Speed multiplier per class. Keyed by the wire id through its NAME, so a
+// reader can see which surface a number belongs to without counting commas.
+export const SURFACE_MUL = {
+  [SURFACE.WATER]: 0.35,      // a car in the gulf: swamped, barely moving
+  [SURFACE.LAND]: 0.78,       // cuadra interior — a WALL in physics; this is
+                              // the fallback value, not a surface you drive
+  [SURFACE.BEACH]: 0.7,       // sand: slow, and it fights back (see physics.js)
+  [SURFACE.ROAD]: 1.0,        // asphalt, the reference
+  [SURFACE.PASEO]: 0.55,
+  [SURFACE.BRIDGE]: 1.0,      // bridge and pier decks
+  [SURFACE.ACERA]: 0.62,      // sidewalk — also a wall; kept for the probe
+  [SURFACE.BOULEVARD]: 0.5,   // calle peatonal: stone paving, you crawl
+  [SURFACE.BARRO]: 0.82,      // packed earth: 189 px/s against asphalt's 230
+  [SURFACE.GRAVEL]: 0.9,      // lastre: firmer than barro, still not asphalt
+  [SURFACE.MALECON]: 0.55,    // the sea front: paving full of people
+};

@@ -44,6 +44,7 @@
 // timeout, always as a loss. Landing at Pitahaya and sinking in the mangrove
 // were the same outcome. `finish()` below is where that is put right.
 import { WORLD2D as W } from "../world2d/index.js";
+import { SURFACE } from "./surfaces.js";
 import { state, pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
 import { markStageCleared, unlockDistrict } from "./progress.js";
@@ -930,7 +931,7 @@ export function crossingTarget() {
  * grounded you on it, which is the worse half: a bank you cannot see but can
  * hit. Renderer and collision both come through here, so they cannot disagree.
  *
- * TESTED LAZILY, NOT AT SPAWN, because of streaming: `surfaceAt` answers 0 for
+ * TESTED LAZILY, NOT AT SPAWN, because of streaming: `surfaceAt` answers WATER for
  * a tile that is not resident yet, so a bank vetted at `startCrossing` — when
  * only the berth's tiles are loaded — would pass on faith and turn out to be
  * sitting on a beach by the time you got there. Asked at the moment it matters,
@@ -947,8 +948,8 @@ export function crossingTarget() {
  *
  * A mark standing on the bank is worse than a missing mark: it tells you the
  * channel is somewhere it is not. So it is simply not drawn. TESTED LAZILY, at
- * draw time, for the reason `bancoExposed` documents — `surfaceAt` answers 0
- * for a tile that has not streamed in, so asking at `channels()` time would
+ * draw time, for the reason `bancoExposed` documents — `surfaceAt` answers
+ * WATER for a tile that has not streamed in, so asking at `channels()` time would
  * pass on faith over the whole route.
  *
  * This is a backstop, NOT the fix. `tools/smoke_crossing.mjs` holds the real
@@ -956,12 +957,12 @@ export function crossingTarget() {
  * buoys climbs, the channel data has regressed and the test says so.
  */
 export function buoyWet(b) {
-  return W.surfaceAt(b.x, b.y) === 0;
+  return W.surfaceAt(b.x, b.y) === SURFACE.WATER;
 }
 
 export function bancoExposed(e, level = tideLevel()) {
   if (e.kind !== "banco" || level >= e.depth) return false;
-  return W.surfaceAt(e.x, e.y) === 0;
+  return W.surfaceAt(e.x, e.y) === SURFACE.WATER;
 }
 
 /**

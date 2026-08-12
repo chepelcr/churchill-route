@@ -17,8 +17,8 @@ traced vertices (see util.geometry.principal_axis).
 from collections import defaultdict, deque
 
 from ..config import (
-    BLOCK_MIN_CUADS, CLS_ACERA, CLS_LAND, CUAD, CUAD_CELLS, GRID_CELL,
-    SLIVER_MAX_CUADS,
+    BLOCK_MIN_CUADS, BLOCK_MIN_M, CLS_ACERA, CLS_LAND, CUAD, CUAD_CELLS,
+    GRID_CELL, SLIVER_MAX_CUADS,
 )
 from ..logging import log
 from ..util.geometry import dp_simplify
@@ -256,7 +256,44 @@ def detect_blocks(raster, build_band_x1=None):
       - green: large but nowhere BLOCK_MIN_CUADS (thin coastal strips) ->
         stays CLS_LAND with no buildings, never paved (no concrete oceans).
     Returns (blocks, plazas): blocks = [{"cells": set[(cc, cr)]}], plazas =
-    flat [x, y, w, h] px rects for the renderer."""
+    flat [x, y, w, h] px rects for the renderer.
+
+    THE BAR IS A REAL SIZE (`BLOCK_MIN_M`, 32 m), not a count of cuadrículas.
+    It was 6 cuadrículas = 48 m, which is bigger than a Puntarenas manzana: a
+    normal one inscribes 4.6, so 61 % of the land components over 4 cuadrículas
+    failed the test and were filed as coastal strip (no buildings at all) or
+    paved over as wedge. Measured over the same 2 108 land components, at 48 m
+    against at 32 m:
+
+        cuadras  416 -> 599      green  566 -> 383      slivers  1126 -> 1126
+
+    Every one of the 183 that moved came out of GREEN — a manzana that had been
+    filed as a thin coastal strip and given no buildings at all. Not one sliver
+    changed class, which is the reassuring half: nothing that had been paved as
+    an intersection wedge turned out to be a block, so the bar came down through
+    empty ground and not into the junctions.
+
+    THE 183 DID NOT ADD HOUSES, THEY MOVED THEM, and that is `SYNTH_MAX_TOTAL`,
+    not this function. The synth stage logged `+79306 synthesized (total 80000)`
+    in BOTH builds — identical line, because the cap is saturated and has been.
+    So the budget is spent on more blocks: measured net over the changed tiles,
+    ~3 400 footprints left x 52 000..60 000 (Mata de Limón, Caldera) for the
+    spit, the centro and the barrios. `SYNTH_MAX_TOTAL`'s own comment says it was
+    raised "so fully-filled small cuadras don't exhaust it mid-map and leave far
+    blocks empty" — which is exactly what it is doing again at 599 blocks. Fixing
+    the bar was right and did not cause this; it revealed it.
+
+    The slivers still outnumber the cuadras, and that is NOT the same finding —
+    a wedge is left at every junction of the ~2 200 mapped ways, so there are
+    honestly more corners in this town than manzanas.
+
+    A SIZE THRESHOLD IS STILL THE WRONG QUESTION, and lowering it does not make
+    it the right one: this looks for leftover raster blobs, so it cannot tell a
+    manzana from an intersection wedge except by how big it is. The
+    size-independent definition is topological — a manzana is a FACE of the
+    planar graph of street centrelines, bounded by four streets at any size.
+    `docs/RESCALE.md` records what that would cost (hand-rolled noding plus
+    half-edge cycles, or a shapely dependency the builder deliberately avoids)."""
     cols, rows, grid = raster.cols, raster.rows, raster.buf
     from array import array
     N = cols * rows
@@ -343,6 +380,9 @@ def detect_blocks(raster, build_band_x1=None):
         if label[i] in paved_ids:
             grid[i] = CLS_ACERA
     n_cuadras = sum(1 for b in blocks if not b["green"])
+    # The bar is in the line on purpose: this census is only readable against
+    # the threshold that produced it, and that threshold used to be invisible.
     log("blocks", f"{n_comps} land components -> {n_cuadras} cuadras, "
-          f"{len(paved_ids)} paved slivers, {n_green} green")
+          f"{len(paved_ids)} paved slivers, {n_green} green "
+          f"(bar {BLOCK_MIN_M:.0f} m = {BLOCK_MIN_CUADS}x{BLOCK_MIN_CUADS} cuadrículas)")
     return blocks, []

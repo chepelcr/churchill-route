@@ -18,6 +18,7 @@ from ..config import (
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
 )
 from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, STAGES
+from ..enums import SignKind
 
 
 def ordered_stages():
@@ -292,7 +293,7 @@ def verify(ctx, *, spawn, gate_pois):
 #: cross is still a promenade. Without this the sweep would push all of them
 #: inland off the sea front they exist to look at, and drop the ones with
 #: nowhere to go.
-ON_THE_ROAD_OK = ("crossing", "tope", "banca")
+ON_THE_ROAD_OK = (SignKind.CROSSING, SignKind.TOPE, SignKind.BANCA)
 
 
 def clear_the_roadway(raster, signs, roads):

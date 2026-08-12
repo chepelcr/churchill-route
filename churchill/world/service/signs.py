@@ -20,21 +20,27 @@ option: inventing them at random would put an ALTO in the middle of a block.
 import math
 
 from ..config import CUAD
+from ..enums.features import SignKind, YIELDS_TO
 from ..logging import log
 from .street import resample_centerline
 
 #: Which OSM node tags become which sign. The value is the `kind` the renderer
-#: switches on — keep it in step with `drawSign` in src/render/c2d/streets.js.
+#: switches on, and it is a `SignKind` now rather than a bare string: the DTO
+#: validates against that enum, so a typo here fails the build instead of
+#: drawing nothing at a junction (`drawSign` in src/render/c2d/streets.js takes
+#: an unknown kind to a silent no-op).
 NODE_SIGNS = {
-    ("highway", "traffic_signals"): "semaforo",
-    ("highway", "crossing"): "crossing",
-    ("highway", "bus_stop"): "bus",
-    ("traffic_calming", "bump"): "tope",
-    ("traffic_calming", "hump"): "tope",
+    ("highway", "traffic_signals"): SignKind.SEMAFORO,
+    ("highway", "crossing"): SignKind.CROSSING,
+    ("highway", "bus_stop"): SignKind.BUS,
+    ("traffic_calming", "bump"): SignKind.TOPE,
+    ("traffic_calming", "hump"): SignKind.TOPE,
 }
 
-#: A street this class or wider never yields to the one crossing it.
-MAJOR = ("trunk", "trunk_link", "primary", "primary_link", "secondary", "paseo")
+#: A street this class or wider never yields to the one crossing it. The set
+#: lives in `enums/features.py` as `YIELDS_TO`, beside the client's separate
+#: "traffic may speed here" list — the two were being read as one.
+MAJOR = YIELDS_TO
 #: …and one this narrow is a driveway, not an approach worth signing.
 MINOR_MIN_LEN = 60          # px
 JUNCTION_R = 1.3 * CUAD     # px: how close two road ends count as a junction
@@ -92,7 +98,7 @@ def _snap_to_road(x, y, roads, reach):
 #: Furniture that OSM maps ON the carriageway because that is where the node
 #: belongs for routing, but that STANDS at the kerb in the world: a parada and a
 #: semáforo. Both get seated on the acera beside their street.
-SEATED_KINDS = ("bus", "semaforo")
+SEATED_KINDS = (SignKind.BUS, SignKind.SEMAFORO)
 
 
 def seat_bus_stops(stops, roads):
@@ -205,7 +211,7 @@ def derive_altos(roads, limit=None):
             by = ey - math.sin(ang) * back
             out.append({"x": round(bx + math.cos(ang + math.pi / 2) * side),
                         "y": round(by + math.sin(ang + math.pi / 2) * side),
-                        "kind": "alto", "ang": round(ang, 3)})
+                        "kind": SignKind.ALTO, "ang": round(ang, 3)})
     # ONE ALTO PER CORNER, not one per approach that happens to end near it.
     # Where the Paseo, Avenida Centenario and the faro street all converge, a
     # dozen short ways end within a few metres of each other and each claimed
@@ -234,9 +240,14 @@ def build_signs(sp, poi_nodes, roads, canvas_w, canvas_h, alto_limit=900):
     mapped = len(signs)
     signs += derive_altos(roads, alto_limit)
     signs.sort(key=lambda s: (s["kind"], s["x"], s["y"]))
+    # Census keyed by the STRING, not the enum member: the build log is the
+    # review surface, and a `SignKind` in a dict f-string reprs as
+    # `<SignKind.ALTO: 'alto'>`, which turned this line into noise the moment
+    # `kind` stopped being a bare str.
     by = {}
     for s in signs:
-        by[s["kind"]] = by.get(s["kind"], 0) + 1
+        key = str(s["kind"])
+        by[key] = by.get(key, 0) + 1
     log("signs", f"{len(signs)} pieces of street furniture "
         f"({mapped} mapped in OSM, {len(signs) - mapped} ALTOs derived from the "
         f"street network): {dict(sorted(by.items()))}")

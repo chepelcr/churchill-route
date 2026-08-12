@@ -127,12 +127,19 @@ These numbers were read directly from the current manifest and tiles. Tile
 features are deduplicated with the inventory generator's identity rules because
 a feature crossing a tile edge is emitted into every intersecting tile.
 
+Refreshed 2026-08-11 after `BLOCK_MIN_M` (see ROADMAP §4). Buildings did NOT
+change — `SYNTH_MAX_TOTAL` is saturated at 80,000, so 183 more manzanas
+redistributed the same footprints rather than adding any; trees and palms fell
+because `decorate` reads the finished surface and will not plant where a house
+now stands. The manifest's `cuadras` count is the editor's selectable-block
+catalog and is unrelated to the classifier's census.
+
 | Family | Count | Breakdown |
 |---|---:|---|
 | Roads | 2,211 | residential 1,444; service 450; unclassified 88; trunk 76; trunk link 53; primary 43; tertiary 37; secondary 7; primary link 6; pedestrian 5; bridge 1; tertiary link 1 |
 | Buildings | 80,405 | OSM + deterministic synthesized footprints |
-| Trees | 32,627 | streamed tile points |
-| Palms | 4,946 | streamed tile points |
+| Trees | 28,737 | streamed tile points |
+| Palms | 4,889 | streamed tile points |
 | Mangroves | 1,260 | streamed tile points |
 | Cuadras | 976 | semantic block polygons |
 | Parcels | 483 | park 193; stadium 82; church 64; school 56; lot 39; campus 17; kinder 12; fuel 11; boulevard 3; civic 2; market 2; cathedral 1; garden 1 |
@@ -918,41 +925,81 @@ the Python enums.
 These are not theoretical duplicate-literal risks; each was confirmed against
 the current working tree and shipped manifest.
 
+**All eight were closed on 2026-08-11**, and the findings are kept rather than
+deleted because each one records why its own class of bug is invisible. The fix
+was not to correct the copies — correcting them by hand is what had already been
+done, and is why they drifted. `tools/gen_vocabulary.py` (`pnpm vocabulary`)
+reads `churchill/world/enums/` and writes `src/domain/vocabulary.generated.js`
+plus `src/assets/vocabulary.generated.json`; the game and the editor consume the
+artifact, and `tests/test_vocabulary.py` fails if one goes stale, if the shipped
+manifest disagrees with the enum class for class, or if an emitted value has no
+renderer implementation. Each item's own resolution follows it.
+
 1. **Surface vocabulary is already divergent.** The authoritative manifest has
    11 classes. `world-editor/src/npcs.js` has only the first 8, the editor Vite
    host validator has the first 10, and the editor surface palettes have 10
    entries. `malecon` is therefore missing from both editor validation and its
    tile palette; `barro`, `gravel`, and `malecon` are missing from the editor's
    NPC placement vocabulary.
+   *Resolved:* the editor host reads `vocabulary.generated.json` from the game
+   and refuses to start without it; surface palettes carry all 11 entries (class
+   10 was painting as `undefined`), and the `npcs.js` list survives only as a
+   complete last resort. An editor test that pinned `classes.slice(8)` by hand
+   had been failing for a week, blaming the world — it compares against the
+   generated vocabulary now.
 2. **Raw surface integers bypass the enum.** Water `0`, beach `2`, bridge `5`,
    and acera `6` appear directly in `world2d/index.js`, `game/physics.js`,
    `game/spawns.js`, `game/crossing.js`, `c2d/water.js`, and `c2d/flora.js`.
    Renumbering is forbidden, but raw use still hides intent and makes role-set
    omissions likely.
+   *Resolved:* all six read `SURFACE.*`, the local `const CLS_ACERA = 6` in
+   `c2d/flora.js` is gone, and a test rejects any new
+   `surfaceAt(...) === <number>` in those files.
 3. **Road rank tables disagree.** Canvas `ROAD_ORDER` knows pedestrian,
    link, paseo, and bridge classes and gives distinct ranks. The editor table
    omits several classes and collapses others. Client `MAIN_ROAD` and builder
    `MAJOR` are also separate semantic sets; the latter includes `paseo` while
    the former does not.
+   *Resolved:* `RENDER_RANK` in the enum layer generates `ROAD_RANK`, which the
+   Canvas consumes — and it exposed a gap the audit had not: `living_street` had
+   no rank at all, so such a calle would fall to `|| 0` and paint beneath the
+   service roads. Latent rather than live, since `docs/map.osm` tags none today,
+   which is precisely why it would have shipped. The two role sets stay two
+   (`YIELDS_TO`, `TRAFFIC_MAIN`), named for the questions they answer, with a
+   test that they never become equal.
 4. **Pier style production exceeds validation/render coverage.** The shipped
    manifest contains `concrete`, `timber`, `apron`, `calzada`, and `malecon`.
    Canvas explicitly defines the first four but not `malecon`, so four current
    records fall back to concrete. The editor accepts only `concrete` and
    `timber`, so it cannot accurately validate all generated styles.
+   *Resolved:* `PierStyle` (5 members) types `Pier.style`; the editor validates
+   against the generated list. `Pier.surface` was `PathSurface | str` — it takes
+   `SurfaceName` now, derived from `Surface` rather than retyped — and `seaEnd`
+   takes `LineEnd`.
 5. **Landmark dispatch exceeds its enum.** Canvas has cases for `museum` and
    `anchor`, but `LandmarkType` has neither. Neither is shipped today, so this
    is latent drift rather than current missing art.
+   *Resolved:* both added, and a test requires every one of the 26 types to have
+   a dispatch case.
 6. **Sign kinds are untyped.** The manifest currently ships `alto`, `banca`,
    `bus`, `crossing`, `semaforo`, and `tope`. The Canvas switch additionally
    supports `ceda`, `semaforo_centered`, `semaforo_overhead`, and
    `speed_limit`. `Sign.kind` is only `str`, so a typo draws nothing.
+   *Resolved:* `SignKind` holds all ten the renderer draws — deliberately more
+   than the build emits, since art with no value to select it is drift too — and
+   `Sign.kind: SignKind` makes a typo fail the build.
 7. **The editor parcel palette omits a live enum member.** Two current parcels
    use `market`; Canvas has a market material, while the editor falls back to
    the generic lot color.
+   *Resolved:* the editor's `PARCEL_FILL` has `market`, and its use list comes
+   from the generated `PARCEL_USE`.
 8. **Acera fallbacks conflict.** The current manifest says `aceraPx = 12`.
    Simulation/editor fallbacks use 12, while Canvas/Pixi helpers fall back to 8.
    Modern manifests hide the disagreement, but a missing/stale meta record
    changes collision-adjacent placement and drawing differently.
+   *Resolved:* `WORLD2D` resolves `aceraPx` and `cuad` once and owns the only
+   legacy defaults (`W.ACERA_PX`, `W.CUAD`); a test walks `src/` and fails if any
+   other module reads `meta.aceraPx` for itself.
 
 ### Closed vocabularies to add to the enum layer
 
@@ -1026,17 +1073,26 @@ The Python enum package remains the lowest world layer and wire authority. A
 deterministic vocabulary generator should emit browser/editor artifacts from
 it rather than maintain handwritten arrays:
 
+**Built on 2026-08-11**, exactly as drawn — `tools/gen_vocabulary.py`, run by
+`pnpm vocabulary` and checked by `tests/test_vocabulary.py`:
+
 ```text
 churchill/world/enums/             # canonical wire/closed world vocabulary
         |
-        +-- tools/gen-vocabulary   # deterministic, diff-checked
+        +-- tools/gen_vocabulary.py   # deterministic, --check mode diffs it
                 |
                 +-- src/domain/vocabulary.generated.js
                 +-- src/assets/vocabulary.generated.json
-                +-- world-editor generated/read-only vocabulary endpoint
+                +-- world-editor reads the JSON (and dies without it)
 
 content/asset registries ----------> schema validation keyed by enum values
 ```
+
+It carries `SURFACE` + `SURFACE_CLASSES` + `SURFACE_BY_NAME` + the five
+`SURFACE_ROLE` sets, `ROAD_RANK` + two `ROAD_ROLE` sets, and ten string
+vocabularies. The physics multiplier stays authored in `src/game/surfaces.js` —
+it is the one surface property the world does not know — but keyed through
+`SURFACE` so a class cannot be silently reassigned.
 
 The generated JavaScript API should expose frozen named maps and sets, for
 example `SURFACE.WATER`, `SURFACE_BY_NAME`, `SURFACE_ROLE.DRIVABLE`,
@@ -1049,16 +1105,26 @@ change; an enum member-name refactor that preserves its emitted value is not.
 
 ### Validation gates to add
 
-- Compare `manifest.grid.classes` byte-for-byte with generated `Surface` order.
-- Fail when a DTO emits a string outside its enum or when a renderer dispatch
-  case is absent from the declared enum/asset registry.
-- Fail when a shipped enum value lacks a renderer implementation, fallback,
-  material, editor label, or inventory entry.
+The first four are in `tests/test_vocabulary.py` as of 2026-08-11 (`pnpm test`).
+
+- ~~Compare `manifest.grid.classes` byte-for-byte with generated `Surface`
+  order.~~ **In place**, in the game and in the editor's own suite.
+- ~~Fail when a DTO emits a string outside its enum~~ **in place** — `SignKind`,
+  `PierStyle`, `LineEnd`, `SurfaceName` are enum-typed, so the build refuses the
+  value rather than the renderer silently drawing nothing — ~~or when a renderer
+  dispatch case is absent from the declared enum/asset registry.~~ **In place**
+  for signs, pier styles and landmark types.
+- ~~Fail when a shipped enum value lacks a renderer implementation~~ **in
+  place**; fallback, material, editor label and inventory entry are not yet
+  checked.
+- ~~Scan game code for raw `surfaceAt(...) === <number>` and reject new uses.~~
+  **In place** for the six modules the audit named.
 - Compare Canvas, Pixi, minimap, editor, and debug materials by enum key rather
-  than array length.
+  than array length. *Still open* — this needs `materials.json` to exist.
 - Validate named role sets: drivable, wall, street, carriageway, calle, major,
-  pedestrian, waterborne, and renderer-owner.
-- Scan game code for raw `surfaceAt(...) === <number>` and reject new uses.
+  pedestrian, waterborne, and renderer-owner. *Partly*: the five surface role
+  sets and the two road ones are generated, so a consumer cannot mistype one;
+  their MEMBERSHIP is not asserted against behaviour.
 - Generate the supported mode/screen/sign/pier/vehicle vocabularies into
   `inventory.json`, then compare runtime dispatch with that machine index.
 - Preserve unknown external OSM values separately; normalize only at the
@@ -1066,15 +1132,20 @@ change; an enum member-name refactor that preserves its emitted value is not.
 
 ### Recommended migration order
 
-1. Add cross-runtime validation tests that expose the current differences
-   without changing world output.
-2. Generate JavaScript surface constants from the Python `Surface` enum and
-   replace raw numeric comparisons.
-3. Make the editor consume all 11 surface values and the shared parcel/road
-   metadata; verify `malecon`, `market`, barro, and gravel previews.
+1. ~~Add cross-runtime validation tests that expose the current differences
+   without changing world output.~~ **Done 2026-08-11** —
+   `tests/test_vocabulary.py`, plus `pnpm test` in the game repo.
+2. ~~Generate JavaScript surface constants from the Python `Surface` enum and
+   replace raw numeric comparisons.~~ **Done 2026-08-11.**
+3. ~~Make the editor consume all 11 surface values and the shared parcel/road
+   metadata; verify `malecon`, `market`, barro, and gravel previews.~~ **Done
+   2026-08-11** — the editor reads the generated JSON for surfaces, pier styles
+   and parcel uses. Its ROAD rank table is still its own.
 4. Add `StageKind`, `SignKind`, `PierStyle`, `LineEnd`, `VehicleMedium`, and
    `VehicleKind` to the typed contract; resolve the live `malecon` pier style
-   fallback deliberately.
+   fallback deliberately. **`SignKind`, `PierStyle`, `LineEnd` and `SurfaceName`
+   done 2026-08-11**; the `malecon` deck recipe exists. `StageKind`,
+   `VehicleMedium` and `VehicleKind` remain.
 5. Centralize ferry/channel/acera/CUAD compatibility defaults with explicit
    units before executing the rescale plan.
 6. Add the remaining simulation/UI enums, then migrate extensible identities to

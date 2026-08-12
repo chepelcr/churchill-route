@@ -18,12 +18,15 @@ function setLastT(v) { lastT = v; }
 // Cuadrícula-based responsive zoom: frame at most CUADS_PER_VIEW cuadrículas
 // so every device shows the same amount of city. Only a floor is clamped —
 // narrow screens show FEWER cuadrículas (more detail), never more than 12.
-const CUAD = (W.META && W.META.cuad) || 20;
+const CUAD = W.CUAD;
 // Camera framing is a RENDERER concern (tuned by feel, not a world rebuild):
 // frame ~20 cuadrículas across so the road ahead is visible while driving.
 // meta.cuadsPerView is advisory only.
 const CUADS_PER_VIEW = 20;
-const ACERA_PX = (W.META && W.META.aceraPx) || 8; // sidewalk depth per side
+// The kerb, from the accessor that owns the manifest and its ONE legacy
+// default. This used to fall back to 8 while the sim fell back to 12 — the
+// renderer and the spawner disagreeing about where the sidewalk is.
+const ACERA_PX = W.ACERA_PX;
 function computeZoom(wCss, hCss) {
   const z = wCss / (CUADS_PER_VIEW * CUAD);
   return Math.max(2.2, z) * tuning.zoom;   // player setting: 0.6 far … 1.4 close

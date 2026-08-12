@@ -8,11 +8,14 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools, beachGames } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
+import { SURFACE } from "./surfaces.js";
+import { ROAD_ROLE } from "../domain/vocabulary.generated.js";
 import { npcCrowdSize, npcMayStand, npcSpeed, npcSurfaceClasses, npcType } from "./npcs.js";
 
-// The sidewalk's depth is a WORLD knob (ACERA_CELLS), read from the manifest
-// rather than hardcoded — the game may not import the renderer's copy.
-const ACERA_PX = (W.META && W.META.aceraPx) || 12;
+// The sidewalk's depth is a WORLD knob (ACERA_CELLS): the accessor resolves it
+// from the manifest and owns the single legacy default, so the sim and the
+// renderers can no longer fall back to different kerbs.
+const ACERA_PX = W.ACERA_PX;
 // how far from the camera we keep life alive / spawn it (world px)
 const KEEP_R = 1400;
 const SPAWN_R = 1100;
@@ -53,7 +56,11 @@ const far = (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R;
 // Cars ride the per-tile road centerlines (arclength advance + a lane offset
 // to their driving side) instead of wandering the surface grid, so they stay
 // aligned with the street and never cut across junctions diagonally.
-const MAIN_ROAD = new Set(["trunk", "trunk_link", "primary", "primary_link", "secondary"]);
+// Where ambient traffic may run at main-road speed. From the generated
+// vocabulary, and deliberately NOT the builder's "never yields" set: that one
+// includes the Paseo, which is a road you stop for and also a promenade nobody
+// crosses town on. Two names for two questions (enums/features.py says why).
+const MAIN_ROAD = new Set(ROAD_ROLE.TRAFFIC_MAIN);
 
 // Interpolated point + tangent angle at arclength s along a prepped road.
 function roadPointAt(r, s) {
@@ -215,7 +222,7 @@ function spawnOnePed() {
   for (const side of Math.random() < 0.5 ? [1, -1] : [-1, 1]) {
     const x = pt.x - Math.sin(pt.ang) * baseOff * side;
     const y = pt.y + Math.cos(pt.ang) * baseOff * side;
-    if (W.surfaceAt(x, y) !== 6) continue; // that side has no sidewalk here
+    if (W.surfaceAt(x, y) !== SURFACE.ACERA) continue; // that side has no sidewalk here
     if (Math.hypot(x - _cam.x, y - _cam.y) > SPAWN_R) return null;
     return {
       road: r, s, side, baseOff, off: side * baseOff,
@@ -336,7 +343,7 @@ function spawnOneSchool() {
   const r = 46 + Math.random() * 46;
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
-    if (W.surfaceAt(pt.x + Math.cos(a) * (r + 70), pt.y + Math.sin(a) * (r + 70)) !== 0) return null;
+    if (W.surfaceAt(pt.x + Math.cos(a) * (r + 70), pt.y + Math.sin(a) * (r + 70)) !== SURFACE.WATER) return null;
   }
   const fleet = [];
   const n = 2 + ((Math.random() * 2) | 0);
@@ -408,7 +415,7 @@ function seedPierFishers(P) {
       // out to the edge, but inside the rail
       const ex = -uy * side * (half - 7), ey = ux * side * (half - 7);
       const x = ax + ux * s + ex, y = ay + uy * s + ey;
-      if (W.surfaceAt(x, y) !== 5) continue;         // still on the deck
+      if (W.surfaceAt(x, y) !== SURFACE.BRIDGE) continue;  // still on the deck
       pedestrians.push({
         x, y, ang: 0, v: 0,
         hue: 20 + ((s * 7) % 40),
@@ -428,7 +435,7 @@ export function advanceSchool(sc, dt) {
   // A shoal that drifted onto the beach would be a shoal on the beach. Turn it
   // back at the shore instead of letting the pool cull it — the school is rare
   // enough that losing one to the coastline reads as them never existing.
-  if (W.surfaceAt(sc.x + sc.vx, sc.y + sc.vy) !== 0) { sc.vx *= -1; sc.vy *= -1; }
+  if (W.surfaceAt(sc.x + sc.vx, sc.y + sc.vy) !== SURFACE.WATER) { sc.vx *= -1; sc.vy *= -1; }
   for (const b of sc.fleet) {
     b.ang += b.v * dt;
     b.x = sc.x + Math.cos(b.ang) * b.rad;
@@ -603,7 +610,7 @@ function maintainBalneario() {
   }
   let hasBoat = false;
   for (const b of boats) if (b.balneario) hasBoat = true;
-  if (!hasBoat && W.surfaceAt(B.cx, B.cy) === 0) {
+  if (!hasBoat && W.surfaceAt(B.cx, B.cy) === SURFACE.WATER) {
     boats.push({
       x: B.cx, y: B.cy,
       vx: (Math.random() < 0.5 ? 1 : -1) * (6 + Math.random() * 4), vy: 0,
@@ -611,16 +618,16 @@ function maintainBalneario() {
     });
   }
 }
-// Advance a swimmer: slow drift that stays on ACTUAL water (surface class 0),
+// Advance a swimmer: slow drift that stays on ACTUAL water (SURFACE.WATER),
 // so it follows the inlet's real shape instead of the rectangular bbox — no
 // more swimmers wandering onto the streets at the block corners.
 // A swimmer's BODY has to clear the kerb, not just its centre point — testing
 // the centre alone let them ride half-on the balneario's inner acera.
 const SWIM_R = npcType("swimmer").radius ?? 6;
 export function swimmerWater(x, y) {
-  return W.surfaceAt(x, y) === 0 &&
-         W.surfaceAt(x + SWIM_R, y) === 0 && W.surfaceAt(x - SWIM_R, y) === 0 &&
-         W.surfaceAt(x, y + SWIM_R) === 0 && W.surfaceAt(x, y - SWIM_R) === 0;
+  const wet = (px, py) => W.surfaceAt(px, py) === SURFACE.WATER;
+  return wet(x, y) && wet(x + SWIM_R, y) && wet(x - SWIM_R, y) &&
+         wet(x, y + SWIM_R) && wet(x, y - SWIM_R);
 }
 export function advanceSwimmer(pe, dt) {
   pe.ph += dt * 4;
@@ -685,12 +692,12 @@ function maintainBeachGames() {
     beachGames.splice(i, 1);
   }
   if (beachGames.length >= GAMES_WANTED) return;
-  const p = sampleNear(_cam.x, _cam.y, [2], SPAWN_MIN, SPAWN_R);
+  const p = sampleNear(_cam.x, _cam.y, [SURFACE.BEACH], SPAWN_MIN, SPAWN_R);
   if (!p) return;
   // THE WHOLE PITCH HAS TO BE SAND. A game started on a 20 px spit of beach
   // spends its life with the ball in the sea and the players against the kerb.
   for (const [dx, dy] of [[GAME_R, 0], [-GAME_R, 0], [0, GAME_R], [0, -GAME_R]]) {
-    if (W.surfaceAt(p.x + dx, p.y + dy) !== 2) return;
+    if (W.surfaceAt(p.x + dx, p.y + dy) !== SURFACE.BEACH) return;
   }
   const G = { x: p.x, y: p.y, r: GAME_R, ball: { x: p.x, y: p.y, vx: 0, vy: 0, ph: 0 } };
   beachGames.push(G);

@@ -68,6 +68,12 @@ class LandmarkType(StrEnum):
     ESTUARY = "estuary"
     HIGHWAY = "highway"
     VILLAGE = "village"
+    # Drawn but never yet produced. They belong here anyway: the audit found
+    # them as cases in landmarks.js with no member to authorise them, which is
+    # drift in the direction nobody notices — art waiting for a value that the
+    # DTO would have refused the moment a stage tried to use it.
+    MUSEUM = "museum"
+    ANCHOR = "anchor"
 
 
 class PathSurface(StrEnum):
@@ -102,6 +108,90 @@ class RoadClass(StrEnum):
     PEDESTRIAN = "pedestrian"
     PASEO = "paseo"
     BRIDGE = "bridge"
+
+
+class SignKind(StrEnum):
+    """A piece of street furniture. Drives the `switch` in `drawSign`
+    (src/render/c2d/streets.js) — and an unknown kind draws NOTHING, silently,
+    which is why `Sign.kind` may not stay a bare `str`: one typo in a producer
+    and a junction quietly loses its lights.
+
+    The members are what the renderer can draw, which is deliberately more than
+    the build currently emits (`alto`, `banca`, `bus`, `crossing`, `semaforo`,
+    `tope`). Art that exists and has no value to select it is drift too."""
+    ALTO = "alto"                            # stop sign
+    CEDA = "ceda"                            # yield
+    SEMAFORO = "semaforo"                    # traffic light on its pole
+    SEMAFORO_CENTERED = "semaforo_centered"  # on a mast over the lane
+    SEMAFORO_OVERHEAD = "semaforo_overhead"  # on a gantry, two heads
+    SPEED_LIMIT = "speed_limit"
+    CROSSING = "crossing"                    # zebra, painted across the lane
+    TOPE = "tope"                            # hump, with its yellow hatching
+    BANCA = "banca"                          # a bench
+    BUS = "bus"                              # a parada's caseta
+
+
+class PierStyle(StrEnum):
+    """Which deck `drawPier` paints (`PIER_STYLES` in c2d/structures.js). Every
+    value the builder produces must have a recipe there: `malecon` shipped for a
+    week without one and four bajadas were drawn as concrete muelles, complete
+    with blue railings and lamps, lying on the sand."""
+    CONCRETE = "concrete"
+    TIMBER = "timber"
+    APRON = "apron"      # a terminal's asphalt: no rails, no lamps, on the ground
+    CALZADA = "calzada"  # the muelle's own access street, lane dashes and all
+    MALECON = "malecon"  # a bajada onto the sand, in the promenade's pavers
+
+
+class LineEnd(StrEnum):
+    """Which end of a polyline a rule applies to. `Pier.seaEnd` is the one that
+    hangs over open water, and it decides whether the stamp is pulled back by
+    w/2 (a muelle: drivable cells past the drawn deck are where the car gets
+    trapped) or left overhanging (a ferry ramp: the cap IS the overlap you board
+    across). `None` means neither end — an apron on the ground."""
+    FIRST = "first"
+    LAST = "last"
+
+
+#: PAINTING ORDER: a road with a higher rank is stroked over one with a lower,
+#: so a trunk's asphalt covers the service road that runs into it instead of
+#: being cut by it. Read by `ROAD_ORDER` in src/render/c2d/cache.js — which had
+#: no entry for `living_street`, so such a calle would fall to `|| 0` and paint
+#: UNDER the service roads. LATENT, not live: `docs/map.osm` tags no
+#: living_street today, which is exactly why nobody would have found it before a
+#: mapper added one. EVERY RoadClass must appear here; the vocabulary test says
+#: so.
+RENDER_RANK = {
+    RoadClass.SERVICE: 0,
+    RoadClass.PEDESTRIAN: 1,
+    RoadClass.LIVING_STREET: 2,
+    RoadClass.RESIDENTIAL: 2,
+    RoadClass.UNCLASSIFIED: 3,
+    RoadClass.TERTIARY: 4,
+    RoadClass.TERTIARY_LINK: 4,
+    RoadClass.SECONDARY: 5,
+    RoadClass.PRIMARY_LINK: 6,
+    RoadClass.PRIMARY: 7,
+    RoadClass.TRUNK_LINK: 8,
+    RoadClass.TRUNK: 9,
+    RoadClass.PASEO: 10,
+    RoadClass.BRIDGE: 11,
+}
+
+#: A street this class or wider never yields to the one crossing it — the set
+#: `service/signs.py` uses to decide which end of which calle gets an ALTO.
+#: The Paseo is in it: two lanes with a palm median is not something you cross
+#: without stopping.
+YIELDS_TO = (RoadClass.TRUNK, RoadClass.TRUNK_LINK, RoadClass.PRIMARY,
+             RoadClass.PRIMARY_LINK, RoadClass.SECONDARY, RoadClass.PASEO)
+
+#: Where ambient traffic is allowed to run at main-road speed (`MAIN_ROAD` in
+#: src/game/spawns.js). NOT the same set as `YIELDS_TO`, and the audit was right
+#: to flag that they had been treated as one: the Paseo de los Turistas is a
+#: road you stop for and also a promenade nobody does 76 px/s down. Two names
+#: because they are two questions.
+TRAFFIC_MAIN = (RoadClass.TRUNK, RoadClass.TRUNK_LINK, RoadClass.PRIMARY,
+                RoadClass.PRIMARY_LINK, RoadClass.SECONDARY)
 
 
 class IslandKind(StrEnum):

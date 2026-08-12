@@ -130,7 +130,7 @@ export class PixiScene {
     // vector roads: acera shoulders under the asphalt, rounded joins — the
     // smooth look the 4px-texel surface grid can't give
     const roads = new Graphics();
-    const ACERA = (W.META && W.META.aceraPx) || 8;
+    const ACERA = W.ACERA_PX;
     for (const r of t.roads) {
       if (r.cls === "pedestrian") continue;
       this._stroke(roads, r.pts);

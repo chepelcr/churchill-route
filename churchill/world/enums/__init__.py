@@ -15,12 +15,14 @@ process — into src/world2d/*.json and from there into the client:
     no encoder help. Nothing downstream can tell it apart from the literal.
 """
 from .features import (
-    GreenType, IslandKind, LandmarkType, ParcelUse, PathSurface, RoadClass,
-    Weather,
+    RENDER_RANK, TRAFFIC_MAIN, YIELDS_TO, GreenType, IslandKind, LandmarkType,
+    LineEnd, ParcelUse, PathSurface, PierStyle, RoadClass, SignKind, Weather,
 )
-from .surface import CLASS_NAMES, Surface
+from .surface import CLASS_NAMES, Surface, SurfaceName
 
 __all__ = [
-    "CLASS_NAMES", "GreenType", "IslandKind", "LandmarkType", "ParcelUse",
-    "PathSurface", "RoadClass", "Surface", "Weather",
+    "CLASS_NAMES", "GreenType", "IslandKind", "LandmarkType", "LineEnd",
+    "ParcelUse", "PathSurface", "PierStyle", "RENDER_RANK", "RoadClass",
+    "SignKind", "Surface", "SurfaceName", "TRAFFIC_MAIN", "Weather",
+    "YIELDS_TO",
 ]

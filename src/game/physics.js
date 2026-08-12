@@ -3,7 +3,7 @@
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains, schools, pushFloat } from "./state.js";
-import { SURFACE_MUL } from "./surfaces.js";
+import { SURFACE, SURFACE_MUL } from "./surfaces.js";
 import { HULL, hullBankAssist, hullFriction, hullGlance, hullLean, hullThrottle, hullTopMul, hullTurn } from "./boat.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceBeachGames, advanceBeachPlayer, advanceCarOnRoad, advanceEditorRoute, advanceTrain, advanceSchool } from "./spawns.js";
@@ -23,7 +23,7 @@ import { updateEditorTriggers } from "./editorGameplay.js";
 import { activeEditorBoost, tickEditorBoosts } from "./editorContent.js";
 
 // surface classes pedestrians walk on (aceras only — never the road)
-const PED_CLS = [6]; // fallback for free (stadium) peds; rail peds cross via advancePed
+const PED_CLS = [SURFACE.ACERA]; // fallback for free (stadium) peds; rail peds cross via advancePed
 
 //: how close to the berth, and how slow, before the lancha is offered. Parking
 //: is the consent: driving PAST a muelle must never put you in a boat.
@@ -130,7 +130,7 @@ function djLevel(p) {
 }
 
 function surfLevel(p, surf) {
-  if (surf !== 5) return 0;
+  if (surf !== SURFACE.BRIDGE) return 0;
   let best = 0;
   // ARCLENGTH ALONG THE MUELLE, whichever one you are on and however it bends:
   // 0 at the shore end, 1 at the sea end. Both piers are polylines now, so this
@@ -198,15 +198,15 @@ export function update(dt) {
   updateDayCycle(dt);          // the sky, when the mode asked for a clock
   updateTide(dt);              // …and the water under it, always
   const surf = W.surfaceAt(p.x, p.y);
-  const onRoad = surf === 3 || surf === 5; // road or bridge deck
-  const onSand = surf === 2;
-  const inWater = surf === 0;
-  // A BOAT'S GOOD SURFACE IS THE ONE A CAR DROWNS IN. SURFACE_MUL[0] = 0.35
+  const onRoad = surf === SURFACE.ROAD || surf === SURFACE.BRIDGE; // road or bridge deck
+  const onSand = surf === SURFACE.BEACH;
+  const inWater = surf === SURFACE.WATER;
+  // A BOAT'S GOOD SURFACE IS THE ONE A CAR DROWNS IN. The water multiplier
   // stays exactly what it is — it describes a CAR in the sea, and a car can
   // still end up there off a deck — but for a hull the estero is the road.
   const afloat = veh.medium === "water";
   const surfaceMul = aboard ? 1.0                       // steel deck
-    : afloat ? (surf === 0 ? 1.0 : 0.5)                 // aground: she barely moves
+    : afloat ? (surf === SURFACE.WATER ? 1.0 : 0.5)     // aground: she barely moves
     : SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
   const wetMul = state.weather === "storm" ? 0.92 : 1;
   // i-frames after a traffic hit so one collision can't roll the churchill
@@ -242,35 +242,36 @@ export function update(dt) {
     if (deckAt(x, y)) return false;
     if (W.driveUnderAt(x, y)) return false;
     // BEACH IS NOT A WALL. The world has always said so — `DRIVABLE` in
-    // churchill/world/enums/surface.py includes it, and SURFACE_MUL[2] = 0.7 is
+    // churchill/world/enums/surface.py includes it, and SURFACE_MUL[BEACH] is
     // a speed for driving on sand — but the collider walled it off, so 78,830
     // cells of beach were drivable in the build's own reachability gate and
     // untouchable in the game. The sand is slow and loose, not a barrier.
     const c = W.surfaceAt(x, y);
     // A BOAT'S WORLD IS THE INVERSE OF A CAR'S. Water is the only ground she
-    // has, and everything else is a wall — including the muelle deck (5),
+    // has, and everything else is a wall — including the muelle deck (BRIDGE),
     // because a pier is something a hull goes AROUND, not a ramp she climbs.
     // Inverting the test rather than listing water's complement is deliberate:
     // the surface classes are append-only, so a class added later is a wall to
     // a boat by default, which is the safe direction to be wrong in.
-    if (afloat) return c !== 0;
-    // …and the MALECÓN (10) is a wall to a car, like the acera. It was drivable
+    if (afloat) return c !== SURFACE.WATER;
+    // …and the MALECÓN is a wall to a car, like the acera. It was drivable
     // at 0.55 — "you crawl among people" — which was an attempt to say "this is
     // not really for you" in the only vocabulary the surface table had. The
     // honest version is that a promenade is somewhere people walk. The two
     // Paseo kiosks standing on it are reached by their own stamped calle
     // auxiliar, the bajadas onto the sand are stamped ROAD, and the campo
     // ferial is packed earth, so nothing that has to be reachable went with it.
-    return c === 1 || c === 6 || c === 0 || c === 10;
+    return c === SURFACE.LAND || c === SURFACE.ACERA || c === SURFACE.WATER ||
+           c === SURFACE.MALECON;
   };
-  // On a pier deck (class 5) the only wall is the surrounding water, so the
+  // On a pier deck the only wall is the surrounding water, so the
   // usual 20% overhang forgiveness reads as "half off the muelle" — probe at
   // near-full extents there so the body can't hang over the edge. A HULL WANTS
   // THE FORGIVENESS BACK: that 0.98 exists for a kerb you can see, and the
   // estero's wall is mangrove that reads as ragged, so a boat brushing it
   // should slide rather than stop.
   const probeF = afloat ? HULL.probeF
-    : (aboard || W.surfaceAt(p.x, p.y) === 5) ? 0.98 : 0.8;
+    : (aboard || W.surfaceAt(p.x, p.y) === SURFACE.BRIDGE) ? 0.98 : 0.8;
   const hw = veh.w * 0.5 * probeF, hh = veh.h * 0.5 * probeF;
   const BUBBLE_PAD = 1.5;                     // keeps the drawn body off the kerb
   const br = hh + BUBBLE_PAD;                 // bubble radius = half the body width
@@ -362,8 +363,8 @@ export function update(dt) {
   const clearSpot = (x, y) => {
     if (deckAt(x, y)) return !blockedAt(x, y);
     const c = W.surfaceAt(x, y);
-    if (afloat) return c === 0 && !blockedAt(x, y);
-    return (c === 3 || c === 5) && !blockedAt(x, y);
+    if (afloat) return c === SURFACE.WATER && !blockedAt(x, y);
+    return (c === SURFACE.ROAD || c === SURFACE.BRIDGE) && !blockedAt(x, y);
   };
 
   // Turning must never sweep the body INTO a wall (that penetration was the
@@ -462,12 +463,12 @@ export function update(dt) {
   // shore biases you back toward the middle of the water you are in, so the
   // channel reads as a channel instead of as a corridor with two things in it
   // that catch you. Before the integration, so it is a force and not a shove.
-  if (afloat) hullBankAssist(p, veh, dt, (x, y) => W.surfaceAt(x, y) === 0);
+  if (afloat) hullBankAssist(p, veh, dt, (x, y) => W.surfaceAt(x, y) === SURFACE.WATER);
   p.x += p.vx * dt; p.y += p.vy * dt;
-  // Solid cuadras + aceras + open water: class 1 land, class 6 acera/curb and
-  // class 0 water are the walls you slide along. THE SAND IS NOT ONE — see
-  // `isWall` above: beach is drivable, slow and loose, and the malecón (10)
-  // beside it is drivable paving. What keeps you off the beach is that nothing
+  // Solid cuadras + aceras + open water: LAND, ACERA (the kerb) and WATER are
+  // the walls you slide along. THE SAND IS NOT ONE — see `isWall` above: beach
+  // is drivable, slow and loose, and the MALECON beside it is a wall for a car,
+  // like the acera. What keeps you off the beach is that nothing
   // leads there any more except the bajadas, not a wall.
   const hit0 = contactAt(p.x, p.y);
   if (hit0) {
@@ -519,7 +520,7 @@ export function update(dt) {
     // back on the road, never on a paseo/acera edge)
     // — and for a hull the drivable street IS the water, or the pose is never
     // recorded at all and the pocket fallback above can never fire.
-  } else if (afloat ? W.surfaceAt(p.x, p.y) === 0 : W.onRoad(p.x, p.y)) {
+  } else if (afloat ? W.surfaceAt(p.x, p.y) === SURFACE.WATER : W.onRoad(p.x, p.y)) {
     p.freeX = p.x; p.freeY = p.y; p.freeA = p.a;
   }
   p.speed = Math.hypot(p.vx, p.vy);
@@ -840,7 +841,8 @@ function maintainArcadeCoins(dt) {
     const x = cam.x + Math.cos(a) * r, y = cam.y + Math.sin(a) * r;
     const s = W.surfaceAt(x, y);
     // streets, pier deck, calle peatonal, malecón
-    if (s !== 3 && s !== 5 && s !== 7 && s !== 10) continue;
+    if (s !== SURFACE.ROAD && s !== SURFACE.BRIDGE && s !== SURFACE.BOULEVARD &&
+        s !== SURFACE.MALECON) continue;
     if (Math.hypot(x - p.x, y - p.y) < ACOIN_SPAWN_MIN) continue;
     arr.push({ x, y, t: Math.random() * 6 });
   }

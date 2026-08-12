@@ -8,21 +8,26 @@
 // the most reliable buffer->texture path in Pixi 8 (a raw Uint8Array
 // TextureSource uploads blank on some drivers).
 import { Texture, CanvasSource } from "pixi.js";
+import { SURFACE } from "../../domain/vocabulary.generated.js";
 
-// class -> [r,g,b]; mirrors the canvas smoke viewer's CLASS_COLOR.
+// class -> [r,g,b]. Keyed through SURFACE so the class a colour belongs to is
+// named rather than counted; the world editor keeps the same table for its own
+// preview and used to stop at 8 of these, which is how `malecon` came to be
+// missing from its tile palette entirely.
 const CLASS_RGB = {
-  0: [0x2a, 0x7f, 0xa8], // water
-  1: [0xe8, 0xd5, 0xa0], // land (cuadra interior)
-  2: [0xf4, 0xd7, 0x7a], // beach
-  3: [0x3a, 0x35, 0x40], // road
-  4: [0xf0, 0x8a, 0x5d], // paseo
-  5: [0x8c, 0x8c, 0x8c], // bridge/pier
-  6: [0xce, 0xc7, 0xb2], // acera
-  7: [0xd9, 0xd6, 0xcd], // boulevard (stone paving)
-  8: [0x9c, 0x7a, 0x4f], // barro — the same dirt the road vector is drawn in
-  9: [0xa9, 0x9d, 0x8b], // gravel / lastre
-  10: [0xe4, 0xd2, 0xae], // malecón — warm pavers, a shade off the sand it edges
+  [SURFACE.WATER]: [0x2a, 0x7f, 0xa8],
+  [SURFACE.LAND]: [0xe8, 0xd5, 0xa0],       // cuadra interior
+  [SURFACE.BEACH]: [0xf4, 0xd7, 0x7a],
+  [SURFACE.ROAD]: [0x3a, 0x35, 0x40],
+  [SURFACE.PASEO]: [0xf0, 0x8a, 0x5d],
+  [SURFACE.BRIDGE]: [0x8c, 0x8c, 0x8c],     // bridge and pier decks
+  [SURFACE.ACERA]: [0xce, 0xc7, 0xb2],
+  [SURFACE.BOULEVARD]: [0xd9, 0xd6, 0xcd],  // stone paving
+  [SURFACE.BARRO]: [0x9c, 0x7a, 0x4f],      // the same dirt the road vector uses
+  [SURFACE.GRAVEL]: [0xa9, 0x9d, 0x8b],     // lastre
+  [SURFACE.MALECON]: [0xe4, 0xd2, 0xae],    // warm pavers, a shade off the sand
 };
+// MAGENTA ON PURPOSE: a class with no colour has to be visible, not plausible.
 const FALLBACK = [0xff, 0x00, 0xff];
 
 // Returns a Pixi Texture (nearest-filtered) for the tile's surface grid.

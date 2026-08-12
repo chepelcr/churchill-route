@@ -254,6 +254,18 @@ MANGROVE_SEED = 57              # deterministic scatter (jitter + radius)
 SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so
                                 # fully-filled small cuadras don't exhaust it
                                 # mid-map and leave far blocks empty)
+                                # SATURATED, AND IT BINDS. The log reads
+                                # `+79306 synthesized (total 80000)` and read the
+                                # same before `BLOCK_MIN_M` found 183 more
+                                # manzanas — so those blocks did not gain houses,
+                                # they took them: ~3 400 footprints left
+                                # x 52 000..60 000 (Mata de Limón, Caldera) for
+                                # the centro. That is the failure this cap was
+                                # raised to avoid, recurring at 599 blocks. It
+                                # wants raising again, but the number is a
+                                # density AND performance decision (buildings are
+                                # AABB-culled per frame), so it is not a silent
+                                # bump — see ROADMAP.md §4.
 SYNTH_SEED = 77
 BLDG_INSET = 2                  # px seam per side so adjacent roofs don't fuse
 FRONTAGE_DEPTH = 3              # buildable band (CUADs) from the block edge
@@ -265,8 +277,33 @@ SYNTH_LOTS = [((2, 2), 0.25), ((2, 1), 0.20), ((1, 2), 0.20),
               ((1, 1), 0.30), ((3, 2), 0.05)]
 
 # ---- cuadra detection --------------------------------------------------------
-BLOCK_MIN_CUADS = 6       # a real cuadra fits >= 6x6 buildable cuadrículas
-SLIVER_MAX_CUADS = 25.0   # smaller-and-thinner land paves to plaza concrete
+# HOW BIG A PIECE OF LAND HAS TO BE TO COUNT AS A MANZANA — and it is a REAL
+# SIZE, so it is in metres.
+#
+# It was `BLOCK_MIN_CUADS = 6`, i.e. 6 x CUAD, i.e. 48 m at today's scale, and
+# it was set ABOVE WHAT THIS TOWN CAN PHYSICALLY PRODUCE: a standard Puntarenas
+# manzana yields an inscribed square of 4.6 cuadrículas. So ordinary blocks were
+# classified as coastal strips (no buildings at all) or as intersection wedges
+# (paved over as concrete) — the Mercado Municipal's own short, wide manzana was
+# one of the slivers. Two full builds over the same 2 108 land components, at
+# 48 m and at 32: cuadras 416 -> 599, green 566 -> 383, slivers 1126 unchanged.
+# See `detect_blocks` for what that means and what it still does not fix.
+#
+# 32 m is a block a house can stand on and comfortably below the 36.8 m a
+# normal manzana here gives. Being metres, it also survives the next rescale:
+# `docs/RESCALE.md` notes the old bar "passes" after one only because the
+# cuadrícula shrinks in metres, which is the threshold moving, not the town.
+BLOCK_MIN_M = 32
+#: A cuadrícula's side in metres (8 m today): the bridge between the two units.
+CUAD_M = CUAD / PLANAR_PX_PER_M
+#: The bar in whole buildable cuadrículas, which is the unit `detect_blocks`
+#: counts in — its inscribed-square DP walks the coarse grid, not the raster.
+BLOCK_MIN_CUADS = max(1, round(BLOCK_MIN_M / CUAD_M))
+#: Land with no room for a block AND smaller than this paves to plaza concrete:
+#: the corner wedges and alley leftovers. In m² for the same reason. 1 600 m² is
+#: exactly the 25.0 cuadrículas this was, so it changes nothing today.
+SLIVER_MAX_M2 = 1600.0
+SLIVER_MAX_CUADS = SLIVER_MAX_M2 / (CUAD_M ** 2)
 
 # ---- paseo separators --------------------------------------------------------
 # The Paseo de los Turistas is a divided avenue: a dashed palm median runs down

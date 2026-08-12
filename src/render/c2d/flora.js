@@ -20,6 +20,7 @@
 // A palm stays a palm — fronds, a leaning trunk, its own sway — but it takes
 // its shadow, its scale and its seed from the same three lines as the rest.
 import { WORLD2D as W } from "../../world2d/index.js";
+import { SURFACE } from "../../game/surfaces.js";
 import { ACERA_PX, ctx, hash01 } from "./gfx.js";
 
 // The one palette. Dark body → mid → highlight, plus the two trunks.
@@ -131,7 +132,6 @@ function paintPalm(pa, t) {
 //     deliberately left blank (`RUN` slots at a time).
 const ROADSIDE_PITCH = 46;    // nominal px between slots
 const RUN = 5;                // slots per planted / blank stretch
-const CLS_ACERA = 6;
 
 function roadsideTrees(r) {
   // an empty list is also "not resolved yet" — a kerb whose tile had not
@@ -167,7 +167,7 @@ function roadsideTrees(r) {
       if (hs < 0.42) continue;                     // this kerb stays empty here
       const d = off + hs * 3.5;
       const x = px + nx * side * d, y = py + ny * side * d;
-      if (W.surfaceAt(x, y) !== CLS_ACERA) continue;   // acera or nothing
+      if (W.surfaceAt(x, y) !== SURFACE.ACERA) continue;   // acera or nothing
       out.push({ x, y, s: 0.62 + hash01(base * 71.3 + slot * 5.7 + side) * 0.34 });
     }
   }

@@ -11,6 +11,9 @@
 // Call `WORLD2D.ready(x, y)` once before the sim starts, and `WORLD2D.update(x,
 // y)` each frame to keep the tiles around the camera resident.
 import manifest from "./manifest.json";
+// The grid's vocabulary, generated from churchill/world/enums/surface.py — the
+// same enum whose values are the bytes this file decodes out of the RLE.
+import { SURFACE } from "../domain/vocabulary.generated.js";
 
 // () => Promise<{default: tileJson}> per tile, keyed by module path. Vite turns
 // each tile into an on-demand chunk; nothing is fetched until first referenced.
@@ -23,6 +26,17 @@ export const WORLD2D = (function () {
   const TCOLS = META.tileCols, TROWS = META.tileRows;
   const COLS = manifest.grid.cols, ROWS = manifest.grid.rows;
   const CLASSES = manifest.grid.classes; // ["water","land","beach",...]
+
+  // ----- the world's own measurements, with ONE legacy default each ----------
+  // `aceraPx` and `cuad` are required fields of `manifest.meta`, so in
+  // production these defaults never fire. They existed anyway, four times over,
+  // and they DISAGREED: the sim and the editor fell back to an acera of 12 px
+  // and both renderers to 8, so a stale manifest would have moved every NPC
+  // one way and drawn the kerb another. One fallback, resolved here where the
+  // manifest is read, and everybody asks this accessor for the answer.
+  const LEGACY_META = { aceraPx: 12, cuad: 20 };
+  const ACERA_PX = META.aceraPx || LEGACY_META.aceraPx; // sidewalk depth per side
+  const CUAD = META.cuad || LEGACY_META.cuad;           // px per cuadrícula
 
   // ----- backdrop + POIs (small, eager from the manifest) --------------------
   const LANDMARKS = manifest.landmarks;
@@ -317,21 +331,25 @@ export const WORLD2D = (function () {
   }
 
   // ----- surface grid --------------------------------------------------------
-  // 0 water, 1 land, 2 beach, 3 road, 4 paseo, 5 bridge, 6 acera, 7 boulevard,
-  // 8 barro, 9 gravel, 10 malecón.
+  // Class names/ids: SURFACE, from the generated vocabulary. Out of bounds and
+  // not-yet-resident both answer WATER — see `tileResident` for why that is the
+  // right default and also a trap.
   function surfaceAt(x, y) {
-    if (x < 0 || y < 0 || x >= W || y >= H) return 0;
+    if (x < 0 || y < 0 || x >= W || y >= H) return SURFACE.WATER;
     const tc = (x / TILE_PX) | 0, tr = (y / TILE_PX) | 0;
     const t = decodedTile(tc, tr);
-    if (!t) return 0; // tile not resident yet → treat as open water
+    if (!t) return SURFACE.WATER; // tile not resident yet → treat as open water
     const lc = ((x - t.x) / CELL) | 0, lr = ((y - t.y) / CELL) | 0;
-    if (lc < 0 || lr < 0 || lc >= t.cols || lr >= t.rows) return 0;
+    if (lc < 0 || lr < 0 || lc >= t.cols || lr >= t.rows) return SURFACE.WATER;
     return t.grid[lr * t.cols + lc];
   }
-  function onRoad(x, y) { const c = surfaceAt(x, y); return c === 3 || c === 5; }
-  function onPaseo(x, y) { return surfaceAt(x, y) === 4; }
-  function inWater(x, y) { return surfaceAt(x, y) === 0; }
-  function onBeach(x, y) { return surfaceAt(x, y) === 2; }
+  // ASPHALT AND DECKS, not the whole DRIVABLE role: `onRoad` answers "is this a
+  // full-speed lane the traffic model may use", so the sand, the bulevar and the
+  // calles de barro are deliberately out of it.
+  function onRoad(x, y) { const c = surfaceAt(x, y); return c === SURFACE.ROAD || c === SURFACE.BRIDGE; }
+  function onPaseo(x, y) { return surfaceAt(x, y) === SURFACE.PASEO; }
+  function inWater(x, y) { return surfaceAt(x, y) === SURFACE.WATER; }
+  function onBeach(x, y) { return surfaceAt(x, y) === SURFACE.BEACH; }
   function driveUnderAt(x, y) {
     for (const feature of ROOFS) {
       const properties = feature.properties || {};
@@ -417,7 +435,7 @@ export const WORLD2D = (function () {
   function reachablePointNear(x, y, radius = 480, accept = null) {
     const ok = (px, py) => {
       const c = surfaceAt(px, py);
-      return (c === 3 || c === 5) && (!accept || accept(px, py));
+      return (c === SURFACE.ROAD || c === SURFACE.BRIDGE) && (!accept || accept(px, py));
     };
     const cands = [];
     for (let k = 0; k < 220; k++) {
@@ -466,7 +484,7 @@ export const WORLD2D = (function () {
   }
 
   return {
-    W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
+    W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES, ACERA_PX, CUAD,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
     WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, FERIA, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle

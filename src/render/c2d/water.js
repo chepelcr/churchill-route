@@ -35,6 +35,7 @@
 //     rectangle in world px, in coarse steps, and every per-feature pass culls
 //     on its own AABB first.
 import { WORLD2D as W } from "../../world2d/index.js";
+import { SURFACE } from "../../game/surfaces.js";
 import { boats, pedestrians, state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
 import { aabbInView, ctx, hash01, weatherColors } from "./gfx.js";
@@ -350,7 +351,7 @@ function buildShore(i, poly, rc) {
     // transform, and this runs deep inside the camera transform with the paths
     // in world space; the surface grid is the authoritative answer to "is this
     // point sea", it is what physics uses, and it costs a tile lookup.
-    const land = (px, py) => W.surfaceAt(px, py) !== 0;
+    const land = (px, py) => W.surfaceAt(px, py) !== SURFACE.WATER;
     const outA = !land(mx + nx * PROBE, my + ny * PROBE);
     const outB = !land(mx - nx * PROBE, my - ny * PROBE);
     if (outA === outB) { segs.push(null); continue; }   // both sea or both land: not a shoreline

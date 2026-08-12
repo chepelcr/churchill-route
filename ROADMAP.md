@@ -32,27 +32,65 @@ No son riesgos teóricos: §13 los verificó contra el manifest publicado.
       piers `style:"malecon"` (las bajadas) y `structures.js` caía a `concrete`:
       se dibujaban como muelle de hormigón con baranda azul y lámparas. Arreglado
       en este commit — el caso exacto que §13.4 predijo.
-- [ ] **El vocabulario de superficies ya divergió.** El manifest tiene 11 clases;
-      `world-editor/src/npcs.js` conoce 8, el validador del host 10, las paletas
-      10. `malecon` falta en la validación y en la paleta del editor; `barro`,
-      `gravel` y `malecon` faltan en el vocabulario de NPCs.
-- [ ] **Enteros de superficie crudos** (`0`, `2`, `5`, `6`) en `world2d/index.js`,
-      `physics.js`, `spawns.js`, `crossing.js`, `c2d/water.js`, `c2d/flora.js`.
-      Renumerar está prohibido; usarlos crudos esconde la intención.
-- [ ] **Las tablas de rango de calle no coinciden** (Canvas `ROAD_ORDER` vs la del
-      editor; `MAIN_ROAD` vs `MAJOR` del builder, que incluye `paseo`).
-- [ ] **`Sign.kind` es `str`.** El Canvas soporta `ceda`, `semaforo_centered`,
-      `semaforo_overhead` y `speed_limit`; una errata simplemente no dibuja nada.
-- [ ] **`LandmarkType` no tiene `museum` ni `anchor`**, que el Canvas sí despacha.
-- [ ] **`aceraPx` en desacuerdo**: el manifest dice 12; sim/editor caen a 12 y
-      Canvas/Pixi a 8. Un meta viejo cambia colocación y dibujo de forma distinta.
+**Cerrada (2026-08-11) por un vocabulario GENERADO**, no por corregir las copias
+a mano — corregirlas es lo que ya se había hecho y es la razón de que divergieran.
+`tools/gen_vocabulary.py` (`pnpm vocabulary`) lee `churchill/world/enums/` y
+escribe `src/domain/vocabulary.generated.js` + `src/assets/vocabulary.generated.json`;
+la generación es de UNA VÍA y los artefactos van al repo, porque el juego compila
+con Vite y no puede depender de Python. `tests/test_vocabulary.py` es la
+compuerta: 14 aserciones que fallan si un artefacto queda viejo, si el manifest
+publicado no coincide clase por clase con el enum, o si un valor emitido no
+tiene implementación en el renderer.
+
+- [x] **El vocabulario de superficies ya divergió.** El editor lee ahora
+      `vocabulary.generated.json` desde el juego (y **muere al arrancar** si no
+      está, en vez de validar contra un vocabulario de tres fases atrás):
+      superficies 10 → **11**, estilos de muelle 2 → **5**, `market` en la paleta
+      de parcelas, `malecon` en la paleta de tiles (clase 10 se pintaba
+      `undefined` — 54 623 celdas de frente de mar dibujadas como nada). El
+      `SURFACE_CLASS_NAMES` de `npcs.js` queda sólo como último recurso, ya
+      completo. Un test del editor que fijaba `classes.slice(8)` a mano llevaba
+      una semana fallando y culpando al MUNDO: ahora compara contra el enum.
+- [x] **Enteros de superficie crudos.** Los seis archivos usan `SURFACE.*`; el
+      `const CLS_ACERA = 6` local de `flora.js` desapareció, y un test rechaza
+      cualquier `surfaceAt(...) === <número>` nuevo.
+- [x] **Las tablas de rango de calle no coinciden.** `RENDER_RANK` en el enum →
+      `ROAD_RANK` generado, que Canvas consume: `living_street` **no tenía rango**
+      y habría caído a `|| 0`, pintada debajo de las calles de servicio —
+      latente, porque hoy el mapa no etiqueta ninguna, que es justo la razón por
+      la que habría llegado a producción. `MAIN_ROAD` y
+      `MAJOR` quedan como **dos** sets con nombre (`TRAFFIC_MAIN`, `YIELDS_TO`) —
+      son dos preguntas distintas y el Paseo es la diferencia; un test exige que
+      sigan siendo distintos.
+- [x] **`Sign.kind` es `str`.** `SignKind` (10 miembros: todo lo que `drawSign`
+      dibuja, no sólo lo que el build emite hoy) y `Sign.kind: SignKind` en el
+      DTO, así que una errata **falla el build**. Un test exige que cada miembro
+      tenga su `case`.
+- [x] **`LandmarkType` no tiene `museum` ni `anchor`.** Añadidos; el test exige
+      que los 26 tipos tengan despacho en `landmarks.js`.
+- [x] **`aceraPx` en desacuerdo.** Un solo fallback, en el accesor que lee el
+      manifest (`W.ACERA_PX`, `W.CUAD`). Un test recorre `src/` y falla si
+      cualquier otro módulo lee `meta.aceraPx` por su cuenta.
+- [x] **`Pier.style`/`surface`/`seaEnd` sin tipo.** `PierStyle`, `SurfaceName`
+      (derivado de `Surface`, no re-escrito) y `LineEnd`. `surface` era
+      `PathSurface | str`, que aceptaba `"paved"` y cualquier otra cosa.
 
 ### 2. P0 — impedir el desajuste data ↔ render
 
 - [ ] **Registro canónico de superficies**: un solo JSON versionado (ID de wire,
       etiquetas, roles, velocidad, materiales) generado hacia Python y JS.
+      *Medio hecho*: el vocabulario generado ya lleva ID, etiqueta y los cinco
+      role sets. Faltan la VELOCIDAD (`SURFACE_MUL` sigue autorada en
+      `src/game/surfaces.js`, que es el sitio correcto hasta que exista el
+      registro) y los MATERIALES (colores, todavía duplicados Canvas/Pixi/editor
+      — `CLASS_RGB` ya está keyed por `SURFACE`, que es la mitad del camino).
 - [ ] **Capa de enums** para las identidades sueltas (stage/sign/pier/vehicle/
       host/geometry/mode) + vocabulario JS/JSON generado determinísticamente.
+      *El generador existe*; ya lleva `SignKind`, `PierStyle`, `LineEnd`,
+      `SurfaceName` + los 7 enums que ya había. Faltan `StageKind`,
+      `VehicleMedium`, `VehicleKind`, `HostKind`, `GeometryKind`,
+      `EditorOperation`, `RendererBackend` (P0 en §13) — cada uno es un miembro
+      en `enums/` y una línea en `STR_ENUMS`.
 - [ ] **`src/assets/vehicles.json`**: stats, medio, bounds, partes, colores,
       montaje de carga, voz de audio, precio. Queda motor: física, intérprete de
       siluetas, síntesis WebAudio.
@@ -79,10 +117,41 @@ registros. Detalle y autoría propuesta por fila: `docs/inventory.md` §12.
 cuadrícula como unidad de PANTALLA) deja el mundo byte-idéntico y es el que
 conviene hacer antes de mover arte, para no re-medir dos veces.
 
-- [ ] **`BLOCK_MIN_CUADS = 6` rechaza manzanas reales** — 61 % de las componentes
-      de tierra >4 cuadrículas quedan bajo la barra (417 cuadras contra 569 verdes
-      y 984 slivers). Una manzana normal de Puntarenas inscribe **4.6**. Arreglo
-      de una línea, **independiente** del reescalado: no dejar que lo justifique.
+- [x] **`BLOCK_MIN_CUADS = 6` rechazaba manzanas reales.** Hecho 2026-08-11 y,
+      como decía la nota, **sin** el reescalado. Ahora es `BLOCK_MIN_M = 32`:
+      **416 → 599 cuadras**, 566 → **383** verdes, y las 1 126 cuñas pavimentadas
+      **sin cambio** — las 183 que se movieron salieron todas de las verdes, o
+      sea de manzanas a las que no se les ponía ni una casa. `SLIVER_MAX_CUADS`
+      pasa a `SLIVER_MAX_M2 = 1600.0` (idéntico). Sigue pendiente la definición
+      **topológica** de manzana (cara del grafo de ejes), que es la pregunta
+      correcta; el docstring de `detect_blocks` dice por qué el tamaño no lo es.
+- [ ] **`SYNTH_MAX_TOTAL = 80000` está saturado y ahora reparte, no suma.**
+      Destapado por lo de arriba, no causado por él: el log dice
+      `+79306 synthesized (total 80000)` **idéntico** en los dos builds, así que
+      las 183 manzanas nuevas no ganaron casas — se las quitaron a otras. Medido
+      sobre los tiles que cambiaron: **~3 400 huellas salieron de
+      x 52 000..60 000** (Mata de Limón, Caldera) hacia el espigón, el centro y
+      los barrios. El comentario del propio tope dice que se subió para no "dejar
+      vacíos los bloques lejanos", que es lo que vuelve a pasar con 599 bloques.
+      Mantener la densidad por manzana pediría ~**114 000** huellas: es una
+      decisión de densidad **y de rendimiento** (se cullean por AABB cada frame y
+      el manifest ya pesa 16,7 MB), así que la toma una persona, no un bump
+      silencioso.
+- [ ] **Un templo de 30 celdas quedó 878 px peor sentado.**
+      `osm_worship_964088820` (Iglesia Cristana) tiene 21/30 celdas de acera bajo
+      su contorno mapeado, así que `_seat_site_in_manzana` la reubica en los dos
+      builds; sólo cambió a qué manzana. De las 17 parcelas que se movieron,
+      **15 de 16** con vía de OSM quedaron MÁS CERCA de su contorno mapeado (una
+      pasó de 2 144 px a 144), ésta más lejos. El mecanismo: la manzana se elige
+      por la CELDA más cercana, pero el lote se encaja en el único rectángulo
+      libre más grande de esa manzana, que en un bloque grande puede quedar lejos.
+      Pre-existente, no lo introduce este cambio.
+- [ ] **Paso 0: retirar la cuadrícula como unidad de PANTALLA.** `VIEW_WIDTH_M`,
+      `MAX_VIEW_M` (el piso 2.2 que decide el encuadre en teléfono y no está en
+      `config.py`), `LOT_GRID_M`, `SIDEWALK_M`, `TILE_M`. Deja el mundo
+      byte-idéntico y es lo siguiente que conviene hacer aquí. Medio empezado:
+      `CUAD_M` ya existe en `config.py` y el cliente pregunta `W.CUAD` en vez de
+      caer a su propio 20.
 
 ## ✅ El malecón llega a la acera, el Paseo tiene feria, y la Travesía es un nivel (2026-08-11)
 
@@ -128,13 +197,9 @@ la cuadra es su suelo (`"cuadra": True`, `FieldService._manzana_ground`).
 
 Pendiente, y **no** lo arregla este cambio (ver `docs/RESCALE.md`):
 
-- [ ] **`BLOCK_MIN_CUADS = 6` rechaza manzanas reales.** Medido: **61 %** de las
-      componentes de tierra mayores a 4 cuadrículas quedan bajo la barra de 6x6
-      — 417 cuadras contra 569 verdes y 984 slivers pavimentados. Una manzana
-      normal de Puntarenas da un cuadrado inscrito de **4.6** cuadrículas contra
-      una barra de 6: la barra está por encima de lo que este pueblo puede dar.
-      Arreglo de una línea (bajarla a 4, o expresarla en metros), independiente
-      del reescalado — no dejar que lo justifique.
+- [x] **`BLOCK_MIN_CUADS = 6` rechazaba manzanas reales.** Arreglado 2026-08-11
+      expresándola en metros (`BLOCK_MIN_M = 32`), independiente del reescalado
+      como decía esta nota. Detalle y censo medido en §4 de arriba.
 - [ ] **El reescalado del mundo** — `docs/RESCALE.md` lo mapea completo: por qué
       ninguna proyección lo arregla (el carro mide 7.6 m de ancho), las tres
       variantes con sus números medidos, el piso de zoom que en teléfono decide

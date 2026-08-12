@@ -10,7 +10,7 @@ never in the middle.
 a `bytearray`, compared to a raw cell, and JSON-encoded as the number it always
 was. Nothing downstream can tell the difference.
 """
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 
 class Surface(IntEnum):
@@ -43,6 +43,13 @@ class Surface(IntEnum):
 
 #: index -> name, exactly as it ships in the manifest
 CLASS_NAMES = [s.label for s in Surface]
+
+#: The same vocabulary as a STRING, for the handful of records that name a
+#: surface class instead of holding a cell of one — `Pier.surface` is "bridge"
+#: for a muelle and "road" for a ferry ramp. Derived from `Surface` rather than
+#: retyped, so it cannot fall behind it: the field used to be
+#: `PathSurface | str`, which accepted "paved", "brdige" and everything else.
+SurfaceName = StrEnum("SurfaceName", {s.name: s.label for s in Surface})
 
 #: What a vehicle may drive on. BEACH is included on purpose — the sand is
 #: slow (see SURFACE_MUL on the client), not a wall. So is BOULEVARD: a calle

@@ -33,7 +33,7 @@ from ..content import (
     BLDG_PALETTE, LANDMARK_DEFS, MARINE_BUILDING_NAMES, MARINE_SITE_OSM_ID,
     ROOF_PALETTE,
 )
-from ..enums import GreenType, LandmarkType, ParcelUse, Surface
+from ..enums import GreenType, LandmarkType, ParcelUse, SignKind, Surface
 from ..logging import log, warn
 from ..service.attraction import place_attractions
 from ..service.block import (
@@ -1490,7 +1490,7 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                 if nx * sand[0][0] + ny * sand[0][1] < 0:
                     nx, ny = -nx, -ny                   # …pointed at the sand
                 ctx.signs.append({"x": round(px - nx * 6), "y": round(py - ny * 6),
-                                  "kind": "banca", "ang": round(math.atan2(ny, nx), 3)})
+                                  "kind": SignKind.BANCA, "ang": round(math.atan2(ny, nx), 3)})
                 n_bancas += 1
         elif any(v in (CLS_ROAD, CLS_ACERA) for v in nbs.values()):
             if _room("almendro", px, py):

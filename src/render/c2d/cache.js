@@ -2,17 +2,20 @@
 // per-tile junction cut tables that make lane dashes stop at intersections.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { flatAABB, flatMultiPath, flatPath } from "./gfx.js";
+import { ROAD_RANK } from "../../domain/vocabulary.generated.js";
 
 // ---- Static geometry cache (Path2D per feature, built once) ----
 // Mandatory for 60fps: ~2k roads and ~1.4k buildings get AABB-culled
 // against the camera view and stroked/filled from prebuilt paths.
 let RC = null;
 
-const ROAD_ORDER = {
-  service: 0, pedestrian: 1, residential: 2, unclassified: 3,
-  tertiary: 4, tertiary_link: 4, secondary: 5, primary_link: 6,
-  primary: 7, trunk_link: 8, trunk: 9, paseo: 10, bridge: 11,
-};
+// PAINTING ORDER, generated from churchill/world/enums/features.py — not a
+// second handwritten table. This one had no `living_street` entry, so such a
+// calle would fall to `|| 0` in the sort below and paint under the service
+// roads — latent, since nothing in the map is tagged that way yet, which is why
+// it would have shipped. The editor kept a third copy that collapsed more
+// classes still.
+const ROAD_ORDER = ROAD_RANK;
 // Backdrop silhouette cache: land / inner water / beach polygons are global on
 // WORLD2D (few, low-res). Drawn under the streamed surface tiles so unloaded /
 // far areas still read as the real Puntarenas shape.

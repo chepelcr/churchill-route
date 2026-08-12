@@ -23,6 +23,8 @@ pnpm dev            # HMR dev server (falls back off :8734 if taken)
 pnpm build          # -> dist/ (static; GitHub Pages publishes this)
 pnpm preview        # serve the production build
 pnpm inventory      # regenerate inventory.json
+pnpm vocabulary     # regenerate src/domain|assets/vocabulary.generated.* from the enums
+pnpm test           # python unit tests (vocabulary drift gate, surfaces, editor patch)
 pnpm world:build    # rebuild src/world2d/ from docs/map.osm (deterministic)
 python3 tools/world_snapshot.py verify   # emitted world unchanged?
 ```
@@ -118,6 +120,26 @@ leaving barro out of the acera seeds silently stripped the sidewalk from 8,204
 cells of cuadra frontage, and out of `CALLE` would point every "nearest street"
 search past it. `CARRIAGEWAY` includes the muelle decks; `CALLE` does not,
 because a deck is something you drive on, not a street to link to.
+
+**THE CLIENT'S COPY IS GENERATED — never hand-write a class list again.**
+`pnpm vocabulary` (`tools/gen_vocabulary.py`) reads `churchill/world/enums/` and
+writes `src/domain/vocabulary.generated.js` for the game plus
+`src/assets/vocabulary.generated.json` for the tools and the editor: `SURFACE`,
+`SURFACE_CLASSES`, `SURFACE_BY_NAME`, the five `SURFACE_ROLE` sets, `ROAD_RANK`,
+two `ROAD_ROLE` sets, and ten token vocabularies (`SIGN_KIND`, `PIER_STYLE`,
+`LANDMARK_TYPE`, `PARCEL_USE`, …). Generation is ONE-WAY and the artifacts are
+committed, because the game builds with Vite and must not need Python. Add the
+member to the Python enum, run `pnpm vocabulary`, and `pnpm test`
+(`tests/test_vocabulary.py`) is the gate: it fails on a stale artifact, on a
+manifest that disagrees with the enum class for class, on an emitted value with
+no renderer implementation, and on any `surfaceAt(...) === <number>` anywhere in
+`src/`. `src/game/surfaces.js` keeps only `SURFACE_MUL` — the one surface
+property the world does not know — keyed through `SURFACE.*`.
+
+Two numbers the client used to guess and now asks the accessor for: `W.ACERA_PX`
+and `W.CUAD`. There were four fallbacks for the kerb and they disagreed (12 in
+the sim and the editor, 8 in both renderers), so a stale manifest would have
+moved every NPC one way and drawn the sidewalk the other.
 
 ### The `churchill/` package (Python)
 
@@ -726,6 +748,8 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
 ## Conventions
 
 - After changing the world or any module, run `pnpm inventory`.
+- After changing anything in `churchill/world/enums/`, run `pnpm vocabulary` and
+  `pnpm test` — the client's copy is generated from it and committed.
 - Keep `src/game/vehicles.js` and `src/game/surfaces.js` free of DOM/`window` so
   Node (the inventory script) can import them.
 - The camera zoom is responsive: `computeZoom` in `src/render/canvas2d.js`

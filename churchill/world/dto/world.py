@@ -20,7 +20,10 @@ Two rules they all follow:
 """
 from pydantic import BaseModel, ConfigDict, Field
 
-from ..enums import GreenType, LandmarkType, ParcelUse, PathSurface, Weather
+from ..enums import (
+    GreenType, LandmarkType, LineEnd, ParcelUse, PathSurface, PierStyle,
+    SignKind, SurfaceName, Weather,
+)
 from .geo import FlatPoly, Rect
 
 
@@ -243,10 +246,12 @@ class Stadium(WorldModel):
 
 class Sign(WorldModel):
     """A piece of street furniture. `kind` drives `drawSign` in
-    src/render/c2d/streets.js — an unknown kind draws nothing."""
+    src/render/c2d/streets.js — an unknown kind draws NOTHING, silently, which
+    is why this is a `SignKind` and no longer a bare `str`: a typo in a producer
+    now fails the build instead of quietly unlighting a junction."""
     x: int
     y: int
-    kind: str
+    kind: SignKind
     ang: float = 0.0
 
 
@@ -342,9 +347,19 @@ class Pier(WorldModel):
     name: str
     pts: FlatPoly
     w: int
-    style: str = Field(default="concrete", description="which deck the renderer draws")
-    surface: PathSurface | str = Field(default="bridge", description="stamped surface class")
-    seaEnd: str | None = Field(default="last", description="'first', 'last' or null")
+    # Typed, all three. `style` selects a deck recipe from a FINITE set in
+    # c2d/structures.js — `malecon` shipped for a week without one and four
+    # bajadas were drawn as concrete muelles on the sand. `surface` is a
+    # SURFACE class name (`bridge` for a muelle, `road` for a ramp or a
+    # calzada); it was typed `PathSurface | str`, which accepted "paved" and
+    # anything else besides.
+    style: PierStyle = Field(default=PierStyle.CONCRETE,
+                             description="which deck the renderer draws")
+    surface: SurfaceName = Field(default=SurfaceName.BRIDGE,
+                                 description="stamped surface class")
+    seaEnd: LineEnd | None = Field(
+        default=LineEnd.LAST,
+        description="the end hanging over water, or null for neither")
 
 
 class Balneario(WorldModel):

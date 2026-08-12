@@ -217,7 +217,10 @@ already marginal on a 30 fps phone today.
 ## Order of work
 
 0. **Retire the cuadrícula as a SCREEN unit and name the world's units in
-   metres.** `CUAD` does three unrelated jobs and only one is vestigial:
+   metres.** Partly begun on 2026-08-11: `CUAD_M` exists in `config.py`, the
+   cuadra bar and the sliver cap are in metres and m², and the client asks
+   `W.CUAD`/`W.ACERA_PX` instead of keeping its own fallbacks (they disagreed —
+   8 px against 12). `CUAD` still does three jobs and only one is vestigial:
 
    | job | where | keep? |
    |---|---|---|
@@ -276,10 +279,16 @@ Improves, by 16–26 % of manzana depth — not solves:
 
 Fixes outright, but **for a reason worth understanding**:
 
-- `BLOCK_MIN_CUADS = 6` rejecting real manzanas. **Measured today: 61 % of land
-  components bigger than 4 cuadrículas fall below the 6×6 bar** — 417 cuadras
+- ~~`BLOCK_MIN_CUADS = 6` rejecting real manzanas.~~ **DONE 2026-08-11, without
+  this project**, exactly as the note below said to. It is `BLOCK_MIN_M = 32`
+  now, and the rebuild measured **416 → 599 cuadras, 566 → 383 green, 1 126
+  paved slivers unchanged** — all 183 that moved came out of green, i.e. real
+  manzanas that were being given no buildings at all.
+
+  The original finding, kept because the reasoning is the point: **61 % of land
+  components bigger than 4 cuadrículas fell below the 6×6 bar** — 417 cuadras
   vs 569 green and 984 paved slivers. A standard Puntarenas manzana yields a
-  4.6-cuadrícula inscribed square against a bar of 6, so the bar is set above
+  4.6-cuadrícula inscribed square against a bar of 6, so the bar was set above
   what this town can physically produce.
 
   It passes after the rescale (variant A: 5.7 cuads against a 6-cuad bar — still
@@ -288,9 +297,10 @@ Fixes outright, but **for a reason worth understanding**:
   a px-denominated threshold: 6 × `CUAD`. Today that is 48 m; in variant B it is
   30 m, and the same 42–46 m block sails past.
 
-  That means the classification bug does **not** need this project. Expressing
-  the threshold in metres (or simply setting it to 4) fixes it today, in one
-  line. Do that first and independently; do not let it justify the rescale.
+  That means the classification bug did **not** need this project. Expressing
+  the threshold in metres (or simply setting it to 4) fixed it today, in one
+  line — and being metres is the half that matters for the rescale: whatever
+  `PLANAR_PX_PER_M` becomes, 32 m stays 32 m.
 
 Does **not** fix, and is worth doing independently:
 

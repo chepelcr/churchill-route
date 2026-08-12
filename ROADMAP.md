@@ -4,6 +4,114 @@ Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementati
 The OSM world pipeline (`tools/build_world.py` → `churchill/world/` → `src/world2d/`)
 and the three game modes are live; the items below are what remains.
 
+## 🔜 El catálogo de assets — todo el juego en el formato de la feria
+
+El inventario completo está en [`docs/inventory.md`](docs/inventory.md) (auditoría
+2026-08-11): qué construye, carga, simula, dibuja y empaqueta el juego hoy, y
+dónde el contenido autorado vive todavía como literal de JS o de Python. **Esa
+tabla — §12, el registro de migración — es la lista de trabajo; esto es sólo el
+orden en que conviene atacarla.**
+
+`src/render/c2d/feriaAssets.json` es la plantilla y ya está en el árbol: 14 tipos
+descritos como partes ordenadas con paleta y animación, contra un vocabulario
+FINITO de 25 primitivas que sí es código. La prueba para decidir qué migra es la
+del propio inventario: *¿esperaría un diseñador poder cambiar esto sin tocar el
+motor?* Si sí, es data validada por esquema; si define física, streaming,
+colisión o el intérprete, es motor.
+
+**El orden importa y no es libre.** El inventario avisa (§7) que la migración del
+render debe coordinarse con [`docs/RESCALE.md`](docs/RESCALE.md) y que **no** se
+hagan como limpiezas independientes; y que Pixi **se queda** — el mar del boot es
+Pixi vivo, y `scene.js` es material de migración, no prueba de duplicación.
+
+### 1. La deriva ya confirmada (barata, y bloquea lo demás)
+
+No son riesgos teóricos: §13 los verificó contra el manifest publicado.
+
+- [x] **`malecon` no existía como estilo de muelle.** El manifest envía **4**
+      piers `style:"malecon"` (las bajadas) y `structures.js` caía a `concrete`:
+      se dibujaban como muelle de hormigón con baranda azul y lámparas. Arreglado
+      en este commit — el caso exacto que §13.4 predijo.
+- [ ] **El vocabulario de superficies ya divergió.** El manifest tiene 11 clases;
+      `world-editor/src/npcs.js` conoce 8, el validador del host 10, las paletas
+      10. `malecon` falta en la validación y en la paleta del editor; `barro`,
+      `gravel` y `malecon` faltan en el vocabulario de NPCs.
+- [ ] **Enteros de superficie crudos** (`0`, `2`, `5`, `6`) en `world2d/index.js`,
+      `physics.js`, `spawns.js`, `crossing.js`, `c2d/water.js`, `c2d/flora.js`.
+      Renumerar está prohibido; usarlos crudos esconde la intención.
+- [ ] **Las tablas de rango de calle no coinciden** (Canvas `ROAD_ORDER` vs la del
+      editor; `MAIN_ROAD` vs `MAJOR` del builder, que incluye `paseo`).
+- [ ] **`Sign.kind` es `str`.** El Canvas soporta `ceda`, `semaforo_centered`,
+      `semaforo_overhead` y `speed_limit`; una errata simplemente no dibuja nada.
+- [ ] **`LandmarkType` no tiene `museum` ni `anchor`**, que el Canvas sí despacha.
+- [ ] **`aceraPx` en desacuerdo**: el manifest dice 12; sim/editor caen a 12 y
+      Canvas/Pixi a 8. Un meta viejo cambia colocación y dibujo de forma distinta.
+
+### 2. P0 — impedir el desajuste data ↔ render
+
+- [ ] **Registro canónico de superficies**: un solo JSON versionado (ID de wire,
+      etiquetas, roles, velocidad, materiales) generado hacia Python y JS.
+- [ ] **Capa de enums** para las identidades sueltas (stage/sign/pier/vehicle/
+      host/geometry/mode) + vocabulario JS/JSON generado determinísticamente.
+- [ ] **`src/assets/vehicles.json`**: stats, medio, bounds, partes, colores,
+      montaje de carga, voz de audio, precio. Queda motor: física, intérprete de
+      siluetas, síntesis WebAudio.
+- [ ] **`src/assets/world-props.json`**: registro de tipo semántico → asset para
+      landmarks/parcelas/señales, con el mismo DSL finito de la feria.
+- [ ] **`src/assets/materials.json`**: terreno, calles, estructuras, minimapa y
+      preview del editor — hoy duplicados entre Canvas, Pixi y editor.
+- [ ] **`src/assets/water.json`** + registro de qué backend es dueño de qué
+      familia visual, con fixtures de paridad.
+
+### 3. P1 / P2 — la superficie de autoría
+
+`content.py` → `content/world/*.json`; `economy.js`, `audio.js`, `spawns.js` /
+`buses.js` / `crossing.js` / `tides.js`, `tutorial.js` / `progress.js` / `modes.js`;
+después HUD, pantallas y el render simplificado del editor consumiendo los mismos
+registros. Detalle y autoría propuesta por fila: `docs/inventory.md` §12.
+
+- [ ] **Darle esquema a la feria.** `feriaAssets.json` es hoy la plantilla y es el
+      único catálogo **sin** validador: falta DTO/versión y preview en el editor.
+
+### 4. El reescalado
+
+[`docs/RESCALE.md`](docs/RESCALE.md) lo mapea completo. El paso 0 (retirar la
+cuadrícula como unidad de PANTALLA) deja el mundo byte-idéntico y es el que
+conviene hacer antes de mover arte, para no re-medir dos veces.
+
+- [ ] **`BLOCK_MIN_CUADS = 6` rechaza manzanas reales** — 61 % de las componentes
+      de tierra >4 cuadrículas quedan bajo la barra (417 cuadras contra 569 verdes
+      y 984 slivers). Una manzana normal de Puntarenas inscribe **4.6**. Arreglo
+      de una línea, **independiente** del reescalado: no dejar que lo justifique.
+
+## ✅ El malecón llega a la acera, el Paseo tiene feria, y la Travesía es un nivel (2026-08-11)
+
+- [x] **El malecón es uno solo y pegado a la acera.** La sonda caminaba 30 m más
+      allá del cordón y la distancia real cordón→arena tiene **mediana 94 px**
+      sobre 1 589 secciones: **el 7 %** alcanzaba a ver la arena. A 70 m, con
+      enlace de 60 m sobre el solar. **7 bandas → 6, y las 6 llegan a la calzada**
+      (eran 2; cuatro no tocaban nada — 6 746 celdas inalcanzables).
+- [x] **El malecón ya no es transitable.** Bajadas re-estampadas `ROAD`, campo
+      ferial con entrada, y `stamp_pad` atraviesa la clase 10 — `c3` quedaba
+      parada sobre un muro y la compuerta lo cazó (`46/47 POIs`).
+- [x] **La plazoleta del faro** se cierra contra su cordón y se dibuja con el
+      empedrado del malecón en gris. La línea amarilla era `CLS_LAND`, no arena.
+- [x] **Los kioscos del Paseo** en su ancla de OSM con calle auxiliar; techo
+      mapeado duplicado eliminado.
+- [x] **La feria**: un campo de barro frente a La Takería, 12 juegos + 3 chinamos,
+      y el arte en `feriaAssets.json`.
+- [x] **La Travesía**: ruta por la cresta del agua + canal dragado + canal
+      **medido** (`Channel`), casco propio (`boat.js`), y la marea dejó de cerrar
+      el canal dibujado. **Boyas en tierra: 91/196 → 2/122, cero en portones.**
+
+Pendiente de este bloque:
+
+- [ ] **Las 2 boyas que quedan en tierra.** El render las suprime (`buoyWet`) y
+      `smoke:crossing` sostiene la línea dura en los portones con un presupuesto
+      de 5 % para las simples. Es un paracaídas, no el arreglo.
+- [ ] **`smoke_sea` falla dos aserciones de pescadores** — verificado que falla
+      igual en `HEAD`, anterior a este trabajo.
+
 ## ✅ El Mercado Municipal ocupa su manzana (2026-08-07)
 
 Un sitio de OSM cuyo contorno **es** una manzana ahora se arma como los estadios:

@@ -49,6 +49,19 @@ const PIER_STYLES = {
   // hut: it is a calzada, not a promenade.
   calzada:  { deck: "#c6c6bf", seam: "rgba(0,0,0,0.09)", seamGap: 18, cap: null,
               rail: null, centre: null, round: true, ground: true },
+  // LAS BAJADAS a la arena. They are stamped `Surface.ROAD` — the promenade
+  // stopped being drivable and a beach access that is a wall is not an access —
+  // but they are not asphalt: they are the way DOWN off the malecón, so they are
+  // paved in its baldosa and scored across their width like the courses are.
+  //
+  // This entry was missing, and the failure was silent in the way this audit
+  // (`docs/inventory.md` §13.4) predicted: the manifest ships FOUR piers with
+  // `style: "malecon"` and the lookup simply fell through to `concrete`, so the
+  // four bajadas were drawn as grey quay decks with blue rails and lamps on
+  // them. A style the builder produces and the renderer does not know about
+  // does not throw; it just draws the wrong thing.
+  malecon:  { deck: "#e7d6b3", seam: "rgba(150,132,100,0.34)", seamGap: 14, cap: null,
+              rail: null, centre: null, round: true, ground: true },
 };
 
 function pierInView(P, view) {

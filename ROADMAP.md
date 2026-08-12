@@ -125,27 +125,41 @@ conviene hacer antes de mover arte, para no re-medir dos veces.
       pasa a `SLIVER_MAX_M2 = 1600.0` (idéntico). Sigue pendiente la definición
       **topológica** de manzana (cara del grafo de ejes), que es la pregunta
       correcta; el docstring de `detect_blocks` dice por qué el tamaño no lo es.
-- [ ] **`SYNTH_MAX_TOTAL = 80000` está saturado y ahora reparte, no suma.**
-      Destapado por lo de arriba, no causado por él: el log dice
-      `+79306 synthesized (total 80000)` **idéntico** en los dos builds, así que
-      las 183 manzanas nuevas no ganaron casas — se las quitaron a otras. Medido
-      sobre los tiles que cambiaron: **~3 400 huellas salieron de
-      x 52 000..60 000** (Mata de Limón, Caldera) hacia el espigón, el centro y
-      los barrios. El comentario del propio tope dice que se subió para no "dejar
-      vacíos los bloques lejanos", que es lo que vuelve a pasar con 599 bloques.
-      Mantener la densidad por manzana pediría ~**114 000** huellas: es una
-      decisión de densidad **y de rendimiento** (se cullean por AABB cada frame y
-      el manifest ya pesa 16,7 MB), así que la toma una persona, no un bump
-      silencioso.
-- [ ] **Un templo de 30 celdas quedó 878 px peor sentado.**
-      `osm_worship_964088820` (Iglesia Cristana) tiene 21/30 celdas de acera bajo
-      su contorno mapeado, así que `_seat_site_in_manzana` la reubica en los dos
-      builds; sólo cambió a qué manzana. De las 17 parcelas que se movieron,
-      **15 de 16** con vía de OSM quedaron MÁS CERCA de su contorno mapeado (una
-      pasó de 2 144 px a 144), ésta más lejos. El mecanismo: la manzana se elige
-      por la CELDA más cercana, pero el lote se encaja en el único rectángulo
-      libre más grande de esa manzana, que en un bloque grande puede quedar lejos.
-      Pre-existente, no lo introduce este cambio.
+- [ ] **Los blobs rurales se rellenan como si fueran manzanas, y el tope lo
+      tapaba.** MEDIDO (2026-08-11) poniendo `SYNTH_MAX_TOTAL` en no-vinculante:
+      el mapa pide **193 271** huellas, 2,4× las 80 000 de hoy. Ese número **no
+      es un objetivo de densidad, es la evidencia de otro bug** — y desmiente la
+      estimación de ~114 000 que estaba escrita aquí antes de medir.
+
+      Lo que pasa de verdad: las huellas sintetizadas del mundo publicado **se
+      cortan en seco en x ≈ 68 000** (1 198 por cada 1 000 px justo al oeste,
+      **220 en los 12 000 px al este**), porque el presupuesto se gasta de oeste a
+      este con un `return` en seco y simplemente se acaba. Así que los pueblos de
+      verdad de allá — entre ellos un racimo de **56 edificios mapeados en
+      x 69–70 k** — están sin vecinos. Subir el tope no arregla eso: **alfombraría
+      4,8 km de costa rural**, porque entre las "cuadras" del este hay blobs de
+      tierra de **339 MILLONES de px²** cuya sola banda de fachada pide decenas de
+      miles de lotes. Un blob así no es una manzana — es exactamente lo que dice
+      el docstring de `detect_blocks`: el umbral de TAMAÑO es la pregunta
+      equivocada, y la respuesta es la definición topológica (`docs/RESCALE.md`).
+
+      Tres cosas que arreglar, en este orden: (1) que un blob rural deje de
+      contar como cuadra edificable; (2) que el presupuesto deje de gastarse por
+      orden geográfico con un corte en seco — reparte o cuota por lugar, no una
+      carrera oeste→este; (3) sólo entonces elegir el número. Pre-existe a
+      `BLOCK_MIN_M`: la barra vieja de 48 m también truncaba en 80 000, y estos
+      blobs inscriben 6x6 de sobra.
+- [x] **Las parcelas se sentaban por la MANZANA más cercana, no por el asiento.**
+      Arreglado 2026-08-11. Se entró a arreglar un templo 878 px peor sentado y
+      resultó que había parcelas desplazadas por KILÓMETROS: una iglesia a
+      10 538 px de su propio contorno mapeado, una gasolinera a 8 694, un parque a
+      6 584, un jardín de niños a 5 874. La manzana se elegía por la celda más
+      cercana y se comprometía con ella, pero el lote se encaja en el único
+      rectángulo libre más grande de esa manzana — que en un bloque grande queda
+      al otro extremo. Ahora se puntúa el ASIENTO: de cerca a lejos, con corte por
+      cota demostrable. **Media 147 → 54 px** sobre las 430 parcelas con vía de
+      OSM, peor caso **10 538 → 1 152 px**; 19 mejores y 6 un poco peores de las
+      27 que se movieron (reclaman celdas en secuencia).
 - [ ] **Paso 0: retirar la cuadrícula como unidad de PANTALLA.** `VIEW_WIDTH_M`,
       `MAX_VIEW_M` (el piso 2.2 que decide el encuadre en teléfono y no está en
       `config.py`), `LOT_GRID_M`, `SIDEWALK_M`, `TILE_M`. Deja el mundo

@@ -8,6 +8,14 @@
 // once without — and asserts the pixels inside the slot changed. It guards the
 // regression that made the feature unreachable: the content loader dropping the
 // `parcel` field, so the match never fired.
+//
+// IT WAITS FOR THE GROUND, IT DOES NOT COUNT SECONDS. This shot both frames after
+// a flat 6 000 ms, and booting the finished world takes about that — so the two
+// screenshots eventually became two pictures of the LOADING screen, identical for
+// a reason that has nothing to do with sponsors, and the test reported the
+// feature broken. The honest condition is the one `smoke_crossing` already uses:
+// `tileResident` — because the pitch cannot be drawn until its tile has streamed
+// in, and `surfaceAt` answers "water" for a tile that has not.
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
@@ -31,8 +39,20 @@ async function shot(withSponsor) {
       ui: {},
     }),
   }));
-  await page.goto(`${url}?editorPlay=1&x=${Math.round(sx + sw / 2)}&y=${Math.round(sy + sh / 2)}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(6000);
+  const cx = Math.round(sx + sw / 2), cy = Math.round(sy + sh / 2);
+  await page.goto(`${url}?editorPlay=1&x=${cx}&y=${cy}`, { waitUntil: 'domcontentloaded' });
+  // …the pitch's own tile, resident. Generous bound: a tight one buys flakiness.
+  let ready = false;
+  for (const deadline = Date.now() + 60000; Date.now() < deadline;) {
+    await page.waitForTimeout(400);
+    ready = await page.evaluate(([x, y]) => {
+      const W = window.WORLD2D;
+      return Boolean(W && W.tileResident && W.tileResident(x, y));
+    }, [cx, cy]);
+    if (ready) break;
+  }
+  if (!ready) throw new Error(`the tile under the slot (${cx},${cy}) never streamed in`);
+  await page.waitForTimeout(1200);          // let the frame settle on that ground
   const buffer = await page.screenshot({ clip: { x: 540, y: 260, width: 200, height: 200 } });
   await browser.close();
   return { buffer, errors };

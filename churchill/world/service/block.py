@@ -276,12 +276,20 @@ def detect_blocks(raster, build_band_x1=None):
     THE 183 DID NOT ADD HOUSES, THEY MOVED THEM, and that is `SYNTH_MAX_TOTAL`,
     not this function. The synth stage logged `+79306 synthesized (total 80000)`
     in BOTH builds — identical line, because the cap is saturated and has been.
-    So the budget is spent on more blocks: measured net over the changed tiles,
-    ~3 400 footprints left x 52 000..60 000 (Mata de Limón, Caldera) for the
-    spit, the centro and the barrios. `SYNTH_MAX_TOTAL`'s own comment says it was
-    raised "so fully-filled small cuadras don't exhaust it mid-map and leave far
-    blocks empty" — which is exactly what it is doing again at 599 blocks. Fixing
-    the bar was right and did not cause this; it revealed it.
+
+    Measuring what the map really wants (cap set non-binding, 2026-08-11) then
+    turned up something worse, and it is worth knowing here because it is a
+    judgement about WHAT COUNTS AS A BLOCK: the demand is 193 271 footprints, and
+    it is not a density target. The eastern "cuadras" this returns include land
+    blobs of 339 MILLION px² — hinterland, not manzanas — and `synth_buildings`
+    fills their frontage band, so meeting the demand would carpet 4.8 km of rural
+    coast. The cap is the only thing preventing that, and it prevents it in the
+    worst way: a west-to-east cliff at x ~= 68 000 that also leaves real mapped
+    villages out there without a single synthesized neighbour.
+
+    None of which this change caused — those blobs clear a 6x6 bar comfortably —
+    but it is the same root as the note above. A size threshold cannot tell a
+    manzana from the countryside.
 
     The slivers still outnumber the cuadras, and that is NOT the same finding —
     a wedge is left at every junction of the ~2 200 mapped ways, so there are

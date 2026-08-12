@@ -904,6 +904,12 @@ class FieldService:
                         return moved, None
         return None
 
+    #: A hard ceiling on how many manzanas to TRY when reseating a plot. Rarely
+    #: reached: the search stops as soon as no remaining block could beat the
+    #: best seat found (see `_seat_site_in_manzana`), and this only bounds the
+    #: pathological case where every candidate in a row has no room.
+    SEAT_BLOCK_CANDIDATES = 12
+
     def _seat_site_in_manzana(self, keep, krect, ang, cell):
         """Put a plot that is still on the sidewalk INSIDE its manzana.
 
@@ -913,18 +919,52 @@ class FieldService:
         the block allows to where the mapper actually drew it — so a chapel does
         not teleport across the barrio, it steps off the kerb.
 
-        Returns (cells, rect) or None when the block has no room for a plot.
+        THE NEAREST BLOCK IS NOT THE NEAREST SEAT, and picking one by the first
+        used to lose the second. This chose the manzana whose nearest CELL was
+        closest and then committed to it — but the plot is clamped into that
+        block's single largest free rectangle, which on a big manzana can be at
+        the far end of it. Measured: `osm_worship_964088820` (Iglesia Cristana,
+        21 of its 30 mapped cells are sidewalk) came out 1 464 px from its own
+        outline, having been 586 px away in the build before. Committing also
+        meant that a candidate which turned out to have no room returned None
+        instead of trying the next manzana along.
+
+        So SCORE THE SEAT, not the block: walk the manzanas nearest-first and
+        keep whichever seat actually lands closest to where the mapper drew the
+        place. The walk stops on a bound rather than a guess — a seat is inside
+        its block, so no remaining block can beat the best seat already found.
+
+        Returns (cells, rect) or None when no candidate has room for a plot.
         """
         cx = sum(c for c, _ in keep) / len(keep) * cell
         cy = sum(r for _, r in keep) / len(keep) * cell
-        block = min(
-            (b for b in self.blocks if not b.get("green")),
-            key=lambda b: min((cc * CUAD + CUAD / 2 - cx) ** 2
-                              + (cr * CUAD + CUAD / 2 - cy) ** 2
-                              for cc, cr in b["cells"]),
-            default=None)
-        if block is None:
-            return None
+        reach = [(b, min((cc * CUAD + CUAD / 2 - cx) ** 2
+                         + (cr * CUAD + CUAD / 2 - cy) ** 2
+                         for cc, cr in b["cells"]))
+                 for b in self.blocks if not b.get("green")]
+        # sorted by distance, tie broken explicitly so the order is stable
+        near = sorted(reach, key=lambda pair: (pair[1], min(pair[0]["cells"])))
+        best = None
+        for block, reach2 in near[:self.SEAT_BLOCK_CANDIDATES]:
+            # PROVABLY DONE: a seat sits inside this block, so it cannot be
+            # nearer than the block's own nearest cell — less one cuadrícula,
+            # since `reach2` is measured to cell CENTRES and a seat may sit at a
+            # cell's edge. Once no remaining block can beat what we have, stop.
+            if best is not None and math.sqrt(reach2) - CUAD > math.sqrt(best[0]):
+                break
+            got = self._seat_in_one_block(block, krect, ang, cell, cx, cy)
+            if got is None:
+                continue
+            _, seat = got
+            away = (seat[4] - cx) ** 2 + (seat[5] - cy) ** 2
+            if best is None or away < best[0]:
+                best = (away, got)
+        return best[1] if best else None
+
+    def _seat_in_one_block(self, block, krect, ang, cell, cx, cy):
+        """The seat this ONE manzana can offer, or None. Split out of
+        `_seat_site_in_manzana` so several candidates can be compared instead of
+        the first being committed to."""
         inner = erode_cells(
             block_raster_cells(self.raster, block["cells"], CUAD // cell, CLS_LAND),
             ACERA_CELLS, STREET_CLASSES, self.raster.at)

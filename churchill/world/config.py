@@ -254,18 +254,26 @@ MANGROVE_SEED = 57              # deterministic scatter (jitter + radius)
 SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so
                                 # fully-filled small cuadras don't exhaust it
                                 # mid-map and leave far blocks empty)
-                                # SATURATED, AND IT BINDS. The log reads
-                                # `+79306 synthesized (total 80000)` and read the
-                                # same before `BLOCK_MIN_M` found 183 more
-                                # manzanas — so those blocks did not gain houses,
-                                # they took them: ~3 400 footprints left
-                                # x 52 000..60 000 (Mata de Limón, Caldera) for
-                                # the centro. That is the failure this cap was
-                                # raised to avoid, recurring at 599 blocks. It
-                                # wants raising again, but the number is a
-                                # density AND performance decision (buildings are
-                                # AABB-culled per frame), so it is not a silent
-                                # bump — see ROADMAP.md §4.
+                                # SATURATED, AND IT BINDS — but DO NOT raise it
+                                # to meet demand. Measured 2026-08-11 with the
+                                # cap set non-binding: the map asks for
+                                # **193 271** footprints, 2.4x this. That number
+                                # is not a density target, it is evidence of a
+                                # different bug. The shipped world's synthesized
+                                # buildings stop dead at x ~= 68 000 (1 198 per
+                                # 1 000 px just west of it, 220 in the whole
+                                # 12 000 px east), because the budget is spent
+                                # west-to-east and simply runs out — so the real
+                                # villages out there, including a 56-building
+                                # cluster at x 69-70 k, stand with no neighbours.
+                                # Meeting the demand would not fix that; it would
+                                # carpet 4.8 km of rural coast, because eastern
+                                # "cuadras" include land blobs of 339 MILLION px²
+                                # whose frontage band alone wants tens of
+                                # thousands of lots. A blob that size is not a
+                                # manzana — see `detect_blocks`, which says a
+                                # size threshold is the wrong question, and
+                                # ROADMAP §4.
 SYNTH_SEED = 77
 BLDG_INSET = 2                  # px seam per side so adjacent roofs don't fuse
 FRONTAGE_DEPTH = 3              # buildable band (CUADs) from the block edge

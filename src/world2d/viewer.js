@@ -4,13 +4,13 @@
 // (proving the real 2-D Puntarenas is traversable). NOT part of the shipped game
 // — open /world2d.html on the dev server. Arrows/WASD drive · +/- or wheel zoom.
 import { WORLD2D as W } from "./index.js";
-import { SURFACE_MUL } from "../game/surfaces.js";
+import { SURFACE_MUL, surfaceColor } from "../game/surfaces.js";
 import { VEHICLES } from "../game/vehicles.js";
 
-const CLASS_COLOR = {
-  0: "#2a7fa8", 1: "#e8d5a0", 2: "#f4d77a", 3: "#3a3540",
-  4: "#f08a5d", 5: "#8c8c8c", 6: "#cec7b2",
-};
+// Straight off the registry, so the viewer can no longer know FEWER classes than
+// the world has. It listed 0..6 and fell back to magenta, which meant the two
+// unpaved calles, the bulevar and the whole malecón were drawn `#f0f` here.
+const CLASS_COLOR = (id) => surfaceColor(id) || "#f0f";
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
@@ -43,7 +43,7 @@ function surfaceCanvas(t) {
   cv = document.createElement("canvas"); cv.width = t.cols; cv.height = t.rows;
   const g = cv.getContext("2d"), img = g.createImageData(t.cols, t.rows);
   for (let i = 0; i < t.grid.length; i++) {
-    const c = CLASS_COLOR[t.grid[i]] || "#f0f";
+    const c = CLASS_COLOR(t.grid[i]);
     img.data[i * 4] = parseInt(c.slice(1, 3), 16);
     img.data[i * 4 + 1] = parseInt(c.slice(3, 5), 16);
     img.data[i * 4 + 2] = parseInt(c.slice(5, 7), 16);

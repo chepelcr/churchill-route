@@ -22,6 +22,12 @@ DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
 # chunked output — the tiled world the src/world2d accessor streams by camera
 # region (416 tiles + manifest.json).
 WORLD2D_DIR = os.path.join(ROOT, "src", "world2d")
+#: The per-surface REGISTRY: how each class drives and what it is made of, keyed
+#: by name. Shared with the client (src/game/surfaces.js), the dev viewer and the
+#: world editor — the palette used to be written out five times and two of the
+#: copies were wrong (the bulevar was #d8d4c8 here and #d9d6cd everywhere else;
+#: the dev viewer knew 7 of 11 classes and drew the rest magenta).
+SURFACE_REGISTRY_PATH = os.path.join(ROOT, "src", "assets", "surfaces.json")
 
 # World SIZE is not a knob: it is computed from the OSM bounds at build time
 # (see planar_setup) and lives with the grid, not here.
@@ -124,6 +130,16 @@ STREET_SPAN_M = 440             # vals() / edge(): samples near a reference
 STREET_AT_SPAN_M = 560          # at(): the coordinate AT a point
 STREET_DIR_SPAN_M = 325         # direction(): a manzana's angle
 STREET_NEAR_SPAN_M = (500, 315)  # near(): the build-log diagnostic
+
+
+def surface_registry():
+    """`{name: {speed, day, night}}` from SURFACE_REGISTRY_PATH.
+
+    Read on demand rather than at import: the builder must not fail to import
+    because a client asset is missing, and nothing in the hot path wants it."""
+    import json
+    with open(SURFACE_REGISTRY_PATH, encoding="utf-8") as fh:
+        return json.load(fh)["surfaces"]
 
 
 def street_span_px(metres):

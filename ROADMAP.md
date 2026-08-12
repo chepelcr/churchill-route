@@ -77,13 +77,27 @@ tiene implementación en el renderer.
 
 ### 2. P0 — impedir el desajuste data ↔ render
 
-- [ ] **Registro canónico de superficies**: un solo JSON versionado (ID de wire,
-      etiquetas, roles, velocidad, materiales) generado hacia Python y JS.
-      *Medio hecho*: el vocabulario generado ya lleva ID, etiqueta y los cinco
-      role sets. Faltan la VELOCIDAD (`SURFACE_MUL` sigue autorada en
-      `src/game/surfaces.js`, que es el sitio correcto hasta que exista el
-      registro) y los MATERIALES (colores, todavía duplicados Canvas/Pixi/editor
-      — `CLASS_RGB` ya está keyed por `SURFACE`, que es la mitad del camino).
+- [x] **Registro canónico de superficies.** Hecho 2026-08-11. La IDENTIDAD (id de
+      wire, etiqueta, role sets) se genera desde `enums/surface.py`; las
+      PROPIEDADES viven en `src/assets/surfaces.json`, un JSON versionado keyed
+      por NOMBRE con `speed` + `day`/`night` por clase. Lo leen los cinco que
+      antes tenían su propia copia: `src/game/surfaces.js` (`SURFACE_MUL`),
+      `pixi/tileTexture.js`, `world2d/viewer.js`, el `pal` de
+      `repository/debug_render.py` y la paleta del editor (vía `/api/surfaces`,
+      con validador y entrada en el Data workspace).
+
+      **Dos de las cinco copias estaban mal**, y ninguna se veía en review: el
+      render de debug de Python dibujaba el bulevar `#d8d4c8` donde el Canvas, el
+      Pixi y el editor dibujaban `#d9d6cd`; y `world2d/viewer.js` conocía **7 de
+      11** clases, así que las dos calles sin pavimentar, el bulevar y TODO el
+      malecón se pintaban magenta. `tests/test_world_surfaces.py` es la compuerta:
+      cada clase con fila completa, colores `#rrggbb`, y un escaneo de `src/` +
+      `churchill/` que **rechaza cualquier tabla clase → color** nueva (con el
+      lookbehind que hace falta para no confundir `sky1: "#3a4a5e"` de una paleta
+      de clima con la clase 1).
+
+      Nota: `tools/debug_map.png` se regenera en el próximo build del mundo, que
+      es cuando el bulevar pasa a su color correcto ahí.
 - [ ] **Capa de enums** para las identidades sueltas (stage/sign/pier/vehicle/
       host/geometry/mode) + vocabulario JS/JSON generado determinísticamente.
       *El generador existe*; ya lleva `SignKind`, `PierStyle`, `LineEnd`,

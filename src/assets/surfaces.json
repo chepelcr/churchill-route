@@ -1,0 +1,61 @@
+{
+  "_note": "THE canonical per-surface registry. Identity (wire id, name, role sets) belongs to churchill/world/enums/surface.py and reaches the client as src/domain/vocabulary.generated.js; what lives HERE is every property hung off a surface: how it drives and what it is made of. Keyed by NAME, never by index, so a reader cannot miscount and a new class cannot silently shift the table.",
+  "version": 1,
+  "surfaces": {
+    "water": {
+      "speed": 0.35,
+      "day": "#2a7fa8",
+      "night": "#1a2a44"
+    },
+    "land": {
+      "speed": 0.78,
+      "day": "#e8d5a0",
+      "night": "#4a5040"
+    },
+    "beach": {
+      "speed": 0.7,
+      "day": "#f4d77a",
+      "night": "#6a5a48"
+    },
+    "road": {
+      "speed": 1.0,
+      "day": "#3a3540",
+      "night": "#282633"
+    },
+    "paseo": {
+      "speed": 0.55,
+      "day": "#f08a5d",
+      "night": "#744b4c"
+    },
+    "bridge": {
+      "speed": 1.0,
+      "day": "#8c8c8c",
+      "night": "#555967"
+    },
+    "acera": {
+      "speed": 0.62,
+      "day": "#cec7b2",
+      "night": "#66655f"
+    },
+    "boulevard": {
+      "speed": 0.5,
+      "day": "#d9d6cd",
+      "night": "#5d5a5a"
+    },
+    "barro": {
+      "speed": 0.82,
+      "day": "#9c7a4f",
+      "night": "#4e3f2c"
+    },
+    "gravel": {
+      "speed": 0.9,
+      "day": "#a99d8b",
+      "night": "#565049"
+    },
+    "malecon": {
+      "speed": 0.55,
+      "day": "#e4d2ae",
+      "night": "#6b6152"
+    }
+  }
+}

@@ -133,8 +133,20 @@ member to the Python enum, run `pnpm vocabulary`, and `pnpm test`
 (`tests/test_vocabulary.py`) is the gate: it fails on a stale artifact, on a
 manifest that disagrees with the enum class for class, on an emitted value with
 no renderer implementation, and on any `surfaceAt(...) === <number>` anywhere in
-`src/`. `src/game/surfaces.js` keeps only `SURFACE_MUL` — the one surface
-property the world does not know — keyed through `SURFACE.*`.
+`src/`. A surface's PROPERTIES are a
+separate thing from its identity and live in **`src/assets/surfaces.json`**: one
+versioned registry, keyed by class NAME, holding the speed multiplier and the
+day/night material. Five modules used to keep their own copy of that palette and
+two were wrong — the Python debug renderer drew the bulevar `#d8d4c8` against
+every client's `#d9d6cd`, and `world2d/viewer.js` knew 7 of the 11 classes and
+painted the rest magenta. Now `surfaces.js` (`SURFACE_MUL`), `pixi/tileTexture.js`,
+`world2d/viewer.js`, `debug_render.py` and the editor (`/api/surfaces`) all read
+the one file, and `tests/test_world_surfaces.py` rejects any new class→colour
+table anywhere in `src/` or `churchill/`.
+
+`surfaces.js` imports it with `with { type: "json" }` — required, because
+`tools/gen-inventory.mjs` loads that module under plain Node, which refuses a bare
+JSON import. Same reason it stays free of DOM and `window`.
 
 Two numbers the client used to guess and now asks the accessor for: `W.ACERA_PX`
 and `W.CUAD`. There were four fallbacks for the kerb and they disagreed (12 in

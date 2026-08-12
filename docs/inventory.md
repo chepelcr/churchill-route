@@ -1060,7 +1060,7 @@ styles the game actually knows how to draw or simulate.
 | Authored road width `28` | editor creation/rendering and builder patch fallback | editor feature schema default with world-pixel unit |
 | Ferry/pier/road dimensions in world px | builder, editor, render fallbacks | unit-tagged asset/config records reviewed during `RESCALE.md` work |
 | Road ordering and role membership | Canvas, editor, spawner, sign derivation | `RoadClass`-keyed registry containing render rank and named role flags |
-| Surface speed/roles/colors | Python tuples, JS multiplier, Pixi colors, Canvas/minimap/editor palettes | `Surface`-keyed registry with separate physics and material views |
+| ~~Surface speed/roles/colors~~ | ~~Python tuples, JS multiplier, Pixi colors, Canvas/minimap/editor palettes~~ | **DONE 2026-08-11** — `src/assets/surfaces.json`, keyed by class name: `speed` + `day`/`night`. Read by `surfaces.js`, Pixi, the dev viewer, `debug_render.py` and the editor. Two of the five copies were wrong (bulevar `#d8d4c8` vs `#d9d6cd`; the viewer knew 7 of 11 and drew the rest magenta) |
 
 The values used only inside a drawing recipe—such as a wheel radius, a shadow
 alpha, or a bezier control ratio—belong in that asset's future shape/material
@@ -1119,8 +1119,11 @@ The first four are in `tests/test_vocabulary.py` as of 2026-08-11 (`pnpm test`).
   checked.
 - ~~Scan game code for raw `surfaceAt(...) === <number>` and reject new uses.~~
   **In place** for the six modules the audit named.
-- Compare Canvas, Pixi, minimap, editor, and debug materials by enum key rather
-  than array length. *Still open* — this needs `materials.json` to exist.
+- ~~Compare Canvas, Pixi, minimap, editor, and debug materials by enum key rather
+  than array length.~~ **In place for SURFACE materials** (2026-08-11): there is
+  one registry, so there is nothing left to compare, and a test rejects any new
+  class→colour table. Still open for the non-surface families (structures,
+  minimap, props) — those need `materials.json`.
 - Validate named role sets: drivable, wall, street, carriageway, calle, major,
   pedestrian, waterborne, and renderer-owner. *Partly*: the five surface role
   sets and the two road ones are generated, so a consumer cannot mistype one;

@@ -12,11 +12,8 @@ project takes no image dependency for a debug artefact.
 import struct
 import zlib
 
-from ..config import (
-    CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_BRIDGE, CLS_LAND, CLS_MALECON,
-    CLS_PASEO, CLS_BARRO, CLS_GRAVEL, CLS_ROAD, CLS_WATER,
-    GRID_CELL,
-)
+from ..config import GRID_CELL, surface_registry
+from ..enums import Surface
 from ..logging import log
 from ..util.geometry import pairs
 from ..util.raster import Raster
@@ -56,11 +53,15 @@ def render_debug(*, raster, buildings, landmarks, customers, roads,
     grid = raster.buf
     CANVAS_W, CANVAS_H = raster.cols * raster.cell, raster.rows * raster.cell
     DEBUG_PNG, DEBUG_SVG = png_path, svg_path
-    pal = {CLS_WATER: (42, 127, 168), CLS_LAND: (232, 213, 160), CLS_BEACH: (244, 215, 122),
-           CLS_ROAD: (58, 53, 64), CLS_PASEO: (240, 138, 93), CLS_BRIDGE: (140, 140, 140),
-           CLS_ACERA: (206, 199, 178), CLS_BOULEVARD: (216, 212, 200),
-           CLS_BARRO: (156, 122, 79), CLS_GRAVEL: (169, 157, 139),
-           CLS_MALECON: (228, 210, 174)}
+    # THE PALETTE COMES FROM THE REGISTRY, not from a copy kept here. This table
+    # was one of five, and it was one of the two that were wrong: it drew the
+    # bulevar (216, 212, 200) = #d8d4c8 while the Canvas, Pixi and the editor all
+    # drew #d9d6cd, so the debug map disagreed with the game about a surface the
+    # player can see.
+    pal = {int(Surface[name.upper()]): (int(row["day"][1:3], 16),
+                                        int(row["day"][3:5], 16),
+                                        int(row["day"][5:7], 16))
+           for name, row in surface_registry().items()}
     overlay = Raster(GRID_COLS, GRID_ROWS, GRID_CELL)
     bldg_overlay = overlay.buf
     for b in buildings:

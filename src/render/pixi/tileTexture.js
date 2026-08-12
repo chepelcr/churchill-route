@@ -8,26 +8,17 @@
 // the most reliable buffer->texture path in Pixi 8 (a raw Uint8Array
 // TextureSource uploads blank on some drivers).
 import { Texture, CanvasSource } from "pixi.js";
-import { SURFACE } from "../../domain/vocabulary.generated.js";
+import { SURFACE_CLASSES, surfaceColor } from "../../game/surfaces.js";
 
-// class -> [r,g,b]. Keyed through SURFACE so the class a colour belongs to is
-// named rather than counted; the world editor keeps the same table for its own
-// preview and used to stop at 8 of these, which is how `malecon` came to be
-// missing from its tile palette entirely.
-const CLASS_RGB = {
-  [SURFACE.WATER]: [0x2a, 0x7f, 0xa8],
-  [SURFACE.LAND]: [0xe8, 0xd5, 0xa0],       // cuadra interior
-  [SURFACE.BEACH]: [0xf4, 0xd7, 0x7a],
-  [SURFACE.ROAD]: [0x3a, 0x35, 0x40],
-  [SURFACE.PASEO]: [0xf0, 0x8a, 0x5d],
-  [SURFACE.BRIDGE]: [0x8c, 0x8c, 0x8c],     // bridge and pier decks
-  [SURFACE.ACERA]: [0xce, 0xc7, 0xb2],
-  [SURFACE.BOULEVARD]: [0xd9, 0xd6, 0xcd],  // stone paving
-  [SURFACE.BARRO]: [0x9c, 0x7a, 0x4f],      // the same dirt the road vector uses
-  [SURFACE.GRAVEL]: [0xa9, 0x9d, 0x8b],     // lastre
-  [SURFACE.MALECON]: [0xe4, 0xd2, 0xae],    // warm pavers, a shade off the sand
-};
-// MAGENTA ON PURPOSE: a class with no colour has to be visible, not plausible.
+// class -> [r,g,b], from the ONE registry (src/assets/surfaces.json). This was a
+// hand-written table, one of five copies of the same palette; the world editor
+// kept another and stopped at 8 of the 11 classes, and the dev viewer at 7.
+const CLASS_RGB = Object.fromEntries(SURFACE_CLASSES.map((_, id) => {
+  const hex = surfaceColor(id);
+  return [id, [parseInt(hex.slice(1, 3), 16),
+               parseInt(hex.slice(3, 5), 16),
+               parseInt(hex.slice(5, 7), 16)]];
+}));
 const FALLBACK = [0xff, 0x00, 0xff];
 
 // Returns a Pixi Texture (nearest-filtered) for the tile's surface grid.

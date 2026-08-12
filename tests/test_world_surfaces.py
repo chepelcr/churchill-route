@@ -1,60 +1,94 @@
 """The surface vocabulary is a WIRE FORMAT: these values are the bytes inside
-every tile's RLE, and the client reads them back. The client's copy of the LIST
-is generated now (`tools/gen_vocabulary.py` → src/domain/vocabulary.generated.js,
-checked by tests/test_vocabulary.py), so what is left to check here is the part
-the client still authors: `SURFACE_MUL`, the driving model of each class."""
+every tile's RLE. Identity is generated (`tools/gen_vocabulary.py`, checked by
+tests/test_vocabulary.py); what is checked here is the REGISTRY that hangs
+properties off each class — `src/assets/surfaces.json`, the single home for how a
+surface drives and what it is made of.
+
+It replaced FIVE copies of the same palette, two of them wrong: the Python debug
+renderer drew the bulevar `#d8d4c8` where every client drew `#d9d6cd`, and the
+dev viewer knew 7 of the 11 classes and painted the rest magenta. Both were
+invisible to review, so they are asserted here instead.
+"""
+import json
 import os
 import re
 import unittest
 
-from churchill.world.config import ROOT
+from churchill.world.config import ROOT, surface_registry
 from churchill.world.enums.surface import (
     CALLE, CARRIAGEWAY, DRIVABLE, STREET, Surface, WALL,
 )
 
-SURFACES_JS = os.path.join(ROOT, "src", "game", "surfaces.js")
+HEX = re.compile(r"^#[0-9a-f]{6}$")
 
 
-def _surface_mul():
-    """`SURFACE_MUL` keyed by Surface member name.
+class SurfaceRegistryTests(unittest.TestCase):
+    def setUp(self):
+        self.rows = surface_registry()
 
-    The table is written `[SURFACE.BARRO]: 0.82` — computed keys off the
-    generated vocabulary, so a reader can see which surface a number belongs to
-    without counting commas, and a renumbering cannot silently reassign one."""
-    with open(SURFACES_JS, encoding="utf-8") as fh:
-        text = fh.read()
-    body = text.split("SURFACE_MUL = {", 1)[1].split("\n};", 1)[0]
-    return {name: float(value)
-            for name, value in re.findall(r"\[SURFACE\.(\w+)\]:\s*([\d.]+)", body)}
-
-
-class SurfaceVocabularyTests(unittest.TestCase):
-    def test_every_class_has_a_speed(self):
-        # SURFACE_MUL is the whole driving model of a surface. A class without
-        # one falls back to 0.78 in physics.js, which is a silent wrong answer.
-        multipliers = _surface_mul()
+    def test_every_class_has_a_row(self):
+        # A class with no row is `undefined` in SURFACE_MUL, and physics.js then
+        # silently falls back to 0.78 — a wrong answer that reads as a right one.
         for surface in Surface:
-            self.assertIn(surface.name, multipliers,
-                          f"{surface.label} has no speed multiplier")
+            self.assertIn(surface.label, self.rows,
+                          f"{surface.label} has no registry row")
 
-    def test_the_table_names_no_surface_that_does_not_exist(self):
-        # The keys are `SURFACE.<NAME>` from the generated vocabulary, so a stale
-        # name would be `undefined` — an object with one `undefined` key, and
-        # every class after it reading the wrong speed.
-        names = {s.name for s in Surface}
-        for key in _surface_mul():
-            self.assertIn(key, names, f"SURFACE_MUL names an unknown class: {key}")
+    def test_the_registry_names_no_surface_that_does_not_exist(self):
+        labels = {s.label for s in Surface}
+        for name in self.rows:
+            self.assertIn(name, labels, f"registry names an unknown class: {name}")
+
+    def test_every_row_is_complete_and_well_formed(self):
+        for name, row in self.rows.items():
+            self.assertGreater(row["speed"], 0, f"{name}: speed must be positive")
+            self.assertLessEqual(row["speed"], 1.0, f"{name}: asphalt is the 1.0 reference")
+            for key in ("day", "night"):
+                self.assertRegex(row[key], HEX, f"{name}.{key} is not #rrggbb")
 
     def test_the_unpaved_calles_are_streets_you_drive_slower_on(self):
-        multipliers = _surface_mul()
-        road = multipliers[Surface.ROAD.name]
+        road = self.rows[Surface.ROAD.label]["speed"]
         for surface in (Surface.BARRO, Surface.GRAVEL):
             self.assertIn(surface, DRIVABLE)
             self.assertIn(surface, STREET)      # so the acera ring still forms
             self.assertIn(surface, CALLE)       # so a POI can link to one
             self.assertNotIn(surface, WALL)
-            self.assertLess(multipliers[surface.name], road,
+            self.assertLess(self.rows[surface.label]["speed"], road,
                             f"{surface.label} should be slower than asphalt")
+
+
+class NoSecondPaletteTests(unittest.TestCase):
+    """Nobody may keep their own class -> colour table again.
+
+    The five copies were the whole problem, and four of them looked perfectly
+    reasonable in isolation.
+    """
+
+    #: An object/dict literal mapping a class KEY to a colour: `3: "#3a3540"`,
+    #: `[SURFACE.ROAD]: [0x3a,`, `CLS_ROAD: (58,`. The number must be the whole
+    #: key — the lookbehind is why: without it `sky1: "#3a4a5e"` in a weather
+    #: palette matches on the `1`, and those are not surface colours.
+    PALETTE = re.compile(
+        r"(?:\[SURFACE\.\w+\]|\bCLS_\w+|(?<![\w.])\d+)\s*:\s*"
+        r"(?:\"#[0-9a-fA-F]{6}\"|'#[0-9a-fA-F]{6}'|\[\s*0x[0-9a-fA-F]{2}\s*,|"
+        r"\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\))")
+
+    def test_no_module_hardcodes_a_surface_palette(self):
+        offenders = []
+        for base in ("src", "churchill"):
+            for dirpath, _, files in os.walk(os.path.join(ROOT, base)):
+                if "tiles" in dirpath or "__pycache__" in dirpath:
+                    continue
+                for name in sorted(files):
+                    if not name.endswith((".js", ".jsx", ".py")):
+                        continue
+                    path = os.path.join(dirpath, name)
+                    with open(path, encoding="utf-8") as fh:
+                        text = fh.read()
+                    hits = self.PALETTE.findall(text)
+                    if hits:
+                        offenders.append(f"{os.path.relpath(path, ROOT)} ({len(hits)})")
+        self.assertEqual(offenders, [],
+                         "read src/assets/surfaces.json instead: " + ", ".join(offenders))
 
     def test_a_deck_is_a_carriageway_but_not_a_calle(self):
         # Pointing the faro's access lane at a muelle connected it to itself and

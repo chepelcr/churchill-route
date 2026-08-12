@@ -73,7 +73,18 @@ const out = await page.evaluate(async () => {
   res.travelled = Math.round(Math.hypot(p.x - from.x, p.y - from.y));
 
   // The same hull, on a downtown street.
-  p.x = 17944; p.y = 12240; p.a = wa; p.vx = 0; p.vy = 0; p.speed = 0;
+  //
+  // THIS COORDINATE WENT STALE AND THE TEST WENT GREEN ANYWAY, which is worth a
+  // note because it is the failure mode a smoke test is supposed to not have.
+  // (17944, 12240) was a street when it was written; a rescale later it is OPEN
+  // WATER, so the "on land" leg was measuring a boat on the sea. It still passed
+  // — because the hull was tuned so badly that 2.4 s from rest could not reach a
+  // quarter of her top speed even on water. Two bugs cancelling. When `boat.js`
+  // made her accelerate like an arcade boat, the land leg finally reported 440
+  // px/s and the test failed for the first time, on the one thing that was
+  // right. Verified against the raster: this one is asphalt with no water cell
+  // within 400 px, so a hull dropped here is buried in wall on every side.
+  p.x = 23000; p.y = 15100; p.a = wa; p.vx = 0; p.vy = 0; p.speed = 0;
   const lFrom = { x: p.x, y: p.y };
   res.landTop = 0;
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));

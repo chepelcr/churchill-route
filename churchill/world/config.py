@@ -281,7 +281,26 @@ PASEO_GAP_MARGIN = CUAD         # extra turn room on each side of a crossing
 # broke at the 1.6 -> 2.0 rescale (see STREET_SPAN_M above and the faro's
 # esplanade radius), and this one describes a promenade, which is a real width.
 MALECON_BAND_M = 30             # ~60 px at 2.0 px/m = 3 cuadrículas of paving
-MALECON_SHOULDER_M = 30         # how far past the kerb to look for the sand
+# HOW FAR PAST THE KERB THE SAND MAY BE. This was 30 m (75 px) and that one
+# number is why the sea front arrived in seven disjoint pieces. Measured on the
+# finished raster, the strip between the Paseo's acera and the playa is a solar
+# 80 px deep along the whole Muelle de Cruceros frontage (x 23 900..24 300) and
+# 116 px at the faro end — so the probe gave up before it ever saw sand and
+# those stretches got no promenade at all. At x 24 300 it missed by ONE PIXEL.
+# Measured, not guessed: over the 1 589 cross-sections of the two paseos that
+# actually have sea front, the kerb-to-sand gap runs a median of 94 px, p90 140,
+# p99 150, max 168. At the old 75 px only 7.1 % of them could even SEE the sand.
+MALECON_SHOULDER_M = 70         # 175 px: reaches every one of them
+# …and the other half of the same fault. The band used to START at the first
+# sand cell, so where the solar was narrow enough to cross the promenade still
+# floated 24-56 px off the street with a stripe of land colour between the two.
+# The paving walks BACK to the kerb through that gap — bounded, because an
+# unbounded walk landward is how a cuadra gets paved. Sites stay reserved, so
+# El Planché and the canchas de playa are flowed around, never crossed.
+# …and the cap comes off the same distribution: 40 m links 60 % of the sea
+# front, 50 m links 80 %, 60 m links 99.9 %. Above that it is one pathological
+# section and a wider licence to pave, so the last 0.1 % keeps its short float.
+MALECON_KERB_LINK_M = 60        # non-sand the band may cross to reach the kerb
 # THE SAND HAS A VETO. The beach is 88-150 px wide along most of the Paseo and
 # ~28 px by the faro; taking a flat band would pave the playa away at that end.
 MALECON_MIN_SAND_PX = 24        # sand that must survive seaward of the paving
@@ -312,13 +331,21 @@ FARO_ESP_R_M = 120
 # this big is a leak, and the radius falls back with a warning rather than
 # paving the Paseo. (~2400 cells is the tip; the whole beach is 400k.)
 FARO_ESP_MAX_CELLS = 6000
-# …and the other half of the same fix. The ring of sand the player sees between
-# the grey plaza and the loop road is not the flood stopping short: it is sand
-# the plaza and the street CLOSED AROUND, which the flood can never reach. A
-# pocket of beach with no way to the sea is a hole in the esplanade, and gets
-# paved with it — up to this size, so that a rebuild which opens a path to the
-# playa cannot quietly pave the coast.
-FARO_POCKET_MAX_CELLS = 400
+# …and the other half of the same fix, which took two goes to state correctly.
+# The line the player sees between the grey plazoleta and the loop road is NOT
+# sand and it was never a matter of radius: measured off the finished raster it
+# is `CLS_LAND` — 52 px of it at y 15 340, 60 px at y 15 560 — painted in the
+# land tan `#cfb27a`, which against the plaza's `#cbc6ba` and the acera's
+# `#b8b6b0` reads as a yellow stripe down the middle of one place. The flood
+# follows SAND, so it can never take that ground, and a pocket rule bounded by
+# a radius box and vetoed by "does it touch the sea" could not either.
+#
+# So the plazoleta is CLOSED TO ITS KERB instead: from the flooded sand it
+# absorbs land and beach outward until it meets the sidewalk, the roadway or
+# the water. This is the same move the malecón's `MALECON_KERB_LINK_M` makes
+# on the other side of the spit, and for the same reason — a paved place with
+# a verge between it and the street is two things, not one.
+FARO_ESP_KERB_LINK_M = 30
 
 PASEO_TURISTAS = "paseo de los turistas"
 # THE TWO PASEOS ARE ONE WATERFRONT. Turistas runs the spit from the faro to

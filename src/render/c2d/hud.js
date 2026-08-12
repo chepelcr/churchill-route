@@ -549,7 +549,11 @@ function drawCrossingHud(vw, vh) {
     ctx.font = "600 9px 'Space Mono', monospace";
   }
   const w = Math.max(132, PAD + titleW + (counter ? GAP + counterW : 0) + PAD, tideW);
-  const h = 44 + (tide ? TIDE_ROW_H : 0) + (prog !== null ? 10 : 0);
+  // EL IMPULSO gets its own row, because it is now the thing the level runs on:
+  // you earn it by going close and you spend it on the turbo, and a meter you
+  // cannot see is a mechanic you will not use.
+  const boostRow = c.level ? 12 : 0;
+  const h = 44 + boostRow + (tide ? TIDE_ROW_H : 0) + (prog !== null ? 10 : 0);
   const x = vw - w - 18, y = 108;
   ctx.fillStyle = "rgba(12,20,26,0.72)";
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
@@ -574,10 +578,28 @@ function drawCrossingHud(vw, vh) {
   ctx.fillText(`${c.fish} 🐟`, x + (c.level ? 58 : 12), y + 34);
   ctx.fillStyle = "#dfe7e3";
   ctx.fillText(`${c.t.toFixed(0)}s`, x + w - 34, y + 34);
+  // EL IMPULSO: a bar that fills as you brush things, and a streak beside it.
+  if (boostRow) {
+    const by0 = y + 41, bw0 = w - 20;
+    const boost = Math.max(0, Math.min(1, c.boost || 0));
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.beginPath(); ctx.roundRect(x + 10, by0, bw0, 5, 2.5); ctx.fill();
+    ctx.fillStyle = boost >= 1 ? "#ffd166" : "#4fb0d6";
+    ctx.beginPath();
+    ctx.roundRect(x + 10, by0, Math.max(2, bw0 * boost), 5, 2.5); ctx.fill();
+    if (c.streak > 1) {
+      ctx.textAlign = "right";
+      ctx.font = "600 8px 'Space Mono', monospace";
+      ctx.fillStyle = "#ffd166";
+      ctx.fillText(`x${c.streak}`, x + w - PAD, by0 - 2);
+      ctx.textAlign = "left";
+      ctx.font = "600 9px 'Space Mono', monospace";
+    }
+  }
   // LA MAREA: the gauge, then the name of the hour and which way it is going.
   // Sandy while the banks are out, because that is when the level is news.
   if (tide) {
-    const gy = y + 42;
+    const gy = y + 42 + boostRow;
     drawTideGauge(x + PAD, gy, tide);
     const tx = x + PAD + TIDE_GW + 7;
     const col = tide.level < 0.35 ? "#e8c07a" : "#9fd7ef";

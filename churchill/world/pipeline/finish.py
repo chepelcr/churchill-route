@@ -366,7 +366,7 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
                  land_polys=land_polys, landmarks=ctx.landmarks,
                  customers=ctx.customers, stages=ordered_stages(),
                  stadiums=ctx.stadiums, malecon=ctx.malecon,
-                 attractions=ctx.attractions,
+                 attractions=ctx.attractions, feria=ctx.feria,
                  kiosk_paths=ctx.kiosk_paths,
                  balneario=ctx.balneario, bridge=ctx.bridge, estuary=ctx.estuary,
                  piers=ctx.piers, hills=ctx.hills, pois=ctx.pois,

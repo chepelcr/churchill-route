@@ -31,14 +31,23 @@ export const VEHICLES = {
   // shop, the paint swatches and applyOwnedShopEffects all work on them with no
   // special case, because the only thing that makes them boats is `medium`.
   //
-  // The ladder is grip, not speed. A panga is slow and holds her line; a
-  // deslizador is fast and washes wide out of every bend, which is what makes
-  // the buoys worth reading. Their `turn` is LOW next to a car's — nothing on
-  // water pivots — and physics.js suppresses the pivot-in-place term for them,
-  // which is the single thing that would otherwise make a hull feel like a kart.
-  panga:      { name: "Panga de trabajo", accel: 150, top: 190, turn: 1.9, grip: 0.55, melt: 1.0, drag: 0.45, color: "#f6f2e8", roof: "#3a6f8a", w: 34, h: 14, kind: "boat", medium: "water" },
-  lanchataxi: { name: "Lancha taxi",      accel: 205, top: 260, turn: 2.2, grip: 0.42, melt: 1.0, drag: 0.38, color: "#4fb0d6", roof: "#f6f2e8", w: 32, h: 12, kind: "boat", medium: "water" },
-  deslizador: { name: "Deslizador",       accel: 280, top: 340, turn: 2.5, grip: 0.30, melt: 1.0, drag: 0.30, color: "#ff3d80", roof: "#26222c", w: 30, h: 11, kind: "boat", medium: "water" },
+  // THE LADDER IS GRIP, NOT SPEED. A panga holds her line; a deslizador washes
+  // wide out of every bend, which is what makes the buoys worth reading. That
+  // part was always right and is untouched.
+  //
+  // The NUMBERS moved, and the comment that used to sit here is why they had to.
+  // It read: "their `turn` is LOW next to a car's — nothing on water pivots —
+  // and physics.js suppresses the pivot-in-place term for them". Two of those
+  // three clauses were doing the same job twice, and on top of them physics.js
+  // ALSO multiplied by `0.25 + 0.75*spdFac`. Three suppressions stacked on a
+  // low base is not a heavy boat, it is a boat that does not answer: stopped,
+  // she had a quarter of a turn rate already below any car's, and could not
+  // build the speed that was the only way out of it. `boat.js` now holds the
+  // handling model and states the one real rule (way and prop wash buy you the
+  // rudder), so these can be honest arcade numbers again.
+  panga:      { name: "Panga de trabajo", accel: 210, top: 235, turn: 2.4, grip: 0.62, melt: 1.0, drag: 0.34, color: "#f6f2e8", roof: "#3a6f8a", w: 34, h: 14, kind: "boat", medium: "water" },
+  lanchataxi: { name: "Lancha taxi",      accel: 265, top: 305, turn: 2.7, grip: 0.52, melt: 1.0, drag: 0.30, color: "#4fb0d6", roof: "#f6f2e8", w: 32, h: 12, kind: "boat", medium: "water" },
+  deslizador: { name: "Deslizador",       accel: 345, top: 400, turn: 3.0, grip: 0.42, melt: 1.0, drag: 0.24, color: "#ff3d80", roof: "#26222c", w: 30, h: 11, kind: "boat", medium: "water" },
 };
 
 //: the medium a vehicle key belongs to, defaulting to land — an editor-authored

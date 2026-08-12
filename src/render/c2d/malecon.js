@@ -39,8 +39,25 @@ const MALECON_COLORS = {
   night:  { fill: "#6f6450", joint: "rgba(40,36,28,0.40)",
             kerb: "rgba(30,28,22,0.70)", inlay: "rgba(255,236,180,0.16)" },
 };
-function maleconColors() {
-  return MALECON_COLORS[state.weather] || MALECON_COLORS.clear;
+// …and the faro's plazoleta is the SAME FLOOR IN ANOTHER STONE. It is the same
+// kind of place — paved sea front you walk on — so it gets the same baldosa
+// mosaic laid in the same way; what changes is the material. Grey, because La
+// Punta's plazoleta is concrete and riprap out on the rocks rather than warm
+// baldosa along a beach, and because the whole point of the band there is to
+// read as ONE surface with the loop road's acera it now meets.
+const ESPLANADE_COLORS = {
+  clear:  { fill: "#c9c6bf", joint: "rgba(112,110,104,0.34)",
+            kerb: "rgba(96,94,88,0.75)", inlay: "rgba(255,255,255,0.20)" },
+  storm:  { fill: "#9d9c96", joint: "rgba(70,70,66,0.34)",
+            kerb: "rgba(56,56,52,0.75)", inlay: "rgba(255,255,255,0.10)" },
+  sunset: { fill: "#cfbdb0", joint: "rgba(120,100,92,0.32)",
+            kerb: "rgba(104,86,78,0.72)", inlay: "rgba(255,240,230,0.20)" },
+  night:  { fill: "#5c5b56", joint: "rgba(34,34,32,0.40)",
+            kerb: "rgba(26,26,24,0.70)", inlay: "rgba(220,228,238,0.16)" },
+};
+function maleconColors(band) {
+  const table = band && band.style === "esplanade" ? ESPLANADE_COLORS : MALECON_COLORS;
+  return table[state.weather] || table.clear;
 }
 
 function bandPath(B) {
@@ -97,9 +114,9 @@ function paintBaldosas(B, view, C) {
 function drawMalecon(view) {
   const arr = W.MALECON;
   if (!arr || !arr.length) return;
-  const C = maleconColors();
   for (const B of arr) {
     if (!aabbInView(bandAABB(B), view, 8)) continue;
+    const C = maleconColors(B);          // sand along the playa, stone at La Punta
     const path = bandPath(B);
     ctx.fillStyle = C.fill;
     ctx.fill(path, "evenodd");

@@ -102,21 +102,21 @@ export function tideName(level = tide.level) {
   return tide.rising ? "subiendo" : "bajando";
 }
 
-/**
- * How much of the marked channel is actually navigable right now, 0..1.
- *
- * THE LANE NARROWS AT LOW WATER, and this is the knob the whole level turns on.
- * The buoys do not move — they mark the channel, not the water — so at bajamar
- * you are threading a lane visibly narrower than the one the marks describe,
- * which is exactly the read a real pilot makes. It never closes completely:
- * a crossing you cannot make is not a difficulty setting.
- */
-export function navigableFraction(level = tide.level) {
-  // THE MARKED CHANNEL HAS TO STAY MOSTLY SAILABLE. At 0.55 a bajamar left the
-  // navigable water at 58 px against buoys set at 105, so a boat steering dead
-  // centre between the marks was still in the shallows and dragging — the level
-  // read as "the boat is slow", not as "you are off the line", which is the
-  // opposite of what a channel is for. The floor is the width of the promise
-  // the buoys make; the tide narrows it enough to be felt, not enough to lie.
-  return 0.72 + 0.28 * level;
-}
+// `navigableFraction` USED TO LIVE HERE, and deleting it is the point.
+//
+// It returned `0.72 + 0.28 * level` and the renderer drew the BRIGHT navigable
+// band at that fraction of the marked channel, on the reasoning that a pilot
+// reads the difference between what the marks promise and what the tide gives.
+// The reasoning is lovely. What it actually did was this: a run starts on the
+// FLOOD, so the pleamar and aguacero attempts top out within seconds and then
+// drain for the rest of the crossing — and the player watched the channel close
+// in on them, continuously, from the first second to the last, with no way to
+// answer it. PHYSICS NEVER READ THE NUMBER (the off-lane drag it was invented
+// for was deleted long ago), so there was nothing to answer: it was a threat
+// drawn on the screen and nowhere else. It is the single thing the player named
+// when they said the path gets smaller and smaller.
+//
+// The lane is drawn at the width the WORLD measured now (`manifest.ferries[].
+// channel`), which opens and closes with the real estero — level shape instead
+// of a moving goalpost. The tide keeps the job it can honestly do: the bancos
+// de arena dry out at low water (`bancoExposed` in crossing.js).

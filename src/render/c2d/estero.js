@@ -18,8 +18,7 @@
 import { ctx, hash01, roundRect, weatherColors } from "./gfx.js";
 import { drawFisher, paintHull } from "./entities.js";
 import { state } from "../../game/state.js";
-import { LANE_HW, bancoExposed, channels, crossingState, esteroThings } from "../../game/crossing.js";
-import { navigableFraction } from "../../game/tides.js";
+import { LANE_HW, bancoExposed, buoyWet, channels, crossingState, esteroThings, laneAt } from "../../game/crossing.js";
 
 const RED = "#e2503f", GREEN = "#3fa86a";
 
@@ -27,83 +26,89 @@ function inView(x, y, view, m = 60) {
   return !(x + m < view.x0 || x - m > view.x1 || y + m < view.y0 || y - m > view.y1);
 }
 
-/**
- * How much of the marked channel is water RIGHT NOW, 0.55..1.
- *
- * A running crossing publishes it on `state.crossing.laneFrac`, and that is the
- * number the physics is using this frame, so the drawing cannot disagree with
- * it. Outside a crossing the channel is still drawn (the lancha's route is part
- * of the estero at every hour), and there the tide on `state` goes through the
- * SAME published mapping rather than a copy of its constants.
- */
-function laneFraction() {
-  const c = state.crossing;
-  if (c && c.active && Number.isFinite(c.laneFrac)) return c.laneFrac;
-  return navigableFraction(Number.isFinite(state.tide) ? state.tide : 0.5);
-}
+// THE LANE IS DRAWN AT THE WIDTH THE WORLD MEASURED. There used to be two
+// widths here — a fixed "marked channel" envelope and, inside it, a bright
+// "navigable" band scaled by the tide — and the gap between them was described
+// as the pilotage this crossing is about. It was not: physics never read the
+// fraction, and because a run starts on the flood, the bright band simply
+// closed in on the player for the whole of the pleamar and aguacero attempts.
+// One band now, at `laneAt(ch, s).hw`, which is real: it opens out in the gulf
+// and narrows through the mangrove because THE ESTERO DOES.
+//
+// Sampled along the route rather than per vertex, because the width and the
+// centre both vary between vertices now.
+const LANE_STEP = 60;
 
-// One polyline offset `off` px to starboard of the route, as a fresh path.
-function lanePolyline(pts, off) {
-  ctx.beginPath();
+// …AND IT IS BUILT ONCE. The lane is static geometry — the route, the measured
+// half-width and the offset are all world data — but sampling it costs an
+// `at()` walk of the arclength table per point, and the fill alone wants ~240
+// of them. Rebuilding six of these polylines every frame was ~1 700 `laneAt`
+// calls and a quarter of a million comparisons per frame, for a shape that
+// never changes. Cached on the channel object, the same way the renderer caches
+// road and building paths.
+function laneCache(ch) {
+  if (ch._lane) return ch._lane;
+  const pts = [];
+  for (let s = 0; s <= ch.total; s += LANE_STEP) pts.push(laneAt(ch, s));
+  const at = (off) => {
+    const p = new Path2D();
+    for (let i = 0; i < pts.length; i++) {
+      const q = pts[i];
+      const x = q.x - Math.sin(q.a) * q.hw * off;
+      const y = q.y + Math.cos(q.a) * q.hw * off;
+      if (i === 0) p.moveTo(x, y); else p.lineTo(x, y);
+    }
+    return p;
+  };
+  // the ribbon: starboard limit out, port limit back, closed
+  const band = new Path2D();
   for (let i = 0; i < pts.length; i++) {
-    const [x, y] = pts[i];
-    const [px, py] = pts[Math.max(0, i - 1)];
-    const a = Math.atan2(y - py, x - px);
-    const nx = x - Math.sin(a) * off, ny = y + Math.cos(a) * off;
-    if (i === 0) ctx.moveTo(nx, ny); else ctx.lineTo(nx, ny);
+    const q = pts[i];
+    const x = q.x - Math.sin(q.a) * q.hw, y = q.y + Math.cos(q.a) * q.hw;
+    if (i === 0) band.moveTo(x, y); else band.lineTo(x, y);
   }
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const q = pts[i];
+    band.lineTo(q.x + Math.sin(q.a) * q.hw, q.y - Math.cos(q.a) * q.hw);
+  }
+  band.closePath();
+  ch._lane = {
+    band,
+    limits: [at(-1), at(1)],
+    streaks: [at(-0.55), at(0), at(0.55)],
+  };
+  return ch._lane;
 }
 
 // The lane: calmer water + current streaks, under everything that floats on it.
 //
-// TWO WIDTHS, AND THE GAP BETWEEN THEM IS THE LEVEL. The buoys mark a SURVEYED
-// channel: it is the same channel at every hour, so the faint envelope and its
-// two dashed limits never move. The water inside it does — at bajamar the
-// navigable band shrinks to a little over half the marked width — and it is the
-// bright band, because that is the water you can actually use. Reading the
-// difference between what the marks promise and what the tide gives you is the
-// pilotage this crossing is about, so it has to be visible, not inferred.
+// ONE WIDTH, AND IT IS THE REAL ONE. See the note on `laneCache` for the two
+// widths that used to be here and why the second was a lie. What is drawn now
+// is the measured channel: a soft band of calmer water between the marks, its
+// two limits, and streaks sliding down it. It widens in the gulf and closes
+// through the mangrove because the water does, so reading it ahead is worth
+// something — which is what the old bright band was reaching for and could not
+// deliver, because it moved with the clock instead of with the place.
 function drawCurrent(channel, view, t) {
-  const pts = channel.pts;
   const night = state.weather === "night";
-  const frac = laneFraction();
+  const L = laneCache(channel);
   ctx.save();
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-  // el canal balizado — wide, faint, fixed
-  lanePolyline(pts, 0);
-  ctx.strokeStyle = night ? "rgba(120,180,210,0.05)" : "rgba(255,255,255,0.045)";
-  ctx.lineWidth = LANE_HW * 2;
-  ctx.stroke();
-  // …and its two limits, dashed, so the envelope reads as a MARK and not as
-  // water. They run through the buoys, which is where they belong.
-  ctx.setLineDash([16, 24]);
-  ctx.lineDashOffset = 0;
+  // el canal — a soft fill between the two limits. A stroke down the centre
+  // would be wrong now that the width varies, so it is a filled ribbon.
+  ctx.fillStyle = night ? "rgba(120,180,210,0.10)" : "rgba(255,255,255,0.09)";
+  ctx.fill(L.band);
+  // …and its two limits, solid, running through the buoys where they belong.
   ctx.lineWidth = 1.6;
-  ctx.strokeStyle = night ? "rgba(160,210,235,0.34)" : "rgba(255,255,255,0.30)";
-  for (const side of [-1, 1]) { lanePolyline(pts, LANE_HW * side); ctx.stroke(); }
-  ctx.setLineDash([]);
-  // el agua navegable — narrower at low water, and this is the band you steer in
-  lanePolyline(pts, 0);
-  ctx.strokeStyle = night ? "rgba(120,180,210,0.13)" : "rgba(255,255,255,0.12)";
-  ctx.lineWidth = LANE_HW * 2 * frac;
-  ctx.stroke();
-  // …and its own two edges, solid, because the boundary between the water that
-  // is there and the water that is only on the chart is the thing being read
-  ctx.lineWidth = 1.6;
-  ctx.strokeStyle = night ? "rgba(170,220,240,0.22)" : "rgba(255,255,255,0.24)";
-  for (const side of [-1, 1]) { lanePolyline(pts, LANE_HW * frac * side); ctx.stroke(); }
+  ctx.strokeStyle = night ? "rgba(170,220,240,0.26)" : "rgba(255,255,255,0.26)";
+  for (const p of L.limits) ctx.stroke(p);
   // streaks: short dashes sliding along the lane, so the water reads as moving.
-  // They ride the NAVIGABLE width, so the current visibly closes in on the
-  // centreline as the estero empties.
   ctx.strokeStyle = night ? "rgba(150,200,225,0.16)" : "rgba(255,255,255,0.20)";
   ctx.lineWidth = 2;
   ctx.setLineDash([26, 64]);
   ctx.lineDashOffset = -(t * 26) % 90;
-  for (const off of [-0.55, 0, 0.55]) {
-    lanePolyline(pts, LANE_HW * frac * off);
-    ctx.stroke();
-  }
+  for (const p of L.streaks) ctx.stroke(p);
   ctx.setLineDash([]);
   ctx.restore();
 }
@@ -122,6 +127,8 @@ function drawCurrent(channel, view, t) {
 // real navigation and the thing this level asks you to read.
 function drawBuoy(b, view, t) {
   if (!inView(b.x, b.y, view, 24)) return;
+  // a mark on the bank says the channel is where it is not — see `buoyWet`
+  if (!buoyWet(b)) return;
   const swell = Math.sin(t * 1.6 + b.ph);
   // she does not BOUNCE UP THE SCREEN — seen from above, the swell shows as the
   // body sliding inside its own ring of foam, and as the ring breathing.
@@ -405,6 +412,82 @@ function drawBanco(e, level, t) {
   ctx.restore();
 }
 
+// EL PESCADOR. The boat is scenery; the NET is the obstacle, so the net is what
+// the drawing is about — a line of corks from her stern to a marker float,
+// spanning part of the channel. Read it from a long way off and you pick the
+// side with the gap; read it late and you are in it. Drawn as the segment the
+// collision actually tests (`segDist` on the same two points), because a hazard
+// whose picture and whose hitbox are different shapes is the worst kind.
+function drawPescador(e, view, t) {
+  const fx = e.fx ?? e.x, fy = e.fy ?? e.y;
+  ctx.save();
+  // the net: a taut line with corks bobbing along it
+  ctx.strokeStyle = "rgba(240,236,220,0.55)";
+  ctx.lineWidth = 1.6;
+  ctx.setLineDash([7, 7]);
+  ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(fx, fy); ctx.stroke();
+  ctx.setLineDash([]);
+  const n = 7;
+  for (let i = 1; i < n; i++) {
+    const k = i / n;
+    const cx = e.x + (fx - e.x) * k, cy = e.y + (fy - e.y) * k;
+    const bob = Math.sin(t * 2.1 + e.ph + i) * 1.4;
+    ctx.fillStyle = "#e8a33d";
+    ctx.beginPath(); ctx.arc(cx, cy + bob, 2.6, 0, Math.PI * 2); ctx.fill();
+  }
+  // the marker float at the far end
+  ctx.fillStyle = "#d9482f";
+  ctx.beginPath(); ctx.arc(fx, fy, 4.2, 0, Math.PI * 2); ctx.fill();
+  // …and the panga herself, with her man in her. `drawFisher` is not reused
+  // here on purpose: it paints in WORLD coordinates (it is written for the
+  // muellero on the pier rail), so inside this rotated frame it would draw
+  // itself somewhere else entirely. He is two shapes; the net is the obstacle.
+  ctx.translate(e.x, e.y); ctx.rotate(e.a + Math.PI / 2);
+  paintHull(ctx, 26, 10, "#f2ead6");
+  ctx.fillStyle = "#2f4a60";                       // seated, facing his net
+  ctx.beginPath(); ctx.arc(0, -1, 3.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#e8c07a";
+  ctx.beginPath(); ctx.arc(0, -5.4, 2.1, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// EL YATE. The set piece: a big white motor yacht steaming along the channel
+// with two wake crests astern. She is drawn big on purpose — she has to read as
+// something you go AROUND from far enough away to choose a side — and the wake
+// is drawn as the two rings the collision pays out on, so "take the wake fast"
+// is a thing you can see rather than a thing you find out.
+function drawYate(e, view, t) {
+  ctx.save();
+  // the wake crests, behind her
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 2.5;
+  for (const rr of [e.r + 46, e.r + 74]) {
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, rr + Math.sin(t * 2 + e.ph) * 2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.translate(e.x, e.y); ctx.rotate(e.a);
+  // hull: a long flare-bowed white thing with a dark sheer line
+  ctx.fillStyle = "#f6f6f2";
+  ctx.beginPath();
+  ctx.moveTo(52, 0); ctx.quadraticCurveTo(22, -17, -34, -14);
+  ctx.lineTo(-42, 0); ctx.lineTo(-34, 14);
+  ctx.quadraticCurveTo(22, 17, 52, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "rgba(40,60,80,0.35)"; ctx.lineWidth = 1.4; ctx.stroke();
+  // superstructure + flybridge
+  ctx.fillStyle = "#dfe6ea";
+  roundRect(ctx, -18, -10, 34, 20, 4, true, false);
+  ctx.fillStyle = "#2f4a60";
+  roundRect(ctx, -8, -6, 18, 12, 3, true, false);
+  // prop wash
+  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(-48, 0, 10 + Math.sin(t * 6 + e.ph) * 2, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 /** The channel itself — drawn under the boats, over the water. */
 export function drawChannel(view, t) {
   for (const channel of channels().values()) {
@@ -434,5 +517,7 @@ export function drawEstero(view, t) {
     else if (e.kind === "gulls" && !e.taken) drawGulls(e, view, t);
     else if (e.kind === "roots") drawRoots(e, view, t);
     else if (e.kind === "remolino") drawRemolino(e, view, t);
+    else if (e.kind === "pescador") drawPescador(e, view, t);
+    else if (e.kind === "yate") drawYate(e, view, t);
   }
 }

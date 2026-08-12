@@ -102,8 +102,11 @@ class WorldContext:
     stadiums: list = field(default_factory=list)
     parcels: list = field(default_factory=list)
     kiosk_paths: list = field(default_factory=list)
-    #: the turno on the malecón: carrusel, rueda, chocones, tómbola and the DJ
+    #: the turno on the malecón: the rides, the chinamos and the DJ
     attractions: list = field(default_factory=list)
+    #: …and the GROUND they stand on — the campo ferial's packed-earth lot,
+    #: outline rings plus the frame its two rows are laid out in.
+    feria: list = field(default_factory=list)
     buildings: list = field(default_factory=list)
     #: Semantic additions the current runtime does not render yet. Preserving
     #: them in the manifest is part of the editor contract: no valid edit is

@@ -357,6 +357,27 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     if balneario_cells:                 # keep OSM buildings off the Balneario water
         occ.update(balneario_cells)
 
+    # A LANDMARK THAT DRAWS ITSELF OWNS THE FOOTPRINT IT WAS RESOLVED FROM.
+    # The two Paseo stands are anchored on OSM way 232193746 — `amenity=food_court`,
+    # `building=roof`, "Kioscos Paseo de los Turistas" — which is the real thing
+    # they ARE. It is also a NAMED footprint, and named footprints bypass `occ`
+    # unconditionally, so the mapped roof was extracted and drawn on top of the
+    # two churchill stands standing on the same spot. Exactly the reason
+    # `SITE_BUILT` clears a church's way when the parcel draws the church.
+    #
+    # Keyed off `osmRef`, which the POI stage already records as the PROVENANCE
+    # of each anchor, so this cannot drift from whatever the resolver picked.
+    # `kios_faro` resolves to a NODE and is untouched by the `way/` test.
+    drawn_ways = {int(str(lm["osmRef"]).split("/")[1])
+                  for lm in landmarks
+                  if lm.get("type") == "kiosk"
+                  and str(lm.get("osmRef", "")).startswith("way/")}
+    if drawn_ways:
+        before = len(raw_bldgs)
+        raw_bldgs = [b for b in raw_bldgs if b.get("id") not in drawn_ways]
+        log("kiosk", f"cleared {before - len(raw_bldgs)} OSM footprint(s) a kiosk "
+            f"draws itself: ways {sorted(drawn_ways)}")
+
     # --- Estadios: DRIVABLE green pitches placed on a named street-grid cuadra.
     # Lito Pérez = the block bounded by Calle 15-17 x Avenida 0-2 (actual size);
     # Las Playitas = Calle 6-8 x Avenida 1, extended NORTH so it reads vertical.
@@ -1188,8 +1209,12 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
     # same reason everything else in it is: the rides snap onto the FINISHED
     # promenade, and the DJ onto the frontage of a building that only exists
     # once place_structures has run.
+    # The campo ferial is laid out in the PASEO'S frame, so this stage needs a
+    # street index of its own — `decorate` never had one, and reaching for the
+    # name that exists in `place_structures` is how this failed the first time.
     ctx.attractions.extend(place_attractions(
-        ctx, lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2], buildings))
+        ctx, lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2],
+        buildings, StreetIndex(roads)))
     # --- bridge / estuary / decorations
     if bridge_road:
         bp = bridge_road["pts"]

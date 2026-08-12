@@ -19,11 +19,20 @@ because the alternative was measured on this coast:
     the take is capped per cross-section: `MALECON_MIN_SAND_PX` of sand always
     survives seaward of the paving, and where that leaves nothing worth paving
     there is simply no malecón.
-  * ONLY SAND BECOMES MALECON. The stamp never overwrites asphalt, water or a
-    cuadra — it converts `CLS_BEACH` and nothing else. That is what lets it
-    follow the real, wandering line between the street and the sea without a
+  * ONLY SAND BECOMES BAND. The stamp never overwrites asphalt, water or a
+    cuadra — the BAND converts `CLS_BEACH` and nothing else. That is what lets
+    it follow the real, wandering line between the street and the sea without a
     single hand-placed vertex, and what makes it safe to run over the whole
     length of the Paseo at once.
+  * …BUT THE BAND HAS TO REACH THE KERB. A promenade with a stripe of solar
+    between it and the sidewalk is two things, not one, and that is what the
+    sea front looked like: 24 px of land colour at x 25 000, 48 px at x 24 500,
+    and NOTHING AT ALL for the 636 px of the Muelle de Cruceros frontage,
+    because an 80 px solar there put the sand past the old 30 m shoulder. So
+    after the band is laid, the paving walks BACK from the first sand cell to
+    the kerb, crossing `KERB_LINK_CLASSES` — land and acera, never a
+    carriageway — for at most `MALECON_KERB_LINK_M`. The cap is the whole
+    safety argument: unbounded, this is how a cuadra gets paved.
 
 The ENTRADAS are the exception to the last rule. A promenade you cannot get onto
 is scenery, and in places a strip of solar or acera stands between the kerb and
@@ -43,8 +52,9 @@ from collections import deque
 from ..config import (
     CARRIAGEWAY_CLASSES, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND,
     CLS_MALECON, CLS_WATER, CUAD, GRID_CELL, MALECON_BAND_M, MALECON_ENTRADA_W,
-    MALECON_MIN_PATCH_CELLS, MALECON_MIN_SAND_PX, MALECON_MIN_TAKE_PX,
-    MALECON_SHOULDER_M, PASEO_NAMES, PASEO_TURISTAS, PLANAR_PX_PER_M,
+    MALECON_KERB_LINK_M, MALECON_MIN_PATCH_CELLS, MALECON_MIN_SAND_PX,
+    MALECON_MIN_TAKE_PX, MALECON_SHOULDER_M, PASEO_NAMES, PASEO_TURISTAS,
+    PLANAR_PX_PER_M,
 )
 from ..logging import log, warn
 from ..util.geometry import point_in_poly
@@ -56,6 +66,41 @@ from .street import resample_centerline
 #: ramp starts at the kerb and runs seaward, so the asphalt it comes off stays
 #: asphalt and the two simply meet.
 ENTRADA_CLASSES = (CLS_ACERA, CLS_LAND, CLS_BEACH)
+
+#: What the band may cross walking BACK from the sand to the kerb: the solar
+#: between the Paseo and the playa, AND the sidewalk in between.
+#:
+#: The acera is in here on purpose, and it was left out for one revision to see
+#: what happened. What happened is that the band stopped 12 px short of the
+#: asphalt with a sidewalk in the way — and `CLS_ACERA` IS A WALL in the game's
+#: collider, so that is not a tidy edge, it is a fence. Measured on the shipped
+#: world, FOUR OF THE SEVEN existing bands already touch neither carriageway nor
+#: acera: 6 746 cells of promenade you can see, cannot reach, and cannot leave.
+#: A malecón you cannot get onto is scenery, which is the same thing the
+#: `entradas` were invented to prevent.
+#:
+#: Nor is the sidewalk lost: on the seaward side of the Paseo the promenade IS
+#: the sidewalk. Class 10 is transitable (0.55 — you crawl among people), the
+#: `paseante` crowds already walk on it by registry, and the landward acera of
+#: the Paseo is untouched for the rail-bound walkers.
+#:
+#: `CLS_BEACH` is in here too, and leaving it out cost a whole build. The band
+#: is laid seaward from `d0`, the first sand the probe found, and the link is
+#: laid landward from the same `d0` — so between the two there is nothing, in
+#: theory. In practice the rays are perpendicular to a centreline that BENDS,
+#: so a ray finds its `d0` a few px along from where the neighbouring ray found
+#: its own, and the strip between two adjacent rays keeps a sliver of the sand
+#: that neither of them claimed. Cell-scale slivers, one to three cells wide —
+#: and each one is a HOLE in the promenade. The band that should have been one
+#: piece came out as 95 rings and 752 outline points, and the renderer's
+#: even-odd fill drew every one of those holes as a wedge of bare sand. The
+#: link takes whatever is between the kerb and the sand, sand included; the
+#: seaward veto still protects the playa, because that is measured from `d0`
+#: OUTWARD and this only ever paints inward of it.
+#:
+#: A carriageway is never crossed: it stays asphalt and the two simply meet,
+#: exactly as the entrada ramps already do.
+KERB_LINK_CLASSES = (CLS_LAND, CLS_ACERA, CLS_BEACH)
 
 
 def paseo_frontage_roads(roads):
@@ -105,25 +150,32 @@ def _sand_run(raster, x, y, nx, ny, hw, shoulder_px, reach_px):
       the Paseo onto the wrong side of it.
     """
     step = raster.cell / 2.0
-    d, d0 = hw, None
     limit = hw + shoulder_px + reach_px
+    d = hw
     while d <= hw + shoulder_px:
         cls = raster.at_px(x + nx * d, y + ny * d)
-        if cls == CLS_BEACH:
-            d0 = d
-            break
         if cls is None or cls == CLS_WATER:
             return None                      # the sea is already here
+        if cls != CLS_BEACH:
+            d += step
+            continue
+        d0 = d
+        while d <= limit and raster.at_px(x + nx * d, y + ny * d) == CLS_BEACH:
+            d += step
+        end = raster.at_px(x + nx * d, y + ny * d)
+        if d > limit or end in (CLS_WATER, CLS_BRIDGE):
+            return d0, d - d0
+        # AN INLAND POCKET — AND THE WALK GOES ON. This used to `return None`
+        # on the spot: the first sand within reach either ended at the sea or
+        # the whole cross-section was written off. At the old 30 m shoulder
+        # that was nearly always the same thing. At 70 m it is not: the probe
+        # now reaches far enough inland to meet a pocket of sand BEFORE the
+        # playa — a dry patch in a solar, the tail of a bajada — and giving up
+        # there would punch a hole in the sea front for a reason that has
+        # nothing to do with the sea front. Step past it and keep looking, on
+        # the same shoulder budget.
         d += step
-    if d0 is None:
-        return None
-    d = d0
-    while d <= limit and raster.at_px(x + nx * d, y + ny * d) == CLS_BEACH:
-        d += step
-    end = raster.at_px(x + nx * d, y + ny * d)
-    if d <= limit and end not in (CLS_WATER, CLS_BRIDGE):
-        return None                          # not a shore: an inland sand pocket
-    return d0, d - d0
+    return None
 
 
 def _paint(raster, x, y, cls, allowed, reserved=(), was=None):
@@ -231,20 +283,31 @@ def stamp_malecon(raster, roads, streets, sites=(), east_x=None):
     ys = [v for r in pieces for v in r["pts"][1::2]]
     reserved = _site_keepout(raster, sites, (min(xs) - reach, min(ys) - reach,
                                              max(xs) + reach, max(ys) + reach))
+    link_px = MALECON_KERB_LINK_M * PLANAR_PX_PER_M
     cells, was = set(), {}
-    n_narrow = 0
+    n_narrow = n_link = n_second = 0
     for r in sorted(pieces, key=lambda p: (p["pts"][0], p["pts"][1])):
         hw = r["w"] / 2.0
         samples = resample_centerline(r["pts"], 3.0)
         for (_s, x, y), (nx, ny) in zip(samples, _normals(samples)):
             if east_x is not None and x > east_x:
                 continue                  # past the Parque Marino: not sea front
+            # ONE SIDE PER CROSS-SECTION, and the WIDER RUN WINS. At the old
+            # 30 m shoulder this could not come up; at 60 m it can, because by
+            # the faro the spit is narrow enough that the ESTERO shore falls
+            # inside the probe's reach — and the Paseo's sea front is the
+            # Pacific one. The playa is 88-150 px along this coast and the
+            # estuary side is mangrove to the waterline, so "wider" is the same
+            # answer as "seaward" without needing a hand-placed side.
+            runs = []
             for side in (-1, 1):
                 sx, sy = nx * side, ny * side
                 run = _sand_run(raster, x, y, sx, sy, hw, shoulder_px, band_px + MALECON_MIN_SAND_PX)
-                if run is None:
-                    continue
-                d0, width = run
+                if run is not None:
+                    runs.append((run[1], side, sx, sy, run[0]))
+            if len(runs) > 1:
+                n_second += 1
+            for width, _side, sx, sy, d0 in sorted(runs, reverse=True)[:1]:
                 take = min(band_px, width - MALECON_MIN_SAND_PX)
                 if take < MALECON_MIN_TAKE_PX:
                     n_narrow += 1
@@ -256,24 +319,65 @@ def stamp_malecon(raster, roads, streets, sites=(), east_x=None):
                     if hit:
                         cells.add(hit)
                     d += raster.cell / 2.0
+                # …AND BACK TO THE KERB. Everything above this line lays the
+                # band on SAND; this lays the few metres of solar or sidewalk
+                # between that sand and the street, so the promenade and the
+                # acera are one surface instead of two with a tan stripe down
+                # the middle. A gap wider than the cap is left alone: at that
+                # width the ground between is somebody's manzana, not a verge.
+                if d0 - hw > link_px:
+                    continue
+                linked = False
+                d = d0
+                while d >= hw - raster.cell:
+                    hit = _paint(raster, x + sx * d, y + sy * d, CLS_MALECON,
+                                 KERB_LINK_CLASSES, reserved, was)
+                    if hit:
+                        cells.add(hit)
+                        linked = True
+                    d -= raster.cell / 2.0
+                n_link += 1 if linked else 0
     # Pinholes: a cell the marching rays stepped over is still promenade if the
     # promenade is on every side of it. Cheaper and more honest than sampling
     # finely enough to be sure — the band's EDGES stay exactly where the sand
     # rule put them.
+    # CLOSED, NOT JUST PINHOLED. The old rule filled a cell with promenade on
+    # THREE of its four sides, which closes a single missed cell and nothing
+    # else. What the marching rays actually leave is not pinholes but SEAMS —
+    # one- and two-cell stripes running along the band where two adjacent rays
+    # disagreed about where the sand began — and a seam has promenade on two
+    # sides, not three. So the pass also closes a cell with promenade on
+    # OPPOSITE sides, and iterates, which walks a stripe shut from both ends.
+    # Bounded to a few rounds: this is meant to close seams, not to grow.
+    CLOSEABLE = (CLS_BEACH, CLS_LAND, CLS_ACERA)
     n_fill = 0
-    for (c, r) in sorted(cells.copy()):
-        for nb in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
-            if nb in cells or raster.at(*nb) != CLS_BEACH:
-                continue
-            ring = [(nb[0] + 1, nb[1]), (nb[0] - 1, nb[1]), (nb[0], nb[1] + 1), (nb[0], nb[1] - 1)]
-            if sum(1 for q in ring if q in cells) >= 3:
-                was.setdefault(nb, CLS_BEACH)
-                raster.set(nb[0], nb[1], CLS_MALECON)
-                cells.add(nb)
-                n_fill += 1
+    for _round in range(3):
+        add = set()
+        for (c, r) in sorted(cells):
+            for nb in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
+                if nb in cells or nb in add or nb in reserved:
+                    continue
+                if raster.at(*nb) not in CLOSEABLE:
+                    continue
+                nc, nr = nb
+                ring = [(nc + 1, nr), (nc - 1, nr), (nc, nr + 1), (nc, nr - 1)]
+                inb = [q in cells or q in add for q in ring]
+                opposite = (inb[0] and inb[1]) or (inb[2] and inb[3])
+                if sum(inb) >= 3 or opposite:
+                    add.add(nb)
+        if not add:
+            break
+        for nb in add:
+            was.setdefault(nb, raster.at(*nb))
+            raster.set(nb[0], nb[1], CLS_MALECON)
+            cells.add(nb)
+        n_fill += len(add)
     log("malecon", f"{len(cells)} cells of sea front paved along {len(pieces)} "
         f"pieces of the Paseo ({round(band_px)}px deep, {n_fill} pinholes filled, "
         f"{n_narrow} cross-sections too narrow to share)")
+    log("malecon", f"{n_link} cross-sections linked back to the kerb across up "
+        f"to {round(link_px)}px of solar/acera; {n_second} where the estero side "
+        f"also offered sand and lost to the wider playa")
 
     # --- las entradas: a ramp at every opening of the palm median
     n_ramp = 0

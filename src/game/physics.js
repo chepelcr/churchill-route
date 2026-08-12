@@ -4,6 +4,7 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { state, traffic, pedestrians, gulls, boats, trains, schools, pushFloat } from "./state.js";
 import { SURFACE_MUL } from "./surfaces.js";
+import { HULL, hullBankAssist, hullFriction, hullGlance, hullLean, hullThrottle, hullTopMul, hullTurn } from "./boat.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceBeachGames, advanceBeachPlayer, advanceCarOnRoad, advanceEditorRoute, advanceTrain, advanceSchool } from "./spawns.js";
 import { advanceBus, advancePassenger, maintainBusStops } from "./buses.js";
@@ -14,7 +15,7 @@ import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt, ferries, routePoint } from "./ferries.js";
-import { advanceCrossing, advanceEstero, catchFish, crossingState } from "./crossing.js";
+import { advanceCrossing, advanceEstero, boostReady, catchFish, crossingState, spendBoost } from "./crossing.js";
 import { leaveTheLancha } from "./modes.js";
 import { updateDayCycle } from "./daynight.js";
 import { updateTide } from "./tides.js";
@@ -159,7 +160,7 @@ export function update(dt) {
   if (state.paused || state.over) return;
   tickEditorBoosts(dt, state);
   readInput(); pollGamepad();
-  applyTouch(state.cam, state.p);
+  applyTouch(state.cam, state.p, state.veh);
 
   const p = state.p; const veh = state.veh;
   // FERRIES first, before anything reads the ground. The deck is the only
@@ -253,7 +254,14 @@ export function update(dt) {
     // the surface classes are append-only, so a class added later is a wall to
     // a boat by default, which is the safe direction to be wrong in.
     if (afloat) return c !== 0;
-    return c === 1 || c === 6 || c === 0;
+    // …and the MALECÓN (10) is a wall to a car, like the acera. It was drivable
+    // at 0.55 — "you crawl among people" — which was an attempt to say "this is
+    // not really for you" in the only vocabulary the surface table had. The
+    // honest version is that a promenade is somewhere people walk. The two
+    // Paseo kiosks standing on it are reached by their own stamped calle
+    // auxiliar, the bajadas onto the sand are stamped ROAD, and the campo
+    // ferial is packed earth, so nothing that has to be reachable went with it.
+    return c === 1 || c === 6 || c === 0 || c === 10;
   };
   // On a pier deck (class 5) the only wall is the surrounding water, so the
   // usual 20% overhang forgiveness reads as "half off the muelle" — probe at
@@ -261,7 +269,8 @@ export function update(dt) {
   // THE FORGIVENESS BACK: that 0.98 exists for a kerb you can see, and the
   // estero's wall is mangrove that reads as ragged, so a boat brushing it
   // should slide rather than stop.
-  const probeF = !afloat && (aboard || W.surfaceAt(p.x, p.y) === 5) ? 0.98 : 0.8;
+  const probeF = afloat ? HULL.probeF
+    : (aboard || W.surfaceAt(p.x, p.y) === 5) ? 0.98 : 0.8;
   const hw = veh.w * 0.5 * probeF, hh = veh.h * 0.5 * probeF;
   const BUBBLE_PAD = 1.5;                     // keeps the drawn body off the kerb
   const br = hh + BUBBLE_PAD;                 // bubble radius = half the body width
@@ -308,24 +317,40 @@ export function update(dt) {
   input.snapT = Math.max(0, input.snapT - dt);
   const turning = input.right - input.left;
   const spdFac = Math.min(1, Math.abs(p.speed) / (veh.top * tuning.speed));
-  let turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
-  // Pivot-in-place: when nearly stopped, spin fast toward the steer target so a
-  // tap turns the car ON ITS OWN AXIS immediately, then it drives off facing
-  // the finger (instead of arcing forward to turn). Fades out by ~60px/s.
-  // NOTHING ON WATER PIVOTS. A hull with no way on has no steerage — the rudder
-  // is a wing and it needs flow. Leaving the pivot term in was the single thing
-  // that made a lancha feel like a kart: she spun on the spot at the muelle and
-  // every correction mid-channel snapped instead of carving.
-  const pivot = afloat ? 0 : Math.max(0, 1 - Math.abs(p.speed) / 60);
-  turnRate += veh.turn * 1.5 * pivot;
-  // …and instead she answers the tiller in PROPORTION to her way: no flow, no
-  // turn, which is what makes carrying speed through a bend the skill.
-  if (afloat) turnRate *= 0.25 + 0.75 * spdFac;
+  // THROTTLE AND BOOST ARE READ HERE, not at the thrust below, because a hull's
+  // turn rate depends on them: an outboard pushes water past the rudder the
+  // moment you open it. For a car nothing changed — the same two values, a few
+  // lines earlier.
+  // …and in a crossing the turbo runs on IMPULSO, which you earn by brushing
+  // things, taking gates and jumping a yate's wake. Everywhere else it is the
+  // ordinary turbo and `boostReady()` answers true.
+  const boosting = (input.boost && boostReady())
+    || (state.headstartT || 0) > 0 || Boolean(activeEditorBoost(state, "turbo"));
+  if (boosting && input.boost) spendBoost(dt);
+  const throttleRaw = input.up - input.down * 0.6;
+  const throttle = afloat ? hullThrottle(throttleRaw, p.speed, input.brake) : throttleRaw;
+  let turnRate;
+  if (afloat) {
+    // See `boat.js` for why this is a curve and not a suppression, and for the
+    // no-speed/no-turn deadlock the old `pivot = 0` + `0.25 + 0.75*spdFac` made.
+    turnRate = veh.turn * hullTurn(spdFac, throttle, boosting, input.brake);
+  } else {
+    turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
+    // Pivot-in-place: when nearly stopped, spin fast toward the steer target so
+    // a tap turns the car ON ITS OWN AXIS immediately, then it drives off facing
+    // the finger (instead of arcing forward to turn). Fades out by ~60px/s.
+    // NOTHING ON WATER PIVOTS — a hull with no way on has no steerage, so this
+    // term is the car's alone and always was.
+    turnRate += veh.turn * 1.5 * Math.max(0, 1 - Math.abs(p.speed) / 60);
+  }
   const prevA = p.a;
-  p.a += turning * turnRate * dt * (input.brake ? 1.35 : 1);
+  // The brake's turn bonus is the car's handbrake. A hull gets hers inside
+  // `hullTurn` (`driftTurn`), where it belongs with the grip cut it goes with.
+  p.a += turning * turnRate * dt * (!afloat && input.brake ? 1.35 : 1);
   // angular velocity (rad/s) this frame — the renderer draws wind swirls around
   // the car when it whips around, scaled by this
   p.av = dt > 0 ? (p.a - prevA) / dt : 0;
+  if (afloat) hullLean(p, turning, spdFac, dt);   // heel — renderer only
   // A clear spot the car may be nudged to: its box must be unblocked AND its
   // CENTER must be on a DRIVABLE street (class 3 road / 5 bridge). Requiring
   // drivable-center is what makes unstick nudges safe — they can never place
@@ -368,9 +393,8 @@ export function update(dt) {
   p.wallT = Math.max(0, (p.wallT || 0) - dt);
   const onWall = p.wallT > 0;
 
-  // acceleration (headstart consumable = free turbo for its first seconds)
-  const boosting = input.boost || (state.headstartT || 0) > 0 || Boolean(activeEditorBoost(state, "turbo"));
-  const throttle = input.up - input.down * 0.6;
+  // acceleration (headstart consumable = free turbo for its first seconds).
+  // `boosting` and `throttle` were read up at the turning block — see there.
   let ax = Math.cos(p.a), ay = Math.sin(p.a);
   if (onWall) {
     const an = ax * p.wallNX + ay * p.wallNY;   // wallN points AWAY from the wall
@@ -388,8 +412,12 @@ export function update(dt) {
   // SAND FIGHTS BACK. It is slow through SURFACE_MUL, but a beach that only
   // capped the top speed would drive like a narrow road: the loose surface is
   // what makes it a shortcut you take on purpose rather than by accident.
-  const grip = veh.grip * gripBoost * (input.brake ? 0.55 : 1) * wetMul
-    * (onWall ? 0.15 : 1) * (onSand ? 0.62 : 1);
+  // A HULL LETS GO HARDER AND HOLDS ON LONGER. The brake is her drift verb, so
+  // it cuts grip past what a handbrake does; and the car's 0.15 wall relax is
+  // tuned for a kerb you can see, which makes a boat skate along a ragged
+  // mangrove edge instead of running down it.
+  const grip = veh.grip * gripBoost * (input.brake ? (afloat ? HULL.driftGrip : 0.55) : 1) * wetMul
+    * (onWall ? (afloat ? HULL.wallGrip : 0.15) : 1) * (onSand ? 0.62 : 1);
   const kept = side * (1 - Math.min(1, grip * dt * 6));
   p.vx = heading.x * fwd - heading.y * kept;
   p.vy = heading.y * fwd + heading.x * kept;
@@ -399,7 +427,10 @@ export function update(dt) {
   // `drag` is why a boat coasts. Friction is DIVIDED by the surface multiplier,
   // and on open water at mul 1.0 a car's rolling friction stops a hull dead in
   // her own length — which reads as driving through treacle, not as sailing.
-  const fric = (input.up || input.down) ? 0.4 : 1.8;
+  // …and once she is up on the plane there is less of her in the water, which
+  // is what turns "hold the throttle" from an instruction into a reward.
+  const fric = afloat ? hullFriction(Boolean(input.up || input.down), spdFac)
+    : (input.up || input.down) ? 0.4 : 1.8;
   const sp2 = Math.hypot(p.vx, p.vy);
   if (sp2 > 0.1) {
     const k = Math.max(0, sp2 - fric * (veh.drag || 1) * (1 / surfaceMul) * dt * 60) / sp2;
@@ -419,10 +450,19 @@ export function update(dt) {
   }
   // turbotank upgrade raises the boost speed cap (1.35 stock → up to 1.55)
   const speedBoost = activeEditorBoost(state, "speed-multiplier")?.value || 1;
-  const top = veh.top * speedBoost * tuning.speed * surfaceMul * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul;
+  const top = veh.top * speedBoost * tuning.speed * surfaceMul
+    * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul
+    * (afloat ? hullTopMul(spdFac) : 1);
   const sp3 = Math.hypot(p.vx, p.vy);
   if (sp3 > top) { p.vx *= top / sp3; p.vy *= top / sp3; }
 
+  // THE BANK YOU FEEL BEFORE YOU TOUCH IT. The manglar is still solid — see
+  // `isWall`; "no walls" means the estero must not feel FENCED, not that a hull
+  // may sail over the mangrove. What it means in practice is this cushion: the
+  // shore biases you back toward the middle of the water you are in, so the
+  // channel reads as a channel instead of as a corridor with two things in it
+  // that catch you. Before the integration, so it is a force and not a shove.
+  if (afloat) hullBankAssist(p, veh, dt, (x, y) => W.surfaceAt(x, y) === 0);
   p.x += p.vx * dt; p.y += p.vy * dt;
   // Solid cuadras + aceras + open water: class 1 land, class 6 acera/curb and
   // class 0 water are the walls you slide along. THE SAND IS NOT ONE — see
@@ -446,12 +486,23 @@ export function update(dt) {
     }
     // Velocity: remove ONLY the component going into the wall. All tangential
     // speed carries, on an axis wall and a 45° one alike.
-    const vn = p.vx * nx + p.vy * ny;
-    if (vn < 0) {
-      const hitSpeed = Math.hypot(p.vx, p.vy);
-      p.vx -= vn * nx; p.vy -= vn * ny;
-      if (hitSpeed > 220) state.cam.shake = Math.max(state.cam.shake, Math.min(2, hitSpeed / 220));
+    // A HULL GLANCES. Removing all of the into-wall velocity is right for a car
+    // against a kerb and wrong for a boat against a bank: it stops her dead on a
+    // shore she was passing at 15°, which is most of what "the path gets smaller
+    // and smaller" felt like. `hullGlance` keeps most of the tangential speed,
+    // gives a little of the normal back and swings the bow off — a brush turns
+    // you back down the channel, a square-on ram still stops you.
+    let hitSpeed = 0;
+    if (afloat) {
+      hitSpeed = hullGlance(p, nx, ny, dt);
+    } else {
+      const vn = p.vx * nx + p.vy * ny;
+      if (vn < 0) {
+        hitSpeed = Math.hypot(p.vx, p.vy);
+        p.vx -= vn * nx; p.vy -= vn * ny;
+      }
     }
+    if (hitSpeed > 220) state.cam.shake = Math.max(state.cam.shake, Math.min(2, hitSpeed / 220));
     // Hand the kerb to the next frame: thrust gets redirected along it and grip
     // is relaxed, so holding the finger into a wall drives you down it.
     p.wallNX = nx; p.wallNY = ny; p.wallT = 0.12;
@@ -548,7 +599,7 @@ export function update(dt) {
   // RECORRER: the muelle is where the road runs out and the lancha starts.
   // Park on the pier and you take your own boat; land at the far shore and you
   // get your car back. Only in explore — in a stage the crossing IS the level,
-  // and in arcade a three-minute clock should not be spent on a 7 km passage.
+  // and in arcade a three-minute clock should not be spent on a 5,7 km passage.
   if (state.mode === "explore") maintainLanchaSwap(p, veh, cross);
 
   // District identity: fire a "you entered X" title card when the player

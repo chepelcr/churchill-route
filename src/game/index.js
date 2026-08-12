@@ -9,7 +9,7 @@ import { tutorialDone, tutorialStepKey } from "./tutorial.js";
 import { attachTouch, attachThrottle } from "./input.js";
 import { update } from "./physics.js";
 import { setAttract, attractTick } from "./attract.js";
-import { esteroThings } from "./crossing.js";
+import { channels, esteroThings, laneAt } from "./crossing.js";
 import { setTide } from "./tides.js";
 import { loadProgress, saveProgress, rebuildBarriers } from "./progress.js";
 import { setupCanvas, render } from "../render/Renderer.js";
@@ -43,6 +43,14 @@ export const Game = {
   // obstacles are a module array rather than state, so without this the only
   // way to assert anything about the tide is to infer it from the boat.
   crossingThings: () => esteroThings,
+  // …and the derived course itself. The buoys, the gates and the measured lane
+  // are computed from the route at runtime, so the only way a check in tools/
+  // can assert that a mark is standing ON WATER is to be handed them.
+  crossingChannel: (id) => channels().get(id) || null,
+  crossingLaneAt: (id, s) => {
+    const ch = channels().get(id);
+    return ch ? laneAt(ch, s) : null;
+  },
   // The ambient pools. They are module arrays rather than fields on `state`,
   // which is right for the sim and means nothing outside it — a console, a
   // check in tools/ — can otherwise see whether they are populated at all.

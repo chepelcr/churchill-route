@@ -1,7 +1,7 @@
 // Static geometry caches: the backdrop silhouette Path2Ds (built once) and the
 // per-tile junction cut tables that make lane dashes stop at intersections.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { flatAABB, flatPath } from "./gfx.js";
+import { flatAABB, flatMultiPath, flatPath } from "./gfx.js";
 
 // ---- Static geometry cache (Path2D per feature, built once) ----
 // Mandatory for 60fps: ~2k roads and ~1.4k buildings get AABB-culled
@@ -22,6 +22,15 @@ function ensureRenderCache() {
   for (const poly of W.LAND_POLYS || []) if (poly.length >= 6) RC.land.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
   for (const poly of W.BEACHES || []) if (poly.length >= 6) RC.beach.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
   for (const poly of W.WATERS || []) if (poly.length >= 6) RC.water.push({ path: flatPath(poly, true), aabb: flatAABB(poly) });
+  // THE SAND IS ONE SHAPE WITH HOLES IN IT, and filling its rings one at a time
+  // says the opposite. `sand_outlines` traces the finished raster with
+  // `outline_polys`, which returns hole rings alongside outer ones (opposite
+  // winding, on purpose) — so 16 of this world's 59 beach rings are holes, and
+  // a per-ring non-zero fill paints every one of them SOLID. The largest is
+  // 805 000 px² of inland water wearing a coat of sand. One path, even-odd,
+  // exactly as the marine park's residual and the malecón's bands already do.
+  // The per-ring AABBs stay: they are still the cull.
+  RC.sand = flatMultiPath((W.BEACHES || []).filter((p) => p.length >= 6));
   return RC;
 }
 

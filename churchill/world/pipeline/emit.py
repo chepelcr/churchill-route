@@ -25,7 +25,7 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, piers, hills,
                  stadiums=None, kiosk_paths=None, greens=None, malecon=None,
-                 attractions=None,
+                 attractions=None, feria=None,
                  balneario=None, pois=None, parcels=None, ferries=None, signs=None,
                  editor_features=None, editor_patch=None, cuadras=None,
                  surface_styles=None, editor_ui=None, editor_content=None):
@@ -138,6 +138,7 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
         "malecon": malecon or [],
         # the turno on the sea front: rides + the DJ, drawn, never stamped
         "attractions": attractions or [],
+        "feria": feria or [],
         "stadiums": stadiums or [],
         "balneario": balneario,
         "kioskPaths": kiosk_paths or [],

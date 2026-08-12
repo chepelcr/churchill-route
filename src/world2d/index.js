@@ -108,6 +108,7 @@ export const WORLD2D = (function () {
   // La feria del malecón: the rides + DJ Urtech {id,name,kind,x,y,r}. Drawn and
   // heard, never stamped — nothing here blocks the car.
   const ATTRACTIONS = manifest.attractions || [];
+  const FERIA = manifest.feria || [];
   const CUADRAS = manifest.cuadras || []; // selectable generated block interiors
   const SURFACE_STYLES = manifest.surfaceStyles || []; // per-region ground/acera materials
   // Every named real-world POI OSM knows about {x,y,name,cat}. Debug overlay
@@ -452,12 +453,24 @@ export const WORLD2D = (function () {
     return out;
   }
 
+  // IS THE GROUND UNDER THIS POINT ACTUALLY KNOWN?
+  //
+  // `surfaceAt` answers 0 — WATER — for a tile that is not resident, which is
+  // the right default for a streaming world (you are never blocked by geometry
+  // that has not arrived) and a trap for anything that wants to VERIFY a place.
+  // A check that sweeps the estero asking "is this buoy on water?" gets a yes
+  // for every tile it has not waited for, and passes while half the marks stand
+  // in the mangrove. This is the honest question, so such a check can wait.
+  function tileResident(x, y) {
+    return decodedTile((x / TILE_PX) | 0, (y / TILE_PX) | 0) !== null;
+  }
+
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, FERIA, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle
-    ready, update, ensureView, visibleTiles, loadTile,
+    ready, update, ensureView, visibleTiles, loadTile, tileResident,
     // queries
     surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated, driveUnderAt,
     buildingsNear, districtAt, landmarkById, customerById, reachablePointNear,

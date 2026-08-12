@@ -49,8 +49,18 @@ CLASS_NAMES = [s.label for s in Surface]
 #: peatonal here is paving you may cross, not a barrier — you just crawl. BARRO
 #: and GRAVEL are ordinary streets that are simply slower. MALECON is the same
 #: bargain as BOULEVARD: paving you cross at a crawl, among people.
+#: THE MALECÓN IS NOT IN HERE, and that is the decision it looks like. A
+#: promenade is somewhere people WALK — the whole reason it is slow (0.55, "you
+#: crawl among people") was to make driving it unpleasant, and the honest
+#: version of "unpleasant" is "not a road". It also stopped being necessary:
+#: the promenade used to be the only way the two Paseo kiosks were reached, so
+#: walling it would have taken two delivery targets off the network, and both
+#: now stand on their own stamped calle auxiliar.
+#: Two things had to move with it — the bajadas onto the sand are stamped as
+#: ROAD (drawn in the promenade's own pavers, but a ramp you take a vehicle
+#: down), and the campo ferial is BARRO, so the fairground stays enterable.
 DRIVABLE = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.BEACH,
-            Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL, Surface.MALECON)
+            Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL)
 
 #: What counts as "a street is on the other side of this edge" when eroding an
 #: acera. A cuadra edge facing the sea, the sand or the next parcel has no

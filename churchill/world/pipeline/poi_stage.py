@@ -21,14 +21,15 @@ from collections import defaultdict, deque
 from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_MALECON, CLS_PASEO,
     CALLE_CLASSES, CARRIAGEWAY_CLASSES, CLS_BARRO, CLS_GRAVEL, CLS_ROAD, CLS_WATER, CUAD,
-    CUAD_CELLS, FARO_ESP_MAX_CELLS, FARO_ESP_R_M, FARO_POCKET_MAX_CELLS,
+    CUAD_CELLS, FARO_ESP_KERB_LINK_M, FARO_ESP_MAX_CELLS, FARO_ESP_R_M,
     GRID_CELL, PITAHAYA_STREET,
     PLANAR_PX_PER_M, POI_NUDGE_PX,
 )
 from ..content import CUSTOMER_DEFS, LANDMARK_DEFS, MALECON_EAST_LL, STAGES
 from ..enums import GreenType, LandmarkType, Surface
 from ..logging import log, warn
-from ..service.block import block_raster_cells, cells_to_rects, detect_blocks, outline_poly
+from ..service.block import (block_raster_cells, cells_to_rects, detect_blocks,
+                             outline_poly, outline_polys)
 from ..service.malecon import stamp_malecon
 from ..service.network import largest_drivable_component
 from ..service.pier import log_pier, make_pier, stamp as stamp_pier
@@ -414,41 +415,44 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
     # below, so nothing is left mid-lane.
     kiosk_paths = []
     beach_kiosks = set()
-    # THE PASEO STANDS NOW LIVE ON THE MALECÓN, and that is the whole change:
-    # they used to keep their anchor between the Paseo and the sand and have a
-    # 28 px lane of ASPHALT stamped across the beach to reach them — the "kiosk
-    # street into the playa". The promenade is a drivable surface running the
-    # length of the sea front, so the access is simply the place they stand on,
-    # and the sand goes back to being sand you enter by a bajada.
-    PINNED_KIOSKS = {"kios_paseo1", "kios_paseo2"}
+    # A SEA-FRONT STAND KEEPS ITS ANCHOR AND GETS A LANE TO IT.
+    #
+    # For a while the two Paseo stands were PINNED: snapped onto the nearest
+    # `CLS_MALECON` cell within 240 px, on the argument that the promenade is
+    # itself drivable so the access is simply the ground they stand on. That
+    # argument is sound and the pin still broke them, because it depended on
+    # there BEING malecón at the anchor. There was not — an 80 px solar along
+    # the whole Muelle de Cruceros frontage put the sand past the old shoulder,
+    # so the sea front had a 636 px hole in it exactly there. `kios_paseo2`
+    # clipped a 132-cell scrap of band; `kios_paseo1` found nothing, fell
+    # through to the cuadra-frontage pass, and was re-seated 200 px INLAND on
+    # somebody else's block — a churchill stand on the Paseo de los Turistas
+    # that is not on the Paseo de los Turistas.
+    #
+    # A landmark that has to be moved to be reachable is a landmark whose
+    # ACCESS is missing, so the access is what gets built: the stand stays on
+    # the geo anchor the mapper gave it, east of the muelle, and a drivable
+    # connector is stamped from the nearest street. That is the "calle
+    # auxiliar" these two have always had.
+    STAND_SURFACES = (CLS_BEACH, CLS_MALECON)
     for lm in landmarks:
         if lm["type"] != "kiosk" or lm["id"] == "kios_faro":
             continue                                    # kios_faro goes on the muelle below
         kx, ky = lm["x"], lm["y"]
         surf = _cell_cls(int(kx // GRID_CELL), int(ky // GRID_CELL))
-        if lm["id"] in PINNED_KIOSKS:
-            spot = _nearest_cell(kx, ky, (CLS_MALECON,), 60)
-            if spot:
-                lm["x"], lm["y"] = round(spot[0]), round(spot[1])
-                log("kiosk", f"{lm['id']} seated on the malecón "
-                    f"({lm['x']},{lm['y']}) — no lane over the sand")
-            else:
-                warn("kiosk", f"{lm['id']} found no malecón within 240px; it keeps "
-                     f"its anchor and the frontage pass will seat it")
-                continue
-            beach_kiosks.add(lm["id"])
-            continue
-        if surf == CLS_BEACH:
-            # A stand out on the open playa somewhere else in the world still
-            # needs its ramp: sand is slow and loose, but a kiosk with no paved
-            # way to it is a delivery that starts in a dune.
+        if surf in STAND_SURFACES:
+            # Sand is slow and loose and the promenade is slower still, but a
+            # kiosk with no paved way to it is a delivery that starts in a dune.
             tgt = _nearest_cell(kx, ky, (CLS_ROAD, CLS_BRIDGE, CLS_BARRO, CLS_GRAVEL), 260)
             if tgt:
                 raster.stamp_polyline([kx, ky, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
                 kiosk_paths.append({"pts": [round(kx), round(ky), round(tgt[0]), round(tgt[1])],
                                     "surface": "paved"})
-                log("kiosk", f"sand path {lm['id']} (surf {surf}) -> street "
+                log("kiosk", f"calle auxiliar {lm['id']} (surf {surf}) -> street "
                     f"({round(tgt[0])},{round(tgt[1])})")
+            else:
+                warn("kiosk", f"{lm['id']} stands on surf {surf} with no street "
+                     f"within 260px — no calle auxiliar")
             beach_kiosks.add(lm["id"])
 
     for lm in landmarks:
@@ -514,45 +518,45 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
                  f"the tip's sand is not bounded; falling back to 136px")
             Rc = int(round(136 / GRID_CELL))
             esp = flood(Rc)
-        # THE YELLOW PATCHES. What was left between the grey plazoleta and the
-        # loop road was never a matter of RADIUS — it is sand the flood could
-        # not reach, because the plaza and the street had already closed around
-        # it. A pocket of beach with no way to the sea is not a beach; it is a
-        # hole in the esplanade, so it is paved with it. Bounded to the tip and
-        # to pockets small enough to BE pockets, so this can never swallow the
-        # playa if a rebuild opens a path.
-        pockets, seen = 0, set()
-        for cc in range(fcc0 - Rc, fcc0 + Rc + 1):
-            for cr in range(fcr0 - Rc, fcr0 + Rc + 1):
-                if (cc, cr) in seen or (cc, cr) in esp:
-                    continue
-                if _cell_cls(cc, cr) != CLS_BEACH:
-                    continue
-                comp, q, open_sea = {(cc, cr)}, deque([(cc, cr)]), False
-                seen.add((cc, cr))
-                while q and len(comp) <= FARO_POCKET_MAX_CELLS:
-                    pc, pr = q.popleft()
-                    for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                        nb = (pc + dc, pr + dr)
-                        cls = _cell_cls(*nb)
-                        if cls == CLS_WATER:
-                            open_sea = True
-                        # THE ESPLANADE IS A WALL HERE. Its cells are still
-                        # CLS_BEACH in the grid — they are only written as acera
-                        # further down — so without this every pocket walks
-                        # straight through the plaza to the open sea and no
-                        # pocket is ever found, which is exactly what the first
-                        # run of this did.
-                        if cls != CLS_BEACH or nb in comp or nb in esp:
-                            continue
-                        comp.add(nb); seen.add(nb); q.append(nb)
-                if open_sea or len(comp) > FARO_POCKET_MAX_CELLS:
-                    continue                      # a real beach, not a pocket
-                esp |= comp
-                pockets += 1
-        if pockets:
-            log("faro", f"{pockets} pockets of enclosed sand paved into the "
-                f"esplanade — the yellow ring between the plazoleta and the calle")
+        # THE YELLOW LINE, AND WHAT IT ACTUALLY IS. Between the grey plazoleta
+        # and the loop road's sidewalk there is a strip of `CLS_LAND` — 52 px
+        # at y 15 340, 60 px at y 15 560, measured off the finished raster —
+        # drawn in the land tan `#cfb27a`. Against the plaza's `#cbc6ba` and
+        # the acera's `#b8b6b0` that reads as a yellow stripe splitting one
+        # place in two, and no radius could ever have fixed it: the flood
+        # follows SAND, and this ground is not sand.
+        #
+        # So CLOSE THE PLAZOLETA TO ITS KERB. From the flooded tip, absorb land
+        # and beach outward until the sidewalk, the roadway or the water stops
+        # it — the loop road is a closed ring around La Punta, so this
+        # terminates ON the kerb by construction, which is the whole point.
+        # Bounded by `FARO_ESP_KERB_LINK_M` as well, because "walk until
+        # something stops you" is one missing kerb away from paving the barrio.
+        link_cells = int(round(FARO_ESP_KERB_LINK_M * PLANAR_PX_PER_M / GRID_CELL))
+        LINKABLE = (CLS_BEACH, CLS_LAND)
+        frontier = set(esp)
+        gained = 0
+        for _step in range(link_cells):
+            add = set()
+            for (cc, cr) in frontier:
+                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nb = (cc + dc, cr + dr)
+                    # The esplanade's own cells are still CLS_BEACH in the grid
+                    # here — they are written as acera further down — so `esp`
+                    # has to be tested as a set, not as a class.
+                    if nb in esp or nb in add:
+                        continue
+                    if _cell_cls(*nb) in LINKABLE:
+                        add.add(nb)
+            if not add or len(esp) + len(add) > FARO_ESP_MAX_CELLS:
+                break
+            esp |= add
+            frontier = add
+            gained += len(add)
+        if gained:
+            log("faro", f"{gained} cells of solar and sand closed into the "
+                f"esplanade — the plazoleta now reaches the loop road's acera "
+                f"(up to {link_cells} cells)")
         esp.add((fcc0, fcr0))
         for _ in range(7):                                 # dilate into the sea
             add = set()
@@ -566,6 +570,32 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
             if 0 <= cc < GRID_COLS and 0 <= cr < GRID_ROWS:
                 grid[cr * GRID_COLS + cc] = CLS_ACERA       # pedestrian plaza (NON-drivable)
         faro_esp = esp
+        # THE PLAZOLETA IS PAVED LIKE THE MALECÓN, IN GREY. It is the same kind
+        # of place — a paved sea front you walk on — and it was reading as a
+        # flat grey rectangle because that is literally what it was: rects in
+        # `plazas`, one colour, no material. Emitted as a malecón BAND instead
+        # (outline rings + the frame to lay the courses in), so it gets the
+        # promenade's baldosa mosaic for free; `style` is what tells the
+        # renderer to lay them in stone grey instead of the sea front's sand.
+        #
+        # DRAWING ONLY. The cells stay `CLS_ACERA` a few lines below, so the
+        # plazoleta is walked and not driven — exactly as before.
+        esp_cells = sorted(esp)
+        ex0 = min(c for c, _ in esp_cells) * GRID_CELL
+        ex1 = (max(c for c, _ in esp_cells) + 1) * GRID_CELL
+        ey0 = min(r for _, r in esp_cells) * GRID_CELL
+        ey1 = (max(r for _, r in esp_cells) + 1) * GRID_CELL
+        esp_polys = outline_polys(esp, GRID_CELL)
+        if esp_polys:
+            esp_ang = StreetIndex(ctx.roads).angle_at(
+                (ex0 + ex1) / 2, (ey0 + ey1) / 2, reach=12 * CUAD)
+            ctx.malecon.append({
+                "polys": esp_polys, "ang": round(float(esp_ang or 0.0), 4),
+                "x0": ex0, "y0": ey0, "x1": ex1, "y1": ey1,
+                "cells": len(esp), "style": "esplanade",
+            })
+            log("faro", f"plazoleta emitted as paving: {len(esp)} cells, "
+                f"{len(esp_polys)} ring(s), {sum(len(p) // 2 for p in esp_polys)} points")
         ecc0 = min(c for c, _ in esp); ecc1 = max(c for c, _ in esp)
         ecr0 = min(r for _, r in esp); ecr1 = max(r for _, r in esp)
         faro_lm["plaza"] = [ecc0 * GRID_CELL, ecr0 * GRID_CELL,

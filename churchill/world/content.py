@@ -312,11 +312,21 @@ CROSSING_STAGES = [
     {
         "id": "s8", "after": "s3", "kind": "crossing", "ferry": "pitahaya",
         "name": "Travesía del Estero", "district": "centro",
-        "brief": ("Llevá la lancha hasta Pitahaya. Esquivá las pangas de los "
-                  "pescadores y las raíces del manglar — tres golpes y se hunde. "
-                  "Cruzá los cardúmenes: el que llega con peces, llega mejor."),
+        # THE BRIEF HAS TO MATCH THE LEVEL, and this one stopped doing so twice
+        # over: it promised "tres golpes y se hunde" when the hull now recovers
+        # a knock every two boyas and only the clock can end the run, and it
+        # never mentioned the yates or the impulso, which are the two things a
+        # player most needs to be told about before the first bend.
+        "brief": ("Llevá la lancha hasta Pitahaya siguiendo las boyas. Esquivá "
+                  "las pangas, los yates y las redes de los pescadores — rozalos "
+                  "de cerca y ganás impulso. Cruzá los cardúmenes: el que llega "
+                  "con peces, llega mejor."),
         "kiosks": [], "customers": [], "targetDeliveries": 0,
-        "timeLimit": 225, "weather": "sunny", "unlock": None,
+        # 225 s was reasoned off a route the build logged as "8.88 km", which
+        # was 14 214 px divided by 1.6 px/m — the scale from before the rescale
+        # to 2.5. It is 5,7 km. At the lancha taxi's ~305 px/s that is ~47 s of
+        # running, so 150 s plus ~15 boyas x 6 s is generous without being idle.
+        "timeLimit": 150, "weather": "sunny", "unlock": None,
     },
 ]
 
@@ -328,8 +338,12 @@ LANCHA_DEFS = [
         "landing": (10.02539, -84.82923),   # Calle Pitahaya, on the far shore
         "deck": (86, 34),                   # smaller than a ferry: one car deep
         "dockS": 20,
-        # ~7.1 km of estero at 150 px/s is a 76 s crossing. The ferry's 82 px/s
-        # would make it 2 min 18 s of open water with nothing to do.
+        # 5,7 km of estero at 150 px/s is a 95 s passage for the AI lancha (the
+        # player sails her own hull and is faster). The ferry's 82 px/s would
+        # make it nearly three minutes of open water with nothing to do.
+        # It said "~7.1 km" here for a long time: the build's own log divided
+        # the route by 1.6 px/m, the scale before the rescale to 2.5, and every
+        # number reasoned off that line inherited the error.
         "speed": 150,
     },
 ]
@@ -358,17 +372,75 @@ LANCHA_DEFS = [
 # the LONGITUDE is read.
 MALECON_EAST_LL = (9.97747, -84.82532)
 
+# EL CAMPO FERIAL — one lot, not four rides strung out over 900 metres.
+#
+# The rides used to be geo-anchored one by one, 750 px apart along the sea
+# front: a carrusel, then a quarter of a kilometre of empty promenade, then the
+# chocones. Each was in a plausible place and together they were not a feria at
+# all — a turno is a FIELD you walk into, packed, loud, with the chinamos down
+# one side and the rueda over the top of everything.
+#
+# So the lot is the authored thing and the rides are laid out INSIDE it, in its
+# own frame. It is seated on the frontage of La Takería exactly as DJ Urtech
+# is — he plays at the edge of the fairground, which is why he was put there —
+# and stamped as `Surface.BARRO`: a Costa Rican campo ferial is packed earth,
+# and the game already has that surface with its own look and its own grip.
+FERIA_DEF = {
+    "id": "feria_paseo",
+    "name": "Campo Ferial del Paseo",
+    "host": "La Takería",     # seated on its frontage, like the DJ
+    "w": 560, "h": 200,       # the lot, in px, in the Paseo's own frame
+}
+
+# The roster is the one that actually comes to a Costa Rican turno — Zapote,
+# Palmares, the Carnaval de Puntarenas. `at` is now (u, v) IN THE LOT'S FRAME:
+# u runs along the coast, v runs seaward, both from the lot's centre.
 ATTRACTION_DEFS = [
-    {"id": "carrusel", "name": "El Carrusel", "kind": "carrusel",
-     "at": (9.97431, -84.84537), "r": 26},
-    {"id": "chocones", "name": "Los Chocones", "kind": "chocones",
-     "at": (9.97431, -84.84264), "r": 30},
+    # --- la fila de atrás: the big ones, seen from down the Paseo
     {"id": "rueda", "name": "La Rueda de Chicago", "kind": "rueda",
-     "at": (9.97431, -84.83990), "r": 34},
+     "at": (-232, -22), "r": 34},
+    {"id": "pulpo", "name": "El Pulpo", "kind": "pulpo",
+     "at": (-142, -26), "r": 30},
+    {"id": "martillo", "name": "El Martillo", "kind": "martillo",
+     "at": (-46, -28), "r": 27},
+    {"id": "sillas", "name": "Las Sillas Voladoras", "kind": "sillas",
+     "at": (44, -26), "r": 26},
+    {"id": "terror", "name": "La Casa del Terror", "kind": "terror",
+     "at": (140, -26), "r": 27},
+    {"id": "carrusel", "name": "El Carrusel", "kind": "carrusel",
+     "at": (232, -24), "r": 26},
+    # --- la fila de adelante
+    {"id": "tagada", "name": "La Tagada", "kind": "tagada",
+     "at": (-206, 52), "r": 30},
+    {"id": "chocones", "name": "Los Chocones", "kind": "chocones",
+     "at": (-110, 54), "r": 32},
+    {"id": "barco", "name": "El Barco Pirata", "kind": "barco",
+     "at": (-10, 52), "r": 29},
+    {"id": "gusano", "name": "El Gusanito", "kind": "gusano",
+     "at": (80, 54), "r": 23},
+    {"id": "argollas", "name": "Tiro al Blanco", "kind": "argollas",
+     "at": (158, 54), "r": 21},
     {"id": "tombola", "name": "La Tómbola", "kind": "tombola",
-     "at": (9.97435, -84.83716), "r": 18},
+     "at": (228, 54), "r": 19},
+    # --- LOS CHINAMOS. The food, along the landward edge, which is where it
+    # always is — you pass it going in and again coming out.
+    #
+    # THEY ARE CONTIGUOUS ON PURPOSE. Photographs of the real row on the Paseo
+    # show one continuous building: a shared frame, one long roof, and the
+    # printed banners running unbroken from one stall to the next. Spaced out,
+    # three booths read as three booths. Butted together at `r = 44` — the
+    # module draws 1.9·r wide, so 84 px of pitch closes the seam — they read as
+    # the row they are.
+    {"id": "chin_canton", "name": "Arroz Cantonés", "kind": "chinamo",
+     "at": (-84, -74), "r": 44, "food": "canton"},
+    {"id": "chin_manzanas", "name": "Manzanas Escarchadas", "kind": "chinamo",
+     "at": (0, -74), "r": 44, "food": "manzana"},
+    {"id": "chin_churros", "name": "Churros Rellenos", "kind": "chinamo",
+     "at": (84, -74), "r": 44, "food": "churro"},
     # DJ Urtech, en vivo frente a La Takería. The sound is procedural and
     # proximity-driven (sfx.dj), so this is the point the music comes from.
+    # He is NOT in the lot's frame: he is on the restaurant's own sidewalk,
+    # which is the far side of the promenade from the rides.
     {"id": "dj_urtech", "name": "DJ Urtech", "kind": "dj",
      "at": (9.97495, -84.84405), "r": 20, "host": "La Takería"},
 ]

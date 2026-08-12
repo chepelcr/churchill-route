@@ -79,7 +79,11 @@ function drawLandBase(view, t) {
     ctx.save(); ctx.clip(w.path); drawRipples(view, i); ctx.restore();
   }
   // beach: sandy fill + a faint wet line along its seaward edge
-  ctx.fillStyle = C.sand; for (const b of rc.beach) if (aabbInView(b.aabb, view, 4)) ctx.fill(b.path);
+  // One even-odd fill of every ring, so the sand's HOLES stay holes — see the
+  // note on `RC.sand` in cache.js. The per-ring AABBs are still the cull: if no
+  // ring is in view there is no beach on screen and the fill is skipped.
+  ctx.fillStyle = C.sand;
+  if (rc.beach.some((b) => aabbInView(b.aabb, view, 4))) ctx.fill(rc.sand, "evenodd");
   // LA ROMPIENTE, over the sand and under the streets: the swash runs up the
   // beach and back, and where it reaches is a function of the tide.
   drawShoreBreak(view, t);
@@ -91,7 +95,12 @@ function drawLandBase(view, t) {
 // civic plaza, a park lawn, or the marine park — instead of layering a
 // texture over the base terrain. Rects tile the block edge-to-edge, so a
 // single flat colour with square corners reads as one continuous area.
-const GREEN_COLORS = { plaza: "#5ba362", park: "#4f9d5b", marine: "#46a98f", pool: "#5faec7", stadium: "#4f9d5b", esplanade: "#cbc6ba" };
+// `esplanade` is the faro's plazoleta and it is now the BASE COAT only: the
+// stone it actually reads as is laid over it by `drawMalecon`, which draws the
+// plazoleta as a band in its own grey (see ESPLANADE_COLORS in malecon.js).
+// Kept as a flat fill underneath so a streaming seam can never show sand
+// through the middle of it, and matched to that palette's `fill`.
+const GREEN_COLORS = { plaza: "#5ba362", park: "#4f9d5b", marine: "#46a98f", pool: "#5faec7", stadium: "#4f9d5b", esplanade: "#c9c6bf" };
 function drawPlazaGreen(pz, view) {
   const [px, py, pw, ph] = pz;
   if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;

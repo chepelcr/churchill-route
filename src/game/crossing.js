@@ -17,9 +17,9 @@
 //     side at the same arclength, so a gate costs no new geometry: it is a pair
 //     promoted.
 //
-//     THIS FILE USED TO REFUSE A HUD ARROW — "el estero son 7 km de agua
+//     THIS FILE USED TO REFUSE A HUD ARROW — "el estero son 5,7 km de agua
 //     abierta y la navegación tiene que ser diegética". That rule was written
-//     when the boat was on a rail and could not get lost. Freed, the same 7 km
+//     when the boat was on a rail and could not get lost. Freed, the same 5,7 km
 //     of open water stopped reading as a place to explore and started reading
 //     as a corridor you were being shoved down, because the only thing telling
 //     you where the channel was were the marks themselves and a drag that
@@ -47,29 +47,62 @@ import { WORLD2D as W } from "../world2d/index.js";
 import { state, pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
 import { markStageCleared, unlockDistrict } from "./progress.js";
-import { navigableFraction, tideLevel } from "./tides.js";
+import { tideLevel } from "./tides.js";
 
 // ---- the lane -------------------------------------------------------------
-//: half-width of the navigable channel, in world px. Wider than the boat by a
-//: lot: the lane is where it is SAFE, not where you are allowed.
+//: THE FALLBACK half-width, in world px, and nothing else any more.
+//:
+//: This used to BE the lane: one constant, 105 px, so 210 px between the marks
+//: for the whole 5,7 km. The estero is not 210 px wide for the whole 5,7 km —
+//: measured off the shipped world, the corridor is under 240 px for 68 % of the
+//: route and drops to 80 px off el Centro — so 82 of the 170 buoys stood on dry
+//: mangrove and 16 of the 22 gates had a mark ashore. The marked channel was
+//: lying about where the water was, which is the one thing a marked channel
+//: must not do.
+//:
+//: The world measures it now and ships it per arclength (`manifest.ferries[].
+//: channel`). This survives as the answer for a world built before that field
+//: existed: a stale `src/world2d/` must still boot and still be playable.
 export const LANE_HW = 105;
+//: the marked lane pulls in this far from the real water's edge, so a buoy is
+//: IN the channel rather than on its bank.
+const BUOY_MARGIN = 24;
+//: …but never further in than this FRACTION of the water there is. A fixed
+//: margin on a narrow reach would put the two marks on top of each other.
+const LANE_MIN_FRAC = 0.6;
+//: THERE IS NO MINIMUM WIDTH, and there was: `LANE_MIN_HW = 64` clamped the
+//: lane UP so the marks stayed readable where the estero got thin. Readable
+//: marks standing on mangrove are worse than narrow ones standing on water,
+//: and that clamp is precisely how seven of them ended up ashore. The lane is
+//: now always a fraction of the room the world measured, so a buoy is inside
+//: the water BY CONSTRUCTION.
+const LANE_MAX_HW = 190;
 //: buoys every this many px of arclength, and half that through a bend
-const BUOY_GAP = 300;
-const BEND_GAP = 150;
+const BUOY_GAP = 260;
+const BEND_GAP = 130;
 //: a turn sharper than this (radians between legs) counts as a bend
 const BEND_ANG = 0.35;
 
-//: how far off the lane centre you may be before the shallows start
-const SHALLOW_HW = LANE_HW * 1.35;
-
-//: every Nth buoy pair is a GATE. Not every pair: a gate at each of ~40 pairs
-//: is a checkbox list, not a course. At 4 the estero gives ~10 of them, which
-//: is a lap's worth of decisions over a 7 km crossing.
-const GATE_EVERY = 4;
+//: a GATE every this many px of arclength. Not every Nth PAIR, which is what
+//: this used to be: the buoy spacing halves through a bend, so counting pairs
+//: made the gates bunch up exactly where the course was already busiest and
+//: stretch out over the long straights where a checkpoint would have been
+//: worth something. Arclength gives ~15 evenly spaced decisions.
+const GATE_GAP = 900;
+//: …and every Nth of those is a PORTÓN DE IMPULSO: through the middle of the
+//: mouth and it pays a full boost. Wide still counts — precision is rewarded,
+//: imprecision is not punished, which is the arcade rule.
+const BOOST_GATE_EVERY = 3;
+//: how much of the gate mouth counts as "through the middle".
+const BOOST_GATE_BAND = 0.3;
 //: seconds banked for passing through a gate the right way round
 const GATE_BONUS = 6;
 //: how far past the last gate the landing counts as reached
 const FINISH_PAD = 120;
+//: beyond this the compass leads along the channel instead of sighting the
+//: gate, and this is how far ahead it looks when it does.
+const ARROW_LEAD = 900;
+const ARROW_STEP = 500;
 //: how far past a gate's arclength before it counts as missed rather than
 //: still-being-approached. A boat crabbing across the channel can sit level
 //: with a gate for a second before she goes through it.
@@ -91,22 +124,28 @@ export function channels() {
       cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     }
     const total = cum[cum.length - 1] || 1;
-    const buoys = [];
-    const gates = [];
+    const ch = { pts, cum, total, chan: f.channel || null, buoys: [], gates: [] };
+    const buoys = ch.buoys, gates = ch.gates;
     let s = BUOY_GAP * 0.5;
-    let pair = 0;
-    while (s < total - 60) {
-      const q = at(pts, cum, s);
+    let lastGateS = -Infinity;
+    // …and the last pair stops well short of the landing. The final 120 px is
+    // `FINISH_PAD` and the landing itself is SHORE on purpose — a buoy there is
+    // a mark standing on the ramp you are aiming at.
+    while (s < total - 260) {
+      // EVERY MARK IS PLACED THROUGH `laneAt`, which is the whole fix: it puts
+      // the pair on the measured water at that arclength instead of at a
+      // constant offset from a polyline that may be running up the bank.
+      const q = laneAt(ch, s);
       const gap = bendAt(pts, cum, s) ? BEND_GAP : BUOY_GAP;
       // A GATE IS A PAIR PROMOTED, not a new object in the world. The two
       // buoys are already at the same arclength on opposite sides, so the gate
       // is the segment between them and it is drawn for free by drawing them.
-      const isGate = pair % GATE_EVERY === 0;
+      const isGate = s - lastGateS >= GATE_GAP;
       const side1 = [], side2 = [];
       for (const side of [-1, 1]) {
         const b = {
-          x: q.x - Math.sin(q.a) * LANE_HW * side,
-          y: q.y + Math.cos(q.a) * LANE_HW * side,
+          x: q.x - Math.sin(q.a) * q.hw * side,
+          y: q.y + Math.cos(q.a) * q.hw * side,
           // Red to PORT, green to starboard, in the direction of the outbound
           // passage — the same convention the estero's own markers use.
           side, red: side > 0, ph: (s * 0.017) % (Math.PI * 2), gate: isGate,
@@ -115,19 +154,90 @@ export function channels() {
         (side < 0 ? side1 : side2).push(b);
       }
       if (isGate) {
+        lastGateS = s;
         gates.push({
           s, index: gates.length,
           ax: side1[0].x, ay: side1[0].y,
           bx: side2[0].x, by: side2[0].y,
+          cx: q.x, cy: q.y, hw: q.hw,
+          boost: gates.length % BOOST_GATE_EVERY === 0,
           taken: false, missed: false,
         });
       }
       s += gap;
-      pair += 1;
     }
-    _channels.set(f.id, { pts, cum, total, buoys, gates });
+    _channels.set(f.id, ch);
   }
   return _channels;
+}
+
+/** Linear read into a per-arclength array emitted by the build. */
+function lerpArr(arr, u) {
+  if (!arr || !arr.length) return null;
+  const i = Math.max(0, Math.min(arr.length - 1, Math.floor(u)));
+  const j = Math.min(arr.length - 1, i + 1);
+  const k = Math.max(0, Math.min(1, u - i));
+  return arr[i] + (arr[j] - arr[i]) * k;
+}
+
+/**
+ * …but the WIDTH is read as the NARROWER of the two samples it falls between.
+ *
+ * The build measures the channel every 40 px and the marks go in every 260, so
+ * a buoy almost always lands BETWEEN two samples — and interpolating a width
+ * across a bend claims the average of two places while standing in neither.
+ * That is the last three marks that were still ashore after the lane itself
+ * became honest. Between two soundings you trust the shallower one, which is
+ * what any pilot does and costs a few px of lane where the estero is turning.
+ */
+function minArr(arr, u) {
+  if (!arr || !arr.length) return null;
+  const i = Math.max(0, Math.min(arr.length - 1, Math.floor(u)));
+  const j = Math.min(arr.length - 1, i + 1);
+  return Math.min(arr[i], arr[j]);
+}
+
+/**
+ * The centre of the navigable water at arclength `s`, and how wide it is there.
+ *
+ * `at()` still exists and is still right — it is the arclength math on the
+ * polyline. This is the thing that turns an arclength into a PLACE, and
+ * everything that puts an object in the estero goes through it: buoys, gates,
+ * pangas, yates, remolinos, bancos and the drawn lane. That is what stops the
+ * course being scattered across the mangrove.
+ *
+ * `off` matters as much as `hw`. Douglas-Peucker is allowed to move the route
+ * up to its tolerance, so a chord across a bend cuts to the inside of the real
+ * channel; the build measures how far the water's centre actually lies to
+ * starboard and this puts the lane back on it.
+ *
+ * Falls back to the old constant when the world shipped no `channel` — see
+ * `LANE_HW`.
+ */
+//: the lane's heading is measured over this much arclength either side, NOT
+//: from the segment the point happens to land on. It has to match the build's
+//: `TANGENT_SPAN`: the world measured the channel across a smoothed normal, so
+//: a client placing the marks across the raw segment normal is putting them on
+//: a different line from the one that was sounded. The route averages ~23 px a
+//: segment and the disagreement is easily a few degrees — which at 150 px out
+//: is the difference between the middle of the channel and the mangrove.
+const TANGENT_SPAN = 60;
+
+export function laneAt(ch, s) {
+  const q = at(ch.pts, ch.cum, s);
+  const c = ch.chan;
+  if (!c || !c.hw || !c.hw.length) return { x: q.x, y: q.y, a: q.a, hw: LANE_HW };
+  const b = at(ch.pts, ch.cum, s - TANGENT_SPAN);
+  const f = at(ch.pts, ch.cum, s + TANGENT_SPAN);
+  q.a = Math.atan2(f.y - b.y, f.x - b.x);
+  const u = s / (c.pitch || 40);
+  const off = lerpArr(c.off, u) || 0;
+  const room = minArr(c.hw, u) || LANE_HW;
+  // INSIDE THE WATER BY CONSTRUCTION: pull in by the margin, but never past a
+  // fraction of the room, and never wider than the room itself.
+  const hw = Math.min(LANE_MAX_HW, room,
+    Math.max(room - BUOY_MARGIN, room * LANE_MIN_FRAC));
+  return { x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a, hw };
 }
 
 export function channelOf(ferry) {
@@ -138,7 +248,7 @@ export function channelOf(ferry) {
 // THE ESTERO IS NOT THE SAME PLACE TWICE, and the four rows below are the level
 // design. Weather and tide are ONE choice, not two, because they interact: a
 // storm piles the water up, so the hard run is not the one with the least water
-// but the one with the most. Sailing the same 7 km at bajamar and at pleamar in
+// but the one with the most. Sailing the same 5,7 km at bajamar and at pleamar in
 // an aguacero are two different courses on one polyline, which is the cheapest
 // real variety this level can have.
 //
@@ -198,7 +308,12 @@ function bendAt(pts, cum, s) {
 
 /** Signed distance from the lane centre at arclength `s`. */
 export function laneOffset(channel, s, x, y) {
-  const q = at(channel.pts, channel.cum, s);
+  // FROM THE LANE'S CENTRE, not the polyline's. They are no longer the same
+  // point: the build measures how far to starboard the water actually centres
+  // (`off`), so a boat sailing dead down the middle of the marked channel can
+  // read 30 px off the route. The portón de impulso tests "through the middle
+  // of the mouth", and the mouth is between the two buoys.
+  const q = laneAt(channel, s);
   return (x - q.x) * -Math.sin(q.a) + (y - q.y) * Math.cos(q.a);
 }
 
@@ -257,6 +372,8 @@ const _crossing = {
   level: false,                 // level rules (gates, damage) vs Recorrer
   knocks: 0, fish: 0, t: 0, offset: 0, done: null,
   s: 0, progress: 0, gateIndex: 0, gates: 0, wrongWay: false,
+  // el impulso, and what earns it
+  boost: 0, near: 0, streak: 0, streakT: 0, bestStreak: 0, jumps: 0,
   // the last gate passed, as a respawn pose — see `respawn()`
   checkpoint: null,
 };
@@ -280,7 +397,21 @@ export function startCrossing(ferry, { level = false } = {}) {
   _crossing.gateIndex = 0;
   _crossing.gates = channel.gates.length;
   _crossing.wrongWay = false;
-  _crossing.checkpoint = null;
+  _crossing.boost = 0;
+  _crossing.near = 0; _crossing.streak = 0; _crossing.streakT = 0;
+  _crossing.bestStreak = 0; _crossing.jumps = 0;
+  // THE START LINE IS A CHECKPOINT, and leaving it null was a silent killer.
+  // `respawn()` used to call `endCrossing("swamped")` when there was nothing to
+  // go back to — and NOTHING IN THIS CODEBASE READS `done`. So sinking before
+  // the first gate did not end the run, it HOLLOWED it: `advanceCrossing`
+  // returned false, the compass went blank, the obstacles froze, the finish
+  // became unreachable, and the player sailed a dead estero until the clock ran
+  // out with no idea why. The same class of bug this file's header says the
+  // rewrite existed to fix, one function further down.
+  //
+  // `modes.js` poses `state.p` and nudges her `START_OUT_PX` down the route
+  // BEFORE calling `startCrossing`, so the pose is already the start line here.
+  _crossing.checkpoint = { x: state.p.x, y: state.p.y, a: state.p.a };
   for (const g of channel.gates) { g.taken = false; g.missed = false; }
   state.crossing = _crossing;
   spawnEstero(channel);
@@ -335,7 +466,14 @@ function finish() {
   // Time left and fish caught ARE the score here: there are no deliveries to
   // total, and a crossing that scored zero would rank last on the results
   // screen no matter how well it was sailed.
-  state.score += Math.round(Math.max(0, state.timeLeft) * 10 + _crossing.fish * 25);
+  // Time and fish were the whole score, which paid for exactly the timid line.
+  // The rozadas, the streak and the gates are in it now, so sailing it WELL
+  // beats sailing it safely.
+  state.score += Math.round(Math.max(0, state.timeLeft) * 10
+    + _crossing.fish * 25
+    + (_crossing.near || 0) * 15
+    + (_crossing.bestStreak || 0) * 50
+    + _crossing.gateIndex * 40);
   state.won = true;
   state.over = true;
   markStageCleared(state.stage.id, state.score);
@@ -356,22 +494,31 @@ function recordCrossing(stageId, c) {
     // A LOWER time is better, so an absent record must not win the comparison.
     bestTime: prev.bestTime ? Math.min(prev.bestTime, secs) : secs,
     bestFish: Math.max(prev.bestFish || 0, c.fish),
+    bestStreak: Math.max(prev.bestStreak || 0, c.bestStreak || 0),
   };
 }
 
 /**
  * Put her back at the last gate she passed.
  *
- * A sinking used to end the run outright, which in a 7 km race means the last
+ * A sinking used to end the run outright, which in a 5,7 km race means the last
  * ten seconds can throw away four minutes. The gates are checkpoints precisely
  * so that they can be respawn points — that is what makes taking a risk at a
  * bend a decision rather than a gamble.
  */
 function respawn() {
-  const cp = _crossing.checkpoint;
   const p = state.p;
   _crossing.knocks = 0;
-  if (!cp) { endCrossing("swamped"); return; }
+  // A RESPAWN NEVER ENDS THE CROSSING. It used to, when there was no checkpoint,
+  // by calling `endCrossing("swamped")` — see `startCrossing` for what that
+  // actually did to the run. There is always a checkpoint now (the start line),
+  // and this last-resort fallback is the head of the route rather than a way
+  // out of the level: the clock is the only thing that ends a crossing badly.
+  const cp = _crossing.checkpoint || (() => {
+    const ch = _crossing.channel;
+    const q = ch ? at(ch.pts, ch.cum, 0) : { x: p.x, y: p.y, a: p.a };
+    return { x: q.x, y: q.y, a: q.a };
+  })();
   p.x = cp.x; p.y = cp.y; p.a = cp.a;
   p.vx = 0; p.vy = 0; p.speed = 0; p.drift = 0;
   // The gate test is a SEGMENT between this frame's pose and last frame's, so a
@@ -400,8 +547,20 @@ export function advanceCrossing(dt, p) {
   // being sailed at, and neither should have to import the tide module to
   // learn it while a crossing is the only place it changes the gameplay.
   _crossing.tide = tideLevel();
-  _crossing.laneFrac = navigableFraction();
+  // THE LANE NO LONGER SHRINKS UNDER YOU. `laneFrac` was `0.72 + 0.28·level`
+  // off the tide, and it drove the BRIGHT band in the renderer while physics
+  // never read it — so on the pleamar and aguacero attempts, which start near
+  // high water and fall for the whole run, the drawn channel visibly closed in
+  // on you from the first second to the last, and there was nothing you could
+  // do about it because it was not real. It is gone; the lane is drawn at the
+  // width the world measured. The tide keeps the job it can actually do: the
+  // bancos de arena come out of the water at low tide (`bancoExposed`).
   const prevS = _crossing.s;
+  // the streak is a WINDOW, not a counter: stop brushing things and it lapses.
+  if (_crossing.streakT > 0) {
+    _crossing.streakT -= dt;
+    if (_crossing.streakT <= 0) _crossing.streak = 0;
+  }
   const near = projectToRoute(ch, p.x, p.y);
   _crossing.s = near.s;
   _crossing.offset = near.offset;
@@ -425,6 +584,21 @@ export function advanceCrossing(dt, p) {
       _crossing.checkpoint = { x: near.ax, y: near.ay, a: p.a };
       if (_crossing.level) {
         state.timeLeft += GATE_BONUS;
+        addBoost(GATE_BOOST);
+        // EL PORTÓN DE IMPULSO: through the middle of the mouth and she fills
+        // the tank. Wide still takes the gate, the time and the checkpoint —
+        // the precision is a bonus, never a toll.
+        if (g.boost) {
+          const off = Math.abs(laneOffset(ch, g.s, p.x, p.y) - 0);
+          if (off < (g.hw || LANE_HW) * BOOST_GATE_BAND) {
+            _crossing.boost = 1;
+            state.score += 80;
+            pushFloat(p.x, p.y - 62, t("crossing.boostReady"), "#ffd166");
+          }
+        }
+        // one knock back every two gates: an arcade water level should not have
+        // a death spiral, and three strikes over 5,7 km is one.
+        if (g.index % 2 === 1) _crossing.knocks = Math.max(0, _crossing.knocks - 1);
         // The float is the REWARD, the tip is the RULE. Two channels, so the
         // "+6s" popping off the bow never has to compete with the explanation
         // of why sinking from here will not cost you the whole passage.
@@ -442,13 +616,13 @@ export function advanceCrossing(dt, p) {
     }
   }
   p.prevX = p.x; p.prevY = p.y;
-  // Sailing back down the channel is worth saying, because in 7 km of open
+  // Sailing back down the channel is worth saying, because in 5,7 km of open
   // water with the shore a green line on both sides it is genuinely possible
   // to do it for a while without noticing.
   if (_crossing.wrongWay) state.storyTip = t("crossing.wrongWay");
 
   // NO DRAG FOR LEAVING THE LINE. This used to bleed your speed the moment you
-  // left the navigable band, and that one rule is what made 7 km of open
+  // left the navigable band, and that one rule is what made 5,7 km of open
   // estuary feel like a fenced corridor: the water outside the marks was
   // rendered, reachable and pointless, so the level was a ride between two
   // hedges. The compass (`crossingTarget`) replaces it — you can go anywhere on
@@ -494,7 +668,79 @@ export function knock(what) {
 
 export function catchFish(n) {
   _crossing.fish += n;
+  addBoost(FISH_BOOST);
   pushFloat(state.p.x, state.p.y - 40, `+${n} 🐟`, "#9fd7ef");
+}
+
+// ---- el impulso: the economy that makes this a game -----------------------
+//
+// THE OLD LEVEL HAD NOTHING TO WANT. It had a clock, three lives and a list of
+// things not to touch, so the optimal line was the timid one — stay in the
+// middle, go round everything wide, wait it out. An arcade water level has to
+// pay you for the opposite, and the cheapest honest way to do that is to make
+// GOING CLOSE the thing that earns the speed you need to go fast.
+//
+// So: brush something without touching it and you bank impulso; take a gate,
+// jump a yate's wake, or catch a shoal and you bank more; and impulso is what
+// the turbo spends. Nothing here punishes — a miss just does not pay.
+const NEAR_R = 30;             // px of clearance that counts as a rozada
+const NEAR_BOOST = 0.16;
+const GATE_BOOST = 0.30;
+const JUMP_BOOST = 0.25;
+const FISH_BOOST = 0.12;
+const BOOST_DRAIN = 0.45;      // per second held
+const STREAK_WINDOW = 4;       // s to keep a streak alive
+
+export function addBoost(v) {
+  const was = _crossing.boost || 0;
+  _crossing.boost = Math.min(1, was + v);
+  if (was < 1 && _crossing.boost >= 1) state.storyTip = t("crossing.boostReady");
+}
+
+/** Is there impulso to burn? Asked by physics before it lets the turbo fire. */
+export function boostReady() {
+  return !_crossing.active || (_crossing.boost || 0) > 0.05;
+}
+
+/** Burn it. Called by physics on the frames the turbo is actually running. */
+export function spendBoost(dt) {
+  if (!_crossing.active) return;
+  _crossing.boost = Math.max(0, (_crossing.boost || 0) - BOOST_DRAIN * dt);
+}
+
+/** Distance from a point to a segment — the pescador's net is a segment. */
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  let k = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+  k = k < 0 ? 0 : k > 1 ? 1 : k;
+  return Math.hypot(px - (ax + dx * k), py - (ay + dy * k));
+}
+
+/**
+ * A rozada: passed close, did not touch.
+ *
+ * Rides the distance the caller already computed, so it costs one comparison
+ * per entity. Only fires once per entity per approach (`nearT`), or holding
+ * station beside a moored panga would print money.
+ */
+function nearMiss(e, d, reach) {
+  const edge = d - (e.r || 24) - reach;
+  if (edge > 0 && edge < NEAR_R) {
+    if (e.nearT) return;
+    e.nearT = 1;
+    _crossing.near = (_crossing.near || 0) + 1;
+    _crossing.streak = (_crossing.streakT > 0 ? _crossing.streak || 0 : 0) + 1;
+    _crossing.streakT = STREAK_WINDOW;
+    _crossing.bestStreak = Math.max(_crossing.bestStreak || 0, _crossing.streak);
+    addBoost(NEAR_BOOST);
+    state.score += 15 * _crossing.streak;
+    pushFloat(state.p.x, state.p.y - 40,
+      _crossing.streak > 1 ? `${t("crossing.nearMiss")} x${_crossing.streak}`
+        : t("crossing.nearMiss"), "#9fd7ef");
+  } else if (edge > NEAR_R * 2) {
+    e.nearT = 0;
+  }
 }
 
 // ---- what lives in the estero --------------------------------------------
@@ -507,27 +753,74 @@ function rng(seed) {
   return () => (x = (x * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
 }
 
+// EVERY OFFSET BELOW IS A FRACTION OF THE LANE AT THAT ARCLENGTH, never of a
+// constant. That one change is what puts the estero's life ON the estero: at
+// `LANE_HW` a third of the pangas, half the roots and a quarter of the
+// remolinos were sitting on dry mangrove, drawn and collidable, which is how a
+// channel comes to feel like a corridor full of invisible walls.
+function place(list, ch, s, off, rest) {
+  const q = laneAt(ch, s);
+  list.push({ s, off, x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off,
+    a: q.a, taken: false, ...rest });
+}
+
 function spawnEstero(ch) {
   esteroThings.length = 0;
   const r = rng(0x1a5c4a);   // "lancha", near enough
-  const step = 260;
-  for (let s = 500; s < ch.total - 400; s += step) {
-    const q = at(ch.pts, ch.cum, s);
+  // THE FIRST REACH TEACHES. Full density from the start is how a course reads
+  // as unfair rather than hard, so the opening 2 000 px runs at quarter rate.
+  const dense = (s) => (s < 2000 ? 4 : s < 3500 ? 2 : 1);
+  let s = 500;
+  while (s < ch.total - 400) {
+    const hw = laneAt(ch, s).hw;
     const roll = r();
     const side = r() < 0.5 ? -1 : 1;
-    const off = (0.25 + r() * 0.75) * LANE_HW * side;
+    const off = (0.25 + r() * 0.75) * hw * side;
     const kind = roll < 0.42 ? "panga" : roll < 0.78 ? "fish" : "gulls";
-    esteroThings.push({
-      // PANGAS MOVE, and they move like the balneario's launch: straight across
-      // and back, turning at the edge of the lane. A moored obstacle is a
-      // slalom you learn once; one working her way across the channel is
-      // something you have to read every time.
-      kind, s, off,
+    // PANGAS MOVE, and they move like the balneario's launch: straight across
+    // and back, turning at the edge of the lane. A moored obstacle is a slalom
+    // you learn once; one working her way across the channel is something you
+    // have to read every time.
+    place(esteroThings, ch, s, off, {
+      kind, hw,
       ph: r() * Math.PI * 2,
       drift: kind === "panga" ? (r() < 0.5 ? -1 : 1) * (0.7 + r() * 0.8)
         : (r() - 0.5) * 0.4,
-      x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a,
-      taken: false, r: kind === "panga" ? 26 : kind === "fish" ? 34 : 40,
+      r: kind === "panga" ? 26 : kind === "fish" ? 34 : 40,
+    });
+    s += 420 * dense(s);
+  }
+
+  // LOS PESCADORES — a moored panga with a NET streaming off her to a float.
+  // The hazard is the LINE BETWEEN TWO THINGS, which is a gap to read rather
+  // than a disc to dodge, and it is the only obstacle here that asks you to
+  // choose a side of the channel a long way out. Fouling it costs you your way
+  // and not a knock: a net is an embarrassment, not a holing.
+  for (let sp = 900; sp < ch.total - 600; sp += 700) {
+    const hw = laneAt(ch, sp).hw;
+    const side = r() < 0.5 ? -1 : 1;
+    const anchor = (0.55 + r() * 0.4) * hw * side;
+    const reach = (0.35 + r() * 0.25) * hw * 2;
+    place(esteroThings, ch, sp, anchor, {
+      kind: "pescador", hw, ph: r() * Math.PI * 2, drift: 0, r: 24,
+      // the far end of the net, as a lane offset — the renderer and the
+      // collision both read it, so the drawn line IS the line you can foul
+      netOff: anchor - reach * side, netSide: side,
+    });
+  }
+
+  // LOS YATES — the set piece. A big motor yacht running ALONG the channel with
+  // two wake crests astern of her: a solid to go round, and a wake that PAYS if
+  // you take it fast. A hazard that can be worth points is what keeps an
+  // obstacle course from being a list of things not to do.
+  for (let sy = 1600; sy < ch.total - 900; sy += 1100) {
+    const hw = laneAt(ch, sy).hw;
+    if (hw < 130) continue;              // no room to pass her: don't put her there
+    const side = r() < 0.5 ? -1 : 1;
+    place(esteroThings, ch, sy, (0.2 + r() * 0.35) * hw * side, {
+      kind: "yate", hw, ph: r() * Math.PI * 2, drift: 0, r: 52,
+      run: (r() < 0.5 ? -1 : 1) * (120 + r() * 60),   // px/s along the channel
+      wake: 0,
     });
   }
   // REMOLINOS. They used to be storm-only, which meant that the one obstacle
@@ -536,26 +829,27 @@ function spawnEstero(ch) {
   // shipped. They are in every crossing now, and a storm simply brings more.
   // Mid-channel on purpose: a hazard hugging the bank would just be roots.
   const stormy = state.weather === "storm";
-  for (let s = 700; s < ch.total - 500; s += (stormy ? 520 : 900)) {
-    const q = at(ch.pts, ch.cum, s);
-    const off = (r() - 0.5) * LANE_HW * 1.1;
-    esteroThings.push({
-      kind: "remolino", s, off, ph: r() * Math.PI * 2, drift: 0, r: 52,
-      x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a,
-      pull: (r() < 0.5 ? -1 : 1) * (26 + r() * 22) * (stormy ? 1.4 : 1),
-      taken: false,
+  for (let sr = 700; sr < ch.total - 500; sr += (stormy ? 520 : 900)) {
+    const hw = laneAt(ch, sr).hw;
+    // …and the pull is halved now that the hull is an arcade boat. At the old
+    // 26-48 a remolino could take a slow panga's line away entirely, which is a
+    // current you cannot answer rather than one you have to.
+    place(esteroThings, ch, sr, (r() - 0.5) * hw * 1.1, {
+      kind: "remolino", hw, ph: r() * Math.PI * 2, drift: 0, r: 52,
+      pull: (r() < 0.5 ? -1 : 1) * (16 + r() * 14) * (stormy ? 1.4 : 1),
     });
   }
 
-  // The roots: they hug the bank, so they are only in the way of a boat that
-  // cuts the corner. Placed just outside the lane, on both sides.
-  for (let s = 380; s < ch.total - 300; s += 190) {
+  // The roots MARK THE BANK. They used to sit at `LANE_HW + 18`, which on a
+  // reach where the real water was 80 px wide put them well inland — drawn on
+  // mangrove, and only reachable by a boat that was already aground. On the
+  // measured lane they land where they belong: just outside the marks, in the
+  // way of a boat that cuts the corner and nobody else.
+  for (let sk = 380; sk < ch.total - 300; sk += 190) {
+    const hw = laneAt(ch, sk).hw;
     for (const side of [-1, 1]) {
-      const q = at(ch.pts, ch.cum, s);
-      const off = (LANE_HW + 18 + r() * 26) * side;
-      esteroThings.push({
-        kind: "roots", s, off, ph: r() * Math.PI * 2, drift: 0, r: 22,
-        x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a, taken: false,
+      place(esteroThings, ch, sk, (hw + 10 + r() * 20) * side, {
+        kind: "roots", hw, ph: r() * Math.PI * 2, drift: 0, r: 22,
       });
     }
   }
@@ -572,24 +866,22 @@ function spawnEstero(ch) {
   // bank is the boat stopping being a boat for a moment — she drags to a crawl
   // and you have to work her off. That is why it does not cost a knock unless
   // you drive onto it hard.
-  for (let s = 620; s < ch.total - 420; s += 330) {
-    const q = at(ch.pts, ch.cum, s);
+  for (let sb = 620; sb < ch.total - 420; sb += 330) {
+    const hw = laneAt(ch, sb).hw;
     const side = r() < 0.5 ? -1 : 1;
     // KEPT NEAR THE CENTRELINE. Out at 0.95 of the lane a bank sat where the
-    // estero often is not — the marked channel is wider than the water beside
-    // el Centro — and it is also the least interesting place to put one: a
-    // hazard against the bank is just the shallows again, while one you have to
-    // go round is a decision. `bancoExposed` still has the final say.
-    const off = (0.15 + r() * 0.45) * LANE_HW * side;
-    esteroThings.push({
-      kind: "banco", s, off, ph: r() * Math.PI * 2, drift: 0,
+    // estero often is not, and it is also the least interesting place to put
+    // one: a hazard against the bank is just the shallows again, while one you
+    // have to go round is a decision. `bancoExposed` still has the final say —
+    // and now that the lane IS the water, it has much less to veto.
+    place(esteroThings, ch, sb, (0.15 + r() * 0.45) * hw * side, {
+      kind: "banco", hw, ph: r() * Math.PI * 2, drift: 0,
       // the shallowest sit high and are out at almost any tide; the deepest
       // only show at a real bajamar, which is what makes low water read as a
       // different course rather than the same one with more scenery
       depth: 0.28 + r() * 0.5,
       r: 34 + r() * 30,
-      x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a,
-      taken: false, aground: false,
+      aground: false,
     });
   }
 }
@@ -612,10 +904,17 @@ export function crossingTarget() {
   if (!ch) return null;
   for (const g of ch.gates) {
     if (g.taken) continue;
-    return {
-      x: (g.ax + g.bx) / 2, y: (g.ay + g.by) / 2,
-      gate: g.index + 1, gates: ch.gates.length,
-    };
+    // FOLLOW THE BUOYS, DON'T CUT TO THE MARK. A gate can be 900 px down the
+    // channel, and an arrow pointing straight at it across two bends says
+    // "cut the corner" — which on this estero means the mangrove. While it is
+    // still far, aim at the LANE a little way ahead instead; the arrow then
+    // traces the channel and only becomes a gate sight when the gate is the
+    // next thing you have to do.
+    const lead = g.s - _crossing.s;
+    const q = lead > ARROW_LEAD
+      ? laneAt(ch, Math.min(_crossing.s + ARROW_STEP, g.s))
+      : { x: (g.ax + g.bx) / 2, y: (g.ay + g.by) / 2 };
+    return { x: q.x, y: q.y, gate: g.index + 1, gates: ch.gates.length };
   }
   const end = at(ch.pts, ch.cum, ch.total);
   return { x: end.x, y: end.y, gate: ch.gates.length, gates: ch.gates.length, finish: true };
@@ -637,6 +936,29 @@ export function crossingTarget() {
  * sitting on a beach by the time you got there. Asked at the moment it matters,
  * the tile under it is always loaded.
  */
+/**
+ * Is this buoy actually floating?
+ *
+ * THE LAST 2 %, AND THE SAME TRICK `bancoExposed` USES. The world measures the
+ * channel and the marks are placed inside it, so they are on water by
+ * construction — but the sounding is every 40 px along a line the dredge cut at
+ * half-cell steps, and on the sharpest bends of a real estuary those two do not
+ * agree to the pixel. Two of 122 came out on mangrove.
+ *
+ * A mark standing on the bank is worse than a missing mark: it tells you the
+ * channel is somewhere it is not. So it is simply not drawn. TESTED LAZILY, at
+ * draw time, for the reason `bancoExposed` documents — `surfaceAt` answers 0
+ * for a tile that has not streamed in, so asking at `channels()` time would
+ * pass on faith over the whole route.
+ *
+ * This is a backstop, NOT the fix. `tools/smoke_crossing.mjs` holds the real
+ * line: no GATE mark may ever be suppressed, and if the count of suppressed
+ * buoys climbs, the channel data has regressed and the test says so.
+ */
+export function buoyWet(b) {
+  return W.surfaceAt(b.x, b.y) === 0;
+}
+
 export function bancoExposed(e, level = tideLevel()) {
   if (e.kind !== "banco" || level >= e.depth) return false;
   return W.surfaceAt(e.x, e.y) === 0;
@@ -659,10 +981,74 @@ export function advanceEstero(dt, p, veh) {
     else if (e.kind !== "roots") e.ph += dt * (e.kind === "gulls" ? 3.2 : 1.4);
     if (e.drift) {
       e.off += e.drift * dt * 12;
-      if (Math.abs(e.off) > LANE_HW * 0.95) e.drift *= -1;
-      const q = at(ch.pts, ch.cum, e.s);
+      // she turns at the edge of HER lane, not at a constant — a panga working
+      // across a 90 px reach must not swing out to 200 px and beach herself.
+      if (Math.abs(e.off) > (e.hw || LANE_HW) * 0.95) e.drift *= -1;
+      const q = laneAt(ch, e.s);
       e.x = q.x - Math.sin(q.a) * e.off;
       e.y = q.y + Math.cos(q.a) * e.off;
+    }
+    // LOS YATES steam along the channel and turn at each end of their beat, so
+    // the gap you were going to take closes while you approach it.
+    if (e.kind === "yate") {
+      e.s += e.run * dt;
+      if (e.s < 600 || e.s > ch.total - 600) e.run *= -1;
+      const q = laneAt(ch, e.s);
+      e.x = q.x - Math.sin(q.a) * e.off;
+      e.y = q.y + Math.cos(q.a) * e.off;
+      e.a = q.a + (e.run < 0 ? Math.PI : 0);
+      const d = Math.hypot(e.x - p.x, e.y - p.y);
+      // THE WAKE PAYS. Two crests astern of her: cross one with way on and she
+      // throws you (boost + score); cross it slowly and she just slews you.
+      const wakeD = Math.abs(d - (e.r + 46));
+      if (wakeD < 18) {
+        const sp = Math.hypot(p.vx, p.vy);
+        if (sp > 200 && !e.wakeT) {
+          e.wakeT = 1;
+          addBoost(JUMP_BOOST);
+          _crossing.jumps = (_crossing.jumps || 0) + 1;
+          state.score += 60;
+          pushFloat(p.x, p.y - 40, t("crossing.jump"), "#9fd7ef");
+        } else if (sp <= 200) {
+          p.a += (e.run > 0 ? 1 : -1) * dt * 0.8;
+        }
+      } else if (wakeD > 40) {
+        e.wakeT = 0;
+      }
+      if (d < e.r + reach && !e.taken) {
+        e.taken = true;
+        const k = d > 0.001 ? 1 / d : 0;
+        p.vx += (p.x - e.x) * k * 120;
+        p.vy += (p.y - e.y) * k * 120;
+        if (knock("yate")) return;
+      } else if (d > e.r + reach + 30) {
+        e.taken = false;                 // she moves: she can hit you twice
+      }
+      nearMiss(e, d, reach);
+      continue;
+    }
+    // EL PESCADOR — the boat is nothing, the NET is the obstacle. Tested as the
+    // distance to a SEGMENT, because that is what it is: a line across part of
+    // the channel with a gap beside it, read from a long way off.
+    if (e.kind === "pescador") {
+      const q = laneAt(ch, e.s);
+      const fx = q.x - Math.sin(q.a) * e.netOff, fy = q.y + Math.cos(q.a) * e.netOff;
+      e.fx = fx; e.fy = fy;
+      const d = segDist(p.x, p.y, e.x, e.y, fx, fy);
+      if (d < reach + 8) {
+        // Fouling a net is an embarrassment, not a holing: it takes your way
+        // off and costs you nothing else. No knock — the one soft barrier here.
+        p.vx *= 0.55; p.vy *= 0.55;
+        if (!e.fouled) {
+          e.fouled = true;
+          pushFloat(p.x, p.y - 40, t("crossing.hit.red"), "#e8c07a");
+          state.cam.shake = Math.max(state.cam.shake, 1.5);
+        }
+      } else if (d > reach + 40) {
+        e.fouled = false;
+      }
+      nearMiss(e, d, reach);
+      continue;
     }
     // A remolino is not a collision: it is a current. It keeps working on you
     // the whole time you are in it, and it is never "taken". Now that the
@@ -708,9 +1094,15 @@ export function advanceEstero(dt, p, veh) {
     }
     if (e.taken) continue;
     const d = Math.hypot(e.x - p.x, e.y - p.y);
+    // A rozada is only worth something against a thing that could have HURT
+    // you, so the shoal and the gulls — which pay and blind, but never knock —
+    // are not part of the streak.
+    if (e.kind === "panga") nearMiss(e, d, reach);
     if (d > e.r + reach) continue;
     if (e.kind === "fish") { e.taken = true; catchFish(3); }
-    else if (e.kind === "gulls") { e.taken = true; state.gullBlind = 1.1; }
+    // …and the blind is shorter. 1.1 s at the old hull speed was a beat; at an
+    // arcade boat's it is most of a bend taken with the screen full of gulls.
+    else if (e.kind === "gulls") { e.taken = true; state.gullBlind = 0.7; }
     else {
       e.taken = true;
       // A panga you clip should also SHOVE you — she is a boat with mass, and

@@ -71,8 +71,9 @@ renderer (the "view") lives behind a seam so backends can be swapped.
 - `src/game/` — simulation + state (renderer-agnostic):
   - `state.js` — the shared mutable `state` singleton + world-entity arrays
     (traffic, pedestrians, gulls, boats, parked, vendors, animals) + `pushFloat`.
-  - `vehicles.js`, `surfaces.js` — **pure data, browser-free** (also imported by
-    the inventory script; keep them free of `window`/DOM).
+  - `vehicles.js`, `surfaces.js`, `boat.js` — **pure data/functions,
+    browser-free** (also imported by the inventory script and by Node checks;
+    keep them free of `window`/DOM).
   - `input.js` (keyboard/gamepad/touch), `spawns.js`, `delivery.js` (pickup/
     deliver loop + scoring), `physics.js` (`update(dt)`: driving, collisions,
     entity advancement), `progress.js` (localStorage unlocks/barriers),
@@ -350,6 +351,49 @@ when `lm.stands`, strokes a dark two-tone band over the block's real acera ring
 in the LANDMARK pass (after sidewalks → recolours the actual acera; follows the
 organic/diagonal outline). Interior cross-streets clipped by `_clip_roads_poly`.
 
+**LA TRAVESÍA DEL ESTERO: the lane is MEASURED, and the hull has its own model.**
+Two separate things were wrong and each one is worth not re-introducing.
+
+*The course.* `water_route` (`service/lancha.py`) was a plain BFS **shortest**
+path, which hugs every inside corner: measured on the line it emitted, the
+corridor is under 240 px wide for 68 % of the crossing, drops to 80 px off el
+Centro, and at four sample points the perpendicular water on one side was ZERO —
+the centreline was ON the mangrove. Against that, `crossing.js` marked a channel
+of one constant half-width (105 px), so **82 of 170 buoys stood on dry land** and
+16 of 22 gates had a mark ashore. It is now a **clearance-biased Dijkstra** over a
+bounded distance transform (`_clearance`, `CLEARANCE_WEIGHT`, penalty SQUARED so
+a wide reach still takes the short way), the channel is **dredged** to
+`DREDGE_HW` — converting `CLS_LAND` only, stopping the ray at anything that is
+neither land nor water, so it can never tunnel through a road — and the build
+**emits the measured lane** (`Ferry.channel`: `pitch`, `hw`, `off`). Everything
+that places something in the estero goes through `laneAt(ch, s)`, never a
+constant. `_navigable`'s old "…or any 4-neighbour is water" is exactly the
+licence that let the line sit on the bank; it now asks for real clearance.
+**A dredge must also emit its outline into `ctx.waters`** — `trace_land_contours`
+runs in `rasterise_surface`, ten stages earlier, so the drawn silhouette would
+otherwise still paint the new channel as land (the Balneario precedent, and the
+same trap `reclaim_shore` documents from the other side).
+
+*The hull.* `src/game/boat.js` owns it. Before, the boat existed only as nine
+`afloat ? … : …` subtractions scattered through `physics.js`, and two of them
+made a genuine DEADLOCK: `pivot` was hard-zeroed where a car gets `+1.5×turn`
+below 60 px/s, then what was left was multiplied by `0.25 + 0.75·spdFac`, so
+stopped she had a QUARTER of a turn rate already lower than any car's — and the
+touch model's `0.35 + 0.65·cos(e)` starved the throttle to 0.35 exactly when the
+finger was behind the beam. No speed → no turn → no way to get speed. She now
+always answers the helm (floor 0.62, plus prop wash under power), always makes
+way (`idleThrust`), planes above `planeAt`, drifts on the brake, and gets a
+bank-repulsion ring plus a glancing deflection. **Land stays a wall** — the
+surface classes are append-only, so a class added later must be a wall to a hull
+by default; forgiveness comes from the cushion, not from softening `isWall`.
+
+*And the tide stopped narrowing the lane.* `navigableFraction` returned
+`0.72 + 0.28·level` and drove the drawn band while **physics never read it**, so
+on the pleamar and aguacero attempts — which start near high water and fall for
+the whole run — the channel visibly closed in on the player from the first second
+to the last, unanswerable because it was not real. Deleted. The tide keeps the
+job it can do: `bancoExposed`.
+
 **NPC types (`kind` field, extensible)**: peds carry a `kind` and one of several
 advancers (branch in `physics.js`): rail-bound city walkers (`pe.road`,
 `advancePed`); **surface crowds** (`playero` on the sand, `paseante` on the
@@ -432,22 +476,56 @@ drowned coast.
 
 **The malecón** (`churchill/world/service/malecon.py`, stamped in
 `place_kiosks_and_blocks` after `acera_fringe` and before the faro esplanade).
-The sand between the paseos and the playa is `Surface.MALECON`.
-Four rules, each one measured on this coast:
+The ground between the paseos and the playa is `Surface.MALECON`.
+Rules, each one measured on this coast:
 - **the width is METRES** (`MALECON_BAND_M`) — every px constant here broke at
   the 1.6 → 2.0 rescale;
 - **the sand has a veto**: per cross-section the take is capped so
   `MALECON_MIN_SAND_PX` of playa survives seaward, and where nothing is left
   worth paving there is simply no malecón;
-- **only `CLS_BEACH` is converted**, which is what lets the band follow the real
+- **the BAND converts `CLS_BEACH` only**, which is what lets it follow the real
   wandering line without one hand-placed vertex — and what makes the OSM sites
   already on the front (Parque El Planché, the canchas) survive: their cells are
   reserved, so the paving goes AROUND them;
+- **…but the band has to REACH THE KERB, so the link crosses solar and acera**
+  (`KERB_LINK_CLASSES`, capped by `MALECON_KERB_LINK_M`, never a carriageway).
+  Measured over the 1 589 sea-front cross-sections the kerb-to-sand gap is a
+  median of 94 px and p99 150; at the old 30 m shoulder only **7 %** of them
+  could even SEE the sand, which is why the sea front shipped as 7 disjoint
+  bands with a 636 px hole along the whole Muelle de Cruceros frontage. It
+  crosses the ACERA on purpose: `CLS_ACERA` is a wall in the collider, so a
+  sidewalk left between asphalt and promenade is a fence, and 4 of those 7
+  bands touched neither carriageway nor acera — 6 746 cells you could see, not
+  reach, and not leave;
+- **`_sand_run` walks PAST an inland sand pocket** instead of writing the
+  cross-section off. At 30 m the first sand was always the playa; at 70 m it
+  often is not;
+- **the closing pass closes SEAMS, not just pinholes.** The rays are
+  perpendicular to a centreline that bends, so neighbouring rays disagree about
+  where the sand starts and leave one- to three-cell stripes between band and
+  link. A stripe has promenade on TWO sides, so a "3 of 4 neighbours" pinhole
+  rule cannot see it — it shipped 95 rings and 752 outline points on one band,
+  and the renderer's even-odd fill drew every hole as a wedge of bare sand.
+  Fill on three neighbours OR on two OPPOSITE ones, and iterate;
 - **a patch under `MALECON_MIN_PATCH_CELLS` goes back to the sand**, not merely
   out of the emit — a class-10 cell nobody draws is a hole in the beach.
 It emits `manifest.malecon` (outline rings + the Paseo's `ang`), painted by
 `src/render/c2d/malecon.js` between the land base and the roads so the acera
 band and the asphalt still cover anything that reached the kerb.
+
+**The faro's plazoleta is closed to its kerb, not grown to a radius.** The
+yellow line the player saw between the grey plaza and the loop road was never
+sand and never a matter of `FARO_ESP_R_M`: it is `CLS_LAND` — 52 px at
+y 15 340, 60 px at y 15 560 — drawn in the land tan `#cfb27a`, which against
+the plaza's `#cbc6ba` and the acera's `#b8b6b0` reads as a stripe down the
+middle of one place. The flood follows SAND, so it could never take that
+ground, and the old pocket pass could not either (its scan was a `± Rc` box and
+it vetoed anything touching the sea). After the flood the esplanade now absorbs
+land and beach OUTWARD until the sidewalk, the roadway or the water stops it —
+the loop road is a closed ring around La Punta, so it terminates ON the kerb by
+construction — bounded by `FARO_ESP_KERB_LINK_M` and still by
+`FARO_ESP_MAX_CELLS`. Same move as the malecón's kerb link, other side of the
+spit.
 
 **The drawn sand IS the sand.** `beaches` used to ship the raw OSM
 `natural=beach` outlines while the raster's sand is those plus nine rings of
@@ -657,6 +735,14 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
 - Don't hand-edit `src/world2d/` (manifest or tiles) — regenerate with
   `pnpm world:build`, then `python3 tools/world_snapshot.py verify` (or `save`
   if the change was intended).
+- **A full build is ~28 MINUTES, so smoke it first.** `PLANAR_BBOX` exists for
+  this: `PLANAR_BBOX="-84.8600,9.9700,-84.8200,9.9820" pnpm world:build` runs
+  the WHOLE pipeline over a centro-sized window in about a minute. It always
+  ends `[poi] BUILD INCOMPLETE — unresolved: …` because the clip drops every POI
+  outside the window, and it never reaches `write_world`, so **it cannot touch
+  `src/world2d/`** — which is exactly what makes it safe to run against a dirty
+  tree. What you are reading it for is a `Traceback`. A `NameError` in
+  `decorate` is 25 minutes into a full build and one minute into a smoke.
 - After a world rebuild, refresh BOTH derived artifacts: `pnpm inventory` and
   `python3 tools/gen_lotes.py`. The lote catalog went stale for a week once —
   it listed sponsorable footprints that no longer existed.
@@ -667,7 +753,20 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
   and `pnpm build` cannot see it (Rollup only WARNS about an import of a deleted
   export). `node tools/smoke.mjs http://localhost:8799/` against a
   `vite preview` boots the game, drives it and fails on any page error; it has
-  caught this exact class of bug three times.
+  caught this exact class of bug four times — most recently an import of
+  `drawFisher` deleted from `estero.js` while a call to it remained.
+- The smokes are `smoke` (the loop is alive), `smoke:boat` (the water medium),
+  `smoke:crossing` (every buoy is ON WATER, and she can be driven down the
+  channel at speed), plus `smoke:theme` / `smoke:sponsor`.
+  **A SMOKE TEST CAN GO GREEN FOR THE WRONG REASON.** `smoke_boat`'s "downtown
+  street" coordinate went stale in a rescale and became OPEN WATER, so its
+  land-is-a-wall leg was testing a boat at sea — and it still passed, because the
+  hull was tuned so badly it could not reach a quarter of its top speed on water
+  either. Two bugs cancelling, green for months. When a check asserts something
+  about a PLACE, assert the place too. For the same reason `smoke_crossing` walks
+  the camera down the route and uses `W.tileResident(x, y)`: `surfaceAt` answers
+  0 (**water**) for a tile that has not streamed in, so a naive sweep would pass
+  on faith over every buoy it had not waited for.
 - Changelogs live in `docs/changelog/`, one file per release date, named
   `YYYY-MM-DD.md` (nothing else) — Spanish, ready-to-post copy up top and a
   `## 🧾 Changelog` section below it.

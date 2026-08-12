@@ -18,8 +18,8 @@ import math
 from collections import deque
 
 from ..config import (
-    ACERA_CELLS, CALLE_CLASSES, CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_PASEO,
-    CLS_ROAD, CLS_WATER,
+    ACERA_CELLS, CALLE_CLASSES, CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_MALECON,
+    CLS_PASEO, CLS_ROAD, CLS_WATER,
     CUAD, CUAD_CELLS, DP_COAST_PX, DP_SAND_PX, ESTERO_MAINLAND_PX, GRID_CELL,
     SPIT_MAX_WIDTH_PX, SPIT_SHORE_TOL_PX,
 )
@@ -172,7 +172,15 @@ def stamp_pad(raster, x, y, r_px):
     """Carve a drivable road apron under a POI, punching through the acera so
     you can pull off the street right up to the kiosk/customer even though
     aceras are otherwise non-drivable curbs. Cuadrícula-aligned: the apron is
-    a whole-CUAD square centered on the POI's cuadrícula cell."""
+    a whole-CUAD square centered on the POI's cuadrícula cell.
+
+    …AND THROUGH THE MALECÓN, for exactly the same reason. While the promenade
+    was drivable this never came up; the moment it became a wall, `c3` — the
+    Carnaval troupe, who stand on the sea front at (23658, 15946) — was a
+    delivery target standing on a wall, and the build's own reachability gate
+    caught it: `46/47 POIs ok, unreachable c3`. A customer is somewhere you have
+    to be able to DRIVE TO, so the apron punches through whatever is under them
+    that a car cannot cross. That is the whole point of it."""
     cols, rows, grid = raster.cols, raster.rows, raster.buf
     side = max(2, round(2 * r_px / CUAD))          # side in cuadrículas
     cc0 = int(x // CUAD) - (side - 1) // 2
@@ -181,7 +189,7 @@ def stamp_pad(raster, x, y, r_px):
     for r in range(max(0, r0), min(rows, r0 + side * CUAD_CELLS)):
         row = r * cols
         for c in range(max(0, c0), min(cols, c0 + side * CUAD_CELLS)):
-            if grid[row + c] in (CLS_LAND, CLS_ACERA):
+            if grid[row + c] in (CLS_LAND, CLS_ACERA, CLS_MALECON):
                 grid[row + c] = CLS_ROAD
 
 

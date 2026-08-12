@@ -173,6 +173,32 @@ class Parcel(WorldModel):
         return bool(self.slot)
 
 
+class Channel(WorldModel):
+    """The navigable corridor around a lancha's route — MEASURED, not assumed.
+
+    The crossing used to mark a channel of one constant half-width (105 px, so
+    210 px between the marks) against a corridor that is under 240 px wide for
+    68 % of the route and drops to 80 px through the reach off el Centro. 48 %
+    of the buoys therefore stood on dry mangrove, 16 of the 22 gates had a mark
+    ashore, and the player's read of "where the channel is" was wrong wherever
+    it mattered most.
+
+    The lane is not a constant. It is a function of where you are, and this is
+    that function, sampled every `pitch` px of arclength along `route`:
+
+      * `hw`  — the navigable half-width there, so the buoys stand ON water and
+                the marked channel visibly opens and closes with the estero.
+      * `off` — how far to starboard the water's centre lies from the polyline.
+                Douglas-Peucker is allowed to move the line up to its tolerance,
+                so a chord across a bend still cuts to the inside; this puts the
+                marked lane back on the actual water without having to re-run
+                the simplifier at a tolerance that would restore forty waypoints.
+    """
+    pitch: int = Field(description="px of arclength between samples")
+    hw: list[int] = Field(description="navigable half-width at each sample, px")
+    off: list[int] = Field(description="px to starboard of the polyline the water centres")
+
+
 class Ferry(WorldModel):
     """A ferry berth and the line it sails.
 
@@ -193,6 +219,8 @@ class Ferry(WorldModel):
     deck: list[int] = Field(default=[124, 46], description="[length, width] in world px")
     dockS: float = Field(default=28.0, description="px seaward of the berth node she lies")
     route: FlatPoly
+    #: None for the two gulf ferries: they sail open water and have no channel.
+    channel: Channel | None = None
 
 
 class Stadium(WorldModel):

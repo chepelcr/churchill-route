@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "inventory": "node tools/gen-inventory.mjs",
     "world:build": "python3 tools/build_world.py",
-    "test": "python3 -m unittest tests.test_vocabulary tests.test_world_surfaces tests.test_world_editor_patch",
+    "test": "python3 -m unittest tests.test_vocabulary tests.test_world_surfaces tests.test_flora tests.test_world_editor_patch",
     "vocabulary": "python3 tools/gen_vocabulary.py",
     "smoke": "node tools/smoke.mjs",
     "smoke:boat": "node tools/smoke_boat.mjs",

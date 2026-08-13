@@ -1388,6 +1388,12 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
     PATIO_MAX = 45000
     for bi in sorted(range(len(blocks)), key=lambda i: min(blocks[i]["cells"])):
         b = blocks[bi]
+        # A WOOD PLANTS ITSELF. These are the rural blobs, and the renderer
+        # scatters a whole forest over them from `cuadra.wood` — emitting the
+        # old handful of patio trees here as well would be both redundant and
+        # the only part of it that costs tile bytes.
+        if b.get("wood"):
+            continue
         green = b.get("green")
         size = len(b["cells"])
         p = 0.55 if green else 0.30

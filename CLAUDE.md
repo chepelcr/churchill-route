@@ -227,6 +227,32 @@ The **corridor-unroll projection was deleted** (2026-07-25) along with
 the `data.js` emitter. If you find a doc or comment describing arclength-along-a-
 spine coordinates, it predates that.
 
+**EL MONTE: a wood is an AREA and a MIX, never a list of trees.**
+`detect_blocks` cannot tell a manzana from the hinterland except by size, and 55
+cuadras over 32 ha hold **95 % of all cuadra ground** (the largest is 270 M px²).
+Those are countryside, so `service/woods.py` marks them `cuadra.wood = "seco" |
+"monte" | "altura"` and the renderer plants them — `paintWoods` in
+`c2d/flora.js`. It CANNOT be emitted trees: that ground wants 300 000–950 000 of
+them and the whole world is 16.7 MB. The scatter is a global lattice walked over
+the VISIBLE RECTANGLE only, so a 270 M px² forest costs the same ~60 candidates
+per frame as a small one, and the position hash keeps every tree still.
+Containment is `surfaceAt(x,y) === SURFACE.LAND`, one tile lookup, which is both
+cheaper and more correct than a 6 392-vertex point-in-polygon: it already
+excludes the roads, the sand and the aceras. Which forest is decided by measured
+distance to real water — `manifest.hills` is a painted backdrop band, not
+elevation, so it cannot answer "is this highland".
+
+**The species are DATA, the forms are CODE** (`src/assets/flora.json`). A row
+says palette, crown radius, trunk height and which `form` draws it; the four
+forms (`broadleaf`, `conifer`, `column`, `bare`) are geometry and stay in
+`flora.js`. Adding a tree is a row plus a mix that names it. Two things learned
+drawing them: overlapping tiers in the SAME shade have no internal edges, so a
+conifer whose lower tiers share a colour reads as one ball with a bobble on top;
+and a column needs many steps barely narrowing, or it is a snowman.
+`tests/test_flora.py` checks every species names a form the renderer implements,
+every mix names species that exist, and that the builder only assigns mixes the
+registry has.
+
 ## World structures — recipes (reusable patterns)
 
 **Place a structure on a named street-grid cuadra** (how the two estadios are

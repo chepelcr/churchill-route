@@ -1,0 +1,205 @@
+{
+  "_note": "LA ARBOLEDA, as data. Every species the world can plant, keyed by the name the world emits. `form` picks which painter in src/render/c2d/flora.js builds the silhouette — the FORMS are code (they are geometry), the species are not. Adding a tree is a row here plus, at most, a mix that names it. Palettes run dark body -> mid -> highlight, the one lighting idiom every plant in this world shares.",
+  "version": 1,
+  "forms": {
+    "broadleaf": "the shared canopy stack: a round, slightly ragged crown on a short trunk",
+    "conifer": "stacked tiers narrowing upward — a cone read from above with its shadow side",
+    "column": "one tall narrow crown: a cypress is a vertical line in a landscape",
+    "bare": "trunk and branches, no canopy — the dry season, and what a dead tree looks like",
+    "palm": "a leaning trunk under a ring of fronds — a palm is a different tree and has to stay one",
+    "mangrove": "a dense low crown over a cage of prop roots, standing in the tide"
+  },
+  "species": {
+    "almendro": {
+      "form": "broadleaf",
+      "canopy": [
+        "#276b3f",
+        "#358a4d",
+        "#4aa863",
+        "#5fc07a"
+      ],
+      "trunk": "#6a4426",
+      "r": 9.5,
+      "trunkH": 7,
+      "note": "the default, and what every tree in this world was until now"
+    },
+    "guanacaste": {
+      "form": "broadleaf",
+      "canopy": [
+        "#2f6b3a",
+        "#3f8a4a",
+        "#57a862",
+        "#6ec078"
+      ],
+      "trunk": "#7a6a52",
+      "r": 12.5,
+      "trunkH": 9,
+      "spread": 1.28,
+      "note": "the national tree: a huge low crown much wider than it is tall"
+    },
+    "cortez": {
+      "form": "broadleaf",
+      "canopy": [
+        "#b8871f",
+        "#d8a72c",
+        "#efc451",
+        "#ffe08a"
+      ],
+      "trunk": "#6f5a44",
+      "r": 10.5,
+      "trunkH": 8,
+      "note": "cortez amarillo in bloom — the dry season's yellow, and the only tree here that is not green"
+    },
+    "seco": {
+      "form": "bare",
+      "canopy": [],
+      "trunk": "#8a7a63",
+      "r": 9.0,
+      "trunkH": 11,
+      "branches": 5,
+      "note": "dry-season bare, or dead. No crown at all — the silhouette IS the branches"
+    },
+    "pino": {
+      "form": "conifer",
+      "canopy": [
+        "#14402a",
+        "#1c5636",
+        "#276b44",
+        "#357f52"
+      ],
+      "trunk": "#4a3524",
+      "r": 8.5,
+      "trunkH": 6,
+      "tiers": 7,
+      "note": "highland. Not a Puntarenas coastal tree — zoned inland, toward the cordillera"
+    },
+    "cipres": {
+      "form": "column",
+      "canopy": [
+        "#133a2a",
+        "#1a4c36",
+        "#235f43"
+      ],
+      "trunk": "#40301f",
+      "r": 4.4,
+      "trunkH": 5,
+      "height": 3.0,
+      "note": "highland, and a vertical: it reads at a glance because nothing else here is tall and narrow"
+    },
+    "cerezo": {
+      "form": "broadleaf",
+      "canopy": [
+        "#c2557f",
+        "#dc7ba3",
+        "#f0a3c2",
+        "#ffc7dd"
+      ],
+      "trunk": "#4a3330",
+      "r": 9.0,
+      "trunkH": 8,
+      "note": "el cerezo en flor. Ornamental and deliberately not native — it is pink, it is meant to be found"
+    },
+    "palma": {
+      "form": "palm",
+      "canopy": [
+        "#276b3f",
+        "#358a4d",
+        "#4aa863",
+        "#5fc07a"
+      ],
+      "trunk": "#7a4f2a",
+      "r": 11.0,
+      "trunkH": 16,
+      "fronds": 6,
+      "note": "la palma: the Paseo median, the beaches and the faro. Its palette was the ALMENDRO'S until now — the same array, shared by import, so recolouring one tree silently recoloured every frond in the world"
+    },
+    "mangle": {
+      "form": "mangrove",
+      "canopy": [
+        "#276b3f",
+        "#358a4d",
+        "#4aa863",
+        "#5fc07a"
+      ],
+      "trunk": "#34261a",
+      "r": 26.0,
+      "trunkH": 0,
+      "roots": "52,38,24",
+      "mud": "84,68,44",
+      "shallow": "214,235,232",
+      "note": "el mangle: the darkest green in this world, but the same ramp as every other crown. Drawn by ground.js, which imported the almendro's palette to get it"
+    }
+  },
+  "mixes": {
+    "_note": "Which species a wood plants, and how often. Weights need not sum to 1 — they are normalised. `d` is px² of ground per tree, so a bigger number is a thinner wood. `floor` is the wash laid under a wood — bare land tan under trees reads as a beach with trees on it.",
+    "seco": {
+      "d": 2400,
+      "weights": [
+        [
+          "seco",
+          0.42
+        ],
+        [
+          "guanacaste",
+          0.28
+        ],
+        [
+          "cortez",
+          0.16
+        ],
+        [
+          "almendro",
+          0.14
+        ]
+      ],
+      "note": "tropical dry forest: the coast and the estero's far shore",
+      "floor": "rgba(150,120,64,0.46)"
+    },
+    "monte": {
+      "d": 2000,
+      "weights": [
+        [
+          "almendro",
+          0.44
+        ],
+        [
+          "guanacaste",
+          0.26
+        ],
+        [
+          "seco",
+          0.18
+        ],
+        [
+          "cortez",
+          0.12
+        ]
+      ],
+      "note": "the ordinary green hinterland between the coast and the hills",
+      "floor": "rgba(72,108,56,0.52)"
+    },
+    "altura": {
+      "d": 1700,
+      "weights": [
+        [
+          "pino",
+          0.4
+        ],
+        [
+          "cipres",
+          0.26
+        ],
+        [
+          "almendro",
+          0.2
+        ],
+        [
+          "cerezo",
+          0.14
+        ]
+      ],
+      "note": "the cordillera behind the port: denser, darker, and where the cerezos are",
+      "floor": "rgba(38,74,52,0.62)"
+    }
+  }
+}

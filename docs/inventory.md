@@ -138,10 +138,10 @@ catalog and is unrelated to the classifier's census.
 |---|---:|---|
 | Roads | 2,211 | residential 1,444; service 450; unclassified 88; trunk 76; trunk link 53; primary 43; tertiary 37; secondary 7; primary link 6; pedestrian 5; bridge 1; tertiary link 1 |
 | Buildings | 80,405 | OSM + deterministic synthesized footprints |
-| Trees | 28,570 | streamed tile points |
-| Palms | 4,885 | streamed tile points |
+| Trees | 22,185 | streamed tile points |
+| Palms | 4,898 | streamed tile points |
 | Mangroves | 1,260 | streamed tile points |
-| Cuadras | 976 | semantic block polygons |
+| Cuadras | 976 | semantic block polygons; **55 carry `wood`** and are planted by the renderer, not emitted as trees |
 | Parcels | 483 | park 193; stadium 82; church 64; school 56; lot 39; campus 17; kinder 12; fuel 11; boulevard 3; civic 2; market 2; cathedral 1; garden 1 |
 | OSM POIs | 987 | 133 source tag categories; full breakdown is in `inventory.json` |
 | Signs/furniture | 496 | ALTO 281; banca 114; bus 82; crossing 12; semáforo 5; tope 2 |

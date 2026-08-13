@@ -98,7 +98,7 @@ def build_cuadra_catalog(raster, blocks):
         points = list(zip(poly[0::2], poly[1::2]))
         x0, y0, x1, y1 = _bbox(points)
         cx, cy = _centroid(points)
-        cuadras.append({
+        record = {
             "id": cuadra_source_id(poly),
             "name": f"Cuadra {len(cuadras) + 1}",
             "poly": poly,
@@ -106,7 +106,12 @@ def build_cuadra_catalog(raster, blocks):
             "x0": x0, "y0": y0, "x1": x1, "y1": y1,
             "surfaceClass": "land",
             "groundPreset": "cuadra",
-        })
+        }
+        # Countryside rather than a manzana: the renderer plants it (service/
+        # woods.py). One short string, not the 300 000+ trees it stands for.
+        if block.get("wood"):
+            record["wood"] = block["wood"]
+        cuadras.append(record)
     return cuadras
 
 

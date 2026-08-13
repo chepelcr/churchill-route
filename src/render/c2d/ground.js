@@ -3,7 +3,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
-import { CANOPY, canopyPath } from "./flora.js";
+import { canopyPath, species } from "./flora.js";
 import { aabbInView, ctx, flatMultiPath, hash01, weatherColors } from "./gfx.js";
 import {
   drawCurrents, drawRipples, drawShoreBreak, drawSwell, isBalneario,
@@ -156,7 +156,12 @@ function drawGreenPoly(gp, view) {
 // bajamar half the root cage and a band of mud are out. It is scenery, not the
 // subject — the reason it moves at all is that a mangrove whose roots never
 // changed would be the one thing in the estero the tide did not reach.
-const MANGROVE_R = 26;                       // when the world emits no radius
+// The mangle's own row in src/assets/flora.json. This file used to import
+// `CANOPY` — the ALMENDRO's palette — so the manglar's greens were the street
+// tree's greens by reference, and recolouring one would have recoloured the
+// other with nothing to say so.
+const MANGLE = species("mangle");
+const MANGROVE_R = MANGLE.r;                 // when the world emits no radius
 
 // The canopy blob is the ARBOLEDA'S, not the manglar's: `canopyPath` in
 // flora.js is the one construction every crown in this world is built from, so
@@ -171,7 +176,7 @@ function paintMangrove(m, tide, t) {
   const sway = Math.sin(t * 0.0004 + seed * 6.3) * 1.2;
   // el fango: the mud the roots stand in, out only at low water
   if (wet < 0.85) {
-    ctx.fillStyle = `rgba(84,68,44,${(0.34 * (1 - wet)).toFixed(3)})`;
+    ctx.fillStyle = `rgba(${MANGLE.mud},${(0.34 * (1 - wet)).toFixed(3)})`;
     manglePath(m.x, m.y + 1, R * 1.3, seed + 0.4, 0.18); ctx.fill();
   }
   ctx.fillStyle = "rgba(0,0,0,0.22)";                    // her shadow on the water
@@ -180,7 +185,7 @@ function paintMangrove(m, tide, t) {
   // shorten and go dim as the water comes up over them.
   const legs = 7 + Math.round(hash01(seed * 13.7) * 4);
   const lr = R * (0.42 + 0.34 * (1 - wet));
-  ctx.strokeStyle = `rgba(52,38,24,${(0.85 - 0.42 * wet).toFixed(3)})`;
+  ctx.strokeStyle = `rgba(${MANGLE.roots},${(0.85 - 0.42 * wet).toFixed(3)})`;
   ctx.lineWidth = 1.6;
   ctx.lineCap = "round";
   for (let i = 0; i < legs; i++) {
@@ -200,18 +205,19 @@ function paintMangrove(m, tide, t) {
   // as a WHITE OUTLINE drawn round every tree in the manglar. It is a FILL now:
   // a soft, slightly wider disc of shallow water under the canopy, which is
   // what the tide actually leaves there and has no edge to read as a line.
-  ctx.fillStyle = `rgba(214,235,232,${(0.10 + 0.10 * wet).toFixed(3)})`;
+  ctx.fillStyle = `rgba(${MANGLE.shallow},${(0.10 + 0.10 * wet).toFixed(3)})`;
   manglePath(m.x, m.y + 1, R * (0.84 + 0.1 * wet), seed + 1.7, 0.14); ctx.fill();
   // la copa: dense, dark, ragged — and lower on the water when the tide is in
   const cr = R * (0.82 + 0.12 * wet);
   const cy = m.y - R * 0.16 * (1 - wet);
-  // …in the ARBOLEDA's palette, from its dark end: a mangle is the darkest
-  // green in this world, but it is the same ramp as every other crown.
-  ctx.fillStyle = CANOPY[0];
+  // …from its OWN row's dark end. A mangle is the darkest green in this world
+  // and it is still the same SHAPE of ramp as every other crown — but it is its
+  // own ramp now, not the almendro's by import.
+  ctx.fillStyle = MANGLE.canopy[0];
   manglePath(m.x + sway * 0.4, cy, cr, seed, 0.24); ctx.fill();
-  ctx.fillStyle = CANOPY[1];
+  ctx.fillStyle = MANGLE.canopy[1];
   manglePath(m.x - cr * 0.16 + sway * 0.6, cy - cr * 0.16, cr * 0.66, seed + 2.3, 0.26); ctx.fill();
-  ctx.fillStyle = CANOPY[2];
+  ctx.fillStyle = MANGLE.canopy[2];
   manglePath(m.x + cr * 0.24 + sway, cy - cr * 0.22, cr * 0.4, seed + 5.1, 0.28); ctx.fill();
 }
 

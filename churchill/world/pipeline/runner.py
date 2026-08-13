@@ -21,6 +21,7 @@ from ..config import (
 from ..repository.osm_file import OsmFileRepository
 from ..repository.world_json import JsonWorldRepository
 from ..service.block import block_raster_cells, outline_poly
+from ..service.woods import classify as classify_woods
 from ..service.editor_patch import (
     WorldPatchError, WorldPatchSession, build_cuadra_catalog,
 )
@@ -92,6 +93,12 @@ def main():
         keepouts=keepouts, streets=StreetIndex(roads), raw_bldgs=raw_bldgs,
         sites=ctx.sites, _green_poly=_green_poly,
         _block_raster_cells=_block_raster_cells)
+
+    # WHICH BLOCKS ARE COUNTRYSIDE — before `decorate`, because the patio scatter
+    # must not sprinkle its handful of trees over ground a whole forest covers.
+    # After the surface is finished, because it asks how far each one is from the
+    # real sea.
+    classify_woods(ctx.raster, blocks)
 
     bridge, est, trees, palms, mangroves = decorate(
         ctx, sp=sp, roads=roads, blocks=blocks, occ=occ, waters=waters,

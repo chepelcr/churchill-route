@@ -6,7 +6,7 @@
 // low-res land/water/beach backdrop covers unloaded gaps.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
-import { paintPalm, paintRoadsideTrees, paintTree, tileTrees } from "./flora.js";
+import { paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
 import { aabbInView } from "./gfx.js";
 import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
@@ -46,6 +46,9 @@ function drawWorld2D(view, t) {
   // meets the world's own planting on the cuadra behind it should pass under
   // it, not over. `tileTrees` is the tile's own planting with a double-anchor
   // median's two interleaved rows merged onto its centre (see flora.js).
+  // EL MONTE first: it is the ground cover of the countryside, so the town's own
+  // planting and the street trees stand over it rather than in a gap in it.
+  paintWoods(view);
   paintRoadsideTrees(roads, view);
   for (const tile of vts) {
     for (const tr of tileTrees(tile, medianPairs(tile).pairs)) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }

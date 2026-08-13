@@ -300,6 +300,18 @@ OSM_MAX_CUADS = 4               # cap OSM footprints at 4x4 cuadrículas
 SYNTH_LOTS = [((2, 2), 0.25), ((2, 1), 0.20), ((1, 2), 0.20),
               ((1, 1), 0.30), ((3, 2), 0.05)]
 
+# ---- el monte: which cuadras are countryside, not manzanas ------------------
+# `detect_blocks` cannot tell a manzana from the hinterland except by size, and
+# measured on the shipped world 55 cuadras over 2 M px² hold 95 % of ALL cuadra
+# ground. Those get planted as woods instead of built on. In m² because it is a
+# real size (see BLOCK_MIN_M just below, and docs/RESCALE.md).
+WOOD_MIN_M2 = 320_000           # 32 ha ~= 2 M px² today: bigger than any manzana
+                                # this town has by a wide margin
+# WHICH forest, decided by distance from real water — the only terrain signal
+# this world has. `manifest.hills` is a painted backdrop band, not elevation.
+WOOD_COAST_M = 900              # within this of sea or sand: tropical dry forest
+WOOD_ALTURA_M = 4000            # no water within this: the cordillera
+
 # ---- cuadra detection --------------------------------------------------------
 # HOW BIG A PIECE OF LAND HAS TO BE TO COUNT AS A MANZANA — and it is a REAL
 # SIZE, so it is in metres.

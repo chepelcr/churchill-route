@@ -27,7 +27,7 @@ from ..config import (
     LEON_END_STREET, MARINE_POOL_GROUND_CLEAR_PX, MARINE_POOL_RAIL_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_SCALE,
     MARINE_STRUCTURE_PARCEL_PAD_PX, PASEO_LEON, PASEO_MEDIAN_W, PASEO_TURISTAS,
-    STREET_CLASSES, SYNTH_MAX_TOTAL, road_width_px,
+    STREET_CLASSES, SYNTH_MAX_TOTAL, flora_registry, road_width_px,
 )
 from ..content import (
     BLDG_PALETTE, LANDMARK_DEFS, MARINE_BUILDING_NAMES, MARINE_SITE_OSM_ID,
@@ -1315,6 +1315,31 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                     trees.append({"x": round(x), "y": round(y),
                                   "s": round(0.9 + rng() * 0.3, 2)})
                     nxt = s + TREE_PITCH
+    # WHICH SPECIES EACH PLANTED TREE IS. From a POSITION HASH, never from
+    # `rng()`: the seeded stream is shared by every scatter in this stage, so
+    # taking one draw per tree would shift every value after it and a change of
+    # species would come out of the diff looking like the whole world moved.
+    # Hashing the position also means a tree keeps its species if something
+    # unrelated upstream changes.
+    _FLORA = flora_registry()
+    def _species(mix_name, x, y, default):
+        weights = _FLORA["plantings"][mix_name]["weights"]
+        v = math.sin(x * 12.9898 + y * 78.233) * 43758.5453
+        roll = (v - math.floor(v)) * sum(w for _, w in weights)
+        for name, w in weights:
+            roll -= w
+            if roll <= 0:
+                return name
+        return weights[-1][0]
+    def _plant(out, x, y, s, mix_name, default="almendro"):
+        """Append a tree, naming its species only when it is not the default —
+        22 000 records, so the common case must cost no bytes."""
+        rec = {"x": x, "y": y, "s": s}
+        kind = _species(mix_name, x, y, default)
+        if kind != default:
+            rec["k"] = kind
+        out.append(rec)
+
     # Tree line on the north shoulder of Avenida 2 del Ferrocarril (from
     # x≈6892 to the avenue's end), separating it from the parallel Avenida
     # Alberto Echandi Montero. Decorative trees (no blocking median → the barro
@@ -1353,21 +1378,33 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
             # line the user saw sitting on top of streets.
             if grid[gr * GRID_COLS + c] in CARRIAGEWAY_CLASSES + (CLS_WATER,):
                 continue
-            trees.append({"x": round(tx), "y": round(ty), "s": round(0.9 + rng() * 0.3, 2)})
+            _plant(trees, round(tx), round(ty), round(0.9 + rng() * 0.3, 2), "barro")
             n_ferro_trees += 1
-    # Planted median down the middle of the divided Cocal avenue (corridor-only;
-    # planar never divides that avenue, so this is inert there).
-    def _centerline_pts(name, x0, x1):
+    # Planted median down the middle of the divided Cocal avenue.
+    #
+    # THE WINDOW COMES FROM THE ROADS, NOT FROM TWO NUMBERS. This asked for
+    # x 8139..11921 — a corridor-era anchor — while both avenues actually run
+    # x 26200..70786, so it had been planting NOTHING for as long as the planar
+    # world has existed, and the comment above it said "planar never divides
+    # that avenue" as though that were a finding rather than a consequence of
+    # looking 15 000 px away from it. Measured on the real geometry: of 130
+    # sample points where both avenues are present, 55 have them within 120 px
+    # of each other. It IS a divided avenue. (`EVERY ANCHOR IS GEO` in
+    # CLAUDE.md is the rule this broke.)
+    def _centerline_pts(name):
         out = []
         for r in roads:
             if (r.get("name") or "") == name:
-                out += [(x, y) for (_, x, y) in resample_centerline(r["pts"], 10) if x0 <= x <= x1]
+                out += [(x, y) for (_, x, y) in resample_centerline(r["pts"], 10)]
         return sorted(out)
-    A = _centerline_pts("Avenida 1", 8139, 11921)
-    B = _centerline_pts("Avenida Alberto Echandi Montero", 8139, 11921)
+    A = _centerline_pts("Avenida 1")
+    B = _centerline_pts("Avenida Alberto Echandi Montero")
     n_dc = 0
     if A and B:
-        for xs in range(8200, 11900, 40):
+        # where the two carriageways overlap in x, which is the only stretch on
+        # which "the middle of a divided avenue" means anything
+        span0, span1 = max(A[0][0], B[0][0]), min(A[-1][0], B[-1][0])
+        for xs in range(int(span0), int(span1) + 1, 40):
             a = min(A, key=lambda p: abs(p[0] - xs))
             b = min(B, key=lambda p: abs(p[0] - xs))
             if abs(a[0] - xs) < 90 and abs(b[0] - xs) < 90 and abs(a[1] - b[1]) < 6 * CUAD:
@@ -1375,7 +1412,12 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                 c, gr = int(mx / GRID_CELL), int(my / GRID_CELL)
                 if 0 <= c < GRID_COLS and 0 <= gr < GRID_ROWS and \
                         grid[gr * GRID_COLS + c] not in CARRIAGEWAY_CLASSES + (CLS_WATER,):
-                    trees.append({"x": mx, "y": my, "s": round(0.9 + rng() * 0.3, 2)})
+                    # scale from the POSITION HASH, not `rng()`: this used to
+                    # plant nothing, so taking 55 draws would shift every value
+                    # the scatters after it pull from the shared stream and the
+                    # whole patio planting would move for no reason.
+                    h = math.sin(mx * 12.9898 + my * 78.233) * 43758.5453
+                    _plant(trees, mx, my, round(0.9 + (h - math.floor(h)) * 0.3, 2), "parque")
                     n_dc += 1
     log("median", f"{n_median_palms} palms on the paseo median dashes, "
           f"{len(trees)} trees on the tree lines ({n_ferro_trees} Ferrocarril, "
@@ -1406,9 +1448,9 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                 continue
             if rng() > p:
                 continue
-            trees.append({"x": round(cc * CUAD + CUAD / 2 + (rng() - 0.5) * 8),
-                          "y": round(cr * CUAD + CUAD / 2 + (rng() - 0.5) * 8),
-                          "s": round(0.85 + rng() * 0.4, 2)})
+            _plant(trees, round(cc * CUAD + CUAD / 2 + (rng() - 0.5) * 8),
+                   round(cr * CUAD + CUAD / 2 + (rng() - 0.5) * 8),
+                   round(0.85 + rng() * 0.4, 2), "parque")
             n_patio += 1
     n_beach_palms = 0
     _lat = 6                                     # 6 cells = 24 px lattice

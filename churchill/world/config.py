@@ -28,6 +28,8 @@ WORLD2D_DIR = os.path.join(ROOT, "src", "world2d")
 #: copies were wrong (the bulevar was #d8d4c8 here and #d9d6cd everywhere else;
 #: the dev viewer knew 7 of 11 classes and drew the rest magenta).
 SURFACE_REGISTRY_PATH = os.path.join(ROOT, "src", "assets", "surfaces.json")
+#: Every plant in the world: species, wood mixes, and the build's plantings.
+FLORA_REGISTRY_PATH = os.path.join(ROOT, "src", "assets", "flora.json")
 
 # World SIZE is not a knob: it is computed from the OSM bounds at build time
 # (see planar_setup) and lives with the grid, not here.
@@ -130,6 +132,17 @@ STREET_SPAN_M = 440             # vals() / edge(): samples near a reference
 STREET_AT_SPAN_M = 560          # at(): the coordinate AT a point
 STREET_DIR_SPAN_M = 325         # direction(): a manzana's angle
 STREET_NEAR_SPAN_M = (500, 315)  # near(): the build-log diagnostic
+
+
+def flora_registry():
+    """`src/assets/flora.json` — the species, the wood mixes and the plantings.
+
+    The BUILD reads it to decide which species each tree it places IS; the
+    renderer reads the same file for the woods it scatters. One catalog, both
+    ends, exactly like the surface registry below."""
+    import json
+    with open(FLORA_REGISTRY_PATH, encoding="utf-8") as fh:
+        return json.load(fh)
 
 
 def surface_registry():
@@ -270,26 +283,21 @@ MANGROVE_SEED = 57              # deterministic scatter (jitter + radius)
 SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so
                                 # fully-filled small cuadras don't exhaust it
                                 # mid-map and leave far blocks empty)
-                                # SATURATED, AND IT BINDS — but DO NOT raise it
-                                # to meet demand. Measured 2026-08-11 with the
-                                # cap set non-binding: the map asks for
-                                # **193 271** footprints, 2.4x this. That number
-                                # is not a density target, it is evidence of a
-                                # different bug. The shipped world's synthesized
-                                # buildings stop dead at x ~= 68 000 (1 198 per
-                                # 1 000 px just west of it, 220 in the whole
-                                # 12 000 px east), because the budget is spent
-                                # west-to-east and simply runs out — so the real
-                                # villages out there, including a 56-building
-                                # cluster at x 69-70 k, stand with no neighbours.
-                                # Meeting the demand would not fix that; it would
-                                # carpet 4.8 km of rural coast, because eastern
-                                # "cuadras" include land blobs of 339 MILLION px²
-                                # whose frontage band alone wants tens of
-                                # thousands of lots. A blob that size is not a
-                                # manzana — see `detect_blocks`, which says a
-                                # size threshold is the wrong question, and
-                                # ROADMAP §4.
+                                # It USED to bind hard, and the reason was not
+                                # density: measured 2026-08-11 with the cap set
+                                # non-binding, the map asked for 193 271
+                                # footprints, because `synth_buildings` was
+                                # giving a frontage band to 55 rural land blobs
+                                # of up to 339 MILLION px² — 95 % of all cuadra
+                                # ground. That is what made this a west-to-east
+                                # cliff at x ~= 68 000 that left real villages
+                                # without neighbours. El monte is not buildable
+                                # now (service/woods.py; the skip is in
+                                # synth_buildings), so the demand is what a TOWN
+                                # actually asks for. Read the
+                                # `[buildings] +N synthesized (total N)` line: if
+                                # N is below this number, the cap no longer binds
+                                # at all and nothing is being starved.
 SYNTH_SEED = 77
 BLDG_INSET = 2                  # px seam per side so adjacent roofs don't fuse
 FRONTAGE_DEPTH = 3              # buildable band (CUADs) from the block edge

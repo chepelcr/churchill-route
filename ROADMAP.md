@@ -152,15 +152,24 @@ conviene hacer antes de mover arte, para no re-medir dos veces.
       MEDIDA al agua real (`manifest.hills` es un telón pintado, no elevación).
       Y el `decorate` deja de sembrar sus árboles de patio ahí, así que el mundo
       emite MENOS árboles que antes.
-- [ ] **El tope de edificios sigue siendo una carrera oeste→este.** Lo de arriba
-      le quita la peor consecuencia (ya no hay riesgo de alfombrar el campo),
-      pero `SYNTH_MAX_TOTAL` se sigue gastando por orden geográfico con un corte
-      en seco, así que los pueblos reales del este siguen con menos vecinos de
-      los que les tocan. Queda medir de nuevo la demanda **con el monte fuera**:
-      ahora que 55 blobs no piden fachada, el número real será mucho menor que
-      los 193 271 medidos, y quizá el tope ya ni siquiera ate.
-- [ ] ~~**Los blobs rurales se rellenan como si fueran manzanas, y el tope lo
-      tapaba.**~~ (el diagnóstico, conservado) MEDIDO (2026-08-11) poniendo `SYNTH_MAX_TOTAL` en no-vinculante:
+- [x] **El tope de edificios ya no ata, y el acantilado del este desapareció.**
+      Hecho 2026-08-13. Con el monte fuera de `synth_buildings`, la demanda real
+      del PUEBLO es **44 479** contra un tope de 80 000: los 193 271 de la
+      medición anterior eran, enteros, las bandas de fachada de los 55 blobs
+      rurales. El presupuesto deja de agotarse, así que el corte oeste→este ya no
+      corta nada:
+
+      | al este de x 68 000 | antes | ahora |
+      |---|---:|---:|
+      | edificios | 302 | **11 537** |
+
+      Los pueblos de verdad de allá — el racimo de 56 en x 69–70 k incluido — por
+      fin tienen vecinos. El total baja 80 894 → 45 218 porque esos 36 000 eran
+      fachada rural que ahora es bosque, y el mundo pesa **16 481 → 12 980 KB**.
+      El tope sigue siendo una carrera oeste→este por construcción; simplemente
+      dejó de importar, y queda anotado por si el pueblo crece.
+- [x] ~~**Los blobs rurales se rellenan como si fueran manzanas, y el tope lo
+      tapaba.**~~ Cerrado por las dos filas de arriba. MEDIDO (2026-08-11) poniendo `SYNTH_MAX_TOTAL` en no-vinculante:
       el mapa pide **193 271** huellas, 2,4× las 80 000 de hoy. Ese número **no
       es un objetivo de densidad, es la evidencia de otro bug** — y desmiente la
       estimación de ~114 000 que estaba escrita aquí antes de medir.

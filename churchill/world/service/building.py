@@ -110,6 +110,13 @@ def synth_buildings(blocks, cell_block, occ, n_real):
     rng = make_rng(SYNTH_SEED)
     out = []
     for bi in sorted(range(len(blocks)), key=lambda i: min(blocks[i]["cells"])):
+        # EL MONTE IS NOT BUILDABLE. These are the rural blobs — 95 % of all
+        # cuadra ground — and filling their frontage band is what made the demand
+        # 193 271 footprints against a cap of 80 000, i.e. what turned this cap
+        # into a hard west-to-east cliff that starved the real villages out east.
+        # A forest is not a manzana, so it does not get a frontage.
+        if blocks[bi].get("wood"):
+            continue
         cells = blocks[bi]["cells"]
         depth, q = {}, deque()
         for (cc, cr) in cells:

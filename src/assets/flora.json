@@ -131,25 +131,29 @@
     }
   },
   "mixes": {
-    "_note": "Which species a wood plants, and how often. Weights need not sum to 1 — they are normalised. `d` is px² of ground per tree, so a bigger number is a thinner wood. `floor` is the wash laid under a wood — bare land tan under trees reads as a beach with trees on it.",
+    "_note": "Which species a wood plants, and how often. Weights need not sum to 1 — they are normalised. `d` is px² of ground per tree, so a bigger number is a thinner wood. `floor` is the wash laid under a wood — bare land tan under trees reads as a beach with trees on it. The cerezo is in ALL THREE on purpose: zoned only to the 4 altura woods it was botanically tidy and practically invisible, because the player drives the coast.",
     "seco": {
       "d": 2400,
       "weights": [
         [
           "seco",
-          0.42
+          0.36
         ],
         [
           "guanacaste",
-          0.28
+          0.24
         ],
         [
           "cortez",
-          0.16
+          0.15
+        ],
+        [
+          "cerezo",
+          0.13
         ],
         [
           "almendro",
-          0.14
+          0.12
         ]
       ],
       "note": "tropical dry forest: the coast and the estero's far shore",
@@ -160,19 +164,23 @@
       "weights": [
         [
           "almendro",
-          0.44
+          0.38
         ],
         [
           "guanacaste",
-          0.26
+          0.22
         ],
         [
-          "seco",
+          "cerezo",
           0.18
         ],
         [
+          "seco",
+          0.14
+        ],
+        [
           "cortez",
-          0.12
+          0.08
         ]
       ],
       "note": "the ordinary green hinterland between the coast and the hills",
@@ -183,23 +191,72 @@
       "weights": [
         [
           "pino",
-          0.4
+          0.32
         ],
         [
           "cipres",
-          0.26
-        ],
-        [
-          "almendro",
           0.2
         ],
         [
           "cerezo",
-          0.14
+          0.3
+        ],
+        [
+          "almendro",
+          0.18
         ]
       ],
-      "note": "the cordillera behind the port: denser, darker, and where the cerezos are",
+      "note": "the cordillera behind the port: denser, darker, and where the cerezos are thickest — nearly a third of it is in flower",
       "floor": "rgba(38,74,52,0.62)"
+    }
+  },
+  "plantings": {
+    "_note": "Species for the plantings the BUILD places, as opposed to the woods the RENDERER scatters. Resolved at build time from a POSITION HASH — never from the shared seeded rng, because inserting draws into that stream shifts every random value after it and a species change would come out looking like the whole world moved. Written as `k` only when it differs from the family default (almendro for a tree, palma for a palm): there are 22 000 of them and the default must cost nothing.",
+    "parque": {
+      "weights": [
+        [
+          "almendro",
+          0.44
+        ],
+        [
+          "guanacaste",
+          0.2
+        ],
+        [
+          "cortez",
+          0.16
+        ],
+        [
+          "cerezo",
+          0.12
+        ],
+        [
+          "seco",
+          0.08
+        ]
+      ],
+      "note": "patios, parks and plazas — the town's own planting, mixed so a barrio is not 22 000 identical almendros"
+    },
+    "barro": {
+      "weights": [
+        [
+          "seco",
+          0.38
+        ],
+        [
+          "guanacaste",
+          0.3
+        ],
+        [
+          "cortez",
+          0.2
+        ],
+        [
+          "almendro",
+          0.12
+        ]
+      ],
+      "note": "the elevated barro route: Av. 2 del Ferrocarril and the Cocal-side avenue. Dusty and dry, so dry-forest species"
     }
   }
 }

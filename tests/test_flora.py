@@ -97,6 +97,38 @@ class FloraRegistryTests(unittest.TestCase):
             self.assertIn(name, self.mixes,
                           f"woods.py assigns mix '{name}', which flora.json has no entry for")
 
+    def test_every_planting_names_species_that_exist(self):
+        # The BUILD resolves these (build_stage `_plant`), the woods mixes are
+        # resolved by the RENDERER — two ends, one catalog.
+        plantings = {k: v for k, v in self.doc["plantings"].items()
+                     if not k.startswith("_")}
+        self.assertTrue(plantings, "no plantings — has the shape changed?")
+        for name, mix in plantings.items():
+            for species_name, weight in mix["weights"]:
+                self.assertIn(species_name, self.species,
+                              f"planting {name} plants '{species_name}', which is not a species")
+                self.assertGreater(weight, 0, f"planting {name}: {species_name} has no weight")
+
+    def test_the_builder_only_names_plantings_the_registry_has(self):
+        build_stage = read(os.path.join(ROOT, "churchill", "world", "pipeline", "build_stage.py"))
+        # CALL SITES ONLY, with the parens BALANCED. `def _plant(..., default=
+        # "almendro")` is the helper's own signature — matching it made this
+        # demand a planting called "almendro", which is a species — and a lazy
+        # `.*?` stops at the first `)`, which is inside `round(tx)`.
+        used = set()
+        for match in re.finditer(r"(?<!def )_plant\(", build_stage):
+            depth, i = 1, match.end()
+            while i < len(build_stage) and depth:
+                depth += {"(": 1, ")": -1}.get(build_stage[i], 0)
+                i += 1
+            names = re.findall(r'"(\w+)"', build_stage[match.end():i])
+            if names:
+                used.add(names[-1])
+        self.assertTrue(used, "build_stage plants nothing by name — has `_plant` changed?")
+        for name in used:
+            self.assertIn(name, self.doc["plantings"],
+                          f"build_stage plants '{name}', which flora.json has no planting for")
+
     def test_every_plant_family_is_in_the_catalog(self):
         # The palma and the mangle were drawn from hardcoded numbers and took
         # their greens from `CANOPY` — the ALMENDRO's array, shared by import —

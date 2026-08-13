@@ -86,6 +86,14 @@ def main():
         _block_containing=_block_containing,
         _block_raster_cells=_block_raster_cells, _green_poly=_green_poly)
 
+    # WHICH BLOCKS ARE COUNTRYSIDE. It has to run BEFORE `place_structures`,
+    # because `synth_buildings` lives in there and el monte must not be given a
+    # frontage band — placing this before `decorate` instead left the flag unset
+    # at synth time, so the skip never fired and the re-measured demand came back
+    # 193 271, identical to the digit, which is what gave the mistake away.
+    # `decorate`'s patio scatter reads the same flag, later.
+    classify_woods(ctx.raster, blocks)
+
     buildings, occ, stadiums, parcels = place_structures(
         ctx, landmarks=landmarks, roads=roads, blocks=blocks, greens=greens,
         plazas=plazas, beaches=beaches, balneario=balneario,
@@ -93,12 +101,6 @@ def main():
         keepouts=keepouts, streets=StreetIndex(roads), raw_bldgs=raw_bldgs,
         sites=ctx.sites, _green_poly=_green_poly,
         _block_raster_cells=_block_raster_cells)
-
-    # WHICH BLOCKS ARE COUNTRYSIDE — before `decorate`, because the patio scatter
-    # must not sprinkle its handful of trees over ground a whole forest covers.
-    # After the surface is finished, because it asks how far each one is from the
-    # real sea.
-    classify_woods(ctx.raster, blocks)
 
     bridge, est, trees, palms, mangroves = decorate(
         ctx, sp=sp, roads=roads, blocks=blocks, occ=occ, waters=waters,

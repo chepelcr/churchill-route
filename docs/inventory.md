@@ -847,7 +847,7 @@ foundation, P2 = later authoring surface.
 |---|---|---|---|---|
 | P0 | `vehicles.js`, `entities.js`, `vehicleShapes.js`, `audio.js`, economy/editor vehicle merge | complete vehicle definition: stats, medium, bounds/collision, body parts, colors, cargo mounts, sound voice, price/unlock | `src/assets/vehicles.json` with versioned schema | vehicle physics, part/silhouette interpreter, WebAudio synthesis |
 | P0 | surface mirrors across Python/JS/Pixi/editor | one canonical surface registry with wire ID, labels, roles, speed, materials | versioned shared surface JSON consumed/generated into both runtimes | raster algorithms and collision category evaluation |
-| P0 | loose string vocabularies in DTOs, simulation, renderer, UI, and editor | stage/sign/pier/vehicle/host/geometry/mode identities and validation | Python enum layer plus deterministic generated JS/JSON vocabulary | state transitions, rendering, geometry, validation algorithms |
+| P0 | ~~loose string vocabularies in DTOs, simulation, renderer, UI, and editor~~ **DONE 2026-08-11 / 08-13** | stage/sign/pier/vehicle/host/geometry/mode identities and validation | Python enum layer plus deterministic generated JS/JSON vocabulary — 17 enums, `enums/{features,game,editing,surface}.py` | state transitions, rendering, geometry, validation algorithms |
 | P0 | landmark/parcel/sign switches | asset kind registry and mapping from semantic type to asset | `src/assets/world-props.json` or per-family files | finite shape DSL and draw dispatch by schema |
 | P0 | duplicated Canvas/Pixi/editor colors | shared material/theme registry for terrain, roads, structures, minimap/editor preview | `src/assets/materials.json` | backend adapters |
 | P0 | Canvas gameplay water plus older Pixi water paths | water palettes/effect presets, explicit backend owner, units, layers, and parity fixtures | `src/assets/water.json` plus renderer ownership registry | Canvas draw algorithms, Pixi shaders/draw algorithms, simulation interactions |
@@ -1008,16 +1008,16 @@ literal in one change.
 
 | Priority | Proposed enum | Values observed or required | Why it is closed |
 |---|---|---|---|
-| P0 | `StageKind` | `delivery`, `crossing` | changes start flow, required medium, goals, and win condition |
-| P0 | `VehicleMedium` | `land`, `water` | collision, spawn, shop fallback, and vehicle picker depend on it |
-| P0 | `VehicleKind` | `bike`, `car`, `boat` | shared silhouette/renderer dispatch; vehicle IDs remain a registry |
+| P0 | `StageKind` | `delivery`, `crossing` | changes start flow, required medium, goals, and win condition. **DONE 2026-08-13** (`enums/game.py`; `Stage.kind` is typed now, so a typo fails the build) |
+| P0 | `VehicleMedium` | `land`, `water` | collision, spawn, shop fallback, and vehicle picker depend on it. **DONE 2026-08-13** (`enums/game.py`) |
+| P0 | `VehicleKind` | `bike`, `car`, `boat` | shared silhouette/renderer dispatch; vehicle IDs remain a registry. **DONE 2026-08-13** (`enums/game.py`) |
 | P0 | `SignKind` | `alto`, `banca`, `ceda`, `semaforo`, `semaforo_centered`, `semaforo_overhead`, `speed_limit`, `crossing`, `tope`, `bus` | producer/DTO/renderer must agree or furniture disappears |
 | P0 | `PierStyle` | `concrete`, `timber`, `apron`, `calzada`, `malecon` | builder output selects a finite renderer material recipe |
 | P0 | `LineEnd` | `first`, `last` | pier `seaEnd` affects stamping, collision, and deck length; null remains “neither” |
-| P0 | `HostKind` | `cuadra`, `parcel`, `landmark`, `stadium`, `green` | editor, API validation, builder containment, and NPC hosts repeat it |
-| P0 | `GeometryKind` | `point`, `line`, `polygon` | editor project schema and builder patch dispatch both depend on it |
-| P0 | `EditorOperation` | `add`, `modify` | source replacement semantics are closed and validated |
-| P0 | `RendererBackend` | `canvas`, `pixi` | required by the per-family ownership registry and fallback policy |
+| P0 | `HostKind` | `cuadra`, `parcel`, `landmark`, `stadium`, `green` | editor, API validation, builder containment, and NPC hosts repeat it. **DONE 2026-08-13** (`enums/editing.py`) |
+| P0 | `GeometryKind` | `point`, `line`, `polygon` | editor project schema and builder patch dispatch both depend on it. **DONE 2026-08-13** (`enums/editing.py`) |
+| P0 | `EditorOperation` | `add`, `modify` | source replacement semantics are closed and validated. **DONE 2026-08-13** (`enums/editing.py`) |
+| P0 | `RendererBackend` | `canvas`, `pixi` | required by the per-family ownership registry and fallback policy. **DONE 2026-08-13** (`enums/game.py`; the value also sits in a player's localStorage) |
 | P1 | `GameMode` | `story`, `arcade`, `explore`, `tutorial` | repeated across mode starts, scoring, timers, UI, results, and analytics |
 | P1 | `UIScreen` | `boot`, `intro`, `title`, `stagepick`, `brief`, `modebrief`, `tutbrief`, `vehpick`, `lanchapick`, `playing`, `paused`, `over`, `settings`, `supporters`, `shop` | React's screen state machine is a finite internal vocabulary |
 | P1 | `NpcMovement` | `rail`, `bounded-random`, `route`, `stationary` | JSON chooses among code-owned movement algorithms |
@@ -1089,10 +1089,19 @@ content/asset registries ----------> schema validation keyed by enum values
 ```
 
 It carries `SURFACE` + `SURFACE_CLASSES` + `SURFACE_BY_NAME` + the five
-`SURFACE_ROLE` sets, `ROAD_RANK` + two `ROAD_ROLE` sets, and ten string
-vocabularies. The physics multiplier stays authored in `src/game/surfaces.js` —
-it is the one surface property the world does not know — but keyed through
-`SURFACE` so a class cannot be silently reassigned.
+`SURFACE_ROLE` sets, `ROAD_RANK` + two `ROAD_ROLE` sets, and **seventeen** string
+vocabularies (ten on 2026-08-11, the seven P0s above on 2026-08-13). The physics
+multiplier stays authored in `src/game/surfaces.js` — it is the one surface
+property the world does not know — but keyed through `SURFACE` so a class cannot
+be silently reassigned.
+
+The enum package is layered by WHO OWNS THE VOCABULARY, not by size:
+`enums/surface.py` is the wire format itself, `enums/features.py` is what the
+world contains, `enums/game.py` is what the runtime branches on, and
+`enums/editing.py` is what the editor authors and the game reads back. The last
+one lives here rather than in the editor's own repo for exactly the reason this
+whole layer exists — the editor is a separate repository, so a vocabulary it
+kept privately would be a handwritten copy by definition.
 
 The generated JavaScript API should expose frozen named maps and sets, for
 example `SURFACE.WATER`, `SURFACE_BY_NAME`, `SURFACE_ROLE.DRIVABLE`,
@@ -1118,7 +1127,11 @@ The first four are in `tests/test_vocabulary.py` as of 2026-08-11 (`pnpm test`).
   place**; fallback, material, editor label and inventory entry are not yet
   checked.
 - ~~Scan game code for raw `surfaceAt(...) === <number>` and reject new uses.~~
-  **In place** for the six modules the audit named.
+  **In place** for the six modules the audit named — and, since 2026-08-13, over
+  the whole of `src/` for the runtime tokens too: a bare `.kind === "crossing"`,
+  `.medium === "land"`, `veh.kind === "boat"` or `geometry.kind === "…"` fails
+  the suite. It earned itself immediately, catching a `crossing.js` comparison
+  that the by-hand sweep had missed.
 - ~~Compare Canvas, Pixi, minimap, editor, and debug materials by enum key rather
   than array length.~~ **In place for SURFACE materials** (2026-08-11): there is
   one registry, so there is nothing left to compare, and a test rejects any new
@@ -1144,11 +1157,21 @@ The first four are in `tests/test_vocabulary.py` as of 2026-08-11 (`pnpm test`).
    metadata; verify `malecon`, `market`, barro, and gravel previews.~~ **Done
    2026-08-11** — the editor reads the generated JSON for surfaces, pier styles
    and parcel uses. Its ROAD rank table is still its own.
-4. Add `StageKind`, `SignKind`, `PierStyle`, `LineEnd`, `VehicleMedium`, and
+4. ~~Add `StageKind`, `SignKind`, `PierStyle`, `LineEnd`, `VehicleMedium`, and
    `VehicleKind` to the typed contract; resolve the live `malecon` pier style
-   fallback deliberately. **`SignKind`, `PierStyle`, `LineEnd` and `SurfaceName`
-   done 2026-08-11**; the `malecon` deck recipe exists. `StageKind`,
-   `VehicleMedium` and `VehicleKind` remain.
+   fallback deliberately.~~ **Done** — `SignKind`, `PierStyle`, `LineEnd`,
+   `SurfaceName` on 2026-08-11 (and the `malecon` deck recipe exists);
+   `StageKind`, `VehicleMedium`, `VehicleKind`, `RendererBackend`, `HostKind`,
+   `GeometryKind` and `EditorOperation` on 2026-08-13, in two new modules —
+   `enums/game.py` for what the runtime branches on and `enums/editing.py` for
+   what the editor authors and the game reads back. The generated vocabulary
+   carries 17 enums now.
+
+   The `Stage.kind` change is the one worth naming: it was
+   `Field(default="delivery", description="delivery | crossing")`, which
+   documents a contract without enforcing it. `Manifest.model_validate` runs
+   before every write, so a typo now fails the build rather than shipping a
+   stage that loads, lists, and starts as a delivery run with no kiosk.
 5. Centralize ferry/channel/acera/CUAD compatibility defaults with explicit
    units before executing the rescale plan.
 6. Add the remaining simulation/UI enums, then migrate extensible identities to

@@ -182,6 +182,53 @@ export const LINE_END = Object.freeze({
 });
 export const LINE_END_VALUES = Object.freeze(["first", "last"]);
 
+export const STAGE_KIND = Object.freeze({
+  DELIVERY: "delivery",
+  CROSSING: "crossing",
+});
+export const STAGE_KIND_VALUES = Object.freeze(["delivery", "crossing"]);
+
+export const VEHICLE_MEDIUM = Object.freeze({
+  LAND: "land",
+  WATER: "water",
+});
+export const VEHICLE_MEDIUM_VALUES = Object.freeze(["land", "water"]);
+
+export const VEHICLE_KIND = Object.freeze({
+  BIKE: "bike",
+  CAR: "car",
+  BOAT: "boat",
+});
+export const VEHICLE_KIND_VALUES = Object.freeze(["bike", "car", "boat"]);
+
+export const RENDERER_BACKEND = Object.freeze({
+  CANVAS: "canvas",
+  PIXI: "pixi",
+});
+export const RENDERER_BACKEND_VALUES = Object.freeze(["canvas", "pixi"]);
+
+export const HOST_KIND = Object.freeze({
+  CUADRA: "cuadra",
+  PARCEL: "parcel",
+  LANDMARK: "landmark",
+  STADIUM: "stadium",
+  GREEN: "green",
+});
+export const HOST_KIND_VALUES = Object.freeze(["cuadra", "parcel", "landmark", "stadium", "green"]);
+
+export const GEOMETRY_KIND = Object.freeze({
+  POINT: "point",
+  LINE: "line",
+  POLYGON: "polygon",
+});
+export const GEOMETRY_KIND_VALUES = Object.freeze(["point", "line", "polygon"]);
+
+export const EDITOR_OPERATION = Object.freeze({
+  ADD: "add",
+  MODIFY: "modify",
+});
+export const EDITOR_OPERATION_VALUES = Object.freeze(["add", "modify"]);
+
 // ---- roads: painting order and the two role sets ---------------------
 // A higher rank is stroked OVER a lower one. Every RoadClass has an
 // entry, which is the drift this replaced: `living_street` had none, so

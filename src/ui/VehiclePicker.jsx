@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Game } from "../game/index.js";
+import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { VEHICLES, vehicleMedium } from "../game/vehicles.js";
 import { economy, VEHICLE_PRICES, BOOSTS, COLORS } from "../game/economy.js";
 import { sfx } from "../game/audio.js";
@@ -14,13 +15,13 @@ import Icon from "./Icon.jsx";
 // Two scale-to-fit cards side by side: the vehicle carousel and an options
 // card (paint colours you own + boosts to arm for this run). Locked vehicles
 // deep-link to the Shop; boosts are consumed at mode start by armRun.
-export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false, medium = "land" }) {
+export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false, medium = VEHICLE_MEDIUM.LAND }) {
   const t = useT();
   // THE CAROUSEL IS SCOPED TO THE RUN'S MEDIUM. Offering a scooter for the
   // Travesía is not a cosmetic mistake — modes.js would refuse it and swap in
   // the panga, so the player would pick one boat and start in another.
   const inMedium = (k) => vehicleMedium(k) === medium;
-  const fallbackKey = medium === "water" ? "panga" : "scooter";
+  const fallbackKey = medium === VEHICLE_MEDIUM.WATER ? "panga" : "scooter";
   const startKey = economy.ownsVehicle(Game.state.vehicleKey) && inMedium(Game.state.vehicleKey)
     ? Game.state.vehicleKey : fallbackKey;
   const [veh, setVeh] = useState(startKey);

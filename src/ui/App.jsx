@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../game/index.js";
+import { STAGE_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { WORLD2D as WORLD } from "../world2d/index.js";
 import TitleScreen from "./screens/TitleScreen.jsx";
 import StageSelect from "./screens/StageSelect.jsx";
@@ -235,7 +236,7 @@ export default function App() {
       // and the player would never have been asked. When the medium changes,
       // the picker is not optional.
       const carried = Game.state.vehicleKey;
-      const sameMedium = vehicleMedium(carried) === (stg.kind === "crossing" ? "water" : "land");
+      const sameMedium = vehicleMedium(carried) === (stg.kind === STAGE_KIND.CROSSING ? VEHICLE_MEDIUM.WATER : VEHICLE_MEDIUM.LAND);
       setPendingStage({ idx: next, vehicleKey: sameMedium ? carried : undefined });
       setScreen(sameMedium ? "brief" : "vehpick");
     } else { setScreen("title"); }
@@ -296,12 +297,12 @@ export default function App() {
           {/* The medium the pending run needs: a crossing stage is sailed, so
               the picker must offer boats and only boats. Every other mode is
               driven — Recorrer swaps to a boat at the muelle, not in the menu. */}
-          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} medium={briefStage?.kind === "crossing" ? "water" : "land"} onShop={(ctx) => { setShopCtx(ctx || null); shopFrom.current = "vehpick"; setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
+          {screen === "vehpick" && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === "story"} medium={briefStage?.kind === STAGE_KIND.CROSSING ? VEHICLE_MEDIUM.WATER : VEHICLE_MEDIUM.LAND} onShop={(ctx) => { setShopCtx(ctx || null); shopFrom.current = "vehpick"; setScreen("shop"); }} onBack={() => setScreen(pendingMode === "story" ? "stagepick" : "title")} />}
           {/* Which hull you cross in is a real choice — the three lanchas
               handle differently enough that it is the difficulty setting — so
               arriving at the muelle opens the same picker a run does, scoped to
               boats. Backing out declines until you drive away. */}
-          {screen === "lanchapick" && <VehiclePicker storyMode medium="water"
+          {screen === "lanchapick" && <VehiclePicker storyMode medium={VEHICLE_MEDIUM.WATER}
             onGo={(vehicleKey) => { Game.acceptLancha(vehicleKey); setScreen("playing"); }}
             onShop={(ctx) => { setShopCtx(ctx || null); shopFrom.current = "lanchapick"; setScreen("shop"); }}
             onBack={() => { Game.declineLancha(); setScreen("playing"); }} />}

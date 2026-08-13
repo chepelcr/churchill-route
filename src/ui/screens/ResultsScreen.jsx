@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Game } from "../../game/index.js";
+import { STAGE_KIND } from "../../domain/vocabulary.generated.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { useT, stageName } from "../../i18n/index.js";
 import { ads } from "../../monetize/ads.js";
@@ -43,7 +44,7 @@ export default function ResultsScreen({ onAgain, onNext, onMenu, onContinue }) {
     if (rewarded) { economy.addCoins(s.runCoins); setDoubled(true); }
   };
   // The Travesía reports itself: fish, gates and the clock, not deliveries.
-  const isCrossing = isStage && s.stage.kind === "crossing";
+  const isCrossing = isStage && s.stage.kind === STAGE_KIND.CROSSING;
   const cross = s.crossing || null;
   const fish = cross ? cross.fish : 0;
   const gatesTaken = cross ? cross.gateIndex : 0;

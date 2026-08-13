@@ -3,6 +3,7 @@
 // original scheme, back by popular demand): hold a finger on the play area
 // and the car steers TOWARD it; the finger's distance to the vehicle is the
 // throttle — near = slow, far = fast, very far = TURBO. Brake ✋ is a pedal.
+import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 
 export const keys = {};
 // snapT: brief "go THERE now" window opened when the drive finger is lifted and
@@ -55,7 +56,7 @@ const WATER_THR_FLOOR = 0.62;
 
 export function applyTouch(cam, p, veh) {
   if (!aim.active) return;
-  const afloat = veh?.medium === "water";
+  const afloat = veh?.medium === VEHICLE_MEDIUM.WATER;
   const zoom = cam.zoom || 5.5;
   const vw = cam.vw || window.innerWidth, vh = cam.vh || window.innerHeight;
   const sx = (p.x - cam.x) * zoom + vw / 2;

@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..enums import (
     GreenType, LandmarkType, LineEnd, ParcelUse, PathSurface, PierStyle,
-    SignKind, SurfaceName, Weather,
+    SignKind, StageKind, SurfaceName, Weather,
 )
 from .geo import FlatPoly, Rect
 
@@ -115,7 +115,12 @@ class Customer(WorldModel):
 class Stage(WorldModel):
     """A level. `kind` is what it ASKS of you: a delivery stage (the default)
     or a `crossing`, which has no kiosks and no customers because the level is
-    the passage itself."""
+    the passage itself.
+
+    It is `StageKind` and not `str` because the value chooses a whole FLOW —
+    required medium, brief, win condition, results screen. A misspelling would
+    load, list and then start as a delivery run with no kiosk to deliver from,
+    and nothing between here and the player would have objected."""
     id: str
     num: int
     name: str
@@ -127,7 +132,7 @@ class Stage(WorldModel):
     weather: Weather
     customers: list[str]
     unlock: str | None = None
-    kind: str = Field(default="delivery", description="delivery | crossing")
+    kind: StageKind = StageKind.DELIVERY
     ferry: str | None = Field(default=None, description="which boat a crossing sails")
 
 

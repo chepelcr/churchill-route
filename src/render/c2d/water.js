@@ -36,6 +36,7 @@
 //     on its own AABB first.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { SURFACE } from "../../game/surfaces.js";
+import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { boats, pedestrians, state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
 import { aabbInView, ctx, hash01, weatherColors } from "./gfx.js";
@@ -292,7 +293,7 @@ function updateWater(t, view) {
   const near = (x, y) => x > view.x0 - 120 && x < view.x1 + 120 && y > view.y0 - 120 && y < view.y1 + 120;
   // la lancha del jugador
   const veh = state.veh, p = state.p;
-  if (veh && veh.medium === "water" && p && near(p.x, p.y)) {
+  if (veh && veh.medium === VEHICLE_MEDIUM.WATER && p && near(p.x, p.y)) {
     emit(p, p.x, p.y, p.speed || 0, 1.35, now, wi);
   }
   // las pangas y los ferries del ambiente

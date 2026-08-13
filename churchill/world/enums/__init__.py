@@ -14,15 +14,18 @@ process — into src/world2d/*.json and from there into the client:
     bytearray, compares to a raw value read back from JSON, and serialises with
     no encoder help. Nothing downstream can tell it apart from the literal.
 """
+from .editing import EditorOperation, GeometryKind, HostKind
 from .features import (
     RENDER_RANK, TRAFFIC_MAIN, YIELDS_TO, GreenType, IslandKind, LandmarkType,
     LineEnd, ParcelUse, PathSurface, PierStyle, RoadClass, SignKind, Weather,
 )
+from .game import RendererBackend, StageKind, VehicleKind, VehicleMedium
 from .surface import CLASS_NAMES, Surface, SurfaceName
 
 __all__ = [
-    "CLASS_NAMES", "GreenType", "IslandKind", "LandmarkType", "LineEnd",
-    "ParcelUse", "PathSurface", "PierStyle", "RENDER_RANK", "RoadClass",
-    "SignKind", "Surface", "SurfaceName", "TRAFFIC_MAIN", "Weather",
-    "YIELDS_TO",
+    "CLASS_NAMES", "EditorOperation", "GeometryKind", "GreenType", "HostKind",
+    "IslandKind", "LandmarkType", "LineEnd", "ParcelUse", "PathSurface",
+    "PierStyle", "RENDER_RANK", "RendererBackend", "RoadClass", "SignKind",
+    "StageKind", "Surface", "SurfaceName", "TRAFFIC_MAIN", "VehicleKind",
+    "VehicleMedium", "Weather", "YIELDS_TO",
 ]

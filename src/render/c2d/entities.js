@@ -2,6 +2,7 @@
 // vendors, animals, the delivery target, arcade coins and the vehicle sprite.
 import { state } from "../../game/state.js";
 import { traceVehicleSilhouette } from "../vehicleShapes.js";
+import { VEHICLE_KIND, VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, hash01, lastT, roundRect } from "./gfx.js";
 
 // THE HULL EVERY BOAT IN THIS PORT IS DRAWN FROM. It used to live inside
@@ -611,9 +612,9 @@ function paintBoat(ctx, key, veh) {
 // vehicle preview (StageSelect). Draws centered at (0,0) facing +x.
 function paintVehicle(g, key, veh) {
   const ctx = g;
-  if (veh.kind === "boat") {
+  if (veh.kind === VEHICLE_KIND.BOAT) {
     paintBoat(ctx, key, veh);
-  } else if (veh.kind === "bike") {
+  } else if (veh.kind === VEHICLE_KIND.BIKE) {
     // two-wheeler: wheels, frame, rider with helmet
     ctx.fillStyle = "#26222c";
     ctx.beginPath(); ctx.ellipse(-veh.w/2 + 3, 0, 3.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
@@ -830,7 +831,7 @@ function drawWake(p, veh) {
 
 function drawPlayer(p, veh) {
   const lift = (state.elev || 0) * 7;   // the barro avenue rides ~1 m up
-  const afloat = veh.medium === "water";
+  const afloat = veh.medium === VEHICLE_MEDIUM.WATER;
   ctx.save();
   if (afloat) drawWake(p, veh);
   else drawTurnWind(p, veh, lastT);
@@ -851,7 +852,7 @@ function drawPlayer(p, veh) {
   // little that way, driven by the angular velocity the renderer already has.
   // The bob is the swell, and it never stops, which is what keeps her alive
   // sitting still at the muelle.
-  if (veh.medium === "water") {
+  if (veh.medium === VEHICLE_MEDIUM.WATER) {
     const heel = Math.max(-1, Math.min(1, (p.av || 0) / 2.2));
     const swell = Math.sin(lastT * 0.0016 + (p.x + p.y) * 0.004);
     ctx.translate(0, heel * veh.h * 0.16 + swell * 0.7);

@@ -98,13 +98,28 @@ tiene implementación en el renderer.
 
       Nota: `tools/debug_map.png` se regenera en el próximo build del mundo, que
       es cuando el bulevar pasa a su color correcto ahí.
-- [ ] **Capa de enums** para las identidades sueltas (stage/sign/pier/vehicle/
-      host/geometry/mode) + vocabulario JS/JSON generado determinísticamente.
-      *El generador existe*; ya lleva `SignKind`, `PierStyle`, `LineEnd`,
-      `SurfaceName` + los 7 enums que ya había. Faltan `StageKind`,
-      `VehicleMedium`, `VehicleKind`, `HostKind`, `GeometryKind`,
-      `EditorOperation`, `RendererBackend` (P0 en §13) — cada uno es un miembro
-      en `enums/` y una línea en `STR_ENUMS`.
+- [x] **Capa de enums cerrada.** Hecho 2026-08-13. Los siete que faltaban:
+      `StageKind`, `VehicleMedium`, `VehicleKind`, `RendererBackend` en un
+      **`enums/game.py`** nuevo (lo que el JUEGO ramifica, no lo que el mundo
+      contiene) y `HostKind`, `GeometryKind`, `EditorOperation` en un
+      **`enums/editing.py`** nuevo (lo que el EDITOR escribe y el juego lee de
+      vuelta — viven acá justamente porque el editor es otro repo). El
+      vocabulario generado pasa de 10 a **17** enums; cada uno fue un miembro
+      más una línea en `STR_ENUMS`, que es lo que decía la fila.
+
+      `Stage.kind` deja de ser `str`. Era `Field(default="delivery",
+      description="delivery | crossing")`: el contrato **documentado sin
+      exigirlo**. Como `Manifest.model_validate` corre antes de cada escritura,
+      ahora una errata **falla el build**, en vez de producir un nivel que carga,
+      se lista, y arranca como reparto sin kiosko del cual repartir.
+
+      17 literales reemplazados en 12 archivos. La compuerta nueva
+      (`test_no_runtime_token_is_written_as_a_bare_string`) **cazó uno que se me
+      había pasado** — `crossing.js:284` —, que es exactamente para lo que
+      existe. **El mundo no cambia y se puede demostrar sin rebuild**: los DTO
+      validan el emit pero no lo serializan (`world_json.py` hace `json.dump` de
+      dicts), y un `StrEnum` ES su string. 51 tests (antes 45), snapshot de 1001
+      archivos byte-idéntico, los cinco smokes en verde.
 - [ ] **`src/assets/vehicles.json`**: stats, medio, bounds, partes, colores,
       montaje de carga, voz de audio, precio. Queda motor: física, intérprete de
       siluetas, síntesis WebAudio.

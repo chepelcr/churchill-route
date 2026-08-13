@@ -25,9 +25,11 @@ import re
 import unittest
 
 from churchill.world.config import ROOT
+from churchill.world.dto.world import Stage
 from churchill.world.enums import (
-    RENDER_RANK, TRAFFIC_MAIN, YIELDS_TO, LandmarkType, PierStyle, RoadClass,
-    SignKind,
+    RENDER_RANK, TRAFFIC_MAIN, YIELDS_TO, EditorOperation, GeometryKind,
+    HostKind, LandmarkType, PierStyle, RendererBackend, RoadClass, SignKind,
+    StageKind, VehicleKind, VehicleMedium,
 )
 from churchill.world.enums.surface import CLASS_NAMES, Surface
 
@@ -44,6 +46,23 @@ def read(*parts):
 def js_cases(text):
     """Every `case "value":` in a JS source."""
     return set(re.findall(r'case\s+"([^"]+)"\s*:', text))
+
+
+def walk_src():
+    """Every authored JS/JSX file under `src/`, as `(relpath, text)`.
+
+    Skips `src/world2d/tiles/` — that is generated tile data, not source, and
+    walking it is 640 files of RLE for nothing.
+    """
+    for dirpath, _, files in os.walk(os.path.join(ROOT, "src")):
+        if "tiles" in dirpath:
+            continue
+        for name in sorted(files):
+            if not name.endswith((".js", ".jsx")):
+                continue
+            path = os.path.join(dirpath, name)
+            with open(path, encoding="utf-8") as fh:
+                yield os.path.relpath(path, ROOT), fh.read()
 
 
 class GeneratedArtifactTests(unittest.TestCase):
@@ -104,6 +123,79 @@ class RendererCoverageTests(unittest.TestCase):
                           f"{cls.value} has no render rank")
 
 
+class RuntimeVocabularyTests(unittest.TestCase):
+    """The seven vocabularies §13 listed as P0 and the generator did not carry.
+
+    These are not world contents — the builder never draws a vehicle — but they
+    are closed, they cross a process boundary, and each of them already had two
+    handwritten copies. `RendererBackend` crosses the widest boundary of all:
+    its value is what sits in a player's `localStorage`.
+    """
+
+    def test_every_new_vocabulary_reaches_the_client(self):
+        js = read("src", "domain", "vocabulary.generated.js")
+        doc = json.loads(read("src", "assets", "vocabulary.generated.json"))
+        for const, enum in (("STAGE_KIND", StageKind),
+                            ("VEHICLE_MEDIUM", VehicleMedium),
+                            ("VEHICLE_KIND", VehicleKind),
+                            ("RENDERER_BACKEND", RendererBackend),
+                            ("HOST_KIND", HostKind),
+                            ("GEOMETRY_KIND", GeometryKind),
+                            ("EDITOR_OPERATION", EditorOperation)):
+            self.assertIn(f"export const {const} = ", js,
+                          f"{const} is not generated into the client")
+            self.assertEqual(doc["enums"].get(const), [m.value for m in enum],
+                             f"{const} disagrees between the enum and the JSON")
+
+    def test_a_stage_may_not_carry_an_invented_kind(self):
+        # It was `kind: str` with a "delivery | crossing" description, which
+        # documents the contract without enforcing it. A misspelling produced a
+        # stage that loaded and listed and then started as a delivery run with
+        # no kiosk — the DTO is the only layer that can still say no.
+        with self.assertRaises(Exception):
+            Stage(id="sX", num=1, name="", district="", brief="", kiosks=[],
+                  targetDeliveries=1, timeLimit=60, weather="sunny",
+                  customers=[], kind="crosing")
+
+    def test_the_shipped_stages_use_the_enum(self):
+        manifest = json.loads(read("src", "world2d", "manifest.json"))
+        kinds = {s.get("kind", StageKind.DELIVERY) for s in manifest["stages"]}
+        self.assertTrue(kinds <= {m.value for m in StageKind},
+                        f"a shipped stage has a kind outside StageKind: {kinds}")
+
+    def test_every_vehicle_medium_can_be_driven_somewhere(self):
+        # `resolveVehicle` falls back PER MEDIUM, so a medium with no free
+        # vehicle strands the player: modes.js would hand back `undefined` and
+        # the run starts with no hull at all. The literal fallback pair in
+        # `freeVehicleFor` is the belt to that braces.
+        vehicles = read("src", "game", "vehicles.js")
+        for medium in VehicleMedium:
+            self.assertIn(f'medium: "{medium.value}"', vehicles,
+                          f"no vehicle exists for medium {medium.value}")
+
+    #: `car` is the DEFAULT body plan, not a branch — both painters fall
+    #: through to it, and a four-wheeled vehicle with no special shape is drawn
+    #: by the final `else`. Asserting it has a branch would be asserting a
+    #: refactor nobody wants.
+    BRANCHED_KINDS = (VehicleKind.BIKE, VehicleKind.BOAT)
+
+    def test_every_vehicle_kind_is_drawn_and_cast(self):
+        # Two painters, and they must agree: the sprite is what you see, the
+        # trace is the shadow under it. A kind branched in one and not the
+        # other is a vehicle wearing somebody else's shadow.
+        art = read("src", "render", "c2d", "entities.js")
+        trace = read("src", "render", "vehicleShapes.js")
+        for kind in self.BRANCHED_KINDS:
+            token = f"VEHICLE_KIND.{kind.name}"
+            self.assertIn(token, art, f"{kind.value} has no branch in paintVehicle")
+            self.assertIn(token, trace,
+                          f"{kind.value} has no branch in traceVehicleSilhouette")
+        self.assertEqual(set(VehicleKind) - set(self.BRANCHED_KINDS),
+                         {VehicleKind.CAR},
+                         "a new VehicleKind needs a branch in both painters, or "
+                         "a deliberate line here saying it is the default")
+
+
 class RoleSetTests(unittest.TestCase):
     def test_the_two_road_role_sets_are_deliberately_different(self):
         # The audit found these read as one set. They are not: the Paseo is a
@@ -132,34 +224,47 @@ class RawLiteralTests(unittest.TestCase):
     )
 
     def test_no_surface_is_named_by_a_number(self):
-        for dirpath, _, files in os.walk(os.path.join(ROOT, "src")):
-            if "tiles" in dirpath:                    # generated tile data
-                continue
-            for name in sorted(files):
-                if not name.endswith((".js", ".jsx")):
-                    continue
-                rel = os.path.relpath(os.path.join(dirpath, name), ROOT)
-                with open(os.path.join(dirpath, name), encoding="utf-8") as fh:
-                    text = fh.read()
-                for pattern, why in self.PATTERNS:
-                    hits = re.findall(pattern, text)
-                    self.assertEqual(hits, [], f"{rel}: {why} — use SURFACE.* ({hits})")
+        for rel, text in walk_src():
+            for pattern, why in self.PATTERNS:
+                hits = re.findall(pattern, text)
+                self.assertEqual(hits, [], f"{rel}: {why} — use SURFACE.* ({hits})")
+
+    #: The runtime vocabularies, and the shape each one takes when it is
+    #: written out by hand. Every pattern here was a live comparison in `src/`
+    #: before this gate existed.
+    TOKEN_PATTERNS = (
+        (r'\.kind\s*[!=]==\s*"(?:crossing|delivery)"',
+         "a stage kind as a bare string — use STAGE_KIND.*"),
+        (r'\.medium\s*[!=]==\s*"(?:land|water)"',
+         "a vehicle medium as a bare string — use VEHICLE_MEDIUM.*"),
+        (r'\bveh\.kind\s*[!=]==\s*"(?:bike|car|boat)"',
+         "a vehicle kind as a bare string — use VEHICLE_KIND.*"),
+        (r'geometry\.kind\s*[!=]==\s*"',
+         "a geometry kind as a bare string — use GEOMETRY_KIND.*"),
+    )
+
+    def test_no_runtime_token_is_written_as_a_bare_string(self):
+        """The same rule as the surfaces, for the vocabularies §13 added.
+
+        These are worse than the surface case in one way: a surface compared to
+        the wrong number draws the wrong ground and somebody sees it. A stage
+        whose `kind` misses its branch starts as an ordinary delivery run with
+        no kiosk, and a vehicle whose `medium` misses starts inside a wall —
+        both look like the game is broken somewhere else entirely.
+        """
+        for rel, text in walk_src():
+            for pattern, why in self.TOKEN_PATTERNS:
+                hits = re.findall(pattern, text)
+                self.assertEqual(hits, [], f"{rel}: {why} ({hits})")
 
     def test_the_acera_depth_has_exactly_one_fallback(self):
         # It had four, and they disagreed: 12 in the sim and the editor, 8 in
         # both renderers, so a stale manifest moved every NPC one way and drew
         # the kerb another. The accessor owns the default now.
         owner = os.path.join("src", "world2d", "index.js")
-        for dirpath, _, files in os.walk(os.path.join(ROOT, "src")):
-            for name in files:
-                if not name.endswith((".js", ".jsx")):
-                    continue
-                path = os.path.join(dirpath, name)
-                rel = os.path.relpath(path, ROOT)
-                if rel == owner:
-                    continue
-                with open(path, encoding="utf-8") as fh:
-                    text = fh.read()
-                self.assertNotIn("aceraPx", text,
-                                 f"{rel} reads meta.aceraPx directly; ask "
-                                 f"W.ACERA_PX so there is one fallback")
+        for rel, text in walk_src():
+            if rel == owner:
+                continue
+            self.assertNotIn("aceraPx", text,
+                             f"{rel} reads meta.aceraPx directly; ask "
+                             f"W.ACERA_PX so there is one fallback")

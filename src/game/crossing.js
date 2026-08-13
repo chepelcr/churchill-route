@@ -45,6 +45,7 @@
 // were the same outcome. `finish()` below is where that is put right.
 import { WORLD2D as W } from "../world2d/index.js";
 import { SURFACE } from "./surfaces.js";
+import { STAGE_KIND } from "../domain/vocabulary.generated.js";
 import { state, pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
 import { markStageCleared, unlockDistrict } from "./progress.js";
@@ -281,7 +282,7 @@ export function crossingCondition(n = 0) {
  *  count falls out of it, so the number on the brief can never disagree with
  *  the number in the water. Returns 0 for a stage that is not a crossing. */
 export function gateCount(stage) {
-  if (stage?.kind !== "crossing") return 0;
+  if (stage?.kind !== STAGE_KIND.CROSSING) return 0;
   return channels().get(stage.ferry)?.gates.length || 0;
 }
 

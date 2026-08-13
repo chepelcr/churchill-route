@@ -5,10 +5,12 @@
 // owns the transform (centered at (0,0), facing +x), sets the fill style and
 // calls fill(). Used today for the player's ground shadow (canvas2d); the
 // Pixi backend adopts it when vehicles land there (Milestone C).
+import { VEHICLE_KIND } from "../domain/vocabulary.generated.js";
+
 export function traceVehicleSilhouette(g, key, veh) {
   const w = veh.w, h = veh.h;
   g.beginPath();
-  if (veh.kind === "boat") {
+  if (veh.kind === VEHICLE_KIND.BOAT) {
     // A HULL, not a box: pointed at the bow, full amidships, square at the
     // transom. Traced with the same two-quadratic sheer the ambient pangas use
     // (drawBoat in c2d/entities.js), so the player's boat and the port's boats
@@ -20,7 +22,7 @@ export function traceVehicleSilhouette(g, key, veh) {
     g.lineTo(-w / 2 + 2, h / 2 - 1);
     g.quadraticCurveTo(w * 0.1, h / 2, w / 2, 0);
     g.closePath();
-  } else if (veh.kind === "bike") {
+  } else if (veh.kind === VEHICLE_KIND.BIKE) {
     // slim capsule from rear wheel to front wheel (frame + rider, not the
     // full bounding box — bikes are much narrower than veh.h)
     g.roundRect(-w / 2 - 1, -5, w + 2, 10, 5);

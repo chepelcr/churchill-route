@@ -18,6 +18,8 @@
 // `drag` is optional and only boats set it: friction is DIVIDED by the surface
 // multiplier, and on open water at mul 1.0 a car's friction stops a hull dead.
 // A boat glides, so it drags less and coasts through a turn. Absent = 1.
+import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
+
 export const VEHICLES = {
   bici:    { name: "Bicicleta repartidora", accel: 170, top: 180, turn: 3.4, grip: 0.90, melt: 0.7, color: "#2e8bd6", roof: "#ffe6b3", w: 20, h: 13, kind: "bike", medium: "land" },
   scooter: { name: "Scooter retro",        accel: 225, top: 230, turn: 3.05, grip: 0.85, melt: 1.0, color: "#e85d75", roof: "#fff",   w: 22, h: 13, kind: "bike", medium: "land" },
@@ -53,5 +55,5 @@ export const VEHICLES = {
 //: the medium a vehicle key belongs to, defaulting to land — an editor-authored
 //: vehicle that predates the field is a car, which is what it always was.
 export function vehicleMedium(key) {
-  return VEHICLES[key]?.medium || "land";
+  return VEHICLES[key]?.medium || VEHICLE_MEDIUM.LAND;
 }

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
+import { STAGE_KIND } from "../../domain/vocabulary.generated.js";
 import { economy, BOOSTS } from "../../game/economy.js";
 import { gateCount, crossingCondition } from "../../game/crossing.js";
 import { crossingRuns } from "../../game/progress.js";
@@ -23,7 +24,7 @@ export default function StageBrief({ stage, onGo }) {
   // and the least appealing possible description of the level. The gate count
   // is DERIVED from the lancha's route, exactly like the buoys that mark it, so
   // the number here cannot disagree with the number in the water.
-  const isCrossing = stage.kind === "crossing";
+  const isCrossing = stage.kind === STAGE_KIND.CROSSING;
   const gates = gateCount(stage);
   // THE BRIEF PROMISES THE CONDITIONS THE RUN WILL ACTUALLY HAVE. The crossing
   // rotates through four of them by attempt, so `stage.weather` — a single word

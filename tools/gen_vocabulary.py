@@ -32,7 +32,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from churchill.world.enums import features  # noqa: E402
+from churchill.world.enums import editing, features, game  # noqa: E402
 from churchill.world.enums.surface import (  # noqa: E402
     CALLE, CARRIAGEWAY, DRIVABLE, STREET, Surface, WALL,
 )
@@ -59,6 +59,7 @@ SURFACE_ROLES = (
 #: rather than introspected: this list is the review surface, and a new enum
 #: should be a deliberate line here.
 STR_ENUMS = (
+    # what the world CONTAINS
     ("PARCEL_USE", features.ParcelUse),
     ("GREEN_TYPE", features.GreenType),
     ("LANDMARK_TYPE", features.LandmarkType),
@@ -69,6 +70,15 @@ STR_ENUMS = (
     ("SIGN_KIND", features.SignKind),
     ("PIER_STYLE", features.PierStyle),
     ("LINE_END", features.LineEnd),
+    # what the GAME branches on
+    ("STAGE_KIND", game.StageKind),
+    ("VEHICLE_MEDIUM", game.VehicleMedium),
+    ("VEHICLE_KIND", game.VehicleKind),
+    ("RENDERER_BACKEND", game.RendererBackend),
+    # what the EDITOR authors and the game reads back
+    ("HOST_KIND", editing.HostKind),
+    ("GEOMETRY_KIND", editing.GeometryKind),
+    ("EDITOR_OPERATION", editing.EditorOperation),
 )
 
 #: The road-class role sets — two of them, on purpose. The audit found the

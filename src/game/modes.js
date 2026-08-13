@@ -1,5 +1,6 @@
 // Game-mode starts (story / arcade / explore) and world setters.
 import { WORLD2D as W } from "../world2d/index.js";
+import { STAGE_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { state, pushFloat } from "./state.js";
 import { VEHICLES, vehicleMedium } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
@@ -26,9 +27,9 @@ import { applyOwnedShopEffects, consumeEditorBoosts } from "./editorContent.js";
 // FREE_VEHICLES is guaranteed to hold at least one entry per medium.
 function freeVehicleFor(medium) {
   return FREE_VEHICLES.find((k) => vehicleMedium(k) === medium)
-    || (medium === "water" ? "panga" : "scooter");
+    || (medium === VEHICLE_MEDIUM.WATER ? "panga" : "scooter");
 }
-function resolveVehicle(key, medium = "land") {
+function resolveVehicle(key, medium = VEHICLE_MEDIUM.LAND) {
   const owned = economy.ownsVehicle(key) && vehicleMedium(key) === medium;
   const k = owned ? key : freeVehicleFor(medium);
   const col = economy.equippedColor(k);
@@ -37,7 +38,8 @@ function resolveVehicle(key, medium = "land") {
 }
 //: the medium a run demands. A crossing stage is sailed; everything else driven.
 export function stageMedium(stg) {
-  return stg?.kind === "crossing" ? "water" : "land";
+  return stg?.kind === STAGE_KIND.CROSSING
+    ? VEHICLE_MEDIUM.WATER : VEHICLE_MEDIUM.LAND;
 }
 
 //: how far along the route the player's boat starts.
@@ -76,7 +78,7 @@ function startAtBerth(f) {
 export function takeTheLancha(ferry, vehicleKey = null) {
   if (!ferry) return false;
   state.landVehicleKey = state.vehicleKey;
-  const rv = resolveVehicle(vehicleKey || bestOwnedBoat(), "water");
+  const rv = resolveVehicle(vehicleKey || bestOwnedBoat(), VEHICLE_MEDIUM.WATER);
   state.vehicleKey = rv.key; state.veh = rv.veh;
   const q = startAtBerth(ferry);
   state.p.x = q.x; state.p.y = q.y; state.p.a = q.a;
@@ -89,7 +91,7 @@ export function takeTheLancha(ferry, vehicleKey = null) {
 /** Back onto the road at whichever shore she was left at. */
 export function leaveTheLancha() {
   const key = state.landVehicleKey || "scooter";
-  const rv = resolveVehicle(key, "land");
+  const rv = resolveVehicle(key, VEHICLE_MEDIUM.LAND);
   state.vehicleKey = rv.key; state.veh = rv.veh;
   state.landVehicleKey = null;
   // The apron at either end is stamped ROAD, so the nearest drivable cell IS
@@ -133,7 +135,7 @@ export function declineLancha() {
 //: and what a caller that does not care gets.
 function bestOwnedBoat() {
   const boats = Object.keys(VEHICLES)
-    .filter((k) => vehicleMedium(k) === "water" && economy.ownsVehicle(k))
+    .filter((k) => vehicleMedium(k) === VEHICLE_MEDIUM.WATER && economy.ownsVehicle(k))
     .sort((a, b) => (VEHICLE_PRICES[b] || 0) - (VEHICLE_PRICES[a] || 0));
   return boats[0] || "panga";
 }
@@ -206,7 +208,7 @@ export function startStage(stageIdx, vehicleKey) {
   // rather than naming one in the world. The day clock still stays off: a
   // three-minute run that cycled the whole day would strobe, and the point is
   // that this run has an hour, not that it has all of them.
-  const crossCond = stg.kind === "crossing"
+  const crossCond = stg.kind === STAGE_KIND.CROSSING
     ? crossingCondition(bumpCrossingRuns(stg.id)) : null;
   if (crossCond) {
     state.weather = crossCond.weather;
@@ -231,7 +233,7 @@ export function startStage(stageIdx, vehicleKey) {
   // player IS the lancha — a water-medium vehicle out of the picker, not a car
   // parked on somebody else's deck. The berth and the heading still come from
   // the world's ferry record, because that is where the build put the muelle.
-  const crossingFerry = stg.kind === "crossing"
+  const crossingFerry = stg.kind === STAGE_KIND.CROSSING
     ? ferries().find((f) => f.id === stg.ferry) : null;
   let sp;
   if (crossingFerry) {
@@ -273,7 +275,7 @@ export function startStage(stageIdx, vehicleKey) {
       state.cam.x = state.p.x; state.cam.y = state.p.y;
     }
     startCrossing(crossingFerry, { level: true });
-  } else if (stg.kind === "crossing") {
+  } else if (stg.kind === STAGE_KIND.CROSSING) {
     // The stage says "sail to Pitahaya" and the world shipped no boat to sail:
     // the build could not find navigable water between the two ends and warned
     // instead of emitting a ferry. Say so, once, where somebody will see it —

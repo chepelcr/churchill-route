@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../../game/index.js";
+import { STAGE_KIND } from "../../domain/vocabulary.generated.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { isMvpLocked } from "../../game/progress.js";
@@ -111,12 +112,12 @@ export default function StageSelect({ onStart, onBack }) {
                     route; the weather is whichever of the four conditions this
                     attempt will actually be sailed in. */}
                 <div className="hero-meta">
-                  {s.kind === "crossing"
+                  {s.kind === STAGE_KIND.CROSSING
                     ? <span><b>{gateCount(s)}</b> {t("select.gates")}</span>
                     : <span><b>{s.targetDeliveries}</b> {t("select.deliveries")}</span>}
                   <span><b>{s.timeLimit}s</b> {t("select.time")}</span>
                   {(() => {
-                    const w = s.kind === "crossing"
+                    const w = s.kind === STAGE_KIND.CROSSING
                       ? crossingCondition(crossingRuns(s.id)).weather : s.weather;
                     return <span><Icon name={WEATHER_ICON[w] || "sun"} size={14} /> {t(`weather.${w}`)}</span>;
                   })()}

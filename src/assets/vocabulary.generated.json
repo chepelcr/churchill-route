@@ -172,6 +172,39 @@
     "LINE_END": [
       "first",
       "last"
+    ],
+    "STAGE_KIND": [
+      "delivery",
+      "crossing"
+    ],
+    "VEHICLE_MEDIUM": [
+      "land",
+      "water"
+    ],
+    "VEHICLE_KIND": [
+      "bike",
+      "car",
+      "boat"
+    ],
+    "RENDERER_BACKEND": [
+      "canvas",
+      "pixi"
+    ],
+    "HOST_KIND": [
+      "cuadra",
+      "parcel",
+      "landmark",
+      "stadium",
+      "green"
+    ],
+    "GEOMETRY_KIND": [
+      "point",
+      "line",
+      "polygon"
+    ],
+    "EDITOR_OPERATION": [
+      "add",
+      "modify"
     ]
   },
   "road": {

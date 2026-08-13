@@ -2,6 +2,7 @@
 // (cuadras, buildings, barriers, traffic, pedestrians), delivery proximity,
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
+import { GEOMETRY_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { state, traffic, pedestrians, gulls, boats, trains, schools, pushFloat } from "./state.js";
 import { SURFACE, SURFACE_MUL } from "./surfaces.js";
 import { HULL, hullBankAssist, hullFriction, hullGlance, hullLean, hullThrottle, hullTopMul, hullTurn } from "./boat.js";
@@ -39,7 +40,7 @@ const LANCHA_TAKE_SPEED = 40;
  * out to sea.
  */
 function maintainLanchaSwap(p, veh, cross) {
-  const afloatNow = veh.medium === "water";
+  const afloatNow = veh.medium === VEHICLE_MEDIUM.WATER;
   if (!cross.active && !afloatNow && !state.landVehicleKey) {
     // The nearest one-way berth within reach, if any. Resolved as ONE answer
     // rather than a loop with side effects, because leaving the berth has to
@@ -204,7 +205,7 @@ export function update(dt) {
   // A BOAT'S GOOD SURFACE IS THE ONE A CAR DROWNS IN. The water multiplier
   // stays exactly what it is — it describes a CAR in the sea, and a car can
   // still end up there off a deck — but for a hull the estero is the road.
-  const afloat = veh.medium === "water";
+  const afloat = veh.medium === VEHICLE_MEDIUM.WATER;
   const surfaceMul = aboard ? 1.0                       // steel deck
     : afloat ? (surf === SURFACE.WATER ? 1.0 : 0.5)     // aground: she barely moves
     : SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
@@ -849,7 +850,7 @@ function maintainArcadeCoins(dt) {
 }
 
 function editorSpawnPoint(feature) {
-  if (feature.geometry.kind === "point") return feature.geometry.point;
+  if (feature.geometry.kind === GEOMETRY_KIND.POINT) return feature.geometry.point;
   const points = feature.geometry.points;
   return [
     points.reduce((sum, point) => sum + point[0], 0) / points.length,
@@ -866,7 +867,7 @@ function pointInEditorSpawn(x, y, points) {
 }
 function randomEditorCoinPoint(feature, radius) {
   const center = editorSpawnPoint(feature);
-  if (feature.geometry.kind === "point") {
+  if (feature.geometry.kind === GEOMETRY_KIND.POINT) {
     const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius;
     return [center[0] + Math.cos(a) * r, center[1] + Math.sin(a) * r];
   }
@@ -983,7 +984,7 @@ export function advanceEntities(dt, withPlayer = true) {
   // Los bancos de atún: the shoal drifts, its fleet turns around it, and a boat
   // that runs through the middle gets paid. Only a BOAT — a car cannot reach
   // open water, and a churchill delivery has no business scoring fish.
-  const afloatNow = state.veh?.medium === "water";
+  const afloatNow = state.veh?.medium === VEHICLE_MEDIUM.WATER;
   for (const sc of schools) {
     advanceSchool(sc, dt);
     if (sc.taken || !afloatNow) continue;

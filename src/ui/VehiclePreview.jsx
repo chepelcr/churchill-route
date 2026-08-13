@@ -2,6 +2,7 @@
 // the render backend), big, on a little asphalt swatch, plus stat bars.
 import React, { useRef, useEffect } from "react";
 import { paintVehicle } from "../render/Renderer.js";
+import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { traceVehicleSilhouette } from "../render/vehicleShapes.js";
 import { VEHICLES } from "../game/vehicles.js";
 import { useT } from "../i18n/index.js";
@@ -17,7 +18,7 @@ import Icon from "./Icon.jsx";
 const _ranges = new Map();
 function statRange(medium) {
   if (!_ranges.has(medium)) {
-    const vs = Object.values(VEHICLES).filter((v) => (v.medium || "land") === medium);
+    const vs = Object.values(VEHICLES).filter((v) => (v.medium || VEHICLE_MEDIUM.LAND) === medium);
     const pool = vs.length ? vs : Object.values(VEHICLES);
     const r = (f) => [Math.min(...pool.map(f)), Math.max(...pool.map(f))];
     _ranges.set(medium, { top: r(v => v.top), accel: r(v => v.accel), grip: r(v => v.grip) });
@@ -63,7 +64,7 @@ export default function VehiclePreview({ vehKey, color = null }) {
   }, [vehKey, veh, color]);
 
   if (!veh) return null;
-  const range = statRange(veh.medium || "land");
+  const range = statRange(veh.medium || VEHICLE_MEDIUM.LAND);
   const bars = [
     [t("veh.speed"), norm(range.top, veh.top), "var(--gold)"],
     [t("veh.accel"), norm(range.accel, veh.accel), "var(--coral)"],

@@ -542,12 +542,45 @@ editor ofrece ocho perillas de paleta y dos no están conectadas a nada. Más 22
 direccionables. Eso no es el esquema JSX descartado; es terminar la capa de
 tokens para que los tokens lleguen de verdad a la hoja de estilos.
 
-- [ ] **Barrido completo de `styles.css` a tokens.** Agrupar los 183 literales
-      en un set real (superficies, trazos, velos, estados, acentos, radios,
-      escala tipográfica, duraciones de movimiento), reescribir la hoja para que
-      sólo use `var()`, y hacer crecer `themeTokens.json` a la par. La compuerta
-      es un diff de píxeles pantalla por pantalla, y una prueba de que no
-      sobrevive ningún literal y de que ningún token queda muerto.
+- [x] **Barrido completo de `styles.css` a tokens.** Hecho 2026-08-14. De **9
+      tokens a 66**, y **cero literales de color o de tipografía fuera de
+      `:root`** — antes eran 183 colores contra 34 `var()`.
+
+      **Tres clases de token, y la diferencia importa.** Un COLOR (`--gold`) es
+      un valor terminado. Un CANAL (`--fg-rgb`, `--surface-oklch`) es un color
+      SIN su alfa, para los muchos lugares que quieren un color a doce
+      opacidades: una hairline al 0,12 y un relleno al 0,06 son un color y dos
+      decisiones locales, así que el alfa se queda en la regla que lo eligió —
+      trece tokens para trece alfas de blanco sería un archivo peor, no uno más
+      editable. Y una PILA (`--font-display`) es una lista de tipografías.
+
+      **`--warm` y `--kola` se BORRARON.** Seguían sin un solo `var()` en todo
+      `src/`: dos de las nueve perillas que el formulario ofrecía no estaban
+      conectadas a nada. Una perilla que no cambia nada es peor que una que
+      falta —quien la mueve concluye que el tema está roto—, y ahora hay una
+      prueba que rechaza la siguiente.
+
+      **La compuerta NO es un diff de píxeles**: tres de estas pantallas animan,
+      así que un bitmap mide un cronómetro. Se compara el ESTILO CALCULADO de
+      cada elemento (`tools/shot-styles.mjs`), que es exactamente lo que un
+      barrido de tokens puede romper — un `var()` que no resuelve deja la
+      declaración *inválida en tiempo de valor calculado* y la propiedad cae a
+      su valor inicial, o sea texto negro sobre panel oscuro, sin un solo error
+      en consola. **327 elementos, 6 pantallas y toda clase de la hoja:
+      idénticos.**
+
+      Dos cosas que costaron una corrida: `animation-play-state: paused` NO
+      alcanza (congela cada elemento donde le tocó, y eso depende de cuánto
+      tardó el bundle), y desde que Chrome tiene anidamiento CSS **toda**
+      `CSSStyleRule` trae un `cssRules` vacío, así que un recorrido
+      "si tiene cssRules, recursá" se salta la hoja entera y devuelve cero.
+- [ ] **Las pantallas y las traducciones** (pedido 2026-08-14). Los tokens ya
+      llegan a todo el color; falta la ESTRUCTURA. Hoy el editor autora
+      `src/i18n/<lang>.json` y los overrides de copy, pero no puede agregar una
+      pantalla ni reordenar la que hay. Antes de tocar JSX conviene medir qué
+      parte es de verdad estructura y qué parte es copy — es la misma pregunta
+      que §14 acaba de contestar para el renderer, y ahí la respuesta fue
+      "cuatro registros, no una reescritura".
 
 ### 4. El reescalado
 

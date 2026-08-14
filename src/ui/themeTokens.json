@@ -1,15 +1,607 @@
 {
-  "schemaVersion": 1,
-  "note": "The game's design tokens. This file is DATA so the world editor can build its theme form from it instead of hardcoding a list — add a token here and both sides learn about it. `css` is the custom property applied to :root; `default` must match src/styles.css so an empty theme renders exactly as today.",
+  "schemaVersion": 2,
+  "note": "The game's design tokens — the registry the world editor builds its theme form from, so adding a token here teaches both sides about it. `css` is the custom property applied to :root and `default` MUST match the value in src/styles.css, which tests/test_theme_tokens.py enforces in both directions.",
+  "history": "v1 held NINE tokens while styles.css held 183 colour literals against 34 var() uses — the editor could reach about a sixth of the colour in the game, and --warm and --kola were not used anywhere in src/ at all: two knobs in the form wired to nothing. v2 is the full sweep: every colour and every type stack in the stylesheet now resolves through one of these. The sweep also DELETED --warm and --kola: they had no var() anywhere in src/, so two of the nine knobs the form offered were wired to nothing.",
+  "types": {
+    "color": "a finished colour value — use it directly",
+    "channelRgb": "`r,g,b` WITHOUT the wrapper, for `rgba(var(--x-rgb), α)`. A colour used at a dozen opacities is one colour and a dozen local decisions; the alpha belongs to the rule that chose it, not to the theme.",
+    "channelOklch": "`L C H` without the alpha, for `oklch(var(--x-oklch) / α)`. Same idea.",
+    "fontStack": "a font-family list, fallbacks included"
+  },
   "tokens": [
-    { "id": "warm", "css": "--warm", "label": "Warm sand", "group": "Palette", "type": "color", "default": "oklch(0.85 0.08 70)", "hint": "Panels and warm surfaces" },
-    { "id": "coral", "css": "--coral", "label": "Coral", "group": "Palette", "type": "color", "default": "oklch(0.68 0.18 30)", "hint": "Primary accent" },
-    { "id": "kola", "css": "--kola", "label": "Kola", "group": "Palette", "type": "color", "default": "oklch(0.62 0.22 25)", "hint": "Deep accent / danger" },
-    { "id": "hot", "css": "--hot", "label": "Hot pink", "group": "Palette", "type": "color", "default": "oklch(0.66 0.25 0)", "hint": "Highlights and combo" },
-    { "id": "gold", "css": "--gold", "label": "Gold", "group": "Palette", "type": "color", "default": "oklch(0.86 0.16 90)", "hint": "Coins and rewards" },
-    { "id": "teal", "css": "--teal", "label": "Teal", "group": "Palette", "type": "color", "default": "oklch(0.62 0.12 220)", "hint": "Water and cool accents" },
-    { "id": "ink", "css": "--ink", "label": "Ink", "group": "Palette", "type": "color", "default": "oklch(0.18 0.03 280)", "hint": "Text on light surfaces" },
-    { "id": "paper", "css": "--paper", "label": "Paper", "group": "Palette", "type": "color", "default": "oklch(0.96 0.02 80)", "hint": "Text on dark surfaces" },
-    { "id": "editorScreenBg", "css": "--editor-screen-bg", "label": "Screen backdrop", "group": "Screens", "type": "color", "default": "#17141f", "hint": "Backdrop behind authored screens" }
+    {
+      "id": "coral",
+      "css": "--coral",
+      "label": "Coral",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.68 0.18 30)",
+      "hint": ""
+    },
+    {
+      "id": "coralLit",
+      "css": "--coral-lit",
+      "label": "Coral lit",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.68 0.20 30)",
+      "hint": ""
+    },
+    {
+      "id": "hot",
+      "css": "--hot",
+      "label": "Hot",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.66 0.25 0)",
+      "hint": ""
+    },
+    {
+      "id": "gold",
+      "css": "--gold",
+      "label": "Gold",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.86 0.16 90)",
+      "hint": ""
+    },
+    {
+      "id": "teal",
+      "css": "--teal",
+      "label": "Teal",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.62 0.12 220)",
+      "hint": ""
+    },
+    {
+      "id": "ink",
+      "css": "--ink",
+      "label": "Ink",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.18 0.03 280)",
+      "hint": ""
+    },
+    {
+      "id": "paper",
+      "css": "--paper",
+      "label": "Paper",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.96 0.02 80)",
+      "hint": ""
+    },
+    {
+      "id": "lemon",
+      "css": "--lemon",
+      "label": "Lemon",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.96 0.13 95)",
+      "hint": ""
+    },
+    {
+      "id": "tangerine",
+      "css": "--tangerine",
+      "label": "Tangerine",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.72 0.20 25)",
+      "hint": ""
+    },
+    {
+      "id": "magenta",
+      "css": "--magenta",
+      "label": "Magenta",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.58 0.22 350)",
+      "hint": ""
+    },
+    {
+      "id": "crimson",
+      "css": "--crimson",
+      "label": "Crimson",
+      "group": "Palette",
+      "type": "color",
+      "default": "oklch(0.55 0.22 0)",
+      "hint": ""
+    },
+    {
+      "id": "textBright",
+      "css": "--text-bright",
+      "label": "Text bright",
+      "group": "Text",
+      "type": "color",
+      "default": "oklch(0.92 0.04 80)",
+      "hint": ""
+    },
+    {
+      "id": "textSoft",
+      "css": "--text-soft",
+      "label": "Text soft",
+      "group": "Text",
+      "type": "color",
+      "default": "oklch(0.9 0.03 80)",
+      "hint": ""
+    },
+    {
+      "id": "textDim",
+      "css": "--text-dim",
+      "label": "Text dim",
+      "group": "Text",
+      "type": "color",
+      "default": "oklch(0.88 0.04 80)",
+      "hint": ""
+    },
+    {
+      "id": "textFaint",
+      "css": "--text-faint",
+      "label": "Text faint",
+      "group": "Text",
+      "type": "color",
+      "default": "oklch(0.78 0.03 80)",
+      "hint": ""
+    },
+    {
+      "id": "paperPure",
+      "css": "--paper-pure",
+      "label": "Paper pure",
+      "group": "Text",
+      "type": "color",
+      "default": "#fff",
+      "hint": ""
+    },
+    {
+      "id": "amber",
+      "css": "--amber",
+      "label": "Amber",
+      "group": "Accents",
+      "type": "color",
+      "default": "#ffe06b",
+      "hint": ""
+    },
+    {
+      "id": "mint",
+      "css": "--mint",
+      "label": "Mint",
+      "group": "Accents",
+      "type": "color",
+      "default": "#6fbf99",
+      "hint": ""
+    },
+    {
+      "id": "sky",
+      "css": "--sky",
+      "label": "Sky",
+      "group": "Accents",
+      "type": "color",
+      "default": "#5fb0d6",
+      "hint": ""
+    },
+    {
+      "id": "rose",
+      "css": "--rose",
+      "label": "Rose",
+      "group": "Accents",
+      "type": "color",
+      "default": "#ff3d80",
+      "hint": ""
+    },
+    {
+      "id": "sand",
+      "css": "--sand",
+      "label": "Sand",
+      "group": "Accents",
+      "type": "color",
+      "default": "#ffce9e",
+      "hint": ""
+    },
+    {
+      "id": "ember",
+      "css": "--ember",
+      "label": "Ember",
+      "group": "Accents",
+      "type": "color",
+      "default": "#ffb36b",
+      "hint": ""
+    },
+    {
+      "id": "straw",
+      "css": "--straw",
+      "label": "Straw",
+      "group": "Accents",
+      "type": "color",
+      "default": "#f4d77a",
+      "hint": ""
+    },
+    {
+      "id": "honey",
+      "css": "--honey",
+      "label": "Honey",
+      "group": "Accents",
+      "type": "color",
+      "default": "#f3c969",
+      "hint": ""
+    },
+    {
+      "id": "foam",
+      "css": "--foam",
+      "label": "Foam",
+      "group": "Accents",
+      "type": "color",
+      "default": "#bff0d6",
+      "hint": ""
+    },
+    {
+      "id": "ice",
+      "css": "--ice",
+      "label": "Ice",
+      "group": "Accents",
+      "type": "color",
+      "default": "#9be6ff",
+      "hint": ""
+    },
+    {
+      "id": "haze",
+      "css": "--haze",
+      "label": "Haze",
+      "group": "Accents",
+      "type": "color",
+      "default": "#9adcf0",
+      "hint": ""
+    },
+    {
+      "id": "grey",
+      "css": "--grey",
+      "label": "Grey",
+      "group": "Accents",
+      "type": "color",
+      "default": "#777",
+      "hint": ""
+    },
+    {
+      "id": "greyDark",
+      "css": "--grey-dark",
+      "label": "Grey dark",
+      "group": "Accents",
+      "type": "color",
+      "default": "#555",
+      "hint": ""
+    },
+    {
+      "id": "page",
+      "css": "--page",
+      "label": "Page",
+      "group": "Surfaces",
+      "type": "color",
+      "default": "#0a0414",
+      "hint": ""
+    },
+    {
+      "id": "deep",
+      "css": "--deep",
+      "label": "Deep",
+      "group": "Surfaces",
+      "type": "color",
+      "default": "#0b1a2e",
+      "hint": ""
+    },
+    {
+      "id": "deepLit",
+      "css": "--deep-lit",
+      "label": "Deep lit",
+      "group": "Surfaces",
+      "type": "color",
+      "default": "#123049",
+      "hint": ""
+    },
+    {
+      "id": "forest",
+      "css": "--forest",
+      "label": "Forest",
+      "group": "Surfaces",
+      "type": "color",
+      "default": "#0c2418",
+      "hint": ""
+    },
+    {
+      "id": "plum",
+      "css": "--plum",
+      "label": "Plum",
+      "group": "Surfaces",
+      "type": "color",
+      "default": "oklch(0.22 0.05 280)",
+      "hint": ""
+    },
+    {
+      "id": "void",
+      "css": "--void",
+      "label": "Void",
+      "group": "Surfaces",
+      "type": "color",
+      "default": "oklch(0.14 0.04 280)",
+      "hint": ""
+    },
+    {
+      "id": "editorScreenBg",
+      "css": "--editor-screen-bg",
+      "label": "Editor screen bg",
+      "group": "Surfaces",
+      "type": "color",
+      "default": "#17141f",
+      "hint": ""
+    },
+    {
+      "id": "fgRgb",
+      "css": "--fg-rgb",
+      "label": "Fg rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "255,255,255",
+      "hint": "hairlines, veils, subtle fills"
+    },
+    {
+      "id": "shadowRgb",
+      "css": "--shadow-rgb",
+      "label": "Shadow rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "0,0,0",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "panelRgb",
+      "css": "--panel-rgb",
+      "label": "Panel rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "20,16,40",
+      "hint": "the dark violet card, at six alphas"
+    },
+    {
+      "id": "panelLitRgb",
+      "css": "--panel-lit-rgb",
+      "label": "Panel lit rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "40,32,70",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "panelMidRgb",
+      "css": "--panel-mid-rgb",
+      "label": "Panel mid rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "30,26,50",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "nightRgb",
+      "css": "--night-rgb",
+      "label": "Night rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "8,4,20",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "abyssRgb",
+      "css": "--abyss-rgb",
+      "label": "Abyss rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "10,14,26",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "amberRgb",
+      "css": "--amber-rgb",
+      "label": "Amber rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "255,224,107",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "skyRgb",
+      "css": "--sky-rgb",
+      "label": "Sky rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "95,176,214",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "mintRgb",
+      "css": "--mint-rgb",
+      "label": "Mint rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "111,191,153",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "brassRgb",
+      "css": "--brass-rgb",
+      "label": "Brass rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "232,181,58",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "iceRgb",
+      "css": "--ice-rgb",
+      "label": "Ice rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "150,230,255",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "iceLitRgb",
+      "css": "--ice-lit-rgb",
+      "label": "Ice lit rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "120,220,255",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "flameRgb",
+      "css": "--flame-rgb",
+      "label": "Flame rgb",
+      "group": "Channels",
+      "type": "channelRgb",
+      "default": "255,139,61",
+      "hint": "r,g,b with no wrapper — the rule adds the alpha"
+    },
+    {
+      "id": "fgOklch",
+      "css": "--fg-oklch",
+      "label": "Fg oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "1 0 0",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "shadowOklch",
+      "css": "--shadow-oklch",
+      "label": "Shadow oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0 0 0",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "goldOklch",
+      "css": "--gold-oklch",
+      "label": "Gold oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0.86 0.16 90",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "warmOklch",
+      "css": "--warm-oklch",
+      "label": "Warm oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0.85 0.04 80",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "magentaOklch",
+      "css": "--magenta-oklch",
+      "label": "Magenta oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0.55 0.18 350",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "surfaceOklch",
+      "css": "--surface-oklch",
+      "label": "Surface oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0.14 0.04 285",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "surfaceLitOklch",
+      "css": "--surface-lit-oklch",
+      "label": "Surface lit oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0.17 0.045 285",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "surfaceMidOklch",
+      "css": "--surface-mid-oklch",
+      "label": "Surface mid oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0.12 0.05 290",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "surfaceDeepOklch",
+      "css": "--surface-deep-oklch",
+      "label": "Surface deep oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0.10 0.05 290",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "surfaceHiOklch",
+      "css": "--surface-hi-oklch",
+      "label": "Surface hi oklch",
+      "group": "Channels",
+      "type": "channelOklch",
+      "default": "0.2 0.06 285",
+      "hint": "L C H with no alpha — the rule adds it"
+    },
+    {
+      "id": "fontDisplay",
+      "css": "--font-display",
+      "label": "Font display",
+      "group": "Type",
+      "type": "fontStack",
+      "default": "\"Bungee\", sans-serif",
+      "hint": "font-family list"
+    },
+    {
+      "id": "fontDisplayAlt",
+      "css": "--font-display-alt",
+      "label": "Font display alt",
+      "group": "Type",
+      "type": "fontStack",
+      "default": "\"Bungee\", \"Space Grotesk\", sans-serif",
+      "hint": "font-family list"
+    },
+    {
+      "id": "fontDisplayMono",
+      "css": "--font-display-mono",
+      "label": "Font display mono",
+      "group": "Type",
+      "type": "fontStack",
+      "default": "\"Bungee\", monospace",
+      "hint": "font-family list"
+    },
+    {
+      "id": "fontUi",
+      "css": "--font-ui",
+      "label": "Font ui",
+      "group": "Type",
+      "type": "fontStack",
+      "default": "\"JetBrains Mono\", monospace",
+      "hint": "font-family list"
+    },
+    {
+      "id": "fontBody",
+      "css": "--font-body",
+      "label": "Font body",
+      "group": "Type",
+      "type": "fontStack",
+      "default": "\"Space Grotesk\", system-ui, sans-serif",
+      "hint": "font-family list"
+    },
+    {
+      "id": "fontBodyPlain",
+      "css": "--font-body-plain",
+      "label": "Font body plain",
+      "group": "Type",
+      "type": "fontStack",
+      "default": "\"Space Grotesk\", sans-serif",
+      "hint": "font-family list"
+    }
   ]
 }

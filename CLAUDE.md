@@ -790,10 +790,28 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
   `pnpm test` — the client's copy is generated from it and committed.
 - Keep `src/game/vehicles.js` and `src/game/surfaces.js` free of DOM/`window` so
   Node (the inventory script) can import them.
-- The camera zoom is responsive: `computeZoom` in `src/render/canvas2d.js`
-  frames ~20 cuadrículas of `meta.cuad` (20) px across the viewport — the
-  constant lives in the RENDERER (tune it there; `meta.cuadsPerView` is
-  advisory, no world rebuild needed).
+- **THE WORLD'S LENGTHS ARE METRES** — `src/assets/world-units.json`, read by
+  the builder (`px(m)` in `config.py`) and the game (`src/domain/units.js`).
+  A px constant is only true at the scale it was tuned at, and this world has
+  been rescaled three times; each time, numbers that meant something silently
+  came to mean something else (the civic centre stopped existing once). It
+  holds the raster cell, la cuadrícula, the tile, the acera depths, the camera,
+  the channel's sounding pitch and each vessel's deck. Add a length there when
+  two runtimes must agree about it; a margin inside one drawing recipe is not
+  that. `tests/test_world_units.py` checks every derivation against the shipped
+  manifest, so a changed metre value that does not match the built world fails.
+- The camera zoom is responsive: `computeZoom` in `src/render/c2d/gfx.js` frames
+  `camera.viewWidthM` (160 m) across the viewport, clamped by
+  `camera.minScreenPxPerM` (5.5) — the **floor is a magnification and scales
+  INVERSELY with the world's scale**, and it binds on every screen under 880 CSS
+  px, i.e. every phone. Framing is a RENDERER concern (no world rebuild needed);
+  `meta.cuadsPerView` is advisory. It used to be `CUADS_PER_VIEW · CUAD`, which
+  let the BUILDER's block-detection grid decide what the player saw.
+- **A run has a clock or it does not** (`src/game/timers.js`): `timeLeft ===
+  UNTIMED` (null) for Recorrer and the tutorial, and everything that spends or
+  scores time goes through `addTime`/`timeRemaining`. Do not re-introduce a
+  large sentinel, and do not branch on mode names to decide — that list was
+  kept in three places and one of them was already wrong.
 - Don't hand-edit `src/world2d/` (manifest or tiles) — regenerate with
   `pnpm world:build`, then `python3 tools/world_snapshot.py verify` (or `save`
   if the change was intended).

@@ -6,6 +6,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { tuning } from "../../game/tuning.js";
+import { MIN_ZOOM, VIEW_WIDTH_PX } from "../../domain/units.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 
 let canvas, ctx, dpr = 1;
@@ -16,21 +17,26 @@ let ZOOM = 5.5;
 // (fountains, pools, the palms in drawFaroScene).
 let lastT = 0;
 function setLastT(v) { lastT = v; }
-// Cuadrícula-based responsive zoom: frame at most CUADS_PER_VIEW cuadrículas
-// so every device shows the same amount of city. Only a floor is clamped —
-// narrow screens show FEWER cuadrículas (more detail), never more than 12.
-const CUAD = W.CUAD;
-// Camera framing is a RENDERER concern (tuned by feel, not a world rebuild):
-// frame ~20 cuadrículas across so the road ahead is visible while driving.
-// meta.cuadsPerView is advisory only.
-const CUADS_PER_VIEW = 20;
+// THE CAMERA FRAMES METRES OF GROUND, not cuadrículas.
+//
+// It used to be `CUADS_PER_VIEW * CUAD`, and that was the last place the
+// cuadrícula did a job it has no business doing: CUAD is the coarse grid the
+// BUILDER walks to find a manzana and cut synth lots on, so expressing the
+// player's view in it meant a rescale of the block-detection grid resized
+// everybody's screen too. `VIEW_WIDTH_PX` and `MIN_ZOOM` come from
+// `src/assets/world-units.json` in metres and derive here; `meta.cuadsPerView`
+// stays advisory, and `docs/RESCALE.md` step 0 is why.
+const CUAD = W.CUAD;                       // still wanted: the debug grid
 // The kerb, from the accessor that owns the manifest and its ONE legacy
 // default. This used to fall back to 8 while the sim fell back to 12 — the
 // renderer and the spawner disagreeing about where the sidewalk is.
 const ACERA_PX = W.ACERA_PX;
 function computeZoom(wCss, hCss) {
-  const z = wCss / (CUADS_PER_VIEW * CUAD);
-  return Math.max(2.2, z) * tuning.zoom;   // player setting: 0.6 far … 1.4 close
+  const z = wCss / VIEW_WIDTH_PX;
+  // Only a floor is clamped — a narrow screen shows LESS ground (more detail),
+  // never more. See MIN_ZOOM: on a phone that floor, not the framing above, is
+  // what decides how much road you see.
+  return Math.max(MIN_ZOOM, z) * tuning.zoom;  // player setting: 0.6 far … 1.4 close
 }
 
 function setupCanvas(c) {
@@ -198,7 +204,7 @@ function hash01(n) {
 // top of it.
 
 export {
-  ACERA_PX, CUAD, CUADS_PER_VIEW, aabbInView, areaLabel, canvas, computeZoom,
+  ACERA_PX, CUAD, VIEW_WIDTH_PX, aabbInView, areaLabel, canvas, computeZoom,
   ctx, dpr, flatAABB, flatMultiPath, flatPath, hash01, label, lastT,
   parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, weatherColors, ZOOM,
 };

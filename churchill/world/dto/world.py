@@ -224,8 +224,14 @@ class Ferry(WorldModel):
     name: str
     berth: list[int]
     ang: float = Field(default=0.0, description="heading out of the berth, radians")
-    deck: list[int] = Field(default=[124, 46], description="[length, width] in world px")
-    dockS: float = Field(default=28.0, description="px seaward of the berth node she lies")
+    # REQUIRED, not defaulted. They carried `[124, 46]` and `28.0`, which is the
+    # third copy of a number the builder derives and the client reads back —
+    # exactly the shape of drift this schema exists to catch. A default here can
+    # only ever paper over a producer that stopped emitting the field, and it
+    # would do it silently, at the size the ferry happened to be in 2026.
+    # The sizes themselves are metres, in src/assets/world-units.json.
+    deck: list[int] = Field(description="[length, width] in world px")
+    dockS: float = Field(description="px seaward of the berth node she lies")
     route: FlatPoly
     #: None for the two gulf ferries: they sail open water and have no channel.
     channel: Channel | None = None

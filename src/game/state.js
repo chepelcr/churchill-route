@@ -2,6 +2,7 @@
 // These are module singletons (one game instance) imported by the spawn,
 // physics, delivery and render modules.
 import { VEHICLES } from "./vehicles.js";
+import { ARCADE_DURATION_S } from "./timers.js";
 
 export const state = {
   running: false, paused: false, over: false, won: false,
@@ -23,7 +24,9 @@ export const state = {
   pendingOrder: null,
   score: 0, combo: 1, comboTimer: 0,
   deliveries: 0, perfect: 0,
-  timeLeft: 180,
+  // Arcade is the mode a cold boot lands in; an untimed run sets this to
+  // UNTIMED (null) rather than to a large number nobody counts down.
+  timeLeft: ARCADE_DURATION_S,
   storyTip: "",
   particles: [], floats: [],
   rainT: 0,

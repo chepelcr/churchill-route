@@ -18,6 +18,7 @@
 // ferry_terminal nodes and both `route=ferry` ways, and the build truncates
 // them to a short loop (churchill/world/service/ferry.py).
 import { WORLD2D as W } from "../world2d/index.js";
+import { FERRY_DECK_L, FERRY_DECK_W, FERRY_DOCK_S } from "../domain/units.js";
 
 const BOARD_WAIT = 7;           // s parked aboard at the berth before it leaves
 const SPEED = 82;               // px/s — 1800 px out and back is ~44 s
@@ -31,7 +32,13 @@ const SPEED = 82;               // px/s — 1800 px out and back is ~44 s
 // They are PER FERRY. Reading them off FERRIES[0] worked only while both boats
 // were the same size, and the editor can now give one of them her own deck —
 // at which point a global would collide the player against the other's.
-const DEF_DECK_L = 124, DEF_DECK_W = 46, DEF_DOCK_S = 28;
+//
+// The fallbacks themselves stopped being px literals on 2026-08-14: a ferry is
+// a real boat (49.6 m × 18.4 m), so her size is metres in
+// `src/assets/world-units.json` and the builder derives the SAME numbers from
+// the same file. There were three copies of `124`/`46`/`28` — here, the
+// builder's service and the DTO's default — and the DTO's is simply gone, since
+// a schema default can only ever paper over a producer that stopped emitting.
 
 let _ferries = null;
 
@@ -42,11 +49,11 @@ function build() {
     const cum = [0];
     for (let i = 1; i < pts.length; i++)
       cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
-    const dock = f.dockS ?? DEF_DOCK_S;
+    const dock = f.dockS ?? FERRY_DOCK_S;
     return {
       id: f.id, name: f.name, pts, cum, total: cum[cum.length - 1] || 1,
       x: f.berth[0], y: f.berth[1], a: f.ang,
-      dl: f.deck?.[0] || DEF_DECK_L, dw: f.deck?.[1] || DEF_DECK_W, dock,
+      dl: f.deck?.[0] || FERRY_DECK_L, dw: f.deck?.[1] || FERRY_DECK_W, dock,
       // A CROSSING, not a scenic loop: the lancha over the estero LANDS you on
       // the far shore and waits there. The two ferries sail out and come home
       // because the real crossing ends on the Nicoya side, where this world has

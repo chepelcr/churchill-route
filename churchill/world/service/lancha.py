@@ -28,7 +28,8 @@ import math
 from collections import deque
 from heapq import heappop, heappush
 
-from ..config import CLS_BEACH, CLS_LAND, CLS_WATER, GRID_CELL, PLANAR_PX_PER_M
+from ..config import (CLS_BEACH, CLS_LAND, CLS_WATER, GRID_CELL, PLANAR_PX_PER_M,
+                      UNITS, px)
 from ..content import BEACH_ACCESS_DEFS, LANCHA_DEFS
 from ..enums import Surface
 from ..logging import log, warn
@@ -80,12 +81,23 @@ DREDGE_HW = CHANNEL_HW
 #: the berth and the landing are SHORE ON PURPOSE — leave their aprons alone.
 DREDGE_END_PAD = 220
 
-#: px of arclength between the emitted channel samples.
-CHANNEL_PITCH = 40
+#: LA LANCHA, in px, derived from her real size. She is a much smaller boat
+#: than the gulf ferries and these were a bare `(86, 34)` / `20` that nothing
+#: else in the build or the client knew about — the fourth copy of a contract
+#: `world-units.json` exists to hold once.
+LANCHA_DECK = (px(UNITS["vessels"]["lancha"]["deckLengthM"]),
+               px(UNITS["vessels"]["lancha"]["deckWidthM"]))
+LANCHA_DOCK_S = px(UNITS["vessels"]["lancha"]["dockOffsetM"])
+
+#: px of arclength between the emitted channel samples. Emitted as
+#: `channel.pitch`, because `laneAt` in the client divides by it — see
+#: `world-units.json` -> `channel`.
+CHANNEL_PITCH = px(UNITS["channel"]["pitchM"])
 #: how far either side of a station the tangent is measured over. Big enough to
 #: average out the derived route's ~23 px segments, small enough to still follow
-#: a real bend. See `_stations`.
-TANGENT_SPAN = 60.0
+#: a real bend. See `_stations`. NOT emitted: the client measures its own
+#: heading over the same span, so the two read the file rather than each other.
+TANGENT_SPAN = float(px(UNITS["channel"]["tangentSpanM"]))
 #: box filter over the emitted arrays, in samples. One mangrove clump must not
 #: put a kink in the marked lane.
 CHANNEL_SMOOTH = 5
@@ -671,11 +683,11 @@ def place_lanchas(ctx, project_ll, nearest_cell):
             warn("lancha", f"{spec['id']}: {tight} muestra(s) bajo "
                  f"{CHANNEL_HW_MIN}px — el canal se cierra ahí")
         ang = math.atan2(route[1][1] - route[0][1], route[1][0] - route[0][0])
-        deck = spec.get("deck", (86, 34))
+        deck = spec.get("deck", LANCHA_DECK)
         ctx.ferries.append({
             "id": spec["id"], "name": spec["name"],
             "berth": [round(berth[0]), round(berth[1])], "ang": round(ang, 4),
-            "deck": [int(deck[0]), int(deck[1])], "dockS": int(spec.get("dockS", 20)),
+            "deck": [int(deck[0]), int(deck[1])], "dockS": int(spec.get("dockS", LANCHA_DOCK_S)),
             "route": [round(v) for p in route for v in p],
             # A CROSSING: she waits at the far shore instead of sailing home, and
             # is never used up, because she is transport rather than a treat.

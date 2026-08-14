@@ -46,6 +46,8 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { SURFACE } from "./surfaces.js";
 import { STAGE_KIND } from "../domain/vocabulary.generated.js";
+import { CHANNEL_PITCH, TANGENT_SPAN } from "../domain/units.js";
+import { addTime, timeRemaining } from "./timers.js";
 import { state, pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
 import { markStageCleared, unlockDistrict } from "./progress.js";
@@ -217,13 +219,15 @@ function minArr(arr, u) {
  * `LANE_HW`.
  */
 //: the lane's heading is measured over this much arclength either side, NOT
-//: from the segment the point happens to land on. It has to match the build's
+//: from the segment the point happens to land on. It HAS to match the build's
 //: `TANGENT_SPAN`: the world measured the channel across a smoothed normal, so
 //: a client placing the marks across the raw segment normal is putting them on
 //: a different line from the one that was sounded. The route averages ~23 px a
 //: segment and the disagreement is easily a few degrees — which at 150 px out
 //: is the difference between the middle of the channel and the mangrove.
-const TANGENT_SPAN = 60;
+//:
+//: So it is no longer written down twice. Both ends read the metres in
+//: `src/assets/world-units.json` and derive their own px (2026-08-14).
 
 export function laneAt(ch, s) {
   const q = at(ch.pts, ch.cum, s);
@@ -232,7 +236,7 @@ export function laneAt(ch, s) {
   const b = at(ch.pts, ch.cum, s - TANGENT_SPAN);
   const f = at(ch.pts, ch.cum, s + TANGENT_SPAN);
   q.a = Math.atan2(f.y - b.y, f.x - b.x);
-  const u = s / (c.pitch || 40);
+  const u = s / (c.pitch || CHANNEL_PITCH);
   const off = lerpArr(c.off, u) || 0;
   const room = minArr(c.hw, u) || LANE_HW;
   // INSIDE THE WATER BY CONSTRUCTION: pull in by the margin, but never past a
@@ -471,7 +475,7 @@ function finish() {
   // Time and fish were the whole score, which paid for exactly the timid line.
   // The rozadas, the streak and the gates are in it now, so sailing it WELL
   // beats sailing it safely.
-  state.score += Math.round(Math.max(0, state.timeLeft) * 10
+  state.score += Math.round(timeRemaining(state) * 10
     + _crossing.fish * 25
     + (_crossing.near || 0) * 15
     + (_crossing.bestStreak || 0) * 50
@@ -585,7 +589,7 @@ export function advanceCrossing(dt, p) {
       _crossing.gateIndex = Math.max(_crossing.gateIndex, g.index + 1);
       _crossing.checkpoint = { x: near.ax, y: near.ay, a: p.a };
       if (_crossing.level) {
-        state.timeLeft += GATE_BONUS;
+        addTime(state, GATE_BONUS);
         addBoost(GATE_BOOST);
         // EL PORTÓN DE IMPULSO: through the middle of the mouth and she fills
         // the tank. Wide still takes the gate, the time and the checkpoint —
@@ -664,7 +668,7 @@ export function knock(what) {
   if (_crossing.level && _crossing.knocks >= KNOCKS) { respawn(); return true; }
   // In Recorrer a knock only costs time, because there the estero is a place
   // you are visiting, not a route you are running.
-  if (!_crossing.level) state.timeLeft = Math.max(0, state.timeLeft - 3);
+  if (!_crossing.level) addTime(state, -3);
   return false;
 }
 

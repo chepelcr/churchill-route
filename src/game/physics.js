@@ -4,6 +4,7 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { GEOMETRY_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { state, traffic, pedestrians, gulls, boats, trains, schools, pushFloat } from "./state.js";
+import { isTimed } from "./timers.js";
 import { SURFACE, SURFACE_MUL } from "./surfaces.js";
 import { HULL, hullBankAssist, hullFriction, hullGlance, hullLean, hullThrottle, hullTopMul, hullTurn } from "./boat.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
@@ -734,15 +735,13 @@ export function update(dt) {
 
   if (state.weather === "storm") state.rainT += dt;
 
-  // Arcade timer (also stage timer)
-  if (state.mode === "arcade" || state.mode === "story") {
+  // THE RUN CLOCK. A run either has one or it does not (`timers.js`), and this
+  // asks the clock rather than listing the modes that own one — the list was
+  // wrong: Recorrer counted 999 s down and set it back to 999 at zero, a
+  // treadmill with no consumer, since the HUD hides the timer there anyway.
+  if (isTimed(state)) {
     state.timeLeft -= dt;
     if (state.timeLeft <= 0) { state.timeLeft = 0; state.over = true; state.won = false; }
-  }
-  if (state.mode === "explore") {
-    // Long, generous timer — encourages cruising
-    state.timeLeft -= dt;
-    if (state.timeLeft <= 0) state.timeLeft = 999;
   }
 }
 

@@ -25,6 +25,7 @@ Two things need care.
 """
 import math
 
+from ..config import UNITS, px
 from ..logging import log
 from .projection import project_way_pts
 
@@ -34,13 +35,16 @@ from .projection import project_way_pts
 #: read as a trip, short enough that nobody puts the controller down.
 RIDE_PX = 1800.0
 
-#: The DECK, in world px, and how far seaward of the OSM berth node she lies
-#: alongside. These live here, not in the client, because the build needs them
-#: too: the boarding ramp has to reach the STERN at rest, and stern position is
-#: a function of all three. The client reads them back off the manifest.
-DECK_L = 124.0
-DECK_W = 46.0
-DOCK_S = 28.0
+#: The DECK and how far seaward of the OSM berth node she lies alongside. A
+#: ferry is a real boat, so her size is in metres (`world-units.json` ->
+#: `ferry`) and the px are derived here; the build needs them as well as the
+#: client, because the boarding ramp has to reach the STERN at rest and stern
+#: position is a function of all three. The client reads them back off the
+#: manifest — these are what is emitted, not a second opinion.
+_FERRY = UNITS["vessels"]["ferry"]
+DECK_L = float(px(_FERRY["deckLengthM"]))
+DECK_W = float(px(_FERRY["deckWidthM"]))
+DOCK_S = float(px(_FERRY["dockOffsetM"]))
 
 #: OSM names, in the order the berths sit north→south at the terminal
 FERRY_DEFS = [

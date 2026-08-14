@@ -11,6 +11,7 @@ import { setDayCycle } from "./daynight.js";
 import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers, bumpCrossingRuns } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
+import { ARCADE_DURATION_S, DEFAULT_STAGE_DURATION_S, UNTIMED } from "./timers.js";
 import { economy, FREE_VEHICLES, VEHICLE_PRICES } from "./economy.js";
 import { t, stageBrief } from "../i18n/index.js";
 import { analytics } from "../monetize/analytics.js";
@@ -216,7 +217,7 @@ export function startStage(stageIdx, vehicleKey) {
   } else {
     setTide(0.5);
   }
-  state.timeLeft = stg.timeLimit;
+  state.timeLeft = stg.timeLimit ?? DEFAULT_STAGE_DURATION_S;
   state.stageDeliveries = 0;
   state.stageTarget = stg.targetDeliveries;
   const rv = resolveVehicle(authoredVehicle("story", vehicleKey), stageMedium(stg));
@@ -298,7 +299,7 @@ export function startArcade(opts = {}) {
   // wants and keeps it. `cycle` is offered for anyone who wants the turn.
   state.weather = opts.weather || authoredWeather();
   setDayCycle(Boolean(opts.cycle), opts.dayAt ?? 0);
-  state.timeLeft = 180;
+  state.timeLeft = ARCADE_DURATION_S;
   const rv = resolveVehicle(authoredVehicle("arcade", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();
@@ -337,7 +338,7 @@ export function startExplore(opts = {}) {
   // and getting a cycle would be a bug, not a feature.
   state.weather = opts.weather || authoredWeather();
   setDayCycle(!opts.weather, Math.random());
-  state.timeLeft = 999;
+  state.timeLeft = UNTIMED;
   const rv = resolveVehicle(authoredVehicle("explore", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();
@@ -381,7 +382,7 @@ export function startTutorial(opts = {}) {
   state.stageIdx = 0;
   state.mode = "tutorial";
   state.weather = "sunny";
-  state.timeLeft = 999;
+  state.timeLeft = UNTIMED;
   const rv = resolveVehicle(authoredVehicle("tutorial", opts.vehicleKey));
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();

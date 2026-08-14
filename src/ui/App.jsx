@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../game/index.js";
+import { addTime } from "../game/timers.js";
 import { STAGE_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { WORLD2D as WORLD } from "../world2d/index.js";
 import TitleScreen from "./screens/TitleScreen.jsx";
@@ -259,7 +260,7 @@ export default function App() {
   const canRestart = Game.state.mode !== "tutorial" && Game.state.mode !== "explore";
   // rewarded-ad continue: revive the lost run with extra time (once per run)
   function continueRun() {
-    Game.state.timeLeft += 60;
+    addTime(Game.state, 60);
     Game.state.over = false; Game.state.won = false;
     Game.state.usedAdContinue = true;
     setScreen("playing");

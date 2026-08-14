@@ -1,7 +1,10 @@
 # El reescalado del mundo — devolverle a la manzana su terreno
 
-Status: **PROPOSED**, not started. This document is the whole context: it can be
-picked up cold, without the conversation that produced it.
+Status: **step 0 done (2026-08-14), the rescale itself PROPOSED.** This document
+is the whole context: it can be picked up cold, without the conversation that
+produced it. Step 0 — naming the world's lengths in metres — is complete and
+left the world byte-identical; the scale change is still a decision nobody has
+taken, and step 1 (choose the framing on a phone) is where it resumes.
 
 ## The one-paragraph problem
 
@@ -31,8 +34,9 @@ Two 19 px cars in a 40.6 px calle leave **1.6 px** of total clearance. The
 current constants are already at their limit; there is no slack to give back to
 the manzanas at this scale.
 
-The car is 7.6 m because the camera frames `CUADS_PER_VIEW · CUAD` = 20 · 20 =
-400 world px = **160 m** (`src/render/c2d/gfx.js:27`). A true-scale car would
+The car is 7.6 m because the camera frames **160 m** of ground
+(`camera.viewWidthM`; it was `CUADS_PER_VIEW · CUAD` = 400 world px until step 0
+below). A true-scale car would
 be 4.75 px — 1.2 % of the screen, undrivable.
 
 So the irreducible trade, which no projection escapes:
@@ -99,8 +103,10 @@ projection escapes it.
 
 ### …but on a phone the zoom FLOOR decides it, not the table
 
-`computeZoom` (`src/render/c2d/gfx.js:27`) is
-`max(2.2, wCss / (CUADS_PER_VIEW · CUAD)) · tuning.zoom`. That floor binds on
+`computeZoom` (`src/render/c2d/gfx.js`) is
+`max(MIN_ZOOM, wCss / VIEW_WIDTH_PX) · tuning.zoom`, and `MIN_ZOOM` derives to
+2.2 at today's scale (it was written as that bare 2.2 until step 0). The floor
+binds on
 any screen narrower than 880 CSS px — **every phone in landscape**. Modelled at
 wCss = 800:
 
@@ -124,10 +130,13 @@ Three things follow, and they matter more than the variant table:
    metre went up. Scaling it *up*, which is the intuitive guess, crops the phone
    view to 57 m.
 
-The floor is currently converting the whole trade from "smaller car" into "less
-road ahead" without anyone having chosen that. Re-express it in metres
-(`MAX_VIEW_M`, or a minimum car size in CSS px — they are the same constraint
-from two directions) so the choice is explicit.
+The floor was converting the whole trade from "smaller car" into "less road
+ahead" without anyone having chosen that, and it was a bare `2.2` in one
+function. **Fixed in step 0**: it is `camera.minScreenPxPerM` = 5.5 screen px
+per METRE, which is scale-free, so point 3 above is now arithmetic the file does
+rather than a rule somebody has to remember. Note there is no fixed
+`MAX_VIEW_M`: the view the floor allows is `wCss / 5.5` metres, so it depends on
+the screen — writing it as metres would have hidden that.
 
 **The zoom slider is the empirical anchor.** `tuning.zoom` runs 0.6–1.4
 (`SettingsScreen.jsx:81`), which on a phone already spans **104 m to 242 m** of
@@ -170,11 +179,13 @@ config.py         POI_NUDGE_PX 750, SERVICE_MIN_PX 150,
                   MALECON_MIN_PATCH_CELLS 120
                   KIOSK_WATER_CLEAR_PX 30
                   FARO_ESP_MAX_CELLS 6000, FARO_POCKET_MAX_CELLS 400
-                  ACERA_CELLS 3, FIELD_ACERA_CELLS 2, BLOCK_MIN_CUADS 6,
+                  ~~ACERA_CELLS 3, FIELD_ACERA_CELLS 2~~ (step 0: derived from
+                  kerb.sidewalkM / fieldSidewalkM), BLOCK_MIN_CUADS 6,
                   SLIVER_MAX_CUADS 25.0, SMALL_BLOCK_CUADS 188, OSM_MAX_CUADS 4
                   BLDG_INSET 2, BUILDING_SCALE 1.4, POI pads
-service/ferry.py     RIDE_PX 1800
+service/ferry.py     RIDE_PX 1800   (DECK_L/DECK_W/DOCK_S: metres, step 0)
 service/lancha.py    SIMPLIFY_PX 60, SNAP_PX 400, MIN_ACCESS_PX 24
+                     (CHANNEL_PITCH and TANGENT_SPAN went to metres in step 0)
 service/placement.py snap_into_block(reach_px=160, inset_px=32)
 service/field.py     LOT_SIZE (76, 60), _slide_cells_into(reach=44 cells)
 ```
@@ -183,11 +194,12 @@ service/field.py     LOT_SIZE (76, 60), _slide_cells_into(reach=44 cells)
 `GRID_CELL`: at 6 px cells, `ACERA_CELLS = 3` is 18 px = 4.5 m instead of 12 px
 = 4.8 m. Near enough to leave — verify, do not assume.
 
-Client side: `src/render/` is full of px sizes tuned to today's zoom.
-`CUADS_PER_VIEW` decides the framing on desktop and **the 2.2 zoom floor decides
-it on every phone** (see above) — the floor is the one people forget, it is not
-in `config.py`, and it scales inversely. `src/game/vehicles.js` `w`/`h` are the
-car.
+Client side: `src/render/` is full of px sizes tuned to today's zoom. The
+framing and the floor were the two that mattered and both are metres now
+(`src/assets/world-units.json`, derived in `src/domain/units.js`).
+`src/game/vehicles.js` `w`/`h` are the car, and they are still px — deliberately,
+since the car's size is a SCREEN decision, which is the trade this whole document
+is about.
 
 Speeds are **px/s** (`top: 180…352`), so at the same numbers a delivery takes
 the same seconds only if px-per-metre is unchanged — it is not. **Stage timers
@@ -216,36 +228,43 @@ already marginal on a 30 fps phone today.
 
 ## Order of work
 
-0. **Retire the cuadrícula as a SCREEN unit and name the world's units in
-   metres.** Partly begun on 2026-08-11: `CUAD_M` exists in `config.py`, the
-   cuadra bar and the sliver cap are in metres and m², and the client asks
-   `W.CUAD`/`W.ACERA_PX` instead of keeping its own fallbacks (they disagreed —
-   8 px against 12). `CUAD` still does three jobs and only one is vestigial:
+0. ~~**Retire the cuadrícula as a SCREEN unit and name the world's units in
+   metres.**~~ **DONE 2026-08-14**, and the world came out byte-identical
+   (`[snapshot] OK — 1001 files byte-identical`), which is the whole reason it
+   was worth doing before anything moves.
 
-   | job | where | keep? |
+   The lengths live in **`src/assets/world-units.json`, in metres**, and both
+   ends derive their own pixels from it — `px(m) = round(m · PLANAR_PX_PER_M)`
+   in `churchill/world/config.py`, and `src/domain/units.js` in the game, off
+   `meta.pxPerMeter`. Today every value lands exactly on the integer it used to
+   be hard-coded as, and `tests/test_world_units.py` asserts that against the
+   shipped manifest, so the conversion moved nothing.
+
+   `CUAD` had three jobs and the camera one is gone:
+
+   | job | where | outcome |
    |---|---|---|
-   | camera framing (`CUADS_PER_VIEW · CUAD` = 400 px) | `gfx.js:28`, `tuning.js` | **no — this is the dead one** |
-   | quantisation grid for block detection + synth lots | `detect_blocks`, `b["cells"]`, `SMALL_BLOCK_CUADS`, `OSM_MAX_CUADS`, `FRONTAGE_DEPTH` | **yes, real work** |
-   | tile size (`TILE_PX = TILE_CUADS · CUAD`) | `config.py:43` | yes, but independent |
+   | camera framing (`CUADS_PER_VIEW · CUAD` = 400 px) | `gfx.js` | **retired** — `camera.viewWidthM` = 160 m |
+   | quantisation grid for block detection + synth lots | `detect_blocks`, `b["cells"]`, `SMALL_BLOCK_CUADS`, `OSM_MAX_CUADS`, `FRONTAGE_DEPTH` | kept, and named `grid.lotGridM` = 8 m |
+   | tile size (`TILE_PX = TILE_CUADS · CUAD`) | `config.py` | kept, independent: `grid.tileM` = 800 m |
 
-   Client-side `CUAD` is *only* the camera and the debug grid, so the
-   screen-division idea can go. `detect_blocks` genuinely needs a coarse grid (a
-   "buildable cell" is 5×5 fully-LAND raster cells); that is not the same idea,
-   it merely shares the constant. So give each job its own name in metres:
+   Two things came out differently from the sketch above, both worth knowing.
 
-   ```python
-   VIEW_WIDTH_M = 160    # what the camera frames   (was CUADS_PER_VIEW · CUAD)
-   MAX_VIEW_M            # the phone zoom floor      (was the bare 2.2)
-   LOT_GRID_M   = 8      # block detection / synth lots
-   SIDEWALK_M   = 4.8    # acera depth per side      (was ACERA_CELLS)
-   TILE_M       = 800    # streaming tile side
-   ```
+   **There is no `MAX_VIEW_M` to write down.** The bare `2.2` is a
+   MAGNIFICATION — screen px per world px — so the view it allows is
+   `wCss / floor` and therefore depends on the screen, and naming it as a fixed
+   number of metres would have hidden exactly that. It is authored as
+   **`camera.minScreenPxPerM` = 5.5**, screen px per METRE, which is scale-free:
+   5.5 / 2.5 is the 2.2 the game has always used, and at p = 4.0 it derives to
+   1.375 without anybody remembering that this one goes *down*. Verified
+   against the old formula at eleven widths from 320 to 3840, including the
+   crossover at exactly 880: identical at every one.
 
-   with px derived once: `px(m) = round(m · PLANAR_PX_PER_M)`. **Do this first
-   and on its own** — it leaves the world byte-identical
-   (`tools/world_snapshot.py verify`), it is valuable with or without the
-   rescale, and it is what stops the next scale change from silently meaning
-   something different, as 2.0 → 2.5 did to the civic centre.
+   **`SIDEWALK_M` is a real width but `ACERA_CELLS` is a COUNT.** The depth is
+   `kerb.sidewalkM` = 4.8 m and the cells are derived from it through
+   `GRID_CELL`, which is the point: at a 6 px raster cell the bare `3` would
+   quietly have become 18 px of sidewalk and nothing in the build would have
+   said so.
 
 1. **Decide the framing on a phone.** Note from the floor analysis above that on
    a phone the choice is *how much road ahead you lose*, not how small the car

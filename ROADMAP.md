@@ -568,12 +568,46 @@ conviene hacer antes de mover arte, para no re-medir dos veces.
       cota demostrable. **Media 147 → 54 px** sobre las 430 parcelas con vía de
       OSM, peor caso **10 538 → 1 152 px**; 19 mejores y 6 un poco peores de las
       27 que se movieron (reclaman celdas en secuencia).
-- [ ] **Paso 0: retirar la cuadrícula como unidad de PANTALLA.** `VIEW_WIDTH_M`,
-      `MAX_VIEW_M` (el piso 2.2 que decide el encuadre en teléfono y no está en
-      `config.py`), `LOT_GRID_M`, `SIDEWALK_M`, `TILE_M`. Deja el mundo
-      byte-idéntico y es lo siguiente que conviene hacer aquí. Medio empezado:
-      `CUAD_M` ya existe en `config.py` y el cliente pregunta `W.CUAD` en vez de
-      caer a su propio 20.
+- [x] **Paso 0: retirar la cuadrícula como unidad de PANTALLA.** Hecho
+      2026-08-14, y el mundo salió **byte-idéntico** (`1001 archivos`), que era
+      justamente el punto de hacerlo antes de tocar la escala.
+
+      Todo lo que dos runtimes tienen que medir igual vive en
+      **`src/assets/world-units.json`, EN METROS**, y de ahí derivan sus píxeles
+      el builder (`px(m)` en `config.py`) y el juego (`src/domain/units.js`).
+      Hoy cada metro cae exacto en el entero que estaba escrito a mano — eso es
+      lo que se prueba, y lo que hace que el paso no mueva nada.
+
+      **La cuadrícula dejó de ser una decisión de pantalla.** El encuadre era
+      `CUADS_PER_VIEW · CUAD`: la retícula con la que el BUILDER busca manzanas
+      y corta lotes decidía cuánto veía el jugador, así que reescalar la
+      retícula le reescalaba la vista a todo el mundo sin que nadie lo hubiera
+      elegido. Ahora la cámara encuadra **160 m de suelo**.
+
+      **Y el piso del zoom era el que de verdad decidía.** El `2.2` pelado de
+      `computeZoom` manda en toda pantalla de menos de 880 px CSS — o sea, todo
+      teléfono en horizontal — y es una MAGNIFICACIÓN, así que tiene que BAJAR
+      cuando el mundo gana píxeles por metro; subirlo, que es lo intuitivo,
+      recorta un teléfono de 145 m de vista a 57. Escrito como **px de pantalla
+      por METRO** (5,5) ya no se puede equivocar, y hay un test por cada lado.
+      No existe un `MAX_VIEW_M` fijo que anotar: la vista que ese piso permite
+      es `wCss / 5,5` metros, o sea que depende de la pantalla — el nombre que
+      esta fila pedía habría escondido eso.
+
+      **Comprobado contra la fórmula vieja en once anchos** (320…3840, incluido
+      el cruce exacto en 880): **idéntica en todos**.
+
+      Y de paso las cuatro contratos numéricas que §13 pedía separar: la
+      **lancha** resultó ser una CUARTA copia del contrato del ferry (un
+      `(86, 34)` / `dockS 20` escondido en `service/lancha.py`, que encontró el
+      test del ferry); el `default=[124, 46]` del DTO se fue, porque un default
+      de esquema sólo puede tapar a un productor que dejó de emitir; `pitch` y
+      `tangentSpan` del canal ya no están escritos dos veces; y **el reloj**:
+      `180` significaba dos cosas (Arcade y el largo por defecto de una etapa) y
+      `999` significaba "sin reloj" — Recorrer lo descontaba y lo volvía a poner
+      en 999, una cinta de correr sin espectador, porque el HUD ahí no muestra
+      cronómetro. Una corrida tiene reloj o no lo tiene (`UNTIMED`), y el HUD
+      pregunta eso en vez de recitar nombres de modo.
 
 ## ✅ El malecón llega a la acera, el Paseo tiene feria, y la Travesía es un nivel (2026-08-11)
 

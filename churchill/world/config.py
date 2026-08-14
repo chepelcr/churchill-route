@@ -30,27 +30,22 @@ WORLD2D_DIR = os.path.join(ROOT, "src", "world2d")
 SURFACE_REGISTRY_PATH = os.path.join(ROOT, "src", "assets", "surfaces.json")
 #: Every plant in the world: species, wood mixes, and the build's plantings.
 FLORA_REGISTRY_PATH = os.path.join(ROOT, "src", "assets", "flora.json")
+#: The world's own MEASUREMENTS, in metres — the lengths the builder, the game
+#: and the editor all have to agree about. See the file's own `_why`: every one
+#: of these was a px constant once, and a px constant is only true at the scale
+#: it was tuned at. Read at import, and deliberately NOT tolerant of a missing
+#: file: a builder that invents its own cuadrícula because an asset is absent is
+#: exactly the silent drift this closes.
+WORLD_UNITS_PATH = os.path.join(ROOT, "src", "assets", "world-units.json")
 
-# World SIZE is not a knob: it is computed from the OSM bounds at build time
-# (see planar_setup) and lives with the grid, not here.
-GRID_CELL = 4                   # raster cell size in world px
 
-# Cuadrícula (tile) standardization: one CUAD is the base city tile. Streets and
-# cuadras are whole numbers of cuadrículas so sizes read uniform and identical
-# across devices. CUAD is a multiple of GRID_CELL so it aligns to the raster.
-#   street: secondary = 4 cuadrículas (2/lane), principal = 6 (3/side)
-#   cuadra: >= 6x6 cuadrículas of land + 1 cuadrícula of acera on every side
-#   view:   the engine frames at most CUADS_PER_VIEW cuadrículas (responsive zoom)
-CUAD = 20                       # px per cuadrícula (a lane ~= 2 cuadrículas)
-CUADS_PER_VIEW = 20             # advisory; the renderer owns the actual framing
-CUAD_CELLS = CUAD // GRID_CELL  # raster cells per cuadrícula side
-assert CUAD % GRID_CELL == 0, "CUAD must align to the raster grid"
-# Planar tiling: the world is emitted as a grid of square tiles the accessor
-# streams by camera region. A tile is a whole number of cuadrículas (so it
-# aligns to CUAD and the raster grid) ~2000 px on a side.
-TILE_CUADS = 100                # 100 CUAD = 2000 px per tile side
-TILE_PX = TILE_CUADS * CUAD     # 2000
-TILE_CELLS = TILE_PX // GRID_CELL   # 500 raster cells per tile side
+def _world_units():
+    import json
+    with open(WORLD_UNITS_PATH, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+UNITS = _world_units()
 
 # local equirectangular projection anchor (Faro de La Punta)
 LAT0, LON0 = 9.9770, -84.8512
@@ -104,6 +99,46 @@ M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
 # measure before touching the stage timers, do not assume.
 PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "2.5"))   # world zoom
 ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.32"))  # widen streets
+
+
+def px(m):
+    """A real length in world pixels, at whatever scale this build runs at.
+
+    THE one conversion. `docs/RESCALE.md` step 0 exists because the world used
+    to hold two dozen numbers that were secretly `metres · 2.5` with the 2.5
+    already multiplied in, so a rescale changed what each of them MEANT and
+    nothing said so."""
+    return round(m * PLANAR_PX_PER_M)
+
+
+# ---- the world's three quantisations, from src/assets/world-units.json ------
+# World SIZE is not a knob: it is computed from the OSM bounds at build time
+# (see planar_setup) and lives with the grid, not here.
+#
+# GRID_CELL is the surface raster's cell — every collision answer in the game is
+# rounded to it. CUAD (la cuadrícula) is the COARSE grid `detect_blocks` walks to
+# find a manzana and `synth_buildings` cuts lots on; it is a multiple of
+# GRID_CELL so it aligns to the raster:
+#   street: secondary = 4 cuadrículas (2/lane), principal = 6 (3/side)
+#   cuadra: >= 6x6 cuadrículas of land + 1 cuadrícula of acera on every side
+#
+# It is NO LONGER a screen unit. The camera used to frame `CUADS_PER_VIEW · CUAD`
+# px, so resizing the block-detection grid resized the player's view with it —
+# see `camera` in world-units.json, and `computeZoom` in src/render/c2d/gfx.js,
+# which now asks for metres. `CUADS_PER_VIEW` survives only as the advisory
+# `meta.cuadsPerView` the manifest has always carried.
+GRID_CELL = px(UNITS["grid"]["rasterCellM"])         # raster cell size in world px
+CUAD = px(UNITS["grid"]["lotGridM"])                 # px per cuadrícula
+CUAD_CELLS = CUAD // GRID_CELL  # raster cells per cuadrícula side
+assert CUAD % GRID_CELL == 0, "CUAD must align to the raster grid"
+CUADS_PER_VIEW = round(px(UNITS["camera"]["viewWidthM"]) / CUAD)
+# Planar tiling: the world is emitted as a grid of square tiles the accessor
+# streams by camera region. A tile is a whole number of cuadrículas (so it
+# aligns to CUAD and the raster grid) ~2000 px on a side.
+TILE_PX = px(UNITS["grid"]["tileM"])                 # 2000
+TILE_CUADS = TILE_PX // CUAD    # 100 CUAD per tile side
+TILE_CELLS = TILE_PX // GRID_CELL   # 500 raster cells per tile side
+assert TILE_PX % CUAD == 0, "a tile must be a whole number of cuadrículas"
 # real-ish carriageway widths (metres) per OSM highway class; painted width =
 # ROAD_WIDTH_M · ARCADE_STREET_MUL · px_per_m (kept modest so junction gores survive)
 ROAD_WIDTH_M = {
@@ -237,17 +272,22 @@ CLS_MALECON = Surface.MALECON
 # of the 306 real named footprints on top of their own acera: a building mapped
 # at its true property line has nowhere else to be once the painted roadway and
 # a ten-metre kerb strip have both eaten inward from the centreline.
-# 3 cells = 12 px = 6 m. Still wider than a real Puntarenas sidewalk, because an
-# arcade one has to be walkable and legible at game zoom, but every cell taken
+# 4.8 m = 12 px = 3 cells. Still wider than a real Puntarenas sidewalk, because
+# an arcade one has to be walkable and legible at game zoom, but every cell taken
 # off it is a cell of cuadra INTERIOR handed back — 8 px per street, on all four
 # sides of every manzana, which is what makes the blocks read as blocks.
-ACERA_CELLS = 3                 # sidewalk depth: 12 px each side
+#
+# The DEPTH is a real width and lives in metres (world-units.json `kerb`); the
+# CELLS are how the stamper counts, so they follow GRID_CELL. That is the whole
+# reason this was worth converting: at a 6 px cell, `3` would quietly have become
+# 18 px of sidewalk, and nothing in the build would have mentioned it.
+ACERA_CELLS = max(1, round(px(UNITS["kerb"]["sidewalkM"]) / GRID_CELL))
 # A FIELD's ring is shallower than a block's. All it has to do is keep the
 # pitch's white lines off the asphalt, and every px of it is grass and markings
 # the player doesn't get: at full depth the Carmen plaza went from 84x92 to
 # 60x48. 8 px still reads as a kerb strip (the drawn sidewalk band is 20 px, so
 # the pitch tucks under most of it, exactly like a park's green skirt).
-FIELD_ACERA_CELLS = 2           # 8 px — estadio / plaza pitches
+FIELD_ACERA_CELLS = max(1, round(px(UNITS["kerb"]["fieldSidewalkM"]) / GRID_CELL))
 # see enums.surface: an acera exists only where there is a street to walk beside
 STREET_CLASSES = surface_enum.STREET
 # what a vehicle may drive on (BEACH included: the sand is slow, not a wall)

@@ -1,0 +1,63 @@
+{
+  "_note": "LAS MEDIDAS DEL MUNDO, EN METROS. Every length here is a real size that two or more runtimes must agree about. The builder (`churchill/world/config.py`), the game and the editor all read this file and derive their own pixels from it — nobody writes a pixel constant for one of these again.",
+
+  "version": 1,
+
+  "_why": "A px constant is only true at the scale it was tuned at, and this world has been rescaled three times. Each time, numbers that meant something in the world silently came to mean something else: at 1.6 -> 2.0 the StreetIndex spans stopped reaching Calle 6 and Las Playitas fell off the drivable network; at 2.0 -> 2.5 the hand-laid px anchors missed the real manzanas by 4 000 px and the ENTIRE civic centre stopped existing, with two WARN lines to say so. `STREET_SPAN_M`, `SHORE_RECLAIM_M`, `MALECON_BAND_M`, `FARO_ESP_R_M` and `BLOCK_MIN_M` were converted one at a time as each burned. This is the rest of them, in one place, before the next rescale rather than after it.",
+
+  "_derive": "px(m) = round(m * pxPerMetre), with pxPerMetre from `manifest.meta` (PLANAR_PX_PER_M in the builder). At today's 2.5 every value below lands exactly on the integer it used to be hard-coded as — that is the invariant `tests/test_world_units.py` asserts, and it is why this conversion leaves the emitted world byte-identical.",
+
+  "_scope": "A length is in here when CHANGING IT IN ONE PLACE AND NOT THE OTHER would be a bug nobody sees. A margin inside one drawing recipe, a simplification tolerance measured on a drawn vector rather than on the ground, or a loop epsilon is not that, and stays where it is used. See docs/RESCALE.md's audit list for what has deliberately been left px-native.",
+
+  "grid": {
+    "_note": "The three quantisations the world is built on. All three are px-exact at any scale where they land on whole pixels; the builder asserts the raster alignment it has always asserted.",
+    "rasterCellM": 1.6,
+    "rasterCellNote": "GRID_CELL, the surface raster's cell — 4 px today. The RLE's resolution: every collision answer in the game is rounded to this.",
+    "lotGridM": 8.0,
+    "lotGridNote": "CUAD, la cuadrícula. NOT a screen unit (see `camera` below, which used to borrow it): it is the coarse grid `detect_blocks` walks to find a manzana and `synth_buildings` cuts lots on. 8 m is a lot's frontage step.",
+    "tileM": 800.0,
+    "tileNote": "the streaming tile's side — 2 000 px, 640 tiles. Independent of the other two except that it must be a whole number of cuadrículas."
+  },
+
+  "kerb": {
+    "_note": "Sidewalk depth per side, carved INTO the manzana — every centimetre of it is block frontage the town does not get. See ACERA_CELLS in config.py for what 10 m of it did to 245 named footprints.",
+    "sidewalkM": 4.8,
+    "sidewalkNote": "a manzana's acera ring: 12 px = 3 raster cells today. Still wider than a real Puntarenas sidewalk (1.5-2 m), because an arcade one has to be walkable and legible at game zoom.",
+    "fieldSidewalkM": 3.2,
+    "fieldSidewalkNote": "a PARCEL's ring is shallower: all it has to do is keep the pitch's white lines off the asphalt. 8 px = 2 cells."
+  },
+
+  "camera": {
+    "_note": "THE CUADRÍCULA IS NOT A SCREEN UNIT, and this is where it stopped being one. The framing was `CUADS_PER_VIEW * CUAD` px — a screen decision expressed in the block-detection grid, so a rescale that resized the grid resized the camera with it, for no reason anybody had chosen.",
+    "viewWidthM": 160.0,
+    "viewWidthNote": "how much ground the camera frames across the viewport. 400 px at today's scale, which is exactly the 20 cuadrículas it was.",
+    "minScreenPxPerM": 5.5,
+    "minScreenNote": "THE LEGIBILITY FLOOR, and the constant everybody forgets. It was a bare `2.2` in `computeZoom` — a magnification, i.e. SCREEN px per WORLD px, so it had to scale INVERSELY with pxPerMetre and the intuitive guess (scale it up) crops a phone to 57 m of view. Stated as screen px per METRE it is scale-free: 5.5 / 2.5 = the 2.2 it has always been. It binds on every screen narrower than 880 CSS px, i.e. every phone in landscape, where it converts the whole framing trade into 'how much road ahead you see' rather than 'how big the car is'. There is no fixed MAX_VIEW_M to write down: the view this floor allows is `wCss / minScreenPxPerM` metres and therefore depends on the screen."
+  },
+
+  "channel": {
+    "_note": "El canal de la Travesía. The build SOUNDS the estero along a smoothed normal and emits the measured lane; the client places every buoy, gate and current filament on it. Two numbers have to be the same at both ends or the client is reading a different line from the one that was sounded.",
+    "pitchM": 16.0,
+    "pitchNote": "CHANNEL_PITCH: the sounding station spacing, 40 px. It is emitted as `channel.pitch` and the client's `c.pitch || 40` is the one legacy fallback, for a manifest built before the field existed.",
+    "tangentSpanM": 24.0,
+    "tangentSpanNote": "TANGENT_SPAN: the arclength either side of a station the heading is averaged over, 60 px. This one is NOT emitted, so it was two copies of the number with a comment at each end asking the other to keep up. The route averages ~23 px a segment, so disagreeing here is a few degrees, which at 150 px out is the difference between mid-channel and the mangrove."
+  },
+
+  "vessels": {
+    "_note": "THE BOATS YOU CAN PARK ON. A deck is a collision box the player drives INSIDE and a ramp the build has to pave up to, so the builder, the schema, the game and the editor were all carrying the same numbers. The world emits them PER VESSEL (`deck`, `dockS`) because the editor can give one boat her own; these are what the build stamps and what a manifest built before those fields existed falls back to.",
+    "_dockNote": "`dockOffsetM` is how far along her route she rests at the berth. The boarding ramp is paved to the stern at rest, which is a function of all three numbers — get one wrong and you have a boat you can see and cannot board.",
+
+    "ferry": {
+      "_note": "Los ferris del golfo — Paquera and Playa Naranjo. A real Puntarenas ferry is about 50 m.",
+      "deckLengthM": 49.6,
+      "deckWidthM": 18.4,
+      "dockOffsetM": 11.2
+    },
+    "lancha": {
+      "_note": "La lancha del estero, a much smaller boat: the Pitahaya crossing. Her defaults were a FOURTH copy of this contract, found by the test that checks the ferry's — `service/lancha.py` carried a bare `(86, 34)` and `dockS 20` that nothing else knew about.",
+      "deckLengthM": 34.4,
+      "deckWidthM": 13.6,
+      "dockOffsetM": 8.0
+    }
+  }
+}

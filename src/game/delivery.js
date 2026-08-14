@@ -7,6 +7,7 @@ import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { content } from "../content/remote.js";
 import { tuning } from "./tuning.js";
+import { addTime } from "./timers.js";
 import { economy, COINS_PER_DELIVERY, COINS_PERFECT_BONUS } from "./economy.js";
 import { analytics } from "../monetize/analytics.js";
 
@@ -172,8 +173,10 @@ export function deliverChurchill() {
   });
   state.carrying = null;
   state.storyTip = t("tip.delivered");
-  if (state.mode === "arcade" || state.mode === "story") state.timeLeft += meltPct < 0.4 ? 10 : 5;
-  if (state.mode === "explore") state.timeLeft += meltPct < 0.4 ? 12 : 6;
+  // A delivery buys time back. `addTime` is a no-op on an untimed run, which
+  // is why Recorrer no longer needs a line of its own here — it was paying 12 s
+  // into a clock nobody was shown.
+  addTime(state, meltPct < 0.4 ? 10 : 5);
   // stage clear check
   if (state.stage && state.stageDeliveries >= state.stageTarget) {
     state.won = true;

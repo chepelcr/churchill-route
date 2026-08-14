@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Game } from "../../game/index.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
+import { isTimed } from "../../game/timers.js";
 import { useT } from "../../i18n/index.js";
 import Icon from "../Icon.jsx";
 
@@ -41,7 +42,10 @@ export default function HUD({ onPause }) {
           <div className="lbl">{t("hud.combo")}</div>
           <div className="val">×{s.combo}</div>
         </div>
-        {s.mode === "explore" || s.mode === "tutorial" ? (
+        {/* NO CLOCK, NO CARD. This asked for the two mode names, which is the
+            same list `physics.js` kept and one of them was already wrong; a run
+            without a clock says so in `timeLeft` itself (timers.js). */}
+        {!isTimed(s) ? (
           <div className="hud-card">
             <div className="lbl">{t("hud.mode")}</div>
             <div className="val" style={{ fontSize: 14 }}>{s.mode === "tutorial" ? t("hud.tutorial") : t("hud.explore")}</div>

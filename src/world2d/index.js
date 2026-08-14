@@ -34,9 +34,17 @@ export const WORLD2D = (function () {
   // and both renderers to 8, so a stale manifest would have moved every NPC
   // one way and drawn the kerb another. One fallback, resolved here where the
   // manifest is read, and everybody asks this accessor for the answer.
-  const LEGACY_META = { aceraPx: 12, cuad: 20 };
+  //
+  // `pxPerMeter` joined them on 2026-08-14: it is the world's SCALE, and it is
+  // what turns every length in `src/assets/world-units.json` — the camera's
+  // framing, the channel's sounding pitch, a ferry's deck — from a real size
+  // into this build's pixels. Before that each of those was a px literal that
+  // was only true at the scale it was tuned at, which is how a rescale once
+  // deleted the whole civic centre without failing anything.
+  const LEGACY_META = { aceraPx: 12, cuad: 20, pxPerMeter: 2.5 };
   const ACERA_PX = META.aceraPx || LEGACY_META.aceraPx; // sidewalk depth per side
   const CUAD = META.cuad || LEGACY_META.cuad;           // px per cuadrícula
+  const PX_PER_M = META.pxPerMeter || LEGACY_META.pxPerMeter; // world px per metre
 
   // ----- backdrop + POIs (small, eager from the manifest) --------------------
   const LANDMARKS = manifest.landmarks;
@@ -484,7 +492,7 @@ export const WORLD2D = (function () {
   }
 
   return {
-    W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES, ACERA_PX, CUAD,
+    W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES, ACERA_PX, CUAD, PX_PER_M,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
     WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, FERIA, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle

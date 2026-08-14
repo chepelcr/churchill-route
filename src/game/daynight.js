@@ -18,19 +18,15 @@
 import { state } from "./state.js";
 import { pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
+import SIM from "../content/simulation.json" with { type: "json" };
 
 //: a whole day, in real seconds. Four phases, so ~2.5 min each.
-export const DAY_SECONDS = 600;
+export const DAY_SECONDS = SIM.day.seconds;
 //: the running order of a day. `sunny` is midday and gets the longest share.
-const PHASES = [
-  { w: "sunny", share: 0.42 },
-  { w: "sunset", share: 0.18 },
-  { w: "night", share: 0.28 },
-  { w: "sunset", share: 0.12 },   // amanecer: the same palette, the other end
-];
+const PHASES = SIM.day.phases.map((p) => ({ w: p.weather, share: p.share }));
 //: how often a storm rolls in, and how long it stays.
-const STORM_EVERY = [210, 420];   // s, random inside the range
-const STORM_LASTS = [45, 90];
+const STORM_EVERY = SIM.day.stormEverySeconds;   // s, random inside the range
+const STORM_LASTS = SIM.day.stormLastsSeconds;
 
 const cycle = {
   on: false, t: 0, phase: -1,

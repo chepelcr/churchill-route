@@ -11,28 +11,32 @@ import { VEHICLES } from "./vehicles.js";
 import { SURFACE } from "./surfaces.js";
 import { ROAD_ROLE } from "../domain/vocabulary.generated.js";
 import { npcCrowdSize, npcMayStand, npcSpeed, npcSurfaceClasses, npcType } from "./npcs.js";
+import SIM from "../content/simulation.json" with { type: "json" };
 
 // The sidewalk's depth is a WORLD knob (ACERA_CELLS): the accessor resolves it
 // from the manifest and owns the single legacy default, so the sim and the
 // renderers can no longer fall back to different kerbs.
 const ACERA_PX = W.ACERA_PX;
 // how far from the camera we keep life alive / spawn it (world px)
-const KEEP_R = 1400;
-const SPAWN_R = 1100;
-const SPAWN_MIN = 300; // keep spawns outside the visible view (half-diagonal ≈ 230)
+// HOW MUCH LIFE THERE IS, AND HOW FAR OUT IT LIVES — `src/content/simulation.json`.
+// The algorithms stay here: the surface sampler, the rails, the advancers. These
+// are the numbers that decide how the town feels, and they are exactly what a
+// designer expects to change without opening this file.
+const KEEP_R = SIM.streaming.keepRadius;
+const SPAWN_R = SIM.streaming.spawnRadius;
+const SPAWN_MIN = SIM.streaming.spawnMin;
 // target populations near the camera (tuned to the corridor build's feel:
 // sidewalks full of people, streets with light town traffic)
 // The walker count comes from the REGISTRY (npcTypes.json), because "how many
 // people are on the sidewalk" is a thing the editor is meant to be able to
 // change; the rest are still tuned here.
-const TARGET = { traffic: 14, pedestrians: npcType("walker").density?.target || 64,
-                 vendors: 10, animals: 8, gulls: 16, boats: 6, trains: 1,
-                 // A banco de atún is an EVENT, not scenery: two of them in
-                 // sight at once and the gulf stops being empty water with
-                 // something happening in it.
-                 schools: 2 };
+// The walker count comes from the NPC REGISTRY, not from here: "how many
+// people are on the sidewalk" belongs with the type the editor already
+// authors. Everything else is the population table.
+const TARGET = { ...SIM.population, pedestrians: npcType("walker").density?.target || 64 };
+delete TARGET.buses;
 // how many of that traffic are buses on the ruta urbana (see buses.js)
-const BUSES_WANTED = 2;
+const BUSES_WANTED = SIM.population.buses;
 const CAR_PALETTE = ["#9bc4d4", "#f4d77a", "#e85d75", "#6fbf99", "#caa089", "#fff", "#3a3a48", "#f08a5d"];
 
 // the camera the maintenance centres on (set each frame by physics)
@@ -647,11 +651,13 @@ export function advanceSwimmer(pe, dt) {
 // world-wide for free — playeros turn up on Playitas and Caldera, not only on
 // the Paseo, because the rule is "sand", not "the Paseo's sand".
 const TAU = Math.PI * 2;
-const SURFACE_CROWDS = [
-  // kind, how many near the camera, how many of them are sitting still
-  ["playero", npcType("playero").density?.target ?? 16, 0.34],
-  ["paseante", npcType("paseante").density?.target ?? 22, 0.22],
-];
+// kind, how many near the camera, how many of them are sitting still. The
+// COUNT is the NPC registry's (it belongs to the type); the SITTING FRACTION is
+// simulation.json's, and it is the whole trick — a beach where everybody is
+// walking reads as a corridor.
+const SURFACE_CROWDS = Object.entries(SIM.crowds)
+  .filter(([kind]) => !kind.startsWith("_"))
+  .map(([kind, c]) => [kind, npcType(kind).density?.target ?? 16, c.sitting]);
 function maintainSurfaceCrowds() {
   for (const [kind, target, sitting] of SURFACE_CROWDS) {
     let n = 0;
@@ -681,8 +687,8 @@ function maintainSurfaceCrowds() {
 // the point: fans wander, and a group of people wandering on a beach is a
 // crowd, not a game. Everyone runs at the ball and whoever reaches it kicks it
 // somewhere else, which is enough to read as fútbol playa from above.
-const GAME_R = 90;                       // px: the pitch they mark out
-const GAMES_WANTED = 1;                  // one game in sight is an event; three is a tournament
+const GAME_R = SIM.beachGames.radiusPx;  // px: the pitch they mark out
+const GAMES_WANTED = SIM.beachGames.wanted;  // one in sight is an event; three is a tournament
 function maintainBeachGames() {
   for (let i = beachGames.length - 1; i >= 0; i--) {
     const G = beachGames[i];

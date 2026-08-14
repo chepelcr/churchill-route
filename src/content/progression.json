@@ -1,0 +1,65 @@
+{
+  "_note": "LA PROGRESIÓN — what the tutorial teaches and in what order, which barrios are open, and what each mode starts with. `tutorial.js`, `progress.js` and `modes.js` keep the state machine and the persistence; this is the shape of the journey.",
+
+  "version": 1,
+
+  "_scope": "The steps and their thresholds are content — 'drive 260 px and turn 1.6 radians' is a judgement about when somebody has understood steering. Reading the input, accumulating the distance and writing localStorage are not.",
+
+  "tutorial": {
+    "_note": "A guided, TIMERLESS run that teaches every control and then the whole delivery loop. Six steps teach, the seventh congratulates and ends the run as a win.",
+    "_keys": "`key` is the i18n key of the instruction. Four of them end in `.touch`/`.keys` — the HUD picks the wording from the pointer type, because 'hold the rim' and 'hold X' are the same lesson and a phone must not be told about a keyboard.",
+    "_gates": "`gate` names the CONDITION the engine implements; the numbers beside it are this file's. A gate with no implementation is a step nobody can pass, which is why `tests/test_progression.py` checks every one against the module.",
+
+    "steps": [
+      { "id": "steer", "key": "tut.steer", "platform": true, "gate": "driveAndTurn",
+        "distancePx": 260, "turnRadians": 1.6,
+        "note": "moving is not the lesson — TURNING is, so it asks for both" },
+      { "id": "speed", "key": "tut.speed", "platform": true, "gate": "holdSpeed",
+        "speed": 170, "seconds": 0.8,
+        "speedNote": "scaled by tuning.speed, so the lesson still passes for a player who has slowed the game down" },
+      { "id": "turbo", "key": "tut.turbo", "platform": true, "gate": "holdBoost", "seconds": 0.6 },
+      { "id": "brake", "key": "tut.brake", "platform": true, "gate": "brakeAtSpeed",
+        "speed": 70, "seconds": 0.4,
+        "note": "at speed, or holding the brake while parked would teach nothing" },
+      { "id": "pickup", "key": "tut.pickup", "gate": "carrying" },
+      { "id": "deliver", "key": "tut.deliver", "gate": "delivered", "count": 1 },
+      { "id": "done", "key": "tut.done", "gate": "linger", "seconds": 4,
+        "note": "the run ends as a WIN, so the results screen says so" }
+    ],
+
+    "sound": "perfect",
+    "soundNote": "played on every advance — the same three notes a perfect delivery gets, so progress feels like the thing the game already rewards"
+  },
+
+  "unlocks": {
+    "_note": "Which districts a new save starts with, and which are closed for the MVP.",
+    "startsUnlocked": ["faro", "carmen"],
+
+    "mvpLocked": ["cocal", "mata", "caldera", "chacarita", "elroble", "barranca", "esparza"],
+    "_mvpNote": "A SCOPE DECISION, NOT A GEOMETRY ONE. Reopening a barrio is deleting it from this list — the wall, the stage cards and the delivery clamp all follow from it.",
+    "_shapeNote": "The gate is the BARRIOS THEMSELVES and not a line, because in a 2-D world a line is the wrong shape: the four inland ones OVERLAP the coastal districts on x (Chacarita starts at 28642, a third of the way into El Cocal), so a single wall fenced off exactly the three districts that are supposed to be open.",
+
+    "_graph": "The unlock GRAPH is not here: a stage names the district it opens (`unlock` in content/world/stages.json), so there is one place a stage's reward is written and it sits with the stage."
+  },
+
+  "modes": {
+    "_note": "What each mode starts with. Durations live in `src/game/timers.js` — they are seconds, and the untimed modes carry no clock at all rather than a large number nobody counts down.",
+    "arcade": {
+      "weatherCycle": false,
+      "note": "ARCADE PICKS ITS SKY. Three minutes is shorter than any phase of the day, so a cycle would either never turn or strobe. `cycle` is offered for anyone who wants the turn."
+    },
+    "explore": {
+      "weatherCycle": true,
+      "note": "RECORRER GETS A DAY. Ten real minutes for a full turn — sunny, atardecer, night, amanecer — with a storm rolling in now and then and handing the sky back where it left off. An explicit `weather` still wins: asking for one and getting a cycle would be a bug."
+    },
+    "story": {
+      "weatherCycle": false,
+      "note": "A stage's sky is part of its brief. Except la Travesía, whose sky and tide ARE the brief: it rotates through four conditions by ATTEMPT rather than naming one, so the estero is a different course at bajamar than at pleamar."
+    },
+    "tutorial": {
+      "weather": "sunny",
+      "weatherCycle": false,
+      "note": "Nothing to learn from a storm on your first run."
+    }
+  }
+}

@@ -529,57 +529,42 @@ motor la física, el intérprete y las transiciones de estado.
       declaración quedó dentro de una función y **compiló igual** — sólo el
       navegador la cazó, que es la razón por la que en este repo un `pnpm build`
       no cuenta como verificación.
-- [ ] **`src/content/simulation.json`**: perfiles de población, tablas de
-      encuentro, presets de bus/ferry/travesía/día/clima/marea desde `spawns.js`,
-      `buses.js`, `crossing.js`, `daynight.js`, `tides.js`. El avance de
-      entidades y la colisión se quedan.
-- [ ] **`src/content/progression.json`**: grafo del tutorial, metas, grafo de
-      desbloqueos, defaults de modo desde `tutorial.js`, `progress.js`,
-      `modes.js`. Las transiciones de estado y la persistencia se quedan.
-- [x] **Los efectos del vehículo son un repertorio.** Hecho 2026-08-14, a raíz
-      de la pregunta "¿cómo están mapeadas las animaciones de los vehículos?".
-      La respuesta honesta era: **no lo estaban**. `vehicles.json` era geometría
-      estática y TODO el movimiento estaba soldado en `drawPlayer` como
-      `if (afloat)` — la estela, los remolinos de giro, la sombra, la escora del
-      casco y el viento de velocidad. Una lancha creada en el editor recibía el
-      tratamiento de un carro y no había forma de decir otra cosa.
+- [x] **`src/content/simulation.json`.** Hecho 2026-08-14. Cuánta vida hay y a
+      qué distancia vive, cómo se comportan los buses en el cordón, cuánto dura
+      un día y cómo se mueve la marea. Los algoritmos se quedan: los rieles, el
+      muestreador de superficie, el coseno que ES la marea.
 
-      Ahora `src/assets/effects.json` es el repertorio: **el algoritmo es del
-      motor, la SELECCIÓN y cada número son del vehículo**. Se elige del
-      repositorio (`turnWind` para el carro, `wake` y `heel` para la lancha) y se
-      afina. El **orden de pintado es del REGISTRO, no de cada vehículo** — los
-      remolinos y la estela van primero y la sombra encima —, porque eso es una
-      propiedad de los efectos y no del barco.
+      El conteo de peatones NO se movió acá y es a propósito: "cuánta gente hay
+      en la acera" le pertenece al TIPO, que el editor ya autora en
+      `npcTypes.json`, y una segunda copia sería justo la deriva que este
+      proyecto viene borrando — hay una prueba de los dos lados que la rechaza.
 
-      **El viento de velocidad no lo teníamos ni ubicado.** Lo notó el usuario
-      manejando: 12 rayas blancas por el borde derecho de la pantalla arriba de
-      240 px/s, al final de `render()`, sin nombre ni comentario. Es el único
-      efecto en espacio de PANTALLA. Se documentaron sus dos rarezas de siempre
-      sin cambiarlas: es un umbral y no una rampa, y se re-aleatoriza cada cuadro
-      contra el borde derecho apunte la nave a donde apunte.
+      El validador caza tres cosas que un humano no ve leyendo: que las fases
+      del día **sumen uno** (si no, el reloj se salta o repite un tramo), que la
+      tormenta más larga no dure más que el hueco más corto entre tormentas
+      (llovería para siempre), y que nada aparezca **dentro del viewport** (la
+      media diagonal son ~230 px).
+- [x] **`src/content/progression.json`.** Hecho 2026-08-14. Los siete pasos del
+      tutorial con sus umbrales, los barrios abiertos y los defaults de cada
+      modo.
 
-      También: `DELIVERY_BAG_MOUNTS` —cuatro puntos de anclaje por vehículo que
-      seguían en el renderer— pasó a los registros de cada vehículo, y
-      `drawCarriedCargo` dejó de ramificar por el NOMBRE del vehículo, que era
-      el último lugar del renderer que conocía uno por nombre. Y `shapes.js`
-      aprendió los cuatro verbos de movimiento de la feria (`spin`, `bob`,
-      `swing`, `pump`): **el carrusel llevaba desde siempre siendo más editable
-      que el carro del jugador**.
+      **Un paso nombra la CONDICIÓN que el motor implementa** y trae sus propios
+      números — "manejá 260 px y girá 1,6 radianes" es un juicio sobre cuándo
+      alguien entendió el volante, no una constante de motor. Y eso abrió un
+      modo de falla que antes era imposible: cuando esto era un `switch` sobre
+      el índice del paso, no se podía nombrar mal una condición; ahora sí, y
+      **un paso que espera una condición inexistente es un paso que nadie puede
+      pasar** — la corrida se queda ahí, sin error, en el control donde cayó el
+      error de dedo. Hay prueba de los dos lados.
 
-      Probado en **cinco hojas sintéticas: 2 043 700 píxeles, cero distintos**
-      (`tools/shot-effects.mjs` es nuevo — las otras cuatro hojas dibujan el
-      CUERPO y no podían ver ninguno de estos efectos). 14 pruebas nuevas, entre
-      ellas la que no se puede ver en revisión: **todo parámetro que un pintor
-      LEE tiene que estar definido**, porque si falta es `undefined`, o sea
-      `NaN`, o sea que el efecto no dibuja nada y nadie se entera.
-- [ ] **El renderer, módulo por módulo** — `docs/inventory.md` §14, medido
-      2026-08-14 al preguntarse si *todo* Canvas2D puede ser data. Respuesta:
-      **casi todo el ARTE sí, el COMPOSITOR no**, y son cuatro registros más, no
-      una reescritura. 7 000 líneas, ~420 colores literales, de los cuales 418
-      están en nueve módulos de arte y los dos núcleos que nunca deben ser data
-      (el compositor y el intérprete) tienen **cero**. Lo que falta: el arte de
-      NPCs y tráfico (`entities.js`, 107), el HUD (67), los ocho encuentros del
-      estero (53), y el campo ferial más el malecón (78).
+      De paso: `["faro", "carmen"]` estaba escrito **tres veces** en
+      `progress.js` —el camino sin save, la reparación de lista vacía y el de
+      parseo fallido—, o sea tres lugares que olvidar cuando se abra un barrio.
+      Ahora es uno.
+
+      Verificado caminando el tutorial completo en el navegador: los siete pasos
+      avanzan, las cuatro llaves de plataforma resuelven a `.keys`/`.touch`, y
+      la corrida termina como VICTORIA.
 - [ ] **`src/assets/hud.json`** (P2): presets de layout/estilo del HUD y los
       materiales del minimapa (`c2d/hud.js`, 718 líneas). Las tintas del
       minimapa que eran cubiertas de muelle ya se fueron a `materials.json`.

@@ -26,21 +26,23 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { pedestrians } from "./state.js";
 import { advanceCarOnRoad } from "./spawns.js";
+import SIM from "../content/simulation.json" with { type: "json" };
 
 // how far from the camera paradas stay staffed with people waiting
-const STOP_KEEP_R = 1300;
-const STOP_SPAWN_R = 1000;
+const B = SIM.buses;
+const STOP_KEEP_R = B.stopKeepRadius;
+const STOP_SPAWN_R = B.stopSpawnRadius;
 // A bus starts braking this far from the parada and halts within HALT of it.
-const BRAKE_R = 105;
-const HALT_R = 15;
+const BRAKE_R = B.brakeRadius;
+const HALT_R = B.haltRadius;
 // …but only for a stop it is actually passing: a parada across a wide avenida,
 // or one on a parallel street, is not this bus's business.
-const LATERAL_R = 34;
-const DWELL = [2.6, 4.4];         // seconds with the doors open
-const WAITING_PER_STOP = 3;       // at most, and usually fewer
-const ALIGHT_MAX = 2;
-const QUIET_AFTER = 18;           // seconds a served parada takes to fill again
-const CREEP = 10;                 // px/s the bus rolls at while pulling in
+const LATERAL_R = B.lateralRadius;
+const DWELL = B.dwellSeconds;     // seconds with the doors open
+const WAITING_PER_STOP = B.waitingPerStop;   // at most, and usually fewer
+const ALIGHT_MAX = B.alightMax;
+const QUIET_AFTER = B.quietAfterSeconds;    // a served parada takes this to fill again
+const CREEP = B.creepSpeed;       // px/s the bus rolls at while pulling in
 
 // ---------------------------------------------------------------- paradas ---
 // The stop list, bucketed once into a coarse grid: `W.SIGNS` is a flat array of

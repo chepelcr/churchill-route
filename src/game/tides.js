@@ -23,19 +23,20 @@
 //     everything in it is moving. High water is not the easy case.
 import { state } from "./state.js";
 import { DAY_SECONDS, dayCycleOn, timeOfDay } from "./daynight.js";
+import SIM from "../content/simulation.json" with { type: "json" };
 
 //: a full tidal cycle in real seconds — TWO of them per day, which is what
 //: makes it semidiurnal like the real gulf.
-export const TIDE_PERIOD = DAY_SECONDS / 2;
+export const TIDE_PERIOD = DAY_SECONDS * SIM.tide.periodFraction;
 
 //: how much a storm piles the water up, on top of the astronomical tide.
 //: Enough to drown the banks a bajamar would have exposed, never enough on its
 //: own to make a low tide read as a high one.
-const STORM_SURGE = 0.28;
+const STORM_SURGE = SIM.tide.stormSurge;
 
 //: how fast the surge arrives and leaves. A storm that raised the water
 //: instantly would pop the banks out of existence mid-turn.
-const SURGE_RATE = 0.35;
+const SURGE_RATE = SIM.tide.surgeRate;
 
 const tide = {
   t: 0,             // own clock, used when the day clock is off

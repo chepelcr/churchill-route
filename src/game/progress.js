@@ -4,6 +4,7 @@ import { state, pushFloat } from "./state.js";
 import { t } from "../i18n/index.js";
 import { ensureEconomy } from "./economy.js";
 import { analytics } from "../monetize/analytics.js";
+import PROGRESSION from "../content/progression.json" with { type: "json" };
 
 const STORAGE_KEY = "churchill_progress_v1";
 
@@ -24,10 +25,16 @@ const STORAGE_KEY = "churchill_progress_v1";
 // This is a SCOPE decision, not a geometry one: reopening them is adding the
 // district back to this list, and the wall, the stage cards and the delivery
 // clamp all follow from it.
-export const MVP_LOCKED = [
-  "cocal", "mata", "caldera",
-  "chacarita", "elroble", "barranca", "esparza",
-];
+export const MVP_LOCKED = PROGRESSION.unlocks.mvpLocked;
+
+//: What a brand-new save can already reach. Written down ONCE — it was three
+//: separate literals in this file (the no-save path, the empty-list repair and
+//: the parse-failure path), which is three places to forget when a district
+//: opens.
+const STARTS_UNLOCKED = PROGRESSION.unlocks.startsUnlocked;
+function freshProgress() {
+  return { unlocked: [...STARTS_UNLOCKED], clearedStages: [], best: 0 };
+}
 export function isMvpLocked(id) { return MVP_LOCKED.includes(id); }
 /**
  * The MVP gate, as the BARRIOS THEMSELVES rather than a line.
@@ -62,11 +69,11 @@ export function mvpWallX() {
 export function loadProgress() {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
-    if (!s) return ensureEconomy({ unlocked: ["faro", "carmen"], clearedStages: [], best: 0 });
+    if (!s) return ensureEconomy(freshProgress());
     const o = JSON.parse(s);
-    if (!o.unlocked || !o.unlocked.length) o.unlocked = ["faro", "carmen"];
+    if (!o.unlocked || !o.unlocked.length) o.unlocked = [...STARTS_UNLOCKED];
     return ensureEconomy(o); // silently adds coins/owned/upgrades/… to old saves
-  } catch (e) { return ensureEconomy({ unlocked: ["faro", "carmen"], clearedStages: [], best: 0 }); }
+  } catch (e) { return ensureEconomy(freshProgress()); }
 }
 
 export function saveProgress() {

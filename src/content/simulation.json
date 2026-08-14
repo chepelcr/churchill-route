@@ -1,0 +1,86 @@
+{
+  "_note": "LA VIDA DEL PUERTO — how much of it there is, how far out it lives, and how fast the sky and the sea move. `spawns.js`, `buses.js`, `daynight.js` and `tides.js` keep the ALGORITHMS: how a pedestrian follows a rail, how a bus finds its parada, how the tide is one cosine on the day clock. These are the numbers that decide how the town FEELS.",
+
+  "version": 1,
+
+  "_scope": "A population target, a spawn radius, a dwell time, the length of a day. Not: `advancePed`, the surface sampler, the bus's kerb approach, the cosine. The line is the one §12 draws everywhere — a designer changes these, an engineer changes the other.",
+
+  "streaming": {
+    "_note": "Life is camera-local: it is created around you and reaped when you leave it behind. `spawnMin` is what keeps somebody from popping into existence in plain sight — the viewport's half-diagonal is about 230 px, so 300 is just outside it.",
+    "_units": "world px",
+    "keepRadius": 1400,
+    "spawnRadius": 1100,
+    "spawnMin": 300
+  },
+
+  "population": {
+    "_note": "How many of each thing live near the camera. Tuned for the feel the corridor build had: sidewalks full of people and streets with light town traffic — a real port at midday, not a rush hour.",
+    "traffic": 14,
+    "vendors": 10,
+    "animals": 8,
+    "gulls": 16,
+    "boats": 6,
+    "trains": 1,
+    "schools": 2,
+    "_schoolsNote": "UN BANCO DE ATÚN ES UN EVENTO, no decorado: dos a la vista al mismo tiempo y el golfo deja de ser agua vacía con algo pasando adentro.",
+    "_pedestriansNote": "The walker count is NOT here — it comes from `src/game/npcTypes.json`, because 'how many people are on the sidewalk' belongs to the NPC registry the editor already authors. Same for `playero` and `paseante` below.",
+    "buses": 2,
+    "_busesNote": "How many of the traffic are buses on the ruta urbana. It is a FLOOR, not a probability: at the old 9 % roll on main-road spawns the paradas went unvisited for minutes at a time."
+  },
+
+  "crowds": {
+    "_note": "Las multitudes de superficie — people who belong to a KIND of ground rather than to a street. `sitting` is the fraction that are not going anywhere, and it is the whole trick: a beach where everybody is walking reads as a corridor, and the towels and the people on the bancas are what make it read as a place people are AT.",
+    "playero": { "sitting": 0.34, "note": "on the sand" },
+    "paseante": { "sitting": 0.22, "note": "on the malecón and the bulevar — the town's crowd, on a Sunday" }
+  },
+
+  "beachGames": {
+    "_note": "LA MEJENGA. A cluster of players around a ball, and the ball is the point: a group wandering on a beach is a crowd, not a game.",
+    "wanted": 1,
+    "wantedNote": "one game in sight is an event; three is a tournament",
+    "radiusPx": 90
+  },
+
+  "buses": {
+    "_note": "A bus stays in `traffic` — same vehicle, same road network, same collision. All this adds is what happens at the kerb.",
+    "_units": "radii in world px, times in seconds",
+    "stopKeepRadius": 1300,
+    "stopSpawnRadius": 1000,
+    "brakeRadius": 105,
+    "haltRadius": 15,
+    "lateralRadius": 34,
+    "dwellSeconds": [2.6, 4.4],
+    "dwellNote": "with the doors open",
+    "waitingPerStop": 3,
+    "waitingNote": "at most, and usually fewer",
+    "alightMax": 2,
+    "quietAfterSeconds": 18,
+    "quietNote": "how long a served parada takes to fill again — without it, the same stop is a crowd every time you pass",
+    "creepSpeed": 10,
+    "creepNote": "px/s the bus rolls at while pulling in"
+  },
+
+  "day": {
+    "_note": "EL DÍA. Four phases on a real-seconds clock; `sunny` is midday and gets the longest share. There is NO game-time scale in this game — the run clock and this one both count real seconds.",
+    "seconds": 600,
+    "phases": [
+      { "weather": "sunny", "share": 0.42 },
+      { "weather": "sunset", "share": 0.18 },
+      { "weather": "night", "share": 0.28 },
+      { "weather": "sunset", "share": 0.12, "note": "el amanecer: the same palette, the other end of the day" }
+    ],
+    "stormEverySeconds": [210, 420],
+    "stormLastsSeconds": [45, 90],
+    "_cycleNote": "The clock only runs in Recorrer. A stage picks a fixed sky, because three minutes is shorter than any phase — a cycle there would either never turn or strobe."
+  },
+
+  "tide": {
+    "_note": "LA MAREA. The Gulf of Nicoya has a three-metre spring tide and the estero is shallow enough that the water genuinely leaves: at bajamar the bancos de arena come out of the channel, at pleamar they are under you. That is real about this place, and it is the best difficulty knob the crossing has, because it changes the SHAPE of the course rather than the numbers on it.",
+    "_semidiurnal": "The period is HALF a day, so there are two highs and two lows per day like the real gulf. It is a function of time, not a simulation — one cosine on the day clock, so there is no state to get out of step with a reload.",
+    "periodFraction": 0.5,
+    "stormSurge": 0.28,
+    "stormSurgeNote": "enough to drown the banks a bajamar would have exposed, never enough on its own to make a low tide read as a high one — HIGH WATER IS NOT THE EASY CASE, the banks are covered and everything in the lane is moving",
+    "surgeRate": 0.35,
+    "surgeRateNote": "how fast the surge arrives and leaves; instant would pop the banks out of existence mid-turn"
+  }
+}

@@ -283,12 +283,66 @@ tiene implementación en el renderer.
         del muelle. Eso sobrevive un reescalado, que es su virtud, pero significa
         que nadie puede decir "extendé las palmas 200 m más al este".
 
-      Para que lo sea hacen falta dos cosas: la fila de `content.py` →
-      `content/world/*.json` (abajo), y un tipo de feature **línea de siembra**
-      que el editor autore y el build consuma en vez de derivar. Mismo patrón
-      para el VERDE: hoy `manifest.greens` sale de `detect_blocks`, así que se
-      puede pintar una región autorada encima pero no cambiar qué manzana el
-      build considera verde.
+      **SON DOS MECANISMOS DISTINTOS, y al jugador le parecen lo mismo.** Esto
+      importa para lo que "incluir el Cocal" significa:
+
+      | | Paseo de los Turistas / León Cortés | Cocal / Av. 2 del Ferrocarril |
+      |---|---|---|
+      | qué emite | `stamp_paseo_median` → una franja estampada + polilíneas en `tile.medians` | árboles sueltos, `_plant(trees, …)` |
+      | suelo verde | **sí** (`materials.median`) | **no** — no hay franja |
+      | colisión | **sí**, `CLS_ACERA` estampado más ancho de lo dibujado | **no** |
+      | visible al editor | ahora sí, como `median_<hash>` | ya lo era, como `tree_<hash>` por árbol |
+
+      O sea que la línea del Cocal hoy son **14 árboles en fila por el medio de
+      la avenida dividida, sin cantero y sin colisión**. Darle suelo verde no es
+      hacerla editable: es un CAMBIO DE COMPORTAMIENTO —pasa a estorbar al
+      carro— y por eso es una decisión aparte, no un efecto colateral de la
+      migración. El esquema de abajo lo cubre con `blocks`.
+
+      **Primer paso hecho (2026-08-13): la mediana ya es DIRECCIONABLE.** El
+      editor no la veía en absoluto — a diferencia de los muelles, que son
+      globales y llevan id, la mediana se emite POR TILE y sin identidad (20
+      tramos en 4 tiles), así que nada podía nombrar uno para ocultarlo o
+      moverlo. Ahora se indexa con el mismo hash de contenido que ya usan los
+      árboles y las calles: para un feature emitido y sin nombre, **la geometría
+      ES la identidad**. Se puede ocultar y referenciar; todavía no alargar.
+
+      **EL ESQUEMA DE UNA SIEMBRA — decidido con el usuario, aún sin
+      implementar.** Una siembra no es una polilínea: es una FORMA con una
+      ALINEACIÓN, y las dos son autoradas por separado.
+
+      | campo | valores | qué decide |
+      |---|---|---|
+      | `form` | `strip`, `disc`, `triangle`, `square`, `free` | el contorno del cantero — una isleta puede ser un disco (rotonda), un triángulo (la cuña donde se cruzan dos calles), un cuadrado, una tira con ancho, o un polígono dibujado a mano |
+      | `align` | `street`, `horizontal`, `vertical`, `free` | **cómo se orienta**: siguiendo la línea de centro de una calle nombrada, a los ejes, o exactamente como se dibujó |
+      | `width` | metros | el ancho de la tira (`form: strip`) |
+      | `mix` | clave de `flora.json` | qué se siembra |
+      | `blocks` | bool | si estampa muro (`CLS_ACERA`) o sólo se dibuja — la mediana del Paseo SÍ, un cantero de adorno no |
+
+      `align: "street"` es el que conserva lo bueno de hoy: la mediana sigue la
+      curva real de la avenida y sobrevive un reescalado. Los otros tres son los
+      que hoy no existen. Y el par forma/alineación es lo que evita el error de
+      modelar esto como "una polilínea con ancho", que no puede expresar una
+      rotonda ni una cuña.
+
+      Falta para cerrarla: que el build CONSUMA una siembra autorada en vez de
+      derivar las suyas (depende de la fila de `content.py` → JSON), y que el
+      editor tenga la herramienta de dibujo con las cinco formas.
+
+      **Las cuatro siembras derivadas que tienen que pasar por ese esquema** —
+      son las que hoy están escritas a mano en `build_stage.py`: la mediana de
+      palmas del Paseo de los Turistas (`paseo_median_runs`), la franja de
+      árboles de León Cortés (`continuous_runs`, desde una esquina de cuadra
+      MEDIDA hasta 3 cuadras antes de la calle del muelle), la línea del
+      Ferrocarril, y la mediana de la avenida dividida del Cocal (Avenida 1 ×
+      Avenida Alberto Echandi Montero, donde las dos calzadas se solapan en x).
+      Las cuatro dejan de ser código y pasan a ser registros; la derivación
+      geométrica se queda como el modo `align: "street"`, que es lo bueno que
+      tienen hoy.
+
+      Mismo patrón para el VERDE: hoy `manifest.greens` sale de `detect_blocks`,
+      así que se puede pintar una región autorada encima pero no cambiar qué
+      manzana el build considera verde.
 
 ### 3. P1 / P2 — la superficie de autoría
 

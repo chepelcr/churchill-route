@@ -1194,7 +1194,88 @@ The first four are in `tests/test_vocabulary.py` as of 2026-08-11 (`pnpm test`).
 7. Regenerate `inventory.json`, rebuild/snapshot only where the world contract
    intentionally changes, and smoke-test every renderer/backend combination.
 
-## 14. Required future asset contracts
+
+## 14. The renderer, module by module — how much of Canvas2D can be data?
+
+Asked directly on 2026-08-14: *can the whole of Canvas2D be mapped into
+editable data?* The honest answer is **most of the ART, none of the
+COMPOSITOR** — and the useful thing is not the opinion but the measurement, so
+here is the whole renderer, counted.
+
+`colours` is literal colour constants (`"#rrggbb"`, `rgba(…)`) still in the
+module. It is the best single proxy for "art that is not yet a registry",
+because a drawer that reads its palette from a catalog has none left.
+
+| module | lines | colours | what it is | verdict |
+|---|---:|---:|---|---|
+| `c2d/entities.js` | 806 | **107** | 26 drawers: peds, playeros, jugadores, swimmers, passengers, fishers, muelleros, traffic, trains, gulls, boats, schools, vendors, animals, coins, the player | **the big one left.** Same shape `vehicles.json` and `world-props.json` already solved: parts + palette. The vehicle half moved 2026-08-13/14 |
+| `c2d/landmarks.js` | 745 | 6 | the 23 landmark types + the scenes | **done** — `world-props.json`; the 6 left are inside `drawFaroScene`/`drawPool`, whose `params` moved but whose geometry is control flow |
+| `c2d/hud.js` | 723 | **67** | minimap, compass, crossing HUD, rain, vignette, POI pills | **hud.json**, already queued as §12's P2 row |
+| `c2d/streets.js` | 705 | 36 | roadway, kerb, caño, aceras, parcels, signs | **mostly done** — signs and parcel dispatch are data; the road CASING/dash geometry is algorithm |
+| `c2d/water.js` | 608 | **0** | swell, currents, ripples, caustics, the wet-sand line | **done** — `water.json`; the interference field is genuinely algorithm |
+| `c2d/attractions.js` | 581 | 46 | the feria's 12 rides + DJ Urtech | **half** — `feriaAssets.json` owns the rides; the campo, the bulb ropes and the DJ's light are still literals. §12 already queues a schema for it |
+| `c2d/estero.js` | 523 | **53** | pangas, cardúmenes, gaviotas, raíces, remolinos | **not started.** Eight encounter kinds, each with its own palette — the `EsteroEncounterKind` row in §13 |
+| `c2d/flora.js` | 427 | 2 | the four tree forms + the woods scatter | **done** — `flora.json`; the forms are geometry |
+| `c2d/ground.js` | 336 | 7 | land base, playas, greens, mangrove shore | **done** — reads `materials.json` |
+| `c2d/structures.js` | 319 | 44 | piers, the bridge, the ferries | **half** — the five pier recipes are `materials.json`; the bridge and the ferry hull are not |
+| `c2d/malecon.js` | 131 | 32 | the promenade band, per weather | **not started**, and it is only a palette — a cheap row |
+| `c2d/editorWorld.js` | 109 | 17 | authored features previewed in-game | editor-owned already; the colours are its own chrome |
+| `c2d/shapes.js` | 273 | **0** | THE INTERPRETER | **stays.** This is the engine's half of every catalog |
+| `canvas2d.js` | 263 | **0** | THE COMPOSITOR: camera, draw order, culling | **stays.** Draw order is not a preference, it is the reason the acera does not cover the asphalt |
+| `c2d/gfx.js` | 210 | 0 | shared ctx, zoom, frames, labels | **stays** (its numbers went to `world-units.json`) |
+| `c2d/cache.js` | 121 | 0 | path caching | **stays** |
+| `render/vehicleShapes.js` | 88 | 0 | the three shared path verbs | **stays** |
+| `c2d/props.js`, `c2d/world.js` | 128 | 0 | dispatch | **stays** |
+
+### The answer
+
+**~7 000 lines, ~420 colour literals.** Of those, **418 are in nine ART modules**
+and the two zero-colour cores (compositor, interpreter) are the ones that must
+never become data. So the goal is reachable, and it is four more registries, not
+a rewrite:
+
+| what | where it would live | colours it closes |
+|---|---|---:|
+| NPC + ambient art (peds, traffic, boats, coins, animals) | `src/assets/npc-art.json` | 107 |
+| the HUD and the minimap | `src/assets/hud.json` (already queued) | 67 |
+| the estero's eight encounters | `src/assets/estero.json` | 53 |
+| the feria's ground + the malecón band | extend `feriaAssets.json` / `materials.json` | 78 |
+
+**What must NOT become data, and why.** This is the same line §12 draws, applied
+to the renderer:
+
+- **draw ORDER** (`canvas2d.js`) — the acera is painted after the parcels and
+  before the asphalt for reasons a build measured; a re-orderable list invites
+  somebody to put a park's lawn back on the pavement.
+- **the shape INTERPRETER** (`shapes.js`) — data composes a finite vocabulary; a
+  vocabulary that data could extend is a Canvas command stream in JSON.
+- **streaming and culling** (`world2d/index.js`, the `view` rects) — a wrong
+  number here is a hole in the world, not a look.
+- **the field algorithms** — the sea's interference pattern, the woods lattice,
+  the caustics. Their INPUTS are already data; the loops are not art.
+- **anything with a `Math.random()` per frame** — it cannot be pixel-diffed, so
+  a migration of it cannot be proved. `speedLines` is the worked example: its
+  parameters moved, its randomness stayed, and the test asserts the parameters
+  because a sheet never could.
+
+### Vehicle effects — done 2026-08-14
+
+The row that started this audit. A vehicle's ART was data since 2026-08-13, but
+what it DID was not: the wake, the turn swirls, the shadow, the heel of a hull
+and the wind at speed were all welded into `drawPlayer` as `if (afloat)`, so an
+authored boat got a car's treatment. `src/assets/effects.json` is the repertoire
+— each effect is an engine painter plus authored params, and a vehicle SELECTS
+and retunes. `DELIVERY_BAG_MOUNTS`, four per-vehicle mount points sitting in the
+renderer, moved to the vehicles' own records, and `drawCarriedCargo` stopped
+branching on the vehicle key.
+
+`shapes.js` also learned the feria's four motion verbs (`spin`, `bob`, `swing`,
+`pump`), so a PART can animate from JSON — the carrusel had been more editable
+than the player's own car since the campo ferial shipped.
+
+Proved on five synthetic sheets: **2 043 700 pixels, none changed.**
+
+## 14b. Required future asset contracts
 
 Every migrated asset family should provide:
 

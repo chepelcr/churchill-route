@@ -19,6 +19,8 @@
 import { PATHS } from "../vehicleShapes.js";
 import { areaLabel, ctx as sharedCtx, label } from "./gfx.js";
 
+const TAU = Math.PI * 2;
+
 /** Pick from a palette by index, wrapping — how a striped awning alternates and
  *  how the port's four containers get four colours from one part. */
 function pick(palette, i) {
@@ -92,6 +94,28 @@ export function paintParts(g, parts, frame) {
 
   for (const part of parts) {
     if (skip(part)) continue;
+
+    // MOTION IS PART OF THE PART. The verbs are the feria's, verbatim —
+    // `attractions.js` has animated its rides from data since the campo ferial
+    // shipped, which meant the carrusel was more editable than the player's own
+    // car. `src/assets/effects.json` -> `partMotion` documents them; the units
+    // are TURNS per second, never radians, so a catalog holds no irrational
+    // literal (a power-of-two turn times TAU is exact in binary floating point).
+    //
+    // A part with no motion pays ONE property lookup and takes no save/restore,
+    // which is why every existing catalog draws pixel for pixel as before.
+    const moved = part.spin || part.bob || part.swing || part.pump;
+    if (moved) {
+      g.save();
+      const t = (frame.t ?? 0), ph = (part.phase || 0) * TAU;
+      if (part.spin) g.rotate(t * part.spin * TAU + ph);
+      if (part.swing) g.rotate(Math.sin(t * part.swing.speed * TAU + ph) * part.swing.amp);
+      if (part.bob) g.translate(0, Math.sin(t * part.bob.speed * TAU + ph) * part.bob.amp);
+      if (part.pump) {
+        const k = 1 + Math.sin(t * part.pump.speed * TAU + ph) * part.pump.amp;
+        g.scale(k, k);
+      }
+    }
 
     switch (part.shape) {
       // `fillRect`, NOT beginPath+rect+fill. They are not the same rasteriser
@@ -234,6 +258,8 @@ export function paintParts(g, parts, frame) {
         }
       }
     }
+
+    if (moved) g.restore();
   }
 }
 

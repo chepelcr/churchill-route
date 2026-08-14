@@ -40,6 +40,7 @@ import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 // plain Node refuses a bare JSON import (ERR_IMPORT_ATTRIBUTE_MISSING), and
 // this module is imported by tools/gen-inventory.mjs.
 import REGISTRY from "../assets/vehicles.json" with { type: "json" };
+import EFFECTS from "../assets/effects.json" with { type: "json" };
 
 /** The flat runtime record every consumer already expects: stats hoisted
  *  alongside the palette and the bounds. Built rather than authored, so the
@@ -110,6 +111,51 @@ export function vehicleParts(key) {
     else out.push(part);
   }
   return out;
+}
+
+/** The effects a vehicle carries, each merged over the repository's defaults.
+ *
+ *  SELECTION IS DATA, THE ALGORITHM IS CODE. A boat leaves a wake and heels
+ *  into her turns; a car throws swirls and a hard shadow. That used to be
+ *  `if (afloat)` inside `drawPlayer`, so an editor-authored boat got the car's
+ *  treatment and there was no way to say otherwise. Returns
+ *  `[{id, effect, cfg}, …]` in the registry's own order, so the paint order is
+ *  the repository's decision and not each vehicle's.
+ *
+ *  An effect a vehicle names that the repository does not have is DROPPED with
+ *  a warning rather than thrown: one bad row in an authored vehicle should cost
+ *  that one effect, not the frame. `tests/test_effects.py` is what actually
+ *  stops it shipping. */
+export function vehicleEffects(key) {
+  const chosen = REGISTRY.vehicles[key]?.effects;
+  if (!chosen) return [];
+  const out = [];
+  for (const [id, effect] of Object.entries(EFFECTS.vehicle)) {
+    if (id.startsWith("_") || !(id in chosen)) continue;
+    out.push({ id, effect, cfg: { ...effect.params, ...(chosen[id] || {}) } });
+  }
+  for (const id of Object.keys(chosen)) {
+    if (!EFFECTS.vehicle[id]) warnOnce(`vehicle "${key}" asks for effect "${id}", which no painter implements`);
+  }
+  return out;
+}
+
+/** How this vehicle carries a churchill: the recipe name and where it rides.
+ *
+ *  This was `if (key === "pickup") … else if (key === "cart") … else` — the
+ *  last place in the renderer that knew a vehicle by its name. */
+export function vehicleCargo(key) {
+  const rec = REGISTRY.vehicles[key]?.cargo;
+  const style = rec?.style || EFFECTS.cargo._fallback;
+  const base = EFFECTS.cargo[style] || EFFECTS.cargo[EFFECTS.cargo._fallback];
+  return { style, mount: { ...base.mount, ...(rec?.mount || {}) } };
+}
+
+const _warned = new Set();
+function warnOnce(msg) {
+  if (_warned.has(msg)) return;
+  _warned.add(msg);
+  console.warn(`[vehicles] ${msg}`);
 }
 
 /** The colour a part asks for: `$color`/`$roof` resolve against this vehicle's

@@ -2,7 +2,7 @@
 // vendors, animals, the delivery target, arcade coins and the vehicle sprite.
 import { state } from "../../game/state.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
-import { partColor, vehicleParts } from "../../game/vehicles.js";
+import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
 import { paintParts } from "./shapes.js";
 import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, hash01, lastT, roundRect } from "./gfx.js";
@@ -595,17 +595,13 @@ function paintVehicle(g, key, veh) {
 }
 
 // Insulated delivery backpacks for the courier-style vehicles. Coordinates are
-// in vehicle-local space (+x is the nose). On the two-wheelers and kart the
-// straps reach forward over the rider, so the bag reads as worn rather than as
-// a box bolted onto the chassis. The tuk-tuk carries the same bag in its rear
-// passenger compartment.
-const DELIVERY_BAG_MOUNTS = {
-  bici:    { x: -4.2, y: 0, scale: 0.72, straps: true },
-  scooter: { x: -4.6, y: 0, scale: 0.76, straps: true },
-  tuktuk:  { x: -7.0, y: 0, scale: 0.92, straps: false },
-  turbo:   { x: -4.5, y: 0, scale: 0.72, straps: true },
-};
-
+// in vehicle-local space (+x is the nose) and come from the vehicle's own
+// record now — `DELIVERY_BAG_MOUNTS` used to sit here, four per-vehicle mount
+// points in the renderer while every other per-vehicle fact had moved to
+// `vehicles.json`. On the two-wheelers and kart the straps reach forward over
+// the rider, so the bag reads as worn rather than as a box bolted onto the
+// chassis; the tuk-tuk carries the same bag in its rear passenger compartment
+// and therefore wears none.
 function drawDeliveryBag(g, mount, carrying) {
   const m = Math.max(0, Math.min(1, carrying.melt / carrying.total));
   g.save();
@@ -660,36 +656,45 @@ function drawCartFreezerLoad(g, veh, carrying) {
   g.fillRect(-2, y - 0.8, 4, 1);
 }
 
+// THE THREE RECIPES ARE CODE, WHICH ONE A VEHICLE USES IS DATA. Each has its
+// own melt gauge — a dropping red band, a cold-to-melting colour ramp — so they
+// are drawings, not parts lists. What was wrong was the dispatch: this branched
+// on the vehicle KEY, the last place in the renderer that knew a vehicle by
+// name, so an authored pickup could never carry a cooler.
+const CARGO_STYLES = {
+  bag: (g, mount, veh, carrying) => drawDeliveryBag(g, mount, carrying),
+  cooler: (g, mount, veh, carrying) => drawPickupCooler(g, carrying),
+  freezer: (g, mount, veh, carrying) => drawCartFreezerLoad(g, veh, carrying),
+};
+
 function drawCarriedCargo(g, key, veh, carrying) {
-  if (key === "pickup") {
-    drawPickupCooler(g, carrying);
-  } else if (key === "cart") {
-    drawCartFreezerLoad(g, veh, carrying);
-  } else {
-    const mount = DELIVERY_BAG_MOUNTS[key] ||
-      { x: -veh.w * 0.2, y: 0, scale: 0.8, straps: false };
-    drawDeliveryBag(g, mount, carrying);
-  }
+  const { style, mount } = vehicleCargo(key);
+  const draw = CARGO_STYLES[style] || CARGO_STYLES.bag;
+  draw(g, mount, veh, carrying);
 }
 
 // Wind swirl: arc streaks whipping around the car, in the direction it's
 // turning, opacity/length scaled by angular speed — sells a fast pivot.
-function drawTurnWind(p, veh, t) {
+//
+// `c` is the effect's config: the repository's defaults with this vehicle's
+// overrides merged over them (`vehicleEffects`). Every number that used to be
+// a literal in this function is one of its keys.
+function drawTurnWind(p, veh, t, c) {
   const w = Math.abs(p.av || 0);
-  if (w < 1.2) return;                       // only when whipping around
+  if (w < c.minRate) return;                 // only when whipping around
   const dir = Math.sign(p.av);
-  const strength = Math.min(1, (w - 1.2) / 4);
-  const r = Math.max(veh.w, veh.h) * 0.75 + 6;
+  const strength = Math.min(1, (w - c.minRate) / c.rampRate);
+  const r = Math.max(veh.w, veh.h) * c.radiusK + c.radiusPad;
   ctx.save();
   ctx.translate(p.x, p.y - (state.elev || 0) * 7);
   ctx.lineCap = "round";
-  for (let i = 0; i < 3; i++) {
-    const base = p.a + dir * (0.5 + i * 0.7) + t * 0.02 * dir;
-    const span = (0.7 + strength * 0.8);
+  for (let i = 0; i < c.arcs; i++) {
+    const base = p.a + dir * (0.5 + i * 0.7) + t * c.drift * dir;
+    const span = (c.span + strength * c.spanK);
     ctx.beginPath();
-    ctx.arc(0, 0, r + i * 3, base, base + dir * span, dir < 0);
-    ctx.strokeStyle = `rgba(255,255,255,${(0.10 + strength * 0.22).toFixed(3)})`;
-    ctx.lineWidth = 1.4;
+    ctx.arc(0, 0, r + i * c.arcGap, base, base + dir * span, dir < 0);
+    ctx.strokeStyle = `rgba(${c.color},${(c.alpha + strength * c.alphaK).toFixed(3)})`;
+    ctx.lineWidth = c.width;
     ctx.stroke();
   }
   ctx.restore();
@@ -699,59 +704,88 @@ function drawTurnWind(p, veh, t) {
 // runs. It replaces the wind swirls on the water — swirls read as air whipping
 // past a kart, and the thing a boat actually leaves behind is her wash. Drawn
 // in WORLD space (before the body's rotate) so it trails her heading.
-function drawWake(p, veh) {
-  const sp = Math.min(1, (p.speed || 0) / 260);
-  if (sp < 0.08) return;
-  const L = veh.w / 2, spread = veh.h * (0.7 + sp * 1.1), len = 14 + sp * 46;
+function drawWake(p, veh, c) {
+  const sp = Math.min(1, (p.speed || 0) / c.refSpeed);
+  if (sp < c.minSpeed) return;
+  const L = veh.w / 2, spread = veh.h * (c.spread + sp * c.spreadK);
+  const len = c.length + sp * c.lengthK;
   ctx.save();
   ctx.translate(p.x, p.y); ctx.rotate(p.a);
-  ctx.fillStyle = `rgba(255,255,255,${(0.10 + sp * 0.22).toFixed(3)})`;
+  ctx.fillStyle = `rgba(${c.color},${(c.alpha + sp * c.alphaK).toFixed(3)})`;
   ctx.beginPath();
-  ctx.moveTo(-L, -veh.h * 0.4);
+  ctx.moveTo(-L, -veh.h * c.mouth);
   ctx.lineTo(-L - len, -spread);
   ctx.lineTo(-L - len, spread);
-  ctx.lineTo(-L, veh.h * 0.4);
+  ctx.lineTo(-L, veh.h * c.mouth);
   ctx.closePath(); ctx.fill();
   // the churn right at the transom, where the outboard is actually working
-  ctx.fillStyle = `rgba(255,255,255,${(0.18 + sp * 0.3).toFixed(3)})`;
-  const ph = lastT * 0.012;
-  for (let i = 0; i < 4; i++) {
-    const d = 3 + i * 5 + (ph % 5);
+  ctx.fillStyle = `rgba(${c.color},${(c.churnAlpha + sp * c.churnAlphaK).toFixed(3)})`;
+  const ph = lastT * c.churnRate;
+  for (let i = 0; i < c.churn; i++) {
+    const d = c.churnLead + i * c.churnGap + (ph % c.churnGap);
     ctx.beginPath();
-    ctx.arc(-L - d, Math.sin(ph + i * 1.7) * veh.h * 0.3, 2.2 - i * 0.4, 0, Math.PI * 2);
+    ctx.arc(-L - d, Math.sin(ph + i * c.churnPhase) * veh.h * c.churnSpread,
+            c.churnR - i * c.churnTaper, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 }
 
+// THE PAINTERS — the engine's half of `src/assets/effects.json`.
+//
+// A `paint` effect draws around the body; a `transform` one bends the frame the
+// sprite is then drawn in and paints nothing. Both take the merged config, so
+// every number a boat and a car once disagreed about through an `if (afloat)`
+// is now that vehicle's own row.
+const EFFECT_PAINTERS = {
+  turnWind: { paint: (p, veh, c) => drawTurnWind(p, veh, lastT, c) },
+  wake: { paint: (p, veh, c) => drawWake(p, veh, c) },
+
+  // The body's OWN silhouette, dropped behind and faded as she climbs the ramp.
+  // Never a generic ellipse — that is what `traceVehicleSilhouette` is for.
+  shadow: {
+    paint: (p, veh, c) => {
+      const lift = (state.elev || 0) * 7;
+      ctx.save();
+      ctx.translate(p.x + c.offX + lift * c.liftX, p.y + c.offY + lift * c.liftY);
+      ctx.rotate(p.a);
+      // ONE COLOUR CONVENTION for every effect: `r,g,b` in the registry and the
+      // alpha composed here, which is what lets an alpha be a FUNCTION — the
+      // wake's ramps with speed, the swirls' with rate of turn, and the
+      // shadow's fades as she climbs the ramp.
+      const a = Math.max(0, c.alpha - lift * c.liftFade);
+      ctx.fillStyle = `rgba(${c.color},${a.toFixed(3)})`;
+      traceVehicleSilhouette(ctx, state.vehicleKey, veh);
+      ctx.fill();
+      ctx.restore();
+    },
+  },
+
+  heel: {
+    transform: (p, veh, c) => {
+      const heel = Math.max(-1, Math.min(1, (p.av || 0) / c.maxRate));
+      const swell = Math.sin(lastT * c.swellRate + (p.x + p.y) * c.swellSpace);
+      ctx.translate(0, heel * veh.h * c.shift + swell * c.swellShift);
+      ctx.scale(1, 1 - Math.abs(heel) * c.squash + swell * c.swellSquash);
+    },
+  },
+};
+
+
 function drawPlayer(p, veh) {
   const lift = (state.elev || 0) * 7;   // the barro avenue rides ~1 m up
-  const afloat = veh.medium === VEHICLE_MEDIUM.WATER;
+  const effects = vehicleEffects(state.vehicleKey);
   ctx.save();
-  if (afloat) drawWake(p, veh);
-  else drawTurnWind(p, veh, lastT);
-  // ground shadow — the body's own silhouette, dropped further behind and
-  // faded as the car climbs the ramp. A HULL SITS IN THE WATER, so hers is
-  // tucked almost underneath and much softer: the same offset that reads as a
-  // car above tarmac reads as a boat flying above the sea.
-  const sx = afloat ? 1.5 : 4 + lift * 0.6, sy = afloat ? 2 : 6 + lift;
-  ctx.save(); ctx.translate(p.x + sx, p.y + sy); ctx.rotate(p.a);
-  ctx.fillStyle = afloat ? "rgba(12,40,58,0.28)"
-    : `rgba(0,0,0,${(0.35 - lift * 0.02).toFixed(3)})`;
-  traceVehicleSilhouette(ctx, state.vehicleKey, veh); ctx.fill(); ctx.restore();
+  // Under the body: the wash, the swirls, then the shadow over them. PAINT
+  // ORDER IS THE REPOSITORY'S, not each vehicle's — a boat that happened to
+  // list her wake last should not end up painting it over her own shadow, and
+  // that is a property of the effects, not of the boat.
+  for (const { id, effect, cfg } of effects) {
+    if (effect.layer === "under") EFFECT_PAINTERS[id]?.paint?.(p, veh, cfg);
+  }
   ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
-  // SHE HEELS, AND SHE BOBS. A car is a rigid body on a flat plane and looks
-  // right as a rotated sprite; a hull that only rotated read as a boat-shaped
-  // car. From directly above, heel shows as the deck foreshortening — so the
-  // beam squashes toward the inside of the turn and the whole body shifts a
-  // little that way, driven by the angular velocity the renderer already has.
-  // The bob is the swell, and it never stops, which is what keeps her alive
-  // sitting still at the muelle.
-  if (veh.medium === VEHICLE_MEDIUM.WATER) {
-    const heel = Math.max(-1, Math.min(1, (p.av || 0) / 2.2));
-    const swell = Math.sin(lastT * 0.0016 + (p.x + p.y) * 0.004);
-    ctx.translate(0, heel * veh.h * 0.16 + swell * 0.7);
-    ctx.scale(1, 1 - Math.abs(heel) * 0.16 + swell * 0.02);
+  for (const { id, effect, cfg } of effects) {
+    if (effect.layer === "transform") EFFECT_PAINTERS[id]?.transform?.(p, veh, cfg);
   }
   paintVehicle(ctx, state.vehicleKey, veh);
   if (state.carrying) drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);

@@ -473,6 +473,50 @@ motor la física, el intérprete y las transiciones de estado.
 - [ ] **`src/content/progression.json`**: grafo del tutorial, metas, grafo de
       desbloqueos, defaults de modo desde `tutorial.js`, `progress.js`,
       `modes.js`. Las transiciones de estado y la persistencia se quedan.
+- [x] **Los efectos del vehículo son un repertorio.** Hecho 2026-08-14, a raíz
+      de la pregunta "¿cómo están mapeadas las animaciones de los vehículos?".
+      La respuesta honesta era: **no lo estaban**. `vehicles.json` era geometría
+      estática y TODO el movimiento estaba soldado en `drawPlayer` como
+      `if (afloat)` — la estela, los remolinos de giro, la sombra, la escora del
+      casco y el viento de velocidad. Una lancha creada en el editor recibía el
+      tratamiento de un carro y no había forma de decir otra cosa.
+
+      Ahora `src/assets/effects.json` es el repertorio: **el algoritmo es del
+      motor, la SELECCIÓN y cada número son del vehículo**. Se elige del
+      repositorio (`turnWind` para el carro, `wake` y `heel` para la lancha) y se
+      afina. El **orden de pintado es del REGISTRO, no de cada vehículo** — los
+      remolinos y la estela van primero y la sombra encima —, porque eso es una
+      propiedad de los efectos y no del barco.
+
+      **El viento de velocidad no lo teníamos ni ubicado.** Lo notó el usuario
+      manejando: 12 rayas blancas por el borde derecho de la pantalla arriba de
+      240 px/s, al final de `render()`, sin nombre ni comentario. Es el único
+      efecto en espacio de PANTALLA. Se documentaron sus dos rarezas de siempre
+      sin cambiarlas: es un umbral y no una rampa, y se re-aleatoriza cada cuadro
+      contra el borde derecho apunte la nave a donde apunte.
+
+      También: `DELIVERY_BAG_MOUNTS` —cuatro puntos de anclaje por vehículo que
+      seguían en el renderer— pasó a los registros de cada vehículo, y
+      `drawCarriedCargo` dejó de ramificar por el NOMBRE del vehículo, que era
+      el último lugar del renderer que conocía uno por nombre. Y `shapes.js`
+      aprendió los cuatro verbos de movimiento de la feria (`spin`, `bob`,
+      `swing`, `pump`): **el carrusel llevaba desde siempre siendo más editable
+      que el carro del jugador**.
+
+      Probado en **cinco hojas sintéticas: 2 043 700 píxeles, cero distintos**
+      (`tools/shot-effects.mjs` es nuevo — las otras cuatro hojas dibujan el
+      CUERPO y no podían ver ninguno de estos efectos). 14 pruebas nuevas, entre
+      ellas la que no se puede ver en revisión: **todo parámetro que un pintor
+      LEE tiene que estar definido**, porque si falta es `undefined`, o sea
+      `NaN`, o sea que el efecto no dibuja nada y nadie se entera.
+- [ ] **El renderer, módulo por módulo** — `docs/inventory.md` §14, medido
+      2026-08-14 al preguntarse si *todo* Canvas2D puede ser data. Respuesta:
+      **casi todo el ARTE sí, el COMPOSITOR no**, y son cuatro registros más, no
+      una reescritura. 7 000 líneas, ~420 colores literales, de los cuales 418
+      están en nueve módulos de arte y los dos núcleos que nunca deben ser data
+      (el compositor y el intérprete) tienen **cero**. Lo que falta: el arte de
+      NPCs y tráfico (`entities.js`, 107), el HUD (67), los ocho encuentros del
+      estero (53), y el campo ferial más el malecón (78).
 - [ ] **`src/assets/hud.json`** (P2): presets de layout/estilo del HUD y los
       materiales del minimapa (`c2d/hud.js`, 718 líneas). Las tintas del
       minimapa que eran cubiertas de muelle ya se fueron a `materials.json`.
@@ -484,11 +528,26 @@ motor la física, el intérprete y las transiciones de estado.
       defaults de producción versionados. La lógica del service worker y las
       llamadas de compra/anuncio se quedan.
 
-**Fuera de alcance, decidido**: la estructura JSX de las pantallas + `styles.css`
-a un esquema de slots. Los tokens de tema (`src/ui/themeTokens.json`) y los
-overrides de copy por i18n ya le dan al editor autoría real sobre las pantallas,
-y el propio §12 duda de esa fila. Cambiar React legible por un lenguaje de layout
-casero es un mal negocio.
+**Fuera de alcance, decidido**: la estructura JSX de las pantallas a un esquema
+de slots. Cambiar React legible por un lenguaje de layout casero es un mal
+negocio, y el propio §12 duda de esa fila.
+
+**Pero la parte de esa frase que decía que los tokens "ya le dan al editor
+autoría real sobre las pantallas" era FALSA, y medirla costó dos minutos**
+(2026-08-14): `src/styles.css` tiene **183 colores literales contra 34 usos de
+`var()`** —o sea que el editor alcanza como un 16 % del color de la hoja— y
+**`--warm` y `--kola` no se usan en NINGÚN lado de `src/`**: el formulario del
+editor ofrece ocho perillas de paleta y dos no están conectadas a nada. Más 22
+`@keyframes`, 61 declaraciones de tipografía, 49 radios y 18 sombras que no son
+direccionables. Eso no es el esquema JSX descartado; es terminar la capa de
+tokens para que los tokens lleguen de verdad a la hoja de estilos.
+
+- [ ] **Barrido completo de `styles.css` a tokens.** Agrupar los 183 literales
+      en un set real (superficies, trazos, velos, estados, acentos, radios,
+      escala tipográfica, duraciones de movimiento), reescribir la hoja para que
+      sólo use `var()`, y hacer crecer `themeTokens.json` a la par. La compuerta
+      es un diff de píxeles pantalla por pantalla, y una prueba de que no
+      sobrevive ningún literal y de que ningún token queda muerto.
 
 ### 4. El reescalado
 

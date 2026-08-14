@@ -7,6 +7,7 @@
 // behind Renderer.js.
 // The game loop (src/game/index.js) calls setupCanvas(canvas) then render(t).
 import { WORLD2D as W } from "../world2d/index.js";
+import { vehicleEffects } from "../game/vehicles.js";
 import {
   state, traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools,
   beachGames,
@@ -236,11 +237,25 @@ function render(t) {
     drawCrossingHud(vw, vh);
   }
 
-  if (!state.attract && state.p.speed > 240) {
-    ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1;
-    for (let i = 0; i < 12; i++) {
-      const y = Math.random() * vh, len = 40 + Math.random() * 60;
-      ctx.beginPath(); ctx.moveTo(vw - 20 - len, y); ctx.lineTo(vw - 20, y); ctx.stroke();
+  // EL VIENTO DE VELOCIDAD. The one vehicle effect drawn in SCREEN space, which
+  // is why it lives up here in the overlay pass with the minimap and the rain
+  // rather than in `drawPlayer` with the wake and the swirls — and why it sat
+  // at the bottom of this function for a year with no name on it. It is a
+  // selectable effect now (`src/assets/effects.json` -> `speedLines`); a
+  // vehicle that does not list it simply does not draw it.
+  if (!state.attract) {
+    for (const { id, effect, cfg } of vehicleEffects(state.vehicleKey)) {
+      if (id !== "speedLines" || effect.layer !== "screen") continue;
+      if (state.p.speed <= cfg.minSpeed) continue;
+      ctx.strokeStyle = `rgba(${cfg.color},${cfg.alpha})`;
+      ctx.lineWidth = cfg.width;
+      const x1 = cfg.edge === "left" ? cfg.margin : vw - cfg.margin;
+      const dir = cfg.edge === "left" ? 1 : -1;
+      for (let i = 0; i < cfg.count; i++) {
+        const y = Math.random() * vh;
+        const len = cfg.length + Math.random() * cfg.lengthSpread;
+        ctx.beginPath(); ctx.moveTo(x1 + dir * len, y); ctx.lineTo(x1, y); ctx.stroke();
+      }
     }
   }
 }

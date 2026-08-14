@@ -1,0 +1,178 @@
+{
+  "_note": "EL REPERTORIO DE EFECTOS — what a vehicle DOES, as opposed to what it is made of. `vehicles.json` says a boat is a hull and a cabin; this says she leaves a wake, heels into her turns and sits in the water rather than above it. A vehicle picks the effects it carries and tunes them; the ALGORITHM of each one stays in `src/render/c2d/entities.js`, because a widening V astern is control flow, not a parts list.",
+  "version": 1,
+  "_why": "Every one of these was welded into `drawPlayer` as an `if (afloat)`. That is the same shape the 26-branch landmark switch had before world-props.json: the engine deciding, by vehicle, what a vehicle looks like. So an editor-authored boat got a car's turn-swirls and a car's hard shadow, and there was no way to say otherwise — the alternative to this file is editing the renderer to add a vehicle, which is precisely what docs/inventory.md §12 exists to end.",
+  "_contract": "An effect is CODE the engine implements plus PARAMS the author owns. Data may select an effect and retune it; it may not invent one. `tests/test_effects.py` fails if a vehicle names an effect with no painter, and if a painter exists that this file does not list — art with nothing to select it is drift too, which is the lesson SignKind taught.",
+  "vehicle": {
+    "_note": "Whole-vehicle effects, drawn around the body. `layer` says when: `under` before the sprite, `over` after it. `space` says in which frame: `world` is drawn before the body's rotate (so it trails the heading and does not spin with her), `body` after it. `transform` effects do not paint at all — they bend the frame the sprite is then drawn in.",
+    "turnWind": {
+      "name": "Remolino de giro",
+      "layer": "under",
+      "space": "world",
+      "medium": [
+        "land"
+      ],
+      "note": "Arc streaks whipping around the car in the direction it is turning — it sells a fast pivot. Deliberately land-only: swirls read as air rushing past a kart, and what a boat actually leaves behind is her wash, so a hull takes `wake` instead.",
+      "params": {
+        "minRate": 1.2,
+        "rampRate": 4.0,
+        "arcs": 3,
+        "arcGap": 3,
+        "radiusK": 0.75,
+        "radiusPad": 6,
+        "span": 0.7,
+        "spanK": 0.8,
+        "drift": 0.02,
+        "alpha": 0.1,
+        "alphaK": 0.22,
+        "width": 1.4,
+        "color": "255,255,255",
+        "minRateNote": "rad/s below which nothing draws — a gentle corner should not smoke the tyres"
+      }
+    },
+    "wake": {
+      "name": "Olas / estela",
+      "layer": "under",
+      "space": "body",
+      "medium": [
+        "water"
+      ],
+      "note": "The widening V astern, longer and brighter the faster she runs, plus the churn right at the transom where the outboard is actually working.",
+      "params": {
+        "refSpeed": 260,
+        "minSpeed": 0.08,
+        "spread": 0.7,
+        "spreadK": 1.1,
+        "length": 14,
+        "lengthK": 46,
+        "mouth": 0.4,
+        "alpha": 0.1,
+        "alphaK": 0.22,
+        "churn": 4,
+        "churnGap": 5,
+        "churnLead": 3,
+        "churnR": 2.2,
+        "churnTaper": 0.4,
+        "churnSpread": 0.3,
+        "churnRate": 0.012,
+        "churnPhase": 1.7,
+        "churnAlpha": 0.18,
+        "churnAlphaK": 0.3,
+        "color": "255,255,255",
+        "refSpeedNote": "px/s at which the wake is full size; it is NOT the vehicle's top speed, so a faster boat does not automatically get a bigger one"
+      }
+    },
+    "shadow": {
+      "name": "Sombra",
+      "layer": "under",
+      "space": "world",
+      "note": "The body's OWN silhouette dropped behind it — never a generic ellipse, which is why `traceVehicleSilhouette` exists. The defaults are the land ones; a hull SITS IN the water, so the boats override to a much tighter, softer offset. The same offset that reads as a car above tarmac reads as a boat flying above the sea.",
+      "params": {
+        "offX": 4,
+        "offY": 6,
+        "color": "0,0,0",
+        "alpha": 0.35,
+        "liftX": 0.6,
+        "liftY": 1.0,
+        "liftFade": 0.02,
+        "colorNote": "`r,g,b` with NO wrapper and NO alpha, like every other effect here — the painter composes `rgba(color, alpha)` so the alpha can be a function of something. The shadow's fades as she climbs the ramp.",
+        "liftNote": "the barro avenue rides ~1 m up (`state.elev`); the shadow slides further out and fades as she climbs"
+      }
+    },
+    "speedLines": {
+      "name": "Viento de velocidad",
+      "layer": "screen",
+      "space": "screen",
+      "note": "The rush of air at speed: streaks raked down the edge of the VIEWPORT, not around the car. It is the one effect drawn in screen space, in the overlay pass with the minimap and the rain, which is why it lived at the very bottom of `render()` with no name and no comment on it.",
+      "params": {
+        "minSpeed": 240,
+        "count": 12,
+        "margin": 20,
+        "length": 40,
+        "lengthSpread": 60,
+        "alpha": 0.22,
+        "width": 1,
+        "color": "255,255,255",
+        "edge": "right"
+      },
+      "_shipped_quirks": "Two things here are the behaviour as shipped, kept deliberately rather than tidied while making it data. (1) It is a THRESHOLD, not a ramp: at 239 px/s there is nothing and at 241 there is the full set, where every other effect in this file fades in. (2) The streaks are re-randomised every frame and always rake down the RIGHT edge, whichever way the car is pointing — so it reads as flicker rather than as air streaming past. Both are now numbers somebody can change; neither was changed here, because that is a feel decision and this commit is a migration.",
+      "_speeds": "The threshold is global today and the boats cross it too — a panga tops 440 px/s, so she has always drawn these. Being per-vehicle now, a hull can be given her own."
+    },
+    "heel": {
+      "name": "Escora y cabeceo",
+      "layer": "transform",
+      "space": "body",
+      "medium": [
+        "water"
+      ],
+      "note": "SHE HEELS, AND SHE BOBS. A car is a rigid body on a flat plane and looks right as a rotated sprite; a hull that only rotated read as a boat-shaped car. From directly above, heel shows as the deck FORESHORTENING — so the beam squashes toward the inside of the turn and the whole body shifts a little that way, driven by the angular velocity the renderer already has. The bob is the swell, and it never stops, which is what keeps her alive sitting still at the muelle.",
+      "params": {
+        "maxRate": 2.2,
+        "shift": 0.16,
+        "squash": 0.16,
+        "swellRate": 0.0016,
+        "swellSpace": 0.004,
+        "swellShift": 0.7,
+        "swellSquash": 0.02,
+        "swellSpaceNote": "the swell is a function of WHERE she is as well as when, so two boats a hundred metres apart are not bobbing in lockstep"
+      }
+    },
+    "_order": "THE KEY ORDER OF THIS OBJECT IS THE PAINT ORDER, and it is deliberate: the swirls and the wash go down first and the shadow lies over them, which is how the shipped renderer had it. A vehicle's own `effects` map is a SELECTION, not a z-order — sorting it differently must not change the frame."
+  },
+  "cargo": {
+    "_note": "How a vehicle CARRIES a churchill. This was a three-way `if (key === \"pickup\") … else if (key === \"cart\")` on the vehicle key — the last place in the renderer that knew a vehicle by name. The three recipes stay in code (each has its own melt gauge); which one a vehicle uses, and where it rides, is the vehicle's own record.",
+    "bag": {
+      "name": "Mochila térmica",
+      "note": "The courier's insulated backpack. On the two-wheelers and the kart the straps reach forward over the rider, so it reads as WORN rather than as a box bolted to the chassis; the tuk-tuk carries the same bag in its rear compartment and therefore wears no straps.",
+      "mount": {
+        "x": -4.4,
+        "y": 0,
+        "scale": 0.75,
+        "straps": true
+      }
+    },
+    "cooler": {
+      "name": "Hielera",
+      "note": "The pickup's cooler in the bed: a white box with a red band that DROPS as the churchill melts.",
+      "mount": {
+        "x": -8,
+        "y": 0,
+        "scale": 1,
+        "straps": false
+      }
+    },
+    "freezer": {
+      "name": "Congelador del carretillo",
+      "note": "The cart's open freezer lid, sized from the vehicle's own body rather than a fixed rect — it is the whole front of the carretillo.",
+      "mount": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "straps": false
+      }
+    },
+    "_fallback": "bag",
+    "_fallbackNote": "An editor-authored vehicle with no `cargo` carries the bag at a mount derived from its own width, which is the behaviour the old `else` branch had."
+  },
+  "partMotion": {
+    "_note": "THE MOTION VERBS A SINGLE PART MAY CARRY, interpreted by `src/render/c2d/shapes.js`. They are the feria's, verbatim: `attractions.js` has animated its rides from data since the campo ferial shipped, so the carrusel was more editable than the player's own car. One vocabulary, both catalogs.",
+    "_units": "`speed`/`spin` are TURNS PER SECOND, never radians — a turn times TAU is exact in binary floating point and a JSON file holds no irrational literal. `phase` is turns too.",
+    "spin": {
+      "of": "turns/s",
+      "note": "rotate the part about the frame origin — a wheel, a rueda de Chicago"
+    },
+    "bob": {
+      "of": "{speed, amp}",
+      "note": "translate on y, sinusoidally — a float, a hull at rest"
+    },
+    "swing": {
+      "of": "{speed, amp, phase}",
+      "note": "rotate back and forth about the origin — a pendulum, a hanging sign"
+    },
+    "pump": {
+      "of": "{speed, amp}",
+      "note": "scale up and down about the origin — a bulb, a breathing highlight"
+    },
+    "_none_today": "NO vehicle part declares one yet, and that is deliberate: adding the verbs is inert until somebody authors motion, which is what let this land with a zero-pixel diff. A spinning wheel is a design change and belongs in its own commit."
+  }
+}

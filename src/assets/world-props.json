@@ -1860,6 +1860,95 @@
         "shimmerFreq": 0.08,
         "shimmerSpeedB": 4
       }
+    },
+    "stadium": {
+      "note": "Estadio — NAME PILL ONLY. The pitch and its grey graderías are painted in the acera pass (`paintStadiumCuadras`), because they are a colour choice on ground that already exists.",
+      "palette": {
+        "pillFg": "#fff",
+        "pillBg": "#2e7d44"
+      }
+    },
+    "marinePark": {
+      "note": "Parque Marino — its green is the cuadra's RESIDUAL after every other lot takes its space, filled multi-ring even-odd. Only the pill is here.",
+      "palette": {
+        "pillFg": "#fff",
+        "pillBg": "#2e7d44"
+      }
+    },
+    "cathedral": {
+      "note": "La Catedral — stone, not stucco, sized off its parcel and facing east onto the calle peatonal. A placeholder for a proper mockup, so everything is derived from the lot.",
+      "palette": {
+        "shadow": "rgba(0,0,0,0.22)",
+        "step": "rgba(232,226,210,0.85)",
+        "cross": "#fff",
+        "stone": "#a9a49b",
+        "stoneDark": "#8b867d",
+        "stoneLite": "#c2bcb1"
+      }
+    },
+    "civicBuilding": {
+      "note": "La Casa de la Cultura, drawn to fill its parcel.",
+      "palette": {
+        "shadow": "rgba(0,0,0,0.22)",
+        "wall": "#e7ddc8",
+        "roof": "#b98a5e"
+      }
+    },
+    "school": {
+      "note": "Escuela / kínder / campus: a swept yard with pavilions along one edge and a marked court when the lot is big enough. HOW MANY pavilions is a function of the frontage, which is why this is a scene.",
+      "palette": {
+        "yard": "rgba(214,206,180,0.55)",
+        "court": "rgba(240,238,230,0.55)",
+        "shadow": "rgba(0,0,0,0.22)",
+        "courtLine": "rgba(90,80,60,0.45)",
+        "pavilion": "rgba(240,238,230,0.85)",
+        "roof": "#e85d75"
+      }
+    },
+    "fuel": {
+      "note": "La gasolinera: a canopy over its islands, with the pumps.",
+      "palette": {
+        "shadow": "rgba(0,0,0,0.22)",
+        "canopy": "#e9e3d4",
+        "band": "#d94f3d",
+        "canopyShadow": "rgba(0,0,0,0.20)",
+        "shop": "#f0efe9",
+        "pump": "#9aa0a8",
+        "pumpDark": "#5c6169"
+      }
+    },
+    "kiosco": {
+      "note": "El kiosco/templete at a park's centre — the Parque Victoria's bandstand.",
+      "palette": {
+        "shadow": "rgba(0,0,0,0.20)",
+        "base": "#cfc7b4",
+        "wall": "#e7ddc8",
+        "step": "#b9b2a0",
+        "roof": "#7f6a52",
+        "highlight": "rgba(255,255,255,0.18)",
+        "post": "#5d5040"
+      }
+    },
+    "parkRiver": {
+      "note": "The channelled river through a park's parcel.",
+      "palette": {
+        "bank": "#7d8f6a",
+        "water": "#4f86a8",
+        "sheen": "rgba(255,255,255,0.30)",
+        "shadow": "rgba(0,0,0,0.20)"
+      }
+    },
+    "lote": {
+      "note": "A SPONSORED lote — a storefront or a billboard. `lo.tone` is the sponsor's own colour and stays dynamic; these are the fixed parts around it.",
+      "palette": {
+        "shadow": "rgba(0,0,0,0.22)",
+        "storeBody": "#f4f0e4",
+        "awningLight": "#fff",
+        "door": "rgba(20,40,60,0.55)",
+        "window": "rgba(255,255,255,0.7)",
+        "post": "#6a5a48",
+        "billboardPill": "rgba(20,16,40,0.85)"
+      }
     }
   }
 }

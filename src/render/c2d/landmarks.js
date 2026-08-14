@@ -134,15 +134,16 @@ function drawGreenSpace(lm, w, h, opts = {}) {
 // already exists, not a structure stacked on a later layer. Drawing it here is
 // what used to bury the street name pills under the block.
 function drawStadium(lm) {
+  const C = PROPS.scenes.stadium.palette;
   const pts = lm.footprint;
   if (!pts || pts.length < 6) {                       // no traced cuadra: legacy rect
     const w = lm.w || 156, h = lm.h || 122;
     drawGreenSpace(lm, w, h, { pitch: true });
-    areaLabel(lm.x - w / 2, lm.y - h / 2, lm.x + w / 2, lm.y + h / 2, "ESTADIO", "#fff", "#2e7d44");
+    areaLabel(lm.x - w / 2, lm.y - h / 2, lm.x + w / 2, lm.y + h / 2, "ESTADIO", C.pillFg, C.pillBg);
     return;
   }
   const b = polyBBox(pts);
-  areaLabel(b.x0, b.y0, b.x1, b.y1, (lm.name || "Estadio").toUpperCase(), "#fff", "#2e7d44");
+  areaLabel(b.x0, b.y0, b.x1, b.y1, (lm.name || "Estadio").toUpperCase(), C.pillFg, C.pillBg);
 }
 
 // Central fountain with living (animated) water: stone basin, rippling pool,
@@ -221,13 +222,14 @@ function drawPool(x, y, rot, s = 1, palms = true) {
 // space. The build hands us pool points whose complete ownership disks stay in
 // that residual and clear of streets and the rail corridor.
 function drawMarinePark(lm) {
+  const C = PROPS.scenes.marinePark.palette;
   const pools = lm.pools || [];
   const poolScale = lm.poolScale || 0.32;
   for (let i = 0; i < pools.length; i++)
     drawPool(pools[i][0], pools[i][1], i % 2 ? 0.18 : -0.14, poolScale, false);
   const mw = lm.w || 240, mh = lm.h || 120;
   areaLabel(lm.x - mw / 2, lm.y - mh / 2, lm.x + mw / 2, lm.y + mh / 2,
-            "PARQUE MARINO", "#fff", "#2e7d44");
+            "PARQUE MARINO", C.pillFg, C.pillBg);
 }
 
 // AREA landmarks draw no object at their anchor — the plaza, the pool and the
@@ -368,10 +370,11 @@ function drawGarden(P) {
 // The 0.86 on the half-extents is the bbox overshoot: a parcel poly is
 // raster-traced on a block that is not square to the screen, so its bbox is
 // slightly larger than the block in the block's own frame.
-const STONE_WALL = "#a9a49b";
-const STONE_DARK = "#8b867d";
-const STONE_LITE = "#c2bcb1";
+const STONE_WALL = PROPS.scenes.cathedral.palette.stone;
+const STONE_DARK = PROPS.scenes.cathedral.palette.stoneDark;
+const STONE_LITE = PROPS.scenes.cathedral.palette.stoneLite;
 function drawCathedral(P) {
+  const C = PROPS.scenes.cathedral.palette;
   const F = parcelFrame(P);
   const hw = F.hw * 0.86, hh = F.hh * 0.86;
   const cx = F.cx, cy = F.cy;
@@ -379,7 +382,7 @@ function drawCathedral(P) {
   ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
   // +u is EAST (the facade, onto the bulevar), +v is SOUTH
   const L = hw, W2 = Math.min(hh, hw * 0.62);       // nave half-length / half-width
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillStyle = C.shadow;
   roundRect(ctx, -L + 3, -W2 + 5, L * 2, W2 * 2, 4, true, false);
   // nave
   ctx.fillStyle = STONE_WALL;
@@ -408,10 +411,10 @@ function drawCathedral(P) {
     ctx.beginPath(); ctx.arc(L - tr * 0.5, s * (W2 - tr * 0.7), tr * 0.55, 0, Math.PI * 2); ctx.fill();
   }
   // atrio: pale steps spilling out of the door toward the bulevar
-  ctx.fillStyle = "rgba(232,226,210,0.85)";
+  ctx.fillStyle = C.step;
   roundRect(ctx, L - 1, -W2 * 0.42, Math.max(6, L * 0.12), W2 * 0.84, 2, true, false);
   // the cross on the roof ridge, at the crossing
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = C.cross;
   ctx.fillRect(tx - 1, -W2 * 0.14, 2, W2 * 0.28);
   ctx.fillRect(tx - W2 * 0.11, -1, W2 * 0.22, 2);
   ctx.restore();
@@ -423,17 +426,18 @@ function drawCathedral(P) {
 // front on the calle peatonal, inset from the parcel edge so the acera band
 // still shows around it.
 function drawCivicBuilding(P) {
+  const C = PROPS.scenes.civicBuilding.palette;
   const F = parcelFrame(P);
   const hw = F.hw * 0.86, hh = F.hh * 0.86;
   const cx = F.cx, cy = F.cy;
   ctx.save();
   ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
   const w = hw * 2 - 8, h = hh * 2 - 8;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillStyle = C.shadow;
   roundRect(ctx, -w / 2 + 3, -h / 2 + 4, w, h, 3, true, false);
-  ctx.fillStyle = "#e7ddc8";                         // stucco body
+  ctx.fillStyle = C.wall;                         // stucco body
   roundRect(ctx, -w / 2, -h / 2, w, h, 3, true, false);
-  ctx.fillStyle = "#b98a5e";                         // tile roof band
+  ctx.fillStyle = C.roof;                         // tile roof band
   ctx.fillRect(-w / 2, -h / 2, w, Math.max(3, h * 0.16));
   // portico columns along the WEST face (the calle peatonal side)
   ctx.fillStyle = STONE_LITE;
@@ -455,6 +459,7 @@ function drawCivicBuilding(P) {
 // scale with a play patio; `campus` (colegio / universidad) is several
 // pavilions on open grounds instead of one.
 function drawSchool(P) {
+  const C = PROPS.scenes.school.palette;
   const F = parcelFrame(P);
   //: The three palettes are the use's own, in the catalog beside its pill ink.
   const wall = (PARCEL_USES[P.use] || NO_USE).wall || PARCEL_USES.school.wall;
@@ -472,10 +477,10 @@ function drawSchool(P) {
   // stray white box the map was showing. A yard is swept concrete with a court
   // painted on it, and only when there is room for one.
   const py0 = -D * 0.10, ph = D * 0.95;
-  ctx.fillStyle = "rgba(214,206,180,0.55)";
+  ctx.fillStyle = C.yard;
   ctx.fillRect(-L * 0.42, py0, L * 0.84, ph);        // the swept patio
   if (L > 70 && ph > 22) {                           // a marked court fits
-    ctx.strokeStyle = "rgba(240,238,230,0.55)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = C.court; ctx.lineWidth = 1;
     const cw = L * 0.52, ch = ph * 0.62, cy0 = py0 + (ph - ch) / 2;
     ctx.strokeRect(-cw / 2, cy0, cw, ch);
     ctx.beginPath(); ctx.moveTo(0, cy0); ctx.lineTo(0, cy0 + ch); ctx.stroke();
@@ -484,23 +489,23 @@ function drawSchool(P) {
   const bw = (L - (n - 1) * 6) / n;
   for (let i = 0; i < n; i++) {
     const x = -L / 2 + i * (bw + 6);
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillStyle = C.shadow;
     roundRect(ctx, x + 2, -D - 1, bw, D, 2, true, false);
     ctx.fillStyle = wall;
     roundRect(ctx, x, -D - 3, bw, D, 2, true, false);
     ctx.fillStyle = roof;                            // zinc roof band
     ctx.fillRect(x, -D - 3, bw, Math.max(2, D * 0.28));
     // classroom doors along the corridor
-    ctx.fillStyle = "rgba(90,80,60,0.45)";
+    ctx.fillStyle = C.courtLine;
     const doors = Math.max(1, Math.round(bw / 11));
     for (let d = 0; d < doors; d++) {
       ctx.fillRect(x + bw * ((d + 0.5) / doors) - 1.4, -3 - D * 0.34, 2.8, D * 0.3);
     }
   }
   // the flagpole, at the yard's edge
-  ctx.strokeStyle = "rgba(240,238,230,0.85)"; ctx.lineWidth = 1.2;
+  ctx.strokeStyle = C.pavilion; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(L * 0.44, D * 0.2); ctx.lineTo(L * 0.44, -D * 0.5); ctx.stroke();
-  ctx.fillStyle = "#e85d75";
+  ctx.fillStyle = C.roof;
   ctx.fillRect(L * 0.44, -D * 0.5, Math.max(3, L * 0.05), 2.6);
   ctx.restore();
 }
@@ -509,6 +514,7 @@ function drawSchool(P) {
 // to one side. Every one of the map's 12 stations is a real OSM `amenity=fuel`
 // area — they used to reach the client as a name on a pastel box.
 function drawFuel(P) {
+  const C = PROPS.scenes.fuel.palette;
   const F = parcelFrame(P);
   const along = F.hw >= F.hh;
   const L = (along ? F.hw : F.hh) * 2, D = (along ? F.hh : F.hw) * 2;
@@ -517,25 +523,25 @@ function drawFuel(P) {
   if (!along) ctx.rotate(Math.PI / 2);
   // the shop, along the back edge
   const sw = L * 0.34, sh = D * 0.30;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillStyle = C.shadow;
   roundRect(ctx, -L / 2 + 2, -D / 2 + 2, sw, sh, 2, true, false);
-  ctx.fillStyle = "#e9e3d4";
+  ctx.fillStyle = C.canopy;
   roundRect(ctx, -L / 2 + 1, -D / 2 + 1, sw, sh, 2, true, false);
-  ctx.fillStyle = "#d94f3d";                                  // the fascia band
+  ctx.fillStyle = C.band;                                  // the fascia band
   ctx.fillRect(-L / 2 + 1, -D / 2 + 1, sw, Math.max(1.6, sh * 0.30));
   // the canopy: a slab on four posts, over the islands
   const cw = L * 0.56, ch = D * 0.56;
   const cx0 = L / 2 - cw - 2, cy0 = -ch / 2;
-  ctx.fillStyle = "rgba(0,0,0,0.20)";
+  ctx.fillStyle = C.canopyShadow;
   roundRect(ctx, cx0 + 2, cy0 + 2.5, cw, ch, 2, true, false);
-  ctx.fillStyle = "#f0efe9";
+  ctx.fillStyle = C.shop;
   roundRect(ctx, cx0, cy0, cw, ch, 2, true, false);
-  ctx.fillStyle = "#d94f3d";
+  ctx.fillStyle = C.band;
   ctx.fillRect(cx0, cy0, cw, Math.max(1.4, ch * 0.18));       // the branded edge
-  ctx.fillStyle = "#9aa0a8";                                   // posts
+  ctx.fillStyle = C.pump;                                   // posts
   for (const px of [cx0 + 2.5, cx0 + cw - 3.5])
     for (const py of [cy0 + 2, cy0 + ch - 3]) ctx.fillRect(px, py, 1.6, 1.6);
-  ctx.fillStyle = "#5c6169";                                   // the pumps
+  ctx.fillStyle = C.pumpDark;                                   // the pumps
   const n = Math.max(1, Math.min(3, Math.round(cw / 16)));
   for (let i = 0; i < n; i++) {
     const px = cx0 + cw * ((i + 0.5) / n) - 1.4;
@@ -548,32 +554,33 @@ function drawFuel(P) {
 // a conical zinc roof and a finial. Declared by the world (content.SITE_DECOR)
 // on the parcels that have one — OSM records the park, not what stands in it.
 function drawKiosco(P) {
+  const C = PROPS.scenes.kiosco.palette;
   const F = parcelFrame(P);
   const r = Math.max(7, Math.min(15, Math.min(F.hw, F.hh) * 0.42));
   const x = F.cx, y = F.cy;
-  ctx.fillStyle = "rgba(0,0,0,0.20)";                                   // shadow
+  ctx.fillStyle = C.shadow;                                   // shadow
   ctx.beginPath(); ctx.ellipse(x + 2, y + r * 0.5, r * 1.12, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#cfc7b4";                                            // stepped base
+  ctx.fillStyle = C.base;                                            // stepped base
   ctx.beginPath(); ctx.ellipse(x, y + r * 0.3, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#e7ddc8";
+  ctx.fillStyle = C.wall;
   ctx.beginPath(); ctx.ellipse(x, y + r * 0.16, r * 0.9, r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#b9b2a0"; ctx.lineWidth = 1.4;                     // columns
+  ctx.strokeStyle = C.step; ctx.lineWidth = 1.4;                     // columns
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
     const cxp = x + Math.cos(a) * r * 0.78, cyp = y + Math.sin(a) * r * 0.34;
     ctx.beginPath(); ctx.moveTo(cxp, cyp); ctx.lineTo(cxp, cyp - r * 0.62); ctx.stroke();
   }
-  ctx.fillStyle = "#7f6a52";                                            // conical roof
+  ctx.fillStyle = C.roof;                                            // conical roof
   ctx.beginPath();
   ctx.moveTo(x, y - r * 1.35);
   ctx.lineTo(x + r * 1.05, y - r * 0.5);
   ctx.lineTo(x - r * 1.05, y - r * 0.5);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.18)";                             // lit side
+  ctx.fillStyle = C.highlight;                             // lit side
   ctx.beginPath();
   ctx.moveTo(x, y - r * 1.35); ctx.lineTo(x + r * 1.05, y - r * 0.5); ctx.lineTo(x, y - r * 0.5);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "#5d5040"; ctx.lineWidth = 1;                       // finial
+  ctx.strokeStyle = C.post; ctx.lineWidth = 1;                       // finial
   ctx.beginPath(); ctx.moveTo(x, y - r * 1.35); ctx.lineTo(x, y - r * 1.7); ctx.stroke();
 }
 
@@ -581,6 +588,7 @@ function drawKiosco(P) {
 // the parcel's frame: the water runs across the SHORT axis so a wide, shallow
 // park still reads as "a park with a river through it".
 function drawParkRiver(P) {
+  const C = PROPS.scenes.parkRiver.palette;
   const F = parcelFrame(P);
   const hw = F.hw * 0.86, hh = F.hh * 0.86;
   const cx = F.cx, cy = F.cy;
@@ -592,12 +600,12 @@ function drawParkRiver(P) {
   const bed = new Path2D();
   bed.moveTo(-hw, -hh * 0.42);
   bed.bezierCurveTo(-hw * 0.3, hh * 0.55, hw * 0.3, -hh * 0.55, hw, hh * 0.42);
-  ctx.strokeStyle = "#7d8f6a"; ctx.lineWidth = w + 5; ctx.stroke(bed);   // damp bank
-  ctx.strokeStyle = "#4f86a8"; ctx.lineWidth = w; ctx.stroke(bed);       // water
-  ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = w * 0.28; ctx.stroke(bed);
+  ctx.strokeStyle = C.bank; ctx.lineWidth = w + 5; ctx.stroke(bed);   // damp bank
+  ctx.strokeStyle = C.water; ctx.lineWidth = w; ctx.stroke(bed);       // water
+  ctx.strokeStyle = C.sheen; ctx.lineWidth = w * 0.28; ctx.stroke(bed);
   // stone footbridge over the middle of the stream, across the flow
   const bw = w + 12, bh = Math.max(5, w * 0.55);
-  ctx.fillStyle = "rgba(0,0,0,0.20)";
+  ctx.fillStyle = C.shadow;
   roundRect(ctx, -bh / 2 + 1, -bw / 2 + 2, bh, bw, 2, true, false);
   ctx.fillStyle = STONE_LITE;
   roundRect(ctx, -bh / 2, -bw / 2, bh, bw, 2, true, false);
@@ -712,24 +720,25 @@ function propVars(lm, prop) {
 // Sponsored lotes (remote content): real Puntarenas businesses claim a spot
 // and appear as a branded billboard or storefront — pure data, no release.
 function drawLote(lo) {
+  const C = PROPS.scenes.lote.palette;
   const x = lo.x, y = lo.y;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillStyle = C.shadow;
   ctx.beginPath(); ctx.ellipse(x + 3, y + 6, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
   if (lo.kind === "store") {
     // small branded storefront: body, awning in the sponsor tone, label
-    ctx.fillStyle = "#f4f0e4"; ctx.fillRect(x - 16, y - 10, 32, 18);
-    for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? "#fff" : lo.tone; ctx.fillRect(x - 16 + i * 8, y - 15, 8, 5); }
-    ctx.fillStyle = "rgba(20,40,60,0.55)"; ctx.fillRect(x - 4, y - 2, 8, 10);   // door
-    ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillRect(x - 13, y - 6, 7, 5); // window
-    label(x, y - 22, lo.label, "#fff", lo.tone);
+    ctx.fillStyle = C.storeBody; ctx.fillRect(x - 16, y - 10, 32, 18);
+    for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? C.awningLight : lo.tone; ctx.fillRect(x - 16 + i * 8, y - 15, 8, 5); }
+    ctx.fillStyle = C.door; ctx.fillRect(x - 4, y - 2, 8, 10);   // door
+    ctx.fillStyle = C.window; ctx.fillRect(x - 13, y - 6, 7, 5); // window
+    label(x, y - 22, lo.label, C.awningLight, lo.tone);
   } else {
     // billboard: two posts + panel in the sponsor tone with the label
-    ctx.strokeStyle = "#6a5a48"; ctx.lineWidth = 2;
+    ctx.strokeStyle = C.post; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x - 10, y + 4); ctx.lineTo(x - 10, y - 12);
     ctx.moveTo(x + 10, y + 4); ctx.lineTo(x + 10, y - 12); ctx.stroke();
-    ctx.fillStyle = "#fff"; ctx.fillRect(x - 17, y - 26, 34, 15);
+    ctx.fillStyle = C.awningLight; ctx.fillRect(x - 17, y - 26, 34, 15);
     ctx.fillStyle = lo.tone; ctx.fillRect(x - 15, y - 24, 30, 11);
-    label(x, y - 30, lo.label, "#fff", "rgba(20,16,40,0.85)");
+    label(x, y - 30, lo.label, C.awningLight, C.billboardPill);
   }
 }
 

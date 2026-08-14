@@ -242,6 +242,33 @@ tiene implementación en el renderer.
       `canvas2d.js` — y `water.js` sólo deriva el mar de sus dos canales de agua.
       Verificado por datos: 32 valores de oleaje y 28 canales de clima idénticos.
 
+- [x] **Las ESCENAS dejan de esconder su contenido.** Hecho 2026-08-13, a pedido
+      del usuario y con razón: decir "es una escena, se queda en código"
+      explicaba por qué no es una lista de partes, pero no **cómo la edita un
+      diseñador**. Dentro del faro había colores de piedra, un rango de tamaños,
+      tres posiciones de palma, cuántas frondas y cuántas bandas tiene la torre.
+
+      La línea correcta no es *lista-de-partes vs código*: es **números y colores
+      vs control de flujo**. Las 13 escenas leen ahora
+      `world-props.json` → `scenes`: **las 13 paletas completas**, y en las
+      cuatro primeras (faro, espacio verde, fuente, piscina) también las cuentas,
+      escalas y proporciones. Conservan sus bucles, sus clamps y su hash
+      determinista.
+
+      Lo que sigue fuera de alcance desde el editor es **sólo lo que viene del
+      MUNDO** — `lm.rim`, la huella del estadio, el residual del parque marino —
+      y eso se edita en la capa de mundo, que es donde corresponde.
+
+      Verificado: parcelas **608 000 px**, hitos **592 800 px**, escenas
+      **343 200 px**, cero distintos en las tres, con las hojas pasando la
+      compuerta de tinta.
+
+      Queda: los offsets geométricos DENTRO de una receta (dónde cae la puerta de
+      una escuela respecto de su pabellón). §13 dice que esos pertenecen al
+      registro de forma del asset, no a la capa de enums — moverlos es convertir
+      el código de dibujo en JSON con peor sintaxis, así que se hacen cuando esa
+      familia tenga su propio DSL de forma, no antes.
+
 - [ ] **LO QUE NO ES ARTE SINO MUNDO: las líneas de siembra y el verde.**
       Pedido explícito del usuario, y hoy NO es editable. Distinguir tres capas:
       - **la especie y su dibujo** — ya es data (`flora.json`): se puede cambiar

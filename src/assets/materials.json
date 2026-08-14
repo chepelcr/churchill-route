@@ -87,6 +87,14 @@
     "roof": "#8a6a4a"
   },
 
+  "median": {
+    "_note": "LA MEDIANA del Paseo — the planted strip down the middle of the avenue, with the palms on it. It is GREEN GROUND and it is a WALL: the build stamps it CLS_ACERA (`stamp_paseo_median`), wider than it is drawn, so the car stops at the visible green instead of slipping into a drawn-but-unstamped round cap and getting trapped there. Drawn by `paintMergedMedian`/the singles pass in c2d/streets.js; the minimap drew the same green from a fourth copy.",
+    "soil": "#4f6f34",
+    "grass": "#79b45c",
+    "rail": "rgba(58,84,40,0.62)",
+    "_extent_note": "The colours are data; WHERE the strip runs is not. `build_stage.py` derives the runs from the streets named after the Paseo and from a MEASURED first-cuadra corner, so it survives a rescale but cannot be lengthened by hand. See the ROADMAP row on planting lines."
+  },
+
   "minimap": {
     "_note": "The HUD's own inks. Two of these were literally the pier decks with a comment pointing at structures.js — those now READ the pier registry rather than restating it, which is the whole point of this file.",
     "barro": "#9c7a4f",

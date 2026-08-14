@@ -416,9 +416,9 @@ function paintTileRails(rails, view) {
 // Do not widen it past the stamp: the car would reach drawn-but-unstamped rim
 // and the both-ends-blocked snap-back traps it there.
 const PAIR_MAX = 26;          // px between the two rails of one divider
-const MEDIAN_SOIL = "#4f6f34";
-const MEDIAN_GRASS = "#79b45c";
-const MEDIAN_RAIL = "rgba(58,84,40,0.62)";
+const MEDIAN_SOIL = MATERIALS.median.soil;
+const MEDIAN_GRASS = MATERIALS.median.grass;
+const MEDIAN_RAIL = MATERIALS.median.rail;
 
 // Pair up a tile's median strips. Cached on the tile's median list, since it is
 // pure geometry off emitted data. Returns { pairs, singles }; `pairs` carry the

@@ -1773,7 +1773,9 @@
         "ringTreesPer": 24,
         "ringInset": 10,
         "ringJitter": 8,
-        "ringScaleVar": 0.4
+        "ringScaleVar": 0.4,
+        "shadowDx": 3,
+        "shadowDy": 4
       }
     },
     "fountain": {
@@ -1798,7 +1800,11 @@
         "droplets": 5,
         "dropletR": 1.2,
         "dropletSpread": 9,
-        "dropletBase": 3
+        "dropletBase": 3,
+        "dropletSpeed": 22,
+        "dropletPhase": 2.5,
+        "dropletRise": 2,
+        "dropletSpin": 2
       }
     },
     "pool": {
@@ -1849,7 +1855,10 @@
             -22
           ]
         ],
-        "palmScale": 0.7
+        "palmScale": 0.7,
+        "shimmerSpeedA": 3,
+        "shimmerFreq": 0.08,
+        "shimmerSpeedB": 4
       }
     }
   }

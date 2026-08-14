@@ -202,7 +202,9 @@ const MINI_WATER  = "#20496b";   // the gulf, the estero and the balneario inlet
 const MINI_LAND   = "#1b2035";   // the peninsula itself, under the street network
 const MINI_SAND   = "#a89a72";   // the beach — drivable, so it is not land-dark
 const MINI_PARK   = "#2f6b3e";   // a green cuadra you cannot drive into
-const MINI_MEDIAN = "#79b45c";   // the Paseo's palm median — planted, and a WALL
+// The SAME green the median is drawn with, read rather than restated — this
+// was a fourth copy of it, like the two pier decks above.
+const MINI_MEDIAN = MATERIALS.median.grass;   // planted, and a WALL
 const MINI_FIELD  = "#4f9d5b";   // an estadio / plaza you CAN — brighter on purpose
 const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
 const MINI_MALECON = "#efdcb4";  // the sea front: warm baldosa, not town stone

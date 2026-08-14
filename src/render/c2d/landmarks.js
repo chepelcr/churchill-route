@@ -79,6 +79,7 @@ function drawFaroScene(lm) {
 // wall; this just paints it green instead of bare sand.
 function drawGreenSpace(lm, w, h, opts = {}) {
   const x = lm.x, y = lm.y;
+  const { palette: C, params: P } = PROPS.scenes.greenSpace;
   // Parks (opts.ground === false): the green GROUND is painted by the block
   // footprint (plaza-green) so it can never overlap streets and follows the
   // block orientation — here we only add the fountain, a small tight tree
@@ -87,35 +88,42 @@ function drawGreenSpace(lm, w, h, opts = {}) {
   if (opts.ground === false) {
     // Trees hug the park perimeter (well clear of the central fountain), so
     // the ring reads as shade trees around the plaza, not a clump on the jet.
-    const rx = Math.max(20, w / 2 - 14), ry = Math.max(18, h / 2 - 14);
-    const n = Math.max(6, Math.round((w + h) / 26));
+    const rx = Math.max(P.parkMinRx, w / 2 - P.parkInset);
+    const ry = Math.max(P.parkMinRy, h / 2 - P.parkInset);
+    const n = Math.max(P.parkTreesMin, Math.round((w + h) / P.parkTreesPer));
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + hash01(i + lm.x) * 0.35;
-      const f = 0.82 + hash01(i * 5 + lm.y) * 0.16;
-      paintTree({ x: x + Math.cos(a) * rx * f, y: y + Math.sin(a) * ry * f, s: 0.8 + hash01(i + lm.x) * 0.35 });
+      const a = (i / n) * Math.PI * 2 + hash01(i + lm.x) * P.parkJitter;
+      const f = P.parkRadiusBase + hash01(i * 5 + lm.y) * P.parkRadiusVar;
+      paintTree({ x: x + Math.cos(a) * rx * f, y: y + Math.sin(a) * ry * f,
+                  s: P.treeScaleBase + hash01(i + lm.x) * P.treeScaleVar });
     }
     if (opts.fountain) drawFountain(x, y);
     return;
   }
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  roundRect(ctx, x - w / 2 + 3, y - h / 2 + 4, w, h, 12, true, false); // soft shadow
-  ctx.fillStyle = "#4f9d5b";
-  roundRect(ctx, x - w / 2, y - h / 2, w, h, 12, true, false);         // grass
-  ctx.strokeStyle = "rgba(232,226,210,0.55)"; ctx.lineWidth = 3;       // gravel path border
-  roundRect(ctx, x - w / 2 + 5, y - h / 2 + 5, w - 10, h - 10, 9, false, true);
-  if (opts.pitch) {                                                    // sports pitch outline
-    ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
-    ctx.strokeRect(x - w / 2 + 16, y - h / 2 + 14, w - 32, h - 28);
-    ctx.beginPath(); ctx.moveTo(x, y - h / 2 + 14); ctx.lineTo(x, y + h / 2 - 14); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = C.shadow;
+  roundRect(ctx, x - w / 2 + P.shadowDx, y - h / 2 + P.shadowDy, w, h, P.corner, true, false);
+  ctx.fillStyle = C.grass;
+  roundRect(ctx, x - w / 2, y - h / 2, w, h, P.corner, true, false);
+  ctx.strokeStyle = C.gravelPath; ctx.lineWidth = P.pathWidth;
+  roundRect(ctx, x - w / 2 + P.pathInset, y - h / 2 + P.pathInset,
+            w - P.pathInset * 2, h - P.pathInset * 2, P.pathCorner, false, true);
+  if (opts.pitch) {
+    ctx.strokeStyle = C.pitchLine; ctx.lineWidth = P.pitchLineWidth;
+    ctx.strokeRect(x - w / 2 + P.pitchInsetX, y - h / 2 + P.pitchInsetY,
+                   w - P.pitchInsetX * 2, h - P.pitchInsetY * 2);
+    ctx.beginPath();
+    ctx.moveTo(x, y - h / 2 + P.pitchInsetY); ctx.lineTo(x, y + h / 2 - P.pitchInsetY);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, P.centreCircle, 0, Math.PI * 2); ctx.stroke();
   }
   // tree ring around the perimeter (deterministic scatter)
-  const n = Math.round((w + h) / 24);
+  const n = Math.round((w + h) / P.ringTreesPer);
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
-    const rx = w / 2 - 10 - hash01(i * 3 + lm.x) * 8;
-    const ry = h / 2 - 10 - hash01(i * 7 + lm.y) * 8;
-    paintTree({ x: x + Math.cos(a) * rx, y: y + Math.sin(a) * ry, s: 0.8 + hash01(i + lm.x) * 0.4 });
+    const rx = w / 2 - P.ringInset - hash01(i * 3 + lm.x) * P.ringJitter;
+    const ry = h / 2 - P.ringInset - hash01(i * 7 + lm.y) * P.ringJitter;
+    paintTree({ x: x + Math.cos(a) * rx, y: y + Math.sin(a) * ry,
+                s: P.treeScaleBase + hash01(i + lm.x) * P.ringScaleVar });
   }
   if (opts.fountain) drawFountain(x, y);
 }
@@ -140,27 +148,31 @@ function drawStadium(lm) {
 // Central fountain with living (animated) water: stone basin, rippling pool,
 // a bobbing central jet and droplets. Animated off lastT.
 function drawFountain(x, y) {
-  const tt = lastT * 0.003;
-  ctx.fillStyle = "#b9b3a4"; ctx.beginPath(); ctx.arc(x, y, 17, 0, Math.PI * 2); ctx.fill(); // rim
-  ctx.fillStyle = "#d6d0c0"; ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill();
+  const { palette: C, params: P } = PROPS.scenes.fountain;
+  const tt = lastT * P.rippleSpeed;
+  ctx.fillStyle = C.rim; ctx.beginPath(); ctx.arc(x, y, P.rimR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.kerb; ctx.beginPath(); ctx.arc(x, y, P.kerbR, 0, Math.PI * 2); ctx.fill();
   ctx.save();
-  ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = "#4fb4d6"; ctx.fillRect(x - 12, y - 12, 24, 24);                            // pool water
-  ctx.strokeStyle = "rgba(255,255,255,0.55)"; ctx.lineWidth = 1;                              // ripples
-  for (let k = 0; k < 3; k++) {
-    const rr = ((tt + k / 3) % 1) * 12;
-    ctx.globalAlpha = Math.max(0, 1 - rr / 12);
+  ctx.beginPath(); ctx.arc(x, y, P.waterR, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = C.water;
+  ctx.fillRect(x - P.waterR, y - P.waterR, P.waterR * 2, P.waterR * 2);
+  ctx.strokeStyle = C.ripple; ctx.lineWidth = 1;
+  for (let k = 0; k < P.ripples; k++) {
+    const rr = ((tt + k / P.ripples) % 1) * P.waterR;
+    ctx.globalAlpha = Math.max(0, 1 - rr / P.waterR);
     ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.globalAlpha = 1;
   ctx.restore();
-  const jh = 9 + Math.sin(tt * 6) * 2;                                                        // central jet
-  ctx.fillStyle = "rgba(206,236,246,0.9)";
-  ctx.beginPath(); ctx.ellipse(x, y - jh / 2, 2, jh / 2, 0, 0, Math.PI * 2); ctx.fill();
-  for (let d = 0; d < 5; d++) {                                                               // droplets
-    const a = (d / 5) * Math.PI * 2 + tt * 2;
-    const rr = 3 + ((tt * 22 + d * 2.5) % 9);
-    ctx.beginPath(); ctx.arc(x + Math.cos(a) * rr, y - jh + Math.sin(a) * 2, 1.2, 0, Math.PI * 2); ctx.fill();
+  const jh = P.jetBase + Math.sin(tt * P.jetSpeed) * P.jetBob;
+  ctx.fillStyle = C.jet;
+  ctx.beginPath(); ctx.ellipse(x, y - jh / 2, P.jetHalfW, jh / 2, 0, 0, Math.PI * 2); ctx.fill();
+  for (let d = 0; d < P.droplets; d++) {
+    const a = (d / P.droplets) * Math.PI * 2 + tt * P.dropletSpin;
+    const rr = P.dropletBase + ((tt * P.dropletSpeed + d * P.dropletPhase) % P.dropletSpread);
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * rr, y - jh + Math.sin(a) * P.dropletRise, P.dropletR, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -168,33 +180,39 @@ function drawFountain(x, y) {
 // moving highlights, a shallow end + slide. Reused for the Balneario and for
 // the Parque Marino's aquarium tanks. `s` scales it; `palms` frames it.
 function drawPool(x, y, rot, s = 1, palms = true) {
-  const tt = lastT * 0.0022;
+  const { palette: C, params: P } = PROPS.scenes.pool;
+  const tt = lastT * P.speed;
   ctx.save();
   ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
-  ctx.fillStyle = "#e8e2d2";                                  // concrete deck
-  ctx.beginPath(); ctx.ellipse(0, 0, 78, 48, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#ccc4ae"; ctx.lineWidth = 5;             // tiled coping ring
-  ctx.beginPath(); ctx.ellipse(0, 0, 72, 43, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.save();                                                 // clip to water
-  ctx.beginPath(); ctx.ellipse(0, 0, 66, 38, 0, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = "#4fbdd8"; ctx.fillRect(-70, -42, 140, 84);
-  ctx.fillStyle = "rgba(40,120,160,0.35)";                    // deeper centre
-  ctx.beginPath(); ctx.ellipse(6, 4, 42, 24, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#aeeaf2";                                  // shallow end
-  ctx.beginPath(); ctx.ellipse(-42, 8, 22, 12, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 2;   // moving shimmer
-  for (let i = 0; i < 4; i++) {
-    const yy = -28 + i * 15 + Math.sin(tt * 3 + i) * 3;
+  ctx.fillStyle = C.deck;
+  ctx.beginPath(); ctx.ellipse(0, 0, P.deckRx, P.deckRy, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = C.coping; ctx.lineWidth = P.copingWidth;
+  ctx.beginPath(); ctx.ellipse(0, 0, P.copingRx, P.copingRy, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(0, 0, P.waterRx, P.waterRy, 0, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = C.water;
+  ctx.fillRect(-P.waterRx - 4, -P.waterRy - 4, P.waterRx * 2 + 8, P.waterRy * 2 + 8);
+  ctx.fillStyle = C.deep;
+  ctx.beginPath(); ctx.ellipse(P.deepX, P.deepY, P.deepRx, P.deepRy, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.shallow;
+  ctx.beginPath();
+  ctx.ellipse(P.shallowX, P.shallowY, P.shallowRx, P.shallowRy, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = C.shimmer; ctx.lineWidth = P.shimmerWidth;
+  for (let i = 0; i < P.shimmerLines; i++) {
+    const yy = P.shimmerTop + i * P.shimmerGap + Math.sin(tt * P.shimmerSpeedA + i) * P.shimmerAmp;
     ctx.beginPath();
-    for (let xx = -66; xx <= 66; xx += 8) ctx.lineTo(xx, yy + Math.sin(xx * 0.08 + tt * 4 + i) * 2.5);
+    for (let xx = -P.waterRx; xx <= P.waterRx; xx += P.shimmerStep)
+      ctx.lineTo(xx, yy + Math.sin(xx * P.shimmerFreq + tt * P.shimmerSpeedB + i) * P.shimmerWave);
     ctx.stroke();
   }
   ctx.restore();
-  ctx.fillStyle = "#f3c969"; ctx.beginPath(); ctx.arc(-54, 22, 6, 0, Math.PI * 2); ctx.fill(); // slide
+  ctx.fillStyle = C.slide;
+  ctx.beginPath(); ctx.arc(P.slideX, P.slideY, P.slideR, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
   if (palms) {
-    paintPalm({ x: x + 60 * s, y: y - 30 * s, s: 0.7 * Math.max(0.7, s) }, lastT);
-    paintPalm({ x: x - 62 * s, y: y - 22 * s, s: 0.7 * Math.max(0.7, s) }, lastT);
+    for (const [ox, oy] of P.palms) {
+      paintPalm({ x: x + ox * s, y: y + oy * s, s: P.palmScale * Math.max(P.palmScale, s) }, lastT);
+    }
   }
 }
 

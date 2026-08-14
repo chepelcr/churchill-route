@@ -41,6 +41,20 @@ const EXTRA = {
   fan(g, p, X, Y) {
     p.pts.forEach((pt, i) => (i ? g.lineTo(X(pt[0]), Y(pt[1])) : g.moveTo(X(pt[0]), Y(pt[1]))));
   },
+  //: A REGULAR n-gon: the ALTO's octagon, and any other sign the Manual
+  //: Centroamericano specifies by its number of sides. `rot` is in TURNS, not
+  //: radians, so an octagon stood on a flat side is `0.0625` (half a facet)
+  //: instead of an irrational literal in a JSON file. A power of two times TAU
+  //: is exact, so this is the same double the hand-written `Math.PI / 8` was.
+  polyN(g, p, X, Y) {
+    const cx = X(p.cx), cy = Y(p.cy), rot = (p.rot || 0) * Math.PI * 2;
+    for (let i = 0; i < p.n; i++) {
+      const a = rot + (i / p.n) * Math.PI * 2;
+      const px = cx + Math.cos(a) * p.r, py = cy + Math.sin(a) * p.r;
+      if (i) g.lineTo(px, py); else g.moveTo(px, py);
+    }
+    g.closePath();
+  },
 };
 
 const SHAPES = { ...PATHS, ...EXTRA };
@@ -50,7 +64,7 @@ const SHAPES = { ...PATHS, ...EXTRA };
  *  silently drawing nothing. */
 export const SHAPE_NAMES = Object.freeze([
   ...Object.keys(SHAPES), "rect", "stripes", "stroke", "strokeRect",
-  "text", "label", "areaLabel", "repeat", "grid", "ring",
+  "text", "label", "areaLabel", "repeat", "grid", "ring", "prop",
 ]);
 
 /**
@@ -66,7 +80,7 @@ export const SHAPE_NAMES = Object.freeze([
  *   @param {object}   [frame.vars]  `$name` substitutions for text
  */
 export function paintParts(g, parts, frame) {
-  const { X: rawX, Y: rawY, color = (c) => c, skip = () => false, vars = {} } = frame;
+  const { X: rawX, Y: rawY, color = (c) => c, skip = () => false, vars = {}, prop } = frame;
   const paint = (spec) => color(spec);
   const str = (v) => (typeof v === "string" && v.startsWith("$") ? (vars[v.slice(1)] ?? "") : v);
   // A `$name` may stand in a NUMERIC slot too, not just in text — the balneario's
@@ -151,8 +165,26 @@ export function paintParts(g, parts, frame) {
         g.fillStyle = paint(part.fill);
         g.font = part.font;
         g.textAlign = part.align || "center";
+        // A pavement marking is centred on its own ring, so it asks for
+        // `middle`. Canvas keeps the baseline until somebody changes it, so put
+        // it back — the speed-limit numeral used to do exactly this by hand, and
+        // leaving it set would have moved every label drawn after it.
+        if (part.baseline) g.textBaseline = part.baseline;
         g.fillText(str(part.text), X(part.x), Y(part.y));
+        if (part.baseline) g.textBaseline = "alphabetic";
         break;
+
+      // ANOTHER RECORD'S PARTS, INLINED HERE. The same church is the `church`
+      // landmark's art AND the building a `church` parcel draws on its lot; the
+      // same caseta is the `bus` sign AND the paradita the civic block puts on
+      // the Parque de la Virgen. Written twice they would drift, which is the
+      // whole reason this file exists. Inlining draws them in the caller's own
+      // order and frame, so it is not a second drawing of anything.
+      case "prop": {
+        const sub = prop && prop(part.ref);
+        if (sub) paintParts(g, sub, frame);
+        break;
+      }
 
       // n copies of a sub-list, stepped by (dx, dy). `$i` in a palette index
       // picks per copy, which is how the village gets three coloured houses and
@@ -164,7 +196,7 @@ export function paintParts(g, parts, frame) {
             X: (v) => X(v) + dx,
             Y: (v) => Y(v) + dy,
             color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
-            skip, vars,
+            skip, vars, prop,
           });
         }
         break;
@@ -181,13 +213,25 @@ export function paintParts(g, parts, frame) {
         }
         break;
 
+      // ONE PATH MAY BE FILLED, STROKED, OR BOTH — and both is not the same as
+      // two parts. A CEDA EL PASO is a white triangle with a red border built
+      // from a single `closePath`; splitting it in two would stroke a SECOND
+      // path over the first and composite the antialiased border twice, which is
+      // the anchor's lesson (see world-props.json's `strokeNote`) from the other
+      // side. Fill stays unconditional when there is no stroke, so nothing in
+      // the catalogs that predates this changes.
       default: {
         const build = SHAPES[part.shape];
         if (!build) break;
-        g.fillStyle = paint(part.fill);
+        const stroked = part.stroke !== undefined;
         g.beginPath();
         build(g, part, X, Y);
-        g.fill();
+        if (!stroked || part.fill !== undefined) { g.fillStyle = paint(part.fill); g.fill(); }
+        if (stroked) {
+          g.strokeStyle = paint(part.stroke);
+          g.lineWidth = part.width;
+          g.stroke();
+        }
       }
     }
   }

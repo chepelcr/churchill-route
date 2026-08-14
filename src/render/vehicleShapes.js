@@ -34,11 +34,28 @@ export function evalOn(value, half) {
  *  `stripes` and the stroked shapes are Canvas-only and live with the painter;
  *  none of them is ever a silhouette part, which is why the split falls here. */
 export const PATHS = {
+  // A WIDTH IS A DIFFERENCE, NOT A POSITION. `X(p.w) - X(0)` is the same number
+  // as `X(p.w)` in a vehicle's frame (its origin is its own centre, so X(0) is
+  // 0) but not in a prop's, where the frame is an OFFSET from a world anchor and
+  // a bare `X(p.w)` came out as `anchor + w`. That is a 4 px traffic-light head
+  // drawn as a rectangle the size of the block it stands on.
   rect(g, p, X, Y) {
-    g.rect(X(p.x), Y(p.y), X(p.w), Y(p.h));
+    g.rect(X(p.x), Y(p.y), X(p.w) - X(0), Y(p.h) - Y(0));
   },
+  // FOUR `arcTo`s, NOT the native `roundRect`. They are the same rectangle and
+  // not the same rasteriser: measured on the traffic-light head (a 4x9 box with
+  // r 1.2) the native one lands 11 pixels one channel level away at the corners.
+  // Every rounded thing this game has ever drawn came through gfx.js's arcTo
+  // composition, so that is the shape of record — the same reasoning that keeps
+  // `rect` on `fillRect`.
   roundRect(g, p, X, Y) {
-    g.roundRect(X(p.x), Y(p.y), X(p.w), Y(p.h), p.r);
+    const x = X(p.x), y = Y(p.y), w = X(p.w) - X(0), h = Y(p.h) - Y(0), r = p.r;
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
   },
   poly(g, p, X, Y) {
     p.pts.forEach((pt, i) => {

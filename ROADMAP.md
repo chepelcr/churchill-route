@@ -239,11 +239,62 @@ mismo movimiento que ya se hizo cuatro veces (superficies, vehículos,
 materiales, hitos): sacar el CONTENIDO a un registro versionado, dejar en el
 motor la física, el intérprete y las transiciones de estado.
 
-- [ ] **Terminar `world-props.json`: parcelas y señales.** Los landmarks ya son
-      data (2026-08-13); falta el `switch` de 10 casos de `drawSign`
-      (`c2d/streets.js`) y el arte que `drawParcels` pone sobre cada uso. El
-      intérprete y la compuerta ya existen — es transcribir y medir con
-      `png-diff`.
+- [x] **Terminar `world-props.json`: parcelas y señales.** Hecho 2026-08-13.
+      El `switch (s.kind)` de **10 casos** de `drawSign` (`c2d/streets.js`) es
+      ahora un recorrido sobre `signs`: los diez son data, incluidos el ALTO
+      (octágono del Manual Centroamericano), la zebra, el tope y la banca del
+      malecón. Lo que se quedó en el archivo es lo único que un catálogo no
+      puede decir: **EL MARCO**. Seis de los diez se dibujan DENTRO de una
+      rotación por el ángulo que el mundo midió contra el cordón, y la parada da
+      media vuelta más cuando la calzada le queda del otro lado.
+
+      **En parcelas la respuesta honesta fue que casi nada es arte.** De once
+      cosas que `drawParcels` despacha por uso, **tres** lo son y se movieron —
+      la parroquia (`props.churchLot`), la Virgen (`props.statue`) y la paradita
+      (`props.parada`) — y **siete se quedan en código porque son ESCENAS**: la
+      catedral, la Casa de la Cultura, las escuelas/kinders/campus, las
+      gasolineras, el kiosco de parque, el río y el arbolado se dimensionan a sí
+      mismos desde los semiejes de su propia parcela, con topes y conteos
+      (`Math.max(3, Math.round(h / 12))` columnas, cancha marcada sólo
+      `if (L > 70 && ph > 22)`, un pabellón por cada 46 px de frente, un scatter
+      sobre hash de posición). Meterlas en JSON sería meter aritmética y
+      condicionales en JSON, o sea un lenguaje de programación peor: es la misma
+      línea que dejó el faro, el estadio y el parque marino donde están. Lo que
+      sí pasó a data es **el despacho**: qué uso dibuja su propio edificio, con
+      qué palabra y qué tinta lleva su pastilla, y las tres paletas de escuela.
+
+      **Dos cosas se dibujaban DOS VECES** y ahora son una: la parroquia (el arte
+      del landmark `church` y el edificio de la parcela `church`, en dos archivos
+      distintos) y la caseta de bus (`drawParada` en gfx.js, llamada desde las
+      dos listas de paradas). El intérprete estrena una parte `prop` que
+      **inyecta** las partes de otro registro en el orden y el marco de quien
+      llama, así que compartir no es volver a dibujar.
+
+      **Verificado pixel por pixel en CUATRO hojas** (`tools/shot-signs.mjs` y
+      `tools/shot-parcels.mjs` son nuevos; cada seña se dibuja derecha y girada,
+      y **toda** parcela de la hoja va girada, porque la cuadrícula no es
+      cuadrada a la pantalla): señales **198 000 px**, parcelas **608 000 px**,
+      hitos **592 800 px**, vehículos **310 500 px** — **1 709 300 pixels, cero
+      distintos**.
+
+      **Tres mediciones costaron una corrida cada una.** (1) Un ancho es una
+      DIFERENCIA, no una posición: `PATHS.rect`/`roundRect` usaban `X(p.w)`, que
+      en el marco de un vehículo (origen en su centro) es correcto y en el de un
+      prop (desplazamiento desde un ancla del mundo) da `ancla + w` — una cabeza
+      de semáforo de 4 px dibujada del tamaño de la manzana, 11 531 px. (2) El
+      `roundRect` nativo del Canvas y la composición de cuatro `arcTo` de gfx.js
+      **no son el mismo rasterizador**: 11 px a un nivel de canal en las
+      esquinas de esa misma cabeza. `PATHS.roundRect` pasa a los `arcTo`, que es
+      la forma con la que se dibujó todo lo redondo de este juego. (3) **Las
+      hojas de arte tenían una carrera con las tipografías**: se dibujaban en
+      `domcontentloaded`, antes de que llegaran los woff2 propios, así que el
+      lado que perdía la carrera medía sus pastillas en el monospace de
+      respaldo — 5 724 px de "el arte se movió" que eran un Vite frío. Los
+      cuatro harnesses esperan ahora a `document.fonts`.
+
+      `tests/test_world_props.py` pasa de 7 a **19** casos (78 en total, antes
+      70) y la cobertura de `SignKind` se muda ahí desde `test_vocabulary.py`,
+      donde exigía un `case` que ya no existe.
 - [ ] **`churchill/world/content.py` → `content/world/*.json`**, validado contra
       los DTO que ya existen. Es la fila de MÁS RIESGO del registro: la prueba
       es un build completo (~28 min) con `world_snapshot.py rebuild` devolviendo

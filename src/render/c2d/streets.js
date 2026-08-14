@@ -1,12 +1,19 @@
 // Street layer: the multi-pass road painter (acera → casing → asphalt → lane
 // dashes), per-tile rails/medians, street name pills and the lock barriers.
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { t } from "../../i18n/index.js";
+import { evalOn } from "../vehicleShapes.js";
 import { dashPath, roadPath } from "./cache.js";
 import { nearestOnPoly } from "./flora.js";
-import { ACERA_PX, aabbInView, ctx, drawParada, flatAABB, flatMultiPath, flatPath, label, parcelFrame, roundRect } from "./gfx.js";
+import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, parcelFrame } from "./gfx.js";
+import { propParts } from "./props.js";
+import { paintAt, paintParts } from "./shapes.js";
+
+//: LA SEÑALIZACIÓN, keyed by SignKind — see the note above `drawSign`.
+const SIGNS = PROPS.signs;
 
 // Estadios are NOT a structure drawn over the ground — they are a COLOUR
 // CHOICE inside the acera pass. The build traces each one from the real cuadra
@@ -659,146 +666,32 @@ function drawBarriers(view) {
 export { drawBarriers, drawSigns, medianPairs, paintParcels, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };
 
 // ---------------------------------------------------------------- signs ----
-// Street furniture, drawn on top of the asphalt. Costa Rica signs to the Manual
-// Centroamericano de Dispositivos Uniformes, so these are the real shapes: the
-// ALTO is a red OCTAGON carrying the word (not "STOP"), a CEDA EL PASO is an
-// inverted white triangle with a red border, and a tope is the yellow-hatched
-// hump every calle de barrio has.
+// Street furniture, drawn on top of the asphalt. THE ART IS DATA: what used to
+// be here was a 10-case `switch` of raw Canvas calls, one per SignKind; what is
+// here is a walk over that kind's `parts` in `src/assets/world-props.json`,
+// through the same interpreter the vehicle and landmark catalogs use.
 //
-// Sizes are in world px at the game's framing (~20 cuadrículas across), so a
-// sign reads at a glance without swallowing the lane it stands beside.
-const SIGN_POST = "#8b8f96";
-// A mapped parada has no size of its own (the civic block's does, from the
-// build). These are the caseta's, in world px at the game's framing.
-const PARADA_W = 34, PARADA_H = 12;
-function drawSignPost(x, y, h) {
-  ctx.strokeStyle = SIGN_POST; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y); ctx.stroke();
-}
-function polyN(x, y, r, n, rot) {
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const a = rot + (i / n) * Math.PI * 2;
-    const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
-    if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
-  }
-  ctx.closePath();
-}
+// This file keeps the one thing a catalog cannot express — THE FRAME. Four of
+// the ten sit upright on their post and are drawn in plain pixels around the
+// anchor; the other six live inside a rotation by the angle the WORLD measured
+// against the kerb (`seat_bus_stops`, the promenade's normal, the lane heading),
+// and the parada turns a half-circle more when the roadway is on its far side.
+// A bench or a zebra painted square to the screen is one in the wrong street.
 function drawSign(s) {
-  const x = s.x, y = s.y;
-  switch (s.kind) {
-    case "alto": {
-      drawSignPost(x, y, 5);
-      ctx.fillStyle = "rgba(0,0,0,0.25)";
-      polyN(x + 0.8, y + 0.8, 4.6, 8, Math.PI / 8); ctx.fill();
-      ctx.fillStyle = "#c0392b";                       // the octagon
-      polyN(x, y, 4.6, 8, Math.PI / 8); ctx.fill();
-      ctx.strokeStyle = "#f4f1e8"; ctx.lineWidth = 0.7;
-      polyN(x, y, 3.5, 8, Math.PI / 8); ctx.stroke();
-      ctx.fillStyle = "#f4f1e8";                       // the word, at this size a bar
-      ctx.fillRect(x - 2.6, y - 0.7, 5.2, 1.4);
-      break;
-    }
-    case "banca": {
-      // LA BANCA DEL MALECÓN. `ang` is the direction it LOOKS — the world takes
-      // the sea's side of the promenade's own normal, so on a wandering coast
-      // every bench still faces the water. Backrest behind the seat, which is
-      // the only thing that makes a 10 px bench read as a bench from above.
-      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
-      ctx.fillStyle = "rgba(0,0,0,0.22)";
-      ctx.fillRect(-2.4, -5.4, 6, 11);
-      ctx.fillStyle = "#8a6a45";                       // respaldo, on the land side
-      ctx.fillRect(-3.4, -6, 1.8, 12);
-      ctx.fillStyle = "#c69a63";                       // el asiento
-      ctx.fillRect(-1.6, -6, 4.6, 12);
-      ctx.strokeStyle = "rgba(90,66,40,0.55)"; ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(-1.6, -2); ctx.lineTo(3, -2); ctx.moveTo(-1.6, 2); ctx.lineTo(3, 2);
-      ctx.stroke();
-      ctx.restore();
-      break;
-    }
-    case "ceda": {
-      drawSignPost(x, y, 5);
-      ctx.fillStyle = "#f4f1e8";                       // inverted triangle
-      ctx.beginPath();
-      ctx.moveTo(x - 4.6, y - 3.6); ctx.lineTo(x + 4.6, y - 3.6); ctx.lineTo(x, y + 4.2);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "#c0392b"; ctx.lineWidth = 1.4; ctx.stroke();
-      break;
-    }
-    case "semaforo": {
-      drawSignPost(x, y, 7);
-      ctx.fillStyle = "#2b2f36";
-      roundRect(ctx, x - 2, y - 7, 4, 9, 1.2, true, false);
-      ctx.fillStyle = "#e0483a"; ctx.beginPath(); ctx.arc(x, y - 5.2, 1.05, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#f0c44a"; ctx.beginPath(); ctx.arc(x, y - 2.6, 1.05, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#4fbf6a"; ctx.beginPath(); ctx.arc(x, y + 0.0, 1.05, 0, Math.PI * 2); ctx.fill();
-      break;
-    }
-    case "semaforo_centered":
-    case "semaforo_overhead": {
-      // Gantry-mounted LATAM signal: pole at the edge, horizontal arm over the
-      // street, with the signal head centered above the lanes.
-      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
-      const span = s.kind === "semaforo_overhead" ? 34 : 24;
-      ctx.strokeStyle = "#596066"; ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(-span / 2, 7); ctx.lineTo(-span / 2, -9); ctx.lineTo(span / 2, -9);
-      ctx.stroke();
-      for (const hx of s.kind === "semaforo_overhead" ? [-span * .2, span * .28] : [0]) {
-        ctx.fillStyle = "#2b2f36";
-        roundRect(ctx, hx - 2, -9, 4, 9, 1.2, true, false);
-        for (const [dy, color] of [[2, "#e0483a"], [4.6, "#f0c44a"], [7.2, "#4fbf6a"]]) {
-          ctx.fillStyle = color; ctx.beginPath(); ctx.arc(hx, -9 + dy, 1.05, 0, Math.PI * 2); ctx.fill();
-        }
-      }
-      ctx.restore();
-      break;
-    }
-    case "speed_limit": {
-      // Costa Rican/LatAm pavement marking: white numerals inside a white ring,
-      // aligned to the authored lane heading.
-      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
-      ctx.strokeStyle = "rgba(244,241,232,.82)"; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = "rgba(244,241,232,.9)";
-      ctx.font = "bold 7px 'JetBrains Mono', monospace";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(String(s.value || 40), 0, 0);
-      ctx.textBaseline = "alphabetic";
-      ctx.restore();
-      break;
-    }
-    case "crossing": {                                 // zebra, across the lane
-      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
-      ctx.fillStyle = "rgba(244,241,232,0.82)";
-      for (let i = -2; i <= 2; i++) ctx.fillRect(i * 3.4 - 1.1, -7, 2.2, 14);
-      ctx.restore();
-      break;
-    }
-    case "tope": {                                     // hump, yellow hatching
-      ctx.save(); ctx.translate(x, y); ctx.rotate(s.ang || 0);
-      ctx.fillStyle = "rgba(240,196,74,0.85)";
-      for (let i = -2; i <= 2; i++) ctx.fillRect(i * 3.2 - 1.0, -6, 2.0, 12);
-      ctx.restore();
-      break;
-    }
-    case "bus": {
-      // LA PARADA — the SAME caseta the civic block's stop uses (`drawParada`
-      // in gfx.js). Which list a parada came out of, the hand-authored manzana
-      // or the 87 mapped `highway=bus_stop` nodes, is not something the player
-      // can see, so it must not change what it looks like; a second drawing of
-      // the same object is just an inconsistency with extra steps.
-      // The build seats it on the acera and turns it along the kerb
-      // (`seat_bus_stops`), and `side` says which way the roadway is — a stop
-      // on the far kerb turns a half-circle more so it still opens onto it.
-      drawParada(x, y, (s.ang || 0) + ((s.side || 1) < 0 ? Math.PI : 0),
-                 PARADA_W, PARADA_H);
-      break;
-    }
-    default: break;                                    // unknown kind: draw nothing
-  }
+  const rec = SIGNS[s.kind];
+  if (!rec) return;                                  // unknown kind: draw nothing
+  const vars = { value: String(s.value || 40) };
+  if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { prop: propParts, vars }); return; }
+  const ang = (s.ang || 0) + (rec.flip === "side" && (s.side || 1) < 0 ? Math.PI : 0);
+  ctx.save();
+  ctx.translate(s.x, s.y); ctx.rotate(ang);
+  const hw = rec.extent ? rec.extent[0] / 2 : 0, hh = rec.extent ? rec.extent[1] / 2 : 0;
+  paintParts(ctx, rec.parts, {
+    X: rec.extent ? (v) => evalOn(v, hw) : (v) => v || 0,
+    Y: rec.extent ? (v) => evalOn(v, hh) : (v) => v || 0,
+    prop: propParts, vars,
+  });
+  ctx.restore();
 }
 // One pass over the furniture in view. `W.SIGNS` is eager in the manifest (it
 // is small), so this culls by bbox rather than by tile.

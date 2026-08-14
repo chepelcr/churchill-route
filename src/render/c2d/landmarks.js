@@ -5,7 +5,8 @@ import { paintAt } from "./shapes.js";
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { content } from "../../content/remote.js";
-import { areaLabel, ctx, drawParada, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
+import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
+import { drawParada, paintProp, propParts } from "./props.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -217,23 +218,35 @@ const NO_SHADOW = new Set(["stadium", "pool", "park"]);
 // tower — and, if a remote `lote` has claimed this parcel by id, its art inside
 // the parcel's own `slot` rect. A defined footprint means a sponsor's logo
 // always has a known place and size instead of floating over the map.
-// A parcel whose whole point is the GROUND gets no name pill: the parks beside
-// the catedral, the parroquia's garden and the two arms of the calle peatonal
-// are read by what is drawn on them — the river and its footbridge, the Virgen,
-// the tree scatter, the stone paving — and a caption sitting in the middle of
-// each one covered exactly that. Buildings and the sports plazas keep theirs;
-// they are places you are sent to, so their name is the point.
-const UNLABELLED_USES = new Set(["park", "garden", "boulevard"]);
-// Pill tone by use, so a name reads as what it names: green for a field, blue
-// for a school, and the default brown for everything built.
-const LABEL_TONE = { plaza: "#2e7d44", stadium: "#2e7d44", school: "#3a6f8a",
-                     kinder: "#3a6f8a", campus: "#3a6f8a" };
+// WHAT A USE MEANS is data (`parcels` in world-props.json): the prop a lot
+// draws, whether it wears its own name, and in what ink.
+//
+// A parcel whose whole point is the GROUND gets no name pill (`label: false`):
+// the parks beside the catedral, the parroquia's garden and the two arms of the
+// calle peatonal are read by what is drawn on them — the river and its
+// footbridge, the Virgen, the tree scatter, the stone paving — and a caption
+// sitting in the middle of each one covered exactly that. Buildings and the
+// sports plazas keep theirs; they are places you are sent to, so their name is
+// the point. The `tone` makes a name read as what it names: green for a field,
+// blue for a school, and the default brown for everything built.
+const PARCELS = PROPS.parcels;
+const PARCEL_USES = PARCELS.uses;
+const NO_USE = {};
 function drawParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;
   for (const P of arr) {
     if (P.x1 + 60 < view.x0 || P.x0 - 60 > view.x1 || P.y1 + 60 < view.y0 || P.y0 - 60 > view.y1) continue;
-    if (P.use === "church") { const F = parcelFrame(P); drawChurch(F.cx, F.cy, Math.min(1, F.hw / 22), F.ang); }
+    const U = PARCEL_USES[P.use] || NO_USE;
+    // A catalog prop scaled to the lot — the parroquia. `fit` is the half-width
+    // the drawing is authored at, so a smaller manzana shrinks it and a larger
+    // one does not blow it up past its natural size.
+    if (U.prop) {
+      const F = parcelFrame(P);
+      paintProp(U.prop, F.cx, F.cy, { ang: F.ang, scale: Math.min(1, F.hw / U.fit) });
+    }
+    // …and the buildings that are still SCENES: every one of them sizes itself
+    // from the parcel through clamps and counts. See `_parcelScenes`.
     if (P.use === "cathedral") drawCathedral(P);
     if (P.use === "civic") drawCivicBuilding(P);
     if (P.use === "school" || P.use === "kinder" || P.use === "campus") drawSchool(P);
@@ -242,21 +255,31 @@ function drawParcels(view) {
         P.decor !== false && !P.whole) drawGarden(P);
     // Civic furniture the WORLD declared on this parcel. The build only says
     // which parcel has a river / a statue / a paradita and roughly where; what
-    // each looks like is here.
+    // each looks like is the catalog's, or — for the two that are drawn from
+    // the parcel's own extents — this file's.
     if (P.river) drawParkRiver(P);
     if (P.kiosco) drawKiosco(P);
-    if (P.statue) drawStatue(P);
+    if (P.statue) drawDecorProp(P, "statue");
     if (P.bus) drawBusStop(P);
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
     if (lote) drawSponsorSlot(P, lote);
     // a whole-cuadra field already carries the estadio's own name pill, a
     // parcel that IS a landmark gets one from the landmark pass (`P.lm`), and
-    // a parcel that is pure GROUND gets none at all — see UNLABELLED_USES
-    if (P.label !== false && !P.whole && !P.lm && !UNLABELLED_USES.has(P.use)) {
+    // a parcel that is pure GROUND gets none at all — `label: false`
+    if (P.label !== false && !P.whole && !P.lm && U.label !== false) {
       areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(), "#fff",
-                LABEL_TONE[P.use] || "#8a6f4a");
+                U.tone || PARCELS.defaultTone);
     }
   }
+}
+// A catalog prop the world put ON a parcel, at a fraction of the lot's bbox.
+// The Virgen stands at her park's edge NEAREST the catedral (its north edge),
+// not in the middle — WHERE is the world's business, WHAT is the catalog's.
+function drawDecorProp(P, key) {
+  const D = PARCELS.decor[key];
+  if (!D) return;
+  paintProp(D.prop, P.x0 + (P.x1 - P.x0) * D.at[0], P.y0 + (P.y1 - P.y0) * D.at[1],
+            { ang: P.ang || 0 });
 }
 // A sponsor's art fills the parcel's slot: a plate with its name, sized and
 // placed by the WORLD, not by the content entry — so nothing a sponsor sends
@@ -308,22 +331,11 @@ function drawGarden(P) {
   }
 }
 
-// Pale stucco nave, bell tower, spire and a white cross — the same silhouette
-// the `church` landmark type uses, drawn at an arbitrary point, scale and ANGLE.
-// The Parroquia del Carmen faces its avenida, not the screen: `ang` is the
-// manzana's own angle, which the parcel carries from the build.
-function drawChurch(x, y, s = 1, ang = 0) {
-  ctx.save(); ctx.translate(x, y); if (ang) ctx.rotate(ang); ctx.scale(s, s);
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.beginPath(); ctx.ellipse(4, 14, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#e7ddc8"; ctx.fillRect(-20, -12, 40, 24);
-  ctx.fillStyle = "#b98a5e"; ctx.fillRect(-20, -12, 40, 4);
-  ctx.fillStyle = "#e7ddc8"; ctx.fillRect(-6, -30, 12, 20);
-  ctx.fillStyle = "#9e6f4a";
-  ctx.beginPath(); ctx.moveTo(-8, -28); ctx.lineTo(0, -40); ctx.lineTo(8, -28); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.fillRect(-1.5, -50, 3, 11); ctx.fillRect(-5, -46, 10, 3);
-  ctx.restore();
-}
+// The Parroquia used to be drawn here, as a second copy of the `church`
+// landmark's own art. It is `props.churchLot` in world-props.json now — the
+// SHARED `props.church` building on a ground shadow — and `drawParcels` puts it
+// on the lot at the manzana's angle and scaled to the lot's own half-width. The
+// Parroquia del Carmen faces its avenida, not the screen.
 
 // The CATEDRAL de Puntarenas — stone, not stucco, and as big as its parcel
 // allows. It is a placeholder for a proper mockup, so everything is derived
@@ -420,12 +432,11 @@ function drawCivicBuilding(P) {
 // `kinder` (jardín de niños / CEN-CINAI) is the same building at a smaller
 // scale with a play patio; `campus` (colegio / universidad) is several
 // pavilions on open grounds instead of one.
-const SCHOOL_WALL = { school: "#f0e4c4", kinder: "#f6dcc0", campus: "#e6e0cb" };
-const SCHOOL_ROOF = { school: "#7f93a6", kinder: "#c98a6a", campus: "#6f8496" };
 function drawSchool(P) {
   const F = parcelFrame(P);
-  const wall = SCHOOL_WALL[P.use] || SCHOOL_WALL.school;
-  const roof = SCHOOL_ROOF[P.use] || SCHOOL_ROOF.school;
+  //: The three palettes are the use's own, in the catalog beside its pill ink.
+  const wall = (PARCEL_USES[P.use] || NO_USE).wall || PARCEL_USES.school.wall;
+  const roof = (PARCEL_USES[P.use] || NO_USE).roof || PARCEL_USES.school.roof;
   // pavilions run along the parcel's LONG axis, so a narrow lot gets a narrow
   // block rather than one that spills over its own kerb
   const along = F.hw >= F.hh;
@@ -574,39 +585,14 @@ function drawParkRiver(P) {
   ctx.restore();
 }
 
-// A statue on a plinth. `P.statue` names the kind; the Virgen stands at the
-// park's edge NEAREST the catedral (its north edge), not in the middle.
-function drawStatue(P) {
-  const cx = (P.x0 + P.x1) / 2;
-  const y = P.y0 + (P.y1 - P.y0) * 0.20;
-  ctx.save();
-  ctx.translate(cx, y); if (P.ang) ctx.rotate(P.ang);
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.beginPath(); ctx.ellipse(1, 5, 9, 3.4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = STONE_DARK;                       // plinth
-  roundRect(ctx, -7, -2, 14, 9, 1.5, true, false);
-  ctx.fillStyle = STONE_LITE;
-  roundRect(ctx, -5.5, -4, 11, 3, 1, true, false);
-  ctx.fillStyle = "#eef1f5";                        // the figure: robe + mantle
-  ctx.beginPath();
-  ctx.moveTo(-4, -4); ctx.lineTo(-2.4, -14); ctx.lineTo(2.4, -14); ctx.lineTo(4, -4);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#9fc0e8";
-  ctx.beginPath();
-  ctx.moveTo(-3.2, -6); ctx.lineTo(-2, -14.5); ctx.lineTo(2, -14.5); ctx.lineTo(3.2, -6);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#eef1f5";
-  ctx.beginPath(); ctx.arc(0, -16, 2.4, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#f4d77a"; ctx.lineWidth = 1;   // halo
-  ctx.beginPath(); ctx.arc(0, -16, 3.6, 0, Math.PI * 2); ctx.stroke();
-  ctx.restore();
-}
+// The Virgen used to be drawn here too. She is `props.statue` in the catalog
+// now, placed by `drawDecorProp` — art in the catalog, position in the world.
 
 // The paradita on the acera outside the parcel. `P.bus` is [x, y, w, h] in
 // world px, placed by the build — the only thing this stop has that a mapped
-// one does not is its own size. The caseta itself is `drawParada` in gfx.js,
-// shared with the 87 stops that come from OSM: which list a parada came out of
-// is not something the player can see.
+// one does not is its own size. The caseta itself is `props.parada`, shared
+// with the 87 stops that come from OSM: which list a parada came out of is not
+// something the player can see.
 function drawBusStop(P) {
   const [bx, by, bw, bh] = P.bus;
   drawParada(bx + bw / 2, by + bh / 2, P.ang || 0, bw, bh);
@@ -625,11 +611,12 @@ function ownedByParcel() {
   for (const P of W.PARCELS || []) if (P.lm) _ownedByParcel.set(P.lm, P);
   return _ownedByParcel;
 }
-const PARCEL_PILL = { cathedral: ["CATEDRAL", "#9e6f4a"], church: ["IGLESIA", "#9e6f4a"],
-                      civic: ["CULTURA", "#2e7d44"], market: ["MERCADO", "#3a3540"] };
 function drawParcelLandmarkPill(lm, P) {
-  const [txt, tone] = PARCEL_PILL[lm.type] || [(lm.name || "").toUpperCase(), "#8a6f4a"];
-  label(lm.x, P.y0 - 10, txt, "#fff", tone);   // above the parcel, clear of the roof
+  //: The word and its ink are the USE's, in the catalog — `pill` there, which is
+  //: a different question from `tone` (the ink a parcel's OWN name is set in).
+  const pill = (PARCEL_USES[lm.type] || NO_USE).pill;
+  const txt = pill ? pill.text : (lm.name || "").toUpperCase();
+  label(lm.x, P.y0 - 10, txt, "#fff", pill ? pill.tone : PARCELS.defaultTone);
 }
 
 // A parcel that DRAWS THE BUILDING replaces the landmark's own art; a parcel
@@ -639,15 +626,14 @@ function drawParcelLandmarkPill(lm, P) {
 // pills on bare plots. So: the church/cathedral/civic/market parcels draw their
 // own building and keep the early return; a `lot` is ground, and the landmark
 // still stands on it.
-// `market` is deliberately NOT here yet: the Mercado owns its manzana now, but
-// `drawParcels` has no market building to put on it, so suppressing the
-// landmark art would leave bare ground under a MERCADO pill. Add a
-// `drawMercado(P)` case beside drawChurch/drawCivicBuilding and move it in —
-// that is the hook the mercado's own style or asset plugs into.
-const PARCEL_DRAWS_BUILDING = new Set(["church", "cathedral", "civic"]);
+// `market` deliberately does NOT carry `drawsBuilding` yet: the Mercado owns
+// its manzana now, but nothing draws a market hall on it, so suppressing the
+// landmark art would leave bare ground under a MERCADO pill. Give the `market`
+// use a `prop` in world-props.json (the parroquia's hook) or a drawer beside
+// drawCivicBuilding, then set the flag — that is where it plugs in.
 function drawLandmark(lm) {
   const owner = ownedByParcel().get(lm.id);
-  if (owner && PARCEL_DRAWS_BUILDING.has(owner.use)) {
+  if (owner && (PARCEL_USES[owner.use] || NO_USE).drawsBuilding) {
     drawParcelLandmarkPill(lm, owner); return;
   }
   const x = lm.x, y = lm.y;
@@ -676,7 +662,7 @@ function drawLandmark(lm) {
 
   const prop = propFor(lm.type);
   if (!prop) return;
-  paintAt(prop.parts, x, y, { vars: propVars(lm, prop) });
+  paintAt(prop.parts, x, y, { prop: propParts, vars: propVars(lm, prop) });
 }
 
 /** The catalog record for a type, following `sameAs` — the cathedral is the

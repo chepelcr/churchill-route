@@ -446,6 +446,13 @@ The editor currently duplicates many game colors and simplified draw paths.
 Moving game art into shared JSON should make both renderers consume the same
 definitions instead of migrating the duplication.
 
+Re-measured 2026-08-13, after the three catalogs landed (same method, so the
+two runs compare): `c2d/landmarks.js` 115 → **87** colour literals and 155 → 125
+primitives; `c2d/streets.js` 63 → **39** and 99 → 61; `c2d/gfx.js` 33 → 28 and
+3 → 1, losing `drawParada` to `props.parada`. What is left in landmarks.js is
+overwhelmingly the seven parcel SCENES, which is the intended residue, not a
+backlog.
+
 ### Pixi preservation, water restoration, and rescale plan
 
 #### Decision
@@ -704,6 +711,8 @@ from code and generated vector/world data.
 | `canvas2d.js` | camera, culling, composition order |
 | `vehicleShapes.js` | backend-neutral vehicle silhouette paths |
 | `c2d/gfx.js` | canvas binding, zoom, paths, labels, weather colors |
+| `c2d/shapes.js` | the ONE shape interpreter, shared by all three art catalogs |
+| `c2d/props.js` | places a catalog prop: the frame (anchor, angle, scale, extent) |
 | `c2d/cache.js` | road/path/tile render caches |
 | `c2d/world.js` | streamed-world painter orchestration |
 | `c2d/ground.js` | land/water/greens/mangroves/surface styles/access paths |
@@ -848,7 +857,7 @@ foundation, P2 = later authoring surface.
 | P0 | ~~`vehicles.js`, `entities.js`, `vehicleShapes.js`, `audio.js`, economy/editor vehicle merge~~ **DONE 2026-08-13** | complete vehicle definition: stats, medium, bounds/collision, body parts, colors, cargo mounts, sound voice, price/unlock | `src/assets/vehicles.json` with versioned schema — proved pixel-identical over all nine (`tools/shot-vehicles.mjs` + `tools/png-diff.mjs`, 310 500 px, 0 changed) | vehicle physics, part/silhouette interpreter, WebAudio synthesis |
 | P0 | surface mirrors across Python/JS/Pixi/editor | one canonical surface registry with wire ID, labels, roles, speed, materials | versioned shared surface JSON consumed/generated into both runtimes | raster algorithms and collision category evaluation |
 | P0 | ~~loose string vocabularies in DTOs, simulation, renderer, UI, and editor~~ **DONE 2026-08-11 / 08-13** | stage/sign/pier/vehicle/host/geometry/mode identities and validation | Python enum layer plus deterministic generated JS/JSON vocabulary — 17 enums, `enums/{features,game,editing,surface}.py` | state transitions, rendering, geometry, validation algorithms |
-| P0 | ~~landmark~~/parcel/sign switches — **landmarks DONE 2026-08-13** | asset kind registry and mapping from semantic type to asset | `src/assets/world-props.json` — 23 of 26 landmark types; `lighthouse`/`stadium`/marine `park` stay in code because they are SCENES, which is this table's own "what should not be converted" rule. Parcels and signs still open | finite shape DSL and draw dispatch by schema — now ONE interpreter (`c2d/shapes.js`) shared with the vehicle catalog |
+| P0 | ~~landmark/parcel/sign switches~~ **DONE 2026-08-13** | asset kind registry and mapping from semantic type to asset | `src/assets/world-props.json` — 23 of 26 landmark types, **all 10 sign kinds**, and the parcel dispatch (pill word/ink, `drawsBuilding`, the three school palettes). `lighthouse`/`stadium`/marine `park` and **seven parcel buildings** stay in code because they are SCENES, which is this table's own "what should not be converted" rule: each derives its own size, pavilion count or scatter FROM the world geometry. Of what `drawParcels` dispatches, 3 of 11 were art (parroquia, Virgen, paradita) and moved; the parroquia and the paradita had each been drawn TWICE, in two files. Proved over four synthetic sheets — signs 198 000 px, parcels 608 000, landmarks 592 800, vehicles 310 500: **1 709 300 pixels, 0 changed** | finite shape DSL and draw dispatch by schema — ONE interpreter (`c2d/shapes.js`) shared by all three catalogs, plus the FRAME, which is the caller's: a sign that turns with the kerb, a prop scaled to its lot |
 | P0 | ~~duplicated Canvas/Pixi/editor colors~~ **DONE 2026-08-13** | shared material/theme registry for terrain, roads, structures, minimap/editor preview | `src/assets/materials.json` — measured first: canvas ∩ pixi was already **0**, canvas ∩ editor was 40, and the ones that only *share a number* were deliberately left alone | backend adapters |
 | P0 | Canvas gameplay water plus older Pixi water paths | water palettes/effect presets, explicit backend owner, units, layers, and parity fixtures | `src/assets/water.json` plus renderer ownership registry | Canvas draw algorithms, Pixi shaders/draw algorithms, simulation interactions |
 | P1 | `churchill/world/content.py` | districts, landmarks, customers, stages, site decor, crossings, lanchas, attractions/access definitions | `content/world/*.json` validated into existing DTOs | projection, placement/resolution, verification |
@@ -987,7 +996,10 @@ renderer implementation. Each item's own resolution follows it.
    `speed_limit`. `Sign.kind` is only `str`, so a typo draws nothing.
    *Resolved:* `SignKind` holds all ten the renderer draws — deliberately more
    than the build emits, since art with no value to select it is drift too — and
-   `Sign.kind: SignKind` makes a typo fail the build.
+   `Sign.kind: SignKind` makes a typo fail the build. Since 2026-08-13 the ten
+   are also the KEYS of `world-props.json`'s `signs` block, so the enum and the
+   art are one lookup rather than a value and a `case` that have to be kept in
+   step; `tests/test_world_props.py` fails on a kind with no record.
 7. **The editor parcel palette omits a live enum member.** Two current parcels
    use `market`; Canvas has a market material, while the editor falls back to
    the generic lot color.

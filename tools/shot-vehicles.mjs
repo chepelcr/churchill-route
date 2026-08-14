@@ -30,6 +30,22 @@ page.on("pageerror", (e) => errors.push(String(e)));
 
 await page.goto(url, { waitUntil: "domcontentloaded" });
 
+// WAIT FOR THE FONTS, or this measures a coin flip. The game self-hosts its
+// woff2 faces (`@fontsource/*` imported by main.jsx), so a sheet drawn at
+// domcontentloaded races them: whichever side of a comparison loses the race
+// measures its pills in the FALLBACK monospace, at different widths and with
+// different glyphs. Two servers of different warmth lose it differently — that
+// is 5 724 pixels of "the art moved" that was nothing but a cold Vite.
+await page.waitForFunction(() => document.fonts.size > 0, null, { timeout: 20000 });
+await page.evaluate(async () => {
+  await Promise.all([
+    document.fonts.load("bold 10px 'JetBrains Mono'"),
+    document.fonts.load("600 10px 'JetBrains Mono'"),
+    document.fonts.load("bold 12px 'Bungee'"),
+  ]);
+  await document.fonts.ready;
+});
+
 const drew = await page.evaluate(async ([scale, cell]) => {
   const [{ paintVehicle }, { traceVehicleSilhouette }, { VEHICLES }] = await Promise.all([
     import("/src/render/c2d/entities.js"),

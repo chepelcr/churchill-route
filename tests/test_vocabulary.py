@@ -92,12 +92,11 @@ class GeneratedArtifactTests(unittest.TestCase):
 class RendererCoverageTests(unittest.TestCase):
     """A shipped enum value with no renderer implementation is invisible art."""
 
-    def test_every_sign_kind_is_drawn(self):
-        cases = js_cases(read("src", "render", "c2d", "streets.js"))
-        for kind in SignKind:
-            self.assertIn(str(kind.value), cases,
-                          f"drawSign has no case for {kind.value} — it would "
-                          f"draw nothing at all")
+    # Sign coverage moved to `tests/test_world_props.py` when the 10-case
+    # `switch (s.kind)` became a walk over `src/assets/world-props.json`. Same
+    # move, same reason, and the check there is stronger: a kind must have a
+    # catalog record whose every part names a shape the interpreter implements —
+    # a `case` that exists can still draw nothing.
 
     # Pier-style coverage moved to `tests/test_materials.py` when `PIER_STYLES`
     # stopped being a literal in structures.js and became a row in

@@ -190,37 +190,13 @@ function hash01(n) {
   return v - Math.floor(v);
 }
 
-// LA PARADITA — one caseta, drawn the same wherever a bus stops.
-//
-// There are two INDEPENDENT sources of bus stops in this world and they used to
-// be two independent drawings: the civic block hands its own out as a rect on a
-// parcel (`P.bus`, the one on the Parque de la Virgen beside the catedral),
-// while the 87 mapped `highway=bus_stop` nodes arrive as street furniture the
-// build seats on the acera. A parada is a parada — the source it came from is
-// not something the player can see, so it must not change what it looks like.
-// Only the SIZE differs, and only because the civic block supplies one.
-//
-// `ang` is the street's angle: the shelter's back is uphill of the bench, so a
-// stop on the far kerb passes `ang + PI` and still opens onto the roadway.
-function drawParada(cx, cy, ang, w, h) {
-  ctx.save();
-  ctx.translate(cx, cy); if (ang) ctx.rotate(ang);
-  ctx.fillStyle = "rgba(0,0,0,0.24)";
-  roundRect(ctx, -w / 2 + 2, -h / 2 + 3, w, h, 2, true, false);
-  ctx.fillStyle = "#3a6f8a";                         // shelter roof
-  roundRect(ctx, -w / 2, -h / 2, w, h, 2, true, false);
-  ctx.fillStyle = "#5b9ec2";                         // the lighter inner panel
-  roundRect(ctx, -w / 2 + 2, -h / 2 + 2, w - 4, h - 6, 1.5, true, false);
-  ctx.fillStyle = "#e7ddc8";                         // banca
-  ctx.fillRect(-w / 2 + 4, h / 2 - 4, w - 8, 2.5);
-  ctx.fillStyle = "#f08a5d";                         // post + route sign
-  ctx.fillRect(w / 2 - 3, -h / 2 - 5, 1.6, 6);
-  roundRect(ctx, w / 2 - 6, -h / 2 - 9, 6, 5, 1, true, false);
-  ctx.restore();
-}
+// LA PARADITA used to be here, as raw Canvas calls. It is `props.parada` in
+// world-props.json now, drawn by `c2d/props.js` — which cannot live in this file
+// because gfx is the BOTTOM of the renderer and the shape interpreter sits on
+// top of it.
 
 export {
   ACERA_PX, CUAD, CUADS_PER_VIEW, aabbInView, areaLabel, canvas, computeZoom,
-  ctx, dpr, drawParada, flatAABB, flatMultiPath, flatPath, hash01, label, lastT,
+  ctx, dpr, flatAABB, flatMultiPath, flatPath, hash01, label, lastT,
   parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, weatherColors, ZOOM,
 };

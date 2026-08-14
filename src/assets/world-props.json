@@ -1,7 +1,7 @@
 {
-  "_note": "LOS HITOS, as data. What each landmark type LOOKS like, keyed by LandmarkType — the same `switch` the renderer used to carry as 26 branches of raw Canvas calls. The world says WHERE a landmark stands (churchill/world/content.py -> manifest.landmarks); this says what is drawn there, in the same spirit as feriaAssets.json and vehicles.json.",
+  "_note": "LO QUE HAY EN EL MUNDO, as data. What each landmark type, each street sign and each parcel prop LOOKS like — the same three `switch`es the renderer used to carry as raw Canvas calls. The world says WHERE a thing stands (churchill/world/content.py -> manifest.landmarks / .signs / .parcels); this says what is drawn there, in the same spirit as feriaAssets.json and vehicles.json.",
 
-  "version": 1,
+  "version": 2,
 
   "_geometry": "Plain PIXEL offsets from the landmark's anchor, +y down — the frame the art was already written in (`ctx.fillRect(x - 16, y - 8, 32, 18)` becomes `x: -16, y: -8, w: 32, h: 18`). Parts are drawn in order, so later ones sit on top.",
 
@@ -39,15 +39,10 @@
     },
 
     "church": {
-      "note": "pale stucco nave, a bell tower with a spire tall enough that it reads as a church and not a house, and a bold white cross on top",
+      "note": "the shared `props.church` building — nave, bell tower, spire, cross — plus the rose window on the tower and the name pill. The building itself is inlined rather than copied, because a `church` PARCEL draws the same one on its own manzana and the two used to be written out in two different files.",
       "label": "IGLESIA",
       "parts": [
-        {"shape": "rect", "fill": "#e7ddc8", "x": -20, "y": -12, "w": 40, "h": 24},
-        {"shape": "rect", "fill": "#b98a5e", "x": -20, "y": -12, "w": 40, "h": 4},
-        {"shape": "rect", "fill": "#e7ddc8", "x": -6, "y": -30, "w": 12, "h": 20},
-        {"shape": "fan", "fill": "#9e6f4a", "pts": [[-8, -28], [0, -40], [8, -28]]},
-        {"shape": "rect", "fill": "#fff", "x": -1.5, "y": -50, "w": 3, "h": 11},
-        {"shape": "rect", "fill": "#fff", "x": -5, "y": -46, "w": 10, "h": 3},
+        {"shape": "prop", "ref": "church"},
         {"shape": "rect", "fill": "#7fa8c8", "x": -3, "y": -26, "w": 6, "h": 8},
         {"shape": "label", "x": 0, "y": -54, "text": "$label", "fg": "#fff", "bg": "#9e6f4a"}
       ]
@@ -240,6 +235,199 @@
     "bridge": {
       "note": "drawn separately by drawBridge, from the world's own span geometry — the pin adds nothing",
       "parts": []
+    }
+  },
+
+  "_signs": "LA SEÑALIZACIÓN, keyed by SignKind. Costa Rica signs to the Manual Centroamericano de Dispositivos Uniformes, so these are the real shapes: an ALTO is a red OCTAGON carrying the word (not `STOP`), a CEDA EL PASO is an inverted white triangle with a red border, and a tope is the yellow-hatched hump every calle de barrio has. Sizes are world px at the game's framing (~20 cuadrículas across), so a sign reads at a glance without swallowing the lane it stands beside.",
+  "_signFrame": "`turn: true` means the sign is drawn INSIDE a rotation by its own `ang` — the world measured that angle against the kerb, and a bench or a zebra painted square to the screen is a bench in the wrong street. `flip: \"side\"` adds a half turn when the roadway is on the far side. `extent: [w, h]` switches the frame from plain pixels to half-extents ([k, px] = k·half + px), which is how one caseta serves a 34 px mapped parada and whatever size the civic block asks for.",
+
+  "signs": {
+    "alto": {
+      "note": "the octagon on its post, and at this size the word is a bar",
+      "parts": [
+        {"shape": "stroke", "stroke": "#8b8f96", "width": 1.2, "pts": [[0, 5], [0, 0]]},
+        {"shape": "polyN", "fill": "rgba(0,0,0,0.25)", "cx": 0.8, "cy": 0.8, "r": 4.6, "n": 8, "rot": 0.0625},
+        {"shape": "polyN", "fill": "#c0392b", "cx": 0, "cy": 0, "r": 4.6, "n": 8, "rot": 0.0625},
+        {"shape": "polyN", "stroke": "#f4f1e8", "width": 0.7, "cx": 0, "cy": 0, "r": 3.5, "n": 8, "rot": 0.0625},
+        {"shape": "rect", "fill": "#f4f1e8", "x": -2.6, "y": -0.7, "w": 5.2, "h": 1.4}
+      ]
+    },
+
+    "ceda": {
+      "note": "ONE path, filled white and stroked red. Two parts would composite the border's antialiased edge twice — the anchor's lesson, from the other side.",
+      "parts": [
+        {"shape": "stroke", "stroke": "#8b8f96", "width": 1.2, "pts": [[0, 5], [0, 0]]},
+        {"shape": "poly", "fill": "#f4f1e8", "stroke": "#c0392b", "width": 1.4,
+         "pts": [[-4.6, -3.6], [4.6, -3.6], [0, 4.2]]}
+      ]
+    },
+
+    "semaforo": {
+      "note": "the pole-mounted head at the kerb: three lenses in a dark box",
+      "parts": [
+        {"shape": "stroke", "stroke": "#8b8f96", "width": 1.2, "pts": [[0, 7], [0, 0]]},
+        {"shape": "roundRect", "fill": "#2b2f36", "x": -2, "y": -7, "w": 4, "h": 9, "r": 1.2},
+        {"shape": "disc", "fill": "#e0483a", "cx": 0, "cy": -5.2, "r": 1.05},
+        {"shape": "disc", "fill": "#f0c44a", "cx": 0, "cy": -2.6, "r": 1.05},
+        {"shape": "disc", "fill": "#4fbf6a", "cx": 0, "cy": 0, "r": 1.05}
+      ]
+    },
+
+    "semaforo_centered": {
+      "note": "gantry-mounted LATAM signal: pole at the edge, a horizontal arm over the street, one head centred above the lanes",
+      "turn": true,
+      "parts": [
+        {"shape": "stroke", "stroke": "#596066", "width": 1.8, "pts": [[-12, 7], [-12, -9], [12, -9]]},
+        {"shape": "roundRect", "fill": "#2b2f36", "x": -2, "y": -9, "w": 4, "h": 9, "r": 1.2},
+        {"shape": "disc", "fill": "#e0483a", "cx": 0, "cy": -7, "r": 1.05},
+        {"shape": "disc", "fill": "#f0c44a", "cx": 0, "cy": -4.4, "r": 1.05},
+        {"shape": "disc", "fill": "#4fbf6a", "cx": 0, "cy": -1.8, "r": 1.05}
+      ]
+    },
+
+    "semaforo_overhead": {
+      "note": "the same gantry with a longer arm and TWO heads, for the avenidas wide enough to need one over each lane",
+      "turn": true,
+      "parts": [
+        {"shape": "stroke", "stroke": "#596066", "width": 1.8, "pts": [[-17, 7], [-17, -9], [17, -9]]},
+        {"shape": "roundRect", "fill": "#2b2f36", "x": -8.8, "y": -9, "w": 4, "h": 9, "r": 1.2},
+        {"shape": "disc", "fill": "#e0483a", "cx": -6.8, "cy": -7, "r": 1.05},
+        {"shape": "disc", "fill": "#f0c44a", "cx": -6.8, "cy": -4.4, "r": 1.05},
+        {"shape": "disc", "fill": "#4fbf6a", "cx": -6.8, "cy": -1.8, "r": 1.05},
+        {"shape": "roundRect", "fill": "#2b2f36", "x": 7.52, "y": -9, "w": 4, "h": 9, "r": 1.2},
+        {"shape": "disc", "fill": "#e0483a", "cx": 9.52, "cy": -7, "r": 1.05},
+        {"shape": "disc", "fill": "#f0c44a", "cx": 9.52, "cy": -4.4, "r": 1.05},
+        {"shape": "disc", "fill": "#4fbf6a", "cx": 9.52, "cy": -1.8, "r": 1.05}
+      ]
+    },
+
+    "speed_limit": {
+      "note": "a PAVEMENT MARKING, not a sign on a post: white numerals inside a white ring, aligned to the lane. `$value` is the world's own limit.",
+      "turn": true,
+      "parts": [
+        {"shape": "ellipse", "stroke": "rgba(244,241,232,.82)", "width": 1.6, "cx": 0, "cy": 0, "rx": 8, "ry": 12},
+        {"shape": "text", "fill": "rgba(244,241,232,.9)", "font": "bold 7px 'JetBrains Mono', monospace",
+         "baseline": "middle", "x": 0, "y": 0, "text": "$value"}
+      ]
+    },
+
+    "crossing": {
+      "note": "la zebra, across the lane",
+      "turn": true,
+      "parts": [
+        {"shape": "repeat", "n": 5, "dx": 3.4, "parts": [
+          {"shape": "rect", "fill": "rgba(244,241,232,0.82)", "x": -7.9, "y": -7, "w": 2.2, "h": 14}
+        ]}
+      ]
+    },
+
+    "tope": {
+      "note": "el muerto: the hump, in yellow hatching",
+      "turn": true,
+      "parts": [
+        {"shape": "repeat", "n": 5, "dx": 3.2, "parts": [
+          {"shape": "rect", "fill": "rgba(240,196,74,0.85)", "x": -7.4, "y": -6, "w": 2.0, "h": 12}
+        ]}
+      ]
+    },
+
+    "banca": {
+      "note": "LA BANCA DEL MALECÓN. `ang` is the direction it LOOKS — the world takes the sea's side of the promenade's own normal, so on a wandering coast every bench still faces the water. The respaldo goes BEHIND the seat, which is the only thing that makes a 10 px bench read as a bench from above.",
+      "turn": true,
+      "parts": [
+        {"shape": "rect", "fill": "rgba(0,0,0,0.22)", "x": -2.4, "y": -5.4, "w": 6, "h": 11},
+        {"shape": "rect", "fill": "#8a6a45", "x": -3.4, "y": -6, "w": 1.8, "h": 12},
+        {"shape": "rect", "fill": "#c69a63", "x": -1.6, "y": -6, "w": 4.6, "h": 12},
+        {"shape": "stroke", "stroke": "rgba(90,66,40,0.55)", "width": 0.5, "runs": [
+          [[-1.6, -2], [3, -2]],
+          [[-1.6, 2], [3, 2]]
+        ]}
+      ]
+    },
+
+    "bus": {
+      "note": "LA PARADA — the SAME caseta the civic block's stop uses, inlined from `props`. Which list a parada came out of, the hand-authored manzana or the 87 mapped `highway=bus_stop` nodes, is not something the player can see, so it must not change what it looks like. `side` says which way the roadway is: a stop on the far kerb turns a half-circle more so it still opens onto it.",
+      "turn": true,
+      "flip": "side",
+      "extent": [34, 12],
+      "parts": [
+        {"shape": "prop", "ref": "parada"}
+      ]
+    }
+  },
+
+  "_props": "PIEZAS COMPARTIDAS — a prop that more than one thing in the world is made of, or that a scene stands on its ground. The frame is the CALLER's, exactly as for a landmark: `paintProp` translates to the anchor, turns by `ang`, scales by `scale`, and switches to a half-extent frame when it is given an `extent`.",
+
+  "props": {
+    "parada": {
+      "note": "one caseta, drawn the same wherever a bus stops. Measured in HALF-EXTENTS ([k, px] = k·half + px) because the only thing that differs between a mapped parada and the civic block's is its size — `ang` is the street's angle and the shelter's back is uphill of the bench.",
+      "frame": "extent",
+      "parts": [
+        {"shape": "roundRect", "fill": "rgba(0,0,0,0.24)", "x": [-1, 2], "y": [-1, 3], "w": [2, 0], "h": [2, 0], "r": 2},
+        {"shape": "roundRect", "fill": "#3a6f8a", "x": [-1, 0], "y": [-1, 0], "w": [2, 0], "h": [2, 0], "r": 2},
+        {"shape": "roundRect", "fill": "#5b9ec2", "x": [-1, 2], "y": [-1, 2], "w": [2, -4], "h": [2, -6], "r": 1.5},
+        {"shape": "rect", "fill": "#e7ddc8", "x": [-1, 4], "y": [1, -4], "w": [2, -8], "h": 2.5},
+        {"shape": "rect", "fill": "#f08a5d", "x": [1, -3], "y": [-1, -5], "w": 1.6, "h": 6},
+        {"shape": "roundRect", "fill": "#f08a5d", "x": [1, -6], "y": [-1, -9], "w": 6, "h": 5, "r": 1}
+      ]
+    },
+
+    "church": {
+      "note": "pale stucco nave, a bell tower with a spire tall enough that it reads as a church and not a house, and a bold white cross on top. Inlined by the `church` LANDMARK (which adds a rose window and a name pill) and by a `church` PARCEL (which adds a ground shadow and is scaled to its own lot) — it was written out twice before, in two files.",
+      "parts": [
+        {"shape": "rect", "fill": "#e7ddc8", "x": -20, "y": -12, "w": 40, "h": 24},
+        {"shape": "rect", "fill": "#b98a5e", "x": -20, "y": -12, "w": 40, "h": 4},
+        {"shape": "rect", "fill": "#e7ddc8", "x": -6, "y": -30, "w": 12, "h": 20},
+        {"shape": "fan", "fill": "#9e6f4a", "pts": [[-8, -28], [0, -40], [8, -28]]},
+        {"shape": "rect", "fill": "#fff", "x": -1.5, "y": -50, "w": 3, "h": 11},
+        {"shape": "rect", "fill": "#fff", "x": -5, "y": -46, "w": 10, "h": 3}
+      ]
+    },
+
+    "churchLot": {
+      "note": "the Parroquia standing on its own manzana: the same building on a ground shadow, drawn in the CUADRA's frame (P.ang) and scaled so it fits the lot",
+      "parts": [
+        {"shape": "ellipse", "fill": "rgba(0,0,0,0.22)", "cx": 4, "cy": 14, "rx": 20, "ry": 5},
+        {"shape": "prop", "ref": "church"}
+      ]
+    },
+
+    "statue": {
+      "note": "a figure on a plinth. `P.statue` names the kind; the Virgen stands at her park's edge NEAREST the catedral, which is placement and stays with the world. The two greys are the catedral's own stone — the same masonry across the calle, not a coincidence worth a registry.",
+      "parts": [
+        {"shape": "ellipse", "fill": "rgba(0,0,0,0.22)", "cx": 1, "cy": 5, "rx": 9, "ry": 3.4},
+        {"shape": "roundRect", "fill": "#8b867d", "x": -7, "y": -2, "w": 14, "h": 9, "r": 1.5},
+        {"shape": "roundRect", "fill": "#c2bcb1", "x": -5.5, "y": -4, "w": 11, "h": 3, "r": 1},
+        {"shape": "poly", "fill": "#eef1f5", "pts": [[-4, -4], [-2.4, -14], [2.4, -14], [4, -4]]},
+        {"shape": "poly", "fill": "#9fc0e8", "pts": [[-3.2, -6], [-2, -14.5], [2, -14.5], [3.2, -6]]},
+        {"shape": "disc", "fill": "#eef1f5", "cx": 0, "cy": -16, "r": 2.4},
+        {"shape": "ring", "stroke": "#f4d77a", "width": 1, "cx": 0, "cy": -16, "r": 3.6}
+      ]
+    }
+  },
+
+  "_parcels": "POR USO: what a parcel is CALLED on the map and what stands on it. The ground colour is a MATERIAL and lives in materials.json (`parcel`), keyed by the same ParcelUse. `pill` is the word a parcel wears when it IS a landmark; `tone` is the ink of its own name; `label: false` means the ground says everything and a caption sitting in the middle of it would cover exactly what it names.",
+  "_parcelScenes": "SEVEN BUILDINGS STAY IN CODE, and it is the same line the faro, the estadio and the parque marino draw. The catedral, the Casa de la Cultura, the escuelas/kinders/campus, the gasolineras, the kiosco de parque, the río and the arbolado all size THEMSELVES from the parcel's own half-extents through clamps and counts — `Math.max(3, Math.round(h / 12))` columns, a marked court only `if (L > 70 && ph > 22)`, one pavilion per 46 px of frontage, a tree scatter on a position hash. Moving them would mean putting arithmetic and conditionals in JSON, which is a programming language and not a catalog; §12's own `what should not be converted` list says so. What DID move is what is genuinely art: the parroquia, the Virgen and the paradita — and the parroquia and the paradita were each being drawn twice.",
+
+  "parcels": {
+    "defaultTone": "#8a6f4a",
+    "uses": {
+      "church":    {"prop": "churchLot", "fit": 22, "drawsBuilding": true, "pill": {"text": "IGLESIA", "tone": "#9e6f4a"}},
+      "cathedral": {"drawsBuilding": true, "pill": {"text": "CATEDRAL", "tone": "#9e6f4a"}},
+      "civic":     {"drawsBuilding": true, "pill": {"text": "CULTURA", "tone": "#2e7d44"}},
+      "market":    {"pill": {"text": "MERCADO", "tone": "#3a3540"}},
+      "plaza":     {"tone": "#2e7d44"},
+      "stadium":   {"tone": "#2e7d44"},
+      "school":    {"tone": "#3a6f8a", "wall": "#f0e4c4", "roof": "#7f93a6"},
+      "kinder":    {"tone": "#3a6f8a", "wall": "#f6dcc0", "roof": "#c98a6a"},
+      "campus":    {"tone": "#3a6f8a", "wall": "#e6e0cb", "roof": "#6f8496"},
+      "park":      {"label": false},
+      "garden":    {"label": false},
+      "boulevard": {"label": false}
+    },
+    "decor": {
+      "statue": {"prop": "statue", "at": [0.5, 0.2]},
+      "bus":    {"prop": "parada"}
     }
   }
 }

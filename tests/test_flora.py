@@ -121,7 +121,13 @@ class FloraRegistryTests(unittest.TestCase):
             while i < len(build_stage) and depth:
                 depth += {"(": 1, ")": -1}.get(build_stage[i], 0)
                 i += 1
-            names = re.findall(r'"(\w+)"', build_stage[match.end():i])
+            call = build_stage[match.end():i]
+            # KEYWORD ARGUMENTS ARE NOT THE MIX. `_plant` grew `line="ferrocarril"`
+            # when the derived planting runs gained an identity, and taking the
+            # LAST string then demanded a flora mix called `ferrocarril`. The mix
+            # is the last POSITIONAL string, so drop `name="…"` pairs first.
+            call = re.sub(r'\w+\s*=\s*"[^"]*"', "", call)
+            names = re.findall(r'"(\w+)"', call)
             if names:
                 used.add(names[-1])
         self.assertTrue(used, "build_stage plants nothing by name — has `_plant` changed?")

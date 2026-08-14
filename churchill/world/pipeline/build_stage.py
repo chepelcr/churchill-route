@@ -1299,7 +1299,8 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                     # the strip's lower edge. Lift by that base offset so the
                     # trunk sits centered ON the median island.
                     palms.append({"x": round(x), "y": round(y - 4),
-                                  "s": 1.05, "sway": round(rng() * 6.28, 2)})
+                                  "s": 1.05, "sway": round(rng() * 6.28, 2),
+                                  "line": "paseo_median"})
                     n_median_palms += 1
                     nxt = s + PALM_PITCH
     # Trees (almendros/robles) along the continuous tree lines only.
@@ -1313,7 +1314,8 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
             for (s, x, y) in samples[k0:k1 + 1]:
                 if s >= nxt and s <= s1:
                     trees.append({"x": round(x), "y": round(y),
-                                  "s": round(0.9 + rng() * 0.3, 2)})
+                                  "s": round(0.9 + rng() * 0.3, 2),
+                                  "line": "leon_cortes"})
                     nxt = s + TREE_PITCH
     # WHICH SPECIES EACH PLANTED TREE IS. From a POSITION HASH, never from
     # `rng()`: the seeded stream is shared by every scatter in this stage, so
@@ -1331,22 +1333,38 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
             if roll <= 0:
                 return name
         return weights[-1][0]
-    def _plant(out, x, y, s, mix_name, default="almendro"):
+    def _plant(out, x, y, s, mix_name, default="almendro", line=None):
         """Append a tree, naming its species only when it is not the default —
-        22 000 records, so the common case must cost no bytes."""
+        22 000 records, so the common case must cost no bytes.
+
+        `line` NAMES THE PLANTING RUN a tree belongs to, and it is the whole
+        difference between a line you can edit and 100-odd anonymous records.
+        The editor derives an id per tree from its geometry, so without this you
+        can hide ONE tree of the Ferrocarril shoulder — never the shoulder. It
+        is absent on the patio scatter, which genuinely belongs to no run.
+        """
         rec = {"x": x, "y": y, "s": s}
         kind = _species(mix_name, x, y, default)
         if kind != default:
             rec["k"] = kind
+        if line:
+            rec["line"] = line
         out.append(rec)
 
-    # Tree line on the north shoulder of Avenida 2 del Ferrocarril (from
-    # x≈6892 to the avenue's end), separating it from the parallel Avenida
-    # Alberto Echandi Montero. Decorative trees (no blocking median → the barro
-    # avenue stays fully drivable), GAPPED at every cross street.
-    FERRO_TREE_X0 = 6892
-    # tree line along the whole elevated barro route (Av. 2 del Ferrocarril AND
-    # the Cocal-side avenue) from x≈6892 to where it ends at the estero
+    # Tree line on the north SHOULDER of the elevated barro route — Avenida 2
+    # del Ferrocarril and the Cocal-side avenue — separating it from the
+    # parallel Avenida Alberto Echandi Montero. Decorative trees, NOT a median:
+    # nothing is stamped, so the barro avenue stays fully drivable. Gapped at
+    # every cross street.
+    #
+    # IT RUNS THE WHOLE ROUTE, and until now the code said otherwise. There was
+    # a `FERRO_TREE_X0 = 6892` here with a comment promising the line started
+    # there — a CORRIDOR-ERA world-px anchor, left behind by the planar rebuild
+    # exactly like the one that had the Cocal median planting nothing. Measured
+    # on the shipped world: the elevated route spans x 26 200..57 648, so the
+    # guard could never fire and cut off 0 points. Removing it changes no tree;
+    # keeping it would have been a number that looks like a decision and is not.
+    # (`EVERY ANCHOR IS GEO` in CLAUDE.md is the rule it broke.)
     ferro = [r for r in roads if r.get("elev")]
     other_pts = [(x, y) for r in roads
                  if not r.get("elev")
@@ -1358,8 +1376,6 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
     for r in ferro:
         samples = resample_centerline(r["pts"], 26)
         for i, (s, cx, cy) in enumerate(samples):
-            if cx < FERRO_TREE_X0:
-                continue
             j = i + 1 if i + 1 < len(samples) else max(0, i - 1)
             hx, hy = samples[j][1] - cx, samples[j][2] - cy
             h = math.hypot(hx, hy) or 1.0
@@ -1378,7 +1394,8 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
             # line the user saw sitting on top of streets.
             if grid[gr * GRID_COLS + c] in CARRIAGEWAY_CLASSES + (CLS_WATER,):
                 continue
-            _plant(trees, round(tx), round(ty), round(0.9 + rng() * 0.3, 2), "barro")
+            _plant(trees, round(tx), round(ty), round(0.9 + rng() * 0.3, 2), "barro",
+                   line="ferrocarril")
             n_ferro_trees += 1
     # Planted median down the middle of the divided Cocal avenue.
     #
@@ -1417,7 +1434,8 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                     # the scatters after it pull from the shared stream and the
                     # whole patio planting would move for no reason.
                     h = math.sin(mx * 12.9898 + my * 78.233) * 43758.5453
-                    _plant(trees, mx, my, round(0.9 + (h - math.floor(h)) * 0.3, 2), "parque")
+                    _plant(trees, mx, my, round(0.9 + (h - math.floor(h)) * 0.3, 2), "parque",
+                           line="cocal_median")
                     n_dc += 1
     log("median", f"{n_median_palms} palms on the paseo median dashes, "
           f"{len(trees)} trees on the tree lines ({n_ferro_trees} Ferrocarril, "

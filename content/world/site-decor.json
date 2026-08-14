@@ -1,0 +1,46 @@
+{
+  "_note": "CÓMO SE PERSONALIZA UNA CUADRA. One record per OSM site whose ground the generic fit gets wrong. This is the mechanism behind Parque Mora y Cañas and the Mercado Municipal, and it was a Python dict until now — which meant only somebody editing the builder could add one.",
+  "_options": {
+    "trace": "keep this site's own SOURCE-SUPPORTED cuadra cells and emit their straightened contour, instead of fitting a rectangle. For a place whose identity is the angled contour. NOTE: it keeps the ground OSM already says is the site's — it cannot invent a shape the data does not have.",
+    "cuadra": "the mapped outline IS a manzana, calle to calle. Implies `trace`, and skips the manzana seat because the site is inside its block by construction.",
+    "rect": "a sub-rectangle of the fitted rect, in FRACTIONS (u east, v south) as [u0, u1, v0, v1] — for when OSM maps the whole block but the building occupies one corner of it.",
+    "kiosco": "the parcel carries a kiosco/templete at its centre."
+  },
+  "_schema": "keys are parcel ids (`osm_<use>_<wayid>`); values are the options above plus an optional `note`.",
+  "sites": {
+    "osm_park_232389752": {
+      "kiosco": true,
+      "note": "Parque Victoria — its bandstand."
+    },
+    "osm_park_232390078": {
+      "trace": true,
+      "note": "Mora y Cañas spans an ANGLED cuadra. The generic safety fallback kept it off the roadway by inscribing a rectangle, but that cut away the west corner and flattened the diagonal north edge. Keep its source-supported cuadra cells and emit their straightened contour instead."
+    },
+    "osm_park_270515697": {
+      "trace": true,
+      "note": "El Parque del Muellero (OSM 'Parque 164') is a 1100 px DIAGONAL RIBBON of waterfront between the Paseo and the muelle, 40-70 px wide — a shape no rectangle in the manzana frame can hold. The percentile fit landed on the roadway, the inscribed fallback found nothing that was still a plot, and the park simply did not exist in the world. Same remedy as Mora y Cañas."
+    },
+    "osm_market_1077016901": {
+      "cuadra": true,
+      "note": "El Mercado Municipal OCCUPIES ITS MANZANA — the mapped outline runs Calle 0B to Calle 2A, Avenida 5 to Avenida 3 Filiberto Sinfontes (its own addr:street). It is a cuadra, like an estadio, not a lot inside one: clipping it to the LAND our carriageways left kept a 266-cell frontage fringe of the 1 300-cell hall. `cuadra` implies `trace`."
+    },
+    "osm_school_263127078": {
+      "rect": [
+        0.0,
+        0.84,
+        0.62,
+        1.0
+      ],
+      "note": "La Escuela Delia Urbina de Guevara is mapped in OSM as the whole tall manzana it stands on; the school itself is a WIDE building on the block's south-west corner — 'the west 84%, the south 38%'."
+    },
+    "osm_campus_232386868": {
+      "rect": [
+        0.0,
+        0.52,
+        0.0,
+        1.0
+      ],
+      "note": "La Escuela de Biología Marina (UNA) sits on the WEST side of its calle; the OSM area spans the block and put it along the north edge instead."
+    }
+  }
+}

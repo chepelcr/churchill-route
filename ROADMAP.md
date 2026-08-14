@@ -286,18 +286,46 @@ tiene implementación en el renderer.
       **SON DOS MECANISMOS DISTINTOS, y al jugador le parecen lo mismo.** Esto
       importa para lo que "incluir el Cocal" significa:
 
-      | | Paseo de los Turistas / León Cortés | Cocal / Av. 2 del Ferrocarril |
-      |---|---|---|
-      | qué emite | `stamp_paseo_median` → una franja estampada + polilíneas en `tile.medians` | árboles sueltos, `_plant(trees, …)` |
-      | suelo verde | **sí** (`materials.median`) | **no** — no hay franja |
-      | colisión | **sí**, `CLS_ACERA` estampado más ancho de lo dibujado | **no** |
-      | visible al editor | ahora sí, como `median_<hash>` | ya lo era, como `tree_<hash>` por árbol |
+      | | Paseo / León Cortés | Cocal (avenida dividida) | Ferrocarril |
+      |---|---|---|---|
+      | dónde va | por el **medio** | por el **medio** | **al hombro NORTE**, corrida del eje |
+      | qué emite | `stamp_paseo_median` → franja estampada + polilíneas en `tile.medians` | árboles sueltos | árboles sueltos |
+      | suelo verde | **sí** (`materials.median`) | **no** | **no** |
+      | colisión | **sí**, `CLS_ACERA` más ancho de lo dibujado | **no** | **no**, a propósito: la avenida de barro queda manejable |
+      | huecos | dashes alineados a las bocacalles | continuo | **sí**, en cada cruce (`_near_crossing`) |
+      | escala del árbol | — | hash de posición | `rng()` |
+      | visible al editor | ahora, `median_<hash>` | ya, `tree_<hash>` | ya, `tree_<hash>` |
 
-      O sea que la línea del Cocal hoy son **14 árboles en fila por el medio de
-      la avenida dividida, sin cantero y sin colisión**. Darle suelo verde no es
-      hacerla editable: es un CAMBIO DE COMPORTAMIENTO —pasa a estorbar al
-      carro— y por eso es una decisión aparte, no un efecto colateral de la
-      migración. El esquema de abajo lo cubre con `blocks`.
+      Son **tres** mecanismos, no dos, y al jugador le parecen lo mismo. El del
+      Ferrocarril ni siquiera va por el medio: se calcula la normal a la línea de
+      centro, se desplaza `w/2 + 0.6·CUAD` y se fuerza al lado norte.
+
+      Así que "darle suelo verde al Cocal (o al Ferrocarril)" **no es hacerlos
+      editables**: es un CAMBIO DE COMPORTAMIENTO —pasan a estorbar al carro, y
+      en el Ferrocarril eso está explícitamente descartado hoy— y por eso es una
+      decisión aparte, no un efecto colateral de la migración. El esquema de
+      abajo lo cubre con `blocks`.
+
+      **Y el del Ferrocarril tenía un ancla muerta** (2026-08-13): un
+      `FERRO_TREE_X0 = 6892` con un comentario prometiendo que la línea empezaba
+      ahí. Ancla de la era del corredor, igual que la que tenía la mediana del
+      Cocal sembrando cero. Medido: la ruta elevada va de x 26 200 a 57 648, así
+      que la guarda **no podía dispararse nunca** y recortaba 0 puntos.
+      Eliminada — no mueve un árbol, pero era un número que parecía una decisión
+      y no lo era.
+
+      **Segundo paso hecho (2026-08-13): LAS CUATRO LÍNEAS SON UN FEATURE.**
+      Cada árbol o palma de una siembra derivada lleva ahora `line` — el nombre
+      de la corrida a la que pertenece — y el editor emite **una fuente por
+      corrida** (`planting_ferrocarril`, `planting_paseo_median`,
+      `planting_leon_cortes`, `planting_cocal_median`) con su conteo y su
+      centro, además de los árboles sueltos que ya indexaba.
+
+      Ésa es toda la diferencia entre una línea que se puede editar y ~100
+      registros anónimos: el editor deriva el id de un árbol de su geometría, así
+      que sin `line` se podía ocultar UN árbol del hombro del Ferrocarril, nunca
+      el hombro. El campo va sólo en las corridas derivadas; la siembra de patio
+      no pertenece a ninguna y no lo lleva.
 
       **Primer paso hecho (2026-08-13): la mediana ya es DIRECCIONABLE.** El
       editor no la veía en absoluto — a diferencia de los muelles, que son
@@ -408,7 +436,25 @@ motor la física, el intérprete y las transiciones de estado.
       70) y la cobertura de `SignKind` se muda ahí desde `test_vocabulary.py`,
       donde exigía un `case` que ya no existe.
 - [ ] **`churchill/world/content.py` → `content/world/*.json`**, validado contra
-      los DTO que ya existen. Es la fila de MÁS RIESGO del registro: la prueba
+      los DTO que ya existen. **Empezado 2026-08-14: `SITE_DECOR` ya salió** —
+      `content/world/site-decor.json`, que es *cómo se personaliza una cuadra*
+      (`trace` para Mora y Cañas y el Parque del Muellero, `cuadra` para el
+      Mercado, `rect` para las dos escuelas que OSM mapea sobre toda la manzana,
+      `kiosco` para el Parque Victoria). Era un dict de Python, o sea que sólo
+      quien editara el builder podía agregar una. Ahora es fuente del editor con
+      validador y `requiresRebuild: true`.
+
+      Probado por comparación directa contra el literal de git: **6 sitios, mismo
+      orden, idénticos en valor Y TIPO** — `rect` sigue siendo una tupla, porque
+      `FieldService` la desempaca como cuatro fracciones y JSON no tiene tuplas;
+      la conversión vive en el loader y no en el servicio.
+
+      **El límite honesto**: `trace` conserva el suelo que OSM YA dice que es del
+      sitio y endereza su contorno. No puede inventar una forma que el dato no
+      tenga; una cuadra arbitraria es territorio del esquema `form` × `align`.
+
+      Falta el resto: DISTRICT_DEFS, LANDMARK_DEFS, CUSTOMER_DEFS, STAGES,
+      probes, ATTRACTION_DEFS. Es la fila de MÁS RIESGO del registro: la prueba
       es un build completo (~28 min) con `world_snapshot.py rebuild` devolviendo
       los 1001 archivos byte-idénticos, **más un diff de los dos logs de build**
       — el log es estable carácter a carácter y caza un cambio de comportamiento

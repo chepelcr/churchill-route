@@ -8,6 +8,11 @@ cannot resolve rather than quietly dropping it.
 This is also the data a future management API would edit — which is why it is
 its own module and not buried in the builder.
 """
+import json
+import os
+
+from .config import ROOT
+
 
 # probes for orientation / sanity (geo)
 PROBE_LAND = [(9.97769, -84.83487),   # Catedral
@@ -247,35 +252,36 @@ STAGES = [
 #
 # The id is `osm_<kind>_<osm way id>`, which is stable across rebuilds because
 # the OSM id is.
-SITE_DECOR = {
-    "osm_park_232389752": {"kiosco": True},      # Parque Victoria
-    # Mora y Cañas spans an angled cuadra. The generic safety fallback kept it
-    # off the roadway by inscribing a rectangle, but that cut away the west
-    # corner and flattened the diagonal north edge. Keep its source-supported
-    # cuadra cells and emit their straightened contour instead.
-    "osm_park_232390078": {"trace": True},
-    # El Parque del Muellero (OSM "Parque 164") is a 1100 px DIAGONAL RIBBON of
-    # waterfront between the Paseo and the muelle, 40-70 px wide — a shape no
-    # rectangle in the manzana frame can hold, so the percentile fit landed on
-    # the roadway, the inscribed fallback found nothing that was still a plot,
-    # and the park simply did not exist in the world. Same remedy as Mora y
-    # Cañas: keep its own source-supported ground and straighten the contour.
-    "osm_park_270515697": {"trace": True},
-    # El Mercado Municipal OCCUPIES ITS MANZANA — the mapped outline runs
-    # Calle 0B to Calle 2A, Avenida 5 to Avenida 3 Filiberto Sinfontes (its own
-    # addr:street). It is a cuadra, like an estadio, not a lot inside one, so
-    # clipping it to the LAND our carriageways left kept a 266-cell frontage
-    # fringe of the 1 300-cell hall. `cuadra` implies `trace`.
-    "osm_market_1077016901": {"cuadra": True},
-    # The Escuela Delia Urbina de Guevara is mapped in OSM as the whole tall
-    # manzana it stands on; the school itself is a WIDE building on the block's
-    # south-west corner. `rect` is in fractions of the fitted rect (u east,
-    # v south), so this is "the west 84%, the south 38%".
-    "osm_school_263127078": {"rect": (0.0, 0.84, 0.62, 1.0)},
-    # The Escuela de Biología Marina (UNA) sits on the WEST side of its calle;
-    # the OSM area spans the block and put it along the north edge instead.
-    "osm_campus_232386868": {"rect": (0.0, 0.52, 0.0, 1.0)},
-}
+def _load_site_decor():
+    """CÓMO SE PERSONALIZA UNA CUADRA — read from `content/world/site-decor.json`.
+
+    One record per OSM site whose ground the generic fit gets wrong: Mora y
+    Cañas and the Parque del Muellero keep their own angled contour (`trace`),
+    the Mercado owns its whole manzana (`cuadra`), two schools occupy one corner
+    of the block OSM maps them across (`rect`), Parque Victoria carries a
+    bandstand (`kiosco`).
+
+    It was a dict in this file until 2026-08-13, which meant a personalised
+    cuadra could only be added by somebody editing the builder. It is data now,
+    so the world editor can author one — which is the whole point of the row.
+
+    `rect` comes back as a TUPLE: `FieldService` unpacks it as four fractions
+    and JSON has no tuple, so the conversion happens here rather than leaving
+    the service to care what file the value came from.
+    """
+    with open(os.path.join(ROOT, "content", "world", "site-decor.json"),
+              encoding="utf-8") as fh:
+        doc = json.load(fh)
+    out = {}
+    for pid, rec in doc["sites"].items():
+        decor = {k: v for k, v in rec.items() if k != "note"}
+        if "rect" in decor:
+            decor["rect"] = tuple(decor["rect"])
+        out[pid] = decor
+    return out
+
+
+SITE_DECOR = _load_site_decor()
 
 # ---------------------------------------------------------------------------
 # LANCHAS. The gulf ferries sail OUT AND BACK because the real crossing ends on

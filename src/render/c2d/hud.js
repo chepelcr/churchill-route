@@ -1,5 +1,6 @@
 // Screen-space overlays: the objective compass, minimap, rain, night vignette
 // and the debug coordinate grid + real-world POI names.
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { nearestKiosk } from "../../game/delivery.js";
@@ -208,13 +209,15 @@ const MINI_MALECON = "#efdcb4";  // the sea front: warm baldosa, not town stone
 // The muelles keep the material they are drawn in out in the world, so the dial
 // and the map agree: the Muelle Nacional is concrete, the faro jetty is timber,
 // and a bridge deck is the pale deck base its asphalt is laid on.
-const MINI_BARRO  = "#9c7a4f";   // calle de barro / terraplén del Ferrocarril
-const MINI_LASTRE = "#a99d8b";   // calle de lastre (gravel)
-const MINI_RAIL   = "#8a7660";   // the Ferrocarril's ballast bed
-const MINI_FERRY  = "#d7d2c4";   // a ferry deck — the same ink as the muelles
-const MINI_PIER   = "#cfcfc8";   // Muelle Nacional — concrete (structures.js)
-const MINI_JETTY  = "#b98a4e";   // muelle del Faro — warm timber
-const MINI_BRIDGE = "#cfc3a3";   // bridge / causeway deck base
+const MINI_BARRO  = MATERIALS.minimap.barro;    // calle de barro / terraplén
+const MINI_LASTRE = MATERIALS.minimap.lastre;   // calle de lastre (gravel)
+const MINI_RAIL   = MATERIALS.minimap.rail;     // the Ferrocarril's ballast bed
+const MINI_FERRY  = MATERIALS.minimap.ferry;    // a ferry deck
+// These two are not "the same colour as" the muelles — they ARE the muelles'
+// decks, read from the one recipe the structures are drawn with.
+const MINI_PIER   = MATERIALS.pier.concrete.deck;  // Muelle Nacional
+const MINI_JETTY  = MATERIALS.pier.timber.deck;    // muelle del Faro
+const MINI_BRIDGE = MATERIALS.minimap.bridge;   // bridge / causeway deck base
 
 // One or more flat [x,y,…] rings, cached as a Path2D + union AABB on the object
 // they came from. `_m*` keys of their own so nothing collides with the world

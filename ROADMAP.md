@@ -162,8 +162,40 @@ tiene implementación en el renderer.
       publicado; darles voz es un cambio de audio, no una migración.
 - [ ] **`src/assets/world-props.json`**: registro de tipo semántico → asset para
       landmarks/parcelas/señales, con el mismo DSL finito de la feria.
-- [ ] **`src/assets/materials.json`**: terreno, calles, estructuras, minimapa y
-      preview del editor — hoy duplicados entre Canvas, Pixi y editor.
+- [x] **`src/assets/materials.json`.** Hecho 2026-08-13. Y lo primero fue
+      **medir**, porque la fila decía "duplicados entre Canvas, Pixi y editor" y
+      eso ya no era cierto: `canvas ∩ pixi = **0**` — el backend de Pixi no tiene
+      un solo literal hex desde que lee `surfaces.json`. Lo que quedaba era
+      `canvas ∩ editor = **40**`.
+
+      De esos 40, varios sólo COMPARTEN UN NÚMERO: `#e85d75` es la pintura del
+      scooter, la cabina de un juego de la feria y el color por defecto de un
+      feature del editor. La regla de §13 dice que un número idéntico en dos
+      archivos no es automáticamente una constante, así que ésos se quedan donde
+      están — juntarlos sólo habría movido el hard-coding de lugar.
+
+      Lo que sí es una familia compartida entró: `parcel` (por `ParcelUse`),
+      `green` (por `GreenType`), `pier` (las cinco recetas completas por
+      `PierStyle` — no un color: costuras, barandas, lámparas, si el muelle va
+      sobre el suelo), `street` (acera, caño, asfalto, paseo, la raya), `structure`
+      y `minimap`. **Dos tintas del minimapa ERAN las cubiertas de los muelles**,
+      con un comentario que decía de qué archivo las habían copiado; ahora las
+      leen.
+
+      **Y la migración encontró una deriva viva**: una región `park` autorada se
+      previsualizaba `#5ba362` en el editor y se pintaba `#4f9d5b` en el juego.
+      Nadie lo reportaba porque cada lado era coherente consigo mismo.
+
+      Verificado como corresponde a un movimiento de DATOS: comparando las tablas
+      viejas (desde git) contra el registro, campo por campo — 14 parcelas, 6
+      verdes, 9 presets de terreno, 11 escalares y las 5 recetas de muelle, todo
+      idéntico. **Una comparación de pixeles no servía acá**: las tomas del mundo
+      tienen mar animado, y el piso de ruido medido con CERO cambios de código es
+      2,1 % / 86,4 % / 46,1 %.
+
+      El editor lo consume por `/api/materials` con validador y entrada en el
+      Data workspace, igual que `/api/surfaces`. `tests/test_materials.py` (6) +
+      `world-editor/tests/materials.test.mjs` (3).
 - [ ] **`src/assets/water.json`** + registro de qué backend es dueño de qué
       familia visual, con fixtures de paridad.
 

@@ -1,5 +1,6 @@
 // Ground layer: sea/inland water, the land base + park/plaza greens, the faro
 // plaza commas and the kiosk access lanes. Painted before roads.
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
@@ -100,7 +101,7 @@ function drawLandBase(view, t) {
 // plazoleta as a band in its own grey (see ESPLANADE_COLORS in malecon.js).
 // Kept as a flat fill underneath so a streaming seam can never show sand
 // through the middle of it, and matched to that palette's `fill`.
-const GREEN_COLORS = { plaza: "#5ba362", park: "#4f9d5b", marine: "#46a98f", pool: "#5faec7", stadium: "#4f9d5b", esplanade: "#c9c6bf" };
+const GREEN_COLORS = MATERIALS.green;
 function drawPlazaGreen(pz, view) {
   const [px, py, pw, ph] = pz;
   if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
@@ -247,20 +248,7 @@ function drawMangroves(view, t) {
   ctx.restore();
 }
 
-const SURFACE_PRESET_COLORS = {
-  cuadra: "#e8d5a0",
-  park: "#4f9d5b",
-  plaza: "#cbc6ba",
-  stadium: "#4f9d5b",
-  balneario: "#2a7fa8",
-  water: "#2a7fa8",
-  beach: "#f4d77a",
-  // The unpaved ground types. They are the same browns the road vectors use,
-  // so an authored patch of barro and the calle de barro beside it are the
-  // same surface to the eye as well as to the car.
-  barro: "#9c7a4f",
-  gravel: "#a99d8b",
-};
+const SURFACE_PRESET_COLORS = MATERIALS.terrain;
 
 function surfaceStylePath(style) {
   if (!style._path) style._path = flatMultiPath([style.pts]);

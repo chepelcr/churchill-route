@@ -849,7 +849,7 @@ foundation, P2 = later authoring surface.
 | P0 | surface mirrors across Python/JS/Pixi/editor | one canonical surface registry with wire ID, labels, roles, speed, materials | versioned shared surface JSON consumed/generated into both runtimes | raster algorithms and collision category evaluation |
 | P0 | ~~loose string vocabularies in DTOs, simulation, renderer, UI, and editor~~ **DONE 2026-08-11 / 08-13** | stage/sign/pier/vehicle/host/geometry/mode identities and validation | Python enum layer plus deterministic generated JS/JSON vocabulary — 17 enums, `enums/{features,game,editing,surface}.py` | state transitions, rendering, geometry, validation algorithms |
 | P0 | landmark/parcel/sign switches | asset kind registry and mapping from semantic type to asset | `src/assets/world-props.json` or per-family files | finite shape DSL and draw dispatch by schema |
-| P0 | duplicated Canvas/Pixi/editor colors | shared material/theme registry for terrain, roads, structures, minimap/editor preview | `src/assets/materials.json` | backend adapters |
+| P0 | ~~duplicated Canvas/Pixi/editor colors~~ **DONE 2026-08-13** | shared material/theme registry for terrain, roads, structures, minimap/editor preview | `src/assets/materials.json` — measured first: canvas ∩ pixi was already **0**, canvas ∩ editor was 40, and the ones that only *share a number* were deliberately left alone | backend adapters |
 | P0 | Canvas gameplay water plus older Pixi water paths | water palettes/effect presets, explicit backend owner, units, layers, and parity fixtures | `src/assets/water.json` plus renderer ownership registry | Canvas draw algorithms, Pixi shaders/draw algorithms, simulation interactions |
 | P1 | `churchill/world/content.py` | districts, landmarks, customers, stages, site decor, crossings, lanchas, attractions/access definitions | `content/world/*.json` validated into existing DTOs | projection, placement/resolution, verification |
 | P1 | `economy.js` | free/paid vehicles, upgrades, boosts, colors, packs, rewards | `src/content/economy.json` or runtime content block | wallet transactions and entitlement logic |
@@ -1135,8 +1135,11 @@ The first four are in `tests/test_vocabulary.py` as of 2026-08-11 (`pnpm test`).
 - ~~Compare Canvas, Pixi, minimap, editor, and debug materials by enum key rather
   than array length.~~ **In place for SURFACE materials** (2026-08-11): there is
   one registry, so there is nothing left to compare, and a test rejects any new
-  class→colour table. Still open for the non-surface families (structures,
-  minimap, props) — those need `materials.json`.
+  class→colour table. ~~Still open for the non-surface families (structures,
+  minimap, props)~~ — **closed 2026-08-13** by `src/assets/materials.json`, which
+  covers parcels, greens, the five pier recipes, the street inks, the structure
+  roof, the minimap and the editor's terrain presets. The Pixi half of that row
+  had already closed itself: the backend has no hex literals at all.
 - Validate named role sets: drivable, wall, street, carriageway, calle, major,
   pedestrian, waterborne, and renderer-owner. *Partly*: the five surface role
   sets and the two road ones are generated, so a consumer cannot mistype one;

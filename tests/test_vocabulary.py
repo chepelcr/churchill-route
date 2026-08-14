@@ -99,14 +99,11 @@ class RendererCoverageTests(unittest.TestCase):
                           f"drawSign has no case for {kind.value} — it would "
                           f"draw nothing at all")
 
-    def test_every_pier_style_has_a_deck_recipe(self):
-        text = read("src", "render", "c2d", "structures.js")
-        body = text.split("PIER_STYLES = {", 1)[1].split("\n};", 1)[0]
-        recipes = set(re.findall(r"^\s{2}(\w+):", body, re.M))
-        for style in PierStyle:
-            self.assertIn(str(style.value), recipes,
-                          f"PIER_STYLES has no recipe for {style.value}; the "
-                          f"lookup falls through to concrete")
+    # Pier-style coverage moved to `tests/test_materials.py` when `PIER_STYLES`
+    # stopped being a literal in structures.js and became a row in
+    # `src/assets/materials.json`. It is a stronger check there — it asserts the
+    # whole recipe (deck, seam, cap, rail, centre), not just that a key exists,
+    # because falling through to `concrete` is what gives a beach ramp railings.
 
     def test_every_landmark_type_is_dispatched(self):
         cases = js_cases(read("src", "render", "c2d", "landmarks.js"))

@@ -1,5 +1,6 @@
 // Street layer: the multi-pass road painter (acera → casing → asphalt → lane
 // dashes), per-tile rails/medians, street name pills and the lock barriers.
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { t } from "../../i18n/index.js";
@@ -34,13 +35,13 @@ function fieldFrame(S) {
 }
 
 // Poured concrete, the colour the aceras actually are in the port.
-const ACERA_GREY = "#b8b6b0";
+const ACERA_GREY = MATERIALS.street.acera;
 // …and the caño: the drainage channel at the kerb, cast in the same concrete
 // but permanently damp and stained, so it reads a full step darker.
-const CANO_GREY = "#807e77";
+const CANO_GREY = MATERIALS.street.cano;
 const CANO_PX = 4;                       // depth of the gutter, per side
 
-const MARK = "rgba(255,255,255,0.75)";   // every line on a field is this one white
+const MARK = MATERIALS.street.mark;   // every line on a field is this one white
 // Grass, mow stripes and fútbol markings inside `path`, all drawn in the
 // FIELD's OWN frame rather than on screen axes — Las Playitas sits on the
 // diagonal street grid and Plaza El Carmen on a slanted manzana, and
@@ -177,19 +178,10 @@ function paintStadiumCuadras(view) {
 // on ground that already exists, painted between the acera band and the
 // asphalt — so the asphalt repaints anything that reached the roadway, and
 // street pills, buildings and flora still land on top.
-// A school's ground is its PATIO, not a lawn: the swept concrete-and-earth
-// yard every escuela in the port has, so it reads as a schoolyard beside the
-// green of a park rather than as one more park.
-const PARCEL_FILL = { plaza: "#4f9d5b", stadium: "#4f9d5b", garden: "#5ba362",
-                      park: "#5ba362", church: "#cfc7b4", cathedral: "#cfc7b4",
-                      boulevard: "#d9d6cd", civic: "#c9c2b2", lot: "#b9b2a0",
-                      school: "#c8bb96", kinder: "#d3b98f", campus: "#bfb894",
-                      // EL MERCADO: swept concrete, its own manzana. A flat
-                      // ground colour on purpose — the mercado is meant to take
-                      // a style or an asset of its own later, and this is the
-                      // plot it will be painted onto.
-                      market: "#c2b49a",
-                      fuel: "#8e9299" };
+//: Ground fill per ParcelUse, from the shared material registry — the editor
+//: paints the same table, and `market` being live here and missing there is
+//: exactly the drift this file closes.
+const PARCEL_FILL = MATERIALS.parcel;
 function paintParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;

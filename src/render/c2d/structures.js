@@ -1,5 +1,6 @@
 // Hand-drawn set pieces: buildings, the two muelles and the Mata de Limón
 // suspension bridge. The painterly tile pass doesn't cover these.
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ctx, flatPath, label, roundRect } from "./gfx.js";
@@ -12,7 +13,7 @@ function paintBuilding(b) {
   ctx.save(); ctx.translate(4, 4); ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fill(path); ctx.restore();
   ctx.fillStyle = b.color || "#caa089"; ctx.fill(path);
   ctx.save(); ctx.clip(path);
-  ctx.fillStyle = b.roof || "#8a6a4a"; ctx.fillRect(a.x0, a.y0, bw, Math.max(3, bh * 0.3));
+  ctx.fillStyle = b.roof || MATERIALS.structure.roof; ctx.fillRect(a.x0, a.y0, bw, Math.max(3, bh * 0.3));
   if (b.wnd) {
     ctx.fillStyle = state.weather === "night" ? "rgba(255,220,140,0.7)" : "rgba(255,255,255,0.55)";
     const wn = Math.max(1, Math.floor(bw / 16));
@@ -30,39 +31,12 @@ function paintBuilding(b) {
 // Muelle Nacional and the faro's wooden jetty are drawn by the same pass, each
 // segment in its own frame. That is what lets the editor bend one, extend it,
 // or draw a third without a new draw function.
-const PIER_STYLES = {
-  concrete: { deck: "#cfcfc8", seam: "rgba(0,0,0,0.1)", seamGap: 14, cap: "#b8b8b0",
-              rail: "#2f6fb8", centre: "#f8d76b", lamps: 46, hut: true },
-  timber:   { deck: "#b98a4e", seam: "rgba(60,40,20,0.35)", seamGap: 12, cap: null,
-              rail: "#8a5f33", centre: null, posts: 34 },
-  // The ferry ramps: asphalt, the same colour as the streets they leave, with
-  // no rails or lamps — a terminal apron, not a promenade. Drawn at the deck's
-  // REAL width, which is the width the raster stamped: on the muelles the two
-  // have to agree, and there is no reason for the ramps to be the exception.
-  apron:    { deck: "#3a3540", seam: null, seamGap: 0, cap: null, rail: null,
-              centre: null, round: true, ground: true },
-  // The muelle's OWN access street. It lies on the ground like an apron, but it
-  // is the landward continuation of a CONCRETE deck, so it is paved in the
-  // muelle's grey and scored with the same slab seams — you drive off the
-  // asphalt of Calle 2 onto the muelle's concrete and then out over the water
-  // without the surface changing under you. Drawn without rails, lamps or a
-  // hut: it is a calzada, not a promenade.
-  calzada:  { deck: "#c6c6bf", seam: "rgba(0,0,0,0.09)", seamGap: 18, cap: null,
-              rail: null, centre: null, round: true, ground: true },
-  // LAS BAJADAS a la arena. They are stamped `Surface.ROAD` — the promenade
-  // stopped being drivable and a beach access that is a wall is not an access —
-  // but they are not asphalt: they are the way DOWN off the malecón, so they are
-  // paved in its baldosa and scored across their width like the courses are.
-  //
-  // This entry was missing, and the failure was silent in the way this audit
-  // (`docs/inventory.md` §13.4) predicted: the manifest ships FOUR piers with
-  // `style: "malecon"` and the lookup simply fell through to `concrete`, so the
-  // four bajadas were drawn as grey quay decks with blue rails and lamps on
-  // them. A style the builder produces and the renderer does not know about
-  // does not throw; it just draws the wrong thing.
-  malecon:  { deck: "#e7d6b3", seam: "rgba(150,132,100,0.34)", seamGap: 14, cap: null,
-              rail: null, centre: null, round: true, ground: true },
-};
+//: The deck recipe per PierStyle, from the shared material registry. Not just
+//: a colour — seams, rails, lamps, and whether the deck lies on the ground.
+//: EVERY style the builder can emit must have a row: `malecon` shipped for a
+//: week without one and four beach ramps were drawn as concrete quays, with
+//: blue railings and lamps, lying on the sand. `tests/test_materials.py`.
+const PIER_STYLES = MATERIALS.pier;
 
 function pierInView(P, view) {
   const pts = P.pts, m = P.w / 2 + 40;

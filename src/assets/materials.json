@@ -1,0 +1,112 @@
+{
+  "_note": "LOS MATERIALES — what the world's non-surface families are MADE OF, keyed by the vocabulary that already names them. The surface classes got their own registry on 2026-08-11 (src/assets/surfaces.json); this is the other half of that gate, for the families §13 left open: parcels, greens, piers, street furniture, structures and the minimap.",
+
+  "version": 1,
+
+  "_scope": "MEASURED, not assumed. The audit row said 'duplicated Canvas/Pixi/editor colors'; scanning the tree found canvas ∩ pixi = ZERO — the Pixi backend has no hex literals at all since it started reading surfaces.json — and canvas ∩ editor = 40. Those 40 are what is here, minus the ones that merely SHARE A NUMBER: `#e85d75` is the scooter's paint, a feria cabin and the editor's default feature colour, and `#f3c969` is the tuk-tuk, a ride's trim and a gold coin. Per §13's own rule, an identical number in two files is not automatically one constant, and merging those would only move the hard-coding.",
+
+  "_stays_local": "A shadow alpha, a lamp glow, a bezier ratio or a highlight inside ONE drawing recipe is not a material and stays in that recipe. The test for a row here is whether two runtimes have to agree about it.",
+
+  "parcel": {
+    "_note": "Ground fill per ParcelUse — `PARCEL_FILL` in c2d/streets.js and the editor's own parcel palette, which is exactly the pair that drifted before (`market` was live in the manifest and missing from the editor's list).",
+    "_key": "churchill/world/enums/features.py :: ParcelUse",
+    "plaza": "#4f9d5b",
+    "stadium": "#4f9d5b",
+    "garden": "#5ba362",
+    "park": "#5ba362",
+    "church": "#cfc7b4",
+    "cathedral": "#cfc7b4",
+    "boulevard": "#d9d6cd",
+    "civic": "#c9c2b2",
+    "lot": "#b9b2a0",
+    "school": "#c8bb96",
+    "kinder": "#d3b98f",
+    "campus": "#bfb894",
+    "market": "#c2b49a",
+    "fuel": "#8e9299",
+    "_school_note": "A school's ground is its PATIO, not a lawn: the swept concrete-and-earth yard every escuela in the port has, so it reads as a schoolyard beside the green of a park rather than as one more park.",
+    "_market_note": "El Mercado: swept concrete, its own manzana. Flat on purpose — it is meant to take a style or an asset of its own later, and this is the plot it will be painted onto."
+  },
+
+  "green": {
+    "_note": "A green cuadra's fill per GreenType — `GREEN_COLORS` in c2d/ground.js.",
+    "_key": "churchill/world/enums/features.py :: GreenType",
+    "park": "#4f9d5b",
+    "plaza": "#5ba362",
+    "pool": "#5faec7",
+    "stadium": "#4f9d5b",
+    "marine": "#46a98f",
+    "esplanade": "#c9c6bf",
+    "_esplanade_note": "matched to the `clear` fill of the esplanade band's own weather palette (c2d/malecon.js), and kept as a flat fill underneath so a streaming seam can never show sand through the middle of it"
+  },
+
+  "pier": {
+    "_note": "The full deck recipe per PierStyle — `PIER_STYLES` in c2d/structures.js. Not just a colour: which seams, which rails, whether it carries lamps or a hut, and whether it lies on the ground. This is the family whose gap shipped for a week — the builder emitted four `malecon` piers, the renderer had no recipe, and the lookup fell through to `concrete`, drawing four beach ramps as grey quays with blue railings and lamps on the sand.",
+    "_key": "churchill/world/enums/features.py :: PierStyle",
+    "concrete": {
+      "deck": "#cfcfc8", "seam": "rgba(0,0,0,0.1)", "seamGap": 14, "cap": "#b8b8b0",
+      "rail": "#2f6fb8", "centre": "#f8d76b", "lamps": 46, "hut": true
+    },
+    "timber": {
+      "deck": "#b98a4e", "seam": "rgba(60,40,20,0.35)", "seamGap": 12, "cap": null,
+      "rail": "#8a5f33", "centre": null, "posts": 34
+    },
+    "apron": {
+      "deck": "#3a3540", "seam": null, "seamGap": 0, "cap": null, "rail": null,
+      "centre": null, "round": true, "ground": true,
+      "note": "the ferry ramps: asphalt, the colour of the streets they leave, no rails and no lamps — a terminal apron, not a promenade"
+    },
+    "calzada": {
+      "deck": "#c6c6bf", "seam": "rgba(0,0,0,0.09)", "seamGap": 18, "cap": null,
+      "rail": null, "centre": null, "round": true, "ground": true,
+      "note": "the muelle's OWN access street: it lies on the ground like an apron but is the landward continuation of a CONCRETE deck, so you drive off Calle 2's asphalt onto the muelle's grey and out over the water without the surface changing under you"
+    },
+    "malecon": {
+      "deck": "#e7d6b3", "seam": "rgba(150,132,100,0.34)", "seamGap": 14, "cap": null,
+      "rail": null, "centre": null, "round": true, "ground": true,
+      "note": "las bajadas a la arena — stamped drivable, because a beach access that is a wall is not an access, but paved in the promenade's baldosa rather than asphalt"
+    }
+  },
+
+  "street": {
+    "_note": "The inks the roadway is drawn with, shared by c2d/streets.js and the editor's road preview.",
+    "acera": "#b8b6b0",
+    "aceraNote": "poured concrete, the colour the aceras actually are in the port",
+    "cano": "#807e77",
+    "canoNote": "the drainage channel at the kerb — the same concrete, permanently damp and stained, so it reads a full step darker",
+    "asphalt": "#3a3540",
+    "paseo": "#f4dca3",
+    "majorDash": "#f8d76b",
+    "minorDash": "rgba(255,255,255,0.45)",
+    "mark": "rgba(255,255,255,0.75)",
+    "markNote": "every line on a field is this one white"
+  },
+
+  "structure": {
+    "_note": "Buildings, when the world does not carry a colour of its own — a named footprint may emit `roof` and it wins.",
+    "roof": "#8a6a4a"
+  },
+
+  "minimap": {
+    "_note": "The HUD's own inks. Two of these were literally the pier decks with a comment pointing at structures.js — those now READ the pier registry rather than restating it, which is the whole point of this file.",
+    "barro": "#9c7a4f",
+    "lastre": "#a99d8b",
+    "rail": "#8a7660",
+    "railNote": "the Ferrocarril's ballast bed",
+    "ferry": "#d7d2c4",
+    "bridge": "#cfc3a3"
+  },
+
+  "terrain": {
+    "_note": "Presets for an editor-authored patch of ground. They overlap the surface registry on purpose and are NOT the same question: surfaces.json says what class 8 looks like everywhere, this says what swatch the editor offers when somebody paints a region by hand. The browns are deliberately the road vectors' browns, so an authored patch of barro and the calle de barro beside it are one surface to the eye as well as to the car.",
+    "cuadra": "#e8d5a0",
+    "park": "#4f9d5b",
+    "plaza": "#cbc6ba",
+    "stadium": "#4f9d5b",
+    "balneario": "#2a7fa8",
+    "water": "#2a7fa8",
+    "beach": "#f4d77a",
+    "barro": "#9c7a4f",
+    "gravel": "#a99d8b"
+  }
+}

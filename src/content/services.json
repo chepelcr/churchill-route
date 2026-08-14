@@ -1,0 +1,45 @@
+{
+  "_note": "LOS SERVICIOS EXTERNOS — the ids and URLs that connect this game to something outside it: AdSense/AdMob, Play Billing, GA4 and the runtime content endpoint. Each one is a string that has to match a console entry somewhere else EXACTLY, and each one fails quietly when it does not.",
+
+  "version": 1,
+
+  "_why_here": "These are not secrets and they were never hidden — a publisher id and an ad unit id ship in the page source of every ad-supported site on the web, because the browser has to send them. Putting them in one versioned record is not about concealment; it is so that the four places a wrong id can bite are one place to check, and so the editor can show what the build is actually configured with rather than somebody grepping four modules.",
+
+  "_secrets": "NOTHING SECRET GOES IN THIS FILE. It is bundled into the client, so anything here is public by construction. A signing keystore, a Play service-account key or a server token belongs outside the repo — see the Android section of CLAUDE.md.",
+
+  "ads": {
+    "_note": "The monetisation rules are as much a product decision as a config: an interstitial every 5th FINISHED run, never during the first runs a new player ever plays, and never in the middle of one.",
+    "publisher": "ca-pub-3090812928887940",
+    "publisherNote": "the AdSense web property. The AdMob unit ids below are the same publisher (`ca-app-pub-…`), which is why they share the number.",
+    "webClient": "ca-pub-3090812928887940",
+    "interstitialUnit": "ca-app-pub-3090812928887940/4457249161",
+    "rewardedUnit": "ca-app-pub-3090812928887940/3168218225",
+    "interstitialEvery": 5,
+    "graceRuns": 3,
+    "graceNote": "NO interstitial at all for the first runs a player ever plays. Somebody deciding whether they like this game should not meet an ad while deciding.",
+    "_policy": "Rewarded ads stay OPT-IN and there are no banners. That is a standing decision, not a default."
+  },
+
+  "iap": {
+    "_note": "Play Billing. `removeAds` is NON-consumable — it is owned forever once bought — while the coin packs in `economy.json` are consumable. Getting that backwards is the difference between selling something once and selling it every time.",
+    "removeAds": "remove_ads"
+  },
+
+  "analytics": {
+    "_note": "GA4. Empty means OFF, and that is the shipped state: the module no-ops entirely without an id, so nothing is sent and no script is loaded until somebody pastes one in. `VITE_GA_ID` in `.env.local` overrides it for a local test.",
+    "measurementId": "",
+    "envOverride": "VITE_GA_ID"
+  },
+
+  "content": {
+    "_note": "The runtime content endpoint — sponsors, the theme, authored copy and now authored sounds. THE ONE THING IN THIS GAME THAT IS FETCHED RATHER THAN BUNDLED: everything else, including all 640 world tiles and every registry, is compiled into the bundle at build time.",
+    "url": "https://churchill.jcampos.dev/content.json",
+    "_integrity": "Because it is fetched, it is the only surface where what the game runs is not what the build produced. `remote.js` validates every field it reads — colours are length-capped, strings are truncated, a sound's steps are clamped to a safe range — rather than trusting the payload."
+  },
+
+  "links": {
+    "_note": "Where the game sends a player who wants to support it.",
+    "kofi": "https://ko-fi.com/churchillroute",
+    "kofiNote": "also overridable per-deploy from content.json's `meta.kofi`"
+  }
+}

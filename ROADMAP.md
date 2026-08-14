@@ -565,16 +565,49 @@ motor la física, el intérprete y las transiciones de estado.
       Verificado caminando el tutorial completo en el navegador: los siete pasos
       avanzan, las cuatro llaves de plataforma resuelven a `.keys`/`.touch`, y
       la corrida termina como VICTORIA.
-- [ ] **`src/assets/hud.json`** (P2): presets de layout/estilo del HUD y los
-      materiales del minimapa (`c2d/hud.js`, 718 líneas). Las tintas del
-      minimapa que eran cubiertas de muelle ya se fueron a `materials.json`.
-- [ ] **Darle esquema a la feria.** `feriaAssets.json` es hoy la plantilla y es el
-      único catálogo **sin** validador: falta DTO/versión y preview en el editor.
-      Ahora comparte vocabulario de formas con `vehicles.json` y
-      `world-props.json`, así que el validador puede ser el mismo.
-- [ ] **Constantes de PWA/ads/IAP/URL de contenido** (P2) → config de build con
-      defaults de producción versionados. La lógica del service worker y las
-      llamadas de compra/anuncio se quedan.
+- [x] **`src/assets/hud.json`.** Hecho 2026-08-14. La paleta del minimapa, la
+      brújula, los rótulos de POI y las tres cosas que le quitan la vista al
+      jugador. Lo que se queda en código es la geometría, la proyección y —sobre
+      todo— **el ORDEN DE DIBUJO**, que no es una preferencia: casing debajo de
+      todo, después la red, y el Paseo de último es la razón entera por la que
+      el mapita se lee como un mapa.
+
+      **El minimapa tiene su propia paleta A PROPÓSITO** —se mira un quinto de
+      segundo a un décimo del tamaño, así que necesita un contraste que el mundo
+      pintado no— pero **no puede tener copia** de una tinta que ya es del
+      registro compartido: el barro, el lastre, el balasto, la cubierta de ferry
+      y las dos de muelle siguen viniendo de `materials.json`. Ya tuvo copia de
+      dos de ellas una vez, con un comentario que apuntaba al archivo del que
+      las había copiado.
+
+      El validador comprueba que la tierra siga siendo casi negra y que **nada
+      transitable sea más oscuro que ella**, porque ese brillo ES la información.
+- [x] **Darle esquema a la feria.** Hecho 2026-08-14. Era el ÚLTIMO catálogo del
+      juego sin validador. Ahora tiene `version`, nota de esquema y compuerta, y
+      lo que importa es el modo de falla: una forma que el motor no sabe dibujar
+      **avisa UNA vez a la consola y el resto de la atracción se dibuja igual** —
+      correcto en tiempo de ejecución y completamente invisible en revisión. La
+      rueda sigue girando, sólo que sin góndolas.
+
+      También quedan anotadas las tres formas implementadas que **ninguna
+      atracción usa** (`tarp`, `banderines`, `neon`): arte sin nada que lo
+      seleccione es deriva igual, la lección de `SignKind`.
+- [x] **Constantes de PWA/ads/IAP/URL de contenido.** Hecho 2026-08-14 en
+      `src/content/services.json`. Los ids y URLs que conectan el juego con algo
+      de afuera: AdSense/AdMob, Play Billing, GA4 y el endpoint de contenido.
+      Cada uno tiene que calzar EXACTO con una consola en otro lado y cada uno
+      falla en silencio cuando no.
+
+      **Ahí no va nada secreto, y hay una prueba de los dos lados que lo
+      rechaza.** El archivo se empaqueta en el cliente, así que todo lo que
+      tenga es público por construcción — un id de publisher viaja en el código
+      fuente de toda página con anuncios porque el navegador tiene que
+      mandarlo. Lo que se gana no es ocultamiento: es que cuatro módulos dejen
+      de tener cada uno su copia.
+
+      El validador también caza una unidad de AdMob **de otro publisher** (que
+      simplemente nunca se llenaría, sin error en ningún lado) y avisa si
+      alguien commitea un id de GA4 — analytics sale APAGADO.
 
 **Fuera de alcance, decidido**: la estructura JSX de las pantallas a un esquema
 de slots. Cambiar React legible por un lenguaje de layout casero es un mal

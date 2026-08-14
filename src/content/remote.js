@@ -19,8 +19,10 @@
 // the checked-in default — the game must always work with no network.
 import { WORLD2D as W } from "../world2d/index.js";
 import DEFAULT_CONTENT from "./default.json";
+import SERVICES from "./services.json" with { type: "json" };
 
-const CONTENT_URL = "https://churchill.jcampos.dev/content.json";
+// THE ONE THING FETCHED RATHER THAN BUNDLED — see `services.json`.
+const CONTENT_URL = SERVICES.content.url;
 const CACHE_KEY = "churchill_content_v1";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // re-fetch after 6h (and on every boot)
 const FETCH_TIMEOUT_MS = 6000;

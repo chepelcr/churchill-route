@@ -22,172 +22,635 @@
     "The roster is the one that actually comes to a Costa Rican turno — Zapote,",
     "Palmares, the Carnaval de Puntarenas — not a generic funfair."
   ],
-
+  "version": 1,
+  "$schema": "Every ride is `{ name, note, parts: [...] }`. A part names a `shape` from the engine's finite vocabulary (`SHAPES` in src/render/c2d/attractions.js) and carries that shape's own fields; `r`/`spread`/`drop` are FRACTIONS of the ride's radius, `*Px` fields are absolute pixels. A part may carry ONE animation: `spin` (turns/s), `swing`, `bob` or `pump` — the same four verbs `src/assets/effects.json` documents for a vehicle part, because they are one vocabulary and not two.",
+  "$gate": "tests/test_feria.py: every shape a ride names must be implemented, or the ride silently loses a piece — `drawAttraction` warns once to the console and carries on, which is correct at runtime and invisible in review. It also lists the shapes the engine implements that NO ride uses: art with nothing to select it is drift too, the lesson SignKind taught.",
   "rueda": {
     "name": "La Rueda de Chicago",
     "note": "The wheel over the top of everything. Two rims, ten gondolas, a stand you can see the sea through.",
     "parts": [
-      { "shape": "legs", "spread": 0.72, "drop": 0.62, "widthPx": 5, "stroke": "#8d949e" },
-      { "shape": "ring", "r": 1.0, "widthPx": 3, "stroke": "#dfe5ec", "spin": 0.06 },
-      { "shape": "ring", "r": 0.72, "widthPx": 2, "stroke": "#c3cad3", "spin": 0.06 },
-      { "shape": "spokes", "n": 10, "r0": 0.1, "r1": 1.0, "widthPx": 1.6, "stroke": "#b6bdc7", "spin": 0.06 },
-      { "shape": "cabins", "n": 10, "r": 1.0, "wPx": 9, "hPx": 7, "hang": true, "spin": 0.06,
-        "palette": ["#e85d75", "#f3c969", "#5fb0d6", "#6fbf99", "#f08a5d"] },
-      { "shape": "disc", "r": 0.12, "fill": "#4a4a55" },
-      { "shape": "bulbs", "n": 16, "r": 1.06, "radiusPx": 1.5, "spin": 0.06,
-        "palette": ["#fff3c4", "#ffd166", "#ff8fa3"] }
+      {
+        "shape": "legs",
+        "spread": 0.72,
+        "drop": 0.62,
+        "widthPx": 5,
+        "stroke": "#8d949e"
+      },
+      {
+        "shape": "ring",
+        "r": 1.0,
+        "widthPx": 3,
+        "stroke": "#dfe5ec",
+        "spin": 0.06
+      },
+      {
+        "shape": "ring",
+        "r": 0.72,
+        "widthPx": 2,
+        "stroke": "#c3cad3",
+        "spin": 0.06
+      },
+      {
+        "shape": "spokes",
+        "n": 10,
+        "r0": 0.1,
+        "r1": 1.0,
+        "widthPx": 1.6,
+        "stroke": "#b6bdc7",
+        "spin": 0.06
+      },
+      {
+        "shape": "cabins",
+        "n": 10,
+        "r": 1.0,
+        "wPx": 9,
+        "hPx": 7,
+        "hang": true,
+        "spin": 0.06,
+        "palette": [
+          "#e85d75",
+          "#f3c969",
+          "#5fb0d6",
+          "#6fbf99",
+          "#f08a5d"
+        ]
+      },
+      {
+        "shape": "disc",
+        "r": 0.12,
+        "fill": "#4a4a55"
+      },
+      {
+        "shape": "bulbs",
+        "n": 16,
+        "r": 1.06,
+        "radiusPx": 1.5,
+        "spin": 0.06,
+        "palette": [
+          "#fff3c4",
+          "#ffd166",
+          "#ff8fa3"
+        ]
+      }
     ]
   },
-
   "tagada": {
     "name": "La Tagada",
     "note": "A dish that spins and bucks, riders round the rim and nothing holding them in. The signature ride at Zapote.",
     "parts": [
-      { "shape": "dish", "r": 1.0, "fill": "#2f3a4a", "rim": "#e0483f", "rimPx": 5 },
-      { "shape": "ring", "r": 0.78, "widthPx": 2, "stroke": "#f3c969" },
-      { "shape": "cabins", "n": 14, "r": 0.86, "wPx": 5, "hPx": 5, "spin": 0.5,
-        "palette": ["#f1c8a4", "#e8b48c", "#c98a63"] },
-      { "shape": "arms", "n": 6, "r": 1.14, "widthPx": 3, "stroke": "#c7ccd3", "tiltPx": 0 },
-      { "shape": "bulbs", "n": 20, "r": 1.16, "radiusPx": 1.4, "spin": -0.3,
-        "palette": ["#ffd166", "#ff5d73", "#7ee0f2"] },
-      { "shape": "sign", "text": "TAGADA", "dyPx": -1.55, "fill": "#ffd166", "bg": "#b3243b" }
+      {
+        "shape": "dish",
+        "r": 1.0,
+        "fill": "#2f3a4a",
+        "rim": "#e0483f",
+        "rimPx": 5
+      },
+      {
+        "shape": "ring",
+        "r": 0.78,
+        "widthPx": 2,
+        "stroke": "#f3c969"
+      },
+      {
+        "shape": "cabins",
+        "n": 14,
+        "r": 0.86,
+        "wPx": 5,
+        "hPx": 5,
+        "spin": 0.5,
+        "palette": [
+          "#f1c8a4",
+          "#e8b48c",
+          "#c98a63"
+        ]
+      },
+      {
+        "shape": "arms",
+        "n": 6,
+        "r": 1.14,
+        "widthPx": 3,
+        "stroke": "#c7ccd3",
+        "tiltPx": 0
+      },
+      {
+        "shape": "bulbs",
+        "n": 20,
+        "r": 1.16,
+        "radiusPx": 1.4,
+        "spin": -0.3,
+        "palette": [
+          "#ffd166",
+          "#ff5d73",
+          "#7ee0f2"
+        ]
+      },
+      {
+        "shape": "sign",
+        "text": "TAGADA",
+        "dyPx": -1.55,
+        "fill": "#ffd166",
+        "bg": "#b3243b"
+      }
     ]
   },
-
   "martillo": {
     "name": "El Martillo",
     "note": "Two arms off a tower, a cabin on each end, right over the top. Nothing else at a turno goes upside down.",
     "parts": [
-      { "shape": "box", "x": -0.16, "y": -0.1, "w": 0.32, "h": 1.0, "fill": "#77808c" },
-      { "shape": "mast", "hPx": 30, "widthPx": 7, "fill": "#9aa3ae" },
-      { "shape": "pendulum", "len": 0.92, "widthPx": 5, "stroke": "#c7ccd3",
-        "cab": { "wPx": 11, "hPx": 9, "fill": "#e85d75" },
-        "swing": { "amp": 2.7, "speed": 0.24 } },
-      { "shape": "pendulum", "len": 0.92, "widthPx": 5, "stroke": "#c7ccd3", "phase": 3.14159,
-        "cab": { "wPx": 11, "hPx": 9, "fill": "#f3c969" },
-        "swing": { "amp": 2.7, "speed": 0.24 } },
-      { "shape": "disc", "r": 0.16, "fill": "#4a4a55" },
-      { "shape": "sign", "text": "MARTILLO", "dyPx": -1.5, "fill": "#0f1720", "bg": "#f3c969" }
+      {
+        "shape": "box",
+        "x": -0.16,
+        "y": -0.1,
+        "w": 0.32,
+        "h": 1.0,
+        "fill": "#77808c"
+      },
+      {
+        "shape": "mast",
+        "hPx": 30,
+        "widthPx": 7,
+        "fill": "#9aa3ae"
+      },
+      {
+        "shape": "pendulum",
+        "len": 0.92,
+        "widthPx": 5,
+        "stroke": "#c7ccd3",
+        "cab": {
+          "wPx": 11,
+          "hPx": 9,
+          "fill": "#e85d75"
+        },
+        "swing": {
+          "amp": 2.7,
+          "speed": 0.24
+        }
+      },
+      {
+        "shape": "pendulum",
+        "len": 0.92,
+        "widthPx": 5,
+        "stroke": "#c7ccd3",
+        "phase": 3.14159,
+        "cab": {
+          "wPx": 11,
+          "hPx": 9,
+          "fill": "#f3c969"
+        },
+        "swing": {
+          "amp": 2.7,
+          "speed": 0.24
+        }
+      },
+      {
+        "shape": "disc",
+        "r": 0.16,
+        "fill": "#4a4a55"
+      },
+      {
+        "shape": "sign",
+        "text": "MARTILLO",
+        "dyPx": -1.5,
+        "fill": "#0f1720",
+        "bg": "#f3c969"
+      }
     ]
   },
-
   "pulpo": {
     "name": "El Pulpo",
     "note": "Eight arms off a hub, a car swinging on each. The one everybody's stomach remembers.",
     "parts": [
-      { "shape": "disc", "r": 0.34, "fill": "#3a4553" },
-      { "shape": "arms", "n": 8, "r": 1.0, "widthPx": 3.5, "stroke": "#8f5fb0", "spin": 0.22,
-        "cap": { "radiusPx": 6, "palette": ["#e85d75", "#f3c969", "#5fb0d6", "#6fbf99"] } },
-      { "shape": "ring", "r": 0.34, "widthPx": 2, "stroke": "#c08ae0" },
-      { "shape": "bulbs", "n": 12, "r": 0.46, "radiusPx": 1.4, "spin": -0.4,
-        "palette": ["#ffd166", "#c08ae0"] },
-      { "shape": "sign", "text": "EL PULPO", "dyPx": -1.5, "fill": "#fff", "bg": "#6b2f8f" }
+      {
+        "shape": "disc",
+        "r": 0.34,
+        "fill": "#3a4553"
+      },
+      {
+        "shape": "arms",
+        "n": 8,
+        "r": 1.0,
+        "widthPx": 3.5,
+        "stroke": "#8f5fb0",
+        "spin": 0.22,
+        "cap": {
+          "radiusPx": 6,
+          "palette": [
+            "#e85d75",
+            "#f3c969",
+            "#5fb0d6",
+            "#6fbf99"
+          ]
+        }
+      },
+      {
+        "shape": "ring",
+        "r": 0.34,
+        "widthPx": 2,
+        "stroke": "#c08ae0"
+      },
+      {
+        "shape": "bulbs",
+        "n": 12,
+        "r": 0.46,
+        "radiusPx": 1.4,
+        "spin": -0.4,
+        "palette": [
+          "#ffd166",
+          "#c08ae0"
+        ]
+      },
+      {
+        "shape": "sign",
+        "text": "EL PULPO",
+        "dyPx": -1.5,
+        "fill": "#fff",
+        "bg": "#6b2f8f"
+      }
     ]
   },
-
   "sillas": {
     "name": "Las Sillas Voladoras",
     "note": "Chairs on chains under a spinning canopy. They fly out as it turns.",
     "parts": [
-      { "shape": "disc", "r": 0.2, "fill": "#4a4a55" },
-      { "shape": "disc", "r": 0.55, "fill": "#e0483f" },
-      { "shape": "ring", "r": 0.55, "widthPx": 2, "stroke": "#ffd166" },
-      { "shape": "arms", "n": 12, "r": 1.0, "widthPx": 1, "stroke": "rgba(220,226,232,0.8)", "spin": 0.45,
-        "cap": { "radiusPx": 3.2, "palette": ["#5fb0d6", "#6fbf99", "#f3c969", "#e85d75"] } },
-      { "shape": "bulbs", "n": 10, "r": 0.6, "radiusPx": 1.3, "spin": 0.45, "palette": ["#fff3c4"] }
+      {
+        "shape": "disc",
+        "r": 0.2,
+        "fill": "#4a4a55"
+      },
+      {
+        "shape": "disc",
+        "r": 0.55,
+        "fill": "#e0483f"
+      },
+      {
+        "shape": "ring",
+        "r": 0.55,
+        "widthPx": 2,
+        "stroke": "#ffd166"
+      },
+      {
+        "shape": "arms",
+        "n": 12,
+        "r": 1.0,
+        "widthPx": 1,
+        "stroke": "rgba(220,226,232,0.8)",
+        "spin": 0.45,
+        "cap": {
+          "radiusPx": 3.2,
+          "palette": [
+            "#5fb0d6",
+            "#6fbf99",
+            "#f3c969",
+            "#e85d75"
+          ]
+        }
+      },
+      {
+        "shape": "bulbs",
+        "n": 10,
+        "r": 0.6,
+        "radiusPx": 1.3,
+        "spin": 0.45,
+        "palette": [
+          "#fff3c4"
+        ]
+      }
     ]
   },
-
   "carrusel": {
     "name": "El Carrusel",
     "note": "Los caballitos. The one the small ones are put on first.",
     "parts": [
-      { "shape": "disc", "r": 1.0, "fill": "#f6e7c8" },
-      { "shape": "ring", "r": 1.0, "widthPx": 3, "stroke": "#e0483f" },
-      { "shape": "arms", "n": 8, "r": 0.72, "widthPx": 1.4, "stroke": "#d8b45c", "spin": 0.18,
-        "cap": { "radiusPx": 4.4, "palette": ["#fff", "#f1c8a4", "#c98a63", "#8a6a4a"] } },
-      { "shape": "disc", "r": 0.22, "fill": "#e0483f" },
-      { "shape": "canopy", "r": 1.0, "n": 12, "palette": ["#e0483f", "#f6e7c8"], "spin": 0.18 },
-      { "shape": "bulbs", "n": 14, "r": 1.04, "radiusPx": 1.4, "spin": 0.18, "palette": ["#fff3c4", "#ffd166"] }
+      {
+        "shape": "disc",
+        "r": 1.0,
+        "fill": "#f6e7c8"
+      },
+      {
+        "shape": "ring",
+        "r": 1.0,
+        "widthPx": 3,
+        "stroke": "#e0483f"
+      },
+      {
+        "shape": "arms",
+        "n": 8,
+        "r": 0.72,
+        "widthPx": 1.4,
+        "stroke": "#d8b45c",
+        "spin": 0.18,
+        "cap": {
+          "radiusPx": 4.4,
+          "palette": [
+            "#fff",
+            "#f1c8a4",
+            "#c98a63",
+            "#8a6a4a"
+          ]
+        }
+      },
+      {
+        "shape": "disc",
+        "r": 0.22,
+        "fill": "#e0483f"
+      },
+      {
+        "shape": "canopy",
+        "r": 1.0,
+        "n": 12,
+        "palette": [
+          "#e0483f",
+          "#f6e7c8"
+        ],
+        "spin": 0.18
+      },
+      {
+        "shape": "bulbs",
+        "n": 14,
+        "r": 1.04,
+        "radiusPx": 1.4,
+        "spin": 0.18,
+        "palette": [
+          "#fff3c4",
+          "#ffd166"
+        ]
+      }
     ]
   },
-
   "chocones": {
     "name": "Los Chocones",
     "note": "A steel floor, a net over it, and everybody breaking the one rule painted on the wall.",
     "parts": [
-      { "shape": "box", "x": -1.0, "y": -0.62, "w": 2.0, "h": 1.24, "fill": "#3b4250", "roundPx": 6 },
-      { "shape": "box", "x": -0.9, "y": -0.52, "w": 1.8, "h": 1.04, "fill": "#2a303a", "roundPx": 4 },
-      { "shape": "cars", "n": 7, "wPx": 10, "hPx": 7, "areaW": 1.7, "areaH": 0.9, "speed": 0.5,
-        "palette": ["#e85d75", "#f3c969", "#5fb0d6", "#6fbf99", "#f08a5d", "#c08ae0"] },
-      { "shape": "bulbs", "n": 14, "rect": { "w": 2.0, "h": 1.24 }, "radiusPx": 1.4,
-        "palette": ["#ffd166", "#ff5d73"] },
-      { "shape": "sign", "text": "CHOCONES", "dyPx": -0.9, "fill": "#0f1720", "bg": "#f3c969" }
+      {
+        "shape": "box",
+        "x": -1.0,
+        "y": -0.62,
+        "w": 2.0,
+        "h": 1.24,
+        "fill": "#3b4250",
+        "roundPx": 6
+      },
+      {
+        "shape": "box",
+        "x": -0.9,
+        "y": -0.52,
+        "w": 1.8,
+        "h": 1.04,
+        "fill": "#2a303a",
+        "roundPx": 4
+      },
+      {
+        "shape": "cars",
+        "n": 7,
+        "wPx": 10,
+        "hPx": 7,
+        "areaW": 1.7,
+        "areaH": 0.9,
+        "speed": 0.5,
+        "palette": [
+          "#e85d75",
+          "#f3c969",
+          "#5fb0d6",
+          "#6fbf99",
+          "#f08a5d",
+          "#c08ae0"
+        ]
+      },
+      {
+        "shape": "bulbs",
+        "n": 14,
+        "rect": {
+          "w": 2.0,
+          "h": 1.24
+        },
+        "radiusPx": 1.4,
+        "palette": [
+          "#ffd166",
+          "#ff5d73"
+        ]
+      },
+      {
+        "shape": "sign",
+        "text": "CHOCONES",
+        "dyPx": -0.9,
+        "fill": "#0f1720",
+        "bg": "#f3c969"
+      }
     ]
   },
-
   "barco": {
     "name": "El Barco Pirata",
     "note": "A galleon on a swing. The back row screams first.",
     "parts": [
-      { "shape": "legs", "spread": 0.8, "drop": 0.5, "widthPx": 5, "stroke": "#8d949e" },
-      { "shape": "boat", "w": 1.5, "h": 0.5, "fill": "#8a5a35", "trim": "#f3c969",
-        "swing": { "amp": 0.75, "speed": 0.2 }, "pivot": 0.9 },
-      { "shape": "disc", "r": 0.12, "fill": "#4a4a55" },
-      { "shape": "sign", "text": "EL BARCO", "dyPx": -1.4, "fill": "#fff", "bg": "#2f5d8a" }
+      {
+        "shape": "legs",
+        "spread": 0.8,
+        "drop": 0.5,
+        "widthPx": 5,
+        "stroke": "#8d949e"
+      },
+      {
+        "shape": "boat",
+        "w": 1.5,
+        "h": 0.5,
+        "fill": "#8a5a35",
+        "trim": "#f3c969",
+        "swing": {
+          "amp": 0.75,
+          "speed": 0.2
+        },
+        "pivot": 0.9
+      },
+      {
+        "shape": "disc",
+        "r": 0.12,
+        "fill": "#4a4a55"
+      },
+      {
+        "shape": "sign",
+        "text": "EL BARCO",
+        "dyPx": -1.4,
+        "fill": "#fff",
+        "bg": "#2f5d8a"
+      }
     ]
   },
-
   "gusano": {
     "name": "El Gusanito",
     "note": "The caterpillar. A little train on a bumpy ring, and the first ride most porteños ever took.",
     "parts": [
-      { "shape": "track", "r": 1.0, "widthPx": 6, "stroke": "#6a7280" },
-      { "shape": "track", "r": 1.0, "widthPx": 2, "stroke": "#9aa3ae" },
-      { "shape": "cabins", "n": 6, "r": 1.0, "wPx": 7, "hPx": 6, "spin": 0.34,
-        "palette": ["#6fbf99", "#8fd6ae", "#4fa87f"] },
-      { "shape": "disc", "r": 0.18, "fill": "#4a4a55" },
-      { "shape": "bulbs", "n": 10, "r": 1.08, "radiusPx": 1.3, "spin": 0.34, "palette": ["#ffd166"] }
+      {
+        "shape": "track",
+        "r": 1.0,
+        "widthPx": 6,
+        "stroke": "#6a7280"
+      },
+      {
+        "shape": "track",
+        "r": 1.0,
+        "widthPx": 2,
+        "stroke": "#9aa3ae"
+      },
+      {
+        "shape": "cabins",
+        "n": 6,
+        "r": 1.0,
+        "wPx": 7,
+        "hPx": 6,
+        "spin": 0.34,
+        "palette": [
+          "#6fbf99",
+          "#8fd6ae",
+          "#4fa87f"
+        ]
+      },
+      {
+        "shape": "disc",
+        "r": 0.18,
+        "fill": "#4a4a55"
+      },
+      {
+        "shape": "bulbs",
+        "n": 10,
+        "r": 1.08,
+        "radiusPx": 1.3,
+        "spin": 0.34,
+        "palette": [
+          "#ffd166"
+        ]
+      }
     ]
   },
-
   "terror": {
     "name": "La Casa del Terror",
     "note": "A painted facade, a black doorway, and a boy on the step deciding.",
     "parts": [
-      { "shape": "facade", "w": 1.7, "h": 1.1, "fill": "#3a2a4a", "trim": "#6b2f8f",
-        "door": { "w": 0.34, "h": 0.62, "fill": "#0d0a12" } },
-      { "shape": "bulbs", "n": 12, "rect": { "w": 1.7, "h": 1.1 }, "radiusPx": 1.4,
-        "palette": ["#7ee0f2", "#c08ae0", "#ff5d73"] },
-      { "shape": "sign", "text": "TERROR", "dyPx": -0.85, "fill": "#7ee0f2", "bg": "#1b1024" }
+      {
+        "shape": "facade",
+        "w": 1.7,
+        "h": 1.1,
+        "fill": "#3a2a4a",
+        "trim": "#6b2f8f",
+        "door": {
+          "w": 0.34,
+          "h": 0.62,
+          "fill": "#0d0a12"
+        }
+      },
+      {
+        "shape": "bulbs",
+        "n": 12,
+        "rect": {
+          "w": 1.7,
+          "h": 1.1
+        },
+        "radiusPx": 1.4,
+        "palette": [
+          "#7ee0f2",
+          "#c08ae0",
+          "#ff5d73"
+        ]
+      },
+      {
+        "shape": "sign",
+        "text": "TERROR",
+        "dyPx": -0.85,
+        "fill": "#7ee0f2",
+        "bg": "#1b1024"
+      }
     ]
   },
-
   "argollas": {
     "name": "Tiro al Blanco",
     "note": "Argollas y tiro al blanco. The prizes hang where you can see them and never quite reach them.",
     "parts": [
-      { "shape": "counter", "w": 1.7, "h": 0.7, "fill": "#c1523a", "top": "#f6e7c8" },
-      { "shape": "awning", "w": 1.8, "h": 0.42, "stripes": ["#e0483f", "#f6e7c8"], "n": 8 },
-      { "shape": "prizes", "n": 7, "w": 1.5, "radiusPx": 3.4,
-        "palette": ["#f3c969", "#e85d75", "#5fb0d6", "#6fbf99", "#c08ae0"] },
-      { "shape": "bulbs", "n": 8, "rect": { "w": 1.8, "h": 0.9 }, "radiusPx": 1.3, "palette": ["#fff3c4"] }
+      {
+        "shape": "counter",
+        "w": 1.7,
+        "h": 0.7,
+        "fill": "#c1523a",
+        "top": "#f6e7c8"
+      },
+      {
+        "shape": "awning",
+        "w": 1.8,
+        "h": 0.42,
+        "stripes": [
+          "#e0483f",
+          "#f6e7c8"
+        ],
+        "n": 8
+      },
+      {
+        "shape": "prizes",
+        "n": 7,
+        "w": 1.5,
+        "radiusPx": 3.4,
+        "palette": [
+          "#f3c969",
+          "#e85d75",
+          "#5fb0d6",
+          "#6fbf99",
+          "#c08ae0"
+        ]
+      },
+      {
+        "shape": "bulbs",
+        "n": 8,
+        "rect": {
+          "w": 1.8,
+          "h": 0.9
+        },
+        "radiusPx": 1.3,
+        "palette": [
+          "#fff3c4"
+        ]
+      }
     ]
   },
-
   "tombola": {
     "name": "La Tómbola",
     "note": "The drum turns, the number comes out, and somebody's abuela wins the blender.",
     "parts": [
-      { "shape": "counter", "w": 1.4, "h": 0.6, "fill": "#2f5d8a", "top": "#f6e7c8" },
-      { "shape": "disc", "r": 0.62, "fill": "#f3c969", "dyPx": -6 },
-      { "shape": "spokes", "n": 8, "r0": 0.0, "r1": 0.62, "widthPx": 1.4, "stroke": "#b3243b",
-        "spin": 0.6, "dyPx": -6 },
-      { "shape": "ring", "r": 0.62, "widthPx": 2, "stroke": "#b3243b", "dyPx": -6 },
-      { "shape": "sign", "text": "TÓMBOLA", "dyPx": -1.5, "fill": "#0f1720", "bg": "#f3c969" }
+      {
+        "shape": "counter",
+        "w": 1.4,
+        "h": 0.6,
+        "fill": "#2f5d8a",
+        "top": "#f6e7c8"
+      },
+      {
+        "shape": "disc",
+        "r": 0.62,
+        "fill": "#f3c969",
+        "dyPx": -6
+      },
+      {
+        "shape": "spokes",
+        "n": 8,
+        "r0": 0.0,
+        "r1": 0.62,
+        "widthPx": 1.4,
+        "stroke": "#b3243b",
+        "spin": 0.6,
+        "dyPx": -6
+      },
+      {
+        "shape": "ring",
+        "r": 0.62,
+        "widthPx": 2,
+        "stroke": "#b3243b",
+        "dyPx": -6
+      },
+      {
+        "shape": "sign",
+        "text": "TÓMBOLA",
+        "dyPx": -1.5,
+        "fill": "#0f1720",
+        "bg": "#f3c969"
+      }
     ]
   },
-
   "chinamo": {
     "name": "Chinamo",
     "note": [
@@ -214,39 +677,135 @@
       "serving counter in front of that."
     ],
     "parts": [
-      { "shape": "zinc", "w": 1.9, "h": 0.8, "ribs": 13,
-        "fill": "#3a3b42", "rib": "#4d4f58", "edge": "#24252a" },
-      { "shape": "banner", "w": 1.86, "h": 0.3, "dy": 0.34, "fromFood": true,
-        "ground": "#2b1b4d", "panels": 3 },
-      { "shape": "counter", "w": 1.8, "h": 0.22, "dy": 0.6,
-        "fill": "#1d1230", "top": "#c9ced4", "trim": "#eef1f4" },
-      { "shape": "goods", "n": 6, "w": 1.56, "dy": 0.56, "radiusPx": 2.8 },
-      { "shape": "frame", "w": 1.9, "h": 0.8, "n": 4, "stroke": "#9aa0a8", "widthPx": 1.4,
-        "jointPx": 1.6 }
+      {
+        "shape": "zinc",
+        "w": 1.9,
+        "h": 0.8,
+        "ribs": 13,
+        "fill": "#3a3b42",
+        "rib": "#4d4f58",
+        "edge": "#24252a"
+      },
+      {
+        "shape": "banner",
+        "w": 1.86,
+        "h": 0.3,
+        "dy": 0.34,
+        "fromFood": true,
+        "ground": "#2b1b4d",
+        "panels": 3
+      },
+      {
+        "shape": "counter",
+        "w": 1.8,
+        "h": 0.22,
+        "dy": 0.6,
+        "fill": "#1d1230",
+        "top": "#c9ced4",
+        "trim": "#eef1f4"
+      },
+      {
+        "shape": "goods",
+        "n": 6,
+        "w": 1.56,
+        "dy": 0.56,
+        "radiusPx": 2.8
+      },
+      {
+        "shape": "frame",
+        "w": 1.9,
+        "h": 0.8,
+        "n": 4,
+        "stroke": "#9aa0a8",
+        "widthPx": 1.4,
+        "jointPx": 1.6
+      }
     ],
     "foods": {
-      "canton": { "label": "CANTONÉS", "ink": "#ffd400", "accent": "#c8102e",
-                  "goods": ["#c9ced4", "#e8c07a", "#c9ced4", "#c98a63"],
-                  "note": "arroz cantonés en la paila, entre las ollas de acero" },
-      "manzana": { "label": "MANZANA ESCARCHADA", "ink": "#ff2d6f", "accent": "#e0483f",
-                   "goods": ["#e0483f", "#c1523a", "#e0483f", "#e85d75"],
-                   "note": "manzanas escarchadas, rojas y en su palito" },
-      "churro": { "label": "CHURROS RELLENOS", "ink": "#ffd400", "accent": "#8a5a35",
-                  "goods": ["#e8b45c", "#d8a04a", "#f0c878", "#e8b45c"],
-                  "note": "churros rellenos, dorados, en su bandeja" }
+      "canton": {
+        "label": "CANTONÉS",
+        "ink": "#ffd400",
+        "accent": "#c8102e",
+        "goods": [
+          "#c9ced4",
+          "#e8c07a",
+          "#c9ced4",
+          "#c98a63"
+        ],
+        "note": "arroz cantonés en la paila, entre las ollas de acero"
+      },
+      "manzana": {
+        "label": "MANZANA ESCARCHADA",
+        "ink": "#ff2d6f",
+        "accent": "#e0483f",
+        "goods": [
+          "#e0483f",
+          "#c1523a",
+          "#e0483f",
+          "#e85d75"
+        ],
+        "note": "manzanas escarchadas, rojas y en su palito"
+      },
+      "churro": {
+        "label": "CHURROS RELLENOS",
+        "ink": "#ffd400",
+        "accent": "#8a5a35",
+        "goods": [
+          "#e8b45c",
+          "#d8a04a",
+          "#f0c878",
+          "#e8b45c"
+        ],
+        "note": "churros rellenos, dorados, en su bandeja"
+      }
     }
   },
-
   "dj": {
     "name": "DJ Urtech",
     "note": "Not a ride. Two decks, a speaker each side, and a man working. The sound is procedural (sfx.dj) and this is where it comes from.",
     "parts": [
-      { "shape": "box", "x": -0.5, "y": -0.2, "w": 1.0, "h": 0.45, "fill": "#2a2233", "roundPx": 2 },
-      { "shape": "box", "x": -0.4, "y": -0.12, "w": 0.8, "h": 0.16, "fill": "#f4d77a" },
-      { "shape": "speakers", "offset": 0.72, "wPx": 7, "hPx": 13, "fill": "#1d1826",
-        "cone": "#5a5170", "pump": { "amp": 0.14, "speed": 2.0 } },
-      { "shape": "disc", "r": 0.14, "fill": "#f1c8a4", "dyPx": -8 },
-      { "shape": "sign", "text": "DJ URTECH", "dyPx": -1.1, "fill": "#fff", "bg": "#7b3fa0" }
+      {
+        "shape": "box",
+        "x": -0.5,
+        "y": -0.2,
+        "w": 1.0,
+        "h": 0.45,
+        "fill": "#2a2233",
+        "roundPx": 2
+      },
+      {
+        "shape": "box",
+        "x": -0.4,
+        "y": -0.12,
+        "w": 0.8,
+        "h": 0.16,
+        "fill": "#f4d77a"
+      },
+      {
+        "shape": "speakers",
+        "offset": 0.72,
+        "wPx": 7,
+        "hPx": 13,
+        "fill": "#1d1826",
+        "cone": "#5a5170",
+        "pump": {
+          "amp": 0.14,
+          "speed": 2.0
+        }
+      },
+      {
+        "shape": "disc",
+        "r": 0.14,
+        "fill": "#f1c8a4",
+        "dyPx": -8
+      },
+      {
+        "shape": "sign",
+        "text": "DJ URTECH",
+        "dyPx": -1.1,
+        "fill": "#fff",
+        "bg": "#7b3fa0"
+      }
     ]
   }
 }

@@ -5,10 +5,11 @@
 // persisted locally and re-validated by the store's restore flow — fine for
 // a single unlock per the monetization plan (no backend needed).
 import { economy, COIN_PACKS } from "../game/economy.js";
+import SERVICES from "../content/services.json" with { type: "json" };
 
 const NATIVE = typeof window !== "undefined" && !!window.Capacitor;
 const OWNED_KEY = "churchill_noads_v1";
-export const PRODUCT_ID = "remove_ads";
+export const PRODUCT_ID = SERVICES.iap.removeAds;
 
 const listeners = new Set();
 let price = null;      // localized remove-ads price once the store loads

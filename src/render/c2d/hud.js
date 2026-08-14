@@ -11,15 +11,16 @@ import { ferries } from "../../game/ferries.js";
 import { crossingTarget } from "../../game/crossing.js";
 import { tideName } from "../../game/tides.js";
 import { t as tr } from "../../i18n/index.js";
+import HUD from "../../assets/hud.json" with { type: "json" };
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
 // debug toggle: at play zoom they'd be a wall of text, but flying over the map
 // with them on is how you check a business is where it really is in Puntarenas.
 // Colour by category so the kind of place reads at a glance.
-const POI_TONE = {
-  amenity: "#e8a33d", shop: "#5fb0d6", tourism: "#e85d75", leisure: "#4f9d5b",
-  office: "#9b8cd6", healthcare: "#4fc7b8", craft: "#c9a227", historic: "#b0895f",
-};
+// ONE TONE PER OSM CATEGORY — `src/assets/hud.json`. The colour is the only
+// thing saying what kind of place a tag is, since there is no room for an icon.
+const POI_TONE = Object.fromEntries(
+  Object.entries(HUD.poiTags).filter(([k]) => !k.startsWith("_")));
 // In-game POI tags: the real business names at a SCREEN-CONSTANT size, so the
 // puerto reads as the real place without the labels competing with driving.
 // No pill, just an outlined name above the spot.
@@ -104,29 +105,30 @@ function drawCompass(vw, vh) {
   // It aims at the MOUTH of the gate, never at a buoy — steering at a mark
   // steers you into it. In Recorrer `crossingTarget()` answers null, because
   // there the estero is a place, not a course.
+  const C = HUD.compass;
   const cross = crossingTarget();
   const target = cross || (state.carrying ? state.carrying.customer : nearestKiosk(p).lm);
   if (!target) return;
   const dx = target.x - p.x, dy = target.y - p.y;
   const d = Math.hypot(dx, dy);
-  if (d < 40) return;
+  if (d < C.minDistance) return;
   const a = Math.atan2(dy, dx);
-  const cx = vw / 2, cy = 92;
+  const cx = vw / 2, cy = C.centreY;
   ctx.save();
-  ctx.fillStyle = "rgba(20,16,40,0.78)";
-  ctx.beginPath(); ctx.arc(cx, cy, 24, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = C.panel;
+  ctx.beginPath(); ctx.arc(cx, cy, C.radius, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = C.ring; ctx.lineWidth = 1; ctx.stroke();
   ctx.translate(cx, cy); ctx.rotate(a);
-  ctx.fillStyle = cross ? "#9fd7ef" : state.carrying ? "#ff3d80" : "#ffe06b";
+  ctx.fillStyle = cross ? C.needle.crossing : state.carrying ? C.needle.carrying : C.needle.idle;
   ctx.beginPath();
   ctx.moveTo(17, 0); ctx.lineTo(-9, -11); ctx.lineTo(-4, 0); ctx.lineTo(-9, 11);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = C.outline; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.restore();
   const meters = Math.round(d / ((W.META && W.META.pxPerMeter) || 1.3));
   ctx.font = "bold 11px 'JetBrains Mono', monospace";
   ctx.textAlign = "center";
-  ctx.fillStyle = "rgba(20,16,40,0.78)";
+  ctx.fillStyle = C.panel;
   // On the water the distance is worth less than WHICH MARK you are running to,
   // so the label carries the gate number and the metres together.
   const label = cross
@@ -135,7 +137,7 @@ function drawCompass(vw, vh) {
     : `${meters} m`;
   const lw = ctx.measureText(label).width + 10;
   ctx.fillRect(cx - lw / 2, cy + 28, lw, 15);
-  ctx.fillStyle = cross ? "#9fd7ef" : state.carrying ? "#ff3d80" : "#ffe06b";
+  ctx.fillStyle = cross ? C.needle.crossing : state.carrying ? C.needle.carrying : C.needle.idle;
   ctx.fillText(label, cx, cy + 39);
 }
 
@@ -195,19 +197,26 @@ function drawNightVignette(vw, vh) {
 // car (resident tile road polylines), the player as a heading arrow in the
 // center, and the delivery target as a red blip (clamped to the rim when
 // it's beyond the dial's range).
-const MINI_CASING = "#39405a";   // outline under every road, one tone
-const MINI_STREET = "#98a0bb";   // the whole network, calles and avenidas alike
-const MINI_PASEO  = "#c9a95e";   // the Paseo de los Turistas, drawn last
-const MINI_WATER  = "#20496b";   // the gulf, the estero and the balneario inlet
-const MINI_LAND   = "#1b2035";   // the peninsula itself, under the street network
-const MINI_SAND   = "#a89a72";   // the beach — drivable, so it is not land-dark
-const MINI_PARK   = "#2f6b3e";   // a green cuadra you cannot drive into
+// THE MINIMAP HAS ITS OWN PALETTE and not the world's: it is read in a fifth
+// of a second at a tenth of the size, so it needs contrast the painted world
+// does not. See `src/assets/hud.json`. The barro, lastre, rail, ferry, bridge,
+// pier and median inks below still come from `materials.json` — the minimap
+// once held its own copy of two pier decks with a comment pointing at the very
+// file it had copied them from.
+const MINI = HUD.minimap;
+const MINI_CASING = MINI.casing;   // outline under every road, one tone
+const MINI_STREET = MINI.street;   // the whole network, calles and avenidas alike
+const MINI_PASEO  = MINI.paseo;    // the Paseo de los Turistas, drawn last
+const MINI_WATER  = MINI.water;    // the gulf, the estero and the balneario inlet
+const MINI_LAND   = MINI.land;     // the peninsula itself, under the street network
+const MINI_SAND   = MINI.sand;     // the beach — drivable, so it is not land-dark
+const MINI_PARK   = MINI.park;     // a green cuadra you cannot drive into
 // The SAME green the median is drawn with, read rather than restated — this
 // was a fourth copy of it, like the two pier decks above.
 const MINI_MEDIAN = MATERIALS.median.grass;   // planted, and a WALL
-const MINI_FIELD  = "#4f9d5b";   // an estadio / plaza you CAN — brighter on purpose
-const MINI_BULE   = "#e2ded2";   // calle peatonal: stone, the lightest ink here
-const MINI_MALECON = "#efdcb4";  // the sea front: warm baldosa, not town stone
+const MINI_FIELD  = MINI.field;    // an estadio / plaza you CAN — brighter on purpose
+const MINI_BULE   = MINI.boulevard;  // calle peatonal: stone, the lightest ink
+const MINI_MALECON = MINI.malecon;   // the sea front: warm baldosa, not town stone
 // The muelles keep the material they are drawn in out in the world, so the dial
 // and the map agree: the Muelle Nacional is concrete, the faro jetty is timber,
 // and a bridge deck is the pale deck base its asphalt is laid on.

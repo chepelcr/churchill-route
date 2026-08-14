@@ -17,17 +17,20 @@
 //    AdSense with H5 Games Ads enabled; until then adBreak calls are silent
 //    no-ops and the game just continues (see docs/MONETIZATION.md).
 import { iap } from "./iap.js";
+import SERVICES from "../content/services.json" with { type: "json" };
 
 const NATIVE = typeof window !== "undefined" && !!window.Capacitor;
 const BROWSER = typeof window !== "undefined" && !NATIVE;
 const COUNT_KEY = "churchill_runs_since_ad_v1";
 const TOTAL_KEY = "churchill_runs_total_v1";
-const INTERSTITIAL_EVERY = 5;
-const GRACE_RUNS = 3; // no interstitials at all for the first runs ever
+// THE RULES ARE CONTENT, and they are as much a product decision as a
+// config — see `services.json`, which says why each number is what it is.
+const INTERSTITIAL_EVERY = SERVICES.ads.interstitialEvery;
+const GRACE_RUNS = SERVICES.ads.graceRuns; // none at all for a player's first runs
 
-const AD_INTERSTITIAL = "ca-app-pub-3090812928887940/4457249161";
-const AD_REWARDED = "ca-app-pub-3090812928887940/3168218225";
-const WEB_CLIENT = "ca-pub-3090812928887940"; // AdSense web property (same publisher)
+const AD_INTERSTITIAL = SERVICES.ads.interstitialUnit;
+const AD_REWARDED = SERVICES.ads.rewardedUnit;
+const WEB_CLIENT = SERVICES.ads.webClient; // AdSense web property (same publisher)
 
 let AdMob = null;          // native plugin module once loaded
 let RewardAdPluginEvents = null;

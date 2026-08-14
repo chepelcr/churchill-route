@@ -25,12 +25,16 @@ const COUNT_KEY = "churchill_runs_since_ad_v1";
 const TOTAL_KEY = "churchill_runs_total_v1";
 // THE RULES ARE CONTENT, and they are as much a product decision as a
 // config — see `services.json`, which says why each number is what it is.
-const INTERSTITIAL_EVERY = SERVICES.ads.interstitialEvery;
-const GRACE_RUNS = SERVICES.ads.graceRuns; // none at all for a player's first runs
-
-const AD_INTERSTITIAL = SERVICES.ads.interstitialUnit;
-const AD_REWARDED = SERVICES.ads.rewardedUnit;
-const WEB_CLIENT = SERVICES.ads.webClient; // AdSense web property (same publisher)
+// THE RULES ARE THE SAME ON BOTH PLATFORMS; THE PLUMBING IS NOT. Web is H5
+// Games Ads (the `adBreak` API) and the app is AdMob — different ids, different
+// placement names, a different way of asking for an ad — so `services.json`
+// keeps them as two blocks under one policy rather than one flat list, which is
+// how an app id ends up where a web one belonged.
+const POLICY = SERVICES.ads.policy;
+const WEB = SERVICES.ads.web;
+const APP = SERVICES.ads.app;
+const INTERSTITIAL_EVERY = POLICY.interstitialEvery;
+const GRACE_RUNS = POLICY.graceRuns;   // none at all for a player's first runs
 
 let AdMob = null;          // native plugin module once loaded
 let RewardAdPluginEvents = null;
@@ -58,10 +62,11 @@ function initWebAds() {
   const s = document.createElement("script");
   s.async = true;
   s.crossOrigin = "anonymous";
-  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${WEB_CLIENT}`;
-  s.setAttribute("data-ad-frequency-hint", "120s"); // extra pacing safety net
+  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${WEB.client}`;
+  // a pacing net ON TOP of the cadence gate; the stricter of the two wins
+  s.setAttribute("data-ad-frequency-hint", WEB.frequencyHint);
   document.head.appendChild(s);
-  window.adConfig({ preloadAdBreaks: "on", sound: "on" });
+  window.adConfig({ preloadAdBreaks: WEB.preloadAdBreaks, sound: WEB.sound });
 }
 
 export const ads = {
@@ -83,16 +88,17 @@ export const ads = {
   // the player bought "remove ads", is still in the first-runs grace period,
   // or just finished the tutorial. Fire-and-forget from the results screen.
   async maybeShowInterstitial(mode) {
-    if (mode === "tutorial" || iap.owned) return;
+    if (POLICY.skipAfterTutorial && mode === "tutorial") return;
+    if (POLICY.removedByPurchase && iap.owned) return;
     if (ready) {
       if (!interstitialDue()) return;
       try {
-        await AdMob.prepareInterstitial({ adId: AD_INTERSTITIAL });
+        await AdMob.prepareInterstitial({ adId: APP.placements.interstitial });
         await AdMob.showInterstitial();
       } catch (e) { console.warn("[ads] interstitial failed", e); }
     } else if (webReady && window.adBreak) {
       if (!interstitialDue()) return;
-      window.adBreak({ type: "next", name: "run_finished" });
+      window.adBreak(WEB.placements.runFinished);
     }
   },
 
@@ -111,7 +117,7 @@ export const ads = {
             for (const s of subs) s.remove();
             resolve(rewarded);
           }));
-          await AdMob.prepareRewardVideoAd({ adId: AD_REWARDED });
+          await AdMob.prepareRewardVideoAd({ adId: APP.placements.rewarded });
           await AdMob.showRewardVideoAd();
         } catch (e) {
           console.warn("[ads] rewarded failed", e);
@@ -125,14 +131,13 @@ export const ads = {
         let granted = false, done = false;
         const finish = () => { if (!done) { done = true; resolve(granted); } };
         window.adBreak({
-          type: "reward",
-          name: "reward_bonus",
+          ...WEB.placements.reward,
           beforeReward(showAdFn) { showAdFn(); }, // a reward ad is available: show it
           adViewed() { granted = true; },
           adDismissed() { /* skipped: no reward */ },
           adBreakDone() { finish(); },            // always fires (even no-fill)
         });
-        setTimeout(finish, 20000);                // belt-and-braces timeout
+        setTimeout(finish, WEB.rewardTimeoutMs);  // belt-and-braces timeout
       });
     }
     return Promise.resolve(false);

@@ -44,28 +44,77 @@ class ServiceRegistryTests(unittest.TestCase):
         self.doc = json.loads(read(SERVICES))
 
     def test_the_ad_ids_are_well_formed(self):
-        ads = self.doc["ads"]
-        self.assertRegex(ads["publisher"], r"^ca-pub-\d+$")
-        self.assertRegex(ads["webClient"], r"^ca-pub-\d+$")
-        for key in ("interstitialUnit", "rewardedUnit"):
-            self.assertRegex(ads[key], r"^ca-app-pub-\d+/\d+$",
-                             f"{key} is not an AdMob unit id")
-        # The AdMob units must belong to the AdSense publisher, or they are
-        # somebody else's inventory and will simply never fill.
-        pub = ads["publisher"].split("-")[-1]
-        for key in ("interstitialUnit", "rewardedUnit"):
-            self.assertIn(pub, ads[key], f"{key} belongs to a different publisher")
+        """TWO SYSTEMS, and that is why they are two blocks. The web is H5 Games
+        Ads (the `adBreak` API) and the app is AdMob: different ids, different
+        placement names, a different way of asking for an ad. Flat, this is how
+        an app id ends up where a web one belonged."""
+        web, app = self.doc["ads"]["web"], self.doc["ads"]["app"]
+        self.assertRegex(web["client"], r"^ca-pub-\d+$")
+        self.assertRegex(app["applicationId"], r"^ca-app-pub-\d+~\d+$",
+                         "an AdMob APPLICATION id uses `~`, a UNIT id uses `/`")
+        for key, unit in app["placements"].items():
+            self.assertRegex(unit, r"^ca-app-pub-\d+/\d+$",
+                             f"app placement '{key}' is not an AdMob unit id")
+        # Everything must belong to the same publisher, or it is somebody
+        # else's inventory and will simply never fill — with no error anywhere.
+        pub = web["client"].split("-")[-1]
+        self.assertIn(pub, app["applicationId"], "the app belongs to a different publisher")
+        for key, unit in app["placements"].items():
+            self.assertIn(pub, unit, f"app placement '{key}' belongs to a different publisher")
+
+    def test_the_app_id_matches_the_android_manifest(self):
+        """THE ONE REAL DRIFT GATE HERE.
+
+        The SDK reads the application id from `AndroidManifest.xml`, not from
+        this registry — so the registry is a RECORD of it, and a record that
+        can drift is worse than none. A mismatch means the app initialises
+        against the wrong account and every ad silently no-fills.
+        """
+        manifest = os.path.join(ROOT, "android", "app", "src", "main", "AndroidManifest.xml")
+        if not os.path.exists(manifest):
+            self.skipTest("no Android project in this checkout")
+        m = re.search(r'APPLICATION_ID"\s*\n?\s*android:value="([^"]+)"', read(manifest))
+        self.assertIsNotNone(m, "the manifest declares no AdMob APPLICATION_ID")
+        self.assertEqual(m.group(1), self.doc["ads"]["app"]["applicationId"],
+                         "the AndroidManifest and services.json disagree about the "
+                         "AdMob application id")
+
+    def test_every_placement_the_code_asks_for_exists(self):
+        """A placement the module reads and the registry does not define is
+        `undefined`, which reaches the SDK as an ad request for nothing."""
+        src = read(os.path.join(MONETIZE, "ads.js"))
+        for key in set(re.findall(r"APP\.placements\.(\w+)", src)):
+            self.assertIn(key, self.doc["ads"]["app"]["placements"],
+                          f"ads.js asks for app placement '{key}'")
+        for key in set(re.findall(r"WEB\.placements\.(\w+)", src)):
+            self.assertIn(key, self.doc["ads"]["web"]["placements"],
+                          f"ads.js asks for web placement '{key}'")
+
+    def test_no_placement_is_dead(self):
+        # The other direction: a unit id nobody asks for is inventory that will
+        # never serve, and it reads as if the game shows more ads than it does.
+        src = read(os.path.join(MONETIZE, "ads.js"))
+        for key in self.doc["ads"]["app"]["placements"]:
+            self.assertIn(f"APP.placements.{key}", src,
+                          f"app placement '{key}' is configured but never used")
+        for key in self.doc["ads"]["web"]["placements"]:
+            self.assertIn(f"WEB.placements.{key}", src,
+                          f"web placement '{key}' is configured but never used")
 
     def test_the_ad_policy_is_the_one_that_was_decided(self):
         """Not a default: no banners, opt-in rewarded, and a grace period for
         somebody still deciding whether they like the game."""
-        ads = self.doc["ads"]
-        self.assertGreaterEqual(ads["graceRuns"], 1,
+        pol = self.doc["ads"]["policy"]
+        self.assertGreaterEqual(pol["graceRuns"], 1,
                                 "a brand-new player would meet an interstitial "
                                 "while deciding whether to keep playing")
-        self.assertGreaterEqual(ads["interstitialEvery"], 3,
+        self.assertGreaterEqual(pol["interstitialEvery"], 3,
                                 "an interstitial this often is the intrusive kind "
                                 "the monetisation plan rules out")
+        self.assertFalse(pol["banners"],
+                         "A BANNER COVERS THE ROAD WHILE DRIVING. That is the "
+                         "reason, and it does not change with revenue.")
+        self.assertEqual(pol["rewarded"], "opt-in")
 
     def test_analytics_ships_off(self):
         # Empty means OFF and nothing is loaded. Shipping an id by accident

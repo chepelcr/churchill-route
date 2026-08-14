@@ -655,13 +655,36 @@ tokens para que los tokens lleguen de verdad a la hoja de estilos.
       tardó el bundle), y desde que Chrome tiene anidamiento CSS **toda**
       `CSSStyleRule` trae un `cssRules` vacío, así que un recorrido
       "si tiene cssRules, recursá" se salta la hoja entera y devuelve cero.
-- [ ] **Las pantallas y las traducciones** (pedido 2026-08-14). Los tokens ya
-      llegan a todo el color; falta la ESTRUCTURA. Hoy el editor autora
-      `src/i18n/<lang>.json` y los overrides de copy, pero no puede agregar una
-      pantalla ni reordenar la que hay. Antes de tocar JSX conviene medir qué
-      parte es de verdad estructura y qué parte es copy — es la misma pregunta
-      que §14 acaba de contestar para el renderer, y ahí la respuesta fue
-      "cuatro registros, no una reescritura".
+- [x] **Las pantallas y las traducciones — MEDIDO PRIMERO, 2026-08-14**, y la
+      medición cambió qué había que hacer.
+
+      **La copy YA está toda autorada.** 259 llaves, español e inglés completos
+      los dos, cero faltantes en cualquier dirección. En **2 254 líneas de JSX**
+      hay exactamente **UNA** cadena escrita a mano que un traductor querría
+      —`LA RUTA`, que es el logotipo del juego— más las cuatro teclas `<kbd>`,
+      que son teclas físicas y no idioma. O sea que "manejar las traducciones"
+      no era el hueco: agregar un idioma sigue siendo un JSON y una entrada en
+      `LANGUAGES`.
+
+      Así que esta fila se convirtió en **proteger lo que ya está bien**, porque
+      las dos formas en que se degrada son silenciosas: una llave agregada a un
+      catálogo y no al otro (t() cae a la LLAVE, así que se ve
+      `title.hint.drift` en pantalla, y sólo lo ve quien juega en ese idioma), y
+      una frase escrita directo en el JSX (se ve perfecta en el idioma en que se
+      escribió y no se puede traducir nunca). `tests/test_i18n.py`, 9 casos,
+      incluye que los `{placeholders}` calcen entre idiomas.
+
+      La prueba encontró algo de una: **la Travesía (`s8`) es un
+      `crossingStages` y no un `stages`**, así que una comprobación que sólo
+      mirara la primera lista habría reportado como huérfana justo la etapa que
+      SÍ está traducida.
+
+      **Lo que queda es la ESTRUCTURA**, y es más chico de lo que parece: qué
+      tarjetas tiene una pantalla, en qué orden y cuáles se muestran. Sigue sin
+      hacerse a propósito — cambiar React legible por un lenguaje de layout
+      casero es el mal negocio que ya se descartó, y la respuesta buena es
+      probablemente un registro de SLOTS por pantalla, no un esquema de JSX.
+      Fila propia cuando haga falta.
 
 ### 4. El reescalado
 

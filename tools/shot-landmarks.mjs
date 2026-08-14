@@ -75,7 +75,18 @@ const drew = await page.evaluate(async ([scenes, cell, cols]) => {
     g.textAlign = "center";
     g.fillText(type, cx, (Math.floor(i / cols) + 1) * cell[1] - 6);
   });
-  return { types, png: cv.toDataURL("image/png").split(",")[1] };
+  // COUNT THE INK before handing the sheet back. These harnesses draw through
+  // gfx's shared `ctx`, which the game's own boot also binds — so if the modules
+  // evaluate in the wrong order every draw lands on the game canvas and this one
+  // comes back empty. A before/after diff of two BLANK sheets reports IDENTICAL,
+  // and that was once taken as proof. So the sheet must prove it has art on it.
+  const bg = g.getImageData(0, 0, 1, 1).data;
+  const all = g.getImageData(0, 0, cv.width, cv.height).data;
+  let ink = 0;
+  for (let i = 0; i < all.length; i += 4) {
+    if (all[i] !== bg[0] || all[i + 1] !== bg[1] || all[i + 2] !== bg[2]) ink++;
+  }
+  return { ink, types, png: cv.toDataURL("image/png").split(",")[1] };
 }, [SCENES, CELL, COLS]);
 
 // The canvas is read back INSIDE the page, in the same turn it was drawn.
@@ -84,6 +95,14 @@ const drew = await page.evaluate(async ([scenes, cell, cols]) => {
 // screenshot is taken the sheet has the whole port painted over it. Reading the
 // bitmap before yielding is the only way to capture just what we drew.
 writeFileSync(out, Buffer.from(drew.png, "base64"));
+// A sheet with almost no ink on it did not draw — see the note inside the page.
+const MIN_INK = 2000;
+if (!(drew.ink > MIN_INK)) {
+  console.error(`[FAIL] the sheet is blank (${drew.ink} non-background pixels). `
+    + `The modules were evaluated in the wrong order, so the art went to the game's `
+    + `canvas. Restart the dev server and re-run — do NOT trust a diff of this.`);
+  process.exit(1);
+}
 await browser.close();
 if (errors.length) { console.error(`[landmarks] page errors: ${errors.join(" | ")}`); process.exit(1); }
 console.log(`[landmarks] ${drew.types.length} drawn -> ${out}`);

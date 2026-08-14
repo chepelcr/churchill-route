@@ -6,6 +6,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { tuning } from "../../game/tuning.js";
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
 
 let canvas, ctx, dpr = 1;
 // Camera zoom: >1 pulls the camera closer so streets/buildings read at
@@ -52,11 +53,12 @@ function setupCanvas(c) {
 }
 
 function weatherColors() {
-  const w = state.weather;
-  if (w === "storm")  return { sky1: "#3a4a5e", sky2: "#5a6a7e", waterTop: "#3b6f7a", waterBot: "#244b56", sand: "#a89870", land: "#8a9c70", tint: "rgba(40,55,80,0.35)" };
-  if (w === "sunset") return { sky1: "#ff8b5a", sky2: "#ff3d80", waterTop: "#d28a6a", waterBot: "#7a4060", sand: "#f4c98b", land: "#cda06a", tint: "rgba(255,80,80,0.12)" };
-  if (w === "night")  return { sky1: "#0e1530", sky2: "#222244", waterTop: "#1a2a44", waterBot: "#0a1428", sand: "#6a5a48", land: "#4a5040", tint: "rgba(10,10,30,0.45)" };
-  return                   { sky1: "#9fd9ec", sky2: "#ffe6b3", waterTop: "#62c2c9", waterBot: "#2e8090", sand: "#f1d29a", land: "#cfb27a", tint: "rgba(255,235,200,0.04)" };
+  // The per-weather palette lives in the shared material registry: five modules
+  // read it — this one for the sky, `ground.js` for the playas and the land
+  // base, `estero.js` for the mangrove's shoreline, `canvas2d.js` for the tint
+  // over the finished frame, and `water.js`, which DERIVES the entire living-sea
+  // palette from `waterTop`/`waterBot` rather than authoring one.
+  return MATERIALS.weather[state.weather] || MATERIALS.weather.sunny;
 }
 
 

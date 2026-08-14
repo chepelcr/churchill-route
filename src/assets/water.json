@@ -1,0 +1,59 @@
+{
+  "_note": "EL MAR — the swell presets and the palette derivation the living-sea effect runs on, plus the registry of which BACKEND owns which visual family. `src/render/c2d/water.js` keeps the algorithms: the interfering crest lines, the current filaments, the ripple pool, the caustics, the shoreline probe.",
+
+  "version": 1,
+
+  "_split": "The per-weather SKY/SAND/LAND/TINT palette is NOT here — it went to `materials.json` under `weather`, because it is not water: `ground.js`, `estero.js` and `canvas2d.js` read it for the beach, the land base and the storm tint. What IS here is the sea's own behaviour and the ratios that turn that palette into a sea.",
+
+  "_derived_on_purpose": "The crest, sheen, cap, trough, wet and ripple colours are NOT authored. Each is the weather's own water colour lifted toward white or dropped toward black by the ratio below, which is why sunset stays warm and night stays cold for free — an authored six-colour table per weather would be four tables to keep in step, and they would drift the first time somebody retuned the sunset. Only the RATIOS are data; the mixing is code.",
+
+  "swell": {
+    "_note": "Per weather. A storm is BIGGER, STEEPER and CLOSER-SPACED swell plus whitecaps — the single most legible 'this is rough' cue there is. Night is low contrast with a moonlit sheen on the crest faces, so the sea is still legibly moving in the dark without turning into a light show.",
+    "_units": "len/run in world px, amp in px, speed in px/s, crest/sheen/trough/caps are alphas 0..1",
+    "sunny": {"len": 78, "amp": 3.2, "speed": 15, "crest": 0.085, "sheen": 0.050, "trough": 0.055, "caps": 0, "run": 4.6},
+    "sunset": {"len": 84, "amp": 3.0, "speed": 13, "crest": 0.100, "sheen": 0.055, "trough": 0.065, "caps": 0, "run": 4.9},
+    "night": {"len": 74, "amp": 2.6, "speed": 12, "crest": 0.042, "sheen": 0.085, "trough": 0.080, "caps": 0, "run": 5.2},
+    "storm": {"len": 52, "amp": 6.2, "speed": 27, "crest": 0.150, "sheen": 0.070, "trough": 0.120, "caps": 0.62, "run": 3.0}
+  },
+
+  "derive": {
+    "_note": "`from` names a channel of the weather palette; `toward` is white or black; `k` is how far. Read by `seaPalette()`, which caches per weather.",
+    "crest": {"from": "waterTop", "toward": "white", "k": 0.60, "note": "the lit face of a crest"},
+    "sheen": {"from": "waterTop", "toward": "white", "k": 0.34, "note": "the wide soft band around it"},
+    "cap": {"from": "waterTop", "toward": "white", "k": 0.92, "note": "whitecaps / foam"},
+    "trough": {"from": "waterBot", "toward": "black", "k": 0.40, "note": "the shadow behind a crest"},
+    "wet": {"from": "sand", "toward": "waterBot", "k": 0.42, "note": "sand the sea just left"},
+    "ripple": {"from": "waterTop", "toward": "white", "k": 0.72}
+  },
+
+  "direction": {
+    "_note": "Where the swell runs. In TURNS rather than radians so the file holds no irrational literal: a power-of-two turn times TAU is exact in binary floating point, so `0.125` really is `Math.PI / 4` and not a rounding of it. `crossOffsetRad` stays in radians because it is a plain offset, not a fraction of a circle.",
+    "swellTurns": 0.125,
+    "swellNote": "NW–SE crest line, propagating NE",
+    "crossOffsetRad": 0.46,
+    "crossNote": "~26° off the main swell, so the two interfere instead of reading as corduroy"
+  },
+
+  "owners": {
+    "_note": "WHICH BACKEND DRAWS WHAT. Both ship — this is not a migration table, it is the current division of labour, and §7's decision is that it stays that way: Canvas2D paints the whole painterly world and the entities, and a transparent Pixi layer ABOVE it carries the structures Canvas cannot do justice. The escape hatch (`?canvas`, or `localStorage.churchill_renderer = 'canvas'`) drops the Pixi layer, so every family it owns needs a Canvas fallback or it vanishes.",
+    "_backends": "the RendererBackend enum — churchill/world/enums/game.py",
+
+    "sea": {"backend": "canvas", "note": "the gameplay sea: swell, currents, ripples, caustics, the wet-sand line. Canvas2D on purpose — it is composited under the entities and reads the same tile stream the ground does"},
+    "ground": {"backend": "canvas"},
+    "roads": {"backend": "canvas"},
+    "parcels": {"backend": "canvas"},
+    "entities": {"backend": "canvas", "note": "vehicles, peds, boats, coins"},
+    "flora": {"backend": "canvas"},
+    "landmarks": {"backend": "canvas", "note": "the pins and their art, from world-props.json"},
+
+    "landmarkStructures": {
+      "backend": "pixi",
+      "fallback": "canvas",
+      "note": "the estadio's gradas and the tunnel roof the player drives under — the two things Canvas could not do justice. `setPixiLandmarks(false)` puts Canvas's own stands back when WebGL is unavailable, which is why this family may never be Pixi-ONLY."
+    },
+    "titleSea": {
+      "backend": "pixi",
+      "note": "the boot screen's sea is LIVE PIXI, not a leftover. §7 is explicit that `scene.js` is migration material rather than evidence of duplication — do not delete it looking for dead code."
+    }
+  }
+}

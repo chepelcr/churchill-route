@@ -12,61 +12,65 @@ import { drawParada, paintProp, propParts } from "./props.js";
 // water side, red crescent shade benches, palms and the red/white tower.
 function drawFaroScene(lm) {
   const x = lm.x, y = lm.y;
+  const { palette: C, params: P } = PROPS.scenes.faro;
   // La Punta plaza: the GRAY esplanade GROUND is drawn by the tile plaza layer
   // (an "esplanade" fill following the real sand shape — no circle, no sand
   // under it). Here we only add the on-plaza decoration: riprap rimming the
   // shape, the iconic RED comma "islands" (spread across the plaza by the
   // build), palms and the tower.
-  const rim = lm.rim;   // rocks only on the real sand/water edge (build-emitted)
+  //
+  // `lm.rim` is WORLD GEOMETRY — the build measured it against the real
+  // sand/water edge — so it is not a knob and never will be. Everything else
+  // here comes from the catalog.
+  const rim = lm.rim;
   if (rim) {
     for (let i = 0; i < rim.length; i++) {
       const rx = rim[i][0], ry = rim[i][1];
-      const r0 = 1.8 + hash01(lm.x * 7.13 + i * 12.9) * 2.4;
-      ctx.fillStyle = i % 3 ? "#4a4d52" : "#5a5e64";
+      const r0 = P.rockMinR + hash01(lm.x * 7.13 + i * 12.9) * P.rockVarR;
+      ctx.fillStyle = i % P.rockDarkEvery ? C.rockDark : C.rockLight;
       ctx.beginPath();
-      ctx.ellipse(rx, ry, r0 + 1.4, r0, hash01(i * 9.4 + lm.x) * Math.PI, 0, Math.PI * 2);
+      ctx.ellipse(rx, ry, r0 + P.rockStretch, r0, hash01(i * 9.4 + lm.x) * Math.PI, 0, Math.PI * 2);
       ctx.fill();
     }
   }
   // (the red comma "islands" are drawn in the GROUND layer — drawFaroCommas —
   // so the trees sit on top of them, not the other way around)
-  // A few palms by the plaza (static, same look as drawPalms)
-  const pxy = [[x + 22, y - 12], [x + 27, y + 11], [x - 4, y + 19]];
-  for (let i = 0; i < pxy.length; i++) {
-    const px = pxy[i][0], py = pxy[i][1], s = 0.8;
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.beginPath(); ctx.ellipse(px + 5, py + 4, 10 * s, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#7a4f2a"; ctx.lineWidth = 3 * s;
-    ctx.beginPath(); ctx.moveTo(px, py + 4); ctx.lineTo(px, py - 16 * s); ctx.stroke();
-    ctx.fillStyle = "#3aa45b";
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2;
-      const fx = px + Math.cos(a) * 11 * s;
-      const fy = py - 16 * s + Math.sin(a) * 5 * s;
-      ctx.beginPath(); ctx.ellipse(fx, fy, 9 * s, 3.2 * s, a, 0, Math.PI * 2); ctx.fill();
+  for (const [ox, oy] of P.palms) {
+    const px = x + ox, py = y + oy, sc = P.palmScale;
+    ctx.fillStyle = C.palmShadow;
+    ctx.beginPath(); ctx.ellipse(px + 5, py + 4, 10 * sc, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = C.palmTrunk; ctx.lineWidth = 3 * sc;
+    ctx.beginPath(); ctx.moveTo(px, py + 4); ctx.lineTo(px, py - P.trunkH * sc); ctx.stroke();
+    ctx.fillStyle = C.frond;
+    for (let k = 0; k < P.fronds; k++) {
+      const a = (k / P.fronds) * Math.PI * 2;
+      const fx = px + Math.cos(a) * P.frondR * sc;
+      const fy = py - P.trunkH * sc + Math.sin(a) * P.frondRy * sc;
+      ctx.beginPath(); ctx.ellipse(fx, fy, 9 * sc, 3.2 * sc, a, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.fillStyle = "#2e7d44";
-    ctx.beginPath(); ctx.arc(px, py - 16 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.crown;
+    ctx.beginPath(); ctx.arc(px, py - P.trunkH * sc, 2.5 * sc, 0, Math.PI * 2); ctx.fill();
   }
   // Tower — white with red bands, slight taper, gallery ring, yellow lantern
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillStyle = C.towerShadow;
   ctx.beginPath(); ctx.ellipse(x + 5, y + 4, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
   const tw = new Path2D();
-  tw.moveTo(x - 6, y + 2); tw.lineTo(x - 4, y - 34);
-  tw.lineTo(x + 4, y - 34); tw.lineTo(x + 6, y + 2);
+  tw.moveTo(x - P.towerBaseHalf, y + P.towerFoot); tw.lineTo(x - P.towerTopHalf, y - P.towerHeight);
+  tw.lineTo(x + P.towerTopHalf, y - P.towerHeight); tw.lineTo(x + P.towerBaseHalf, y + P.towerFoot);
   tw.closePath();
-  ctx.fillStyle = "#fff"; ctx.fill(tw);
+  ctx.fillStyle = C.towerBody; ctx.fill(tw);
   ctx.save();
   ctx.clip(tw);
-  ctx.fillStyle = "#d63a30";
-  for (let i = 0; i < 3; i++) ctx.fillRect(x - 7, y - 29 + i * 11, 14, 5);
+  ctx.fillStyle = C.towerBand;
+  for (let i = 0; i < P.bands; i++)
+    ctx.fillRect(x - P.towerBaseHalf - 1, y - P.bandTop + i * P.bandGap, P.towerBaseHalf * 2 + 2, P.bandH);
   ctx.restore();
-  ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth = 1; ctx.stroke(tw);
+  ctx.strokeStyle = C.towerEdge; ctx.lineWidth = 1; ctx.stroke(tw);
   // Gallery ring + lantern
-  ctx.fillStyle = "#3a3540"; ctx.fillRect(x - 6, y - 36, 12, 2.5);
-  ctx.fillStyle = "#ffe06b"; ctx.beginPath(); ctx.arc(x, y - 40, 4, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#3a3540"; ctx.fillRect(x - 3, y - 45.5, 6, 2);
-  label(x, y - 52, "FARO", "#fff", "#3a3540");
+  ctx.fillStyle = C.gallery; ctx.fillRect(x - P.galleryW / 2, y - P.galleryY, P.galleryW, P.galleryH);
+  ctx.fillStyle = C.lantern; ctx.beginPath(); ctx.arc(x, y - P.lanternY, P.lanternR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.gallery; ctx.fillRect(x - 3, y - P.finialY, 6, 2);
+  label(x, y - P.labelY, P.label, C.pillFg, C.pillBg);
 }
 
 // A green space (park / stadium field): grass with mow stripes, a ring of

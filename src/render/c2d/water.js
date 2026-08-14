@@ -40,6 +40,7 @@ import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { boats, pedestrians, state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
 import { aabbInView, ctx, hash01, weatherColors } from "./gfx.js";
+import WATER from "../../assets/water.json" with { type: "json" };
 
 const TAU = Math.PI * 2;
 
@@ -63,16 +64,15 @@ function seaPalette() {
   const key = state.weather || "sunny";
   if (key === palKey && pal) return pal;
   const C = weatherColors();
-  const top = rgbOf(C.waterTop), bot = rgbOf(C.waterBot), sand = rgbOf(C.sand);
+  const src = { white: WHITE, black: BLACK };
+  const chan = (name) => src[name] || rgbOf(C[name]);
   palKey = key;
-  return (pal = {
-    crest: mix(top, WHITE, 0.60),   // the lit face of a crest
-    sheen: mix(top, WHITE, 0.34),   // the wide soft band around it
-    cap: mix(top, WHITE, 0.92),     // whitecaps / foam
-    trough: mix(bot, BLACK, 0.40),  // the shadow behind a crest
-    wet: mix(sand, bot, 0.42),      // sand the sea just left
-    ripple: mix(top, WHITE, 0.72),
-  });
+  pal = {};
+  for (const [name, d] of Object.entries(WATER.derive)) {
+    if (name.startsWith("_")) continue;
+    pal[name] = mix(chan(d.from), chan(d.toward), d.k);
+  }
+  return pal;
 }
 
 // ---- weather ---------------------------------------------------------------
@@ -80,12 +80,7 @@ function seaPalette() {
 // most legible "this is rough" cue there is. Night is low contrast with a
 // moonlit sheen on the crest faces, so the sea is still legibly moving in the
 // dark without turning into a light show.
-const SEA = {
-  sunny:  { len: 78, amp: 3.2, speed: 15, crest: 0.085, sheen: 0.050, trough: 0.055, caps: 0,    run: 4.6 },
-  sunset: { len: 84, amp: 3.0, speed: 13, crest: 0.100, sheen: 0.055, trough: 0.065, caps: 0,    run: 4.9 },
-  night:  { len: 74, amp: 2.6, speed: 12, crest: 0.042, sheen: 0.085, trough: 0.080, caps: 0,    run: 5.2 },
-  storm:  { len: 52, amp: 6.2, speed: 27, crest: 0.150, sheen: 0.070, trough: 0.120, caps: 0.62, run: 3.0 },
-};
+const SEA = WATER.swell;
 function seaCfg() { return SEA[state.weather] || SEA.sunny; }
 //: the editor's weather zones publish this; everything else leaves it at 1.
 function intensity() {
@@ -98,8 +93,11 @@ function tideLevel() { return Number.isFinite(state.tide) ? Math.max(0, Math.min
 // The swell comes FROM the south-west, so it travels north-east and its crests
 // run NW–SE: `ang` is the crest line's direction, and the crests march toward
 // -y in that rotated frame.
-const SWELL_ANG = Math.PI / 4;          // NW–SE crest line (propagating NE)
-const CROSS_ANG = SWELL_ANG + 0.46;     // ~26° off it, so the two interfere
+// IN TURNS, so the file carries no irrational literal: 0.125 is a power of two,
+// and scaling by TAU is an exponent shift, so this really IS Math.PI / 4 and not
+// a rounding of it.
+const SWELL_ANG = WATER.direction.swellTurns * TAU;
+const CROSS_ANG = SWELL_ANG + WATER.direction.crossOffsetRad;  // ~26° off it
 const CREST_STEP = 22;                  // world px between samples along a crest
 const scratch = new Float64Array(256);  // per-crest y offsets, reused
 

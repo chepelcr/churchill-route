@@ -229,8 +229,39 @@ tiene implementación en el renderer.
       El editor lo consume por `/api/materials` con validador y entrada en el
       Data workspace, igual que `/api/surfaces`. `tests/test_materials.py` (6) +
       `world-editor/tests/materials.test.mjs` (3).
-- [ ] **`src/assets/water.json`** + registro de qué backend es dueño de qué
-      familia visual, con fixtures de paridad.
+- [x] **`src/assets/water.json`** + registro de dueños. Hecho 2026-08-13. Los
+      presets de oleaje por clima, las razones con que se DERIVA la paleta del
+      mar, y la dirección del oleaje (en VUELTAS, para que el archivo no lleve un
+      literal irracional: 0,125 · TAU **es** π/4 y no un redondeo). Más el
+      registro de qué backend dibuja qué familia — Canvas casi todo, Pixi las
+      graderías/el túnel y el mar del boot, con la nota de que la escotilla
+      `?canvas` obliga a que toda familia de Pixi tenga respaldo en Canvas.
+
+      La paleta de CLIMA (cielo/arena/tierra/tinte) **no** quedó acá sino en
+      `materials.json`: no es agua — la leen `ground.js`, `estero.js` y
+      `canvas2d.js` — y `water.js` sólo deriva el mar de sus dos canales de agua.
+      Verificado por datos: 32 valores de oleaje y 28 canales de clima idénticos.
+
+- [ ] **LO QUE NO ES ARTE SINO MUNDO: las líneas de siembra y el verde.**
+      Pedido explícito del usuario, y hoy NO es editable. Distinguir tres capas:
+      - **la especie y su dibujo** — ya es data (`flora.json`): se puede cambiar
+        qué palma, qué copa, qué paleta;
+      - **el árbol individual** — ya es un feature en el editor (`tile.trees` /
+        `tile.palms` se indexan), así que se puede mover u ocultar UNO;
+      - **la LÍNEA como objeto** — no existe. La mediana de palmas del Paseo y
+        la franja de árboles de León Cortés se DERIVAN en el build
+        (`build_stage.py`): los tramos salen de `paseo_median_runs` sobre las
+        calles que se llaman como el Paseo, y la franja va de la esquina de la
+        primera cuadra (medida, no autorada) hasta 3 cuadras antes de la calle
+        del muelle. Eso sobrevive un reescalado, que es su virtud, pero significa
+        que nadie puede decir "extendé las palmas 200 m más al este".
+
+      Para que lo sea hacen falta dos cosas: la fila de `content.py` →
+      `content/world/*.json` (abajo), y un tipo de feature **línea de siembra**
+      que el editor autore y el build consuma en vez de derivar. Mismo patrón
+      para el VERDE: hoy `manifest.greens` sale de `detect_blocks`, así que se
+      puede pintar una región autorada encima pero no cambiar qué manzana el
+      build considera verde.
 
 ### 3. P1 / P2 — la superficie de autoría
 

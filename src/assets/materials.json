@@ -97,6 +97,15 @@
     "bridge": "#cfc3a3"
   },
 
+  "weather": {
+    "_note": "The sky, sea, sand, land and tint of each weather. Not a water palette — `ground.js` fills the playas and the land base from it, `estero.js` matches the mangrove's shore to `sand`, `canvas2d.js` lays the tint over the finished frame, and `water.js` DERIVES the whole living-sea palette from `waterTop`/`waterBot` (the ratios are in water.json). Five consumers, one table.",
+    "_key": "churchill/world/enums/features.py :: Weather",
+    "sunny":  {"sky1": "#9fd9ec", "sky2": "#ffe6b3", "waterTop": "#62c2c9", "waterBot": "#2e8090", "sand": "#f1d29a", "land": "#cfb27a", "tint": "rgba(255,235,200,0.04)"},
+    "sunset": {"sky1": "#ff8b5a", "sky2": "#ff3d80", "waterTop": "#d28a6a", "waterBot": "#7a4060", "sand": "#f4c98b", "land": "#cda06a", "tint": "rgba(255,80,80,0.12)"},
+    "storm":  {"sky1": "#3a4a5e", "sky2": "#5a6a7e", "waterTop": "#3b6f7a", "waterBot": "#244b56", "sand": "#a89870", "land": "#8a9c70", "tint": "rgba(40,55,80,0.35)"},
+    "night":  {"sky1": "#0e1530", "sky2": "#222244", "waterTop": "#1a2a44", "waterBot": "#0a1428", "sand": "#6a5a48", "land": "#4a5040", "tint": "rgba(10,10,30,0.45)"}
+  },
+
   "terrain": {
     "_note": "Presets for an editor-authored patch of ground. They overlap the surface registry on purpose and are NOT the same question: surfaces.json says what class 8 looks like everywhere, this says what swatch the editor offers when somebody paints a region by hand. The browns are deliberately the road vectors' browns, so an authored patch of barro and the calle de barro beside it are one surface to the eye as well as to the car.",
     "cuadra": "#e8d5a0",

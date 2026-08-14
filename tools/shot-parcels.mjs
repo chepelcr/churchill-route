@@ -110,11 +110,30 @@ const drew = await page.evaluate(async ([cell, cols]) => {
   g.font = "10px monospace";
   g.textAlign = "center";
   for (const [name, cx, ly] of labels) g.fillText(name, cx, ly);
-  return { n: parcels.length, png: cv.toDataURL("image/png").split(",")[1] };
+  // COUNT THE INK before handing the sheet back. These harnesses draw through
+  // gfx's shared `ctx`, which the game's own boot also binds — so if the modules
+  // evaluate in the wrong order every draw lands on the game canvas and this one
+  // comes back empty. A before/after diff of two BLANK sheets reports IDENTICAL,
+  // and that was once taken as proof. So the sheet must prove it has art on it.
+  const bg = g.getImageData(0, 0, 1, 1).data;
+  const all = g.getImageData(0, 0, cv.width, cv.height).data;
+  let ink = 0;
+  for (let i = 0; i < all.length; i += 4) {
+    if (all[i] !== bg[0] || all[i + 1] !== bg[1] || all[i + 2] !== bg[2]) ink++;
+  }
+  return { ink, n: parcels.length, png: cv.toDataURL("image/png").split(",")[1] };
 }, [CELL, COLS]);
 
 // Read the bitmap in the same turn it was drawn — see tools/shot-landmarks.mjs.
 writeFileSync(out, Buffer.from(drew.png, "base64"));
+// A sheet with almost no ink on it did not draw — see the note inside the page.
+const MIN_INK = 2000;
+if (!(drew.ink > MIN_INK)) {
+  console.error(`[FAIL] the sheet is blank (${drew.ink} non-background pixels). `
+    + `The modules were evaluated in the wrong order, so the art went to the game's `
+    + `canvas. Restart the dev server and re-run — do NOT trust a diff of this.`);
+  process.exit(1);
+}
 await browser.close();
 if (errors.length) { console.error(`[parcels] page errors: ${errors.join(" | ")}`); process.exit(1); }
 console.log(`[parcels] ${drew.n} drawn -> ${out}`);

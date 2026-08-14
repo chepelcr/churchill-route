@@ -82,14 +82,33 @@ const drew = await page.evaluate(async ([scale, cell]) => {
     g.textAlign = "center";
     g.fillText(`${key}  ${veh.kind}/${veh.medium}  ${veh.w}x${veh.h}`, cx, cy + cell[1] / 2 - 8);
   });
-  return keys;
+  // COUNT THE INK before handing the sheet back. These harnesses draw through
+  // gfx's shared `ctx`, which the game's own boot also binds — so if the modules
+  // evaluate in the wrong order every draw lands on the game canvas and this one
+  // comes back empty. A before/after diff of two BLANK sheets reports IDENTICAL,
+  // and that was once taken as proof. So the sheet must prove it has art on it.
+  const bg = g.getImageData(0, 0, 1, 1).data;
+  const all = g.getImageData(0, 0, cv.width, cv.height).data;
+  let ink = 0;
+  for (let i = 0; i < all.length; i += 4) {
+    if (all[i] !== bg[0] || all[i + 1] !== bg[1] || all[i + 2] !== bg[2]) ink++;
+  }
+  return { ink, keys };
 }, [SCALE, CELL]);
 
 await page.screenshot({ path: out });
+// A sheet with almost no ink on it did not draw — see the note inside the page.
+const MIN_INK = 2000;
+if (!(drew.ink > MIN_INK)) {
+  console.error(`[FAIL] the sheet is blank (${drew.ink} non-background pixels). `
+    + `The modules were evaluated in the wrong order, so the art went to the game's `
+    + `canvas. Restart the dev server and re-run — do NOT trust a diff of this.`);
+  process.exit(1);
+}
 await browser.close();
 
 if (errors.length) {
   console.error(`[vehicles] page errors: ${errors.join(" | ")}`);
   process.exit(1);
 }
-console.log(`[vehicles] ${drew.length} drawn -> ${out}  (${drew.join(", ")})`);
+console.log(`[vehicles] ${drew.keys.length} drawn -> ${out}  (${drew.keys.join(", ")})`);

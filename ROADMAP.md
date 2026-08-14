@@ -160,8 +160,41 @@ tiene implementación en el renderer.
       Anotado y **no** arreglado: las tres lanchas no tienen voz y caen a la del
       scooter, así que un fuera de borda suena a moto. Es el comportamiento
       publicado; darles voz es un cambio de audio, no una migración.
-- [ ] **`src/assets/world-props.json`**: registro de tipo semántico → asset para
-      landmarks/parcelas/señales, con el mismo DSL finito de la feria.
+- [x] **`src/assets/world-props.json`** (landmarks). Hecho 2026-08-13. El
+      `switch (lm.type)` de **26 ramas** de llamadas Canvas crudas en
+      `c2d/landmarks.js` es ahora un recorrido sobre el catálogo. 23 de los 26
+      tipos son data.
+
+      **Tres NO se movieron, y ésa es la línea.** `lighthouse`, `stadium` y un
+      `park` marino son ESCENAS, no arte: el faro barre un haz con el reloj, el
+      estadio recorta césped y graderías contra una huella que emitió el BUILD,
+      y el parque marino rellena un residual multi-anillo con even-odd. La lista
+      de §12 de "qué no convertir" son exactamente ésas — un stream de comandos
+      Canvas sin restricciones no se vuelve JSON.
+
+      **Y el intérprete quedó UNO** (`c2d/shapes.js`). `paintVehicle` y
+      `drawLandmark` resolvían el mismo problema dos veces; ahora comparten la
+      tabla de formas y sólo difieren en el MARCO, que lo pone quien llama: un
+      vehículo mide en semiejes de su propio cuerpo, un hito en píxeles desde su
+      ancla.
+
+      Verificado pixel por pixel con `tools/shot-landmarks.mjs` — **592 800 px,
+      cero distintos**, y los vehículos siguen en 310 500 sin cambio después de
+      colapsar los intérpretes. **Tres cosas que costaron una medición cada una**:
+      (1) la primera hoja salió EN BLANCO las dos veces y el diff dijo
+      "IDENTICAL" — el dev server no había levantado los archivos nuevos, así que
+      el harness probaba el módulo viejo en ambas corridas; (2) `page.screenshot`
+      no sirve acá, porque atar el `ctx` compartido a nuestro canvas también
+      apunta el rAF del juego a él y para cuando se toma la captura el puerto
+      entero está pintado encima — hay que leer el bitmap en la misma vuelta;
+      (3) **el agrupamiento de trazos es contenido, no formato**: juntar el
+      vástago, la cruz y los brazos del ancla en un solo `stroke` aclaró cada
+      cruce ~30 niveles (384 px), porque dos `stroke()` que se solapan componen
+      sus bordes antialiaseados DOS veces y un path unido no.
+
+      `tests/test_world_props.py` (7). **Faltan parcelas y señales** en este
+      registro: `PARCEL_FILL` ya vive en `materials.json` y `drawSign` sigue
+      siendo un `switch` — es la siguiente pasada de esta misma fila.
 - [x] **`src/assets/materials.json`.** Hecho 2026-08-13. Y lo primero fue
       **medir**, porque la fila decía "duplicados entre Canvas, Pixi y editor" y
       eso ya no era cierto: `canvas ∩ pixi = **0**` — el backend de Pixi no tiene

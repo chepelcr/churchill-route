@@ -1,8 +1,9 @@
 // Moving things + the player: peds, swimmers, traffic, trains, gulls, boats,
 // vendors, animals, the delivery target, arcade coins and the vehicle sprite.
 import { state } from "../../game/state.js";
-import { PATHS, evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
+import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleParts } from "../../game/vehicles.js";
+import { paintParts } from "./shapes.js";
 import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, hash01, lastT, roundRect } from "./gfx.js";
 
@@ -580,70 +581,17 @@ function drawTargetCustomer(t) {
 //
 // Drawn centred at (0,0) facing +x; reused by the in-game player draw and by
 // the UI vehicle preview.
-const VEHICLE_SHAPES = {
-  ...PATHS,        // rect, roundRect, poly — shared with the silhouette trace
-
-  // Canvas-only, and none of them is ever a silhouette part: a wheel does not
-  // belong in a body outline, and stripes are a fill pattern rather than a
-  // contour at all.
-  ellipse(g, p, X, Y) {
-    g.ellipse(X(p.cx), Y(p.cy), p.rx, p.ry, 0, 0, Math.PI * 2);
-  },
-  disc(g, p, X, Y) {
-    g.arc(X(p.cx), Y(p.cy), p.r, 0, Math.PI * 2);
-  },
-};
-
 function paintVehicle(g, key, veh) {
-  const X = (v) => evalOn(v, veh.w / 2);
-  const Y = (v) => evalOn(v, veh.h / 2);
-  for (const part of vehicleParts(key)) {
-    if (part.silhouette === "only") continue;   // shadow-only, never painted
-
-    if (part.shape === "stripes") {
-      // A run of n bands across one rect, alternating a palette — the
-      // heladero's awning. Its own shape because the alternation is the idea.
-      const x = X(part.x), w = X(part.w), band = w / part.n;
-      for (let i = 0; i < part.n; i++) {
-        g.fillStyle = partColor(part.palette[i % part.palette.length], veh);
-        g.fillRect(x + i * band, Y(part.y), band, Y(part.h));
-      }
-      continue;
-    }
-    if (part.shape === "stroke") {
-      g.strokeStyle = partColor(part.stroke, veh);
-      g.lineWidth = part.width;
-      if (part.cap) g.lineCap = part.cap;
-      g.beginPath();
-      part.pts.forEach((pt, i) => (i ? g.lineTo(X(pt[0]), Y(pt[1])) : g.moveTo(X(pt[0]), Y(pt[1]))));
-      g.stroke();
-      continue;
-    }
-    if (part.shape === "strokeRect") {
-      g.strokeStyle = partColor(part.stroke, veh);
-      g.lineWidth = part.width;
-      g.strokeRect(X(part.x), Y(part.y), X(part.w), Y(part.h));
-      continue;
-    }
-    if (part.shape === "rect") {
-      // `fillRect`, NOT beginPath+rect+fill. They are not the same rasteriser:
-      // on the fractional coordinates this art is full of (y: -1.5, h: 3, under
-      // a 5x preview scale) the path route antialiases one level differently,
-      // which showed up as 562 pixels of delta-1 across the headlights, the
-      // wheels, the handlebar and the spoiler — every `rect` part and nothing
-      // else. The silhouette still uses `g.rect`, because the trace always did.
-      g.fillStyle = partColor(part.fill, veh);
-      g.fillRect(X(part.x), Y(part.y), X(part.w), Y(part.h));
-      continue;
-    }
-
-    const build = VEHICLE_SHAPES[part.shape];
-    if (!build) continue;
-    g.fillStyle = partColor(part.fill, veh);
-    g.beginPath();
-    build(g, part, X, Y);
-    g.fill();
-  }
+  paintParts(g, vehicleParts(key), {
+    // A vehicle measures in HALF-EXTENTS of its own body (`[-1, 3]` is three
+    // pixels in from the transom); a landmark measures in plain pixels from its
+    // anchor. That difference is the whole reason the interpreter takes the
+    // frame from the caller instead of owning one.
+    X: (v) => evalOn(v, veh.w / 2),
+    Y: (v) => evalOn(v, veh.h / 2),
+    color: (spec) => partColor(spec, veh),
+    skip: (part) => part.silhouette === "only",   // shadow-only, never painted
+  });
 }
 
 // Insulated delivery backpacks for the courier-style vehicles. Coordinates are

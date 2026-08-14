@@ -1,6 +1,8 @@
 // Landmark drawers: the faro scene, green spaces, the estadios, fountains,
 // pools, the Parque Marino and the sponsored lotes, behind drawLandmark().
 import { paintPalm, paintTree } from "./flora.js";
+import { paintAt } from "./shapes.js";
+import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { content } from "../../content/remote.js";
 import { areaLabel, ctx, drawParada, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
@@ -653,187 +655,50 @@ function drawLandmark(lm) {
     ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath(); ctx.ellipse(x + 4, y + 8, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
   }
-  switch (lm.type) {
-    case "kiosk": {
-      // white + ORANGE kiosk (was red); the churchill drink stays red — it's the syrup
-      ctx.fillStyle = "#fff"; ctx.fillRect(x - 16, y - 8, 32, 18);
-      for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? "#fff" : "#f08a5d"; ctx.fillRect(x - 16 + i * 8, y - 14, 8, 6); }
-      ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fillRect(x - 4, y - 4, 8, 12);
-      ctx.fillStyle = "#ff3d80"; ctx.fillRect(x - 4, y, 8, 6);
-      ctx.fillStyle = "#fff"; ctx.fillRect(x - 4, y - 4, 8, 3);
-      label(x, y - 22, "CHURCHILL", "#fff", "#f08a5d"); break;
-    }
-    case "ferry": {
-      // THE TERMINAL IS A PLACE, NOT A BOAT. This used to paint a hull in the
-      // middle of the terminal's own streets — a second, fake ferry parked on
-      // the asphalt beside the two real ones you can actually drive onto. The
-      // landmark keeps its name pill and nothing else.
-      label(x, y - 12, "TERMINAL FERRY", "#fff", "#3a6f8a"); break;
-    }
-    case "cruise": {
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(x - 28, y - 10, 56, 22);
-      ctx.fillStyle = "#f4d77a"; ctx.fillRect(x - 28, y - 14, 56, 4);
-      ctx.fillStyle = "#fff"; ctx.fillRect(x - 6, y - 22, 12, 8);
-      label(x, y - 28, "MUELLE", "#fff", "#3a6f8a"); break;
-    }
-    case "lighthouse": {
-      drawFaroScene(lm); break;
-    }
-    case "church":
-    case "cathedral": {
-      ctx.fillStyle = "#e7ddc8"; ctx.fillRect(x - 20, y - 12, 40, 24);          // pale stucco nave
-      ctx.fillStyle = "#b98a5e"; ctx.fillRect(x - 20, y - 12, 40, 4);
-      // bell tower with a tall spire so it reads as a church, not a house
-      ctx.fillStyle = "#e7ddc8"; ctx.fillRect(x - 6, y - 30, 12, 20);
-      ctx.fillStyle = "#9e6f4a"; ctx.beginPath(); ctx.moveTo(x - 8, y - 28); ctx.lineTo(x, y - 40); ctx.lineTo(x + 8, y - 28); ctx.closePath(); ctx.fill();
-      // bold white cross on top
-      ctx.fillStyle = "#fff"; ctx.fillRect(x - 1.5, y - 50, 3, 11); ctx.fillRect(x - 5, y - 46, 10, 3);
-      ctx.fillStyle = "#7fa8c8"; ctx.fillRect(x - 3, y - 26, 6, 8);              // door
-      label(x, y - 54, lm.type === "cathedral" ? "CATEDRAL" : "IGLESIA", "#fff", "#9e6f4a"); break;
-    }
-    case "market": {
-      ctx.fillStyle = "#f3c969"; ctx.fillRect(x - 24, y - 12, 48, 24);
-      for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? "#fff" : "#6fbf99"; ctx.fillRect(x - 24 + i * 8, y - 16, 8, 4); }
-      label(x, y - 22, "MERCADO", "#fff", "#3a3540"); break;
-    }
-    case "super": {
-      ctx.fillStyle = "#ffec70"; ctx.fillRect(x - 18, y - 12, 36, 22);
-      ctx.fillStyle = "#e85d75"; ctx.fillRect(x - 18, y - 16, 36, 4);
-      label(x, y - 22, "SÚPER", "#fff", "#e85d75"); break;
-    }
-    case "hotel": {
-      ctx.fillStyle = "#5fb0d6"; ctx.fillRect(x - 16, y - 22, 32, 32);
-      for (let r = 0; r < 4; r++) for (let cc = 0; cc < 3; cc++) {
-        ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fillRect(x - 14 + cc * 10, y - 20 + r * 8, 5, 4);
-      }
-      label(x, y - 30, lm.name.split(" ")[1] ? lm.name.split(" ")[1].toUpperCase() : "HOTEL", "#fff", "#3a6f8a"); break;
-    }
-    case "park": {
-      const pw = lm.w || 116, ph = lm.h || 90;
-      if (lm.marine) { drawMarinePark(lm, pw, ph); break; }
-      drawGreenSpace(lm, pw, ph, { fountain: true, ground: false });
-      areaLabel(x - pw / 2, y - ph / 2, x + pw / 2, y + ph / 2, "PARQUE", "#fff", "#2e7d44"); break;
-    }
-    case "stadium": {
-      drawStadium(lm); break;
-    }
-    case "museum": {
-      // neoclassical facade: portico columns + pediment
-      ctx.fillStyle = "#eae3d2"; ctx.fillRect(x - 22, y - 12, 44, 24);
-      ctx.fillStyle = "#d8cfb8"; ctx.beginPath(); ctx.moveTo(x - 24, y - 12); ctx.lineTo(x, y - 24); ctx.lineTo(x + 24, y - 12); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#c3b79a";
-      for (let i = 0; i < 5; i++) ctx.fillRect(x - 20 + i * 9, y - 10, 4, 20); // columns
-      label(x, y - 28, "MUSEO", "#fff", "#8a6f4a"); break;
-    }
-    case "civic": {
-      ctx.fillStyle = "#6fbf99"; ctx.fillRect(x - 20, y - 10, 40, 22);
-      ctx.fillStyle = "#fff"; ctx.fillRect(x - 6, y - 6, 12, 12);
-      label(x, y - 18, "CULTURA", "#fff", "#2e7d44"); break;
-    }
-    case "marina": {
-      ctx.fillStyle = "#5fb0d6"; ctx.fillRect(x - 18, y - 8, 36, 16);
-      ctx.fillStyle = "#fff"; ctx.fillRect(x - 4, y - 18, 2, 10); ctx.beginPath(); ctx.moveTo(x - 4, y - 18); ctx.lineTo(x + 6, y - 12); ctx.lineTo(x - 4, y - 8); ctx.fill();
-      label(x, y - 24, "YACHT", "#fff", "#3a6f8a"); break;
-    }
-    case "pool": {
-      // Balneario Municipal at La Punta — a SEA-WATER inlet: the cuadra is
-      // painted by the living-sea effect (its outline is in W.WATERS) with a
-      // boat + swimmers inside; here we only tag it with a label.
-      const bw = lm.w || 120, bh = lm.h || 60;
-      areaLabel(x - bw / 2, y - bh / 2, x + bw / 2, y + bh / 2, "BALNEARIO", "#fff", "#3a6f8a"); break;
-    }
-    case "house": {
-      ctx.fillStyle = "#c084d6"; ctx.fillRect(x - 14, y - 10, 28, 20);
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(x - 16, y - 10); ctx.lineTo(x, y - 22); ctx.lineTo(x + 16, y - 10); ctx.fill();
-      label(x, y - 26, "CASA FAIT", "#fff", "#c084d6"); break;
-    }
-    case "estuary": {
-      ctx.fillStyle = "#3a6f8a"; ctx.fillRect(x - 16, y - 6, 32, 12);
-      ctx.fillStyle = "#6fbf99"; ctx.fillRect(x - 16, y - 12, 8, 8); ctx.fillRect(x + 8, y - 12, 8, 8);
-      label(x, y - 20, "MATA LIMÓN", "#fff", "#2e7d44"); break;
-    }
-    case "restaurant": {
-      ctx.fillStyle = "#e85d75"; ctx.fillRect(x - 14, y - 10, 28, 20);
-      ctx.fillStyle = "#fff"; ctx.fillRect(x - 6, y - 4, 12, 6);
-      label(x, y - 18, "MARISQ.", "#fff", "#e85d75"); break;
-    }
-    case "beachsign": {
-      ctx.strokeStyle = "#3a3540"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 14); ctx.stroke();
-      ctx.fillStyle = "#6fbf99"; ctx.fillRect(x - 22, y - 18, 44, 8);
-      label(x, y - 24, "PLAYA", "#fff", "#2e7d44"); break;
-    }
-    case "trainstation": {
-      ctx.fillStyle = "#caa089"; ctx.fillRect(x - 20, y - 14, 40, 24);
-      ctx.fillStyle = "#3a3540"; ctx.fillRect(x - 22, y + 10, 44, 4);
-      ctx.fillStyle = "#fff"; ctx.fillRect(x - 6, y - 8, 12, 6);
-      label(x, y - 22, "TREN", "#fff", "#9e6f4a"); break;
-    }
-    case "port": {
-      ctx.fillStyle = "#5fb0d6"; ctx.fillRect(x - 28, y - 8, 56, 18);
-      // crane
-      ctx.strokeStyle = "#f4d77a"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(x - 18, y - 22); ctx.lineTo(x - 18, y - 8);
-      ctx.moveTo(x - 18, y - 22); ctx.lineTo(x + 6, y - 22);
-      ctx.lineTo(x + 6, y - 16);
-      ctx.stroke();
-      // containers
-      for (let i = 0; i < 4; i++) {
-        ctx.fillStyle = ["#e85d75","#f3c969","#6fbf99","#5fb0d6"][i];
-        ctx.fillRect(x - 24 + i * 12, y - 3, 10, 8);
-      }
-      label(x, y - 30, "PUERTO", "#fff", "#3a6f8a"); break;
-    }
-    case "sign": {
-      ctx.strokeStyle = "#3a3540"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 18); ctx.stroke();
-      ctx.fillStyle = "#3a6f8a"; ctx.fillRect(x - 30, y - 24, 60, 12);
-      ctx.fillStyle = "#fff"; ctx.font = "bold 8px 'JetBrains Mono', monospace"; ctx.textAlign = "center";
-      ctx.fillText("BULEVAR", x, y - 15); break;
-    }
-    case "village": {
-      // cluster of three small houses
-      for (let i = 0; i < 3; i++) {
-        const px = x + (i - 1) * 14;
-        ctx.fillStyle = ["#e85d75","#f3c969","#6fbf99"][i];
-        ctx.fillRect(px - 6, y - 6, 12, 10);
-        ctx.fillStyle = "#9e6f4a";
-        ctx.beginPath(); ctx.moveTo(px - 7, y - 6); ctx.lineTo(px, y - 12); ctx.lineTo(px + 7, y - 6); ctx.fill();
-      }
-      label(x, y - 18, "VILLA", "#fff", "#9e6f4a"); break;
-    }
-    case "highway": {
-      ctx.fillStyle = "#3a6f8a"; ctx.fillRect(x - 18, y - 12, 36, 22);
-      ctx.fillStyle = "#fff"; ctx.font = "bold 12px 'Bungee', sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("27", x, y + 2);
-      label(x, y - 18, "RUTA 27", "#fff", "#3a3540"); break;
-    }
-    case "anchor": {
-      // nautical anchor monument on a low round plinth
-      ctx.fillStyle = "#b8b0a0";
-      ctx.beginPath(); ctx.ellipse(x, y + 6, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#4a5560"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      // shank
-      ctx.beginPath(); ctx.moveTo(x, y - 22); ctx.lineTo(x, y + 4); ctx.stroke();
-      // ring at the top
-      ctx.beginPath(); ctx.arc(x, y - 25, 3.5, 0, Math.PI * 2); ctx.stroke();
-      // stock (crossbar)
-      ctx.beginPath(); ctx.moveTo(x - 9, y - 16); ctx.lineTo(x + 9, y - 16); ctx.stroke();
-      // arms + curved flukes
-      ctx.beginPath();
-      ctx.moveTo(x - 11, y - 2); ctx.quadraticCurveTo(x - 12, y + 5, x - 4, y + 4);
-      ctx.moveTo(x + 11, y - 2); ctx.quadraticCurveTo(x + 12, y + 5, x + 4, y + 4);
-      ctx.moveTo(x, y + 4); ctx.lineTo(x - 11, y - 2);
-      ctx.moveTo(x, y + 4); ctx.lineTo(x + 11, y - 2);
-      ctx.stroke();
-      ctx.lineCap = "butt";
-      label(x, y - 32, "EL ANCLA", "#fff", "#4a5560"); break;
-    }
-    case "bridge": {
-      /* drawn separately by drawBridge */ break;
-    }
+  // THE ART IS DATA NOW. What used to be here: a 26-branch `switch` of raw
+  // Canvas calls, one per landmark type. What is here: a walk over that type's
+  // `parts` in `src/assets/world-props.json`, through the same interpreter the
+  // vehicle catalog uses (c2d/shapes.js).
+  //
+  // THREE TYPES ESCAPE, and they are not an oversight — they are the line §12
+  // draws. A scene is not art: `drawFaroScene` sweeps a beam on the clock,
+  // `drawStadium` clips grass and stands to a footprint the BUILD emitted, and
+  // `drawMarinePark` fills a multi-ring even-odd residual. Turning those into
+  // JSON would mean inventing a Canvas command stream with unrestricted
+  // operations, which is exactly what the register says not to do.
+  if (lm.type === "lighthouse") { drawFaroScene(lm); return; }
+  if (lm.type === "stadium") { drawStadium(lm); return; }
+  if (lm.type === "park") {
+    const pw = lm.w || 116, ph = lm.h || 90;
+    if (lm.marine) { drawMarinePark(lm, pw, ph); return; }
+    drawGreenSpace(lm, pw, ph, { fountain: true, ground: false });
   }
+
+  const prop = propFor(lm.type);
+  if (!prop) return;
+  paintAt(prop.parts, x, y, { vars: propVars(lm, prop) });
+}
+
+/** The catalog record for a type, following `sameAs` — the cathedral is the
+ *  same building as the church and differs only in the word on its pill. */
+function propFor(type) {
+  const rec = PROPS.landmarks[type];
+  if (!rec) return null;
+  return rec.sameAs ? { ...PROPS.landmarks[rec.sameAs], ...rec } : rec;
+}
+
+/** The `$name` substitutions a prop's text may ask for. Kept small and explicit
+ *  rather than handing the whole landmark to the interpreter: a catalog that can
+ *  read any field of any record is a catalog that can break on a world change. */
+function propVars(lm, prop) {
+  return {
+    label: prop.label || "",
+    // A hotel's pill takes the SECOND word of its real name — `Hotel Tioga`
+    // reads TIOGA — and falls back to the generic word when there is not one.
+    second: lm.name?.split(" ")[1]?.toUpperCase() || "HOTEL",
+    w: lm.w || prop.defaultW || 116,
+    h: lm.h || prop.defaultH || 90,
+  };
 }
 
 // Sponsored lotes (remote content): real Puntarenas businesses claim a spot

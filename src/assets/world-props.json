@@ -1,0 +1,245 @@
+{
+  "_note": "LOS HITOS, as data. What each landmark type LOOKS like, keyed by LandmarkType — the same `switch` the renderer used to carry as 26 branches of raw Canvas calls. The world says WHERE a landmark stands (churchill/world/content.py -> manifest.landmarks); this says what is drawn there, in the same spirit as feriaAssets.json and vehicles.json.",
+
+  "version": 1,
+
+  "_geometry": "Plain PIXEL offsets from the landmark's anchor, +y down — the frame the art was already written in (`ctx.fillRect(x - 16, y - 8, 32, 18)` becomes `x: -16, y: -8, w: 32, h: 18`). Parts are drawn in order, so later ones sit on top.",
+
+  "_shapes": "The finite vocabulary in src/render/c2d/shapes.js, shared with the vehicle catalog: rect, roundRect, poly, fan, ellipse, disc, stripes, stroke, strokeRect, text, label, areaLabel, repeat, grid. Data composes these and never invents one.",
+
+  "_scenes": "Three types are NOT here and must not be moved: `lighthouse`, `park` (when marine) and `stadium` call drawFaroScene / drawMarinePark / drawStadium. Those are SCENES, not art — the faro sweeps a beam on the clock, the estadio clips grass and stands to a footprint the build emitted, the marine park fills a multi-ring even-odd residual. §12's own list says a Canvas command stream with unrestricted operations does not become JSON; these are that.",
+
+  "landmarks": {
+    "kiosk": {
+      "note": "a churchill stand: where a delivery starts. White and ORANGE — the drink stays red, because that is the syrup.",
+      "parts": [
+        {"shape": "rect", "fill": "#fff", "x": -16, "y": -8, "w": 32, "h": 18},
+        {"shape": "stripes", "n": 4, "palette": ["#f08a5d", "#fff"], "x": -16, "y": -14, "w": 32, "h": 6},
+        {"shape": "rect", "fill": "rgba(255,255,255,0.9)", "x": -4, "y": -4, "w": 8, "h": 12},
+        {"shape": "rect", "fill": "#ff3d80", "x": -4, "y": 0, "w": 8, "h": 6},
+        {"shape": "rect", "fill": "#fff", "x": -4, "y": -4, "w": 8, "h": 3},
+        {"shape": "label", "x": 0, "y": -22, "text": "CHURCHILL", "fg": "#fff", "bg": "#f08a5d"}
+      ]
+    },
+
+    "ferry": {
+      "note": "THE TERMINAL IS A PLACE, NOT A BOAT. This used to paint a hull in the middle of the terminal's own streets — a second, fake ferry parked on the asphalt beside the two real ones you can drive onto. The landmark keeps its name pill and nothing else.",
+      "parts": [
+        {"shape": "label", "x": 0, "y": -12, "text": "TERMINAL FERRY", "fg": "#fff", "bg": "#3a6f8a"}
+      ]
+    },
+
+    "cruise": {
+      "parts": [
+        {"shape": "rect", "fill": "#fff", "x": -28, "y": -10, "w": 56, "h": 22},
+        {"shape": "rect", "fill": "#f4d77a", "x": -28, "y": -14, "w": 56, "h": 4},
+        {"shape": "rect", "fill": "#fff", "x": -6, "y": -22, "w": 12, "h": 8},
+        {"shape": "label", "x": 0, "y": -28, "text": "MUELLE", "fg": "#fff", "bg": "#3a6f8a"}
+      ]
+    },
+
+    "church": {
+      "note": "pale stucco nave, a bell tower with a spire tall enough that it reads as a church and not a house, and a bold white cross on top",
+      "label": "IGLESIA",
+      "parts": [
+        {"shape": "rect", "fill": "#e7ddc8", "x": -20, "y": -12, "w": 40, "h": 24},
+        {"shape": "rect", "fill": "#b98a5e", "x": -20, "y": -12, "w": 40, "h": 4},
+        {"shape": "rect", "fill": "#e7ddc8", "x": -6, "y": -30, "w": 12, "h": 20},
+        {"shape": "fan", "fill": "#9e6f4a", "pts": [[-8, -28], [0, -40], [8, -28]]},
+        {"shape": "rect", "fill": "#fff", "x": -1.5, "y": -50, "w": 3, "h": 11},
+        {"shape": "rect", "fill": "#fff", "x": -5, "y": -46, "w": 10, "h": 3},
+        {"shape": "rect", "fill": "#7fa8c8", "x": -3, "y": -26, "w": 6, "h": 8},
+        {"shape": "label", "x": 0, "y": -54, "text": "$label", "fg": "#fff", "bg": "#9e6f4a"}
+      ]
+    },
+    "cathedral": {
+      "note": "the same building, its own word on the pill — stone, grey and larger is the PARCEL's job, not the pin's",
+      "label": "CATEDRAL",
+      "sameAs": "church"
+    },
+
+    "market": {
+      "parts": [
+        {"shape": "rect", "fill": "#f3c969", "x": -24, "y": -12, "w": 48, "h": 24},
+        {"shape": "stripes", "n": 6, "palette": ["#6fbf99", "#fff"], "x": -24, "y": -16, "w": 48, "h": 4},
+        {"shape": "label", "x": 0, "y": -22, "text": "MERCADO", "fg": "#fff", "bg": "#3a3540"}
+      ]
+    },
+
+    "super": {
+      "parts": [
+        {"shape": "rect", "fill": "#ffec70", "x": -18, "y": -12, "w": 36, "h": 22},
+        {"shape": "rect", "fill": "#e85d75", "x": -18, "y": -16, "w": 36, "h": 4},
+        {"shape": "label", "x": 0, "y": -22, "text": "SÚPER", "fg": "#fff", "bg": "#e85d75"}
+      ]
+    },
+
+    "hotel": {
+      "note": "the pill takes the SECOND word of the hotel's real name when it has one — `Hotel Tioga` reads TIOGA",
+      "parts": [
+        {"shape": "rect", "fill": "#5fb0d6", "x": -16, "y": -22, "w": 32, "h": 32},
+        {"shape": "grid", "fill": "rgba(255,255,255,0.6)", "x": -14, "y": -20, "cols": 3, "rows": 4, "dx": 10, "dy": 8, "w": 5, "h": 4},
+        {"shape": "label", "x": 0, "y": -30, "text": "$second", "fg": "#fff", "bg": "#3a6f8a"}
+      ]
+    },
+
+    "park": {
+      "note": "the green space and its fountain are drawn by drawGreenSpace, which reads the landmark's own w/h — only the area label is art. A MARINE park is a scene and escapes to drawMarinePark.",
+      "areaOnly": true,
+      "parts": [
+        {"shape": "areaLabel", "w": "$w", "h": "$h", "text": "PARQUE", "fg": "#fff", "bg": "#2e7d44"}
+      ]
+    },
+
+    "museum": {
+      "note": "neoclassical facade: a portico of five columns under a pediment",
+      "parts": [
+        {"shape": "rect", "fill": "#eae3d2", "x": -22, "y": -12, "w": 44, "h": 24},
+        {"shape": "fan", "fill": "#d8cfb8", "pts": [[-24, -12], [0, -24], [24, -12]]},
+        {"shape": "repeat", "n": 5, "dx": 9, "parts": [
+          {"shape": "rect", "fill": "#c3b79a", "x": -20, "y": -10, "w": 4, "h": 20}
+        ]},
+        {"shape": "label", "x": 0, "y": -28, "text": "MUSEO", "fg": "#fff", "bg": "#8a6f4a"}
+      ]
+    },
+
+    "civic": {
+      "parts": [
+        {"shape": "rect", "fill": "#6fbf99", "x": -20, "y": -10, "w": 40, "h": 22},
+        {"shape": "rect", "fill": "#fff", "x": -6, "y": -6, "w": 12, "h": 12},
+        {"shape": "label", "x": 0, "y": -18, "text": "CULTURA", "fg": "#fff", "bg": "#2e7d44"}
+      ]
+    },
+
+    "marina": {
+      "parts": [
+        {"shape": "rect", "fill": "#5fb0d6", "x": -18, "y": -8, "w": 36, "h": 16},
+        {"shape": "rect", "fill": "#fff", "x": -4, "y": -18, "w": 2, "h": 10},
+        {"shape": "fan", "fill": "#fff", "pts": [[-4, -18], [6, -12], [-4, -8]]},
+        {"shape": "label", "x": 0, "y": -24, "text": "YACHT", "fg": "#fff", "bg": "#3a6f8a"}
+      ]
+    },
+
+    "pool": {
+      "note": "El Balneario Municipal at La Punta is a SEA-WATER inlet: its cuadra is painted by the living-sea effect (the outline is in W.WATERS) with a boat and swimmers inside, so the landmark only tags it.",
+      "areaOnly": true,
+      "defaultW": 120,
+      "defaultH": 60,
+      "parts": [
+        {"shape": "areaLabel", "w": "$w", "h": "$h", "text": "BALNEARIO", "fg": "#fff", "bg": "#3a6f8a"}
+      ]
+    },
+
+    "house": {
+      "parts": [
+        {"shape": "rect", "fill": "#c084d6", "x": -14, "y": -10, "w": 28, "h": 20},
+        {"shape": "fan", "fill": "#fff", "pts": [[-16, -10], [0, -22], [16, -10]]},
+        {"shape": "label", "x": 0, "y": -26, "text": "CASA FAIT", "fg": "#fff", "bg": "#c084d6"}
+      ]
+    },
+
+    "estuary": {
+      "parts": [
+        {"shape": "rect", "fill": "#3a6f8a", "x": -16, "y": -6, "w": 32, "h": 12},
+        {"shape": "rect", "fill": "#6fbf99", "x": -16, "y": -12, "w": 8, "h": 8},
+        {"shape": "rect", "fill": "#6fbf99", "x": 8, "y": -12, "w": 8, "h": 8},
+        {"shape": "label", "x": 0, "y": -20, "text": "MATA LIMÓN", "fg": "#fff", "bg": "#2e7d44"}
+      ]
+    },
+
+    "restaurant": {
+      "parts": [
+        {"shape": "rect", "fill": "#e85d75", "x": -14, "y": -10, "w": 28, "h": 20},
+        {"shape": "rect", "fill": "#fff", "x": -6, "y": -4, "w": 12, "h": 6},
+        {"shape": "label", "x": 0, "y": -18, "text": "MARISQ.", "fg": "#fff", "bg": "#e85d75"}
+      ]
+    },
+
+    "beachsign": {
+      "parts": [
+        {"shape": "stroke", "stroke": "#3a3540", "width": 2, "pts": [[0, 0], [0, -14]]},
+        {"shape": "rect", "fill": "#6fbf99", "x": -22, "y": -18, "w": 44, "h": 8},
+        {"shape": "label", "x": 0, "y": -24, "text": "PLAYA", "fg": "#fff", "bg": "#2e7d44"}
+      ]
+    },
+
+    "trainstation": {
+      "parts": [
+        {"shape": "rect", "fill": "#caa089", "x": -20, "y": -14, "w": 40, "h": 24},
+        {"shape": "rect", "fill": "#3a3540", "x": -22, "y": 10, "w": 44, "h": 4},
+        {"shape": "rect", "fill": "#fff", "x": -6, "y": -8, "w": 12, "h": 6},
+        {"shape": "label", "x": 0, "y": -22, "text": "TREN", "fg": "#fff", "bg": "#9e6f4a"}
+      ]
+    },
+
+    "port": {
+      "note": "the quay, a gantry crane, and four containers in four colours",
+      "parts": [
+        {"shape": "rect", "fill": "#5fb0d6", "x": -28, "y": -8, "w": 56, "h": 18},
+        {"shape": "stroke", "stroke": "#f4d77a", "width": 2, "runs": [
+          [[-18, -22], [-18, -8]],
+          [[-18, -22], [6, -22], [6, -16]]
+        ]},
+        {"shape": "repeat", "n": 4, "dx": 12, "parts": [
+          {"shape": "rect", "fill": ["#e85d75", "#f3c969", "#6fbf99", "#5fb0d6"], "x": -24, "y": -3, "w": 10, "h": 8}
+        ]},
+        {"shape": "label", "x": 0, "y": -30, "text": "PUERTO", "fg": "#fff", "bg": "#3a6f8a"}
+      ]
+    },
+
+    "sign": {
+      "note": "a gantry sign over the bulevar — free text, no pill",
+      "parts": [
+        {"shape": "stroke", "stroke": "#3a3540", "width": 2, "pts": [[0, 0], [0, -18]]},
+        {"shape": "rect", "fill": "#3a6f8a", "x": -30, "y": -24, "w": 60, "h": 12},
+        {"shape": "text", "fill": "#fff", "font": "bold 8px 'JetBrains Mono', monospace", "x": 0, "y": -15, "text": "BULEVAR"}
+      ]
+    },
+
+    "village": {
+      "note": "a cluster of three small houses, each its own colour",
+      "parts": [
+        {"shape": "repeat", "n": 3, "dx": 14, "parts": [
+          {"shape": "rect", "fill": ["#e85d75", "#f3c969", "#6fbf99"], "x": -20, "y": -6, "w": 12, "h": 10},
+          {"shape": "fan", "fill": "#9e6f4a", "pts": [[-21, -6], [-14, -12], [-7, -6]]}
+        ]},
+        {"shape": "label", "x": 0, "y": -18, "text": "VILLA", "fg": "#fff", "bg": "#9e6f4a"}
+      ]
+    },
+
+    "highway": {
+      "note": "a route shield with its number set in the display face",
+      "parts": [
+        {"shape": "rect", "fill": "#3a6f8a", "x": -18, "y": -12, "w": 36, "h": 22},
+        {"shape": "text", "fill": "#fff", "font": "bold 12px 'Bungee', sans-serif", "x": 0, "y": 2, "text": "27"},
+        {"shape": "label", "x": 0, "y": -18, "text": "RUTA 27", "fg": "#fff", "bg": "#3a3540"}
+      ]
+    },
+
+    "anchor": {
+      "note": "a nautical anchor monument on a low round plinth: shank, ring, stock, and two curved flukes",
+      "strokeNote": "THE GROUPING IS LOAD-BEARING. Each `stroke` part is one stroke() call, and two calls that overlap composite their antialiased edges TWICE — so merging the shank, the stock and the arms into one path lightens every crossing by ~30 levels. Measured: 384 pixels, all of them exactly where the stock crosses the shank and where the arms meet it. Keep them apart.",
+      "parts": [
+        {"shape": "ellipse", "fill": "#b8b0a0", "cx": 0, "cy": 6, "rx": 14, "ry": 5},
+        {"shape": "stroke", "stroke": "#4a5560", "width": 3, "cap": "round", "join": "round",
+         "note": "shank", "pts": [[0, -22], [0, 4]]},
+        {"shape": "ring", "stroke": "#4a5560", "width": 3, "cap": "round", "cx": 0, "cy": -25, "r": 3.5},
+        {"shape": "stroke", "stroke": "#4a5560", "width": 3, "cap": "round", "join": "round",
+         "note": "the stock, its crossbar", "pts": [[-9, -16], [9, -16]]},
+        {"shape": "stroke", "stroke": "#4a5560", "width": 3, "cap": "round", "join": "round",
+         "note": "arms and curved flukes — ONE path, four subpaths, as they were", "runs": [
+          [[-11, -2], {"q": [-12, 5], "to": [-4, 4]}],
+          [[11, -2], {"q": [12, 5], "to": [4, 4]}],
+          [[0, 4], [-11, -2]],
+          [[0, 4], [11, -2]]
+        ]},
+        {"shape": "label", "x": 0, "y": -32, "text": "EL ANCLA", "fg": "#fff", "bg": "#4a5560"}
+      ]
+    },
+
+    "bridge": {
+      "note": "drawn separately by drawBridge, from the world's own span geometry — the pin adds nothing",
+      "parts": []
+    }
+  }
+}

@@ -105,19 +105,11 @@ class RendererCoverageTests(unittest.TestCase):
     # whole recipe (deck, seam, cap, rail, centre), not just that a key exists,
     # because falling through to `concrete` is what gives a beach ramp railings.
 
-    def test_every_landmark_type_is_dispatched(self):
-        cases = js_cases(read("src", "render", "c2d", "landmarks.js"))
-        for kind in LandmarkType:
-            self.assertIn(str(kind.value), cases,
-                          f"landmarks.js has no case for {kind.value} — it "
-                          f"would draw as a generic pin")
-
-    def test_every_road_class_has_a_painting_rank(self):
-        # `ROAD_ORDER[a.cls] || 0` is why a missing entry is silent: the class
-        # just sorts first and gets painted under everything.
-        for cls in RoadClass:
-            self.assertIn(cls, RENDER_RANK,
-                          f"{cls.value} has no render rank")
+    # Landmark coverage moved to `tests/test_world_props.py` when the 26-branch
+    # `switch (lm.type)` became a walk over `src/assets/world-props.json`. It is
+    # a stronger check there: a type must have a catalog record OR be one of the
+    # three declared SCENES, and a scene must keep its escape in the painter —
+    # a scene that quietly gained a record would be drawn twice.
 
 
 class RuntimeVocabularyTests(unittest.TestCase):

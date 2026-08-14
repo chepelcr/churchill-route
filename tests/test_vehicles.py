@@ -28,6 +28,7 @@ import unittest
 
 from churchill.world.config import ROOT
 from churchill.world.enums import VehicleKind, VehicleMedium
+from tests.shapevocab import implemented_shapes
 
 REGISTRY = os.path.join(ROOT, "src", "assets", "vehicles.json")
 ENTITIES = os.path.join(ROOT, "src", "render", "c2d", "entities.js")
@@ -39,24 +40,6 @@ HEX = re.compile(r"^(#[0-9a-f]{3,8}|rgba?\([\d.,\s]+\))$", re.I)
 def read(path):
     with open(path, encoding="utf-8") as fh:
         return fh.read()
-
-
-def implemented_shapes():
-    """Every shape the two interpreters between them can draw.
-
-    Read as TEXT rather than imported, for the same reason `test_vocabulary.py`
-    does it: the question is what the shipped file says, and importing it would
-    need a bundler.
-    """
-    art, trace = read(ENTITIES), read(SHAPES_JS)
-    names = set()
-    # `PATHS = { rect(g, …) {`, `VEHICLE_SHAPES = { …, ellipse(g, …) {`
-    for text, const in ((trace, "PATHS"), (art, "VEHICLE_SHAPES")):
-        body = text.split(f"{const} = {{", 1)[1]
-        names |= set(re.findall(r"^  (\w+)\(", body, re.M))
-    # …plus the ones the painter handles inline, because they are not contours
-    names |= set(re.findall(r'part\.shape === "(\w+)"', art))
-    return names
 
 
 class VehicleRegistryTests(unittest.TestCase):

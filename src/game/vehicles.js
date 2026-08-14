@@ -1,59 +1,122 @@
-// Vehicle stats — pure data (also imported by tools/gen-inventory.mjs).
-// accel/top in px/s, turn in rad/s, grip 0..1, melt = churchill melt-rate mult.
-// Relaxed cruise tuning: slower top speeds + higher grip than the original
-// arcade values, so driving the puerto feels smooth and unhurried rather than
-// frenetic. accel/top in px/s, turn in rad/s, grip 0..1, melt = melt-rate mult.
+// EL GARAJE — the reader for `src/assets/vehicles.json`. Pure data and pure
+// functions; no DOM, no `window`, so `tools/gen-inventory.mjs` can import it
+// under plain Node, same as `surfaces.js`.
+//
+// Nothing about a vehicle is authored here any more, and that is the point. A
+// vehicle used to be spread across four files that had to be edited together:
+// the stats here, the price in `economy.js`, the engine voice in `audio.js`,
+// and the art as a branch of a 90-line if/else chain in `c2d/entities.js`.
+// Adding one meant touching all four and remembering the fifth thing (a free
+// entry for its medium). It is one record now.
+//
+// What stays ENGINE: the physics, the WebAudio synthesis, and the interpreter
+// that walks `parts` (`paintVehicle` in c2d/entities.js, `traceVehicleSilhouette`
+// in render/vehicleShapes.js). Data composes a finite set of shapes; it cannot
+// invent one.
 //
 // `medium` IS THE GROUND A VEHICLE IS ALLOWED TO EXIST ON, and it is the only
-// concept here the collider reads. A land vehicle treats water as a wall; a
-// water one treats everything BUT water as a wall (physics.js `isWall`). Two
-// consequences worth knowing before adding an entry:
+// concept in the record the collider reads. A land vehicle treats water as a
+// wall; a water one treats everything BUT water as a wall (physics.js `isWall`).
+// Two consequences worth knowing before adding an entry:
 //
 //   * it is not cosmetic. A vehicle with the wrong medium is not slow or
 //     awkward, it is stuck inside a wall at the spawn point.
 //   * the ownership fallback is per-medium (modes.js `resolveVehicle`). Falling
 //     back to the scooter on the estero would put a moped in the sea, so every
-//     medium needs at least one entry in economy.js FREE_VEHICLES.
+//     medium needs at least one `"free": true` entry — `tests/test_vehicles.py`
+//     is the gate.
 //
 // `drag` is optional and only boats set it: friction is DIVIDED by the surface
 // multiplier, and on open water at mul 1.0 a car's friction stops a hull dead.
 // A boat glides, so it drags less and coasts through a turn. Absent = 1.
+//
+// THE LADDER FOR THE LANCHAS IS GRIP, NOT SPEED. A panga holds her line; a
+// deslizador washes wide out of every bend, which is what makes the buoys worth
+// reading. `boat.js` owns the handling model and states the one real rule (way
+// and prop wash buy you the rudder), which is why these can be honest arcade
+// numbers rather than the three stacked suppressions they used to be.
 import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
+// `with { type: "json" }` is NOT decoration — see the same note in surfaces.js:
+// plain Node refuses a bare JSON import (ERR_IMPORT_ATTRIBUTE_MISSING), and
+// this module is imported by tools/gen-inventory.mjs.
+import REGISTRY from "../assets/vehicles.json" with { type: "json" };
 
-export const VEHICLES = {
-  bici:    { name: "Bicicleta repartidora", accel: 170, top: 180, turn: 3.4, grip: 0.90, melt: 0.7, color: "#2e8bd6", roof: "#ffe6b3", w: 20, h: 13, kind: "bike", medium: "land" },
-  scooter: { name: "Scooter retro",        accel: 225, top: 230, turn: 3.05, grip: 0.85, melt: 1.0, color: "#e85d75", roof: "#fff",   w: 22, h: 13, kind: "bike", medium: "land" },
-  tuktuk:  { name: "Tuk-tuk porteño",      accel: 202, top: 212, turn: 2.8, grip: 0.82, melt: 0.9, color: "#f3c969", roof: "#3a3a48", w: 26, h: 17, kind: "car", medium: "land"  },
-  cart:    { name: "Mini carrito helado",  accel: 184, top: 194, turn: 2.55, grip: 0.80, melt: 0.55, color: "#fff",  roof: "#e85d75", w: 27, h: 17, kind: "car", medium: "land"  },
-  pickup:  { name: "Pickup pescador",      accel: 253, top: 270, turn: 2.45, grip: 0.78, melt: 1.1, color: "#6fbf99", roof: "#4a3a2a", w: 31, h: 19, kind: "car", medium: "land"  },
-  turbo:   { name: "Turbo Churchill Kart", accel: 330, top: 352, turn: 3.05, grip: 0.72, melt: 1.3, color: "#ff3d80", roof: "#fff36b", w: 25, h: 14, kind: "car", medium: "land"  },
+/** The flat runtime record every consumer already expects: stats hoisted
+ *  alongside the palette and the bounds. Built rather than authored, so the
+ *  registry can grow fields (`voice`, `parts`, `price`) that physics never
+ *  has to know about. */
+export const VEHICLES = Object.fromEntries(
+  Object.entries(REGISTRY.vehicles).map(([key, v]) => [key, {
+    name: v.name,
+    ...v.stats,
+    color: v.color,
+    roof: v.roof,
+    w: v.w,
+    h: v.h,
+    kind: v.kind,
+    medium: v.medium,
+  }]),
+);
 
-  // ---- Las lanchas ---------------------------------------------------------
-  // The estero boats. They are ordinary entries on purpose: the picker, the
-  // shop, the paint swatches and applyOwnedShopEffects all work on them with no
-  // special case, because the only thing that makes them boats is `medium`.
-  //
-  // THE LADDER IS GRIP, NOT SPEED. A panga holds her line; a deslizador washes
-  // wide out of every bend, which is what makes the buoys worth reading. That
-  // part was always right and is untouched.
-  //
-  // The NUMBERS moved, and the comment that used to sit here is why they had to.
-  // It read: "their `turn` is LOW next to a car's — nothing on water pivots —
-  // and physics.js suppresses the pivot-in-place term for them". Two of those
-  // three clauses were doing the same job twice, and on top of them physics.js
-  // ALSO multiplied by `0.25 + 0.75*spdFac`. Three suppressions stacked on a
-  // low base is not a heavy boat, it is a boat that does not answer: stopped,
-  // she had a quarter of a turn rate already below any car's, and could not
-  // build the speed that was the only way out of it. `boat.js` now holds the
-  // handling model and states the one real rule (way and prop wash buy you the
-  // rudder), so these can be honest arcade numbers again.
-  panga:      { name: "Panga de trabajo", accel: 210, top: 235, turn: 2.4, grip: 0.62, melt: 1.0, drag: 0.34, color: "#f6f2e8", roof: "#3a6f8a", w: 34, h: 14, kind: "boat", medium: "water" },
-  lanchataxi: { name: "Lancha taxi",      accel: 265, top: 305, turn: 2.7, grip: 0.52, melt: 1.0, drag: 0.30, color: "#4fb0d6", roof: "#f6f2e8", w: 32, h: 12, kind: "boat", medium: "water" },
-  deslizador: { name: "Deslizador",       accel: 345, top: 400, turn: 3.0, grip: 0.42, melt: 1.0, drag: 0.24, color: "#ff3d80", roof: "#26222c", w: 30, h: 11, kind: "boat", medium: "water" },
-};
+/** Vehicles a player owns without buying one. MUTABLE and order-significant:
+ *  `freeVehicleFor` takes the FIRST entry of a medium, so this is also the
+ *  answer to "which boat does someone who owns no boat sail". */
+export const FREE_VEHICLES = Object.entries(REGISTRY.vehicles)
+  .filter(([, v]) => v.free)
+  .map(([key]) => key);
+
+/** Shop price by key. Mutable on purpose — `editorContent.js` writes
+ *  editor-authored vehicles into it at load. */
+export const VEHICLE_PRICES = Object.fromEntries(
+  Object.entries(REGISTRY.vehicles)
+    .filter(([, v]) => v.price)
+    .map(([key, v]) => [key, v.price]),
+);
+
+/** Engine character per vehicle: oscillator flavour, pitch range (base..base+
+ *  span Hz across the speed range), filter opening and loudness.
+ *
+ *  THE LANCHAS HAVE NO ENTRY, and that is the behaviour as shipped, not an
+ *  oversight in the transcription: all three fall back to the scooter's voice,
+ *  so an outboard currently sounds like a moped. Left exactly as it was —
+ *  giving them a voice is an audio change, not a migration. */
+export const ENGINE_VOICES = Object.fromEntries(
+  Object.entries(REGISTRY.vehicles)
+    .filter(([, v]) => v.voice)
+    .map(([key, v]) => [key, v.voice]),
+);
 
 //: the medium a vehicle key belongs to, defaulting to land — an editor-authored
 //: vehicle that predates the field is a car, which is what it always was.
 export function vehicleMedium(key) {
   return VEHICLES[key]?.medium || VEHICLE_MEDIUM.LAND;
+}
+
+/** The drawing recipe for a key: its own `parts` with every `{ref}` spliced in,
+ *  or the fallback run for its kind.
+ *
+ *  The fallback is not defensive padding — `editorContent.js` writes vehicles
+ *  into `VEHICLES` with no art at all, and before this file they reached the
+ *  `else` at the end of each branch of the paint chain. That `else` is now
+ *  `defaults[kind]`, which is the same answer written down. */
+export function vehicleParts(key) {
+  const rec = REGISTRY.vehicles[key];
+  const kind = rec?.kind || VEHICLES[key]?.kind || "car";
+  const list = rec?.parts
+    || (REGISTRY.defaults[kind] || REGISTRY.defaults.car).map((ref) => ({ ref }));
+  const out = [];
+  for (const part of list) {
+    if (part.ref) out.push(...(REGISTRY.templates[part.ref] || []));
+    else out.push(part);
+  }
+  return out;
+}
+
+/** The colour a part asks for: `$color`/`$roof` resolve against this vehicle's
+ *  own palette (which is what makes a bought paint swatch repaint the body and
+ *  leave the boot-top red), anything else is the literal it already is. */
+export function partColor(spec, veh) {
+  if (spec === "$color") return veh.color;
+  if (spec === "$roof") return veh.roof;
+  return spec;
 }

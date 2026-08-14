@@ -120,9 +120,46 @@ tiene implementación en el renderer.
       validan el emit pero no lo serializan (`world_json.py` hace `json.dump` de
       dicts), y un `StrEnum` ES su string. 51 tests (antes 45), snapshot de 1001
       archivos byte-idéntico, los cinco smokes en verde.
-- [ ] **`src/assets/vehicles.json`**: stats, medio, bounds, partes, colores,
-      montaje de carga, voz de audio, precio. Queda motor: física, intérprete de
-      siluetas, síntesis WebAudio.
+- [x] **`src/assets/vehicles.json`.** Hecho 2026-08-13. Un vehículo estaba
+      repartido en CUATRO archivos que había que editar juntos: los stats en
+      `game/vehicles.js`, el precio en `economy.js`, la voz del motor en
+      `audio.js`, y el arte como una rama de una cadena `if/else` de 90 líneas
+      en `c2d/entities.js`. Ahora es **un registro**, y `vehicles.js` es un
+      lector como quedó `surfaces.js`.
+
+      **El arte también** — que era la mitad difícil. Los nueve se re-escribieron
+      como `parts` ordenadas en un DSL finito (mismo patrón que
+      `feriaAssets.json`): `rect`, `roundRect`, `poly` con tramos cuadráticos,
+      `ellipse`, `disc`, `stripes`, `stroke`, `strokeRect`. Las coordenadas son
+      `[k, px]` = *k · semieje + px*, que es exactamente la aritmética que el
+      arte a mano ya hacía (`-veh.w/2 + 3` es `[-1, 3]`) — por eso se pudo
+      transcribir sin mover un pixel.
+
+      **Y LA SOMBRA SALE DE LAS MISMAS PARTES.** `traceVehicleSilhouette` era
+      una SEGUNDA cadena `if/else` a mano al lado de la del sprite: una forma
+      que puede derivar, y un vehículo podía dibujarse bien y proyectar la
+      sombra de otro sin que nada lo dijera. Hoy una parte lleva
+      `silhouette: true` y entra en las dos, o `"only"` y entra sólo en el
+      contorno — que es lo que necesitan las dos ruedas, porque la sombra de una
+      bici es una cápsula alrededor de cuadro Y ciclista, no ninguna pieza
+      pintada.
+
+      **Verificado pixel por pixel**: `tools/shot-vehicles.mjs` dibuja los nueve
+      con sus dos pintores y `tools/png-diff.mjs` compara. **310 500 pixels,
+      cero distintos.** La primera pasada dio 562 con delta de canal 1, todos
+      sobre partes `rect`: había cambiado `fillRect` por `beginPath+rect+fill`,
+      que no son el mismo rasterizador en coordenadas fraccionarias. El sprite
+      usa `fillRect`; la silueta sigue usando `g.rect`, como siempre.
+
+      Queda motor: la física, la síntesis WebAudio y los dos intérpretes.
+      `tests/test_vehicles.py` (11 casos) cuida los empalmes — una `shape` que
+      nadie implementa se SALTA en silencio, o sea un vehículo al que le falta
+      una rueda. Y un medio sin vehículo gratis no se ve feo: deja al jugador
+      dentro de una pared en medio del estero.
+
+      Anotado y **no** arreglado: las tres lanchas no tienen voz y caen a la del
+      scooter, así que un fuera de borda suena a moto. Es el comportamiento
+      publicado; darles voz es un cambio de audio, no una migración.
 - [ ] **`src/assets/world-props.json`**: registro de tipo semántico → asset para
       landmarks/parcelas/señales, con el mismo DSL finito de la feria.
 - [ ] **`src/assets/materials.json`**: terreno, calles, estructuras, minimapa y

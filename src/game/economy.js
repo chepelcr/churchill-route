@@ -4,12 +4,21 @@
 // vehicles, more colors) = new entries here, no schema changes.
 import { state } from "./state.js";
 import { saveProgress } from "./progress.js";
-import { VEHICLES } from "./vehicles.js";
+import { FREE_VEHICLES, VEHICLES, VEHICLE_PRICES } from "./vehicles.js";
 
-// EVERY MEDIUM NEEDS A FREE ENTRY. The ownership fallback in modes.js picks the
-// first free vehicle of the medium a run requires, so a player who owns no boat
-// still gets the panga on the estero instead of a scooter in the sea.
-export const FREE_VEHICLES = ["bici", "scooter", "tuktuk", "panga"];
+// WHICH VEHICLES ARE FREE AND WHAT THE REST COST BELONG TO THE VEHICLE, not to
+// the wallet. They were two hand-kept lists here, so the answer to "does this
+// vehicle exist" and the answer to "what does it cost" lived in different files
+// and could disagree — a price for a key with no vehicle simply did nothing,
+// and a vehicle whose medium had no free entry stranded the player.
+// `src/assets/vehicles.json` owns both now; this module re-exports them because
+// the shop and the picker have always asked economy for a price.
+//
+// EVERY MEDIUM STILL NEEDS A FREE ENTRY. The ownership fallback in modes.js
+// picks the first free vehicle of the medium a run requires, so a player who
+// owns no boat gets the panga on the estero instead of a scooter in the sea.
+// `tests/test_vehicles.py` is the gate.
+export { FREE_VEHICLES, VEHICLE_PRICES };
 
 // Earn rates — generous so the shop is reachable in a few runs. A delivery
 // pays COINS_PER_DELIVERY (+bonus for a fresh, unmelted drop); in arcade the
@@ -39,11 +48,6 @@ export const COLORS = [
   { id: "col_negro",   name: "Negro noche",   hex: "#26222c", price: 80 },
   { id: "col_dorado",  name: "Dorado leyenda", hex: "#e8b53a", price: 80 },
 ];
-
-export const VEHICLE_PRICES = {
-  cart: 350, pickup: 900, turbo: 1500,
-  lanchataxi: 600, deslizador: 1400,
-};
 
 // IAP coin packs (Play Billing CONSUMABLE product ids → coin amounts)
 export const COIN_PACKS = [

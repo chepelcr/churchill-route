@@ -845,7 +845,7 @@ foundation, P2 = later authoring surface.
 
 | Priority | Current code authority | What must move to data | Proposed authority | What remains engine code |
 |---|---|---|---|---|
-| P0 | `vehicles.js`, `entities.js`, `vehicleShapes.js`, `audio.js`, economy/editor vehicle merge | complete vehicle definition: stats, medium, bounds/collision, body parts, colors, cargo mounts, sound voice, price/unlock | `src/assets/vehicles.json` with versioned schema | vehicle physics, part/silhouette interpreter, WebAudio synthesis |
+| P0 | ~~`vehicles.js`, `entities.js`, `vehicleShapes.js`, `audio.js`, economy/editor vehicle merge~~ **DONE 2026-08-13** | complete vehicle definition: stats, medium, bounds/collision, body parts, colors, cargo mounts, sound voice, price/unlock | `src/assets/vehicles.json` with versioned schema — proved pixel-identical over all nine (`tools/shot-vehicles.mjs` + `tools/png-diff.mjs`, 310 500 px, 0 changed) | vehicle physics, part/silhouette interpreter, WebAudio synthesis |
 | P0 | surface mirrors across Python/JS/Pixi/editor | one canonical surface registry with wire ID, labels, roles, speed, materials | versioned shared surface JSON consumed/generated into both runtimes | raster algorithms and collision category evaluation |
 | P0 | ~~loose string vocabularies in DTOs, simulation, renderer, UI, and editor~~ **DONE 2026-08-11 / 08-13** | stage/sign/pier/vehicle/host/geometry/mode identities and validation | Python enum layer plus deterministic generated JS/JSON vocabulary — 17 enums, `enums/{features,game,editing,surface}.py` | state transitions, rendering, geometry, validation algorithms |
 | P0 | landmark/parcel/sign switches | asset kind registry and mapping from semantic type to asset | `src/assets/world-props.json` or per-family files | finite shape DSL and draw dispatch by schema |
@@ -1035,7 +1035,7 @@ styles the game actually knows how to draw or simulate.
 
 | Repeated identity | Correct authority | Reason not to make it a language enum |
 |---|---|---|
-| vehicle keys (`scooter`, `panga`, etc.) | `vehicles.json` asset registry | designers should add vehicles without extending engine source |
+| vehicle keys (`scooter`, `panga`, etc.) | `vehicles.json` asset registry — **built 2026-08-13** | designers should add vehicles without extending engine source |
 | district, stage, landmark, customer, ferry, and kiosk IDs | world/content registries with reference validation | these are authored records, not engine states |
 | NPC type IDs and NPC art IDs | `npcTypes.json` plus an art registry | NPC types are already data-extensible |
 | attraction kinds | `feriaAssets.json` schema/registry | the existing shape DSL is the authority and can grow as data |

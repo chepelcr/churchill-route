@@ -1,8 +1,9 @@
 // Moving things + the player: peds, swimmers, traffic, trains, gulls, boats,
 // vendors, animals, the delivery target, arcade coins and the vehicle sprite.
 import { state } from "../../game/state.js";
-import { traceVehicleSilhouette } from "../vehicleShapes.js";
-import { VEHICLE_KIND, VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
+import { PATHS, evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
+import { partColor, vehicleParts } from "../../game/vehicles.js";
+import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, hash01, lastT, roundRect } from "./gfx.js";
 
 // THE HULL EVERY BOAT IN THIS PORT IS DRAWN FROM. It used to live inside
@@ -563,139 +564,85 @@ function drawTargetCustomer(t) {
   ctx.beginPath(); ctx.moveTo(c.x + 3, c.y - 4); ctx.lineTo(c.x + 7, c.y - 10 - wave); ctx.stroke();
 }
 
-// The player's lancha, drawn from the same parts as the port's own boats
-// (drawBoat above): a white sheer curving to the bow, the red boot-top at the
-// waterline, a cabin or console, an outboard on the transom. What differs is
-// that the HULL takes veh.color, because the paint swatches have to read at a
-// glance — so the boot-top and the trim stay constant and carry the boat idiom
-// while the topsides carry the player's choice.
-function paintBoat(ctx, key, veh) {
-  const L = veh.w / 2, H = veh.h / 2;
-  ctx.fillStyle = "rgba(255,255,255,0.22)";           // bow wave off the stem
-  ctx.beginPath();
-  ctx.moveTo(L, 0); ctx.lineTo(L - 5, -H - 3); ctx.lineTo(L + 5, 0); ctx.lineTo(L - 5, H + 3);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = veh.color;                          // topsides
-  ctx.beginPath();
-  ctx.moveTo(L, 0);
-  ctx.quadraticCurveTo(L * 0.2, -H, -L + 2, -H + 1);
-  ctx.lineTo(-L, -H + 1); ctx.lineTo(-L, H - 1); ctx.lineTo(-L + 2, H - 1);
-  ctx.quadraticCurveTo(L * 0.2, H, L, 0);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#e2503f";                          // the boot-top, always red
-  ctx.beginPath();
-  ctx.moveTo(L * 0.94, 0);
-  ctx.quadraticCurveTo(L * 0.2, H, -L + 2, H - 1);
-  ctx.lineTo(-L, H - 1); ctx.lineTo(-L, H - 3);
-  ctx.quadraticCurveTo(L * 0.2, H - 2.5, L * 0.94, 0);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.5)";            // the sheer highlight
-  ctx.fillRect(-L + 3, -H + 1.5, veh.w - 7, 1);
-  if (key === "deslizador") {
-    ctx.fillStyle = veh.roof;                         // low wraparound screen
-    ctx.beginPath();
-    ctx.moveTo(L * 0.34, -H + 2); ctx.lineTo(L * 0.06, -H + 2);
-    ctx.lineTo(L * 0.06, H - 2); ctx.lineTo(L * 0.34, H - 2);
-    ctx.closePath(); ctx.fill();
-  } else {
-    ctx.fillStyle = veh.roof;                         // console / cabin
-    roundRect(ctx, -L * 0.2, -H + 2, veh.w * (key === "panga" ? 0.26 : 0.3), veh.h - 4, 2, true, false);
-  }
-  ctx.strokeStyle = "#8a5f33";                        // the outboard on her transom
-  ctx.lineWidth = 1.8; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(-L + 1, 0); ctx.lineTo(-L - 3.5, 0); ctx.stroke();
-  ctx.fillStyle = "#26222c";
-  ctx.beginPath(); ctx.arc(-L - 4, 0, 1.8, 0, Math.PI * 2); ctx.fill();
-}
+// THE VEHICLE SPRITE IS AN INTERPRETER NOW.
+//
+// What used to be here: `paintBoat`, plus a 90-line `if (kind === bike) … else
+// if (key === "tuktuk") … else if (key === "cart") …` chain of raw Canvas calls
+// — one branch per vehicle, art and engine welded together. Adding a vehicle
+// meant editing this function, which is precisely the thing `docs/inventory.md`
+// §12 says a designer should never have to do.
+//
+// What is here instead: a walk over the vehicle's `parts` from
+// `src/assets/vehicles.json`, in order, outward from the centre. The finite
+// shape vocabulary below IS the engine's half of the contract — data may
+// compose these, never invent one — exactly as the feria catalog's `SHAPES`
+// works for the rides.
+//
+// Drawn centred at (0,0) facing +x; reused by the in-game player draw and by
+// the UI vehicle preview.
+const VEHICLE_SHAPES = {
+  ...PATHS,        // rect, roundRect, poly — shared with the silhouette trace
 
-// Vehicle sprite painter, reused by the in-game player draw and the UI
-// vehicle preview (StageSelect). Draws centered at (0,0) facing +x.
+  // Canvas-only, and none of them is ever a silhouette part: a wheel does not
+  // belong in a body outline, and stripes are a fill pattern rather than a
+  // contour at all.
+  ellipse(g, p, X, Y) {
+    g.ellipse(X(p.cx), Y(p.cy), p.rx, p.ry, 0, 0, Math.PI * 2);
+  },
+  disc(g, p, X, Y) {
+    g.arc(X(p.cx), Y(p.cy), p.r, 0, Math.PI * 2);
+  },
+};
+
 function paintVehicle(g, key, veh) {
-  const ctx = g;
-  if (veh.kind === VEHICLE_KIND.BOAT) {
-    paintBoat(ctx, key, veh);
-  } else if (veh.kind === VEHICLE_KIND.BIKE) {
-    // two-wheeler: wheels, frame, rider with helmet
-    ctx.fillStyle = "#26222c";
-    ctx.beginPath(); ctx.ellipse(-veh.w/2 + 3, 0, 3.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(veh.w/2 - 3, 0, 3.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = veh.color;
-    if (key === "scooter") {
-      roundRect(ctx, -veh.w/2 + 3, -3, veh.w - 6, 6, 2.5, true, false);   // deck + leg shield
-      ctx.fillRect(veh.w/2 - 7, -4, 3, 8);
-    } else {
-      roundRect(ctx, -veh.w/2 + 4, -1.5, veh.w - 8, 3, 1.5, true, false); // thin bici frame
-      ctx.strokeStyle = "rgba(38,34,44,0.72)";              // empty rear cargo rack
-      ctx.lineWidth = 1;
-      ctx.strokeRect(-veh.w/2 + 2, -3.5, 5, 7);
+  const X = (v) => evalOn(v, veh.w / 2);
+  const Y = (v) => evalOn(v, veh.h / 2);
+  for (const part of vehicleParts(key)) {
+    if (part.silhouette === "only") continue;   // shadow-only, never painted
+
+    if (part.shape === "stripes") {
+      // A run of n bands across one rect, alternating a palette — the
+      // heladero's awning. Its own shape because the alternation is the idea.
+      const x = X(part.x), w = X(part.w), band = w / part.n;
+      for (let i = 0; i < part.n; i++) {
+        g.fillStyle = partColor(part.palette[i % part.palette.length], veh);
+        g.fillRect(x + i * band, Y(part.y), band, Y(part.h));
+      }
+      continue;
     }
-    ctx.fillStyle = "rgba(20,40,60,0.6)";                  // handlebar
-    ctx.fillRect(veh.w/2 - 6, -veh.h/2 + 2, 2, veh.h - 4);
-    ctx.fillStyle = veh.roof;                               // rider helmet
-    ctx.beginPath(); ctx.arc(-1, 0, 3.6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#fffbe8";                              // headlight
-    ctx.fillRect(veh.w/2 - 2, -1.5, 2, 3);
-  } else if (key === "tuktuk") {
-    // three-wheeler: single front wheel, cabin with canopy
-    ctx.fillStyle = "#26222c";
-    ctx.beginPath(); ctx.ellipse(veh.w/2 - 2, 0, 2.6, 2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-veh.w/2 + 4, -veh.h/2 + 1, 2.6, 2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-veh.w/2 + 4, veh.h/2 - 1, 2.6, 2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = veh.color;
-    ctx.beginPath();                                        // teardrop body
-    ctx.moveTo(veh.w/2, 0);
-    ctx.quadraticCurveTo(veh.w/2 - 4, -veh.h/2, -veh.w/2 + 2, -veh.h/2 + 1);
-    ctx.lineTo(-veh.w/2 + 2, veh.h/2 - 1);
-    ctx.quadraticCurveTo(veh.w/2 - 4, veh.h/2, veh.w/2, 0);
-    ctx.fill();
-    ctx.fillStyle = veh.roof;                               // canopy
-    roundRect(ctx, -veh.w/2 + 3, -veh.h/2 + 2.5, veh.w * 0.6, veh.h - 5, 2, true, false);
-    ctx.fillStyle = "#fffbe8"; ctx.fillRect(veh.w/2 - 2, -1.5, 2, 3);
-  } else if (key === "cart") {
-    // ice-cream cart: white box, striped canopy, small wheels
-    ctx.fillStyle = "#26222c";
-    ctx.fillRect(-veh.w/2 + 3, -veh.h/2 - 1, 4, 2); ctx.fillRect(-veh.w/2 + 3, veh.h/2 - 1, 4, 2);
-    ctx.fillRect(veh.w/2 - 7, -veh.h/2 - 1, 4, 2); ctx.fillRect(veh.w/2 - 7, veh.h/2 - 1, 4, 2);
-    ctx.fillStyle = veh.color;
-    roundRect(ctx, -veh.w/2, -veh.h/2, veh.w, veh.h, 3, true, false);
-    for (let i = 0; i < 4; i++) {                           // striped canopy
-      ctx.fillStyle = i % 2 ? "#fff" : veh.roof;
-      ctx.fillRect(-veh.w/2 + 2 + i * (veh.w - 4) / 4, -veh.h/2 + 1, (veh.w - 4) / 4, veh.h * 0.45);
+    if (part.shape === "stroke") {
+      g.strokeStyle = partColor(part.stroke, veh);
+      g.lineWidth = part.width;
+      if (part.cap) g.lineCap = part.cap;
+      g.beginPath();
+      part.pts.forEach((pt, i) => (i ? g.lineTo(X(pt[0]), Y(pt[1])) : g.moveTo(X(pt[0]), Y(pt[1]))));
+      g.stroke();
+      continue;
     }
-    ctx.fillStyle = "#5fb0d6"; ctx.fillRect(-veh.w/2 + 4, veh.h/2 - 6, veh.w - 8, 3); // freezer lid
-  } else if (key === "pickup") {
-    // pickup: cab up front, open cargo bed behind
-    ctx.fillStyle = veh.color;
-    roundRect(ctx, -veh.w/2, -veh.h/2, veh.w, veh.h, 3, true, false);
-    ctx.fillStyle = veh.roof;                               // cab roof
-    ctx.fillRect(veh.w/2 - 14, -veh.h/2 + 2, 9, veh.h - 4);
-    ctx.fillStyle = "rgba(30,25,20,0.55)";                  // bed
-    ctx.fillRect(-veh.w/2 + 2, -veh.h/2 + 2, veh.w/2 + 2, veh.h - 4);
-    ctx.fillStyle = "#e8e4da";                              // cooler in the bed
-    ctx.fillRect(-veh.w/2 + 5, -3, 7, 6);
-    ctx.fillStyle = "#fffbe8";
-    ctx.fillRect(veh.w/2 - 2, -veh.h/2 + 1, 2, 3); ctx.fillRect(veh.w/2 - 2, veh.h/2 - 4, 2, 3);
-  } else if (key === "turbo") {
-    // kart: low body, exposed wheels, rear spoiler
-    ctx.fillStyle = "#26222c";
-    ctx.fillRect(-veh.w/2 + 1, -veh.h/2 - 2, 5, 3); ctx.fillRect(-veh.w/2 + 1, veh.h/2 - 1, 5, 3);
-    ctx.fillRect(veh.w/2 - 6, -veh.h/2 - 2, 5, 3); ctx.fillRect(veh.w/2 - 6, veh.h/2 - 1, 5, 3);
-    ctx.fillStyle = veh.color;                              // narrow hull
-    roundRect(ctx, -veh.w/2, -veh.h/2 + 3, veh.w, veh.h - 6, 3, true, false);
-    ctx.fillStyle = veh.roof;                               // driver
-    ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = veh.color;                              // spoiler
-    ctx.fillRect(-veh.w/2 - 2, -veh.h/2 + 1, 3, veh.h - 2);
-    ctx.fillStyle = "#fffbe8"; ctx.fillRect(veh.w/2 - 2, -1.5, 2, 3);
-  } else {
-    ctx.fillStyle = veh.color;
-    roundRect(ctx, -veh.w/2, -veh.h/2, veh.w, veh.h, 3, true, false);
-    ctx.fillStyle = veh.roof;
-    ctx.fillRect(-veh.w/2 + 2, -veh.h/2 + 2, veh.w - 4, veh.h * 0.5);
-    ctx.fillStyle = "rgba(20,40,60,0.6)";
-    ctx.fillRect(veh.w/2 - 7, -veh.h/2 + 2, 4, veh.h - 4);
-    ctx.fillStyle = "#fffbe8";
-    ctx.fillRect(veh.w/2 - 2, -veh.h/2 + 1, 2, 3); ctx.fillRect(veh.w/2 - 2, veh.h/2 - 4, 2, 3);
+    if (part.shape === "strokeRect") {
+      g.strokeStyle = partColor(part.stroke, veh);
+      g.lineWidth = part.width;
+      g.strokeRect(X(part.x), Y(part.y), X(part.w), Y(part.h));
+      continue;
+    }
+    if (part.shape === "rect") {
+      // `fillRect`, NOT beginPath+rect+fill. They are not the same rasteriser:
+      // on the fractional coordinates this art is full of (y: -1.5, h: 3, under
+      // a 5x preview scale) the path route antialiases one level differently,
+      // which showed up as 562 pixels of delta-1 across the headlights, the
+      // wheels, the handlebar and the spoiler — every `rect` part and nothing
+      // else. The silhouette still uses `g.rect`, because the trace always did.
+      g.fillStyle = partColor(part.fill, veh);
+      g.fillRect(X(part.x), Y(part.y), X(part.w), Y(part.h));
+      continue;
+    }
+
+    const build = VEHICLE_SHAPES[part.shape];
+    if (!build) continue;
+    g.fillStyle = partColor(part.fill, veh);
+    g.beginPath();
+    build(g, part, X, Y);
+    g.fill();
   }
 }
 

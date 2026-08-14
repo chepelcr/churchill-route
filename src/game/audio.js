@@ -4,6 +4,7 @@
 //
 // One-shots build tiny throwaway node graphs; the continuous engine and
 // drift voices are created once and steered with setTargetAtTime.
+import { ENGINE_VOICES } from "./vehicles.js";
 
 const MUTE_KEY = "churchill_muted_v1";
 const VOL_KEY = "churchill_volume_v1";
@@ -246,17 +247,17 @@ function noiseHit({ dur = 0.05, gain = 0.1, at = 0, band = null }) {
   s.start(t0); s.stop(t0 + dur + 0.02);
 }
 
-// Per-vehicle engine character: oscillator flavor, pitch range (base..base+span
-// Hz over the speed range), filter opening and loudness. The bici is nearly
-// silent — a freewheel whir, not a motor.
-const ENGINE_VOICES = {
-  bici:    { type: "triangle", base: 190, span: 150, filter: 1300, gain: 0.022, detune: 3 },
-  scooter: { type: "sawtooth", base: 68,  span: 110, filter: 720,  gain: 0.075, detune: 9 },
-  tuktuk:  { type: "square",   base: 36,  span: 50,  filter: 420,  gain: 0.06,  detune: 5 },
-  cart:    { type: "triangle", base: 55,  span: 70,  filter: 520,  gain: 0.05,  detune: 6 },
-  pickup:  { type: "sawtooth", base: 30,  span: 55,  filter: 380,  gain: 0.075, detune: 6 },
-  turbo:   { type: "sawtooth", base: 50,  span: 130, filter: 950,  gain: 0.085, detune: 12 },
-};
+// Per-vehicle engine character — oscillator flavour, pitch range (base..base+
+// span Hz over the speed range), filter opening and loudness — read from the
+// vehicle's own record in `src/assets/vehicles.json`. The synthesis below is
+// engine; WHICH voice a vehicle has is part of what that vehicle IS, and
+// keeping it here meant adding a vehicle in one file and hearing it in another.
+// The bici is nearly silent on purpose: a freewheel whir, not a motor.
+//
+// THE THREE LANCHAS HAVE NO VOICE and fall back to the scooter's, so an
+// outboard currently sounds like a moped. That is the behaviour as shipped, not
+// a gap opened by moving the table — kept deliberately, because giving them one
+// is an audio change rather than a migration.
 const DEFAULT_VOICE = ENGINE_VOICES.scooter;
 
 const RECIPES = {

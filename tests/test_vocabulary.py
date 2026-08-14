@@ -163,37 +163,21 @@ class RuntimeVocabularyTests(unittest.TestCase):
         self.assertTrue(kinds <= {m.value for m in StageKind},
                         f"a shipped stage has a kind outside StageKind: {kinds}")
 
-    def test_every_vehicle_medium_can_be_driven_somewhere(self):
-        # `resolveVehicle` falls back PER MEDIUM, so a medium with no free
-        # vehicle strands the player: modes.js would hand back `undefined` and
-        # the run starts with no hull at all. The literal fallback pair in
-        # `freeVehicleFor` is the belt to that braces.
-        vehicles = read("src", "game", "vehicles.js")
-        for medium in VehicleMedium:
-            self.assertIn(f'medium: "{medium.value}"', vehicles,
-                          f"no vehicle exists for medium {medium.value}")
+    # Coverage of the media themselves — that each one has a vehicle, and a
+    # FREE one — moved to `tests/test_vehicles.py` when the roster became
+    # `src/assets/vehicles.json`. It belongs with the registry it reads.
 
-    #: `car` is the DEFAULT body plan, not a branch — both painters fall
-    #: through to it, and a four-wheeled vehicle with no special shape is drawn
-    #: by the final `else`. Asserting it has a branch would be asserting a
-    #: refactor nobody wants.
-    BRANCHED_KINDS = (VehicleKind.BIKE, VehicleKind.BOAT)
-
-    def test_every_vehicle_kind_is_drawn_and_cast(self):
-        # Two painters, and they must agree: the sprite is what you see, the
-        # trace is the shadow under it. A kind branched in one and not the
-        # other is a vehicle wearing somebody else's shadow.
-        art = read("src", "render", "c2d", "entities.js")
-        trace = read("src", "render", "vehicleShapes.js")
-        for kind in self.BRANCHED_KINDS:
-            token = f"VEHICLE_KIND.{kind.name}"
-            self.assertIn(token, art, f"{kind.value} has no branch in paintVehicle")
-            self.assertIn(token, trace,
-                          f"{kind.value} has no branch in traceVehicleSilhouette")
-        self.assertEqual(set(VehicleKind) - set(self.BRANCHED_KINDS),
-                         {VehicleKind.CAR},
-                         "a new VehicleKind needs a branch in both painters, or "
-                         "a deliberate line here saying it is the default")
+    def test_no_painter_branches_on_a_vehicle_kind_again(self):
+        # `VehicleKind` stopped being a branch in the renderer when the art
+        # became data: it now selects a fallback part run in vehicles.json, and
+        # the painters are interpreters that never ask what kind a vehicle is.
+        # A reintroduced branch is the art creeping back into the engine.
+        # Coverage of the kinds themselves is `tests/test_vehicles.py`.
+        for name in (("render", "c2d", "entities.js"), ("render", "vehicleShapes.js")):
+            text = read("src", *name)
+            self.assertNotIn("VEHICLE_KIND.", text,
+                             f"{name[-1]} branches on a vehicle kind; the parts "
+                             f"list decides what a vehicle looks like")
 
 
 class RoleSetTests(unittest.TestCase):

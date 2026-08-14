@@ -1,0 +1,324 @@
+{
+  "_note": "EL GARAJE, as data. One record per vehicle, holding everything a designer would expect to change: how it drives, what it is made of, what it costs, how it sounds and what it LOOKS like. Four files used to own those five things between them — src/game/vehicles.js (stats), economy.js (price), audio.js (engine voice), and a 90-line if/else chain in c2d/entities.js (the art). What stays engine: the physics, the WebAudio synthesis, and the interpreter that walks `parts`.",
+
+  "version": 1,
+
+  "_geometry": "EVERY NUMBER IS IN THE VEHICLE'S OWN FRAME: centred at (0,0), facing +x, y down. A bare number is PIXELS. A pair [k, px] means k times the HALF-EXTENT of that value's own axis, plus px — so on x, [1,0] is the bow and [-1,3] is three pixels in from the transom; a width of [2,-6] is the full beam less six. That is the exact shape the hand-written art already had (`-veh.w/2 + 3`, `veh.h * 0.45`), which is why it can be transcribed without moving a pixel.",
+
+  "_shapes": "The finite vocabulary the interpreter implements, and the only thing a part may ask for: rect, roundRect, ellipse, disc, poly (with quadratic segments), stripes, strokeRect, stroke. Same contract as the feria's shape DSL — data may compose these, never invent one.",
+
+  "_silhouette": "A part marked `silhouette: true` ALSO joins the body outline that `traceVehicleSilhouette` traces for the ground shadow, and `silhouette: \"only\"` joins it without being painted. Deriving the shadow from the same list is the point: the sprite and the shadow used to be two hand-kept if/else chains, so a vehicle could be drawn with somebody else's shadow and only a screenshot would say.",
+
+  "_colors": "`$color` and `$roof` resolve against the vehicle's own palette, which is what makes the shop's paint swatches work — economy.js clones the record with a new `color` and the art follows. Everything else is a literal, on purpose: the red boot-top and the white sheer ARE the boat idiom, and a swatch must not repaint them.",
+
+  "templates": {
+    "_note": "Shared part runs, spliced in by `{\"ref\": \"name\"}`. They exist because the three lanchas really are one boat with three consoles: the idiom must stay ONE edit, which is what it was before this file.",
+
+    "boatHull": [
+      {
+        "shape": "poly",
+        "fill": "rgba(255,255,255,0.22)",
+        "note": "the bow wave off the stem — drawn under the hull so it reads as water, not paint",
+        "pts": [[[1, 0], [0, 0]], [[1, -5], [-1, -3]], [[1, 5], [0, 0]], [[1, -5], [1, 3]]]
+      },
+      {
+        "shape": "poly",
+        "fill": "$color",
+        "silhouette": true,
+        "note": "topsides. THE HULL takes the player's paint, so a swatch reads at a glance",
+        "pts": [
+          [[1, 0], [0, 0]],
+          {"q": [[0.2, 0], [-1, 0]], "to": [[-1, 2], [-1, 1]]},
+          [[-1, 0], [-1, 1]],
+          [[-1, 0], [1, -1]],
+          [[-1, 2], [1, -1]],
+          {"q": [[0.2, 0], [1, 0]], "to": [[1, 0], [0, 0]]}
+        ]
+      },
+      {
+        "shape": "poly",
+        "fill": "#e2503f",
+        "note": "the boot-top at the waterline. ALWAYS red — it carries the boat idiom, so it is not a swatch",
+        "pts": [
+          [[0.94, 0], [0, 0]],
+          {"q": [[0.2, 0], [1, 0]], "to": [[-1, 2], [1, -1]]},
+          [[-1, 0], [1, -1]],
+          [[-1, 0], [1, -3]],
+          {"q": [[0.2, 0], [1, -2.5]], "to": [[0.94, 0], [0, 0]]}
+        ]
+      },
+      {
+        "shape": "rect",
+        "fill": "rgba(255,255,255,0.5)",
+        "note": "the sheer highlight along the gunwale",
+        "x": [-1, 3], "y": [-1, 1.5], "w": [2, -7], "h": 1
+      }
+    ],
+
+    "boatStern": [
+      {
+        "shape": "stroke",
+        "stroke": "#8a5f33",
+        "width": 1.8,
+        "cap": "round",
+        "note": "the outboard's leg, over her transom",
+        "pts": [[[-1, 1], [0, 0]], [[-1, -3.5], [0, 0]]]
+      },
+      {"shape": "disc", "fill": "#26222c", "cx": [-1, -4], "cy": 0, "r": 1.8, "note": "the prop"}
+    ],
+
+    "boatCabin": [
+      {
+        "shape": "roundRect",
+        "fill": "$roof",
+        "note": "the console. The default beam for a lancha; the panga's is narrower",
+        "x": [-0.2, 0], "y": [-1, 2], "w": [0.6, 0], "h": [2, -4], "r": 2
+      }
+    ],
+
+    "bikeWheels": [
+      {"shape": "ellipse", "fill": "#26222c", "cx": [-1, 3], "cy": 0, "rx": 3.4, "ry": 2.2},
+      {"shape": "ellipse", "fill": "#26222c", "cx": [1, -3], "cy": 0, "rx": 3.4, "ry": 2.2}
+    ],
+
+    "bikeRider": [
+      {
+        "shape": "rect",
+        "fill": "rgba(20,40,60,0.6)",
+        "note": "handlebar",
+        "x": [1, -6], "y": [-1, 2], "w": 2, "h": [2, -4]
+      },
+      {"shape": "disc", "fill": "$roof", "cx": -1, "cy": 0, "r": 3.6, "note": "the rider's helmet"},
+      {"shape": "rect", "fill": "#fffbe8", "x": [1, -2], "y": -1.5, "w": 2, "h": 3, "note": "headlight"},
+      {
+        "shape": "roundRect",
+        "silhouette": "only",
+        "note": "A TWO-WHEELER'S SHADOW IS NOT ITS BOUNDING BOX. Frame and rider together read as one slim capsule, much narrower than veh.h — so the shadow is its own part rather than any painted one.",
+        "x": [-1, -1], "y": -5, "w": [2, 2], "h": 10, "r": 5
+      }
+    ],
+
+    "bikeFrame": [
+      {
+        "shape": "roundRect",
+        "fill": "$color",
+        "note": "the thin bici frame — the default two-wheeler body",
+        "x": [-1, 4], "y": -1.5, "w": [2, -8], "h": 3, "r": 1.5
+      },
+      {
+        "shape": "strokeRect",
+        "stroke": "rgba(38,34,44,0.72)",
+        "width": 1,
+        "note": "the empty rear cargo rack: this is the bicicleta REPARTIDORA",
+        "x": [-1, 2], "y": -3.5, "w": 5, "h": 7
+      }
+    ],
+
+    "carBody": [
+      {
+        "shape": "roundRect",
+        "fill": "$color",
+        "silhouette": true,
+        "note": "the generic four-wheeler: a rounded box. What an editor-authored car falls back to.",
+        "x": [-1, 0], "y": [-1, 0], "w": [2, 0], "h": [2, 0], "r": 3
+      },
+      {"shape": "rect", "fill": "$roof", "x": [-1, 2], "y": [-1, 2], "w": [2, -4], "h": [1, 0], "note": "roof"},
+      {
+        "shape": "rect",
+        "fill": "rgba(20,40,60,0.6)",
+        "note": "windscreen",
+        "x": [1, -7], "y": [-1, 2], "w": 4, "h": [2, -4]
+      },
+      {"shape": "rect", "fill": "#fffbe8", "x": [1, -2], "y": [-1, 1], "w": 2, "h": 3},
+      {"shape": "rect", "fill": "#fffbe8", "x": [1, -2], "y": [1, -4], "w": 2, "h": 3}
+    ]
+  },
+
+  "defaults": {
+    "_note": "Which template a vehicle with no `parts` of its own is drawn with, by kind. These are not decoration: an editor-authored vehicle reaches them, and before this file the same fallbacks existed as the `else` at the end of each branch.",
+    "bike": ["bikeWheels", "bikeFrame", "bikeRider"],
+    "car": ["carBody"],
+    "boat": ["boatHull", "boatCabin", "boatStern"]
+  },
+
+  "vehicles": {
+    "bici": {
+      "name": "Bicicleta repartidora",
+      "kind": "bike", "medium": "land",
+      "stats": {"accel": 170, "top": 180, "turn": 3.4, "grip": 0.9, "melt": 0.7},
+      "w": 20, "h": 13,
+      "color": "#2e8bd6", "roof": "#ffe6b3",
+      "free": true,
+      "voice": {"type": "triangle", "base": 190, "span": 150, "filter": 1300, "gain": 0.022, "detune": 3},
+      "voiceNote": "nearly silent — a freewheel whir, not a motor",
+      "parts": [{"ref": "bikeWheels"}, {"ref": "bikeFrame"}, {"ref": "bikeRider"}]
+    },
+
+    "scooter": {
+      "name": "Scooter retro",
+      "kind": "bike", "medium": "land",
+      "stats": {"accel": 225, "top": 230, "turn": 3.05, "grip": 0.85, "melt": 1.0},
+      "w": 22, "h": 13,
+      "color": "#e85d75", "roof": "#fff",
+      "free": true,
+      "voice": {"type": "sawtooth", "base": 68, "span": 110, "filter": 720, "gain": 0.075, "detune": 9},
+      "parts": [
+        {"ref": "bikeWheels"},
+        {
+          "shape": "roundRect", "fill": "$color", "note": "deck",
+          "x": [-1, 3], "y": -3, "w": [2, -6], "h": 6, "r": 2.5
+        },
+        {"shape": "rect", "fill": "$color", "note": "leg shield", "x": [1, -7], "y": -4, "w": 3, "h": 8},
+        {"ref": "bikeRider"}
+      ]
+    },
+
+    "tuktuk": {
+      "name": "Tuk-tuk porteño",
+      "kind": "car", "medium": "land",
+      "stats": {"accel": 202, "top": 212, "turn": 2.8, "grip": 0.82, "melt": 0.9},
+      "w": 26, "h": 17,
+      "color": "#f3c969", "roof": "#3a3a48",
+      "free": true,
+      "voice": {"type": "square", "base": 36, "span": 50, "filter": 420, "gain": 0.06, "detune": 5},
+      "parts": [
+        {"shape": "ellipse", "fill": "#26222c", "cx": [1, -2], "cy": 0, "rx": 2.6, "ry": 2, "note": "single front wheel"},
+        {"shape": "ellipse", "fill": "#26222c", "cx": [-1, 4], "cy": [-1, 1], "rx": 2.6, "ry": 2},
+        {"shape": "ellipse", "fill": "#26222c", "cx": [-1, 4], "cy": [1, -1], "rx": 2.6, "ry": 2},
+        {
+          "shape": "poly", "fill": "$color", "silhouette": true, "note": "teardrop body",
+          "pts": [
+            [[1, 0], [0, 0]],
+            {"q": [[1, -4], [-1, 0]], "to": [[-1, 2], [-1, 1]]},
+            [[-1, 2], [1, -1]],
+            {"q": [[1, -4], [1, 0]], "to": [[1, 0], [0, 0]]}
+          ]
+        },
+        {
+          "shape": "roundRect", "fill": "$roof", "note": "canopy",
+          "x": [-1, 3], "y": [-1, 2.5], "w": [1.2, 0], "h": [2, -5], "r": 2
+        },
+        {"shape": "rect", "fill": "#fffbe8", "x": [1, -2], "y": -1.5, "w": 2, "h": 3}
+      ]
+    },
+
+    "cart": {
+      "name": "Mini carrito helado",
+      "kind": "car", "medium": "land",
+      "stats": {"accel": 184, "top": 194, "turn": 2.55, "grip": 0.8, "melt": 0.55},
+      "w": 27, "h": 17,
+      "color": "#fff", "roof": "#e85d75",
+      "price": 350,
+      "voice": {"type": "triangle", "base": 55, "span": 70, "filter": 520, "gain": 0.05, "detune": 6},
+      "parts": [
+        {"shape": "rect", "fill": "#26222c", "x": [-1, 3], "y": [-1, -1], "w": 4, "h": 2},
+        {"shape": "rect", "fill": "#26222c", "x": [-1, 3], "y": [1, -1], "w": 4, "h": 2},
+        {"shape": "rect", "fill": "#26222c", "x": [1, -7], "y": [-1, -1], "w": 4, "h": 2},
+        {"shape": "rect", "fill": "#26222c", "x": [1, -7], "y": [1, -1], "w": 4, "h": 2},
+        {
+          "shape": "roundRect", "fill": "$color", "silhouette": true, "note": "the white box",
+          "x": [-1, 0], "y": [-1, 0], "w": [2, 0], "h": [2, 0], "r": 3
+        },
+        {
+          "shape": "stripes", "n": 4, "palette": ["$roof", "#fff"],
+          "note": "the striped canopy — a heladero's awning",
+          "x": [-1, 2], "y": [-1, 1], "w": [2, -4], "h": [0.9, 0]
+        },
+        {"shape": "rect", "fill": "#5fb0d6", "note": "freezer lid", "x": [-1, 4], "y": [1, -6], "w": [2, -8], "h": 3}
+      ]
+    },
+
+    "pickup": {
+      "name": "Pickup pescador",
+      "kind": "car", "medium": "land",
+      "stats": {"accel": 253, "top": 270, "turn": 2.45, "grip": 0.78, "melt": 1.1},
+      "w": 31, "h": 19,
+      "color": "#6fbf99", "roof": "#4a3a2a",
+      "price": 900,
+      "voice": {"type": "sawtooth", "base": 30, "span": 55, "filter": 380, "gain": 0.075, "detune": 6},
+      "parts": [
+        {
+          "shape": "roundRect", "fill": "$color", "silhouette": true,
+          "x": [-1, 0], "y": [-1, 0], "w": [2, 0], "h": [2, 0], "r": 3
+        },
+        {"shape": "rect", "fill": "$roof", "note": "cab roof, up front", "x": [1, -14], "y": [-1, 2], "w": 9, "h": [2, -4]},
+        {"shape": "rect", "fill": "rgba(30,25,20,0.55)", "note": "the open bed behind it", "x": [-1, 2], "y": [-1, 2], "w": [1, 2], "h": [2, -4]},
+        {"shape": "rect", "fill": "#e8e4da", "note": "the cooler in the bed", "x": [-1, 5], "y": -3, "w": 7, "h": 6},
+        {"shape": "rect", "fill": "#fffbe8", "x": [1, -2], "y": [-1, 1], "w": 2, "h": 3},
+        {"shape": "rect", "fill": "#fffbe8", "x": [1, -2], "y": [1, -4], "w": 2, "h": 3}
+      ]
+    },
+
+    "turbo": {
+      "name": "Turbo Churchill Kart",
+      "kind": "car", "medium": "land",
+      "stats": {"accel": 330, "top": 352, "turn": 3.05, "grip": 0.72, "melt": 1.3},
+      "w": 25, "h": 14,
+      "color": "#ff3d80", "roof": "#fff36b",
+      "price": 1500,
+      "voice": {"type": "sawtooth", "base": 50, "span": 130, "filter": 950, "gain": 0.085, "detune": 12},
+      "parts": [
+        {"shape": "rect", "fill": "#26222c", "silhouette": true, "x": [-1, 1], "y": [-1, -2], "w": 5, "h": 3},
+        {"shape": "rect", "fill": "#26222c", "silhouette": true, "x": [-1, 1], "y": [1, -1], "w": 5, "h": 3},
+        {"shape": "rect", "fill": "#26222c", "silhouette": true, "x": [1, -6], "y": [-1, -2], "w": 5, "h": 3},
+        {"shape": "rect", "fill": "#26222c", "silhouette": true, "x": [1, -6], "y": [1, -1], "w": 5, "h": 3},
+        {
+          "shape": "roundRect", "fill": "$color", "silhouette": true, "note": "narrow hull, wheels left outside it",
+          "x": [-1, 0], "y": [-1, 3], "w": [2, 0], "h": [2, -6], "r": 3
+        },
+        {"shape": "disc", "fill": "$roof", "cx": 0, "cy": 0, "r": 3.2, "note": "the driver"},
+        {"shape": "rect", "fill": "$color", "silhouette": true, "note": "rear spoiler", "x": [-1, -2], "y": [-1, 1], "w": 3, "h": [2, -2]},
+        {"shape": "rect", "fill": "#fffbe8", "x": [1, -2], "y": -1.5, "w": 2, "h": 3}
+      ]
+    },
+
+    "panga": {
+      "name": "Panga de trabajo",
+      "kind": "boat", "medium": "water",
+      "stats": {"accel": 210, "top": 235, "turn": 2.4, "grip": 0.62, "melt": 1.0, "drag": 0.34},
+      "w": 34, "h": 14,
+      "color": "#f6f2e8", "roof": "#3a6f8a",
+      "free": true,
+      "parts": [
+        {"ref": "boatHull"},
+        {
+          "shape": "roundRect", "fill": "$roof", "note": "a work boat's console is narrower than a taxi's cabin",
+          "x": [-0.2, 0], "y": [-1, 2], "w": [0.52, 0], "h": [2, -4], "r": 2
+        },
+        {"ref": "boatStern"}
+      ]
+    },
+
+    "lanchataxi": {
+      "name": "Lancha taxi",
+      "kind": "boat", "medium": "water",
+      "stats": {"accel": 265, "top": 305, "turn": 2.7, "grip": 0.52, "melt": 1.0, "drag": 0.3},
+      "w": 32, "h": 12,
+      "color": "#4fb0d6", "roof": "#f6f2e8",
+      "price": 600,
+      "parts": [{"ref": "boatHull"}, {"ref": "boatCabin"}, {"ref": "boatStern"}]
+    },
+
+    "deslizador": {
+      "name": "Deslizador",
+      "kind": "boat", "medium": "water",
+      "stats": {"accel": 345, "top": 400, "turn": 3.0, "grip": 0.42, "melt": 1.0, "drag": 0.24},
+      "w": 30, "h": 11,
+      "color": "#ff3d80", "roof": "#26222c",
+      "price": 1400,
+      "parts": [
+        {"ref": "boatHull"},
+        {
+          "shape": "poly", "fill": "$roof", "note": "a low wraparound screen instead of a cabin — nothing to stand up in",
+          "pts": [
+            [[0.34, 0], [-1, 2]],
+            [[0.06, 0], [-1, 2]],
+            [[0.06, 0], [1, -2]],
+            [[0.34, 0], [1, -2]]
+          ]
+        },
+        {"ref": "boatStern"}
+      ]
+    }
+  }
+}

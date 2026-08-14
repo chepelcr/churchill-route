@@ -817,6 +817,17 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
   `vite preview` boots the game, drives it and fails on any page error; it has
   caught this exact class of bug four times — most recently an import of
   `drawFisher` deleted from `estero.js` while a call to it remained.
+- **Changing ART is not covered by any smoke — diff the pixels.**
+  `node tools/shot-vehicles.mjs <out.png> http://localhost:8734/` (the DEV
+  server, so the module under test can be imported directly) draws all nine
+  vehicles with BOTH painters — the silhouette as a ground shadow, the sprite on
+  top — and `node tools/png-diff.mjs before.png after.png [diff.png]` compares
+  them, writing every changed pixel as magenta. This is how `vehicles.json` was
+  proved: 310 500 px, 0 changed. Do NOT compare file sizes — the two PNGs of a
+  562-pixel regression differed by 10 bytes, which is deflate noise. And a
+  delta-1 channel difference is still a difference worth explaining: that one
+  was `fillRect` vs `beginPath+rect+fill`, which are not the same rasteriser on
+  fractional coordinates.
 - The smokes are `smoke` (the loop is alive), `smoke:boat` (the water medium),
   `smoke:crossing` (every buoy is ON WATER, and she can be driven down the
   channel at speed), plus `smoke:theme` / `smoke:sponsor`.

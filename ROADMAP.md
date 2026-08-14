@@ -234,13 +234,52 @@ tiene implementación en el renderer.
 
 ### 3. P1 / P2 — la superficie de autoría
 
-`content.py` → `content/world/*.json`; `economy.js`, `audio.js`, `spawns.js` /
-`buses.js` / `crossing.js` / `tides.js`, `tutorial.js` / `progress.js` / `modes.js`;
-después HUD, pantallas y el render simplificado del editor consumiendo los mismos
-registros. Detalle y autoría propuesta por fila: `docs/inventory.md` §12.
+Detalle y autoría propuesta por fila: `docs/inventory.md` §12. Cada una es el
+mismo movimiento que ya se hizo cuatro veces (superficies, vehículos,
+materiales, hitos): sacar el CONTENIDO a un registro versionado, dejar en el
+motor la física, el intérprete y las transiciones de estado.
 
+- [ ] **Terminar `world-props.json`: parcelas y señales.** Los landmarks ya son
+      data (2026-08-13); falta el `switch` de 10 casos de `drawSign`
+      (`c2d/streets.js`) y el arte que `drawParcels` pone sobre cada uso. El
+      intérprete y la compuerta ya existen — es transcribir y medir con
+      `png-diff`.
+- [ ] **`churchill/world/content.py` → `content/world/*.json`**, validado contra
+      los DTO que ya existen. Es la fila de MÁS RIESGO del registro: la prueba
+      es un build completo (~28 min) con `world_snapshot.py rebuild` devolviendo
+      los 1001 archivos byte-idénticos, **más un diff de los dos logs de build**
+      — el log es estable carácter a carácter y caza un cambio de comportamiento
+      que el digest podría no ver.
+- [ ] **`src/game/economy.js` → `src/content/economy.json`**: upgrades, boosts,
+      colores, packs de monedas, tasas de ganancia. `FREE_VEHICLES` y
+      `VEHICLE_PRICES` ya se fueron a `vehicles.json`; queda el resto del
+      catálogo. La lógica de billetera y titularidad se queda.
+- [ ] **`src/game/audio.js` → `src/assets/audio.json`**: recetas de eventos,
+      melodías, voces continuas. `ENGINE_VOICES` ya vive en `vehicles.json`. El
+      grafo de osciladores y el scheduler se quedan.
+- [ ] **`src/content/simulation.json`**: perfiles de población, tablas de
+      encuentro, presets de bus/ferry/travesía/día/clima/marea desde `spawns.js`,
+      `buses.js`, `crossing.js`, `daynight.js`, `tides.js`. El avance de
+      entidades y la colisión se quedan.
+- [ ] **`src/content/progression.json`**: grafo del tutorial, metas, grafo de
+      desbloqueos, defaults de modo desde `tutorial.js`, `progress.js`,
+      `modes.js`. Las transiciones de estado y la persistencia se quedan.
+- [ ] **`src/assets/hud.json`** (P2): presets de layout/estilo del HUD y los
+      materiales del minimapa (`c2d/hud.js`, 718 líneas). Las tintas del
+      minimapa que eran cubiertas de muelle ya se fueron a `materials.json`.
 - [ ] **Darle esquema a la feria.** `feriaAssets.json` es hoy la plantilla y es el
       único catálogo **sin** validador: falta DTO/versión y preview en el editor.
+      Ahora comparte vocabulario de formas con `vehicles.json` y
+      `world-props.json`, así que el validador puede ser el mismo.
+- [ ] **Constantes de PWA/ads/IAP/URL de contenido** (P2) → config de build con
+      defaults de producción versionados. La lógica del service worker y las
+      llamadas de compra/anuncio se quedan.
+
+**Fuera de alcance, decidido**: la estructura JSX de las pantallas + `styles.css`
+a un esquema de slots. Los tokens de tema (`src/ui/themeTokens.json`) y los
+overrides de copy por i18n ya le dan al editor autoría real sobre las pantallas,
+y el propio §12 duda de esa fila. Cambiar React legible por un lenguaje de layout
+casero es un mal negocio.
 
 ### 4. El reescalado
 

@@ -47,14 +47,29 @@ page.on("pageerror", (e) => errors.push(String(e)));
 await page.goto(url, { waitUntil: "domcontentloaded" });
 await page.waitForFunction(() => !!window.Game, null, { timeout: 25000 });
 
-const rendered = await page.evaluate(async () => {
+const rendered = await page.evaluate(async (hashesOnly) => {
   const audio = await import("/src/game/audio.js");
   const AUDIO = await (await fetch("/src/assets/audio.json")).json();
   const names = Object.keys(AUDIO.recipes).filter((k) => !k.startsWith("_"));
   names.push("horn", "combo");                    // the two that keep their code
   const out = [];
   for (const name of names) {
-    const pcm = await audio.renderOffline(name, name === "combo" ? 4 : undefined);
+    // A FIXED WINDOW FOR THE FINGERPRINT, a tight one for the file.
+    // `renderOffline` sizes the buffer to the recipe, which makes a better WAV
+    // — but the envelope is 64 buckets ACROSS THE BUFFER, so comparing a
+    // 0.8-second render against a 2.5-second one reports a difference that is
+    // entirely the window. Pin it here and the gate compares sound to sound.
+    // `combo` is the one recipe that takes an ARGUMENT — its pitch rises with
+    // the streak — so rendering it means choosing a streak. 4 is a combo a
+    // player actually reaches, and pinning it is what makes the fingerprint
+    // reproducible; at the default 2 the export would not represent the sound
+    // anybody associates with a combo.
+    const arg = name === "combo" ? 4 : undefined;
+    // ONE WINDOW FOR EVERY FINGERPRINT. The envelope is 64 buckets across the
+    // buffer, so two recipes rendered over different lengths are not comparable
+    // and neither are two renders of the SAME recipe. 2.5 s covers the longest
+    // (the ferry horn's two blasts) with room to spare.
+    const pcm = await audio.renderOffline(name, arg, hashesOnly ? 2.5 : null);
     if (!pcm) continue;
     // Peak and RMS travel with the samples: a hash says "different", these say
     // "louder" or "silent", which is the first thing you want to know.
@@ -80,7 +95,7 @@ const rendered = await page.evaluate(async () => {
     out.push({ name, samples: Array.from(pcm), peak, rms: Math.sqrt(sum / pcm.length), env });
   }
   return out;
-});
+}, hashesOnly);
 await browser.close();
 if (errors.length) { console.error(`[audio] page errors: ${errors.join(" | ")}`); process.exit(1); }
 

@@ -12,6 +12,7 @@
 // both the game and the world editor read, so neither hardcodes the token list.
 import TOKEN_FILE from "./themeTokens.json";
 import { setOverrides } from "../i18n/index.js";
+import { applySounds } from "../game/audio.js";
 
 export const THEME_TOKENS = TOKEN_FILE.tokens;
 
@@ -53,7 +54,15 @@ export function applyStrings(strings = {}) {
 export function applyUiContent(ui = {}) {
   applyTheme(ui?.theme || {});
   applyStrings(ui?.strings || {});
-  return { theme: Object.keys(ui?.theme || {}), languages: Object.keys(ui?.strings || {}) };
+  // SONIDOS PERSONALIZADOS, on the same footing as the theme and the copy: an
+  // authored recipe replaces the built-in of the same id and clearing it puts
+  // the built-in back. `remote.js` has already validated the steps.
+  const sounds = applySounds(ui?.sounds || {});
+  return {
+    theme: Object.keys(ui?.theme || {}),
+    languages: Object.keys(ui?.strings || {}),
+    sounds,
+  };
 }
 
 export function tokenById(id) {

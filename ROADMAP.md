@@ -496,6 +496,39 @@ motor la física, el intérprete y las transiciones de estado.
       recorre una tabla de intervalos doblando cada nota con una gemela desafinada
       0,6 % para que el par BATA —ese batido es lo que hace que suene a aire y no
       a un bajo— y `combo` es función de la racha.
+- [x] **Sonidos personalizados, y el catálogo exportable.** Hecho 2026-08-14, a
+      pedido: **el audio del juego se queda como está** —procedural, sin un solo
+      archivo, cero bytes de descarga— y encima de eso se puede *insertar* uno
+      propio y *sacar* los que hay.
+
+      **Insertar**: una receta autorada llega por `content.json` -> `ui.sounds`,
+      igual que el tema y los textos, o sea **sin rebuild y sin release**. Es el
+      mismo vocabulario de pasos que usan las de fábrica —que es justamente por
+      qué valía la pena hacerlas data: un sonido propio no es otra clase de
+      cosa—. **La autorada GANA sobre la de fábrica del mismo id**, y borrarla
+      devuelve la original en vez de dejar silencio. Y como viene por la red, se
+      **valida antes de tocar WebAudio**: ganancia fuera de 0..1, duración que
+      no es un número positivo, o un tipo de oscilador inventado se descartan —
+      un sonido personalizado no puede ser una forma de hacer algo raro con las
+      cornetas de alguien.
+
+      **Sacar**: `pnpm audio:render` escribe WAVs, y el editor tiene el catálogo
+      con preview y exportación por sonido. Lo que hace que eso sea confiable es
+      que el editor importa **el intérprete del juego** (`src/audio/recipe.js`)
+      por alias, no una copia — es la única excepción a la regla de que el
+      editor lee los DATOS del juego y nunca sus módulos, y es a propósito: una
+      segunda implementación del sintetizador de este lado se separaría de la
+      primera, que es exactamente lo que cada registro de este proyecto viene
+      eliminando. Un sonido que se escucha en el editor es el que suena en el
+      juego, por construcción.
+
+      Las diez recetas siguen **idénticas por envolvente** contra el render de
+      antes de todo esto. Dos cosas costaron una corrida: la ventana de render
+      cambió (la huella son 64 baldes RMS *a lo ancho del buffer*, así que 0,8 s
+      contra 2,5 s reporta una diferencia que es toda la ventana), y una
+      declaración quedó dentro de una función y **compiló igual** — sólo el
+      navegador la cazó, que es la razón por la que en este repo un `pnpm build`
+      no cuenta como verificación.
 - [ ] **`src/content/simulation.json`**: perfiles de población, tablas de
       encuentro, presets de bus/ferry/travesía/día/clima/marea desde `spawns.js`,
       `buses.js`, `crossing.js`, `daynight.js`, `tides.js`. El avance de

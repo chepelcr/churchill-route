@@ -6,6 +6,10 @@
 // drift voices are created once and steered with setTargetAtTime.
 import { ENGINE_VOICES } from "./vehicles.js";
 import AUDIO from "../assets/audio.json" with { type: "json" };
+import {
+  encodeWav, noise as noiseStep, playRecipe, recipeDuration, renderRecipe,
+  seededNoise, tone as toneStep,
+} from "../audio/recipe.js";
 
 const MUTE_KEY = "churchill_muted_v1";
 const VOL_KEY = "churchill_volume_v1";
@@ -226,42 +230,20 @@ if (BROWSER) {
 
 // ---- one-shot builders -----------------------------------------------------
 
-function tone({ type = "square", from = 440, to = null, dur = 0.08, gain = 0.15, at = 0, filterHz = null, destination = null }) {
-  const t0 = ctx.currentTime + at;
-  const o = ctx.createOscillator();
-  o.type = type;
-  o.frequency.setValueAtTime(from, t0);
-  if (to !== null) o.frequency.exponentialRampToValueAtTime(Math.max(1, to), t0 + dur);
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(gain, t0);
-  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  let head = o;
-  if (filterHz) {
-    const f = ctx.createBiquadFilter();
-    f.type = "lowpass";
-    f.frequency.setValueAtTime(filterHz, t0);
-    f.frequency.exponentialRampToValueAtTime(120, t0 + dur);
-    o.connect(f); head = f;
-  }
-  head.connect(g); g.connect(destination || buses.sfx || master);
-  o.start(t0); o.stop(t0 + dur + 0.02);
+// The two builders are the SHARED interpreter now (`src/audio/recipe.js`),
+// bound to this module's live context and default destination. They stay as
+// local names because the coded recipes below and the continuous voices call
+// them dozens of times, and because the destination default — the sfx bus,
+// falling back to the master before the buses exist — is this module's policy
+// rather than the interpreter's.
+function tone(opts) {
+  const { destination, ...step } = opts;
+  toneStep(ctx, destination || buses.sfx || master, step);
 }
 
-function noiseHit({ dur = 0.05, gain = 0.1, at = 0, band = null, destination = null }) {
-  const t0 = ctx.currentTime + at;
-  const s = ctx.createBufferSource();
-  s.buffer = noiseBuf;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(gain, t0);
-  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  let head = s;
-  if (band) {
-    const f = ctx.createBiquadFilter();
-    f.type = "bandpass"; f.frequency.value = band; f.Q.value = 1;
-    s.connect(f); head = f;
-  }
-  head.connect(g); g.connect(destination || buses.sfx || master);
-  s.start(t0); s.stop(t0 + dur + 0.02);
+function noiseHit(opts) {
+  const { destination, ...step } = opts;
+  noiseStep(ctx, destination || buses.sfx || master, noiseBuf, step);
 }
 
 // Per-vehicle engine character — oscillator flavour, pitch range (base..base+
@@ -289,11 +271,35 @@ const DEFAULT_VOICE = ENGINE_VOICES.scooter;
 // — and `combo` is a function of the streak, not a fixed list. Expressing
 // either as JSON would be arithmetic in JSON.
 function playSteps(spec) {
-  const dest = buses[spec.bus] || null;
-  for (const step of spec.steps) {
-    if (step.tone) tone({ ...step.tone, destination: dest });
-    else if (step.noise) noiseHit({ ...step.noise, destination: dest });
+  playRecipe(ctx, buses[spec.bus] || master, noiseBuf, spec);
+}
+
+// SONIDOS PERSONALIZADOS. A recipe authored in the world editor lands here at
+// runtime, exactly the way `theme` and `strings` do — so a new sound ships
+// without a rebuild and without an app release. It is the same step vocabulary
+// the built-ins use, which is the whole reason this was worth making data: an
+// authored sound is not a second kind of thing.
+//
+// AUTHORED WINS over a built-in of the same id, so a custom `coin` replaces the
+// stock one; that is what makes it a customisation rather than an addition
+// nobody can reach. Anything the sanitiser rejects simply never arrives, and
+// `sfx.play` on an unknown id has always been a no-op.
+const AUTHORED = {};
+
+/** Install authored recipes (from `content.ui.sounds`). Replaces the previous
+ *  set rather than merging, so clearing a sound in the editor restores the
+ *  built-in — the same rule `applyTheme` follows for a cleared token. */
+export function applySounds(sounds = {}) {
+  for (const id of Object.keys(AUTHORED)) {
+    delete AUTHORED[id];
+    if (BUILT_IN[id]) RECIPES[id] = BUILT_IN[id];
+    else delete RECIPES[id];
   }
+  for (const [id, spec] of Object.entries(sounds || {})) {
+    AUTHORED[id] = spec;
+    RECIPES[id] = () => playSteps(spec);
+  }
+  return Object.keys(AUTHORED);
 }
 
 const RECIPES = Object.fromEntries(
@@ -312,6 +318,7 @@ Object.assign(RECIPES, {
       for (const f of [104, 156, 131]) {                    // root, fifth, third
         tone({ type: "sawtooth", from: f, to: f * 0.97, dur, gain: gain * (f === 104 ? 1 : 0.5),
                at, filterHz: 700 });
+
         tone({ type: "sawtooth", from: f * 1.006, to: f * 0.976, dur, gain: gain * 0.35,
                at, filterHz: 700 });                        // detuned twin → beating
       }
@@ -322,6 +329,12 @@ Object.assign(RECIPES, {
   },
   combo:       (n = 2) => tone({ from: 520 * (1 + 0.09 * Math.min(8, n)), dur: 0.08, gain: 0.14 }),
 });
+
+//: The stock set, snapshotted AFTER the coded recipes join it. `applySounds`
+//: restores from here when an authored sound is cleared, so clearing a custom
+//: `coin` in the editor puts the real one back rather than leaving silence.
+const BUILT_IN = { ...RECIPES };
+
 
 // ---- offline render: the sounds AS FILES ------------------------------------
 //
@@ -340,32 +353,41 @@ Object.assign(RECIPES, {
 // recipe would never agree and a diff of them would mean nothing. A fixed LCG
 // gives the same white noise every time — the same SOUND, since white noise is
 // white noise, but a reproducible one.
-export async function renderOffline(name, arg, seconds = 2.5, rate = 44100) {
+export async function renderOffline(name, arg, seconds = null, rate = 44100) {
   const OAC = typeof window !== "undefined"
     && (window.OfflineAudioContext || window.webkitOfflineAudioContext);
   if (!OAC) return null;
-  const off = new OAC(1, Math.ceil(rate * seconds), rate);
+  // AUTHORED FIRST. An export or a preview has to show what the game will
+  // actually play, and a custom sound REPLACES the built-in of the same id —
+  // reading the static registry here would export the stock `coin` while the
+  // game plays somebody else's.
+  const spec = AUTHORED[name] || AUDIO.recipes[name];
+  const busGains = Object.fromEntries(
+    Object.entries(AUDIO.mixer.buses)
+      .filter(([id]) => !id.startsWith("_"))
+      .map(([id, b]) => [id, b.gain]));
 
+  // A DATA recipe renders straight through the shared interpreter. A CODED one
+  // (`horn`, `combo`) has to be run, so the module's own context is swapped for
+  // the offline one and put back — the only reason this function is not two
+  // lines. `buses` is rebuilt in the offline graph so an export is mixed the
+  // way the game is.
+  if (spec) return renderRecipe(OAC, spec, { buses: busGains, seconds, rate });
+
+  const dur = seconds || 2.5;
+  const off = new OAC(1, Math.ceil(rate * dur), rate);
   const saved = { ctx, master, noiseBuf, buses: { ...buses } };
   ctx = off;
   master = off.createGain();
-  master.gain.value = 1;                    // render dry: the mix is the mix
+  master.gain.value = 1;
   master.connect(off.destination);
-  for (const [id, spec] of Object.entries(AUDIO.mixer.buses)) {
-    if (id.startsWith("_")) continue;
+  for (const [id, gain] of Object.entries(busGains)) {
     const g = off.createGain();
-    g.gain.value = spec.gain;
+    g.gain.value = gain;
     g.connect(master);
     buses[id] = g;
   }
-  noiseBuf = off.createBuffer(1, rate, rate);
-  const d = noiseBuf.getChannelData(0);
-  let seed = 0x2f6e2b1;                     // deterministic white noise
-  for (let i = 0; i < d.length; i++) {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    d[i] = (seed / 0x80000000) - 1;
-  }
-
+  noiseBuf = seededNoise(off);
   try {
     RECIPES[name]?.(arg);
     const buffer = await off.startRendering();
@@ -376,6 +398,20 @@ export async function renderOffline(name, arg, seconds = 2.5, rate = 44100) {
     Object.assign(buses, saved.buses);
   }
 }
+
+/** Every sound the game can play, for a catalog or an export. */
+export function soundCatalog() {
+  return Object.keys(RECIPES).map((id) => ({
+    id,
+    bus: AUDIO.recipes[id]?.bus || "sfx",
+    authored: !!AUTHORED[id],
+    coded: !AUDIO.recipes[id] && !AUTHORED[id],
+    seconds: (AUTHORED[id] || AUDIO.recipes[id])
+      ? recipeDuration(AUTHORED[id] || AUDIO.recipes[id]) : null,
+  }));
+}
+
+export { encodeWav };
 
 // ---- public facade ---------------------------------------------------------
 

@@ -71,7 +71,46 @@ function sanitizeUi(ui) {
     }
     if (Object.keys(clean).length) strings[langId] = clean;
   }
-  return { theme, strings };
+  // SONIDOS PERSONALIZADOS. Same treatment as `theme` and `strings`: this is
+  // untrusted content fetched over the network, so it is validated to the
+  // recipe vocabulary here rather than handed to WebAudio. A step that is not
+  // a tone or a noise, a gain outside 0..1 or a duration that is not a positive
+  // number is DROPPED — a recipe cannot be a way to make somebody's speakers
+  // do something unexpected.
+  const sounds = {};
+  for (const [id, spec] of Object.entries(ui.sounds || {})) {
+    if (!/^[a-z][a-z0-9_]{0,31}$/.test(id) || !Array.isArray(spec?.steps)) continue;
+    const steps = [];
+    for (const step of spec.steps.slice(0, 24)) {
+      const kind = step.tone ? "tone" : step.noise ? "noise" : null;
+      if (!kind) continue;
+      const v = step[kind];
+      const num = (x, lo, hi, dflt) => (Number.isFinite(x) && x >= lo && x <= hi ? x : dflt);
+      const clean = {
+        dur: num(v.dur, 0.001, 5, null),
+        gain: num(v.gain, 0, 1, null),
+        at: num(v.at, 0, 10, 0),
+      };
+      if (clean.dur === null || clean.gain === null) continue;
+      if (kind === "tone") {
+        clean.from = num(v.from, 20, 20000, null);
+        if (clean.from === null) continue;
+        if (Number.isFinite(v.to)) clean.to = num(v.to, 20, 20000, clean.from);
+        if (Number.isFinite(v.filterHz)) clean.filterHz = num(v.filterHz, 20, 20000, null);
+        if (["sine", "square", "sawtooth", "triangle"].includes(v.type)) clean.type = v.type;
+      } else if (Number.isFinite(v.band)) {
+        clean.band = num(v.band, 20, 20000, null);
+      }
+      steps.push({ [kind]: clean });
+    }
+    if (steps.length) {
+      sounds[id] = {
+        bus: ["sfx", "engine", "ambience", "music"].includes(spec.bus) ? spec.bus : "sfx",
+        steps,
+      };
+    }
+  }
+  return { theme, strings, sounds };
 }
 
 function sanitize(body) {

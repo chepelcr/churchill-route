@@ -35,11 +35,23 @@ def read(path):
         return fh.read()
 
 
-def git_show(path):
-    """The module as it was before the migration — the thing being compared to."""
-    out = subprocess.run(["git", "-C", ROOT, "show", f"HEAD:{path}"],
-                         capture_output=True, text=True)
-    return out.stdout
+def git_show(path, must_contain=()):
+    """The most recent version of a file that still contained `must_contain`.
+
+    Not `HEAD:` — the migration has been committed, so HEAD no longer holds the
+    literals this compares against. Walking back for the last version that did
+    keeps the check meaningful, and it degrades to a skip rather than a failure
+    once that scrolls out of reach: it is a migration check, not a permanent
+    contract.
+    """
+    log = subprocess.run(["git", "-C", ROOT, "log", "--format=%H", "-n", "40", "--", path],
+                         capture_output=True, text=True).stdout.split()
+    for sha in log:
+        src = subprocess.run(["git", "-C", ROOT, "show", f"{sha}:{path}"],
+                             capture_output=True, text=True).stdout
+        if all(m in src for m in must_contain):
+            return src
+    return ""
 
 
 def parse_calls(src):
@@ -104,7 +116,8 @@ class RecipeTests(unittest.TestCase):
 
     def setUp(self):
         self.doc = json.loads(read(AUDIO_JSON))
-        self.old = git_show("src/game/audio.js")
+        self.old = git_show("src/game/audio.js",
+                            ("menu_move:", "noiseHit({", "const RECIPES = {"))
         self.js = read(AUDIO_JS)
 
     def old_recipe(self, name):
@@ -114,7 +127,7 @@ class RecipeTests(unittest.TestCase):
             j = self.old.index("\n  ", j + 3)
         return self.old[i:j]
 
-    def test_every_migrated_recipe_kept_its_steps(self):
+    def test_every_migrated_recipe_kept_its_steps(self):  # noqa: C901
         """Step-for-step against the literals — with one caveat worth stating.
 
         `delivery` and `perfect` were written as `[523,659,784].forEach(...)`,
@@ -124,6 +137,8 @@ class RecipeTests(unittest.TestCase):
         all ten is `tools/render-audio.mjs`, which renders each recipe offline
         and compares the envelope (see the module docstring).
         """
+        if not self.old:
+            self.skipTest("the literal version of audio.js is out of git reach")
         for name in [r for r in self.doc["recipes"] if not r.startswith("_")]:
             src = self.old_recipe(name)
             was = parse_calls(src)
@@ -160,7 +175,10 @@ class RecipeTests(unittest.TestCase):
         self.assertIn("combo:", self.js)
 
     def test_the_interpreter_covers_both_step_kinds(self):
-        body = self.js.split("function playSteps", 1)[1].split("\n}", 1)[0]
+        # The step handling lives in the SHARED module now (src/audio/recipe.js),
+        # so that is where to look — `playSteps` is one line of delegation.
+        shared = read(os.path.join(ROOT, "src", "audio", "recipe.js"))
+        body = shared.split("export function playRecipe", 1)[1].split("\n}", 1)[0]
         self.assertIn("step.tone", body)
         self.assertIn("step.noise", body)
 
@@ -192,3 +210,69 @@ class VoiceTests(unittest.TestCase):
         f = self.doc["dj"]["filter"]
         self.assertLess(f["farHz"], f["nearHz"])
         self.assertLess(f["farHz"], 500, "far away must be a kick, not a muffled set")
+
+
+class SharedInterpreterTests(unittest.TestCase):
+    """One synth, three consumers."""
+
+    def setUp(self):
+        self.js = read(AUDIO_JS)
+        self.shared = read(os.path.join(ROOT, "src", "audio", "recipe.js"))
+
+    def test_the_interpreter_is_pure(self):
+        """No DOM, no window, no imports.
+
+        `tools/render-audio.mjs` and the world editor both load this outside the
+        game's module graph — the editor is a separate repo that reads the
+        game's DATA and never its modules, and this file is the single aliased
+        exception. It stops being loadable the moment it reaches for a global.
+        """
+        self.assertNotIn("import ", self.shared.split("export")[0],
+                         "the shared interpreter must have no imports")
+        for forbidden in ("window.", "document.", "localStorage"):
+            self.assertNotIn(forbidden, self.shared,
+                             f"the shared interpreter touches {forbidden}")
+
+    def test_the_game_does_not_keep_its_own_copy(self):
+        # `tone`/`noiseHit` survive as thin wrappers that bind this module's
+        # live ctx and default destination; the SYNTHESIS must be the shared one.
+        self.assertIn("toneStep(ctx,", self.js)
+        self.assertIn("noiseStep(ctx,", self.js)
+        self.assertNotIn("o.frequency.exponentialRampToValueAtTime", self.js,
+                         "audio.js is building oscillators again instead of "
+                         "calling the shared interpreter")
+
+
+class AuthoredSoundTests(unittest.TestCase):
+    """SONIDOS PERSONALIZADOS — a custom sound, without a rebuild."""
+
+    def setUp(self):
+        self.js = read(AUDIO_JS)
+        self.remote = read(os.path.join(ROOT, "src", "content", "remote.js"))
+
+    def test_authored_replaces_and_clearing_restores(self):
+        self.assertIn("const BUILT_IN = { ...RECIPES };", self.js)
+        body = self.js.split("export function applySounds", 1)[1].split("\n}", 1)[0]
+        self.assertIn("BUILT_IN[id]", body,
+                      "clearing an authored sound must put the built-in back, not "
+                      "leave silence — the same rule applyTheme follows for a "
+                      "cleared token")
+
+    def test_an_authored_recipe_is_validated_before_it_reaches_webaudio(self):
+        """It arrives over the network from content.json, so it is untrusted.
+
+        A gain outside 0..1 or a duration that is not a positive number is
+        dropped: a custom sound must not be a way to make somebody's speakers do
+        something unexpected.
+        """
+        block = self.remote.split("ui.sounds", 1)[1][:2000]
+        self.assertIn("num(v.gain, 0, 1", block, "gain is not clamped")
+        self.assertIn("num(v.dur, 0.001, 5", block, "duration is not clamped")
+        self.assertIn("num(v.from, 20, 20000", block, "frequency is not clamped")
+        self.assertIn('["sine", "square", "sawtooth", "triangle"]', block,
+                      "the oscillator type is not restricted to the four real ones")
+
+    def test_the_render_prefers_the_authored_spec(self):
+        # An export has to show what the game will PLAY. Reading the static
+        # registry would export the stock sound while the game plays the custom.
+        self.assertIn("AUTHORED[name] || AUDIO.recipes[name]", self.js)

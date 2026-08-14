@@ -1,0 +1,173 @@
+{
+  "_note": "LAS ETAPAS de Historia. `timeLimit` is SECONDS and speeds are px/s, so a rescale changes how long a delivery takes — `config.py` says to re-measure these rather than assume. `kiosks` names where the churchill is picked up; `unlock` is the district the stage opens.",
+  "stages": [
+    {
+      "id": "s1",
+      "num": 1,
+      "name": "El Faro",
+      "district": "carmen",
+      "brief": "Repartí el primer pedido del día. Llegan cruceros — los gringos quieren probar el dichoso Churchill.",
+      "kiosks": [
+        "kios_faro"
+      ],
+      "targetDeliveries": 3,
+      "timeLimit": 115,
+      "weather": "sunny",
+      "customers": [
+        "c1",
+        "c2"
+      ],
+      "unlock": "paseo"
+    },
+    {
+      "id": "s2",
+      "num": 2,
+      "name": "Paseo de los Turistas",
+      "district": "paseo",
+      "brief": "El boulevard está lleno. Atravesá la peatonal esquivando turistas y comparsas de carnaval.",
+      "kiosks": [
+        "kios_paseo1",
+        "kios_paseo2"
+      ],
+      "targetDeliveries": 4,
+      "timeLimit": 150,
+      "weather": "sunny",
+      "customers": [
+        "c3",
+        "c4",
+        "c5"
+      ],
+      "unlock": "centro"
+    },
+    {
+      "id": "s3",
+      "num": 3,
+      "name": "Mercado y Catedral",
+      "district": "centro",
+      "brief": "Las calles del centro son angostas y el tráfico no perdona. Ojo con los gatos — y el Padre Ramírez no es de esperar.",
+      "kiosks": [
+        "kios_centro",
+        "kios_paseo2"
+      ],
+      "targetDeliveries": 4,
+      "timeLimit": 165,
+      "weather": "sunny",
+      "customers": [
+        "c6",
+        "c7",
+        "c8",
+        "c9"
+      ],
+      "unlock": "playitas"
+    },
+    {
+      "id": "s4",
+      "num": 4,
+      "name": "Atardecer en Las Playitas",
+      "district": "playitas",
+      "brief": "Atardece sobre el Yacht Club. Abrí gas por la Ruta 17, pero cuidado: el equipo de fútbol anda entrenando.",
+      "kiosks": [
+        "kios_play",
+        "kios_centro"
+      ],
+      "targetDeliveries": 5,
+      "timeLimit": 175,
+      "weather": "sunset",
+      "customers": [
+        "c10",
+        "c11",
+        "c12"
+      ],
+      "unlock": "cocal"
+    },
+    {
+      "id": "s5",
+      "num": 5,
+      "name": "Tormenta en El Cocal",
+      "district": "cocal",
+      "brief": "Cayó el aguacero y el asfalto resbala. Llegá a la Ruta 17 antes de que la tormenta empeore.",
+      "kiosks": [
+        "kios_cocal2"
+      ],
+      "targetDeliveries": 5,
+      "timeLimit": 200,
+      "weather": "storm",
+      "customers": [
+        "c13",
+        "c14"
+      ],
+      "unlock": "mata"
+    },
+    {
+      "id": "s6",
+      "num": 6,
+      "name": "Puente · Mata de Limón",
+      "district": "mata",
+      "brief": "Cruzá el puente colgante sobre el estero. Llegá al kiosco de Mata de Limón y a la Marisquería Leda.",
+      "kiosks": [
+        "kios_mata"
+      ],
+      "targetDeliveries": 4,
+      "timeLimit": 150,
+      "weather": "night",
+      "customers": [
+        "c15",
+        "c16"
+      ],
+      "unlock": "mata"
+    },
+    {
+      "id": "s7",
+      "num": 7,
+      "name": "Caldera · Final",
+      "district": "caldera",
+      "brief": "Por la Ruta 27 hasta el Puerto de Caldera. Ya sale el sol — una última entrega y se acaba la jornada.",
+      "kiosks": [
+        "kios_caldera",
+        "kios_mata"
+      ],
+      "targetDeliveries": 4,
+      "timeLimit": 215,
+      "weather": "sunny",
+      "customers": [
+        "c17",
+        "c18"
+      ],
+      "unlock": "caldera"
+    }
+  ],
+  "crossingStages": [
+    {
+      "id": "s8",
+      "after": "s3",
+      "kind": "crossing",
+      "ferry": "pitahaya",
+      "name": "Travesía del Estero",
+      "district": "centro",
+      "brief": "Llevá la lancha hasta Pitahaya siguiendo las boyas. Esquivá las pangas, los yates y las redes de los pescadores — rozalos de cerca y ganás impulso. Cruzá los cardúmenes: el que llega con peces, llega mejor.",
+      "kiosks": [],
+      "customers": [],
+      "targetDeliveries": 0,
+      "timeLimit": 150,
+      "weather": "sunny",
+      "unlock": null
+    }
+  ],
+  "lanchas": [
+    {
+      "id": "pitahaya",
+      "name": "Lancha a Pitahaya",
+      "berth_pier": "muelle_pitahaya",
+      "landing": [
+        10.02539,
+        -84.82923
+      ],
+      "deck": [
+        86,
+        34
+      ],
+      "dockS": 20,
+      "speed": 150
+    }
+  ]
+}

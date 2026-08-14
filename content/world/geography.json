@@ -1,0 +1,182 @@
+{
+  "_note": "LA GEOGRAFÍA AUTORADA — the probes the build sanity-checks itself with, the eight districts of the peninsula and the four inland ones, and the boundaries between them. Every anchor is GEO (lat, lon) so it survives any change to the projection; the build FAILS listing what it cannot resolve rather than quietly dropping it.",
+  "_pairs": "Coordinates are [lat, lon] — the order `ll`/`geo` use everywhere in this builder, and the opposite of a GeoJSON position. The loader turns them back into tuples.",
+  "probeLand": [
+    [
+      9.97769,
+      -84.83487
+    ],
+    [
+      9.92272,
+      -84.70911
+    ],
+    [
+      9.976,
+      -84.845
+    ]
+  ],
+  "probeSea": [
+    [
+      9.95,
+      -84.87
+    ],
+    [
+      9.96,
+      -84.8
+    ],
+    [
+      9.995,
+      -84.82
+    ]
+  ],
+  "districts": [
+    {
+      "id": "faro",
+      "name": "EL FARO",
+      "short": "Faro",
+      "tone": "#f4d77a"
+    },
+    {
+      "id": "carmen",
+      "name": "CARMEN",
+      "short": "Carmen",
+      "tone": "#e0b478"
+    },
+    {
+      "id": "paseo",
+      "name": "PASEO DE LOS TURISTAS",
+      "short": "Paseo",
+      "tone": "#f0a37a"
+    },
+    {
+      "id": "centro",
+      "name": "CENTRO PUNTARENAS",
+      "short": "Centro",
+      "tone": "#e6c388"
+    },
+    {
+      "id": "playitas",
+      "name": "BARRIO LAS PLAYITAS",
+      "short": "Playitas",
+      "tone": "#caa089"
+    },
+    {
+      "id": "cocal",
+      "name": "BARRIO EL COCAL",
+      "short": "Cocal",
+      "tone": "#a8b88a"
+    },
+    {
+      "id": "mata",
+      "name": "MATA DE LIMÓN",
+      "short": "Mata Limón",
+      "tone": "#a0c894"
+    },
+    {
+      "id": "caldera",
+      "name": "CALDERA BULEVAR",
+      "short": "Caldera",
+      "tone": "#9bc4d4"
+    }
+  ],
+  "districtBoundsGeo": [
+    [
+      9.9762,
+      -84.8493
+    ],
+    [
+      9.9755,
+      -84.8405
+    ],
+    [
+      9.977,
+      -84.83182
+    ],
+    [
+      9.9782,
+      -84.829
+    ],
+    [
+      9.979,
+      -84.82512
+    ],
+    [
+      9.96,
+      -84.79293
+    ],
+    [
+      9.9195,
+      -84.7125
+    ]
+  ],
+  "inlandDistricts": [
+    {
+      "id": "chacarita",
+      "name": "CHACARITA",
+      "short": "Chacarita",
+      "tone": "#b0b483",
+      "geo": [
+        9.98061,
+        -84.77368
+      ],
+      "bbox": [
+        9.969,
+        -84.79,
+        9.993,
+        -84.758
+      ]
+    },
+    {
+      "id": "elroble",
+      "name": "EL ROBLE",
+      "short": "El Roble",
+      "tone": "#9ec4a0",
+      "geo": [
+        9.98067,
+        -84.73602
+      ],
+      "bbox": [
+        9.97,
+        -84.756,
+        9.993,
+        -84.725
+      ]
+    },
+    {
+      "id": "barranca",
+      "name": "BARRANCA",
+      "short": "Barranca",
+      "tone": "#c7b98a",
+      "geo": [
+        9.9884,
+        -84.71094
+      ],
+      "bbox": [
+        9.964,
+        -84.725,
+        9.999,
+        -84.696
+      ]
+    },
+    {
+      "id": "esparza",
+      "name": "ESPARZA",
+      "short": "Esparza",
+      "tone": "#d6a97e",
+      "geo": [
+        9.99183,
+        -84.66587
+      ],
+      "bbox": [
+        9.976,
+        -84.686,
+        10.012,
+        -84.644
+      ]
+    }
+  ],
+  "maleconEastLl": [
+    9.97747,
+    -84.82532
+  ]
+}

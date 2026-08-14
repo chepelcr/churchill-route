@@ -1048,11 +1048,11 @@ styles the game actually knows how to draw or simulate.
 | Repeated identity | Correct authority | Reason not to make it a language enum |
 |---|---|---|
 | vehicle keys (`scooter`, `panga`, etc.) | `vehicles.json` asset registry — **built 2026-08-13** | designers should add vehicles without extending engine source |
-| district, stage, landmark, customer, ferry, and kiosk IDs | world/content registries with reference validation | these are authored records, not engine states |
+| district, stage, landmark, customer, ferry, and kiosk IDs | ~~world/content registries with reference validation~~ **DONE 2026-08-14** — `content/world/*.json`, six files, with the editor validating cross-references and geo bounds before a 33-minute build discovers them | these are authored records, not engine states |
 | NPC type IDs and NPC art IDs | `npcTypes.json` plus an art registry | NPC types are already data-extensible |
 | attraction kinds | `feriaAssets.json` schema/registry | the existing shape DSL is the authority and can grow as data |
 | editor feature types | feature-schema registry containing geometry/layer/symbol/handler | the editor is explicitly intended to gain new asset families |
-| audio event IDs | audio recipe registry | new sounds should not require extending a central enum switch |
+| audio event IDs | ~~audio recipe registry~~ **DONE 2026-08-14** — `src/assets/audio.json`, plus a MIXER the game did not have (one gain node until then) and `renderOffline`, which exports any recipe as a WAV and gave audio its first regression gate | new sounds should not require extending a central enum switch |
 | visual family IDs | renderer ownership registry | new families should declare ownership/material contracts as data |
 | material, palette, road-role, and surface-role names | versioned material/domain registries | each name carries properties and membership, not just identity |
 | languages and translation keys | language/catalog registries | localization is intentionally extensible |

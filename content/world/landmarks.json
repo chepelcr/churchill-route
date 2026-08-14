@@ -1,0 +1,415 @@
+{
+  "_note": "LOS HITOS — the 38 places the game names. `osm` resolves the anchor against a mapped feature by name; `ll` anchors it directly. `dx`/`dy` nudge the drawn art off the anchor in world px, which is why they are px and not metres: they are a drawing offset, not a distance on the ground.",
+  "_marine": "Parque Marino's cuadra is partitioned by hand — `marineSiteOsmId` is the theme-park way that decides which footprints belong to the aquarium, and `marineBuildingNames` are externally verified facility labels the local OSM ways do not carry. NEVER infer a new footprint/name assignment from list order.",
+  "landmarks": [
+    {
+      "id": "faro",
+      "name": "El Faro",
+      "type": "lighthouse",
+      "district": "faro",
+      "osm": "faro de la punta",
+      "dx": -12,
+      "dy": 138
+    },
+    {
+      "id": "balneario",
+      "name": "Balneario Municipal",
+      "type": "pool",
+      "district": "faro",
+      "osm": "faro de la punta",
+      "dx": 138,
+      "dy": 12
+    },
+    {
+      "id": "kios_faro",
+      "name": "Churchill La Punta",
+      "type": "kiosk",
+      "district": "faro",
+      "osm": "faro de la punta",
+      "dx": 106,
+      "dy": 131
+    },
+    {
+      "id": "muellecruc",
+      "name": "Muelle de Cruceros",
+      "type": "cruise",
+      "district": "paseo",
+      "osm": "muelle de cruceros",
+      "ll": [
+        9.9745,
+        -84.8345
+      ],
+      "dx": 850
+    },
+    {
+      "id": "ferrycr",
+      "name": "Terminal de Ferry",
+      "type": "ferry",
+      "district": "carmen",
+      "osm": "terminal de ferry puntarenas"
+    },
+    {
+      "id": "playa",
+      "name": "Playa Puntarenas",
+      "type": "beachsign",
+      "district": "carmen",
+      "ll": [
+        9.975,
+        -84.843
+      ]
+    },
+    {
+      "id": "carmenig",
+      "name": "Iglesia del Carmen",
+      "type": "church",
+      "district": "carmen",
+      "osm": "iglesia del carmen",
+      "ll": [
+        9.9765,
+        -84.844
+      ]
+    },
+    {
+      "id": "tioga",
+      "name": "Hotel Tioga",
+      "type": "hotel",
+      "district": "paseo",
+      "osm": "tioga",
+      "ll": [
+        9.975,
+        -84.836
+      ]
+    },
+    {
+      "id": "kios_paseo1",
+      "name": "Kiosco Doña Lela",
+      "type": "kiosk",
+      "district": "paseo",
+      "osm": "kioscos paseo de los turistas",
+      "dx": -75,
+      "dy": 100
+    },
+    {
+      "id": "kios_paseo2",
+      "name": "Churchill El Mariachi",
+      "type": "kiosk",
+      "district": "paseo",
+      "osm": "kioscos paseo de los turistas",
+      "dx": 75,
+      "dy": 100
+    },
+    {
+      "id": "casafait",
+      "name": "Casa Fait",
+      "type": "house",
+      "district": "paseo",
+      "osm": "casa fait",
+      "ll": [
+        9.977,
+        -84.829
+      ]
+    },
+    {
+      "id": "parquemar",
+      "name": "Parque Marino del Pacífico",
+      "type": "park",
+      "district": "playitas",
+      "osm": "parque marino",
+      "ll": [
+        9.976,
+        -84.823
+      ]
+    },
+    {
+      "id": "mercado",
+      "name": "Mercado Central",
+      "type": "market",
+      "district": "centro",
+      "osm": "mercado municipal de puntarenas",
+      "block": {
+        "calles": [
+          [
+            "Calle 2 Presbíterio Florencio del Castillo",
+            "Calle 2"
+          ],
+          [
+            "Calle 4"
+          ]
+        ],
+        "ave_north": [
+          "Avenida 5"
+        ],
+        "ave_south": [
+          "Avenida 3 Filiberto Sinfontes",
+          "Avenida 3"
+        ]
+      }
+    },
+    {
+      "id": "pali",
+      "name": "Supermercado Palí",
+      "type": "super",
+      "district": "centro",
+      "osm": "palí",
+      "ll": [
+        9.9765,
+        -84.829
+      ]
+    },
+    {
+      "id": "catedral",
+      "name": "Catedral de Puntarenas",
+      "type": "cathedral",
+      "district": "centro",
+      "osm": "catedral",
+      "near": [
+        9.97762,
+        -84.83486
+      ]
+    },
+    {
+      "id": "cultura",
+      "name": "Casa de la Cultura",
+      "type": "civic",
+      "district": "centro",
+      "osm": "casa de la cultura elsie",
+      "near": [
+        9.97765,
+        -84.83404
+      ],
+      "ll": [
+        9.97765,
+        -84.83404
+      ]
+    },
+    {
+      "id": "kios_centro",
+      "name": "Kiosco La Porteña",
+      "type": "kiosk",
+      "district": "centro",
+      "ll": [
+        9.9748,
+        -84.83
+      ]
+    },
+    {
+      "id": "estadio",
+      "name": "Estadio Lito Pérez",
+      "type": "stadium",
+      "district": "carmen",
+      "ll": [
+        9.9768,
+        -84.8388
+      ]
+    },
+    {
+      "id": "estadio_playitas",
+      "name": "Plaza Las Playitas",
+      "type": "stadium",
+      "district": "playitas",
+      "ll": [
+        9.9796,
+        -84.8252
+      ]
+    },
+    {
+      "id": "kios_play",
+      "name": "Kiosco Playitas",
+      "type": "kiosk",
+      "district": "playitas",
+      "ll": [
+        9.9784,
+        -84.8264
+      ]
+    },
+    {
+      "id": "yatch",
+      "name": "Yacht Club",
+      "type": "marina",
+      "district": "cocal",
+      "osm": "yacht",
+      "ll": [
+        9.979,
+        -84.812
+      ]
+    },
+    {
+      "id": "cocal_park",
+      "name": "Parque El Cocal",
+      "type": "park",
+      "district": "cocal",
+      "ll": [
+        9.9795,
+        -84.795
+      ]
+    },
+    {
+      "id": "kios_cocal",
+      "name": "Kiosco El Cocal",
+      "type": "kiosk",
+      "district": "cocal",
+      "ll": [
+        9.981,
+        -84.794
+      ]
+    },
+    {
+      "id": "kios_cocal2",
+      "name": "Soda Ruta 17",
+      "type": "kiosk",
+      "district": "cocal",
+      "ll": [
+        9.98109,
+        -84.8139
+      ]
+    },
+    {
+      "id": "puente",
+      "name": "Puente de Mata de Limón",
+      "type": "bridge",
+      "district": "mata",
+      "osm": "puente colgante mata de limón"
+    },
+    {
+      "id": "kios_mata",
+      "name": "Kiosco Mata de Limón",
+      "type": "kiosk",
+      "district": "mata",
+      "ll": [
+        9.9225,
+        -84.7085
+      ]
+    },
+    {
+      "id": "leda",
+      "name": "Marisquería Leda",
+      "type": "restaurant",
+      "district": "mata",
+      "osm": "leda",
+      "ll": [
+        9.9235,
+        -84.7078
+      ]
+    },
+    {
+      "id": "matalimon",
+      "name": "Estero Mata de Limón",
+      "type": "estuary",
+      "district": "mata",
+      "osm": "estero mata de limón"
+    },
+    {
+      "id": "caldera_blvd",
+      "name": "Caldera Bulevar",
+      "type": "sign",
+      "district": "caldera",
+      "ll": [
+        9.918,
+        -84.713
+      ]
+    },
+    {
+      "id": "kios_caldera",
+      "name": "Soda del Puerto",
+      "type": "kiosk",
+      "district": "caldera",
+      "ll": [
+        9.913,
+        -84.716
+      ]
+    },
+    {
+      "id": "tren",
+      "name": "Estación Tren Caldera",
+      "type": "trainstation",
+      "district": "caldera",
+      "osm": "estación tren",
+      "ll": [
+        9.915,
+        -84.715
+      ]
+    },
+    {
+      "id": "puerto",
+      "name": "Puerto de Caldera",
+      "type": "port",
+      "district": "caldera",
+      "osm": "puerto internacional caldera"
+    },
+    {
+      "id": "villach",
+      "name": "Villa Champán",
+      "type": "village",
+      "district": "caldera",
+      "ll": [
+        9.916,
+        -84.7125
+      ]
+    },
+    {
+      "id": "ruta27",
+      "name": "Ruta 27 · Autopista",
+      "type": "highway",
+      "district": "caldera",
+      "ll": [
+        9.91,
+        -84.71
+      ]
+    },
+    {
+      "id": "kios_chac",
+      "name": "Soda Chacarita",
+      "type": "kiosk",
+      "district": "chacarita",
+      "ll": [
+        9.98061,
+        -84.77368
+      ],
+      "snap_road": 1
+    },
+    {
+      "id": "kios_roble",
+      "name": "Churchill El Roble",
+      "type": "kiosk",
+      "district": "elroble",
+      "ll": [
+        9.98067,
+        -84.73602
+      ],
+      "snap_road": 1
+    },
+    {
+      "id": "kios_barr",
+      "name": "Kiosco Barranca",
+      "type": "kiosk",
+      "district": "barranca",
+      "ll": [
+        9.9884,
+        -84.71094
+      ],
+      "snap_road": 1
+    },
+    {
+      "id": "kios_esp",
+      "name": "Churchill Esparza",
+      "type": "kiosk",
+      "district": "esparza",
+      "ll": [
+        9.99183,
+        -84.66587
+      ],
+      "snap_road": 1
+    }
+  ],
+  "marineSiteOsmId": 316422305,
+  "marineBuildingNames": {
+    "911250909": "Módulo Productivo · LABM",
+    "911250910": "Recepción de Visitantes",
+    "911250911": "Antigua Estación del Ferrocarril",
+    "911250912": "Acuario · Sala de Exhibiciones Temporales",
+    "911250913": "Centro de Rescate · CRRAM",
+    "911250914": "Boletería",
+    "911250915": "Servicios Sanitarios",
+    "911250916": "Oficinas Administrativas"
+  }
+}

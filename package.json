@@ -10,13 +10,14 @@
     "preview": "vite preview",
     "inventory": "node tools/gen-inventory.mjs",
     "world:build": "python3 tools/build_world.py",
-    "test": "python3 -m unittest tests.test_vocabulary tests.test_world_surfaces tests.test_flora tests.test_vehicles tests.test_materials tests.test_world_props tests.test_plantings tests.test_world_units tests.test_effects tests.test_theme_tokens tests.test_world_editor_patch",
+    "test": "python3 -m unittest tests.test_vocabulary tests.test_world_surfaces tests.test_flora tests.test_vehicles tests.test_materials tests.test_world_props tests.test_plantings tests.test_world_units tests.test_effects tests.test_theme_tokens tests.test_content tests.test_economy tests.test_audio tests.test_world_editor_patch",
     "vocabulary": "python3 tools/gen_vocabulary.py",
     "smoke": "node tools/smoke.mjs",
     "smoke:boat": "node tools/smoke_boat.mjs",
     "smoke:crossing": "node tools/smoke_crossing.mjs",
     "smoke:theme": "node tools/smoke-theme.mjs",
-    "smoke:sponsor": "node tools/smoke-sponsor.mjs"
+    "smoke:sponsor": "node tools/smoke-sponsor.mjs",
+    "audio:render": "node tools/render-audio.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",

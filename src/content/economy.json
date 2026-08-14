@@ -1,0 +1,59 @@
+{
+  "_note": "LA ECONOMÍA — el catálogo. What a delivery pays, what the shop sells and what it costs. `src/game/economy.js` keeps the WALLET: crediting, spending, ownership, and the migration of an old save. This is the half a designer changes.",
+
+  "version": 1,
+
+  "_scope": "A price, a name, an icon and an effect ladder are content. `ensureEconomy` — which fills in the fields an old localStorage save does not have — is not: it is a migration, and getting it wrong loses somebody's coins.",
+
+  "_elsewhere": "WHICH VEHICLES ARE FREE AND WHAT THE REST COST BELONG TO THE VEHICLE, and moved to `src/assets/vehicles.json` on 2026-08-13. They were two hand-kept lists in economy.js, so 'does this vehicle exist' and 'what does it cost' lived in different files and could disagree: a price for a key with no vehicle simply did nothing, and a medium with no free entry stranded the player in the sea.",
+
+  "earn": {
+    "_note": "Generous on purpose — the shop should be reachable in a few runs.",
+    "perDelivery": 50,
+    "perfectBonus": 25,
+    "perfectNote": "paid on a drop that arrived barely melted; `delivery.js` owns the threshold, because how melted counts as fresh is a rule and not a price",
+    "perPickup": 10,
+    "perPickupNote": "the coins scattered on the streets in Arcade"
+  },
+
+  "upgrades": {
+    "_note": "Permanent, per-line, bought a level at a time. `levels` is the EFFECT at each level and index 0 is 'none' — so a line always has one more level than it has prices, and `tests/test_economy.py` checks exactly that. Getting it wrong sells a level that does nothing.",
+    "cooler": {
+      "name": "Cooler pro", "icon": "cube",
+      "levels": [1, 0.9, 0.8, 0.7], "prices": [200, 500, 1000],
+      "effect": "melt multiplier — lower is slower"
+    },
+    "turbotank": {
+      "name": "Turbo tank", "icon": "flame",
+      "levels": [1.35, 1.42, 1.48, 1.55], "prices": [200, 500, 1000],
+      "effect": "the top-speed cap while boosting"
+    }
+  },
+
+  "boosts": {
+    "_note": "Consumable, armed per run from the picker or the shop.",
+    "icepack": { "name": "Ice pack", "icon": "snow", "price": 60, "desc": "30s sin derretir" },
+    "headstart": { "name": "Head start", "icon": "rocket", "price": 40, "desc": "5s de turbo gratis" }
+  },
+
+  "colors": {
+    "_note": "Cosmetic paint, equipped per vehicle. `hex` replaces the vehicle's `$color`, which is why a bought swatch repaints the body and leaves the boot-top red — see `partColor` in vehicles.js.",
+    "list": [
+      { "id": "col_rojo", "name": "Rojo porteño", "hex": "#d63a30", "price": 80 },
+      { "id": "col_azul", "name": "Azul gulf", "hex": "#2e8bd6", "price": 80 },
+      { "id": "col_verde", "name": "Verde manglar", "hex": "#2e7d44", "price": 80 },
+      { "id": "col_morado", "name": "Morado feria", "hex": "#8a4fd6", "price": 80 },
+      { "id": "col_negro", "name": "Negro noche", "hex": "#26222c", "price": 80 },
+      { "id": "col_dorado", "name": "Dorado leyenda", "hex": "#e8b53a", "price": 80 }
+    ]
+  },
+
+  "coinPacks": {
+    "_note": "REAL MONEY. `productId` is a Play Billing CONSUMABLE product id and it must match what is configured in the Play Console exactly — a typo here is a purchase that takes the money and credits nothing. `usd` is display copy only; the store is the authority on what a player is actually charged in their own currency.",
+    "list": [
+      { "productId": "coins_500", "coins": 500, "usd": "$0.99" },
+      { "productId": "coins_2000", "coins": 2000, "usd": "$2.99" },
+      { "productId": "coins_4000", "coins": 4000, "usd": "$4.99" }
+    ]
+  }
+}

@@ -5,6 +5,7 @@
 // One-shots build tiny throwaway node graphs; the continuous engine and
 // drift voices are created once and steered with setTargetAtTime.
 import { ENGINE_VOICES } from "./vehicles.js";
+import AUDIO from "../assets/audio.json" with { type: "json" };
 
 const MUTE_KEY = "churchill_muted_v1";
 const VOL_KEY = "churchill_volume_v1";
@@ -12,7 +13,15 @@ const BROWSER = typeof window !== "undefined";
 
 let ctx = null;         // AudioContext, created on first gesture
 let master = null;      // master gain (mute = 0)
-let noiseBuf = null;    // shared 1s white-noise buffer
+// THE BUSES. There was exactly ONE gain node in this game until 2026-08-14 —
+// the master — so mixing was not something you could do badly, it was something
+// you could not do at all: ambience could not be set quieter than the SFX.
+// Every bus ships at 1.0 and a gain of 1 in series is arithmetically
+// transparent, so the balance is unchanged by their existence.
+//   voice -> bus -> master -> destination
+// `master` is what mute and the volume slider drive; the buses are the mix.
+const buses = {};       // { sfx, engine, ambience, music }
+let noiseBuf = null;    // shared 1s white-noise buffer (seeded in renderOffline)
 let engineV = null;     // { oscA, oscB, filter, gain }
 let driftV = null;      // { src, filter, gain }
 let fountainV = null;   // { jet, spray, body, level } — a PARK fountain
@@ -45,6 +54,14 @@ function unlock() {
   master = ctx.createGain();
   master.gain.value = sfx.muted ? 0 : sfx.volume;
   master.connect(ctx.destination);
+
+  for (const [id, spec] of Object.entries(AUDIO.mixer.buses)) {
+    if (id.startsWith("_")) continue;
+    const g = ctx.createGain();
+    g.gain.value = spec.gain;
+    g.connect(master);
+    buses[id] = g;
+  }
 
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
@@ -226,11 +243,11 @@ function tone({ type = "square", from = 440, to = null, dur = 0.08, gain = 0.15,
     f.frequency.exponentialRampToValueAtTime(120, t0 + dur);
     o.connect(f); head = f;
   }
-  head.connect(g); g.connect(destination || master);
+  head.connect(g); g.connect(destination || buses.sfx || master);
   o.start(t0); o.stop(t0 + dur + 0.02);
 }
 
-function noiseHit({ dur = 0.05, gain = 0.1, at = 0, band = null }) {
+function noiseHit({ dur = 0.05, gain = 0.1, at = 0, band = null, destination = null }) {
   const t0 = ctx.currentTime + at;
   const s = ctx.createBufferSource();
   s.buffer = noiseBuf;
@@ -243,7 +260,7 @@ function noiseHit({ dur = 0.05, gain = 0.1, at = 0, band = null }) {
     f.type = "bandpass"; f.frequency.value = band; f.Q.value = 1;
     s.connect(f); head = f;
   }
-  head.connect(g); g.connect(master);
+  head.connect(g); g.connect(destination || buses.sfx || master);
   s.start(t0); s.stop(t0 + dur + 0.02);
 }
 
@@ -260,17 +277,32 @@ function noiseHit({ dur = 0.05, gain = 0.1, at = 0, band = null }) {
 // is an audio change rather than a migration.
 const DEFAULT_VOICE = ENGINE_VOICES.scooter;
 
-const RECIPES = {
-  menu_move:   () => tone({ from: 660, dur: 0.06, gain: 0.12 }),
-  menu_select: () => { tone({ from: 523, dur: 0.07, gain: 0.14 }); tone({ from: 784, dur: 0.09, gain: 0.14, at: 0.07 }); },
-  menu_denied: () => tone({ from: 180, to: 140, dur: 0.09, gain: 0.14 }),
-  pickup:      () => { tone({ type: "sine", from: 440, to: 880, dur: 0.09, gain: 0.18 }); noiseHit({ dur: 0.03, gain: 0.08, band: 4000 }); },
-  delivery:    () => [523, 659, 784].forEach((f, i) => tone({ type: "triangle", from: f, dur: 0.09, gain: 0.16, at: i * 0.07 })),
-  perfect:     () => {
-    [523, 659, 784].forEach((f, i) => tone({ type: "triangle", from: f, dur: 0.09, gain: 0.16, at: i * 0.07 }));
-    tone({ type: "triangle", from: 1046, dur: 0.16, gain: 0.18, at: 0.21 });
-    tone({ type: "sine", from: 1052, dur: 0.16, gain: 0.08, at: 0.21 });
-  },
+// THE STEP LIST IS DATA, THE PLAYER IS CODE — `src/assets/audio.json`.
+//
+// A one-shot is an ordered list of `tone` and `noise` steps with an offset, so
+// a three-note arpeggio is three steps rather than three hand-written timers.
+// `bus` names which mixer bus it lands on.
+//
+// TWO RECIPES KEEP THEIR CODE and say so in the registry: `horn` loops over an
+// interval table doubling each note with a twin detuned 0.6 % so the pair
+// BEATS — that beating is what makes a horn read as air rather than a bass note
+// — and `combo` is a function of the streak, not a fixed list. Expressing
+// either as JSON would be arithmetic in JSON.
+function playSteps(spec) {
+  const dest = buses[spec.bus] || null;
+  for (const step of spec.steps) {
+    if (step.tone) tone({ ...step.tone, destination: dest });
+    else if (step.noise) noiseHit({ ...step.noise, destination: dest });
+  }
+}
+
+const RECIPES = Object.fromEntries(
+  Object.entries(AUDIO.recipes)
+    .filter(([id]) => !id.startsWith("_"))
+    .map(([id, spec]) => [id, () => playSteps(spec)]),
+);
+
+Object.assign(RECIPES, {
   // Ferry horn — the "chu… chuuu" of the Paquera boat pulling out of the
   // muelle. A short blast then a long one, each a low pair beating slightly
   // against itself (that beat is what makes a horn sound like a horn and not a
@@ -288,16 +320,62 @@ const RECIPES = {
     blast(0, 0.42, 0.16);
     blast(0.62, 1.15, 0.19);
   },
-  // Street coin: a bright two-note "ching" — distinct from `pickup` (the
-  // churchill), so grabbing colones off the map reads as money, not a drink.
-  coin:        () => {
-    tone({ type: "square", from: 988, dur: 0.05, gain: 0.10 });
-    tone({ type: "square", from: 1319, dur: 0.11, gain: 0.09, at: 0.045 });
-    tone({ type: "sine", from: 2637, dur: 0.09, gain: 0.035, at: 0.045 });
-  },
   combo:       (n = 2) => tone({ from: 520 * (1 + 0.09 * Math.min(8, n)), dur: 0.08, gain: 0.14 }),
-  melt_fail:   () => { tone({ type: "sawtooth", from: 300, to: 80, dur: 0.4, gain: 0.18, filterHz: 900 }); noiseHit({ dur: 0.25, gain: 0.07, at: 0.05, band: 300 }); },
-};
+});
+
+// ---- offline render: the sounds AS FILES ------------------------------------
+//
+// This game synthesises everything at runtime and ships no audio assets, which
+// is why its whole soundtrack costs zero bytes of download. But a procedural
+// sound cannot be dropped into a trailer, and it cannot be REGRESSION-TESTED
+// either — you cannot diff a thing that only exists while it is playing.
+//
+// `renderOffline` fixes both with one move: it re-runs a recipe into an
+// `OfflineAudioContext` and hands back the PCM. `tools/render-audio.mjs` writes
+// those out as WAVs for video editing, and the same buffer hashed is the audio
+// equivalent of the pixel diff every art change in this repo has to pass.
+//
+// THE NOISE BUFFER IS SEEDED HERE, and that is the whole reason the hash is
+// worth anything: the live one is `Math.random()`, so two renders of the same
+// recipe would never agree and a diff of them would mean nothing. A fixed LCG
+// gives the same white noise every time — the same SOUND, since white noise is
+// white noise, but a reproducible one.
+export async function renderOffline(name, arg, seconds = 2.5, rate = 44100) {
+  const OAC = typeof window !== "undefined"
+    && (window.OfflineAudioContext || window.webkitOfflineAudioContext);
+  if (!OAC) return null;
+  const off = new OAC(1, Math.ceil(rate * seconds), rate);
+
+  const saved = { ctx, master, noiseBuf, buses: { ...buses } };
+  ctx = off;
+  master = off.createGain();
+  master.gain.value = 1;                    // render dry: the mix is the mix
+  master.connect(off.destination);
+  for (const [id, spec] of Object.entries(AUDIO.mixer.buses)) {
+    if (id.startsWith("_")) continue;
+    const g = off.createGain();
+    g.gain.value = spec.gain;
+    g.connect(master);
+    buses[id] = g;
+  }
+  noiseBuf = off.createBuffer(1, rate, rate);
+  const d = noiseBuf.getChannelData(0);
+  let seed = 0x2f6e2b1;                     // deterministic white noise
+  for (let i = 0; i < d.length; i++) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    d[i] = (seed / 0x80000000) - 1;
+  }
+
+  try {
+    RECIPES[name]?.(arg);
+    const buffer = await off.startRendering();
+    return buffer.getChannelData(0);
+  } finally {
+    ctx = saved.ctx; master = saved.master; noiseBuf = saved.noiseBuf;
+    for (const k of Object.keys(buses)) delete buses[k];
+    Object.assign(buses, saved.buses);
+  }
+}
 
 // ---- public facade ---------------------------------------------------------
 

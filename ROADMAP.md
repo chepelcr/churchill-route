@@ -435,37 +435,67 @@ motor la física, el intérprete y las transiciones de estado.
       `tests/test_world_props.py` pasa de 7 a **19** casos (78 en total, antes
       70) y la cobertura de `SignKind` se muda ahí desde `test_vocabulary.py`,
       donde exigía un `case` que ya no existe.
-- [ ] **`churchill/world/content.py` → `content/world/*.json`**, validado contra
-      los DTO que ya existen. **Empezado 2026-08-14: `SITE_DECOR` ya salió** —
-      `content/world/site-decor.json`, que es *cómo se personaliza una cuadra*
-      (`trace` para Mora y Cañas y el Parque del Muellero, `cuadra` para el
-      Mercado, `rect` para las dos escuelas que OSM mapea sobre toda la manzana,
-      `kiosco` para el Parque Victoria). Era un dict de Python, o sea que sólo
-      quien editara el builder podía agregar una. Ahora es fuente del editor con
-      validador y `requiresRebuild: true`.
+- [x] **`churchill/world/content.py` → `content/world/*.json`.** Hecho
+      2026-08-14, y era la fila de MÁS RIESGO del registro. `content.py` pasa de
+      **472 líneas de literales a 133 de CARGADOR**: 38 hitos, 24 clientes, 8
+      etapas, 12 distritos, 16 atracciones, las sondas y las paletas son data en
+      seis archivos.
 
-      Probado por comparación directa contra el literal de git: **6 sitios, mismo
-      orden, idénticos en valor Y TIPO** — `rect` sigue siendo una tupla, porque
-      `FieldService` la desempaca como cuatro fracciones y JSON no tiene tuplas;
-      la conversión vive en el loader y no en el servicio.
+      **La compuerta fue un rebuild completo: 33 minutos, `1001 archivos
+      byte-idénticos`**, sin un solo `WARN` nuevo (quedan los dos de siempre —
+      una sonda de mar que da tierra y el canal de la lancha que se cierra en 18
+      muestras). Antes de eso, una comparación profunda contra los literales de
+      git: **19 tablas, 156 registros, idénticos en VALOR Y TIPO**.
 
-      **El límite honesto**: `trace` conserva el suelo que OSM YA dice que es del
-      sitio y endereza su contorno. No puede inventar una forma que el dato no
-      tenga; una cuadra arbitraria es territorio del esquema `form` × `align`.
+      Lo que el cargador sigue haciendo, y por qué no es "un json.load": **las
+      TUPLAS**. Una coordenada es tupla en este builder y JSON no tiene. La
+      regla que no es obvia es `calles`, que es un **PAR DE LISTAS** (los
+      nombres candidatos de cada una de las dos calles que limitan una manzana),
+      así que "una lista cuyo primer elemento es una lista se queda lista" la
+      rompe: lo que hace tupla acá es la ARIDAD, no el contenido. Y la clave
+      aplica sólo en SU nivel — pasarla hacia adentro convertía también las dos
+      listas.
+- [x] **`src/game/economy.js` → `src/content/economy.json`.** Hecho 2026-08-14.
+      Tasas de ganancia, las dos escaleras de mejora, los boosts, las pinturas y
+      los packs de monedas. La BILLETERA se queda: acreditar, gastar, y sobre
+      todo `ensureEconomy`, que es una MIGRACIÓN de saves viejos y equivocarse
+      ahí le borra las monedas a alguien. Verificado campo por campo contra los
+      literales. La prueba cubre lo que un humano no ve: que una escalera tenga
+      **un nivel más que precios** (el nivel 0 es "ninguno", y de a uno menos la
+      tienda vende un nivel que no hace nada) y que un `productId` de Play sea
+      válido — **eso es plata de verdad**, y un id que no calza con la consola
+      cobra y no acredita.
+- [x] **`src/game/audio.js` → `src/assets/audio.json`.** Hecho 2026-08-14, y
+      resultó más grande que una migración.
 
-      Falta el resto: DISTRICT_DEFS, LANDMARK_DEFS, CUSTOMER_DEFS, STAGES,
-      probes, ATTRACTION_DEFS. Es la fila de MÁS RIESGO del registro: la prueba
-      es un build completo (~28 min) con `world_snapshot.py rebuild` devolviendo
-      los 1001 archivos byte-idénticos, **más un diff de los dos logs de build**
-      — el log es estable carácter a carácter y caza un cambio de comportamiento
-      que el digest podría no ver.
-- [ ] **`src/game/economy.js` → `src/content/economy.json`**: upgrades, boosts,
-      colores, packs de monedas, tasas de ganancia. `FREE_VEHICLES` y
-      `VEHICLE_PRICES` ya se fueron a `vehicles.json`; queda el resto del
-      catálogo. La lógica de billetera y titularidad se queda.
-- [ ] **`src/game/audio.js` → `src/assets/audio.json`**: recetas de eventos,
-      melodías, voces continuas. `ENGINE_VOICES` ya vive en `vehicles.json`. El
-      grafo de osciladores y el scheduler se quedan.
+      **NO HABÍA MEZCLA.** Había exactamente UN nodo de ganancia en todo el
+      juego —el master— así que mezclar no era algo que se pudiera hacer mal,
+      era algo que no se podía hacer: el ambiente no se podía bajar respecto a
+      los efectos. Ahora hay cuatro buses (`sfx`, `engine`, `ambience`,
+      `music`), todos a 1.0, porque una ganancia de 1 en serie es
+      aritméticamente transparente y el balance de hoy es el balance del que se
+      escribió el archivo.
+
+      **Y LOS SONIDOS AHORA SE PUEDEN EXPORTAR.** `renderOffline` vuelve a
+      correr cualquier receta dentro de un `OfflineAudioContext` y devuelve el
+      PCM; `pnpm audio:render` los escribe como **WAV** para un trailer o un
+      video. El juego sigue sin un solo archivo de audio —la banda sonora
+      completa cuesta cero bytes de descarga— pero ahora se puede sacar.
+
+      Eso resolvió de paso el único vacío de verificación que quedaba en el
+      repo: **el audio no tenía equivalente del diff de píxeles**. Ahora sí, y
+      la lección se repitió: un **sha256 del PCM NO SIRVE** — renderizando la
+      MISMA receta dos veces en la misma página, `coin` difiere 7,5e-9 y `horn`
+      6,0e-8, porque los osciladores band-limited de WebAudio no son
+      reproducibles al último bit. La huella es una **envolvente de 64 baldes
+      RMS**, cuatro órdenes de magnitud arriba de ese ruido, y está PROBADO que
+      caza un cambio real: 1,5 % de ganancia en un paso de una receta la mueve.
+      **Las diez recetas: idénticas.**
+
+      Dos recetas se quedan en código y el registro dice por qué: la `horn`
+      recorre una tabla de intervalos doblando cada nota con una gemela desafinada
+      0,6 % para que el par BATA —ese batido es lo que hace que suene a aire y no
+      a un bajo— y `combo` es función de la racha.
 - [ ] **`src/content/simulation.json`**: perfiles de población, tablas de
       encuentro, presets de bus/ferry/travesía/día/clima/marea desde `spawns.js`,
       `buses.js`, `crossing.js`, `daynight.js`, `tides.js`. El avance de

@@ -5,6 +5,7 @@
 import { state } from "./state.js";
 import { saveProgress } from "./progress.js";
 import { FREE_VEHICLES, VEHICLES, VEHICLE_PRICES } from "./vehicles.js";
+import CATALOG from "../content/economy.json" with { type: "json" };
 
 // WHICH VEHICLES ARE FREE AND WHAT THE REST COST BELONG TO THE VEHICLE, not to
 // the wallet. They were two hand-kept lists here, so the answer to "does this
@@ -20,41 +21,30 @@ import { FREE_VEHICLES, VEHICLES, VEHICLE_PRICES } from "./vehicles.js";
 // `tests/test_vehicles.py` is the gate.
 export { FREE_VEHICLES, VEHICLE_PRICES };
 
-// Earn rates — generous so the shop is reachable in a few runs. A delivery
-// pays COINS_PER_DELIVERY (+bonus for a fresh, unmelted drop); in arcade the
-// coins scattered on the streets pay COINS_PER_PICKUP each.
-export const COINS_PER_DELIVERY = 50;
-export const COINS_PERFECT_BONUS = 25;
-export const COINS_PER_PICKUP = 10;
+// THE CATALOG IS DATA — `src/content/economy.json`. Prices, names, icons, the
+// effect ladders, the paint swatches and the IAP product ids all moved there on
+// 2026-08-14: they are exactly what a designer expects to change without
+// touching the engine, and one of them (a Play Billing product id) is a string
+// that has to match a console entry character for character.
+//
+// What stays here is the WALLET: crediting, spending, ownership, and
+// `ensureEconomy`, which is a MIGRATION — it fills in the fields an old
+// localStorage save does not have, and getting it wrong loses somebody's coins.
+export const COINS_PER_DELIVERY = CATALOG.earn.perDelivery;
+export const COINS_PERFECT_BONUS = CATALOG.earn.perfectBonus;
+export const COINS_PER_PICKUP = CATALOG.earn.perPickup;
 
-// upgrade lines: effect per level (level 0 = none)
-export const UPGRADES = {
-  cooler:    { name: "Cooler pro",   icon: "cube",  levels: [1, 0.9, 0.8, 0.7],     prices: [200, 500, 1000] }, // melt multiplier
-  turbotank: { name: "Turbo tank",   icon: "flame", levels: [1.35, 1.42, 1.48, 1.55], prices: [200, 500, 1000] }, // boost top-speed cap
-};
+const strip = (obj) => Object.fromEntries(
+  Object.entries(obj).filter(([k]) => !k.startsWith("_")));
 
-// consumable boosts (armed per run from the vehicle picker / shop)
-export const BOOSTS = {
-  icepack:   { name: "Ice pack",    icon: "snow",   price: 60, desc: "30s sin derretir" },
-  headstart: { name: "Head start",  icon: "rocket", price: 40, desc: "5s de turbo gratis" },
-};
-
-// cosmetic paint colors (per-vehicle equip)
-export const COLORS = [
-  { id: "col_rojo",    name: "Rojo porteño",  hex: "#d63a30", price: 80 },
-  { id: "col_azul",    name: "Azul gulf",     hex: "#2e8bd6", price: 80 },
-  { id: "col_verde",   name: "Verde manglar", hex: "#2e7d44", price: 80 },
-  { id: "col_morado",  name: "Morado feria",  hex: "#8a4fd6", price: 80 },
-  { id: "col_negro",   name: "Negro noche",   hex: "#26222c", price: 80 },
-  { id: "col_dorado",  name: "Dorado leyenda", hex: "#e8b53a", price: 80 },
-];
-
-// IAP coin packs (Play Billing CONSUMABLE product ids → coin amounts)
-export const COIN_PACKS = [
-  { productId: "coins_500",  coins: 500,  usd: "$0.99" },
-  { productId: "coins_2000", coins: 2000, usd: "$2.99" },
-  { productId: "coins_4000", coins: 4000, usd: "$4.99" },
-];
+/** Upgrade lines: `levels` is the EFFECT at each level, index 0 being none. */
+export const UPGRADES = strip(CATALOG.upgrades);
+/** Consumable boosts, armed per run. */
+export const BOOSTS = strip(CATALOG.boosts);
+/** Cosmetic paint, equipped per vehicle. */
+export const COLORS = CATALOG.colors.list;
+/** Play Billing consumable products. */
+export const COIN_PACKS = CATALOG.coinPacks.list;
 
 // ---- persistence shape ------------------------------------------------------
 // Called from loadProgress(): fills in economy fields on old saves.

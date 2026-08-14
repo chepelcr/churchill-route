@@ -1,0 +1,245 @@
+{
+  "_note": "LOS CLIENTES — who is waiting for a churchill, where, and what they say when you arrive. `line` is Spanish on purpose and is not run through i18n: it is a character speaking, not UI copy.",
+  "customers": [
+    {
+      "id": "c1",
+      "name": "Don Beto, pescador",
+      "district": "carmen",
+      "line": "¡Antes que se derrita!",
+      "ll": [
+        9.977,
+        -84.847
+      ]
+    },
+    {
+      "id": "c2",
+      "name": "Crucerista alemana",
+      "district": "carmen",
+      "line": "Eine Churchill, bitte!",
+      "ll": [
+        9.976,
+        -84.8455
+      ]
+    },
+    {
+      "id": "c3",
+      "name": "Carnaval troupe",
+      "district": "paseo",
+      "line": "Para toda la comparsa.",
+      "ll": [
+        9.9745,
+        -84.833
+      ]
+    },
+    {
+      "id": "c4",
+      "name": "Familia tica",
+      "district": "paseo",
+      "line": "Cuatro, con leche extra.",
+      "ll": [
+        9.9747,
+        -84.831
+      ]
+    },
+    {
+      "id": "c5",
+      "name": "Surfista canadiense",
+      "district": "paseo",
+      "line": "Make it extra red, dude.",
+      "ll": [
+        9.9742,
+        -84.8355
+      ]
+    },
+    {
+      "id": "c6",
+      "name": "Padre Ramírez",
+      "district": "centro",
+      "line": "Bendito churchill.",
+      "ll": [
+        9.9776,
+        -84.83128
+      ]
+    },
+    {
+      "id": "c7",
+      "name": "Vendedor de ceviche",
+      "district": "centro",
+      "line": "Te cambio uno por ceviche.",
+      "ll": [
+        9.977,
+        -84.831
+      ]
+    },
+    {
+      "id": "c8",
+      "name": "Doña del mercado",
+      "district": "centro",
+      "line": "Rojito bien fuerte.",
+      "ll": [
+        9.97965,
+        -84.82932
+      ]
+    },
+    {
+      "id": "c9",
+      "name": "Niño con bici",
+      "district": "playitas",
+      "line": "¡El mío con piña!",
+      "ll": [
+        9.9772,
+        -84.828
+      ]
+    },
+    {
+      "id": "c10",
+      "name": "Equipo de fútbol",
+      "district": "playitas",
+      "line": "Once. Es broma. Tres.",
+      "ll": [
+        9.9788,
+        -84.8262
+      ]
+    },
+    {
+      "id": "c11",
+      "name": "Doña del rocking chair",
+      "district": "playitas",
+      "line": "Como en los años 80.",
+      "ll": [
+        9.9774,
+        -84.8245
+      ]
+    },
+    {
+      "id": "c12",
+      "name": "Yatista gringo",
+      "district": "carmen",
+      "line": "Best churchill ever, man.",
+      "ll": [
+        9.9768,
+        -84.842
+      ]
+    },
+    {
+      "id": "c19",
+      "name": "Marinero del muelle",
+      "district": "carmen",
+      "line": "Con hielo bien menudito.",
+      "ll": [
+        9.977,
+        -84.8478
+      ]
+    },
+    {
+      "id": "c20",
+      "name": "Capitán del ferry",
+      "district": "carmen",
+      "line": "Uno para el capitán.",
+      "ll": [
+        9.9756,
+        -84.8452
+      ]
+    },
+    {
+      "id": "c21",
+      "name": "Casera del barrio",
+      "district": "carmen",
+      "line": "El clásico de siempre.",
+      "ll": [
+        9.9776,
+        -84.8435
+      ]
+    },
+    {
+      "id": "c22",
+      "name": "Bailarina de comparsa",
+      "district": "paseo",
+      "line": "¡La mía sin tanto rojo!",
+      "ll": [
+        9.974,
+        -84.8368
+      ]
+    },
+    {
+      "id": "c23",
+      "name": "Mesero del Kalúa",
+      "district": "paseo",
+      "line": "Para la mesa del rincón.",
+      "ll": [
+        9.9743,
+        -84.8338
+      ]
+    },
+    {
+      "id": "c24",
+      "name": "Surfista italiano",
+      "district": "paseo",
+      "line": "Doble rojo, per favore.",
+      "ll": [
+        9.9746,
+        -84.8312
+      ]
+    },
+    {
+      "id": "c13",
+      "name": "Pareja en mirador",
+      "district": "cocal",
+      "line": "Para ver el atardecer.",
+      "ll": [
+        9.98028,
+        -84.81846
+      ]
+    },
+    {
+      "id": "c14",
+      "name": "Camionero de Ruta 17",
+      "district": "cocal",
+      "line": "Rápido, voy pa' Caldera.",
+      "ll": [
+        9.98154,
+        -84.80387
+      ]
+    },
+    {
+      "id": "c15",
+      "name": "Pescadores del estero",
+      "district": "mata",
+      "line": "Justo antes de la lluvia.",
+      "ll": [
+        9.926,
+        -84.71
+      ]
+    },
+    {
+      "id": "c16",
+      "name": "Cocineros de Leda",
+      "district": "mata",
+      "line": "Postre para los clientes.",
+      "ll": [
+        9.9235,
+        -84.7078
+      ]
+    },
+    {
+      "id": "c17",
+      "name": "Maquinista del tren",
+      "district": "caldera",
+      "line": "El tren no espera a nadie.",
+      "ll": [
+        9.9145,
+        -84.7155
+      ]
+    },
+    {
+      "id": "c18",
+      "name": "Estibador del Puerto",
+      "district": "caldera",
+      "line": "Rapidito, ando en turno.",
+      "ll": [
+        9.9108,
+        -84.7168
+      ]
+    }
+  ]
+}

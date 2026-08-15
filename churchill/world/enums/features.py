@@ -10,6 +10,32 @@ exactly as the bare literal it replaces.
 from enum import StrEnum
 
 
+class BlockLayout(StrEnum):
+    """CÓMO SE REPARTE UNA CUADRA HECHA A MANO — cuatro maneras genuinamente
+    distintas, no cuatro nombres para una.
+
+    Es la juntura de `content/world/blocks.json`: el JSON escoge la estrategia y
+    la parametriza, el motor la implementa. La misma línea que `SHAPE_NAMES` le
+    pone al vocabulario de formas, y por la misma razón — un `layout` que nadie
+    implementa NO da error: la manzana simplemente deja de existir, que es
+    exactamente cómo el centro cívico se perdió una vez, con dos líneas WARN en
+    un log de 900.
+
+    Leído por churchill/world/pipeline/build_stage.py y por el validador del
+    editor, que no puede volver a escribir la lista a mano."""
+    #: columnas y filas con pesos; cada parte toma una banda o un tramo de
+    #: bandas. El superbloque cívico y la manzana de El Carmen.
+    BANDS = "bands"
+    #: un cuadrilátero armado con las LÍNEAS de las calles que lo bordean, no
+    #: con su caja: una manzana diagonal necesita las líneas. Los estadios.
+    STREETS_QUAD = "streets-quad"
+    #: cada huella mapeada se queda con el suelo más cercano y el parque es el
+    #: residual. La cuadra del Parque Marino.
+    FOOTPRINT_LOTS = "footprint-lots"
+    #: la cuadra entera se vuelve mar abierto. El Balneario.
+    WATER_INLET = "water-inlet"
+
+
 class ParcelUse(StrEnum):
     """A named piece of a cuadra. Drawn by `paintParcels`/`drawParcels` in
     src/render/c2d/ — and `PARCEL_FILL` there must have a colour for each."""

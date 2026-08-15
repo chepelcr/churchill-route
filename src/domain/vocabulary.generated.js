@@ -57,6 +57,14 @@ export function hasSurfaceRole(role, cls) {
 }
 
 // ---- the token vocabularies the client switches on -------------------
+export const BLOCK_LAYOUT = Object.freeze({
+  BANDS: "bands",
+  STREETS_QUAD: "streets-quad",
+  FOOTPRINT_LOTS: "footprint-lots",
+  WATER_INLET: "water-inlet",
+});
+export const BLOCK_LAYOUT_VALUES = Object.freeze(["bands", "streets-quad", "footprint-lots", "water-inlet"]);
+
 export const PARCEL_USE = Object.freeze({
   CHURCH: "church",
   CATHEDRAL: "cathedral",

@@ -74,6 +74,7 @@ _st = _load("stages.json")
 _at = _load("attractions.json")
 _pal = _load("palettes.json")
 _pi = _load("piers.json")
+_bl = _load("blocks.json")
 
 # probes for orientation / sanity (geo)
 PROBE_LAND = [tuple(p) for p in _geo["probeLand"]]
@@ -112,6 +113,27 @@ ROOF_PALETTE = _pal["roof"]
 #: derivation is what survives a rescale. See the file's own `_whyNotGeo`.
 PIER_DECKS = _pi["decks"]
 APRON_DEFS = _pi["aprons"]
+
+#: LAS CUADRAS HECHAS A MANO — el superbloque cívico, la manzana del Carmen,
+#: los dos estadios/plazas, la cuadra del Parque Marino y el Balneario. Cada una
+#: NOMBRA su estrategia (`layout`) y el motor la implementa; el JSON escoge y
+#: parametriza. Eran literales de Python dentro de `pipeline/build_stage.py`.
+BLOCKS = _bl["blocks"]
+
+
+def blocks_by_layout(layout):
+    """Los bloques de una estrategia, EN EL ORDEN DEL ARCHIVO.
+
+    El orden importa y por eso se conserva: dos cuadras hechas a mano pueden
+    tocar el mismo suelo, y la primera en colocarse es la que se lo queda."""
+    return [b for b in BLOCKS if b.get("layout") == layout]
+
+
+#: Los hitos cuya manzana ENTERA les pertenece, por estrategia. El build
+#: preguntaba `lm["type"] == "pool"` y `lm["id"] == "parquemar"`; ahora lo
+#: pregunta al registro, que es lo que permite un segundo balneario.
+WATER_INLET_LMS = {b["lm"] for b in blocks_by_layout("water-inlet")}
+FOOTPRINT_LOT_BLOCKS = {b["lm"]: b for b in blocks_by_layout("footprint-lots")}
 
 
 def _load_site_decor():

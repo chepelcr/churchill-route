@@ -383,7 +383,13 @@ becomes a parcel on the cuadra under it. The parts that are load-bearing:
   west corner and diagonal north edge survive without restoring the old
   hard-surface spill.
 
-**Lay a whole cuadra out by hand** (the civic block: `centro` in `build_stage`).
+**Lay a whole cuadra out by hand** (`content/world/blocks.json`). Every
+hand-authored manzana lives there — the civic superblock, El Carmen, the two
+estadios/plazas, the Parque Marino's partitioned cuadra and the Balneario — and
+**each one NAMES its strategy** (`BlockLayout`: `bands`, `streets-quad`,
+`footprint-lots`, `water-inlet`). The JSON chooses and parameterises; the engine
+implements. A `layout` nobody implements does not raise: the manzana simply
+stops existing, which is exactly how the civic centre was lost once.
 Two things have already happened to a manzana by the time `place_parcels` runs,
 and both make `cuadra_cells` return garbage — it looks for LAND/ACERA, and the
 block may be neither:
@@ -703,14 +709,17 @@ and before the apron (and keep the kiosk on its OWN surface class), and
 `finish.verify` fails the build on any kiosk with water inside that radius.
 `kios_faro` is exempt: it stands on the Muelle del Faro's deck on purpose.
 
-**Water cuadra (Balneario)**: a `type:"pool"` landmark's whole block becomes a
+**Water cuadra (Balneario)** — `layout: "water-inlet"` in `blocks.json`, so a
+SECOND one is a row rather than an edit here. The named landmark's whole block becomes a
 SEA inlet — `occ.update(cells)` (no OSM buildings), stamp the interior
 `CLS_WATER`, and push its `_green_poly` outline into `waters` so it renders with
 the ocean effect (no pool graphic; `case "pool"` is label-only). Emit a
 `manifest.balneario` bbox (→ `W.BALNEARIO`) that `maintainBalneario` fills with
 swimmers + a penned leisure boat (`b.balneario`, contained in the boats loop).
 
-**Parque Marino is a parcel PARTITION, not a bbox paint.** OSM theme-park way
+**Parque Marino is a parcel PARTITION, not a bbox paint** — `layout:
+"footprint-lots"`, whose anchor building, lot prefixes and residual are
+parameters in `blocks.json` while the RULE stays code. OSM theme-park way
 `316422305` decides which eight footprints belong to the aquarium; the resolved
 cuadra decides which neighbouring structures also need ground. Existing OSM
 sites win first (especially Escuela de Biología Marina–UNA and Iglesia

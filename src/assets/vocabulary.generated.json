@@ -68,6 +68,12 @@
     }
   },
   "enums": {
+    "BLOCK_LAYOUT": [
+      "bands",
+      "streets-quad",
+      "footprint-lots",
+      "water-inlet"
+    ],
     "PARCEL_USE": [
       "church",
       "cathedral",

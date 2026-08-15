@@ -17,7 +17,7 @@ process — into src/world2d/*.json and from there into the client:
 from .editing import EditorOperation, GeometryKind, HostKind
 from .features import (
     COURT_SPORTS, RENDER_RANK, TRAFFIC_MAIN, YIELDS_TO, FieldSport, GreenType,
-    IslandKind, LandmarkType, LineEnd, ParcelUse, PathSurface, PierStyle,
+    BlockLayout, IslandKind, LandmarkType, LineEnd, ParcelUse, PathSurface, PierStyle,
     RoadClass, SignKind, Weather,
 )
 from .game import (
@@ -30,7 +30,7 @@ __all__ = [
     "CLASS_NAMES", "COURT_SPORTS", "CoinType", "CrossingOutcome",
     "EditorOperation", "EsteroEncounterKind", "FieldSport", "GameMode",
     "GeometryKind", "GreenType", "HostKind", "IslandKind", "LandmarkType",
-    "LineEnd", "NpcMovement", "ParcelUse", "PathSurface", "PierStyle",
+    "BlockLayout", "LineEnd", "NpcMovement", "ParcelUse", "PathSurface", "PierStyle",
     "RENDER_RANK", "RendererBackend", "RoadClass", "SignKind", "StageKind",
     "Surface", "SurfaceName", "TRAFFIC_MAIN", "UIScreen", "VehicleKind",
     "VehicleMedium", "Weather", "YIELDS_TO",

@@ -30,8 +30,9 @@ from ..config import (
     STREET_CLASSES, SYNTH_MAX_TOTAL, flora_registry, px, road_width_px,
 )
 from ..content import (
-    APRON_DEFS, BLDG_PALETTE, LANDMARK_DEFS, MARINE_BUILDING_NAMES,
-    MARINE_SITE_OSM_ID, ROOF_PALETTE,
+    APRON_DEFS, BLDG_PALETTE, FOOTPRINT_LOT_BLOCKS, LANDMARK_DEFS,
+    MARINE_BUILDING_NAMES, MARINE_SITE_OSM_ID, ROOF_PALETTE, WATER_INLET_LMS,
+    blocks_by_layout,
 )
 
 #: La rampa del ferry: de la popa en reposo a la calle. Su LARGO no se autora
@@ -224,9 +225,13 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     for lm in landmarks:
         if lm["type"] not in ("park", "pool"):
             continue
-        marine = lm["id"] == "parquemar"     # Parque Marino fills its whole cuadra
+        # WHICH LANDMARKS OWN THEIR WHOLE CUADRA IS A REGISTRY QUESTION now
+        # (`content/world/blocks.json`), not two ids written into this branch.
+        # That is what makes a second balneario possible without editing here.
+        marine = lm["id"] in FOOTPRINT_LOT_BLOCKS
+        inlet = lm["id"] in WATER_INLET_LMS
         bi = _block_containing(lm["x"], lm["y"])
-        if bi is None and (lm["type"] == "pool" or marine):
+        if bi is None and (inlet or marine):
             # These two landmarks ARE their cuadra. After the acera resize the
             # Parque Marino anchor landed on a mixed LAND/ACERA cell just
             # outside detect_blocks, so exact containment silently deleted its
@@ -242,7 +247,7 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         cells = blocks[bi]["cells"]
         bc0 = min(c for c, _ in cells); bc1 = max(c for c, _ in cells)
         br0 = min(r for _, r in cells); br1 = max(r for _, r in cells)
-        if lm["type"] == "pool":
+        if inlet:
             # The Balneario is a SEA-WATER inlet: the whole cuadra becomes open
             # water (drawn with the living-sea effect, no pool graphic). Keep OSM
             # buildings off it (occ, applied once occ exists), stamp the interior
@@ -419,8 +424,11 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         grass = site["grass"]                 # residual park cells (CLS_LAND only)
         rail_lines = [pairs(rail["pts"]) for rail in ctx.rails
                       if len(rail.get("pts", [])) >= 4]
+        # The same anchor the partition uses — asked once, from the registry, so
+        # the tanks and the lots can never disagree about which building it is.
+        _anchor = FOOTPRINT_LOT_BLOCKS[site["lm"]["id"]]["anchor"]
         station = next((raw for raw in raws
-                        if raw.get("building") == "train_station"), None)
+                        if raw.get("building") == _anchor["building"]), None)
         if station is None:
             raise RuntimeError("Parque Marino has no OSM train-station footprint")
         station_x0 = min(p[0] for p in station["pts"])
@@ -498,6 +506,12 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
                           project_ll=lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2])
 
     def _partition_marine_cuadra(site, park_raw, block_raw):
+        # LA REGLA ES CÓDIGO; SUS PARÁMETROS SON DATA. Cuál edificio ancla se
+        # queda con un lado, cómo se llaman los lotes y qué es el residual
+        # vienen de `content/world/blocks.json`, así que una segunda cuadra
+        # repartida así no pide editar esta función.
+        _blk = FOOTPRINT_LOT_BLOCKS[site["lm"]["id"]]
+        _anchor, _lots = _blk["anchor"], _blk["lots"]
         """Hand the shared cuadra to its real occupants, then keep the residual.
 
         OSM supplies footprints, not cadastral lot lines. Each non-station
@@ -512,7 +526,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         available = grass - fields.claimed_cells
         park_ids = {raw["id"] for raw in park_raw}
         station = next((raw for raw in park_raw
-                        if raw.get("building") == "train_station"), None)
+                        if raw.get("building") == _anchor["building"]), None)
         if station is None:
             raise RuntimeError("Parque Marino has no station for its east parcel")
         station_x0 = min(p[0] for p in station["pts"])
@@ -544,8 +558,8 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             name = raw_name(raw)
             is_park = raw["id"] in park_ids
             part = {
-                "id": (f"marino_lote_{raw['id']}" if is_park
-                       else f"marino_cuadra_{raw['id']}"),
+                "id": (f"{_lots['siteId']}_{raw['id']}" if is_park
+                       else f"{_lots['blockId']}_{raw['id']}"),
                 "name": name or "Estructura de la cuadra",
                 "use": ParcelUse.LOT,
                 "label": bool(name),
@@ -556,7 +570,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             polys = outline_polys(cells, GRID_CELL)
             part["polys"] = polys
             fields._emit_parcel(
-                "marino", part, cells, cells,
+                _lots["prefix"], part, cells, cells,
                 poly=polys[0] if polys else None)
             lot_cells |= cells
 
@@ -569,7 +583,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         if not station_cells:
             raise RuntimeError("Parque Marino station east parcel has no LAND")
         station_part = {
-            "id": f"marino_lote_{station['id']}",
+            "id": f"{_lots['siteId']}_{station['id']}",
             "name": raw_name(station) or "Antigua Estación del Ferrocarril",
             "use": ParcelUse.LOT,
             "label": True,
@@ -579,7 +593,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         station_polys = outline_polys(station_cells, GRID_CELL)
         station_part["polys"] = station_polys
         fields._emit_parcel(
-            "marino", station_part, station_cells, station_cells,
+            _lots["prefix"], station_part, station_cells, station_cells,
             poly=station_polys[0] if station_polys else None)
 
         park_cells = remaining - station_cells
@@ -596,7 +610,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             raise RuntimeError("Parque Marino residual has no drawable lawn")
         park_poly = park_polys[0]
         greens.append({
-            "pts": park_poly, "polys": park_polys, "type": "marine",
+            "pts": park_poly, "polys": park_polys, "type": _blk["residual"]["green"],
         })
         park_rec = fields._emit_parcel(
             "marino",
@@ -632,137 +646,24 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             f"park-west {len(park_cells)} cells")
         return park_rec
 
-    # Calle/Avenida refs mapped to the OSM names actually present here (odd
-    # calles are unnamed → fall back to the flanking even calle; the central
-    # avenue is "Avenida Centenario"). place_stadium prints the resolved quad.
-    for _sp in (
-        {"id": "estadio",                    # Lito Pérez: Calle 15-17 x Avenida 0-2
-         "calles": (["Calle 15 José Joaquín Escalante"], ["Calle 17"]),
-         "ave_south": ["Avenida 2"],
-         "ave_north": ["Avenida Centenario", "Avenida 0"],
-         "aceras": True},                    # keep the real sidewalk ring visible
-        {"id": "estadio_playitas",           # Las Playitas: Calle 6-8, between Av
-         "calles": (["Calle 6"], ["Calle 8"]),   # Centenario and the shoreline
-         "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
-         "ave_south": ["Avenida Centenario"],
-         "aceras": True,
-         "beach": True,                      # the cuadra runs out to the sand
-         "edge": ["Calle 8"],                # right wall on Calle 8's line, extended
-         # Its west boundary is a long diagonal. Three raster cells remove the
-         # residual short shoulders so it renders as one direct side.
-         "straighten_cells": 3},
-    ):
+    # LOS ESTADIOS Y LAS PLAZAS, desde `content/world/blocks.json`. Los nombres
+    # de calle son listas de candidatos porque son los que OSM trae acá: las
+    # calles impares suelen no tener nombre (se cae a la par que la flanquea) y
+    # la avenida central es "Avenida Centenario", no "Avenida 0".
+    # `place_stadium` imprime el quad resuelto.
+    for _sp in blocks_by_layout("streets-quad"):
         fields.place_stadium(_sp)
 
     # ---- PARCELS -----------------------------------------------------------
-    # A cuadra split into named PARTS, each with a `use` that drives how it is
-    # drawn, and each carrying a `slot` rect a sponsor can paint a logo into.
-    # This is the general form of what the estadios do by hand: resolve the
-    # block from its bounding streets, then hand out pieces of it.
+    # Una cuadra partida en PARTES con nombre, cada una con un `use` que decide
+    # cómo se dibuja y con un `slot` donde un patrocinador puede poner su arte.
+    # Es la forma general de lo que los estadios hacen a mano: resolver la
+    # manzana desde sus calles y después repartirla.
     #
-    #   aceras: True  -> the part is eroded by the sidewalk depth, so whatever
-    #                    sits on it (a church) never lands on the acera.
-    #   aceras: False -> the part keeps the ring, filling the block edge to edge
-    #                    (how Plaza Las Playitas reads as one open field).
-    for _pc in (
-        # THE ANCHOR IS GEO, like every other anchor in this world. These two
-        # were the last WORLD-PIXEL anchors left anywhere in the build, tuned at
-        # 1.6 px/m and carried forward — so the 2.0 -> 2.5 rescale moved the real
-        # manzana 4 000 px away from them, all four bounding streets resolved to
-        # None, and the entire civic block stopped existing: no Parroquia del
-        # Carmen, no Jardín, no Plaza Deportes El Carmen, no Catedral, no Casa de
-        # la Cultura, no Biblioteca. The only sign was two WARN lines.
-        {"id": "carmen", "ll": (9.97705, -84.84868),  # Calle 35-33 x Av Centenario-Av 1
-         "calles": (["Calle 35"], ["Calle 33"]),
-         "ave_north": ["Avenida Centenario", "Avenida 0"],
-         "ave_south": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
-         "cols": [1, 1], "rows": [1, 1],
-         # Customer c19's pull-off apron is stamped before parcels and lands in
-         # this manzana's NW quarter. Restore non-street cells before tracing,
-         # or the parroquia disappears and the remaining two parts are sized
-         # against the three-quarter fragment instead of the whole cuadra.
-         "reclaim": True,
-         "parts": [
-             # left column, split in two: the church up top…
-             {"id": "carmen_parroquia", "col": 0, "row": 0, "use": "church",
-              "name": "Parroquia Nuestra Señora de El Carmen",
-              "aceras": True, "anchor": "north"},
-             # …and its garden below it
-             {"id": "carmen_jardin", "col": 0, "row": 1, "use": "garden",
-              "name": "Jardín de la Parroquia", "aceras": True},
-             # right column, spanning BOTH rows
-             {"id": "carmen_plaza", "col": 1, "row": [0, 1], "use": "stadium",
-              "name": "Plaza Deportes El Carmen", "aceras": False,
-              # The cancha occupies its whole half-cuadra. Two raster cells of
-              # vector tolerance collapse the north/east staircase shoulders
-              # into the four direct sides of the street-aligned parallelogram.
-              "straighten_cells": 2},
-         ]},
-        # THE CIVIC SUPERBLOCK of Puntarenas: Calle 7 -> Bulevar de la Casa de
-        # la Cultura, Avenida 1 (north) -> Avenida Centenario (south). No calle
-        # crosses it — Calle 5 only exists SOUTH of Centenario — so the catedral,
-        # the parks and the Casa de la Cultura share one manzana, and the thing
-        # that organises them is an H of calle peatonal:
-        #
-        #     Av 1  ┌──────────────┬──┬────────────┬─┐  Bulevar
-        #           │ parque río   │▓▓│ biblioteca │▓│
-        #     Calle │──────────────│▓▓├────────────┤▓│
-        #       7   │ ⛪ CATEDRAL  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│ ← arm, ends at the frontage
-        #           │──────────────│▓▓├────────────┤▓│
-        #           │ parque virgen│▓▓│ Casa Cultur│▓│
-        #    Av Cent└──────[bus]───┴──┴────────────┴─┘
-        #                                           ↑ FRONTAGE, avenida to avenida
-        #
-        # The N-S bar runs avenida to avenida in FRONT of (east of) the catedral;
-        # the E-W arm leaves that bar on the catedral's own axis; and the EAST
-        # FRONTAGE is the stretch the BIBLIOTECA PÚBLICA and the CASA DE LA
-        # CULTURA actually face — the block's Bulevar edge, avenida to avenida,
-        # so the calle peatonal runs past both doors instead of stopping in the
-        # gap between them. All three are `boulevard` parts: stamped
-        # Surface.BOULEVARD, so they are transitable but slow, and drawn as
-        # stone rather than asphalt.
-        {"id": "centro", "ll": (9.97772, -84.83442),
-         "calles": (["Calle 7"], ["Bulevar de la Casa de la Cultura", "Calle 3 Francisco de Paula Amador"]),
-         "ave_north": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
-         "ave_south": ["Avenida Centenario", "Avenida 0"],
-         # the catedral row is the widest so the stone church can be as big as
-         # the manzana allows; the bar is wide enough to read as a calle, and
-         # the frontage column takes its width off the civic column beside it
-         "cols": [4.4, 1.8, 2.5, 1.3], "rows": [2.8, 3.8, 2.8],
-         # the manzana was NOT land by this point: a customer's apron cut it in
-         # half and detect_blocks had paved the rest as a sliver
-         "reclaim": True,
-         "clear_buildings": True,   # the parroquia's own OSM footprints stood here
-         "parts": [
-             # the parks keep the acera ring (`aceras: False`): a green tucks
-             # UNDER the sidewalk band the road pass paints, exactly like the
-             # block greens, and at 2.8 rows of a 120px manzana the erosion
-             # would have left a 16px sliver
-             {"id": "centro_parque_norte", "col": 0, "row": 0, "use": "park",
-              "name": "Parque del Río", "aceras": False, "river": True},
-             {"id": "centro_catedral", "col": 0, "row": 1, "use": "cathedral",
-              "name": "Catedral de Puntarenas", "aceras": True, "lm": "catedral"},
-             # the virgen stands at this park's NORTH edge, beside the catedral
-             {"id": "centro_parque_sur", "col": 0, "row": 2, "use": "park",
-              "name": "Parque de la Virgen", "aceras": False,
-              "statue": "virgen", "bus": "south"},
-             {"id": "centro_bulevar", "col": 1, "row": [0, 2], "use": "boulevard",
-              "name": "Bulevar de la Catedral", "aceras": False},
-             {"id": "centro_bulevar_este", "col": 2, "row": 1, "use": "boulevard",
-              "name": "Bulevar de la Casa de la Cultura", "aceras": False},
-             {"id": "centro_biblioteca", "col": 2, "row": 0, "use": "civic",
-              "name": "Biblioteca Pública", "aceras": False},
-             {"id": "centro_cultura", "col": 2, "row": 2, "use": "civic",
-              "name": "Casa de la Cultura", "aceras": False, "lm": "cultura"},
-             # …and the stretch in front of them both. `aceras: False` on
-             # purpose: the un-eroded column reaches the cuadra's own kerb, so
-             # the stone meets the Bulevar's asphalt and you can turn onto it
-             # rather than looking at it over a sidewalk.
-             {"id": "centro_bulevar_frente", "col": 3, "row": [0, 2],
-              "use": "boulevard", "aceras": False,
-              "name": "Bulevar frente a la Casa de la Cultura"},
-         ]},
-    ):
+    # Las dos que hay —el superbloque cívico y la manzana de El Carmen— y el
+    # porqué de cada parte están en `content/world/blocks.json`, incluido el
+    # diagrama de la H de calle peatonal que las organiza.
+    for _pc in blocks_by_layout("bands"):
         claimed = fields.place_parcels(_pc)
         # A HAND-LAID CUADRA THAT RESOLVES TO NOTHING FAILS THE BUILD. It used
         # to log a WARN and carry on, and that is how the Catedral, the Casa de

@@ -60,6 +60,7 @@ SURFACE_ROLES = (
 #: should be a deliberate line here.
 STR_ENUMS = (
     # what the world CONTAINS
+    ("BLOCK_LAYOUT", features.BlockLayout),
     ("PARCEL_USE", features.ParcelUse),
     ("GREEN_TYPE", features.GreenType),
     ("LANDMARK_TYPE", features.LandmarkType),

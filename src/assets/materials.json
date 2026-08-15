@@ -105,6 +105,116 @@
     "bridge": "#cfc3a3"
   },
 
+  "malecon": {
+    "_note": "EL PISO DEL FRENTE DE MAR. El mundo dice cuál suelo es paseo (`Surface.MALECON`, clase 10) y emite sus anillos de contorno; esto dice cómo se ve. Dos cosas que a propósito NO es: no es el bulevar del centro —ése es piedra gris en aparejo corrido, una calle a la que le sacaron los carros— y no es sólo cemento. Un malecón es cálido: baldosa color arena, del color de la playa que bordea y no del pueblo que tiene detrás.",
+    "_key": "el clima, los mismos cuatro estados que tiene la paleta del suelo. Escrito aparte y no mezclado desde `terrain.beach` para que el valor de NOCHE pueda ser lo suyo: un paseo está ILUMINADO, y de noche su piso queda más claro que la arena al lado.",
+    "_baldosaM": "El lado de una baldosa va en `world-units.json`; acá sólo el color. Una baldosa es un PATRÓN, no una textura — se dibuja como líneas y cuadros, no como ruido.",
+    "band": {
+      "clear":  { "fill": "#e7d6b3", "joint": "rgba(150,132,100,0.34)", "kerb": "rgba(126,110,84,0.75)", "inlay": "rgba(255,255,255,0.20)" },
+      "storm":  { "fill": "#b3a688", "joint": "rgba(90,82,64,0.34)",    "kerb": "rgba(70,64,50,0.75)",   "inlay": "rgba(255,255,255,0.10)" },
+      "sunset": { "fill": "#eec79a", "joint": "rgba(150,110,80,0.32)",  "kerb": "rgba(130,90,66,0.72)",  "inlay": "rgba(255,240,220,0.20)" },
+      "night":  { "fill": "#6f6450", "joint": "rgba(40,36,28,0.40)",    "kerb": "rgba(30,28,22,0.70)",   "inlay": "rgba(255,236,180,0.16)" }
+    },
+    "esplanade": {
+      "_note": "LA PLAZOLETA DEL FARO ES EL MISMO PISO EN OTRA PIEDRA. Es el mismo tipo de lugar —frente de mar pavimentado por el que uno camina—, así que lleva el mismo mosaico puesto igual; lo que cambia es el material. Gris, porque La Punta es concreto y escollera sobre las rocas y no baldosa cálida junto a una playa, y porque todo el punto de esa banda es leerse como UNA superficie con la acera del anillo de calle que ahora toca.",
+      "clear":  { "fill": "#c9c6bf", "joint": "rgba(112,110,104,0.34)", "kerb": "rgba(96,94,88,0.75)", "inlay": "rgba(255,255,255,0.20)" },
+      "storm":  { "fill": "#9d9c96", "joint": "rgba(70,70,66,0.34)",    "kerb": "rgba(56,56,52,0.75)", "inlay": "rgba(255,255,255,0.10)" },
+      "sunset": { "fill": "#cfbdb0", "joint": "rgba(120,100,92,0.32)",  "kerb": "rgba(104,86,78,0.72)", "inlay": "rgba(255,240,230,0.20)" },
+      "night":  { "fill": "#5c5b56", "joint": "rgba(34,34,32,0.40)",    "kerb": "rgba(26,26,24,0.70)",  "inlay": "rgba(220,228,238,0.16)" }
+    }
+  },
+  "estero": {
+    "_note": "LOS OCHO ENCUENTROS DEL ESTERO — la paleta de `src/render/c2d/estero.js`. Cuáles existen ya estaba tipado (`EsteroEncounterKind`, el enum generado, que `advanceEstero` usa para despachar); de qué color es cada uno no. Son ocho COMPORTAMIENTOS y no ocho estampas: una panga cuesta y SE MUEVE, un cardumen PAGA por salirse de la línea, las gaviotas quitan la vista sin tocarte, y un remolino no es un choque sino una corriente que sigue trabajando sobre uno todo el tiempo que esté adentro.",
+    "channel": {
+      "_note": "LA CORRIENTE, dibujada como filamentos. De noche el agua se lee azul y de día blanca, así que el par va explícito en vez de calcularse — un `globalAlpha` sobre un solo color daba gris sucio de noche.",
+      "day": {
+        "wash": "rgba(255,255,255,0.09)",
+        "strong": "rgba(255,255,255,0.26)",
+        "faint": "rgba(255,255,255,0.20)"
+      },
+      "night": {
+        "wash": "rgba(120,180,210,0.10)",
+        "strong": "rgba(170,220,240,0.26)",
+        "faint": "rgba(150,200,225,0.16)"
+      }
+    },
+    "buoy": {
+      "_note": "LATERAL DE BABOR Y DE ESTRIBOR — rojo y verde no son decoración, son de qué lado del canal se pasa. La luz sólo prende de noche, y su halo es del color de la marca.",
+      "red": {
+        "body": "#e2503f",
+        "rim": "#a8341f",
+        "pale": "#f4a294",
+        "lamp": "#ff9d8a",
+        "halo": "rgba(255,157,138,0.26)"
+      },
+      "green": {
+        "body": "#3fa86a",
+        "rim": "#25764c",
+        "pale": "#9fdcbb",
+        "lamp": "#8ff0b6",
+        "halo": "rgba(143,240,182,0.26)"
+      },
+      "shadow": "rgba(0,0,0,0.20)",
+      "foam": "rgba(255,255,255,0.40)",
+      "hilite": "rgba(255,255,255,0.45)",
+      "reflector": "rgba(255,255,255,0.7)",
+      "lampOff": "rgba(255,255,255,0.55)"
+    },
+    "panga": {
+      "_note": "La que cuesta. Se dibuja sobre el casco compartido, igual que toda panga de este puerto.",
+      "console": "#3a6f8a",
+      "thwart": "#8a5f33",
+      "outboard": "#8a5f33",
+      "figure": "#26222c"
+    },
+    "fish": {
+      "_note": "El cardumen que PAGA. Cuando ya se cobró queda apenas una sombra en el agua, que es lo que dice que ya no hay nada ahí.",
+      "boil": "rgba(180,225,240,0.30)",
+      "taken": "rgba(255,255,255,0.10)",
+      "flash": "rgba(235,250,255,0.75)"
+    },
+    "gulls": {
+      "wings": "rgba(255,255,255,0.9)"
+    },
+    "roots": {
+      "_note": "Raíces de mangle: lo único del estero que es duro y está sumergido.",
+      "wood": "rgba(58,42,26,0.85)",
+      "waterline": "rgba(255,255,255,0.25)"
+    },
+    "remolino": {
+      "_note": "No es un choque: es una corriente que sigue trabajando sobre uno mientras esté adentro.",
+      "well": "rgba(18,34,44,0.34)",
+      "swirl": "rgba(255,255,255,0.42)",
+      "foam": "rgba(255,255,255,0.6)"
+    },
+    "banco": {
+      "_note": "EL BANCO DE ARENA, que la marea descubre y tapa. Lo que se ve de él depende del agua que tenga encima, así que lleva un tono mojado y uno seco.",
+      "shadow": "rgba(0,0,0,0.16)",
+      "wet": "rgba(28,58,72,0.32)",
+      "foam": "rgba(255,255,255,0.26)",
+      "dry": "rgba(226,214,186,0.45)",
+      "dryNote": "descubierto: pálido y quemado por el sol."
+    },
+    "pescador": {
+      "_note": "Su chinchorro tendido, la boya naranja del extremo y él sentado de cara a la red.",
+      "net": "rgba(240,236,220,0.55)",
+      "float": "#e8a33d",
+      "buoy": "#d9482f",
+      "topsides": "#f2ead6",
+      "topsidesNote": "su panga va en un blanco más crudo que el del puerto — es una lancha de trabajo, no una de paseo. Entra como parámetro de `paintHull`.",
+      "figure": "#2f4a60",
+      "hat": "#e8c07a"
+    },
+    "yate": {
+      "_note": "El único barco del estero que no trabaja.",
+      "wake": "rgba(255,255,255,0.22)",
+      "topsides": "#f6f6f2",
+      "sheer": "rgba(40,60,80,0.35)",
+      "cabin": "#dfe6ea",
+      "windows": "#2f4a60",
+      "rail": "rgba(255,255,255,0.3)"
+    }
+  },
   "weather": {
     "_note": "The sky, sea, sand, land and tint of each weather. Not a water palette — `ground.js` fills the playas and the land base from it, `estero.js` matches the mangrove's shore to `sand`, `canvas2d.js` lays the tint over the finished frame, and `water.js` DERIVES the whole living-sea palette from `waterTop`/`waterBot` (the ratios are in water.json). Five consumers, one table.",
     "_key": "churchill/world/enums/features.py :: Weather",

@@ -19,8 +19,14 @@ import { ctx, hash01, roundRect, weatherColors } from "./gfx.js";
 import { drawFisher, paintHull } from "./entities.js";
 import { state } from "../../game/state.js";
 import { LANE_HW, bancoExposed, buoyWet, channels, crossingState, esteroThings, laneAt } from "../../game/crossing.js";
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
 
-const RED = "#e2503f", GREEN = "#3fa86a";
+// LA PALETA DE LOS OCHO ENCUENTROS vive en `materials.json` -> `estero`. Cuáles
+// existen ya estaba tipado (`EsteroEncounterKind`); de qué color era cada uno,
+// no. `mark` es la marca lateral de una boya — rojo a babor, verde a estribor —
+// y eso no es decoración: dice por cuál lado del canal se pasa.
+const E = MATERIALS.estero;
+const mark = (b) => (b.red ? E.buoy.red : E.buoy.green);
 
 function inView(x, y, view, m = 60) {
   return !(x + m < view.x0 || x - m > view.x1 || y + m < view.y0 || y - m > view.y1);
@@ -97,14 +103,15 @@ function drawCurrent(channel, view, t) {
   ctx.lineCap = "round";
   // el canal — a soft fill between the two limits. A stroke down the centre
   // would be wrong now that the width varies, so it is a filled ribbon.
-  ctx.fillStyle = night ? "rgba(120,180,210,0.10)" : "rgba(255,255,255,0.09)";
+  const CH = night ? E.channel.night : E.channel.day;
+  ctx.fillStyle = CH.wash;
   ctx.fill(L.band);
   // …and its two limits, solid, running through the buoys where they belong.
   ctx.lineWidth = 1.6;
-  ctx.strokeStyle = night ? "rgba(170,220,240,0.26)" : "rgba(255,255,255,0.26)";
+  ctx.strokeStyle = CH.strong;
   for (const p of L.limits) ctx.stroke(p);
   // streaks: short dashes sliding along the lane, so the water reads as moving.
-  ctx.strokeStyle = night ? "rgba(150,200,225,0.16)" : "rgba(255,255,255,0.20)";
+  ctx.strokeStyle = CH.faint;
   ctx.lineWidth = 2;
   ctx.setLineDash([26, 64]);
   ctx.lineDashOffset = -(t * 26) % 90;
@@ -136,13 +143,12 @@ function drawBuoy(b, view, t) {
   const ly = Math.sin(t * 0.5 + b.ph * 1.7) * 1.4;
   const x = b.x + lx, y = b.y + ly;
   const R = 6 + swell * 0.25;
-  const col = b.red ? RED : GREEN;
-  const rim = b.red ? "#a8341f" : "#25764c";
-  const pale = b.red ? "#f4a294" : "#9fdcbb";
+  const MARK = mark(b);
+  const col = MARK.body, rim = MARK.rim, pale = MARK.pale;
   ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.20)";                     // her shadow on the water
+  ctx.fillStyle = E.buoy.shadow;                          // her shadow on the water
   ctx.beginPath(); ctx.ellipse(b.x + 2, b.y + 5, R + 0.5, (R + 0.5) * 0.42, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.40)";             // foam at the waterline
+  ctx.strokeStyle = E.buoy.foam;                          // foam at the waterline
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.ellipse(b.x, b.y + 1, R + 3.4 + swell * 0.9, (R + 3.4) * 0.58, 0, 0, Math.PI * 2);
@@ -151,10 +157,10 @@ function drawBuoy(b, view, t) {
   ctx.beginPath(); ctx.arc(x, y, R + 1.2, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = col;
   ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.45)";               // where the sun lands on her
+  ctx.fillStyle = E.buoy.hilite;                          // where the sun lands on her
   ctx.beginPath();
   ctx.ellipse(x - R * 0.36, y - R * 0.42, R * 0.34, R * 0.22, -0.6, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";              // the radar reflector's plates
+  ctx.strokeStyle = E.buoy.reflector;                     // the radar reflector's plates
   ctx.lineWidth = 1.3;
   ctx.beginPath();
   ctx.moveTo(x - R * 0.95, y); ctx.lineTo(x - R * 0.42, y);
@@ -172,10 +178,10 @@ function drawBuoy(b, view, t) {
   // thing you see of her, so it gets a halo on the water.
   const lit = state.weather === "night" && Math.sin(t * 2.4 + b.ph * 3) > 0.2;
   if (lit) {
-    ctx.fillStyle = b.red ? "rgba(255,157,138,0.26)" : "rgba(143,240,182,0.26)";
+    ctx.fillStyle = MARK.halo;
     ctx.beginPath(); ctx.arc(x, y, R + 7, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.fillStyle = lit ? (b.red ? "#ff9d8a" : "#8ff0b6") : "rgba(255,255,255,0.55)";
+  ctx.fillStyle = lit ? MARK.lamp : E.buoy.lampOff;
   ctx.beginPath(); ctx.arc(x, y, lit ? 2.6 : 1.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
@@ -193,14 +199,14 @@ function drawPanga(e, view, t) {
   ctx.translate(e.x, e.y + bob);
   ctx.rotate(e.a + Math.sin(t * 0.6 + e.ph) * 0.06);
   paintHull(ctx, L, H);
-  ctx.fillStyle = "#3a6f8a";                                // the console, forward
+  ctx.fillStyle = E.panga.console;                          // the console, forward
   roundRect(ctx, L * 0.24, -H * 0.55, L * 0.3, H * 1.1, 1.5, true, false);
-  ctx.fillStyle = "#8a5f33";                                // the thwart he sits on
+  ctx.fillStyle = E.panga.thwart;                           // the thwart he sits on
   ctx.fillRect(-L * 0.42, -H * 0.72, 2.6, H * 1.44);
-  ctx.strokeStyle = "#8a5f33";                              // the outboard, on her transom
+  ctx.strokeStyle = E.panga.outboard;                       // the outboard, on her transom
   ctx.lineWidth = 1.6; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(-L + 1, 0); ctx.lineTo(-L - 3.5, 0); ctx.stroke();
-  ctx.fillStyle = "#26222c";
+  ctx.fillStyle = E.panga.figure;
   ctx.beginPath(); ctx.arc(-L - 4, 0, 1.6, 0, Math.PI * 2); ctx.fill();
   // El pescador rides HER FRAME — after the hull, still inside her transform,
   // so he leans and bobs with her instead of hovering over the spot she was.
@@ -219,10 +225,10 @@ function drawFish(e, view, t) {
   ctx.save();
   ctx.translate(e.x, e.y);
   ctx.rotate(e.a + Math.sin(t * 0.8 + e.ph) * 0.3);
-  ctx.fillStyle = e.taken ? "rgba(255,255,255,0.10)" : "rgba(180,225,240,0.30)";
+  ctx.fillStyle = e.taken ? E.fish.taken : E.fish.boil;
   ctx.beginPath(); ctx.ellipse(0, 0, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
   if (!e.taken) {
-    ctx.fillStyle = "rgba(235,250,255,0.75)";
+    ctx.fillStyle = E.fish.flash;
     for (let i = 0; i < 9; i++) {
       const a = e.ph + i * 0.7 + t * 1.4;
       const r = 6 + (i % 3) * 7;
@@ -242,7 +248,7 @@ function drawGulls(e, view, t) {
     const y = e.y + Math.sin(a + t * 0.9) * (9 + i * 1.7) - Math.sin(t * 3 + i) * 3;
     const w = 3.4 + (i % 3) * 0.7;
     const flap = Math.sin(t * 9 + i * 1.3) * 1.8;
-    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.strokeStyle = E.gulls.wings;
     ctx.lineWidth = 1.3;
     ctx.beginPath();
     ctx.moveTo(x - w, y + flap); ctx.lineTo(x, y - 1); ctx.lineTo(x + w, y + flap);
@@ -256,7 +262,7 @@ function drawRoots(e, view, t) {
   ctx.save();
   ctx.translate(e.x, e.y);
   ctx.rotate(e.a);
-  ctx.strokeStyle = "rgba(58,42,26,0.85)";
+  ctx.strokeStyle = E.roots.wood;
   ctx.lineWidth = 2.2;
   ctx.lineCap = "round";
   for (let i = -2; i <= 2; i++) {
@@ -266,7 +272,7 @@ function drawRoots(e, view, t) {
     ctx.quadraticCurveTo(i * 6 + 3, -h * 0.5, i * 6 + (i % 2 ? 4 : -4), -h);
     ctx.stroke();
   }
-  ctx.strokeStyle = "rgba(255,255,255,0.25)";               // the waterline ring
+  ctx.strokeStyle = E.roots.waterline;                      // the waterline ring
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.ellipse(0, 3, 16, 4, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.restore();
@@ -283,9 +289,9 @@ function drawRemolino(e, view, t) {
   // drawer may count on, so the sign falls back to the entity's own phase.
   const spin = e.pull !== undefined ? Math.sign(e.pull) || 1 : (hash01(e.ph) < 0.5 ? -1 : 1);
   ctx.rotate(e.ph + t * 0.9 * spin);
-  ctx.fillStyle = "rgba(18,34,44,0.34)";
+  ctx.fillStyle = E.remolino.well;
   ctx.beginPath(); ctx.arc(0, 0, e.r * 0.42, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.42)";
+  ctx.strokeStyle = E.remolino.swirl;
   ctx.lineCap = "round";
   for (let i = 0; i < 3; i++) {
     const rr = e.r * (0.5 + i * 0.22);
@@ -294,7 +300,7 @@ function drawRemolino(e, view, t) {
     ctx.arc(0, 0, rr, i * 1.7, i * 1.7 + Math.PI * 1.25);
     ctx.stroke();
   }
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.fillStyle = E.remolino.foam;
   for (let i = 0; i < 6; i++) {
     const a = i * 1.05, rr = e.r * (0.55 + (i % 3) * 0.16);
     ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, 1.5, 0, Math.PI * 2); ctx.fill();
@@ -357,14 +363,14 @@ function drawBanco(e, level, t) {
   ctx.translate(e.x, e.y);
   ctx.rotate(e.a);
   // her shadow, on the water side
-  ctx.fillStyle = "rgba(0,0,0,0.16)";
+  ctx.fillStyle = E.banco.shadow;
   ctx.save(); ctx.translate(3, 5); bankPath(e, Ro, 0.1); ctx.fill(); ctx.restore();
   // wet sand: the beach colour, darkened. The alpha carries the last of the
   // fade, so a bank going under does not vanish on a frame boundary.
   ctx.globalAlpha = 0.55 + 0.45 * Math.min(1, expose * 3);
   ctx.fillStyle = C.sand;
   bankPath(e, Ro, 0.1); ctx.fill();
-  ctx.fillStyle = "rgba(28,58,72,0.32)";
+  ctx.fillStyle = E.banco.wet;
   bankPath(e, Ro, 0.1); ctx.fill();
   // the bright line where the water meets it — brightest when it is well out
   ctx.strokeStyle = `rgba(255,255,255,${(0.28 + 0.42 * expose).toFixed(3)})`;
@@ -376,7 +382,7 @@ function drawBanco(e, level, t) {
   if (Rd > 3) {
     ctx.fillStyle = C.sand;
     bankPath(e, Rd, 0.14); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.26)";      // dry, pale, sun-bleached
+    ctx.fillStyle = E.banco.foam;                  // dry, pale, sun-bleached
     bankPath(e, Rd, 0.14); ctx.fill();
     // ripples: the wind's corrugation on dry sand, along the bar
     ctx.strokeStyle = `rgba(255,255,255,${(0.10 + 0.16 * expose).toFixed(3)})`;
@@ -400,7 +406,7 @@ function drawBanco(e, level, t) {
     ctx.strokeStyle = `rgba(255,255,255,${(0.16 + 0.14 * puls).toFixed(3)})`;
     ctx.lineWidth = 1.4;
     bankPath(e, Ro * (1.06 + 0.04 * puls), 0.16); ctx.stroke();
-    ctx.fillStyle = "rgba(226,214,186,0.45)";
+    ctx.fillStyle = E.banco.dry;
     for (let i = 0; i < 5; i++) {
       const a = e.ph + i * 1.27 + t * 0.0008;
       const rr = Ro * (0.9 + hash01(e.ph + i * 5.1) * 0.3);
@@ -422,7 +428,7 @@ function drawPescador(e, view, t) {
   const fx = e.fx ?? e.x, fy = e.fy ?? e.y;
   ctx.save();
   // the net: a taut line with corks bobbing along it
-  ctx.strokeStyle = "rgba(240,236,220,0.55)";
+  ctx.strokeStyle = E.pescador.net;
   ctx.lineWidth = 1.6;
   ctx.setLineDash([7, 7]);
   ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(fx, fy); ctx.stroke();
@@ -432,21 +438,21 @@ function drawPescador(e, view, t) {
     const k = i / n;
     const cx = e.x + (fx - e.x) * k, cy = e.y + (fy - e.y) * k;
     const bob = Math.sin(t * 2.1 + e.ph + i) * 1.4;
-    ctx.fillStyle = "#e8a33d";
+    ctx.fillStyle = E.pescador.float;
     ctx.beginPath(); ctx.arc(cx, cy + bob, 2.6, 0, Math.PI * 2); ctx.fill();
   }
   // the marker float at the far end
-  ctx.fillStyle = "#d9482f";
+  ctx.fillStyle = E.pescador.buoy;
   ctx.beginPath(); ctx.arc(fx, fy, 4.2, 0, Math.PI * 2); ctx.fill();
   // …and the panga herself, with her man in her. `drawFisher` is not reused
   // here on purpose: it paints in WORLD coordinates (it is written for the
   // muellero on the pier rail), so inside this rotated frame it would draw
   // itself somewhere else entirely. He is two shapes; the net is the obstacle.
   ctx.translate(e.x, e.y); ctx.rotate(e.a + Math.PI / 2);
-  paintHull(ctx, 26, 10, "#f2ead6");
-  ctx.fillStyle = "#2f4a60";                       // seated, facing his net
+  paintHull(ctx, 26, 10, E.pescador.topsides);
+  ctx.fillStyle = E.pescador.figure;               // seated, facing his net
   ctx.beginPath(); ctx.arc(0, -1, 3.1, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#e8c07a";
+  ctx.fillStyle = E.pescador.hat;
   ctx.beginPath(); ctx.arc(0, -5.4, 2.1, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
@@ -459,7 +465,7 @@ function drawPescador(e, view, t) {
 function drawYate(e, view, t) {
   ctx.save();
   // the wake crests, behind her
-  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.strokeStyle = E.yate.wake;
   ctx.lineWidth = 2.5;
   for (const rr of [e.r + 46, e.r + 74]) {
     ctx.beginPath();
@@ -468,20 +474,20 @@ function drawYate(e, view, t) {
   }
   ctx.translate(e.x, e.y); ctx.rotate(e.a);
   // hull: a long flare-bowed white thing with a dark sheer line
-  ctx.fillStyle = "#f6f6f2";
+  ctx.fillStyle = E.yate.topsides;
   ctx.beginPath();
   ctx.moveTo(52, 0); ctx.quadraticCurveTo(22, -17, -34, -14);
   ctx.lineTo(-42, 0); ctx.lineTo(-34, 14);
   ctx.quadraticCurveTo(22, 17, 52, 0);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "rgba(40,60,80,0.35)"; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.strokeStyle = E.yate.sheer; ctx.lineWidth = 1.4; ctx.stroke();
   // superstructure + flybridge
-  ctx.fillStyle = "#dfe6ea";
+  ctx.fillStyle = E.yate.cabin;
   roundRect(ctx, -18, -10, 34, 20, 4, true, false);
-  ctx.fillStyle = "#2f4a60";
+  ctx.fillStyle = E.yate.windows;
   roundRect(ctx, -8, -6, 18, 12, 3, true, false);
   // prop wash
-  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.fillStyle = E.yate.rail;
   ctx.beginPath();
   ctx.ellipse(-48, 0, 10 + Math.sin(t * 6 + e.ph) * 2, 6, 0, 0, Math.PI * 2);
   ctx.fill();

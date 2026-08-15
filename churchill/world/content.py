@@ -73,6 +73,7 @@ _cu = _load("customers.json")
 _st = _load("stages.json")
 _at = _load("attractions.json")
 _pal = _load("palettes.json")
+_pi = _load("piers.json")
 
 # probes for orientation / sanity (geo)
 PROBE_LAND = [tuple(p) for p in _geo["probeLand"]]
@@ -105,6 +106,12 @@ BEACH_ACCESS_DEFS = _at["beachAccesses"]
 
 BLDG_PALETTE = _pal["building"]
 ROOF_PALETTE = _pal["roof"]
+
+#: LOS MUELLES — el tamaño y la receta de cada cubierta. NOT their ends: a pier
+#: grows from the RESOLVED shoreline or from a boat's stern at rest, and that
+#: derivation is what survives a rescale. See the file's own `_whyNotGeo`.
+PIER_DECKS = _pi["decks"]
+APRON_DEFS = _pi["aprons"]
 
 
 def _load_site_decor():

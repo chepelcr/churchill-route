@@ -27,12 +27,16 @@ from ..config import (
     LEON_END_STREET, MARINE_POOL_GROUND_CLEAR_PX, MARINE_POOL_RAIL_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_SCALE,
     MARINE_STRUCTURE_PARCEL_PAD_PX, PASEO_LEON, PASEO_MEDIAN_W, PASEO_TURISTAS,
-    STREET_CLASSES, SYNTH_MAX_TOTAL, flora_registry, road_width_px,
+    STREET_CLASSES, SYNTH_MAX_TOTAL, flora_registry, px, road_width_px,
 )
 from ..content import (
-    BLDG_PALETTE, LANDMARK_DEFS, MARINE_BUILDING_NAMES, MARINE_SITE_OSM_ID,
-    ROOF_PALETTE,
+    APRON_DEFS, BLDG_PALETTE, LANDMARK_DEFS, MARINE_BUILDING_NAMES,
+    MARINE_SITE_OSM_ID, ROOF_PALETTE,
 )
+
+#: La rampa del ferry: de la popa en reposo a la calle. Su LARGO no se autora
+#: —es la distancia que resulte— y por eso el registro sólo trae ancho y receta.
+_FERRY_RAMP = APRON_DEFS["ferryRamp"]
 from ..enums import GreenType, LandmarkType, ParcelUse, SignKind, Surface
 from ..logging import log, warn
 from ..service.attraction import place_attractions
@@ -190,14 +194,15 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     # pier deck the moment it left the street.
     for fy in ctx.ferries:
         sx, sy = stern_at_rest(fy)
-        tgt = _nearest_cell(sx, sy, CARRIAGEWAY_CLASSES, 260)
+        tgt = _nearest_cell(sx, sy, CARRIAGEWAY_CLASSES, px(_FERRY_RAMP["reachM"]))
         if not tgt:
             log("ferry", f"WARN no street near the {fy['id']} berth to ramp to"); continue
         # 2 cuadrículas wide — a shade under the deck, so the ramp is as wide as
         # the door you drive through rather than a footpath to it
         ramp = make_pier(f"ramp_{fy['id']}", f"Rampa {fy['name']}",
-                         [sx, sy, tgt[0], tgt[1]], 2.0 * CUAD,
-                         style="apron", surface=Surface.ROAD, sea_end=None)
+                         [sx, sy, tgt[0], tgt[1]], px(_FERRY_RAMP["widthM"]),
+                         style=_FERRY_RAMP["style"], surface=_FERRY_RAMP["surface"],
+                         sea_end=None)
         ctx.piers.append(ramp)
         ctx.pier_restores[ramp["id"]] = stamp_pier(raster, ramp)
         log("ferry", f"{fy['id']} ramp stern ({round(sx)},{round(sy)}) -> street "

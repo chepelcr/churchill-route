@@ -110,6 +110,8 @@ const REGISTRIES = [
     count: (d) => Object.keys(d.vehicle || {}).filter((k) => !k.startsWith("_")).length },
   { id: "audio", path: "src/assets/audio.json", reads: "game audio, render-audio.mjs, editor",
     count: (d) => Object.keys(d.recipes || {}).filter((k) => !k.startsWith("_")).length },
+  { id: "actors", path: "src/assets/actors.json", reads: "canvas entities (peds, traffic, boats, coins, cargo), editor",
+    count: (d) => Object.keys(d.actors || {}).length },
   { id: "lights", path: "src/assets/lights.json", reads: "canvas lights (editor features + field towers), editor",
     count: (d) => Object.keys(d.types || {}).length },
   { id: "hud", path: "src/assets/hud.json", reads: "canvas HUD + minimap" },

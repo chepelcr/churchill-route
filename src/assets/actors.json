@@ -1,0 +1,212 @@
+{
+  "_note": "LA GENTE, EL TRÁFICO Y LO QUE SE MUEVE — la paleta de `src/render/c2d/entities.js`, la familia de arte más grande del juego. La juntura con el mundo ya existía y no hubo que inventarla: `src/game/npcTypes.json` le da a cada tipo un campo `art`, así que el TIPO (movimiento, hosts, densidad, velocidad) era data desde hace rato. Lo que ese `art` nombraba seguía en código, y esto es esa mitad.",
+  "version": 1,
+
+  "_split": "ESTO ES LA PALETA, NO LA GEOMETRÍA, y la diferencia es deliberada. Un peatón se dibuja sobre `pe.ph` —una fase POR INSTANCIA que la simulación adelanta, no el reloj— y sobre `pe.hue`, que le toca al nacer. Un `bob` de `sin(ph)·1.4` no es una lista de partes: es una función del estado de esa persona. Así que lo que se autora acá es de qué COLOR es cada cosa y con qué saturación se tiñe un hue, y la trigonometría se queda en el motor. Convertirla sería escribir aritmética en JSON, que es la línea que `docs/inventory.md` §12 traza.",
+
+  "_hue": "EL TONO ES DE LA INSTANCIA; LA SATURACIÓN Y EL BRILLO SON DEL PAPEL. `hsl(${pe.hue} 70% 60%)` mezcla las dos cosas: el 200 sale del mundo (esta persona lleva azul), el `70% 60%` dice cómo viste un peatón de calle — y era ese par el que estaba escrito seis veces con cinco valores distintos y ninguna forma de saber si la diferencia era intencional. Acá cada actor trae su par y se ve de un vistazo que el playero va más saturado (78/58, sol) y el nadador más lavado (55/55, bajo el agua).",
+
+  "shared": {
+    "_note": "Lo que MÁS DE UN actor comparte de verdad. La piel estaba escrita catorce veces; si alguna vez se decide que esta gente tiene más de un tono de piel, este es el lugar donde eso deja de ser un `replace` sobre catorce archivos y pasa a ser un campo.",
+    "skin": "#f1c8a4",
+    "skinNote": "el brazo, la cabeza y el torso desnudo del playero. Un solo tono a propósito por ahora — ver la nota de arriba.",
+    "skinWarm": "#e8b98a",
+    "skinWarmNote": "el cliente de la entrega, que se dibuja un poco más grande y más cálido para que se lea a distancia.",
+    "rod": "#8a5f33",
+    "rodNote": "la caña del pescador Y el fuera de borda de la panga — la misma madera/bronce, que no es coincidencia sino la misma pieza de un puerto.",
+    "hat": {
+      "brim": "#e0cf9e",
+      "crown": "#f4d77a"
+    },
+    "hatNote": "el sombrero contra el sol: desde arriba se ve primero el ala y detrás la coronilla."
+  },
+
+  "hull": {
+    "_note": "EL CASCO DEL QUE SE DIBUJA TODO BARCO DE ESTE PUERTO. Vivía adentro de `drawBoat`, así que las pangas del estero eran un SEGUNDO barco dibujado a mano —un trapecio plano— y una panga del golfo y una del canal eran objetos visiblemente distintos sin ninguna razón que un jugador pudiera nombrar.",
+    "shadow": "rgba(0,0,0,0.20)",
+    "topsides": "#f6f2e8",
+    "topsidesNote": "el blanco de la obra muerta. Es un PARÁMETRO de `paintHull`, así que un barco puede traer el suyo; esto es el que sale por omisión.",
+    "boottop": "#e2503f",
+    "boottopNote": "la franja roja en la línea de flotación — lo que hace que se lea como barco y no como cáscara."
+  },
+
+  "coins": {
+    "_note": "Las cuatro monedas, cada una una PROMESA distinta al jugador. `CoinType` (el enum generado) dice cuáles existen; esto dice de qué metal son. `bonus` y `frozen` están implementadas y sin aparecer todavía, que es a propósito: arte sin un valor que lo seleccione es deriva, y nombrarlas es lo que mantiene la paleta honesta.",
+    "gold":   { "rim": "#c8992f", "face": "#f3c969", "mark": "#a97b1e", "r": 7, "note": "la moneda de calle de siempre" },
+    "silver": { "rim": "#8e9bab", "face": "#dfe6ef", "mark": "#5b6675", "r": 9, "note": "la lluvia del estadio — MÁS GRANDE y de otro metal, para que de un vistazo se sepa que la ráfaga en la cancha no es sólo más de lo mismo" },
+    "bonus":  { "rim": "#7b3fc6", "face": "#c58cff", "mark": "#5d259f", "r": 9 },
+    "frozen": { "rim": "#4a9fbd", "face": "#a9edff", "mark": "#24738f", "r": 8 },
+    "shadow": "rgba(0,0,0,0.22)"
+  },
+
+  "cargo": {
+    "_note": "EL CHURCHILL QUE UNO LLEVA. Cuál de las tres recetas usa un vehículo ya es data (`effects.json` → `cargo`); de qué color es cada pieza no lo era. El GRADIENTE de derretimiento se queda en el motor y es lo correcto: es un `oklch` cuyo matiz recorre la barra según `melt/total`, o sea una función del estado de esta entrega, no una paleta.",
+    "bag": {
+      "note": "La bolsa térmica del repartidor, con sus correas.",
+      "straps": "#171820",
+      "body": "#20242b",
+      "seam": "#67d39a",
+      "seamNote": "el vivo verde del aislamiento — el mismo color en el borde y en la costura de la tapa, que es lo que la hace leerse como bolsa de frío.",
+      "label": "#fff"
+    },
+    "cooler": {
+      "note": "La hielera de la cajuela del pickup.",
+      "body": "#fff",
+      "lid": "#fff"
+    },
+    "freezer": {
+      "note": "El congelador abierto de la carreta.",
+      "lid": "#dff7ff",
+      "handle": "#31576a"
+    }
+  },
+
+  "actors": {
+    "walker": {
+      "note": "El peatón de la ciudad, y el que hereda cualquier tipo que no diga otra cosa. `fan` y `paseante` son el MISMO dibujo con otro movimiento — la multitud del malecón es la multitud del pueblo, un domingo.",
+      "shadow": "rgba(0,0,0,0.3)",
+      "shirt": [70, 60],
+      "skin": "#f1c8a4"
+    },
+    "playero": {
+      "note": "Una persona en la arena es una persona en vestido de baño, y desde arriba eso son dos cosas: piel en vez de camisa, y una toalla debajo de quien no camina. El que toma el sol se dibuja ACOSTADO — una figura de pie que no se mueve se lee como alguien esperando el bus en la playa.",
+      "skin": "#f1c8a4",
+      "towelShadow": "rgba(0,0,0,0.16)",
+      "towel": [72, 62],
+      "shadow": "rgba(0,0,0,0.28)",
+      "swimsuit": [78, 58],
+      "swimsuitNote": "más saturado que una camisa de calle: es ropa de sol."
+    },
+    "jugador": {
+      "note": "Inclinado en la corrida, brazos abiertos para el balance y de cara a la bola — `ang` se lo pone el avanzador cada cuadro, que es lo que hace que una mejenga se lea como un partido: ocho personas mirando todas al mismo punto.",
+      "shadow": "rgba(0,0,0,0.28)",
+      "shirt": [76, 58],
+      "limbs": "#f1c8a4",
+      "skin": "#f1c8a4"
+    },
+    "ball": {
+      "note": "Una por mejenga, dibujada en la pasada de peatones para que quede ENTRE los jugadores y no debajo del mundo entero.",
+      "shadow": "rgba(0,0,0,0.22)",
+      "body": "#f6f2e6",
+      "panels": "#2f3540"
+    },
+    "passenger": {
+      "note": "El único tipo TEMPORAL: cuando uno que se baja del bus llega a la acera, `joinTheSidewalk` le quita la bandera Y el kind, así que una persona que se bajó de un bus simplemente ES una persona caminando.",
+      "shadow": "rgba(0,0,0,0.3)",
+      "shirt": [70, 60],
+      "bag": "#7a5c3a",
+      "bagNote": "el bolso al costado, sólo mientras espera",
+      "skin": "#f1c8a4"
+    },
+    "fisher": {
+      "note": "La misma persona que todos en el puerto —el mismo cuerpo angosto en su propio hue, la misma cabeza de 2.2 px— pero SENTADO. Lo que lo hace pescador es sólo lo que carga.",
+      "shadow": "rgba(0,0,0,0.28)",
+      "ripple": "rgba(255,255,255,0.30)",
+      "line": "rgba(255,255,255,0.45)",
+      "shirt": [70, 60],
+      "arm": "#f1c8a4",
+      "rod": "#8a5f33",
+      "skin": "#f1c8a4",
+      "hatBrim": "#e0cf9e",
+      "hatCrown": "#f4d77a"
+    },
+    "muellero": {
+      "note": "La gente pescaba desde el Muelle de Cruceros y ya no, y esto es eso, conservado. El mismo del puerto, de PIE en vez de sentado — ésa es toda la diferencia con el pescador, que va en panga.",
+      "shadow": "rgba(0,0,0,0.30)",
+      "ripple": "rgba(255,255,255,0.28)",
+      "line": "rgba(255,255,255,0.42)",
+      "cooler": "#4f8ea8",
+      "coolerLid": "rgba(255,255,255,0.35)",
+      "shirt": [70, 60],
+      "arm": "#f1c8a4",
+      "rod": "#8a5f33",
+      "skin": "#f1c8a4",
+      "hatBrim": "#e0cf9e",
+      "hatCrown": "#f4d77a"
+    },
+    "swimmer": {
+      "note": "En el balneario. Se ve poco del cuerpo y mucho de la estela, que es lo que se ve de verdad de alguien nadando visto desde arriba.",
+      "splash": "rgba(255,255,255,0.5)",
+      "shirt": [55, 55],
+      "shirtNote": "lavado a propósito: está bajo el agua.",
+      "skin": "#f1c8a4"
+    },
+    "editorNpc": {
+      "note": "Los cuatro estilos que un NPC autorado puede escoger. Su COLOR viene de la instancia (lo pone quien lo coloca), así que acá sólo va lo que no.",
+      "shadow": "rgba(0,0,0,0.28)",
+      "eyes": "#fff",
+      "tray": "#f4d77a",
+      "trayNote": "la bandeja del vendedor",
+      "helmet": "#f4d77a",
+      "skin": "#e8b98a"
+    },
+    "car": {
+      "note": "El tráfico. Su color lo trae el vehículo; esto es todo lo demás — el techo, los vidrios y las luces.",
+      "shadow": "rgba(0,0,0,0.3)",
+      "roof": "#e8e4da",
+      "window": "rgba(0,0,0,0.2)",
+      "headlight": "rgba(255,255,255,0.7)",
+      "taillight": "rgba(255,255,255,0.5)",
+      "tyres": "#222",
+      "tyresNote": "las dos bandas oscuras a lo largo — no son ruedas dibujadas una por una, son la huella del tren de rodaje vista desde arriba."
+    },
+    "train": {
+      "note": "El Ferrocarril al Pacífico. La locomotora y los vagones se dibujan del último al primero para que se solapen en el orden correcto.",
+      "shadow": "rgba(0,0,0,0.3)",
+      "loco": "#a83232",
+      "cab": "#7d2424",
+      "smokebox": "#26222c",
+      "lamp": "#ffe06b",
+      "wagon": "#e8dcc0",
+      "windows": "rgba(20,40,60,0.5)",
+      "outline": "rgba(0,0,0,0.35)",
+      "smoke": "rgba(230,230,230,0.35)"
+    },
+    "gull": {
+      "note": "Dos trazos y una sombra. Es todo lo que hace falta para una gaviota vista desde arriba.",
+      "shadow": "rgba(0,0,0,0.15)",
+      "wings": "#fff"
+    },
+    "boat": {
+      "note": "Sobre el casco compartido: la estela, la cabina, la ventana, y después lo que la hace SUYA — una chimenea si es ferry, un fuera de borda si es panga.",
+      "wake": "rgba(255,255,255,0.30)",
+      "cabin": "#3a6f8a",
+      "window": "#f4d77a",
+      "funnel": "#e85d75",
+      "outboard": "#8a5f33"
+    },
+    "school": {
+      "note": "UN BANCO DE ATÚN. El cardumen NO se dibuja como peces: desde arriba un banco en superficie es agua revuelta, y pintar cuerpos sueltos a este zoom se lee como confeti. Los destellos plateados adentro son lo que lo vende, y salen de `hash01` más la fase de la entidad, nunca de `Math.random`.",
+      "boil": "rgba(226,244,252,0.16)",
+      "rim": "rgba(255,255,255,0.30)",
+      "flash": [238, 250, 255],
+      "flashNote": "el destello es un RGB con alfa calculado por pez (0.3 + h·0.5), así que va como triplete y no como cadena — la misma razón que en `lights.json`.",
+      "console": "#3a6f8a",
+      "outboard": "#8a5f33"
+    },
+    "vendor": {
+      "note": "La carreta del vendedor: caja con sombrilla rayada, y la sombrilla se mece.",
+      "shadow": "rgba(0,0,0,0.25)",
+      "box": "#fff",
+      "band": [70, 55],
+      "wheels": "#26222c",
+      "pole": "#8a7355",
+      "parasol": [75, 60],
+      "parasolHilite": "rgba(255,255,255,0.55)"
+    },
+    "animal": {
+      "note": "El perro y el gato de la calle. El gato lleva orejas y es más oscuro; es toda la diferencia y alcanza.",
+      "shadow": "rgba(0,0,0,0.22)",
+      "cat": "#4a4046",
+      "dog": "#a5763f"
+    },
+    "targetCustomer": {
+      "note": "El destino activo de la entrega: alguien esperando sobre una loza, saludando, con un anillo que pulsa. Es el único actor que se dibuja para ser ENCONTRADO y no para poblar.",
+      "pad": "#cec7b2",
+      "ring": "rgba(255,61,128,0.8)",
+      "shadow": "rgba(0,0,0,0.25)",
+      "body": "#3a6f8a",
+      "skin": "#e8b98a"
+    }
+  }
+}

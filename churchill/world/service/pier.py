@@ -36,9 +36,22 @@ def make_pier(pier_id, name, pts, w, *, style="concrete", surface=Surface.BRIDGE
     return {
         "id": pier_id, "name": name,
         "pts": [round(v) for v in pts], "w": int(w),
-        "style": style, "surface": Surface(surface).label,
+        "style": style, "surface": _surface_label(surface),
         "seaEnd": sea_end,
     }
+
+
+def _surface_label(surface):
+    """A surface class from either the enum or its LABEL.
+
+    `Surface` is an IntEnum whose values ARE the RLE bytes, so `Surface("road")`
+    is a ValueError rather than a lookup — and a label is exactly what an
+    authored record carries, because the label is the wire format the DTO
+    validates and the client reads. Callers inside the builder pass the member;
+    `content/world/piers.json` passes the string."""
+    if isinstance(surface, str):
+        return Surface[surface.upper()].label
+    return Surface(surface).label
 
 
 def _shortened(pts, w, sea_end):

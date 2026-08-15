@@ -6,6 +6,19 @@ import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../gam
 import { paintParts } from "./shapes.js";
 import { COIN_TYPE, VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, hash01, lastT, roundRect } from "./gfx.js";
+import ACTORS from "../../assets/actors.json" with { type: "json" };
+
+// LA PALETA DE LA GENTE. `actors.json` holds the colours; the trigonometry
+// stays here, and that split is the point: a ped bobs on `pe.ph`, a phase the
+// SIMULATION advances per person, so its motion is a function of that entity's
+// state rather than a part list. What is authorable is what colour each piece
+// is, and how a per-instance `hue` is dressed.
+const A = ACTORS.actors, HULL = ACTORS.hull, CARGO = ACTORS.cargo;
+//: `hsl(hue S% L%)` mixes two things: the HUE is the instance's (this person
+//: wears blue) and the S/L pair is the ROLE's (this is how a street walker
+//: dresses). The pair was written six times with five different values and no
+//: way to tell whether the difference was meant.
+const dye = (hue, sl) => `hsl(${hue} ${sl[0]}% ${sl[1]}%)`;
 
 // THE HULL EVERY BOAT IN THIS PORT IS DRAWN FROM. It used to live inside
 // `drawBoat`, which meant the estero's pangas were a second, hand-drawn boat —
@@ -25,13 +38,13 @@ function traceHull(g, L, H) {
   g.quadraticCurveTo(L * 0.55, H, L, 0);
   g.closePath();
 }
-function paintHull(g, L, H, topsides = "#f6f2e8") {
-  g.fillStyle = "rgba(0,0,0,0.20)";        // hull shadow on the water
+function paintHull(g, L, H, topsides = HULL.topsides) {
+  g.fillStyle = HULL.shadow;        // hull shadow on the water
   g.beginPath();
   g.ellipse(1, H * 0.7, L * 0.95, H * 0.8, 0, 0, Math.PI * 2); g.fill();
   g.fillStyle = topsides;                  // white hull, sheer curving to the bow
   traceHull(g, L, H); g.fill();
-  g.fillStyle = "#e2503f";                 // the red boot-top at the waterline
+  g.fillStyle = HULL.boottop;              // the red boot-top at the waterline
   g.beginPath();
   g.moveTo(L * 0.92, 0);
   g.quadraticCurveTo(L * 0.5, H, -L * 0.7, H * 0.88);
@@ -44,13 +57,13 @@ function paintHull(g, L, H, topsides = "#f6f2e8") {
 // GOLD is the ordinary street coin. SILVER is the estadio coin rain — bigger,
 // worth many times a street coin, and a different metal so the player can tell
 // at a glance that the burst on the pitch is not just more of the same.
-const COIN_GOLD   = { rim: "#c8992f", face: "#f3c969", mark: "#a97b1e", r: 7 };
-const COIN_SILVER = { rim: "#8e9bab", face: "#dfe6ef", mark: "#5b6675", r: 9 };
+const COIN_GOLD   = ACTORS.coins.gold;
+const COIN_SILVER = ACTORS.coins.silver;
 const COIN_TYPES = {
   [COIN_TYPE.GOLD]: COIN_GOLD,
   [COIN_TYPE.SILVER]: COIN_SILVER,
-  [COIN_TYPE.BONUS]: { rim: "#7b3fc6", face: "#c58cff", mark: "#5d259f", r: 9 },
-  [COIN_TYPE.FROZEN]: { rim: "#4a9fbd", face: "#a9edff", mark: "#24738f", r: 8 },
+  [COIN_TYPE.BONUS]: ACTORS.coins.bonus,
+  [COIN_TYPE.FROZEN]: ACTORS.coins.frozen,
 };
 function drawArcadeCoin(c, t) {
   const ph = (c.t || 0) + t * 0.004;
@@ -58,7 +71,7 @@ function drawArcadeCoin(c, t) {
   const bob = Math.sin(ph * 3) * 1.6;                // gentle hover
   const M = c.palette || COIN_TYPES[c.coinType] || (c.silver ? COIN_SILVER : COIN_GOLD);
   const R = M.r;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillStyle = ACTORS.coins.shadow;
   ctx.beginPath(); ctx.ellipse(c.x, c.y + 5, R - 1, R * 0.34, 0, 0, Math.PI * 2); ctx.fill();
   const cy = c.y - bob;
   ctx.fillStyle = M.rim;
@@ -100,16 +113,16 @@ function drawPed(pe) {
     : pe.stationary ? Math.sin(pe.ph) * 0.5 : Math.sin(pe.ph) * 1.4;
   const sway = fan ? Math.sin(pe.ph * 2.3) * 1.1 : 0;
   const x = pe.x + sway;
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = `hsl(${pe.hue} 70% 60%)`; ctx.fillRect(x - 2, pe.y - 3 + bob, 4, 6);
+  ctx.fillStyle = A.walker.shadow; ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = dye(pe.hue, A.walker.shirt); ctx.fillRect(x - 2, pe.y - 3 + bob, 4, 6);
   if (fan) {                                       // arms up
-    ctx.strokeStyle = "#f1c8a4"; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+    ctx.strokeStyle = A.walker.skin; ctx.lineWidth = 1.2; ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(x - 2, pe.y - 2 + bob); ctx.lineTo(x - 4, pe.y - 6 + bob);
     ctx.moveTo(x + 2, pe.y - 2 + bob); ctx.lineTo(x + 4, pe.y - 6 + bob);
     ctx.stroke();
   }
-  ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = A.walker.skin; ctx.beginPath(); ctx.arc(x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
 }
 
 // EL PLAYERO. A person on the sand is a person in a swimsuit, and from above
@@ -117,12 +130,12 @@ function drawPed(pe) {
 // is not walking. The sunbather is drawn LYING DOWN — a standing figure that
 // happens not to move reads as somebody waiting for a bus on the beach.
 function drawPlayero(pe) {
-  const skin = "#f1c8a4";
+  const P = A.playero, skin = P.skin;
   if (pe.stationary) {
     ctx.save(); ctx.translate(pe.x, pe.y); ctx.rotate(pe.ang || 0);
-    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    ctx.fillStyle = P.towelShadow;
     ctx.fillRect(-7, -3.5, 15, 8);
-    ctx.fillStyle = `hsl(${pe.hue} 72% 62%)`;              // la toalla
+    ctx.fillStyle = dye(pe.hue, P.towel);                  // la toalla
     ctx.fillRect(-7, -4, 14, 7);
     ctx.fillStyle = skin;                                   // tendido encima
     ctx.fillRect(-4, -1.6, 8, 3.2);
@@ -131,11 +144,11 @@ function drawPlayero(pe) {
     return;
   }
   const bob = Math.sin(pe.ph) * 1.2;
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillStyle = P.shadow;
   ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = skin;                                     // torso, sin camisa
   ctx.fillRect(pe.x - 1.9, pe.y - 3 + bob, 3.8, 4);
-  ctx.fillStyle = `hsl(${pe.hue} 78% 58%)`;                 // el traje de baño
+  ctx.fillStyle = dye(pe.hue, P.swimsuit);                  // el traje de baño
   ctx.fillRect(pe.x - 1.9, pe.y + 0.6 + bob, 3.8, 2.2);
   ctx.fillStyle = skin;
   ctx.beginPath(); ctx.arc(pe.x, pe.y - 5 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
@@ -148,18 +161,18 @@ function drawJugador(pe) {
   const stride = Math.sin(pe.ph * 1.6);
   const lean = stride * 0.22;
   ctx.save(); ctx.translate(pe.x, pe.y); ctx.rotate(lean);
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillStyle = A.jugador.shadow;
   ctx.beginPath(); ctx.ellipse(1, 5, 4.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = `hsl(${pe.hue} 76% 58%)`;                 // la camiseta
+  ctx.fillStyle = dye(pe.hue, A.jugador.shirt);             // la camiseta
   ctx.fillRect(-2, -3, 4, 5.4);
-  ctx.strokeStyle = "#f1c8a4"; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+  ctx.strokeStyle = A.jugador.limbs; ctx.lineWidth = 1.2; ctx.lineCap = "round";
   ctx.beginPath();                                          // brazos abiertos
   ctx.moveTo(-2, -1.6); ctx.lineTo(-4.4, 0.4 + stride);
   ctx.moveTo(2, -1.6); ctx.lineTo(4.4, 0.4 - stride);
   ctx.moveTo(-1, 2.4); ctx.lineTo(-1.6, 5 + stride * 1.4);  // …y las piernas
   ctx.moveTo(1, 2.4); ctx.lineTo(1.6, 5 - stride * 1.4);
   ctx.stroke();
-  ctx.fillStyle = "#f1c8a4";
+  ctx.fillStyle = A.jugador.skin;
   ctx.beginPath(); ctx.arc(0, -5, 2.2, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
@@ -169,11 +182,11 @@ function drawJugador(pe) {
 // advances by how far the ball has actually rolled.
 function drawBeachBall(G) {
   const b = G.ball;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillStyle = A.ball.shadow;
   ctx.beginPath(); ctx.ellipse(b.x + 1, b.y + 3, 3.2, 1.3, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#f6f2e6";
+  ctx.fillStyle = A.ball.body;
   ctx.beginPath(); ctx.arc(b.x, b.y, 3.1, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#2f3540";
+  ctx.fillStyle = A.ball.panels;
   for (let i = 0; i < 3; i++) {
     const a = b.ph + (i / 3) * Math.PI * 2;
     ctx.beginPath();
@@ -188,25 +201,25 @@ function drawEditorNpc(pe) {
   ctx.save();
   ctx.translate(pe.x, pe.y + bob);
   ctx.scale(scale, scale);
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillStyle = A.editorNpc.shadow;
   ctx.beginPath(); ctx.ellipse(1, 5, 4.5, 1.7, 0, 0, Math.PI * 2); ctx.fill();
   if (pe.drawStyle === "mascot") {
     ctx.fillStyle = pe.color;
     ctx.beginPath(); ctx.arc(0, -1, 5.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = A.editorNpc.eyes;
     ctx.beginPath(); ctx.arc(-1.7, -2, 1, 0, Math.PI * 2); ctx.arc(1.7, -2, 1, 0, Math.PI * 2); ctx.fill();
   } else {
     ctx.fillStyle = pe.color;
     if (pe.drawStyle === "vendor") {
       roundRect(ctx, -4, -3, 8, 7, 1.5, true, false);
-      ctx.fillStyle = "#f4d77a"; ctx.fillRect(-5, -5, 10, 2);
+      ctx.fillStyle = A.editorNpc.tray; ctx.fillRect(-5, -5, 10, 2);
     } else {
       ctx.fillRect(-2.5, -3, 5, 7);
       if (pe.drawStyle === "worker") {
-        ctx.fillStyle = "#f4d77a"; ctx.fillRect(-3.2, -6.5, 6.4, 1.6);
+        ctx.fillStyle = A.editorNpc.helmet; ctx.fillRect(-3.2, -6.5, 6.4, 1.6);
       }
     }
-    ctx.fillStyle = "#e8b98a";
+    ctx.fillStyle = A.editorNpc.skin;
     ctx.beginPath(); ctx.arc(0, -5.2, 2.5, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
@@ -221,15 +234,15 @@ function drawPassenger(pe) {
   const waiting = pe.phase === "wait";
   const bob = waiting ? Math.sin(pe.ph) * 0.5 : Math.sin(pe.ph) * 1.4;
   const y = pe.y + bob;
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.fillStyle = A.passenger.shadow;
   ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = `hsl(${pe.hue} 70% 60%)`;
+  ctx.fillStyle = dye(pe.hue, A.passenger.shirt);
   ctx.fillRect(pe.x - 2, y - 3, 4, 6);
   if (waiting) {                                   // the bolso, held at the hip
-    ctx.fillStyle = "#7a5c3a";
+    ctx.fillStyle = A.passenger.bag;
     ctx.fillRect(pe.x + 2, y + 0.6, 2.2, 2.6);
   }
-  ctx.fillStyle = "#f1c8a4";
+  ctx.fillStyle = A.passenger.skin;
   ctx.beginPath(); ctx.arc(pe.x, y - 5, 2.2, 0, Math.PI * 2); ctx.fill();
 }
 // EL PESCADOR. He is the same person as everyone else in the puerto — the same
@@ -253,32 +266,32 @@ function drawFisher(pe) {
   const dip = Math.sin(ph * 0.8) * 1.6;               // where the line breaks the surface
   ctx.save();
   ctx.lineCap = "round";
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillStyle = A.fisher.shadow;
   ctx.beginPath(); ctx.ellipse(x + 1, y + 4, 3.6, 1.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.30)";         // the ring the line makes
+  ctx.strokeStyle = A.fisher.ripple;                  // the ring the line makes
   ctx.lineWidth = 0.9;
   ctx.beginPath();
   ctx.ellipse(x + 15, y + 5 + dip, 3 + Math.sin(ph) * 0.8, 1.4, 0, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.45)";         // the line, into the water
+  ctx.strokeStyle = A.fisher.line;                    // the line, into the water
   ctx.lineWidth = 0.8;
   ctx.beginPath();
   ctx.moveTo(x + 10, y - 5.5);
   ctx.quadraticCurveTo(x + 13.6, y - 1, x + 15, y + 5 + dip);
   ctx.stroke();
-  ctx.fillStyle = `hsl(${hue} 70% 60%)`;              // the body, seated
+  ctx.fillStyle = dye(hue, A.fisher.shirt);           // the body, seated
   ctx.fillRect(x - 2, y - 2 + bob, 4, 5);
-  ctx.strokeStyle = "#f1c8a4";                        // the arm on the caña
+  ctx.strokeStyle = A.fisher.arm;                     // the arm on the caña
   ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(x + 1.4, y - 1 + bob); ctx.lineTo(x + 3.4, y - 2.6 + bob); ctx.stroke();
-  ctx.strokeStyle = "#8a5f33";                        // la caña
+  ctx.strokeStyle = A.fisher.rod;                     // la caña
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x + 2.4, y - 1.4 + bob); ctx.lineTo(x + 10, y - 5.5); ctx.stroke();
-  ctx.fillStyle = "#f1c8a4";                          // the head
+  ctx.fillStyle = A.fisher.skin;                      // the head
   ctx.beginPath(); ctx.arc(x, y - 4.2 + bob, 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#e0cf9e";                          // el sombrero: brim, tipped forward
+  ctx.fillStyle = A.fisher.hatBrim;                   // el sombrero: brim, tipped forward
   ctx.beginPath(); ctx.ellipse(x + 0.7, y - 4.4 + bob, 3.5, 2.7, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#f4d77a";                          // …and its crown
+  ctx.fillStyle = A.fisher.hatCrown;                  // …and its crown
   ctx.beginPath(); ctx.arc(x + 0.5, y - 4.7 + bob, 1.7, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
@@ -304,40 +317,40 @@ function drawMuellero(pe) {
   const hitX = x + nx * 19, hitY = y + ny * 19 + 4 + dip;
   ctx.save();
   ctx.lineCap = "round";
-  ctx.fillStyle = "rgba(0,0,0,0.30)";                 // his shadow on the deck
+  ctx.fillStyle = A.muellero.shadow;                  // his shadow on the deck
   ctx.beginPath(); ctx.ellipse(x + 1, y + 5, 3.8, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.28)";         // the ring where it lands
+  ctx.strokeStyle = A.muellero.ripple;                // the ring where it lands
   ctx.lineWidth = 0.9;
   ctx.beginPath();
   ctx.ellipse(hitX, hitY, 3 + Math.sin(ph) * 0.8, 1.3, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.42)";         // the line
+  ctx.strokeStyle = A.muellero.line;                  // the line
   ctx.lineWidth = 0.8;
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
   ctx.quadraticCurveTo((tipX + hitX) / 2, (tipY + hitY) / 2 - 1, hitX, hitY);
   ctx.stroke();
   // el balde, on the deck behind him — the reason he is out here
-  ctx.fillStyle = "#4f8ea8";
+  ctx.fillStyle = A.muellero.cooler;
   ctx.fillRect(x - nx * 6 - 2, y - ny * 6 + 1, 4, 3.4);
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillStyle = A.muellero.coolerLid;
   ctx.fillRect(x - nx * 6 - 2, y - ny * 6 + 1, 4, 1);
-  ctx.fillStyle = `hsl(${hue} 70% 60%)`;              // standing body
+  ctx.fillStyle = dye(hue, A.muellero.shirt);         // standing body
   ctx.fillRect(x - 2, y - 4, 4, 7);
-  ctx.strokeStyle = "#f1c8a4";                        // arms out over the rail
+  ctx.strokeStyle = A.muellero.arm;                   // arms out over the rail
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(x + nx * 1.2, y + ny * 1.2 - 2.4);
   ctx.lineTo(x + nx * 4, y + ny * 4 - 3.6);
   ctx.stroke();
-  ctx.strokeStyle = "#8a5f33";                        // la caña
+  ctx.strokeStyle = A.muellero.rod;                   // la caña
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(x + nx * 2.6, y + ny * 2.6 - 3.2);
   ctx.lineTo(tipX, tipY);
   ctx.stroke();
-  ctx.fillStyle = "#f1c8a4";                          // head
+  ctx.fillStyle = A.muellero.skin;                    // head
   ctx.beginPath(); ctx.arc(x, y - 6.2, 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#e0cf9e";                          // la gorra, peak to seaward
+  ctx.fillStyle = A.muellero.hatBrim;                 // la gorra, peak to seaward
   ctx.beginPath(); ctx.arc(x, y - 6.6, 2.5, Math.PI, 0); ctx.fill();
   ctx.fillRect(x + Math.min(0, nx * 3.4), y - 7.0, Math.abs(nx * 3.4) + 0.6, 1.1);
   ctx.restore();
@@ -346,35 +359,35 @@ function drawMuellero(pe) {
 // A swimmer: a head just above the water with a ripple wake + stroking arms.
 function drawSwimmer(pe) {
   const t = pe.ph;
-  ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1;               // wake ring
+  ctx.strokeStyle = A.swimmer.splash; ctx.lineWidth = 1;                     // wake ring
   ctx.beginPath(); ctx.ellipse(pe.x, pe.y + 1, 6 + Math.sin(t) * 1.5, 3, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = `hsl(${pe.hue} 55% 55%)`; ctx.lineWidth = 1.6;            // stroking arms
+  ctx.strokeStyle = dye(pe.hue, A.swimmer.shirt); ctx.lineWidth = 1.6;       // stroking arms
   ctx.beginPath();
   ctx.moveTo(pe.x - 3, pe.y + Math.sin(t) * 1.2);
   ctx.lineTo(pe.x + 3, pe.y - Math.sin(t) * 1.2);
   ctx.stroke();
-  ctx.fillStyle = "#f1c8a4"; ctx.beginPath(); ctx.arc(pe.x, pe.y, 2.3, 0, Math.PI * 2); ctx.fill(); // head
+  ctx.fillStyle = A.swimmer.skin; ctx.beginPath(); ctx.arc(pe.x, pe.y, 2.3, 0, Math.PI * 2); ctx.fill(); // head
 }
 function drawCar(c) {
   ctx.save();
   ctx.translate(c.x, c.y); ctx.rotate(c.ang || 0);
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(-c.w/2 + 3, -c.h/2 + 3, c.w, c.h);
+  ctx.fillStyle = A.car.shadow; ctx.fillRect(-c.w/2 + 3, -c.h/2 + 3, c.w, c.h);
   if (c.kind === "truck") {
     // cab + boxy trailer
     ctx.fillStyle = c.color; ctx.fillRect(c.w/2 - 9, -c.h/2, 9, c.h);
-    ctx.fillStyle = "#e8e4da"; ctx.fillRect(-c.w/2, -c.h/2, c.w - 10, c.h);
-    ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(c.w/2 - 10, -c.h/2, 1.5, c.h);
+    ctx.fillStyle = A.car.roof; ctx.fillRect(-c.w/2, -c.h/2, c.w - 10, c.h);
+    ctx.fillStyle = A.car.window; ctx.fillRect(c.w/2 - 10, -c.h/2, 1.5, c.h);
   } else if (c.kind === "bus") {
     ctx.fillStyle = c.color; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillStyle = A.car.headlight;
     for (let wx = -c.w/2 + 4; wx < c.w/2 - 5; wx += 6) ctx.fillRect(wx, -c.h/2 + 2, 4, 3);
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillStyle = A.car.headlight;
     for (let wx = -c.w/2 + 4; wx < c.w/2 - 5; wx += 6) ctx.fillRect(wx, c.h/2 - 5, 4, 3);
   } else {
     ctx.fillStyle = c.color; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
-    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(-c.w/2 + 4, -c.h/2 + 2, c.w - 8, c.h - 4);
+    ctx.fillStyle = A.car.taillight; ctx.fillRect(-c.w/2 + 4, -c.h/2 + 2, c.w - 8, c.h - 4);
   }
-  ctx.fillStyle = "#222"; ctx.fillRect(-c.w/2, -c.h/2 - 1, 3, c.h + 2); ctx.fillRect(c.w/2 - 3, -c.h/2 - 1, 3, c.h + 2);
+  ctx.fillStyle = A.car.tyres; ctx.fillRect(-c.w/2, -c.h/2 - 1, 3, c.h + 2); ctx.fillRect(c.w/2 - 3, -c.h/2 - 1, 3, c.h + 2);
   ctx.restore();
 }
 // The Ferrocarril heritage train: red loco + two cream wagons, each posed
@@ -384,25 +397,25 @@ function drawTrain(tr, t) {
     const c = tr.cars[k];
     ctx.save();
     ctx.translate(c.x, c.y); ctx.rotate(c.ang);
-    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(-17, -6, 34, 13);
+    ctx.fillStyle = A.train.shadow; ctx.fillRect(-17, -6, 34, 13);
     if (k === 0) {
-      ctx.fillStyle = "#a83232"; ctx.fillRect(-18, -7, 36, 14);   // loco body
-      ctx.fillStyle = "#7d2424"; ctx.fillRect(-18, -7, 10, 14);   // cab
-      ctx.fillStyle = "#26222c"; ctx.fillRect(12, -4, 5, 8);      // smokebox
-      ctx.fillStyle = "#ffe06b"; ctx.fillRect(16, -2, 2, 4);      // lamp
+      ctx.fillStyle = A.train.loco; ctx.fillRect(-18, -7, 36, 14);     // loco body
+      ctx.fillStyle = A.train.cab; ctx.fillRect(-18, -7, 10, 14);      // cab
+      ctx.fillStyle = A.train.smokebox; ctx.fillRect(12, -4, 5, 8);    // smokebox
+      ctx.fillStyle = A.train.lamp; ctx.fillRect(16, -2, 2, 4);        // lamp
     } else {
-      ctx.fillStyle = "#e8dcc0"; ctx.fillRect(-16, -6, 32, 12);   // wagon
-      ctx.fillStyle = "#a83232"; ctx.fillRect(-16, -6, 32, 3);    // stripe
-      ctx.fillStyle = "rgba(20,40,60,0.5)";
+      ctx.fillStyle = A.train.wagon; ctx.fillRect(-16, -6, 32, 12);    // wagon
+      ctx.fillStyle = A.train.loco; ctx.fillRect(-16, -6, 32, 3);      // stripe
+      ctx.fillStyle = A.train.windows;
       for (let wx = -11; wx <= 9; wx += 7) ctx.fillRect(wx, -2, 4, 4); // windows
     }
-    ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = A.train.outline; ctx.lineWidth = 1;
     ctx.strokeRect(k === 0 ? -18 : -16, k === 0 ? -7 : -6, k === 0 ? 36 : 32, k === 0 ? 14 : 12);
     ctx.restore();
   }
   // chimney smoke puffs drifting off the loco
   const l = tr.cars[0];
-  ctx.fillStyle = "rgba(230,230,230,0.35)";
+  ctx.fillStyle = A.train.smoke;
   for (let i = 0; i < 3; i++) {
     const ph = (t * 0.0012 + i * 0.33) % 1;
     ctx.beginPath();
@@ -412,8 +425,8 @@ function drawTrain(tr, t) {
 }
 
 function drawGull(g) {
-  ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(g.x, g.y + 14, 6, 1.4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+  ctx.fillStyle = A.gull.shadow; ctx.beginPath(); ctx.ellipse(g.x, g.y + 14, 6, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = A.gull.wings; ctx.lineWidth = 2;
   const f = Math.sin(g.ph) * 4;
   ctx.beginPath();
   ctx.moveTo(g.x - 7, g.y + f); ctx.quadraticCurveTo(g.x - 3, g.y - 3 + f, g.x, g.y + f);
@@ -435,21 +448,21 @@ function drawBoat(b) {
   const big = b.kind === "ferry";
   const L = big ? 30 : 15, H = big ? 8 : 5;
   // wake: a widening V behind her, brighter the faster she runs
-  ctx.fillStyle = "rgba(255,255,255,0.30)";
+  ctx.fillStyle = A.boat.wake;
   ctx.beginPath();
   ctx.moveTo(-L, -H * 0.5); ctx.lineTo(-L - 26, -H * 1.6);
   ctx.lineTo(-L - 26, H * 1.6); ctx.lineTo(-L, H * 0.5);
   ctx.closePath(); ctx.fill();
   paintHull(ctx, L, H);                    // shadow + white sheer + red boot-top
-  ctx.fillStyle = "#3a6f8a";               // cabin
+  ctx.fillStyle = A.boat.cabin;            // cabin
   roundRect(ctx, -L * 0.35, -H * 0.85, L * (big ? 0.5 : 0.42), H * 1.2, 2, true, false);
-  ctx.fillStyle = "#f4d77a";
+  ctx.fillStyle = A.boat.window;
   ctx.fillRect(-L * 0.28, -H * 0.35, L * (big ? 0.34 : 0.26), 2);
   if (big) {
-    ctx.fillStyle = "#e85d75";             // funnel on the bigger one
+    ctx.fillStyle = A.boat.funnel;           // funnel on the bigger one
     ctx.beginPath(); ctx.arc(-L * 0.6, -H * 0.2, 3.2, 0, Math.PI * 2); ctx.fill();
   } else {
-    ctx.strokeStyle = "#8a5f33";           // an outboard on the panga
+    ctx.strokeStyle = A.boat.outboard;       // an outboard on the panga
     ctx.lineWidth = 1.6; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(-L + 1, -1); ctx.lineTo(-L - 3, 3); ctx.stroke();
   }
@@ -470,9 +483,9 @@ function drawSchool(sc, t) {
   const boil = sc.r;
   ctx.save();
   // the boil: a soft pale disc with a broken, breathing rim
-  ctx.fillStyle = "rgba(226,244,252,0.16)";
+  ctx.fillStyle = A.school.boil;
   ctx.beginPath(); ctx.arc(sc.x, sc.y, boil, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.30)";
+  ctx.strokeStyle = A.school.rim;
   ctx.lineWidth = 2;
   for (let i = 0; i < 7; i++) {
     const h = hash01(i * 7.13 + sc.ph);
@@ -489,7 +502,7 @@ function drawSchool(sc, t) {
     const x = sc.x + Math.cos(a) * rr, y = sc.y + Math.sin(a) * rr;
     ctx.save();
     ctx.translate(x, y); ctx.rotate(a + Math.PI / 2);
-    ctx.fillStyle = `rgba(238,250,255,${(0.3 + h1 * 0.5).toFixed(2)})`;
+    ctx.fillStyle = `rgba(${A.school.flash},${(0.3 + h1 * 0.5).toFixed(2)})`;
     ctx.beginPath(); ctx.ellipse(0, 0, 1.2 + h2, 3.4 + h1 * 2.4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
@@ -501,9 +514,9 @@ function drawSchool(sc, t) {
     ctx.translate(b.x, b.y);
     ctx.rotate(b.a || 0);
     paintHull(ctx, 15, 5);
-    ctx.fillStyle = "#3a6f8a";                   // the console
+    ctx.fillStyle = A.school.console;            // the console
     roundRect(ctx, -5, -3, 8, 6, 2, true, false);
-    ctx.strokeStyle = "#8a5f33";                 // the outboard on her transom
+    ctx.strokeStyle = A.school.outboard;         // the outboard on her transom
     ctx.lineWidth = 1.6; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-18, 0); ctx.stroke();
     ctx.restore();
@@ -516,29 +529,29 @@ function drawSchool(sc, t) {
 
 // Street vendor cart: box cart with a striped parasol
 function drawVendor(vn, t) {
-  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillStyle = A.vendor.shadow;
   ctx.beginPath(); ctx.ellipse(vn.x + 2, vn.y + 5, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.fillRect(vn.x - 7, vn.y - 4, 14, 9);
-  ctx.fillStyle = `hsl(${vn.hue} 70% 55%)`; ctx.fillRect(vn.x - 7, vn.y - 4, 14, 3);
-  ctx.fillStyle = "#26222c";
+  ctx.fillStyle = A.vendor.box; ctx.fillRect(vn.x - 7, vn.y - 4, 14, 9);
+  ctx.fillStyle = dye(vn.hue, A.vendor.band); ctx.fillRect(vn.x - 7, vn.y - 4, 14, 3);
+  ctx.fillStyle = A.vendor.wheels;
   ctx.beginPath(); ctx.arc(vn.x - 5, vn.y + 6, 1.6, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(vn.x + 5, vn.y + 6, 1.6, 0, Math.PI * 2); ctx.fill();
   // parasol with a gentle sway
   const sway = Math.sin(t * 0.001 + vn.ph) * 1.2;
-  ctx.strokeStyle = "#8a7355"; ctx.lineWidth = 1.5;
+  ctx.strokeStyle = A.vendor.pole; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(vn.x + 4, vn.y - 2); ctx.lineTo(vn.x + 4 + sway, vn.y - 14); ctx.stroke();
-  ctx.fillStyle = `hsl(${vn.hue} 75% 60%)`;
+  ctx.fillStyle = dye(vn.hue, A.vendor.parasol);
   ctx.beginPath(); ctx.arc(vn.x + 4 + sway, vn.y - 14, 9, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.fillStyle = A.vendor.parasolHilite;
   ctx.beginPath(); ctx.arc(vn.x + 4 + sway, vn.y - 14, 9, Math.PI + 0.5, Math.PI + 1.1); ctx.lineTo(vn.x + 4 + sway, vn.y - 14); ctx.fill();
 }
 
 // Stray dog / cat ambling around the streets
 function drawAnimal(an) {
   const bob = Math.sin(an.ph) * 0.8;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillStyle = A.animal.shadow;
   ctx.beginPath(); ctx.ellipse(an.x + 1, an.y + 3, 4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = an.cat ? "#4a4046" : "#a5763f";
+  ctx.fillStyle = an.cat ? A.animal.cat : A.animal.dog;
   ctx.fillRect(an.x - 4, an.y - 2 + bob, 8, 4);                     // body
   ctx.fillRect(an.x + 3, an.y - 4 + bob, 3.4, 3.4);                 // head
   ctx.fillRect(an.x - 6, an.y - 3 + bob, 2, 2);                     // tail
@@ -549,19 +562,19 @@ function drawAnimal(an) {
 function drawTargetCustomer(t) {
   if (!state.carrying) return;
   const c = state.carrying.customer;
-  ctx.fillStyle = "#cec7b2";                                 // pad
+  ctx.fillStyle = A.targetCustomer.pad;                     // pad
   ctx.beginPath(); ctx.ellipse(c.x, c.y + 4, 16, 9, 0, 0, Math.PI * 2); ctx.fill();
   const pulse = 10 + Math.sin(t * 0.005) * 3;                // pulse ring
-  ctx.strokeStyle = "rgba(255,61,128,0.8)"; ctx.lineWidth = 2;
+  ctx.strokeStyle = A.targetCustomer.ring; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(c.x, c.y, pulse + 8, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = "rgba(0,0,0,0.25)";                        // shadow
+  ctx.fillStyle = A.targetCustomer.shadow;                  // shadow
   ctx.beginPath(); ctx.ellipse(c.x + 2, c.y + 6, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#3a6f8a";                                 // body
+  ctx.fillStyle = A.targetCustomer.body;                    // body
   roundRect(ctx, c.x - 3, c.y - 6, 6, 11, 2, true, false);
-  ctx.fillStyle = "#e8b98a";                                 // head
+  ctx.fillStyle = A.targetCustomer.skin;                    // head
   ctx.beginPath(); ctx.arc(c.x, c.y - 9, 3.4, 0, Math.PI * 2); ctx.fill();
   const wave = Math.sin(t * 0.012) * 3;                      // waving arm
-  ctx.strokeStyle = "#e8b98a"; ctx.lineWidth = 2;
+  ctx.strokeStyle = A.targetCustomer.skin; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(c.x + 3, c.y - 4); ctx.lineTo(c.x + 7, c.y - 10 - wave); ctx.stroke();
 }
 
@@ -608,23 +621,23 @@ function drawDeliveryBag(g, mount, carrying) {
   g.translate(mount.x, mount.y);
   g.scale(mount.scale, mount.scale);
   if (mount.straps) {
-    g.strokeStyle = "#171820";
+    g.strokeStyle = CARGO.bag.straps;
     g.lineWidth = 1.2;
     g.beginPath();
     g.moveTo(2.5, -2.4); g.lineTo(6, -2);
     g.moveTo(2.5,  2.4); g.lineTo(6,  2);
     g.stroke();
   }
-  g.fillStyle = "#20242b";
+  g.fillStyle = CARGO.bag.body;
   roundRect(g, -4, -4, 8, 8, 1.5, true, false);
-  g.strokeStyle = "#67d39a";
+  g.strokeStyle = CARGO.bag.seam;
   g.lineWidth = 1;
   g.strokeRect(-3.5, -3.5, 7, 7);
-  g.fillStyle = "#67d39a";                              // insulated lid seam
+  g.fillStyle = CARGO.bag.seam;                         // insulated lid seam
   g.fillRect(-3.5, -3.5, 1.2, 7);
   g.fillStyle = `oklch(0.66 0.20 ${30 + m * 18})`;       // Churchill badge
   g.fillRect(-1.4, -2.2, 2.8, 3.4);
-  g.fillStyle = "#fff";
+  g.fillStyle = CARGO.bag.label;
   g.fillRect(-1.4, -2.8, 2.8, 1);
   g.restore();
 }
@@ -634,11 +647,11 @@ function drawPickupCooler(g, carrying) {
   const hRed = 6 * (1 - m * 0.5);
   g.save();
   g.translate(-8, 0);
-  g.fillStyle = "#fff";
+  g.fillStyle = CARGO.cooler.body;
   g.fillRect(-3, -4, 6, 8);
   g.fillStyle = `oklch(0.62 0.22 ${25 + m * 20})`;
   g.fillRect(-3, -4 + (6 - hRed), 6, hRed);
-  g.fillStyle = "#fff";
+  g.fillStyle = CARGO.cooler.lid;
   g.fillRect(-3, -5, 6, 2);
   g.restore();
 }
@@ -648,11 +661,11 @@ function drawCartFreezerLoad(g, veh, carrying) {
   const x = -veh.w / 2 + 4;
   const y = veh.h / 2 - 6;
   const w = veh.w - 8;
-  g.fillStyle = "#dff7ff";                              // open, icy freezer lid
+  g.fillStyle = CARGO.freezer.lid;                      // open, icy freezer lid
   roundRect(g, x, y, w, 3, 1, true, false);
   g.fillStyle = `oklch(0.68 0.18 ${210 - m * 170})`;     // cold-to-melting gauge
   g.fillRect(x + 1, y + 1, Math.max(2, (w - 2) * (1 - m * 0.55)), 1);
-  g.fillStyle = "#31576a";                              // recessed lid handle
+  g.fillStyle = CARGO.freezer.handle;                   // recessed lid handle
   g.fillRect(-2, y - 0.8, 4, 1);
 }
 

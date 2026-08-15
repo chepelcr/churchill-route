@@ -20,43 +20,18 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { aabbInView, ctx, flatMultiPath, hash01 } from "./gfx.js";
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
 
 // One baldosa. Big enough to read at play zoom (the camera frames ~20
 // cuadrículas), small enough that a 60 px band is four courses deep.
 const BALDOSA = 14;
 
-// Paving by weather, warm where the sand is warm — the same four states the
-// ground's own palette has. Written out rather than mixed off `C.sand` so the
-// night value can be its own thing: a promenade is LIT, and after dark its
-// paving stays lighter than the beach beside it.
-const MALECON_COLORS = {
-  clear:  { fill: "#e7d6b3", joint: "rgba(150,132,100,0.34)",
-            kerb: "rgba(126,110,84,0.75)", inlay: "rgba(255,255,255,0.20)" },
-  storm:  { fill: "#b3a688", joint: "rgba(90,82,64,0.34)",
-            kerb: "rgba(70,64,50,0.75)", inlay: "rgba(255,255,255,0.10)" },
-  sunset: { fill: "#eec79a", joint: "rgba(150,110,80,0.32)",
-            kerb: "rgba(130,90,66,0.72)", inlay: "rgba(255,240,220,0.20)" },
-  night:  { fill: "#6f6450", joint: "rgba(40,36,28,0.40)",
-            kerb: "rgba(30,28,22,0.70)", inlay: "rgba(255,236,180,0.16)" },
-};
-// …and the faro's plazoleta is the SAME FLOOR IN ANOTHER STONE. It is the same
-// kind of place — paved sea front you walk on — so it gets the same baldosa
-// mosaic laid in the same way; what changes is the material. Grey, because La
-// Punta's plazoleta is concrete and riprap out on the rocks rather than warm
-// baldosa along a beach, and because the whole point of the band there is to
-// read as ONE surface with the loop road's acera it now meets.
-const ESPLANADE_COLORS = {
-  clear:  { fill: "#c9c6bf", joint: "rgba(112,110,104,0.34)",
-            kerb: "rgba(96,94,88,0.75)", inlay: "rgba(255,255,255,0.20)" },
-  storm:  { fill: "#9d9c96", joint: "rgba(70,70,66,0.34)",
-            kerb: "rgba(56,56,52,0.75)", inlay: "rgba(255,255,255,0.10)" },
-  sunset: { fill: "#cfbdb0", joint: "rgba(120,100,92,0.32)",
-            kerb: "rgba(104,86,78,0.72)", inlay: "rgba(255,240,230,0.20)" },
-  night:  { fill: "#5c5b56", joint: "rgba(34,34,32,0.40)",
-            kerb: "rgba(26,26,24,0.70)", inlay: "rgba(220,228,238,0.16)" },
-};
+// LA PALETA VIVE EN `materials.json` -> `malecon`, junto a las otras del mundo.
+// Dos tablas por clima: la banda cálida a lo largo de la playa y la plazoleta
+// gris del Faro, que es el mismo piso en otra piedra.
+const M = MATERIALS.malecon;
 function maleconColors(band) {
-  const table = band && band.style === "esplanade" ? ESPLANADE_COLORS : MALECON_COLORS;
+  const table = band && band.style === "esplanade" ? M.esplanade : M.band;
   return table[state.weather] || table.clear;
 }
 

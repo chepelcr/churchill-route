@@ -30,7 +30,12 @@ from heapq import heappop, heappush
 
 from ..config import (CLS_BEACH, CLS_LAND, CLS_WATER, GRID_CELL, PLANAR_PX_PER_M,
                       UNITS, px)
-from ..content import BEACH_ACCESS_DEFS, LANCHA_DEFS
+# `px` under a second name, because the two apron loops below bind `px, py` as
+# a POINT and shadow it. The module-level constants above are evaluated before
+# that ever happens, so they keep the short name; inside those loops the metre
+# conversion has to be called something else or it is a point, not a function.
+from ..config import px as to_px
+from ..content import APRON_DEFS, BEACH_ACCESS_DEFS, LANCHA_DEFS
 from ..enums import Surface
 from ..logging import log, warn
 from .block import outline_polys
@@ -54,6 +59,12 @@ WATER_STEP = 5
 # is DREDGED to a width a boat can be driven down.
 
 #: the clearance the line wants, in px. Below it, a step starts paying.
+#: Las recetas de las dos piezas derivadas que este servicio emite. Su LARGO no
+#: se autora —van de una cosa a otra que el build ubicó— y el ancho de la rampa
+#: sale de la lancha misma; ver `content/world/piers.json`.
+_LANCHA_RAMP = APRON_DEFS["lanchaRamp"]
+_BAJADA = APRON_DEFS["bajada"]
+
 CHANNEL_HW = px(UNITS["world"]["lancha"]["clearanceM"])
 #: …and how hard. The penalty is SQUARED, which is the whole character of the
 #: search: at 90 % of the wanted clearance a step costs ~1.06 and the route
@@ -703,12 +714,16 @@ def place_lanchas(ctx, project_ll, nearest_cell):
         for label, (px, py) in (("berth", berth), ("landing", landing)):
             if label == "berth" and berth_pier_id:
                 continue
-            target = nearest_cell(px, py, 260)
+            target = nearest_cell(px, py, to_px(_LANCHA_RAMP["reachM"]))
             if not target:
                 warn("lancha", f"{spec['id']}: no street near the {label}")
                 continue
+            # THE RAMP'S WIDTH COMES FROM THE BOAT, not from the registry: a
+            # ramp narrower than the hull is a ramp nobody can use, and the
+            # lancha is already authored. `piers.json` records that it does.
             _apron(ctx, f"ramp_{spec['id']}_{label}", f"{spec['name']} — {label}",
-                   px, py, target[0], target[1], 2.0 * (deck[1] / 2))
+                   px, py, target[0], target[1], 2.0 * (deck[1] / 2),
+                   style=_LANCHA_RAMP["style"], surface=_LANCHA_RAMP["surface"])
         # …and the kilometres are divided by the REAL scale. This line said
         # "8.88 km" because it still divided by 1.6 px/m, the scale before the
         # rescale to 2.5 — which is also where `content.py`'s "~7.1 km of estero"
@@ -755,7 +770,7 @@ def place_beach_accesses(ctx, project_ll, nearest_cell):
         # malecón would make the only marked ways down to the sand into walls —
         # which is the precise opposite of what a beach access is for.
         _apron(ctx, f"bajada_{spec['id']}", spec["name"],
-               x, y, target[0], target[1], spec.get("w", 30),
-               style="malecon", surface=Surface.ROAD)
+               x, y, target[0], target[1], spec.get("w", to_px(_BAJADA["widthM"])),
+               style=_BAJADA["style"], surface=_BAJADA["surface"])
         log("beach", f"{spec['id']}: sand ({round(x)},{round(y)}) -> street "
             f"({round(target[0])},{round(target[1])}), {round(gap)}px")

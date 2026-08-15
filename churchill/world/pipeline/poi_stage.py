@@ -25,7 +25,13 @@ from ..config import (
     GRID_CELL, PITAHAYA_STREET,
     PLANAR_PX_PER_M, POI_NUDGE_PX,
 )
-from ..content import CUSTOMER_DEFS, LANDMARK_DEFS, MALECON_EAST_LL, STAGES
+# `px` under a second name: `place_pois` binds `px, py` as a POINT in three
+# places and shadows it, so inside that function the metre conversion has to be
+# called something else. lancha.py has the identical collision — a one-minute
+# smoke build found both, which is the whole reason that build exists.
+from ..config import px as to_px
+from ..content import (CUSTOMER_DEFS, LANDMARK_DEFS, MALECON_EAST_LL,
+                       PIER_DECKS, STAGES)
 from ..enums import GreenType, LandmarkType, Surface
 from ..logging import log, warn
 from ..service.block import (block_raster_cells, cells_to_rects, detect_blocks,
@@ -256,13 +262,16 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
         warn("pier", "Calle Central not found near the muelle anchor")
     pier_col = min(GRID_COLS - 1, max(0, int(mlm["x"] / GRID_CELL)))
     pier_y0 = botY[pier_col] - 6
-    pier_y1 = round(min(CANVAS_H - 30, pier_y0 + 630))
+    _NACIONAL = PIER_DECKS["muelle_nacional"]
+    pier_y1 = round(min(CANVAS_H - 30, pier_y0 + to_px(_NACIONAL["lengthM"])))
     # A PIER IS A POLYLINE, like a road that is allowed to leave the land. The
     # service owns the one rule both muelles need — the stamp's round cap is
     # pulled back at the sea end so no drivable cell sits past the drawn deck.
-    pier = make_pier("muelle_nacional", "Muelle Nacional",
-                     [mlm["x"], round(pier_y0), mlm["x"], pier_y1], 2 * CUAD,
-                     style="concrete")
+    pier = make_pier("muelle_nacional", _NACIONAL["name"],
+                     [mlm["x"], round(pier_y0), mlm["x"], pier_y1],
+                     to_px(_NACIONAL["widthM"]),
+                     style=_NACIONAL["style"], surface=_NACIONAL["surface"],
+                     sea_end=_NACIONAL["seaEnd"])
     ctx.piers.append(pier)
     ctx.pier_restores[pier["id"]] = stamp_pier(raster, pier)
     log_pier(pier)
@@ -334,13 +343,16 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     # Base a few px inside the land, then run NORTH into the estero. Far
     # shorter than the Nacional's 630: the channel is close on this side, and
     # a deck that overshoots it is a wall across the water the boat needs.
-    PITAHAYA_LEN = 260
+    _PITAHAYA = PIER_DECKS["muelle_pitahaya"]
+    PITAHAYA_LEN = to_px(_PITAHAYA["lengthM"])
     pitahaya_y0 = shore_y + 6
     pitahaya_y1 = round(max(30, pitahaya_y0 - PITAHAYA_LEN))
     pitahaya_pier = make_pier(
-        "muelle_pitahaya", "Muelle de Pitahaya",
-        [pitahaya_x, round(pitahaya_y0), pitahaya_x, pitahaya_y1], 2 * CUAD,
-        style="concrete",
+        "muelle_pitahaya", _PITAHAYA["name"],
+        [pitahaya_x, round(pitahaya_y0), pitahaya_x, pitahaya_y1],
+        to_px(_PITAHAYA["widthM"]),
+        style=_PITAHAYA["style"], surface=_PITAHAYA["surface"],
+        sea_end=_PITAHAYA["seaEnd"],
     )
     ctx.piers.append(pitahaya_pier)
     ctx.pier_restores[pitahaya_pier["id"]] = stamp_pier(raster, pitahaya_pier)
@@ -356,10 +368,13 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     # between the calle and the deck. The muelles themselves are already
     # concrete; this is the piece that was still black.
     aux_len = round(street_y - pitahaya_y0)
+    _CALLE_M = PIER_DECKS["calle_muelle_pitahaya"]
     calle_muelle = make_pier(
-        "calle_muelle_pitahaya", "Calle del Muelle de Pitahaya",
-        [pitahaya_x, round(street_y), pitahaya_x, round(pitahaya_y0)], 2 * CUAD,
-        style="calzada", surface=Surface.ROAD, sea_end=None,
+        "calle_muelle_pitahaya", _CALLE_M["name"],
+        [pitahaya_x, round(street_y), pitahaya_x, round(pitahaya_y0)],
+        to_px(_CALLE_M["widthM"]),
+        style=_CALLE_M["style"], surface=_CALLE_M["surface"],
+        sea_end=_CALLE_M["seaEnd"],
     )
     ctx.piers.append(calle_muelle)
     ctx.pier_restores[calle_muelle["id"]] = stamp_pier(raster, calle_muelle)
@@ -623,12 +638,15 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
                 break
             scc -= 1; scr += 1
         sx, sy = scc * GRID_CELL, scr * GRID_CELL          # muelle base (beach line)
-        ex, ey = sx - 7 * CUAD, sy + 7 * CUAD              # SW sea end
-        pw = 2 * CUAD
+        _FARO_M = PIER_DECKS["muelle_faro"]
+        _off = _FARO_M["offsetM"]                          # SW sea end, a VECTOR
+        ex, ey = sx + to_px(_off[0]), sy + to_px(_off[1])
+        pw = to_px(_FARO_M["widthM"])
         # Shore end first, sea end last — the service pulls the stamp back at
         # the free end so the round cap leaves no drivable cell past the deck.
-        faro_pier = make_pier("muelle_faro", "Muelle del Faro",
-                              [sx, sy, ex, ey], pw, style="timber")
+        faro_pier = make_pier("muelle_faro", _FARO_M["name"],
+                              [sx, sy, ex, ey], pw, style=_FARO_M["style"],
+                              surface=_FARO_M["surface"], sea_end=_FARO_M["seaEnd"])
         ctx.piers.append(faro_pier)
         ctx.pier_restores[faro_pier["id"]] = stamp_pier(raster, faro_pier)
         log_pier(faro_pier)

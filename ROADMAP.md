@@ -31,20 +31,27 @@ cayeron están al final, listadas en vez de borradas en silencio.
       UN paso y a 30 fps el carro avanza 11,7 px por cuadro contra una sonda de
       ~7,6 px.
 
-- [ ] **La graderÍa: los otros tres lados.** *(Su colocación ya es data —
-      `blocks.json` → el bloque del estadio. Falta que `side` acepte una LISTA.)* El asset existe y dibuja
-      (2026-08-14, lado oeste de los dos estadios). Falta decir dónde va en cada
-      caso —de qué lado y con cuántos escalones— y si las plazas llevan el mismo
-      asset a menor escala o uno propio.
+- [ ] **La graderÍa: los otros tres lados.** Su COLOCACIÓN ya es data desde el
+      2026-08-15 — viene con el estadio en `content/world/blocks.json`, y la
+      receta (fondo, escalones, rake) sigue en `world-props.json`. Lo que falta
+      es una sola cosa concreta: **`side` acepta un lado, no una lista.** Y la
+      pregunta de diseño: si una plaza de barrio lleva el mismo asset a menor
+      escala o uno propio.
 
-- [ ] **Las torres de luz, más allá de los dos estadios.** *(Ya vienen con el
-      estadio en `blocks.json`.)* Dibujan desde el
-      2026-08-14, cuatro por cancha en las esquinas del `footprint`, y son una
-      fila de `world-props.json` → `scenes.stadium.towers.byLandmark`. La
-      pregunta abierta es la misma que la de la gradería y conviene contestarla
-      junto: las canchas de barrio son PARCELAS, no estadios —no tienen
-      `footprint`, tienen `hw`/`hh` y un `ang`—, así que darles torres es
-      decidir si una parcela `field` las lleva por defecto y a qué escala.
+- [ ] **Torres de luz en las canchas de barrio.** Los dos estadios ya las
+      tienen (`blocks.json` → el bloque, cuatro en las esquinas del
+      `footprint`). Lo abierto es el resto: una cancha de barrio es una
+      PARCELA, no un estadio —no tiene `footprint`, tiene `hw`/`hh` y un `ang`—
+      así que darle torres es decidir si una parcela `field`/`plaza` las lleva
+      por defecto y a qué escala.
+
+- [ ] **La ruta del bus: hoy es voraz, no un camino.** Desde el 2026-08-15 un
+      bus se fija la próxima parada y resuelve cada cruce hacia ella, que ya se
+      lee como una ruta. Pero **no hay búsqueda de camino** y es a propósito:
+      el cliente no tiene el grafo de calles, sólo los tramos del tile que
+      mira. Si un destino queda detrás de una manzana el bus da vueltas hasta
+      encontrarlo. Cerrar esto de verdad pide líneas de bus AUTORADAS (una
+      secuencia de paradas por ruta), que es un archivo nuevo y no un algoritmo.
 
 ---
 
@@ -54,8 +61,9 @@ cayeron están al final, listadas en vez de borradas en silencio.
 literales de color. **Las ocho cerraron el 2026-08-14** y la fila que sigue
 abierta es otra cosa.
 
-Lo que queda en `src/render/c2d/` son **23 literales**, todos dentro de recetas
-de dibujo con geometría propia —`drawFaroScene`, `drawPool`, la siembra— que
+Lo que queda en `src/render/c2d/` son **27 literales**, todos dentro de recetas
+de dibujo con geometría propia —`drawFaroScene`, `drawPool`, la siembra, y el
+gradiente del pozo de luz, que es un degradado y no una paleta— que
 §12 nombra explícitamente como lo que NO se convierte: cada una deriva su
 tamaño, su conteo de pabellones o su dispersión DESDE la parcela, y expresarlo
 sería aritmética en JSON. **Y los dos núcleos siguen en cero**, que es el número
@@ -147,8 +155,9 @@ en toda la migración.
       ficha, pruebas cerradas 12×14. Checklist en `docs/MONETIZATION.md`.
 - [ ] **Merge a `main`** cuando el MVP esté validado (y sacar `world-2d` del
       workflow de deploy al hacerlo).
-- [ ] **Post-MVP**: abrir El Cocal→Caldera (quitarlos de `mvpLocked` en
-      `progression.json`), anillos 2-D de distritos, puente a desnivel
+- [ ] **Post-MVP**: ~~abrir El Cocal→Caldera~~ **(hecho el 2026-08-15: la valla
+      se bajó y `mvpLocked` quedó VACÍA, no borrada, para que volver a cerrar un
+      barrio siga siendo una fila)**, anillos 2-D de distritos, puente a desnivel
       Barranca/El Roble, backend de contenido (webhook de ko-fi → NPCs, reservas
       de lotes), Tier 4 (kiosco/vehículo brandeado).
 - [ ] **Backend real, cuando el volumen lo pida**: API + panel admin. Hoy el

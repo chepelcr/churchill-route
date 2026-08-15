@@ -18,6 +18,87 @@ notes in `docs/changelog/YYYY-MM-DD.md`. **Verify a row against the tree before
 acting on it, and delete it if it has rotted** — that is how the file stays
 worth reading.
 
+## ANTES DE TOCAR CONTENIDO: ¿esto ya es data?
+
+**This is the first question for any change to what the game CONTAINS** — a
+place, a colour, a crowd, a price, a piece of copy, a vehicle, a light. The
+answer decides the whole shape of the work, and getting it wrong is how this
+codebase accumulated ~420 colour literals and a civic centre nobody could edit.
+
+The procedure is three steps and it is not optional:
+
+1. **LOOK IT UP IN THE INDEX BELOW.** If a registry already owns it, edit the
+   registry. Do not add a second copy anywhere — `materials.street.majorDash`
+   already held the road's dash colour while `paintRoads` re-typed the same hex
+   two lines down, so moving the knob changed every dash in the game except the
+   ones on the road.
+2. **IF IT IS STILL HARDCODED, MIGRATE IT FIRST, THEN MAKE THE CHANGE.** Two
+   commits or one, but the migration is proved SEPARATELY — see the gates
+   below. Editing a literal in place is how the next person finds three copies.
+3. **IF IT SHOULD NOT BE DATA, SAY SO IN THE FILE.** Some things are algorithms
+   and stay code (below). Writing down which, and why, is what stops the next
+   sweep from converting them.
+
+### Where a thing lives
+
+| what you are changing | file |
+|---|---|
+| a place: landmark, customer, stage, district, feria ride, beach access | `content/world/{landmarks,customers,stages,geography,attractions}.json` |
+| **a hand-made manzana** — the civic block, El Carmen, a stadium/plaza, the Marino's partition, the Balneario | `content/world/blocks.json` (each names its `BlockLayout`) |
+| **the ground of one manzana or one parcel** | `content/world/blocks.json` → `manzanas` (BY GEO) / `parcels` (by id) |
+| **who stands on a pitch** | `content/world/blocks.json` → `crowd`; what a type IS → `src/game/npcTypes.json` |
+| a muelle's size, width, style | `content/world/piers.json` |
+| how an OSM site fits its cuadra (`trace`/`cuadra`/`rect`/`kiosco`) | `content/world/site-decor.json` |
+| a surface class's colour and speed | `src/assets/surfaces.json` |
+| a length two runtimes must agree about, IN METRES | `src/assets/world-units.json` |
+| the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` |
+| **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` |
+| **a light: street lamp, stadium tower** | `src/assets/lights.json` (+ `LightType`) |
+| what a vehicle DOES: wake, shadow, turn wind, **headlights** | `src/assets/effects.json` |
+| landmarks, signs, parcel props, scenes | `src/assets/world-props.json` |
+| the world's palettes: estero, malecón, structures, streets, weather, piers | `src/assets/materials.json` |
+| the HUD, the minimap, the crossing card, the tide bar | `src/assets/hud.json` |
+| trees and wood mixes | `src/assets/flora.json` |
+| the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` |
+| spawn rates, buses, tides, the day cycle | `src/content/simulation.json` |
+| unlocks, the tutorial, **the MVP gate** | `src/content/progression.json` |
+| prices, coins, IAP | `src/content/economy.json` |
+| ads, analytics, remote content | `src/content/services.json` (**nothing secret** — it ships in the bundle) |
+| screens, their slots | `src/ui/screens.json`; copy → `src/i18n/<lang>.json` |
+| design tokens | `src/ui/themeTokens.json` |
+| any closed vocabulary | `churchill/world/enums/` → `pnpm vocabulary`. **Never retype a generated list.** |
+
+### What stays code, on purpose
+
+The compositor (`canvas2d.js`), the shape interpreter (`shapes.js`), and any
+DERIVED geometry: `paintRoads`' casing and dashes, the Marino's
+footprint-proximity rule, a pier's ENDS (they grow from the resolved shoreline
+or a boat's stern, which is what survives a rescale), a ped's per-instance
+motion. The line is `docs/inventory.md` §12: **data composes engine verbs, it
+never becomes a worse programming language.** A registry with `Math.` in it has
+stopped being one.
+
+### The gates a migration has to pass
+
+* **art** → a synthetic sheet, diffed: `shot-vehicles` · `shot-actors` ·
+  `shot-landmarks` · `shot-signs` · `shot-parcels` · `shot-scenes` ·
+  `shot-effects` · `shot-stands` · `shot-lights`, vs `tools/png-diff.mjs`.
+  **Never diff a world scene** — the noise floor is 2 % to 86 %.
+* **no sheet?** compare the SET of colours against `git show HEAD:<file>`. A
+  mistyped hex does not survive that.
+* **anything the builder reads** → `PLANAR_BBOX=… pnpm world:build` (1 min,
+  cannot write `src/world2d/`) FIRST, then the full 33-min run, then
+  `world_snapshot.py verify` — **byte-identical** for a pure lift, or `save` in
+  the same commit for an intended change.
+* **the build log is a review surface**: diff two runs. It is character-stable,
+  so a `:.0f` matters.
+* `pnpm test` · `pnpm inventory` · the smokes · `cd world-editor && npm test`.
+
+**A new registry needs four things or it is not done**: the file, a validator in
+the editor (`vite.config.js` — an unvalidated source can corrupt the game's
+JSON), a row in `gen-inventory.mjs`, and a test module named in `pnpm test`'s
+list — that list is explicit, so a new test file passes by never running.
+
 ## Toolchain
 
 Vite + pnpm project. Node 20+; get pnpm via `corepack` (or `~/.local/bin/pnpm`).
@@ -825,6 +906,9 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
 
 ## Conventions
 
+- **Before changing CONTENT, read "¿esto ya es data?" at the top of this file.**
+  If a registry owns it, edit the registry; if it is still hardcoded, migrate it
+  first and prove the migration separately.
 - After changing the world or any module, run `pnpm inventory`.
 - After changing anything in `churchill/world/enums/`, run `pnpm vocabulary` and
   `pnpm test` — the client's copy is generated from it and committed.
@@ -888,7 +972,11 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
   fractional coordinates.
 - The smokes are `smoke` (the loop is alive), `smoke:boat` (the water medium),
   `smoke:crossing` (every buoy is ON WATER, and she can be driven down the
-  channel at speed), plus `smoke:theme` / `smoke:sponsor`.
+  channel at speed), `smoke:night` (the lit city: it forces the weather AT
+  START — writing `state.weather` by hand lasts ONE frame because
+  `updateDayCycle` rewrites it from the day clock — waits for it to stick, and
+  checks the frame actually has bright spots, because timing a path proves it
+  runs and not that it does anything), plus `smoke:theme` / `smoke:sponsor`.
   **A SMOKE TEST CAN GO GREEN FOR THE WRONG REASON.** `smoke_boat`'s "downtown
   street" coordinate went stale in a rescale and became OPEN WATER, so its
   land-is-a-wall leg was testing a boat at sea — and it still passed, because the

@@ -23,6 +23,14 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { ctx, hash01, label, roundRect } from "./gfx.js";
 import ASSETS from "./feriaAssets.json";
 
+// LOS VALORES POR OMISIÓN Y EL DECORADO DEL CAMPO. Distinto del resto de las
+// paletas del juego, y vale decir por qué: acá los JUEGOS ya eran data desde
+// que existe el campo ferial. Lo que seguía en código era lo que dibuja un
+// verbo cuando la receta NO trae ese campo (`p.fill || "#dfe5ec"`), así que se
+// podía pintar una rueda y no el gris de la que se olvidaron de pintar; y el
+// decorado que no es de ningún juego — las guirnaldas, las sombras y la tierra.
+const D = ASSETS.$defaults, CH = ASSETS.$chrome;
+
 const TAU = Math.PI * 2;
 
 // Deterministic per-ride phase, so two chocones do not pulse in lockstep and
@@ -30,7 +38,7 @@ const TAU = Math.PI * 2;
 function phaseOf(A) { return hash01(A.x * 0.013 + A.y * 0.017) * TAU; }
 
 function pick(palette, i) {
-  if (!palette || !palette.length) return "#dfe5ec";
+  if (!palette || !palette.length) return D.fallback;
   return palette[i % palette.length];
 }
 
@@ -40,14 +48,14 @@ function pick(palette, i) {
 
 const SHAPES = {
   disc(p, r) {
-    ctx.fillStyle = p.fill || "#dfe5ec";
+    ctx.fillStyle = p.fill || D.disc;
     ctx.beginPath();
     ctx.arc(0, p.dyPx || 0, (p.r || 1) * r, 0, TAU);
     ctx.fill();
   },
 
   ring(p, r) {
-    ctx.strokeStyle = p.stroke || "#dfe5ec";
+    ctx.strokeStyle = p.stroke || D.ring;
     ctx.lineWidth = p.widthPx || 2;
     ctx.beginPath();
     ctx.arc(0, p.dyPx || 0, (p.r || 1) * r, 0, TAU);
@@ -55,7 +63,7 @@ const SHAPES = {
   },
 
   spokes(p, r) {
-    ctx.strokeStyle = p.stroke || "#b6bdc7";
+    ctx.strokeStyle = p.stroke || D.spokes;
     ctx.lineWidth = p.widthPx || 1.5;
     const n = p.n || 8, r0 = (p.r0 || 0) * r, r1 = (p.r1 || 1) * r, dy = p.dyPx || 0;
     ctx.beginPath();
@@ -70,7 +78,7 @@ const SHAPES = {
   // arms with a car on the end — el pulpo, las sillas, los caballitos
   arms(p, r) {
     const n = p.n || 8, len = (p.r || 1) * r;
-    ctx.strokeStyle = p.stroke || "#c7ccd3";
+    ctx.strokeStyle = p.stroke || D.arms;
     ctx.lineWidth = p.widthPx || 3;
     ctx.beginPath();
     for (let i = 0; i < n; i++) {
@@ -110,13 +118,13 @@ const SHAPES = {
   },
 
   box(p, r) {
-    ctx.fillStyle = p.fill || "#3b4250";
+    ctx.fillStyle = p.fill || D.box;
     roundRect(ctx, (p.x || 0) * r, (p.y || 0) * r, (p.w || 1) * r, (p.h || 1) * r,
       p.roundPx || 2, true, false);
   },
 
   legs(p, r) {
-    ctx.strokeStyle = p.stroke || "#8d949e";
+    ctx.strokeStyle = p.stroke || D.legs;
     ctx.lineWidth = p.widthPx || 4;
     const s = (p.spread || 0.7) * r, d = (p.drop || 0.6) * r;
     ctx.beginPath();
@@ -125,7 +133,7 @@ const SHAPES = {
   },
 
   mast(p) {
-    ctx.fillStyle = p.fill || "#9aa3ae";
+    ctx.fillStyle = p.fill || D.mast;
     const w = p.widthPx || 6, h = p.hPx || 26;
     ctx.fillRect(-w / 2, -h, w, h);
   },
@@ -135,7 +143,7 @@ const SHAPES = {
     const sw = p.swing || { amp: 2.6, speed: 0.25 };
     const a = Math.sin(t * sw.speed * TAU + (p.phase || 0)) * sw.amp - Math.PI / 2;
     const len = (p.len || 0.9) * r;
-    ctx.strokeStyle = p.stroke || "#c7ccd3";
+    ctx.strokeStyle = p.stroke || D.pendulumArm;
     ctx.lineWidth = p.widthPx || 5;
     ctx.beginPath(); ctx.moveTo(0, 0);
     ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
@@ -144,16 +152,16 @@ const SHAPES = {
     ctx.save();
     ctx.translate(Math.cos(a) * len, Math.sin(a) * len);
     ctx.rotate(a + Math.PI / 2);
-    ctx.fillStyle = p.cab.fill || "#e85d75";
+    ctx.fillStyle = p.cab.fill || D.pendulumCab;
     roundRect(ctx, -(p.cab.wPx || 10) / 2, -(p.cab.hPx || 8) / 2,
       p.cab.wPx || 10, p.cab.hPx || 8, 2, true, false);
     ctx.restore();
   },
 
   dish(p, r) {
-    ctx.fillStyle = p.fill || "#2f3a4a";
+    ctx.fillStyle = p.fill || D.dish;
     ctx.beginPath(); ctx.arc(0, 0, (p.r || 1) * r, 0, TAU); ctx.fill();
-    ctx.strokeStyle = p.rim || "#e0483f";
+    ctx.strokeStyle = p.rim || D.dishRim;
     ctx.lineWidth = p.rimPx || 5;
     ctx.beginPath(); ctx.arc(0, 0, (p.r || 1) * r, 0, TAU); ctx.stroke();
   },
@@ -181,39 +189,39 @@ const SHAPES = {
     ctx.rotate(a);
     ctx.translate(0, piv);
     const w = (p.w || 1.4) * r, h = (p.h || 0.5) * r;
-    ctx.fillStyle = p.fill || "#8a5a35";
+    ctx.fillStyle = p.fill || D.boat;
     ctx.beginPath();
     ctx.moveTo(-w / 2, -h / 2);
     ctx.quadraticCurveTo(0, h * 0.9, w / 2, -h / 2);
     ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = p.trim || "#f3c969";
+    ctx.strokeStyle = p.trim || D.boatTrim;
     ctx.lineWidth = 1.6; ctx.stroke();
     ctx.restore();
   },
 
   track(p, r) {
-    ctx.strokeStyle = p.stroke || "#6a7280";
+    ctx.strokeStyle = p.stroke || D.track;
     ctx.lineWidth = p.widthPx || 5;
     ctx.beginPath(); ctx.arc(0, 0, (p.r || 1) * r, 0, TAU); ctx.stroke();
   },
 
   facade(p, r) {
     const w = (p.w || 1.6) * r, h = (p.h || 1.1) * r;
-    ctx.fillStyle = p.fill || "#3a2a4a";
+    ctx.fillStyle = p.fill || D.facade;
     roundRect(ctx, -w / 2, -h / 2, w, h, 3, true, false);
-    ctx.strokeStyle = p.trim || "#6b2f8f";
+    ctx.strokeStyle = p.trim || D.facadeTrim;
     ctx.lineWidth = 2; ctx.stroke();
     if (!p.door) return;
     const dw = (p.door.w || 0.3) * r, dh = (p.door.h || 0.6) * r;
-    ctx.fillStyle = p.door.fill || "#0d0a12";
+    ctx.fillStyle = p.door.fill || D.facadeDoor;
     ctx.fillRect(-dw / 2, h / 2 - dh, dw, dh);
   },
 
   counter(p, r) {
     const w = (p.w || 1.5) * r, h = (p.h || 0.6) * r, dy = (p.dy || 0) * r;
-    ctx.fillStyle = p.fill || "#b8875a";
+    ctx.fillStyle = p.fill || D.counter;
     roundRect(ctx, -w / 2, dy - h / 2, w, h, 2, true, false);
-    ctx.fillStyle = p.top || "#f6e7c8";
+    ctx.fillStyle = p.top || D.counterTop;
     ctx.fillRect(-w / 2, dy - h / 2, w, Math.max(2, h * 0.3));
     // the stainless rail along the front — the bright line under the food
     if (p.trim) {
@@ -230,20 +238,20 @@ const SHAPES = {
   // dark. Drawn as one module so a row of them butts into a continuous roof.
   tarp(p, r) {
     const w = (p.w || 1.8) * r, h = (p.h || 0.8) * r, bays = p.bays || 3;
-    ctx.fillStyle = p.eave || "#0e2258";
+    ctx.fillStyle = p.eave || D.tarpEave;
     roundRect(ctx, -w / 2, -h / 2, w, h, 2, true, false);
     const seg = w / bays;
     for (let i = 0; i < bays; i++) {
       const x0 = -w / 2 + i * seg;
       // each bay: a lit ridge running front-to-back, darker to either side
       const g = ctx.createLinearGradient(x0, 0, x0 + seg, 0);
-      g.addColorStop(0, p.eave || "#0e2258");
-      g.addColorStop(0.5, p.ridge || "#2f6fc0");
-      g.addColorStop(1, p.eave || "#0e2258");
+      g.addColorStop(0, p.eave || D.tarpEave);
+      g.addColorStop(0.5, p.ridge || D.tarpRidge);
+      g.addColorStop(1, p.eave || D.tarpEave);
       ctx.fillStyle = g;
       ctx.fillRect(x0 + 1, -h / 2 + 1, seg - 2, h - 2);
       // the gable's front point
-      ctx.fillStyle = p.fill || "#17357f";
+      ctx.fillStyle = p.fill || D.tarpFill;
       ctx.beginPath();
       ctx.moveTo(x0 + 1, h / 2 - 1);
       ctx.lineTo(x0 + seg / 2, h / 2 + h * 0.14);
@@ -256,7 +264,7 @@ const SHAPES = {
   // what makes the row read as built rather than as a tent.
   frame(p, r) {
     const w = (p.w || 1.8) * r, h = (p.h || 0.8) * r, n = p.n || 4;
-    ctx.strokeStyle = p.stroke || "#e8ecef";
+    ctx.strokeStyle = p.stroke || D.frame;
     ctx.lineWidth = p.widthPx || 2;
     ctx.beginPath();
     for (let i = 0; i < n; i++) {
@@ -265,7 +273,7 @@ const SHAPES = {
     }
     ctx.moveTo(-w / 2, h / 2); ctx.lineTo(w / 2, h / 2);
     ctx.stroke();
-    ctx.fillStyle = p.stroke || "#e8ecef";
+    ctx.fillStyle = p.stroke || D.frame;
     for (let i = 0; i < n; i++) {
       const x = -w / 2 + (i / (n - 1)) * w;
       ctx.beginPath(); ctx.arc(x, h / 2, p.jointPx || 2.2, 0, TAU); ctx.fill();
@@ -278,7 +286,7 @@ const SHAPES = {
     const w = (p.w || 2.0) * r, n = p.n || 10, dy = (p.dy || 0.7) * r;
     const s = p.sizePx || 5;
     const seg = w / n;
-    ctx.strokeStyle = "rgba(240,244,248,0.7)";
+    ctx.strokeStyle = CH.banderines;
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(-w / 2, dy);
@@ -306,9 +314,9 @@ const SHAPES = {
   // chinamo's footprint and it should read as METAL, not as cloth.
   zinc(p, r) {
     const w = (p.w || 1.9) * r, h = (p.h || 0.8) * r, ribs = p.ribs || 12;
-    ctx.fillStyle = p.fill || "#3a3b42";
+    ctx.fillStyle = p.fill || D.zinc;
     roundRect(ctx, -w / 2, -h / 2, w, h, 1.5, true, false);
-    ctx.strokeStyle = p.rib || "#4d4f58";
+    ctx.strokeStyle = p.rib || D.zincRib;
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 1; i < ribs; i++) {
@@ -316,7 +324,7 @@ const SHAPES = {
       ctx.moveTo(x, -h / 2 + 1); ctx.lineTo(x, h / 2 - 1);
     }
     ctx.stroke();
-    ctx.strokeStyle = p.edge || "#24252a";
+    ctx.strokeStyle = p.edge || D.zincEdge;
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(-w / 2, h / 2); ctx.lineTo(w / 2, h / 2);
@@ -331,11 +339,11 @@ const SHAPES = {
     const food = spec.foods && spec.foods[A.food];
     const w = (p.w || 1.8) * r, h = (p.h || 0.3) * r, dy = (p.dy || 0.35) * r;
     const n = p.panels || 3;
-    ctx.fillStyle = p.ground || "#2b1b4d";
+    ctx.fillStyle = p.ground || D.bannerGround;
     roundRect(ctx, -w / 2, dy - h / 2, w, h, 1.5, true, false);
     const seg = w / n;
-    const ink = (food && food.ink) || "#ffd400";
-    const accent = (food && food.accent) || "#c8102e";
+    const ink = (food && food.ink) || D.bannerInk;
+    const accent = (food && food.accent) || D.bannerAccent;
     for (let i = 0; i < n; i++) {
       const x0 = -w / 2 + i * seg;
       // the photograph: a block of the food's own colour, bled to the panel edge
@@ -346,7 +354,7 @@ const SHAPES = {
       ctx.fillRect(x0 + seg * 0.5, dy - h * 0.28, seg * 0.42, h * 0.2);
       ctx.fillRect(x0 + seg * 0.5, dy + h * 0.04, seg * 0.3, h * 0.16);
     }
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.strokeStyle = CH.bannerSeam;
     ctx.lineWidth = 0.8;
     ctx.strokeRect(-w / 2, dy - h / 2, w, h);
   },
@@ -356,7 +364,7 @@ const SHAPES = {
   // blue-tarp chinamos on the Paseo do, the printed-banner ones do not.
   neon(p, r, t, ph, A, spec) {
     const food = spec.foods && spec.foods[A.food];
-    const col = (food && food.neon) || p.color || "#7dff5a";
+    const col = (food && food.neon) || p.color || D.neon;
     const w = (p.w || 1.4) * r, dy = (p.dy || 0.2) * r;
     const flicker = 0.82 + 0.18 * Math.sin(t * 7 + ph * 3);
     ctx.save();
@@ -385,7 +393,7 @@ const SHAPES = {
       ctx.closePath(); ctx.fill();
     }
     // the scalloped edge
-    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillStyle = CH.awningShadow;
     for (let i = 0; i < n; i++) {
       ctx.beginPath();
       ctx.arc(-w / 2 + (i + 0.5) * seg, 0, seg * 0.5, 0, Math.PI);
@@ -396,7 +404,7 @@ const SHAPES = {
   // what is on the counter: churros standing in their cup, manzanas on sticks
   goods(p, r, t, ph, A, spec) {
     const food = spec.foods && spec.foods[A.food];
-    const palette = (food && food.goods) || ["#e8c07a"];
+    const palette = (food && food.goods) || D.goods;
     const n = p.n || 5, w = (p.w || 1.3) * r;
     for (let i = 0; i < n; i++) {
       ctx.fillStyle = pick(palette, i);
@@ -435,9 +443,9 @@ const SHAPES = {
     const off = (p.offset || 0.7) * r, w = p.wPx || 7, h = p.hPx || 12;
     const pump = p.pump ? 1 + Math.sin(t * (p.pump.speed || 2) * TAU) * p.pump.amp : 1;
     for (const side of [-1, 1]) {
-      ctx.fillStyle = p.fill || "#1d1826";
+      ctx.fillStyle = p.fill || D.speaker;
       roundRect(ctx, side * off - w / 2, -h / 2, w, h, 1.5, true, false);
-      ctx.fillStyle = p.cone || "#5a5170";
+      ctx.fillStyle = p.cone || D.speakerCone;
       ctx.beginPath();
       ctx.arc(side * off, -h * 0.18, w * 0.3 * pump, 0, TAU); ctx.fill();
       ctx.beginPath();
@@ -473,7 +481,7 @@ const SHAPES = {
   },
 
   sign(p, r, t, ph, A, spec) {
-    let text = p.text, fill = p.fill || "#fff", bg = p.bg || "#b3243b";
+    let text = p.text, fill = p.fill || D.signFg, bg = p.bg || D.signBg;
     if (p.fromFood) {
       const food = spec.foods && spec.foods[A.food];
       if (!food) return;
@@ -493,7 +501,7 @@ function drawAttraction(A, t) {
   ctx.save();
   ctx.translate(A.x, A.y);
   // the ground shadow, so nothing floats over the barro
-  ctx.fillStyle = "rgba(0,0,0,0.16)";
+  ctx.fillStyle = CH.rideShadow;
   ctx.beginPath(); ctx.ellipse(1, r * 0.28, r * 0.95, r * 0.4, 0, 0, TAU); ctx.fill();
   for (const part of spec.parts) {
     const draw = SHAPES[part.shape];
@@ -544,12 +552,12 @@ function drawFeriaGround(view, t) {
     if (F.x1 < view.x0 || F.x0 > view.x1 || F.y1 < view.y0 || F.y0 > view.y1) continue;
     const path = bandPath(F);
     ctx.save();
-    ctx.fillStyle = "#a8845c";                      // la tierra del campo ferial
+    ctx.fillStyle = CH.ground;                      // la tierra del campo ferial
     ctx.fill(path, "evenodd");
     // scuffed patches, deterministic so they never crawl
     ctx.save();
     ctx.clip(path, "evenodd");
-    ctx.fillStyle = "rgba(120,92,60,0.35)";
+    ctx.fillStyle = CH.groundMottle;
     for (let i = 0; i < 40; i++) {
       const hx = F.x0 + hash01(i * 1.7 + F.x0) * (F.x1 - F.x0);
       const hy = F.y0 + hash01(i * 2.9 + F.y0) * (F.y1 - F.y0);
@@ -559,7 +567,7 @@ function drawFeriaGround(view, t) {
       ctx.fill();
     }
     ctx.restore();
-    ctx.strokeStyle = "rgba(90,68,44,0.8)";
+    ctx.strokeStyle = CH.groundEdge;
     ctx.lineWidth = 2; ctx.lineJoin = "round";
     ctx.stroke(path);
     ctx.restore();

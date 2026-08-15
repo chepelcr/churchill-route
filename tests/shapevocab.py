@@ -36,15 +36,23 @@ def _object_methods(text, const):
 def implemented_shapes():
     """The union of everything a part may name.
 
-    Three sources, because the interpreter is deliberately split: the path verbs
+    Four sources, because the interpreter is deliberately split: the path verbs
     BOTH backends share (`PATHS`, in vehicleShapes.js — those are the ones a
-    silhouette may also be traced from), the Canvas-only ones (`EXTRA`), and the
-    cases the painter handles inline because they are not contours at all
-    (`stripes` is a fill pattern, `label` is a pill, `repeat` is control flow).
+    silhouette may also be traced from), the Canvas-only ones (`EXTRA`), the
+    GENERATORS (`scatter`, `orbit` — n copies placed by a rule the engine owns),
+    and the cases the painter handles inline because they are not contours at
+    all (`stripes` is a fill pattern, `label` is a pill, `repeat` is control
+    flow).
+
+    The generators are spread into `SHAPE_NAMES` rather than quoted there, so
+    they have to be read from the object — a scan that only picked up the string
+    literals would report them as unimplemented the first time a catalog used
+    one.
     """
     shapes = _read(SHAPES_JS)
     names = _object_methods(_read(PATHS_JS), "PATHS")
     names |= _object_methods(shapes, "const EXTRA")
+    names |= _object_methods(shapes, "const GENERATORS")
     listed = shapes.split("SHAPE_NAMES = Object.freeze([", 1)[1].split("]);", 1)[0]
     names |= set(re.findall(r'"(\w+)"', listed))
     return names

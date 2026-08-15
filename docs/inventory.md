@@ -1286,6 +1286,33 @@ palette), `delivery.js` 7, `physics.js` 6. The UI's remaining 23 are inside
 compositor and the shape interpreter never acquired a literal through any of
 this.
 
+### The shape vocabulary grew generators (2026-08-14)
+
+The enabling move for the rest of §14. Three verbs — `scatter`, `orbit`, `arcs`
+— so an ALGORITHMIC drawing can be a parts list without arithmetic in JSON.
+
+A tuna boil is 22 fish on a position hash and seven broken arcs. Written as data
+there were only two options: a loop-and-arithmetic language in JSON, which is a
+worse language than the JS it replaces and exactly the line §12 draws; or a verb
+the ENGINE implements and the catalog invokes with parameters. The feria settled
+that argument long before, with `bulbs` and `spokes`; these are the general form.
+
+Three properties make them safe to build catalogs on, and each has a test:
+
+- **the hash is `flora.js`'s**, so a fish is in the same place every frame. A
+  `Math.random()` in the interpreter would make the shoal boil and — worse —
+  make every art sheet un-diffable, which is how this repo proves art at all.
+- **`sqrt` on the radial hash**, because a uniform radius is not a uniform AREA;
+  without it every copy piles toward the centre and reads as a clump.
+- **a copy draws in its own frame**, so a sub-list is written once about its own
+  origin and the verb puts it where it goes. Inheriting the parent anchor looks
+  right for `repeat` on a line and wrong for anything rotated.
+
+Proved inert on landing: the four existing art sheets came back **1 709 300 px,
+zero changed** — a verb nobody uses yet must move nothing — and
+`tools/shot-generators.mjs` draws all three so a reviewer can see the shoal
+scatter, the orbit copies lying tangent, and the rim break.
+
 ### The lights are placed but not designed
 
 Called out on 2026-08-14 and worth its own note, because it is the clearest

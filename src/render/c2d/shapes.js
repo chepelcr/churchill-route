@@ -17,7 +17,7 @@
 // evaluators and this never has to know which. Same reason `color` is passed
 // in: a vehicle resolves `$color` against its paint, a prop against nothing.
 import { PATHS } from "../vehicleShapes.js";
-import { areaLabel, ctx as sharedCtx, label } from "./gfx.js";
+import { areaLabel, ctx as sharedCtx, hash01, label } from "./gfx.js";
 
 const TAU = Math.PI * 2;
 
@@ -61,11 +61,88 @@ const EXTRA = {
 
 const SHAPES = { ...PATHS, ...EXTRA };
 
+// ---- THE GENERATORS ---------------------------------------------------------
+//
+// Three verbs that make an ALGORITHMIC drawing expressible as parts. They exist
+// because the alternative did not survive contact: a tuna boil is 22 fish on a
+// position hash and seven broken arcs, and writing that as data means either a
+// loop-and-arithmetic language in JSON — which is a worse language than the JS
+// it would replace, and the line `docs/inventory.md` §12 draws — or a verb the
+// ENGINE implements and the catalog invokes. The feria settled this argument
+// years earlier with `bulbs` and `spokes`; these are the general form.
+//
+// Two rules they all obey:
+//
+//   * **TURNS, NEVER RADIANS.** A power-of-two turn times TAU is exact in binary
+//     floating point, so a catalog holds no irrational literal — the same rule
+//     `polyN`'s `rot` and every motion verb follow.
+//   * **THE HASH IS THE ONE `flora.js` USES** (`hash01` from gfx). That is what
+//     makes a fish stay in the same place frame after frame; a `Math.random()`
+//     here would make the shoal boil and, worse, make every art sheet
+//     un-diffable.
+//
+// `seed` shifts the whole pattern, so two schools drawn from one record are not
+// the same school.
+const GENERATORS = {
+  /** n copies on a position hash inside an ellipse — a shoal, a wood, a patio. */
+  scatter(g, p, X, Y, draw) {
+    const n = p.n | 0, seed = p.seed || 0;
+    for (let i = 0; i < n; i++) {
+      const h1 = hash01(i * 12.9898 + seed), h2 = hash01(i * 78.233 + seed);
+      const a = h1 * TAU;
+      // sqrt keeps the scatter EVEN over the area; without it everything piles
+      // into the middle, which reads as a clump rather than a shoal.
+      const rr = Math.sqrt(h2);
+      draw(i, {
+        dx: Math.cos(a) * (p.rx ?? p.r ?? 0) * rr,
+        dy: Math.sin(a) * (p.ry ?? p.r ?? 0) * rr,
+        rot: p.rotate ? h1 * TAU : 0,
+        scale: p.scaleVar ? 1 - p.scaleVar + hash01(i * 5.17 + seed) * p.scaleVar * 2 : 1,
+      });
+    }
+  },
+
+  /** n copies around a circle, optionally turning with the clock. */
+  orbit(g, p, X, Y, draw, t) {
+    const n = p.n | 0, seed = p.seed || 0;
+    const spin = (p.spin || 0) * (t || 0) * TAU;
+    for (let i = 0; i < n; i++) {
+      const h = hash01(i * 7.13 + seed);
+      const a = (i / n) * TAU + spin + (p.jitter ? (h - 0.5) * p.jitter * TAU : 0);
+      const rr = (p.r || 0) * (p.rVar ? 1 - p.rVar + h * p.rVar * 2 : 1);
+      draw(i, {
+        dx: Math.cos(a) * rr, dy: Math.sin(a) * rr,
+        // `face` turns each copy to follow the circle — a fish swims along it,
+        // a gondola does not.
+        rot: p.face ? a + TAU / 4 : 0,
+        scale: 1,
+      });
+    }
+  },
+};
+
+/** n arc segments on a hash around a centre — a broken, breathing rim. */
+function drawArcs(g, p, X, Y, t) {
+  const n = p.n | 0, seed = p.seed || 0;
+  g.lineWidth = p.width ?? 2;
+  for (let i = 0; i < n; i++) {
+    const h = hash01(i * 7.13 + seed);
+    const a0 = (p.spin || 0) * (t || 0) * TAU + i * (p.step ?? 0.9)
+      + (p.breathe ? Math.sin((t || 0) * p.breathe * TAU + i) * (p.breatheAmp ?? 0.2) : 0);
+    const span = ((p.span ?? 0.08) + h * (p.spanVar ?? 0.06)) * TAU;
+    const rr = (p.r || 0) * (1 - (p.rVar ?? 0) + h * (p.rVar ?? 0) * 2);
+    g.beginPath();
+    g.arc(X(p.cx ?? 0), Y(p.cy ?? 0), rr, a0, a0 + span);
+    g.stroke();
+  }
+}
+
 /** Every shape name the interpreter implements — the list the catalogs are
  *  checked against, so a part naming anything else fails a test instead of
  *  silently drawing nothing. */
 export const SHAPE_NAMES = Object.freeze([
-  ...Object.keys(SHAPES), "rect", "stripes", "stroke", "strokeRect",
+  ...Object.keys(SHAPES), ...Object.keys(GENERATORS), "arcs",
+  "rect", "stripes", "stroke", "strokeRect",
   "text", "label", "areaLabel", "repeat", "grid", "ring", "prop",
 ]);
 
@@ -209,6 +286,37 @@ export function paintParts(g, parts, frame) {
         if (sub) paintParts(g, sub, frame);
         break;
       }
+
+      // THE GENERATORS: n copies of a sub-list, placed by a rule the engine
+      // owns. `repeat` steps them on a line; these two place them on a hash and
+      // on a circle. A copy may be turned and scaled, so the sub-list is
+      // written ONCE in its own frame and the verb puts it where it goes.
+      case "scatter":
+      case "orbit": {
+        const place = GENERATORS[part.shape];
+        place(g, part, X, Y, (i, at) => {
+          g.save();
+          g.translate(X(part.cx ?? 0) + at.dx, Y(part.cy ?? 0) + at.dy);
+          if (at.rot) g.rotate(at.rot);
+          if (at.scale !== 1) g.scale(at.scale, at.scale);
+          paintParts(g, part.parts, {
+            X: (v) => rawX(str(v)) - rawX(0),   // the copy draws about its own
+            Y: (v) => rawY(str(v)) - rawY(0),   // origin, not the parent anchor
+            color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
+            skip, vars, prop, t: frame.t,
+          });
+          g.restore();
+        }, frame.t);
+        break;
+      }
+
+      // n arc segments on a hash — a rim that is broken and breathing rather
+      // than a circle, which is the whole difference between a shoal working
+      // the surface and a painted disc.
+      case "arcs":
+        g.strokeStyle = paint(part.stroke);
+        drawArcs(g, part, X, Y, frame.t);
+        break;
 
       // n copies of a sub-list, stepped by (dx, dy). `$i` in a palette index
       // picks per copy, which is how the village gets three coloured houses and

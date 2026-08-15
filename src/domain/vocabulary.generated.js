@@ -207,6 +207,33 @@ export const RENDERER_BACKEND = Object.freeze({
 });
 export const RENDERER_BACKEND_VALUES = Object.freeze(["canvas", "pixi"]);
 
+export const GAME_MODE = Object.freeze({
+  STORY: "story",
+  ARCADE: "arcade",
+  EXPLORE: "explore",
+  TUTORIAL: "tutorial",
+});
+export const GAME_MODE_VALUES = Object.freeze(["story", "arcade", "explore", "tutorial"]);
+
+export const UI_SCREEN = Object.freeze({
+  BOOT: "boot",
+  INTRO: "intro",
+  TITLE: "title",
+  STAGEPICK: "stagepick",
+  BRIEF: "brief",
+  MODEBRIEF: "modebrief",
+  TUTBRIEF: "tutbrief",
+  VEHPICK: "vehpick",
+  LANCHAPICK: "lanchapick",
+  PLAYING: "playing",
+  PAUSED: "paused",
+  OVER: "over",
+  SETTINGS: "settings",
+  SUPPORTERS: "supporters",
+  SHOP: "shop",
+});
+export const UI_SCREEN_VALUES = Object.freeze(["boot", "intro", "title", "stagepick", "brief", "modebrief", "tutbrief", "vehpick", "lanchapick", "playing", "paused", "over", "settings", "supporters", "shop"]);
+
 export const HOST_KIND = Object.freeze({
   CUADRA: "cuadra",
   PARCEL: "parcel",

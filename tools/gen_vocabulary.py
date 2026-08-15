@@ -75,6 +75,8 @@ STR_ENUMS = (
     ("VEHICLE_MEDIUM", game.VehicleMedium),
     ("VEHICLE_KIND", game.VehicleKind),
     ("RENDERER_BACKEND", game.RendererBackend),
+    ("GAME_MODE", game.GameMode),
+    ("UI_SCREEN", game.UIScreen),
     # what the EDITOR authors and the game reads back
     ("HOST_KIND", editing.HostKind),
     ("GEOMETRY_KIND", editing.GeometryKind),

@@ -63,3 +63,50 @@ class RendererBackend(StrEnum):
     has to answer per family rather than globally."""
     CANVAS = "canvas"
     PIXI = "pixi"
+
+
+class GameMode(StrEnum):
+    """The four ways to play, and every one of them changes a rule.
+
+    Not a label. `physics.js` asks it whether the run has a clock; `modes.js`
+    picks the sky and the day cycle from it; `delivery.js` pays a different
+    bonus per mode; `progress.js` decides whether a restart button exists;
+    the results screen and the analytics both group by it.
+
+    It was a raw string in a dozen comparisons — `state.mode === "explore"` —
+    and that list was already WRONG in one place: the timer branch handled
+    arcade and story and then handled explore separately with a treadmill that
+    counted 999 down and reset it, while the HUD asked for a different pair of
+    names to decide whether to draw a clock at all."""
+    STORY = "story"
+    ARCADE = "arcade"
+    EXPLORE = "explore"
+    TUTORIAL = "tutorial"
+
+
+class UIScreen(StrEnum):
+    """React's screen state machine — a finite internal vocabulary.
+
+    `App.jsx` branches on these fifteen strings in about thirty places, and
+    three of them (`settings`, `shop`, `lanchapick`) also decide whether the
+    simulation is PAUSED and whether the attract camera runs, so a typo is not
+    a blank screen: it is a live game running behind a menu.
+
+    They are also the keys of `src/ui/screens.json`, the per-screen registry the
+    world editor authors, and of the manifest's `editorUI.screens` block. Three
+    files keyed by the same fifteen names is exactly the shape that drifts."""
+    BOOT = "boot"
+    INTRO = "intro"
+    TITLE = "title"
+    STAGEPICK = "stagepick"
+    BRIEF = "brief"
+    MODEBRIEF = "modebrief"
+    TUTBRIEF = "tutbrief"
+    VEHPICK = "vehpick"
+    LANCHAPICK = "lanchapick"
+    PLAYING = "playing"
+    PAUSED = "paused"
+    OVER = "over"
+    SETTINGS = "settings"
+    SUPPORTERS = "supporters"
+    SHOP = "shop"

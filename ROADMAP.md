@@ -679,12 +679,41 @@ tokens para que los tokens lleguen de verdad a la hoja de estilos.
       mirara la primera lista habría reportado como huérfana justo la etapa que
       SÍ está traducida.
 
-      **Lo que queda es la ESTRUCTURA**, y es más chico de lo que parece: qué
-      tarjetas tiene una pantalla, en qué orden y cuáles se muestran. Sigue sin
-      hacerse a propósito — cambiar React legible por un lenguaje de layout
-      casero es el mal negocio que ya se descartó, y la respuesta buena es
-      probablemente un registro de SLOTS por pantalla, no un esquema de JSX.
-      Fila propia cuando haga falta.
+      **Y la ESTRUCTURA se hizo el 2026-08-14**, como registro de SLOTS y no
+      como esquema de JSX. `src/ui/screens.json` dice qué bloques tiene una
+      pantalla, en qué orden y bajo qué condición; el motor sigue teniendo los
+      componentes. La regla que lo separa de un lenguaje de layout casero —el
+      mal negocio que se descartó— es una sola: **el JSON selecciona y ordena,
+      el motor implementa**. No hay posiciones, ni estilos, ni anidamiento, ni
+      expresiones, y hay una prueba por cada una de esas cuatro cosas.
+
+      `when` nombra una CLAVE del contexto de la pantalla, nunca una expresión.
+      No es un detalle: los bloques de Resultados son condiciones de JUEGO
+      —`canContinue` es "se perdió una corrida cronometrada, hay anuncio listo y
+      esta corrida no usó uno"— así que el registro nombra la decisión y la
+      pantalla la calcula. Las negaciones son claves (`notCrossing`) porque en
+      cuanto esto pueda expresar `!a && b`, es un lenguaje.
+
+      **Y `UIScreen` por fin existe** (los quince ids de `App.jsx`), junto con
+      `GameMode`. Eran ~30 comparaciones contra strings crudos, y tres de esas
+      pantallas —`settings`, `shop`, `lanchapick`— además deciden si la
+      SIMULACIÓN está en pausa: un error de dedo ahí no es una pantalla en
+      blanco, es el juego corriendo detrás de un menú.
+
+      Dos cosas aparecieron al abrirlo:
+      - **el título del juego no era traducible.** `TitleScreen` caía a
+        `"LA RUTA DEL CHURCHILL"` literal mientras el subtítulo justo debajo
+        usaba `t("title.sub")`. La prueba de i18n no lo cazó porque escaneaba
+        sólo el texto entre `>` y `<`; ahora también los fallbacks dentro de
+        expresiones.
+      - **el barrido de CSS no había mirado el JSX.** Los tres swatches de modo
+        eran copias exactas de `--amber`, `--mint` y `--rose`. Las 20 restantes
+        están dentro de iconos, que son su propia receta de dibujo y se quedan.
+
+      **Probado montando la pantalla de verdad** (`tools/shot-results.mjs`, que
+      la renderiza con ReactDOM en seis desenlaces): árbol idéntico en los seis.
+      Y **la compuerta se probó capaz de fallar** antes de creerle: ocultando un
+      slot cambia 5 de 6 —el sexto es el tutorial, que nunca mostró ese bloque.
 
 ### 4. El reescalado
 

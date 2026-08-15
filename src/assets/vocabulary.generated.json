@@ -190,6 +190,29 @@
       "canvas",
       "pixi"
     ],
+    "GAME_MODE": [
+      "story",
+      "arcade",
+      "explore",
+      "tutorial"
+    ],
+    "UI_SCREEN": [
+      "boot",
+      "intro",
+      "title",
+      "stagepick",
+      "brief",
+      "modebrief",
+      "tutbrief",
+      "vehpick",
+      "lanchapick",
+      "playing",
+      "paused",
+      "over",
+      "settings",
+      "supporters",
+      "shop"
+    ],
     "HOST_KIND": [
       "cuadra",
       "parcel",

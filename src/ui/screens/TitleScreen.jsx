@@ -7,14 +7,21 @@ import { needsIosFullscreenHint, dismissIosFullscreenHint } from "../immersive.j
 import { useT } from "../../i18n/index.js";
 import CoinIcon from "../CoinIcon.jsx";
 import Icon from "../Icon.jsx";
+import Slots from "../Slots.jsx";
+import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
 
 // Hide the APK download in the native app (only offer it on the web).
 const IS_NATIVE = typeof window !== "undefined" && !!window.Capacitor;
 
+// The swatch is the mode's accent, and each of these three was an exact
+// duplicate of a theme token (`--amber`, `--mint`, `--rose`) written out again
+// — the styles.css sweep took the stylesheet and never looked at the inline
+// styles in the JSX. An icon's internal fills stay in the icon, because those
+// are one drawing's own recipe; a mode's accent is the theme's.
 const MODE_IDS = [
-  { id: "story",    swatch: "#ffe06b" },
-  { id: "explore",  swatch: "#6fbf99" },
-  { id: "arcade",   swatch: "#ff3d80" },
+  { id: "story",    swatch: "var(--amber)" },
+  { id: "explore",  swatch: "var(--mint)" },
+  { id: "arcade",   swatch: "var(--rose)" },
 ];
 
 export default function TitleScreen({ editorConfig, onPickMode, onSettings, onSupporters, onShop }) {
@@ -40,6 +47,63 @@ export default function TitleScreen({ editorConfig, onPickMode, onSettings, onSu
   }, [info]);
 
   const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
+  // The blocks this screen can show — `src/ui/screens.json` decides which of
+  // them appear and in what order. The tools row stays in the shell below
+  // because it is the card's chrome, not a block of the page.
+  const SLOTS = {
+    wordmark: () => <>
+      <h1 className="title-main">{editorConfig?.title || t("title.main")}</h1>
+      <div className="title-sub">{editorConfig?.subtitle || t("title.sub")}</div>
+    </>,
+    iosHint: () => (
+      <div className="ios-hint">
+        <span><Icon name="phone" size={14} /> {t("ios.hint")}</span>
+        <button className="tool-pill" aria-label="✕"
+          onClick={() => { dismissIosFullscreenHint(); setIosHint(false); }}>✕</button>
+      </div>
+    ),
+    modes: () => (
+      <div className="modes" style={{ gridTemplateColumns: `repeat(${MODE_IDS.length}, 1fr)`, maxWidth: 760, margin: "16px auto" }}>
+        {MODE_IDS.map((m, i) => (
+          <button key={m.id}
+            className={"mode" + (idx === i ? " focused" : "")}
+            onMouseEnter={() => setIdx(i)} onClick={() => pick(m.id)}>
+            <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{t(`mode.${m.id}`)}</div>
+            <div className="ms">{t(`mode.${m.id}.tag`)}</div>
+          </button>
+        ))}
+      </div>
+    ),
+    apk: () => (
+      <a className="apk-btn" href="/churchill.apk" download>
+        <span aria-hidden="true">↓</span> {t("title.apk")}
+      </a>
+    ),
+    controlsHint: () => (
+      <div className="controls-hint">
+        {coarse ? (
+          <span>{t("title.hint.touch")}</span>
+        ) : (
+          <>
+            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> {t("title.hint.drive")}</span>
+            <span><kbd>Space</kbd> {t("title.hint.drift")}</span>
+            <span><kbd>X</kbd> {t("title.hint.turbo")}</span>
+            <span><kbd>P</kbd> {t("title.hint.pause")}</span>
+            <span>{t("title.hint.pad")}</span>
+          </>
+        )}
+      </div>
+    ),
+  };
+  // Negations and compounds are KEYS, never expressions — `Slots` cannot parse
+  // one, deliberately.
+  const ctx = {
+    showIosHint: !!iosHint,
+    canDownloadApk: !IS_NATIVE,
+    hasKeyboard: true,
+  };
+  const slot = (region) => <Slots screen={UI_SCREEN.TITLE} region={region} ctx={ctx} slots={SLOTS} />;
 
   return (
     <div className="page-card title-page">
@@ -69,47 +133,8 @@ export default function TitleScreen({ editorConfig, onPickMode, onSettings, onSu
         </div>
       </div>
       <div className="page-body">
-          <h1 className="title-main">{editorConfig?.title || "LA RUTA DEL CHURCHILL"}</h1>
-          <div className="title-sub">{editorConfig?.subtitle || t("title.sub")}</div>
-
-          {iosHint && (
-            <div className="ios-hint">
-              <span><Icon name="phone" size={14} /> {t("ios.hint")}</span>
-              <button className="tool-pill" aria-label="✕"
-                onClick={() => { dismissIosFullscreenHint(); setIosHint(false); }}>✕</button>
-            </div>
-          )}
-
-          <div className="modes" style={{ gridTemplateColumns: `repeat(${MODE_IDS.length}, 1fr)`, maxWidth: 760, margin: "16px auto" }}>
-            {MODE_IDS.map((m, i) => (
-              <button key={m.id}
-                className={"mode" + (idx === i ? " focused" : "")}
-                onMouseEnter={() => setIdx(i)} onClick={() => pick(m.id)}>
-                <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{t(`mode.${m.id}`)}</div>
-                <div className="ms">{t(`mode.${m.id}.tag`)}</div>
-              </button>
-            ))}
-          </div>
-
-          {!IS_NATIVE && (
-            <a className="apk-btn" href="/churchill.apk" download>
-              <span aria-hidden="true">↓</span> {t("title.apk")}
-            </a>
-          )}
-
-          <div className="controls-hint">
-            {coarse ? (
-              <span>{t("title.hint.touch")}</span>
-            ) : (
-              <>
-                <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> {t("title.hint.drive")}</span>
-                <span><kbd>Space</kbd> {t("title.hint.drift")}</span>
-                <span><kbd>X</kbd> {t("title.hint.turbo")}</span>
-                <span><kbd>P</kbd> {t("title.hint.pause")}</span>
-                <span>{t("title.hint.pad")}</span>
-              </>
-            )}
-          </div>
+          {slot("main")}
+          {slot("footer")}
       </div>
     </div>
   );

@@ -137,6 +137,31 @@ class JsxTests(unittest.TestCase):
         "LA RUTA",          # the game's own wordmark, not copy
     }
 
+    def test_no_untranslatable_fallback_in_an_expression(self):
+        """THE ONE THE FIRST VERSION OF THIS FILE MISSED.
+
+        `TitleScreen` rendered `{editorConfig?.title || "LA RUTA DEL CHURCHILL"}`
+        while the subtitle immediately below it fell back to `t("title.sub")` —
+        so the game's own title was NOT translatable and its tagline was, and
+        nothing said so. The original scan only looked at text between `>` and
+        `<`, which is not where that lives.
+        """
+        offenders = []
+        for base, _dirs, files in os.walk(UI):
+            for name in files:
+                if not name.endswith(".jsx"):
+                    continue
+                src = read(os.path.join(base, name))
+                # `something || "Some words"` inside an expression
+                for m in re.finditer(r'\|\|\s*"([^"]*\s[^"]*)"', src):
+                    text = m.group(1).strip()
+                    if not text or text in self.ALLOWED:
+                        continue
+                    offenders.append(f"{name}: {text[:48]}")
+        self.assertEqual(offenders, [],
+                         f"a string fallback in a JSX expression cannot be "
+                         f"translated: {offenders[:5]}")
+
     def test_no_untranslatable_copy_in_the_screens(self):
         """A sentence in the JSX renders perfectly in the language it was
         written in and can never be translated at all."""

@@ -79,6 +79,28 @@
         "liftNote": "the barro avenue rides ~1 m up (`state.elev`); the shadow slides further out and fades as she climbs"
       }
     },
+    "headlights": {
+      "name": "Faros",
+      "layer": "under",
+      "space": "vehicle",
+      "note": "LOS FAROS. De noche todo vehículo que se mueve alumbra por delante — y no es decoración: la ciudad ahora tiene pozos de luz y oscuridad entre ellos, así que un carro sin faros es un carro que va a ciegas por una calle negra. Se dibuja sólo de noche, en el marco del vehículo, y el CONO va DEBAJO del casco para que la luz salga de la trompa y no encima de ella.",
+      "_night": "Sólo de noche, que es comportamiento y por eso lo decide el pintor y no este archivo — igual que el halo de una luminaria.",
+      "beamNote": "cuánto alcanza el cono por delante de la trompa, en px del mundo. Un poco menos que el pozo de una farola (65 px) para que el carro no compita con el alumbrado.",
+      "spreadNote": "medio ángulo del cono, en radianes. Ancho: un cono angosto se lee como un láser y no como un faro.",
+      "colorNote": "El triplete y no una cadena, la misma convención que toda esta familia: el alfa se compone en el pintor.",
+      "lampNote": "los dos focos en la trompa, que es lo que se ve del carro de frente.",
+      "tailNote": "las calaveras. Lo único que se ve de un carro que se aleja, así que sin ellas el tráfico de noche desaparece por detrás.",
+      "params": {
+        "beam": 74,
+        "spread": 0.42,
+        "color": "255,238,190",
+        "alpha": 0.2,
+        "lampR": 2.1,
+        "lampAlpha": 0.92,
+        "tail": "255,90,70",
+        "tailAlpha": 0.55
+      }
+    },
     "speedLines": {
       "name": "Viento de velocidad",
       "layer": "screen",

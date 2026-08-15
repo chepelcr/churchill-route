@@ -48,6 +48,11 @@ PAINTERS = {
     "shadow": (ENTITIES, "  shadow: {", "\n  },"),
     "heel": (ENTITIES, "  heel: {", "\n  },"),
     "speedLines": (CANVAS2D, "if (id !== \"speedLines\"", "\n  }"),
+    # Los faros son DOS pintores porque los usan tres cosas distintas: el
+    # jugador por la vía de efectos, y el tráfico y las lanchas llamando
+    # directo — un carro del tráfico no tiene registro de vehículo del que
+    # escoger un efecto, y aun así tiene que alumbrar.
+    "headlights": (ENTITIES, "export function paintHeadlights(", "\n}"),
 }
 
 #: Params whose name ends in `Note` are prose for whoever opens the file, and

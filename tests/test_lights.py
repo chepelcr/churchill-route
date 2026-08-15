@@ -274,3 +274,66 @@ class FieldTowerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StreetLampFixtureTests(unittest.TestCase):
+    """LOS POSTES SE DIBUJAN, y su diseño es data.
+
+    El compositor de noche abre el pozo de luz; sin esto el mundo tenía 18 978
+    charcos flotando sobre la calle sin nada que los explicara, y de día
+    ninguna señal de que la ciudad estuviera alumbrada. Se detectó revisando
+    antes de que el usuario probara, no después.
+    """
+
+    def test_the_world_pass_draws_the_lamps(self):
+        world = source(os.path.join(ROOT, "src", "render", "c2d", "world.js"))
+        self.assertIn("drawStreetLamps", world)
+
+    def test_a_lamp_is_drawn_from_the_registry_and_not_by_hand(self):
+        """Rediseñar la farola de la ciudad entera tiene que ser editar una
+        lista de partes en `lights.json`, no tocar el renderer."""
+        src = source(LIGHTS_JS)
+        body = src.split("export function drawStreetLamps", 1)[1].split("\n}", 1)[0]
+        self.assertIn("paintLight", body)
+
+    def test_the_fixture_pass_never_draws_the_halo(self):
+        """Sería el mismo error que tenía la noche: un gradiente por lámpara
+        pintado DEBAJO del velo que lo tapa. La luz la abre el compositor,
+        contra el tinte y no debajo."""
+        src = source(LIGHTS_JS)
+        body = src.split("export function drawStreetLamps", 1)[1].split("\n}", 1)[0]
+        self.assertIn("night: false", body)
+
+
+class HeadlightTests(unittest.TestCase):
+    """FAROS. La ciudad ahora tiene pozos de luz y oscuridad entre ellos, así
+    que un vehículo sin faros va a ciegas por una calle negra."""
+
+    def setUp(self):
+        with open(os.path.join(ROOT, "src", "assets", "vehicles.json"), encoding="utf-8") as fh:
+            self.vehicles = json.load(fh)["vehicles"]
+
+    def test_every_vehicle_that_has_effects_has_headlights(self):
+        for key, veh in self.vehicles.items():
+            fx = veh.get("effects")
+            if not fx:
+                continue
+            with self.subTest(vehicle=key):
+                self.assertIn("headlights", fx)
+
+    def test_the_traffic_and_the_boats_light_up_too(self):
+        """No pasan por la vía de efectos —un carro del tráfico no tiene
+        registro de vehículo del que escoger uno— y aun así tienen que
+        alumbrar, o de noche se te vienen encima invisibles."""
+        src = source(os.path.join(ROOT, "src", "render", "c2d", "entities.js"))
+        car = src.split("function drawCar(", 1)[1].split("\n}", 1)[0]
+        boat = src.split("function drawBoat(", 1)[1].split("\n}", 1)[0]
+        for name, body in (("drawCar", car), ("drawBoat", boat)):
+            with self.subTest(painter=name):
+                self.assertIn("paintHeadlights", body)
+
+    def test_night_is_behaviour_and_stays_in_the_painter(self):
+        blob = read(os.path.join(ROOT, "src", "assets", "effects.json"))
+        params = json.loads(blob)["vehicle"]["headlights"]["params"]
+        self.assertNotIn("night", params)
+        self.assertNotIn("weather", params)

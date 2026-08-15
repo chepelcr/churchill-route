@@ -7,6 +7,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
 import { paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
+import { drawStreetLamps } from "./lights.js";
 import { aabbInView } from "./gfx.js";
 import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
@@ -54,6 +55,9 @@ function drawWorld2D(view, t) {
     for (const tr of tileTrees(tile, medianPairs(tile).pairs)) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
     for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
   }
+  // …y los postes del alumbrado, sobre la acera y bajo los rótulos. El pozo de
+  // luz lo abre el compositor de noche (`nightlights.js`); esto es la lámpara.
+  drawStreetLamps(view);
   drawStreetLabels2D(roads, view);
 }
 

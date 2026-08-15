@@ -12,6 +12,7 @@
 // test, and the radial gradient — which is not a shape the vocabulary has.
 import LIGHTS from "../../assets/lights.json" with { type: "json" };
 import { state } from "../../game/state.js";
+import { WORLD2D as W } from "../../world2d/index.js";
 import { ctx } from "./gfx.js";
 import { paintAt } from "./shapes.js";
 
@@ -70,6 +71,26 @@ export function drawLight(feature) {
     radius: properties.lightRadius,
     intensity: properties.lightIntensity,
   });
+}
+
+/**
+ * LOS POSTES DEL ALUMBRADO, dibujados.
+ *
+ * `nightlights.js` abre el pozo de luz; esto pone la lámpara que lo hace. Sin
+ * él el mundo tiene 18 978 charcos de luz flotando sobre la calle sin nada que
+ * los explique — y de día, ninguna señal de que la ciudad esté alumbrada.
+ *
+ * EL DISEÑO ES DATA: el poste sale de `lights.json` como cualquier otra
+ * luminaria, así que rediseñar la farola de la ciudad entera es editar una
+ * lista de partes. Acá sólo va DÓNDE, que es lo que el mundo emite por tile.
+ *
+ * El HALO no se dibuja acá: sería el mismo error que tenía la noche antes —
+ * un gradiente por lámpara pintado bajo el velo que lo tapa. La luz la abre el
+ * compositor, contra el tinte y no debajo.
+ */
+export function drawStreetLamps(view) {
+  const lamps = W.lampsIn ? W.lampsIn(view, 24) : [];
+  for (const lamp of lamps) paintLight(lamp.type || "warm", lamp.x, lamp.y, { night: false });
 }
 
 /**

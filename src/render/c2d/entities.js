@@ -3,6 +3,7 @@
 import { state } from "../../game/state.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
+import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { npcArt } from "../../game/npcs.js";
 import { paintParts } from "./shapes.js";
 import { COIN_TYPE, VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
@@ -387,6 +388,10 @@ function drawCar(c) {
   ctx.save();
   ctx.translate(c.x, c.y); ctx.rotate(c.ang || 0);
   ctx.fillStyle = A.car.shadow; ctx.fillRect(-c.w/2 + 3, -c.h/2 + 3, c.w, c.h);
+  // EL TRÁFICO TAMBIÉN ALUMBRA. Un carro sin faros en una calle con pozos de
+  // luz y oscuridad entre ellos es un carro invisible que se te viene encima —
+  // y las calaveras son lo único que se ve de uno que se aleja.
+  if (state.weather === "night") paintHeadlights(ctx, c.w / 2, c.h / 2);
   if (c.kind === "truck") {
     // cab + boxy trailer
     ctx.fillStyle = c.color; ctx.fillRect(c.w/2 - 9, -c.h/2, 9, c.h);
@@ -468,6 +473,8 @@ function drawBoat(b) {
   ctx.moveTo(-L, -H * 0.5); ctx.lineTo(-L - 26, -H * 1.6);
   ctx.lineTo(-L - 26, H * 1.6); ctx.lineTo(-L, H * 0.5);
   ctx.closePath(); ctx.fill();
+  // …y sus luces de navegación, por delante del casco y bajo la cabina.
+  if (state.weather === "night") paintHeadlights(ctx, L, H);
   paintHull(ctx, L, H);                    // shadow + white sheer + red boot-top
   ctx.fillStyle = A.boat.cabin;            // cabin
   roundRect(ctx, -L * 0.35, -H * 0.85, L * (big ? 0.5 : 0.42), H * 1.2, 2, true, false);
@@ -765,7 +772,59 @@ function drawWake(p, veh, c) {
 // sprite is then drawn in and paints nothing. Both take the merged config, so
 // every number a boat and a car once disagreed about through an `if (afloat)`
 // is now that vehicle's own row.
+// LOS FAROS. Se dibujan en el marco del vehículo (trompa a +x), así que el
+// cono sale de la trompa cualquiera sea el rumbo. `night` lo decide el LLAMADOR
+// y no este pintor, porque el mismo dibujo sirve al jugador, al tráfico y a las
+// lanchas — y cada uno sabe su propia mitad del marco.
+const HEADLIGHTS = EFFECTS.vehicle.headlights.params;
+
+/** Faros en el marco del vehículo (trompa a +x). Lo llaman el jugador por la
+ *  vía de efectos, y el tráfico y las lanchas directo — un carro del tráfico no
+ *  tiene registro del que escoger un efecto y aun así tiene que alumbrar. */
+export function paintHeadlights(g, hw, hh, c = HEADLIGHTS) {
+  // EL CONO primero, después los focos: la luz sale de la lámpara, así que la
+  // lámpara va encima de su propio haz.
+  const reach = hw + c.beam, halfW = Math.tan(c.spread) * c.beam;
+  const grad = g.createLinearGradient(hw, 0, reach, 0);
+  grad.addColorStop(0, `rgba(${c.color},${c.alpha})`);
+  grad.addColorStop(1, `rgba(${c.color},0)`);
+  g.fillStyle = grad;
+  for (const side of [-1, 1]) {
+    const y0 = side * hh * 0.55;
+    g.beginPath();
+    g.moveTo(hw - 1, y0);
+    g.lineTo(reach, y0 - halfW * 0.5);
+    g.lineTo(reach, y0 + halfW * 0.5);
+    g.closePath();
+    g.fill();
+  }
+  g.fillStyle = `rgba(${c.color},${c.lampAlpha})`;
+  for (const side of [-1, 1]) {
+    g.beginPath(); g.arc(hw - 1, side * hh * 0.55, c.lampR, 0, Math.PI * 2); g.fill();
+  }
+  // …y las calaveras, que son lo ÚNICO que se ve de un carro que se aleja: sin
+  // ellas el tráfico de noche desaparece por detrás.
+  g.fillStyle = `rgba(${c.tail},${c.tailAlpha})`;
+  for (const side of [-1, 1]) {
+    g.beginPath(); g.arc(-hw + 1, side * hh * 0.55, c.lampR * 0.85, 0, Math.PI * 2); g.fill();
+  }
+}
+
 const EFFECT_PAINTERS = {
+  // El cono va DEBAJO del casco (`under: true`), o la luz sale encima de la
+  // trompa en vez de salir de ella.
+  headlights: {
+    under: true,
+    paint: (p, veh, c) => {
+      if (state.weather !== "night") return;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.a);
+      paintHeadlights(ctx, veh.w / 2, veh.h / 2, c);
+      ctx.restore();
+    },
+  },
+
   turnWind: { paint: (p, veh, c) => drawTurnWind(p, veh, lastT, c) },
   wake: { paint: (p, veh, c) => drawWake(p, veh, c) },
 

@@ -571,6 +571,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {},
         "turnWind": {},
         "speedLines": {}
@@ -646,6 +647,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {},
         "turnWind": {},
         "speedLines": {}
@@ -832,6 +834,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {},
         "turnWind": {},
         "speedLines": {}
@@ -995,6 +998,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {},
         "turnWind": {},
         "speedLines": {}
@@ -1131,6 +1135,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {},
         "turnWind": {},
         "speedLines": {}
@@ -1287,6 +1292,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {},
         "turnWind": {},
         "speedLines": {}
@@ -1349,6 +1355,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {
           "offX": 1.5,
           "offY": 2,
@@ -1392,6 +1399,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {
           "offX": 1.5,
           "offY": 2,
@@ -1479,6 +1487,7 @@
         }
       ],
       "effects": {
+        "headlights": {},
         "shadow": {
           "offX": 1.5,
           "offY": 2,

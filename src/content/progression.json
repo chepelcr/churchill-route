@@ -35,7 +35,8 @@
     "_note": "Which districts a new save starts with, and which are closed for the MVP.",
     "startsUnlocked": ["faro", "carmen"],
 
-    "mvpLocked": ["cocal", "mata", "caldera", "chacarita", "elroble", "barranca", "esparza"],
+    "mvpLocked": [],
+    "_mvpOpened": "2026-08-15: la valla del MVP se bajó y el mundo entero quedó abierto. La lista se conserva VACÍA y no borrada porque volver a cerrar un barrio tiene que seguir siendo una fila de JSON: los barrios eran cocal, mata, caldera, chacarita, elroble, barranca y esparza.",
     "_mvpNote": "A SCOPE DECISION, NOT A GEOMETRY ONE. Reopening a barrio is deleting it from this list — the wall, the stage cards and the delivery clamp all follow from it.",
     "_shapeNote": "The gate is the BARRIOS THEMSELVES and not a line, because in a 2-D world a line is the wrong shape: the four inland ones OVERLAP the coastal districts on x (Chacarita starts at 28642, a third of the way into El Cocal), so a single wall fenced off exactly the three districts that are supposed to be open.",
 

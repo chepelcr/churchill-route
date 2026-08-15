@@ -36,21 +36,22 @@ cayeron están al final, listadas en vez de borradas en silencio.
       caso —de qué lado y con cuántos escalones— y si las plazas llevan el mismo
       asset a menor escala o uno propio.
 
+- [ ] **Las torres de luz, más allá de los dos estadios.** Dibujan desde el
+      2026-08-14, cuatro por cancha en las esquinas del `footprint`, y son una
+      fila de `world-props.json` → `scenes.stadium.towers.byLandmark`. La
+      pregunta abierta es la misma que la de la gradería y conviene contestarla
+      junto: las canchas de barrio son PARCELAS, no estadios —no tienen
+      `footprint`, tienen `hw`/`hh` y un `ang`—, así que darles torres es
+      decidir si una parcela `field` las lleva por defecto y a qué escala.
+
 ---
 
 ## 2. El arte que todavía es código
 
-`docs/inventory.md` §14 tiene la medición completa. Ocho familias, por tamaño.
-Los dos núcleos que **nunca** deben salir de código —el compositor y el
-intérprete de formas— siguen en cero literales.
+`docs/inventory.md` §14 tiene la medición completa. Siete familias, por tamaño
+—las luces salieron el 2026-08-14—. Los dos núcleos que **nunca** deben salir de
+código —el compositor y el intérprete de formas— siguen en cero literales.
 
-- [ ] **Las luces se colocan pero no se diseñan.** El caso más claro de familia
-      a medias: la POSICIÓN ya se autora en el editor (son `editorFeatures`),
-      pero `lightPalette()` es un if/else de cuatro ramas con los colores
-      adentro, y la geometría —alto del mástil, cabeza, radio del halo— son
-      ternarios sobre `type === "stadium"`. Se puede poner una luz donde uno
-      quiera y no se puede diseñar una quinta. Forma: `lights.json` con un
-      `LightType` generado y el pintor en el motor. **Es la más chica.**
 - [ ] **El arte de la gente y el tráfico** (`c2d/entities.js`, 117 colores, 26
       dibujantes). La mitad del vehículo ya es data; la multitud no.
 - [ ] **Los ocho encuentros del estero** (`c2d/estero.js`, 53). El despacho ya

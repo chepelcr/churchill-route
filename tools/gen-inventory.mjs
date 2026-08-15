@@ -110,6 +110,8 @@ const REGISTRIES = [
     count: (d) => Object.keys(d.vehicle || {}).filter((k) => !k.startsWith("_")).length },
   { id: "audio", path: "src/assets/audio.json", reads: "game audio, render-audio.mjs, editor",
     count: (d) => Object.keys(d.recipes || {}).filter((k) => !k.startsWith("_")).length },
+  { id: "lights", path: "src/assets/lights.json", reads: "canvas lights (editor features + field towers), editor",
+    count: (d) => Object.keys(d.types || {}).length },
   { id: "hud", path: "src/assets/hud.json", reads: "canvas HUD + minimap" },
   { id: "flora", path: "src/assets/flora.json", reads: "builder, canvas flora" },
   { id: "feria", path: "src/render/c2d/feriaAssets.json", reads: "canvas attractions" },

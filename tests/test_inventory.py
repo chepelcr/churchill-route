@@ -12,6 +12,7 @@ precisely the drift it exists to report.
 """
 import json
 import os
+import re
 import unittest
 
 from churchill.world.config import ROOT
@@ -23,6 +24,11 @@ VOCAB = os.path.join(ROOT, "src", "assets", "vocabulary.generated.json")
 def read(path):
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def read_text(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
 
 
 class RegistryIndexTests(unittest.TestCase):
@@ -57,6 +63,23 @@ class RegistryIndexTests(unittest.TestCase):
                     found.add(rel)
         self.assertEqual(found - listed, set(),
                          f"these versioned registries are not in inventory.json: "
+                         f"{sorted(found - listed)}")
+
+    def test_every_test_module_is_actually_run(self):
+        """A suite is only as good as the list that invokes it.
+
+        `pnpm test` names its modules one by one rather than discovering them,
+        which is deliberate — the list is a review surface. The cost is that a
+        NEW test file runs green by never running at all, and that is not
+        hypothetical: `tests/test_lights.py` shipped 20 passing cases and the
+        total stayed at 227 until this check was written.
+        """
+        script = read_text(os.path.join(ROOT, "package.json"))
+        listed = set(re.findall(r"tests\.(test_\w+)", script))
+        found = {name[:-3] for name in os.listdir(os.path.join(ROOT, "tests"))
+                 if name.startswith("test_") and name.endswith(".py")}
+        self.assertEqual(found - listed, set(),
+                         f"these test modules exist and `pnpm test` never runs them: "
                          f"{sorted(found - listed)}")
 
     def test_the_catalogs_come_from_the_vocabulary(self):

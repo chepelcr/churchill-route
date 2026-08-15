@@ -1273,7 +1273,8 @@ colour constants still in the module; `dispatch` is `=== "literal"` / `case
 | `c2d/hud.js` | 732 | 39 | 5 | the minimap, compass and POI tags moved; the crossing HUD and the tide bar did not |
 | `c2d/streets.js` | 708 | 36 | 10 | signs and the parcel dispatch are data; the roadway's own marks are not |
 | `c2d/malecon.js` | 131 | 32 | 1 | the promenade band per weather — a pure palette, and the cheapest row left |
-| `c2d/editorWorld.js` | 109 | 17 | **15** | **the lights**, and the authored-feature furniture |
+| `c2d/editorWorld.js` | 90 | 7 | 8 | the authored-feature furniture. **The lights left** (`lights.json`, 2026-08-14): 17 colours → 7, 15 branches → 8 |
+| `c2d/lights.js` | 128 | 0 | 0 | the new painter — clamps, the night test and the gradient, which is not a shape |
 | `c2d/landmarks.js` | 745 | 6 | 10 | done — the six are inside `drawFaroScene`/`drawPool`, whose geometry is control flow |
 | `c2d/ground.js`, `flora.js` | 763 | 9 | 3 | done — they read the registries |
 | `c2d/water.js`, `shapes.js`, `canvas2d.js`, `gfx.js` | 1 354 | **0** | 18 | the compositor, the interpreter and the sea. These must stay code |
@@ -1313,18 +1314,49 @@ zero changed** — a verb nobody uses yet must move nothing — and
 `tools/shot-generators.mjs` draws all three so a reviewer can see the shoal
 scatter, the orbit copies lying tangent, and the rim break.
 
-### The lights are placed but not designed
+### The lights are placed but not designed — done 2026-08-14
 
-Called out on 2026-08-14 and worth its own note, because it is the clearest
-example of a HALF-migrated family. A light's POSITION is fully authored — lights
-are `editorFeatures`, drawn in the editor and delivered through the manifest.
-Its DESIGN is not data at all: `lightPalette()` is a four-branch if/else with
-the colours written in, and the geometry (mast height, head size, halo radius)
-is ternaries on `type === "stadium"` inside the draw call.
+The clearest example this audit found of a HALF-migrated family. A light's
+POSITION was fully authored — lights are `editorFeatures`, drawn in the editor
+and delivered through the manifest. Its DESIGN was not data at all:
+`lightPalette()` was a four-branch if/else with the colours written in, and the
+geometry (mast height, head size, halo radius) was ternaries on
+`type === "stadium"` spread through the draw call. So a light could be put
+anywhere and a fifth kind could not be designed.
 
-So a light can be put anywhere and a fifth kind cannot be designed. The fix is
-the shape every other family took: `lights.json` keyed by a generated
-`LightType`, with the painter staying in the engine.
+Now `LightType` is generated like every other vocabulary and
+`src/assets/lights.json` holds the properties — the same split `surfaces.json`
+makes for a surface class. `c2d/lights.js` is what is genuinely engine: the
+clamps, the night test and the radial gradient, which is not a shape the
+vocabulary has.
+
+Three things this one settled that the remaining families will hit:
+
+- **A dead knob is worse than a missing one.** The four old glows carried an
+  alpha —`.34`, `.42`, `.32`— that NEVER reached the canvas: the painter
+  overwrote it with `glow.replace(/[\d.]+\)$/, …)` before use. Four numbers that
+  looked adjustable and were not. The registry stores the RGB TRIPLE and derives
+  the alpha from intensity, so the value cannot come back.
+- **A fallback is not a branch.** `TYPES[type] || TYPES.warm` is a lookup; a
+  `type === "stadium"` deciding a head's width is the thing that had to go. The
+  test asserts the second and permits the first, because an unknown lamp really
+  is a lamp — unlike an unknown surface, which is a guess about what you can
+  drive on.
+- **The regression gate keeps the OLD painter.** `tools/shot-lights.mjs old`
+  reconstructs the deleted if/else verbatim and draws the same three lamps in
+  the same layout; `new` draws them from the registry. A gate you have to check
+  out an old commit to run is a gate nobody runs. Result: **144 000 px,
+  identical**, day and night.
+
+And the `stadium` fixture became what it always claimed to be. It was an 18 px
+mast with a 10×4 head — the street lamp, widened. A floodlight tower is a
+lattice mast with a crossbar of four lamps, so it is now that, in parts, and
+each estadio gets four of them at its pitch corners. They are built from the
+emitted `footprint` like the gradería and for the same reason: the traced cuadra
+already follows the real street grid, so ONE record lights two stadiums whose
+blocks are different shapes and neither square to the screen. The corner is the
+POLYGON's furthest vertex in each diagonal, never the bbox's — on a skewed
+manzana a bbox corner is off the pitch.
 
 ### Vehicle effects — done 2026-08-14
 

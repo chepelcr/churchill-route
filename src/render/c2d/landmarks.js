@@ -2,6 +2,7 @@
 // pools, the Parque Marino and the sponsored lotes, behind drawLandmark().
 import { paintPalm, paintTree } from "./flora.js";
 import { paintAt } from "./shapes.js";
+import { drawFieldTowers } from "./lights.js";
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { content } from "../../content/remote.js";
@@ -255,6 +256,9 @@ function drawStadium(lm) {
   // The stand goes down BEFORE the pill, so the name still reads over it.
   const stands = PROPS.scenes.stadium.stands;
   if (stands) drawStands(lm, stands);
+  // …and the masts after it: a corner tower stands OUTSIDE the stand's back
+  // wall, so drawing it first would put the seating on top of the pole.
+  drawFieldTowers(lm, PROPS.scenes.stadium.towers);
   const b = polyBBox(pts);
   areaLabel(b.x0, b.y0, b.x1, b.y1, (lm.name || "Estadio").toUpperCase(), C.pillFg, C.pillBg);
 }

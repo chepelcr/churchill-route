@@ -3,7 +3,8 @@
 // are layered objects whose draw order matters (furniture, lights, roofs).
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
-import { ctx, roundRect } from "./gfx.js";
+import { ctx } from "./gfx.js";
+import { drawLight } from "./lights.js";
 
 const pointInView = ([x, y], view, pad = 60) => (
   x >= view.x0 - pad && x <= view.x1 + pad && y >= view.y0 - pad && y <= view.y1 + pad
@@ -45,31 +46,10 @@ function drawEntrance(feature) {
   ctx.beginPath(); ctx.moveTo(-7, -6); ctx.lineTo(-7, 6); ctx.moveTo(7, -6); ctx.lineTo(7, 6); ctx.stroke();
   ctx.restore();
 }
-function lightPalette(type) {
-  if (type === "led") return { core: "#dff7ff", glow: "rgba(155,225,255,.34)" };
-  if (type === "stadium") return { core: "#fff", glow: "rgba(240,248,255,.42)" };
-  if (type === "amber") return { core: "#ffbd5b", glow: "rgba(255,157,57,.34)" };
-  return { core: "#fff0ad", glow: "rgba(255,224,125,.32)" };
-}
-function drawLight(feature) {
-  const [x, y] = feature.geometry.point;
-  const properties = feature.properties || {};
-  const type = properties.lightType || (feature.type === "light" ? "stadium" : "warm");
-  const palette = lightPalette(type);
-  const intensity = Math.max(0, Math.min(4, Number(properties.lightIntensity) || 1));
-  const radius = Math.max(10, Math.min(240, Number(properties.lightRadius) || (type === "stadium" ? 100 : 46)));
-  ctx.strokeStyle = "#3f4648"; ctx.lineWidth = type === "stadium" ? 2.2 : 1.4;
-  ctx.beginPath(); ctx.moveTo(x, y + 8); ctx.lineTo(x, y - (type === "stadium" ? 18 : 10)); ctx.stroke();
-  ctx.fillStyle = palette.core;
-  roundRect(ctx, x - (type === "stadium" ? 5 : 3), y - (type === "stadium" ? 21 : 13), type === "stadium" ? 10 : 6, 4, 1, true, false);
-  if (state.weather === "night" && intensity > 0) {
-    const glow = ctx.createRadialGradient(x, y - 10, 0, x, y - 10, radius);
-    glow.addColorStop(0, palette.glow.replace(/[\d.]+\)$/, `${Math.min(.75, intensity * .24)})`));
-    glow.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(x, y - 10, radius, 0, Math.PI * 2); ctx.fill();
-  }
-}
+// The luminaire moved to `c2d/lights.js` + `src/assets/lights.json`: what a
+// lamp IS is a registry now, so a fifth kind is a record instead of a fifth
+// branch. Where it stands is still authored here, which was always the half
+// that worked.
 function drawRoof(feature) {
   const path = pathFor(feature);
   const properties = feature.properties || {};

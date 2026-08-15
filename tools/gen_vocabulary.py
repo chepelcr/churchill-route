@@ -79,6 +79,7 @@ STR_ENUMS = (
     ("GAME_MODE", game.GameMode),
     ("UI_SCREEN", game.UIScreen),
     ("COIN_TYPE", game.CoinType),
+    ("LIGHT_TYPE", game.LightType),
     ("CROSSING_OUTCOME", game.CrossingOutcome),
     ("ESTERO_ENCOUNTER", game.EsteroEncounterKind),
     ("NPC_MOVEMENT", game.NpcMovement),

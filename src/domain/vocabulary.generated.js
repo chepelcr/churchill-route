@@ -251,6 +251,14 @@ export const COIN_TYPE = Object.freeze({
 });
 export const COIN_TYPE_VALUES = Object.freeze(["gold", "silver", "bonus", "frozen"]);
 
+export const LIGHT_TYPE = Object.freeze({
+  WARM: "warm",
+  LED: "led",
+  AMBER: "amber",
+  STADIUM: "stadium",
+});
+export const LIGHT_TYPE_VALUES = Object.freeze(["warm", "led", "amber", "stadium"]);
+
 export const CROSSING_OUTCOME = Object.freeze({
   LANDED: "landed",
   SWAMPED: "swamped",

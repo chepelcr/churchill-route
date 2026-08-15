@@ -226,6 +226,12 @@
       "bonus",
       "frozen"
     ],
+    "LIGHT_TYPE": [
+      "warm",
+      "led",
+      "amber",
+      "stadium"
+    ],
     "CROSSING_OUTCOME": [
       "landed",
       "swamped"

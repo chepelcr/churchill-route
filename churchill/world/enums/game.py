@@ -129,6 +129,28 @@ class CoinType(StrEnum):
     FROZEN = "frozen"
 
 
+class LightType(StrEnum):
+    """WHAT A LAMP IS — the fixture, never where it stands.
+
+    The two halves of a light were split down the middle: its POSITION has been
+    authored in the editor since editor features shipped (`W.LIGHTS`), while
+    what it looks like was a four-branch if/else with the colours inline and the
+    geometry as ternaries on `type === "stadium"`. So a light could be put
+    anywhere and a fifth kind could not be designed at all.
+
+    This is the identity; `src/assets/lights.json` holds the properties — core,
+    halo, radius and the fixture's own part list — exactly the split
+    `surfaces.json` makes for a surface class. A `stadium` fixture is not a
+    brighter street lamp: it is a mast with a crossbar of four floodlights, and
+    that is why it is a member here rather than a radius.
+
+    Read by src/render/c2d/lights.js and the editor's light inspector."""
+    WARM = "warm"
+    LED = "led"
+    AMBER = "amber"
+    STADIUM = "stadium"
+
+
 class CrossingOutcome(StrEnum):
     """How la Travesía ended, and it decides PROGRESSION versus failure.
 

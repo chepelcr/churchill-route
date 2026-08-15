@@ -78,5 +78,63 @@
       "colour": "rgba(223,231,227,0.55)",
       "note": "A BIRD THAT CROSSED YOU IS BETWEEN YOU AND EVERYTHING. The estero's gulls go over the CAMERA, which is why they are drawn up here with the weather and not in the world pass."
     }
+  },
+  "palette": {
+    "_note": "EL HUD DE LA TRAVESÍA Y LA BARRA DE MAREA — lo último de `c2d/hud.js` que seguía con los colores adentro. El minimapa, la brújula y las etiquetas de POI ya habían salido; esto es el resto.",
+    "poi": {
+      "_note": "Las etiquetas de punto de interés y sus nombres.",
+      "tagStroke": "rgba(12,10,22,0.82)",
+      "tagFill": "rgba(255,255,255,0.86)",
+      "nameBg": "rgba(10,8,20,0.72)",
+      "nameFallback": "#fff",
+      "nameFallbackNote": "cuando la categoría no tiene tono propio en `POI_TONE`."
+    },
+    "debugGrid": {
+      "_note": "La retícula de depuración. Sólo se ve con el debug prendido.",
+      "fine": "rgba(255,255,255,0.06)",
+      "coarse": "rgba(120,220,255,0.28)",
+      "text": "rgba(150,230,255,0.9)"
+    },
+    "vignette": {
+      "_note": "El viñeteado de noche: transparente en el centro, oscuro en el borde.",
+      "inner": "rgba(0,0,0,0)",
+      "outer": "rgba(0,0,10,0.6)"
+    },
+    "tide": {
+      "_note": "LA BARRA DE MAREA. Sube y baja con el ciclo real, y es lo que le dice al jugador si el banco de arena va a estar descubierto.",
+      "sand": "#c39d6b",
+      "water": "#3f95b8",
+      "waterline": "rgba(255,255,255,0.75)",
+      "ticks": "rgba(255,255,255,0.30)"
+    },
+    "crossing": {
+      "_note": "LA TARJETA DE LA TRAVESÍA. Se dimensiona a su contenido y no a una constante — a 132 px fijos el título y el contador se encimaban en «ESTUARY CROSSING2», y el número que lo arreglaba en inglés es el número equivocado en español, donde el mismo título es tres caracteres más largo.",
+      "card": "rgba(12,20,26,0.72)",
+      "title": "#9fd7ef",
+      "counter": "#f4d77a",
+      "hullOk": "#6fbf99",
+      "hullOkNote": "una pipa por golpe que queda. En Recorrer no hay daño, así que no aparecen.",
+      "hullGone": "rgba(232,93,117,0.55)",
+      "value": "#f4d77a",
+      "text": "#dfe7e3",
+      "meterBg": "rgba(255,255,255,0.14)",
+      "boost": "#4fb0d6",
+      "boostFull": "#ffd166",
+      "boostNote": "EL IMPULSO lleva fila propia porque es lo que el nivel corre encima: se gana yendo cerca y se gasta en el turbo, y un medidor que no se ve es una mecánica que no se usa.",
+      "tideLow": "#e8c07a",
+      "tideHigh": "#9fd7ef",
+      "tideCaption": "rgba(223,231,227,0.55)",
+      "progress": "#6fbf99"
+    },
+    "minimap": {
+      "_note": "Los puntos vivos que van encima del minimapa emitido.",
+      "panel": "rgba(12,14,26,0.82)",
+      "target": "#ff2d2d",
+      "npc": "#ff5050",
+      "targetRing": "rgba(255,255,255,0.8)",
+      "player": "#ffe06b",
+      "playerRing": "rgba(0,0,0,0.5)",
+      "viewport": "rgba(255,255,255,0.25)"
+    }
   }
 }

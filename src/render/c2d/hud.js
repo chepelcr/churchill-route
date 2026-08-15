@@ -12,6 +12,10 @@ import { crossingTarget } from "../../game/crossing.js";
 import { tideName } from "../../game/tides.js";
 import { t as tr } from "../../i18n/index.js";
 import HUD from "../../assets/hud.json" with { type: "json" };
+//: …y su bloque de paleta. El minimapa, la brújula y las etiquetas de POI ya
+//: leían de este archivo; la tarjeta de la Travesía y la barra de marea eran lo
+//: último que quedaba con los colores escritos adentro de su propia función.
+const HP = HUD.palette;
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
 // debug toggle: at play zoom they'd be a wall of text, but flying over the map
@@ -30,8 +34,8 @@ function drawPoiTags(view, zoom) {
   ctx.font = `${(11 / zoom).toFixed(2)}px 'JetBrains Mono', monospace`;
   ctx.textAlign = "center";
   ctx.lineWidth = 2.6 / zoom;
-  ctx.strokeStyle = "rgba(12,10,22,0.82)";
-  ctx.fillStyle = "rgba(255,255,255,0.86)";
+  ctx.strokeStyle = HP.poi.tagStroke;
+  ctx.fillStyle = HP.poi.tagFill;
   for (const p of pois) {
     if (p.x < view.x0 || p.x > view.x1 || p.y < view.y0 || p.y > view.y1) continue;
     const ty = p.y - 8 / zoom;
@@ -48,10 +52,10 @@ function drawPoiNames(view, zoom) {
   const pad = 40;
   for (const p of pois) {
     if (p.x < view.x0 - pad || p.x > view.x1 + pad || p.y < view.y0 - pad || p.y > view.y1 + pad) continue;
-    const tone = POI_TONE[p.cat.split("=")[0]] || "#fff";
+    const tone = POI_TONE[p.cat.split("=")[0]] || HP.poi.nameFallback;
     ctx.fillStyle = tone;
     ctx.beginPath(); ctx.arc(p.x, p.y, 3 / zoom, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "rgba(10,8,20,0.72)";
+    ctx.fillStyle = HP.poi.nameBg;
     const w = ctx.measureText(p.name).width + 6 / zoom;
     ctx.fillRect(p.x - w / 2, p.y - 15 / zoom, w, 11 / zoom);
     ctx.fillStyle = tone;
@@ -67,19 +71,19 @@ function drawDebugGrid(view, zoom) {
   const y0 = Math.floor(view.y0 / minor) * minor, y1 = Math.ceil(view.y1 / minor) * minor;
   ctx.lineWidth = 1 / zoom;
   // minor grid
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.strokeStyle = HP.debugGrid.fine;
   ctx.beginPath();
   for (let x = x0; x <= x1; x += minor) { ctx.moveTo(x, view.y0); ctx.lineTo(x, view.y1); }
   for (let y = y0; y <= y1; y += minor) { ctx.moveTo(view.x0, y); ctx.lineTo(view.x1, y); }
   ctx.stroke();
   // major grid
-  ctx.strokeStyle = "rgba(120,220,255,0.28)";
+  ctx.strokeStyle = HP.debugGrid.coarse;
   ctx.beginPath();
   for (let x = Math.ceil(x0 / major) * major; x <= x1; x += major) { ctx.moveTo(x, view.y0); ctx.lineTo(x, view.y1); }
   for (let y = Math.ceil(y0 / major) * major; y <= y1; y += major) { ctx.moveTo(view.x0, y); ctx.lineTo(view.x1, y); }
   ctx.stroke();
   // labels at major intersections
-  ctx.fillStyle = "rgba(150,230,255,0.9)";
+  ctx.fillStyle = HP.debugGrid.text;
   ctx.font = `${Math.round(9 / zoom * 10) / 10}px 'JetBrains Mono', monospace`;
   ctx.textAlign = "left";
   for (let x = Math.ceil(x0 / major) * major; x <= x1; x += major) {
@@ -189,7 +193,7 @@ function drawGullBlind(vw, vh, t) {
 }
 function drawNightVignette(vw, vh) {
   const g = ctx.createRadialGradient(vw/2, vh/2, vh*0.15, vw/2, vh/2, vh*0.8);
-  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,10,0.6)");
+  g.addColorStop(0, HP.vignette.inner); g.addColorStop(1, HP.vignette.outer);
   ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
 }
 
@@ -505,17 +509,17 @@ function crossingTide(c) {
 function drawTideGauge(x, y, tide) {
   const gx = x, gy = y, gw = TIDE_GW, gh = TIDE_GH;
   // el fondo: the bed the water stands on — what is showing IS the sand
-  ctx.fillStyle = "#c39d6b";
+  ctx.fillStyle = HP.tide.sand;
   ctx.beginPath(); ctx.roundRect(gx, gy, gw, gh, 3); ctx.fill();
   const wh = Math.max(1.5, gh * tide.level);
   ctx.save();
   ctx.beginPath(); ctx.roundRect(gx, gy, gw, gh, 3); ctx.clip();
-  ctx.fillStyle = "#3f95b8";
+  ctx.fillStyle = HP.tide.water;
   ctx.fillRect(gx, gy + gh - wh, gw, wh);
-  ctx.fillStyle = "rgba(255,255,255,0.75)";               // the waterline itself
+  ctx.fillStyle = HP.tide.waterline;                      // the waterline itself
   ctx.fillRect(gx, gy + gh - wh, gw, 1.2);
   ctx.restore();
-  ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 1;
+  ctx.strokeStyle = HP.tide.ticks; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.roundRect(gx + 0.5, gy + 0.5, gw - 1, gh - 1, 3); ctx.stroke();
 }
 
@@ -569,13 +573,13 @@ function drawCrossingHud(vw, vh) {
   const boostRow = c.level ? 12 : 0;
   const h = 44 + boostRow + (tide ? TIDE_ROW_H : 0) + (prog !== null ? 10 : 0);
   const x = vw - w - 18, y = 108;
-  ctx.fillStyle = "rgba(12,20,26,0.72)";
+  ctx.fillStyle = HP.crossing.card;
   ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
-  ctx.fillStyle = "#9fd7ef";
+  ctx.fillStyle = HP.crossing.title;
   ctx.fillText(title, x + PAD, y + 15);
   if (counter) {                           // …y por cuál boya vas
     ctx.textAlign = "right";
-    ctx.fillStyle = "#f4d77a";
+    ctx.fillStyle = HP.crossing.counter;
     ctx.fillText(counter, x + w - PAD, y + 15);
     ctx.textAlign = "left";
   }
@@ -583,28 +587,28 @@ function drawCrossingHud(vw, vh) {
   // the pips simply do not appear.
   if (c.level) {
     for (let i = 0; i < 3; i++) {
-      ctx.fillStyle = i < 3 - c.knocks ? "#6fbf99" : "rgba(232,93,117,0.55)";
+      ctx.fillStyle = i < 3 - c.knocks ? HP.crossing.hullOk : HP.crossing.hullGone;
       ctx.beginPath(); ctx.arc(x + 14 + i * 12, y + 30, 4, 0, Math.PI * 2); ctx.fill();
     }
   }
-  ctx.fillStyle = "#f4d77a";
+  ctx.fillStyle = HP.crossing.value;
   ctx.font = "600 11px 'Space Mono', monospace";
   ctx.fillText(`${c.fish} 🐟`, x + (c.level ? 58 : 12), y + 34);
-  ctx.fillStyle = "#dfe7e3";
+  ctx.fillStyle = HP.crossing.text;
   ctx.fillText(`${c.t.toFixed(0)}s`, x + w - 34, y + 34);
   // EL IMPULSO: a bar that fills as you brush things, and a streak beside it.
   if (boostRow) {
     const by0 = y + 41, bw0 = w - 20;
     const boost = Math.max(0, Math.min(1, c.boost || 0));
-    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillStyle = HP.crossing.meterBg;
     ctx.beginPath(); ctx.roundRect(x + 10, by0, bw0, 5, 2.5); ctx.fill();
-    ctx.fillStyle = boost >= 1 ? "#ffd166" : "#4fb0d6";
+    ctx.fillStyle = boost >= 1 ? HP.crossing.boostFull : HP.crossing.boost;
     ctx.beginPath();
     ctx.roundRect(x + 10, by0, Math.max(2, bw0 * boost), 5, 2.5); ctx.fill();
     if (c.streak > 1) {
       ctx.textAlign = "right";
       ctx.font = "600 8px 'Space Mono', monospace";
-      ctx.fillStyle = "#ffd166";
+      ctx.fillStyle = HP.crossing.boostFull;
       ctx.fillText(`x${c.streak}`, x + w - PAD, by0 - 2);
       ctx.textAlign = "left";
       ctx.font = "600 9px 'Space Mono', monospace";
@@ -616,9 +620,9 @@ function drawCrossingHud(vw, vh) {
     const gy = y + 42 + boostRow;
     drawTideGauge(x + PAD, gy, tide);
     const tx = x + PAD + TIDE_GW + 7;
-    const col = tide.level < 0.35 ? "#e8c07a" : "#9fd7ef";
+    const col = tide.level < 0.35 ? HP.crossing.tideLow : HP.crossing.tideHigh;
     ctx.font = "600 7px 'Space Mono', monospace";
-    ctx.fillStyle = "rgba(223,231,227,0.55)";
+    ctx.fillStyle = HP.crossing.tideCaption;
     ctx.fillText(tideCap, tx, gy + 6);
     tideArrow(tx, gy + 18, tide.rising, col);
     ctx.font = "600 9px 'Space Mono', monospace";
@@ -627,9 +631,9 @@ function drawCrossingHud(vw, vh) {
   }
   if (prog !== null) {                     // how much estero is left, as a track
     const bx = x + 10, by = y + h - 9, bw = w - 20;
-    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillStyle = HP.crossing.meterBg;
     ctx.beginPath(); ctx.roundRect(bx, by, bw, 4, 2); ctx.fill();
-    ctx.fillStyle = "#6fbf99";
+    ctx.fillStyle = HP.crossing.progress;
     ctx.beginPath(); ctx.roundRect(bx, by, Math.max(3, bw * prog), 4, 2); ctx.fill();
   }
   ctx.restore();
@@ -645,7 +649,7 @@ function drawMinimap(vw, vh, t) {
   // dial background + clip
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(12,14,26,0.82)";
+  ctx.fillStyle = HP.minimap.panel;
   ctx.fill();
   ctx.clip();
 
@@ -707,9 +711,9 @@ function drawMinimap(vw, vh, t) {
     const d = Math.hypot(mx, my), lim = R - 9;
     if (d > lim) { mx *= lim / d; my *= lim / d; }   // pin to the rim when far
     const pulse = 3.4 + Math.sin(t * 0.006) * 1.1;
-    ctx.fillStyle = state.carrying ? "#ff2d2d" : "#ff5050"; // NPC / target = red
+    ctx.fillStyle = state.carrying ? HP.minimap.target : HP.minimap.npc; // NPC / target = red
     ctx.beginPath(); ctx.arc(cx + mx, cy + my, pulse, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1.2;
+    ctx.strokeStyle = HP.minimap.targetRing; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(cx + mx, cy + my, pulse, 0, Math.PI * 2); ctx.stroke();
   }
 
@@ -717,15 +721,15 @@ function drawMinimap(vw, vh, t) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(p.a + Math.PI / 2); // arrow art points up = -y
-  ctx.fillStyle = "#ffe06b";
-  ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1.5;
+  ctx.fillStyle = HP.minimap.player;
+  ctx.strokeStyle = HP.minimap.playerRing; ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, -8); ctx.lineTo(6, 7); ctx.lineTo(0, 3.5); ctx.lineTo(-6, 7);
   ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.restore();
 
   // rim
-  ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 2;
+  ctx.strokeStyle = HP.minimap.viewport; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
 }
 

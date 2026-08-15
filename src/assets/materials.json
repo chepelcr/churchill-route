@@ -84,7 +84,73 @@
 
   "structure": {
     "_note": "Buildings, when the world does not carry a colour of its own — a named footprint may emit `roof` and it wins.",
-    "roof": "#8a6a4a"
+    "roof": "#8a6a4a",
+    "building": {
+      "_note": "Las huellas OSM y sintéticas. El COLOR de cada edificio lo trae el mundo (`b.color`, del muestrario de `palettes.json`); acá va lo que no es suyo — su sombra, su contorno y las ventanas que prenden de noche.",
+      "shadow": "rgba(0,0,0,0.22)",
+      "fallback": "#caa089",
+      "fallbackNote": "cuando la huella no trae color propio.",
+      "outline": "rgba(0,0,0,0.25)",
+      "windowsDay": "rgba(255,255,255,0.55)",
+      "windowsNight": "rgba(255,220,140,0.7)",
+      "windowsNote": "de noche las ventanas se ponen cálidas — es lo único que distingue un edificio dormido de uno vivo a esta distancia."
+    },
+    "bridge": {
+      "_note": "EL PUENTE DE MATA LIMÓN, colgante: torres, cables, tablero y barandas. Es la única estructura del mundo con obra de arte propia a esta escala.",
+      "ramp": "#7a6a55",
+      "deck": "#cfc3a3",
+      "asphalt": "#3a3540",
+      "dash": "#f8d76b",
+      "rail": "#b4bcc4",
+      "cable": "#e2e6ea",
+      "hanger": "rgba(228,233,238,0.9)",
+      "towerLeg": "#aeb6c0",
+      "towerCap": "#7d8791",
+      "towerBrace": "#7d8791",
+      "signBg": "rgba(20,16,40,0.78)",
+      "signFg": "#fff"
+    },
+    "ferry": {
+      "_note": "LOS FERRIS DEL GOLFO. Todo se dibuja en el marco del barco, así que la cubierta —que es un rectángulo por el que uno MANEJA— queda alineada con la caja de colisión que el mundo emitió.",
+      "wake": "rgba(255,255,255,0.16)",
+      "shadow": "rgba(0,0,0,0.26)",
+      "hull": "#2f4f68",
+      "boottop": "#3f6d8c",
+      "deck": "#d7d2c4",
+      "deckNote": "el rectángulo manejable — el mismo que el colisionador conoce.",
+      "lane": "#f4d77a",
+      "rails": "#b7402f",
+      "ramp": "#8a7f6a",
+      "rampNote": "la rampa de popa: por ahí se sube.",
+      "wheelhouse": "#eee8d8",
+      "wheelhouseRoof": "#3a6f8a",
+      "windowLight": "#f4d77a",
+      "funnel": "#e85d75",
+      "funnelCap": "#2b2b33",
+      "nameFg": "#fff",
+      "nameBg": "#2f4f68"
+    },
+    "berth": {
+      "_note": "El atracadero al que llega. Concreto, dos tonos.",
+      "deck": "#b6b1a2",
+      "edge": "#8f8a7c"
+    },
+    "pierDeck": {
+      "_note": "Lo que un muelle añade sobre su receta de `pier`: la sombra del apron, los pilotes y las lámparas de la cubierta.",
+      "apronShadow": "rgba(0,0,0,0.22)",
+      "pile": "#6a451f",
+      "lampPost": "#8a8f96",
+      "lampDay": "#f4e6c0",
+      "lampNight": "#ffd98a"
+    },
+    "pierHut": {
+      "_note": "La caseta al final del muelle.",
+      "shadow": "rgba(0,0,0,0.24)",
+      "walls": "#f4f4ef",
+      "roof": "#3f7fc4",
+      "ridge": "rgba(255,255,255,0.30)",
+      "door": "rgba(20,40,60,0.62)"
+    }
   },
 
   "median": {
@@ -213,6 +279,69 @@
       "cabin": "#dfe6ea",
       "windows": "#2f4a60",
       "rail": "rgba(255,255,255,0.3)"
+    }
+  },
+
+  "streets": {
+    "_note": "LAS MARCAS DE LA CALZADA Y LO QUE SE PINTA SOBRE UNA CANCHA. `paintRoads` se queda en código y eso no es pereza: el casing, los guiones y el caño son GEOMETRÍA DERIVADA de la clase de vía —cuánto mide, cómo se cruza, dónde termina un guión— y no una paleta. Lo que sí es paleta es de qué color sale cada cosa.",
+    "field": {
+      "_note": "La cancha: césped, sus rayas de corte y las líneas de fútbol. Todo se dibuja en el marco de la parcela (`P.ang`), nunca en el de la pantalla.",
+      "grass": "#4f9d5b",
+      "court": "#9a9c93",
+      "courtNote": "una cancha DURA (baloncesto, multiuso) es cemento y no césped.",
+      "lines": "rgba(240,238,230,0.5)",
+      "mow": "rgba(30,88,50,0.16)",
+      "mowNote": "las rayas de la podadora, a lo largo de la cancha — lo que la hace leerse como césped cuidado y no como un rectángulo verde.",
+      "goals": "rgba(255,255,255,0.92)",
+      "stadiumRing": "#4f9d5b"
+    },
+    "court": {
+      "_note": "Las marcas de una cancha dura: el perímetro, la línea de tiro y el aro.",
+      "lines": "rgba(240,238,230,0.72)",
+      "paint": "rgba(240,238,230,0.9)",
+      "hoop": "#e07a42"
+    },
+    "parcel": {
+      "fallback": "#b9b2a0",
+      "fallbackNote": "cuando el uso de la parcela no tiene relleno propio.",
+      "kerb": "rgba(232,226,210,0.68)"
+    },
+    "stone": {
+      "_note": "EL BULEVAR DEL CENTRO: piedra gris en aparejo corrido, una calle a la que le sacaron los carros. No confundir con el malecón, que es baldosa cálida junto a la playa.",
+      "joint": "rgba(120,116,106,0.38)",
+      "kerb": "rgba(150,146,136,0.75)"
+    },
+    "roadway": {
+      "_note": "La calzada. El COLOR por clase de superficie, más el caño y el casing.",
+      "casing": "rgba(0,0,0,0.30)",
+      "asphalt": "#3a3540",
+      "barro": "#9c7a4f",
+      "gravel": "#a99d8b",
+      "paseo": "#f4dca3",
+      "cano": "rgba(0,0,0,0.35)",
+      "canoNote": "una banda más oscura trazada después del casing y antes del asfalto, con topes rectos para que corte cuadrado en la boca de la intersección.",
+      "kerbLine": "#7d6242",
+      "kerbFace": "#cfc3a3"
+    },
+    "rails": {
+      "_note": "El Ferrocarril: balasto, durmientes y los dos rieles.",
+      "ballast": "rgba(120,104,84,0.5)",
+      "ties": "#5a4a38",
+      "steel": "#9aa0a6"
+    },
+    "labels": {
+      "fg": "#fff",
+      "bg": "rgba(20,16,40,0.78)"
+    },
+    "barrier": {
+      "_note": "LA VALLA DEL MVP — lo que cierra un barrio que todavía no se abre. Cono naranja, cinta de dos tonos y un rótulo.",
+      "cone": "#ff8b3d",
+      "tapeA": "#f3c969",
+      "tapeB": "#3a3540",
+      "trestle": "#fff",
+      "signBg": "rgba(20,16,40,0.88)",
+      "signTitle": "#ff3d80",
+      "signText": "#fff"
     }
   },
   "weather": {

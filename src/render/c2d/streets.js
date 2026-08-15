@@ -43,6 +43,11 @@ function fieldFrame(S) {
 }
 
 // Poured concrete, the colour the aceras actually are in the port.
+//: LA PALETA DE LA CALZADA Y DE LO QUE SE PINTA SOBRE UNA CANCHA.
+//: `paintRoads` se queda en código y eso no es pereza: el casing, los guiones y
+//: el caño son GEOMETRÍA derivada de la clase de vía, no una paleta. De qué
+//: color sale cada cosa sí lo es.
+const ST = MATERIALS.streets;
 const ACERA_GREY = MATERIALS.street.acera;
 // …and the caño: the drainage channel at the kerb, cast in the same concrete
 // but permanently damp and stained, so it reads a full step darker.
@@ -65,12 +70,12 @@ function paintField(path, F, sport) {
   // A basketball court is CONCRETE, not grass. Painting 21 of them green with
   // a halfway line and a centre circle is what made them read as stray white
   // rectangles on the map.
-  ctx.fillStyle = court ? "#9a9c93" : "#4f9d5b"; ctx.fill(path, "evenodd");
+  ctx.fillStyle = court ? ST.field.court : ST.field.grass; ctx.fill(path, "evenodd");
   ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
   const hw = F.hw, hh = F.hh;
   if (court) { paintCourt(hw, hh); ctx.restore();
-    ctx.strokeStyle = "rgba(240,238,230,0.5)"; ctx.lineWidth = 2; ctx.stroke(path); return; }
-  ctx.fillStyle = "rgba(30,88,50,0.16)";                   // mow stripes, along the pitch
+    ctx.strokeStyle = ST.field.lines; ctx.lineWidth = 2; ctx.stroke(path); return; }
+  ctx.fillStyle = ST.field.mow;                            // mow stripes, along the pitch
   for (let sy = -hh; sy < hh; sy += 14) ctx.fillRect(-hw, sy, hw * 2, 7);
   // LEVEL OF DETAIL. 27 of the map's canchas are under 60 px on their short
   // side; a halfway line and a centre circle on a 16x28 px pitch is not a
@@ -122,7 +127,7 @@ function paintField(path, F, sport) {
 function paintGoals(hw, hh) {
   const mouth = Math.max(5, Math.min(18, hh * 0.24));
   const depth = Math.max(3, Math.min(8, mouth * 0.42));
-  ctx.strokeStyle = "rgba(255,255,255,0.92)";
+  ctx.strokeStyle = ST.field.goals;
   ctx.lineWidth = Math.max(1.4, Math.min(2.4, hh * 0.035));
   ctx.lineJoin = "miter";
   for (const side of [-1, 1]) {
@@ -143,7 +148,7 @@ function paintGoals(hw, hh) {
 // gets the plain slab.
 function paintCourt(hw, hh) {
   if (Math.min(hw, hh) < 14) return;
-  ctx.strokeStyle = "rgba(240,238,230,0.72)"; ctx.lineWidth = 1.6;
+  ctx.strokeStyle = ST.court.lines; ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(0, hh); ctx.stroke();   // halfway
   ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
   const kw = Math.min(hw * 0.30, hh * 0.85), kh = Math.min(hh * 0.52, hw * 0.5);
@@ -152,11 +157,11 @@ function paintCourt(hw, hh) {
     ctx.strokeRect(x0, -kh, kw, kh * 2);                                  // the key
     ctx.beginPath(); ctx.arc(sd < 0 ? x0 + kw : x0, 0, kh * 0.55, 0, Math.PI * 2); ctx.stroke();
     // the hoop: backboard on the end line with the ring in front of it
-    ctx.fillStyle = "rgba(240,238,230,0.9)";
+    ctx.fillStyle = ST.court.paint;
     ctx.fillRect(sd < 0 ? -hw + 1 : hw - 3, -3.2, 2, 6.4);
-    ctx.strokeStyle = "#e07a42"; ctx.lineWidth = 1.4;
+    ctx.strokeStyle = ST.court.hoop; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.arc(sd * (hw - 5), 0, 2.4, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = "rgba(240,238,230,0.72)"; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = ST.court.lines; ctx.lineWidth = 1.6;
   }
 }
 
@@ -179,7 +184,7 @@ function paintStadiumCuadras(view) {
     // 4 px of grass dilation first: the traced pitch steps in 4 px raster
     // increments, so its edge and the acera band don't meet exactly and a hair
     // of bare ground shows through at the seam.
-    ctx.strokeStyle = "#4f9d5b"; ctx.lineWidth = 8; ctx.lineJoin = "miter"; ctx.stroke(pitch);
+    ctx.strokeStyle = ST.field.stadiumRing; ctx.lineWidth = 8; ctx.lineJoin = "miter"; ctx.stroke(pitch);
     paintField(pitch, fieldFrame(S), S.sport);
   }
 }
@@ -206,7 +211,7 @@ function paintParcels(view) {
     // diagonal manzana reads as one direct edge instead of 4 px stair steps.
     const hasPolys = P.polys && P.polys.length;
     const path = P._path || (P._path = hasPolys ? flatMultiPath(P.polys) : flatPath(P.poly, true));
-    ctx.fillStyle = PARCEL_FILL[P.use] || "#b9b2a0";
+    ctx.fillStyle = PARCEL_FILL[P.use] || ST.parcel.fallback;
     ctx.lineJoin = "miter";
     if (!hasPolys) {
       ctx.lineWidth = 8;
@@ -218,7 +223,7 @@ function paintParcels(view) {
     // square pitch on a slanted block.
     if (P.use === "plaza" || P.use === "stadium") { paintField(path, fieldFrame(P), P.sport); continue; }
     if (P.use === "boulevard") { paintStone(path, P); continue; }
-    ctx.strokeStyle = "rgba(232,226,210,0.68)"; ctx.lineWidth = 2; ctx.stroke(path); // curb
+    ctx.strokeStyle = ST.parcel.kerb; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }
 }
 
@@ -234,7 +239,7 @@ function paintStone(path, P) {
   const F = parcelFrame(P);
   const R = Math.hypot(F.hw, F.hh) + STONE * 2;
   ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
-  ctx.strokeStyle = "rgba(120,116,106,0.38)"; ctx.lineWidth = 1;
+  ctx.strokeStyle = ST.stone.joint; ctx.lineWidth = 1;
   ctx.beginPath();
   for (let v = -R; v <= R; v += STONE) {           // courses along the avenidas
     ctx.moveTo(-R, v); ctx.lineTo(R, v);
@@ -250,7 +255,7 @@ function paintStone(path, P) {
   ctx.stroke();
   ctx.restore();
   // kerb: a touch darker than the paving so the calle reads as a defined space
-  ctx.strokeStyle = "rgba(150,146,136,0.75)"; ctx.lineWidth = 2; ctx.stroke(path);
+  ctx.strokeStyle = ST.stone.kerb; ctx.lineWidth = 2; ctx.stroke(path);
 }
 
 // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
@@ -258,7 +263,7 @@ function paintStone(path, P) {
 function paintRoads(roads, view) {
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // elevated (barro/Ferrocarril) drop-shadow
-  ctx.strokeStyle = "rgba(0,0,0,0.30)";
+  ctx.strokeStyle = ST.roadway.casing;
   for (const r of roads) { if (!r.elev) continue; ctx.save(); ctx.translate(0, 3.5); ctx.lineWidth = r.w + 2 * ACERA_PX + 3; ctx.stroke(roadPath(r)); ctx.restore(); }
   // THE PARCELS GO DOWN BEFORE THE SIDEWALK, NOT AFTER.
   //
@@ -302,17 +307,17 @@ function paintRoads(roads, view) {
   paintStadiumCuadras(view);
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // barro shoulder
-  ctx.strokeStyle = "#7d6242";
+  ctx.strokeStyle = ST.roadway.kerbLine;
   for (const r of roads) { if (!r.barro && !r.gravel) continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
   // bridge deck
-  ctx.strokeStyle = "#cfc3a3";
+  ctx.strokeStyle = ST.roadway.kerbFace;
   for (const r of roads) { if (!r.bridge) continue; ctx.lineWidth = r.w + 10; ctx.stroke(roadPath(r)); }
   // Casing + asphalt use BUTT caps: round caps bulge a half-circle past
   // each piece's endpoint, smearing dark arcs onto the sidewalks at every
   // junction ("little curves in the aceras"). Joins stay round for curves.
   ctx.lineCap = "butt";
   // casing
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.strokeStyle = ST.roadway.cano;
   for (const r of roads) { ctx.lineWidth = r.w + 4; ctx.stroke(roadPath(r)); }
   // EL CAÑO: the open gutter between the kerb and the asphalt, which in
   // Puntarenas is a real, visible channel running the length of every calle —
@@ -331,8 +336,8 @@ function paintRoads(roads, view) {
   // Turistas curve smooth) and unify junction mouths, without the visible
   // "mini circles" a contrasting eraser disc would leave.
   for (const r of roads) {
-    const col = r.barro ? "#9c7a4f" : r.gravel ? "#a99d8b"
-      : r.cls === "paseo" ? "#f4dca3" : "#3a3540";
+    const col = r.barro ? ST.roadway.barro : r.gravel ? ST.roadway.gravel
+      : r.cls === "paseo" ? ST.roadway.paseo : ST.roadway.asphalt;
     ctx.strokeStyle = col; ctx.lineWidth = r.w; ctx.stroke(roadPath(r));
     const p = r.pts, n = p.length, rad = r.w / 2 - 0.4;
     ctx.fillStyle = col;
@@ -346,8 +351,12 @@ function paintRoads(roads, view) {
   for (const r of roads) {
     if (r.barro || r.gravel) continue;   // nobody paints lines on lastre
     const cls = r.cls;
-    if (cls === "trunk" || cls === "trunk_link" || cls === "primary" || cls === "primary_link") { ctx.strokeStyle = "#f8d76b"; ctx.lineWidth = 2; ctx.setLineDash([18, 18]); }
-    else if (cls === "secondary" || cls === "tertiary" || cls === "tertiary_link" || cls === "residential" || cls === "unclassified") { ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([6, 10]); }
+    // …AND THESE TWO WERE ALREADY IN THE REGISTRY. `materials.street.majorDash`
+    // and `.minorDash` held exactly these values and this function spelled them
+    // out anyway — a live duplicate, so editing the registry moved every dash
+    // in the game EXCEPT the ones on the road.
+    if (cls === "trunk" || cls === "trunk_link" || cls === "primary" || cls === "primary_link") { ctx.strokeStyle = MATERIALS.street.majorDash; ctx.lineWidth = 2; ctx.setLineDash([18, 18]); }
+    else if (cls === "secondary" || cls === "tertiary" || cls === "tertiary_link" || cls === "residential" || cls === "unclassified") { ctx.strokeStyle = MATERIALS.street.minorDash; ctx.lineWidth = 1; ctx.setLineDash([6, 10]); }
     else continue;
     const dp = dashPath(r);
     if (dp) ctx.stroke(dp);
@@ -365,10 +374,10 @@ function paintTileRails(rails, view) {
     if (!aabbInView(rl.aabb, view, 12)) continue;
     const p = rl.pts;
     // ballast bed
-    ctx.strokeStyle = "rgba(120,104,84,0.5)"; ctx.lineWidth = 9;
+    ctx.strokeStyle = ST.rails.ballast; ctx.lineWidth = 9;
     ctx.stroke(rl._path || (rl._path = flatPath(p, false)));
     // ties
-    ctx.strokeStyle = "#5a4a38"; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = ST.rails.ties; ctx.lineWidth = 1.6;
     for (let i = 0; i + 3 < p.length; i += 2) {
       const x0 = p[i], y0 = p[i + 1], dx = p[i + 2] - x0, dy = p[i + 3] - y0;
       const len = Math.hypot(dx, dy); if (len < 0.001) continue;
@@ -381,7 +390,7 @@ function paintTileRails(rails, view) {
       }
     }
     // two steel rails, offset either side of the centerline
-    ctx.strokeStyle = "#9aa0a6"; ctx.lineWidth = 1.4;
+    ctx.strokeStyle = ST.rails.steel; ctx.lineWidth = 1.4;
     for (const sgn of [-3.2, 3.2]) {
       ctx.beginPath();
       for (let i = 0; i < p.length; i += 2) {
@@ -531,7 +540,7 @@ function drawStreetLabels2D(roads, view) {
       const key = lbl + "|" + ((pt.x / 120) | 0) + "|" + ((pt.y / 120) | 0);
       if (seen.has(key)) continue;
       seen.add(key);
-      label(pt.x, pt.y + 2, lbl, "#fff", "rgba(20,16,40,0.78)");
+      label(pt.x, pt.y + 2, lbl, ST.labels.fg, ST.labels.bg);
     }
   }
 }
@@ -550,8 +559,8 @@ function drawStreetLabels2D(roads, view) {
 // (a progression barrier is one LINE at `br.x`; the MVP gate is a BOX, and any
 // of its four edges may be the one you drove up to), each intersected with the
 // roads in view. One barricade per crossing, turned to the street it blocks.
-const CONE = "#ff8b3d";
-const TAPE_A = "#f3c969", TAPE_B = "#3a3540";
+const CONE = ST.barrier.cone;
+const TAPE_A = ST.barrier.tapeA, TAPE_B = ST.barrier.tapeB;
 
 // Where two segments cross, or null. Used to find the calles that reach the
 // boundary; everything else about a barrier is drawn from these points.
@@ -608,7 +617,7 @@ function drawBarricade(c) {
     ctx.beginPath();
     ctx.moveTo(-6, cy + 3 * sd); ctx.lineTo(0, cy - 3 * sd); ctx.lineTo(6, cy + 3 * sd);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#fff"; ctx.fillRect(-2, cy - 0.5, 4, 1.4);
+    ctx.fillStyle = ST.barrier.trestle; ctx.fillRect(-2, cy - 0.5, 4, 1.4);
   }
   ctx.restore();
 }
@@ -622,14 +631,14 @@ function drawBarrierSign(br, c, view) {
   const dname = dstr ? dstr.name : br.district.toUpperCase();
   const sw = 138, sh = 40;
   const sx = c.x, sy = c.y - c.w / 2 - 6 - sh / 2;
-  ctx.fillStyle = "rgba(20,16,40,0.88)";
+  ctx.fillStyle = ST.barrier.signBg;
   ctx.fillRect(sx - sw / 2, sy - sh / 2, sw, sh);
   ctx.fillStyle = dstr ? dstr.tone : TAPE_A;
   ctx.fillRect(sx - sw / 2, sy - sh / 2, sw, 4);
   ctx.textAlign = "center";
-  ctx.fillStyle = "#ff3d80"; ctx.font = "bold 9px 'JetBrains Mono', monospace";
+  ctx.fillStyle = ST.barrier.signTitle; ctx.font = "bold 9px 'JetBrains Mono', monospace";
   ctx.fillText(t("sign.blocked"), sx, sy - 6);
-  ctx.fillStyle = "#fff"; ctx.font = "bold 8px 'JetBrains Mono', monospace";
+  ctx.fillStyle = ST.barrier.signText; ctx.font = "bold 8px 'JetBrains Mono', monospace";
   ctx.fillText(dname.slice(0, 20), sx, sy + 5);
   ctx.fillStyle = dstr ? dstr.tone : TAPE_A; ctx.font = "bold 8px 'JetBrains Mono', monospace";
   ctx.fillText(br.mvp ? t("sign.soon") : t("sign.level", { n: br.requiredStage || "—" }), sx, sy + 15);

@@ -10,8 +10,13 @@ vehicle, pick up a *churchill* (shaved-ice drink) at a kiosk, and deliver it to 
 customer before it melts. Three modes: **Historia** (7 stages), **Arcade** (3-min
 free roam), **Recorrer** (open world with unlockable districts).
 
-Design doc: `docs/GAME_DESIGN.md`. Roadmap + milestone tracker: `ROADMAP.md`.
-Release notes: `docs/changelog/YYYY-MM-DD.md`, one per release date.
+Design doc: `docs/GAME_DESIGN.md`. **`ROADMAP.md` is OPEN WORK ONLY** — it was
+pruned to 193 lines on 2026-08-14 after several of its oldest rows turned out to
+be false (it claimed the game had no audio, an all-Spanish UI and a pending 2-D
+map). The history lives in `docs/ROADMAP-ARCHIVE.md`, and the per-date release
+notes in `docs/changelog/YYYY-MM-DD.md`. **Verify a row against the tree before
+acting on it, and delete it if it has rotted** — that is how the file stays
+worth reading.
 
 ## Toolchain
 
@@ -126,8 +131,9 @@ because a deck is something you drive on, not a street to link to.
 writes `src/domain/vocabulary.generated.js` for the game plus
 `src/assets/vocabulary.generated.json` for the tools and the editor: `SURFACE`,
 `SURFACE_CLASSES`, `SURFACE_BY_NAME`, the five `SURFACE_ROLE` sets, `ROAD_RANK`,
-two `ROAD_ROLE` sets, and ten token vocabularies (`SIGN_KIND`, `PIER_STYLE`,
-`LANDMARK_TYPE`, `PARCEL_USE`, …). Generation is ONE-WAY and the artifacts are
+two `ROAD_ROLE` sets, a `FIELD_SPORT_ROLE` set, and **24** token vocabularies
+(`SIGN_KIND`, `PIER_STYLE`, `LANDMARK_TYPE`, `PARCEL_USE`, `UI_SCREEN`,
+`GAME_MODE`, `COIN_TYPE`, `ESTERO_ENCOUNTER`, …). Generation is ONE-WAY and the artifacts are
 committed, because the game builds with Vite and must not need Python. Add the
 member to the Python enum, run `pnpm vocabulary`, and `pnpm test`
 (`tests/test_vocabulary.py`) is the gate: it fails on a stale artifact, on a

@@ -119,7 +119,22 @@ function findNextRoad(c) {
       else if (Math.hypot(b1.x - E.x, b1.y - E.y) <= EPS_JOIN) cands.push({ road: r2, dir: -1 });
     }
   if (!cands.length) return null;
-  return cands[(Math.random() * cands.length) | 0];
+  // UN CARRO CUALQUIERA DOBLA AL AZAR; UNO CON RUMBO, HACIA SU DESTINO. `aim`
+  // es el punto al que este vehículo va — hoy lo pone el bus con su próxima
+  // parada. No es una búsqueda de camino: el cliente no tiene el grafo de
+  // calles, sólo los tramos del tile que está mirando. Es una elección VORAZ en
+  // cada cruce, que es suficiente para que un bus se lea yendo de una parada a
+  // la otra en vez de vagando, y que degrada sola cuando el destino queda
+  // detrás de una manzana.
+  const aim = c.aim;
+  if (!aim) return cands[(Math.random() * cands.length) | 0];
+  let best = null, bestD = Infinity;
+  for (const cand of cands) {
+    const far = roadEndpoint(cand.road, cand.dir < 0);
+    const d = Math.hypot(far.x - aim.x, far.y - aim.y);
+    if (d < bestD) { bestD = d; best = cand; }
+  }
+  return best;
 }
 export function advanceCarOnRoad(c, dt) {
   if (!c.road) { c.dead = true; return; }

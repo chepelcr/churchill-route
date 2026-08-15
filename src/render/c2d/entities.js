@@ -392,24 +392,22 @@ function drawCar(c) {
   // luz y oscuridad entre ellos es un carro invisible que se te viene encima —
   // y las calaveras son lo único que se ve de uno que se aleja.
   if (state.weather === "night") paintHeadlights(ctx, c.w / 2, c.h / 2);
-  if (c.kind === "truck") {
-    // cab + boxy trailer
-    ctx.fillStyle = c.color; ctx.fillRect(c.w/2 - 9, -c.h/2, 9, c.h);
-    ctx.fillStyle = A.car.roof; ctx.fillRect(-c.w/2, -c.h/2, c.w - 10, c.h);
-    ctx.fillStyle = A.car.window; ctx.fillRect(c.w/2 - 10, -c.h/2, 1.5, c.h);
-  } else if (c.kind === "bus") {
-    ctx.fillStyle = c.color; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
-    ctx.fillStyle = A.car.headlight;
-    for (let wx = -c.w/2 + 4; wx < c.w/2 - 5; wx += 6) ctx.fillRect(wx, -c.h/2 + 2, 4, 3);
-    ctx.fillStyle = A.car.headlight;
-    for (let wx = -c.w/2 + 4; wx < c.w/2 - 5; wx += 6) ctx.fillRect(wx, c.h/2 - 5, 4, 3);
-  } else {
-    ctx.fillStyle = c.color; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
-    ctx.fillStyle = A.car.taillight; ctx.fillRect(-c.w/2 + 4, -c.h/2 + 2, c.w - 8, c.h - 4);
-  }
-  ctx.fillStyle = A.car.tyres; ctx.fillRect(-c.w/2, -c.h/2 - 1, 3, c.h + 2); ctx.fillRect(c.w/2 - 3, -c.h/2 - 1, 3, c.h + 2);
+  // …Y SU CUERPO ES UNA LISTA DE PARTES, como el del carro que uno maneja. Eran
+  // tres ramas de código a punta de rectángulos, así que un taxi o una moto
+  // pedían editar el renderer. El marco es de MEDIO-EXTENSIONES, que es lo que
+  // deja la misma receta servir a un carro de 23 px y a un bus de 34.
+  const kind = TRAFFIC.kinds[c.kind] || TRAFFIC.kinds.car;
+  const hw = c.w / 2, hh = c.h / 2;
+  paintParts(ctx, kind.parts, {
+    X: (v) => (v || 0) * hw,
+    Y: (v) => (v || 0) * hh,
+    color: (spec) => (spec === "$color" ? c.color : PAINT[spec] ?? spec),
+  });
+  ctx.fillStyle = A.car.tyres;
+  ctx.fillRect(-hw, -hh - 1, 3, c.h + 2); ctx.fillRect(hw - 3, -hh - 1, 3, c.h + 2);
   ctx.restore();
 }
+
 // The Ferrocarril heritage train: red loco + two cream wagons, each posed
 // on the rail by spawns.js (tr.cars[0] = loco).
 function drawTrain(tr, t) {
@@ -809,6 +807,15 @@ export function paintHeadlights(g, hw, hh, c = HEADLIGHTS) {
     g.beginPath(); g.arc(-hw + 1, side * hh * 0.55, c.lampR * 0.85, 0, Math.PI * 2); g.fill();
   }
 }
+
+//: Los colores del tráfico que NO son del vehículo. `$color` es suyo (lo trae
+//: la instancia); el resto sale del registro, resuelto acá para que la receta
+//: nombre roles y no hexes.
+const TRAFFIC = A.traffic;
+const PAINT = {
+  $roof: A.car.roof, $window: A.car.window,
+  $headlight: A.car.headlight, $taillight: A.car.taillight,
+};
 
 const EFFECT_PAINTERS = {
   // El cono va DEBAJO del casco (`under: true`), o la luz sale encima de la

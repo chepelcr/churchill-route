@@ -103,6 +103,12 @@ export function advanceBus(b, dt) {
     if (b.dwell <= 0) { b.v = b.cruise; b.doors = false; }
     return;
   }
+  // A DÓNDE VA ESTE BUS. Antes no iba a ninguna parte: `advanceCarOnRoad` dobla
+  // al azar en cada cruce, así que un bus VAGABA y servía la parada que se
+  // encontrara. Ahora se fija una próxima parada y el cruce se resuelve hacia
+  // ella — una ruta que se lee como ruta, sin pedirle al cliente un grafo de
+  // calles que no tiene.
+  aimAtNextStop(b);
   const target = stopAhead(b);
   if (target) {
     if (target.d <= HALT_R) { serveStop(b, target.stop); return; }
@@ -117,6 +123,28 @@ export function advanceBus(b, dt) {
   advanceCarOnRoad(b, dt);
 }
 
+// LA PRÓXIMA PARADA. Se escoge una y se mantiene hasta servirla: recalcular la
+// más cercana en cada cuadro haría que el bus cambiara de idea en mitad de una
+// cuadra y se quedara oscilando en el cruce entre dos paradas equidistantes.
+function aimAtNextStop(b) {
+  if (b.aim && b.aimStop && !b.aimStop._served) {
+    // …y se suelta cuando ya se pasó: si el destino queda detrás, seguir
+    // apuntándole haría que el bus se devolviera contra el tráfico.
+    if (Math.hypot(b.aimStop.x - b.x, b.aimStop.y - b.y) < HALT_R) b.aim = null;
+    else return;
+  }
+  const near = stopsNear(b.x, b.y, STOP_KEEP_R);
+  let best = null, bestD = Infinity;
+  for (const stop of near) {
+    if (stop === b.lastStop || stop === b.aimStop) continue;
+    const d = Math.hypot(stop.x - b.x, stop.y - b.y);
+    // Ni la que tiene encima ni una al otro lado del barrio: la SIGUIENTE.
+    if (d < BRAKE_R || d > bestD) continue;
+    bestD = d; best = stop;
+  }
+  if (best) { b.aimStop = best; b.aim = { x: best.x, y: best.y }; }
+}
+
 // Doors open: some people get off and walk away, and whoever was waiting here
 // gets on. Both are the same handful of peds moving between two states.
 function serveStop(b, stop) {
@@ -124,6 +152,8 @@ function serveStop(b, stop) {
   b.v = 0;
   b.doors = true;
   b.lastStop = stop;
+  // Servida: se suelta el rumbo para que `aimAtNextStop` escoja la siguiente.
+  if (b.aimStop === stop) { b.aimStop = null; b.aim = null; }
   const door = { x: (b.x + stop.x) / 2, y: (b.y + stop.y) / 2 };
   for (const pe of pedestrians) {
     if (pe.bus && pe.phase === "wait" && pe.stop === stop) {

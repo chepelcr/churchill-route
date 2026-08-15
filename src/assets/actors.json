@@ -140,6 +140,42 @@
       "helmet": "#f4d77a",
       "skin": "#e8b98a"
     },
+    "traffic": {
+      "note": "EL TRÁFICO, COMO PARTES. Su color ya era data desde hoy; su FORMA eran tres ramas de código dibujadas a punta de rectángulos — así que se podía repintar el tráfico y no rediseñarlo, y un cuarto tipo (un taxi, una moto, un repartidor) pedía editar el renderer. El carro que uno maneja lleva lista de partes desde hace tiempo; los que uno se cruza no. Ahora sí.",
+      "_frame": "MEDIO-EXTENSIONES del cuerpo, igual que un vehículo del jugador: `[-1, 1]` es la trompa, `[1, 1]` la popa. Por eso la misma receta sirve para un carro de 23 px y para un bus de 34 sin números por tamaño.",
+      "_inset": "UN CAMBIO CHICO Y DELIBERADO: los detalles ahora escalan con el vehículo. El código viejo metía la ventana 4 px hacia adentro —un número ABSOLUTO— y un marco de medio-extensiones no puede decir «4 px» sin aritmética, que el intérprete no tiene a propósito. Así que es una fracción, y la diferencia son 30 px en la hoja de arte, todos en el contorno de la ventana del carro. Es la versión que sobrevive un cambio de tamaño: las ventanas de un bus no tienen por qué meterse lo mismo que las de un carro.",
+      "_join": "`kind` en el tráfico escoge la fila. Uno que nombre una que no existe cae al `car`, que es un carro — a diferencia de una superficie desconocida, que sería una suposición sobre dónde se puede manejar.",
+      "kinds": {
+        "car": {
+          "name": "Carro",
+          "parts": [
+            { "shape": "rect", "fill": "$color", "x": -1, "y": -1, "w": 2, "h": 2 },
+            { "shape": "rect", "fill": "$taillight", "x": -0.65, "y": -0.6, "w": 1.3, "h": 1.2 }
+          ]
+        },
+        "truck": {
+          "name": "Camión",
+          "_note": "cabina adelante y furgón atrás — la línea del vidrio es lo que los separa de un vistazo desde arriba.",
+          "parts": [
+            { "shape": "rect", "fill": "$color", "x": 0.22, "y": -1, "w": 0.78, "h": 2 },
+            { "shape": "rect", "fill": "$roof", "x": -1, "y": -1, "w": 1.2, "h": 2 },
+            { "shape": "rect", "fill": "$window", "x": 0.16, "y": -1, "w": 0.06, "h": 2 }
+          ]
+        },
+        "bus": {
+          "name": "Bus",
+          "_note": "dos filas de ventanas a lo largo — es lo único que lo distingue de un camión visto desde arriba, y por eso son `repeat` y no un rectángulo.",
+          "parts": [
+            { "shape": "rect", "fill": "$color", "x": -1, "y": -1, "w": 2, "h": 2 },
+            { "shape": "repeat", "n": 5, "dx": 0.26, "parts": [
+              { "shape": "rect", "fill": "$headlight", "x": -0.68, "y": -0.78, "w": 0.16, "h": 0.28 },
+              { "shape": "rect", "fill": "$headlight", "x": -0.68, "y": 0.5, "w": 0.16, "h": 0.28 }
+            ] }
+          ]
+        }
+      }
+    },
+
     "car": {
       "note": "El tráfico. Su color lo trae el vehículo; esto es todo lo demás — el techo, los vidrios y las luces.",
       "shadow": "rgba(0,0,0,0.3)",

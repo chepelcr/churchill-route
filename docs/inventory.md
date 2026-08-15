@@ -1030,13 +1030,13 @@ literal in one change.
 | P0 | `GeometryKind` | `point`, `line`, `polygon` | editor project schema and builder patch dispatch both depend on it. **DONE 2026-08-13** (`enums/editing.py`) |
 | P0 | `EditorOperation` | `add`, `modify` | source replacement semantics are closed and validated. **DONE 2026-08-13** (`enums/editing.py`) |
 | P0 | `RendererBackend` | `canvas`, `pixi` | required by the per-family ownership registry and fallback policy. **DONE 2026-08-13** (`enums/game.py`; the value also sits in a player's localStorage) |
-| P1 | `GameMode` | `story`, `arcade`, `explore`, `tutorial` | repeated across mode starts, scoring, timers, UI, results, and analytics |
-| P1 | `UIScreen` | `boot`, `intro`, `title`, `stagepick`, `brief`, `modebrief`, `tutbrief`, `vehpick`, `lanchapick`, `playing`, `paused`, `over`, `settings`, `supporters`, `shop` | React's screen state machine is a finite internal vocabulary |
-| P1 | `NpcMovement` | `rail`, `bounded-random`, `route`, `stationary` | JSON chooses among code-owned movement algorithms |
-| P1 | `FieldSport` | normalized `soccer`, `basketball`, `skateboard`, `baseball`, `tennis` | renderer/editor support is finite even though raw OSM `sport` is open-ended |
-| P1 | `CoinType` | `gold`, `silver`, `bonus`, `frozen` | spawning and rendering currently share an implicit palette vocabulary |
-| P1 | `EsteroEncounterKind` | `panga`, `fish`, `gulls`, `roots`, `remolino`, `pescador`, `yate`, `banco` | race simulation and renderer use the same finite behavior cases |
-| P1 | `CrossingOutcome` | `landed`, `swamped` | determines progression versus failure and must not be a free string |
+| ~~P1~~ | `GameMode` | `story`, `arcade`, `explore`, `tutorial` | **DONE 2026-08-14** — `App.jsx` had ~30 raw-string comparisons |
+| ~~P1~~ | `UIScreen` | `boot`, `intro`, `title`, `stagepick`, `brief`, `modebrief`, `tutbrief`, `vehpick`, `lanchapick`, `playing`, `paused`, `over`, `settings`, `supporters`, `shop` | **DONE 2026-08-14** — three of the fifteen also decide whether the SIMULATION is paused, so a typo is a live game behind a menu |
+| ~~P1~~ | `NpcMovement` | `rail`, `bounded-random`, `route`, `stationary` | **DONE 2026-08-14** — and `inventory.json` had the list WRONG (`stationary, wander, route`), which is what a hand-typed vocabulary does |
+| ~~P1~~ | `FieldSport` | normalized `soccer`, `basketball`, `skateboard`, `baseball`, `tennis` | **DONE 2026-08-14**; the raw OSM value is kept and an unknown sport is normalised to None and SAID SO, rather than drawn as football |
+| ~~P1~~ | `CoinType` | `gold`, `silver`, `bonus`, `frozen` | **DONE 2026-08-14**; the palette stays a registry, since a rim and a radius are properties |
+| ~~P1~~ | `EsteroEncounterKind` | `panga`, `fish`, `gulls`, `roots`, `remolino`, `pescador`, `yate`, `banco` | **DONE 2026-08-14** — eight BEHAVIOURS, not eight sprites |
+| ~~P1~~ | `CrossingOutcome` | `landed`, `swamped` | **DONE 2026-08-14** — landing clears the stage and writes the save; swamping does none of it |
 | P2 | `AmbientVehicleKind` | `car`, `truck`, `bus`, `ferry`, `panga` or separated land/boat enums | Canvas and dormant Pixi make the same size/detail decisions from these values |
 
 `FieldSport` should preserve an optional raw OSM value separately if unknown
@@ -1326,31 +1326,53 @@ runtime smoke verification.
 
 ## 15. Known drift and engine risks
 
-1. **The machine inventory is incomplete for this goal.** It indexes 83
-   JavaScript modules and the generated world, but not physical assets, Python
-   modules/constants, CSS, Android, tests, or the private editor.
+1. **The machine inventory is incomplete for this goal.** *Partly closed
+   2026-08-14*: it now indexes all 20 versioned registries (id, version, entry
+   count and who reads each), the screens with their slots, the sound ids, the
+   mixer buses and the vehicle effects, and its vocabulary catalogs are
+   GENERATED rather than typed — one of them was already wrong, listing the NPC
+   movements as `stationary, wander, route` when the registry has `rail,
+   bounded-random, route, stationary`. Still not indexed: physical assets,
+   Python modules/constants, CSS, Android, tests, and the private editor.
 2. **Visual type safety is one-way.** Python enums explain which JS switch must
    agree, but an unknown sign/attraction may draw nothing and an unknown
    landmark can also draw nothing; the enum documentation's claimed generic
    pin fallback is not present in the current Canvas switch. Add cross-runtime
    catalog validation.
-3. **Surfaces are duplicated.** The current editor has literal surface arrays;
-   its NPC list contains the first eight and its validator/palettes the first
-   ten, while the manifest contains eleven. This is the exact class of drift a
-   canonical registry prevents.
-4. **Canvas, Pixi, minimap, and editor palettes are duplicated.** A material
-   change can update the game but leave preview/minimap/fallback inconsistent.
+3. ~~**Surfaces are duplicated.**~~ **CLOSED 2026-08-11.** The editor read
+   `vocabulary.generated.json` and refuses to start without it; the palettes
+   carry all eleven classes (class 10 had been painting as `undefined`) and the
+   `npcs.js` list survives only as a last resort. An editor test that pinned
+   `classes.slice(8)` by hand had been failing for a week, blaming the world.
+   The finding is kept because it records why the class of bug was invisible:
+   both sides were internally consistent.
+4. ~~**Canvas, Pixi, minimap, and editor palettes are duplicated.**~~
+   **CLOSED 2026-08-13/14.** Measured first: canvas ∩ pixi was ZERO (the Pixi
+   backend has no hex literals at all) and canvas ∩ editor was 40 — those forty
+   are `src/assets/materials.json`, and the minimap's own palette went to
+   `hud.json` with a test that it holds no COPY of a materials ink. It had two:
+   the pier decks, with a comment pointing at the file it had copied them from.
+   One real drift was found in the doing — an authored `park` region previewed
+   `#5ba362` here and painted `#4f9d5b` in the game.
 5. **Pixi ownership comments exceed current behavior.** The retained full scene
    says new visuals should land in Pixi, while the shipped gameplay mode is
    landmark-only and `_MIGRATED` is empty. This is not a reason to delete Pixi:
    boot water is active, the full scene/viewer are migration inputs, and Pixi
    water is the planned first rescale family. The engine needs one declared
    backend contract, not comments as ownership.
-6. **Vehicle definitions are fragmented.** Stats, physics, economy, silhouette,
-   painted detail, delivery cargo, preview, and engine voice are separate.
-7. **Stage content is split.** Python owns runtime stage records; translation
-   JSON owns localized overlays; crossing conditions live in JS; unlock rules
-   also live in code.
+6. ~~**Vehicle definitions are fragmented.**~~ **CLOSED 2026-08-13/14.** One
+   record in `src/assets/vehicles.json`: stats, medium, kind, bounds, palette,
+   price, engine voice, art, the effects it carries and where it puts the
+   cargo. The last two moved on 2026-08-14 — `DELIVERY_BAG_MOUNTS` was four
+   per-vehicle mount points still sitting in the renderer, and
+   `drawCarriedCargo` branched on the vehicle's NAME.
+7. ~~**Stage content is split.**~~ **CLOSED 2026-08-14.** The stage records are
+   `content/world/stages.json`, the unlock rules `src/content/progression.json`,
+   and a stage still names the district it opens so the reward sits with the
+   stage. The localized overlay stays in `src/i18n/stages.json` DELIBERATELY —
+   a name and a brief are copy, and copy belongs with the other copy; a test
+   checks the two lists against each other, and caught that la Travesía is a
+   `crossingStages` entry rather than a `stages` one.
 8. **World source and render asset are coupled by strings.** `type`, `use`,
    `kind`, `sport`, `style`, and `surface` cross multiple languages without a
    single generated contract.

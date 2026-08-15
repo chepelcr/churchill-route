@@ -37,7 +37,7 @@
 // touching you. Remolinos are not a collision at all — they are a current that
 // keeps working on you the whole time you are in one.
 //
-// THE WIN PATH IS THE BUG THIS REWRITE EXISTS TO FIX. `endCrossing("landed")`
+// THE WIN PATH IS THE BUG THIS REWRITE EXISTS TO FIX. `endCrossing(CROSSING_OUTCOME.LANDED)`
 // used to set `_crossing.done` and NOTHING IN THE CODEBASE READ IT.
 // `delivery.js` held the only `state.won = true`, gated on deliveries, and s8
 // has `targetDeliveries: 0` — so the level could only ever end by its own
@@ -45,7 +45,7 @@
 // were the same outcome. `finish()` below is where that is put right.
 import { WORLD2D as W } from "../world2d/index.js";
 import { SURFACE } from "./surfaces.js";
-import { STAGE_KIND } from "../domain/vocabulary.generated.js";
+import { CROSSING_OUTCOME, ESTERO_ENCOUNTER, STAGE_KIND } from "../domain/vocabulary.generated.js";
 import { CHANNEL_PITCH, TANGENT_SPAN } from "../domain/units.js";
 import { addTime, timeRemaining } from "./timers.js";
 import { state, pushFloat } from "./state.js";
@@ -407,7 +407,7 @@ export function startCrossing(ferry, { level = false } = {}) {
   _crossing.near = 0; _crossing.streak = 0; _crossing.streakT = 0;
   _crossing.bestStreak = 0; _crossing.jumps = 0;
   // THE START LINE IS A CHECKPOINT, and leaving it null was a silent killer.
-  // `respawn()` used to call `endCrossing("swamped")` when there was nothing to
+  // `respawn()` used to call `endCrossing(CROSSING_OUTCOME.SWAMPED)` when there was nothing to
   // go back to — and NOTHING IN THIS CODEBASE READS `done`. So sinking before
   // the first gate did not end the run, it HOLLOWED it: `advanceCrossing`
   // returned false, the compass went blank, the obstacles froze, the finish
@@ -466,7 +466,7 @@ export function resetCrossing() {
  * carousel and the save file must not be able to tell the difference.
  */
 function finish() {
-  endCrossing("landed");
+  endCrossing(CROSSING_OUTCOME.LANDED);
   pushFloat(state.p.x, state.p.y - 40, t("crossing.landed"), "#9fd7ef");
   if (!_crossing.level || !state.stage) return;   // Recorrer: arriving is its own reward
   // Time left and fish caught ARE the score here: there are no deliveries to
@@ -516,7 +516,7 @@ function respawn() {
   const p = state.p;
   _crossing.knocks = 0;
   // A RESPAWN NEVER ENDS THE CROSSING. It used to, when there was no checkpoint,
-  // by calling `endCrossing("swamped")` — see `startCrossing` for what that
+  // by calling `endCrossing(CROSSING_OUTCOME.SWAMPED)` — see `startCrossing` for what that
   // actually did to the run. There is always a checkpoint now (the start line),
   // and this last-resort fallback is the head of the route rather than a way
   // out of the level: the clock is the only thing that ends a crossing badly.
@@ -808,7 +808,7 @@ function spawnEstero(ch) {
     const anchor = (0.55 + r() * 0.4) * hw * side;
     const reach = (0.35 + r() * 0.25) * hw * 2;
     place(esteroThings, ch, sp, anchor, {
-      kind: "pescador", hw, ph: r() * Math.PI * 2, drift: 0, r: 24,
+      kind: ESTERO_ENCOUNTER.PESCADOR, hw, ph: r() * Math.PI * 2, drift: 0, r: 24,
       // the far end of the net, as a lane offset — the renderer and the
       // collision both read it, so the drawn line IS the line you can foul
       netOff: anchor - reach * side, netSide: side,
@@ -824,7 +824,7 @@ function spawnEstero(ch) {
     if (hw < 130) continue;              // no room to pass her: don't put her there
     const side = r() < 0.5 ? -1 : 1;
     place(esteroThings, ch, sy, (0.2 + r() * 0.35) * hw * side, {
-      kind: "yate", hw, ph: r() * Math.PI * 2, drift: 0, r: 52,
+      kind: ESTERO_ENCOUNTER.YATE, hw, ph: r() * Math.PI * 2, drift: 0, r: 52,
       run: (r() < 0.5 ? -1 : 1) * (120 + r() * 60),   // px/s along the channel
       wake: 0,
     });
@@ -841,7 +841,7 @@ function spawnEstero(ch) {
     // 26-48 a remolino could take a slow panga's line away entirely, which is a
     // current you cannot answer rather than one you have to.
     place(esteroThings, ch, sr, (r() - 0.5) * hw * 1.1, {
-      kind: "remolino", hw, ph: r() * Math.PI * 2, drift: 0, r: 52,
+      kind: ESTERO_ENCOUNTER.REMOLINO, hw, ph: r() * Math.PI * 2, drift: 0, r: 52,
       pull: (r() < 0.5 ? -1 : 1) * (16 + r() * 14) * (stormy ? 1.4 : 1),
     });
   }
@@ -855,7 +855,7 @@ function spawnEstero(ch) {
     const hw = laneAt(ch, sk).hw;
     for (const side of [-1, 1]) {
       place(esteroThings, ch, sk, (hw + 10 + r() * 20) * side, {
-        kind: "roots", hw, ph: r() * Math.PI * 2, drift: 0, r: 22,
+        kind: ESTERO_ENCOUNTER.ROOTS, hw, ph: r() * Math.PI * 2, drift: 0, r: 22,
       });
     }
   }
@@ -881,7 +881,7 @@ function spawnEstero(ch) {
     // have to go round is a decision. `bancoExposed` still has the final say —
     // and now that the lane IS the water, it has much less to veto.
     place(esteroThings, ch, sb, (0.15 + r() * 0.45) * hw * side, {
-      kind: "banco", hw, ph: r() * Math.PI * 2, drift: 0,
+      kind: ESTERO_ENCOUNTER.BANCO, hw, ph: r() * Math.PI * 2, drift: 0,
       // the shallowest sit high and are out at almost any tide; the deepest
       // only show at a real bajamar, which is what makes low water read as a
       // different course rather than the same one with more scenery
@@ -983,8 +983,8 @@ export function advanceEstero(dt, p, veh) {
   const ch = _crossing.channel;
   const reach = Math.max(veh?.w || 30, veh?.h || 12) / 2;
   for (const e of esteroThings) {
-    if (e.kind === "remolino") e.ph += dt * 1.9;
-    else if (e.kind !== "roots") e.ph += dt * (e.kind === "gulls" ? 3.2 : 1.4);
+    if (e.kind === ESTERO_ENCOUNTER.REMOLINO) e.ph += dt * 1.9;
+    else if (e.kind !== "roots") e.ph += dt * (e.kind === ESTERO_ENCOUNTER.GULLS ? 3.2 : 1.4);
     if (e.drift) {
       e.off += e.drift * dt * 12;
       // she turns at the edge of HER lane, not at a constant — a panga working
@@ -996,7 +996,7 @@ export function advanceEstero(dt, p, veh) {
     }
     // LOS YATES steam along the channel and turn at each end of their beat, so
     // the gap you were going to take closes while you approach it.
-    if (e.kind === "yate") {
+    if (e.kind === ESTERO_ENCOUNTER.YATE) {
       e.s += e.run * dt;
       if (e.s < 600 || e.s > ch.total - 600) e.run *= -1;
       const q = laneAt(ch, e.s);
@@ -1036,7 +1036,7 @@ export function advanceEstero(dt, p, veh) {
     // EL PESCADOR — the boat is nothing, the NET is the obstacle. Tested as the
     // distance to a SEGMENT, because that is what it is: a line across part of
     // the channel with a gap beside it, read from a long way off.
-    if (e.kind === "pescador") {
+    if (e.kind === ESTERO_ENCOUNTER.PESCADOR) {
       const q = laneAt(ch, e.s);
       const fx = q.x - Math.sin(q.a) * e.netOff, fy = q.y + Math.cos(q.a) * e.netOff;
       e.fx = fx; e.fy = fy;
@@ -1061,7 +1061,7 @@ export function advanceEstero(dt, p, veh) {
     // player is a free body it can finally do BOTH things it was written to
     // do — pull her off her line, and twist her head round. The spin used to
     // be computed into a field nobody read.
-    if (e.kind === "remolino") {
+    if (e.kind === ESTERO_ENCOUNTER.REMOLINO) {
       const d = Math.hypot(e.x - p.x, e.y - p.y);
       if (d < e.r + reach) {
         const grip = 1 - Math.min(1, d / (e.r + reach));
@@ -1075,7 +1075,7 @@ export function advanceEstero(dt, p, veh) {
     // A BANK IS GROUND, NOT AN IMPACT — and it is only there at low water.
     // It is never "taken": you can sit on it, work her off, and put her back on
     // it two seconds later, which is exactly what running aground is like.
-    if (e.kind === "banco") {
+    if (e.kind === ESTERO_ENCOUNTER.BANCO) {
       const exposed = bancoExposed(e);
       const d = Math.hypot(e.x - p.x, e.y - p.y);
       const on = exposed && d < e.r + reach;
@@ -1103,12 +1103,12 @@ export function advanceEstero(dt, p, veh) {
     // A rozada is only worth something against a thing that could have HURT
     // you, so the shoal and the gulls — which pay and blind, but never knock —
     // are not part of the streak.
-    if (e.kind === "panga") nearMiss(e, d, reach);
+    if (e.kind === ESTERO_ENCOUNTER.PANGA) nearMiss(e, d, reach);
     if (d > e.r + reach) continue;
-    if (e.kind === "fish") { e.taken = true; catchFish(3); }
+    if (e.kind === ESTERO_ENCOUNTER.FISH) { e.taken = true; catchFish(3); }
     // …and the blind is shorter. 1.1 s at the old hull speed was a beat; at an
     // arcade boat's it is most of a bend taken with the screen full of gulls.
-    else if (e.kind === "gulls") { e.taken = true; state.gullBlind = 0.7; }
+    else if (e.kind === ESTERO_ENCOUNTER.GULLS) { e.taken = true; state.gullBlind = 0.7; }
     else {
       e.taken = true;
       // A panga you clip should also SHOVE you — she is a boat with mass, and

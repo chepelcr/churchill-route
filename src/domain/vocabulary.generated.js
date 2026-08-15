@@ -182,6 +182,15 @@ export const LINE_END = Object.freeze({
 });
 export const LINE_END_VALUES = Object.freeze(["first", "last"]);
 
+export const FIELD_SPORT = Object.freeze({
+  SOCCER: "soccer",
+  BASKETBALL: "basketball",
+  SKATEBOARD: "skateboard",
+  BASEBALL: "baseball",
+  TENNIS: "tennis",
+});
+export const FIELD_SPORT_VALUES = Object.freeze(["soccer", "basketball", "skateboard", "baseball", "tennis"]);
+
 export const STAGE_KIND = Object.freeze({
   DELIVERY: "delivery",
   CROSSING: "crossing",
@@ -234,6 +243,40 @@ export const UI_SCREEN = Object.freeze({
 });
 export const UI_SCREEN_VALUES = Object.freeze(["boot", "intro", "title", "stagepick", "brief", "modebrief", "tutbrief", "vehpick", "lanchapick", "playing", "paused", "over", "settings", "supporters", "shop"]);
 
+export const COIN_TYPE = Object.freeze({
+  GOLD: "gold",
+  SILVER: "silver",
+  BONUS: "bonus",
+  FROZEN: "frozen",
+});
+export const COIN_TYPE_VALUES = Object.freeze(["gold", "silver", "bonus", "frozen"]);
+
+export const CROSSING_OUTCOME = Object.freeze({
+  LANDED: "landed",
+  SWAMPED: "swamped",
+});
+export const CROSSING_OUTCOME_VALUES = Object.freeze(["landed", "swamped"]);
+
+export const ESTERO_ENCOUNTER = Object.freeze({
+  PANGA: "panga",
+  FISH: "fish",
+  GULLS: "gulls",
+  ROOTS: "roots",
+  REMOLINO: "remolino",
+  PESCADOR: "pescador",
+  YATE: "yate",
+  BANCO: "banco",
+});
+export const ESTERO_ENCOUNTER_VALUES = Object.freeze(["panga", "fish", "gulls", "roots", "remolino", "pescador", "yate", "banco"]);
+
+export const NPC_MOVEMENT = Object.freeze({
+  RAIL: "rail",
+  BOUNDED_RANDOM: "bounded-random",
+  ROUTE: "route",
+  STATIONARY: "stationary",
+});
+export const NPC_MOVEMENT_VALUES = Object.freeze(["rail", "bounded-random", "route", "stationary"]);
+
 export const HOST_KIND = Object.freeze({
   CUADRA: "cuadra",
   PARCEL: "parcel",
@@ -281,4 +324,10 @@ export const ROAD_RANK = Object.freeze({
 export const ROAD_ROLE = Object.freeze({
   YIELDS_TO: Object.freeze(["trunk", "trunk_link", "primary", "primary_link", "secondary", "paseo"]),
   TRAFFIC_MAIN: Object.freeze(["trunk", "trunk_link", "primary", "primary_link", "secondary"]),
+});
+
+// A cancha is drawn as a COURT or as a PITCH, and that is the only
+// distinction the renderer makes among the sports it knows.
+export const FIELD_SPORT_ROLE = Object.freeze({
+  COURT: Object.freeze(["basketball", "skateboard"]),
 });

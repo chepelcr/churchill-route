@@ -4,7 +4,7 @@ import { state } from "../../game/state.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
 import { paintParts } from "./shapes.js";
-import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
+import { COIN_TYPE, VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, hash01, lastT, roundRect } from "./gfx.js";
 
 // THE HULL EVERY BOAT IN THIS PORT IS DRAWN FROM. It used to live inside
@@ -47,10 +47,10 @@ function paintHull(g, L, H, topsides = "#f6f2e8") {
 const COIN_GOLD   = { rim: "#c8992f", face: "#f3c969", mark: "#a97b1e", r: 7 };
 const COIN_SILVER = { rim: "#8e9bab", face: "#dfe6ef", mark: "#5b6675", r: 9 };
 const COIN_TYPES = {
-  gold: COIN_GOLD,
-  silver: COIN_SILVER,
-  bonus: { rim: "#7b3fc6", face: "#c58cff", mark: "#5d259f", r: 9 },
-  frozen: { rim: "#4a9fbd", face: "#a9edff", mark: "#24738f", r: 8 },
+  [COIN_TYPE.GOLD]: COIN_GOLD,
+  [COIN_TYPE.SILVER]: COIN_SILVER,
+  [COIN_TYPE.BONUS]: { rim: "#7b3fc6", face: "#c58cff", mark: "#5d259f", r: 9 },
+  [COIN_TYPE.FROZEN]: { rim: "#4a9fbd", face: "#a9edff", mark: "#24738f", r: 8 },
 };
 function drawArcadeCoin(c, t) {
   const ph = (c.t || 0) + t * 0.004;

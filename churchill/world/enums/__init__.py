@@ -16,16 +16,22 @@ process — into src/world2d/*.json and from there into the client:
 """
 from .editing import EditorOperation, GeometryKind, HostKind
 from .features import (
-    RENDER_RANK, TRAFFIC_MAIN, YIELDS_TO, GreenType, IslandKind, LandmarkType,
-    LineEnd, ParcelUse, PathSurface, PierStyle, RoadClass, SignKind, Weather,
+    COURT_SPORTS, RENDER_RANK, TRAFFIC_MAIN, YIELDS_TO, FieldSport, GreenType,
+    IslandKind, LandmarkType, LineEnd, ParcelUse, PathSurface, PierStyle,
+    RoadClass, SignKind, Weather,
 )
-from .game import RendererBackend, StageKind, VehicleKind, VehicleMedium
+from .game import (
+    CoinType, CrossingOutcome, EsteroEncounterKind, GameMode, NpcMovement,
+    RendererBackend, StageKind, UIScreen, VehicleKind, VehicleMedium,
+)
 from .surface import CLASS_NAMES, Surface, SurfaceName
 
 __all__ = [
-    "CLASS_NAMES", "EditorOperation", "GeometryKind", "GreenType", "HostKind",
-    "IslandKind", "LandmarkType", "LineEnd", "ParcelUse", "PathSurface",
-    "PierStyle", "RENDER_RANK", "RendererBackend", "RoadClass", "SignKind",
-    "StageKind", "Surface", "SurfaceName", "TRAFFIC_MAIN", "VehicleKind",
+    "CLASS_NAMES", "COURT_SPORTS", "CoinType", "CrossingOutcome",
+    "EditorOperation", "EsteroEncounterKind", "FieldSport", "GameMode",
+    "GeometryKind", "GreenType", "HostKind", "IslandKind", "LandmarkType",
+    "LineEnd", "NpcMovement", "ParcelUse", "PathSurface", "PierStyle",
+    "RENDER_RANK", "RendererBackend", "RoadClass", "SignKind", "StageKind",
+    "Surface", "SurfaceName", "TRAFFIC_MAIN", "UIScreen", "VehicleKind",
     "VehicleMedium", "Weather", "YIELDS_TO",
 ]

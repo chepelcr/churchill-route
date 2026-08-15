@@ -201,3 +201,30 @@ class IslandKind(StrEnum):
     the client still accept them."""
     MEDIAN = "median"
     CUADRA = "cuadra"
+
+
+class FieldSport(StrEnum):
+    """What a cancha is FOR, normalised to what the renderer can draw.
+
+    OSM's `sport` is open-ended and semicolon-separated; this is the closed set
+    `paintField` knows, and the distinction it actually makes is narrower than
+    the list looks: `basketball` and `skateboard` draw a COURT (a hard rectangle
+    with a centre circle) and everything else draws a PITCH (grass, mow stripes,
+    fútbol markings). The other three are here because they are real values on
+    this map and naming them is how a future court style gets a place to go.
+
+    THE RAW OSM VALUE IS NOT REPLACED BY THIS — a sport the game cannot draw is
+    normalised to None and SAID SO in the build log, rather than emitted and
+    silently drawn as a football pitch. That is the difference between "we do
+    not draw padel yet" and "padel is football"."""
+    SOCCER = "soccer"
+    BASKETBALL = "basketball"
+    SKATEBOARD = "skateboard"
+    BASEBALL = "baseball"
+    TENNIS = "tennis"
+
+
+#: The two that draw a COURT rather than a pitch — `paintField` in
+#: src/render/c2d/streets.js. A role set, not a second enum, for the same reason
+#: the road roles are: it answers one question about the members.
+COURT_SPORTS = frozenset({FieldSport.BASKETBALL, FieldSport.SKATEBOARD})

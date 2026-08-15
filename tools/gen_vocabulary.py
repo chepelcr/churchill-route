@@ -70,6 +70,7 @@ STR_ENUMS = (
     ("SIGN_KIND", features.SignKind),
     ("PIER_STYLE", features.PierStyle),
     ("LINE_END", features.LineEnd),
+    ("FIELD_SPORT", features.FieldSport),
     # what the GAME branches on
     ("STAGE_KIND", game.StageKind),
     ("VEHICLE_MEDIUM", game.VehicleMedium),
@@ -77,6 +78,10 @@ STR_ENUMS = (
     ("RENDERER_BACKEND", game.RendererBackend),
     ("GAME_MODE", game.GameMode),
     ("UI_SCREEN", game.UIScreen),
+    ("COIN_TYPE", game.CoinType),
+    ("CROSSING_OUTCOME", game.CrossingOutcome),
+    ("ESTERO_ENCOUNTER", game.EsteroEncounterKind),
+    ("NPC_MOVEMENT", game.NpcMovement),
     # what the EDITOR authors and the game reads back
     ("HOST_KIND", editing.HostKind),
     ("GEOMETRY_KIND", editing.GeometryKind),
@@ -89,6 +94,14 @@ STR_ENUMS = (
 ROAD_ROLES = (
     ("YIELDS_TO", features.YIELDS_TO),
     ("TRAFFIC_MAIN", features.TRAFFIC_MAIN),
+)
+
+#: The sports that draw a COURT rather than a pitch. A role set rather than a
+#: second enum, for the same reason the road ones are: it answers one question
+#: about the members. `paintField` in src/render/c2d/streets.js had the pair as
+#: two literals.
+FIELD_SPORT_ROLES = (
+    ("COURT", features.COURT_SPORTS),
 )
 
 
@@ -157,6 +170,12 @@ def render_js():
         "export const ROAD_ROLE = " + _js_object(
             [(name, _js_array([json.dumps(str(c.value)) for c in members]))
              for name, members in ROAD_ROLES]) + ";",
+        "",
+        "// A cancha is drawn as a COURT or as a PITCH, and that is the only",
+        "// distinction the renderer makes among the sports it knows.",
+        "export const FIELD_SPORT_ROLE = " + _js_object(
+            [(name, _js_array([json.dumps(str(c.value)) for c in sorted(members)]))
+             for name, members in FIELD_SPORT_ROLES]) + ";",
     ]
     return "\n".join(out).rstrip("\n") + "\n"
 
@@ -174,6 +193,10 @@ def render_json():
         },
         "enums": {const: [str(m.value) for m in enum]
                   for const, enum in STR_ENUMS},
+        "field": {
+            "roles": {name: sorted(str(c.value) for c in members)
+                      for name, members in FIELD_SPORT_ROLES},
+        },
         "road": {
             "rank": {str(cls.value): rank
                      for cls, rank in features.RENDER_RANK.items()},

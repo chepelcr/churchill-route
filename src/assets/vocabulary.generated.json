@@ -173,6 +173,13 @@
       "first",
       "last"
     ],
+    "FIELD_SPORT": [
+      "soccer",
+      "basketball",
+      "skateboard",
+      "baseball",
+      "tennis"
+    ],
     "STAGE_KIND": [
       "delivery",
       "crossing"
@@ -213,6 +220,32 @@
       "supporters",
       "shop"
     ],
+    "COIN_TYPE": [
+      "gold",
+      "silver",
+      "bonus",
+      "frozen"
+    ],
+    "CROSSING_OUTCOME": [
+      "landed",
+      "swamped"
+    ],
+    "ESTERO_ENCOUNTER": [
+      "panga",
+      "fish",
+      "gulls",
+      "roots",
+      "remolino",
+      "pescador",
+      "yate",
+      "banco"
+    ],
+    "NPC_MOVEMENT": [
+      "rail",
+      "bounded-random",
+      "route",
+      "stationary"
+    ],
     "HOST_KIND": [
       "cuadra",
       "parcel",
@@ -229,6 +262,14 @@
       "add",
       "modify"
     ]
+  },
+  "field": {
+    "roles": {
+      "COURT": [
+        "basketball",
+        "skateboard"
+      ]
+    }
   },
   "road": {
     "rank": {

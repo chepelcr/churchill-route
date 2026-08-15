@@ -110,3 +110,64 @@ class UIScreen(StrEnum):
     SETTINGS = "settings"
     SUPPORTERS = "supporters"
     SHOP = "shop"
+
+
+class CoinType(StrEnum):
+    """The four coins, and each one is a different PROMISE to the player.
+
+    `gold` is the ordinary street coin. `silver` is the estadio's coin rain —
+    bigger, worth many times a gold one, and a different METAL so a glance tells
+    you the burst on the pitch is not just more of the same. The other two are
+    implemented and unspawned, which is deliberate: art with no value to select
+    it is drift, so naming them is what keeps the palette honest.
+
+    The palette itself stays a registry (`COIN_TYPES` in c2d/entities.js) — a
+    rim, a face, a mark and a radius are properties, not identity."""
+    GOLD = "gold"
+    SILVER = "silver"
+    BONUS = "bonus"
+    FROZEN = "frozen"
+
+
+class CrossingOutcome(StrEnum):
+    """How la Travesía ended, and it decides PROGRESSION versus failure.
+
+    It was a free string passed to `endCrossing`, which is the one place it must
+    not be: landing at Pitahaya clears the stage, unlocks the next district and
+    writes the save; swamping in the mangrove does none of that. Before the win
+    path existed at all, those two were the same outcome — `endCrossing`
+    recorded a result nothing in the codebase read."""
+    LANDED = "landed"
+    SWAMPED = "swamped"
+
+
+class EsteroEncounterKind(StrEnum):
+    """What you can meet in the estuary — eight behaviours, not eight sprites.
+
+    They are deliberately not one collision: a `panga` costs you and MOVES, so
+    it has to be read rather than memorised; a `fish` school PAYS you for
+    leaving the racing line; `gulls` take the view away without touching you; a
+    `remolino` is not a collision at all but a current that keeps working on you
+    the whole time you are in it. `advanceEstero` branches on this."""
+    PANGA = "panga"
+    FISH = "fish"
+    GULLS = "gulls"
+    ROOTS = "roots"
+    REMOLINO = "remolino"
+    PESCADOR = "pescador"
+    YATE = "yate"
+    BANCO = "banco"
+
+
+class NpcMovement(StrEnum):
+    """How a person GETS ABOUT — the algorithm `physics.js` advances them with.
+
+    JSON chooses among code-owned movers, which is the whole shape of
+    `npcTypes.json`: an authored type may pick `rail` and walk the sidewalks
+    like everybody else, but it cannot invent a way of moving. A type naming one
+    that does not exist simply stands still forever, which reads as a bug in the
+    world rather than a typo in a registry."""
+    RAIL = "rail"
+    BOUNDED_RANDOM = "bounded-random"
+    ROUTE = "route"
+    STATIONARY = "stationary"

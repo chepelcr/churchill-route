@@ -2,6 +2,7 @@
 // dashes), per-tile rails/medians, street name pills and the lock barriers.
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
+import { FIELD_SPORT_ROLE } from "../../domain/vocabulary.generated.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { t } from "../../i18n/index.js";
@@ -58,7 +59,9 @@ const MARK = MATERIALS.street.mark;   // every line on a field is this one white
 function paintField(path, F, sport) {
   ctx.save();
   ctx.clip(path, "evenodd");
-  const court = sport === "basketball" || sport === "skateboard";
+  // THE COURT SPORTS are a role set in the enum layer, not a pair of
+  // literals — `COURT_SPORTS` in churchill/world/enums/features.py.
+  const court = FIELD_SPORT_ROLE.COURT.includes(sport);
   // A basketball court is CONCRETE, not grass. Painting 21 of them green with
   // a halfway line and a centre circle is what made them read as stray white
   // rectangles on the map.

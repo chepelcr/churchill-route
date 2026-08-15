@@ -1,14 +1,9 @@
 {
   "_note": "LAS MEDIDAS DEL MUNDO, EN METROS. Every length here is a real size that two or more runtimes must agree about. The builder (`churchill/world/config.py`), the game and the editor all read this file and derive their own pixels from it — nobody writes a pixel constant for one of these again.",
-
   "version": 1,
-
   "_why": "A px constant is only true at the scale it was tuned at, and this world has been rescaled three times. Each time, numbers that meant something in the world silently came to mean something else: at 1.6 -> 2.0 the StreetIndex spans stopped reaching Calle 6 and Las Playitas fell off the drivable network; at 2.0 -> 2.5 the hand-laid px anchors missed the real manzanas by 4 000 px and the ENTIRE civic centre stopped existing, with two WARN lines to say so. `STREET_SPAN_M`, `SHORE_RECLAIM_M`, `MALECON_BAND_M`, `FARO_ESP_R_M` and `BLOCK_MIN_M` were converted one at a time as each burned. This is the rest of them, in one place, before the next rescale rather than after it.",
-
   "_derive": "px(m) = round(m * pxPerMetre), with pxPerMetre from `manifest.meta` (PLANAR_PX_PER_M in the builder). At today's 2.5 every value below lands exactly on the integer it used to be hard-coded as — that is the invariant `tests/test_world_units.py` asserts, and it is why this conversion leaves the emitted world byte-identical.",
-
   "_scope": "A length is in here when CHANGING IT IN ONE PLACE AND NOT THE OTHER would be a bug nobody sees. A margin inside one drawing recipe, a simplification tolerance measured on a drawn vector rather than on the ground, or a loop epsilon is not that, and stays where it is used. See docs/RESCALE.md's audit list for what has deliberately been left px-native.",
-
   "grid": {
     "_note": "The three quantisations the world is built on. All three are px-exact at any scale where they land on whole pixels; the builder asserts the raster alignment it has always asserted.",
     "rasterCellM": 1.6,
@@ -18,7 +13,6 @@
     "tileM": 800.0,
     "tileNote": "the streaming tile's side — 2 000 px, 640 tiles. Independent of the other two except that it must be a whole number of cuadrículas."
   },
-
   "kerb": {
     "_note": "Sidewalk depth per side, carved INTO the manzana — every centimetre of it is block frontage the town does not get. See ACERA_CELLS in config.py for what 10 m of it did to 245 named footprints.",
     "sidewalkM": 4.8,
@@ -26,7 +20,6 @@
     "fieldSidewalkM": 3.2,
     "fieldSidewalkNote": "a PARCEL's ring is shallower: all it has to do is keep the pitch's white lines off the asphalt. 8 px = 2 cells."
   },
-
   "camera": {
     "_note": "THE CUADRÍCULA IS NOT A SCREEN UNIT, and this is where it stopped being one. The framing was `CUADS_PER_VIEW * CUAD` px — a screen decision expressed in the block-detection grid, so a rescale that resized the grid resized the camera with it, for no reason anybody had chosen.",
     "viewWidthM": 160.0,
@@ -34,7 +27,6 @@
     "minScreenPxPerM": 5.5,
     "minScreenNote": "THE LEGIBILITY FLOOR, and the constant everybody forgets. It was a bare `2.2` in `computeZoom` — a magnification, i.e. SCREEN px per WORLD px, so it had to scale INVERSELY with pxPerMetre and the intuitive guess (scale it up) crops a phone to 57 m of view. Stated as screen px per METRE it is scale-free: 5.5 / 2.5 = the 2.2 it has always been. It binds on every screen narrower than 880 CSS px, i.e. every phone in landscape, where it converts the whole framing trade into 'how much road ahead you see' rather than 'how big the car is'. There is no fixed MAX_VIEW_M to write down: the view this floor allows is `wCss / minScreenPxPerM` metres and therefore depends on the screen."
   },
-
   "channel": {
     "_note": "El canal de la Travesía. The build SOUNDS the estero along a smoothed normal and emits the measured lane; the client places every buoy, gate and current filament on it. Two numbers have to be the same at both ends or the client is reading a different line from the one that was sounded.",
     "pitchM": 16.0,
@@ -42,11 +34,9 @@
     "tangentSpanM": 24.0,
     "tangentSpanNote": "TANGENT_SPAN: the arclength either side of a station the heading is averaged over, 60 px. This one is NOT emitted, so it was two copies of the number with a comment at each end asking the other to keep up. The route averages ~23 px a segment, so disagreeing here is a few degrees, which at 150 px out is the difference between mid-channel and the mangrove."
   },
-
   "vessels": {
     "_note": "THE BOATS YOU CAN PARK ON. A deck is a collision box the player drives INSIDE and a ramp the build has to pave up to, so the builder, the schema, the game and the editor were all carrying the same numbers. The world emits them PER VESSEL (`deck`, `dockS`) because the editor can give one boat her own; these are what the build stamps and what a manifest built before those fields existed falls back to.",
     "_dockNote": "`dockOffsetM` is how far along her route she rests at the berth. The boarding ramp is paved to the stern at rest, which is a function of all three numbers — get one wrong and you have a boat you can see and cannot board.",
-
     "ferry": {
       "_note": "Los ferris del golfo — Paquera and Playa Naranjo. A real Puntarenas ferry is about 50 m.",
       "deckLengthM": 49.6,
@@ -58,6 +48,85 @@
       "deckLengthM": 34.4,
       "deckWidthM": 13.6,
       "dockOffsetM": 8.0
+    }
+  },
+  "world": {
+    "_note": "LAS DISTANCIAS DEL MUNDO — the rest of `docs/RESCALE.md`'s audit list. Every one of these is a real size on the ground, so it is metres and the builder derives its pixels.",
+    "_areas": "A few are AREAS and end in `M2`. They were cell counts and px², which are both `metres² · scale²` — so they scale as the SQUARE and are the easiest thing in this file to get wrong by hand.",
+    "poi": {
+      "nudgeM": 300.0,
+      "nudgeNote": "how far a POI may be moved to find ground it can legally stand on. It is a search radius over real terrain, so it is a real distance.",
+      "serviceMinM": 60.0,
+      "serviceMinNote": "a service road shorter than this is a driveway, not a street",
+      "minBuildingM2": 34.56,
+      "minBuildingNote": "below this an OSM footprint is a shed or a mapping artefact"
+    },
+    "marine": {
+      "_note": "Parque Marino's tanks. World invariants, not renderer nudges: `finish.verify` re-checks every one after the full build, so a later projection or acera change cannot silently put a tank on the railway.",
+      "poolGroundClearM": 11.2,
+      "poolGroundClearNote": "from every structure and acera. It must also stay above the raster cell's half-diagonal, because the drawn deck is continuous and the ground it must be inside is quantised — the builder asserts that rather than trusting the metres.",
+      "poolSpacingM": 28.8,
+      "poolSpacingNote": "between tank centres; below it the gap stops reading as two tanks",
+      "railClearM": 20.8,
+      "railClearNote": "the Ferrocarril's longest ties reach ~6 px from its centreline",
+      "structurePadM": 3.2,
+      "structurePadNote": "the lot a mapped building owns around its own footprint"
+    },
+    "estero": {
+      "_note": "How the build tells the spit from the mainland, and the mangrove from the shore. All four are measured off real landforms.",
+      "spitMaxWidthM": 1600.0,
+      "spitMaxWidthNote": "a land run wider than this in its column is the mainland, not the spit (the spit is ~440 m at the Muelle Nacional, 880 at its widest)",
+      "spitShoreTolM": 80.0,
+      "spitShoreTolNote": "the column-to-column jump the Pacific shore may make and still be the same shore; a bigger one is a different landmass",
+      "mainlandM": 1600.0,
+      "mainlandNote": "walking north from the spit, a land run this wide is the estuary's FAR shore — anything narrower is an island in it, whose own banks are mangrove too",
+      "mangrovePitchM": 22.4,
+      "mangrovePitchNote": "column stride of the clumps: a touch under the mean clump DIAMETER, so the bank reads as one dense fringe rather than a dotted line",
+      "mangroveRadiusM": [
+        6.4,
+        16.0
+      ]
+    },
+    "malecon": {
+      "minSandM": 9.6,
+      "minSandNote": "sand that must survive seaward of the paving — THE SAND HAS A VETO",
+      "minTakeM": 4.8,
+      "minTakeNote": "below this a cross-section gets no promenade at all",
+      "minPatchM2": 307.2,
+      "minPatchNote": "a patch smaller than this goes BACK to sand rather than merely out of the emit — a class-10 cell nobody draws is a hole in the beach"
+    },
+    "faro": {
+      "esplanadeMaxM2": 15360.0,
+      "esplanadeMaxNote": "the flood follows SAND, and sand runs the length of the coast; a flood bigger than this is a leak into the playa, so the radius falls back with a warning rather than paving the Paseo",
+      "pocketMaxM2": 1024.0
+    },
+    "lancha": {
+      "_note": "La Travesía's route search and the beach accesses.",
+      "clearanceM": 60.0,
+      "clearanceNote": "the water the line WANTS either side. Below it a step starts paying, and the penalty is squared — at 90 % of it a step costs ~1.06 and the route still takes the short way, at 30 % it costs ~3.9 and it sails 120 m around instead.",
+      "dredgeEndPadM": 88.0,
+      "dredgeEndPadNote": "the berth and the landing are SHORE ON PURPOSE — leave their aprons alone",
+      "simplifyM": 24.0,
+      "simplifyNote": "the flood returns a staircase; the boat wants a line",
+      "snapM": 160.0,
+      "snapNote": "how far from an authored anchor to look for water, or for a street",
+      "minAccessM": 9.6,
+      "minAccessNote": "below this the street already touches the sand and an access would be a stub of asphalt on a beach nobody was kept off",
+      "searchPadM": 2400.0,
+      "searchPadNote": "the two ends' bbox is grown by this so the ridge Dijkstra does not price the entire Gulf of Nicoya"
+    },
+    "ferry": {
+      "rideM": 720.0,
+      "rideNote": "how far out along the real route she sails before turning back. The rest of the route runs off the map to the Nicoya side, where there is no world to arrive at."
+    },
+    "_pxNative": {
+      "_note": "MEASURED AND LEFT IN PIXELS, each for a stated reason. This list is the deliverable as much as the conversions above: `docs/RESCALE.md` says to decide per constant and not convert blindly, and a value converted for tidiness would break at the next rescale in the direction nobody expected.",
+      "kioskWaterClearPx": "30 — it clears the ART, not the ground. A churchill stand is 32 px wide and throws a 22 px shadow, and those are drawn sizes that do NOT scale with the world; in metres this would shrink exactly when the drawing did not.",
+      "channelHwCapPx": "190 — past it a marked channel stops reading as a channel and the buoys leave both sides of the screen. That is a statement about the VIEW, and the camera frames a fixed number of metres, so the px is what holds it.",
+      "channelHwMinPx": "64 — same reason, the other end: below it the two marks sit on top of each other on screen.",
+      "bldgInsetPx": "2 — a seam so adjacent roofs do not fuse. A hairline is a hairline at any scale.",
+      "dpTolerancePx": "DP_ROAD/BUILDING/COAST/SAND — Douglas-Peucker tolerances on the EMITTED VECTOR. They trade shape fidelity against manifest size, and both of those are properties of the vector and its vertex count, not of the ground.",
+      "buildingScale": "1.4 — a RATIO, not a length. It matches footprints to the exaggerated road widths, so it moves with ARCADE_STREET_MUL and not with the scale."
     }
   }
 }

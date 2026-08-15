@@ -883,9 +883,25 @@ Pendiente, y **no** lo arregla este cambio (ver `docs/RESCALE.md`):
       como decía esta nota. Detalle y censo medido en §4 de arriba.
 - [ ] **El reescalado del mundo** — `docs/RESCALE.md` lo mapea completo: por qué
       ninguna proyección lo arregla (el carro mide 7.6 m de ancho), las tres
-      variantes con sus números medidos, el piso de zoom que en teléfono decide
-      el encuadre en lugar de `CUADS_PER_VIEW`, y retirar la cuadrícula como
-      unidad de PANTALLA (paso 0, deja el mundo byte-idéntico).
+      variantes con sus números medidos, y el piso de zoom que en teléfono
+      decide el encuadre.
+
+      **Pasos 0 y 2 hechos** (2026-08-14): la cuadrícula dejó de ser unidad de
+      pantalla, y las ~30 constantes en px que quedaban pasaron a metros o
+      quedaron **documentadas como px-nativas con su razón** — que es la mitad
+      del entregable, porque `RESCALE.md` pide decidir una por una y no
+      convertir a ciegas. Las que se quedan en px: la holgura del kiosco (limpia
+      el ARTE, que no escala con el mundo), el tope y el piso del canal marcado
+      (son afirmaciones sobre la PANTALLA), la costura entre techos, las
+      tolerancias de Douglas-Peucker (van sobre el vector emitido, no sobre el
+      suelo) y `BUILDING_SCALE`, que es una razón y no una longitud.
+
+      **Falta el paso 1, y es del usuario**: elegir el encuadre EN UN TELÉFONO.
+      Es un juicio de feel que ninguna medición resuelve, y de él dependen los
+      pasos 3-5 (cambiar `PLANAR_PX_PER_M` / `ARCADE_STREET_MUL` / `GRID_CELL` /
+      `CUAD` juntos, el build de 33 min, re-medir los relojes de etapa y el
+      substepping de física — `physics.js` integra en UN paso y a 30 fps el
+      carro ya avanza 11,7 px por cuadro contra una sonda de ~7,6).
 
 ## ✅ El malecón del Paseo de los Turistas (2026-08-06)
 

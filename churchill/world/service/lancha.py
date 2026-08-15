@@ -54,7 +54,7 @@ WATER_STEP = 5
 # is DREDGED to a width a boat can be driven down.
 
 #: the clearance the line wants, in px. Below it, a step starts paying.
-CHANNEL_HW = 150
+CHANNEL_HW = px(UNITS["world"]["lancha"]["clearanceM"])
 #: …and how hard. The penalty is SQUARED, which is the whole character of the
 #: search: at 90 % of the wanted clearance a step costs ~1.06 and the route
 #: still takes the short way through the wide reaches, but squeezing past a
@@ -74,12 +74,12 @@ CLEAR_CAP_NODES = 10
 CLEAR_FLOOR_NODES = 2
 #: the search is confined to the two ends' bbox grown by this, so the ridge
 #: Dijkstra does not price the entire Gulf of Nicoya. Falls back to unbounded.
-SEARCH_PAD_PX = 6000
+SEARCH_PAD_PX = px(UNITS["world"]["lancha"]["searchPadM"])
 
 #: how much water the dredge guarantees either side of the line.
 DREDGE_HW = CHANNEL_HW
 #: the berth and the landing are SHORE ON PURPOSE — leave their aprons alone.
-DREDGE_END_PAD = 220
+DREDGE_END_PAD = px(UNITS["world"]["lancha"]["dredgeEndPadM"])
 
 #: LA LANCHA, in px, derived from her real size. She is a much smaller boat
 #: than the gulf ferries and these were a bare `(86, 34)` / `20` that nothing
@@ -101,23 +101,26 @@ TANGENT_SPAN = float(px(UNITS["channel"]["tangentSpanM"]))
 #: box filter over the emitted arrays, in samples. One mangrove clump must not
 #: put a kink in the marked lane.
 CHANNEL_SMOOTH = 5
-#: past this a marked channel stops reading as a channel and starts reading as
-#: open water, so the buoys would just vanish off both sides of the screen.
+#: PX-NATIVE, both of them, and on purpose. Past the cap a marked channel stops
+#: reading as a channel and the buoys leave both sides of the SCREEN; below the
+#: floor the two marks sit on top of each other. Those are statements about the
+#: view, and the camera frames a fixed number of metres, so the px is what holds
+#: them — in metres they would drift with the projection in the direction
+#: nobody expects.
 CHANNEL_HW_CAP = 190
-#: …and below this it is not a lane, whatever the raster says.
 CHANNEL_HW_MIN = 64
 
 #: how far a route point may deviate from the straight line between its
 #: neighbours before it is kept. The flood returns a staircase; the boat wants
 #: a line.
-SIMPLIFY_PX = 60.0
+SIMPLIFY_PX = float(px(UNITS["world"]["lancha"]["simplifyM"]))
 
 #: how far from the authored anchor we may look for water / for a street.
-SNAP_PX = 400.0
+SNAP_PX = float(px(UNITS["world"]["lancha"]["snapM"]))
 
 #: below this, the street already touches the sand and an access would be a
 #: stub of asphalt on a beach nobody was ever kept off.
-MIN_ACCESS_PX = 24.0
+MIN_ACCESS_PX = float(px(UNITS["world"]["lancha"]["minAccessM"]))
 
 
 def _water_mask(raster):

@@ -195,8 +195,12 @@ def street_span_px(metres):
     return round(metres * PLANAR_PX_PER_M)
 
 
-BUILDING_SCALE = 1.4            # match footprints to exaggerated road widths
-POI_NUDGE_PX = 750
+# A RATIO, not a length: it matches footprints to the exaggerated road widths,
+# so it moves with ARCADE_STREET_MUL and not with the scale.
+BUILDING_SCALE = 1.4
+#: The rest of the audit list, in metres (`world-units.json` -> `world`).
+W = UNITS["world"]
+POI_NUDGE_PX = px(W["poi"]["nudgeM"])
 
 ROAD_CLASSES = set(ROAD_WIDTH_M) - {"paseo", "bridge"}
 
@@ -209,7 +213,7 @@ def road_width_px(cls):
 # cuadra/street sizes by snapping to the tile grid, so we no longer prune
 # streets to control block size.
 DROP_ROAD_CLASSES = set()
-SERVICE_MIN_PX = 150
+SERVICE_MIN_PX = px(W["poi"]["serviceMinM"])
 DP_ROAD_PX = 1.0
 DP_BUILDING_PX = 2.0
 DP_COAST_PX = 2.5
@@ -218,7 +222,9 @@ DP_COAST_PX = 2.5
 # playa. 12 px keeps the shape and costs ~120 KB of manifest; the raster cells
 # stay authoritative for physics either way.
 DP_SAND_PX = 12.0
-MIN_BUILDING_AREA_PX2 = 216
+#: an AREA, so it scales as the SQUARE of the projection — the easiest thing
+#: in this file to get wrong by hand.
+MIN_BUILDING_AREA_PX2 = round(W["poi"]["minBuildingM2"] * PLANAR_PX_PER_M ** 2)
 
 # ---- the coast, widened on purpose ------------------------------------------
 # The one deliberate lie this map tells about its own geography. Puntarenas'
@@ -242,16 +248,16 @@ SHORE_RECLAIM_CELLS = int(round(SHORE_RECLAIM_M * PLANAR_PX_PER_M / GRID_CELL))
 # stays inside marine ground; 72 px between centres leaves a visible gap. The
 # disk also defines "entirely west of the station parcel".
 MARINE_POOL_SCALE = 0.32
-MARINE_POOL_GROUND_CLEAR_PX = 28
-MARINE_POOL_MIN_SPACING_PX = 72
+MARINE_POOL_GROUND_CLEAR_PX = px(W["marine"]["poolGroundClearM"])
+MARINE_POOL_MIN_SPACING_PX = px(W["marine"]["poolSpacingM"])
 # A building lot owns an 8 px band around its mapped footprint. Close structures
 # divide shared cells by nearest-footprint distance, so parcels never overlap.
-MARINE_STRUCTURE_PARCEL_PAD_PX = 8
+MARINE_STRUCTURE_PARCEL_PAD_PX = px(W["marine"]["structurePadM"])
 # The Ferrocarril's longest ties reach ~6 px from its centreline. Keep the
 # established conservative rail envelope: these are WORLD constraints, not
 # renderer nudges, so a later projection/acera resize cannot silently put a
 # tank back on the tracks.
-MARINE_POOL_RAIL_CLEAR_PX = 52
+MARINE_POOL_RAIL_CLEAR_PX = px(W["marine"]["railClearM"])
 
 # Surface classes come from the enum layer; these aliases are what the builder
 # has always called them (a member IS its int, so nothing else changes).
@@ -301,22 +307,22 @@ CALLE_CLASSES = surface_enum.CALLE
 # waterline. `estero_band` derives that split from the raster instead of an
 # authored bbox, by tracing the ONE landform that has water on both sides — the
 # spit — and calling everything north of its north shore estuary.
-SPIT_MAX_WIDTH_PX = 4000        # a land run wider than this in its column is the
+SPIT_MAX_WIDTH_PX = px(W["estero"]["spitMaxWidthM"])        # a land run wider than this in its column is the
                                 # mainland, not the spit (the spit is ~1100 px at
                                 # the Muelle Nacional, 2200 at its widest)
-SPIT_SHORE_TOL_PX = 200         # column-to-column jump the spit's Pacific shore
+SPIT_SHORE_TOL_PX = px(W["estero"]["spitShoreTolM"])         # column-to-column jump the spit's Pacific shore
                                 # may make and still be the same shore; a bigger
                                 # jump is a different landmass (the tip)
-ESTERO_MAINLAND_PX = 4000       # walking north from the spit, a land run this
+ESTERO_MAINLAND_PX = px(W["estero"]["mainlandM"])       # walking north from the spit, a land run this
                                 # wide is the estuary's FAR shore — stop there.
                                 # Anything narrower is an island in the estero,
                                 # whose own shores are mangrove too.
-MANGROVE_PITCH_PX = 56          # column stride of the mangrove clumps along the
+MANGROVE_PITCH_PX = px(W["estero"]["mangrovePitchM"])          # column stride of the mangrove clumps along the
                                 # waterline: a touch under the mean clump
                                 # DIAMETER, so the bank reads as one dense
                                 # fringe rather than a dotted line
-MANGROVE_R_MIN = 16             # clump radius range (px)
-MANGROVE_R_MAX = 40
+MANGROVE_R_MIN = px(W["estero"]["mangroveRadiusM"][0])   # clump radius range
+MANGROVE_R_MAX = px(W["estero"]["mangroveRadiusM"][1])
 MANGROVE_SEED = 57              # deterministic scatter (jitter + radius)
 
 # ---- buildings on the cuadrícula --------------------------------------------
@@ -424,20 +430,24 @@ MALECON_SHOULDER_M = 70         # 175 px: reaches every one of them
 MALECON_KERB_LINK_M = 60        # non-sand the band may cross to reach the kerb
 # THE SAND HAS A VETO. The beach is 88-150 px wide along most of the Paseo and
 # ~28 px by the faro; taking a flat band would pave the playa away at that end.
-MALECON_MIN_SAND_PX = 24        # sand that must survive seaward of the paving
-MALECON_MIN_TAKE_PX = 12        # below this the cross-section gets no promenade
+MALECON_MIN_SAND_PX = px(W["malecon"]["minSandM"])        # sand that must survive seaward of the paving
+MALECON_MIN_TAKE_PX = px(W["malecon"]["minTakeM"])        # below this the cross-section gets no promenade
 MALECON_ENTRADA_W = 1.2 * CUAD  # the ramp down at each opening of the median
 # By the faro the sea is on BOTH sides of the Paseo, so the sand rule finds a
 # few dozen cells of "sea front" on the estero side too. A patch this small is a
 # square of paving in the middle of a beach, not a promenade: it goes back to
 # sand rather than being quietly left out of the emit (see stamp_malecon).
-MALECON_MIN_PATCH_CELLS = 120   # ~45x45 px — below this it is raster noise
+MALECON_MIN_PATCH_CELLS = round(W["malecon"]["minPatchM2"] * PLANAR_PX_PER_M ** 2 / GRID_CELL ** 2)   # ~45x45 px — below this it is raster noise
 
 # A CHURCHILL STAND IS 32 px WIDE and throws a shadow 22 px to its right, so a
 # kiosk 14 px from open water is drawn half in the gulf — which is exactly where
 # the rescale put three of them. What has to clear the sea is the ART, not the
 # anchor the build nudged onto land once and never re-checked.
 # `kios_faro` is exempt: it stands on the Muelle del Faro's deck on purpose.
+# PX-NATIVE, and this one is worth the note: it clears the ART, not the ground.
+# A stand is 32 px wide and throws a 22 px shadow, and those are DRAWN sizes
+# that do not scale with the world — in metres this would shrink exactly when
+# the drawing did not.
 KIOSK_WATER_CLEAR_PX = 30
 
 # ---- La Punta: the faro's plazoleta ----------------------------------------
@@ -451,7 +461,7 @@ FARO_ESP_R_M = 120
 # beach ever joins the playa, the plazoleta stops being a plazoleta — so a flood
 # this big is a leak, and the radius falls back with a warning rather than
 # paving the Paseo. (~2400 cells is the tip; the whole beach is 400k.)
-FARO_ESP_MAX_CELLS = 6000
+FARO_ESP_MAX_CELLS = round(W["faro"]["esplanadeMaxM2"] * PLANAR_PX_PER_M ** 2 / GRID_CELL ** 2)
 # …and the other half of the same fix, which took two goes to state correctly.
 # The line the player sees between the grey plazoleta and the loop road is NOT
 # sand and it was never a matter of radius: measured off the finished raster it

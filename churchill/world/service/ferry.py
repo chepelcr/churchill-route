@@ -33,7 +33,7 @@ from .projection import project_way_pts
 #: px). ~1800 px at PLANAR_PX_PER_M 1.6 is a bit over a kilometre of gulf, which
 #: at the ferry's speed is a crossing of about 45 s round trip — long enough to
 #: read as a trip, short enough that nobody puts the controller down.
-RIDE_PX = 1800.0
+RIDE_PX = float(px(UNITS["world"]["ferry"]["rideM"]))
 
 #: The DECK and how far seaward of the OSM berth node she lies alongside. A
 #: ferry is a real boat, so her size is in metres (`world-units.json` ->

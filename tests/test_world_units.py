@@ -154,6 +154,85 @@ class DerivationTests(unittest.TestCase):
         self.assertLess(UNITS["camera"]["minScreenPxPerM"] / 4.0, floor)
 
 
+class WorldDistanceTests(unittest.TestCase):
+    """`docs/RESCALE.md` step 2 — the rest of the audit list.
+
+    THE PROOF IS THE ARITHMETIC, not a rebuild. The build is deterministic, so
+    if every constant derives to the integer it was hard-coded as, the emitted
+    world is identical BY CONSTRUCTION — and that is a stronger statement than a
+    33-minute rebuild, which could mask a difference under other noise. What the
+    rebuild would add is confidence that nothing ELSE moved, which
+    `world_snapshot.py verify` already answers for the files on disk.
+    """
+
+    def setUp(self):
+        self.w = UNITS["world"]
+
+    def px2(self, m2):
+        """An AREA in px². These scale as the SQUARE of the projection, which is
+        the easiest thing in this file to get wrong by hand."""
+        return round(m2 * config.PLANAR_PX_PER_M ** 2)
+
+    def test_the_lengths_land_on_their_original_pixels(self):
+        want = {
+            "POI_NUDGE_PX": (750, config.px(self.w["poi"]["nudgeM"])),
+            "SERVICE_MIN_PX": (150, config.px(self.w["poi"]["serviceMinM"])),
+            "MARINE_POOL_GROUND_CLEAR_PX": (28, config.px(self.w["marine"]["poolGroundClearM"])),
+            "MARINE_POOL_MIN_SPACING_PX": (72, config.px(self.w["marine"]["poolSpacingM"])),
+            "MARINE_POOL_RAIL_CLEAR_PX": (52, config.px(self.w["marine"]["railClearM"])),
+            "MARINE_STRUCTURE_PARCEL_PAD_PX": (8, config.px(self.w["marine"]["structurePadM"])),
+            "SPIT_MAX_WIDTH_PX": (4000, config.px(self.w["estero"]["spitMaxWidthM"])),
+            "SPIT_SHORE_TOL_PX": (200, config.px(self.w["estero"]["spitShoreTolM"])),
+            "ESTERO_MAINLAND_PX": (4000, config.px(self.w["estero"]["mainlandM"])),
+            "MANGROVE_PITCH_PX": (56, config.px(self.w["estero"]["mangrovePitchM"])),
+            "MALECON_MIN_SAND_PX": (24, config.px(self.w["malecon"]["minSandM"])),
+            "MALECON_MIN_TAKE_PX": (12, config.px(self.w["malecon"]["minTakeM"])),
+        }
+        for name, (was, now) in want.items():
+            self.assertEqual(now, was, f"{name}: {now} px, was {was}")
+            self.assertEqual(getattr(config, name), was, f"config.{name} drifted")
+
+    def test_the_areas_scale_as_the_square(self):
+        self.assertEqual(config.MIN_BUILDING_AREA_PX2,
+                         self.px2(self.w["poi"]["minBuildingM2"]))
+        cell2 = config.GRID_CELL ** 2
+        self.assertEqual(config.MALECON_MIN_PATCH_CELLS,
+                         round(self.px2(self.w["malecon"]["minPatchM2"]) / cell2))
+        self.assertEqual(config.FARO_ESP_MAX_CELLS,
+                         round(self.px2(self.w["faro"]["esplanadeMaxM2"]) / cell2))
+
+    def test_the_services_derive_the_same(self):
+        from churchill.world.service import ferry, lancha
+        self.assertEqual(lancha.CHANNEL_HW, 150)
+        self.assertEqual(lancha.DREDGE_END_PAD, 220)
+        self.assertEqual(lancha.SIMPLIFY_PX, 60.0)
+        self.assertEqual(lancha.SNAP_PX, 400.0)
+        self.assertEqual(lancha.MIN_ACCESS_PX, 24.0)
+        self.assertEqual(lancha.SEARCH_PAD_PX, 6000)
+        self.assertEqual(ferry.RIDE_PX, 1800.0)
+
+    def test_the_marine_clearance_clears_the_raster(self):
+        """The drawn deck is continuous and the ground it must sit inside is
+        quantised, so the clearance has to exceed the cell's half-diagonal or a
+        tank that passes in metres fails on the raster."""
+        half_diag = config.GRID_CELL * 2 ** 0.5 / 2
+        self.assertGreater(config.MARINE_POOL_GROUND_CLEAR_PX, half_diag)
+
+    def test_the_px_native_ones_are_documented(self):
+        """`docs/RESCALE.md` says to decide per constant and not convert
+        blindly. A value left in px needs a REASON on the record, or the next
+        person converts it for tidiness and it breaks in the direction nobody
+        expects."""
+        native = self.w["_pxNative"]
+        for key in ("kioskWaterClearPx", "channelHwCapPx", "bldgInsetPx",
+                    "dpTolerancePx", "buildingScale"):
+            self.assertIn(key, native, f"{key} has no recorded reason for staying px")
+            self.assertGreater(len(native[key]), 40, f"{key}'s reason is too thin to be one")
+        # …and they must actually still be px in the source.
+        self.assertEqual(config.KIOSK_WATER_CLEAR_PX, 30)
+        self.assertEqual(config.BLDG_INSET, 2)
+
+
 class SingleCopyTests(unittest.TestCase):
     """The numbers are gone from the code that used to carry them."""
 

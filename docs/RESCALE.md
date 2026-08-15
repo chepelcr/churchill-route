@@ -269,9 +269,23 @@ already marginal on a 30 fps phone today.
 1. **Decide the framing on a phone.** Note from the floor analysis above that on
    a phone the choice is *how much road ahead you lose*, not how small the car
    gets, and that A and B are indistinguishable there.
-2. Convert the audit list above to metres (or confirm px-native), one commit,
-   no scale change yet — the world must stay byte-identical:
-   `python3 tools/world_snapshot.py verify`.
+2. ~~Convert the audit list above to metres (or confirm px-native).~~
+   **DONE 2026-08-14.** Everything that is a real size on the ground is in
+   `src/assets/world-units.json` -> `world`; the rest is listed under
+   `_pxNative` WITH ITS REASON, which is as much the deliverable as the
+   conversions — a value converted for tidiness breaks at the next rescale in
+   the direction nobody expects.
+
+   The proof is the ARITHMETIC, not a rebuild: the build is deterministic, so
+   every constant deriving to the integer it was hard-coded as means the emitted
+   world is identical by construction. 23 derivations checked, all exact.
+
+   Left in pixels, each for a stated reason: `KIOSK_WATER_CLEAR_PX` (it clears
+   the ART, whose 32 px width does not scale with the world), `CHANNEL_HW_CAP`
+   and `CHANNEL_HW_MIN` (statements about the SCREEN — the camera frames a fixed
+   number of metres, so px is what holds them), `BLDG_INSET` (a hairline is a
+   hairline), the four `DP_*` tolerances (they measure the emitted VECTOR and
+   trade fidelity against manifest size) and `BUILDING_SCALE` (a ratio).
 3. Change `PLANAR_PX_PER_M`, `ARCADE_STREET_MUL`, `GRID_CELL`, `CUAD` together.
    They are one edit; changing any alone produces a broken world.
 4. Build and **read the log end to end** — it is character-stable and it is the

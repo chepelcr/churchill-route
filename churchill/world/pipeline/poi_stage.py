@@ -514,7 +514,11 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
         # street-side sand out of the flood's way, which is the other half of
         # the same guard.
         if len(esp) > FARO_ESP_MAX_CELLS:
-            warn("faro", f"esplanade flooded {len(esp)} cells at {FARO_ESP_R_M}m — "
+            # `:.0f` because the metres now come from the registry as a float,
+            # and the build log is a review surface that has to stay
+            # character-stable — a diff of two runs is what catches a behaviour
+            # change the world digest can miss.
+            warn("faro", f"esplanade flooded {len(esp)} cells at {FARO_ESP_R_M:.0f}m — "
                  f"the tip's sand is not bounded; falling back to 136px")
             Rc = int(round(136 / GRID_CELL))
             esp = flood(Rc)

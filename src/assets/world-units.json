@@ -87,7 +87,48 @@
         16.0
       ]
     },
+    "street": {
+      "_note": "StreetIndex's search spans — how far from a reference point it looks for a named calle or avenida. These are the ones the 1.6 -> 2.0 rescale broke SILENTLY: Calle 6 sits 744 px from the Las Playitas anchor at 2.0, just past a 700 px span that used to reach it, so the estadio fell back to its anchor rect and took Kiosco Playitas out of the drivable network with it. A distance that means 'about half a manzana away' is metres.",
+      "_family": "All four move together and all four are here for that reason. `nearSpanM` is only the build-log diagnostic, but a family with one member left behind in px is exactly the drift this file exists to stop — and the diagnostic is what a reviewer reads to decide whether the other three reached.",
+      "spanM": 440.0,
+      "spanNote": "vals() / edge(): samples near a reference",
+      "atSpanM": 560.0,
+      "atSpanNote": "at(): the coordinate AT a point",
+      "dirSpanM": 325.0,
+      "dirSpanNote": "direction(): a manzana's angle",
+      "nearSpanM": [500.0, 315.0],
+      "nearSpanNote": "near(): the build-log diagnostic — the (x, y) pair it reports around"
+    },
+    "shore": {
+      "_note": "LA MENTIRA DELIBERADA que este mapa cuenta sobre su propia geografía. Puntarenas' playa is 15-40 m of sand and the camera frames twenty cuadrículas, so at true scale the beach is a stripe you cross rather than a place you are at — and the malecón beside it has nothing to be beside.",
+      "reclaimM": 20.0,
+      "reclaimNote": "how much sea becomes sand. The spit does not visibly fatten and the ESTUARY gains nothing: it is mangrove down to the waterline, by design, and reuses the same estuary mask `beach_fringe` does.",
+      "reclaimReachM": 600.0,
+      "reclaimReachNote": "how far around the paseos' own waterfront it may reach — this is the beach the camera is ever pointed at. Las Playitas is inside it; the 60 km of coast east of the spit is not. Run world-wide it doubled the world's sand, doubled the beach palms and stranded 300k drivable cells."
+    },
+    "woods": {
+      "_note": "EL MONTE — which cuadras are countryside rather than manzanas. `detect_blocks` cannot tell one from the other except by SIZE, and measured on the shipped world 55 cuadras over 32 ha hold 95 % of ALL cuadra ground.",
+      "minM2": 320000.0,
+      "minNote": "32 ha ≈ 2 M px² today — bigger than any manzana this town has, by a wide margin. An AREA, so it scales as the SQUARE of pxPerMetre.",
+      "coastM": 900.0,
+      "coastNote": "within this of sea or sand: tropical dry forest",
+      "alturaM": 4000.0,
+      "alturaNote": "no water within this: the cordillera. WHICH forest is decided by measured distance to REAL water — `manifest.hills` is a painted backdrop band, not elevation, so it cannot answer 'is this highland'."
+    },
+    "blocks": {
+      "_note": "HOW BIG A PIECE OF LAND HAS TO BE TO COUNT AS A MANZANA — a real size, so metres.",
+      "minM": 32.0,
+      "minNote": "It was `BLOCK_MIN_CUADS = 6` (48 m today) and that was set ABOVE WHAT THIS TOWN CAN PHYSICALLY PRODUCE: a standard Puntarenas manzana yields an inscribed square of 4.6 cuadrículas. Ordinary blocks were therefore classified as coastal strips (no buildings at all) or paved over as intersection wedges — the Mercado Municipal's own short, wide manzana was one of the slivers. Two full builds over the same 2 108 land components, at 48 m and at 32: cuadras 416 -> 599, green 566 -> 383, slivers 1126 unchanged. Being metres it also survives the next rescale: the old bar 'passes' after one only because the cuadrícula shrinks in metres, which is the threshold moving rather than the town.",
+      "sliverMaxM2": 1600.0,
+      "sliverMaxNote": "land with no room for a block AND smaller than this paves to plaza concrete: the corner wedges and the alley leftovers. 1 600 m² is exactly the 25.0 cuadrículas this was."
+    },
     "malecon": {
+      "bandM": 30.0,
+      "bandNote": "the promenade's depth — ~75 px today, 3 cuadrículas of paving. THE WIDTH IS METRES: every px constant on this coast broke at the 1.6 -> 2.0 rescale.",
+      "shoulderM": 70.0,
+      "shoulderNote": "HOW FAR PAST THE KERB THE SAND MAY BE. This was 30 m and that one number is why the sea front arrived in seven disjoint pieces: the strip between the Paseo's acera and the playa is a solar 80 px deep along the whole Muelle de Cruceros frontage and 116 px at the faro end, so the probe gave up before it ever saw sand. At x 24 300 it missed by ONE PIXEL. Measured over the 1 589 sea-front cross-sections the kerb-to-sand gap runs a median of 94 px, p90 140, p99 150, max 168 — at the old 75 px only 7.1 % of them could even SEE the sand.",
+      "kerbLinkM": 60.0,
+      "kerbLinkNote": "the non-sand the band may cross to REACH the kerb, and the other half of the same fault: the band used to start at the first sand cell, so where the solar was narrow enough to cross, the promenade still floated 24-56 px off the street with a stripe of land colour between. Bounded, because an unbounded walk landward is how a cuadra gets paved. The cap comes off the same distribution — 40 m links 60 % of the sea front, 50 m links 80 %, 60 m links 99.9 %; above that it is one pathological section and a wider licence to pave.",
       "minSandM": 9.6,
       "minSandNote": "sand that must survive seaward of the paving — THE SAND HAS A VETO",
       "minTakeM": 4.8,
@@ -96,9 +137,13 @@
       "minPatchNote": "a patch smaller than this goes BACK to sand rather than merely out of the emit — a class-10 cell nobody draws is a hole in the beach"
     },
     "faro": {
+      "esplanadeRadiusM": 120.0,
+      "esplanadeRadiusNote": "how far the paved sand tip reaches from the lighthouse. It was 34 raster cells — 136 px, tuned at 1.6 px/m — so the rescale to 2.0 shrank the plaza from 85 m to 68 m while the loop road around it moved OUTWARD, and the sand left between the two is the yellow ring the player used to see against the grey. Radial probes put the road at ~200 px from the flood origin on the east side.",
       "esplanadeMaxM2": 15360.0,
       "esplanadeMaxNote": "the flood follows SAND, and sand runs the length of the coast; a flood bigger than this is a leak into the playa, so the radius falls back with a warning rather than paving the Paseo",
-      "pocketMaxM2": 1024.0
+      "pocketMaxM2": 1024.0,
+      "kerbLinkM": 30.0,
+      "kerbLinkNote": "and the other half of the same fix, which took two goes to state correctly. The line between the grey plazoleta and the loop road is NOT sand and was never a matter of radius: it is `CLS_LAND` — 52 px at y 15 340, 60 px at y 15 560 — painted in the land tan `#cfb27a`, which against the plaza's `#cbc6ba` and the acera's `#b8b6b0` reads as a yellow stripe down the middle of one place. The flood follows SAND, so it can never take that ground. So the plazoleta is CLOSED TO ITS KERB instead, absorbing land and beach outward until the sidewalk, the roadway or the water stops it — the same move `malecon.kerbLinkM` makes on the other side of the spit, and for the same reason: a paved place with a verge between it and the street is two things, not one."
     },
     "lancha": {
       "_note": "La Travesía's route search and the beach accesses.",

@@ -156,17 +156,13 @@ ROAD_WIDTH_M = {
 PLANAR_FULL_BBOX = "-84.9188,9.8539,-84.6328,10.0304"
 PLANAR_BBOX = os.environ.get("PLANAR_BBOX") or PLANAR_FULL_BBOX
 
-# StreetIndex search spans, in METRES, converted to px at build time.
-#
-# These were px constants tuned at px_per_m 1.6, and the rescale broke them
-# silently: Calle 6 sits 744 px from the Las Playitas anchor at 2.0, just past a
-# 700 px span that used to reach it — so the estadio fell back to its anchor
-# rect and took Kiosco Playitas out of the drivable network with it. A distance
-# that means "about half a manzana away" belongs in metres.
-STREET_SPAN_M = 440             # vals() / edge(): samples near a reference
-STREET_AT_SPAN_M = 560          # at(): the coordinate AT a point
-STREET_DIR_SPAN_M = 325         # direction(): a manzana's angle
-STREET_NEAR_SPAN_M = (500, 315)  # near(): the build-log diagnostic
+# StreetIndex search spans, in METRES (`world-units.json` -> `world.street`,
+# which carries why each one is what it is). All four move together.
+_STREET = UNITS["world"]["street"]
+STREET_SPAN_M = _STREET["spanM"]            # vals() / edge(): samples near a reference
+STREET_AT_SPAN_M = _STREET["atSpanM"]       # at(): the coordinate AT a point
+STREET_DIR_SPAN_M = _STREET["dirSpanM"]     # direction(): a manzana's angle
+STREET_NEAR_SPAN_M = tuple(_STREET["nearSpanM"])  # near(): the build-log diagnostic
 
 
 def flora_registry():
@@ -227,17 +223,11 @@ DP_SAND_PX = 12.0
 MIN_BUILDING_AREA_PX2 = round(W["poi"]["minBuildingM2"] * PLANAR_PX_PER_M ** 2)
 
 # ---- the coast, widened on purpose ------------------------------------------
-# The one deliberate lie this map tells about its own geography. Puntarenas'
-# playa is 15-40 m of sand, and the camera frames twenty cuadrículas — so at
-# true scale the beach is a stripe you cross, not a place you are at, and the
-# malecón beside it has nothing to be beside. Twenty metres of reclaimed sea
-# makes the playa read at play zoom; the spit does not visibly fatten, and the
-# ESTUARY gains nothing (it is mangrove down to the waterline, by design).
-SHORE_RECLAIM_M = 20
-# …and how far around the paseos' own waterfront it is allowed to reach. This
-# is the beach the camera is ever pointed at — Las Playitas is inside it, the
-# 60 km of coast east of the spit is not.
-SHORE_RECLAIM_REACH_M = 600
+# The one deliberate lie this map tells about its own geography: twenty metres
+# of reclaimed sea, so the playa reads at play zoom. Why, and how far around the
+# paseos it may reach, are in `world-units.json` -> `world.shore`.
+SHORE_RECLAIM_M = UNITS["world"]["shore"]["reclaimM"]
+SHORE_RECLAIM_REACH_M = UNITS["world"]["shore"]["reclaimReachM"]
 SHORE_RECLAIM_CELLS = int(round(SHORE_RECLAIM_M * PLANAR_PX_PER_M / GRID_CELL))
 
 # Parque Marino is the RESIDUAL of its cuadra after the UNA campus and every
@@ -355,44 +345,29 @@ SYNTH_LOTS = [((2, 2), 0.25), ((2, 1), 0.20), ((1, 2), 0.20),
               ((1, 1), 0.30), ((3, 2), 0.05)]
 
 # ---- el monte: which cuadras are countryside, not manzanas ------------------
-# `detect_blocks` cannot tell a manzana from the hinterland except by size, and
-# measured on the shipped world 55 cuadras over 2 M px² hold 95 % of ALL cuadra
-# ground. Those get planted as woods instead of built on. In m² because it is a
-# real size (see BLOCK_MIN_M just below, and docs/RESCALE.md).
-WOOD_MIN_M2 = 320_000           # 32 ha ~= 2 M px² today: bigger than any manzana
-                                # this town has by a wide margin
-# WHICH forest, decided by distance from real water — the only terrain signal
-# this world has. `manifest.hills` is a painted backdrop band, not elevation.
-WOOD_COAST_M = 900              # within this of sea or sand: tropical dry forest
-WOOD_ALTURA_M = 4000            # no water within this: the cordillera
+# A cuadra bigger than `minM2` is hinterland and gets planted rather than built
+# on; distance to real water picks WHICH forest. `world-units.json` ->
+# `world.woods` carries the measurements behind all three.
+_WOODS = UNITS["world"]["woods"]
+WOOD_MIN_M2 = _WOODS["minM2"]
+WOOD_COAST_M = _WOODS["coastM"]
+WOOD_ALTURA_M = _WOODS["alturaM"]
 
 # ---- cuadra detection --------------------------------------------------------
-# HOW BIG A PIECE OF LAND HAS TO BE TO COUNT AS A MANZANA — and it is a REAL
-# SIZE, so it is in metres.
-#
-# It was `BLOCK_MIN_CUADS = 6`, i.e. 6 x CUAD, i.e. 48 m at today's scale, and
-# it was set ABOVE WHAT THIS TOWN CAN PHYSICALLY PRODUCE: a standard Puntarenas
-# manzana yields an inscribed square of 4.6 cuadrículas. So ordinary blocks were
-# classified as coastal strips (no buildings at all) or as intersection wedges
-# (paved over as concrete) — the Mercado Municipal's own short, wide manzana was
-# one of the slivers. Two full builds over the same 2 108 land components, at
-# 48 m and at 32: cuadras 416 -> 599, green 566 -> 383, slivers 1126 unchanged.
-# See `detect_blocks` for what that means and what it still does not fix.
-#
-# 32 m is a block a house can stand on and comfortably below the 36.8 m a
-# normal manzana here gives. Being metres, it also survives the next rescale:
-# `docs/RESCALE.md` notes the old bar "passes" after one only because the
-# cuadrícula shrinks in metres, which is the threshold moving, not the town.
-BLOCK_MIN_M = 32
+# HOW BIG A PIECE OF LAND HAS TO BE TO COUNT AS A MANZANA — a REAL SIZE, so it
+# is metres, and it lives in `world-units.json` -> `world.blocks` with the two
+# full builds that settled it. 32 m is a block a house can stand on and
+# comfortably below the 36.8 m a normal manzana here gives. See `detect_blocks`
+# for what that means and what it still does not fix.
+BLOCK_MIN_M = UNITS["world"]["blocks"]["minM"]
 #: A cuadrícula's side in metres (8 m today): the bridge between the two units.
 CUAD_M = CUAD / PLANAR_PX_PER_M
 #: The bar in whole buildable cuadrículas, which is the unit `detect_blocks`
 #: counts in — its inscribed-square DP walks the coarse grid, not the raster.
 BLOCK_MIN_CUADS = max(1, round(BLOCK_MIN_M / CUAD_M))
 #: Land with no room for a block AND smaller than this paves to plaza concrete:
-#: the corner wedges and alley leftovers. In m² for the same reason. 1 600 m² is
-#: exactly the 25.0 cuadrículas this was, so it changes nothing today.
-SLIVER_MAX_M2 = 1600.0
+#: the corner wedges and alley leftovers. In m² for the same reason.
+SLIVER_MAX_M2 = UNITS["world"]["blocks"]["sliverMaxM2"]
 SLIVER_MAX_CUADS = SLIVER_MAX_M2 / (CUAD_M ** 2)
 
 # ---- paseo separators --------------------------------------------------------
@@ -404,30 +379,16 @@ PASEO_MIN_DASH = 2.0 * CUAD     # drop palm-median slivers shorter than this
 PASEO_GAP_MARGIN = CUAD         # extra turn room on each side of a crossing
 
 # ---- el malecón: the paved sea front of the Paseo de los Turistas -----------
-# Depth in METRES, on purpose. Every constant on this coast that was tuned in px
-# broke at the 1.6 -> 2.0 rescale (see STREET_SPAN_M above and the faro's
-# esplanade radius), and this one describes a promenade, which is a real width.
-MALECON_BAND_M = 30             # ~60 px at 2.0 px/m = 3 cuadrículas of paving
-# HOW FAR PAST THE KERB THE SAND MAY BE. This was 30 m (75 px) and that one
-# number is why the sea front arrived in seven disjoint pieces. Measured on the
-# finished raster, the strip between the Paseo's acera and the playa is a solar
-# 80 px deep along the whole Muelle de Cruceros frontage (x 23 900..24 300) and
-# 116 px at the faro end — so the probe gave up before it ever saw sand and
-# those stretches got no promenade at all. At x 24 300 it missed by ONE PIXEL.
-# Measured, not guessed: over the 1 589 cross-sections of the two paseos that
-# actually have sea front, the kerb-to-sand gap runs a median of 94 px, p90 140,
-# p99 150, max 168. At the old 75 px only 7.1 % of them could even SEE the sand.
-MALECON_SHOULDER_M = 70         # 175 px: reaches every one of them
-# …and the other half of the same fault. The band used to START at the first
-# sand cell, so where the solar was narrow enough to cross the promenade still
-# floated 24-56 px off the street with a stripe of land colour between the two.
-# The paving walks BACK to the kerb through that gap — bounded, because an
-# unbounded walk landward is how a cuadra gets paved. Sites stay reserved, so
-# El Planché and the canchas de playa are flowed around, never crossed.
-# …and the cap comes off the same distribution: 40 m links 60 % of the sea
-# front, 50 m links 80 %, 60 m links 99.9 %. Above that it is one pathological
-# section and a wider licence to pave, so the last 0.1 % keeps its short float.
-MALECON_KERB_LINK_M = 60        # non-sand the band may cross to reach the kerb
+# All three depths are METRES, on purpose: every constant on this coast that was
+# tuned in px broke at the 1.6 -> 2.0 rescale. `world-units.json` ->
+# `world.malecon` carries the cross-section measurements behind each one — the
+# shoulder in particular is why the sea front once arrived in seven pieces.
+# Sites stay reserved throughout, so El Planché and the canchas de playa are
+# flowed around, never crossed.
+_MALECON = UNITS["world"]["malecon"]
+MALECON_BAND_M = _MALECON["bandM"]              # the paving's depth
+MALECON_SHOULDER_M = _MALECON["shoulderM"]      # how far past the kerb sand may be
+MALECON_KERB_LINK_M = _MALECON["kerbLinkM"]     # non-sand the band may cross to reach it
 # THE SAND HAS A VETO. The beach is 88-150 px wide along most of the Paseo and
 # ~28 px by the faro; taking a flat band would pave the playa away at that end.
 MALECON_MIN_SAND_PX = px(W["malecon"]["minSandM"])        # sand that must survive seaward of the paving
@@ -451,32 +412,20 @@ MALECON_MIN_PATCH_CELLS = round(W["malecon"]["minPatchM2"] * PLANAR_PX_PER_M ** 
 KIOSK_WATER_CLEAR_PX = 30
 
 # ---- La Punta: the faro's plazoleta ----------------------------------------
-# How far the paved sand tip reaches from the lighthouse, IN METRES. It was 34
-# raster cells — 136 px, tuned at 1.6 px/m — so the rescale to 2.0 shrank the
-# plaza from 85 m to 68 m while the loop road around it moved outward, and the
-# sand left between the two is the yellow ring the player sees against the grey.
-# Radial probes put the road at ~200 px from the flood origin on the east side.
-FARO_ESP_R_M = 120
+# How far the paved sand tip reaches from the lighthouse, IN METRES — it was 34
+# raster cells tuned at 1.6 px/m, and what that cost is in `world-units.json` ->
+# `world.faro`.
+FARO_ESP_R_M = UNITS["world"]["faro"]["esplanadeRadiusM"]
 # The flood follows SAND, and sand runs the length of the coast. If the tip's
 # beach ever joins the playa, the plazoleta stops being a plazoleta — so a flood
 # this big is a leak, and the radius falls back with a warning rather than
 # paving the Paseo. (~2400 cells is the tip; the whole beach is 400k.)
 FARO_ESP_MAX_CELLS = round(W["faro"]["esplanadeMaxM2"] * PLANAR_PX_PER_M ** 2 / GRID_CELL ** 2)
-# …and the other half of the same fix, which took two goes to state correctly.
-# The line the player sees between the grey plazoleta and the loop road is NOT
-# sand and it was never a matter of radius: measured off the finished raster it
-# is `CLS_LAND` — 52 px of it at y 15 340, 60 px at y 15 560 — painted in the
-# land tan `#cfb27a`, which against the plaza's `#cbc6ba` and the acera's
-# `#b8b6b0` reads as a yellow stripe down the middle of one place. The flood
-# follows SAND, so it can never take that ground, and a pocket rule bounded by
-# a radius box and vetoed by "does it touch the sea" could not either.
-#
-# So the plazoleta is CLOSED TO ITS KERB instead: from the flooded sand it
-# absorbs land and beach outward until it meets the sidewalk, the roadway or
-# the water. This is the same move the malecón's `MALECON_KERB_LINK_M` makes
-# on the other side of the spit, and for the same reason — a paved place with
-# a verge between it and the street is two things, not one.
-FARO_ESP_KERB_LINK_M = 30
+# …and the other half of the same fix: the plazoleta is CLOSED TO ITS KERB,
+# absorbing land and beach outward until the sidewalk, the roadway or the water
+# stops it. The same move `MALECON_KERB_LINK_M` makes on the other side of the
+# spit. What the yellow stripe actually was is in `world.faro.kerbLinkNote`.
+FARO_ESP_KERB_LINK_M = W["faro"]["kerbLinkM"]
 
 PASEO_TURISTAS = "paseo de los turistas"
 # THE TWO PASEOS ARE ONE WATERFRONT. Turistas runs the spit from the faro to

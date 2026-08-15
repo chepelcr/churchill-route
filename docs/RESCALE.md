@@ -163,7 +163,20 @@ silently mean something different. This has happened twice already:
 
 The rule learned from both: **a distance that means something in the world
 belongs in metres.** `STREET_SPAN_M`, `SHORE_RECLAIM_M`, `MALECON_BAND_M`,
-`FARO_ESP_R_M` were already converted. The audit list of what has not been:
+`FARO_ESP_R_M` were already converted.
+
+**And being metres is not the same as being reachable** — a distinction this
+document did not draw until it cost something. Those fifteen sat in `config.py`
+as metre literals: safe across a rescale, and invisible to the editor, which
+reads `src/assets/world-units.json` and nothing else. Among them are the five
+that shape the faro's plazoleta and the malecón, i.e. exactly the ones somebody
+designing the sea front would reach for. They moved to the registry on
+2026-08-14 (`world.street`, `world.shore`, `world.woods`, `world.blocks`, and
+the extended `world.malecon` / `world.faro`), with the build log
+character-identical over the smoke window and every derived integer unchanged.
+So the audit list below is now about METRES ONLY: a constant on it is still px.
+
+The audit list of what has not been:
 
 ```
 config.py         POI_NUDGE_PX 750, SERVICE_MIN_PX 150,

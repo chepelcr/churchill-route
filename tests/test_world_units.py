@@ -192,6 +192,49 @@ class WorldDistanceTests(unittest.TestCase):
             self.assertEqual(now, was, f"{name}: {now} px, was {was}")
             self.assertEqual(getattr(config, name), was, f"config.{name} drifted")
 
+    def test_the_last_fifteen_landed_on_their_own_numbers(self):
+        """The audit's remainder, converted 2026-08-14.
+
+        These were already METRES and therefore already safe across a rescale —
+        what they were not was REACHABLE: they sat in `config.py`, so the editor
+        could not see them, and among them are the five that shape the faro's
+        plazoleta and the malecón. Moving them changes nothing, and this is what
+        says so: each name still equals the literal it was written as.
+        """
+        want = {
+            "STREET_SPAN_M": 440, "STREET_AT_SPAN_M": 560, "STREET_DIR_SPAN_M": 325,
+            "SHORE_RECLAIM_M": 20, "SHORE_RECLAIM_REACH_M": 600,
+            "WOOD_MIN_M2": 320_000, "WOOD_COAST_M": 900, "WOOD_ALTURA_M": 4000,
+            "BLOCK_MIN_M": 32, "SLIVER_MAX_M2": 1600.0,
+            "MALECON_BAND_M": 30, "MALECON_SHOULDER_M": 70, "MALECON_KERB_LINK_M": 60,
+            "FARO_ESP_R_M": 120, "FARO_ESP_KERB_LINK_M": 30,
+        }
+        for name, was in want.items():
+            self.assertEqual(getattr(config, name), was, f"config.{name} drifted")
+        # …and the diagnostic that travels with the three street spans. It is
+        # only a build-log line, which is exactly why it would have been the one
+        # left behind — a family with one member still in px is the drift.
+        self.assertEqual(config.STREET_NEAR_SPAN_M, (500, 315))
+
+    def test_the_derived_integers_did_not_move(self):
+        """The conversion turned `int` literals into registry `float`s, and the
+        risk that carries is not a crash — it is a value that rounds one step
+        differently on the way to a cell count. These three are the ones with a
+        second derivation on top of the metres."""
+        self.assertEqual(config.SHORE_RECLAIM_CELLS, 12)
+        self.assertEqual(config.BLOCK_MIN_CUADS, 4)
+        self.assertEqual(config.SLIVER_MAX_CUADS, 25.0)
+
+    def test_the_fifteen_are_gone_from_the_source(self):
+        """A registry that the builder shadows with its own literal is worse
+        than no registry: the editor would show a number the build ignores."""
+        src = read(os.path.join(ROOT, "churchill", "world", "config.py"))
+        src = re.sub(r"#.*", "", src)
+        for name in ("STREET_SPAN_M", "SHORE_RECLAIM_M", "WOOD_MIN_M2",
+                     "BLOCK_MIN_M", "MALECON_BAND_M", "FARO_ESP_R_M"):
+            line = next(ln for ln in src.splitlines() if ln.startswith(f"{name} ="))
+            self.assertIn("[", line, f"{name} is still a literal in config.py: {line.strip()}")
+
     def test_the_areas_scale_as_the_square(self):
         self.assertEqual(config.MIN_BUILDING_AREA_PX2,
                          self.px2(self.w["poi"]["minBuildingM2"]))

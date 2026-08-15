@@ -87,6 +87,13 @@
         16.0
       ]
     },
+    "lighting": {
+      "_note": "EL ALUMBRADO PÚBLICO. De noche la ciudad no se ve, y no era una cuestión de brillo: la noche es un lavado plano sobre el cuadro entero y no había ni una fuente de luz que lo perforara.",
+      "lampSpacingM": 32.0,
+      "lampSpacingNote": "un poste cada 32 m de calzada, ALTERNANDO de acera — así el vano que uno ve es la mitad del que hay por lado, que es como se lee una calle de verdad alumbrada. En metros porque es una distancia del mundo: a 2.5 px/m son 80 px, y ese número dejaría de significar lo mismo al siguiente reescalado.",
+      "poolRadiusM": 26.0,
+      "poolRadiusNote": "cuánto suelo alumbra un poste. Es lo que decide si la calle se lee continua o como una fila de islas — por debajo de la mitad del espaciado quedan pozos separados, por encima se funden en una manta y la noche vuelve a ser plana."
+    },
     "street": {
       "_note": "StreetIndex's search spans — how far from a reference point it looks for a named calle or avenida. These are the ones the 1.6 -> 2.0 rescale broke SILENTLY: Calle 6 sits 744 px from the Las Playitas anchor at 2.0, just past a 700 px span that used to reach it, so the estadio fell back to its anchor rect and took Kiosco Playitas out of the drivable network with it. A distance that means 'about half a manzana away' is metres.",
       "_family": "All four move together and all four are here for that reason. `nearSpanM` is only the build-log diagnostic, but a family with one member left behind in px is exactly the drift this file exists to stop — and the diagnostic is what a reviewer reads to decide whether the other three reached.",

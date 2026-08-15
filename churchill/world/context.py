@@ -118,6 +118,9 @@ class WorldContext:
     editor_patch_meta: object = None
     cuadras: list = field(default_factory=list)
     surface_styles: list = field(default_factory=list)
+    #: EL ALUMBRADO. Va por TILE, como los árboles y no como los rótulos: son
+    #: miles, y una lista global las cargaría todas para dibujar las que se ven.
+    lamps: list = field(default_factory=list)
 
     # ---- decoration ---------------------------------------------------------
     trees: list = field(default_factory=list)

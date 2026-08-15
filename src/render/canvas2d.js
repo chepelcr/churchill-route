@@ -18,6 +18,7 @@ import {
 } from "./c2d/gfx.js";
 import { drawMangroves, drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
+import { drawNightLights, setLightZoom } from "./c2d/nightlights.js";
 import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawChannel, drawEstero } from "./c2d/estero.js";
@@ -223,7 +224,18 @@ function render(t) {
   // Overlays
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const C = weatherColors();
-  ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
+  if (state.weather === "night") {
+    // LA NOCHE ES UNA CAPA QUE LAS LÁMPARAS PERFORAN, no una manta. El tinte
+    // plano sigue siendo lo que se ve LEJOS de un poste — que es como el juego
+    // se ha visto siempre — pero deja de ser la última palabra. Sin alumbrado
+    // en la vista, `drawNightLights` pinta exactamente el mismo tinte y nada
+    // cambia, que es lo que mantiene honesto el cambio.
+    setLightZoom(ZOOM);
+    drawNightLights(vw, vh, view, C.tint,
+                    (wx, wy) => [(wx - cam.x) * ZOOM + vw / 2, (wy - cam.y) * ZOOM + vh / 2]);
+  } else {
+    ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
+  }
   if (state.weather === "storm") drawRain(vw, vh, t);
   if (state.weather === "night") drawNightVignette(vw, vh);
   // The estero's gulls go over the CAMERA, so they belong up here with the

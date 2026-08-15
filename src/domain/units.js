@@ -66,3 +66,8 @@ export const TANGENT_SPAN = px(UNITS.channel.tangentSpanM);
 export const FERRY_DECK_L = px(UNITS.vessels.ferry.deckLengthM);
 export const FERRY_DECK_W = px(UNITS.vessels.ferry.deckWidthM);
 export const FERRY_DOCK_S = px(UNITS.vessels.ferry.dockOffsetM);
+
+//: EL POZO DE UNA LÁMPARA, en px del mundo. Es lo que decide si una calle se lee
+//: continua o como una fila de islas: por debajo de la mitad del espaciado
+//: quedan pozos separados, por encima se funden y la noche vuelve a ser plana.
+export const LAMP_POOL_R = px(UNITS.world.lighting.poolRadiusM);

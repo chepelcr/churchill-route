@@ -30,7 +30,7 @@ from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD,
     FIELD_ACERA_CELLS, GRID_CELL, STREET_CLASSES,
 )
-from ..content import SITE_DECOR
+from ..content import PARCEL_STYLES, SITE_DECOR
 from ..enums import GreenType, ParcelUse
 from ..logging import log, warn
 from .editor_patch import building_source_id
@@ -461,6 +461,18 @@ class FieldService:
         lm["x"], lm["y"] = cxpx, cypx
         lm["footprint"] = footprint      # the pitch (grass + white markings)
         lm["outline"] = outline          # the whole drivable cuadra
+        # LA GRADERÍA Y LAS TORRES VIENEN CON EL BLOQUE. Vivían en el registro
+        # de arte llaveadas por hito (`scenes.stadium.stands.byLandmark`), o sea
+        # aparte del estadio al que pertenecen; ahora un estadio es UN registro.
+        # Y esto cierra una mentira vieja: CLAUDE.md, el ROADMAP y water.json
+        # describían graderías dibujadas «cuando `lm.stands`» — el build no
+        # emitía `stands`, nadie lo leía, y `drawStadium` eran once líneas.
+        # Sigue siendo COLOCACIÓN: qué ES una gradería (fondo, escalones, rake)
+        # se queda en `world-props.json`, como la receta de una luminaria se
+        # queda en `lights.json`.
+        for key in ("stands", "towers"):
+            if spec.get(key):
+                lm[key] = spec[key]
         # The pitch's own FRAME, not just its bbox. The match sim places the two
         # goals off it, and it is the same thing the renderer's `fieldFrame` was
         # re-deriving from the polygon every time — badly, since a raster-traced
@@ -473,7 +485,13 @@ class FieldService:
                          "cx": cxpx, "cy": cypx, "footprint": footprint,
                          "outline": outline, "ang": round(sa, 4),
                          "hw": shw, "hh": shh, "sport": "soccer",
-                         "aceras": spec.get("aceras", True)})
+                         "aceras": spec.get("aceras", True),
+                         # QUIÉN ESTÁ EN ESTA CANCHA. `maintainStadiumPeds`
+                         # tenía "fan" escrito cuatro veces, así que toda cancha
+                         # del mundo recibía la misma multitud y no había forma
+                         # de quitársela a una. Ausente = el `fan` de siempre;
+                         # lista vacía = sin gente.
+                         **({"crowd": spec["crowd"]} if spec.get("crowd") is not None else {})})
         # …and as a sponsorable space. A stadium is a WHOLE cuadra, not a part
         # of one, so `whole` tells the renderer its ground is already painted
         # (by paintStadiumCuadras) and only the slot art belongs to the parcel.
@@ -481,12 +499,37 @@ class FieldService:
         # goes.
         sw = max(40, (bx1 - bx0) // 3); sh = max(28, (by1 - by0) // 3)
         self.parcels.append({"id": f"{spec['id']}_field", "name": lm.get("name") or spec["id"],
-                        "use": ParcelUse.STADIUM, "whole": True, "poly": footprint,
+                        # UNA PLAZA DE BARRIO NO ES UN ESTADIO. `ParcelUse.PLAZA`
+                        # existía con CERO usuarios y `materials.json` le daba el
+                        # mismo hex que a `stadium`, así que Plaza Las Playitas
+                        # se dibujaba idéntica al Estadio Lito Pérez.
+                        "use": spec.get("use", ParcelUse.STADIUM),
+                        "whole": True, "poly": footprint,
                         "cx": cxpx, "cy": cypx,
                         "x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                         "slot": [int(cxpx - sw // 2), int(cypx - sh // 2), int(sw), int(sh)]})
-        log("parcel", f"{spec['id']}_field (stadium, whole cuadra) "
+        log("parcel", f"{spec['id']}_field ({spec.get('use', ParcelUse.STADIUM)}, whole cuadra) "
               f"slot[{int(cxpx - sw // 2)}, {int(cypx - sh // 2)}, {int(sw)}, {int(sh)}]")
+        # …Y SUS SUB-ÁREAS, si el bloque las trae. Un estadio emitía UNA parcela
+        # de cuadra entera, así que a una plaza de barrio no se le podía agregar
+        # una cancha multiuso o un kiosco sin tocar su contorno — que es lo que
+        # no se quería tocar. El mismo repartidor de bandas que usa una cuadra
+        # hecha a mano, sobre el marco del quad y no sobre su caja.
+        if spec.get("parts"):
+            av = self.streets.direction(spec["ave_north"], ref, "x") or \
+                self.streets.direction(spec["ave_south"], ref, "x")
+            cl = self.streets.direction(spec["calles"][0], ref, "y") or \
+                self.streets.direction(spec["calles"][1], ref, "y")
+            if av and cl:
+                mx = sum(c[0] for c in outer_cells) / len(outer_cells)
+                my = sum(c[1] for c in outer_cells) / len(outer_cells)
+                shallow = erode_cells(outer_cells, FIELD_ACERA_CELLS,
+                                      STREET_CLASSES, self.raster.at)
+                self._band_parts(spec, outer_cells, inner_cells, shallow, sa,
+                                 (cl[1], -cl[0]), (-av[1], av[0]), mx, my)
+            else:
+                log("estadio", f"WARN {spec['id']} parts skipped — street "
+                    f"direction unresolved (avenida {av}, calle {cl})")
         ox = outline[0::2]; oy = outline[1::2]
         log("estadio", f"{spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
               f"-> cuadra ({min(ox)},{min(oy)})-({max(ox)},{max(oy)})px {len(outline)//2}v, "
@@ -536,10 +579,20 @@ class FieldService:
         # Stable/source identity and drawing semantics used by feature blocks.
         # A marine structure's parcel is real GROUND around its OSM footprint,
         # while the residual park is already painted by `greens` (`whole`).
+        # `crowd` = quién se para en esta parcela; `groundColor`/`kerbColor` =
+        # de qué color es SU suelo, no el de su `use`. Las tres son de la
+        # INSTANCIA, que es justo lo que faltaba: 193 parques compartían una
+        # perilla y toda cancha del mundo recibía la misma multitud.
         for k in ("label", "osmId", "marine", "whole", "built", "decor",
-                  "polys"):
+                  "polys", "crowd", "groundColor", "kerbColor"):
             if k in part:
                 rec[k] = part[k]
+        # …y el estilo autorado POR ID, que gana sobre lo que traiga la parte.
+        # Las parcelas sí tienen ids estables y con significado
+        # (`osm_park_232390078`, `centro_catedral`), a diferencia de una cuadra,
+        # cuyo id es el hash de su contorno.
+        for k, v in PARCEL_STYLES.get(rec["id"], {}).items():
+            rec[{"ground": "groundColor", "kerb": "kerbColor"}.get(k, k)] = v
         # HALF-EXTENTS in the parcel's OWN frame. Every drawer used to size
         # itself off the AXIS-ALIGNED bbox (P.x1 - P.x0), which on a turned
         # parcel is bigger than the parcel — so the church, the schoolyard and
@@ -680,6 +733,56 @@ class FieldService:
         log("parcel", f"{spec_id} reclaimed {n} cells inside the manzana "
             f"(POI aprons + sliver paving) back to land")
 
+    def _band_parts(self, spec, outer, inner, field, ang, ncol, nrow, mx, my):
+        """Cut `outer` into the spec's columns and rows and emit each part.
+
+        SHARED BY LOS DOS REPARTOS DE BANDAS — la cuadra hecha a mano y, desde
+        el 2026-08-15, un `streets-quad` que trae `parts`. Escrito dos veces se
+        habrían separado en los detalles, que es justamente lo que le pasó a la
+        gradería y a la torre viviendo aparte del estadio.
+
+        Cada celda se proyecta sobre el NORMAL DE LA OTRA FAMILIA — las columnas
+        se cortan con líneas paralelas a las CALLES y las filas con líneas
+        paralelas a las AVENIDAS. Es un marco afín, y es lo que hace que encaje
+        en un paralelogramo: la cuadrícula no es cuadrada con la pantalla ni
+        consigo misma.
+        """
+        uv = {c: ((c[0] - mx) * ncol[0] + (c[1] - my) * ncol[1],
+                  (c[0] - mx) * nrow[0] + (c[1] - my) * nrow[1])
+              for c in outer}
+        cw = spec.get("cols", [1]); rw = spec.get("rows", [1])
+        ue = _bands([v[0] for v in uv.values()], cw)
+        ve = _bands([v[1] for v in uv.values()], rw)
+        nominal = len(outer) / (len(cw) * len(rw))
+        # `col`/`row` take an int or an inclusive [from, to] SPAN, so parts do
+        # not all have to be the same size: the Carmen block is one column of
+        # two (church over garden) beside one column spanning both rows (the
+        # plaza). That is what lets a cuadra hold commerce of different sizes.
+        rng = lambda v: (v, v) if isinstance(v, int) else (v[0], v[1])
+        claimed = set()
+        for part in spec["parts"]:
+            c0, c1 = rng(part.get("col", 0))
+            r0, r1 = rng(part.get("row", 0))
+            src = ((field if part["use"] in (ParcelUse.PLAZA, ParcelUse.STADIUM) else inner)
+                   if part.get("aceras") else outer)
+            cells = {c for c in src
+                     if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
+            # cells the part OWNS on the block (for occ / drivability), which is
+            # the un-eroded slice — the ring in front of a church is still its
+            # frontage, no building may land there
+            own = {c for c in outer
+                   if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
+            span = (c1 - c0 + 1) * (r1 - r0 + 1)
+            # A part that came out mostly EMPTY means the split does not suit
+            # this block (it is a ribbon, not a rectangle) — fail loudly in the
+            # log instead of quietly emitting a sliver out in the street.
+            if len(own) < nominal * span * 0.35:
+                log("parcel", f"WARN {part['id']} only {len(cells)} cells vs "
+                      f"{nominal * span:.0f} nominal — split does not suit this block"); continue
+            self._emit_parcel(spec["id"], part, own, cells, ang)
+            claimed |= own
+        return claimed
+
     def place_parcels(self, spec):
         # `ll` is the anchor; `at` is the legacy world-px one and is only still
         # read so an old spec fails loudly rather than silently. A px anchor
@@ -733,40 +836,7 @@ class FieldService:
             nrow, ncol = (-sa, ca), (ca, sa)
         log("parcel", f"{spec['id']} block frame {math.degrees(ang):+.1f}° "
               f"(avenida {av}, calle {cl}), {len(outer)} cells")
-        uv = {c: ((c[0] - mx) * ncol[0] + (c[1] - my) * ncol[1],
-                  (c[0] - mx) * nrow[0] + (c[1] - my) * nrow[1])
-              for c in outer}
-        cw = spec.get("cols", [1]); rw = spec.get("rows", [1])
-        ue = _bands([v[0] for v in uv.values()], cw)
-        ve = _bands([v[1] for v in uv.values()], rw)
-        nominal = len(outer) / (len(cw) * len(rw))
-        # `col`/`row` take an int or an inclusive [from, to] SPAN, so parts do
-        # not all have to be the same size: the Carmen block is one column of
-        # two (church over garden) beside one column spanning both rows (the
-        # plaza). That is what lets a cuadra hold commerce of different sizes.
-        rng = lambda v: (v, v) if isinstance(v, int) else (v[0], v[1])
-        claimed = set()
-        for part in spec["parts"]:
-            c0, c1 = rng(part.get("col", 0))
-            r0, r1 = rng(part.get("row", 0))
-            src = ((field if part["use"] in (ParcelUse.PLAZA, ParcelUse.STADIUM) else inner)
-                   if part.get("aceras") else outer)
-            cells = {c for c in src
-                     if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
-            # cells the part OWNS on the block (for occ / drivability), which is
-            # the un-eroded slice — the ring in front of a church is still its
-            # frontage, no building may land there
-            own = {c for c in outer
-                   if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
-            span = (c1 - c0 + 1) * (r1 - r0 + 1)
-            # A part that came out mostly EMPTY means the split does not suit
-            # this block (it is a ribbon, not a rectangle) — fail loudly in the
-            # log instead of quietly emitting a sliver out in the street.
-            if len(own) < nominal * span * 0.35:
-                log("parcel", f"WARN {part['id']} only {len(cells)} cells vs "
-                      f"{nominal * span:.0f} nominal — split does not suit this block"); continue
-            self._emit_parcel(spec["id"], part, own, cells, ang)
-            claimed |= own
+        claimed = self._band_parts(spec, outer, inner, field, ang, ncol, nrow, mx, my)
         # The CUAD cells the block's parts took. A caller that is laying a whole
         # cuadra out by hand uses this to clear the OSM footprints standing on
         # it: named buildings are kept at their real outline unconditionally, so

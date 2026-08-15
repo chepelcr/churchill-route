@@ -32,6 +32,15 @@ export function npcType(id) {
   return byId.get(id) || byId.get("walker") || NPC_TYPES[0];
 }
 
+/** WHICH DRAWING A TYPE USES — the registry's `art` field, and the join the
+ *  whole actor catalog hangs off. A type's ID is not its ART: `supporter` and
+ *  `fan` are two crowds that look the same, `mascot` and an authored NPC share
+ *  one figure. Reading `kind` as the art directly is why a `supporter` spawned
+ *  on a plaza came out drawn as an ordinary commuter. */
+export function npcArt(id) {
+  return npcType(id).art || id;
+}
+
 /** [min, max] speed of a type, as one sample. */
 export function npcSpeed(id) {
   const [lo, hi] = npcType(id).speed || [14, 26];

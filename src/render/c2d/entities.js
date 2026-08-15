@@ -3,6 +3,7 @@
 import { state } from "../../game/state.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
+import { npcArt } from "../../game/npcs.js";
 import { paintParts } from "./shapes.js";
 import { COIN_TYPE, VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, hash01, lastT, roundRect } from "./gfx.js";
@@ -92,15 +93,23 @@ function drawPed(pe) {
   // existing look (`art`), which is what makes the registry worth having —
   // picking a built-in art means accepting the built-in drawing, colour and
   // all, and the four person styles keep the authored colour/scale.
-  const art = pe.editorNpc ? (pe.drawStyle || "person") : (pe.kind || "walker");
+  // THE ART, VIA THE REGISTRY. `pe.kind` is the TYPE; `npcArt` is what it looks
+  // like, and they are deliberately not the same — `supporter` draws as a
+  // `fan`, `mascot` as the authored mascot figure. Reading `kind` as the art
+  // meant every type whose name was not already a drawer fell through to the
+  // default walker, silently.
+  const art = pe.editorNpc ? (pe.drawStyle || "person") : npcArt(pe.kind || "walker");
   if (art === "swimmer") { drawSwimmer(pe); return; }
   if (art === "passenger") { drawPassenger(pe); return; }
   if (art === "fisher") { drawFisher(pe); return; }
   if (art === "muellero") { drawMuellero(pe); return; }
   if (art === "playero") { drawPlayero(pe); return; }
   if (art === "jugador") { drawJugador(pe); return; }
-  if (pe.editorNpc && ["person", "vendor", "worker", "mascot"].includes(art)) {
-    drawEditorNpc(pe); return;
+  if (["person", "vendor", "worker", "mascot"].includes(art)) {
+    // …and a WORLD npc whose art is one of these draws the same figure. The
+    // branch used to require `editorNpc`, so a `mascot` seated on a plaza by
+    // the world had no drawer at all and came out a commuter.
+    drawEditorNpc(pe, art); return;
   }
   // FANS celebrate: a bigger, faster bounce plus a side-to-side shake and two
   // raised arms, so the crowd around the estadio and la plaza reads as a crowd
@@ -195,7 +204,13 @@ function drawBeachBall(G) {
   }
 }
 
-function drawEditorNpc(pe) {
+function drawEditorNpc(pe, style = pe.drawStyle) {
+  // COLOUR COMES FROM THE INSTANCE, and a world-spawned one has no `color` —
+  // only a `hue`, like every other person in the crowd. Without the fallback
+  // `fillStyle = undefined` leaves whatever the previous drawer set, which is
+  // not a bug that looks like a bug: the figure simply comes out the colour of
+  // the last thing painted.
+  const color = pe.color || `hsl(${pe.hue ?? 200} 70% 60%)`;
   const scale = pe.scale || 1;
   const bob = pe.stationary ? Math.sin(pe.ph) * 0.35 : Math.sin(pe.ph) * 1.2;
   ctx.save();
@@ -203,19 +218,19 @@ function drawEditorNpc(pe) {
   ctx.scale(scale, scale);
   ctx.fillStyle = A.editorNpc.shadow;
   ctx.beginPath(); ctx.ellipse(1, 5, 4.5, 1.7, 0, 0, Math.PI * 2); ctx.fill();
-  if (pe.drawStyle === "mascot") {
-    ctx.fillStyle = pe.color;
+  if (style === "mascot") {
+    ctx.fillStyle = color;
     ctx.beginPath(); ctx.arc(0, -1, 5.2, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = A.editorNpc.eyes;
     ctx.beginPath(); ctx.arc(-1.7, -2, 1, 0, Math.PI * 2); ctx.arc(1.7, -2, 1, 0, Math.PI * 2); ctx.fill();
   } else {
-    ctx.fillStyle = pe.color;
-    if (pe.drawStyle === "vendor") {
+    ctx.fillStyle = color;
+    if (style === "vendor") {
       roundRect(ctx, -4, -3, 8, 7, 1.5, true, false);
       ctx.fillStyle = A.editorNpc.tray; ctx.fillRect(-5, -5, 10, 2);
     } else {
       ctx.fillRect(-2.5, -3, 5, 7);
-      if (pe.drawStyle === "worker") {
+      if (style === "worker") {
         ctx.fillStyle = A.editorNpc.helmet; ctx.fillRect(-3.2, -6.5, 6.4, 1.6);
       }
     }

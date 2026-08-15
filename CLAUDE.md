@@ -512,8 +512,15 @@ from down the Paseo you get the kick and only at the booth the whole set.
 as separate features: the square raster and source polygons are the geometry.
 
 **A crowd on a cancha** (`maintainStadiumPeds` + `advanceFieldPed` in
-`spawns.js`). Every field with a footprint holds a wandering crowd of
-`kind:"fan"`, and the coin rain is a CLOCK: park on a pitch and the fans throw a
+`spawns.js`). **WHO stands on a given field is authored** — `crowd` on its block
+in `content/world/blocks.json`, a list of `npcTypes.json` ids with an optional
+count; `[]` means nobody, absent means the default `fan`. It used to have
+`"fan"` written into it four times, so every pitch in the world got the same
+crowd and there was no way to take it off one — while `supporter` and `mascot`
+sat in the registry hosting `parcel:stadium`/`parcel:plaza` and were **never
+spawned**. A type's ID is not its ART, either: `npcArt()` resolves that through
+the registry, and reading `kind` as the art is why a `supporter` came out drawn
+as an ordinary commuter. Every field with a footprint holds a wandering crowd, and the coin rain is a CLOCK: park on a pitch and the fans throw a
 silver burst, once per `ACOIN_RAIN_COOLDOWN`. A match sim with players and a
 ball lived here for a day and was reverted — it is in the history if it is ever
 wanted again. Two things the crowd has to get right:
@@ -774,6 +781,24 @@ slips into the drawn-but-unstamped rim and the both-ends-blocked snap-back traps
 it — medians stamp `PASEO_MEDIAN_W + 6` while rendering at `PASEO_MEDIAN_W`.
 Decorative tree lines need a surface-class guard (skip `CLS_ROAD/PASEO/BRIDGE`)
 so they sit beside the lane, not on it.
+
+**LA NOCHE ES UNA CAPA QUE LAS LÁMPARAS PERFORAN** (`c2d/nightlights.js`). The
+city was too dark and the cause was structural, not a brightness value: night is
+`C.tint`, a flat wash over the WHOLE FRAME, so a lamp drawn in the world pass
+sat under the same wash that was darkening it. Now the darkness is filled into
+its own half-resolution canvas, each lamp `destination-out`s a soft disc out of
+it, the layer goes over the frame, and a warm `lighter` pass adds the lamp's own
+colour. Three things make thousands of lamps affordable and none is optional:
+**half resolution** (a light pool is soft, so it costs a quarter and nobody
+sees), **a pre-rendered sprite blitted** per lamp rather than a
+`createRadialGradient` per lamp per frame, and **per-tile streaming** —
+`street lamps go in the tiles like trees, never global like signs`, because
+there are thousands and a global list would load them all to draw twelve. A
+lamp record is `{x, y, ang, type}` and nothing more: what a lamp IS lives in
+`lights.json`. With no lamps in view the painter paints the same tint as before,
+which is what keeps the change honest. `pnpm smoke:night` measures the cost by
+interleaving day and night medians — a single before/after comparison measures
+warm-up, which is how it first reported 50 ms.
 
 ## inventory.json
 

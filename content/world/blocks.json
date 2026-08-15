@@ -10,6 +10,24 @@
 
   "_aceras": "`aceras: true` erosiona la parte según la profundidad de acera, así que lo que se pare encima (una iglesia) nunca cae sobre la acera. `aceras: false` le deja el anillo y la parte llena la cuadra de borde a borde — que es como Plaza Las Playitas se lee como un solo campo abierto.",
 
+  "_manzanas": "EL SUELO DE UNA MANZANA CUALQUIERA. Las 976 cuadras que el mundo deriva no tenían color propio: el interior de toda manzana es UN relleno global por clima sobre 27 siluetas de isla, así que no había forma de decir «ésta es distinta». Acá se dice, y se direcciona POR PUNTO GEO — nunca por id, porque el id de una cuadra es el hash de su contorno (`cuadra_<hash>`) y su nombre es posicional: un edificio nuevo o un reescalado lo cambian y el override se despega en silencio. Un ancla que no cae en ninguna cuadra HACE FALLAR EL BUILD.",
+  "_manzanaFields": "`ground` y `acera.color` son apariencia y alimentan el pintor que YA existe y llega vacío (`drawSurfaceStyleGround` / `drawSurfaceStyleAceras`). `surface` es opcional y cambia la CLASE de superficie, o sea la manejabilidad — y por eso el paso corre antes de `verify`, para que una manzana convertida en muro haga fallar el build en vez de dejar una entrega inalcanzable.",
+  "manzanas": [
+    {
+      "at": [9.97705, -84.84868],
+      "name": "La manzana de El Carmen",
+      "ground": "#d8cfbc",
+      "acera": { "color": "#c4c0b6", "cells": 3 },
+      "_note": "PRUEBA VIVA de que una manzana derivada se puede repintar: la del Carmen, un poco más clara y con su acera propia. Alimenta `drawSurfaceStyleGround` / `drawSurfaceStyleAceras`, que existían y llegaban vacíos."
+    }
+  ],
+
+  "_parcels": "EL SUELO DE UNA PARCELA, por id. Hoy el color sale sólo del `use`, así que las 193 parcelas `park` del mundo comparten una perilla y no hay manera de darle a UN parque su propio verde. Los ids de parcela sí son estables y con significado (`osm_park_232390078`, `centro_catedral`), a diferencia de los de cuadra.",
+  "parcels": {
+    "playitas_multiuso": { "ground": "#9a9c93", "kerb": "rgba(240,238,230,0.6)",
+      "_note": "la cancha multiuso es CEMENTO, no césped — y ésta es la prueba de que una parcela puede tener su propio suelo sin inventarle un `use`." }
+  },
+
   "blocks": [
     {
       "id": "carmen",
@@ -37,7 +55,7 @@
           "_note": "…y su jardín debajo"
         },
         {
-          "id": "carmen_plaza", "col": 1, "row": [0, 1], "use": "stadium",
+          "id": "carmen_plaza", "col": 1, "row": [0, 1], "use": "plaza",
           "name": "Plaza Deportes El Carmen", "aceras": false,
           "straighten_cells": 2,
           "_note": "columna derecha, abarcando LAS DOS filas. La cancha ocupa su media cuadra entera; dos celdas de tolerancia vectorial colapsan las escaleras del norte y del este en los cuatro lados directos del paralelogramo alineado a la calle."
@@ -117,6 +135,13 @@
       "id": "estadio",
       "layout": "streets-quad",
       "name": "Estadio Lito Pérez",
+      "stands": {
+        "side": "west",
+        "palette": { "tierA": "#e8792b", "tierB": "#b8541a", "structure": "#5a3a20" },
+        "_note": "Estadio Lito Pérez — naranja, los colores del Puntarenas F.C."
+      },
+      "towers": { "type": "stadium", "inset": 14 },
+      "crowd": [ { "type": "fan" } ],
       "_ll": "Lito Pérez: Calle 15-17 x Avenida 0-2",
       "calles": [["Calle 15 José Joaquín Escalante"], ["Calle 17"]],
       "ave_south": ["Avenida 2"],
@@ -129,6 +154,15 @@
       "id": "estadio_playitas",
       "layout": "streets-quad",
       "name": "Plaza Las Playitas",
+      "stands": {
+        "side": "west",
+        "palette": { "tierA": "#f1f4f7", "tierB": "#2f6fb8", "structure": "#24476e" },
+        "_note": "Plaza Las Playitas — blanco y azul."
+      },
+      "towers": { "type": "stadium", "inset": 10, "radius": 74,
+                  "_note": "cancha más chica, halo más chico — si no, los cuatro halos se funden en uno y la plaza entera queda blanca." },
+      "crowd": [ { "type": "supporter" }, { "type": "mascot", "count": 1 } ],
+      "_crowd": "LA MULTITUD SE ESCOGE POR CANCHA. `supporter` y `mascot` estaban definidos en `npcTypes.json`, hospedaban `parcel:plaza` y `parcel:stadium`, y NO SE GENERABAN NUNCA — entradas muertas del registro, como los cuatro alfas muertos de las luces. Una lista vacía significa sin gente; ausente significa el `fan` de siempre.",
       "_ll": "Las Playitas: Calle 6-8, entre Avenida Centenario y la orilla",
       "calles": [["Calle 6"], ["Calle 8"]],
       "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
@@ -139,7 +173,23 @@
       "edge": ["Calle 8"],
       "_edge": "pared derecha sobre la LÍNEA de Calle 8, extendida.",
       "straighten_cells": 3,
-      "_straighten": "su límite oeste es una diagonal larga. Tres celdas de ráster quitan los hombros cortos residuales para que se dibuje como un solo lado directo."
+      "_straighten": "su límite oeste es una diagonal larga. Tres celdas de ráster quitan los hombros cortos residuales para que se dibuje como un solo lado directo.",
+      "use": "plaza",
+      "_use": "es una PLAZA DE BARRIO, no un estadio. Con `ParcelUse.PLAZA` de verdad se dibuja como lo que es — y además `npcTypes.json` ya hospedaba `parcel:plaza` en tres tipos que nunca calzaban con nada, porque ninguna parcela usaba ese valor.",
+      "cols": [1, 1.6],
+      "rows": [1],
+      "_bands": "la cancha ocupa la banda ancha del este; la angosta del oeste es donde caben las piezas que le faltaban a Las Playitas.",
+      "parts": [
+        {
+          "id": "playitas_cancha", "col": 1, "row": 0, "use": "plaza",
+          "name": "Cancha de Las Playitas", "aceras": false, "sport": "soccer"
+        },
+        {
+          "id": "playitas_multiuso", "col": 0, "row": 0, "use": "plaza",
+          "name": "Cancha multiuso", "aceras": false, "sport": "basketball",
+          "_note": "cancha DURA: `sport` decide que se dibujen marcas de cancha y no de fútbol, y `COURT_SPORTS` ya nombra cuáles lo son."
+        }
+      ]
     },
 
     {

@@ -32,7 +32,13 @@ def read(path):
 
 class StandsTests(unittest.TestCase):
     def setUp(self):
+        # LA RECETA sigue en el registro de arte; QUIÉN LLEVA GRADERÍA y de qué
+        # lado se autora con el estadio, en `content/world/blocks.json`, porque
+        # un estadio es UN registro. El build lo emite sobre el landmark.
+        from churchill.world.content import blocks_by_layout
         self.spec = read(PROPS)["scenes"]["stadium"]["stands"]
+        self.own = {b["id"]: b["stands"] for b in blocks_by_layout("streets-quad")
+                    if b.get("stands")}
         with open(LANDMARKS_JS, encoding="utf-8") as fh:
             self.js = fh.read()
         self.stadiums = {l["id"]: l for l in read(MANIFEST)["landmarks"]
@@ -41,14 +47,14 @@ class StandsTests(unittest.TestCase):
     def test_every_configured_stadium_exists_and_has_a_footprint(self):
         """The stand has NO geometry of its own — it is fitted to the emitted
         footprint. A landmark without one silently gets nothing."""
-        for lid in self.spec["byLandmark"]:
+        for lid in self.own:
             self.assertIn(lid, self.stadiums, f"'{lid}' is not a stadium in the world")
             fp = self.stadiums[lid].get("footprint") or []
             self.assertGreaterEqual(len(fp), 6,
                                     f"'{lid}' has no traced footprint to build a stand on")
 
     def test_every_side_is_a_real_side(self):
-        for lid, rec in self.spec["byLandmark"].items():
+        for lid, rec in self.own.items():
             self.assertIn(rec["side"], SIDES, f"{lid}.side")
 
     def test_the_side_is_resolved_against_the_polygon(self):
@@ -66,7 +72,7 @@ class StandsTests(unittest.TestCase):
         """Lito Pérez is orange (Puntarenas F.C.); Las Playitas is white and
         blue. A shared default with no override would make them the same place."""
         pal = {lid: {**self.spec["palette"], **rec.get("palette", {})}
-               for lid, rec in self.spec["byLandmark"].items()}
+               for lid, rec in self.own.items()}
         self.assertNotEqual(pal["estadio"]["tierA"], pal["estadio_playitas"]["tierA"],
                             "both stadiums are wearing the same seats")
         for lid, p in pal.items():

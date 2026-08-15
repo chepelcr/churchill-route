@@ -272,6 +272,10 @@ export const WORLD2D = (function () {
       // has emitted them into the tiles all along; nothing decoded them, so
       // nothing could draw them.
       trees: raw.trees || [], palms: raw.palms || [], mangroves: raw.mangroves || [],
+      // EL ALUMBRADO. Por tile como los árboles y no global como los rótulos:
+      // son miles, y una lista global las cargaría todas para dibujar las doce
+      // que se ven — que es justo lo que el streaming existe para no hacer.
+      lamps: raw.lamps || [],
       medians: raw.medians || [], plazas: raw.plazas || [],
       islands: raw.islands || [],
     };
@@ -487,6 +491,21 @@ export const WORLD2D = (function () {
   // A check that sweeps the estero asking "is this buoy on water?" gets a yes
   // for every tile it has not waited for, and passes while half the marks stand
   // in the mangrove. This is the honest question, so such a check can wait.
+  /** Las lámparas cuyo pozo puede alcanzar la vista, ya culadas por tile. El
+   *  margen es el alcance del pozo: una lámpara fuera de cuadro sigue
+   *  alumbrando dentro de él. */
+  function lampsIn(view, pad = 0) {
+    const out = [];
+    for (const t of visibleTiles(view.x0 - pad, view.y0 - pad, view.x1 + pad, view.y1 + pad)) {
+      for (const lamp of t.lamps) {
+        if (lamp.x < view.x0 - pad || lamp.x > view.x1 + pad) continue;
+        if (lamp.y < view.y0 - pad || lamp.y > view.y1 + pad) continue;
+        out.push(lamp);
+      }
+    }
+    return out;
+  }
+
   function tileResident(x, y) {
     return decodedTile((x / TILE_PX) | 0, (y / TILE_PX) | 0) !== null;
   }
@@ -496,7 +515,7 @@ export const WORLD2D = (function () {
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
     WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, FERIA, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle
-    ready, update, ensureView, visibleTiles, loadTile, tileResident,
+    ready, update, ensureView, visibleTiles, loadTile, tileResident, lampsIn,
     // queries
     surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated, driveUnderAt,
     buildingsNear, districtAt, landmarkById, customerById, reachablePointNear,

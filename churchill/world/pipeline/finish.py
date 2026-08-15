@@ -375,7 +375,7 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
                  editor_features=ctx.editor_features,
                  editor_patch=ctx.editor_patch_meta, cuadras=ctx.cuadras,
                  surface_styles=ctx.surface_styles, editor_ui=ctx.editor_ui,
-                 editor_content=ctx.editor_content)
+                 editor_content=ctx.editor_content, lamps=ctx.lamps)
     render_debug(raster=ctx.raster, buildings=ctx.buildings,
                  landmarks=ctx.landmarks, customers=ctx.customers,
                  roads=ctx.roads, land_contours=land_polys, waters=ctx.waters,

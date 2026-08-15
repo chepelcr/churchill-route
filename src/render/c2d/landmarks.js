@@ -179,7 +179,11 @@ function standEdge(pts, side) {
 function drawStands(lm, spec) {
   const pts = lm.footprint;
   if (!pts || pts.length < 6) return;
-  const own = spec.byLandmark?.[lm.id];
+  // LA GRADERÍA VIENE CON EL ESTADIO. Estaba llaveada por hito en el registro
+  // de arte, o sea aparte del estadio a la que pertenece; ahora el mundo la
+  // emite sobre el landmark desde `content/world/blocks.json`. Lo que sigue
+  // acá es la RECETA — fondo, escalones, rake, roofFrom, paleta base.
+  const own = lm.stands;
   if (!own) return;                       // only the stadiums that have one
   const P = { ...spec.palette, ...(own.palette || {}) };
   const e = standEdge(pts, own.side);

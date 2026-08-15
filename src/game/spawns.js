@@ -533,8 +533,15 @@ function crowded(x, y, S, gap) {
 // HOW MANY a field holds. A cancha de barrio is 60 px across and Lito Pérez
 // 210: twelve people on the first is a scrum and on the second is empty. The
 // count comes from the room there actually is, at one person per FAN_GAP box.
-function crowdSize(S) {
-  return npcCrowdSize("fan", (S.x1 - S.x0) * (S.y1 - S.y0));
+//: QUIÉN ESTÁ EN ESTA CANCHA, cuando el mundo no lo dice. Antes `"fan"` estaba
+//: escrito cuatro veces acá, así que TODA cancha del mundo recibía la misma
+//: multitud y no había forma de quitársela a una. Ahora el bloque lo autora en
+//: `content/world/blocks.json`; esto es sólo lo que pasa si no dijo nada.
+const DEFAULT_CROWD = [{ type: "fan" }];
+const fieldCrowd = (S) => (Array.isArray(S.crowd) ? S.crowd : DEFAULT_CROWD);
+function crowdSize(S, type = "fan", want) {
+  // `count` de la instancia gana: una mascota es UNA, no una densidad.
+  return want ?? npcCrowdSize(type, (S.x1 - S.x0) * (S.y1 - S.y0));
 }
 // Wander inside the field, turning back at the edge instead of leaving it. The
 // turn-back happens at FIELD_INSET, not at the outline, so a fan never walks
@@ -569,23 +576,28 @@ function maintainStadiumPeds() {
   for (const S of arr) {
     if (Math.hypot(S.cx - _cam.x, S.cy - _cam.y) > SPAWN_R + 400) continue;
     if (!S.footprint || S.footprint.length < 6) continue;
-    let n = 0;
-    for (const pe of pedestrians) if (pe.stadium === S) n++;
-    const want = crowdSize(S);
-    let guard = 0;
-    while (n < want && guard++ < want * 3) {
-      // real position NOW, or far() culls it before it is ever placed
-      const q = fieldPoint(S);
-      // the inset a fan RESPECTS is the one it actually spawned at — on a
-      // small pitch fieldPoint falls back to a shallower one, and holding it
-      // to FIELD_INSET afterwards would freeze it on the spot
-      const inset = Math.min(FIELD_INSET, distToPoly(q.x, q.y, S.footprint));
-      pedestrians.push({
-        x: q.x, y: q.y, ang: Math.random() * Math.PI * 2, v: npcSpeed("fan"),
-        hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
-        stadium: S, field: true, inset, kind: "fan",
-      });
-      n++;
+    // Una lista vacía significa SIN GENTE — borrarle la multitud a esta plaza
+    // es una fila del JSON, no una rama acá.
+    for (const entry of fieldCrowd(S)) {
+      const type = entry.type;
+      let n = 0;
+      for (const pe of pedestrians) if (pe.stadium === S && pe.kind === type) n++;
+      const want = crowdSize(S, type, entry.count);
+      let guard = 0;
+      while (n < want && guard++ < want * 3) {
+        // real position NOW, or far() culls it before it is ever placed
+        const q = fieldPoint(S);
+        // the inset a fan RESPECTS is the one it actually spawned at — on a
+        // small pitch fieldPoint falls back to a shallower one, and holding it
+        // to FIELD_INSET afterwards would freeze it on the spot
+        const inset = Math.min(FIELD_INSET, distToPoly(q.x, q.y, S.footprint));
+        pedestrians.push({
+          x: q.x, y: q.y, ang: Math.random() * Math.PI * 2, v: npcSpeed(type),
+          hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
+          stadium: S, field: true, inset, kind: type,
+        });
+        n++;
+      }
     }
   }
 }

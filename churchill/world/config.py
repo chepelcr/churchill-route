@@ -427,6 +427,18 @@ FARO_ESP_MAX_CELLS = round(W["faro"]["esplanadeMaxM2"] * PLANAR_PX_PER_M ** 2 / 
 # spit. What the yellow stripe actually was is in `world.faro.kerbLinkNote`.
 FARO_ESP_KERB_LINK_M = W["faro"]["kerbLinkM"]
 
+# ---- el alumbrado público ---------------------------------------------------
+# LAS LÁMPARAS VAN POR TILE, como los árboles y no como los rótulos: son miles.
+# El espaciado va en METROS (`world-units.json` -> `lighting`) y las clases de
+# vía que se alumbran son las que un jugador maneja de verdad — un sendero o una
+# escalera no llevan poste, y sumarlos multiplicaría la cuenta por nada.
+LAMP_SPACING_M = W["lighting"]["lampSpacingM"]
+LAMP_POOL_R_M = W["lighting"]["poolRadiusM"]
+LAMP_ROAD_CLASSES = frozenset({
+    "trunk", "trunk_link", "primary", "primary_link", "secondary",
+    "tertiary", "tertiary_link", "residential", "unclassified", "paseo",
+})
+
 PASEO_TURISTAS = "paseo de los turistas"
 # THE TWO PASEOS ARE ONE WATERFRONT. Turistas runs the spit from the faro to
 # x≈19099 and León Cortés Castro picks up at that exact point and carries on

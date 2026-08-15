@@ -10,7 +10,8 @@
   "parcel": {
     "_note": "Ground fill per ParcelUse — `PARCEL_FILL` in c2d/streets.js and the editor's own parcel palette, which is exactly the pair that drifted before (`market` was live in the manifest and missing from the editor's list).",
     "_key": "churchill/world/enums/features.py :: ParcelUse",
-    "plaza": "#4f9d5b",
+    "plaza": "#7fa87a",
+    "_plaza": "UNA PLAZA DE BARRIO NO ES UN ESTADIO. `ParcelUse.PLAZA` existía con CERO usuarios y llevaba el mismo hex que `stadium`, así que Plaza Las Playitas y Plaza Deportes El Carmen se dibujaban idénticas al Estadio Lito Pérez. Un verde más gris y más seco: una plaza es césped pisado y polvo, no una cancha regada.",
     "stadium": "#4f9d5b",
     "garden": "#5ba362",
     "park": "#5ba362",

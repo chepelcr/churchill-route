@@ -31,12 +31,14 @@ cayeron están al final, listadas en vez de borradas en silencio.
       UN paso y a 30 fps el carro avanza 11,7 px por cuadro contra una sonda de
       ~7,6 px.
 
-- [ ] **La graderÍa: los otros tres lados.** El asset existe y dibuja
+- [ ] **La graderÍa: los otros tres lados.** *(Su colocación ya es data —
+      `blocks.json` → el bloque del estadio. Falta que `side` acepte una LISTA.)* El asset existe y dibuja
       (2026-08-14, lado oeste de los dos estadios). Falta decir dónde va en cada
       caso —de qué lado y con cuántos escalones— y si las plazas llevan el mismo
       asset a menor escala o uno propio.
 
-- [ ] **Las torres de luz, más allá de los dos estadios.** Dibujan desde el
+- [ ] **Las torres de luz, más allá de los dos estadios.** *(Ya vienen con el
+      estadio en `blocks.json`.)* Dibujan desde el
       2026-08-14, cuatro por cancha en las esquinas del `footprint`, y son una
       fila de `world-props.json` → `scenes.stadium.towers.byLandmark`. La
       pregunta abierta es la misma que la de la gradería y conviene contestarla

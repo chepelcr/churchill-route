@@ -210,20 +210,24 @@ class FieldTowerTests(unittest.TestCase):
 
     def setUp(self):
         self.props = json.loads(read(PROPS_JSON))
+        from churchill.world.content import blocks_by_layout
         self.towers = self.props["scenes"]["stadium"]["towers"]
+        self.own = {b["id"]: b["towers"] for b in blocks_by_layout("streets-quad")
+                    if b.get("towers")}
         self.lights = json.loads(read(LIGHTS_JSON))["types"]
 
     def test_the_tower_names_a_light_type_that_exists(self):
         kinds = {self.towers["type"]}
-        kinds |= {own["type"] for own in self.towers["byLandmark"].values() if "type" in own}
+        kinds |= {own["type"] for own in self.own.values() if "type" in own}
         for kind in kinds:
             self.assertIn(kind, self.lights, f"towers name a light type nobody designed: {kind}")
 
     def test_both_stadiums_get_towers(self):
         """The same two the gradería covers — a lit stand and an unlit pitch
         beside it would read as two different places."""
-        stands = self.props["scenes"]["stadium"]["stands"]["byLandmark"]
-        self.assertEqual(set(self.towers["byLandmark"]), set(stands))
+        from churchill.world.content import blocks_by_layout
+        stands = {b["id"] for b in blocks_by_layout("streets-quad") if b.get("stands")}
+        self.assertEqual(set(self.own), stands)
 
     def test_the_corner_is_the_polygons_and_not_the_bboxs(self):
         """A cuadra here is not square to the screen (the avenidas run -5.4° and

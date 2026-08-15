@@ -211,7 +211,9 @@ function paintParcels(view) {
     // diagonal manzana reads as one direct edge instead of 4 px stair steps.
     const hasPolys = P.polys && P.polys.length;
     const path = P._path || (P._path = hasPolys ? flatMultiPath(P.polys) : flatPath(P.poly, true));
-    ctx.fillStyle = PARCEL_FILL[P.use] || ST.parcel.fallback;
+    // EL COLOR DE ESTA PARCELA, y sólo si no, el de su `use`. 193 parques
+    // compartían una perilla: no había forma de darle a UN parque su verde.
+    ctx.fillStyle = P.groundColor || PARCEL_FILL[P.use] || ST.parcel.fallback;
     ctx.lineJoin = "miter";
     if (!hasPolys) {
       ctx.lineWidth = 8;
@@ -223,7 +225,7 @@ function paintParcels(view) {
     // square pitch on a slanted block.
     if (P.use === "plaza" || P.use === "stadium") { paintField(path, fieldFrame(P), P.sport); continue; }
     if (P.use === "boulevard") { paintStone(path, P); continue; }
-    ctx.strokeStyle = ST.parcel.kerb; ctx.lineWidth = 2; ctx.stroke(path); // curb
+    ctx.strokeStyle = P.kerbColor || ST.parcel.kerb; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }
 }
 

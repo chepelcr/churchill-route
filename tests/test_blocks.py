@@ -214,3 +214,175 @@ class WholeCuadraTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StadiumIsOneRecordTests(unittest.TestCase):
+    """LA GRADERÍA Y LAS TORRES VIENEN CON EL ESTADIO.
+
+    Vivían en `world-props.json` llaveadas por hito
+    (`scenes.stadium.stands.byLandmark`), o sea aparte del estadio al que
+    pertenecen. Y eso cerró además una mentira vieja: CLAUDE.md, el ROADMAP y
+    `water.json` describían graderías dibujadas «cuando `lm.stands`» — el build
+    no emitía `stands`, nadie lo leía, y `drawStadium` eran once líneas.
+    """
+
+    def setUp(self):
+        self.quads = content.blocks_by_layout("streets-quad")
+
+    def test_the_placement_left_the_art_registry(self):
+        props = json.loads(read(os.path.join(ROOT, "src", "assets", "world-props.json")))
+        stadium = props["scenes"]["stadium"]
+        for key in ("stands", "towers"):
+            self.assertNotIn("byLandmark", stadium[key],
+                             f"{key} still keys placement by landmark in the art registry")
+
+    def test_the_recipe_stayed_in_the_art_registry(self):
+        """El corte: el mundo dice CUÁL estadio lleva gradería y de qué colores;
+        el registro de arte dice QUÉ ES una gradería. Es el mismo corte que
+        `surfaces.json` y `lights.json` hacen entre identidad y propiedades."""
+        props = json.loads(read(os.path.join(ROOT, "src", "assets", "world-props.json")))
+        stands = props["scenes"]["stadium"]["stands"]
+        for key in ("depth", "tiers", "rake", "roofFrom", "palette"):
+            self.assertIn(key, stands, f"the recipe lost {key}")
+
+    def test_each_stadium_carries_its_own(self):
+        with_stands = {b["id"] for b in self.quads if b.get("stands")}
+        with_towers = {b["id"] for b in self.quads if b.get("towers")}
+        self.assertEqual(with_stands, {"estadio", "estadio_playitas"})
+        self.assertEqual(with_towers, with_stands)
+
+    def test_a_stand_names_a_real_side(self):
+        for block in self.quads:
+            if not block.get("stands"):
+                continue
+            with self.subTest(block=block["id"]):
+                self.assertIn(block["stands"]["side"], {"north", "south", "east", "west"})
+
+
+class CrowdTests(unittest.TestCase):
+    """QUIÉN ESTÁ EN ESTA CANCHA.
+
+    `maintainStadiumPeds` tenía `"fan"` escrito cuatro veces, así que TODA
+    cancha del mundo recibía la misma multitud y no había forma de quitársela a
+    una. Y el registro ya ofrecía más de lo que el código leía: `supporter` y
+    `mascot` estaban definidos, hospedaban `parcel:stadium` y `parcel:plaza`, y
+    no se generaban nunca.
+    """
+
+    def setUp(self):
+        with open(os.path.join(ROOT, "src", "game", "npcTypes.json"), encoding="utf-8") as fh:
+            self.types = {t["id"]: t for t in json.load(fh)["types"]}
+
+    def _crowds(self):
+        for block in content.BLOCKS:
+            if block.get("crowd") is not None:
+                yield block["id"], block["crowd"], block
+            for part in block.get("parts", []):
+                if part.get("crowd") is not None:
+                    yield part["id"], part["crowd"], block
+
+    def test_every_crowd_names_a_type_that_exists(self):
+        for owner, crowd, _ in self._crowds():
+            for entry in crowd:
+                with self.subTest(owner=owner, type=entry["type"]):
+                    self.assertIn(entry["type"], self.types)
+
+    def test_every_crowd_type_may_actually_stand_there(self):
+        """El fallo NO es ruidoso: un tipo que no puede pararse en esa parcela no
+        da error, simplemente no aparece nadie."""
+        for owner, crowd, block in self._crowds():
+            use = block.get("use", "stadium")
+            for entry in crowd:
+                hosts = self.types[entry["type"]]["hosts"]
+                with self.subTest(owner=owner, type=entry["type"]):
+                    self.assertIn(f"parcel:{use}", hosts,
+                                  f"{entry['type']} does not host parcel:{use} — "
+                                  f"it would simply never appear")
+
+    def test_the_dead_registry_entries_are_alive_now(self):
+        """`supporter` y `mascot` existían y no se generaban nunca — la misma
+        forma de deriva que los cuatro alfas muertos de `lightPalette` y que
+        `ParcelUse.PLAZA` con cero usuarios."""
+        used = {e["type"] for _, crowd, _ in self._crowds() for e in crowd}
+        self.assertIn("supporter", used)
+        self.assertIn("mascot", used)
+
+
+class PlazaIdentityTests(unittest.TestCase):
+    def test_plaza_is_no_longer_an_unused_member(self):
+        """`ParcelUse.PLAZA` existía con CERO parcelas usándolo, y
+        `materials.json` le daba el MISMO hex que a `stadium` — así que Plaza
+        Las Playitas se dibujaba idéntica al Estadio Lito Pérez."""
+        uses = {b.get("use") for b in content.BLOCKS}
+        uses |= {p.get("use") for b in content.BLOCKS for p in b.get("parts", [])}
+        self.assertIn("plaza", uses, "nothing uses ParcelUse.PLAZA")
+
+    def test_a_plaza_no_longer_looks_like_a_stadium(self):
+        mats = json.loads(read(os.path.join(ROOT, "src", "assets", "materials.json")))
+        self.assertNotEqual(mats["parcel"]["plaza"], mats["parcel"]["stadium"],
+                            "a barrio plaza still paints as a stadium")
+
+
+class ManzanaStyleTests(unittest.TestCase):
+    """EL SUELO DE UNA MANZANA, autorado — y direccionado por GEO."""
+
+    def setUp(self):
+        self.raw = json.loads(read(BLOCKS_JSON))
+
+    def test_a_manzana_is_addressed_by_geo_and_never_by_id(self):
+        """El id de una cuadra es `"cuadra_" + hash(contorno)` y su nombre es
+        posicional: un edificio nuevo o un reescalado lo cambian y el override
+        se despega EN SILENCIO."""
+        for style in self.raw["manzanas"]:
+            with self.subTest(style=style.get("name")):
+                self.assertIn("at", style)
+                self.assertNotIn("id", style)
+                self.assertNotIn("cuadra", style)
+                lat, lon = style["at"]
+                self.assertTrue(9.8 < lat < 10.1 and -84.95 < lon < -84.6)
+
+    def test_a_missing_anchor_fails_the_build_rather_than_warning(self):
+        src = read(os.path.join(ROOT, "churchill", "world", "service", "manzana_style.py"))
+        self.assertIn("ctx.failures.append", src)
+        self.assertNotIn("warn(", src.replace("from ..logging import log, warn", ""))
+
+    def test_the_emitted_record_is_the_shape_the_painter_reads(self):
+        """`drawSurfaceStyleGround` existe desde que hay editor y llega VACÍO al
+        mundo publicado. Esto lo llena, y sólo sirve si la forma coincide."""
+        src = read(os.path.join(ROOT, "churchill", "world", "service", "manzana_style.py"))
+        for field_name in ("groundColor", "aceraColor", "aceraWidthCells",
+                           "groundPreset", "surfaceClass", "pts"):
+            self.assertIn(f'"{field_name}"', src)
+
+    def test_the_style_step_runs_before_verify(self):
+        """Un `surface` cambia la MANEJABILIDAD. Correr antes de `verify` es lo
+        que hace que una manzana convertida en muro falle la compuerta de red
+        en vez de dejar una entrega inalcanzable."""
+        runner = read(os.path.join(ROOT, "churchill", "world", "pipeline", "runner.py"))
+        self.assertLess(runner.index("apply_manzana_styles("), runner.index("verify(ctx"))
+
+
+class StreetLightTests(unittest.TestCase):
+    """EL ALUMBRADO PÚBLICO — y por qué va por tile."""
+
+    def test_the_spacing_is_metres(self):
+        from churchill.world.config import LAMP_POOL_R_M, LAMP_SPACING_M
+        self.assertGreater(LAMP_SPACING_M, 0)
+        # Un pozo más chico que medio vano deja la calle en islas; más grande
+        # que el vano funde todo y la noche vuelve a ser plana.
+        self.assertGreater(LAMP_POOL_R_M, LAMP_SPACING_M * 0.5)
+        self.assertLess(LAMP_POOL_R_M, LAMP_SPACING_M)
+
+    def test_lamps_are_emitted_per_tile_not_globally(self):
+        """Los rótulos son globales porque son ~470; las lámparas son miles. Una
+        lista global las cargaría todas para dibujar las que se ven."""
+        emit = read(os.path.join(ROOT, "churchill", "world", "pipeline", "emit.py"))
+        self.assertIn('add_point("lamps", lamps)', emit)
+
+    def test_a_lamp_record_is_tiny(self):
+        """Qué ES una lámpara ya lo dice `lights.json`; repetirlo por poste
+        multiplicaría el peso del mundo por nada."""
+        src = read(os.path.join(ROOT, "churchill", "world", "service", "streetlights.py"))
+        body = src.split('lamps.append({', 1)[1].split('})', 1)[0]
+        for banned in ("core", "halo", "radius", "parts"):
+            self.assertNotIn(banned, body, f"a lamp record carries {banned}")

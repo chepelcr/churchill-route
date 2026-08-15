@@ -28,7 +28,8 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
                  attractions=None, feria=None,
                  balneario=None, pois=None, parcels=None, ferries=None, signs=None,
                  editor_features=None, editor_patch=None, cuadras=None,
-                 surface_styles=None, editor_ui=None, editor_content=None):
+                 surface_styles=None, editor_ui=None, editor_content=None,
+                 lamps=()):
     """Chunked planar emit (Milestone D): tile the world into
     src/world2d/tiles/<tc>_<tr>.json (each = an RLE surface slab + the vector
     features overlapping that tile) plus a small src/world2d/manifest.json (world
@@ -73,6 +74,7 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
     add_point("trees", trees)
     add_point("palms", palms)
     add_point("mangroves", mangroves)
+    add_point("lamps", lamps)
     # plazas ([x,y,w,h,type] rects) stay global in the manifest: they are ground
     # colour, painted with the land base so parks are green before their tile
     # streams in. islands are {kind, pts:[[x,y],...]} pairs

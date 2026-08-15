@@ -113,7 +113,9 @@ const CORNERS = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
 export function drawFieldTowers(lm, spec) {
   const pts = lm.footprint;
   if (!pts || pts.length < 6 || !spec) return;
-  const own = spec.byLandmark?.[lm.id];
+  // …y las torres igual: el mundo dice cuál cancha las lleva, `lights.json`
+  // dice qué es una torre.
+  const own = lm.towers;
   if (!own) return;                        // only the fields that have them
   const type = own.type || spec.type;
   const inset = own.inset ?? spec.inset;

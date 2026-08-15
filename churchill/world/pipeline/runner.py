@@ -18,6 +18,7 @@ import time
 from ..config import (
     CLS_LAND, CUAD_CELLS, GRID_CELL, OSM_PATH, WORLD2D_DIR,
 )
+from ..content import MANZANA_STYLES
 from ..repository.osm_file import OsmFileRepository
 from ..repository.world_json import JsonWorldRepository
 from ..service.block import block_raster_cells, outline_poly
@@ -26,7 +27,10 @@ from ..service.editor_patch import (
     WorldPatchError, WorldPatchSession, build_cuadra_catalog,
 )
 from ..service.placement import block_containing, nearest_cell
+from ..service.manzana_style import apply_manzana_styles
+from ..service.streetlights import place_streetlights
 from ..service.street import StreetIndex
+from ..util.geometry import to_m
 from .build_stage import decorate, place_structures, seat_town_kiosks
 from .extract import extract_world
 from .finish import build_meta, verify, write_world
@@ -115,7 +119,16 @@ def main():
     ctx.mangroves, ctx.medians = mangroves, medians
     ctx.bridge, ctx.estuary, ctx.balneario = bridge, est, balneario
     ctx.failures = failures
+    # EL ALUMBRADO PÚBLICO, sobre la red de calles ya terminada.
+    ctx.lamps = place_streetlights(ctx.roads)
     ctx.cuadras = build_cuadra_catalog(ctx.raster, blocks)
+    # EL SUELO AUTORADO DE UNA MANZANA. Va DESPUÉS del catálogo (necesita los
+    # contornos para resolver un punto geo a su cuadra) y ANTES de `verify`,
+    # para que una manzana convertida en muro haga fallar la compuerta de red
+    # manejable en vez de dejar una entrega inalcanzable.
+    apply_manzana_styles(
+        ctx, MANZANA_STYLES,
+        lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2])
     if editor_patch:
         try:
             editor_patch.apply_final(ctx)

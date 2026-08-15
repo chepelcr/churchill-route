@@ -1887,26 +1887,6 @@
           "row": "rgba(0,0,0,0.16)"
         },
         "_palette": "The default is bare concrete, which is what an unnamed cancha has. A stadium with painted seats overrides the two tier colours below — and they alternate, because a real grandstand's seats are laid in blocks.",
-        "byLandmark": {
-          "estadio": {
-            "side": "west",
-            "note": "Estadio Lito Pérez — naranja, los colores del Puntarenas F.C.",
-            "palette": {
-              "tierA": "#e8792b",
-              "tierB": "#b8541a",
-              "structure": "#5a3a20"
-            }
-          },
-          "estadio_playitas": {
-            "side": "west",
-            "note": "Plaza Las Playitas — blanco y azul.",
-            "palette": {
-              "tierA": "#f1f4f7",
-              "tierB": "#2f6fb8",
-              "structure": "#24476e"
-            }
-          }
-        },
         "roofFrom": 0.45,
         "roofFromNote": "where the roofed part starts, as a fraction of the depth. The two tones are split by DEPTH, not striped — front rows in the open, back rows in shade. Alternating whole tiers and ruling a row line every few px both read as a BARCODE at play zoom; each was tried."
       },
@@ -1915,12 +1895,8 @@
         "_corners": "Una en cada esquina de la cancha, que es donde se paran de verdad — nunca a media línea de banda, porque ahí el mástil estorba al juego y a la gradería. La esquina se resuelve contra el POLÍGONO (el vértice más lejano en cada diagonal), no contra su bbox: en una manzana torcida la esquina del bbox cae fuera de la cancha.",
         "type": "stadium",
         "inset": 14,
-        "insetNote": "px hacia adentro desde el vértice. Suficiente para que la base quede en el césped y no en la calle.",
-        "byLandmark": {
-          "estadio": { "note": "Estadio Lito Pérez." },
-          "estadio_playitas": { "note": "Plaza Las Playitas.", "inset": 10, "radius": 74, "radiusNote": "cancha más chica, halo más chico — si no, los cuatro halos se funden en uno solo y la plaza entera queda blanca." }
+        "insetNote": "px hacia adentro desde el vértice. Suficiente para que la base quede en el césped y no en la calle."
         }
-      }
     },
     "marinePark": {
       "note": "Parque Marino — its green is the cuadra's RESIDUAL after every other lot takes its space, filled multi-ring even-odd. Only the pill is here.",

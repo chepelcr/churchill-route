@@ -17,6 +17,7 @@
     "smoke:crossing": "node tools/smoke_crossing.mjs",
     "smoke:theme": "node tools/smoke-theme.mjs",
     "smoke:sponsor": "node tools/smoke-sponsor.mjs",
+    "smoke:night": "node tools/smoke-night.mjs",
     "audio:render": "node tools/render-audio.mjs"
   },
   "dependencies": {

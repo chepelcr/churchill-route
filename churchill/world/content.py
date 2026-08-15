@@ -120,6 +120,11 @@ APRON_DEFS = _pi["aprons"]
 #: parametriza. Eran literales de Python dentro de `pipeline/build_stage.py`.
 BLOCKS = _bl["blocks"]
 
+#: El estilo de suelo de una manzana DERIVADA, direccionado por punto geo, y el
+#: de una parcela, por id. Ver `_manzanas` en el archivo para el porqué del geo.
+MANZANA_STYLES = _bl["manzanas"]
+PARCEL_STYLES = _bl["parcels"]
+
 
 def blocks_by_layout(layout):
     """Los bloques de una estrategia, EN EL ORDEN DEL ARCHIVO.

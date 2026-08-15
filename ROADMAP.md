@@ -609,6 +609,35 @@ motor la física, el intérprete y las transiciones de estado.
       simplemente nunca se llenaría, sin error en ningún lado) y avisa si
       alguien commitea un id de GA4 — analytics sale APAGADO.
 
+- [ ] **LAS LUCES SE COLOCAN PERO NO SE DISEÑAN** (medido 2026-08-14, a pedido).
+      La POSICIÓN de una luz ya es editable —son `editorFeatures`, se autoran en
+      el editor y llegan por el manifest— pero su DISEÑO no existe como data:
+      `lightPalette()` en `c2d/editorWorld.js` es un if/else de cuatro ramas con
+      los colores escritos a mano (`led`, `stadium`, `amber`, `warm`), y la
+      geometría —alto del mástil, tamaño de la cabeza, radio del halo— son
+      ternarios sobre `type === "stadium"` incrustados en el dibujo.
+
+      O sea: se puede poner una luz donde uno quiera y no se puede diseñar una
+      quinta. Es exactamente el patrón cerrado seis veces ya: `lights.json` con
+      un `LightType` generado, y el pintor en el motor.
+
+      **Y la torre de estadio de verdad no está.** Hoy una luz `stadium` es un
+      mástil de 18 px con una cabeza de 10×4. Una torre de cancha son cuatro
+      focos en una cruceta a treinta metros, y eso es un ASSET, no un ternario.
+- [ ] **LAS GRADERÍAS NO EXISTEN, y tres documentos dicen que sí.** Medido
+      2026-08-14: `CLAUDE.md` y este roadmap describen "graderías desde la acera
+      real" —una banda de dos tonos trazada sobre el anillo de acera de la
+      manzana cuando `lm.stands`— y **nada de eso corre**. El build no emite
+      `stands` (los dos estadios lo tienen en `None`), ningún módulo lee
+      `.stands`, y `drawStadium` quedó en once líneas que dibujan la etiqueta y
+      poco más. `water.json` encima le adjudica las gradas al backend de Pixi,
+      donde `_MIGRATED` está vacío.
+
+      Lo que se pidió es lo correcto: **una gradería como ASSET reutilizable**,
+      para estadios Y plazas, con su entrada propia en el catálogo de formas. El
+      contorno de la manzana ya existe (`footprint`); falta que el usuario diga
+      de qué lado va la tribuna y cuántos escalones tiene.
+
 **Fuera de alcance, decidido**: la estructura JSX de las pantallas a un esquema
 de slots. Cambiar React legible por un lenguaje de layout casero es un mal
 negocio, y el propio §12 duda de esa fila.

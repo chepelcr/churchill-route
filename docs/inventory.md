@@ -1266,18 +1266,33 @@ colour constants still in the module; `dispatch` is `=== "literal"` / `case
 
 | module | lines | colours | dispatch | what is left |
 |---|---:|---:|---:|---|
-| `c2d/entities.js` | 806 | **117** | 18 | **the biggest remaining family.** 26 drawers: peds, playeros, jugadores, swimmers, passengers, fishers, muelleros, traffic, trains, gulls, boats, schools, vendors, animals, coins. The vehicle half is data; the crowd is not |
-| `c2d/estero.js` | 523 | **53** | 10 | the eight encounters. `EsteroEncounterKind` now names them, so the dispatch is typed — the ART is not |
-| `c2d/attractions.js` | 581 | 46 | 0 | the rides are `feriaAssets.json`; the campo, the bulb ropes and the DJ's light are not |
-| `c2d/structures.js` | 319 | 44 | 3 | the five pier recipes are `materials.json`; the Mata bridge and the ferry hull are not |
-| `c2d/hud.js` | 732 | 39 | 5 | the minimap, compass and POI tags moved; the crossing HUD and the tide bar did not |
-| `c2d/streets.js` | 708 | 36 | 10 | signs and the parcel dispatch are data; the roadway's own marks are not |
-| `c2d/malecon.js` | 131 | 32 | 1 | the promenade band per weather — a pure palette, and the cheapest row left |
-| `c2d/editorWorld.js` | 90 | 7 | 8 | the authored-feature furniture. **The lights left** (`lights.json`, 2026-08-14): 17 colours → 7, 15 branches → 8 |
-| `c2d/lights.js` | 128 | 0 | 0 | the new painter — clamps, the night test and the gradient, which is not a shape |
+| `c2d/entities.js` | 806 | **0** | 18 | **done 2026-08-14** — `src/assets/actors.json`. 117 → 0. The join was already there: `npcTypes.json`'s `art` field |
+| `c2d/estero.js` | 523 | **0** | 10 | done — `materials.json` → `estero`. The lateral mark (red to port, green to starboard) stopped being five `b.red ?` ternaries |
+| `c2d/attractions.js` | 581 | **0** | 0 | done — `feriaAssets.json` → `$defaults` + `$chrome`. A DIFFERENT case: the rides were already data, so what was left were the ENGINE's fallbacks |
+| `c2d/structures.js` | 319 | **0** | 3 | done — `materials.json` → `structure`. The Mata bridge and the ferry hull, the last two big world pieces |
+| `c2d/hud.js` | 732 | **0** | 5 | done — `hud.json` → `palette`. The crossing card and the tide bar |
+| `c2d/streets.js` | 708 | **0** | 10 | done — `materials.json` → `streets`. `paintRoads` stays code (derived geometry) |
+| `c2d/malecon.js` | 131 | **0** | 1 | done — `materials.json` → `malecon` |
+| `c2d/editorWorld.js` | 90 | 7 | 8 | the lights left (`lights.json`); the authored-feature furniture stays |
+| `c2d/lights.js` | 128 | 0 | 0 | the new painter — clamps, the night test and the gradient |
 | `c2d/landmarks.js` | 745 | 6 | 10 | done — the six are inside `drawFaroScene`/`drawPool`, whose geometry is control flow |
 | `c2d/ground.js`, `flora.js` | 763 | 9 | 3 | done — they read the registries |
 | `c2d/water.js`, `shapes.js`, `canvas2d.js`, `gfx.js` | 1 354 | **0** | 18 | the compositor, the interpreter and the sea. These must stay code |
+
+**ALL EIGHT FAMILIES CLOSED, 2026-08-14.** The renderer holds **23** colour
+literals in total, every one of them inside a drawing recipe with geometry of
+its own — `drawFaroScene`, `drawPool`, the planting scatter — which is the list
+§12 names as what does NOT get converted: each derives its own size, pavilion
+count or scatter FROM the parcel, and expressing that would be arithmetic in
+JSON.
+
+Two things the sweep found that were worth more than the migration itself:
+
+- **`materials.street.majorDash` and `.minorDash` already existed**, holding
+  exactly the values `paintRoads` spelled out two lines below. A live duplicate:
+  editing the registry moved every dash in the game EXCEPT the ones on the road.
+- **Four dead alphas in `lightPalette`** (see the lights note above), and the
+  same shape of bug: a knob that looks adjustable and is not.
 
 Game side, for completeness: `crossing.js` 11, `spawns.js` 10 (the car
 palette), `delivery.js` 7, `physics.js` 6. The UI's remaining 23 are inside

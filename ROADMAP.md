@@ -48,22 +48,17 @@ cayeron están al final, listadas en vez de borradas en silencio.
 
 ## 2. El arte que todavía es código
 
-`docs/inventory.md` §14 tiene la medición completa. Siete familias, por tamaño
-—las luces salieron el 2026-08-14—. Los dos núcleos que **nunca** deben salir de
-código —el compositor y el intérprete de formas— siguen en cero literales.
+`docs/inventory.md` §14 tenía la medición completa: ocho familias, ~420
+literales de color. **Las ocho cerraron el 2026-08-14** y la fila que sigue
+abierta es otra cosa.
 
-- [ ] **El arte de la gente y el tráfico** (`c2d/entities.js`, 117 colores, 26
-      dibujantes). La mitad del vehículo ya es data; la multitud no.
-- [ ] **Los ocho encuentros del estero** (`c2d/estero.js`, 53). El despacho ya
-      está tipado (`EsteroEncounterKind`); el arte no.
-- [ ] **El campo ferial** (`c2d/attractions.js`, 46) — los juegos son data; el
-      campo, las guirnaldas y la luz del DJ no.
-- [ ] **El puente de Mata y el casco del ferry** (`c2d/structures.js`, 44) —
-      las cinco recetas de muelle ya son data.
-- [ ] **El HUD de la travesía y la barra de marea** (`c2d/hud.js`, 39).
-- [ ] **Las marcas de la calzada** (`c2d/streets.js`, 36).
-- [ ] **La banda del malecón por clima** (`c2d/malecon.js`, 32) — pura paleta,
-      la fila más barata que queda.
+Lo que queda en `src/render/c2d/` son **23 literales**, todos dentro de recetas
+de dibujo con geometría propia —`drawFaroScene`, `drawPool`, la siembra— que
+§12 nombra explícitamente como lo que NO se convierte: cada una deriva su
+tamaño, su conteo de pabellones o su dispersión DESDE la parcela, y expresarlo
+sería aritmética en JSON. **Y los dos núcleos siguen en cero**, que es el número
+que importa: el compositor y el intérprete de formas no adquirieron un literal
+en toda la migración.
 
 - [ ] **Las líneas de siembra, la otra mitad.** El esquema `form` × `align`
       (circular / triangular / cuadrada / libre × horizontal / vertical / libre

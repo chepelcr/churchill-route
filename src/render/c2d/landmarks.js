@@ -133,6 +133,116 @@ function drawGreenSpace(lm, w, h, opts = {}) {
 // paintStadiumCuadras in ./streets.js: it's a colour choice on ground that
 // already exists, not a structure stacked on a later layer. Drawing it here is
 // what used to bury the street name pills under the block.
+/**
+ * LA GRADERÍA — fitted to one EDGE of the stadium's own traced footprint.
+ *
+ * The side is named (`west`) and resolved against the polygon, never against
+ * the screen: a cuadra here is not square to the viewport and not even square
+ * to itself — by El Carmen the avenidas run at -5.4° and the calles at 82.3° —
+ * so "the west side" has to mean an edge, and a `strokeRect` off the bbox would
+ * put a straight stand on a slanted block. Same rule `P.ang` follows for
+ * everything else drawn on a parcel.
+ *
+ * It is built OUTWARD from that edge onto the cuadra's acera ring, because that
+ * grey band IS a whole-cuadra stadium's sidewalk and it is where a stand
+ * physically goes.
+ */
+function standEdge(pts, side) {
+  // pts is a flat [x,y,…] ring. Pick the edge whose midpoint is furthest in the
+  // named direction — the polygon's own answer, not the bounding box's.
+  const n = pts.length / 2;
+  let cx = 0, cy = 0;
+  for (let i = 0; i < n; i++) { cx += pts[i * 2]; cy += pts[i * 2 + 1]; }
+  cx /= n; cy /= n;
+  const score = {
+    west: (mx) => -mx, east: (mx) => mx,
+    north: (mx, my) => -my, south: (mx, my) => my,
+  }[side] || ((mx) => -mx);
+  let best = null;
+  for (let i = 0; i < n; i++) {
+    const ax = pts[i * 2], ay = pts[i * 2 + 1];
+    const bx = pts[((i + 1) % n) * 2], by = pts[((i + 1) % n) * 2 + 1];
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    const s = score(mx, my);
+    if (!best || s > best.s) best = { s, ax, ay, bx, by, mx, my };
+  }
+  // The outward normal is the one pointing AWAY from the centre; picking the
+  // wrong one builds the stand across the pitch.
+  const dx = best.bx - best.ax, dy = best.by - best.ay;
+  const len = Math.hypot(dx, dy) || 1;
+  let nx = -dy / len, ny = dx / len;
+  if ((best.mx - cx) * nx + (best.my - cy) * ny < 0) { nx = -nx; ny = -ny; }
+  return { ...best, nx, ny, len };
+}
+
+function drawStands(lm, spec) {
+  const pts = lm.footprint;
+  if (!pts || pts.length < 6) return;
+  const own = spec.byLandmark?.[lm.id];
+  if (!own) return;                       // only the stadiums that have one
+  const P = { ...spec.palette, ...(own.palette || {}) };
+  const e = standEdge(pts, own.side);
+  const D = spec.depth;
+  const ux = (e.bx - e.ax) / e.len, uy = (e.by - e.ay) / e.len;
+  // The back is narrower than the front — a bank seen from above is a
+  // trapezoid, and that taper is what says "raked seating" rather than "a
+  // painted rectangle beside the pitch". Alternating the whole tiers at full
+  // saturation instead reads as a barcode; it was tried.
+  const cut = spec.rake * D;
+  const front = (t) => [e.ax + ux * 0 + e.nx * t, e.ay + uy * 0 + e.ny * t];
+  const quad = (t0, t1, c0, c1) => {
+    ctx.beginPath();
+    ctx.moveTo(e.ax + ux * c0 + e.nx * t0, e.ay + uy * c0 + e.ny * t0);
+    ctx.lineTo(e.bx - ux * c0 + e.nx * t0, e.by - uy * c0 + e.ny * t0);
+    ctx.lineTo(e.bx - ux * c1 + e.nx * t1, e.by - uy * c1 + e.ny * t1);
+    ctx.lineTo(e.ax + ux * c1 + e.nx * t1, e.ay + uy * c1 + e.ny * t1);
+    ctx.closePath();
+  };
+
+  ctx.save();
+  // the shadow it throws back onto the pitch
+  ctx.fillStyle = P.shadow;
+  quad(-3, 0, 0, 0); ctx.fill();
+
+  // THE SEATING BLOCK. Two tones, split by DEPTH rather than striped: the front
+  // rows are in the open and the back ones are under the roof, which is what
+  // you actually see of a grandstand from above. Alternating whole tiers, or
+  // ruling a row line every few pixels, both read as a barcode at play zoom —
+  // each was tried and each is why this is written down.
+  ctx.fillStyle = P.tierA;
+  quad(0, D, 0, cut); ctx.fill();
+  ctx.fillStyle = P.tierB;
+  quad(D * spec.roofFrom, D, cut * spec.roofFrom, cut); ctx.fill();
+
+  // …and the rows, barely: one hairline per tier at low contrast, so the
+  // texture is there when you drive past and never competes with the pitch.
+  ctx.save();
+  quad(0, D, 0, cut); ctx.clip();
+  ctx.strokeStyle = P.row;
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= spec.tiers; i++) {
+    const t = (D * i) / (spec.tiers + 1);
+    const c = (cut * i) / (spec.tiers + 1);
+    ctx.beginPath();
+    ctx.moveTo(e.ax + ux * c + e.nx * t, e.ay + uy * c + e.ny * t);
+    ctx.lineTo(e.bx - ux * c + e.nx * t, e.by - uy * c + e.ny * t);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // the back wall — the tallest thing, so it takes the structure colour
+  ctx.strokeStyle = P.structure;
+  ctx.lineWidth = Math.max(2, D * 0.14);
+  ctx.beginPath();
+  ctx.moveTo(e.ax + ux * cut + e.nx * D, e.ay + uy * cut + e.ny * D);
+  ctx.lineTo(e.bx - ux * cut + e.nx * D, e.by - uy * cut + e.ny * D);
+  ctx.stroke();
+  // and the rail along the pitch
+  ctx.strokeStyle = P.rail; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(e.ax, e.ay); ctx.lineTo(e.bx, e.by); ctx.stroke();
+  ctx.restore();
+}
+
 function drawStadium(lm) {
   const C = PROPS.scenes.stadium.palette;
   const pts = lm.footprint;
@@ -142,6 +252,9 @@ function drawStadium(lm) {
     areaLabel(lm.x - w / 2, lm.y - h / 2, lm.x + w / 2, lm.y + h / 2, "ESTADIO", C.pillFg, C.pillBg);
     return;
   }
+  // The stand goes down BEFORE the pill, so the name still reads over it.
+  const stands = PROPS.scenes.stadium.stands;
+  if (stands) drawStands(lm, stands);
   const b = polyBBox(pts);
   areaLabel(b.x0, b.y0, b.x1, b.y1, (lm.name || "Estadio").toUpperCase(), C.pillFg, C.pillBg);
 }

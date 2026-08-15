@@ -624,7 +624,30 @@ motor la física, el intérprete y las transiciones de estado.
       **Y la torre de estadio de verdad no está.** Hoy una luz `stadium` es un
       mástil de 18 px con una cabeza de 10×4. Una torre de cancha son cuatro
       focos en una cruceta a treinta metros, y eso es un ASSET, no un ternario.
-- [ ] **LAS GRADERÍAS NO EXISTEN, y tres documentos dicen que sí.** Medido
+- [x] **La graderÍa del oeste.** Hecho 2026-08-14. La primera que dibuja: se
+      arma sobre el `footprint` que el build ya emite, así que **no tiene
+      geometría propia** — se le nombra un LADO y se ajusta a esa arista. Por eso
+      es un solo asset para dos estadios de manzanas distintas, y ninguna de las
+      dos es cuadrada a la pantalla.
+
+      **El lado se resuelve contra el POLÍGONO, no contra la pantalla.** Un
+      `strokeRect` sobre el bounding box pondría una tribuna recta en un bloque
+      inclinado, que es la misma equivocación que `P.ang` evita en todo lo demás
+      que se dibuja sobre una parcela.
+
+      **Cada estadio con su color**: el Lito Pérez de naranja (los del
+      Puntarenas F.C.) y Las Playitas de blanco y azul, con la paleta por
+      defecto en concreto pelado para una cancha sin nombre.
+
+      Dos diseños se probaron y se descartaron, y quedan escritos porque los dos
+      parecen razonables sobre el papel: **alternar los escalones enteros** y
+      **rayar una línea de fila cada pocos píxeles** se leen los dos como un
+      CÓDIGO DE BARRAS al zoom de juego. Lo que funciona es partir los dos tonos
+      por PROFUNDIDAD —las filas de adelante al aire, las de atrás bajo techo—
+      con las filas como pelos de un píxel encima.
+
+      `tools/shot-stands.mjs` dibuja los dos contornos reales para mirarlo.
+- [ ] **~~LAS GRADERÍAS NO EXISTEN~~, y tres documentos decían que sí.** Medido
       2026-08-14: `CLAUDE.md` y este roadmap describen "graderías desde la acera
       real" —una banda de dos tonos trazada sobre el anillo de acera de la
       manzana cuando `lm.stands`— y **nada de eso corre**. El build no emite

@@ -1258,6 +1258,47 @@ to the renderer:
   parameters moved, its randomness stayed, and the test asserts the parameters
   because a sheet never could.
 
+### Re-measured 2026-08-14, after the migration
+
+The same count, run again once every registry had landed. `colours` is literal
+colour constants still in the module; `dispatch` is `=== "literal"` / `case
+"literal"` branches.
+
+| module | lines | colours | dispatch | what is left |
+|---|---:|---:|---:|---|
+| `c2d/entities.js` | 806 | **117** | 18 | **the biggest remaining family.** 26 drawers: peds, playeros, jugadores, swimmers, passengers, fishers, muelleros, traffic, trains, gulls, boats, schools, vendors, animals, coins. The vehicle half is data; the crowd is not |
+| `c2d/estero.js` | 523 | **53** | 10 | the eight encounters. `EsteroEncounterKind` now names them, so the dispatch is typed — the ART is not |
+| `c2d/attractions.js` | 581 | 46 | 0 | the rides are `feriaAssets.json`; the campo, the bulb ropes and the DJ's light are not |
+| `c2d/structures.js` | 319 | 44 | 3 | the five pier recipes are `materials.json`; the Mata bridge and the ferry hull are not |
+| `c2d/hud.js` | 732 | 39 | 5 | the minimap, compass and POI tags moved; the crossing HUD and the tide bar did not |
+| `c2d/streets.js` | 708 | 36 | 10 | signs and the parcel dispatch are data; the roadway's own marks are not |
+| `c2d/malecon.js` | 131 | 32 | 1 | the promenade band per weather — a pure palette, and the cheapest row left |
+| `c2d/editorWorld.js` | 109 | 17 | **15** | **the lights**, and the authored-feature furniture |
+| `c2d/landmarks.js` | 745 | 6 | 10 | done — the six are inside `drawFaroScene`/`drawPool`, whose geometry is control flow |
+| `c2d/ground.js`, `flora.js` | 763 | 9 | 3 | done — they read the registries |
+| `c2d/water.js`, `shapes.js`, `canvas2d.js`, `gfx.js` | 1 354 | **0** | 18 | the compositor, the interpreter and the sea. These must stay code |
+
+Game side, for completeness: `crossing.js` 11, `spawns.js` 10 (the car
+palette), `delivery.js` 7, `physics.js` 6. The UI's remaining 23 are inside
+`Icon.jsx` and `CoinIcon.jsx`, which are drawing recipes and stay.
+
+**The two cores still hold zero**, which is the number that matters: the
+compositor and the shape interpreter never acquired a literal through any of
+this.
+
+### The lights are placed but not designed
+
+Called out on 2026-08-14 and worth its own note, because it is the clearest
+example of a HALF-migrated family. A light's POSITION is fully authored — lights
+are `editorFeatures`, drawn in the editor and delivered through the manifest.
+Its DESIGN is not data at all: `lightPalette()` is a four-branch if/else with
+the colours written in, and the geometry (mast height, head size, halo radius)
+is ternaries on `type === "stadium"` inside the draw call.
+
+So a light can be put anywhere and a fifth kind cannot be designed. The fix is
+the shape every other family took: `lights.json` keyed by a generated
+`LightType`, with the painter staying in the engine.
+
 ### Vehicle effects — done 2026-08-14
 
 The row that started this audit. A vehicle's ART was data since 2026-08-13, but

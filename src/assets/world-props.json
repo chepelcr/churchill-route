@@ -1862,10 +1862,53 @@
       }
     },
     "stadium": {
-      "note": "Estadio — NAME PILL ONLY. The pitch and its grey graderías are painted in the acera pass (`paintStadiumCuadras`), because they are a colour choice on ground that already exists.",
+      "note": "Estadio — el rótulo y LA GRADERÍA. The pitch itself is painted in the acera pass (`paintStadiumCuadras`), because it is a colour choice on ground that already exists; the stand is a STRUCTURE that stands on that ground, so it is drawn here.",
       "palette": {
         "pillFg": "#fff",
         "pillBg": "#2e7d44"
+      },
+      "stands": {
+        "_note": "LA GRADERÍA. Built from the stadium's own emitted `footprint` — the traced cuadra, which already follows the real street grid — so it needs no geometry of its own: name a SIDE and it is fitted to that edge. That is the whole reason it can be one asset for two stadiums whose blocks are different shapes and neither is square to the screen.",
+        "_history": "CLAUDE.md, the ROADMAP and water.json all described graderías 'stroked over the block's real acera ring' when `lm.stands`. None of it ran: the build emits no `stands`, nothing read it, and `drawStadium` was eleven lines. This is the first one that draws.",
+        "_side": "`west`, `east`, `north` or `south` — resolved against the FOOTPRINT's own edges, not the screen: the edge whose midpoint is furthest that way. A cuadra here is not square to the screen (the avenidas run -5.4° and the calles 82.3°), so 'the west side' has to mean an edge and not a rectangle's left.",
+        "_outward": "The stand sits OUTSIDE the pitch, on the cuadra's acera ring — that grey band IS a stadium's sidewalk, and it is where a stand physically goes. Drawn before the landmark pill so the name still reads over it.",
+        "depth": 26,
+        "depthNote": "px from the pitch edge outward. A stand deeper than the acera ring would stand in the street.",
+        "tiers": 5,
+        "tiersNote": "stepped bands, back to front. More than about seven and they stop resolving at play zoom.",
+        "rake": 0.34,
+        "rakeNote": "how much narrower each tier is than the one below, as a fraction of the depth — this is what makes it read as banked seating rather than a striped rectangle.",
+        "palette": {
+          "structure": "#4a4a52",
+          "tierA": "#b9bec9",
+          "tierB": "#9aa1ae",
+          "rail": "rgba(0,0,0,0.45)",
+          "shadow": "rgba(0,0,0,0.22)",
+          "row": "rgba(0,0,0,0.16)"
+        },
+        "_palette": "The default is bare concrete, which is what an unnamed cancha has. A stadium with painted seats overrides the two tier colours below — and they alternate, because a real grandstand's seats are laid in blocks.",
+        "byLandmark": {
+          "estadio": {
+            "side": "west",
+            "note": "Estadio Lito Pérez — naranja, los colores del Puntarenas F.C.",
+            "palette": {
+              "tierA": "#e8792b",
+              "tierB": "#b8541a",
+              "structure": "#5a3a20"
+            }
+          },
+          "estadio_playitas": {
+            "side": "west",
+            "note": "Plaza Las Playitas — blanco y azul.",
+            "palette": {
+              "tierA": "#f1f4f7",
+              "tierB": "#2f6fb8",
+              "structure": "#24476e"
+            }
+          }
+        },
+        "roofFrom": 0.45,
+        "roofFromNote": "where the roofed part starts, as a fraction of the depth. The two tones are split by DEPTH, not striped — front rows in the open, back rows in shade. Alternating whole tiers and ruling a row line every few px both read as a BARCODE at play zoom; each was tried."
       }
     },
     "marinePark": {

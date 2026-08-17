@@ -5,6 +5,7 @@ import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { FIELD_SPORT_ROLE } from "../../domain/vocabulary.generated.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
+import { PX_PER_M } from "../../domain/units.js";
 import { t } from "../../i18n/index.js";
 import { evalOn } from "../vehicleShapes.js";
 import { dashPath, roadPath } from "./cache.js";
@@ -695,12 +696,13 @@ function drawSign(s) {
   const rec = SIGNS[s.kind];
   if (!rec) return;                                  // unknown kind: draw nothing
   const vars = { value: String(s.value || 40) };
-  if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { g: ctx, prop: propParts, vars }); return; }
+  if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars }); return; }
   const ang = (s.ang || 0) + (rec.flip === "side" && (s.side || 1) < 0 ? Math.PI : 0);
   ctx.save();
   ctx.translate(s.x, s.y); ctx.rotate(ang);
   const hw = rec.extent ? rec.extent[0] / 2 : 0, hh = rec.extent ? rec.extent[1] / 2 : 0;
   paintParts(ctx, rec.parts, {
+    pxPerM: PX_PER_M,
     X: rec.extent ? (v) => evalOn(v, hw) : (v) => v || 0,
     Y: rec.extent ? (v) => evalOn(v, hh) : (v) => v || 0,
     prop: propParts, vars,

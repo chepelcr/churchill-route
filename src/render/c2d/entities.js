@@ -1,6 +1,7 @@
 // Moving things + the player: peds, swimmers, traffic, trains, gulls, boats,
 // vendors, animals, the delivery target, arcade coins and the vehicle sprite.
 import { state } from "../../game/state.js";
+import { PX_PER_M } from "../../domain/units.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
 import { figureShadow } from "./shadows.js";
@@ -609,6 +610,7 @@ function drawTargetCustomer(t) {
 // the UI vehicle preview.
 function paintVehicle(g, key, veh) {
   paintParts(g, vehicleParts(key), {
+    pxPerM: PX_PER_M,
     // A vehicle measures in HALF-EXTENTS of its own body (`[-1, 3]` is three
     // pixels in from the transom); a landmark measures in plain pixels from its
     // anchor. That difference is the whole reason the interpreter takes the

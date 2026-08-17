@@ -27,7 +27,10 @@ FERIA = ROOT / "src" / "render" / "c2d" / "feriaShapes.js"
 #: los módulos que el intérprete tiene permitido tocar. `vehicleShapes.js` entra
 #: porque sólo depende de `game/vehicles.js`, que por contrato (CLAUDE.md) es
 #: libre de DOM y de `window` para que Node lo pueda importar.
-ALLOWED_IMPORTS = {"../vehicleShapes.js", "./primitives.js"}
+ALLOWED_IMPORTS = {"../vehicleShapes.js", "./primitives.js", "./sprites.js"}
+#: `sprites.js` entra porque sólo importa su propio registro JSON — nada del
+#: juego. Es lo que permite que el verbo `sprite` exista sin que el intérprete
+#: deje de cargarse solo; los px/m, que sí salen del mundo, los trae el MARCO.
 
 
 def imports_of(path):

@@ -14,6 +14,7 @@ import LIGHTS from "../../assets/lights.json" with { type: "json" };
 import { state } from "../../game/state.js";
 import { lightsOn } from "../../game/daynight.js";
 import { WORLD2D as W } from "../../world2d/index.js";
+import { PX_PER_M } from "../../domain/units.js";
 import { ctx } from "./gfx.js";
 import { paintAt } from "./shapes.js";
 
@@ -52,7 +53,7 @@ export function paintLight(type, x, y, opts = {}) {
   // The fixture first, the halo over it — the order the four hand-written
   // lamps drew in, and the one that reads right: the glow is in front of the
   // lamp, not behind the pole.
-  paintAt(spec.parts, x, y, { g: ctx, color: (c) => (c === "$core" ? spec.core : c) });
+  paintAt(spec.parts, x, y, { g: ctx, pxPerM: PX_PER_M, color: (c) => (c === "$core" ? spec.core : c) });
 
   if (!(opts.night ?? isNight()) || intensity <= 0) return;
   const A = LIGHTS.haloAlpha;

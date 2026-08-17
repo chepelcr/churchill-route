@@ -116,6 +116,13 @@ const REGISTRIES = [
     count: (d) => Object.keys(d.types || {}).length },
   { id: "hud", path: "src/assets/hud.json", reads: "canvas HUD + minimap" },
   { id: "flora", path: "src/assets/flora.json", reads: "builder, canvas flora" },
+  //: LOS SPRITES: la vía para que un lugar CONCRETO use una imagen en vez de
+  //: dibujarse. Todo lo demás del arte es vectorial y para casi todo eso es lo
+  //: correcto; lo que el vector no cubre es un edificio que uno quiere que sea
+  //: ESE edificio. Se mide en METROS, y `casa_prueba` se queda porque un verbo
+  //: que nada ejercita es un verbo roto que nadie ve.
+  { id: "sprites", path: "src/assets/sprites.json", reads: "canvas (el verbo `sprite`), editor",
+    count: (d) => Object.keys(d.sprites || {}).filter((k) => !k.startsWith("_")).length },
   { id: "feria", path: "src/render/c2d/feriaAssets.json", reads: "canvas attractions" },
   { id: "npc-types", path: "src/game/npcTypes.json", reads: "spawns, editor",
     count: (d) => (d.types || []).length },

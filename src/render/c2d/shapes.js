@@ -25,6 +25,7 @@
 // the game at all.
 import { PATHS } from "../vehicleShapes.js";
 import { areaLabel, hash01, label } from "./primitives.js";
+import { spriteImage, spriteRecord } from "./sprites.js";
 
 const TAU = Math.PI * 2;
 
@@ -152,6 +153,7 @@ export const SHAPE_NAMES = Object.freeze([
   ...Object.keys(SHAPES), ...Object.keys(GENERATORS), "arcs",
   "stripes", "stroke", "strokeRect",
   "text", "label", "areaLabel", "repeat", "fit", "grid", "ring", "prop",
+  "sprite",
 ]);
 
 /**
@@ -193,6 +195,16 @@ export function paintParts(g, parts, frame) {
   // píxel por píxel lo mismo — y las diez hojas de arte lo comprueban. Un marco
   // que QUIERE radios proporcionales pasa el suyo, y ahí sí cambia, a propósito.
   const S = rawS ? (v) => rawS(str(v)) : (v) => str(v) || 0;
+  // PÍXELES POR METRO, del LLAMADOR. Un sprite se mide en metros —como todo largo
+  // que dos runtimes comparten— y la escala de este build vive en el manifest del
+  // mundo. Traerla acá con un `import` rompería lo único que hace este archivo
+  // cargable solo, que es no saber nada del mundo: `domain/units.js` la saca del
+  // accesor. Así que la trae el marco, igual que `X`, `Y` y `S`.
+  //
+  // El defecto es 1, y es a propósito que sea ABSURDO: un sprite dibujado a un
+  // píxel por metro sale del tamaño de una uña, o sea SE VE que el llamador se
+  // olvidó. Un defecto plausible lo dejaría del tamaño equivocado en silencio.
+  const pxPerM = frame.pxPerM ?? 1;
 
   for (const part of parts) {
     if (skip(part)) continue;
@@ -409,6 +421,35 @@ export function paintParts(g, parts, frame) {
             skip, vars, prop, t: frame.t,
           });
         }
+        break;
+      }
+
+      // UN LUGAR PUEDE USAR UNA IMAGEN EN VEZ DE DIBUJARSE.
+      //
+      // El único verbo que no compone las primitivas del motor, y está bien que
+      // exista: hay un caso que el vector no cubre, y es un lugar CONCRETO que uno
+      // quiere que se vea como es. La Catedral de Puntarenas no es «una catedral
+      // del tamaño de su lote», es ese edificio.
+      //
+      // **El tamaño sale del REGISTRO, en metros, no de la parte.** Así una misma
+      // imagen mide lo mismo en todo el mundo y sobrevive un reescalado — y así el
+      // catálogo no puede estirar un edificio para que quepa, que es cómo se ve
+      // mal una imagen. La parte dice DÓNDE y, si quiere, con qué escala relativa.
+      //
+      // **Y si la imagen no está, se pinta su `placeholder`.** Un sprite que nunca
+      // carga tiene que VERSE —un bloque liso donde debería estar el edificio— en
+      // vez de dejar un hueco que parece que ahí no había nada.
+      case "sprite": {
+        const id = str(part.src);
+        const rec = spriteRecord(id);
+        if (!rec) break;                       // un id que el registro no tiene
+        const k = part.scale ?? 1;
+        const w = rec.wM * pxPerM * k, h = rec.hM * pxPerM * k;
+        const ax = (rec.anchor?.[0] ?? 0.5) * w, ay = (rec.anchor?.[1] ?? 0.5) * h;
+        const x = X(part.x) - ax, y = Y(part.y) - ay;
+        const img = spriteImage(id);
+        if (img) g.drawImage(img, x, y, w, h);
+        else { g.fillStyle = paint(part.fill ?? rec.placeholder); g.fillRect(x, y, w, h); }
         break;
       }
 

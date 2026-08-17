@@ -5,6 +5,7 @@ import { paintAt } from "./shapes.js";
 import { drawFieldTowers } from "./lights.js";
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
+import { PX_PER_M } from "../../domain/units.js";
 import { content } from "../../content/remote.js";
 import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
 import { drawParada, paintProp, propParts } from "./props.js";
@@ -813,7 +814,7 @@ function drawLandmark(lm) {
 
   const prop = propFor(lm.type);
   if (!prop) return;
-  paintAt(prop.parts, x, y, { g: ctx, prop: propParts, vars: propVars(lm, prop) });
+  paintAt(prop.parts, x, y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars: propVars(lm, prop) });
 }
 
 /** The catalog record for a type, following `sameAs` — the cathedral is the

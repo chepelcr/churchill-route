@@ -54,6 +54,7 @@ The procedure is three steps and it is not optional:
 | the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` |
 | **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` |
 | **a light: street lamp, stadium tower** | `src/assets/lights.json` (+ `LightType`) |
+| **how a shadow answers the sun; how tall a building is** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` |
 | what a vehicle DOES: wake, shadow, turn wind, **headlights** | `src/assets/effects.json` |
 | landmarks, signs, parcel props, scenes | `src/assets/world-props.json` |
 | the world's palettes: estero, malecón, structures, streets, weather, piers | `src/assets/materials.json` |
@@ -933,6 +934,35 @@ asks for:
   midday. Two callers ask (the one drawing the lamp and the one opening its
   pool), and written twice a different threshold in each gives lit lamps with no
   light around them — which is the bug the night had the first time.
+
+**LA SOMBRA SIGUE AL SOL, Y SU LARGO ES LA ALTURA** (`c2d/shadows.js`). There
+were **19 fixed offsets** in four files — every pedestrian, the boats, the buoy,
+the banco, the pier hut, the ferry, a landmark's plate, and every building in the
+world at `ctx.translate(4, 4)` — none of which knew what time it was. The trees
+had followed the sun since the sky became continuous, which left the scene split:
+trees on the right hour, everything else on an invented one.
+
+Three things this had to get right, and two of them cost a mistake:
+
+* **THE LENGTH IS WHAT SELLS THE DEPTH, not the angle.** A pedestrian and a
+  warehouse throwing the same shadow is what flattens a scene, so `sunShadow`
+  takes a HEIGHT IN METRES. Measured: a five-storey block throws 9.4× a person's.
+* **`+1, +5` WAS NEVER A SUN DIRECTION — IT IS THE FEET.** A figure is drawn from
+  its centre, so that offset anchors the ellipse at its feet. Replacing it with a
+  solar one would have slid every pedestrian's shadow off their feet. A figure's
+  shadow is the foot anchor PLUS the sun's offset, and only the second moves.
+* **NOTHING IN THE EMITTED WORLD KNOWS ITS HEIGHT.** A building carries `pts`,
+  `color`, `roof`, `wnd`. Measured on the shipped world, **10 of 45 218 carry an
+  OSM `building` tag and 9 of those say `yes`** — the tag is not there to use. So
+  height is inferred from FOOTPRINT AREA (a port house is ~90 m², the market
+  11 000) with `wnd` separating a storeyed building from a windowless shed, as a
+  band table in the registry. A tag-based height needs the extractor to keep the
+  tag, i.e. a rebuild.
+
+`pnpm smoke:shadows` measures what a screenshot cannot: that the offset SWEEPS
+with the hour in small steps (7.03 px across the day, worst step 0.38), that a
+block's shadow is many times a person's, and that inferred height rises with
+footprint.
 
 `pnpm smoke:sky` walks the clock and measures what a screenshot cannot: that the
 ground colour moves in SMALL steps. It samples 480 times because the biggest

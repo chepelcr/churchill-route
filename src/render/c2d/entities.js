@@ -3,6 +3,7 @@
 import { state } from "../../game/state.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
+import { figureShadow } from "./shadows.js";
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { npcArt } from "../../game/npcs.js";
 import { paintParts } from "./shapes.js";
@@ -123,7 +124,7 @@ function drawPed(pe) {
     : pe.stationary ? Math.sin(pe.ph) * 0.5 : Math.sin(pe.ph) * 1.4;
   const sway = fan ? Math.sin(pe.ph * 2.3) * 1.1 : 0;
   const x = pe.x + sway;
-  ctx.fillStyle = A.walker.shadow; ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, pe.x + 1, pe.y + 5, 4, 1.6, A.walker.shadow);
   ctx.fillStyle = dye(pe.hue, A.walker.shirt); ctx.fillRect(x - 2, pe.y - 3 + bob, 4, 6);
   if (fan) {                                       // arms up
     ctx.strokeStyle = A.walker.skin; ctx.lineWidth = 1.2; ctx.lineCap = "round";
@@ -154,8 +155,7 @@ function drawPlayero(pe) {
     return;
   }
   const bob = Math.sin(pe.ph) * 1.2;
-  ctx.fillStyle = P.shadow;
-  ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, pe.x + 1, pe.y + 5, 4, 1.6, P.shadow);
   ctx.fillStyle = skin;                                     // torso, sin camisa
   ctx.fillRect(pe.x - 1.9, pe.y - 3 + bob, 3.8, 4);
   ctx.fillStyle = dye(pe.hue, P.swimsuit);                  // el traje de baño
@@ -171,8 +171,7 @@ function drawJugador(pe) {
   const stride = Math.sin(pe.ph * 1.6);
   const lean = stride * 0.22;
   ctx.save(); ctx.translate(pe.x, pe.y); ctx.rotate(lean);
-  ctx.fillStyle = A.jugador.shadow;
-  ctx.beginPath(); ctx.ellipse(1, 5, 4.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, 1, 5, 4.2, 1.6, A.jugador.shadow);
   ctx.fillStyle = dye(pe.hue, A.jugador.shirt);             // la camiseta
   ctx.fillRect(-2, -3, 4, 5.4);
   ctx.strokeStyle = A.jugador.limbs; ctx.lineWidth = 1.2; ctx.lineCap = "round";
@@ -192,8 +191,7 @@ function drawJugador(pe) {
 // advances by how far the ball has actually rolled.
 function drawBeachBall(G) {
   const b = G.ball;
-  ctx.fillStyle = A.ball.shadow;
-  ctx.beginPath(); ctx.ellipse(b.x + 1, b.y + 3, 3.2, 1.3, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, b.x + 1, b.y + 3, 3.2, 1.3, A.ball.shadow, 0.6);
   ctx.fillStyle = A.ball.body;
   ctx.beginPath(); ctx.arc(b.x, b.y, 3.1, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = A.ball.panels;
@@ -217,8 +215,7 @@ function drawEditorNpc(pe, style = pe.drawStyle) {
   ctx.save();
   ctx.translate(pe.x, pe.y + bob);
   ctx.scale(scale, scale);
-  ctx.fillStyle = A.editorNpc.shadow;
-  ctx.beginPath(); ctx.ellipse(1, 5, 4.5, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, 1, 5, 4.5, 1.7, A.editorNpc.shadow);
   if (style === "mascot") {
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.arc(0, -1, 5.2, 0, Math.PI * 2); ctx.fill();
@@ -250,8 +247,7 @@ function drawPassenger(pe) {
   const waiting = pe.phase === "wait";
   const bob = waiting ? Math.sin(pe.ph) * 0.5 : Math.sin(pe.ph) * 1.4;
   const y = pe.y + bob;
-  ctx.fillStyle = A.passenger.shadow;
-  ctx.beginPath(); ctx.ellipse(pe.x + 1, pe.y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, pe.x + 1, pe.y + 5, 4, 1.6, A.passenger.shadow);
   ctx.fillStyle = dye(pe.hue, A.passenger.shirt);
   ctx.fillRect(pe.x - 2, y - 3, 4, 6);
   if (waiting) {                                   // the bolso, held at the hip
@@ -282,8 +278,7 @@ function drawFisher(pe) {
   const dip = Math.sin(ph * 0.8) * 1.6;               // where the line breaks the surface
   ctx.save();
   ctx.lineCap = "round";
-  ctx.fillStyle = A.fisher.shadow;
-  ctx.beginPath(); ctx.ellipse(x + 1, y + 4, 3.6, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, x + 1, y + 4, 3.6, 1.5, A.fisher.shadow);
   ctx.strokeStyle = A.fisher.ripple;                  // the ring the line makes
   ctx.lineWidth = 0.9;
   ctx.beginPath();
@@ -549,8 +544,7 @@ function drawSchool(sc, t) {
 
 // Street vendor cart: box cart with a striped parasol
 function drawVendor(vn, t) {
-  ctx.fillStyle = A.vendor.shadow;
-  ctx.beginPath(); ctx.ellipse(vn.x + 2, vn.y + 5, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, vn.x + 2, vn.y + 5, 8, 3, A.vendor.shadow, 2.1);
   ctx.fillStyle = A.vendor.box; ctx.fillRect(vn.x - 7, vn.y - 4, 14, 9);
   ctx.fillStyle = dye(vn.hue, A.vendor.band); ctx.fillRect(vn.x - 7, vn.y - 4, 14, 3);
   ctx.fillStyle = A.vendor.wheels;
@@ -569,8 +563,7 @@ function drawVendor(vn, t) {
 // Stray dog / cat ambling around the streets
 function drawAnimal(an) {
   const bob = Math.sin(an.ph) * 0.8;
-  ctx.fillStyle = A.animal.shadow;
-  ctx.beginPath(); ctx.ellipse(an.x + 1, an.y + 3, 4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+  figureShadow(ctx, an.x + 1, an.y + 3, 4, 1.4, A.animal.shadow, 0.5);
   ctx.fillStyle = an.cat ? A.animal.cat : A.animal.dog;
   ctx.fillRect(an.x - 4, an.y - 2 + bob, 8, 4);                     // body
   ctx.fillRect(an.x + 3, an.y - 4 + bob, 3.4, 3.4);                 // head

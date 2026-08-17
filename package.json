@@ -19,6 +19,7 @@
     "smoke:sponsor": "node tools/smoke-sponsor.mjs",
     "smoke:night": "node tools/smoke-night.mjs",
     "smoke:sky": "node tools/smoke-sky.mjs",
+    "smoke:shadows": "node tools/smoke-shadows.mjs",
     "audio:render": "node tools/render-audio.mjs"
   },
   "dependencies": {

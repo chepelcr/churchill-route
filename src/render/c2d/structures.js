@@ -5,12 +5,23 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ctx, flatPath, label, roundRect } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
+import { buildingHeightM, sunShadow } from "./shadows.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
   const a = b.aabb, path = (b._path || (b._path = flatPath(b.pts, true)));
   const bw = a.x1 - a.x0, bh = a.y1 - a.y0;
-  ctx.save(); ctx.translate(4, 4); ctx.fillStyle = S.building.shadow; ctx.fill(path); ctx.restore();
+  // LA SOMBRA SIGUE AL SOL Y CRECE CON LA ALTURA. Era `translate(4, 4)`: abajo y
+  // a la derecha, a las tres de la tarde y a las seis igual, y del mismo largo
+  // para una casa que para el mercado. La altura se infiere de la huella porque
+  // nada en el mundo emitido la trae — ver `buildingHeightM`.
+  const sh = sunShadow(buildingHeightM(b));
+  ctx.save();
+  ctx.translate(sh.dx, sh.dy);
+  ctx.globalAlpha = sh.alpha;
+  ctx.fillStyle = S.building.shadow;
+  ctx.fill(path);
+  ctx.restore();
   ctx.fillStyle = b.color || S.building.fallback; ctx.fill(path);
   ctx.save(); ctx.clip(path);
   ctx.fillStyle = b.roof || MATERIALS.structure.roof; ctx.fillRect(a.x0, a.y0, bw, Math.max(3, bh * 0.3));

@@ -229,3 +229,63 @@ class PartMotionTests(unittest.TestCase):
         # the four art sheets are no longer proof of anything.
         self.assertIn("if (moved) {", self.shapes)
         self.assertIn("if (moved) g.restore();", self.shapes)
+
+
+class SunShadowRegistry(unittest.TestCase):
+    """LA SOMBRA SIGUE AL SOL, y sus números viven acá.
+
+    Antes eran **19 desplazamientos fijos** en cuatro archivos —cada peatón, los
+    barcos, la boya, el banco, la caseta, el ferry, la placa de un hito y todo
+    edificio con `ctx.translate(4, 4)`— y ninguno sabía qué hora era.
+    """
+
+    def setUp(self):
+        self.doc = json.loads(read(EFFECTS))
+        self.sun = self.doc["sunShadow"]
+        self.heights = self.doc["buildingHeight"]
+
+    def test_the_reach_is_in_multiples_of_height(self):
+        """Es lo que hace el 2.5D: sin altura, un peatón y una bodega tiran la
+        misma sombra y la escena se aplana."""
+        self.assertLess(self.sun["reachAtNoon"], self.sun["reachAtDusk"],
+                        "la sombra tiene que ser MÁS CORTA al mediodía que al atardecer")
+        for k in ("reachAtNoon", "reachAtDusk", "squashY", "figureHeightM"):
+            self.assertIsInstance(self.sun[k], (int, float))
+            self.assertGreater(self.sun[k], 0)
+
+    def test_a_noon_shadow_is_harder_than_a_dusk_one(self):
+        self.assertGreater(self.sun["alphaAtNoon"], self.sun["alphaAtDusk"])
+        self.assertLessEqual(self.sun["alphaAtNoon"], 1.0)
+
+    def test_the_colour_is_a_triple_because_the_painter_builds_the_alpha(self):
+        self.assertRegex(str(self.sun["color"]), r"^\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*$")
+
+    def test_the_height_bands_are_ordered_and_end_open(self):
+        """Una banda fuera de orden le da a una huella grande la altura de una
+        chica, y sin la banda abierta el mercado no tiene altura ninguna."""
+        bands = self.heights["bands"]
+        areas = [b["maxAreaM2"] for b in bands]
+        self.assertIsNone(areas[-1], "la última banda tiene que quedar abierta")
+        finite = [a for a in areas if a is not None]
+        self.assertEqual(finite, sorted(finite), "las bandas no están ordenadas por área")
+        storeys = [b["storeys"] for b in bands]
+        self.assertEqual(storeys, sorted(storeys),
+                         "una huella más grande no puede dar menos plantas")
+
+    def test_a_windowless_building_is_lower(self):
+        """Sin ventanas emitidas es un galpón: ancho y bajo."""
+        self.assertLess(self.heights["windowlessScale"], 1.0)
+        self.assertGreater(self.heights["windowlessScale"], 0)
+
+    def test_the_nineteen_fixed_offsets_are_going_away(self):
+        """El `translate(4, 4)` de todo edificio del mundo era el más visible."""
+        # sin comentarios: el propio archivo EXPLICA que antes era `translate(4, 4)`,
+        # y buscarlo en crudo encuentra esa frase. Octava vez en este repo.
+        def source(path):
+            return re.sub(r"^\s*//.*$", "", read(path), flags=re.M)
+        src = source(os.path.join(ROOT, "src", "render", "c2d", "structures.js"))
+        self.assertNotIn("ctx.translate(4, 4)", src,
+                         "la sombra de un edificio volvió a ser un desplazamiento fijo")
+        ents = source(os.path.join(ROOT, "src", "render", "c2d", "entities.js"))
+        self.assertIn("figureShadow", ents,
+                      "las figuras de pie tienen que pasar por el ayudante del sol")

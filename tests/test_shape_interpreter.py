@@ -162,3 +162,76 @@ class FeriaInterpreterStandsAloneToo(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheFrameCarriesSizesToo(unittest.TestCase):
+    """`S`: EL EVALUADOR DE TAMAÑOS, y por qué un radio no puede ir por `X`.
+
+    `X`/`Y` son AFINES: los anchos se calculan como diferencias (`X(w) - X(0)`),
+    así que el desplazamiento del marco se cancela solo. Un radio no tiene de
+    dónde restar — pasarlo por `X` le sumaría el origen del marco y pondría el
+    círculo en otro lado, con otro tamaño.
+
+    El defecto es la IDENTIDAD, y ésa es la garantía de que el día que se agregó
+    no cambió un píxel: las diez hojas de arte salieron idénticas.
+    """
+
+    def test_the_frame_documents_S(self):
+        text = SHAPES.read_text(encoding="utf-8")
+        self.assertIn("frame.S", text, "el contrato del marco no documenta `S`")
+
+    def test_no_size_is_left_raw_in_the_switch(self):
+        """Un tamaño que no pasa por `S` es un tamaño que un marco proporcional
+        no puede escalar — que es exactamente el defecto que esto vino a cerrar:
+        `part.r` y `part.width` no pasaban, así que un vehículo al doble escalaba
+        sus posiciones y no sus radios."""
+        text = SHAPES.read_text(encoding="utf-8")
+        code = re.sub(r"^\s*//.*$", "", text, flags=re.M)
+        for bad in ("g.lineWidth = part.width;", "part.r, 0, Math.PI * 2"):
+            self.assertNotIn(bad, code,
+                             f"`{bad}` volvió a saltarse el marco de tamaños")
+
+    def test_fit_is_a_verb_the_interpreter_admits(self):
+        """La cuenta desde un tamaño: lo único que ningún verbo hacía.
+
+        `repeat` toma una cuenta autorada; `stripes` divide un ancho ENTRE una
+        cuenta autorada, que es lo contrario. Doce de los dieciocho pintores que
+        siguen en código tienen esta forma."""
+        text = SHAPES.read_text(encoding="utf-8")
+        self.assertRegex(text, r'case "fit"', "el verbo `fit` no está implementado")
+        self.assertIn('"fit"', text.split("export const SHAPE_NAMES")[1].split("]")[0],
+                      "`fit` no está en SHAPE_NAMES, así que ningún validador lo admite")
+
+    def test_the_recursive_verbs_pass_the_clock_and_the_sizes(self):
+        """Una parte anidada perdía el marco de tamaños y, peor, el RELOJ: un
+        `spin` dentro de un `repeat` no se movía. Ningún catálogo lo hacía —se
+        midió— así que cerrarlo fue gratis."""
+        text = SHAPES.read_text(encoding="utf-8")
+        body = text.split("export function paintParts")[1]
+        # cada llamada recursiva tiene que llevar S y t
+        calls = re.findall(r"paintParts\(g, part\.parts, \{(.*?)\}\);", body, re.S)
+        self.assertGreaterEqual(len(calls), 3, "no se encontraron las llamadas recursivas")
+        for i, c in enumerate(calls):
+            self.assertIn("S:", c, f"la llamada recursiva {i} no pasa el marco de tamaños")
+            self.assertIn("t:", c, f"la llamada recursiva {i} no pasa el reloj")
+
+    def test_no_arithmetic_leaked_into_the_catalogs(self):
+        """`fit` existe para que la cuenta NO se escriba en el JSON. Si un
+        catálogo trae una expresión, el verbo falló en su propósito.
+
+        `data_only` SE IMPORTA de `test_actors`, que ya la escribió: es la que
+        quita `_x`, `xNote` **y `note`**, y esa tercera es la que importa — sin
+        ella este chequeo encuentra la frase de `actors.json` que explica que los
+        destellos salen de `hash01` y nunca de `Math.random`. Séptima vez que una
+        prueba de este repo se lee su propia prosa, y la razón de importar el
+        ayudante en vez de copiarlo."""
+        import json
+        from tests.test_actors import data_only
+        for name in ("vehicles", "world-props", "lights", "actors"):
+            path = ROOT / "src" / "assets" / f"{name}.json"
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            blob = json.dumps(data_only(doc))
+            for banned in ("Math.", "=>"):
+                self.assertNotIn(banned, blob,
+                                 f"{name}.json trae {banned!r}: un registro con una "
+                                 "expresión dejó de ser un registro")

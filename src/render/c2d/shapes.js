@@ -38,11 +38,11 @@ function pick(palette, i) {
  *  None of these can be a silhouette contour, which is exactly why the split
  *  between this file and `vehicleShapes.js` falls where it does. */
 const EXTRA = {
-  ellipse(g, p, X, Y) {
-    g.ellipse(X(p.cx), Y(p.cy), p.rx, p.ry, 0, 0, Math.PI * 2);
+  ellipse(g, p, X, Y, S) {
+    g.ellipse(X(p.cx), Y(p.cy), S(p.rx), S(p.ry), 0, 0, Math.PI * 2);
   },
-  disc(g, p, X, Y) {
-    g.arc(X(p.cx), Y(p.cy), p.r, 0, Math.PI * 2);
+  disc(g, p, X, Y, S) {
+    g.arc(X(p.cx), Y(p.cy), S(p.r), 0, Math.PI * 2);
   },
   //: A gable, a pediment, a sail. Canvas closes an unclosed path when it fills,
   //: so this is `poly` without the `closePath` — kept apart because the two
@@ -55,11 +55,12 @@ const EXTRA = {
   //: radians, so an octagon stood on a flat side is `0.0625` (half a facet)
   //: instead of an irrational literal in a JSON file. A power of two times TAU
   //: is exact, so this is the same double the hand-written `Math.PI / 8` was.
-  polyN(g, p, X, Y) {
+  polyN(g, p, X, Y, S) {
     const cx = X(p.cx), cy = Y(p.cy), rot = (p.rot || 0) * Math.PI * 2;
     for (let i = 0; i < p.n; i++) {
       const a = rot + (i / p.n) * Math.PI * 2;
-      const px = cx + Math.cos(a) * p.r, py = cy + Math.sin(a) * p.r;
+      const rr = S(p.r);
+      const px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr;
       if (i) g.lineTo(px, py); else g.moveTo(px, py);
     }
     g.closePath();
@@ -149,8 +150,8 @@ function drawArcs(g, p, X, Y, t) {
  *  silently drawing nothing. */
 export const SHAPE_NAMES = Object.freeze([
   ...Object.keys(SHAPES), ...Object.keys(GENERATORS), "arcs",
-  "rect", "stripes", "stroke", "strokeRect",
-  "text", "label", "areaLabel", "repeat", "grid", "ring", "prop",
+  "stripes", "stroke", "strokeRect",
+  "text", "label", "areaLabel", "repeat", "fit", "grid", "ring", "prop",
 ]);
 
 /**
@@ -161,12 +162,17 @@ export const SHAPE_NAMES = Object.freeze([
  * @param {object} frame
  *   @param {function} frame.X      evaluate a part's x value
  *   @param {function} frame.Y      evaluate a part's y value
+ *   @param {function} [frame.S]    evaluate a SIZE — a radius, a stroke width, a
+ *                                  step. Defaults to identity, which is exactly
+ *                                  what every catalog did before it existed.
  *   @param {function} [frame.color] resolve a colour spec (placeholders)
  *   @param {function} [frame.skip]  drop a part before it is drawn
  *   @param {object}   [frame.vars]  `$name` substitutions for text
  */
 export function paintParts(g, parts, frame) {
-  const { X: rawX, Y: rawY, color = (c) => c, skip = () => false, vars = {}, prop } = frame;
+  const {
+    X: rawX, Y: rawY, S: rawS, color = (c) => c, skip = () => false, vars = {}, prop,
+  } = frame;
   const paint = (spec) => color(spec);
   const str = (v) => (typeof v === "string" && v.startsWith("$") ? (vars[v.slice(1)] ?? "") : v);
   // A `$name` may stand in a NUMERIC slot too, not just in text — the balneario's
@@ -175,6 +181,18 @@ export function paintParts(g, parts, frame) {
   // no warning, just a missing pill on the one landmark whose art IS the pill.
   const X = (v) => rawX(str(v));
   const Y = (v) => rawY(str(v));
+  // UN TAMAÑO NO ES UNA POSICIÓN, y por eso necesita su propio evaluador.
+  //
+  // `X`/`Y` son AFINES: los anchos se calculan como diferencias (`X(w) - X(0)`),
+  // así que el desplazamiento del marco se cancela. Un radio no tiene de dónde
+  // restar — pasarlo por `X` le sumaría el origen del marco y pondría el círculo
+  // en otro lado, con otro tamaño. De ahí `S`.
+  //
+  // **El defecto es la identidad, y eso no es pereza: es la garantía.** Todo
+  // catálogo de hoy dibuja `part.r` tal cual, así que con `S` identidad sale
+  // píxel por píxel lo mismo — y las diez hojas de arte lo comprueban. Un marco
+  // que QUIERE radios proporcionales pasa el suyo, y ahí sí cambia, a propósito.
+  const S = rawS ? (v) => rawS(str(v)) : (v) => str(v) || 0;
 
   for (const part of parts) {
     if (skip(part)) continue;
@@ -212,7 +230,7 @@ export function paintParts(g, parts, frame) {
 
       case "strokeRect":
         g.strokeStyle = paint(part.stroke);
-        g.lineWidth = part.width;
+        g.lineWidth = S(part.width);
         g.strokeRect(X(part.x), Y(part.y), X(part.w) - X(0), Y(part.h) - Y(0));
         break;
 
@@ -231,17 +249,17 @@ export function paintParts(g, parts, frame) {
       // A stroked circle — an anchor's ring, a rim. Not `disc`, which fills.
       case "ring":
         g.strokeStyle = paint(part.stroke);
-        g.lineWidth = part.width;
+        g.lineWidth = S(part.width);
         if (part.cap) g.lineCap = part.cap;
         g.beginPath();
-        g.arc(X(part.cx), Y(part.cy), part.r, 0, Math.PI * 2);
+        g.arc(X(part.cx), Y(part.cy), S(part.r), 0, Math.PI * 2);
         g.stroke();
         if (part.cap) g.lineCap = "butt";
         break;
 
       case "stroke":
         g.strokeStyle = paint(part.stroke);
-        g.lineWidth = part.width;
+        g.lineWidth = S(part.width);
         if (part.cap) g.lineCap = part.cap;
         if (part.join) g.lineJoin = part.join;
         g.beginPath();
@@ -313,7 +331,7 @@ export function paintParts(g, parts, frame) {
             X: (v) => rawX(str(v)) - rawX(0),   // the copy draws about its own
             Y: (v) => rawY(str(v)) - rawY(0),   // origin, not the parent anchor
             color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
-            skip, vars, prop, t: frame.t,
+            S: rawS, skip, vars, prop, t: frame.t,
           });
           g.restore();
         }, frame.t);
@@ -333,15 +351,66 @@ export function paintParts(g, parts, frame) {
       // the muelle four coloured containers from one part.
       case "repeat":
         for (let i = 0; i < part.n; i++) {
-          const dx = (part.dx || 0) * i, dy = (part.dy || 0) * i;
+          const dx = S(part.dx || 0) * i, dy = S(part.dy || 0) * i;
           paintParts(g, part.parts, {
             X: (v) => X(v) + dx,
             Y: (v) => Y(v) + dy,
-            color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
-            skip, vars, prop,
+            // `S` y `t` SE PASAN. Sin ellos una parte anidada perdía el marco de
+            // tamaños y, peor, el reloj: un `spin` dentro de un `repeat`
+            // simplemente no se movía. Hoy ningún catálogo lo hace —se midió— así
+            // que cerrarlo no cambia un píxel; el día que alguien lo escriba,
+            // funciona en vez de fallar en silencio.
+            S: rawS, color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
+            skip, vars, prop, t: frame.t,
           });
         }
         break;
+
+      // EL VERBO QUE FALTABA: LA CUENTA SALE DEL TAMAÑO.
+      //
+      // `repeat` toma una cuenta autorada; `stripes` toma una cuenta autorada y
+      // divide un ancho entre ella. NINGUNO de los dos hace lo que el arte de
+      // este juego pide todo el tiempo, que es lo INVERSO: dado un largo y un
+      // PASO, cuántos caben.
+      //
+      // Es la forma de doce de los dieciocho pintores que todavía están en
+      // código — las ventanas de un edificio (`Math.max(1, Math.floor(bw / 16))`),
+      // las columnas de la Casa de la Cultura (`Math.max(3, Math.round(h / 12))`),
+      // los pabellones de una escuela (`Math.round(L / 46)`), los tensores del
+      // puente, las juntas de un muelle, las bandas de una valla.
+      //
+      // **El JSON da el PASO y el motor cuenta**, que es de qué lado de la línea
+      // de `docs/inventory.md` §12 cae esto: el catálogo no hace la división, la
+      // invoca. Un `n` calculado en JSON sería una expresión, o sea un lenguaje
+      // de programación peor escondido en un registro.
+      //
+      // `pitch` es un TAMAÑO, así que pasa por `S`: en un marco proporcional el
+      // paso se estira con el resto y la cuenta se mantiene, que es lo que uno
+      // quiere de una fila de ventanas al doble de tamaño.
+      case "fit": {
+        const along = part.along === "y" ? Y : X;
+        const span = Math.abs(along(part.length) - along(0));
+        const pitch = Math.abs(S(part.pitch)) || 1;
+        // `round` por omisión, y se puede pedir `floor`: una fila de ventanas
+        // prefiere no desbordar su pared, un tramo de juntas prefiere repartir.
+        const raw = part.mode === "floor" ? Math.floor(span / pitch) : Math.round(span / pitch);
+        const n = Math.max(part.min ?? 1, Math.min(part.max ?? Infinity, raw));
+        // El paso REAL reparte el largo entre los que cupieron, para que la fila
+        // quede centrada en su hueco en vez de sobrar por la derecha.
+        const step = n > 1 && part.spread !== false ? span / n : pitch;
+        for (let i = 0; i < n; i++) {
+          const d = (i + (part.spread === false ? 0 : 0.5)) * step;
+          const dx = part.along === "y" ? 0 : d, dy = part.along === "y" ? d : 0;
+          paintParts(g, part.parts, {
+            X: (v) => X(v) + dx,
+            Y: (v) => Y(v) + dy,
+            S: rawS,
+            color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
+            skip, vars, prop, t: frame.t,
+          });
+        }
+        break;
+      }
 
       // A block of small rects — a hotel's lit windows. Rows and columns rather
       // than a nested `repeat`, because that is what it is.
@@ -349,7 +418,7 @@ export function paintParts(g, parts, frame) {
         g.fillStyle = paint(part.fill);
         for (let r = 0; r < part.rows; r++) {
           for (let c = 0; c < part.cols; c++) {
-            g.fillRect(X(part.x) + c * part.dx, Y(part.y) + r * part.dy,
+            g.fillRect(X(part.x) + c * S(part.dx), Y(part.y) + r * S(part.dy),
                        X(part.w) - X(0), Y(part.h) - Y(0));
           }
         }
@@ -367,11 +436,11 @@ export function paintParts(g, parts, frame) {
         if (!build) break;
         const stroked = part.stroke !== undefined;
         g.beginPath();
-        build(g, part, X, Y);
+        build(g, part, X, Y, S);
         if (!stroked || part.fill !== undefined) { g.fillStyle = paint(part.fill); g.fill(); }
         if (stroked) {
           g.strokeStyle = paint(part.stroke);
-          g.lineWidth = part.width;
+          g.lineWidth = S(part.width);
           g.stroke();
         }
       }

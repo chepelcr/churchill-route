@@ -48,8 +48,13 @@ export const PATHS = {
   // Every rounded thing this game has ever drawn came through gfx.js's arcTo
   // composition, so that is the shape of record — the same reasoning that keeps
   // `rect` on `fillRect`.
-  roundRect(g, p, X, Y) {
-    const x = X(p.x), y = Y(p.y), w = X(p.w) - X(0), h = Y(p.h) - Y(0), r = p.r;
+  roundRect(g, p, X, Y, S) {
+    // EL RADIO DE ESQUINA TAMBIÉN ES UN TAMAÑO. Sin `S` una carrocería
+    // proporcional escalaría su caja y no sus esquinas, que a la mitad de tamaño
+    // se ve como una caja con las puntas mordidas. `S` por omisión es la
+    // identidad, así que hoy sale igual que siempre.
+    const x = X(p.x), y = Y(p.y), w = X(p.w) - X(0), h = Y(p.h) - Y(0);
+    const r = S ? S(p.r) : p.r;
     g.moveTo(x + r, y);
     g.arcTo(x + w, y, x + w, y + h, r);
     g.arcTo(x + w, y + h, x, y + h, r);

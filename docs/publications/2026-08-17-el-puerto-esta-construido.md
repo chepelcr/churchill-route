@@ -22,6 +22,8 @@ abrió el agua, se le puso la noche y el clima, y se cayó la valla del este.
 > 🛥️ se **maneja la lancha**: la **Travesía del Estero** es un nivel, con marea,
 > manglar y bancos de arena que salen y se cubren
 > 🎡 el **malecón** del Paseo, con feria y DJ
+> 🛣️ las **cuadras son más grandes** y las **esquinas doblan** — con sus caños
+> ⛴️ dos **ferris** a Paquera y Playa Naranjo, y se sube manejando por la rampa
 > 🌙 **16 663 postes de luz** — de noche la ciudad se ve, y el carro tiene faros
 > ⛈️ el cielo pasa de a poco, las **tormentas llegan en tres actos** y mojan la
 > calle, y en las bravas hay **tornado**
@@ -51,6 +53,23 @@ abrió el agua, se le puso la noche y el clima, y se cayó la valla del este.
 > 🏟️ El **Lito Pérez** con gradería naranja y cuatro torres de luz. Y **Plaza Las
 > Playitas** dejó de ser el mismo dibujo que el estadio: es una plaza, con su
 > gradería blanquiazul, su cancha y una **multiuso de cemento** al lado.
+> ⚽ A las canchas **se entra manejando**, caen **monedas** adentro, la hinchada
+> salta en las gradas — y cruzar el Lito Pérez en diagonal es atajo.
+>
+> **Las calles**
+> 🛣️ Las **cuadras son más grandes** sin que las calles se vean distintas: se
+> subió la escala del mundo y se bajó el ensanche en la misma proporción, así que
+> cada calle mide en pantalla lo que medía y la manzana creció.
+> ↩️ **Las esquinas doblan.** Una esquina de verdad no termina en ángulo: el
+> cordón traza su curva y la acera la sigue, así que las manzanas se ven con las
+> puntas cortadas desde arriba.
+> 💧 Y están los **caños**, el canal abierto entre el cordón y el asfalto por el
+> que Puntarenas drena — y se corta en la esquina, como el de verdad se corta en
+> el tragante.
+> ⛴️ En la terminal hay **dos ferris**, el de **Paquera** y el de **Playa
+> Naranjo**, y a los dos se sube manejando por la rampa.
+> 🗺️ El **minimapa ya es un mapa**: el mar tiene su color y la península su
+> forma, con los parques y las canchas marcados.
 >
 > **El agua**
 > 🛥️ Se **maneja la lancha**, y la **Travesía del Estero** es un nivel de verdad
@@ -107,11 +126,44 @@ Y las **canchas**: el Lito Pérez con su gradería en los colores del Puntarenas
 F.C. y cuatro torres en las esquinas, Plaza Las Playitas como plaza y no como
 estadio, y las canchas de barrio con su gente.
 
+Y una cancha no es adorno del mapa: **se entra manejando** desde la calle, caen
+**monedas** adentro en tandas, la hinchada salta en las gradas cuando uno pasa, y
+cruzar el Lito Pérez en diagonal es más rápido que rodearlo.
+
 Un detalle del que estamos contentos: la gradería no es un rectángulo pegado al
 lado. Se arma sobre el contorno real de la manzana, y las calles de Puntarenas no
 son cuadradas con la pantalla ni entre sí — por El Carmen las avenidas van a -5,4°
 y las calles a 82,3°. Así que la gradería sale torcida porque la manzana está
 torcida.
+
+### Las calles se agrandaron sin cambiar de ancho
+
+La manzana era chica para lo que tenía que contener. Se arregló moviendo **dos
+números juntos**: el ancho pintado de una calle es su ancho real por el ensanche
+de arcade por la escala del mundo, así que subir la escala y bajar el ensanche en
+la misma proporción deja cada calle **exactamente igual de ancha en pantalla** y
+hace la cuadra más grande, que era todo el punto.
+
+Y **la esquina dobla**. Una esquina de verdad no termina en ángulo: el cordón
+traza una curva de una calle a la otra y la acera la sigue, y por eso una manzana
+se ve con las puntas cortadas desde arriba. No pasaba, y no por falta de ganas —
+el render pinta las calles por tile y nunca ve un cruce como tal, sólo tiene una
+lista de líneas.
+
+Con ellas llegaron los **caños**: el canal abierto entre el cordón y el asfalto,
+que es por donde Puntarenas drena de verdad en los aguaceros. Se corta en la
+esquina, igual que el de verdad se corta en el tragante.
+
+Y en la terminal del ferry, al oeste de la lengüeta, hay **dos atracaderos** —
+Paquera y Playa Naranjo— cada uno con su ferri, y a los dos **se sube manejando
+por la rampa**.
+
+### El minimapa ya es un mapa
+
+El dial de la esquina dibujaba calles y nada más: tierra y agua eran el mismo
+fondo oscuro y la red simplemente se acababa en la costa sin decir por qué. Ahora
+el mar tiene su color, la península su forma, y los parques y las canchas están
+marcados.
 
 ### El agua se abrió
 
@@ -177,5 +229,7 @@ foto o hay que capturarlas. En juego, no del render de depuración.
 | `hito-estadio.png` | el Lito Pérez con la gradería y una torre |
 | `hito-travesia.png` | la lancha en el canal, con boyas |
 | `hito-malecon.png` | la feria del malecón |
+| `hito-esquina.png` | una esquina doblando, con su caño |
+| `hito-ferri.png` | el ferri en su atracadero, con la rampa |
 | `hito-noche.png` | el centro de noche, con los pozos de luz |
 | `hito-tormenta.png` | el cielo cerrado con el alumbrado prendido, de día |

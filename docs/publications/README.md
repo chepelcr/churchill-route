@@ -36,9 +36,17 @@ no se lee. Pero hay una razón más fuerte: **a alguien que sólo vio el post de
 julio, «el malecón ya toca la acera» no le dice nada.** La historia que sí le
 dice algo es que el pueblo está construido.
 
-Así que el hito es LA publicación. Las cuatro de julio quedaron viejas —el hito
-las cubre— y las tres temáticas de agosto son material de fondo: sirven para
-mantener cadencia después, un post por semana, sin tener que escribir nada nuevo.
+Así que el hito es LA publicación. Las tres temáticas de agosto son material de
+fondo: sirven para mantener cadencia después, un post por semana, sin escribir
+nada nuevo.
+
+**Y las cuatro de julio se revisaron una por una contra el hito, no se dieron por
+cubiertas.** La primera versión del hito decía que las cubría y no era cierto:
+faltaban seis cosas que un jugador sí ve — las esquinas que doblan, los caños, la
+cuadra más grande, el minimapa hecho mapa, los dos ferris, y qué se hace en una
+cancha (se entra manejando, caen monedas, salta la hinchada). Están agregadas. El
+único punto donde el hito se aparta a propósito es el bulevar de la Catedral: en
+julio era una **T** y hoy es una **H**, porque le entró el tramo del frente.
 
 ## Formato
 

@@ -19,12 +19,33 @@ import { vehicleParts } from "../game/vehicles.js";
 
 /** Evaluate a part coordinate against the half-extent of its own axis.
  *
- *  A bare number is PIXELS; `[k, px]` is `k · half + px`. That is exactly the
- *  arithmetic the hand-written art already did (`-veh.w / 2 + 3` is `[-1, 3]`,
- *  `veh.h * 0.45` is `[0.9, 0]` of the half-height), which is what let the whole
- *  catalog be transcribed without a pixel moving. */
+ *  Tres formas, y cada una existe porque el arte escrito a mano ya hacía esa
+ *  aritmética:
+ *
+ *  * un número pelado son PÍXELES;
+ *  * `[k, px]` es `k · half + px` — que es literalmente lo que decía el código
+ *    (`-veh.w / 2 + 3` es `[-1, 3]`, `veh.h * 0.45` es `[0.9, 0]`), y es lo que
+ *    permitió transcribir el catálogo entero sin mover un píxel;
+ *  * `{k, px, min, max}` es lo mismo ACOTADO, y es la forma que faltaba. Las
+ *    escenas de parcela están llenas de `Math.max(3, h * 0.16)` y
+ *    `Math.min(18, hh * 0.24)`: un tope no es aritmética que el catálogo invente,
+ *    es un tope que el catálogo DECLARA y el motor aplica — el mismo lado de la
+ *    línea de §12 donde está `fit`. Sin él, la banda del techo de la Casa de la
+ *    Cultura desaparece en una parcela angosta, que es exactamente contra lo que
+ *    ese `max(3, …)` protegía.
+ *
+ *  Sigue siendo AFÍN por tramos, que es lo que los anchos necesitan: se calculan
+ *  como diferencias (`X(w) - X(0)`) y un tope aplicado a los dos extremos por
+ *  igual no rompe la resta.
+ */
 export function evalOn(value, half) {
-  return Array.isArray(value) ? value[0] * half + value[1] : value;
+  if (Array.isArray(value)) return value[0] * half + value[1];
+  if (value && typeof value === "object") {
+    const v = (value.k || 0) * half + (value.px || 0);
+    const lo = value.min ?? -Infinity, hi = value.max ?? Infinity;
+    return v < lo ? lo : v > hi ? hi : v;
+  }
+  return value;
 }
 
 /** The path verbs a part may compose — the ones BOTH backends agree on.

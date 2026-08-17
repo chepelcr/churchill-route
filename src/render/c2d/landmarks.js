@@ -1,7 +1,8 @@
 // Landmark drawers: the faro scene, green spaces, the estadios, fountains,
 // pools, the Parque Marino and the sponsored lotes, behind drawLandmark().
 import { paintPalm, paintTree } from "./flora.js";
-import { paintAt } from "./shapes.js";
+import { paintAt, paintParts } from "./shapes.js";
+import { evalOn } from "../vehicleShapes.js";
 import { drawFieldTowers } from "./lights.js";
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
@@ -547,28 +548,79 @@ function drawCathedral(P) {
 // that used to stand on it, so the parcel has to draw its own: a colonnaded
 // front on the calle peatonal, inset from the parcel edge so the acera band
 // still shows around it.
-function drawCivicBuilding(P) {
-  const C = PROPS.scenes.civicBuilding.palette;
+/**
+ * UNA ESCENA DE PARCELA, DIBUJADA DESDE SU REGISTRO.
+ *
+ * Las siete escenas de parcela estaban en código y `_parcelScenes` explicaba por
+ * qué: «se dimensionan desde las medio-extensiones de la parcela POR CLAMPS Y
+ * CUENTAS», y ni un clamp ni una cuenta se podían escribir en un catálogo. Eso
+ * dejó de ser cierto: `fit` deriva una cuenta de un largo y un paso, y la forma
+ * `{k, px, min, max}` de `evalOn` declara un tope. La nota había podrido.
+ *
+ * EL MARCO, que es lo único que esta función decide:
+ *
+ *   * `X`/`Y` miden en MEDIO-EXTENSIONES del lote, ya reducidas por el `inset` de
+ *     la escena — así `[-1, 4]` es «el borde izquierdo más cuatro píxeles», que es
+ *     literalmente lo que decía `-w / 2 + 4`.
+ *   * `S` mide en la dimensión CARACTERÍSTICA de la escena. La elige el llamador y
+ *     no el JSON, porque es la única parte que de verdad es distinta entre una
+ *     catedral (cuya espina es `min(hh, hw·0.62)`) y una Casa de la Cultura. Un
+ *     `min` entre ejes no cabe en un evaluador de un eje, y meterlo en el JSON
+ *     sería aritmética en el registro.
+ *   * el ÁNGULO es el de la manzana (`P.ang`), nunca un ajuste: la cuadrícula no
+ *     es cuadrada ni consigo misma, y un ajuste de eje principal en un bloque
+ *     casi cuadrado salta a la diagonal contraria.
+ */
+function paintParcelScene(P, name, opts = {}) {
+  const scene = PROPS.scenes[name];
+  if (!scene || !scene.parts) return false;
   const F = parcelFrame(P);
-  const hw = F.hw * 0.86, hh = F.hh * 0.86;
-  const cx = F.cx, cy = F.cy;
+  const inset = scene.inset ?? 1;
+  const hw = F.hw * inset, hh = F.hh * inset;
+  const s = opts.size ?? Math.min(hw, hh);
   ctx.save();
-  ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
-  const w = hw * 2 - 8, h = hh * 2 - 8;
-  ctx.fillStyle = C.shadow;
-  roundRect(ctx, -w / 2 + 3, -h / 2 + 4, w, h, 3, true, false);
-  ctx.fillStyle = C.wall;                         // stucco body
-  roundRect(ctx, -w / 2, -h / 2, w, h, 3, true, false);
-  ctx.fillStyle = C.roof;                         // tile roof band
-  ctx.fillRect(-w / 2, -h / 2, w, Math.max(3, h * 0.16));
-  // portico columns along the WEST face (the calle peatonal side)
-  ctx.fillStyle = STONE_LITE;
-  const n = Math.max(3, Math.round(h / 12));
-  for (let i = 0; i < n; i++) {
-    const v = -h / 2 + h * ((i + 0.5) / n);
-    ctx.fillRect(-w / 2 + 2, v - 1.6, 4, 3.2);
-  }
+  ctx.translate(F.cx, F.cy);
+  if (F.ang) ctx.rotate(F.ang);
+  if (opts.rotate) ctx.rotate(opts.rotate);
+  paintParts(ctx, scene.parts, {
+    X: (v) => evalOn(v, hw),
+    Y: (v) => evalOn(v, hh),
+    S: (v) => evalOn(v, s),
+    pxPerM: PX_PER_M,
+    color: (spec) => scenePaint(scene, spec),
+    vars: opts.vars,
+    t: lastT / 1000,
+  });
   ctx.restore();
+  return true;
+}
+
+/** `$name` contra la paleta de la escena, con UN salto a otra escena.
+ *
+ *  `@otraEscena.clave` existe porque el gris de piedra vive en la paleta de la
+ *  catedral y tres escenas lo usan: el código ya lo leía de allí. Copiar el hex en
+ *  cada una sería el duplicado que este proyecto lleva semanas quitando —
+ *  `materials.street.majorDash` y `paintRoads` tenían cada uno el suyo, y mover la
+ *  perilla cambiaba todos los guiones del juego menos los de la calle. Un salto y
+ *  sólo uno: no se persiguen cadenas. */
+function scenePaint(scene, spec) {
+  if (typeof spec !== "string" || !spec.startsWith("$")) return spec;
+  let v = scene.palette?.[spec.slice(1)];
+  if (typeof v === "string" && v.startsWith("@")) {
+    const [other, key] = v.slice(1).split(".");
+    v = PROPS.scenes[other]?.palette?.[key];
+  }
+  return v ?? spec;
+}
+
+// LA CASA DE LA CULTURA ES DATA. Era la escena más simple de las siete y la que
+// mejor mostraba por qué las siete estaban en código: una banda de techo con un
+// `Math.max(3, …)` y una fila de columnas con un `Math.round(h / 12)`. Ninguna de
+// las dos cosas se podía escribir en un catálogo — hasta que existieron `fit` (la
+// cuenta sale del largo y el paso) y la forma acotada de `evalOn` (`{k, px, min}`).
+// Ahora es `scenes.civicBuilding.parts` y esta función es su llamador.
+function drawCivicBuilding(P) {
+  paintParcelScene(P, "civicBuilding");
 }
 
 // A SCHOOL parcel: the pavilion along the parcel's back edge, the patio in

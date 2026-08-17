@@ -1604,7 +1604,7 @@
     }
   },
   "_parcels": "POR USO: what a parcel is CALLED on the map and what stands on it. The ground colour is a MATERIAL and lives in materials.json (`parcel`), keyed by the same ParcelUse. `pill` is the word a parcel wears when it IS a landmark; `tone` is the ink of its own name; `label: false` means the ground says everything and a caption sitting in the middle of it would cover exactly what it names.",
-  "_parcelScenes": "SEVEN BUILDINGS STAY IN CODE, and it is the same line the faro, the estadio and the parque marino draw. The catedral, the Casa de la Cultura, the escuelas/kinders/campus, the gasolineras, the kiosco de parque, the río and the arbolado all size THEMSELVES from the parcel's own half-extents through clamps and counts — `Math.max(3, Math.round(h / 12))` columns, a marked court only `if (L > 70 && ph > 22)`, one pavilion per 46 px of frontage, a tree scatter on a position hash. Moving them would mean putting arithmetic and conditionals in JSON, which is a programming language and not a catalog; §12's own `what should not be converted` list says so. What DID move is what is genuinely art: the parroquia, the Virgen and the paradita — and the parroquia and the paradita were each being drawn twice.",
+  "_parcelScenes": "LAS ESCENAS DE PARCELA SE ESTAN PASANDO A DATA, y la nota que decia lo contrario habia podrido. Decia: «siete edificios se quedan en codigo porque se dimensionan desde las medio-extensiones de la parcela POR CLAMPS Y CUENTAS — moverlos seria poner aritmetica y condicionales en JSON, que es un lenguaje de programacion y no un catalogo». Era cierto cuando se escribio y dejo de serlo: `fit` deriva una CUENTA de un largo y un paso, y la forma `{k, px, min, max}` de `evalOn` declara un TOPE. Ninguna de las dos pone aritmetica en el registro — el JSON dice el paso y el tope, el motor hace la division y la comparacion, que es el mismo lado de la linea de §12 donde ya estaban `scatter`, `orbit` y `bulbs`.\n\nEl marco lo arma `paintParcelScene`: `X`/`Y` en medio-extensiones ya reducidas por el `inset` de la escena, `S` en la dimension CARACTERISTICA que elige el llamador. Eso ultimo se queda en codigo a proposito: la espina de una catedral es `min(hh, hw*0.62)` y un `min` entre ejes no cabe en un evaluador de un eje. El llamador lo calcula, el JSON lo usa como fraccion.\n\nMigradas: `civicBuilding`. Faltan: catedral, escuela/kinder/campus, gasolinera, kiosco, rio y arbolado. Cada una entra con su hoja diffeada — `shot-parcels` dibuja los 18 usos, asi que una transcripcion mal hecha se ve ahi y no en el mundo.",
   "parcels": {
     "defaultTone": "#8a6f4a",
     "uses": {
@@ -1896,7 +1896,7 @@
         "type": "stadium",
         "inset": 14,
         "insetNote": "px hacia adentro desde el vértice. Suficiente para que la base quede en el césped y no en la calle."
-        }
+      }
     },
     "marinePark": {
       "note": "Parque Marino — its green is the cuadra's RESIDUAL after every other lot takes its space, filled multi-ring even-odd. Only the pill is here.",
@@ -1921,8 +1921,108 @@
       "palette": {
         "shadow": "rgba(0,0,0,0.22)",
         "wall": "#e7ddc8",
-        "roof": "#b98a5e"
-      }
+        "roof": "#b98a5e",
+        "stoneLite": "@cathedral.stoneLite",
+        "_stoneLite": "Apunta a la paleta de la catedral, que es donde vive ese gris. `@escena.clave` es un salto y solo uno: el resolvedor no persigue cadenas. Copiar el hex aca seria la clase de duplicado que hizo que `materials.street.majorDash` y `paintRoads` tuvieran cada uno el suyo — mover la perilla cambiaba todos los guiones del juego menos los de la calle."
+      },
+      "_frame": "PARTES EN EL MARCO DE LA PARCELA. `X`/`Y` miden en medio-extensiones del lote (ya reducidas por `inset`), así que `[-1, 4]` es «el borde izquierdo, mas cuatro pixeles» — exactamente lo que decia `-w/2 + 4`. `S` mide en la dimension caracteristica de la escena (la menor de las dos), para radios y grosores.",
+      "inset": 0.86,
+      "_inset": "el edificio se planta al 86% del lote: el resto es su retiro, que es lo que hace que lea como un edificio en su terreno y no como el terreno pintado.",
+      "parts": [
+        {
+          "shape": "roundRect",
+          "fill": "$shadow",
+          "x": [
+            -1,
+            7
+          ],
+          "y": [
+            -1,
+            8
+          ],
+          "w": [
+            2,
+            -8
+          ],
+          "h": [
+            2,
+            -8
+          ],
+          "r": 3,
+          "_": "la sombra: el mismo cuerpo corrido +3,+4. Queda fija a proposito — es una escena de parcela, no una figura, y moverla con el sol es la ronda que sigue."
+        },
+        {
+          "shape": "roundRect",
+          "fill": "$wall",
+          "x": [
+            -1,
+            4
+          ],
+          "y": [
+            -1,
+            4
+          ],
+          "w": [
+            2,
+            -8
+          ],
+          "h": [
+            2,
+            -8
+          ],
+          "r": 3,
+          "_": "el cuerpo de repello"
+        },
+        {
+          "shape": "rect",
+          "fill": "$roof",
+          "x": [
+            -1,
+            4
+          ],
+          "y": [
+            -1,
+            4
+          ],
+          "w": [
+            2,
+            -8
+          ],
+          "h": {
+            "k": 0.32,
+            "px": -1.28,
+            "min": 3
+          },
+          "_": "la banda de teja. `max(3, h*0.16)` con h = 2*hh-8, o sea 0.32 de la media altura menos 1.28, con piso de 3 px: sin ese piso la banda desaparece en una parcela angosta."
+        },
+        {
+          "shape": "fit",
+          "along": "y",
+          "length": [
+            2,
+            -8
+          ],
+          "pitch": 12,
+          "min": 3,
+          "_": "las columnas del portico sobre la cara oeste (la del bulevar). `round(h/12)` con piso de 3 — la cuenta la deriva `fit` del largo y el paso, no el JSON.",
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": "$stoneLite",
+              "x": [
+                -1,
+                6
+              ],
+              "y": [
+                -1,
+                2.4
+              ],
+              "w": 4,
+              "h": 3.2
+            }
+          ]
+        }
+      ]
     },
     "school": {
       "note": "Escuela / kínder / campus: a swept yard with pavilions along one edge and a marked court when the lot is big enough. HOW MANY pavilions is a function of the frontage, which is why this is a scene.",

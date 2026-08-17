@@ -27,6 +27,7 @@
 //   * **sólo las de la vista**, que el streaming por tile ya da gratis.
 import LIGHTS from "../../assets/lights.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
+import { moonlight } from "../../game/daynight.js";
 import { LAMP_POOL_R } from "../../domain/units.js";
 import { ctx, dpr } from "./gfx.js";
 
@@ -75,6 +76,13 @@ function lampsInView(view) {
  * the last word.
  */
 export function drawNightLights(vw, vh, view, tint, toScreen) {
+  // LA LUNA DECIDE CUÁNTO SE VE. Luna llena y luna nueva son dos noches
+  // distintas y el jugador lo nota antes de saber por qué: en llena el tinte se
+  // aligera y se maneja por la calle, en nueva la ciudad son los pozos de luz y
+  // nada más. Es la misma luna que abre y cierra la marea, así que una noche de
+  // marea viva es además una noche clara — que es verdad y es una pista.
+  const moon = moonlight();
+  if (moon > 0) tint = lightenTint(tint, moon * 0.34);
   const lamps = lampsInView(view);
   if (!lamps.length) {
     // Sin postes la noche es lo que siempre fue. Este camino es el que mantiene
@@ -129,6 +137,17 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
   }
   ctx.restore();
   return lamps.length;
+}
+
+//: Aclara el velo de la noche por la luna. El tinte es un `rgba()`, así que lo
+//: que se baja es su ALFA — aclarar su color lo volvería azul lechoso en vez de
+//: dejar ver lo que hay debajo.
+function lightenTint(tint, k) {
+  const i = tint.lastIndexOf(",");
+  if (!tint.startsWith("rgba") || i < 0) return tint;
+  const alpha = parseFloat(tint.slice(i + 1));
+  if (!Number.isFinite(alpha)) return tint;
+  return `${tint.slice(0, i + 1)}${(alpha * (1 - k)).toFixed(3)})`;
 }
 
 //: El zoom vigente, puesto por el compositor antes de llamar — el pozo es una

@@ -19,7 +19,8 @@ import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt, ferries, routePoint } from "./ferries.js";
 import { advanceCrossing, advanceEstero, boostReady, catchFish, crossingState, spendBoost } from "./crossing.js";
 import { leaveTheLancha } from "./modes.js";
-import { updateDayCycle } from "./daynight.js";
+import { updateDayCycle , wetGrip } from "./daynight.js";
+import { tornadoPull, updateTornado } from "./tornado.js";
 import { updateTide } from "./tides.js";
 import { updateEditorTriggers } from "./editorGameplay.js";
 import { activeEditorBoost, tickEditorBoosts } from "./editorContent.js";
@@ -199,6 +200,7 @@ export function update(dt) {
   }
   updateDayCycle(dt);          // the sky, when the mode asked for a clock
   updateTide(dt);              // …and the water under it, always
+  updateTornado(dt);           // …y el tornado, que sólo existe en las bravas
   const surf = W.surfaceAt(p.x, p.y);
   const onRoad = surf === SURFACE.ROAD || surf === SURFACE.BRIDGE; // road or bridge deck
   const onSand = surf === SURFACE.BEACH;
@@ -210,7 +212,13 @@ export function update(dt) {
   const surfaceMul = aboard ? 1.0                       // steel deck
     : afloat ? (surf === SURFACE.WATER ? 1.0 : 0.5)     // aground: she barely moves
     : SURFACE_MUL[surf] !== undefined ? SURFACE_MUL[surf] : 0.78;
-  const wetMul = state.weather === "storm" ? 0.92 : 1;
+  // EL ASFALTO MOJADO, y era casi mentira: `state.weather === "storm" ? 0.92 : 1`
+  // — un interruptor sobre el NOMBRE del clima, a 0.92 (que no se siente), y que
+  // se apagaba en el mismo cuadro en que escampaba. Ahora sale del CHARCO: entra
+  // con la rampa de la tormenta, es 0.82 (resbaloso de sentir, no de perder el
+  // carro) y se va secando después, así que la calle sigue traicionera un rato
+  // con el cielo ya abierto.
+  const wetMul = wetGrip();
   // i-frames after a traffic hit so one collision can't roll the churchill
   // drop every frame of contact
   state.hitT = Math.max(0, (state.hitT || 0) - dt);
@@ -419,6 +427,16 @@ export function update(dt) {
   // it cuts grip past what a handbrake does; and the car's 0.15 wall relax is
   // tuned for a kerb you can see, which makes a boat skate along a ragged
   // mangrove edge instead of running down it.
+  // EL TORNADO ES UNA CORRIENTE, igual que el remolino del estero: no choca, tira
+  // — y le tuerce la trompa además de moverla, que es lo que lo hace sentir
+  // viento y no muro. Se aplica acá, con el resto de las fuerzas, en vez de
+  // escribir en `p` desde su propio módulo.
+  const twist = tornadoPull(p);
+  if (twist) {
+    p.vx += twist.ax * dt;
+    p.vy += twist.ay * dt;
+    p.a += twist.spin * dt;
+  }
   const grip = veh.grip * gripBoost * (input.brake ? (afloat ? HULL.driftGrip : 0.55) : 1) * wetMul
     * (onWall ? (afloat ? HULL.wallGrip : 0.15) : 1) * (onSand ? 0.62 : 1);
   const kept = side * (1 - Math.min(1, grip * dt * 6));

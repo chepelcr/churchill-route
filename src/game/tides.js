@@ -22,7 +22,7 @@
 //     rather than merely dark: the banks are covered, so the lane is wide, and
 //     everything in it is moving. High water is not the easy case.
 import { state } from "./state.js";
-import { DAY_SECONDS, dayCycleOn, timeOfDay } from "./daynight.js";
+import { DAY_SECONDS, dayCycleOn, timeOfDay, tideRange } from "./daynight.js";
 import SIM from "../content/simulation.json" with { type: "json" };
 
 //: a full tidal cycle in real seconds — TWO of them per day, which is what
@@ -78,7 +78,14 @@ function astronomical(seconds) {
   const u = dayCycleOn()
     ? (timeOfDay() * DAY_SECONDS) / TIDE_PERIOD + tide.phase
     : seconds / TIDE_PERIOD + tide.phase;
-  return 0.5 - 0.5 * Math.cos(u * Math.PI * 2);
+  // LA LUNA ABRE Y CIERRA EL RANGO, que es la razón real por la que existe una
+  // marea viva. Llena o nueva: el sol y la luna tiran alineados y el rango es el
+  // grande — los bancos salen del todo a bajamar y se cubren del todo a pleamar.
+  // Cuarto: tiran en cruz y el estero apenas cambia. Multiplica la AMPLITUD y
+  // deja el centro donde está, así que la media marea sigue siendo media marea
+  // y sólo cambia CUÁNTO se mueve alrededor de ella — que es lo que le cambia la
+  // FORMA al curso de la Travesía en vez de sus números.
+  return 0.5 - 0.5 * Math.cos(u * Math.PI * 2) * tideRange();
 }
 
 export function updateTide(dt) {

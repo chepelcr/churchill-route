@@ -5,6 +5,7 @@
 // so the drawers can keep writing plain `ctx.fillStyle = ...`.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
+import { skyBlend } from "../../game/daynight.js";
 import { tuning } from "../../game/tuning.js";
 import { MIN_ZOOM, VIEW_WIDTH_PX } from "../../domain/units.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
@@ -58,13 +59,67 @@ function setupCanvas(c) {
   document.addEventListener("webkitfullscreenchange", () => setTimeout(resize, 60));
 }
 
+// ---- EL CIELO ES UN CONTINUO, no cuatro estados -----------------------------
+//
+// `apply()` sólo actuaba al cruzar una frontera de fase, así que el atardecer
+// aparecía DE UN CUADRO AL OTRO. La hora siempre fue continua; ahora la paleta
+// también, mezclando las dos fases vecinas — y la tormenta entra por el mismo
+// camino en vez de ser un quinto caso, que es lo que hace que el cielo se
+// CIERRE en vez de saltar.
+//
+// El resultado se cachea por (from, to, k) redondeado: cinco módulos llaman a
+// `weatherColors()` por cuadro y mezclar siete colores cada vez, cinco veces, es
+// trabajo que nadie ve. El paso de redondeo (1/64) es más fino que lo que
+// distingue el ojo en un lavado de pantalla completa.
+const _mixCache = new Map();
+
+function _hex(v) {
+  const n = parseInt(v.slice(1), 16);
+  return v.length === 4
+    ? [((n >> 8) & 15) * 17, ((n >> 4) & 15) * 17, (n & 15) * 17]
+    : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function _rgba(v) {
+  const parts = v.slice(v.indexOf("(") + 1, -1).split(",").map(Number);
+  return [parts[0], parts[1], parts[2], parts[3] ?? 1];
+}
+//: Mezcla dos colores del registro. Acepta hex y `rgba()` porque `tint` es
+//: rgba y todo lo demás es hex — y un tinte mezclado como si fuera opaco es la
+//: pantalla en negro.
+function mixColor(a, b, k) {
+  if (a === b) return a;
+  const isA = a.startsWith("rgba") || a.startsWith("rgb");
+  if (isA || b.startsWith("rgba") || b.startsWith("rgb")) {
+    const [ar, ag, ab, aa] = isA ? _rgba(a) : [..._hex(a), 1];
+    const [br, bg, bb, ba] = b.startsWith("rgb") ? _rgba(b) : [..._hex(b), 1];
+    const m = (x, y) => Math.round(x + (y - x) * k);
+    return `rgba(${m(ar, br)},${m(ag, bg)},${m(ab, bb)},${(aa + (ba - aa) * k).toFixed(3)})`;
+  }
+  const [ar, ag, ab] = _hex(a), [br, bg, bb] = _hex(b);
+  const m = (x, y) => Math.round(x + (y - x) * k);
+  return `#${((1 << 24) | (m(ar, br) << 16) | (m(ag, bg) << 8) | m(ab, bb)).toString(16).slice(1)}`;
+}
+
 function weatherColors() {
   // The per-weather palette lives in the shared material registry: five modules
   // read it — this one for the sky, `ground.js` for the playas and the land
   // base, `estero.js` for the mangrove's shoreline, `canvas2d.js` for the tint
   // over the finished frame, and `water.js`, which DERIVES the entire living-sea
   // palette from `waterTop`/`waterBot` rather than authoring one.
-  return MATERIALS.weather[state.weather] || MATERIALS.weather.sunny;
+  const W = MATERIALS.weather;
+  const { from, to, k } = skyBlend();
+  const a = W[from] || W.sunny;
+  if (!(k > 0)) return a;
+  const b = W[to] || a;
+  if (a === b) return a;
+  const step = Math.round(k * 64) / 64;
+  const key = `${from}>${to}@${step}`;
+  const had = _mixCache.get(key);
+  if (had) return had;
+  const out = {};
+  for (const field of Object.keys(a)) out[field] = mixColor(a[field], b[field] ?? a[field], step);
+  _mixCache.set(key, out);
+  return out;
 }
 
 

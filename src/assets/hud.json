@@ -105,7 +105,10 @@
       "sand": "#c39d6b",
       "water": "#3f95b8",
       "waterline": "rgba(255,255,255,0.75)",
-      "ticks": "rgba(255,255,255,0.30)"
+        "ticks": "rgba(255,255,255,0.30)",
+      "moonLit": "#e8e4cf",
+      "moonDark": "rgba(255,255,255,0.16)",
+      "moonNote": "LA FASE DE LA LUNA, junto a la marea porque es su CAUSA. La barra dice cuánta agua hay; el disco dice por qué su rango es el que es — llena o nueva y la marea es viva, cuarto y es muerta. Sin él, el jugador ve que la Travesía cambió de dificultad y no tiene con qué explicárselo."
     },
     "crossing": {
       "_note": "LA TARJETA DE LA TRAVESÍA. Se dimensiona a su contenido y no a una constante — a 132 px fijos el título y el contador se encimaban en «ESTUARY CROSSING2», y el número que lo arreglaba en inglés es el número equivocado en español, donde el mismo título es tres caracteres más largo.",

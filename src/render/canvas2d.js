@@ -19,6 +19,8 @@ import {
 import { drawMangroves, drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
 import { drawNightLights, setLightZoom } from "./c2d/nightlights.js";
+import { drawTornado } from "./c2d/tornado.js";
+import { lightning, lightsOn, stormForce, stormLevel } from "../game/daynight.js";
 import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawChannel, drawEstero } from "./c2d/estero.js";
@@ -218,13 +220,22 @@ function render(t) {
     ctx.globalAlpha = 1;
   }
 
+  // EL TORNADO, sobre el mundo y bajo la interfaz: es una cosa del mundo, con
+  // posición propia, y hay que poder verlo llegar por encima de la calle.
+  drawTornado(view);
+
   // Debug coordinate grid (topmost world-space layer)
   if (state.debug) { drawDebugGrid(view, ZOOM); drawPoiNames(view, ZOOM); }
 
   // Overlays
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const C = weatherColors();
-  if (state.weather === "night") {
+  // LOS POZOS DE LUZ SON DE LA NOCHE **Y DE LA TORMENTA**. Un cielo cerrado a
+  // mediodía prende el alumbrado, y si el compositor sólo mirara el nombre del
+  // clima esas lámparas se dibujarían sin abrir su pozo — el mismo error que
+  // tenía la noche, otra vez.
+  const lit = lightsOn();
+  if (lit) {
     // LA NOCHE ES UNA CAPA QUE LAS LÁMPARAS PERFORAN, no una manta. El tinte
     // plano sigue siendo lo que se ve LEJOS de un poste — que es como el juego
     // se ha visto siempre — pero deja de ser la última palabra. Sin alumbrado
@@ -236,8 +247,21 @@ function render(t) {
   } else {
     ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
   }
-  if (state.weather === "storm") drawRain(vw, vh, t);
+  // LA LLUVIA ENTRA CON LA RAMPA, no con el nombre: primero el cielo plomizo,
+  // después el agua. Antes caía a plomo en el mismo cuadro en que el clima
+  // cambiaba, que es lo que hacía que una tormenta se sintiera un interruptor.
+  const storm = stormLevel();
+  if (storm > 0) drawRain(vw, vh, t, stormForce());
   if (state.weather === "night") drawNightVignette(vw, vh);
+  // EL RELÁMPAGO va encima de TODO —del tinte, de la lluvia, del viñeteado—
+  // porque un relámpago ilumina la escena entera y no una capa de ella. Dura
+  // fracciones de segundo, así que es lo único de la tormenta que se dibuja como
+  // un destello y no como un estado.
+  const bolt = lightning();
+  if (bolt > 0) {
+    ctx.fillStyle = `rgba(214,232,255,${(bolt * 0.5).toFixed(3)})`;
+    ctx.fillRect(0, 0, vw, vh);
+  }
   // The estero's gulls go over the CAMERA, so they belong up here with the
   // weather and not in the world pass — a bird that crossed you is between you
   // and everything, including the boat.

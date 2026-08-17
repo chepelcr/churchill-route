@@ -345,6 +345,16 @@
       "signText": "#fff"
     }
   },
+  "tornado": {
+    "_note": "EL TORNADO. Un embudo visto desde arriba es un anillo de polvo que gira, no un cono — desde esta cámara nunca se le ve el alto. Así que se dibuja como lo que se ve: un remolino de polvo, un ojo oscuro, y escombro girando alrededor. Los generadores del vocabulario de formas (`orbit`, `scatter`) harían esto como partes, pero gira con el reloj y con su propia fase, así que la geometría se queda en el pintor y acá va sólo la paleta.",
+    "dust": "rgba(150,132,104,0.30)",
+    "dustEdge": "rgba(120,104,80,0.44)",
+    "eye": "rgba(58,50,40,0.52)",
+    "debris": "rgba(96,84,64,0.66)",
+    "spray": "rgba(214,226,236,0.34)",
+    "sprayNote": "sobre agua levanta rocío en vez de polvo, que es la diferencia visible entre una tromba marina y un tornado de tierra."
+  },
+
   "weather": {
     "_note": "The sky, sea, sand, land and tint of each weather. Not a water palette — `ground.js` fills the playas and the land base from it, `estero.js` matches the mangrove's shore to `sand`, `canvas2d.js` lays the tint over the finished frame, and `water.js` DERIVES the whole living-sea palette from `waterTop`/`waterBot` (the ratios are in water.json). Five consumers, one table.",
     "_key": "churchill/world/enums/features.py :: Weather",

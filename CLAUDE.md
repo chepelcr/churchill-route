@@ -872,6 +872,51 @@ it — medians stamp `PASEO_MEDIAN_W + 6` while rendering at `PASEO_MEDIAN_W`.
 Decorative tree lines need a surface-class guard (skip `CLS_ROAD/PASEO/BRIDGE`)
 so they sit beside the lane, not on it.
 
+**EL CIELO ES UN CONTINUO, NO CUATRO ESTADOS** (`src/game/daynight.js`). The
+day used to change BETWEEN FRAMES: `apply()` only acted on crossing a phase
+boundary, so dusk arrived in one step. `state.weather` is still the four discrete
+names — everything reads it, the smokes force it, the tests assert it — but it is
+now DERIVED from a continuous sky, and the continuum is what everything visual
+asks for:
+
+* `skyBlend()` → the two phases and how far between. `weatherColors()` mixes
+  them, so the palette moves. **The blend lives in the last third of a phase**,
+  not across all of it: blended end to end, midday is never midday — it is
+  always half-dusk, and the day loses its hours. The mix is cached by
+  `(from, to, k)` rounded to 1/64 because five modules call it per frame.
+* `sunVector()` → **shadows follow the sun.** `plantShadow` had a fixed
+  `+0.5R, +0.42R`, i.e. one invented light direction for the whole world at
+  every hour, which at midday reads as every tree being off-square with its own
+  shadow. What sells it is not the angle but the LENGTH (short and tucked under
+  the crown at noon, stretched at dusk) and the OPACITY (a noon shadow is hard,
+  a dusk one long and washed out).
+* `moonPhase()` / `moonlight()` / `tideRange()` → **the moon moves the tide and
+  the night.** Full or new = spring (sun and moon pull ALIGNED — note it is
+  alignment, not how much moon you see); quarter = neap. It multiplies the
+  existing cosine's AMPLITUDE rather than adding a term, so half tide is still
+  half tide and only the swing changes — which alters the SHAPE of la Travesía's
+  course rather than its numbers. It also lifts the night tint, so a spring-tide
+  night is also a bright one: true, and a hint.
+* `stormLevel()` / `lightning()` / `wetGrip()` → **a storm arrives in three
+  acts**, at any hour. It was a switch: `state.weather = "storm"` and it was
+  already raining. Now the sky closes first, then it thunders, and only then does
+  the water come — and `wetGrip()` is the puddle, not the cloud, so the road
+  stays treacherous after it clears. The old wet grip was
+  `state.weather === "storm" ? 0.92 : 1`: a switch on a NAME, at a value nobody
+  could feel, that ended the frame the rain did.
+* `lightsOn()` → **one owner** for "are the lamps lit". Night, or a closed sky at
+  midday. Two callers ask (the one drawing the lamp and the one opening its
+  pool), and written twice a different threshold in each gives lit lamps with no
+  light around them — which is the bug the night had the first time.
+
+`pnpm smoke:sky` walks the clock and measures what a screenshot cannot: that the
+ground colour moves in SMALL steps. It samples 480 times because the biggest
+transition (dusk→night, 159 units of colour) takes 37 s of a 600 s day — at 48
+samples only 2.9 landed in that window and each step measured 54, which looked
+like a jump and was the sampling. A ramp steps ~5.5; a switch steps 159. It also
+walks a lunar MONTH separately, because one day is an eighth of one and leaves
+the moon nearly still.
+
 **LA NOCHE ES UNA CAPA QUE LAS LÁMPARAS PERFORAN** (`c2d/nightlights.js`). The
 city was too dark and the cause was structural, not a brightness value: night is
 `C.tint`, a flat wash over the WHOLE FRAME, so a lamp drawn in the world pass
@@ -885,7 +930,13 @@ sees), **a pre-rendered sprite blitted** per lamp rather than a
 `street lamps go in the tiles like trees, never global like signs`, because
 there are thousands and a global list would load them all to draw twelve. A
 lamp record is `{x, y, ang, type}` and nothing more: what a lamp IS lives in
-`lights.json`. With no lamps in view the painter paints the same tint as before,
+`lights.json`. **And the GROUND decides where one stands, not the geometry**: the
+first version walked each polyline independently and offset to the side, which at
+a junction puts the post IN THE MIDDLE OF THE INTERSECTION — two streets' ends
+coincide there and each offers its own kerb. Working out "am I near a junction?"
+from the road list is exactly the derivation the raster already answers, so
+`place_streetlights` asks what is under the post and drops it unless it is acera
+or land. 198 of 781 were in the roadway. With no lamps in view the painter paints the same tint as before,
 which is what keeps the change honest. `pnpm smoke:night` measures the cost by
 interleaving day and night medians — a single before/after comparison measures
 warm-up, which is how it first reported 50 ms.

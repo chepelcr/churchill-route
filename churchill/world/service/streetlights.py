@@ -22,7 +22,8 @@ es viable.
 """
 import math
 
-from ..config import ACERA_CELLS, GRID_CELL, LAMP_ROAD_CLASSES, LAMP_SPACING_M, px
+from ..config import (ACERA_CELLS, CLS_ACERA, CLS_LAND, GRID_CELL,
+                      LAMP_ROAD_CLASSES, LAMP_SPACING_M, px)
 from ..logging import log
 
 
@@ -33,15 +34,31 @@ def _lamp_offset(width):
     return width / 2 + ACERA_CELLS * GRID_CELL * 0.5
 
 
-def place_streetlights(roads, kind="warm"):
+#: DÓNDE PUEDE PARARSE UN POSTE. La acera, ante todo; tierra también, porque
+#: una manzana sin acera trazada sigue siendo el borde de la calle. Nada más — y
+#: en particular NO la calzada, que es el bug que esto cierra.
+LAMP_GROUND = (CLS_ACERA, CLS_LAND)
+
+
+def place_streetlights(roads, raster=None, kind="warm"):
     """Un poste cada `LAMP_SPACING_M` metros de calzada, alternando de acera.
 
     Alternar los lados es lo que hace que una calle se lea alumbrada en vez de
     tener una fila de postes de un solo lado: en un pueblo real el vano entre
     dos postes de la misma acera es el doble del que uno ve.
+
+    **Y EL SUELO DECIDE, NO LA GEOMETRÍA.** La primera versión caminaba cada
+    polilínea por su cuenta y ponía un poste cada tantos metros al costado — lo
+    que en un cruce pone el poste EN MEDIO DE LA INTERSECCIÓN, porque los
+    extremos de dos calles coinciden ahí y cada una ofrece su propio costado.
+    Calcular «¿estoy cerca de un cruce?» a partir de la lista de vías es
+    exactamente el tipo de derivación que el ráster ya contesta: se le pregunta
+    qué hay bajo el poste y si no es acera ni tierra, no hay poste. Es la misma
+    regla que usa todo lo demás que se para en este mundo.
     """
     spacing = px(LAMP_SPACING_M)
     lamps = []
+    rejected = 0
     for road in roads:
         if road.get("cls") not in LAMP_ROAD_CLASSES:
             continue
@@ -63,15 +80,23 @@ def place_streetlights(roads, kind="warm"):
             ux, uy = dx / length, dy / length
             t = spacing - carry
             while t < length:
+                lx = round(x0 + ux * t - uy * off * side)
+                ly = round(y0 + uy * t + ux * off * side)
+                t += spacing
+                side = -side
+                if raster is not None:
+                    col, row = raster.cell_of(lx, ly)
+                    if not raster.in_bounds(col, row) or raster.at(col, row) not in LAMP_GROUND:
+                        rejected += 1
+                        continue
                 lamps.append({
-                    "x": round(x0 + ux * t - uy * off * side),
-                    "y": round(y0 + uy * t + ux * off * side),
+                    "x": lx, "y": ly,
                     "ang": round(math.atan2(uy, ux), 3),
                     "type": kind,
                 })
-                side = -side
-                t += spacing
             carry = (carry + length) % spacing
     log("luz", f"{len(lamps)} postes de alumbrado cada {LAMP_SPACING_M:.0f} m "
-        f"sobre {len(LAMP_ROAD_CLASSES)} clases de vía")
+        f"sobre {len(LAMP_ROAD_CLASSES)} clases de vía; "
+        f"{rejected} descartados por no caer en acera ni tierra "
+        f"(la boca de un cruce, sobre todo)")
     return lamps

@@ -120,7 +120,7 @@ def main():
     ctx.bridge, ctx.estuary, ctx.balneario = bridge, est, balneario
     ctx.failures = failures
     # EL ALUMBRADO PÚBLICO, sobre la red de calles ya terminada.
-    ctx.lamps = place_streetlights(ctx.roads)
+    ctx.lamps = place_streetlights(ctx.roads, ctx.raster)
     ctx.cuadras = build_cuadra_catalog(ctx.raster, blocks)
     # EL SUELO AUTORADO DE UNA MANZANA. Va DESPUÉS del catálogo (necesita los
     # contornos para resolver un punto geo a su cuadra) y ANTES de `verify`,

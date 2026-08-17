@@ -23,6 +23,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { SURFACE } from "../../game/surfaces.js";
 import { ACERA_PX, ctx, flatPath, hash01 } from "./gfx.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
+import { sunVector } from "../../game/daynight.js";
 
 // THE SPECIES ARE DATA, THE FORMS ARE CODE. `src/assets/flora.json` says what a
 // guanacaste is — palette, crown radius, trunk height, which form draws it — and
@@ -71,12 +72,29 @@ function canopyPath(cx, cy, R, seed, wob = 0.22, n = 13) {
   ctx.closePath();
 }
 
-// The one shadow: an ellipse thrown down and to the right, sized off the crown.
+// LA SOMBRA SIGUE AL SOL.
+//
+// Era una elipse clavada abajo y a la derecha —`+0.5R, +0.42R`— en TODO el mundo
+// y a toda hora, o sea una dirección de luz inventada y fija. A mediodía eso se
+// lee exactamente como lo que es: cada árbol descuadrado respecto de su propia
+// sombra.
+//
+// Ahora sale del vector del sol. Dos cosas hacen la diferencia y ninguna es el
+// ángulo: **la LARGURA** —con el sol alto la sombra se recoge bajo la copa, con
+// el sol bajo se tiende— y **la OPACIDAD**, porque una sombra de mediodía es
+// dura y una de atardecer es larga y lavada. Al mediodía queda casi centrada,
+// que es lo que se ve en la calle.
 function plantShadow(x, y, R) {
+  const sun = sunVector();
+  // `alt` va de 0 (horizonte) a 1 (cenit); la sombra es su inversa.
+  const reach = R * (0.18 + (1 - sun.alt) * 0.95);
   ctx.fillStyle = PLANT_SHADOW;
+  ctx.globalAlpha = 0.45 + sun.alt * 0.55;
   ctx.beginPath();
-  ctx.ellipse(x + R * 0.5, y + R * 0.42, R * 1.12, R * 0.42, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + sun.x * reach, y + sun.y * reach * 0.62,
+              R * 1.12, R * 0.42, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.globalAlpha = 1;
 }
 
 // A seed a plant carries for its whole life: its own position, nothing else.

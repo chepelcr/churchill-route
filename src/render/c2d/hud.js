@@ -12,10 +12,14 @@ import { crossingTarget } from "../../game/crossing.js";
 import { tideName } from "../../game/tides.js";
 import { t as tr } from "../../i18n/index.js";
 import HUD from "../../assets/hud.json" with { type: "json" };
+import SIM from "../../content/simulation.json" with { type: "json" };
+import { moonPhase, moonlight } from "../../game/daynight.js";
 //: …y su bloque de paleta. El minimapa, la brújula y las etiquetas de POI ya
 //: leían de este archivo; la tarjeta de la Travesía y la barra de marea eran lo
 //: último que quedaba con los colores escritos adentro de su propia función.
 const HP = HUD.palette;
+//: El techo de opacidad de la lluvia — ver `rainCapNote` en simulation.json.
+const RAIN_CAP = SIM.day.rainCapAlpha;
 
 // Every named real place OSM knows about (1160 of them), drawn ONLY under the
 // debug toggle: at play zoom they'd be a wall of text, but flying over the map
@@ -145,12 +149,26 @@ function drawCompass(vw, vh) {
   ctx.fillText(label, cx, cy + 39);
 }
 
-function drawRain(vw, vh, t) {
-  const intensity = Math.max(0.1, Math.min(2, state.weatherIntensity || 1));
-  ctx.strokeStyle = `rgba(180,210,240,${Math.min(0.8, 0.28 + intensity * 0.22)})`; ctx.lineWidth = 1;
-  for (let i = 0; i < Math.round(240 * intensity); i++) {
-    const x = (i * 73 + t * 0.4) % vw, y = (i * 137 + t * 0.9) % vh;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 6, y + 10); ctx.stroke();
+function drawRain(vw, vh, t, force = 1) {
+  // `force` es la rampa POR la fuerza de la tormenta: el agua arrecia en vez de
+  // aparecer, y un aguacero cae distinto que un chubasco. Multiplica la
+  // intensidad autorada en vez de reemplazarla, así que una etapa que pidió
+  // lluvia fuerte sigue teniéndola — sólo que ahora llega.
+  const intensity = Math.max(0.1, Math.min(2, (state.weatherIntensity || 1) * force));
+  // EL TECHO DE LEGIBILIDAD, y es lo que hace jugable una tormenta fuerte. La
+  // lluvia arrecia, pero su opacidad NO pasa de acá: una pantalla que no deja
+  // ver la calle no es difícil, es injusta — y este juego se maneja mirando dos
+  // cuadras adelante. Las gotas se hacen más, más largas y más rápidas; lo que
+  // no se hace es más OPACO.
+  const alpha = Math.min(RAIN_CAP, 0.16 + intensity * 0.2);
+  ctx.strokeStyle = `rgba(180,210,240,${alpha.toFixed(3)})`;
+  ctx.lineWidth = intensity > 1.1 ? 1.4 : 1;
+  const drops = Math.round(150 * intensity);
+  const len = 8 + intensity * 7;
+  for (let i = 0; i < drops; i++) {
+    const x = (i * 73 + t * (0.4 + intensity * 0.35)) % vw;
+    const y = (i * 137 + t * (0.9 + intensity * 0.7)) % vh;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - len * 0.6, y + len); ctx.stroke();
   }
 }
 // LA HORDA DE GAVIOTAS, from where the pilot is sitting. The flock in the
@@ -521,6 +539,41 @@ function drawTideGauge(x, y, tide) {
   ctx.restore();
   ctx.strokeStyle = HP.tide.ticks; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.roundRect(gx + 0.5, gy + 0.5, gw - 1, gh - 1, 3); ctx.stroke();
+  // LA LUNA, al lado de la marea porque es su CAUSA. La barra dice cuánta agua
+  // hay; el disco dice por qué el rango es el que es. Sin él el jugador nota que
+  // la Travesía cambió de dificultad y no tiene con qué explicárselo.
+  drawMoon(gx + gw / 2, gy - 8, 4.2);
+}
+
+/**
+ * La luna como un disco con su terminador: llena, nueva, o un gajo.
+ *
+ * Se dibuja el disco oscuro completo y encima la parte iluminada, así que la
+ * luna nueva es un círculo apenas visible y no un hueco — que es lo que se ve
+ * en el cielo, y lo que dice «hay luna, no la estás viendo».
+ */
+function drawMoon(cx, cy, r) {
+  const phase = moonPhase();
+  const lit = moonlight();
+  ctx.fillStyle = HP.tide.moonDark;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  if (lit <= 0.02) return;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = HP.tide.moonLit;
+  if (lit > 0.97) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // El gajo: media luna llena recortada por una elipse cuyo ancho es lo que
+    // falta para llenarla, y el lado depende de si crece o mengua.
+    const waxing = phase < 0.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !waxing);
+    ctx.ellipse(cx, cy, r * (1 - lit * 2 < 0 ? lit * 2 - 1 : 1 - lit * 2), r,
+                0, Math.PI / 2, -Math.PI / 2, lit > 0.5 ? !waxing : waxing);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
 }
 
 // A filled triangle rather than a glyph: an arrow that depends on the font

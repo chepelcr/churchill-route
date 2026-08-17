@@ -12,6 +12,7 @@
 // test, and the radial gradient — which is not a shape the vocabulary has.
 import LIGHTS from "../../assets/lights.json" with { type: "json" };
 import { state } from "../../game/state.js";
+import { lightsOn } from "../../game/daynight.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { ctx } from "./gfx.js";
 import { paintAt } from "./shapes.js";
@@ -24,8 +25,15 @@ const FALLBACK = "warm";
 
 export const lightSpec = (type) => TYPES[type] || TYPES[FALLBACK];
 
-/** Is the halo lit? Night is BEHAVIOUR, which is why it never left this file. */
-const isNight = () => state.weather === "night";
+/**
+ * ¿Está prendida la luz?
+ *
+ * De noche, claro — y **TAMBIÉN EN TORMENTA**, que es lo que hace un pueblo de
+ * verdad: el cielo se cierra a mediodía y se prende el alumbrado. Se pide a la
+ * RAMPA y no al nombre del clima, así que las luces entran cuando el cielo ya
+ * está plomizo y no en el cuadro en que empieza a llover.
+ */
+const isNight = lightsOn;
 
 /**
  * Paint one luminaire at (x, y) in world pixels.

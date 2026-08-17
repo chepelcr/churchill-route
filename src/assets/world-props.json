@@ -1914,7 +1914,264 @@
         "stone": "#a9a49b",
         "stoneDark": "#8b867d",
         "stoneLite": "#c2bcb1"
-      }
+      },
+      "inset": 0.86,
+      "_frame": "`X` mide en L (la media LARGO de la nave = la media anchura del lote); `Y` mide en W2 = min(hh, hw*0.62), la media anchura de la nave. Ese `min` entre ejes lo calcula el llamador y no el JSON: un min entre dos ejes no cabe en un evaluador de un eje, y escribirlo aca seria aritmetica en el registro. +x es el ESTE (la fachada, hacia el bulevar), +y es el SUR.",
+      "_vars": "LA REGLA: un valor que mezcla las DOS escalas no se puede escribir en `[k, px]`, porque `px` es un literal — `[1, \"$v\"]` concatenaria texto. Asi que cualquier mezcla la resuelve el llamador y entra como UN `$var` en pixeles. Son las unicas cinco de esta escena, y todas son un min/max entre ejes o un producto de dos escalares distintos: `$tw` `$th` (crucero), `$dome` (min(W2*0.72, tw*0.9)), `$towerX` `$towerTop` `$towerStep` (los campanarios, que dependen de `tr`), `$crossX` `$crossW` (la cruz, cuyo palo se corre W2*0.11 sobre el eje x). El resto —que es casi todo— es una fraccion limpia de L o de W2 y se edita como tal.",
+      "parts": [
+        {
+          "_": "la sombra: el mismo cuerpo corrido +3,+5",
+          "shape": "roundRect",
+          "fill": "$shadow",
+          "x": [
+            -1,
+            3
+          ],
+          "y": [
+            -1,
+            5
+          ],
+          "w": [
+            2,
+            0
+          ],
+          "h": [
+            2,
+            0
+          ],
+          "r": 4
+        },
+        {
+          "_": "la nave",
+          "shape": "roundRect",
+          "fill": "$stone",
+          "x": [
+            -1,
+            0
+          ],
+          "y": [
+            -1,
+            0
+          ],
+          "w": [
+            2,
+            0
+          ],
+          "h": [
+            2,
+            0
+          ],
+          "r": 3
+        },
+        {
+          "_": "EL CRUCERO: los brazos de la cruz. Mide en $tw x $th, asi que adentro todo vuelve a ser una fraccion — que es la razon de ser del verbo `group`.",
+          "shape": "group",
+          "x": [
+            0.05,
+            0
+          ],
+          "y": 0,
+          "hw": "$tw",
+          "hh": "$th",
+          "parts": [
+            {
+              "shape": "roundRect",
+              "fill": "$stone",
+              "x": [
+                -1,
+                0
+              ],
+              "y": [
+                -1,
+                0
+              ],
+              "w": [
+                2,
+                0
+              ],
+              "h": [
+                2,
+                0
+              ],
+              "r": 3
+            },
+            {
+              "_": "la cumbrera clara cruzando el crucero",
+              "shape": "rect",
+              "fill": "$stoneLite",
+              "x": [
+                -0.34,
+                0
+              ],
+              "y": [
+                -1,
+                2
+              ],
+              "w": [
+                0.68,
+                0
+              ],
+              "h": [
+                2,
+                -4
+              ]
+            }
+          ]
+        },
+        {
+          "_": "la cumbrera clara bajando la nave",
+          "shape": "rect",
+          "fill": "$stoneLite",
+          "x": [
+            -1,
+            2
+          ],
+          "y": [
+            -0.3,
+            0
+          ],
+          "w": [
+            2,
+            -4
+          ],
+          "h": [
+            0.6,
+            0
+          ]
+        },
+        {
+          "_": "EL CIMBORRIO sobre el cruce. Su radio es min(W2*0.72, tw*0.9): un min entre dos escalares distintos, asi que entra resuelto como `$dome` y el grupo mide en el.",
+          "shape": "group",
+          "x": [
+            0.05,
+            0
+          ],
+          "y": 0,
+          "s": "$dome",
+          "parts": [
+            {
+              "shape": "disc",
+              "fill": "$stoneDark",
+              "cx": 0,
+              "cy": 0,
+              "r": [
+                1,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$stoneLite",
+              "cx": 0,
+              "cy": 0,
+              "r": [
+                0.62,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "_": "el abside: el remate redondo del OESTE. `S` de esta escena ES W2, asi que 0.9 de W2 se escribe limpio.",
+          "shape": "disc",
+          "fill": "$stone",
+          "cx": [
+            -1,
+            0
+          ],
+          "cy": 0,
+          "r": [
+            0.9,
+            0
+          ]
+        },
+        {
+          "_": "LA FACHADA ESTE: dos campanarios flanqueando la puerta. El `for (const s of [-1, 1])` es un `repeat` de dos; su y arranca en $towerTop y salta $towerStep, los dos en pixeles porque dependen de `tr` y de W2 a la vez.",
+          "shape": "repeat",
+          "n": 2,
+          "dy": "$towerStep",
+          "parts": [
+            {
+              "shape": "group",
+              "x": "$towerX",
+              "y": "$towerTop",
+              "s": "$tr",
+              "parts": [
+                {
+                  "shape": "disc",
+                  "fill": "$stoneDark",
+                  "cx": 0,
+                  "cy": 0,
+                  "r": [
+                    1,
+                    0
+                  ]
+                },
+                {
+                  "shape": "disc",
+                  "fill": "$stoneLite",
+                  "cx": 0,
+                  "cy": 0,
+                  "r": [
+                    0.55,
+                    0
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "_": "el atrio: las gradas palidas saliendo de la puerta hacia el bulevar. `max(6, L*0.12)` es la forma acotada.",
+          "shape": "roundRect",
+          "fill": "$step",
+          "x": [
+            1,
+            -1
+          ],
+          "y": [
+            -0.42,
+            0
+          ],
+          "w": {
+            "k": 0.12,
+            "px": 0,
+            "min": 6
+          },
+          "h": [
+            0.84,
+            0
+          ],
+          "r": 2
+        },
+        {
+          "_": "la cruz en la cumbrera — el palo",
+          "shape": "rect",
+          "fill": "$cross",
+          "x": [
+            0.05,
+            -1
+          ],
+          "y": [
+            -0.14,
+            0
+          ],
+          "w": 2,
+          "h": [
+            0.28,
+            0
+          ]
+        },
+        {
+          "_": "…y el travesano. Su x es tx - W2*0.11: mezcla las dos escalas, asi que va resuelto.",
+          "shape": "rect",
+          "fill": "$cross",
+          "x": "$crossX",
+          "y": -1,
+          "w": "$crossW",
+          "h": 2
+        }
+      ]
     },
     "civicBuilding": {
       "note": "La Casa de la Cultura, drawn to fill its parcel.",

@@ -496,51 +496,39 @@ function drawGarden(P) {
 const STONE_WALL = PROPS.scenes.cathedral.palette.stone;
 const STONE_DARK = PROPS.scenes.cathedral.palette.stoneDark;
 const STONE_LITE = PROPS.scenes.cathedral.palette.stoneLite;
+// LA CATEDRAL ES DATA — diez partes en `scenes.cathedral.parts`.
+//
+// Lo que se queda acá es lo que de verdad es cálculo y no arte: los escalares
+// DERIVADOS. `W2 = min(hh, hw·0.62)` es la espina de la escena y un `min` entre
+// dos ejes no cabe en un evaluador de un eje; `tw`, `th`, `tr` y el radio del
+// cimborrio son cada uno un `max` o un `min` entre magnitudes distintas. El
+// llamador los resuelve, el catálogo los compone.
+//
+// Y la regla que los ordena: **un valor que mezcla las dos escalas entra ya
+// resuelto**, porque `[k, px]` tiene un literal en `px` y `[1, "$v"]`
+// concatenaría texto. Son cinco de treinta y tantas medidas; el resto es una
+// fracción limpia de L o de W2 y se edita como tal.
 function drawCathedral(P) {
-  const C = PROPS.scenes.cathedral.palette;
   const F = parcelFrame(P);
   const hw = F.hw * 0.86, hh = F.hh * 0.86;
-  const cx = F.cx, cy = F.cy;
-  ctx.save();
-  ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
-  // +u is EAST (the facade, onto the bulevar), +v is SOUTH
-  const L = hw, W2 = Math.min(hh, hw * 0.62);       // nave half-length / half-width
-  ctx.fillStyle = C.shadow;
-  roundRect(ctx, -L + 3, -W2 + 5, L * 2, W2 * 2, 4, true, false);
-  // nave
-  ctx.fillStyle = STONE_WALL;
-  roundRect(ctx, -L, -W2, L * 2, W2 * 2, 3, true, false);
-  // transept: the cross arms, a third of the way back from the facade
-  const tx = L * 0.05, tw = Math.max(10, L * 0.26), th = Math.min(hh, W2 * 1.45);
-  roundRect(ctx, tx - tw, -th, tw * 2, th * 2, 3, true, false);
-  // roof ridges (a lighter stone strip down the nave and across the transept)
-  ctx.fillStyle = STONE_LITE;
-  ctx.fillRect(-L + 2, -W2 * 0.30, L * 2 - 4, W2 * 0.60);
-  ctx.fillRect(tx - tw * 0.34, -th + 2, tw * 0.68, th * 2 - 4);
-  // crossing dome
-  ctx.fillStyle = STONE_DARK;
-  ctx.beginPath(); ctx.arc(tx, 0, Math.min(W2 * 0.72, tw * 0.9), 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = STONE_LITE;
-  ctx.beginPath(); ctx.arc(tx, 0, Math.min(W2 * 0.72, tw * 0.9) * 0.62, 0, Math.PI * 2); ctx.fill();
-  // apse: a rounded end at the WEST (the back)
-  ctx.fillStyle = STONE_WALL;
-  ctx.beginPath(); ctx.arc(-L, 0, W2 * 0.9, 0, Math.PI * 2); ctx.fill();
-  // EAST facade: two bell towers flanking the door, onto the calle peatonal
+  // +x es el ESTE (la fachada, hacia el bulevar), +y es el SUR
+  const L = hw, W2 = Math.min(hh, hw * 0.62);       // media largo / media anchura de la nave
+  const tw = Math.max(10, L * 0.26), th = Math.min(hh, W2 * 1.45);
   const tr = Math.max(5, W2 * 0.42);
-  for (const s of [-1, 1]) {
-    ctx.fillStyle = STONE_DARK;
-    ctx.beginPath(); ctx.arc(L - tr * 0.5, s * (W2 - tr * 0.7), tr, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = STONE_LITE;
-    ctx.beginPath(); ctx.arc(L - tr * 0.5, s * (W2 - tr * 0.7), tr * 0.55, 0, Math.PI * 2); ctx.fill();
-  }
-  // atrio: pale steps spilling out of the door toward the bulevar
-  ctx.fillStyle = C.step;
-  roundRect(ctx, L - 1, -W2 * 0.42, Math.max(6, L * 0.12), W2 * 0.84, 2, true, false);
-  // the cross on the roof ridge, at the crossing
-  ctx.fillStyle = C.cross;
-  ctx.fillRect(tx - 1, -W2 * 0.14, 2, W2 * 0.28);
-  ctx.fillRect(tx - W2 * 0.11, -1, W2 * 0.22, 2);
-  ctx.restore();
+  const tx = L * 0.05;
+  paintParcelScene(P, "cathedral", {
+    // `X` mide en L, `Y` y `S` en W2 — de ahí que el ábside sea `[0.9, 0]`.
+    hw: L, hh: W2, size: W2,
+    vars: {
+      tw, th, tr,
+      dome: Math.min(W2 * 0.72, tw * 0.9),
+      towerX: L - tr * 0.5,
+      towerTop: -(W2 - tr * 0.7),
+      towerStep: 2 * (W2 - tr * 0.7),
+      crossX: tx - W2 * 0.11,
+      crossW: W2 * 0.22,
+    },
+  });
 }
 
 // A `civic` parcel IS a public building — the Casa de la Cultura, the
@@ -576,7 +564,11 @@ function paintParcelScene(P, name, opts = {}) {
   if (!scene || !scene.parts) return false;
   const F = parcelFrame(P);
   const inset = scene.inset ?? 1;
-  const hw = F.hw * inset, hh = F.hh * inset;
+  // Una escena puede medir en algo DERIVADO de sus medio-extensiones en vez de en
+  // ellas: la catedral mide su x en L y su y en W2 = min(hh, hw·0.62). Ese `min`
+  // entre ejes lo calcula el llamador, porque no cabe en un evaluador de un eje.
+  const hw = opts.hw ?? F.hw * inset;
+  const hh = opts.hh ?? F.hh * inset;
   const s = opts.size ?? Math.min(hw, hh);
   ctx.save();
   ctx.translate(F.cx, F.cy);
@@ -610,7 +602,25 @@ function scenePaint(scene, spec) {
     const [other, key] = v.slice(1).split(".");
     v = PROPS.scenes[other]?.palette?.[key];
   }
-  return v ?? spec;
+  if (v === undefined) {
+    // UN `$name` QUE NO RESUELVE NO PUEDE PASAR CALLADO, y ésta es la razón:
+    // devolver el propio `"$stone"` como `fillStyle` no lanza — Canvas descarta
+    // el valor inválido y SIGUE PINTANDO CON EL COLOR ANTERIOR. Al transcribir la
+    // catedral escribí `$stoneWall` donde la paleta dice `stone` y el resultado
+    // fueron 7 540 píxeles del color de la parte de antes: un edificio con la
+    // silueta correcta y los colores de otro. Nada lo reportó.
+    //
+    // Así que se avisa una vez y se devuelve un color IMPOSIBLE de no ver. Un
+    // fallo de arte tiene que verse en la primera captura, no en la revisión.
+    if (!scenePaint._warned) scenePaint._warned = new Set();
+    const key = `${scene.name || "scene"}${spec}`;
+    if (!scenePaint._warned.has(key)) {
+      scenePaint._warned.add(key);
+      console.warn(`[scene] ${spec} no está en la paleta de esta escena`);
+    }
+    return "#ff00ff";
+  }
+  return v;
 }
 
 // LA CASA DE LA CULTURA ES DATA. Era la escena más simple de las siete y la que

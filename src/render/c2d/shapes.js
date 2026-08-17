@@ -23,7 +23,7 @@
 // thing genuinely tied to the running renderer is the DEFAULT context, which
 // `paintProp` resolves lazily so a caller that passes its own `g` never touches
 // the game at all.
-import { PATHS } from "../vehicleShapes.js";
+import { PATHS, evalOn as evalScalar } from "../vehicleShapes.js";
 import { areaLabel, hash01, label } from "./primitives.js";
 import { spriteImage, spriteRecord } from "./sprites.js";
 
@@ -153,7 +153,7 @@ export const SHAPE_NAMES = Object.freeze([
   ...Object.keys(SHAPES), ...Object.keys(GENERATORS), "arcs",
   "stripes", "stroke", "strokeRect",
   "text", "label", "areaLabel", "repeat", "fit", "grid", "ring", "prop",
-  "sprite",
+  "sprite", "group",
 ]);
 
 /**
@@ -421,6 +421,56 @@ export function paintParts(g, parts, frame) {
             skip, vars, prop, t: frame.t,
           });
         }
+        break;
+      }
+
+      // UN GRUPO CON SU PROPIO MARCO — un sistema de coordenadas anidado.
+      //
+      // Es el verbo que le faltaba al intérprete para que una escena compuesta
+      // fuera data, y el caso que lo pidió es la catedral: su crucero se mide en
+      // `tw`/`th` (dos escalares DERIVADOS, cada uno un `min`/`max` entre ejes) y
+      // dentro de él todo es una fracción de ésos — `tw * 0.34`, `th * 2 - 4`. Con
+      // un solo evaluador de tamaños por escena eso no se puede escribir, y
+      // meterlo en el JSON como `0.26 * hw` sería aritmética en el registro.
+      //
+      // Con un grupo se escribe como lo que es: «acá adentro, el ancho es `tw`»,
+      // y las partes hijas vuelven a hablar en `[k, px]` sobre eso. Es lo que hace
+      // cualquier formato vectorial de verdad con un transform anidado, y es
+      // exactamente la misma idea que `scatter`/`orbit` ya usaban para re-derivar
+      // el marco de sus copias.
+      //
+      // `hw`/`hh`/`s` se resuelven en el marco del PADRE, así que un grupo puede
+      // medir la mitad de su contenedor (`[0.5, 0]`) o un tamaño derivado que el
+      // llamador pasó como `$var`.
+      case "group": {
+        const gx = X(part.x ?? 0), gy = Y(part.y ?? 0);
+        const ghw = part.hw !== undefined ? Math.abs(X(part.hw) - X(0)) : null;
+        const ghh = part.hh !== undefined ? Math.abs(Y(part.hh) - Y(0)) : null;
+        const gs = part.s !== undefined ? Math.abs(S(part.s)) : null;
+        // EL DESPLAZAMIENTO VA EN LOS EVALUADORES, NO EN UN `translate`, y esto
+        // costó 207 píxeles medirlo. Canvas no rasteriza igual un camino en
+        // coordenadas absolutas y el mismo camino relativo bajo un `translate`
+        // fraccionario: el crucero de la catedral se traslada 3,4 px y las
+        // esquinas redondeadas caían un nivel de canal distinto. Es la misma clase
+        // de diferencia que `fillRect` contra `beginPath`+`rect`+`fill`.
+        //
+        // Un marco anidado sólo NECESITA una transformación para ROTAR. Sin
+        // rotación, sumar el offset en `X`/`Y` deja las coordenadas absolutas y el
+        // resultado es idéntico al del código que reemplaza.
+        const turn = part.rotate ? part.rotate * TAU : 0;
+        const ox = turn ? 0 : gx, oy = turn ? 0 : gy;
+        const child = {
+          X: ghw === null ? (v) => X(v) - X(0) + ox : (v) => evalScalar(str(v), ghw) + ox,
+          Y: ghh === null ? (v) => Y(v) - Y(0) + oy : (v) => evalScalar(str(v), ghh) + oy,
+          S: gs === null ? rawS : (v) => evalScalar(str(v), gs),
+          color, skip, vars, prop, t: frame.t, pxPerM,
+        };
+        if (!turn) { paintParts(g, part.parts, child); break; }
+        g.save();
+        g.translate(gx, gy);
+        g.rotate(turn);
+        paintParts(g, part.parts, child);
+        g.restore();
         break;
       }
 

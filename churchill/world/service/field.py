@@ -28,7 +28,8 @@ from collections import defaultdict
 
 from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD,
-    FIELD_ACERA_CELLS, GRID_CELL, STREET_CLASSES,
+    FIELD_ACERA_CELLS, GRID_CELL, STREET_CLASSES, STREET_SPAN_M,
+    street_span_px,
 )
 from ..content import PARCEL_STYLES, SITE_DECOR
 from ..enums import GreenType, ParcelUse
@@ -753,7 +754,18 @@ class FieldService:
         cw = spec.get("cols", [1]); rw = spec.get("rows", [1])
         ue = _bands([v[0] for v in uv.values()], cw)
         ve = _bands([v[1] for v in uv.values()], rw)
-        nominal = len(outer) / (len(cw) * len(rw))
+        # CUÁNTAS CELDAS LE TOCAN A UNA PARTE, por sus PESOS y no por reparto
+        # parejo. `len(outer) / (ncols·nrows)` supone bandas iguales, y con pesos
+        # desiguales eso rechaza partes legítimas: en el centro cívico las
+        # columnas van 4.4 / 1.8 / 1.3 / 2.2, así que la celda de la columna
+        # angosta tiene la mitad de las celdas del reparto parejo y la Capilla se
+        # caía por «el split no le queda a este bloque» estando perfectamente
+        # bien. El área esperada es la FRACCIÓN de peso que la parte abarca.
+        tw_c, tw_r = sum(cw), sum(rw)
+        def nominal_for(c0, c1, r0, r1):
+            fc = sum(cw[c0:c1 + 1]) / tw_c
+            fr = sum(rw[r0:r1 + 1]) / tw_r
+            return len(outer) * fc * fr
         # `col`/`row` take an int or an inclusive [from, to] SPAN, so parts do
         # not all have to be the same size: the Carmen block is one column of
         # two (church over garden) beside one column spanning both rows (the
@@ -772,16 +784,67 @@ class FieldService:
             # frontage, no building may land there
             own = {c for c in outer
                    if ue[c0] <= uv[c][0] < ue[c1 + 1] and ve[r0] <= uv[c][1] < ve[r1 + 1]}
-            span = (c1 - c0 + 1) * (r1 - r0 + 1)
+            want = nominal_for(c0, c1, r0, r1)
             # A part that came out mostly EMPTY means the split does not suit
             # this block (it is a ribbon, not a rectangle) — fail loudly in the
             # log instead of quietly emitting a sliver out in the street.
-            if len(own) < nominal * span * 0.35:
+            if len(own) < want * 0.35:
                 log("parcel", f"WARN {part['id']} only {len(cells)} cells vs "
-                      f"{nominal * span:.0f} nominal — split does not suit this block"); continue
+                      f"{want:.0f} nominal — split does not suit this block"); continue
             self._emit_parcel(spec["id"], part, own, cells, ang)
             claimed |= own
         return claimed
+
+    def _boulevard_street(self, spec, ref):
+        """UNA CALLE QUE ES BULEVAR, no una franja de manzana que lo parece.
+
+        Hasta hoy `Surface.BOULEVARD` sólo salía de una PARCELA: para que una
+        calle peatonal se leyera como tal había que robarle al bloque una franja
+        pegada al borde, que es lo que cerraba la H del centro cívico y se comía
+        el ancho de la cuadra. El Bulevar de la Casa de la Cultura no es una
+        franja de la manzana — **es la calle**, y así se llama en la vida real.
+
+        Se estampa sobre la CALZADA de la vía nombrada, con su propio ancho, así
+        que queda transitable-pero-lenta. No se le toca la acera: el cordón sigue
+        siendo cordón.
+
+        **TODAVÍA NO SE DIBUJA EN PIEDRA, y esto estampa el suelo, no lo pinta.**
+        Decía que `paintStone` la dibujaba y es falso: `paintStone` se llama sólo
+        desde `paintParcels` cuando `P.use == "boulevard"`, y una calle no es una
+        parcela. Peor, el propio `paintStone` documenta que «el asfalto todavía
+        repinta lo que llegó a la calzada» — correcto para una franja de manzana,
+        fatal para una CALLE, porque la calzada es la pieza entera. Medido: la
+        clase 7 de esta calle sale `#513842` (el asfalto) contra `#ddc6be` de la
+        T. Para arreglarlo hay que EMITIR el tramo estampado (estos `flat` y este
+        ancho) como entidad propia y pintarla después del asfalto; mientras no
+        exista, el jugador la siente lenta y la ve asfalto.
+        """
+        names = spec.get("boulevardStreet")
+        if not names:
+            return
+        # El alcance es el mismo que usa StreetIndex para resolver una calle
+        # junto a un ancla — en METROS, así que sobrevive un reescalado.
+        span = street_span_px(STREET_SPAN_M)
+        for name, roads in self.streets.named(names):
+            n = 0
+            for road in roads:
+                pts = road.get("pts") or []
+                if len(pts) < 4:
+                    continue
+                # Sólo el tramo que de verdad bordea ESTA manzana: la misma vía
+                # puede seguir diez cuadras más y no todas son peatonales.
+                near = [(pts[i], pts[i + 1]) for i in range(0, len(pts), 2)
+                        if abs(pts[i] - ref[0]) < span
+                        and abs(pts[i + 1] - ref[1]) < span]
+                if len(near) < 2:
+                    continue
+                flat = [v for xy in near for v in xy]
+                self.raster.stamp_polyline(flat, road.get("w") or CUAD, CLS_BOULEVARD)
+                n += 1
+            log("parcel", f"{spec['id']}: {name} estampada como bulevar "
+                f"({n} tramo(s) junto a la manzana)")
+            return
+        log("parcel", f"WARN {spec['id']} boulevardStreet {names} no resolvió")
 
     def place_parcels(self, spec):
         # `ll` is the anchor; `at` is the legacy world-px one and is only still
@@ -837,6 +900,7 @@ class FieldService:
         log("parcel", f"{spec['id']} block frame {math.degrees(ang):+.1f}° "
               f"(avenida {av}, calle {cl}), {len(outer)} cells")
         claimed = self._band_parts(spec, outer, inner, field, ang, ncol, nrow, mx, my)
+        self._boulevard_street(spec, ref)
         # The CUAD cells the block's parts took. A caller that is laying a whole
         # cuadra out by hand uses this to clear the OSM footprints standing on
         # it: named buildings are kept at their real outline unconditionally, so

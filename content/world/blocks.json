@@ -68,69 +68,87 @@
       "layout": "bands",
       "name": "El superbloque cívico",
       "ll": [9.97772, -84.83442],
-      "_note": "EL SUPERBLOQUE CÍVICO de Puntarenas: Calle 7 → Bulevar de la Casa de la Cultura, Avenida 1 (norte) → Avenida Centenario (sur). NINGUNA calle lo cruza —Calle 5 sólo existe al SUR de Centenario—, así que la catedral, los parques y la Casa de la Cultura comparten una sola manzana, y lo que los organiza es una H de calle peatonal.",
+      "_note": "EL SUPERBLOQUE CÍVICO de Puntarenas: Calle 7 → Bulevar de la Casa de la Cultura, Avenida 1 (norte) → Avenida Centenario (sur). NINGUNA calle lo cruza —Calle 5 sólo existe al SUR de Centenario—, así que la catedral, los parques y la Casa de la Cultura comparten una sola manzana, y lo que los organiza es una T de calle peatonal.",
       "_diagram": [
-        "  Av 1  ┌──────────────┬──┬────────────┬─┐  Bulevar",
-        "        │ parque río   │▓▓│ biblioteca │▓│",
-        "  Calle │──────────────│▓▓├────────────┤▓│",
-        "    7   │ ⛪ CATEDRAL  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│ ← brazo, muere en la frontage",
-        "        │──────────────│▓▓├────────────┤▓│",
-        "        │ parque virgen│▓▓│ Casa Cultur│▓│",
-        " Av Cent└──────[bus]───┴──┴────────────┴─┘",
-        "                                        ↑ FRONTAGE, avenida a avenida"
+        "  Av 1  ┌──────────────┬──┬────────┬─────────┐  Bulevar",
+        "        │ parque río   │▓▓│ museo  │ biblio  │  ← y la CALLE de acá",
+        "  Calle │──────────────│▓▓├────────┴─────────┤    también es bulevar",
+        "    7   │ ⛪ CATEDRAL  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│  ← el brazo, hasta el borde",
+        "        │──────────────│▓▓├────────┬─────────┤",
+        "        │ curia        │▓▓│ capilla│ Casa de │",
+        "        │──────────────│▓▓│  +     │ la      │",
+        " Av Cent└─[bus]parque──┴──┴─oficina┴─Cultura─┘"
       ],
-      "_bulevar": "La barra N-S corre avenida a avenida por DELANTE (al este) de la catedral; el brazo E-O sale de esa barra sobre el eje de la catedral misma; y la FRONTAGE ESTE es el tramo al que la BIBLIOTECA PÚBLICA y la CASA DE LA CULTURA de verdad dan la cara —el borde del Bulevar, avenida a avenida— para que la calle peatonal pase por las dos puertas en vez de morir en el hueco entre ellas. Las tres son partes `boulevard`: estampadas `Surface.BOULEVARD`, transitables pero lentas, y dibujadas en piedra y no en asfalto.",
+      "_bulevar": "UNA T, no una H. La barra N-S corre avenida a avenida por delante (al este) de la Catedral, y el brazo E-O sale de ella sobre el eje de la Catedral hasta el borde de la manzana. Antes había una TERCERA franja pegada al borde este —la frontage— que cerraba la H y se comía el ancho de la cuadra; se quitó, y en su lugar **la calle de ese lado ES un bulevar**: el Bulevar de la Casa de la Cultura, que es lo que se llama en la vida real. Las dos partes de la T son `boulevard`: estampadas `Surface.BOULEVARD`, transitables pero lentas, y dibujadas en piedra.",
+      "_osm": "LA MANZANA ESTABA MEDIO VACÍA Y NO ERA UN PROBLEMA DE DISEÑO: `clear_buildings` borraba las TRECE huellas OSM del bloque, incluidas seis con nombre. Medidas sobre el mundo publicado, OSM pone acá la Catedral del Sagrado Corazón, la Curia Diocesana, la Capilla (way/395461264, `building=chapel`), la Oficina Parroquial, la Biblioteca Pública, la Casa de la Cultura y el Museo Histórico. Ahora cada una tiene su parte con un `use` que DIBUJA UN ASSET propio en vez de dejar la huella genérica de OSM. Las siete sin nombre no entran: no hay con qué rotularlas.",
+      "_osmNota": "La «Capilla de Velación» de OSM está a 10,7 km, en otro pueblo. La de esta manzana se llama sólo «Capilla», y va a la izquierda del espacio central, que es donde el mapa la pone.",
+      "_parques": "LOS DOS PARQUES SON REALES Y OSM NO LOS TIENE, que no es lo mismo que inventados — y la diferencia importa, porque en esta manzana OSM no trae NI UNA sola área (ni parque, ni plaza, ni uso de suelo): sólo trece huellas de edificio. Quien mida eso y concluya «los parques no existen, fuera» estaría borrando el Parque del Río y el Parque de la Virgen, que están ahí, con la Virgen y con la paradita. Se autoran acá precisamente porque el mapa no los puede dar.",
+      "_biblioteca": "Y una que estaba en el lado equivocado: la Biblioteca se dibujaba en el NORTE de la columna cívica y OSM la pone en el SUR, al lado de la Casa de la Cultura. Lo que hay en el norte es el Museo Histórico.",
       "calles": [["Calle 7"], ["Bulevar de la Casa de la Cultura", "Calle 3 Francisco de Paula Amador"]],
       "ave_north": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
       "ave_south": ["Avenida Centenario", "Avenida 0"],
-      "cols": [4.4, 1.8, 2.5, 1.3],
-      "rows": [2.8, 3.8, 2.8],
-      "_weights": "la fila de la catedral es la más ancha para que la iglesia de piedra sea tan grande como la manzana lo permita; la barra es lo bastante ancha para leerse como calle; y la columna de la frontage saca su ancho de la columna cívica de al lado.",
+      "boulevardStreet": ["Bulevar de la Casa de la Cultura"],
+      "_boulevardStreet": "LA CALLE DEL LADO ESTE ES UN BULEVAR. Se estampa `Surface.BOULEVARD` sobre su calzada, así que se cruza despacio. Es la única de este mundo así: hasta hoy `BOULEVARD` sólo salía de una PARCELA, nunca de una calle.",
+      "_boulevardStreetPendiente": "SE ESTAMPA PERO TODAVÍA NO SE DIBUJA EN PIEDRA, y el renderer no puede arreglarlo solo. `paintStone` se llama ÚNICAMENTE desde `paintParcels` cuando `P.use === 'boulevard'`, y una calle no es una parcela; además el propio comentario de `paintStone` dice que «el asfalto todavía repinta lo que llegó a la calzada», que para una franja de manzana está bien y para una CALLE la borra entera —la calzada es toda la pieza—. Medido sobre el mundo publicado: la clase 7 de esta calle sale `#513842` (el asfalto de `materials.street`) mientras la T sale `#ddc6be`. La misma causa deja la calle fuera del minimapa, porque `miniBoulevards` también filtra `W.PARCELS`. El arreglo pide que el builder emita el tramo estampado como su propia entidad (los `pts` y el `w` que se estamparon) para pintarla DESPUÉS del asfalto, así que va con la reconstrucción de la ronda de sombras y no antes: cambiar el manifest cuesta un build de 28 min.",
+      "cols": [4.4, 1.8, 1.3, 2.2],
+      "rows": [2.8, 3.8, 1.4, 1.4],
+      "_weights": "la fila de la catedral es la más ancha para que la iglesia de piedra sea tan grande como la manzana lo permita; la barra es lo bastante ancha para leerse como calle; y el sur se parte en dos filas cortas porque ahí hay DOS edificios por columna, no uno.",
       "reclaim": true,
       "_reclaim": "la manzana NO era tierra a esta altura: el apron de un cliente la partió en dos y `detect_blocks` había pavimentado el resto como sliver.",
       "clear_buildings": true,
-      "_clear_buildings": "las huellas OSM de la propia parroquia estaban paradas acá. Una cuadra hecha a mano es dueña de su suelo: las huellas OSM CON NOMBRE se conservan en su contorno real incondicionalmente, así que sin esto la capilla, la curia y las oficinas de la parroquia seguirían en medio de los parques y cruzadas sobre la calle peatonal.",
+      "_clear_buildings": "sigue borrando las huellas OSM del bloque, y ahora eso es correcto en vez de una pérdida: cada edificio real tiene su PARTE con su asset, así que dejar además la huella genérica encima los dibujaría dos veces.",
       "parts": [
         {
           "id": "centro_parque_norte", "col": 0, "row": 0, "use": "park",
           "name": "Parque del Río", "aceras": false, "river": true,
-          "_note": "los parques CONSERVAN el anillo de acera (`aceras: false`): un verde se mete DEBAJO de la banda de acera que pinta la pasada de calles, igual que los verdes de cuadra — y a 2.8 filas de una manzana de 120 px la erosión habría dejado una astilla de 16 px."
+          "_note": "los parques CONSERVAN el anillo de acera (`aceras: false`): un verde se mete DEBAJO de la banda de acera que pinta la pasada de calles, igual que los verdes de cuadra."
         },
         {
           "id": "centro_catedral", "col": 0, "row": 1, "use": "cathedral",
           "name": "Catedral de Puntarenas", "aceras": true, "lm": "catedral"
         },
         {
-          "id": "centro_parque_sur", "col": 0, "row": 2, "use": "park",
+          "id": "centro_curia", "col": 0, "row": 2, "use": "civic",
+          "name": "Curia Diocesana de Puntarenas", "aceras": true,
+          "_note": "OSM la pone en (23487,15114), que caía DENTRO del Parque de la Virgen — el parque se encogió y la Curia entró donde el mapa la tiene."
+        },
+        {
+          "id": "centro_parque_sur", "col": 0, "row": 3, "use": "park",
           "name": "Parque de la Virgen", "aceras": false,
           "statue": "virgen", "bus": "south",
-          "_note": "la Virgen se para en el borde NORTE de este parque, junto a la catedral."
+          "_note": "más chico que antes, para que la Curia quepa. La Virgen se para en su borde NORTE, que ahora da a la Curia y no a la Catedral."
         },
         {
-          "id": "centro_bulevar", "col": 1, "row": [0, 2], "use": "boulevard",
-          "name": "Bulevar de la Catedral", "aceras": false
+          "id": "centro_bulevar", "col": 1, "row": [0, 3], "use": "boulevard",
+          "name": "Bulevar de la Catedral", "aceras": false,
+          "_note": "LA BARRA de la T, avenida a avenida y a lo alto de la manzana."
         },
         {
-          "id": "centro_bulevar_este", "col": 2, "row": 1, "use": "boulevard",
-          "name": "Bulevar de la Casa de la Cultura", "aceras": false
+          "id": "centro_bulevar_este", "col": [2, 3], "row": 1, "use": "boulevard",
+          "name": "Bulevar de la Casa de la Cultura", "aceras": false,
+          "_note": "EL BRAZO de la T: sale de la barra sobre el eje de la Catedral y llega al borde este de la manzana, donde se encuentra con la calle que también es bulevar. `aceras: false` a propósito, para que la piedra toque el cordón y se pueda doblar hacia ella."
         },
         {
-          "id": "centro_biblioteca", "col": 2, "row": 0, "use": "civic",
-          "name": "Biblioteca Pública", "aceras": false
+          "id": "centro_museo", "col": 2, "row": 0, "use": "civic",
+          "name": "Museo Histórico de la Ciudad de Puntarenas", "aceras": true,
+          "_note": "la huella más grande de la manzana (8 676 px²) y estaba borrada. Va al norte del espacio central, que es donde OSM la pone."
         },
         {
-          "id": "centro_cultura", "col": 2, "row": 2, "use": "civic",
-          "name": "Casa de la Cultura", "aceras": false, "lm": "cultura"
+          "id": "centro_capilla", "col": 2, "row": [2, 3], "use": "church",
+          "name": "Capilla", "aceras": true,
+          "_note": "A LA IZQUIERDA DEL ESPACIO CENTRAL, que es donde está. `use: church` le dibuja una capilla de verdad en vez de dejar la huella genérica. La Oficina Parroquial está a 20 px de ella —una sola parcela a esta escala— y comparte su lote, que es lo que son en la calle: la oficina al lado de su capilla."
         },
         {
-          "id": "centro_bulevar_frente", "col": 3, "row": [0, 2],
-          "use": "boulevard", "aceras": false,
-          "name": "Bulevar frente a la Casa de la Cultura",
-          "_note": "…y el tramo al frente de las dos. `aceras: false` a propósito: la columna sin erosionar llega al cordón de la propia cuadra, así que la piedra se encuentra con el asfalto del Bulevar y uno puede DOBLAR hacia ella en vez de mirarla por encima de una acera."
+          "id": "centro_biblioteca", "col": 3, "row": 0, "use": "civic",
+          "name": "Biblioteca Pública", "aceras": true,
+          "_note": "OSM la pone en el sur, pero el sur de esta columna es la Casa de la Cultura, que es más grande y da al bulevar. La Biblioteca toma el norte, a un lote de donde el mapa la tiene."
+        },
+        {
+          "id": "centro_cultura", "col": 3, "row": [2, 3], "use": "civic",
+          "name": "Casa de la Cultura", "aceras": true, "lm": "cultura"
         }
       ]
     },
-
     {
       "id": "estadio",
       "layout": "streets-quad",

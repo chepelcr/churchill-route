@@ -184,6 +184,19 @@ renderer (the "view") lives behind a seam so backends can be swapped.
 - `src/render/` — `Renderer.js` (the seam: `setupCanvas`, `render`) →
   `canvas2d.js` (current Canvas2D backend, extracted from the old engine).
   **Milestone C adds a `pixi/` backend and swaps the one line in `Renderer.js`.**
+  **`c2d/shapes.js` — the shape interpreter — IMPORTS NO PART OF THE GAME, and
+  `tests/test_shape_interpreter.py` keeps it that way.** It is the engine's half
+  of every art catalog, and the editor loads it to preview the record it is
+  editing; `gfx.js` is the BOTTOM of the renderer and would drag the world
+  accessor, `state`, the day cycle, `tuning` and `materials.json` along. So the
+  four helpers it needed live in `c2d/primitives.js`, which imports **nothing**
+  and takes its context as an argument (`label(g, …)`); `gfx.js` re-exports them
+  bound to the shared `ctx`, so all ~30 drawers still call `label(x, y, …)` and
+  the nine art sheets came out identical. `paintAt` has **no default surface** —
+  `opts.g || sharedCtx` let a caller silently draw on the game's canvas instead
+  of its own, which is a bug shaped like nothing happening. The editor drawing
+  previews with its OWN code is not the alternative: that already shipped once,
+  showing a `park` as `#5ba362` while the game painted `#4f9d5b`.
 - `src/ui/` — React: `App.jsx` (screen state machine), `screens/*`
   (Title, StageSelect, HUD, Pause, Results, StageBrief), `TouchControls.jsx`,
   `GameTweaks.jsx`, `tweaks/TweaksPanel.jsx` (reusable dev panel + host bridge).

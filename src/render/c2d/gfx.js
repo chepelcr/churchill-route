@@ -9,6 +9,9 @@ import { skyBlend } from "../../game/daynight.js";
 import { tuning } from "../../game/tuning.js";
 import { MIN_ZOOM, VIEW_WIDTH_PX } from "../../domain/units.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import {
+  areaLabel as rawAreaLabel, hash01, label as rawLabel, roundRect,
+} from "./primitives.js";
 
 let canvas, ctx, dpr = 1;
 // Camera zoom: >1 pulls the camera closer so streets/buildings read at
@@ -124,13 +127,10 @@ function weatherColors() {
 
 
 // ---- Drawing helpers ----
-function roundRect(c, x, y, w, h, r, fill, stroke) {
-  c.beginPath();
-  c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r);
-  c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r);
-  c.arcTo(x, y, x + w, y, r); c.closePath();
-  if (fill) c.fill(); if (stroke) c.stroke();
-}
+// `roundRect`, `hash01`, `label` and `areaLabel` MOVED TO `primitives.js` — the
+// four things `shapes.js` needed from here, and the only reason the shape
+// interpreter could not be imported without the whole game behind it. They are
+// re-exported below at their historical signatures so nothing else changed.
 
 
 function flatAABB(pts) {
@@ -173,42 +173,15 @@ function aabbInView(a, view, pad) {
 }
 
 
+// The two label wrappers: they bind the SHARED `ctx` so every drawer in this
+// renderer keeps calling `label(x, y, …)` exactly as before. `primitives.js`
+// takes the context as its first argument, which is what lets `shapes.js` label
+// onto whatever surface its caller handed it.
 function label(x, y, text, fg, bg, size = 10) {
-  ctx.font = `bold ${size}px 'JetBrains Mono', monospace`;
-  ctx.textAlign = "center";
-  const w = ctx.measureText(text).width + size;
-  const h = size + 4;
-  ctx.fillStyle = bg; roundRect(ctx, x - w / 2, y - h * 0.64, w, h, 4, true, false);
-  ctx.fillStyle = fg; ctx.fillText(text, x, y + size * 0.1);
+  return rawLabel(ctx, x, y, text, fg, bg, size);
 }
-
-// Tag for an AREA landmark (park, estadio, plaza, parcel). Three rules the
-// long real names forced: the type is SMALLER than a point-landmark pill (a
-// full "Parroquia Nuestra Señora de El Carmen" at pill size swamps its own
-// cuadra), a long name WRAPS to two lines at the space nearest its middle
-// rather than running off the block, and the stack sits nearer the centre of
-// the area than its top edge — pinned to the top it read as floating off.
-const AREA_WRAP = 15;          // chars before a name is split in two
-const AREA_ALPHA = 0.62;       // semi-transparent: an area tag sits ON its own
-                               // artwork (the church, the garden trees), so it
-                               // has to be readable WITHOUT hiding what it names
 function areaLabel(x0, y0, x1, y1, text, fg, bg) {
-  const cx = (x0 + x1) / 2;
-  let lines = [text];
-  if (text.length > AREA_WRAP) {
-    // break at the space closest to the middle, so both lines read evenly
-    const mid = text.length / 2;
-    let best = -1;
-    for (let i = 0; i < text.length; i++)
-      if (text[i] === " " && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
-    if (best > 0) lines = [text.slice(0, best), text.slice(best + 1)];
-  }
-  const lh = 7;
-  const top = Math.min(y0 + (y1 - y0) * 0.30, (y0 + y1) / 2 - ((lines.length - 1) * lh) / 2);
-  ctx.save();
-  ctx.globalAlpha = AREA_ALPHA;
-  for (let i = 0; i < lines.length; i++) label(cx, top + i * lh, lines[i], fg, bg, 5.5);
-  ctx.restore();
+  return rawAreaLabel(ctx, x0, y0, x1, y1, text, fg, bg);
 }
 
 // A parcel's or a field's OWN frame: {cx, cy, ang, hw, hh}.
@@ -245,12 +218,6 @@ function parcelFrame(P) {
     }
   }
   return (P._pframe = { cx, cy, ang, hw, hh });
-}
-
-// Deterministic 0..1 hash for scene scatter (no Math.random in draw paths)
-function hash01(n) {
-  const v = Math.sin(n) * 43758.5453;
-  return v - Math.floor(v);
 }
 
 // LA PARADITA used to be here, as raw Canvas calls. It is `props.parada` in

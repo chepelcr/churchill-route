@@ -52,7 +52,7 @@ export function paintLight(type, x, y, opts = {}) {
   // The fixture first, the halo over it — the order the four hand-written
   // lamps drew in, and the one that reads right: the glow is in front of the
   // lamp, not behind the pole.
-  paintAt(spec.parts, x, y, { color: (c) => (c === "$core" ? spec.core : c) });
+  paintAt(spec.parts, x, y, { g: ctx, color: (c) => (c === "$core" ? spec.core : c) });
 
   if (!(opts.night ?? isNight()) || intensity <= 0) return;
   const A = LIGHTS.haloAlpha;

@@ -813,7 +813,7 @@ function drawLandmark(lm) {
 
   const prop = propFor(lm.type);
   if (!prop) return;
-  paintAt(prop.parts, x, y, { prop: propParts, vars: propVars(lm, prop) });
+  paintAt(prop.parts, x, y, { g: ctx, prop: propParts, vars: propVars(lm, prop) });
 }
 
 /** The catalog record for a type, following `sameAs` — the cathedral is the

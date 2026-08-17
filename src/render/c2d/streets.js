@@ -695,7 +695,7 @@ function drawSign(s) {
   const rec = SIGNS[s.kind];
   if (!rec) return;                                  // unknown kind: draw nothing
   const vars = { value: String(s.value || 40) };
-  if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { prop: propParts, vars }); return; }
+  if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { g: ctx, prop: propParts, vars }); return; }
   const ang = (s.ang || 0) + (rec.flip === "side" && (s.side || 1) < 0 ? Math.PI : 0);
   ctx.save();
   ctx.translate(s.x, s.y); ctx.rotate(ang);

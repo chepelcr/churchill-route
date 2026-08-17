@@ -16,8 +16,15 @@
 // body, a landmark in pixels around its anchor, so the caller passes `X`/`Y`
 // evaluators and this never has to know which. Same reason `color` is passed
 // in: a vehicle resolves `$color` against its paint, a prop against nothing.
+// NOTHING FROM `gfx.js`. This file is importable on its own — the editor loads
+// it to preview the very record it is editing, and `gfx.js` would drag the world
+// accessor, `state`, the day cycle, `tuning` and `materials.json` in with it.
+// `primitives.js` holds the four helpers that used to come from there; the only
+// thing genuinely tied to the running renderer is the DEFAULT context, which
+// `paintProp` resolves lazily so a caller that passes its own `g` never touches
+// the game at all.
 import { PATHS } from "../vehicleShapes.js";
-import { areaLabel, ctx as sharedCtx, hash01, label } from "./gfx.js";
+import { areaLabel, hash01, label } from "./primitives.js";
 
 const TAU = Math.PI * 2;
 
@@ -251,12 +258,15 @@ export function paintParts(g, parts, frame) {
         break;
 
       // The name pill every landmark wears, and the one that spans an area.
+      // BOTH GO TO `g`, the surface this call was handed. They used to go to
+      // `gfx`'s shared `ctx` regardless, so a caller drawing onto its own canvas
+      // got the parts on one surface and the pill on another.
       case "label":
-        label(X(part.x), Y(part.y), str(part.text), part.fg, part.bg);
+        label(g, X(part.x), Y(part.y), str(part.text), part.fg, part.bg);
         break;
       case "areaLabel": {
         const hw = (X(part.w) - X(0)) / 2, hh = (Y(part.h) - Y(0)) / 2;
-        areaLabel(X(0) - hw, Y(0) - hh, X(0) + hw, Y(0) + hh, str(part.text), part.fg, part.bg);
+        areaLabel(g, X(0) - hw, Y(0) - hh, X(0) + hw, Y(0) + hh, str(part.text), part.fg, part.bg);
         break;
       }
 
@@ -371,9 +381,15 @@ export function paintParts(g, parts, frame) {
   }
 }
 
-/** Paint a prop anchored at world (x, y), in plain pixel offsets. */
+/** Paint a prop anchored at world (x, y), in plain pixel offsets.
+ *
+ *  `opts.g` IS REQUIRED. It used to fall back to `gfx`'s shared `ctx`, which was
+ *  the last thread tying this file to the running renderer — and a silent one:
+ *  a caller that forgot `g` drew on the game's canvas instead of its own, which
+ *  is a bug that looks like nothing happened. The three callers are all inside
+ *  the renderer and all already hold `ctx`, so saying so costs a word each. */
 export function paintAt(parts, x, y, opts = {}) {
-  paintParts(opts.g || sharedCtx, parts, {
+  paintParts(opts.g, parts, {
     X: (v) => x + (v || 0),
     Y: (v) => y + (v || 0),
     ...opts,

@@ -59,7 +59,7 @@ The procedure is three steps and it is not optional:
 | the world's palettes: estero, malecón, structures, streets, weather, piers | `src/assets/materials.json` |
 | the HUD, the minimap, the crossing card, the tide bar | `src/assets/hud.json` |
 | trees and wood mixes | `src/assets/flora.json` |
-| the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` |
+| the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` (verbs: `c2d/feriaShapes.js`) |
 | spawn rates, buses, tides, the day cycle | `src/content/simulation.json` |
 | unlocks, the tutorial, **the MVP gate** | `src/content/progression.json` |
 | prices, coins, IAP | `src/content/economy.json` |
@@ -82,8 +82,12 @@ stopped being one.
 
 * **art** → a synthetic sheet, diffed: `shot-vehicles` · `shot-actors` ·
   `shot-landmarks` · `shot-signs` · `shot-parcels` · `shot-scenes` ·
-  `shot-effects` · `shot-stands` · `shot-lights`, vs `tools/png-diff.mjs`.
-  **Never diff a world scene** — the noise floor is 2 % to 86 %.
+  `shot-effects` · `shot-stands` · `shot-lights` · `shot-feria`, vs
+  `tools/png-diff.mjs`. **Never diff a world scene** — the noise floor is 2 % to
+  86 %. **A stale dev server fakes a regression**: after adding or moving a
+  module, kill the server AND `rm -rf node_modules/.vite`, or four sheets come
+  back blank and three more diff at 6–45 %. The sheets' own blank-guards are what
+  catch it — believe them before you believe the diff.
 * **no sheet?** compare the SET of colours against `git show HEAD:<file>`. A
   mistyped hex does not survive that.
 * **anything the builder reads** → `PLANAR_BBOX=… pnpm world:build` (1 min,
@@ -188,7 +192,15 @@ renderer (the "view") lives behind a seam so backends can be swapped.
   `tests/test_shape_interpreter.py` keeps it that way.** It is the engine's half
   of every art catalog, and the editor loads it to preview the record it is
   editing; `gfx.js` is the BOTTOM of the renderer and would drag the world
-  accessor, `state`, the day cycle, `tuning` and `materials.json` along. So the
+  accessor, `state`, the day cycle, `tuning` and `materials.json` along.
+  **`c2d/feriaShapes.js` is the SECOND interpreter and stays second on purpose**:
+  the feria measures in FRACTIONS OF A RIDE'S RADIUS (with a `Px` suffix for
+  absolutes) — a third frame — and only `disc`/`ring` share a name with the 21
+  above. The other 26 are not primitives but RECIPES for a fairground stall
+  (`counter`, `awning`, `facade`, `prizes`, `goods`). Merging them would move the
+  pixels of 71 hand-tuned parts for nothing a player sees. What WAS closed is the
+  drift: both interpreters export their verb list, and the editor's validator
+  asks instead of keeping the copy of 28 names it used to hold. So the
   four helpers it needed live in `c2d/primitives.js`, which imports **nothing**
   and takes its context as an argument (`label(g, …)`); `gfx.js` re-exports them
   bound to the shared `ctx`, so all ~30 drawers still call `label(x, y, …)` and

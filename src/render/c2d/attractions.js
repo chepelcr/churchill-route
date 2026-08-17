@@ -20,7 +20,8 @@
 // ferial's packed earth and that is what the car interacts with; a ride is
 // scenery you drive around, like a vendor's cart or a parada.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { ctx, hash01, label, roundRect } from "./gfx.js";
+import { ctx, hash01 } from "./gfx.js";
+import { FERIA_SHAPES } from "./feriaShapes.js";
 import ASSETS from "./feriaAssets.json";
 
 // LOS VALORES POR OMISIÓN Y EL DECORADO DEL CAMPO. Distinto del resto de las
@@ -37,462 +38,57 @@ const TAU = Math.PI * 2;
 // nothing shimmers between frames.
 function phaseOf(A) { return hash01(A.x * 0.013 + A.y * 0.017) * TAU; }
 
-function pick(palette, i) {
-  if (!palette || !palette.length) return D.fallback;
-  return palette[i % palette.length];
-}
-
 // ---- the shapes ------------------------------------------------------------
-// Each takes (part, r, t, ph) with the canvas already translated to the ride's
-// centre and rotated into its frame; `r` is the ride's radius in px.
-
-const SHAPES = {
-  disc(p, r) {
-    ctx.fillStyle = p.fill || D.disc;
-    ctx.beginPath();
-    ctx.arc(0, p.dyPx || 0, (p.r || 1) * r, 0, TAU);
-    ctx.fill();
-  },
-
-  ring(p, r) {
-    ctx.strokeStyle = p.stroke || D.ring;
-    ctx.lineWidth = p.widthPx || 2;
-    ctx.beginPath();
-    ctx.arc(0, p.dyPx || 0, (p.r || 1) * r, 0, TAU);
-    ctx.stroke();
-  },
-
-  spokes(p, r) {
-    ctx.strokeStyle = p.stroke || D.spokes;
-    ctx.lineWidth = p.widthPx || 1.5;
-    const n = p.n || 8, r0 = (p.r0 || 0) * r, r1 = (p.r1 || 1) * r, dy = p.dyPx || 0;
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU;
-      ctx.moveTo(Math.cos(a) * r0, dy + Math.sin(a) * r0);
-      ctx.lineTo(Math.cos(a) * r1, dy + Math.sin(a) * r1);
-    }
-    ctx.stroke();
-  },
-
-  // arms with a car on the end — el pulpo, las sillas, los caballitos
-  arms(p, r) {
-    const n = p.n || 8, len = (p.r || 1) * r;
-    ctx.strokeStyle = p.stroke || D.arms;
-    ctx.lineWidth = p.widthPx || 3;
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU;
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
-    }
-    ctx.stroke();
-    if (!p.cap) return;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU;
-      ctx.fillStyle = pick(p.cap.palette, i);
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * len, Math.sin(a) * len, p.cap.radiusPx || 4, 0, TAU);
-      ctx.fill();
-    }
-  },
-
-  // boxes round a circle — gondolas, the tagada's riders, the gusanito's train
-  cabins(p, r, t, ph, A, spec, spinA) {
-    const n = p.n || 8, rad = (p.r || 1) * r;
-    const w = p.wPx || 8, h = p.hPx || 6;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU;
-      const x = Math.cos(a) * rad, y = Math.sin(a) * rad;
-      ctx.save();
-      ctx.translate(x, y);
-      // A GONDOLA HANGS. It stays level however far round the wheel it has got,
-      // and the frame is turning under it — so it is counter-rotated by exactly
-      // the spin this part was drawn under. Without it the cabins cartwheel with
-      // the rim, which is the one thing a Ferris wheel visibly does not do.
-      if (p.hang) ctx.rotate(-spinA);
-      ctx.fillStyle = pick(p.palette, i);
-      roundRect(ctx, -w / 2, -h / 2, w, h, 2, true, false);
-      ctx.restore();
-    }
-  },
-
-  box(p, r) {
-    ctx.fillStyle = p.fill || D.box;
-    roundRect(ctx, (p.x || 0) * r, (p.y || 0) * r, (p.w || 1) * r, (p.h || 1) * r,
-      p.roundPx || 2, true, false);
-  },
-
-  legs(p, r) {
-    ctx.strokeStyle = p.stroke || D.legs;
-    ctx.lineWidth = p.widthPx || 4;
-    const s = (p.spread || 0.7) * r, d = (p.drop || 0.6) * r;
-    ctx.beginPath();
-    ctx.moveTo(-s, d); ctx.lineTo(0, 0); ctx.lineTo(s, d);
-    ctx.stroke();
-  },
-
-  mast(p) {
-    ctx.fillStyle = p.fill || D.mast;
-    const w = p.widthPx || 6, h = p.hPx || 26;
-    ctx.fillRect(-w / 2, -h, w, h);
-  },
-
-  // el martillo: an arm about the centre with a cabin on the end
-  pendulum(p, r, t) {
-    const sw = p.swing || { amp: 2.6, speed: 0.25 };
-    const a = Math.sin(t * sw.speed * TAU + (p.phase || 0)) * sw.amp - Math.PI / 2;
-    const len = (p.len || 0.9) * r;
-    ctx.strokeStyle = p.stroke || D.pendulumArm;
-    ctx.lineWidth = p.widthPx || 5;
-    ctx.beginPath(); ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
-    ctx.stroke();
-    if (!p.cab) return;
-    ctx.save();
-    ctx.translate(Math.cos(a) * len, Math.sin(a) * len);
-    ctx.rotate(a + Math.PI / 2);
-    ctx.fillStyle = p.cab.fill || D.pendulumCab;
-    roundRect(ctx, -(p.cab.wPx || 10) / 2, -(p.cab.hPx || 8) / 2,
-      p.cab.wPx || 10, p.cab.hPx || 8, 2, true, false);
-    ctx.restore();
-  },
-
-  dish(p, r) {
-    ctx.fillStyle = p.fill || D.dish;
-    ctx.beginPath(); ctx.arc(0, 0, (p.r || 1) * r, 0, TAU); ctx.fill();
-    ctx.strokeStyle = p.rim || D.dishRim;
-    ctx.lineWidth = p.rimPx || 5;
-    ctx.beginPath(); ctx.arc(0, 0, (p.r || 1) * r, 0, TAU); ctx.stroke();
-  },
-
-  // el carrusel's striped roof
-  canopy(p, r) {
-    const n = p.n || 12, rad = (p.r || 1) * r;
-    for (let i = 0; i < n; i++) {
-      ctx.fillStyle = pick(p.palette, i);
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, rad, (i / n) * TAU, ((i + 1) / n) * TAU);
-      ctx.closePath();
-      ctx.globalAlpha = 0.35;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-  },
-
-  boat(p, r, t) {
-    const sw = p.swing || { amp: 0.7, speed: 0.2 };
-    const a = Math.sin(t * sw.speed * TAU) * sw.amp;
-    const piv = (p.pivot || 0.9) * r;
-    ctx.save();
-    ctx.rotate(a);
-    ctx.translate(0, piv);
-    const w = (p.w || 1.4) * r, h = (p.h || 0.5) * r;
-    ctx.fillStyle = p.fill || D.boat;
-    ctx.beginPath();
-    ctx.moveTo(-w / 2, -h / 2);
-    ctx.quadraticCurveTo(0, h * 0.9, w / 2, -h / 2);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = p.trim || D.boatTrim;
-    ctx.lineWidth = 1.6; ctx.stroke();
-    ctx.restore();
-  },
-
-  track(p, r) {
-    ctx.strokeStyle = p.stroke || D.track;
-    ctx.lineWidth = p.widthPx || 5;
-    ctx.beginPath(); ctx.arc(0, 0, (p.r || 1) * r, 0, TAU); ctx.stroke();
-  },
-
-  facade(p, r) {
-    const w = (p.w || 1.6) * r, h = (p.h || 1.1) * r;
-    ctx.fillStyle = p.fill || D.facade;
-    roundRect(ctx, -w / 2, -h / 2, w, h, 3, true, false);
-    ctx.strokeStyle = p.trim || D.facadeTrim;
-    ctx.lineWidth = 2; ctx.stroke();
-    if (!p.door) return;
-    const dw = (p.door.w || 0.3) * r, dh = (p.door.h || 0.6) * r;
-    ctx.fillStyle = p.door.fill || D.facadeDoor;
-    ctx.fillRect(-dw / 2, h / 2 - dh, dw, dh);
-  },
-
-  counter(p, r) {
-    const w = (p.w || 1.5) * r, h = (p.h || 0.6) * r, dy = (p.dy || 0) * r;
-    ctx.fillStyle = p.fill || D.counter;
-    roundRect(ctx, -w / 2, dy - h / 2, w, h, 2, true, false);
-    ctx.fillStyle = p.top || D.counterTop;
-    ctx.fillRect(-w / 2, dy - h / 2, w, Math.max(2, h * 0.3));
-    // the stainless rail along the front — the bright line under the food
-    if (p.trim) {
-      ctx.strokeStyle = p.trim;
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(-w / 2, dy + h / 2 - 1); ctx.lineTo(w / 2, dy + h / 2 - 1);
-      ctx.stroke();
-    }
-  },
-
-  // LA LONA. Seen from above the chinamos' roof is one long blue tarp pitched
-  // in gables over each bay — the ridge catches the light, the eaves fall away
-  // dark. Drawn as one module so a row of them butts into a continuous roof.
-  tarp(p, r) {
-    const w = (p.w || 1.8) * r, h = (p.h || 0.8) * r, bays = p.bays || 3;
-    ctx.fillStyle = p.eave || D.tarpEave;
-    roundRect(ctx, -w / 2, -h / 2, w, h, 2, true, false);
-    const seg = w / bays;
-    for (let i = 0; i < bays; i++) {
-      const x0 = -w / 2 + i * seg;
-      // each bay: a lit ridge running front-to-back, darker to either side
-      const g = ctx.createLinearGradient(x0, 0, x0 + seg, 0);
-      g.addColorStop(0, p.eave || D.tarpEave);
-      g.addColorStop(0.5, p.ridge || D.tarpRidge);
-      g.addColorStop(1, p.eave || D.tarpEave);
-      ctx.fillStyle = g;
-      ctx.fillRect(x0 + 1, -h / 2 + 1, seg - 2, h - 2);
-      // the gable's front point
-      ctx.fillStyle = p.fill || D.tarpFill;
-      ctx.beginPath();
-      ctx.moveTo(x0 + 1, h / 2 - 1);
-      ctx.lineTo(x0 + seg / 2, h / 2 + h * 0.14);
-      ctx.lineTo(x0 + seg - 1, h / 2 - 1);
-      ctx.closePath(); ctx.fill();
-    }
-  },
-
-  // EL ANDAMIO. White scaffold pipe with those bulbous cast joints, which is
-  // what makes the row read as built rather than as a tent.
-  frame(p, r) {
-    const w = (p.w || 1.8) * r, h = (p.h || 0.8) * r, n = p.n || 4;
-    ctx.strokeStyle = p.stroke || D.frame;
-    ctx.lineWidth = p.widthPx || 2;
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const x = -w / 2 + (i / (n - 1)) * w;
-      ctx.moveTo(x, -h / 2); ctx.lineTo(x, h / 2 + h * 0.12);
-    }
-    ctx.moveTo(-w / 2, h / 2); ctx.lineTo(w / 2, h / 2);
-    ctx.stroke();
-    ctx.fillStyle = p.stroke || D.frame;
-    for (let i = 0; i < n; i++) {
-      const x = -w / 2 + (i / (n - 1)) * w;
-      ctx.beginPath(); ctx.arc(x, h / 2, p.jointPx || 2.2, 0, TAU); ctx.fill();
-    }
-  },
-
-  // LOS BANDERINES. The neon pennant line along the front of the row, and the
-  // thing that says "feria" from further away than anything else here.
-  banderines(p, r, t, ph) {
-    const w = (p.w || 2.0) * r, n = p.n || 10, dy = (p.dy || 0.7) * r;
-    const s = p.sizePx || 5;
-    const seg = w / n;
-    ctx.strokeStyle = CH.banderines;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(-w / 2, dy);
-    for (let i = 0; i <= n; i++) {
-      const x = -w / 2 + i * seg;
-      ctx.lineTo(x, dy + Math.sin(i * 0.9 + ph) * 1.2);
-    }
-    ctx.stroke();
-    for (let i = 0; i < n; i++) {
-      const x = -w / 2 + (i + 0.5) * seg;
-      const sag = Math.sin(i * 0.9 + ph) * 1.2;
-      // they flutter — a slow shear, deterministic per pennant
-      const lean = Math.sin(t * 1.6 + i * 0.7 + ph) * 0.28;
-      ctx.fillStyle = pick(p.palette, i);
-      ctx.beginPath();
-      ctx.moveTo(x - s * 0.45, dy + sag);
-      ctx.lineTo(x + s * 0.45, dy + sag);
-      ctx.lineTo(x + lean * s, dy + sag + s);
-      ctx.closePath(); ctx.fill();
-    }
-  },
-
-  // EL TECHO DE ZINC. Corrugated sheet, dark, ribbed along the row's length,
-  // with the eaves catching a little light. From above this is most of the
-  // chinamo's footprint and it should read as METAL, not as cloth.
-  zinc(p, r) {
-    const w = (p.w || 1.9) * r, h = (p.h || 0.8) * r, ribs = p.ribs || 12;
-    ctx.fillStyle = p.fill || D.zinc;
-    roundRect(ctx, -w / 2, -h / 2, w, h, 1.5, true, false);
-    ctx.strokeStyle = p.rib || D.zincRib;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = 1; i < ribs; i++) {
-      const x = -w / 2 + (i / ribs) * w;
-      ctx.moveTo(x, -h / 2 + 1); ctx.lineTo(x, h / 2 - 1);
-    }
-    ctx.stroke();
-    ctx.strokeStyle = p.edge || D.zincEdge;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(-w / 2, h / 2); ctx.lineTo(w / 2, h / 2);
-    ctx.stroke();
-  },
-
-  // LA MANTA IMPRESA — and this is the chinamo, seen from above. A band of
-  // printed panels on a dark ground: the product photograph, then the name in
-  // saturated ink, repeated down the row. It is the brightest thing in the
-  // fairground and the reason you can read the food from across the Paseo.
-  banner(p, r, t, ph, A, spec) {
-    const food = spec.foods && spec.foods[A.food];
-    const w = (p.w || 1.8) * r, h = (p.h || 0.3) * r, dy = (p.dy || 0.35) * r;
-    const n = p.panels || 3;
-    ctx.fillStyle = p.ground || D.bannerGround;
-    roundRect(ctx, -w / 2, dy - h / 2, w, h, 1.5, true, false);
-    const seg = w / n;
-    const ink = (food && food.ink) || D.bannerInk;
-    const accent = (food && food.accent) || D.bannerAccent;
-    for (let i = 0; i < n; i++) {
-      const x0 = -w / 2 + i * seg;
-      // the photograph: a block of the food's own colour, bled to the panel edge
-      ctx.fillStyle = accent;
-      ctx.fillRect(x0 + 1.5, dy - h / 2 + 1.5, seg * 0.42, h - 3);
-      // the lettering: two bars of ink, because at this zoom a word IS two bars
-      ctx.fillStyle = ink;
-      ctx.fillRect(x0 + seg * 0.5, dy - h * 0.28, seg * 0.42, h * 0.2);
-      ctx.fillRect(x0 + seg * 0.5, dy + h * 0.04, seg * 0.3, h * 0.16);
-    }
-    ctx.strokeStyle = CH.bannerSeam;
-    ctx.lineWidth = 0.8;
-    ctx.strokeRect(-w / 2, dy - h / 2, w, h);
-  },
-
-  // EL RÓTULO DE NEÓN. Lit tube lettering over the counter, not a label pill:
-  // a glowing bar with the word on it. Kept for the rows that have it — the
-  // blue-tarp chinamos on the Paseo do, the printed-banner ones do not.
-  neon(p, r, t, ph, A, spec) {
-    const food = spec.foods && spec.foods[A.food];
-    const col = (food && food.neon) || p.color || D.neon;
-    const w = (p.w || 1.4) * r, dy = (p.dy || 0.2) * r;
-    const flicker = 0.82 + 0.18 * Math.sin(t * 7 + ph * 3);
-    ctx.save();
-    ctx.globalAlpha = flicker;
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 2.4;
-    ctx.lineCap = "round";
-    ctx.shadowColor = col; ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.moveTo(-w / 2, dy); ctx.lineTo(w / 2, dy);
-    ctx.stroke();
-    ctx.restore();
-  },
-
-  // the striped toldo over a chinamo — the thing that makes it a chinamo
-  awning(p, r) {
-    const w = (p.w || 1.7) * r, h = (p.h || 0.42) * r, n = p.n || 7;
-    const seg = w / n;
-    for (let i = 0; i < n; i++) {
-      ctx.fillStyle = pick(p.stripes, i);
-      ctx.beginPath();
-      ctx.moveTo(-w / 2 + i * seg, -h);
-      ctx.lineTo(-w / 2 + (i + 1) * seg, -h);
-      ctx.lineTo(-w / 2 + (i + 1) * seg, 0);
-      ctx.lineTo(-w / 2 + i * seg, 0);
-      ctx.closePath(); ctx.fill();
-    }
-    // the scalloped edge
-    ctx.fillStyle = CH.awningShadow;
-    for (let i = 0; i < n; i++) {
-      ctx.beginPath();
-      ctx.arc(-w / 2 + (i + 0.5) * seg, 0, seg * 0.5, 0, Math.PI);
-      ctx.fill();
-    }
-  },
-
-  // what is on the counter: churros standing in their cup, manzanas on sticks
-  goods(p, r, t, ph, A, spec) {
-    const food = spec.foods && spec.foods[A.food];
-    const palette = (food && food.goods) || D.goods;
-    const n = p.n || 5, w = (p.w || 1.3) * r;
-    for (let i = 0; i < n; i++) {
-      ctx.fillStyle = pick(palette, i);
-      ctx.beginPath();
-      ctx.arc(-w / 2 + (i + 0.5) * (w / n), -r * 0.36, p.radiusPx || 3, 0, TAU);
-      ctx.fill();
-    }
-  },
-
-  prizes(p, r) {
-    const n = p.n || 7, w = (p.w || 1.5) * r;
-    for (let i = 0; i < n; i++) {
-      ctx.fillStyle = pick(p.palette, i);
-      ctx.beginPath();
-      ctx.arc(-w / 2 + (i + 0.5) * (w / n), -r * 0.5, p.radiusPx || 3.4, 0, TAU);
-      ctx.fill();
-    }
-  },
-
-  cars(p, r, t, ph) {
-    const n = p.n || 6, w = (p.areaW || 1.6) * r, h = (p.areaH || 0.9) * r;
-    for (let i = 0; i < n; i++) {
-      const s = hash01(i * 3.7 + ph) * TAU;
-      const x = Math.cos(t * (p.speed || 0.5) + s) * w * 0.4;
-      const y = Math.sin(t * (p.speed || 0.5) * 1.3 + s * 1.7) * h * 0.34;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(Math.sin(t * 0.7 + s) * 0.9);
-      ctx.fillStyle = pick(p.palette, i);
-      roundRect(ctx, -(p.wPx || 9) / 2, -(p.hPx || 6) / 2, p.wPx || 9, p.hPx || 6, 2, true, false);
-      ctx.restore();
-    }
-  },
-
-  speakers(p, r, t) {
-    const off = (p.offset || 0.7) * r, w = p.wPx || 7, h = p.hPx || 12;
-    const pump = p.pump ? 1 + Math.sin(t * (p.pump.speed || 2) * TAU) * p.pump.amp : 1;
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = p.fill || D.speaker;
-      roundRect(ctx, side * off - w / 2, -h / 2, w, h, 1.5, true, false);
-      ctx.fillStyle = p.cone || D.speakerCone;
-      ctx.beginPath();
-      ctx.arc(side * off, -h * 0.18, w * 0.3 * pump, 0, TAU); ctx.fill();
-      ctx.beginPath();
-      ctx.arc(side * off, h * 0.24, w * 0.22 * pump, 0, TAU); ctx.fill();
-    }
-  },
-
-  // LAS LUCES. A feria at night IS its bulbs, so they are their own shape and
-  // they twinkle on a deterministic phase rather than at random.
-  bulbs(p, r, t, ph) {
-    const n = p.n || 12;
-    for (let i = 0; i < n; i++) {
-      let x, y;
-      if (p.rect) {
-        // strung round a rectangle: walk its perimeter
-        const w = p.rect.w * r, h = p.rect.h * r;
-        const per = (i / n) * (2 * (w + h));
-        if (per < w) { x = -w / 2 + per; y = -h / 2; }
-        else if (per < w + h) { x = w / 2; y = -h / 2 + (per - w); }
-        else if (per < 2 * w + h) { x = w / 2 - (per - w - h); y = h / 2; }
-        else { x = -w / 2; y = h / 2 - (per - 2 * w - h); }
-      } else {
-        const a = (i / n) * TAU;
-        x = Math.cos(a) * (p.r || 1) * r;
-        y = Math.sin(a) * (p.r || 1) * r;
-      }
-      const tw = 0.55 + 0.45 * Math.sin(t * 3 + i * 1.7 + ph);
-      ctx.globalAlpha = tw;
-      ctx.fillStyle = pick(p.palette, i);
-      ctx.beginPath(); ctx.arc(x, y, p.radiusPx || 1.4, 0, TAU); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-  },
-
-  sign(p, r, t, ph, A, spec) {
-    let text = p.text, fill = p.fill || D.signFg, bg = p.bg || D.signBg;
-    if (p.fromFood) {
-      const food = spec.foods && spec.foods[A.food];
-      if (!food) return;
-      text = food.label; fill = food.fill; bg = food.bg;
-    }
-    if (!text) return;
-    label(0, (p.dyPx || -1.4) * r, text, fill, bg);
-  },
-};
+// LOS 28 VERBOS SE MUDARON a `feriaShapes.js`, parametrizados en su superficie.
+// Este archivo se queda con lo que de verdad es suyo: DÓNDE va cada juego, con
+// qué fase, y el suelo del campo ferial. La tabla se fue porque un catálogo de
+// arte que sólo sabe pintar sobre el canvas del juego no se puede meter en una
+// hoja sintética ni en la vista previa del editor — y porque escribía en `ctx`
+// mientras `paintRide` escribía en `g`, que es cómo la hoja nueva salió con
+// 66 164 px de tinta que eran sólo las sombras.
+const SHAPES = FERIA_SHAPES;
 
 // ---- one attraction --------------------------------------------------------
+/**
+ * UN JUEGO, EN EL ORIGEN Y EN LA SUPERFICIE QUE LE DEN.
+ *
+ * Es el mismo cuerpo que `drawAttraction` corría con el `ctx` compartido, sacado
+ * a una función con costura por dos razones concretas: `tools/shot-feria.mjs`
+ * necesita dibujar los 16 juegos en una hoja sintética —el campo ferial era el
+ * ÚNICO catálogo de arte sin hoja, o sea lo único que no se podía refactorizar
+ * con prueba— y el editor necesita previsualizar el juego que está editando con
+ * ESTE dibujante y no con uno paralelo.
+ *
+ * El reloj y la fase entran como parámetros en vez de derivarse acá, que es lo
+ * que permite congelarlos: una hoja que se mueve no se puede diffear.
+ *
+ * `A` es la INSTANCIA, y casi ninguna forma la mira: las cuatro que sí leen
+ * `A.food`, que es cuál de sus comidas vende ese chinamo. Por eso el defecto es
+ * `{ food: 0 }` y no `null` — con `null` las cuatro reventaban, y un dibujante
+ * que sólo funciona dentro de la escena real no sirve ni para una hoja ni para
+ * una vista previa.
+ */
+export function paintRide(g, kind, r, t = 0, ph = 0, A = { food: 0 }) {
+  const spec = ASSETS[kind];
+  if (!spec || !spec.parts) return;
+  // la sombra en el suelo, para que nada flote sobre el barro
+  g.fillStyle = CH.rideShadow;
+  g.beginPath(); g.ellipse(1, r * 0.28, r * 0.95, r * 0.4, 0, 0, TAU); g.fill();
+  for (const part of spec.parts) {
+    const draw = SHAPES[part.shape];
+    if (!draw) {
+      warnMissingShape(part.shape, kind);
+      continue;
+    }
+    g.save();
+    const spinA = part.spin ? t * part.spin * TAU + ph : 0;
+    if (spinA) g.rotate(spinA);
+    if (part.bob) g.translate(0, Math.sin(t * part.bob.speed * TAU + ph) * part.bob.amp);
+    draw(g, part, r, t, ph, A, spec, spinA);
+    g.restore();
+  }
+}
+
 function drawAttraction(A, t) {
   const spec = ASSETS[A.kind];
   if (!spec || !spec.parts) return;
@@ -500,31 +96,20 @@ function drawAttraction(A, t) {
   const ph = phaseOf(A);
   ctx.save();
   ctx.translate(A.x, A.y);
-  // the ground shadow, so nothing floats over the barro
-  ctx.fillStyle = CH.rideShadow;
-  ctx.beginPath(); ctx.ellipse(1, r * 0.28, r * 0.95, r * 0.4, 0, 0, TAU); ctx.fill();
-  for (const part of spec.parts) {
-    const draw = SHAPES[part.shape];
-    if (!draw) {
-      // A catalog this file cannot draw is the failure mode of making the art
-      // data: someone adds a shape to the JSON (or the editor writes one) and
-      // it silently does not appear. Say so, once per shape, and carry on
-      // drawing the rest of the ride.
-      if (!drawAttraction._warned) drawAttraction._warned = new Set();
-      if (!drawAttraction._warned.has(part.shape)) {
-        drawAttraction._warned.add(part.shape);
-        console.warn(`[feria] no drawer for shape "${part.shape}" (kind ${A.kind})`);
-      }
-      continue;
-    }
-    ctx.save();
-    const spinA = part.spin ? t * part.spin * TAU + ph : 0;
-    if (spinA) ctx.rotate(spinA);
-    if (part.bob) ctx.translate(0, Math.sin(t * part.bob.speed * TAU + ph) * part.bob.amp);
-    draw(part, r, t, ph, A, spec, spinA);
-    ctx.restore();
-  }
+  paintRide(ctx, A.kind, r, t, ph, A);
   ctx.restore();
+}
+
+// A catalog this file cannot draw is the failure mode of making the art data:
+// someone adds a shape to the JSON (or the editor writes one) and it silently
+// does not appear. Say so, once per shape, and carry on drawing the rest of the
+// ride. The editor now catches this BEFORE it ships — its validator asks the
+// interpreter which verbs exist instead of keeping a copy of the list.
+const warnedShapes = new Set();
+function warnMissingShape(shape, kind) {
+  if (warnedShapes.has(shape)) return;
+  warnedShapes.add(shape);
+  console.warn(`[feria] no drawer for shape "${shape}" (kind ${kind})`);
 }
 
 // ---- el campo ferial: the ground itself -------------------------------------

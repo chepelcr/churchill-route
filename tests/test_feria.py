@@ -22,7 +22,13 @@ import unittest
 from churchill.world.config import ROOT
 
 FERIA = os.path.join(ROOT, "src", "render", "c2d", "feriaAssets.json")
+# LOS VERBOS SE MUDARON. Vivían en `attractions.js` y ahora están en
+# `feriaShapes.js`, parametrizados en su superficie: un catálogo de arte que sólo
+# sabe pintar sobre el canvas del juego no se puede meter en una hoja sintética
+# (`tools/shot-feria.mjs`) ni en la vista previa del editor. `attractions.js` se
+# quedó con lo suyo — dónde va cada juego y el suelo del campo ferial.
 ATTRACTIONS = os.path.join(ROOT, "src", "render", "c2d", "attractions.js")
+FERIA_SHAPES = os.path.join(ROOT, "src", "render", "c2d", "feriaShapes.js")
 EFFECTS = os.path.join(ROOT, "src", "assets", "effects.json")
 CONTENT = os.path.join(ROOT, "content", "world", "attractions.json")
 
@@ -50,8 +56,9 @@ class CatalogTests(unittest.TestCase):
         self.doc = json.loads(read(FERIA))
         self.rides = {k: v for k, v in self.doc.items() if not k.startswith("$")
                       and k != "version"}
-        body = read(ATTRACTIONS).split("const SHAPES = {", 1)[1]
-        self.impl = set(re.findall(r"^  (\w+)\(", body, re.M)) - {"drawFeriaGround"}
+        body = read(FERIA_SHAPES).split("export const FERIA_SHAPES = {", 1)[1]
+        # cada verbo recibe ahora su superficie como primer argumento
+        self.impl = set(re.findall(r"^  (\w+)\(g[,)]", body, re.M))
 
     def test_it_is_versioned(self):
         # It was the last catalog without one — a file the editor is meant to

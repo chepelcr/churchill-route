@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SHAPES = ROOT / "src" / "render" / "c2d" / "shapes.js"
 PRIMS = ROOT / "src" / "render" / "c2d" / "primitives.js"
 GFX = ROOT / "src" / "render" / "c2d" / "gfx.js"
+FERIA = ROOT / "src" / "render" / "c2d" / "feriaShapes.js"
 
 #: los módulos que el intérprete tiene permitido tocar. `vehicleShapes.js` entra
 #: porque sólo depende de `game/vehicles.js`, que por contrato (CLAUDE.md) es
@@ -99,6 +100,64 @@ class ShapeInterpreterStandsAlone(unittest.TestCase):
                       flags=re.M)
         self.assertNotIn("sharedCtx", body,
                          "paintAt volvió a tener una superficie por defecto")
+
+
+
+class FeriaInterpreterStandsAloneToo(unittest.TestCase):
+    """EL SEGUNDO INTÉRPRETE, y sigue siendo el segundo a propósito.
+
+    Los 28 verbos de la feria NO se fundieron con los 21 de `shapes.js`, y la
+    razón está medida: la feria mide en FRACCIONES DEL RADIO del juego (con
+    sufijo `Px` para lo absoluto) — un tercer marco — y sólo `disc` y `ring`
+    coinciden de nombre. El resto no son primitivas sino RECETAS de un puesto de
+    feria: `counter`, `awning`, `facade`, `prizes`, `goods`. Reescribir 71 partes
+    afinadas a mano para que hablen el otro vocabulario cambiaría los píxeles del
+    campo ferial sin que el jugador gane nada.
+
+    Lo que sí se cerró es la deriva que importaba: los NOMBRES ya no están
+    copiados en el validador del editor, se exportan desde acá.
+    """
+
+    ALLOWED = {"./primitives.js", "./feriaAssets.json"}
+
+    def test_it_does_not_import_the_game_either(self):
+        imps = imports_of(FERIA)
+        self.assertNotIn("./gfx.js", imps,
+                         "feriaShapes.js volvió a importar gfx.js: la hoja "
+                         "sintética y la vista previa del editor dejan de cargar")
+        self.assertEqual(imps - self.ALLOWED, set())
+
+    def test_the_json_import_carries_its_attribute(self):
+        """Vite acepta un import de JSON sin atributo y Node NO.
+
+        La misma trampa que documenta `game/surfaces.js`, y acá muerde igual: el
+        editor lo carga bajo Node pelado para preguntarle sus verbos."""
+        self.assertRegex(FERIA.read_text(encoding="utf-8"),
+                         r'feriaAssets\.json"\s+with\s*\{\s*type:\s*"json"\s*\}')
+
+    def test_every_verb_takes_its_surface_first(self):
+        """Si uno solo escribe en un `ctx` compartido, dibuja en el canvas
+        equivocado — y no falla, que es lo peor. La hoja lo encontró: 66 164 px
+        de tinta que eran SÓLO las sombras, porque la tabla escribía en `ctx`
+        mientras el resto de la función escribía en `g`."""
+        body = FERIA.read_text(encoding="utf-8").split("export const FERIA_SHAPES = {", 1)[1]
+        verbs = re.findall(r"^  (\w+)\(([^)]*)\)", body, re.M)
+        self.assertGreater(len(verbs), 20, "no se encontraron los verbos")
+        for name, args in verbs:
+            self.assertEqual(args.split(",")[0].strip(), "g",
+                             f"el verbo {name} no recibe su superficie")
+        # SIN COMENTARIOS. Uno de los verbos lleva escrito por qué su gradiente se
+        # llama `grad` y no `g`, y la palabra `ctx` aparece en esa explicación —
+        # sexta vez que una prueba de este repo se lee su propia prosa.
+        code = re.sub(r"^\s*//.*$", "", body, flags=re.M)
+        self.assertNotIn("ctx", code,
+                         "quedó un `ctx` en la tabla: ese verbo pinta en el "
+                         "canvas del juego pase lo que pase")
+
+    def test_the_names_are_exported_for_the_editor(self):
+        text = FERIA.read_text(encoding="utf-8")
+        self.assertIn("export const FERIA_SHAPE_NAMES", text,
+                      "el editor pregunta esta lista en vez de copiarla")
 
 
 if __name__ == "__main__":

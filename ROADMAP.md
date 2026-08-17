@@ -146,6 +146,58 @@ en toda la migración.
 
 ---
 
+## 6b. EL CORTE EN DOS REPOSITORIOS
+
+Decidido el 2026-08-17. El juego público queda con **sólo el juego**; el builder
+se va con el mapa y el contenido autorado, y **el editor se va con el builder**
+porque el editor AUTORA lo que el builder consume: son las dos mitades de una
+herramienta, no dos herramientas.
+
+```
+churchill-route   (público)   el juego. Consume artefactos publicados.
+churchill-world   (privado)   churchill/ + tools/ + docs/map.osm +
+                              content/world/ + el editor
+```
+
+**El paso habilitante ya está hecho**: `CHURCHILL_GAME_ROOT` — el nombre que el
+editor ya usaba, no uno nuevo. La frontera resultó **angosta y medida: ocho
+rutas en cuatro archivos**, y `tests/test_game_root.py` la fija, así que una
+novena tiene que ser una decisión y no un descuido. Probado de verdad: un build
+completo escribiendo en un game root aparte, sin tocar el repo real.
+
+Lo que queda, en orden:
+
+- [ ] **Portar los 21 módulos de prueba que examinan el JUEGO a JS.** Este es el
+      trabajo de verdad y la razón por la que el corte no es un `git mv`. De los
+      24 módulos de Python, **21 leen `src/`**: no son pruebas del builder, son
+      compuertas de deriva entre un registro y su pintor (`actors.json` contra
+      `entities.js`, `lights.json` contra `lights.js`). Pertenecen al juego, en
+      un repo que no va a tener Python.
+
+      Lo que lo hace posible es justamente el diseño de artefactos publicados:
+      hoy esas pruebas importan los enums de Python, y contra el artefacto
+      (`vocabulary.generated.json`) la misma aserción se escribe en JS. Sólo 3
+      son del builder de verdad: `test_content`, `test_piers`,
+      `test_world_editor_patch`.
+
+- [ ] **`src/world2d/` SE QUEDA versionado** en el repo público (decidido): son
+      15 MB de mundo generado, y el precio se paga para que un clon del juego
+      corra solo. Cada reconstrucción es un diff grande y eso es aceptado.
+
+- [ ] **La cirugía**, al final y sólo cuando las pruebas ya no cruzan: mover con
+      historia (`git filter-repo` o un subtree), no con `cp`. `docs/map.osm`
+      (12 MB) y `content/world/` (72 KB) van al privado; el editor pasa de
+      `world-editor/` a `editor/` ahí.
+
+- [ ] **Y una pregunta abierta que el corte hace urgente**: quién OWNS
+      `surfaces.json`, `flora.json` y `world-units.json`. Hoy los leen los dos.
+      Si el builder los publica como los artefactos del vocabulario, el juego no
+      los edita; si los autora el editor, el builder los lee del game root. Las
+      dos funcionan — pero hay que escoger una, porque un archivo con dos dueños
+      es el patrón que este proyecto lleva dos días desarmando.
+
+---
+
 ## 7. Producto
 
 - [ ] **QA en dispositivos reales** (usuario): controles táctiles, coach-marks

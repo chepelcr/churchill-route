@@ -89,7 +89,7 @@
       "spreadNote": "medio ángulo del cono, en radianes. Ancho: un cono angosto se lee como un láser y no como un faro.",
       "colorNote": "El triplete y no una cadena, la misma convención que toda esta familia: el alfa se compone en el pintor.",
       "lampNote": "los dos focos en la trompa, que es lo que se ve del carro de frente.",
-      "tailNote": "las calaveras. Lo único que se ve de un carro que se aleja, así que sin ellas el tráfico de noche desaparece por detrás.",
+      "tailColorNote": "las calaveras. Lo único que se ve de un carro que se aleja, así que sin ellas el tráfico de noche desaparece por detrás.",
       "params": {
         "beam": 74,
         "spread": 0.42,
@@ -97,7 +97,7 @@
         "alpha": 0.2,
         "lampR": 2.1,
         "lampAlpha": 0.92,
-        "tail": "255,90,70",
+        "tailColor": "255,90,70",
         "tailAlpha": 0.55
       }
     },

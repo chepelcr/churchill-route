@@ -37,8 +37,12 @@ from churchill.world.enums.surface import (  # noqa: E402
     CALLE, CARRIAGEWAY, DRIVABLE, STREET, Surface, WALL,
 )
 
-JS_PATH = os.path.join(ROOT, "src", "domain", "vocabulary.generated.js")
-JSON_PATH = os.path.join(ROOT, "src", "assets", "vocabulary.generated.json")
+#: THE TWO ARTIFACTS THIS PUBLISHES INTO THE GAME. `CHURCHILL_GAME_ROOT` moves
+#: them, so the builder can live in its own repository and hand the vocabulary
+#: over rather than reaching into a sibling directory.
+from churchill.world.config import GAME_ROOT  # noqa: E402
+JS_PATH = os.path.join(GAME_ROOT, "src", "domain", "vocabulary.generated.js")
+JSON_PATH = os.path.join(GAME_ROOT, "src", "assets", "vocabulary.generated.json")
 
 #: Bumped when the SHAPE of the artifact changes (an export added or renamed),
 #: never for a new member — consumers read names, not a schema revision.
@@ -213,7 +217,11 @@ def main(argv):
     check = "--check" in argv
     stale = []
     for path, text in ((JS_PATH, render_js()), (JSON_PATH, render_json())):
-        rel = os.path.relpath(path, ROOT)
+        # Relative to the GAME, which is what this path is inside. Against the
+        # builder's own root it came out as five `../` when the two live in
+        # separate checkouts — a log line nobody can read is a log line that
+        # stops being checked.
+        rel = os.path.relpath(path, GAME_ROOT)
         current = None
         if os.path.exists(path):
             with open(path, encoding="utf-8") as fh:

@@ -18,10 +18,10 @@ neither matches nothing, rather than quietly matching everything.
 import json
 import os
 
-from ..config import ROOT
+from ..config import GAME_ROOT
 from ..enums import Surface
 
-NPC_TYPES_PATH = os.path.join(ROOT, "src", "game", "npcTypes.json")
+NPC_TYPES_PATH = os.path.join(GAME_ROOT, "src", "game", "npcTypes.json")
 
 _SURFACE_BY_NAME = {surface.label: surface for surface in Surface}
 

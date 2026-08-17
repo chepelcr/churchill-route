@@ -14,29 +14,46 @@ import os
 from .enums import CLASS_NAMES, Surface  # noqa: F401
 from .enums import surface as surface_enum
 
+#: THE BUILDER'S OWN ROOT — where `churchill/`, the OSM extract and the authored
+#: world content live. Derived from this file, so it is right wherever the
+#: builder is checked out.
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+#: WHERE THE GAME IS, which is not the same question. The builder WRITES the
+#: emitted world and the generated vocabulary into the game, and READS four
+#: registries back out of it — eight paths in four files, and that is the whole
+#: boundary between the two.
+#:
+#: It is overridable so the two can live in separate repositories: the builder
+#: with the map and the authored content, the game with only the game. The
+#: variable name is the world editor's (`CHURCHILL_GAME_ROOT`), because the
+#: editor has answered this same question since it shipped and a second name for
+#: one concept is how the two would drift apart.
+#:
+#: Defaults to `ROOT`, so a single checkout behaves exactly as it always has.
+GAME_ROOT = os.environ.get("CHURCHILL_GAME_ROOT") or ROOT
 OSM_PATH = os.path.join(ROOT, "docs", "map.osm")
 EDITOR_PATCH_PATH = os.path.join(ROOT, "docs", "world-editor.patch.json")
 DEBUG_PNG = os.path.join(ROOT, "tools", "debug_map.png")
 DEBUG_SVG = os.path.join(ROOT, "tools", "debug_features.svg")
 # chunked output — the tiled world the src/world2d accessor streams by camera
 # region (416 tiles + manifest.json).
-WORLD2D_DIR = os.path.join(ROOT, "src", "world2d")
+WORLD2D_DIR = os.path.join(GAME_ROOT, "src", "world2d")
 #: The per-surface REGISTRY: how each class drives and what it is made of, keyed
 #: by name. Shared with the client (src/game/surfaces.js), the dev viewer and the
 #: world editor — the palette used to be written out five times and two of the
 #: copies were wrong (the bulevar was #d8d4c8 here and #d9d6cd everywhere else;
 #: the dev viewer knew 7 of 11 classes and drew the rest magenta).
-SURFACE_REGISTRY_PATH = os.path.join(ROOT, "src", "assets", "surfaces.json")
+SURFACE_REGISTRY_PATH = os.path.join(GAME_ROOT, "src", "assets", "surfaces.json")
 #: Every plant in the world: species, wood mixes, and the build's plantings.
-FLORA_REGISTRY_PATH = os.path.join(ROOT, "src", "assets", "flora.json")
+FLORA_REGISTRY_PATH = os.path.join(GAME_ROOT, "src", "assets", "flora.json")
 #: The world's own MEASUREMENTS, in metres — the lengths the builder, the game
 #: and the editor all have to agree about. See the file's own `_why`: every one
 #: of these was a px constant once, and a px constant is only true at the scale
 #: it was tuned at. Read at import, and deliberately NOT tolerant of a missing
 #: file: a builder that invents its own cuadrícula because an asset is absent is
 #: exactly the silent drift this closes.
-WORLD_UNITS_PATH = os.path.join(ROOT, "src", "assets", "world-units.json")
+WORLD_UNITS_PATH = os.path.join(GAME_ROOT, "src", "assets", "world-units.json")
 
 
 def _world_units():

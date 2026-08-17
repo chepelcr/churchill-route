@@ -22,7 +22,13 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WORLD = os.path.join(ROOT, "src", "world2d")
+#: WHERE THE EMITTED WORLD IS. Its own root for the digest it keeps; the GAME's
+#: root for the world it verifies, so the two can be separate checkouts. This
+#: script derives ROOT itself rather than importing config, so it reads the
+#: variable directly — importing the builder just for a path would make the
+#: snapshot depend on the whole package loading.
+GAME_ROOT = os.environ.get("CHURCHILL_GAME_ROOT") or ROOT
+WORLD = os.path.join(GAME_ROOT, "src", "world2d")
 TILES = os.path.join(WORLD, "tiles")
 DIGEST = os.path.join(ROOT, "tools", "world_digest.json")
 

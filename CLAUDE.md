@@ -115,6 +115,15 @@ pnpm world:build    # rebuild src/world2d/ from docs/map.osm (deterministic)
 python3 tools/world_snapshot.py verify   # emitted world unchanged?
 ```
 
+**EL BUILDER PUEDE ESCRIBIR EN OTRO CHECKOUT.** `CHURCHILL_GAME_ROOT` (el
+editor's own variable, not a second name for one concept) redirects every path
+the builder aims at the game. The boundary is **eight paths in four files** —
+`config.py` (the emitted world + three shared registries), `service/npc.py`
+(npcTypes), `gen_vocabulary.py` (the two published artifacts) and
+`world_snapshot.py` — and `tests/test_game_root.py` pins that list, so a ninth
+crossing has to be a decision rather than an oversight. Unset, everything
+behaves exactly as a single checkout. See ROADMAP §6b for the split it is for.
+
 Deploy: push to `main` → `.github/workflows/deploy.yml` builds with pnpm and
 publishes `dist/` to GitHub Pages (https://churchill.jcampos.dev, `CNAME`).
 

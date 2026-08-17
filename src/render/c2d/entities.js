@@ -802,7 +802,7 @@ export function paintHeadlights(g, hw, hh, c = HEADLIGHTS) {
   }
   // …y las calaveras, que son lo ÚNICO que se ve de un carro que se aleja: sin
   // ellas el tráfico de noche desaparece por detrás.
-  g.fillStyle = `rgba(${c.tail},${c.tailAlpha})`;
+  g.fillStyle = `rgba(${c.tailColor},${c.tailAlpha})`;
   for (const side of [-1, 1]) {
     g.beginPath(); g.arc(-hw + 1, side * hh * 0.55, c.lampR * 0.85, 0, Math.PI * 2); g.fill();
   }

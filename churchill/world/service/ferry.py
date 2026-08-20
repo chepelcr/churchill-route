@@ -1,7 +1,8 @@
 """The Puntarenas ferry: two berths and the routes they sail.
 
 Almost none of this is invented. OSM already carries the whole thing at the west
-end of the spit, and the build only has to find it and truncate it:
+end of the spit, and the build only has to find it and extract a playable
+segment:
 
     amenity=ferry_terminal  "Ferry Paquera"          the north berth
     amenity=ferry_terminal  "Ferry a Playa Naranjo"  the south berth
@@ -18,14 +19,16 @@ Two things need care.
   and heads out; Playa Naranjo's starts on the far shore, outside the world, and
   ends here. So the route is oriented by which END is nearer the berth, never by
   assuming the file's order.
-* THE CROSSING IS A SHORT LOOP, not the real 90-minute sailing. The route is cut
-  at RIDE_PX of arclength, which is the whole ride: out, turn, back. The rest of
-  the real route runs off the map to the Nicoya side, where there is no world to
+* THE CROSSING IS A SHORT OUT-AND-BACK, not the real 90-minute sailing. The
+  route is cut at RIDE_PX of arclength, which is the whole ride: out, reverse,
+  back. The double-ended ferries do not rotate at that reversal. The rest of the
+  real route runs off the map to the Nicoya side, where there is no world to
   arrive at.
 """
 import math
 
 from ..config import UNITS, px
+from ..content import FERRY_DEFS
 from ..logging import log
 from .projection import project_way_pts
 
@@ -45,15 +48,6 @@ _FERRY = UNITS["vessels"]["ferry"]
 DECK_L = float(px(_FERRY["deckLengthM"]))
 DECK_W = float(px(_FERRY["deckWidthM"]))
 DOCK_S = float(px(_FERRY["dockOffsetM"]))
-
-#: OSM names, in the order the berths sit north→south at the terminal
-FERRY_DEFS = [
-    {"id": "paquera", "name": "Ferry a Paquera",
-     "terminal": "ferry paquera", "route": "ruta puntarenas - paquera"},
-    {"id": "naranjo", "name": "Ferry a Playa Naranjo",
-     "terminal": "ferry a playa naranjo", "route": "ruta puntarenas - playa naranjo"},
-]
-
 
 def _resample(pts, step=24.0):
     """Polyline resampled at a fixed step, so a route's shape does not depend on
@@ -102,8 +96,8 @@ def extract_ferries(sp, ways, pois, canvas_w, canvas_h):
     """[{id, name, berth, ang, route}] — one per FERRY_DEFS entry that resolves.
 
     `berth` is the ferry_terminal node in world px, `ang` the heading it leaves
-    on (radians, from the first leg of its route) and `route` the flat truncated
-    sailing line the ferry follows out and back.
+    on (radians, from the first leg of its route) and `route` the flat playable
+    segment of the real sailing line that the ferry follows out and back.
     """
     by_name = {}
     for w in ways:
@@ -115,8 +109,8 @@ def extract_ferries(sp, ways, pois, canvas_w, canvas_h):
 
     out = []
     for spec in FERRY_DEFS:
-        term = terminals.get(spec["terminal"])
-        way = by_name.get(spec["route"])
+        term = terminals.get(spec["terminalOsmName"])
+        way = by_name.get(spec["routeOsmName"])
         if term is None or way is None:
             log("ferry", f"WARN {spec['id']} unresolved "
                 f"(terminal={term is not None}, route={way is not None})")
@@ -139,6 +133,11 @@ def extract_ferries(sp, ways, pois, canvas_w, canvas_h):
                     for i in range(len(pts) - 1))
         out.append({
             "id": spec["id"], "name": spec["name"],
+            "destination": spec["destination"],
+            "vesselName": spec["vesselName"],
+            "doubleEnded": bool(spec.get("doubleEnded")),
+            "terminalOsmName": spec["terminalOsmName"],
+            "routeOsmName": spec["routeOsmName"],
             "berth": [int(bx), int(by)], "ang": round(ang, 4),
             "deck": [int(DECK_L), int(DECK_W)], "dockS": int(DOCK_S),
             "route": [round(v) for p in pts for v in p],

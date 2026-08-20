@@ -75,6 +75,7 @@ _at = _load("attractions.json")
 _pal = _load("palettes.json")
 _pi = _load("piers.json")
 _bl = _load("blocks.json")
+_fe = _load("ferries.json")
 
 # probes for orientation / sanity (geo)
 PROBE_LAND = [tuple(p) for p in _geo["probeLand"]]
@@ -113,6 +114,11 @@ ROOF_PALETTE = _pal["roof"]
 #: derivation is what survives a rescale. See the file's own `_whyNotGeo`.
 PIER_DECKS = _pi["decks"]
 APRON_DEFS = _pi["aprons"]
+
+#: LOS FERRIS DEL GOLFO — joins to the real OSM terminal/route plus the public
+#: destination, vessel lettering and double-ended behaviour. Geometry remains
+#: resolved from OSM; presentation and route semantics no longer live in Python.
+FERRY_DEFS = _fe["ferries"]
 
 #: LAS CUADRAS HECHAS A MANO — el superbloque cívico, la manzana del Carmen,
 #: los dos estadios/plazas, la cuadra del Parque Marino y el Balneario. Cada una

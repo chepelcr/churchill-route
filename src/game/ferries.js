@@ -14,9 +14,10 @@
 //   * one shot   `used` — once a ferry has come home it stays home. A ride you
 //                cannot get off of is not a treat.
 //
-// The berths, the headings and the routes are all real: OSM has the two
-// ferry_terminal nodes and both `route=ferry` ways, and the build truncates
-// them to a short loop (churchill/world/service/ferry.py).
+// The berths, headings and route SHAPES are real: OSM has the two
+// ferry_terminal nodes and both `route=ferry` ways. The build extracts a short
+// playable segment of each line; it does not pretend the rest of the 90-minute
+// crossing fits inside this world (churchill/world/service/ferry.py).
 import { WORLD2D as W } from "../world2d/index.js";
 import { FERRY_DECK_L, FERRY_DECK_W, FERRY_DOCK_S } from "../domain/units.js";
 
@@ -51,7 +52,9 @@ function build() {
       cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
     const dock = f.dockS ?? FERRY_DOCK_S;
     return {
-      id: f.id, name: f.name, pts, cum, total: cum[cum.length - 1] || 1,
+      id: f.id, name: f.name, destination: f.destination,
+      vesselName: f.vesselName || f.name, doubleEnded: !!f.doubleEnded,
+      pts, cum, total: cum[cum.length - 1] || 1,
       x: f.berth[0], y: f.berth[1], a: f.ang,
       dl: f.deck?.[0] || FERRY_DECK_L, dw: f.deck?.[1] || FERRY_DECK_W, dock,
       // A CROSSING, not a scenic loop: the lancha over the estero LANDS you on
@@ -91,6 +94,12 @@ export function routePoint(f, s) {
   const t = (u - cum[i - 1]) / seg;
   const ax = pts[i - 1].x, ay = pts[i - 1].y, bx = pts[i].x, by = pts[i].y;
   return { x: ax + (bx - ax) * t, y: ay + (by - ay) * t, a: Math.atan2(by - ay, bx - ax) };
+}
+
+// A double-ended ferry has no fixed bow: either ramp may lead. Keep this pure
+// so the visual/physics contract is explicit and independently auditable.
+export function ferryHeading(routeHeading, returning, doubleEnded) {
+  return returning && !doubleEnded ? routeHeading + Math.PI : routeHeading;
 }
 
 // The ferry whose DECK contains (x, y), or null. The test is in the ferry's own
@@ -144,10 +153,12 @@ export function advanceFerries(dt, aboard, steeredId = null) {
     }
     const q = routePoint(f, f.s);
     f.x = q.x; f.y = q.y;
-    // sailing home it runs the route backwards, so it points the other way —
-    // and a one-way boat berthed at the far shore keeps that heading while she
-    // waits, or she would sit facing the water she just crossed
-    f.a = (f.phase === "back" || (f.far && f.phase === "docked")) ? q.a + Math.PI : q.a;
+    // A conventional single-ended boat turns to run the line backwards. The
+    // gulf ferries are double-ended: both ends carry the same ramp and either
+    // end can lead, so the hull stays parallel to the route and simply reverses
+    // through it. That avoids a fake 180° pirouette at the far endpoint.
+    const returning = f.phase === "back" || (f.far && f.phase === "docked");
+    f.a = ferryHeading(q.a, returning, f.doubleEnded);
     f.dx = f.x - px; f.dy = f.y - py;
     let da = f.a - pa;
     while (da > Math.PI) da -= Math.PI * 2;

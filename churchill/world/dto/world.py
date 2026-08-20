@@ -222,6 +222,11 @@ class Ferry(WorldModel):
     """
     id: str
     name: str
+    destination: str | None = None
+    vesselName: str | None = Field(default=None, description="lettering painted on the vessel")
+    doubleEnded: bool = Field(default=False, description="ramps at both ends; return without a 180° turn")
+    terminalOsmName: str | None = None
+    routeOsmName: str | None = None
     berth: list[int]
     ang: float = Field(default=0.0, description="heading out of the berth, radians")
     # REQUIRED, not defaulted. They carried `[124, 46]` and `28.0`, which is the
@@ -380,6 +385,5 @@ class Balneario(WorldModel):
     y1: int
     cx: int
     cy: int
-
 
 

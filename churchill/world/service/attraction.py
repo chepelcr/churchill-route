@@ -35,7 +35,7 @@ inside it, in its own frame. Decisions worth keeping:
 import math
 
 from ..config import (CLS_ACERA, CLS_BARRO, CLS_BEACH, CLS_MALECON, CLS_ROAD,
-                      GRID_CELL)
+                      CLS_WATER, GRID_CELL)
 from ..content import ATTRACTION_DEFS, FERIA_DEF
 from ..enums import Surface
 from ..logging import log, warn
@@ -46,8 +46,24 @@ from .placement import nearest_cell
 SNAP_CELLS = 60                     # 240 px
 #: …and how far the DJ's booth may look off his restaurant for a sidewalk.
 FRONTAGE_STEPS = 24              # cells
-#: what the fairground's ground may be cut from. Never a street, never a cuadra.
-LOT_CLASSES = (CLS_MALECON, CLS_BEACH)
+#: hasta dónde se anda el rayo hacia el mar buscando el malecón de la tarima.
+DJ_STAGE_REACH_PX = 520
+#: EL CAMPO FERIAL ES UNA CALLE CERRADA, no un lote de tierra sobre el paseo.
+#: Antes tomaba malecón y arena y los estampaba `Surface.BARRO` — «a campo ferial
+#: in this country is tierra» —, lo que ponía el turno ENCIMA del paseo marítimo,
+#: se comía la playa y dejaba el frente del mar café. Un turno de verdad cierra
+#: una calle: la calzada SUR del Paseo de los Turistas, al sur de la mediana de
+#: palmas, mientras la calzada norte sigue abierta y el Paseo se recorre de punta
+#: a punta. El suelo NO se estampa — es la calle, y sigue siendo la calle.
+LOT_CLASSES = (CLS_ROAD,)
+#: lo que corta la búsqueda hacia el mar: pasado esto ya no hay más calzada.
+SEAWARD_STOP = (CLS_MALECON, CLS_BEACH, CLS_WATER)
+#: CÓMO SE SABE HACIA DÓNDE ESTÁ EL MAR, que es una pregunta distinta de con qué
+#: se corta el lote. Eran la misma constante mientras el campo ferial se cortaba
+#: del malecón, y separarlas no es cosmética: `_seaward` cuenta cuál de las dos
+#: normales de la calle tiene más de esto debajo, así que apuntarlo a la calzada
+#: hacía que «el mar» fuera el lado con más asfalto — tierra adentro.
+SEA_CLASSES = (CLS_MALECON, CLS_BEACH)
 #: how far seaward of the host building to look for the promenade to stand on.
 LOT_REACH_PX = 420
 
@@ -85,7 +101,7 @@ def _seaward(raster, cx, cy, ang):
         d = 0.0
         while d <= LOT_REACH_PX:
             c, r = raster.cell_of(cx + nx * d, cy + ny * d)
-            if raster.in_bounds(c, r) and raster.at(c, r) in LOT_CLASSES:
+            if raster.in_bounds(c, r) and raster.at(c, r) in SEA_CLASSES:
                 hits += 1
                 if first is None:
                     first = d
@@ -93,6 +109,49 @@ def _seaward(raster, cx, cy, ang):
         if hits and (best is None or hits > best[0]):
             best = (hits, nx, ny, first)
     return best
+
+
+def _first_class(raster, cx, cy, nx, ny, classes, reach):
+    """El primer punto del rayo cuya celda es una de `classes`, o None."""
+    d = 0.0
+    while d <= reach:
+        px, py = cx + nx * d, cy + ny * d
+        c, r = raster.cell_of(px, py)
+        if raster.in_bounds(c, r) and raster.at(c, r) in classes:
+            return (px, py)
+        d += GRID_CELL
+    return None
+
+
+def _south_carriageway(raster, cx, cy, nx, ny):
+    """LA CALZADA MÁS AL MAR antes de que se acabe el asfalto — `(d0, d1)` en px
+    desde `(cx, cy)` a lo largo de `(nx, ny)`.
+
+    El Paseo de los Turistas es una avenida DIVIDIDA: calzada norte, mediana de
+    palmas (una acera de ~16 px) y calzada sur. Caminar hacia el mar cruza las
+    dos, así que la que se cierra es LA ÚLTIMA — la de más al mar — y eso se
+    encuentra sin nombrar ninguna: se anda hasta que aparece malecón, arena o
+    agua, y se devuelve la última corrida de calzada de ese camino.
+    """
+    runs, start = [], None
+    d = 0.0
+    while d <= LOT_REACH_PX:
+        c, r = raster.cell_of(cx + nx * d, cy + ny * d)
+        if not raster.in_bounds(c, r):
+            break
+        cls = raster.at(c, r)
+        if cls in SEAWARD_STOP:
+            break
+        if cls == CLS_ROAD:
+            if start is None:
+                start = d
+        elif start is not None:
+            runs.append((start, d - GRID_CELL))
+            start = None
+        d += GRID_CELL
+    if start is not None:
+        runs.append((start, d - GRID_CELL))
+    return runs[-1] if runs else None
 
 
 def _line_cells(raster, x0, y0, x1, y1):
@@ -132,11 +191,21 @@ def place_feria(ctx, buildings, streets):
              f"{FERIA_DEF['host']} — the campo ferial is not placed")
         return None, None, None
     _hits, nx, ny, first = found
+    lane = _south_carriageway(raster, cx, cy, nx, ny)
+    if lane is None:
+        warn("feria", f"no carriageway seaward of {FERIA_DEF['host']} — "
+             f"the campo ferial is not placed")
+        return None, None, None
+    d0, d1 = lane
     w, h = FERIA_DEF["w"], FERIA_DEF["h"]
-    # the lot's centre: half its depth in from the first promenade cell, so the
-    # landward edge (where the chinamos are) sits against the sidewalk
-    lx = cx + nx * (first + h / 2.0)
-    ly = cy + ny * (first + h / 2.0)
+    # El lote se centra EN la calzada que cierra. Su profundidad autorada (`h`)
+    # es mucho mayor que un carril —200 px contra ~32— y eso es a propósito: los
+    # juegos DESBORDAN sobre el borde de la mediana y el labio del malecón, como
+    # desborda un turno de verdad. Lo que no desborda es el SUELO: sólo se toman
+    # las celdas de calzada dentro de la franja, así que el campo ferial se
+    # dibuja sobre la calle que cerró y sobre nada más.
+    lx = cx + nx * ((d0 + d1) / 2.0)
+    ly = cy + ny * ((d0 + d1) / 2.0)
     ca, sa = math.cos(ang), math.sin(ang)
     cells = set()
     u = -w / 2.0
@@ -146,33 +215,20 @@ def place_feria(ctx, buildings, streets):
             px = lx + ca * u - sa * v
             py = ly + sa * u + ca * v
             c, r = raster.cell_of(px, py)
+            # NADA SE ESTAMPA. El suelo del campo ferial ES la calle: cerrarla
+            # para el turno no la convierte en tierra, y estampar `CLS_BARRO`
+            # aquí era lo que pintaba el frente del mar de café. Se recogen las
+            # celdas para tener el contorno, y se dejan como están.
             if raster.in_bounds(c, r) and raster.at(c, r) in LOT_CLASSES:
-                raster.set(c, r, CLS_BARRO)
                 cells.add((c, r))
             v += GRID_CELL / 2.0
         u += GRID_CELL / 2.0
     if not cells:
-        warn("feria", "the campo ferial's rect covered no promenade — not placed")
+        warn("feria", "the campo ferial's rect covered no carriageway — not placed")
         return None, None, None
-    # LA ENTRADA DEL CAMPO FERIAL. The promenade around the lot is a wall now,
-    # so without this the fairground is a perfectly good piece of drivable earth
-    # that nothing can reach — an island, and the kind the reachability gate
-    # does not flag because a ride is not a POI. So the lot gets a way in for
-    # the same reason a kiosk gets its calle auxiliar: a place you cannot enter
-    # is scenery. Stamped as earth, not asphalt — it is the gap in the fence the
-    # trucks come through, not a street.
-    gate = nearest_cell(raster, lx - nx * (h / 2.0), ly - ny * (h / 2.0),
-                        (CLS_ROAD,), 40)
-    if gate:
-        raster.stamp_polyline(
-            [lx - nx * (h / 2.0 - GRID_CELL), ly - ny * (h / 2.0 - GRID_CELL),
-             gate[0], gate[1]], 1.4 * 20, CLS_BARRO)
-        for c, r0 in _line_cells(raster, lx, ly, gate[0], gate[1]):
-            cells.add((c, r0))
-        log("feria", f"entrada del campo ferial -> calle "
-            f"({round(gate[0])},{round(gate[1])})")
-    else:
-        warn("feria", "the campo ferial has no street within 160px — no way in")
+    # Y NO HACE FALTA ENTRADA. La reja de tierra existía porque el lote era una
+    # isla de barro rodeada de malecón, que es pared para un carro. Una calzada
+    # ya está en la red: se entra por donde se entraba a la calle.
     polys = outline_polys(cells, GRID_CELL)
     xs = [c for c, _ in cells]
     ys = [r for _, r in cells]
@@ -185,7 +241,8 @@ def place_feria(ctx, buildings, streets):
     }
     log("feria", f"campo ferial frente a {FERIA_DEF['host']}: "
         f"({round(lx)},{round(ly)}) {w}x{h}px at {math.degrees(ang):+.1f}°, "
-        f"{len(cells)} celdas de barro, {len(polys)} contorno(s)")
+        f"calzada sur {round(d1 - d0)}px de ancho, {len(cells)} celdas de calle "
+        f"(sin estampar), {len(polys)} contorno(s)")
     return lot, (lx, ly), ang
 
 
@@ -198,21 +255,46 @@ def place_attractions(ctx, project_ll, buildings, streets):
     ca, sa = (math.cos(ang), math.sin(ang)) if ang is not None else (1.0, 0.0)
     out = []
     for spec in ATTRACTION_DEFS:
-        seat = None
+        seat, rec_ang = None, None
         if spec["kind"] == "dj":
             # THE DJ IS SEATED ON HIS RESTAURANT, NOT ON A COORDINATE, and not
             # in the lot's frame either: he plays on La Takería's own sidewalk,
             # across the promenade from the rides.
+            # EL DJ SE MUDÓ AL MALECÓN, de cara al mar. Tocaba en la acera de su
+            # restaurante, de espaldas al golfo y con el campo ferial encima del
+            # paseo; ahora el turno cierra una calzada y el paseo marítimo queda
+            # libre, que es donde se pone una tarima. Sigue anclado a La
+            # Takería —mové el restaurante en OSM y el DJ lo sigue— pero se
+            # sienta en el malecón que tiene enfrente.
             host = _host_building(buildings, spec.get("host"))
             if host:
                 xs, ys = host["pts"][0::2], host["pts"][1::2]
                 hx, hy = sum(xs) / len(xs), sum(ys) / len(ys)
-                street = nearest_cell(raster, hx, hy, (CLS_ROAD,), 40)
-                if street:
-                    seat = _seat_on_frontage(raster, hx, hy, street)
+                hang = float(streets.angle_at(hx, hy, reach=12 * 20) or 0.0)
+                found = _seaward(raster, hx, hy, hang)
+                if found:
+                    _h, dnx, dny, _first = found
+                    # EL PRIMER MALECÓN DEL RAYO, no una distancia escrita. Un
+                    # `+150 px` es verdad sólo donde la avenida mide lo que medía
+                    # el día que se escribió: aquí la calzada norte, la mediana y
+                    # la calzada sur suman ~160, así que el tiro caía todavía en
+                    # el asfalto. Andar el rayo hasta encontrar promenade
+                    # funciona en cualquier ancho.
+                    spot = _first_class(raster, hx, hy, dnx, dny,
+                                        (CLS_MALECON,), DJ_STAGE_REACH_PX)
+                    if spot:
+                        seat = spot
+                        log("feria", f"{spec['id']} en el malecón "
+                            f"({round(spot[0])},{round(spot[1])}), "
+                            f"{round(math.hypot(spot[0] - hx, spot[1] - hy))}px mar "
+                            f"adentro de {spec['host']}")
+                        # DE CARA A LA PLAYA. `_seaward` ya resolvió cuál de las
+                        # dos normales de la calle da al mar, así que el rumbo
+                        # del escenario sale de ahí y no de un número escrito.
+                        rec_ang = math.atan2(dny, dnx)
                 if seat is None:
-                    warn("feria", f"{spec['id']}: {spec['host']} has no acera frontage; "
-                         f"falling back to the authored anchor")
+                    warn("feria", f"{spec['id']}: {spec['host']} has no malecón in "
+                         f"front of it; falling back to the authored anchor")
             else:
                 warn("feria", f"{spec['id']}: no building named {spec.get('host')!r}")
             if seat is None:
@@ -229,6 +311,8 @@ def place_attractions(ctx, project_ll, buildings, streets):
             continue
         rec = {"id": spec["id"], "name": spec["name"], "kind": spec["kind"],
                "x": round(seat[0]), "y": round(seat[1]), "r": spec.get("r", 24)}
+        if rec_ang is not None:
+            rec["ang"] = round(rec_ang, 4)
         if spec.get("food"):
             rec["food"] = spec["food"]
         out.append(rec)

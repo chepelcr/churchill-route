@@ -1,115 +1,375 @@
 {
   "_note": "EL SONIDO — the mixer, the one-shot recipes and the numbers every continuous voice is tuned to. `src/game/audio.js` keeps the WebAudio graph: which node connects to which, the LFO routing, the scheduler. This is everything a person tuning the game by ear wants to change.",
-
   "version": 1,
-
   "_procedural": "THERE IS NOT ONE AUDIO FILE IN THIS GAME. Every sound is synthesised at runtime from oscillators and a noise buffer, which is why the whole soundtrack costs zero bytes of download and why a recipe is a list of tones rather than a filename. Sample playback is a real feature and a real cost, and it is NOT here — see the ROADMAP row, which names the decisions it needs.",
-
   "_split": "The step LIST of a one-shot is data; a recipe that loops or takes an argument keeps its code (`combo` scales with the streak, `horn` beats a detuned twin against itself). A voice's NUMBERS are data; its GRAPH is not — the surf's LFO is summed onto two gains rather than replacing them, and that wiring is the difference between waves and static.",
-
   "mixer": {
     "_note": "THE BUSES. Until 2026-08-14 there was exactly ONE gain node in this game — the master — so mixing was not something you could do badly, it was something you could not do at all: ambience could not be set quieter than the SFX. Every bus ships at 1.0, so today's balance is the balance this file was written from.",
     "_chain": "voice -> bus -> master -> destination. `master` is what mute and the volume slider drive; the buses are the mix.",
     "buses": {
-      "sfx": { "name": "Efectos", "gain": 1.0, "note": "one-shots: menus, pickup, delivery, coins, the horn" },
-      "engine": { "name": "Motor", "gain": 1.0, "note": "the vehicle's own voice and the drift hiss" },
-      "ambience": { "name": "Ambiente", "gain": 1.0, "note": "fountain, pool, surf — the world, not the run" },
-      "music": { "name": "Música", "gain": 1.0, "note": "the ice-cream cart's melody and DJ Urtech's set" }
+      "sfx": {
+        "name": "Efectos",
+        "gain": 1.0,
+        "note": "one-shots: menus, pickup, delivery, coins, the horn"
+      },
+      "engine": {
+        "name": "Motor",
+        "gain": 1.0,
+        "note": "the vehicle's own voice and the drift hiss"
+      },
+      "ambience": {
+        "name": "Ambiente",
+        "gain": 1.0,
+        "note": "fountain, pool, surf — the world, not the run"
+      },
+      "music": {
+        "name": "Música",
+        "gain": 1.0,
+        "note": "the ice-cream cart's melody and DJ Urtech's set"
+      }
     }
   },
-
   "recipes": {
     "_note": "One-shots, as a list of steps. `tone` is an oscillator with an optional glide and lowpass; `noise` is a burst of the shared white-noise buffer through an optional bandpass. `at` is seconds from the trigger, which is how a three-note arpeggio is three steps and not three timers.",
     "_units": "`from`/`to` Hz, `dur`/`at` seconds, `gain` 0..1, `filterHz`/`band` Hz.",
-
-    "menu_move": { "bus": "sfx", "steps": [
-      { "tone": { "from": 660, "dur": 0.06, "gain": 0.12 } }
-    ] },
-    "menu_select": { "bus": "sfx", "steps": [
-      { "tone": { "from": 523, "dur": 0.07, "gain": 0.14 } },
-      { "tone": { "from": 784, "dur": 0.09, "gain": 0.14, "at": 0.07 } }
-    ] },
-    "menu_denied": { "bus": "sfx", "steps": [
-      { "tone": { "from": 180, "to": 140, "dur": 0.09, "gain": 0.14 } }
-    ] },
-    "pickup": { "bus": "sfx", "note": "the churchill leaving the kiosk", "steps": [
-      { "tone": { "type": "sine", "from": 440, "to": 880, "dur": 0.09, "gain": 0.18 } },
-      { "noise": { "dur": 0.03, "gain": 0.08, "band": 4000 } }
-    ] },
-    "delivery": { "bus": "sfx", "steps": [
-      { "tone": { "type": "triangle", "from": 523, "dur": 0.09, "gain": 0.16, "at": 0 } },
-      { "tone": { "type": "triangle", "from": 659, "dur": 0.09, "gain": 0.16, "at": 0.07 } },
-      { "tone": { "type": "triangle", "from": 784, "dur": 0.09, "gain": 0.16, "at": 0.14 } }
-    ] },
-    "perfect": { "bus": "sfx", "note": "the delivery arpeggio plus an octave on top", "steps": [
-      { "tone": { "type": "triangle", "from": 523, "dur": 0.09, "gain": 0.16, "at": 0 } },
-      { "tone": { "type": "triangle", "from": 659, "dur": 0.09, "gain": 0.16, "at": 0.07 } },
-      { "tone": { "type": "triangle", "from": 784, "dur": 0.09, "gain": 0.16, "at": 0.14 } },
-      { "tone": { "type": "triangle", "from": 1046, "dur": 0.16, "gain": 0.18, "at": 0.21 } },
-      { "tone": { "type": "sine", "from": 1052, "dur": 0.16, "gain": 0.08, "at": 0.21 } }
-    ] },
-    "coin": { "bus": "sfx", "note": "a bright two-note ching — deliberately NOT `pickup`, so colones off the street read as money and not as a drink", "steps": [
-      { "tone": { "type": "square", "from": 988, "dur": 0.05, "gain": 0.10 } },
-      { "tone": { "type": "square", "from": 1319, "dur": 0.11, "gain": 0.09, "at": 0.045 } },
-      { "tone": { "type": "sine", "from": 2637, "dur": 0.09, "gain": 0.035, "at": 0.045 } }
-    ] },
-    "melt_fail": { "bus": "sfx", "steps": [
-      { "tone": { "type": "sawtooth", "from": 300, "to": 80, "dur": 0.4, "gain": 0.18, "filterHz": 900 } },
-      { "noise": { "dur": 0.25, "gain": 0.07, "at": 0.05, "band": 300 } }
-    ] },
-
+    "menu_move": {
+      "bus": "sfx",
+      "steps": [
+        {
+          "tone": {
+            "from": 660,
+            "dur": 0.06,
+            "gain": 0.12
+          }
+        }
+      ]
+    },
+    "menu_select": {
+      "bus": "sfx",
+      "steps": [
+        {
+          "tone": {
+            "from": 523,
+            "dur": 0.07,
+            "gain": 0.14
+          }
+        },
+        {
+          "tone": {
+            "from": 784,
+            "dur": 0.09,
+            "gain": 0.14,
+            "at": 0.07
+          }
+        }
+      ]
+    },
+    "menu_denied": {
+      "bus": "sfx",
+      "steps": [
+        {
+          "tone": {
+            "from": 180,
+            "to": 140,
+            "dur": 0.09,
+            "gain": 0.14
+          }
+        }
+      ]
+    },
+    "bump": {
+      "bus": "sfx",
+      "note": "el golpe contra un juego de la feria: un thud de madera y lona, no el `menu_denied` de la interfaz. Grave y corto, con un chasquido encima — una tabla, no una campana, porque un chinamo está hecho de eso.",
+      "steps": [
+        {
+          "tone": {
+            "type": "sine",
+            "from": 150,
+            "to": 58,
+            "dur": 0.13,
+            "gain": 0.16
+          }
+        },
+        {
+          "noise": {
+            "dur": 0.06,
+            "gain": 0.07,
+            "filterHz": 1100
+          }
+        },
+        {
+          "tone": {
+            "type": "triangle",
+            "from": 320,
+            "to": 210,
+            "dur": 0.07,
+            "gain": 0.05,
+            "at": 0.01
+          }
+        }
+      ]
+    },
+    "pickup": {
+      "bus": "sfx",
+      "note": "the churchill leaving the kiosk",
+      "steps": [
+        {
+          "tone": {
+            "type": "sine",
+            "from": 440,
+            "to": 880,
+            "dur": 0.09,
+            "gain": 0.18
+          }
+        },
+        {
+          "noise": {
+            "dur": 0.03,
+            "gain": 0.08,
+            "band": 4000
+          }
+        }
+      ]
+    },
+    "delivery": {
+      "bus": "sfx",
+      "steps": [
+        {
+          "tone": {
+            "type": "triangle",
+            "from": 523,
+            "dur": 0.09,
+            "gain": 0.16,
+            "at": 0
+          }
+        },
+        {
+          "tone": {
+            "type": "triangle",
+            "from": 659,
+            "dur": 0.09,
+            "gain": 0.16,
+            "at": 0.07
+          }
+        },
+        {
+          "tone": {
+            "type": "triangle",
+            "from": 784,
+            "dur": 0.09,
+            "gain": 0.16,
+            "at": 0.14
+          }
+        }
+      ]
+    },
+    "perfect": {
+      "bus": "sfx",
+      "note": "the delivery arpeggio plus an octave on top",
+      "steps": [
+        {
+          "tone": {
+            "type": "triangle",
+            "from": 523,
+            "dur": 0.09,
+            "gain": 0.16,
+            "at": 0
+          }
+        },
+        {
+          "tone": {
+            "type": "triangle",
+            "from": 659,
+            "dur": 0.09,
+            "gain": 0.16,
+            "at": 0.07
+          }
+        },
+        {
+          "tone": {
+            "type": "triangle",
+            "from": 784,
+            "dur": 0.09,
+            "gain": 0.16,
+            "at": 0.14
+          }
+        },
+        {
+          "tone": {
+            "type": "triangle",
+            "from": 1046,
+            "dur": 0.16,
+            "gain": 0.18,
+            "at": 0.21
+          }
+        },
+        {
+          "tone": {
+            "type": "sine",
+            "from": 1052,
+            "dur": 0.16,
+            "gain": 0.08,
+            "at": 0.21
+          }
+        }
+      ]
+    },
+    "coin": {
+      "bus": "sfx",
+      "note": "a bright two-note ching — deliberately NOT `pickup`, so colones off the street read as money and not as a drink",
+      "steps": [
+        {
+          "tone": {
+            "type": "square",
+            "from": 988,
+            "dur": 0.05,
+            "gain": 0.1
+          }
+        },
+        {
+          "tone": {
+            "type": "square",
+            "from": 1319,
+            "dur": 0.11,
+            "gain": 0.09,
+            "at": 0.045
+          }
+        },
+        {
+          "tone": {
+            "type": "sine",
+            "from": 2637,
+            "dur": 0.09,
+            "gain": 0.035,
+            "at": 0.045
+          }
+        }
+      ]
+    },
+    "melt_fail": {
+      "bus": "sfx",
+      "steps": [
+        {
+          "tone": {
+            "type": "sawtooth",
+            "from": 300,
+            "to": 80,
+            "dur": 0.4,
+            "gain": 0.18,
+            "filterHz": 900
+          }
+        },
+        {
+          "noise": {
+            "dur": 0.25,
+            "gain": 0.07,
+            "at": 0.05,
+            "band": 300
+          }
+        }
+      ]
+    },
     "_coded": "`horn` and `combo` keep their code and are not here. The horn is two blasts of a three-note chord, each note doubled by a twin detuned 0.6 % so the pair BEATS — that beating is what makes a horn sound like air and not like a bass note — and expressing a nested loop over an interval table as JSON would be arithmetic in JSON. `combo` scales its pitch with the streak, so it is a function of an argument, not a fixed list."
   },
-
   "voices": {
     "_note": "The CONTINUOUS voices: created once at unlock, silent at gain 0, and steered with `setTargetAtTime`. The numbers are here; the graph stays in audio.js, because the wiring is the sound — the surf's LFO is SUMMED onto both gains rather than replacing them, and that is the difference between waves and static.",
-
     "engine": {
       "bus": "engine",
       "note": "two detuned sawtooths through a lowpass. The per-vehicle character (base pitch, span, filter, gain, detune) lives in `vehicles.json` -> `voice`, because it belongs to the vehicle.",
-      "oscType": "sawtooth", "baseHz": 42, "detune": 6,
-      "filter": { "type": "lowpass", "hz": 500, "q": 0.7 }
+      "oscType": "sawtooth",
+      "baseHz": 42,
+      "detune": 6,
+      "filter": {
+        "type": "lowpass",
+        "hz": 500,
+        "q": 0.7
+      }
     },
     "drift": {
       "bus": "engine",
       "note": "looped noise through a bandpass — the tyres letting go",
-      "filter": { "type": "bandpass", "hz": 1400, "q": 1.2 }
+      "filter": {
+        "type": "bandpass",
+        "hz": 1400,
+        "q": 1.2
+      }
     },
-
     "fountain": {
       "bus": "ambience",
       "note": "THREE noise beds, and that is what separates a fountain from a shower: the JET (narrow and resonant, where the stream leaves the nozzle), the SPLASH it makes landing, and the basin's own BODY. The old voice had only the last two. The droplet plips on top are fired irregularly from code — IRREGULAR TIMING is what the ear reads as water, which is why they are not on an LFO the way the surf is.",
       "beds": {
-        "jet":   { "type": "bandpass", "hz": 5200, "q": 2.2 },
-        "spray": { "type": "bandpass", "hz": 2400, "q": 0.6 },
-        "body":  { "type": "lowpass",  "hz": 620,  "q": 0.5 }
+        "jet": {
+          "type": "bandpass",
+          "hz": 5200,
+          "q": 2.2
+        },
+        "spray": {
+          "type": "bandpass",
+          "hz": 2400,
+          "q": 0.6
+        },
+        "body": {
+          "type": "lowpass",
+          "hz": 620,
+          "q": 0.5
+        }
       },
-      "lfo": { "hz": 2.6, "note": "the jet flutters — fast and shallow. Far from the 3.2 Hz wobble on a dark lowpass that used to read as an engine." }
+      "lfo": {
+        "hz": 2.6,
+        "note": "the jet flutters — fast and shallow. Far from the 3.2 Hz wobble on a dark lowpass that used to read as an engine."
+      }
     },
     "pool": {
       "bus": "ambience",
       "note": "EL BALNEARIO, and it is not a fountain: nothing is falling. It is a body of sea water in a cuadra, lapping at its kerb, with people in it.",
       "beds": {
-        "lap":  { "type": "lowpass",  "hz": 520,  "q": 0.7 },
-        "edge": { "type": "bandpass", "hz": 1800, "q": 1.1 }
+        "lap": {
+          "type": "lowpass",
+          "hz": 520,
+          "q": 0.7
+        },
+        "edge": {
+          "type": "bandpass",
+          "hz": 1800,
+          "q": 1.1
+        }
       },
-      "lfo": { "hz": 0.35, "note": "a pool slops faster than the open gulf breathes and far slower than a jet flutters" }
+      "lfo": {
+        "hz": 0.35,
+        "note": "a pool slops faster than the open gulf breathes and far slower than a jet flutters"
+      }
     },
     "waves": {
       "bus": "ambience",
       "note": "the surf under a muelle. Same two-bed idea as the fountain, opposite shape: a fountain is constant and busy, surf BREATHES.",
       "beds": {
-        "swell": { "type": "lowpass",  "hz": 380,  "q": 0.4 },
-        "foam":  { "type": "bandpass", "hz": 1500, "q": 0.5 }
+        "swell": {
+          "type": "lowpass",
+          "hz": 380,
+          "q": 0.4
+        },
+        "foam": {
+          "type": "bandpass",
+          "hz": 1500,
+          "q": 0.5
+        }
       },
-      "lfo": { "hz": 0.11, "note": "a nine-second swell. This is the number that turns a noise bed into waves." }
+      "lfo": {
+        "hz": 0.11,
+        "note": "a nine-second swell. This is the number that turns a noise bed into waves."
+      }
     },
-
-    "icecream": { "bus": "music", "note": "the cart's melody while you are carrying" },
+    "icecream": {
+      "bus": "music",
+      "note": "the cart's melody while you are carrying"
+    },
     "dj": {
       "bus": "music",
       "note": "DJ Urtech outside La Takería. Everything else in this file is AMBIENCE; this is MUSIC, and the difference is that music has a clock — the voice owns a bar counter and schedules ahead. DISTANCE IS A FILTER, NOT A FADER: the lowpass opens from `nearHz` to `farHz` as well as the gain, so from down the Paseo you get the kick and only at the booth the whole set.",
-      "filter": { "farHz": 260, "nearHz": 4000 }
+      "filter": {
+        "farHz": 260,
+        "nearHz": 4000
+      }
     }
   }
 }

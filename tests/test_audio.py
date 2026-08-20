@@ -140,6 +140,14 @@ class RecipeTests(unittest.TestCase):
         if not self.old:
             self.skipTest("the literal version of audio.js is out of git reach")
         for name in [r for r in self.doc["recipes"] if not r.startswith("_")]:
+            # UNA RECETA AUTORADA DESPUÉS no tiene literal contra el cual
+            # compararse, y eso no es una migración rota: es sonido nuevo. Esta
+            # prueba fija que la migración fue fiel, no que el juego dejara de
+            # ganar sonidos — `bump`, el golpe contra un juego de la feria, es
+            # el primero. Lo que sí sigue fallando es una receta que ESTABA y
+            # ya no reproduce sus pasos.
+            if f"  {name}:" not in self.old:
+                continue
             src = self.old_recipe(name)
             was = parse_calls(src)
             now = [("tone", s["tone"]) if "tone" in s else ("noiseHit", s["noise"])

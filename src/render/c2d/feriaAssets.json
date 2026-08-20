@@ -73,10 +73,11 @@
     "bannerSeam": "rgba(255,255,255,0.18)",
     "awningShadow": "rgba(0,0,0,0.12)",
     "rideShadow": "rgba(0,0,0,0.16)",
-    "ground": "#a8845c",
-    "groundNote": "la tierra del campo ferial — barro compactado, la misma superficie que el mundo estampa debajo.",
-    "groundMottle": "rgba(120,92,60,0.35)",
-    "groundEdge": "rgba(90,68,44,0.8)"
+    "ground": "rgba(150,122,86,0.30)",
+    "groundNote": "EL SUELO ES LA CALLE. Era `#a8845c` opaco — barro compactado — porque el build estampaba `Surface.BARRO` debajo; ahora el turno CIERRA la calzada sur del Paseo y no estampa nada, así que esto es el desgaste del gentío SOBRE el asfalto y tiene que dejarlo ver. Un relleno opaco volvería a pintar el frente del mar de café, que es justo lo que se quitó.",
+    "groundMottle": "rgba(120,92,60,0.22)",
+    "groundEdge": "rgba(232,226,210,0.85)",
+    "groundEdgeNote": "el canto es la VALLA del turno, no el borde de un lote de tierra: pálido, como las barreras que cierran una calle."
   },
   "rueda": {
     "name": "La Rueda de Chicago",
@@ -815,47 +816,88 @@
   },
   "dj": {
     "name": "DJ Urtech",
-    "note": "Not a ride. Two decks, a speaker each side, and a man working. The sound is procedural (sfx.dj) and this is where it comes from.",
+    "note": "DJ Urtech en el malecón, DE CARA A LA PLAYA. No es un juego: una tarima, dos tornamesas, dos bocinas y un hombre trabajando. El mundo le resuelve el rumbo desde la normal de la calle que da al mar, así que la tarima se dibuja mirando hacia +y en su propio marco y el `ang` la orienta. El sonido es procedural (sfx.dj) y de aquí sale.",
     "parts": [
       {
+        "_": "EL TELÓN, a espaldas del DJ — va primero porque todo lo demás va delante",
         "shape": "box",
-        "x": -0.5,
-        "y": -0.2,
-        "w": 1.0,
-        "h": 0.45,
+        "x": -0.85,
+        "y": -0.78,
+        "w": 1.7,
+        "h": 0.34,
         "fill": "#2a2233",
         "roundPx": 2
       },
       {
+        "_": "la tarima: entablado de madera, claro para que lo negro encima se lea",
         "shape": "box",
-        "x": -0.4,
-        "y": -0.12,
-        "w": 0.8,
+        "x": -0.95,
+        "y": -0.5,
+        "w": 1.9,
+        "h": 1.2,
+        "fill": "#8a6f4e",
+        "roundPx": 3
+      },
+      {
+        "_": "las tablas",
+        "shape": "box",
+        "x": -0.95,
+        "y": -0.5,
+        "w": 1.9,
+        "h": 0.06,
+        "fill": "#9c8059"
+      },
+      {
+        "_": "el canto en sombra — lo que la levanta del malecón",
+        "shape": "box",
+        "x": -0.95,
+        "y": 0.58,
+        "w": 1.9,
         "h": 0.16,
-        "fill": "#f4d77a"
+        "fill": "#5e4a33"
       },
       {
         "shape": "speakers",
-        "offset": 0.72,
-        "wPx": 7,
-        "hPx": 13,
-        "fill": "#1d1826",
-        "cone": "#5a5170",
+        "offset": 0.78,
+        "wPx": 9,
+        "hPx": 17,
+        "fill": "#141019",
+        "cone": "#6a5f80",
         "pump": {
           "amp": 0.14,
           "speed": 2.0
         }
       },
       {
+        "_": "la consola",
+        "shape": "box",
+        "x": -0.42,
+        "y": -0.02,
+        "w": 0.84,
+        "h": 0.4,
+        "fill": "#241d2e",
+        "roundPx": 2
+      },
+      {
+        "_": "la cara iluminada de la consola",
+        "shape": "box",
+        "x": -0.34,
+        "y": 0.06,
+        "w": 0.68,
+        "h": 0.14,
+        "fill": "#f4d77a"
+      },
+      {
+        "_": "el DJ, entre la consola y el telón",
         "shape": "disc",
-        "r": 0.14,
+        "r": 0.15,
         "fill": "#f1c8a4",
-        "dyPx": -8
+        "dyPx": -14
       },
       {
         "shape": "sign",
         "text": "DJ URTECH",
-        "dyPx": -1.1,
+        "dyPx": -1.5,
         "fill": "#fff",
         "bg": "#7b3fa0"
       }

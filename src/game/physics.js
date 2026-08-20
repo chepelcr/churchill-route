@@ -15,6 +15,7 @@ import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
+import ACTORS from "../assets/actors.json" with { type: "json" };
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt, ferries, routePoint } from "./ferries.js";
 import { advanceCrossing, advanceEstero, boostReady, catchFish, crossingState, spendBoost } from "./crossing.js";
@@ -572,6 +573,50 @@ export function update(dt) {
     if (collideBuilding(p, b)) {
       state.cam.shake = Math.max(state.cam.shake, 3);
       if (state.carrying && Math.random() < 0.01) dropChurchill();
+    }
+  }
+
+  // LOS JUEGOS DE LA FERIA ESTORBAN — Y REBOTAN.
+  //
+  // Eran escenografía que el carro atravesaba, y la razón escrita para dejarlos
+  // así era que estampar un carrusel sacaría un destino de la red. Esa razón se
+  // conserva ENTERA: nada de esto se estampa. La atracción sigue sin existir
+  // para el raster, la compuerta de red manejable ni la ve, y el estorbo vive
+  // sólo aquí. Por eso un carrusel no puede desconectar un kiosco por
+  // construcción, en vez de por medición.
+  //
+  // Y REBOTA, no frena. Un edificio absorbe 0.95 de la componente normal —te
+  // quedás pegado a la pared, que es lo correcto para una pared—; un juego de
+  // feria devuelve, como un bumper. `restitution`, `minPush` y el radio salen
+  // de `actors.json -> attraction`, del lado del cliente, porque afinar un
+  // rebote no puede costar una reconstrucción del mundo.
+  const AT = ACTORS.attraction;
+  for (const A of W.ATTRACTIONS || []) {
+    const rr = (A.r || 24) * AT.radiusScale;
+    const dx = p.x - A.x, dy = p.y - A.y;
+    const d2 = dx * dx + dy * dy;
+    const reach = rr + 9;
+    if (d2 > reach * reach) continue;
+    const d = Math.sqrt(d2) || 0.0001;
+    // Dead centre has no normal to leave by, so pick one rather than divide by
+    // zero and launch the car to NaN.
+    const nx = d2 > 1e-6 ? dx / d : 0, ny = d2 > 1e-6 ? dy / d : -1;
+    p.x = A.x + nx * reach;
+    p.y = A.y + ny * reach;
+    const vn = p.vx * nx + p.vy * ny;
+    if (vn < 0) {
+      p.vx -= vn * (1 + AT.restitution) * nx;
+      p.vy -= vn * (1 + AT.restitution) * ny;
+    } else {
+      p.vx += nx * AT.minPush;                 // entró casi sin normal: sacalo
+      p.vy += ny * AT.minPush;
+    }
+    state.cam.shake = Math.max(state.cam.shake, AT.shake);
+    sfx.play("bump");
+    // CHOCAR CON LA FERIA CUESTA, o estorbar no significa nada.
+    if (state.carrying) {
+      state.carrying.melt = Math.min(state.carrying.total,
+        state.carrying.melt + state.carrying.total * AT.meltPenalty);
     }
   }
 

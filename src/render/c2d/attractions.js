@@ -96,6 +96,11 @@ function drawAttraction(A, t) {
   const ph = phaseOf(A);
   ctx.save();
   ctx.translate(A.x, A.y);
+  // UNA ATRACCIÓN PUEDE TENER RUMBO. Una rueda o un pulpo giran sobre su eje y
+  // no lo necesitan, pero una TARIMA mira a algún lado: el DJ toca de cara a la
+  // playa, y el mundo resuelve ese rumbo desde la normal de la calle que da al
+  // mar (`_seaward`), no desde un número escrito. Sin `ang` nada cambia.
+  if (A.ang) ctx.rotate(A.ang);
   paintRide(ctx, A.kind, r, t, ph, A);
   ctx.restore();
 }
@@ -112,10 +117,13 @@ function warnMissingShape(shape, kind) {
   console.warn(`[feria] no drawer for shape "${shape}" (kind ${kind})`);
 }
 
-// ---- el campo ferial: the ground itself -------------------------------------
-// Packed earth, stamped by the build (`Surface.BARRO`) so the car feels it, and
-// drawn here so it READS as a fairground: the tierra, the tyre-worn ring the
-// crowd walks, and a rope of bulbs round the whole lot.
+// ---- el campo ferial: LA CALLE CERRADA ---------------------------------------
+// Ya no es tierra estampada sobre el paseo marítimo. El turno CIERRA LA CALZADA
+// SUR del Paseo de los Turistas —la calzada norte sigue abierta— así que el
+// suelo es la calle y sigue siéndolo: el build no estampa nada. Lo que se pinta
+// aquí es lo que hace leer una calle cerrada como un campo ferial, y NADA que
+// finja otro suelo: el desgaste del gentío sobre el asfalto y la ristra de
+// bombillos alrededor del lote.
 function bandPath(F) {
   if (!F._path) {
     const p = new Path2D();

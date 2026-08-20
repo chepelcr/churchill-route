@@ -128,7 +128,12 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
       Se escribió un portón que cruzara el paseo, se midió que no tenía a qué
       llegar, y se revirtió.
 
-- [ ] **El malecón: 6 bandas, y no todas tocan la calzada.**
+- [x] ~~**El malecón: 6 bandas, y no todas tocan la calzada.**~~ **Hecho el
+      2026-08-20.** Se pavimenta EN UNA SOLA CORRIDA desde el cordón hacia el
+      mar, sin tope de distancia: el guardia es la CLASE, no los píxeles. El tope
+      de 150 px protegía manzanas que hacia el mar NO EXISTEN — medido, lo que
+      separaba el cordón del malecón era acera y arena. Ahora **4 bandas y las 4
+      alcanzan la calzada**, 1 281 cortes desde el cordón.
 - [ ] **El malecón se corta entre el Faro y x≈15500** — entre el Paseo y la
       arena hay solar que la sonda no cruza a ese ancho.
 - [x] ~~**Las atracciones no bloquean.**~~ **Hecho el 2026-08-20, y su premisa
@@ -136,6 +141,12 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
       calle (172 y 108 px), no sobre la banda de 60 del malecón. Y la solución no
       necesitó medir nada: una atracción NO SE ESTAMPA, así que la compuerta de
       red ni la ve — el estorbo es del cliente. Ver `smoke:feria`.
+- [x] ~~**El Parque del Muellero no existía**~~ **(2026-08-20).** Salía a 252x96
+      px de una huella de 1 336x463 —el 4 %— con el rótulo flotando fuera. Su
+      suelo es MALECÓN y ARENA, no tierra, y encima se lo sentaba «dentro de su
+      manzana», que una cinta del frente marítimo no tiene. `shore` en
+      `site-decor.json`; ahora 904x316 px con su contorno diagonal.
+
 - [ ] **36 parcelas pisan >25 % de acera** — capillas, escuelas y gasolineras
       cuyo lote no se puede re-encajar sin perderlo.
 - [ ] **El Faro "vacío"**: el debug map muestra que el barrio SÍ tiene manzanas;

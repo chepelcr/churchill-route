@@ -18,6 +18,7 @@ each of a block's two bounding calles), so "a list whose first item is a list
 stays a list" gets it wrong. Arity is what makes a tuple here, not content.
 """
 import json
+import math
 import os
 import subprocess
 import types
@@ -232,6 +233,24 @@ class KioskTests(unittest.TestCase):
             lms = json.load(fh)["landmarks"]
         self.assertEqual([l["id"] for l in lms if l.get("type") == "kiosk"], [],
                          "quedó un kiosco en landmarks.json — se autoran en kiosks.json")
+
+    def test_no_two_kiosks_land_on_the_same_spot(self):
+        """Contra el MUNDO EMITIDO, no contra el ancla autorada: el asiento mueve
+        un kiosco a la calle más cercana, así que dos anclas a 75 px pueden
+        acabar en la misma celda — y dos puntos de recogida encima uno del otro
+        son uno disfrazado de dos. Un par CERCANO está bien: los dos del Paseo
+        van a 148 px y venden cosas distintas, que es lo que los hace dos."""
+        man = os.path.join(ROOT, "src", "world2d", "manifest.json")
+        if not os.path.exists(man):
+            self.skipTest("el mundo no está construido")
+        with open(man, encoding="utf-8") as fh:
+            ks = [l for l in json.load(fh)["landmarks"] if l["type"] == "kiosk"]
+        for i, a in enumerate(ks):
+            for b in ks[i + 1:]:
+                d = math.hypot(a["x"] - b["x"], a["y"] - b["y"])
+                self.assertGreater(
+                    d, 40, f"{a['id']} y {b['id']} caen a {round(d)} px: "
+                           f"son el mismo punto de recogida")
 
     def test_every_kiosk_has_an_anchor(self):
         for k in self.kiosks:

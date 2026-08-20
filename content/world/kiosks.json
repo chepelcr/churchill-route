@@ -149,16 +149,16 @@
     },
     {
       "id": "kios_esp2",
-      "name": "El Punto Latino",
+      "name": "Restaurante Tabaris",
       "district": "esparza",
-      "product": "papicarne",
-      "osm": "el punto latino",
+      "product": "mariscada",
+      "osm": "restaurante tabaris esparza",
       "ll": [
-        9.99053,
-        -84.66705
+        9.99478,
+        -84.66646
       ],
       "snap_road": 1,
-      "_anchor": "El Punto Latino, Esparza — el segundo punto del pueblo, para que una entrega ahí no sea siempre la misma"
+      "_anchor": "Restaurante Tabaris, Esparza — a 1 186 px de Soda Torrejas. El primer intento lo puso en El Punto Latino, que en OSM está a 75 px de Torrejas: tras el asiento los DOS kioscos cayeron en el mismo punto, y dos puntos de recogida encima uno del otro son uno solo. Y vende otra cosa, que es la mitad del sentido de tener dos."
     },
     {
       "id": "kios_barr2",
@@ -199,5 +199,6 @@
       "snap_road": 1,
       "_anchor": "Soda El Bus Buru, Caldera"
     }
-  ]
+  ],
+  "_spacing": "DOS KIOSCOS NO PUEDEN CAER EN EL MISMO PUNTO. Un par cercano está bien —los dos del Paseo van a 148 px y venden cosas distintas, que es lo que los hace dos— pero coincidentes son uno disfrazado de dos. El asiento mueve un kiosco a la calle más cercana, así que dos anclas separadas por menos de una cuadra pueden colapsar: se comprueba contra el MUNDO EMITIDO, no contra el ancla autorada."
 }

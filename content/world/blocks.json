@@ -1,73 +1,114 @@
 {
   "_note": "LAS CUADRAS HECHAS A MANO. Todo lo que este mundo dice de una manzana que OSM no dice por sí solo: el superbloque cívico, la manzana del Carmen, los dos estadios/plazas, la cuadra del Parque Marino y el Balneario. Hasta el 2026-08-15 los seis eran literales de Python adentro de `pipeline/build_stage.py` — se podía mover un muelle o un hito desde un JSON, pero no la Catedral.",
   "version": 1,
-
   "_layouts": "CADA BLOQUE NOMBRA SU ESTRATEGIA, y el motor la implementa. Son cuatro maneras genuinamente distintas de repartir una manzana, no cuatro nombres para una: `bands` corta columnas y filas con pesos; `streets-quad` arma un cuadrilátero con las LÍNEAS de las calles que lo bordean; `footprint-lots` le da a cada huella mapeada el suelo más cercano y guarda el residual; `water-inlet` convierte la cuadra entera en mar. El JSON escoge y parametriza; el algoritmo se queda en código, que es la misma línea que `docs/inventory.md` §12 traza para las formas.",
-
   "_anchors": "EL ANCLA ES GEO, SIEMPRE. `carmen` y `centro` fueron las dos últimas anclas en PÍXELES que quedaban en el build, calibradas a 1.6 px/m: el reescalado a 2.5 movió la manzana real 4 000 px, las cuatro calles resolvieron a `None` y EL CENTRO CÍVICO ENTERO DEJÓ DE EXISTIR —sin Parroquia del Carmen, sin Jardín, sin Plaza Deportes El Carmen, sin Catedral, sin Casa de la Cultura, sin Biblioteca— con dos líneas WARN en un log de 900 para contarlo. Hoy una cuadra hecha a mano que no resuelve HACE FALLAR EL BUILD: alguien se sentó a dibujar estos bloques y el build no puede decidir que son opcionales.",
-
   "_streets": "Las calles y avenidas se dan como LISTAS DE CANDIDATOS con los nombres que OSM realmente trae acá: las calles impares suelen no tener nombre (se cae a la par que la flanquea) y la avenida central es «Avenida Centenario», no «Avenida 0».",
-
   "_aceras": "`aceras: true` erosiona la parte según la profundidad de acera, así que lo que se pare encima (una iglesia) nunca cae sobre la acera. `aceras: false` le deja el anillo y la parte llena la cuadra de borde a borde — que es como Plaza Las Playitas se lee como un solo campo abierto.",
-
   "_manzanas": "EL SUELO DE UNA MANZANA CUALQUIERA. Las 976 cuadras que el mundo deriva no tenían color propio: el interior de toda manzana es UN relleno global por clima sobre 27 siluetas de isla, así que no había forma de decir «ésta es distinta». Acá se dice, y se direcciona POR PUNTO GEO — nunca por id, porque el id de una cuadra es el hash de su contorno (`cuadra_<hash>`) y su nombre es posicional: un edificio nuevo o un reescalado lo cambian y el override se despega en silencio. Un ancla que no cae en ninguna cuadra HACE FALLAR EL BUILD.",
   "_manzanaFields": "`ground` y `acera.color` son apariencia y alimentan el pintor que YA existe y llega vacío (`drawSurfaceStyleGround` / `drawSurfaceStyleAceras`). `surface` es opcional y cambia la CLASE de superficie, o sea la manejabilidad — y por eso el paso corre antes de `verify`, para que una manzana convertida en muro haga fallar el build en vez de dejar una entrega inalcanzable.",
   "manzanas": [
     {
-      "at": [9.97705, -84.84868],
+      "at": [
+        9.97705,
+        -84.84868
+      ],
       "name": "La manzana de El Carmen",
       "ground": "#d8cfbc",
-      "acera": { "color": "#c4c0b6", "cells": 3 },
+      "acera": {
+        "color": "#c4c0b6",
+        "cells": 3
+      },
       "_note": "PRUEBA VIVA de que una manzana derivada se puede repintar: la del Carmen, un poco más clara y con su acera propia. Alimenta `drawSurfaceStyleGround` / `drawSurfaceStyleAceras`, que existían y llegaban vacíos."
     }
   ],
-
   "_parcels": "EL SUELO DE UNA PARCELA, por id. Hoy el color sale sólo del `use`, así que las 193 parcelas `park` del mundo comparten una perilla y no hay manera de darle a UN parque su propio verde. Los ids de parcela sí son estables y con significado (`osm_park_232390078`, `centro_catedral`), a diferencia de los de cuadra.",
   "parcels": {
-    "playitas_multiuso": { "ground": "#9a9c93", "kerb": "rgba(240,238,230,0.6)",
-      "_note": "la cancha multiuso es CEMENTO, no césped — y ésta es la prueba de que una parcela puede tener su propio suelo sin inventarle un `use`." }
+    "playitas_multiuso": {
+      "ground": "#9a9c93",
+      "kerb": "rgba(240,238,230,0.6)",
+      "_note": "la cancha multiuso es CEMENTO, no césped — y ésta es la prueba de que una parcela puede tener su propio suelo sin inventarle un `use`."
+    }
   },
-
   "blocks": [
     {
       "id": "carmen",
       "layout": "bands",
       "name": "La manzana de El Carmen",
-      "ll": [9.97705, -84.84868],
+      "ll": [
+        9.97705,
+        -84.84868
+      ],
       "_ll": "Calle 35-33 x Av Centenario-Av 1",
-      "calles": [["Calle 35"], ["Calle 33"]],
-      "ave_north": ["Avenida Centenario", "Avenida 0"],
-      "ave_south": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
-      "cols": [1, 1],
-      "rows": [1, 1],
+      "calles": [
+        [
+          "Calle 35"
+        ],
+        [
+          "Calle 33"
+        ]
+      ],
+      "ave_north": [
+        "Avenida Centenario",
+        "Avenida 0"
+      ],
+      "ave_south": [
+        "Avenida 1 Dr. Sergio Fallas Badilla",
+        "Avenida 1"
+      ],
+      "cols": [
+        1,
+        1
+      ],
+      "rows": [
+        1,
+        1
+      ],
       "reclaim": true,
       "_reclaim": "El apron del cliente c19 se estampa antes que las parcelas y cae en el cuarto noroeste de esta manzana. Hay que devolver a tierra las celdas que ninguna línea de calle pinta ANTES de trazar, o la parroquia desaparece y las otras dos partes se dimensionan contra el fragmento de tres cuartos en vez de contra la cuadra entera.",
       "parts": [
         {
-          "id": "carmen_parroquia", "col": 0, "row": 0, "use": "church",
+          "id": "carmen_parroquia",
+          "col": 0,
+          "row": 0,
+          "use": "church",
           "name": "Parroquia Nuestra Señora de El Carmen",
-          "aceras": true, "anchor": "north",
+          "aceras": true,
+          "anchor": "north",
           "_note": "columna izquierda, partida en dos: la iglesia arriba…"
         },
         {
-          "id": "carmen_jardin", "col": 0, "row": 1, "use": "garden",
-          "name": "Jardín de la Parroquia", "aceras": true,
+          "id": "carmen_jardin",
+          "col": 0,
+          "row": 1,
+          "use": "garden",
+          "name": "Jardín de la Parroquia",
+          "aceras": true,
           "_note": "…y su jardín debajo"
         },
         {
-          "id": "carmen_plaza", "col": 1, "row": [0, 1], "use": "plaza",
-          "name": "Plaza Deportes El Carmen", "aceras": false,
+          "id": "carmen_plaza",
+          "col": 1,
+          "row": [
+            0,
+            1
+          ],
+          "use": "plaza",
+          "name": "Plaza Deportes El Carmen",
+          "aceras": false,
           "straighten_cells": 2,
           "_note": "columna derecha, abarcando LAS DOS filas. La cancha ocupa su media cuadra entera; dos celdas de tolerancia vectorial colapsan las escaleras del norte y del este en los cuatro lados directos del paralelogramo alineado a la calle."
         }
       ]
     },
-
     {
       "id": "centro",
       "layout": "bands",
       "name": "El superbloque cívico",
-      "ll": [9.97772, -84.83442],
+      "ll": [
+        9.97772,
+        -84.83442
+      ],
       "_note": "EL SUPERBLOQUE CÍVICO de Puntarenas: Calle 7 → Bulevar de la Casa de la Cultura, Avenida 1 (norte) → Avenida Centenario (sur). NINGUNA calle lo cruza —Calle 5 sólo existe al SUR de Centenario—, así que la catedral, los parques y la Casa de la Cultura comparten una sola manzana, y lo que los organiza es una T de calle peatonal.",
       "_diagram": [
         "  Av 1  ┌──────────────┬──┬────────┬─────────┐  Bulevar",
@@ -84,14 +125,40 @@
       "_osmNota": "La «Capilla de Velación» de OSM está a 10,7 km, en otro pueblo. La de esta manzana se llama sólo «Capilla», y va a la izquierda del espacio central, que es donde el mapa la pone.",
       "_parques": "LOS DOS PARQUES SON REALES Y OSM NO LOS TIENE, que no es lo mismo que inventados — y la diferencia importa, porque en esta manzana OSM no trae NI UNA sola área (ni parque, ni plaza, ni uso de suelo): sólo trece huellas de edificio. Quien mida eso y concluya «los parques no existen, fuera» estaría borrando el Parque del Río y el Parque de la Virgen, que están ahí, con la Virgen y con la paradita. Se autoran acá precisamente porque el mapa no los puede dar.",
       "_biblioteca": "Y una que estaba en el lado equivocado: la Biblioteca se dibujaba en el NORTE de la columna cívica y OSM la pone en el SUR, al lado de la Casa de la Cultura. Lo que hay en el norte es el Museo Histórico.",
-      "calles": [["Calle 7"], ["Bulevar de la Casa de la Cultura", "Calle 3 Francisco de Paula Amador"]],
-      "ave_north": ["Avenida 1 Dr. Sergio Fallas Badilla", "Avenida 1"],
-      "ave_south": ["Avenida Centenario", "Avenida 0"],
-      "boulevardStreet": ["Bulevar de la Casa de la Cultura"],
+      "calles": [
+        [
+          "Calle 7"
+        ],
+        [
+          "Bulevar de la Casa de la Cultura",
+          "Calle 3 Francisco de Paula Amador"
+        ]
+      ],
+      "ave_north": [
+        "Avenida 1 Dr. Sergio Fallas Badilla",
+        "Avenida 1"
+      ],
+      "ave_south": [
+        "Avenida Centenario",
+        "Avenida 0"
+      ],
+      "boulevardStreet": [
+        "Bulevar de la Casa de la Cultura"
+      ],
       "_boulevardStreet": "LA CALLE DEL LADO ESTE ES UN BULEVAR. Se estampa `Surface.BOULEVARD` sobre su calzada, así que se cruza despacio. Es la única de este mundo así: hasta hoy `BOULEVARD` sólo salía de una PARCELA, nunca de una calle.",
       "_boulevardStreetPendiente": "SE ESTAMPA PERO TODAVÍA NO SE DIBUJA EN PIEDRA, y el renderer no puede arreglarlo solo. `paintStone` se llama ÚNICAMENTE desde `paintParcels` cuando `P.use === 'boulevard'`, y una calle no es una parcela; además el propio comentario de `paintStone` dice que «el asfalto todavía repinta lo que llegó a la calzada», que para una franja de manzana está bien y para una CALLE la borra entera —la calzada es toda la pieza—. Medido sobre el mundo publicado: la clase 7 de esta calle sale `#513842` (el asfalto de `materials.street`) mientras la T sale `#ddc6be`. La misma causa deja la calle fuera del minimapa, porque `miniBoulevards` también filtra `W.PARCELS`. El arreglo pide que el builder emita el tramo estampado como su propia entidad (los `pts` y el `w` que se estamparon) para pintarla DESPUÉS del asfalto, así que va con la reconstrucción de la ronda de sombras y no antes: cambiar el manifest cuesta un build de 28 min.",
-      "cols": [4.4, 1.8, 1.3, 2.2],
-      "rows": [2.8, 3.8, 1.4, 1.4],
+      "cols": [
+        4.4,
+        1.8,
+        1.3,
+        2.2
+      ],
+      "rows": [
+        2.8,
+        3.8,
+        1.4,
+        1.4
+      ],
       "_weights": "la fila de la catedral es la más ancha para que la iglesia de piedra sea tan grande como la manzana lo permita; la barra es lo bastante ancha para leerse como calle; y el sur se parte en dos filas cortas porque ahí hay DOS edificios por columna, no uno.",
       "reclaim": true,
       "_reclaim": "la manzana NO era tierra a esta altura: el apron de un cliente la partió en dos y `detect_blocks` había pavimentado el resto como sliver.",
@@ -99,53 +166,109 @@
       "_clear_buildings": "sigue borrando las huellas OSM del bloque, y ahora eso es correcto en vez de una pérdida: cada edificio real tiene su PARTE con su asset, así que dejar además la huella genérica encima los dibujaría dos veces.",
       "parts": [
         {
-          "id": "centro_parque_norte", "col": 0, "row": 0, "use": "park",
-          "name": "Parque del Río", "aceras": false, "river": true,
+          "id": "centro_parque_norte",
+          "col": 0,
+          "row": 0,
+          "use": "park",
+          "name": "Parque del Río",
+          "aceras": false,
+          "river": true,
           "_note": "los parques CONSERVAN el anillo de acera (`aceras: false`): un verde se mete DEBAJO de la banda de acera que pinta la pasada de calles, igual que los verdes de cuadra."
         },
         {
-          "id": "centro_catedral", "col": 0, "row": 1, "use": "cathedral",
-          "name": "Catedral de Puntarenas", "aceras": true, "lm": "catedral"
+          "id": "centro_catedral",
+          "col": 0,
+          "row": 1,
+          "use": "cathedral",
+          "name": "Catedral de Puntarenas",
+          "aceras": true,
+          "lm": "catedral"
         },
         {
-          "id": "centro_curia", "col": 0, "row": 2, "use": "civic",
-          "name": "Curia Diocesana de Puntarenas", "aceras": true,
+          "id": "centro_curia",
+          "col": 0,
+          "row": 2,
+          "use": "civic",
+          "name": "Curia Diocesana de Puntarenas",
+          "aceras": true,
           "_note": "OSM la pone en (23487,15114), que caía DENTRO del Parque de la Virgen — el parque se encogió y la Curia entró donde el mapa la tiene."
         },
         {
-          "id": "centro_parque_sur", "col": 0, "row": 3, "use": "park",
-          "name": "Parque de la Virgen", "aceras": false,
-          "statue": "virgen", "bus": "south",
+          "id": "centro_parque_sur",
+          "col": 0,
+          "row": 3,
+          "use": "park",
+          "name": "Parque de la Virgen",
+          "aceras": false,
+          "statue": "virgen",
+          "bus": "south",
           "_note": "más chico que antes, para que la Curia quepa. La Virgen se para en su borde NORTE, que ahora da a la Curia y no a la Catedral."
         },
         {
-          "id": "centro_bulevar", "col": 1, "row": [0, 3], "use": "boulevard",
-          "name": "Bulevar de la Catedral", "aceras": false,
+          "id": "centro_bulevar",
+          "col": 1,
+          "row": [
+            0,
+            3
+          ],
+          "use": "boulevard",
+          "name": "Bulevar de la Catedral",
+          "aceras": false,
           "_note": "LA BARRA de la T, avenida a avenida y a lo alto de la manzana."
         },
         {
-          "id": "centro_bulevar_este", "col": [2, 3], "row": 1, "use": "boulevard",
-          "name": "Bulevar de la Casa de la Cultura", "aceras": false,
+          "id": "centro_bulevar_este",
+          "col": [
+            2,
+            3
+          ],
+          "row": 1,
+          "use": "boulevard",
+          "name": "Bulevar de la Casa de la Cultura",
+          "aceras": false,
           "_note": "EL BRAZO de la T: sale de la barra sobre el eje de la Catedral y llega al borde este de la manzana, donde se encuentra con la calle que también es bulevar. `aceras: false` a propósito, para que la piedra toque el cordón y se pueda doblar hacia ella."
         },
         {
-          "id": "centro_museo", "col": 2, "row": 0, "use": "civic",
-          "name": "Museo Histórico de la Ciudad de Puntarenas", "aceras": true,
+          "id": "centro_museo",
+          "col": 2,
+          "row": 0,
+          "use": "civic",
+          "name": "Museo Histórico de la Ciudad de Puntarenas",
+          "aceras": true,
           "_note": "la huella más grande de la manzana (8 676 px²) y estaba borrada. Va al norte del espacio central, que es donde OSM la pone."
         },
         {
-          "id": "centro_capilla", "col": 2, "row": [2, 3], "use": "church",
-          "name": "Capilla", "aceras": true,
+          "id": "centro_capilla",
+          "col": 2,
+          "row": [
+            2,
+            3
+          ],
+          "use": "church",
+          "name": "Capilla",
+          "aceras": true,
           "_note": "A LA IZQUIERDA DEL ESPACIO CENTRAL, que es donde está. `use: church` le dibuja una capilla de verdad en vez de dejar la huella genérica. La Oficina Parroquial está a 20 px de ella —una sola parcela a esta escala— y comparte su lote, que es lo que son en la calle: la oficina al lado de su capilla."
         },
         {
-          "id": "centro_biblioteca", "col": 3, "row": 0, "use": "civic",
-          "name": "Biblioteca Pública", "aceras": true,
+          "id": "centro_biblioteca",
+          "col": 3,
+          "row": 0,
+          "use": "civic",
+          "name": "Biblioteca Pública",
+          "aceras": true,
           "_note": "OSM la pone en el sur, pero el sur de esta columna es la Casa de la Cultura, que es más grande y da al bulevar. La Biblioteca toma el norte, a un lote de donde el mapa la tiene."
         },
         {
-          "id": "centro_cultura", "col": 3, "row": [2, 3], "use": "civic",
-          "name": "Casa de la Cultura", "aceras": true, "lm": "cultura"
+          "id": "centro_cultura",
+          "col": 3,
+          "row": [
+            2,
+            3
+          ],
+          "use": "civic",
+          "name": "Casa de la Cultura",
+          "aceras": true,
+          "lm": "cultura"
         }
       ]
     },
@@ -155,61 +278,127 @@
       "name": "Estadio Lito Pérez",
       "stands": {
         "side": "west",
-        "palette": { "tierA": "#e8792b", "tierB": "#b8541a", "structure": "#5a3a20" },
+        "palette": {
+          "tierA": "#e8792b",
+          "tierB": "#b8541a",
+          "structure": "#5a3a20"
+        },
         "_note": "Estadio Lito Pérez — naranja, los colores del Puntarenas F.C."
       },
-      "towers": { "type": "stadium", "inset": 14 },
-      "crowd": [ { "type": "fan" } ],
+      "towers": {
+        "type": "stadium",
+        "inset": 14
+      },
+      "crowd": [
+        {
+          "type": "fan"
+        }
+      ],
       "_ll": "Lito Pérez: Calle 15-17 x Avenida 0-2",
-      "calles": [["Calle 15 José Joaquín Escalante"], ["Calle 17"]],
-      "ave_south": ["Avenida 2"],
-      "ave_north": ["Avenida Centenario", "Avenida 0"],
+      "calles": [
+        [
+          "Calle 15 José Joaquín Escalante"
+        ],
+        [
+          "Calle 17"
+        ]
+      ],
+      "ave_south": [
+        "Avenida 2"
+      ],
+      "ave_north": [
+        "Avenida Centenario",
+        "Avenida 0"
+      ],
       "aceras": true,
       "_aceras": "conservar visible el anillo de acera real."
     },
-
     {
       "id": "estadio_playitas",
       "layout": "streets-quad",
       "name": "Plaza Las Playitas",
       "stands": {
         "side": "west",
-        "palette": { "tierA": "#f1f4f7", "tierB": "#2f6fb8", "structure": "#24476e" },
+        "palette": {
+          "tierA": "#f1f4f7",
+          "tierB": "#2f6fb8",
+          "structure": "#24476e"
+        },
         "_note": "Plaza Las Playitas — blanco y azul."
       },
-      "towers": { "type": "stadium", "inset": 10, "radius": 74,
-                  "_note": "cancha más chica, halo más chico — si no, los cuatro halos se funden en uno y la plaza entera queda blanca." },
-      "crowd": [ { "type": "supporter" }, { "type": "mascot", "count": 1 } ],
+      "towers": {
+        "type": "stadium",
+        "inset": 10,
+        "radius": 74,
+        "_note": "cancha más chica, halo más chico — si no, los cuatro halos se funden en uno y la plaza entera queda blanca."
+      },
+      "crowd": [
+        {
+          "type": "supporter"
+        },
+        {
+          "type": "mascot",
+          "count": 1
+        }
+      ],
       "_crowd": "LA MULTITUD SE ESCOGE POR CANCHA. `supporter` y `mascot` estaban definidos en `npcTypes.json`, hospedaban `parcel:plaza` y `parcel:stadium`, y NO SE GENERABAN NUNCA — entradas muertas del registro, como los cuatro alfas muertos de las luces. Una lista vacía significa sin gente; ausente significa el `fan` de siempre.",
       "_ll": "Las Playitas: Calle 6-8, entre Avenida Centenario y la orilla",
-      "calles": [["Calle 6"], ["Calle 8"]],
-      "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
-      "ave_south": ["Avenida Centenario"],
+      "calles": [
+        [
+          "Calle 6"
+        ],
+        [
+          "Calle 8"
+        ]
+      ],
+      "ave_north": [
+        "Avenida 1",
+        "Avenida 1 Dr. Sergio Fallas Badilla"
+      ],
+      "ave_south": [
+        "Avenida Centenario"
+      ],
       "aceras": true,
       "beach": true,
       "_beach": "la cuadra corre hasta la arena.",
-      "edge": ["Calle 8"],
+      "edge": [
+        "Calle 8"
+      ],
       "_edge": "pared derecha sobre la LÍNEA de Calle 8, extendida.",
       "straighten_cells": 3,
       "_straighten": "su límite oeste es una diagonal larga. Tres celdas de ráster quitan los hombros cortos residuales para que se dibuje como un solo lado directo.",
       "use": "plaza",
       "_use": "es una PLAZA DE BARRIO, no un estadio. Con `ParcelUse.PLAZA` de verdad se dibuja como lo que es — y además `npcTypes.json` ya hospedaba `parcel:plaza` en tres tipos que nunca calzaban con nada, porque ninguna parcela usaba ese valor.",
-      "cols": [1, 1.6],
-      "rows": [1],
+      "cols": [
+        1,
+        1.6
+      ],
+      "rows": [
+        1
+      ],
       "_bands": "la cancha ocupa la banda ancha del este; la angosta del oeste es donde caben las piezas que le faltaban a Las Playitas.",
       "parts": [
         {
-          "id": "playitas_cancha", "col": 1, "row": 0, "use": "plaza",
-          "name": "Cancha de Las Playitas", "aceras": false, "sport": "soccer"
+          "id": "playitas_cancha",
+          "col": 1,
+          "row": 0,
+          "use": "plaza",
+          "name": "Cancha de Las Playitas",
+          "aceras": false,
+          "sport": "soccer"
         },
         {
-          "id": "playitas_multiuso", "col": 0, "row": 0, "use": "plaza",
-          "name": "Cancha multiuso", "aceras": false, "sport": "basketball",
+          "id": "playitas_multiuso",
+          "col": 0,
+          "row": 0,
+          "use": "plaza",
+          "name": "Cancha multiuso",
+          "aceras": false,
+          "sport": "basketball",
           "_note": "cancha DURA: `sport` decide que se dibujen marcas de cancha y no de fútbol, y `COURT_SPORTS` ya nombra cuáles lo son."
         }
       ]
     },
-
     {
       "id": "parquemar",
       "layout": "footprint-lots",
@@ -217,14 +406,23 @@
       "lm": "parquemar",
       "_note": "SU CUADRA SE REPARTE ENTRE SUS OCUPANTES REALES, y el parque es lo que sobra. OSM da HUELLAS, no líneas de catastro: cada huella que no es la estación se queda con las celdas de tierra más cercanas en una banda, y las vecinas cercanas se la parten por distancia. Los sitios OSM que ya existen —sobre todo el campus de la UNA y la Iglesia Cristiana— ganan primero. La estación se lleva todo lo que quede al este de su pared oeste. Lo que sobra al oeste es el césped del Parque Marino y el ÚNICO suelo legal para las pilas.",
       "_site": "cuál vía OSM decide qué huellas pertenecen al acuario vive en `landmarks.json` → `marineSiteOsmId`, junto a los ocho nombres verificados de sus edificios. NO se repite acá: un número en dos archivos es la deriva que estos registros existen para cerrar.",
-      "anchor": { "building": "train_station", "takes": "east" },
+      "anchor": {
+        "building": "train_station",
+        "takes": "east"
+      },
       "_anchor": "la antigua estación del Ferrocarril se queda con el remanente oriental entero, medido desde su pared oeste.",
-      "lots": { "prefix": "marino", "siteId": "marino_lote", "blockId": "marino_cuadra" },
+      "lots": {
+        "prefix": "marino",
+        "siteId": "marino_lote",
+        "blockId": "marino_cuadra"
+      },
       "_lots": "una huella DEL PARQUE emite `marino_lote_<osmid>`; una del resto de la cuadra, `marino_cuadra_<osmid>`. `finish.verify` exige que cada id OSM tenga exactamente uno, para que otra estructura no desaparezca en silencio bajo el césped.",
-      "residual": { "use": "park", "green": "marine" },
+      "residual": {
+        "use": "park",
+        "green": "marine"
+      },
       "_residual": "el residual puede tener piezas sueltas y huecos alrededor de los lotes: se emite CADA anillo y se rellena con `evenodd`. Pintar sólo el anillo mayor pierde propiedad real; pintar su anillo exterior macizo tapa los lotes."
     },
-
     {
       "id": "balneario",
       "layout": "water-inlet",
@@ -233,5 +431,65 @@
       "_note": "EL BALNEARIO ES UNA ENSENADA DE AGUA DE MAR: la cuadra entera se vuelve agua abierta, dibujada con el efecto de mar vivo y sin gráfico de piscina. Se le mantienen los edificios OSM afuera, se estampa el interior `CLS_WATER`, y su contorno entra en `waters` para que se pinte exactamente como el océano. Adentro de su bbox nacen bañistas y una lancha de recreo encerrada (`maintainBalneario`).",
       "_seat": "el hito se re-ancla a la celda más cercana al centroide de la cuadra, y su `w`/`h` toman la caja de la manzana — así el bbox emitido (`W.BALNEARIO`) es la cuadra y no el ancla del topógrafo."
     }
-  ]
+  ],
+  "_fountains": "LAS FUENTES DE PATIO, por punto GEO. Un patio existe en cada manzana; una fuente NO, y ésa es la diferencia entre un centro y un barrio. Poner una en las 976 sería el mismo error que la multitud con `fan` escrito cuatro veces: nada distinguiría al Parque Central. El ancla es un punto geo y nunca el id de una cuadra, porque ese id es el hash de su contorno y un edificio nuevo o un reescalado lo cambian — la misma regla que `manzanas`. El punto es [lat, lon], como todo ancla geo de este archivo.",
+  "fountains": [
+    {
+      "name": "Patio de la Angostura",
+      "at": [
+        9.98043,
+        -84.818728
+      ],
+      "_": "el patio más grande del centro-este, 200x220 px"
+    },
+    {
+      "name": "Patio del Carmen",
+      "at": [
+        9.977607,
+        -84.844267
+      ],
+      "_": "sobre la manzana al este de la parroquia"
+    },
+    {
+      "name": "Patio de la Catedral",
+      "at": [
+        9.978838,
+        -84.83438
+      ],
+      "_": "a una cuadra de la catedral, 180x180 px"
+    }
+  ],
+  "casonas": {
+    "_note": "DÓNDE HAY CASONAS. La hilera de fachada continua es el PUERTO VIEJO: del faro hasta El Cocal, y se acaba donde empieza La Angostura. Esparza, Barranca y El Roble no son eso — son pueblo moderno y llevan edificios sueltos, como los llevaban. Es un límite GEO y no un x, porque un x es verdad sólo a la escala en que se escribió y este mundo ya se reescaló tres veces.",
+    "westOfLon": -84.794,
+    "_westOfLon": "La Angostura, medida contra su nodo `place` en OSM.",
+    "_onlyEmpty": "Y sólo en la manzana que OSM dejó VACÍA. Donde el mapeador puso edificios, ésos mandan: se rellena alrededor con lotes sueltos que no le disputan suelo a nadie. Una hilera continua encima de huellas reales sería el mundo peleándose consigo mismo.",
+    "variants": {
+      "_note": "Para que la cuadra no se repita. `full` cierra las cuatro caras; `half` deja los extremos cortos abiertos —una hilera con solares al fondo—; `corner` es sólo las esquinas, que es como crece un barrio antes de llenarse. El reparto es determinista por posición: la misma manzana sale igual en cada build.",
+      "full": 0.5,
+      "half": 0.3,
+      "corner": 0.2
+    },
+    "runMaxCuads": 4,
+    "_runMaxCuads": "una casona no mide media manzana: 4 cuadrículas son 32 m de fachada, que es una casona grande de verdad. Más largo y la hilera deja de leerse como casas y pasa a leerse como una bodega.",
+    "palette": {
+      "_note": "LOS COLORES DEL PUERTO. Puntarenas se pinta en pasteles de cal — añil, ocre, verde agua, rosa viejo, crema— y es lo que hace que una cuadra no sea una fila de cajas iguales. Cada casona toma uno por posición.",
+      "walls": [
+        "#d9c9a8",
+        "#c8d6cd",
+        "#e0c4b4",
+        "#cdd4e0",
+        "#e6dcc2",
+        "#bfd0c4",
+        "#dcc0c0",
+        "#cfc3d2"
+      ],
+      "roofs": [
+        "#9e6f4a",
+        "#8a5f45",
+        "#a87a55",
+        "#7d5a43"
+      ]
+    }
+  }
 }

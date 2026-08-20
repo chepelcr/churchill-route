@@ -80,8 +80,9 @@ export const PARCEL_USE = Object.freeze({
   CAMPUS: "campus",
   FUEL: "fuel",
   MARKET: "market",
+  PATIO: "patio",
 });
-export const PARCEL_USE_VALUES = Object.freeze(["church", "cathedral", "garden", "park", "plaza", "stadium", "boulevard", "civic", "lot", "school", "kinder", "campus", "fuel", "market"]);
+export const PARCEL_USE_VALUES = Object.freeze(["church", "cathedral", "garden", "park", "plaza", "stadium", "boulevard", "civic", "lot", "school", "kinder", "campus", "fuel", "market", "patio"]);
 
 export const GREEN_TYPE = Object.freeze({
   PARK: "park",

@@ -129,6 +129,14 @@ BLOCKS = _bl["blocks"]
 #: El estilo de suelo de una manzana DERIVADA, direccionado por punto geo, y el
 #: de una parcela, por id. Ver `_manzanas` en el archivo para el porqué del geo.
 MANZANA_STYLES = _bl["manzanas"]
+
+#: DÓNDE HAY CASONAS, y de qué colores. La fachada continua es el puerto viejo:
+#: del faro a El Cocal y se acaba en La Angostura.
+CASONA_DEF = _bl.get("casonas", {})
+
+#: LAS FUENTES DE PATIO — por punto geo, y sólo donde se autoran. Cada manzana
+#: tiene patio; una fuente es lo que hace que UNA manzana sea el centro.
+FOUNTAIN_DEFS = _bl.get("fountains", [])
 PARCEL_STYLES = _bl["parcels"]
 
 

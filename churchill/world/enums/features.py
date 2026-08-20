@@ -53,6 +53,7 @@ class ParcelUse(StrEnum):
     CAMPUS = "campus"        # colegio / universidad: several pavilions on open grounds
     FUEL = "fuel"            # gasolinera: a canopy over its islands, with the pumps
     MARKET = "market"        # el Mercado Central: its own manzana, like an estadio
+    PATIO = "patio"          # el interior de una manzana: lo que el anillo de casonas deja
 
 
 class GreenType(StrEnum):

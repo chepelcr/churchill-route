@@ -1,12 +1,8 @@
 {
   "_note": "LOS MATERIALES — what the world's non-surface families are MADE OF, keyed by the vocabulary that already names them. The surface classes got their own registry on 2026-08-11 (src/assets/surfaces.json); this is the other half of that gate, for the families §13 left open: parcels, greens, piers, street furniture, structures and the minimap.",
-
   "version": 1,
-
   "_scope": "MEASURED, not assumed. The audit row said 'duplicated Canvas/Pixi/editor colors'; scanning the tree found canvas ∩ pixi = ZERO — the Pixi backend has no hex literals at all since it started reading surfaces.json — and canvas ∩ editor = 40. Those 40 are what is here, minus the ones that merely SHARE A NUMBER: `#e85d75` is the scooter's paint, a feria cabin and the editor's default feature colour, and `#f3c969` is the tuk-tuk, a ride's trim and a gold coin. Per §13's own rule, an identical number in two files is not automatically one constant, and merging those would only move the hard-coding.",
-
   "_stays_local": "A shadow alpha, a lamp glow, a bezier ratio or a highlight inside ONE drawing recipe is not a material and stays in that recipe. The test for a row here is whether two runtimes have to agree about it.",
-
   "parcel": {
     "_note": "Ground fill per ParcelUse — `PARCEL_FILL` in c2d/streets.js and the editor's own parcel palette, which is exactly the pair that drifted before (`market` was live in the manifest and missing from the editor's list).",
     "_key": "churchill/world/enums/features.py :: ParcelUse",
@@ -26,9 +22,10 @@
     "market": "#c2b49a",
     "fuel": "#8e9299",
     "_school_note": "A school's ground is its PATIO, not a lawn: the swept concrete-and-earth yard every escuela in the port has, so it reads as a schoolyard beside the green of a park rather than as one more park.",
-    "_market_note": "El Mercado: swept concrete, its own manzana. Flat on purpose — it is meant to take a style or an asset of its own later, and this is the plot it will be painted onto."
+    "_market_note": "El Mercado: swept concrete, its own manzana. Flat on purpose — it is meant to take a style or an asset of its own later, and this is the plot it will be painted onto.",
+    "patio": "#8fae7c",
+    "_patio": "EL PATIO DE LA MANZANA — lo que el anillo de casonas deja adentro. Verde, pero no el verde de un parque: es tierra de vecinos con árboles en las esquinas, más apagada que `park` porque no es suelo público y no se entra a ella. Se ve desde arriba por encima de los techos, que es todo lo que hace falta para que una manzana lea como una manzana y no como un bloque macizo."
   },
-
   "green": {
     "_note": "A green cuadra's fill per GreenType — `GREEN_COLORS` in c2d/ground.js.",
     "_key": "churchill/world/enums/features.py :: GreenType",
@@ -40,35 +37,62 @@
     "esplanade": "#c9c6bf",
     "_esplanade_note": "matched to the `clear` fill of the esplanade band's own weather palette (c2d/malecon.js), and kept as a flat fill underneath so a streaming seam can never show sand through the middle of it"
   },
-
   "pier": {
     "_note": "The full deck recipe per PierStyle — `PIER_STYLES` in c2d/structures.js. Not just a colour: which seams, which rails, whether it carries lamps or a hut, and whether it lies on the ground. This is the family whose gap shipped for a week — the builder emitted four `malecon` piers, the renderer had no recipe, and the lookup fell through to `concrete`, drawing four beach ramps as grey quays with blue railings and lamps on the sand.",
     "_key": "churchill/world/enums/features.py :: PierStyle",
     "concrete": {
-      "deck": "#cfcfc8", "seam": "rgba(0,0,0,0.1)", "seamGap": 14, "cap": "#b8b8b0",
-      "rail": "#2f6fb8", "centre": "#f8d76b", "lamps": 46, "hut": true
+      "deck": "#cfcfc8",
+      "seam": "rgba(0,0,0,0.1)",
+      "seamGap": 14,
+      "cap": "#b8b8b0",
+      "rail": "#2f6fb8",
+      "centre": "#f8d76b",
+      "lamps": 46,
+      "hut": true
     },
     "timber": {
-      "deck": "#b98a4e", "seam": "rgba(60,40,20,0.35)", "seamGap": 12, "cap": null,
-      "rail": "#8a5f33", "centre": null, "posts": 34
+      "deck": "#b98a4e",
+      "seam": "rgba(60,40,20,0.35)",
+      "seamGap": 12,
+      "cap": null,
+      "rail": "#8a5f33",
+      "centre": null,
+      "posts": 34
     },
     "apron": {
-      "deck": "#3a3540", "seam": null, "seamGap": 0, "cap": null, "rail": null,
-      "centre": null, "round": true, "ground": true,
+      "deck": "#3a3540",
+      "seam": null,
+      "seamGap": 0,
+      "cap": null,
+      "rail": null,
+      "centre": null,
+      "round": true,
+      "ground": true,
       "note": "the ferry ramps: asphalt, the colour of the streets they leave, no rails and no lamps — a terminal apron, not a promenade"
     },
     "calzada": {
-      "deck": "#c6c6bf", "seam": "rgba(0,0,0,0.09)", "seamGap": 18, "cap": null,
-      "rail": null, "centre": null, "round": true, "ground": true,
+      "deck": "#c6c6bf",
+      "seam": "rgba(0,0,0,0.09)",
+      "seamGap": 18,
+      "cap": null,
+      "rail": null,
+      "centre": null,
+      "round": true,
+      "ground": true,
       "note": "the muelle's OWN access street: it lies on the ground like an apron but is the landward continuation of a CONCRETE deck, so you drive off Calle 2's asphalt onto the muelle's grey and out over the water without the surface changing under you"
     },
     "malecon": {
-      "deck": "#e7d6b3", "seam": "rgba(150,132,100,0.34)", "seamGap": 14, "cap": null,
-      "rail": null, "centre": null, "round": true, "ground": true,
+      "deck": "#e7d6b3",
+      "seam": "rgba(150,132,100,0.34)",
+      "seamGap": 14,
+      "cap": null,
+      "rail": null,
+      "centre": null,
+      "round": true,
+      "ground": true,
       "note": "las bajadas a la arena — stamped drivable, because a beach access that is a wall is not an access, but paved in the promenade's baldosa rather than asphalt"
     }
   },
-
   "street": {
     "_note": "The inks the roadway is drawn with, shared by c2d/streets.js and the editor's road preview.",
     "acera": "#b8b6b0",
@@ -83,7 +107,6 @@
     "mark": "rgba(255,255,255,0.75)",
     "markNote": "every line on a field is this one white"
   },
-
   "structure": {
     "_note": "Buildings, when the world does not carry a colour of its own — a named footprint may emit `roof` and it wins.",
     "roof": "#8a6a4a",
@@ -97,15 +120,67 @@
       "windowsNight": "rgba(255,220,140,0.7)",
       "windowsNote": "de noche las ventanas se ponen cálidas — es lo único que distingue un edificio dormido de uno vivo a esta distancia.",
       "values": {
-        "roofH": { "op": "max", "args": [3, { "op": "mul", "args": [{ "ref": "bh" }, 0.3] }] },
-        "windowY": { "op": "mul", "args": [{ "ref": "bh" }, 0.55] }
+        "roofH": {
+          "op": "max",
+          "args": [
+            3,
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "bh"
+                },
+                0.3
+              ]
+            }
+          ]
+        },
+        "windowY": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "bh"
+            },
+            0.55
+          ]
+        }
       },
-      "preview": { "bw": 64, "bh": 40, "roof": "#8a6a4a", "windowInk": "rgba(255,255,255,0.55)", "windows": true },
+      "preview": {
+        "bw": 64,
+        "bh": 40,
+        "roof": "#8a6a4a",
+        "windowInk": "rgba(255,255,255,0.55)",
+        "windows": true
+      },
       "parts": [
-        { "shape": "rect", "fill": "$roof", "x": 0, "y": 0, "w": "$bw", "h": "$roofH" },
-        { "shape": "fit", "when": "$windows", "along": "x", "length": "$bw", "pitch": 16, "mode": "floor", "min": 1, "anchor": "start", "parts": [
-          { "shape": "rect", "fill": "$windowInk", "x": 4, "y": "$windowY", "w": 4, "h": 3 }
-        ] }
+        {
+          "shape": "rect",
+          "fill": "$roof",
+          "x": 0,
+          "y": 0,
+          "w": "$bw",
+          "h": "$roofH"
+        },
+        {
+          "shape": "fit",
+          "when": "$windows",
+          "along": "x",
+          "length": "$bw",
+          "pitch": 16,
+          "mode": "floor",
+          "min": 1,
+          "anchor": "start",
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": "$windowInk",
+              "x": 4,
+              "y": "$windowY",
+              "w": 4,
+              "h": 3
+            }
+          ]
+        }
       ]
     },
     "bridge": {
@@ -123,37 +198,301 @@
       "signBg": "rgba(20,16,40,0.78)",
       "signFg": "#fff",
       "values": {
-        "halfDeck": { "op": "div", "args": [{ "ref": "deckW" }, 2] },
-        "negHalfDeck": { "op": "mul", "args": [{ "ref": "halfDeck" }, -1] },
-        "deckY": { "op": "sub", "args": [{ "ref": "negHalfDeck" }, 4] },
-        "deckH": { "op": "add", "args": [{ "ref": "deckW" }, 8] },
-        "asphaltY": { "op": "add", "args": [{ "ref": "negHalfDeck" }, 2] },
-        "asphaltH": { "op": "sub", "args": [{ "ref": "deckW" }, 4] },
-        "railTop": { "op": "sub", "args": [{ "ref": "negHalfDeck" }, 2] },
-        "towerTop": { "op": "mul", "args": [{ "ref": "towerH" }, -1] },
+        "halfDeck": {
+          "op": "div",
+          "args": [
+            {
+              "ref": "deckW"
+            },
+            2
+          ]
+        },
+        "negHalfDeck": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "halfDeck"
+            },
+            -1
+          ]
+        },
+        "deckY": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "negHalfDeck"
+            },
+            4
+          ]
+        },
+        "deckH": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "deckW"
+            },
+            8
+          ]
+        },
+        "asphaltY": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "negHalfDeck"
+            },
+            2
+          ]
+        },
+        "asphaltH": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "deckW"
+            },
+            4
+          ]
+        },
+        "railTop": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "negHalfDeck"
+            },
+            2
+          ]
+        },
+        "towerTop": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "towerH"
+            },
+            -1
+          ]
+        },
         "sagY": -14,
         "hangerDeck": -4,
-        "mid": { "op": "div", "args": [{ "ref": "len" }, 2] },
-        "labelY": { "op": "add", "args": [{ "ref": "halfDeck" }, 14] }
+        "mid": {
+          "op": "div",
+          "args": [
+            {
+              "ref": "len"
+            },
+            2
+          ]
+        },
+        "labelY": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "halfDeck"
+            },
+            14
+          ]
+        }
       },
-      "preview": { "len": 170, "deckW": 24, "tower0": 42, "tower1": 128, "towerH": 44, "labelText": "PUENTE MATA LIMÓN" },
+      "preview": {
+        "len": 170,
+        "deckW": 24,
+        "tower0": 42,
+        "tower1": 128,
+        "towerH": 44,
+        "labelText": "PUENTE MATA LIMÓN"
+      },
       "parts": [
-        { "shape": "rect", "fill": "$ramp", "x": -32, "y": "$deckY", "w": 32, "h": "$deckH" },
-        { "shape": "rect", "fill": "$ramp", "x": "$len", "y": "$deckY", "w": 32, "h": "$deckH" },
-        { "shape": "rect", "fill": "$deck", "x": 0, "y": "$deckY", "w": "$len", "h": "$deckH" },
-        { "shape": "rect", "fill": "$asphalt", "x": 0, "y": "$asphaltY", "w": "$len", "h": "$asphaltH" },
-        { "shape": "stroke", "stroke": "$dash", "width": 2, "dash": [14, 14], "pts": [[4, 0], [{ "op": "sub", "args": [{ "ref": "len" }, 4] }, 0]] },
-        { "shape": "rect", "fill": "$rail", "x": 0, "y": "$railTop", "w": "$len", "h": 2 },
-        { "shape": "rect", "fill": "$rail", "x": 0, "y": "$halfDeck", "w": "$len", "h": 2 },
-        { "shape": "stroke", "stroke": "$cable", "width": 2, "pts": [["$tower0", "$towerTop"], { "q": ["$mid", -14], "to": ["$tower1", "$towerTop"] }] },
-        { "shape": "stroke", "stroke": "$cable", "width": 2, "runs": [
-          [[-28, 4], ["$tower0", "$towerTop"]],
-          [[{ "op": "add", "args": [{ "ref": "len" }, 28] }, 4], ["$tower1", "$towerTop"]]
-        ] },
-        { "shape": "family", "verb": "bridge-hangers", "stroke": "$hanger", "width": 1, "from": "tower0", "to": "tower1", "top": "towerTop", "sag": "sagY", "deck": "hangerDeck", "gap": 6 },
-        { "shape": "family", "verb": "bridge-tower", "x": "tower0", "top": "towerTop", "height": "towerH", "legFill": "$towerLeg", "capFill": "$towerCap", "braceStroke": "$towerBrace", "legGap": 4, "legWidth": 3, "legFoot": 4, "capHalf": 6, "capHeight": 4, "braceHalf": 2.5, "braceWidth": 1, "panels": 4 },
-        { "shape": "family", "verb": "bridge-tower", "x": "tower1", "top": "towerTop", "height": "towerH", "legFill": "$towerLeg", "capFill": "$towerCap", "braceStroke": "$towerBrace", "legGap": 4, "legWidth": 3, "legFoot": 4, "capHalf": 6, "capHeight": 4, "braceHalf": 2.5, "braceWidth": 1, "panels": 4 },
-        { "shape": "family", "verb": "bridge-sign", "x": "mid", "y": "labelY", "text": "labelText", "fallback": "PUENTE MATA LIMÓN", "bg": "$signBg", "fg": "$signFg", "font": "bold 9px 'JetBrains Mono', monospace", "padX": 5, "height": 12, "baseline": 9 }
+        {
+          "shape": "rect",
+          "fill": "$ramp",
+          "x": -32,
+          "y": "$deckY",
+          "w": 32,
+          "h": "$deckH"
+        },
+        {
+          "shape": "rect",
+          "fill": "$ramp",
+          "x": "$len",
+          "y": "$deckY",
+          "w": 32,
+          "h": "$deckH"
+        },
+        {
+          "shape": "rect",
+          "fill": "$deck",
+          "x": 0,
+          "y": "$deckY",
+          "w": "$len",
+          "h": "$deckH"
+        },
+        {
+          "shape": "rect",
+          "fill": "$asphalt",
+          "x": 0,
+          "y": "$asphaltY",
+          "w": "$len",
+          "h": "$asphaltH"
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$dash",
+          "width": 2,
+          "dash": [
+            14,
+            14
+          ],
+          "pts": [
+            [
+              4,
+              0
+            ],
+            [
+              {
+                "op": "sub",
+                "args": [
+                  {
+                    "ref": "len"
+                  },
+                  4
+                ]
+              },
+              0
+            ]
+          ]
+        },
+        {
+          "shape": "rect",
+          "fill": "$rail",
+          "x": 0,
+          "y": "$railTop",
+          "w": "$len",
+          "h": 2
+        },
+        {
+          "shape": "rect",
+          "fill": "$rail",
+          "x": 0,
+          "y": "$halfDeck",
+          "w": "$len",
+          "h": 2
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$cable",
+          "width": 2,
+          "pts": [
+            [
+              "$tower0",
+              "$towerTop"
+            ],
+            {
+              "q": [
+                "$mid",
+                -14
+              ],
+              "to": [
+                "$tower1",
+                "$towerTop"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$cable",
+          "width": 2,
+          "runs": [
+            [
+              [
+                -28,
+                4
+              ],
+              [
+                "$tower0",
+                "$towerTop"
+              ]
+            ],
+            [
+              [
+                {
+                  "op": "add",
+                  "args": [
+                    {
+                      "ref": "len"
+                    },
+                    28
+                  ]
+                },
+                4
+              ],
+              [
+                "$tower1",
+                "$towerTop"
+              ]
+            ]
+          ]
+        },
+        {
+          "shape": "family",
+          "verb": "bridge-hangers",
+          "stroke": "$hanger",
+          "width": 1,
+          "from": "tower0",
+          "to": "tower1",
+          "top": "towerTop",
+          "sag": "sagY",
+          "deck": "hangerDeck",
+          "gap": 6
+        },
+        {
+          "shape": "family",
+          "verb": "bridge-tower",
+          "x": "tower0",
+          "top": "towerTop",
+          "height": "towerH",
+          "legFill": "$towerLeg",
+          "capFill": "$towerCap",
+          "braceStroke": "$towerBrace",
+          "legGap": 4,
+          "legWidth": 3,
+          "legFoot": 4,
+          "capHalf": 6,
+          "capHeight": 4,
+          "braceHalf": 2.5,
+          "braceWidth": 1,
+          "panels": 4
+        },
+        {
+          "shape": "family",
+          "verb": "bridge-tower",
+          "x": "tower1",
+          "top": "towerTop",
+          "height": "towerH",
+          "legFill": "$towerLeg",
+          "capFill": "$towerCap",
+          "braceStroke": "$towerBrace",
+          "legGap": 4,
+          "legWidth": 3,
+          "legFoot": 4,
+          "capHalf": 6,
+          "capHeight": 4,
+          "braceHalf": 2.5,
+          "braceWidth": 1,
+          "panels": 4
+        },
+        {
+          "shape": "family",
+          "verb": "bridge-sign",
+          "x": "mid",
+          "y": "labelY",
+          "text": "labelText",
+          "fallback": "PUENTE MATA LIMÓN",
+          "bg": "$signBg",
+          "fg": "$signFg",
+          "font": "bold 9px 'JetBrains Mono', monospace",
+          "padX": 5,
+          "height": 12,
+          "baseline": 9
+        }
       ]
     },
     "ferry": {
@@ -176,56 +515,491 @@
       "funnelCap": "#2b2b33",
       "nameFg": "#fff",
       "nameBg": "#2f4f68",
-      "preview": { "L": 62, "B": 23, "moving": true, "travelDir": 1, "doubleEnded": true, "shadowDx": 4, "shadowDy": 5, "shadowAlpha": 0.75 },
+      "preview": {
+        "L": 62,
+        "B": 23,
+        "moving": true,
+        "travelDir": 1,
+        "doubleEnded": true,
+        "shadowDx": 4,
+        "shadowDy": 5,
+        "shadowAlpha": 0.75
+      },
       "parts": [
         {
-          "shape": "group", "when": "$moving", "scaleX": "$travelDir", "hw": "$L", "hh": "$B",
+          "shape": "group",
+          "when": "$moving",
+          "scaleX": "$travelDir",
+          "hw": "$L",
+          "hh": "$B",
           "parts": [
-            { "shape": "poly", "fill": "$wake", "pts": [
-              [[-1, 0], [-0.7, 0]], [[-1, -70], [-1.5, 0]],
-              [[-1, -70], [1.5, 0]], [[-1, 0], [0.7, 0]]
-            ] }
+            {
+              "shape": "poly",
+              "fill": "$wake",
+              "pts": [
+                [
+                  [
+                    -1,
+                    0
+                  ],
+                  [
+                    -0.7,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -1,
+                    -70
+                  ],
+                  [
+                    -1.5,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -1,
+                    -70
+                  ],
+                  [
+                    1.5,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -1,
+                    0
+                  ],
+                  [
+                    0.7,
+                    0
+                  ]
+                ]
+              ]
+            }
           ]
         },
         {
-          "shape": "group", "x": "$shadowDx", "y": "$shadowDy", "alpha": "$shadowAlpha", "hw": "$L", "hh": "$B",
+          "shape": "group",
+          "x": "$shadowDx",
+          "y": "$shadowDy",
+          "alpha": "$shadowAlpha",
+          "hw": "$L",
+          "hh": "$B",
           "parts": [
-            { "shape": "poly", "fill": "$shadow", "pts": [
-              [[1, 4], [0, 3]],
-              { "q": [[1, -8], [-1, 8]], "to": [[1, -30], [-1, 5]] },
-              [[-1, 8], [-1, 5]],
-              { "q": [[-1, -2], [0, 3]], "to": [[-1, 8], [1, 5]] },
-              [[1, -30], [1, 5]],
-              { "q": [[1, -8], [1, 5]], "to": [[1, 4], [0, 3]] }
-            ] }
+            {
+              "shape": "poly",
+              "fill": "$shadow",
+              "pts": [
+                [
+                  [
+                    1,
+                    4
+                  ],
+                  [
+                    0,
+                    3
+                  ]
+                ],
+                {
+                  "q": [
+                    [
+                      1,
+                      -8
+                    ],
+                    [
+                      -1,
+                      8
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      -30
+                    ],
+                    [
+                      -1,
+                      5
+                    ]
+                  ]
+                },
+                [
+                  [
+                    -1,
+                    8
+                  ],
+                  [
+                    -1,
+                    5
+                  ]
+                ],
+                {
+                  "q": [
+                    [
+                      -1,
+                      -2
+                    ],
+                    [
+                      0,
+                      3
+                    ]
+                  ],
+                  "to": [
+                    [
+                      -1,
+                      8
+                    ],
+                    [
+                      1,
+                      5
+                    ]
+                  ]
+                },
+                [
+                  [
+                    1,
+                    -30
+                  ],
+                  [
+                    1,
+                    5
+                  ]
+                ],
+                {
+                  "q": [
+                    [
+                      1,
+                      -8
+                    ],
+                    [
+                      1,
+                      5
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      4
+                    ],
+                    [
+                      0,
+                      3
+                    ]
+                  ]
+                }
+              ]
+            }
           ]
         },
         {
-          "shape": "group", "hw": "$L", "hh": "$B",
+          "shape": "group",
+          "hw": "$L",
+          "hh": "$B",
           "parts": [
-            { "shape": "poly", "fill": "$hull", "pts": [
-              [[1, 2], 0],
-              { "q": [[1, -6], [-1, 0]], "to": [[1, -30], [-1, 0]] },
-              [[-1, 6], [-1, 0]],
-              { "q": [[-1, -3], 0], "to": [[-1, 6], [1, 0]] },
-              [[1, -30], [1, 0]],
-              { "q": [[1, -6], [1, 0]], "to": [[1, 2], 0] }
-            ] },
-            { "shape": "rect", "fill": "$boottop", "x": [-1, 6], "y": [-1, 2], "w": [2, -12], "h": 2 },
-            { "shape": "rect", "fill": "$boottop", "x": [-1, 6], "y": [1, -4], "w": [2, -12], "h": 2 },
-            { "shape": "roundRect", "fill": "$deck", "x": [-1, 4], "y": [-1, 5], "w": [2, -8], "h": [2, -10], "r": 5 },
-            { "shape": "stroke", "stroke": "$lane", "width": 1.5, "dash": [9, 9], "pts": [[[-1, 12], 0], [[1, -12], 0]] },
-            { "shape": "rect", "fill": "$rails", "x": [-1, 4], "y": [-1, 2], "w": [2, -8], "h": 3 },
-            { "shape": "rect", "fill": "$rails", "x": [-1, 4], "y": [1, -5], "w": [2, -8], "h": 3 },
-            { "shape": "roundRect", "fill": "$ramp", "x": [-1, -9], "y": [-1, 9], "w": 12, "h": [2, -18], "r": 3 },
-            { "shape": "roundRect", "fill": "$ramp", "x": [1, -3], "y": [-1, 9], "w": 12, "h": [2, -18], "r": 3 },
-            { "shape": "roundRect", "fill": "$wheelhouse", "x": -11, "y": [-1, 8], "w": 22, "h": [2, -16], "r": 5 },
-            { "shape": "roundRect", "fill": "$wheelhouseRoof", "x": -8, "y": [-1, 11], "w": 16, "h": [2, -22], "r": 4 },
-            { "shape": "rect", "fill": "$windowLight", "x": -5, "y": -3, "w": 10, "h": 6 },
-            { "shape": "repeat", "n": 2, "dx": 48, "parts": [
-              { "shape": "disc", "fill": "$funnel", "cx": -24, "cy": 0, "r": 5.5 },
-              { "shape": "disc", "fill": "$funnelCap", "cx": -24, "cy": 0, "r": 3.2 }
-            ] }
+            {
+              "shape": "poly",
+              "fill": "$hull",
+              "pts": [
+                [
+                  [
+                    1,
+                    2
+                  ],
+                  0
+                ],
+                {
+                  "q": [
+                    [
+                      1,
+                      -6
+                    ],
+                    [
+                      -1,
+                      0
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      -30
+                    ],
+                    [
+                      -1,
+                      0
+                    ]
+                  ]
+                },
+                [
+                  [
+                    -1,
+                    6
+                  ],
+                  [
+                    -1,
+                    0
+                  ]
+                ],
+                {
+                  "q": [
+                    [
+                      -1,
+                      -3
+                    ],
+                    0
+                  ],
+                  "to": [
+                    [
+                      -1,
+                      6
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                [
+                  [
+                    1,
+                    -30
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                {
+                  "q": [
+                    [
+                      1,
+                      -6
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      2
+                    ],
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "shape": "rect",
+              "fill": "$boottop",
+              "x": [
+                -1,
+                6
+              ],
+              "y": [
+                -1,
+                2
+              ],
+              "w": [
+                2,
+                -12
+              ],
+              "h": 2
+            },
+            {
+              "shape": "rect",
+              "fill": "$boottop",
+              "x": [
+                -1,
+                6
+              ],
+              "y": [
+                1,
+                -4
+              ],
+              "w": [
+                2,
+                -12
+              ],
+              "h": 2
+            },
+            {
+              "shape": "roundRect",
+              "fill": "$deck",
+              "x": [
+                -1,
+                4
+              ],
+              "y": [
+                -1,
+                5
+              ],
+              "w": [
+                2,
+                -8
+              ],
+              "h": [
+                2,
+                -10
+              ],
+              "r": 5
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$lane",
+              "width": 1.5,
+              "dash": [
+                9,
+                9
+              ],
+              "pts": [
+                [
+                  [
+                    -1,
+                    12
+                  ],
+                  0
+                ],
+                [
+                  [
+                    1,
+                    -12
+                  ],
+                  0
+                ]
+              ]
+            },
+            {
+              "shape": "rect",
+              "fill": "$rails",
+              "x": [
+                -1,
+                4
+              ],
+              "y": [
+                -1,
+                2
+              ],
+              "w": [
+                2,
+                -8
+              ],
+              "h": 3
+            },
+            {
+              "shape": "rect",
+              "fill": "$rails",
+              "x": [
+                -1,
+                4
+              ],
+              "y": [
+                1,
+                -5
+              ],
+              "w": [
+                2,
+                -8
+              ],
+              "h": 3
+            },
+            {
+              "shape": "roundRect",
+              "fill": "$ramp",
+              "x": [
+                -1,
+                -9
+              ],
+              "y": [
+                -1,
+                9
+              ],
+              "w": 12,
+              "h": [
+                2,
+                -18
+              ],
+              "r": 3
+            },
+            {
+              "shape": "roundRect",
+              "fill": "$ramp",
+              "x": [
+                1,
+                -3
+              ],
+              "y": [
+                -1,
+                9
+              ],
+              "w": 12,
+              "h": [
+                2,
+                -18
+              ],
+              "r": 3
+            },
+            {
+              "shape": "roundRect",
+              "fill": "$wheelhouse",
+              "x": -11,
+              "y": [
+                -1,
+                8
+              ],
+              "w": 22,
+              "h": [
+                2,
+                -16
+              ],
+              "r": 5
+            },
+            {
+              "shape": "roundRect",
+              "fill": "$wheelhouseRoof",
+              "x": -8,
+              "y": [
+                -1,
+                11
+              ],
+              "w": 16,
+              "h": [
+                2,
+                -22
+              ],
+              "r": 4
+            },
+            {
+              "shape": "rect",
+              "fill": "$windowLight",
+              "x": -5,
+              "y": -3,
+              "w": 10,
+              "h": 6
+            },
+            {
+              "shape": "repeat",
+              "n": 2,
+              "dx": 48,
+              "parts": [
+                {
+                  "shape": "disc",
+                  "fill": "$funnel",
+                  "cx": -24,
+                  "cy": 0,
+                  "r": 5.5
+                },
+                {
+                  "shape": "disc",
+                  "fill": "$funnelCap",
+                  "cx": -24,
+                  "cy": 0,
+                  "r": 3.2
+                }
+              ]
+            }
           ]
         }
       ]
@@ -234,12 +1008,39 @@
       "_note": "El atracadero al que llega. Concreto, dos tonos.",
       "deck": "#b6b1a2",
       "edge": "#8f8a7c",
-      "preview": { "dw": 46, "negB": -23, "apronY": -29, "apronH": 58 },
+      "preview": {
+        "dw": 46,
+        "negB": -23,
+        "apronY": -29,
+        "apronH": 58
+      },
       "parts": [
-        { "shape": "rect", "fill": "$deck", "x": -14, "y": "$apronY", "w": 46, "h": "$apronH" },
-        { "shape": "fit", "along": "y", "length": "$dw", "pitch": 12, "spread": false, "anchor": "start", "parts": [
-          { "shape": "rect", "fill": "$edge", "x": -14, "y": "$negB", "w": 46, "h": 2 }
-        ] }
+        {
+          "shape": "rect",
+          "fill": "$deck",
+          "x": -14,
+          "y": "$apronY",
+          "w": 46,
+          "h": "$apronH"
+        },
+        {
+          "shape": "fit",
+          "along": "y",
+          "length": "$dw",
+          "pitch": 12,
+          "spread": false,
+          "anchor": "start",
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": "$edge",
+              "x": -14,
+              "y": "$negB",
+              "w": 46,
+              "h": 2
+            }
+          ]
+        }
       ]
     },
     "pierDeck": {
@@ -249,19 +1050,163 @@
       "lampPost": "#8a8f96",
       "lampDay": "#f4e6c0",
       "lampNight": "#ffd98a",
-      "preview": { "len": 132, "hw": 14, "negHw": -14, "width": 28, "run": 0, "last": true, "round": false, "shadowVisible": true, "deck": "#b8b3a6", "seam": "#8d6a3f", "seamGap": 12, "cap": "#71614e", "capVisible": true, "rail": "#3f6f8f", "centre": "#f4d77a", "centreStart": 6, "centreEnd": 126, "posts": 18, "lamps": 34, "night": false },
+      "preview": {
+        "len": 132,
+        "hw": 14,
+        "negHw": -14,
+        "width": 28,
+        "run": 0,
+        "last": true,
+        "round": false,
+        "shadowVisible": true,
+        "deck": "#b8b3a6",
+        "seam": "#8d6a3f",
+        "seamGap": 12,
+        "cap": "#71614e",
+        "capVisible": true,
+        "rail": "#3f6f8f",
+        "centre": "#f4d77a",
+        "centreStart": 6,
+        "centreEnd": 126,
+        "posts": 18,
+        "lamps": 34,
+        "night": false
+      },
       "parts": [
-        { "shape": "rect", "when": "$shadowVisible", "fill": "$apronShadow", "x": 3, "y": { "op": "add", "args": [{ "ref": "negHw" }, 4] }, "w": "$len", "h": "$width" },
-        { "shape": "disc", "when": "$round", "fill": "$deck", "cx": 0, "cy": 0, "r": "$hw" },
-        { "shape": "disc", "when": "$round", "fill": "$deck", "cx": "$len", "cy": 0, "r": "$hw" },
-        { "shape": "rect", "fill": "$deck", "x": 0, "y": "$negHw", "w": "$len", "h": "$width" },
-        { "shape": "family", "when": "$seam", "verb": "pier-seams", "width": 1, "inset": 1 },
-        { "shape": "rect", "when": "$capVisible", "fill": "$cap", "x": { "op": "sub", "args": [{ "ref": "len" }, 3] }, "y": "$negHw", "w": 3, "h": "$width" },
-        { "shape": "rect", "when": "$rail", "fill": "$rail", "x": 0, "y": "$negHw", "w": "$len", "h": 2 },
-        { "shape": "rect", "when": "$rail", "fill": "$rail", "x": 0, "y": { "op": "sub", "args": [{ "ref": "hw" }, 2] }, "w": "$len", "h": 2 },
-        { "shape": "stroke", "when": "$centre", "stroke": "$centre", "width": 2, "dash": [12, 10], "pts": [["$centreStart", 0], ["$centreEnd", 0]] },
-        { "shape": "family", "when": "$posts", "verb": "pier-posts", "fill": "$pile", "start": 10, "size": 3 },
-        { "shape": "family", "when": "$lamps", "verb": "pier-lamps", "postFill": "$lampPost", "dayFill": "$lampDay", "nightFill": "$lampNight", "start": 24, "endInset": 8, "sideInset": 3, "postWidth": 1.5, "postHeight": 6, "lampLift": 7, "r": 1.6 }
+        {
+          "shape": "rect",
+          "when": "$shadowVisible",
+          "fill": "$apronShadow",
+          "x": 3,
+          "y": {
+            "op": "add",
+            "args": [
+              {
+                "ref": "negHw"
+              },
+              4
+            ]
+          },
+          "w": "$len",
+          "h": "$width"
+        },
+        {
+          "shape": "disc",
+          "when": "$round",
+          "fill": "$deck",
+          "cx": 0,
+          "cy": 0,
+          "r": "$hw"
+        },
+        {
+          "shape": "disc",
+          "when": "$round",
+          "fill": "$deck",
+          "cx": "$len",
+          "cy": 0,
+          "r": "$hw"
+        },
+        {
+          "shape": "rect",
+          "fill": "$deck",
+          "x": 0,
+          "y": "$negHw",
+          "w": "$len",
+          "h": "$width"
+        },
+        {
+          "shape": "family",
+          "when": "$seam",
+          "verb": "pier-seams",
+          "width": 1,
+          "inset": 1
+        },
+        {
+          "shape": "rect",
+          "when": "$capVisible",
+          "fill": "$cap",
+          "x": {
+            "op": "sub",
+            "args": [
+              {
+                "ref": "len"
+              },
+              3
+            ]
+          },
+          "y": "$negHw",
+          "w": 3,
+          "h": "$width"
+        },
+        {
+          "shape": "rect",
+          "when": "$rail",
+          "fill": "$rail",
+          "x": 0,
+          "y": "$negHw",
+          "w": "$len",
+          "h": 2
+        },
+        {
+          "shape": "rect",
+          "when": "$rail",
+          "fill": "$rail",
+          "x": 0,
+          "y": {
+            "op": "sub",
+            "args": [
+              {
+                "ref": "hw"
+              },
+              2
+            ]
+          },
+          "w": "$len",
+          "h": 2
+        },
+        {
+          "shape": "stroke",
+          "when": "$centre",
+          "stroke": "$centre",
+          "width": 2,
+          "dash": [
+            12,
+            10
+          ],
+          "pts": [
+            [
+              "$centreStart",
+              0
+            ],
+            [
+              "$centreEnd",
+              0
+            ]
+          ]
+        },
+        {
+          "shape": "family",
+          "when": "$posts",
+          "verb": "pier-posts",
+          "fill": "$pile",
+          "start": 10,
+          "size": 3
+        },
+        {
+          "shape": "family",
+          "when": "$lamps",
+          "verb": "pier-lamps",
+          "postFill": "$lampPost",
+          "dayFill": "$lampDay",
+          "nightFill": "$lampNight",
+          "start": 24,
+          "endInset": 8,
+          "sideInset": 3,
+          "postWidth": 1.5,
+          "postHeight": 6,
+          "lampLift": 7,
+          "r": 1.6
+        }
       ]
     },
     "pierHut": {
@@ -272,20 +1217,94 @@
       "ridge": "rgba(255,255,255,0.30)",
       "door": "rgba(20,40,60,0.62)",
       "values": {
-        "doorX": { "op": "sub", "args": [{ "op": "mul", "args": [{ "ref": "nx" }, -7.5] }, 2.2] },
-        "doorY": { "op": "sub", "args": [{ "op": "mul", "args": [{ "ref": "ny" }, -7.5] }, 2.2] }
+        "doorX": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "nx"
+                },
+                -7.5
+              ]
+            },
+            2.2
+          ]
+        },
+        "doorY": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "ny"
+                },
+                -7.5
+              ]
+            },
+            2.2
+          ]
+        }
       },
-      "preview": { "nx": 0, "ny": 1 },
+      "preview": {
+        "nx": 0,
+        "ny": 1
+      },
       "parts": [
-        { "shape": "ellipse", "fill": "$shadow", "cx": 2, "cy": 4, "rx": 10, "ry": 4.9 },
-        { "shape": "roundRect", "fill": "$walls", "x": -9, "y": -7, "w": 18, "h": 14, "r": 2 },
-        { "shape": "roundRect", "fill": "$roof", "x": -10.5, "y": -8.5, "w": 21, "h": 17, "r": 2.5 },
-        { "shape": "stroke", "stroke": "$ridge", "width": 1, "pts": [[-10, 0], [10, 0]] },
-        { "shape": "rect", "fill": "$door", "x": "$doorX", "y": "$doorY", "w": 4.4, "h": 4.4 }
+        {
+          "shape": "ellipse",
+          "fill": "$shadow",
+          "cx": 2,
+          "cy": 4,
+          "rx": 10,
+          "ry": 4.9
+        },
+        {
+          "shape": "roundRect",
+          "fill": "$walls",
+          "x": -9,
+          "y": -7,
+          "w": 18,
+          "h": 14,
+          "r": 2
+        },
+        {
+          "shape": "roundRect",
+          "fill": "$roof",
+          "x": -10.5,
+          "y": -8.5,
+          "w": 21,
+          "h": 17,
+          "r": 2.5
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$ridge",
+          "width": 1,
+          "pts": [
+            [
+              -10,
+              0
+            ],
+            [
+              10,
+              0
+            ]
+          ]
+        },
+        {
+          "shape": "rect",
+          "fill": "$door",
+          "x": "$doorX",
+          "y": "$doorY",
+          "w": 4.4,
+          "h": 4.4
+        }
       ]
     }
   },
-
   "median": {
     "_note": "LA MEDIANA del Paseo — the planted strip down the middle of the avenue, with the palms on it. It is GREEN GROUND and it is a WALL: the build stamps it CLS_ACERA (`stamp_paseo_median`), wider than it is drawn, so the car stops at the visible green instead of slipping into a drawn-but-unstamped round cap and getting trapped there. Drawn by `paintMergedMedian`/the singles pass in c2d/streets.js; the minimap drew the same green from a fourth copy.",
     "soil": "#4f6f34",
@@ -293,7 +1312,6 @@
     "rail": "rgba(58,84,40,0.62)",
     "_extent_note": "The colours are data; WHERE the strip runs is not. `build_stage.py` derives the runs from the streets named after the Paseo and from a MEASURED first-cuadra corner, so it survives a rescale but cannot be lengthened by hand. See the ROADMAP row on planting lines."
   },
-
   "minimap": {
     "_note": "The HUD's own inks. Two of these were literally the pier decks with a comment pointing at structures.js — those now READ the pier registry rather than restating it, which is the whole point of this file.",
     "barro": "#9c7a4f",
@@ -303,23 +1321,62 @@
     "ferry": "#d7d2c4",
     "bridge": "#cfc3a3"
   },
-
   "malecon": {
     "_note": "EL PISO DEL FRENTE DE MAR. El mundo dice cuál suelo es paseo (`Surface.MALECON`, clase 10) y emite sus anillos de contorno; esto dice cómo se ve. Dos cosas que a propósito NO es: no es el bulevar del centro —ése es piedra gris en aparejo corrido, una calle a la que le sacaron los carros— y no es sólo cemento. Un malecón es cálido: baldosa color arena, del color de la playa que bordea y no del pueblo que tiene detrás.",
     "_key": "el clima, los mismos cuatro estados que tiene la paleta del suelo. Escrito aparte y no mezclado desde `terrain.beach` para que el valor de NOCHE pueda ser lo suyo: un paseo está ILUMINADO, y de noche su piso queda más claro que la arena al lado.",
     "_baldosaM": "El lado de una baldosa va en `world-units.json`; acá sólo el color. Una baldosa es un PATRÓN, no una textura — se dibuja como líneas y cuadros, no como ruido.",
     "band": {
-      "clear":  { "fill": "#e7d6b3", "joint": "rgba(150,132,100,0.34)", "kerb": "rgba(126,110,84,0.75)", "inlay": "rgba(255,255,255,0.20)" },
-      "storm":  { "fill": "#b3a688", "joint": "rgba(90,82,64,0.34)",    "kerb": "rgba(70,64,50,0.75)",   "inlay": "rgba(255,255,255,0.10)" },
-      "sunset": { "fill": "#eec79a", "joint": "rgba(150,110,80,0.32)",  "kerb": "rgba(130,90,66,0.72)",  "inlay": "rgba(255,240,220,0.20)" },
-      "night":  { "fill": "#6f6450", "joint": "rgba(40,36,28,0.40)",    "kerb": "rgba(30,28,22,0.70)",   "inlay": "rgba(255,236,180,0.16)" }
+      "clear": {
+        "fill": "#e7d6b3",
+        "joint": "rgba(150,132,100,0.34)",
+        "kerb": "rgba(126,110,84,0.75)",
+        "inlay": "rgba(255,255,255,0.20)"
+      },
+      "storm": {
+        "fill": "#b3a688",
+        "joint": "rgba(90,82,64,0.34)",
+        "kerb": "rgba(70,64,50,0.75)",
+        "inlay": "rgba(255,255,255,0.10)"
+      },
+      "sunset": {
+        "fill": "#eec79a",
+        "joint": "rgba(150,110,80,0.32)",
+        "kerb": "rgba(130,90,66,0.72)",
+        "inlay": "rgba(255,240,220,0.20)"
+      },
+      "night": {
+        "fill": "#6f6450",
+        "joint": "rgba(40,36,28,0.40)",
+        "kerb": "rgba(30,28,22,0.70)",
+        "inlay": "rgba(255,236,180,0.16)"
+      }
     },
     "esplanade": {
       "_note": "LA PLAZOLETA DEL FARO ES EL MISMO PISO EN OTRA PIEDRA. Es el mismo tipo de lugar —frente de mar pavimentado por el que uno camina—, así que lleva el mismo mosaico puesto igual; lo que cambia es el material. Gris, porque La Punta es concreto y escollera sobre las rocas y no baldosa cálida junto a una playa, y porque todo el punto de esa banda es leerse como UNA superficie con la acera del anillo de calle que ahora toca.",
-      "clear":  { "fill": "#c9c6bf", "joint": "rgba(112,110,104,0.34)", "kerb": "rgba(96,94,88,0.75)", "inlay": "rgba(255,255,255,0.20)" },
-      "storm":  { "fill": "#9d9c96", "joint": "rgba(70,70,66,0.34)",    "kerb": "rgba(56,56,52,0.75)", "inlay": "rgba(255,255,255,0.10)" },
-      "sunset": { "fill": "#cfbdb0", "joint": "rgba(120,100,92,0.32)",  "kerb": "rgba(104,86,78,0.72)", "inlay": "rgba(255,240,230,0.20)" },
-      "night":  { "fill": "#5c5b56", "joint": "rgba(34,34,32,0.40)",    "kerb": "rgba(26,26,24,0.70)",  "inlay": "rgba(220,228,238,0.16)" }
+      "clear": {
+        "fill": "#c9c6bf",
+        "joint": "rgba(112,110,104,0.34)",
+        "kerb": "rgba(96,94,88,0.75)",
+        "inlay": "rgba(255,255,255,0.20)"
+      },
+      "storm": {
+        "fill": "#9d9c96",
+        "joint": "rgba(70,70,66,0.34)",
+        "kerb": "rgba(56,56,52,0.75)",
+        "inlay": "rgba(255,255,255,0.10)"
+      },
+      "sunset": {
+        "fill": "#cfbdb0",
+        "joint": "rgba(120,100,92,0.32)",
+        "kerb": "rgba(104,86,78,0.72)",
+        "inlay": "rgba(255,240,230,0.20)"
+      },
+      "night": {
+        "fill": "#5c5b56",
+        "joint": "rgba(34,34,32,0.40)",
+        "kerb": "rgba(26,26,24,0.70)",
+        "inlay": "rgba(220,228,238,0.16)"
+      }
     }
   },
   "estero": {
@@ -365,9 +1422,29 @@
       "wet": "rgba(28,58,72,0.32)",
       "foam": "rgba(255,255,255,0.26)",
       "dry": "rgba(226,214,186,0.45)",
-      "waterline": {"rgb": "255,255,255", "alphaBase": 0.28, "alphaRange": 0.42, "width": 1.6},
-      "ripples": {"rgb": "255,255,255", "alphaBase": 0.10, "alphaRange": 0.16, "width": 0.9, "count": 4, "jitter": 2, "curveJitter": 2.2},
-      "aground": {"rgb": "255,255,255", "alphaBase": 0.16, "alphaRange": 0.14, "width": 1.4, "radiusBase": 1.06, "radiusRange": 0.04},
+      "waterline": {
+        "rgb": "255,255,255",
+        "alphaBase": 0.28,
+        "alphaRange": 0.42,
+        "width": 1.6
+      },
+      "ripples": {
+        "rgb": "255,255,255",
+        "alphaBase": 0.1,
+        "alphaRange": 0.16,
+        "width": 0.9,
+        "count": 4,
+        "jitter": 2,
+        "curveJitter": 2.2
+      },
+      "aground": {
+        "rgb": "255,255,255",
+        "alphaBase": 0.16,
+        "alphaRange": 0.14,
+        "width": 1.4,
+        "radiusBase": 1.06,
+        "radiusRange": 0.04
+      },
       "dryNote": "descubierto: pálido y quemado por el sol."
     },
     "pescador": {
@@ -377,14 +1454,33 @@
       "buoy": "#d9482f"
     }
   },
-
   "editorFeature": {
     "_note": "Fallback styling for semantic paths authored by the world editor. A feature may override style.color; these values keep the renderer from inventing the remaining shape or ink.",
-    "grandstand": {"fill": "#171b18", "row": "rgba(235,235,225,0.58)", "edge": "rgba(0,0,0,0.65)", "rowWidth": 1, "edgeWidth": 1.5, "maxRows": 12, "defaultRows": 3},
-    "entrance": {"stroke": "#f3c969", "width": 2, "halfWidth": 7, "halfHeight": 6},
-    "roof": {"fill": "#2f3737", "driveUnder": "#e8c765", "edge": "rgba(15,20,20,0.75)", "dayAlpha": 0.82, "nightAlpha": 0.88, "driveUnderWidth": 2, "edgeWidth": 1.5}
+    "grandstand": {
+      "fill": "#171b18",
+      "row": "rgba(235,235,225,0.58)",
+      "edge": "rgba(0,0,0,0.65)",
+      "rowWidth": 1,
+      "edgeWidth": 1.5,
+      "maxRows": 12,
+      "defaultRows": 3
+    },
+    "entrance": {
+      "stroke": "#f3c969",
+      "width": 2,
+      "halfWidth": 7,
+      "halfHeight": 6
+    },
+    "roof": {
+      "fill": "#2f3737",
+      "driveUnder": "#e8c765",
+      "edge": "rgba(15,20,20,0.75)",
+      "dayAlpha": 0.82,
+      "nightAlpha": 0.88,
+      "driveUnderWidth": 2,
+      "edgeWidth": 1.5
+    }
   },
-
   "streets": {
     "_note": "LAS MARCAS DE LA CALZADA Y LO QUE SE PINTA SOBRE UNA CANCHA. `paintRoads` se queda en código y eso no es pereza: el casing, los guiones y el caño son GEOMETRÍA DERIVADA de la clase de vía —cuánto mide, cómo se cruza, dónde termina un guión— y no una paleta. Lo que sí es paleta es de qué color sale cada cosa.",
     "field": {
@@ -456,16 +1552,46 @@
     "spray": "rgba(214,226,236,0.34)",
     "sprayNote": "sobre agua levanta rocío en vez de polvo, que es la diferencia visible entre una tromba marina y un tornado de tierra."
   },
-
   "weather": {
     "_note": "The sky, sea, sand, land and tint of each weather. Not a water palette — `ground.js` fills the playas and the land base from it, `estero.js` matches the mangrove's shore to `sand`, `canvas2d.js` lays the tint over the finished frame, and `water.js` DERIVES the whole living-sea palette from `waterTop`/`waterBot` (the ratios are in water.json). Five consumers, one table.",
     "_key": "churchill/world/enums/features.py :: Weather",
-    "sunny":  {"sky1": "#9fd9ec", "sky2": "#ffe6b3", "waterTop": "#62c2c9", "waterBot": "#2e8090", "sand": "#f1d29a", "land": "#cfb27a", "tint": "rgba(255,235,200,0.04)"},
-    "sunset": {"sky1": "#ff8b5a", "sky2": "#ff3d80", "waterTop": "#d28a6a", "waterBot": "#7a4060", "sand": "#f4c98b", "land": "#cda06a", "tint": "rgba(255,80,80,0.12)"},
-    "storm":  {"sky1": "#3a4a5e", "sky2": "#5a6a7e", "waterTop": "#3b6f7a", "waterBot": "#244b56", "sand": "#a89870", "land": "#8a9c70", "tint": "rgba(40,55,80,0.35)"},
-    "night":  {"sky1": "#0e1530", "sky2": "#222244", "waterTop": "#1a2a44", "waterBot": "#0a1428", "sand": "#6a5a48", "land": "#4a5040", "tint": "rgba(10,10,30,0.45)"}
+    "sunny": {
+      "sky1": "#9fd9ec",
+      "sky2": "#ffe6b3",
+      "waterTop": "#62c2c9",
+      "waterBot": "#2e8090",
+      "sand": "#f1d29a",
+      "land": "#cfb27a",
+      "tint": "rgba(255,235,200,0.04)"
+    },
+    "sunset": {
+      "sky1": "#ff8b5a",
+      "sky2": "#ff3d80",
+      "waterTop": "#d28a6a",
+      "waterBot": "#7a4060",
+      "sand": "#f4c98b",
+      "land": "#cda06a",
+      "tint": "rgba(255,80,80,0.12)"
+    },
+    "storm": {
+      "sky1": "#3a4a5e",
+      "sky2": "#5a6a7e",
+      "waterTop": "#3b6f7a",
+      "waterBot": "#244b56",
+      "sand": "#a89870",
+      "land": "#8a9c70",
+      "tint": "rgba(40,55,80,0.35)"
+    },
+    "night": {
+      "sky1": "#0e1530",
+      "sky2": "#222244",
+      "waterTop": "#1a2a44",
+      "waterBot": "#0a1428",
+      "sand": "#6a5a48",
+      "land": "#4a5040",
+      "tint": "rgba(10,10,30,0.45)"
+    }
   },
-
   "terrain": {
     "_note": "Presets for an editor-authored patch of ground. They overlap the surface registry on purpose and are NOT the same question: surfaces.json says what class 8 looks like everywhere, this says what swatch the editor offers when somebody paints a region by hand. The browns are deliberately the road vectors' browns, so an authored patch of barro and the calle de barro beside it are one surface to the eye as well as to the car.",
     "cuadra": "#e8d5a0",

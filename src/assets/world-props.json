@@ -1891,6 +1891,11 @@
       },
       "boulevard": {
         "label": false
+      },
+      "patio": {
+        "_": "EL PATIO DE MANZANA — lo que el anillo de casonas deja adentro. No es un parque: no se entra, se ve desde arriba por encima de los techos. Por eso no lleva placa (`label: false`) y su verde es más apagado que el de `park`. Los árboles van en las ESQUINAS INTERIORES, que es donde quedan en un patio de verdad — el centro se deja libre, y en tres manzanas del centro lo ocupa una fuente autorada.",
+        "scene": "patio",
+        "label": false
       }
     },
     "decor": {
@@ -1909,6 +1914,9 @@
       },
       "river": {
         "scene": "parkRiver"
+      },
+      "fountain": {
+        "scene": "fountain"
       }
     }
   },
@@ -4579,6 +4587,250 @@
       "heightM": 4,
       "castsShadow": false,
       "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
+    },
+    "patio": {
+      "note": "El interior de una manzana. Cuatro árboles en las esquinas, la acera que las une contra la cara interior de las casonas, y el centro libre para que una fuente autorada tenga dónde ir.",
+      "palette": {
+        "kerb": "rgba(232,226,210,0.55)",
+        "crown": "#4f7f46",
+        "crownLite": "#5f9553",
+        "trunk": "#6b4a2f"
+      },
+      "heightM": 6,
+      "castsShadow": false,
+      "parts": [
+        {
+          "_": "la acera interior: el canto contra la cara de atrás de las casonas",
+          "shape": "strokeRect",
+          "stroke": "$kerb",
+          "width": 3,
+          "x": [
+            -0.94,
+            0
+          ],
+          "y": [
+            -0.94,
+            0
+          ],
+          "w": [
+            1.88,
+            0
+          ],
+          "h": [
+            1.88,
+            0
+          ]
+        },
+        {
+          "_": "LOS CUATRO ÁRBOLES DE ESQUINA, escritos uno por uno. Con `repeat` no: sus `dx`/`dy` se evalúan en `S` (el lado menor de la parcela) mientras las posiciones van en `X`/`Y` (media anchura y media altura), así que en una parcela que no es cuadrada la segunda copia no cae en la esquina opuesta — cae adentro.",
+          "shape": "group",
+          "x": 0,
+          "y": 0,
+          "parts": [
+            {
+              "shape": "disc",
+              "fill": "$trunk",
+              "cx": [
+                -0.66,
+                0
+              ],
+              "cy": [
+                -0.66,
+                0
+              ],
+              "r": [
+                0.05,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$crown",
+              "cx": [
+                -0.66,
+                0
+              ],
+              "cy": [
+                -0.62,
+                0
+              ],
+              "r": [
+                0.19,
+                0
+              ],
+              "heightM": 6,
+              "castsShadow": true
+            },
+            {
+              "shape": "disc",
+              "fill": "$crownLite",
+              "cx": [
+                -0.62,
+                0
+              ],
+              "cy": [
+                -0.57,
+                0
+              ],
+              "r": [
+                0.1,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$trunk",
+              "cx": [
+                0.66,
+                0
+              ],
+              "cy": [
+                -0.66,
+                0
+              ],
+              "r": [
+                0.05,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$crown",
+              "cx": [
+                0.66,
+                0
+              ],
+              "cy": [
+                -0.62,
+                0
+              ],
+              "r": [
+                0.19,
+                0
+              ],
+              "heightM": 6,
+              "castsShadow": true
+            },
+            {
+              "shape": "disc",
+              "fill": "$crownLite",
+              "cx": [
+                0.62,
+                0
+              ],
+              "cy": [
+                -0.57,
+                0
+              ],
+              "r": [
+                0.1,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$trunk",
+              "cx": [
+                -0.66,
+                0
+              ],
+              "cy": [
+                0.66,
+                0
+              ],
+              "r": [
+                0.05,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$crown",
+              "cx": [
+                -0.66,
+                0
+              ],
+              "cy": [
+                0.62,
+                0
+              ],
+              "r": [
+                0.19,
+                0
+              ],
+              "heightM": 6,
+              "castsShadow": true
+            },
+            {
+              "shape": "disc",
+              "fill": "$crownLite",
+              "cx": [
+                -0.62,
+                0
+              ],
+              "cy": [
+                0.57,
+                0
+              ],
+              "r": [
+                0.1,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$trunk",
+              "cx": [
+                0.66,
+                0
+              ],
+              "cy": [
+                0.66,
+                0
+              ],
+              "r": [
+                0.05,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$crown",
+              "cx": [
+                0.66,
+                0
+              ],
+              "cy": [
+                0.62,
+                0
+              ],
+              "r": [
+                0.19,
+                0
+              ],
+              "heightM": 6,
+              "castsShadow": true
+            },
+            {
+              "shape": "disc",
+              "fill": "$crownLite",
+              "cx": [
+                0.62,
+                0
+              ],
+              "cy": [
+                0.57,
+                0
+              ],
+              "r": [
+                0.1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "_coords": "LAS COORDENADAS VAN EN `[k, px]`, no en un número suelto. `evalOn` devuelve un número tal cual —es un ABSOLUTO en píxeles— y sólo la forma de arreglo lo lee como fracción del marco. Escrito `cx: -0.66` los cuatro árboles salieron como discos de medio píxel en el centro de la parcela: no dio error, no dio warning, simplemente no había patio. Es la misma forma que usa la catedral (`\"x\": [-1, 3]`)."
     }
   }
 }

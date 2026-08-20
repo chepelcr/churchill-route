@@ -29,7 +29,7 @@ from ..config import (
     MARINE_STRUCTURE_PARCEL_PAD_PX, PASEO_LEON, PASEO_MEDIAN_W, PASEO_TURISTAS,
     STREET_CLASSES, SYNTH_MAX_TOTAL, flora_registry, px, road_width_px,
 )
-from ..content import (
+from ..content import (CASONA_DEF, FOUNTAIN_DEFS, 
     APRON_DEFS, BLDG_PALETTE, FOOTPRINT_LOT_BLOCKS, LANDMARK_DEFS,
     MARINE_BUILDING_NAMES, MARINE_SITE_OSM_ID, ROOF_PALETTE, WATER_INLET_LMS,
     blocks_by_layout,
@@ -47,6 +47,7 @@ from ..service.block import (
     outline_polys,
 )
 from ..service.building import (
+    manzana_patios,
     _grid_placer, fit_manzana_contents, make_rng, snap_osm_buildings,
     synth_buildings,
 )
@@ -1029,11 +1030,107 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             for cr in range(int(min(ys) // CUAD), int(max(ys) // CUAD) + 1):
                 occ.add((cc, cr))
     buildings = snap_osm_buildings(raw_bldgs, cell_block, occ)
+    # QUÉ MANZANAS LLEVAN CASONAS. Dos condiciones y ninguna es opcional.
+    #
+    # 1. EL PUERTO VIEJO, y nada más al este. La fachada continua es Puntarenas
+    #    del faro a El Cocal; La Angostura ya es otra cosa y Esparza, Barranca y
+    #    El Roble son pueblo moderno de edificios sueltos. El límite es un punto
+    #    GEO —la longitud de La Angostura— porque un x es verdad sólo a la
+    #    escala en que se escribió, y este mundo ya se reescaló tres veces.
+    # 2. LA MANZANA QUE OSM DEJÓ VACÍA. Donde el mapeador puso edificios, ésos
+    #    mandan: la cuadra se rellena alrededor con lotes sueltos que no le
+    #    disputan suelo a ninguna huella ni a ninguna parcela.
+    casona_x = None
+    if CASONA_DEF.get("westOfLon") is not None:
+        casona_x = fields.project_ll(9.978, CASONA_DEF["westOfLon"])[0]
+    real_cells = set()
+    for b in buildings:
+        xs, ys = b["pts"][0::2], b["pts"][1::2]
+        for cc in range(int(min(xs) // CUAD), int(max(xs) // CUAD) + 1):
+            for cr in range(int(min(ys) // CUAD), int(max(ys) // CUAD) + 1):
+                real_cells.add((cc, cr))
+    for raw in named_raw:
+        xs = [p2[0] for p2 in raw["pts"]]; ys = [p2[1] for p2 in raw["pts"]]
+        for cc in range(int(min(xs) // CUAD), int(max(xs) // CUAD) + 1):
+            for cr in range(int(min(ys) // CUAD), int(max(ys) // CUAD) + 1):
+                real_cells.add((cc, cr))
+
+    def _is_casona_block(b):
+        if casona_x is None:
+            return False
+        cells = b["cells"]
+        cx = sum(c for c, _ in cells) / len(cells) * CUAD
+        if cx >= casona_x:
+            return False                       # de La Angostura al este, no
+        return not any(c in real_cells for c in cells)
+
     synth = synth_buildings([b for b in blocks if not b["green"]],
-                            cell_block, occ, len(buildings))
+                            cell_block, occ, len(buildings),
+                            casona=CASONA_DEF, is_casona_block=_is_casona_block)
     log("buildings", f"+{len(synth)} synthesized in cuadra frontage bands "
           f"(total {len(buildings) + len(synth)})")
     buildings = buildings + synth
+    # EL PATIO DE CADA MANZANA — emitido DESPUÉS de las casonas y de los
+    # edificios reales, porque es literalmente lo que ellos dejan. `occ` a esta
+    # altura ya conoce las parcelas de OSM, las huellas con nombre y los aprons
+    # de kiosco, así que el patio no le disputa suelo a nadie: es el resto.
+    #
+    # No se estampa nada. El anillo es continuo, así que el patio no entra a la
+    # red manejable y la compuerta de conectividad no cambia — se ve desde
+    # arriba por encima de los techos, que es para lo que está.
+    n_patio, n_fuente = 0, 0
+    # La lista se ata UNA vez. `green` se enciende mientras se emiten parcelas
+    # (una parcela que es casi toda su cuadra apaga los edificios del bloque),
+    # así que re-filtrar dentro del bucle indexa contra una lista que se está
+    # encogiendo — y eso fue un IndexError, no un dibujo raro.
+    buildable = [b for b in blocks if not b["green"]]
+    for bi, inner in manzana_patios(buildable, occ):
+        block = buildable[bi]
+        cells = {(cc * CUAD_CELLS + dc, cr * CUAD_CELLS + dr)
+                 for (cc, cr) in inner
+                 for dc in range(CUAD_CELLS) for dr in range(CUAD_CELLS)}
+        ang = float(streets.angle_at(
+            (min(c for c, _ in cells) + max(c for c, _ in cells)) / 2 * GRID_CELL,
+            (min(r for _, r in cells) + max(r for _, r in cells)) / 2 * GRID_CELL) or 0.0)
+        pid = f"patio_{block['cells'] and min(block['cells'])[0]}_{min(block['cells'])[1]}"
+        part = {"id": pid, "name": "Patio de manzana", "use": ParcelUse.PATIO,
+                "decor": False, "label": False}
+        rec = fields._emit_parcel(pid, part, cells, cells, ang=ang)
+        if rec is None:
+            continue
+        n_patio += 1
+        # LA FUENTE ES AUTORADA, no derivada. 976 fuentes idénticas serían el
+        # mismo problema que la multitud con `fan` escrito cuatro veces: nada
+        # distinguiría al Parque Central. El ancla es GEO, como en
+        # `manzana_style`, porque el id de una cuadra es el hash de su contorno.
+        for spec in FOUNTAIN_DEFS:
+            fx, fy = fields.project_ll(*spec["at"])
+            if rec["x0"] <= fx <= rec["x1"] and rec["y0"] <= fy <= rec["y1"]:
+                rec["fountain"] = True
+                if spec.get("name"):
+                    rec["name"] = spec["name"]
+                n_fuente += 1
+                break
+    # LOS PATIOS MÁS GRANDES, EN GEO — el log es la superficie donde se autora.
+    # Una fuente se ancla por punto geo y sólo cae si hay patio debajo; sin esto
+    # la única forma de encontrar uno es adivinar una coordenada y volver a
+    # correr el build, que a 33 minutos no es una forma.
+    # La proyección es EXACTAMENTE lineal en lat/lon, así que dos sondas la
+    # invierten — no hace falta arrastrar el afín del manifest hasta acá, que
+    # todavía no existe a esta altura del build.
+    _a = fields.project_ll(9.90, -84.90)
+    _b = fields.project_ll(10.00, -84.70)
+    _ax = (_b[0] - _a[0]) / 0.20
+    _ay = (_b[1] - _a[1]) / 0.10
+    def _ll(px, py):
+        return (round(9.90 + (py - _a[1]) / _ay, 6),
+                round(-84.90 + (px - _a[0]) / _ax, 6))
+    biggest = sorted(parcels, key=lambda r: -((r["x1"] - r["x0"]) * (r["y1"] - r["y0"])))
+    for r in [r for r in biggest if r["use"] == ParcelUse.PATIO][:6]:
+        lat, lon = _ll(r["cx"], r["cy"])
+        log("parcel", f"  patio grande {r['id']:22s} {r['x1'] - r['x0']:4d}x"
+            f"{r['y1'] - r['y0']:4d}px  at [{lat}, {lon}]")
+    log("parcel", f"{n_patio} patios de manzana ({n_fuente} con fuente autorada)")
     # gate: every footprint sits on the cuadrícula (inset seam on each edge)
     for b in buildings:
         xs, ys = b["pts"][0::2], b["pts"][1::2]

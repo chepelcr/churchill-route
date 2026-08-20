@@ -353,8 +353,24 @@ SYNTH_MAX_TOTAL = 80000         # cap on real + synthesized buildings (raised so
                                 # at all and nothing is being starved.
 SYNTH_SEED = 77
 BLDG_INSET = 2                  # px seam per side so adjacent roofs don't fuse
-FRONTAGE_DEPTH = 3              # buildable band (CUADs) from the block edge
-SMALL_BLOCK_CUADS = 188         # blocks <= this many cuadrículas fill completely
+# LA MANZANA ES UN ANILLO DE CASONAS CON UN PATIO ADENTRO, que es como está
+# hecha una manzana colonial y como se ve Puntarenas desde arriba. Antes toda
+# cuadra bajo `SMALL_BLOCK_CUADS` se llenaba ENTERA —«dense puerto — no empty
+# centers»— y 188 cuadrículas de 8 m son 1,2 ha: una manzana normal de 80x80 m
+# son ~100, así que la excepción era la regla y CADA manzana salía maciza.
+# Medido sobre 95 cuadras del centro: mediana de 25 huellas sueltas y 54,3 % del
+# suelo cubierto, con una de 125.
+#
+# El anillo tiene la profundidad de una casona de verdad —sala, corredor,
+# cuarto— y lo que queda adentro es el patio.
+CASONA_RING_CUADS = 2           # 16 m de fondo construido desde la calle
+# …y cuánto resto hace falta para que eso sea un PATIO y no un hueco. Nueve
+# cuadrículas son 24x24 m: cabe una fuente, su acera y cuatro árboles en las
+# esquinas. Por debajo de eso el anillo ES la manzana, que es lo que pasa en las
+# cuadras angostas del arenal, y no se le inventa un vacío.
+PATIO_MIN_CUADS = 9
+FRONTAGE_DEPTH = 3              # (histórico) banda edificable de una cuadra grande
+SMALL_BLOCK_CUADS = 188         # (histórico) el umbral que hacía maciza a toda manzana
                                 # (dense town); bigger ones keep patio interiors
 OSM_MAX_CUADS = 4               # cap OSM footprints at 4x4 cuadrículas
 # weighted synth footprint mix (w x h in cuadrículas)

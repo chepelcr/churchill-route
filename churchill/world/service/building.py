@@ -12,7 +12,7 @@ some earlier stage happened to draw.
 import math
 from collections import defaultdict, deque
 
-from ..config import BLDG_INSET, CUAD, FRONTAGE_DEPTH, OSM_MAX_CUADS, SMALL_BLOCK_CUADS, SYNTH_LOTS, SYNTH_MAX_TOTAL, SYNTH_SEED
+from ..config import BLDG_INSET, CASONA_RING_CUADS, CUAD, OSM_MAX_CUADS, PATIO_MIN_CUADS, SYNTH_LOTS, SYNTH_MAX_TOTAL, SYNTH_SEED
 from ..content import BLDG_PALETTE, ROOF_PALETTE
 from ..logging import log, warn
 
@@ -110,13 +110,167 @@ def snap_osm_buildings(raws, cell_block, occ):
     log("buildings", f"{len(out)} OSM snapped to the cuadrícula, {dropped} no-fit")
     return out
 
-def synth_buildings(blocks, cell_block, occ, n_real):
-    """Fill cuadras with whole-cuadrícula lots. Small town blocks fill
-    COMPLETELY (dense puerto — no empty centers); large blocks keep only a
-    frontage band so their interiors read as patios/parks. Deterministic:
-    sorted block/cell order + seeded rng."""
+def block_depths(cells):
+    """Distancia en cuadrículas de cada celda al borde de la manzana.
+
+    Era una transformada de distancia local dentro de `synth_buildings`. Salió
+    porque ahora responde DOS preguntas con una sola pasada: cuál es el anillo
+    construido (`depth <= CASONA_RING_CUADS`) y cuál es el patio que queda
+    adentro. Calcularla dos veces sería dos verdades que se pueden despegar.
+    """
+    depth, q = {}, deque()
+    for (cc, cr) in cells:
+        if any((cc + dx, cr + dy) not in cells
+               for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+            depth[(cc, cr)] = 1
+            q.append((cc, cr))
+    while q:
+        cc, cr = q.popleft()
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nb = (cc + dx, cr + dy)
+            if nb in cells and nb not in depth:
+                depth[nb] = depth[(cc, cr)] + 1
+                q.append(nb)
+    return depth
+
+
+def manzana_patios(blocks, occ, min_cuads=PATIO_MIN_CUADS):
+    """EL PATIO DE CADA MANZANA — las cuadrículas que el anillo de casonas deja.
+
+    Devuelve `[(block_index, cells)]`. Un patio es lo que queda pasado
+    `CASONA_RING_CUADS` desde la calle, MENOS lo que ya está ocupado: una
+    parcela de OSM, una huella con nombre, el apron de un kiosco. `occ` ya sabe
+    todo eso, así que el patio no se pelea con nadie — simplemente es el resto.
+
+    Una manzana sin resto no tiene patio y no se le inventa uno: en el arenal
+    hay cuadras de tres cuadrículas de ancho donde el anillo es la manzana
+    entera, y meterles un patio sería meterles un hueco.
+    """
+    out = []
+    for bi, b in enumerate(blocks):
+        if b.get("wood") or b.get("green"):
+            continue
+        cells = b["cells"]
+        depth = block_depths(cells)
+        inner = {c for c in cells
+                 if depth.get(c, 0) > CASONA_RING_CUADS and c not in occ}
+        if len(inner) >= min_cuads:
+            out.append((bi, inner))
+    return out
+
+
+def _pick_variant(weights, seed_cell):
+    """Qué reparto le toca a esta manzana — determinista por su posición.
+
+    Un `random` de proceso haría que el mundo dependiera de cuántos números
+    sacó una etapa anterior, que es la razón por la que este módulo trae su
+    propio LCG. La semilla es la celda mínima de la cuadra: estable mientras la
+    cuadra lo sea, y distinta entre vecinas.
+    """
+    names = [k for k in weights if not k.startswith("_")]
+    total = sum(weights[k] for k in names) or 1.0
+    h = ((seed_cell[0] * 73856093) ^ (seed_cell[1] * 19349663)) % 100000 / 100000.0
+    acc = 0.0
+    for k in names:
+        acc += weights[k] / total
+        if h <= acc:
+            return k
+    return names[-1]
+
+
+def _runs_in_row(row_cells):
+    """Maximal contiguous runs of columns in one row — `[(c0, c1), …]`."""
+    out, run = [], None
+    for c in sorted(row_cells):
+        if run is None or c != run[1] + 1:
+            if run is not None:
+                out.append(run)
+            run = [c, c]
+        else:
+            run[1] = c
+    if run is not None:
+        out.append(run)
+    return [tuple(r) for r in out]
+
+
+def casona_ring(cells, depth, occ, rng, variant, run_max, walls, roofs):
+    """UNA HILERA DE CASONAS sobre las calles de una manzana — fachada continua.
+
+    Se emite POR CORRIDA, no por lote: un tramo contiguo de cuadrículas sobre
+    una misma fila sale como UNA huella, con su propio color de cal. Eso es lo
+    que separa una hilera de casas pegadas de veinticinco cajitas con costura —
+    `BLDG_INSET` deja 4 px entre vecinos a propósito «so adjacent roofs don't
+    fuse», y fusionarse es exactamente lo que una casona hace.
+
+    `variant` reparte la manzana sin que todas se vean iguales:
+      * `full`   — las cuatro caras;
+      * `half`   — sólo las corridas largas, extremos cortos abiertos;
+      * `corner` — sólo lo que toca una esquina.
+    """
+    rows = {}
+    for (cc, cr) in cells:
+        if depth.get((cc, cr), 99) <= CASONA_RING_CUADS and (cc, cr) not in occ:
+            rows.setdefault(cr, set()).add(cc)
+    if not rows:
+        return []
+    r0, r1 = min(rows), max(rows)
+    c0 = min(c for row in rows.values() for c in row)
+    c1 = max(c for row in rows.values() for c in row)
+    out = []
+    for cr, row in sorted(rows.items()):
+        for (a, b) in _runs_in_row(row):
+            long_run = (b - a + 1) > CASONA_RING_CUADS
+            if variant == "half" and not long_run:
+                continue                       # los extremos cortos quedan abiertos
+            if variant == "corner":
+                near = (cr - r0 <= CASONA_RING_CUADS or r1 - cr <= CASONA_RING_CUADS)
+                if not near and not (a - c0 <= CASONA_RING_CUADS or c1 - b <= CASONA_RING_CUADS):
+                    continue
+            # Partir la corrida en casonas: una fachada de manzana entera no es
+            # un edificio, es una cuadra de edificios pegados.
+            x = a
+            while x <= b:
+                n = min(run_max, b - x + 1)
+                if n <= 0:
+                    break
+                if rng() < 0.06 and n > 1:      # el portón, el solar de en medio
+                    x += 1
+                    continue
+                claimed = [(cx, cr) for cx in range(x, x + n)]
+                if any(c in occ for c in claimed):
+                    x += n
+                    continue
+                for c in claimed:
+                    occ.add(c)
+                i = int(rng() * len(walls))
+                j = int(rng() * len(roofs))
+                x0 = x * CUAD + BLDG_INSET
+                y0 = cr * CUAD + BLDG_INSET
+                x1 = (x + n) * CUAD - BLDG_INSET
+                y1 = (cr + 1) * CUAD - BLDG_INSET
+                out.append({"pts": [x0, y0, x1, y0, x1, y1, x0, y1],
+                            "color": walls[i], "roof": roofs[j],
+                            "wnd": 1, "casona": 1})
+                x += n
+    return out
+
+
+def synth_buildings(blocks, cell_block, occ, n_real, casona=None,
+                    is_casona_block=None):
+    """UN ANILLO DE CASONAS SOBRE LAS CALLES, y un patio adentro.
+
+    Toda manzana se construye igual: una banda de `CASONA_RING_CUADS` de fondo
+    contra la calle, y el interior queda libre. Antes las cuadras chicas se
+    llenaban ENTERAS —«dense puerto — no empty centers»— y con el umbral en 188
+    cuadrículas eso era, en la práctica, todas: medido sobre 95 cuadras del
+    centro daba 25 huellas sueltas por manzana y 54,3 % del suelo cubierto.
+
+    La banda sale de la misma transformada de distancia que ya se calculaba; lo
+    único que cambia es que nadie pasa de ella. Determinista: orden de bloque y
+    celda ordenado, más un rng con semilla."""
     rng = make_rng(SYNTH_SEED)
     out = []
+    n_casona = {}
     for bi in sorted(range(len(blocks)), key=lambda i: min(blocks[i]["cells"])):
         # EL MONTE IS NOT BUILDABLE. These are the rural blobs — 95 % of all
         # cuadra ground — and filling their frontage band is what made the demand
@@ -126,24 +280,27 @@ def synth_buildings(blocks, cell_block, occ, n_real):
         if blocks[bi].get("wood"):
             continue
         cells = blocks[bi]["cells"]
-        depth, q = {}, deque()
-        for (cc, cr) in cells:
-            if any((cc + dx, cr + dy) not in cells
-                   for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
-                depth[(cc, cr)] = 1
-                q.append((cc, cr))
-        while q:
-            cc, cr = q.popleft()
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nb = (cc + dx, cr + dy)
-                if nb in cells and nb not in depth:
-                    depth[nb] = depth[(cc, cr)] + 1
-                    q.append(nb)
-        # small blocks: fill the whole cuadra; large blocks: frontage band only
-        if len(cells) <= SMALL_BLOCK_CUADS:
-            band = set(cells)
-        else:
-            band = {c for c in cells if depth[c] <= FRONTAGE_DEPTH}
+        depth = block_depths(cells)
+        # ¿ESTA MANZANA LLEVA CASONAS? Dos condiciones, y las dos importan:
+        # está en el puerto viejo (del faro a El Cocal — Esparza y Barranca no
+        # son eso) y OSM la dejó VACÍA. Donde el mapeador puso edificios, ésos
+        # mandan y se rellena alrededor con lotes sueltos: una fachada continua
+        # encima de huellas reales sería el mundo peleándose consigo mismo.
+        if is_casona_block and is_casona_block(blocks[bi]):
+            variant = _pick_variant(casona["variants"], min(cells))
+            made = casona_ring(cells, depth, occ, rng, variant,
+                               casona.get("runMaxCuads", 4),
+                               casona["palette"]["walls"],
+                               casona["palette"]["roofs"])
+            out.extend(made)
+            n_casona[variant] = n_casona.get(variant, 0) + 1
+            if n_real + len(out) >= SYNTH_MAX_TOTAL:
+                return out
+            continue
+        # …y si no, el anillo de lotes sueltos de siempre. `depth` es la
+        # distancia a la calle en cuadrículas, así que esto es «lo que da al
+        # frente» — el interior queda para el patio.
+        band = {c for c in cells if depth[c] <= CASONA_RING_CUADS}
         for cell0 in sorted(band, key=lambda c: (c[1], c[0])):
             if cell0 in occ:
                 continue
@@ -173,6 +330,9 @@ def synth_buildings(blocks, cell_block, occ, n_real):
                     break
             if n_real + len(out) >= SYNTH_MAX_TOTAL:
                 return out
+    if n_casona:
+        log("buildings", "casonas por manzana: "
+            + ", ".join(f"{k} {v}" for k, v in sorted(n_casona.items())))
     return out
 
 

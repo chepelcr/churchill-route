@@ -974,6 +974,40 @@ Three things this had to get right, and two of them cost a mistake:
   band table in the registry. A tag-based height needs the extractor to keep the
   tag, i.e. a rebuild.
 
+**UNA ESCENA TAMBIÉN TIENE ALTURA** (`heightM` / `castsShadow` en
+`world-props.json`). Las escenas eran la mitad que faltaba: la catedral llevaba
+literalmente una primera parte *«la sombra: el mismo cuerpo corrido +3,+5»* —un
+`roundRect` que sólo cubría la NAVE, ignoraba crucero, ábside, cimborrio, torres
+y cruz, y no sabía qué hora era—. Ahora cada masa declara METROS y `paintParts`
+hace una PRIMERA PASADA sobre las mismas partes. Tres cosas son load-bearing:
+
+* **el sol entra POR EL FRAME** (`frame.shadow`, `frame.shadowInk`), porque
+  `shapes.js` no puede importar `shadows.js` —arrastraría `daynight.js` y con él
+  el juego— y `tests/test_shape_interpreter.py` fija esa lista. El juego pasa el
+  sol real; el editor, uno fijo. **Sin las dos cosas no hay pasada**, y sin ellas
+  el cuadro sale idéntico al de antes: eso es lo que hace la migración
+  demostrable pixel a pixel. Un color por defecto aquí sería una tinta autorada
+  dentro del intérprete, que es exactamente lo que la prueba prohíbe;
+* **el offset va en los EVALUADORES `X`/`Y`, no en un `translate`** — la misma
+  razón medida que documenta el verbo `group` (207 px): Canvas no rasteriza
+  igual un camino absoluto que el mismo camino bajo un `translate` fraccionario.
+  Y como todo ancho se calcula `X(w) - X(0)`, un offset constante se cancela;
+* **una parte que proyecta se toma ENTERA, subárbol incluido**, y las alturas se
+  heredan hacia adentro. Por eso un `group` tira UNA silueta y no una por hijo,
+  que es la diferencia entre una catedral con sombra y una catedral con un
+  montón de sombras. El detalle —cornisas, puertas, columnas— lleva
+  `castsShadow: false` heredado para no tirar una segunda sombra sobre la que ya
+  tira lo que lo sostiene.
+
+La única `$shadow` pintada a mano que queda es la de `greenSpace`, y no es una
+excepción sino la distinción: es el canto de la LOSA de césped contra el suelo,
+no la sombra de un cuerpo. Un parque no se levanta sobre su propia parcela.
+
+`pnpm smoke:sceneshadows` lo mide con el pintor de verdad —y resuelve la URL
+VIVA de `daynight.js` desde `shadows.js`, igual que `shot-parcels` resuelve la de
+`gfx.js`: con HMR encima, importar la ruta lisa acuña una segunda instancia y el
+reloj que se mueve no es el que el pintor lee.
+
 `pnpm smoke:shadows` measures what a screenshot cannot: that the offset SWEEPS
 with the hour in small steps (7.03 px across the day, worst step 0.38), that a
 block's shadow is many times a person's, and that inferred height rises with

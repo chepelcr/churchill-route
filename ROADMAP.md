@@ -67,10 +67,13 @@ Flora, actores y ferry ya declaran `heightM`; los edificios infieren altura y
 esas familias desplazan sus sombras con el sol. Éste es ahora el siguiente plan,
 descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
-- [ ] **Bandas de altura de escenas.** Agregar `heightM`/`castsShadow` heredable
-      a parts/groups y una pasada de máscara que reutilice la silueta. La
-      catedral es el primer fixture: nave, crucero, cimborrio y campanarios a
-      alturas distintas. Retirar entonces sus offsets de sombra artísticos.
+- [x] ~~**Bandas de altura de escenas.**~~ **Hecho el 2026-08-20.**
+      `heightM`/`castsShadow` se heredan por parts/groups y `paintParts` hace una
+      primera pasada sobre las mismas partes, con el sol entrando por el frame.
+      La catedral fue el fixture —nave 8 m, crucero 8, cimborrio 14, campanarios
+      18— y se retiró su `$shadow`, más las de civicBuilding, school, fuel,
+      kiosco, parkRiver y lote. Siete hojas de arte salieron idénticas y
+      `pnpm smoke:sceneshadows` mide que la sombra barre 50 px en el día.
 
 - [ ] **La fuente: las curvas de nivel del IGN.** `IGN_1:curvas_1000` por el WFS
       de SNIT trae un `LineString` con `elevacion` en metros — el control

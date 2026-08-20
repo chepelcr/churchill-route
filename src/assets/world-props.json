@@ -2245,7 +2245,8 @@
           "cy": 0,
           "r": 14
         }
-      ]
+      ],
+      "_shadow": "ESTA SÍ SE QUEDA, y no es una excepción sino la distinción: no es la sombra de un cuerpo sino el canto de la LOSA de césped contra el suelo del parque. Un parque no tiene altura sobre su propia parcela, así que no hay metros que declarar y no hay sol al que seguir."
     },
     "fountain": {
       "note": "La fuente in the middle of a plaza. Animated off the shared clock, so the ripple count and the jet period are knobs but the phase is not.",
@@ -2428,7 +2429,6 @@
     "cathedral": {
       "note": "La Catedral — stone, not stucco, sized off its parcel and facing east onto the calle peatonal. A placeholder for a proper mockup, so everything is derived from the lot.",
       "palette": {
-        "shadow": "rgba(0,0,0,0.22)",
         "step": "rgba(232,226,210,0.85)",
         "cross": "#fff",
         "stone": "#a9a49b",
@@ -2652,28 +2652,6 @@
       },
       "parts": [
         {
-          "_": "la sombra: el mismo cuerpo corrido +3,+5",
-          "shape": "roundRect",
-          "fill": "$shadow",
-          "x": [
-            -1,
-            3
-          ],
-          "y": [
-            -1,
-            5
-          ],
-          "w": [
-            2,
-            0
-          ],
-          "h": [
-            2,
-            0
-          ],
-          "r": 4
-        },
-        {
           "_": "la nave",
           "shape": "roundRect",
           "fill": "$stone",
@@ -2693,7 +2671,9 @@
             2,
             0
           ],
-          "r": 3
+          "r": 3,
+          "heightM": 8,
+          "castsShadow": true
         },
         {
           "_": "EL CRUCERO: los brazos de la cruz. Mide en $tw x $th, asi que adentro todo vuelve a ser una fraccion — que es la razon de ser del verbo `group`.",
@@ -2748,7 +2728,9 @@
                 -4
               ]
             }
-          ]
+          ],
+          "heightM": 8,
+          "castsShadow": true
         },
         {
           "_": "la cumbrera clara bajando la nave",
@@ -2801,7 +2783,9 @@
                 0
               ]
             }
-          ]
+          ],
+          "heightM": 14,
+          "castsShadow": true
         },
         {
           "_": "el abside: el remate redondo del OESTE. `S` de esta escena ES W2, asi que 0.9 de W2 se escribe limpio.",
@@ -2815,7 +2799,9 @@
           "r": [
             0.9,
             0
-          ]
+          ],
+          "heightM": 8,
+          "castsShadow": true
         },
         {
           "_": "LA FACHADA ESTE: dos campanarios flanqueando la puerta. El `for (const s of [-1, 1])` es un `repeat` de dos; su y arranca en $towerTop y salta $towerStep, los dos en pixeles porque dependen de `tr` y de W2 a la vez.",
@@ -2851,7 +2837,9 @@
                 }
               ]
             }
-          ]
+          ],
+          "heightM": 18,
+          "castsShadow": true
         },
         {
           "_": "el atrio: las gradas palidas saliendo de la puerta hacia el bulevar. `max(6, L*0.12)` es la forma acotada.",
@@ -2903,12 +2891,14 @@
           "w": "$crossW",
           "h": 2
         }
-      ]
+      ],
+      "heightM": 8,
+      "castsShadow": false,
+      "_heights": "LA CATEDRAL NO ES UN CUERPO. La primera parte era literalmente 'la sombra: el mismo cuerpo corrido +3,+5' — un roundRect que sólo cubría la NAVE, ignoraba crucero, ábside, cimborrio, torres y cruz, y no sabía qué hora era. Ahora cada masa declara su altura EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow` va en false por defecto para que la cumbrera, el atrio y la cruz —detalle sobre otra masa— no tiren una segunda sombra encima de la que ya tira lo que las sostiene."
     },
     "civicBuilding": {
       "note": "La Casa de la Cultura, drawn to fill its parcel.",
       "palette": {
-        "shadow": "rgba(0,0,0,0.22)",
         "wall": "#e7ddc8",
         "roof": "#b98a5e",
         "stoneLite": "@cathedral.stoneLite",
@@ -2918,28 +2908,6 @@
       "inset": 0.86,
       "_inset": "el edificio se planta al 86% del lote: el resto es su retiro, que es lo que hace que lea como un edificio en su terreno y no como el terreno pintado.",
       "parts": [
-        {
-          "shape": "roundRect",
-          "fill": "$shadow",
-          "x": [
-            -1,
-            7
-          ],
-          "y": [
-            -1,
-            8
-          ],
-          "w": [
-            2,
-            -8
-          ],
-          "h": [
-            2,
-            -8
-          ],
-          "r": 3,
-          "_": "la sombra: el mismo cuerpo corrido +3,+4. Queda fija a proposito — es una escena de parcela, no una figura, y moverla con el sol es la ronda que sigue."
-        },
         {
           "shape": "roundRect",
           "fill": "$wall",
@@ -2960,7 +2928,9 @@
             -8
           ],
           "r": 3,
-          "_": "el cuerpo de repello"
+          "_": "el cuerpo de repello",
+          "heightM": 8,
+          "castsShadow": true
         },
         {
           "shape": "rect",
@@ -3011,7 +2981,10 @@
             }
           ]
         }
-      ]
+      ],
+      "heightM": 8,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
     },
     "school": {
       "note": "Escuela / kínder / campus: a swept yard with pavilions along one edge and a marked court when the lot is big enough. HOW MANY pavilions is a function of the frontage, which is why this is a scene.",
@@ -3019,7 +2992,6 @@
       "palette": {
         "yard": "rgba(214,206,180,0.55)",
         "court": "rgba(240,238,230,0.55)",
-        "shadow": "rgba(0,0,0,0.22)",
         "courtLine": "rgba(90,80,60,0.45)",
         "pavilion": "rgba(240,238,230,0.85)",
         "useWall": "#f0e4c4",
@@ -3299,24 +3271,6 @@
           "parts": [
             {
               "shape": "roundRect",
-              "fill": "$shadow",
-              "x": [
-                -1,
-                2
-              ],
-              "y": [
-                -1,
-                -1
-              ],
-              "w": "$fitWidth",
-              "h": [
-                1,
-                0
-              ],
-              "r": 2
-            },
-            {
-              "shape": "roundRect",
               "fill": "$useWall",
               "x": [
                 -1,
@@ -3378,7 +3332,9 @@
                 }
               ]
             }
-          ]
+          ],
+          "heightM": 6,
+          "castsShadow": true
         },
         {
           "_": "El asta, al borde del patio.",
@@ -3426,7 +3382,10 @@
           },
           "h": 2.6
         }
-      ]
+      ],
+      "heightM": 6,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
     },
     "garden": {
       "note": "El arbolado de parque: values posee visibilidad, cantidad, seeds y claro central; la silueta de cada especie viene de flora.json.",
@@ -3568,10 +3527,8 @@
       "note": "La gasolinera: a canopy over its islands, with the pumps.",
       "_frame": "X es la media extensión LARGA y Y la CORTA; values da el cuarto de vuelta cuando la larga no es la x del host.",
       "palette": {
-        "shadow": "rgba(0,0,0,0.22)",
         "canopy": "#e9e3d4",
         "band": "#d94f3d",
-        "canopyShadow": "rgba(0,0,0,0.20)",
         "shop": "#f0efe9",
         "pump": "#9aa0a8",
         "pumpDark": "#5c6169"
@@ -3629,28 +3586,6 @@
       },
       "parts": [
         {
-          "_": "sombra de la tienda, contra el borde trasero",
-          "shape": "roundRect",
-          "fill": "$shadow",
-          "x": [
-            -1,
-            2
-          ],
-          "y": [
-            -1,
-            2
-          ],
-          "w": [
-            0.68,
-            0
-          ],
-          "h": [
-            0.6,
-            0
-          ],
-          "r": 2
-        },
-        {
           "shape": "roundRect",
           "fill": "$canopy",
           "x": [
@@ -3669,7 +3604,9 @@
             0.6,
             0
           ],
-          "r": 2
+          "r": 2,
+          "heightM": 5.5,
+          "castsShadow": true
         },
         {
           "shape": "rect",
@@ -3693,28 +3630,6 @@
           }
         },
         {
-          "_": "sombra de la marquesina",
-          "shape": "roundRect",
-          "fill": "$canopyShadow",
-          "x": [
-            -0.12,
-            0
-          ],
-          "y": [
-            -0.56,
-            2.5
-          ],
-          "w": [
-            1.12,
-            0
-          ],
-          "h": [
-            1.12,
-            0
-          ],
-          "r": 2
-        },
-        {
           "shape": "roundRect",
           "fill": "$shop",
           "x": [
@@ -3733,7 +3648,9 @@
             1.12,
             0
           ],
-          "r": 2
+          "r": 2,
+          "heightM": 4,
+          "castsShadow": true
         },
         {
           "shape": "rect",
@@ -3844,14 +3761,16 @@
             }
           ]
         }
-      ]
+      ],
+      "heightM": 4,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
     },
     "kiosco": {
       "note": "El kiosco/templete at a park's centre — the Parque Victoria's bandstand.",
       "turn": false,
       "_turn": "El templete es radial y su techo mira a la pantalla, como el pintor original: no hereda el ángulo de la manzana.",
       "palette": {
-        "shadow": "rgba(0,0,0,0.20)",
         "base": "#cfc7b4",
         "wall": "#e7ddc8",
         "step": "#b9b2a0",
@@ -3904,23 +3823,6 @@
             "max": 15
           },
           "parts": [
-            {
-              "shape": "ellipse",
-              "fill": "$shadow",
-              "cx": 2,
-              "cy": [
-                0.5,
-                0
-              ],
-              "rx": [
-                1.12,
-                0
-              ],
-              "ry": [
-                0.5,
-                0
-              ]
-            },
             {
               "shape": "ellipse",
               "fill": "$base",
@@ -4268,9 +4170,14 @@
                 ]
               ]
             }
-          ]
+          ],
+          "heightM": 4.5,
+          "castsShadow": true
         }
-      ]
+      ],
+      "heightM": 4.5,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
     },
     "parkRiver": {
       "note": "The channelled river through a park's parcel.",
@@ -4279,7 +4186,6 @@
         "bank": "#7d8f6a",
         "water": "#4f86a8",
         "sheen": "rgba(255,255,255,0.30)",
-        "shadow": "rgba(0,0,0,0.20)",
         "stoneLite": "@cathedral.stoneLite",
         "stoneDark": "@cathedral.stoneDark"
       },
@@ -4488,27 +4394,6 @@
               "parts": [
                 {
                   "shape": "roundRect",
-                  "fill": "$shadow",
-                  "x": [
-                    -1,
-                    1
-                  ],
-                  "y": [
-                    -1,
-                    2
-                  ],
-                  "w": [
-                    2,
-                    0
-                  ],
-                  "h": [
-                    2,
-                    0
-                  ],
-                  "r": 2
-                },
-                {
-                  "shape": "roundRect",
                   "fill": "$stoneLite",
                   "x": [
                     -1,
@@ -4562,16 +4447,20 @@
                   ],
                   "h": 1.6
                 }
-              ]
+              ],
+              "heightM": 1.5,
+              "castsShadow": true
             }
           ]
         }
-      ]
+      ],
+      "heightM": 1.5,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
     },
     "lote": {
       "note": "A SPONSORED lote — a storefront or a billboard. `lo.tone` is the sponsor's own colour and stays dynamic; these are the fixed parts around it.",
       "palette": {
-        "shadow": "rgba(0,0,0,0.22)",
         "storeBody": "#f4f0e4",
         "awningLight": "#fff",
         "door": "rgba(20,40,60,0.55)",
@@ -4581,21 +4470,15 @@
       },
       "parts": [
         {
-          "shape": "ellipse",
-          "fill": "$shadow",
-          "cx": 3,
-          "cy": 6,
-          "rx": 16,
-          "ry": 5
-        },
-        {
           "shape": "rect",
           "when": "$store",
           "fill": "$storeBody",
           "x": -16,
           "y": -10,
           "w": 32,
-          "h": 18
+          "h": 18,
+          "heightM": 4,
+          "castsShadow": true
         },
         {
           "shape": "stripes",
@@ -4692,7 +4575,10 @@
           "fg": "$awningLight",
           "bg": "$billboardPill"
         }
-      ]
+      ],
+      "heightM": 4,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
     }
   }
 }

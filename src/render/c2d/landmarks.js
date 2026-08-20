@@ -15,6 +15,7 @@ import { PX_PER_M } from "../../domain/units.js";
 import { content } from "../../content/remote.js";
 import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
 import { drawParada, paintProp, propParts } from "./props.js";
+import { shadowInk, sunShadow } from "./shadows.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -416,6 +417,14 @@ function paintParcelScene(P, name) {
     skip: (part) => Boolean(part.when && !values[part.when]),
     vars: values,
     t: lastT / 1000,
+    // EL SOL ENTRA POR EL FRAME. `shapes.js` no puede importarlo (arrastraría
+    // el juego entero), así que la escena declara ALTURAS EN METROS y quien
+    // pinta dice qué hora es. `heightM`/`castsShadow` se heredan hacia adentro,
+    // de modo que una escena sin ellos no tiene primera pasada y sale idéntica.
+    heightM: scene.heightM,
+    castsShadow: scene.castsShadow,
+    shadow: scene.heightM || scene.castsShadow ? sunShadow : null,
+    shadowInk: shadowInk(1),
   };
   // A garden's PLACEMENT is scene data; a tree's SILHOUETTE deliberately is
   // not. `paintTree` remains the renderer's perturbed spline, while `scatter`

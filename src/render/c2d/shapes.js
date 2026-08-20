@@ -320,11 +320,83 @@ export const SHAPE_NAMES = Object.freeze([
  *   @param {object}   [frame.vars]  `$name` substitutions for text
  *   @param {function} [frame.sprite] resolve `{record,image}` for unsaved rows
  */
+/**
+ * WHICH PARTS CAST, AND AT WHAT HEIGHT — one pass over the tree, grouped.
+ *
+ * `heightM` and `castsShadow` are INHERITED downward, so a scene states its
+ * height once and a part only says what differs. A part that casts is taken
+ * WHOLE, subtree and all: that is what makes a group throw ONE silhouette
+ * instead of one per child, which is the difference between a cathedral with a
+ * shadow and a cathedral with a pile of shadows.
+ *
+ * Returns `[heightM, allow]` pairs. `allow` holds the casting parts AND their
+ * ancestors, because the traversal has to reach a nested part through the
+ * groups that establish its frame.
+ */
+function shadowPasses(parts, baseH, baseCast) {
+  const out = new Map();
+  const walk = (list, inhH, inhCast, ancestors) => {
+    for (const part of list) {
+      if (!part || typeof part !== "object") continue;
+      const h = part.heightM ?? inhH;
+      const casts = part.castsShadow ?? inhCast;
+      if (casts && h > 0) {
+        if (!out.has(h)) out.set(h, new Set());
+        const allow = out.get(h);
+        allow.add(part);
+        for (const a of ancestors) allow.add(a);
+      } else if (Array.isArray(part.parts)) {
+        walk(part.parts, h, casts, [...ancestors, part]);
+      }
+    }
+  };
+  walk(parts, baseH, baseCast, []);
+  return out;
+}
+
 export function paintParts(g, parts, frame) {
   const {
     X: rawX, Y: rawY, S: rawS, color = (c) => c, skip = () => false, vars = {}, prop,
     family, sprite,
   } = frame;
+  // LA SOMBRA ES UNA PRIMERA PASADA SOBRE LAS MISMAS PARTES, no una silueta
+  // duplicada en el JSON. El sol entra POR EL FRAME —como ya entran `X`, `Y`,
+  // `color` y `skip`— porque este archivo no puede importar `shadows.js`:
+  // arrastraría `daynight.js` y con él el juego entero, y
+  // `tests/test_shape_interpreter.py` fija esa lista. El juego pasa el sol de
+  // verdad; el editor, uno fijo de mediodía. Sin `frame.shadow` no hay pasada y
+  // el cuadro sale idéntico al de antes, que es lo que hace la migración
+  // demostrable pixel a pixel.
+  //
+  // Y EL DESPLAZAMIENTO VA EN LOS EVALUADORES, NO EN UN `translate`, por la
+  // misma razón medida que documenta el verbo `group`: Canvas no rasteriza
+  // igual un camino absoluto y el mismo camino bajo un `translate` fraccionario.
+  // Sumarlo en `X`/`Y` deja las coordenadas absolutas — y como todo ancho se
+  // calcula `X(w) - X(0)`, un offset constante se cancela y no deforma nada.
+  // LA TINTA LA TRAE EL LLAMADOR, SIEMPRE. Un valor por defecto aquí sería un
+  // color autorado dentro del intérprete, que es justo lo que
+  // `test_world_props.test_interpreters_do_not_own_asset_colours` prohíbe — y
+  // con razón: la sombra del mundo vive en `effects.json -> sunShadow.color`,
+  // y una segunda copia aquí se despegaría de ella sin que nadie lo notara.
+  // Sin las DOS cosas no hay pasada.
+  if (frame.shadow && frame.shadowInk && !frame._shadowPass) {
+    const passes = shadowPasses(parts, frame.heightM, frame.castsShadow);
+    for (const [h, allow] of passes) {
+      const sh = frame.shadow(h);
+      if (!sh) continue;
+      const prevAlpha = g.globalAlpha;
+      g.globalAlpha = prevAlpha * (sh.alpha ?? 1);
+      paintParts(g, parts, {
+        ...frame,
+        _shadowPass: true,
+        X: (v) => rawX(v) + sh.dx,
+        Y: (v) => rawY(v) + sh.dy,
+        color: () => frame.shadowInk,
+        skip: (part) => !allow.has(part) || skip(part),
+      });
+      g.globalAlpha = prevAlpha;
+    }
+  }
   const resolveSprite = sprite || ((id) => ({
     record: spriteRecord(id), image: spriteImage(id),
   }));

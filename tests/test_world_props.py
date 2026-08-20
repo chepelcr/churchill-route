@@ -144,6 +144,57 @@ class WorldPropTests(unittest.TestCase):
             self.assertTrue(self.props[name].get("areaOnly"),
                             f"{name} is a scene; only its area label may be data")
 
+    def test_a_shadow_caster_declares_its_height_in_metres(self):
+        """LO QUE VENDE LA PROFUNDIDAD ES EL LARGO, y el largo sale de la
+        ALTURA. Una parte que proyecta sombra sin altura resoluble no dibuja
+        nada — `shadowPasses` la salta en silencio y la escena se queda plana,
+        que es exactamente el fallo que esta migración vino a cerrar."""
+        for name, parts in self.every_record():
+            stack = [(p, None) for p in parts]
+            while stack:
+                part, inherited = stack.pop()
+                if not isinstance(part, dict):
+                    continue
+                h = part.get("heightM", inherited)
+                if part.get("castsShadow"):
+                    self.assertIsNotNone(
+                        h, f"{name}: a part casts a shadow with no heightM")
+                    self.assertIsInstance(h, (int, float),
+                                          f"{name}: heightM must be a number, not {h!r}")
+                    self.assertGreater(h, 0, f"{name}: heightM must be metres above zero")
+                if "heightM" in part:
+                    self.assertIsInstance(part["heightM"], (int, float),
+                                          f"{name}: heightM must be a number")
+                    self.assertGreater(part["heightM"], 0,
+                                       f"{name}: heightM must be metres above zero")
+                for child in part.get("parts") or []:
+                    stack.append((child, h))
+
+    def test_no_scene_repaints_its_own_body_as_a_shadow(self):
+        """El atajo que esta migración quitó: una PRIMERA PARTE que es el mismo
+        cuerpo corrido unos píxeles fijos. No sabía qué hora era, no crecía con
+        la altura y sólo cubría esa forma — la catedral tiraba la sombra de su
+        nave y nada más, sin crucero, cimborrio, torres ni cruz.
+
+        `greenSpace` es la única que conserva una, y no es una excepción sino la
+        distinción: es el canto de la LOSA de césped contra el suelo, no la
+        sombra de un cuerpo. Un parque no se levanta sobre su propia parcela."""
+        allowed = {"greenSpace"}
+        scenes = json.loads(read(PROPS))["scenes"]
+        for name, scene in scenes.items():
+            if name in allowed or not isinstance(scene, dict):
+                continue
+            stack = list(scene.get("parts") or [])
+            while stack:
+                part = stack.pop()
+                if not isinstance(part, dict):
+                    continue
+                ink = f"{part.get('fill', '')}{part.get('stroke', '')}"
+                self.assertNotIn("shadow", str(ink).lower(),
+                                 f"{name} still paints a hand-made shadow — a "
+                                 f"body's shadow is `heightM` + `castsShadow` now")
+                stack.extend(part.get("parts") or [])
+
     def test_every_part_names_a_shape_the_interpreter_implements(self):
         for name, parts in self.every_record():
             for part in self.walk(parts):

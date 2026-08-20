@@ -2,7 +2,7 @@
   "name": "churchill-route",
   "version": "2.0.0",
   "private": true,
-  "description": "La Ruta del Churchill \u2014 Puntarenas arcade delivery game",
+  "description": "La Ruta del Churchill — Puntarenas arcade delivery game",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,6 +20,7 @@
     "smoke:night": "node tools/smoke-night.mjs",
     "smoke:sky": "node tools/smoke-sky.mjs",
     "smoke:shadows": "node tools/smoke-shadows.mjs",
+    "smoke:sceneshadows": "node tools/smoke-scene-shadows.mjs",
     "audio:render": "node tools/render-audio.mjs"
   },
   "dependencies": {

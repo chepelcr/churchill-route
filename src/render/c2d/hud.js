@@ -14,6 +14,11 @@ import { t as tr } from "../../i18n/index.js";
 import HUD from "../../assets/hud.json" with { type: "json" };
 import SIM from "../../content/simulation.json" with { type: "json" };
 import { moonPhase, moonlight } from "../../game/daynight.js";
+import { alphaColor } from "./primitives.js";
+import {
+  paintCompassDial, paintGullBlind, paintMinimapPlayer, paintMinimapRim,
+  paintNightVignette, paintRain,
+} from "./systemShapes.js";
 //: …y su bloque de paleta. El minimapa, la brújula y las etiquetas de POI ya
 //: leían de este archivo; la tarjeta de la Travesía y la barra de marea eran lo
 //: último que quedaba con los colores escritos adentro de su propia función.
@@ -122,17 +127,8 @@ function drawCompass(vw, vh) {
   if (d < C.minDistance) return;
   const a = Math.atan2(dy, dx);
   const cx = vw / 2, cy = C.centreY;
-  ctx.save();
-  ctx.fillStyle = C.panel;
-  ctx.beginPath(); ctx.arc(cx, cy, C.radius, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = C.ring; ctx.lineWidth = 1; ctx.stroke();
-  ctx.translate(cx, cy); ctx.rotate(a);
-  ctx.fillStyle = cross ? C.needle.crossing : state.carrying ? C.needle.carrying : C.needle.idle;
-  ctx.beginPath();
-  ctx.moveTo(17, 0); ctx.lineTo(-9, -11); ctx.lineTo(-4, 0); ctx.lineTo(-9, 11);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = C.outline; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.restore();
+  const mode = cross ? "crossing" : state.carrying ? "carrying" : "idle";
+  paintCompassDial(ctx, C, cx, cy, a, mode);
   const meters = Math.round(d / ((W.META && W.META.pxPerMeter) || 1.3));
   ctx.font = "bold 11px 'JetBrains Mono', monospace";
   ctx.textAlign = "center";
@@ -150,26 +146,13 @@ function drawCompass(vw, vh) {
 }
 
 function drawRain(vw, vh, t, force = 1) {
+  const R = HUD.weather.rain;
   // `force` es la rampa POR la fuerza de la tormenta: el agua arrecia en vez de
   // aparecer, y un aguacero cae distinto que un chubasco. Multiplica la
   // intensidad autorada en vez de reemplazarla, así que una etapa que pidió
   // lluvia fuerte sigue teniéndola — sólo que ahora llega.
-  const intensity = Math.max(0.1, Math.min(2, (state.weatherIntensity || 1) * force));
-  // EL TECHO DE LEGIBILIDAD, y es lo que hace jugable una tormenta fuerte. La
-  // lluvia arrecia, pero su opacidad NO pasa de acá: una pantalla que no deja
-  // ver la calle no es difícil, es injusta — y este juego se maneja mirando dos
-  // cuadras adelante. Las gotas se hacen más, más largas y más rápidas; lo que
-  // no se hace es más OPACO.
-  const alpha = Math.min(RAIN_CAP, 0.16 + intensity * 0.2);
-  ctx.strokeStyle = `rgba(180,210,240,${alpha.toFixed(3)})`;
-  ctx.lineWidth = intensity > 1.1 ? 1.4 : 1;
-  const drops = Math.round(150 * intensity);
-  const len = 8 + intensity * 7;
-  for (let i = 0; i < drops; i++) {
-    const x = (i * 73 + t * (0.4 + intensity * 0.35)) % vw;
-    const y = (i * 137 + t * (0.9 + intensity * 0.7)) % vh;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - len * 0.6, y + len); ctx.stroke();
-  }
+  paintRain(ctx, vw, vh, t, { ...R, alphaCap: RAIN_CAP },
+    (state.weatherIntensity || 1) * force);
 }
 // LA HORDA DE GAVIOTAS, from where the pilot is sitting. The flock in the
 // estero is supposed to "take the view away for a moment without touching you",
@@ -182,37 +165,11 @@ function drawRain(vw, vh, t, force = 1) {
 // the sim owns the clock. Wing positions come off `hash01`, never `Math.random`,
 // so the same instant of the pass draws the same frame.
 function drawGullBlind(vw, vh, t) {
-  const left = state.gullBlind || 0;
-  if (left <= 0) return;
-  const k = Math.min(1, left / 1.1);            // 1 as they cross, 0 as it clears
-  const pass = 1 - k;                            // how far through the frame they are
-  ctx.save();
-  ctx.fillStyle = `rgba(18,28,38,${(0.13 * k).toFixed(3)})`;   // the flock's shadow
-  ctx.fillRect(0, 0, vw, vh);
-  ctx.strokeStyle = `rgba(255,255,255,${(0.55 + k * 0.4).toFixed(3)})`;
-  ctx.lineCap = "round";
-  const n = 14 + Math.round(k * 12);
-  for (let i = 0; i < n; i++) {
-    const h1 = hash01(i * 12.9898 + 1.7), h2 = hash01(i * 78.233 + 4.1);
-    // they cross on a diagonal and are gone by the time the timer is
-    const p = pass + h1 * 0.6;
-    const x = (h1 * 1.3 - 0.15 + p * 0.7) * vw;
-    const y = (h2 * 1.3 - 0.2 - p * 0.45) * vh;
-    const s = 12 + h2 * 30;
-    const flap = Math.sin(t * 0.022 + i * 1.7) * s * 0.4;
-    ctx.lineWidth = 1.6 + h1 * 2.4;
-    ctx.beginPath();
-    ctx.moveTo(x - s, y + flap);
-    ctx.quadraticCurveTo(x - s * 0.42, y - s * 0.34 + flap, x, y);
-    ctx.quadraticCurveTo(x + s * 0.42, y - s * 0.34 + flap, x + s, y + flap);
-    ctx.stroke();
-  }
-  ctx.restore();
+  const G = HUD.weather.gullBlind;
+  paintGullBlind(ctx, vw, vh, t, G, state.gullBlind || 0);
 }
 function drawNightVignette(vw, vh) {
-  const g = ctx.createRadialGradient(vw/2, vh/2, vh*0.15, vw/2, vh/2, vh*0.8);
-  g.addColorStop(0, HP.vignette.inner); g.addColorStop(1, HP.vignette.outer);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+  paintNightVignette(ctx, vw, vh, HP.vignette);
 }
 
 // NFS-style minimap: a circular NORTH-UP dial of the streets around the
@@ -693,9 +650,9 @@ function drawCrossingHud(vw, vh) {
 }
 
 function drawMinimap(vw, vh, t) {
-  const R = 76;                          // dial radius on screen (px)
-  const cx = vw - R - 18, cy = R + 18;
-  const RANGE = 460;                     // world px from car to dial edge
+  const R = MINI.radius;                  // dial radius on screen (px)
+  const cx = vw - R - MINI.edgeInset, cy = R + MINI.edgeInset;
+  const RANGE = MINI.range;               // world px from car to dial edge
   const s = R / RANGE;
   const p = state.p;
 
@@ -711,7 +668,7 @@ function drawMinimap(vw, vh, t) {
   ctx.scale(s, s);
   ctx.translate(-p.x, -p.y);
 
-  const M = RANGE * 1.05;
+  const M = RANGE * MINI.queryPad;
   const mv = { x0: p.x - M, x1: p.x + M, y0: p.y - M, y1: p.y + M };
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   const vts = W.visibleTiles(mv.x0, mv.y0, mv.x1, mv.y1);
@@ -761,9 +718,9 @@ function drawMinimap(vw, vh, t) {
   if (tgt) {
     let mx = (tgt.x - p.x) * s;
     let my = (tgt.y - p.y) * s;
-    const d = Math.hypot(mx, my), lim = R - 9;
+    const d = Math.hypot(mx, my), lim = R - MINI.targetRimInset;
     if (d > lim) { mx *= lim / d; my *= lim / d; }   // pin to the rim when far
-    const pulse = 3.4 + Math.sin(t * 0.006) * 1.1;
+    const pulse = MINI.targetR + Math.sin(t * 0.006) * MINI.targetPulse;
     ctx.fillStyle = state.carrying ? HP.minimap.target : HP.minimap.npc; // NPC / target = red
     ctx.beginPath(); ctx.arc(cx + mx, cy + my, pulse, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = HP.minimap.targetRing; ctx.lineWidth = 1.2;
@@ -771,19 +728,9 @@ function drawMinimap(vw, vh, t) {
   }
 
   // the car: gold arrow in the center, rotated to the travel heading
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(p.a + Math.PI / 2); // arrow art points up = -y
-  ctx.fillStyle = HP.minimap.player;
-  ctx.strokeStyle = HP.minimap.playerRing; ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(0, -8); ctx.lineTo(6, 7); ctx.lineTo(0, 3.5); ctx.lineTo(-6, 7);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.restore();
-
-  // rim
-  ctx.strokeStyle = HP.minimap.viewport; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  const dial = { ...MINI, ...HP.minimap };
+  paintMinimapPlayer(ctx, dial, cx, cy, p.a);
+  paintMinimapRim(ctx, dial, cx, cy);
 }
 
 export { drawCompass, drawCrossingHud, drawDebugGrid, drawGullBlind, drawMinimap, drawNightVignette, drawPoiNames, drawPoiTags, drawRain };

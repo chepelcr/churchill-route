@@ -17,6 +17,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { ctx } from "./gfx.js";
 import { paintAt } from "./shapes.js";
+import { paintLuminaire } from "./systemShapes.js";
 
 const TYPES = LIGHTS.types;
 //: A light with no type, or with one the registry does not know, is a street
@@ -45,28 +46,12 @@ const isNight = lightsOn;
  * is not a design, it is a white screen.
  */
 export function paintLight(type, x, y, opts = {}) {
-  const spec = lightSpec(type);
-  const L = LIGHTS.limits;
-  const intensity = Math.max(0, Math.min(L.intensityMax, Number(opts.intensity) || 1));
-  const radius = Math.max(L.radiusMin, Math.min(L.radiusMax, Number(opts.radius) || spec.radius));
-
-  // The fixture first, the halo over it — the order the four hand-written
-  // lamps drew in, and the one that reads right: the glow is in front of the
-  // lamp, not behind the pole.
-  paintAt(spec.parts, x, y, { g: ctx, pxPerM: PX_PER_M, color: (c) => (c === "$core" ? spec.core : c) });
-
-  if (!(opts.night ?? isNight()) || intensity <= 0) return;
-  const A = LIGHTS.haloAlpha;
-  const [hx, hy] = spec.haloAt;
-  const [r, g, b] = spec.halo;
-  const cxx = x + hx, cyy = y + hy;
-  const glow = ctx.createRadialGradient(cxx, cyy, 0, cxx, cyy, radius);
-  glow.addColorStop(0, `rgba(${r},${g},${b},${Math.min(A.max, intensity * A.perUnit)})`);
-  glow.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(cxx, cyy, radius, 0, Math.PI * 2);
-  ctx.fill();
+  paintLuminaire(ctx, LIGHTS, type, x, y, {
+    ...opts, night: opts.night ?? isNight(),
+  }, (parts, px, py, spec) => paintAt(parts, px, py, {
+    g: ctx, pxPerM: PX_PER_M,
+    color: (color) => (color === "$core" ? spec.core : color),
+  }));
 }
 
 /** An authored point light from the editor (`W.LIGHTS`). */

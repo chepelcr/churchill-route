@@ -32,6 +32,8 @@ from churchill.world.config import ROOT
 from churchill.world.enums import GreenType, ParcelUse, PierStyle
 
 MATERIALS = os.path.join(ROOT, "src", "assets", "materials.json")
+STRUCTURES = os.path.join(ROOT, "src", "render", "c2d", "structures.js")
+STRUCTURE_SHAPES = os.path.join(ROOT, "src", "render", "c2d", "structureShapes.js")
 HEX = re.compile(r"^(#[0-9a-f]{3,8}|rgba?\([\d.,\s]+\))$", re.I)
 
 
@@ -116,3 +118,63 @@ class MaterialRegistryTests(unittest.TestCase):
                 for pattern, why in self.FORBIDDEN:
                     self.assertIsNone(re.search(pattern, text),
                                       f"{rel} authors {why}; materials.json owns it")
+
+    def test_building_bridge_ferry_and_berth_are_editable_recipes(self):
+        structures = self.doc["structure"]
+        for asset in ("building", "bridge", "ferry", "berth"):
+            with self.subTest(asset=asset):
+                self.assertTrue(structures[asset].get("parts"))
+                self.assertIsInstance(structures[asset].get("preview"), dict)
+        painter = read(STRUCTURES)
+        self.assertIn("paintStructureParts(ctx, S.building.parts", painter)
+        self.assertIn("paintStructureParts(ctx, S.bridge.parts", painter)
+
+    def test_double_ended_ferry_has_equivalent_ramps_at_both_ends(self):
+        ferry = self.doc["structure"]["ferry"]
+        self.assertTrue(ferry["preview"]["doubleEnded"])
+        hull = next(part for part in ferry["parts"]
+                    if part.get("shape") == "group" and not part.get("when")
+                    and any(child.get("fill") == "$ramp" for child in part.get("parts", [])))
+        ramps = [part for part in hull["parts"] if part.get("fill") == "$ramp"]
+        self.assertEqual(len(ramps), 2, "a double-ended ferry needs one ramp at each end")
+        for field in ("y", "w", "h", "r"):
+            self.assertEqual(ramps[0][field], ramps[1][field],
+                             f"the two ferry ramps disagree on {field}")
+        # Rect x is its left edge. These two formulas put equal-width ramps at
+        # centres -L-3 and +L+3: mirrored, not a decorative stern door.
+        self.assertEqual(ramps[0]["x"], [-1, -9])
+        self.assertEqual(ramps[1]["x"], [1, -3])
+
+    def test_structure_family_verbs_are_finite_and_implemented(self):
+        verbs = set()
+        def walk(parts):
+            for part in parts or []:
+                if part.get("shape") == "family":
+                    verbs.add(part.get("verb"))
+                walk(part.get("parts"))
+        for record in self.doc["structure"].values():
+            if isinstance(record, dict):
+                walk(record.get("parts"))
+        interpreter = read(STRUCTURE_SHAPES)
+        for verb in verbs:
+            self.assertIn(f'"{verb}"', interpreter)
+
+    def test_renderer_contains_no_authored_colour_literals(self):
+        """The renderer composes registries; it must not become another one.
+
+        Dynamic ``rgba(${rgb},${alpha})`` assembly is engine behaviour. A hex or
+        numeric rgba literal in ``src/render`` is an authored ink with no editor
+        surface and therefore a second source of truth.
+        """
+        colour = re.compile(r"#[0-9a-fA-F]{3,8}\b|rgba?\(\s*[\d.,\s]+\)")
+        for dirpath, _, files in os.walk(os.path.join(ROOT, "src", "render")):
+            for name in files:
+                if not name.endswith((".js", ".jsx")):
+                    continue
+                path = os.path.join(dirpath, name)
+                source = re.sub(r"/\*.*?\*/", "", read(path), flags=re.S)
+                source = re.sub(r"^\s*//.*$", "", source, flags=re.M)
+                found = colour.findall(source)
+                self.assertEqual(found, [],
+                                 f"{os.path.relpath(path, ROOT)} authors colours {found}; "
+                                 "move them to the relevant JSON registry")

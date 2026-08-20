@@ -13,6 +13,7 @@ import { nearestOnPoly } from "./flora.js";
 import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, parcelFrame } from "./gfx.js";
 import { propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
+import { paintRoadNetwork } from "./systemShapes.js";
 
 //: LA SEÑALIZACIÓN, keyed by SignKind — see the note above `drawSign`.
 const SIGNS = PROPS.signs;
@@ -264,108 +265,18 @@ function paintStone(path, P) {
 // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
 // ported from the corridor renderer but fed per-tile road segments.
 function paintRoads(roads, view) {
-  ctx.lineJoin = "round"; ctx.lineCap = "round";
-  // elevated (barro/Ferrocarril) drop-shadow
-  ctx.strokeStyle = ST.roadway.casing;
-  for (const r of roads) { if (!r.elev) continue; ctx.save(); ctx.translate(0, 3.5); ctx.lineWidth = r.w + 2 * ACERA_PX + 3; ctx.stroke(roadPath(r)); ctx.restore(); }
-  // THE PARCELS GO DOWN BEFORE THE SIDEWALK, NOT AFTER.
-  //
-  // A parcel is a colour choice on ground somebody else painted, and it used to
-  // be painted OVER the acera band — so a park whose plot reaches the kerb put
-  // its lawn on the pavement, and the walkers, who are rail-bound to acera
-  // cells, walked up a strip of grass. 57 plots still reach it: they are the
-  // mapped chapels, escuelas and gasolineras with no land of their own, and the
-  // world tried DELETING them once to keep the kerb clear — four escuelas, four
-  // gasolineras and the INA went with it. The order is the cheaper answer: the
-  // sidewalk is painted last of the two, so every acera in the town reads clean
-  // and nothing has to stop existing. The asphalt still wins over both.
-  //
-  // THE ESTADIOS ARE THE EXCEPTION, and they have to be: a whole-cuadra field
-  // is stamped drivable over its own manzana, so it has no acera in the raster
-  // at all — `paintStadiumCuadras` IS its sidewalk, painted grey from the
-  // emitted cuadra outline with the pitch inset inside it. Moved up here with
-  // the parcels it stopped being a sidewalk and started being something the
-  // road's band painted over. It goes back below.
-  paintParcels(view);
-  ctx.lineJoin = "round"; ctx.lineCap = "round";
-  // acera concrete band. GREY, not the sandy cream it used to be: the aceras in
-  // Puntarenas are poured concrete, and a warm band beside warm ground made the
-  // whole town read as one colour.
-  ctx.strokeStyle = ACERA_GREY;
-  for (const r of roads) { if (r.bridge || r.cls === "bridge") continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
-  // acera joint discs at each piece endpoint: they weld chained pieces so the
-  // band has no seam. Inscribed in the junction's plus, so they round NOTHING
-  // and leave the cuadras' square corner geometry untouched.
-  ctx.fillStyle = ACERA_GREY;
-  for (const r of roads) {
-    if (r.bridge || r.cls === "bridge") continue;
-    const p = r.pts, n = p.length, rad = r.w / 2 + ACERA_PX;
-    ctx.beginPath();
-    ctx.moveTo(p[0] + rad, p[1]); ctx.arc(p[0], p[1], rad, 0, Math.PI * 2);
-    ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // estadios: their own sidewalk, repainted grey after the acera bands and
-  // joint discs, before the asphalt so the asphalt still wins
-  paintStadiumCuadras(view);
-  ctx.lineJoin = "round"; ctx.lineCap = "round";
-  // barro shoulder
-  ctx.strokeStyle = ST.roadway.kerbLine;
-  for (const r of roads) { if (!r.barro && !r.gravel) continue; ctx.lineWidth = r.w + 2 * ACERA_PX; ctx.stroke(roadPath(r)); }
-  // bridge deck
-  ctx.strokeStyle = ST.roadway.kerbFace;
-  for (const r of roads) { if (!r.bridge) continue; ctx.lineWidth = r.w + 10; ctx.stroke(roadPath(r)); }
-  // Casing + asphalt use BUTT caps: round caps bulge a half-circle past
-  // each piece's endpoint, smearing dark arcs onto the sidewalks at every
-  // junction ("little curves in the aceras"). Joins stay round for curves.
-  ctx.lineCap = "butt";
-  // casing
-  ctx.strokeStyle = ST.roadway.cano;
-  for (const r of roads) { ctx.lineWidth = r.w + 4; ctx.stroke(roadPath(r)); }
-  // EL CAÑO: the open gutter between the kerb and the asphalt, which in
-  // Puntarenas is a real, visible channel running the length of every calle —
-  // it is how the town drains in the aguaceros. Drawn as the outer strip of the
-  // acera in a darker concrete, with BUTT caps (inherited above) so it stops at
-  // the esquina exactly like the real one does at the tragante, instead of
-  // sweeping a dark arc across the junction mouth.
-  ctx.strokeStyle = CANO_GREY;
-  for (const r of roads) {
-    // no caño on an unpaved street: there is no kerb to run one along
-    if (r.bridge || r.cls === "bridge" || r.barro || r.gravel) continue;
-    ctx.lineWidth = r.w + 2 * CANO_PX; ctx.stroke(roadPath(r));
-  }
-  // asphalt / barro / paseo surface + SAME-COLOR joint discs at both piece
-  // ends: they invisibly weld chained pieces (keeps the León Cortés →
-  // Turistas curve smooth) and unify junction mouths, without the visible
-  // "mini circles" a contrasting eraser disc would leave.
-  for (const r of roads) {
-    const col = r.barro ? ST.roadway.barro : r.gravel ? ST.roadway.gravel
-      : r.cls === "paseo" ? ST.roadway.paseo : ST.roadway.asphalt;
-    ctx.strokeStyle = col; ctx.lineWidth = r.w; ctx.stroke(roadPath(r));
-    const p = r.pts, n = p.length, rad = r.w / 2 - 0.4;
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.moveTo(p[0] + rad, p[1]); ctx.arc(p[0], p[1], rad, 0, Math.PI * 2);
-    ctx.moveTo(p[n - 2] + rad, p[n - 1]); ctx.arc(p[n - 2], p[n - 1], rad, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // lane markings: yellow dashes on arterials, faint white on locals —
-  // drawn on the TRIMMED path so they stop short of the junctions
-  for (const r of roads) {
-    if (r.barro || r.gravel) continue;   // nobody paints lines on lastre
-    const cls = r.cls;
-    // …AND THESE TWO WERE ALREADY IN THE REGISTRY. `materials.street.majorDash`
-    // and `.minorDash` held exactly these values and this function spelled them
-    // out anyway — a live duplicate, so editing the registry moved every dash
-    // in the game EXCEPT the ones on the road.
-    if (cls === "trunk" || cls === "trunk_link" || cls === "primary" || cls === "primary_link") { ctx.strokeStyle = MATERIALS.street.majorDash; ctx.lineWidth = 2; ctx.setLineDash([18, 18]); }
-    else if (cls === "secondary" || cls === "tertiary" || cls === "tertiary_link" || cls === "residential" || cls === "unclassified") { ctx.strokeStyle = MATERIALS.street.minorDash; ctx.lineWidth = 1; ctx.setLineDash([6, 10]); }
-    else continue;
-    const dp = dashPath(r);
-    if (dp) ctx.stroke(dp);
-    ctx.setLineDash([]);
-  }
-  ctx.lineCap = "butt";
+  // Parcelas van antes de la acera y los estadios entre acera y asfalto. Esas
+  // dos callbacks son geometría mundial; todas las pasadas de la calle viven en
+  // el compositor compartido que también ejecuta el fixture del editor.
+  paintRoadNetwork(ctx, roads, {
+    materials: MATERIALS,
+    sidewalkPx: ACERA_PX,
+    canoPx: CANO_PX,
+    pathFor: roadPath,
+    dashPathFor: dashPath,
+    beforeAcera: () => paintParcels(view),
+    afterAcera: () => paintStadiumCuadras(view),
+  });
 }
 
 // Per-tile Ferrocarril rail pieces: ballast bed + ties + two steel rails.

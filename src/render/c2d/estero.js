@@ -15,11 +15,15 @@
 //   * las boyas — red to port, green to starboard, bobbing, blinking at night.
 //     That is what you steer by up close, and what makes a bend legible before
 //     you are in it.
-import { ctx, hash01, roundRect, weatherColors } from "./gfx.js";
-import { drawFisher, paintHull } from "./entities.js";
+import { ctx, hash01, weatherColors } from "./gfx.js";
+import {
+  actorAnimationValues, paintActor, resolveActorRecord,
+} from "./actorShapes.js";
 import { state } from "../../game/state.js";
 import { LANE_HW, bancoExposed, buoyWet, channels, crossingState, esteroThings, laneAt } from "../../game/crossing.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import ACTORS from "../../assets/actors.json" with { type: "json" };
+import { alphaColor } from "./primitives.js";
 
 // LA PALETA DE LOS OCHO ENCUENTROS vive en `materials.json` -> `estero`. Cuáles
 // existen ya estaba tipado (`EsteroEncounterKind`); de qué color era cada uno,
@@ -193,51 +197,31 @@ function drawBuoy(b, view, t) {
 // is a wake: she is working, not travelling, and she does NOT move out of your
 // way, which is the whole reason she is an obstacle and not scenery.
 function drawPanga(e, view, t) {
-  const bob = Math.sin(t * 1.2 + e.ph) * 1.2;
-  const L = 17, H = 6;
+  const actor = resolveActorRecord(ACTORS, "esteroPanga");
+  const motion = actorAnimationValues(actor.animations, { timeMs: t, phase: e.ph });
   ctx.save();
-  ctx.translate(e.x, e.y + bob);
-  ctx.rotate(e.a + Math.sin(t * 0.6 + e.ph) * 0.06);
-  paintHull(ctx, L, H);
-  ctx.fillStyle = E.panga.console;                          // the console, forward
-  roundRect(ctx, L * 0.24, -H * 0.55, L * 0.3, H * 1.1, 1.5, true, false);
-  ctx.fillStyle = E.panga.thwart;                           // the thwart he sits on
-  ctx.fillRect(-L * 0.42, -H * 0.72, 2.6, H * 1.44);
-  ctx.strokeStyle = E.panga.outboard;                       // the outboard, on her transom
-  ctx.lineWidth = 1.6; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(-L + 1, 0); ctx.lineTo(-L - 3.5, 0); ctx.stroke();
-  ctx.fillStyle = E.panga.figure;
-  ctx.beginPath(); ctx.arc(-L - 4, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.translate(e.x, e.y + motion.bob);
+  ctx.rotate(e.a + motion.yaw);
+  paintActor(ctx, ACTORS, "esteroPanga", { phase: e.ph, timeMs: t });
   // El pescador rides HER FRAME — after the hull, still inside her transform,
   // so he leans and bobs with her instead of hovering over the spot she was.
   // His hue comes off the entity's own phase (hash01, never Math.random: the
   // frame has to be the same frame every time it is drawn).
-  drawFisher({
-    x: -L * 0.36, y: 0,
+  paintActor(ctx, ACTORS, "fisher", {
+    x: -17 * 0.36, y: 0,
     hue: Math.round(hash01(e.ph * 12.9898 + 4.1) * 320),
-    ph: t * 1.4 + e.ph,
+    phase: t * 1.4 + e.ph, timeMs: t,
   });
   ctx.restore();
 }
 
 // A banco de peces: a shoal under the surface. Silver flashes, no wake.
 function drawFish(e, view, t) {
-  ctx.save();
-  ctx.translate(e.x, e.y);
-  ctx.rotate(e.a + Math.sin(t * 0.8 + e.ph) * 0.3);
-  ctx.fillStyle = e.taken ? E.fish.taken : E.fish.boil;
-  ctx.beginPath(); ctx.ellipse(0, 0, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
-  if (!e.taken) {
-    ctx.fillStyle = E.fish.flash;
-    for (let i = 0; i < 9; i++) {
-      const a = e.ph + i * 0.7 + t * 1.4;
-      const r = 6 + (i % 3) * 7;
-      ctx.beginPath();
-      ctx.ellipse(Math.cos(a) * r, Math.sin(a) * r * 0.5, 2.6, 1.1, a, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-  ctx.restore();
+  paintActor(ctx, ACTORS, "esteroFish", {
+    x: e.x, y: e.y,
+    rotation: e.a + Math.sin(t * 0.8 + e.ph) * 0.3,
+    phase: e.ph, timeMs: t, variant: e.taken ? "taken" : undefined,
+  });
 }
 
 // Una horda de gaviotas crossing the channel: they take the VIEW, not health.
@@ -247,65 +231,32 @@ function drawGulls(e, view, t) {
     const x = e.x + Math.cos(a + t * 0.7) * (14 + i * 3.2);
     const y = e.y + Math.sin(a + t * 0.9) * (9 + i * 1.7) - Math.sin(t * 3 + i) * 3;
     const w = 3.4 + (i % 3) * 0.7;
-    const flap = Math.sin(t * 9 + i * 1.3) * 1.8;
-    ctx.strokeStyle = E.gulls.wings;
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(x - w, y + flap); ctx.lineTo(x, y - 1); ctx.lineTo(x + w, y + flap);
-    ctx.stroke();
+    paintActor(ctx, ACTORS, "esteroGull", {
+      x, y, phase: i, timeMs: t, wingW: w, negW: -w,
+    });
   }
 }
 
 // Mangrove roots: half-submerged, hugging the bank. They are only in the way of
 // a boat cutting the corner, which is exactly what they are for.
 function drawRoots(e, view, t) {
-  ctx.save();
-  ctx.translate(e.x, e.y);
-  ctx.rotate(e.a);
-  ctx.strokeStyle = E.roots.wood;
-  ctx.lineWidth = 2.2;
-  ctx.lineCap = "round";
-  for (let i = -2; i <= 2; i++) {
-    const h = 7 + ((i + 2) % 3) * 4 + Math.sin(t * 0.8 + e.ph + i) * 0.8;
-    ctx.beginPath();
-    ctx.moveTo(i * 6, 4);
-    ctx.quadraticCurveTo(i * 6 + 3, -h * 0.5, i * 6 + (i % 2 ? 4 : -4), -h);
-    ctx.stroke();
-  }
-  ctx.strokeStyle = E.roots.waterline;                      // the waterline ring
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.ellipse(0, 3, 16, 4, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.restore();
+  paintActor(ctx, ACTORS, "esteroRoots", {
+    x: e.x, y: e.y, rotation: e.a, phase: e.ph, timeMs: t,
+  });
 }
 
 // A remolino: rings of foam turning around a dark eye. Read at a distance by
 // the ring, and up close by which WAY it turns — which is the information you
 // need, because that is the side it will put you on.
 function drawRemolino(e, view, t) {
-  ctx.save();
-  ctx.translate(e.x, e.y);
   // WHICH WAY she turns is the information you need, because that is the side
   // she will put you on. `pull` is the sim's, and is not one of the fields a
   // drawer may count on, so the sign falls back to the entity's own phase.
   const spin = e.pull !== undefined ? Math.sign(e.pull) || 1 : (hash01(e.ph) < 0.5 ? -1 : 1);
-  ctx.rotate(e.ph + t * 0.9 * spin);
-  ctx.fillStyle = E.remolino.well;
-  ctx.beginPath(); ctx.arc(0, 0, e.r * 0.42, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = E.remolino.swirl;
-  ctx.lineCap = "round";
-  for (let i = 0; i < 3; i++) {
-    const rr = e.r * (0.5 + i * 0.22);
-    ctx.lineWidth = 2.4 - i * 0.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, rr, i * 1.7, i * 1.7 + Math.PI * 1.25);
-    ctx.stroke();
-  }
-  ctx.fillStyle = E.remolino.foam;
-  for (let i = 0; i < 6; i++) {
-    const a = i * 1.05, rr = e.r * (0.55 + (i % 3) * 0.16);
-    ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, 1.5, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
+  paintActor(ctx, ACTORS, "esteroRemolino", {
+    x: e.x, y: e.y, rotation: e.ph + t * 0.9 * spin,
+    phase: e.ph, timeMs: t, radius: e.r,
+  });
 }
 
 // UN BANCO DE ARENA — the only thing in the estero that comes and goes.
@@ -352,6 +303,9 @@ function bankPath(e, R, wob, n = 18) {
 }
 
 function drawBanco(e, level, t) {
+  const waterline = E.banco.waterline;
+  const ripples = E.banco.ripples;
+  const aground = E.banco.aground;
   const expose = Math.max(0, Math.min(1, (e.depth - level) / BANK_SPAN));
   const C = weatherColors();
   // the wet shoal (what the water has uncovered) and the dry crown inside it.
@@ -373,8 +327,9 @@ function drawBanco(e, level, t) {
   ctx.fillStyle = E.banco.wet;
   bankPath(e, Ro, 0.1); ctx.fill();
   // the bright line where the water meets it — brightest when it is well out
-  ctx.strokeStyle = `rgba(255,255,255,${(0.28 + 0.42 * expose).toFixed(3)})`;
-  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = alphaColor(waterline.rgb,
+    waterline.alphaBase + waterline.alphaRange * expose);
+  ctx.lineWidth = waterline.width;
   bankPath(e, Ro, 0.1); ctx.stroke();
   // A WET RING THAT LINGERS: the crown dries from the middle outward, so the
   // band between it and the waterline stays dark long after the bar is out —
@@ -385,16 +340,17 @@ function drawBanco(e, level, t) {
     ctx.fillStyle = E.banco.foam;                  // dry, pale, sun-bleached
     bankPath(e, Rd, 0.14); ctx.fill();
     // ripples: the wind's corrugation on dry sand, along the bar
-    ctx.strokeStyle = `rgba(255,255,255,${(0.10 + 0.16 * expose).toFixed(3)})`;
-    ctx.lineWidth = 0.9;
-    for (let i = 0; i < 4; i++) {
-      const k = (i + 1) / 5;
+    ctx.strokeStyle = alphaColor(ripples.rgb,
+      ripples.alphaBase + ripples.alphaRange * expose);
+    ctx.lineWidth = ripples.width;
+    for (let i = 0; i < ripples.count; i++) {
+      const k = (i + 1) / (ripples.count + 1);
       const ry = (k - 0.5) * Rd * 1.1;
       const rx = Rd * 1.2 * Math.sqrt(Math.max(0, 1 - (k - 0.5) * (k - 0.5) * 4));
-      const j = (hash01(e.ph * 3.7 + i) - 0.5) * 2;
+      const j = (hash01(e.ph * 3.7 + i) - 0.5) * ripples.jitter;
       ctx.beginPath();
       ctx.moveTo(-rx * 0.8, ry + j);
-      ctx.quadraticCurveTo(0, ry + j * 2.2, rx * 0.8, ry + j);
+      ctx.quadraticCurveTo(0, ry + j * ripples.curveJitter, rx * 0.8, ry + j);
       ctx.stroke();
     }
   }
@@ -403,9 +359,10 @@ function drawBanco(e, level, t) {
   // all the bank does is churn: a little disturbed water working around her.
   if (e.aground) {
     const puls = 0.5 + 0.5 * Math.sin(t * 0.006 + e.ph);
-    ctx.strokeStyle = `rgba(255,255,255,${(0.16 + 0.14 * puls).toFixed(3)})`;
-    ctx.lineWidth = 1.4;
-    bankPath(e, Ro * (1.06 + 0.04 * puls), 0.16); ctx.stroke();
+    ctx.strokeStyle = alphaColor(aground.rgb,
+      aground.alphaBase + aground.alphaRange * puls);
+    ctx.lineWidth = aground.width;
+    bankPath(e, Ro * (aground.radiusBase + aground.radiusRange * puls), 0.16); ctx.stroke();
     ctx.fillStyle = E.banco.dry;
     for (let i = 0; i < 5; i++) {
       const a = e.ph + i * 1.27 + t * 0.0008;
@@ -448,13 +405,10 @@ function drawPescador(e, view, t) {
   // here on purpose: it paints in WORLD coordinates (it is written for the
   // muellero on the pier rail), so inside this rotated frame it would draw
   // itself somewhere else entirely. He is two shapes; the net is the obstacle.
-  ctx.translate(e.x, e.y); ctx.rotate(e.a + Math.PI / 2);
-  paintHull(ctx, 26, 10, E.pescador.topsides);
-  ctx.fillStyle = E.pescador.figure;               // seated, facing his net
-  ctx.beginPath(); ctx.arc(0, -1, 3.1, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = E.pescador.hat;
-  ctx.beginPath(); ctx.arc(0, -5.4, 2.1, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
+  paintActor(ctx, ACTORS, "esteroPescadorBoat", {
+    x: e.x, y: e.y, rotation: e.a + Math.PI / 2, phase: e.ph, timeMs: t,
+  });
 }
 
 // EL YATE. The set piece: a big white motor yacht steaming along the channel
@@ -463,35 +417,9 @@ function drawPescador(e, view, t) {
 // is drawn as the two rings the collision pays out on, so "take the wake fast"
 // is a thing you can see rather than a thing you find out.
 function drawYate(e, view, t) {
-  ctx.save();
-  // the wake crests, behind her
-  ctx.strokeStyle = E.yate.wake;
-  ctx.lineWidth = 2.5;
-  for (const rr of [e.r + 46, e.r + 74]) {
-    ctx.beginPath();
-    ctx.arc(e.x, e.y, rr + Math.sin(t * 2 + e.ph) * 2, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.translate(e.x, e.y); ctx.rotate(e.a);
-  // hull: a long flare-bowed white thing with a dark sheer line
-  ctx.fillStyle = E.yate.topsides;
-  ctx.beginPath();
-  ctx.moveTo(52, 0); ctx.quadraticCurveTo(22, -17, -34, -14);
-  ctx.lineTo(-42, 0); ctx.lineTo(-34, 14);
-  ctx.quadraticCurveTo(22, 17, 52, 0);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = E.yate.sheer; ctx.lineWidth = 1.4; ctx.stroke();
-  // superstructure + flybridge
-  ctx.fillStyle = E.yate.cabin;
-  roundRect(ctx, -18, -10, 34, 20, 4, true, false);
-  ctx.fillStyle = E.yate.windows;
-  roundRect(ctx, -8, -6, 18, 12, 3, true, false);
-  // prop wash
-  ctx.fillStyle = E.yate.rail;
-  ctx.beginPath();
-  ctx.ellipse(-48, 0, 10 + Math.sin(t * 6 + e.ph) * 2, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  paintActor(ctx, ACTORS, "esteroYacht", {
+    x: e.x, y: e.y, rotation: e.a, phase: e.ph, timeMs: t, radius: e.r,
+  });
 }
 
 /** The channel itself — drawn under the boats, over the water. */

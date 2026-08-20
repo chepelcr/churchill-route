@@ -43,10 +43,18 @@ await page.evaluate(async () => {
 });
 
 const drew = await page.evaluate(async ([cell, cols]) => {
+  // Vite HMR versions dependencies (`gfx.js?t=…`) without changing the direct
+  // module URL. Importing plain `/gfx.js` here after an edit would initialise a
+  // DIFFERENT live `ctx` binding from the one streets/landmarks paint through.
+  // Follow the exact dependency URL emitted for streets so the sheet remains
+  // valid on the persistent dev server — no cache deletion or restart needed.
+  const streetSource = await fetch("/src/render/c2d/streets.js").then((r) => r.text());
+  const gfxUrl = streetSource.match(/from\s+["']([^"']*\/c2d\/gfx\.js[^"']*)["']/)?.[1];
+  if (!gfxUrl) throw new Error("shot-parcels could not resolve streets.js's live gfx module");
   const [streets, landmarks, gfx, { WORLD2D }, { PARCEL_USE }] = await Promise.all([
     import("/src/render/c2d/streets.js"),
     import("/src/render/c2d/landmarks.js"),
-    import("/src/render/c2d/gfx.js"),
+    import(gfxUrl),
     import("/src/world2d/index.js"),
     import("/src/domain/vocabulary.generated.js"),
   ]);

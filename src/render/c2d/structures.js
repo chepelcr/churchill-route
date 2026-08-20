@@ -3,9 +3,11 @@
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
-import { ctx, flatPath, label, roundRect } from "./gfx.js";
+import { ctx, flatPath, label } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
 import { buildingHeightM, sunShadow } from "./shadows.js";
+import { resolveAssetFormulaMap } from "./shapes.js";
+import { paintStructureParts } from "./structureShapes.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
@@ -24,12 +26,18 @@ function paintBuilding(b) {
   ctx.restore();
   ctx.fillStyle = b.color || S.building.fallback; ctx.fill(path);
   ctx.save(); ctx.clip(path);
-  ctx.fillStyle = b.roof || MATERIALS.structure.roof; ctx.fillRect(a.x0, a.y0, bw, Math.max(3, bh * 0.3));
-  if (b.wnd) {
-    ctx.fillStyle = state.weather === "night" ? S.building.windowsNight : S.building.windowsDay;
-    const wn = Math.max(1, Math.floor(bw / 16));
-    for (let i = 0; i < wn; i++) ctx.fillRect(a.x0 + 4 + i * (bw / wn), a.y0 + bh * 0.55, 4, 3);
-  }
+  ctx.translate(a.x0, a.y0);
+  const vars = resolveAssetFormulaMap(S.building.values, {
+    bw, bh, roof: b.roof || S.roof,
+    windows: Boolean(b.wnd),
+    windowInk: state.weather === "night" ? S.building.windowsNight : S.building.windowsDay,
+  });
+  paintStructureParts(ctx, S.building.parts, {
+    X: (value) => value || 0,
+    Y: (value) => value || 0,
+    vars,
+    color: (spec) => structureColor(S.building, spec, vars),
+  });
   ctx.restore();
   ctx.strokeStyle = S.building.outline; ctx.lineWidth = 1; ctx.stroke(path);
 }
@@ -53,6 +61,13 @@ const PIER_STYLES = MATERIALS.pier;
 // mundo dibujadas con los colores escritos adentro de su propia función.
 const S = MATERIALS.structure;
 
+function structureColor(palette, spec, vars = {}) {
+  if (typeof spec === "string" && spec.startsWith("$")) {
+    return vars[spec.slice(1)] ?? palette[spec.slice(1)] ?? spec;
+  }
+  return spec;
+}
+
 function pierInView(P, view) {
   const pts = P.pts, m = P.w / 2 + 40;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -74,48 +89,20 @@ function drawPier(P, view) {
     const last = i === pts.length - 4;
     ctx.save();
     ctx.translate(ax, ay); ctx.rotate(Math.atan2(by - ay, bx - ax));
-    if (!style.round) {                          // decks cast a shadow on the sea;
-      ctx.fillStyle = S.pierDeck.apronShadow;    // an apron lies on the ground
-      ctx.fillRect(3, -hw + 4, len, P.w);
-    }
-    ctx.fillStyle = style.deck;
-    if (style.round) {                           // round ends, like every other
-      ctx.beginPath();                           // paved connector on the sand
-      ctx.arc(0, 0, hw, 0, Math.PI * 2); ctx.arc(len, 0, hw, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillRect(0, -hw, len, P.w);
-    if (style.seam) {
-      ctx.strokeStyle = style.seam; ctx.lineWidth = 1;                        // planks across
-      for (let s = style.seamGap - (run % style.seamGap); s < len; s += style.seamGap) {
-        ctx.beginPath(); ctx.moveTo(s, -hw + 1); ctx.lineTo(s, hw - 1); ctx.stroke();
-      }
-    }
-    if (style.cap && last) { ctx.fillStyle = style.cap; ctx.fillRect(len - 3, -hw, 3, P.w); }
-    if (style.rail) {                                                         // rails, both sides
-      ctx.fillStyle = style.rail;
-      ctx.fillRect(0, -hw, len, 2); ctx.fillRect(0, hw - 2, len, 2);
-    }
-    if (style.centre) {                                                       // lane dashes
-      ctx.strokeStyle = style.centre; ctx.lineWidth = 2; ctx.setLineDash([12, 10]);
-      ctx.beginPath(); ctx.moveTo(run ? 0 : 6, 0); ctx.lineTo(last ? len - 6 : len, 0); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    if (style.posts) {
-      ctx.fillStyle = S.pierDeck.pile;
-      for (let s = 10 - (run % style.posts); s < len; s += style.posts) {
-        ctx.fillRect(s, -hw - 1, 3, 3); ctx.fillRect(s, hw - 2, 3, 3);
-      }
-    }
-    if (style.lamps) {                        // warm dot on a pole, alternating
-      for (let s = 24 - (run % style.lamps); s < len - 8; s += style.lamps) {
-        const side = ((((run + s) / style.lamps) | 0) % 2) ? 1 : -1;
-        const lv = side * (hw - 3);
-        ctx.fillStyle = S.pierDeck.lampPost; ctx.fillRect(-0.75 + s, lv - 6, 1.5, 6);
-        ctx.fillStyle = state.weather === "night" ? S.pierDeck.lampNight : S.pierDeck.lampDay;
-        ctx.beginPath(); ctx.arc(s, lv - 7, 1.6, 0, Math.PI * 2); ctx.fill();
-      }
-    }
+    const vars = {
+      len, hw, negHw: -hw, width: P.w, run, last,
+      round: Boolean(style.round), shadowVisible: !style.round,
+      deck: style.deck, seam: style.seam, seamGap: style.seamGap,
+      cap: style.cap, capVisible: Boolean(style.cap && last), rail: style.rail,
+      centre: style.centre, centreStart: run ? 0 : 6, centreEnd: last ? len - 6 : len,
+      posts: style.posts, lamps: style.lamps, night: state.weather === "night",
+    };
+    paintStructureParts(ctx, S.pierDeck.parts, {
+      X: (value) => value || 0,
+      Y: (value) => value || 0,
+      vars,
+      color: (spec) => structureColor(S.pierDeck, spec, vars),
+    });
     ctx.restore();
     run += len;
   }
@@ -143,22 +130,15 @@ function drawPierHut(P, hw) {
   const nx = -Math.sin(a), ny = Math.cos(a);       // off the deck, to one side
   const cx = ax + nx * (hw + 13) + ux * 18;
   const cy = ay + ny * (hw + 13) + uy * 18;
-  const W2 = 9, H2 = 7;                            // half extents, world px
+  const vars = resolveAssetFormulaMap(S.pierHut.values, { nx, ny });
   ctx.save();
-  ctx.fillStyle = S.pierHut.shadow;                // its shadow on the deck
-  ctx.beginPath();
-  ctx.ellipse(cx + 2, cy + 4, W2 + 1, H2 * 0.7, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = S.pierHut.walls;                 // the walls
-  roundRect(ctx, cx - W2, cy - H2, W2 * 2, H2 * 2, 2, true, false);
-  ctx.fillStyle = S.pierHut.roof;                  // the roof, with a ridge
-  roundRect(ctx, cx - W2 - 1.5, cy - H2 - 1.5, W2 * 2 + 3, H2 * 2 + 3, 2.5, true, false);
-  ctx.strokeStyle = S.pierHut.ridge;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(cx - W2 - 1, cy); ctx.lineTo(cx + W2 + 1, cy); ctx.stroke();
-  // la puerta, on the side that looks at the deck
-  ctx.fillStyle = S.pierHut.door;
-  ctx.fillRect(cx - nx * (H2 + 0.5) - 2.2, cy - ny * (H2 + 0.5) - 2.2, 4.4, 4.4);
+  ctx.translate(cx, cy);
+  paintStructureParts(ctx, S.pierHut.parts, {
+    X: (value) => value || 0,
+    Y: (value) => value || 0,
+    vars,
+    color: (spec) => structureColor(S.pierHut, spec, vars),
+  });
   ctx.restore();
 }
 
@@ -180,71 +160,24 @@ function drawBridge(view) {
   if (!W.BRIDGE) return;
   const B = W.BRIDGE;
   if (B.x1 < view.x0 || B.x0 > view.x1) return;
-  // approach ramps
-  ctx.fillStyle = S.bridge.ramp;
-  ctx.fillRect(B.x0 - 32, B.cy - B.deckW/2 - 4, 32, B.deckW + 8);
-  ctx.fillRect(B.x1, B.cy - B.deckW/2 - 4, 32, B.deckW + 8);
-  // Deck base
-  ctx.fillStyle = S.bridge.deck;
-  ctx.fillRect(B.x0, B.cy - B.deckW/2 - 4, B.x1 - B.x0, B.deckW + 8);
-  // Asphalt
-  ctx.fillStyle = S.bridge.asphalt;
-  ctx.fillRect(B.x0, B.cy - B.deckW/2 + 2, B.x1 - B.x0, B.deckW - 4);
-  // Lane dashes
-  ctx.strokeStyle = S.bridge.dash; ctx.lineWidth = 2; ctx.setLineDash([14, 14]);
-  ctx.beginPath(); ctx.moveTo(B.x0 + 4, B.cy); ctx.lineTo(B.x1 - 4, B.cy); ctx.stroke();
-  ctx.setLineDash([]);
-  // Rails
-  ctx.fillStyle = S.bridge.rail;
-  ctx.fillRect(B.x0, B.cy - B.deckW/2 - 2, B.x1 - B.x0, 2);
-  ctx.fillRect(B.x0, B.cy + B.deckW/2, B.x1 - B.x0, 2);
-  // Cables (catenary)
   const [tx0, tx1] = B.towers;
-  const towerTop = B.cy - B.towerH;
-  const sagY = B.cy - 14;
-  ctx.strokeStyle = S.bridge.cable; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(tx0, towerTop);
-  ctx.quadraticCurveTo((tx0 + tx1) / 2, sagY, tx1, towerTop);
-  ctx.stroke();
-  // Side anchor cables
-  ctx.beginPath();
-  ctx.moveTo(B.x0 - 28, B.cy + 4); ctx.lineTo(tx0, towerTop);
-  ctx.moveTo(B.x1 + 28, B.cy + 4); ctx.lineTo(tx1, towerTop);
-  ctx.stroke();
-  // Vertical hangers
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = S.bridge.hanger;
-  for (let xx = tx0 + 6; xx < tx1; xx += 6) {
-    const t = (xx - tx0) / (tx1 - tx0);
-    const ty = (1-t)*(1-t)*towerTop + 2*t*(1-t)*sagY + t*t*towerTop;
-    ctx.beginPath(); ctx.moveTo(xx, ty); ctx.lineTo(xx, B.cy - 4); ctx.stroke();
-  }
-  // Towers — slender silver lattice legs with X cross-bracing
-  for (const tx of B.towers) {
-    ctx.fillStyle = S.bridge.towerLeg;
-    ctx.fillRect(tx - 4, towerTop, 3, B.towerH + 4);
-    ctx.fillRect(tx + 1, towerTop, 3, B.towerH + 4);
-    ctx.fillStyle = S.bridge.towerCap;
-    ctx.fillRect(tx - 6, towerTop - 4, 12, 4);
-    // lattice X braces between the legs, 4 panels up the height
-    ctx.strokeStyle = S.bridge.towerBrace; ctx.lineWidth = 1;
-    const seg = (B.towerH + 4) / 4;
-    for (let i = 0; i < 4; i++) {
-      const yA = towerTop + i * seg, yB = yA + seg;
-      ctx.beginPath();
-      ctx.moveTo(tx - 2.5, yA); ctx.lineTo(tx + 2.5, yB);
-      ctx.moveTo(tx + 2.5, yA); ctx.lineTo(tx - 2.5, yB);
-      ctx.stroke();
-    }
-  }
-  // Sign
-  ctx.font = "bold 9px 'JetBrains Mono', monospace"; ctx.textAlign = "center";
-  const lbl = "PUENTE MATA LIMÓN";
-  const wlbl = ctx.measureText(lbl).width + 10;
-  const mx = (B.x0 + B.x1) / 2;
-  ctx.fillStyle = S.bridge.signBg; ctx.fillRect(mx - wlbl/2, B.cy + B.deckW/2 + 14, wlbl, 12);
-  ctx.fillStyle = S.bridge.signFg; ctx.fillText(lbl, mx, B.cy + B.deckW/2 + 23);
+  const vars = resolveAssetFormulaMap(S.bridge.values, {
+    len: B.x1 - B.x0,
+    deckW: B.deckW,
+    tower0: tx0 - B.x0,
+    tower1: tx1 - B.x0,
+    towerH: B.towerH,
+    labelText: "PUENTE MATA LIMÓN",
+  });
+  ctx.save();
+  ctx.translate(B.x0, B.cy);
+  paintStructureParts(ctx, S.bridge.parts, {
+    X: (value) => value || 0,
+    Y: (value) => value || 0,
+    vars,
+    color: (spec) => structureColor(S.bridge, spec, vars),
+  });
+  ctx.restore();
 }
 
 // The two ferries and their berths. Everything is drawn in the ferry's own
@@ -257,60 +190,21 @@ function drawFerry(f, view) {
   const L = f.dl / 2, B = f.dw / 2;
   ctx.save();
   ctx.translate(f.x, f.y); ctx.rotate(f.a);
-  // wake: it only exists while she is making way
-  if (f.phase === "out" || f.phase === "back") {
-    ctx.fillStyle = S.ferry.wake;
-    ctx.beginPath();
-    ctx.moveTo(-L, -B * 0.7); ctx.lineTo(-L - 70, -B * 1.5);
-    ctx.lineTo(-L - 70, B * 1.5); ctx.lineTo(-L, B * 0.7);
-    ctx.closePath(); ctx.fill();
-  }
-  // THE HULL IS A CURVE, not a box with a notch. Everything else that moves in
-  // this game is drawn round and warm — the scooter, the pangas, the churchill
-  // itself — and the ferry was the one square thing on the water. A quadratic
-  // bow and a flared quarter give her the same line, and the DECK still ends
-  // exactly where `deckAt` says it does, so what you see is what you stand on.
-  ctx.fillStyle = S.ferry.shadow;                // hull shadow on the water
-  ctx.beginPath();
-  ctx.moveTo(L + 4, 3); ctx.quadraticCurveTo(L - 8, -B + 8, L - 30, -B + 5);
-  ctx.lineTo(-L + 8, -B + 5); ctx.quadraticCurveTo(-L - 2, 3, -L + 8, B + 5);
-  ctx.lineTo(L - 30, B + 5); ctx.quadraticCurveTo(L - 8, B + 5, L + 4, 3);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = S.ferry.hull;                  // hull
-  ctx.beginPath();
-  ctx.moveTo(L + 2, 0);
-  ctx.quadraticCurveTo(L - 6, -B, L - 30, -B);  // flared bow
-  ctx.lineTo(-L + 6, -B);
-  ctx.quadraticCurveTo(-L - 3, 0, -L + 6, B);   // rounded quarter aft
-  ctx.lineTo(L - 30, B);
-  ctx.quadraticCurveTo(L - 6, B, L + 2, 0);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = S.ferry.boottop;               // boot-top stripe along the sheer
-  ctx.fillRect(-L + 6, -B + 2, L * 2 - 36, 2);
-  ctx.fillRect(-L + 6, B - 4, L * 2 - 36, 2);
-  ctx.fillStyle = S.ferry.deck;                  // the DECK — the drivable rect
-  roundRect(ctx, -L + 4, -B + 5, L * 2 - 30, B * 2 - 10, 5, true, false);
-  ctx.strokeStyle = S.ferry.lane; ctx.lineWidth = 1.5; // lane guides down the deck
-  ctx.setLineDash([9, 9]);
-  ctx.beginPath(); ctx.moveTo(-L + 9, 0); ctx.lineTo(L - 30, 0); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = S.ferry.rails;                 // rails, both sides
-  ctx.fillRect(-L + 4, -B + 2, L * 2 - 32, 3);
-  ctx.fillRect(-L + 4, B - 5, L * 2 - 32, 3);
-  ctx.fillStyle = S.ferry.ramp;                  // stern ramp (how you get on)
-  roundRect(ctx, -L - 9, -B + 9, 12, B * 2 - 18, 3, true, false);
-  ctx.fillStyle = S.ferry.wheelhouse;            // wheelhouse forward, with a roof
-  roundRect(ctx, L - 48, -B + 8, 22, B * 2 - 16, 5, true, false);
-  ctx.fillStyle = S.ferry.wheelhouseRoof;
-  roundRect(ctx, L - 45, -B + 11, 16, B * 2 - 22, 4, true, false);
-  ctx.fillStyle = S.ferry.windowLight;           // a warm light in the window
-  ctx.fillRect(L - 42, -3, 10, 6);
-  ctx.fillStyle = S.ferry.funnel;                // funnel, with a black cap
-  ctx.beginPath(); ctx.arc(L - 58, 0, 5.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = S.ferry.funnelCap;
-  ctx.beginPath(); ctx.arc(L - 58, 0, 5.5, Math.PI * 1.15, Math.PI * 1.85); ctx.fill();
+  const sh = sunShadow(S.ferry.heightM);
+  paintStructureParts(ctx, S.ferry.parts, {
+    X: (value) => value || 0,
+    Y: (value) => value || 0,
+    vars: {
+      L, B,
+      moving: f.phase === "out" || f.phase === "back",
+      travelDir: f.phase === "back" ? -1 : 1,
+      doubleEnded: f.doubleEnded,
+      shadowDx: sh.dx, shadowDy: sh.dy, shadowAlpha: sh.alpha,
+    },
+    color: (spec) => structureColor(S.ferry, spec),
+  });
   ctx.restore();
-  label(f.x, f.y - f.dw / 2 - 14, f.name.toUpperCase().replace("FERRY A ", ""),
+  label(f.x, f.y - f.dw / 2 - 14, (f.vesselName || f.name).toUpperCase(),
         S.ferry.nameFg, S.ferry.nameBg);
 }
 // The berth she sails from: a concrete apron at the quay, so an empty berth
@@ -321,10 +215,13 @@ function drawBerth(f, view) {
   ctx.save();
   ctx.translate(bx, by); ctx.rotate(f.pts.length > 1
     ? Math.atan2(f.pts[1].y - by, f.pts[1].x - bx) : 0);
-  ctx.fillStyle = S.berth.deck;
-  ctx.fillRect(-14, -f.dw / 2 - 6, 46, f.dw + 12);
-  ctx.fillStyle = S.berth.edge;
-  for (let v = -f.dw / 2; v < f.dw / 2; v += 12) ctx.fillRect(-14, v, 46, 2);
+  const B = f.dw / 2;
+  paintStructureParts(ctx, S.berth.parts, {
+    X: (value) => value || 0,
+    Y: (value) => value || 0,
+    vars: { dw: f.dw, negB: -B, apronY: -B - 6, apronH: f.dw + 12 },
+    color: (spec) => structureColor(S.berth, spec),
+  });
   ctx.restore();
 }
 function drawFerries(view) {

@@ -7,6 +7,21 @@
 
   "_derived_on_purpose": "The crest, sheen, cap, trough, wet and ripple colours are NOT authored. Each is the weather's own water colour lifted toward white or dropped toward black by the ratio below, which is why sunset stays warm and night stays cold for free — an authored six-colour table per weather would be four tables to keep in step, and they would drift the first time somebody retuned the sunset. Only the RATIOS are data; the mixing is code.",
 
+  "inland": {
+    "_note": "The estero/river surface painted inside a mapped water polygon. Geometry and clipping come from the world; every visible cadence and ink is editable here.",
+    "shimmer": {
+      "color": "rgba(255,255,255,0.14)",
+      "lineWidth": 1,
+      "timeScale": 0.0006,
+      "rowGap": 22,
+      "sampleStep": 18,
+      "xFrequency": 0.05,
+      "yFrequency": 0.04,
+      "amplitude": 1.8
+    },
+    "bank": {"color": "rgba(226,240,238,0.35)", "lineWidth": 2.5}
+  },
+
   "swell": {
     "_note": "Per weather. A storm is BIGGER, STEEPER and CLOSER-SPACED swell plus whitecaps — the single most legible 'this is rough' cue there is. Night is low contrast with a moonlit sheen on the crest faces, so the sea is still legibly moving in the dark without turning into a light show.",
     "_units": "len/run in world px, amp in px, speed in px/s, crest/sheen/trough/caps are alphas 0..1",

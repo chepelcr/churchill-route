@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Churchill art fixture</title>
+  </head>
+  <body>
+    <script type="module">
+      import "@fontsource/bungee/400.css";
+      import "@fontsource/space-grotesk/400.css";
+      import "@fontsource/space-grotesk/500.css";
+      import "@fontsource/space-grotesk/600.css";
+      import "@fontsource/space-grotesk/700.css";
+      import "@fontsource/jetbrains-mono/400.css";
+      import "@fontsource/jetbrains-mono/600.css";
+
+      // Art sheets import the renderer themselves. Loading the React game here
+      // gives HMR two module graphs after an edit (the app graph and the direct
+      // fixture imports), so a sheet can bind gfx.ctx in one and paint through
+      // the other. A dedicated page keeps one graph and one Canvas context while
+      // the normal dev server stays alive.
+      window.__CHURCHILL_ART_FIXTURE_READY__ = true;
+    </script>
+  </body>
+</html>

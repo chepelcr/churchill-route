@@ -44,6 +44,8 @@ class GeneratorTests(unittest.TestCase):
     def setUp(self):
         self.js = code(SHAPES_JS)
         self.body = self.js.split("const GENERATORS = {", 1)[1].split("\n};", 1)[0]
+        self.scatter = self.js.split("export function scatterPlacements", 1)[1].split(
+            "const GENERATORS = {", 1)[0]
 
     def test_all_three_are_reachable_from_a_catalog(self):
         """`SHAPE_NAMES` is the list every catalog is validated against. A verb
@@ -75,8 +77,14 @@ class GeneratorTests(unittest.TestCase):
         """`sqrt` of the radial hash. Without it every copy piles toward the
         centre, because a uniform radius is not a uniform AREA — it reads as a
         clump rather than a shoal, and that is the whole point of the verb."""
-        scatter = self.body.split("scatter(", 1)[1].split("orbit(", 1)[0]
-        self.assertIn("Math.sqrt", scatter)
+        self.assertIn("Math.sqrt", self.scatter)
+
+    def test_box_scatter_keeps_clearings_inside_the_lot(self):
+        """A parcel garden pushes trees out of its centre, then drops a tree if
+        that push crosses the declared local bounds. The tree silhouette remains
+        in flora.js; this is only the reusable placement rule."""
+        for token in ('layout === "box"', "clear", "boundX", "boundY", "continue"):
+            self.assertIn(token, self.scatter)
 
     def test_a_generator_draws_its_copies_in_their_own_frame(self):
         """A sub-list is written ONCE about its own origin and the verb puts each

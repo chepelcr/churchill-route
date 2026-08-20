@@ -23,6 +23,7 @@ SHAPES = ROOT / "src" / "render" / "c2d" / "shapes.js"
 PRIMS = ROOT / "src" / "render" / "c2d" / "primitives.js"
 GFX = ROOT / "src" / "render" / "c2d" / "gfx.js"
 FERIA = ROOT / "src" / "render" / "c2d" / "feriaShapes.js"
+FLORA = ROOT / "src" / "render" / "c2d" / "floraShapes.js"
 
 #: los módulos que el intérprete tiene permitido tocar. `vehicleShapes.js` entra
 #: porque sólo depende de `game/vehicles.js`, que por contrato (CLAUDE.md) es
@@ -161,6 +162,45 @@ class FeriaInterpreterStandsAloneToo(unittest.TestCase):
         text = FERIA.read_text(encoding="utf-8")
         self.assertIn("export const FERIA_SHAPE_NAMES", text,
                       "el editor pregunta esta lista en vez de copiarla")
+
+
+class FloraInterpreterStandsAloneToo(unittest.TestCase):
+    """Six plant families, one game/editor painter, no scene globals."""
+
+    def test_it_imports_only_the_pure_primitive_leaf(self):
+        self.assertEqual(imports_of(FLORA), {"./primitives.js"})
+
+    def test_it_exports_generator_names_and_contracts_for_validators(self):
+        text = FLORA.read_text(encoding="utf-8")
+        for name in ("FLORA_GENERATOR_NAMES", "FLORA_GENERATOR_CONTRACTS",
+                     "paintFloraSpecies", "paintFloraPreview"):
+            self.assertIn(f"export {'const' if name.startswith('FLORA_') else 'function'} {name}", text)
+
+    def test_it_has_no_world_dom_state_or_authored_colours(self):
+        text = re.sub(r"/\*.*?\*/", "", FLORA.read_text(encoding="utf-8"), flags=re.S)
+        text = re.sub(r"^\s*//.*$", "", text, flags=re.M)
+        for banned in ("window", "document", "state.", "./gfx.js"):
+            self.assertNotIn(banned, text)
+        self.assertNotRegex(text, r"#[0-9a-fA-F]{3,8}|rgba?\(\s*\d")
+
+
+class AssetFrameFormulaLanguageIsClosed(unittest.TestCase):
+    """Cross-axis shape proportions are JSON now, but never executable text."""
+
+    def test_formula_vocabulary_is_exported_and_finite(self):
+        text = SHAPES.read_text(encoding="utf-8")
+        block = text.split("export const ASSET_FORMULA_OPS", 1)[1].split("]", 1)[0]
+        names = re.findall(r'"([a-z]+)"', block)
+        self.assertGreater(len(names), 10)
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_formula_evaluator_never_executes_source_text(self):
+        text = SHAPES.read_text(encoding="utf-8")
+        body = text.split("export function evaluateAssetFormula", 1)[1].split(
+            "/** Resolve a named formula map", 1)[0]
+        for banned in ("eval(", "new Function", "Function("):
+            self.assertNotIn(banned, body)
+        self.assertIn("unknown asset formula operation", body)
 
 
 if __name__ == "__main__":

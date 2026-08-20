@@ -1,262 +1,550 @@
 {
-  "_note": "LA ARBOLEDA, as data. Every species the world can plant, keyed by the name the world emits. `form` picks which painter in src/render/c2d/flora.js builds the silhouette — the FORMS are code (they are geometry), the species are not. Adding a tree is a row here plus, at most, a mix that names it. Palettes run dark body -> mid -> highlight, the one lighting idiom every plant in this world shares.",
-  "version": 1,
+  "_note": "LA ARBOLEDA REGIONAL. Species identity, botanical status, habitat, palettes and complete silhouette recipes live here. The Canvas interpreter owns only a finite geometry vocabulary; it never branches on a species id. `observed_local` means documented in Puntarenas, not automatically native.",
+  "version": 2,
+  "defaults": {
+    "treeSpecies": "almendro",
+    "palmSpecies": "palma",
+    "mangroveMix": "channel_edge",
+    "_note": "Wire-format defaults: generated tree/palm records omit `k` for these identities; unlabelled mangrove points resolve through this zone. Unknown explicit ids still throw."
+  },
+  "vocabulary": {
+    "kinds": ["taxon", "condition", "placeholder"],
+    "origins": ["native", "introduced", "unresolved", "not_applicable"],
+    "occurrences": ["observed_local", "regional_reference", "authored_legacy"],
+    "habitats": {
+      "urban_center": "Documented or deliberately planted in the central urban peninsula.",
+      "coastal_urban": "Beach edge, paseo, median or other salt- and wind-exposed urban planting.",
+      "dry_forest": "Seasonal Pacific dry forest; native mixes must not contain introduced ornamentals.",
+      "transition_forest": "The Miramar and foothill transition behind the port, not a generic conifer highland.",
+      "mangrove_channel_edge": "Intertidal waterline and channel edge currently emitted by the world builder.",
+      "mangrove_interior": "Landward or higher-salinity interior mangrove; catalogued now, pending interior polygons.",
+      "cultivated_upland": "Cultivated legacy asset retained for manual placement, never a native Puntarenas mix."
+    },
+    "rootArchitectures": ["prop", "spike", "buttress", "collar"]
+  },
+  "sources": {
+    "urban_puntarenas_2025": {
+      "title": "Inventario de la paleta vegetal del eje iglesia–Parque Victoria–bulevar de Puntarenas",
+      "scope": "Exact urban centre; reports Terminalia catappa as predominant and lists Cedrela odorata, Ficus sp., Cassia fistula and Licuala grandis.",
+      "url": "https://repositoriotec.tec.ac.cr/server/api/core/bitstreams/d736ba39-acf3-4c12-ad44-08d6371ee851/content"
+    },
+    "chacarita_mangrove_2024": {
+      "title": "Estructura y composición en un manglar del Pacífico Central de Costa Rica",
+      "scope": "Exact Chacarita, Puntarenas; five measured species and their importance values.",
+      "url": "https://www.scielo.sa.cr/scielo.php?pid=S2215-34702024000100098&script=sci_arttext"
+    },
+    "morales_mangrove_2025": {
+      "title": "Cobertura, estructura vegetal y almacenamiento de carbono del manglar de Morales",
+      "scope": "Gulf of Nicoya; Rhizophora dominates channels/coastal edge, while Avicennia and Laguncularia form interior patches.",
+      "url": "https://www.scielo.sa.cr/scielo.php?pid=S0034-77442025000200006&script=sci_arttext"
+    },
+    "sinac_dry_forest": {
+      "title": "SINAC — flora del bosque seco deciduo y semideciduo del Pacífico",
+      "scope": "Regional Pacific dry-forest reference, not a specimen inventory of the peninsula.",
+      "url": "https://www.sinac.go.cr/ES/ac/act/pnmlb/Paginas/default.aspx"
+    },
+    "miramar_transition": {
+      "title": "Composición florística del bosque de transición de Miramar, Puntarenas",
+      "scope": "Puntarenas foothill transition reference; supports a native broadleaf mix instead of pines/cypresses.",
+      "url": "https://repositoriotec.tec.ac.cr/server/api/core/bitstreams/0da1fa99-4e8d-4956-928e-e7c22c1917b3/content"
+    },
+    "tivives_coastal_dry_forest_2018": {
+      "title": "SINAC — diagnóstico socioambiental de la Zona Protectora Tivives",
+      "scope": "Exact Caldera/Tivives coastal dry forest and mangrove reference; documents deciduous structure, Cedrela odorata, Bursera simaruba, Sideroxylon capiri and the seven mangrove taxa.",
+      "url": "https://www.sinac.go.cr/ES/planmanejo/Plan%20Manejo%20ACOPAC/ZP%20Tivives%20%282018%29/Diagnostico%20Tivives%20final.pdf"
+    },
+    "mata_limon_mangrove_2022": {
+      "title": "Estructura vegetal y flora asociada del manglar de Mata de Limón, Puntarenas",
+      "scope": "Exact game-route estuary beside Caldera; six nuclear mangroves, Avicennia germinans with the highest importance value, and associated Tabebuia rosea, Bursera simaruba, Enterolobium cyclocarpum and Cedrela odorata.",
+      "url": "https://www.revistas.una.ac.cr/index.php/revmar/article/view/16894"
+    },
+    "kew_terminalia": { "title": "Kew POWO — Terminalia catappa", "scope": "Native range and introduced status in Costa Rica.", "url": "https://powo.science.kew.org/taxon/171034-1" },
+    "kew_cedrela": { "title": "Kew POWO — Cedrela odorata", "scope": "Native range includes Costa Rica.", "url": "https://powo.science.kew.org/taxon/urn%3Alsid%3Aipni.org%3Anames%3A51010-2" },
+    "kew_guanacaste": { "title": "Kew POWO — Enterolobium cyclocarpum", "scope": "Native range includes Costa Rica.", "url": "https://powo.science.kew.org/taxon/urn%3Alsid%3Aipni.org%3Anames%3A1037928-2" },
+    "kew_corteza": { "title": "Kew POWO — Handroanthus ochraceus", "scope": "Native range includes Costa Rica.", "url": "https://powo.science.kew.org/taxon/117333-2" },
+    "kew_roble": { "title": "Kew POWO — Tabebuia rosea", "scope": "Native range includes Costa Rica.", "url": "https://powo.science.kew.org/taxon/111027-1" },
+    "kew_indio": { "title": "Kew POWO — Bursera simaruba", "scope": "Native to Costa Rica and characteristic of seasonally dry tropical forest.", "url": "https://powo.science.kew.org/taxon/127217-1" },
+    "kew_tempisque": { "title": "Kew POWO — Sideroxylon capiri", "scope": "Native to Costa Rica and characteristic of seasonally dry tropical forest.", "url": "https://powo.science.kew.org/taxon/urn%3Alsid%3Aipni.org%3Anames%3A789590-1" },
+    "kew_madrono": { "title": "Kew POWO — Calycophyllum candidissimum", "scope": "Native range includes Costa Rica.", "url": "https://powo.science.kew.org/taxon/urn%3Alsid%3Aipni.org%3Anames%3A745241-1" },
+    "kew_cassia": { "title": "Kew POWO — Cassia fistula", "scope": "Native to South Asia; introduced ornamental in the region.", "url": "https://powo.science.kew.org/taxon/urn%3Alsid%3Aipni.org%3Anames%3A484507-1" },
+    "kew_licuala": { "title": "Kew POWO — Licuala grandis", "scope": "Native to the southwest Pacific; introduced ornamental in Puntarenas.", "url": "https://powo.science.kew.org/taxon/urn%3Alsid%3Aipni.org%3Anames%3A667880-1" }
+  },
   "forms": {
-    "broadleaf": "the shared canopy stack: a round, slightly ragged crown on a short trunk",
-    "conifer": "stacked tiers narrowing upward — a cone read from above with its shadow side",
-    "column": "one tall narrow crown: a cypress is a vertical line in a landscape",
-    "bare": "trunk and branches, no canopy — the dry season, and what a dead tree looks like",
-    "palm": "a leaning trunk under a ring of fronds — a palm is a different tree and has to stay one",
-    "mangrove": "a dense low crown over a cage of prop roots, standing in the tide"
+    "almendro_tiered": {
+      "_note": "Low, broad and horizontally tiered: the characteristic shade crown of the predominant urban almendro de playa.",
+      "generator": "crown-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 1.16, "rxR": 1.22, "ryR": 0.4, "alpha": 0.24 },
+      "trunk": { "baseYPx": 3, "widthPx": 3, "cap": "butt", "crownGapPx": 3 },
+      "crown": { "scaleX": 1, "scaleY": 0.64, "jitterXR": 0.1, "jitterYR": 0.08, "layers": [
+        { "xR": 0, "yR": 0.05, "radiusR": 1, "scaleX": 1.18, "scaleY": 0.58, "tone": 1, "wobble": 0.11, "points": 12, "seedOffset": 0 },
+        { "xR": -0.5, "yR": -0.12, "radiusR": 0.58, "scaleX": 1.08, "scaleY": 0.54, "tone": 2, "wobble": 0.13, "points": 10, "seedOffset": 2.3 },
+        { "xR": 0.48, "yR": -0.1, "radiusR": 0.56, "scaleX": 1.08, "scaleY": 0.54, "tone": 2, "wobble": 0.13, "points": 10, "seedOffset": 4.1 },
+        { "xR": 0.04, "yR": -0.34, "radiusR": 0.5, "scaleX": 1.05, "scaleY": 0.56, "tone": 3, "wobble": 0.14, "points": 9, "seedOffset": 6.2 }
+      ] }
+    },
+    "guanacaste_umbrella": {
+      "_note": "Very wide, flattened umbrella on a low branching trunk.",
+      "generator": "crown-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 1.3, "rxR": 1.28, "ryR": 0.38, "alpha": 0.25 },
+      "trunk": { "baseYPx": 3, "widthPx": 4.2, "cap": "round", "crownGapPx": 2 },
+      "crown": { "scaleX": 1.28, "scaleY": 0.54, "jitterXR": 0.08, "jitterYR": 0.06, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 1, "tone": 1, "wobble": 0.16, "points": 14, "seedOffset": 0 },
+        { "xR": -0.52, "yR": -0.08, "radiusR": 0.62, "tone": 2, "wobble": 0.18, "points": 11, "seedOffset": 2.7 },
+        { "xR": 0.54, "yR": -0.06, "radiusR": 0.6, "tone": 2, "wobble": 0.18, "points": 11, "seedOffset": 4.9 },
+        { "xR": 0.08, "yR": -0.3, "radiusR": 0.48, "scaleX": 1.1, "scaleY": 0.58, "tone": 3, "wobble": 0.18, "points": 10, "seedOffset": 7.1 }
+      ] }
+    },
+    "flowering_round": {
+      "_note": "Rounded seasonal flowering crown used by corteza amarilla and roble de sabana; palette carries bloom colour.",
+      "generator": "crown-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 1, "rxR": 1.12, "ryR": 0.42, "alpha": 0.24 },
+      "trunk": { "baseYPx": 3, "widthPx": 2.7, "cap": "butt", "crownGapPx": 4 },
+      "crown": { "scaleX": 1, "scaleY": 0.82, "jitterXR": 0.16, "jitterYR": 0.12, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 0.94, "tone": 1, "wobble": 0.19, "points": 12, "seedOffset": 0 },
+        { "xR": -0.32, "yR": -0.18, "radiusR": 0.58, "tone": 2, "wobble": 0.21, "points": 10, "seedOffset": 2.1 },
+        { "xR": 0.34, "yR": -0.12, "radiusR": 0.56, "tone": 2, "wobble": 0.21, "points": 10, "seedOffset": 4.4 },
+        { "xR": 0.08, "yR": -0.42, "radiusR": 0.4, "tone": 3, "wobble": 0.22, "points": 9, "seedOffset": 6.6 }
+      ] }
+    },
+    "cedro_open": {
+      "_note": "Tall trunk with a lighter, discontinuous asymmetric crown instead of a single dense ball.",
+      "generator": "crown-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.94, "rxR": 1.1, "ryR": 0.4, "alpha": 0.22 },
+      "trunk": { "baseYPx": 3, "widthPx": 2.5, "cap": "butt", "crownGapPx": 5 },
+      "crown": { "scaleX": 1, "scaleY": 0.78, "jitterXR": 0.18, "jitterYR": 0.15, "layers": [
+        { "xR": -0.34, "yR": 0.02, "radiusR": 0.58, "tone": 1, "wobble": 0.22, "points": 10, "seedOffset": 0 },
+        { "xR": 0.38, "yR": -0.06, "radiusR": 0.62, "tone": 1, "wobble": 0.22, "points": 10, "seedOffset": 2.2 },
+        { "xR": -0.02, "yR": -0.34, "radiusR": 0.54, "tone": 2, "wobble": 0.24, "points": 9, "seedOffset": 4.7 },
+        { "xR": 0.35, "yR": -0.48, "radiusR": 0.32, "tone": 3, "wobble": 0.24, "points": 8, "seedOffset": 7.2 }
+      ] }
+    },
+    "dense_round": {
+      "_note": "Dense rounded evergreen crown for higuerón and tempisque-like silhouettes.",
+      "generator": "crown-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 1.05, "rxR": 1.15, "ryR": 0.44, "alpha": 0.25 },
+      "trunk": { "baseYPx": 3, "widthPx": 3.4, "cap": "round", "crownGapPx": 3 },
+      "crown": { "scaleX": 1.04, "scaleY": 0.88, "jitterXR": 0.1, "jitterYR": 0.08, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 1, "tone": 1, "wobble": 0.14, "points": 14, "seedOffset": 0 },
+        { "xR": -0.24, "yR": -0.24, "radiusR": 0.66, "tone": 2, "wobble": 0.16, "points": 11, "seedOffset": 2.5 },
+        { "xR": 0.3, "yR": -0.28, "radiusR": 0.58, "tone": 2, "wobble": 0.16, "points": 11, "seedOffset": 4.8 },
+        { "xR": 0.04, "yR": -0.5, "radiusR": 0.38, "tone": 3, "wobble": 0.17, "points": 9, "seedOffset": 7.3 }
+      ] }
+    },
+    "cana_fistula_open": {
+      "_note": "Small open crown; yellow palette reads the hanging flower mass without pretending it is native.",
+      "generator": "crown-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.9, "rxR": 1.08, "ryR": 0.4, "alpha": 0.22 },
+      "trunk": { "baseYPx": 3, "widthPx": 2.1, "cap": "butt", "crownGapPx": 4 },
+      "crown": { "scaleX": 0.94, "scaleY": 0.8, "jitterXR": 0.2, "jitterYR": 0.16, "layers": [
+        { "xR": -0.28, "yR": 0.02, "radiusR": 0.62, "tone": 1, "wobble": 0.22, "points": 10, "seedOffset": 0 },
+        { "xR": 0.3, "yR": -0.04, "radiusR": 0.64, "tone": 2, "wobble": 0.23, "points": 10, "seedOffset": 2.6 },
+        { "xR": 0, "yR": -0.36, "radiusR": 0.5, "tone": 3, "wobble": 0.24, "points": 9, "seedOffset": 5.3 }
+      ] }
+    },
+    "dry_branch": {
+      "_note": "Generic dry-season condition, explicitly not a taxon.",
+      "generator": "branch-crown", "paletteRoles": ["trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.5, "rxR": 1.12, "ryR": 0.42, "alpha": 0.22 },
+      "trunk": { "baseYPx": 3, "widthPx": 2.4, "branchWidthPx": 1.4, "cap": "round" },
+      "branches": { "count": 6, "angleSpread": 2.2, "lengthMinR": 0.55, "lengthRangeR": 0.6, "verticalScale": 0.8, "startMinH": 0.68, "startRangeH": 0.3, "forkAngleSpread": 0.8, "forkLength": 0.5, "forkVerticalScale": 0.4 }
+    },
+    "indio_branch": {
+      "_note": "Sparse dry-forest branching that leaves the copper-red trunk visible.",
+      "generator": "branch-crown", "paletteRoles": ["trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.56, "rxR": 1.1, "ryR": 0.4, "alpha": 0.2 },
+      "trunk": { "baseYPx": 3, "widthPx": 3.2, "branchWidthPx": 1.7, "cap": "round" },
+      "branches": { "count": 7, "angleSpread": 2.5, "lengthMinR": 0.48, "lengthRangeR": 0.52, "verticalScale": 0.72, "startMinH": 0.58, "startRangeH": 0.38, "forkAngleSpread": 0.72, "forkLength": 0.44, "forkVerticalScale": 0.34 }
+    },
+    "madrono_high": {
+      "_note": "High smooth pale trunk and a compact crown.",
+      "generator": "crown-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.88, "rxR": 1.08, "ryR": 0.4, "alpha": 0.22 },
+      "trunk": { "baseYPx": 3, "widthPx": 2.6, "cap": "butt", "crownGapPx": 5 },
+      "crown": { "scaleX": 0.92, "scaleY": 0.84, "jitterXR": 0.14, "jitterYR": 0.12, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 0.86, "tone": 1, "wobble": 0.17, "points": 11, "seedOffset": 0 },
+        { "xR": -0.22, "yR": -0.22, "radiusR": 0.52, "tone": 2, "wobble": 0.19, "points": 9, "seedOffset": 2.4 },
+        { "xR": 0.26, "yR": -0.28, "radiusR": 0.46, "tone": 3, "wobble": 0.19, "points": 9, "seedOffset": 5.1 }
+      ] }
+    },
+    "conifer": {
+      "generator": "tier-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.9, "rxR": 1.12, "ryR": 0.42, "alpha": 0.24 },
+      "trunk": { "baseYPx": 3, "widthPx": 2.2, "cap": "butt" },
+      "tiers": { "startPx": 2, "layers": [
+        { "xR": -0.02, "yR": 0, "radiusR": 1, "scaleX": 1, "scaleY": 0.72, "tone": 1, "wobble": 0.1, "points": 10, "seedOffset": 0 },
+        { "xR": 0.04, "yR": -0.34, "radiusR": 0.9, "scaleX": 0.98, "scaleY": 0.7, "tone": 1, "wobble": 0.11, "points": 10, "seedOffset": 3.7 },
+        { "xR": -0.03, "yR": -0.67, "radiusR": 0.8, "scaleX": 1.02, "scaleY": 0.68, "tone": 2, "wobble": 0.12, "points": 9, "seedOffset": 7.4 },
+        { "xR": 0.03, "yR": -0.98, "radiusR": 0.69, "scaleX": 0.96, "scaleY": 0.66, "tone": 2, "wobble": 0.11, "points": 9, "seedOffset": 11.1 },
+        { "xR": -0.02, "yR": -1.27, "radiusR": 0.57, "scaleX": 1, "scaleY": 0.64, "tone": 2, "wobble": 0.12, "points": 9, "seedOffset": 14.8 },
+        { "xR": 0.02, "yR": -1.53, "radiusR": 0.44, "scaleX": 0.94, "scaleY": 0.62, "tone": 3, "wobble": 0.1, "points": 8, "seedOffset": 18.5 },
+        { "xR": 0, "yR": -1.76, "radiusR": 0.3, "scaleX": 0.88, "scaleY": 0.6, "tone": 3, "wobble": 0.09, "points": 8, "seedOffset": 22.2 }
+      ] }
+    },
+    "column": {
+      "generator": "column-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.8, "rxR": 1.12, "ryR": 0.42, "alpha": 0.24 },
+      "trunk": { "baseYPx": 3, "widthPx": 2, "cap": "butt" },
+      "column": { "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 1, "scaleX": 0.9, "scaleY": 0.82, "tone": 1, "wobble": 0.1, "points": 10, "seedOffset": 0 },
+        { "xR": 0.02, "yR": -0.34, "radiusR": 0.98, "scaleX": 0.88, "scaleY": 0.82, "tone": 1, "wobble": 0.11, "points": 10, "seedOffset": 4.1 },
+        { "xR": -0.02, "yR": -0.68, "radiusR": 0.96, "scaleX": 0.86, "scaleY": 0.82, "tone": 1, "wobble": 0.11, "points": 10, "seedOffset": 8.2 },
+        { "xR": 0.01, "yR": -1.02, "radiusR": 0.93, "scaleX": 0.84, "scaleY": 0.82, "tone": 1, "wobble": 0.11, "points": 9, "seedOffset": 12.3 },
+        { "xR": -0.01, "yR": -1.36, "radiusR": 0.9, "scaleX": 0.82, "scaleY": 0.8, "tone": 1, "wobble": 0.12, "points": 9, "seedOffset": 16.4 },
+        { "xR": 0.02, "yR": -1.7, "radiusR": 0.86, "scaleX": 0.78, "scaleY": 0.78, "tone": 1, "wobble": 0.12, "points": 9, "seedOffset": 20.5 },
+        { "xR": -0.01, "yR": -2.04, "radiusR": 0.78, "scaleX": 0.72, "scaleY": 0.76, "tone": 2, "wobble": 0.11, "points": 9, "seedOffset": 24.6 },
+        { "xR": 0.01, "yR": -2.38, "radiusR": 0.66, "scaleX": 0.64, "scaleY": 0.72, "tone": 2, "wobble": 0.1, "points": 8, "seedOffset": 28.7 },
+        { "xR": 0, "yR": -2.7, "radiusR": 0.48, "scaleX": 0.54, "scaleY": 0.68, "tone": 2, "wobble": 0.09, "points": 8, "seedOffset": 32.8 }
+      ] }
+    },
+    "cerezo_ornamental": {
+      "generator": "crown-stack", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.96, "rxR": 1.1, "ryR": 0.42, "alpha": 0.22 },
+      "trunk": { "baseYPx": 3, "widthPx": 2.4, "cap": "round", "crownGapPx": 4 },
+      "crown": { "scaleX": 1.02, "scaleY": 0.82, "jitterXR": 0.18, "jitterYR": 0.14, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 0.9, "tone": 1, "wobble": 0.2, "points": 12, "seedOffset": 0 },
+        { "xR": -0.3, "yR": -0.2, "radiusR": 0.56, "tone": 2, "wobble": 0.22, "points": 10, "seedOffset": 2.3 },
+        { "xR": 0.32, "yR": -0.2, "radiusR": 0.54, "tone": 2, "wobble": 0.22, "points": 10, "seedOffset": 4.8 },
+        { "xR": 0.02, "yR": -0.44, "radiusR": 0.38, "tone": 3, "wobble": 0.23, "points": 9, "seedOffset": 7.1 }
+      ] }
+    },
+    "feather_palm": {
+      "generator": "frond-ring", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 4, "radiusR": 1, "rxR": 1.12, "ryR": 0.42, "alpha": 0.24 },
+      "trunk": { "baseYPx": 4, "widthPx": 3, "cap": "butt", "swayPx": 2, "swaySpeed": 0.001 },
+      "fronds": { "count": 7, "tone": 2, "angleSway": 0.06, "angleJitter": 0.22, "lengthMinR": 0.86, "lengthRangeR": 0.28, "radialYSquash": 0.46, "widthPx": 9, "heightPx": 3.2 },
+      "core": { "tone": 0, "radiusPx": 2.9, "wobble": 0.2, "points": 8, "seedOffset": 3.7 }
+    },
+    "fan_palm": {
+      "generator": "fan-ring", "paletteRoles": ["canopy", "trunk"], "overrides": [],
+      "shadow": { "baseYPx": 3, "radiusR": 0.94, "rxR": 1.08, "ryR": 0.4, "alpha": 0.22 },
+      "trunk": { "baseYPx": 3, "widthPx": 2.5, "cap": "butt", "swayPx": 0.8, "swaySpeed": 0.0008 },
+      "fans": { "count": 9, "tone": 2, "angleSway": 0.03, "angleSeed": 31.1, "angleJitter": 0.14, "lengthMinR": 0.68, "lengthRangeR": 0.18, "lengthSeed": 17.9, "lengthStep": 2.7, "halfAngle": 0.32, "radialYSquash": 0.58, "baseR": 0.08, "tipBulgeR": 1.14 },
+      "core": { "tone": 0, "radiusPx": 2.6, "wobble": 0.18, "points": 8, "seedOffset": 3.7, "scaleX": 1, "scaleY": 0.86 }
+    },
+    "rhizophora_tidal": {
+      "_note": "Arching stilt/prop roots for Rhizophora at channel edges.",
+      "generator": "tidal-root-crown", "paletteRoles": ["canopy", "roots", "mud", "shallow"], "overrides": [],
+      "mud": { "visibleBelowTide": 0.85, "radiusR": 1.3, "seedOffset": 0.4, "wobble": 0.18, "alpha": 0.34 },
+      "shadow": { "xPx": 3, "yPx": 4, "radiusR": 0.95, "wobble": 0.2, "alpha": 0.22 },
+      "roots": { "architecture": "prop", "count": { "min": 8, "range": 5 }, "stroke": { "widthPx": 1.6, "cap": "round", "alphaDry": 0.88, "alphaWetLoss": 0.44 }, "prop": { "radiusMinR": 0.44, "radiusDryGainR": 0.38, "lengthMin": 0.72, "lengthRange": 0.52, "startR": 0.32, "startYR": 0.28, "control": 0.82, "controlY": 0.58, "endY": 0.88, "angleSeed": 2.1, "lengthSeed": 5.1, "lengthStep": 1.9 } },
+      "water": { "radiusR": 0.84, "wetGainR": 0.1, "seedOffset": 1.7, "wobble": 0.14, "alpha": 0.1, "wetAlphaGain": 0.1 },
+      "crown": { "swayPx": 1.2, "swaySpeed": 0.0004, "swaySeed": 6.3, "radiusR": 0.82, "wetRadiusGainR": 0.12, "dryLiftR": 0.16, "scaleX": 1, "scaleY": 0.78, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 1, "tone": 0, "wobble": 0.24, "points": 13, "seedOffset": 0, "sway": 0.4 },
+        { "xR": -0.16, "yR": -0.16, "radiusR": 0.66, "tone": 1, "wobble": 0.26, "points": 11, "seedOffset": 2.3, "sway": 0.6 },
+        { "xR": 0.24, "yR": -0.22, "radiusR": 0.4, "tone": 2, "wobble": 0.28, "points": 9, "seedOffset": 5.1, "sway": 1 }
+      ] }
+    },
+    "avicennia_tidal": {
+      "_note": "Pneumatophore field for Avicennia; deliberately not Rhizophora prop roots.",
+      "generator": "tidal-root-crown", "paletteRoles": ["canopy", "roots", "mud", "shallow"], "overrides": [],
+      "mud": { "visibleBelowTide": 0.82, "radiusR": 1.28, "seedOffset": 0.6, "wobble": 0.16, "alpha": 0.38 },
+      "shadow": { "xPx": 2.5, "yPx": 3.5, "radiusR": 0.9, "wobble": 0.18, "alpha": 0.2 },
+      "roots": { "architecture": "spike", "count": { "min": 18, "range": 9 }, "stroke": { "widthPx": 1.05, "cap": "round", "alphaDry": 0.78, "alphaWetLoss": 0.5 }, "spike": { "radiusMinR": 0.34, "radiusRangeR": 0.72, "radiusSeed": 7.1, "radiusStep": 2.3, "angleSeed": 1.8, "heightMinR": 0.06, "heightRangeR": 0.1, "heightSeed": 11.7, "heightStep": 1.6, "radialYSquash": 0.72, "leanR": 0.12 } },
+      "water": { "radiusR": 0.82, "wetGainR": 0.12, "seedOffset": 1.9, "wobble": 0.12, "alpha": 0.1, "wetAlphaGain": 0.12 },
+      "crown": { "swayPx": 0.8, "swaySpeed": 0.00035, "swaySeed": 5.8, "radiusR": 0.78, "wetRadiusGainR": 0.1, "dryLiftR": 0.12, "scaleX": 1.02, "scaleY": 0.8, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 1, "tone": 0, "wobble": 0.18, "points": 14, "seedOffset": 0, "sway": 0.35 },
+        { "xR": -0.2, "yR": -0.18, "radiusR": 0.64, "tone": 1, "wobble": 0.2, "points": 11, "seedOffset": 2.4, "sway": 0.55 },
+        { "xR": 0.22, "yR": -0.24, "radiusR": 0.42, "tone": 2, "wobble": 0.21, "points": 9, "seedOffset": 5.2, "sway": 0.8 }
+      ] }
+    },
+    "pelliciera_tidal": {
+      "_note": "Broad basal buttresses for Pelliciera/piñuela.",
+      "generator": "tidal-root-crown", "paletteRoles": ["canopy", "roots", "mud", "shallow"], "overrides": [],
+      "mud": { "visibleBelowTide": 0.84, "radiusR": 1.3, "seedOffset": 0.5, "wobble": 0.18, "alpha": 0.36 },
+      "shadow": { "xPx": 3, "yPx": 4, "radiusR": 0.94, "wobble": 0.2, "alpha": 0.21 },
+      "roots": { "architecture": "buttress", "count": { "min": 5, "range": 3 }, "fill": { "alphaDry": 0.82, "alphaWetLoss": 0.42 }, "buttress": { "startR": 0.2, "startYR": 0.16, "endMinR": 0.5, "endRangeR": 0.22, "endY": 0.78, "halfAngle": 0.13, "angleSeed": 1.9, "lengthSeed": 6.2, "lengthStep": 1.7 } },
+      "water": { "radiusR": 0.84, "wetGainR": 0.1, "seedOffset": 1.8, "wobble": 0.14, "alpha": 0.1, "wetAlphaGain": 0.1 },
+      "crown": { "swayPx": 0.9, "swaySpeed": 0.00038, "swaySeed": 6, "radiusR": 0.84, "wetRadiusGainR": 0.1, "dryLiftR": 0.14, "scaleX": 1.04, "scaleY": 0.82, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 1, "tone": 0, "wobble": 0.2, "points": 13, "seedOffset": 0, "sway": 0.35 },
+        { "xR": -0.18, "yR": -0.18, "radiusR": 0.68, "tone": 1, "wobble": 0.22, "points": 11, "seedOffset": 2.2, "sway": 0.55 },
+        { "xR": 0.22, "yR": -0.24, "radiusR": 0.44, "tone": 2, "wobble": 0.23, "points": 9, "seedOffset": 5, "sway": 0.85 }
+      ] }
+    },
+    "landward_mangle_tidal": {
+      "_note": "Compact basal collar, not exposed prop roots, for Laguncularia and Conocarpus at the landward side.",
+      "generator": "tidal-root-crown", "paletteRoles": ["canopy", "roots", "mud", "shallow"], "overrides": [],
+      "mud": { "visibleBelowTide": 0.8, "radiusR": 1.18, "seedOffset": 0.7, "wobble": 0.14, "alpha": 0.3 },
+      "shadow": { "xPx": 2.5, "yPx": 3.5, "radiusR": 0.88, "wobble": 0.16, "alpha": 0.2 },
+      "roots": { "architecture": "collar", "fill": { "alphaDry": 0.72, "alphaWetLoss": 0.44 }, "collar": { "yR": 0.08, "radiusR": 0.42, "seedOffset": 2.1, "wobble": 0.14, "points": 10, "scaleX": 1.2, "scaleY": 0.5 } },
+      "water": { "radiusR": 0.78, "wetGainR": 0.1, "seedOffset": 1.7, "wobble": 0.12, "alpha": 0.08, "wetAlphaGain": 0.1 },
+      "crown": { "swayPx": 0.65, "swaySpeed": 0.00032, "swaySeed": 5.6, "radiusR": 0.76, "wetRadiusGainR": 0.08, "dryLiftR": 0.1, "scaleX": 1, "scaleY": 0.82, "layers": [
+        { "xR": 0, "yR": 0, "radiusR": 1, "tone": 0, "wobble": 0.17, "points": 13, "seedOffset": 0, "sway": 0.3 },
+        { "xR": -0.16, "yR": -0.18, "radiusR": 0.62, "tone": 1, "wobble": 0.19, "points": 10, "seedOffset": 2.4, "sway": 0.5 },
+        { "xR": 0.2, "yR": -0.22, "radiusR": 0.4, "tone": 2, "wobble": 0.2, "points": 9, "seedOffset": 5.1, "sway": 0.75 }
+      ] }
+    }
   },
   "species": {
     "almendro": {
-      "form": "broadleaf",
-      "canopy": [
-        "#276b3f",
-        "#358a4d",
-        "#4aa863",
-        "#5fc07a"
-      ],
-      "trunk": "#6a4426",
-      "r": 9.5,
-      "trunkH": 7,
-      "note": "the default, and what every tree in this world was until now"
+      "commonName": "Almendro de playa", "scientificName": "Terminalia catappa", "kind": "taxon", "origin": "introduced", "occurrence": "observed_local", "habitats": ["urban_center", "coastal_urban"], "sourceRefs": ["urban_puntarenas_2025", "kew_terminalia"],
+      "form": "almendro_tiered", "canopy": ["#276b3f", "#358a4d", "#4aa863", "#76bd69"], "trunk": "#6a4426", "r": 10.5, "trunkH": 6, "heightM": 8,
+      "note": "Predominant in the documented urban route, but introduced in Costa Rica. Low branching and wide shade crown."
     },
     "guanacaste": {
-      "form": "broadleaf",
-      "canopy": [
-        "#2f6b3a",
-        "#3f8a4a",
-        "#57a862",
-        "#6ec078"
-      ],
-      "trunk": "#7a6a52",
-      "r": 12.5,
-      "trunkH": 9,
-      "spread": 1.28,
-      "note": "the national tree: a huge low crown much wider than it is tall"
+      "commonName": "Guanacaste", "scientificName": "Enterolobium cyclocarpum", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["dry_forest", "transition_forest"], "sourceRefs": ["mata_limon_mangrove_2022", "miramar_transition", "kew_guanacaste"],
+      "form": "guanacaste_umbrella", "canopy": ["#285d35", "#377c43", "#50a05a", "#70bd74"], "trunk": "#776851", "r": 13, "trunkH": 7, "heightM": 15,
+      "note": "Native dry-forest giant: a low, very broad umbrella rather than the almendro's horizontal tiers."
     },
     "cortez": {
-      "form": "broadleaf",
-      "canopy": [
-        "#b8871f",
-        "#d8a72c",
-        "#efc451",
-        "#ffe08a"
-      ],
-      "trunk": "#6f5a44",
-      "r": 10.5,
-      "trunkH": 8,
-      "note": "cortez amarillo in bloom — the dry season's yellow, and the only tree here that is not green"
+      "commonName": "Corteza amarilla", "scientificName": "Handroanthus ochraceus", "kind": "taxon", "origin": "native", "occurrence": "regional_reference", "habitats": ["dry_forest", "transition_forest"], "sourceRefs": ["miramar_transition", "kew_corteza"],
+      "form": "flowering_round", "canopy": ["#9a731d", "#c59622", "#e7b83b", "#ffe477"], "trunk": "#6f5a44", "r": 10.5, "trunkH": 8, "heightM": 10,
+      "note": "Native yellow-blooming dry-season tree."
+    },
+    "roble_sabana": {
+      "commonName": "Roble de sabana", "scientificName": "Tabebuia rosea", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["dry_forest", "transition_forest", "urban_center"], "sourceRefs": ["mata_limon_mangrove_2022", "miramar_transition", "kew_roble"],
+      "form": "flowering_round", "canopy": ["#a84f72", "#cb7194", "#e99bb8", "#fbc7d8"], "trunk": "#665044", "r": 10, "trunkH": 8, "heightM": 11,
+      "note": "The regionally credible native pink flowering tree; use this in native mixes instead of the legacy cerezo."
+    },
+    "cedro_amargo": {
+      "commonName": "Cedro amargo", "scientificName": "Cedrela odorata", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["urban_center", "dry_forest", "transition_forest"], "sourceRefs": ["urban_puntarenas_2025", "mata_limon_mangrove_2022", "tivives_coastal_dry_forest_2018", "miramar_transition", "kew_cedrela"],
+      "form": "cedro_open", "canopy": ["#315f38", "#417c47", "#5d9b5a", "#7bb973"], "trunk": "#735640", "r": 9.5, "trunkH": 11, "heightM": 16,
+      "note": "Observed in the central urban inventory and native to Costa Rica; a high open asymmetric crown."
+    },
+    "higueron": {
+      "commonName": "Higuerón", "scientificName": "Ficus sp.", "kind": "taxon", "origin": "unresolved", "occurrence": "observed_local", "habitats": ["urban_center"], "sourceRefs": ["urban_puntarenas_2025"],
+      "form": "dense_round", "canopy": ["#1e5634", "#2d7442", "#439454", "#62ae68"], "trunk": "#81755d", "r": 12, "trunkH": 7, "heightM": 14,
+      "note": "The local source identifies only Ficus sp.; the asset stays genus-level rather than inventing a species."
+    },
+    "cana_fistula": {
+      "commonName": "Caña fístula", "scientificName": "Cassia fistula", "kind": "taxon", "origin": "introduced", "occurrence": "observed_local", "habitats": ["urban_center"], "sourceRefs": ["urban_puntarenas_2025", "kew_cassia"],
+      "form": "cana_fistula_open", "canopy": ["#69712d", "#a6952b", "#d6bd3a", "#f5db61"], "trunk": "#685039", "r": 8.5, "trunkH": 8, "heightM": 9,
+      "note": "Actually observed in town, but introduced; suitable for urban planting, never native woodland."
+    },
+    "indio_desnudo": {
+      "commonName": "Indio desnudo", "scientificName": "Bursera simaruba", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["dry_forest"], "sourceRefs": ["mata_limon_mangrove_2022", "tivives_coastal_dry_forest_2018", "miramar_transition", "kew_indio"],
+      "form": "indio_branch", "trunk": "#a75d43", "r": 9.5, "trunkH": 12, "heightM": 10,
+      "note": "Native dry-forest silhouette with the copper-red trunk left visible."
+    },
+    "tempisque": {
+      "commonName": "Tempisque", "scientificName": "Sideroxylon capiri", "kind": "taxon", "origin": "native", "occurrence": "regional_reference", "habitats": ["dry_forest", "transition_forest"], "sourceRefs": ["tivives_coastal_dry_forest_2018", "kew_tempisque"],
+      "form": "dense_round", "canopy": ["#244f32", "#326d40", "#488c51", "#66aa69"], "trunk": "#665743", "r": 10.5, "trunkH": 8, "heightM": 13,
+      "note": "Native seasonally dry broadleaf used in both dry and transition mixes."
+    },
+    "madrono": {
+      "commonName": "Madroño", "scientificName": "Calycophyllum candidissimum", "kind": "taxon", "origin": "native", "occurrence": "regional_reference", "habitats": ["dry_forest", "transition_forest"], "sourceRefs": ["miramar_transition", "kew_madrono"],
+      "form": "madrono_high", "canopy": ["#32623c", "#46804b", "#62a15e", "#83bd7a"], "trunk": "#c2b59b", "r": 8.5, "trunkH": 12, "heightM": 14,
+      "note": "Native tree with a pale smooth trunk and compact high crown."
     },
     "seco": {
-      "form": "bare",
-      "canopy": [],
-      "trunk": "#8a7a63",
-      "r": 9.0,
-      "trunkH": 11,
-      "branches": 5,
-      "note": "dry-season bare, or dead. No crown at all — the silhouette IS the branches"
+      "commonName": "Árbol caducifolio en estación seca", "scientificName": null, "kind": "condition", "origin": "not_applicable", "occurrence": "authored_legacy", "habitats": ["dry_forest"], "sourceRefs": ["tivives_coastal_dry_forest_2018"],
+      "form": "dry_branch", "trunk": "#8a7a63", "r": 9, "trunkH": 11, "heightM": 9,
+      "note": "A seasonal visual condition, not a species."
     },
     "pino": {
-      "form": "conifer",
-      "canopy": [
-        "#14402a",
-        "#1c5636",
-        "#276b44",
-        "#357f52"
-      ],
-      "trunk": "#4a3524",
-      "r": 8.5,
-      "trunkH": 6,
-      "tiers": 7,
-      "note": "highland. Not a Puntarenas coastal tree — zoned inland, toward the cordillera"
+      "commonName": "Pino cultivado — taxón por resolver", "scientificName": null, "kind": "placeholder", "origin": "unresolved", "occurrence": "authored_legacy", "habitats": ["cultivated_upland"], "sourceRefs": [],
+      "form": "conifer", "canopy": ["#14402a", "#1c5636", "#276b44", "#357f52"], "trunk": "#4a3524", "r": 8.5, "trunkH": 6, "heightM": 12,
+      "note": "Retained for explicit cultivated placement; excluded from native Puntarenas mixes."
     },
     "cipres": {
-      "form": "column",
-      "canopy": [
-        "#133a2a",
-        "#1a4c36",
-        "#235f43"
-      ],
-      "trunk": "#40301f",
-      "r": 4.4,
-      "trunkH": 5,
-      "height": 3.0,
-      "note": "highland, and a vertical: it reads at a glance because nothing else here is tall and narrow"
+      "commonName": "Ciprés cultivado — taxón por resolver", "scientificName": null, "kind": "placeholder", "origin": "unresolved", "occurrence": "authored_legacy", "habitats": ["cultivated_upland"], "sourceRefs": [],
+      "form": "column", "canopy": ["#133a2a", "#1a4c36", "#235f43"], "trunk": "#40301f", "r": 4.4, "trunkH": 5, "heightM": 14,
+      "note": "Retained as a vertical cultivated asset; excluded from native Puntarenas mixes."
     },
     "cerezo": {
-      "form": "broadleaf",
-      "canopy": [
-        "#c2557f",
-        "#dc7ba3",
-        "#f0a3c2",
-        "#ffc7dd"
-      ],
-      "trunk": "#4a3330",
-      "r": 9.0,
-      "trunkH": 8,
-      "note": "el cerezo en flor. Ornamental and deliberately not native — it is pink, it is meant to be found"
+      "commonName": "Cerezo ornamental — taxón por resolver", "scientificName": null, "kind": "placeholder", "origin": "unresolved", "occurrence": "authored_legacy", "habitats": ["cultivated_upland"], "sourceRefs": [],
+      "form": "cerezo_ornamental", "canopy": ["#c2557f", "#dc7ba3", "#f0a3c2", "#ffc7dd"], "trunk": "#4a3330", "r": 9, "trunkH": 8, "heightM": 8,
+      "note": "Legacy pink ornamental retained for manual scenes; native woods now use roble_sabana."
     },
     "palma": {
-      "form": "palm",
-      "canopy": [
-        "#276b3f",
-        "#358a4d",
-        "#4aa863",
-        "#5fc07a"
-      ],
-      "trunk": "#7a4f2a",
-      "r": 11.0,
-      "trunkH": 16,
-      "fronds": 6,
-      "note": "la palma: the Paseo median, the beaches and the faro. Its palette was the ALMENDRO'S until now — the same array, shared by import, so recolouring one tree silently recoloured every frond in the world"
+      "commonName": "Palma costera — taxón por resolver", "scientificName": null, "kind": "placeholder", "origin": "unresolved", "occurrence": "authored_legacy", "habitats": ["coastal_urban"], "sourceRefs": [],
+      "form": "feather_palm", "canopy": ["#276b3f", "#358a4d", "#4aa863", "#5fc07a"], "trunk": "#7a4f2a", "r": 11, "trunkH": 16, "heightM": 11,
+      "note": "The existing feather-palm asset remains honest about its unresolved taxon."
     },
-    "mangle": {
-      "form": "mangrove",
-      "canopy": [
-        "#276b3f",
-        "#358a4d",
-        "#4aa863",
-        "#5fc07a"
-      ],
-      "trunk": "#34261a",
-      "r": 26.0,
-      "trunkH": 0,
-      "roots": "52,38,24",
-      "mud": "84,68,44",
-      "shallow": "214,235,232",
-      "note": "el mangle: the darkest green in this world, but the same ramp as every other crown. Drawn by ground.js, which imported the almendro's palette to get it"
+    "palma_abanico": {
+      "commonName": "Palma de abanico", "scientificName": "Licuala grandis", "kind": "taxon", "origin": "introduced", "occurrence": "observed_local", "habitats": ["urban_center"], "sourceRefs": ["urban_puntarenas_2025", "kew_licuala"],
+      "form": "fan_palm", "canopy": ["#245c36", "#347a43", "#4b9c55", "#70ba70"], "trunk": "#70513a", "r": 9, "trunkH": 11, "heightM": 7,
+      "note": "Documented in the urban palette and drawn with fan leaves, not feather fronds; introduced, not native."
+    },
+    "mangle_rojo": {
+      "commonName": "Mangle rojo gateador", "scientificName": "Rhizophora mangle", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["mangrove_channel_edge"], "sourceRefs": ["mata_limon_mangrove_2022", "chacarita_mangrove_2024", "morales_mangrove_2025"],
+      "form": "rhizophora_tidal", "canopy": ["#17492d", "#22643a", "#337f49", "#4d9d5d"], "roots": "61,43,29", "mud": "84,68,44", "shallow": "214,235,232", "r": 26, "trunkH": 0, "heightM": 7,
+      "note": "Channel-edge Rhizophora with exposed prop roots."
+    },
+    "mangle_rojo_caballero": {
+      "commonName": "Mangle rojo caballero", "scientificName": "Rhizophora racemosa", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["mangrove_channel_edge"], "sourceRefs": ["mata_limon_mangrove_2022", "chacarita_mangrove_2024", "morales_mangrove_2025"],
+      "form": "rhizophora_tidal", "canopy": ["#143f28", "#1d5832", "#2c733f", "#438f52"], "roots": "57,39,25", "mud": "82,66,43", "shallow": "210,233,230", "r": 28, "trunkH": 0, "heightM": 8,
+      "note": "Rhizophora prominent along channels and coastal edge in Gulf of Nicoya studies."
+    },
+    "mangle_blanco": {
+      "commonName": "Mangle blanco / mariquita", "scientificName": "Laguncularia racemosa", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["mangrove_interior", "mangrove_channel_edge"], "sourceRefs": ["mata_limon_mangrove_2022", "chacarita_mangrove_2024", "morales_mangrove_2025"],
+      "form": "landward_mangle_tidal", "canopy": ["#28553b", "#39724b", "#52905f", "#72ad78"], "roots": "80,67,48", "mud": "91,75,49", "shallow": "218,237,233", "r": 23, "trunkH": 0, "heightM": 5,
+      "note": "More appropriate toward interior patches; compact basal collar, no invented prop-root cage."
+    },
+    "palo_de_sal": {
+      "commonName": "Palo de sal", "scientificName": "Avicennia germinans", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["mangrove_interior"], "sourceRefs": ["mata_limon_mangrove_2022", "chacarita_mangrove_2024", "morales_mangrove_2025"],
+      "form": "avicennia_tidal", "canopy": ["#314f3f", "#476957", "#648574", "#85a492"], "roots": "65,55,43", "mud": "88,72,48", "shallow": "216,235,232", "r": 22, "trunkH": 0, "heightM": 5,
+      "note": "Salt-tolerant interior mangrove, with pneumatophores rather than stilt roots."
+    },
+    "palo_de_sal_bicolor": {
+      "commonName": "Palo de sal bicolor", "scientificName": "Avicennia bicolor", "kind": "taxon", "origin": "native", "occurrence": "regional_reference", "habitats": ["mangrove_interior"], "sourceRefs": ["morales_mangrove_2025"],
+      "form": "avicennia_tidal", "canopy": ["#2b4a3d", "#3d6250", "#587c68", "#789985"], "roots": "62,53,42", "mud": "88,72,48", "shallow": "216,235,232", "r": 21, "trunkH": 0, "heightM": 4,
+      "note": "Catalogued for interior mangrove; not forced into the current channel-edge scatter."
+    },
+    "mangle_pinuela": {
+      "commonName": "Mangle piñuela", "scientificName": "Pelliciera rhizophorae", "kind": "taxon", "origin": "native", "occurrence": "observed_local", "habitats": ["mangrove_channel_edge", "mangrove_interior"], "sourceRefs": ["mata_limon_mangrove_2022", "chacarita_mangrove_2024"],
+      "form": "pelliciera_tidal", "canopy": ["#183f2b", "#245b38", "#387747", "#55955b"], "roots": "70,50,32", "mud": "86,69,45", "shallow": "212,234,231", "r": 27, "trunkH": 0, "heightM": 7,
+      "note": "Highest importance value in the Chacarita sample; broad buttress base, not Rhizophora arches."
+    },
+    "mangle_botoncillo": {
+      "commonName": "Mangle botoncillo", "scientificName": "Conocarpus erectus", "kind": "taxon", "origin": "native", "occurrence": "regional_reference", "habitats": ["mangrove_interior"], "sourceRefs": ["morales_mangrove_2025"],
+      "form": "landward_mangle_tidal", "canopy": ["#2a5137", "#3c6c46", "#56885a", "#77a472"], "roots": "78,63,45", "mud": "92,76,50", "shallow": "218,237,233", "r": 20, "trunkH": 0, "heightM": 4,
+      "note": "Landward mangrove associate catalogued for future interior polygons."
     }
   },
   "mixes": {
-    "_note": "Which species a wood plants, and how often. Weights need not sum to 1 — they are normalised. `d` is px² of ground per tree, so a bigger number is a thinner wood. `floor` is the wash laid under a wood — bare land tan under trees reads as a beach with trees on it. The cerezo is in ALL THREE on purpose: zoned only to the 4 altura woods it was botanically tidy and practically invisible, because the player drives the coast.",
+    "_note": "Runtime woodland mixes. These are ecological zones, so introduced urban trees and unresolved cultivated placeholders are excluded.",
     "seco": {
       "d": 2400,
-      "weights": [
-        [
-          "seco",
-          0.36
-        ],
-        [
-          "guanacaste",
-          0.24
-        ],
-        [
-          "cortez",
-          0.15
-        ],
-        [
-          "cerezo",
-          0.13
-        ],
-        [
-          "almendro",
-          0.12
-        ]
-      ],
-      "note": "tropical dry forest: the coast and the estero's far shore",
+      "weights": [["seco", 0.18], ["guanacaste", 0.2], ["cortez", 0.18], ["indio_desnudo", 0.16], ["tempisque", 0.14], ["madrono", 0.08], ["roble_sabana", 0.06]],
+      "note": "Pacific tropical dry forest; native taxa plus an explicit deciduous-season condition.",
+      "sourceRefs": ["tivives_coastal_dry_forest_2018", "miramar_transition"],
       "floor": "rgba(150,120,64,0.46)"
     },
     "monte": {
       "d": 2000,
-      "weights": [
-        [
-          "almendro",
-          0.38
-        ],
-        [
-          "guanacaste",
-          0.22
-        ],
-        [
-          "cerezo",
-          0.18
-        ],
-        [
-          "seco",
-          0.14
-        ],
-        [
-          "cortez",
-          0.08
-        ]
-      ],
-      "note": "the ordinary green hinterland between the coast and the hills",
+      "weights": [["cedro_amargo", 0.21], ["tempisque", 0.2], ["guanacaste", 0.17], ["roble_sabana", 0.15], ["madrono", 0.13], ["indio_desnudo", 0.08], ["cortez", 0.06]],
+      "note": "Native lowland-to-foothill broadleaf transition; no urban almendro or ornamental cherry.",
+      "sourceRefs": ["tivives_coastal_dry_forest_2018", "miramar_transition"],
       "floor": "rgba(72,108,56,0.52)"
     },
     "altura": {
       "d": 1700,
-      "weights": [
-        [
-          "pino",
-          0.32
-        ],
-        [
-          "cipres",
-          0.2
-        ],
-        [
-          "cerezo",
-          0.3
-        ],
-        [
-          "almendro",
-          0.18
-        ]
-      ],
-      "note": "the cordillera behind the port: denser, darker, and where the cerezos are thickest — nearly a third of it is in flower",
+      "weights": [["tempisque", 0.24], ["cedro_amargo", 0.2], ["madrono", 0.18], ["guanacaste", 0.14], ["roble_sabana", 0.12], ["cortez", 0.07], ["indio_desnudo", 0.05]],
+      "note": "Miramar/foothill transition behind the port. `altura` is a world zone name, not permission to invent a pine-cypress forest.",
+      "sourceRefs": ["miramar_transition"],
       "floor": "rgba(38,74,52,0.62)"
     }
   },
+  "mangroveMixes": {
+    "_note": "The builder currently emits only waterline clumps. `channel_edge` is therefore the shipped mix; `interior` is editable and previewable but awaits interior habitat polygons.",
+    "channel_edge": {
+      "weights": [["mangle_rojo_caballero", 0.34], ["mangle_pinuela", 0.3], ["mangle_rojo", 0.2], ["mangle_blanco", 0.1], ["palo_de_sal", 0.06]],
+      "note": "Evidence-guided art weights, not a claim of survey abundance: Rhizophora favours channel edges and Pelliciera was highly important in the Chacarita sample.",
+      "sourceRefs": ["mata_limon_mangrove_2022", "chacarita_mangrove_2024", "morales_mangrove_2025"]
+    },
+    "interior": {
+      "weights": [["palo_de_sal", 0.34], ["palo_de_sal_bicolor", 0.18], ["mangle_blanco", 0.28], ["mangle_botoncillo", 0.12], ["mangle_pinuela", 0.08]],
+      "note": "Future landward/interior mix; not used until the world emits that habitat separately.",
+      "sourceRefs": ["mata_limon_mangrove_2022", "morales_mangrove_2025"]
+    }
+  },
   "plantings": {
-    "_note": "Species for the plantings the BUILD places, as opposed to the woods the RENDERER scatters. Resolved at build time from a POSITION HASH — never from the shared seeded rng, because inserting draws into that stream shifts every random value after it and a species change would come out looking like the whole world moved. Written as `k` only when it differs from the family default (almendro for a tree, palma for a palm): there are 22 000 of them and the default must cost nothing.",
+    "_note": "Build-time planted trees. Urban planting follows the documented city palette; the barro route uses native dry-forest taxa. Rebuilding writes `k` only when it differs from default almendro.",
+    "paseo_palms": {
+      "weights": [["palma", 1]],
+      "note": "The historic palm separators on Paseo de los Turistas. Kept as a mix so changing the species is an authored decision, not a special case in the builder.",
+      "sourceRefs": ["urban_puntarenas_2025"]
+    },
+    "leon_almendros": {
+      "weights": [["almendro", 1]],
+      "note": "The existing León Cortés strip, explicitly authored as almendros so moving its species out of Python does not silently redesign the shipped world.",
+      "sourceRefs": ["urban_puntarenas_2025"]
+    },
     "parque": {
-      "weights": [
-        [
-          "almendro",
-          0.44
-        ],
-        [
-          "guanacaste",
-          0.2
-        ],
-        [
-          "cortez",
-          0.16
-        ],
-        [
-          "cerezo",
-          0.12
-        ],
-        [
-          "seco",
-          0.08
-        ]
-      ],
-      "note": "patios, parks and plazas — the town's own planting, mixed so a barrio is not 22 000 identical almendros"
+      "weights": [["almendro", 0.45], ["cedro_amargo", 0.2], ["higueron", 0.14], ["cana_fistula", 0.11], ["roble_sabana", 0.1]],
+      "note": "Central parks, patios and plazas: actual urban Puntarenas palette, with introduced status kept explicit.",
+      "sourceRefs": ["urban_puntarenas_2025"]
     },
     "barro": {
-      "weights": [
-        [
-          "seco",
-          0.38
-        ],
-        [
-          "guanacaste",
-          0.3
-        ],
-        [
-          "cortez",
-          0.2
-        ],
-        [
-          "almendro",
-          0.12
-        ]
-      ],
-      "note": "the elevated barro route: Av. 2 del Ferrocarril and the Cocal-side avenue. Dusty and dry, so dry-forest species"
+      "weights": [["guanacaste", 0.27], ["cortez", 0.22], ["indio_desnudo", 0.18], ["tempisque", 0.16], ["cedro_amargo", 0.1], ["roble_sabana", 0.07]],
+      "note": "Dry, elevated Ferrocarril/Cocal planting using native Pacific dry-forest taxa.",
+      "sourceRefs": ["mata_limon_mangrove_2022", "tivives_coastal_dry_forest_2018", "miramar_transition"]
+    }
+  },
+  "plantingSchema": {
+    "_note": "The finite planting language shared by the editor preview and the deterministic builder. `form` owns the bed outline; `align` independently owns its orientation. Every physical length is in metres.",
+    "forms": ["strip", "disc", "triangle", "square", "free"],
+    "alignments": ["street", "horizontal", "vertical", "free"],
+    "defaults": {
+      "form": "strip",
+      "align": "free",
+      "widthM": 4,
+      "radiusM": 8,
+      "spacingM": 10.4,
+      "mix": "parque",
+      "treeKind": "tree",
+      "scale": 1,
+      "blocks": false
+    },
+    "preview": {
+      "boundary": "#e8b84a",
+      "selected": "#fff1a8",
+      "blockingFill": "rgba(184,180,126,0.24)",
+      "nonBlockingFill": "rgba(87,192,120,0.10)"
+    },
+    "_geometry": "strip uses a line; disc uses a point; triangle/square/free use polygons with 3/4/3+ vertices. align=street may name `streetName`; without one the drawn line is already the authored street alignment."
+  },
+  "plantingRuns": {
+    "_note": "The four shipped derived plantings. Their geometry strategies stay finite engine verbs; every species, size, spacing, width, alignment, collision decision and street selector is authored here.",
+    "paseo_median": {
+      "name": "Mediana de palmas · Paseo de los Turistas",
+      "strategy": "paseo-crossing-runs",
+      "form": "strip",
+      "align": "street",
+      "streetName": "paseo de los turistas",
+      "widthM": 4,
+      "collisionPadM": 2.4,
+      "spacingM": 8.8,
+      "endMarginM": 4,
+      "sampleStepM": 1.6,
+      "minimumRunM": 16,
+      "gapMarginM": 8,
+      "mix": "paseo_palms",
+      "treeKind": "palm",
+      "scale": [1.05, 1.05],
+      "anchorOffsetM": [0, -1.6],
+      "blocks": true
+    },
+    "leon_cortes": {
+      "name": "Franja de árboles · Paseo León Cortés",
+      "strategy": "leon-corner-window",
+      "form": "strip",
+      "align": "street",
+      "streetName": "paseo león cortés",
+      "widthM": 4,
+      "collisionPadM": 2.4,
+      "spacingM": 10.4,
+      "endMarginM": 4.8,
+      "sampleStepM": 1.6,
+      "cornerProbeStepM": 3.2,
+      "cornerSearchM": 48,
+      "stopClearM": 24,
+      "mix": "leon_almendros",
+      "treeKind": "tree",
+      "scale": [0.9, 1.2],
+      "blocks": true
+    },
+    "ferrocarril": {
+      "name": "Hombro norte · Avenida 2 del Ferrocarril",
+      "strategy": "elevated-road-shoulder",
+      "form": "strip",
+      "align": "street",
+      "streetSelector": "elevated",
+      "side": "north",
+      "widthM": 4,
+      "spacingM": 10.4,
+      "roadEdgeOffsetM": 4.8,
+      "crossingRadiusM": 14.4,
+      "mix": "barro",
+      "treeKind": "tree",
+      "scale": [0.9, 1.2],
+      "blocks": false
+    },
+    "cocal_median": {
+      "name": "Mediana · avenida dividida del Cocal",
+      "strategy": "divided-avenue-midline",
+      "form": "strip",
+      "align": "street",
+      "streetNames": ["Avenida 1", "Avenida Alberto Echandi Montero"],
+      "widthM": 4,
+      "spacingM": 16,
+      "sampleStepM": 4,
+      "matchToleranceM": 36,
+      "maxSeparationM": 48,
+      "mix": "parque",
+      "treeKind": "tree",
+      "scale": [0.9, 1.2],
+      "blocks": false
     }
   }
 }

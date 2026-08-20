@@ -34,12 +34,24 @@
       "crossing": "#9fd7ef",
       "carrying": "#ff3d80",
       "idle": "#ffe06b",
+      "points": [[17, 0], [-9, -11], [-4, 0], [-9, 11]],
+      "outlineWidth": 1.5,
       "_note": "three states, three colours — a glance has to answer 'am I fetching or delivering' without reading the label"
     }
   },
 
   "minimap": {
     "_note": "The little map. Its own palette and NOT the world's: the minimap is read in a fifth of a second at a tenth of the size, so it needs contrast the painted world does not — the land is nearly black so the street network reads as light on dark.",
+    "radius": 76,
+    "edgeInset": 18,
+    "range": 460,
+    "queryPad": 1.05,
+    "targetR": 3.4,
+    "targetPulse": 1.1,
+    "targetRimInset": 9,
+    "playerPoints": [[0, -8], [6, 7], [0, 3.5], [-6, 7]],
+    "playerOutlineWidth": 1.5,
+    "rimWidth": 2,
     "casing": "#39405a",
     "casingNote": "the outline under every road, one tone",
     "street": "#98a0bb",
@@ -63,20 +75,46 @@
   },
 
   "weather": {
-    "_note": "The three things drawn over the finished frame.",
+    "_note": "Screen-space animated effects. The engine supplies the clock and live intensity; this registry owns their inks, counts, proportions and alpha ramps.",
     "rain": {
-      "colour": "rgba(150,230,255,0.9)",
-      "streaks": 140,
-      "note": "screen-space streaks; the storm tint itself is the weather palette's, in materials.json"
-    },
-    "nightVignette": {
-      "inner": "rgba(0,0,0,0)",
-      "outer": "rgba(0,0,10,0.6)",
-      "note": "a radial darkening at the edges, so night reads as night without making the middle unreadable"
+      "rgb": "180,210,240",
+      "alphaBase": 0.16,
+      "alphaPerIntensity": 0.2,
+      "thickAt": 1.1,
+      "thinWidth": 1,
+      "thickWidth": 1.4,
+      "dropsPerIntensity": 150,
+      "lengthBase": 8,
+      "lengthPerIntensity": 7,
+      "slant": 0.6,
+      "xStride": 73,
+      "yStride": 137,
+      "xSpeedBase": 0.4,
+      "xSpeedPerIntensity": 0.35,
+      "ySpeedBase": 0.9,
+      "ySpeedPerIntensity": 0.7,
+      "note": "The storm tint itself is materials.weather; these are only the visible streaks."
     },
     "gullBlind": {
-      "colour": "rgba(223,231,227,0.55)",
+      "duration": 1.1,
+      "shadowRgb": "18,28,38",
+      "shadowAlpha": 0.13,
+      "wingRgb": "255,255,255",
+      "wingAlphaBase": 0.55,
+      "wingAlphaRange": 0.4,
+      "countBase": 14,
+      "countRange": 12,
+      "sizeBase": 12,
+      "sizeRange": 30,
+      "flapScale": 0.4,
+      "flapSpeed": 0.022,
+      "lineWidthBase": 1.6,
+      "lineWidthRange": 2.4,
       "note": "A BIRD THAT CROSSED YOU IS BETWEEN YOU AND EVERYTHING. The estero's gulls go over the CAMERA, which is why they are drawn up here with the weather and not in the world pass."
+    },
+    "lightning": {
+      "rgb": "214,232,255",
+      "alphaMax": 0.5
     }
   },
   "palette": {

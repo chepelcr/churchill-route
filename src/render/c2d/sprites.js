@@ -44,26 +44,42 @@ const cache = new Map();
  * falla queda marcado y no se vuelve a pedir — si no, un 404 se reintentaría
  * sesenta veces por segundo.
  */
-export function spriteImage(id) {
-  const had = cache.get(id);
+export function spriteImage(id, onsettled) {
+  return spriteImageRecord(SPRITES.sprites[id], onsettled);
+}
+
+/**
+ * La imagen de una FILA suministrada por el llamador.
+ *
+ * Es la puerta que necesita el editor: mientras se está editando `sprites.json`
+ * la fila visible puede no ser todavía la que importó este módulo desde disco.
+ * La caché se indexa por `src`, no por id, así cambiar el archivo refresca la
+ * imagen sin inventar un segundo cargador. `onsettled` repinta el canvas cuando
+ * termina la carga asíncrona.
+ */
+export function spriteImageRecord(record, onsettled) {
+  const key = record?.src;
+  if (!key) return null;
+  const had = cache.get(key);
   if (had && had !== "loading" && had !== "failed") return had;
   if (had) return null;                      // cargando, o ya falló
-  const rec = SPRITES.sprites[id];
-  if (!rec || !rec.src) { cache.set(id, "failed"); return null; }
   // Bajo Node no hay `Image`, y este módulo se importa igual para preguntarle la
   // lista de sprites. Marcar y salir, en vez de reventar el import del editor.
-  if (typeof Image === "undefined") { cache.set(id, "failed"); return null; }
-  cache.set(id, "loading");
+  if (typeof Image === "undefined") { cache.set(key, "failed"); return null; }
+  cache.set(key, "loading");
   const img = new Image();
   img.decoding = "async";
-  img.onload = () => cache.set(id, img);
-  img.onerror = () => cache.set(id, "failed");
-  img.src = rec.src;
+  img.onload = () => { cache.set(key, img); onsettled?.(img, null); };
+  img.onerror = () => { cache.set(key, "failed"); onsettled?.(null, new Error(`sprite failed: ${key}`)); };
+  img.src = key;
   return null;
 }
 
 /** ¿Ya se sabe que este sprite no va a llegar? Para que el dibujante decida. */
-export function spriteFailed(id) { return cache.get(id) === "failed"; }
+export function spriteFailed(id) {
+  const src = SPRITES.sprites[id]?.src || id;
+  return cache.get(src) === "failed";
+}
 
 /** El registro de un sprite: `{src, wM, hM, anchor, placeholder}`. */
 export function spriteRecord(id) { return SPRITES.sprites[id] || null; }

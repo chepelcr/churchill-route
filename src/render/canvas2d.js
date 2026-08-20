@@ -36,6 +36,9 @@ import {
   drawNightVignette, drawPoiNames, drawPoiTags, drawRain,
 } from "./c2d/hud.js";
 import { drawEditorWorld } from "./c2d/editorWorld.js";
+import HUD from "../assets/hud.json" with { type: "json" };
+import { alphaColor } from "./c2d/primitives.js";
+import { paintSpeedLines } from "./c2d/systemShapes.js";
 
 // ---- Main render ----------------------------------------------------------
 // Overlay mode (legacy full-hybrid experiment): Pixi draws the world +
@@ -259,7 +262,8 @@ function render(t) {
   // un destello y no como un estado.
   const bolt = lightning();
   if (bolt > 0) {
-    ctx.fillStyle = `rgba(214,232,255,${(bolt * 0.5).toFixed(3)})`;
+    const flash = HUD.weather.lightning;
+    ctx.fillStyle = alphaColor(flash.rgb, bolt * flash.alphaMax);
     ctx.fillRect(0, 0, vw, vh);
   }
   // The estero's gulls go over the CAMERA, so they belong up here with the
@@ -282,16 +286,7 @@ function render(t) {
   if (!state.attract) {
     for (const { id, effect, cfg } of vehicleEffects(state.vehicleKey)) {
       if (id !== "speedLines" || effect.layer !== "screen") continue;
-      if (state.p.speed <= cfg.minSpeed) continue;
-      ctx.strokeStyle = `rgba(${cfg.color},${cfg.alpha})`;
-      ctx.lineWidth = cfg.width;
-      const x1 = cfg.edge === "left" ? cfg.margin : vw - cfg.margin;
-      const dir = cfg.edge === "left" ? 1 : -1;
-      for (let i = 0; i < cfg.count; i++) {
-        const y = Math.random() * vh;
-        const len = cfg.length + Math.random() * cfg.lengthSpread;
-        ctx.beginPath(); ctx.moveTo(x1 + dir * len, y); ctx.lineTo(x1, y); ctx.stroke();
-      }
+      paintSpeedLines(ctx, vw, vh, cfg, state.p.speed);
     }
   }
 }

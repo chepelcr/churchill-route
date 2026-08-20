@@ -34,25 +34,30 @@ from churchill.world.config import ROOT
 
 EFFECTS = os.path.join(ROOT, "src", "assets", "effects.json")
 VEHICLES = os.path.join(ROOT, "src", "assets", "vehicles.json")
+ACTORS = os.path.join(ROOT, "src", "assets", "actors.json")
 ENTITIES = os.path.join(ROOT, "src", "render", "c2d", "entities.js")
 CANVAS2D = os.path.join(ROOT, "src", "render", "canvas2d.js")
 SHAPES = os.path.join(ROOT, "src", "render", "c2d", "shapes.js")
+SYSTEM_SHAPES = os.path.join(ROOT, "src", "render", "c2d", "systemShapes.js")
 
 #: Where each effect's painter lives, and the marker its body starts at. The
 #: scan is scoped per painter rather than run over the whole file on purpose:
 #: `drawArcadeCoin(c, t)` also names its argument `c`, and a blanket sweep for
 #: `c.<name>` would demand the coin's `palette` be an effect parameter.
 PAINTERS = {
-    "turnWind": (ENTITIES, "function drawTurnWind(", "\n}"),
-    "wake": (ENTITIES, "function drawWake(", "\n}"),
-    "shadow": (ENTITIES, "  shadow: {", "\n  },"),
-    "heel": (ENTITIES, "  heel: {", "\n  },"),
-    "speedLines": (CANVAS2D, "if (id !== \"speedLines\"", "\n  }"),
+    # These painters are shared with the editor's animated labs. The runtime
+    # wrappers in entities/canvas2d provide state; the canonical algorithm —
+    # and therefore every parameter read — lives in systemShapes.js.
+    "turnWind": (SYSTEM_SHAPES, "export function paintTurnWind(", "\n}"),
+    "wake": (SYSTEM_SHAPES, "export function paintWake(", "\n}"),
+    "shadow": (SYSTEM_SHAPES, "export function paintVehicleShadow(", "\n}"),
+    "heel": (SYSTEM_SHAPES, "export function applyVehicleHeel(", "\n}"),
+    "speedLines": (SYSTEM_SHAPES, "export function paintSpeedLines(", "\n}"),
     # Los faros son DOS pintores porque los usan tres cosas distintas: el
     # jugador por la vía de efectos, y el tráfico y las lanchas llamando
     # directo — un carro del tráfico no tiene registro de vehículo del que
     # escoger un efecto, y aun así tiene que alumbrar.
-    "headlights": (ENTITIES, "export function paintHeadlights(", "\n}"),
+    "headlights": (SYSTEM_SHAPES, "export function paintHeadlights(", "\n}"),
 }
 
 #: Params whose name ends in `Note` are prose for whoever opens the file, and
@@ -121,7 +126,7 @@ class RegistryTests(unittest.TestCase):
         """
         for eid, effect in self.effects.items():
             params = {k for k in (effect.get("params") or {}) if is_param(k)}
-            used = set(re.findall(r"\b(?:c|cfg)\.([A-Za-z_]\w*)", body(eid)))
+            used = set(re.findall(r"\b(?:c|cfg|config)\.([A-Za-z_]\w*)", body(eid)))
             missing = used - params
             self.assertEqual(missing, set(),
                              f"effect '{eid}' reads {sorted(missing)}, which its "
@@ -132,7 +137,7 @@ class RegistryTests(unittest.TestCase):
         # to whoever turns it.
         for eid, effect in self.effects.items():
             params = {k for k in (effect.get("params") or {}) if is_param(k)}
-            used = set(re.findall(r"\b(?:c|cfg)\.([A-Za-z_]\w*)", body(eid)))
+            used = set(re.findall(r"\b(?:c|cfg|config)\.([A-Za-z_]\w*)", body(eid)))
             dead = params - used
             self.assertEqual(dead, set(),
                              f"effect '{eid}' offers {sorted(dead)}, which its painter "
@@ -173,18 +178,28 @@ class CargoTests(unittest.TestCase):
     def setUp(self):
         self.reg = json.loads(read(EFFECTS))["cargo"]
         self.veh = json.loads(read(VEHICLES))["vehicles"]
+        self.actors = json.loads(read(ACTORS))
         self.entities = code(ENTITIES)
 
     def test_every_cargo_style_a_vehicle_uses_is_implemented(self):
-        styles = set(re.findall(r"^  (\w+): \(g, mount, veh, carrying\)",
-                                self.entities.split("const CARGO_STYLES = {", 1)[1], re.M))
-        self.assertTrue(styles, "CARGO_STYLES no longer parses")
+        # The three identity drawers moved with the rest of the actor art.  The
+        # effect registry owns selection/mount, actors.json owns the visible
+        # form, and the renderer only implements the finite placement verbs.
+        styles = {key for key in self.actors["cargo"] if not key.startswith("_")}
+        forms = self.actors["forms"]
+        placements = set(re.findall(r'^  "([\w-]+)":',
+                                    self.entities.split("const CARGO_PLACERS = Object.freeze({", 1)[1], re.M))
+        self.assertTrue(placements, "CARGO_PLACERS no longer parses")
         for key, v in self.veh.items():
             style = (v.get("cargo") or {}).get("style")
             if style is None:
                 continue
             self.assertIn(style, self.reg, f"'{key}' carries an unknown cargo '{style}'")
-            self.assertIn(style, styles, f"cargo style '{style}' has no drawer")
+            self.assertIn(style, styles, f"cargo style '{style}' has no JSON asset")
+            cargo = self.actors["cargo"][style]
+            self.assertIn(cargo["form"], forms, f"cargo style '{style}' has no form")
+            self.assertIn(cargo["placement"], placements,
+                          f"cargo style '{style}' has no placement implementation")
 
     def test_the_renderer_no_longer_knows_a_vehicle_by_name(self):
         """`DELIVERY_BAG_MOUNTS` and the key dispatch were the last of it.
@@ -287,5 +302,12 @@ class SunShadowRegistry(unittest.TestCase):
         self.assertNotIn("ctx.translate(4, 4)", src,
                          "la sombra de un edificio volvió a ser un desplazamiento fijo")
         ents = source(os.path.join(ROOT, "src", "render", "c2d", "entities.js"))
-        self.assertIn("figureShadow", ents,
-                      "las figuras de pie tienen que pasar por el ayudante del sol")
+        self.assertIn("sunShadow(record.heightM", ents,
+                      "la sombra del actor tiene que derivarse de su altura y del sol")
+        self.assertIn("shadowDx: sh.dx", ents)
+        self.assertIn("shadowDy: sh.dy", ents)
+        actor_data = read(ACTORS)
+        self.assertIn('"x": "$shadowDx"', actor_data,
+                      "la silueta JSON no está consumiendo el vector solar")
+        self.assertIn('"y": "$shadowDy"', actor_data,
+                      "la silueta JSON no está consumiendo el vector solar")

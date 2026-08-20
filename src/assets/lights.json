@@ -23,6 +23,14 @@
     "_note": "alfa = min(max, intensidad · perUnit). Con la intensidad 1 por defecto da .24, que es lo que se veía."
   },
 
+  "poolMask": {
+    "_note": "Pre-rendered destination-out mask shared by every lamp. RGB is immaterial to destination-out but explicit so the painter owns no colour literal.",
+    "rgb": "0,0,0",
+    "resolutionScale": 0.5,
+    "warmAlpha": 0.16,
+    "stops": [[0, 1], [0.45, 0.72], [0.78, 0.22], [1, 0]]
+  },
+
   "types": {
     "warm": {
       "note": "La luminaria de sodio de toda la vida — la calle de Puntarenas de noche es este amarillo. Es el tipo por defecto: una luz sin `lightType` es ésta.",

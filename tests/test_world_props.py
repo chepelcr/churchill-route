@@ -6,15 +6,13 @@ each parcel prop LOOKS like; the world says where it stands. Those used to be a
 `c2d/streets.js`, which is the shape `docs/inventory.md` §12 names as the thing a
 designer should never have to edit.
 
-SOME THINGS DELIBERATELY STAY IN CODE, and the test asserts that they do.
-`lighthouse`, `stadium` and a marine `park` are SCENES, not art: the faro sweeps
-a beam on the clock, the estadio clips grass and stands to a footprint the build
-emitted, the marine park fills a multi-ring even-odd residual. So are the seven
-parcel buildings — every one of them sizes ITSELF from the parcel's own
-half-extents through clamps and counts, which would need arithmetic in JSON.
-§12's own "what should not be converted" list covers exactly these — a Canvas
-command stream with unrestricted operations does not become JSON, and pretending
-otherwise is how a DSL turns into a worse programming language.
+WORLD SCENES STILL SELECT THEIR HOST IN CODE, while their authored identity does
+not. `lighthouse`, `stadium` and a marine `park` consume a mapped rim, a traced
+footprint or emitted pool anchors; the Faro, fountains and pools execute JSON
+parts plus a finite family interpreter shared with the editor. Parcel scenes use
+`fit`, clamped scalar slots, `group`, deterministic `scatter` and a closed JSON
+formula tree. There are no cathedral/school/fountain/pool identity drawers left.
+Tree silhouettes live in flora.json v2.
 
 What rots silently here is the same as in the vehicle catalog: a part naming a
 shape nobody implements is SKIPPED, so a landmark loses its roof, a parada loses
@@ -30,7 +28,9 @@ from churchill.world.enums import LandmarkType, ParcelUse, SignKind
 from tests.shapevocab import implemented_shapes
 
 PROPS = os.path.join(ROOT, "src", "assets", "world-props.json")
+FLORA = os.path.join(ROOT, "src", "assets", "flora.json")
 SHAPES_JS = os.path.join(ROOT, "src", "render", "c2d", "shapes.js")
+SCENE_SHAPES_JS = os.path.join(ROOT, "src", "render", "c2d", "sceneShapes.js")
 LANDMARKS_JS = os.path.join(ROOT, "src", "render", "c2d", "landmarks.js")
 STREETS_JS = os.path.join(ROOT, "src", "render", "c2d", "streets.js")
 HEX = re.compile(r"^(#[0-9a-f]{3,8}|rgba?\([\d.,\s]+\))$", re.I)
@@ -39,17 +39,20 @@ HEX = re.compile(r"^(#[0-9a-f]{3,8}|rgba?\([\d.,\s]+\))$", re.I)
 #: so that MOVING one is a deliberate edit to this list, not an accident.
 SCENES = {"lighthouse", "stadium", "park"}
 
-#: The parcel uses whose building is still a scene, and the drawer that owns it.
-#: Same list as the catalog's `_parcelScenes`, and for the same reason: each one
-#: derives its own size, its own pavilion count or its own scatter FROM THE
-#: PARCEL. Moving one here without moving the code is what this pins.
+#: Parcel uses drawn by a data scene. The use-to-scene dispatch is data too.
 PARCEL_SCENES = {
-    "cathedral": "drawCathedral",
-    "civic": "drawCivicBuilding",
-    "school": "drawSchool",
-    "kinder": "drawSchool",
-    "campus": "drawSchool",
-    "fuel": "drawFuel",
+    "cathedral": "cathedral",
+    "civic": "civicBuilding",
+    "school": "school",
+    "kinder": "school",
+    "campus": "school",
+    "fuel": "fuel",
+    "garden": "garden",
+    "park": "garden",
+}
+DECOR_SCENES = {
+    "kiosco": "kiosco",
+    "river": "parkRiver",
 }
 
 
@@ -77,7 +80,7 @@ class WorldPropTests(unittest.TestCase):
     def walk(self, parts):
         for part in parts:
             yield part
-            if part["shape"] == "repeat":
+            if part.get("parts"):
                 yield from self.walk(part["parts"])
             # A `prop` part inlines another record — follow it, or half the
             # catalog goes unchecked the moment anything is shared.
@@ -92,6 +95,10 @@ class WorldPropTests(unittest.TestCase):
             yield f"sign {name}", self.parts_of(name, self.signs)
         for name in self.pieces:
             yield f"prop {name}", self.parts_of(name, self.pieces)
+        for name, rec in self.doc["scenes"].items():
+            if isinstance(rec, dict) and rec.get("parts"):
+                yield f"scene {name}", rec["parts"]
+        yield "default landmark shadow", self.doc["defaults"]["landmarkShadow"]["parts"]
 
     def test_every_landmark_type_is_drawn_somehow(self):
         for kind in LandmarkType:
@@ -101,9 +108,9 @@ class WorldPropTests(unittest.TestCase):
                           f"{kind.value} has no prop record and is not a scene — "
                           f"it would draw nothing at all")
 
-    def test_the_scenes_stay_in_code(self):
-        # The other direction: a scene that quietly acquired a catalog record
-        # would be drawn TWICE, its art on top of its own geometry.
+    def test_world_scene_dispatch_stays_attached_to_mapped_hosts(self):
+        # These branches supply mapped host geometry. They select a data scene;
+        # they are not permission to put its silhouette back in this module.
         js = read(LANDMARKS_JS)
         for name in SCENES:
             self.assertIn(f'lm.type === "{name}"', js,
@@ -213,16 +220,105 @@ class WorldPropTests(unittest.TestCase):
                           f"`{use}` is not a ParcelUse — nothing will ever look "
                           f"it up")
 
-    def test_the_parcel_buildings_that_are_scenes_stay_in_code(self):
-        # The other direction from `_parcelScenes`: giving one of these a `prop`
-        # would draw the catalog art AND the scene, one on top of the other.
-        js = read(LANDMARKS_JS)
-        for use, drawer in PARCEL_SCENES.items():
-            self.assertIn(f"function {drawer}(", js,
-                          f"{use}'s {drawer} is gone from landmarks.js")
+    def test_parcel_uses_dispatch_to_complete_json_scenes(self):
+        for use, scene in PARCEL_SCENES.items():
+            self.assertEqual(self.parcels["uses"][use].get("scene"), scene,
+                             f"{use} does not name its scene in JSON")
+            self.assertTrue(self.doc["scenes"][scene].get("parts"),
+                            f"{use}'s scene {scene} has no parts")
             self.assertIsNone(self.parcels["uses"].get(use, {}).get("prop"),
-                              f"{use} is a scene ({drawer}); a `prop` on it "
+                              f"{use} is a scene; a `prop` on it "
                               f"would be drawn on top of its own building")
+
+    def test_parcel_decor_dispatches_to_json_scenes(self):
+        for feature, scene in DECOR_SCENES.items():
+            self.assertEqual(self.parcels["decor"][feature].get("scene"), scene)
+            self.assertTrue(self.doc["scenes"][scene].get("parts"),
+                            f"scenes.{scene} has no parts")
+
+    def test_no_parcel_asset_has_an_identity_drawer_left(self):
+        js = re.sub(r"/\*.*?\*/", "", read(LANDMARKS_JS), flags=re.S)
+        js = re.sub(r"^\s*//.*$", "", js, flags=re.M)
+        for drawer in ("drawCathedral", "drawCivicBuilding", "drawSchool",
+                       "drawFuel", "drawGarden", "drawKiosco", "drawParkRiver"):
+            self.assertNotIn(drawer, js,
+                             f"{drawer} makes code, not world-props.json, the asset authority")
+        self.assertNotRegex(js, r'P\.use\s*===\s*"(?:cathedral|civic|school|fuel|garden)"')
+
+    def test_scene_flora_identity_is_authored_not_a_renderer_default(self):
+        flora = json.loads(read(FLORA))
+        for scene_name, scene in self.doc["scenes"].items():
+            if not isinstance(scene, dict):
+                continue
+            for part in self.walk(scene.get("parts", [])):
+                if part.get("paint") != "tree":
+                    continue
+                self.assertIn("species", part,
+                              f"scenes.{scene_name} relies on paintTree's hidden default")
+                self.assertIn(part["species"], flora["species"],
+                              f"scenes.{scene_name} names missing flora species")
+
+    def test_procedural_world_scenes_use_the_finite_shared_interpreter(self):
+        expected = {
+            "riprap", "flora-placements", "lighthouse-tower",
+            "fountain-water", "pool-water",
+        }
+        used = set()
+        for scene in self.doc["scenes"].values():
+            if not isinstance(scene, dict):
+                continue
+            for part in self.walk(scene.get("parts", [])):
+                if part.get("shape") == "family":
+                    used.add(part.get("verb"))
+        self.assertEqual(used, expected)
+        interpreter = read(SCENE_SHAPES_JS)
+        for verb in used:
+            self.assertIn(f'"{verb}"', interpreter)
+        landmarks = read(LANDMARKS_JS)
+        for scene in ("faro", "fountain", "pool", "lote"):
+            self.assertIn(f'paintSceneParts(ctx, PROPS, "{scene}"', landmarks)
+
+    def test_scene_interpreter_owns_no_authored_colours(self):
+        js = re.sub(r"/\*.*?\*/", "", read(SCENE_SHAPES_JS), flags=re.S)
+        js = re.sub(r"^\s*//.*$", "", js, flags=re.M)
+        self.assertNotRegex(js, r"#[0-9a-fA-F]{3,8}|rgba?\(\s*\d")
+
+    def test_scene_formula_trees_use_only_the_exported_finite_vocabulary(self):
+        shapes = read(SHAPES_JS)
+        block = shapes.split("export const ASSET_FORMULA_OPS", 1)[1].split("]", 1)[0]
+        operators = set(re.findall(r'"([a-z]+)"', block))
+        host = {"hw", "hh", "cx", "cy", "x0", "y0", "use", "whole", "decor",
+                "hasKiosco", "hasStatue", "hasFountain"}
+
+        for scene_name, scene in self.doc["scenes"].items():
+            if not isinstance(scene, dict):
+                continue
+            definitions = scene.get("values", {})
+            known = host | set(definitions)
+
+            def walk(node, where):
+                if isinstance(node, (str, int, float, bool)) or node is None:
+                    return
+                self.assertIsInstance(node, dict, f"{where} is executable/unknown syntax")
+                if "ref" in node:
+                    self.assertEqual(set(node), {"ref"}, where)
+                    self.assertIn(node["ref"], known, f"{where} references a missing value")
+                    return
+                self.assertEqual(set(node), {"op", "args"}, where)
+                self.assertIn(node["op"], operators, f"{where} names an engine op that is absent")
+                self.assertIsInstance(node["args"], list, where)
+                for index, child in enumerate(node["args"]):
+                    walk(child, f"{where}.{node['op']}[{index}]")
+
+            for name, formula in definitions.items():
+                walk(formula, f"scenes.{scene_name}.values.{name}")
+
+    def test_interpreters_do_not_own_asset_colours(self):
+        for path in (SHAPES_JS, LANDMARKS_JS):
+            js = re.sub(r"/\*.*?\*/", "", read(path), flags=re.S)
+            js = re.sub(r"^\s*//.*$", "", js, flags=re.M)
+            self.assertNotRegex(js, r"#[0-9a-fA-F]{3,8}|rgba?\(\s*\d",
+                                f"{os.path.basename(path)} owns an authored colour")
 
     def test_a_use_that_draws_its_own_building_has_something_to_draw(self):
         """`drawsBuilding` SUPPRESSES the landmark's art.
@@ -234,9 +330,9 @@ class WorldPropTests(unittest.TestCase):
         for use, rec in self.parcels["uses"].items():
             if not rec.get("drawsBuilding"):
                 continue
-            self.assertTrue(rec.get("prop") or use in PARCEL_SCENES,
+            self.assertTrue(rec.get("prop") or rec.get("scene"),
                             f"{use} claims to draw its own building but has "
-                            f"neither a prop nor a drawer — the landmark's art "
+                            f"neither a prop nor a scene — the landmark's art "
                             f"is suppressed and nothing replaces it")
 
     def test_a_scaled_prop_carries_the_size_it_was_drawn_at(self):

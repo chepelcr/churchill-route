@@ -3,7 +3,15 @@
   "version": 2,
   "_geometry": "Plain PIXEL offsets from the landmark's anchor, +y down — the frame the art was already written in (`ctx.fillRect(x - 16, y - 8, 32, 18)` becomes `x: -16, y: -8, w: 32, h: 18`). Parts are drawn in order, so later ones sit on top.",
   "_shapes": "The finite vocabulary in src/render/c2d/shapes.js, shared with the vehicle catalog: rect, roundRect, poly, fan, ellipse, disc, stripes, stroke, strokeRect, text, label, areaLabel, repeat, grid. Data composes these and never invents one.",
-  "_scenes": "Three landmark types and seven parcel uses are drawn by SCENE functions rather than from a parts list, because what they do is arithmetic: the estadio clips to a footprint the BUILD emitted, a school sizes its own pavilion count from its lot, the faro's riprap follows a rim the build measured. Their CONTROL FLOW stays in code — but their content does not. Every colour, count, scale and proportion they use is in `scenes` below, so a designer can retint the faro, move its palms or change how many bands its tower has without touching the engine. What stays unreachable from here is only what comes from the WORLD (a footprint, a rim, a residual), and that is edited through the world editor's world layer, which is where it belongs.",
+  "_scenes": "A scene may consume host geometry, clipping, time or tide, but its authored appearance is JSON: palettes, parts and a finite `values` formula tree. Parcel scenes use the generic interpreter; animated or irregular world scenes call the finite family verbs in sceneShapes.js. Code owns placement and traced footprints, never an asset's editable identity.",
+  "defaults": {
+    "landmarkShadow": {
+      "parts": [
+        { "shape": "ellipse", "fill": "rgba(0,0,0,0.22)", "cx": 4, "cy": 8, "rx": 18, "ry": 5 }
+      ]
+    },
+    "noLandmarkShadow": ["stadium", "pool", "park"]
+  },
   "landmarks": {
     "kiosk": {
       "note": "a churchill stand: where a delivery starts. White and ORANGE — the drink stays red, because that is the syrup.",
@@ -236,7 +244,7 @@
       ]
     },
     "park": {
-      "note": "the green space and its fountain are drawn by drawGreenSpace, which reads the landmark's own w/h — only the area label is art. A MARINE park is a scene and escapes to drawMarinePark.",
+      "note": "the green space and its fountain are scene recipes selected by drawGreenSpace from the landmark's own w/h — this pin only carries the area label. A marine park composes the shared JSON pool recipe over its mapped pool anchors.",
       "areaOnly": true,
       "parts": [
         {
@@ -1604,9 +1612,15 @@
     }
   },
   "_parcels": "POR USO: what a parcel is CALLED on the map and what stands on it. The ground colour is a MATERIAL and lives in materials.json (`parcel`), keyed by the same ParcelUse. `pill` is the word a parcel wears when it IS a landmark; `tone` is the ink of its own name; `label: false` means the ground says everything and a caption sitting in the middle of it would cover exactly what it names.",
-  "_parcelScenes": "LAS ESCENAS DE PARCELA SE ESTAN PASANDO A DATA, y la nota que decia lo contrario habia podrido. Decia: «siete edificios se quedan en codigo porque se dimensionan desde las medio-extensiones de la parcela POR CLAMPS Y CUENTAS — moverlos seria poner aritmetica y condicionales en JSON, que es un lenguaje de programacion y no un catalogo». Era cierto cuando se escribio y dejo de serlo: `fit` deriva una CUENTA de un largo y un paso, y la forma `{k, px, min, max}` de `evalOn` declara un TOPE. Ninguna de las dos pone aritmetica en el registro — el JSON dice el paso y el tope, el motor hace la division y la comparacion, que es el mismo lado de la linea de §12 donde ya estaban `scatter`, `orbit` y `bulbs`.\n\nEl marco lo arma `paintParcelScene`: `X`/`Y` en medio-extensiones ya reducidas por el `inset` de la escena, `S` en la dimension CARACTERISTICA que elige el llamador. Eso ultimo se queda en codigo a proposito: la espina de una catedral es `min(hh, hw*0.62)` y un `min` entre ejes no cabe en un evaluador de un eje. El llamador lo calcula, el JSON lo usa como fraccion.\n\nMigradas: `civicBuilding`. Faltan: catedral, escuela/kinder/campus, gasolinera, kiosco, rio y arbolado. Cada una entra con su hoja diffeada — `shot-parcels` dibuja los 18 usos, asi que una transcripcion mal hecha se ve ahi y no en el mundo.",
+  "_parcelScenes": "LAS ESCENAS DE PARCELA SON JSON COMPLETO: `parts` declara capas y formas; `palette` declara toda tinta; `values` declara incluso el marco, proporciones cruzadas, condiciones y giro como árboles de fórmula con un vocabulario finito. El intérprete aporta `min/max/mul/if`, `fit`, `group` y `scatter`; no conoce una catedral, una escuela o una gasolinera y `landmarks.js` no contiene `drawCathedral` ni ramas equivalentes. El mundo sólo entrega hechos del host (`hw`, `hh`, uso y decoraciones).\n\n`shot-parcels` dibuja los 18 usos y tiene que salir idéntico: esta migración es una transcripción, no un rediseño.",
   "parcels": {
     "defaultTone": "#8a6f4a",
+    "labelFg": "#fff",
+    "sponsor": {
+      "plate": "rgba(12,10,22,0.55)",
+      "defaultTone": "#f3c969",
+      "text": "#26222c"
+    },
     "uses": {
       "church": {
         "prop": "churchLot",
@@ -1618,6 +1632,7 @@
         }
       },
       "cathedral": {
+        "scene": "cathedral",
         "drawsBuilding": true,
         "pill": {
           "text": "CATEDRAL",
@@ -1625,6 +1640,7 @@
         }
       },
       "civic": {
+        "scene": "civicBuilding",
         "drawsBuilding": true,
         "pill": {
           "text": "CULTURA",
@@ -1644,25 +1660,33 @@
         "tone": "#2e7d44"
       },
       "school": {
+        "scene": "school",
         "tone": "#3a6f8a",
         "wall": "#f0e4c4",
         "roof": "#7f93a6"
       },
       "kinder": {
+        "scene": "school",
         "tone": "#3a6f8a",
         "wall": "#f6dcc0",
         "roof": "#c98a6a"
       },
       "campus": {
+        "scene": "school",
         "tone": "#3a6f8a",
         "wall": "#e6e0cb",
         "roof": "#6f8496"
       },
       "park": {
+        "scene": "garden",
         "label": false
       },
       "garden": {
+        "scene": "garden",
         "label": false
+      },
+      "fuel": {
+        "scene": "fuel"
       },
       "boulevard": {
         "label": false
@@ -1678,20 +1702,23 @@
       },
       "bus": {
         "prop": "parada"
+      },
+      "kiosco": {
+        "scene": "kiosco"
+      },
+      "river": {
+        "scene": "parkRiver"
       }
     }
   },
   "scenes": {
-    "_note": "Per-scene palette and knobs. The scene function owns the loops, the clamps and the deterministic hash scatter; it owns no colours and no counts.",
+    "_note": "Per-scene palettes and parts. The interpreter owns fit counts, clamps, nested frames and deterministic scatter; a caller only resolves derived values that combine parcel axes.",
     "faro": {
       "note": "El Faro de Puntarenas on its plazoleta at La Punta. The riprap follows `lm.rim`, which the BUILD measured against the real sand/water edge — that is world geometry and not a knob.",
       "palette": {
         "rockDark": "#4a4d52",
         "rockLight": "#5a5e64",
-        "palmShadow": "rgba(0,0,0,0.25)",
-        "palmTrunk": "#7a4f2a",
-        "frond": "#3aa45b",
-        "crown": "#2e7d44",
+        "comma": "#c34a3c",
         "towerShadow": "rgba(0,0,0,0.22)",
         "towerBody": "#fff",
         "towerBand": "#d63a30",
@@ -1701,47 +1728,27 @@
         "pillFg": "#fff",
         "pillBg": "#3a3540"
       },
-      "params": {
-        "rockMinR": 1.8,
-        "rockVarR": 2.4,
-        "rockStretch": 1.4,
-        "rockDarkEvery": 3,
-        "palms": [
-          [
-            22,
-            -12
-          ],
-          [
-            27,
-            11
-          ],
-          [
-            -4,
-            19
-          ]
-        ],
-        "palmScale": 0.8,
-        "fronds": 6,
-        "frondR": 11,
-        "frondRy": 5,
-        "trunkH": 16,
-        "towerBaseHalf": 6,
-        "towerTopHalf": 4,
-        "towerHeight": 34,
-        "towerFoot": 2,
-        "bands": 3,
-        "bandTop": 29,
-        "bandGap": 11,
-        "bandH": 5,
-        "galleryY": 36,
-        "galleryW": 12,
-        "galleryH": 2.5,
-        "lanternY": 40,
-        "lanternR": 4,
-        "finialY": 45.5,
-        "labelY": 52,
-        "label": "FARO"
-      }
+      "comma": {
+        "radius": 7,
+        "headY": 0.5,
+        "headR": 0.6,
+        "innerX": -0.45,
+        "innerY": 0.4,
+        "innerControlX": -0.2,
+        "innerControlY": -0.35,
+        "tipX": 0.12,
+        "tipY": -1.2,
+        "outerControlX": 0.72,
+        "outerControlY": -0.35,
+        "outerX": 0.55,
+        "outerY": 0.4
+      },
+      "parts": [
+        { "shape": "family", "verb": "riprap", "dark": "$rockDark", "light": "$rockLight", "minR": 1.8, "radiusRange": 2.4, "stretch": 1.4, "darkEvery": 3, "seedMul": 7.13, "step": 12.9, "rotStep": 9.4 },
+        { "shape": "family", "verb": "flora-placements", "species": "palma", "positions": [[22, -12], [27, 11], [-4, 19]], "scale": 0.8, "seed": 0.31 },
+        { "shape": "family", "verb": "lighthouse-tower", "shadow": "$towerShadow", "shadowDx": 5, "shadowDy": 4, "shadowRx": 9, "shadowRy": 3, "body": "$towerBody", "band": "$towerBand", "edge": "$towerEdge", "gallery": "$gallery", "lantern": "$lantern", "baseHalf": 6, "topHalf": 4, "height": 34, "foot": 2, "bands": 3, "bandTop": 29, "bandGap": 11, "bandH": 5, "edgeWidth": 1, "galleryY": 36, "galleryW": 12, "galleryH": 2.5, "lanternY": 40, "lanternR": 4, "finialY": 45.5, "finialW": 6, "finialH": 2 },
+        { "shape": "label", "x": 0, "y": -52, "text": "FARO", "fg": "$pillFg", "bg": "$pillBg" }
+      ]
     },
     "greenSpace": {
       "note": "A park or a standalone field. A PARK (`ground: false`) has its green painted by the block footprint, so this only adds the perimeter trees and the fountain; a standalone keeps the legacy self-drawn grass rect.",
@@ -1762,21 +1769,36 @@
         "parkRadiusBase": 0.82,
         "treeScaleBase": 0.8,
         "treeScaleVar": 0.35,
-        "corner": 12,
-        "pathInset": 5,
-        "pathCorner": 9,
-        "pathWidth": 3,
-        "pitchInsetX": 16,
-        "pitchInsetY": 14,
-        "pitchLineWidth": 2,
-        "centreCircle": 14,
         "ringTreesPer": 24,
         "ringInset": 10,
         "ringJitter": 8,
-        "ringScaleVar": 0.4,
-        "shadowDx": 3,
-        "shadowDy": 4
-      }
+        "ringScaleVar": 0.4
+      },
+      "values": {
+        "left": { "op": "mul", "args": [{ "ref": "hw" }, -1] },
+        "top": { "op": "mul", "args": [{ "ref": "hh" }, -1] },
+        "width": { "op": "mul", "args": [{ "ref": "hw" }, 2] },
+        "height": { "op": "mul", "args": [{ "ref": "hh" }, 2] },
+        "shadowX": { "op": "add", "args": [{ "ref": "left" }, 3] },
+        "shadowY": { "op": "add", "args": [{ "ref": "top" }, 4] },
+        "pathX": { "op": "add", "args": [{ "ref": "left" }, 5] },
+        "pathY": { "op": "add", "args": [{ "ref": "top" }, 5] },
+        "pathW": { "op": "sub", "args": [{ "ref": "width" }, 10] },
+        "pathH": { "op": "sub", "args": [{ "ref": "height" }, 10] },
+        "pitchX": { "op": "add", "args": [{ "ref": "left" }, 16] },
+        "pitchY": { "op": "add", "args": [{ "ref": "top" }, 14] },
+        "pitchW": { "op": "sub", "args": [{ "ref": "width" }, 32] },
+        "pitchH": { "op": "sub", "args": [{ "ref": "height" }, 28] },
+        "pitchBottom": { "op": "sub", "args": [{ "ref": "hh" }, 14] }
+      },
+      "parts": [
+        { "shape": "roundRect", "fill": "$shadow", "x": "$shadowX", "y": "$shadowY", "w": "$width", "h": "$height", "r": 12 },
+        { "shape": "roundRect", "fill": "$grass", "x": "$left", "y": "$top", "w": "$width", "h": "$height", "r": 12 },
+        { "shape": "roundRect", "stroke": "$gravelPath", "width": 3, "x": "$pathX", "y": "$pathY", "w": "$pathW", "h": "$pathH", "r": 9 },
+        { "shape": "strokeRect", "when": "$pitch", "stroke": "$pitchLine", "width": 2, "x": "$pitchX", "y": "$pitchY", "w": "$pitchW", "h": "$pitchH" },
+        { "shape": "stroke", "when": "$pitch", "stroke": "$pitchLine", "width": 2, "pts": [[0, "$pitchY"], [0, "$pitchBottom"]] },
+        { "shape": "ring", "when": "$pitch", "stroke": "$pitchLine", "width": 2, "cx": 0, "cy": 0, "r": 14 }
+      ]
     },
     "fountain": {
       "note": "La fuente in the middle of a plaza. Animated off the shared clock, so the ripple count and the jet period are knobs but the phase is not.",
@@ -1787,25 +1809,11 @@
         "ripple": "rgba(255,255,255,0.55)",
         "jet": "rgba(206,236,246,0.9)"
       },
-      "params": {
-        "rimR": 17,
-        "kerbR": 14,
-        "waterR": 12,
-        "ripples": 3,
-        "rippleSpeed": 0.003,
-        "jetBase": 9,
-        "jetBob": 2,
-        "jetSpeed": 6,
-        "jetHalfW": 2,
-        "droplets": 5,
-        "dropletR": 1.2,
-        "dropletSpread": 9,
-        "dropletBase": 3,
-        "dropletSpeed": 22,
-        "dropletPhase": 2.5,
-        "dropletRise": 2,
-        "dropletSpin": 2
-      }
+      "parts": [
+        { "shape": "disc", "fill": "$rim", "cx": 0, "cy": 0, "r": 17 },
+        { "shape": "disc", "fill": "$kerb", "cx": 0, "cy": 0, "r": 14 },
+        { "shape": "family", "verb": "fountain-water", "water": "$water", "ripple": "$ripple", "jet": "$jet", "waterR": 12, "ripples": 3, "rippleWidth": 1, "rippleSpeed": 0.003, "jetBase": 9, "jetBob": 2, "jetSpeed": 6, "jetHalfW": 2, "droplets": 5, "dropletR": 1.2, "dropletSpread": 9, "dropletBase": 3, "dropletSpeed": 22, "dropletPhase": 2.5, "dropletRise": 2, "dropletSpin": 2 }
+      ]
     },
     "pool": {
       "note": "A landscaped pool — the Balneario and the Parque Marino's tanks. `s` scales the whole thing; these are its unscaled proportions.",
@@ -1818,48 +1826,13 @@
         "shimmer": "rgba(255,255,255,0.5)",
         "slide": "#f3c969"
       },
-      "params": {
-        "deckRx": 78,
-        "deckRy": 48,
-        "copingRx": 72,
-        "copingRy": 43,
-        "copingWidth": 5,
-        "waterRx": 66,
-        "waterRy": 38,
-        "deepX": 6,
-        "deepY": 4,
-        "deepRx": 42,
-        "deepRy": 24,
-        "shallowX": -42,
-        "shallowY": 8,
-        "shallowRx": 22,
-        "shallowRy": 12,
-        "shimmerLines": 4,
-        "shimmerTop": -28,
-        "shimmerGap": 15,
-        "shimmerAmp": 3,
-        "shimmerWave": 2.5,
-        "shimmerStep": 8,
-        "shimmerWidth": 2,
-        "speed": 0.0022,
-        "slideX": -54,
-        "slideY": 22,
-        "slideR": 6,
-        "palms": [
-          [
-            60,
-            -30
-          ],
-          [
-            -62,
-            -22
-          ]
-        ],
-        "palmScale": 0.7,
-        "shimmerSpeedA": 3,
-        "shimmerFreq": 0.08,
-        "shimmerSpeedB": 4
-      }
+      "parts": [
+        { "shape": "ellipse", "fill": "$deck", "cx": 0, "cy": 0, "rx": 78, "ry": 48 },
+        { "shape": "ellipse", "stroke": "$coping", "width": 5, "cx": 0, "cy": 0, "rx": 72, "ry": 43 },
+        { "shape": "family", "verb": "pool-water", "water": "$water", "deep": "$deep", "shallow": "$shallow", "shimmer": "$shimmer", "waterRx": 66, "waterRy": 38, "deepX": 6, "deepY": 4, "deepRx": 42, "deepRy": 24, "shallowX": -42, "shallowY": 8, "shallowRx": 22, "shallowRy": 12, "shimmerLines": 4, "shimmerTop": -28, "shimmerGap": 15, "shimmerAmp": 3, "shimmerWave": 2.5, "shimmerStep": 8, "shimmerWidth": 2, "speed": 0.0022, "shimmerSpeedA": 3, "shimmerFreq": 0.08, "shimmerSpeedB": 4 },
+        { "shape": "disc", "fill": "$slide", "cx": -54, "cy": 22, "r": 6 },
+        { "shape": "family", "when": "$palms", "verb": "flora-placements", "species": "palma", "positions": [[60, -30], [-62, -22]], "scale": 0.7, "seed": 0.57 }
+      ]
     },
     "stadium": {
       "note": "Estadio — el rótulo y LA GRADERÍA. The pitch itself is painted in the acera pass (`paintStadiumCuadras`), because it is a colour choice on ground that already exists; the stand is a STRUCTURE that stands on that ground, so it is drawn here.",
@@ -1916,8 +1889,25 @@
         "stoneLite": "#c2bcb1"
       },
       "inset": 0.86,
-      "_frame": "`X` mide en L (la media LARGO de la nave = la media anchura del lote); `Y` mide en W2 = min(hh, hw*0.62), la media anchura de la nave. Ese `min` entre ejes lo calcula el llamador y no el JSON: un min entre dos ejes no cabe en un evaluador de un eje, y escribirlo aca seria aritmetica en el registro. +x es el ESTE (la fachada, hacia el bulevar), +y es el SUR.",
-      "_vars": "LA REGLA: un valor que mezcla las DOS escalas no se puede escribir en `[k, px]`, porque `px` es un literal — `[1, \"$v\"]` concatenaria texto. Asi que cualquier mezcla la resuelve el llamador y entra como UN `$var` en pixeles. Son las unicas cinco de esta escena, y todas son un min/max entre ejes o un producto de dos escalares distintos: `$tw` `$th` (crucero), `$dome` (min(W2*0.72, tw*0.9)), `$towerX` `$towerTop` `$towerStep` (los campanarios, que dependen de `tr`), `$crossX` `$crossW` (la cruz, cuyo palo se corre W2*0.11 sobre el eje x). El resto —que es casi todo— es una fraccion limpia de L o de W2 y se edita como tal.",
+      "_frame": "`values` posee también el marco: `X` mide en L; `Y` y `S` en W2=min(hh·inset, L·0.62). +x es el ESTE (fachada hacia el bulevar), +y es el SUR. Ninguna de estas proporciones vive en `landmarks.js`.",
+      "_vars": "Cada nodo es `{op,args}` o `{ref}` y sólo usa el vocabulario finito exportado por shapes.js. Los nombres resueltos alimentan `$tw`, `$dome`, `$towerX` y las otras dimensiones de `parts`; no son strings ejecutables ni comandos Canvas.",
+      "values": {
+        "L": { "op": "mul", "args": [{ "ref": "hw" }, 0.86] },
+        "insetH": { "op": "mul", "args": [{ "ref": "hh" }, 0.86] },
+        "W2": { "op": "min", "args": [{ "ref": "insetH" }, { "op": "mul", "args": [{ "ref": "L" }, 0.62] }] },
+        "frameHw": { "ref": "L" },
+        "frameHh": { "ref": "W2" },
+        "frameSize": { "ref": "W2" },
+        "tw": { "op": "max", "args": [10, { "op": "mul", "args": [{ "ref": "L" }, 0.26] }] },
+        "th": { "op": "min", "args": [{ "ref": "insetH" }, { "op": "mul", "args": [{ "ref": "W2" }, 1.45] }] },
+        "tr": { "op": "max", "args": [5, { "op": "mul", "args": [{ "ref": "W2" }, 0.42] }] },
+        "dome": { "op": "min", "args": [{ "op": "mul", "args": [{ "ref": "W2" }, 0.72] }, { "op": "mul", "args": [{ "ref": "tw" }, 0.9] }] },
+        "towerX": { "op": "sub", "args": [{ "ref": "L" }, { "op": "mul", "args": [{ "ref": "tr" }, 0.5] }] },
+        "towerTop": { "op": "sub", "args": [{ "op": "mul", "args": [-1, { "ref": "W2" }] }, { "op": "mul", "args": [-1, { "ref": "tr" }, 0.7] }] },
+        "towerStep": { "op": "mul", "args": [2, { "op": "sub", "args": [{ "ref": "W2" }, { "op": "mul", "args": [{ "ref": "tr" }, 0.7] }] }] },
+        "crossX": { "op": "sub", "args": [{ "op": "mul", "args": [{ "ref": "L" }, 0.05] }, { "op": "mul", "args": [{ "ref": "W2" }, 0.11] }] },
+        "crossW": { "op": "mul", "args": [{ "ref": "W2" }, 0.22] }
+      },
       "parts": [
         {
           "_": "la sombra: el mismo cuerpo corrido +3,+5",
@@ -2283,17 +2273,133 @@
     },
     "school": {
       "note": "Escuela / kínder / campus: a swept yard with pavilions along one edge and a marked court when the lot is big enough. HOW MANY pavilions is a function of the frontage, which is why this is a scene.",
+      "_frame": "`values` elige el eje largo, gira un cuarto de vuelta cuando corresponde y deriva L, D, la cancha y los límites de pabellones. El host sólo aporta hw/hh/use.",
       "palette": {
         "yard": "rgba(214,206,180,0.55)",
         "court": "rgba(240,238,230,0.55)",
         "shadow": "rgba(0,0,0,0.22)",
         "courtLine": "rgba(90,80,60,0.45)",
         "pavilion": "rgba(240,238,230,0.85)",
+        "useWall": "#f0e4c4",
+        "useRoof": "#7f93a6",
         "roof": "#e85d75"
-      }
+      },
+      "values": {
+        "along": { "op": "gte", "args": [{ "ref": "hw" }, { "ref": "hh" }] },
+        "longHalf": { "op": "if", "args": [{ "ref": "along" }, { "ref": "hw" }, { "ref": "hh" }] },
+        "shortHalf": { "op": "if", "args": [{ "ref": "along" }, { "ref": "hh" }, { "ref": "hw" }] },
+        "L": { "op": "mul", "args": [{ "ref": "longHalf" }, 1.64] },
+        "D": { "op": "mul", "args": [{ "ref": "shortHalf" }, 0.62] },
+        "ph": { "op": "mul", "args": [{ "ref": "D" }, 0.95] },
+        "frameHw": { "op": "mul", "args": [{ "ref": "L" }, 0.5] },
+        "frameHh": { "ref": "D" },
+        "frameSize": { "ref": "D" },
+        "rotateTurns": { "op": "if", "args": [{ "ref": "along" }, 0, 0.25] },
+        "court": { "op": "and", "args": [{ "op": "gt", "args": [{ "ref": "L" }, 70] }, { "op": "gt", "args": [{ "ref": "ph" }, 22] }] },
+        "courtR": { "op": "mul", "args": [{ "op": "min", "args": [{ "op": "mul", "args": [{ "ref": "L" }, 0.52] }, { "op": "mul", "args": [{ "ref": "ph" }, 0.62] }] }, 0.2] },
+        "campus": { "op": "eq", "args": [{ "ref": "use" }, "campus"] },
+        "minPavilions": { "op": "if", "args": [{ "ref": "campus" }, 2, 1] },
+        "maxPavilions": { "op": "if", "args": [{ "ref": "campus" }, 4, 1] }
+      },
+      "parts": [
+        {
+          "_": "El patio barrido: relleno, no el rectángulo blanco vacío que antes se pintaba sobre 85 escuelas.",
+          "shape": "rect", "fill": "$yard",
+          "x": [-0.84, 0], "y": [-0.1, 0], "w": [1.68, 0], "h": [0.95, 0]
+        },
+        {
+          "_": "La cancha sólo entra cuando el llamador confirma L > 70 y ph > 22.",
+          "shape": "strokeRect", "when": "court", "stroke": "$court", "width": 1,
+          "x": [-0.52, 0], "y": [0.0805, 0], "w": [1.04, 0], "h": [0.589, 0]
+        },
+        {
+          "shape": "stroke", "when": "court", "stroke": "$court", "width": 1,
+          "pts": [[0, [0.0805, 0]], [0, [0.6695, 0]]]
+        },
+        {
+          "shape": "ring", "when": "court", "stroke": "$court", "width": 1,
+          "cx": 0, "cy": [0.375, 0], "r": "$courtR"
+        },
+        {
+          "_": "`fit` cuenta uno, o 2–4 para campus, desde L/46. Reparte L+6 para que cada vano mida exactamente (L-(n-1)*6)/n y deja ese ancho como `$fitWidth`.",
+          "shape": "fit", "along": "x", "length": [2, 0], "spreadLength": [2, 6],
+          "pitch": 46, "min": "$minPavilions", "max": "$maxPavilions",
+          "gap": 6, "anchor": "start",
+          "parts": [
+            {
+              "shape": "roundRect", "fill": "$shadow",
+              "x": [-1, 2], "y": [-1, -1], "w": "$fitWidth", "h": [1, 0], "r": 2
+            },
+            {
+              "shape": "roundRect", "fill": "$useWall",
+              "x": [-1, 0], "y": [-1, -3], "w": "$fitWidth", "h": [1, 0], "r": 2
+            },
+            {
+              "shape": "rect", "fill": "$useRoof",
+              "x": [-1, 0], "y": [-1, -3], "w": "$fitWidth",
+              "h": {"k": 0.28, "px": 0, "min": 2}
+            },
+            {
+              "_": "Las puertas se vuelven a ajustar dentro del ancho REAL del pabellón, a paso de 11 px.",
+              "shape": "fit", "along": "x", "length": "$fitWidth", "pitch": 11, "min": 1,
+              "parts": [
+                {
+                  "shape": "rect", "fill": "$courtLine",
+                  "x": [-1, -1.4], "y": [-0.34, -3], "w": 2.8, "h": [0.3, 0]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "_": "El asta, al borde del patio.",
+          "shape": "stroke", "stroke": "$pavilion", "width": 1.2,
+          "pts": [[[0.88, 0], [0.2, 0]], [[0.88, 0], [-0.5, 0]]]
+        },
+        {
+          "shape": "rect", "fill": "$roof",
+          "x": [0.88, 0], "y": [-0.5, 0], "w": {"k": 0.1, "px": 0, "min": 3}, "h": 2.6
+        }
+      ]
+    },
+    "garden": {
+      "note": "El arbolado de parque: values posee visibilidad, cantidad, seeds y claro central; la silueta de cada especie viene de flora.json.",
+      "values": {
+        "visible": { "op": "and", "args": [{ "ref": "decor" }, { "op": "not", "args": [{ "ref": "whole" }] }] },
+        "perimeter": { "op": "add", "args": [{ "op": "mul", "args": [{ "ref": "hw" }, 2] }, { "op": "mul", "args": [{ "ref": "hh" }, 2] }] },
+        "seedX": { "ref": "x0" },
+        "seedY": { "ref": "y0" },
+        "hasCentre": { "op": "or", "args": [{ "ref": "hasKiosco" }, { "ref": "hasStatue" }, { "ref": "hasFountain" }] },
+        "clear": { "op": "if", "args": [{ "ref": "hasCentre" }, { "op": "max", "args": [14, { "op": "mul", "args": [{ "op": "min", "args": [{ "ref": "hw" }, { "ref": "hh" }] }, 0.62] }] }, 0] }
+      },
+      "parts": [
+        {
+          "shape": "scatter",
+          "paint": "tree",
+          "species": "almendro",
+          "layout": "box",
+          "fit": {"length": "$perimeter", "pitch": 26, "min": 3},
+          "width": [2, 0],
+          "height": [2, 0],
+          "xMul": 0.7,
+          "yMul": 0.62,
+          "seedX": "$seedX",
+          "seedY": "$seedY",
+          "xStep": 3.7,
+          "yStep": 8.1,
+          "clear": "$clear",
+          "boundX": [0.92, 0],
+          "boundY": [0.92, 0],
+          "scaleMin": 0.7,
+          "scaleRange": 0.35,
+          "scaleSeed": "$seedX",
+          "scaleStep": 1
+        }
+      ]
     },
     "fuel": {
       "note": "La gasolinera: a canopy over its islands, with the pumps.",
+      "_frame": "X es la media extensión LARGA y Y la CORTA; values da el cuarto de vuelta cuando la larga no es la x del host.",
       "palette": {
         "shadow": "rgba(0,0,0,0.22)",
         "canopy": "#e9e3d4",
@@ -2302,10 +2408,63 @@
         "shop": "#f0efe9",
         "pump": "#9aa0a8",
         "pumpDark": "#5c6169"
-      }
+      },
+      "values": {
+        "along": { "op": "gte", "args": [{ "ref": "hw" }, { "ref": "hh" }] },
+        "frameHw": { "op": "if", "args": [{ "ref": "along" }, { "ref": "hw" }, { "ref": "hh" }] },
+        "frameHh": { "op": "if", "args": [{ "ref": "along" }, { "ref": "hh" }, { "ref": "hw" }] },
+        "rotateTurns": { "op": "if", "args": [{ "ref": "along" }, 0, 0.25] }
+      },
+      "parts": [
+        {
+          "_": "sombra de la tienda, contra el borde trasero",
+          "shape": "roundRect", "fill": "$shadow",
+          "x": [-1, 2], "y": [-1, 2], "w": [0.68, 0], "h": [0.6, 0], "r": 2
+        },
+        {
+          "shape": "roundRect", "fill": "$canopy",
+          "x": [-1, 1], "y": [-1, 1], "w": [0.68, 0], "h": [0.6, 0], "r": 2
+        },
+        {
+          "shape": "rect", "fill": "$band",
+          "x": [-1, 1], "y": [-1, 1], "w": [0.68, 0],
+          "h": {"k": 0.18, "px": 0, "min": 1.6}
+        },
+        {
+          "_": "sombra de la marquesina",
+          "shape": "roundRect", "fill": "$canopyShadow",
+          "x": [-0.12, 0], "y": [-0.56, 2.5], "w": [1.12, 0], "h": [1.12, 0], "r": 2
+        },
+        {
+          "shape": "roundRect", "fill": "$shop",
+          "x": [-0.12, -2], "y": [-0.56, 0], "w": [1.12, 0], "h": [1.12, 0], "r": 2
+        },
+        {
+          "shape": "rect", "fill": "$band",
+          "x": [-0.12, -2], "y": [-0.56, 0], "w": [1.12, 0],
+          "h": {"k": 0.2016, "px": 0, "min": 1.4}
+        },
+        {"shape": "rect", "fill": "$pump", "x": [-0.12, 0.5], "y": [-0.56, 2], "w": 1.6, "h": 1.6},
+        {"shape": "rect", "fill": "$pump", "x": [1, -5.5], "y": [-0.56, 2], "w": 1.6, "h": 1.6},
+        {"shape": "rect", "fill": "$pump", "x": [-0.12, 0.5], "y": [0.56, -3], "w": 1.6, "h": 1.6},
+        {"shape": "rect", "fill": "$pump", "x": [1, -5.5], "y": [0.56, -3], "w": 1.6, "h": 1.6},
+        {
+          "_": "Una a tres bombas según cuántas caben a paso de 16 px bajo la marquesina.",
+          "shape": "fit", "along": "x", "length": [1.12, 0], "pitch": 16, "min": 1, "max": 3,
+          "parts": [
+            {
+              "shape": "rect", "fill": "$pumpDark",
+              "x": [-0.12, -3.4], "y": [-0.0896, 0], "w": 2.8,
+              "h": {"k": 0.224, "px": 0, "min": 2.4}
+            }
+          ]
+        }
+      ]
     },
     "kiosco": {
       "note": "El kiosco/templete at a park's centre — the Parque Victoria's bandstand.",
+      "turn": false,
+      "_turn": "El templete es radial y su techo mira a la pantalla, como el pintor original: no hereda el ángulo de la manzana.",
       "palette": {
         "shadow": "rgba(0,0,0,0.20)",
         "base": "#cfc7b4",
@@ -2314,16 +2473,157 @@
         "roof": "#7f6a52",
         "highlight": "rgba(255,255,255,0.18)",
         "post": "#5d5040"
-      }
+      },
+      "values": {
+        "size": { "op": "min", "args": [{ "ref": "hw" }, { "ref": "hh" }] },
+        "frameHw": { "ref": "size" },
+        "frameHh": { "ref": "size" },
+        "frameSize": { "ref": "size" }
+      },
+      "parts": [
+        {
+          "_": "El caller entrega min(hw,hh); el grupo declara r = clamp(0.42*s, 7, 15) una sola vez para sus dos ejes y sus tamaños.",
+          "shape": "group",
+          "hwS": {"k": 0.42, "px": 0, "min": 7, "max": 15},
+          "hhS": {"k": 0.42, "px": 0, "min": 7, "max": 15},
+          "s": {"k": 0.42, "px": 0, "min": 7, "max": 15},
+          "parts": [
+        {
+          "shape": "ellipse",
+          "fill": "$shadow",
+          "cx": 2,
+          "cy": [0.5, 0],
+          "rx": [1.12, 0],
+          "ry": [0.5, 0]
+        },
+        {
+          "shape": "ellipse",
+          "fill": "$base",
+          "cx": 0,
+          "cy": [0.3, 0],
+          "rx": [1.1, 0],
+          "ry": [0.5, 0]
+        },
+        {
+          "shape": "ellipse",
+          "fill": "$wall",
+          "cx": 0,
+          "cy": [0.16, 0],
+          "rx": [0.9, 0],
+          "ry": [0.42, 0]
+        },
+        {
+          "_": "Las ocho columnas son ocho strokes, no un path compuesto: Canvas compone el antialias de cada llamada por separado y ésa es parte de la imagen de referencia.",
+          "shape": "stroke", "stroke": "$step", "width": 1.4,
+          "pts": [[[0.78, 0], 0], [[0.78, 0], [-0.62, 0]]]
+        },
+        {
+          "shape": "stroke", "stroke": "$step", "width": 1.4,
+          "pts": [[[0.5515432893255071, 0], [0.24041630560342617, 0]], [[0.5515432893255071, 0], [-0.3795836943965738, 0]]]
+        },
+        {
+          "shape": "stroke", "stroke": "$step", "width": 1.4,
+          "pts": [[[4.7761225166746774e-17, 0], [0.34, 0]], [[4.7761225166746774e-17, 0], [-0.27999999999999997, 0]]]
+        },
+        {
+          "shape": "stroke", "stroke": "$step", "width": 1.4,
+          "pts": [[[-0.551543289325507, 0], [0.2404163056034262, 0]], [[-0.551543289325507, 0], [-0.3795836943965738, 0]]]
+        },
+        {
+          "shape": "stroke", "stroke": "$step", "width": 1.4,
+          "pts": [[[-0.78, 0], [4.163799117101001e-17, 0]], [[-0.78, 0], [-0.62, 0]]]
+        },
+        {
+          "shape": "stroke", "stroke": "$step", "width": 1.4,
+          "pts": [[[-0.5515432893255072, 0], [-0.24041630560342617, 0]], [[-0.5515432893255072, 0], [-0.8604163056034262, 0]]]
+        },
+        {
+          "shape": "stroke", "stroke": "$step", "width": 1.4,
+          "pts": [[[-1.4328367550024033e-16, 0], [-0.34, 0]], [[-1.4328367550024033e-16, 0], [-0.96, 0]]]
+        },
+        {
+          "shape": "stroke", "stroke": "$step", "width": 1.4,
+          "pts": [[[0.551543289325507, 0], [-0.24041630560342622, 0]], [[0.551543289325507, 0], [-0.8604163056034262, 0]]]
+        },
+        {
+          "shape": "fan",
+          "fill": "$roof",
+          "pts": [[[0, 0], [-1.35, 0]], [[1.05, 0], [-0.5, 0]], [[-1.05, 0], [-0.5, 0]]]
+        },
+        {
+          "shape": "fan",
+          "fill": "$highlight",
+          "pts": [[[0, 0], [-1.35, 0]], [[1.05, 0], [-0.5, 0]], [[0, 0], [-0.5, 0]]]
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$post",
+          "width": 1,
+          "pts": [[[0, 0], [-1.35, 0]], [[0, 0], [-1.7, 0]]]
+        }
+          ]
+        }
+      ]
     },
     "parkRiver": {
       "note": "The channelled river through a park's parcel.",
+      "inset": 0.86,
       "palette": {
         "bank": "#7d8f6a",
         "water": "#4f86a8",
         "sheen": "rgba(255,255,255,0.30)",
-        "shadow": "rgba(0,0,0,0.20)"
-      }
+        "shadow": "rgba(0,0,0,0.20)",
+        "stoneLite": "@cathedral.stoneLite",
+        "stoneDark": "@cathedral.stoneDark"
+      },
+      "values": {
+        "frameSize": { "op": "mul", "args": [{ "ref": "hh" }, 0.86] }
+      },
+      "parts": [
+        {
+          "_": "El ancho del agua es clamp(0.34*hh, 7, 13). Todo lo que depende de w vive dentro de este marco S; X/Y siguen siendo las extensiones del parque.",
+          "shape": "group",
+          "s": {"k": 0.34, "px": 0, "min": 7, "max": 13},
+          "parts": [
+        {
+          "_": "El cauce es el mismo Bézier perezoso repetido con tres tintas. `S` es el ancho ya acotado del agua.",
+          "shape": "stroke",
+          "stroke": "$bank",
+          "width": [1, 5],
+          "cap": "round",
+          "pts": [[[-1, 0], [-0.42, 0]], {"c": [[[-0.3, 0], [0.55, 0]], [[0.3, 0], [-0.55, 0]]], "to": [[1, 0], [0.42, 0]]}]
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$water",
+          "width": [1, 0],
+          "cap": "round",
+          "pts": [[[-1, 0], [-0.42, 0]], {"c": [[[-0.3, 0], [0.55, 0]], [[0.3, 0], [-0.55, 0]]], "to": [[1, 0], [0.42, 0]]}]
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$sheen",
+          "width": [0.28, 0],
+          "cap": "round",
+          "pts": [[[-1, 0], [-0.42, 0]], {"c": [[[-0.3, 0], [0.55, 0]], [[0.3, 0], [-0.55, 0]]], "to": [[1, 0], [0.42, 0]]}]
+        },
+        {
+          "_": "El puente deriva sus dos medias extensiones del ancho ya acotado: max(5,w*0.55)/2 y (w+12)/2.",
+          "shape": "group",
+          "hwS": {"k": 0.55, "px": 0, "min": 5},
+          "hwScale": 0.5,
+          "hhS": [1, 12],
+          "hhScale": 0.5,
+          "parts": [
+            {"shape": "roundRect", "fill": "$shadow", "x": [-1, 1], "y": [-1, 2], "w": [2, 0], "h": [2, 0], "r": 2},
+            {"shape": "roundRect", "fill": "$stoneLite", "x": [-1, 0], "y": [-1, 0], "w": [2, 0], "h": [2, 0], "r": 2},
+            {"shape": "rect", "fill": "$stoneDark", "x": [-1, 0], "y": [-1, 0], "w": [2, 0], "h": 1.6},
+            {"shape": "rect", "fill": "$stoneDark", "x": [-1, 0], "y": [1, -1.6], "w": [2, 0], "h": 1.6}
+          ]
+        }
+          ]
+        }
+      ]
     },
     "lote": {
       "note": "A SPONSORED lote — a storefront or a billboard. `lo.tone` is the sponsor's own colour and stays dynamic; these are the fixed parts around it.",
@@ -2335,7 +2635,19 @@
         "window": "rgba(255,255,255,0.7)",
         "post": "#6a5a48",
         "billboardPill": "rgba(20,16,40,0.85)"
-      }
+      },
+      "parts": [
+        { "shape": "ellipse", "fill": "$shadow", "cx": 3, "cy": 6, "rx": 16, "ry": 5 },
+        { "shape": "rect", "when": "$store", "fill": "$storeBody", "x": -16, "y": -10, "w": 32, "h": 18 },
+        { "shape": "stripes", "when": "$store", "x": -16, "y": -15, "w": 32, "h": 5, "n": 4, "palette": ["$tone", "$awningLight"] },
+        { "shape": "rect", "when": "$store", "fill": "$door", "x": -4, "y": -2, "w": 8, "h": 10 },
+        { "shape": "rect", "when": "$store", "fill": "$window", "x": -13, "y": -6, "w": 7, "h": 5 },
+        { "shape": "label", "when": "$store", "x": 0, "y": -22, "text": "$label", "fg": "$awningLight", "bg": "$tone" },
+        { "shape": "stroke", "unless": "$store", "stroke": "$post", "width": 2, "runs": [[[-10, 4], [-10, -12]], [[10, 4], [10, -12]]] },
+        { "shape": "rect", "unless": "$store", "fill": "$awningLight", "x": -17, "y": -26, "w": 34, "h": 15 },
+        { "shape": "rect", "unless": "$store", "fill": "$tone", "x": -15, "y": -24, "w": 30, "h": 11 },
+        { "shape": "label", "unless": "$store", "x": 0, "y": -30, "text": "$label", "fg": "$awningLight", "bg": "$billboardPill" }
+      ]
     }
   }
 }

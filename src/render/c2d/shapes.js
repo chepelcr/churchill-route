@@ -29,6 +29,93 @@ import { spriteImage, spriteRecord } from "./sprites.js";
 
 const TAU = Math.PI * 2;
 
+// A TINY, CLOSED FORMULA VOCABULARY FOR ASSET FRAMES.
+//
+// A cathedral recipe may depend on both half-extents of its host parcel. That
+// dependency is authored content too: leaving `min(hh, hw * .62)` in a
+// `drawCathedral` function means the JSON still does not own the cathedral's
+// proportions. These expressions are explicit JSON trees, never source text;
+// the engine supplies only this finite arithmetic vocabulary and host facts.
+// There is no property lookup, function call or Canvas access in the language.
+export const ASSET_FORMULA_OPS = Object.freeze([
+  "add", "sub", "mul", "div", "min", "max", "abs", "clamp",
+  "round", "floor", "ceil", "gt", "gte", "lt", "lte", "eq",
+  "and", "or", "not", "if",
+]);
+const FORMULA_OPS = new Set(ASSET_FORMULA_OPS);
+
+function formulaNumber(value, where) {
+  if (!Number.isFinite(value)) throw new Error(`${where} resolved to a non-finite number`);
+  return value;
+}
+
+/** Evaluate one declarative asset formula against a flat scope. */
+export function evaluateAssetFormula(node, scope = {}, where = "formula") {
+  if (node === null || typeof node === "number" || typeof node === "boolean"
+      || typeof node === "string") return node;
+  if (Array.isArray(node) || typeof node !== "object") {
+    throw new Error(`${where} must be a literal, {ref}, or {op,args} formula`);
+  }
+  if (Object.hasOwn(node, "ref")) {
+    if (typeof node.ref !== "string" || !Object.hasOwn(scope, node.ref)) {
+      throw new Error(`${where} references unknown value "${node.ref}"`);
+    }
+    return scope[node.ref];
+  }
+  const { op, args } = node;
+  if (!FORMULA_OPS.has(op) || !Array.isArray(args)) {
+    throw new Error(`${where} uses an unknown asset formula operation "${op}"`);
+  }
+  const at = (index) => evaluateAssetFormula(args[index], scope, `${where}.${op}[${index}]`);
+  const all = () => args.map((_arg, index) => at(index));
+  switch (op) {
+    case "if": return at(0) ? at(1) : at(2);
+    case "and": return args.every((_arg, index) => Boolean(at(index)));
+    case "or": return args.some((_arg, index) => Boolean(at(index)));
+    case "not": return !at(0);
+    case "eq": return at(0) === at(1);
+    case "gt": return Number(at(0)) > Number(at(1));
+    case "gte": return Number(at(0)) >= Number(at(1));
+    case "lt": return Number(at(0)) < Number(at(1));
+    case "lte": return Number(at(0)) <= Number(at(1));
+    case "add": return formulaNumber(all().reduce((sum, value) => sum + Number(value), 0), where);
+    case "sub": return formulaNumber(Number(at(0)) - Number(at(1)), where);
+    case "mul": return formulaNumber(all().reduce((product, value) => product * Number(value), 1), where);
+    case "div": return formulaNumber(Number(at(0)) / Number(at(1)), where);
+    case "min": return formulaNumber(Math.min(...all().map(Number)), where);
+    case "max": return formulaNumber(Math.max(...all().map(Number)), where);
+    case "abs": return formulaNumber(Math.abs(Number(at(0))), where);
+    case "clamp": return formulaNumber(Math.max(Number(at(1)), Math.min(Number(at(2)), Number(at(0)))), where);
+    case "round": return formulaNumber(Math.round(Number(at(0))), where);
+    case "floor": return formulaNumber(Math.floor(Number(at(0))), where);
+    case "ceil": return formulaNumber(Math.ceil(Number(at(0))), where);
+    default: throw new Error(`${where} uses unsupported operation "${op}"`);
+  }
+}
+
+/** Resolve a named formula map, including references between authored values. */
+export function resolveAssetFormulaMap(definitions = {}, source = {}) {
+  const values = { ...source };
+  const active = new Set();
+  const resolve = (name) => {
+    if (Object.hasOwn(values, name)) return values[name];
+    if (!Object.hasOwn(definitions, name)) throw new Error(`unknown asset value "${name}"`);
+    if (active.has(name)) throw new Error(`asset formula cycle at "${name}"`);
+    active.add(name);
+    const scope = new Proxy(values, {
+      has: (_target, key) => Object.hasOwn(values, key) || Object.hasOwn(definitions, key),
+      get: (_target, key) => (typeof key === "string" ? resolve(key) : undefined),
+      getOwnPropertyDescriptor: (_target, key) => ((Object.hasOwn(values, key)
+        || Object.hasOwn(definitions, key)) ? { configurable: true, enumerable: true } : undefined),
+    });
+    values[name] = evaluateAssetFormula(definitions[name], scope, `values.${name}`);
+    active.delete(name);
+    return values[name];
+  };
+  for (const name of Object.keys(definitions)) resolve(name);
+  return values;
+}
+
 /** Pick from a palette by index, wrapping — how a striped awning alternates and
  *  how the port's four containers get four colours from one part. */
 function pick(palette, i) {
@@ -40,10 +127,20 @@ function pick(palette, i) {
  *  between this file and `vehicleShapes.js` falls where it does. */
 const EXTRA = {
   ellipse(g, p, X, Y, S) {
-    g.ellipse(X(p.cx), Y(p.cy), S(p.rx), S(p.ry), 0, 0, Math.PI * 2);
+    const rot = p.rotRad !== undefined ? Number(p.rotRad) : Number(p.rot || 0) * TAU;
+    g.ellipse(X(p.cx), Y(p.cy), S(p.rx), S(p.ry), rot, 0, Math.PI * 2);
   },
   disc(g, p, X, Y, S) {
     g.arc(X(p.cx), Y(p.cy), S(p.r), 0, Math.PI * 2);
+  },
+  // A finite arc, filled or stroked by the ordinary part rules. Angles are
+  // authored in TURNS (or supplied as `startRad`/`endRad` by a state frame), so
+  // a parasol, cap or gauge never has to smuggle `Math.PI` into JSON.
+  arc(g, p, X, Y, S) {
+    const start = p.startRad !== undefined ? Number(p.startRad) : Number(p.start || 0) * TAU;
+    const end = p.endRad !== undefined ? Number(p.endRad) : Number(p.end ?? 1) * TAU;
+    g.arc(X(p.cx), Y(p.cy), S(p.r), start, end, Boolean(p.ccw));
+    if (p.toCenter) g.lineTo(X(p.cx), Y(p.cy));
   },
   //: A gable, a pediment, a sail. Canvas closes an unclosed path when it fills,
   //: so this is `poly` without the `closePath` — kept apart because the two
@@ -92,23 +189,74 @@ const SHAPES = { ...PATHS, ...EXTRA };
 //
 // `seed` shifts the whole pattern, so two schools drawn from one record are not
 // the same school.
+/** Place a deterministic scatter without deciding what each copy paints.
+ *
+ * The ordinary form is the ellipse the catalogs already use. `layout:"box"`
+ * is the garden form: independent x/y hashes inside a rectangle, optionally
+ * pushed out of a centre clearance and dropped if that push leaves the lot.
+ * `fit` derives its count from a declared length and pitch — the same contract
+ * as the `fit` shape, applied to a placement generator instead of a row.
+ */
+export function scatterPlacements(p, frame, draw) {
+  const { X = (v) => v, Y = (v) => v, vars = {} } = frame;
+  const value = (v) => (typeof v === "string" && v.startsWith("$") ? (vars[v.slice(1)] ?? 0) : v);
+  const xSize = (v) => Math.abs(X(value(v)) - X(0));
+  const ySize = (v) => Math.abs(Y(value(v)) - Y(0));
+  let n = Number(value(p.n)) | 0;
+  if (p.fit) {
+    const length = Math.abs(Number(value(p.fit.length))) || 0;
+    const pitch = Math.abs(Number(value(p.fit.pitch))) || 1;
+    const raw = p.fit.mode === "floor" ? Math.floor(length / pitch) : Math.round(length / pitch);
+    n = Math.max(p.fit.min ?? 1, Math.min(p.fit.max ?? Infinity, raw));
+  }
+  const seed = Number(value(p.seed)) || 0;
+  const rx = xSize(p.rx ?? p.r ?? 0), ry = ySize(p.ry ?? p.r ?? 0);
+  for (let i = 0; i < n; i++) {
+    if (p.layout === "box") {
+      const seedX = Number(value(p.seedX)) || 0, seedY = Number(value(p.seedY)) || 0;
+      const h1 = hash01(i * (p.xStep ?? 12.9898) + seedX);
+      const h2 = hash01(i * (p.yStep ?? 78.233) + seedY);
+      // The garden historically multiplied full extent and inset in this
+      // order. Keep it: re-associating the equivalent expression moves two
+      // antialiased pixels by one channel level on the golden sheet.
+      let dx = p.width === undefined
+        ? (h1 - 0.5) * rx * 2
+        : (h1 - 0.5) * xSize(p.width) * (p.xMul ?? 1);
+      let dy = p.height === undefined
+        ? (h2 - 0.5) * ry * 2
+        : (h2 - 0.5) * ySize(p.height) * (p.yMul ?? 1);
+      const clear = Number(value(p.clear)) || 0;
+      if (clear) {
+        const d = Math.hypot(dx, dy) || 1;
+        if (d < clear) { dx = dx / d * clear; dy = dy / d * clear; }
+        if ((p.boundX !== undefined && Math.abs(dx) > xSize(p.boundX)) ||
+            (p.boundY !== undefined && Math.abs(dy) > ySize(p.boundY))) continue;
+      }
+      const scaleSeed = Number(value(p.scaleSeed)) || 0;
+      draw(i, {
+        dx, dy, rot: p.rotate ? h1 * TAU : 0,
+        scale: (p.scaleMin ?? 1) + hash01(i * (p.scaleStep ?? 5.17) + scaleSeed) * (p.scaleRange ?? 0),
+      });
+      continue;
+    }
+    const h1 = hash01(i * 12.9898 + seed), h2 = hash01(i * 78.233 + seed);
+    const a = h1 * TAU;
+    // sqrt keeps the scatter EVEN over the area; without it everything piles
+    // into the middle, which reads as a clump rather than a shoal.
+    const rr = Math.sqrt(h2);
+    draw(i, {
+      dx: Math.cos(a) * rx * rr,
+      dy: Math.sin(a) * ry * rr,
+      rot: p.rotate ? h1 * TAU : 0,
+      scale: p.scaleVar ? 1 - p.scaleVar + hash01(i * 5.17 + seed) * p.scaleVar * 2 : 1,
+    });
+  }
+}
+
 const GENERATORS = {
   /** n copies on a position hash inside an ellipse — a shoal, a wood, a patio. */
   scatter(g, p, X, Y, draw) {
-    const n = p.n | 0, seed = p.seed || 0;
-    for (let i = 0; i < n; i++) {
-      const h1 = hash01(i * 12.9898 + seed), h2 = hash01(i * 78.233 + seed);
-      const a = h1 * TAU;
-      // sqrt keeps the scatter EVEN over the area; without it everything piles
-      // into the middle, which reads as a clump rather than a shoal.
-      const rr = Math.sqrt(h2);
-      draw(i, {
-        dx: Math.cos(a) * (p.rx ?? p.r ?? 0) * rr,
-        dy: Math.sin(a) * (p.ry ?? p.r ?? 0) * rr,
-        rot: p.rotate ? h1 * TAU : 0,
-        scale: p.scaleVar ? 1 - p.scaleVar + hash01(i * 5.17 + seed) * p.scaleVar * 2 : 1,
-      });
-    }
+    scatterPlacements(p, { X, Y }, draw);
   },
 
   /** n copies around a circle, optionally turning with the clock. */
@@ -153,7 +301,7 @@ export const SHAPE_NAMES = Object.freeze([
   ...Object.keys(SHAPES), ...Object.keys(GENERATORS), "arcs",
   "stripes", "stroke", "strokeRect",
   "text", "label", "areaLabel", "repeat", "fit", "grid", "ring", "prop",
-  "sprite", "group",
+  "sprite", "group", "family",
 ]);
 
 /**
@@ -170,13 +318,27 @@ export const SHAPE_NAMES = Object.freeze([
  *   @param {function} [frame.color] resolve a colour spec (placeholders)
  *   @param {function} [frame.skip]  drop a part before it is drawn
  *   @param {object}   [frame.vars]  `$name` substitutions for text
+ *   @param {function} [frame.sprite] resolve `{record,image}` for unsaved rows
  */
 export function paintParts(g, parts, frame) {
   const {
     X: rawX, Y: rawY, S: rawS, color = (c) => c, skip = () => false, vars = {}, prop,
+    family, sprite,
   } = frame;
+  const resolveSprite = sprite || ((id) => ({
+    record: spriteRecord(id), image: spriteImage(id),
+  }));
   const paint = (spec) => color(spec);
-  const str = (v) => (typeof v === "string" && v.startsWith("$") ? (vars[v.slice(1)] ?? "") : v);
+  const str = (v) => {
+    if (typeof v === "string" && v.startsWith("$")) return vars[v.slice(1)] ?? "";
+    // Formula trees are the only object values evaluated here. Coordinate
+    // records (`{k,px,min,max}`) remain intact for `evalOn`.
+    if (v && typeof v === "object" && !Array.isArray(v)
+        && (Object.hasOwn(v, "ref") || Object.hasOwn(v, "op"))) {
+      return evaluateAssetFormula(v, vars, "part formula");
+    }
+    return v;
+  };
   // A `$name` may stand in a NUMERIC slot too, not just in text — the balneario's
   // area label is `w: "$w"`, sized from the landmark's own extent. Resolving it
   // only for text is how that label came out at NaN and drew nothing: no error,
@@ -208,6 +370,8 @@ export function paintParts(g, parts, frame) {
 
   for (const part of parts) {
     if (skip(part)) continue;
+    if (part.when !== undefined && !str(part.when)) continue;
+    if (part.unless !== undefined && str(part.unless)) continue;
 
     // MOTION IS PART OF THE PART. The verbs are the feria's, verbatim —
     // `attractions.js` has animated its rides from data since the campo ferial
@@ -218,15 +382,20 @@ export function paintParts(g, parts, frame) {
     //
     // A part with no motion pays ONE property lookup and takes no save/restore,
     // which is why every existing catalog draws pixel for pixel as before.
-    const moved = part.spin || part.bob || part.swing || part.pump;
+    const moved = part.spin || part.bob || part.swing || part.pump
+      || part.alpha !== undefined;
     if (moved) {
       g.save();
       const t = (frame.t ?? 0), ph = (part.phase || 0) * TAU;
-      if (part.spin) g.rotate(t * part.spin * TAU + ph);
-      if (part.swing) g.rotate(Math.sin(t * part.swing.speed * TAU + ph) * part.swing.amp);
-      if (part.bob) g.translate(0, Math.sin(t * part.bob.speed * TAU + ph) * part.bob.amp);
+      if (part.alpha !== undefined) g.globalAlpha *= Number(str(part.alpha));
+      if (part.spin) g.rotate(t * Number(str(part.spin)) * TAU + ph);
+      if (part.swing) g.rotate(Math.sin(t * Number(str(part.swing.speed)) * TAU + ph)
+        * Number(str(part.swing.amp)));
+      if (part.bob) g.translate(0, Math.sin(t * Number(str(part.bob.speed)) * TAU + ph)
+        * Number(str(part.bob.amp)));
       if (part.pump) {
-        const k = 1 + Math.sin(t * part.pump.speed * TAU + ph) * part.pump.amp;
+        const k = 1 + Math.sin(t * Number(str(part.pump.speed)) * TAU + ph)
+          * Number(str(part.pump.amp));
         g.scale(k, k);
       }
     }
@@ -274,15 +443,20 @@ export function paintParts(g, parts, frame) {
         g.lineWidth = S(part.width);
         if (part.cap) g.lineCap = part.cap;
         if (part.join) g.lineJoin = part.join;
+        if (part.dash) g.setLineDash(part.dash.map((v) => S(v)));
         g.beginPath();
         for (const run of (part.runs || [part.pts])) {
           run.forEach((pt, i) => {
-            if (pt.q) g.quadraticCurveTo(X(pt.q[0]), Y(pt.q[1]), X(pt.to[0]), Y(pt.to[1]));
+            if (pt.c) g.bezierCurveTo(X(pt.c[0][0]), Y(pt.c[0][1]),
+                                      X(pt.c[1][0]), Y(pt.c[1][1]),
+                                      X(pt.to[0]), Y(pt.to[1]));
+            else if (pt.q) g.quadraticCurveTo(X(pt.q[0]), Y(pt.q[1]), X(pt.to[0]), Y(pt.to[1]));
             else if (i) g.lineTo(X(pt[0]), Y(pt[1]));
             else g.moveTo(X(pt[0]), Y(pt[1]));
           });
         }
         g.stroke();
+        if (part.dash) g.setLineDash([]);
         if (part.cap) g.lineCap = "butt";
         if (part.join) g.lineJoin = "miter";
         break;
@@ -292,11 +466,12 @@ export function paintParts(g, parts, frame) {
       // `gfx`'s shared `ctx` regardless, so a caller drawing onto its own canvas
       // got the parts on one surface and the pill on another.
       case "label":
-        label(g, X(part.x), Y(part.y), str(part.text), part.fg, part.bg);
+        label(g, X(part.x), Y(part.y), str(part.text), paint(part.fg), paint(part.bg));
         break;
       case "areaLabel": {
         const hw = (X(part.w) - X(0)) / 2, hh = (Y(part.h) - Y(0)) / 2;
-        areaLabel(g, X(0) - hw, Y(0) - hh, X(0) + hw, Y(0) + hh, str(part.text), part.fg, part.bg);
+        areaLabel(g, X(0) - hw, Y(0) - hh, X(0) + hw, Y(0) + hh,
+          str(part.text), paint(part.fg), paint(part.bg));
         break;
       }
 
@@ -304,7 +479,10 @@ export function paintParts(g, parts, frame) {
       // word. Not a label: no pill, and the font is the part's own.
       case "text":
         g.fillStyle = paint(part.fill);
-        g.font = part.font;
+        if (part.font && typeof part.font === "object") {
+          g.font = `${part.font.weight || "normal"} ${Number(str(part.font.size))}px `
+            + `${part.font.family || "sans-serif"}`;
+        } else g.font = str(part.font);
         g.textAlign = part.align || "center";
         // A pavement marking is centred on its own ring, so it asks for
         // `middle`. Canvas keeps the baseline until somebody changes it, so put
@@ -327,6 +505,15 @@ export function paintParts(g, parts, frame) {
         break;
       }
 
+      // A FAMILY-SPECIFIC FINITE VERB. Actors need a deterministic school of
+      // flashes; water needs a crest field. Those algorithms belong in their
+      // family interpreter, while z-order and every authored knob stay in this
+      // parts list. `verb` is validated by that family and an absent handler is
+      // deliberately a no-op, just like an unmounted provider.
+      case "family":
+        family?.(g, part, { X, Y, S, color: paint, vars, t: frame.t ?? 0 });
+        break;
+
       // THE GENERATORS: n copies of a sub-list, placed by a rule the engine
       // owns. `repeat` steps them on a line; these two place them on a hash and
       // on a circle. A copy may be turned and scaled, so the sub-list is
@@ -334,7 +521,7 @@ export function paintParts(g, parts, frame) {
       case "scatter":
       case "orbit": {
         const place = GENERATORS[part.shape];
-        place(g, part, X, Y, (i, at) => {
+        const placeCopy = (i, at) => {
           g.save();
           g.translate(X(part.cx ?? 0) + at.dx, Y(part.cy ?? 0) + at.dy);
           if (at.rot) g.rotate(at.rot);
@@ -343,10 +530,13 @@ export function paintParts(g, parts, frame) {
             X: (v) => rawX(str(v)) - rawX(0),   // the copy draws about its own
             Y: (v) => rawY(str(v)) - rawY(0),   // origin, not the parent anchor
             color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
-            S: rawS, skip, vars, prop, t: frame.t,
+            S: rawS, skip, vars: { ...vars, i }, prop, family, sprite,
+            t: frame.t, pxPerM,
           });
           g.restore();
-        }, frame.t);
+        };
+        if (part.shape === "scatter") scatterPlacements(part, { X, Y, S, vars }, placeCopy);
+        else place(g, part, X, Y, placeCopy, frame.t);
         break;
       }
 
@@ -362,7 +552,7 @@ export function paintParts(g, parts, frame) {
       // picks per copy, which is how the village gets three coloured houses and
       // the muelle four coloured containers from one part.
       case "repeat":
-        for (let i = 0; i < part.n; i++) {
+        for (let i = 0; i < Number(str(part.n)); i++) {
           const dx = S(part.dx || 0) * i, dy = S(part.dy || 0) * i;
           paintParts(g, part.parts, {
             X: (v) => X(v) + dx,
@@ -373,7 +563,8 @@ export function paintParts(g, parts, frame) {
             // que cerrarlo no cambia un píxel; el día que alguien lo escriba,
             // funciona en vez de fallar en silencio.
             S: rawS, color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
-            skip, vars, prop, t: frame.t,
+            skip, vars: { ...vars, i }, prop, family, sprite,
+            t: frame.t, pxPerM,
           });
         }
         break;
@@ -406,19 +597,29 @@ export function paintParts(g, parts, frame) {
         // `round` por omisión, y se puede pedir `floor`: una fila de ventanas
         // prefiere no desbordar su pared, un tramo de juntas prefiere repartir.
         const raw = part.mode === "floor" ? Math.floor(span / pitch) : Math.round(span / pitch);
-        const n = Math.max(part.min ?? 1, Math.min(part.max ?? Infinity, raw));
+        const min = part.min === undefined ? 1 : Number(str(part.min));
+        const max = part.max === undefined ? Infinity : Number(str(part.max));
+        const n = Math.max(min, Math.min(max, raw));
         // El paso REAL reparte el largo entre los que cupieron, para que la fila
         // quede centrada en su hueco en vez de sobrar por la derecha.
-        const step = n > 1 && part.spread !== false ? span / n : pitch;
+        // Una escuela cuenta pabellones sobre L pero reparte sus vanos sobre
+        // L+gap; `spreadLength` declara ese segundo largo sin convertir el JSON
+        // en una expresión. `gap` deja el ancho útil de cada vano disponible a
+        // las partes anidadas como `$fitWidth`.
+        const spreadSpan = part.spreadLength === undefined
+          ? span : Math.abs(along(part.spreadLength) - along(0));
+        const step = part.spread === false ? pitch : spreadSpan / n;
+        const fitWidth = step - (part.gap || 0);
         for (let i = 0; i < n; i++) {
-          const d = (i + (part.spread === false ? 0 : 0.5)) * step;
+          const d = (i + (part.spread === false || part.anchor === "start" ? 0 : 0.5)) * step;
           const dx = part.along === "y" ? 0 : d, dy = part.along === "y" ? d : 0;
           paintParts(g, part.parts, {
             X: (v) => X(v) + dx,
             Y: (v) => Y(v) + dy,
             S: rawS,
             color: (spec) => (Array.isArray(spec) ? paint(pick(spec, i)) : paint(spec)),
-            skip, vars, prop, t: frame.t,
+            skip, vars: { ...vars, fitWidth }, prop, family, sprite,
+            t: frame.t, pxPerM,
           });
         }
         break;
@@ -439,13 +640,18 @@ export function paintParts(g, parts, frame) {
       // exactamente la misma idea que `scatter`/`orbit` ya usaban para re-derivar
       // el marco de sus copias.
       //
-      // `hw`/`hh`/`s` se resuelven en el marco del PADRE, así que un grupo puede
-      // medir la mitad de su contenedor (`[0.5, 0]`) o un tamaño derivado que el
-      // llamador pasó como `$var`.
+      // `hw`/`hh` se resuelven en los ejes del PADRE; `hwS`/`hhS` permiten que
+      // ambos salgan de su dimensión CARACTERÍSTICA. Así un kiosco declara una
+      // sola `r` acotada para x/y/S y el caller conserva únicamente el
+      // `min(hw,hh)` entre ejes que el evaluador no puede ver.
       case "group": {
         const gx = X(part.x ?? 0), gy = Y(part.y ?? 0);
-        const ghw = part.hw !== undefined ? Math.abs(X(part.hw) - X(0)) : null;
-        const ghh = part.hh !== undefined ? Math.abs(Y(part.hh) - Y(0)) : null;
+        const ghw = part.hwS !== undefined
+          ? Math.abs(S(part.hwS)) * (part.hwScale ?? 1)
+          : part.hw !== undefined ? Math.abs(X(part.hw) - X(0)) : null;
+        const ghh = part.hhS !== undefined
+          ? Math.abs(S(part.hhS)) * (part.hhScale ?? 1)
+          : part.hh !== undefined ? Math.abs(Y(part.hh) - Y(0)) : null;
         const gs = part.s !== undefined ? Math.abs(S(part.s)) : null;
         // EL DESPLAZAMIENTO VA EN LOS EVALUADORES, NO EN UN `translate`, y esto
         // costó 207 píxeles medirlo. Canvas no rasteriza igual un camino en
@@ -457,18 +663,23 @@ export function paintParts(g, parts, frame) {
         // Un marco anidado sólo NECESITA una transformación para ROTAR. Sin
         // rotación, sumar el offset en `X`/`Y` deja las coordenadas absolutas y el
         // resultado es idéntico al del código que reemplaza.
-        const turn = part.rotate ? part.rotate * TAU : 0;
-        const ox = turn ? 0 : gx, oy = turn ? 0 : gy;
+        const turn = part.rotateRad !== undefined
+          ? Number(str(part.rotateRad)) : Number(str(part.rotate || 0)) * TAU;
+        const scaleX = Number(str(part.scaleX ?? part.scale ?? 1));
+        const scaleY = Number(str(part.scaleY ?? part.scale ?? 1));
+        const transformed = Boolean(turn) || scaleX !== 1 || scaleY !== 1;
+        const ox = transformed ? 0 : gx, oy = transformed ? 0 : gy;
         const child = {
           X: ghw === null ? (v) => X(v) - X(0) + ox : (v) => evalScalar(str(v), ghw) + ox,
           Y: ghh === null ? (v) => Y(v) - Y(0) + oy : (v) => evalScalar(str(v), ghh) + oy,
           S: gs === null ? rawS : (v) => evalScalar(str(v), gs),
-          color, skip, vars, prop, t: frame.t, pxPerM,
+          color, skip, vars, prop, family, sprite, t: frame.t, pxPerM,
         };
-        if (!turn) { paintParts(g, part.parts, child); break; }
+        if (!transformed) { paintParts(g, part.parts, child); break; }
         g.save();
         g.translate(gx, gy);
         g.rotate(turn);
+        g.scale(scaleX, scaleY);
         paintParts(g, part.parts, child);
         g.restore();
         break;
@@ -491,13 +702,14 @@ export function paintParts(g, parts, frame) {
       // vez de dejar un hueco que parece que ahí no había nada.
       case "sprite": {
         const id = str(part.src);
-        const rec = spriteRecord(id);
+        const resolved = resolveSprite(id) || {};
+        const rec = resolved.record || null;
         if (!rec) break;                       // un id que el registro no tiene
         const k = part.scale ?? 1;
         const w = rec.wM * pxPerM * k, h = rec.hM * pxPerM * k;
         const ax = (rec.anchor?.[0] ?? 0.5) * w, ay = (rec.anchor?.[1] ?? 0.5) * h;
         const x = X(part.x) - ax, y = Y(part.y) - ay;
-        const img = spriteImage(id);
+        const img = resolved.image || null;
         if (img) g.drawImage(img, x, y, w, h);
         else { g.fillStyle = paint(part.fill ?? rec.placeholder); g.fillRect(x, y, w, h); }
         break;

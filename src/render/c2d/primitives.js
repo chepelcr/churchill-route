@@ -27,6 +27,17 @@ export function hash01(n) {
   return v - Math.floor(v);
 }
 
+/** Attach a runtime alpha to an authored RGB triplet.
+ *
+ * Effects ramp opacity every frame, so storing a complete rgba() string would
+ * make its alpha a dead knob. `rgb` is data (`"r,g,b"` or `[r,g,b]`); only the
+ * clamping and CSS composition are engine behaviour. */
+export function alphaColor(rgb, alpha) {
+  const channels = Array.isArray(rgb) ? rgb.join(",") : rgb;
+  const a = Math.max(0, Math.min(1, Number(alpha) || 0));
+  return `rgba(${channels},${a})`;
+}
+
 /** A rounded rectangle on `c`. Takes its context as an argument, which is why it
  *  could move here unchanged. */
 export function roundRect(c, x, y, w, h, r, fill, stroke) {

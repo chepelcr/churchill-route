@@ -102,7 +102,7 @@ class HudRegistryTests(unittest.TestCase):
     def test_the_compass_has_three_states(self):
         # A glance has to answer "am I fetching or delivering" without reading.
         needle = self.doc["compass"]["needle"]
-        colours = {v for k, v in needle.items() if not k.startswith("_")}
+        colours = {needle[state] for state in ("crossing", "carrying", "idle")}
         self.assertEqual(len(colours), 3, "two states share a colour")
 
     def test_every_poi_tone_is_a_colour(self):

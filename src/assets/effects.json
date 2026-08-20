@@ -3,6 +3,18 @@
   "version": 1,
   "_why": "Every one of these was welded into `drawPlayer` as an `if (afloat)`. That is the same shape the 26-branch landmark switch had before world-props.json: the engine deciding, by vehicle, what a vehicle looks like. So an editor-authored boat got a car's turn-swirls and a car's hard shadow, and there was no way to say otherwise — the alternative to this file is editing the renderer to add a vehicle, which is precisely what docs/inventory.md §12 exists to end.",
   "_contract": "An effect is CODE the engine implements plus PARAMS the author owns. Data may select an effect and retune it; it may not invent one. `tests/test_effects.py` fails if a vehicle names an effect with no painter, and if a painter exists that this file does not list — art with nothing to select it is drift too, which is the lesson SignKind taught.",
+  "assetPreview": {
+    "_note": "Truthful asset fixtures use these authored inks instead of carrying a private editor palette. The two backgrounds expose a silhouette on day/night ground; checkerA/B expose alpha; missingColor makes an unresolved token impossible to overlook.",
+    "light": "#dfe6d5",
+    "dark": "#101511",
+    "checkerA": "#141a15",
+    "checkerB": "#101511",
+    "sheetBackground": "#d9d3c5",
+    "sheetLabel": "#28252c",
+    "missingColor": "#ff00ff",
+    "spriteBounds": "rgba(255,255,255,0.62)",
+    "spriteAnchor": "#ff3d80"
+  },
   "vehicle": {
     "_note": "Whole-vehicle effects, drawn around the body. `layer` says when: `under` before the sprite, `over` after it. `space` says in which frame: `world` is drawn before the body's rotate (so it trails the heading and does not spin with her), `body` after it. `transform` effects do not paint at all — they bend the frame the sprite is then drawn in.",
     "turnWind": {
@@ -142,7 +154,7 @@
     "_order": "THE KEY ORDER OF THIS OBJECT IS THE PAINT ORDER, and it is deliberate: the swirls and the wash go down first and the shadow lies over them, which is how the shipped renderer had it. A vehicle's own `effects` map is a SELECTION, not a z-order — sorting it differently must not change the frame."
   },
   "cargo": {
-    "_note": "How a vehicle CARRIES a churchill. This was a three-way `if (key === \"pickup\") … else if (key === \"cart\")` on the vehicle key — the last place in the renderer that knew a vehicle by name. The three recipes stay in code (each has its own melt gauge); which one a vehicle uses, and where it rides, is the vehicle's own record.",
+    "_note": "How a vehicle CARRIES a churchill. This was a three-way `if (key === \"pickup\") … else if (key === \"cart\")` on the vehicle key — the last place in the renderer that knew a vehicle by name. This registry owns selection and mount; `actors.json.cargo` owns the three visible recipes and their melt-aware forms; the renderer only executes the finite placement verbs.",
     "bag": {
       "name": "Mochila térmica",
       "note": "The courier's insulated backpack. On the two-wheelers and the kart the straps reach forward over the rider, so it reads as WORN rather than as a box bolted to the chassis; the tuk-tuk carries the same bag in its rear compartment and therefore wears no straps.",

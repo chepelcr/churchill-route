@@ -19,8 +19,9 @@
 // the coast.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
-import { aabbInView, ctx, flatMultiPath, hash01 } from "./gfx.js";
+import { aabbInView, ctx, flatMultiPath } from "./gfx.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import { paintMaleconPattern } from "./systemShapes.js";
 
 // One baldosa. Big enough to read at play zoom (the camera frames ~20
 // cuadrículas), small enough that a 60 px band is four courses deep.
@@ -51,35 +52,7 @@ function bandAABB(B) {
 // laid in its frame; the loop is bounded to the VIEW, not to the band, because
 // the band is three kilometres long.
 function paintBaldosas(B, view, C) {
-  const ang = B.ang || 0;
-  const ca = Math.cos(-ang), sa = Math.sin(-ang);
-  const cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
-  // the view's corners in the band's frame, so the courses cover exactly it
-  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
-  for (const [px, py] of [[view.x0, view.y0], [view.x1, view.y0],
-                          [view.x0, view.y1], [view.x1, view.y1]]) {
-    const dx = px - cx, dy = py - cy;
-    const u = dx * ca - dy * sa, v = dx * sa + dy * ca;
-    if (u < u0) u0 = u; if (u > u1) u1 = u;
-    if (v < v0) v0 = v; if (v > v1) v1 = v;
-  }
-  u0 = Math.floor(u0 / BALDOSA) * BALDOSA; v0 = Math.floor(v0 / BALDOSA) * BALDOSA;
-  ctx.save();
-  ctx.clip(bandPath(B), "evenodd");
-  ctx.translate(cx, cy); ctx.rotate(ang);
-  ctx.strokeStyle = C.joint; ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let u = u0; u <= u1 + BALDOSA; u += BALDOSA) { ctx.moveTo(u, v0); ctx.lineTo(u, v1 + BALDOSA); }
-  for (let v = v0; v <= v1 + BALDOSA; v += BALDOSA) { ctx.moveTo(u0, v); ctx.lineTo(u1 + BALDOSA, v); }
-  ctx.stroke();
-  // the scattered pale baldosa — deterministic, so it never shimmers
-  ctx.fillStyle = C.inlay;
-  for (let v = v0; v <= v1 + BALDOSA; v += BALDOSA) {
-    for (let u = u0; u <= u1 + BALDOSA; u += BALDOSA) {
-      if (hash01(u * 0.37 + v * 0.11) > 0.88) ctx.fillRect(u + 1, v + 1, BALDOSA - 2, BALDOSA - 2);
-    }
-  }
-  ctx.restore();
+  paintMaleconPattern(ctx, B, view, C, bandPath(B), BALDOSA);
 }
 
 // One pass over the sea front in view. Called straight after the land base and

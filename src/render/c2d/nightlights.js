@@ -30,6 +30,7 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { moonlight } from "../../game/daynight.js";
 import { LAMP_POOL_R } from "../../domain/units.js";
 import { ctx, dpr } from "./gfx.js";
+import { paintLightPoolMask, paintLightWarmPool } from "./systemShapes.js";
 
 //: La capa de oscuridad, a media resolución. Se reusa entre cuadros: crear un
 //: canvas de pantalla completa por cuadro es basura para el GC en el bucle más
@@ -48,16 +49,7 @@ function poolSprite(type, radius) {
   const cv = document.createElement("canvas");
   cv.width = cv.height = size;
   const g = cv.getContext("2d");
-  const grad = g.createRadialGradient(radius, radius, 0, radius, radius, radius);
-  // Un pozo de luz no tiene borde. El centro borra del todo y el canto no borra
-  // nada; las dos paradas de en medio son lo que evita que se lea como un
-  // círculo recortado — que es exactamente como se ve un `globalAlpha` plano.
-  grad.addColorStop(0, "rgba(0,0,0,1)");
-  grad.addColorStop(0.45, "rgba(0,0,0,0.72)");
-  grad.addColorStop(0.78, "rgba(0,0,0,0.22)");
-  grad.addColorStop(1, "rgba(0,0,0,0)");
-  g.fillStyle = grad;
-  g.fillRect(0, 0, size, size);
+  paintLightPoolMask(g, LIGHTS, radius);
   pools.set(key, cv);
   return cv;
 }
@@ -91,7 +83,9 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
     ctx.fillRect(0, 0, vw, vh);
     return 0;
   }
-  const w = Math.max(1, Math.ceil(vw / 2)), h = Math.max(1, Math.ceil(vh / 2));
+  const maskScale = LIGHTS.poolMask.resolutionScale;
+  const w = Math.max(1, Math.ceil(vw * maskScale));
+  const h = Math.max(1, Math.ceil(vh * maskScale));
   if (!layer || layer.width !== w || layer.height !== h) {
     layer = document.createElement("canvas");
     layer.width = w; layer.height = h;
@@ -107,7 +101,7 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
   // por eso la oscuridad tiene que vivir en su propio canvas — hacerlo sobre el
   // frame borraría el mundo.
   lctx.globalCompositeOperation = "destination-out";
-  const s = 0.5;                       // world px -> layer px (half resolution)
+  const s = maskScale;                 // world px -> layer px
   const r = Math.max(2, Math.round(LAMP_POOL_R * ZOOMED * s));
   for (const lamp of lamps) {
     const [sx, sy] = toScreen(lamp.x, lamp.y);
@@ -126,14 +120,8 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
   const warmR = LAMP_POOL_R * ZOOMED;
   for (const lamp of lamps) {
     const spec = LIGHTS.types[lamp.type] || LIGHTS.types.warm;
-    const [cr, cg, cb] = spec.halo;
     const [sx, sy] = toScreen(lamp.x, lamp.y);
-    const grad = ctx.createRadialGradient(
-      sx * dpr, sy * dpr, 0, sx * dpr, sy * dpr, warmR * dpr);
-    grad.addColorStop(0, `rgba(${cr},${cg},${cb},0.16)`);
-    grad.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
-    ctx.fillStyle = grad;
-    ctx.fillRect((sx - warmR) * dpr, (sy - warmR) * dpr, warmR * 2 * dpr, warmR * 2 * dpr);
+    paintLightWarmPool(ctx, LIGHTS, spec, sx * dpr, sy * dpr, warmR * dpr);
   }
   ctx.restore();
   return lamps.length;

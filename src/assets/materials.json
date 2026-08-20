@@ -76,6 +76,7 @@
     "cano": "#807e77",
     "canoNote": "the drainage channel at the kerb — the same concrete, permanently damp and stained, so it reads a full step darker",
     "asphalt": "#3a3540",
+    "kioskPathWidth": 28,
     "paseo": "#f4dca3",
     "majorDash": "#f8d76b",
     "minorDash": "rgba(255,255,255,0.45)",
@@ -94,7 +95,18 @@
       "outline": "rgba(0,0,0,0.25)",
       "windowsDay": "rgba(255,255,255,0.55)",
       "windowsNight": "rgba(255,220,140,0.7)",
-      "windowsNote": "de noche las ventanas se ponen cálidas — es lo único que distingue un edificio dormido de uno vivo a esta distancia."
+      "windowsNote": "de noche las ventanas se ponen cálidas — es lo único que distingue un edificio dormido de uno vivo a esta distancia.",
+      "values": {
+        "roofH": { "op": "max", "args": [3, { "op": "mul", "args": [{ "ref": "bh" }, 0.3] }] },
+        "windowY": { "op": "mul", "args": [{ "ref": "bh" }, 0.55] }
+      },
+      "preview": { "bw": 64, "bh": 40, "roof": "#8a6a4a", "windowInk": "rgba(255,255,255,0.55)", "windows": true },
+      "parts": [
+        { "shape": "rect", "fill": "$roof", "x": 0, "y": 0, "w": "$bw", "h": "$roofH" },
+        { "shape": "fit", "when": "$windows", "along": "x", "length": "$bw", "pitch": 16, "mode": "floor", "min": 1, "anchor": "start", "parts": [
+          { "shape": "rect", "fill": "$windowInk", "x": 4, "y": "$windowY", "w": 4, "h": 3 }
+        ] }
+      ]
     },
     "bridge": {
       "_note": "EL PUENTE DE MATA LIMÓN, colgante: torres, cables, tablero y barandas. Es la única estructura del mundo con obra de arte propia a esta escala.",
@@ -109,10 +121,44 @@
       "towerCap": "#7d8791",
       "towerBrace": "#7d8791",
       "signBg": "rgba(20,16,40,0.78)",
-      "signFg": "#fff"
+      "signFg": "#fff",
+      "values": {
+        "halfDeck": { "op": "div", "args": [{ "ref": "deckW" }, 2] },
+        "negHalfDeck": { "op": "mul", "args": [{ "ref": "halfDeck" }, -1] },
+        "deckY": { "op": "sub", "args": [{ "ref": "negHalfDeck" }, 4] },
+        "deckH": { "op": "add", "args": [{ "ref": "deckW" }, 8] },
+        "asphaltY": { "op": "add", "args": [{ "ref": "negHalfDeck" }, 2] },
+        "asphaltH": { "op": "sub", "args": [{ "ref": "deckW" }, 4] },
+        "railTop": { "op": "sub", "args": [{ "ref": "negHalfDeck" }, 2] },
+        "towerTop": { "op": "mul", "args": [{ "ref": "towerH" }, -1] },
+        "sagY": -14,
+        "hangerDeck": -4,
+        "mid": { "op": "div", "args": [{ "ref": "len" }, 2] },
+        "labelY": { "op": "add", "args": [{ "ref": "halfDeck" }, 14] }
+      },
+      "preview": { "len": 170, "deckW": 24, "tower0": 42, "tower1": 128, "towerH": 44, "labelText": "PUENTE MATA LIMÓN" },
+      "parts": [
+        { "shape": "rect", "fill": "$ramp", "x": -32, "y": "$deckY", "w": 32, "h": "$deckH" },
+        { "shape": "rect", "fill": "$ramp", "x": "$len", "y": "$deckY", "w": 32, "h": "$deckH" },
+        { "shape": "rect", "fill": "$deck", "x": 0, "y": "$deckY", "w": "$len", "h": "$deckH" },
+        { "shape": "rect", "fill": "$asphalt", "x": 0, "y": "$asphaltY", "w": "$len", "h": "$asphaltH" },
+        { "shape": "stroke", "stroke": "$dash", "width": 2, "dash": [14, 14], "pts": [[4, 0], [{ "op": "sub", "args": [{ "ref": "len" }, 4] }, 0]] },
+        { "shape": "rect", "fill": "$rail", "x": 0, "y": "$railTop", "w": "$len", "h": 2 },
+        { "shape": "rect", "fill": "$rail", "x": 0, "y": "$halfDeck", "w": "$len", "h": 2 },
+        { "shape": "stroke", "stroke": "$cable", "width": 2, "pts": [["$tower0", "$towerTop"], { "q": ["$mid", -14], "to": ["$tower1", "$towerTop"] }] },
+        { "shape": "stroke", "stroke": "$cable", "width": 2, "runs": [
+          [[-28, 4], ["$tower0", "$towerTop"]],
+          [[{ "op": "add", "args": [{ "ref": "len" }, 28] }, 4], ["$tower1", "$towerTop"]]
+        ] },
+        { "shape": "family", "verb": "bridge-hangers", "stroke": "$hanger", "width": 1, "from": "tower0", "to": "tower1", "top": "towerTop", "sag": "sagY", "deck": "hangerDeck", "gap": 6 },
+        { "shape": "family", "verb": "bridge-tower", "x": "tower0", "top": "towerTop", "height": "towerH", "legFill": "$towerLeg", "capFill": "$towerCap", "braceStroke": "$towerBrace", "legGap": 4, "legWidth": 3, "legFoot": 4, "capHalf": 6, "capHeight": 4, "braceHalf": 2.5, "braceWidth": 1, "panels": 4 },
+        { "shape": "family", "verb": "bridge-tower", "x": "tower1", "top": "towerTop", "height": "towerH", "legFill": "$towerLeg", "capFill": "$towerCap", "braceStroke": "$towerBrace", "legGap": 4, "legWidth": 3, "legFoot": 4, "capHalf": 6, "capHeight": 4, "braceHalf": 2.5, "braceWidth": 1, "panels": 4 },
+        { "shape": "family", "verb": "bridge-sign", "x": "mid", "y": "labelY", "text": "labelText", "fallback": "PUENTE MATA LIMÓN", "bg": "$signBg", "fg": "$signFg", "font": "bold 9px 'JetBrains Mono', monospace", "padX": 5, "height": 12, "baseline": 9 }
+      ]
     },
     "ferry": {
-      "_note": "LOS FERRIS DEL GOLFO. Todo se dibuja en el marco del barco, así que la cubierta —que es un rectángulo por el que uno MANEJA— queda alineada con la caja de colisión que el mundo emitió.",
+      "_note": "LOS FERRIS DEL GOLFO, COMPLETOS COMO DATOS. La receta tiene la misma rampa, casco y superestructura en ambos extremos: cualquiera puede ser proa operativa y el barco no necesita girar para volver. Todo se dibuja en su marco, así que la cubierta visible coincide con la caja de colisión.",
+      "heightM": 6.5,
       "wake": "rgba(255,255,255,0.16)",
       "shadow": "rgba(0,0,0,0.26)",
       "hull": "#2f4f68",
@@ -122,19 +168,79 @@
       "lane": "#f4d77a",
       "rails": "#b7402f",
       "ramp": "#8a7f6a",
-      "rampNote": "la rampa de popa: por ahí se sube.",
+      "rampNote": "dos rampas idénticas: cualquiera puede ser entrada o salida.",
       "wheelhouse": "#eee8d8",
       "wheelhouseRoof": "#3a6f8a",
       "windowLight": "#f4d77a",
       "funnel": "#e85d75",
       "funnelCap": "#2b2b33",
       "nameFg": "#fff",
-      "nameBg": "#2f4f68"
+      "nameBg": "#2f4f68",
+      "preview": { "L": 62, "B": 23, "moving": true, "travelDir": 1, "doubleEnded": true, "shadowDx": 4, "shadowDy": 5, "shadowAlpha": 0.75 },
+      "parts": [
+        {
+          "shape": "group", "when": "$moving", "scaleX": "$travelDir", "hw": "$L", "hh": "$B",
+          "parts": [
+            { "shape": "poly", "fill": "$wake", "pts": [
+              [[-1, 0], [-0.7, 0]], [[-1, -70], [-1.5, 0]],
+              [[-1, -70], [1.5, 0]], [[-1, 0], [0.7, 0]]
+            ] }
+          ]
+        },
+        {
+          "shape": "group", "x": "$shadowDx", "y": "$shadowDy", "alpha": "$shadowAlpha", "hw": "$L", "hh": "$B",
+          "parts": [
+            { "shape": "poly", "fill": "$shadow", "pts": [
+              [[1, 4], [0, 3]],
+              { "q": [[1, -8], [-1, 8]], "to": [[1, -30], [-1, 5]] },
+              [[-1, 8], [-1, 5]],
+              { "q": [[-1, -2], [0, 3]], "to": [[-1, 8], [1, 5]] },
+              [[1, -30], [1, 5]],
+              { "q": [[1, -8], [1, 5]], "to": [[1, 4], [0, 3]] }
+            ] }
+          ]
+        },
+        {
+          "shape": "group", "hw": "$L", "hh": "$B",
+          "parts": [
+            { "shape": "poly", "fill": "$hull", "pts": [
+              [[1, 2], 0],
+              { "q": [[1, -6], [-1, 0]], "to": [[1, -30], [-1, 0]] },
+              [[-1, 6], [-1, 0]],
+              { "q": [[-1, -3], 0], "to": [[-1, 6], [1, 0]] },
+              [[1, -30], [1, 0]],
+              { "q": [[1, -6], [1, 0]], "to": [[1, 2], 0] }
+            ] },
+            { "shape": "rect", "fill": "$boottop", "x": [-1, 6], "y": [-1, 2], "w": [2, -12], "h": 2 },
+            { "shape": "rect", "fill": "$boottop", "x": [-1, 6], "y": [1, -4], "w": [2, -12], "h": 2 },
+            { "shape": "roundRect", "fill": "$deck", "x": [-1, 4], "y": [-1, 5], "w": [2, -8], "h": [2, -10], "r": 5 },
+            { "shape": "stroke", "stroke": "$lane", "width": 1.5, "dash": [9, 9], "pts": [[[-1, 12], 0], [[1, -12], 0]] },
+            { "shape": "rect", "fill": "$rails", "x": [-1, 4], "y": [-1, 2], "w": [2, -8], "h": 3 },
+            { "shape": "rect", "fill": "$rails", "x": [-1, 4], "y": [1, -5], "w": [2, -8], "h": 3 },
+            { "shape": "roundRect", "fill": "$ramp", "x": [-1, -9], "y": [-1, 9], "w": 12, "h": [2, -18], "r": 3 },
+            { "shape": "roundRect", "fill": "$ramp", "x": [1, -3], "y": [-1, 9], "w": 12, "h": [2, -18], "r": 3 },
+            { "shape": "roundRect", "fill": "$wheelhouse", "x": -11, "y": [-1, 8], "w": 22, "h": [2, -16], "r": 5 },
+            { "shape": "roundRect", "fill": "$wheelhouseRoof", "x": -8, "y": [-1, 11], "w": 16, "h": [2, -22], "r": 4 },
+            { "shape": "rect", "fill": "$windowLight", "x": -5, "y": -3, "w": 10, "h": 6 },
+            { "shape": "repeat", "n": 2, "dx": 48, "parts": [
+              { "shape": "disc", "fill": "$funnel", "cx": -24, "cy": 0, "r": 5.5 },
+              { "shape": "disc", "fill": "$funnelCap", "cx": -24, "cy": 0, "r": 3.2 }
+            ] }
+          ]
+        }
+      ]
     },
     "berth": {
       "_note": "El atracadero al que llega. Concreto, dos tonos.",
       "deck": "#b6b1a2",
-      "edge": "#8f8a7c"
+      "edge": "#8f8a7c",
+      "preview": { "dw": 46, "negB": -23, "apronY": -29, "apronH": 58 },
+      "parts": [
+        { "shape": "rect", "fill": "$deck", "x": -14, "y": "$apronY", "w": 46, "h": "$apronH" },
+        { "shape": "fit", "along": "y", "length": "$dw", "pitch": 12, "spread": false, "anchor": "start", "parts": [
+          { "shape": "rect", "fill": "$edge", "x": -14, "y": "$negB", "w": 46, "h": 2 }
+        ] }
+      ]
     },
     "pierDeck": {
       "_note": "Lo que un muelle añade sobre su receta de `pier`: la sombra del apron, los pilotes y las lámparas de la cubierta.",
@@ -142,7 +248,21 @@
       "pile": "#6a451f",
       "lampPost": "#8a8f96",
       "lampDay": "#f4e6c0",
-      "lampNight": "#ffd98a"
+      "lampNight": "#ffd98a",
+      "preview": { "len": 132, "hw": 14, "negHw": -14, "width": 28, "run": 0, "last": true, "round": false, "shadowVisible": true, "deck": "#b8b3a6", "seam": "#8d6a3f", "seamGap": 12, "cap": "#71614e", "capVisible": true, "rail": "#3f6f8f", "centre": "#f4d77a", "centreStart": 6, "centreEnd": 126, "posts": 18, "lamps": 34, "night": false },
+      "parts": [
+        { "shape": "rect", "when": "$shadowVisible", "fill": "$apronShadow", "x": 3, "y": { "op": "add", "args": [{ "ref": "negHw" }, 4] }, "w": "$len", "h": "$width" },
+        { "shape": "disc", "when": "$round", "fill": "$deck", "cx": 0, "cy": 0, "r": "$hw" },
+        { "shape": "disc", "when": "$round", "fill": "$deck", "cx": "$len", "cy": 0, "r": "$hw" },
+        { "shape": "rect", "fill": "$deck", "x": 0, "y": "$negHw", "w": "$len", "h": "$width" },
+        { "shape": "family", "when": "$seam", "verb": "pier-seams", "width": 1, "inset": 1 },
+        { "shape": "rect", "when": "$capVisible", "fill": "$cap", "x": { "op": "sub", "args": [{ "ref": "len" }, 3] }, "y": "$negHw", "w": 3, "h": "$width" },
+        { "shape": "rect", "when": "$rail", "fill": "$rail", "x": 0, "y": "$negHw", "w": "$len", "h": 2 },
+        { "shape": "rect", "when": "$rail", "fill": "$rail", "x": 0, "y": { "op": "sub", "args": [{ "ref": "hw" }, 2] }, "w": "$len", "h": 2 },
+        { "shape": "stroke", "when": "$centre", "stroke": "$centre", "width": 2, "dash": [12, 10], "pts": [["$centreStart", 0], ["$centreEnd", 0]] },
+        { "shape": "family", "when": "$posts", "verb": "pier-posts", "fill": "$pile", "start": 10, "size": 3 },
+        { "shape": "family", "when": "$lamps", "verb": "pier-lamps", "postFill": "$lampPost", "dayFill": "$lampDay", "nightFill": "$lampNight", "start": 24, "endInset": 8, "sideInset": 3, "postWidth": 1.5, "postHeight": 6, "lampLift": 7, "r": 1.6 }
+      ]
     },
     "pierHut": {
       "_note": "La caseta al final del muelle.",
@@ -150,7 +270,19 @@
       "walls": "#f4f4ef",
       "roof": "#3f7fc4",
       "ridge": "rgba(255,255,255,0.30)",
-      "door": "rgba(20,40,60,0.62)"
+      "door": "rgba(20,40,60,0.62)",
+      "values": {
+        "doorX": { "op": "sub", "args": [{ "op": "mul", "args": [{ "ref": "nx" }, -7.5] }, 2.2] },
+        "doorY": { "op": "sub", "args": [{ "op": "mul", "args": [{ "ref": "ny" }, -7.5] }, 2.2] }
+      },
+      "preview": { "nx": 0, "ny": 1 },
+      "parts": [
+        { "shape": "ellipse", "fill": "$shadow", "cx": 2, "cy": 4, "rx": 10, "ry": 4.9 },
+        { "shape": "roundRect", "fill": "$walls", "x": -9, "y": -7, "w": 18, "h": 14, "r": 2 },
+        { "shape": "roundRect", "fill": "$roof", "x": -10.5, "y": -8.5, "w": 21, "h": 17, "r": 2.5 },
+        { "shape": "stroke", "stroke": "$ridge", "width": 1, "pts": [[-10, 0], [10, 0]] },
+        { "shape": "rect", "fill": "$door", "x": "$doorX", "y": "$doorY", "w": 4.4, "h": 4.4 }
+      ]
     }
   },
 
@@ -191,7 +323,7 @@
     }
   },
   "estero": {
-    "_note": "LOS OCHO ENCUENTROS DEL ESTERO — la paleta de `src/render/c2d/estero.js`. Cuáles existen ya estaba tipado (`EsteroEncounterKind`, el enum generado, que `advanceEstero` usa para despachar); de qué color es cada uno no. Son ocho COMPORTAMIENTOS y no ocho estampas: una panga cuesta y SE MUEVE, un cardumen PAGA por salirse de la línea, las gaviotas quitan la vista sin tocarte, y un remolino no es un choque sino una corriente que sigue trabajando sobre uno todo el tiempo que esté adentro.",
+    "_note": "EL MEDIO DEL ESTERO: corriente, boyas, banco de arena y la red que coincide con su hitbox. Los objetos que flotan —panga, cardumen, bandada, raíces, remolino, barco pescador y yate— viven completos en actors.json para que su forma, color y animación tengan una sola autoridad y una preview compartida.",
     "channel": {
       "_note": "LA CORRIENTE, dibujada como filamentos. De noche el agua se lee azul y de día blanca, así que el par va explícito en vez de calcularse — un `globalAlpha` sobre un solo color daba gris sucio de noche.",
       "day": {
@@ -227,60 +359,30 @@
       "reflector": "rgba(255,255,255,0.7)",
       "lampOff": "rgba(255,255,255,0.55)"
     },
-    "panga": {
-      "_note": "La que cuesta. Se dibuja sobre el casco compartido, igual que toda panga de este puerto.",
-      "console": "#3a6f8a",
-      "thwart": "#8a5f33",
-      "outboard": "#8a5f33",
-      "figure": "#26222c"
-    },
-    "fish": {
-      "_note": "El cardumen que PAGA. Cuando ya se cobró queda apenas una sombra en el agua, que es lo que dice que ya no hay nada ahí.",
-      "boil": "rgba(180,225,240,0.30)",
-      "taken": "rgba(255,255,255,0.10)",
-      "flash": "rgba(235,250,255,0.75)"
-    },
-    "gulls": {
-      "wings": "rgba(255,255,255,0.9)"
-    },
-    "roots": {
-      "_note": "Raíces de mangle: lo único del estero que es duro y está sumergido.",
-      "wood": "rgba(58,42,26,0.85)",
-      "waterline": "rgba(255,255,255,0.25)"
-    },
-    "remolino": {
-      "_note": "No es un choque: es una corriente que sigue trabajando sobre uno mientras esté adentro.",
-      "well": "rgba(18,34,44,0.34)",
-      "swirl": "rgba(255,255,255,0.42)",
-      "foam": "rgba(255,255,255,0.6)"
-    },
     "banco": {
       "_note": "EL BANCO DE ARENA, que la marea descubre y tapa. Lo que se ve de él depende del agua que tenga encima, así que lleva un tono mojado y uno seco.",
       "shadow": "rgba(0,0,0,0.16)",
       "wet": "rgba(28,58,72,0.32)",
       "foam": "rgba(255,255,255,0.26)",
       "dry": "rgba(226,214,186,0.45)",
+      "waterline": {"rgb": "255,255,255", "alphaBase": 0.28, "alphaRange": 0.42, "width": 1.6},
+      "ripples": {"rgb": "255,255,255", "alphaBase": 0.10, "alphaRange": 0.16, "width": 0.9, "count": 4, "jitter": 2, "curveJitter": 2.2},
+      "aground": {"rgb": "255,255,255", "alphaBase": 0.16, "alphaRange": 0.14, "width": 1.4, "radiusBase": 1.06, "radiusRange": 0.04},
       "dryNote": "descubierto: pálido y quemado por el sol."
     },
     "pescador": {
       "_note": "Su chinchorro tendido, la boya naranja del extremo y él sentado de cara a la red.",
       "net": "rgba(240,236,220,0.55)",
       "float": "#e8a33d",
-      "buoy": "#d9482f",
-      "topsides": "#f2ead6",
-      "topsidesNote": "su panga va en un blanco más crudo que el del puerto — es una lancha de trabajo, no una de paseo. Entra como parámetro de `paintHull`.",
-      "figure": "#2f4a60",
-      "hat": "#e8c07a"
-    },
-    "yate": {
-      "_note": "El único barco del estero que no trabaja.",
-      "wake": "rgba(255,255,255,0.22)",
-      "topsides": "#f6f6f2",
-      "sheer": "rgba(40,60,80,0.35)",
-      "cabin": "#dfe6ea",
-      "windows": "#2f4a60",
-      "rail": "rgba(255,255,255,0.3)"
+      "buoy": "#d9482f"
     }
+  },
+
+  "editorFeature": {
+    "_note": "Fallback styling for semantic paths authored by the world editor. A feature may override style.color; these values keep the renderer from inventing the remaining shape or ink.",
+    "grandstand": {"fill": "#171b18", "row": "rgba(235,235,225,0.58)", "edge": "rgba(0,0,0,0.65)", "rowWidth": 1, "edgeWidth": 1.5, "maxRows": 12, "defaultRows": 3},
+    "entrance": {"stroke": "#f3c969", "width": 2, "halfWidth": 7, "halfHeight": 6},
+    "roof": {"fill": "#2f3737", "driveUnder": "#e8c765", "edge": "rgba(15,20,20,0.75)", "dayAlpha": 0.82, "nightAlpha": 0.88, "driveUnderWidth": 2, "edgeWidth": 1.5}
   },
 
   "streets": {

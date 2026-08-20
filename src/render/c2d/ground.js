@@ -1,11 +1,17 @@
 // Ground layer: sea/inland water, the land base + park/plaza greens, the faro
 // plaza commas and the kiosk access lanes. Painted before roads.
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import FLORA from "../../assets/flora.json" with { type: "json" };
+import EFFECTS from "../../assets/effects.json" with { type: "json" };
+import WATER from "../../assets/water.json" with { type: "json" };
+import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
-import { canopyPath, species } from "./flora.js";
-import { aabbInView, ctx, flatMultiPath, hash01, weatherColors } from "./gfx.js";
+import {
+  floraSeed, paintFloraSpecies, resolveFloraMixSpecies,
+} from "./floraShapes.js";
+import { aabbInView, ctx, flatMultiPath, weatherColors } from "./gfx.js";
 import {
   drawCurrents, drawRipples, drawShoreBreak, drawSwell, isBalneario,
   paintBalneario, updateWater,
@@ -33,27 +39,28 @@ function drawWaterAll(view, t) {
 // One inland water body (estuary / river): gradient fill, animated shimmer
 // clipped to its shape, and a soft foam bank where it meets the land.
 function paintWaterBody(w, view, t) {
+  const I = WATER.inland, S = I.shimmer;
   const C = weatherColors(), a = w.aabb;
   const g = ctx.createLinearGradient(0, a.y0, 0, a.y1);
   g.addColorStop(0, C.waterTop); g.addColorStop(1, C.waterBot);
   ctx.fillStyle = g; ctx.fill(w.path);
   // shimmer, clipped to the water
   ctx.save(); ctx.clip(w.path);
-  ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 1;
-  const tt = t * 0.0006;
+  ctx.strokeStyle = S.color; ctx.lineWidth = S.lineWidth;
+  const tt = t * S.timeScale;
   const y0 = Math.max(view.y0, a.y0), y1 = Math.min(view.y1, a.y1);
   const x0 = Math.max(view.x0, a.x0), x1 = Math.min(view.x1, a.x1);
-  for (let yy = y0; yy < y1; yy += 22) {
+  for (let yy = y0; yy < y1; yy += S.rowGap) {
     ctx.beginPath();
-    for (let xx = x0; xx < x1; xx += 18) {
-      const yo = Math.sin(tt + xx * 0.05 + yy * 0.04) * 1.8;
+    for (let xx = x0; xx < x1; xx += S.sampleStep) {
+      const yo = Math.sin(tt + xx * S.xFrequency + yy * S.yFrequency) * S.amplitude;
       xx === x0 ? ctx.moveTo(xx, yy + yo) : ctx.lineTo(xx, yy + yo);
     }
     ctx.stroke();
   }
   ctx.restore();
   // foam bank: soft pale rim along the shoreline
-  ctx.strokeStyle = "rgba(226,240,238,0.35)"; ctx.lineWidth = 2.5; ctx.stroke(w.path);
+  ctx.strokeStyle = I.bank.color; ctx.lineWidth = I.bank.lineWidth; ctx.stroke(w.path);
 }
 
 // Base land + inland waters (with river love) + beach, under the streets.
@@ -105,7 +112,7 @@ const GREEN_COLORS = MATERIALS.green;
 function drawPlazaGreen(pz, view) {
   const [px, py, pw, ph] = pz;
   if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
-  ctx.fillStyle = GREEN_COLORS[pz[4]] || "#4f9d5b";
+  ctx.fillStyle = GREEN_COLORS[pz[4]] || GREEN_COLORS.park;
   ctx.fillRect(px, py, pw, ph);
 }
 
@@ -134,7 +141,7 @@ function drawGreenPoly(gp, view) {
   const m = (gp.type === "marine" || gp.type === "pool" || gp.type === "stadium") ? 0 : GREEN_DILATE;
   if (b.x1 + m < view.x0 || b.x0 - m > view.x1 || b.y1 + m < view.y0 || b.y0 - m > view.y1) return;
   if (!gp._path) gp._path = flatMultiPath(polys);
-  const col = GREEN_COLORS[gp.type] || "#4f9d5b";
+  const col = GREEN_COLORS[gp.type] || GREEN_COLORS.park;
   ctx.fillStyle = col; ctx.fill(gp._path, "evenodd");
   if (m) {
     ctx.strokeStyle = col; ctx.lineWidth = m; ctx.lineJoin = "round";
@@ -157,69 +164,39 @@ function drawGreenPoly(gp, view) {
 // bajamar half the root cage and a band of mud are out. It is scenery, not the
 // subject — the reason it moves at all is that a mangrove whose roots never
 // changed would be the one thing in the estero the tide did not reach.
-// The mangle's own row in src/assets/flora.json. This file used to import
-// `CANOPY` — the ALMENDRO's palette — so the manglar's greens were the street
-// tree's greens by reference, and recolouring one would have recoloured the
-// other with nothing to say so.
-const MANGLE = species("mangle");
-const MANGROVE_R = MANGLE.r;                 // when the world emits no radius
+// Exact mangrove identities and zonation are JSON. The builder currently emits
+// only waterline clumps, so every unlabelled point resolves through the authored
+// channel-edge mix; a future emitted `k` can name a surveyed specimen directly.
+const MANGROVE_MIX = FLORA.mangroveMixes[FLORA.defaults.mangroveMix];
+const MANGROVE_SPECIES = MANGROVE_MIX.weights.map(([id]) => {
+  const record = FLORA.species[id];
+  if (!record) throw new Error(`unknown channel-edge mangrove species: ${id}`);
+  return record;
+});
+const MANGROVE_R = Math.max(...MANGROVE_SPECIES.map((record) => record.r));
 
-// The canopy blob is the ARBOLEDA'S, not the manglar's: `canopyPath` in
-// flora.js is the one construction every crown in this world is built from, so
-// a mangle and an almendro are the same hand at two scales. It used to be a
-// private copy here, which is how the two drifted apart.
-const manglePath = canopyPath;
+function mangroveSpecies(m) {
+  const id = m.k || resolveFloraMixSpecies(
+    MANGROVE_MIX.weights,
+    floraSeed(m.x + MANGROVE_R, m.y - MANGROVE_R),
+  );
+  const record = FLORA.species[id];
+  if (!record) throw new Error(`unknown mangrove species: ${id}`);
+  return record;
+}
 
-function paintMangrove(m, tide, t) {
-  const R = m.r || MANGROVE_R;
-  const seed = hash01(m.x * 0.0173 + m.y * 0.0131);
-  const wet = Math.max(0, Math.min(1, tide));
-  const sway = Math.sin(t * 0.0004 + seed * 6.3) * 1.2;
-  // el fango: the mud the roots stand in, out only at low water
-  if (wet < 0.85) {
-    ctx.fillStyle = `rgba(${MANGLE.mud},${(0.34 * (1 - wet)).toFixed(3)})`;
-    manglePath(m.x, m.y + 1, R * 1.3, seed + 0.4, 0.18); ctx.fill();
-  }
-  ctx.fillStyle = "rgba(0,0,0,0.22)";                    // her shadow on the water
-  manglePath(m.x + 3, m.y + 4, R * 0.95, seed, 0.2); ctx.fill();
-  // las raíces zancudas: a cage of arching prop roots at the waterline. They
-  // shorten and go dim as the water comes up over them.
-  const legs = 7 + Math.round(hash01(seed * 13.7) * 4);
-  const lr = R * (0.42 + 0.34 * (1 - wet));
-  ctx.strokeStyle = `rgba(${MANGLE.roots},${(0.85 - 0.42 * wet).toFixed(3)})`;
-  ctx.lineWidth = 1.6;
-  ctx.lineCap = "round";
-  for (let i = 0; i < legs; i++) {
-    const a = (i / legs) * Math.PI * 2 + seed * 2.1;
-    const rr = lr * (0.72 + hash01(seed * 5.1 + i * 1.9) * 0.5);
-    ctx.beginPath();
-    ctx.moveTo(m.x + Math.cos(a) * R * 0.34, m.y + Math.sin(a) * R * 0.3);
-    ctx.quadraticCurveTo(
-      m.x + Math.cos(a) * rr * 0.8, m.y + Math.sin(a) * rr * 0.6,
-      m.x + Math.cos(a) * rr, m.y + Math.sin(a) * rr * 0.88,
-    );
-    ctx.stroke();
-  }
-  // EL AGUA SE ARRIMA, NO SE DIBUJA. The waterline used to be a pale ring
-  // stroked round the clump at 0.78 R — but the crown sits higher than that
-  // ring and is only 0.82 R wide, so the ring came out from under it and read
-  // as a WHITE OUTLINE drawn round every tree in the manglar. It is a FILL now:
-  // a soft, slightly wider disc of shallow water under the canopy, which is
-  // what the tide actually leaves there and has no edge to read as a line.
-  ctx.fillStyle = `rgba(${MANGLE.shallow},${(0.10 + 0.10 * wet).toFixed(3)})`;
-  manglePath(m.x, m.y + 1, R * (0.84 + 0.1 * wet), seed + 1.7, 0.14); ctx.fill();
-  // la copa: dense, dark, ragged — and lower on the water when the tide is in
-  const cr = R * (0.82 + 0.12 * wet);
-  const cy = m.y - R * 0.16 * (1 - wet);
-  // …from its OWN row's dark end. A mangle is the darkest green in this world
-  // and it is still the same SHAPE of ramp as every other crown — but it is its
-  // own ramp now, not the almendro's by import.
-  ctx.fillStyle = MANGLE.canopy[0];
-  manglePath(m.x + sway * 0.4, cy, cr, seed, 0.24); ctx.fill();
-  ctx.fillStyle = MANGLE.canopy[1];
-  manglePath(m.x - cr * 0.16 + sway * 0.6, cy - cr * 0.16, cr * 0.66, seed + 2.3, 0.26); ctx.fill();
-  ctx.fillStyle = MANGLE.canopy[2];
-  manglePath(m.x + cr * 0.24 + sway, cy - cr * 0.22, cr * 0.4, seed + 5.1, 0.28); ctx.fill();
+export function paintMangrove(m, tide, t) {
+  const record = mangroveSpecies(m);
+  paintFloraSpecies(ctx, record, FLORA.forms[record.form], {
+    x: m.x,
+    y: m.y,
+    s: 1,
+    radius: m.r || record.r,
+    seed: floraSeed(m.x, m.y),
+    tide,
+    tMs: t,
+    shadowModel: EFFECTS.sunShadow,
+  });
 }
 
 // The mangrove banks. The world emits them as points ({x, y, r}); the accessor
@@ -297,18 +274,21 @@ function drawFaroCommas(view) {
   const lm = W.landmarkById ? W.landmarkById("faro") : null;
   const commas = lm && lm.commas;
   if (!commas || !commas.length) return;
-  ctx.fillStyle = "#c34a3c";
-  const r = 7;
+  const faro = PROPS.scenes.faro, P = faro.comma;
+  ctx.fillStyle = faro.palette.comma;
+  const r = P.radius;
   for (let i = 0; i < commas.length; i++) {
     const cx = commas[i][0], cy = commas[i][1];
     if (cx < view.x0 - 20 || cx > view.x1 + 20 || cy < view.y0 - 20 || cy > view.y1 + 20) continue;
     // a COMMA (round head + an asymmetric hooking tail to a NORTH tip), not a
     // symmetric drop
-    ctx.beginPath(); ctx.arc(cx, cy + r * 0.5, r * 0.6, 0, Math.PI * 2); ctx.fill();    // head (ball)
+    ctx.beginPath(); ctx.arc(cx, cy + r * P.headY, r * P.headR, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(cx - r * 0.45, cy + r * 0.4);
-    ctx.quadraticCurveTo(cx - r * 0.2, cy - r * 0.35, cx + r * 0.12, cy - r * 1.2);     // inner edge up to tip
-    ctx.quadraticCurveTo(cx + r * 0.72, cy - r * 0.35, cx + r * 0.55, cy + r * 0.4);    // outer edge (hook) down
+    ctx.moveTo(cx + r * P.innerX, cy + r * P.innerY);
+    ctx.quadraticCurveTo(cx + r * P.innerControlX, cy + r * P.innerControlY,
+      cx + r * P.tipX, cy + r * P.tipY);
+    ctx.quadraticCurveTo(cx + r * P.outerControlX, cy + r * P.outerControlY,
+      cx + r * P.outerX, cy + r * P.outerY);
     ctx.closePath(); ctx.fill();
   }
 }
@@ -320,7 +300,8 @@ function drawKioskPaths(view) {
   const paths = W.KIOSK_PATHS;
   if (!paths || !paths.length) return;
   ctx.lineCap = "round"; ctx.lineJoin = "round";
-  ctx.strokeStyle = "#3a3540"; ctx.lineWidth = 28;                 // asphalt (as the streets)
+  ctx.strokeStyle = MATERIALS.street.asphalt;
+  ctx.lineWidth = MATERIALS.street.kioskPathWidth;
   for (const p of paths) {
     const [x0, y0, x1, y1] = p.pts;
     if (Math.max(x0, x1) < view.x0 - 40 || Math.min(x0, x1) > view.x1 + 40 ||

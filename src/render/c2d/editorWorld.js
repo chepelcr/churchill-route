@@ -5,6 +5,9 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ctx } from "./gfx.js";
 import { drawLight } from "./lights.js";
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
+
+const EDITOR_ART = MATERIALS.editorFeature;
 
 const pointInView = ([x, y], view, pad = 60) => (
   x >= view.x0 - pad && x <= view.x1 + pad && y >= view.y0 - pad && y <= view.y1 + pad
@@ -21,29 +24,34 @@ function pathFor(feature) {
 }
 function drawGrandstand(feature) {
   const path = pathFor(feature), properties = feature.properties || {};
-  ctx.fillStyle = feature.style?.color || "#171b18";
+  const A = EDITOR_ART.grandstand;
+  ctx.fillStyle = feature.style?.color || A.fill;
   ctx.fill(path);
   ctx.save();
   ctx.clip(path);
   const points = feature.geometry.points;
   const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const rows = Math.max(1, Math.min(12, Number(properties.rows) || 3));
-  ctx.strokeStyle = "rgba(235,235,225,.58)";
-  ctx.lineWidth = 1;
+  const rows = Math.max(1, Math.min(A.maxRows, Number(properties.rows) || A.defaultRows));
+  ctx.strokeStyle = A.row;
+  ctx.lineWidth = A.rowWidth;
   for (let row = 1; row < rows; row++) {
     const y = y0 + (y1 - y0) * row / rows;
     ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
   }
   ctx.restore();
-  ctx.strokeStyle = "rgba(0,0,0,.65)"; ctx.lineWidth = 1.5; ctx.stroke(path);
+  ctx.strokeStyle = A.edge; ctx.lineWidth = A.edgeWidth; ctx.stroke(path);
 }
 function drawEntrance(feature) {
+  const A = EDITOR_ART.entrance;
   const [x, y] = feature.geometry.point;
   const angle = (Number(feature.properties?.angle) || 0) * Math.PI / 180;
   ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
-  ctx.strokeStyle = feature.style?.color || "#f3c969"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(-7, -6); ctx.lineTo(-7, 6); ctx.moveTo(7, -6); ctx.lineTo(7, 6); ctx.stroke();
+  ctx.strokeStyle = feature.style?.color || A.stroke; ctx.lineWidth = A.width;
+  ctx.beginPath();
+  ctx.moveTo(-A.halfWidth, -A.halfHeight); ctx.lineTo(-A.halfWidth, A.halfHeight);
+  ctx.moveTo(A.halfWidth, -A.halfHeight); ctx.lineTo(A.halfWidth, A.halfHeight);
+  ctx.stroke();
   ctx.restore();
 }
 // The luminaire moved to `c2d/lights.js` + `src/assets/lights.json`: what a
@@ -51,15 +59,16 @@ function drawEntrance(feature) {
 // branch. Where it stands is still authored here, which was always the half
 // that worked.
 function drawRoof(feature) {
+  const A = EDITOR_ART.roof;
   const path = pathFor(feature);
   const properties = feature.properties || {};
   ctx.save();
-  ctx.globalAlpha = state.weather === "night" ? 0.88 : 0.82;
-  ctx.fillStyle = feature.style?.color || properties.roofColor || "#2f3737";
+  ctx.globalAlpha = state.weather === "night" ? A.nightAlpha : A.dayAlpha;
+  ctx.fillStyle = feature.style?.color || properties.roofColor || A.fill;
   ctx.fill(path);
   ctx.globalAlpha = 1;
-  ctx.strokeStyle = properties.driveUnder ? "#e8c765" : "rgba(15,20,20,.75)";
-  ctx.lineWidth = properties.driveUnder ? 2 : 1.5;
+  ctx.strokeStyle = properties.driveUnder ? A.driveUnder : A.edge;
+  ctx.lineWidth = properties.driveUnder ? A.driveUnderWidth : A.edgeWidth;
   ctx.stroke(path);
   ctx.restore();
 }

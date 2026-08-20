@@ -130,6 +130,23 @@ class DerivationTests(unittest.TestCase):
                          "lancha; if one is gone this test covers half of what "
                          "it says it does")
 
+    def test_gulf_ferries_are_named_and_double_ended(self):
+        gulf = {f["id"]: f for f in self.m.get("ferries") or []
+                if not f.get("oneWay")}
+        self.assertEqual(set(gulf), {"paquera", "naranjo"})
+        self.assertEqual(gulf["paquera"]["destination"], "Tambor")
+        self.assertEqual(gulf["paquera"]["vesselName"], "Tambor")
+        self.assertEqual(gulf["naranjo"]["vesselName"], "San Lucas 3")
+        self.assertTrue(all(f.get("doubleEnded") is True for f in gulf.values()))
+
+    def test_double_ended_return_does_not_pirouette(self):
+        src = read(FERRIES_JS)
+        self.assertIn("f.a = ferryHeading(q.a, returning, f.doubleEnded)", src)
+        self.assertRegex(
+            src,
+            r"return returning && !doubleEnded \? routeHeading \+ Math\.PI : routeHeading",
+        )
+
     def test_the_channel_pitch_is_emitted_and_derived(self):
         self.assertEqual(lancha.CHANNEL_PITCH, config.px(UNITS["channel"]["pitchM"]))
         self.assertEqual(lancha.TANGENT_SPAN, config.px(UNITS["channel"]["tangentSpanM"]))

@@ -1,19 +1,13 @@
 // LA ARBOLEDA — every plant in this world, drawn from ONE idiom.
 //
-// There are three species and they used to be three unrelated drawings: the
-// almendro (`paintTree`) was a stack of hard circles, the palma (`paintPalm`) a
-// ring of ellipses, and the mangle (`paintMangrove`, ground.js) a set of ragged
-// blobs with a pale ring stroked round it. Side by side they did not read as
-// the same hand, and the mangrove's ring read as a white outline round a tree.
+// The first world had three unrelated drawings: almendro, palma and a generic
+// mangle. The regional catalog now carries taxons, conditions and placeholders
+// with distinct JSON recipes, but every one still speaks this shared idiom.
 //
-// So the vocabulary is shared and lives here:
-//   * `canopyPath` — a canopy is a SOFT, SLIGHTLY RAGGED BLOB, never a circle
-//     and never an outline. Every species builds its crown out of a small stack
-//     of them (the mangrove included: ground.js imports this one).
-//   * `CANOPY` — one palette, dark → light, so a crown is lit the same way
-//     wherever it stands.
-//   * `plantShadow` — one shadow ellipse, offset the same way, sized off the
-//     same scale.
+// So the vocabulary is shared and lives in `floraShapes.js`:
+//   * `floraCanopyPath` — one soft ragged crown primitive;
+//   * a finite generator/root vocabulary whose authored knobs live in JSON;
+//   * one deterministic seed and one solar-shadow recipe.
 //   * `hash01` — the ONLY source of variation. No `Math.random` in a draw call:
 //     a tree that changes shape every frame is a tree that shimmers.
 //
@@ -23,15 +17,18 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { SURFACE } from "../../game/surfaces.js";
 import { ACERA_PX, ctx, flatPath, hash01 } from "./gfx.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
+import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { sunVector } from "../../game/daynight.js";
+import {
+  floraSeed, paintFloraSpecies, resolveFloraMixSpecies,
+} from "./floraShapes.js";
 
-// THE SPECIES ARE DATA, THE FORMS ARE CODE. `src/assets/flora.json` says what a
-// guanacaste is — palette, crown radius, trunk height, which form draws it — and
-// the four `paint*Form` functions below say what a broadleaf, a conifer, a column
-// and a bare tree ARE. That split is deliberate: a silhouette is geometry and
-// belongs in a renderer; a species is a row somebody should be able to add.
+// THE SPECIES AND FORM RECIPES ARE DATA; the finite maths vocabulary is code.
+// This file owns placement/culling and hands one resolved row to the shared
+// interpreter. The editor calls that same interpreter with its unsaved document.
 const SPECIES = FLORA.species;
-const DEFAULT_SPECIES = "almendro";
+const DEFAULT_SPECIES = FLORA.defaults.treeSpecies;
+const DEFAULT_PALM = FLORA.defaults.palmSpecies;
 
 // EVERY PLANT IN THIS WORLD IS A ROW, including the two that are not "trees".
 // The palma and the mangle used to be drawn from hardcoded numbers and to take
@@ -39,196 +36,43 @@ const DEFAULT_SPECIES = "almendro";
 // tree in the registry silently restyled every frond and every mangrove in the
 // world. They have their own rows now, with the same values, so the look is
 // unchanged and the coupling is gone.
-const CANOPY = SPECIES[DEFAULT_SPECIES].canopy;   // still the almendro's, by name
-const TRUNK_TREE = SPECIES[DEFAULT_SPECIES].trunk;
-const PLANT_SHADOW = "rgba(0,0,0,0.24)";
-
-/** A species row by name, falling back to the almendro. */
-function species(name) { return SPECIES[name] || SPECIES[DEFAULT_SPECIES]; }
-
-// A SOFT, ragged closed blob, stable for a given seed. Slightly squashed on y
-// so it reads as a crown seen from above rather than a disc.
-//
-// The ragged radii are laid out on a ring and then the outline is drawn as a
-// quadratic spline THROUGH THE MIDPOINTS of that ring, each vertex acting as a
-// control point. Joining them with straight lines instead — which is what this
-// did while it lived in ground.js and only ever drew 26 px mangroves — turns
-// into a visible polygon the moment the crown is a 10 px street tree under a
-// 5.5× camera: eleven flat facets, which is a gem, not a canopy.
-const _bx = [], _by = [];
-function canopyPath(cx, cy, R, seed, wob = 0.22, n = 13) {
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2 + seed * 0.7;
-    const rr = R * (1 - wob + wob * 2 * hash01(seed * 91.7 + i * 3.13));
-    _bx[i] = cx + Math.cos(a) * rr;
-    _by[i] = cy + Math.sin(a) * rr * 0.86;
-  }
-  ctx.beginPath();
-  ctx.moveTo((_bx[n - 1] + _bx[0]) / 2, (_by[n - 1] + _by[0]) / 2);
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    ctx.quadraticCurveTo(_bx[i], _by[i], (_bx[i] + _bx[j]) / 2, (_by[i] + _by[j]) / 2);
-  }
-  ctx.closePath();
+/** Missing `k` is the wire-format default; an unknown explicit id is an error. */
+function species(name) {
+  if (name == null || name === "") return SPECIES[DEFAULT_SPECIES];
+  const record = SPECIES[name];
+  if (!record) throw new Error(`unknown flora species: ${name}`);
+  return record;
 }
 
-// LA SOMBRA SIGUE AL SOL.
-//
-// Era una elipse clavada abajo y a la derecha —`+0.5R, +0.42R`— en TODO el mundo
-// y a toda hora, o sea una dirección de luz inventada y fija. A mediodía eso se
-// lee exactamente como lo que es: cada árbol descuadrado respecto de su propia
-// sombra.
-//
-// Ahora sale del vector del sol. Dos cosas hacen la diferencia y ninguna es el
-// ángulo: **la LARGURA** —con el sol alto la sombra se recoge bajo la copa, con
-// el sol bajo se tiende— y **la OPACIDAD**, porque una sombra de mediodía es
-// dura y una de atardecer es larga y lavada. Al mediodía queda casi centrada,
-// que es lo que se ve en la calle.
-function plantShadow(x, y, R) {
-  const sun = sunVector();
-  // `alt` va de 0 (horizonte) a 1 (cenit); la sombra es su inversa.
-  const reach = R * (0.18 + (1 - sun.alt) * 0.95);
-  ctx.fillStyle = PLANT_SHADOW;
-  ctx.globalAlpha = 0.45 + sun.alt * 0.55;
-  ctx.beginPath();
-  ctx.ellipse(x + sun.x * reach, y + sun.y * reach * 0.62,
-              R * 1.12, R * 0.42, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
+export function floraSolar() {
+  return { sun: sunVector(), model: EFFECTS.sunShadow };
 }
-
-// A seed a plant carries for its whole life: its own position, nothing else.
-function plantSeed(x, y) { return hash01(x * 0.0173 + y * 0.0131); }
-
-// The crown of ANY species: the same three-blob stack, in that species' palette
-// and about its own centre. `spread` widens it without making it taller, which
-// is the whole difference between an almendro and a guanacaste.
-function paintCrown(x, y, R, seed, pal, spread = 1) {
-  const jx = (hash01(seed * 7.7) - 0.5) * R * 0.22;
-  const jy = (hash01(seed * 11.3) - 0.5) * R * 0.18;
-  const W3 = R * spread;
-  ctx.fillStyle = pal[1];
-  canopyPath(x + jx, y + jy, W3, seed, 0.16, 11); ctx.fill();
-  ctx.fillStyle = pal[2];
-  canopyPath(x + jx - W3 * 0.16, y + jy - R * 0.20, W3 * 0.68, seed + 2.3, 0.18, 10); ctx.fill();
-  ctx.fillStyle = pal[3] || pal[2];
-  canopyPath(x + jx + W3 * 0.26, y + jy - R * 0.26, W3 * 0.36, seed + 5.1, 0.20, 9); ctx.fill();
-}
-
-// ---- the four FORMS. Everything else about a tree is a row in flora.json ----
-
-// BROADLEAF — the almendro, the guanacaste, the cortez in bloom, the cerezo.
-function paintBroadleaf(x, y, s, seed, sp) {
-  const R = sp.r * s, spread = sp.spread || 1;
-  plantShadow(x, y + 3, R * spread);
-  ctx.strokeStyle = sp.trunk; ctx.lineWidth = 2.5 * s * (sp.spread || 1); ctx.lineCap = "butt";
-  ctx.beginPath(); ctx.moveTo(x, y + 3); ctx.lineTo(x, y - sp.trunkH * s); ctx.stroke();
-  paintCrown(x, y - (sp.trunkH + 4) * s, R, seed, sp.canopy, spread);
-}
-
-// CONIFER — tiers narrowing upward. A pine from above is not a blob: it is a
-// cone, and what says so is that each tier is smaller AND higher than the last.
-function paintConifer(x, y, s, seed, sp) {
-  const R = sp.r * s, tiers = sp.tiers || 3;
-  plantShadow(x, y + 3, R * 0.9);
-  ctx.strokeStyle = sp.trunk; ctx.lineWidth = 2.2 * s; ctx.lineCap = "butt";
-  ctx.beginPath(); ctx.moveTo(x, y + 3); ctx.lineTo(x, y - sp.trunkH * s); ctx.stroke();
-  // Bottom skirt first, tip last. The tiers OVERLAP heavily — spaced well under
-  // their own radius — because three well-separated blobs read as three blobs,
-  // which is what the first attempt looked like. Overlapping them merges the
-  // profile into one triangle and the tier edges become the pine's steps.
-  for (let i = 0; i < tiers; i++) {
-    const k = i / (tiers - 1 || 1);                 // 0 at the skirt, 1 at the tip
-    // EVERY TIER ITS OWN SHADE, walking dark → light up the tree. Giving the
-    // lower three the same colour is what made the first attempt a pear with a
-    // bobble on top: same-coloured overlapping blobs have no internal edges, so
-    // the whole skirt read as one ball and only the small top tiers showed.
-    const shade = sp.canopy[Math.min(sp.canopy.length - 1,
-                                     1 + Math.round(k * (sp.canopy.length - 2)))];
-    ctx.fillStyle = shade;
-    canopyPath(x, y - (sp.trunkH + 2) * s - k * R * 1.7,
-               R * (1 - k * 0.68), seed + i * 3.7, 0.09, 9);
-    ctx.fill();
-  }
-}
-
-// COLUMN — the ciprés. Tall and narrow, drawn as overlapping crowns up a line so
-// it keeps the ragged edge instead of becoming a rectangle.
-function paintColumn(x, y, s, seed, sp) {
-  const R = sp.r * s, H = (sp.height || 2.4) * R;
-  plantShadow(x, y + 3, R * 0.8);
-  // Many steps, barely narrowing, spaced far closer than their own radius: the
-  // crowns fuse into ONE column with a ragged edge. At four steps and a 35 %
-  // taper they stayed separate and the tree read as a snowman.
-  const steps = 9;
-  for (let i = 0; i < steps; i++) {
-    const k = i / (steps - 1);
-    // one shade for the body, the lighter one only on the top third, so the
-    // column has a lit tip instead of a band across its middle
-    ctx.fillStyle = k > 0.68 ? sp.canopy[2] : sp.canopy[1];
-    canopyPath(x, y - sp.trunkH * s - k * H, R * (1 - k * 0.18), seed + i * 4.1, 0.12, 9);
-    ctx.fill();
-  }
-}
-
-// BARE — the dry season, and the dead tree. No crown: the silhouette IS the
-// branches, so they get drawn properly rather than as a stick.
-function paintBare(x, y, s, seed, sp) {
-  const H = sp.trunkH * s, R = sp.r * s, n = sp.branches || 5;
-  plantShadow(x, y + 3, R * 0.5);
-  ctx.strokeStyle = sp.trunk; ctx.lineCap = "round";
-  ctx.lineWidth = 2.4 * s;
-  ctx.beginPath(); ctx.moveTo(x, y + 3); ctx.lineTo(x, y - H); ctx.stroke();
-  ctx.lineWidth = 1.4 * s;
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const a = -Math.PI / 2 + (hash01(seed * 13.7 + i * 2.9) - 0.5) * 2.2;
-    const len = R * (0.55 + hash01(seed * 23.3 + i) * 0.6);
-    const bx = x + Math.cos(a) * len, by = y - H + Math.sin(a) * len * 0.8;
-    ctx.moveTo(x, y - H * (0.72 + hash01(seed * 5.1 + i) * 0.26));
-    ctx.lineTo(bx, by);
-    // one fork, so it reads as a tree and not as a asterisk
-    const a2 = a + (hash01(seed * 31.1 + i) - 0.5) * 0.8;
-    ctx.lineTo(bx + Math.cos(a2) * len * 0.5, by + Math.sin(a2) * len * 0.4);
-  }
-  ctx.stroke();
-}
-
-const FORMS = {
-  broadleaf: paintBroadleaf, conifer: paintConifer,
-  column: paintColumn, bare: paintBare,
-};
 
 /** Draw one tree of any species. `tr.k` names it; no `k` is the almendro. */
 function paintTree(tr) {
-  const sp = SPECIES[tr.k] || SPECIES[DEFAULT_SPECIES];
-  (FORMS[sp.form] || paintBroadleaf)(tr.x, tr.y, tr.s || 1, plantSeed(tr.x, tr.y), sp);
+  const sp = species(tr.k);
+  paintFloraSpecies(ctx, sp, FLORA.forms[sp.form], {
+    x: tr.x,
+    y: tr.y,
+    s: tr.s || 1,
+    seed: floraSeed(tr.x, tr.y),
+    solar: floraSolar(),
+  });
 }
 
-// LA PALMA. Same shadow, same seed, same palette — but a crown of fronds on a
-// leaning trunk, because a palm is a different tree and has to stay one.
+// A palm keeps its clock/instance phase in this placement module; the authored
+// trunk/frond silhouette is executed by the same shared family interpreter.
 function paintPalm(pa, t) {
-  const sp = species(pa.k || "palma");
-  const s = pa.s || 1, R = sp.r * s;
-  const seed = plantSeed(pa.x, pa.y);
-  const sway = Math.sin(t * 0.001 + (pa.sway || 0)) * 2;
-  plantShadow(pa.x, pa.y + 4, R);
-  ctx.strokeStyle = sp.trunk; ctx.lineWidth = 3 * s; ctx.lineCap = "butt";
-  ctx.beginPath(); ctx.moveTo(pa.x, pa.y + 4); ctx.lineTo(pa.x + sway, pa.y - sp.trunkH * s); ctx.stroke();
-  const cx = pa.x + sway, cy = pa.y - sp.trunkH * s, n = sp.fronds || 6;
-  ctx.fillStyle = sp.canopy[2];
-  for (let i = 0; i < n; i++) {
-    // each frond turned a little off its slot by the palm's own seed, so a row
-    // of palms is a row of individuals and not one stamp repeated
-    const a = (i / n) * Math.PI * 2 + sway * 0.06 + (hash01(seed * 31.1 + i) - 0.5) * 0.22;
-    const len = R * (0.86 + hash01(seed * 17.9 + i * 2.7) * 0.28);
-    ctx.beginPath();
-    ctx.ellipse(cx + Math.cos(a) * len, cy + Math.sin(a) * len * 0.46,
-                9 * s, 3.2 * s, a, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.fillStyle = sp.canopy[0];
-  canopyPath(cx, cy, 2.9 * s, seed + 3.7, 0.2, 8); ctx.fill();
+  const sp = species(pa.k || DEFAULT_PALM);
+  paintFloraSpecies(ctx, sp, FLORA.forms[sp.form], {
+    x: pa.x,
+    y: pa.y,
+    s: pa.s || 1,
+    seed: floraSeed(pa.x, pa.y),
+    tMs: t,
+    phase: pa.sway || 0,
+    solar: floraSolar(),
+  });
 }
 
 // --------------------------------------------------------------- monte ----
@@ -250,15 +94,10 @@ const MIXES = FLORA.mixes;
 
 /** Species for a lattice point, by the mix's weights. Deterministic in (gx,gy). */
 function woodSpecies(mix, gx, gy) {
-  const weights = mix.weights;
-  let total = 0;
-  for (const [, w] of weights) total += w;
-  let roll = hash01(gx * 3.71 + gy * 7.13 + 41.9) * total;
-  for (const [name, w] of weights) {
-    roll -= w;
-    if (roll <= 0) return name;
-  }
-  return weights[weights.length - 1][0];
+  return resolveFloraMixSpecies(
+    mix.weights,
+    hash01(gx * 3.71 + gy * 7.13 + 41.9),
+  );
 }
 
 /** Plant every wood that reaches the view. */
@@ -280,7 +119,7 @@ function paintWoods(view) {
       cu._woodPath = cu.poly && cu.poly.length >= 6 ? flatPath(cu.poly, true) : null;
     }
     if (cu._woodPath) {
-      ctx.fillStyle = mix.floor || "rgba(72,108,56,0.52)";
+      ctx.fillStyle = mix.floor;
       ctx.fill(cu._woodPath);
     }
     const step = Math.sqrt(mix.d);
@@ -438,8 +277,6 @@ function tileTrees(tile, pairs) {
 }
 
 export {
-  CANOPY, canopyPath, nearestOnPoly, paintPalm, paintRoadsideTrees, paintTree,
-  species,
-  paintWoods,
-  roadsideTrees, tileTrees,
+  nearestOnPoly, paintPalm, paintRoadsideTrees, paintTree, species,
+  paintWoods, roadsideTrees, tileTrees,
 };

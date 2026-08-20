@@ -1,10 +1,15 @@
 // Landmark drawers: the faro scene, green spaces, the estadios, fountains,
 // pools, the Parque Marino and the sponsored lotes, behind drawLandmark().
-import { paintPalm, paintTree } from "./flora.js";
-import { paintAt, paintParts } from "./shapes.js";
+import { floraSolar, paintTree } from "./flora.js";
+import {
+  paintAt, paintParts, resolveAssetFormulaMap, scatterPlacements,
+} from "./shapes.js";
 import { evalOn } from "../vehicleShapes.js";
 import { drawFieldTowers } from "./lights.js";
 import PROPS from "../../assets/world-props.json" with { type: "json" };
+import EFFECTS from "../../assets/effects.json" with { type: "json" };
+import FLORA from "../../assets/flora.json" with { type: "json" };
+import { paintSceneParts } from "./sceneShapes.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { content } from "../../content/remote.js";
@@ -15,7 +20,6 @@ import { drawParada, paintProp, propParts } from "./props.js";
 // water side, red crescent shade benches, palms and the red/white tower.
 function drawFaroScene(lm) {
   const x = lm.x, y = lm.y;
-  const { palette: C, params: P } = PROPS.scenes.faro;
   // La Punta plaza: the GRAY esplanade GROUND is drawn by the tile plaza layer
   // (an "esplanade" fill following the real sand shape — no circle, no sand
   // under it). Here we only add the on-plaza decoration: riprap rimming the
@@ -25,55 +29,14 @@ function drawFaroScene(lm) {
   // `lm.rim` is WORLD GEOMETRY — the build measured it against the real
   // sand/water edge — so it is not a knob and never will be. Everything else
   // here comes from the catalog.
-  const rim = lm.rim;
-  if (rim) {
-    for (let i = 0; i < rim.length; i++) {
-      const rx = rim[i][0], ry = rim[i][1];
-      const r0 = P.rockMinR + hash01(lm.x * 7.13 + i * 12.9) * P.rockVarR;
-      ctx.fillStyle = i % P.rockDarkEvery ? C.rockDark : C.rockLight;
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, r0 + P.rockStretch, r0, hash01(i * 9.4 + lm.x) * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-  // (the red comma "islands" are drawn in the GROUND layer — drawFaroCommas —
-  // so the trees sit on top of them, not the other way around)
-  for (const [ox, oy] of P.palms) {
-    const px = x + ox, py = y + oy, sc = P.palmScale;
-    ctx.fillStyle = C.palmShadow;
-    ctx.beginPath(); ctx.ellipse(px + 5, py + 4, 10 * sc, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = C.palmTrunk; ctx.lineWidth = 3 * sc;
-    ctx.beginPath(); ctx.moveTo(px, py + 4); ctx.lineTo(px, py - P.trunkH * sc); ctx.stroke();
-    ctx.fillStyle = C.frond;
-    for (let k = 0; k < P.fronds; k++) {
-      const a = (k / P.fronds) * Math.PI * 2;
-      const fx = px + Math.cos(a) * P.frondR * sc;
-      const fy = py - P.trunkH * sc + Math.sin(a) * P.frondRy * sc;
-      ctx.beginPath(); ctx.ellipse(fx, fy, 9 * sc, 3.2 * sc, a, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.fillStyle = C.crown;
-    ctx.beginPath(); ctx.arc(px, py - P.trunkH * sc, 2.5 * sc, 0, Math.PI * 2); ctx.fill();
-  }
-  // Tower — white with red bands, slight taper, gallery ring, yellow lantern
-  ctx.fillStyle = C.towerShadow;
-  ctx.beginPath(); ctx.ellipse(x + 5, y + 4, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
-  const tw = new Path2D();
-  tw.moveTo(x - P.towerBaseHalf, y + P.towerFoot); tw.lineTo(x - P.towerTopHalf, y - P.towerHeight);
-  tw.lineTo(x + P.towerTopHalf, y - P.towerHeight); tw.lineTo(x + P.towerBaseHalf, y + P.towerFoot);
-  tw.closePath();
-  ctx.fillStyle = C.towerBody; ctx.fill(tw);
+  const rim = (lm.rim || []).map(([rx, ry]) => [rx - x, ry - y]);
   ctx.save();
-  ctx.clip(tw);
-  ctx.fillStyle = C.towerBand;
-  for (let i = 0; i < P.bands; i++)
-    ctx.fillRect(x - P.towerBaseHalf - 1, y - P.bandTop + i * P.bandGap, P.towerBaseHalf * 2 + 2, P.bandH);
+  ctx.translate(x, y);
+  paintSceneParts(ctx, PROPS, "faro", {
+    X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
+    vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT }, timeMs: lastT,
+  });
   ctx.restore();
-  ctx.strokeStyle = C.towerEdge; ctx.lineWidth = 1; ctx.stroke(tw);
-  // Gallery ring + lantern
-  ctx.fillStyle = C.gallery; ctx.fillRect(x - P.galleryW / 2, y - P.galleryY, P.galleryW, P.galleryH);
-  ctx.fillStyle = C.lantern; ctx.beginPath(); ctx.arc(x, y - P.lanternY, P.lanternR, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = C.gallery; ctx.fillRect(x - 3, y - P.finialY, 6, 2);
-  label(x, y - P.labelY, P.label, C.pillFg, C.pillBg);
 }
 
 // A green space (park / stadium field): grass with mow stripes, a ring of
@@ -82,7 +45,7 @@ function drawFaroScene(lm) {
 // wall; this just paints it green instead of bare sand.
 function drawGreenSpace(lm, w, h, opts = {}) {
   const x = lm.x, y = lm.y;
-  const { palette: C, params: P } = PROPS.scenes.greenSpace;
+  const { params: P } = PROPS.scenes.greenSpace;
   // Parks (opts.ground === false): the green GROUND is painted by the block
   // footprint (plaza-green) so it can never overlap streets and follows the
   // block orientation — here we only add the fountain, a small tight tree
@@ -103,22 +66,15 @@ function drawGreenSpace(lm, w, h, opts = {}) {
     if (opts.fountain) drawFountain(x, y);
     return;
   }
-  ctx.fillStyle = C.shadow;
-  roundRect(ctx, x - w / 2 + P.shadowDx, y - h / 2 + P.shadowDy, w, h, P.corner, true, false);
-  ctx.fillStyle = C.grass;
-  roundRect(ctx, x - w / 2, y - h / 2, w, h, P.corner, true, false);
-  ctx.strokeStyle = C.gravelPath; ctx.lineWidth = P.pathWidth;
-  roundRect(ctx, x - w / 2 + P.pathInset, y - h / 2 + P.pathInset,
-            w - P.pathInset * 2, h - P.pathInset * 2, P.pathCorner, false, true);
-  if (opts.pitch) {
-    ctx.strokeStyle = C.pitchLine; ctx.lineWidth = P.pitchLineWidth;
-    ctx.strokeRect(x - w / 2 + P.pitchInsetX, y - h / 2 + P.pitchInsetY,
-                   w - P.pitchInsetX * 2, h - P.pitchInsetY * 2);
-    ctx.beginPath();
-    ctx.moveTo(x, y - h / 2 + P.pitchInsetY); ctx.lineTo(x, y + h / 2 - P.pitchInsetY);
-    ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, P.centreCircle, 0, Math.PI * 2); ctx.stroke();
-  }
+  const vars = resolveAssetFormulaMap(PROPS.scenes.greenSpace.values, {
+    hw: w / 2, hh: h / 2, pitch: Boolean(opts.pitch), timeMs: lastT,
+  });
+  ctx.save(); ctx.translate(x, y);
+  paintSceneParts(ctx, PROPS, "greenSpace", {
+    X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
+    vars, timeMs: lastT,
+  });
+  ctx.restore();
   // tree ring around the perimeter (deterministic scatter)
   const n = Math.round((w + h) / P.ringTreesPer);
   for (let i = 0; i < n; i++) {
@@ -272,72 +228,25 @@ function drawStadium(lm) {
 // Central fountain with living (animated) water: stone basin, rippling pool,
 // a bobbing central jet and droplets. Animated off lastT.
 function drawFountain(x, y) {
-  const { palette: C, params: P } = PROPS.scenes.fountain;
-  const tt = lastT * P.rippleSpeed;
-  ctx.fillStyle = C.rim; ctx.beginPath(); ctx.arc(x, y, P.rimR, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = C.kerb; ctx.beginPath(); ctx.arc(x, y, P.kerbR, 0, Math.PI * 2); ctx.fill();
-  ctx.save();
-  ctx.beginPath(); ctx.arc(x, y, P.waterR, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = C.water;
-  ctx.fillRect(x - P.waterR, y - P.waterR, P.waterR * 2, P.waterR * 2);
-  ctx.strokeStyle = C.ripple; ctx.lineWidth = 1;
-  for (let k = 0; k < P.ripples; k++) {
-    const rr = ((tt + k / P.ripples) % 1) * P.waterR;
-    ctx.globalAlpha = Math.max(0, 1 - rr / P.waterR);
-    ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
+  ctx.save(); ctx.translate(x, y);
+  paintSceneParts(ctx, PROPS, "fountain", {
+    X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
+    vars: { timeMs: lastT }, timeMs: lastT,
+  });
   ctx.restore();
-  const jh = P.jetBase + Math.sin(tt * P.jetSpeed) * P.jetBob;
-  ctx.fillStyle = C.jet;
-  ctx.beginPath(); ctx.ellipse(x, y - jh / 2, P.jetHalfW, jh / 2, 0, 0, Math.PI * 2); ctx.fill();
-  for (let d = 0; d < P.droplets; d++) {
-    const a = (d / P.droplets) * Math.PI * 2 + tt * P.dropletSpin;
-    const rr = P.dropletBase + ((tt * P.dropletSpeed + d * P.dropletPhase) % P.dropletSpread);
-    ctx.beginPath();
-    ctx.arc(x + Math.cos(a) * rr, y - jh + Math.sin(a) * P.dropletRise, P.dropletR, 0, Math.PI * 2);
-    ctx.fill();
-  }
 }
 
 // A landscaped pool: tiled concrete deck, animated shimmering water with
 // moving highlights, a shallow end + slide. Reused for the Balneario and for
 // the Parque Marino's aquarium tanks. `s` scales it; `palms` frames it.
 function drawPool(x, y, rot, s = 1, palms = true) {
-  const { palette: C, params: P } = PROPS.scenes.pool;
-  const tt = lastT * P.speed;
   ctx.save();
   ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
-  ctx.fillStyle = C.deck;
-  ctx.beginPath(); ctx.ellipse(0, 0, P.deckRx, P.deckRy, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = C.coping; ctx.lineWidth = P.copingWidth;
-  ctx.beginPath(); ctx.ellipse(0, 0, P.copingRx, P.copingRy, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.save();
-  ctx.beginPath(); ctx.ellipse(0, 0, P.waterRx, P.waterRy, 0, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = C.water;
-  ctx.fillRect(-P.waterRx - 4, -P.waterRy - 4, P.waterRx * 2 + 8, P.waterRy * 2 + 8);
-  ctx.fillStyle = C.deep;
-  ctx.beginPath(); ctx.ellipse(P.deepX, P.deepY, P.deepRx, P.deepRy, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = C.shallow;
-  ctx.beginPath();
-  ctx.ellipse(P.shallowX, P.shallowY, P.shallowRx, P.shallowRy, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = C.shimmer; ctx.lineWidth = P.shimmerWidth;
-  for (let i = 0; i < P.shimmerLines; i++) {
-    const yy = P.shimmerTop + i * P.shimmerGap + Math.sin(tt * P.shimmerSpeedA + i) * P.shimmerAmp;
-    ctx.beginPath();
-    for (let xx = -P.waterRx; xx <= P.waterRx; xx += P.shimmerStep)
-      ctx.lineTo(xx, yy + Math.sin(xx * P.shimmerFreq + tt * P.shimmerSpeedB + i) * P.shimmerWave);
-    ctx.stroke();
-  }
+  paintSceneParts(ctx, PROPS, "pool", {
+    X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
+    vars: { palms, flora: FLORA, solar: floraSolar(), timeMs: lastT }, timeMs: lastT,
+  });
   ctx.restore();
-  ctx.fillStyle = C.slide;
-  ctx.beginPath(); ctx.arc(P.slideX, P.slideY, P.slideR, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  if (palms) {
-    for (const [ox, oy] of P.palms) {
-      paintPalm({ x: x + ox * s, y: y + oy * s, s: P.palmScale * Math.max(P.palmScale, s) }, lastT);
-    }
-  }
 }
 
 // Parque Marino del Pacífico: its green is the cuadra's RESIDUAL after the UNA
@@ -358,7 +267,7 @@ function drawMarinePark(lm) {
 // AREA landmarks draw no object at their anchor — the plaza, the pool and the
 // park ARE their ground. The generic drop shadow below would be a dark ellipse
 // floating in the middle of the grass / the water with nothing casting it.
-const NO_SHADOW = new Set(["stadium", "pool", "park"]);
+const NO_SHADOW = new Set(PROPS.defaults.noLandmarkShadow);
 
 // PARCEL structures + the sponsor slot. The ground is painted in the acera
 // pass (paintParcels); here we add what STANDS on it — the Parroquia's nave and
@@ -378,6 +287,7 @@ const NO_SHADOW = new Set(["stadium", "pool", "park"]);
 // blue for a school, and the default brown for everything built.
 const PARCELS = PROPS.parcels;
 const PARCEL_USES = PARCELS.uses;
+const PARCEL_DECOR = PARCELS.decor;
 const NO_USE = {};
 function drawParcels(view) {
   const arr = W.PARCELS;
@@ -392,20 +302,17 @@ function drawParcels(view) {
       const F = parcelFrame(P);
       paintProp(U.prop, F.cx, F.cy, { ang: F.ang, scale: Math.min(1, F.hw / U.fit) });
     }
-    // …and the buildings that are still SCENES: every one of them sizes itself
-    // from the parcel through clamps and counts. See `_parcelScenes`.
-    if (P.use === "cathedral") drawCathedral(P);
-    if (P.use === "civic") drawCivicBuilding(P);
-    if (P.use === "school" || P.use === "kinder" || P.use === "campus") drawSchool(P);
-    if (P.use === "fuel") drawFuel(P);
-    if ((P.use === "garden" || P.use === "park") &&
-        P.decor !== false && !P.whole) drawGarden(P);
+    // The use names its scene; the scene owns BOTH its parts and its complete
+    // host-to-frame recipe. No cathedral/school/fuel identity branch lives in
+    // this renderer anymore.
+    if (U.scene) paintParcelScene(P, U.scene);
     // Civic furniture the WORLD declared on this parcel. The build only says
     // which parcel has a river / a statue / a paradita and roughly where; what
-    // each looks like is the catalog's, or — for the two that are drawn from
-    // the parcel's own extents — this file's.
-    if (P.river) drawParkRiver(P);
-    if (P.kiosco) drawKiosco(P);
+    // each looks like is the catalog's; the caller only supplies derived frame
+    // scalars when the recipe combines both parcel axes.
+    for (const [key, decor] of Object.entries(PARCEL_DECOR)) {
+      if (decor.scene && P[key]) paintParcelScene(P, decor.scene);
+    }
     if (P.statue) drawDecorProp(P, "statue");
     if (P.bus) drawBusStop(P);
     const lote = content.lotes && content.lotes.find((l) => l.parcel === P.id);
@@ -414,7 +321,7 @@ function drawParcels(view) {
     // parcel that IS a landmark gets one from the landmark pass (`P.lm`), and
     // a parcel that is pure GROUND gets none at all — `label: false`
     if (P.label !== false && !P.whole && !P.lm && U.label !== false) {
-      areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(), "#fff",
+      areaLabel(P.x0, P.y0, P.x1, P.y1, (P.name || "").toUpperCase(), PARCELS.labelFg,
                 U.tone || PARCELS.defaultTone);
     }
   }
@@ -436,100 +343,21 @@ function drawSponsorSlot(P, lote) {
   // the plate lies FLAT on the parcel, so it turns with the manzana too
   ctx.save();
   if (P.ang) { ctx.translate(sx + sw / 2, sy + sh / 2); ctx.rotate(P.ang); ctx.translate(-sx - sw / 2, -sy - sh / 2); }
-  ctx.fillStyle = "rgba(12,10,22,0.55)";
+  ctx.fillStyle = PARCELS.sponsor.plate;
   roundRect(ctx, sx, sy, sw, sh, 3, true, false);
-  ctx.fillStyle = lote.tone || "#f3c969";
+  ctx.fillStyle = lote.tone || PARCELS.sponsor.defaultTone;
   roundRect(ctx, sx + 2, sy + 2, sw - 4, sh - 4, 2, true, false);
-  ctx.fillStyle = "#26222c";
+  ctx.fillStyle = PARCELS.sponsor.text;
   ctx.font = `bold ${Math.max(5, Math.round(sh * 0.34))}px 'JetBrains Mono', monospace`;
   ctx.textAlign = "center";
   ctx.fillText((lote.label || lote.name || "").slice(0, 14), sx + sw / 2, sy + sh / 2 + sh * 0.12);
   ctx.restore();
 }
-// A garden parcel: shade trees scattered across its grass, on a deterministic
-// hash so they never crawl between frames. Scattered in the parcel's OWN frame
-// (P.ang, the manzana's angle) and inset from its edge, so on a slanted cuadra
-// no canopy drifts off the corner that the bbox overshoots.
-function drawGarden(P) {
-  const F = parcelFrame(P);
-  const ca = Math.cos(F.ang), sa = Math.sin(F.ang);
-  const cx = F.cx, cy = F.cy;
-  const w = F.hw * 2, h = F.hh * 2;
-  const n = Math.max(3, Math.round((w + h) / 26));
-  // KEEP THE MIDDLE CLEAR for whatever the world put there. A kiosco, a statue
-  // or a fountain stands at the parcel centre, and a canopy dropped on top of it
-  // hides the thing the park is known for — the Parque Victoria's bandstand had
-  // trees growing through its roof.
-  const clear = (P.kiosco || P.statue || P.fountain)
-    ? Math.max(14, Math.min(F.hw, F.hh) * 0.62) : 0;
-  for (let i = 0; i < n; i++) {
-    let u = (hash01(i * 3.7 + P.x0) - 0.5) * w * 0.7;        // along the avenidas
-    let v = (hash01(i * 8.1 + P.y0) - 0.5) * h * 0.62;       // along the calles
-    if (clear) {
-      // push it out of the clear zone along its own bearing, so the scatter
-      // still reads as scattered instead of collapsing onto a ring
-      const d = Math.hypot(u, v) || 1;
-      if (d < clear) { u = u / d * clear; v = v / d * clear; }
-      // …and if that pushed it off the lot, drop the tree rather than clip it
-      if (Math.abs(u) > F.hw * 0.92 || Math.abs(v) > F.hh * 0.92) continue;
-    }
-    paintTree({ x: cx + u * ca - v * sa, y: cy + u * sa + v * ca,
-                s: 0.7 + hash01(i + P.x0) * 0.35 });
-  }
-}
-
 // The Parroquia used to be drawn here, as a second copy of the `church`
 // landmark's own art. It is `props.churchLot` in world-props.json now — the
 // SHARED `props.church` building on a ground shadow — and `drawParcels` puts it
 // on the lot at the manzana's angle and scaled to the lot's own half-width. The
 // Parroquia del Carmen faces its avenida, not the screen.
-
-// The CATEDRAL de Puntarenas — stone, not stucco, and as big as its parcel
-// allows. It is a placeholder for a proper mockup, so everything is derived
-// from the parcel rather than hard-coded: it is drawn in the manzana's own
-// frame (P.ang), sized off the parcel's half-extents, and FACES EAST onto the
-// calle peatonal in front of it, which is where its towers and steps go.
-//
-// The 0.86 on the half-extents is the bbox overshoot: a parcel poly is
-// raster-traced on a block that is not square to the screen, so its bbox is
-// slightly larger than the block in the block's own frame.
-const STONE_WALL = PROPS.scenes.cathedral.palette.stone;
-const STONE_DARK = PROPS.scenes.cathedral.palette.stoneDark;
-const STONE_LITE = PROPS.scenes.cathedral.palette.stoneLite;
-// LA CATEDRAL ES DATA — diez partes en `scenes.cathedral.parts`.
-//
-// Lo que se queda acá es lo que de verdad es cálculo y no arte: los escalares
-// DERIVADOS. `W2 = min(hh, hw·0.62)` es la espina de la escena y un `min` entre
-// dos ejes no cabe en un evaluador de un eje; `tw`, `th`, `tr` y el radio del
-// cimborrio son cada uno un `max` o un `min` entre magnitudes distintas. El
-// llamador los resuelve, el catálogo los compone.
-//
-// Y la regla que los ordena: **un valor que mezcla las dos escalas entra ya
-// resuelto**, porque `[k, px]` tiene un literal en `px` y `[1, "$v"]`
-// concatenaría texto. Son cinco de treinta y tantas medidas; el resto es una
-// fracción limpia de L o de W2 y se edita como tal.
-function drawCathedral(P) {
-  const F = parcelFrame(P);
-  const hw = F.hw * 0.86, hh = F.hh * 0.86;
-  // +x es el ESTE (la fachada, hacia el bulevar), +y es el SUR
-  const L = hw, W2 = Math.min(hh, hw * 0.62);       // media largo / media anchura de la nave
-  const tw = Math.max(10, L * 0.26), th = Math.min(hh, W2 * 1.45);
-  const tr = Math.max(5, W2 * 0.42);
-  const tx = L * 0.05;
-  paintParcelScene(P, "cathedral", {
-    // `X` mide en L, `Y` y `S` en W2 — de ahí que el ábside sea `[0.9, 0]`.
-    hw: L, hh: W2, size: W2,
-    vars: {
-      tw, th, tr,
-      dome: Math.min(W2 * 0.72, tw * 0.9),
-      towerX: L - tr * 0.5,
-      towerTop: -(W2 - tr * 0.7),
-      towerStep: 2 * (W2 - tr * 0.7),
-      crossX: tx - W2 * 0.11,
-      crossW: W2 * 0.22,
-    },
-  });
-}
 
 // A `civic` parcel IS a public building — the Casa de la Cultura, the
 // Biblioteca. The block was laid out by hand, which cleared the OSM footprints
@@ -545,44 +373,87 @@ function drawCathedral(P) {
  * dejó de ser cierto: `fit` deriva una cuenta de un largo y un paso, y la forma
  * `{k, px, min, max}` de `evalOn` declara un tope. La nota había podrido.
  *
- * EL MARCO, que es lo único que esta función decide:
- *
- *   * `X`/`Y` miden en MEDIO-EXTENSIONES del lote, ya reducidas por el `inset` de
- *     la escena — así `[-1, 4]` es «el borde izquierdo más cuatro píxeles», que es
- *     literalmente lo que decía `-w / 2 + 4`.
- *   * `S` mide en la dimensión CARACTERÍSTICA de la escena. La elige el llamador y
- *     no el JSON, porque es la única parte que de verdad es distinta entre una
- *     catedral (cuya espina es `min(hh, hw·0.62)`) y una Casa de la Cultura. Un
- *     `min` entre ejes no cabe en un evaluador de un eje, y meterlo en el JSON
- *     sería aritmética en el registro.
- *   * el ÁNGULO es el de la manzana (`P.ang`), nunca un ajuste: la cuadrícula no
- *     es cuadrada ni consigo misma, y un ajuste de eje principal en un bloque
- *     casi cuadrado salta a la diagonal contraria.
+ * EL MARCO TAMBIÉN ES DATA. `scene.values` es un árbol de fórmulas JSON con un
+ * vocabulario cerrado (`min`, `max`, `mul`, comparaciones, `if`...). El engine
+ * sólo entrega hechos del host (`hw`, `hh`, uso, decoraciones) y ejecuta ese
+ * árbol. Así la espina, crucero, torres y giro de la catedral pertenecen al
+ * mismo registro que sus partes; no queda una función `drawCathedral` que sea
+ * la autoridad artística escondida.
  */
-function paintParcelScene(P, name, opts = {}) {
+function paintParcelScene(P, name) {
   const scene = PROPS.scenes[name];
   if (!scene || !scene.parts) return false;
   const F = parcelFrame(P);
+  const use = PARCEL_USES[P.use] || NO_USE;
+  const values = resolveAssetFormulaMap(scene.values || {}, {
+    hw: F.hw,
+    hh: F.hh,
+    cx: F.cx,
+    cy: F.cy,
+    x0: P.x0,
+    y0: P.y0,
+    use: P.use,
+    whole: Boolean(P.whole),
+    decor: P.decor !== false,
+    hasKiosco: Boolean(P.kiosco),
+    hasStatue: Boolean(P.statue),
+    hasFountain: Boolean(P.fountain),
+  });
+  if (values.visible === false) return false;
   const inset = scene.inset ?? 1;
-  // Una escena puede medir en algo DERIVADO de sus medio-extensiones en vez de en
-  // ellas: la catedral mide su x en L y su y en W2 = min(hh, hw·0.62). Ese `min`
-  // entre ejes lo calcula el llamador, porque no cabe en un evaluador de un eje.
-  const hw = opts.hw ?? F.hw * inset;
-  const hh = opts.hh ?? F.hh * inset;
-  const s = opts.size ?? Math.min(hw, hh);
-  ctx.save();
-  ctx.translate(F.cx, F.cy);
-  if (F.ang) ctx.rotate(F.ang);
-  if (opts.rotate) ctx.rotate(opts.rotate);
-  paintParts(ctx, scene.parts, {
+  const hw = values.frameHw ?? F.hw * inset;
+  const hh = values.frameHh ?? F.hh * inset;
+  const s = values.frameSize ?? Math.min(hw, hh);
+  const frame = {
     X: (v) => evalOn(v, hw),
     Y: (v) => evalOn(v, hh),
     S: (v) => evalOn(v, s),
     pxPerM: PX_PER_M,
-    color: (spec) => scenePaint(scene, spec),
-    vars: opts.vars,
+    color: (spec) => scenePaint(scene, spec, {
+      useWall: use.wall,
+      useRoof: use.roof,
+    }),
+    skip: (part) => Boolean(part.when && !values[part.when]),
+    vars: values,
     t: lastT / 1000,
-  });
+  };
+  // A garden's PLACEMENT is scene data; a tree's SILHOUETTE deliberately is
+  // not. `paintTree` remains the renderer's perturbed spline, while `scatter`
+  // supplies local points that are turned into world coordinates here, before
+  // the parcel transform, so the crowns stay screen-oriented exactly as before.
+  const procedural = scene.parts.filter((part) => part.shape === "scatter" && part.paint === "tree");
+  if (procedural.length) {
+    const ca = Math.cos(F.ang), sa = Math.sin(F.ang);
+    for (const part of procedural) {
+      scatterPlacements(part, frame, (_i, at) => {
+        paintTree({
+          x: F.cx + at.dx * ca - at.dy * sa,
+          y: F.cy + at.dx * sa + at.dy * ca,
+          s: at.scale,
+          k: part.species,
+        });
+      });
+    }
+  }
+  const parts = procedural.length ? scene.parts.filter((part) => !procedural.includes(part)) : scene.parts;
+  if (!parts.length) return true;
+  // Un templete radial no hereda el giro de la manzana. Dibujarlo en
+  // coordenadas absolutas, además de conservar esa orientación, conserva el
+  // rasterizador del pintor original: un `translate` fraccionario no produce
+  // exactamente los mismos bordes antialias que la misma ruta absoluta.
+  if (scene.turn === false) {
+    paintParts(ctx, parts, {
+      ...frame,
+      X: (v) => F.cx + evalOn(v, hw),
+      Y: (v) => F.cy + evalOn(v, hh),
+    });
+    return true;
+  }
+  ctx.save();
+  ctx.translate(F.cx, F.cy);
+  if (F.ang) ctx.rotate(F.ang);
+  if (values.rotateTurns) ctx.rotate(values.rotateTurns * Math.PI * 2);
+  paintParts(ctx, parts, frame);
   ctx.restore();
   return true;
 }
@@ -595,9 +466,9 @@ function paintParcelScene(P, name, opts = {}) {
  *  `materials.street.majorDash` y `paintRoads` tenían cada uno el suyo, y mover la
  *  perilla cambiaba todos los guiones del juego menos los de la calle. Un salto y
  *  sólo uno: no se persiguen cadenas. */
-function scenePaint(scene, spec) {
+function scenePaint(scene, spec, colors = {}) {
   if (typeof spec !== "string" || !spec.startsWith("$")) return spec;
-  let v = scene.palette?.[spec.slice(1)];
+  let v = colors?.[spec.slice(1)] ?? scene.palette?.[spec.slice(1)];
   if (typeof v === "string" && v.startsWith("@")) {
     const [other, key] = v.slice(1).split(".");
     v = PROPS.scenes[other]?.palette?.[key];
@@ -618,185 +489,9 @@ function scenePaint(scene, spec) {
       scenePaint._warned.add(key);
       console.warn(`[scene] ${spec} no está en la paleta de esta escena`);
     }
-    return "#ff00ff";
+    return EFFECTS.assetPreview.missingColor;
   }
   return v;
-}
-
-// LA CASA DE LA CULTURA ES DATA. Era la escena más simple de las siete y la que
-// mejor mostraba por qué las siete estaban en código: una banda de techo con un
-// `Math.max(3, …)` y una fila de columnas con un `Math.round(h / 12)`. Ninguna de
-// las dos cosas se podía escribir en un catálogo — hasta que existieron `fit` (la
-// cuenta sale del largo y el paso) y la forma acotada de `evalOn` (`{k, px, min}`).
-// Ahora es `scenes.civicBuilding.parts` y esta función es su llamador.
-function drawCivicBuilding(P) {
-  paintParcelScene(P, "civicBuilding");
-}
-
-// A SCHOOL parcel: the pavilion along the parcel's back edge, the patio in
-// front of it, and the flagpole every escuela in the port has by its gate.
-// Drawn in the manzana's frame (P.ang) like everything else on a parcel — the
-// cuadrícula is not square to the screen, so a strokeRect off P.x0..P.x1 would
-// put a straight school on a slanted block.
-//
-// `kinder` (jardín de niños / CEN-CINAI) is the same building at a smaller
-// scale with a play patio; `campus` (colegio / universidad) is several
-// pavilions on open grounds instead of one.
-function drawSchool(P) {
-  const C = PROPS.scenes.school.palette;
-  const F = parcelFrame(P);
-  //: The three palettes are the use's own, in the catalog beside its pill ink.
-  const wall = (PARCEL_USES[P.use] || NO_USE).wall || PARCEL_USES.school.wall;
-  const roof = (PARCEL_USES[P.use] || NO_USE).roof || PARCEL_USES.school.roof;
-  // pavilions run along the parcel's LONG axis, so a narrow lot gets a narrow
-  // block rather than one that spills over its own kerb
-  const along = F.hw >= F.hh;
-  const L = (along ? F.hw : F.hh) * 1.64, D = (along ? F.hh : F.hw) * 0.62;
-  const n = P.use === "campus" ? Math.max(2, Math.min(4, Math.round(L / 46))) : 1;
-  ctx.save();
-  ctx.translate(F.cx, F.cy); if (F.ang) ctx.rotate(F.ang);
-  if (!along) ctx.rotate(Math.PI / 2);               // work in "along x" space
-  // THE PATIO IS GROUND, NOT AN OUTLINE. This used to stroke an empty white
-  // rectangle over every school on the map — 85 of them — which is exactly the
-  // stray white box the map was showing. A yard is swept concrete with a court
-  // painted on it, and only when there is room for one.
-  const py0 = -D * 0.10, ph = D * 0.95;
-  ctx.fillStyle = C.yard;
-  ctx.fillRect(-L * 0.42, py0, L * 0.84, ph);        // the swept patio
-  if (L > 70 && ph > 22) {                           // a marked court fits
-    ctx.strokeStyle = C.court; ctx.lineWidth = 1;
-    const cw = L * 0.52, ch = ph * 0.62, cy0 = py0 + (ph - ch) / 2;
-    ctx.strokeRect(-cw / 2, cy0, cw, ch);
-    ctx.beginPath(); ctx.moveTo(0, cy0); ctx.lineTo(0, cy0 + ch); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, cy0 + ch / 2, Math.min(cw, ch) * 0.2, 0, Math.PI * 2); ctx.stroke();
-  }
-  const bw = (L - (n - 1) * 6) / n;
-  for (let i = 0; i < n; i++) {
-    const x = -L / 2 + i * (bw + 6);
-    ctx.fillStyle = C.shadow;
-    roundRect(ctx, x + 2, -D - 1, bw, D, 2, true, false);
-    ctx.fillStyle = wall;
-    roundRect(ctx, x, -D - 3, bw, D, 2, true, false);
-    ctx.fillStyle = roof;                            // zinc roof band
-    ctx.fillRect(x, -D - 3, bw, Math.max(2, D * 0.28));
-    // classroom doors along the corridor
-    ctx.fillStyle = C.courtLine;
-    const doors = Math.max(1, Math.round(bw / 11));
-    for (let d = 0; d < doors; d++) {
-      ctx.fillRect(x + bw * ((d + 0.5) / doors) - 1.4, -3 - D * 0.34, 2.8, D * 0.3);
-    }
-  }
-  // the flagpole, at the yard's edge
-  ctx.strokeStyle = C.pavilion; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(L * 0.44, D * 0.2); ctx.lineTo(L * 0.44, -D * 0.5); ctx.stroke();
-  ctx.fillStyle = C.roof;
-  ctx.fillRect(L * 0.44, -D * 0.5, Math.max(3, L * 0.05), 2.6);
-  ctx.restore();
-}
-
-// A GASOLINERA: the canopy over the islands, a pump on each, and the shop off
-// to one side. Every one of the map's 12 stations is a real OSM `amenity=fuel`
-// area — they used to reach the client as a name on a pastel box.
-function drawFuel(P) {
-  const C = PROPS.scenes.fuel.palette;
-  const F = parcelFrame(P);
-  const along = F.hw >= F.hh;
-  const L = (along ? F.hw : F.hh) * 2, D = (along ? F.hh : F.hw) * 2;
-  ctx.save();
-  ctx.translate(F.cx, F.cy); if (F.ang) ctx.rotate(F.ang);
-  if (!along) ctx.rotate(Math.PI / 2);
-  // the shop, along the back edge
-  const sw = L * 0.34, sh = D * 0.30;
-  ctx.fillStyle = C.shadow;
-  roundRect(ctx, -L / 2 + 2, -D / 2 + 2, sw, sh, 2, true, false);
-  ctx.fillStyle = C.canopy;
-  roundRect(ctx, -L / 2 + 1, -D / 2 + 1, sw, sh, 2, true, false);
-  ctx.fillStyle = C.band;                                  // the fascia band
-  ctx.fillRect(-L / 2 + 1, -D / 2 + 1, sw, Math.max(1.6, sh * 0.30));
-  // the canopy: a slab on four posts, over the islands
-  const cw = L * 0.56, ch = D * 0.56;
-  const cx0 = L / 2 - cw - 2, cy0 = -ch / 2;
-  ctx.fillStyle = C.canopyShadow;
-  roundRect(ctx, cx0 + 2, cy0 + 2.5, cw, ch, 2, true, false);
-  ctx.fillStyle = C.shop;
-  roundRect(ctx, cx0, cy0, cw, ch, 2, true, false);
-  ctx.fillStyle = C.band;
-  ctx.fillRect(cx0, cy0, cw, Math.max(1.4, ch * 0.18));       // the branded edge
-  ctx.fillStyle = C.pump;                                   // posts
-  for (const px of [cx0 + 2.5, cx0 + cw - 3.5])
-    for (const py of [cy0 + 2, cy0 + ch - 3]) ctx.fillRect(px, py, 1.6, 1.6);
-  ctx.fillStyle = C.pumpDark;                                   // the pumps
-  const n = Math.max(1, Math.min(3, Math.round(cw / 16)));
-  for (let i = 0; i < n; i++) {
-    const px = cx0 + cw * ((i + 0.5) / n) - 1.4;
-    ctx.fillRect(px, cy0 + ch * 0.42, 2.8, Math.max(2.4, ch * 0.2));
-  }
-  ctx.restore();
-}
-
-// The old round KIOSCO of a parque central: stepped base, a ring of columns,
-// a conical zinc roof and a finial. Declared by the world (content.SITE_DECOR)
-// on the parcels that have one — OSM records the park, not what stands in it.
-function drawKiosco(P) {
-  const C = PROPS.scenes.kiosco.palette;
-  const F = parcelFrame(P);
-  const r = Math.max(7, Math.min(15, Math.min(F.hw, F.hh) * 0.42));
-  const x = F.cx, y = F.cy;
-  ctx.fillStyle = C.shadow;                                   // shadow
-  ctx.beginPath(); ctx.ellipse(x + 2, y + r * 0.5, r * 1.12, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = C.base;                                            // stepped base
-  ctx.beginPath(); ctx.ellipse(x, y + r * 0.3, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = C.wall;
-  ctx.beginPath(); ctx.ellipse(x, y + r * 0.16, r * 0.9, r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = C.step; ctx.lineWidth = 1.4;                     // columns
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const cxp = x + Math.cos(a) * r * 0.78, cyp = y + Math.sin(a) * r * 0.34;
-    ctx.beginPath(); ctx.moveTo(cxp, cyp); ctx.lineTo(cxp, cyp - r * 0.62); ctx.stroke();
-  }
-  ctx.fillStyle = C.roof;                                            // conical roof
-  ctx.beginPath();
-  ctx.moveTo(x, y - r * 1.35);
-  ctx.lineTo(x + r * 1.05, y - r * 0.5);
-  ctx.lineTo(x - r * 1.05, y - r * 0.5);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = C.highlight;                             // lit side
-  ctx.beginPath();
-  ctx.moveTo(x, y - r * 1.35); ctx.lineTo(x + r * 1.05, y - r * 0.5); ctx.lineTo(x, y - r * 0.5);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = C.post; ctx.lineWidth = 1;                       // finial
-  ctx.beginPath(); ctx.moveTo(x, y - r * 1.35); ctx.lineTo(x, y - r * 1.7); ctx.stroke();
-}
-
-// A stream crossing a park, with a stone footbridge over its middle. Drawn in
-// the parcel's frame: the water runs across the SHORT axis so a wide, shallow
-// park still reads as "a park with a river through it".
-function drawParkRiver(P) {
-  const C = PROPS.scenes.parkRiver.palette;
-  const F = parcelFrame(P);
-  const hw = F.hw * 0.86, hh = F.hh * 0.86;
-  const cx = F.cx, cy = F.cy;
-  ctx.save();
-  ctx.translate(cx, cy); if (P.ang) ctx.rotate(P.ang);
-  ctx.lineCap = "round";
-  const w = Math.max(7, Math.min(13, hh * 0.34));
-  // a lazy S across the park, from the west edge to the east edge
-  const bed = new Path2D();
-  bed.moveTo(-hw, -hh * 0.42);
-  bed.bezierCurveTo(-hw * 0.3, hh * 0.55, hw * 0.3, -hh * 0.55, hw, hh * 0.42);
-  ctx.strokeStyle = C.bank; ctx.lineWidth = w + 5; ctx.stroke(bed);   // damp bank
-  ctx.strokeStyle = C.water; ctx.lineWidth = w; ctx.stroke(bed);       // water
-  ctx.strokeStyle = C.sheen; ctx.lineWidth = w * 0.28; ctx.stroke(bed);
-  // stone footbridge over the middle of the stream, across the flow
-  const bw = w + 12, bh = Math.max(5, w * 0.55);
-  ctx.fillStyle = C.shadow;
-  roundRect(ctx, -bh / 2 + 1, -bw / 2 + 2, bh, bw, 2, true, false);
-  ctx.fillStyle = STONE_LITE;
-  roundRect(ctx, -bh / 2, -bw / 2, bh, bw, 2, true, false);
-  ctx.fillStyle = STONE_DARK;
-  ctx.fillRect(-bh / 2, -bw / 2, bh, 1.6);
-  ctx.fillRect(-bh / 2, bw / 2 - 1.6, bh, 1.6);
-  ctx.restore();
 }
 
 // The Virgen used to be drawn here too. She is `props.statue` in the catalog
@@ -813,7 +508,7 @@ function drawBusStop(P) {
 }
 
 // A parcel that carries `lm` IS that landmark: the block layout already drew
-// the building (drawCathedral / drawCivicBuilding) at the parcel's own size and
+// the use's JSON scene at the parcel's own size and
 // angle. The landmark pass must not draw its generic art on top — that is what
 // put a 40 px stucco church in the middle of the stone catedral, and a green
 // civic box in the middle of the Casa de la Cultura. What the landmark still
@@ -830,7 +525,7 @@ function drawParcelLandmarkPill(lm, P) {
   //: a different question from `tone` (the ink a parcel's OWN name is set in).
   const pill = (PARCEL_USES[lm.type] || NO_USE).pill;
   const txt = pill ? pill.text : (lm.name || "").toUpperCase();
-  label(lm.x, P.y0 - 10, txt, "#fff", pill ? pill.tone : PARCELS.defaultTone);
+  label(lm.x, P.y0 - 10, txt, PARCELS.labelFg, pill ? pill.tone : PARCELS.defaultTone);
 }
 
 // A parcel that DRAWS THE BUILDING replaces the landmark's own art; a parcel
@@ -843,8 +538,8 @@ function drawParcelLandmarkPill(lm, P) {
 // `market` deliberately does NOT carry `drawsBuilding` yet: the Mercado owns
 // its manzana now, but nothing draws a market hall on it, so suppressing the
 // landmark art would leave bare ground under a MERCADO pill. Give the `market`
-// use a `prop` in world-props.json (the parroquia's hook) or a drawer beside
-// drawCivicBuilding, then set the flag — that is where it plugs in.
+// use a `prop` or `scene` in world-props.json, then set the flag — that is where
+// it plugs in.
 function drawLandmark(lm) {
   const owner = ownedByParcel().get(lm.id);
   if (owner && (PARCEL_USES[owner.use] || NO_USE).drawsBuilding) {
@@ -852,20 +547,18 @@ function drawLandmark(lm) {
   }
   const x = lm.x, y = lm.y;
   if (!NO_SHADOW.has(lm.type)) {
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.beginPath(); ctx.ellipse(x + 4, y + 8, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+    paintAt(PROPS.defaults.landmarkShadow.parts, x, y, { g: ctx });
   }
   // THE ART IS DATA NOW. What used to be here: a 26-branch `switch` of raw
   // Canvas calls, one per landmark type. What is here: a walk over that type's
   // `parts` in `src/assets/world-props.json`, through the same interpreter the
   // vehicle catalog uses (c2d/shapes.js).
   //
-  // THREE TYPES ESCAPE, and they are not an oversight — they are the line §12
-  // draws. A scene is not art: `drawFaroScene` sweeps a beam on the clock,
-  // `drawStadium` clips grass and stands to a footprint the BUILD emitted, and
-  // `drawMarinePark` fills a multi-ring even-odd residual. Turning those into
-  // JSON would mean inventing a Canvas command stream with unrestricted
-  // operations, which is exactly what the register says not to do.
+  // THREE TYPES SELECT A WORLD SCENE, rather than a pin. Their authored shapes,
+  // colours and motion are data now; these branches only supply facts no asset
+  // can own: the Faro's mapped shoreline rim, the stadium's traced footprint,
+  // and the marine park's emitted pool anchors. The shared scene interpreter is
+  // deliberately finite, so this dispatch never becomes a hidden Canvas asset.
   if (lm.type === "lighthouse") { drawFaroScene(lm); return; }
   if (lm.type === "stadium") { drawStadium(lm); return; }
   if (lm.type === "park") {
@@ -904,26 +597,14 @@ function propVars(lm, prop) {
 // Sponsored lotes (remote content): real Puntarenas businesses claim a spot
 // and appear as a branded billboard or storefront — pure data, no release.
 function drawLote(lo) {
-  const C = PROPS.scenes.lote.palette;
   const x = lo.x, y = lo.y;
-  ctx.fillStyle = C.shadow;
-  ctx.beginPath(); ctx.ellipse(x + 3, y + 6, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
-  if (lo.kind === "store") {
-    // small branded storefront: body, awning in the sponsor tone, label
-    ctx.fillStyle = C.storeBody; ctx.fillRect(x - 16, y - 10, 32, 18);
-    for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? C.awningLight : lo.tone; ctx.fillRect(x - 16 + i * 8, y - 15, 8, 5); }
-    ctx.fillStyle = C.door; ctx.fillRect(x - 4, y - 2, 8, 10);   // door
-    ctx.fillStyle = C.window; ctx.fillRect(x - 13, y - 6, 7, 5); // window
-    label(x, y - 22, lo.label, C.awningLight, lo.tone);
-  } else {
-    // billboard: two posts + panel in the sponsor tone with the label
-    ctx.strokeStyle = C.post; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x - 10, y + 4); ctx.lineTo(x - 10, y - 12);
-    ctx.moveTo(x + 10, y + 4); ctx.lineTo(x + 10, y - 12); ctx.stroke();
-    ctx.fillStyle = C.awningLight; ctx.fillRect(x - 17, y - 26, 34, 15);
-    ctx.fillStyle = lo.tone; ctx.fillRect(x - 15, y - 24, 30, 11);
-    label(x, y - 30, lo.label, C.awningLight, C.billboardPill);
-  }
+  ctx.save(); ctx.translate(x, y);
+  paintSceneParts(ctx, PROPS, "lote", {
+    X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
+    vars: { store: lo.kind === "store", tone: lo.tone, label: lo.label, timeMs: lastT },
+    timeMs: lastT,
+  });
+  ctx.restore();
 }
 
 export { drawParcels, drawFaroScene, drawFountain, drawGreenSpace, drawLandmark, drawLote, drawMarinePark, drawPool, drawStadium };

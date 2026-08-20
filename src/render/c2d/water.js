@@ -40,6 +40,9 @@ import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { boats, pedestrians, state } from "../../game/state.js";
 import { ensureRenderCache } from "./cache.js";
 import { aabbInView, ctx, hash01, weatherColors } from "./gfx.js";
+import {
+  deriveWaterPalette, paintWaterCurrents, paintWaterSwell, rgba,
+} from "./systemShapes.js";
 import WATER from "../../assets/water.json" with { type: "json" };
 
 const TAU = Math.PI * 2;
@@ -48,30 +51,12 @@ const TAU = Math.PI * 2;
 // Derived from `weatherColors()` rather than invented: a crest is the water's
 // own top colour lifted toward white, a trough is its bottom colour dropped
 // toward black. That way sunset stays warm and night stays cold for free.
-const WHITE = [255, 255, 255], BLACK = [0, 0, 0];
-function rgbOf(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-function mix(a, b, k) {
-  return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
-}
-function rgba(c, a) {
-  return `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a < 0 ? 0 : a > 1 ? 1 : a})`;
-}
 let palKey = "", pal = null;
 function seaPalette() {
   const key = state.weather || "sunny";
   if (key === palKey && pal) return pal;
-  const C = weatherColors();
-  const src = { white: WHITE, black: BLACK };
-  const chan = (name) => src[name] || rgbOf(C[name]);
   palKey = key;
-  pal = {};
-  for (const [name, d] of Object.entries(WATER.derive)) {
-    if (name.startsWith("_")) continue;
-    pal[name] = mix(chan(d.from), chan(d.toward), d.k);
-  }
+  pal = deriveWaterPalette(WATER, weatherColors());
   return pal;
 }
 
@@ -96,101 +81,15 @@ function tideLevel() { return Number.isFinite(state.tide) ? Math.max(0, Math.min
 // IN TURNS, so the file carries no irrational literal: 0.125 is a power of two,
 // and scaling by TAU is an exponent shift, so this really IS Math.PI / 4 and not
 // a rounding of it.
-const SWELL_ANG = WATER.direction.swellTurns * TAU;
-const CROSS_ANG = SWELL_ANG + WATER.direction.crossOffsetRad;  // ~26° off it
-const CREST_STEP = 22;                  // world px between samples along a crest
-const scratch = new Float64Array(256);  // per-crest y offsets, reused
-
-// One family of crests across a rotated view box of half-diagonal R.
-function paintCrests(cx, cy, R, t, o) {
-  const P = seaPalette();
-  // the step never gets so fine that a very wide viewport overruns `scratch`
-  const step = Math.max(12, o.step || CREST_STEP, (2 * R) / (scratch.length - 2));
-  const n = Math.floor((2 * R) / step) + 2;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(o.ang);
-  ctx.lineCap = "butt";
-  ctx.lineJoin = "round";
-  const off = -((t * o.speed) % o.len);
-  const k0 = Math.ceil((-R - off) / o.len), k1 = Math.floor((R - off) / o.len);
-  const wideW = o.len * 0.17, troughW = o.len * 0.30;
-  const wideS = rgba(P.sheen, o.sheen), thinS = rgba(P.crest, o.crest);
-  const troughS = rgba(P.trough, o.trough);
-  for (let k = k0; k <= k1; k++) {
-    const y = k * o.len + off;
-    // the crest's own shape: two travelling sines along it, so no two crests in
-    // view are the same line
-    for (let j = 0; j < n; j++) {
-      const x = -R + j * step;
-      scratch[j] = Math.sin(x * 0.0115 + t * 0.9 + k * 1.7) * o.amp
-                 + Math.sin(x * 0.031 - t * 1.35 + k * 0.6) * o.amp * 0.42;
-    }
-    // el seno — the shadow the crest ahead casts into the trough behind it
-    if (o.trough > 0.004) {
-      ctx.beginPath();
-      for (let j = 0; j < n; j++) {
-        const x = -R + j * step, yy = y + scratch[j] + o.len * 0.44;
-        j ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy);
-      }
-      ctx.strokeStyle = troughS; ctx.lineWidth = troughW; ctx.stroke();
-    }
-    ctx.beginPath();
-    for (let j = 0; j < n; j++) {
-      const x = -R + j * step, yy = y + scratch[j];
-      j ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy);
-    }
-    ctx.strokeStyle = wideS; ctx.lineWidth = wideW; ctx.stroke();   // the soft band
-    ctx.strokeStyle = thinS; ctx.lineWidth = 1.4; ctx.stroke();     // its lit thread
-    // LOS BORREGOS — short broken white marks that live and die ON the crest.
-    // Deterministic: which mark exists is a hash of its slot and the CURRENT
-    // time bucket, so the same timestamp paints the same caps.
-    if (o.caps > 0.01) {
-      ctx.strokeStyle = rgba(P.cap, o.caps);
-      ctx.lineWidth = 2.4;
-      ctx.lineCap = "round";
-      for (let j = 1; j < n - 1; j += 2) {
-        const seed = k * 37.1 + j * 7.3;
-        const life = (t * 0.85 + hash01(seed)) % 1;
-        if (life > 0.5) continue;
-        const x = -R + j * step;
-        const f = Math.sin((life / 0.5) * Math.PI);
-        const half = (5 + hash01(seed * 3.7) * 9) * f;
-        if (half < 1.2) continue;
-        ctx.beginPath();
-        ctx.moveTo(x - half, y + scratch[j]);
-        ctx.lineTo(x + half, y + scratch[j] + 1.2);
-        ctx.stroke();
-      }
-      ctx.lineCap = "butt";
-    }
-  }
-  ctx.restore();
-}
-
 /**
  * The swell over a rectangle of water. `shelter` (0 open gulf … 1 fully
  * enclosed) shortens the wave and takes the caps off — an estero does not get
  * the same sea as the gulf outside it.
  */
 function drawSwell(box, t, shelter = 0) {
-  const cfg = seaCfg(), wi = intensity();
-  const w = box.x1 - box.x0, h = box.y1 - box.y0;
-  if (w <= 0 || h <= 0) return;
-  const cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2;
-  const s = 1 - 0.55 * shelter;
-  const len = cfg.len * (1 - 0.42 * shelter);
-  const R = Math.hypot(w, h) / 2 + len;
-  paintCrests(cx, cy, R, t, {
-    ang: SWELL_ANG, len, amp: cfg.amp * s * wi, speed: cfg.speed * s,
-    crest: cfg.crest * wi, sheen: cfg.sheen * wi, trough: cfg.trough * (1 - 0.5 * shelter),
-    caps: cfg.caps * wi * (1 - shelter), step: CREST_STEP,
-  });
-  // la mar cruzada: shorter, weaker, at an angle to the main swell
-  paintCrests(cx, cy, R, t * 1.21, {
-    ang: CROSS_ANG, len: len * 0.56, amp: cfg.amp * 0.45 * s * wi, speed: cfg.speed * 0.62 * s,
-    crest: cfg.crest * 0.5 * wi, sheen: cfg.sheen * 0.5 * wi, trough: cfg.trough * 0.35,
-    caps: 0, step: CREST_STEP * 0.8,
+  paintWaterSwell(ctx, box, t, {
+    water: WATER, weatherColors: weatherColors(), weather: state.weather,
+    intensity: intensity(), shelter,
   });
 }
 
@@ -200,32 +99,10 @@ function drawSwell(box, t, shelter = 0) {
 // slides them along their own axis, and the whole family drifts sideways very
 // slowly. Alpha is deliberately near the floor: they must never compete with
 // the swell, and there are only ever three or four of them in view.
-const CUR_ANG = -0.16;      // their own shallow angle, not the swell's
-const CUR_GAP = 150;        // world px between filaments
 function drawCurrents(box, t) {
-  const P = seaPalette(), wi = intensity();
-  const w = box.x1 - box.x0, h = box.y1 - box.y0;
-  if (w <= 0 || h <= 0) return;
-  const R = Math.hypot(w, h) / 2 + CUR_GAP;
-  ctx.save();
-  ctx.translate((box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2);
-  ctx.rotate(CUR_ANG);
-  ctx.lineCap = "round";
-  ctx.setLineDash([250, 470]);
-  ctx.lineDashOffset = -(t * 8) % 720;
-  const drift = Math.sin(t * 0.05) * 22;
-  for (let k = Math.ceil(-R / CUR_GAP); k <= Math.floor(R / CUR_GAP); k++) {
-    const y = k * CUR_GAP + drift;
-    ctx.beginPath();
-    for (let x = -R; x <= R; x += 44) {
-      const yy = y + Math.sin(x * 0.0034 + k * 2.1 + t * 0.11) * 15;
-      x === -R ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
-    }
-    ctx.strokeStyle = rgba(P.sheen, 0.045 * wi); ctx.lineWidth = 11; ctx.stroke();
-    ctx.strokeStyle = rgba(P.crest, 0.032 * wi); ctx.lineWidth = 2.6; ctx.stroke();
-  }
-  ctx.setLineDash([]);
-  ctx.restore();
+  paintWaterCurrents(ctx, box, t, {
+    water: WATER, weatherColors: weatherColors(), intensity: intensity(),
+  });
 }
 
 // ---- las ondulaciones ------------------------------------------------------

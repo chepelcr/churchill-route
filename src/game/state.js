@@ -46,6 +46,14 @@ export const state = {
   // 0..1 how far the car has climbed onto the raised barro avenue (ramps at
   // the intersections). Drives a visual lift in the renderer.
   elev: 0,
+  //: LA COTA REAL BAJO EL CARRO, en metros — del campo del IGN, no de `elev`.
+  //: Son dos cosas distintas y conviven a propósito: `elev` es un booleano por
+  //: NOMBRE de calle que levanta el dibujo 7 px, y esto es el terreno.
+  zM: 0,
+  //: …y la pendiente FIRMADA en la dirección en que va el carro (dz/ds). Firmada
+  //: y no magnitud: una cuesta que se siente igual de frente y de espaldas no es
+  //: una cuesta. Suavizada, porque el campo se muestrea cada 32 m.
+  grade: 0,
 };
 
 // ----- World entities (advanced by physics, drawn by the renderer) ----------

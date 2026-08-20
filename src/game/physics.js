@@ -16,6 +16,7 @@ import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
 import ACTORS from "../assets/actors.json" with { type: "json" };
+import SIM from "../content/simulation.json" with { type: "json" };
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt, ferries, routePoint } from "./ferries.js";
 import { advanceCrossing, advanceEstero, boostReady, catchFish, crossingState, spendBoost } from "./crossing.js";
@@ -412,8 +413,15 @@ export function update(dt) {
     const an = ax * p.wallNX + ay * p.wallNY;   // wallN points AWAY from the wall
     if (an < 0) { ax -= an * p.wallNX; ay -= an * p.wallNY; }
   }
-  p.vx += ax * veh.accel * tuning.speed * throttle * dt;
-  p.vy += ay * veh.accel * tuning.speed * throttle * dt;
+  // SUBIR CUESTA. `state.grade` es dz/ds firmado en la dirección del vehículo,
+  // así que un mismo cerro frena de subida y suelta de bajada con el mismo
+  // número y sin una rama. Los topes están porque el campo es interpolado cada
+  // 32 m y un artefacto local no puede dejar el carro clavado ni dispararlo.
+  const gcfg = SIM.grade;
+  const gAccel = Math.max(gcfg.accelMin, Math.min(gcfg.accelMax,
+    1 + state.grade * gcfg.accelPerGrade));
+  p.vx += ax * veh.accel * tuning.speed * throttle * gAccel * dt;
+  p.vy += ay * veh.accel * tuning.speed * throttle * gAccel * dt;
   if (boosting) { p.vx *= 1 + 0.7 * dt; p.vy *= 1 + 0.7 * dt; }
 
   // grip (kill lateral)
@@ -472,7 +480,13 @@ export function update(dt) {
   }
   // turbotank upgrade raises the boost speed cap (1.35 stock → up to 1.55)
   const speedBoost = activeEditorBoost(state, "speed-multiplier")?.value || 1;
-  const top = veh.top * speedBoost * tuning.speed * surfaceMul
+  // Y EL TECHO TAMBIÉN PAGA LA CUESTA, no sólo la aceleración. Con sólo lo
+  // segundo una subida larga se acaba corriendo igual de rápido, nada más que
+  // tardando en llegar ahí — y una cuesta que no se nota al final no es una
+  // cuesta. Un casco no: en el agua no hay pendiente que subir.
+  const gTop = afloat ? 1 : Math.max(SIM.grade.topMin, Math.min(SIM.grade.topMax,
+    1 + state.grade * SIM.grade.topPerGrade));
+  const top = veh.top * speedBoost * tuning.speed * surfaceMul * gTop
     * (boosting ? economy.upgradeEffect("turbotank") : 1) * wetMul
     * (afloat ? hullTopMul(spdFac) : 1);
   const sp3 = Math.hypot(p.vx, p.vy);
@@ -695,6 +709,18 @@ export function update(dt) {
   // car smoothly climbs onto it and ramps back down at each intersection.
   const elevTarget = W.onElevated(p.x, p.y) ? 1 : 0;
   state.elev += (elevTarget - state.elev) * Math.min(1, dt * 5);
+
+  // LA CUESTA, DERIVADA DEL TERRENO. `state.elev` de arriba sigue siendo lo que
+  // era: un booleano por NOMBRE de calle que levanta el dibujo 7 px y no toca
+  // una sola ecuación. Esto es otra cosa — la cota real del IGN bajo el carro.
+  //
+  // Y ES LA PENDIENTE FIRMADA EN LA DIRECCIÓN EN QUE VA, no la magnitud: una
+  // cuesta que se siente igual de frente y de espaldas no es una cuesta, es un
+  // parche de asfalto lento. Por eso se proyecta el gradiente sobre el rumbo.
+  const gr = W.groundGradeAt(p.x, p.y);
+  const along = gr.dzdx * Math.cos(p.a) + gr.dzdy * Math.sin(p.a);
+  state.zM = W.groundZAt(p.x, p.y);
+  state.grade += (along - state.grade) * Math.min(1, dt * SIM.grade.smoothing);
 
   // Drift sparks — dust off a sliding tyre, and SPRAY off a hull that is
   // crabbing. Same emitter, different material: the sandy tan that reads as

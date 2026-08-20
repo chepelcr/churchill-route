@@ -22,6 +22,7 @@
     "smoke:sky": "node tools/smoke-sky.mjs",
     "smoke:shadows": "node tools/smoke-shadows.mjs",
     "smoke:sceneshadows": "node tools/smoke-scene-shadows.mjs",
+    "smoke:grade": "node tools/smoke-grade.mjs",
     "audio:render": "node tools/render-audio.mjs"
   },
   "dependencies": {

@@ -1,10 +1,7 @@
 {
   "_note": "LA VIDA DEL PUERTO — how much of it there is, how far out it lives, and how fast the sky and the sea move. `spawns.js`, `buses.js`, `daynight.js` and `tides.js` keep the ALGORITHMS: how a pedestrian follows a rail, how a bus finds its parada, how the tide is one cosine on the day clock. These are the numbers that decide how the town FEELS.",
-
   "version": 1,
-
   "_scope": "A population target, a spawn radius, a dwell time, the length of a day. Not: `advancePed`, the surface sampler, the bus's kerb approach, the cosine. The line is the one §12 draws everywhere — a designer changes these, an engineer changes the other.",
-
   "streaming": {
     "_note": "Life is camera-local: it is created around you and reaped when you leave it behind. `spawnMin` is what keeps somebody from popping into existence in plain sight — the viewport's half-diagonal is about 230 px, so 300 is just outside it.",
     "_units": "world px",
@@ -12,7 +9,6 @@
     "spawnRadius": 1100,
     "spawnMin": 300
   },
-
   "population": {
     "_note": "How many of each thing live near the camera. Tuned for the feel the corridor build had: sidewalks full of people and streets with light town traffic — a real port at midday, not a rush hour.",
     "traffic": 14,
@@ -27,20 +23,23 @@
     "buses": 2,
     "_busesNote": "How many of the traffic are buses on the ruta urbana. It is a FLOOR, not a probability: at the old 9 % roll on main-road spawns the paradas went unvisited for minutes at a time."
   },
-
   "crowds": {
     "_note": "Las multitudes de superficie — people who belong to a KIND of ground rather than to a street. `sitting` is the fraction that are not going anywhere, and it is the whole trick: a beach where everybody is walking reads as a corridor, and the towels and the people on the bancas are what make it read as a place people are AT.",
-    "playero": { "sitting": 0.34, "note": "on the sand" },
-    "paseante": { "sitting": 0.22, "note": "on the malecón and the bulevar — the town's crowd, on a Sunday" }
+    "playero": {
+      "sitting": 0.34,
+      "note": "on the sand"
+    },
+    "paseante": {
+      "sitting": 0.22,
+      "note": "on the malecón and the bulevar — the town's crowd, on a Sunday"
+    }
   },
-
   "beachGames": {
     "_note": "LA MEJENGA. A cluster of players around a ball, and the ball is the point: a group wandering on a beach is a crowd, not a game.",
     "wanted": 1,
     "wantedNote": "one game in sight is an event; three is a tournament",
     "radiusPx": 90
   },
-
   "buses": {
     "_note": "A bus stays in `traffic` — same vehicle, same road network, same collision. All this adds is what happens at the kerb.",
     "_units": "radii in world px, times in seconds",
@@ -49,7 +48,10 @@
     "brakeRadius": 105,
     "haltRadius": 15,
     "lateralRadius": 34,
-    "dwellSeconds": [2.6, 4.4],
+    "dwellSeconds": [
+      2.6,
+      4.4
+    ],
     "dwellNote": "with the doors open",
     "waitingPerStop": 3,
     "waitingNote": "at most, and usually fewer",
@@ -59,15 +61,27 @@
     "creepSpeed": 10,
     "creepNote": "px/s the bus rolls at while pulling in"
   },
-
   "day": {
     "_note": "EL DÍA. Four phases on a real-seconds clock; `sunny` is midday and gets the longest share. There is NO game-time scale in this game — the run clock and this one both count real seconds.",
     "seconds": 600,
     "phases": [
-      { "weather": "sunny", "share": 0.42 },
-      { "weather": "sunset", "share": 0.18 },
-      { "weather": "night", "share": 0.28 },
-      { "weather": "sunset", "share": 0.12, "note": "el amanecer: the same palette, the other end of the day" }
+      {
+        "weather": "sunny",
+        "share": 0.42
+      },
+      {
+        "weather": "sunset",
+        "share": 0.18
+      },
+      {
+        "weather": "night",
+        "share": 0.28
+      },
+      {
+        "weather": "sunset",
+        "share": 0.12,
+        "note": "el amanecer: the same palette, the other end of the day"
+      }
     ],
     "_storm": "UNA TORMENTA DEL PACÍFICO NO LLEGA DE GOLPE, y antes llegaba: `state.weather = \"storm\"` en un cuadro y ya estaba lloviendo. Ahora entra en TRES ACTOS y el cielo se lo cuenta primero — se pone plomizo, después truena y relampaguea, y sólo entonces cae el agua. Puede pasar a cualquier hora: de día se ve venir, de noche los relámpagos son lo que se ve.",
     "stormBuildSeconds": 14,
@@ -79,7 +93,10 @@
     "stormDryingSeconds": 26,
     "stormDryingNote": "lo que tarda el asfalto en secarse después. Que el agarre vuelva junto con el sol sería mentira: el charco dura más que la nube.",
     "_severity": "NO TODAS LAS TORMENTAS SON IGUALES. Antes había UNA tormenta y siempre la misma; ahora cada una se sortea una fuerza, así que un chubasco de tarde y un aguacero de los que cierran el puerto son dos cosas distintas. La fuerza multiplica la lluvia, se come el agarre, y arriba del umbral saca un tornado sobre el estero.",
-    "stormSeverity": [0.35, 1.0],
+    "stormSeverity": [
+      0.35,
+      1.0
+    ],
     "stormSeverityNote": "el rango que se sortea. Abajo de ~0.5 es un chubasco: se ve venir, moja la calle y pasa. Arriba de 0.8 es de los otros.",
     "rainCapAlpha": 0.46,
     "rainCapNote": "EL TECHO DE LEGIBILIDAD, y es lo que hace jugable una tormenta fuerte. La lluvia arrecia con la fuerza, pero su opacidad NUNCA pasa de acá: una pantalla que no deja ver la calle no es difícil, es injusta — y este juego se maneja mirando dos cuadras adelante. `smoke:sky` lo mide en píxeles en vez de creerlo.",
@@ -95,11 +112,16 @@
       6.5
     ],
     "lightningNote": "cada cuánto cae un relámpago mientras la tormenta está encima. Dos destellos seguidos y luego nada por seis segundos es lo que lo hace leerse como una tormenta y no como una luz estroboscópica.",
-    "stormEverySeconds": [210, 420],
-    "stormLastsSeconds": [45, 90],
+    "stormEverySeconds": [
+      210,
+      420
+    ],
+    "stormLastsSeconds": [
+      45,
+      90
+    ],
     "_cycleNote": "The clock only runs in Recorrer. A stage picks a fixed sky, because three minutes is shorter than any phase — a cycle there would either never turn or strobe."
   },
-
   "tide": {
     "_note": "LA MAREA. The Gulf of Nicoya has a three-metre spring tide and the estero is shallow enough that the water genuinely leaves: at bajamar the bancos de arena come out of the channel, at pleamar they are under you. That is real about this place, and it is the best difficulty knob the crossing has, because it changes the SHAPE of the course rather than the numbers on it.",
     "_semidiurnal": "The period is HALF a day, so there are two highs and two lows per day like the real gulf. It is a function of time, not a simulation — one cosine on the day clock, so there is no state to get out of step with a reload.",
@@ -114,5 +136,20 @@
     "stormSurgeNote": "enough to drown the banks a bajamar would have exposed, never enough on its own to make a low tide read as a high one — HIGH WATER IS NOT THE EASY CASE, the banks are covered and everything in the lane is moving",
     "surgeRate": 0.35,
     "surgeRateNote": "how fast the surge arrives and leaves; instant would pop the banks out of existence mid-turn"
+  },
+  "grade": {
+    "_note": "LA CUESTA. `state.elev` era un lerp 0/1 sobre `W.onElevated()` — un booleano por NOMBRE de calle que subía al carro 7 px de dibujo y no tocaba una sola ecuación. Ahora la pendiente sale del campo de cota del IGN (`W.groundGradeAt`) proyectada sobre el RUMBO del vehículo, que es lo que hace que subir cueste y bajar suelte: una cuesta que se ve igual de frente y de espaldas no es una cuesta.",
+    "_units": "`dz/ds` — metros de subida por píxel de avance. Un 8 % son 0.08.",
+    "accelPerGrade": -3.2,
+    "_accelPerGrade": "cuánto se multiplica la aceleración por unidad de pendiente. A 8 % de subida queda en 0.74 y a 8 % de bajada en 1.26: se siente, y todavía se sube.",
+    "topPerGrade": -1.6,
+    "_topPerGrade": "y cuánto el techo de velocidad. Una cuesta larga se acaba pagando.",
+    "accelMin": 0.35,
+    "accelMax": 1.6,
+    "topMin": 0.55,
+    "topMax": 1.3,
+    "_clamps": "Los topes existen porque el campo es interpolado y un artefacto local no puede dejar al carro clavado ni dispararlo. Nada de esto toca la COLISIÓN ni la navegación, que siguen en planta.",
+    "smoothing": 6.0,
+    "_smoothing": "con qué rapidez `state.grade` persigue la pendiente real. El campo se muestrea cada 32 m; sin esto un borde de celda se siente como un escalón."
   }
 }

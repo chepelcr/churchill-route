@@ -17,6 +17,41 @@ se descartó y por qué.
 
 ---
 
+## ✅ 2026-08-17 — cierre de las herramientas complementarias de assets
+
+La identidad artística ya había salido del renderer hacia catálogos JSON. Este
+cierre terminó las cuatro superficies que faltaban para poder trabajar esos
+catálogos sin abrir código y dejó la verticalidad como un plan separado:
+
+- [x] **Laboratorios animados de sistemas.** `assetPreview.js` delega a los
+      pintores reales de agua, oleaje/corriente, clima, noche, luminarias,
+      efectos de vehículo y HUD. Reloj, intensidad, marea, velocidad, clima y
+      viewport son controles de fixture; paletas, cantidades, formas y límites
+      continúan viniendo de `water.json`, `effects.json`, `lights.json`,
+      `hud.json` y `materials.json`.
+- [x] **Sprites de extremo a extremo.** Biblioteca con imagen real, alpha,
+      bounds, ancla, medidas físicas y placeholder; importación PNG/JPEG/WebP
+      por UI/API/CLI/MCP, magic bytes, límite de tamaño, revisión optimista,
+      escritura atómica y backup. El preview sin guardar usa el mismo verbo
+      `sprite` del juego.
+- [x] **Siembras `form × align`.** `strip`, `disc`, `triangle`, `square` y
+      `free`, orientadas a calle/ejes/libre, con mezcla, especie, escala,
+      espaciado y colisión en `flora.json`. Juego, builder y editor comparten el
+      contrato; `align: street` previsualiza la calle resuelta. Las cuatro
+      corridas publicadas —Paseo, León Cortés, Ferrocarril y Cocal— tienen sus
+      estrategias y todas sus medidas autoradas y validadas antes del build.
+- [x] **Fixtures de geometría mundial.** Calle completa con cruce, malecón y
+      swatches de terreno ejercitan los compositores reales sobre paths y
+      footprints sintéticos; el JSON cambia el material, no suplanta la
+      geometría del engine.
+
+La compuerta quedó en UI, API, CLI y MCP, con pruebas que rompen cada contrato a
+propósito. `pnpm dev` permanece levantado con HMR: reiniciarlo o borrar la caché
+de Vite no forma parte del loop normal. El trabajo siguiente es únicamente el
+plan 2.5D de `docs/HANDOFF-verticality-2_5d.md`.
+
+---
+
 ## 🔜 El catálogo de assets — todo el juego en el formato de la feria
 
 El inventario completo está en [`docs/inventory.md`](docs/inventory.md) (auditoría
@@ -2508,4 +2543,3 @@ Knobs at the top of `tools/build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`, `ROAD
 `LANDMARK_DEFS`/`CUSTOMER_DEFS` (geo anchors; build fails listing unresolved POIs —
 and on any POI unreachable through the drivable network). Camera zoom is responsive
 (`computeZoom` in `src/render/canvas2d.js`, ≤12 cuadrículas per view).
-

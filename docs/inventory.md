@@ -251,7 +251,9 @@ copy. This is a B/C split that should become one stage schema.
 ### Landmarks
 
 All 38 generated landmark records are listed below. Placement is world-build
-data; the visual type dispatch is hard-coded in `c2d/landmarks.js`.
+data; visual identity, palettes and finite shapes come from
+`src/assets/world-props.json`, while `c2d/landmarks.js` retains only dispatch,
+parcel framing and genuinely animated/derived scene algorithms.
 
 | District | Landmarks (`id`: type — name) |
 |---|---|
@@ -367,6 +369,13 @@ be data.
 
 ## 7. Renderer and visual asset inventory
 
+> **Estado actual (2026-08-17):** el audit ejecutable de formas, previews y
+> autoridad artística está en
+> [`HAND_DRAWN_ASSET_AUDIT.md`](HAND_DRAWN_ASSET_AUDIT.md). Sus tablas
+> reemplazan los estados históricos de esta sección y de §14; en particular,
+> una familia con paleta en JSON pero silueta en un `draw*` ya no se considera
+> completamente migrada.
+
 ### Canvas2D compositor order
 
 1. Water backdrop and offshore boats/schools.
@@ -392,10 +401,10 @@ layer graph. The appearance of each family should become assets.
 | Roads/fields | `streets.js` | road classes, acera, caño, lane dashes, dirt/gravel, rails, medians, fields/courts, labels | C; geometry is G, materials are C |
 | Malecón | `malecon.js` | baldosa courses and esplanade palettes | C |
 | Buildings | `structures.js` | generic roof/body/windows; concrete/timber/apron piers; bridge; ferry/berth | C |
-| Parcels | `landmarks.js`, `streets.js` | park, stadium, school, kinder, campus, fuel, market, church/cathedral/civic, sponsor slot | C |
-| Landmark props | `landmarks.js` | lighthouse, kiosk, ferry/cruise marker, church, market, super, hotel, park, stadium, museum fallback, civic, marina, pool, house, estuary, restaurant, beach sign, train station, port, sign, village, highway, anchor, bridge | C dispatch and shapes |
+| Parcels | `world-props.json`, `landmarks.js`, `streets.js` | park, stadium, school, kinder, campus, fuel, market, church/cathedral/civic, sponsor slot | **JSON art/formulas; C framing and dispatch** |
+| Landmark props | `world-props.json`, `landmarks.js` | lighthouse, kiosk, ferry/cruise marker, church, market, super, hotel, park, stadium, museum fallback, civic, marina, pool, house, estuary, restaurant, beach sign, train station, port, sign, village, highway, anchor, bridge | **JSON shapes/palettes; C dynamic scenes and dispatch** |
 | Feria | `feriaAssets.json` + `attractions.js` | 14 catalog kinds; all 14 are placed now across 16 records; shape-part interpreter | **data-driven exemplar** |
-| Flora | `flora.js` | tree canopy, palm, roadside trees, median merge | C palette/shape; G placement |
+| Flora | `flora.json`, `floraShapes.js`, `flora.js` | 23 botanical/legacy records, 18 silhouette recipes, native dry-forest/urban/mangrove mixes, roadside trees and median merge | **JSON palette/shape/species/mix; interpreter C; G placement** |
 | People | `entities.js` | walker, playero, jugador, passenger, fisher, muellero, swimmer, authored person/vendor/worker/mascot | C |
 | Vehicles | `entities.js`, `vehicleShapes.js` | 9 player vehicles, ambient cars/trucks/buses, train, boats/ferries | C |
 | Animals/air | `entities.js` | dog/cat, gulls | C |
@@ -446,12 +455,13 @@ The editor currently duplicates many game colors and simplified draw paths.
 Moving game art into shared JSON should make both renderers consume the same
 definitions instead of migrating the duplication.
 
-Re-measured 2026-08-13, after the three catalogs landed (same method, so the
-two runs compare): `c2d/landmarks.js` 115 → **87** colour literals and 155 → 125
-primitives; `c2d/streets.js` 63 → **39** and 99 → 61; `c2d/gfx.js` 33 → 28 and
-3 → 1, losing `drawParada` to `props.parada`. What is left in landmarks.js is
-overwhelmingly the seven parcel SCENES, which is the intended residue, not a
-backlog.
+Re-measured 2026-08-13, after the first three catalogs landed (same method, so
+the two runs compare): `c2d/landmarks.js` 115 → **87** colour literals and 155 →
+125 primitives; `c2d/streets.js` 63 → **39** and 99 → 61; `c2d/gfx.js` 33 →
+28 and 3 → 1, losing `drawParada` to `props.parada`. This paragraph records
+that historical checkpoint. On 2026-08-17 the seven remaining parcel scenes
+also moved completely to `world-props.json`: formulas, parts, palettes and
+scatter instructions are now interpreted data, including the cathedral.
 
 ### Pixi preservation, water restoration, and rescale plan
 
@@ -723,7 +733,7 @@ from code and generated vector/world data.
 | `c2d/landmarks.js` | parcel and landmark art/sponsor lots |
 | `c2d/attractions.js` | feria asset DSL interpreter |
 | `c2d/feriaAssets.json` | feria asset definitions |
-| `c2d/flora.js` | trees/palms/roadside flora |
+| `c2d/flora.js`, `c2d/floraShapes.js` | placement/culling plus the shared JSON flora interpreter |
 | `c2d/entities.js` | people, animals, vehicles, boats, train, coins, player/cargo |
 | `c2d/estero.js` | crossing channel and encounters |
 | `c2d/editorWorld.js` | editor-authored elements and roofs |
@@ -857,7 +867,7 @@ foundation, P2 = later authoring surface.
 | P0 | ~~`vehicles.js`, `entities.js`, `vehicleShapes.js`, `audio.js`, economy/editor vehicle merge~~ **DONE 2026-08-13** | complete vehicle definition: stats, medium, bounds/collision, body parts, colors, cargo mounts, sound voice, price/unlock | `src/assets/vehicles.json` with versioned schema — proved pixel-identical over all nine (`tools/shot-vehicles.mjs` + `tools/png-diff.mjs`, 310 500 px, 0 changed) | vehicle physics, part/silhouette interpreter, WebAudio synthesis |
 | P0 | surface mirrors across Python/JS/Pixi/editor | one canonical surface registry with wire ID, labels, roles, speed, materials | versioned shared surface JSON consumed/generated into both runtimes | raster algorithms and collision category evaluation |
 | P0 | ~~loose string vocabularies in DTOs, simulation, renderer, UI, and editor~~ **DONE 2026-08-11 / 08-13** | stage/sign/pier/vehicle/host/geometry/mode identities and validation | Python enum layer plus deterministic generated JS/JSON vocabulary — 17 enums, `enums/{features,game,editing,surface}.py` | state transitions, rendering, geometry, validation algorithms |
-| P0 | ~~landmark/parcel/sign switches~~ **DONE 2026-08-13** | asset kind registry and mapping from semantic type to asset | `src/assets/world-props.json` — 23 of 26 landmark types, **all 10 sign kinds**, and the parcel dispatch (pill word/ink, `drawsBuilding`, the three school palettes). `lighthouse`/`stadium`/marine `park` and **seven parcel buildings** stay in code because they are SCENES, which is this table's own "what should not be converted" rule: each derives its own size, pavilion count or scatter FROM the world geometry. Of what `drawParcels` dispatches, 3 of 11 were art (parroquia, Virgen, paradita) and moved; the parroquia and the paradita had each been drawn TWICE, in two files. Proved over four synthetic sheets — signs 198 000 px, parcels 608 000, landmarks 592 800, vehicles 310 500: **1 709 300 pixels, 0 changed** | finite shape DSL and draw dispatch by schema — ONE interpreter (`c2d/shapes.js`) shared by all three catalogs, plus the FRAME, which is the caller's: a sign that turns with the kerb, a prop scaled to its lot |
+| P0 | ~~landmark/parcel/sign switches~~ **DONE 2026-08-17** | asset kind registry and mapping from semantic type to asset | `src/assets/world-props.json` — 23 of 26 landmark types, **all 10 sign kinds**, parcel dispatch and all seven formerly procedural parcel scenes. Their palettes, parts and finite formula trees are JSON, including the cathedral; a generic interpreter evaluates them against the parcel frame. The earlier prop/sign/vehicle transcription proved 1,709,300 pixels unchanged, and the parcel-scene fixture separately proved the seven scene migrations pixel-identical before the intentional regional flora update. | finite shape/formula DSL and draw dispatch by schema — ONE interpreter (`c2d/shapes.js`) shared by the catalogs; code still supplies the runtime frame and dynamic context |
 | P0 | ~~duplicated Canvas/Pixi/editor colors~~ **DONE 2026-08-13** | shared material/theme registry for terrain, roads, structures, minimap/editor preview | `src/assets/materials.json` — measured first: canvas ∩ pixi was already **0**, canvas ∩ editor was 40, and the ones that only *share a number* were deliberately left alone | backend adapters |
 | P0 | Canvas gameplay water plus older Pixi water paths | water palettes/effect presets, explicit backend owner, units, layers, and parity fixtures | `src/assets/water.json` plus renderer ownership registry | Canvas draw algorithms, Pixi shaders/draw algorithms, simulation interactions |
 | P1 | `churchill/world/content.py` | districts, landmarks, customers, stages, site decor, crossings, lanchas, attractions/access definitions | `content/world/*.json` validated into existing DTOs | projection, placement/resolution, verification |
@@ -1202,6 +1212,10 @@ editable data?* The honest answer is **most of the ART, none of the
 COMPOSITOR** — and the useful thing is not the opinion but the measurement, so
 here is the whole renderer, counted.
 
+> **Tabla histórica:** las dos tablas siguientes son la medición que abrió el
+> trabajo el 2026-08-14, no el estado actual. El cierre re-medido está más abajo
+> y la auditoría normativa vive en `HAND_DRAWN_ASSET_AUDIT.md`.
+
 `colours` is literal colour constants (`"#rrggbb"`, `rgba(…)`) still in the
 module. It is the best single proxy for "art that is not yet a registry",
 because a drawer that reads its palette from a catalog has none left.
@@ -1209,13 +1223,13 @@ because a drawer that reads its palette from a catalog has none left.
 | module | lines | colours | what it is | verdict |
 |---|---:|---:|---|---|
 | `c2d/entities.js` | 806 | **107** | 26 drawers: peds, playeros, jugadores, swimmers, passengers, fishers, muelleros, traffic, trains, gulls, boats, schools, vendors, animals, coins, the player | **the big one left.** Same shape `vehicles.json` and `world-props.json` already solved: parts + palette. The vehicle half moved 2026-08-13/14 |
-| `c2d/landmarks.js` | 745 | 6 | the 23 landmark types + the scenes | **done** — `world-props.json`; the 6 left are inside `drawFaroScene`/`drawPool`, whose `params` moved but whose geometry is control flow |
+| `c2d/landmarks.js` | 717 | 0 | landmark dispatch plus animated/derived faro, pool, stadium and green-space frames | **done for parcel art** — all seven parcel scenes are `world-props.json` parts/formulas; only time-dependent or geometry-derived scene algorithms remain code |
 | `c2d/hud.js` | 723 | **67** | minimap, compass, crossing HUD, rain, vignette, POI pills | **hud.json**, already queued as §12's P2 row |
 | `c2d/streets.js` | 705 | 36 | roadway, kerb, caño, aceras, parcels, signs | **mostly done** — signs and parcel dispatch are data; the road CASING/dash geometry is algorithm |
 | `c2d/water.js` | 608 | **0** | swell, currents, ripples, caustics, the wet-sand line | **done** — `water.json`; the interference field is genuinely algorithm |
 | `c2d/attractions.js` | 581 | 46 | the feria's 12 rides + DJ Urtech | **half** — `feriaAssets.json` owns the rides; the campo, the bulb ropes and the DJ's light are still literals. §12 already queues a schema for it |
 | `c2d/estero.js` | 523 | **53** | pangas, cardúmenes, gaviotas, raíces, remolinos | **not started.** Eight encounter kinds, each with its own palette — the `EsteroEncounterKind` row in §13 |
-| `c2d/flora.js` | 427 | 2 | the four tree forms + the woods scatter | **done** — `flora.json`; the forms are geometry |
+| `c2d/flora.js` + `floraShapes.js` | 860 | 0 authored literals | placement/culling plus 18 generic silhouette recipes for 23 botanical/legacy records | **done for flora art** — `flora.json` owns palettes, every visible layer, taxonomic metadata and weighted mixes; code is the species-agnostic interpreter |
 | `c2d/ground.js` | 336 | 7 | land base, playas, greens, mangrove shore | **done** — reads `materials.json` |
 | `c2d/structures.js` | 319 | 44 | piers, the bridge, the ferries | **half** — the five pier recipes are `materials.json`; the bridge and the ferry hull are not |
 | `c2d/malecon.js` | 131 | 32 | the promenade band, per weather | **not started**, and it is only a palette — a cheap row |
@@ -1227,7 +1241,7 @@ because a drawer that reads its palette from a catalog has none left.
 | `render/vehicleShapes.js` | 88 | 0 | the three shared path verbs | **stays** |
 | `c2d/props.js`, `c2d/world.js` | 128 | 0 | dispatch | **stays** |
 
-### The answer
+### The answer at that historical checkpoint
 
 **~7 000 lines, ~420 colour literals.** Of those, **418 are in nine ART modules**
 and the two zero-colour cores (compositor, interpreter) are the ones that must
@@ -1258,33 +1272,32 @@ to the renderer:
   parameters moved, its randomness stayed, and the test asserts the parameters
   because a sheet never could.
 
-### Re-measured 2026-08-14, after the migration
+### Re-measured 2026-08-17, after the complete asset migration
 
 The same count, run again once every registry had landed. `colours` is literal
 colour constants still in the module; `dispatch` is `=== "literal"` / `case
 "literal"` branches.
 
-| module | lines | colours | dispatch | what is left |
-|---|---:|---:|---:|---|
-| `c2d/entities.js` | 806 | **0** | 18 | **done 2026-08-14** — `src/assets/actors.json`. 117 → 0. The join was already there: `npcTypes.json`'s `art` field |
-| `c2d/estero.js` | 523 | **0** | 10 | done — `materials.json` → `estero`. The lateral mark (red to port, green to starboard) stopped being five `b.red ?` ternaries |
-| `c2d/attractions.js` | 581 | **0** | 0 | done — `feriaAssets.json` → `$defaults` + `$chrome`. A DIFFERENT case: the rides were already data, so what was left were the ENGINE's fallbacks |
-| `c2d/structures.js` | 319 | **0** | 3 | done — `materials.json` → `structure`. The Mata bridge and the ferry hull, the last two big world pieces |
-| `c2d/hud.js` | 732 | **0** | 5 | done — `hud.json` → `palette`. The crossing card and the tide bar |
-| `c2d/streets.js` | 708 | **0** | 10 | done — `materials.json` → `streets`. `paintRoads` stays code (derived geometry) |
-| `c2d/malecon.js` | 131 | **0** | 1 | done — `materials.json` → `malecon` |
-| `c2d/editorWorld.js` | 90 | 7 | 8 | the lights left (`lights.json`); the authored-feature furniture stays |
-| `c2d/lights.js` | 128 | 0 | 0 | the new painter — clamps, the night test and the gradient |
-| `c2d/landmarks.js` | 745 | 6 | 10 | done — the six are inside `drawFaroScene`/`drawPool`, whose geometry is control flow |
-| `c2d/ground.js`, `flora.js` | 763 | 9 | 3 | done — they read the registries |
-| `c2d/water.js`, `shapes.js`, `canvas2d.js`, `gfx.js` | 1 354 | **0** | 18 | the compositor, the interpreter and the sea. These must stay code |
+| family/modules | authored colours in renderer | current authority |
+|---|---:|---|
+| `entities.js` + `actorShapes.js` | **0** | `actors.json`: 31 actors, 36 forms, poses, variants and visual animation |
+| `estero.js` | **0** | mobile silhouettes in `actors.json`; channel/bank material in `materials.json` |
+| `attractions.js` + `malecon.js` | **0** | `feriaAssets.json` and `materials.json` |
+| `structures.js` + `structureShapes.js` | **0** | `materials.json.structure`: building, bridge, ferry, berth and piers |
+| `hud.js`, `lights.js`, `nightlights.js` | **0** | `hud.json`, `lights.json`, `effects.json` |
+| `streets.js`, `ground.js`, `water.js` | **0** | `materials.json` and `water.json`; path/field algorithms stay code |
+| `landmarks.js` + `sceneShapes.js` | **0** | `world-props.json`: 14 scenes, including all parcel scenes |
+| `flora.js` + `floraShapes.js` | **0** | `flora.json`: 23 records, 18 forms and regional mixes |
+| compositor/interpreters/cache | **0** | finite execution, draw order, streaming and culling stay code |
 
-**ALL EIGHT FAMILIES CLOSED, 2026-08-14.** The renderer holds **23** colour
-literals in total, every one of them inside a drawing recipe with geometry of
-its own — `drawFaroScene`, `drawPool`, the planting scatter — which is the list
-§12 names as what does NOT get converted: each derives its own size, pavilion
-count or scatter FROM the parcel, and expressing that would be arithmetic in
-JSON.
+**ALL AUTHORED WORLD COLOURS ARE OUT OF `src/render/`, 2026-08-17.** The gate
+strips comments and rejects any new numeric hex/rgb literal. The cathedral and
+the six companion parcel scenes now prove that
+bounded arithmetic can remain editable without turning JSON into code: the
+catalog carries a finite formula tree, and the interpreter supplies only the
+approved operators and runtime frame. Flora follows the same boundary: every
+authored layer and colour is data; culling, deterministic placement and canvas
+execution remain engine behavior.
 
 Two things the sweep found that were worth more than the migration itself:
 
@@ -1294,13 +1307,9 @@ Two things the sweep found that were worth more than the migration itself:
 - **Four dead alphas in `lightPalette`** (see the lights note above), and the
   same shape of bug: a knob that looks adjustable and is not.
 
-Game side, for completeness: `crossing.js` 11, `spawns.js` 10 (the car
-palette), `delivery.js` 7, `physics.js` 6. The UI's remaining 23 are inside
-`Icon.jsx` and `CoinIcon.jsx`, which are drawing recipes and stay.
-
-**The two cores still hold zero**, which is the number that matters: the
-compositor and the shape interpreter never acquired a literal through any of
-this.
+UI SVG and branding remain code-native by design; they are not world assets.
+The compositor and the finite interpreters also remain code, but contain no
+authored palette of their own.
 
 ### The shape vocabulary grew generators (2026-08-14)
 

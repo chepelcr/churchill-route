@@ -85,10 +85,25 @@ stopped being one.
   `shot-landmarks` · `shot-signs` · `shot-parcels` · `shot-scenes` ·
   `shot-effects` · `shot-stands` · `shot-lights` · `shot-feria`, vs
   `tools/png-diff.mjs`. **Never diff a world scene** — the noise floor is 2 % to
-  86 %. **A stale dev server fakes a regression**: after adding or moving a
-  module, kill the server AND `rm -rf node_modules/.vite`, or four sheets come
-  back blank and three more diff at 6–45 %. The sheets' own blank-guards are what
-  catch it — believe them before you believe the diff.
+  86 %. The Vite process on `:8734` is persistent: client modules, JSON and new
+  imports are handled by HMR, so **do not kill it or delete
+  `node_modules/.vite` as part of the edit loop**. A restart is diagnostic only
+  after a reproduced optimizer/config failure; cache deletion is the last step,
+  never the first. The sheets' own blank-guards catch a genuinely stale graph —
+  believe them before the diff, then diagnose the specific request that failed.
+  **But a long-lived HMR server splits the module graph for a tool that imports
+  a source module by plain path**, and that is not the same failure. Once a file
+  has been invalidated, the page's own graph holds it as
+  `/src/game/daynight.js?t=1787029979794` while `import("/src/game/daynight.js")`
+  mints a SECOND instance with its own module state. So `smoke:sky` and
+  `smoke:shadows` — the only two that reach in and move the clock — set the hour
+  on one `cycle` and read `sunShadow`/`weatherColors` off the other: both report
+  the sky and the shadows never moving, with the code correct and every art sheet
+  clean. `sunVector()` sweeps in the same breath, which is what makes it read as
+  a real regression. **Run those two against a FRESH dev server on another port**
+  (`pnpm dev --port 8736 --strictPort`), never against a `:8734` that has been up
+  through an edit loop; the rest of the smokes take `vite preview` and do not
+  care.
 * **no sheet?** compare the SET of colours against `git show HEAD:<file>`. A
   mistyped hex does not survive that.
 * **anything the builder reads** → `PLANAR_BBOX=… pnpm world:build` (1 min,

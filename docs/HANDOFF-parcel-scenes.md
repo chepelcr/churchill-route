@@ -1,4 +1,10 @@
-# Handoff — las cinco escenas de parcela que faltan
+# Handoff histórico — escenas de parcela (completado)
+
+> **Estado 2026-08-17:** las siete escenas ya están migradas a JSON y este
+> documento queda sólo como registro de la transcripción. Sus instrucciones de
+> matar Vite y borrar `node_modules/.vite` están anuladas: el servidor persistente
+> en `:8734` usa HMR y no se reinicia entre cambios. La autoridad actual es
+> `src/assets/world-props.json` + el intérprete compartido.
 
 Rama `world-2d`, repo `/Users/jcampos/Desktop/dev/churchill-route`.
 Todo lo de abajo está pusheado hasta `e7a8c90`.
@@ -43,8 +49,9 @@ Faltan, en orden de dificultad creciente:
      mide en un escalar derivado. Ver el crucero de la catedral.
    * `sprite` — una IMAGEN en vez de dibujo, medida en metros
      (`src/assets/sprites.json`). **Es lo que el dueño pidió para poder poner
-     assets propios en lugares concretos**; funciona y está probado, sólo le falta
-     que alguien registre imágenes de verdad.
+     assets propios en lugares concretos**. El cierre del 2026-08-17 agregó la
+     biblioteca/importador real con alpha, bounds, ancla, metros y paridad
+     UI/API/CLI/MCP; `casa_prueba` queda como fixture, no como límite del flujo.
 
 4. **El cuarto de vuelta por aspecto** (`const along = F.hw >= F.hh; if (!along)
    ctx.rotate(PI/2)`) lo hace el llamador con `opts.rotate`, que
@@ -69,11 +76,8 @@ Faltan, en orden de dificultad creciente:
 
 ## La compuerta, para cada escena
 
-```
-# el dev server SIEMPRE limpio, o cuatro hojas salen en blanco y tres diffean 6-45%
-lsof -ti:8734 | xargs kill -9; rm -rf node_modules/.vite
-pnpm dev --port 8734 --strictPort &
-
+```sh
+# El Vite persistente ya corre en :8734 y aplica HMR; no matarlo ni limpiar cache.
 node tools/shot-parcels.mjs after.png http://localhost:8734/
 node tools/png-diff.mjs <base> after.png diff.png
 ```
@@ -90,15 +94,23 @@ escenas toca el builder, así que si cambia, algo se hizo mal).
 Y las otras diez hojas al final: `shot-vehicles` `actors` `landmarks` `signs`
 `scenes` `effects` `stands` `lights` `feria` `generators` `sprites`.
 
-## Lo que NO hay que migrar, y por qué
+## Límite actual (las exclusiones históricas fueron superadas)
 
-* **`paintBuilding`** (`structures.js`) — su silueta ES geometría del mundo:
-  `ctx.clip(path)` sobre el contorno emitido. Sólo la banda del techo y las
-  ventanas podrían ser partes, dentro del clip.
-* **Las cuatro formas de árbol** — `canopyPath` es una spline por puntos
-  perturbados con hash y `scatter` coloca sub-listas, no puede perturbar un
-  contorno.
-* **`paintHeadlights`** — `createLinearGradient` no tiene verbo. Un gradiente no
-  es una forma.
-* Los pintores del agua, las capas del minimapa y los compositores. La razón de
-  cada uno está escrita en su archivo.
+La lista original de “no migrar” describía las capacidades del intérprete de
+ese momento, no una prohibición arquitectónica permanente. El cierre del
+2026-08-17 conservó el límite correcto —la geometría y los algoritmos siguen en
+el engine— y movió toda la **autoría** que sí estaba escondida:
+
+* `paintBuilding` todavía recorta contra el footprint del mundo, pero techo,
+  bandas y ventanas ya son una receta de `materials.json` interpretada por
+  `structureShapes.js`.
+* La flora no se forzó dentro del DSL rectangular. `floraShapes.js` aporta un
+  vocabulario finito de splines, copas, coníferas, palmas y raíces; las 18
+  recetas y todos sus knobs viven en `flora.json`.
+* Faro, piscina y las demás escenas procedurales usan un intérprete de familia
+  para sus partes/recetas; reloj, clipping y footprint permanecen en el host.
+* Gradientes, agua, minimapa y compositores permanecen como algoritmos, pero sus
+  paletas, stops, cantidades y límites consumen catálogos JSON.
+
+El estado completo y las compuertas vigentes están en
+[`HAND_DRAWN_ASSET_AUDIT.md`](HAND_DRAWN_ASSET_AUDIT.md).

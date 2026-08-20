@@ -55,29 +55,40 @@ cayeron están al final, listadas en vez de borradas en silencio.
 
 ---
 
-## 2. El arte que todavía es código
+## 2. Verticalidad 2.5D del mundo
 
-`docs/inventory.md` §14 tenía la medición completa: ocho familias, ~420
-literales de color. **Las ocho cerraron el 2026-08-14** y la fila que sigue
-abierta es otra cosa.
+La migración artística y sus cuatro herramientas complementarias cerraron el
+2026-08-17: laboratorios animados, biblioteca/importador de sprites, autoría
+semántica de siembras y fixtures de geometría mundial. El cierre está archivado
+en `docs/ROADMAP-ARCHIVE.md` y auditado en
+`docs/HAND_DRAWN_ASSET_AUDIT.md`. No se inició elevación en ese bloque.
 
-Lo que queda en `src/render/c2d/` son **27 literales**, todos dentro de recetas
-de dibujo con geometría propia —`drawFaroScene`, `drawPool`, la siembra, y el
-gradiente del pozo de luz, que es un degradado y no una paleta— que
-§12 nombra explícitamente como lo que NO se convierte: cada una deriva su
-tamaño, su conteo de pabellones o su dispersión DESDE la parcela, y expresarlo
-sería aritmética en JSON. **Y los dos núcleos siguen en cero**, que es el número
-que importa: el compositor y el intérprete de formas no adquirieron un literal
-en toda la migración.
+Flora, actores y ferry ya declaran `heightM`; los edificios infieren altura y
+esas familias desplazan sus sombras con el sol. Éste es ahora el siguiente plan,
+descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
-- [ ] **Las líneas de siembra, la otra mitad.** El esquema `form` × `align`
-      (circular / triangular / cuadrada / libre × horizontal / vertical / libre
-      / siguiendo la calle) está escrito y NO implementado: el build deriva sus
-      cuatro siembras en vez de consumir una autorada, y el editor no tiene con
-      qué dibujarla. **Y una decisión aparte**: darle suelo verde al Cocal o al
-      Ferrocarril **no es hacerlos editables**, es un CAMBIO DE COMPORTAMIENTO
-      —pasan a estorbar al carro, y en el Ferrocarril eso está explícitamente
-      descartado hoy.
+- [ ] **Bandas de altura de escenas.** Agregar `heightM`/`castsShadow` heredable
+      a parts/groups y una pasada de máscara que reutilice la silueta. La
+      catedral es el primer fixture: nave, crucero, cimborrio y campanarios a
+      alturas distintas. Retirar entonces sus offsets de sombra artísticos.
+
+- [ ] **Canal de elevación del terreno.** Emitir `zM` aparte de Surface, con RLE
+      propio, muestreo/caché en el cliente y continuidad determinista entre
+      tiles. No renumerar las clases de superficie.
+
+- [ ] **Perfiles por porciones de calle.** Autorizar tramos `flat`, `slope` y
+      transiciones por arclength: cuesta → recta alta → bajada → recta baja. Los
+      extremos compartidos deben resolver la misma cota y las intersecciones
+      deben generar una transición alcanzable hacia la calle conectada.
+
+- [ ] **Editor de perfiles.** Vista lateral y mapa enlazados, handles de cota,
+      pendiente en %, validación de saltos/pendiente máxima y herramientas para
+      empatar otra porción. Ferrocarril será el primer caso real que sustituya
+      su lift visual actual.
+
+- [ ] **Física por pendiente.** Derivar el grado del perfil bajo el vehículo:
+      subir reduce aceleración/velocidad sostenible, bajar la aumenta dentro de
+      límites y el freno compensa. Colisión y navegación continúan en planta.
 
 ---
 

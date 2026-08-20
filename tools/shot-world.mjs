@@ -28,6 +28,15 @@ await page.evaluate(async ([x, y, z]) => {
   G.state.cam.x = x; G.state.cam.y = y;
   if (G.state.cam.z) G.state.cam.z *= z;
 }, [Number(X), Number(Y), Number(zoom)]);
+// MEDIODÍA, y por la instancia VIVA del reloj. `setWeather` dura un cuadro —
+// `updateDayCycle` lo reescribe desde la hora— y un `import` de la ruta lisa
+// acuña una SEGUNDA instancia con su propio `cycle`, así que se resuelve la URL
+// que el pintor de verdad usa, igual que hace `shot-parcels` con `gfx.js`.
+await page.evaluate(async () => {
+  const src = await fetch("/src/render/c2d/shadows.js").then((r) => r.text());
+  const u = src.match(/from\s+["']([^"']*\/game\/daynight\.js[^"']*)["']/)?.[1];
+  if (u) (await import(u)).setDayCycle(true, 0.25);
+});
 await page.waitForTimeout(6000);          // let the tiles stream in
 // ESCONDER LA INTERFAZ. El canvas es del juego y React pinta encima; sin esto
 // la foto es del cartel de etapa, no del suelo que se vino a mirar.
@@ -37,7 +46,13 @@ await page.evaluate(() => {
   }
   for (const el of document.querySelectorAll("canvas")) el.style.visibility = "visible";
 });
-await page.waitForTimeout(500);
+await page.waitForTimeout(900);
+await page.evaluate(() => {
+  for (const el of document.querySelectorAll("body > *:not(canvas), #root > *:not(canvas)")) {
+    if (!el.querySelector("canvas")) el.style.display = "none";
+  }
+});
+await page.waitForTimeout(400);
 const shot = await page.screenshot();
 writeFileSync(out, shot);
 await browser.close();

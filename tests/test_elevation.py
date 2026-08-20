@@ -93,6 +93,34 @@ class ChannelTests(unittest.TestCase):
         self.assertTrue(all(c <= 255 for c in counts))
 
 
+class WiringTests(unittest.TestCase):
+    """QUE EL EMIT PUEDA LLAMARSE. El smoke de `PLANAR_BBOX` corre la tubería
+    entera MENOS `write_world` —sale en `[poi] BUILD INCOMPLETE` antes de
+    emitir— así que nada de lo que vive ahí está cubierto por él. Un
+    `ctx.dims.W` en vez de `ctx.dims.w` costó una corrida completa de 33 minutos
+    para reventar en el último minuto."""
+
+    def test_world_dims_exposes_the_names_write_world_uses(self):
+        from churchill.world.context import WorldDims
+        d = WorldDims.of(1000, 800, 4)
+        for name in ("w", "h", "cell", "cols", "rows"):
+            self.assertTrue(hasattr(d, name), f"WorldDims perdió `{name}`")
+
+    def test_the_emit_signature_takes_the_elevation_channel(self):
+        import inspect
+        from churchill.world.pipeline.emit import emit_world2d
+        self.assertIn("elev", inspect.signature(emit_world2d).parameters)
+
+    def test_write_world_asks_dims_by_its_real_attribute_names(self):
+        import os
+        from churchill.world.config import ROOT
+        with open(os.path.join(ROOT, "churchill", "world", "pipeline",
+                               "finish.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertNotIn("ctx.dims.W", src, "`WorldDims` no tiene `.W`, tiene `.w`")
+        self.assertNotIn("ctx.dims.H", src, "`WorldDims` no tiene `.H`, tiene `.h`")
+
+
 class FieldTests(unittest.TestCase):
     """El campo, sobre una caja chica — la forma, no el mundo entero."""
 

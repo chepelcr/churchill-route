@@ -370,7 +370,7 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
     try:
         cols_e, rows_e, zz = elevation_field(
             lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2],
-            ctx.dims.W, ctx.dims.H)
+            ctx.dims.w, ctx.dims.h)
         elev = {"cols": cols_e, "rows": rows_e, "z": zz,
                 "perTile": TILE_PX // ELEV_CELL}
     except FileNotFoundError:

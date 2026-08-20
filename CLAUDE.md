@@ -1201,6 +1201,15 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
   `src/world2d/`** — which is exactly what makes it safe to run against a dirty
   tree. What you are reading it for is a `Traceback`. A `NameError` in
   `decorate` is 25 minutes into a full build and one minute into a smoke.
+
+  **Y ESE MISMO «never reaches `write_world`» ES SU PUNTO CIEGO.** Nada de lo que
+  vive en `write_world` o en `pipeline/emit.py` está cubierto por el smoke: un
+  `ctx.dims.W` en vez de `ctx.dims.w` costó una corrida COMPLETA para reventar en
+  el último minuto, después de 33 de trabajo bueno. Si el cambio toca el emit,
+  pruébalo A MANO antes de pagar la corrida — construir el campo y rebanarlo por
+  tile es un script de veinte líneas. Y **no envuelvas el build en
+  `cmd > log; echo $?`**: el `echo` sale 0 y tapa el fallo, así que el build
+  «terminó bien» y no había mundo.
 - After a world rebuild, refresh BOTH derived artifacts: `pnpm inventory` and
   `python3 tools/gen_lotes.py`. The lote catalog went stale for a week once —
   it listed sponsorable footprints that no longer existed.

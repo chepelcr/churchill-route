@@ -18,10 +18,10 @@ from collections import defaultdict
 
 from ..config import CLASS_NAMES, TILE_CELLS, TILE_PX
 from ..logging import log
-from ..util.raster import rle_encode
+from ..util.raster import rle_encode, rle_encode_u16
 
 
-def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, trees, palms,
+def emit_world2d(raster, repo, *, elev=None, meta, districts, roads, rails, buildings, trees, palms,
                  mangroves, medians, plazas, islands, beaches, waters, land_polys,
                  landmarks, customers, stages, bridge, estuary, piers, hills,
                  stadiums=None, kiosk_paths=None, greens=None, malecon=None,
@@ -98,17 +98,49 @@ def emit_world2d(raster, repo, *, meta, districts, roads, rails, buildings, tree
             sub[rr * cw:(rr + 1) * cw] = buf[s:s + cw]
         return cw, ch, rle_encode(sub)
 
+    def tile_elev(tc, tr):
+        """Las `perTile x perTile` muestras de cota de un tile, en DECÍMETROS.
+
+        Decímetros y no metros porque una pendiente de 4 % sobre 32 m son 1,3 m
+        y en metros enteros eso es una escalera. Y no centímetros porque 262 m
+        en centímetros no cabe en el uint16 que hace barata la corrida.
+        """
+        per = elev["perTile"]
+        vals = []
+        for rr in range(per):
+            gy = tr * per + rr
+            for cc in range(per):
+                gx = tc * per + cc
+                if 0 <= gx < elev["cols"] and 0 <= gy < elev["rows"]:
+                    vals.append(max(0, min(65535, round(elev["z"][gy * elev["cols"] + gx] * 10))))
+                else:
+                    vals.append(0)
+        return rle_encode_u16(vals)
+
     n_tiles = 0
+    n_elev = 0
     for tr in range(trows):
         for tc in range(tcols):
             cw, ch, rle = tile_slab(tc, tr)
             b = buckets.get((tc, tr), {})
             tile = {"tc": tc, "tr": tr, "x": tc * TILE_PX, "y": tr * TILE_PX,
                     "cols": cw, "rows": ch, "rle": rle}
+            # LA COTA, en su propio canal y sólo si la hay. Un tile plano no
+            # lleva `zRle` en absoluto: la mitad oeste del mundo es el arenal y
+            # no debe pagar bytes por decir cero seiscientas veces.
+            if elev is not None:
+                ez = tile_elev(tc, tr)
+                if ez is not None:
+                    tile["zRle"] = ez
+                    tile["zCols"] = elev["perTile"]
+                    n_elev += 1
             for key, feats in b.items():
                 tile[key] = feats
             repo.write_tile(tc, tr, tile)
             n_tiles += 1
+    if elev is not None:
+        log("emit", f"{n_elev}/{n_tiles} tiles llevan cota "
+            f"({elev['perTile']}x{elev['perTile']} muestras cada uno); el resto es plano")
 
     # districts as 2-D polys — planar arranges the barrios west→east along the
     # spit, so the x-band edges become full-height rectangles (a working

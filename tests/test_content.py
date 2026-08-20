@@ -235,13 +235,24 @@ class ShapeTests(unittest.TestCase):
                              f"somebody editing the builder can change it")
 
     def test_every_emitted_file_is_read(self):
+        """NINGÚN ARCHIVO DE CONTENIDO HUÉRFANO. Lo que esto atrapa es un JSON
+        autorado que nadie lee: se edita, no pasa nada, y nadie se entera.
+
+        Se busca en TODO el paquete y no sólo en `content.py`. La mayoría entra
+        por ahí, pero no todos pueden: `contours.json` pesa 3,2 MB y
+        `service/elevation.py` lo carga PEREZOSAMENTE, porque `content.py` se
+        importa en cada prueba y parsear tres megas para no usarlos es un peaje
+        que se paga siempre. La compuerta sigue fallando con un huérfano — que es
+        lo que vino a impedir— y deja de exigir un solo cargador."""
         on_disk = {f for f in os.listdir(CONTENT_DIR) if f.endswith(".json")}
-        read_by = set()
-        py = open(os.path.join(ROOT, "churchill", "world", "content.py"),
-                  encoding="utf-8").read()
-        for f in on_disk:
-            if f in py:
-                read_by.add(f)
+        src = []
+        for base, _dirs, files in os.walk(os.path.join(ROOT, "churchill")):
+            for name in files:
+                if name.endswith(".py"):
+                    with open(os.path.join(base, name), encoding="utf-8") as fh:
+                        src.append(fh.read())
+        py = "\n".join(src)
+        read_by = {f for f in on_disk if f in py}
         self.assertEqual(on_disk, read_by,
                          f"these content files are not loaded by anything: "
                          f"{on_disk - read_by}")

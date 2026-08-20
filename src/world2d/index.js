@@ -243,8 +243,29 @@ export const WORLD2D = (function () {
     });
   }
 
+  // LA COTA DEL TERRENO — canal propio, tripletas `(cuenta:uint8, valor:uint16
+  // LE)`, en DECÍMETROS. No comparte flujo con `decodeRLE`: una clase de
+  // superficie cabe en un byte y una cota no, y meterlas juntas obligaría a
+  // renumerar las clases, que son formato de cable y sólo crecen.
+  function decodeZ(b64, n) {
+    const bin = atob(b64);
+    const out = new Uint16Array(n);
+    let o = 0;
+    for (let i = 0; i + 2 < bin.length; i += 3) {
+      const cnt = bin.charCodeAt(i);
+      const v = bin.charCodeAt(i + 1) | (bin.charCodeAt(i + 2) << 8);
+      out.fill(v, o, o + cnt);
+      o += cnt;
+    }
+    return out;
+  }
+
   function decodeTile(tc, tr, raw) {
     const grid = decodeRLE(raw.rle, raw.cols * raw.rows);
+    // Un tile sin `zRle` es PLANO, no «sin datos»: el emit lo omite justamente
+    // porque el arenal es medio mundo y decir cero seiscientas veces cuesta.
+    const zCols = raw.zCols || 0;
+    const z = raw.zRle ? decodeZ(raw.zRle, zCols * zCols) : null;
     const buildings = (raw.buildings || []).map((b) => ({
       pts: b.pts, aabb: flatAABB(b.pts), color: b.color, roof: b.roof, wnd: b.wnd,
     }));
@@ -266,6 +287,7 @@ export const WORLD2D = (function () {
     }
     return {
       tc, tr, x: raw.x, y: raw.y, cols: raw.cols, rows: raw.rows, grid,
+      z, zCols,
       roads: prepRoads(raw.roads), rails: raw.rails || [],
       buildings, bhash,
       // mangroves are {x,y,r} clumps along the estero waterline — the builder
@@ -355,6 +377,44 @@ export const WORLD2D = (function () {
     if (lc < 0 || lr < 0 || lc >= t.cols || lr >= t.rows) return SURFACE.WATER;
     return t.grid[lr * t.cols + lc];
   }
+  /**
+   * LA COTA DEL SUELO en (x, y), en METROS sobre el datum del mundo.
+   *
+   * Se interpola BILINEALMENTE entre las cuatro muestras vecinas y no se toma
+   * la más cercana: a 32 m de paso, el vecino más cercano es una escalera de
+   * escalones de 32 m, y una cuesta hecha de escalones no es una cuesta.
+   *
+   * Un tile que todavía no ha llegado responde 0, igual que `surfaceAt`
+   * responde agua: es la respuesta segura, porque el arenal —donde está el
+   * juego— es 0 de verdad.
+   */
+  function groundZAt(x, y) {
+    if (x < 0 || y < 0 || x >= W || y >= H) return 0;
+    const tc = (x / TILE_PX) | 0, tr = (y / TILE_PX) | 0;
+    const t = decodedTile(tc, tr);
+    if (!t || !t.z) return 0;                    // sin canal = plano, no «sin dato»
+    const step = TILE_PX / t.zCols;
+    const fx = (x - t.x) / step - 0.5, fy = (y - t.y) / step - 0.5;
+    const x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const ax = fx - x0, ay = fy - y0;
+    const at = (cx, cy) => {
+      const c = cx < 0 ? 0 : cx >= t.zCols ? t.zCols - 1 : cx;
+      const r = cy < 0 ? 0 : cy >= t.zCols ? t.zCols - 1 : cy;
+      return t.z[r * t.zCols + c];
+    };
+    const a = at(x0, y0), b = at(x0 + 1, y0), c2 = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+    const top = a + (b - a) * ax, bot = c2 + (d - c2) * ax;
+    return (top + (bot - top) * ay) / 10;        // decímetros -> metros
+  }
+
+  /** La PENDIENTE del suelo en (x, y): `{dzdx, dzdy}` en metros por píxel. */
+  function groundGradeAt(x, y, h = 40) {
+    return {
+      dzdx: (groundZAt(x + h, y) - groundZAt(x - h, y)) / (2 * h),
+      dzdy: (groundZAt(x, y + h) - groundZAt(x, y - h)) / (2 * h),
+    };
+  }
+
   // ASPHALT AND DECKS, not the whole DRIVABLE role: `onRoad` answers "is this a
   // full-speed lane the traffic model may use", so the sand, the bulevar and the
   // calles de barro are deliberately out of it.
@@ -518,6 +578,7 @@ export const WORLD2D = (function () {
     ready, update, ensureView, visibleTiles, loadTile, tileResident, lampsIn,
     // queries
     surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated, driveUnderAt,
+    groundZAt, groundGradeAt,
     buildingsNear, districtAt, landmarkById, customerById, reachablePointNear,
     geoToWorld,
   };

@@ -16,6 +16,7 @@ from ..config import (
     DRIVABLE_CLASSES, GRID_CELL, KIOSK_WATER_CLEAR_PX,
     MARINE_POOL_GROUND_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
+    TILE_PX,
 )
 from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, STAGES
 from ..enums import SignKind
@@ -41,6 +42,7 @@ def ordered_stages():
     return [dict(s, num=i + 1) for i, s in enumerate(out)]
 from ..logging import log
 from ..repository.debug_render import render_debug
+from ..service.elevation import ELEV_CELL, elevation_field
 from ..service.network import block_census, verify_connectivity
 from ..service.placement import water_within
 from ..service.surface import sand_outlines
@@ -359,7 +361,22 @@ def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
     # the surface is finished. (The Balneario's floating-building pads stamp
     # CLS_BEACH, so they come along for free.)
     ctx.beaches[:] = sand_outlines(ctx.raster)
-    emit_world2d(ctx.raster, sink, meta=meta, districts=ctx.districts,
+    # EL CAMPO DE COTA, desde las curvas del IGN. Se calcula aquí y no en una
+    # etapa propia porque no lo consume nadie del build: es un canal que sale
+    # derecho al cliente, como el RLE de superficie. Si el archivo de curvas no
+    # está, el mundo sale plano y lo dice — no falla, porque un mundo plano es
+    # exactamente lo que había hasta ayer.
+    elev = None
+    try:
+        cols_e, rows_e, zz = elevation_field(
+            lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2],
+            ctx.dims.W, ctx.dims.H)
+        elev = {"cols": cols_e, "rows": rows_e, "z": zz,
+                "perTile": TILE_PX // ELEV_CELL}
+    except FileNotFoundError:
+        log("elev", "sin content/world/contours.json — el mundo sale plano")
+
+    emit_world2d(ctx.raster, sink, elev=elev, meta=meta, districts=ctx.districts,
                  roads=ctx.roads, rails=ctx.rails, buildings=ctx.buildings,
                  trees=ctx.trees, palms=ctx.palms, mangroves=ctx.mangroves,
                  medians=ctx.medians, plazas=ctx.plazas, greens=ctx.greens,

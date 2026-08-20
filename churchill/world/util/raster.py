@@ -228,6 +228,36 @@ def rle_encode(buf):
     return base64.b64encode(bytes(out)).decode("ascii")
 
 
+def rle_encode_u16(values):
+    """La COTA como el cliente la lee: tripletas `(cuenta:uint8, valor:uint16 LE)`
+    en base64.
+
+    NO se mezcla con `rle_encode`. Aquél son pares de un byte porque una clase de
+    superficie cabe en uno; la cota en decímetros llega a 4 000 y no cabe, y
+    meterla en el mismo flujo obligaría a renumerar las clases —que son formato
+    de cable y sólo crecen— o a un segundo significado para los mismos bytes.
+    Dos canales separados cuestan tres bytes por corrida y no cuestan una
+    ambigüedad.
+
+    Devuelve `None` si todo es cero: un tile plano no paga nada, y la mitad
+    oeste del mundo es plana.
+    """
+    if not values or not any(values):
+        return None
+    out = bytearray()
+    i, n = 0, len(values)
+    while i < n:
+        v = values[i]
+        j = i
+        while j < n and values[j] == v and j - i < 255:
+            j += 1
+        out.append(j - i)
+        out.append(v & 0xFF)
+        out.append((v >> 8) & 0xFF)
+        i = j
+    return base64.b64encode(bytes(out)).decode("ascii")
+
+
 def erode_cells(cells, depth, facing=None, at=None):
     """Morphological erosion of a CELL SET by `depth` (BFS distance transform
     seeded on the boundary). Applied to a cuadra+acera set it yields the pitch,

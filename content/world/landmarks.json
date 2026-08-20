@@ -1,5 +1,5 @@
 {
-  "_note": "LOS HITOS — the 38 places the game names. `osm` resolves the anchor against a mapped feature by name; `ll` anchors it directly. `dx`/`dy` nudge the drawn art off the anchor in world px, which is why they are px and not metres: they are a drawing offset, not a distance on the ground.",
+  "_note": "LOS HITOS — the 40 places the game names. `osm` resolves the anchor against a mapped feature by name; `ll` anchors it directly. `dx`/`dy` nudge the drawn art off the anchor in world px, which is why they are px and not metres: they are a drawing offset, not a distance on the ground.",
   "_marine": "Parque Marino's cuadra is partitioned by hand — `marineSiteOsmId` is the theme-park way that decides which footprints belong to the aquarium, and `marineBuildingNames` are externally verified facility labels the local OSM ways do not carry. NEVER infer a new footprint/name assignment from list order.",
   "landmarks": [
     {
@@ -78,6 +78,28 @@
       "ll": [
         9.975,
         -84.836
+      ]
+    },
+    {
+      "id": "brisas",
+      "name": "Hotel Las Brisas",
+      "type": "hotel",
+      "district": "carmen",
+      "_ll": "way/380158921, tourism=hotel, building:levels=3 — anchored by ll and not by name because OSM carries four Las Brisas here (the hotel, a plain building, Las Brisas 2 and Urb. Las Brisas) and a name match would take whichever came first.",
+      "ll": [
+        9.97496,
+        -84.84754
+      ]
+    },
+    {
+      "id": "capitania",
+      "name": "Capitanía de Puerto",
+      "type": "civic",
+      "district": "paseo",
+      "_ll": "way/380233859, MOPT - Capitanía de Puerto Puntarenas. Su propio addr:street dice `Muelle de Cruceros`: está al oeste del muelle y lo gobierna.",
+      "ll": [
+        9.97534,
+        -84.83159
       ]
     },
     {

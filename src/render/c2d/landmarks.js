@@ -567,15 +567,28 @@ function drawLandmark(lm) {
     drawGreenSpace(lm, pw, ph, { fountain: true, ground: false });
   }
 
-  const prop = propFor(lm.type);
+  const prop = propFor(lm.id) || propFor(lm.type);
   if (!prop) return;
   paintAt(prop.parts, x, y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars: propVars(lm, prop) });
 }
 
-/** The catalog record for a type, following `sameAs` — the cathedral is the
- *  same building as the church and differs only in the word on its pill. */
-function propFor(type) {
-  const rec = PROPS.landmarks[type];
+/** The catalog record for a key, following `sameAs` — the cathedral is the
+ *  same building as the church and differs only in the word on its pill.
+ *
+ *  THE KEY IS TRIED AS AN ID FIRST, THEN AS A TYPE. A `type` is what a place
+ *  IS; it cannot be what a place LOOKS LIKE, because a type is shared: every
+ *  hotel in the world drew the same blue box with the same window grid, so the
+ *  Tioga — a long wine-coloured block across a whole cuadra — and Las Brisas —
+ *  white, two storeys, on a corner — were the same building with a different
+ *  word on the pill. An id-keyed record lets one PLACE be itself while every
+ *  other hotel keeps the generic look, and `sameAs` means it only has to state
+ *  what differs.
+ *
+ *  Ids and types share one namespace, so `tests/test_world_props.py` fails if a
+ *  landmark id ever equals a type name — otherwise a new landmark called
+ *  `house` would silently repaint every house in the world. */
+function propFor(key) {
+  const rec = PROPS.landmarks[key];
   if (!rec) return null;
   return rec.sameAs ? { ...PROPS.landmarks[rec.sameAs], ...rec } : rec;
 }

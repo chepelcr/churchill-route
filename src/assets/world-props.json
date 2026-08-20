@@ -7,10 +7,21 @@
   "defaults": {
     "landmarkShadow": {
       "parts": [
-        { "shape": "ellipse", "fill": "rgba(0,0,0,0.22)", "cx": 4, "cy": 8, "rx": 18, "ry": 5 }
+        {
+          "shape": "ellipse",
+          "fill": "rgba(0,0,0,0.22)",
+          "cx": 4,
+          "cy": 8,
+          "rx": 18,
+          "ry": 5
+        }
       ]
     },
-    "noLandmarkShadow": ["stadium", "pool", "park"]
+    "noLandmarkShadow": [
+      "stadium",
+      "pool",
+      "park"
+    ]
   },
   "landmarks": {
     "kiosk": {
@@ -893,6 +904,196 @@
     "bridge": {
       "note": "drawn separately by drawBridge, from the world's own span geometry — the pin adds nothing",
       "parts": []
+    },
+    "tioga": {
+      "note": "EL TIOGA — no es 'un hotel', es EL hotel del Paseo: un bloque LARGO y bajo de tres plantas que ocupa el frente entero de su cuadra, en vinotinto. El genérico lo dibujaba como una caja celeste de 32x32 igual que cualquier otro, que es justo lo que hace irreconocible a un hito.",
+      "sameAs": "hotel",
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#7d2b3d",
+          "x": -34,
+          "y": -20,
+          "w": 68,
+          "h": 30
+        },
+        {
+          "_": "la cornisa clara que corona el bloque",
+          "shape": "rect",
+          "fill": "#c9b6a8",
+          "x": -34,
+          "y": -23,
+          "w": 68,
+          "h": 4
+        },
+        {
+          "_": "tres plantas de ventanas a lo largo",
+          "shape": "grid",
+          "fill": "rgba(255,255,255,0.72)",
+          "x": -30,
+          "y": -18,
+          "cols": 8,
+          "rows": 3,
+          "dx": 8,
+          "dy": 8,
+          "w": 5,
+          "h": 5
+        },
+        {
+          "_": "el zaguán central",
+          "shape": "rect",
+          "fill": "#3c1520",
+          "x": -5,
+          "y": 2,
+          "w": 10,
+          "h": 8
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -30,
+          "text": "TIOGA",
+          "fg": "#fff",
+          "bg": "#7d2b3d"
+        }
+      ]
+    },
+    "brisas": {
+      "note": "LAS BRISAS — blanco, DOS plantas, y de ESQUINA: su gracia es que dobla, así que el cuerpo es una L y no un rectángulo. OSM le da building:levels=3; se dibuja como la lee el jugador desde la calle.",
+      "sameAs": "hotel",
+      "parts": [
+        {
+          "_": "el ala larga",
+          "shape": "rect",
+          "fill": "#f2efe6",
+          "x": -22,
+          "y": -18,
+          "w": 44,
+          "h": 20
+        },
+        {
+          "_": "el ala corta que dobla la esquina",
+          "shape": "rect",
+          "fill": "#f2efe6",
+          "x": -22,
+          "y": -18,
+          "w": 18,
+          "h": 34
+        },
+        {
+          "_": "el zócalo, que es lo que separa las dos plantas de lejos",
+          "shape": "rect",
+          "fill": "#cfc6b4",
+          "x": -22,
+          "y": -9,
+          "w": 44,
+          "h": 3
+        },
+        {
+          "shape": "grid",
+          "fill": "rgba(90,120,140,0.55)",
+          "x": -18,
+          "y": -15,
+          "cols": 5,
+          "rows": 2,
+          "dx": 8,
+          "dy": 9,
+          "w": 5,
+          "h": 5
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -26,
+          "text": "BRISAS",
+          "fg": "#3a6f8a",
+          "bg": "#f2efe6"
+        }
+      ]
+    },
+    "capitania": {
+      "note": "LA CAPITANÍA DE PUERTO, al oeste del Muelle de Cruceros — madera VERDE y techo de ZINC ROJO, dos plantas. Es el edificio del MOPT que gobierna el muelle, y no se parece a nada más en la costa; con el genérico `civic` salía como una caja verde con un cuadro blanco.",
+      "parts": [
+        {
+          "_": "el cuerpo de madera, dos plantas",
+          "shape": "rect",
+          "fill": "#3f7d54",
+          "x": -20,
+          "y": -16,
+          "w": 40,
+          "h": 26
+        },
+        {
+          "_": "LAS TABLAS. `stripes` reparte n bandas sobre w y toma su color de una paleta ciclada — que es exactamente una pared de madera, y por eso son dos verdes y no un rayado encima.",
+          "shape": "stripes",
+          "x": -20,
+          "y": -16,
+          "w": 40,
+          "h": 26,
+          "n": 8,
+          "palette": [
+            "#3f7d54",
+            "#457f58"
+          ]
+        },
+        {
+          "_": "el entrepiso — lo que hace que se lean DOS plantas",
+          "shape": "rect",
+          "fill": "#2c5c3d",
+          "x": -20,
+          "y": -4,
+          "w": 40,
+          "h": 2
+        },
+        {
+          "_": "EL TECHO DE ZINC ROJO, a dos aguas",
+          "shape": "fan",
+          "fill": "#b8412f",
+          "pts": [
+            [
+              -23,
+              -16
+            ],
+            [
+              0,
+              -27
+            ],
+            [
+              23,
+              -16
+            ]
+          ]
+        },
+        {
+          "_": "el caballete",
+          "shape": "rect",
+          "fill": "#8e2f22",
+          "x": -23,
+          "y": -17,
+          "w": 46,
+          "h": 2
+        },
+        {
+          "shape": "grid",
+          "fill": "rgba(255,255,255,0.70)",
+          "x": -15,
+          "y": -13,
+          "cols": 4,
+          "rows": 2,
+          "dx": 9,
+          "dy": 9,
+          "w": 5,
+          "h": 5
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -32,
+          "text": "CAPITANÍA",
+          "fg": "#fff",
+          "bg": "#2c5c3d"
+        }
+      ]
     }
   },
   "_signs": "LA SEÑALIZACIÓN, keyed by SignKind. Costa Rica signs to the Manual Centroamericano de Dispositivos Uniformes, so these are the real shapes: an ALTO is a red OCTAGON carrying the word (not `STOP`), a CEDA EL PASO is an inverted white triangle with a red border, and a tope is the yellow-hatched hump every calle de barrio has. Sizes are world px at the game's framing (~20 cuadrículas across), so a sign reads at a glance without swallowing the lane it stands beside.",
@@ -1744,10 +1945,79 @@
         "outerY": 0.4
       },
       "parts": [
-        { "shape": "family", "verb": "riprap", "dark": "$rockDark", "light": "$rockLight", "minR": 1.8, "radiusRange": 2.4, "stretch": 1.4, "darkEvery": 3, "seedMul": 7.13, "step": 12.9, "rotStep": 9.4 },
-        { "shape": "family", "verb": "flora-placements", "species": "palma", "positions": [[22, -12], [27, 11], [-4, 19]], "scale": 0.8, "seed": 0.31 },
-        { "shape": "family", "verb": "lighthouse-tower", "shadow": "$towerShadow", "shadowDx": 5, "shadowDy": 4, "shadowRx": 9, "shadowRy": 3, "body": "$towerBody", "band": "$towerBand", "edge": "$towerEdge", "gallery": "$gallery", "lantern": "$lantern", "baseHalf": 6, "topHalf": 4, "height": 34, "foot": 2, "bands": 3, "bandTop": 29, "bandGap": 11, "bandH": 5, "edgeWidth": 1, "galleryY": 36, "galleryW": 12, "galleryH": 2.5, "lanternY": 40, "lanternR": 4, "finialY": 45.5, "finialW": 6, "finialH": 2 },
-        { "shape": "label", "x": 0, "y": -52, "text": "FARO", "fg": "$pillFg", "bg": "$pillBg" }
+        {
+          "shape": "family",
+          "verb": "riprap",
+          "dark": "$rockDark",
+          "light": "$rockLight",
+          "minR": 1.8,
+          "radiusRange": 2.4,
+          "stretch": 1.4,
+          "darkEvery": 3,
+          "seedMul": 7.13,
+          "step": 12.9,
+          "rotStep": 9.4
+        },
+        {
+          "shape": "family",
+          "verb": "flora-placements",
+          "species": "palma",
+          "positions": [
+            [
+              22,
+              -12
+            ],
+            [
+              27,
+              11
+            ],
+            [
+              -4,
+              19
+            ]
+          ],
+          "scale": 0.8,
+          "seed": 0.31
+        },
+        {
+          "shape": "family",
+          "verb": "lighthouse-tower",
+          "shadow": "$towerShadow",
+          "shadowDx": 5,
+          "shadowDy": 4,
+          "shadowRx": 9,
+          "shadowRy": 3,
+          "body": "$towerBody",
+          "band": "$towerBand",
+          "edge": "$towerEdge",
+          "gallery": "$gallery",
+          "lantern": "$lantern",
+          "baseHalf": 6,
+          "topHalf": 4,
+          "height": 34,
+          "foot": 2,
+          "bands": 3,
+          "bandTop": 29,
+          "bandGap": 11,
+          "bandH": 5,
+          "edgeWidth": 1,
+          "galleryY": 36,
+          "galleryW": 12,
+          "galleryH": 2.5,
+          "lanternY": 40,
+          "lanternR": 4,
+          "finialY": 45.5,
+          "finialW": 6,
+          "finialH": 2
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -52,
+          "text": "FARO",
+          "fg": "$pillFg",
+          "bg": "$pillBg"
+        }
       ]
     },
     "greenSpace": {
@@ -1775,29 +2045,206 @@
         "ringScaleVar": 0.4
       },
       "values": {
-        "left": { "op": "mul", "args": [{ "ref": "hw" }, -1] },
-        "top": { "op": "mul", "args": [{ "ref": "hh" }, -1] },
-        "width": { "op": "mul", "args": [{ "ref": "hw" }, 2] },
-        "height": { "op": "mul", "args": [{ "ref": "hh" }, 2] },
-        "shadowX": { "op": "add", "args": [{ "ref": "left" }, 3] },
-        "shadowY": { "op": "add", "args": [{ "ref": "top" }, 4] },
-        "pathX": { "op": "add", "args": [{ "ref": "left" }, 5] },
-        "pathY": { "op": "add", "args": [{ "ref": "top" }, 5] },
-        "pathW": { "op": "sub", "args": [{ "ref": "width" }, 10] },
-        "pathH": { "op": "sub", "args": [{ "ref": "height" }, 10] },
-        "pitchX": { "op": "add", "args": [{ "ref": "left" }, 16] },
-        "pitchY": { "op": "add", "args": [{ "ref": "top" }, 14] },
-        "pitchW": { "op": "sub", "args": [{ "ref": "width" }, 32] },
-        "pitchH": { "op": "sub", "args": [{ "ref": "height" }, 28] },
-        "pitchBottom": { "op": "sub", "args": [{ "ref": "hh" }, 14] }
+        "left": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            -1
+          ]
+        },
+        "top": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            -1
+          ]
+        },
+        "width": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            2
+          ]
+        },
+        "height": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            2
+          ]
+        },
+        "shadowX": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "left"
+            },
+            3
+          ]
+        },
+        "shadowY": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "top"
+            },
+            4
+          ]
+        },
+        "pathX": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "left"
+            },
+            5
+          ]
+        },
+        "pathY": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "top"
+            },
+            5
+          ]
+        },
+        "pathW": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "width"
+            },
+            10
+          ]
+        },
+        "pathH": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "height"
+            },
+            10
+          ]
+        },
+        "pitchX": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "left"
+            },
+            16
+          ]
+        },
+        "pitchY": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "top"
+            },
+            14
+          ]
+        },
+        "pitchW": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "width"
+            },
+            32
+          ]
+        },
+        "pitchH": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "height"
+            },
+            28
+          ]
+        },
+        "pitchBottom": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            14
+          ]
+        }
       },
       "parts": [
-        { "shape": "roundRect", "fill": "$shadow", "x": "$shadowX", "y": "$shadowY", "w": "$width", "h": "$height", "r": 12 },
-        { "shape": "roundRect", "fill": "$grass", "x": "$left", "y": "$top", "w": "$width", "h": "$height", "r": 12 },
-        { "shape": "roundRect", "stroke": "$gravelPath", "width": 3, "x": "$pathX", "y": "$pathY", "w": "$pathW", "h": "$pathH", "r": 9 },
-        { "shape": "strokeRect", "when": "$pitch", "stroke": "$pitchLine", "width": 2, "x": "$pitchX", "y": "$pitchY", "w": "$pitchW", "h": "$pitchH" },
-        { "shape": "stroke", "when": "$pitch", "stroke": "$pitchLine", "width": 2, "pts": [[0, "$pitchY"], [0, "$pitchBottom"]] },
-        { "shape": "ring", "when": "$pitch", "stroke": "$pitchLine", "width": 2, "cx": 0, "cy": 0, "r": 14 }
+        {
+          "shape": "roundRect",
+          "fill": "$shadow",
+          "x": "$shadowX",
+          "y": "$shadowY",
+          "w": "$width",
+          "h": "$height",
+          "r": 12
+        },
+        {
+          "shape": "roundRect",
+          "fill": "$grass",
+          "x": "$left",
+          "y": "$top",
+          "w": "$width",
+          "h": "$height",
+          "r": 12
+        },
+        {
+          "shape": "roundRect",
+          "stroke": "$gravelPath",
+          "width": 3,
+          "x": "$pathX",
+          "y": "$pathY",
+          "w": "$pathW",
+          "h": "$pathH",
+          "r": 9
+        },
+        {
+          "shape": "strokeRect",
+          "when": "$pitch",
+          "stroke": "$pitchLine",
+          "width": 2,
+          "x": "$pitchX",
+          "y": "$pitchY",
+          "w": "$pitchW",
+          "h": "$pitchH"
+        },
+        {
+          "shape": "stroke",
+          "when": "$pitch",
+          "stroke": "$pitchLine",
+          "width": 2,
+          "pts": [
+            [
+              0,
+              "$pitchY"
+            ],
+            [
+              0,
+              "$pitchBottom"
+            ]
+          ]
+        },
+        {
+          "shape": "ring",
+          "when": "$pitch",
+          "stroke": "$pitchLine",
+          "width": 2,
+          "cx": 0,
+          "cy": 0,
+          "r": 14
+        }
       ]
     },
     "fountain": {
@@ -1810,9 +2257,43 @@
         "jet": "rgba(206,236,246,0.9)"
       },
       "parts": [
-        { "shape": "disc", "fill": "$rim", "cx": 0, "cy": 0, "r": 17 },
-        { "shape": "disc", "fill": "$kerb", "cx": 0, "cy": 0, "r": 14 },
-        { "shape": "family", "verb": "fountain-water", "water": "$water", "ripple": "$ripple", "jet": "$jet", "waterR": 12, "ripples": 3, "rippleWidth": 1, "rippleSpeed": 0.003, "jetBase": 9, "jetBob": 2, "jetSpeed": 6, "jetHalfW": 2, "droplets": 5, "dropletR": 1.2, "dropletSpread": 9, "dropletBase": 3, "dropletSpeed": 22, "dropletPhase": 2.5, "dropletRise": 2, "dropletSpin": 2 }
+        {
+          "shape": "disc",
+          "fill": "$rim",
+          "cx": 0,
+          "cy": 0,
+          "r": 17
+        },
+        {
+          "shape": "disc",
+          "fill": "$kerb",
+          "cx": 0,
+          "cy": 0,
+          "r": 14
+        },
+        {
+          "shape": "family",
+          "verb": "fountain-water",
+          "water": "$water",
+          "ripple": "$ripple",
+          "jet": "$jet",
+          "waterR": 12,
+          "ripples": 3,
+          "rippleWidth": 1,
+          "rippleSpeed": 0.003,
+          "jetBase": 9,
+          "jetBob": 2,
+          "jetSpeed": 6,
+          "jetHalfW": 2,
+          "droplets": 5,
+          "dropletR": 1.2,
+          "dropletSpread": 9,
+          "dropletBase": 3,
+          "dropletSpeed": 22,
+          "dropletPhase": 2.5,
+          "dropletRise": 2,
+          "dropletSpin": 2
+        }
       ]
     },
     "pool": {
@@ -1827,11 +2308,77 @@
         "slide": "#f3c969"
       },
       "parts": [
-        { "shape": "ellipse", "fill": "$deck", "cx": 0, "cy": 0, "rx": 78, "ry": 48 },
-        { "shape": "ellipse", "stroke": "$coping", "width": 5, "cx": 0, "cy": 0, "rx": 72, "ry": 43 },
-        { "shape": "family", "verb": "pool-water", "water": "$water", "deep": "$deep", "shallow": "$shallow", "shimmer": "$shimmer", "waterRx": 66, "waterRy": 38, "deepX": 6, "deepY": 4, "deepRx": 42, "deepRy": 24, "shallowX": -42, "shallowY": 8, "shallowRx": 22, "shallowRy": 12, "shimmerLines": 4, "shimmerTop": -28, "shimmerGap": 15, "shimmerAmp": 3, "shimmerWave": 2.5, "shimmerStep": 8, "shimmerWidth": 2, "speed": 0.0022, "shimmerSpeedA": 3, "shimmerFreq": 0.08, "shimmerSpeedB": 4 },
-        { "shape": "disc", "fill": "$slide", "cx": -54, "cy": 22, "r": 6 },
-        { "shape": "family", "when": "$palms", "verb": "flora-placements", "species": "palma", "positions": [[60, -30], [-62, -22]], "scale": 0.7, "seed": 0.57 }
+        {
+          "shape": "ellipse",
+          "fill": "$deck",
+          "cx": 0,
+          "cy": 0,
+          "rx": 78,
+          "ry": 48
+        },
+        {
+          "shape": "ellipse",
+          "stroke": "$coping",
+          "width": 5,
+          "cx": 0,
+          "cy": 0,
+          "rx": 72,
+          "ry": 43
+        },
+        {
+          "shape": "family",
+          "verb": "pool-water",
+          "water": "$water",
+          "deep": "$deep",
+          "shallow": "$shallow",
+          "shimmer": "$shimmer",
+          "waterRx": 66,
+          "waterRy": 38,
+          "deepX": 6,
+          "deepY": 4,
+          "deepRx": 42,
+          "deepRy": 24,
+          "shallowX": -42,
+          "shallowY": 8,
+          "shallowRx": 22,
+          "shallowRy": 12,
+          "shimmerLines": 4,
+          "shimmerTop": -28,
+          "shimmerGap": 15,
+          "shimmerAmp": 3,
+          "shimmerWave": 2.5,
+          "shimmerStep": 8,
+          "shimmerWidth": 2,
+          "speed": 0.0022,
+          "shimmerSpeedA": 3,
+          "shimmerFreq": 0.08,
+          "shimmerSpeedB": 4
+        },
+        {
+          "shape": "disc",
+          "fill": "$slide",
+          "cx": -54,
+          "cy": 22,
+          "r": 6
+        },
+        {
+          "shape": "family",
+          "when": "$palms",
+          "verb": "flora-placements",
+          "species": "palma",
+          "positions": [
+            [
+              60,
+              -30
+            ],
+            [
+              -62,
+              -22
+            ]
+          ],
+          "scale": 0.7,
+          "seed": 0.57
+        }
       ]
     },
     "stadium": {
@@ -1892,21 +2439,216 @@
       "_frame": "`values` posee también el marco: `X` mide en L; `Y` y `S` en W2=min(hh·inset, L·0.62). +x es el ESTE (fachada hacia el bulevar), +y es el SUR. Ninguna de estas proporciones vive en `landmarks.js`.",
       "_vars": "Cada nodo es `{op,args}` o `{ref}` y sólo usa el vocabulario finito exportado por shapes.js. Los nombres resueltos alimentan `$tw`, `$dome`, `$towerX` y las otras dimensiones de `parts`; no son strings ejecutables ni comandos Canvas.",
       "values": {
-        "L": { "op": "mul", "args": [{ "ref": "hw" }, 0.86] },
-        "insetH": { "op": "mul", "args": [{ "ref": "hh" }, 0.86] },
-        "W2": { "op": "min", "args": [{ "ref": "insetH" }, { "op": "mul", "args": [{ "ref": "L" }, 0.62] }] },
-        "frameHw": { "ref": "L" },
-        "frameHh": { "ref": "W2" },
-        "frameSize": { "ref": "W2" },
-        "tw": { "op": "max", "args": [10, { "op": "mul", "args": [{ "ref": "L" }, 0.26] }] },
-        "th": { "op": "min", "args": [{ "ref": "insetH" }, { "op": "mul", "args": [{ "ref": "W2" }, 1.45] }] },
-        "tr": { "op": "max", "args": [5, { "op": "mul", "args": [{ "ref": "W2" }, 0.42] }] },
-        "dome": { "op": "min", "args": [{ "op": "mul", "args": [{ "ref": "W2" }, 0.72] }, { "op": "mul", "args": [{ "ref": "tw" }, 0.9] }] },
-        "towerX": { "op": "sub", "args": [{ "ref": "L" }, { "op": "mul", "args": [{ "ref": "tr" }, 0.5] }] },
-        "towerTop": { "op": "sub", "args": [{ "op": "mul", "args": [-1, { "ref": "W2" }] }, { "op": "mul", "args": [-1, { "ref": "tr" }, 0.7] }] },
-        "towerStep": { "op": "mul", "args": [2, { "op": "sub", "args": [{ "ref": "W2" }, { "op": "mul", "args": [{ "ref": "tr" }, 0.7] }] }] },
-        "crossX": { "op": "sub", "args": [{ "op": "mul", "args": [{ "ref": "L" }, 0.05] }, { "op": "mul", "args": [{ "ref": "W2" }, 0.11] }] },
-        "crossW": { "op": "mul", "args": [{ "ref": "W2" }, 0.22] }
+        "L": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            0.86
+          ]
+        },
+        "insetH": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            0.86
+          ]
+        },
+        "W2": {
+          "op": "min",
+          "args": [
+            {
+              "ref": "insetH"
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "L"
+                },
+                0.62
+              ]
+            }
+          ]
+        },
+        "frameHw": {
+          "ref": "L"
+        },
+        "frameHh": {
+          "ref": "W2"
+        },
+        "frameSize": {
+          "ref": "W2"
+        },
+        "tw": {
+          "op": "max",
+          "args": [
+            10,
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "L"
+                },
+                0.26
+              ]
+            }
+          ]
+        },
+        "th": {
+          "op": "min",
+          "args": [
+            {
+              "ref": "insetH"
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                1.45
+              ]
+            }
+          ]
+        },
+        "tr": {
+          "op": "max",
+          "args": [
+            5,
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                0.42
+              ]
+            }
+          ]
+        },
+        "dome": {
+          "op": "min",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                0.72
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "tw"
+                },
+                0.9
+              ]
+            }
+          ]
+        },
+        "towerX": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "L"
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "tr"
+                },
+                0.5
+              ]
+            }
+          ]
+        },
+        "towerTop": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                -1,
+                {
+                  "ref": "W2"
+                }
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                -1,
+                {
+                  "ref": "tr"
+                },
+                0.7
+              ]
+            }
+          ]
+        },
+        "towerStep": {
+          "op": "mul",
+          "args": [
+            2,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "ref": "tr"
+                    },
+                    0.7
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "crossX": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "L"
+                },
+                0.05
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                0.11
+              ]
+            }
+          ]
+        },
+        "crossW": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "W2"
+            },
+            0.22
+          ]
+        }
       },
       "parts": [
         {
@@ -2285,67 +3027,354 @@
         "roof": "#e85d75"
       },
       "values": {
-        "along": { "op": "gte", "args": [{ "ref": "hw" }, { "ref": "hh" }] },
-        "longHalf": { "op": "if", "args": [{ "ref": "along" }, { "ref": "hw" }, { "ref": "hh" }] },
-        "shortHalf": { "op": "if", "args": [{ "ref": "along" }, { "ref": "hh" }, { "ref": "hw" }] },
-        "L": { "op": "mul", "args": [{ "ref": "longHalf" }, 1.64] },
-        "D": { "op": "mul", "args": [{ "ref": "shortHalf" }, 0.62] },
-        "ph": { "op": "mul", "args": [{ "ref": "D" }, 0.95] },
-        "frameHw": { "op": "mul", "args": [{ "ref": "L" }, 0.5] },
-        "frameHh": { "ref": "D" },
-        "frameSize": { "ref": "D" },
-        "rotateTurns": { "op": "if", "args": [{ "ref": "along" }, 0, 0.25] },
-        "court": { "op": "and", "args": [{ "op": "gt", "args": [{ "ref": "L" }, 70] }, { "op": "gt", "args": [{ "ref": "ph" }, 22] }] },
-        "courtR": { "op": "mul", "args": [{ "op": "min", "args": [{ "op": "mul", "args": [{ "ref": "L" }, 0.52] }, { "op": "mul", "args": [{ "ref": "ph" }, 0.62] }] }, 0.2] },
-        "campus": { "op": "eq", "args": [{ "ref": "use" }, "campus"] },
-        "minPavilions": { "op": "if", "args": [{ "ref": "campus" }, 2, 1] },
-        "maxPavilions": { "op": "if", "args": [{ "ref": "campus" }, 4, 1] }
+        "along": {
+          "op": "gte",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "longHalf": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "shortHalf": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            {
+              "ref": "hh"
+            },
+            {
+              "ref": "hw"
+            }
+          ]
+        },
+        "L": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "longHalf"
+            },
+            1.64
+          ]
+        },
+        "D": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "shortHalf"
+            },
+            0.62
+          ]
+        },
+        "ph": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "D"
+            },
+            0.95
+          ]
+        },
+        "frameHw": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "L"
+            },
+            0.5
+          ]
+        },
+        "frameHh": {
+          "ref": "D"
+        },
+        "frameSize": {
+          "ref": "D"
+        },
+        "rotateTurns": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            0,
+            0.25
+          ]
+        },
+        "court": {
+          "op": "and",
+          "args": [
+            {
+              "op": "gt",
+              "args": [
+                {
+                  "ref": "L"
+                },
+                70
+              ]
+            },
+            {
+              "op": "gt",
+              "args": [
+                {
+                  "ref": "ph"
+                },
+                22
+              ]
+            }
+          ]
+        },
+        "courtR": {
+          "op": "mul",
+          "args": [
+            {
+              "op": "min",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "ref": "L"
+                    },
+                    0.52
+                  ]
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "ref": "ph"
+                    },
+                    0.62
+                  ]
+                }
+              ]
+            },
+            0.2
+          ]
+        },
+        "campus": {
+          "op": "eq",
+          "args": [
+            {
+              "ref": "use"
+            },
+            "campus"
+          ]
+        },
+        "minPavilions": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "campus"
+            },
+            2,
+            1
+          ]
+        },
+        "maxPavilions": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "campus"
+            },
+            4,
+            1
+          ]
+        }
       },
       "parts": [
         {
           "_": "El patio barrido: relleno, no el rectángulo blanco vacío que antes se pintaba sobre 85 escuelas.",
-          "shape": "rect", "fill": "$yard",
-          "x": [-0.84, 0], "y": [-0.1, 0], "w": [1.68, 0], "h": [0.95, 0]
+          "shape": "rect",
+          "fill": "$yard",
+          "x": [
+            -0.84,
+            0
+          ],
+          "y": [
+            -0.1,
+            0
+          ],
+          "w": [
+            1.68,
+            0
+          ],
+          "h": [
+            0.95,
+            0
+          ]
         },
         {
           "_": "La cancha sólo entra cuando el llamador confirma L > 70 y ph > 22.",
-          "shape": "strokeRect", "when": "court", "stroke": "$court", "width": 1,
-          "x": [-0.52, 0], "y": [0.0805, 0], "w": [1.04, 0], "h": [0.589, 0]
+          "shape": "strokeRect",
+          "when": "court",
+          "stroke": "$court",
+          "width": 1,
+          "x": [
+            -0.52,
+            0
+          ],
+          "y": [
+            0.0805,
+            0
+          ],
+          "w": [
+            1.04,
+            0
+          ],
+          "h": [
+            0.589,
+            0
+          ]
         },
         {
-          "shape": "stroke", "when": "court", "stroke": "$court", "width": 1,
-          "pts": [[0, [0.0805, 0]], [0, [0.6695, 0]]]
+          "shape": "stroke",
+          "when": "court",
+          "stroke": "$court",
+          "width": 1,
+          "pts": [
+            [
+              0,
+              [
+                0.0805,
+                0
+              ]
+            ],
+            [
+              0,
+              [
+                0.6695,
+                0
+              ]
+            ]
+          ]
         },
         {
-          "shape": "ring", "when": "court", "stroke": "$court", "width": 1,
-          "cx": 0, "cy": [0.375, 0], "r": "$courtR"
+          "shape": "ring",
+          "when": "court",
+          "stroke": "$court",
+          "width": 1,
+          "cx": 0,
+          "cy": [
+            0.375,
+            0
+          ],
+          "r": "$courtR"
         },
         {
           "_": "`fit` cuenta uno, o 2–4 para campus, desde L/46. Reparte L+6 para que cada vano mida exactamente (L-(n-1)*6)/n y deja ese ancho como `$fitWidth`.",
-          "shape": "fit", "along": "x", "length": [2, 0], "spreadLength": [2, 6],
-          "pitch": 46, "min": "$minPavilions", "max": "$maxPavilions",
-          "gap": 6, "anchor": "start",
+          "shape": "fit",
+          "along": "x",
+          "length": [
+            2,
+            0
+          ],
+          "spreadLength": [
+            2,
+            6
+          ],
+          "pitch": 46,
+          "min": "$minPavilions",
+          "max": "$maxPavilions",
+          "gap": 6,
+          "anchor": "start",
           "parts": [
             {
-              "shape": "roundRect", "fill": "$shadow",
-              "x": [-1, 2], "y": [-1, -1], "w": "$fitWidth", "h": [1, 0], "r": 2
+              "shape": "roundRect",
+              "fill": "$shadow",
+              "x": [
+                -1,
+                2
+              ],
+              "y": [
+                -1,
+                -1
+              ],
+              "w": "$fitWidth",
+              "h": [
+                1,
+                0
+              ],
+              "r": 2
             },
             {
-              "shape": "roundRect", "fill": "$useWall",
-              "x": [-1, 0], "y": [-1, -3], "w": "$fitWidth", "h": [1, 0], "r": 2
+              "shape": "roundRect",
+              "fill": "$useWall",
+              "x": [
+                -1,
+                0
+              ],
+              "y": [
+                -1,
+                -3
+              ],
+              "w": "$fitWidth",
+              "h": [
+                1,
+                0
+              ],
+              "r": 2
             },
             {
-              "shape": "rect", "fill": "$useRoof",
-              "x": [-1, 0], "y": [-1, -3], "w": "$fitWidth",
-              "h": {"k": 0.28, "px": 0, "min": 2}
+              "shape": "rect",
+              "fill": "$useRoof",
+              "x": [
+                -1,
+                0
+              ],
+              "y": [
+                -1,
+                -3
+              ],
+              "w": "$fitWidth",
+              "h": {
+                "k": 0.28,
+                "px": 0,
+                "min": 2
+              }
             },
             {
               "_": "Las puertas se vuelven a ajustar dentro del ancho REAL del pabellón, a paso de 11 px.",
-              "shape": "fit", "along": "x", "length": "$fitWidth", "pitch": 11, "min": 1,
+              "shape": "fit",
+              "along": "x",
+              "length": "$fitWidth",
+              "pitch": 11,
+              "min": 1,
               "parts": [
                 {
-                  "shape": "rect", "fill": "$courtLine",
-                  "x": [-1, -1.4], "y": [-0.34, -3], "w": 2.8, "h": [0.3, 0]
+                  "shape": "rect",
+                  "fill": "$courtLine",
+                  "x": [
+                    -1,
+                    -1.4
+                  ],
+                  "y": [
+                    -0.34,
+                    -3
+                  ],
+                  "w": 2.8,
+                  "h": [
+                    0.3,
+                    0
+                  ]
                 }
               ]
             }
@@ -2353,24 +3382,146 @@
         },
         {
           "_": "El asta, al borde del patio.",
-          "shape": "stroke", "stroke": "$pavilion", "width": 1.2,
-          "pts": [[[0.88, 0], [0.2, 0]], [[0.88, 0], [-0.5, 0]]]
+          "shape": "stroke",
+          "stroke": "$pavilion",
+          "width": 1.2,
+          "pts": [
+            [
+              [
+                0.88,
+                0
+              ],
+              [
+                0.2,
+                0
+              ]
+            ],
+            [
+              [
+                0.88,
+                0
+              ],
+              [
+                -0.5,
+                0
+              ]
+            ]
+          ]
         },
         {
-          "shape": "rect", "fill": "$roof",
-          "x": [0.88, 0], "y": [-0.5, 0], "w": {"k": 0.1, "px": 0, "min": 3}, "h": 2.6
+          "shape": "rect",
+          "fill": "$roof",
+          "x": [
+            0.88,
+            0
+          ],
+          "y": [
+            -0.5,
+            0
+          ],
+          "w": {
+            "k": 0.1,
+            "px": 0,
+            "min": 3
+          },
+          "h": 2.6
         }
       ]
     },
     "garden": {
       "note": "El arbolado de parque: values posee visibilidad, cantidad, seeds y claro central; la silueta de cada especie viene de flora.json.",
       "values": {
-        "visible": { "op": "and", "args": [{ "ref": "decor" }, { "op": "not", "args": [{ "ref": "whole" }] }] },
-        "perimeter": { "op": "add", "args": [{ "op": "mul", "args": [{ "ref": "hw" }, 2] }, { "op": "mul", "args": [{ "ref": "hh" }, 2] }] },
-        "seedX": { "ref": "x0" },
-        "seedY": { "ref": "y0" },
-        "hasCentre": { "op": "or", "args": [{ "ref": "hasKiosco" }, { "ref": "hasStatue" }, { "ref": "hasFountain" }] },
-        "clear": { "op": "if", "args": [{ "ref": "hasCentre" }, { "op": "max", "args": [14, { "op": "mul", "args": [{ "op": "min", "args": [{ "ref": "hw" }, { "ref": "hh" }] }, 0.62] }] }, 0] }
+        "visible": {
+          "op": "and",
+          "args": [
+            {
+              "ref": "decor"
+            },
+            {
+              "op": "not",
+              "args": [
+                {
+                  "ref": "whole"
+                }
+              ]
+            }
+          ]
+        },
+        "perimeter": {
+          "op": "add",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "hw"
+                },
+                2
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "hh"
+                },
+                2
+              ]
+            }
+          ]
+        },
+        "seedX": {
+          "ref": "x0"
+        },
+        "seedY": {
+          "ref": "y0"
+        },
+        "hasCentre": {
+          "op": "or",
+          "args": [
+            {
+              "ref": "hasKiosco"
+            },
+            {
+              "ref": "hasStatue"
+            },
+            {
+              "ref": "hasFountain"
+            }
+          ]
+        },
+        "clear": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "hasCentre"
+            },
+            {
+              "op": "max",
+              "args": [
+                14,
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "op": "min",
+                      "args": [
+                        {
+                          "ref": "hw"
+                        },
+                        {
+                          "ref": "hh"
+                        }
+                      ]
+                    },
+                    0.62
+                  ]
+                }
+              ]
+            },
+            0
+          ]
+        }
       },
       "parts": [
         {
@@ -2378,9 +3529,19 @@
           "paint": "tree",
           "species": "almendro",
           "layout": "box",
-          "fit": {"length": "$perimeter", "pitch": 26, "min": 3},
-          "width": [2, 0],
-          "height": [2, 0],
+          "fit": {
+            "length": "$perimeter",
+            "pitch": 26,
+            "min": 3
+          },
+          "width": [
+            2,
+            0
+          ],
+          "height": [
+            2,
+            0
+          ],
           "xMul": 0.7,
           "yMul": 0.62,
           "seedX": "$seedX",
@@ -2388,8 +3549,14 @@
           "xStep": 3.7,
           "yStep": 8.1,
           "clear": "$clear",
-          "boundX": [0.92, 0],
-          "boundY": [0.92, 0],
+          "boundX": [
+            0.92,
+            0
+          ],
+          "boundY": [
+            0.92,
+            0
+          ],
           "scaleMin": 0.7,
           "scaleRange": 0.35,
           "scaleSeed": "$seedX",
@@ -2410,52 +3577,270 @@
         "pumpDark": "#5c6169"
       },
       "values": {
-        "along": { "op": "gte", "args": [{ "ref": "hw" }, { "ref": "hh" }] },
-        "frameHw": { "op": "if", "args": [{ "ref": "along" }, { "ref": "hw" }, { "ref": "hh" }] },
-        "frameHh": { "op": "if", "args": [{ "ref": "along" }, { "ref": "hh" }, { "ref": "hw" }] },
-        "rotateTurns": { "op": "if", "args": [{ "ref": "along" }, 0, 0.25] }
+        "along": {
+          "op": "gte",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "frameHw": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "frameHh": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            {
+              "ref": "hh"
+            },
+            {
+              "ref": "hw"
+            }
+          ]
+        },
+        "rotateTurns": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            0,
+            0.25
+          ]
+        }
       },
       "parts": [
         {
           "_": "sombra de la tienda, contra el borde trasero",
-          "shape": "roundRect", "fill": "$shadow",
-          "x": [-1, 2], "y": [-1, 2], "w": [0.68, 0], "h": [0.6, 0], "r": 2
+          "shape": "roundRect",
+          "fill": "$shadow",
+          "x": [
+            -1,
+            2
+          ],
+          "y": [
+            -1,
+            2
+          ],
+          "w": [
+            0.68,
+            0
+          ],
+          "h": [
+            0.6,
+            0
+          ],
+          "r": 2
         },
         {
-          "shape": "roundRect", "fill": "$canopy",
-          "x": [-1, 1], "y": [-1, 1], "w": [0.68, 0], "h": [0.6, 0], "r": 2
+          "shape": "roundRect",
+          "fill": "$canopy",
+          "x": [
+            -1,
+            1
+          ],
+          "y": [
+            -1,
+            1
+          ],
+          "w": [
+            0.68,
+            0
+          ],
+          "h": [
+            0.6,
+            0
+          ],
+          "r": 2
         },
         {
-          "shape": "rect", "fill": "$band",
-          "x": [-1, 1], "y": [-1, 1], "w": [0.68, 0],
-          "h": {"k": 0.18, "px": 0, "min": 1.6}
+          "shape": "rect",
+          "fill": "$band",
+          "x": [
+            -1,
+            1
+          ],
+          "y": [
+            -1,
+            1
+          ],
+          "w": [
+            0.68,
+            0
+          ],
+          "h": {
+            "k": 0.18,
+            "px": 0,
+            "min": 1.6
+          }
         },
         {
           "_": "sombra de la marquesina",
-          "shape": "roundRect", "fill": "$canopyShadow",
-          "x": [-0.12, 0], "y": [-0.56, 2.5], "w": [1.12, 0], "h": [1.12, 0], "r": 2
+          "shape": "roundRect",
+          "fill": "$canopyShadow",
+          "x": [
+            -0.12,
+            0
+          ],
+          "y": [
+            -0.56,
+            2.5
+          ],
+          "w": [
+            1.12,
+            0
+          ],
+          "h": [
+            1.12,
+            0
+          ],
+          "r": 2
         },
         {
-          "shape": "roundRect", "fill": "$shop",
-          "x": [-0.12, -2], "y": [-0.56, 0], "w": [1.12, 0], "h": [1.12, 0], "r": 2
+          "shape": "roundRect",
+          "fill": "$shop",
+          "x": [
+            -0.12,
+            -2
+          ],
+          "y": [
+            -0.56,
+            0
+          ],
+          "w": [
+            1.12,
+            0
+          ],
+          "h": [
+            1.12,
+            0
+          ],
+          "r": 2
         },
         {
-          "shape": "rect", "fill": "$band",
-          "x": [-0.12, -2], "y": [-0.56, 0], "w": [1.12, 0],
-          "h": {"k": 0.2016, "px": 0, "min": 1.4}
+          "shape": "rect",
+          "fill": "$band",
+          "x": [
+            -0.12,
+            -2
+          ],
+          "y": [
+            -0.56,
+            0
+          ],
+          "w": [
+            1.12,
+            0
+          ],
+          "h": {
+            "k": 0.2016,
+            "px": 0,
+            "min": 1.4
+          }
         },
-        {"shape": "rect", "fill": "$pump", "x": [-0.12, 0.5], "y": [-0.56, 2], "w": 1.6, "h": 1.6},
-        {"shape": "rect", "fill": "$pump", "x": [1, -5.5], "y": [-0.56, 2], "w": 1.6, "h": 1.6},
-        {"shape": "rect", "fill": "$pump", "x": [-0.12, 0.5], "y": [0.56, -3], "w": 1.6, "h": 1.6},
-        {"shape": "rect", "fill": "$pump", "x": [1, -5.5], "y": [0.56, -3], "w": 1.6, "h": 1.6},
+        {
+          "shape": "rect",
+          "fill": "$pump",
+          "x": [
+            -0.12,
+            0.5
+          ],
+          "y": [
+            -0.56,
+            2
+          ],
+          "w": 1.6,
+          "h": 1.6
+        },
+        {
+          "shape": "rect",
+          "fill": "$pump",
+          "x": [
+            1,
+            -5.5
+          ],
+          "y": [
+            -0.56,
+            2
+          ],
+          "w": 1.6,
+          "h": 1.6
+        },
+        {
+          "shape": "rect",
+          "fill": "$pump",
+          "x": [
+            -0.12,
+            0.5
+          ],
+          "y": [
+            0.56,
+            -3
+          ],
+          "w": 1.6,
+          "h": 1.6
+        },
+        {
+          "shape": "rect",
+          "fill": "$pump",
+          "x": [
+            1,
+            -5.5
+          ],
+          "y": [
+            0.56,
+            -3
+          ],
+          "w": 1.6,
+          "h": 1.6
+        },
         {
           "_": "Una a tres bombas según cuántas caben a paso de 16 px bajo la marquesina.",
-          "shape": "fit", "along": "x", "length": [1.12, 0], "pitch": 16, "min": 1, "max": 3,
+          "shape": "fit",
+          "along": "x",
+          "length": [
+            1.12,
+            0
+          ],
+          "pitch": 16,
+          "min": 1,
+          "max": 3,
           "parts": [
             {
-              "shape": "rect", "fill": "$pumpDark",
-              "x": [-0.12, -3.4], "y": [-0.0896, 0], "w": 2.8,
-              "h": {"k": 0.224, "px": 0, "min": 2.4}
+              "shape": "rect",
+              "fill": "$pumpDark",
+              "x": [
+                -0.12,
+                -3.4
+              ],
+              "y": [
+                -0.0896,
+                0
+              ],
+              "w": 2.8,
+              "h": {
+                "k": 0.224,
+                "px": 0,
+                "min": 2.4
+              }
             }
           ]
         }
@@ -2475,92 +3860,414 @@
         "post": "#5d5040"
       },
       "values": {
-        "size": { "op": "min", "args": [{ "ref": "hw" }, { "ref": "hh" }] },
-        "frameHw": { "ref": "size" },
-        "frameHh": { "ref": "size" },
-        "frameSize": { "ref": "size" }
+        "size": {
+          "op": "min",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "frameHw": {
+          "ref": "size"
+        },
+        "frameHh": {
+          "ref": "size"
+        },
+        "frameSize": {
+          "ref": "size"
+        }
       },
       "parts": [
         {
           "_": "El caller entrega min(hw,hh); el grupo declara r = clamp(0.42*s, 7, 15) una sola vez para sus dos ejes y sus tamaños.",
           "shape": "group",
-          "hwS": {"k": 0.42, "px": 0, "min": 7, "max": 15},
-          "hhS": {"k": 0.42, "px": 0, "min": 7, "max": 15},
-          "s": {"k": 0.42, "px": 0, "min": 7, "max": 15},
+          "hwS": {
+            "k": 0.42,
+            "px": 0,
+            "min": 7,
+            "max": 15
+          },
+          "hhS": {
+            "k": 0.42,
+            "px": 0,
+            "min": 7,
+            "max": 15
+          },
+          "s": {
+            "k": 0.42,
+            "px": 0,
+            "min": 7,
+            "max": 15
+          },
           "parts": [
-        {
-          "shape": "ellipse",
-          "fill": "$shadow",
-          "cx": 2,
-          "cy": [0.5, 0],
-          "rx": [1.12, 0],
-          "ry": [0.5, 0]
-        },
-        {
-          "shape": "ellipse",
-          "fill": "$base",
-          "cx": 0,
-          "cy": [0.3, 0],
-          "rx": [1.1, 0],
-          "ry": [0.5, 0]
-        },
-        {
-          "shape": "ellipse",
-          "fill": "$wall",
-          "cx": 0,
-          "cy": [0.16, 0],
-          "rx": [0.9, 0],
-          "ry": [0.42, 0]
-        },
-        {
-          "_": "Las ocho columnas son ocho strokes, no un path compuesto: Canvas compone el antialias de cada llamada por separado y ésa es parte de la imagen de referencia.",
-          "shape": "stroke", "stroke": "$step", "width": 1.4,
-          "pts": [[[0.78, 0], 0], [[0.78, 0], [-0.62, 0]]]
-        },
-        {
-          "shape": "stroke", "stroke": "$step", "width": 1.4,
-          "pts": [[[0.5515432893255071, 0], [0.24041630560342617, 0]], [[0.5515432893255071, 0], [-0.3795836943965738, 0]]]
-        },
-        {
-          "shape": "stroke", "stroke": "$step", "width": 1.4,
-          "pts": [[[4.7761225166746774e-17, 0], [0.34, 0]], [[4.7761225166746774e-17, 0], [-0.27999999999999997, 0]]]
-        },
-        {
-          "shape": "stroke", "stroke": "$step", "width": 1.4,
-          "pts": [[[-0.551543289325507, 0], [0.2404163056034262, 0]], [[-0.551543289325507, 0], [-0.3795836943965738, 0]]]
-        },
-        {
-          "shape": "stroke", "stroke": "$step", "width": 1.4,
-          "pts": [[[-0.78, 0], [4.163799117101001e-17, 0]], [[-0.78, 0], [-0.62, 0]]]
-        },
-        {
-          "shape": "stroke", "stroke": "$step", "width": 1.4,
-          "pts": [[[-0.5515432893255072, 0], [-0.24041630560342617, 0]], [[-0.5515432893255072, 0], [-0.8604163056034262, 0]]]
-        },
-        {
-          "shape": "stroke", "stroke": "$step", "width": 1.4,
-          "pts": [[[-1.4328367550024033e-16, 0], [-0.34, 0]], [[-1.4328367550024033e-16, 0], [-0.96, 0]]]
-        },
-        {
-          "shape": "stroke", "stroke": "$step", "width": 1.4,
-          "pts": [[[0.551543289325507, 0], [-0.24041630560342622, 0]], [[0.551543289325507, 0], [-0.8604163056034262, 0]]]
-        },
-        {
-          "shape": "fan",
-          "fill": "$roof",
-          "pts": [[[0, 0], [-1.35, 0]], [[1.05, 0], [-0.5, 0]], [[-1.05, 0], [-0.5, 0]]]
-        },
-        {
-          "shape": "fan",
-          "fill": "$highlight",
-          "pts": [[[0, 0], [-1.35, 0]], [[1.05, 0], [-0.5, 0]], [[0, 0], [-0.5, 0]]]
-        },
-        {
-          "shape": "stroke",
-          "stroke": "$post",
-          "width": 1,
-          "pts": [[[0, 0], [-1.35, 0]], [[0, 0], [-1.7, 0]]]
-        }
+            {
+              "shape": "ellipse",
+              "fill": "$shadow",
+              "cx": 2,
+              "cy": [
+                0.5,
+                0
+              ],
+              "rx": [
+                1.12,
+                0
+              ],
+              "ry": [
+                0.5,
+                0
+              ]
+            },
+            {
+              "shape": "ellipse",
+              "fill": "$base",
+              "cx": 0,
+              "cy": [
+                0.3,
+                0
+              ],
+              "rx": [
+                1.1,
+                0
+              ],
+              "ry": [
+                0.5,
+                0
+              ]
+            },
+            {
+              "shape": "ellipse",
+              "fill": "$wall",
+              "cx": 0,
+              "cy": [
+                0.16,
+                0
+              ],
+              "rx": [
+                0.9,
+                0
+              ],
+              "ry": [
+                0.42,
+                0
+              ]
+            },
+            {
+              "_": "Las ocho columnas son ocho strokes, no un path compuesto: Canvas compone el antialias de cada llamada por separado y ésa es parte de la imagen de referencia.",
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    0.78,
+                    0
+                  ],
+                  0
+                ],
+                [
+                  [
+                    0.78,
+                    0
+                  ],
+                  [
+                    -0.62,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    0.5515432893255071,
+                    0
+                  ],
+                  [
+                    0.24041630560342617,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    0.5515432893255071,
+                    0
+                  ],
+                  [
+                    -0.3795836943965738,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    4.7761225166746774e-17,
+                    0
+                  ],
+                  [
+                    0.34,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    4.7761225166746774e-17,
+                    0
+                  ],
+                  [
+                    -0.27999999999999997,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    -0.551543289325507,
+                    0
+                  ],
+                  [
+                    0.2404163056034262,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -0.551543289325507,
+                    0
+                  ],
+                  [
+                    -0.3795836943965738,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    -0.78,
+                    0
+                  ],
+                  [
+                    4.163799117101001e-17,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -0.78,
+                    0
+                  ],
+                  [
+                    -0.62,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    -0.5515432893255072,
+                    0
+                  ],
+                  [
+                    -0.24041630560342617,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -0.5515432893255072,
+                    0
+                  ],
+                  [
+                    -0.8604163056034262,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    -1.4328367550024033e-16,
+                    0
+                  ],
+                  [
+                    -0.34,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -1.4328367550024033e-16,
+                    0
+                  ],
+                  [
+                    -0.96,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    0.551543289325507,
+                    0
+                  ],
+                  [
+                    -0.24041630560342622,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    0.551543289325507,
+                    0
+                  ],
+                  [
+                    -0.8604163056034262,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "fan",
+              "fill": "$roof",
+              "pts": [
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -1.35,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    1.05,
+                    0
+                  ],
+                  [
+                    -0.5,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -1.05,
+                    0
+                  ],
+                  [
+                    -0.5,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "fan",
+              "fill": "$highlight",
+              "pts": [
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -1.35,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    1.05,
+                    0
+                  ],
+                  [
+                    -0.5,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -0.5,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$post",
+              "width": 1,
+              "pts": [
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -1.35,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -1.7,
+                    0
+                  ]
+                ]
+              ]
+            }
           ]
         }
       ]
@@ -2577,50 +4284,286 @@
         "stoneDark": "@cathedral.stoneDark"
       },
       "values": {
-        "frameSize": { "op": "mul", "args": [{ "ref": "hh" }, 0.86] }
+        "frameSize": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            0.86
+          ]
+        }
       },
       "parts": [
         {
           "_": "El ancho del agua es clamp(0.34*hh, 7, 13). Todo lo que depende de w vive dentro de este marco S; X/Y siguen siendo las extensiones del parque.",
           "shape": "group",
-          "s": {"k": 0.34, "px": 0, "min": 7, "max": 13},
+          "s": {
+            "k": 0.34,
+            "px": 0,
+            "min": 7,
+            "max": 13
+          },
           "parts": [
-        {
-          "_": "El cauce es el mismo Bézier perezoso repetido con tres tintas. `S` es el ancho ya acotado del agua.",
-          "shape": "stroke",
-          "stroke": "$bank",
-          "width": [1, 5],
-          "cap": "round",
-          "pts": [[[-1, 0], [-0.42, 0]], {"c": [[[-0.3, 0], [0.55, 0]], [[0.3, 0], [-0.55, 0]]], "to": [[1, 0], [0.42, 0]]}]
-        },
-        {
-          "shape": "stroke",
-          "stroke": "$water",
-          "width": [1, 0],
-          "cap": "round",
-          "pts": [[[-1, 0], [-0.42, 0]], {"c": [[[-0.3, 0], [0.55, 0]], [[0.3, 0], [-0.55, 0]]], "to": [[1, 0], [0.42, 0]]}]
-        },
-        {
-          "shape": "stroke",
-          "stroke": "$sheen",
-          "width": [0.28, 0],
-          "cap": "round",
-          "pts": [[[-1, 0], [-0.42, 0]], {"c": [[[-0.3, 0], [0.55, 0]], [[0.3, 0], [-0.55, 0]]], "to": [[1, 0], [0.42, 0]]}]
-        },
-        {
-          "_": "El puente deriva sus dos medias extensiones del ancho ya acotado: max(5,w*0.55)/2 y (w+12)/2.",
-          "shape": "group",
-          "hwS": {"k": 0.55, "px": 0, "min": 5},
-          "hwScale": 0.5,
-          "hhS": [1, 12],
-          "hhScale": 0.5,
-          "parts": [
-            {"shape": "roundRect", "fill": "$shadow", "x": [-1, 1], "y": [-1, 2], "w": [2, 0], "h": [2, 0], "r": 2},
-            {"shape": "roundRect", "fill": "$stoneLite", "x": [-1, 0], "y": [-1, 0], "w": [2, 0], "h": [2, 0], "r": 2},
-            {"shape": "rect", "fill": "$stoneDark", "x": [-1, 0], "y": [-1, 0], "w": [2, 0], "h": 1.6},
-            {"shape": "rect", "fill": "$stoneDark", "x": [-1, 0], "y": [1, -1.6], "w": [2, 0], "h": 1.6}
-          ]
-        }
+            {
+              "_": "El cauce es el mismo Bézier perezoso repetido con tres tintas. `S` es el ancho ya acotado del agua.",
+              "shape": "stroke",
+              "stroke": "$bank",
+              "width": [
+                1,
+                5
+              ],
+              "cap": "round",
+              "pts": [
+                [
+                  [
+                    -1,
+                    0
+                  ],
+                  [
+                    -0.42,
+                    0
+                  ]
+                ],
+                {
+                  "c": [
+                    [
+                      [
+                        -0.3,
+                        0
+                      ],
+                      [
+                        0.55,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        0.3,
+                        0
+                      ],
+                      [
+                        -0.55,
+                        0
+                      ]
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      0.42,
+                      0
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$water",
+              "width": [
+                1,
+                0
+              ],
+              "cap": "round",
+              "pts": [
+                [
+                  [
+                    -1,
+                    0
+                  ],
+                  [
+                    -0.42,
+                    0
+                  ]
+                ],
+                {
+                  "c": [
+                    [
+                      [
+                        -0.3,
+                        0
+                      ],
+                      [
+                        0.55,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        0.3,
+                        0
+                      ],
+                      [
+                        -0.55,
+                        0
+                      ]
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      0.42,
+                      0
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$sheen",
+              "width": [
+                0.28,
+                0
+              ],
+              "cap": "round",
+              "pts": [
+                [
+                  [
+                    -1,
+                    0
+                  ],
+                  [
+                    -0.42,
+                    0
+                  ]
+                ],
+                {
+                  "c": [
+                    [
+                      [
+                        -0.3,
+                        0
+                      ],
+                      [
+                        0.55,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        0.3,
+                        0
+                      ],
+                      [
+                        -0.55,
+                        0
+                      ]
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      0.42,
+                      0
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "_": "El puente deriva sus dos medias extensiones del ancho ya acotado: max(5,w*0.55)/2 y (w+12)/2.",
+              "shape": "group",
+              "hwS": {
+                "k": 0.55,
+                "px": 0,
+                "min": 5
+              },
+              "hwScale": 0.5,
+              "hhS": [
+                1,
+                12
+              ],
+              "hhScale": 0.5,
+              "parts": [
+                {
+                  "shape": "roundRect",
+                  "fill": "$shadow",
+                  "x": [
+                    -1,
+                    1
+                  ],
+                  "y": [
+                    -1,
+                    2
+                  ],
+                  "w": [
+                    2,
+                    0
+                  ],
+                  "h": [
+                    2,
+                    0
+                  ],
+                  "r": 2
+                },
+                {
+                  "shape": "roundRect",
+                  "fill": "$stoneLite",
+                  "x": [
+                    -1,
+                    0
+                  ],
+                  "y": [
+                    -1,
+                    0
+                  ],
+                  "w": [
+                    2,
+                    0
+                  ],
+                  "h": [
+                    2,
+                    0
+                  ],
+                  "r": 2
+                },
+                {
+                  "shape": "rect",
+                  "fill": "$stoneDark",
+                  "x": [
+                    -1,
+                    0
+                  ],
+                  "y": [
+                    -1,
+                    0
+                  ],
+                  "w": [
+                    2,
+                    0
+                  ],
+                  "h": 1.6
+                },
+                {
+                  "shape": "rect",
+                  "fill": "$stoneDark",
+                  "x": [
+                    -1,
+                    0
+                  ],
+                  "y": [
+                    1,
+                    -1.6
+                  ],
+                  "w": [
+                    2,
+                    0
+                  ],
+                  "h": 1.6
+                }
+              ]
+            }
           ]
         }
       ]
@@ -2637,16 +4580,118 @@
         "billboardPill": "rgba(20,16,40,0.85)"
       },
       "parts": [
-        { "shape": "ellipse", "fill": "$shadow", "cx": 3, "cy": 6, "rx": 16, "ry": 5 },
-        { "shape": "rect", "when": "$store", "fill": "$storeBody", "x": -16, "y": -10, "w": 32, "h": 18 },
-        { "shape": "stripes", "when": "$store", "x": -16, "y": -15, "w": 32, "h": 5, "n": 4, "palette": ["$tone", "$awningLight"] },
-        { "shape": "rect", "when": "$store", "fill": "$door", "x": -4, "y": -2, "w": 8, "h": 10 },
-        { "shape": "rect", "when": "$store", "fill": "$window", "x": -13, "y": -6, "w": 7, "h": 5 },
-        { "shape": "label", "when": "$store", "x": 0, "y": -22, "text": "$label", "fg": "$awningLight", "bg": "$tone" },
-        { "shape": "stroke", "unless": "$store", "stroke": "$post", "width": 2, "runs": [[[-10, 4], [-10, -12]], [[10, 4], [10, -12]]] },
-        { "shape": "rect", "unless": "$store", "fill": "$awningLight", "x": -17, "y": -26, "w": 34, "h": 15 },
-        { "shape": "rect", "unless": "$store", "fill": "$tone", "x": -15, "y": -24, "w": 30, "h": 11 },
-        { "shape": "label", "unless": "$store", "x": 0, "y": -30, "text": "$label", "fg": "$awningLight", "bg": "$billboardPill" }
+        {
+          "shape": "ellipse",
+          "fill": "$shadow",
+          "cx": 3,
+          "cy": 6,
+          "rx": 16,
+          "ry": 5
+        },
+        {
+          "shape": "rect",
+          "when": "$store",
+          "fill": "$storeBody",
+          "x": -16,
+          "y": -10,
+          "w": 32,
+          "h": 18
+        },
+        {
+          "shape": "stripes",
+          "when": "$store",
+          "x": -16,
+          "y": -15,
+          "w": 32,
+          "h": 5,
+          "n": 4,
+          "palette": [
+            "$tone",
+            "$awningLight"
+          ]
+        },
+        {
+          "shape": "rect",
+          "when": "$store",
+          "fill": "$door",
+          "x": -4,
+          "y": -2,
+          "w": 8,
+          "h": 10
+        },
+        {
+          "shape": "rect",
+          "when": "$store",
+          "fill": "$window",
+          "x": -13,
+          "y": -6,
+          "w": 7,
+          "h": 5
+        },
+        {
+          "shape": "label",
+          "when": "$store",
+          "x": 0,
+          "y": -22,
+          "text": "$label",
+          "fg": "$awningLight",
+          "bg": "$tone"
+        },
+        {
+          "shape": "stroke",
+          "unless": "$store",
+          "stroke": "$post",
+          "width": 2,
+          "runs": [
+            [
+              [
+                -10,
+                4
+              ],
+              [
+                -10,
+                -12
+              ]
+            ],
+            [
+              [
+                10,
+                4
+              ],
+              [
+                10,
+                -12
+              ]
+            ]
+          ]
+        },
+        {
+          "shape": "rect",
+          "unless": "$store",
+          "fill": "$awningLight",
+          "x": -17,
+          "y": -26,
+          "w": 34,
+          "h": 15
+        },
+        {
+          "shape": "rect",
+          "unless": "$store",
+          "fill": "$tone",
+          "x": -15,
+          "y": -24,
+          "w": 30,
+          "h": 11
+        },
+        {
+          "shape": "label",
+          "unless": "$store",
+          "x": 0,
+          "y": -30,
+          "text": "$label",
+          "fg": "$awningLight",
+          "bg": "$billboardPill"
+        }
       ]
     }
   }

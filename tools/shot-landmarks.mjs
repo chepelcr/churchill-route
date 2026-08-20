@@ -49,10 +49,24 @@ const drew = await page.evaluate(async ([scenes, cell, cols]) => {
     import("/src/render/c2d/gfx.js"),
     import("/src/domain/vocabulary.generated.js"),
   ]);
+  const props = (await import("/src/assets/world-props.json", { with: { type: "json" } })).default;
   const types = Object.values(LANDMARK_TYPE).filter((t) => !scenes.includes(t));
+  // …AND THE PLACES THAT OWN THEIR ART. `propFor` tries the landmark's ID
+  // before its type, so a record keyed by an id draws one PLACE and never
+  // appears on a walk over the type vocabulary — i.e. it would ship with no
+  // sheet and no diff at all. Anything in the catalog that is not a type and
+  // not a scene is one of those, so the sheet finds them by subtraction rather
+  // than by a hand-kept list that can go stale.
+  const owned = Object.keys(props.landmarks)
+    .filter((k) => !types.includes(k) && !scenes.includes(k)
+                   && props.landmarks[k] && props.landmarks[k].parts);
+  const cells = [
+    ...types.map((t) => ({ key: t, id: `t_${t}`, type: t })),
+    ...owned.map((k) => ({ key: k, id: k, type: "house" })),
+  ];
   const cv = document.createElement("canvas");
   cv.width = cols * cell[0];
-  cv.height = Math.ceil(types.length / cols) * cell[1];
+  cv.height = Math.ceil(cells.length / cols) * cell[1];
   document.body.replaceChildren(cv);
   document.body.style.margin = "0";
   // The painters draw through gfx's shared `ctx` live binding, so bind it to
@@ -66,14 +80,14 @@ const drew = await page.evaluate(async ([scenes, cell, cols]) => {
   g.fillStyle = "#cfb27a";
   g.fillRect(0, 0, cv.width, cv.height);
 
-  types.forEach((type, i) => {
+  cells.forEach((c, i) => {
     const cx = (i % cols) * cell[0] + cell[0] / 2;
     const cy = Math.floor(i / cols) * cell[1] + cell[1] / 2 + 8;
-    drawLandmark({ id: `t_${type}`, type, x: cx, y: cy, name: "Hotel Tioga", w: 116, h: 90 });
+    drawLandmark({ id: c.id, type: c.type, x: cx, y: cy, name: "Hotel Tioga", w: 116, h: 90 });
     g.fillStyle = "#26222c";
     g.font = "11px monospace";
     g.textAlign = "center";
-    g.fillText(type, cx, (Math.floor(i / cols) + 1) * cell[1] - 6);
+    g.fillText(c.key, cx, (Math.floor(i / cols) + 1) * cell[1] - 6);
   });
   // COUNT THE INK before handing the sheet back. These harnesses draw through
   // gfx's shared `ctx`, which the game's own boot also binds — so if the modules
@@ -86,7 +100,7 @@ const drew = await page.evaluate(async ([scenes, cell, cols]) => {
   for (let i = 0; i < all.length; i += 4) {
     if (all[i] !== bg[0] || all[i + 1] !== bg[1] || all[i + 2] !== bg[2]) ink++;
   }
-  return { ink, types, png: cv.toDataURL("image/png").split(",")[1] };
+  return { ink, types: cells.map((c) => c.key), png: cv.toDataURL("image/png").split(",")[1] };
 }, [SCENES, CELL, COLS]);
 
 // The canvas is read back INSIDE the page, in the same turn it was drawn.

@@ -28,6 +28,7 @@ from churchill.world.enums import LandmarkType, ParcelUse, SignKind
 from tests.shapevocab import implemented_shapes
 
 PROPS = os.path.join(ROOT, "src", "assets", "world-props.json")
+LANDMARKS_JSON = os.path.join(ROOT, "content", "world", "landmarks.json")
 FLORA = os.path.join(ROOT, "src", "assets", "flora.json")
 SHAPES_JS = os.path.join(ROOT, "src", "render", "c2d", "shapes.js")
 SCENE_SHAPES_JS = os.path.join(ROOT, "src", "render", "c2d", "sceneShapes.js")
@@ -107,6 +108,30 @@ class WorldPropTests(unittest.TestCase):
             self.assertIn(kind.value, self.props,
                           f"{kind.value} has no prop record and is not a scene — "
                           f"it would draw nothing at all")
+
+    def test_a_place_may_own_its_art_without_shadowing_a_type(self):
+        """`propFor` tries the landmark's ID before its TYPE, so one PLACE can
+        look like itself — the Tioga is a long wine block, Las Brisas is a white
+        corner, the Capitanía is green wood under red zinc — while every other
+        hotel keeps the generic record.
+
+        The two live in ONE namespace, which is the whole hazard: a landmark
+        whose id happened to equal a type name would silently repaint every
+        place of that type in the world, and nothing would raise."""
+        with open(LANDMARKS_JSON, encoding="utf-8") as fh:
+            ids = {l["id"] for l in json.load(fh)["landmarks"]}
+        types = {k.value for k in LandmarkType}
+        self.assertEqual(ids & types, set(),
+                         "a landmark id equals a type name — its art would "
+                         "replace that whole type's art")
+        # …and an id-keyed art record has to belong to a landmark that exists,
+        # or it is art nothing can ever select.
+        for key, rec in self.props.items():
+            if key in types or not isinstance(rec, dict):
+                continue
+            self.assertIn(key, ids,
+                          f"landmark art {key!r} matches no landmark id and no "
+                          f"type — nothing will ever draw it")
 
     def test_world_scene_dispatch_stays_attached_to_mapped_hosts(self):
         # These branches supply mapped host geometry. They select a data scene;

@@ -150,6 +150,84 @@ lectura top-down responda a “esto es más alto” de manera coherente y sutil.
 - edificios genéricos: `heightM` authored gana sobre `buildingHeightM`; la
   inferencia queda como fallback visible en el editor.
 
+## Track B0 — LA FUENTE, que es la parte con la trampa adentro
+
+Este contrato decía «un import futuro de DEM genera los mismos controles» y con
+esa línea daba por resuelto lo único que no lo estaba. **Medido el 2026-08-19**
+sobre el mundo publicado (31,8 × 19,9 km, lon −84,921…−84,631), convirtiendo
+transectos con `manifest.meta.geo`:
+
+### Un DEM global INVENTA un cerro en el centro de Puntarenas
+
+Sobre el arenal —x 1 000 a 35 000, o sea el juego entero de hoy— SRTM30m lee 0 m
+en todas partes MENOS entre x 20 000 y 26 000, donde salta a **6–8 m**. Mapzen
+dice lo mismo (−2 a 9 m). Esa banda es exactamente Carmen, el Paseo, el Centro y
+Playitas.
+
+**No es suelo: son techos y árboles.** SRTM y Copernicus son modelos de
+SUPERFICIE. El propio nodo de OSM en x 19 082 dice **2,49 m** y Chacarita 3,26 m.
+Importar un DEM sin más levantaría el centro ocho metros sobre el faro y pondría
+al jugador a subir una cuesta hecha de edificios, justo en la parte más jugada
+del mapa. Un DEM se puede usar; lo que no se puede es creerle sobre el arenal.
+
+Al este, en cambio, el relieve es de verdad: x 50 000 a 79 000 (Barranca →
+Esparza) barre de 0 a 212 m con estructura real, y OSM trae los picos en cuadro
+—Cerro San Miguel **414 m**, Juanilama 253, Cerro Barbudal 224, Alto Cascabel
+221—. **Esos barrios son jugables**: la valla del MVP se bajó el 2026-08-15.
+
+### La fuente elegida: las curvas de nivel del IGN, por SNIT
+
+`https://geos.snitcr.go.cr/be/IGN_1/wfs` → **`IGN_1:curvas_1000`**, WFS 2.0,
+GeoJSON, EPSG:4326, un `LineString` por curva con la propiedad **`elevacion` en
+METROS**. Es decir: el control `contour` de este documento (`pts, zM`) ya
+existe, publicado, y no hay que traducir nada.
+
+Es la fuente correcta por cuatro razones medidas, no por preferencia:
+
+1. **Es vectorial y bare-earth**, restitución fotogramétrica — no arrastra el
+   sesgo de techos que descalifica a los DEM globales;
+2. **se generaliza sola donde importa.** Sobre el arenal las únicas curvas que
+   trae son **2 m (130), 4 m (54) y 6 m (3)**: intervalo de 2 m donde el terreno
+   es sutil. Tierra adentro el intervalo es de 10 m, donde el terreno es
+   dramático. Nadie tuvo que pedirlo;
+3. **coincide con la verdad conocida** — 2 m en el arenal contra los 2,49 m del
+   nodo de OSM, y NINGUNA cúpula de 8 m;
+4. **su propia densidad confirma la lectura del mundo**: 14 628 curvas en la caja
+   completa, de las cuales **13 828 caen en Barranca+Esparza y sólo 187 en el
+   arenal jugable**. La fuente está de acuerdo con que el arenal es plano.
+
+`IGN_5:curvas_5000` es la misma cosa a 50 m de intervalo (1 830 curvas, 0–400 m):
+sirve de contraste grueso, no de fuente. `IGN_5_CO:curvas_5000_2017` trae además
+`linea_costa_5000`, que vale la pena mirar contra `reclaim_shore`.
+
+**FABDEM está descartado y conviene dejarlo escrito**, porque es justo el arreglo
+que uno buscaría —Copernicus con bosques y edificios removidos— y su licencia es
+**CC BY-NC-SA 4.0, no comercial**. Este juego se publica con anuncios y compras.
+Copernicus GLO-30 (AWS Open Data, sin auth) sí es de uso comercial y queda como
+relleno posible entre curvas, nunca como autoridad sobre el arenal.
+
+### La batimetría no entra
+
+GEBCO 2020 mide ~450 m por celda: cruzando el estero devuelve valores de tierra
+(0–11 m) y no resuelve un canal que el build ya mide entre 22 y 166 px; el golfo
+le sale un −7/−8 m plano. La Travesía ya tiene su calle medida y su marea. La
+profundidad no agregaría nada que el jugador sienta.
+
+### Lo que esto obliga
+
+- **Se commitea un extracto recortado**, como `docs/map.osm`, y el build lo lee
+  determinísticamente. Un WFS en vivo dentro del build rompería la regla de que
+  el mismo insumo da el mismo mundo byte a byte.
+- **Los bytes emitidos entran a `world_snapshot.py`** igual que cualquier otro
+  archivo del mundo.
+- **El arenal se autoriza, no se muestrea.** Aunque esta fuente sea honesta ahí,
+  la regla se queda escrita: al oeste de El Cocal la cota es contenido, y sólo al
+  este se mezcla con la fuente. Es la misma lógica de `reclaim_shore` —el mundo
+  se aparta de la verdad cuando el juego lo pide— y conviene que sea una decisión
+  y no un efecto.
+
+---
+
 ## Track B — cota del mundo, cuestas y bajadas
 
 ### Dos capas, no otro Surface
@@ -450,6 +528,10 @@ ya migrada.
 
 ### V3 — Elevation channel + Ferrocarril
 
+0. **Bajar el extracto de `IGN_1:curvas_1000` y commitearlo** (Track B0). Es el
+   primer paso porque decide el resto: sin fuente, los pasos 2 y 3 se prueban
+   contra terreno inventado, y el arenal —donde está el juego— hay que
+   autorizarlo aunque la fuente sea honesta.
 1. DTO de anchors/tramos/junctions + validator + patch editor.
 2. Controles de terreno, solver determinista y wire separado.
 3. `groundZAt`, `roadPoseAt`, continuidad/junction validation.

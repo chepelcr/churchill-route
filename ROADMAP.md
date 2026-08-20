@@ -72,6 +72,14 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
       catedral es el primer fixture: nave, crucero, cimborrio y campanarios a
       alturas distintas. Retirar entonces sus offsets de sombra artísticos.
 
+- [ ] **La fuente: las curvas de nivel del IGN.** `IGN_1:curvas_1000` por el WFS
+      de SNIT trae un `LineString` con `elevacion` en metros — el control
+      `contour` de este plan, ya publicado. Se commitea recortado como
+      `docs/map.osm`. **Un DEM global no sirve para el arenal**: SRTM y Mapzen
+      levantan Carmen/Paseo/Centro/Playitas 6–8 m sobre el faro, y eso son techos,
+      no suelo. Y **FABDEM, que es justo ese arreglo, es CC BY-NC-SA — no
+      comercial**. Medido y detallado en Track B0 del handoff.
+
 - [ ] **Canal de elevación del terreno.** Emitir `zM` aparte de Surface, con RLE
       propio, muestreo/caché en el cliente y continuidad determinista entre
       tiles. No renumerar las clases de superficie.

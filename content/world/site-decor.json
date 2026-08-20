@@ -47,8 +47,12 @@
       "shore": true,
       "use": "plaza",
       "sport": "basketball",
-      "note": "LA CANCHA MULTIUSOS del Paseo, frente a la Clínica San Rafael. En OSM es `way/964080190`, con el nombre mal escrito («Cqancha de Futbol Playa Puntarenas»), etiquetada `leisure=park` y SIN `sport` — así que el mundo la dibujaba como un parque y, al estar sobre el malecón, la prueba de LAND/ACERA la dejaba en 73x17 px. Es una cancha de baloncesto multiuso: `plaza` le da el pintor de campo abierto y `sport` las marcas. `aceras: false` porque una cancha sobre la arena no tiene acera de la que apartarse: la erosión le comía la mitad de una huella que ya es de 91x31 px.",
-      "aceras": false
+      "note": "LA CANCHA MULTIUSOS del Paseo, frente a la Clínica San Rafael. En OSM es `way/964080190`, con el nombre mal escrito («Cqancha de Futbol Playa Puntarenas»), etiquetada `leisure=park` y SIN `sport` — así que el mundo la dibujaba como un parque y, al estar sobre el malecón, la prueba de LAND/ACERA la dejaba en 73x17 px. Es una cancha de baloncesto multiuso: `plaza` le da el pintor de campo abierto y `sport` las marcas. `aceras: false` porque una cancha sobre la arena no tiene acera de la que apartarse: la erosión le comía la mitad de una huella que ya es de 91x31 px. Y `sizeM`: el contorno del mapeador es un BOCETO — 91x31 px, o sea 36 x 12 m. Una cancha multiuso de verdad tiene el doble de fondo, así que la del Paseo se leía como una tira. Ninguna fracción de `rect` podía arreglarlo porque `rect` sólo recorta lo dibujado. 36 x 22 m conserva el ancho que el mapeador sí midió y le devuelve el fondo; medido sobre el mundo emitido, la calzada más cercana está a 44 px al norte y 56 al sur del centro, y media cancha son 27.5 px, así que cabe entera sobre el malecón sin tocar asfalto.",
+      "aceras": false,
+      "sizeM": [
+        36,
+        22
+      ]
     }
   }
 }

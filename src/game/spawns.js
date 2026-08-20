@@ -821,9 +821,15 @@ export function maintainStreaming() {
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);
   topUp(animals, TARGET.animals, spawnOneAnimal, (e) => e.dead || far(e));
   topUp(gulls, TARGET.gulls, spawnOneGull, far);
-  // …y las ordas, SÓLO donde la etapa las pide. Una dificultad que aparece en
-  // todos lados deja de ser el carácter de un nivel y pasa a ser el del juego.
-  const wantFlocks = state.stage?.hazards?.gullFlocks || 0;
+  // …y las ordas. Cuántas hay es del REGISTRO y una etapa manda sobre el
+  // registro — no al revés. Estaba escrito `state.stage?.hazards?.gullFlocks
+  // || 0`, y Recorrer no tiene etapa: en el mundo abierto, que es donde más se
+  // anda, no salía ni una. Lo que se veía volando ahí son las gaviotas sueltas
+  // del golfo, que nunca fueron un estorbo y no se distinguen a simple vista de
+  // una orda, así que parecía que la colisión estaba rota. El `??` es lo que
+  // hace la diferencia: una etapa que pide 0 se queda sin ordas a propósito,
+  // que es como sigue siendo una decisión y no una omisión.
+  const wantFlocks = state.stage?.hazards?.gullFlocks ?? (TARGET.gullFlocks || 0);
   if (wantFlocks) topUp(gullFlocks, wantFlocks, spawnOneFlock, far);
   else if (gullFlocks.length) gullFlocks.length = 0;
   topUp(boats, TARGET.boats, spawnOneBoat, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 400);

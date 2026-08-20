@@ -30,7 +30,7 @@ from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_MALECON,
     CLS_ROAD, CUAD,
     FIELD_ACERA_CELLS, GRID_CELL, STREET_CLASSES, STREET_SPAN_M,
-    street_span_px,
+    px, street_span_px,
 )
 from ..content import PARCEL_STYLES, SITE_DECOR
 from ..enums import GreenType, ParcelUse
@@ -1524,6 +1524,15 @@ class FieldService:
             # calles (south +), so (0, .85, .65, 1) is "the west 85%, the south
             # 35%" — the SW corner, landscape.
             fr = decor.pop("rect", None)
+            # `sizeM`: el tamaño REAL del lugar, en METROS, centrado en el ajuste
+            # que sobrevivió. `rect` sólo sabe recortar fracciones de lo que el
+            # mapeador dibujó, y a veces lo que el mapeador dibujó es un boceto:
+            # la cancha del Paseo viene como una tira de 36 x 12 m cuando una
+            # cancha de verdad tiene el doble de fondo, así que ninguna fracción
+            # podía arreglarla. Crece, pero NUNCA sobre calzada: se prueban
+            # tamaños decrecientes y se queda con el primero que no pisa duro,
+            # que es la misma prueba que gobierna cualquier otro ajuste.
+            sz = decor.pop("sizeM", None)
             part.update(decor)
             if fr:
                 u0, u1, v0, v1, cu, cv = krect
@@ -1534,6 +1543,32 @@ class FieldService:
                 part["hh"] = round((krect[3] - krect[2]) / 2, 1)
                 log("site", f"{pid}: rect overridden to {fr} -> "
                     f"{part['hw'] * 2:.0f}x{part['hh'] * 2:.0f}px")
+            if sz:
+                u0, u1, v0, v1, cu, cv = krect
+                mu, mv = (u0 + u1) / 2, (v0 + v1) / 2
+                # LO QUE ES SUELO DE ESTE SITIO NO ES INVASIÓN. `MALECON` está
+                # en `HARD_STREET_CLASSES` —es calzada lenta— y esta cancha
+                # ESTÁ SOBRE el malecón, así que contar su propio suelo como
+                # pisada hacía fallar todos los tamaños, incluido el que ya
+                # tenía: el sitio no cabía ni al 60 % de sí mismo. `shore` es la
+                # declaración de qué suelo es suyo y ya gobierna `ground`; la
+                # prueba de invasión tiene que leer la misma declaración, o dice
+                # que un lugar invade el terreno en el que está parado.
+                spill = tuple(c for c in HARD_STREET_CLASSES if c not in ground)
+                for k in (1.0, 0.92, 0.84, 0.76, 0.68, 0.6):
+                    hw, hh = px(sz[0]) / 2 * k, px(sz[1]) / 2 * k
+                    cand = (mu - hw, mu + hw, mv - hh, mv + hh, cu, cv)
+                    if not poly_surface_count(rect_poly(cand, ang), raster, spill):
+                        krect = cand
+                        part["hw"] = round(hw, 1)
+                        part["hh"] = round(hh, 1)
+                        log("site", f"{pid}: sized to its real {sz[0]}x{sz[1]} m"
+                            f"{'' if k == 1.0 else f' x{k:.2f} (lo que cabe)'} -> "
+                            f"{hw * 2:.0f}x{hh * 2:.0f}px")
+                        break
+                else:
+                    warn("site", f"{pid}: 'sizeM' {sz} no cabe ni al 60 % sin pisar "
+                         f"calzada — se queda con el ajuste del mapeador")
             # Ownership, collision and any open-field surface stamp follow the
             # accepted rectangle too. Keeping the pre-fit `own` here would fix
             # the drawing while leaving an invisible drivable/occupied spill.

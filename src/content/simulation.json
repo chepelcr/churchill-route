@@ -15,6 +15,8 @@
     "vendors": 10,
     "animals": 8,
     "gulls": 16,
+    "gullFlocks": 2,
+    "_gullFlocksNote": "LAS ORDAS DE GAVIOTAS, y esto es un PISO, no un privilegio de una etapa. Se escribió como `state.stage?.hazards?.gullFlocks || 0`, o sea que en Recorrer —que no tiene etapa— no salía ninguna: el jugador veía gaviotas pintadas (las sueltas del golfo, que nunca chocaron) y ninguna se comportaba como estorbo. El mundo abierto es donde más se anda, así que las ordas viven ahí también; una etapa sigue mandando sobre esto con `hazards.gullFlocks`, y El Cocal pide más porque ése es su carácter. Poner 0 en una etapa la deja sin ordas, que es lo que hace que siga siendo una decisión.",
     "boats": 6,
     "trains": 1,
     "schools": 2,

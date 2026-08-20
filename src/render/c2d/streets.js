@@ -215,7 +215,18 @@ function paintParcels(view) {
     const path = P._path || (P._path = hasPolys ? flatMultiPath(P.polys) : flatPath(P.poly, true));
     // EL COLOR DE ESTA PARCELA, y sólo si no, el de su `use`. 193 parques
     // compartían una perilla: no había forma de darle a UN parque su verde.
-    ctx.fillStyle = P.groundColor || PARCEL_FILL[P.use] || ST.parcel.fallback;
+    // UNA CANCHA DE CEMENTO NO LLEVA ORILLA VERDE. El dilatado que tapa los
+    // escalones del raster se hacía SIEMPRE con el color del `use`, y el pintor
+    // de campo que viene después rellena el camino pero no vuelve a dilatarlo —
+    // así que a una cancha de baloncesto le quedaba un reborde verde de 4 px
+    // por lado. En la del Paseo, que mide 25 px de alto, ese reborde es la
+    // mayor parte de lo que se ve: la cancha se leía verde teniendo el cemento
+    // debajo. El color del dilatado tiene que ser el mismo con el que se va a
+    // rellenar, no el del `use`.
+    const isCourt = (P.use === "plaza" || P.use === "stadium")
+      && FIELD_SPORT_ROLE.COURT.includes(P.sport);
+    ctx.fillStyle = isCourt ? ST.field.court
+      : (P.groundColor || PARCEL_FILL[P.use] || ST.parcel.fallback);
     ctx.lineJoin = "miter";
     if (!hasPolys) {
       ctx.lineWidth = 8;

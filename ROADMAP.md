@@ -75,17 +75,17 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
       kiosco, parkRiver y lote. Siete hojas de arte salieron idénticas y
       `pnpm smoke:sceneshadows` mide que la sombra barre 50 px en el día.
 
-- [ ] **La fuente: las curvas de nivel del IGN.** `IGN_1:curvas_1000` por el WFS
-      de SNIT trae un `LineString` con `elevacion` en metros — el control
-      `contour` de este plan, ya publicado. Se commitea recortado como
-      `docs/map.osm`. **Un DEM global no sirve para el arenal**: SRTM y Mapzen
-      levantan Carmen/Paseo/Centro/Playitas 6–8 m sobre el faro, y eso son techos,
-      no suelo. Y **FABDEM, que es justo ese arreglo, es CC BY-NC-SA — no
-      comercial**. Medido y detallado en Track B0 del handoff.
+- [x] ~~**La fuente: las curvas de nivel del IGN.**~~ **Hecha el 2026-08-20.**
+      `content/world/contours.json`: 16 499 curvas del WFS de SNIT, commiteadas
+      como `docs/map.osm`. **Hacen falta LOS DOS juegos** — `curvas_1000` (2 m)
+      hace honesto el arenal pero es cartografía urbana y no cubre Alto Cascabel
+      ni Juanilama; `curvas_5000` (50 m) es el nacional y sí. Un DEM global habría
+      levantado Carmen/Paseo/Centro/Playitas 6–8 m de TECHOS.
 
-- [ ] **Canal de elevación del terreno.** Emitir `zM` aparte de Surface, con RLE
-      propio, muestreo/caché en el cliente y continuidad determinista entre
-      tiles. No renumerar las clases de superficie.
+- [x] ~~**Canal de elevación del terreno.**~~ **Hecho el 2026-08-20.**
+      `service/elevation.py` → campo a 80 px, `(cuenta:uint8, valor:uint16 LE)`
+      propio, emitido sólo donde el tile no es plano; `groundZAt`/`groundGradeAt`
+      en el cliente, bilineales. No se renumeró ninguna clase de superficie.
 
 - [ ] **Perfiles por porciones de calle.** Autorizar tramos `flat`, `slope` y
       transiciones por arclength: cuesta → recta alta → bajada → recta baja. Los
@@ -120,12 +120,22 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
       la línea las puso ahí.
 - [ ] **`smoke_sea` falla dos aserciones de pescadores** — verificado que falla
       por el harness, no por el mundo.
+- [x] ~~**El Muelle de Cruceros no lo tocan las calles del frente.**~~
+      **Medido el 2026-08-20 y cerrado sin tocar nada**: la cubierta inunda hacia
+      una componente manejable que va del faro a El Cocal — no está aislada. Su
+      RAÍZ está en la línea de agua (20 px a cada lado es arena y mar), así que no
+      hay calles del frente que enlazar y el acceso por el norte es el correcto.
+      Se escribió un portón que cruzara el paseo, se midió que no tenía a qué
+      llegar, y se revirtió.
+
 - [ ] **El malecón: 6 bandas, y no todas tocan la calzada.**
 - [ ] **El malecón se corta entre el Faro y x≈15500** — entre el Paseo y la
       arena hay solar que la sonda no cruza a ese ancho.
-- [ ] **Las atracciones no bloquean.** La banda mide 60 px y es el único camino
-      a los dos kioscos del Paseo, así que un carrusel estampado sacaría un
-      destino de la red. Está bien hoy; queda anotado por si cambia el ancho.
+- [x] ~~**Las atracciones no bloquean.**~~ **Hecho el 2026-08-20, y su premisa
+      era falsa.** Los dos kioscos del Paseo están sobre sus PROPIOS pads de
+      calle (172 y 108 px), no sobre la banda de 60 del malecón. Y la solución no
+      necesitó medir nada: una atracción NO SE ESTAMPA, así que la compuerta de
+      red ni la ve — el estorbo es del cliente. Ver `smoke:feria`.
 - [ ] **36 parcelas pisan >25 % de acera** — capillas, escuelas y gasolineras
       cuyo lote no se puede re-encajar sin perderlo.
 - [ ] **El Faro "vacío"**: el debug map muestra que el barrio SÍ tiene manzanas;

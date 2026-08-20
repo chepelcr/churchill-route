@@ -1045,6 +1045,84 @@ which is what keeps the change honest. `pnpm smoke:night` measures the cost by
 interleaving day and night medians — a single before/after comparison measures
 warm-up, which is how it first reported 50 ms.
 
+**LA MANZANA ES UN ANILLO DE CASONAS CON UN PATIO ADENTRO** — y sólo en el
+puerto viejo. Toda cuadra bajo `SMALL_BLOCK_CUADS` (188 cuadrículas = 1,2 ha) se
+llenaba ENTERA, y una manzana normal de 80x80 m son ~100: la excepción era la
+regla. Medido sobre 95 cuadras del centro: 25 huellas sueltas de mediana y 54,3 %
+de suelo cubierto. Hoy se construye contra la calle (`CASONA_RING_CUADS`) y el
+resto es el patio. **Que eso sea una CASONA depende de tres cosas**:
+del faro a El Cocal y no más al este (límite GEO — la longitud de La Angostura;
+Esparza, Barranca y El Roble son pueblo moderno de edificios sueltos); **sólo
+donde OSM dejó la manzana vacía**, porque donde el mapeador puso edificios ésos
+mandan; y en tres repartos —`full`, `half`, `corner`— con paleta de pasteles de
+puerto, deterministas por posición. Una casona se emite POR CORRIDA (`BLDG_INSET`
+separa vecinos «so adjacent roofs don't fuse», y fusionarse es lo que una casona
+hace), partida cada 4 cuadrículas.
+
+**El patio** es `ParcelUse.PATIO`, emitido DESPUÉS de las casonas y de los
+edificios reales porque es literalmente el resto — `occ` ya conoce parcelas,
+huellas y aprons. **No se estampa**: el anillo es continuo, así que no entra a la
+red manejable. La FUENTE es autorada por punto geo en `blocks.json` (976 fuentes
+idénticas serían el error de la multitud con `fan` escrito cuatro veces), y el
+build IMPRIME los patios más grandes con su lat/lon, porque si no la única forma
+de encontrar uno es adivinar una coordenada y correr 33 minutos.
+
+**`evalOn` DEVUELVE UN NÚMERO SUELTO TAL CUAL** — es un ABSOLUTO en píxeles. Sólo
+la forma `[k, px]` lo lee como fracción del marco. Escrito `cx: -0.66` los cuatro
+árboles del patio salieron como discos de medio píxel en el centro de la parcela:
+sin error, sin warning, simplemente no había patio.
+
+**EL TURNO CIERRA UNA CALLE, no se estampa sobre el paseo.** El campo ferial se
+cortaba del malecón y la arena y se estampaba `Surface.BARRO`, lo que pintaba el
+frente del mar de café y se comía la playa. Hoy se asienta en la CALZADA SUR del
+Paseo —`_south_carriageway` la encuentra andando hacia el mar hasta que aparece
+malecón, arena o agua, y devuelve la última corrida de calzada— y **no estampa
+nada**. La calzada norte queda abierta. Los juegos DESBORDAN sobre la mediana y
+el labio del malecón a propósito; el suelo no. Y ojo: `_seaward` cuenta cuál de
+las dos normales de la calle tiene más SEA_CLASSES debajo para saber dónde está
+el mar — apuntar esa constante a la calzada hace que «el mar» sea el lado con más
+asfalto, tierra adentro. Son dos preguntas distintas.
+
+**LOS JUEGOS ESTORBAN SIN ESTAMPARSE.** Cada atracción es un disco en
+`physics.js` que REBOTA (un edificio absorbe 0.95 de la componente normal; un
+juego devuelve), con `bump`, sacudón y penalidad de derretimiento. Nada de esto
+toca el raster, así que la compuerta de red manejable ni ve una atracción y un
+carrusel NO PUEDE sacar un destino de la red — por construcción, no por medición.
+La tuning vive en `actors.json -> attraction`, del lado del cliente, porque
+afinar un rebote no puede costar una reconstrucción. `pnpm smoke:feria`.
+
+**UN EDIFICIO CON NOMBRE NO DESAPARECE.** Había TRES muertes y ninguna avisaba:
+la extracción descartaba lo que seguía sobre calzada ANTES de asignar `name`;
+`PUSH_MAX = 40 px` está medido sobre una calle de 65 y el Paseo es una avenida
+DIVIDIDA de 196; y el snapper borraba lo que no encajaba detrás de un contador.
+Hoy hay un segundo empujón cuya tolerancia sale del ancho de la calle de enfrente
+(`StreetIndex.nearest_road_normal`), el primero queda intacto, y una huella sin
+suelo se queda en su CONTORNO REAL marcada `ghost`: se dibuja y `collideBuilding`
+la salta, porque si no los hoteles del Paseo tapiarían su propia calle. Medido en
+el centro: de 32 pérdidas a **0**.
+
+**UN LUGAR PUEDE VERSE COMO ÉL MISMO.** `propFor` prueba el ID del hito antes que
+su TIPO — sin cambio en el builder, porque el `id` ya viajaba en el manifest — así
+que el Tioga es un bloque vinotinto, Las Brisas una esquina blanca y la Capitanía
+madera verde bajo zinc rojo, mientras el resto de los hoteles conserva el
+genérico. Ids y tipos comparten un namespace y eso es el peligro: un hito llamado
+`house` repintaría todas las casas del mundo, así que `test_world_props` falla si
+un id iguala a un tipo. `shot-landmarks` los encuentra POR SUSTRACCIÓN, o un arte
+con dueño entraría sin hoja y sin diff.
+
+**LA COTA DEL TERRENO ES DEL IGN, NO DE UN DEM** (`service/elevation.py`,
+`content/world/contours.json`). Medido: SRTM30m y Mapzen levantan
+Carmen/Paseo/Centro/Playitas 6–8 m sobre el faro y eso son TECHOS —son modelos de
+SUPERFICIE— contra los 2,49 m que dice el nodo de OSM. FABDEM es justo ese
+arreglo y es CC BY-NC-SA, **no comercial**. **Hacen falta los DOS juegos del
+IGN**: `curvas_1000` (2 m) hace honesto el arenal pero es cartografía urbana y no
+tiene una curva a 3 km de Alto Cascabel; `curvas_5000` (50 m) es el nacional y sí.
+Se estampa el grueso y el fino encima. El campo tiene resolución PROPIA
+(`ELEV_CELL` 80 px, no los 4 del raster de colisión) y **su RLE es aparte**:
+`(cuenta:uint8, valor:uint16 LE)`, emitido sólo donde el tile no es plano, porque
+una cota en decímetros no cabe en el byte de una clase de superficie y meterlas
+juntas obligaría a renumerar las clases.
+
 ## inventory.json
 
 `pnpm inventory` writes a machine-readable index at repo root: world counts

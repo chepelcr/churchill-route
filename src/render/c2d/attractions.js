@@ -89,6 +89,10 @@ export function paintRide(g, kind, r, t = 0, ph = 0, A = { food: 0 }) {
   }
 }
 
+//: Cuánto hay que corregir el `ang` del mundo según el eje al que mira el arte.
+const FACING_OFFSET = Object.freeze({ "+x": 0, "+y": -Math.PI / 2,
+  "-x": Math.PI, "-y": Math.PI / 2 });
+
 function drawAttraction(A, t) {
   const spec = ASSETS[A.kind];
   if (!spec || !spec.parts) return;
@@ -100,7 +104,12 @@ function drawAttraction(A, t) {
   // no lo necesitan, pero una TARIMA mira a algún lado: el DJ toca de cara a la
   // playa, y el mundo resuelve ese rumbo desde la normal de la calle que da al
   // mar (`_seaward`), no desde un número escrito. Sin `ang` nada cambia.
-  if (A.ang) ctx.rotate(A.ang);
+  // …Y EL ARTE DICE HACIA DÓNDE MIRA. `ang` es la normal de la calle que da al
+  // mar, o sea un ángulo medido desde +x; una tarima dibujada mirando a +y
+  // rotada por él queda un cuarto de vuelta corrida — el DJ salió tocando calle
+  // abajo. El desfase es del ARTE, así que lo declara el arte (`facing`) y no se
+  // escribe ni en el build ni aquí como número suelto.
+  if (A.ang) ctx.rotate(A.ang + FACING_OFFSET[spec.facing || "+x"]);
   paintRide(ctx, A.kind, r, t, ph, A);
   ctx.restore();
 }
@@ -117,58 +126,21 @@ function warnMissingShape(shape, kind) {
   console.warn(`[feria] no drawer for shape "${shape}" (kind ${kind})`);
 }
 
-// ---- el campo ferial: LA CALLE CERRADA ---------------------------------------
-// Ya no es tierra estampada sobre el paseo marítimo. El turno CIERRA LA CALZADA
-// SUR del Paseo de los Turistas —la calzada norte sigue abierta— así que el
-// suelo es la calle y sigue siéndolo: el build no estampa nada. Lo que se pinta
-// aquí es lo que hace leer una calle cerrada como un campo ferial, y NADA que
-// finja otro suelo: el desgaste del gentío sobre el asfalto y la ristra de
-// bombillos alrededor del lote.
-function bandPath(F) {
-  if (!F._path) {
-    const p = new Path2D();
-    for (const poly of F.polys || []) {
-      if (!poly || poly.length < 6) continue;
-      p.moveTo(poly[0], poly[1]);
-      for (let i = 2; i < poly.length; i += 2) p.lineTo(poly[i], poly[i + 1]);
-      p.closePath();
-    }
-    F._path = p;
-  }
-  return F._path;
-}
-
-function drawFeriaGround(view, t) {
-  const arr = W.FERIA;
-  if (!arr || !arr.length) return;
-  for (const F of arr) {
-    if (F.x1 < view.x0 || F.x0 > view.x1 || F.y1 < view.y0 || F.y0 > view.y1) continue;
-    const path = bandPath(F);
-    ctx.save();
-    ctx.fillStyle = CH.ground;                      // la tierra del campo ferial
-    ctx.fill(path, "evenodd");
-    // scuffed patches, deterministic so they never crawl
-    ctx.save();
-    ctx.clip(path, "evenodd");
-    ctx.fillStyle = CH.groundMottle;
-    for (let i = 0; i < 40; i++) {
-      const hx = F.x0 + hash01(i * 1.7 + F.x0) * (F.x1 - F.x0);
-      const hy = F.y0 + hash01(i * 2.9 + F.y0) * (F.y1 - F.y0);
-      ctx.beginPath();
-      ctx.ellipse(hx, hy, 10 + hash01(i * 3.1) * 16, 5 + hash01(i * 4.3) * 8,
-        hash01(i * 5.7) * Math.PI, 0, TAU);
-      ctx.fill();
-    }
-    ctx.restore();
-    ctx.strokeStyle = CH.groundEdge;
-    ctx.lineWidth = 2; ctx.lineJoin = "round";
-    ctx.stroke(path);
-    ctx.restore();
-  }
-}
+// EL SUELO DE UN TURNO ES LA CALLE, Y NO SE PINTA.
+//
+// Esto llegó a pintar una losa de barro opaca porque el build estampaba
+// `Surface.BARRO` debajo. Cuando el turno se mudó a la calzada sur del Paseo y
+// dejó de estampar, la losa se bajó a un lavado translúcido con un canto pálido
+// —la valla— creyendo que así dejaba ver el asfalto. No lo dejaba: sobre la
+// calle se lee como una mancha café con un borde alrededor, que es exactamente
+// lo que se estaba quitando. Dos intentos de pintar un suelo que ya existe.
+//
+// Así que no se pinta nada. La calle que está debajo ES el campo ferial, y lo
+// que dice que hay feria son los juegos, que ya se dibujan solos. `W.FERIA`
+// sigue emitiéndose porque es el lote —de él salen los `at` de cada juego y la
+// zona que el mundo reserva—, no un dibujo.
 
 function drawAttractions(view, t) {
-  drawFeriaGround(view, t);
   const arr = W.ATTRACTIONS;
   if (!arr || !arr.length) return;
   for (const A of arr) {

@@ -781,6 +781,32 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
                     return True
         return False
 
+    def _poly_over_cost(pts, step=4):
+        """Cuánto duro pisa el polígono — la calzada pesa más que la acera.
+
+        `_poly_over` contesta sí/no, que es todo lo que hace falta para decidir
+        si una huella CABE. Cuando ya se sabe que no cabe en ninguna parte, la
+        pregunta pasa a ser cuál de las malas posiciones es la MENOS mala, y para
+        eso hay que contar. La calzada pesa el triple porque un edificio sobre el
+        asfalto es el error que se ve desde el carro; sobre la acera sólo se ve
+        de cerca.
+        """
+        xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
+        cost = 0
+        for py in range(int(min(ys)), int(max(ys)) + 1, step):
+            for px in range(int(min(xs)), int(max(xs)) + 1, step):
+                if not (0 <= px < CANVAS_W and 0 <= py < CANVAS_H):
+                    cost += 3
+                    continue
+                if not point_in_poly((px, py), pts):
+                    continue
+                cls = grid[(py // GRID_CELL) * GRID_COLS + (px // GRID_CELL)]
+                if cls in ROADISH:
+                    cost += 3
+                elif cls == CLS_ACERA:
+                    cost += 1
+        return cost
+
     ROADISH = CARRIAGEWAY_CLASSES
     STREETISH = ROADISH + (CLS_ACERA,)
 
@@ -850,6 +876,69 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             if not _poly_over(moved, STREETISH):
                 return moved
         return None
+
+    # LA ÚLTIMA CARTA ANTES DE MONTARSE EN LA CALLE: encoger.
+    SHRINK_STEPS = (0.85, 0.72, 0.6, 0.5, 0.42)
+
+    def _shrink_to_fit(raw):
+        """La huella escalada sobre su centro hasta que deje de pisar duro.
+
+        Isótropa a propósito: un edificio más pequeño sigue siendo el mismo
+        edificio, y uno estirado para caber ya no. Por debajo de ~0.42 deja de
+        parecerse a lo mapeado y se prefiere el `ghost`, que al menos dice la
+        verdad sobre dónde estaba.
+        """
+        pts = raw["pts"]
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        allow = max(_street_allowance(raw), PUSH_MAX)
+        for k in SHRINK_STEPS:
+            small = [(cx + (px - cx) * k, cy + (py - cy) * k) for px, py in pts]
+            # ENCOGER Y EMPUJAR, no encoger a secas. Encogida sobre su propio
+            # centro, una huella cuyo centro está BAJO el asfalto sigue bajo el
+            # asfalto por chica que sea: los hoteles del Paseo tienen 196 px de
+            # calzada encima y al 42 % seguían pisando. Medido, encoger solo
+            # rescataba 1 de 35. Lo que el empujón no podía era meter la huella
+            # ENTERA en el hueco que quedaba; con una más chica el mismo empujón
+            # sí alcanza, así que la escala es lo que le abre paso.
+            moved = _push_off_street({**raw, "pts": small}, allow)
+            if moved is None:
+                # …y si el empujón sigue sin alcanzar, que el reasiento lo
+                # intente CON LA HUELLA CHICA. Es la misma composición: lo que
+                # le faltaba al reasiento era un hueco del tamaño de la huella,
+                # y la huella acaba de encoger.
+                moved = _reseat_in_block({**raw, "pts": small})
+            if moved is not None:
+                return moved
+        return None
+
+    def _least_overlap(raw):
+        """La menos mala de las posiciones que no caben — o `None` si la cruda ya
+        es la mejor.
+
+        Se barre la misma rejilla que la cadena ya usa (las escalas del
+        encogimiento x las distancias del empujón) puntuando con
+        `_poly_over_cost`, y se exige una mejora REAL: si moverla no baja el
+        costo, se queda donde el mapeador la puso, que es el dato verdadero.
+        """
+        pts = raw["pts"]
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        hit = streets.nearest_normal(cx, cy)
+        best, best_cost = None, _poly_over_cost(pts)
+        allow = max(_street_allowance(raw), PUSH_MAX)
+        for k in SHRINK_STEPS:
+            small = [(cx + (px - cx) * k, cy + (py - cy) * k) for px, py in pts]
+            cand = [(small, 0)]
+            if hit is not None:
+                nx, ny = hit
+                cand += [([(x + nx * d, y + ny * d) for x, y in small], d)
+                         for d in range(PUSH_STEP, allow + 1, PUSH_STEP)]
+            for poly, _d in cand:
+                cost = _poly_over_cost(poly)
+                if cost < best_cost:
+                    best, best_cost = poly, cost
+        return best
 
     # …and when the straight push has nowhere to go, LOOK AROUND rather than
     # give up. The push only ever tries ONE direction — straight back off the
@@ -980,11 +1069,16 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         if _scales else
         f"{n_fit} named footprints already fitted their manzana; {n_nofit} left to the push")
 
-    named_raw, keep, n_onroad, n_pushed, n_reseat, n_wide = [], [], 0, 0, 0, 0
+    named_raw, keep, n_onroad, n_pushed, n_reseat, n_wide, n_shrunk, n_eased = [], [], 0, 0, 0, 0, 0, 0
     for raw in raw_bldgs:
         if not (raw.get("name") and raw.get("pts")):
             keep.append(raw)
             continue
+        # LA CADENA, y cada eslabón se cuenta a sí mismo. Estaba anidada y el
+        # contador del reasiento acabó dentro de la rama del encogimiento, así
+        # que el log decía «1 reseated» sobre 51 reasientos reales. Un log que
+        # miente sobre lo que hizo el build es peor que ninguno: es la superficie
+        # donde se revisa.
         moved = _push_off_street(raw)
         if moved is None:
             wide = _street_allowance(raw)
@@ -994,19 +1088,41 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
                     n_wide += 1
         if moved is None:
             moved = _reseat_in_block(raw)
-            if moved is None:
-                # NEVER DROP A NAME. This used to hand the footprint to the
-                # snapper, which shrinks it to a lattice rect and — when even
-                # that does not fit — deletes it behind an aggregate counter.
-                # Measured over the centro window alone that was 32 named
-                # buildings gone, the Parroquia del Carmen among them. A
-                # landmark drawn on ground the game painted as road is a far
-                # smaller error than a landmark that does not exist, and
-                # `ghost` lets the client draw it without walling the street.
-                n_onroad += 1
-                named_raw.append({**raw, "ghost": True})
-                continue
-            n_reseat += 1
+            if moved is not None:
+                n_reseat += 1
+        if moved is None:
+            # …Y SI TODAVÍA NO CABE, QUE ENCOJA. Es lo que `fit_manzana_contents`
+            # ya hace con las huellas de una manzana —una escala isótropa sobre
+            # el grupo— sólo que ésta no pertenece a ninguna: es el caso que se
+            # le escapa. Medido: de los 97 `ghost` del mundo, 58 pisaban más de
+            # un cuarto de acera y 56 más de un cuarto de calzada, o sea que casi
+            # todo el solape del mundo era esto. Una huella al 60 % que cabe se
+            # lee mejor que una al 100 % atravesada en la calle, y la forma se
+            # conserva porque la escala es isótropa.
+            moved = _shrink_to_fit(raw)
+            if moved is not None:
+                n_shrunk += 1
+        if moved is None:
+            # NI SIQUIERA UN `ghost` TIENE QUE PISAR TODO LO QUE PISABA.
+            #
+            # Los que llegan aquí no caben en ninguna parte, y eso no es un fallo
+            # del encajador: son las huellas del frente marítimo, cuya tierra
+            # quedó bajo una avenida de 196 px. Pero «no cabe» no es lo mismo que
+            # «da igual dónde»: dejarla en su contorno crudo pone el hotel entero
+            # atravesado en la calzada, y una versión más chica corrida hacia el
+            # solar pisa mucho menos por el mismo precio. Se busca la posición de
+            # MENOR costo en vez de rendirse con la primera.
+            eased = _least_overlap(raw)
+            if eased is not None:
+                n_eased += 1
+                raw = {**raw, "pts": eased}
+            # NEVER DROP A NAME. Esto se lo entregaba al snapper, que lo encoge a
+            # un rect de la retícula y —cuando ni eso cabe— lo borra detrás de un
+            # contador. Medido sobre la ventana del centro eran 32 edificios con
+            # nombre, la Parroquia del Carmen entre ellos.
+            n_onroad += 1
+            named_raw.append({**raw, "ghost": True})
+            continue
         if moved is not raw["pts"]:
             n_pushed += 1
             raw = {**raw, "pts": moved}
@@ -1015,6 +1131,13 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     if n_wide:
         log("buildings", f"{n_wide} named footprints needed a WIDE push — their street "
             f"is a boulevard, not a calle, so the allowance came from its own width")
+    if n_shrunk:
+        log("buildings", f"{n_shrunk} named footprints SHRANK to fit their own ground "
+            f"(isotropic, about their centre — a smaller building, not a stretched one)")
+    if n_eased:
+        log("buildings", f"{n_eased} footprints that fit NOWHERE were EASED to their "
+            f"least-overlapping scale and offset — not fitting is not the same as it "
+            f"not mattering where")
     if n_onroad:
         log("buildings", f"{n_onroad} named footprints had no room off the street — "
             f"kept at their real outline as `ghost` (drawn, not collidable)")

@@ -73,11 +73,8 @@
     "bannerSeam": "rgba(255,255,255,0.18)",
     "awningShadow": "rgba(0,0,0,0.12)",
     "rideShadow": "rgba(0,0,0,0.16)",
-    "ground": "rgba(150,122,86,0.30)",
-    "groundNote": "EL SUELO ES LA CALLE. Era `#a8845c` opaco — barro compactado — porque el build estampaba `Surface.BARRO` debajo; ahora el turno CIERRA la calzada sur del Paseo y no estampa nada, así que esto es el desgaste del gentío SOBRE el asfalto y tiene que dejarlo ver. Un relleno opaco volvería a pintar el frente del mar de café, que es justo lo que se quitó.",
-    "groundMottle": "rgba(120,92,60,0.22)",
-    "groundEdge": "rgba(232,226,210,0.85)",
-    "groundEdgeNote": "el canto es la VALLA del turno, no el borde de un lote de tierra: pálido, como las barreras que cierran una calle."
+    "$speedNote": "LAS VELOCIDADES SON VUELTAS POR SEGUNDO (`t*spin*TAU`), no un número de gusto. Estaban 2–4 veces de más: la tómbola a 0.6 son 36 rpm y el carrusel a 0.18 son 11, cuando un carrusel de verdad hace 4–5 y una rueda 1–1,5. Un turno que gira demasiado rápido no se lee como una feria, se lee como un error. Referencias: rueda 1–1,5 rpm · carrusel 4–5 · sillas voladoras 8–10 · pulpo 6–8 · tagada 8–12.",
+    "_groundNote": "EL SUELO NO SE PINTA. Aquí vivieron `ground`/`groundMottle`/`groundEdge`: primero una losa de barro opaca (el build estampaba `Surface.BARRO` debajo), luego un lavado translúcido con canto pálido que pretendía dejar ver el asfalto y no lo dejaba. El turno CIERRA la calzada sur del Paseo y no estampa nada, así que la calle que está debajo ES el campo ferial y cualquier relleno encima vuelve a pintar el frente del mar de café. Lo que dice que hay feria son los juegos."
   },
   "rueda": {
     "name": "La Rueda de Chicago",
@@ -95,14 +92,14 @@
         "r": 1.0,
         "widthPx": 3,
         "stroke": "#dfe5ec",
-        "spin": 0.06
+        "spin": 0.02
       },
       {
         "shape": "ring",
         "r": 0.72,
         "widthPx": 2,
         "stroke": "#c3cad3",
-        "spin": 0.06
+        "spin": 0.02
       },
       {
         "shape": "spokes",
@@ -111,7 +108,7 @@
         "r1": 1.0,
         "widthPx": 1.6,
         "stroke": "#b6bdc7",
-        "spin": 0.06
+        "spin": 0.02
       },
       {
         "shape": "cabins",
@@ -120,7 +117,7 @@
         "wPx": 9,
         "hPx": 7,
         "hang": true,
-        "spin": 0.06,
+        "spin": 0.02,
         "palette": [
           "#e85d75",
           "#f3c969",
@@ -139,7 +136,7 @@
         "n": 16,
         "r": 1.06,
         "radiusPx": 1.5,
-        "spin": 0.06,
+        "spin": 0.02,
         "palette": [
           "#fff3c4",
           "#ffd166",
@@ -171,7 +168,7 @@
         "r": 0.86,
         "wPx": 5,
         "hPx": 5,
-        "spin": 0.5,
+        "spin": 0.18,
         "palette": [
           "#f1c8a4",
           "#e8b48c",
@@ -191,7 +188,7 @@
         "n": 20,
         "r": 1.16,
         "radiusPx": 1.4,
-        "spin": -0.3,
+        "spin": -0.18,
         "palette": [
           "#ffd166",
           "#ff5d73",
@@ -237,7 +234,7 @@
         },
         "swing": {
           "amp": 2.7,
-          "speed": 0.24
+          "speed": 0.09
         }
       },
       {
@@ -253,7 +250,7 @@
         },
         "swing": {
           "amp": 2.7,
-          "speed": 0.24
+          "speed": 0.09
         }
       },
       {
@@ -285,7 +282,7 @@
         "r": 1.0,
         "widthPx": 3.5,
         "stroke": "#8f5fb0",
-        "spin": 0.22,
+        "spin": 0.12,
         "cap": {
           "radiusPx": 6,
           "palette": [
@@ -307,7 +304,7 @@
         "n": 12,
         "r": 0.46,
         "radiusPx": 1.4,
-        "spin": -0.4,
+        "spin": -0.12,
         "palette": [
           "#ffd166",
           "#c08ae0"
@@ -348,7 +345,7 @@
         "r": 1.0,
         "widthPx": 1,
         "stroke": "rgba(220,226,232,0.8)",
-        "spin": 0.45,
+        "spin": 0.15,
         "cap": {
           "radiusPx": 3.2,
           "palette": [
@@ -364,7 +361,7 @@
         "n": 10,
         "r": 0.6,
         "radiusPx": 1.3,
-        "spin": 0.45,
+        "spin": 0.15,
         "palette": [
           "#fff3c4"
         ]
@@ -392,7 +389,7 @@
         "r": 0.72,
         "widthPx": 1.4,
         "stroke": "#d8b45c",
-        "spin": 0.18,
+        "spin": 0.07,
         "cap": {
           "radiusPx": 4.4,
           "palette": [
@@ -416,14 +413,14 @@
           "#e0483f",
           "#f6e7c8"
         ],
-        "spin": 0.18
+        "spin": 0.07
       },
       {
         "shape": "bulbs",
         "n": 14,
         "r": 1.04,
         "radiusPx": 1.4,
-        "spin": 0.18,
+        "spin": 0.07,
         "palette": [
           "#fff3c4",
           "#ffd166"
@@ -460,7 +457,7 @@
         "hPx": 7,
         "areaW": 1.7,
         "areaH": 0.9,
-        "speed": 0.5,
+        "speed": 0.22,
         "palette": [
           "#e85d75",
           "#f3c969",
@@ -511,7 +508,7 @@
         "trim": "#f3c969",
         "swing": {
           "amp": 0.75,
-          "speed": 0.2
+          "speed": 0.09
         },
         "pivot": 0.9
       },
@@ -551,7 +548,7 @@
         "r": 1.0,
         "wPx": 7,
         "hPx": 6,
-        "spin": 0.34,
+        "spin": 0.13,
         "palette": [
           "#6fbf99",
           "#8fd6ae",
@@ -568,7 +565,7 @@
         "n": 10,
         "r": 1.08,
         "radiusPx": 1.3,
-        "spin": 0.34,
+        "spin": 0.13,
         "palette": [
           "#ffd166"
         ]
@@ -686,7 +683,7 @@
         "r1": 0.62,
         "widthPx": 1.4,
         "stroke": "#b3243b",
-        "spin": 0.6,
+        "spin": 0.3,
         "dyPx": -6
       },
       {
@@ -816,6 +813,8 @@
   },
   "dj": {
     "name": "DJ Urtech",
+    "facing": "+y",
+    "facingNote": "HACIA DÓNDE MIRA ESTE ARTE EN SU PROPIO MARCO. La tarima se dibuja mirando a +y (el telón arriba, la consola abajo), pero el mundo resuelve el rumbo como la NORMAL DE LA CALLE que da al mar, que es un ángulo medido desde +x. Rotar el arte por ese ángulo sin más le mete un cuarto de vuelta: el DJ salió tocando de cara al oeste, calle abajo, en vez de a la playa. El arte declara su eje y el intérprete lo compensa — lo contrario sería escribir el cuarto de vuelta dentro de la física o dentro del build, donde nadie lo encontraría.",
     "note": "DJ Urtech en el malecón, DE CARA A LA PLAYA. No es un juego: una tarima, dos tornamesas, dos bocinas y un hombre trabajando. El mundo le resuelve el rumbo desde la normal de la calle que da al mar, así que la tarima se dibuja mirando hacia +y en su propio marco y el `ang` la orienta. El sonido es procedural (sfx.dj) y de aquí sale.",
     "parts": [
       {

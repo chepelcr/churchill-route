@@ -47,8 +47,16 @@
       "cap": "#b8b8b0",
       "rail": "#2f6fb8",
       "centre": "#f8d76b",
-      "lamps": 46,
-      "hut": true
+      "hut": true,
+      "lamp": {
+        "type": "amber",
+        "gap": 46,
+        "start": 24,
+        "endInset": 8,
+        "sideInset": 3,
+        "alternate": true
+      },
+      "_lampNote": "LA LÁMPARA DEL MUELLE ES UNA LUZ, no un dibujo del entablado. Era `lamps: 46` —un número de separación— y el poste, el bombillo y sus dos colores (día/noche) vivían dentro de la receta del deck como el verbo `pier-lamps`, con su propia geometría. O sea DOS sistemas de alumbrado: éste y `lights.json`, que ya tenía `amber` descrito literalmente como «la del muelle» y nunca se usó. Ahora el estilo dice DÓNDE (separación, arranque, retiro del canto, si alternan de lado) y `type` dice QUÉ LÁMPARA ES; el aspecto sale del registro de luces como el de cualquier farola. Cambiar un muelle a `led` o a `warm` es editar esta línea, y la luz que abre en la noche cambia con ella porque es la misma luz."
     },
     "timber": {
       "deck": "#b98a4e",
@@ -91,7 +99,8 @@
       "round": true,
       "ground": true,
       "note": "las bajadas a la arena — stamped drivable, because a beach access that is a wall is not an access, but paved in the promenade's baldosa rather than asphalt"
-    }
+    },
+    "_lampTypeKey": "churchill/world/enums/game.py :: LightType — y las propiedades en src/assets/lights.json"
   },
   "street": {
     "_note": "The inks the roadway is drawn with, shared by c2d/streets.js and the editor's road preview.",
@@ -1191,21 +1200,6 @@
           "fill": "$pile",
           "start": 10,
           "size": 3
-        },
-        {
-          "shape": "family",
-          "when": "$lamps",
-          "verb": "pier-lamps",
-          "postFill": "$lampPost",
-          "dayFill": "$lampDay",
-          "nightFill": "$lampNight",
-          "start": 24,
-          "endInset": 8,
-          "sideInset": 3,
-          "postWidth": 1.5,
-          "postHeight": 6,
-          "lampLift": 7,
-          "r": 1.6
         }
       ]
     },

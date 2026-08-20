@@ -27,6 +27,23 @@ await page.evaluate(async () => {
   window.__feria = { rides: rides.length };
   if (!rides.length) return;
   const cfg = ACTORS.attraction;
+  // …PERO PRIMERO, QUE EL SUELO EXISTA. `surfaceAt` contesta 0 —AGUA— para un
+  // tile que todavía no ha llegado, así que preguntarle por el campo ferial con
+  // el carro en el arranque de Recorrer devuelve «agua» para los doce juegos y
+  // la prueba falla anunciando que la feria está sobre una pared. Es
+  // exactamente el modo de fallo que `smoke_crossing` ya documenta, y se cura
+  // igual: llevar el carro allá y ESPERAR a que el tile sea residente.
+  const p0 = window.Game.state.p;
+  p0.x = rides[0].x; p0.y = rides[0].y; p0.vx = 0; p0.vy = 0; p0.speed = 0;
+  for (let i = 0; i < 240; i++) {
+    W.ensureView(p0.x - 700, p0.y - 700, p0.x + 700, p0.y + 700, 1);
+    if (rides.every((a) => W.tileResident(a.x, a.y))) break;
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+  if (!rides.every((a) => W.tileResident(a.x, a.y))) {
+    window.__feria = { rides: rides.length, notStreamed: true };
+    return;
+  }
   // ELEGIR UN JUEGO AL QUE SE PUEDA LLEGAR. Un juego puede estar parado sobre
   // suelo que es PARED para un carro —el malecón lo es— y entonces la embestida
   // se detiene contra el suelo y no contra el juego: la prueba mediría otra
@@ -67,6 +84,7 @@ await page.waitForTimeout(2200);
 const out = await page.evaluate(() => {
   const r = window.__feria;
   if (!r) return { rides: 0 };
+  if (r.notStreamed) return { rides: r.rides, notStreamed: true };
   if (r.unreachable) return { rides: r.rides, unreachable: true };
   if (!r.vx) return { rides: 0 };
   return { rides: r.rides, kind: r.kind, r: r.r, rr: +r.rr.toFixed(1),
@@ -76,6 +94,11 @@ const out = await page.evaluate(() => {
 await browser.close();
 if (errors.length) { console.error(`[feria] page errors: ${errors.join(" | ")}`); process.exit(1); }
 if (!out.rides) { console.error("[feria] FAIL — the world has no rides to hit"); process.exit(1); }
+if (out.notStreamed) {
+  console.error("[feria] FAIL — los tiles del campo ferial no llegaron: la medición "
+    + "habría sido sobre agua, que es lo que `surfaceAt` contesta por un tile ausente.");
+  process.exit(1);
+}
 if (out.unreachable) {
   console.error(`[feria] FAIL — ninguno de los ${out.rides} juegos tiene calle alrededor: `
     + `el campo ferial está sobre suelo que es pared para un carro. `

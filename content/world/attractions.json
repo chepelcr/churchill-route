@@ -14,9 +14,9 @@
       "kind": "rueda",
       "at": [
         -232,
-        -22
+        -10
       ],
-      "r": 34
+      "r": 22
     },
     {
       "id": "pulpo",
@@ -24,9 +24,9 @@
       "kind": "pulpo",
       "at": [
         -142,
-        -26
+        -14
       ],
-      "r": 30
+      "r": 19
     },
     {
       "id": "martillo",
@@ -34,9 +34,9 @@
       "kind": "martillo",
       "at": [
         -46,
-        -28
+        -16
       ],
-      "r": 27
+      "r": 17
     },
     {
       "id": "sillas",
@@ -44,9 +44,9 @@
       "kind": "sillas",
       "at": [
         44,
-        -26
+        -14
       ],
-      "r": 26
+      "r": 17
     },
     {
       "id": "terror",
@@ -54,9 +54,9 @@
       "kind": "terror",
       "at": [
         140,
-        -26
+        -14
       ],
-      "r": 27
+      "r": 18
     },
     {
       "id": "carrusel",
@@ -64,9 +64,9 @@
       "kind": "carrusel",
       "at": [
         232,
-        -24
+        -12
       ],
-      "r": 26
+      "r": 17
     },
     {
       "id": "tagada",
@@ -76,7 +76,7 @@
         -206,
         52
       ],
-      "r": 30
+      "r": 19
     },
     {
       "id": "chocones",
@@ -86,7 +86,7 @@
         -110,
         54
       ],
-      "r": 32
+      "r": 21
     },
     {
       "id": "barco",
@@ -96,7 +96,7 @@
         -10,
         52
       ],
-      "r": 29
+      "r": 19
     },
     {
       "id": "gusano",
@@ -106,7 +106,7 @@
         80,
         54
       ],
-      "r": 23
+      "r": 15
     },
     {
       "id": "argollas",
@@ -116,7 +116,7 @@
         158,
         54
       ],
-      "r": 21
+      "r": 13
     },
     {
       "id": "tombola",
@@ -126,7 +126,7 @@
         228,
         54
       ],
-      "r": 19
+      "r": 12
     },
     {
       "id": "chin_canton",
@@ -134,9 +134,9 @@
       "kind": "chinamo",
       "at": [
         -84,
-        -74
+        14
       ],
-      "r": 44,
+      "r": 14,
       "food": "canton"
     },
     {
@@ -145,9 +145,9 @@
       "kind": "chinamo",
       "at": [
         0,
-        -74
+        14
       ],
-      "r": 44,
+      "r": 14,
       "food": "manzana"
     },
     {
@@ -156,9 +156,9 @@
       "kind": "chinamo",
       "at": [
         84,
-        -74
+        14
       ],
-      "r": 44,
+      "r": 14,
       "food": "churro"
     },
     {
@@ -210,5 +210,7 @@
       ],
       "w": 30
     }
-  ]
+  ],
+  "_size": "EL TAMAÑO ES EN PÍXELES DE MUNDO y a 2,5 px/m se lee en metros. Estaban de más: un chinamo con r=44 mide 35 m de ancho —un puesto de comida— y el carrusel con r=26 medía 21 m contra los 10–12 de uno real. Ahora la rueda mide ~18 m de diámetro, el carrusel ~14 y un chinamo ~11 de frente, que es un chinamo grande. Y el radio es también el COLISIONADOR (`actors.json -> attraction`), así que achicarlos no sólo se ve mejor: deja pasar entre ellos.",
+  "_layoutNote": "EL TURNO CABE EN LA CALZADA QUE CIERRA, y nada suyo se para en la que queda abierta. Los tres chinamos estaban en `at.y = -74`, que medido sobre el mundo emitido los ponía en y 15868-15880: el CENTRO de la calzada norte del Paseo (15852-15912), la que el diseño promete dejar pasar. Tres puestos de 44 px de radio la tapaban de punta a punta, así que por el campo ferial no se podía pasar por ningún lado — que es lo que se reportó. La calzada sur cerrada mide 28 px (15932-15960) y el malecón sigue hacia el mar, de modo que el reparto es: los juegos grandes sobre la calzada cerrada (`at.y` ~ -24), los chinamos justo al sur de ella sobre el malecón (+14) y los juegos chicos más afuera (+52). Nada al norte de la mediana de palmas."
 }

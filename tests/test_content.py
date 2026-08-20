@@ -59,11 +59,46 @@ REAUTHORED = {
     "LANDMARK_DEFS[kios_barr].ll[1]": "kios_barr -> Marisquería Los Pajaritos",
     "LANDMARK_DEFS[kios_esp].ll[0]": "kios_esp -> Soda Torrejas, Esparza",
     "LANDMARK_DEFS[kios_esp].ll[1]": "kios_esp -> Soda Torrejas",
+    # EL TURNO SE REHIZO ENTERO, y son dos decisiones, no veintiocho. Escribir
+    # una fila por juego repetiría la misma razón catorce veces y enterraría lo
+    # que de verdad pasó, así que la clave admite comodín — el patrón dice
+    # exactamente qué campo de qué tabla se re-autoró y sigue fallando si se
+    # mueve cualquier otro.
+    "ATTRACTION_DEFS[*].r":
+        "los juegos se dibujaban a escala de manzana: la rueda medía 34 px de "
+        "radio sobre una calzada de 28. Achicados contra medidas de feria de "
+        "verdad, que es también lo que los deja estorbar sin tapar la calle.",
+    "ATTRACTION_DEFS[*].at[1]":
+        "el reparto se rehizo para caber en la calzada que el turno CIERRA. "
+        "Medido sobre el mundo emitido, los tres chinamos caían en el centro "
+        "de la calzada NORTE —la que queda abierta— y la tapaban de punta a "
+        "punta: por el campo ferial no se podía pasar por ningún lado.",
     "CROSSING_STAGES[s8].after":
         "la Travesía pasó de seguir a s3 a seguir a s7: iba cuarta y dejaba "
         "Las Playitas, El Cocal, Mata de Limón y Caldera detrás de la única "
         "etapa que falta afinar.",
 }
+
+
+def _reauthored(path):
+    """¿Está este campo escrito en `REAUTHORED`, exacto o por patrón?
+
+    El comodín existe para el caso en que UNA decisión toca el mismo campo de
+    toda una tabla; no afloja la compuerta, porque el patrón nombra el campo.
+    """
+    if path in REAUTHORED:
+        return True
+    for key in REAUTHORED:
+        # A mano y no con `fnmatch`: estas claves llevan `[id]`, y para fnmatch
+        # los corchetes son una CLASE DE CARACTERES — `ATTRACTION_DEFS[*].r`
+        # le pedía un asterisco literal y no casaba con nada.
+        if "*" not in key:
+            continue
+        head, _, tail = key.partition("*")
+        if path.startswith(head) and path.endswith(tail) \
+                and len(path) >= len(head) + len(tail):
+            return True
+    return False
 
 
 def deep_diff(a, b, path=""):
@@ -85,7 +120,7 @@ def deep_diff(a, b, path=""):
                 for d in deep_diff(x, y, f"{path}[{i}]")]
     if a == b:
         return []
-    return [] if path in REAUTHORED else [f"{path}: {a!r} vs {b!r}"]
+    return [] if _reauthored(path) else [f"{path}: {a!r} vs {b!r}"]
 
 
 class MigrationTests(unittest.TestCase):

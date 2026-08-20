@@ -8,6 +8,8 @@ import { ferries } from "../../game/ferries.js";
 import { buildingHeightM, sunShadow } from "./shadows.js";
 import { resolveAssetFormulaMap } from "./shapes.js";
 import { paintStructureParts } from "./structureShapes.js";
+import { paintLight } from "./lights.js";
+import { registerLampSource } from "./nightlights.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
@@ -68,8 +70,8 @@ function structureColor(palette, spec, vars = {}) {
   return spec;
 }
 
-function pierInView(P, view) {
-  const pts = P.pts, m = P.w / 2 + 40;
+function pierInView(P, view, pad = 0) {
+  const pts = P.pts, m = P.w / 2 + 40 + pad;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (let i = 0; i < pts.length; i += 2) {
     x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]);
@@ -95,7 +97,7 @@ function drawPier(P, view) {
       deck: style.deck, seam: style.seam, seamGap: style.seamGap,
       cap: style.cap, capVisible: Boolean(style.cap && last), rail: style.rail,
       centre: style.centre, centreStart: run ? 0 : 6, centreEnd: last ? len - 6 : len,
-      posts: style.posts, lamps: style.lamps, night: state.weather === "night",
+      posts: style.posts,
     };
     paintStructureParts(ctx, S.pierDeck.parts, {
       X: (value) => value || 0,
@@ -106,7 +108,68 @@ function drawPier(P, view) {
     ctx.restore();
     run += len;
   }
+  for (const L of pierLamps(P)) paintLight(L.type, L.x, L.y, { night: false });
   if (style.hut) drawPierHut(P, hw);
+}
+
+/**
+ * LAS LÁMPARAS DE UN MUELLE, en coordenadas del mundo.
+ *
+ * Una lámpara de muelle ES UNA LUZ y no un adorno del entablado. Vivía dentro
+ * de la receta del deck como el verbo de familia `pier-lamps`, con su propio
+ * poste, su propio bombillo y sus dos colores día/noche escritos aparte — es
+ * decir, un SEGUNDO sistema de alumbrado al lado de `lights.json`, que ya traía
+ * `amber` descrito como «la del muelle» y jamás se usó. Se veía en que las del
+ * muelle no prendían: la noche es un velo que las lámparas PERFORAN, y sólo
+ * perforan las que el compositor conoce.
+ *
+ * Así que acá queda lo único que es del muelle —DÓNDE se para cada una, que sale
+ * de la geometría de su propio deck— y el resto lo contesta el registro. La
+ * misma función la usa el compositor de noche para abrir el pozo, de modo que la
+ * lámpara dibujada y la luz que da son literalmente la misma.
+ */
+export function pierLamps(P) {
+  const style = PIER_STYLES[P.style] || PIER_STYLES.concrete;
+  const spec = style.lamp;
+  if (!spec) return [];
+  const gap = spec.gap, hw = P.w / 2, pts = P.pts, out = [];
+  let run = 0;
+  for (let i = 0; i < pts.length - 2; i += 2) {
+    const ax = pts[i], ay = pts[i + 1], bx = pts[i + 2], by = pts[i + 3];
+    const len = Math.hypot(bx - ax, by - ay);
+    const ux = (bx - ax) / (len || 1), uy = (by - ay) / (len || 1);
+    const nx = -uy, ny = ux;
+    for (let d = spec.start - (run % gap); d < len - spec.endInset; d += gap) {
+      if (d < 0) continue;
+      // De lado y lado alternando, que es como está alumbrado un muelle de
+      // verdad: dos hileras enfrentadas costarían el doble de postes para
+      // alumbrar lo mismo.
+      const side = spec.alternate === false ? -1
+        : ((((run + d) / gap) | 0) % 2 ? 1 : -1);
+      const off = side * (hw - spec.sideInset);
+      out.push({
+        x: ax + ux * d + nx * off, y: ay + uy * d + ny * off,
+        type: spec.type,
+      });
+    }
+    run += len;
+  }
+  return out;
+}
+
+/** Las de todos los muelles que alcanzan la vista — lo que el compositor de
+ *  noche necesita para abrirles el pozo. */
+export function pierLampsIn(view, pad = 0) {
+  const out = [];
+  for (const P of W.PIERS || []) {
+    if (!pierInView(P, view, pad)) continue;
+    for (const L of pierLamps(P)) {
+      if (L.x < view.x0 - pad || L.x > view.x1 + pad
+        || L.y < view.y0 - pad || L.y > view.y1 + pad) continue;
+      out.push(L);
+    }
+  }
+  return out;
 }
 
 // The guard hut at the shore entrance, beside the deck — drawn in the pier's
@@ -229,3 +292,8 @@ function drawFerries(view) {
 }
 
 export { drawBridge, drawFerries, drawPiers, paintBuilding };
+
+// Y QUE LA NOCHE LAS CONOZCA. Sin esto se dibujan y no alumbran: el velo de la
+// noche se pinta encima y sólo lo perforan las lámparas que el compositor tiene
+// en su lista.
+registerLampSource(pierLampsIn);

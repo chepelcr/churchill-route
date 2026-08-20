@@ -54,10 +54,29 @@ function poolSprite(type, radius) {
   return cv;
 }
 
+//: OTRAS FUENTES DE LUZ, registradas por quien las dibuja.
+//:
+//: El alumbrado público viaja por tile y lo contesta `W.lampsIn`, pero no es el
+//: único que hay: las del muelle salen de la geometría de su propio deck y sólo
+//: las conoce quien lo dibuja. Mientras el compositor no supiera de ellas, se
+//: dibujaban y no alumbraban — la noche es un velo que las lámparas PERFORAN, y
+//: una lámpara que el compositor no ve queda debajo del velo que la apaga. Es
+//: un registro y no un `import` a propósito: este archivo no tiene por qué
+//: saber qué es un muelle, ni el próximo que traiga luces propias.
+const sources = [];
+export function registerLampSource(fn) { sources.push(fn); }
+
 /** Every lamp whose pool can reach the view, from the streamed tiles. The pad
  *  is the pool's own reach: a lamp just off-screen still lights what is on it. */
 function lampsInView(view) {
-  return W.lampsIn ? W.lampsIn(view, LAMP_POOL_R) : [];
+  const out = W.lampsIn ? W.lampsIn(view, LAMP_POOL_R) : [];
+  if (!sources.length) return out;
+  const extra = [];
+  for (const fn of sources) {
+    const got = fn(view, LAMP_POOL_R);
+    if (got && got.length) extra.push(...got);
+  }
+  return extra.length ? out.concat(extra) : out;
 }
 
 /**

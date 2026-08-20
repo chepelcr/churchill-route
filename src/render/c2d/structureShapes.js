@@ -3,12 +3,12 @@
 // The world owns a footprint/polyline.  `materials.json` owns everything that
 // appears inside that host: ordered layers, dimensions, spacing and inks.  This
 // module executes the few loops that cannot honestly be expanded into hundreds
-// of JSON rectangles (suspension hangers, lattice braces, pier seams/lamps).
+// of JSON rectangles (suspension hangers, lattice braces, pier seams and posts).
 import { paintParts } from "./shapes.js";
 
 export const STRUCTURE_FAMILY_VERBS = Object.freeze([
   "bridge-hangers", "bridge-tower", "bridge-sign",
-  "pier-seams", "pier-posts", "pier-lamps",
+  "pier-seams", "pier-posts",
 ]);
 
 const FAMILY = Object.freeze({
@@ -83,20 +83,6 @@ const FAMILY = Object.freeze({
     }
   },
 
-  "pier-lamps"(g, part, frame) {
-    const v = frame.vars;
-    const len = Number(v.len), hw = Number(v.hw), run = Number(v.run);
-    const gap = Number(v.lamps);
-    for (let s = Number(part.start) - (run % gap); s < len - Number(part.endInset); s += gap) {
-      const side = ((((run + s) / gap) | 0) % 2) ? 1 : -1;
-      const y = side * (hw - Number(part.sideInset));
-      g.fillStyle = frame.color(part.postFill);
-      g.fillRect(s - Number(part.postWidth) / 2, y - Number(part.postHeight),
-        Number(part.postWidth), Number(part.postHeight));
-      g.fillStyle = frame.color(v.night ? part.nightFill : part.dayFill);
-      g.beginPath(); g.arc(s, y - Number(part.lampLift), Number(part.r), 0, Math.PI * 2); g.fill();
-    }
-  },
 });
 
 export function paintStructureParts(g, parts, frame) {

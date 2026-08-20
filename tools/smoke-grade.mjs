@@ -22,6 +22,8 @@ await page.waitForTimeout(800);
 const probe = await page.evaluate(async () => {
   const { WORLD2D: W } = await import("/src/world2d/index.js");
   const SIM = (await import("/src/content/simulation.json", { with: { type: "json" } })).default;
+  const { SURFACE } = await import("/src/domain/vocabulary.generated.js");
+  const DRIVE = new Set([SURFACE.ROAD, SURFACE.PASEO, SURFACE.BRIDGE, SURFACE.BARRO, SURFACE.GRAVEL]);
   // Barrer el este, que es donde el IGN pone los cerros. Se piden los tiles
   // primero: `groundZAt` responde 0 para un tile que no ha llegado, igual que
   // `surfaceAt` responde agua, así que un barrido ingenuo mide fe.
@@ -30,31 +32,47 @@ const probe = await page.evaluate(async () => {
   // igual que `surfaceAt` responde agua, y el barrido mediría FE: saldría plano
   // y la prueba diría «el mundo no tiene cota» sobre un mundo que sí la tiene.
   // Es la misma trampa que `smoke_crossing` documenta desde el otro lado.
-  let best = null;
-  const X0 = 50000, X1 = 78000, Y0 = 6000, Y1 = 40000;
-  for (let x = X0; x < X1; x += 2000) {
-    for (let y = Y0; y < Y1; y += 2000) W.ensureView(x, y, x + 2000, y + 2000, 0);
-  }
-  for (let i = 0; i < 40; i++) {
-    await new Promise((r) => setTimeout(r, 250));
-    if (W.tileResident((X0 + X1) / 2, (Y0 + Y1) / 2)) break;
-  }
-  await new Promise((r) => setTimeout(r, 1500));
-  let resident = 0, probed = 0;
-  for (let x = X0; x < X1; x += 400) {
-    for (let y = Y0; y < Y1; y += 400) {
-      probed++;
-      if (!W.tileResident(x, y)) continue;
-      resident++;
-      const g = W.groundGradeAt(x, y);
-      const m = Math.hypot(g.dzdx, g.dzdy);
-      if (!best || m > best.m) best = { x, y, m, z: W.groundZAt(x, y), g };
+  // SE MUEVE LA CÁMARA Y SE DEJA QUE EL JUEGO CARGUE. `ensureView` encola, pero
+  // quien procesa la cola es el lazo — pedir y contar en el mismo tick mide la
+  // cola, no el mundo. Es la misma trampa que `smoke_crossing` documenta: una
+  // celda sin tile responde AGUA, y aquí responde COTA CERO.
+  const G = window.Game;
+  const spots = [];
+  for (let x = 52000; x < 76000; x += 3000)
+    for (let y = 8000; y < 34000; y += 3000) spots.push([x, y]);
+  let best = null, resident = 0, probed = 0;
+  const grades = [];
+  for (const [sx, sy] of spots) {
+    const p = G.state.p;
+    p.x = sx; p.y = sy; p.vx = p.vy = 0; p.speed = 0;
+    G.state.cam.x = sx; G.state.cam.y = sy;
+    for (let i = 0; i < 12; i++) await new Promise((r) => requestAnimationFrame(r));
+    for (let dx = -800; dx <= 800; dx += 200) {
+      for (let dy = -800; dy <= 800; dy += 200) {
+        const x = sx + dx, y = sy + dy;
+        probed++;
+        if (!W.tileResident(x, y)) continue;
+        resident++;
+        // SOBRE CALLE, o la prueba mide un carro aparcado en la ladera. El punto
+        // más empinado del mundo está en un cerro, y un cerro no es asfalto: el
+        // carro no se movía ni un píxel en ninguna de las dos direcciones y eso
+        // no dice NADA sobre la pendiente.
+        if (!DRIVE.has(W.surfaceAt(x, y))) continue;
+        const g = W.groundGradeAt(x, y);
+        const m = Math.hypot(g.dzdx, g.dzdy);
+        grades.push(m);
+        if (!best || m > best.m) best = { x, y, m, z: W.groundZAt(x, y), g };
+      }
     }
   }
-  return { best, cfg: SIM.grade, resident, probed };
+  grades.sort((a, b) => a - b);
+  return { best, cfg: SIM.grade, resident, probed, onRoad: grades.length,
+           p50: grades[(grades.length * 0.5) | 0], p95: grades[(grades.length * 0.95) | 0] };
 });
 if (errors.length) { console.error(`[grade] page errors: ${errors.join(" | ")}`); await browser.close(); process.exit(1); }
-console.log(`[grade] ${probe.resident}/${probe.probed} sondas sobre tiles residentes`);
+console.log(`[grade] ${probe.resident}/${probe.probed} sondas residentes, ${probe.onRoad} sobre calle`);
+if (probe.onRoad) console.log(`[grade] pendiente en calle: mediana ${(probe.p50*100).toFixed(2)} %, `
+  + `p95 ${(probe.p95*100).toFixed(2)} %, máx ${(probe.best.m*100).toFixed(2)} %`);
 if (!probe.resident) {
   console.error("[grade] FAIL — ningún tile del este llegó a tiempo; esto mide el "
     + "streaming, no la cota. Subí la espera.");
@@ -67,22 +85,34 @@ if (!probe.best || probe.best.m < 1e-6) {
 }
 const b = probe.best;
 console.log(`[grade] el punto más empinado del este: (${b.x},${b.y})  z=${b.z.toFixed(1)} m  `
-  + `pendiente ${(b.m * 100).toFixed(2)} % por px`);
+  + `pendiente ${(b.m * 100).toFixed(2)} %`);
 
 const runs = await page.evaluate(async ([bx, by, gx, gy]) => {
-  const p = window.Game.state.p;
+  const G = window.Game;
+  const p = G.state.p;
+  const cv = document.querySelector("canvas");
+  const touch = (type, x, y) => {
+    const t = { identifier: 7, clientX: x, clientY: y, target: cv };
+    const ev = new Event(type, { bubbles: true, cancelable: true });
+    ev.touches = type === "touchend" ? [] : [t];
+    ev.changedTouches = [t];
+    cv.dispatchEvent(ev);
+  };
   // Cuesta arriba = contra el gradiente; cuesta abajo = a favor.
   const up = Math.atan2(gy, gx), down = up + Math.PI;
   const out = [];
   for (const [a, label] of [[up, "subiendo"], [down, "bajando"]]) {
     p.x = bx; p.y = by; p.a = a; p.vx = 0; p.vy = 0; p.speed = 0;
-    window.Game.state.grade = 0;
-    const t0 = performance.now();
-    await new Promise((r) => {
-      const tick = () => (performance.now() - t0 > 1400 ? r() : requestAnimationFrame(tick));
-      requestAnimationFrame(tick);
-    });
-    out.push({ label, speed: Math.hypot(p.vx, p.vy), grade: window.Game.state.grade });
+    G.state.cam.x = bx; G.state.cam.y = by;
+    G.state.grade = 0;
+    // …Y CON EL ACELERADOR PUESTO. Sin gas el carro no se mueve y las dos
+    // corridas dan cero, que no dice nada sobre la cuesta. El dedo va DELANTE
+    // del carro en pantalla: la cámara no gira aquí, así que basta con empujar
+    // hacia donde ya mira.
+    touch("touchstart", 450 + Math.cos(a) * 250, 280 + Math.sin(a) * 250);
+    for (let i = 0; i < 120; i++) await new Promise((r) => requestAnimationFrame(r));
+    touch("touchend", 450, 280);
+    out.push({ label, speed: Math.hypot(p.vx, p.vy), grade: G.state.grade });
   }
   return out;
 }, [b.x, b.y, b.g.dzdx, b.g.dzdy]);

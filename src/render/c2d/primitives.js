@@ -55,12 +55,20 @@ export function roundRect(c, x, y, w, h, r, fill, stroke) {
  *  that passed its own canvas — an art sheet, and soon the editor's preview —
  *  got its parts on one surface and its labels on another. */
 export function label(g, x, y, text, fg, bg, size = 10) {
+  // UN RÓTULO DE LADO NO ES UN RÓTULO. Cuando la cámara del nivel va girada, el
+  // mundo gira con ella y el texto también — así que la placa se contragira
+  // sobre su propia ancla. El ángulo viaja en el CONTEXTO porque este módulo no
+  // importa nada por contrato (`test_shape_interpreter`), y el contexto es lo
+  // único que ya recibe.
+  const rot = g.__worldRot || 0;
+  if (rot) { g.save(); g.translate(x, y); g.rotate(-rot); x = 0; y = 0; }
   g.font = `bold ${size}px 'JetBrains Mono', monospace`;
   g.textAlign = "center";
   const w = g.measureText(text).width + size;
   const h = size + 4;
   g.fillStyle = bg; roundRect(g, x - w / 2, y - h * 0.64, w, h, 4, true, false);
   g.fillStyle = fg; g.fillText(text, x, y + size * 0.1);
+  if (rot) g.restore();
 }
 
 // Tag for an AREA landmark (park, estadio, plaza, parcel). Three rules the

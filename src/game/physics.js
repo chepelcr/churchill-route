@@ -3,7 +3,7 @@
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
 import { GEOMETRY_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
-import { state, traffic, pedestrians, gulls, boats, trains, schools, pushFloat } from "./state.js";
+import { state, traffic, pedestrians, gulls, boats, trains, schools, gullFlocks, pushFloat } from "./state.js";
 import { isTimed } from "./timers.js";
 import { SURFACE, SURFACE_MUL } from "./surfaces.js";
 import { HULL, hullBankAssist, hullFriction, hullGlance, hullLean, hullThrottle, hullTopMul, hullTurn } from "./boat.js";
@@ -1063,6 +1063,35 @@ export function advanceEntities(dt, withPlayer = true) {
       if (Math.random() < 0.3) dropChurchill();
     }
   }
+  // LAS ORDAS. Una bandada posada deriva despacio; cuando el carro entra en
+  // ella ALZA EL VUELO — y eso es el estorbo: la nube te ciega y te puede tumbar
+  // el churchill. `gullBlind` y su pintor ya existían para la Travesía y no los
+  // usaba nadie más; aquí es exactamente el mismo efecto y no un segundo.
+  //
+  // Se ESQUIVA, no se atraviesa: por eso el radio es generoso y el aviso es
+  // visual (los pájaros se levantan antes de que llegues), no un golpe seco.
+  for (const f of gullFlocks) {
+    f.x += f.vx * dt; f.y += f.vy * dt;
+    f.spooked = Math.max(0, f.spooked - dt);
+    const d = Math.hypot(f.x - p.x, f.y - p.y);
+    if (withPlayer && d < f.r + 40) {
+      f.spooked = 1.2;
+      // huyen del carro, no en una dirección inventada
+      const k = 26 / (d || 1);
+      f.vx += (f.x - p.x) * k * dt; f.vy += (f.y - p.y) * k * dt;
+    }
+    const sp = Math.hypot(f.vx, f.vy);
+    if (sp > 70) { f.vx *= 70 / sp; f.vy *= 70 / sp; }
+    for (const b of f.birds) {
+      b.ph += dt * (6 + f.spooked * 10);
+      b.lift += ((f.spooked ? 1 : 0) - b.lift) * Math.min(1, dt * 4);
+    }
+    if (withPlayer && d < f.r) {
+      state.gullBlind = Math.max(state.gullBlind || 0, 0.55);
+      if (state.carrying && Math.random() < 0.012) dropChurchill();
+    }
+  }
+
   // Boats drift
   for (const b of boats) {
     b.wake += dt;

@@ -407,11 +407,18 @@ export const WORLD2D = (function () {
     return (top + (bot - top) * ay) / 10;        // decímetros -> metros
   }
 
-  /** La PENDIENTE del suelo en (x, y): `{dzdx, dzdy}` en metros por píxel. */
+  /** La PENDIENTE del suelo en (x, y) — ADIMENSIONAL: metros de subida por metro
+   *  de avance, que es lo que «8 %» quiere decir.
+   *
+   *  No metros por PÍXEL. La diferencia no es cosmética: a 2,5 px/m un 0,08 en
+   *  m/px son 20 % de cuesta real, así que una tuning escrita como «8 %» estaría
+   *  frenando dos veces y media de más. El píxel es una unidad del renderer y no
+   *  tiene por qué asomarse a la física. */
   function groundGradeAt(x, y, h = 40) {
+    const k = PX_PER_M;                       // m/px -> m/m
     return {
-      dzdx: (groundZAt(x + h, y) - groundZAt(x - h, y)) / (2 * h),
-      dzdy: (groundZAt(x, y + h) - groundZAt(x, y - h)) / (2 * h),
+      dzdx: (groundZAt(x + h, y) - groundZAt(x - h, y)) / (2 * h) * k,
+      dzdy: (groundZAt(x, y + h) - groundZAt(x, y - h)) / (2 * h) * k,
     };
   }
 

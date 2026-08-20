@@ -199,6 +199,24 @@ function drawTrain(tr, t) {
 function drawGull(g) {
   paintActor(ctx, ACTORS, "gull", actorFrame("gull", g));
 }
+
+/** UNA ORDA POSADA — la misma gaviota del catálogo, muchas veces.
+ *
+ *  No hay un segundo pájaro y no debe haberlo: una bandada dibujada con su
+ *  propio arte se despega del ave que ya existe en cuanto alguien retoque una.
+ *  Lo único propio de la orda es la DISPOSICIÓN — dónde está cada una y cuánto
+ *  ha levantado el vuelo — y eso vive en la entidad, no en el arte.
+ *
+ *  `lift` es lo que hace legible el estorbo ANTES de llegar: la bandada se alza
+ *  cuando el carro se acerca, así que se ve venir y se puede rodear. Una nube
+ *  que sólo reacciona al chocarla sería un castigo, no un obstáculo. */
+function drawGullFlock(f) {
+  for (const b of f.birds) {
+    const lift = b.lift * 9;
+    drawGull({ x: f.x + b.dx, y: f.y + b.dy - lift,
+               vx: f.vx || 1, vy: f.vy, ph: b.ph });
+  }
+}
 // The boats on the water. Both were flat rectangles seen from directly above,
 // which is not how anything else in this game is drawn: the loading screen's
 // little lancha has a white hull, a red boot-top and a cabin, and that is the
@@ -432,4 +450,5 @@ function drawPlayerCarrying(p, veh) {
   ctx.restore();
 }
 
-export { drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawSchool, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle };
+export {
+  drawGullFlock, drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawSchool, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle };

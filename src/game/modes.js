@@ -201,6 +201,11 @@ export function startStage(stageIdx, vehicleKey) {
   state.stage = stg;
   state.stageIdx = stageIdx;
   state.mode = "story";
+  // EL ENCUADRE DEL NIVEL. Una etapa puede pedir que su cámara vaya girada: El
+  // Cocal corre a lo largo del arenal, que es horizontal, y de canto llena la
+  // pantalla en vez de cruzarla. Es de la CÁMARA, no del mundo — ninguna
+  // coordenada cambia — y se limpia al salir, o el giro se filtra al siguiente.
+  state.cam.rot = (stg.rotate || 0) * Math.PI / 180;
   state.weather = stg.weather;
   setDayCycle(false);          // a stage's sky is part of its brief
   // …EXCEPT THE TRAVESÍA, whose sky and tide ARE the brief. The estero is a
@@ -292,6 +297,7 @@ export function startStage(stageIdx, vehicleKey) {
 export function startArcade(opts = {}) {
   resetCrossing();
   state.stage = null;
+  state.cam.rot = 0;
   state.stageIdx = 0;
   state.mode = "arcade";
   // ARCADE PICKS ITS SKY. Three minutes is shorter than any phase of the day,
@@ -330,6 +336,7 @@ export function startArcade(opts = {}) {
 export function startExplore(opts = {}) {
   resetCrossing();
   state.stage = null;
+  state.cam.rot = 0;
   state.stageIdx = 0;
   state.mode = "explore";
   // RECORRER GETS A DAY. Ten real minutes for a full turn — sunny, atardecer,
@@ -379,6 +386,7 @@ export function startExplore(opts = {}) {
 export function startTutorial(opts = {}) {
   resetCrossing();
   state.stage = null;
+  state.cam.rot = 0;
   state.stageIdx = 0;
   state.mode = "tutorial";
   state.weather = "sunny";

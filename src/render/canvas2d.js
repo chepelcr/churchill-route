@@ -9,7 +9,7 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { vehicleEffects } from "../game/vehicles.js";
 import {
-  state, traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools,
+  state, traffic, pedestrians, gulls, gullFlocks, boats, parked, vendors, animals, trains, schools,
   beachGames,
 } from "../game/state.js";
 import { content } from "../content/remote.js";
@@ -27,7 +27,7 @@ import { drawChannel, drawEstero } from "./c2d/estero.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import { drawAttractions } from "./c2d/attractions.js";
 import {
-  drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawPed, drawSchool,
+  drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawGullFlock, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
   paintVehicle,
 } from "./c2d/entities.js";
@@ -75,12 +75,40 @@ function render(t) {
   }
   const cam = { x: state.cam.x + sx, y: state.cam.y + sy };
   const wvw = vw / ZOOM, wvh = vh / ZOOM;
-  const view = { x0: cam.x - wvw/2 - 40, x1: cam.x + wvw/2 + 40, y0: cam.y - wvh/2 - 40, y1: cam.y + wvh/2 + 40 };
+  // UN NIVEL PUEDE JUGARSE DE CANTO. El Cocal corre a lo largo del arenal, que
+  // es horizontal, y en un teléfono vertical eso deja el nivel entero cruzando
+  // el lado corto de la pantalla. `rot` gira la CÁMARA, no el mundo: nada del
+  // build cambia y ninguna coordenada se toca.
+  const rot = state.cam.rot || 0;
+  // …y por eso el rectángulo de recorte NO puede seguir siendo el de la
+  // pantalla. Girada, la región visible es un rect girado: con el de siempre se
+  // recortaría lo que sí se ve. Se proyectan las cuatro esquinas al mundo y se
+  // toma su caja, que vale para cualquier ángulo y no sólo para 90°.
+  let view;
+  if (rot) {
+    const c = Math.cos(-rot), s2 = Math.sin(-rot);
+    const hx = wvw / 2, hy = wvh / 2;
+    const xs = [], ys = [];
+    for (const [px, py] of [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]) {
+      xs.push(cam.x + px * c - py * s2);
+      ys.push(cam.y + px * s2 + py * c);
+    }
+    view = { x0: Math.min(...xs) - 40, x1: Math.max(...xs) + 40,
+             y0: Math.min(...ys) - 40, y1: Math.max(...ys) + 40 };
+  } else {
+    view = { x0: cam.x - wvw/2 - 40, x1: cam.x + wvw/2 + 40,
+             y0: cam.y - wvh/2 - 40, y1: cam.y + wvh/2 + 40 };
+  }
 
   // World transform (zoomed)
   ctx.translate(vw/2, vh/2);
   ctx.scale(ZOOM, ZOOM);
+  if (rot) ctx.rotate(rot);
   ctx.translate(-cam.x, -cam.y);
+  // Los rótulos se contragiran para seguir siendo LEGIBLES: un nombre de calle
+  // de lado no es un nombre de calle. `primitives.js` no importa nada, así que
+  // el dato viaja en el contexto que ya recibe.
+  ctx.__worldRot = rot;
 
   if (!OVERLAY) {
     // Sky/water everywhere (drawn in world coords across viewport)
@@ -212,6 +240,12 @@ function render(t) {
   if (!OVERLAY) for (const g of gulls) {
     if (g.x < view.x0 - 30 || g.x > view.x1 + 30) continue;
     drawGull(g);
+  }
+  // …y las ordas, que van con ellas porque son lo mismo visto en bandada.
+  if (!OVERLAY) for (const f of gullFlocks) {
+    if (f.x + f.r < view.x0 || f.x - f.r > view.x1
+      || f.y + f.r < view.y0 || f.y - f.r > view.y1) continue;
+    drawGullFlock(f);
   }
   // Floats
   for (const f of state.floats) {

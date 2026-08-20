@@ -57,6 +57,10 @@ export const state = {
 };
 
 // ----- World entities (advanced by physics, drawn by the renderer) ----------
+//: LAS ORDAS DE GAVIOTAS — bandadas posadas, no la gaviota ambiental del golfo.
+//: Cada una es UNA entidad con su centro y sus pájaros, igual que un banco de
+//: atún: si los pájaros fueran sueltos, «orda» sería sólo un contador más alto.
+export const gullFlocks = [];
 export const traffic = [];      // moving cars/buses/trucks on main roads
 export const pedestrians = [];  // strollers on the paseo + aceras
 export const gulls = [];        // seagulls over the water

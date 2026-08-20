@@ -134,6 +134,12 @@ class Stage(WorldModel):
     unlock: str | None = None
     kind: StageKind = StageKind.DELIVERY
     ferry: str | None = Field(default=None, description="which boat a crossing sails")
+    rotate: int = Field(default=0, description=(
+        "degrees the stage's CAMERA is turned. Not the world: no coordinate "
+        "changes, and the touch model is corrected by the same angle."))
+    hazards: dict | None = Field(default=None, description=(
+        "what this stage throws at you that the others do not. A level whose "
+        "only difference is its coordinates is the same level twice."))
     openAlways: bool = Field(default=False, description=(
         "this stage never locks, and never gates the one after it. Both halves "
         "matter: an always-open stage that still gated its successor would put "

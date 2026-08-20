@@ -96,7 +96,13 @@
         "c13",
         "c14"
       ],
-      "unlock": "mata"
+      "unlock": "mata",
+      "_hazards": "LAS ORDAS DE GAVIOTAS DEL COCAL. El resto de las etapas se juega igual y eso las vuelve intercambiables; ésta pide otra cosa. Las gaviotas ambientales no sirven: `spawnOneGull` las siembra sobre AGUA ABIERTA y en el Cocal la cámara va tierra adentro por el arenal, así que no encuentra dónde ponerlas y no sale casi ninguna — que es exactamente lo que se veía. Una orda es una BANDADA sobre el arenal, con su propio centro que deriva, y hay que esquivarla: atravesarla ciega la pantalla y puede tumbarte el churchill.",
+      "hazards": {
+        "gullFlocks": 5
+      },
+      "_rotate": "EL COCAL SE JUEGA DE CANTO. El barrio corre a lo largo del arenal —de oeste a este— así que en pantalla ocupa una franja y deja el resto vacío. Girada 90°, la ruta baja por el lado LARGO. Es un cambio de CÁMARA: el mundo no se toca, ninguna coordenada cambia, y el control de un dedo se corrige por el mismo ángulo para que el dedo siga apuntando a donde el jugador cree.",
+      "rotate": 90
     },
     {
       "id": "s6",

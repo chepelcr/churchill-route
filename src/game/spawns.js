@@ -6,7 +6,7 @@
 // old global arclength model (place-once across the whole corridor via ROADS +
 // roadPointAt), which cannot work when most of the map isn't loaded.
 import { WORLD2D as W } from "../world2d/index.js";
-import { traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools, beachGames } from "./state.js";
+import { state, traffic, pedestrians, gulls, boats, parked, vendors, animals, trains, schools, beachGames, gullFlocks } from "./state.js";
 import { VEHICLES } from "./vehicles.js";
 import { SURFACE } from "./surfaces.js";
 import { ROAD_ROLE } from "../domain/vocabulary.generated.js";
@@ -339,6 +339,35 @@ function spawnOneGull() {
   if (!pt) return null;
   return { x: pt.x, y: pt.y, vx: (Math.random() < 0.5 ? 1 : -1) * (40 + Math.random() * 50),
            vy: (Math.random() - 0.5) * 20, ph: Math.random() * Math.PI * 2 };
+}
+
+// UNA ORDA DE GAVIOTAS — la bandada posada en el arenal, no la gaviota suelta
+// sobre el golfo.
+//
+// La ambiental no sirve para esto y la razón es concreta: `spawnOneGull` siembra
+// sobre AGUA ABIERTA (clase 0), y en El Cocal la cámara va tierra adentro por el
+// arenal, así que `sampleNear` no encuentra dónde ponerlas y no sale casi
+// ninguna. Una orda vive sobre la ARENA y la CALLE, que es donde de verdad se
+// paran a comer, y por eso es un estorbo: hay que rodearla.
+//
+// La bandada es UNA entidad con su propio centro que deriva, y los pájaros son
+// suyos — igual que el banco de atún es una entidad y no tres cosas que se
+// pueden despegar. Sin eso una «orda» es sólo el contador de gaviotas más alto,
+// que es ruido, no dificultad.
+const FLOCK_CLASSES = [SURFACE.BEACH, SURFACE.ROAD, SURFACE.BARRO, SURFACE.MALECON];
+function spawnOneFlock() {
+  const pt = sampleNear(_cam.x, _cam.y, FLOCK_CLASSES, 260, KEEP_R);
+  if (!pt) return null;
+  const n = 9 + ((Math.random() * 8) | 0);
+  const birds = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 46;
+    birds.push({ dx: Math.cos(a) * r, dy: Math.sin(a) * r,
+                 ph: Math.random() * Math.PI * 2, lift: 0 });
+  }
+  return { x: pt.x, y: pt.y,
+           vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
+           r: 54, birds, spooked: 0 };
 }
 function spawnOneBoat() {
   const pt = sampleNear(_cam.x, _cam.y, [0], 300, KEEP_R);
@@ -792,6 +821,11 @@ export function maintainStreaming() {
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);
   topUp(animals, TARGET.animals, spawnOneAnimal, (e) => e.dead || far(e));
   topUp(gulls, TARGET.gulls, spawnOneGull, far);
+  // …y las ordas, SÓLO donde la etapa las pide. Una dificultad que aparece en
+  // todos lados deja de ser el carácter de un nivel y pasa a ser el del juego.
+  const wantFlocks = state.stage?.hazards?.gullFlocks || 0;
+  if (wantFlocks) topUp(gullFlocks, wantFlocks, spawnOneFlock, far);
+  else if (gullFlocks.length) gullFlocks.length = 0;
   topUp(boats, TARGET.boats, spawnOneBoat, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 400);
   topUp(schools, TARGET.schools, spawnOneSchool, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
 }

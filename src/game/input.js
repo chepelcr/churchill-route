@@ -64,7 +64,11 @@ export function applyTouch(cam, p, veh) {
   const dx = aim.x - sx, dy = aim.y - sy;
   const d = Math.hypot(dx, dy);
   if (d < THR_DEAD) return;                            // dead zone: coast
-  let e = Math.atan2(dy, dx) - p.a;
+  // …MENOS EL GIRO DE LA CÁMARA. `atan2` da un ángulo de PANTALLA y `p.a` es de
+  // MUNDO; hoy coinciden porque no hay giro, y en un nivel girado no. Sin este
+  // término el dedo apunta 90° al lado de donde el jugador cree — que es la
+  // única forma de arruinar el control de un dedo.
+  let e = Math.atan2(dy, dx) - (cam.rot || 0) - p.a;
   e = Math.atan2(Math.sin(e), Math.cos(e));            // shortest angle diff
   const snap = input.snapT > 0;
   if (snap && Math.abs(e) < 0.2) input.snapT = 0;      // facing the finger: snap done

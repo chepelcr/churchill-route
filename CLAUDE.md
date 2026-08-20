@@ -100,10 +100,22 @@ stopped being one.
   on one `cycle` and read `sunShadow`/`weatherColors` off the other: both report
   the sky and the shadows never moving, with the code correct and every art sheet
   clean. `sunVector()` sweeps in the same breath, which is what makes it read as
-  a real regression. **Run those two against a FRESH dev server on another port**
-  (`pnpm dev --port 8736 --strictPort`), never against a `:8734` that has been up
-  through an edit loop; the rest of the smokes take `vite preview` and do not
-  care.
+  a real regression. **LAS SMOKES QUE IMPORTAN MÓDULOS FUENTE VAN CONTRA UN SERVIDOR FRESCO**, en
+  otro puerto (`pnpm dev --port 8736 --strictPort`), nunca contra un `:8734` que
+  lleve un ciclo de edición encima. Son **cinco** y se reconocen porque hacen
+  `import("/src/…")`: `smoke:sky`, `smoke:shadows`, `smoke:sceneshadows`,
+  `smoke:feria` y `smoke:grade`. Las de producción (`smoke`, `boat`, `crossing`,
+  `theme`, `sponsor`, `night`) toman `vite preview` y no les afecta.
+
+  Esto mordió CUATRO veces en un solo día, y no siempre igual: dos smokes que
+  reportan que el cielo y las sombras no se mueven; una hoja de parcelas que sale
+  ENTERA en blanco; y las cuatro fallando a la vez después de reconstruir 240
+  tiles. El síntoma no se parece a un servidor viejo — se parece a una regresión,
+  y por eso cuesta. **La prueba barata es correrlo en un puerto nuevo antes de
+  creerle al fallo.** `shot-parcels` esquiva la mitad del problema resolviendo la
+  URL VIVA de `gfx.js` desde el fuente de `streets.js`, y `smoke-scene-shadows`
+  hace lo mismo con `daynight.js`; es el patrón a copiar cuando una herramienta
+  tiene que compartir instancia con el pintor.
 * **no sheet?** compare the SET of colours against `git show HEAD:<file>`. A
   mistyped hex does not survive that.
 * **anything the builder reads** → `PLANAR_BBOX=… pnpm world:build` (1 min,

@@ -27,7 +27,8 @@ import math
 from collections import defaultdict
 
 from ..config import (
-    ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD,
+    ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_MALECON,
+    CLS_ROAD, CUAD,
     FIELD_ACERA_CELLS, GRID_CELL, STREET_CLASSES, STREET_SPAN_M,
     street_span_px,
 )
@@ -1216,7 +1217,20 @@ class FieldService:
             # the same way rejected all 12 stations on the map (the Delta at
             # 6/40 cells). It is not stamped, so the asphalt still wins the
             # ground; only the canopy and the pumps draw on top.
+            # UN LUGAR DEL FRENTE MARÍTIMO NO ESTÁ SOBRE TIERRA, y por eso
+            # desaparecía. LAND/ACERA es la prueba correcta para un lote cortado
+            # de una cuadra, pero el Parque del Muellero es una cinta de 1 336 px
+            # entre el Paseo y el muelle y la cancha de playa está sobre la
+            # arena: su suelo es MALECÓN y ARENA, ninguno de los dos elegible.
+            # El parque salía a 252x96 px de una huella de 1336x463 —el 4 %— con
+            # su rótulo flotando fuera de lo que quedaba. `shore` en
+            # `site-decor.json` es el mismo permiso explícito que `fuel` ya tiene
+            # para su asfalto: el sitio NO se estampa, así que el malecón sigue
+            # ganando el suelo; sólo se dibuja encima.
+            _decor0 = SITE_DECOR.get(f"osm_{site['kind']}_{site['id']}", {})
             ground = ((CLS_LAND, CLS_ACERA, CLS_ROAD) if site["kind"] == "fuel"
+                      else (CLS_LAND, CLS_ACERA, CLS_MALECON, CLS_BEACH)
+                      if _decor0.get("shore")
                       else (CLS_LAND, CLS_ACERA))
             under, own = set(), set()
             for r in range(max(0, r0), min(raster.rows, r1 + 1)):
@@ -1341,7 +1355,14 @@ class FieldService:
             # hard surface, inscribe a strict-LAND rectangle in the site's own
             # safe cells. Mora y Cañas was the regression — 162x262 px including
             # 540 ROAD cells — while its safe manzana is ~84x250 px.
-            deep = (FIELD_ACERA_CELLS
+            # UN SITIO DE ORILLA NO SE APARTA DE UNA ACERA QUE NO EXISTE. La
+            # erosión graduada tira el lote hacia adentro para que sus líneas
+            # blancas paren en el cordón — pero una cancha sobre la arena no
+            # tiene cordón del que apartarse, y a 91x31 px de huella real dos
+            # celdas por lado se llevan la mitad. Una sola celda, no cero: a
+            # cero el filtro de «esto sigue siendo un lote» la rechaza entera.
+            deep = (1 if _decor0.get("shore")
+                    else FIELD_ACERA_CELLS
                     if use in (ParcelUse.PARK, ParcelUse.STADIUM, ParcelUse.FUEL)
                     else ACERA_CELLS)
             keep, krect, used = set(), None, 0
@@ -1434,7 +1455,14 @@ class FieldService:
             # the seat's whole purpose is "put this plot inside its manzana",
             # and the cuadra path did that already, from the manzana's side. Its
             # cells read as acera only because the block was paved as a sliver.
-            if krect and keep and not cuadra:
+            # …Y UN SITIO DE ORILLA TAMPOCO SE MUEVE, por la misma razón que un
+            # `cuadra`: el asiento existe para meter un lote DENTRO de su
+            # manzana, y la orilla no tiene manzana. Un parque del frente
+            # marítimo está sobre la acera del paseo porque ESO es lo que hay
+            # ahí — moverlo tierra adentro lo saca del sitio que le da nombre.
+            # El Parque del Muellero se sentaba así y salía a 252 px de una
+            # cinta de 1 336.
+            if krect and keep and not cuadra and not _decor0.get("shore"):
                 on_acera = sum(1 for c in keep if raster.at(*c) == CLS_ACERA)
                 if on_acera > PARCEL_ACERA_MAX * len(keep):
                     moved = (self._slide_cells_into(keep, ang, cell) if trace else None) \

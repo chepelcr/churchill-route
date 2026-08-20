@@ -28,11 +28,20 @@ because the alternative was measured on this coast:
     between it and the sidewalk is two things, not one, and that is what the
     sea front looked like: 24 px of land colour at x 25 000, 48 px at x 24 500,
     and NOTHING AT ALL for the 636 px of the Muelle de Cruceros frontage,
-    because an 80 px solar there put the sand past the old 30 m shoulder. So
-    after the band is laid, the paving walks BACK from the first sand cell to
-    the kerb, crossing `KERB_LINK_CLASSES` — land and acera, never a
-    carriageway — for at most `MALECON_KERB_LINK_M`. The cap is the whole
-    safety argument: unbounded, this is how a cuadra gets paved.
+    because an 80 px solar there put the sand past the old 30 m shoulder.
+
+    So el paseo se pavimenta EN UNA SOLA CORRIDA, desde el cordón hacia el mar:
+    `KERB_LINK_CLASSES` —acera, solar, playa; nunca una calzada— hasta donde
+    empieza la arena, y arena de ahí en adelante. **Sin tope de distancia.** Lo
+    hubo, de 150 px, con este argumento: «a esa anchura el suelo de en medio es
+    la manzana de alguien». No en este lado — las manzanas están tierra adentro
+    y hacia el mar no hay ninguna. Medido en los cuatro peores cortes, lo que
+    separaba el cordón del malecón era ACERA Y ARENA (76 px de acera y 92 de
+    playa en x 22 660; 100 px de acera en x 24 000), y en dos de ellos la banda
+    salía como una tira de 28 px con arena a los DOS lados: un pedazo de paseo
+    flotando en la playa, despegado de su calle. El guardia de verdad no es una
+    distancia sino la CLASE, que detiene la corrida en cualquier cosa que no sea
+    acera, solar o playa — y por tanto en una calzada o en el agua.
 
 The ENTRADAS are the exception to the last rule. A promenade you cannot get onto
 is scenery, and in places a strip of solar or acera stands between the kerb and
@@ -52,7 +61,7 @@ from collections import deque
 from ..config import (
     CARRIAGEWAY_CLASSES, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND,
     CLS_MALECON, CLS_WATER, CUAD, GRID_CELL, MALECON_BAND_M, MALECON_ENTRADA_W,
-    MALECON_KERB_LINK_M, MALECON_MIN_PATCH_CELLS, MALECON_MIN_SAND_PX,
+    MALECON_MIN_PATCH_CELLS, MALECON_MIN_SAND_PX,
     MALECON_MIN_TAKE_PX, MALECON_SHOULDER_M, PASEO_NAMES, PASEO_TURISTAS,
     PLANAR_PX_PER_M,
 )
@@ -283,7 +292,6 @@ def stamp_malecon(raster, roads, streets, sites=(), east_x=None):
     ys = [v for r in pieces for v in r["pts"][1::2]]
     reserved = _site_keepout(raster, sites, (min(xs) - reach, min(ys) - reach,
                                              max(xs) + reach, max(ys) + reach))
-    link_px = MALECON_KERB_LINK_M * PLANAR_PX_PER_M
     cells, was = set(), {}
     n_narrow = n_link = n_second = 0
     for r in sorted(pieces, key=lambda p: (p["pts"][0], p["pts"][1])):
@@ -312,30 +320,35 @@ def stamp_malecon(raster, roads, streets, sites=(), east_x=None):
                 if take < MALECON_MIN_TAKE_PX:
                     n_narrow += 1
                     continue
-                d = d0
-                while d <= d0 + take:
-                    hit = _paint(raster, x + sx * d, y + sy * d, CLS_MALECON,
-                                 (CLS_BEACH,), reserved, was)
-                    if hit:
-                        cells.add(hit)
-                    d += raster.cell / 2.0
-                # …AND BACK TO THE KERB. Everything above this line lays the
-                # band on SAND; this lays the few metres of solar or sidewalk
-                # between that sand and the street, so the promenade and the
-                # acera are one surface instead of two with a tan stripe down
-                # the middle. A gap wider than the cap is left alone: at that
-                # width the ground between is somebody's manzana, not a verge.
-                if d0 - hw > link_px:
-                    continue
+                # UNA SOLA CORRIDA, DEL CORDÓN A LA ARENA. Antes eran dos: la
+                # banda se tendía sobre la ARENA y después se intentaba un
+                # enlace de vuelta al cordón, con un tope de 150 px «porque a
+                # esa anchura el suelo de en medio es la manzana de alguien».
+                #
+                # NO EN ESTE LADO. Las manzanas están tierra adentro; hacia el
+                # mar no hay ninguna. Medido en los cuatro peores cortes, lo que
+                # separa el cordón del malecón es ACERA Y ARENA — 76 px de acera
+                # y 92 de playa en x 22660, 100 de acera en x 24000 — y en dos de
+                # ellos la banda salía como una tira de 28 px con arena a los DOS
+                # lados: un pedazo de paseo flotando en la playa, despegado de su
+                # calle. Eso es lo que se veía «desviarse y volver».
+                #
+                # Así que se pavimenta seguido desde el cordón: clases de verge
+                # hasta donde empieza la arena, arena a partir de ahí. El tope
+                # de distancia se va — el guardia de verdad es la CLASE, que
+                # detiene la corrida en cualquier cosa que no sea acera, solar o
+                # playa, y por tanto en una calzada o en el agua.
                 linked = False
-                d = d0
-                while d >= hw - raster.cell:
+                d = hw - raster.cell
+                while d <= d0 + take:
+                    allowed = (CLS_BEACH,) if d >= d0 else KERB_LINK_CLASSES
                     hit = _paint(raster, x + sx * d, y + sy * d, CLS_MALECON,
-                                 KERB_LINK_CLASSES, reserved, was)
+                                 allowed, reserved, was)
                     if hit:
                         cells.add(hit)
-                        linked = True
-                    d -= raster.cell / 2.0
+                        if d < d0:
+                            linked = True
+                    d += raster.cell / 2.0
                 n_link += 1 if linked else 0
     # Pinholes: a cell the marching rays stepped over is still promenade if the
     # promenade is on every side of it. Cheaper and more honest than sampling
@@ -375,9 +388,9 @@ def stamp_malecon(raster, roads, streets, sites=(), east_x=None):
     log("malecon", f"{len(cells)} cells of sea front paved along {len(pieces)} "
         f"pieces of the Paseo ({round(band_px)}px deep, {n_fill} pinholes filled, "
         f"{n_narrow} cross-sections too narrow to share)")
-    log("malecon", f"{n_link} cross-sections linked back to the kerb across up "
-        f"to {round(link_px)}px of solar/acera; {n_second} where the estero side "
-        f"also offered sand and lost to the wider playa")
+    log("malecon", f"{n_link} cortes pavimentados DESDE EL CORDÓN hasta la arena "
+        f"en una sola corrida; {n_second} donde el estero también ofrecía arena y "
+        f"perdió contra la playa más ancha")
 
     # --- las entradas: a ramp at every opening of the palm median
     n_ramp = 0

@@ -18,7 +18,8 @@
     },
     "osm_park_270515697": {
       "trace": true,
-      "note": "El Parque del Muellero (OSM 'Parque 164') is a 1100 px DIAGONAL RIBBON of waterfront between the Paseo and the muelle, 40-70 px wide — a shape no rectangle in the manzana frame can hold. The percentile fit landed on the roadway, the inscribed fallback found nothing that was still a plot, and the park simply did not exist in the world. Same remedy as Mora y Cañas."
+      "note": "El Parque del Muellero (OSM 'Parque 164') is a 1100 px DIAGONAL RIBBON of waterfront between the Paseo and the muelle, 40-70 px wide — a shape no rectangle in the manzana frame can hold. The percentile fit landed on the roadway, the inscribed fallback found nothing that was still a plot, and the park simply did not exist in the world. Same remedy as Mora y Cañas. Y `shore`: su suelo es MALECÓN y ARENA, no tierra, así que la prueba de LAND/ACERA lo dejaba en 252x96 px de una huella de 1336x463 — el 4 %, con el rótulo flotando fuera de lo que quedaba.",
+      "shore": true
     },
     "osm_market_1077016901": {
       "cuadra": true,
@@ -41,6 +42,13 @@
         1.0
       ],
       "note": "La Escuela de Biología Marina (UNA) sits on the WEST side of its calle; the OSM area spans the block and put it along the north edge instead."
+    },
+    "osm_park_964080190": {
+      "shore": true,
+      "use": "plaza",
+      "sport": "basketball",
+      "note": "LA CANCHA MULTIUSOS del Paseo, frente a la Clínica San Rafael. En OSM es `way/964080190`, con el nombre mal escrito («Cqancha de Futbol Playa Puntarenas»), etiquetada `leisure=park` y SIN `sport` — así que el mundo la dibujaba como un parque y, al estar sobre el malecón, la prueba de LAND/ACERA la dejaba en 73x17 px. Es una cancha de baloncesto multiuso: `plaza` le da el pintor de campo abierto y `sport` las marcas. `aceras: false` porque una cancha sobre la arena no tiene acera de la que apartarse: la erosión le comía la mitad de una huella que ya es de 91x31 px.",
+      "aceras": false
     }
   }
 }

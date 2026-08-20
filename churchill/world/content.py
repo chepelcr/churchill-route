@@ -86,7 +86,20 @@ DISTRICT_DEFS = _geo["districts"]
 DISTRICT_BOUNDS_GEO = [tuple(p) for p in _geo["districtBoundsGeo"]]
 INLAND_DISTRICT_DEFS = _geo["inlandDistricts"]
 
-LANDMARK_DEFS = _lm["landmarks"]
+_ki = _load("kiosks.json")
+_pr = _load("products.json")
+
+#: LOS PUNTOS DE RECOGIDA, aparte de los hitos. Un kiosco no es «un hito de tipo
+#: kiosk»: es el ARRANQUE de una entrega y tiene producto. Se concatenan a los
+#: hitos aquí porque el resto del build los coloca igual que a cualquier POI —
+#: lo que cambia es dónde se AUTORAN y qué llevan encima.
+KIOSK_DEFS = [{**k, "type": "kiosk"} for k in _ki["kiosks"]]
+
+#: QUÉ SE ENTREGA Y CÓMO SE ECHA A PERDER. Un churchill se derrite, un vigorón se
+#: aguada, un ceviche aguanta la distancia pero no el sol.
+PRODUCT_DEFS = _pr["products"]
+
+LANDMARK_DEFS = _lm["landmarks"] + KIOSK_DEFS
 #: The OSM theme-park way that decides which footprints belong to the aquarium.
 MARINE_SITE_OSM_ID = _lm["marineSiteOsmId"]
 #: Externally verified facility labels; the local OSM ways do not carry them, so

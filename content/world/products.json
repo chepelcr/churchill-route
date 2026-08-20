@@ -1,0 +1,47 @@
+{
+  "_note": "QUÉ SE ENTREGA, Y CÓMO SE ECHA A PERDER. El juego tenía un solo producto —el churchill— así que todas las etapas eran el mismo trabajo en otras coordenadas. Un producto no es un nombre distinto: es una PRESIÓN distinta. Un churchill se derrite, un vigorón se aguada, un ceviche aguanta la distancia pero no el sol.",
+  "_contract": "`spoil` es el modelo que la física implementa y el producto SELECCIONA; `budgetMul` escala el presupuesto de tiempo que `pickUpChurchill` deriva de la distancia. Un producto no puede inventar un modelo nuevo — eso es código — pero sí puede pedir otro y afinarlo. Es el mismo contrato que `effects.json` le pone a un vehículo.",
+  "version": 1,
+  "products": {
+    "churchill": {
+      "name": "Churchill",
+      "short": "CHURCHILL",
+      "note": "Hielo raspado con sirope, leche condensada, leche en polvo y helado. NACIÓ en el Paseo de los Turistas y le pusieron el nombre por un cliente que se parecía a Winston Churchill. Es el producto del juego y el que más apura: se derrite mientras uno maneja.",
+      "spoil": "melt",
+      "budgetMul": 1.0,
+      "cargo": "cup"
+    },
+    "papicarne": {
+      "name": "Papi-carne",
+      "short": "PAPI-CARNE",
+      "note": "Papas con carne mechada, y en la costa se pide CON CANTONES. No es comida de feria de paso: es comida fuerte de todo el corredor — Puntarenas, Esparza, Barranca y Caldera — y por eso es el hilo que une los barrios del este con el puerto. No se derrite; se enfría, que perdona más pero no perdona siempre.",
+      "spoil": "cool",
+      "budgetMul": 1.35,
+      "cargo": "box"
+    },
+    "vigoron": {
+      "name": "Vigorón",
+      "short": "VIGORÓN",
+      "note": "Repollo picado, yuca sancochada y chicharrones, con chimichurri, servido en hoja. Se popularizó en el puerto por la migración nicaragüense — se come aquí de verdad, y decirlo así es más honesto que llamarlo endémico. Aguanta: es el reparto largo y tranquilo.",
+      "spoil": "sog",
+      "budgetMul": 1.6,
+      "cargo": "leaf"
+    },
+    "ceviche": {
+      "name": "Ceviche",
+      "short": "CEVICHE",
+      "note": "De pescado, camarón, chucheca o piangua. En esta provincia nacieron los ceviches que después se comieron en todo el país. Aguanta la distancia pero NO el sol: su reloj corre con el cielo, no con el odómetro, así que la misma entrega es otra cosa a mediodía que al atardecer.",
+      "spoil": "sun",
+      "budgetMul": 1.25,
+      "cargo": "cup"
+    },
+    "mariscada": {
+      "name": "Mariscada",
+      "short": "MARISCADA",
+      "note": "Cazuela de mariscos del muelle. Pesada y cara: paga más y corre menos, así que es el trabajo de las rutas cortas de Caldera y Mata de Limón.",
+      "spoil": "cool",
+      "budgetMul": 1.15,
+      "cargo": "box"
+    }
+  }
+}

@@ -169,6 +169,10 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
                "_how": how}
         if osm_id is not None:
             rec["osmRef"] = osm_id     # "node/123" — provenance of the anchor
+        # …y lo que este punto VENDE. Sin esto todo kiosco entrega lo mismo y una
+        # etapa se distingue de otra sólo por sus coordenadas.
+        if spec.get("product"):
+            rec["product"] = spec["product"]
         landmarks.append(rec)
     # Customers: nudge to land, then ENFORCE spread so every delivery is a
     # real trip — ≥150px from any kiosk, ≥120px from every other customer.

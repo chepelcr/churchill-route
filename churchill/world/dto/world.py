@@ -93,6 +93,9 @@ class Landmark(WorldModel):
     # share one (faro, balneario and kios_faro all hang off the same node with
     # different offsets). Absent when the landmark was placed from a hand `ll`.
     osmRef: str | None = None
+    # QUÉ VENDE ESTE PUNTO DE RECOGIDA. Sólo un kiosco lo lleva, y sin él toda
+    # etapa es el mismo trabajo en otras coordenadas.
+    product: str | None = None
     w: int | None = None
     h: int | None = None
     # NOT a flag: the build-authored player start [x, y], snapped to the

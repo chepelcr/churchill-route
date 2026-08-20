@@ -1,0 +1,203 @@
+{
+  "_note": "LOS PUNTOS DE RECOGIDA. Vivían mezclados entre los 40 hitos de `landmarks.json`, distinguidos sólo por `type: kiosk`, y todos vendían lo mismo. Salen aquí porque son otra cosa: son el ARRANQUE de una entrega, tienen producto, y agregar uno tiene que ser una fila.",
+  "_anchor": "Un kiosco se ancla a un RESTAURANTE REAL cuando OSM lo tiene — `osm` lo resuelve por nombre y `ll` desempata los homónimos (hay cuatro «Ready Pizza» en el mapa). El kiosco entonces OCUPA esa huella: es lo que los dos del Paseo ya hacían con `way/232193746`, cuyo techo de patio de comidas no se dibuja como edificio.",
+  "_pending": "Tres que el usuario nombró y OSM NO trae: Sabor Callejero y Papi Burguer (Esparza), Makos Pizza (Barranca) — y Soda Migdalia (El Cocal), el papi-carne con cantones. Se anclan en cuanto haya coordenada; inventarles uno sería ponerle a un negocio real una dirección falsa. Chung-San SÍ está, pero en el Paseo (22082,15844), no en El Roble.",
+  "version": 1,
+  "kiosks": [
+    {
+      "id": "kios_faro",
+      "name": "Churchill La Punta",
+      "district": "faro",
+      "product": "churchill",
+      "osm": "faro de la punta",
+      "dx": 106,
+      "dy": 131
+    },
+    {
+      "id": "kios_paseo1",
+      "name": "Kiosco Doña Lela",
+      "district": "paseo",
+      "product": "churchill",
+      "osm": "kioscos paseo de los turistas",
+      "dx": -75,
+      "dy": 100
+    },
+    {
+      "id": "kios_paseo2",
+      "name": "Churchill El Mariachi",
+      "district": "paseo",
+      "product": "vigoron",
+      "osm": "kioscos paseo de los turistas",
+      "dx": 75,
+      "dy": 100
+    },
+    {
+      "id": "kios_centro",
+      "name": "Kiosco La Porteña",
+      "district": "centro",
+      "product": "ceviche",
+      "osm": "el cevichito",
+      "ll": [
+        9.97621,
+        -84.83364
+      ],
+      "_anchor": "El Cevichito — el ceviche de Puntarenas, mapeado"
+    },
+    {
+      "id": "kios_play",
+      "name": "Kiosco Playitas",
+      "district": "playitas",
+      "product": "papicarne",
+      "ll": [
+        9.9784,
+        -84.8264
+      ]
+    },
+    {
+      "id": "kios_cocal",
+      "name": "Kiosco El Cocal",
+      "district": "cocal",
+      "product": "vigoron",
+      "osm": "pata larga - terraza",
+      "ll": [
+        9.98074,
+        -84.79708
+      ],
+      "_anchor": "Pata Larga, El Cocal"
+    },
+    {
+      "id": "kios_cocal2",
+      "name": "Soda Ruta 17",
+      "district": "cocal",
+      "product": "papicarne",
+      "ll": [
+        9.98109,
+        -84.8139
+      ]
+    },
+    {
+      "id": "kios_mata",
+      "name": "Kiosco Mata de Limón",
+      "district": "mata",
+      "product": "mariscada",
+      "ll": [
+        9.9225,
+        -84.7085
+      ]
+    },
+    {
+      "id": "kios_caldera",
+      "name": "Soda del Puerto",
+      "district": "caldera",
+      "product": "churchill",
+      "osm": "restaurante y marisquería tabaris",
+      "ll": [
+        9.92304,
+        -84.71329
+      ],
+      "_anchor": "Tabaris, Caldera"
+    },
+    {
+      "id": "kios_chac",
+      "name": "Soda Chacarita",
+      "district": "chacarita",
+      "product": "papicarne",
+      "ll": [
+        9.98061,
+        -84.77368
+      ],
+      "snap_road": 1
+    },
+    {
+      "id": "kios_roble",
+      "name": "Churchill El Roble",
+      "district": "elroble",
+      "product": "papicarne",
+      "osm": "soda el taxista",
+      "ll": [
+        9.97341,
+        -84.7387
+      ],
+      "_anchor": "Soda El Taxista, El Roble",
+      "snap_road": 1
+    },
+    {
+      "id": "kios_barr",
+      "name": "Kiosco Barranca",
+      "district": "barranca",
+      "product": "papicarne",
+      "osm": "marisquería los pajaritos",
+      "ll": [
+        9.99097,
+        -84.72088
+      ],
+      "_anchor": "Marisquería Los Pajaritos, Barranca",
+      "snap_road": 1
+    },
+    {
+      "id": "kios_esp",
+      "name": "Churchill Esparza",
+      "district": "esparza",
+      "product": "papicarne",
+      "osm": "soda torrejas",
+      "ll": [
+        9.9908,
+        -84.66717
+      ],
+      "_anchor": "Soda Torrejas, Esparza",
+      "snap_road": 1
+    },
+    {
+      "id": "kios_esp2",
+      "name": "El Punto Latino",
+      "district": "esparza",
+      "product": "papicarne",
+      "osm": "el punto latino",
+      "ll": [
+        9.99053,
+        -84.66705
+      ],
+      "snap_road": 1,
+      "_anchor": "El Punto Latino, Esparza — el segundo punto del pueblo, para que una entrega ahí no sea siempre la misma"
+    },
+    {
+      "id": "kios_barr2",
+      "name": "Pollos Jefry",
+      "district": "barranca",
+      "product": "papicarne",
+      "osm": "pollos jefry",
+      "ll": [
+        9.98344,
+        -84.71822
+      ],
+      "snap_road": 1,
+      "_anchor": "Pollos Jefry, Barranca"
+    },
+    {
+      "id": "kios_roble2",
+      "name": "La Sirena",
+      "district": "elroble",
+      "product": "mariscada",
+      "osm": "la sirena",
+      "ll": [
+        9.96925,
+        -84.73763
+      ],
+      "snap_road": 1,
+      "_anchor": "La Sirena, El Roble"
+    },
+    {
+      "id": "kios_cald2",
+      "name": "Soda El Bus Buru",
+      "district": "caldera",
+      "product": "papicarne",
+      "osm": "soda el bus buru",
+      "ll": [
+        9.91866,
+        -84.71197
+      ],
+      "snap_road": 1,
+      "_anchor": "Soda El Bus Buru, Caldera"
+    }
+  ]
+}

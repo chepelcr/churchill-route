@@ -1,5 +1,5 @@
 {
-  "_note": "LOS HITOS — the 40 places the game names. `osm` resolves the anchor against a mapped feature by name; `ll` anchors it directly. `dx`/`dy` nudge the drawn art off the anchor in world px, which is why they are px and not metres: they are a drawing offset, not a distance on the ground.",
+  "_note": "LOS HITOS — los lugares que el juego nombra. `osm` resuelve el ancla contra un rasgo mapeado por nombre; `ll` la ancla directo. `dx`/`dy` corren el arte respecto del ancla en px de mundo, y por eso son px y no metros: son un desplazamiento de dibujo, no una distancia sobre el suelo. LOS KIOSCOS YA NO ESTÁN AQUÍ: son el arranque de una entrega y tienen producto, así que viven en `kiosks.json`.",
   "_marine": "Parque Marino's cuadra is partitioned by hand — `marineSiteOsmId` is the theme-park way that decides which footprints belong to the aquarium, and `marineBuildingNames` are externally verified facility labels the local OSM ways do not carry. NEVER infer a new footprint/name assignment from list order.",
   "landmarks": [
     {
@@ -19,15 +19,6 @@
       "osm": "faro de la punta",
       "dx": 138,
       "dy": 12
-    },
-    {
-      "id": "kios_faro",
-      "name": "Churchill La Punta",
-      "type": "kiosk",
-      "district": "faro",
-      "osm": "faro de la punta",
-      "dx": 106,
-      "dy": 131
     },
     {
       "id": "muellecruc",
@@ -101,24 +92,6 @@
         9.97534,
         -84.83159
       ]
-    },
-    {
-      "id": "kios_paseo1",
-      "name": "Kiosco Doña Lela",
-      "type": "kiosk",
-      "district": "paseo",
-      "osm": "kioscos paseo de los turistas",
-      "dx": -75,
-      "dy": 100
-    },
-    {
-      "id": "kios_paseo2",
-      "name": "Churchill El Mariachi",
-      "type": "kiosk",
-      "district": "paseo",
-      "osm": "kioscos paseo de los turistas",
-      "dx": 75,
-      "dy": 100
     },
     {
       "id": "casafait",
@@ -205,16 +178,6 @@
       ]
     },
     {
-      "id": "kios_centro",
-      "name": "Kiosco La Porteña",
-      "type": "kiosk",
-      "district": "centro",
-      "ll": [
-        9.9748,
-        -84.83
-      ]
-    },
-    {
       "id": "estadio",
       "name": "Estadio Lito Pérez",
       "type": "stadium",
@@ -232,16 +195,6 @@
       "ll": [
         9.9796,
         -84.8252
-      ]
-    },
-    {
-      "id": "kios_play",
-      "name": "Kiosco Playitas",
-      "type": "kiosk",
-      "district": "playitas",
-      "ll": [
-        9.9784,
-        -84.8264
       ]
     },
     {
@@ -266,41 +219,11 @@
       ]
     },
     {
-      "id": "kios_cocal",
-      "name": "Kiosco El Cocal",
-      "type": "kiosk",
-      "district": "cocal",
-      "ll": [
-        9.981,
-        -84.794
-      ]
-    },
-    {
-      "id": "kios_cocal2",
-      "name": "Soda Ruta 17",
-      "type": "kiosk",
-      "district": "cocal",
-      "ll": [
-        9.98109,
-        -84.8139
-      ]
-    },
-    {
       "id": "puente",
       "name": "Puente de Mata de Limón",
       "type": "bridge",
       "district": "mata",
       "osm": "puente colgante mata de limón"
-    },
-    {
-      "id": "kios_mata",
-      "name": "Kiosco Mata de Limón",
-      "type": "kiosk",
-      "district": "mata",
-      "ll": [
-        9.9225,
-        -84.7085
-      ]
     },
     {
       "id": "leda",
@@ -328,16 +251,6 @@
       "ll": [
         9.918,
         -84.713
-      ]
-    },
-    {
-      "id": "kios_caldera",
-      "name": "Soda del Puerto",
-      "type": "kiosk",
-      "district": "caldera",
-      "ll": [
-        9.913,
-        -84.716
       ]
     },
     {
@@ -377,50 +290,6 @@
         9.91,
         -84.71
       ]
-    },
-    {
-      "id": "kios_chac",
-      "name": "Soda Chacarita",
-      "type": "kiosk",
-      "district": "chacarita",
-      "ll": [
-        9.98061,
-        -84.77368
-      ],
-      "snap_road": 1
-    },
-    {
-      "id": "kios_roble",
-      "name": "Churchill El Roble",
-      "type": "kiosk",
-      "district": "elroble",
-      "ll": [
-        9.98067,
-        -84.73602
-      ],
-      "snap_road": 1
-    },
-    {
-      "id": "kios_barr",
-      "name": "Kiosco Barranca",
-      "type": "kiosk",
-      "district": "barranca",
-      "ll": [
-        9.9884,
-        -84.71094
-      ],
-      "snap_road": 1
-    },
-    {
-      "id": "kios_esp",
-      "name": "Churchill Esparza",
-      "type": "kiosk",
-      "district": "esparza",
-      "ll": [
-        9.99183,
-        -84.66587
-      ],
-      "snap_road": 1
     }
   ],
   "marineSiteOsmId": 316422305,

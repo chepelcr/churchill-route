@@ -42,7 +42,23 @@ TABLES = ["PROBE_LAND", "PROBE_SEA", "DISTRICT_DEFS", "DISTRICT_BOUNDS_GEO",
 #: down HERE rather than silently tolerated — an entry is a decision, an
 #: unexpected divergence is still a failure.
 REAUTHORED = {
-    "CROSSING_STAGES[0].after":
+    # LOS TRES KIOSCOS RE-ANCLADOS sobre restaurantes REALES del mapa. Antes
+    # eran una coordenada a ojo; ahora cada uno se para sobre un negocio que
+    # OSM trae, que es lo que hace que el punto de recogida sea un lugar y no
+    # un punto.
+    "LANDMARK_DEFS[kios_centro].ll[0]": "kios_centro -> El Cevichito, el ceviche de Puntarenas",
+    "LANDMARK_DEFS[kios_centro].ll[1]": "kios_centro -> El Cevichito",
+    "LANDMARK_DEFS[kios_cocal].ll[0]": "kios_cocal -> Pata Larga, El Cocal",
+    "LANDMARK_DEFS[kios_cocal].ll[1]": "kios_cocal -> Pata Larga",
+    "LANDMARK_DEFS[kios_caldera].ll[0]": "kios_caldera -> Marisquería Tabaris, Caldera",
+    "LANDMARK_DEFS[kios_caldera].ll[1]": "kios_caldera -> Marisquería Tabaris",
+    "LANDMARK_DEFS[kios_roble].ll[0]": "kios_roble -> Soda El Taxista, El Roble",
+    "LANDMARK_DEFS[kios_roble].ll[1]": "kios_roble -> Soda El Taxista",
+    "LANDMARK_DEFS[kios_barr].ll[0]": "kios_barr -> Marisquería Los Pajaritos, Barranca",
+    "LANDMARK_DEFS[kios_barr].ll[1]": "kios_barr -> Marisquería Los Pajaritos",
+    "LANDMARK_DEFS[kios_esp].ll[0]": "kios_esp -> Soda Torrejas, Esparza",
+    "LANDMARK_DEFS[kios_esp].ll[1]": "kios_esp -> Soda Torrejas",
+    "CROSSING_STAGES[s8].after":
         "la Travesía pasó de seguir a s3 a seguir a s7: iba cuarta y dejaba "
         "Las Playitas, El Cocal, Mata de Limón y Caldera detrás de la única "
         "etapa que falta afinar.",
@@ -121,12 +137,18 @@ class MigrationTests(unittest.TestCase):
             if (isinstance(was, list) and isinstance(now, list)
                     and all(isinstance(r, dict) and "id" in r for r in was + now)):
                 by_id = {r["id"]: r for r in now}
+                # Las claves de `REAUTHORED` se escriben por ID y no por índice:
+                # un lugar nuevo se autora junto a sus vecinos, así que un índice
+                # señala a otro registro en cuanto alguien inserta uno.
+                name = f"{name}[{{id}}]"
                 missing = [r["id"] for r in was if r["id"] not in by_id]
                 if missing:
                     diffs.append(f"{name}: records vanished — {missing}")
                     continue
                 grown.append(f"{name} +{len(now) - len(was)}")
-                now = [by_id[r["id"]] for r in was]
+                diffs += [d for r in was
+                          for d in deep_diff(r, by_id[r["id"]], name.format(id=r["id"]))]
+                continue
             diffs += deep_diff(was, now, name)
         self.assertEqual(diffs, [], f"the loader no longer reproduces the "
                                     f"original tables: {diffs[:5]}")
@@ -167,6 +189,54 @@ class StageChainTests(unittest.TestCase):
                          [s["id"] for s in self.stages
                           if s.get("kind", "delivery") == "delivery"],
                          "the gating chain is not exactly the delivery stages")
+
+
+class KioskTests(unittest.TestCase):
+    """LOS PUNTOS DE RECOGIDA Y LO QUE VENDEN. Salieron de `landmarks.json`
+    porque un kiosco no es «un hito de tipo kiosk»: es el arranque de una
+    entrega y tiene producto."""
+
+    def setUp(self):
+        with open(os.path.join(CONTENT_DIR, "kiosks.json"), encoding="utf-8") as fh:
+            self.kiosks = json.load(fh)["kiosks"]
+        with open(os.path.join(CONTENT_DIR, "products.json"), encoding="utf-8") as fh:
+            self.products = json.load(fh)["products"]
+
+    def test_every_kiosk_sells_something_the_registry_knows(self):
+        """Un producto que nadie define es un kiosco que no entrega nada — y
+        nada lo diría: el reparto seguiría corriendo con el reloj por defecto."""
+        for k in self.kiosks:
+            self.assertIn(k.get("product"), self.products,
+                          f"{k['id']} vende {k.get('product')!r}, que no está en products.json")
+
+    def test_every_product_is_sold_somewhere(self):
+        """Arte y datos sin quién los seleccione es deriva, en la dirección que
+        nadie nota — la misma lección que `SignKind`."""
+        sold = {k["product"] for k in self.kiosks}
+        for pid in self.products:
+            self.assertIn(pid, sold, f"{pid} no lo vende ningún kiosco")
+
+    def test_a_product_names_a_spoil_model_the_game_implements(self):
+        """`spoil` SELECCIONA un modelo que la física implementa; no lo inventa.
+        Es el mismo contrato que `effects.json` le pone a un vehículo."""
+        implemented = {"melt", "cool", "sog", "sun"}
+        for pid, p in self.products.items():
+            self.assertIn(p.get("spoil"), implemented,
+                          f"{pid} pide un modelo de deterioro que nadie implementa")
+            self.assertGreater(p.get("budgetMul", 0), 0, f"{pid} sin presupuesto")
+
+    def test_kiosk_ids_are_unique_and_no_kiosk_is_left_in_landmarks(self):
+        ids = [k["id"] for k in self.kiosks]
+        self.assertEqual(len(ids), len(set(ids)), "dos kioscos con el mismo id")
+        with open(os.path.join(CONTENT_DIR, "landmarks.json"), encoding="utf-8") as fh:
+            lms = json.load(fh)["landmarks"]
+        self.assertEqual([l["id"] for l in lms if l.get("type") == "kiosk"], [],
+                         "quedó un kiosco en landmarks.json — se autoran en kiosks.json")
+
+    def test_every_kiosk_has_an_anchor(self):
+        for k in self.kiosks:
+            self.assertTrue(k.get("osm") or k.get("ll"),
+                            f"{k['id']} no tiene ni `osm` ni `ll`: no se puede colocar")
 
 
 class ShapeTests(unittest.TestCase):

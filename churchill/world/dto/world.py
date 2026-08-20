@@ -134,6 +134,10 @@ class Stage(WorldModel):
     unlock: str | None = None
     kind: StageKind = StageKind.DELIVERY
     ferry: str | None = Field(default=None, description="which boat a crossing sails")
+    openAlways: bool = Field(default=False, description=(
+        "this stage never locks, and never gates the one after it. Both halves "
+        "matter: an always-open stage that still gated its successor would put "
+        "everything behind it back behind it."))
 
 
 class Parcel(WorldModel):

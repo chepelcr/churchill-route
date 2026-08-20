@@ -36,19 +36,39 @@ TABLES = ["PROBE_LAND", "PROBE_SEA", "DISTRICT_DEFS", "DISTRICT_BOUNDS_GEO",
           "BEACH_ACCESS_DEFS", "BLDG_PALETTE", "ROOF_PALETTE", "SITE_DECOR"]
 
 
+#: FIELDS RE-AUTHORED SINCE THE MIGRATION, with the reason. A migration check
+#: proves the loader still reproduces the literals; it cannot also demand the
+#: world stop changing. So a deliberate edit to an original field is written
+#: down HERE rather than silently tolerated — an entry is a decision, an
+#: unexpected divergence is still a failure.
+REAUTHORED = {
+    "CROSSING_STAGES[0].after":
+        "la Travesía pasó de seguir a s3 a seguir a s7: iba cuarta y dejaba "
+        "Las Playitas, El Cocal, Mata de Limón y Caldera detrás de la única "
+        "etapa que falta afinar.",
+}
+
+
 def deep_diff(a, b, path=""):
     if type(a) is not type(b):
         return [f"{path}: TYPE {type(a).__name__} vs {type(b).__name__}"]
     if isinstance(a, dict):
-        if set(a) != set(b):
-            return [f"{path}: keys differ by {set(a) ^ set(b)}"]
+        # A RECORD MAY HAVE GAINED A FIELD, and that is authored content, not a
+        # broken loader — `openAlways` on the crossing, a `_why` note beside a
+        # value. What may NOT happen is a field going missing: that is the
+        # loader failing to reproduce what the literal held.
+        gone = set(a) - set(b)
+        if gone:
+            return [f"{path}: keys VANISHED — {sorted(gone)}"]
         return [d for k in a for d in deep_diff(a[k], b[k], f"{path}.{k}")]
     if isinstance(a, (list, tuple)):
         if len(a) != len(b):
             return [f"{path}: length {len(a)} vs {len(b)}"]
         return [d for i, (x, y) in enumerate(zip(a, b))
                 for d in deep_diff(x, y, f"{path}[{i}]")]
-    return [] if a == b else [f"{path}: {a!r} vs {b!r}"]
+    if a == b:
+        return []
+    return [] if path in REAUTHORED else [f"{path}: {a!r} vs {b!r}"]
 
 
 class MigrationTests(unittest.TestCase):
@@ -110,6 +130,43 @@ class MigrationTests(unittest.TestCase):
             diffs += deep_diff(was, now, name)
         self.assertEqual(diffs, [], f"the loader no longer reproduces the "
                                     f"original tables: {diffs[:5]}")
+
+
+class StageChainTests(unittest.TestCase):
+    """WHAT A PLAYER CAN REACH. `StageSelect` chains strictly — a stage opens
+    when the one before it is cleared — so WHERE a stage sits in the list is a
+    gate on everything after it."""
+
+    def setUp(self):
+        from churchill.world.pipeline.finish import ordered_stages
+        self.stages = ordered_stages()
+
+    def test_num_is_the_position_and_never_authored(self):
+        for i, s in enumerate(self.stages):
+            self.assertEqual(s["num"], i + 1, f"{s['id']} labels position {i + 1}")
+
+    def test_the_travesia_does_not_stand_between_two_delivery_stages(self):
+        """It is the level that still needs tuning, and it used to sit FOURTH:
+        Las Playitas, El Cocal, Mata de Limón and Caldera were all behind it.
+        A stage that is not a delivery run may not gate one unless it says
+        `openAlways`."""
+        for i, s in enumerate(self.stages):
+            if s.get("kind") != "crossing" or s.get("openAlways"):
+                continue
+            after = self.stages[i + 1:]
+            self.assertFalse(
+                [x for x in after if x.get("kind", "delivery") == "delivery"],
+                f"{s['id']} is a crossing that gates "
+                f"{[x['id'] for x in after]} and is not openAlways")
+
+    def test_the_delivery_stages_chain_among_themselves(self):
+        """Walking only the stages that GATE must reach every delivery stage —
+        i.e. removing the open ones leaves an unbroken run."""
+        chain = [s for s in self.stages if not s.get("openAlways")]
+        self.assertEqual([s["id"] for s in chain],
+                         [s["id"] for s in self.stages
+                          if s.get("kind", "delivery") == "delivery"],
+                         "the gating chain is not exactly the delivery stages")
 
 
 class ShapeTests(unittest.TestCase):

@@ -139,7 +139,7 @@
   "crossingStages": [
     {
       "id": "s8",
-      "after": "s3",
+      "after": "s7",
       "kind": "crossing",
       "ferry": "pitahaya",
       "name": "Travesía del Estero",
@@ -150,7 +150,9 @@
       "targetDeliveries": 0,
       "timeLimit": 150,
       "weather": "sunny",
-      "unlock": null
+      "unlock": null,
+      "_openAlways": "La Travesía no encadena. Va al FINAL de la Historia porque es la que falta afinar, y abierta porque si no cuatro etapas de entrega quedarían detrás de la que no está lista. Una etapa `openAlways` nunca se bloquea Y nunca bloquea a la siguiente: las dos cosas, o moverla mañana vuelve a tapar lo que venga detrás.",
+      "openAlways": true
     }
   ],
   "lanchas": [

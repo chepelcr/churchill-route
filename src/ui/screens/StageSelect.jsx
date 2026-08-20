@@ -18,7 +18,24 @@ export default function StageSelect({ onStart, onBack }) {
   const cleared = Game.state.progress.clearedStages;
   // MVP: stages set in the gated eastern districts ship in a later release
   const isMvp = (i) => isMvpLocked(stages[i].district);
-  const isLocked = (i) => isMvp(i) || (i > 0 && !cleared.includes(stages[i - 1].id));
+  // A STAGE MAY STAND OUTSIDE THE CHAIN, and that is TWO properties, not one:
+  // an `openAlways` stage never locks, AND never gates the one after it. Only
+  // the first half would have left everything behind it still behind it, which
+  // is the exact bug this removes — la Travesía sat fourth and put Las
+  // Playitas, El Cocal, Mata de Limón and Caldera behind the one level that
+  // still needs tuning. Written as a property of the STAGE and not as "the
+  // crossing", so the next side challenge is a row of JSON.
+  const opens = (i) => i >= 0 && Boolean(stages[i].openAlways);
+  const gate = (i) => {                       // the nearest stage before `i` that gates
+    for (let j = i - 1; j >= 0; j--) if (!opens(j)) return j;
+    return -1;
+  };
+  const isLocked = (i) => {
+    if (isMvp(i)) return true;
+    if (opens(i)) return false;
+    const g = gate(i);
+    return g >= 0 && !cleared.includes(stages[g].id);
+  };
   // start on the first not-yet-cleared stage so you land on "where you are"
   const firstOpen = Math.max(0, stages.findIndex((s, i) => !cleared.includes(s.id) && !isMvp(i)));
 
@@ -103,7 +120,13 @@ export default function StageSelect({ onStart, onBack }) {
                 </div>
                 <div className="hero-name">{stageName(s)}</div>
                 <p className="hero-brief">{locked
-                  ? (isMvp(cur) ? t("select.soonBrief") : t("select.lockedBrief", { n: s.num - 1 }))
+                  ? (isMvp(cur) ? t("select.soonBrief")
+                     // THE STAGE THAT ACTUALLY GATES, not `num - 1`. With a
+                     // stage standing outside the chain the one before is not
+                     // necessarily the one to clear, and telling a player to
+                     // finish a level that was never in their way is worse
+                     // than saying nothing.
+                     : t("select.lockedBrief", { n: stages[gate(cur)]?.num ?? s.num - 1 }))
                   : stageBrief(s)}</p>
                 {/* A CROSSING HAS NO DELIVERIES AND NO FIXED SKY. The carousel
                     described s8 as "0 deliveries · Sunny" — the same two wrong

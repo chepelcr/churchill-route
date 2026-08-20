@@ -27,6 +27,7 @@ from copy import deepcopy
 
 from ..config import (
     CLS_ACERA, CLS_LAND, CLS_ROAD, CUAD_CELLS, EDITOR_PATCH_PATH, GRID_CELL,
+    PLANAR_PX_PER_M, flora_registry,
 )
 from ..enums import Surface
 from ..logging import log
@@ -34,6 +35,7 @@ from ..util.geometry import point_in_poly
 from .block import block_raster_cells, outline_poly
 from .npc import load_npc_types, may_stand
 from .pier import log_pier, restore, stamp as stamp_pier
+from .planting import planting_placements, resolve_planting, stamp_planting
 from .street import StreetIndex
 
 
@@ -305,6 +307,55 @@ class WorldPatchSession:
                 raise WorldPatchError(
                     f"{feature_id}: point ({x}, {y}) is outside "
                     f"0..{self.dims.w}, 0..{self.dims.h}")
+        if feature.get("type") == "planting":
+            flora = flora_registry()
+            schema = flora.get("plantingSchema") or {}
+            defaults = schema.get("defaults") or {}
+            properties = {**defaults, **(feature.get("properties") or {})}
+            form = properties.get("form")
+            align = properties.get("align")
+            if form not in (schema.get("forms") or ()):
+                raise WorldPatchError(
+                    f"{feature_id}: unknown planting form {form!r}")
+            if align not in (schema.get("alignments") or ()):
+                raise WorldPatchError(
+                    f"{feature_id}: unknown planting alignment {align!r}")
+            expected = "line" if form == "strip" else "point" if form == "disc" else "polygon"
+            if kind != expected:
+                raise WorldPatchError(
+                    f"{feature_id}: planting form {form} requires {expected} geometry")
+            if form == "triangle" and len(points) != 3:
+                raise WorldPatchError(f"{feature_id}: triangle planting needs 3 vertices")
+            if form == "square" and len(points) != 4:
+                raise WorldPatchError(f"{feature_id}: square planting needs 4 vertices")
+            for field in ("widthM", "radiusM", "spacingM"):
+                if field in properties and not (_finite(properties[field])
+                                                and properties[field] > 0):
+                    raise WorldPatchError(
+                        f"{feature_id}: planting {field} must be positive metres")
+            mixes = {**(flora.get("plantings") or {}), **(flora.get("mixes") or {}),
+                     **(flora.get("mangroveMixes") or {})}
+            if properties.get("mix") not in mixes:
+                raise WorldPatchError(
+                    f"{feature_id}: unknown flora mix {properties.get('mix')!r}")
+            if properties.get("treeKind") not in ("tree", "palm"):
+                raise WorldPatchError(
+                    f"{feature_id}: planting treeKind must be 'tree' or 'palm'")
+            if not isinstance(properties.get("blocks"), bool):
+                raise WorldPatchError(
+                    f"{feature_id}: planting blocks must be boolean")
+            scale = properties.get("scale")
+            valid_scale = _finite(scale) and scale > 0
+            if isinstance(scale, list):
+                valid_scale = (len(scale) == 2 and all(_finite(value) and value > 0
+                                                       for value in scale)
+                               and scale[0] <= scale[1])
+            if not valid_scale:
+                raise WorldPatchError(
+                    f"{feature_id}: planting scale must be positive or [min, max]")
+            if "streetName" in properties and not isinstance(properties["streetName"], str):
+                raise WorldPatchError(
+                    f"{feature_id}: planting streetName must be text")
 
     def _override_for(self, kind):
         return {
@@ -469,7 +520,7 @@ class WorldPatchSession:
             feature_type = feature["type"]
             if feature_type == "building":
                 ctx.buildings.append(self._building_record({}, feature))
-            elif feature_type in ("tree", "tree-line"):
+            elif feature_type in ("tree", "tree-line", "planting"):
                 self._add_tree_feature(ctx, feature)
             elif feature_type == "kiosk":
                 ctx.landmarks.append(self._landmark_record({}, feature, ctx=ctx))
@@ -724,6 +775,10 @@ class WorldPatchSession:
         record.update({
             "id": record.get("id") or feature["id"],
             "name": feature.get("name") or record.get("name") or feature["id"],
+            "destination": properties.get("destination", record.get("destination")),
+            "vesselName": properties.get("vesselName", record.get("vesselName")),
+            "doubleEnded": bool(properties.get(
+                "doubleEnded", record.get("doubleEnded", False))),
             "berth": [round(points[0][0]), round(points[0][1])],
             "ang": round(ang, 4),
             "deck": [round(deck_l), round(deck_w)],
@@ -793,6 +848,29 @@ class WorldPatchSession:
     def _add_tree_feature(self, ctx, feature):
         properties = feature.get("properties") or {}
         kind = properties.get("treeKind") or "tree"
+        if feature["type"] == "planting":
+            flora = flora_registry()
+            spec = resolve_planting(
+                feature, flora, PLANAR_PX_PER_M, ctx.roads)
+            kind = spec["treeKind"]
+            stamp_planting(ctx.raster, feature, flora, PLANAR_PX_PER_M, ctx.roads)
+            placements = planting_placements(
+                feature, flora, PLANAR_PX_PER_M, ctx.roads)
+            target = ctx.palms if kind == "palm" else ctx.trees
+            default = (flora["defaults"]["palmSpecies"] if kind == "palm"
+                       else flora["defaults"]["treeSpecies"])
+            for index, placement in enumerate(placements):
+                record = {
+                    "x": round(placement["x"]),
+                    "y": round(placement["y"]),
+                    "s": round(placement["scale"], 2),
+                    "line": feature["id"],
+                    "editorId": f"{feature['id']}_{index + 1}",
+                }
+                if placement["speciesId"] != default:
+                    record["k"] = placement["speciesId"]
+                target.append(record)
+            return
         points = _feature_points(feature)
         if feature["geometry"]["kind"] == "line":
             spacing = max(4, float(properties.get("spacing") or 36))

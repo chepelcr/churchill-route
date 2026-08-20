@@ -21,8 +21,8 @@ from collections import defaultdict
 
 from ..config import (
     CLS_ACERA, CLS_WATER, MANGROVE_PITCH_PX,
-    MANGROVE_R_MAX, MANGROVE_R_MIN, MANGROVE_SEED, PASEO_GAP_MARGIN,
-    PASEO_MEDIAN_W, PASEO_MIN_DASH, PASEO_NAMES, STREET_CLASSES,
+    MANGROVE_R_MAX, MANGROVE_R_MIN, MANGROVE_SEED, STREET_CLASSES,
+    flora_registry, px,
 )
 from ..logging import log
 from .street import resample_centerline
@@ -35,23 +35,31 @@ from .street import resample_centerline
 
 
 def paseo_roads(roads):
+    runs = flora_registry()["plantingRuns"]
+    names = tuple(str(record.get("streetName") or "").lower()
+                  for record in runs.values() if isinstance(record, dict)
+                  and record.get("streetName"))
     return [r for r in roads
-            if any(n in (r.get("name") or "").lower() for n in PASEO_NAMES)]
+            if any(n in (r.get("name") or "").lower() for n in names)]
 
-def paseo_median_runs(roads, pieces):
+def paseo_median_runs(roads, pieces, spec=None):
     """Solid-median runs along the given avenue pieces, with gaps ALIGNED TO
     THE CROSS STREETS: a gap opens wherever another street meets the avenue,
     wide enough to turn into it (street width + PASEO_GAP_MARGIN per side).
     Returns [(samples, [(k0, k1), ...])] — resampled centerline points and
     index ranges of the solid runs. Used by both the median stamp and the
     palm planting so they always agree."""
+    spec = spec or flora_registry()["plantingRuns"]["paseo_median"]
+    sample_step = px(spec["sampleStepM"])
+    gap_margin = px(spec["gapMarginM"])
+    min_dash = px(spec["minimumRunM"])
     paseo_ids = set(map(id, paseo_roads(roads)))
     segs = []
     for r in roads:
         if id(r) in paseo_ids or r["cls"] == "bridge":
             continue
         p = r["pts"]
-        hw = r["w"] / 2 + PASEO_GAP_MARGIN
+        hw = r["w"] / 2 + gap_margin
         for i in range(0, len(p) - 2, 2):
             segs.append((p[i], p[i + 1], p[i + 2], p[i + 3], hw))
     CS = 256
@@ -76,7 +84,7 @@ def paseo_median_runs(roads, pieces):
 
     out = []
     for r in pieces:
-        samples = resample_centerline(r["pts"], 4.0)
+        samples = resample_centerline(r["pts"], sample_step)
         solid = [not in_crossing(x, y) for (_, x, y) in samples]
         runs, k = [], 0
         while k < len(samples):
@@ -84,19 +92,22 @@ def paseo_median_runs(roads, pieces):
                 k0 = k
                 while k < len(samples) and solid[k]:
                     k += 1
-                if samples[k - 1][0] - samples[k0][0] >= PASEO_MIN_DASH:
+                if samples[k - 1][0] - samples[k0][0] >= min_dash:
                     runs.append((k0, k - 1))
             else:
                 k += 1
         out.append((samples, runs))
     return out
 
-def stamp_paseo_median(raster, median_runs):
+def stamp_paseo_median(raster, median_runs, spec=None):
     """Stamp the separator strips (paseo palm median + tree lines) and return
     their polylines (for rendering the planted strip). Stamped as CLS_ACERA:
     equally blocking in physics (walls are land+acera) but invisible to block
     detection and building placement, which only consider CLS_LAND. Run AFTER
     acera_fringe so the strip stays a blocking separator, not sidewalk."""
+    spec = spec or flora_registry()["plantingRuns"]["paseo_median"]
+    width = px(spec["widthM"])
+    collision_pad = px(spec["collisionPadM"])
     dashes = []
     for samples, runs in median_runs:
         for (k0, k1) in runs:
@@ -107,8 +118,8 @@ def stamp_paseo_median(raster, median_runs):
                 # visual green and can't slip into a drawn-but-unstamped round
                 # cap corner (that trapped it half-in). Manifest `w` stays the
                 # drawn value, so rendering is unchanged.
-                raster.stamp_polyline(flat, PASEO_MEDIAN_W + 6, CLS_ACERA)
-                dashes.append({"pts": [round(v) for v in flat], "w": round(PASEO_MEDIAN_W)})
+                raster.stamp_polyline(flat, width + collision_pad, CLS_ACERA)
+                dashes.append({"pts": [round(v) for v in flat], "w": round(width)})
     return dashes
 
 

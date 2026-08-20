@@ -38,6 +38,7 @@ from ..content import (
 #: La rampa del ferry: de la popa en reposo a la calle. Su LARGO no se autora
 #: —es la distancia que resulte— y por eso el registro sólo trae ancho y receta.
 _FERRY_RAMP = APRON_DEFS["ferryRamp"]
+metres_to_px = px
 from ..enums import GreenType, LandmarkType, ParcelUse, SignKind, Surface
 from ..logging import log, warn
 from ..service.attraction import place_attractions
@@ -302,12 +303,15 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     # - The kiosks street (Paseo León Cortés): ONE continuous tree strip from
     #   the first cuadra's corner (the Turistas→León Cortés curve stays fully
     #   drivable) up to just before the muelle street; beyond, normal street.
-    tzx1 = mlm["x"] - 3 * CUAD          # stop clear of the muelle street
+    planting_specs = flora_registry()["plantingRuns"]
+    palm_spec = planting_specs["paseo_median"]
+    leon_spec = planting_specs["leon_cortes"]
+    tzx1 = mlm["x"] - px(leon_spec["stopClearM"])  # stop clear of the muelle street
 
-    def continuous_runs(pieces, x0=None, x1=None):
+    def continuous_runs(pieces, x0=None, x1=None, sample_step=4):
         out = []
         for r in pieces:
-            samples = resample_centerline(r["pts"], 4.0)
+            samples = resample_centerline(r["pts"], sample_step)
             ks = [k for k, (_, x, _) in enumerate(samples)
                   if (x0 is None or x >= x0) and (x1 is None or x <= x1)]
             run = []
@@ -320,14 +324,15 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         return out
 
     turistas = [r for r in paseo_roads(roads)
-                if PASEO_TURISTAS in (r.get("name") or "").lower()]
+                if palm_spec["streetName"] in (r.get("name") or "").lower()]
     leon = [r for r in paseo_roads(roads)
-            if PASEO_LEON in (r.get("name") or "").lower()]
+            if leon_spec["streetName"] in (r.get("name") or "").lower()]
 
     # the tree strip starts at the SW corner of the first cuadra facing the
     # León Cortés stretch — never inside the curve that leads into it
     leon_cl = [(x, y) for r in leon
-               for (_, x, y) in resample_centerline(r["pts"], 8.0)]
+               for (_, x, y) in resample_centerline(
+                   r["pts"], px(leon_spec["cornerProbeStepM"]))]
     lx0, lx1 = min(x for x, _ in leon_cl), max(x for x, _ in leon_cl)
 
     def _leon_y(x):
@@ -337,14 +342,18 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     for b in blocks:
         for (cc, cr) in b["cells"]:
             bx, by = cc * CUAD, (cr + 1) * CUAD          # cell SW corner
-            if lx0 <= bx <= min(lx1, tzx1) and 0 < _leon_y(bx) - by <= 6 * CUAD:
+            if lx0 <= bx <= min(lx1, tzx1) \
+                    and 0 < _leon_y(bx) - by <= px(leon_spec["cornerSearchM"]):
                 corner_xs.append(bx)
     tzx0 = min(corner_xs, default=lx0)
     log("median", f"León Cortés tree strip x{tzx0}-{tzx1} (cuadra corner start)")
 
-    palm_runs = paseo_median_runs(roads, turistas)
-    tree_runs = continuous_runs(leon, x0=tzx0, x1=tzx1)
-    medians = stamp_paseo_median(raster, palm_runs + tree_runs)
+    palm_runs = paseo_median_runs(roads, turistas, palm_spec)
+    tree_runs = continuous_runs(
+        leon, x0=tzx0, x1=tzx1,
+        sample_step=px(leon_spec["sampleStepM"]))
+    medians = (stamp_paseo_median(raster, palm_runs, palm_spec)
+               + stamp_paseo_median(raster, tree_runs, leon_spec))
 
     # --- buildings on the cuadrícula: snap OSM footprints, then fill the
     # cuadras' frontage bands with synth lots (shared occupancy, POI keepouts)
@@ -1189,10 +1198,54 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
             palms.append({"x": round(x), "y": round(topY[c] + 10 + rng() * 6),
                           "s": round(0.8 + rng() * 0.4, 2), "sway": round(rng() * 6.28, 2)})
         x += 70 + rng() * 60
+    # WHICH SPECIES EACH PLANTED TREE IS. From a POSITION HASH, never from
+    # `rng()`: the seeded stream is shared by every scatter in this stage, so
+    # taking one draw per tree would shift every value after it and a change of
+    # species would come out of the diff looking like the whole world moved.
+    # Hashing the position also means a tree keeps its species if something
+    # unrelated upstream changes.
+    _FLORA = flora_registry()
+    _DEFAULT_TREE = _FLORA["defaults"]["treeSpecies"]
+    _DEFAULT_PALM = _FLORA["defaults"]["palmSpecies"]
+    run_specs = _FLORA["plantingRuns"]
+    palm_spec = run_specs["paseo_median"]
+    leon_spec = run_specs["leon_cortes"]
+    ferro_spec = run_specs["ferrocarril"]
+    cocal_spec = run_specs["cocal_median"]
+
+    def _species(mix_name, x, y, default):
+        weights = _FLORA["plantings"][mix_name]["weights"]
+        v = math.sin(x * 12.9898 + y * 78.233) * 43758.5453
+        roll = (v - math.floor(v)) * sum(w for _, w in weights)
+        for name, w in weights:
+            roll -= w
+            if roll <= 0:
+                return name
+        return weights[-1][0]
+
+    def _plant(out, x, y, s, mix_name, default=None, line=None):
+        """Append a tree, naming its species only when it is not the default —
+        22 000 records, so the common case must cost no bytes.
+
+        `line` NAMES THE PLANTING RUN a tree belongs to, and it is the whole
+        difference between a line you can edit and 100-odd anonymous records.
+        The editor derives an id per tree from its geometry, so without this you
+        can hide ONE tree of the Ferrocarril shoulder — never the shoulder. It
+        is absent on the patio scatter, which genuinely belongs to no run.
+        """
+        default = default or _DEFAULT_TREE
+        rec = {"x": x, "y": y, "s": s}
+        kind = _species(mix_name, x, y, default)
+        if kind != default:
+            rec["k"] = kind
+        if line:
+            rec["line"] = line
+        out.append(rec)
+
     # Paseo de los Turistas: PALMS on the median dashes, planted inside the
     # same street-aligned runs the median stamp uses.
-    PALM_PITCH = 22
-    PALM_END_MARGIN = 10
+    PALM_PITCH = metres_to_px(palm_spec["spacingM"])
+    PALM_END_MARGIN = metres_to_px(palm_spec["endMarginM"])
     n_median_palms = 0
     for samples, runs in palm_runs:
         for (k0, k1) in runs:
@@ -1204,14 +1257,22 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                     # planting on the island centerline drops the visible palm to
                     # the strip's lower edge. Lift by that base offset so the
                     # trunk sits centered ON the median island.
-                    palms.append({"x": round(x), "y": round(y - 4),
-                                  "s": 1.05, "sway": round(rng() * 6.28, 2),
-                                  "line": "paseo_median"})
+                    offset = palm_spec["anchorOffsetM"]
+                    px_x = round(x + metres_to_px(offset[0]))
+                    px_y = round(y + metres_to_px(offset[1]))
+                    scale = palm_spec["scale"][0]
+                    rec = {"x": px_x, "y": px_y, "s": scale,
+                           "sway": round(rng() * 6.28, 2),
+                           "line": "paseo_median"}
+                    species = _species(palm_spec["mix"], px_x, px_y, _DEFAULT_PALM)
+                    if species != _DEFAULT_PALM:
+                        rec["k"] = species
+                    palms.append(rec)
                     n_median_palms += 1
                     nxt = s + PALM_PITCH
     # Trees (almendros/robles) along the continuous tree lines only.
-    TREE_PITCH = 26
-    TREE_END_MARGIN = 12
+    TREE_PITCH = metres_to_px(leon_spec["spacingM"])
+    TREE_END_MARGIN = metres_to_px(leon_spec["endMarginM"])
     trees = []
     for samples, runs in tree_runs:
         for (k0, k1) in runs:
@@ -1219,43 +1280,10 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
             nxt = s0
             for (s, x, y) in samples[k0:k1 + 1]:
                 if s >= nxt and s <= s1:
-                    trees.append({"x": round(x), "y": round(y),
-                                  "s": round(0.9 + rng() * 0.3, 2),
-                                  "line": "leon_cortes"})
+                    lo, hi = leon_spec["scale"]
+                    _plant(trees, round(x), round(y), round(lo + rng() * (hi - lo), 2),
+                           leon_spec["mix"], line="leon_cortes")
                     nxt = s + TREE_PITCH
-    # WHICH SPECIES EACH PLANTED TREE IS. From a POSITION HASH, never from
-    # `rng()`: the seeded stream is shared by every scatter in this stage, so
-    # taking one draw per tree would shift every value after it and a change of
-    # species would come out of the diff looking like the whole world moved.
-    # Hashing the position also means a tree keeps its species if something
-    # unrelated upstream changes.
-    _FLORA = flora_registry()
-    def _species(mix_name, x, y, default):
-        weights = _FLORA["plantings"][mix_name]["weights"]
-        v = math.sin(x * 12.9898 + y * 78.233) * 43758.5453
-        roll = (v - math.floor(v)) * sum(w for _, w in weights)
-        for name, w in weights:
-            roll -= w
-            if roll <= 0:
-                return name
-        return weights[-1][0]
-    def _plant(out, x, y, s, mix_name, default="almendro", line=None):
-        """Append a tree, naming its species only when it is not the default —
-        22 000 records, so the common case must cost no bytes.
-
-        `line` NAMES THE PLANTING RUN a tree belongs to, and it is the whole
-        difference between a line you can edit and 100-odd anonymous records.
-        The editor derives an id per tree from its geometry, so without this you
-        can hide ONE tree of the Ferrocarril shoulder — never the shoulder. It
-        is absent on the patio scatter, which genuinely belongs to no run.
-        """
-        rec = {"x": x, "y": y, "s": s}
-        kind = _species(mix_name, x, y, default)
-        if kind != default:
-            rec["k"] = kind
-        if line:
-            rec["line"] = line
-        out.append(rec)
 
     # Tree line on the north SHOULDER of the elevated barro route — Avenida 2
     # del Ferrocarril and the Cocal-side avenue — separating it from the
@@ -1271,24 +1299,30 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
     # guard could never fire and cut off 0 points. Removing it changes no tree;
     # keeping it would have been a number that looks like a decision and is not.
     # (`EVERY ANCHOR IS GEO` in CLAUDE.md is the rule it broke.)
-    ferro = [r for r in roads if r.get("elev")]
+    selector = ferro_spec["streetSelector"]
+    ferro = [r for r in roads if selector == "elevated" and r.get("elev")]
     other_pts = [(x, y) for r in roads
                  if not r.get("elev")
                  for x, y in zip(r["pts"][0::2], r["pts"][1::2])]
-    def _near_crossing(px, py, rad=1.8 * CUAD):
+    def _near_crossing(point_x, point_y,
+                       rad=metres_to_px(ferro_spec["crossingRadiusM"])):
         rr = rad * rad
-        return any((px - ox) ** 2 + (py - oy) ** 2 < rr for ox, oy in other_pts)
+        return any((point_x - ox) ** 2 + (point_y - oy) ** 2 < rr
+                   for ox, oy in other_pts)
     n_ferro_trees = 0
     for r in ferro:
-        samples = resample_centerline(r["pts"], 26)
+        samples = resample_centerline(
+            r["pts"], metres_to_px(ferro_spec["spacingM"]))
         for i, (s, cx, cy) in enumerate(samples):
             j = i + 1 if i + 1 < len(samples) else max(0, i - 1)
             hx, hy = samples[j][1] - cx, samples[j][2] - cy
             h = math.hypot(hx, hy) or 1.0
             nx, ny = -hy / h, hx / h
-            off = r["w"] / 2 + 0.6 * CUAD
+            off = r["w"] / 2 + metres_to_px(ferro_spec["roadEdgeOffsetM"])
             tx, ty = cx + nx * off, cy + ny * off
-            if ty > cy:                      # force the NORTH side (smaller y)
+            if ferro_spec["side"] == "north" and ty > cy:
+                tx, ty = cx - nx * off, cy - ny * off
+            elif ferro_spec["side"] == "south" and ty < cy:
                 tx, ty = cx - nx * off, cy - ny * off
             if _near_crossing(cx, cy):       # respect intersections (leave gaps)
                 continue
@@ -1300,7 +1334,9 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
             # line the user saw sitting on top of streets.
             if grid[gr * GRID_COLS + c] in CARRIAGEWAY_CLASSES + (CLS_WATER,):
                 continue
-            _plant(trees, round(tx), round(ty), round(0.9 + rng() * 0.3, 2), "barro",
+            lo, hi = ferro_spec["scale"]
+            _plant(trees, round(tx), round(ty), round(lo + rng() * (hi - lo), 2),
+                   ferro_spec["mix"],
                    line="ferrocarril")
             n_ferro_trees += 1
     # Planted median down the middle of the divided Cocal avenue.
@@ -1318,19 +1354,24 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
         out = []
         for r in roads:
             if (r.get("name") or "") == name:
-                out += [(x, y) for (_, x, y) in resample_centerline(r["pts"], 10)]
+                out += [(x, y) for (_, x, y) in resample_centerline(
+                    r["pts"], metres_to_px(cocal_spec["sampleStepM"]))]
         return sorted(out)
-    A = _centerline_pts("Avenida 1")
-    B = _centerline_pts("Avenida Alberto Echandi Montero")
+    A = _centerline_pts(cocal_spec["streetNames"][0])
+    B = _centerline_pts(cocal_spec["streetNames"][1])
     n_dc = 0
     if A and B:
         # where the two carriageways overlap in x, which is the only stretch on
         # which "the middle of a divided avenue" means anything
         span0, span1 = max(A[0][0], B[0][0]), min(A[-1][0], B[-1][0])
-        for xs in range(int(span0), int(span1) + 1, 40):
+        for xs in range(int(span0), int(span1) + 1,
+                        round(metres_to_px(cocal_spec["spacingM"]))):
             a = min(A, key=lambda p: abs(p[0] - xs))
             b = min(B, key=lambda p: abs(p[0] - xs))
-            if abs(a[0] - xs) < 90 and abs(b[0] - xs) < 90 and abs(a[1] - b[1]) < 6 * CUAD:
+            tolerance = metres_to_px(cocal_spec["matchToleranceM"])
+            separation = metres_to_px(cocal_spec["maxSeparationM"])
+            if (abs(a[0] - xs) < tolerance and abs(b[0] - xs) < tolerance
+                    and abs(a[1] - b[1]) < separation):
                 mx, my = xs, round((a[1] + b[1]) / 2)
                 c, gr = int(mx / GRID_CELL), int(my / GRID_CELL)
                 if 0 <= c < GRID_COLS and 0 <= gr < GRID_ROWS and \
@@ -1340,7 +1381,10 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                     # the scatters after it pull from the shared stream and the
                     # whole patio planting would move for no reason.
                     h = math.sin(mx * 12.9898 + my * 78.233) * 43758.5453
-                    _plant(trees, mx, my, round(0.9 + (h - math.floor(h)) * 0.3, 2), "parque",
+                    lo, hi = cocal_spec["scale"]
+                    _plant(trees, mx, my,
+                           round(lo + (h - math.floor(h)) * (hi - lo), 2),
+                           cocal_spec["mix"],
                            line="cocal_median")
                     n_dc += 1
     log("median", f"{n_median_palms} palms on the paseo median dashes, "
@@ -1410,8 +1454,8 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
     # paving invisible under it. A row of palms is a row: you have to see
     # between them.
     n_mal_palms, n_mal_trees = 0, 0
-    PLANT_GAP = {"palma": 110, "almendro": 150}
-    placed = {"palma": [], "almendro": []}
+    PLANT_GAP = {_DEFAULT_PALM: 110, _DEFAULT_TREE: 150}
+    placed = {_DEFAULT_PALM: [], _DEFAULT_TREE: []}
 
     def _room(kind, px, py):
         gap2 = PLANT_GAP[kind] ** 2
@@ -1448,7 +1492,7 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
         py = gr * GRID_CELL + GRID_CELL / 2
         sand = [d for d, v in nbs.items() if v == CLS_BEACH]
         if sand:
-            if _room("palma", px, py):
+            if _room(_DEFAULT_PALM, px, py):
                 palms.append({"x": round(px + (rng() - 0.5) * 8),
                               "y": round(py + (rng() - 0.5) * 8),
                               "s": round(0.85 + rng() * 0.35, 2),
@@ -1465,7 +1509,7 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                                   "kind": SignKind.BANCA, "ang": round(math.atan2(ny, nx), 3)})
                 n_bancas += 1
         elif any(v in (CLS_ROAD, CLS_ACERA) for v in nbs.values()):
-            if _room("almendro", px, py):
+            if _room(_DEFAULT_TREE, px, py):
                 trees.append({"x": round(px + (rng() - 0.5) * 8),
                               "y": round(py + (rng() - 0.5) * 8),
                               "s": round(0.8 + rng() * 0.35, 2)})

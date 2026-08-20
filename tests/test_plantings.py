@@ -30,6 +30,7 @@ from churchill.world.config import ROOT
 
 BUILD_STAGE = os.path.join(ROOT, "churchill", "world", "pipeline", "build_stage.py")
 EDITOR_CFG = os.path.join(ROOT, "world-editor", "vite.config.js")
+FLORA = os.path.join(ROOT, "src", "assets", "flora.json")
 MANIFEST_DIR = os.path.join(ROOT, "src", "world2d", "tiles")
 
 #: The four runs the build derives, with the count each emitted when the `line`
@@ -82,8 +83,7 @@ class PlantingRunTests(unittest.TestCase):
         # A `line` the editor has no label for reaches a human as a raw slug.
         for line in self.emitted:
             self.assertIn(line, RUNS, f"the world emits a run '{line}' this test "
-                                      f"does not know; add it here and to RUN_NAMES "
-                                      f"in the editor")
+                                      f"does not know; add it here and to flora.json")
 
     def test_the_builder_names_all_four(self):
         src = read(BUILD_STAGE)
@@ -93,22 +93,32 @@ class PlantingRunTests(unittest.TestCase):
 
     def test_the_editor_labels_every_run(self):
         # The editor turns each run into one source; an unlabelled one is
-        # addressable but unreadable.
+        # addressable but unreadable. Names belong beside the recipes in JSON,
+        # not in another editor-only table.
         cfg = read(EDITOR_CFG)
-        body = cfg.split("const RUN_NAMES = {", 1)[1].split("};", 1)[0]
-        labelled = set(re.findall(r"^\s*(\w+):", body, re.M))
+        flora = json.loads(read(FLORA))
+        labelled = {line for line, spec in flora["plantingRuns"].items()
+                    if not line.startswith("_") and spec.get("name")}
         for line in RUNS:
             self.assertIn(line, labelled,
                           f"the editor has no display name for the {line} run")
+        self.assertIn("plantingDefinitions[line]?.name", cfg)
+        self.assertNotIn("const RUN_NAMES", cfg)
 
     def test_the_scattered_plantings_stay_anonymous(self):
         # `_plant` takes `line=None` by default precisely so the patio scatter
-        # does not claim a run. If the default ever flips, 14 000 patio trees
-        # become one enormous fake "line".
+        # does not claim a run. Its botanical default must also stay indirect:
+        # flora.json, not this Python helper, owns what an omitted `k` means.
+        # If the line default ever flips, 14 000 patio trees become one enormous
+        # fake "line".
         src = read(BUILD_STAGE)
-        self.assertIn("def _plant(out, x, y, s, mix_name, default=\"almendro\", line=None)", src,
+        self.assertIn("def _plant(out, x, y, s, mix_name, default=None, line=None)", src,
                       "`_plant` must default `line` to None — the patio scatter "
                       "belongs to no run")
+        self.assertIn('_DEFAULT_TREE = _FLORA["defaults"]["treeSpecies"]', src,
+                      "the compact tree wire default must come from flora.json")
+        self.assertNotIn('default="almendro"', src,
+                         "the builder must not duplicate flora.json's default species")
         total_tagged = sum(self.emitted.values())
         self.assertLess(total_tagged, 1000,
                         f"{total_tagged} plants carry a `line`; the derived runs are "

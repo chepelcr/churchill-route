@@ -275,7 +275,9 @@ class WorldEditorPatchTests(unittest.TestCase):
     @staticmethod
     def ferry():
         return {
-            "id": "paquera", "name": "Ferry a Paquera",
+            "id": "paquera", "name": "Ferry a Tambor",
+            "destination": "Tambor", "vesselName": "Tambor",
+            "doubleEnded": True,
             "berth": [500, 400], "ang": 0.0,
             "deck": [124, 46], "dockS": 28,
             "route": [500, 400, 600, 400, 700, 460],
@@ -312,6 +314,9 @@ class WorldEditorPatchTests(unittest.TestCase):
         # Heading follows the first leg, the way extract_ferries derives it.
         self.assertEqual(edited["ang"], 0.0)
         self.assertEqual(edited["name"], "Move Ferry")
+        self.assertEqual(edited["destination"], "Tambor")
+        self.assertEqual(edited["vesselName"], "Tambor")
+        self.assertIs(edited["doubleEnded"], True)
 
     def test_ferry_heading_can_be_pinned(self):
         ctx = self.context()
@@ -503,6 +508,43 @@ class WorldEditorPatchTests(unittest.TestCase):
         ctx = self.context()
         with self.assertRaisesRegex(WorldPatchError, "unknown npcType"):
             self.npc_session("astronaut").apply_final(ctx)
+
+    def test_a_semantic_planting_emits_editable_species_and_collision(self):
+        bed = feature(
+            "patio_nativo", "planting",
+            {"kind": "line", "points": [[100, 100], [300, 100]]},
+            properties={
+                "form": "strip", "align": "horizontal", "widthM": 4,
+                "radiusM": 8, "spacingM": 10.4, "mix": "barro",
+                "treeKind": "tree", "scale": [0.9, 1.2], "blocks": True,
+            },
+        )
+        session = self.session({
+            "schemaVersion": 1, "overrides": [], "additions": [bed], "deletions": [],
+        })
+        ctx = self.context()
+        session.apply_final(ctx)
+        self.assertGreater(len(ctx.trees), 1)
+        self.assertTrue(all(tree["line"] == "patio_nativo" for tree in ctx.trees))
+        self.assertTrue(all(tree["editorId"].startswith("patio_nativo_")
+                            for tree in ctx.trees))
+        self.assertTrue(all(tree.get("k") in {
+            "guanacaste", "cortez", "indio_desnudo", "tempisque",
+            "cedro_amargo", "roble_sabana",
+        } for tree in ctx.trees))
+        self.assertEqual(ctx.raster.at_px(200, 100), Surface.ACERA)
+
+    def test_a_planting_form_cannot_lie_about_its_geometry(self):
+        bed = feature(
+            "bad_disc", "planting",
+            {"kind": "line", "points": [[100, 100], [200, 100]]},
+            properties={"form": "disc"},
+        )
+        with self.assertRaisesRegex(WorldPatchError, "disc requires point"):
+            self.session({
+                "schemaVersion": 1, "overrides": [],
+                "additions": [bed], "deletions": [],
+            })
 
     def test_invalid_geometry_is_rejected(self):
         invalid = feature(

@@ -15,6 +15,10 @@ from .osm import (
     extract_pois, extract_rails, extract_roads, propagate_barro_to_crossings,
 )
 from .network import block_census, largest_drivable_component, verify_connectivity
+from .planting import (
+    DERIVED_PLANTING_STRATEGIES, PLANTING_ALIGNS, PLANTING_FORMS,
+    planting_placements, planting_species, resolve_planting, stamp_planting,
+)
 from .projection import PlanarProjection, project_way_pts
 from .placement import (
     block_containing, cell_class, drivable_cell, kiosk_frontage, near_drivable,
@@ -39,6 +43,9 @@ __all__ = [
     "road_adj", "snap_into_block", "snap_into_block_cell",
     "paseo_roads", "stamp_paseo_median",
     "largest_drivable_component", "verify_connectivity",
+    "DERIVED_PLANTING_STRATEGIES", "PLANTING_ALIGNS", "PLANTING_FORMS",
+    "planting_placements", "planting_species", "resolve_planting",
+    "stamp_planting",
     "beach_fringe", "block_raster_cells", "cuadra_cells", "half_plane",
     "make_rng", "outline_poly", "project_way_pts", "raster_coast_barrier",
     "raster_poly_barrier", "resample_centerline", "snap_osm_buildings",

@@ -4600,29 +4600,7 @@
       "castsShadow": false,
       "parts": [
         {
-          "_": "la acera interior: el canto contra la cara de atrás de las casonas",
-          "shape": "strokeRect",
-          "stroke": "$kerb",
-          "width": 3,
-          "x": [
-            -0.94,
-            0
-          ],
-          "y": [
-            -0.94,
-            0
-          ],
-          "w": [
-            1.88,
-            0
-          ],
-          "h": [
-            1.88,
-            0
-          ]
-        },
-        {
-          "_": "LOS CUATRO ÁRBOLES DE ESQUINA, escritos uno por uno. Con `repeat` no: sus `dx`/`dy` se evalúan en `S` (el lado menor de la parcela) mientras las posiciones van en `X`/`Y` (media anchura y media altura), así que en una parcela que no es cuadrada la segunda copia no cae en la esquina opuesta — cae adentro.",
+          "_": "los cuatro árboles de esquina, escritos uno por uno",
           "shape": "group",
           "x": 0,
           "y": 0,
@@ -4631,11 +4609,11 @@
               "shape": "disc",
               "fill": "$trunk",
               "cx": [
-                -0.66,
+                -0.52,
                 0
               ],
               "cy": [
-                -0.66,
+                -0.52,
                 0
               ],
               "r": [
@@ -4647,15 +4625,15 @@
               "shape": "disc",
               "fill": "$crown",
               "cx": [
-                -0.66,
+                -0.52,
                 0
               ],
               "cy": [
-                -0.62,
+                -0.48,
                 0
               ],
               "r": [
-                0.19,
+                0.17,
                 0
               ],
               "heightM": 6,
@@ -4665,15 +4643,15 @@
               "shape": "disc",
               "fill": "$crownLite",
               "cx": [
-                -0.62,
+                -0.48,
                 0
               ],
               "cy": [
-                -0.57,
+                -0.44,
                 0
               ],
               "r": [
-                0.1,
+                0.09,
                 0
               ]
             },
@@ -4681,11 +4659,11 @@
               "shape": "disc",
               "fill": "$trunk",
               "cx": [
-                0.66,
+                0.52,
                 0
               ],
               "cy": [
-                -0.66,
+                -0.52,
                 0
               ],
               "r": [
@@ -4697,15 +4675,15 @@
               "shape": "disc",
               "fill": "$crown",
               "cx": [
-                0.66,
+                0.52,
                 0
               ],
               "cy": [
-                -0.62,
+                -0.48,
                 0
               ],
               "r": [
-                0.19,
+                0.17,
                 0
               ],
               "heightM": 6,
@@ -4715,15 +4693,15 @@
               "shape": "disc",
               "fill": "$crownLite",
               "cx": [
-                0.62,
+                0.48,
                 0
               ],
               "cy": [
-                -0.57,
+                -0.44,
                 0
               ],
               "r": [
-                0.1,
+                0.09,
                 0
               ]
             },
@@ -4731,11 +4709,11 @@
               "shape": "disc",
               "fill": "$trunk",
               "cx": [
-                -0.66,
+                -0.52,
                 0
               ],
               "cy": [
-                0.66,
+                0.52,
                 0
               ],
               "r": [
@@ -4747,15 +4725,15 @@
               "shape": "disc",
               "fill": "$crown",
               "cx": [
-                -0.66,
+                -0.52,
                 0
               ],
               "cy": [
-                0.62,
+                0.48,
                 0
               ],
               "r": [
-                0.19,
+                0.17,
                 0
               ],
               "heightM": 6,
@@ -4765,15 +4743,15 @@
               "shape": "disc",
               "fill": "$crownLite",
               "cx": [
-                -0.62,
+                -0.48,
                 0
               ],
               "cy": [
-                0.57,
+                0.44,
                 0
               ],
               "r": [
-                0.1,
+                0.09,
                 0
               ]
             },
@@ -4781,11 +4759,11 @@
               "shape": "disc",
               "fill": "$trunk",
               "cx": [
-                0.66,
+                0.52,
                 0
               ],
               "cy": [
-                0.66,
+                0.52,
                 0
               ],
               "r": [
@@ -4797,15 +4775,15 @@
               "shape": "disc",
               "fill": "$crown",
               "cx": [
-                0.66,
+                0.52,
                 0
               ],
               "cy": [
-                0.62,
+                0.48,
                 0
               ],
               "r": [
-                0.19,
+                0.17,
                 0
               ],
               "heightM": 6,
@@ -4815,22 +4793,23 @@
               "shape": "disc",
               "fill": "$crownLite",
               "cx": [
-                0.62,
+                0.48,
                 0
               ],
               "cy": [
-                0.57,
+                0.44,
                 0
               ],
               "r": [
-                0.1,
+                0.09,
                 0
               ]
             }
           ]
         }
       ],
-      "_coords": "LAS COORDENADAS VAN EN `[k, px]`, no en un número suelto. `evalOn` devuelve un número tal cual —es un ABSOLUTO en píxeles— y sólo la forma de arreglo lo lee como fracción del marco. Escrito `cx: -0.66` los cuatro árboles salieron como discos de medio píxel en el centro de la parcela: no dio error, no dio warning, simplemente no había patio. Es la misma forma que usa la catedral (`\"x\": [-1, 3]`)."
+      "_coords": "LAS COORDENADAS VAN EN `[k, px]`. `evalOn` devuelve un número suelto TAL CUAL —es un absoluto en píxeles— y sólo la forma de arreglo lo lee como fracción del marco. Escrito `cx: -0.66` los cuatro árboles salieron como discos de medio píxel en el centro de la parcela: sin error, sin warning, simplemente no había patio.",
+      "_inset": "Y VAN A 0,52 DEL MARCO, NO A 0,66. El marco de una parcela es su rectángulo de medias extensiones, pero el SUELO que se pinta es el contorno trazado del interior de la manzana, que es irregular: a 0,66 las esquinas del rectángulo caen fuera del verde y el árbol queda parado en el techo de una casona. No se dibuja el canto por la misma razón — `paintParcels` ya perfila la parcela con su forma REAL, y un `strokeRect` encima es un rectángulo sobre un polígono."
     }
   }
 }

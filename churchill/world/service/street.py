@@ -221,6 +221,19 @@ class StreetIndex:
         it is away from the calle it is on, whatever angle that calle runs at.
         Returns None when nothing is within `reach` (nothing to move away from).
         """
+        hit = self.nearest_road_normal(px, py, reach)
+        return None if hit is None else (hit[0], hit[1])
+
+    def nearest_road_normal(self, px, py, reach=None):
+        """`nearest_normal`, plus the ROAD it is measured from — `(nx, ny, road)`.
+
+        The width matters because how far a footprint has to retreat is not a
+        constant: it is a property of the street in front of it. This world
+        paints a carriageway at ~3x its real size, so the overlap a building
+        starts with is proportional to the painted width — 33 px on a 65 px
+        calle, but 98 on the Paseo's 196 px boulevard. A single push allowance
+        can only be right for one of them.
+        """
         reach = reach if reach is not None else 8 * CUAD
         if self._boxed is None:
             self._boxed = [(r, (min(r["pts"][0::2]), min(r["pts"][1::2]),
@@ -242,14 +255,14 @@ class StreetIndex:
                 d2 = (px - qx) ** 2 + (py - qy) ** 2
                 key = (d2, ax, ay, bx, by)
                 if best is None or key < best[0]:
-                    best = (key, qx, qy)
+                    best = (key, qx, qy, r)
         if best is None or best[0][0] > reach * reach:
             return None
         vx, vy = px - best[1], py - best[2]
         d = math.hypot(vx, vy)
         if d < 1e-6:
             return None                     # dead on the centreline: no way out
-        return (vx / d, vy / d)
+        return (vx / d, vy / d, best[3])
 
     def on_street(self, px, py, pad=2.0, reach=60.0):
         """Is (px, py) under the painted width of a real road centreline?

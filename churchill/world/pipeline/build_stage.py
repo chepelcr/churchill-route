@@ -809,7 +809,31 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     PUSH_STEP = GRID_CELL
     PUSH_MAX = 10 * GRID_CELL         # 40 px
 
-    def _push_off_street(raw):
+    # …AND ON A BOULEVARD, 40 px IS NOT THE SAME LIE. The paragraph above is
+    # measured on a 7 m calle, where the painted corridor is 65 px. The Paseo de
+    # los Turistas is a DIVIDED avenue: 196 px of carriageway at the Hotel
+    # Tioga, so a footprint on its real property line starts ~98 px over and no
+    # fixed allowance tuned on a calle can ever reach land. That is why the
+    # whole named frontage of the Paseo — the Tioga, Las Brisas, the Parroquia
+    # del Carmen, the Capitanía, a dozen sodas — was being deleted.
+    #
+    # So the allowance is a property of the STREET IN FRONT, not a constant. It
+    # is applied as a SECOND attempt with the first left exactly as it was: a
+    # footprint that already clears at 40 px still clears at 40 px, so nothing
+    # that works today moves, and only the ones that were being lost are treated
+    # differently.
+    def _street_allowance(raw):
+        pts = raw["pts"]
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        hit = streets.nearest_road_normal(cx, cy)
+        if hit is None:
+            return PUSH_MAX
+        half = (hit[2].get("w") or 0) / 2
+        want = half + ACERA_CELLS * GRID_CELL + PUSH_STEP
+        return max(PUSH_MAX, int(want // PUSH_STEP) * PUSH_STEP)
+
+    def _push_off_street(raw, allowance=None):
         pts = raw["pts"]
         if not _poly_over(pts, STREETISH):
             return pts                      # already clear
@@ -819,7 +843,7 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         if hit is None:
             return None
         nx, ny = hit
-        for k in range(1, PUSH_MAX // PUSH_STEP + 1):
+        for k in range(1, (allowance or PUSH_MAX) // PUSH_STEP + 1):
             d = k * PUSH_STEP
             moved = [(p[0] + nx * d, p[1] + ny * d) for p in pts]
             if not _poly_over(moved, STREETISH):
@@ -955,17 +979,31 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         if _scales else
         f"{n_fit} named footprints already fitted their manzana; {n_nofit} left to the push")
 
-    named_raw, keep, n_onroad, n_pushed, n_reseat = [], [], 0, 0, 0
+    named_raw, keep, n_onroad, n_pushed, n_reseat, n_wide = [], [], 0, 0, 0, 0
     for raw in raw_bldgs:
         if not (raw.get("name") and raw.get("pts")):
             keep.append(raw)
             continue
         moved = _push_off_street(raw)
         if moved is None:
+            wide = _street_allowance(raw)
+            if wide > PUSH_MAX:
+                moved = _push_off_street(raw, wide)
+                if moved is not None:
+                    n_wide += 1
+        if moved is None:
             moved = _reseat_in_block(raw)
             if moved is None:
+                # NEVER DROP A NAME. This used to hand the footprint to the
+                # snapper, which shrinks it to a lattice rect and — when even
+                # that does not fit — deletes it behind an aggregate counter.
+                # Measured over the centro window alone that was 32 named
+                # buildings gone, the Parroquia del Carmen among them. A
+                # landmark drawn on ground the game painted as road is a far
+                # smaller error than a landmark that does not exist, and
+                # `ghost` lets the client draw it without walling the street.
                 n_onroad += 1
-                keep.append(raw)            # the snapper will find it a block
+                named_raw.append({**raw, "ghost": True})
                 continue
             n_reseat += 1
         if moved is not raw["pts"]:
@@ -973,8 +1011,12 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             raw = {**raw, "pts": moved}
         named_raw.append(raw)
     raw_bldgs = keep
+    if n_wide:
+        log("buildings", f"{n_wide} named footprints needed a WIDE push — their street "
+            f"is a boulevard, not a calle, so the allowance came from its own width")
     if n_onroad:
-        log("buildings", f"{n_onroad} named footprints had no room off the street — snapped instead")
+        log("buildings", f"{n_onroad} named footprints had no room off the street — "
+            f"kept at their real outline as `ghost` (drawn, not collidable)")
     if n_pushed:
         log("buildings", f"{n_pushed} named footprints pushed back off the acera "
             f"(up to {PUSH_MAX} px, along the nearest street's normal)")
@@ -1043,14 +1085,24 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
         log("marino", f"{len(marine_raw)} aquarium buildings at their real OSM "
               f"footprints + {len(marine_cuadra_buildings)} named neighbours, "
               f"{len(marine_site['lm'].get('pools', []))} tanks placed clear")
+    n_ghost = 0
     for raw in named_raw:
         rng = make_rng(raw["id"])
-        buildings.append({"pts": [round(v) for p in raw["pts"] for v in p],
-                          "color": BLDG_PALETTE[int(rng() * len(BLDG_PALETTE))],
-                          "roof": ROOF_PALETTE[int(rng() * len(ROOF_PALETTE))],
-                          "wnd": 1 if rng() < 0.7 else 0,
-                          "name": raw["name"], "cat": raw.get("cat")})
-    log("buildings", f"{len(named_raw)} NAMED buildings kept at their real OSM footprint")
+        rec = {"pts": [round(v) for p in raw["pts"] for v in p],
+               "color": BLDG_PALETTE[int(rng() * len(BLDG_PALETTE))],
+               "roof": ROOF_PALETTE[int(rng() * len(ROOF_PALETTE))],
+               "wnd": 1 if rng() < 0.7 else 0,
+               "name": raw["name"], "cat": raw.get("cat")}
+        # A footprint the game's own widened roadway left no land for. It is
+        # DRAWN — that is the whole reason a named building is kept — but the
+        # client must not collide with it, or the Paseo would be walled shut by
+        # its own hotels.
+        if raw.get("ghost"):
+            rec["ghost"] = 1
+            n_ghost += 1
+        buildings.append(rec)
+    log("buildings", f"{len(named_raw)} NAMED buildings kept at their real OSM footprint"
+        + (f" ({n_ghost} of them `ghost`: drawn, not collidable)" if n_ghost else ""))
     # The Balneario cuadra is a SEA inlet, so any building whose real footprint
     # lands inside it was floating on the water. Give each one a sand pad: a
     # dilated bbox emitted into `beaches` (painted AFTER the water, so it shows)

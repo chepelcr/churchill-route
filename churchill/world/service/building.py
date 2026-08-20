@@ -14,7 +14,7 @@ from collections import defaultdict, deque
 
 from ..config import BLDG_INSET, CUAD, FRONTAGE_DEPTH, OSM_MAX_CUADS, SMALL_BLOCK_CUADS, SYNTH_LOTS, SYNTH_MAX_TOTAL, SYNTH_SEED
 from ..content import BLDG_PALETTE, ROOF_PALETTE
-from ..logging import log
+from ..logging import log, warn
 
 
 def make_rng(seed):
@@ -95,6 +95,14 @@ def snap_osm_buildings(raws, cell_block, occ):
                 th -= 1
         if placed is None:
             dropped += 1
+            # INSTRUMENTATION (Stage F): a NAMED footprint must not vanish
+            # behind an aggregate counter. `manzana_style` already treats a lost
+            # anchor as a build failure for exactly this reason.
+            nm = raw.get("name") or raw.get("osm_name")
+            if nm:
+                warn("buildings", f"NO-FIT named footprint way/{raw['id']} {nm!r} "
+                     f"at ({round(raw['cx'])},{round(raw['cy'])}) "
+                     f"{round(raw['w'])}x{round(raw['h'])}px — DROPPED")
             continue
         cc0, cr0, tw, th = placed
         _claim(occ, cc0, cr0, tw, th)

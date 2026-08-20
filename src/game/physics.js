@@ -558,7 +558,15 @@ export function update(dt) {
   if (inWater && !afloat && Math.random() < 0.06) state.cam.shake = Math.max(state.cam.shake, 2);
 
   // Building collisions (polygon buildings via spatial hash)
+  //
+  // A `ghost` is a NAMED footprint the builder could not find land for, because
+  // this world paints a carriageway at ~3x its real size and on the Paseo's
+  // divided avenue that swallows the whole seafront frontage — the Hotel Tioga,
+  // Las Brisas, the Parroquia del Carmen. It is drawn at its true outline
+  // (a landmark you cannot recognise is not a landmark) but it must not be a
+  // wall, or the hotels would fence off the street they stand on.
   for (const b of W.buildingsNear(p.x, p.y)) {
+    if (b.ghost) continue;
     const a = b.aabb;
     if (p.x < a.x0 - 9 || p.x > a.x1 + 9 || p.y < a.y0 - 9 || p.y > a.y1 + 9) continue;
     if (collideBuilding(p, b)) {

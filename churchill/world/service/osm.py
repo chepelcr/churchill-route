@@ -22,7 +22,7 @@ from ..config import (
     DP_ROAD_PX, DROP_ROAD_CLASSES, GRID_CELL, MIN_BUILDING_AREA_PX2,
     ROAD_CLASSES, SERVICE_MIN_PX, road_width_px,
 )
-from ..logging import log
+from ..logging import log, warn
 from ..repository.osm_file import poi_category
 from ..util.geometry import (
     clip_poly_to_rect, clip_polyline_to_rect, dist, dp_simplify, poly_area,
@@ -232,7 +232,7 @@ def extract_buildings(sp, ways, roads, canvas_w, canvas_h):
         return b is not None and b[0] <= 0
 
     out = []
-    dropped_road, dropped_small = 0, 0
+    dropped_road, dropped_small, dropped_road_named = 0, 0, 0
     for w in ways:
         if "building" not in w["tags"] or len(w["pts"]) < 4:
             continue
@@ -263,9 +263,19 @@ def extract_buildings(sp, ways, roads, canvas_w, canvas_h):
             shift = (hw + 4 - d)
             cx, cy = cx + ux * shift, cy + uy * shift
             pts = [(px + ux * shift, py + uy * shift) for px, py in pts]
+        # A NAMED footprint is never dropped here. This is the EARLIEST of the
+        # three places one could die, and the most invisible: it happens before
+        # `name` is even assigned below, before the landmark join, and before
+        # the push/reseat chain — so nothing downstream could report it, and
+        # nothing downstream could rescue it either. An anonymous shed on the
+        # roadway is noise and still goes; a named place is the reason this
+        # extractor keeps outlines at all, so it is handed on and the chain in
+        # `build_stage` decides where it stands (or keeps it as a `ghost`).
         if not ok or near_road(cx, cy):
-            dropped_road += 1
-            continue
+            if not w["tags"].get("name"):
+                dropped_road += 1
+                continue
+            dropped_road_named += 1
         # Raw record only: the footprint is snapped to whole cuadrículas later
         # (snap_osm_buildings), once the cuadra blocks are known. Target size
         # comes from the pushed-out footprint's AABB × BUILDING_SCALE. `pts` is
@@ -288,12 +298,23 @@ def extract_buildings(sp, ways, roads, canvas_w, canvas_h):
         # A building that IS a named place (Hotel Tioga, Súper Salinas, the
         # church…) keeps its real outline — snapping it to the cuadrícula turns
         # a landmark you can recognise into one more anonymous pastel box.
-        if w["tags"].get("name") and poi_category(w["tags"]):
+        # THE NAME IS ENOUGH. This used to also require a POI category, which
+        # quietly split the mapper's named buildings in two: a `tourism=hotel`
+        # kept its outline while a plain `building=yes` carrying the same kind
+        # of name — a taller, a bar, an antigua fábrica — went to the snapper as
+        # an anonymous box and could be deleted outright. OSM has 635 named
+        # buildings in this window and only a fraction carry a category; a name
+        # a surveyor bothered to write down IS the signal.
+        if w["tags"].get("name"):
             rec["name"] = w["tags"]["name"]
-            k, v = poi_category(w["tags"])
-            rec["cat"] = f"{k}={v}"
+            cat = poi_category(w["tags"])
+            if cat:
+                rec["cat"] = f"{cat[0]}={cat[1]}"
         out.append(rec)
-    log("buildings", f"{len(out)} raw OSM footprints, dropped {dropped_road} on-road, {dropped_small} tiny")
+    log("buildings", f"{len(out)} raw OSM footprints, dropped {dropped_road} on-road, "
+        f"{dropped_small} tiny"
+        + (f"; {dropped_road_named} NAMED ones on-road were kept for the push chain"
+           if dropped_road_named else ""))
     return out
 
 

@@ -78,13 +78,36 @@ class MigrationTests(unittest.TestCase):
     def test_every_table_matches_the_literals_it_replaced(self):
         if not self.ref:
             self.skipTest("the literal version is no longer in reach of git log -S")
+        grown = []
         old = types.ModuleType("old_content")
         src = self.ref.replace("from .config import ROOT",
                                "from churchill.world.config import ROOT")
         exec(compile(src, "old_content.py", "exec"), old.__dict__)
         diffs = []
         for name in TABLES:
-            diffs += deep_diff(getattr(old, name), getattr(content, name), name)
+            was, now = getattr(old, name), getattr(content, name)
+            # A LIST OF AUTHORED RECORDS MAY HAVE GROWN, AND THAT IS NOT A
+            # REGRESSION. What this test exists to prove is that the JSON loader
+            # still reproduces the literals it replaced — not that the world
+            # stopped gaining places. Comparing length would make every new
+            # landmark, customer or ride fail a MIGRATION check, which teaches
+            # exactly the wrong lesson: bump the number and move on.
+            #
+            # The match is BY ID, never by position: a new place is authored
+            # next to its neighbours (Las Brisas belongs beside the Tioga, the
+            # Capitanía beside its muelle), so an index-based compare would
+            # report every record after the insertion as changed and hide a real
+            # regression in the noise.
+            if (isinstance(was, list) and isinstance(now, list)
+                    and all(isinstance(r, dict) and "id" in r for r in was + now)):
+                by_id = {r["id"]: r for r in now}
+                missing = [r["id"] for r in was if r["id"] not in by_id]
+                if missing:
+                    diffs.append(f"{name}: records vanished — {missing}")
+                    continue
+                grown.append(f"{name} +{len(now) - len(was)}")
+                now = [by_id[r["id"]] for r in was]
+            diffs += deep_diff(was, now, name)
         self.assertEqual(diffs, [], f"the loader no longer reproduces the "
                                     f"original tables: {diffs[:5]}")
 

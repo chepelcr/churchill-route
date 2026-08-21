@@ -378,9 +378,10 @@ def _solve(cells, comp, water=frozenset()):
         ci, ri = i % cols, i // cols
         if ci == 0 or ri == 0 or ci == cols - 1 or ri == rows - 1:
             fixed[i] = 1                 # …y en el borde del parche no hay campo
-        elif (ci + c0, ri + r0) in water:
+        elif ((ci + c0, ri + r0) in water
+              and not (lab >= 0 and lab != out)):   # no pisar una manzana
             ux[i] = uy[i] = 0.0
-            fixed[i] = 1                 # EL AGUA NO SE MUEVE
+            fixed[i] = 1                 # EL AGUA Y SU ORILLA NO SE MUEVEN
     # …y lo que queda —la calzada y el campo abierto— se suaviza entre esas dos
     # condiciones. Así el salto ocurre EN la calle (que es donde tiene que
     # ocurrir), el campo baja a cero antes del borde del parche, y nada se rasga.
@@ -417,6 +418,16 @@ def _water_cells(waters):
     mismas vías —barata, porque lo caro fue el parseo— y deja el golfo, el
     estero y los ríos exactamente donde el mapeador los puso.
     """
+    #: CUÁNTO SE ENSANCHA EL CLAVO ALREDEDOR DEL AGUA, en celdas. Clavar sólo
+    #: el agua no basta y está medido: el canal de la Travesía siguió cerrándose
+    #: igual (12 px de media caña) porque lo que se le mete dentro no es agua que
+    #: se mueva, son las ORILLAS — manglar y tierra, que no están clavadas. El
+    #: dragado convierte tierra en agua, pero se para en cuanto encuentra algo
+    #: que no es ni tierra ni agua, así que una calle que entra al corredor lo
+    #: tapona. Ocho celdas son 160 px, del orden de la media caña que el canal
+    #: necesita.
+    BANK_CELLS = 8
+
     out = set()
     for flat in waters or ():
         pts = [(flat[i], flat[i + 1]) for i in range(0, len(flat) - 1, 2)]
@@ -438,6 +449,20 @@ def _water_cells(waters):
             for k in range(0, len(xs_hit) - 1, 2):
                 for c in range(int(xs_hit[k] // DCELL), int(xs_hit[k + 1] // DCELL) + 1):
                     out.add((c, r))
+    # …y la ORILLA con ella. Es la banda por la que el canal tiene que pasar.
+    if out:
+        banks = set(out)
+        ring = out
+        for _ in range(BANK_CELLS):
+            nxt = set()
+            for (c, r) in ring:
+                for (nc, nr) in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
+                    if (nc, nr) not in banks:
+                        banks.add((nc, nr)); nxt.add((nc, nr))
+            ring = nxt
+            if not ring:
+                break
+        out = banks
     return out
 
 

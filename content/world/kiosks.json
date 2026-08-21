@@ -24,16 +24,18 @@
     },
     {
       "id": "kios_paseo2",
-      "name": "Churchill El Mariachi",
+      "name": "Vigorón El Mariachi",
       "district": "paseo",
       "product": "vigoron",
       "osm": "kioscos paseo de los turistas",
       "dx": 75,
-      "dy": 100
+      "dy": 100,
+      "_wasName": "Churchill El Mariachi",
+      "_renameWhy": "vendía vigorón y se anunciaba como churchill; no tiene negocio real detrás, así que conserva el personaje y corrige la comida"
     },
     {
       "id": "kios_centro",
-      "name": "Kiosco La Porteña",
+      "name": "El Cevichito",
       "district": "centro",
       "product": "ceviche",
       "osm": "el cevichito",
@@ -41,7 +43,9 @@
         9.97621,
         -84.83364
       ],
-      "_anchor": "El Cevichito — el ceviche de Puntarenas, mapeado"
+      "_anchor": "El Cevichito — el ceviche de Puntarenas, mapeado",
+      "_wasName": "Kiosco La Porteña",
+      "_renameWhy": "estaba como «Kiosco La Porteña» encima de El Cevichito, que es el negocio real y además es justo el puesto de ceviche"
     },
     {
       "id": "kios_play",
@@ -55,7 +59,7 @@
     },
     {
       "id": "kios_cocal",
-      "name": "Kiosco El Cocal",
+      "name": "Pata Larga",
       "district": "cocal",
       "product": "vigoron",
       "osm": "pata larga - terraza",
@@ -63,7 +67,9 @@
         9.98074,
         -84.79708
       ],
-      "_anchor": "Pata Larga, El Cocal"
+      "_anchor": "Pata Larga, El Cocal",
+      "_wasName": "Kiosco El Cocal",
+      "_renameWhy": "estaba como «Kiosco El Cocal» encima de Pata Larga, el negocio real"
     },
     {
       "id": "kios_cocal2",
@@ -110,7 +116,7 @@
     },
     {
       "id": "kios_roble",
-      "name": "Churchill El Roble",
+      "name": "Soda El Taxista",
       "district": "elroble",
       "product": "papicarne",
       "osm": "soda el taxista",
@@ -119,7 +125,9 @@
         -84.7387
       ],
       "_anchor": "Soda El Taxista, El Roble",
-      "snap_road": 1
+      "snap_road": 1,
+      "_wasName": "Churchill El Roble",
+      "_renameWhy": "el nombre del negocio de verdad sobre el que está parado — y una soda vendiendo papi-carne es exactamente lo que es"
     },
     {
       "id": "kios_barr",
@@ -136,7 +144,7 @@
     },
     {
       "id": "kios_esp",
-      "name": "Churchill Esparza",
+      "name": "Soda Torrejas",
       "district": "esparza",
       "product": "papicarne",
       "osm": "soda torrejas",
@@ -145,7 +153,9 @@
         -84.66717
       ],
       "_anchor": "Soda Torrejas, Esparza",
-      "snap_road": 1
+      "snap_road": 1,
+      "_wasName": "Churchill Esparza",
+      "_renameWhy": "igual: el negocio real del ancla, y una soda de papi-carne"
     },
     {
       "id": "kios_esp2",
@@ -200,5 +210,6 @@
       "_anchor": "Soda El Bus Buru, Caldera"
     }
   ],
-  "_spacing": "DOS KIOSCOS NO PUEDEN CAER EN EL MISMO PUNTO. Un par cercano está bien —los dos del Paseo van a 148 px y venden cosas distintas, que es lo que los hace dos— pero coincidentes son uno disfrazado de dos. El asiento mueve un kiosco a la calle más cercana, así que dos anclas separadas por menos de una cuadra pueden colapsar: se comprueba contra el MUNDO EMITIDO, no contra el ancla autorada."
+  "_spacing": "DOS KIOSCOS NO PUEDEN CAER EN EL MISMO PUNTO. Un par cercano está bien —los dos del Paseo van a 148 px y venden cosas distintas, que es lo que los hace dos— pero coincidentes son uno disfrazado de dos. El asiento mueve un kiosco a la calle más cercana, así que dos anclas separadas por menos de una cuadra pueden colapsar: se comprueba contra el MUNDO EMITIDO, no contra el ancla autorada.",
+  "_nameNote": "EL NOMBRE NO PUEDE MENTIR SOBRE EL PRODUCTO. Tres puestos se llamaban «Churchill …» y vendían vigorón o papi-carne, que es la clase de detalle que rompe la conexión con el lugar justo cuando se está intentando construirla. Donde hay un negocio REAL debajo —el `osm` del ancla— el puesto toma su nombre: es más fiel y de paso no puede volver a contradecirse. `kios_barr` se queda como «Kiosco Barranca` a propósito: su ancla es la Marisquería Los Pajaritos y vende papi-carne, así que ponerle el nombre real crearía la misma mentira al revés."
 }

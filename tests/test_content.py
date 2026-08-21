@@ -73,6 +73,16 @@ REAUTHORED = {
         "Medido sobre el mundo emitido, los tres chinamos caían en el centro "
         "de la calzada NORTE —la que queda abierta— y la tapaban de punta a "
         "punta: por el campo ferial no se podía pasar por ningún lado.",
+    # EL NOMBRE NO PUEDE MENTIR SOBRE EL PRODUCTO. Tres puestos se llamaban
+    # «Churchill …» y vendían vigorón o papi-carne — el detalle que rompe la
+    # conexión con el lugar justo cuando se está intentando construirla. Donde
+    # hay un negocio REAL debajo, el puesto toma su nombre: es más fiel y no
+    # puede volver a contradecirse.
+    "LANDMARK_DEFS[kios_paseo2].name": "vendía vigorón anunciándose como churchill",
+    "LANDMARK_DEFS[kios_roble].name": "-> Soda El Taxista, el negocio real del ancla",
+    "LANDMARK_DEFS[kios_esp].name": "-> Soda Torrejas, el negocio real del ancla",
+    "LANDMARK_DEFS[kios_centro].name": "-> El Cevichito, real y además el puesto de ceviche",
+    "LANDMARK_DEFS[kios_cocal].name": "-> Pata Larga, el negocio real del ancla",
     "CROSSING_STAGES[s8].after":
         "la Travesía pasó de seguir a s3 a seguir a s7: iba cuarta y dejaba "
         "Las Playitas, El Cocal, Mata de Limón y Caldera detrás de la única "

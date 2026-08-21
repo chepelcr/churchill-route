@@ -25,10 +25,25 @@ class PlanarProjection:
     def __init__(self, min_mx, min_my, px_per_m):
         self.min_mx, self.min_my = min_mx, min_my
         self.px_per_m = px_per_m
+        #: EL CAMPO DE DILATACIÓN, o `None`. Se instala DESPUÉS de extraer las
+        #: calles (que es de donde sale) y antes de extraer todo lo demás, así
+        #: que a partir de ese momento absolutamente todo lo que se proyecte
+        #: —edificios, sitios, POIs, las curvas del IGN, cada ancla geo de
+        #: `content.py`— sale ya separado, sin que ninguna etapa se entere.
+        #:
+        #: Y ES LO QUE ROMPE LA LINEALIDAD que el docstring de arriba protege:
+        #: con un campo instalado, `meta.geo` deja de describir la proyección
+        #: entera y el cliente necesita además el canal de warp. Ver
+        #: `service/dilation.py`.
+        self.warp = None
 
     def to_px(self, mx, my):
-        return ((mx - self.min_mx) * self.px_per_m,
-                (my - self.min_my) * self.px_per_m)
+        x = (mx - self.min_mx) * self.px_per_m
+        y = (my - self.min_my) * self.px_per_m
+        if self.warp is not None:
+            dx, dy = self.warp.at(x, y)
+            return x + dx, y + dy
+        return x, y
 
     def project_m(self, p_m):
         """Identity: in a planar world the 'projected' metres ARE the metres."""

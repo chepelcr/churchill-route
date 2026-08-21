@@ -48,11 +48,16 @@ function saveCache(body) {
 // via the manifest's geo affine. Returns null if it can't be placed.
 function toWorld(item) {
   if (Number.isFinite(item.x) && Number.isFinite(item.y)) return { x: item.x, y: item.y };
-  const g = W.META && W.META.geo;
-  if (!g || !Number.isFinite(item.lat) || !Number.isFinite(item.lon)) return null;
-  const x = g.ax * item.lon + g.bx, y = g.ay * item.lat + g.by;
-  if (x < 0 || y < 0 || x > W.W || y > W.H) return null;
-  return { x: Math.round(x), y: Math.round(y) };
+  if (!Number.isFinite(item.lat) || !Number.isFinite(item.lon)) return null;
+  // UN SOLO DUEÑO DE LA PREGUNTA. Esto se calculaba aquí con la afín cruda, y
+  // desde que el mundo se DILATA dentro de cada pueblo la afín se queda corta
+  // por hasta unos cientos de px — media manzana. `W.geoToWorld` ya aplica la
+  // corrección; hacerlo por segunda vez acá es cómo se acaba plantando un
+  // patrocinio en la cuadra de al lado.
+  const p = W.geoToWorld(item.lat, item.lon);
+  if (!p) return null;
+  if (p.x < 0 || p.y < 0 || p.x > W.W || p.y > W.H) return null;
+  return { x: Math.round(p.x), y: Math.round(p.y) };
 }
 
 // The authored UI block: design tokens and copy overrides. Values are strings

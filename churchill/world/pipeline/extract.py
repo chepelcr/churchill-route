@@ -12,8 +12,10 @@ a building here still sits at its true OSM footprint.
 import time
 from collections import defaultdict
 
+from ..config import DILATION_ON
 from ..context import WorldContext
 from ..logging import log, warn
+from ..service.dilation import build as dilation_build
 from ..service.ferry import extract_ferries
 from ..service.osm import (
     barro_leon_continuation, extract_areas, extract_buildings, extract_pois,
@@ -39,6 +41,21 @@ def extract_world(osm_source):
     ctx.relations, ctx.poi_nodes = relations, poi_nodes
     ctx.sign_nodes = sign_nodes
     ctx.raster = Raster(dims.cols, dims.rows, dims.cell)
+
+    # LA DILATACIÓN, y por qué son DOS pasadas sobre las calles.
+    #
+    # El campo que le devuelve su suelo a las manzanas se calcula A PARTIR de la
+    # red de calles, y la red de calles sale de la proyección — así que hay un
+    # huevo y una gallina. Se rompe barato: se extraen las calles con la
+    # proyección afín (rápido; lo caro fue el parseo, y ya está hecho), se
+    # construye el campo con eso, se instala en la proyección, y se vuelve a
+    # extraer. A partir de ahí TODO lo que se proyecte sale ya separado y
+    # ninguna etapa aguas abajo se entera de que esto existe.
+    if DILATION_ON:
+        probe_roads, _ = extract_roads(sp, ways, dims.w, dims.h)
+        sp.warp = dilation_build(probe_roads)
+    else:
+        log("dilate", "apagada (DILATION=0): las calles siguen comiéndose la manzana")
 
     roads, bridge_road = extract_roads(sp, ways, dims.w, dims.h)
     # León Cortés end-barro + dirt cross streets (coordinate-agnostic).

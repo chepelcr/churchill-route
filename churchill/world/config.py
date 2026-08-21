@@ -235,6 +235,11 @@ BUILDING_SCALE = 1.4
 #: calle queda en 33 px y los `ghost` sólo bajan de 31 a 25. El límite es el
 #: carro, no la manzana.
 MANZANA_FIT_MIN_SCALE = float(os.environ.get("MANZANA_FIT_MIN_SCALE", "1.0"))
+
+#: ¿SE DILATAN LAS MANZANAS? Ver `service/dilation.py`. En 0 el mundo se
+#: construye como siempre —las calles se comen 4.7 m por lado de cada cuadra— y
+#: es la vuelta atrás si algo sale raro, sin tocar código.
+DILATION_ON = os.environ.get("DILATION", "1") not in ("0", "off", "false")
 #: The rest of the audit list, in metres (`world-units.json` -> `world`).
 W = UNITS["world"]
 POI_NUDGE_PX = px(W["poi"]["nudgeM"])

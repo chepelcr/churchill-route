@@ -123,6 +123,40 @@ def _first_class(raster, cx, cy, nx, ny, classes, reach):
     return None
 
 
+def _disc_on(raster, px, py, classes, rad):
+    """¿Cae el disco ENTERO sobre estas clases? (no sólo su centro)"""
+    if rad <= 0:
+        rad = 0.0
+    for f in (1.0, 0.62):
+        for k in range(8):
+            a = k * (math.pi / 4)
+            x, y = px + math.cos(a) * rad * f, py + math.sin(a) * rad * f
+            c, r = raster.cell_of(x, y)
+            if not (raster.in_bounds(c, r) and raster.at(c, r) in classes):
+                return False
+    c, r = raster.cell_of(px, py)
+    return raster.in_bounds(c, r) and raster.at(c, r) in classes
+
+
+def _first_class_clear(raster, cx, cy, nx, ny, classes, reach, rad):
+    """El primer punto del rayo donde CABE ENTERO un disco de radio `rad`.
+
+    UNA TARIMA TIENE QUE LIBRAR POR SU ARTE, NO POR SU ANCLA — es la misma regla
+    que el repo ya escribió para los kioscos y el agua («a kiosk must clear the
+    sea by its ART, not its anchor»), y se rompió igual: `_first_class` devuelve
+    la PRIMERA celda de malecón del rayo, o sea justo el borde de tierra. El DJ
+    quedaba con su ancla 2 px dentro del malecón y la tarima —que mide ±19 px—
+    metida en la calzada sur cerrada y en la acera de la mediana.
+    """
+    d = 0.0
+    while d <= reach:
+        px, py = cx + nx * d, cy + ny * d
+        if _disc_on(raster, px, py, classes, rad):
+            return (px, py)
+        d += GRID_CELL
+    return None
+
+
 def _south_carriageway(raster, cx, cy, nx, ny):
     """LA CALZADA MÁS AL MAR antes de que se acabe el asfalto — `(d0, d1)` en px
     desde `(cx, cy)` a lo largo de `(nx, ny)`.
@@ -280,8 +314,20 @@ def place_attractions(ctx, project_ll, buildings, streets):
                     # la calzada sur suman ~160, así que el tiro caía todavía en
                     # el asfalto. Andar el rayo hasta encontrar promenade
                     # funciona en cualquier ancho.
-                    spot = _first_class(raster, hx, hy, dnx, dny,
-                                        (CLS_MALECON,), DJ_STAGE_REACH_PX)
+                    # …Y QUE QUEPA LA TARIMA ENTERA, no sólo su ancla. El arte
+                    # va de -0.95r a +0.95r, así que se pide un disco del radio
+                    # del propio juego; si el malecón no da para tanto se cae al
+                    # borde de antes, avisando, en vez de plantarlo en la calle.
+                    rad = float(spec.get("r") or 0)
+                    spot = _first_class_clear(raster, hx, hy, dnx, dny,
+                                              (CLS_MALECON,), DJ_STAGE_REACH_PX, rad)
+                    if spot is None:
+                        spot = _first_class(raster, hx, hy, dnx, dny,
+                                            (CLS_MALECON,), DJ_STAGE_REACH_PX)
+                        if spot:
+                            warn("feria", f"{spec['id']}: el malecón frente a "
+                                 f"{spec['host']} no da para una tarima de {rad:.0f}px "
+                                 f"de radio — queda en el borde")
                     if spot:
                         seat = spot
                         log("feria", f"{spec['id']} en el malecón "

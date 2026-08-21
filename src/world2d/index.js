@@ -503,7 +503,55 @@ export const WORLD2D = (function () {
   function geoToWorld(lat, lon) {
     const g = META.geo;
     if (!g) return null;
-    return { x: g.ax * lon + g.bx, y: g.ay * lat + g.by };
+    const x = g.ax * lon + g.bx, y = g.ay * lat + g.by;
+    const [dx, dy] = warpAt(x, y);
+    return { x: x + dx, y: y + dy };
+  }
+
+  //: LA AFÍN YA NO LO CUENTA TODO. El mundo se DILATA dentro de cada pueblo
+  //: para devolverle a la manzana el suelo que el ancho arcade de la calle le
+  //: quita (ver churchill/world/service/dilation.py), así que la proyección
+  //: dejó de ser lineal en lon/lat: `ax·lon + bx` se queda corto por hasta unos
+  //: cientos de px, que es media manzana. Fuera de los pueblos el campo es cero
+  //: y la afín vuelve a ser exacta — por eso en el manifest sólo viajan los
+  //: pueblos y no una rejilla del mundo entero.
+  //:
+  //: Es UN SOLO DUEÑO de la pregunta a propósito: `remote.js` leía la afín por
+  //: su cuenta, y dos sitios calculando lo mismo con datos distintos es cómo se
+  //: acaba plantando un patrocinio en la manzana de al lado.
+  let WARP = null;
+  function warpPatches() {
+    if (WARP !== null) return WARP;
+    WARP = [];
+    for (const p of META.warp || []) {
+      const raw = atob(p.d);
+      const n = p.cols * p.rows;
+      const dx = new Int16Array(n), dy = new Int16Array(n);
+      for (let i = 0; i < n; i++) {
+        dx[i] = (raw.charCodeAt(i * 4) | (raw.charCodeAt(i * 4 + 1) << 8)) << 16 >> 16;
+        dy[i] = (raw.charCodeAt(i * 4 + 2) | (raw.charCodeAt(i * 4 + 3) << 8)) << 16 >> 16;
+      }
+      WARP.push({ ...p, dx, dy });
+    }
+    return WARP;
+  }
+  function warpAt(x, y) {
+    for (const p of warpPatches()) {
+      const fc = (x - p.x) / p.step, fr = (y - p.y) / p.step;
+      if (fc < 0 || fr < 0 || fc > p.cols - 1 || fr > p.rows - 1) continue;
+      const ic = Math.floor(fc), ir = Math.floor(fr);
+      const tc = fc - ic, tr = fr - ir;
+      const ic2 = Math.min(ic + 1, p.cols - 1), ir2 = Math.min(ir + 1, p.rows - 1);
+      const i00 = ir * p.cols + ic, i10 = ir * p.cols + ic2;
+      const i01 = ir2 * p.cols + ic, i11 = ir2 * p.cols + ic2;
+      const w00 = (1 - tc) * (1 - tr), w10 = tc * (1 - tr);
+      const w01 = (1 - tc) * tr, w11 = tc * tr;
+      return [
+        p.dx[i00] * w00 + p.dx[i10] * w10 + p.dx[i01] * w01 + p.dx[i11] * w11,
+        p.dy[i00] * w00 + p.dy[i10] * w10 + p.dy[i01] * w01 + p.dy[i11] * w11,
+      ];
+    }
+    return [0, 0];
   }
   function landmarkById(id) { return LANDMARKS.find((l) => l.id === id); }
   function customerById(id) { return CUSTOMERS.find((c) => c.id === id); }

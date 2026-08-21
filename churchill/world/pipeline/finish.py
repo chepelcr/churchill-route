@@ -44,6 +44,7 @@ from ..logging import log
 from ..repository.debug_render import render_debug
 from ..service.elevation import ELEV_CELL, elevation_field
 from ..service.network import block_census, verify_connectivity
+from ..service.dilation import export_patches
 from ..service.placement import water_within
 from ..service.surface import sand_outlines
 from ..service.street import StreetIndex
@@ -77,6 +78,14 @@ def build_meta(ctx):
             "aceraPx": ACERA_CELLS * GRID_CELL,
             "pxPerMeter": round(sp.px_per_m, 5)}
     meta["geo"] = geo_affine(sp)
+    # …Y LA CORRECCIÓN, porque `geo` ya no lo cuenta todo. Con la dilatación
+    # instalada la proyección deja de ser afín: `x = ax·lon + bx` se queda corto
+    # por hasta unos cientos de px dentro de un pueblo, que es media manzana. El
+    # cliente coloca contenido remoto por lat/lon, así que necesita las dos
+    # cosas. Fuera de los parches el campo es cero y la afín es exacta, que es
+    # lo que mantiene barato el formato: sólo viajan los pueblos.
+    if getattr(sp, "warp", None) is not None and sp.warp.patches:
+        meta["warp"] = export_patches(sp.warp)
     return meta
 
 
@@ -146,6 +155,26 @@ def verify(ctx, *, spawn, gate_pois):
             f"{'IS' if ok else 'is NOT'} on the drivable network reached from the spawn")
         if not ok:
             ctx.failures.append(f"unreachable pier {pier['id']}(landward base)")
+    # UNA CANCHA A LA QUE NO SE ENTRA NO ES UNA CANCHA, y esta compuerta faltaba.
+    # `verify_connectivity` cubre los POIs —kioscos y clientes— pero no las
+    # PARCELAS, así que la Cancha Multiusos del Paseo se publicó siendo
+    # inalcanzable y pasó la verificación: al crecer a su tamaño real quedó como
+    # una isla de calzada dentro del malecón, que es pared para un carro
+    # (`isWall` en src/game/physics.js). El suelo estaba bien; nadie preguntaba
+    # por el acceso. Un campo abierto se estampa transitable PARA QUE SE ENTRE,
+    # así que si no está en la red que el spawn alcanza, es un fallo del build.
+    for P in ctx.parcels:
+        if P.get("use") not in ("plaza", "stadium"):
+            continue
+        px_, py_ = P.get("cx"), P.get("cy")
+        if px_ is None or py_ is None:
+            continue
+        c, r = int(px_ // cell), int(py_ // cell)
+        if not (ctx.raster.in_bounds(c, r) and reached[r * cols + c]):
+            ctx.failures.append(
+                f"unreachable field {P.get('id')}(open field stamped drivable "
+                f"but not on the network the spawn reaches)")
+
     # NO KIOSK STANDS IN THE GULF. The stand is 32 px of art with a 22 px
     # shadow, and the build only ever tested its geo ANCHOR for water — which is
     # how the 1.6 -> 2.0 rescale left three of them drawn half in the sea and

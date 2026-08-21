@@ -36,6 +36,7 @@ from ..content import PARCEL_STYLES, SITE_DECOR
 from ..enums import GreenType, ParcelUse
 from ..logging import log, warn
 from .editor_patch import building_source_id
+from .placement import nearest_cell
 from ..util.geometry import point_in_poly, principal_axis
 from ..util.raster import erode_cells
 from .block import block_raster_cells, cuadra_cells, outline_poly
@@ -653,6 +654,7 @@ class FieldService:
         if part["use"] in (ParcelUse.PLAZA, ParcelUse.STADIUM):   # drivable open field
             for (c, r) in cells:
                 self.raster.set(c, r, CLS_ROAD)
+            self._open_a_mouth(part, cells)
         elif part["use"] == ParcelUse.BOULEVARD:
             # A calle peatonal is its OWN surface class, not asphalt: transitable
             # (Surface.DRIVABLE) but slow, and the client paints it as stone
@@ -950,6 +952,58 @@ class FieldService:
     #: goes green and its synth houses go away. Below it the site is a piece of
     #: a live manzana and the neighbours keep their buildings.
     SITE_OWNS_BLOCK = 0.6
+
+    #: Lo que un CARRO puede pisar. NO incluye el malecón ni la acera: los dos
+    #: son pared en `isWall` (src/game/physics.js) por decisión explícita — «un
+    #: paseo marítimo es para caminar». Por eso una cancha rodeada de malecón no
+    #: está «cerrada por el norte»: está cerrada por los cuatro lados.
+    CAR_CLASSES = (CLS_ROAD, CLS_BOULEVARD)
+
+    #: Hasta dónde se busca calle para abrirle la boca a un campo aislado.
+    MOUTH_REACH_CELLS = 40
+
+    def _open_a_mouth(self, part, cells):
+        """UNA CANCHA A LA QUE NO SE ENTRA NO ES UNA CANCHA.
+
+        Un campo abierto se estampa transitable para que el carro entre derecho,
+        y eso funciona mientras la manzana toque una calle. La del Paseo no: al
+        crecer a su tamaño real quedó como una ISLA de calzada dentro del
+        malecón, y el malecón es pared para un carro. El suelo estaba bien y el
+        ACCESO era lo que faltaba — el mismo diagnóstico y el mismo remedio que
+        la «calle auxiliar» de los kioscos de la arena.
+
+        Así que si el campo no toca nada manejable, se le abre una boca hasta la
+        calle más cercana. Es una regla general a propósito: el fallo fue que
+        NADIE preguntaba, y preguntar una vez por campo cuesta nada.
+        """
+        own = set(cells)
+        touches = False
+        for (c, r) in cells:
+            for (nc, nr) in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
+                if (nc, nr) in own:
+                    continue
+                if self.raster.in_bounds(nc, nr) and \
+                        self.raster.at(nc, nr) in self.CAR_CLASSES:
+                    touches = True
+                    break
+            if touches:
+                break
+        if touches:
+            return
+        cx = sum(c for c, _ in cells) / len(cells) * GRID_CELL
+        cy = sum(r for _, r in cells) / len(cells) * GRID_CELL
+        tgt = nearest_cell(self.raster, cx, cy, self.CAR_CLASSES,
+                           self.MOUTH_REACH_CELLS)
+        if tgt is None:
+            warn("parcel", f"{part.get('id')}: campo transitable SIN calle a "
+                 f"{self.MOUTH_REACH_CELLS} celdas — queda aislado")
+            return
+        # Ancha como la calle auxiliar de un kiosco: una boca de un carril se
+        # cierra sola con el redondeo del raster.
+        self.raster.stamp_polyline([cx, cy, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
+        log("parcel", f"{part.get('id')}: boca de entrada abierta hasta "
+            f"({round(tgt[0])},{round(tgt[1])}) — estaba rodeado de suelo "
+            f"que es pared para un carro")
 
     def _manzana_ground(self, under, cell):
         """The whole cuadra a site FILLS, as that site's ground.

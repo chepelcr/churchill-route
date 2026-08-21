@@ -104,6 +104,33 @@ class SanityTests(unittest.TestCase):
         self.assertAlmostEqual(math.hypot(*field.at(1400, 2000)), 0.0, delta=0.5)
 
 
+class WaterTests(unittest.TestCase):
+    """EL AGUA NO SE MUEVE, y esto es lo que hace jugable la Travesía.
+
+    Sin clavarla, el pueblo se mete en el corredor navegable al separarse: el
+    canal dragado se cerró a 12 px de media caña contra un casco de 34 y el
+    propio build lo avisó. Ganar suelo de manzana a cambio de una etapa entera
+    no es un cambio, es un mal intercambio."""
+
+    def test_water_stays_exactly_where_it_was(self):
+        # un pueblo, y un canal justo al lado
+        town = grid_town()
+        canal = [2100, 400, 2600, 400, 2600, 2200, 2100, 2200]
+        field = D.build(town, waters=[canal])
+        for (x, y) in ((2150, 800), (2350, 1300), (2550, 2000)):
+            self.assertAlmostEqual(math.hypot(*field.at(x, y)), 0.0, delta=0.6,
+                                   msg=f"el agua se movió en ({x},{y})")
+
+    def test_the_town_still_opens_up_beside_the_water(self):
+        """Clavar el agua no puede costar la separación: si la costase, el
+        arreglo habría cambiado un problema por otro."""
+        delta = D.steal_px("residential")
+        field = D.build(grid_town(), waters=[[2100, 400, 2600, 400, 2600, 2200, 2100, 2200]])
+        a = field.point(1050, 1050)
+        b = field.point(1350, 1050)
+        self.assertAlmostEqual((b[0] - a[0]) - 300, delta, delta=2.0)
+
+
 class WireTests(unittest.TestCase):
     """EL FORMATO QUE VIAJA. `meta.geo` describe una afín y con dilatación la
     proyección deja de serlo, así que el cliente necesita además esta

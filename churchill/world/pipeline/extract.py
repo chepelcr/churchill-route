@@ -53,7 +53,11 @@ def extract_world(osm_source):
     # ninguna etapa aguas abajo se entera de que esto existe.
     if DILATION_ON:
         probe_roads, _ = extract_roads(sp, ways, dims.w, dims.h)
-        sp.warp = dilation_build(probe_roads)
+        # …y el AGUA, para clavarla. Sin esto el pueblo se mete en el corredor
+        # navegable al separarse: el canal de la Travesía se cerró a 12 px de
+        # media caña contra un casco de 34 y la etapa dejó de poderse jugar.
+        _pb, probe_waters = extract_areas(sp, ways, relations, dims.w, dims.h)
+        sp.warp = dilation_build(probe_roads, waters=probe_waters)
     else:
         log("dilate", "apagada (DILATION=0): las calles siguen comiéndose la manzana")
 

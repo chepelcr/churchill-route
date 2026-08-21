@@ -246,7 +246,7 @@ def _clusters(cells):
     return out
 
 
-def _solve(cells, comp):
+def _solve(cells, comp, water=frozenset()):
     """Resuelve una rejilla local. Devuelve (c0, r0, cols, rows, ux, uy).
 
     NO es un suavizado: una manzana tiene que quedar RÍGIDA y el salto ocurre
@@ -378,6 +378,9 @@ def _solve(cells, comp):
         ci, ri = i % cols, i // cols
         if ci == 0 or ri == 0 or ci == cols - 1 or ri == rows - 1:
             fixed[i] = 1                 # …y en el borde del parche no hay campo
+        elif (ci + c0, ri + r0) in water:
+            ux[i] = uy[i] = 0.0
+            fixed[i] = 1                 # EL AGUA NO SE MUEVE
     # …y lo que queda —la calzada y el campo abierto— se suaviza entre esas dos
     # condiciones. Así el salto ocurre EN la calle (que es donde tiene que
     # ocurrir), el campo baja a cero antes del borde del parche, y nada se rasga.
@@ -399,19 +402,59 @@ def _solve(cells, comp):
     return (c0, r0, cols, rows, ux, uy)
 
 
-def build(roads):
+def _water_cells(waters):
+    """{(c, r)} — las celdas que son AGUA, para clavarlas.
+
+    EL ESTERO NO SE MUEVE. La primera versión de esto no sabía dónde estaba el
+    agua —el campo se calcula antes de que exista el raster— así que al separar
+    las manzanas el pueblo se metía en el corredor navegable: el canal dragado
+    de la Travesía se cerró a 12 px de media caña contra un casco de 34, y el
+    propio build lo avisó («21 muestras bajo 64px»). Una etapa entera dejaba de
+    poderse jugar para ganar suelo de manzana, que no es un cambio: es un
+    intercambio malo.
+
+    Clavarlas a cero cuesta una segunda pasada de `extract_areas` sobre las
+    mismas vías —barata, porque lo caro fue el parseo— y deja el golfo, el
+    estero y los ríos exactamente donde el mapeador los puso.
+    """
+    out = set()
+    for flat in waters or ():
+        pts = [(flat[i], flat[i + 1]) for i in range(0, len(flat) - 1, 2)]
+        if len(pts) < 3:
+            continue
+        xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
+        c0, c1 = int(min(xs) // DCELL), int(max(xs) // DCELL)
+        r0, r1 = int(min(ys) // DCELL), int(max(ys) // DCELL)
+        if (c1 - c0) * (r1 - r0) > 4_000_000:      # un polígono absurdo, no un agua
+            continue
+        for r in range(r0, r1 + 1):
+            y = r * DCELL + DCELL / 2
+            xs_hit = []
+            for i in range(len(pts)):
+                ax, ay = pts[i]; bx, by = pts[(i + 1) % len(pts)]
+                if (ay > y) != (by > y):
+                    xs_hit.append(ax + (y - ay) * (bx - ax) / ((by - ay) or 1e-9))
+            xs_hit.sort()
+            for k in range(0, len(xs_hit) - 1, 2):
+                for c in range(int(xs_hit[k] // DCELL), int(xs_hit[k + 1] // DCELL) + 1):
+                    out.add((c, r))
+    return out
+
+
+def build(roads, waters=None):
     """El campo de dilatación para esta red de calles."""
     cells = _road_cells(roads)
     if not cells:
         warn("dilate", "no hay calles con ancho exagerado — campo vacío")
         return Dilation([])
+    water = _water_cells(waters)
     comps = _clusters(cells)
     comps.sort(key=len, reverse=True)
     patches, total = [], 0
     for comp in comps:
         if len(comp) < 12:            # un camino suelto en el campo, no un pueblo
             continue
-        patch = _solve(cells, comp)
+        patch = _solve(cells, comp, water)
         patches.append(patch)
         total += patch[2] * patch[3]
     field = Dilation(patches)
@@ -424,5 +467,6 @@ def build(roads):
                 mx = d
     log("dilate", f"{len(cells)} celdas de calle en {len(comps)} clústers -> "
         f"{len(patches)} rejillas ({total/1000:.0f}k celdas), "
+        f"{len(water)} celdas de agua clavadas, "
         f"desplazamiento máximo {mx:.0f}px")
     return field

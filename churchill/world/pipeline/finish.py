@@ -12,7 +12,8 @@ no drivable pad and was never a delivery target.
 import time
 
 from ..config import (
-    ACERA_CELLS, CLS_LAND, CUAD, CUADS_PER_VIEW, DEBUG_PNG, DEBUG_SVG,
+    ACERA_CELLS, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD, CUADS_PER_VIEW,
+    DEBUG_PNG, DEBUG_SVG,
     DRIVABLE_CLASSES, GRID_CELL, KIOSK_WATER_CLEAR_PX,
     MARINE_POOL_GROUND_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
@@ -155,25 +156,49 @@ def verify(ctx, *, spawn, gate_pois):
             f"{'IS' if ok else 'is NOT'} on the drivable network reached from the spawn")
         if not ok:
             ctx.failures.append(f"unreachable pier {pier['id']}(landward base)")
-    # UNA CANCHA A LA QUE NO SE ENTRA NO ES UNA CANCHA, y esta compuerta faltaba.
-    # `verify_connectivity` cubre los POIs —kioscos y clientes— pero no las
-    # PARCELAS, así que la Cancha Multiusos del Paseo se publicó siendo
-    # inalcanzable y pasó la verificación: al crecer a su tamaño real quedó como
-    # una isla de calzada dentro del malecón, que es pared para un carro
-    # (`isWall` en src/game/physics.js). El suelo estaba bien; nadie preguntaba
-    # por el acceso. Un campo abierto se estampa transitable PARA QUE SE ENTRE,
-    # así que si no está en la red que el spawn alcanza, es un fallo del build.
+    # UNA CANCHA A LA QUE NO SE ENTRA NO ES UNA CANCHA, y esta compuerta
+    # faltaba: `verify_connectivity` cubre los POIs pero no las PARCELAS, así
+    # que la Cancha Multiusos del Paseo se publicó inalcanzable y pasó la
+    # verificación — al crecer a su tamaño real quedó como una ISLA de calzada
+    # dentro del malecón, que es pared para un carro (`isWall` en physics.js).
+    #
+    # LA PREGUNTA ES LOCAL, NO «¿llega el spawn?». Pedir alcance desde el spawn
+    # marcó 61 canchas de Esparza, Barranca y Caldera que están perfectamente
+    # bien: a esos distritos se llega en lancha, y su red no toca la del centro
+    # por diseño. Lo que hace mala a una cancha no es estar lejos, es estar
+    # CERRADA — así que se pregunta si desde ella se puede SALIR de su propia
+    # huella por suelo manejable.
+    ESCAPE = (CLS_ROAD, CLS_BOULEVARD)
     for P in ctx.parcels:
         if P.get("use") not in ("plaza", "stadium"):
             continue
         px_, py_ = P.get("cx"), P.get("cy")
         if px_ is None or py_ is None:
             continue
-        c, r = int(px_ // cell), int(py_ // cell)
-        if not (ctx.raster.in_bounds(c, r) and reached[r * cols + c]):
+        x0, y0 = P.get("x0", px_), P.get("y0", py_)
+        x1, y1 = P.get("x1", px_), P.get("y1", py_)
+        margin = 3 * cell
+        seen_c = {(int(px_ // cell), int(py_ // cell))}
+        stack = list(seen_c)
+        escaped = False
+        while stack and len(seen_c) < 4000 and not escaped:
+            c, r = stack.pop()
+            for (nc, nr) in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
+                if (nc, nr) in seen_c or not ctx.raster.in_bounds(nc, nr):
+                    continue
+                if ctx.raster.at(nc, nr) not in ESCAPE:
+                    continue
+                wx, wy = nc * cell, nr * cell
+                if (wx < x0 - margin or wx > x1 + margin
+                        or wy < y0 - margin or wy > y1 + margin):
+                    escaped = True
+                    break
+                seen_c.add((nc, nr))
+                stack.append((nc, nr))
+        if not escaped:
             ctx.failures.append(
-                f"unreachable field {P.get('id')}(open field stamped drivable "
-                f"but not on the network the spawn reaches)")
+                f"walled-in field {P.get('id')}(stamped drivable but its own "
+                f"footprint is an island — nothing to drive in from)")
 
     # NO KIOSK STANDS IN THE GULF. The stand is 32 px of art with a 22 px
     # shadow, and the build only ever tested its geo ANCHOR for water — which is

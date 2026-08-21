@@ -198,11 +198,11 @@ function drawBuoy(b, view, t) {
 // way, which is the whole reason she is an obstacle and not scenery.
 function drawPanga(e, view, t) {
   const actor = resolveActorRecord(ACTORS, "esteroPanga");
-  const motion = actorAnimationValues(actor.animations, { timeMs: t, phase: e.ph });
+  const motion = actorAnimationValues(actor.animations, { timeMs: t * 1000, phase: e.ph });
   ctx.save();
   ctx.translate(e.x, e.y + motion.bob);
   ctx.rotate(e.a + motion.yaw);
-  paintActor(ctx, ACTORS, "esteroPanga", { phase: e.ph, timeMs: t });
+  paintActor(ctx, ACTORS, "esteroPanga", { phase: e.ph, timeMs: t * 1000 });
   // El pescador rides HER FRAME — after the hull, still inside her transform,
   // so he leans and bobs with her instead of hovering over the spot she was.
   // His hue comes off the entity's own phase (hash01, never Math.random: the
@@ -210,7 +210,7 @@ function drawPanga(e, view, t) {
   paintActor(ctx, ACTORS, "fisher", {
     x: -17 * 0.36, y: 0,
     hue: Math.round(hash01(e.ph * 12.9898 + 4.1) * 320),
-    phase: t * 1.4 + e.ph, timeMs: t,
+    phase: t * 1.4 + e.ph, timeMs: t * 1000,
   });
   ctx.restore();
 }
@@ -220,7 +220,7 @@ function drawFish(e, view, t) {
   paintActor(ctx, ACTORS, "esteroFish", {
     x: e.x, y: e.y,
     rotation: e.a + Math.sin(t * 0.8 + e.ph) * 0.3,
-    phase: e.ph, timeMs: t, variant: e.taken ? "taken" : undefined,
+    phase: e.ph, timeMs: t * 1000, variant: e.taken ? "taken" : undefined,
   });
 }
 
@@ -232,7 +232,7 @@ function drawGulls(e, view, t) {
     const y = e.y + Math.sin(a + t * 0.9) * (9 + i * 1.7) - Math.sin(t * 3 + i) * 3;
     const w = 3.4 + (i % 3) * 0.7;
     paintActor(ctx, ACTORS, "esteroGull", {
-      x, y, phase: i, timeMs: t, wingW: w, negW: -w,
+      x, y, phase: i, timeMs: t * 1000, wingW: w, negW: -w,
     });
   }
 }
@@ -241,7 +241,7 @@ function drawGulls(e, view, t) {
 // a boat cutting the corner, which is exactly what they are for.
 function drawRoots(e, view, t) {
   paintActor(ctx, ACTORS, "esteroRoots", {
-    x: e.x, y: e.y, rotation: e.a, phase: e.ph, timeMs: t,
+    x: e.x, y: e.y, rotation: e.a, phase: e.ph, timeMs: t * 1000,
   });
 }
 
@@ -255,7 +255,7 @@ function drawRemolino(e, view, t) {
   const spin = e.pull !== undefined ? Math.sign(e.pull) || 1 : (hash01(e.ph) < 0.5 ? -1 : 1);
   paintActor(ctx, ACTORS, "esteroRemolino", {
     x: e.x, y: e.y, rotation: e.ph + t * 0.9 * spin,
-    phase: e.ph, timeMs: t, radius: e.r,
+    phase: e.ph, timeMs: t * 1000, radius: e.r,
   });
 }
 
@@ -358,14 +358,14 @@ function drawBanco(e, level, t) {
   // AGROUND. The float text and the camera shake already say this loudly, so
   // all the bank does is churn: a little disturbed water working around her.
   if (e.aground) {
-    const puls = 0.5 + 0.5 * Math.sin(t * 0.006 + e.ph);
+    const puls = 0.5 + 0.5 * Math.sin(t * 6 + e.ph);
     ctx.strokeStyle = alphaColor(aground.rgb,
       aground.alphaBase + aground.alphaRange * puls);
     ctx.lineWidth = aground.width;
     bankPath(e, Ro * (aground.radiusBase + aground.radiusRange * puls), 0.16); ctx.stroke();
     ctx.fillStyle = E.banco.dry;
     for (let i = 0; i < 5; i++) {
-      const a = e.ph + i * 1.27 + t * 0.0008;
+      const a = e.ph + i * 1.27 + t * 0.8;
       const rr = Ro * (0.9 + hash01(e.ph + i * 5.1) * 0.3);
       ctx.beginPath();
       ctx.arc(Math.cos(a) * rr * 1.2, Math.sin(a) * rr * 0.8, 1.3, 0, Math.PI * 2);
@@ -407,7 +407,7 @@ function drawPescador(e, view, t) {
   // itself somewhere else entirely. He is two shapes; the net is the obstacle.
   ctx.restore();
   paintActor(ctx, ACTORS, "esteroPescadorBoat", {
-    x: e.x, y: e.y, rotation: e.a + Math.PI / 2, phase: e.ph, timeMs: t,
+    x: e.x, y: e.y, rotation: e.a + Math.PI / 2, phase: e.ph, timeMs: t * 1000,
   });
 }
 
@@ -418,7 +418,7 @@ function drawPescador(e, view, t) {
 // is a thing you can see rather than a thing you find out.
 function drawYate(e, view, t) {
   paintActor(ctx, ACTORS, "esteroYacht", {
-    x: e.x, y: e.y, rotation: e.a, phase: e.ph, timeMs: t, radius: e.r,
+    x: e.x, y: e.y, rotation: e.a, phase: e.ph, timeMs: t * 1000, radius: e.r,
   });
 }
 

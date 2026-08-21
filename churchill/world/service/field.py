@@ -652,9 +652,14 @@ class FieldService:
                 if not b.get("green") and any(c in cuads for c in b["cells"]):
                     b["green"] = True
         if part["use"] in (ParcelUse.PLAZA, ParcelUse.STADIUM):   # drivable open field
+            # LA BOCA SE ABRE ANTES DE ESTAMPAR. Al revés no sirve de nada y
+            # no se nota: con la cancha ya puesta a `CLS_ROAD`, la búsqueda de
+            # «la calzada más cercana» encuentra la cancha MISMA a una celda de
+            # distancia y estampa un enlace de la parcela a la parcela. La
+            # compuerta de `finish.verify` es la que lo dijo.
+            self._open_a_mouth(part, cells)
             for (c, r) in cells:
                 self.raster.set(c, r, CLS_ROAD)
-            self._open_a_mouth(part, cells)
         elif part["use"] == ParcelUse.BOULEVARD:
             # A calle peatonal is its OWN surface class, not asphalt: transitable
             # (Surface.DRIVABLE) but slow, and the client paints it as stone

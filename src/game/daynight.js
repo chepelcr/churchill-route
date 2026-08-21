@@ -83,6 +83,34 @@ export function setDayCycle(on, at = 0) {
   if (on) apply(true);
 }
 
+/**
+ * PEDIR UNA TORMENTA, y que llueva de verdad.
+ *
+ * `s5` se llama «Tormenta en El Cocal» y hacía `state.weather = "storm"` y nada
+ * más: nadie arrancaba el ciclo, así que `cycle.storm` se quedaba en 0 y la
+ * etapa tenía la PALETA de tormenta y ni una gota — sin lluvia, sin relámpagos,
+ * sin agarre mojado, y `lightsOn()` sin enterarse de que el cielo estaba
+ * cerrado. Es el mismo patrón que ya mordió con las ordas de gaviotas: lo que
+ * una etapa AJUSTA tiene que existir en el registro, no inventarse a medias.
+ *
+ * `ramp` decide si la tormenta ya está encima (una etapa que se llama Tormenta
+ * empieza mojada) o si se ve venir, que es lo que hace el planificador.
+ */
+export function forceStorm({ ramp = false, severity = null, hold = false } = {}) {
+  cycle.before = state.weather;
+  // UNA ETAPA QUE SE LLAMA «TORMENTA» LLUEVE TODA LA ETAPA. El planificador
+  // sortea una duración porque una tormenta que pasa es lo que hace viva a la
+  // ciudad; una tormenta AUTORADA es el clima del nivel, y que escampe a los
+  // noventa segundos convierte su nombre en mentira a media partida.
+  cycle.stormLeft = hold ? Infinity : rand(STORM_LASTS);
+  cycle.severity = severity == null ? rand(SEVERITY) : severity;
+  cycle.boltIn = rand(LIGHTNING_EVERY);
+  cycle.storm = ramp ? 0 : 1;
+  cycle.wet = ramp ? 0 : 1;
+  cycle.wetSeverity = cycle.severity;
+  state.weather = "storm";
+}
+
 export function dayCycleOn() { return cycle.on; }
 
 /** 0..1 through the day — for anything that wants a continuous hour. */

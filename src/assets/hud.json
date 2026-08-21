@@ -1,12 +1,8 @@
 {
   "_note": "EL HUD — the inks of everything drawn over the world: the minimap, the compass, the POI tags, the rain and the two things that take the view away (the night vignette and a gull crossing the camera). `src/render/c2d/hud.js` keeps the geometry and the projections; this is the palette.",
-
   "version": 1,
-
   "_split": "A colour and a size are here. Which roads the minimap draws in what ORDER is not — that ordering is the whole reason it reads as a map (casing under everything, then the network, then the Paseo last), and it is a z-order, not a preference. Nor is the projection from world px to the little rectangle.",
-
   "_elsewhere": "The minimap's barro, lastre, rail, ferry and bridge inks, the pier decks and the planted median's green are NOT here: they came from `materials.json` already, and they must keep coming from there. The minimap once held its own copy of the two pier decks with a comment pointing at the file it had copied them from.",
-
   "poiTags": {
     "_note": "The real business names, drawn over the ground at a SCREEN-CONSTANT size so the port reads as the real place without the labels competing with driving. One tone per OSM category — the colour is the only thing saying what kind of place it is, since there is no room for an icon.",
     "_key": "the OSM top-level key of the feature",
@@ -19,7 +15,6 @@
     "craft": "#c9a227",
     "historic": "#b0895f"
   },
-
   "compass": {
     "_note": "The arrow at the top of the screen. It points at the customer when you are carrying, the nearest kiosk when you are not — and on the estero at the MOUTH of the next gate, never at a buoy, because steering at a mark steers you into it.",
     "_history": "The crossing refused a compass on principle for a while: the estuary was meant to be read diegetically, off the marks and the water. That held while the boat was on a rail. Freed, the same 7 km read as a corridor, because the only thing keeping you on the channel was a drag that punished you for leaving it. The drag is gone and this took its place.",
@@ -34,12 +29,28 @@
       "crossing": "#9fd7ef",
       "carrying": "#ff3d80",
       "idle": "#ffe06b",
-      "points": [[17, 0], [-9, -11], [-4, 0], [-9, 11]],
+      "points": [
+        [
+          17,
+          0
+        ],
+        [
+          -9,
+          -11
+        ],
+        [
+          -4,
+          0
+        ],
+        [
+          -9,
+          11
+        ]
+      ],
       "outlineWidth": 1.5,
       "_note": "three states, three colours — a glance has to answer 'am I fetching or delivering' without reading the label"
     }
   },
-
   "minimap": {
     "_note": "The little map. Its own palette and NOT the world's: the minimap is read in a fifth of a second at a tenth of the size, so it needs contrast the painted world does not — the land is nearly black so the street network reads as light on dark.",
     "radius": 76,
@@ -49,7 +60,24 @@
     "targetR": 3.4,
     "targetPulse": 1.1,
     "targetRimInset": 9,
-    "playerPoints": [[0, -8], [6, 7], [0, 3.5], [-6, 7]],
+    "playerPoints": [
+      [
+        0,
+        -8
+      ],
+      [
+        6,
+        7
+      ],
+      [
+        0,
+        3.5
+      ],
+      [
+        -6,
+        7
+      ]
+    ],
     "playerOutlineWidth": 1.5,
     "rimWidth": 2,
     "casing": "#39405a",
@@ -73,7 +101,6 @@
     "malecon": "#efdcb4",
     "maleconNote": "the sea front: warm baldosa, not town stone"
   },
-
   "weather": {
     "_note": "Screen-space animated effects. The engine supplies the clock and live intensity; this registry owns their inks, counts, proportions and alpha ramps.",
     "rain": {
@@ -89,11 +116,12 @@
       "slant": 0.6,
       "xStride": 73,
       "yStride": 137,
-      "xSpeedBase": 0.4,
-      "xSpeedPerIntensity": 0.35,
-      "ySpeedBase": 0.9,
-      "ySpeedPerIntensity": 0.7,
-      "note": "The storm tint itself is materials.weather; these are only the visible streaks."
+      "xSpeedBase": 400.0,
+      "xSpeedPerIntensity": 350.0,
+      "ySpeedBase": 900.0,
+      "ySpeedPerIntensity": 700.0,
+      "note": "The storm tint itself is materials.weather; these are only the visible streaks.",
+      "_speedNote": "EN PÍXELES POR SEGUNDO. Estaban en px/MILISEGUNDO porque el reloj del render venía en ms; al pasar el reloj a segundos una gota se movía 0.9 px/s y la lluvia era una imagen fija. El valor es el mismo movimiento que se afinó a ojo, expresado en la unidad que ahora se declara."
     },
     "gullBlind": {
       "duration": 1.1,
@@ -143,7 +171,7 @@
       "sand": "#c39d6b",
       "water": "#3f95b8",
       "waterline": "rgba(255,255,255,0.75)",
-        "ticks": "rgba(255,255,255,0.30)",
+      "ticks": "rgba(255,255,255,0.30)",
       "moonLit": "#e8e4cf",
       "moonDark": "rgba(255,255,255,0.16)",
       "moonNote": "LA FASE DE LA LUNA, junto a la marea porque es su CAUSA. La barra dice cuánta agua hay; el disco dice por qué su rango es el que es — llena o nueva y la marea es viva, cuarto y es muerta. Sin él, el jugador ve que la Travesía cambió de dificultad y no tiene con qué explicárselo."

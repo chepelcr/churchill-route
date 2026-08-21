@@ -125,7 +125,9 @@ function drawCompass(vw, vh) {
   const dx = target.x - p.x, dy = target.y - p.y;
   const d = Math.hypot(dx, dy);
   if (d < C.minDistance) return;
-  const a = Math.atan2(dy, dx);
+  // …y el rumbo se pasa a coordenadas de PANTALLA. `atan2` da un ángulo del
+  // mundo, que es lo que hay que apuntar sólo mientras la cámara no gire.
+  const a = Math.atan2(dy, dx) - camRot();
   const cx = vw / 2, cy = C.centreY;
   const mode = cross ? "crossing" : state.carrying ? "carrying" : "idle";
   paintCompassDial(ctx, C, cx, cy, a, mode);
@@ -144,6 +146,20 @@ function drawCompass(vw, vh) {
   ctx.fillStyle = cross ? C.needle.crossing : state.carrying ? C.needle.carrying : C.needle.idle;
   ctx.fillText(label, cx, cy + 39);
 }
+
+/**
+ * CUÁNTO ESTÁ GIRADO EL MUNDO EN PANTALLA, en radianes.
+ *
+ * `state.cam.rot` lo leían SÓLO el compositor (`canvas2d.js`, que gira el mundo)
+ * y el volante (`input.js`, que corrige el rumbo del dedo). El HUD no lo leía
+ * nunca, así que en El Cocal —la única etapa rotada, 90°— el minimapa seguía
+ * apuntando al norte del MUNDO mientras la pantalla apuntaba a otro lado, y la
+ * flecha de entrega señalaba noventa grados fuera del cliente.
+ *
+ * Con nombre y en un solo sitio a propósito: escrito dos veces con dos
+ * convenciones distintas es el fallo que `lightsOn()` documenta.
+ */
+function camRot() { return state.cam.rot || 0; }
 
 function drawRain(vw, vh, t, force = 1) {
   const R = HUD.weather.rain;
@@ -663,8 +679,11 @@ function drawMinimap(vw, vh, t) {
   ctx.fill();
   ctx.clip();
 
-  // world → dial transform (north up, car at center)
+  // world → dial transform (car at centre, ARRIBA = arriba en la pantalla)
+  // No es «north up»: es el norte de la PANTALLA. En una etapa rotada el mundo
+  // se dibuja girado y un dial sin girar es un mapa de otro sitio.
   ctx.translate(cx, cy);
+  ctx.rotate(camRot());
   ctx.scale(s, s);
   ctx.translate(-p.x, -p.y);
 
@@ -713,23 +732,29 @@ function drawMinimap(vw, vh, t) {
   miniMedians(vts, mv);                         // …and the palm median splitting it
   ctx.restore();
 
-  // target blip in screen space (north-up: plain scaled offset)
+  // El blip del destino se dibuja en coordenadas de PANTALLA, fuera del marco
+  // del dial, así que le toca girar por su cuenta: era un desplazamiento del
+  // mundo escalado y nada más, correcto sólo mientras la cámara no girara.
   const tgt = state.carrying ? state.carrying.customer : nearestKiosk(p).lm;
   if (tgt) {
-    let mx = (tgt.x - p.x) * s;
-    let my = (tgt.y - p.y) * s;
+    const rot = camRot(), cr = Math.cos(rot), sr = Math.sin(rot);
+    const wx = (tgt.x - p.x) * s, wy = (tgt.y - p.y) * s;
+    let mx = wx * cr - wy * sr;
+    let my = wx * sr + wy * cr;
     const d = Math.hypot(mx, my), lim = R - MINI.targetRimInset;
     if (d > lim) { mx *= lim / d; my *= lim / d; }   // pin to the rim when far
-    const pulse = MINI.targetR + Math.sin(t * 0.006) * MINI.targetPulse;
+    const pulse = MINI.targetR + Math.sin(t * 6) * MINI.targetPulse;
     ctx.fillStyle = state.carrying ? HP.minimap.target : HP.minimap.npc; // NPC / target = red
     ctx.beginPath(); ctx.arc(cx + mx, cy + my, pulse, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = HP.minimap.targetRing; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(cx + mx, cy + my, pulse, 0, Math.PI * 2); ctx.stroke();
   }
 
-  // the car: gold arrow in the center, rotated to the travel heading
+  // El carro: la flecha dorada del centro, apuntando a donde va — y `p.a` es un
+  // rumbo del MUNDO, así que en una etapa girada hay que llevarlo a pantalla
+  // igual que el dial.
   const dial = { ...MINI, ...HP.minimap };
-  paintMinimapPlayer(ctx, dial, cx, cy, p.a);
+  paintMinimapPlayer(ctx, dial, cx, cy, p.a + camRot());
   paintMinimapRim(ctx, dial, cx, cy);
 }
 

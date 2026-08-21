@@ -7,7 +7,7 @@ import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns
 import { ferries, resetFerries, routePoint } from "./ferries.js";
 import { startCrossing, crossingCondition, resetCrossing } from "./crossing.js";
 import { setTide } from "./tides.js";
-import { setDayCycle } from "./daynight.js";
+import { forceStorm, setDayCycle } from "./daynight.js";
 import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers, bumpCrossingRuns } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
@@ -206,7 +206,7 @@ export function startStage(stageIdx, vehicleKey) {
   // pantalla en vez de cruzarla. Es de la CÁMARA, no del mundo — ninguna
   // coordenada cambia — y se limpia al salir, o el giro se filtra al siguiente.
   state.cam.rot = (stg.rotate || 0) * Math.PI / 180;
-  state.weather = stg.weather;
+  applyWeather(stg.weather, { hold: true });
   setDayCycle(false);          // a stage's sky is part of its brief
   // …EXCEPT THE TRAVESÍA, whose sky and tide ARE the brief. The estero is a
   // different course at bajamar than at pleamar and a different one again in an
@@ -303,7 +303,7 @@ export function startArcade(opts = {}) {
   // ARCADE PICKS ITS SKY. Three minutes is shorter than any phase of the day,
   // so a cycle here would either never turn or strobe; the run says what it
   // wants and keeps it. `cycle` is offered for anyone who wants the turn.
-  state.weather = opts.weather || authoredWeather();
+  applyWeather(opts.weather || authoredWeather());
   setDayCycle(Boolean(opts.cycle), opts.dayAt ?? 0);
   state.timeLeft = ARCADE_DURATION_S;
   const rv = resolveVehicle(authoredVehicle("arcade", opts.vehicleKey));
@@ -343,7 +343,7 @@ export function startExplore(opts = {}) {
   // night, amanecer — with a storm rolling in now and then and handing the sky
   // back where it left off. An explicit `weather` still wins: asking for one
   // and getting a cycle would be a bug, not a feature.
-  state.weather = opts.weather || authoredWeather();
+  applyWeather(opts.weather || authoredWeather());
   setDayCycle(!opts.weather, Math.random());
   state.timeLeft = UNTIMED;
   const rv = resolveVehicle(authoredVehicle("explore", opts.vehicleKey));
@@ -414,6 +414,20 @@ export function startTutorial(opts = {}) {
   pickCustomerNear(k0.x, k0.y); // short, predictable first delivery
   initTutorial();
   analytics.track("run_start", { mode: "tutorial", vehicle: state.vehicleKey });
+}
+
+/**
+ * PONER EL CLIMA, y que el clima OCURRA.
+ *
+ * Era `state.weather = …` en tres sitios, y para «storm» eso sólo cambiaba el
+ * nombre: la lluvia, los relámpagos, el agarre mojado y el alumbrado de día
+ * cuelgan todos de la RAMPA (`cycle.storm`), que nadie arrancaba. La etapa
+ * `s5 Tormenta en El Cocal` llevaba así desde que existe — con la paleta de
+ * tormenta y ni una gota.
+ */
+function applyWeather(w, opts = {}) {
+  state.weather = w;
+  if (w === "storm") forceStorm(opts);
 }
 
 export function setWeather(w) { state.weather = w; }

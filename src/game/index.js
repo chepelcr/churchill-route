@@ -24,7 +24,14 @@ function loop(t) {
   lastT = t;
   if (state.running) update(dt);
   else if (state.attract) attractTick(dt);
-  render(t);
+  // EL RENDERER CUENTA EN SEGUNDOS, igual que el sim. `t` viene de rAF en
+  // MILISEGUNDOS y aquí se convertía sólo para `dt`, así que el render recibía
+  // ms y cada dibujante decidía por su cuenta qué unidad creía tener: unos
+  // convertían local (`t * 0.001`), otros venían afinados en ms (`t * 0.006`) y
+  // muchos en segundos (`t * 0.7`, o el `spin` de la feria en vueltas/segundo).
+  // Estos últimos corrían MIL VECES rápido — la rueda de Chicago daba 1200 rpm
+  // y el resto hacía alias, que se lee como ruido y no como un error.
+  render(t / 1000);
   requestAnimationFrame(loop);
 }
 

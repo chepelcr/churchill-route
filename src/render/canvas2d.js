@@ -56,9 +56,13 @@ function setPixiLandmarks(v) { PIXI_LANDMARKS = !!v; }
 // until the Pixi landmark path is verified.
 const PIXI_MIGRATED = new Set();
 
-function render(t) {
+function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
   if (!ctx) return;
-  setLastT(t);
+  // `lastT` alimenta `timeMs`, que es un contrato con nombre que los registros
+  // de actores usan en MILISEGUNDOS (`rate` está afinado ahí). El arreglo no es
+  // renombrar ese contrato: es que deje de haber un reloj SIN nombre. Uno de
+  // los dos dice en qué unidad está.
+  setLastT(t * 1000);
   const cw = canvas.width, ch = canvas.height;
   const vw = cw / dpr, vh = ch / dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

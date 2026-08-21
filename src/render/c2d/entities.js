@@ -61,7 +61,7 @@ function drawArcadeCoin(c, t) {
   const fallback = c.silver ? ACTORS.coins.silver : ACTORS.coins.gold;
   const metal = c.palette || ACTORS.coins[c.coinType] || fallback;
   paintActorForm(ctx, ACTORS, metal.form || "coin", {
-    x: c.x, y: c.y, phase: c.t || 0, timeMs: t,
+    x: c.x, y: c.y, phase: c.t || 0, timeMs: t * 1000,
     radius: metal.r, fontBase: c.silver ? 11 : 9,
     rim: metal.rim, face: metal.face, mark: metal.mark,
   });
@@ -187,12 +187,12 @@ function drawTrain(tr, t) {
   for (let k = tr.cars.length - 1; k >= 0; k--) {
     const c = tr.cars[k];
     paintActorForm(ctx, ACTORS, k === 0 ? C.first : C.rest, {
-      x: c.x, y: c.y, rotation: c.ang, timeMs: t,
+      x: c.x, y: c.y, rotation: c.ang, timeMs: t * 1000,
     });
   }
   const l = tr.cars[0];
   if (l) paintActorForm(ctx, ACTORS, C.smoke, {
-    x: l.x, y: l.y, angle: l.ang, timeMs: t,
+    x: l.x, y: l.y, angle: l.ang, timeMs: t * 1000,
   });
 }
 
@@ -257,7 +257,7 @@ function drawSchool(sc, t) {
   for (const b of sc.fleet) {
     if (b.x === undefined) continue;
     paintActorForm(ctx, ACTORS, C.boat, {
-      x: b.x, y: b.y, rotation: b.a || 0, timeMs: t,
+      x: b.x, y: b.y, rotation: b.a || 0, timeMs: t * 1000,
     });
     paintActor(ctx, ACTORS, C.fisher, actorFrame(C.fisher, {
       ...b, y: b.y - 1, ph: b.ph || 0,

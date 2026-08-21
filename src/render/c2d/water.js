@@ -155,7 +155,7 @@ function emit(src, x, y, speed, scale, now, wi) {
  * water paths in world coordinates).
  */
 function updateWater(t, view) {
-  const now = t * 0.001;
+  const now = t;                        // ya viene en segundos
   const dt = clock < 0 ? 0 : Math.max(0, Math.min(0.1, now - clock));
   clock = now;
   for (let i = RIPPLES.length - 1; i >= 0; i--) {
@@ -317,7 +317,7 @@ function drawShoreBreak(view, t) {
     // takes), so dividing the raw value ran the swash at ~200 cycles a second:
     // the foam strobed every frame and averaged into a static smear, which is
     // why the beach looked like it had no waves at all.
-    const T = t * 0.001;
+    const T = t;                          // ya viene en segundos
     const s = swash(T / cfg.run + sh.phase);
     const reach = tideOff - runUp * s;                       // negative = up the sand
     const band = 4 + 5 * s + storm * 5;

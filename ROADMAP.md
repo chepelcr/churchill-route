@@ -115,6 +115,17 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
 ## 4. El mundo: medido y sin cerrar
 
+- [ ] **El canal de la Travesía se estrecha a 12 px de media caña en UNA
+  muestra de 352** (`smoke:crossing` falla; el casco mide 34). Medido el
+  2026-08-22: no es un canal angosto, es la LÍNEA mal puesta — en la muestra 141
+  (26118, 8962) el centro cae sobre manglar y el agua abierta está 4..76 px al
+  lado. `CLEAR_FLOOR_NODES` dice que una polilínea simplificada tiene que dejar
+  40 px de agua a los dos lados, así que el simplificador está violando su
+  propio piso al cortar una curva. **Ya avisaba antes de la dilatación** (36 px
+  de mínima contra un casco de 34, o sea dos píxeles de margen, y el mismo WARNING
+  en el log de cada build); la dilatación se comió ese margen, no lo creó. La
+  etapa es `openAlways` y no bloquea a ninguna, que es lo que lo hace afinable
+  aparte.
 - [ ] **2 boyas siguen en tierra** (de 122). El render las suprime (`buoyWet`) y
       `smoke_crossing` las tolera dentro de presupuesto, así que no se ven — pero
       la línea las puso ahí.

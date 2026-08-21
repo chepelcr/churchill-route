@@ -657,9 +657,9 @@ class FieldService:
             # «la calzada más cercana» encuentra la cancha MISMA a una celda de
             # distancia y estampa un enlace de la parcela a la parcela. La
             # compuerta de `finish.verify` es la que lo dijo.
-            self._open_a_mouth(part, cells)
-            for (c, r) in cells:
-                self.raster.set(c, r, CLS_ROAD)
+            if self._open_a_mouth(part, cells):
+                for (c, r) in cells:
+                    self.raster.set(c, r, CLS_ROAD)
         elif part["use"] == ParcelUse.BOULEVARD:
             # A calle peatonal is its OWN surface class, not asphalt: transitable
             # (Surface.DRIVABLE) but slow, and the client paints it as stone
@@ -964,8 +964,11 @@ class FieldService:
     #: está «cerrada por el norte»: está cerrada por los cuatro lados.
     CAR_CLASSES = (CLS_ROAD, CLS_BOULEVARD)
 
-    #: Hasta dónde se busca calle para abrirle la boca a un campo aislado.
-    MOUTH_REACH_CELLS = 40
+    #: Hasta dónde se busca calle para abrirle la boca a un campo aislado, en
+    #: celdas del raster (4 px). Estaba en 40 —160 px— y cinco canchas quedaron
+    #: fuera por poco: una cancha en el interior de una manzana grande puede
+    #: estar a 300 px de la calzada más cercana sin que eso tenga nada de raro.
+    MOUTH_REACH_CELLS = 110
 
     def _open_a_mouth(self, part, cells):
         """UNA CANCHA A LA QUE NO SE ENTRA NO ES UNA CANCHA.
@@ -994,21 +997,28 @@ class FieldService:
             if touches:
                 break
         if touches:
-            return
+            return True
         cx = sum(c for c, _ in cells) / len(cells) * GRID_CELL
         cy = sum(r for _, r in cells) / len(cells) * GRID_CELL
         tgt = nearest_cell(self.raster, cx, cy, self.CAR_CLASSES,
                            self.MOUTH_REACH_CELLS)
         if tgt is None:
-            warn("parcel", f"{part.get('id')}: campo transitable SIN calle a "
-                 f"{self.MOUTH_REACH_CELLS} celdas — queda aislado")
-            return
+            # NO SE ESTAMPA LO QUE NO SE PUEDE ALCANZAR. Un campo abierto se
+            # estampa transitable PARA QUE SE ENTRE; si no hay calle a la que
+            # conectarlo, marcarlo manejable es una mentira en el raster — un
+            # pedazo de calzada suelto en medio de una manzana, que además la
+            # compuerta de `verify` tiene que salir a cazar. Se queda como suelo
+            # de parcela: se dibuja igual y no se conduce.
+            warn("parcel", f"{part.get('id')}: campo SIN calle a "
+                 f"{self.MOUTH_REACH_CELLS} celdas — se deja sin estampar")
+            return False
         # Ancha como la calle auxiliar de un kiosco: una boca de un carril se
         # cierra sola con el redondeo del raster.
         self.raster.stamp_polyline([cx, cy, tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
         log("parcel", f"{part.get('id')}: boca de entrada abierta hasta "
             f"({round(tgt[0])},{round(tgt[1])}) — estaba rodeado de suelo "
             f"que es pared para un carro")
+        return True
 
     def _manzana_ground(self, under, cell):
         """The whole cuadra a site FILLS, as that site's ground.

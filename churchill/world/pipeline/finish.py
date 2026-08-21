@@ -175,6 +175,14 @@ def verify(ctx, *, spawn, gate_pois):
         px_, py_ = P.get("cx"), P.get("cy")
         if px_ is None or py_ is None:
             continue
+        # …y sólo si de verdad se estampó transitable. Un campo que no
+        # encontró calle a la que conectarse se deja SIN estampar a propósito
+        # (ver `field._open_a_mouth`), así que no es una calzada amurallada:
+        # es suelo de parcela, y preguntarle por su red no significa nada.
+        cc, rr = int(px_ // cell), int(py_ // cell)
+        if not (ctx.raster.in_bounds(cc, rr)
+                and ctx.raster.at(cc, rr) in ESCAPE):
+            continue
         x0, y0 = P.get("x0", px_), P.get("y0", py_)
         x1, y1 = P.get("x1", px_), P.get("y1", py_)
         margin = 3 * cell

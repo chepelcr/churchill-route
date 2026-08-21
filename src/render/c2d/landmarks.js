@@ -576,10 +576,31 @@ function drawLandmark(lm) {
     drawGreenSpace(lm, pw, ph, { fountain: true, ground: false });
   }
 
-  const prop = propFor(lm.id) || propFor(lm.type);
+  // …Y UN PUESTO SE PARECE A LO QUE VENDE. Entre el id y el tipo entra el
+  // PRODUCTO: los 17 kioscos son puntos de recogida de cinco comidas distintas
+  // y los diecisiete se dibujaban como el puesto de churchill, con la palabra
+  // CHURCHILL en el rótulo — un vigorón, un ceviche y una papicarne incluidos.
+  // Sigue siendo la misma escalera de siempre (lo específico gana) y un
+  // producto sin arte propio cae al puesto genérico, así que agregar una comida
+  // no obliga a dibujarla el mismo día.
+  const prop = landmarkProp(lm);
   if (!prop) return;
   paintAt(prop.parts, x, y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars: propVars(lm, prop) });
 }
+
+/** LA ESCALERA DE RESOLUCIÓN, con nombre y exportada — id, luego tipo:producto,
+ *  luego tipo. Está afuera porque quien quiera PREVISUALIZAR un registro (una
+ *  hoja de arte, el inspector del editor) tiene que resolverlo igual que el
+ *  juego; una herramienta que se escriba su propia escalera es la misma deriva
+ *  que ya se cerró cuando el editor dibujaba un `park` en un verde distinto al
+ *  del juego. */
+export function landmarkProp(lm) {
+  return propFor(lm.id)
+    || (lm.product && propFor(`${lm.type}:${lm.product}`))
+    || propFor(lm.type);
+}
+
+export { propVars };
 
 /** The catalog record for a key, following `sameAs` — the cathedral is the
  *  same building as the church and differs only in the word on its pill.

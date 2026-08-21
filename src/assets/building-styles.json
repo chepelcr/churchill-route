@@ -1,0 +1,224 @@
+{
+  "_note": "EL COLOR DE UN EDIFICIO SALE DE LO QUE EL EDIFICIO ES.\n\nCada huella con nombre recibía `BLDG_PALETTE[rng()]`: un color al azar, estable por su id pero sin ninguna relación con el lugar. Un hotel, una iglesia, una soda y una bodega salían del mismo bombo, así que el puerto no tenía tipología visual — sólo variedad.\n\nLo que hace esto posible ya estaba emitido y sin usar: `cat`. Medido sobre el mundo publicado, 487 edificios lo traen. Y la clave NO es la etiqueta `building`, que es la que uno buscaría primero: de las 635 huellas con nombre que trae OSM en esta ventana, 571 dicen `building=yes`. Lo que sí trae la categoría real es `amenity`/`shop`/`tourism`/`office` — 80 restaurantes, 71 templos, 28 pulperías, 22 tiendas de ropa, 22 oficinas de gobierno, 18 hoteles, 16 bancos. Ésa es la llave.\n\nSe resuelve en el CLIENTE contra `cat`, no en el build, y es a propósito: `cat` ya viaja en el mundo emitido, así que reteñir el puerto entero es editar este archivo y recargar — no una reconstrucción de 33 minutos. El `color` emitido sigue siendo el respaldo, de modo que un edificio sin categoría se ve exactamente como antes.",
+  "_key": "el `cat` de un edificio, tal como lo emite churchill/world/service/osm.py (`poi_category`)",
+  "version": 1,
+  "_paletteNote": "`walls` y `roofs` son LISTAS y se escoge por el id de OSM, no por azar de cuadro: dos sodas vecinas no pueden salir del mismo color y ninguna puede cambiar de color al volver a mirarla. Una lista de un solo color es una decisión válida — un banco es institucional y no tiene por qué variar.",
+  "byCat": {
+    "tourism=hotel": {
+      "_": "cal y arena con teja: el hotel de playa del Pacífico",
+      "walls": [
+        "#efe3cc",
+        "#e8d9bd",
+        "#f2ead8",
+        "#e3d3b6"
+      ],
+      "roofs": [
+        "#a4573c",
+        "#8f4a33",
+        "#b06246"
+      ],
+      "wnd": 1
+    },
+    "amenity=place_of_worship": {
+      "_": "templo: cal blanca, techo de zinc envejecido",
+      "walls": [
+        "#f4f1e8",
+        "#eeeadd",
+        "#f7f4ec"
+      ],
+      "roofs": [
+        "#6d7c86",
+        "#5f6d77"
+      ],
+      "wnd": 1
+    },
+    "amenity=restaurant": {
+      "_": "LA SODA SE PINTA FUERTE. Es el rasgo que más se repite en el puerto (80 huellas) y el que más color tiene en la calle de verdad.",
+      "walls": [
+        "#d9532f",
+        "#e0a52a",
+        "#2f8f6f",
+        "#c93f57",
+        "#3a7fb5"
+      ],
+      "roofs": [
+        "#8d8175",
+        "#7a7168"
+      ],
+      "wnd": 1
+    },
+    "amenity=fast_food": {
+      "walls": [
+        "#e2542c",
+        "#e8a319",
+        "#c8324a"
+      ],
+      "roofs": [
+        "#8d8175"
+      ],
+      "wnd": 1
+    },
+    "amenity=bar": {
+      "_": "la cantina: más oscura que una soda, y de noche es donde hay luz",
+      "walls": [
+        "#7a3d63",
+        "#8c4430",
+        "#3f5f8a"
+      ],
+      "roofs": [
+        "#5f584f"
+      ],
+      "wnd": 1
+    },
+    "amenity=cafe": {
+      "walls": [
+        "#b5793f",
+        "#cf9a55"
+      ],
+      "roofs": [
+        "#7a7168"
+      ],
+      "wnd": 1
+    },
+    "shop=convenience": {
+      "_": "la pulpería: celeste y blanco, la fachada más común del país",
+      "walls": [
+        "#bcd7e0",
+        "#d8e6ea",
+        "#a9cbd6"
+      ],
+      "roofs": [
+        "#8b8f92"
+      ],
+      "wnd": 1
+    },
+    "shop=supermarket": {
+      "walls": [
+        "#e6e9ea",
+        "#d3dade"
+      ],
+      "roofs": [
+        "#7f868a"
+      ],
+      "wnd": 1
+    },
+    "shop=clothes": {
+      "walls": [
+        "#e7cfd8",
+        "#e3d3e6",
+        "#f0dcc8"
+      ],
+      "roofs": [
+        "#8b8f92"
+      ],
+      "wnd": 1
+    },
+    "shop=yes": {
+      "walls": [
+        "#dcd6c6",
+        "#e4dccb",
+        "#cfc7b5"
+      ],
+      "roofs": [
+        "#8b8f92"
+      ],
+      "wnd": 1
+    },
+    "shop=car_repair": {
+      "_": "el taller: portón de lámina y paredes sufridas",
+      "walls": [
+        "#9aa0a2",
+        "#8a9295",
+        "#a7a291"
+      ],
+      "roofs": [
+        "#6f7679"
+      ],
+      "wnd": 0
+    },
+    "shop=car_parts": {
+      "walls": [
+        "#9aa0a2",
+        "#a7a291"
+      ],
+      "roofs": [
+        "#6f7679"
+      ],
+      "wnd": 0
+    },
+    "office=government": {
+      "_": "institucional: blanco hueso, sobrio, sin variar mucho",
+      "walls": [
+        "#eae7de",
+        "#e0ddd3"
+      ],
+      "roofs": [
+        "#79808a"
+      ],
+      "wnd": 1
+    },
+    "amenity=police": {
+      "walls": [
+        "#d9e2ea",
+        "#cbd6e0"
+      ],
+      "roofs": [
+        "#4d5a6b"
+      ],
+      "wnd": 1
+    },
+    "amenity=bank": {
+      "walls": [
+        "#e9e6dd"
+      ],
+      "roofs": [
+        "#6e757c"
+      ],
+      "wnd": 1
+    },
+    "amenity=clinic": {
+      "_": "salud: blanco con techo claro, se lee de lejos",
+      "walls": [
+        "#f2f4f1",
+        "#e8efe9"
+      ],
+      "roofs": [
+        "#8fa39a"
+      ],
+      "wnd": 1
+    },
+    "amenity=pharmacy": {
+      "walls": [
+        "#eef5ef",
+        "#e2eee6"
+      ],
+      "roofs": [
+        "#7f9a8c"
+      ],
+      "wnd": 1
+    },
+    "amenity=hospital": {
+      "walls": [
+        "#f2f4f1"
+      ],
+      "roofs": [
+        "#8fa39a"
+      ],
+      "wnd": 1
+    },
+    "amenity=community_centre": {
+      "walls": [
+        "#dfd8c4",
+        "#e6e0cf"
+      ],
+      "roofs": [
+        "#7e857d"
+      ],
+      "wnd": 1
+    }
+  },
+  "byId": {
+    "_note": "UN LUGAR PUEDE TENER SU PROPIO COLOR, por id de OSM, y gana sobre su categoría. Es para el edificio que la gente reconoce por su color — no para corregir una categoría, que se corrige en OSM."
+  },
+  "_dropped": "Vivieron aquí `amenity=school`, `building=industrial` y `building=warehouse`, y la prueba los sacó: el mundo no emite ninguno como `cat`. Las escuelas se dibujan como PARCELA con su propio arte, y `poi_category` no lee la etiqueta `building` — que es justamente la trampa que este registro documenta. Un estilo esperando un valor que no llega es deriva, igual que un `case` del renderer sin miembro que lo autorice."
+}

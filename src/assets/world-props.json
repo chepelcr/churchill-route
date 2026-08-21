@@ -25,7 +25,7 @@
   },
   "landmarks": {
     "kiosk": {
-      "note": "a churchill stand: where a delivery starts. White and ORANGE — the drink stays red, because that is the syrup.",
+      "note": "EL PUESTO GENÉRICO — el de churchill, que es el producto del juego. Blanco y NARANJA; la bebida se queda roja porque ése es el sirope. Los otros productos entran por `kiosk:<product>`, que `propFor` prueba entre el id y el tipo: los 17 kioscos son puntos de recogida de cinco comidas y los diecisiete se dibujaban ASÍ, con la palabra CHURCHILL en el rótulo — vigorones, ceviches y papicarnes incluidos. Un producto sin arte propio sigue cayendo aquí a propósito: agregar una comida no obliga a dibujarla el mismo día.",
       "parts": [
         {
           "shape": "rect",
@@ -1092,6 +1092,276 @@
           "text": "CAPITANÍA",
           "fg": "#fff",
           "bg": "#2c5c3d"
+        }
+      ]
+    },
+    "kiosk:vigoron": {
+      "note": "VIGORÓN: se sirve sobre HOJA DE PLÁTANO, así que el puesto es verde y lo que se ve en el mostrador es el bulto de la hoja con el chicharrón encima, no un vaso.",
+      "parts": [
+        {
+          "_": "el cuerpo",
+          "shape": "rect",
+          "fill": "#f4f1e4",
+          "x": -16,
+          "y": -8,
+          "w": 32,
+          "h": 18
+        },
+        {
+          "_": "el toldo",
+          "shape": "stripes",
+          "n": 4,
+          "palette": [
+            "#2f8f4e",
+            "#fff"
+          ],
+          "x": -16,
+          "y": -14,
+          "w": 32,
+          "h": 6
+        },
+        {
+          "_": "la hoja de plátano, doblada",
+          "shape": "ellipse",
+          "fill": "#3e9b57",
+          "cx": 0,
+          "cy": 0,
+          "rx": 9,
+          "ry": 6
+        },
+        {
+          "_": "el chicharrón",
+          "shape": "disc",
+          "fill": "#c98a3f",
+          "cx": -2,
+          "cy": -1,
+          "r": 3
+        },
+        {
+          "_": "el repollo",
+          "shape": "disc",
+          "fill": "#e6efd8",
+          "cx": 3,
+          "cy": 1,
+          "r": 2.5
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "VIGORÓN",
+          "fg": "#fff",
+          "bg": "#2f8f4e"
+        }
+      ]
+    },
+    "kiosk:ceviche": {
+      "note": "CEVICHE: azul de mar y blanco, y en el mostrador el vaso plástico con el pescado curtido y su limón. Es el que peor aguanta el SOL, no la distancia — de ahí su `spoil`.",
+      "parts": [
+        {
+          "_": "el cuerpo",
+          "shape": "rect",
+          "fill": "#f2f6f8",
+          "x": -16,
+          "y": -8,
+          "w": 32,
+          "h": 18
+        },
+        {
+          "_": "el toldo",
+          "shape": "stripes",
+          "n": 4,
+          "palette": [
+            "#2b6fa8",
+            "#fff"
+          ],
+          "x": -16,
+          "y": -14,
+          "w": 32,
+          "h": 6
+        },
+        {
+          "_": "el vaso",
+          "shape": "rect",
+          "fill": "rgba(255,255,255,0.92)",
+          "x": -5,
+          "y": -4,
+          "w": 10,
+          "h": 12
+        },
+        {
+          "_": "el ceviche",
+          "shape": "rect",
+          "fill": "#eae2cf",
+          "x": -5,
+          "y": 0,
+          "w": 10,
+          "h": 6
+        },
+        {
+          "_": "el limón",
+          "shape": "disc",
+          "fill": "#c3d94a",
+          "cx": 4,
+          "cy": -5,
+          "r": 2.4
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "CEVICHE",
+          "fg": "#fff",
+          "bg": "#2b6fa8"
+        }
+      ]
+    },
+    "kiosk:papicarne": {
+      "note": "PAPI-CARNE: la soda de barrio, roja y amarilla, con su PLANCHA humeando y la caja de papas. Es el producto más repetido del mapa porque es la comida de calle de toda la zona.",
+      "parts": [
+        {
+          "_": "el cuerpo",
+          "shape": "rect",
+          "fill": "#f7e9c9",
+          "x": -16,
+          "y": -8,
+          "w": 32,
+          "h": 18
+        },
+        {
+          "_": "el toldo",
+          "shape": "stripes",
+          "n": 4,
+          "palette": [
+            "#c8352e",
+            "#fff"
+          ],
+          "x": -16,
+          "y": -14,
+          "w": 32,
+          "h": 6
+        },
+        {
+          "_": "la plancha",
+          "shape": "rect",
+          "fill": "#4a4238",
+          "x": -12,
+          "y": -3,
+          "w": 11,
+          "h": 9
+        },
+        {
+          "_": "la carne encima",
+          "shape": "rect",
+          "fill": "#8a4a2c",
+          "x": -10,
+          "y": -1,
+          "w": 7,
+          "h": 4
+        },
+        {
+          "_": "la caja de papas",
+          "shape": "rect",
+          "fill": "#e8b93f",
+          "x": 2,
+          "y": -3,
+          "w": 9,
+          "h": 10
+        },
+        {
+          "_": "las papas asomando",
+          "shape": "rect",
+          "fill": "#f6dd8a",
+          "x": 3.5,
+          "y": -5,
+          "w": 6,
+          "h": 3
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "PAPI-CARNE",
+          "fg": "#fff",
+          "bg": "#c8352e"
+        }
+      ]
+    },
+    "kiosk:mariscada": {
+      "note": "MARISCADA: no es un puesto, es una MARISQUERÍA — por eso es ANCHA y no un cuadrito. Restaurante Tabaris ocupa un local horizontal de verdad, y un carrito de 32 px de frente no se le parecía en nada. Turquesa de local de playa, con su mostrador largo y la olla.",
+      "parts": [
+        {
+          "_": "el cuerpo",
+          "shape": "rect",
+          "fill": "#f0efe6",
+          "x": -26,
+          "y": -8,
+          "w": 52,
+          "h": 18
+        },
+        {
+          "_": "el toldo",
+          "shape": "stripes",
+          "n": 6,
+          "palette": [
+            "#1f8a8a",
+            "#fff"
+          ],
+          "x": -26,
+          "y": -14,
+          "w": 52,
+          "h": 6
+        },
+        {
+          "_": "el mostrador largo",
+          "shape": "rect",
+          "fill": "#d9d2bd",
+          "x": -24,
+          "y": 2,
+          "w": 48,
+          "h": 6
+        },
+        {
+          "_": "la olla",
+          "shape": "disc",
+          "fill": "#6f7276",
+          "cx": -13,
+          "cy": -1,
+          "r": 5
+        },
+        {
+          "_": "lo que hierve",
+          "shape": "disc",
+          "fill": "#d8683f",
+          "cx": -13,
+          "cy": -2,
+          "r": 3
+        },
+        {
+          "_": "la bandeja de pescado",
+          "shape": "rect",
+          "fill": "#e7eef0",
+          "x": 2,
+          "y": -4,
+          "w": 16,
+          "h": 9
+        },
+        {
+          "_": "el pescado",
+          "shape": "ellipse",
+          "fill": "#9aa7ad",
+          "cx": 10,
+          "cy": 0,
+          "rx": 6,
+          "ry": 2.4
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "MARISCADA",
+          "fg": "#fff",
+          "bg": "#1f8a8a"
         }
       ]
     }

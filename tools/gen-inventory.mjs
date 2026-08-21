@@ -104,6 +104,14 @@ const REGISTRIES = [
     count: (d) => Object.keys(d.vehicles || {}).length },
   { id: "materials", path: "src/assets/materials.json", reads: "canvas, minimap, editor" },
   { id: "world-props", path: "src/assets/world-props.json", reads: "canvas (landmarks, signs, parcels)" },
+  //: EL COLOR DE UN EDIFICIO POR LO QUE EL EDIFICIO ES. La llave es `cat` —la
+  //: categoría de OSM que el mundo ya emitía sin que nadie la usara— y NO la
+  //: etiqueta `building`, que en esta ventana dice `yes` en 571 de 635 huellas
+  //: con nombre. Se resuelve en el cliente, así que reteñir el puerto no cuesta
+  //: una reconstrucción.
+  { id: "building-styles", path: "src/assets/building-styles.json",
+    reads: "canvas structures (paintBuilding), editor",
+    count: (d) => Object.keys(d.byCat || {}).length },
   { id: "water", path: "src/assets/water.json", reads: "canvas water + the backend ownership registry" },
   { id: "world-units", path: "src/assets/world-units.json", reads: "builder (px()), game (domain/units.js), editor" },
   { id: "effects", path: "src/assets/effects.json", reads: "canvas entities, editor",

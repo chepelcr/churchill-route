@@ -29,6 +29,7 @@ from tests.shapevocab import implemented_shapes
 
 PROPS = os.path.join(ROOT, "src", "assets", "world-props.json")
 LANDMARKS_JSON = os.path.join(ROOT, "content", "world", "landmarks.json")
+PRODUCTS_JSON = os.path.join(ROOT, "content", "world", "products.json")
 FLORA = os.path.join(ROOT, "src", "assets", "flora.json")
 SHAPES_JS = os.path.join(ROOT, "src", "render", "c2d", "shapes.js")
 SCENE_SHAPES_JS = os.path.join(ROOT, "src", "render", "c2d", "sceneShapes.js")
@@ -124,10 +125,26 @@ class WorldPropTests(unittest.TestCase):
         self.assertEqual(ids & types, set(),
                          "a landmark id equals a type name — its art would "
                          "replace that whole type's art")
+        # …and a THIRD form, between the two: `<type>:<product>`. Un puesto se
+        # parece a lo que vende — los 17 kioscos son puntos de recogida de cinco
+        # comidas distintas y los diecisiete se dibujaban como el de churchill,
+        # con esa palabra en el rótulo. Se valida igual de duro que las otras
+        # dos: el tipo tiene que ser un `LandmarkType` y el producto tiene que
+        # existir en su registro, o `kiosk:vigorón` con tilde es arte muerta.
+        with open(PRODUCTS_JSON, encoding="utf-8") as fh:
+            products = set(json.load(fh)["products"])
         # …and an id-keyed art record has to belong to a landmark that exists,
         # or it is art nothing can ever select.
         for key, rec in self.props.items():
             if key in types or not isinstance(rec, dict):
+                continue
+            if ":" in key:
+                kind, _, product = key.partition(":")
+                self.assertIn(kind, types,
+                              f"landmark art {key!r}: {kind!r} is not a LandmarkType")
+                self.assertIn(product, products,
+                              f"landmark art {key!r}: {product!r} is not in "
+                              f"products.json — nothing will ever select it")
                 continue
             self.assertIn(key, ids,
                           f"landmark art {key!r} matches no landmark id and no "

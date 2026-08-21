@@ -9,6 +9,8 @@ import { buildingHeightM, sunShadow } from "./shadows.js";
 import { resolveAssetFormulaMap } from "./shapes.js";
 import { paintStructureParts } from "./structureShapes.js";
 import { paintLight } from "./lights.js";
+import { buildingStyle } from "./buildingStyle.js";
+import { lightsOn } from "../../game/daynight.js";
 import { registerLampSource } from "./nightlights.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
@@ -26,13 +28,22 @@ function paintBuilding(b) {
   ctx.fillStyle = S.building.shadow;
   ctx.fill(path);
   ctx.restore();
-  ctx.fillStyle = b.color || S.building.fallback; ctx.fill(path);
+  // …Y EL COLOR SALE DE LO QUE EL EDIFICIO ES, si se sabe. El respaldo es el
+  // color que el build emitió, así que una huella sin categoría se ve igual que
+  // siempre: es lo que hace la migración demostrable edificio por edificio.
+  const st = buildingStyle(b);
+  ctx.fillStyle = (st && st.color) || b.color || S.building.fallback; ctx.fill(path);
   ctx.save(); ctx.clip(path);
   ctx.translate(a.x0, a.y0);
   const vars = resolveAssetFormulaMap(S.building.values, {
-    bw, bh, roof: b.roof || S.roof,
-    windows: Boolean(b.wnd),
-    windowInk: state.weather === "night" ? S.building.windowsNight : S.building.windowsDay,
+    bw, bh, roof: (st && st.roof) || b.roof || S.roof,
+    windows: Boolean(st && st.wnd !== undefined ? st.wnd : b.wnd),
+    // LO PREGUNTA `lightsOn()`, que es el dueño. Era `state.weather === "night"`:
+    // una tormenta a mediodía cierra el cielo y prende el alumbrado de la ciudad,
+    // pero las ventanas de los edificios se quedaban apagadas — dos umbrales
+    // para una sola pregunta, que es exactamente el error que la noche ya tuvo
+    // una vez con las lámparas.
+    windowInk: lightsOn() ? S.building.windowsNight : S.building.windowsDay,
   });
   paintStructureParts(ctx, S.building.parts, {
     X: (value) => value || 0,

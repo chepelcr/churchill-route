@@ -19,8 +19,9 @@ import {
 import { drawMangroves, drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
 import { drawNightLights, setLightZoom } from "./c2d/nightlights.js";
+import { drawFloodedStreets, drawRoadSplashes } from "./c2d/downpour.js";
 import { drawTornado } from "./c2d/tornado.js";
-import { lightning, lightsOn, stormForce, stormLevel } from "../game/daynight.js";
+import { lightning, lightsOn, stormForce, stormLevel, wetLevel } from "../game/daynight.js";
 import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawChannel, drawEstero } from "./c2d/estero.js";
@@ -33,7 +34,7 @@ import {
 } from "./c2d/entities.js";
 import {
   drawCompass, drawCrossingHud, drawDebugGrid, drawGullBlind, drawMinimap,
-  drawNightVignette, drawPoiNames, drawPoiTags, drawRain,
+  drawNightVignette, drawPoiNames, drawPoiTags, drawRain, drawRainSplash,
 } from "./c2d/hud.js";
 import { drawEditorWorld } from "./c2d/editorWorld.js";
 import HUD from "../assets/hud.json" with { type: "json" };
@@ -156,6 +157,14 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
   drawSigns(view);      // ALTO, semáforos, paradas, zebras, topes
   drawEditorWorld(view, "elements");
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
+  // EL AGUACERO SOBRE EL SUELO, antes de que se dibuje nada que ande encima:
+  // el agua está en la calle, no sobre los carros ni sobre la gente.
+  const stormNow = stormLevel();
+  if (stormNow > 0) {
+    drawFloodedStreets(view, stormForce(), wetLevel());
+    drawRoadSplashes(view, t, stormForce());
+  }
+
   // La feria del malecón — the rides and DJ Urtech, with the landmarks because
   // that is what they are: things standing on ground somebody else painted.
   drawAttractions(view, t);
@@ -292,7 +301,12 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
   // después el agua. Antes caía a plomo en el mismo cuadro en que el clima
   // cambiaba, que es lo que hacía que una tormenta se sintiera un interruptor.
   const storm = stormLevel();
-  if (storm > 0) drawRain(vw, vh, t, stormForce());
+  if (storm > 0) {
+    drawRain(vw, vh, t, stormForce());
+    // …y lo que revienta en el vidrio. Va DESPUÉS de las rayas porque está más
+    // cerca: una gota en el parabrisas tapa la lluvia del fondo, no al revés.
+    drawRainSplash(vw, vh, t, stormForce());
+  }
   if (state.weather === "night") drawNightVignette(vw, vh);
   // EL RELÁMPAGO va encima de TODO —del tinte, de la lluvia, del viñeteado—
   // porque un relámpago ilumina la escena entera y no una capa de ella. Dura

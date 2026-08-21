@@ -363,6 +363,39 @@ export function paintLightWarmPool(g, lights, spec, x, y, radius) {
   g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
 
+/**
+ * LO QUE REVIENTA EN EL PARABRISAS.
+ *
+ * La lluvia eran RAYAS y nada más, y una raya no moja. Lo que hace leer un
+ * aguacero es la gota que estalla encima de uno y se queda un momento
+ * corriéndose por el vidrio — por eso esto vive en el espacio de la CÁMARA y no
+ * del mundo: es agua sobre el parabrisas, no sobre el suelo.
+ *
+ * Cada gota tiene su propia vida dentro de un ciclo, sacada de `hash01` y no de
+ * `Math.random`, así que el mismo instante dibuja el mismo cuadro y el vidrio no
+ * hierve.
+ */
+export function paintRainSplash(g, width, height, t, spec, intensity = 1) {
+  const force = Math.max(0.1, Math.min(2, Number(intensity) || 1));
+  const drops = Math.round(spec.drops + spec.dropsPerIntensity * force);
+  const life = spec.life;
+  for (let i = 0; i < drops; i += 1) {
+    // …cada gota en su propia fase del ciclo, para que no revienten todas a la vez
+    const seed = i * 2.399;
+    const phase = (t / life + hash01(seed)) % 1;
+    const x = hash01(seed + 11.3) * width;
+    const y = hash01(seed + 27.7) * height;
+    // nace de golpe y se apaga: `1 - phase` al cuadrado se lee como evaporarse
+    const fade = (1 - phase) * (1 - phase);
+    const r = spec.rMin + (spec.rMax - spec.rMin) * hash01(seed + 5.1);
+    const run = phase * spec.streak;          // se corre hacia abajo mientras vive
+    g.fillStyle = rgba(spec.rgb, spec.alpha * fade * Math.min(1, force));
+    g.beginPath();
+    g.ellipse(x, y + run, r * (1 - phase * 0.35), r, 0, 0, TAU);
+    g.fill();
+  }
+}
+
 export function paintRain(g, width, height, t, rain, intensity = 1) {
   const force = Math.max(0.1, Math.min(2, Number(intensity) || 1));
   const alpha = Math.min(rain.alphaCap,

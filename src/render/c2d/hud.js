@@ -17,7 +17,7 @@ import { moonPhase, moonlight } from "../../game/daynight.js";
 import { alphaColor } from "./primitives.js";
 import {
   paintCompassDial, paintGullBlind, paintMinimapPlayer, paintMinimapRim,
-  paintNightVignette, paintRain,
+  paintNightVignette, paintRain, paintRainSplash,
 } from "./systemShapes.js";
 //: …y su bloque de paleta. El minimapa, la brújula y las etiquetas de POI ya
 //: leían de este archivo; la tarjeta de la Travesía y la barra de marea eran lo
@@ -160,6 +160,10 @@ function drawCompass(vw, vh) {
  * convenciones distintas es el fallo que `lightsOn()` documenta.
  */
 function camRot() { return state.cam.rot || 0; }
+
+function drawRainSplash(vw, vh, t, force = 1) {
+  paintRainSplash(ctx, vw, vh, t, HUD.weather.splash, force);
+}
 
 function drawRain(vw, vh, t, force = 1) {
   const R = HUD.weather.rain;
@@ -758,4 +762,4 @@ function drawMinimap(vw, vh, t) {
   paintMinimapRim(ctx, dial, cx, cy);
 }
 
-export { drawCompass, drawCrossingHud, drawDebugGrid, drawGullBlind, drawMinimap, drawNightVignette, drawPoiNames, drawPoiTags, drawRain };
+export { drawCompass, drawCrossingHud, drawDebugGrid, drawGullBlind, drawMinimap, drawNightVignette, drawPoiNames, drawPoiTags, drawRain, drawRainSplash };

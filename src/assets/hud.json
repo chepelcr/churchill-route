@@ -123,6 +123,42 @@
       "note": "The storm tint itself is materials.weather; these are only the visible streaks.",
       "_speedNote": "EN PÍXELES POR SEGUNDO. Estaban en px/MILISEGUNDO porque el reloj del render venía en ms; al pasar el reloj a segundos una gota se movía 0.9 px/s y la lluvia era una imagen fija. El valor es el mismo movimiento que se afinó a ojo, expresado en la unidad que ahora se declara."
     },
+    "splash": {
+      "_note": "LO QUE REVIENTA EN EL PARABRISAS. La lluvia eran rayas y nada más, y una raya no moja: lo que hace leer un aguacero es la gota que te estalla ENCIMA y se queda un momento corriéndose. Vive en el espacio de la CÁMARA, no del mundo — es agua sobre el vidrio, no sobre el suelo.",
+      "drops": 26,
+      "dropsPerIntensity": 22,
+      "rMin": 2.2,
+      "rMax": 6.5,
+      "life": 1.35,
+      "rgb": "206,228,248",
+      "alpha": 0.5,
+      "streak": 9,
+      "_streakNote": "cuánto se corre la gota hacia abajo mientras se apaga; el carro va hacia adelante, así que el agua baja por el vidrio."
+    },
+    "roadSplash": {
+      "_note": "Y LO QUE REVIENTA EN EL SUELO. Anillos cortos alrededor del carro, en el MUNDO: sólo sobre calzada, porque una gota reventando sobre el mar o sobre el techo de una casa no se ve desde arriba. Deterministas por posición y por instante, así que no hierven ni parpadean.",
+      "reach": 300,
+      "count": 70,
+      "countPerIntensity": 70,
+      "rMin": 1.6,
+      "rMax": 7.0,
+      "life": 0.55,
+      "rgb": "208,230,250",
+      "alpha": 0.42,
+      "width": 1.1
+    },
+    "flood": {
+      "_note": "LA CALLE SE ENCHARCA. Por encima de `startsAt` de fuerza de tormenta, la calzada deja de estar mojada y pasa a tener AGUA encima. Se dibuja sólo sobre calzada y usa la cota del terreno (`groundZAt`, que ya existe) para que el agua se junte en lo BAJO, que es donde se junta: una lámina uniforme se lee como un filtro de color, no como una calle inundada.",
+      "startsAt": 0.55,
+      "rgb": "96,140,170",
+      "alphaMax": 0.42,
+      "sheenRgb": "198,224,244",
+      "sheenAlpha": 0.16,
+      "lowByM": 1.2,
+      "_lowByNote": "cuántos metros por debajo del terreno de alrededor hace falta para que un punto se considere bajo y junte agua.",
+      "cell": 26,
+      "dryingNote": "la lámina se va con `wetGrip()`, que ya dura más que la nube — el asfalto sigue mojado un rato después de que escampa."
+    },
     "gullBlind": {
       "duration": 1.1,
       "shadowRgb": "18,28,38",

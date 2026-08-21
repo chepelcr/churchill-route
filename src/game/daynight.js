@@ -241,6 +241,17 @@ export function lightning() { return cycle.bolt > 0 ? cycle.bolt / 0.18 : 0; }
  * La lluvia no le hacía NADA a la calle: llovía y se manejaba igual. Sale del
  * CHARCO y no de la nube, así que la calle sigue resbalosa después de escampar.
  */
+/**
+ * CUÁNTA AGUA QUEDA EN EL SUELO, 0..1 — el charco, no la nube.
+ *
+ * Es el mismo `cycle.wet` del que ya cuelga el agarre, expuesto con su propio
+ * nombre porque el dibujo también lo necesita. Deducirlo del multiplicador de
+ * agarre (`(1 - wetGrip()) / algo`) sería calcular dos veces la misma cantidad
+ * con una constante mágica en medio, y el día que se afine el agarre el agua
+ * dibujada se despegaría de él sin que nadie lo note.
+ */
+export function wetLevel() { return cycle.wet; }
+
 export function wetGrip() {
   // LA FUERZA SE COME EL AGARRE. Un chubasco moja la calle; un aguacero la
   // vuelve otra cosa. `wet` es el charco (que sobrevive a la nube) y la fuerza

@@ -103,7 +103,10 @@
       "atSpanNote": "at(): the coordinate AT a point",
       "dirSpanM": 325.0,
       "dirSpanNote": "direction(): a manzana's angle",
-      "nearSpanM": [500.0, 315.0],
+      "nearSpanM": [
+        500.0,
+        315.0
+      ],
       "nearSpanNote": "near(): the build-log diagnostic — the (x, y) pair it reports around"
     },
     "shore": {

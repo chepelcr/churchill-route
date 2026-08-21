@@ -24,7 +24,7 @@ The drivable stamp always uses a part's UN-eroded cells, so the ring is asphalt
 you drive in over, never a wall around the field.
 """
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_MALECON,
@@ -43,6 +43,21 @@ from .block import block_raster_cells, cuadra_cells, outline_poly
 from .street import half_plane
 
 HARD_STREET_CLASSES = tuple(cls for cls in STREET_CLASSES if cls != CLS_ACERA)
+
+
+def _outline_probe(pts, cell, step=2):
+    """Puntos de muestreo dentro del contorno de un sitio, para diagnóstico."""
+    xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
+    out = []
+    y = min(ys)
+    while y <= max(ys):
+        x = min(xs)
+        while x <= max(xs):
+            if point_in_poly((x, y), pts):
+                out.append((x, y))
+            x += cell * step
+        y += cell * step
+    return out
 #: How much of a parcel may sit on the ACERA before it is re-fitted inside
 #: strict land. Not zero: the rect is fitted in the manzana's frame against a
 #: 4 px raster, so a cell or two of overlap is quantisation, not a park on the
@@ -1449,8 +1464,19 @@ class FieldService:
                 # Escuela de Biología Marina came out at 2 324 px² that way, and
                 # failed the build's own marine gate.
                 authored = trace or bool(decor.get("rect"))
+                # LO QUE ES SUELO DECLARADO DE UN SITIO NO ES INVASIÓN, y ésta
+                # es la SEGUNDA vez que muerde: `MALECON` está en
+                # `HARD_STREET_CLASSES` —es calzada lenta— así que a un sitio
+                # `shore`, que vive sobre malecón y arena porque ahí no hay
+                # tierra, se le contaba su propio suelo como derrame. Se le
+                # re-encajaba dentro de LAND estricta, no había ninguna, y
+                # desaparecía entero. La Cancha Multiusos se perdió así con la
+                # dilatación: 125 celdas de suelo bueno debajo y ni un rect.
+                # `sizeM` ya había aprendido esto; el ajuste base no.
+                spill_classes = tuple(c for c in HARD_STREET_CLASSES
+                                      if c not in ground)
                 hard_spill = (poly_surface_count(
-                    candidate_poly, raster, HARD_STREET_CLASSES)
+                    candidate_poly, raster, spill_classes)
                     if candidate_poly and site["kind"] != "fuel" and not authored else 0)
                 # THE SIDEWALK IS NOT PARCEL GROUND EITHER. It used to be — an
                 # acera-only fit was accepted as "the frontage the site already
@@ -1468,8 +1494,18 @@ class FieldService:
                 # the INA and a dozen iglesias — for the crime of having no land
                 # of their own. So when the inscribe finds nothing, an
                 # acera-only spill keeps the fit it already had.
+                # …PERO LA ACERA ES SUELO DECLARADO DE UN SITIO `shore`.
+                # Es la misma lección que `sizeM` ya aprendió con el malecón: lo
+                # que un sitio DECLARA como su suelo no es invasión. Un sitio del
+                # frente marítimo vive sobre acera, malecón y arena —no hay
+                # tierra ahí— así que re-encajarlo dentro de LAND estricta no
+                # encuentra nada y lo borra. Con la dilatación, la Cancha
+                # Multiusos se corrió unos metros y quedó 24 de 28 celdas sobre
+                # acera: desapareció entera, teniendo sus 125 celdas de suelo
+                # bueno debajo. El derrame HARD (calzada) se le sigue mirando.
                 acera_spill = (poly_surface_count(candidate_poly, raster, (CLS_ACERA,))
-                               if candidate_poly and not authored else 0)
+                               if candidate_poly and not authored
+                               and not _decor0.get("shore") else 0)
                 acera_only = (not hard_spill
                               and acera_spill > PARCEL_ACERA_MAX * max(1, len(keep)))
                 if hard_spill or acera_only:
@@ -1561,9 +1597,24 @@ class FieldService:
             kh = (krect[3] - krect[2]) / cell + side_pad if krect else 0
             if not krect or len(keep) < self.SITE_MIN_CELLS or min(kw, kh) < self.SITE_MIN_SIDE:
                 skipped["too-thin"] += 1
+                # …Y QUE DIGA QUÉ HABÍA DEBAJO. «0x0» no es un diagnóstico: no
+                # distingue «el contorno cayó sobre calzada» de «otro sitio
+                # reclamó el suelo primero» de «se quedó sobre el agua», y las
+                # tres se arreglan de manera distinta. Contar las clases bajo el
+                # contorno del mapeador cuesta nada y convierte el descarte en
+                # algo accionable.
+                under = Counter()
+                for (px_, py_) in _outline_probe(site["pts"], cell):
+                    c_, r_ = int(px_ // cell), int(py_ // cell)
+                    if raster.in_bounds(c_, r_):
+                        under[int(raster.at(c_, r_))] += 1
+                claimed = sum(1 for (px_, py_) in _outline_probe(site["pts"], cell)
+                              if (int(px_ // cell), int(py_ // cell)) in self.claimed_cells)
                 log("site", f"skip {site['id']} {site['kind']} "
                     f"{(site['name'] or '—')[:34]}: {round(kw)}x{round(kh)} cells left "
-                    f"after the acera ring — too thin to draw")
+                    f"after the acera ring — too thin to draw "
+                    f"(bajo el contorno: {dict(under.most_common(4))}, "
+                    f"{claimed} ya reclamadas, own={len(own)}, keep={len(keep)})")
                 continue
             if used != deep:
                 log("site", f"{site['id']} {(site['name'] or '—')[:34]}: acera ring "

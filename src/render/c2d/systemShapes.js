@@ -589,8 +589,14 @@ export function paintRoadNetwork(g, roads, {
     g.stroke(pathFor(road));
   }
   for (const road of roads) {
+    // UNA CALLE PEATONAL NO ES ASFALTO. `Surface.BOULEVARD` sólo salía de una
+    // parcela, así que el Bulevar de la Catedral se dibujaba en piedra y el de
+    // la Casa de la Cultura —el mismo bulevar, pero emitido como CALLE— salía
+    // negro justo al lado. El build ya lo estampa transitable-pero-lento; lo
+    // que faltaba era que se viera.
     const color = road.barro ? roadway.barro : road.gravel ? roadway.gravel
-      : road.cls === "paseo" ? roadway.paseo : roadway.asphalt;
+      : road.cls === "paseo" ? roadway.paseo
+      : road.cls === "pedestrian" ? roadway.boulevard : roadway.asphalt;
     g.strokeStyle = color;
     g.lineWidth = road.w;
     g.stroke(pathFor(road));

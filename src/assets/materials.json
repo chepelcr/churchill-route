@@ -1508,6 +1508,8 @@
       "_note": "La calzada. El COLOR por clase de superficie, más el caño y el casing.",
       "casing": "rgba(0,0,0,0.30)",
       "asphalt": "#3a3540",
+      "boulevard": "#d9d6cd",
+      "_boulevardNote": "UNA CALLE PEATONAL SE PAVIMENTA EN PIEDRA, no en asfalto. `Surface.BOULEVARD` sólo salía de una PARCELA, así que el Bulevar de la Catedral —que es una parcela— se dibujaba en piedra mientras el Bulevar de la Casa de la Cultura —que es una CALLE— salía negro al lado, siendo el mismo bulevar. El propio `blocks.json` lo tenía anotado como pendiente: «se estampa pero todavía no se dibuja en piedra, y el renderer no puede arreglarlo solo», porque `paintStone` se llama únicamente desde `paintParcels`. Es el MISMO hex que `parcel.boulevard` a propósito: son el mismo suelo y tienen que leerse continuos.",
       "barro": "#9c7a4f",
       "gravel": "#a99d8b",
       "paseo": "#f4dca3",

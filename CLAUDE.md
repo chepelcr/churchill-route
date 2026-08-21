@@ -813,6 +813,24 @@ the seam read as a straight line down the playa. `service.surface.sand_outlines`
 traces the FINISHED raster instead (run last, after the malecón, the esplanade,
 the pads and the bajadas take their cells).
 
+**LOS EDIFICIOS SE QUEDAN AL TAMAÑO QUE EL MAPEADOR MIDIÓ**
+(`MANZANA_FIT_MIN_SCALE = 1.0`). `fit_manzana_contents` encogía el grupo de cada
+cuadra con una mediana de 0.78 — un 28 % de tamaño perdido justo en los
+edificios que uno reconoce. Quitarlo **no cuesta nada, y está medido**: sobre la
+ventana del centro salen los MISMOS 31 `ghost` y los MISMOS 279 contornos
+reales; lo único que sube es el empujón por edificio (139 → 196), que es trabajo
+que la cadena ya sabía hacer. La función se queda como red de seguridad y la
+perilla es una env var, así que volver a 0.55 es una línea.
+
+**Y NO SE PUEDE EXTENDER LA MANZANA MÁS ALLÁ DE ESO: EL LÍMITE ES EL CARRO.**
+Dar más suelo a una cuadra pide calles más angostas, y las calles son anchas
+porque los VEHÍCULOS están dibujados ~2.4x sobre lo real — un tuktuk mide 26x17
+px, o sea 10.4 x 6.8 m. Dos no se cruzan por debajo de ~34 px. Medido con
+edificios a tamaño real: a `ARCADE_STREET_MUL` 1.90 la calle residencial cae a
+33 px y los `ghost` sólo bajan de 31 a 25; a 1.60 son 28 px —el tráfico se
+traba— y bajan a 21. **Un mapa de verdad a escala pide achicar los vehículos
+primero**, y eso cambia el juego, no el mundo.
+
 **THE MANZANA IS A CONTAINER, AND ITS CONTENTS ARE FITTED TO IT.** This is the
 answer to "why is anything standing on the acera", and it had been answered five
 different wrong ways before it was answered once. The arithmetic: a 7 m calle is

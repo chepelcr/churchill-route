@@ -20,6 +20,7 @@ import math
 from collections import defaultdict
 
 from ..config import (
+    MANZANA_FIT_MIN_SCALE,
     ACERA_CELLS, BLDG_INSET, CLS_ACERA, CLS_BARRO, CLS_BEACH, CLS_BRIDGE,
     CLS_GRAVEL, CLS_LAND, CLS_MALECON,
     CARRIAGEWAY_CLASSES, CLS_PASEO, CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL,
@@ -1062,7 +1063,8 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     n_fit, n_nofit, _scales = fit_manzana_contents(
         raster, blocks, cell_block, _named_now, streets,
         lambda cells: block_raster_cells(raster, cells, CUAD_CELLS, CLS_LAND),
-        erode_cells, ACERA_CELLS, STREET_CLASSES)
+        erode_cells, ACERA_CELLS, STREET_CLASSES,
+        min_scale=MANZANA_FIT_MIN_SCALE)
     log("buildings", f"{n_fit} named footprints fitted into their own manzana "
         f"(median scale {sorted(_scales)[len(_scales) // 2]:.2f} over {len(_scales)} "
         f"blocks that needed one); {n_nofit} manzanas left to the push"

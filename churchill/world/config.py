@@ -211,6 +211,30 @@ def street_span_px(metres):
 # A RATIO, not a length: it matches footprints to the exaggerated road widths,
 # so it moves with ARCADE_STREET_MUL and not with the scale.
 BUILDING_SCALE = 1.4
+
+#: HASTA DÓNDE SE DEJA ENCOGER EL CONTENIDO DE UNA MANZANA para que quepa
+#: dentro de su propio anillo de acera. `fit_manzana_contents` escala el GRUPO
+#: de huellas con nombre de cada cuadra —una escala isótropa sobre su centro— y
+#: por debajo de esto se rinde y se lo deja al empujón por edificio.
+#:
+#: Es la perilla que decide entre «mapa real» y «mapa que cabe», y HOY ESTÁ EN
+#: 1.0: no encoge nada. Cada huella conserva el tamaño que el mapeador midió y
+#: lo que no quepa lo resuelve la cadena de empujones o se queda `ghost`.
+#:
+#: Estaba en 0.55 y encogía con una mediana de 0.78 las cuadras que lo pedían —
+#: un 28 % de tamaño perdido en los edificios que más se reconocen. Lo que hizo
+#: posible quitarlo es que NO CUESTA NADA, y eso está medido, no supuesto:
+#: sobre la ventana del centro, con 1.0 salen los MISMOS 31 `ghost` y los MISMOS
+#: 279 contornos reales que con 0.55. Lo que sube es el empujón por edificio
+#: (139 -> 196), que es trabajo que la cadena ya sabía hacer.
+#:
+#: Y no se puede ir más lejos por acá. Extender las manzanas de verdad pide
+#: calles más angostas, y las calles son anchas porque los VEHÍCULOS están
+#: dibujados ~2.4x sobre su tamaño real: un tuktuk mide 17 px de ancho, así que
+#: dos no se cruzan por debajo de ~34 px. Medido: a 1.90x de exageración la
+#: calle queda en 33 px y los `ghost` sólo bajan de 31 a 25. El límite es el
+#: carro, no la manzana.
+MANZANA_FIT_MIN_SCALE = float(os.environ.get("MANZANA_FIT_MIN_SCALE", "1.0"))
 #: The rest of the audit list, in metres (`world-units.json` -> `world`).
 W = UNITS["world"]
 POI_NUDGE_PX = px(W["poi"]["nudgeM"])

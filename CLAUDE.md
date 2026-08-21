@@ -55,6 +55,7 @@ The procedure is three steps and it is not optional:
 | **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` |
 | **a light: street lamp, stadium tower, la del muelle** | `src/assets/lights.json` (+ `LightType`). DÓNDE se para la del muelle y de qué tipo es → `materials.json` → `pier.<style>.lamp` |
 | **de qué color es un edificio de OSM** | `src/assets/building-styles.json`, por `cat` |
+| **la lluvia, sus salpicaduras y la calle encharcada** | `src/assets/hud.json` → `weather.{rain,splash,roadSplash,flood}` |
 | **cómo se ve un puesto según lo que vende** | `src/assets/world-props.json` → `landmarks["kiosk:<product>"]` |
 | **how a shadow answers the sun; how tall a building is** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` |
 | what a vehicle DOES: wake, shadow, turn wind, **headlights** | `src/assets/effects.json` |
@@ -1169,6 +1170,76 @@ el labio del malecón a propósito; el suelo no. Y ojo: `_seaward` cuenta cuál 
 las dos normales de la calle tiene más SEA_CLASSES debajo para saber dónde está
 el mar — apuntar esa constante a la calzada hace que «el mar» sea el lado con más
 asfalto, tierra adentro. Son dos preguntas distintas.
+
+**EL RELOJ DEL RENDERER CUENTA EN SEGUNDOS.** `render(t)` recibía el
+timestamp de rAF en MILISEGUNDOS —`dt` se dividía entre 1000 para el sim y el
+render se quedaba con el crudo— así que cada dibujante decidía por su cuenta qué
+unidad creía tener: `water.js` convertía local (`t * 0.001`), el HUD venía
+afinado en ms (`t * 0.006`) y muchísimo código en segundos (`t * 0.7`, o el
+`spin` de la feria, documentado en VUELTAS POR SEGUNDO). Esos últimos corrían mil
+veces rápido: **la rueda de Chicago daba 1200 rpm** y el resto hacía alias, que
+se lee como textura y no como error — por eso nadie lo vio en años. Hoy el lazo
+pasa `t / 1000` y **la unidad se declara**: lo que necesita milisegundos los pide
+por su nombre (`timeMs`, que es el contrato que usan los registros de actores) y
+`setLastT` guarda ms a propósito. Al tocar una animación, mirar primero en qué
+reloj está.
+
+**LA MANZANA RECUPERA SU SUELO: UN CAMPO DE DILATACIÓN LOCAL**
+(`service/dilation.py`). Las calles se estampan a `ARCADE_STREET_MUL` = 2.32 su
+ancho real porque los VEHÍCULOS están dibujados ~2.4x sobre el suyo (un tuktuk
+mide 26x17 px = 10.4 x 6.8 m y dos no se cruzan por debajo de ~34 px), y lo que
+sobra salía de las cuadras: 4.7 m por lado en una residencial, 10.6 en el Paseo.
+Ahora, en vez de quitarle suelo a la manzana, se SEPARAN las manzanas y el
+pueblo se estira ~10 %.
+
+Tres cosas que costaron un intento cada una:
+
+* **no es un suavizado.** Un relajador laplaciano sobre las celdas entregaba
+  **5.9 px de los 23.5** que pedía y estiraba la manzana 3.5 px cada 150: un
+  laplaciano no sabe hacer un ESCALÓN, se lo come. Las incógnitas no son las
+  celdas sino las MANZANAS — una traslación por componente, y cada par que se
+  mira a través de una calle pide `(u_b − u_a)·n̂ = δ`;
+* **el campo abierto no es un cuerpo rígido.** Metido en el sistema, tendría que
+  estar δ al norte de una manzana y δ al sur de otra a la vez — inconsistente, y
+  la relajación salía en un campo uniforme (o sea, cero separación). Se deja
+  FUERA y se rellena suavizando después;
+* **no puede ser un mapa 1-D separable**: el mundo abarca 60 km y varios
+  pueblos, así que una calle de Puntarenas y otra de Barranca en la misma `x`
+  insertarían las dos en el mismo sitio. Y por tamaño tampoco puede ser global —
+  a 20 px de celda el mundo son 10 M de celdas y esto es Python. Se agrupa por
+  CLÚSTER y el campo decae a cero en su borde.
+
+Entra como una etapa entre `extract_world` y `rasterise_surface`, y se instala
+en la PROYECCIÓN (`sp.warp`), así que todo lo que se proyecte después —las
+curvas del IGN, cada ancla geo— sale ya separado sin que ninguna etapa se
+entere. **Y rompe la linealidad que `projection.py` protegía**: `meta.geo` deja
+de contarlo todo, así que viaja además `meta.warp` (por pueblo, muestreado cada
+160 px) y `W.geoToWorld` es el ÚNICO dueño de la pregunta. `DILATION=0` lo apaga.
+
+**UNA CANCHA A LA QUE NO SE ENTRA NO ES UNA CANCHA.** El malecón es PARED para
+un carro (`isWall`, decisión explícita: «un paseo marítimo es para caminar»), así
+que un campo abierto estampado transitable en medio de él es una ISLA. Le pasó a
+la Cancha Multiusos al crecer a su tamaño real. Dos cosas: `_open_a_mouth` le
+abre una boca hasta la calle más cercana —la misma «calle auxiliar» de los
+kioscos de la arena— **antes de estampar la parcela**, porque al revés la
+búsqueda encuentra la cancha misma a una celda y enlaza la parcela consigo
+misma; y `finish.verify` pregunta si desde el campo se puede SALIR de su propia
+huella. **No preguntes «¿llega el spawn?»**: eso marca 61 canchas de Esparza,
+Barranca y Caldera que están bien — a esos distritos se llega en lancha.
+
+**LO QUE UNA ETAPA PIDE, TIENE QUE OCURRIR.** `s5` se llama «Tormenta en El
+Cocal», hacía `state.weather = "storm"` y nadie arrancaba el ciclo: `cycle.storm`
+en 0, o sea la PALETA de tormenta y ni una gota — sin lluvia, sin relámpagos, sin
+agarre mojado. `applyWeather` es ahora el único sitio que pone el clima y, si es
+tormenta, la ARRANCA; una etapa autorada además la SOSTIENE, porque que escampe
+a los noventa segundos convierte su nombre en mentira a media partida. Es el
+mismo patrón que ya mordió con las ordas de gaviotas.
+
+**EL HUD TAMBIÉN VIVE EN LA CÁMARA.** `state.cam.rot` lo leían sólo `canvas2d.js`
+y `input.js`, así que en El Cocal —la única etapa rotada— el minimapa apuntaba al
+norte del MUNDO y la flecha señalaba noventa grados fuera del cliente. Giran el
+dial, el rumbo de la brújula, el blip del destino y la flecha del carro; `camRot()`
+es el único dueño.
 
 **LOS JUEGOS ESTORBAN SIN ESTAMPARSE.** Cada atracción es un disco en
 `physics.js` que REBOTA (un edificio absorbe 0.95 de la componente normal; un

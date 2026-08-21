@@ -53,7 +53,9 @@ The procedure is three steps and it is not optional:
 | a length two runtimes must agree about, IN METRES | `src/assets/world-units.json` |
 | the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` |
 | **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` |
-| **a light: street lamp, stadium tower** | `src/assets/lights.json` (+ `LightType`) |
+| **a light: street lamp, stadium tower, la del muelle** | `src/assets/lights.json` (+ `LightType`). DÓNDE se para la del muelle y de qué tipo es → `materials.json` → `pier.<style>.lamp` |
+| **de qué color es un edificio de OSM** | `src/assets/building-styles.json`, por `cat` |
+| **cómo se ve un puesto según lo que vende** | `src/assets/world-props.json` → `landmarks["kiosk:<product>"]` |
 | **how a shadow answers the sun; how tall a building is** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` |
 | what a vehicle DOES: wake, shadow, turn wind, **headlights** | `src/assets/effects.json` |
 | landmarks, signs, parcel props, scenes | `src/assets/world-props.json` |
@@ -83,7 +85,7 @@ stopped being one.
 
 * **art** → a synthetic sheet, diffed: `shot-vehicles` · `shot-actors` ·
   `shot-landmarks` · `shot-signs` · `shot-parcels` · `shot-scenes` ·
-  `shot-effects` · `shot-stands` · `shot-lights` · `shot-feria`, vs
+  `shot-effects` · `shot-stands` · `shot-kiosks` · `shot-lights` · `shot-feria`, vs
   `tools/png-diff.mjs`. **Never diff a world scene** — the noise floor is 2 % to
   86 %. The Vite process on `:8734` is persistent: client modules, JSON and new
   imports are handled by HMR, so **do not kill it or delete
@@ -565,6 +567,61 @@ bounding streets so you can enter — no acera wall); the DRAWN pitch is
 when `lm.stands`, strokes a dark two-tone band over the block's real acera ring
 in the LANDMARK pass (after sidewalks → recolours the actual acera; follows the
 organic/diagonal outline). Interior cross-streets clipped by `_clip_roads_poly`.
+
+**UN EDIFICIO SE PINTA POR LO QUE ES, Y LA LLAVE NO ES `building`.**
+`src/assets/building-styles.json`, resuelto en `c2d/buildingStyle.js`. Cada
+huella con nombre recibía `BLDG_PALETTE[rng()]` — estable por su id y sin
+ninguna relación con el lugar, así que un hotel, una iglesia, una soda y una
+bodega salían del mismo bombo. Lo que lo hace posible ya estaba emitido y no lo
+usaba nadie: **`cat`**, en 487 edificios del mundo publicado.
+
+La trampa está en cuál etiqueta responde. `building` NO: de las 635 huellas con
+nombre de esta ventana, **571 dicen `building=yes`** — no es una categoría, es
+la ausencia de una, y la prueba y el validador del editor la rechazan por su
+nombre. La categoría real vive en `amenity`/`shop`/`tourism`/`office`, que es lo
+que `poi_category` ya resuelve: 80 restaurantes, 71 templos, 28 pulperías, 22
+oficinas de gobierno, 18 hoteles. Hoy 366 de 487 (75 %) tienen estilo.
+
+Se resuelve en el **CLIENTE**, no en el build, y eso es la mitad del punto:
+`cat` ya viaja en el mundo emitido, así que reteñir el puerto entero cuesta una
+recarga y no 33 minutos. El `color` emitido sigue siendo el respaldo, de modo
+que un edificio sin categoría se ve exactamente igual que antes — que es lo que
+hace la migración demostrable edificio por edificio. Un estilo para una
+categoría que el mundo nunca emite es deriva y `tests/test_building_styles.py`
+lo falla: ya cobró tres (`amenity=school`, `building=industrial`,
+`building=warehouse`).
+
+**UN PUESTO SE PARECE A LO QUE VENDE.** `propFor` (c2d/landmarks.js) prueba
+**id → `tipo:producto` → tipo**, y la escalera está exportada como
+`landmarkProp` para que una hoja de arte o el inspector del editor resuelva
+IGUAL que el juego — escribirse una propia es la deriva que ya se cerró cuando
+el editor pintaba un `park` de otro verde. Los 17 kioscos son puntos de recogida
+de cinco comidas y los diecisiete se dibujaban como el de churchill, con esa
+palabra en el rótulo. Un producto sin arte propio cae al puesto genérico a
+propósito: agregar una comida no obliga a dibujarla el mismo día. `pnpm
+shot:kiosks` es su hoja, y **falla si dos productos resuelven al MISMO arte** —
+el fallo callado de una escalera con niveles, que se ve idéntico a que el arte
+no exista.
+
+**UN SITIO PUEDE DECLARAR SU TAMAÑO REAL EN METROS** (`"sizeM": [w, h]` en
+`site-decor.json`). El contorno del mapeador es a veces un BOCETO: la cancha del
+Paseo viene como 91x31 px (36 x 12 m) cuando una cancha multiuso tiene el doble
+de fondo, y `rect` no podía arreglarlo porque sólo recorta FRACCIONES de lo
+dibujado. Crece hacia su tamaño y nunca sobre calzada — se prueban tamaños
+decrecientes y se queda con el primero que no pisa duro. **Y la prueba de
+invasión lee `shore`**: `MALECON` está en `HARD_STREET_CLASSES` (es calzada
+lenta), así que a un sitio que ESTÁ sobre el malecón se le contaba su propio
+suelo como pisada y no cabía ni al 60 % de sí mismo. Lo que es suelo declarado
+de un sitio no es invasión.
+
+**LO QUE UNA ETAPA AJUSTA, EL REGISTRO LO PONE POR DEFECTO.** Las ordas de
+gaviotas se leían `state.stage?.hazards?.gullFlocks || 0`, y **Recorrer no tiene
+etapa**: en el mundo abierto, que es donde más se anda, no salía ni una — y lo
+que se ve volando ahí son las gaviotas sueltas del golfo, que nunca fueron un
+estorbo y a simple vista no se distinguen de una orda, así que parecía colisión
+rota. El piso vive en `simulation.json` y la etapa manda SOBRE él con `??` y no
+con `||`, de modo que una etapa que pide 0 sigue siendo una decisión y no una
+omisión.
 
 **LA TRAVESÍA DEL ESTERO: the lane is MEASURED, and the hull has its own model.**
 Two separate things were wrong and each one is worth not re-introducing.

@@ -215,6 +215,70 @@
         "#7e857d"
       ],
       "wnd": 1
+    },
+    "tourism=hostel": {
+      "_": "el hostel: la misma cal del hotel pero sin teja, techo de zinc",
+      "walls": [
+        "#efe3cc",
+        "#e6dcc4"
+      ],
+      "roofs": [
+        "#7f8a86"
+      ],
+      "wnd": 1
+    },
+    "shop=bakery": {
+      "_": "la panadería: horno y pan, el café con leche de la esquina",
+      "walls": [
+        "#d9a860",
+        "#e5bd7c"
+      ],
+      "roofs": [
+        "#8a6a45"
+      ],
+      "wnd": 1
+    },
+    "shop=department_store": {
+      "walls": [
+        "#dfe3e6",
+        "#d2d8dd"
+      ],
+      "roofs": [
+        "#7f868a"
+      ],
+      "wnd": 1
+    },
+    "shop=shoes": {
+      "walls": [
+        "#d8c3a8",
+        "#e2d1ba"
+      ],
+      "roofs": [
+        "#8b8f92"
+      ],
+      "wnd": 1
+    },
+    "shop=appliance": {
+      "walls": [
+        "#c9d3d8",
+        "#bcc8ce"
+      ],
+      "roofs": [
+        "#7f868a"
+      ],
+      "wnd": 1
+    },
+    "shop=paint": {
+      "_": "la ferretería de pinturas: se anuncia con su propio muestrario",
+      "walls": [
+        "#2f7fb5",
+        "#d9532f",
+        "#e8b93f"
+      ],
+      "roofs": [
+        "#6f7679"
+      ],
+      "wnd": 1
     }
   },
   "byId": {

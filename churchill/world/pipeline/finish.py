@@ -41,7 +41,7 @@ def ordered_stages():
         at = next((i + 1 for i, s in enumerate(out) if s["id"] == after), len(out))
         out.insert(at, spec)
     return [dict(s, num=i + 1) for i, s in enumerate(out)]
-from ..logging import log
+from ..logging import log, warn
 from ..repository.debug_render import render_debug
 from ..service.elevation import ELEV_CELL, elevation_field
 from ..service.network import block_census, verify_connectivity
@@ -186,10 +186,17 @@ def verify(ctx, *, spawn, gate_pois):
         x0, y0 = P.get("x0", px_), P.get("y0", py_)
         x1, y1 = P.get("x1", px_), P.get("y1", py_)
         margin = 3 * cell
+        # EL PRESUPUESTO TIENE QUE DAR PARA CRUZAR EL PROPIO CAMPO. Con un tope
+        # fijo de 4 000 celdas, la Ciudad Deportiva Ángela Quesada —485x480 px,
+        # unas 14 500 celdas, todas estampadas calzada— se gastaba la búsqueda
+        # recorriendo su propio interior y salía «amurallada» teniendo su boca
+        # abierta. Una compuerta que falla porque se quedó sin presupuesto está
+        # mintiendo, así que el tope crece con el campo…
+        budget = 4000 + int(((x1 - x0) / cell + 2) * ((y1 - y0) / cell + 2))
         seen_c = {(int(px_ // cell), int(py_ // cell))}
         stack = list(seen_c)
         escaped = False
-        while stack and len(seen_c) < 4000 and not escaped:
+        while stack and len(seen_c) < budget and not escaped:
             c, r = stack.pop()
             for (nc, nr) in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
                 if (nc, nr) in seen_c or not ctx.raster.in_bounds(nc, nr):
@@ -203,10 +210,18 @@ def verify(ctx, *, spawn, gate_pois):
                     break
                 seen_c.add((nc, nr))
                 stack.append((nc, nr))
-        if not escaped:
-            ctx.failures.append(
-                f"walled-in field {P.get('id')}(stamped drivable but its own "
-                f"footprint is an island — nothing to drive in from)")
+        if escaped:
+            continue
+        # …y si aun así se agotó el presupuesto, la respuesta es NO SÉ, no NO.
+        # Fallar el build por no haber terminado de mirar es la peor clase de
+        # compuerta: la que hay que desactivar para poder trabajar.
+        if len(seen_c) >= budget:
+            warn("gate", f"{P.get('id')}: no se pudo decidir si tiene salida "
+                 f"({len(seen_c)} celdas recorridas) — se deja pasar")
+            continue
+        ctx.failures.append(
+            f"walled-in field {P.get('id')}(stamped drivable but its own "
+            f"footprint is an island — nothing to drive in from)")
 
     # NO KIOSK STANDS IN THE GULF. The stand is 32 px of art with a 22 px
     # shadow, and the build only ever tested its geo ANCHOR for water — which is

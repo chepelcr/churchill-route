@@ -87,12 +87,16 @@ renderer (the "view") lives behind a seam so backends can be swapped.
   `WORLD2D`/`W` accessor: per-tile RLE decode + streaming, `surfaceAt`, road
   arclength samplers, building spatial hash, silhouettes).
 - `src/render/` — `Renderer.js` is the seam (`setupCanvas`, `render`,
-  `paintVehicle`). Behind it, `canvas2d.js` + `src/render/c2d/*` (ground,
+  `paintVehicle`) and `camera.js` is the one camera authority shared by every
+  backend. Behind it, `canvas2d.js` + `src/render/c2d/*` (ground,
   streets, structures, landmarks, entities, flora, estero, hud, gfx, cache)
   paint the whole painterly world, and a transparent `src/render/pixi/` layer
-  above it carries the landmark structures canvas can't do justice (the
-  estadio's gradas, the tunnel roof). Escape hatch: `?canvas` or
+  above it is the migration seam for landmark structures canvas can't do
+  justice; its owner registry is currently empty, so Canvas still paints them.
+  Escape hatch: `?canvas` or
   `localStorage.churchill_renderer = "canvas"` disables the Pixi layer.
+  `?render=3d` lazy-loads the opt-in `src/render/three/` layer; normal 2-D must
+  download none of Three.
 - `src/ui/` — React: `App.jsx` (screen state machine), `screens/*`
   (Title, StageSelect, HUD, Pause, Results, StageBrief), `TouchControls.jsx`,
   `GameTweaks.jsx`, `tweaks/TweaksPanel.jsx` (reusable dev panel + host bridge).
@@ -140,8 +144,8 @@ churchill/world/
                  gives a fast smoke build — CUAD, ACERA_CELLS /
                  FIELD_ACERA_CELLS, BUILDING_SCALE)
   content.py     the hand-authored map: DISTRICT_DEFS, LANDMARK_DEFS,
-                 CUSTOMER_DEFS, STAGES, probes (geo anchors — the build FAILS
-                 listing unresolved POIs)
+                 CUSTOMER_DEFS, STAGES, RAILWAY_DEF, probes (geo anchors — the
+                 build FAILS listing unresolved POIs)
   logging.py     log(tag, msg) / warn / die — the build log is the review
                  surface, so keep a stage's lines factual and countable
   dto/           PYDANTIC v2 models = the emitted JSON's schema (Manifest, Tile,
@@ -162,7 +166,8 @@ churchill/world/
                  globals: street (StreetIndex — read its docstring before
                  picking a method), block, field, building, surface (the
                  stamping ORDER matters), network, placement, osm, decoration,
-                 projection, signs, kerb
+                 projection, signs, kerb, railway (named-street alignment +
+                 build-only envelope audit)
   pipeline/      the stages, in order
 ```
 
@@ -220,10 +225,10 @@ the game's contents without reading the code. Refresh after world/module changes
 - After changing the world or any module, run `pnpm inventory`.
 - Keep `src/game/vehicles.js` and `src/game/surfaces.js` free of DOM/`window` so
   Node (the inventory script) can import them.
-- The camera zoom is responsive: `computeZoom` in `src/render/canvas2d.js`
-  frames ~20 cuadrículas of `meta.cuad` (20) px across the viewport — the
-  constant lives in the RENDERER (tune it there; `meta.cuadsPerView` is
-  advisory, no world rebuild needed).
+- The camera zoom is responsive: `computeZoom` in `src/render/camera.js` frames
+  `camera.viewWidthM` across the viewport, clamped by
+  `camera.minScreenPxPerM`. The constant lives in the RENDERER (tune it there;
+  `meta.cuadsPerView` is advisory, no world rebuild needed).
 - Don't hand-edit `src/world2d/` (manifest or tiles) — regenerate with
   `pnpm world:build`, then `python3 tools/world_snapshot.py verify` (or `save`
   if the change was intended).

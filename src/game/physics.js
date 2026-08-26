@@ -6,11 +6,11 @@ import { GEOMETRY_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js
 import { state, traffic, pedestrians, gulls, boats, trains, schools, gullFlocks, pushFloat } from "./state.js";
 import { isTimed } from "./timers.js";
 import { SURFACE, SURFACE_MUL } from "./surfaces.js";
-import { HULL, hullBankAssist, hullFriction, hullGlance, hullLean, hullThrottle, hullTopMul, hullTurn } from "./boat.js";
+import { HULL, hullBankAssist, hullFriction, hullGlance, hullLean, hullPivot, hullTopMul, hullTurn } from "./boat.js";
 import { input, readInput, pollGamepad, applyTouch } from "./input.js";
 import { updateAnimals, maintainStreaming, setSpawnCamera, advanceOnSurface, advancePed, advanceFieldPed, advanceSwimmer, advanceBeachGames, advanceBeachPlayer, advanceCarOnRoad, advanceEditorRoute, advanceTrain, advanceSchool } from "./spawns.js";
 import { advanceBus, advancePassenger, maintainBusStops } from "./buses.js";
-import { nearestKiosk, pickCustomer, pickUpChurchill, deliverChurchill, dropChurchill } from "./delivery.js";
+import { nearestKiosk, pickCustomer, pickUpOrder, deliverOrder, dropOrder, spoilRate } from "./delivery.js";
 import { sfx } from "./audio.js";
 import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
@@ -178,7 +178,7 @@ export function update(dt) {
   // that Easter egg is the reason `deckAt`/`carry` exist and none of the race
   // below has anything to do with it.
   const cross = crossingState();
-  advanceFerries(dt, aboard, null);
+  advanceFerries(dt, aboard);
   if (aboard) carry(aboard, p);
   // THE TRAVESÍA IS NO LONGER A RIDE ON A DECK. You sail it yourself, in a
   // water-medium vehicle, so the crossing is armed by BEING A BOAT IN THE
@@ -340,20 +340,25 @@ export function update(dt) {
   const boosting = (input.boost && boostReady())
     || (state.headstartT || 0) > 0 || Boolean(activeEditorBoost(state, "turbo"));
   if (boosting && input.boost) spendBoost(dt);
-  const throttleRaw = input.up - input.down * 0.6;
-  const throttle = afloat ? hullThrottle(throttleRaw, p.speed, input.brake) : throttleRaw;
+  // ONE THROTTLE FOR BOTH MEDIA. A hull used to get an idle floor here, which
+  // meant she made way with the controls untouched — see `boat.js`.
+  const throttle = input.up - input.down * 0.6;
   let turnRate;
   if (afloat) {
     // See `boat.js` for why this is a curve and not a suppression, and for the
     // no-speed/no-turn deadlock the old `pivot = 0` + `0.25 + 0.75*spdFac` made.
     turnRate = veh.turn * hullTurn(spdFac, throttle, boosting, input.brake);
+    // …AND SHE PIVOTS TOO. This term used to be the car's alone, on the grounds
+    // that a hull with no way on has no steerage — which is true of a boat and
+    // false of a game: it left "point her, then go" impossible on water, and the
+    // hole was plugged with idle thrust that drove her without being asked. Pay
+    // for the pointing directly instead.
+    turnRate += veh.turn * hullPivot(p.speed);
   } else {
     turnRate = veh.turn * (input.snapT > 0 ? 0.75 + spdFac * 0.55 : 0.4 + spdFac * 0.9);
     // Pivot-in-place: when nearly stopped, spin fast toward the steer target so
     // a tap turns the car ON ITS OWN AXIS immediately, then it drives off facing
     // the finger (instead of arcing forward to turn). Fades out by ~60px/s.
-    // NOTHING ON WATER PIVOTS — a hull with no way on has no steerage, so this
-    // term is the car's alone and always was.
     turnRate += veh.turn * 1.5 * Math.max(0, 1 - Math.abs(p.speed) / 60);
   }
   const prevA = p.a;
@@ -469,14 +474,15 @@ export function update(dt) {
   // Brake / stop button: an EXAGGERATED, snappy stop (arcade handbrake) — bleed
   // the velocity hard so a tap kills momentum near-instantly instead of a slow
   // coast, and clamp to a dead stop once slow.
-  // A BOAT HAS NO BRAKES. The arcade handbrake is a tyre on tarmac; the same
-  // button on a hull is astern thrust, which bleeds way rather than killing it,
-  // and there is no dead-stop clamp — a lancha that stopped in her own length
-  // would make the whole channel trivial to hold.
+  // A BOAT STILL HAS NO TYRES — astern thrust bleeds way rather than killing it,
+  // which is why the decay is 3.2 against a car's 16. But she DOES come to a
+  // stop at the end of it: the dead-stop clamp used to be the car's alone, and a
+  // hull that could never quite stop is a hull that is always drifting somewhere
+  // you did not steer.
   if (input.brake) {
     const decay = Math.max(0, 1 - (afloat ? 3.2 : 16) * dt);
     p.vx *= decay; p.vy *= decay;
-    if (!afloat && Math.hypot(p.vx, p.vy) < 12) { p.vx = 0; p.vy = 0; }
+    if (Math.hypot(p.vx, p.vy) < 12) { p.vx = 0; p.vy = 0; }
   }
   // turbotank upgrade raises the boost speed cap (1.35 stock → up to 1.55)
   const speedBoost = activeEditorBoost(state, "speed-multiplier")?.value || 1;
@@ -494,10 +500,10 @@ export function update(dt) {
 
   // THE BANK YOU FEEL BEFORE YOU TOUCH IT. The manglar is still solid — see
   // `isWall`; "no walls" means the estero must not feel FENCED, not that a hull
-  // may sail over the mangrove. What it means in practice is this cushion: the
-  // shore biases you back toward the middle of the water you are in, so the
-  // channel reads as a channel instead of as a corridor with two things in it
-  // that catch you. Before the integration, so it is a force and not a shove.
+  // may sail over the mangrove. What it means in practice is this cushion: you
+  // are bled off the shore before you reach it. It only ever REMOVES velocity
+  // heading into the bank now — see `hullBankAssist` for why pushing was wrong.
+  // Before the integration, so it is a force and not a shove.
   if (afloat) hullBankAssist(p, veh, dt, (x, y) => W.surfaceAt(x, y) === SURFACE.WATER);
   p.x += p.vx * dt; p.y += p.vy * dt;
   // Solid cuadras + aceras + open water: LAND, ACERA (the kerb) and WATER are
@@ -586,7 +592,7 @@ export function update(dt) {
     if (p.x < a.x0 - 9 || p.x > a.x1 + 9 || p.y < a.y0 - 9 || p.y > a.y1 + 9) continue;
     if (collideBuilding(p, b)) {
       state.cam.shake = Math.max(state.cam.shake, 3);
-      if (state.carrying && Math.random() < 0.01) dropChurchill();
+      if (state.carrying && Math.random() < 0.01) dropOrder();
     }
   }
 
@@ -740,12 +746,12 @@ export function update(dt) {
   const nk = nearestKiosk(p);
   if (!state.carrying && nk.lm && nk.d < 38 && p.speed < 60) {
     if (!state.pendingOrder) pickCustomer();
-    pickUpChurchill(nk.lm);
+    pickUpOrder(nk.lm);
   }
   if (state.carrying) {
     const c = state.carrying.customer;
     const dc = Math.hypot(p.x - c.x, p.y - c.y);
-    if (dc < 36 && p.speed < 80) deliverChurchill();
+    if (dc < 36 && p.speed < 80) deliverOrder();
   }
   // consumable timers (armed at run start by modes.js)
   if (state.headstartT > 0) state.headstartT = Math.max(0, state.headstartT - dt);
@@ -755,10 +761,15 @@ export function update(dt) {
     // cooler upgrade slows the melt; an active ice pack pauses it entirely —
     // and so does a ferry crossing. The whole point of the Easter egg is a
     // break, and a 45 s break that costs you the delivery is not one.
+    // …Y CADA COMIDA TIENE SU RELOJ. El churchill se derrite manejando; el
+    // ceviche corre con el cielo; el vigorón lo aguada la lluvia. `spoilRate`
+    // en `delivery.js` elige el modelo por el producto que va en la carga —
+    // aquí sólo se junta lo que la FÍSICA sabe (si va en calle) con lo que el
+    // jugador compró (la hielera). Sin carga es el churchill, o sea lo de antes.
     const meltRate = (state.icepackT > 0 || crossing || activeEditorBoost(state, "melt-freeze")) ? 0
-      : state.veh.melt * (onRoad ? 1.0 : 1.25) * heat * economy.upgradeEffect("cooler");
+      : spoilRate(state.veh.melt * economy.upgradeEffect("cooler"), onRoad, heat);
     state.carrying.melt += dt * meltRate;
-    if (state.carrying.melt >= state.carrying.total) dropChurchill();
+    if (state.carrying.melt >= state.carrying.total) dropOrder();
   }
 
   updateEditorTriggers();
@@ -1023,7 +1034,7 @@ export function advanceEntities(dt, withPlayer = true) {
       // one drop roll per collision event, not per frame of contact
       if (state.hitT <= 0) {
         state.hitT = 1.5;
-        if (state.carrying && Math.random() < 0.35) dropChurchill();
+        if (state.carrying && Math.random() < 0.35) dropOrder();
       }
     }
   }
@@ -1060,7 +1071,7 @@ export function advanceEntities(dt, withPlayer = true) {
     // Gulls hover over open water; if one drifts over land, steer it back.
     if (!W.inWater(g.x, g.y)) g.vy = -g.vy || 20;
     if (withPlayer && state.carrying && Math.hypot(g.x - p.x, g.y - p.y) < 70 && Math.random() < 0.005) {
-      if (Math.random() < 0.3) dropChurchill();
+      if (Math.random() < 0.3) dropOrder();
     }
   }
   // LAS ORDAS. Una bandada posada deriva despacio; cuando el carro entra en
@@ -1088,7 +1099,7 @@ export function advanceEntities(dt, withPlayer = true) {
     }
     if (withPlayer && d < f.r) {
       state.gullBlind = Math.max(state.gullBlind || 0, 0.55);
-      if (state.carrying && Math.random() < 0.012) dropChurchill();
+      if (state.carrying && Math.random() < 0.012) dropOrder();
     }
   }
 

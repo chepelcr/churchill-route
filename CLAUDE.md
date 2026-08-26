@@ -11,11 +11,11 @@ customer before it melts. Three modes: **Historia** (7 stages), **Arcade** (3-mi
 free roam), **Recorrer** (open world with unlockable districts).
 
 Design doc: `docs/GAME_DESIGN.md`. **`ROADMAP.md` is OPEN WORK ONLY** — it was
-pruned to 193 lines on 2026-08-14 after several of its oldest rows turned out to
-be false (it claimed the game had no audio, an all-Spanish UI and a pending 2-D
-map). The history lives in `docs/ROADMAP-ARCHIVE.md`, and the per-date release
-notes in `docs/changelog/YYYY-MM-DD.md`. **Verify a row against the tree before
-acting on it, and delete it if it has rotted** — that is how the file stays
+pruned on 2026-08-14 after several of its oldest rows turned out to be false (it
+claimed the game had no audio, an all-Spanish UI and a pending 2-D map). The
+history lives in `docs/ROADMAP-ARCHIVE.md`, and the per-date release notes in
+`docs/changelog/YYYY-MM-DD.md`. **Verify a row against the tree before acting on
+it, and archive it if it has closed or rotted** — that is how the file stays
 worth reading.
 
 ## ANTES DE TOCAR CONTENIDO: ¿esto ya es data?
@@ -45,6 +45,7 @@ The procedure is three steps and it is not optional:
 |---|---|
 | a place: landmark, customer, stage, district, feria ride, beach access | `content/world/{landmarks,customers,stages,geography,attractions}.json` |
 | **a hand-made manzana** — the civic block, El Carmen, a stadium/plaza, the Marino's partition, the Balneario | `content/world/blocks.json` (each names its `BlockLayout`) |
+| **where the disused railway runs relative to named streets** | `content/world/railway.json` — names and metres only; never world px or geo anchors |
 | **the ground of one manzana or one parcel** | `content/world/blocks.json` → `manzanas` (BY GEO) / `parcels` (by id) |
 | **who stands on a pitch** | `content/world/blocks.json` → `crowd`; what a type IS → `src/game/npcTypes.json` |
 | a muelle's size, width, style | `content/world/piers.json` |
@@ -57,7 +58,7 @@ The procedure is three steps and it is not optional:
 | **de qué color es un edificio de OSM** | `src/assets/building-styles.json`, por `cat` |
 | **la lluvia, sus salpicaduras y la calle encharcada** | `src/assets/hud.json` → `weather.{rain,splash,roadSplash,flood}` |
 | **cómo se ve un puesto según lo que vende** | `src/assets/world-props.json` → `landmarks["kiosk:<product>"]` |
-| **how a shadow answers the sun; how tall a building is** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` |
+| **how a shadow answers the sun; how tall a building is; the terrain shadow-map budget** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` / `terrainShadow` |
 | what a vehicle DOES: wake, shadow, turn wind, **headlights** | `src/assets/effects.json` |
 | landmarks, signs, parcel props, scenes | `src/assets/world-props.json` |
 | the world's palettes: estero, malecón, structures, streets, weather, piers | `src/assets/materials.json` |
@@ -105,10 +106,11 @@ stopped being one.
   clean. `sunVector()` sweeps in the same breath, which is what makes it read as
   a real regression. **LAS SMOKES QUE IMPORTAN MÓDULOS FUENTE VAN CONTRA UN SERVIDOR FRESCO**, en
   otro puerto (`pnpm dev --port 8736 --strictPort`), nunca contra un `:8734` que
-  lleve un ciclo de edición encima. Son **cinco** y se reconocen porque hacen
+  lleve un ciclo de edición encima. Son **seis** y se reconocen porque hacen
   `import("/src/…")`: `smoke:sky`, `smoke:shadows`, `smoke:sceneshadows`,
-  `smoke:feria` y `smoke:grade`. Las de producción (`smoke`, `boat`, `crossing`,
-  `theme`, `sponsor`, `night`) toman `vite preview` y no les afecta.
+  `smoke:standshadow`, `smoke:feria` y `smoke:grade`. Las de producción
+  (`smoke`, `boat`, `crossing`, `theme`, `sponsor`, `night`) toman
+  `vite preview` y no les afecta.
 
   Esto mordió CUATRO veces en un solo día, y no siempre igual: dos smokes que
   reportan que el cielo y las sombras no se mueven; una hoja de parcelas que sale
@@ -212,13 +214,15 @@ renderer (the "view") lives behind a seam so backends can be swapped.
     `modes.js` (`startArcade`/`startStage`/`startExplore` + setters).
   - `index.js` — **Game facade** + main loop; exports `Game`, mirrors it to
     `window.Game` for the dev tweaks host + console debugging.
-- `src/world2d/` — **generated**, do not hand-edit: `manifest.json` + 640
+- `src/world2d/` — **generated**, do not hand-edit: `manifest.json` + streamed
   `tiles/*.json` from `tools/build_world.py`, plus `index.js` (the `WORLD2D`/`W`
   accessor: per-tile RLE decode + streaming, `surfaceAt`, road arclength
   samplers, building spatial hash, silhouettes).
-- `src/render/` — `Renderer.js` (the seam: `setupCanvas`, `render`) →
-  `canvas2d.js` (current Canvas2D backend, extracted from the old engine).
-  **Milestone C adds a `pixi/` backend and swaps the one line in `Renderer.js`.**
+- `src/render/` — `Renderer.js` is the seam and `camera.js` is the ONE camera
+  authority shared by its backends. `canvas2d.js` paints the complete shipped
+  world; the transparent `pixi/` layer above carries migrated landmark
+  structures (currently none are owned there), and `?render=3d` lazy-loads the
+  opt-in `three/` layer. The normal 2-D path must make zero Three requests.
   **`c2d/shapes.js` — the shape interpreter — IMPORTS NO PART OF THE GAME, and
   `tests/test_shape_interpreter.py` keeps it that way.** It is the engine's half
   of every art catalog, and the editor loads it to preview the record it is
@@ -317,8 +321,8 @@ churchill/world/
                  a fast smoke build — CUAD, ACERA_CELLS / FIELD_ACERA_CELLS,
                  BUILDING_SCALE)
   content.py     the hand-authored map: DISTRICT_DEFS, LANDMARK_DEFS,
-                 CUSTOMER_DEFS, STAGES, probes  (geo anchors — the build FAILS
-                 listing unresolved POIs)
+                 CUSTOMER_DEFS, STAGES, RAILWAY_DEF, probes  (geo anchors —
+                 the build FAILS listing unresolved POIs)
   logging.py     log(tag, msg) / warn / die — the build log is the review
                  surface, so keep a stage's lines factual and countable
   dto/           PYDANTIC v2 models = the emitted JSON's schema (Manifest, Tile,
@@ -344,7 +348,8 @@ churchill/world/
                  surface (the stamping ORDER matters), network (the gate),
                  placement (why a POI has to be nudged at all), osm, decoration,
                  projection, signs (street furniture + seating the paradas),
-                 kerb (the esquinas — read WHY the renderer cannot find them)
+                 kerb (the esquinas — read WHY the renderer cannot find them),
+                 railway (named-street alignment + build-audited envelopes)
   pipeline/      the stages: extract_world -> … -> verify -> write_world
 ```
 
@@ -557,17 +562,17 @@ centre), `"river"/"statue"/"bus"` (civic furniture the renderer draws — the
 world says only which parcel has one), and `"use": "boulevard"`, which stamps
 `Surface.BOULEVARD` (7): transitable but slow, painted as stone by `paintStone`.
 
-**Organic stadium (graderías from the real acera)**: `place_stadium` builds each
-estadio as a `quad` that follows the street grid — a diagonal block resolves its
-left/right edges from the two calles' *lines* (`_street_line` = principal-axis
-fit) intersected with the south avenue (`_iline`), extended north; an axis block
-uses `_street_vals`. The OUTER quad is stamped `CLS_ROAD` (drivable, overlaps the
-bounding streets so you can enter — no acera wall); the DRAWN pitch is
-`draw_poly` = `_inset_poly(quad, ~0.9·CUAD)` so grass never paints over asphalt.
-`drawStadium(lm)` clips green + white lines to `lm.footprint` (= draw_poly) and,
-when `lm.stands`, strokes a dark two-tone band over the block's real acera ring
-in the LANDMARK pass (after sidewalks → recolours the actual acera; follows the
-organic/diagonal outline). Interior cross-streets clipped by `_clip_roads_poly`.
+**Organic stadium (four emitted graderías + corner mouths)**: `place_stadium`
+builds each estadio as a `quad` that follows the street grid — a diagonal block
+resolves its left/right edges from the two calles' *lines* (`_street_line` =
+principal-axis fit) intersected with the south avenue (`_iline`), extended
+north; an axis block uses `_street_vals`. The pitch remains the inset polygon,
+but every authored `stands.side`/`stands.sides` is emitted as its own 12 px-deep
+quadrilateral. Those exact quads drive both art and collision: only their bands
+are blocked, while four corner mouths remain drivable. `drawStadium(lm)` paints
+the emitted quads and derives their northward solar offsets from
+`sunShadow(heightM)`; do not restore the former inward fixed three-pixel stroke.
+Interior cross-streets are clipped by `_clip_roads_poly`.
 
 **UN EDIFICIO SE PINTA POR LO QUE ES, Y LA LLAVE NO ES `building`.**
 `src/assets/building-styles.json`, resuelto en `c2d/buildingStyle.js`. Cada
@@ -635,17 +640,22 @@ the centreline was ON the mangrove. Against that, `crossing.js` marked a channel
 of one constant half-width (105 px), so **82 of 170 buoys stood on dry land** and
 16 of 22 gates had a mark ashore. It is now a **clearance-biased Dijkstra** over a
 bounded distance transform (`_clearance`, `CLEARANCE_WEIGHT`, penalty SQUARED so
-a wide reach still takes the short way), the channel is **dredged** to
-`DREDGE_HW` — converting `CLS_LAND` only, stopping the ray at anything that is
-neither land nor water, so it can never tunnel through a road — and the build
-**emits the measured lane** (`Ferry.channel`: `pitch`, `hw`, `off`). Everything
-that places something in the estero goes through `laneAt(ch, s)`, never a
-constant. `_navigable`'s old "…or any 4-neighbour is water" is exactly the
-licence that let the line sit on the bank; it now asks for real clearance.
-**A dredge must also emit its outline into `ctx.waters`** — `trace_land_contours`
-runs in `rasterise_surface`, ten stages earlier, so the drawn silhouette would
-otherwise still paint the new channel as land (the Balneario precedent, and the
-same trap `reclaim_shore` documents from the other side).
+a wide reach still takes the short way), and the build **emits the measured
+course** (`Ferry.channel`: `pitch`, `hw`, `off`). Everything that places
+something in the estero goes through `laneAt(ch, s)`, never a constant.
+`_navigable`'s old "…or any 4-neighbour is water" is exactly the licence that let
+the line sit on the bank; it now asks for real clearance.
+
+**THE ESTUARY IS OPENED EARLY; THERE IS NO LATE DREDGE.** `open_estuary` runs in
+`rasterise_surface` after mapped water and before `trace_land_contours`, turning
+shore-connected `CLS_LAND` inside `estero_band` into the basin the player will
+actually sail. It keeps a mangrove rim derived from `MANGROVE_R_MAX`, preserves
+detached islets, and protects the road+future-acera corridor, OSM sites/parcels,
+authored POI aprons and the lancha landings through `estuary_claim_mask`. That
+ordering is load-bearing: the traced land silhouette, the route and the channel
+soundings all read the SAME finished coast. Do not restore `dredge_channel`,
+`DREDGE_HW`, or a compensating contour overlay in `ctx.waters`; those were the
+late-stage workaround this opening replaced.
 
 *The hull.* `src/game/boat.js` owns it. Before, the boat existed only as nine
 `afloat ? … : …` subtractions scattered through `physics.js`, and two of them
@@ -813,6 +823,29 @@ spit.
 the seam read as a straight line down the playa. `service.surface.sand_outlines`
 traces the FINISHED raster instead (run last, after the malecón, the esplanade,
 the pads and the bajadas take their cells).
+
+**Y LA SILUETA DE LA TIERRA SE PUEDE PERDER EN SILENCIO — el mapa de aristas de
+`trace_land_contours` es un MULTIMAPA y tiene que serlo.** El trazador encadena
+aristas de frontera; un punto de la retícula donde dos celdas de tierra se tocan
+ESQUINA CON ESQUINA a través del agua es el inicio de DOS aristas. Guardadas en
+un `dict` de `inicio -> fin`, la segunda pisaba a la primera, el paseo que
+llegaba a la perdida se salía de la cadena, y la prueba de cierre descartaba **el
+lazo entero**. Medido sobre un fixture de dos bloques que se tocan por una
+esquina: **0 lazos conservados y 17 cadenas descartadas**, o sea ninguna silueta
+para dos bloques macizos.
+
+El 2026-08-23 abrir la cuenca del estero agregó pellizcos nuevos y uno solo
+borró el único lazo de **24 200 vértices** que es toda la tierra firme más el
+arenal: `landPolys` pasó de 26 a 54 y **ninguno** de cinco puntos del arenal
+quedaba dentro de alguno. Como `drawLandBase` pinta el mar en todo el viewport y
+encima las tierras, los patios de El Cocal se dibujaban como MAR ABIERTO — con
+el ráster diciendo 0 % agua ahí. Se ve en una captura y en ninguna prueba, que es
+lo que lo hace peligroso.
+
+Ahora se consume una salida por visita y **una cadena que no cierra AVISA**. No
+se exige un número de lazos: atravesar el pellizco traza los dos bloques como un
+ocho, y un ocho relleno cubre los dos. Lo que se exige —y lo que habría cazado
+esto— es que **la tierra que hay quede DENTRO de alguna silueta**.
 
 **LOS EDIFICIOS SE QUEDAN AL TAMAÑO QUE EL MAPEADOR MIDIÓ**
 (`MANZANA_FIT_MIN_SCALE = 1.0`). `fit_manzana_contents` encogía el grupo de cada
@@ -1324,7 +1357,7 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
   two runtimes must agree about it; a margin inside one drawing recipe is not
   that. `tests/test_world_units.py` checks every derivation against the shipped
   manifest, so a changed metre value that does not match the built world fails.
-- The camera zoom is responsive: `computeZoom` in `src/render/c2d/gfx.js` frames
+- The camera zoom is responsive: `computeZoom` in `src/render/camera.js` frames
   `camera.viewWidthM` (160 m) across the viewport, clamped by
   `camera.minScreenPxPerM` (5.5) — the **floor is a magnification and scales
   INVERSELY with the world's scale**, and it binds on every screen under 880 CSS
@@ -1356,6 +1389,29 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
   tile es un script de veinte líneas. Y **no envuelvas el build en
   `cmd > log; echo $?`**: el `echo` sale 0 y tapa el fallo, así que el build
   «terminó bien» y no había mundo.
+
+  **Y LA CORRIDA COMPLETA DURA MÁS QUE CUALQUIER LLAMADA DE HERRAMIENTA: HAY QUE
+  LANZARLA DESPRENDIDA.** Bash topa a 600 000 ms (10 min) y `run_in_background`
+  no levanta ese tope — sólo evita que uno se quede esperando. El 2026-08-23 una
+  corrida murió en la línea 953 de su log, a mitad de pipeline, exactamente a los
+  diez minutos. Va en su propia sesión para que nada aguas arriba la coseche:
+  `subprocess.Popen([sys.executable, "-u", "tools/build_world.py"], …,
+  start_new_session=True)`, el pid a un archivo, y un Monitor que vigile **las
+  dos salidas** — `kill -0 $PID` para el final y un grep de
+  `Traceback|MemoryError|Killed` para el fallo. Un filtro que sólo casa el éxito
+  se queda callado ante un cuelgue, y el silencio se ve igual que «sigue
+  corriendo». Ojo también con `pgrep -f build_world.py`: casa además el shell que
+  la envuelve, así que mirá en `ps aux` cuál es el proceso que de verdad quema
+  CPU antes de concluir que se trabó.
+
+  **Y ANTES DE PAGARLA: PROBÁ EL ARREGLO CONTRA EL MUNDO YA EMITIDO.** Los tiles
+  publicados SON el ráster que el build midió, así que una función del builder se
+  puede volver a correr encima de ellos con un shim de cuatro métodos
+  (`cell`, `cell_of`, `in_bounds`, `at`). Así se probaron los dos arreglos del
+  2026-08-23 sin una corrida de más: `measure_channel` (media caña mínima 0 → 36,
+  120 estaciones mejores y 0 peores) y `trace_land_contours` (6/6 sondas del
+  arenal dentro de la silueta). Convierte «arrancá 50 minutos y esperá» en una
+  medición.
 - After a world rebuild, refresh BOTH derived artifacts: `pnpm inventory` and
   `python3 tools/gen_lotes.py`. The lote catalog went stale for a week once —
   it listed sponsorable footprints that no longer existed.

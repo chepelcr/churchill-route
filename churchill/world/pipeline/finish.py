@@ -47,6 +47,7 @@ from ..service.elevation import ELEV_CELL, elevation_field
 from ..service.network import block_census, verify_connectivity
 from ..service.dilation import export_patches
 from ..service.placement import water_within
+from ..service.railway import alignment_failures, alignment_log_line
 from ..service.surface import sand_outlines
 from ..service.street import StreetIndex
 from ..util.geometry import (
@@ -130,11 +131,67 @@ def _rings_area(rings):
     return abs(sum(poly_area(ring) for ring in rings))
 
 
+FIELD_ESCAPE = (CLS_ROAD, CLS_BOULEVARD)
+
+
+def field_escape_status(raster, parcel):
+    """Whether a stamped cancha can leave its own footprint locally.
+
+    This is deliberately a small reusable piece of the final gate: stadium
+    stands now turn most of Lito Perez's ring into wall, so focused tests can
+    prove the four authored corner mouths still satisfy the SAME reachability
+    predicate the full world build runs.
+
+    Returns ``(status, visited)`` where status is ``escaped``, ``walled``,
+    ``undecided`` (search budget exhausted), or ``not-drivable``.
+    """
+    cell = raster.cell
+    px_, py_ = parcel.get("cx"), parcel.get("cy")
+    if px_ is None or py_ is None:
+        return "not-drivable", 0
+    cc, rr = int(px_ // cell), int(py_ // cell)
+    if not (raster.in_bounds(cc, rr) and raster.at(cc, rr) in FIELD_ESCAPE):
+        return "not-drivable", 0
+    x0, y0 = parcel.get("x0", px_), parcel.get("y0", py_)
+    x1, y1 = parcel.get("x1", px_), parcel.get("y1", py_)
+    margin = 3 * cell
+    budget = 4000 + int(((x1 - x0) / cell + 2) * ((y1 - y0) / cell + 2))
+    seen = {(cc, rr)}
+    stack = list(seen)
+    while stack and len(seen) < budget:
+        c, r = stack.pop()
+        for nc, nr in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
+            if (nc, nr) in seen or not raster.in_bounds(nc, nr):
+                continue
+            if raster.at(nc, nr) not in FIELD_ESCAPE:
+                continue
+            wx, wy = nc * cell, nr * cell
+            if (wx < x0 - margin or wx > x1 + margin
+                    or wy < y0 - margin or wy > y1 + margin):
+                return "escaped", len(seen)
+            seen.add((nc, nr))
+            stack.append((nc, nr))
+    return ("undecided" if len(seen) >= budget else "walled"), len(seen)
+
+
 def verify(ctx, *, spawn, gate_pois):
     """The build's gate. Appends to ctx.failures; the runner raises on any."""
     unreachable, reached = verify_connectivity(ctx.raster, spawn, gate_pois,
                                                reach=GATE_REACH_CELLS)
     ctx.failures.extend("unreachable " + u for u in unreachable)
+    # EL FERROCARRIL TIENE DERECHO DE VÍA, no centro de calzada.  The analytic
+    # proof comes from the same named road geometry used to align it, not from
+    # a raster cell that may also have been painted by a plaza or apron later.
+    #
+    # Pair stretches are the explicit exception to a painted-width zero: the
+    # arcade carriageways at El Cocal overlap, so their midpoint is necessarily
+    # inside painted asphalt.  That impossibility is COUNTED in every line;
+    # pair samples instead fail if they leave the two named centrelines or drift
+    # farther than the authored midpoint tolerance.  Shoulder stretches retain
+    # the strict true/painted target of zero.
+    for rail_report in ctx.rail_alignment:
+        log("railway", alignment_log_line(rail_report))
+    ctx.failures.extend(alignment_failures(ctx.rail_alignment))
     # A MUELLE THE PLAYER CANNOT DRIVE ONTO IS DECORATION. The POI gate does not
     # cover the piers — they are not landmarks — and that is exactly how the
     # Muelle de Pitahaya spent a release standing off the end of every street,
@@ -168,56 +225,22 @@ def verify(ctx, *, spawn, gate_pois):
     # por diseño. Lo que hace mala a una cancha no es estar lejos, es estar
     # CERRADA — así que se pregunta si desde ella se puede SALIR de su propia
     # huella por suelo manejable.
-    ESCAPE = (CLS_ROAD, CLS_BOULEVARD)
     for P in ctx.parcels:
         if P.get("use") not in ("plaza", "stadium"):
-            continue
-        px_, py_ = P.get("cx"), P.get("cy")
-        if px_ is None or py_ is None:
             continue
         # …y sólo si de verdad se estampó transitable. Un campo que no
         # encontró calle a la que conectarse se deja SIN estampar a propósito
         # (ver `field._open_a_mouth`), así que no es una calzada amurallada:
         # es suelo de parcela, y preguntarle por su red no significa nada.
-        cc, rr = int(px_ // cell), int(py_ // cell)
-        if not (ctx.raster.in_bounds(cc, rr)
-                and ctx.raster.at(cc, rr) in ESCAPE):
-            continue
-        x0, y0 = P.get("x0", px_), P.get("y0", py_)
-        x1, y1 = P.get("x1", px_), P.get("y1", py_)
-        margin = 3 * cell
-        # EL PRESUPUESTO TIENE QUE DAR PARA CRUZAR EL PROPIO CAMPO. Con un tope
-        # fijo de 4 000 celdas, la Ciudad Deportiva Ángela Quesada —485x480 px,
-        # unas 14 500 celdas, todas estampadas calzada— se gastaba la búsqueda
-        # recorriendo su propio interior y salía «amurallada» teniendo su boca
-        # abierta. Una compuerta que falla porque se quedó sin presupuesto está
-        # mintiendo, así que el tope crece con el campo…
-        budget = 4000 + int(((x1 - x0) / cell + 2) * ((y1 - y0) / cell + 2))
-        seen_c = {(int(px_ // cell), int(py_ // cell))}
-        stack = list(seen_c)
-        escaped = False
-        while stack and len(seen_c) < budget and not escaped:
-            c, r = stack.pop()
-            for (nc, nr) in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
-                if (nc, nr) in seen_c or not ctx.raster.in_bounds(nc, nr):
-                    continue
-                if ctx.raster.at(nc, nr) not in ESCAPE:
-                    continue
-                wx, wy = nc * cell, nr * cell
-                if (wx < x0 - margin or wx > x1 + margin
-                        or wy < y0 - margin or wy > y1 + margin):
-                    escaped = True
-                    break
-                seen_c.add((nc, nr))
-                stack.append((nc, nr))
-        if escaped:
+        status, visited = field_escape_status(ctx.raster, P)
+        if status in ("not-drivable", "escaped"):
             continue
         # …y si aun así se agotó el presupuesto, la respuesta es NO SÉ, no NO.
         # Fallar el build por no haber terminado de mirar es la peor clase de
         # compuerta: la que hay que desactivar para poder trabajar.
-        if len(seen_c) >= budget:
+        if status == "undecided":
             warn("gate", f"{P.get('id')}: no se pudo decidir si tiene salida "
-                 f"({len(seen_c)} celdas recorridas) — se deja pasar")
+                 f"({visited} celdas recorridas) — se deja pasar")
             continue
         ctx.failures.append(
             f"walled-in field {P.get('id')}(stamped drivable but its own "

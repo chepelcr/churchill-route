@@ -20,6 +20,7 @@ The zoom floor gets its own case because it is the one that scales INVERSELY,
 which is the mistake the doc predicts somebody making.
 """
 import json
+import math
 import os
 import re
 import unittest
@@ -32,7 +33,8 @@ ROOT = config.ROOT
 UNITS = config.UNITS
 MANIFEST = os.path.join(ROOT, "src", "world2d", "manifest.json")
 CLIENT_UNITS = os.path.join(ROOT, "src", "domain", "units.js")
-GFX = os.path.join(ROOT, "src", "render", "c2d", "gfx.js")
+CAMERA = os.path.join(ROOT, "src", "render", "camera.js")
+EFFECTS = os.path.join(ROOT, "src", "assets", "effects.json")
 CROSSING = os.path.join(ROOT, "src", "game", "crossing.js")
 FERRIES_JS = os.path.join(ROOT, "src", "game", "ferries.js")
 DTO = os.path.join(ROOT, "churchill", "world", "dto", "world.py")
@@ -93,6 +95,51 @@ class DerivationTests(unittest.TestCase):
         self.assertEqual(config.CUADS_PER_VIEW, self.m["meta"]["cuadsPerView"])
         self.assertEqual(config.px(UNITS["camera"]["viewWidthM"]),
                          config.CUADS_PER_VIEW * config.CUAD)
+
+    def test_the_future_ortho_tilt_matches_the_authored_foreshortening(self):
+        """Stage 6 may activate tilt, but it may not quietly retune the art."""
+        effects = json.loads(read(EFFECTS))
+        tilt = UNITS["camera"]["tiltDeg"]
+        self.assertGreater(tilt, 0)
+        self.assertLess(tilt, 90)
+        self.assertAlmostEqual(
+            math.cos(math.radians(tilt)),
+            effects["sunShadow"]["squashY"],
+            places=15,
+            msg="camera tilt no longer derives from the Canvas north-south squash",
+        )
+
+    def test_the_lean_in_use_never_passes_the_angle_the_art_was_drawn_for(self):
+        """`tiltDeg` es el TECHO; `leanDeg` es lo que se usa.
+
+        Los dos son ángulos de cámara y viven juntos, que es exactamente cómo
+        se confunden. El techo deriva del arte (arriba) y no se toca; la
+        perilla de sensación es la otra, y pasada la primera un sprite cenital
+        deja de leerse como su propio objeto.
+        """
+        camera = UNITS["camera"]
+        self.assertIn("leanDeg", camera, "no hay perilla de inclinación")
+        self.assertGreaterEqual(camera["leanDeg"], 0)
+        self.assertLessEqual(
+            camera["leanDeg"], camera["tiltDeg"],
+            msg="la inclinación en uso pasó el ángulo para el que se dibujó el arte",
+        )
+
+    def test_the_lean_leaves_the_ground_alone(self):
+        """LA PROMESA DEL HITO, escrita donde se pueda romper.
+
+        El suelo NO se achata: la proyección se compensa (`render/lean.js` y
+        `three/index.js`), así que `applyTouch` sigue comparando un ángulo de
+        pantalla contra un rumbo de mundo que sí coinciden. Si alguien mete un
+        `cos(tilt)` en la cámara 2-D, manejar cambia — y esto lo dice.
+        """
+        camera_js = read(os.path.join(ROOT, "src", "render", "camera.js"))
+        for banned in ("tilt", "squash", "lean"):
+            self.assertNotIn(
+                banned, camera_js,
+                msg=f"`{banned}` entró a la cámara 2-D: el suelo se movió y el "
+                    f"volante con él",
+            )
 
     def deck_of(self, vessel):
         v = UNITS["vessels"][vessel]
@@ -264,7 +311,7 @@ class WorldDistanceTests(unittest.TestCase):
     def test_the_services_derive_the_same(self):
         from churchill.world.service import ferry, lancha
         self.assertEqual(lancha.CHANNEL_HW, 150)
-        self.assertEqual(lancha.DREDGE_END_PAD, 220)
+        self.assertNotIn("dredgeEndPadM", UNITS["world"]["lancha"])
         self.assertEqual(lancha.SIMPLIFY_PX, 60.0)
         self.assertEqual(lancha.SNAP_PX, 400.0)
         self.assertEqual(lancha.MIN_ACCESS_PX, 24.0)
@@ -297,7 +344,7 @@ class SingleCopyTests(unittest.TestCase):
     """The numbers are gone from the code that used to carry them."""
 
     def test_the_camera_no_longer_frames_cuadriculas(self):
-        src = read(GFX)
+        src = read(CAMERA)
         body = src.split("function computeZoom", 1)[1].split("}", 1)[0]
         self.assertNotIn("2.2", body,
                          "the zoom floor is back as a literal in computeZoom — "

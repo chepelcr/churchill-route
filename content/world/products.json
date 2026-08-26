@@ -17,7 +17,14 @@
       "note": "Papas con carne mechada, y en la costa se pide CON CANTONES. No es comida de feria de paso: es comida fuerte de todo el corredor — Puntarenas, Esparza, Barranca y Caldera — y por eso es el hilo que une los barrios del este con el puerto. No se derrite; se enfría, que perdona más pero no perdona siempre.",
       "spoil": "cool",
       "budgetMul": 1.35,
-      "cargo": "box"
+      "cargo": "box",
+      "lines": [
+        "¡Con cantones, porfa!",
+        "Para el break del turno.",
+        "Que venga bien caliente.",
+        "Dos, y uno sin chile.",
+        "Ando con hambre de verdad."
+      ]
     },
     "vigoron": {
       "name": "Vigorón",
@@ -25,7 +32,13 @@
       "note": "Repollo picado, yuca sancochada y chicharrones, con chimichurri, servido en hoja. Se popularizó en el puerto por la migración nicaragüense — se come aquí de verdad, y decirlo así es más honesto que llamarlo endémico. Aguanta: es el reparto largo y tranquilo.",
       "spoil": "sog",
       "budgetMul": 1.6,
-      "cargo": "leaf"
+      "cargo": "leaf",
+      "lines": [
+        "Con harto chicharrón.",
+        "Que no se me aguade la hoja.",
+        "Extra chimichurri, por favor.",
+        "El de siempre, tranquilo."
+      ]
     },
     "ceviche": {
       "name": "Ceviche",
@@ -33,7 +46,13 @@
       "note": "De pescado, camarón, chucheca o piangua. En esta provincia nacieron los ceviches que después se comieron en todo el país. Aguanta la distancia pero NO el sol: su reloj corre con el cielo, no con el odómetro, así que la misma entrega es otra cosa a mediodía que al atardecer.",
       "spoil": "sun",
       "budgetMul": 1.25,
-      "cargo": "cup"
+      "cargo": "cup",
+      "lines": [
+        "De piangua si hay.",
+        "Bien frío, que pega el sol.",
+        "Con galletas, porfa.",
+        "El de camarón, ese."
+      ]
     },
     "mariscada": {
       "name": "Mariscada",
@@ -41,7 +60,14 @@
       "note": "Cazuela de mariscos del muelle. Pesada y cara: paga más y corre menos, así que es el trabajo de las rutas cortas de Caldera y Mata de Limón.",
       "spoil": "cool",
       "budgetMul": 1.15,
-      "cargo": "box"
+      "cargo": "box",
+      "lines": [
+        "La cazuela completa.",
+        "Es para celebrar.",
+        "Del muelle, como debe ser.",
+        "Que llegue calientita."
+      ]
     }
-  }
+  },
+  "_lines": "LO QUE PIDE QUIEN PIDE ESTO. Se usa cuando la frase propia del cliente habla de otra comida (ver `product` en customers.json); quién dice cuál es estable por cliente, para que el puerto no cambie de voz cada entrega. El churchill no lleva ninguna a propósito: las 24 frases del pueblo YA son su voz."
 }

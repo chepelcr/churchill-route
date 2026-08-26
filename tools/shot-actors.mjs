@@ -27,10 +27,11 @@ await page.goto(url, { waitUntil: "domcontentloaded" });
 await page.waitForFunction(() => document.fonts.size > 0, null, { timeout: 20000 });
 await page.evaluate(async () => { await document.fonts.ready; });
 const drew = await page.evaluate(async ({ W, H }) => {
-  const [ent, gfx, st] = await Promise.all([
+  const [ent, gfx, st, veh] = await Promise.all([
     import("/src/render/c2d/entities.js"),
     import("/src/render/c2d/gfx.js"),
     import("/src/game/state.js"),
+    import("/src/game/vehicles.js"),
   ]);
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = H;
@@ -44,6 +45,19 @@ const drew = await page.evaluate(async ({ W, H }) => {
 
   const T = 1234;                       // a fixed clock for the few that read one
   const ped = (o) => ({ x: 0, y: 0, ph: 1.1, hue: 200, ...o });
+  // The real composition, without the vehicle body: one vehicle-selected
+  // container plus one product-selected contents form. Three cup cases prove
+  // that changing vehicles preserves bag/cooler/freezer; the last two keep the
+  // bag fixed and prove that products.json changes only what is inside it.
+  const cargo = (key, product, x, y) => {
+    const previousKey = st.state.vehicleKey;
+    const previousCargo = st.state.carrying;
+    st.state.vehicleKey = key;
+    st.state.carrying = { product, melt: 0.35, total: 1 };
+    ent.drawPlayerCarrying({ x, y, a: 0 }, veh.VEHICLES[key]);
+    st.state.vehicleKey = previousKey;
+    st.state.carrying = previousCargo;
+  };
   // Every case is [label, draw(x, y)]. Kept as one list so the sheet's layout
   // is a consequence of the list rather than a set of coordinates to maintain.
   const CASES = [
@@ -94,6 +108,11 @@ const drew = await page.evaluate(async ({ W, H }) => {
       ent.drawTargetCustomer(T);
       st.state.carrying = null;
     }],
+    ["bag + cup", (x, y) => cargo("bici", "churchill", x, y)],
+    ["cooler + cup", (x, y) => cargo("pickup", "churchill", x, y)],
+    ["freezer + cup", (x, y) => cargo("cart", "churchill", x, y)],
+    ["bag + box", (x, y) => cargo("bici", "papicarne", x, y)],
+    ["bag + leaf", (x, y) => cargo("bici", "vigoron", x, y)],
   ];
 
   const COLS = 7, CW = W / COLS, CH = 110;

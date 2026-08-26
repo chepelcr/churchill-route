@@ -20,6 +20,7 @@ stays a list" gets it wrong. Arity is what makes a tuple here, not content.
 import json
 import math
 import os
+import re
 import subprocess
 import types
 import unittest
@@ -264,12 +265,109 @@ class KioskTests(unittest.TestCase):
 
     def test_a_product_names_a_spoil_model_the_game_implements(self):
         """`spoil` SELECCIONA un modelo que la física implementa; no lo inventa.
-        Es el mismo contrato que `effects.json` le pone a un vehículo."""
-        implemented = {"melt", "cool", "sog", "sun"}
+        Es el mismo contrato que `effects.json` le pone a un vehículo.
+
+        LA LISTA SE LEE DEL JUEGO. Estuvo escrita a mano aquí durante toda la
+        vida del registro, y mientras tanto NINGUNO de los cuatro modelos
+        existía: los cinco productos corrían el reloj del churchill y esta
+        prueba pasaba igual, porque comparaba el dato contra una copia del dato.
+        Un contrato que no toca el código no es un contrato."""
+        implemented = self._implemented_spoil_models()
+        self.assertEqual(len(implemented), 4,
+                         f"delivery.js implementa {sorted(implemented)} — "
+                         "¿cambió la forma del objeto SPOIL?")
         for pid, p in self.products.items():
             self.assertIn(p.get("spoil"), implemented,
                           f"{pid} pide un modelo de deterioro que nadie implementa")
             self.assertGreater(p.get("budgetMul", 0), 0, f"{pid} sin presupuesto")
+
+    @staticmethod
+    def _implemented_spoil_models():
+        """Las claves del objeto `SPOIL` en `src/game/delivery.js`."""
+        with open(os.path.join(ROOT, "src", "game", "delivery.js"),
+                  encoding="utf-8") as fh:
+            js = fh.read()
+        body = js.split("const SPOIL = {", 1)
+        assert len(body) == 2, "no hay un `const SPOIL = {` en delivery.js"
+        body = body[1].split("\n};", 1)[0]
+        return set(re.findall(r"^\s*(\w+):", body, re.M))
+
+    def test_every_spoil_model_can_speak(self):
+        """Un modelo sin copia sale como su propia clave en pantalla: `t()` cae
+        al nombre de la clave, así que el jugador lee `quip.sog.2` donde iba una
+        frase — y sólo lo ve quien entrega ESE producto, que es lo que hace que
+        no se note."""
+        cats = {}
+        for lang in ("es", "en"):
+            with open(os.path.join(ROOT, "src", "i18n", f"{lang}.json"),
+                      encoding="utf-8") as fh:
+                cats[lang] = json.load(fh)
+        for model in self._implemented_spoil_models():
+            keys = ([f"hud.keep.{model}", f"float.spoiled.{model}",
+                     f"tip.spoiled.{model}"]
+                    + [f"quip.{model}.{i}" for i in range(4)])
+            for lang, cat in cats.items():
+                for key in keys:
+                    self.assertIn(key, cat,
+                                  f"el modelo '{model}' no tiene {key} en {lang}.json")
+
+    def test_a_customer_line_only_claims_a_product_that_exists(self):
+        """`product` en una frase dice DE QUÉ HABLA. Apuntando a un id que no
+        existe la frase no se usaría nunca y nadie lo diría."""
+        with open(os.path.join(CONTENT_DIR, "customers.json"), encoding="utf-8") as fh:
+            customers = json.load(fh)["customers"]
+        for c in customers:
+            if "product" in c:
+                self.assertIn(c["product"], self.products,
+                              f"{c['id']} habla de {c['product']!r}, que no existe")
+
+    def test_a_line_tag_actually_reaches_the_game(self):
+        """UNA ETIQUETA QUE NADIE PUEDE LEER ES UNA ETIQUETA QUE NO EXISTE.
+
+        `product` en una frase se autora en `customers.json`, y **el mundo
+        emitido no lo lleva**: el builder emite id/nombre/posición/distrito/
+        línea, y un campo que no está en ese modelo se cae sin decir nada. Con
+        eso, `customerLine` tomaba siempre la rama «esta frase sirve para
+        cualquiera» y los repuestos por producto no se usaban NUNCA — se vio
+        porque el propio smoke del HUD imprimió «¡La mía sin tanto rojo!», que
+        es el sirope de cola de un churchill, sobre un vigorón en hoja.
+
+        Así que el cliente lee la tabla autorada. Esta prueba fija ese camino:
+        es la única forma de que el arreglo no se deshaga en silencio la próxima
+        vez que alguien mueva el import."""
+        with open(os.path.join(ROOT, "src", "game", "delivery.js"),
+                  encoding="utf-8") as fh:
+            js = fh.read()
+        self.assertIn("content/world/customers.json", js,
+                      "el cliente no lee las etiquetas autoradas: los repuestos "
+                      "por producto quedan muertos otra vez")
+        self.assertIn("LINE_PRODUCT", js)
+        # …y se comprueba la premisa, para que la prueba no proteja un rodeo que
+        # ya no hace falta: si algún día el emit SÍ lleva `product`, esto falla
+        # y alguien decide a conciencia dónde vive la respuesta.
+        man = os.path.join(ROOT, "src", "world2d", "manifest.json")
+        if os.path.exists(man):
+            with open(man, encoding="utf-8") as fh:
+                emitted = json.load(fh)["customers"]
+            self.assertFalse(
+                any(c.get("product") for c in emitted),
+                "el mundo emitido ya lleva `product` en los clientes: el rodeo "
+                "del cliente sobra, decidí dónde vive la respuesta")
+
+    def test_a_product_that_replaces_a_line_has_lines_to_replace_it_with(self):
+        """Si un cliente sólo sabe hablar de churchill y le entregan otra cosa,
+        habla el producto. Sin `lines` se cae a la frase propia — que es
+        exactamente la que nombra el churchill, y entonces el arreglo no
+        arregla nada."""
+        with open(os.path.join(CONTENT_DIR, "customers.json"), encoding="utf-8") as fh:
+            customers = json.load(fh)["customers"]
+        claimed = {c["product"] for c in customers if c.get("product")}
+        for pid, p in self.products.items():
+            if pid in claimed:
+                continue          # los clientes YA son la voz de este producto
+            self.assertTrue(p.get("lines"),
+                            f"{pid} no tiene `lines`: un cliente con frase de "
+                            "otra comida se la diría igual")
 
     def test_kiosk_ids_are_unique_and_no_kiosk_is_left_in_landmarks(self):
         ids = [k["id"] for k in self.kiosks]

@@ -3,7 +3,6 @@
 // original scheme, back by popular demand): hold a finger on the play area
 // and the car steers TOWARD it; the finger's distance to the vehicle is the
 // throttle — near = slow, far = fast, very far = TURBO. Brake ✋ is a pedal.
-import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 
 export const keys = {};
 // snapT: brief "go THERE now" window opened when the drive finger is lifted and
@@ -44,19 +43,17 @@ export function readInput() {
 // controllable), turbo past the far threshold.
 // THE MODEL IS NOT NEGOTIABLE AND DOES NOT CHANGE: one finger, steer toward it,
 // throttle by distance, far = turbo, and the held-finger drift feel is the whole
-// point of it. What follows is ONE constant that has to know the medium.
+// point of it. AND IT IS THE SAME MODEL IN BOTH MEDIA.
 //
-// `0.35 + 0.65*cos(e)` is the behind-the-car damping, and on a car it is exactly
-// right: pointing backwards should mean a slow, drifty U-turn. On a HULL it is
-// half of a deadlock. A boat needs way IN ORDER to turn — that is the one real
-// rule in `boat.js` — so starving her to 0.35 throttle precisely when she is
-// pointing the wrong way takes away the thing she needs to stop pointing the
-// wrong way. She keeps steerage way instead.
-const WATER_THR_FLOOR = 0.62;
-
+// `0.35 + 0.65*cos(e)` is the behind-the-vehicle damping: pointing backwards
+// should mean a slow, drifty U-turn. There used to be a `WATER_THR_FLOOR = 0.62`
+// here so a hull kept steerage way through it — the reasoning being that a boat
+// needs way IN ORDER to turn. She does not any more: `hullPivot` in `boat.js`
+// pays for the pointing directly, so the throttle goes back to being the
+// player's in both media. A boat under 62% power whenever a finger is down is a
+// boat that is driving itself.
 export function applyTouch(cam, p, veh) {
   if (!aim.active) return;
-  const afloat = veh?.medium === VEHICLE_MEDIUM.WATER;
   const zoom = cam.zoom || 5.5;
   const vw = cam.vw || window.innerWidth, vh = cam.vh || window.innerHeight;
   const sx = (p.x - cam.x) * zoom + vw / 2;
@@ -76,9 +73,8 @@ export function applyTouch(cam, p, veh) {
   if (steer > 0) input.right = Math.max(input.right, steer);
   else input.left = Math.max(input.left, -steer);
   let thr = Math.min(1, (d - THR_DEAD) / (THR_FULL - THR_DEAD));
-  const floor = afloat ? WATER_THR_FLOOR : 0.35;
-  thr *= snap ? 0.55 + 0.45 * Math.max(0, Math.cos(e)) // snap: keep pace through the pivot
-              : floor + (1 - floor) * Math.max(0, Math.cos(e)); // held: behind = slow U-turn (drift feel)
+  thr *= snap ? 0.55 + 0.45 * Math.max(0, Math.cos(e))  // snap: keep pace through the pivot
+              : 0.35 + 0.65 * Math.max(0, Math.cos(e)); // held: behind = slow U-turn (drift feel)
   input.up = Math.max(input.up, thr);
   if (d > THR_TURBO && Math.cos(e) > 0.3) input.boost = 1; // far & ahead = turbo
 }

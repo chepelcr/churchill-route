@@ -2667,12 +2667,14 @@
         "pillBg": "#2e7d44"
       },
       "stands": {
-        "_note": "LA GRADERÍA. Built from the stadium's own emitted `footprint` — the traced cuadra, which already follows the real street grid — so it needs no geometry of its own: name a SIDE and it is fitted to that edge. That is the whole reason it can be one asset for two stadiums whose blocks are different shapes and neither is square to the screen.",
-        "_history": "CLAUDE.md, the ROADMAP and water.json all described graderías 'stroked over the block's real acera ring' when `lm.stands`. None of it ran: the build emits no `stands`, nothing read it, and `drawStadium` was eleven lines. This is the first one that draws.",
-        "_side": "`west`, `east`, `north` or `south` — resolved against the FOOTPRINT's own edges, not the screen: the edge whose midpoint is furthest that way. A cuadra here is not square to the screen (the avenidas run -5.4° and the calles 82.3°), so 'the west side' has to mean an edge and not a rectangle's left.",
-        "_outward": "The stand sits OUTSIDE the pitch, on the cuadra's acera ring — that grey band IS a stadium's sidewalk, and it is where a stand physically goes. Drawn before the landmark pill so the name still reads over it.",
-        "depth": 26,
-        "depthNote": "px from the pitch edge outward. A stand deeper than the acera ring would stand in the street.",
+        "_note": "LA GRADERÍA. The builder emits `lm.stands.quads` from the stadium's real footprint edges, and stamps those same trapezoids as wall cells. The renderer only paints that geometry: art and collision cannot disagree.",
+        "_history": "The first version derived one west-side trapezoid in Canvas and left every cell below it drivable. Emitting quads made four stands, corner-only entrances and collision one world contract.",
+        "_side": "Authored placement accepts `sides` and the legacy singular `side`; the builder resolves each name against edge midpoints, never the bbox.",
+        "_outward": "Each emitted stand sits outside the pitch on the real acera ring and stops short at both ends, leaving a road wedge at every corner.",
+        "depth": 12,
+        "depthNote": "px from the pitch edge outward: exactly the current 3 x 4 px whole-cuadra acera ring. The builder owns the emitted geometry; this value documents and tests the art recipe against it.",
+        "heightM": 6,
+        "heightNote": "Structural height used by sunShadow; unlike the old fixed 3 px sliver, its direction, reach and opacity now follow the time of day.",
         "tiers": 5,
         "tiersNote": "stepped bands, back to front. More than about seven and they stop resolving at play zoom.",
         "rake": 0.34,
@@ -2682,7 +2684,6 @@
           "tierA": "#b9bec9",
           "tierB": "#9aa1ae",
           "rail": "rgba(0,0,0,0.45)",
-          "shadow": "rgba(0,0,0,0.22)",
           "row": "rgba(0,0,0,0.16)"
         },
         "_palette": "The default is bare concrete, which is what an unnamed cancha has. A stadium with painted seats overrides the two tier colours below — and they alternate, because a real grandstand's seats are laid in blocks.",

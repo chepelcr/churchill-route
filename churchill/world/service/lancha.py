@@ -28,7 +28,7 @@ import math
 from collections import deque
 from heapq import heappop, heappush
 
-from ..config import (CLS_BEACH, CLS_LAND, CLS_WATER, GRID_CELL, PLANAR_PX_PER_M,
+from ..config import (CLS_BEACH, CLS_WATER, GRID_CELL, PLANAR_PX_PER_M,
                       UNITS, px)
 # `px` under a second name, because the two apron loops below bind `px, py` as
 # a POINT and shadow it. The module-level constants above are evaluated before
@@ -38,7 +38,6 @@ from ..config import px as to_px
 from ..content import APRON_DEFS, BEACH_ACCESS_DEFS, LANCHA_DEFS
 from ..enums import Surface
 from ..logging import log, warn
-from .block import outline_polys
 from .pier import log_pier, make_pier, stamp as stamp_pier
 
 #: nodes per raster cell in the water flood. 5 cells = 20 px: fine enough to
@@ -54,9 +53,9 @@ WATER_STEP = 5
 # so that is not a scenic narrow bit, it is 5,7 km of scraping; and the game's
 # 105 px marked half-width put 48 % of its buoys on dry land.
 #
-# Two things fix it, and both are needed. The line is re-derived to ride the
-# RIDGE of the water rather than its shortest chord, and the channel it rides
-# is DREDGED to a width a boat can be driven down.
+# The line is re-derived to ride the RIDGE of the water rather than its shortest
+# chord.  The surface stage opens the estuary basin before this service runs, so
+# routing measures faithful open water instead of manufacturing a late channel.
 
 #: the clearance the line wants, in px. Below it, a step starts paying.
 #: Las recetas de las dos piezas derivadas que este servicio emite. Su LARGO no
@@ -86,11 +85,6 @@ CLEAR_FLOOR_NODES = 2
 #: the search is confined to the two ends' bbox grown by this, so the ridge
 #: Dijkstra does not price the entire Gulf of Nicoya. Falls back to unbounded.
 SEARCH_PAD_PX = px(UNITS["world"]["lancha"]["searchPadM"])
-
-#: how much water the dredge guarantees either side of the line.
-DREDGE_HW = CHANNEL_HW
-#: the berth and the landing are SHORE ON PURPOSE — leave their aprons alone.
-DREDGE_END_PAD = px(UNITS["world"]["lancha"]["dredgeEndPadM"])
 
 #: LA LANCHA, in px, derived from her real size. She is a much smaller boat
 #: than the gulf ferries and these were a bare `(86, 34)` / `20` that nothing
@@ -361,19 +355,19 @@ def _has_clearance(mask, clear, cols, rows, c, r):
     return bool(mask[i]) and clear[i] >= CLEAR_FLOOR_NODES
 
 
-def _stations(route, pitch, span=TANGENT_SPAN):
+def _stations(route, pitch):
     """Walk a polyline at UNIFORM arclength: (s, x, y, unit normal to starboard).
 
     UNIFORM IS THE WHOLE CONTRACT, and getting it wrong is silent. The first
     version stepped `pitch` along each SEGMENT and restarted at every vertex, so
     a segment shorter than the pitch still produced a station and the samples
     came out unevenly spaced — 619 of them for a 14 159 px route at a pitch of
-    40, where uniform gives 355. That is fine for the dredge, which only wants
-    dense coverage, and quietly fatal for `measure_channel`: the client reads
-    the emitted arrays as `hw[s / pitch]`, so a non-uniform array is the right
-    numbers at the wrong places, squeezing the whole channel's profile into the
-    first half of the route. Nothing would have crashed; the buoys would just
-    have been wrong in a way that looks like the world being odd.
+    40, where uniform gives 355. Dense coverage hid the mistake, but it is
+    quietly fatal for `measure_channel`: the client reads the emitted arrays as
+    `hw[s / pitch]`, so a non-uniform array is the right numbers at the wrong
+    places, squeezing the whole channel's profile into the first half of the
+    route. Nothing would have crashed; the buoys would just have been wrong in
+    a way that looks like the world being odd.
     """
     if len(route) < 2:
         return []
@@ -401,122 +395,17 @@ def _stations(route, pitch, span=TANGENT_SPAN):
     # s=5260 that reported 144 px of water between two stations that correctly
     # reported 44 and 40, and it put a gate mark on the mangrove.
     # Taking the chord over +/- TANGENT_SPAN averages the wobble out.
-    #
-    # …AND `span=0` ASKS FOR THE LOCAL ONE, which the DREDGE needs. A smoothed
-    # normal does not rotate with a tight bend, so consecutive rays go nearly
-    # parallel and the OUTSIDE of the bend is left under-painted: dredging with
-    # it turned a channel that traced as 201 outline rings into 2 614, i.e. a
-    # corridor full of holes, and dropped the measured minimum from 28 px to 16.
-    # Sounding wants the smoothed normal; painting wants the one that follows
-    # the curve. They are different jobs and this is the switch between them.
     out, s = [], 0.0
     while s <= total + 1e-9:
         x, y = at(s)
-        if span > 0:
-            bxp, byp = at(s - span)
-            fxp, fyp = at(s + span)
-            tx, ty = fxp - bxp, fyp - byp
-        else:
-            i = 1
-            while i < len(cum) - 1 and cum[i] < s:
-                i += 1
-            (ax, ay), (bx, by) = route[i - 1], route[i]
-            tx, ty = bx - ax, by - ay
+        bxp, byp = at(s - TANGENT_SPAN)
+        fxp, fyp = at(s + TANGENT_SPAN)
+        tx, ty = fxp - bxp, fyp - byp
         L = math.hypot(tx, ty)
         tx, ty = (tx / L, ty / L) if L > 1e-9 else (1.0, 0.0)
         out.append((s, x, y, -ty, tx))
         s += pitch
     return out
-
-
-def dredge_channel(raster, route):
-    """Widen the estero along the sailing line to a boat's width. Returns cells.
-
-    THIS CHANGES THE COASTLINE, in a game whose premise is a faithful true-scale
-    map, so the argument had better be good. It is this: OSM maps the estuary's
-    edge as one `natural=wetland` + `wetland=mangrove` polygon, and the mangrove
-    is drawn to the OUTER edge of the intertidal flat, not to the water. The
-    channel it leaves in the raster is a thread — measured on the emitted route,
-    under 240 px of total corridor for 68 % of the crossing and 80 px through
-    the reach off el Centro — where the real main channel of the Estero de
-    Puntarenas is something like 120 m of water. So the dredge RESTORES the
-    channel rather than inventing one, and everything about it is written to
-    keep that true:
-
-      * it only ever converts `CLS_LAND`. Never road, acera, beach, bridge,
-        malecón or boulevard — the two aprons at the berth and the landing are
-        418 road and 343 acera cells inside its reach, and this is the guard
-        that means they cannot be quietly deleted.
-      * it works OUTWARD FROM THE SAILING LINE and STOPS at the first thing that
-        is neither water nor land. It cannot tunnel through a road into a
-        lagoon on the far side, because the road stops the ray.
-      * it stops at `DREDGE_HW`, so it widens a channel and never opens a bay.
-      * the two ends are left alone: the berth and the landing are shore ON
-        PURPOSE and their ramps are stamped on it.
-
-    Runs before `decorate`, which is not an accident: `mangrove_line` re-plants
-    the manglar along the FINISHED waterline, so the dredged banks get their
-    mangroves for free instead of leaving a raw edge.
-    """
-    cell = raster.cell
-    cells = set()
-    total = sum(math.hypot(route[i + 1][0] - route[i][0], route[i + 1][1] - route[i][1])
-                for i in range(len(route) - 1))
-    # HALF A CELL, and the LOCAL normal: the dredge is painting, and a painter
-    # wants its strokes to follow the curve and overlap.
-    for (s, x, y, nx, ny) in _stations(route, cell / 2.0, span=0):
-        if s < DREDGE_END_PAD or s > total - DREDGE_END_PAD:
-            continue
-        for side in (-1, 1):
-            sx, sy = nx * side, ny * side
-            d = 0.0
-            while d <= DREDGE_HW:
-                c, r = raster.cell_of(x + sx * d, y + sy * d)
-                if not raster.in_bounds(c, r):
-                    break
-                v = raster.at(c, r)
-                if v == CLS_WATER:
-                    d += cell / 2.0
-                    continue
-                if v != CLS_LAND:
-                    break                 # a road, an acera, the playa: stop dead
-                raster.set(c, r, CLS_WATER)
-                cells.add((c, r))
-                d += cell / 2.0
-    # …AND CLOSE THE ISLETS. Rays fan apart on the outside of a tight bend, so
-    # however finely they are stepped they leave single cells of mangrove
-    # standing in the middle of the dug channel — 292 of them on a test bend,
-    # and every one is a wall a hull can hit in open water. Fill anything with
-    # water on three sides; twice, so a two-cell islet goes as well. The same
-    # move `stamp_malecon` makes on its seams, and for the same reason.
-    # Iterated: filling one islet can expose the next, and the loop breaks the
-    # moment a round adds nothing, so the extra passes are free where the
-    # channel is already clean.
-    for _round in range(4):
-        add = set()
-        for (c, r) in cells:
-            for nb in ((c + 1, r), (c - 1, r), (c, r + 1), (c, r - 1)):
-                if nb in cells or nb in add:
-                    continue
-                if not raster.in_bounds(*nb) or raster.at(*nb) != CLS_LAND:
-                    continue
-                # …counting the DIAGONALS too. A cell pinched between two banks
-                # corner-to-corner has only two orthogonal wet neighbours and
-                # survives a 4-neighbour test for ever; it is still a rock in
-                # the fairway. Six of eight is "surrounded by water".
-                wet = sum(1 for q in ((nb[0] + 1, nb[1]), (nb[0] - 1, nb[1]),
-                                      (nb[0], nb[1] + 1), (nb[0], nb[1] - 1),
-                                      (nb[0] + 1, nb[1] + 1), (nb[0] + 1, nb[1] - 1),
-                                      (nb[0] - 1, nb[1] + 1), (nb[0] - 1, nb[1] - 1))
-                          if raster.in_bounds(*q) and raster.at(*q) == CLS_WATER)
-                if wet >= 6:
-                    add.add(nb)
-        if not add:
-            break
-        for nb in add:
-            raster.set(nb[0], nb[1], CLS_WATER)
-            cells.add(nb)
-    return cells
 
 
 def _water_run(raster, x, y, nx, ny, cap=600):
@@ -554,22 +443,48 @@ def measure_channel(raster, route):
     So: measure, smooth the CENTRE, then re-measure about that smoothed centre
     and let the smoothed width be clamped by what is actually there. Smoothing
     can round a width DOWN but never invent water.
+
+    …AND IT MAY NOT COST WATER EITHER, which is the other half of the same rule
+    and was missing. Clamping `hw` under the re-measured `room` makes a drifted
+    centre HONEST, not USABLE: on the bend at (25708, 10032) the box filter
+    pulled the centre 85 px to port — off a run that only reached 48 px that way
+    — so the station truthfully reported a half-width of 0 and the lane vanished
+    where the estuary is 200 px wide. Two samples of 355, and they are what kept
+    `smoke:crossing` red after the basin opened.
+
+    A station therefore keeps the smoothed centre only while it leaves as much
+    water as its OWN measurement already offered; where it does not, the raw
+    centre — the middle of the water actually there — wins. Isolated stations
+    fall back, so the lane still reads smooth, and no station can be made worse
+    by the filter than it was without it.
     """
     stations = _stations(route, CHANNEL_PITCH)
     # 1. where the water centres, from the polyline
     off_raw = []
+    room_raw = []
     for (_s, x, y, nx, ny) in stations:
         dl = _water_run(raster, x, y, -nx, -ny)
         dr = _water_run(raster, x, y, nx, ny)
         off_raw.append((dr - dl) / 2.0)
+        # the raw centre sits mid-run, so this is what that centre would give
+        room_raw.append(min((dl + dr) / 2.0, float(CHANNEL_HW_CAP)))
     off = _smooth(off_raw)
-    # 2. what is really there about the SMOOTHED centre — this is the ceiling
+    # 2. what is really there about the SMOOTHED centre — this is the ceiling,
+    #    and where the filter has cost water the station takes its raw centre back
     room = []
     for i, (_s, x, y, nx, ny) in enumerate(stations):
         cx, cy = x + nx * off[i], y + ny * off[i]
         dl = _water_run(raster, cx, cy, -nx, -ny)
         dr = _water_run(raster, cx, cy, nx, ny)
-        room.append(min(min(dl, dr), float(CHANNEL_HW_CAP)))
+        have = min(min(dl, dr), float(CHANNEL_HW_CAP))
+        keep = min(room_raw[i], float(CHANNEL_HW_MIN))
+        if have < keep:
+            off[i] = int(round(off_raw[i]))
+            cx, cy = x + nx * off[i], y + ny * off[i]
+            dl = _water_run(raster, cx, cy, -nx, -ny)
+            dr = _water_run(raster, cx, cy, nx, ny)
+            have = min(min(dl, dr), float(CHANNEL_HW_CAP))
+        room.append(have)
     # 3. smooth the width for a lane that reads as a lane, then clamp it back
     #    under the ceiling so no sample can claim water it does not have
     hw = [min(s, int(room[i])) for i, s in enumerate(_smooth(room))]
@@ -653,38 +568,13 @@ def place_lanchas(ctx, project_ll, nearest_cell):
         if berth is None or landing is None:
             warn("lancha", f"{spec['id']}: berth or landing is nowhere near water")
             continue
-        # THREE PASSES, AND THE THIRD IS NOT REDUNDANT. The first finds the best
-        # ridge through the estuary AS MAPPED; the dredge then opens the water
-        # that ridge had to squeeze past; and the third re-derives on the widened
-        # raster, which both straightens the line and — the part that matters —
-        # means `measure_channel` is measuring the water the PLAYER will meet
-        # rather than the water the router had to work around.
+        # One derived route over the FINISHED basin.  The surface stage has
+        # already opened the estuary before tracing its coastline, so routing
+        # and sounding now read exactly the water the player will meet.
         route = water_route(ctx.raster, berth, landing)
         if route is None or len(route) < 2:
             warn("lancha", f"{spec['id']}: no navigable water from the berth to the landing")
             continue
-        dug = dredge_channel(ctx.raster, route)
-        if dug:
-            # THE DRAWN COAST HAS TO AGREE WITH THE RASTER, and it does not get
-            # there by itself. `trace_land_contours` runs in `rasterise_surface`,
-            # the SECOND pipeline stage — long before this one — so the land
-            # silhouette the renderer paints as its base was traced from the
-            # estuary as mapped, and the channel we just opened would be sailed
-            # over PAINTED LAND. This is the same trap `reclaim_shore` documents
-            # ("trace_land_contours must run AFTER it, or the drawn silhouette
-            # keeps the drowned coast"), reached from the other direction.
-            #
-            # Rather than re-scan 250 M cells for a corridor we already know the
-            # shape of, the dredge follows the BALNEARIO PRECEDENT: stamp the
-            # water AND emit its outline, so the renderer paints it over the
-            # stale silhouette. Every ring, because a dredge along a bending
-            # channel leaves islands behind.
-            rings = outline_polys(dug, GRID_CELL)
-            ctx.waters.extend(rings)
-            log("lancha", f"{spec['id']}: canal dragado — {len(dug)} celdas "
-                f"({len(dug) * GRID_CELL * GRID_CELL / 1e6:.2f} Mpx²) de manglar "
-                f"abiertas a {DREDGE_HW}px de media caña, {len(rings)} contorno(s)")
-            route = water_route(ctx.raster, berth, landing) or route
         total = sum(math.hypot(route[i + 1][0] - route[i][0], route[i + 1][1] - route[i][1])
                     for i in range(len(route) - 1))
         hw, off = measure_channel(ctx.raster, route)

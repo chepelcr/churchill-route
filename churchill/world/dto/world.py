@@ -57,6 +57,10 @@ class Meta(WorldModel):
     tileCells: int
     tileCols: int
     tileRows: int
+    elevSamplesPerTile: int | None = Field(
+        default=None, gt=1,
+        description="width of each tile's square elevation lattice",
+    )
 
 
 class GridInfo(WorldModel):
@@ -398,5 +402,4 @@ class Balneario(WorldModel):
     y1: int
     cx: int
     cy: int
-
 

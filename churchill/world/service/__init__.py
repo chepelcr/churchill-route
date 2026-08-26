@@ -20,6 +20,7 @@ from .planting import (
     planting_placements, planting_species, resolve_planting, stamp_planting,
 )
 from .projection import PlanarProjection, project_way_pts
+from .railway import align_rails, alignment_failures, alignment_log_line
 from .placement import (
     block_containing, cell_class, drivable_cell, kiosk_frontage, near_drivable,
     nearest_block, nearest_cell, nudge_off_acera, nudge_to_land, resolve_poi,
@@ -37,6 +38,7 @@ __all__ = [
     "extract_areas", "extract_buildings", "extract_coastlines", "extract_ferries",
     "extract_pois",
     "extract_rails", "extract_roads", "paseo_median_runs",
+    "align_rails", "alignment_failures", "alignment_log_line",
     "propagate_barro_to_crossings", "block_containing", "cell_class",
     "drivable_cell", "kiosk_frontage", "near_drivable", "nearest_block",
     "nearest_cell", "nudge_off_acera", "nudge_to_land", "resolve_poi",

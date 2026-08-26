@@ -39,6 +39,8 @@ ENTITIES = os.path.join(ROOT, "src", "render", "c2d", "entities.js")
 CANVAS2D = os.path.join(ROOT, "src", "render", "canvas2d.js")
 SHAPES = os.path.join(ROOT, "src", "render", "c2d", "shapes.js")
 SYSTEM_SHAPES = os.path.join(ROOT, "src", "render", "c2d", "systemShapes.js")
+SHADOWS = os.path.join(ROOT, "src", "render", "c2d", "shadows.js")
+SUN_DIRECTION = os.path.join(ROOT, "src", "render", "sun.js")
 
 #: Where each effect's painter lives, and the marker its body starts at. The
 #: scan is scoped per painter rather than run over the whole file on purpose:
@@ -257,6 +259,7 @@ class SunShadowRegistry(unittest.TestCase):
     def setUp(self):
         self.doc = json.loads(read(EFFECTS))
         self.sun = self.doc["sunShadow"]
+        self.terrain = self.doc["terrainShadow"]
         self.heights = self.doc["buildingHeight"]
 
     def test_the_reach_is_in_multiples_of_height(self):
@@ -271,6 +274,72 @@ class SunShadowRegistry(unittest.TestCase):
     def test_a_noon_shadow_is_harder_than_a_dusk_one(self):
         self.assertGreater(self.sun["alphaAtNoon"], self.sun["alphaAtDusk"])
         self.assertLessEqual(self.sun["alphaAtNoon"], 1.0)
+
+    def test_one_backend_free_module_owns_the_2d_and_3d_sun(self):
+        """Three must consume the art's sun, not invent a geometric second one.
+
+        The shared module may read the live clock and its data registry; it may
+        not depend on Canvas, Three, the DOM, or a browser global. That keeps it
+        usable by either renderer and by deterministic diagnostics.
+        """
+        solar = read(SUN_DIRECTION)
+        self.assertIn("export function sunDirection3", solar)
+        for forbidden in ('from "three"', "/c2d/", "window.", "document."):
+            self.assertNotIn(forbidden, solar,
+                             f"la autoridad solar volvió a depender de {forbidden}")
+        shadows = read(SHADOWS)
+        self.assertIn('import { sunShadow2 } from "../sun.js"', shadows)
+        self.assertNotIn('import { sunVector }', shadows,
+                         "Canvas sigue calculando un segundo sol por su cuenta")
+
+    def test_the_3d_ray_keeps_the_authored_anisotropy(self):
+        """The signs are load-bearing because Three's Y is minus Canvas Y."""
+        solar = read(SUN_DIRECTION)
+        self.assertIn("const rawX = -sun.x * reach", solar)
+        self.assertIn("const rawY = sun.y * reach * SUN.squashY", solar)
+        self.assertIn("Math.hypot(rawX, rawY, 1)", solar)
+        self.assertIn("Math.atan2(z, Math.hypot(x, y))", solar)
+
+        # The public Three contract is intentionally small and stable. Canvas'
+        # exact-IEEE adapter is another export, not hidden backend fields on the
+        # direction object.
+        returned = re.search(
+            r"export function sunDirection3\(.*?return\s*\{(.*?)\n\s*\};",
+            solar,
+            flags=re.S,
+        )
+        self.assertIsNotNone(returned, "sunDirection3's return object no longer parses")
+        keys = re.findall(r"^\s*([A-Za-z_]\w*)\s*(?=[:,])", returned.group(1), flags=re.M)
+        self.assertEqual(
+            keys,
+            ["x", "y", "z", "reach", "shadowAlpha", "elevationRad"],
+            "the renderer-neutral solar contract drifted",
+        )
+
+        # Normalise/divide is algebraically equal but moves a few components by
+        # ~1e-14. This adapter consumes direction reach/alpha and keeps the old
+        # multiplication order; smoke-shadows proves every IEEE value exactly.
+        self.assertIn("const direction = sunDirection3(sun)", solar)
+        self.assertIn("heightM * pxPerM * direction.reach", solar)
+        self.assertIn("dx: sun.x * reach", solar)
+        self.assertIn("dy: sun.y * reach * SUN.squashY", solar)
+        self.assertIn("alpha: direction.shadowAlpha", solar)
+        shadows = read(SHADOWS)
+        self.assertIn("return sunShadow2(heightM, PX_PER_M)", shadows)
+
+    def test_the_terrain_shadow_budget_is_bounded_and_authored(self):
+        """The mountain shadow is one predictable GPU budget, not a knob pile."""
+        self.assertEqual(self.terrain["mapSize"], 1024)
+        self.assertEqual(self.terrain["mapSize"] & (self.terrain["mapSize"] - 1), 0)
+        self.assertEqual(self.terrain["maxCasterHeightM"], 400)
+        self.assertGreaterEqual(self.terrain["flatCasterMaxM"], 10)
+        self.assertLess(self.terrain["flatCasterMaxM"], self.terrain["maxCasterHeightM"])
+        self.assertGreater(self.terrain["opacity"], 0)
+        self.assertLessEqual(self.terrain["opacity"], 1)
+        self.assertLess(self.terrain["bias"], 0)
+        self.assertGreater(self.terrain["normalBiasM"], 0)
+        self.assertGreaterEqual(self.terrain["radius"], 1)
+        self.assertGreater(self.terrain["receiverBelowM"], 0)
 
     def test_the_colour_is_a_triple_because_the_painter_builds_the_alpha(self):
         self.assertRegex(str(self.sun["color"]), r"^\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*$")

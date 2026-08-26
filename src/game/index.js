@@ -22,8 +22,11 @@ let lastT = 0;
 function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000);
   lastT = t;
+  const prof = typeof window !== "undefined" ? window.__prof : null;
+  const updateStarted = prof ? performance.now() : 0;
   if (state.running) update(dt);
   else if (state.attract) attractTick(dt);
+  if (prof) prof.update = (prof.update || 0) + performance.now() - updateStarted;
   // EL RENDERER CUENTA EN SEGUNDOS, igual que el sim. `t` viene de rAF en
   // MILISEGUNDOS y aquí se convertía sólo para `dt`, así que el render recibía
   // ms y cada dibujante decidía por su cuenta qué unidad creía tener: unos

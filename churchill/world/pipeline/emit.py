@@ -156,9 +156,16 @@ def emit_world2d(raster, repo, *, elev=None, meta, districts, roads, rails, buil
                          "tone": d["tone"], "x0": x0, "x1": x1, "y0": y0, "y1": y1,
                          "poly": [x0, y0, x1, y0, x1, y1, x0, y1]})
 
+    manifest_meta = {**meta, "tilePx": TILE_PX, "tileCells": TILE_CELLS,
+                     "tileCols": tcols, "tileRows": trows}
+    if elev is not None:
+        # The lattice width is protocol, not client tuning. Tiles repeat zCols
+        # for local validation; the eager manifest lets a flat resident tile
+        # locate its global neighbours before the first non-flat slab arrives.
+        manifest_meta["elevSamplesPerTile"] = elev["perTile"]
+
     manifest = {
-        "meta": {**meta, "tilePx": TILE_PX, "tileCells": TILE_CELLS,
-                 "tileCols": tcols, "tileRows": trows},
+        "meta": manifest_meta,
         "grid": {"cols": cols, "rows": rows, "classes": CLASS_NAMES},
         "districts": dist_out,
         "landmarks": landmarks, "customers": customers, "stages": stages,

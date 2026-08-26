@@ -5,9 +5,10 @@ The order these run in is load-bearing and easy to get wrong:
   1. the coast + water-area BARRIERS, then the flood — everything the sea cannot
      reach past a closed barrier is land, so one sub-cell gap floods the
      peninsula;
-  2. beaches and water polygons stamped over the flooded result;
-  3. roads;
-  4. `acera_fringe` — sidewalks grow OUT of the roads, so anything stamped
+  2. beaches, then the estuary basin and mapped water polygons;
+  3. the FINAL land silhouette, after every early land/water change;
+  4. roads;
+  5. `acera_fringe` — sidewalks grow OUT of the roads, so anything stamped
      after it (a stadium pitch, a median) will NOT be re-ringed with sidewalk.
      That is exactly how a whole-cuadra field reads as one open surface.
 
@@ -21,10 +22,11 @@ from ..config import (
     ACERA_CELLS, CALLE_CLASSES, CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_MALECON,
     CLS_PASEO, CLS_ROAD, CLS_WATER,
     CUAD, CUAD_CELLS, DP_COAST_PX, DP_SAND_PX, ESTERO_MAINLAND_PX, GRID_CELL,
-    SPIT_MAX_WIDTH_PX, SPIT_SHORE_TOL_PX,
+    MANGROVE_R_MAX, SPIT_MAX_WIDTH_PX, SPIT_SHORE_TOL_PX,
 )
-from ..logging import log
+from ..logging import log, warn
 from ..util.geometry import dp_simplify, poly_area, to_m
+from ..util.raster import Raster
 from .block import outline_polys
 from .projection import project_way_pts
 
@@ -100,14 +102,35 @@ def raster_poly_barrier(barrier, raster, polys):
 
 def trace_land_contours(raster):
     """Marching-squares style: emit oriented boundary edges (land on left),
-    chain them into loops, return px-space polygons."""
+    chain them into loops, return px-space polygons.
+
+    THE EDGE MAP IS A MULTIMAP, and it has to be. A lattice point where two land
+    cells meet CORNER TO CORNER across water — a diagonal pinch — is the start
+    of TWO boundary edges. Held in a plain `start -> end` dict the second
+    overwrites the first, the walk that reaches the lost one runs off the end of
+    the chain, and the closing test then discards THE WHOLE LOOP.
+
+    That is not a rounding error: it silently deletes a coastline. Measured on
+    2026-08-23, opening the estuary added enough new diagonal pinches to take
+    out the single 24 200-vertex loop that is the entire mainland-plus-spit —
+    so `landPolys` went 26 -> 54 while the peninsula the game is set on stopped
+    having a silhouette at all, and the manzana interiors of El Cocal rendered
+    as open sea. The bug was always here; the old waterline simply never pinched.
+
+    So: every outgoing edge is kept, one is consumed per visit, and a pinch is
+    walked once per loop through it. And a loop that still fails to close is
+    LOGGED rather than dropped in silence — that is the part that let this ship.
+    """
     cols, rows, grid = raster.cols, raster.rows, raster.buf
-    edges = {}  # start -> end
+    edges = {}  # start -> [end, ...]
 
     def is_land(c, r):
         if c < 0 or c >= cols or r < 0 or r >= rows:
             return False
         return grid[r * cols + c] != CLS_WATER
+
+    def add(a, b):
+        edges.setdefault(a, []).append(b)
 
     G = GRID_CELL
     for r in range(rows):
@@ -116,25 +139,40 @@ def trace_land_contours(raster):
                 continue
             x0, y0, x1, y1 = c * G, r * G, (c + 1) * G, (r + 1) * G
             if not is_land(c + 1, r):
-                edges[(x1, y1)] = (x1, y0)
+                add((x1, y1), (x1, y0))
             if not is_land(c - 1, r):
-                edges[(x0, y0)] = (x0, y1)
+                add((x0, y0), (x0, y1))
             if not is_land(c, r - 1):
-                edges[(x1, y0)] = (x0, y0)
+                add((x1, y0), (x0, y0))
             if not is_land(c, r + 1):
-                edges[(x0, y1)] = (x1, y1)
+                add((x0, y1), (x1, y1))
+
+    def take(v):
+        """One outgoing edge from `v`, or None once it is spent."""
+        outs = edges.get(v)
+        if not outs:
+            return None
+        nxt = outs.pop()
+        if not outs:
+            del edges[v]
+        return nxt
+
     loops = []
+    dropped = 0
     while edges:
-        start, cur = next(iter(edges.items()))
+        start = next(iter(edges))
+        cur = take(start)
         loop = [start]
-        del edges[start]
-        while cur != start and cur in edges:
+        while cur is not None and cur != start:
             loop.append(cur)
-            nxt = edges[cur]
-            del edges[cur]
-            cur = nxt
+            cur = take(cur)
         if cur == start and len(loop) >= 8:
             loops.append(loop)
+        elif len(loop) >= 8:
+            dropped = max(dropped, len(loop))
+    if dropped:
+        warn("coast", f"a boundary chain of {dropped} points never closed — "
+                      "the land silhouette is missing a piece")
     out = []
     for lp in loops:
         if abs(poly_area(lp)) < 400:  # skip specks
@@ -292,6 +330,196 @@ def estero_band(raster):
     log("estero", f"spit traced over {n_cols} columns, x {c0 * cell}..{c1 * cell}px; "
         f"estuary north of it: {n_water} water cells")
     return band
+
+
+# One full largest mangrove clump between the opened basin and either shore.
+# This is deliberately derived from the existing flora dial instead of adding
+# a second number that could drift away from the thing the rim has to hold.
+ESTERO_RIM_CELLS = max(1, math.ceil(MANGROVE_R_MAX / GRID_CELL))
+
+
+def estuary_claim_mask(raster, band, *, roads=(), sites=(), pois=(),
+                       authored_pois=(), parcels=(), occ=(), bridge_road=None,
+                       poi_pad_px=56):
+    """Scratch bitmap of authored ground the estuary opening must keep.
+
+    The basin has to open before blocks, parcels and their shared ``occ`` set
+    exist, because the land silhouette is traced in the surface stage.  Protect
+    their SOURCE geometry here instead: a road plus its future acera, OSM site
+    polygons (the future parcels), the exact cuadrícula-aligned POI apron, and
+    any parcel/occ claims a caller already has.  The bitmap is also the visited
+    scratch space consumed by :func:`open_estuary`; do not retain it afterwards.
+
+    Only features whose bbox intersects the estuary's rectangular extent are
+    stamped.  On the full 247M-cell raster that turns an otherwise global
+    second placement pass into a small, countable guard pass.
+    """
+    segments = [(c, seg) for c, seg in enumerate(band[:raster.cols])
+                if seg is not None]
+    counts = {"roads": 0, "sites": 0, "pois": 0, "authored": 0,
+              "parcels": 0, "occ": 0}
+    if not segments:
+        return None, counts
+
+    c0, c1 = segments[0][0], segments[-1][0]
+    r0 = min(seg[0] for _, seg in segments)
+    r1 = max(seg[1] for _, seg in segments)
+    x0, y0 = c0 * raster.cell, r0 * raster.cell
+    x1, y1 = (c1 + 1) * raster.cell, (r1 + 1) * raster.cell
+    claims = Raster(raster.cols, raster.rows, raster.cell)
+
+    def overlaps(points, pad=0):
+        if not points:
+            return False
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        return not (max(xs) + pad < x0 or min(xs) - pad > x1
+                    or max(ys) + pad < y0 or min(ys) - pad > y1)
+
+    def points_of(record):
+        raw = record.get("pts") or record.get("poly") or ()
+        if raw and isinstance(raw[0], (int, float)):
+            return list(zip(raw[0::2], raw[1::2]))
+        return list(raw)
+
+    # The surface stage has not stamped roads yet.  Reserve the carriageway and
+    # the LAND the later acera fringe needs on both sides, or opening the basin
+    # first would silently remove a waterfront street's sidewalk.
+    road_records = list(roads)
+    # extract_roads returns the bridge both in `roads` and as the convenience
+    # pointer `bridge_road`; do not count/stamp the same source twice.
+    if bridge_road and bridge_road not in road_records:
+        road_records.append(bridge_road)
+    acera_pad = ACERA_CELLS * raster.cell
+    for road in road_records:
+        pts = list(zip(road.get("pts", ())[0::2], road.get("pts", ())[1::2]))
+        half_width = road.get("w", 0) / 2 + acera_pad
+        if not overlaps(pts, half_width):
+            continue
+        claims.stamp_polyline(road["pts"], road.get("w", 0) + 2 * acera_pad, 1)
+        counts["roads"] += 1
+
+    for label, records in (("sites", sites), ("parcels", parcels)):
+        for record in records:
+            pts = points_of(record)
+            if len(pts) < 3 or not overlaps(pts):
+                continue
+            claims.fill_poly(pts, 1)
+            counts[label] += 1
+
+    # Match stamp_pad exactly: it is a whole-CUAD square, not a radius around
+    # the point.  Using the same lattice is what makes this a POI-apron guard
+    # rather than a merely nearby keep-out.
+    side = max(2, round(2 * poi_pad_px / CUAD))
+    for label, records in (("pois", pois), ("authored", authored_pois)):
+        for poi in records:
+            x, y = poi.get("x"), poi.get("y")
+            if x is None or y is None:
+                continue
+            cc0 = int(x // CUAD) - (side - 1) // 2
+            cr0 = int(y // CUAD) - (side - 1) // 2
+            pc0, pr0 = cc0 * CUAD_CELLS, cr0 * CUAD_CELLS
+            pc1, pr1 = pc0 + side * CUAD_CELLS, pr0 + side * CUAD_CELLS
+            if pc1 * raster.cell < x0 or pc0 * raster.cell > x1 \
+                    or pr1 * raster.cell < y0 or pr0 * raster.cell > y1:
+                continue
+            for row in range(max(0, pr0), min(raster.rows, pr1)):
+                base = row * raster.cols
+                for col in range(max(0, pc0), min(raster.cols, pc1)):
+                    claims.buf[base + col] = 1
+            counts[label] += 1
+
+    # ``occ`` is expressed in CUAD cells.  It is empty in today's early stage,
+    # but accepting it makes the guard exact for focused tests and for any
+    # future pre-authored claim without moving the coastline pass later.
+    for cc, cr in occ:
+        oc0, or0 = cc * CUAD_CELLS, cr * CUAD_CELLS
+        if (oc0 + CUAD_CELLS) * raster.cell < x0 or oc0 * raster.cell > x1 \
+                or (or0 + CUAD_CELLS) * raster.cell < y0 or or0 * raster.cell > y1:
+            continue
+        for row in range(max(0, or0), min(raster.rows, or0 + CUAD_CELLS)):
+            base = row * raster.cols
+            for col in range(max(0, oc0), min(raster.cols, oc0 + CUAD_CELLS)):
+                claims.buf[base + col] = 1
+        counts["occ"] += 1
+
+    return claims.buf, counts
+
+
+def open_estuary(raster, band, *, claims=None, rim_cells=ESTERO_RIM_CELLS):
+    """Turn the estuary's shore-connected interior LAND into open WATER.
+
+    The band is the hard cap: no search or write may cross it into town.  A
+    connected LAND component wholly inside the cap is an islet and survives.
+    A component touching the cap is shoreline/mangrove flat: keep a rim at the
+    north or south edge and open the rest.  ``claims`` protects authored ground
+    inside that flat.  Every other surface class is untouched by construction.
+
+    Returns countable buckets whose sum is the LAND examined.  ``claims`` is a
+    scratch bytearray and is consumed (bit 1 is used as the visited flag).
+    """
+    cols, rows, grid = raster.cols, raster.rows, raster.buf
+    rim_cells = max(0, int(rim_cells))
+    stats = {"mask": 0, "land": 0, "opened": 0, "rim": 0,
+             "islets": 0, "islet_cells": 0, "claims": 0}
+    segments = [(c, seg) for c, seg in enumerate(band[:cols]) if seg is not None]
+    if not segments:
+        return stats
+    stats["mask"] = sum(bot - top + 1 for _, (top, bot) in segments)
+    marks = claims if claims is not None else bytearray(len(grid))
+    if len(marks) != len(grid):
+        raise ValueError("estuary claim mask must match the surface raster")
+
+    def inside(c, r):
+        if not (0 <= c < cols and 0 <= r < rows and c < len(band)):
+            return False
+        seg = band[c]
+        return seg is not None and seg[0] <= r <= seg[1]
+
+    for c, (top, bot) in segments:
+        for r in range(top, bot + 1):
+            idx = r * cols + c
+            if grid[idx] != CLS_LAND or marks[idx] & 2:
+                continue
+            component = []
+            queue = deque([idx])
+            marks[idx] |= 2
+            touches_cap = False
+            while queue:
+                cur = queue.popleft()
+                component.append(cur)
+                rr, cc = divmod(cur, cols)
+                for nc, nr in ((cc - 1, rr), (cc + 1, rr),
+                               (cc, rr - 1), (cc, rr + 1)):
+                    if not inside(nc, nr):
+                        touches_cap = True
+                        continue
+                    ni = nr * cols + nc
+                    if grid[ni] == CLS_LAND and not marks[ni] & 2:
+                        marks[ni] |= 2
+                        queue.append(ni)
+
+            stats["land"] += len(component)
+            if not touches_cap:
+                stats["islets"] += 1
+                stats["islet_cells"] += len(component)
+                continue
+            for cur in component:
+                rr, cc = divmod(cur, cols)
+                seg_top, seg_bot = band[cc]
+                if marks[cur] & 1:
+                    stats["claims"] += 1
+                elif min(rr - seg_top, seg_bot - rr) < rim_cells:
+                    stats["rim"] += 1
+                else:
+                    grid[cur] = CLS_WATER
+                    stats["opened"] += 1
+
+    log("estero", f"basin opened {stats['opened']} LAND cells to WATER inside "
+        f"{stats['mask']} mask cells; kept {stats['rim']} shore-rim cells at "
+        f"{rim_cells * raster.cell}px, {stats['islet_cells']} cells in "
+        f"{stats['islets']} islet(s), {stats['claims']} claimed cells")
+    return stats
 
 
 def beach_fringe(raster, depth_cells=3, band=None):

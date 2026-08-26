@@ -20,8 +20,9 @@ most to learn:
   block's (FIELD_ACERA_CELLS): it only has to stop the white lines before the
   asphalt, and every px of it is grass the player does not get.
 
-The drivable stamp always uses a part's UN-eroded cells, so the ring is asphalt
-you drive in over, never a wall around the field.
+The drivable stamp uses a part's UN-eroded cells. Stadium stands are the one
+explicit exception: only the emitted stand trapezoids become wall, while their
+corner mouths remain asphalt into the pitch.
 """
 import math
 from collections import Counter, defaultdict
@@ -43,6 +44,105 @@ from .block import block_raster_cells, cuadra_cells, outline_poly
 from .street import half_plane
 
 HARD_STREET_CLASSES = tuple(cls for cls in STREET_CLASSES if cls != CLS_ACERA)
+
+# A stadium stand is WORLD GEOMETRY, because the cells under it are walls.  The
+# renderer used to derive this trapezoid for itself, which meant a perfectly
+# visible stand was still road as far as physics was concerned.  Keep the
+# structural dimensions tied to the sidewalk it occupies; the renderer now
+# consumes the quads emitted here instead of owning a second geometry formula.
+STAND_SIDES = ("west", "east", "north", "south")
+STAND_DEPTH_PX = ACERA_CELLS * GRID_CELL
+STAND_RAKE = 0.34
+
+
+def stadium_stand_sides(spec):
+    """Normalise the authored plural ``sides`` while accepting legacy ``side``.
+
+    The singular form remains useful for neighbourhood plazas with one small
+    graderia.  A malformed side is a content error, not something the builder
+    should silently turn into a west stand.
+    """
+    raw = spec.get("sides")
+    if raw is None:
+        raw = [spec["side"]] if spec.get("side") else []
+    if isinstance(raw, str):
+        raw = [raw]
+    sides = tuple(dict.fromkeys(raw))
+    bad = [side for side in sides if side not in STAND_SIDES]
+    if not sides or bad:
+        raise ValueError(f"stadium stands require valid side(s), got {raw!r}")
+    return sides
+
+
+def _stadium_stand_edge(flat_pts, side):
+    """The footprint edge furthest in a cardinal direction, plus its frame.
+
+    This is the builder version of the old renderer rule: score EDGE MIDPOINTS,
+    then flip the normal away from the polygon's vertex centroid.  It is not a
+    bbox lookup; Puntarenas' cuadras are slanted parallelograms and raster-traced
+    polygons often retain a short shoulder.
+    """
+    pts = [(flat_pts[i], flat_pts[i + 1]) for i in range(0, len(flat_pts), 2)]
+    if len(pts) < 3:
+        raise ValueError("a stadium stand needs a polygon footprint")
+    cx = sum(p[0] for p in pts) / len(pts)
+    cy = sum(p[1] for p in pts) / len(pts)
+
+    def score(mid):
+        mx, my = mid
+        return {"west": -mx, "east": mx, "north": -my, "south": my}[side]
+
+    a, b = max(zip(pts, pts[1:] + pts[:1]),
+               key=lambda edge: score(((edge[0][0] + edge[1][0]) / 2,
+                                       (edge[0][1] + edge[1][1]) / 2)))
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length = math.hypot(dx, dy) or 1
+    ux, uy = dx / length, dy / length
+    nx, ny = -uy, ux
+    mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+    if (mx - cx) * nx + (my - cy) * ny < 0:
+        nx, ny = -nx, -ny
+    return a, b, ux, uy, nx, ny, length
+
+
+def stadium_stand_quads(footprint, stands, *, depth=STAND_DEPTH_PX,
+                        rake=STAND_RAKE, corner_mouth=None):
+    """Return one emitted stand trapezoid per authored side (flat world px).
+
+    ``corner_mouth`` of one stand-depth is left at BOTH ends of every edge.
+    Adjacent stands therefore do not meet at the pitch vertex: their open road
+    wedges are the four entrances.  The back edge tapers a little further, the
+    same silhouette the old renderer made, but geometry and collision now share
+    these exact rounded coordinates.
+    """
+    mouth = depth if corner_mouth is None else corner_mouth
+    out = []
+    for side in stadium_stand_sides(stands):
+        a, b, ux, uy, nx, ny, length = _stadium_stand_edge(footprint, side)
+        # Keep at least two raster cells of seating on an unusually short edge.
+        mouth_here = min(mouth, max(0, (length - 2 * GRID_CELL) / 2))
+        cut = min(rake * depth,
+                  max(0, (length - 2 * mouth_here - 2 * GRID_CELL) / 2))
+        inner_a = (a[0] + ux * mouth_here, a[1] + uy * mouth_here)
+        inner_b = (b[0] - ux * mouth_here, b[1] - uy * mouth_here)
+        outer_b = (b[0] - ux * (mouth_here + cut) + nx * depth,
+                   b[1] - uy * (mouth_here + cut) + ny * depth)
+        outer_a = (a[0] + ux * (mouth_here + cut) + nx * depth,
+                   a[1] + uy * (mouth_here + cut) + ny * depth)
+        # Two decimals are below raster precision while keeping the emitted
+        # bytes deterministic and readable in a manifest diff.
+        out.append([round(v, 2) for p in (inner_a, inner_b, outer_b, outer_a)
+                    for v in p])
+    return out
+
+
+def stadium_stand_cells(ring_cells, quads, cell=GRID_CELL):
+    """Raster cells whose centres lie under an emitted stand quad."""
+    polys = [[(quad[i], quad[i + 1]) for i in range(0, len(quad), 2)]
+             for quad in quads]
+    return {(c, r) for c, r in ring_cells
+            if any(point_in_poly(((c + 0.5) * cell, (r + 0.5) * cell), poly)
+                   for poly in polys)}
 
 
 def _outline_probe(pts, cell, step=2):
@@ -458,13 +558,19 @@ class FieldService:
         for b in self.blocks:
             if not b.get("green") and any(c in cuad_cells for c in b["cells"]):
                 b["green"] = True
-        # DRIVABLE: stamp the traced cuadra (pitch + acera ring) CLS_ROAD — and
-        # ONLY that. The ring touches the bounding streets so the car can drive
-        # straight in with no acera wall, while everything outside the block
-        # keeps its own class: at Las Playitas the sea north of the pitch stays
-        # CLS_WATER (a wall) instead of becoming drivable asphalt.
+        # Start with a drivable traced cuadra. A stand is the one exception: its
+        # emitted quad is also its collision footprint, so only the ring cells
+        # UNDER that quad become ACERA (a wall). Each trapezoid stops one ring
+        # depth short of its edge's two vertices, leaving four ROAD wedges into
+        # Lito Perez rather than an invisible wall or an entirely open pitch.
         for (c, r) in outer_cells:
             self.raster.set(c, r, CLS_ROAD)
+        stand_quads = []
+        stand_cells = set()
+        if spec.get("stands"):
+            stand_quads = stadium_stand_quads(footprint, spec["stands"])
+            stand_cells = stadium_stand_cells(outer_cells - inner_cells,
+                                              stand_quads)
         fx = footprint[0::2]; fy = footprint[1::2]
         bx0, by0, bx1, by1 = min(fx), min(fy), max(fx), max(fy)
         # drop any pre-existing green/plaza whose CENTRE falls on this block,
@@ -488,9 +594,10 @@ class FieldService:
         # Sigue siendo COLOCACIÓN: qué ES una gradería (fondo, escalones, rake)
         # se queda en `world-props.json`, como la receta de una luminaria se
         # queda en `lights.json`.
-        for key in ("stands", "towers"):
-            if spec.get(key):
-                lm[key] = spec[key]
+        if spec.get("stands"):
+            lm["stands"] = {**spec["stands"], "quads": stand_quads}
+        if spec.get("towers"):
+            lm["towers"] = spec["towers"]
         # The pitch's own FRAME, not just its bbox. The match sim places the two
         # goals off it, and it is the same thing the renderer's `fieldFrame` was
         # re-deriving from the polygon every time — badly, since a raster-traced
@@ -548,11 +655,17 @@ class FieldService:
             else:
                 log("estadio", f"WARN {spec['id']} parts skipped — street "
                     f"direction unresolved (avenida {av}, calle {cl})")
+        # Parts may stamp their own open fields ROAD, so the structural wall is
+        # the stadium's LAST surface word. This matters at Las Playitas, whose
+        # one legacy west stand shares the same cuadra with two emitted courts.
+        for c, r in stand_cells:
+            self.raster.set(c, r, CLS_ACERA)
         ox = outline[0::2]; oy = outline[1::2]
         log("estadio", f"{spec['id']} rect ({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)}) "
               f"-> cuadra ({min(ox)},{min(oy)})-({max(ox)},{max(oy)})px {len(outline)//2}v, "
               f"pitch ({bx0},{by0})-({bx1},{by1})px {len(footprint)//2}v, "
-              f"{len(outer_cells)} cells drivable")
+              f"{len(outer_cells) - len(stand_cells)} cells drivable, "
+              f"{len(stand_cells)} under stands")
 
     def _emit_parcel(self, spec_id, part, cells, keep_cells, ang=0.0, poly=None):
         # `poly` given = the caller already knows the shape. A site parcel is a

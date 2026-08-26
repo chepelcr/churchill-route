@@ -23,10 +23,14 @@
 //     shortfall is made up by the throttle rather than by speed: an outboard
 //     pushes water past the rudder the instant you open it, which is a real
 //     boat and also happens to be the thing that breaks the deadlock.
-//   * SHE ALWAYS MAKES WAY. An outboard in gear idles ahead. `idleThrust` is
-//     not flavour: with no way on there is no steerage, so a boat that has
-//     stopped can neither turn nor recover, and the compass is pointing at
-//     somewhere she cannot go.
+//   * SHE PIVOTS, LIKE A CAR. The deadlock used to be broken the other way —
+//     `idleThrust` kept her making way at 22% throttle up to 95 px/s with the
+//     controls untouched, so with no input she DROVE HERSELF and the whole
+//     medium read as an auto-ride. The deadlock is real and still has to be
+//     answered; the answer is the car's own: `pivot`, a spin-on-the-spot term
+//     that fades out with speed. She turns where she sits, then leaves under
+//     YOUR throttle. A hull with no way on having no steerage is true, and it
+//     is also unplayable with a finger, which is why the car has this term.
 //   * COMMITTING PAYS. Past `planeAt` she comes up on the plane — less drag,
 //     more top end. "Hold the throttle" becomes a decision with a reward.
 //   * THE BANK PUSHES BACK BEFORE IT HITS. `bankAssist` is the answer to "no
@@ -52,9 +56,13 @@ export const HULL = {
   //: …and it lets go of the water while it does. Replaces the car's 0.55.
   driftGrip: 0.35,
 
-  //: in gear at idle. Below `idleTop` px/s she keeps making way on her own.
-  idleThrust: 0.22,
-  idleTop: 95,
+  //: spin-on-the-spot, as a fraction of `veh.turn`, fading out by `pivotTop`
+  //: px/s. THE SAME TERM THE CAR HAS, and for the same reason: a tap has to
+  //: point her before she moves, or steering means arcing forward first. It
+  //: replaces `idleThrust` as the answer to no-speed/no-turn — the difference
+  //: is that a pivot is something the player asked for and idle thrust was not.
+  pivot: 1.5,
+  pivotTop: 60,
 
   //: on the plane above this speed fraction: less drag, more top end.
   planeAt: 0.55,
@@ -72,7 +80,10 @@ export const HULL = {
   //: costs nearly everything, because it should.
   glanceKeep: 0.72,
   glanceBounce: 0.30,
-  glanceYaw: 0.9,
+  //: …and it swings the bow, but only half as far as it used to. This is a
+  //: heading the player did not ask for, and at 0.9 rad/s a scrape down the
+  //: mangrove was steering the boat more than the finger was.
+  glanceYaw: 0.45,
   //: grip while in contact. The car's 0.15 is tuned for a kerb you can see and
   //: makes a hull skate along a ragged mangrove edge.
   wallGrip: 0.5,
@@ -97,10 +108,16 @@ export function hullTurn(spdFac, throttle, boosting, braking) {
     * (braking ? HULL.driftTurn : 1);
 }
 
-/** Throttle with the idle floor: she is never dead in the water. */
-export function hullThrottle(raw, speed, braking) {
-  if (braking || raw > HULL.idleThrust || raw < 0) return raw;
-  return Math.abs(speed) < HULL.idleTop ? HULL.idleThrust : raw;
+/**
+ * Pivot-in-place, as a multiple of `veh.turn` — added to `hullTurn`, not
+ * multiplied, exactly as the car adds its own.
+ *
+ * This is the whole replacement for `idleThrust`: the deadlock was never that
+ * she could not MOVE, it was that she could not POINT. Answer the pointing and
+ * the throttle can stay the player's.
+ */
+export function hullPivot(speed) {
+  return HULL.pivot * Math.max(0, 1 - Math.abs(speed) / HULL.pivotTop);
 }
 
 /** Rolling friction for a hull, lighter once she is up on the plane. */
@@ -115,13 +132,18 @@ export function hullTopMul(spdFac) {
 }
 
 /**
- * The cushion off the bank — the single change that most answers "too hard".
+ * The cushion off the bank — softened, and it is now a BRAKE and not a thruster.
  *
- * Eight probes on a ring, an outward push from each one that is not water. It
- * is not a collision and it never stops you: it BIASES you toward the middle of
- * whatever water you are in, so a channel reads as a channel instead of as a
- * corridor with two things in it that catch you. Eight `isWater` calls a frame
- * is nothing next to the capsule solver's cell sweep.
+ * Eight probes on a ring, an outward direction summed from every one that is
+ * not water. What changed: it used to add `bankPush` along that direction
+ * unconditionally, so a hull sitting still near the mangrove was accelerated by
+ * the shore, and one running parallel to it was pushed along. That is
+ * un-commanded motion, and it was half of what read as the boat driving itself.
+ *
+ * Now it can only CANCEL velocity that is heading INTO the bank, bounded by the
+ * same budget. Stopped, it does nothing. Moving away, it does nothing. So the
+ * bank still stops feeling like a fence — you are bled off it before you touch
+ * it — without ever putting speed on the boat that the player did not ask for.
  *
  * @param {(x:number,y:number)=>boolean} isWater
  */
@@ -142,11 +164,14 @@ export function hullBankAssist(p, veh, dt, isWater) {
       px -= dx * w; py -= dy * w;
     }
   }
-  if (px || py) {
-    const L = Math.hypot(px, py);
-    p.vx += (px / L) * HULL.bankPush * Math.min(1, L) * dt;
-    p.vy += (py / L) * HULL.bankPush * Math.min(1, L) * dt;
-  }
+  if (!px && !py) return;
+  const L = Math.hypot(px, py);
+  const nx = px / L, ny = py / L;          // unit, pointing AWAY from the bank
+  const vn = p.vx * nx + p.vy * ny;        // …so vn < 0 is closing with it
+  if (vn >= 0) return;
+  const budget = HULL.bankPush * Math.min(1, L) * dt;
+  const cut = Math.min(-vn, budget);
+  p.vx += nx * cut; p.vy += ny * cut;
 }
 
 /**

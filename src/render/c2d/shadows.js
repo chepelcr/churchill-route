@@ -17,8 +17,8 @@
 // ya usaba con los árboles: la única parte de todo esto que llevaba meses
 // viéndose bien, así que se generalizó en vez de inventar otra.
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
-import { sunVector } from "../../game/daynight.js";
 import { PX_PER_M } from "../../domain/units.js";
+import { sunShadow2 } from "../sun.js";
 
 const SUN = EFFECTS.sunShadow;
 const BH = EFFECTS.buildingHeight;
@@ -31,20 +31,10 @@ const BH = EFFECTS.buildingHeight;
  * porque la forma es lo único que de verdad es distinto entre ellos.
  */
 export function sunShadow(heightM) {
-  const sun = sunVector();
-  // `alt` va de 0 (horizonte) a 1 (cenit); la sombra es su inversa. Al mediodía
-  // queda casi debajo del objeto, al atardecer se estira.
-  const reach = heightM * PX_PER_M * (SUN.reachAtNoon + (1 - sun.alt)
-    * (SUN.reachAtDusk - SUN.reachAtNoon));
-  return {
-    dx: sun.x * reach,
-    // El mundo se ve desde arriba pero no en planta pura, así que la componente
-    // norte-sur se acorta; sin esto la sombra de mediodía se vería tan larga
-    // hacia el sur como hacia el este.
-    dy: sun.y * reach * SUN.squashY,
-    // Una sombra de mediodía es DURA; una de atardecer, larga y lavada.
-    alpha: SUN.alphaAtDusk + sun.alt * (SUN.alphaAtNoon - SUN.alphaAtDusk),
-  };
+  // El adaptador vive junto a `sunDirection3`: consume su reach/alpha, y sólo
+  // conserva acá el orden IEEE-754 del arte histórico para que el cambio de
+  // autoridad siga siendo un diff de CERO píxeles.
+  return sunShadow2(heightM, PX_PER_M);
 }
 
 /**

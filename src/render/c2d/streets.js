@@ -10,7 +10,7 @@ import { t } from "../../i18n/index.js";
 import { evalOn } from "../vehicleShapes.js";
 import { dashPath, roadPath } from "./cache.js";
 import { nearestOnPoly } from "./flora.js";
-import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, parcelFrame } from "./gfx.js";
+import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, parcelFrame, upright } from "./gfx.js";
 import { propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
@@ -555,7 +555,12 @@ function drawBarrierSign(br, c, view) {
   const dstr = W.DISTRICTS.find((d) => d.id === br.district);
   const dname = dstr ? dstr.name : br.district.toUpperCase();
   const sw = 138, sh = 40;
-  const sx = c.x, sy = c.y - c.w / 2 - 6 - sh / 2;
+  const ax = c.x, ay = c.y - c.w / 2 - 6 - sh / 2;
+  // The WHOLE sign stands up, board and all — it is a thing hanging in front of
+  // you, not a marking on the road, and three lines of rolled text is the
+  // clearest way to make a closed street unreadable.
+  const stood = upright(ax, ay);
+  const sx = stood ? 0 : ax, sy = stood ? 0 : ay;
   ctx.fillStyle = ST.barrier.signBg;
   ctx.fillRect(sx - sw / 2, sy - sh / 2, sw, sh);
   ctx.fillStyle = dstr ? dstr.tone : TAPE_A;
@@ -567,6 +572,7 @@ function drawBarrierSign(br, c, view) {
   ctx.fillText(dname.slice(0, 20), sx, sy + 5);
   ctx.fillStyle = dstr ? dstr.tone : TAPE_A; ctx.font = "bold 8px 'JetBrains Mono', monospace";
   ctx.fillText(br.mvp ? t("sign.soon") : t("sign.level", { n: br.requiredStage || "—" }), sx, sy + 15);
+  if (stood) ctx.restore();
 }
 
 // The boundary of one barrier as segments, clipped to the view.

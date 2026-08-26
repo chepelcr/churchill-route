@@ -12,6 +12,7 @@ import unittest
 from churchill.world.config import ROOT
 
 ACTORS_JSON = os.path.join(ROOT, "src", "assets", "actors.json")
+PRODUCTS_JSON = os.path.join(ROOT, "content", "world", "products.json")
 ENTITIES_JS = os.path.join(ROOT, "src", "render", "c2d", "entities.js")
 ESTERO_JS = os.path.join(ROOT, "src", "render", "c2d", "estero.js")
 INTERPRETER_JS = os.path.join(ROOT, "src", "render", "c2d", "actorShapes.js")
@@ -148,6 +149,31 @@ class ActorRegistryTests(unittest.TestCase):
         for cargo in records(self.data["cargo"]).values():
             self.assertIn(cargo["form"], self.forms)
             self.assertIn(cargo["placement"], PLACEMENTS)
+
+    def test_every_product_cargo_names_a_reusable_contents_form(self):
+        """The vehicle chooses the container; ``products.json`` chooses what
+        appears inside it.  The renderer derives one actor form from the token,
+        so every token must be a safe suffix and that form must exist."""
+        products = json.loads(read(PRODUCTS_JSON))["products"]
+        kinds = {product.get("cargo") for product in products.values()}
+        self.assertEqual(kinds, {"cup", "box", "leaf"})
+        for kind in kinds:
+            with self.subTest(cargo=kind):
+                self.assertRegex(kind, r"^[a-z][a-z0-9]*$")
+                form = f"cargo{kind[0].upper()}{kind[1:]}"
+                self.assertIn(form, self.forms,
+                              f"products.json cargo {kind!r} has no {form} actor form")
+
+    def test_carried_cargo_composes_container_and_product_contents(self):
+        """One order draws twice at one resolved mount: first the container
+        selected by ``vehicleCargo``, then the product form on top."""
+        painter = source(ENTITIES_JS).split("function drawCarriedCargo(", 1)[1].split("\n}", 1)[0]
+        self.assertIn("vehicleCargo(key)", painter)
+        self.assertIn("cargoContentsForm(carrying.product)", painter)
+        self.assertIn("paintActorForm(g, ACTORS, container.form", painter)
+        self.assertIn("const { contents, ...containerFrame } = placed", painter)
+        self.assertEqual(painter.count("paintActorForm(g, ACTORS,"), 2,
+                         "carried cargo must paint one container and one contents form")
 
     def test_melt_ramps_and_hull_geometry_live_in_json(self):
         self.assertNotIn("oklch", source(ENTITIES_JS))

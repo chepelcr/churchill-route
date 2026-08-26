@@ -3,9 +3,9 @@
 `rasterise_surface` is where the world becomes DRIVABLE GROUND rather than a
 list of features, and its order is the fragile part (see service.surface): coast
 and water barriers, then the flood — everything the sea cannot reach past a
-closed barrier is land — then beaches, water polygons, roads, and only then the
-acera fringe, which grows out of the roads and must run before anything that
-needs to stay un-ringed.
+closed barrier is land — then beaches, mapped water and the open estuary, the
+final land silhouette, roads, and only then the acera fringe, which grows out
+of the roads and must run before anything that needs to stay un-ringed.
 
 It also builds the shore arrays: for every grid column, the first and last
 non-water row. The renderer draws the coastline from them, and a median filter
@@ -24,17 +24,53 @@ from ..config import (
     CUAD, GRID_CELL, PLANAR_PX_PER_M, SHORE_RECLAIM_CELLS, SHORE_RECLAIM_REACH_M,
 )
 from ..content import (
-    DISTRICT_BOUNDS_GEO, DISTRICT_DEFS, INLAND_DISTRICT_DEFS, PROBE_LAND,
-    PROBE_SEA,
+    CUSTOMER_DEFS, DISTRICT_BOUNDS_GEO, DISTRICT_DEFS, INLAND_DISTRICT_DEFS,
+    LANCHA_DEFS, LANDMARK_DEFS, PROBE_LAND, PROBE_SEA,
 )
 from ..logging import log, warn
 from ..service.osm import extract_coastlines
 from ..service.malecon import paseo_frontage_roads
+from ..service.placement import resolve_poi
 from ..service.surface import (
-    acera_fringe, beach_fringe, estero_band, raster_coast_barrier,
-    raster_poly_barrier, reclaim_shore, trace_land_contours,
+    acera_fringe, beach_fringe, estero_band, estuary_claim_mask, open_estuary,
+    raster_coast_barrier, raster_poly_barrier, reclaim_shore,
+    trace_land_contours,
 )
 from ..util.geometry import pairs, to_m
+
+
+def _authored_apron_sources(ctx, sp):
+    """Pre-nudge world points for every authored pad/ramp source.
+
+    ``ctx.pois`` is only the raw OSM catalog; it is not the landmarks and
+    customers that ``place_pois`` resolves later and stamps at 48/56 px.  Do
+    that SOURCE resolution now (still geo/name-authored, never a px anchor) so
+    the early coastline pass cannot drown the ground their apron starts on.
+    The later nudge may choose a neighbouring cell, but the estuary rim and the
+    road+acera guard preserve that destination corridor as well.
+    """
+    out = []
+    for spec in LANDMARK_DEFS:
+        pm, _, _ = resolve_poi(ctx.named, spec)
+        if pm is None:
+            continue
+        x, y, _, _ = sp.project(pm)
+        out.append({"x": x + spec.get("dx", 0),
+                    "y": y + spec.get("dy", 0), "id": spec["id"]})
+    for spec in CUSTOMER_DEFS:
+        x, y, _, _ = sp.project(to_m(*spec["ll"]))
+        out.append({"x": x, "y": y, "id": spec["id"]})
+    # The far ramp begins at an authored geo landing before `_shoreline` snaps
+    # it to water.  The berth is the Muelle de Pitahaya: its street corridor is
+    # in the road guard and its land/water edge is the retained shore rim.
+    for spec in LANCHA_DEFS:
+        if spec.get("landing"):
+            x, y, _, _ = sp.project(to_m(*spec["landing"]))
+            out.append({"x": x, "y": y, "id": spec["id"] + ":landing"})
+        if spec.get("berth"):
+            x, y, _, _ = sp.project(to_m(*spec["berth"]))
+            out.append({"x": x, "y": y, "id": spec["id"] + ":berth"})
+    return out
 
 
 def rasterise_surface(ctx, *, sp, ways, nodes, roads, beaches, waters, bridge_road):
@@ -67,6 +103,9 @@ def rasterise_surface(ctx, *, sp, ways, nodes, roads, beaches, waters, bridge_ro
     sea_seeds = [(2, y) for y in range(2, CANVAS_H, 200)]
     sea_seeds.append(sp.to_px(*sp.project_m(to_m(*PROBE_SEA[0]))))
     raster.flood_water(barrier, sea_seeds, CLS_WATER, CLS_LAND)
+    # The flood's barrier is 1 byte per cell (247 MB in the full world).  Its
+    # job is over; release it before the estuary's equally-sized claim bitmap.
+    del barrier
 
     # sanity probes before painting details
     def cls_at_geo(ll):
@@ -107,14 +146,30 @@ def rasterise_surface(ctx, *, sp, ways, nodes, roads, beaches, waters, bridge_ro
                                 max(xs) + pad, max(ys) + pad))
     else:
         log("beach", "no paseo frontage — the coast keeps its true waterline")
+
+    # MAPPED WATER IS PART OF THE COASTLINE, not an overlay applied after its
+    # silhouette was frozen.  More importantly, the estero's natural=water
+    # polygons distinguish the actual islets from the intertidal ground that is
+    # about to open.  Stamp them first, then open only the remaining LAND.
+    for wpoly in waters:
+        raster.fill_poly([(wpoly[i], wpoly[i + 1])
+                          for i in range(0, len(wpoly), 2)], CLS_WATER)
+    authored_aprons = _authored_apron_sources(ctx, sp)
+    claims, claim_sources = estuary_claim_mask(
+        raster, ctx.estero, roads=roads, sites=ctx.sites, pois=ctx.pois,
+        authored_pois=authored_aprons, parcels=ctx.parcels,
+        bridge_road=bridge_road)
+    log("estero", "claim guard sources inside estuary extent: "
+        + ", ".join(f"{name}={count}" for name, count in claim_sources.items()))
+    open_estuary(raster, ctx.estero, claims=claims)
+    del claims
+
     # THE SILHOUETTE IS TRACED AFTER THE COAST IS FINAL. It used to be traced
     # before the sand was even stamped, which was harmless while nothing moved
     # the waterline — `beach_fringe` only ever converted land. `reclaim_shore`
-    # moves it, so a contour traced earlier would draw the drowned coast under
-    # the new one.
+    # and the open estuary move it, so a contour traced earlier would draw the
+    # drowned coast under the new one.
     land_contours = trace_land_contours(raster)
-    for wpoly in waters:
-        raster.fill_poly([(wpoly[i], wpoly[i + 1]) for i in range(0, len(wpoly), 2)], CLS_WATER)
     # WHAT THE STREET IS MADE OF, in the raster. A paseo and a bridge deck come
     # first because they are structures; then the mapper's surface tag, which is
     # what makes a calle de barro drive like one (SURFACE_MUL on the client)

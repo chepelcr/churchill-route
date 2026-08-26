@@ -24,6 +24,6 @@ export function setupPixi(mainCanvas, onFail) {
   });
 }
 
-export function renderPixi(t) {
-  if (ready && !failed) scene.render(t);
+export function renderPixi(tSeconds, camera) {
+  if (ready && !failed) scene.render(tSeconds, camera);
 }

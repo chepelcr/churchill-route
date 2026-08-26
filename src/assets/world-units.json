@@ -25,7 +25,11 @@
     "viewWidthM": 160.0,
     "viewWidthNote": "how much ground the camera frames across the viewport. 400 px at today's scale, which is exactly the 20 cuadrículas it was.",
     "minScreenPxPerM": 5.5,
-    "minScreenNote": "THE LEGIBILITY FLOOR, and the constant everybody forgets. It was a bare `2.2` in `computeZoom` — a magnification, i.e. SCREEN px per WORLD px, so it had to scale INVERSELY with pxPerMetre and the intuitive guess (scale it up) crops a phone to 57 m of view. Stated as screen px per METRE it is scale-free: 5.5 / 2.5 = the 2.2 it has always been. It binds on every screen narrower than 880 CSS px, i.e. every phone in landscape, where it converts the whole framing trade into 'how much road ahead you see' rather than 'how big the car is'. There is no fixed MAX_VIEW_M to write down: the view this floor allows is `wCss / minScreenPxPerM` metres and therefore depends on the screen."
+    "minScreenNote": "THE LEGIBILITY FLOOR, and the constant everybody forgets. It was a bare `2.2` in `computeZoom` — a magnification, i.e. SCREEN px per WORLD px, so it had to scale INVERSELY with pxPerMetre and the intuitive guess (scale it up) crops a phone to 57 m of view. Stated as screen px per METRE it is scale-free: 5.5 / 2.5 = the 2.2 it has always been. It binds on every screen narrower than 880 CSS px, i.e. every phone in landscape, where it converts the whole framing trade into 'how much road ahead you see' rather than 'how big the car is'. There is no fixed MAX_VIEW_M to write down: the view this floor allows is `wCss / minScreenPxPerM` metres and therefore depends on the screen.",
+    "tiltDeg": 51.68386552633426,
+    "tiltNote": "EL TECHO DE LA INCLINACION, y de donde sale: bajo camara ortografica cos(tilt) es el acortamiento norte-sur del suelo, asi que este valor deriva exactamente de sunShadow.squashY = 0.62 y es el angulo con el que el arte cenital fue dibujada. Pasado el, un sprite visto desde arriba deja de leerse como su propio objeto. NO es lo que se usa: el suelo se compensa para que salga en planta (ver render/lean.js), asi que esto solo acota `leanDeg`.",
+    "leanDeg": 0.0,
+    "leanNote": "CUÁNTO SE INCLINA LA CÁMARA. CERO, y es una decisión: el mundo se ve desde arriba en ortográfica, así que el plano del suelo mapea EXACTAMENTE como siempre y manejar es idéntico por construcción — `applyTouch` compara un ángulo de pantalla contra un rumbo de mundo y a 0° coinciden. Lo 3-D no viene de inclinar sino de que la geometría sea REAL: volúmenes con techo, aceras a su propia cota, un sol de verdad y sombras proyectadas. Se puede pedir un ángulo por URL (`?lean=N`) para comparar, acotado por `tiltDeg`; lo que se publica es 0."
   },
   "channel": {
     "_note": "El canal de la Travesía. The build SOUNDS the estero along a smoothed normal and emits the measured lane; the client places every buoy, gate and current filament on it. Two numbers have to be the same at both ends or the client is reading a different line from the one that was sounded.",
@@ -159,8 +163,6 @@
       "_note": "La Travesía's route search and the beach accesses.",
       "clearanceM": 60.0,
       "clearanceNote": "the water the line WANTS either side. Below it a step starts paying, and the penalty is squared — at 90 % of it a step costs ~1.06 and the route still takes the short way, at 30 % it costs ~3.9 and it sails 120 m around instead.",
-      "dredgeEndPadM": 88.0,
-      "dredgeEndPadNote": "the berth and the landing are SHORE ON PURPOSE — leave their aprons alone",
       "simplifyM": 24.0,
       "simplifyNote": "the flood returns a staircase; the boat wants a line",
       "snapM": 160.0,

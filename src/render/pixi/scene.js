@@ -293,34 +293,33 @@ export class PixiScene {
     this.playerSprite.rotation = p.a;
   }
 
-  render(tms) {
+  render(tSeconds, camera) {
     if (!this.world) return;
-    this._frame = tms;
+    this._frame = tSeconds;
 
-    // shared camera jitter so both canvases shake in lockstep. In landmarks
-    // mode canvas2d renders first and publishes its jitter; reuse it here.
-    const shake = state.cam.shake || 0;
-    if (!(this.landmarksOnly && state.cam._sx !== undefined)) {
-      state.cam._sx = (Math.random() - 0.5) * shake;
-      state.cam._sy = (Math.random() - 0.5) * shake;
-    }
-    const camX = state.cam.x + state.cam._sx, camY = state.cam.y + state.cam._sy;
-    const z = state.cam.zoom || 3;
+    // Renderer.js hands every backend the same resolved camera frame. Pixi
+    // applies it; it never draws its own shake or keeps a second projection.
+    const camX = camera?.x ?? state.cam.x;
+    const camY = camera?.y ?? state.cam.y;
+    const z = camera?.zoom ?? state.cam.zoom ?? 3;
+    const rotation = camera?.rotation ?? state.cam.rot ?? 0;
     const sw = this.app.screen.width, sh = this.app.screen.height;
     this.world.scale.set(z);
-    this.world.position.set(sw / 2 - camX * z, sh / 2 - camY * z);
+    this.world.pivot.set(camX, camY);
+    this.world.position.set(sw / 2, sh / 2);
+    this.world.rotation = rotation;
 
     // la ola: a crest at normalized position `head` sweeps the perimeter on
     // the same 24s clock the game uses; seats within the crest window hop.
     if (this.crowd) {
-      const WAVE_MS = 24000;
-      const head = (tms % WAVE_MS) / WAVE_MS;      // 0..1 around the ring
+      const WAVE_SECONDS = 24;
+      const head = (tSeconds % WAVE_SECONDS) / WAVE_SECONDS; // 0..1 around the ring
       const party = (state.stadiumParty || 0) > 0; // post-lap eruption
       for (const s of this.crowd) {
         let d = (s.u / this.crowdPer) - head;      // signed distance behind the crest
         d -= Math.round(d);                        // wrap to [-0.5, 0.5]
         const inCrest = Math.max(0, 1 - Math.abs(d) / 0.06); // 6% crest window
-        const bounce = party ? 0.5 + 0.5 * Math.abs(Math.sin(tms * 0.02 + s.u)) : 0;
+        const bounce = party ? 0.5 + 0.5 * Math.abs(Math.sin(tSeconds * 20 + s.u)) : 0;
         s.g.position.y = s.by - (inCrest * s.amp + bounce * s.amp);
       }
     }
@@ -337,8 +336,8 @@ export class PixiScene {
           g.rect(-1, -2.6, 2, 5.2).fill({ color: 0xd99a1c, alpha: 0.7 });
           this.coinLayer.addChild(g); this.coinPool.set(c, g);
         }
-        g.position.set(c.x, c.y - 2 - Math.abs(Math.sin(tms * 0.004 + c.x)) * 2);
-        g.scale.x = Math.cos(tms * 0.005 + c.y); // spin (edge-on flip)
+        g.position.set(c.x, c.y - 2 - Math.abs(Math.sin(tSeconds * 4 + c.x)) * 2);
+        g.scale.x = Math.cos(tSeconds * 5 + c.y); // spin (edge-on flip)
         g.alpha = c.t > 22 ? Math.max(0, (25 - c.t) / 3) : 1; // fade before expiry
       }
       for (const [c, g] of this.coinPool) {

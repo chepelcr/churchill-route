@@ -245,7 +245,7 @@ def cells_to_rects(cells, cell_px):
 
 
 
-def detect_blocks(raster, build_band_x1=None):
+def detect_blocks(raster, old_port_x1=None):
     """Classify every CLS_LAND component (after roads/aceras/pads are stamped)
     at cuadrícula resolution:
       - block: fits a BLOCK_MIN_CUADS square of buildable CUAD cells somewhere
@@ -363,12 +363,14 @@ def detect_blocks(raster, build_band_x1=None):
     for cid in range(1, len(comp_n)):
         area_cuads = comp_n[cid] / (CUAD_CELLS * CUAD_CELLS)
         cells = comp_cells[cid]
-        # Faro tip: the fine street grid makes cuadras below the 6x6 minimum, so
-        # they'd pave to green plazas. Keep the small coastal blocks BUILDABLE
-        # (whole component west of the band edge) so the barrio by the lighthouse
-        # has houses instead of a green patchwork.
-        in_band = (build_band_x1 is not None and cells and
-                   max(cc for cc, _ in cells) * CUAD < build_band_x1)
+        # Faro through El Cocal: the fine street grid leaves real urban
+        # manzanas below the normal inscribed-square bar. Keep those thin but
+        # substantial components BUILDABLE when the whole component is inside
+        # the authored old-port band. The 2x2 + area floors still reject true
+        # shore strips, and the Cocal edge keeps the rescue out of the rural
+        # coast east of La Angostura.
+        in_band = (old_port_x1 is not None and cells and
+                   max(cc for cc, _ in cells) * CUAD < old_port_x1)
         if comp_ins[cid] >= BLOCK_MIN_CUADS:
             blocks.append({"cells": cells, "green": False})
         elif in_band and comp_ins[cid] >= 2 and area_cuads >= 4:

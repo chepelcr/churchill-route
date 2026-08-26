@@ -31,12 +31,20 @@ cayeron están al final, listadas en vez de borradas en silencio.
       UN paso y a 30 fps el carro avanza 11,7 px por cuadro contra una sonda de
       ~7,6 px.
 
-- [ ] **La graderÍa: los otros tres lados.** Su COLOCACIÓN ya es data desde el
-      2026-08-15 — viene con el estadio en `content/world/blocks.json`, y la
-      receta (fondo, escalones, rake) sigue en `world-props.json`. Lo que falta
-      es una sola cosa concreta: **`side` acepta un lado, no una lista.** Y la
-      pregunta de diseño: si una plaza de barrio lleva el mismo asset a menor
-      escala o uno propio.
+- [x] ~~**La gradería: los otros tres lados, y por dónde se entra.**~~
+      **Cerrado el 2026-08-23.** Lito Pérez emite cuatro bandas de 12 px con las
+      bocas libres en las esquinas y colisión SÓLO bajo esas bandas
+      (`3 029 celdas manejables / 365 bajo gradería`); los cuadriláteros viajan
+      en el landmark, así que el arte y la colisión no pueden derivar. La sombra
+      dejó de ser el `quad(-3,0,0,0)` fijo y sigue al sol, con `dy < 0` forzado
+      para que caiga al norte: offsets medidos **(9,30, −3,41), (0, −0,92),
+      (−9,30, −3,41), (−9,04, −4,23) px**. `smoke:standshadow` nuevo. El
+      validador del editor acepta `sides` plural o `side` legado y rechaza
+      duplicados y mezclas. Las Playitas conserva su lado único, que es lo que
+      prueba que el camino de compatibilidad sigue vivo.
+
+      Sigue abierta la pregunta de diseño: si una plaza de barrio lleva el mismo
+      asset a menor escala o uno propio.
 
 - [ ] **Torres de luz en las canchas de barrio.** Los dos estadios ya las
       tienen (`blocks.json` → el bloque, cuatro en las esquinas del
@@ -97,9 +105,25 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
       empatar otra porción. Ferrocarril será el primer caso real que sustituya
       su lift visual actual.
 
-- [ ] **Física por pendiente.** Derivar el grado del perfil bajo el vehículo:
-      subir reduce aceleración/velocidad sostenible, bajar la aumenta dentro de
-      límites y el freno compensa. Colisión y navegación continúan en planta.
+- [x] ~~**Física por pendiente.**~~ **Hecha, y este archivo no se había
+      enterado** (verificado el 2026-08-23 contra el árbol). No salió de un
+      perfil autorado sino del campo de cota del IGN: `physics.js:729` persigue
+      `W.groundGradeAt` proyectado sobre el RUMBO del vehículo, y `:427` / `:493`
+      lo pagan en aceleración Y en techo (`simulation.json` → `grade`:
+      `accelPerGrade -1.8`, `topPerGrade -0.9`, con topes porque el campo es
+      interpolado). Colisión y navegación siguen en planta, como decía la fila.
+
+- [ ] **NADIE DIBUJA LA COTA.** El campo se emite, la física lo corre y el único
+      consumidor VISUAL es el charco de la tormenta (`c2d/downpour.js:94-106`).
+      `state.zM` se escribe y no lo lee nadie. Esto es lo que el 2026-08-23 pasó
+      a ser la capa three.js — ver §6.
+
+- [x] ~~**`groundZAt` da un escalón en cada borde de tile.**~~ **Cerrado el
+      2026-08-23.** `zSampleAt(gcx, gcy)` consulta la retícula GLOBAL y la
+      bilineal puede tomar sus cuatro esquinas de tiles vecinos. La regresión
+      primero reprodujo **23,00 m** de salto; después midió 678 bordes
+      residentes con máximo **0,0057 m**. `smoke:grade` conserva además la
+      prueba física: cuesta abajo sigue siendo 3,58× más rápido que cuesta arriba.
 
 ---
 
@@ -115,20 +139,58 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
 ## 4. El mundo: medido y sin cerrar
 
-- [ ] **El canal de la Travesía se estrecha a 12 px de media caña en UNA
-  muestra de 352** (`smoke:crossing` falla; el casco mide 34). Medido el
-  2026-08-22: no es un canal angosto, es la LÍNEA mal puesta — en la muestra 141
-  (26118, 8962) el centro cae sobre manglar y el agua abierta está 4..76 px al
-  lado. `CLEAR_FLOOR_NODES` dice que una polilínea simplificada tiene que dejar
-  40 px de agua a los dos lados, así que el simplificador está violando su
-  propio piso al cortar una curva. **Ya avisaba antes de la dilatación** (36 px
-  de mínima contra un casco de 34, o sea dos píxeles de margen, y el mismo WARNING
-  en el log de cada build); la dilatación se comió ese margen, no lo creó. La
-  etapa es `openAlways` y no bloquea a ninguna, que es lo que lo hace afinable
-  aparte.
-- [ ] **2 boyas siguen en tierra** (de 122). El render las suprime (`buoyWet`) y
-      `smoke_crossing` las tolera dentro de presupuesto, así que no se ven — pero
-      la línea las puso ahí.
+- [x] ~~**EL ESTERO SE ABRE.**~~ **Implementado el 2026-08-23.** El usuario pidió
+      «un estero completamente abierto y manejable, pero **con las boyas** de la
+      Travesía para que el nivel se pueda jugar», así que las boyas se quedaron
+      y pasaron a ser un CAMPO DE REGATA sobre agua abierta: se fue la pintura
+      de pasillo (banda, límites, estrías) y `laneAt` quedó topado a 190 px.
+
+      El dragado se borró y la cuenca se INUNDA en `rasterise_surface`, antes de
+      `trace_land_contours` — `basin opened 17 743 LAND cells to WATER`, con un
+      borde de manglar de 40 px conservado y las celdas reclamadas por calles,
+      sitios, POIs y anclas autoradas respetadas. Ninguna boya ni portón quedó
+      en seco (antes: 82 de 170 sobre tierra firme).
+
+      **Y destapó dos cosas que llevaban tiempo escondidas**, las dos cerradas:
+
+      * `measure_channel` suavizaba el CENTRO del canal y podía sacarlo del agua
+        en una curva. La estación informaba entonces media caña 0 —con toda
+        honestidad— y el carril desaparecía donde el estero mide 200 px. Ahora
+        una estación conserva el centro suavizado sólo mientras le deje tanta
+        agua como su propia medición ya ofrecía. Medido: **min 0 → 36 px, 120
+        estaciones mejoradas, 0 empeoradas**.
+      * `trace_land_contours` guardaba las aristas de frontera en un diccionario
+        `inicio -> fin`, así que un pellizco diagonal pisaba una arista y el lazo
+        entero se descartaba **en silencio**. Bastó uno para borrar el lazo de
+        24 200 vértices que es toda la tierra firme más el arenal: los patios de
+        El Cocal se dibujaban como mar. Ahora es un multimapa y una cadena que no
+        cierra se avisa. Medido sobre un fixture de dos bloques que se tocan por
+        una esquina, el código viejo daba **0 lazos y 17 cadenas descartadas**.
+
+- [x] ~~**EL COCAL: calles sí, manzanas no.**~~ **Cerrado el 2026-08-23.** La
+      causa no era el veto por huella de OSM sino la clasificación `green` de
+      `detect_blocks`: una cuadra que no inscribe su cuadrado se marcaba verde y
+      `synth_buildings` se saltaba TODA la síntesis en ella. El rescate ahora
+      recibe el borde este del distrito `cocal` autorado en vez del viejo límite
+      Carmen/Faro. Medido sobre el mundo emitido, edificios por tile:
+      `13_7` 131 → **190**, `14_7` 101 → **180**, `15_7` 13 → **75**,
+      `17_7` 0 → **19** — por encima incluso de antes de la dilatación. 64
+      cuadras en el distrito, una sola marcada bosque.
+
+- [x] ~~**EL FERROCARRIL VA ENCIMA DE LA CALLE.**~~ **Cerrado el 2026-08-23.**
+      Hay `content/world/railway.json` (registro v1, en el inventario, con
+      validador estricto de nombres/metros en el editor) y un servicio de
+      alineación que corre justo después de `extract_rails`, así que todo
+      consumidor río abajo ve la geometría ya corrida. La `Calle del
+      Ferrocarril` resultó ser un ramal N–S de ~75 m: la continuidad real la dan
+      `Avenida del Ferrocarril` y `Avenida Alberto Echandi Montero`. Barrido de
+      las 23 piezas emitidas: **9 alineadas**, 6 698/6 886 muestras comprobadas,
+      **hombro sobre calzada 0/0**, errores entre-ejes/punto-medio **0/0**,
+      `alignment_failures=[]`. Verificado además a ojo en El Cocal: la vía corre
+      por el hombro, fuera del asfalto. Queda una brecha real de OSM de 53,1 m
+      que no se une, y el par del Cocal se autoró con 14 m de tolerancia porque
+      los ejes quedan a 8,5–11,9 m.
+
 - [ ] **`smoke_sea` falla dos aserciones de pescadores** — verificado que falla
       por el harness, no por el mundo.
 - [x] ~~**El Muelle de Cruceros no lo tocan las calles del frente.**~~
@@ -175,6 +237,33 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
 ## 5. Juego y balance
 
+- [x] ~~**La carga se dibuja por VEHÍCULO, no por comida.**~~ **Cerrado el
+      2026-08-23.** Desde ese día el
+      producto viaja con el pedido y manda en el reloj, el presupuesto, la barra
+      del HUD y lo que dice el cliente. Ahora el vehículo pone el RECIPIENTE
+      (`bag`/`cooler`/`freezer`) y el producto pone el contenido (`cup`/`box`/
+      `leaf`), incluidas las formas nuevas en `actors.json`. Gate visual:
+      **103/607.600 px (0,0170 %)** cambiaron, todos dentro de los cinco ejemplos
+      de carga y **0 fuera**.
+
+- [x] ~~**La etiqueta de una frase no llegaba al juego.**~~ **Cerrado el
+      2026-08-23, y lo encontró el propio `smoke:product-hud`.** `product` en una
+      frase se autora en `customers.json` y **el mundo emitido no lo llevaba**
+      —0 de 24 clientes— así que `customerLine` tomaba siempre la rama «esta
+      frase sirve para cualquiera» y los repuestos por producto **no se usaron
+      nunca**: el HUD decía «¡La mía sin tanto rojo!» —el sirope de cola de un
+      churchill— sobre un vigorón en hoja. Se resuelve en el CLIENTE leyendo la
+      tabla autorada, porque la etiqueta es una propiedad de la COPIA y no del
+      sitio donde para el cliente, y afinarla no puede costar 48 minutos.
+
+      **La lección está en la compuerta, no en el arreglo.** El primer barrido
+      que se escribió le pasaba a `customerLine` los registros AUTORADOS —que ya
+      traen la etiqueta— y por eso **seguía verde con el arreglo revertido**,
+      mientras el HUD decía «Rojito bien fuerte.» sobre un vigorón. El sujeto de
+      una prueba así tiene que ser lo que el juego ve (`W.CUSTOMERS`); la
+      expectativa es lo que dice el archivo. Corregida, reporta **48 frases sobre
+      la comida equivocada** con el arreglo quitado y ninguna con él puesto.
+
 - [ ] **Semántica del turbo** — el GDD dice que X multiplica la velocidad actual
       ×1.35 una vez; la implementación es una rampa continua más un techo de
       velocidad ×1.35. Decidir cuál se quiere y alinear el otro.
@@ -185,15 +274,67 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
 - [ ] **Ciudad viva 2** — peatones que reaccionen al pito, ciclistas ocasionales,
       gentío en el Mercado, ventanas que se encienden de noche.
 
+- [x] ~~**EL JUEGO SE PUSO LENTO, Y NO HABÍA CON QUÉ MEDIRLO.**~~ Medido y
+      primer arreglo retenido el 2026-08-23. `GameTweaks` muestra mediana/p95/FPS
+      sólo mientras el panel está abierto y `smoke:perf` calienta e intercala
+      variantes. El sospechoso principal no era el culpable: el minimapa cuesta
+      **0,08 ms (~6 %)**. La sonda sí encontró culling sólo en X: 17/18 peatones
+      y 3/3 carros que pasaban X estaban fuera de Y. El culling 2-D bajó entidades
+      **0,32→0,11 ms** y render **1,34→1,09 ms** (~19 %). Una caché de sombras
+      no movió sus 0,19 ms y se revirtió.
+
 ---
 
 ## 6. Motor
+
+- [ ] **PERSPECTIVA DE VERDAD: una capa three.js.** Decidido por el usuario el
+      2026-08-23 sobre las dos opciones más baratas. Seis etapas, cada una
+      entregable por su cuenta detrás de una bandera; el plan completo está en
+      `docs/HANDOFF-2026-08-23.md` §D.
+
+      Lo que lo hace abordable es una corrección que conviene no perder: **una
+      cámara ORTOGRÁFICA inclinada SÍ registra exactamente con la afín 2-D.** Con
+      ortográfica, el mapa del plano de suelo a la pantalla sigue siendo una afín
+      2-D (`ScaleY(cosφ)·Rot(θ)`); lo único que queda fuera de Canvas2D es el
+      levante por cota — que es justo lo que se va al 3-D. Así que ~2 500 líneas
+      de dibujo de suelo no se reescriben, y otras ~3 400 de pintores de arte
+      tampoco porque `shapes.js` y la familia `*Shapes.js` ya reciben su
+      superficie como argumento. **Neto: ~1 000 líneas, no 11 000.**
+
+      Dos constantes que NO son libres: `TILT = acos(0.62) = 51.68°`, porque
+      `sunShadow.squashY = 0.62` es el escorzo contra el que se autoró todo el
+      arte 2-D y bajo ortográfica el escorzo ES `cos(tilt)`; y la dirección 3-D
+      del sol se DERIVA del desplazamiento pintado completo, no de una altitud
+      física: `normalize(-sun.x*r, +sun.y*r*0.62, 1)`. Esto conserva también el
+      `y: 0.55` histórico y da 86,49° al mediodía / 48,86° en el clamp bajo;
+      omitir cualquiera de esos factores mueve los píxeles 2-D a mitad de la
+      migración.
+
+      **Se entrega en la etapa 3** (malla de terreno + `DirectionalLight` + mapa
+      de sombras: las montañas hacen sombra). De ahí en adelante es pulido, y la
+      etapa 6 —inclinar— contradice una decisión escrita en
+      `docs/HANDOFF-verticality-2_5d.md:425`; las 0-5 no.
+
+      - [x] **Etapa 0:** cota continua entre tiles (`smoke:grade`, 0,0057 m).
+      - [x] **Etapa 1:** autoridad de cámara + canvas Three vacío. El modo 2-D
+        descarga 0 bytes de Three; el chunk opt-in pesa 189,60 kB gzip y
+        `shot:3d` cambió **0/770.000 px**.
+      - [x] **Etapa 2:** malla residente local + hillshade, inclinación 0. El
+        Paseo quedó **0/770.000 px** idéntico y la cordillera cambió
+        **675.824/770.000** con 1.250 triángulos. Se descartó el readback de
+        4,700 ms; la capa CSS final añade ~0,558 ms/cuadro de compositor y
+        0,031 ms de CPU síncrona.
+      - [ ] **Etapa 3:** luz direccional + sombra de montañas (entrega).
 
 - [ ] **Milestone C — backend PixiJS/WebGL** detrás de `src/render/Renderer.js`.
       Sigue abierto y sigue siendo opt-in: hoy Canvas2D pinta el mundo entero y
       una capa Pixi transparente encima lleva lo que Canvas no puede hacer bien.
       El detalle (contenedores por capa, filtros de agua, grading por clima) está
-      en el archivo.
+      en el archivo. **Y hoy no dibuja nada**: `_MIGRATED` está vacío.
+
+- [x] ~~**Pixi confundía segundos con milisegundos.**~~ Cerrado el 2026-08-23:
+      la conversión de rAF se hace una sola vez y Canvas, Pixi y Three reciben
+      `tSeconds`; ola, monedas y rebotes expresan sus ritmos en segundos.
 - [ ] **Deuda técnica, ya verificada**: `state.rainT` se escribe y no se lee, y
       `Game.pause()` no lo usa nadie (React maneja la pausa). El resto de esa
       lista vieja ya no era cierto — ver la tabla del final.

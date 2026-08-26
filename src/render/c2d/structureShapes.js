@@ -5,6 +5,7 @@
 // module executes the few loops that cannot honestly be expanded into hundreds
 // of JSON rectangles (suspension hangers, lattice braces, pier seams and posts).
 import { paintParts } from "./shapes.js";
+import { upright } from "./primitives.js";
 
 export const STRUCTURE_FAMILY_VERBS = Object.freeze([
   "bridge-hangers", "bridge-tower", "bridge-sign",
@@ -47,17 +48,22 @@ const FAMILY = Object.freeze({
     }
   },
 
+  // The bridge's name board. Like every other sign, it stands up against a
+  // rolled camera — see `upright` in `primitives.js`.
   "bridge-sign"(g, part, frame) {
     const v = frame.vars;
     const text = String(v[part.text] ?? part.fallback ?? "");
     const x = Number(v[part.x]), y = Number(v[part.y]);
+    const stood = upright(g, x, y);
+    const bx = stood ? 0 : x, by = stood ? 0 : y;
     g.font = part.font;
     g.textAlign = "center";
     const w = g.measureText(text).width + Number(part.padX) * 2;
     g.fillStyle = frame.color(part.bg);
-    g.fillRect(x - w / 2, y, w, Number(part.height));
+    g.fillRect(bx - w / 2, by, w, Number(part.height));
     g.fillStyle = frame.color(part.fg);
-    g.fillText(text, x, y + Number(part.baseline));
+    g.fillText(text, bx, by + Number(part.baseline));
+    if (stood) g.restore();
   },
 
   "pier-seams"(g, part, frame) {

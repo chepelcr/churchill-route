@@ -1,28 +1,30 @@
-"""LA GRADERÍA — `world-props.json` -> `scenes.stadium.stands`.
+"""Stadium stands are one world contract: geometry, collision and paint.
 
-The first one that draws. `CLAUDE.md`, the ROADMAP and `water.json` all
-described graderías "stroked over the block's real acera ring" when
-`lm.stands`; none of it ran — the build emits no `stands`, nothing read it, and
-`drawStadium` was eleven lines that drew the label.
-
-What makes it ONE asset for two stadiums whose blocks are different shapes:
-the stand is fitted to an EDGE of the emitted footprint, named by side. A cuadra
-here is not square to the screen and not even square to itself, so "the west
-side" has to mean an edge — a rect off the bounding box would put a straight
-stand on a slanted block, which is the same mistake `P.ang` exists to prevent
-everywhere else.
+The builder resolves authored cardinal sides against the traced pitch, emits
+the exact trapezoids on ``lm.stands.quads`` and stamps only the raster cells
+below them as ACERA walls. Canvas consumes those quads and gives the same shape
+a solar shadow. Four trimmed trapezoids must still leave four ROAD mouths.
 """
 import json
+import math
 import os
 import unittest
 
-from churchill.world.config import ROOT
+from churchill.world.config import CLS_ACERA, CLS_ROAD, GRID_CELL, ROOT
+from churchill.world.pipeline.finish import field_escape_status
+from churchill.world.service.field import (
+    STAND_DEPTH_PX,
+    STAND_RAKE,
+    stadium_stand_cells,
+    stadium_stand_quads,
+    stadium_stand_sides,
+)
+from churchill.world.util.raster import Raster
 
 PROPS = os.path.join(ROOT, "src", "assets", "world-props.json")
 LANDMARKS_JS = os.path.join(ROOT, "src", "render", "c2d", "landmarks.js")
 MANIFEST = os.path.join(ROOT, "src", "world2d", "manifest.json")
-
-SIDES = {"west", "east", "north", "south"}
+SIDES = ("west", "east", "north", "south")
 
 
 def read(path):
@@ -30,68 +32,119 @@ def read(path):
         return json.load(fh)
 
 
-class StandsTests(unittest.TestCase):
+class StandContractTests(unittest.TestCase):
     def setUp(self):
-        # LA RECETA sigue en el registro de arte; QUIÉN LLEVA GRADERÍA y de qué
-        # lado se autora con el estadio, en `content/world/blocks.json`, porque
-        # un estadio es UN registro. El build lo emite sobre el landmark.
         from churchill.world.content import blocks_by_layout
-        self.spec = read(PROPS)["scenes"]["stadium"]["stands"]
+
+        self.recipe = read(PROPS)["scenes"]["stadium"]["stands"]
         self.own = {b["id"]: b["stands"] for b in blocks_by_layout("streets-quad")
                     if b.get("stands")}
         with open(LANDMARKS_JS, encoding="utf-8") as fh:
             self.js = fh.read()
-        self.stadiums = {l["id"]: l for l in read(MANIFEST)["landmarks"]
-                         if l.get("type") == "stadium"}
 
-    def test_every_configured_stadium_exists_and_has_a_footprint(self):
-        """The stand has NO geometry of its own — it is fitted to the emitted
-        footprint. A landmark without one silently gets nothing."""
+    def test_lito_has_all_four_sides_and_singular_side_stays_compatible(self):
+        self.assertEqual(stadium_stand_sides(self.own["estadio"]), SIDES)
+        self.assertNotIn("side", self.own["estadio"])
+        self.assertEqual(self.own["estadio_playitas"]["side"], "west")
+        self.assertNotIn("sides", self.own["estadio_playitas"])
+        self.assertEqual(stadium_stand_sides(self.own["estadio_playitas"]),
+                         ("west",))
+
+    def test_every_configured_stadium_has_a_traced_footprint(self):
+        # The checked-in world may precede this intended world rebuild, but its
+        # true footprints are the inputs whose geometry the new builder uses.
+        stadiums = {lm["id"]: lm for lm in read(MANIFEST)["landmarks"]
+                    if lm.get("type") == "stadium"}
         for lid in self.own:
-            self.assertIn(lid, self.stadiums, f"'{lid}' is not a stadium in the world")
-            fp = self.stadiums[lid].get("footprint") or []
-            self.assertGreaterEqual(len(fp), 6,
-                                    f"'{lid}' has no traced footprint to build a stand on")
+            self.assertGreaterEqual(len(stadiums[lid].get("footprint") or []), 6)
 
-    def test_every_side_is_a_real_side(self):
-        for lid, rec in self.own.items():
-            self.assertIn(rec["side"], SIDES, f"{lid}.side")
+    def test_edge_midpoints_not_a_bbox_resolve_the_four_quads(self):
+        # A slanted parallelogram: no edge lies on a bbox side.
+        footprint = [36, 28, 164, 16, 176, 112, 48, 124]
+        quads = stadium_stand_quads(footprint, {"sides": list(SIDES)})
+        self.assertEqual(len(quads), 4)
+        cx = sum(footprint[0::2]) / 4
+        cy = sum(footprint[1::2]) / 4
+        for side, quad in zip(SIDES, quads):
+            self.assertEqual(len(quad), 8)
+            inner = ((quad[0] + quad[2]) / 2, (quad[1] + quad[3]) / 2)
+            outer = ((quad[4] + quad[6]) / 2, (quad[5] + quad[7]) / 2)
+            # The back wall must point farther out than the rail for its side.
+            axis = {"west": (-1, 0), "east": (1, 0),
+                    "north": (0, -1), "south": (0, 1)}[side]
+            self.assertGreater((outer[0] - inner[0]) * axis[0]
+                               + (outer[1] - inner[1]) * axis[1], 0)
+            # The rail is deliberately inset from both source vertices: this
+            # is the corner mouth, not four stands meeting at one sealed point.
+            vertices = list(zip(footprint[0::2], footprint[1::2]))
+            for p in ((quad[0], quad[1]), (quad[2], quad[3])):
+                self.assertGreater(min(math.dist(p, v) for v in vertices),
+                                   GRID_CELL)
+            self.assertGreater(math.dist(inner, (cx, cy)), 0)
 
-    def test_the_side_is_resolved_against_the_polygon(self):
-        """Not against the bounding box. The avenidas run -5.4° and the calles
-        82.3°, so a rect off the bbox puts a straight stand on a slanted block."""
-        self.assertIn("standEdge", self.js)
-        body = self.js.split("function standEdge", 1)[1].split("\n}", 1)[0]
-        self.assertIn("midpoint" in body.lower() or "mx" in body, [True],
-                      "standEdge must pick an EDGE by its midpoint")
-        self.assertIn("nx = -nx", body,
-                      "the outward normal must be flipped toward the outside — "
-                      "the other one builds the stand across the pitch")
+    def test_recipe_matches_the_ring_and_authors_a_real_height(self):
+        self.assertEqual(self.recipe["depth"], STAND_DEPTH_PX)
+        self.assertEqual(self.recipe["rake"], STAND_RAKE)
+        self.assertGreater(self.recipe["heightM"], 0)
+        self.assertGreater(self.recipe["tiers"], 0)
+        self.assertLessEqual(self.recipe["tiers"], 8)
+        self.assertTrue(0 < self.recipe["roofFrom"] < 1)
+
+    def test_four_wall_bands_leave_corner_road_and_the_pitch_can_escape(self):
+        # An isolated, axis-aligned stadium makes every raster answer obvious.
+        # The surrounding ROAD represents its bounding streets.
+        raster = Raster(64, 52, GRID_CELL, fill=CLS_ROAD)
+        footprint = [60, 60, 180, 60, 180, 140, 60, 140]
+        inner = {(c, r) for r in range(15, 35) for c in range(15, 45)}
+        outer = {(c, r) for r in range(12, 38) for c in range(12, 48)}
+        ring = outer - inner
+        quads = stadium_stand_quads(footprint, {"sides": list(SIDES)})
+        walls = stadium_stand_cells(ring, quads)
+        self.assertGreater(len(walls), 0)
+        for c, r in walls:
+            raster.set(c, r, CLS_ACERA)
+
+        # Mid-side is wall; the four outer corner wedges remain road.
+        for cell in ((30, 13), (46, 25), (30, 36), (13, 25)):
+            self.assertEqual(raster.at(*cell), CLS_ACERA, cell)
+        for cell in ((13, 13), (46, 13), (46, 36), (13, 36)):
+            self.assertEqual(raster.at(*cell), CLS_ROAD, cell)
+        self.assertEqual(raster.at(30, 25), CLS_ROAD, "pitch became wall")
+
+        parcel = {"id": "estadio_field", "use": "stadium",
+                  "cx": 120, "cy": 100,
+                  "x0": 60, "y0": 60, "x1": 180, "y1": 140}
+        self.assertEqual(field_escape_status(raster, parcel)[0], "escaped")
+
+        # Prove this is the final gate doing work, not a trivially passing test:
+        # sealing the whole ring is rejected by the same predicate.
+        sealed = Raster(64, 52, GRID_CELL, fill=CLS_ROAD)
+        for c, r in ring:
+            sealed.set(c, r, CLS_ACERA)
+        self.assertEqual(field_escape_status(sealed, parcel)[0], "walled")
+
+    def test_renderer_consumes_quads_and_casts_their_solar_shadow(self):
+        body = self.js.split("function standQuads", 1)[1].split(
+            "\nfunction drawStadium", 1)[0]
+        self.assertIn("own.quads", body)
+        self.assertIn("for (const quad", body)
+        self.assertIn("sunShadow(spec.heightM)", body)
+        self.assertIn("shadowInk(sh.alpha)", body)
+        self.assertIn("-Math.abs(sh.dy)", body,
+                      "the requested north-side cast is negative world Y")
+        self.assertNotIn("quad(-3", self.js)
 
     def test_each_stadium_keeps_its_own_colours(self):
-        """Lito Pérez is orange (Puntarenas F.C.); Las Playitas is white and
-        blue. A shared default with no override would make them the same place."""
-        pal = {lid: {**self.spec["palette"], **rec.get("palette", {})}
-               for lid, rec in self.own.items()}
-        self.assertNotEqual(pal["estadio"]["tierA"], pal["estadio_playitas"]["tierA"],
-                            "both stadiums are wearing the same seats")
-        for lid, p in pal.items():
-            for key in ("tierA", "tierB", "structure", "rail", "shadow", "row"):
-                self.assertIn(key, p, f"{lid} has no {key}")
+        palettes = {lid: {**self.recipe["palette"], **rec.get("palette", {})}
+                    for lid, rec in self.own.items()}
+        self.assertNotEqual(palettes["estadio"]["tierA"],
+                            palettes["estadio_playitas"]["tierA"])
+        for lid, palette in palettes.items():
+            for key in ("tierA", "tierB", "structure", "rail", "row"):
+                self.assertIn(key, palette, f"{lid} has no {key}")
+            self.assertNotIn("shadow", palette,
+                             "stand shadows must use the shared solar ink")
 
-    def test_the_geometry_is_sane(self):
-        self.assertGreater(self.spec["tiers"], 0)
-        self.assertLessEqual(self.spec["tiers"], 8,
-                             "more than about seven rows stop resolving at play zoom")
-        self.assertGreater(self.spec["depth"], 0)
-        self.assertLess(self.spec["depth"], 60,
-                        "a stand deeper than the acera ring stands in the street")
-        self.assertTrue(0 < self.spec["rake"] < 1, "the rake is a fraction of the depth")
-        self.assertTrue(0 < self.spec["roofFrom"] < 1)
 
-    def test_the_two_tones_split_by_depth_not_by_stripe(self):
-        """Alternating whole tiers and ruling a row line every few px BOTH read
-        as a barcode at play zoom. Each was tried; this records which."""
-        body = self.js.split("function drawStands", 1)[1].split("\nfunction ", 1)[0]
-        self.assertIn("roofFrom", body, "the back tone is not split by depth")
-        self.assertIn("lineWidth = 1", body, "the row hairlines are not hairlines")
+if __name__ == "__main__":
+    unittest.main()

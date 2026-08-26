@@ -19,6 +19,7 @@ from churchill.world.config import ROOT
 
 STYLES = os.path.join(ROOT, "src", "assets", "building-styles.json")
 MANIFEST = os.path.join(ROOT, "src", "world2d", "manifest.json")
+DECODER = os.path.join(ROOT, "src", "world2d", "index.js")
 TILES = os.path.join(ROOT, "src", "world2d", "tiles")
 HEX = re.compile(r"#[0-9a-f]{6}")
 
@@ -108,6 +109,41 @@ class WorldTests(unittest.TestCase):
         missing = [c for c in top if c not in self.doc["byCat"]]
         self.assertEqual(missing, [],
                          f"las más pobladas del mundo sin estilo: {missing}")
+
+
+
+
+class DecoderCarriesTheKeyTests(unittest.TestCase):
+    """…Y LA LLAVE TIENE QUE LLEGAR AL CLIENTE, que es donde se resuelve.
+
+    Este registro estuvo COMPLETO Y MUERTO. El mundo emitía `cat` en 486
+    huellas, `buildingStyle()` lo leía, y entre los dos el decodificador de
+    tiles copiaba cinco campos —`pts`, `color`, `roof`, `wnd`— y ninguno de los
+    tres que dicen qué ES el edificio. Así que `buildingStyle()` devolvía
+    `null` siempre y todo el puerto se pintaba del color de RESPALDO.
+
+    Lo que lo hizo invisible durante meses es que el respaldo funciona: un
+    edificio sin estilo se ve bien, sólo que se ve igual que todos los demás.
+    El fallo era idéntico al éxito, y ninguna prueba miraba el puente.
+    """
+
+    def setUp(self):
+        with open(DECODER, encoding="utf-8") as fh:
+            self.js = fh.read()
+        self.decode = self.js.split("raw.buildings || []", 1)[1].split("});", 1)[0]
+
+    def test_the_tile_decoder_copies_every_field_the_style_resolves_on(self):
+        # Las llaves que `buildingStyle()` lee, por su nombre.
+        for field in ("cat", "osmId"):
+            self.assertIn(f"b.{field}", self.decode,
+                          f"el decodificador de tiles descarta `{field}`, "
+                          f"así que building-styles.json no puede resolver nada")
+
+    def test_the_world_actually_emits_that_key(self):
+        # Si esto cae a cero, la prueba de arriba pasa protegiendo un puente
+        # que no cruza nada — que es el otro modo de fallar en silencio.
+        self.assertGreater(sum(emitted_categories().values()), 0,
+                           "ningún edificio emitido trae `cat`")
 
 
 if __name__ == "__main__":

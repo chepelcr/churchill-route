@@ -9,7 +9,8 @@
       "ll": [
         9.977,
         -84.847
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c2",
@@ -19,7 +20,8 @@
       "ll": [
         9.976,
         -84.8455
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c3",
@@ -39,7 +41,8 @@
       "ll": [
         9.9747,
         -84.831
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c5",
@@ -49,7 +52,8 @@
       "ll": [
         9.9742,
         -84.8355
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c6",
@@ -59,7 +63,8 @@
       "ll": [
         9.9776,
         -84.83128
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c7",
@@ -69,7 +74,8 @@
       "ll": [
         9.977,
         -84.831
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c8",
@@ -79,7 +85,8 @@
       "ll": [
         9.97965,
         -84.82932
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c9",
@@ -89,7 +96,8 @@
       "ll": [
         9.9772,
         -84.828
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c10",
@@ -119,7 +127,8 @@
       "ll": [
         9.9768,
         -84.842
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c19",
@@ -129,7 +138,8 @@
       "ll": [
         9.977,
         -84.8478
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c20",
@@ -159,7 +169,8 @@
       "ll": [
         9.974,
         -84.8368
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c23",
@@ -179,7 +190,8 @@
       "ll": [
         9.9746,
         -84.8312
-      ]
+      ],
+      "product": "churchill"
     },
     {
       "id": "c13",
@@ -241,5 +253,6 @@
         -84.7168
       ]
     }
-  ]
+  ],
+  "_lines": "UNA FRASE PUEDE DECLARAR DE QUÉ HABLA. `product` marca las que nombran el churchill o sus partes — el rojito, el hielo menudito, la leche — para que no se digan sobre un vigorón en hoja. Sin `product` la frase es del PERSONAJE y sirve para cualquier entrega, que es como está escrita la mayoría. Cuando no encaja habla el producto: `lines` en products.json."
 }

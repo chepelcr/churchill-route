@@ -24,7 +24,7 @@
 // `paintProp` resolves lazily so a caller that passes its own `g` never touches
 // the game at all.
 import { PATHS, evalOn as evalScalar } from "../vehicleShapes.js";
-import { areaLabel, hash01, label } from "./primitives.js";
+import { areaLabel, hash01, label, upright } from "./primitives.js";
 import { spriteImage, spriteRecord } from "./sprites.js";
 
 const TAU = Math.PI * 2;
@@ -549,7 +549,17 @@ export function paintParts(g, parts, frame) {
 
       // Free text INSIDE the art — a route shield's number, a bulevar sign's
       // word. Not a label: no pill, and the font is the part's own.
-      case "text":
+      //
+      // IT STANDS UP AGAINST THE WORLD by default, because every one of these
+      // in the catalog today is SIGNAGE — a shield, a plate, the word BULEVAR —
+      // and a sign the player cannot read is not a sign. `upright: false` is the
+      // opt-out for the case this verb also serves: PAINT ON THE GROUND, a
+      // pavement marking, which belongs to the road's orientation and must turn
+      // with it. Nothing asks for that yet; the knob exists so the day something
+      // does, it says so instead of quietly coming out sideways.
+      case "text": {
+        const tx = X(part.x), ty = Y(part.y);
+        const stood = part.upright === false ? false : upright(g, tx, ty);
         g.fillStyle = paint(part.fill);
         if (part.font && typeof part.font === "object") {
           g.font = `${part.font.weight || "normal"} ${Number(str(part.font.size))}px `
@@ -561,9 +571,11 @@ export function paintParts(g, parts, frame) {
         // it back — the speed-limit numeral used to do exactly this by hand, and
         // leaving it set would have moved every label drawn after it.
         if (part.baseline) g.textBaseline = part.baseline;
-        g.fillText(str(part.text), X(part.x), Y(part.y));
+        g.fillText(str(part.text), stood ? 0 : tx, stood ? 0 : ty);
         if (part.baseline) g.textBaseline = "alphabetic";
+        if (stood) g.restore();
         break;
+      }
 
       // ANOTHER RECORD'S PARTS, INLINED HERE. The same church is the `church`
       // landmark's art AND the building a `church` parcel draws on its lot; the

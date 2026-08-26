@@ -33,9 +33,15 @@ await page.evaluate(async ([x, y, z]) => {
 // acuña una SEGUNDA instancia con su propio `cycle`, así que se resuelve la URL
 // que el pintor de verdad usa, igual que hace `shot-parcels` con `gfx.js`.
 await page.evaluate(async () => {
-  const src = await fetch("/src/render/c2d/shadows.js").then((r) => r.text());
-  const u = src.match(/from\s+["']([^"']*\/game\/daynight\.js[^"']*)["']/)?.[1];
-  if (u) (await import(u)).setDayCycle(true, 0.25);
+  const shadowsUrl = new URL("/src/render/c2d/shadows.js", location.href);
+  const shadowsSrc = await fetch(shadowsUrl).then((r) => r.text());
+  const solarSpec = shadowsSrc.match(/from\s+["']([^"']*\/render\/sun\.js[^"']*)["']/)?.[1];
+  if (!solarSpec) throw new Error("shot-world could not resolve the live solar module");
+  const solarUrl = new URL(solarSpec, shadowsUrl);
+  const solarSrc = await fetch(solarUrl).then((r) => r.text());
+  const daySpec = solarSrc.match(/from\s+["']([^"']*\/game\/daynight\.js[^"']*)["']/)?.[1];
+  if (!daySpec) throw new Error("shot-world could not resolve the live daynight module");
+  (await import(new URL(daySpec, solarUrl).href)).setDayCycle(true, 0.25);
 });
 await page.waitForTimeout(6000);          // let the tiles stream in
 // ESCONDER LA INTERFAZ. El canvas es del juego y React pinta encima; sin esto

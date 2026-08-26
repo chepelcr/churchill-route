@@ -78,7 +78,7 @@
     "shadow": "rgba(0,0,0,0.22)"
   },
   "cargo": {
-    "_note": "EL CHURCHILL QUE UNO LLEVA. Cuál de las tres recetas usa un vehículo ya es data (`effects.json` → `cargo`); de qué color es cada pieza no lo era. El GRADIENTE de derretimiento se queda en el motor y es lo correcto: es un `oklch` cuyo matiz recorre la barra según `melt/total`, o sea una función del estado de esta entrega, no una paleta.",
+    "_note": "CÓMO VIAJA EL PEDIDO Y QUÉ VA ADENTRO SON DOS COSAS. El vehículo escoge una de estas tres recetas de recipiente (`effects.json` → `cargo`): mochila, hielera o congelador. El producto escoge una forma reutilizable por su `cargo` de products.json: `cargoCup`, `cargoBox` o `cargoLeaf`. El GRADIENTE de deterioro se queda en el motor y es lo correcto: es un `oklch` que recorre la barra según `melt/total`, o sea una función del estado de esta entrega, no una paleta.",
     "bag": {
       "form": "cargoBag",
       "placement": "vehicle-mount",
@@ -3260,6 +3260,110 @@
           "y": -0.8,
           "w": 4,
           "h": 1
+        }
+      ]
+    },
+    "cargoCup": {
+      "note": "El vaso es el contenido, no el recipiente del vehículo: se ve igual dentro de una mochila, una hielera o el congelador de la carreta.",
+      "cup": "#f5fbff",
+      "rim": "#c5dce7",
+      "syrup": "#f04e68",
+      "straw": "#fff1a8",
+      "parts": [
+        {
+          "shape": "poly",
+          "fill": "$cup",
+          "stroke": "$rim",
+          "width": 0.5,
+          "pts": [
+            [-2, -2],
+            [2, -2],
+            [1.45, 2.2],
+            [-1.45, 2.2]
+          ]
+        },
+        {
+          "shape": "rect",
+          "fill": "$syrup",
+          "x": -1.25,
+          "y": -0.35,
+          "w": 2.5,
+          "h": 2.15
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$straw",
+          "width": 0.6,
+          "cap": "round",
+          "pts": [
+            [0.65, -1.8],
+            [1.25, -3.1]
+          ]
+        }
+      ]
+    },
+    "cargoBox": {
+      "note": "La caja de papi-carne o mariscada: cartón de soda con tapa y pliegues, legible aun en la mochila pequeña.",
+      "board": "#f2c86f",
+      "edge": "#9a5d35",
+      "fold": "#fff0bd",
+      "parts": [
+        {
+          "shape": "roundRect",
+          "fill": "$board",
+          "stroke": "$edge",
+          "width": 0.55,
+          "x": -2.35,
+          "y": -2.05,
+          "w": 4.7,
+          "h": 4.1,
+          "r": 0.55
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$fold",
+          "width": 0.55,
+          "runs": [
+            [[-1.85, -0.9], [1.85, -0.9]],
+            [[0, -1.75], [0, 1.7]]
+          ]
+        }
+      ]
+    },
+    "cargoLeaf": {
+      "note": "El vigorón doblado en hoja de plátano: verde, con la nervadura y el bulto claro de yuca y chicharrón al centro.",
+      "leaf": "#4f9d5b",
+      "vein": "#285f3b",
+      "food": "#f0d59b",
+      "parts": [
+        {
+          "shape": "poly",
+          "fill": "$leaf",
+          "stroke": "$vein",
+          "width": 0.55,
+          "pts": [
+            [-2.8, 0],
+            [0, -2.05],
+            [2.8, 0],
+            [0, 2.05]
+          ]
+        },
+        {
+          "shape": "stroke",
+          "stroke": "$vein",
+          "width": 0.45,
+          "pts": [
+            [-2.15, 0],
+            [2.15, 0]
+          ]
+        },
+        {
+          "shape": "ellipse",
+          "fill": "$food",
+          "cx": 0,
+          "cy": -0.15,
+          "rx": 1.2,
+          "ry": 0.75
         }
       ]
     }

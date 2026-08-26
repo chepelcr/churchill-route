@@ -16,11 +16,13 @@ import { actorAnimationValues, paintActor, paintActorForm, resolveActorRecord } 
 import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, lastT } from "./gfx.js";
 import ACTORS from "../../assets/actors.json" with { type: "json" };
+import PRODUCTS_JSON from "../../../content/world/products.json" with { type: "json" };
 
 // actors.json is the visual source of truth. This file only maps simulation
 // state into the interpreter's finite frame: pose, variant, time and the sun's
 // shadow vector. No actor identity owns Canvas geometry here.
 const A = ACTORS.actors;
+const PRODUCTS = PRODUCTS_JSON.products;
 
 function poseFromState(record, entity) {
   for (const rule of record.statePoses || []) {
@@ -323,27 +325,55 @@ function paintVehicle(g, key, veh) {
 // chassis; the tuk-tuk carries the same bag in its rear passenger compartment
 // and therefore wears none.
 // Placement is a finite engine concern: the registry chooses one frame family,
-// while the complete bag/cooler/freezer shape and melt animation stay in JSON.
+// while the complete bag/cooler/freezer shape, spoil gauge and the three product
+// contents forms stay in JSON.
 const CARGO_PLACERS = Object.freeze({
-  "vehicle-mount": (mount) => ({
-    x: mount?.x || 0, y: mount?.y || 0, scale: mount?.scale || 1,
-    straps: Boolean(mount?.straps),
+  "vehicle-mount": (mount) => {
+    const frame = {
+      x: mount?.x || 0, y: mount?.y || 0, scale: mount?.scale || 1,
+      straps: Boolean(mount?.straps),
+    };
+    return { ...frame, contents: { x: frame.x, y: frame.y, scale: frame.scale } };
+  },
+  "pickup-bed": () => ({
+    x: -8, y: 0,
+    contents: { x: -8, y: 0, scale: 0.8 },
   }),
-  "pickup-bed": () => ({ x: -8, y: 0 }),
   "cart-lid": (_mount, veh) => {
     const x = -veh.w / 2 + 4;
+    const y = veh.h / 2 - 6;
+    const width = veh.w - 8;
     return {
-      x, y: veh.h / 2 - 6, width: veh.w - 8, handleX: -2 - x,
+      x, y, width, handleX: -2 - x,
+      contents: { x: x + width / 2, y: y + 1.5, scale: 0.55 },
     };
   },
 });
 
+// PRODUCT CONTENT IS A FORM, NOT A SECOND CONTAINER. `products.json` owns the
+// closed cargo vocabulary (`cup` / `box` / `leaf`); actor forms follow the
+// `cargo${PascalCase}` convention so there is no second map to drift away from
+// it. The content validator in `tests/test_actors.py` proves every authored
+// token resolves. An old save with no product remains a churchill cup.
+function cargoContentsForm(productId) {
+  const kind = PRODUCTS[productId]?.cargo || PRODUCTS.churchill?.cargo || "cup";
+  const form = `cargo${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;
+  return ACTORS.forms[form] ? form : "cargoCup";
+}
+
 function drawCarriedCargo(g, key, veh, carrying) {
   const { style, mount } = vehicleCargo(key);
-  const cargo = ACTORS.cargo[style] || ACTORS.cargo.bag;
-  const place = CARGO_PLACERS[cargo.placement] || CARGO_PLACERS["vehicle-mount"];
+  // The vehicle still decides HOW the order travels. A bici keeps its bag, a
+  // pickup its cooler and the cart its freezer; changing food cannot move it.
+  const container = ACTORS.cargo[style] || ACTORS.cargo.bag;
+  const place = CARGO_PLACERS[container.placement] || CARGO_PLACERS["vehicle-mount"];
+  const placed = place(mount, veh);
+  const { contents, ...containerFrame } = placed;
   const melt = Math.max(0, Math.min(1, carrying.melt / (carrying.total || 1)));
-  paintActorForm(g, ACTORS, cargo.form, { ...place(mount, veh), melt });
+  paintActorForm(g, ACTORS, container.form, { ...containerFrame, melt });
+  // …and the product decides WHAT is inside that unchanged container. Paint it
+  // last so the cup/box/leaf reads through the container's top/label window.
+  paintActorForm(g, ACTORS, cargoContentsForm(carrying.product), { ...contents, melt });
 }
 
 // Wind swirl: arc streaks whipping around the car, in the direction it's

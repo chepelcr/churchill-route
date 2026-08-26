@@ -7,6 +7,7 @@ faro, y eso son TECHOS — son modelos de superficie. Si algún día alguien cam
 la fuente por «un DEM que es más fácil de bajar», esta prueba es lo que lo dice.
 """
 import base64
+import inspect
 import json
 import os
 import unittest
@@ -107,9 +108,17 @@ class WiringTests(unittest.TestCase):
             self.assertTrue(hasattr(d, name), f"WorldDims perdió `{name}`")
 
     def test_the_emit_signature_takes_the_elevation_channel(self):
-        import inspect
         from churchill.world.pipeline.emit import emit_world2d
         self.assertIn("elev", inspect.signature(emit_world2d).parameters)
+
+    def test_the_lattice_width_is_manifest_protocol_not_a_client_literal(self):
+        from churchill.world.pipeline import emit
+        emit_src = inspect.getsource(emit.emit_world2d)
+        self.assertIn('manifest_meta["elevSamplesPerTile"] = elev["perTile"]', emit_src)
+        with open(os.path.join(ROOT, "src", "world2d", "index.js"), encoding="utf-8") as fh:
+            client = fh.read()
+        self.assertNotRegex(client, r"elevSamplesPerTile\s*\|\|\s*\d",
+                            "the elevation wire width is a magic client fallback again")
 
     def test_write_world_asks_dims_by_its_real_attribute_names(self):
         import os

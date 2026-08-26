@@ -14,7 +14,7 @@ import { t as tr } from "../../i18n/index.js";
 import HUD from "../../assets/hud.json" with { type: "json" };
 import SIM from "../../content/simulation.json" with { type: "json" };
 import { moonPhase, moonlight } from "../../game/daynight.js";
-import { alphaColor } from "./primitives.js";
+import { alphaColor, ctxRotation, upright } from "./primitives.js";
 import {
   paintCompassDial, paintGullBlind, paintMinimapPlayer, paintMinimapRim,
   paintNightVignette, paintRain, paintRainSplash,
@@ -45,11 +45,18 @@ function drawPoiTags(view, zoom) {
   ctx.lineWidth = 2.6 / zoom;
   ctx.strokeStyle = HP.poi.tagStroke;
   ctx.fillStyle = HP.poi.tagFill;
+  // A business's real name is the clearest case of "text the player reads", so
+  // it stands up when the camera is rolled. Hoisted: `ctxRotation` mints a
+  // DOMMatrix, and this loop runs over every POI in view.
+  const rot = ctxRotation(ctx);
   for (const p of pois) {
     if (p.x < view.x0 || p.x > view.x1 || p.y < view.y0 || p.y > view.y1) continue;
     const ty = p.y - 8 / zoom;
-    ctx.strokeText(p.name, p.x, ty);
-    ctx.fillText(p.name, p.x, ty);
+    const stood = upright(ctx, p.x, ty, rot);
+    const tx = stood ? 0 : p.x, tty = stood ? 0 : ty;
+    ctx.strokeText(p.name, tx, tty);
+    ctx.fillText(p.name, tx, tty);
+    if (stood) ctx.restore();
   }
 }
 
@@ -59,16 +66,21 @@ function drawPoiNames(view, zoom) {
   ctx.font = `${Math.round(80 / zoom) / 10}px 'JetBrains Mono', monospace`;
   ctx.textAlign = "center";
   const pad = 40;
+  const rot = ctxRotation(ctx);
   for (const p of pois) {
     if (p.x < view.x0 - pad || p.x > view.x1 + pad || p.y < view.y0 - pad || p.y > view.y1 + pad) continue;
     const tone = POI_TONE[p.cat.split("=")[0]] || HP.poi.nameFallback;
     ctx.fillStyle = tone;
     ctx.beginPath(); ctx.arc(p.x, p.y, 3 / zoom, 0, Math.PI * 2); ctx.fill();
+    // the dot marks the spot and stays put; the plate and the name stand up
+    const stood = upright(ctx, p.x, p.y, rot);
+    const px = stood ? 0 : p.x, py = stood ? 0 : p.y;
     ctx.fillStyle = HP.poi.nameBg;
     const w = ctx.measureText(p.name).width + 6 / zoom;
-    ctx.fillRect(p.x - w / 2, p.y - 15 / zoom, w, 11 / zoom);
+    ctx.fillRect(px - w / 2, py - 15 / zoom, w, 11 / zoom);
     ctx.fillStyle = tone;
-    ctx.fillText(p.name, p.x, p.y - 7 / zoom);
+    ctx.fillText(p.name, px, py - 7 / zoom);
+    if (stood) ctx.restore();
   }
 }
 
@@ -95,9 +107,13 @@ function drawDebugGrid(view, zoom) {
   ctx.fillStyle = HP.debugGrid.text;
   ctx.font = `${Math.round(9 / zoom * 10) / 10}px 'JetBrains Mono', monospace`;
   ctx.textAlign = "left";
+  const rot = ctxRotation(ctx);
   for (let x = Math.ceil(x0 / major) * major; x <= x1; x += major) {
     for (let y = Math.ceil(y0 / major) * major; y <= y1; y += major) {
-      ctx.fillText(`${x},${y}`, x + 2 / zoom, y - 2 / zoom);
+      // a coordinate readout you cannot read is worse than no readout
+      const stood = upright(ctx, x, y, rot);
+      ctx.fillText(`${x},${y}`, (stood ? 0 : x) + 2 / zoom, (stood ? 0 : y) - 2 / zoom);
+      if (stood) ctx.restore();
     }
   }
 }

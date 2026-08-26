@@ -1,9 +1,9 @@
 // La Ruta del Churchill — Canvas2D render backend.
 //
-// This file is the COMPOSITOR: it owns the camera transform and the draw
-// ORDER, one layer per call. Every drawer lives in ./c2d/* (ground, streets,
-// structures, landmarks, entities, hud), sharing the live `ctx` binding from
-// ./c2d/gfx.js. The Pixi backend (src/render/pixi) is the WebGL alternative
+// This file is the COMPOSITOR: it applies camera.js's shared transform and owns
+// the draw ORDER, one layer per call. Every drawer lives in ./c2d/* (ground,
+// streets, structures, landmarks, entities, hud), sharing the live `ctx`
+// binding from ./c2d/gfx.js. The Pixi backend (src/render/pixi) is the WebGL alternative
 // behind Renderer.js.
 // The game loop (src/game/index.js) calls setupCanvas(canvas) then render(t).
 import { WORLD2D as W } from "../world2d/index.js";
@@ -14,7 +14,8 @@ import {
 } from "../game/state.js";
 import { content } from "../content/remote.js";
 import {
-  canvas, ctx, dpr, ZOOM, setLastT, setupCanvas, weatherColors,
+  beginScreenOverlay, canvas, ctx, dpr, endScreenOverlay, ZOOM,
+  setLastT, setupCanvas, weatherColors,
 } from "./c2d/gfx.js";
 import { drawMangroves, drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
@@ -38,8 +39,11 @@ import {
 } from "./c2d/hud.js";
 import { drawEditorWorld } from "./c2d/editorWorld.js";
 import HUD from "../assets/hud.json" with { type: "json" };
-import { alphaColor } from "./c2d/primitives.js";
+import { alphaColor, upright } from "./c2d/primitives.js";
 import { paintSpeedLines } from "./c2d/systemShapes.js";
+import { beginCameraFrame, cameraAffine, worldToScreen } from "./camera.js";
+import { beginLeanFrame } from "./lean.js";
+import { terrainFrameActive } from "./terrainComposite.js";
 
 // ---- Main render ----------------------------------------------------------
 // Overlay mode (legacy full-hybrid experiment): Pixi draws the world +
@@ -57,63 +61,48 @@ function setPixiLandmarks(v) { PIXI_LANDMARKS = !!v; }
 // until the Pixi landmark path is verified.
 const PIXI_MIGRATED = new Set();
 
-function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
+function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.js)
   if (!ctx) return;
+  const prof = window.__prof;
+  let phaseT = prof ? performance.now() : 0;
+  const phase = (key) => {
+    if (!prof) return;
+    const now = performance.now();
+    prof[key] = (prof[key] || 0) + now - phaseT;
+    phaseT = now;
+  };
   // `lastT` alimenta `timeMs`, que es un contrato con nombre que los registros
   // de actores usan en MILISEGUNDOS (`rate` está afinado ahí). El arreglo no es
   // renombrar ese contrato: es que deje de haber un reloj SIN nombre. Uno de
   // los dos dice en qué unidad está.
   setLastT(t * 1000);
   const cw = canvas.width, ch = canvas.height;
-  const vw = cw / dpr, vh = ch / dpr;
+  const fallbackVw = cw / dpr, fallbackVh = ch / dpr;
+  // Renderer.js normally supplies this. The fallback keeps direct diagnostic
+  // imports useful while still going through the same authority.
+  const camera = sharedCamera || beginCameraFrame({
+    viewportWidth: fallbackVw, viewportHeight: fallbackVh,
+  });
+  const vw = camera.viewportWidth, vh = camera.viewportHeight;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, vw, vh);
 
-  // Camera — publish the jitter so the Pixi landmarks layer above shakes in
-  // lockstep (in legacy overlay mode, reuse the jitter Pixi computed first)
-  const shake = state.cam.shake;
-  let sx, sy;
-  if (OVERLAY && state.cam._sx !== undefined) { sx = state.cam._sx; sy = state.cam._sy; }
-  else {
-    sx = (Math.random() - 0.5) * shake; sy = (Math.random() - 0.5) * shake;
-    state.cam._sx = sx; state.cam._sy = sy;
-  }
-  const cam = { x: state.cam.x + sx, y: state.cam.y + sy };
-  const wvw = vw / ZOOM, wvh = vh / ZOOM;
-  // UN NIVEL PUEDE JUGARSE DE CANTO. El Cocal corre a lo largo del arenal, que
-  // es horizontal, y en un teléfono vertical eso deja el nivel entero cruzando
-  // el lado corto de la pantalla. `rot` gira la CÁMARA, no el mundo: nada del
-  // build cambia y ninguna coordenada se toca.
-  const rot = state.cam.rot || 0;
-  // …y por eso el rectángulo de recorte NO puede seguir siendo el de la
-  // pantalla. Girada, la región visible es un rect girado: con el de siempre se
-  // recortaría lo que sí se ve. Se proyectan las cuatro esquinas al mundo y se
-  // toma su caja, que vale para cualquier ángulo y no sólo para 90°.
-  let view;
-  if (rot) {
-    const c = Math.cos(-rot), s2 = Math.sin(-rot);
-    const hx = wvw / 2, hy = wvh / 2;
-    const xs = [], ys = [];
-    for (const [px, py] of [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]) {
-      xs.push(cam.x + px * c - py * s2);
-      ys.push(cam.y + px * s2 + py * c);
-    }
-    view = { x0: Math.min(...xs) - 40, x1: Math.max(...xs) + 40,
-             y0: Math.min(...ys) - 40, y1: Math.max(...ys) + 40 };
-  } else {
-    view = { x0: cam.x - wvw/2 - 40, x1: cam.x + wvw/2 + 40,
-             y0: cam.y - wvh/2 - 40, y1: cam.y + wvh/2 + 40 };
-  }
+  const cam = camera;
+  const rot = camera.rotation;
+  const view = camera.view;
 
-  // World transform (zoomed)
-  ctx.translate(vw/2, vh/2);
-  ctx.scale(ZOOM, ZOOM);
-  if (rot) ctx.rotate(rot);
-  ctx.translate(-cam.x, -cam.y);
+  // …y la inclinación se mide contra ESTE giro. Se dice una vez por cuadro
+  // para que ni un árbol ni un poste tengan que leer la matriz para saber
+  // dónde queda «arriba de la pantalla».
+  beginLeanFrame(rot);
+  // World transform (zoomed), resolved once for every backend by camera.js.
+  ctx.setTransform(...cameraAffine(camera, dpr));
   // Los rótulos se contragiran para seguir siendo LEGIBLES: un nombre de calle
-  // de lado no es un nombre de calle. `primitives.js` no importa nada, así que
-  // el dato viaja en el contexto que ya recibe.
-  ctx.__worldRot = rot;
+  // de lado no es un nombre de calle. Antes el ángulo viajaba de aquí en
+  // `ctx.__worldRot`, y ese canal sólo sabía del giro de la CÁMARA: un rótulo
+  // dentro de algo ya girado —la placa de un patrocinador sobre el ángulo de su
+  // manzana— salía torcido igual. `upright` en `primitives.js` lo lee de la
+  // MATRIZ, que sabe de los dos, así que no hace falta pasarle nada.
 
   if (!OVERLAY) {
     // Sky/water everywhere (drawn in world coords across viewport)
@@ -123,7 +112,8 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
     // Boats (behind land) — the Balneario boat is drawn LATER, above its
     // inner-water fill (which drawWorld2D paints), or it'd be hidden.
     for (const b of boats) {
-      if (b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
+      if (b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80
+        || b.y < view.y0 - 80 || b.y > view.y1 + 80) continue;
       drawBoat(b);
     }
     // LOS BANCOS DE ATÚN, with the land pass: a school works the surface out in
@@ -137,10 +127,11 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
     }
     // Painterly 2-D world from resident tiles: land silhouette + road strokes +
     // buildings + palms/trees (replaces the corridor's global-array drawers).
-    drawWorld2D(view, t);
+    drawWorld2D(view, t, rot);
     drawEditorWorld(view, "districts");
     drawPoiTags(view, ZOOM);   // real business names, small, over the ground
   }
+  phase("world");
   // Hand-drawn set pieces the painterly pass doesn't cover: the Muelle de
   // Cruceros deck (its BRIDGE surface cells are drivable but not painted by
   // the vector road pass) and the Mata de Limón suspension bridge.
@@ -157,6 +148,7 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
   drawSigns(view);      // ALTO, semáforos, paradas, zebras, topes
   drawEditorWorld(view, "elements");
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
+  phase("setpieces");
   // EL AGUACERO SOBRE EL SUELO, antes de que se dibuje nada que ande encima:
   // el agua está en la calle, no sobre los carros ni sobre la gente.
   const stormNow = stormLevel();
@@ -188,15 +180,24 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
     if (lo.x < view.x0 - 60 || lo.x > view.x1 + 60 || lo.y < view.y0 - 60 || lo.y > view.y1 + 60) continue;
     drawLote(lo);
   }
+  phase("landmarks");
   // Pedestrians, traffic (Pixi's in hybrid mode)
   if (!OVERLAY) {
     // Balneario boat: above the inlet water, below the swimmers.
     for (const b of boats) {
-      if (!b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80) continue;
+      if (!b.balneario || b.x < view.x0 - 80 || b.x > view.x1 + 80
+        || b.y < view.y0 - 80 || b.y > view.y1 + 80) continue;
       drawBoat(b);
     }
+    if (prof) prof.pedCandidates = (prof.pedCandidates || 0) + pedestrians.length;
     for (const pe of pedestrians) {
       if (pe.x < view.x0 - 20 || pe.x > view.x1 + 20) continue;
+      if (prof) {
+        prof.pedXPass = (prof.pedXPass || 0) + 1;
+        if (pe.y < view.y0 - 20 || pe.y > view.y1 + 20)
+          prof.pedYCulled = (prof.pedYCulled || 0) + 1;
+      }
+      if (pe.y < view.y0 - 20 || pe.y > view.y1 + 20) continue;
       drawPed(pe);
     }
     // …and the ball each mejenga is played with, among its players
@@ -216,8 +217,15 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
       if (an.x < view.x0 - 20 || an.x > view.x1 + 20 || an.y < view.y0 - 20 || an.y > view.y1 + 20) continue;
       drawAnimal(an);
     }
+    if (prof) prof.trafficCandidates = (prof.trafficCandidates || 0) + traffic.length;
     for (const car of traffic) {
       if (car.x < view.x0 - 20 || car.x > view.x1 + 20) continue;
+      if (prof) {
+        prof.trafficXPass = (prof.trafficXPass || 0) + 1;
+        if (car.y < view.y0 - 20 || car.y > view.y1 + 20)
+          prof.trafficYCulled = (prof.trafficYCulled || 0) + 1;
+      }
+      if (car.y < view.y0 - 20 || car.y > view.y1 + 20) continue;
       drawCar(car);
     }
     for (const tr of trains) {
@@ -251,7 +259,8 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
   drawEditorWorld(view, "roofs");
   // Gulls above
   if (!OVERLAY) for (const g of gulls) {
-    if (g.x < view.x0 - 30 || g.x > view.x1 + 30) continue;
+    if (g.x < view.x0 - 30 || g.x > view.x1 + 30
+      || g.y < view.y0 - 30 || g.y > view.y1 + 30) continue;
     drawGull(g);
   }
   // …y las ordas, que van con ellas porque son lo mismo visto en bandada.
@@ -260,14 +269,20 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
       || f.y + f.r < view.y0 || f.y - f.r > view.y1) continue;
     drawGullFlock(f);
   }
-  // Floats
-  for (const f of state.floats) {
-    ctx.globalAlpha = Math.max(0, 1 - f.t / f.ttl);
-    ctx.fillStyle = f.color;
+  // Floats — `+ CHURCHILL`, `+₡250`, `¡SE DERRITIÓ!`, lo que dice el cliente.
+  // Se paran contra el mundo: son lo que el juego te está DICIENDO, y en El
+  // Cocal —la única etapa de canto— salían todos de lado.
+  if (state.floats.length) {
     ctx.font = "bold 12px 'Space Grotesk', sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(f.text, f.x, f.y);
-    ctx.globalAlpha = 1;
+    for (const f of state.floats) {
+      ctx.globalAlpha = Math.max(0, 1 - f.t / f.ttl);
+      ctx.fillStyle = f.color;
+      const stood = upright(ctx, f.x, f.y, rot);
+      ctx.fillText(f.text, stood ? 0 : f.x, stood ? 0 : f.y);
+      if (stood) ctx.restore();
+      ctx.globalAlpha = 1;
+    }
   }
 
   // EL TORNADO, sobre el mundo y bajo la interfaz: es una cosa del mundo, con
@@ -276,8 +291,10 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
 
   // Debug coordinate grid (topmost world-space layer)
   if (state.debug) { drawDebugGrid(view, ZOOM); drawPoiNames(view, ZOOM); }
+  phase("entities");
 
   // Overlays
+  const separateOverlay = beginScreenOverlay(terrainFrameActive());
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const C = weatherColors();
   // LOS POZOS DE LUZ SON DE LA NOCHE **Y DE LA TORMENTA**. Un cielo cerrado a
@@ -293,7 +310,7 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
     // cambia, que es lo que mantiene honesto el cambio.
     setLightZoom(ZOOM);
     drawNightLights(vw, vh, view, C.tint,
-                    (wx, wy) => [(wx - cam.x) * ZOOM + vw / 2, (wy - cam.y) * ZOOM + vh / 2]);
+                    (wx, wy) => worldToScreen(camera, wx, wy));
   } else {
     ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
   }
@@ -324,10 +341,20 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
   drawGullBlind(vw, vh, t);
 
   if (!state.attract) {
-    drawMinimap(vw, vh, t);
+    // Performance harness escape hatch. The normal game never defines this;
+    // smoke-perf interleaves the same scene with/without the map so its cost is
+    // measured instead of guessed. Keep the direct section timer as the second
+    // witness beside whole-frame time.
+    if (window.__perfFlags?.minimap !== false) {
+      const _miniT0 = window.__prof ? performance.now() : 0;
+      drawMinimap(vw, vh, t);
+      if (window.__prof) window.__prof.minimap = (window.__prof.minimap || 0)
+        + performance.now() - _miniT0;
+    }
     drawCompass(vw, vh);
     drawCrossingHud(vw, vh);
   }
+  phase("overlays");
 
   // EL VIENTO DE VELOCIDAD. The one vehicle effect drawn in SCREEN space, which
   // is why it lives up here in the overlay pass with the minimap and the rain
@@ -341,6 +368,7 @@ function render(t) {                 // t en SEGUNDOS (ver src/game/index.js)
       paintSpeedLines(ctx, vw, vh, cfg, state.p.speed);
     }
   }
+  if (separateOverlay) endScreenOverlay();
 }
 
 export { setupCanvas, render, paintVehicle, setOverlayMode, setPixiLandmarks };

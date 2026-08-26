@@ -204,6 +204,16 @@ export const WORLD2D = (function () {
   // in-flight Promise while loading.
   const tiles = new Map();
   const tileKey = (tc, tr) => tr * TCOLS + tc;
+  // Elevation tiles all carry the same lattice width (`emit.py` slices the
+  // global field by `perTile`), and the MANIFEST is where that width is
+  // published. There is deliberately no numeric fallback — this is a wire
+  // dimension, not a renderer tuning value — and since 2026-08-23 there is no
+  // learn-from-the-first-tile fallback either: it existed only to read
+  // snapshots emitted before the field was published, and every consumer that
+  // needs the lattice BEFORE a tile is resident (the terrain mesher's shadow
+  // volume, which sizes its caster box from it) was silently getting a
+  // tile-sized guess instead. One source, known at load.
+  const zColsPerTile = META.elevSamplesPerTile ?? null;
 
   function flatAABB(pts) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -265,10 +275,31 @@ export const WORLD2D = (function () {
     // Un tile sin `zRle` es PLANO, no «sin datos»: el emit lo omite justamente
     // porque el arenal es medio mundo y decir cero seiscientas veces cuesta.
     const zCols = raw.zCols || 0;
+    // The consistency check stays: a tile disagreeing with the published width
+    // is a corrupt emit, and answering cota off the wrong lattice is a silent
+    // wrong number rather than a missing one.
+    if (zCols && zColsPerTile && zColsPerTile !== zCols)
+      throw new Error(`inconsistent elevation lattice: ${zColsPerTile} vs ${zCols}`);
     const z = raw.zRle ? decodeZ(raw.zRle, zCols * zCols) : null;
-    const buildings = (raw.buildings || []).map((b) => ({
-      pts: b.pts, aabb: flatAABB(b.pts), color: b.color, roof: b.roof, wnd: b.wnd,
-    }));
+    // …Y LA CATEGORÍA VIAJA. `cat`/`osmId`/`name` se quedaban en el JSON del
+    // tile: este `map` copiaba cinco campos y los tres que dicen QUÉ ES el
+    // edificio no estaban entre ellos, así que `buildingStyle()` no encontraba
+    // nunca su llave y devolvía `null` para las 39 759 huellas del mundo. El
+    // respaldo —el `color` emitido— hacía que el fallo se viera exactamente
+    // igual que el éxito: un puerto entero pintado del color de reserva, con el
+    // registro de estilos completo y sin un solo consumidor. Medido sobre el
+    // mundo publicado: **486 huellas traen `cat`**, 10 traen `osmId` y 577 su
+    // nombre. Se copian sólo cuando existen, porque poner tres claves
+    // `undefined` en cada una de 39 759 huellas es memoria por nada.
+    const buildings = (raw.buildings || []).map((b) => {
+      const rec = {
+        pts: b.pts, aabb: flatAABB(b.pts), color: b.color, roof: b.roof, wnd: b.wnd,
+      };
+      if (b.cat !== undefined) rec.cat = b.cat;
+      if (b.osmId !== undefined) rec.osmId = b.osmId;
+      if (b.name !== undefined) rec.name = b.name;
+      return rec;
+    });
     // 64px building hash local to the tile (buildingsNear hits only same tile;
     // border buildings are duplicated into each overlapping tile by the emit)
     const bhash = new Map();
@@ -300,6 +331,7 @@ export const WORLD2D = (function () {
       lamps: raw.lamps || [],
       medians: raw.medians || [], plazas: raw.plazas || [],
       islands: raw.islands || [],
+      _elevationMesh: null,
     };
   }
 
@@ -377,12 +409,40 @@ export const WORLD2D = (function () {
     if (lc < 0 || lr < 0 || lc >= t.cols || lr >= t.rows) return SURFACE.WATER;
     return t.grid[lr * t.cols + lc];
   }
+  /** Una muestra cruda (decímetros) de la retícula GLOBAL de cota.
+   *
+   * `emit.py` corta esa retícula en slabs `zCols × zCols`; el índice global,
+   * no el punto consultado, decide qué tile posee la muestra. Ésa es la pieza
+   * que evita recortar una bilineal justo en cada borde de tile.
+   *
+   * - tile residente sin zRle: 0, porque el emit omite los slabs planos;
+   * - tile existente pero no residente: null, porque todavía no conocemos la
+   *   muestra y fingir nivel del mar fabricaría un acantilado transitorio;
+   * - fuera del campo emitido: 0, el datum seguro del borde del mundo.
+   */
+  function zSampleAt(gcx, gcy) {
+    if (!zColsPerTile) return null;
+    const tc = Math.floor(gcx / zColsPerTile), tr = Math.floor(gcy / zColsPerTile);
+    if (tc < 0 || tr < 0 || tc >= TCOLS || tr >= TROWS) return 0;
+    const t = decodedTile(tc, tr);
+    if (!t) {
+      // A missing loader is an absent (therefore flat) slab; a loader that has
+      // not resolved yet is unknown and must not be confused with flat ground.
+      return TILE_LOADERS[`./tiles/${tc}_${tr}.json`] ? null : 0;
+    }
+    if (!t.z) return 0;
+    const lc = gcx - tc * zColsPerTile, lr = gcy - tr * zColsPerTile;
+    if (lc < 0 || lr < 0 || lc >= t.zCols || lr >= t.zCols) return 0;
+    return t.z[lr * t.zCols + lc];
+  }
+
   /**
    * LA COTA DEL SUELO en (x, y), en METROS sobre el datum del mundo.
    *
-   * Se interpola BILINEALMENTE entre las cuatro muestras vecinas y no se toma
-   * la más cercana: a 32 m de paso, el vecino más cercano es una escalera de
-   * escalones de 32 m, y una cuesta hecha de escalones no es una cuesta.
+   * Se interpola BILINEALMENTE entre las cuatro muestras vecinas de la
+   * retícula GLOBAL y no se toma la más cercana: a 32 m de paso, el vecino más
+   * cercano es una escalera de escalones de 32 m, y una cuesta hecha de
+   * escalones no es una cuesta.
    *
    * Un tile que todavía no ha llegado responde 0, igual que `surfaceAt`
    * responde agua: es la respuesta segura, porque el arenal —donde está el
@@ -392,17 +452,16 @@ export const WORLD2D = (function () {
     if (x < 0 || y < 0 || x >= W || y >= H) return 0;
     const tc = (x / TILE_PX) | 0, tr = (y / TILE_PX) | 0;
     const t = decodedTile(tc, tr);
-    if (!t || !t.z) return 0;                    // sin canal = plano, no «sin dato»
-    const step = TILE_PX / t.zCols;
-    const fx = (x - t.x) / step - 0.5, fy = (y - t.y) / step - 0.5;
+    if (!t) return 0;
+    const perTile = t.zCols || zColsPerTile;
+    if (!perTile) return 0;                       // todavía no llegó ningún slab de cota
+    const step = TILE_PX / perTile;
+    const fx = x / step - 0.5, fy = y / step - 0.5;
     const x0 = Math.floor(fx), y0 = Math.floor(fy);
     const ax = fx - x0, ay = fy - y0;
-    const at = (cx, cy) => {
-      const c = cx < 0 ? 0 : cx >= t.zCols ? t.zCols - 1 : cx;
-      const r = cy < 0 ? 0 : cy >= t.zCols ? t.zCols - 1 : cy;
-      return t.z[r * t.zCols + c];
-    };
-    const a = at(x0, y0), b = at(x0 + 1, y0), c2 = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+    const a = zSampleAt(x0, y0), b = zSampleAt(x0 + 1, y0);
+    const c2 = zSampleAt(x0, y0 + 1), d = zSampleAt(x0 + 1, y0 + 1);
+    if (a === null || b === null || c2 === null || d === null) return 0;
     const top = a + (b - a) * ax, bot = c2 + (d - c2) * ax;
     return (top + (bot - top) * ay) / 10;        // decímetros -> metros
   }
@@ -598,6 +657,56 @@ export const WORLD2D = (function () {
     return out;
   }
 
+  // A SMALL, READ-ONLY ELEVATION SEAM FOR THE 3-D COMPOSITOR. The broad tile
+  // records also contain roads, buildings and mutable caches; Three needs none
+  // of those. It gets only a local, boundary-aligned height grid for resident
+  // elevated tiles. The one-tile halo has to be resident before a grid is
+  // exposed because a boundary vertex interpolates samples from both sides;
+  // publishing it earlier would cache a transient cliff to sea level.
+  function elevationNeighbourhoodResident(tile) {
+    for (let tr = tile.tr - 1; tr <= tile.tr + 1; tr++) {
+      for (let tc = tile.tc - 1; tc <= tile.tc + 1; tc++) {
+        if (tc < 0 || tr < 0 || tc >= TCOLS || tr >= TROWS) continue;
+        if (!TILE_LOADERS[`./tiles/${tc}_${tr}.json`]) continue;
+        if (!decodedTile(tc, tr)) return false;
+      }
+    }
+    return true;
+  }
+
+  function elevationMeshTile(tile) {
+    if (!tile.z || !tile.zCols) return null;       // omitted slab = flat
+    if (tile._elevationMesh) return tile._elevationMesh;
+    if (!elevationNeighbourhoodResident(tile)) return null;
+    const segments = tile.zCols;
+    const side = segments + 1;
+    const step = TILE_PX / segments;
+    const heightsM = new Float32Array(side * side);
+    for (let row = 0; row < side; row++) {
+      for (let col = 0; col < side; col++) {
+        heightsM[row * side + col] = groundZAt(
+          tile.x + col * step,
+          tile.y + row * step,
+        );
+      }
+    }
+    tile._elevationMesh = Object.freeze({
+      key: tileKey(tile.tc, tile.tr),
+      tc: tile.tc, tr: tile.tr, x: tile.x, y: tile.y,
+      size: TILE_PX, segments, side, heightsM,
+    });
+    return tile._elevationMesh;
+  }
+
+  function residentElevationTiles(view) {
+    const out = [];
+    for (const tile of visibleTiles(view.x0, view.y0, view.x1, view.y1)) {
+      const elevation = elevationMeshTile(tile);
+      if (elevation) out.push(elevation);
+    }
+    return out;
+  }
+
   // IS THE GROUND UNDER THIS POINT ACTUALLY KNOWN?
   //
   // `surfaceAt` answers 0 — WATER — for a tile that is not resident, which is
@@ -630,10 +739,11 @@ export const WORLD2D = (function () {
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
     WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, FERIA, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle
-    ready, update, ensureView, visibleTiles, loadTile, tileResident, lampsIn,
+    ready, update, ensureView, visibleTiles, residentElevationTiles,
+    loadTile, tileResident, lampsIn,
     // queries
     surfaceAt, onRoad, onPaseo, inWater, onBeach, onElevated, driveUnderAt,
-    groundZAt, groundGradeAt,
+    zSampleAt, groundZAt, groundGradeAt,
     buildingsNear, districtAt, landmarkById, customerById, reachablePointNear,
     geoToWorld,
   };

@@ -13,7 +13,7 @@ import { paintSceneParts } from "./sceneShapes.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { content } from "../../content/remote.js";
-import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect } from "./gfx.js";
+import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect, upright } from "./gfx.js";
 import { drawParada, paintProp, propParts } from "./props.js";
 import { shadowInk, sunShadow } from "./shadows.js";
 
@@ -93,19 +93,10 @@ function drawGreenSpace(lm, w, h, opts = {}) {
 // paintStadiumCuadras in ./streets.js: it's a colour choice on ground that
 // already exists, not a structure stacked on a later layer. Drawing it here is
 // what used to bury the street name pills under the block.
-/**
- * LA GRADERÍA — fitted to one EDGE of the stadium's own traced footprint.
- *
- * The side is named (`west`) and resolved against the polygon, never against
- * the screen: a cuadra here is not square to the viewport and not even square
- * to itself — by El Carmen the avenidas run at -5.4° and the calles at 82.3° —
- * so "the west side" has to mean an edge, and a `strokeRect` off the bbox would
- * put a straight stand on a slanted block. Same rule `P.ang` follows for
- * everything else drawn on a parcel.
- *
- * It is built OUTWARD from that edge onto the cuadra's acera ring, because that
- * grey band IS a whole-cuadra stadium's sidewalk and it is where a stand
- * physically goes.
+/** Legacy fallback for worlds emitted before stand quads joined the contract.
+ * New worlds resolve this edge in `FieldService.place_stadium`, then ship the
+ * exact geometry that was stamped into collision. Keeping the fallback makes
+ * the singular `side` format loadable during a rolling deploy.
  */
 function standEdge(pts, side) {
   // pts is a flat [x,y,…] ring. Pick the edge whose midpoint is furthest in the
@@ -135,38 +126,50 @@ function standEdge(pts, side) {
   return { ...best, nx, ny, len };
 }
 
-function drawStands(lm, spec) {
-  const pts = lm.footprint;
-  if (!pts || pts.length < 6) return;
-  // LA GRADERÍA VIENE CON EL ESTADIO. Estaba llaveada por hito en el registro
-  // de arte, o sea aparte del estadio a la que pertenece; ahora el mundo la
-  // emite sobre el landmark desde `content/world/blocks.json`. Lo que sigue
-  // acá es la RECETA — fondo, escalones, rake, roofFrom, paleta base.
-  const own = lm.stands;
-  if (!own) return;                       // only the stadiums that have one
-  const P = { ...spec.palette, ...(own.palette || {}) };
-  const e = standEdge(pts, own.side);
+function legacyStandQuad(pts, side, spec) {
+  const e = standEdge(pts, side);
   const D = spec.depth;
   const ux = (e.bx - e.ax) / e.len, uy = (e.by - e.ay) / e.len;
-  // The back is narrower than the front — a bank seen from above is a
-  // trapezoid, and that taper is what says "raked seating" rather than "a
-  // painted rectangle beside the pitch". Alternating the whole tiers at full
-  // saturation instead reads as a barcode; it was tried.
   const cut = spec.rake * D;
-  const front = (t) => [e.ax + ux * 0 + e.nx * t, e.ay + uy * 0 + e.ny * t];
-  const quad = (t0, t1, c0, c1) => {
-    ctx.beginPath();
-    ctx.moveTo(e.ax + ux * c0 + e.nx * t0, e.ay + uy * c0 + e.ny * t0);
-    ctx.lineTo(e.bx - ux * c0 + e.nx * t0, e.by - uy * c0 + e.ny * t0);
-    ctx.lineTo(e.bx - ux * c1 + e.nx * t1, e.by - uy * c1 + e.ny * t1);
-    ctx.lineTo(e.ax + ux * c1 + e.nx * t1, e.ay + uy * c1 + e.ny * t1);
-    ctx.closePath();
+  return [e.ax, e.ay, e.bx, e.by,
+    e.bx - ux * cut + e.nx * D, e.by - uy * cut + e.ny * D,
+    e.ax + ux * cut + e.nx * D, e.ay + uy * cut + e.ny * D];
+}
+
+function standQuads(lm, spec) {
+  const own = lm.stands;
+  if (!own) return [];
+  if (own.quads?.length) return own.quads.filter((quad) => quad?.length === 8);
+  const pts = lm.footprint;
+  if (!pts || pts.length < 6) return [];
+  const sides = own.sides || (own.side ? [own.side] : []);
+  return sides.map((side) => legacyStandQuad(pts, side, spec));
+}
+
+function drawStandQuad(points, spec, P) {
+  // p0/p1 are the rail at the pitch; p3/p2 are the narrower back wall. Every
+  // tier is an interpolation across the EMITTED trapezoid, not a fresh guess.
+  const at = (a, b, t) => [
+    points[a] + (points[b] - points[a]) * t,
+    points[a + 1] + (points[b + 1] - points[a + 1]) * t,
+  ];
+  const band = (t0, t1) => {
+    const l0 = at(0, 6, t0), r0 = at(2, 4, t0);
+    const l1 = at(0, 6, t1), r1 = at(2, 4, t1);
+    ctx.beginPath(); ctx.moveTo(l0[0], l0[1]); ctx.lineTo(r0[0], r0[1]);
+    ctx.lineTo(r1[0], r1[1]); ctx.lineTo(l1[0], l1[1]); ctx.closePath();
   };
 
   ctx.save();
-  // the shadow it throws back onto the pitch
-  ctx.fillStyle = P.shadow;
-  quad(-3, 0, 0, 0); ctx.fill();
+  // THE SHADOW IS THE STAND'S OWN SILHOUETTE. Its old fixed three-pixel band
+  // always fell onto the pitch and knew neither height nor time of day.
+  const sh = sunShadow(spec.heightM);
+  // Lito Perez is read from its north-side cast shadow. The shared sun model's
+  // world-Y component is south-positive all day, so this scene deliberately
+  // mirrors only that component northward; east/west sweep, length and alpha
+  // remain the real `sunShadow(heightM)` answer.
+  ctx.save(); ctx.translate(sh.dx, -Math.abs(sh.dy));
+  ctx.fillStyle = shadowInk(sh.alpha); band(0, 1); ctx.fill(); ctx.restore();
 
   // THE SEATING BLOCK. Two tones, split by DEPTH rather than striped: the front
   // rows are in the open and the back ones are under the roof, which is what
@@ -174,37 +177,45 @@ function drawStands(lm, spec) {
   // ruling a row line every few pixels, both read as a barcode at play zoom —
   // each was tried and each is why this is written down.
   ctx.fillStyle = P.tierA;
-  quad(0, D, 0, cut); ctx.fill();
+  band(0, 1); ctx.fill();
   ctx.fillStyle = P.tierB;
-  quad(D * spec.roofFrom, D, cut * spec.roofFrom, cut); ctx.fill();
+  band(spec.roofFrom, 1); ctx.fill();
 
   // …and the rows, barely: one hairline per tier at low contrast, so the
   // texture is there when you drive past and never competes with the pitch.
   ctx.save();
-  quad(0, D, 0, cut); ctx.clip();
+  band(0, 1); ctx.clip();
   ctx.strokeStyle = P.row;
   ctx.lineWidth = 1;
   for (let i = 1; i <= spec.tiers; i++) {
-    const t = (D * i) / (spec.tiers + 1);
-    const c = (cut * i) / (spec.tiers + 1);
+    const t = i / (spec.tiers + 1);
+    const l = at(0, 6, t), r = at(2, 4, t);
     ctx.beginPath();
-    ctx.moveTo(e.ax + ux * c + e.nx * t, e.ay + uy * c + e.ny * t);
-    ctx.lineTo(e.bx - ux * c + e.nx * t, e.by - uy * c + e.ny * t);
+    ctx.moveTo(l[0], l[1]); ctx.lineTo(r[0], r[1]);
     ctx.stroke();
   }
   ctx.restore();
 
   // the back wall — the tallest thing, so it takes the structure colour
   ctx.strokeStyle = P.structure;
-  ctx.lineWidth = Math.max(2, D * 0.14);
+  const depth = (Math.hypot(points[6] - points[0], points[7] - points[1])
+    + Math.hypot(points[4] - points[2], points[5] - points[3])) / 2;
+  ctx.lineWidth = Math.max(2, depth * 0.14);
   ctx.beginPath();
-  ctx.moveTo(e.ax + ux * cut + e.nx * D, e.ay + uy * cut + e.ny * D);
-  ctx.lineTo(e.bx - ux * cut + e.nx * D, e.by - uy * cut + e.ny * D);
+  ctx.moveTo(points[6], points[7]); ctx.lineTo(points[4], points[5]);
   ctx.stroke();
   // and the rail along the pitch
   ctx.strokeStyle = P.rail; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(e.ax, e.ay); ctx.lineTo(e.bx, e.by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(points[0], points[1]);
+  ctx.lineTo(points[2], points[3]); ctx.stroke();
   ctx.restore();
+}
+
+function drawStands(lm, spec) {
+  const own = lm.stands;
+  if (!own) return;
+  const P = { ...spec.palette, ...(own.palette || {}) };
+  for (const quad of standQuads(lm, spec)) drawStandQuad(quad, spec, P);
 }
 
 function drawStadium(lm) {
@@ -351,7 +362,15 @@ function drawSponsorSlot(P, lote) {
   ctx.fillStyle = PARCELS.sponsor.text;
   ctx.font = `bold ${Math.max(5, Math.round(sh * 0.34))}px 'JetBrains Mono', monospace`;
   ctx.textAlign = "center";
-  ctx.fillText((lote.label || lote.name || "").slice(0, 14), sx + sw / 2, sy + sh / 2 + sh * 0.12);
+  // THE PLATE lies flat on the parcel and turns with the manzana; THE NAME on it
+  // does not. And the name has to undo BOTH turns — the camera's and `P.ang`'s —
+  // which is exactly why `upright` reads the matrix instead of the compositor's
+  // `__worldRot`: that only ever knew about the first one.
+  const cx = sx + sw / 2, cy = sy + sh / 2 + sh * 0.12;
+  const stood = upright(cx, cy);
+  ctx.fillText((lote.label || lote.name || "").slice(0, 14),
+               stood ? 0 : cx, stood ? 0 : cy);
+  if (stood) ctx.restore();
   ctx.restore();
 }
 // The Parroquia used to be drawn here, as a second copy of the `church`

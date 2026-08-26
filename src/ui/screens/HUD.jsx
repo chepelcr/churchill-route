@@ -3,6 +3,7 @@ import { Game } from "../../game/index.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { isTimed } from "../../game/timers.js";
+import { carriedProduct, customerLine } from "../../game/delivery.js";
 import { useT } from "../../i18n/index.js";
 import Icon from "../Icon.jsx";
 
@@ -23,13 +24,16 @@ export default function HUD({ onPause }) {
   // fade in over 0.3s, hold, fade out over the last 0.5s of the 2.6s life
   const toastOpacity = toast ? Math.max(0, Math.min(1, toast.t / 0.3, (2.6 - toast.t) / 0.5)) : 0;
   const meltPct = s.carrying ? Math.min(1, s.carrying.melt / s.carrying.total) : 0;
+  // LA BARRA HABLA DE LO QUE UNO LLEVA. Decía «% hielo» y «¡Se derrite!» sobre
+  // una papi-carne y sobre un ceviche, que es la parte del reparto que el
+  // jugador tiene delante todo el rato. Las cuatro frases y la unidad de la
+  // barra van por el MODELO de deterioro del producto, no por el churchill.
+  const spoil = s.carrying ? (carriedProduct().spoil || "melt") : "melt";
   const quip = useMemo(() => {
     if (!s.carrying) return "";
-    if (meltPct < 0.2) return t("quip.cold");
-    if (meltPct < 0.5) return t("quip.warm");
-    if (meltPct < 0.8) return t("quip.hot");
-    return t("quip.melt");
-  }, [meltPct, s.carrying, t]);
+    const step = meltPct < 0.2 ? 0 : meltPct < 0.5 ? 1 : meltPct < 0.8 ? 2 : 3;
+    return t(`quip.${spoil}.${step}`);
+  }, [meltPct, s.carrying, spoil, t]);
 
   return (
     <div className="ui-layer">
@@ -106,10 +110,10 @@ export default function HUD({ onPause }) {
         <div className="melt-bar">
           <div className="row">
             <span className="name">→ {s.carrying.customer.name}</span>
-            <span className="pct">{Math.round((1 - meltPct) * 100)}{t("hud.ice")}</span>
+            <span className="pct">{Math.round((1 - meltPct) * 100)}{t(`hud.keep.${spoil}`)}</span>
           </div>
           <div className="bar"><div className="fill" style={{ width: `${meltPct * 100}%` }}></div></div>
-          <div className="quip">{quip} <span style={{ opacity: 0.5 }}>· {s.carrying.customer.line}</span></div>
+          <div className="quip">{quip} <span style={{ opacity: 0.5 }}>· {customerLine(s.carrying.customer, s.carrying.product)}</span></div>
         </div>
       )}
     </div>

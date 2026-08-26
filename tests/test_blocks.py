@@ -256,7 +256,11 @@ class StadiumIsOneRecordTests(unittest.TestCase):
             if not block.get("stands"):
                 continue
             with self.subTest(block=block["id"]):
-                self.assertIn(block["stands"]["side"], {"north", "south", "east", "west"})
+                stands = block["stands"]
+                sides = stands.get("sides") or [stands.get("side")]
+                self.assertTrue(sides)
+                self.assertEqual(len(sides), len(set(sides)))
+                self.assertTrue(set(sides) <= {"north", "south", "east", "west"})
 
 
 class CrowdTests(unittest.TestCase):

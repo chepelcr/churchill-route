@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "_why": "La vía del Ferrocarril al Pacífico comparte o roza el eje OSM de las avenidas que ocuparon su derecho de vía. Las reglas son semánticas: nombran calles reales y dejan que la geometría resuelva cada transición; no hay anclas en px ni longitud/latitud que se pudran con otra proyección.",
+  "railway": {
+    "sampleM": 2.0,
+    "checkSampleM": 2.0,
+    "smoothM": 60.0,
+    "handoffM": 60.0,
+    "pairMinRunM": 40.0,
+    "simplifyM": 0.2,
+    "searchM": 70.0,
+    "parallelMaxDeg": 28.0,
+    "sideEpsilonM": 0.6,
+    "shoulderM": 2.4,
+    "shoulderSide": "preserve-local-raw",
+    "trueClearanceM": 0.2,
+    "pairMidpointToleranceM": 3.0,
+    "pairRules": [
+      {
+        "id": "cocal_between_avenues",
+        "a": [
+          "Avenida 2 del Farrocarril",
+          "Avenida del Farrocarril"
+        ],
+        "b": [
+          "Avenida Alberto Echandi Montero"
+        ],
+        "minM": 5.0,
+        "maxM": 18.0
+      }
+    ],
+    "dividedRules": [
+      {
+        "id": "alberto_divided",
+        "names": [
+          "Avenida Alberto Echandi Montero"
+        ],
+        "minM": 14.0,
+        "maxM": 65.0
+      }
+    ],
+    "shoulderNames": [
+      "Avenida 2 del Farrocarril",
+      "Avenida del Farrocarril",
+      "Avenida Alberto Echandi Montero"
+    ],
+    "transition": {
+      "anchorNames": [
+        "Calle del Ferrocarril"
+      ],
+      "continuationNames": [
+        "Avenida del Ferrocarril"
+      ],
+      "reachM": 35.0
+    }
+  }
+}

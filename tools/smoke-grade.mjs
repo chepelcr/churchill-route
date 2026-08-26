@@ -42,11 +42,36 @@ const probe = await page.evaluate(async () => {
     for (let y = 8000; y < 34000; y += 3000) spots.push([x, y]);
   let best = null, resident = 0, probed = 0;
   const grades = [];
+  // UN BORDE DE TILE NO ES UN ACANTILADO. `groundZAt` used to clamp the four
+  // bilinear samples to the tile containing the query, so the limit from the
+  // left read sample 24 and the limit from the right read sample 25. Those are
+  // neighbours 80 px apart, not two heights at the same point. Sweep both
+  // orientations while the normal east-side scan already has the surrounding
+  // tiles resident; an epsilon-wide crossing must therefore be continuous.
+  const seamSeen = new Set(), seams = [];
+  const SEAM_EPS = 0.01;
+  const sampleSeam = (axis, edge, other) => {
+    const key = `${axis}:${edge}:${other}`;
+    if (seamSeen.has(key)) return;
+    seamSeen.add(key);
+    const a = axis === "x" ? [edge - SEAM_EPS, other] : [other, edge - SEAM_EPS];
+    const b = axis === "x" ? [edge + SEAM_EPS, other] : [other, edge + SEAM_EPS];
+    if (!W.tileResident(...a) || !W.tileResident(...b)) return;
+    const za = W.groundZAt(...a), zb = W.groundZAt(...b);
+    if (Math.max(Math.abs(za), Math.abs(zb)) < 1e-6) return; // flat coast: honest but uninformative
+    seams.push({ axis, edge, other, jump: Math.abs(zb - za), za, zb });
+  };
   for (const [sx, sy] of spots) {
     const p = G.state.p;
     p.x = sx; p.y = sy; p.vx = p.vy = 0; p.speed = 0;
     G.state.cam.x = sx; G.state.cam.y = sy;
     for (let i = 0; i < 12; i++) await new Promise((r) => requestAnimationFrame(r));
+    const bx = Math.round(sx / W.TILE_PX) * W.TILE_PX;
+    const by = Math.round(sy / W.TILE_PX) * W.TILE_PX;
+    if (bx > 0 && bx < W.W)
+      for (let d = -600; d <= 600; d += 300) sampleSeam("x", bx, sy + d);
+    if (by > 0 && by < W.H)
+      for (let d = -600; d <= 600; d += 300) sampleSeam("y", by, sx + d);
     for (let dx = -800; dx <= 800; dx += 200) {
       for (let dy = -800; dy <= 800; dy += 200) {
         const x = sx + dx, y = sy + dy;
@@ -66,8 +91,10 @@ const probe = await page.evaluate(async () => {
     }
   }
   grades.sort((a, b) => a - b);
+  seams.sort((a, b) => b.jump - a.jump);
   return { best, cfg: SIM.grade, resident, probed, onRoad: grades.length,
-           p50: grades[(grades.length * 0.5) | 0], p95: grades[(grades.length * 0.95) | 0] };
+           p50: grades[(grades.length * 0.5) | 0], p95: grades[(grades.length * 0.95) | 0],
+           seamCount: seams.length, worstSeam: seams[0] || null };
 });
 if (errors.length) { console.error(`[grade] page errors: ${errors.join(" | ")}`); await browser.close(); process.exit(1); }
 console.log(`[grade] ${probe.resident}/${probe.probed} sondas residentes, ${probe.onRoad} sobre calle`);
@@ -81,6 +108,19 @@ if (!probe.resident) {
 if (!probe.best || probe.best.m < 1e-6) {
   console.error("[grade] FAIL — el mundo emitido no lleva cota: `groundZAt` es 0 en todo el este. "
     + "Si la reconstrucción con el canal de elevación todavía no corrió, esto es eso.");
+  await browser.close(); process.exit(1);
+}
+if (probe.seamCount < 20) {
+  console.error(`[grade] FAIL — sólo ${probe.seamCount} bordes de tile con cota residentes; `
+    + "la prueba necesita al menos 20 para no aprobar por una costura plana");
+  await browser.close(); process.exit(1);
+}
+const seam = probe.worstSeam;
+console.log(`[grade] ${probe.seamCount} bordes de tile: salto máx ${seam.jump.toFixed(4)} m `
+  + `(${seam.axis}=${seam.edge}, otro=${seam.other}, ${seam.za.toFixed(1)}→${seam.zb.toFixed(1)} m)`);
+if (seam.jump > 0.05) {
+  console.error(`[grade] FAIL — el borde salta ${seam.jump.toFixed(2)} m en sólo 0.02 px; `
+    + "la interpolación sigue recortada al tile");
   await browser.close(); process.exit(1);
 }
 const b = probe.best;

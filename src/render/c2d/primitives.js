@@ -48,27 +48,55 @@ export function roundRect(c, x, y, w, h, r, fill, stroke) {
   if (fill) c.fill(); if (stroke) c.stroke();
 }
 
+/** The world rotation currently baked into `g`, in radians.
+ *
+ *  READ OFF THE MATRIX, not off a side channel. `label` used to take it from
+ *  `g.__worldRot`, a value the compositor stashed on the context — which works
+ *  for the camera's own roll and for nothing else, because a caller that has
+ *  applied a rotation of its own (a parcel's `ang`, a scattered copy's `rot`) is
+ *  invisible to it. The CTM knows about all of them, and it is already there.
+ *
+ *  Hoist it out of a loop: `getTransform()` mints a fresh DOMMatrix per call. */
+export function ctxRotation(g) {
+  const m = g.getTransform();
+  return Math.atan2(m.b, m.a);
+}
+
+/** Stand text up against the world.
+ *
+ *  UN RÓTULO DE LADO NO ES UN RÓTULO. When a stage rolls the camera — El Cocal
+ *  is played on its side — the world turns with it and so does every glyph
+ *  drawn in world space. A name, a price, a score float and a CERRADO sign are
+ *  things the PLAYER reads; they are not paint on the ground. So they pin to
+ *  their own anchor and turn back.
+ *
+ *  Returns true if it pushed a `save()`, in which case the caller draws at the
+ *  ORIGIN and must `restore()`. Returns false when there is nothing to undo,
+ *  which is every unrotated frame in the game and every art sheet — that is
+ *  what makes this migration provable pixel for pixel. */
+export function upright(g, x, y, rot) {
+  const a = rot === undefined ? ctxRotation(g) : rot;
+  if (!a) return false;
+  g.save(); g.translate(x, y); g.rotate(-a);
+  return true;
+}
+
 /** A point landmark's name pill.
  *
  *  `g` IS NOW THE FIRST ARGUMENT, and that is the one real change in this lift.
  *  It used to draw on `gfx`'s shared `ctx` no matter who called it, so a caller
  *  that passed its own canvas — an art sheet, and soon the editor's preview —
  *  got its parts on one surface and its labels on another. */
-export function label(g, x, y, text, fg, bg, size = 10) {
-  // UN RÓTULO DE LADO NO ES UN RÓTULO. Cuando la cámara del nivel va girada, el
-  // mundo gira con ella y el texto también — así que la placa se contragira
-  // sobre su propia ancla. El ángulo viaja en el CONTEXTO porque este módulo no
-  // importa nada por contrato (`test_shape_interpreter`), y el contexto es lo
-  // único que ya recibe.
-  const rot = g.__worldRot || 0;
-  if (rot) { g.save(); g.translate(x, y); g.rotate(-rot); x = 0; y = 0; }
+export function label(g, x, y, text, fg, bg, size = 10, rot) {
+  const turned = upright(g, x, y, rot);
+  if (turned) { x = 0; y = 0; }
   g.font = `bold ${size}px 'JetBrains Mono', monospace`;
   g.textAlign = "center";
   const w = g.measureText(text).width + size;
   const h = size + 4;
   g.fillStyle = bg; roundRect(g, x - w / 2, y - h * 0.64, w, h, 4, true, false);
   g.fillStyle = fg; g.fillText(text, x, y + size * 0.1);
-  if (rot) g.restore();
+  if (turned) g.restore();
 }
 
 // Tag for an AREA landmark (park, estadio, plaza, parcel). Three rules the
@@ -82,6 +110,7 @@ const AREA_ALPHA = 0.62;       // semi-transparent: an area tag sits ON its own
                                // artwork (the church, the garden trees), so it
                                // has to be readable WITHOUT hiding what it names
 export function areaLabel(g, x0, y0, x1, y1, text, fg, bg) {
+  const rot = ctxRotation(g);            // once for the stack, not once per line
   const cx = (x0 + x1) / 2;
   let lines = [text];
   if (text.length > AREA_WRAP) {
@@ -96,6 +125,6 @@ export function areaLabel(g, x0, y0, x1, y1, text, fg, bg) {
   const top = Math.min(y0 + (y1 - y0) * 0.30, (y0 + y1) / 2 - ((lines.length - 1) * lh) / 2);
   g.save();
   g.globalAlpha = AREA_ALPHA;
-  for (let i = 0; i < lines.length; i++) label(g, cx, top + i * lh, lines[i], fg, bg, 5.5);
+  for (let i = 0; i < lines.length; i++) label(g, cx, top + i * lh, lines[i], fg, bg, 5.5, rot);
   g.restore();
 }

@@ -76,6 +76,7 @@ _pal = _load("palettes.json")
 _pi = _load("piers.json")
 _bl = _load("blocks.json")
 _fe = _load("ferries.json")
+_ra = _load("railway.json")
 
 # probes for orientation / sanity (geo)
 PROBE_LAND = [tuple(p) for p in _geo["probeLand"]]
@@ -132,6 +133,11 @@ APRON_DEFS = _pi["aprons"]
 #: destination, vessel lettering and double-ended behaviour. Geometry remains
 #: resolved from OSM; presentation and route semantics no longer live in Python.
 FERRY_DEFS = _fe["ferries"]
+
+#: EL DERECHO DE VÍA DEL FERROCARRIL. Sólo nombres de calles y medidas reales:
+#: la geometría decide dónde termina una avenida, dónde empieza su continuación
+#: y dónde dos calzadas forman una vía dividida. Ver service/railway.py.
+RAILWAY_DEF = _ra["railway"]
 
 #: LAS CUADRAS HECHAS A MANO — el superbloque cívico, la manzana del Carmen,
 #: los dos estadios/plazas, la cuadra del Parque Marino y el Balneario. Cada una

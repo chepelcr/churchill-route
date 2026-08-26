@@ -4,16 +4,17 @@
 // and setLastT() reassign them here and every importer sees the new value,
 // so the drawers can keep writing plain `ctx.fillStyle = ...`.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { state } from "../../game/state.js";
 import { skyBlend } from "../../game/daynight.js";
-import { tuning } from "../../game/tuning.js";
-import { MIN_ZOOM, VIEW_WIDTH_PX } from "../../domain/units.js";
+import { computeZoom, resizeCamera, VIEW_WIDTH_PX } from "../camera.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import {
-  areaLabel as rawAreaLabel, hash01, label as rawLabel, roundRect,
+  areaLabel as rawAreaLabel, ctxRotation as rawCtxRotation, hash01,
+  label as rawLabel, roundRect, upright as rawUpright,
 } from "./primitives.js";
 
 let canvas, ctx, dpr = 1;
+let mainCanvas = null, mainCtx = null;
+let overlayCanvas = null, overlayCtx = null;
 // Camera zoom: >1 pulls the camera closer so streets/buildings read at
 // city-exploration scale. Recomputed responsively per viewport in setupCanvas().
 let ZOOM = 5.5;
@@ -35,23 +36,27 @@ const CUAD = W.CUAD;                       // still wanted: the debug grid
 // default. This used to fall back to 8 while the sim fell back to 12 — the
 // renderer and the spawner disagreeing about where the sidewalk is.
 const ACERA_PX = W.ACERA_PX;
-function computeZoom(wCss, hCss) {
-  const z = wCss / VIEW_WIDTH_PX;
-  // Only a floor is clamped — a narrow screen shows LESS ground (more detail),
-  // never more. See MIN_ZOOM: on a phone that floor, not the framing above, is
-  // what decides how much road you see.
-  return Math.max(MIN_ZOOM, z) * tuning.zoom;  // player setting: 0.6 far … 1.4 close
-}
-
-function setupCanvas(c) {
-  canvas = c; ctx = c.getContext("2d");
+function setupCanvas(c, { separateOverlay = false } = {}) {
+  mainCanvas = c; mainCtx = c.getContext("2d");
+  canvas = mainCanvas; ctx = mainCtx;
+  if (separateOverlay && !overlayCanvas) {
+    overlayCanvas = document.createElement("canvas");
+    overlayCanvas.id = "game-overlay-canvas";
+    overlayCanvas.dataset.layer = "screen";
+    overlayCanvas.setAttribute("aria-hidden", "true");
+    overlayCanvas.style.pointerEvents = "none";
+    c.parentNode.insertBefore(overlayCanvas, c.nextSibling);
+    overlayCtx = overlayCanvas.getContext("2d");
+  }
   const resize = () => {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = c.clientWidth, h = c.clientHeight;
     c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
-    ZOOM = computeZoom(w, h);
-    // publish the view transform for input (point-to-drive) + camera clamp
-    state.cam.zoom = ZOOM; state.cam.vw = w; state.cam.vh = h;
+    if (overlayCanvas) {
+      overlayCanvas.width = Math.round(w * dpr);
+      overlayCanvas.height = Math.round(h * dpr);
+    }
+    ZOOM = resizeCamera(w, h);
   };
   resize(); window.addEventListener("resize", resize);
   // some mobile browsers report stale sizes at orientationchange time
@@ -60,6 +65,24 @@ function setupCanvas(c) {
   // entering/leaving fullscreen doesn't fire resize on all mobile browsers
   document.addEventListener("fullscreenchange", () => setTimeout(resize, 60));
   document.addEventListener("webkitfullscreenchange", () => setTimeout(resize, 60));
+}
+
+// Switch the shared live bindings for the screen-space tail of canvas2d.render.
+// Every drawer already imports `ctx` from here, so one switch moves that entire
+// pass without teaching dozens of functions about another surface.
+function beginScreenOverlay(active = true) {
+  if (!overlayCanvas || !overlayCtx) return false;
+  const w = overlayCanvas.width / dpr, h = overlayCanvas.height / dpr;
+  overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  overlayCtx.clearRect(0, 0, w, h);
+  if (!active) return false;
+  canvas = overlayCanvas; ctx = overlayCtx;
+  return true;
+}
+
+function endScreenOverlay() {
+  if (!mainCanvas || !mainCtx) return;
+  canvas = mainCanvas; ctx = mainCtx;
 }
 
 // ---- EL CIELO ES UN CONTINUO, no cuatro estados -----------------------------
@@ -183,6 +206,14 @@ function label(x, y, text, fg, bg, size = 10) {
 function areaLabel(x0, y0, x1, y1, text, fg, bg) {
   return rawAreaLabel(ctx, x0, y0, x1, y1, text, fg, bg);
 }
+// …and the third one, for the drawers that write text without a pill: a sign
+// board, a sponsor's plate, a POI tag, a score float. Same binding, same reason.
+function upright(x, y, rot) {
+  return rawUpright(ctx, x, y, rot);
+}
+function ctxRotation() {
+  return rawCtxRotation(ctx);
+}
 
 // A parcel's or a field's OWN frame: {cx, cy, ang, hw, hh}.
 //
@@ -227,6 +258,8 @@ function parcelFrame(P) {
 
 export {
   ACERA_PX, CUAD, VIEW_WIDTH_PX, aabbInView, areaLabel, canvas, computeZoom,
-  ctx, dpr, flatAABB, flatMultiPath, flatPath, hash01, label, lastT,
-  parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, weatherColors, ZOOM,
+  beginScreenOverlay, ctx, ctxRotation, dpr, endScreenOverlay,
+  flatAABB, flatMultiPath, flatPath, hash01, label, lastT,
+  parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, upright,
+  weatherColors, ZOOM,
 };

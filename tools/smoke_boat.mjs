@@ -97,6 +97,91 @@ const out = await page.evaluate(async () => {
   return res;
 });
 
+// SHE ONLY GOES WHERE SHE IS SENT — the three legs that keep the auto-ride out.
+//
+// The hull used to carry an idle floor (`hullThrottle`, 22% throttle under
+// 95 px/s) so she always made way, because a boat with no way on has no
+// steerage and could neither turn nor recover. True of a boat; the cost was
+// that with the controls untouched she DROVE HERSELF, which is exactly what a
+// player reports as "the boat auto drives". The deadlock is now paid for
+// directly — `hullPivot` lets her turn on the spot the way every car in the
+// game already does — so all three of these can be asserted at once:
+//
+//   1. hands off, she stays put;
+//   2. turn alone, from a dead stop, actually points her — AND she does not
+//      arc away while doing it (that is the difference between a pivot and a
+//      circle, and it is the whole reason the pivot term exists);
+//   3. the brake brings her to a real stop. There was no dead-stop clamp on a
+//      hull, so she was always creeping somewhere nobody steered.
+//
+// Leg 2 is measured AGAINST A CAR in the same run rather than against a
+// number, because "like the cars" is the actual requirement and a bare
+// threshold would drift away from the vehicles it is supposed to match.
+const feel = await page.evaluate(async () => {
+  const G = window.Game;
+  const p = G.state.p;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const key = (type, k) => window.dispatchEvent(new KeyboardEvent(type, { key: k }));
+  // The open gulf again, and for the same reason as above.
+  const put = () => { p.x = 19551; p.y = 13800; p.a = 0; p.vx = 0; p.vy = 0; p.speed = 0; };
+  const res = {};
+
+  put();
+  await wait(3000);
+  res.driftPx = Math.round(Math.hypot(p.x - 19551, p.y - 13800));
+
+  const pivot = async () => {
+    put();
+    key("keydown", "a");
+    await wait(2000);
+    key("keyup", "a");
+    return { deg: Math.abs(p.a) * 180 / Math.PI,
+             movedPx: Math.round(Math.hypot(p.x - 19551, p.y - 13800)) };
+  };
+  const hull = await pivot();
+  res.pivotDeg = Math.round(hull.deg);
+  res.pivotMovedPx = hull.movedPx;
+
+  put();
+  key("keydown", "w");
+  await wait(2500);
+  key("keyup", "w");
+  res.beforeBrake = Math.round(p.speed || 0);
+  key("keydown", " ");
+  await wait(3000);
+  key("keyup", " ");
+  res.afterBrake = Math.round(Math.hypot(p.vx, p.vy));
+
+  // …and the same two seconds in a CAR, on the same water, so the comparison is
+  // of the two turn models and nothing else. It is a wall for her, which is
+  // fine: a pivot in place needs no room.
+  G.setVehicle("pickup");
+  const car = await pivot();
+  res.carPivotDeg = Math.round(car.deg);
+  G.setVehicle("deslizador");
+  return res;
+});
+
+if (feel.driftPx > 24) {
+  fail(`hands off the controls she travelled ${feel.driftPx} px in 3 s — something is `
+    + `driving her (idle thrust? bank assist pushing instead of braking?)`);
+}
+if (feel.pivotDeg < 120) {
+  fail(`turning from a dead stop she came round only ${feel.pivotDeg}° in 2 s — `
+    + `she cannot point herself, which is the deadlock \`hullPivot\` exists to break`);
+}
+if (feel.pivotDeg < feel.carPivotDeg * 0.5) {
+  fail(`she pivots at ${feel.pivotDeg}°/2s against a pickup's ${feel.carPivotDeg}° — `
+    + `the hull is supposed to turn LIKE the cars, not a fraction of them`);
+}
+if (feel.pivotMovedPx > 40) {
+  fail(`pivoting she also travelled ${feel.pivotMovedPx} px — that is a circle, not a pivot`);
+}
+if (feel.afterBrake > 12) {
+  fail(`3 s on the brake from ${feel.beforeBrake} px/s left her still making `
+    + `${feel.afterBrake} px/s — the dead-stop clamp is not reaching a hull`);
+}
+
 if (out.medium !== "water") fail(`setVehicle('deslizador') resolved to medium ${out.medium}`);
 if (out.key !== "deslizador") fail(`the vehicle fell back to ${out.key} — the ownership/medium gate is wrong`);
 if (out.top < out.configuredTop * 0.9) {
@@ -113,5 +198,8 @@ await browser.close();
 if (!bad) {
   console.log(`[boat] ok — sailed ${out.travelled} px at her full ${Math.round(out.top)} px/s, `
     + `and could not pass ${Math.round(out.landTop)} px/s on land`);
+  console.log(`[boat] ok — hands off she drifted ${feel.driftPx} px; pivots ${feel.pivotDeg}°/2s `
+    + `(a pickup: ${feel.carPivotDeg}°) without leaving her own ${feel.pivotMovedPx} px; `
+    + `brakes from ${feel.beforeBrake} to ${feel.afterBrake} px/s`);
 }
 process.exit(bad ? 1 : 0);

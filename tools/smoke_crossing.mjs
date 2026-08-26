@@ -157,6 +157,12 @@ else {
     fail(`the channel closes to ${Math.round(geom.minRoom * 2)}px of water — `
       + `a 34px hull cannot pass`);
   }
+  // Open water may be arbitrarily broad, but the buoys mark an authored
+  // regatta course rather than the banks of the whole basin.
+  if (geom.maxHw > 190.001) {
+    fail(`the marked course opens to ${Math.round(geom.maxHw)}px half-width — `
+      + `the authored maximum is 190px`);
+  }
   if (geom.unloaded > geom.buoys * 0.2) {
     fail(`${geom.unloaded}/${geom.buoys} buoys were never checked — tiles did not stream`);
   }

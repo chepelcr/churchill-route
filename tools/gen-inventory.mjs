@@ -124,6 +124,9 @@ const REGISTRIES = [
     count: (d) => Object.keys(d.types || {}).length },
   { id: "hud", path: "src/assets/hud.json", reads: "canvas HUD + minimap" },
   { id: "flora", path: "src/assets/flora.json", reads: "builder, canvas flora" },
+  { id: "railway", path: "content/world/railway.json",
+    reads: "builder (named-street rail alignment), editor",
+    count: (d) => (d.railway?.pairRules || []).length + (d.railway?.dividedRules || []).length },
   //: LOS SPRITES: la vía para que un lugar CONCRETO use una imagen en vez de
   //: dibujarse. Todo lo demás del arte es vectorial y para casi todo eso es lo
   //: correcto; lo que el vector no cubre es un edificio que uno quiere que sea

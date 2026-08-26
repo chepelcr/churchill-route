@@ -712,12 +712,14 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
     log("acera", f"{acera_cells} sidewalk cells; {len(junction_islands)} junction islands")
 
     # --- cuadrícula blocks: classify land into cuadras / paved plazas / green.
-    # The Faro + Carmen barrios by the lighthouse have a fine street grid whose
-    # small cuadras would pave to green plazas — keep them BUILDABLE (houses)
-    # out to the east edge of Carmen so the tip reads as a town, not a lawn.
-    faro_band_x1 = next((d["x1"] for d in districts if d["id"] == "carmen"),
-                        next((d["x1"] for d in districts if d["id"] == "faro"), None))
-    blocks, plazas = detect_blocks(raster, build_band_x1=faro_band_x1)
+    # Faro through El Cocal has a fine street grid whose thin real manzanas can
+    # miss the normal inscribed-square bar. El Cocal's authored district edge
+    # scopes the existing 2x2/area rescue to the old port; rural coastal strips
+    # east of La Angostura remain green.
+    old_port_x1 = next((d["x1"] for d in districts if d["id"] == "cocal"),
+                       next((d["x1"] for d in districts if d["id"] == "carmen"),
+                            next((d["x1"] for d in districts if d["id"] == "faro"), None)))
+    blocks, plazas = detect_blocks(raster, old_port_x1=old_port_x1)
     # Faro esplanade: paint the paved sand-tip as a gray ground fill by TYPE
     # (single draw — no sand shows under it; follows the sand, never the street).
     if faro_esp:

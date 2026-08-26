@@ -13,6 +13,7 @@ import time
 from collections import defaultdict
 
 from ..config import DILATION_ON
+from ..content import RAILWAY_DEF
 from ..context import WorldContext
 from ..logging import log, warn
 from ..service.dilation import build as dilation_build
@@ -22,7 +23,9 @@ from ..service.osm import (
     extract_rails, extract_roads, extract_sites, propagate_barro_to_crossings,
 )
 from ..service.projection import planar_setup
+from ..service.railway import align_rails
 from ..service.signs import build_signs
+from ..service.street import StreetIndex
 from ..util.raster import Raster
 
 
@@ -68,6 +71,12 @@ def extract_world(osm_source):
     ctx.roads = roads
 
     ctx.rails = extract_rails(sp, ways, dims.w, dims.h)
+    aligned_rails, rail_alignment = align_rails(
+        ctx.rails, roads, StreetIndex(roads), RAILWAY_DEF)
+    # Mutate the context collections in place: services that captured one must
+    # keep seeing the growing world (WorldContext's central contract).
+    ctx.rails[:] = aligned_rails
+    ctx.rail_alignment.extend(rail_alignment)
     log("rails", f"{len(ctx.rails)} rail pieces")
     n_by_cls = defaultdict(int)
     for r in roads:

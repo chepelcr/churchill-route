@@ -15,14 +15,25 @@ await page.goto(url, { waitUntil: "domcontentloaded" });
 await page.waitForFunction(() => document.fonts.size > 0, null, { timeout: 20000 });
 
 const out = await page.evaluate(async () => {
-  const shadowsSrc = await fetch("/src/render/c2d/shadows.js").then((r) => r.text());
-  const dnUrl = shadowsSrc.match(/from\s+["']([^"']*\/game\/daynight\.js[^"']*)["']/)?.[1];
-  if (!dnUrl) throw new Error("could not resolve the live daynight module");
-  const streetSrc = await fetch("/src/render/c2d/streets.js").then((r) => r.text());
-  const gfxUrl = streetSrc.match(/from\s+["']([^"']*\/c2d\/gfx\.js[^"']*)["']/)?.[1];
+  const landmarksUrl = new URL("/src/render/c2d/landmarks.js", location.href);
+  const landmarksSrc = await fetch(landmarksUrl).then((r) => r.text());
+  const shadowsSpec = landmarksSrc.match(/from\s+["']([^"']*\/c2d\/shadows\.js[^"']*)["']/)?.[1];
+  if (!shadowsSpec) throw new Error("could not resolve the live shadow module");
+  const shadowsUrl = new URL(shadowsSpec, landmarksUrl);
+  const shadowsSrc = await fetch(shadowsUrl).then((r) => r.text());
+  const solarSpec = shadowsSrc.match(/from\s+["']([^"']*\/render\/sun\.js[^"']*)["']/)?.[1];
+  if (!solarSpec) throw new Error("could not resolve the live solar module");
+  const solarUrl = new URL(solarSpec, shadowsUrl);
+  const solarSrc = await fetch(solarUrl).then((r) => r.text());
+  const dnSpec = solarSrc.match(/from\s+["']([^"']*\/game\/daynight\.js[^"']*)["']/)?.[1];
+  if (!dnSpec) throw new Error("could not resolve the live daynight module");
+  const gfxSpec = landmarksSrc.match(/from\s+["']([^"']*\/c2d\/gfx\.js[^"']*)["']/)?.[1];
+  const worldSpec = landmarksSrc.match(/from\s+["']([^"']*\/world2d\/index\.js[^"']*)["']/)?.[1];
+  if (!gfxSpec || !worldSpec) throw new Error("could not resolve live landmark dependencies");
   const [dn, landmarks, gfx, { WORLD2D }] = await Promise.all([
-    import(dnUrl), import("/src/render/c2d/landmarks.js"), import(gfxUrl),
-    import("/src/world2d/index.js"),
+    import(new URL(dnSpec, solarUrl).href), import(landmarksUrl.href),
+    import(new URL(gfxSpec, landmarksUrl).href),
+    import(new URL(worldSpec, landmarksUrl).href),
   ]);
   const cv = document.createElement("canvas");
   cv.width = 300; cv.height = 260;

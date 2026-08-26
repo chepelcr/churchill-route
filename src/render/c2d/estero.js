@@ -1,26 +1,19 @@
-// La Travesía del Estero — the channel, and what is floating in it.
+// La Travesía del Estero — the open-water course, and what is floating in it.
 //
-// Nothing here is emitted by the world: the buoys, the current and the
-// obstacles are all a function of the lancha's route polyline, which the build
+// Nothing here is emitted by the world: the buoys and obstacles are all a
+// function of the lancha's route polyline, which the build
 // already derived from the water raster. A channel that had to be authored
 // would be a second copy of the crossing, and the first thing to go stale.
 //
-// The channel is drawn TWICE on purpose, because it has to answer two different
-// questions at two different distances:
-//
-//   * la corriente — the water inside the lane is calmer and a shade lighter,
-//     with streaks running along the route. That is what you read from far
-//     away, and what tells you where the estero goes when the shore is a green
-//     line on the horizon.
-//   * las boyas — red to port, green to starboard, bobbing, blinking at night.
-//     That is what you steer by up close, and what makes a bend legible before
-//     you are in it.
+// The water itself stays open: no painted ribbon, limits or current streaks
+// turn the estuary back into a corridor. Las boyas — red to port, green to
+// starboard, bobbing and blinking at night — are the regatta course you steer.
 import { ctx, hash01, weatherColors } from "./gfx.js";
 import {
   actorAnimationValues, paintActor, resolveActorRecord,
 } from "./actorShapes.js";
 import { state } from "../../game/state.js";
-import { LANE_HW, bancoExposed, buoyWet, channels, crossingState, esteroThings, laneAt } from "../../game/crossing.js";
+import { bancoExposed, buoyWet, channels, crossingState, esteroThings, laneAt } from "../../game/crossing.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import ACTORS from "../../assets/actors.json" with { type: "json" };
 import { alphaColor } from "./primitives.js";
@@ -36,92 +29,20 @@ function inView(x, y, view, m = 60) {
   return !(x + m < view.x0 || x - m > view.x1 || y + m < view.y0 || y - m > view.y1);
 }
 
-// THE LANE IS DRAWN AT THE WIDTH THE WORLD MEASURED. There used to be two
-// widths here — a fixed "marked channel" envelope and, inside it, a bright
-// "navigable" band scaled by the tide — and the gap between them was described
-// as the pilotage this crossing is about. It was not: physics never read the
-// fraction, and because a run starts on the flood, the bright band simply
-// closed in on the player for the whole of the pleamar and aguacero attempts.
-// One band now, at `laneAt(ch, s).hw`, which is real: it opens out in the gulf
-// and narrows through the mangrove because THE ESTERO DOES.
-//
-// Sampled along the route rather than per vertex, because the width and the
-// centre both vary between vertices now.
+// Sample the measured route once for accurate view culling. The route bends and
+// its centre moves between emitted vertices, so an endpoint-only bbox is not a
+// trustworthy description of where the course is. This walk deliberately
+// remains even though the old painted ribbon is gone: every visible mark still
+// belongs to this measured course.
 const LANE_STEP = 60;
 
-// …AND IT IS BUILT ONCE. The lane is static geometry — the route, the measured
-// half-width and the offset are all world data — but sampling it costs an
-// `at()` walk of the arclength table per point, and the fill alone wants ~240
-// of them. Rebuilding six of these polylines every frame was ~1 700 `laneAt`
-// calls and a quarter of a million comparisons per frame, for a shape that
-// never changes. Cached on the channel object, the same way the renderer caches
-// road and building paths.
+// The course is static geometry, so cache the arclength walk on the channel.
 function laneCache(ch) {
-  if (ch._lane) return ch._lane;
+  if (ch._lanePts) return ch._lanePts;
   const pts = [];
   for (let s = 0; s <= ch.total; s += LANE_STEP) pts.push(laneAt(ch, s));
-  const at = (off) => {
-    const p = new Path2D();
-    for (let i = 0; i < pts.length; i++) {
-      const q = pts[i];
-      const x = q.x - Math.sin(q.a) * q.hw * off;
-      const y = q.y + Math.cos(q.a) * q.hw * off;
-      if (i === 0) p.moveTo(x, y); else p.lineTo(x, y);
-    }
-    return p;
-  };
-  // the ribbon: starboard limit out, port limit back, closed
-  const band = new Path2D();
-  for (let i = 0; i < pts.length; i++) {
-    const q = pts[i];
-    const x = q.x - Math.sin(q.a) * q.hw, y = q.y + Math.cos(q.a) * q.hw;
-    if (i === 0) band.moveTo(x, y); else band.lineTo(x, y);
-  }
-  for (let i = pts.length - 1; i >= 0; i--) {
-    const q = pts[i];
-    band.lineTo(q.x + Math.sin(q.a) * q.hw, q.y - Math.cos(q.a) * q.hw);
-  }
-  band.closePath();
-  ch._lane = {
-    band,
-    limits: [at(-1), at(1)],
-    streaks: [at(-0.55), at(0), at(0.55)],
-  };
-  return ch._lane;
-}
-
-// The lane: calmer water + current streaks, under everything that floats on it.
-//
-// ONE WIDTH, AND IT IS THE REAL ONE. See the note on `laneCache` for the two
-// widths that used to be here and why the second was a lie. What is drawn now
-// is the measured channel: a soft band of calmer water between the marks, its
-// two limits, and streaks sliding down it. It widens in the gulf and closes
-// through the mangrove because the water does, so reading it ahead is worth
-// something — which is what the old bright band was reaching for and could not
-// deliver, because it moved with the clock instead of with the place.
-function drawCurrent(channel, view, t) {
-  const night = state.weather === "night";
-  const L = laneCache(channel);
-  ctx.save();
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  // el canal — a soft fill between the two limits. A stroke down the centre
-  // would be wrong now that the width varies, so it is a filled ribbon.
-  const CH = night ? E.channel.night : E.channel.day;
-  ctx.fillStyle = CH.wash;
-  ctx.fill(L.band);
-  // …and its two limits, solid, running through the buoys where they belong.
-  ctx.lineWidth = 1.6;
-  ctx.strokeStyle = CH.strong;
-  for (const p of L.limits) ctx.stroke(p);
-  // streaks: short dashes sliding along the lane, so the water reads as moving.
-  ctx.strokeStyle = CH.faint;
-  ctx.lineWidth = 2;
-  ctx.setLineDash([26, 64]);
-  ctx.lineDashOffset = -(t * 26) % 90;
-  for (const p of L.streaks) ctx.stroke(p);
-  ctx.setLineDash([]);
-  ctx.restore();
+  ch._lanePts = pts;
+  return ch._lanePts;
 }
 
 // LAS BOYAS, FROM ABOVE. This buoy used to be drawn in ELEVATION — a float, a
@@ -422,13 +343,10 @@ function drawYate(e, view, t) {
   });
 }
 
-/** The channel itself — drawn under the boats, over the water. */
+/** The regatta course: open water, marked only by its buoys. */
 export function drawChannel(view, t) {
   for (const channel of channels().values()) {
-    const [x0, y0] = channel.pts[0];
-    const [x1, y1] = channel.pts[channel.pts.length - 1];
-    if (!inView((x0 + x1) / 2, (y0 + y1) / 2, view, Math.hypot(x1 - x0, y1 - y0) / 2 + 400)) continue;
-    drawCurrent(channel, view, t);
+    if (!laneCache(channel).some((q) => inView(q.x, q.y, view, q.hw + 60))) continue;
     for (const b of channel.buoys) drawBuoy(b, view, t);
   }
 }

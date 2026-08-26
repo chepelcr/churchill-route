@@ -68,6 +68,10 @@ class WorldContext:
     # ---- extracted geometry -------------------------------------------------
     roads: list = field(default_factory=list)
     rails: list = field(default_factory=list)
+    #: BUILD-ONLY per-piece proof from service.railway. The emitted rails stay
+    #: plain geometry; the final gate/log reads this instead of shipping audit
+    #: bookkeeping to every client tile.
+    rail_alignment: list = field(default_factory=list)
     beaches: list = field(default_factory=list)
     waters: list = field(default_factory=list)
     land_polys: list = field(default_factory=list)

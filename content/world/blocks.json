@@ -277,7 +277,12 @@
       "layout": "streets-quad",
       "name": "Estadio Lito Pérez",
       "stands": {
-        "side": "west",
+        "sides": [
+          "west",
+          "east",
+          "north",
+          "south"
+        ],
         "palette": {
           "tierA": "#e8792b",
           "tierB": "#b8541a",

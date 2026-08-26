@@ -80,7 +80,7 @@ const LANE_MIN_FRAC = 0.6;
 //: and that clamp is precisely how seven of them ended up ashore. The lane is
 //: now always a fraction of the room the world measured, so a buoy is inside
 //: the water BY CONSTRUCTION.
-const LANE_MAX_HW = 190;
+const LANE_MAX_HW = 190; // authored course half-width across the open basin
 //: buoys every this many px of arclength, and half that through a bend
 const BUOY_GAP = 260;
 const BEND_GAP = 130;
@@ -240,9 +240,12 @@ export function laneAt(ch, s) {
   const off = lerpArr(c.off, u) || 0;
   const room = minArr(c.hw, u) || LANE_HW;
   // INSIDE THE WATER BY CONSTRUCTION: pull in by the margin, but never past a
-  // fraction of the room, and never wider than the room itself.
-  const hw = Math.min(LANE_MAX_HW, room,
+  // fraction of the room or wider than the room itself. The water may open much
+  // farther after the estuary flood; the authored cap keeps the marks a useful
+  // regatta course instead of scattering them across the whole basin.
+  const measuredHw = Math.min(room,
     Math.max(room - BUOY_MARGIN, room * LANE_MIN_FRAC));
+  const hw = Math.min(measuredHw, LANE_MAX_HW);
   return { x: q.x - Math.sin(q.a) * off, y: q.y + Math.cos(q.a) * off, a: q.a, hw };
 }
 
@@ -947,9 +950,9 @@ export function crossingTarget() {
  *
  * THE LAST 2 %, AND THE SAME TRICK `bancoExposed` USES. The world measures the
  * channel and the marks are placed inside it, so they are on water by
- * construction — but the sounding is every 40 px along a line the dredge cut at
- * half-cell steps, and on the sharpest bends of a real estuary those two do not
- * agree to the pixel. Two of 122 came out on mangrove.
+ * construction — but the sounding is every 40 px along a simplified line and,
+ * even over the opened basin, the sharpest bends need not agree to the pixel.
+ * Two of 122 came out on mangrove in the last emitted world.
  *
  * A mark standing on the bank is worse than a missing mark: it tells you the
  * channel is somewhere it is not. So it is simply not drawn. TESTED LAZILY, at

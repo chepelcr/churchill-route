@@ -259,7 +259,6 @@ class SunShadowRegistry(unittest.TestCase):
     def setUp(self):
         self.doc = json.loads(read(EFFECTS))
         self.sun = self.doc["sunShadow"]
-        self.terrain = self.doc["terrainShadow"]
         self.heights = self.doc["buildingHeight"]
 
     def test_the_reach_is_in_multiples_of_height(self):
@@ -326,20 +325,6 @@ class SunShadowRegistry(unittest.TestCase):
         self.assertIn("alpha: direction.shadowAlpha", solar)
         shadows = read(SHADOWS)
         self.assertIn("return sunShadow2(heightM, PX_PER_M)", shadows)
-
-    def test_the_terrain_shadow_budget_is_bounded_and_authored(self):
-        """The mountain shadow is one predictable GPU budget, not a knob pile."""
-        self.assertEqual(self.terrain["mapSize"], 1024)
-        self.assertEqual(self.terrain["mapSize"] & (self.terrain["mapSize"] - 1), 0)
-        self.assertEqual(self.terrain["maxCasterHeightM"], 400)
-        self.assertGreaterEqual(self.terrain["flatCasterMaxM"], 10)
-        self.assertLess(self.terrain["flatCasterMaxM"], self.terrain["maxCasterHeightM"])
-        self.assertGreater(self.terrain["opacity"], 0)
-        self.assertLessEqual(self.terrain["opacity"], 1)
-        self.assertLess(self.terrain["bias"], 0)
-        self.assertGreater(self.terrain["normalBiasM"], 0)
-        self.assertGreaterEqual(self.terrain["radius"], 1)
-        self.assertGreater(self.terrain["receiverBelowM"], 0)
 
     def test_the_colour_is_a_triple_because_the_painter_builds_the_alpha(self):
         self.assertRegex(str(self.sun["color"]), r"^\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*$")

@@ -42,8 +42,6 @@ import HUD from "../assets/hud.json" with { type: "json" };
 import { alphaColor, upright } from "./c2d/primitives.js";
 import { paintSpeedLines } from "./c2d/systemShapes.js";
 import { beginCameraFrame, cameraAffine, worldToScreen } from "./camera.js";
-import { beginLeanFrame } from "./lean.js";
-import { terrainFrameActive } from "./terrainComposite.js";
 
 // ---- Main render ----------------------------------------------------------
 // Overlay mode (legacy full-hybrid experiment): Pixi draws the world +
@@ -91,10 +89,6 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   const rot = camera.rotation;
   const view = camera.view;
 
-  // …y la inclinación se mide contra ESTE giro. Se dice una vez por cuadro
-  // para que ni un árbol ni un poste tengan que leer la matriz para saber
-  // dónde queda «arriba de la pantalla».
-  beginLeanFrame(rot);
   // World transform (zoomed), resolved once for every backend by camera.js.
   ctx.setTransform(...cameraAffine(camera, dpr));
   // Los rótulos se contragiran para seguir siendo LEGIBLES: un nombre de calle
@@ -127,7 +121,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     }
     // Painterly 2-D world from resident tiles: land silhouette + road strokes +
     // buildings + palms/trees (replaces the corridor's global-array drawers).
-    drawWorld2D(view, t, rot);
+    drawWorld2D(view, t);
     drawEditorWorld(view, "districts");
     drawPoiTags(view, ZOOM);   // real business names, small, over the ground
   }
@@ -294,7 +288,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   phase("entities");
 
   // Overlays
-  const separateOverlay = beginScreenOverlay(terrainFrameActive());
+  const separateOverlay = beginScreenOverlay(false);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const C = weatherColors();
   // LOS POZOS DE LUZ SON DE LA NOCHE **Y DE LA TORMENTA**. Un cielo cerrado a

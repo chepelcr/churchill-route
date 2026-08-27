@@ -281,25 +281,9 @@ export const WORLD2D = (function () {
     if (zCols && zColsPerTile && zColsPerTile !== zCols)
       throw new Error(`inconsistent elevation lattice: ${zColsPerTile} vs ${zCols}`);
     const z = raw.zRle ? decodeZ(raw.zRle, zCols * zCols) : null;
-    // …Y LA CATEGORÍA VIAJA. `cat`/`osmId`/`name` se quedaban en el JSON del
-    // tile: este `map` copiaba cinco campos y los tres que dicen QUÉ ES el
-    // edificio no estaban entre ellos, así que `buildingStyle()` no encontraba
-    // nunca su llave y devolvía `null` para las 39 759 huellas del mundo. El
-    // respaldo —el `color` emitido— hacía que el fallo se viera exactamente
-    // igual que el éxito: un puerto entero pintado del color de reserva, con el
-    // registro de estilos completo y sin un solo consumidor. Medido sobre el
-    // mundo publicado: **486 huellas traen `cat`**, 10 traen `osmId` y 577 su
-    // nombre. Se copian sólo cuando existen, porque poner tres claves
-    // `undefined` en cada una de 39 759 huellas es memoria por nada.
-    const buildings = (raw.buildings || []).map((b) => {
-      const rec = {
-        pts: b.pts, aabb: flatAABB(b.pts), color: b.color, roof: b.roof, wnd: b.wnd,
-      };
-      if (b.cat !== undefined) rec.cat = b.cat;
-      if (b.osmId !== undefined) rec.osmId = b.osmId;
-      if (b.name !== undefined) rec.name = b.name;
-      return rec;
-    });
+    const buildings = (raw.buildings || []).map((b) => ({
+      pts: b.pts, aabb: flatAABB(b.pts), color: b.color, roof: b.roof, wnd: b.wnd,
+    }));
     // 64px building hash local to the tile (buildingsNear hits only same tile;
     // border buildings are duplicated into each overlapping tile by the emit)
     const bhash = new Map();

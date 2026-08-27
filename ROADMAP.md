@@ -287,44 +287,33 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
 ## 6. Motor
 
-- [ ] **PERSPECTIVA DE VERDAD: una capa three.js.** Decidido por el usuario el
-      2026-08-23 sobre las dos opciones más baratas. Seis etapas, cada una
-      entregable por su cuenta detrás de una bandera; el plan completo está en
-      `docs/HANDOFF-2026-08-23.md` §D.
+- [ ] **PERSPECTIVA: ABIERTA OTRA VEZ, Y DESDE CERO.** Se construyó y se
+      RETIRÓ entera el 2026-08-26, a pedido del usuario. El código vive en el
+      tag `3d-attempt-2026-08-26`; esto es lo que costó averiguar, para que la
+      próxima no lo vuelva a pagar:
 
-      Lo que lo hace abordable es una corrección que conviene no perder: **una
-      cámara ORTOGRÁFICA inclinada SÍ registra exactamente con la afín 2-D.** Con
-      ortográfica, el mapa del plano de suelo a la pantalla sigue siendo una afín
-      2-D (`ScaleY(cosφ)·Rot(θ)`); lo único que queda fuera de Canvas2D es el
-      levante por cota — que es justo lo que se va al 3-D. Así que ~2 500 líneas
-      de dibujo de suelo no se reescriben, y otras ~3 400 de pintores de arte
-      tampoco porque `shapes.js` y la familia `*Shapes.js` ya reciben su
-      superficie como argumento. **Neto: ~1 000 líneas, no 11 000.**
-
-      Dos constantes que NO son libres: `TILT = acos(0.62) = 51.68°`, porque
-      `sunShadow.squashY = 0.62` es el escorzo contra el que se autoró todo el
-      arte 2-D y bajo ortográfica el escorzo ES `cos(tilt)`; y la dirección 3-D
-      del sol se DERIVA del desplazamiento pintado completo, no de una altitud
-      física: `normalize(-sun.x*r, +sun.y*r*0.62, 1)`. Esto conserva también el
-      `y: 0.55` histórico y da 86,49° al mediodía / 48,86° en el clamp bajo;
-      omitir cualquiera de esos factores mueve los píxeles 2-D a mitad de la
-      migración.
-
-      **Se entrega en la etapa 3** (malla de terreno + `DirectionalLight` + mapa
-      de sombras: las montañas hacen sombra). De ahí en adelante es pulido, y la
-      etapa 6 —inclinar— contradice una decisión escrita en
-      `docs/HANDOFF-verticality-2_5d.md:425`; las 0-5 no.
-
-      - [x] **Etapa 0:** cota continua entre tiles (`smoke:grade`, 0,0057 m).
-      - [x] **Etapa 1:** autoridad de cámara + canvas Three vacío. El modo 2-D
-        descarga 0 bytes de Three; el chunk opt-in pesa 189,60 kB gzip y
-        `shot:3d` cambió **0/770.000 px**.
-      - [x] **Etapa 2:** malla residente local + hillshade, inclinación 0. El
-        Paseo quedó **0/770.000 px** idéntico y la cordillera cambió
-        **675.824/770.000** con 1.250 triángulos. Se descartó el readback de
-        4,700 ms; la capa CSS final añade ~0,558 ms/cuadro de compositor y
-        0,031 ms de CPU síncrona.
-      - [ ] **Etapa 3:** luz direccional + sombra de montañas (entrega).
+      * **Una ortográfica inclinada SÍ registra con la afín 2-D.** El mapa del
+        suelo a la pantalla sigue siendo `ScaleY(cosφ)·Rot(θ)`, así que las
+        ~2 500 líneas de dibujo de suelo NO se reescriben. Sólo el levante por
+        cota queda fuera de Canvas.
+      * **Pero el achatamiento llega al VOLANTE.** `applyTouch` compara un
+        ángulo de PANTALLA contra un rumbo de MUNDO. La corrección correcta es
+        des-achatar el ÁNGULO y sacar el acelerador de la distancia de pantalla
+        CRUDA; des-achatar las dos cosas cambia el tacto y se siente mal.
+      * **A 0° no se ve un solo costado** — es geometría, no implementación. Lo
+        único que dice que hay volumen es la SOMBRA, y a 10° de latitud el sol
+        de mediodía está a 86°: la sombra de un bloque de 16 m mide 2,5 px. Al
+        amanecer y al atardecer mide 35.
+      * **Un techo a dos aguas visto a plomo se lee como una PIRÁMIDE**, no como
+        un techo: cuatro faldones con luz distinta y las limatesas cruzando la
+        planta. A 0.34 de la altura el centro salía como un campo de carpas.
+      * **El receptor de sombra NO puede ser coplanar con la base** de lo que
+        proyecta, o no sale NINGUNA sombra (no ruido: nada). Cuatro centímetros
+        abajo alcanzan — es lo que `terrainShadow.receiverBelowM` ya decía.
+      * **El mapa de sombras tiene que invalidarse con el conjunto de CASTERS**,
+        no sólo con el sol y la cámara: los tiles llegan por streaming.
+      * `src/render/camera.js` y `src/render/sun.js` se quedaron: son las
+        autoridades únicas de cámara y de sol del juego 2-D, sin three adentro.
 
 - [ ] **Milestone C — backend PixiJS/WebGL** detrás de `src/render/Renderer.js`.
       Sigue abierto y sigue siendo opt-in: hoy Canvas2D pinta el mundo entero y

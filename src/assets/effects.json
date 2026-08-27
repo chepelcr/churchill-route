@@ -224,25 +224,6 @@
     "figureHeightM": 1.7,
     "_figureHeightM": "una persona de pie. El corrimiento solar que le toca va de medio pixel al mediodia a cuatro al atardecer — poco, y es lo correcto: una persona no tira la sombra de una bodega. El ANCLA de los pies no sale de aca, la pone cada dibujante, porque es donde estan los pies de ESA figura y no una propiedad del sol."
   },
-  "terrainShadow": {
-    "_note": "LA SOMBRA DE LA CORDILLERA. Una sola DirectionalLight y un solo mapa para el terreno: Three r185 no usa las Layers de la luz para aislar casters en una pasada, y duplicar luces duplicaría una respuesta solar que ya tiene autoridad en sun.js.",
-    "mapSize": 1024,
-    "_mapSize": "1024² es el presupuesto medido: con el peor relieve y reachAtDusk el cuadro caster ronda 2 400 px por lado, menos de 1 m por texel y mucho más fino que las muestras de elevación de 32 m.",
-    "maxCasterHeightM": 400,
-    "_maxCasterHeightM": "techo conservador del relieve para encuadrar las ocho esquinas del volumen caster en espacio de luz; no es una altura inventada por cuadro.",
-    "flatCasterMaxM": 10,
-    "_flatCasterMaxM": "una losa cuya altura máxima no pasa de 10 m sólo recibe: excluirla como caster conserva el contrato de cero píxeles de la península plana sin omitir mesetas altas de poco rango.",
-    "opacity": 0.24,
-    "_opacity": "fuerza del oscurecimiento multiplicativo sobre el mundo Canvas; la montaña modula el arte, no lo repinta.",
-    "bias": -0.0002,
-    "_bias": "sesgo de profundidad normalizado para frenar acne sin despegar la sombra de su ladera.",
-    "normalBiasM": 0.7,
-    "_normalBiasM": "sesgo a lo largo de la normal en metros del mundo. 0,7 m es el menor valor del barrido 0,4/0,7/2,0 que borra la retícula de auto-sombra: ≈1 texel efectivo del mapa y sólo 1/46 de la muestra de cota de 32 m. A 0,4 todavía se veía el moiré; 2,0 borraba también la sombra.",
-    "radius": 1,
-    "_radius": "radio PCF mínimo; subirlo ensancha el filtro y cuesta muestras, no resolución geométrica.",
-    "receiverBelowM": 0.04,
-    "_receiverBelowM": "el plano receptor plano queda cuatro centímetros bajo z=0 para evitar z-fighting sin crear un escalón visible."
-  },
   "buildingHeight": {
     "_note": "CUÁN ALTO ES UN EDIFICIO, y por qué se infiere. Nada en el mundo emitido lo sabe: un edificio lleva `pts`, `color`, `roof` y `wnd`. Medido sobre el mundo publicado, **10 de 45 218 traen la etiqueta `building` de OSM y 9 de esas dicen `yes`**, así que la etiqueta no alcanza para nada — no es que no se haya querido usar, es que no está.",
     "_source": "Lo que sí hay es la HUELLA. En un puerto de una y dos plantas el área es la mejor señal disponible: una casa son ~90 m2 y una plaza de mercado 11 000. `wnd` ayuda a distinguir una construcción con pisos de una bodega o un galpón.",

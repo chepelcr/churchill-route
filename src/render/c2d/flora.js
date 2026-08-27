@@ -100,18 +100,8 @@ function woodSpecies(mix, gx, gy) {
   );
 }
 
-// DÓNDE ESTÁN LOS ÁRBOLES, UNA SOLA VEZ.
-//
-// El monte no se emite: se computa por cuadro desde una retícula GLOBAL sobre
-// el rectángulo visible. Eso está bien —el mundo pide 300 000 a 950 000 árboles
-// y pesa 16,7 MB— pero deja la posición del árbol dentro del pintor, y ahora
-// hay DOS capas que necesitan la misma respuesta: el arte plano y la geometría
-// 3-D. Escrita dos veces, un árbol se dibujaría en un sitio y su volumen en
-// otro, y nadie lo vería hasta mirar de cerca.
-//
-// Así que el recorrido se separa del dibujo. `visit` recibe la posición, la
-// especie y la escala; quien lo llama decide qué hacer con eso.
-function forEachWoodTree(view, visit) {
+/** Plant every wood that reaches the view. */
+function paintWoods(view) {
   const woods = W.CUADRAS;
   if (!woods || !woods.length) return;
   for (const cu of woods) {
@@ -120,6 +110,18 @@ function forEachWoodTree(view, visit) {
         cu.y1 < view.y0 - 40 || cu.y0 > view.y1 + 40) continue;
     const mix = MIXES[cu.wood];
     if (!mix) continue;
+    // THE FOREST FLOOR. Bare land tan under a wood reads as trees standing on a
+    // beach; a wash of the mix's own shade under them reads as woodland. The
+    // path is built once per wood and kept on the record, the same way a road
+    // keeps its roadside planting — the biggest of these is 6 392 vertices and
+    // rebuilding it per frame would be the one expensive thing here.
+    if (cu._woodPath === undefined) {
+      cu._woodPath = cu.poly && cu.poly.length >= 6 ? flatPath(cu.poly, true) : null;
+    }
+    if (cu._woodPath) {
+      ctx.fillStyle = mix.floor;
+      ctx.fill(cu._woodPath);
+    }
     const step = Math.sqrt(mix.d);
     // the lattice is GLOBAL, so a tree does not move when the camera does
     const gx0 = Math.floor(Math.max(cu.x0, view.x0 - 40) / step);
@@ -140,43 +142,11 @@ function forEachWoodTree(view, visit) {
         // that a 6 000-vertex point-in-polygon test would have cost a frame to
         // answer less well.
         if (W.surfaceAt(x, y) !== SURFACE.LAND) continue;
-        visit(x, y, woodSpecies(mix, gx, gy),
-              0.85 + hash01(gx * 8.3 + gy * 3.7) * 0.4);
+        paintTree({ x, y, k: woodSpecies(mix, gx, gy),
+                    s: 0.85 + hash01(gx * 8.3 + gy * 3.7) * 0.4 });
       }
     }
   }
-}
-
-/** EL SUELO DEL MONTE — un lavado bajo los árboles. Siempre es de Canvas: es
- *  suelo, no algo que se pare. */
-function paintWoodFloor(view) {
-  const woods = W.CUADRAS;
-  if (!woods || !woods.length) return;
-  for (const cu of woods) {
-    if (!cu.wood) continue;
-    if (cu.x1 < view.x0 - 40 || cu.x0 > view.x1 + 40 ||
-        cu.y1 < view.y0 - 40 || cu.y0 > view.y1 + 40) continue;
-    const mix = MIXES[cu.wood];
-    if (!mix) continue;
-    // Bare land tan under a wood reads as trees standing on a beach; a wash of
-    // the mix's own shade under them reads as woodland. The path is built once
-    // per wood and kept on the record, the same way a road keeps its roadside
-    // planting — the biggest of these is 6 392 vertices and rebuilding it per
-    // frame would be the one expensive thing here.
-    if (cu._woodPath === undefined) {
-      cu._woodPath = cu.poly && cu.poly.length >= 6 ? flatPath(cu.poly, true) : null;
-    }
-    if (cu._woodPath) {
-      ctx.fillStyle = mix.floor;
-      ctx.fill(cu._woodPath);
-    }
-  }
-}
-
-/** Plant every wood that reaches the view. */
-function paintWoods(view) {
-  paintWoodFloor(view);
-  forEachWoodTree(view, (x, y, k, s) => paintTree({ x, y, k, s }));
 }
 
 // ----------------------------------------------------------- roadside ----
@@ -307,6 +277,6 @@ function tileTrees(tile, pairs) {
 }
 
 export {
-  forEachWoodTree, nearestOnPoly, paintPalm, paintRoadsideTrees, paintTree,
-  paintWoodFloor, paintWoods, roadsideTrees, species, tileTrees,
+  nearestOnPoly, paintPalm, paintRoadsideTrees, paintTree, species,
+  paintWoods, roadsideTrees, tileTrees,
 };

@@ -25,12 +25,8 @@
     "smoke:sceneshadows": "node tools/smoke-scene-shadows.mjs",
     "smoke:standshadow": "node tools/smoke-stand-shadow.mjs",
     "smoke:grade": "node tools/smoke-grade.mjs",
-    "smoke:lean": "node tools/smoke-lean.mjs",
     "smoke:perf": "node tools/smoke-perf.mjs",
     "smoke:product-hud": "node tools/smoke-product-hud.mjs",
-    "shot:3d": "node tools/shot-3d.mjs",
-    "shot:terrain": "node tools/shot-terrain.mjs",
-    "shot:terrain-shadow": "node tools/shot-terrain-shadow.mjs",
     "audio:render": "node tools/render-audio.mjs",
     "shot:kiosks": "node tools/shot-kiosks.mjs"
   },
@@ -44,8 +40,7 @@
     "cordova-plugin-purchase": "^13.17.2",
     "pixi.js": "^8.19.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "three": "^0.185.1"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

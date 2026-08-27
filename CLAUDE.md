@@ -221,8 +221,13 @@ renderer (the "view") lives behind a seam so backends can be swapped.
 - `src/render/` — `Renderer.js` is the seam and `camera.js` is the ONE camera
   authority shared by its backends. `canvas2d.js` paints the complete shipped
   world; the transparent `pixi/` layer above carries migrated landmark
-  structures (currently none are owned there), and `?render=3d` lazy-loads the
-  opt-in `three/` layer. The normal 2-D path must make zero Three requests.
+  structures (currently none are owned there). **There is no three.js layer**:
+  one was built to stages 1-3 (terrain relief + a real mountain shadow map) and
+  then to a full 3-D town, and the whole of it was removed on 2026-08-26 — the
+  work is preserved at the tag `3d-attempt-2026-08-26` if it is ever wanted
+  back. `src/render/camera.js` and `src/render/sun.js` SURVIVED it on purpose:
+  they are the single camera and single sun authorities the 2-D game now reads,
+  and neither contains any three.js.
   **`c2d/shapes.js` — the shape interpreter — IMPORTS NO PART OF THE GAME, and
   `tests/test_shape_interpreter.py` keeps it that way.** It is the engine's half
   of every art catalog, and the editor loads it to preview the record it is

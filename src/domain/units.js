@@ -43,26 +43,6 @@ export const VIEW_WIDTH_PX = px(UNITS.camera.viewWidthM);
  * which is scale-free, and divided back here.
  */
 export const MIN_ZOOM = UNITS.camera.minScreenPxPerM / PX_PER_M;
-/**
- * THE CEILING on the camera's lean, in radians.
- *
- * Not a look decision: under an ORTHOGRAPHIC camera the north-south
- * foreshortening of the ground is `cos(tilt)`, and the whole 2-D art was
- * authored against `sunShadow.squashY`. So this is the angle the top-down
- * sprites were drawn for, and past it one stops reading as its own object.
- * It is a CLAMP, not the value in use — see `DEFAULT_LEAN_RAD`.
- */
-export const MAX_TILT_RAD = (UNITS.camera.tiltDeg || 0) * Math.PI / 180;
-/**
- * How far the world actually leans, in radians.
- *
- * The ONE perspective knob. The ground plane is compensated back to plan view
- * (`src/render/lean.js`), so this only decides how far something of a given
- * height rises up the screen — and therefore it never touches the driving.
- */
-export const DEFAULT_LEAN_RAD = Math.min(
-  MAX_TILT_RAD, (UNITS.camera.leanDeg || 0) * Math.PI / 180,
-);
 
 // ----- la Travesía -----------------------------------------------------------
 /** Arclength between the channel's sounding stations. Emitted as `channel.pitch`. */

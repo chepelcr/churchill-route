@@ -6,9 +6,7 @@
 // low-res land/water/beach backdrop covers unloaded gaps.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
-import {
-  paintPalm, paintRoadsideTrees, paintTree, paintWoodFloor, paintWoods, tileTrees,
-} from "./flora.js";
+import { paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
 import { drawStreetLamps } from "./lights.js";
 import { aabbInView } from "./gfx.js";
 import {
@@ -17,10 +15,9 @@ import {
 import { drawMalecon } from "./malecon.js";
 import { drawStreetLabels2D, medianPairs, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
 import { drawPiers, paintBuilding } from "./structures.js";
-import { LAYER, owns } from "../migrated.js";
 
 // Orchestrate the painterly world from resident, in-view tiles.
-function drawWorld2D(view, t, rotation = 0) {
+function drawWorld2D(view, t) {
   const prof = window.__prof;
   let phaseT = prof ? performance.now() : 0;
   const phase = (key) => {
@@ -54,15 +51,8 @@ function drawWorld2D(view, t, rotation = 0) {
   drawKioskPaths(view);
   drawPiers(view, true);
   phase("worldStreets");
-  // buildings — SI ES QUE LOS DIBUJA ESTA CAPA. Con el mundo en 3-D las
-  // huellas son volumen de verdad en `render/three/massing.js`: techo a dos
-  // aguas, sol real y sombra proyectada sobre la calle. Que las pinte una capa
-  // o la otra es lo único que se decide acá, y se decide en UN registro
-  // (`render/migrated.js`) para que no puedan pintarlas las dos —un edificio
-  // con doble no se ve doble, se ve mal— ni ninguna.
-  if (owns(LAYER.CANVAS, "buildings")) {
-    for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
-  }
+  // buildings
+  for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
   phase("worldBuildings");
   // flora. The street trees go down FIRST: they line the acera, so a crown that
   // meets the world's own planting on the cuadra behind it should pass under
@@ -70,21 +60,15 @@ function drawWorld2D(view, t, rotation = 0) {
   // median's two interleaved rows merged onto its centre (see flora.js).
   // EL MONTE first: it is the ground cover of the countryside, so the town's own
   // planting and the street trees stand over it rather than in a gap in it.
-  // EL SUELO DEL MONTE SIEMPRE ES DE CANVAS: es un lavado sobre la tierra, no
-  // algo que se pare, así que no se va con los árboles al volumen.
-  if (owns(LAYER.CANVAS, "flora")) {
-    paintWoods(view);
-    paintRoadsideTrees(roads, view);
-    for (const tile of vts) {
-      for (const tr of tileTrees(tile, medianPairs(tile).pairs)) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
-      for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
-    }
-  } else {
-    paintWoodFloor(view);
+  paintWoods(view);
+  paintRoadsideTrees(roads, view);
+  for (const tile of vts) {
+    for (const tr of tileTrees(tile, medianPairs(tile).pairs)) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
+    for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
   }
   // …y los postes del alumbrado, sobre la acera y bajo los rótulos. El pozo de
   // luz lo abre el compositor de noche (`nightlights.js`); esto es la lámpara.
-  if (owns(LAYER.CANVAS, "flora")) drawStreetLamps(view);
+  drawStreetLamps(view);
   drawStreetLabels2D(roads, view);
   phase("worldFlora");
 }

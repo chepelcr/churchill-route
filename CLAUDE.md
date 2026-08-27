@@ -143,6 +143,7 @@ Vite + pnpm project. Node 20+; get pnpm via `corepack` (or `~/.local/bin/pnpm`).
 ```
 pnpm install
 pnpm dev            # HMR dev server (falls back off :8734 if taken)
+./reboot-server.sh  # …o esto: lo relevanta y DEJA EL LOG EN EL REPO
 pnpm build          # -> dist/ (static; GitHub Pages publishes this)
 pnpm preview        # serve the production build
 pnpm inventory      # regenerate inventory.json
@@ -160,6 +161,32 @@ the builder aims at the game. The boundary is **eight paths in four files** —
 `world_snapshot.py` — and `tests/test_game_root.py` pins that list, so a ninth
 crossing has to be a decision rather than an oversight. Unset, everything
 behaves exactly as a single checkout. See ROADMAP §6b for the split it is for.
+
+**`./reboot-server.sh` — EL SERVIDOR, Y SU LOG DONDE SE PUEDA LEER.**
+
+```
+./reboot-server.sh            # dev en :8734
+./reboot-server.sh 8736       # un servidor FRESCO en otro puerto
+./reboot-server.sh --clean    # …y además borra la caché de Vite
+./reboot-server.sh --stop     # baja el de ese puerto y no levanta nada
+```
+
+Tres cosas que hace y que no son cosméticas:
+
+* **El log va a `logs/dev-<puerto>.log`, dentro del repo** (ignorado por git).
+  Antes cada quien lo escondía en su propio directorio temporal, así que la
+  única forma de saber por qué no arrancó era preguntarle a quien lo hubiera
+  levantado. Ahora es un `tail -f` y lo lee cualquiera.
+* **Mata al DUEÑO DEL PUERTO, nunca a `node` entero.** En esta máquina puede
+  haber a la vez un dev en :8734, un servidor fresco en :8736 y un `vite
+  preview` en :8799; llevárselos por delante es peor que el problema.
+* **`--clean` es opt-in**, y por lo que ya dice la sección de arte más abajo: el
+  proceso de :8734 es PERSISTENTE y borrarle la caché como parte del ciclo de
+  edición cuesta un arranque en frío cada vez sin arreglar nada. Reiniciar es
+  diagnóstico; borrar la caché es el último paso, nunca el primero.
+
+Y espera a que el puerto RESPONDA en vez de dormir un rato fijo: en frío Vite
+tarda más, y un `sleep` a ojo declara éxito antes de tiempo.
 
 Deploy: push to `main` → `.github/workflows/deploy.yml` builds with pnpm and
 publishes `dist/` to GitHub Pages (https://churchill.jcampos.dev, `CNAME`).

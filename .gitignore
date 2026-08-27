@@ -27,3 +27,6 @@ __pycache__/
 # Claude Code: the /roadmap command is shared, the rest is per-machine
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Logs del servidor de desarrollo (./reboot-server.sh)
+logs/

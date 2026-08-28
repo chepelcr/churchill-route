@@ -159,35 +159,16 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
 ## 4. El mundo: medido y sin cerrar
 
-- [ ] **EL NORTE NO SE CONECTA POR TIERRA — un corte de 95 m… de 95 PÍXELES.**
-      Medido el 2026-08-28 sobre el mundo emitido, decodificando los tiles (sin
-      pagar corrida): la red manejable tiene **69 componentes**. La península es
-      la **#4** (4 228 466 celdas); **Pitahaya y toda la tierra firme de esa
-      orilla son la #3** (162 945 celdas, x 22 530..60 440), y **en 600 px a la
-      redonda se acercan en UN SOLO PUNTO**.
-
-      Ese punto es el final de la **Calle del Arreo**, que termina en
-      (57908, 8495) y empalma con una vía `unclassified` sin nombre de 3 puntos
-      que muere en **(57951, 8433)**. Enfrente, otra `unclassified` sin nombre
-      arranca en **(58000, 8351)** y sigue al norte. Entre las dos: **~45 px de
-      `CLS_LAND` macizo** más la acera de cada una. En geo, **10.00779,-84.75148
-      → 10.00803,-84.75133**: unos 30 m sin mapear.
-
-      Es una **laguna del mapeo aguas arriba**, no un fallo del builder — las dos
-      vías existen y no comparten nodo. Mientras siga ahí, la única forma de
-      llegar es la puerta del muelle (`crossTheEstero`), que es lo que se
-      implementó ese día.
-
-      Lo que falta decidir es **cómo se cierra**, y el riesgo está en la regla
-      general: soldar automáticamente todo par de extremos de vía a menos de N px
-      es barato de escribir y caro de verificar —puede unir calles que en la
-      vida real no se tocan, en todo el mapa, y sólo se vería conduciendo—. Antes
-      de escribirla hay que **contar cuántos cortes así hay**: si es sólo éste,
-      lo honesto es autorarlo por geo en un registro (la regla de la casa: cada
-      ancla es geo) y que el build lo cosa; si son decenas, entonces sí una regla
-      con tolerancia apretada y su recuento en el log. Cuesta una corrida
-      completa (~33 min) de cualquier forma, así que va con otro cambio del
-      mundo, no sola.
+- [x] ~~**EL NORTE NO SE CONECTA POR TIERRA.**~~ **Cerrado el 2026-08-28.** Se
+      autoró el empalme en geo (`geography.json` -> `roadLinks`, motor en
+      `service/roadlink.py`) y el mundo se reconstruyó: **69 -> 68 componentes**,
+      con la que queda en 4 391 519 celdas = 4 228 466 + 162 945 + las 108 del
+      corredor. NO se escribió una regla general, y está medido por qué: hay
+      1 568 extremos libres y 128 pares a menos de 100 px, de los que sólo 9
+      comparten nombre — y las dos puntas de la Calle del Arreo son anónimas, así
+      que una regla o se pierde la que importa o suelda las 128.
+      `finish.verify` exige ahora que las puntas queden en la componente que
+      alcanza el spawn: la invariante de alcanzabilidad que no existía.
 
 - [x] ~~**EL ESTERO SE ABRE.**~~ **Implementado el 2026-08-23.** El usuario pidió
       «un estero completamente abierto y manejable, pero **con las boyas** de la
@@ -282,6 +263,43 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
       daba este archivo —"lo comprime el x-warp"— ya no existe (la proyección
       corridor se borró el 2026-07-25). Si sigue leyéndose corto es una decisión
       de escala, no un artefacto.
+
+---
+
+## 4b. El aspecto: tapete de ciudad CON profundidad
+
+Plan en `docs/investigacion-2d-avanzado.md`, con la premisa corregida: **el
+render cuesta 1,24 ms de un cuadro de 16,7**, así que el salto a WebGL que ese
+documento propone resuelve un problema que no existe. Canvas2D se queda y lo que
+faltaban eran las técnicas.
+
+- [x] ~~**Fase 1 — el suelo vuelve a ser lugares.**~~ 2026-08-28: `c2d/noise.js`
+      (ruido de valor sobre el `hash01` que ya existía), `c2d/curves.js`
+      (redondeo por esquina — NO Chaikin, que encoge el polígono y abre las
+      costuras) y `c2d/districts.js` (El Cocal arenal, el Centro cal y zinc, el
+      Paseo pasteles de balneario).
+- [x] ~~**Fase 2 — el pueblo gana volumen.**~~ 2026-08-28: paredes por paralaje
+      con la rotación gratis, sombra como barrido en vez de copia despegada, y
+      orden de pintado por distancia radial. Falta escoger `cameraHeightM` con
+      el ojo: `logs/depth-{150,80,45}m.png`.
+- [ ] **Fase 1b — materiales: patrones y textura.** Hoy `materials.json` y
+      `surfaces.json` son ~266 hex planos y hay **cero `createPattern`** en todo
+      el repo. Falta la noción `flat | gradient | pattern` con caché por
+      `nombre@zoom` (el precedente es `nightlights.js:49`, que cachea el sprite
+      del charco: generar por cuadro es lo que hace inviable la cobertura). El
+      asfalto, el pasto, la arena y los techos siguen siendo relleno sólido.
+- [ ] **Fase 3 — el mundo bajo un cielo.** Sombras de nubes en `multiply` a
+      media resolución, atadas a `stormLevel()` y a la hora.
+- [ ] **El relieve del terreno.** `residentElevationTiles` está construido desde
+      hace tiempo y **no lo consume nadie**, y la ranura
+      `effects.json -> terrainShadow` está documentada en CLAUDE.md y nunca se
+      escribió. Ojo con el dato: la cota es del IGN y el arenal es plano de
+      verdad, así que sólo se notará tierra adentro — hay que decirlo o parecerá
+      que no funciona.
+- [ ] **Dos archivos que este trabajo dejó grandes.** `systemShapes.js` (669) y
+      `streets.js` (649) siguen enteros; el plan preveía sacarles
+      `paintRoadNetwork` y el suelo de parcelas a sus propios módulos, y no hizo
+      falta para lo de arriba. `hud.js` (781) y `landmarks.js` (672) van después.
 
 ---
 

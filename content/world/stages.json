@@ -170,12 +170,8 @@
         10.02539,
         -84.82923
       ],
-      "deck": [
-        86,
-        34
-      ],
-      "dockS": 20,
-      "speed": 150
+      "speedMS": 60.0,
+      "_units": "deck y dockS los pone src/assets/world-units.json -> vessels.lancha, en metros. Estaban aqui en px (86x34, dockS 20) y coincidian con el registro SOLO a 2.5 px/m: el reescalado del 2026-08-27 los separo y `tests/test_world_units.py` lo cazo. speedMS es m/s."
     }
   ]
 }

@@ -10,8 +10,8 @@
       "district": "faro",
       "product": "churchill",
       "osm": "faro de la punta",
-      "dx": 106,
-      "dy": 131
+      "dxM": 42.4,
+      "dyM": 52.4
     },
     {
       "id": "kios_paseo1",
@@ -19,8 +19,8 @@
       "district": "paseo",
       "product": "churchill",
       "osm": "kioscos paseo de los turistas",
-      "dx": -75,
-      "dy": 100
+      "dxM": -30.0,
+      "dyM": 40.0
     },
     {
       "id": "kios_paseo2",
@@ -28,10 +28,10 @@
       "district": "paseo",
       "product": "vigoron",
       "osm": "kioscos paseo de los turistas",
-      "dx": 75,
-      "dy": 100,
       "_wasName": "Churchill El Mariachi",
-      "_renameWhy": "vendía vigorón y se anunciaba como churchill; no tiene negocio real detrás, así que conserva el personaje y corrige la comida"
+      "_renameWhy": "vendía vigorón y se anunciaba como churchill; no tiene negocio real detrás, así que conserva el personaje y corrige la comida",
+      "dxM": 30.0,
+      "dyM": 40.0
     },
     {
       "id": "kios_centro",

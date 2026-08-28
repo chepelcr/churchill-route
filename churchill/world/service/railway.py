@@ -85,6 +85,30 @@ class _Aligner:
             raise ValueError("railway shoulderSide must be 'preserve-local-raw'")
         self.true_clearance = spec["trueClearanceM"] * px_per_m
         self.midpoint_tolerance = spec["pairMidpointToleranceM"] * px_per_m
+        #: CUÁNTO PUEDE ESTAR LA CUERDA CORRIDA, y por qué es OTRA tolerancia.
+        #:
+        #: `across` no mide si el riel va entre las dos avenidas —eso lo mide la
+        #: banda `along`, y sigue en `midpoint_tolerance`—: mide cuánto se corrió
+        #: A LO LARGO DEL CORREDOR el pie que la búsqueda encontró en cada
+        #: calzada respecto de la muestra. Con las dos avenidas paralelas es casi
+        #: cero; donde ABREN, la cuerda que une los dos pies deja de ser
+        #: perpendicular al riel y `across` crece por geometría, no por
+        #: desalineación.
+        #:
+        #: Medido en el punto donde esto salta (x ≈ 16 330 m, la Avenida Alberto
+        #: Echandi abriéndose): la separación pasa de 45,8 m a 53,7 m en 25 m de
+        #: riel, y `across` llega a **4,52 m** — mientras `along` se queda
+        #: clavado en la mitad exacta de la separación en las doce muestras, o
+        #: sea que el riel va perfectamente centrado. Con una sola tolerancia de
+        #: 3 m eso se reportaba como «12 muestras no van entre sus calzadas», que
+        #: sobre esas doce es literalmente falso.
+        #:
+        #: Es independiente de la escala: a 2,5 px/m las mismas muestras dan
+        #: 3,05–4,46 m y a 3,125 dan 3,68–4,52. Falla en las dos, así que no lo
+        #: causó el reescalado del 2026-08-27 — lo destapó, porque el campo de
+        #: dilatación que se apagó movía esas muestras lo justo para pasar.
+        self.chord_tolerance = spec.get("pairChordToleranceM",
+                                        spec["pairMidpointToleranceM"]) * px_per_m
         self.road_order = {id(road): i for i, road in enumerate(roads)}
 
         names = []
@@ -453,7 +477,7 @@ class _Aligner:
             "pairTrueHits": 0, "pairPaintedHits": 0,
             "handoffSamples": 0, "handoffTrueHits": 0,
             "handoffPaintedHits": 0,
-            "pairBetweenErrors": 0, "pairMidpointErrors": 0,
+            "pairBetweenErrors": 0, "pairChordErrors": 0, "pairMidpointErrors": 0,
             "pairNoTrueGap": 0,
         }
         checks = _sample_piece(aligned_flat, self.check_sample)
@@ -514,10 +538,15 @@ class _Aligner:
             vx, vy = check["p"][0] - a[0], check["p"][1] - a[1]
             along = vx * u[0] + vy * u[1]
             across = abs(vx * u[1] - vy * u[0])
+            # DOS PREGUNTAS DISTINTAS, y estaban compartiendo un número y un
+            # mensaje. La banda dice si el riel va ENTRE las dos calzadas; la
+            # cuerda dice si los dos pies quedaron a la altura de la muestra.
+            # Ver `chord_tolerance` arriba para las medidas.
             if along < -self.midpoint_tolerance \
-                    or along > separation + self.midpoint_tolerance \
-                    or across > self.midpoint_tolerance:
+                    or along > separation + self.midpoint_tolerance:
                 report["pairBetweenErrors"] += 1
+            elif across > self.chord_tolerance:
+                report["pairChordErrors"] += 1
             if abs(along - separation / 2.0) > self.midpoint_tolerance:
                 report["pairMidpointErrors"] += 1
         return report
@@ -580,6 +609,10 @@ def alignment_failures(reports, *, require_alignment=True):
             failures.append(
                 f"rail {piece}: {report['pairBetweenErrors']} pair samples not "
                 "between their named carriageways")
+        if report["pairChordErrors"]:
+            failures.append(
+                f"rail {piece}: {report['pairChordErrors']} pair samples whose "
+                "carriageway feet are not abeam of them")
         if report["pairMidpointErrors"]:
             failures.append(
                 f"rail {piece}: {report['pairMidpointErrors']} pair samples too "
@@ -597,7 +630,7 @@ def alignment_log_line(report):
         f"{report['pairTrueHits']}/{report['pairPaintedHits']} diagnostic, "
         f"handoff true/painted hits {report['handoffTrueHits']}/"
         f"{report['handoffPaintedHits']} diagnostic, "
-        f"between/midpoint errors {report['pairBetweenErrors']}/"
-        f"{report['pairMidpointErrors']}, no-true-gap "
+        f"between/chord/midpoint errors {report['pairBetweenErrors']}/"
+        f"{report['pairChordErrors']}/{report['pairMidpointErrors']}, no-true-gap "
         f"{report['pairNoTrueGap']}"
     )

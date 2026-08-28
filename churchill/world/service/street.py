@@ -34,7 +34,7 @@ from collections import defaultdict
 
 from ..config import (
     CUAD, MUELLE_STREET, STREET_AT_SPAN_M, STREET_DIR_SPAN_M,
-    STREET_NEAR_SPAN_M, STREET_SPAN_M, street_span_px,
+    STREET_NEAR_SPAN_M, STREET_SPAN_M, px as to_px, street_span_px,
 )
 from ..util.geometry import principal_axis
 
@@ -315,7 +315,15 @@ class StreetIndex:
                 for nm, v in sorted(near.items())}
 
 
-def street_end(roads, name, near_x, near_y, end="south", reach=1500):
+#: HASTA DÓNDE SE BUSCA UNA CALLE POR SU NOMBRE, en metros. Eran 1500 px
+#: escritos como valor por defecto, y a 3.125 px/m habrían pasado a valer 480 m
+#: en vez de 600 — justo la clase de encogimiento silencioso que ya dejó a la
+#: Calle 6 fuera de un span de 700 px en el reescalado de 1.6 -> 2.0 y sacó a
+#: Kiosco Playitas de la red manejable. Al 2.5 de siempre dan exactamente 1500.
+STREET_END_REACH_PX = to_px(600.0)
+
+
+def street_end(roads, name, near_x, near_y, end="south", reach=STREET_END_REACH_PX):
     """(x, y) of a named street's SOUTHERN or NORTHERN extreme near an anchor.
 
     A muelle stands at the end of a calle, and which end matters twice over:
@@ -327,11 +335,20 @@ def street_end(roads, name, near_x, near_y, end="south", reach=1500):
 
     The proximity filter is not optional: 'Calle Central' also exists in
     Esparza and Barranca, and 'Calle 2' exists in half the cantons on the map.
+
+    `name` MAY BE A LIST OF CANDIDATES, and it has to be able to be. The real
+    grid is patchy: a calle that reaches the water often does so under a second
+    name past the avenida that crosses it, so the "end" of the first one is a
+    junction and not a shore. That is the same reason `block_rect` takes a list
+    per edge, and it is what the Muelle de Pitahaya needed — see
+    `PITAHAYA_STREETS`. The extreme is taken across ALL the candidates, so the
+    order in the list carries no meaning.
     """
     best = None
-    key = name.lower()
+    names = [name] if isinstance(name, str) else list(name)
+    keys = {n.lower() for n in names}
     for r in roads:
-        if (r.get("name") or "").lower() != key:
+        if (r.get("name") or "").lower() not in keys:
             continue
         p = r["pts"]
         for i in range(0, len(p), 2):

@@ -4,162 +4,163 @@
     "id": "feria_paseo",
     "name": "Campo Ferial del Paseo",
     "host": "La Takería",
-    "w": 560,
-    "h": 200
+    "wM": 224.0,
+    "hM": 80.0,
+    "_units": "wM/hM: el suelo del campo ferial EN METROS. Eran 560x200 px afinados a 2.5 px/m; el reescalado del 2026-08-27 los habria dejado un 20 % cortos."
   },
   "attractions": [
     {
       "id": "rueda",
       "name": "La Rueda de Chicago",
       "kind": "rueda",
-      "at": [
-        -232,
-        -10
+      "atM": [
+        -92.8,
+        -4.0
       ],
-      "r": 22
+      "rM": 8.8
     },
     {
       "id": "pulpo",
       "name": "El Pulpo",
       "kind": "pulpo",
-      "at": [
-        -142,
-        -14
+      "atM": [
+        -56.8,
+        -5.6
       ],
-      "r": 19
+      "rM": 7.6
     },
     {
       "id": "martillo",
       "name": "El Martillo",
       "kind": "martillo",
-      "at": [
-        -46,
-        -16
+      "atM": [
+        -18.4,
+        -6.4
       ],
-      "r": 17
+      "rM": 6.8
     },
     {
       "id": "sillas",
       "name": "Las Sillas Voladoras",
       "kind": "sillas",
-      "at": [
-        44,
-        -14
+      "atM": [
+        17.6,
+        -5.6
       ],
-      "r": 17
+      "rM": 6.8
     },
     {
       "id": "terror",
       "name": "La Casa del Terror",
       "kind": "terror",
-      "at": [
-        140,
-        -14
+      "atM": [
+        56.0,
+        -5.6
       ],
-      "r": 18
+      "rM": 7.2
     },
     {
       "id": "carrusel",
       "name": "El Carrusel",
       "kind": "carrusel",
-      "at": [
-        232,
-        -12
+      "atM": [
+        92.8,
+        -4.8
       ],
-      "r": 17
+      "rM": 6.8
     },
     {
       "id": "tagada",
       "name": "La Tagada",
       "kind": "tagada",
-      "at": [
-        -206,
-        52
+      "atM": [
+        -82.4,
+        20.8
       ],
-      "r": 19
+      "rM": 7.6
     },
     {
       "id": "chocones",
       "name": "Los Chocones",
       "kind": "chocones",
-      "at": [
-        -110,
-        54
+      "atM": [
+        -44.0,
+        21.6
       ],
-      "r": 21
+      "rM": 8.4
     },
     {
       "id": "barco",
       "name": "El Barco Pirata",
       "kind": "barco",
-      "at": [
-        -10,
-        52
+      "atM": [
+        -4.0,
+        20.8
       ],
-      "r": 19
+      "rM": 7.6
     },
     {
       "id": "gusano",
       "name": "El Gusanito",
       "kind": "gusano",
-      "at": [
-        80,
-        54
+      "atM": [
+        32.0,
+        21.6
       ],
-      "r": 15
+      "rM": 6.0
     },
     {
       "id": "argollas",
       "name": "Tiro al Blanco",
       "kind": "argollas",
-      "at": [
-        158,
-        54
+      "atM": [
+        63.2,
+        21.6
       ],
-      "r": 13
+      "rM": 5.2
     },
     {
       "id": "tombola",
       "name": "La Tómbola",
       "kind": "tombola",
-      "at": [
-        228,
-        54
+      "atM": [
+        91.2,
+        21.6
       ],
-      "r": 12
+      "rM": 4.8
     },
     {
       "id": "chin_canton",
       "name": "Arroz Cantonés",
       "kind": "chinamo",
-      "at": [
-        -84,
-        14
+      "food": "canton",
+      "atM": [
+        -33.6,
+        5.6
       ],
-      "r": 14,
-      "food": "canton"
+      "rM": 5.6
     },
     {
       "id": "chin_manzanas",
       "name": "Manzanas Escarchadas",
       "kind": "chinamo",
-      "at": [
-        0,
-        14
+      "food": "manzana",
+      "atM": [
+        0.0,
+        5.6
       ],
-      "r": 14,
-      "food": "manzana"
+      "rM": 5.6
     },
     {
       "id": "chin_churros",
       "name": "Churros Rellenos",
       "kind": "chinamo",
-      "at": [
-        84,
-        14
+      "food": "churro",
+      "atM": [
+        33.6,
+        5.6
       ],
-      "r": 14,
-      "food": "churro"
+      "rM": 5.6
     },
     {
       "id": "dj_urtech",
@@ -169,7 +170,8 @@
         9.97495,
         -84.84405
       ],
-      "r": 20,
+      "_at": "ANCLA GEO, no un desplazamiento. El DJ se sienta en la FRONTERA del edificio real que toca (`host`), así que su sitio es una coordenada del mundo y no una posición dentro del campo ferial — al contrario que los juegos, cuyo `atM` es un offset en metros desde el centro del campo. La migración de metros del 2026-08-27 estuvo a punto de convertir esto y dejar al DJ en (4, -34).",
+      "rM": 8.0,
       "host": "La Takería"
     }
   ],
@@ -181,7 +183,7 @@
         9.97481,
         -84.83187
       ],
-      "w": 34
+      "wM": 13.6
     },
     {
       "id": "muelle_este",
@@ -190,7 +192,7 @@
         9.97481,
         -84.83105
       ],
-      "w": 34
+      "wM": 13.6
     },
     {
       "id": "caldera_playa",
@@ -199,7 +201,7 @@
         9.92983,
         -84.71084
       ],
-      "w": 30
+      "wM": 12.0
     },
     {
       "id": "tivives",
@@ -208,7 +210,7 @@
         9.85763,
         -84.6986
       ],
-      "w": 30
+      "wM": 12.0
     }
   ],
   "_size": "EL TAMAÑO ES EN PÍXELES DE MUNDO y a 2,5 px/m se lee en metros. Estaban de más: un chinamo con r=44 mide 35 m de ancho —un puesto de comida— y el carrusel con r=26 medía 21 m contra los 10–12 de uno real. Ahora la rueda mide ~18 m de diámetro, el carrusel ~14 y un chinamo ~11 de frente, que es un chinamo grande. Y el radio es también el COLISIONADOR (`actors.json -> attraction`), así que achicarlos no sólo se ve mejor: deja pasar entre ellos.",

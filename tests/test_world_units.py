@@ -47,6 +47,18 @@ def read(path):
         return fh.read()
 
 
+#: LA ESCALA A LA QUE SE DEMOSTRÓ LA CONVERSIÓN, y no la escala de hoy.
+#:
+#: El 2026-08-14 cada longitud del mundo se movió a `world-units.json` en metros,
+#: y lo que hizo esa migración demostrable fue que TODAS derivaban exactamente al
+#: entero que estaban escritas antes — a 2.5 px/m, que era la escala entonces.
+#: Esa prueba es histórica: dice que la conversión no perdió nada. El 2026-08-27
+#: el mundo se reescaló a 3.125 y cada uno de esos enteros cambió, como tenía que
+#: pasar. Leída como «el valor de hoy», la prueba habría exigido que el mundo no
+#: se pudiera reescalar nunca — que es lo contrario de para lo que se escribió.
+CONVERSION_PPM = 2.5
+
+
 def manifest():
     return json.loads(read(MANIFEST))
 
@@ -166,10 +178,22 @@ class DerivationTests(unittest.TestCase):
         view to 57. Authored as screen px per METRE it cannot be got wrong.
         """
         floor = UNITS["camera"]["minScreenPxPerM"] / config.PLANAR_PX_PER_M
-        self.assertAlmostEqual(floor, 2.2, places=12,
+        # AT THE SCALE IT WAS AUTHORED FOR it is the bare 2.2 the game always
+        # used — that is what says the conversion to screen-px-per-metre was
+        # lossless. Pinned to 2.2 at TODAY's scale it would instead have
+        # forbidden the rescale, which is the trap one level up from the one
+        # this test was written for.
+        self.assertAlmostEqual(UNITS["camera"]["minScreenPxPerM"] / CONVERSION_PPM,
+                               2.2, places=12,
                                msg="the floor no longer derives to the 2.2 the "
-                                   "game has always used at this scale")
-        # …and at a hypothetical 4.0 px/m it must fall, not rise.
+                                   "game used at the scale it was authored for")
+        # …and today's floor must have FALLEN with the rescale, not risen: the
+        # world gained pixels per metre, so the magnification loses them.
+        # At 3.125 this is 1.76.
+        self.assertAlmostEqual(floor, 2.2 * CONVERSION_PPM / config.PLANAR_PX_PER_M,
+                               places=12)
+        self.assertLessEqual(floor, 2.2)
+        # …and at a hypothetical 4.0 px/m it must fall further still.
         self.assertLess(UNITS["camera"]["minScreenPxPerM"] / 4.0, floor)
 
 
@@ -193,23 +217,40 @@ class WorldDistanceTests(unittest.TestCase):
         return round(m2 * config.PLANAR_PX_PER_M ** 2)
 
     def test_the_lengths_land_on_their_original_pixels(self):
+        """Two assertions, and separating them is the whole point.
+
+        This used to compare each constant against the integer it was hard-coded
+        as BEFORE the conversion — a proof that moving it into the registry was
+        lossless. Then the world was rescaled to 3.125 px/m (2026-08-27) and
+        every one of those integers legitimately changed, so read literally the
+        test would have demanded the rescale not happen.
+
+        What actually survives a rescale is the pair: the conversion was exact
+        AT THE SCALE IT WAS PROVED AT, and the constant still derives from the
+        registry TODAY. A constant that quietly went back to being a literal
+        fails the second half at any scale.
+        """
         want = {
-            "POI_NUDGE_PX": (750, config.px(self.w["poi"]["nudgeM"])),
-            "SERVICE_MIN_PX": (150, config.px(self.w["poi"]["serviceMinM"])),
-            "MARINE_POOL_GROUND_CLEAR_PX": (28, config.px(self.w["marine"]["poolGroundClearM"])),
-            "MARINE_POOL_MIN_SPACING_PX": (72, config.px(self.w["marine"]["poolSpacingM"])),
-            "MARINE_POOL_RAIL_CLEAR_PX": (52, config.px(self.w["marine"]["railClearM"])),
-            "MARINE_STRUCTURE_PARCEL_PAD_PX": (8, config.px(self.w["marine"]["structurePadM"])),
-            "SPIT_MAX_WIDTH_PX": (4000, config.px(self.w["estero"]["spitMaxWidthM"])),
-            "SPIT_SHORE_TOL_PX": (200, config.px(self.w["estero"]["spitShoreTolM"])),
-            "ESTERO_MAINLAND_PX": (4000, config.px(self.w["estero"]["mainlandM"])),
-            "MANGROVE_PITCH_PX": (56, config.px(self.w["estero"]["mangrovePitchM"])),
-            "MALECON_MIN_SAND_PX": (24, config.px(self.w["malecon"]["minSandM"])),
-            "MALECON_MIN_TAKE_PX": (12, config.px(self.w["malecon"]["minTakeM"])),
+            "POI_NUDGE_PX": (750, self.w["poi"]["nudgeM"]),
+            "SERVICE_MIN_PX": (150, self.w["poi"]["serviceMinM"]),
+            "MARINE_POOL_GROUND_CLEAR_PX": (28, self.w["marine"]["poolGroundClearM"]),
+            "MARINE_POOL_MIN_SPACING_PX": (72, self.w["marine"]["poolSpacingM"]),
+            "MARINE_POOL_RAIL_CLEAR_PX": (52, self.w["marine"]["railClearM"]),
+            "MARINE_STRUCTURE_PARCEL_PAD_PX": (8, self.w["marine"]["structurePadM"]),
+            "SPIT_MAX_WIDTH_PX": (4000, self.w["estero"]["spitMaxWidthM"]),
+            "SPIT_SHORE_TOL_PX": (200, self.w["estero"]["spitShoreTolM"]),
+            "ESTERO_MAINLAND_PX": (4000, self.w["estero"]["mainlandM"]),
+            "MANGROVE_PITCH_PX": (56, self.w["estero"]["mangrovePitchM"]),
+            "MALECON_MIN_SAND_PX": (24, self.w["malecon"]["minSandM"]),
+            "MALECON_MIN_TAKE_PX": (12, self.w["malecon"]["minTakeM"]),
         }
-        for name, (was, now) in want.items():
-            self.assertEqual(now, was, f"{name}: {now} px, was {was}")
-            self.assertEqual(getattr(config, name), was, f"config.{name} drifted")
+        for name, (was, metres) in want.items():
+            self.assertEqual(round(metres * CONVERSION_PPM), was,
+                             f"{name}: {metres} m does not reproduce the {was} px "
+                             f"it was converted from, at the {CONVERSION_PPM} px/m "
+                             f"the conversion was proved at")
+            self.assertEqual(getattr(config, name), config.px(metres),
+                             f"config.{name} no longer derives from the registry")
 
     def test_the_last_fifteen_landed_on_their_own_numbers(self):
         """The audit's remainder, converted 2026-08-14.
@@ -264,14 +305,22 @@ class WorldDistanceTests(unittest.TestCase):
                          round(self.px2(self.w["faro"]["esplanadeMaxM2"]) / cell2))
 
     def test_the_services_derive_the_same(self):
+        """Same shape as the test above: exact at the scale it was proved at,
+        and still derived today."""
         from churchill.world.service import ferry, lancha
-        self.assertEqual(lancha.CHANNEL_HW, 150)
-        self.assertNotIn("dredgeEndPadM", UNITS["world"]["lancha"])
-        self.assertEqual(lancha.SIMPLIFY_PX, 60.0)
-        self.assertEqual(lancha.SNAP_PX, 400.0)
-        self.assertEqual(lancha.MIN_ACCESS_PX, 24.0)
-        self.assertEqual(lancha.SEARCH_PAD_PX, 6000)
-        self.assertEqual(ferry.RIDE_PX, 1800.0)
+        L = UNITS["world"]["lancha"]
+        self.assertNotIn("dredgeEndPadM", L)
+        want = {
+            "CHANNEL_HW": (150, L["clearanceM"], lancha.CHANNEL_HW),
+            "SIMPLIFY_PX": (60.0, L["simplifyM"], lancha.SIMPLIFY_PX),
+            "SNAP_PX": (400.0, L["snapM"], lancha.SNAP_PX),
+            "MIN_ACCESS_PX": (24.0, L["minAccessM"], lancha.MIN_ACCESS_PX),
+            "SEARCH_PAD_PX": (6000, L["searchPadM"], lancha.SEARCH_PAD_PX),
+            "RIDE_PX": (1800.0, UNITS["world"]["ferry"]["rideM"], ferry.RIDE_PX),
+        }
+        for name, (was, metres, now) in want.items():
+            self.assertEqual(round(metres * CONVERSION_PPM), was, f"{name} at the reference scale")
+            self.assertEqual(now, config.px(metres), f"{name} no longer derives from the registry")
 
     def test_the_marine_clearance_clears_the_raster(self):
         """The drawn deck is continuous and the ground it must sit inside is
@@ -286,13 +335,52 @@ class WorldDistanceTests(unittest.TestCase):
         person converts it for tidiness and it breaks in the direction nobody
         expects."""
         native = self.w["_pxNative"]
-        for key in ("kioskWaterClearPx", "channelHwCapPx", "bldgInsetPx",
-                    "dpTolerancePx", "buildingScale"):
+        for key in ("kioskWaterClearPx", "bldgInsetPx", "lotSizePx"):
             self.assertIn(key, native, f"{key} has no recorded reason for staying px")
             self.assertGreater(len(native[key]), 40, f"{key}'s reason is too thin to be one")
-        # …and they must actually still be px in the source.
+        # …and they must actually still be px in the source. Both are sized
+        # against DRAWN ART, which is the one thing a rescale does not move.
         self.assertEqual(config.KIOSK_WATER_CLEAR_PX, 30)
         self.assertEqual(config.BLDG_INSET, 2)
+
+    def test_the_four_that_stopped_being_px_native_actually_scale(self):
+        """EL REESCALADO COBRÓ CUATRO DE ESA LISTA, y quedarse callado sería la
+        deriva: una entrada que dice «se queda en píxeles» sobre un valor que
+        ahora escala es peor que no tener la lista.
+
+        Las cuatro estaban ahí por el mismo malentendido — «px-native» se usaba
+        para decir «no depende del suelo», cuando lo que decide es si depende de
+        la ESCALA. El tope del canal es el caso claro: su razón decía que la
+        cámara encuadra un número fijo de METROS «así que el px es lo que lo
+        sostiene», y es exactamente al revés — cuántos píxeles son esos 160
+        metros es lo único que un reescalado cambia.
+        """
+        from churchill.world.service import lancha, placement
+        ppm = config.PLANAR_PX_PER_M
+        for name, value, metres in (
+            ("CHANNEL_HW_CAP", lancha.CHANNEL_HW_CAP, 76.0),
+            ("CHANNEL_HW_MIN", lancha.CHANNEL_HW_MIN, 25.6),
+            ("SNAP_REACH_PX", placement.SNAP_REACH_PX, 64.0),
+            ("SNAP_INSET_PX", placement.SNAP_INSET_PX, 12.8),
+            ("DP_ROAD_PX", config.DP_ROAD_PX, 0.4),
+            ("DP_BUILDING_PX", config.DP_BUILDING_PX, 0.8),
+            ("DP_COAST_PX", config.DP_COAST_PX, 1.0),
+            ("DP_SAND_PX", config.DP_SAND_PX, 4.8),
+        ):
+            self.assertAlmostEqual(value, metres * ppm, delta=0.5,
+                                   msg=f"{name} stopped tracking the scale")
+            self.assertAlmostEqual(metres * CONVERSION_PPM,
+                                   {"CHANNEL_HW_CAP": 190, "CHANNEL_HW_MIN": 64,
+                                    "SNAP_REACH_PX": 160, "SNAP_INSET_PX": 32,
+                                    "DP_ROAD_PX": 1.0, "DP_BUILDING_PX": 2.0,
+                                    "DP_COAST_PX": 2.5, "DP_SAND_PX": 12.0}[name],
+                                   delta=0.01,
+                                   msg=f"{name} does not reproduce its historical px")
+        # BUILDING_SCALE is the odd one: a RATIO, so it follows the street
+        # multiplier rather than the scale — and it used to follow it only in a
+        # comment, which is why the rescale would have left it behind.
+        self.assertAlmostEqual(
+            config.BUILDING_SCALE, 1.4 * config.ARCADE_STREET_MUL / 2.32, places=4)
 
 
 class SingleCopyTests(unittest.TestCase):

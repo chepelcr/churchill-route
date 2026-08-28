@@ -94,9 +94,17 @@ class StandContractTests(unittest.TestCase):
         # An isolated, axis-aligned stadium makes every raster answer obvious.
         # The surrounding ROAD represents its bounding streets.
         raster = Raster(64, 52, GRID_CELL, fill=CLS_ROAD)
-        footprint = [60, 60, 180, 60, 180, 140, 60, 140]
-        inner = {(c, r) for r in range(15, 35) for c in range(15, 45)}
-        outer = {(c, r) for r in range(12, 38) for c in range(12, 48)}
+        # EL CONTORNO SE DERIVA DE LAS CELDAS, no se escribe en píxeles al lado
+        # de ellas. Estaba como `[60, 60, 180, 60, …]`, que es el mismo
+        # rectángulo que `range(15, 45)` x `range(15, 35)` SÓLO si la celda mide
+        # 4 px — y el reescalado a 3.125 px/m la puso en 5, con lo que el
+        # contorno y el anillo dejaron de solaparse y no salía ni una grada. El
+        # fixture no estaba mal: estaba escrito en dos unidades a la vez.
+        C0, C1, R0, R1 = 15, 45, 15, 35
+        footprint = [C0 * GRID_CELL, R0 * GRID_CELL, C1 * GRID_CELL, R0 * GRID_CELL,
+                     C1 * GRID_CELL, R1 * GRID_CELL, C0 * GRID_CELL, R1 * GRID_CELL]
+        inner = {(c, r) for r in range(R0, R1) for c in range(C0, C1)}
+        outer = {(c, r) for r in range(R0 - 3, R1 + 3) for c in range(C0 - 3, C1 + 3)}
         ring = outer - inner
         quads = stadium_stand_quads(footprint, {"sides": list(SIDES)})
         walls = stadium_stand_cells(ring, quads)
@@ -111,9 +119,12 @@ class StandContractTests(unittest.TestCase):
             self.assertEqual(raster.at(*cell), CLS_ROAD, cell)
         self.assertEqual(raster.at(30, 25), CLS_ROAD, "pitch became wall")
 
+        # …y la parcela también: es EL MISMO rectángulo que el contorno, así que
+        # escribirlo otra vez en píxeles era la tercera copia de un número.
         parcel = {"id": "estadio_field", "use": "stadium",
-                  "cx": 120, "cy": 100,
-                  "x0": 60, "y0": 60, "x1": 180, "y1": 140}
+                  "cx": (C0 + C1) / 2 * GRID_CELL, "cy": (R0 + R1) / 2 * GRID_CELL,
+                  "x0": C0 * GRID_CELL, "y0": R0 * GRID_CELL,
+                  "x1": C1 * GRID_CELL, "y1": R1 * GRID_CELL}
         self.assertEqual(field_escape_status(raster, parcel)[0], "escaped")
 
         # Prove this is the final gate doing work, not a trivially passing test:

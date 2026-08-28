@@ -15,21 +15,27 @@ cayeron están al final, listadas en vez de borradas en silencio.
 
 ## 1. El mundo — decisiones que esperan al usuario
 
-- [ ] **El reescalado: elegir el encuadre EN UN TELÉFONO.** `docs/RESCALE.md`
-      está completo y **los pasos 0 y 2 ya se hicieron** (la cuadrícula dejó de
-      ser unidad de pantalla; ninguna medida del mundo queda en px sin una razón
-      escrita). Falta el paso 1, que **no es técnico**: es un juicio de feel que
-      ninguna medición resuelve — cuánta calle adelante se está dispuesto a
-      perder. En teléfono las variantes A y B son indistinguibles, así que la
-      decisión es una sola.
+- [x] ~~**El reescalado: elegir el encuadre EN UN TELÉFONO.**~~ **Cerrado el
+      2026-08-27 en p = 3.125** (`ARCADE_STREET_MUL` 1,856). El encuadre se deja
+      en 160 m, así que la vista en metros no cambia en ninguna pantalla y lo
+      que encoge es el carro: 10,4 m → 8,3, o sea 57 → 46 px de pantalla en
+      teléfono. Las doce clases de vía conservan su ancho pintado AL PÍXEL —la
+      restricción siempre fue en píxeles— y la calle encoge en metros, 16,4 →
+      13,1, que es el suelo que la manzana recupera (+8,9 % en la cuadra del
+      Mercado). La retícula del ráster no se mueve: 19 850 × 12 445 celdas en
+      1 000 tiles, mismo suelo a la misma resolución.
 
-      De ella cuelgan los pasos 3-5: cambiar `PLANAR_PX_PER_M` /
-      `ARCADE_STREET_MUL` / `GRID_CELL` / `CUAD` **juntos** (cambiar uno solo
-      produce un mundo roto), el build de 33 min, re-medir los relojes de etapa
-      —la velocidad es px/s, así que una entrega dura otros segundos— y el
-      **substepping de física**, que ya es marginal hoy: `physics.js` integra en
-      UN paso y a 30 fps el carro avanza 11,7 px por cuadro contra una sonda de
-      ~7,6 px.
+      Los pasos 3-5 fueron con él: `GRID_CELL` y `CUAD` se derivan solos desde
+      el paso 0, las velocidades subieron por 1,25 (px/s), los relojes de etapa
+      **se conservan por construcción** —distancias y velocidades escalan
+      juntas— y el substepping de física entró en la misma tanda.
+
+      Y hubo un cuarto paso que `RESCALE.md` no podía prever: **deshacer el
+      campo de dilatación**, que era exactamente la proyección no uniforme
+      contra la que ese documento advierte. Medido en la ventana del centro,
+      el reescalado le gana de frente: **31 `ghost` sin campo a 2,5, 26 con
+      campo, 21 con el reescalado** — más edificios encajados y las calles
+      rectas.
 
 - [x] ~~**La gradería: los otros tres lados, y por dónde se entra.**~~
       **Cerrado el 2026-08-23.** Lito Pérez emite cuatro bandas de 12 px con las

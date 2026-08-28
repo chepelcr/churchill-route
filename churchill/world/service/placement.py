@@ -25,6 +25,7 @@ from ..config import (
     ACERA_CELLS, CARRIAGEWAY_CLASSES, CLS_ACERA, CLS_BEACH, CLS_BRIDGE,
     CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER, CUAD, CUAD_CELLS, GRID_CELL,
     POI_NUDGE_PX,
+    px as to_px,
 )
 from ..util.geometry import dist, to_m
 
@@ -55,7 +56,15 @@ def drivable_cell(raster, c, r):
     return 0 <= c < cols and 0 <= r < rows and \
         grid[r * cols + c] in (CLS_ROAD, CLS_BRIDGE)
 
-def snap_into_block(raster, x, y, reach_px=160, inset_px=32):
+#: CUÁNTO SE BUSCA Y CUÁNTO SE ENTRA, en metros. Eran 160 y 32 px escritos como
+#: valores por defecto —una manzana de fondo y unos tres metros de zaguán— y a
+#: 3.125 px/m habrían pasado a valer 51 y 10 m sin avisar. Al 2.5 de siempre dan
+#: exactamente los 160 y 32 que eran.
+SNAP_REACH_PX = to_px(64.0)
+SNAP_INSET_PX = to_px(12.8)
+
+
+def snap_into_block(raster, x, y, reach_px=SNAP_REACH_PX, inset_px=SNAP_INSET_PX):
     cols, rows, grid = raster.cols, raster.rows, raster.buf
     # The anchor is on/next to a street; step into the nearest cuadra
     # interior (CLS_LAND) and then a bit deeper (inset) so the footprint

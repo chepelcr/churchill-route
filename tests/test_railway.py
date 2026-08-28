@@ -161,5 +161,93 @@ class AlignmentTests(unittest.TestCase):
                          "pair geometry, not an impossible painted-zero, is its gate")
 
 
+class ChordVersusBandTests(unittest.TestCase):
+    """DOS PREGUNTAS DISTINTAS QUE COMPARTÍAN UN NÚMERO Y UN MENSAJE.
+
+    `along` mide si el riel va ENTRE las dos calzadas. `across` mide si los dos
+    pies que la búsqueda encontró quedaron a la altura de la muestra — con las
+    avenidas paralelas es casi cero, y donde ABREN crece por pura geometría.
+
+    En el mundo real esto salta en un solo sitio: x ≈ 16 330 m, la Avenida
+    Alberto Echandi abriéndose de 45,8 m a 53,7 m en 25 m de riel. Ahí `across`
+    llega a 4,52 m mientras `along` se queda en la MITAD EXACTA de la separación
+    en las doce muestras — o sea que el riel va perfectamente centrado y el que
+    estaba mal era el test, que lo reportaba como «no van entre sus calzadas».
+
+    Es independiente de la escala (3,05–4,46 m a 2,5 px/m; 3,68–4,52 a 3,125),
+    así que no lo causó el reescalado del 2026-08-27: lo destapó, porque el
+    campo de dilatación que se apagó movía esas muestras lo justo para pasar.
+    """
+
+    def _splayed(self, chord_tol):
+        """Dos avenidas que ABREN, con el riel exactamente en medio."""
+        rules = spec(
+            pairMidpointToleranceM=1.0,
+            pairChordToleranceM=chord_tol,
+            dividedRules=[{"id": "d", "names": ["Alberto"], "minM": 5, "maxM": 90}],
+            shoulderNames=["Alberto"],
+        )
+        # una recta y otra que se abre: la cuerda que une sus pies deja de ser
+        # perpendicular al riel, que es lo que hace crecer `across`
+        roads = [{"name": "Alberto", "cls": "residential", "w": 10,
+                  "pts": [-20, -20, 300, -20]},
+                 {"name": "Alberto", "cls": "residential", "w": 10,
+                  "pts": [-20, 20, 300, 60]}]
+        rail = {"pts": [0, 0, 100, 0]}
+        return align_rails([rail], roads, StreetIndex(roads), rules, px_per_m=1.0)
+
+    def test_a_splayed_pair_is_a_chord_error_not_a_between_error(self):
+        _aligned, reports = self._splayed(chord_tol=0.5)
+        r = reports[0]
+        self.assertEqual(r["pairBetweenErrors"], 0,
+                         "el riel va entre las dos avenidas; no es un fallo de banda")
+        self.assertGreater(r["pairChordErrors"], 0,
+                           "la cuerda corrida tiene que contarse por separado")
+        self.assertTrue(any("abeam" in f for f in alignment_failures(reports)),
+                        "el mensaje sigue diciendo lo que no es")
+
+    def test_the_real_tolerance_admits_the_real_splay(self):
+        _aligned, reports = self._splayed(chord_tol=6.0)
+        self.assertEqual(reports[0]["pairChordErrors"], 0)
+        self.assertEqual(alignment_failures(reports), [])
+
+    def test_the_band_still_has_teeth(self):
+        """AFLOJAR LA CUERDA NO PUEDE AFLOJAR LA CONTENCIÓN. Un riel FUERA del
+        par sigue siendo un fallo de banda por muy grande que sea la tolerancia
+        de la cuerda — si no, esto habría sido desactivar la compuerta."""
+        rules = spec(
+            pairMidpointToleranceM=1.0, pairChordToleranceM=1000.0,
+            dividedRules=[{"id": "d", "names": ["Alberto"], "minM": 5, "maxM": 90}],
+            shoulderNames=["Alberto"],
+        )
+        roads = [road("Alberto", -20), road("Alberto", 20)]
+        aligned, _r = align_rails([{"pts": [0, 0, 100, 0]}], roads,
+                                  StreetIndex(roads), rules, px_per_m=1.0)
+        self.assertEqual(aligned[0]["pts"], [0, 0, 100, 0],
+                         "el par centrado sigue siendo el par centrado")
+
+    def test_the_registry_authors_it_and_leaves_the_midpoint_alone(self):
+        self.assertEqual(RAILWAY_DEF["pairMidpointToleranceM"], 3.0,
+                         "la contención NO se tocó")
+        self.assertGreaterEqual(RAILWAY_DEF["pairChordToleranceM"], 4.6,
+                                "por debajo del 4,52 m medido vuelve a fallar")
+
+    def test_it_falls_back_to_the_midpoint_tolerance_when_unauthored(self):
+        """Un registro viejo sin la llave nueva se comporta EXACTAMENTE como
+        antes, que es lo que hace la migración demostrable."""
+        rules = spec(pairMidpointToleranceM=1.0,
+                     dividedRules=[{"id": "d", "names": ["Alberto"],
+                                    "minM": 5, "maxM": 90}],
+                     shoulderNames=["Alberto"])
+        self.assertNotIn("pairChordToleranceM", rules)
+        roads = [{"name": "Alberto", "cls": "residential", "w": 10,
+                  "pts": [-20, -20, 300, -20]},
+                 {"name": "Alberto", "cls": "residential", "w": 10,
+                  "pts": [-20, 20, 300, 60]}]
+        _a, reports = align_rails([{"pts": [0, 0, 100, 0]}], roads,
+                                  StreetIndex(roads), rules, px_per_m=1.0)
+        self.assertGreater(reports[0]["pairChordErrors"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

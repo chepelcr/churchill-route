@@ -539,8 +539,8 @@
       "kind": "bike",
       "medium": "land",
       "stats": {
-        "accel": 170,
-        "top": 180,
+        "accel": 212,
+        "top": 225,
         "turn": 3.4,
         "grip": 0.9,
         "melt": 0.7
@@ -591,8 +591,8 @@
       "kind": "bike",
       "medium": "land",
       "stats": {
-        "accel": 225,
-        "top": 230,
+        "accel": 281,
+        "top": 288,
         "turn": 3.05,
         "grip": 0.85,
         "melt": 1.0
@@ -667,8 +667,8 @@
       "kind": "car",
       "medium": "land",
       "stats": {
-        "accel": 202,
-        "top": 212,
+        "accel": 252,
+        "top": 265,
         "turn": 2.8,
         "grip": 0.82,
         "melt": 0.9
@@ -854,8 +854,8 @@
       "kind": "car",
       "medium": "land",
       "stats": {
-        "accel": 184,
-        "top": 194,
+        "accel": 230,
+        "top": 242,
         "turn": 2.55,
         "grip": 0.8,
         "melt": 0.55
@@ -1012,8 +1012,8 @@
       "kind": "car",
       "medium": "land",
       "stats": {
-        "accel": 253,
-        "top": 270,
+        "accel": 316,
+        "top": 338,
         "turn": 2.45,
         "grip": 0.78,
         "melt": 1.1
@@ -1149,8 +1149,8 @@
       "kind": "car",
       "medium": "land",
       "stats": {
-        "accel": 330,
-        "top": 352,
+        "accel": 412,
+        "top": 440,
         "turn": 3.05,
         "grip": 0.72,
         "melt": 1.3
@@ -1312,8 +1312,8 @@
       "kind": "boat",
       "medium": "water",
       "stats": {
-        "accel": 210,
-        "top": 235,
+        "accel": 262,
+        "top": 294,
         "turn": 2.4,
         "grip": 0.62,
         "melt": 1.0,
@@ -1375,8 +1375,8 @@
       "kind": "boat",
       "medium": "water",
       "stats": {
-        "accel": 265,
-        "top": 305,
+        "accel": 331,
+        "top": 381,
         "turn": 2.7,
         "grip": 0.52,
         "melt": 1.0,
@@ -1419,8 +1419,8 @@
       "kind": "boat",
       "medium": "water",
       "stats": {
-        "accel": 345,
-        "top": 400,
+        "accel": 431,
+        "top": 500,
         "turn": 3.0,
         "grip": 0.42,
         "melt": 1.0,

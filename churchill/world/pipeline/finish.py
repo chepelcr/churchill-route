@@ -19,7 +19,7 @@ from ..config import (
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
     TILE_PX,
 )
-from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, STAGES
+from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, SITE_DECOR, STAGES
 from ..enums import SignKind
 
 
@@ -134,6 +134,31 @@ def _rings_area(rings):
 FIELD_ESCAPE = (CLS_ROAD, CLS_BOULEVARD)
 
 
+def _seg_hits_rect(ax, ay, bx, by, x0, y0, x1, y1):
+    """Does the segment a->b touch the axis-aligned rect? (Liang-Barsky slabs.)
+
+    An endpoint test is not this: a calle stamped straight across a manzana has
+    both its ends OUTSIDE the block it ruins.
+    """
+    dx, dy = bx - ax, by - ay
+    t0, t1 = 0.0, 1.0
+    for (p, q) in ((-dx, ax - x0), (dx, x1 - ax), (-dy, ay - y0), (dy, y1 - ay)):
+        if p == 0:
+            if q < 0:
+                return False          # parallel to this slab and outside it
+            continue
+        t = q / p
+        if p < 0:
+            if t > t1:
+                return False
+            t0 = max(t0, t)
+        else:
+            if t < t0:
+                return False
+            t1 = min(t1, t)
+    return t0 <= t1
+
+
 def field_escape_status(raster, parcel):
     """Whether a stamped cancha can leave its own footprint locally.
 
@@ -213,6 +238,47 @@ def verify(ctx, *, spawn, gate_pois):
             f"{'IS' if ok else 'is NOT'} on the drivable network reached from the spawn")
         if not ok:
             ctx.failures.append(f"unreachable pier {pier['id']}(landward base)")
+    # …Y UN MUELLE NO SE LLEGA ATRAVESANDO UNA MANZANA.
+    #
+    # La compuerta de arriba pregunta si a la base se LLEGA, y a la del Muelle
+    # de Pitahaya se llegaba: su calle auxiliar iba recta desde el final de la
+    # Calle 2 hasta la orilla, 247 px de calzada que cruzaban la manzana del
+    # Mercado Municipal entera. Estaba conectada, era manejable, y pasaba —
+    # porque «alcanzable» y «no le pasa por encima a nadie» son dos preguntas y
+    # sólo se hacía una.
+    #
+    # Se prueba contra las parcelas que son UNA MANZANA COMPLETA (`cuadra`), que
+    # son las que no pueden tener una calle por dentro por definición: el
+    # Mercado ocupa su cuadra de calle a calle, así que cualquier calzada dentro
+    # de su rectángulo es una calzada que no debería existir.
+    # Quiénes son se pregunta al REGISTRO, no a la parcela emitida: `cuadra` es
+    # una instrucción de autoría que `place_osm_sites` consume, así que no viaja
+    # en el mundo, y hacerla viajar sería cambiar el esquema emitido para una
+    # compuerta. `SITE_DECOR` la tiene, y la parcela conserva su id.
+    cuadra_ids = {pid for pid, decor in SITE_DECOR.items() if decor.get("cuadra")}
+    cuadra_parcels = [pc for pc in ctx.parcels if pc.get("id") in cuadra_ids]
+    for pier in ctx.piers:
+        if pier.get("style") not in ("calzada", "apron"):
+            continue
+        pts = pier["pts"]
+        for pc in cuadra_parcels:
+            # SE PRUEBA EL SEGMENTO, NO LOS VÉRTICES, y esta distinción es la
+            # compuerta entera. La calle del Pitahaya iba de (24644,14495) a
+            # (24644,14254) y la manzana del Mercado va de y 14340 a 14460:
+            # ninguno de los dos extremos cae dentro — la atraviesa de lado a
+            # lado y sale por el otro. Una prueba por vértices la habría dejado
+            # pasar exactamente igual que antes, que es la peor clase de
+            # compuerta: la que se escribe, se ve verde y no mira nada.
+            if not any(_seg_hits_rect(pts[i], pts[i + 1], pts[i + 2], pts[i + 3],
+                                      pc["x0"], pc["y0"], pc["x1"], pc["y1"])
+                       for i in range(0, len(pts) - 3, 2)):
+                continue
+            ctx.failures.append(
+                f"{pier['id']}(crosses the {pc.get('name') or pc['id']} manzana)")
+            warn("gate", f"{pier['id']} runs through {pc.get('name') or pc['id']}"
+                 f" — a `cuadra` parcel is a whole manzana and cannot have a "
+                 f"calle inside it; resolve the pier onto the calle that really "
+                 f"reaches the water (see PITAHAYA_STREETS)")
     # UNA CANCHA A LA QUE NO SE ENTRA NO ES UNA CANCHA, y esta compuerta
     # faltaba: `verify_connectivity` cubre los POIs pero no las PARCELAS, así
     # que la Cancha Multiusos del Paseo se publicó inalcanzable y pasó la

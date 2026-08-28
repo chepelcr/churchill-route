@@ -114,8 +114,45 @@ M_PER_DEG_LON = 111320.0 * math.cos(math.radians(LAT0))
 # What it costs: the raster goes from 158M cells to 247M (build ~15 min, ~22 MB
 # emitted), and since speed is px/s a delivery is a longer drive in seconds —
 # measure before touching the stage timers, do not assume.
-PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "2.5"))   # world zoom
-ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "2.32"))  # widen streets
+#
+# 2.5 / 2.32 -> 3.125 / 1.856, EL MISMO MOVIMIENTO, y esta vez es el que sustituye
+# al campo de dilatación (`service/dilation.py`, apagado en la misma corrida).
+# Ese campo separaba las manzanas TORCIENDO las calles: medido sobre el mundo que
+# emitió, 5 509 celdas del pueblo giradas más de 3° (máximo 46°), la Calle 35 de
+# atrás del Balneario doblada de 0.0 a 55.8 px sobre un tramo de 417, el marco de
+# la manzana del Mercado girado de -9.2° a -28.7°, y 370 px de cizalla a lo largo
+# de un Paseo que es recto. `docs/RESCALE.md` ya lo había dicho antes de que
+# existiera —«una proyección NO UNIFORME lo esquiva matemáticamente… costó las
+# distancias verdaderas, las calles rectas y cada gore de cruce hecho a mano. NO
+# LA REVIVAS»— y lo que costó fue exactamente eso.
+#
+# La separación uniforme no torce nada porque es una SEMEJANZA: el mapa entero se
+# estira, así que toda calle conserva su ángulo y sólo se alarga. La proyección
+# sigue siendo una afín exacta, `meta.geo` la describe entera y `meta.warp`
+# desaparece.
+#
+# El escalón sale de barrer la escalera entera: es el primero por encima de 2.55
+# donde las TRES cuantizaciones siguen siendo conmensurables sin tocar un metro
+# de `world-units.json` — GRID_CELL 4->5, CUAD 20->25, TILE_PX 2000->2500, con
+# 25 % 5 == 0 y 2500 % 25 == 0. (Variante A de RESCALE.md pedía 4.0, que NO pasa:
+# 3200 % 30 = 20. Los peldaños de esa rama son 3.75 y 3.125.)
+#
+# Dos invariantes hacen esto barato de revisar:
+#   * TODA calle conserva su ancho pintado EN PÍXELES — 41/52/64/81/93, idénticos
+#     — así que el tráfico, la colisión y el piso de «dos tuktuks se tienen que
+#     cruzar» quedan intactos: esa restricción siempre fue en píxeles. Lo que
+#     encoge es su ancho en METROS, 16.4 -> 13.1, y eso es el suelo que la
+#     manzana recupera (+8.9 % sobre la cuadra del Mercado).
+#   * los px del mundo y los px de la celda escalan los dos por 1.25, así que el
+#     ráster sigue siendo LA MISMA rejilla del mismo suelo a la misma resolución:
+#     19 850 x 12 445 celdas en 1 000 tiles, igual que antes. El volumen de datos
+#     del mundo no cambia.
+# Lo que sí cambia es el carro: 26 px dejan de ser 10.4 m y pasan a ser 8.3 m, o
+# sea 57 -> 46 px de pantalla en un teléfono. Es la dirección que RESCALE.md dice
+# que un mapa a escala pide («achicar los vehículos primero»), y por eso
+# `vehicles.json` sube `accel`/`top` por 1.25 y deja `w`/`h` quietos.
+PLANAR_PX_PER_M = float(os.environ.get("PLANAR_PX_PER_M", "3.125"))   # world zoom
+ARCADE_STREET_MUL = float(os.environ.get("ARCADE_STREET_MUL", "1.856"))  # widen streets
 
 
 def px(m):
@@ -210,7 +247,13 @@ def street_span_px(metres):
 
 # A RATIO, not a length: it matches footprints to the exaggerated road widths,
 # so it moves with ARCADE_STREET_MUL and not with the scale.
-BUILDING_SCALE = 1.4
+#
+# Y AHORA SE MUEVE DE VERDAD. Eso era un comentario y el número era un literal,
+# así que el reescalado de 2026-08-27 —que bajó el multiplicador de 2.32 a
+# 1.856— lo habría dejado atrás en silencio. La relación se escribe, no se
+# recuerda: al multiplicador de referencia da exactamente el 1.4 de siempre.
+_BUILDING_SCALE_REF_MUL = 2.32
+BUILDING_SCALE = round(1.4 * ARCADE_STREET_MUL / _BUILDING_SCALE_REF_MUL, 4)
 
 #: HASTA DÓNDE SE DEJA ENCOGER EL CONTENIDO DE UNA MANZANA para que quepa
 #: dentro de su propio anillo de acera. `fit_manzana_contents` escala el GRUPO
@@ -236,10 +279,26 @@ BUILDING_SCALE = 1.4
 #: carro, no la manzana.
 MANZANA_FIT_MIN_SCALE = float(os.environ.get("MANZANA_FIT_MIN_SCALE", "1.0"))
 
-#: ¿SE DILATAN LAS MANZANAS? Ver `service/dilation.py`. En 0 el mundo se
-#: construye como siempre —las calles se comen 4.7 m por lado de cada cuadra— y
-#: es la vuelta atrás si algo sale raro, sin tocar código.
-DILATION_ON = os.environ.get("DILATION", "1") not in ("0", "off", "false")
+#: ¿SE DILATAN LAS MANZANAS CON UN CAMPO? **NO, Y ESTÁ MEDIDO.** Ver
+#: `service/dilation.py`, que se conserva entero con sus pruebas.
+#:
+#: El campo le devolvía suelo a la manzana TORCIENDO la calle, porque las
+#: manzanas se trasladan rígidas y la calzada queda en el resto suavizado: sobre
+#: el mundo que emitió, desplazamiento máximo 392 px, **5 509 celdas del pueblo
+#: giradas más de 3°** (máximo 46°) y divergencia de área hasta 1.15. En el mapa
+#: eso se ve como que el Paseo deja de encontrarse con la calle del faro, que la
+#: ele de atrás del Balneario deja de ser una ele y que las calles del Mercado
+#: se recuestan.
+#:
+#: Y lo que compraba, medido contra dos mundos anteriores en git: el suelo pisado
+#: por huellas con nombre baja 0.87 % -> 0.59 %, y quince `ghost` de 62. Sobre
+#: las 39 479 huellas del mundo, el 99.8 % del suelo edificado ya caía dentro de
+#: la manzana SIN el campo. Se paga con cada calle recta del pueblo.
+#:
+#: La separación se hace ahora con una SEMEJANZA —el mapa entero a otra escala,
+#: ver `PLANAR_PX_PER_M` arriba—, que por construcción no puede torcer una recta.
+#: En 1 vuelve el campo, para poder medirlo otra vez sin tocar código.
+DILATION_ON = os.environ.get("DILATION", "0") not in ("0", "off", "false")
 #: The rest of the audit list, in metres (`world-units.json` -> `world`).
 W = UNITS["world"]
 POI_NUDGE_PX = px(W["poi"]["nudgeM"])
@@ -256,14 +315,21 @@ def road_width_px(cls):
 # streets to control block size.
 DROP_ROAD_CLASSES = set()
 SERVICE_MIN_PX = px(W["poi"]["serviceMinM"])
-DP_ROAD_PX = 1.0
-DP_BUILDING_PX = 2.0
-DP_COAST_PX = 2.5
+# LAS TOLERANCIAS DE SIMPLIFICACIÓN ESCALAN CON EL MUNDO, y esto costó pensarlo
+# dos veces. Están listadas como px-native porque miden el VECTOR EMITIDO y no
+# el suelo — pero lo que compran es una cuenta de vértices, y una manzana con
+# 1.25x más píxeles tiene 1.25x más extensión que simplificar. Congeladas en px
+# serían una tolerancia más FINA en metros a cada reescalado, o sea un manifest
+# que crece sin que nadie lo pida. Al 2.5 de siempre dan exactamente 1.0 / 2.0 /
+# 2.5 / 12.0, que es lo que las hace demostrables.
+DP_ROAD_PX = 0.4 * PLANAR_PX_PER_M
+DP_BUILDING_PX = 0.8 * PLANAR_PX_PER_M
+DP_COAST_PX = 1.0 * PLANAR_PX_PER_M
 # The DRAWN sand is traced from the raster (service.surface.sand_outlines), not
 # from the OSM beach polygons — that disagreement is what put two tones on the
-# playa. 12 px keeps the shape and costs ~120 KB of manifest; the raster cells
+# playa. 4.8 m keeps the shape and costs ~120 KB of manifest; the raster cells
 # stay authoritative for physics either way.
-DP_SAND_PX = 12.0
+DP_SAND_PX = 4.8 * PLANAR_PX_PER_M
 #: an AREA, so it scales as the SQUARE of the projection — the easiest thing
 #: in this file to get wrong by hand.
 MIN_BUILDING_AREA_PX2 = round(W["poi"]["minBuildingM2"] * PLANAR_PX_PER_M ** 2)
@@ -516,7 +582,32 @@ MUELLE_STREET = "calle central"
 # south end the Muelle Nacional stands on. Anchoring the twin to the Nacional's
 # x put it off the end of every calle, on ground no road reaches — a pier you
 # can see and never drive onto. Calle 2 runs to the estero on its own.
-PITAHAYA_STREET = "calle 2 presbíterio florencio del castillo"
+#: …y NO ES UNA SOLA CALLE, que fue el segundo error de este muelle.
+#:
+#: Calle 2 Presbíterio se acaba en su cruce con la Avenida 3, y ese cruce está
+#: AL SUR de la manzana del Mercado Municipal — o sea que su «extremo norte»
+#: (24644, 14495) no es la orilla, es una esquina con una cuadra entera por
+#: delante. La calle auxiliar se estampaba recta desde ahí hasta la base del
+#: muelle, 241 px que atraviesan la manzana del Mercado de lado a lado (la
+#: cuadra va de x 24505 a 24683 y de y 14327 a 14495; la parcela `cuadra` del
+#: mercado, de 24560 a 24732 y de 14340 a 14460). Un muelle plantado en medio
+#: del mercado.
+#:
+#: La calle que SÍ llega al estero es la Calle 2A, que arranca al norte de esa
+#: misma avenida y termina en (24683, 14302) — por fuera de la esquina noreste
+#: de la manzana y a unos 54 px del agua. El extremo se toma sobre las DOS, que
+#: es el patrón de lista de candidatos que `block_rect` ya usa para resolver una
+#: cuadra por sus calles.
+PITAHAYA_STREETS = ("calle 2 presbíterio florencio del castillo", "calle 2a")
+#: El nombre viejo, para el log y el mensaje de error: es la calle desde la que
+#: se busca, y la que el jugador recorre para llegar.
+PITAHAYA_STREET = PITAHAYA_STREETS[0]
+#: Cuánto se sigue buscando hacia el norte DESDE el final de la primera calle.
+#: Es una manzana y su avenida, no medio pueblo: el segundo paso está para
+#: cruzar UN cruce, y un alcance generoso volvería a coger una calle de otro
+#: barrio con el mismo nombre. La Calle 2A arranca a ~193 px del final de la
+#: Calle 2, así que 240 m sobran y no llegan a la siguiente ambigüedad.
+PITAHAYA_CONTINUATION_PX = px(240.0)
 LEON_END_STREET = "calle 20"    # the calle at the paseo's east end
 
 # LA ANGOSTURA — where the spit runs out and El Cocal with it. Measured off the

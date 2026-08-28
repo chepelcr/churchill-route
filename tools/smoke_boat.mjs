@@ -49,12 +49,22 @@ const out = await page.evaluate(async () => {
   const G = window.Game;
   G.setAttract(false);
   G.startExplore();
-  // THE OPEN GULF, south of the Muelle Nacional's sea end (19551, 13288).
+  // THE OPEN GULF, south of the Muelle Nacional's sea end.
   // Deliberately NOT a point interpolated along the lancha's route: that line
   // is only guaranteed navigable to the water flood's own ~20 px resolution,
   // so a chord midpoint can sit in the mangrove and fail this check for a
   // reason that has nothing to do with the medium. The gulf is unambiguous.
-  const wx = 19551, wy = 13800, wa = 0;
+  //
+  // ANCLADO EN GEO Y NO EN PÍXELES, que es la lección que este archivo ya tenía
+  // escrita y volvió a cobrar. Estaba en (19551, 13800) px, y el reescalado a
+  // 3.125 px/m del 2026-08-27 movió el mundo un 25 %: ese punto seguía siendo
+  // agua por casualidad, pero el de tierra de abajo pasó a ser mar y la prueba
+  // volvió a medir un barco en el mar contra un barco en el mar. Una lat/lon
+  // sobrevive a cualquier reescalado; un píxel sólo es verdad a la escala en
+  // que se escribió.
+  const W = window.WORLD2D || window.Game.W;
+  const gulf = W.geoToWorld(9.982269, -84.849290);
+  const wx = gulf.x, wy = gulf.y, wa = 0;
   G.state.progress.coins = 9999;                  // so the paid hull is ownable
   G.state.progress.owned.push("deslizador");
   G.setVehicle("deslizador");
@@ -82,9 +92,16 @@ const out = await page.evaluate(async () => {
   // quarter of her top speed even on water. Two bugs cancelling. When `boat.js`
   // made her accelerate like an arcade boat, the land leg finally reported 440
   // px/s and the test failed for the first time, on the one thing that was
-  // right. Verified against the raster: this one is asphalt with no water cell
-  // within 400 px, so a hull dropped here is buried in wall on every side.
-  p.x = 23000; p.y = 15100; p.a = wa; p.vx = 0; p.vy = 0; p.speed = 0;
+  // right.
+  //
+  // Y VOLVIÓ A PASAR EN EL SIGUIENTE REESCALADO, con la coordenada de repuesto:
+  // (23000, 15100) también era asfalto a 2.5 px/m y a 3.125 es mar abierto. Dos
+  // veces el mismo fallo con el mismo arreglo a medias dice que el arreglo era
+  // el equivocado — el sitio se ancla en GEO, y además se AFIRMA (ver abajo),
+  // porque una prueba sobre un lugar tiene que afirmar el lugar.
+  const city = W.geoToWorld(9.977564, -84.836707);
+  const lx = city.x, ly = city.y;
+  p.x = lx; p.y = ly; p.a = wa; p.vx = 0; p.vy = 0; p.speed = 0;
   const lFrom = { x: p.x, y: p.y };
   res.landTop = 0;
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
@@ -94,6 +111,13 @@ const out = await page.evaluate(async () => {
   }
   window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
   res.landBlocked = Math.round(Math.hypot(p.x - lFrom.x, p.y - lFrom.y));
+  // Y SE AFIRMA EL SITIO. Las dos veces que esta prueba mintió fue porque nadie
+  // comprobaba QUÉ había debajo: un casco «en la ciudad» que estaba en el mar
+  // se lee exactamente igual que un casco que ignora la tierra.
+  res.gulfSurface = W.surfaceAt(wx, wy);
+  res.citySurface = W.surfaceAt(lx, ly);
+  res.gulfPx = [Math.round(wx), Math.round(wy)];
+  res.cityPx = [Math.round(lx), Math.round(ly)];
   return res;
 });
 
@@ -122,13 +146,16 @@ const feel = await page.evaluate(async () => {
   const p = G.state.p;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const key = (type, k) => window.dispatchEvent(new KeyboardEvent(type, { key: k }));
-  // The open gulf again, and for the same reason as above.
-  const put = () => { p.x = 19551; p.y = 13800; p.a = 0; p.vx = 0; p.vy = 0; p.speed = 0; };
+  // The open gulf again, and for the same reason as above — anclado en geo.
+  const W = window.WORLD2D || window.Game.W;
+  const g0 = W.geoToWorld(9.982269, -84.849290);
+  const gx = g0.x, gy = g0.y;
+  const put = () => { p.x = gx; p.y = gy; p.a = 0; p.vx = 0; p.vy = 0; p.speed = 0; };
   const res = {};
 
   put();
   await wait(3000);
-  res.driftPx = Math.round(Math.hypot(p.x - 19551, p.y - 13800));
+  res.driftPx = Math.round(Math.hypot(p.x - gx, p.y - gy));
 
   const pivot = async () => {
     put();
@@ -136,7 +163,7 @@ const feel = await page.evaluate(async () => {
     await wait(2000);
     key("keyup", "a");
     return { deg: Math.abs(p.a) * 180 / Math.PI,
-             movedPx: Math.round(Math.hypot(p.x - 19551, p.y - 13800)) };
+             movedPx: Math.round(Math.hypot(p.x - gx, p.y - gy)) };
   };
   const hull = await pivot();
   res.pivotDeg = Math.round(hull.deg);
@@ -182,6 +209,19 @@ if (feel.afterBrake > 12) {
     + `${feel.afterBrake} px/s — the dead-stop clamp is not reaching a hull`);
 }
 
+// PRIMERO EL SITIO, Y ANTES QUE NADA. Las dos veces que esta prueba mintió fue
+// aquí: la coordenada «de la ciudad» era mar, así que la pata de «la tierra es
+// pared» comparaba mar contra mar y salía verde. Un fallo de SITIO se reporta
+// como lo que es —un mundo que cambió debajo— y no como una regresión del casco.
+// 0 water … 3 road, 6 acera, 10 malecon.
+if (out.gulfSurface !== 0) {
+  fail(`the "open gulf" anchor is surface ${out.gulfSurface} at ${out.gulfPx}, not water `
+     + `— the water leg would be measuring a hull on land`);
+}
+if (out.citySurface === 0) {
+  fail(`the "downtown" anchor is WATER at ${out.cityPx} — this is the exact stale-place `
+     + `failure this file already documents twice; re-anchor it, do not retune the hull`);
+}
 if (out.medium !== "water") fail(`setVehicle('deslizador') resolved to medium ${out.medium}`);
 if (out.key !== "deslizador") fail(`the vehicle fell back to ${out.key} — the ownership/medium gate is wrong`);
 if (out.top < out.configuredTop * 0.9) {

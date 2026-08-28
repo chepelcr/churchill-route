@@ -1,10 +1,38 @@
 # El reescalado del mundo — devolverle a la manzana su terreno
 
-Status: **step 0 done (2026-08-14), the rescale itself PROPOSED.** This document
-is the whole context: it can be picked up cold, without the conversation that
-produced it. Step 0 — naming the world's lengths in metres — is complete and
-left the world byte-identical; the scale change is still a decision nobody has
-taken, and step 1 (choose the framing on a phone) is where it resumes.
+Status: **DONE 2026-08-27 at p = 3.125.** Steps 0, 1, 2 and 3 are complete; the
+world is built at 3.125 px/m with `ARCADE_STREET_MUL` 1.856. This document is
+still the whole context — it can be picked up cold — and what follows is the
+original analysis, kept as written, with the outcome recorded at the end of each
+section it decided.
+
+Two corrections the execution turned up, both worth reading before trusting a
+number below:
+
+* **variant A's p = 4.0 does not build.** `assert TILE_PX % CUAD == 0` fails
+  (3200 % 30 = 20). Scanning the ladder for rungs where both quantisation
+  asserts hold with the metres in `world-units.json` untouched gives exactly
+  **2.55, 3.125, 3.75, 4.375** — and at every one of them the twelve road
+  classes keep their painted pixel width to the pixel, which is the invariant
+  that makes traffic and collision indifferent to the change.
+* **the world does not get bigger in DATA.** The table below worries about
+  "raster ×1.14" and "×2.56"; that was computed holding `GRID_CELL` fixed in
+  pixels. It is not: it derives from `grid.rasterCellM` = 1.6 m, so it scales
+  with the world and the cell COUNT is unchanged. At p = 3.125 the raster is the
+  same 19 850 × 12 445 cells in the same 1 000 tiles as at 2.5 — same ground,
+  same resolution, same bytes. Only the pixel scale moved.
+
+**Y HABÍA UN CUARTO PASO QUE ESTE DOCUMENTO NO PODÍA PREVER: DESHACER EL CAMPO
+DE DILATACIÓN.** Entre que esto se escribió y se ejecutó, se construyó
+`service/dilation.py` — un campo de desplazamiento 2-D que separaba las manzanas
+localmente. Es exactamente la proyección no uniforme contra la que este
+documento advierte más abajo («NO LA REVIVAS»), y costó exactamente lo que dice
+que cuesta: 5 509 celdas del pueblo giradas más de 3°, la Calle 35 doblada 55.8
+px sobre 417, el marco del Mercado girado 19.5°, 370 px de cizalla a lo largo
+del Paseo. Se apagó en la misma corrida. Y la comparación es limpia, sobre la
+misma ventana del centro: **31 `ghost` sin campo a 2.5, 26 con campo, 21 con el
+reescalado a 3.125.** El reescalado encaja MÁS edificios que el campo, y no
+dobla una sola calle.
 
 ## The one-paragraph problem
 
@@ -279,9 +307,19 @@ already marginal on a 30 fps phone today.
    quietly have become 18 px of sidewalk and nothing in the build would have
    said so.
 
-1. **Decide the framing on a phone.** Note from the floor analysis above that on
-   a phone the choice is *how much road ahead you lose*, not how small the car
-   gets, and that A and B are indistinguishable there.
+1. ~~**Decide the framing on a phone.**~~ **DECIDIDO 2026-08-27: p = 3.125**, el
+   escalón intermedio. `camera.viewWidthM` se deja en 160 m, así que la vista en
+   metros no cambia en ninguna pantalla y lo que se mueve es el carro: 26 px
+   dejan de ser 10.4 m y pasan a ser 8.3, o sea 57 -> 46 px de pantalla en un
+   teléfono. Es la dirección que este documento pide («achicar los vehículos
+   primero») y queda muy dentro de lo que el deslizador de zoom ya permite.
+
+   Ojo con el análisis del piso de arriba: decía que «en un teléfono el
+   reescalado no encoge el carro» porque el piso era un `2.2` crudo (px de
+   pantalla por px de MUNDO). El paso 0 lo volvió `minScreenPxPerM` = 5.5 —px de
+   pantalla por METRO, o sea libre de escala—, así que hoy es al revés: la vista
+   en metros se conserva y el carro es lo que encoge. `tests/test_world_units.py`
+   fija las dos mitades.
 2. ~~Convert the audit list above to metres (or confirm px-native).~~
    **DONE 2026-08-14.** Everything that is a real size on the ground is in
    `src/assets/world-units.json` -> `world`; the rest is listed under
@@ -299,8 +337,31 @@ already marginal on a 30 fps phone today.
    number of metres, so px is what holds them), `BLDG_INSET` (a hairline is a
    hairline), the four `DP_*` tolerances (they measure the emitted VECTOR and
    trade fidelity against manifest size) and `BUILDING_SCALE` (a ratio).
-3. Change `PLANAR_PX_PER_M`, `ARCADE_STREET_MUL`, `GRID_CELL`, `CUAD` together.
-   They are one edit; changing any alone produces a broken world.
+3. ~~Change `PLANAR_PX_PER_M`, `ARCADE_STREET_MUL`, `GRID_CELL`, `CUAD`
+   together.~~ **HECHO**, y resultaron ser DOS y no cuatro: desde el paso 0
+   `GRID_CELL`, `CUAD` y `TILE_PX` se derivan de los metros de
+   `world-units.json`, así que se mueven solos (4->5, 20->25, 2000->2500) y los
+   dos asserts siguen dando cero. La edición es `PLANAR_PX_PER_M` 2.5 -> 3.125 y
+   `ARCADE_STREET_MUL` 2.32 -> 1.856.
+
+   Y la auditoría del paso 2 se quedó corta en cuatro sitios, todos por el mismo
+   malentendido: «px-native» se había usado para decir «no depende del suelo»,
+   cuando lo que decide es si depende de la ESCALA. Los cuatro se convirtieron a
+   metros y al 2.5 de siempre reproducen su entero exacto — `CHANNEL_HW_CAP` y
+   `CHANNEL_HW_MIN` (cuya razón escrita decía justo lo contrario de lo cierto:
+   la cámara encuadra 160 METROS, y cuántos píxeles son esos 160 metros es
+   precisamente lo que un reescalado cambia), las cuatro tolerancias `DP_*`,
+   `BUILDING_SCALE` (que «se movía con `ARCADE_STREET_MUL`» sólo en un
+   comentario) y los `reach_px=160, inset_px=32` de `snap_into_block`, que no
+   estaban ni en la lista. Se quedan en píxeles `KIOSK_WATER_CLEAR_PX`,
+   `BLDG_INSET` y el `LOT_SIZE` de `field.py`: los tres están dimensionados
+   contra ARTE DIBUJADO, que es lo único que un reescalado no mueve.
+
+   Las velocidades son px/s, así que suben por 1.25 en `vehicles.json`
+   (`accel`/`top`; `turn` es rad/s, `melt` segundos, `grip`/`drag` razones — no
+   se tocan). Distancias y velocidades escalan juntas, así que **los tiempos de
+   etapa se conservan por construcción**. Y el sub-paso del integrador de
+   `physics.js` entró en la misma tanda, como este documento exige.
 4. Build and **read the log end to end** — it is character-stable and it is the
    review surface. Any `WARN` is a stage to fix, not to ship. Specifically
    check: the civic centre resolves, every estadio resolves its bounding

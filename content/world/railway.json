@@ -15,6 +15,8 @@
     "shoulderSide": "preserve-local-raw",
     "trueClearanceM": 0.2,
     "pairMidpointToleranceM": 3.0,
+      "_pairChordToleranceM": "CUÁNTO PUEDE ESTAR CORRIDA LA CUERDA entre los dos pies, en metros. NO es «va el riel entre las dos calzadas» — eso es pairMidpointToleranceM, que se queda en 3 m y no se toca. Esto es cuánto se corrió a lo largo del corredor el pie que la búsqueda encontró en cada avenida respecto de la muestra: con las calzadas paralelas es casi cero, y donde ABREN crece por geometría. Medido donde salta (x ~ 16 330 m, la Avenida Alberto Echandi abriéndose de 45,8 a 53,7 m en 25 m de riel): llega a 4,52 m, mientras `along` se queda en la mitad exacta de la separación en las doce muestras — el riel va centrado y el que estaba mal era el test. 6 m deja aire sin aflojar la contención, que sigue siendo cosa de la banda.",
+      "pairChordToleranceM": 6.0,
     "pairRules": [
       {
         "id": "cocal_between_avenues",

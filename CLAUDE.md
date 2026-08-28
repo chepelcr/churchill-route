@@ -52,6 +52,7 @@ The procedure is three steps and it is not optional:
 | how an OSM site fits its cuadra (`trace`/`cuadra`/`rect`/`kiosco`) | `content/world/site-decor.json` |
 | a surface class's colour and speed | `src/assets/surfaces.json` |
 | a length two runtimes must agree about, IN METRES | `src/assets/world-units.json` |
+| **un largo que UN registro autora** (un `dx`, un ancho, el radio de un juego) | en METROS y en su propio registro, con sufijo `M` — `content.py` → `METRE_KEYS` lo pasa a px al cargar. **Nunca en píxeles**: sólo son verdad a la escala en que se afinaron, y este mundo lleva cuatro reescalados |
 | the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` |
 | **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` |
 | **a light: street lamp, stadium tower, la del muelle** | `src/assets/lights.json` (+ `LightType`). DÓNDE se para la del muelle y de qué tipo es → `materials.json` → `pier.<style>.lamp` |
@@ -888,14 +889,38 @@ reales; lo único que sube es el empujón por edificio (139 → 196), que es tra
 que la cadena ya sabía hacer. La función se queda como red de seguridad y la
 perilla es una env var, así que volver a 0.55 es una línea.
 
-**Y NO SE PUEDE EXTENDER LA MANZANA MÁS ALLÁ DE ESO: EL LÍMITE ES EL CARRO.**
+Y el suelo que hacía falta se consiguió por el otro lado — subiendo la escala,
+ver «EL LÍMITE ES EL CARRO» aquí abajo. En la misma ventana los `ghost` bajaron
+de 31 a **21** sin encoger una sola huella. Si algún día se vuelve a 0.55, hay
+un número que conviene tener a mano: medido sobre el mundo entero, el encogido
+por grupo NO baja la cuenta de `ghost` (62 en ambos) — lo que baja es cuánta
+CALZADA pisan los que quedan, de 2 753 celdas a 943. Es una perilla sobre el
+ÁREA de solape, no sobre cuántos edificios no caben.
+
+**EL LÍMITE ES EL CARRO — PERO SE MIDE EN PÍXELES, Y AHÍ ESTÁ LA SALIDA.**
 Dar más suelo a una cuadra pide calles más angostas, y las calles son anchas
-porque los VEHÍCULOS están dibujados ~2.4x sobre lo real — un tuktuk mide 26x17
-px, o sea 10.4 x 6.8 m. Dos no se cruzan por debajo de ~34 px. Medido con
-edificios a tamaño real: a `ARCADE_STREET_MUL` 1.90 la calle residencial cae a
-33 px y los `ghost` sólo bajan de 31 a 25; a 1.60 son 28 px —el tráfico se
-traba— y bajan a 21. **Un mapa de verdad a escala pide achicar los vehículos
-primero**, y eso cambia el juego, no el mundo.
+porque los VEHÍCULOS están dibujados sobre lo real. Dos no se cruzan por debajo
+de ~34 px. Bajar `ARCADE_STREET_MUL` A SECAS choca contra eso: a 1.90 la
+residencial cae a 33 px y los `ghost` sólo bajan de 31 a 25; a 1.60 son 28 px,
+el tráfico se traba, y bajan a 21.
+
+**Lo que no choca es bajarlo SUBIENDO LA ESCALA en la misma proporción.** La
+restricción es el ancho PINTADO EN PÍXELES —dos cuerpos de 17 px en 41 px de
+calzada—, y `road_width_px` es `metros · MUL · ppm`: subir `ppm` y bajar `MUL`
+por el mismo factor deja los 41 px CLAVADOS y encoge la calle en METROS, que es
+lo único que la manzana necesita. Es exactamente el «achicar los vehículos
+primero» que decía esta sección: a 3.125 px/m el tuktuk sigue midiendo 26 px y
+pasa a medir 8.3 m en vez de 10.4, sin tocar una línea de arte.
+
+Hecho el 2026-08-27: **2.5 / 2.32 -> 3.125 / 1.856**. Las doce clases de vía
+conservan su ancho pintado al píxel (41/52/64/81/93/70/26/29…), la residencial
+pasa de 16.4 m a 13.1, y en la ventana del centro los `ghost` bajan de 31 a
+**21** — mejor que los 26 que daba el campo de dilatación, y con las calles
+rectas. La escalera de escalones válidos es corta, porque `CUAD % GRID_CELL` y
+`TILE_PX % CUAD` tienen que seguir dando cero sin mover un metro de
+`world-units.json`: 2.55, 3.125, 3.75, 4.375. (La variante A de `RESCALE.md`
+pedía 4.0 y NO pasa: 3200 % 30 = 20.) Lo que se paga es el carro en pantalla, y
+sólo eso: `docs/RESCALE.md` tiene la tabla.
 
 **THE MANZANA IS A CONTAINER, AND ITS CONTENTS ARE FITTED TO IT.** This is the
 answer to "why is anything standing on the acera", and it had been answered five
@@ -1249,37 +1274,130 @@ por su nombre (`timeMs`, que es el contrato que usan los registros de actores) y
 `setLastT` guarda ms a propósito. Al tocar una animación, mirar primero en qué
 reloj está.
 
-**LA MANZANA RECUPERA SU SUELO: UN CAMPO DE DILATACIÓN LOCAL**
-(`service/dilation.py`). Las calles se estampan a `ARCADE_STREET_MUL` = 2.32 su
-ancho real porque los VEHÍCULOS están dibujados ~2.4x sobre el suyo (un tuktuk
-mide 26x17 px = 10.4 x 6.8 m y dos no se cruzan por debajo de ~34 px), y lo que
-sobra salía de las cuadras: 4.7 m por lado en una residencial, 10.6 en el Paseo.
-Ahora, en vez de quitarle suelo a la manzana, se SEPARAN las manzanas y el
-pueblo se estira ~10 %.
+**LA MANZANA RECUPERA SU SUELO — CON UNA SEMEJANZA, NO CON UN CAMPO.** Las
+calles se estampan exageradas porque los VEHÍCULOS están dibujados sobre su
+tamaño real (un tuktuk mide 26x17 px y dos no se cruzan por debajo de ~34 px), y
+lo que sobra salía de las cuadras. La forma de devolvérselo que FUNCIONA es
+subir `PLANAR_PX_PER_M` y bajar `ARCADE_STREET_MUL` en la misma proporción: la
+calle conserva su ancho EN PÍXELES —o sea el tráfico, la colisión y el piso de
+«dos carros se cruzan» no se enteran— y encoge en METROS, que es el suelo que la
+manzana recupera. Hoy 3.125 / 1.856: la residencial pasó de 16.4 m a 13.1 y la
+cuadra del Mercado de 36.8 m de suelo a 40.1. Es una SEMEJANZA, así que ninguna
+recta se dobla y ningún ángulo cambia. Ver `PLANAR_PX_PER_M` en `config.py` y
+`docs/RESCALE.md`.
 
-Tres cosas que costaron un intento cada una:
+**UNA PRUEBA SOBRE UN LUGAR TIENE QUE AFIRMAR EL LUGAR — Y ESTO YA ESTABA
+ESCRITO AQUÍ.** El reescalado dejó tres smokes en rojo y NINGUNO era una
+regresión del juego:
 
-* **no es un suavizado.** Un relajador laplaciano sobre las celdas entregaba
-  **5.9 px de los 23.5** que pedía y estiraba la manzana 3.5 px cada 150: un
-  laplaciano no sabe hacer un ESCALÓN, se lo come. Las incógnitas no son las
-  celdas sino las MANZANAS — una traslación por componente, y cada par que se
-  mira a través de una calle pide `(u_b − u_a)·n̂ = δ`;
-* **el campo abierto no es un cuerpo rígido.** Metido en el sistema, tendría que
-  estar δ al norte de una manzana y δ al sur de otra a la vez — inconsistente, y
-  la relajación salía en un campo uniforme (o sea, cero separación). Se deja
-  FUERA y se rellena suavizando después;
-* **no puede ser un mapa 1-D separable**: el mundo abarca 60 km y varios
-  pueblos, así que una calle de Puntarenas y otra de Barranca en la misma `x`
-  insertarían las dos en el mismo sitio. Y por tamaño tampoco puede ser global —
-  a 20 px de celda el mundo son 10 M de celdas y esto es Python. Se agrupa por
-  CLÚSTER y el campo decae a cero en su borde.
+* `smoke.mjs` probaba «las cuatro direcciones» sin volver al punto de partida
+  entre una y otra, así que en realidad probaba un recorrido de cuatro tramos.
+  Con el spawn en la calle auxiliar que baja al kiosco del Paseo —40 px entre
+  dos paredes de malecón— los tres primeros rumbos aparcaban el carro contra la
+  pared y el cuarto, que era el bueno, salía de una esquina. Desde el spawn el
+  norte recorre **154 px a 266 px/s**; encadenado daba 82. El juego estaba bien
+  y la prueba se estorbaba a sí misma.
+* `smoke_boat.mjs` volvió a caer en su propio bug documentado: su coordenada «de
+  la ciudad» era asfalto a 2.5 px/m y a 3.125 es MAR ABIERTO, así que la pata de
+  «la tierra es pared» comparaba mar contra mar. **Dos veces el mismo fallo con
+  el mismo arreglo a medias** (mover el píxel) dice que el arreglo era el
+  equivocado: hoy los dos sitios se anclan en GEO y además se AFIRMAN, que es lo
+  que este archivo llevaba años pidiendo. Hoy da 550 px/s en el agua y **8 px/s
+  en tierra**.
+* `smoke_crossing.mjs` sí destapó dos bugs de verdad, y los dos del jugador, no
+  del mundo — ver `START_OUT_M` y el atracadero en `modes.js`.
 
-Entra como una etapa entre `extract_world` y `rasterise_surface`, y se instala
-en la PROYECCIÓN (`sp.warp`), así que todo lo que se proyecte después —las
-curvas del IGN, cada ancla geo— sale ya separado sin que ninguna etapa se
-entere. **Y rompe la linealidad que `projection.py` protegía**: `meta.geo` deja
-de contarlo todo, así que viaja además `meta.warp` (por pueblo, muestreado cada
-160 px) y `W.geoToWorld` es el ÚNICO dueño de la pregunta. `DILATION=0` lo apaga.
+La regla, otra vez y ahora con tres cicatrices: **un smoke que afirma algo sobre
+un LUGAR tiene que afirmar también el lugar**, y un punto del mundo se ancla en
+lat/lon, nunca en píxeles. `smoke.mjs` comprueba hoy la clase de superficie de
+su spawn y `smoke_boat` la de sus dos anclas, de modo que un mundo que se mueve
+debajo se reporta como lo que es y no como una regresión del casco.
+
+**LO QUE UN REGISTRO AUTORA EN LARGO, LO AUTORA EN METROS — Y CINCO NO LO
+HACÍAN.** El reescalado destapó que `content/world/` llevaba desplazamientos y
+tamaños EN PÍXELES afinados a 2.5: los `dx`/`dy` de tres kioscos y tres hitos, el
+campo ferial (560x200 px), el `at` y el `r` de cada juego de la feria, el ancho
+de cada bajada, los focos de la plaza de Playitas y la cubierta de la lancha.
+**Ninguno hacía fallar nada**: se quedaban un 20 % cortos EN METROS, con el faro
+corrido 44 m donde el autor pidió 55 y el turno un quinto más chico.
+
+La que sí falló fue la cubierta de la lancha, porque `tests/test_world_units.py`
+compara la de cada barco contra `world-units.json` — y `[86, 34]` coincidía con
+el registro SÓLO a 2.5 px/m. Esa prueba se llama «cada barco es un barco y no
+cuatro copias de ella» y ya había cazado cuatro; ésta era la quinta, y tirando
+de ella salieron las otras cinco familias. **Una prueba que caza una copia vale
+por las que no se han buscado.**
+
+La conversión se hace EN LA CARGA (`content.py` → `METRE_KEYS`), no en cada
+lector: los lectores ya piden `dx`, `w`, `at`, y lo que cambia es de dónde sale
+el número. Las 52 medidas convertidas reproducen su píxel original EXACTO a
+2.5 px/m, que es lo que hace la migración demostrable sin reconstruir.
+
+**Y hay una excepción que casi se pierde**: el `at` del DJ es una LAT/LON, no un
+offset — se sienta en la frontera del edificio real que toca, mientras el de un
+juego es un desplazamiento desde el centro del campo. La conversión automática
+lo tomó por offset y lo dejó en (4, -34), o sea en el golfo. `at` es una llave
+SOBRECARGADA y por eso los juegos autoran `atM` y el DJ conserva `at`.
+
+**Y UNA COMPUERTA PUEDE ESTAR HACIENDO DOS PREGUNTAS CON UN SOLO NÚMERO.** Al
+apagar el campo, el build falló en su último segundo: «rail 15: 12 pair samples
+not between their named carriageways». No lo causó el reescalado — **falla
+igual a 2.5 px/m, con 14 en vez de 12**, y el campo lo tapaba moviendo esas
+muestras lo justo. La medición se hizo corriendo `align_rails` SOLO, sin el
+resto del pipeline: 40 segundos en vez de 30 minutos, y es el patrón a copiar
+cuando una compuerta falla al final de una corrida larga.
+
+Lo que decía el mensaje era falso sobre esas doce muestras: `along` valía la
+MITAD EXACTA de la separación en las doce, o sea que el riel iba perfectamente
+centrado. Lo que fallaba era `across`, que mide una cosa distinta — cuánto se
+corrió a lo largo del corredor el pie que la búsqueda encontró en cada calzada
+respecto de la muestra. Con las avenidas paralelas es casi cero; donde ABREN, la
+cuerda que une los dos pies deja de ser perpendicular al riel y `across` crece
+por geometría. En el punto donde salta (x ≈ 16 330 m, la Avenida Alberto Echandi
+abriéndose de 45,8 a 53,7 m en 25 m de riel) llega a **4,52 m** contra una
+tolerancia de 3.
+
+Así que las dos preguntas se separaron: `pairMidpointToleranceM` **sigue en 3 m**
+y decide si el riel va ENTRE las calzadas, y `pairChordToleranceM` (6 m) decide
+si los pies quedaron a su altura, con su propio mensaje. Aflojar la cuerda no
+afloja la contención, y hay una prueba que lo dice poniendo la cuerda en 1000 m.
+
+**EL CAMPO DE DILATACIÓN (`service/dilation.py`) ESTÁ APAGADO, Y HAY QUE SABER
+POR QUÉ ANTES DE VOLVER A ENCENDERLO.** Separaba las manzanas RÍGIDAS y estiraba
+lo que quedaba entre ellas — que es la calle. El solucionador hace exactamente
+lo que promete (sus 14 pruebas siguen pasando); el problema es geométrico y no
+tiene arreglo dentro de ese enfoque: separar cuerpos rígidos es una deformación
+NO UNIFORME, y una deformación no uniforme dobla las rectas. Medido sobre el
+mundo que emitió (`0eb0eceb`):
+
+* desplazamiento máximo **392 px**, **5 509 celdas del pueblo giradas más de 3°**
+  (máximo 46°), divergencia de área hasta 1.15;
+* la Calle 35 de atrás del Balneario, recta, con **0.0 -> 55.8 px** de comba
+  sobre un tramo de 417; la Calle 39, 116 px;
+* el marco de la manzana del **Mercado girado de -9.2° a -28.7°**, y las parcelas
+  del centro a más de 20° de la retícula de 2 a 12;
+* **370 px de cizalla** a lo largo del Paseo, que es recto: el faro se desplaza
+  (-47,-17) y el medio del Paseo (-197,+12), así que el Paseo dejó de encontrarse
+  con la calle del faro.
+
+Y lo que compraba: el suelo pisado por huellas con nombre baja 0.87 % -> 0.59 %,
+y quince `ghost` de 62. **Sobre las 39 479 huellas del mundo, el 99.8 % del suelo
+edificado ya caía dentro de su manzana SIN el campo.** Medido en la ventana del
+centro, la semejanza le gana además de frente: **31 `ghost` sin campo a 2.5,
+26 con campo, 21 con la semejanza a 3.125** — más edificios encajados Y las
+calles rectas.
+
+`docs/RESCALE.md` ya lo había escrito antes de que el campo existiera: «una
+proyección NO UNIFORME lo esquiva matemáticamente — eso fue el corridor-unroll,
+borrado el 2026-07-25. Costó las distancias verdaderas, las calles rectas y cada
+gore de cruce hecho a mano. NO LA REVIVAS.» Se revivió y costó exactamente eso.
+El módulo y sus pruebas se conservan; `DILATION=1` lo enciende, para poder
+volver a MEDIRLO sin tocar código.
+
+Con el campo apagado la proyección vuelve a ser una AFÍN EXACTA: `meta.geo` la
+describe entera, `meta.warp` no se emite y `W.geoToWorld` cae al camino lineal
+—que sigue siendo el único dueño de la pregunta, porque el canal de warp sigue
+implementado en el cliente para un manifest que lo traiga.
 
 **UNA CANCHA A LA QUE NO SE ENTRA NO ES UNA CANCHA.** El malecón es PARED para
 un carro (`isWall`, decisión explícita: «un paseo marítimo es para caminar»), así

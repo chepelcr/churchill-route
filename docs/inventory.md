@@ -108,17 +108,24 @@ Pydantic v2.
 
 ### Dimensions and storage
 
+**El mundo se reescaló a 3.125 px/m el 2026-08-27 y NO se hizo más grande en
+datos.** La celda del ráster mide 1,6 m antes y después, y el tile 800 m, así que
+la rejilla es LA MISMA —19 850 × 12 445 celdas en 1 000 tiles— sobre el mismo
+suelo a la misma resolución. Lo único que cambió es a cuántos píxeles equivale un
+metro, que es lo que le devolvió suelo a la manzana sin torcer una calle. Ver
+`docs/RESCALE.md`.
+
 | Item | Current value |
 |---|---:|
-| World size | 79,400 × 49,780 world px |
-| Scale | 2.5 px/metre |
-| Raster cell | 4 px |
+| World size | 99,250 × 62,225 world px |
+| Scale | 3.125 px/metre |
+| Raster cell | 5 px (1.6 m — unchanged in metres) |
 | Raster grid | 19,850 × 12,445 cells |
-| Cuadrícula | 20 px |
-| Tile | 2,000 px / 500 cells |
+| Cuadrícula | 25 px (8 m) |
+| Tile | 2,500 px / 500 cells (800 m) |
 | Tile grid | 40 × 25 |
 | Tile files | 1,000 |
-| `src/world2d/` size at audit | about 18 MB |
+| `src/world2d/` size at audit | about 17 MB |
 | Source OSM size at audit | about 12 MB |
 
 ### Generated feature counts

@@ -27,6 +27,15 @@ import { updateTide } from "./tides.js";
 import { updateEditorTriggers } from "./editorGameplay.js";
 import { activeEditorBoost, tickEditorBoosts } from "./editorContent.js";
 
+//: TECHO DE SUB-PASOS POR CUADRO. El sub-paso está para que un cuadro lento no
+//: deje al carro atravesar una pared (ver el lazo de integración), pero un
+//: cuadro CATASTRÓFICO —una pestaña que vuelve de segundo plano con un `dt` de
+//: varios segundos— no puede convertirse en cientos de pruebas de colisión.
+//: Ocho cubren hasta ~68 px de avance, muy por encima de cualquier cuadro que
+//: siga siendo jugable; más allá de eso el sub-paso deja de ser exacto, que es
+//: preferible a que se congele.
+const SUBSTEP_MAX = 8;
+
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [SURFACE.ACERA]; // fallback for free (stadium) peds; rail peds cross via advancePed
 
@@ -505,27 +514,68 @@ export function update(dt) {
   // heading into the bank now — see `hullBankAssist` for why pushing was wrong.
   // Before the integration, so it is a force and not a shove.
   if (afloat) hullBankAssist(p, veh, dt, (x, y) => W.surfaceAt(x, y) === SURFACE.WATER);
-  p.x += p.vx * dt; p.y += p.vy * dt;
-  // Solid cuadras + aceras + open water: LAND, ACERA (the kerb) and WATER are
-  // the walls you slide along. THE SAND IS NOT ONE — see `isWall` above: beach
-  // is drivable, slow and loose, and the MALECON beside it is a wall for a car,
-  // like the acera. What keeps you off the beach is that nothing
-  // leads there any more except the bajadas, not a wall.
-  const hit0 = contactAt(p.x, p.y);
-  if (hit0) {
+  // EL PASO SE PARTE, porque la colisión es una CAJA EN EL DESTINO y no un
+  // barrido. `contactAt` pregunta «¿estoy dentro de algo AQUÍ?», así que un
+  // paso más largo que el cuerpo puede saltarse una pared entera y aparecer
+  // limpio del otro lado — el carro atraviesa la manzana y no hay nada en el
+  // resolvedor de abajo que pueda enterarse, porque cuando le toca mirar ya no
+  // hay contacto.
+  //
+  // Ya era marginal: a 352 px/s y 30 fps el cuerpo avanzaba 11.7 px contra una
+  // cápsula de ~8.5 px de radio. El reescalado a 3.125 px/m subió las
+  // velocidades por 1.25 —tenían que subir, o el mismo px/s recorre menos
+  // suelo—, así que lo marginal pasaba a ser ordinario. `docs/RESCALE.md` lo
+  // dice sin rodeos: el sub-paso es parte de esta tarea, no un follow-up.
+  //
+  // El tope es el RADIO DE LA CÁPSULA, de modo que dos posiciones consecutivas
+  // siempre se solapan y no queda hueco por donde colarse. A 60 fps con las
+  // velocidades de hoy esto da UN sub-paso y el código de abajo es literalmente
+  // el que había — que es lo que hace el cambio seguro: sólo pagan los cuadros
+  // lentos, que son los que tenían el bug.
+  // …Y CADA SUB-PASO SE RESUELVE, no se abandona el resto. La primera versión
+  // de esto cortaba el lazo en cuanto había contacto y dejaba que el resolvedor
+  // de abajo sacara el cuerpo — o sea ACORTABA EL PASO, que es exactamente lo
+  // que el comentario de ese resolvedor dice que no se puede hacer («the step
+  // is never shortened … which is what keeps the car travelling ALONG a wall
+  // instead of stopping on it»).
+  //
+  // Medido: con la moto en el pasillo de 40 px que baja al kiosco del Paseo,
+  // rozando la pared del malecón todo el rato, cada cuadro entregaba 1/subs de
+  // su avance y el resto se tiraba. En el navegador headless del smoke —donde
+  // el cuadro es largo y `subs` sube a cinco— eso son 82 px en dos segundos con
+  // un tope de 288 px/s. No es un mundo mal construido: es el paso acortado.
+  const stepPx = Math.hypot(p.vx, p.vy) * dt;
+  const subs = Math.min(SUBSTEP_MAX, Math.max(1, Math.ceil(stepPx / Math.max(2, br))));
+  let hit0 = null, nx = 0, ny = 0, stuck = null;
+  for (let s = 0; s < subs; s++) {
+    p.x += (p.vx * dt) / subs;
+    p.y += (p.vy * dt) / subs;
+    let hit = contactAt(p.x, p.y);
+    if (!hit) continue;
     // RESOLVE: push out along the contact normal by the penetration depth,
     // re-measure, repeat. Each pass takes the DEEPEST contact, so an inside
     // corner settles over a couple of iterations instead of needing a special
     // case. Position is never reverted and the step is never shortened — the
     // body is simply moved to the nearest legal pose, which is what keeps the
     // car travelling ALONG a wall instead of stopping on it.
-    let hit = hit0, nx = hit.nx, ny = hit.ny;
+    hit0 = hit;
     for (let i = 0; i < 4 && hit; i++) {
       p.x += hit.nx * (hit.depth + 0.01);
       p.y += hit.ny * (hit.depth + 0.01);
       nx = hit.nx; ny = hit.ny;
       hit = contactAt(p.x, p.y);
     }
+    stuck = hit;          // sigue dentro tras cuatro pasadas
+  }
+  // Solid cuadras + aceras + open water: LAND, ACERA (the kerb) and WATER are
+  // the walls you slide along. THE SAND IS NOT ONE — see `isWall` above: beach
+  // is drivable, slow and loose, and the MALECON beside it is a wall for a car,
+  // like the acera. What keeps you off the beach is that nothing
+  // leads there any more except the bajadas, not a wall.
+  if (hit0) {
+    // La posición ya quedó resuelta arriba, sub-paso a sub-paso; aquí sólo va
+    // la respuesta de VELOCIDAD, que es una por cuadro y no una por sub-paso.
+    const hit = stuck;
     // Velocity: remove ONLY the component going into the wall. All tangential
     // speed carries, on an axis wall and a 45° one alike.
     // A HULL GLANCES. Removing all of the into-wall velocity is right for a car

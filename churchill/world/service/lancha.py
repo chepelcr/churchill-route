@@ -106,14 +106,20 @@ TANGENT_SPAN = float(px(UNITS["channel"]["tangentSpanM"]))
 #: box filter over the emitted arrays, in samples. One mangrove clump must not
 #: put a kink in the marked lane.
 CHANNEL_SMOOTH = 5
-#: PX-NATIVE, both of them, and on purpose. Past the cap a marked channel stops
-#: reading as a channel and the buoys leave both sides of the SCREEN; below the
-#: floor the two marks sit on top of each other. Those are statements about the
-#: view, and the camera frames a fixed number of metres, so the px is what holds
-#: them — in metres they would drift with the projection in the direction
-#: nobody expects.
-CHANNEL_HW_CAP = 190
-CHANNEL_HW_MIN = 64
+#: Past the cap a marked channel stops reading as a channel and the buoys leave
+#: both sides of the SCREEN; below the floor the two marks sit on top of each
+#: other. Those are statements about the VIEW.
+#:
+#: Y POR ESO SON METROS, QUE ES LO CONTRARIO DE LO QUE DECÍA AQUÍ. Estaban
+#: fijados en px «porque la cámara encuadra un número fijo de metros, así que el
+#: px es lo que los sostiene» — y es justo al revés: `camera.viewWidthM` son 160
+#: metros, y cuántos PÍXELES son esos 160 metros depende de la escala. Al pasar
+#: de 2.5 a 3.125 px/m el encuadre pasó de 400 a 500 px, así que un tope de 190
+#: px se encogió de la mitad del ancho de pantalla a un 38 % sin que nadie lo
+#: decidiera. Lo que se sostiene entre reescalados es la fracción de la vista, o
+#: sea el metraje. Al 2.5 de siempre dan exactamente los 190 y 64 que eran.
+CHANNEL_HW_CAP = to_px(76.0)
+CHANNEL_HW_MIN = to_px(25.6)
 
 #: how far a route point may deviate from the straight line between its
 #: neighbours before it is kept. The flood returns a staircase; the boat wants
@@ -485,10 +491,45 @@ def measure_channel(raster, route):
             dr = _water_run(raster, cx, cy, nx, ny)
             have = min(min(dl, dr), float(CHANNEL_HW_CAP))
         room.append(have)
+    # 2b. UNA ESTACIÓN QUE NO SE PUDO SONDEAR NO ES UNA SONDA DE CERO.
+    #
+    # `_water_run` empieza a caminar EN la celda de la estación, así que si esa
+    # celda no es agua devuelve 0 hacia los dos lados y el canal "se cierra" ahí.
+    # Pasa en un sitio concreto y por una razón conocida: la ruta arranca en la
+    # punta del muelle, y `raster_stamp_polyline` le pone al muelle una tapa
+    # redonda de `w/2` MÁS ALLÁ de su último punto (ver CLAUDE.md, «collision-vs-
+    # visual alignment gotchas»), de modo que la primera estación cae sobre la
+    # cubierta. Medido en el Pitahaya: `hw[0]` = 0 con agua abierta a 15 px por
+    # los dos lados, y `smoke:crossing` en rojo por «el canal se cierra a 0px».
+    #
+    # Un cero así no es una medición, es un hueco — la misma distinción que el
+    # resto de esta función ya hace con el filtro. Se rellena con la vecina
+    # sondeable más cercana, que es lo que de verdad hay al lado.
+    dry = [i for i, (_s, x, y, _nx, _ny) in enumerate(stations)
+           if _cell_is_water(raster, x, y) is False]
+    for i in dry:
+        j = next((k for k in range(i + 1, len(stations)) if k not in dry), None)
+        if j is None:
+            j = next((k for k in range(i - 1, -1, -1) if k not in dry), None)
+        if j is None:
+            continue
+        room[i] = room[j]
+        off[i] = off[j]
+    if dry:
+        log("lancha", f"{len(dry)} estación(es) sobre estructura, no sobre agua "
+                      f"(la punta del muelle) — heredan la sonda de al lado")
     # 3. smooth the width for a lane that reads as a lane, then clamp it back
     #    under the ceiling so no sample can claim water it does not have
     hw = [min(s, int(room[i])) for i, s in enumerate(_smooth(room))]
     return hw, off
+
+
+def _cell_is_water(raster, x, y):
+    """Is the station's OWN cell water? `None` if it is off the raster."""
+    c, r = raster.cell_of(x, y)
+    if not raster.in_bounds(c, r):
+        return None
+    return raster.at(c, r) == CLS_WATER
 
 
 def _smooth(vals, win=CHANNEL_SMOOTH):

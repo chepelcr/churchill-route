@@ -8,8 +8,8 @@
       "type": "lighthouse",
       "district": "faro",
       "osm": "faro de la punta",
-      "dx": -12,
-      "dy": 138
+      "dxM": -4.8,
+      "dyM": 55.2
     },
     {
       "id": "balneario",
@@ -17,8 +17,8 @@
       "type": "pool",
       "district": "faro",
       "osm": "faro de la punta",
-      "dx": 138,
-      "dy": 12
+      "dxM": 55.2,
+      "dyM": 4.8
     },
     {
       "id": "muellecruc",
@@ -30,7 +30,7 @@
         9.9745,
         -84.8345
       ],
-      "dx": 850
+      "dxM": 340.0
     },
     {
       "id": "ferrycr",

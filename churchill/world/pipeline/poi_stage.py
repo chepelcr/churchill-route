@@ -22,7 +22,7 @@ from ..config import (
     ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BRIDGE, CLS_LAND, CLS_MALECON, CLS_PASEO,
     CALLE_CLASSES, CARRIAGEWAY_CLASSES, CLS_BARRO, CLS_GRAVEL, CLS_ROAD, CLS_WATER, CUAD,
     CUAD_CELLS, FARO_ESP_KERB_LINK_M, FARO_ESP_MAX_CELLS, FARO_ESP_R_M,
-    GRID_CELL, PITAHAYA_STREET,
+    GRID_CELL, PITAHAYA_CONTINUATION_PX, PITAHAYA_STREET, PITAHAYA_STREETS,
     PLANAR_PX_PER_M, POI_NUDGE_PX,
 )
 # `px` under a second name: `place_pois` binds `px, py` as a POINT in three
@@ -302,17 +302,33 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     # The connector loop below then "found" a calle cell 38 px away and paved a
     # stub to nothing: a pier you could see and never drive onto.
     #
-    # Calle 2 Presbíterio Florencio del Castillo runs to the estero on its own,
-    # so resolve ITS north end and put the pier there.
-    pit_end = street_end(roads, PITAHAYA_STREET, mlm["x"], mlm["y"], "north")
-    if pit_end is None:
+    # …Y SE RESUELVE EN DOS PASOS, porque una calle se acaba en un cruce y no en
+    # la orilla. Calle 2 Presbíterio termina contra la Avenida 3, y esa avenida
+    # pasa AL SUR de la manzana del Mercado Municipal: su «extremo norte» tiene
+    # una cuadra entera de mercado por delante, y la calle auxiliar de abajo se
+    # estampaba recta a través de ella — 241 px de calzada atravesando el
+    # mercado hasta un muelle que quedaba plantado dentro de la manzana. Lo que
+    # sigue al norte de esa avenida y sí llega al estero es la Calle 2A.
+    #
+    # El primer paso ancla en el Muelle Nacional; el segundo tiene que anclar en
+    # el RESULTADO del primero y no otra vez en el Nacional, porque la Calle 2A
+    # está a 1 608 px de él y el alcance la descartaría en silencio — que es
+    # exactamente la clase de fallo callado que dejó a este muelle mal puesto.
+    seed = street_end(roads, PITAHAYA_STREET, mlm["x"], mlm["y"], "north")
+    if seed is None:
         warn("pier", f"muelle_pitahaya: {PITAHAYA_STREET} not found near the "
              f"muelle anchor — pier skipped")
         return landmarks, customers, failures, mlm, pier, BUILDING_LM, NO_PAD_LM, resolve
+    pit_end = street_end(roads, PITAHAYA_STREETS, seed[0], seed[1], "north",
+                         reach=PITAHAYA_CONTINUATION_PX) or seed
     pitahaya_x = round(pit_end[0])
     street_y = pit_end[1]
-    log("pier", f"planar anchor: {PITAHAYA_STREET.title()} north end at "
-        f"x={pitahaya_x}, y={round(street_y)}")
+    if tuple(pit_end) != tuple(seed):     # por VALOR: la 2ª llamada devuelve otra tupla
+        log("pier", f"planar anchor: {PITAHAYA_STREET.title()} ends at "
+            f"({round(seed[0])},{round(seed[1])}); the calles that carry on "
+            f"north reach ({pitahaya_x},{round(street_y)}) — "
+            f"{round(seed[1] - street_y)}px closer to the estero")
+    log("pier", f"planar anchor: north end at x={pitahaya_x}, y={round(street_y)}")
     pitahaya_col = min(GRID_COLS - 1, max(0, int(pitahaya_x / GRID_CELL)))
     # THE ESTERO SHORE IS NOT `topY`, and that is the whole difficulty here.
     # `botY[col]` works for the Nacional because the spit IS the southernmost

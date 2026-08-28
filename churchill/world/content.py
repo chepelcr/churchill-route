@@ -61,10 +61,58 @@ def _tuples(node, key=None):
     return node
 
 
+#: LAS MEDIDAS AUTORADAS SON METROS, Y AQUÍ SE VUELVEN PÍXELES. Cada llave de
+#: la izquierda se escribe en metros en su registro y llega al builder como la
+#: de la derecha, en px de este build.
+#:
+#: Por qué existe esto. El reescalado a 3.125 px/m (2026-08-27) destapó que
+#: cinco registros llevaban desplazamientos y tamaños EN PÍXELES afinados a 2.5:
+#: los `dx`/`dy` de tres kioscos y tres hitos, el campo ferial (560x200 px), el
+#: `at`/`r` de cada juego de la feria, el ancho de cada bajada, los focos de la
+#: plaza de Playitas y la cubierta de la lancha. Ninguno falla nada: se quedan
+#: un 20 % cortos en METROS y el mundo sale con el faro corrido 11 m de menos y
+#: el turno un quinto más chico. La cubierta de la lancha SÍ falló, porque
+#: `tests/test_world_units.py` compara la de cada barco contra el registro — y
+#: fue esa prueba la que destapó las otras cinco.
+#:
+#: Se convierte AQUÍ, en la carga, y no en cada lector: los lectores ya piden
+#: `dx`, `w`, `at`; lo que cambia es de dónde sale el número. Una llave en px se
+#: sigue aceptando y gana, para que un registro a medio migrar no se rompa en
+#: silencio — pero `tests/test_content.py` pide que no quede ninguna.
+METRE_KEYS = {
+    "dxM": "dx", "dyM": "dy",
+    "wM": "w", "hM": "h", "rM": "r",
+    "atM": "at",
+    "insetM": "inset", "radiusM": "radius",
+    "speedMS": "speed",
+}
+
+
+def _metres_to_px(node):
+    """Rewrite every authored metre key into the pixel key the builder reads."""
+    from .config import px
+    if isinstance(node, dict):
+        out = {}
+        for k, v in node.items():
+            out[k] = _metres_to_px(v)
+        for m_key, px_key in METRE_KEYS.items():
+            if m_key not in out:
+                continue
+            value = out.pop(m_key)
+            if px_key in out:            # an un-migrated px key wins, loudly
+                continue
+            out[px_key] = ([px(x) for x in value] if isinstance(value, (list, tuple))
+                           else px(value))
+        return out
+    if isinstance(node, list):
+        return [_metres_to_px(v) for v in node]
+    return node
+
+
 def _load(name):
     with open(os.path.join(CONTENT_DIR, name), encoding="utf-8") as fh:
-        return {k: _tuples(v, k) for k, v in json.load(fh).items()
-                if not k.startswith("_")}
+        raw = _metres_to_px(json.load(fh))
+    return {k: _tuples(v, k) for k, v in raw.items() if not k.startswith("_")}
 
 
 _geo = _load("geography.json")

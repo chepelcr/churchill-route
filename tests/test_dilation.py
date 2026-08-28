@@ -164,5 +164,63 @@ class WireTests(unittest.TestCase):
         self.assertEqual(D.export_patches(D.build([])), [])
 
 
+class ItIsOffTests(unittest.TestCase):
+    """EL CAMPO ESTÁ APAGADO POR DEFECTO, Y ESTO ES LO QUE LO DICE.
+
+    Todo lo de arriba sigue pasando: el solucionador hace exactamente lo que
+    promete y separa las manzanas δ. El problema nunca fue que no funcionara —
+    fue que para separar manzanas RÍGIDAS hay que estirar de forma NO UNIFORME
+    lo que queda entre ellas, y lo que queda entre ellas es la calle. Medido
+    sobre el mundo que emitió (`0eb0eceb`):
+
+      * desplazamiento máximo 392 px, y **5 509 celdas del pueblo giradas más de
+        3°**, hasta 46°; divergencia de área hasta 1.15;
+      * la Calle 35 de atrás del Balneario, recta, doblada de 0.0 a 55.8 px
+        sobre un tramo de 417; la Calle 39, 116 px de comba;
+      * el marco de la manzana del Mercado girado de -9.2° a -28.7°, y las
+        parcelas del centro a más de 20° de la retícula pasaron de 2 a 12;
+      * 370 px de cizalla a lo largo del Paseo, que es recto: el faro se
+        desplaza (-47,-17) y el medio del Paseo (-197,+12).
+
+    Y lo que compraba, contra dos mundos anteriores en git: el suelo pisado por
+    huellas con nombre baja 0.87 % -> 0.59 %, y quince `ghost` de 62. Sobre las
+    39 479 huellas del mundo entero, el 99.8 % del suelo edificado ya caía
+    dentro de su manzana SIN el campo.
+
+    `docs/RESCALE.md` lo había dicho antes de que esto existiera: «una proyección
+    NO UNIFORME lo esquiva matemáticamente… costó las distancias verdaderas, las
+    calles rectas y cada gore de cruce hecho a mano. NO LA REVIVAS.» La
+    separación se hace hoy con una SEMEJANZA — el mapa entero a 3.125 px/m — que
+    por construcción no puede torcer una recta.
+    """
+
+    def test_the_field_is_off_by_default(self):
+        import importlib
+        from churchill.world import config
+        importlib.reload(config)
+        self.assertFalse(config.DILATION_ON,
+                         "el campo de dilatación volvió a estar encendido por "
+                         "defecto — ver el docstring de esta clase antes de "
+                         "dejarlo así")
+
+    def test_it_can_still_be_turned_back_on(self):
+        """La vuelta atrás sigue siendo una variable de entorno, para poder
+        volver a MEDIRLO sin tocar código."""
+        import importlib
+        import os
+        from churchill.world import config
+        old = os.environ.get("DILATION")
+        os.environ["DILATION"] = "1"
+        try:
+            importlib.reload(config)
+            self.assertTrue(config.DILATION_ON)
+        finally:
+            if old is None:
+                os.environ.pop("DILATION", None)
+            else:
+                os.environ["DILATION"] = old
+            importlib.reload(config)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -292,7 +292,7 @@
       },
       "towers": {
         "type": "stadium",
-        "inset": 14
+        "insetM": 5.6
       },
       "crowd": [
         {
@@ -333,9 +333,9 @@
       },
       "towers": {
         "type": "stadium",
-        "inset": 10,
-        "radius": 74,
-        "_note": "cancha más chica, halo más chico — si no, los cuatro halos se funden en uno y la plaza entera queda blanca."
+        "_note": "cancha más chica, halo más chico — si no, los cuatro halos se funden en uno y la plaza entera queda blanca.",
+        "insetM": 4.0,
+        "radiusM": 29.6
       },
       "crowd": [
         {

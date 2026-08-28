@@ -1,5 +1,7 @@
 // Game-mode starts (story / arcade / explore) and world setters.
 import { WORLD2D as W } from "../world2d/index.js";
+import { px } from "../domain/units.js";
+import UNITS from "../assets/world-units.json" with { type: "json" };
 import { STAGE_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { state, pushFloat } from "./state.js";
 import { VEHICLES, vehicleMedium } from "./vehicles.js";
@@ -49,7 +51,26 @@ export function stageMedium(stg) {
 //: so starting exactly on it puts half the hull in a wall and the solver spends
 //: the opening second shoving her off the beach. A little way out is clear
 //: water on a line the build already proved navigable.
-const START_OUT_PX = 70;
+//:
+//: PERO SOBRE TODO TIENE QUE DEJAR ATRÁS A LA LANCHA, y eso es lo que era un
+//: `70` a secas. La lancha del estero está atracada en `dockOffsetM` sobre esta
+//: misma ruta y su cubierta mide `deckLengthM`, así que su proa llega a
+//: 8 + 34.4/2 = 25.2 m. El 70 px valía 28 m — la libraba por dos metros y
+//: medio, sin que nada lo dijera.
+//:
+//: El reescalado a 3.125 px/m del 2026-08-27 se llevó ese margen por delante:
+//: 70 px pasaron a ser 22.4 m, o sea DENTRO de ella. Y estar dentro no es un
+//: detalle: `startStage` manda la lancha a la otra orilla con
+//: `crossingFerry.s = total`, el jugador cuenta como embarcado y `carry()` se lo
+//: lleva 15 000 px de un cuadro. Medido: la Travesía se daba por ganada en el
+//: primer cuadro, con `progress` 0.997 y `over` true antes de tocar una tecla.
+//:
+//: Así que se DERIVA de la lancha en vez de escribirse: proa + un margen. Al
+//: 2.5 de siempre da los mismos 70 px, que es lo que hace el arreglo
+//: demostrable.
+const START_OUT_M = UNITS.vessels.lancha.dockOffsetM
+  + UNITS.vessels.lancha.deckLengthM / 2 + 2.8;
+const START_OUT_PX = px(START_OUT_M);
 
 /** The player's pose on the start line of a crossing, or null if there is no
  *  route to start on.
@@ -243,7 +264,20 @@ export function startStage(stageIdx, vehicleKey) {
     ? ferries().find((f) => f.id === stg.ferry) : null;
   let sp;
   if (crossingFerry) {
-    const q = { x: crossingFerry.x, y: crossingFerry.y, a: crossingFerry.a };
+    // EL ATRACADERO ES UN PUNTO DE LA RUTA, NO DONDE ESTÉ LA LANCHA AHORA.
+    //
+    // Esto leía `crossingFerry.x/y`, que es su pose VIVA — la lancha navega y
+    // esos campos se reescriben cada cuadro. `resetFerries()` la manda a casa,
+    // pero se llama TREINTA LÍNEAS MÁS ABAJO, después de colocar al jugador.
+    // La primera vez no se nota porque arranca atracada; a la SEGUNDA —o sea al
+    // reintentar la etapa, que es lo que hace cualquiera que la pierda— el
+    // jugador aparecía donde la lancha se hubiera quedado. Medido: reintentando
+    // la Travesía salías en (31327,2423), a 45 px del desembarcadero, con la
+    // etapa dada por ganada en el primer cuadro (`progress` 0.997, `over` true).
+    //
+    // `routePoint(f, f.dock)` es exactamente lo que `resetFerries` va a
+    // escribir, así que da la misma pose SIN depender del orden de llamada.
+    const q = routePoint(crossingFerry, crossingFerry.dock);
     sp = authoredSpawn("story", q);
   } else {
     // place player near first kiosk of stage (on its street-snapped spawn)

@@ -44,6 +44,42 @@ TABLES = ["PROBE_LAND", "PROBE_SEA", "DISTRICT_DEFS", "DISTRICT_BOUNDS_GEO",
 #: down HERE rather than silently tolerated — an entry is a decision, an
 #: unexpected divergence is still a failure.
 REAUTHORED = {
+    # LOS DESPLAZAMIENTOS AUTORADOS PASARON A METROS (2026-08-27). Eran píxeles
+    # afinados a 2.5 px/m — el faro corrido `dy: 138`, el balneario `dx: 138`,
+    # el Muelle de Cruceros `dx: 850` — y el reescalado a 3.125 los habría
+    # dejado un 20 % cortos EN METROS sin que nada fallara: el faro se habría
+    # movido 44 m donde el autor pidió 55. Hoy se escriben `dyM: 55.2` y el
+    # cargador los convierte, así que el número que se lee aquí es el mismo
+    # desplazamiento a la escala de hoy. A 2.5 px/m los 52 valores convertidos
+    # reproducen su píxel original exacto, que es lo que hace la migración
+    # demostrable sin reconstruir el mundo.
+    "LANDMARK_DEFS[*].dx":
+        "el desplazamiento autorado se escribe en METROS (`dxM`) y el cargador "
+        "lo pasa a px de este build — ver METRE_KEYS en content.py",
+    "LANDMARK_DEFS[*].dy":
+        "idem `dxM`: metros, no píxeles de una escala que ya se movió tres veces",
+    "ATTRACTION_DEFS[*].at[0]": "idem — el offset de un juego, en metros",
+    "ATTRACTION_DEFS[*].at[1]": "idem — el offset de un juego, en metros",
+    "ATTRACTION_DEFS[*].at":
+        "el sitio de un juego dentro del campo ferial es un offset EN METROS "
+        "(`atM`) desde su centro. El DJ es la excepción y conserva una lat/lon: "
+        "se sienta en la frontera del edificio real que toca, no en una posición "
+        "dentro del campo.",
+    "FERIA_DEF.w": "el suelo del campo ferial en METROS (`wM`)",
+    "FERIA_DEF.h": "idem (`hM`)",
+    "BEACH_ACCESS_DEFS[*].w": "el ancho de una bajada en METROS (`wM`)",
+    "LANCHA_DEFS[*].speed":
+        "la velocidad de la lancha en m/s (`speedMS`); era px/s, que sólo "
+        "significaba lo mismo a la escala en que se afinó",
+    "LANCHA_DEFS[*].deck":
+        "LA CUBIERTA NO SE AUTORA AQUÍ. `src/assets/world-units.json` -> "
+        "vessels.lancha la tiene en metros y `service/lancha.py` la deriva; "
+        "esta copia en píxeles (86x34) coincidía con el registro SÓLO a 2.5 "
+        "px/m, así que el reescalado del 2026-08-27 la dejó un 20 % chica y "
+        "`tests/test_world_units.py` lo cazó. Es la quinta copia de un contrato "
+        "que esa prueba ya había perseguido cuatro veces.",
+    "LANCHA_DEFS[*].dockS":
+        "idem `deck`: la ampara `world-units.json` -> vessels.lancha.dockOffsetM",
     # LOS TRES KIOSCOS RE-ANCLADOS sobre restaurantes REALES del mapa. Antes
     # eran una coordenada a ojo; ahora cada uno se para sobre un negocio que
     # OSM trae, que es lo que hace que el punto de recogida sea un lugar y no
@@ -120,10 +156,18 @@ def deep_diff(a, b, path=""):
         # broken loader — `openAlways` on the crossing, a `_why` note beside a
         # value. What may NOT happen is a field going missing: that is the
         # loader failing to reproduce what the literal held.
-        gone = set(a) - set(b)
+        # …Y UNA LLAVE PUEDE DESAPARECER A PROPÓSITO, que es lo que pasa cuando
+        # deja de autorarse aquí porque otro registro ya la tenía. `deck` y
+        # `dockS` de la lancha eran la QUINTA copia de un contrato que vive en
+        # `world-units.json`; borrarlas es el arreglo, no la regresión. Se
+        # pregunta a REAUTHORED con el mismo camino que un campo cambiado, así
+        # que una desaparición sigue teniendo que estar escrita y razonada.
+        gone = sorted(k for k in set(a) - set(b) if not _reauthored(f"{path}.{k}"))
         if gone:
-            return [f"{path}: keys VANISHED — {sorted(gone)}"]
-        return [d for k in a for d in deep_diff(a[k], b[k], f"{path}.{k}")]
+            return [f"{path}: keys VANISHED — {gone}"]
+        # …y una llave excusada arriba tampoco se compara: ya no está en `b`.
+        return [d for k in a if k in b
+                for d in deep_diff(a[k], b[k], f"{path}.{k}")]
     if isinstance(a, (list, tuple)):
         if len(a) != len(b):
             return [f"{path}: length {len(a)} vs {len(b)}"]
@@ -488,3 +532,83 @@ class ShapeTests(unittest.TestCase):
         self.assertEqual(on_disk, read_by,
                          f"these content files are not loaded by anything: "
                          f"{on_disk - read_by}")
+
+class AuthoredLengthsAreMetresTests(unittest.TestCase):
+    """LO QUE UN REGISTRO AUTORA EN LARGO, LO AUTORA EN METROS.
+
+    El reescalado a 3.125 px/m (2026-08-27) destapó que cinco registros llevaban
+    desplazamientos y tamaños EN PÍXELES afinados a 2.5: los `dx`/`dy` de tres
+    kioscos y tres hitos, el campo ferial (560x200 px), el `at`/`r` de cada juego
+    de la feria, el ancho de cada bajada, los focos de la plaza de Playitas y la
+    cubierta de la lancha. Ninguno hacía fallar nada — se quedaban un 20 % cortos
+    en METROS, con el faro corrido 11 m de menos y el turno un quinto más chico.
+
+    La cubierta de la lancha SÍ falló, porque `tests/test_world_units.py` compara
+    la de cada barco contra `world-units.json`, y coincidía con el registro sólo
+    a 2.5 px/m. Esa prueba destapó las otras cinco: es exactamente lo que quería
+    decir su propio nombre, «la fila decía tres copias y la prueba encontró una
+    cuarta».
+    """
+
+    def test_no_authored_length_is_left_in_pixels(self):
+        """Las llaves en px ya no existen en los registros. `content.py` sigue
+        aceptándolas —para que una migración a medias no reviente en silencio—
+        así que esto es lo que dice que la migración está entera."""
+        import glob
+        from churchill.world.content import METRE_KEYS, CONTENT_DIR
+        # `at` NO entra: la llave está sobrecargada — en un juego de la feria es
+        # un offset (y hoy se autora `atM`), pero en el DJ y en cada bajada es
+        # una LAT/LON. Lo que se comprueba de los juegos es que usen `atM`.
+        px_keys = set(METRE_KEYS.values()) - {"at"}
+        offenders = []
+
+        def walk(node, path, where):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    if k.startswith("_"):
+                        continue
+                    if k in px_keys:
+                        offenders.append(f"{where}:{path}.{k} = {v}")
+                    walk(v, f"{path}.{k}", where)
+            elif isinstance(node, list):
+                for i, v in enumerate(node):
+                    walk(v, f"{path}[{i}]", where)
+
+        for path in sorted(glob.glob(os.path.join(CONTENT_DIR, "*.json"))):
+            with open(path, encoding="utf-8") as fh:
+                walk(json.load(fh), "", os.path.basename(path))
+        self.assertEqual(offenders, [], "authored in pixels; use the metre key")
+
+    def test_every_ride_offset_is_metres(self):
+        """La otra mitad de lo de arriba: `at` se excluye por estar sobrecargada,
+        así que los juegos —los únicos cuyo `at` ES un offset— se comprueban por
+        su nombre."""
+        with open(os.path.join(CONTENT_DIR, "attractions.json"), encoding="utf-8") as fh:
+            raw = json.load(fh)
+        for ride in raw["attractions"]:
+            if ride["id"] == "dj_urtech":
+                continue                      # ancla geo, ver la prueba de abajo
+            self.assertIn("atM", ride, f"{ride['id']} sigue con su offset en px")
+            self.assertNotIn("at", ride, f"{ride['id']} tiene las dos llaves")
+
+    def test_the_dj_keeps_a_GEO_anchor_and_not_an_offset(self):
+        """LA EXCEPCIÓN, y casi se pierde en la migración. Los juegos llevan un
+        offset EN METROS desde el centro del campo ferial; el DJ se sienta en la
+        FRONTERA del edificio real que toca, así que su `at` es una lat/lon. La
+        conversión automática lo tomó por un offset y lo dejó en (4, -34) — a
+        cuatro metros del origen del mundo, en el golfo."""
+        from churchill.world.content import ATTRACTION_DEFS
+        dj = next(a for a in ATTRACTION_DEFS if a["id"] == "dj_urtech")
+        lat, lon = dj["at"]
+        self.assertTrue(9.8 < lat < 10.1, f"el DJ perdió su latitud: {lat}")
+        self.assertTrue(-85.0 < lon < -84.6, f"el DJ perdió su longitud: {lon}")
+
+    def test_the_lancha_takes_her_deck_from_the_vessel_registry(self):
+        """No se autora aquí: `world-units.json` -> vessels.lancha la tiene en
+        metros, y tenerla en los dos sitios es cómo se acaba con una lancha que
+        encoge un 20 % cuando el mundo se reescala."""
+        from churchill.world.content import LANCHA_DEFS
+        for spec in LANCHA_DEFS:
+            self.assertNotIn("deck", spec)
+            self.assertNotIn("dockS", spec)
+

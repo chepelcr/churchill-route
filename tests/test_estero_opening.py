@@ -3,7 +3,7 @@ import inspect
 import unittest
 
 from churchill.world.config import (
-    CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER,
+    CLS_ACERA, CLS_BEACH, CLS_LAND, CLS_PASEO, CLS_ROAD, CLS_WATER, GRID_CELL,
 )
 from churchill.world.pipeline.surface_stage import rasterise_surface
 from churchill.world.service import lancha
@@ -54,19 +54,27 @@ class OpenEstuaryTests(unittest.TestCase):
             self.assertEqual(raster.at(*cell), surface)
 
     def test_claim_bitmap_covers_every_future_ground_family(self):
-        raster = Raster(80, 80, 4)
+        # TODO ESTE FIXTURE SE MIDE EN CELDAS, y las px salen de ellas. Estaba
+        # escrito con la celda clavada en 4 y las posiciones en píxeles al lado
+        # —`{"x": 80, "y": 280}` para decir «la celda (20, 70)»—, así que el
+        # reescalado a 3.125 px/m, que puso la celda en 5, desalineó las
+        # posiciones de las aserciones sin que el código bajo prueba cambiara.
+        # `g` es la unidad; nada aquí vuelve a escribirse en píxeles crudos.
+        g = GRID_CELL
+        raster = Raster(80, 80, g)
         band = [(0, 79)] * 80
-        road = {"pts": [20, 40, 300, 40], "w": 8}
+        road = {"pts": [5 * g, 10 * g, 75 * g, 10 * g], "w": 2 * g}
         mask, counts = estuary_claim_mask(
             raster,
             band,
             roads=[road],
             bridge_road=road,  # production passes the same record both ways
-            sites=[{"pts": [(160, 160), (240, 160),
-                             (240, 240), (160, 240)]}],
-            pois=[{"x": 80, "y": 280}],
-            authored_pois=[{"x": 280, "y": 280}],
-            parcels=[{"poly": [8, 160, 80, 160, 80, 240, 8, 240]}],
+            sites=[{"pts": [(40 * g, 40 * g), (60 * g, 40 * g),
+                            (60 * g, 60 * g), (40 * g, 60 * g)]}],
+            pois=[{"x": 20 * g, "y": 70 * g}],
+            authored_pois=[{"x": 70 * g, "y": 70 * g}],
+            parcels=[{"poly": [2 * g, 40 * g, 20 * g, 40 * g,
+                               20 * g, 60 * g, 2 * g, 60 * g]}],
             occ={(0, 0)},
         )
 
@@ -124,7 +132,8 @@ class SmoothedCentreTests(unittest.TestCase):
         """Una ría recta que dobla: el canal es ancho en todas partes, pero el
         codo es lo bastante cerrado como para que la media móvil ponga el centro
         suavizado en el manglar."""
-        raster = Raster(60, 60, 4, fill=CLS_LAND)
+        g = GRID_CELL
+        raster = Raster(60, 60, g, fill=CLS_LAND)
         route = []
         for step in range(30):
             col = 8 + step
@@ -132,7 +141,9 @@ class SmoothedCentreTests(unittest.TestCase):
             for wide in range(-6, 7):
                 if 0 <= row + wide < 60:
                     raster.set(col, row + wide, CLS_WATER)
-            route.append((col * 4 + 2, row * 4 + 2))
+            # el centro de la celda, sea cual sea su tamaño — estaba como
+            # `col * 4 + 2`, o sea la celda de 4 px escrita dos veces
+            route.append((col * g + g // 2, row * g + g // 2))
         return raster, route
 
     def test_no_station_loses_water_to_the_filter(self):

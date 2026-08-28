@@ -6,6 +6,135 @@
   "_when": "`when` is a KEY OF THE SCREEN'S CONTEXT, never an expression. The screen already computes these — `canContinue` is 'a timed run was lost, an ad is ready, and this run has not used one' — so the registry names the decision and the screen owns it. Negations are provided by the screen as their own keys (`notTutorial`) rather than parsed here, deliberately: the moment this file can express `!a && b` it has become a language. `tests/test_screens.py` fails on a `when` no screen provides, because that is a block that never appears and says nothing.",
   "_editor": "An editor may REORDER a screen's slots and hide one (`\"hidden\": true`). It may not invent a slot id — an unknown id has no component and would silently render nothing, which is the failure this registry exists to make impossible.",
   "screens": {
+    "boot": {
+      "name": "Arranque",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "EL AGUA NO ESTÁ AQUÍ, y es la misma línea que la fila de herramientas de `title`: es el fondo de la secuencia entera, está en las dos fases y no hay ninguna decisión por pantalla en ella. Lo que el registro ordena son las dos pantallas que se muestran encima.",
+      "slots": [
+        {
+          "id": "logo",
+          "region": "main",
+          "when": "showingLogo"
+        },
+        {
+          "id": "art",
+          "region": "main",
+          "when": "showingLoad"
+        },
+        {
+          "id": "bar",
+          "region": "main",
+          "when": "showingLoad",
+          "note": "el ferry del muelle va montado en el borde del relleno — es la misma arte que `drawBoat`"
+        },
+        {
+          "id": "loading",
+          "region": "main",
+          "when": "showingLoad"
+        }
+      ]
+    },
+    "brief": {
+      "name": "Antes del nivel",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "Lo que la etapa PROMETE. Una travesía no tiene entregas ni cielo fijo, así que el objetivo y la condición son bloques distintos y condicionales: informarla como «0 entregas · Soleado» eran dos datos falsos y la peor descripción posible del nivel.",
+      "slots": [
+        {
+          "id": "kicker",
+          "region": "main"
+        },
+        {
+          "id": "name",
+          "region": "main"
+        },
+        {
+          "id": "body",
+          "region": "main"
+        },
+        {
+          "id": "objective",
+          "region": "main"
+        },
+        {
+          "id": "condition",
+          "region": "main",
+          "when": "hasCondition",
+          "note": "la travesía rota entre cuatro condiciones por intento; «Bajamar despejada» y «Aguacero con marea alta» son dos niveles distintos"
+        },
+        {
+          "id": "boosts",
+          "region": "main",
+          "when": "hasBoosts"
+        },
+        {
+          "id": "go",
+          "region": "actions"
+        }
+      ]
+    },
+    "intro": {
+      "name": "Intro",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "Tres tiempos de historia y nada más. El PASO de diapositiva no es un slot: la animación vive en el `key={slide}` que hace remontar el bloque, y sacarla al registro sería describir la transición como si fuera contenido.",
+      "slots": [
+        {
+          "id": "text",
+          "region": "slide"
+        },
+        {
+          "id": "support",
+          "region": "slide",
+          "when": "isLastSlide",
+          "note": "la única línea de «esto se puede apoyar» en todo el arranque, y va en la última"
+        },
+        {
+          "id": "dots",
+          "region": "main"
+        },
+        {
+          "id": "next",
+          "region": "actions"
+        }
+      ]
+    },
+    "modebrief": {
+      "name": "Antes del modo",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "«Aquí está el trato» para Recorrer y Arcade. Arcade ESCOGE su cielo y Recorrer lo hace girar, así que son dos bloques excluyentes y no un control con un modo apagado.",
+      "slots": [
+        {
+          "id": "heading",
+          "region": "main"
+        },
+        {
+          "id": "body",
+          "region": "main"
+        },
+        {
+          "id": "sky",
+          "region": "main",
+          "when": "picksSky",
+          "note": "tres minutos son más cortos que cualquier fase de un día de diez, así que un Arcade con ciclo o no giraría o parpadearía: escoger es el control honesto"
+        },
+        {
+          "id": "cycleNote",
+          "region": "main",
+          "when": "turnsTheDay"
+        },
+        {
+          "id": "rules",
+          "region": "main"
+        },
+        {
+          "id": "go",
+          "region": "actions"
+        }
+      ]
+    },
     "over": {
       "name": "Resultados",
       "accent": "gold",
@@ -96,6 +225,108 @@
         }
       ]
     },
+    "paused": {
+      "name": "Pausa",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "Los cuatro botones son slots propios porque el ORDEN de una fila de botones es una decisión de diseño —cuál queda de primero es cuál se pulsa sin mirar— y uno de ellos ya era condicional.",
+      "slots": [
+        {
+          "id": "title",
+          "region": "main"
+        },
+        {
+          "id": "body",
+          "region": "main"
+        },
+        {
+          "id": "resume",
+          "region": "actions"
+        },
+        {
+          "id": "restart",
+          "region": "actions",
+          "when": "canRestart",
+          "note": "Recorrer no tiene nivel que reiniciar, así que no lo ofrece"
+        },
+        {
+          "id": "settings",
+          "region": "actions"
+        },
+        {
+          "id": "quit",
+          "region": "actions"
+        }
+      ]
+    },
+    "playing": {
+      "name": "En juego",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "AQUÍ ES DONDE EL REGISTRO SE GANA EL SUELDO: cuál de las cuatro tarjetas va primero, y si la pestaña del distrito o el consejo aparecen, eran decisiones de diseño soldadas en el JSX. El `ui-layer` y sus filas se quedan en CSS, que es su idioma.",
+      "slots": [
+        {
+          "id": "score",
+          "region": "top"
+        },
+        {
+          "id": "combo",
+          "region": "top"
+        },
+        {
+          "id": "modeCard",
+          "region": "top",
+          "when": "untimed",
+          "note": "una corrida sin reloj lo dice en `timeLeft`, no en una lista de nombres de modo — esa lista se guardaba en tres sitios y uno ya estaba mal"
+        },
+        {
+          "id": "timer",
+          "region": "top",
+          "when": "isTimed"
+        },
+        {
+          "id": "stageProgress",
+          "region": "top",
+          "when": "inStage"
+        },
+        {
+          "id": "deliveries",
+          "region": "top",
+          "when": "freeRun"
+        },
+        {
+          "id": "tools",
+          "region": "tools",
+          "when": "canPause",
+          "note": "en la pantalla de pausa el HUD se dibuja SIN ellos: es una condición de la región, no un bloque que se quita"
+        },
+        {
+          "id": "debugCoords",
+          "region": "overlay",
+          "when": "debugOn"
+        },
+        {
+          "id": "districtTab",
+          "region": "overlay"
+        },
+        {
+          "id": "districtToast",
+          "region": "overlay",
+          "when": "hasToast"
+        },
+        {
+          "id": "storyTip",
+          "region": "overlay",
+          "when": "hasTip"
+        },
+        {
+          "id": "cargo",
+          "region": "overlay",
+          "when": "carrying",
+          "note": "la barra habla de lo que uno LLEVA: las frases y la unidad van por el modelo de deterioro del producto, no por el churchill"
+        }
+      ]
+    },
     "realmpick": {
       "name": "Recorrer: ¿por dónde?",
       "accent": "mint",
@@ -114,6 +345,165 @@
           "id": "esteroNote",
           "region": "footer",
           "note": "el estero no reparte: todos los clientes están en tierra, así que decirlo aquí evita que se lea como un modo roto"
+        }
+      ]
+    },
+    "settings": {
+      "name": "Ajustes",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "LOS TRES GRUPOS SON REGIONES, no bloques: un encabezado suelto en el registro habría que mantenerlo en orden con lo que encabeza. Cada FILA sí es contenido — cuáles se ofrecen y en qué orden es exactamente lo que un editor de ajustes querría cambiar.",
+      "slots": [
+        {
+          "id": "language",
+          "region": "app"
+        },
+        {
+          "id": "volume",
+          "region": "app"
+        },
+        {
+          "id": "speed",
+          "region": "gameplay"
+        },
+        {
+          "id": "zoom",
+          "region": "gameplay"
+        },
+        {
+          "id": "poiNames",
+          "region": "gameplay"
+        },
+        {
+          "id": "removeAds",
+          "region": "account"
+        },
+        {
+          "id": "tutorial",
+          "region": "account"
+        },
+        {
+          "id": "supporters",
+          "region": "account",
+          "when": "fromTitle",
+          "note": "sólo desde la portada: abre una página que no tiene vuelta al juego"
+        },
+        {
+          "id": "reset",
+          "region": "account"
+        },
+        {
+          "id": "privacy",
+          "region": "account"
+        }
+      ]
+    },
+    "shop": {
+      "name": "Tienda",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "LAS PESTAÑAS SON EL MARCO Y LOS PANELES EL CONTENIDO. La fila de pestañas está en todos los renders y es el control de la tienda misma; qué paneles existen y en qué orden se recorren sí es una decisión, y cada uno ya era condicional: seis pruebas de pestaña seguidas.",
+      "slots": [
+        {
+          "id": "tabs",
+          "region": "head"
+        },
+        {
+          "id": "vehicles",
+          "region": "main",
+          "when": "onVehicleTab",
+          "note": "las pestañas de vehículos se parten por MEDIO, así que un enlace profundo que nombra un vehículo re-resuelve su pestaña desde el medio de ese vehículo"
+        },
+        {
+          "id": "upgrades",
+          "region": "main",
+          "when": "onUpgrades"
+        },
+        {
+          "id": "boosts",
+          "region": "main",
+          "when": "onBoosts"
+        },
+        {
+          "id": "colors",
+          "region": "main",
+          "when": "onColors"
+        },
+        {
+          "id": "packs",
+          "region": "main",
+          "when": "onPacks"
+        },
+        {
+          "id": "authored",
+          "region": "main",
+          "when": "hasAuthored",
+          "note": "los artículos que autora el editor viven junto a los del juego, en la pestaña que ellos digan"
+        },
+        {
+          "id": "confirm",
+          "region": "modal",
+          "when": "confirming"
+        }
+      ]
+    },
+    "stagepick": {
+      "name": "Escoger nivel",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "Las FLECHAS no están aquí: son el control de la carrusela, están en los dos lados y siempre. Lo que la tarjeta DICE de un nivel sí es contenido, y es donde una travesía se describe distinto de una entrega.",
+      "slots": [
+        {
+          "id": "badges",
+          "region": "head"
+        },
+        {
+          "id": "name",
+          "region": "main"
+        },
+        {
+          "id": "brief",
+          "region": "main"
+        },
+        {
+          "id": "meta",
+          "region": "main",
+          "note": "una travesía no tiene entregas ni cielo fijo: los portones salen de la ruta de la lancha y el clima de la condición que ESTE intento va a navegar"
+        },
+        {
+          "id": "play",
+          "region": "main"
+        },
+        {
+          "id": "dots",
+          "region": "footer"
+        }
+      ]
+    },
+    "supporters": {
+      "name": "Saludos",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "Lo alimenta el contenido remoto, así que cambia sin publicar una versión. La lista vacía es un bloque PROPIO y no un ternario dentro del otro: son dos cosas distintas que decir, y el registro puede quitar cualquiera de las dos.",
+      "slots": [
+        {
+          "id": "body",
+          "region": "main"
+        },
+        {
+          "id": "empty",
+          "region": "main",
+          "when": "isEmpty"
+        },
+        {
+          "id": "tiers",
+          "region": "main",
+          "when": "hasTiers"
+        },
+        {
+          "id": "kofi",
+          "region": "footer",
+          "when": "hasKofi"
         }
       ]
     },
@@ -147,7 +537,57 @@
           "when": "hasKeyboard"
         }
       ]
+    },
+    "tutbrief": {
+      "name": "Antes del tutorial",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "El ajuste de manejo va ANTES de aprender los controles, no a mitad de camino. Que sea un bloque es lo que permite quitarlo del registro si algún día se decide que el tutorial no debe abrir con dos deslizadores encima.",
+      "slots": [
+        {
+          "id": "kicker",
+          "region": "main"
+        },
+        {
+          "id": "title",
+          "region": "main"
+        },
+        {
+          "id": "body",
+          "region": "main"
+        },
+        {
+          "id": "tuning",
+          "region": "main"
+        },
+        {
+          "id": "go",
+          "region": "actions"
+        }
+      ]
+    },
+    "vehpick": {
+      "name": "Escoger vehículo",
+      "accent": "gold",
+      "background": "editorScreenBg",
+      "_why": "Tres columnas, tres decisiones: la moto, su pintura y lo que uno se lleva. La fila de arriba —volver, título, monedas— es el marco de la tarjeta y está en todos los renders, así que no es un slot.",
+      "slots": [
+        {
+          "id": "vehicle",
+          "region": "main"
+        },
+        {
+          "id": "color",
+          "region": "main"
+        },
+        {
+          "id": "boosts",
+          "region": "main",
+          "when": "armsBoosts",
+          "note": "Historia arma sus mejoras en el StageBrief, así que ahí esta columna no va — apiladas bajo la pintura hacían una tarjeta alta y despareja"
+        }
+      ]
     }
   },
-  "_partial": "Sólo `over`, `title`, `realmpick` y `passage` se pintan por slots hoy, y eso es a propósito y no algo a medio hacer: `over` tiene la estructura condicional más rica del juego (nueve bloques, siete condicionales), `title` ya cargaba el gancho del editor, y `realmpick` nació aquí porque una pantalla nueva no tiene por qué nacer fuera del registro. Convertir las quince de un solo tirón es el punto en que esto deja de ser un registro y se vuelve una reescritura — las otras once siguen tomando su acento y su fondo de `applyScreen`, que siempre los ha leído por pantalla."
+  "_partial": "LAS DIECISÉIS ESTÁN. `over` y `title` fueron las dos primeras, `realmpick` y `passage` nacieron aquí, y las doce restantes se migraron el 2026-08-28. Lo que NO entró está decidido y no pendiente: el agua del arranque, la fila de herramientas de la portada, las flechas de la carrusela, las pestañas de la tienda y el paso de diapositiva del intro son el MARCO — están en todos los renders de su pantalla y no hay ninguna decisión por pantalla en ellos. Un registro que los listara estaría describiendo el marco como si fuera contenido, y ésa es la misma línea que impide que esto se vuelva un lenguaje de maquetado."
 }

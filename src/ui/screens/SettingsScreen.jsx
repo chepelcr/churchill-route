@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Game } from "../../game/index.js";
 import { sfx } from "../../game/audio.js";
 import { useT, getLang, setLang } from "../../i18n/index.js";
+import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
 import { iap } from "../../monetize/iap.js";
 import { tuning } from "../../game/tuning.js";
 import Icon from "../Icon.jsx";
+import Slots from "../Slots.jsx";
 
 // App config — a FULL-SCREEN page (edge to edge): language, volume/mute,
 // remove-ads purchase, tutorial replay, supporters, progress reset.
@@ -26,6 +28,140 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   };
   const version = (typeof __APP_VERSION__ !== "undefined" && __APP_VERSION__) || "dev";
 
+  // LOS TRES GRUPOS SON REGIONES, no bloques. Un `<h2 class="set-group">` es el
+  // esqueleto de la página —el registro no lleva encabezados sueltos que haya
+  // que mantener en orden con lo que van encabezando—, mientras que CADA FILA
+  // sí es contenido: cuáles se ofrecen y en qué orden es exactamente lo que un
+  // editor de ajustes querría cambiar.
+  const SLOTS = {
+    language: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.language")}</span>
+        <div className="lang-toggle">
+          {["es", "en"].map((l) => (
+            <button key={l} className={"btn " + (getLang() === l ? "gold" : "secondary")}
+              onClick={() => { setLang(l); sfx.play("menu_select"); }}>
+              {l === "es" ? "Español" : "English"}
+            </button>
+          ))}
+        </div>
+      </div>
+    ),
+    volume: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.volume")}</span>
+        <div className="vol-wrap">
+          <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
+            aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} /></button>
+          <input type="range" min="0" max="100" value={muted ? 0 : vol}
+            onChange={(e) => changeVol(+e.target.value)}
+            aria-label={t("settings.volume")} />
+          <span className="vol-pct">{muted ? t("settings.muted") : `${vol}%`}</span>
+        </div>
+      </div>
+    ),
+    speed: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.speed")}</span>
+        <div className="vol-wrap">
+          <input type="range" min="70" max="120" step="5" value={spd}
+            onChange={(e) => { const v = +e.target.value; setSpd(v); tuning.setSpeed(v / 100); }}
+            aria-label={t("settings.speed")} />
+          <span className="vol-pct">{spd}%</span>
+        </div>
+      </div>
+    ),
+    zoom: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.zoom")}</span>
+        <div className="vol-wrap">
+          <input type="range" min="60" max="140" step="10" value={zoom}
+            onChange={(e) => { const v = +e.target.value; setZoom(v); tuning.setZoom(v / 100); }}
+            aria-label={t("settings.zoom")} />
+          <span className="vol-pct">{zoom}%</span>
+        </div>
+      </div>
+    ),
+    poiNames: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.poiNames")}</span>
+        <div className="lang-toggle">
+          <span className="set-desc">{t("settings.poiNames.desc")}</span>
+          <button className={"btn " + (poi ? "gold" : "secondary")}
+            onClick={() => { const v = !poi; setPoi(v); tuning.setPoiNames(v); sfx.play("menu_select"); }}>
+            {poi ? t("select.yes") : t("select.no")}
+          </button>
+        </div>
+      </div>
+    ),
+    removeAds: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.removeAds")}</span>
+        <div className="iap-wrap">
+          {iap.owned ? (
+            <span className="iap-owned">{t("settings.removeAds.owned")}</span>
+          ) : iap.isNative ? (
+            iap.available ? (
+              <>
+                <span className="set-desc">{t("settings.removeAds.desc")}</span>
+                <button className="btn gold" onClick={() => iap.buy()}>
+                  {t("settings.buy")}{iap.price ? ` · ${iap.price}` : ""}
+                </button>
+                <button className="btn secondary" onClick={() => iap.restore()}>
+                  {t("settings.restore")}
+                </button>
+              </>
+            ) : (
+              // sideloaded APK / product not live yet: Play Billing only works
+              // for installs that came through Google Play
+              <span className="set-desc">{t("settings.removeAds.play")}</span>
+            )
+          ) : (
+            <span className="set-desc">{t("settings.removeAds.web")}</span>
+          )}
+        </div>
+      </div>
+    ),
+    tutorial: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("mode.tutorial")}</span>
+        <button className="btn secondary" onClick={onTutorial}>{t("settings.tutorial")}</button>
+      </div>
+    ),
+    supporters: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.supporters")}</span>
+        <button className="btn secondary" onClick={onSupporters}><Icon name="heart" size={14} /> {t("sup.title")}</button>
+      </div>
+    ),
+    reset: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.reset")}</span>
+        {confirming ? (
+          <div className="lang-toggle">
+            <span className="set-desc">{t("settings.resetQ")}</span>
+            <button className="btn" onClick={() => { Game.resetProgress(); setConfirming(false); }}>{t("select.yes")}</button>
+            <button className="btn secondary" onClick={() => setConfirming(false)}>{t("select.no")}</button>
+          </div>
+        ) : (
+          <button className="btn secondary" onClick={() => setConfirming(true)}>↺</button>
+        )}
+      </div>
+    ),
+    privacy: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.privacy")}</span>
+        {/* absolute URL so it also opens from the Android WebView build */}
+        <a className="btn secondary" href="https://churchill.jcampos.dev/privacy/"
+          target="_blank" rel="noopener noreferrer">{t("settings.privacy")}</a>
+      </div>
+    ),
+  };
+  // Supporters is only offered from the TITLE, never from a paused run: it opens
+  // a page that has no way back to the game.
+  const ctx = { fromTitle: !!onSupporters };
+  const slot = (region) => <Slots screen={UI_SCREEN.SETTINGS} region={region} ctx={ctx} slots={SLOTS} />;
+
   return (
     <div className="page-card">
       <div className="page-head">
@@ -36,127 +172,14 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
 
       <div className="page-body scrolly">
         <div className="center-stack">
-        <div className="settings-rows">
-          <h2 className="set-group">{t("settings.group.app")}</h2>
-
-          <div className="set-row">
-            <span className="set-lbl">{t("settings.language")}</span>
-            <div className="lang-toggle">
-              {["es", "en"].map((l) => (
-                <button key={l} className={"btn " + (getLang() === l ? "gold" : "secondary")}
-                  onClick={() => { setLang(l); sfx.play("menu_select"); }}>
-                  {l === "es" ? "Español" : "English"}
-                </button>
-              ))}
-            </div>
+          <div className="settings-rows">
+            <h2 className="set-group">{t("settings.group.app")}</h2>
+            {slot("app")}
+            <h2 className="set-group">{t("settings.group.gameplay")}</h2>
+            {slot("gameplay")}
+            <h2 className="set-group">{t("settings.group.account")}</h2>
+            {slot("account")}
           </div>
-
-          <div className="set-row">
-            <span className="set-lbl">{t("settings.volume")}</span>
-            <div className="vol-wrap">
-              <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
-                aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} /></button>
-              <input type="range" min="0" max="100" value={muted ? 0 : vol}
-                onChange={(e) => changeVol(+e.target.value)}
-                aria-label={t("settings.volume")} />
-              <span className="vol-pct">{muted ? t("settings.muted") : `${vol}%`}</span>
-            </div>
-          </div>
-
-          <h2 className="set-group">{t("settings.group.gameplay")}</h2>
-
-          <div className="set-row">
-            <span className="set-lbl">{t("settings.speed")}</span>
-            <div className="vol-wrap">
-              <input type="range" min="70" max="120" step="5" value={spd}
-                onChange={(e) => { const v = +e.target.value; setSpd(v); tuning.setSpeed(v / 100); }}
-                aria-label={t("settings.speed")} />
-              <span className="vol-pct">{spd}%</span>
-            </div>
-          </div>
-
-          <div className="set-row">
-            <span className="set-lbl">{t("settings.zoom")}</span>
-            <div className="vol-wrap">
-              <input type="range" min="60" max="140" step="10" value={zoom}
-                onChange={(e) => { const v = +e.target.value; setZoom(v); tuning.setZoom(v / 100); }}
-                aria-label={t("settings.zoom")} />
-              <span className="vol-pct">{zoom}%</span>
-            </div>
-          </div>
-
-          <div className="set-row">
-            <span className="set-lbl">{t("settings.poiNames")}</span>
-            <div className="lang-toggle">
-              <span className="set-desc">{t("settings.poiNames.desc")}</span>
-              <button className={"btn " + (poi ? "gold" : "secondary")}
-                onClick={() => { const v = !poi; setPoi(v); tuning.setPoiNames(v); sfx.play("menu_select"); }}>
-                {poi ? t("select.yes") : t("select.no")}
-              </button>
-            </div>
-          </div>
-
-          <h2 className="set-group">{t("settings.group.account")}</h2>
-
-          <div className="set-row">
-            <span className="set-lbl">{t("settings.removeAds")}</span>
-            <div className="iap-wrap">
-              {iap.owned ? (
-                <span className="iap-owned">{t("settings.removeAds.owned")}</span>
-              ) : iap.isNative ? (
-                iap.available ? (
-                  <>
-                    <span className="set-desc">{t("settings.removeAds.desc")}</span>
-                    <button className="btn gold" onClick={() => iap.buy()}>
-                      {t("settings.buy")}{iap.price ? ` · ${iap.price}` : ""}
-                    </button>
-                    <button className="btn secondary" onClick={() => iap.restore()}>
-                      {t("settings.restore")}
-                    </button>
-                  </>
-                ) : (
-                  // sideloaded APK / product not live yet: Play Billing only
-                  // works for installs that came through Google Play
-                  <span className="set-desc">{t("settings.removeAds.play")}</span>
-                )
-              ) : (
-                <span className="set-desc">{t("settings.removeAds.web")}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="set-row">
-            <span className="set-lbl">{t("mode.tutorial")}</span>
-            <button className="btn secondary" onClick={onTutorial}>{t("settings.tutorial")}</button>
-          </div>
-
-          {onSupporters && (
-            <div className="set-row">
-              <span className="set-lbl">{t("settings.supporters")}</span>
-              <button className="btn secondary" onClick={onSupporters}><Icon name="heart" size={14} /> {t("sup.title")}</button>
-            </div>
-          )}
-
-          <div className="set-row">
-            <span className="set-lbl">{t("settings.reset")}</span>
-            {confirming ? (
-              <div className="lang-toggle">
-                <span className="set-desc">{t("settings.resetQ")}</span>
-                <button className="btn" onClick={() => { Game.resetProgress(); setConfirming(false); }}>{t("select.yes")}</button>
-                <button className="btn secondary" onClick={() => setConfirming(false)}>{t("select.no")}</button>
-              </div>
-            ) : (
-              <button className="btn secondary" onClick={() => setConfirming(true)}>↺</button>
-            )}
-          </div>
-
-          <div className="set-row">
-            <span className="set-lbl">{t("settings.privacy")}</span>
-            {/* absolute URL so it also opens from the Android WebView build */}
-            <a className="btn secondary" href="https://churchill.jcampos.dev/privacy/"
-              target="_blank" rel="noopener noreferrer">{t("settings.privacy")}</a>
-          </div>
-        </div>
         </div>
       </div>
     </div>

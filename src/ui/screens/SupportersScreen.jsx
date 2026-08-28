@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useT } from "../../i18n/index.js";
+import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
 import { content } from "../../content/remote.js";
 import Icon from "../Icon.jsx";
+import Slots from "../Slots.jsx";
 
 const TIER_ICON = ["", "medal3", "medal2", "medal1", "crown"];
 
@@ -17,6 +19,35 @@ export default function SupportersScreen({ onBack }) {
     .filter((g) => g.list.length);
   const kofi = content.meta.kofi;
 
+  const SLOTS = {
+    body: () => <p style={{ opacity: 0.8, fontSize: 13, margin: "4px 0" }}>{t("sup.body")}</p>,
+    // LA LISTA VACÍA ES UN BLOQUE PROPIO, no un ternario dentro del otro: son
+    // dos cosas distintas que decir y el registro puede quitar cualquiera.
+    empty: () => <p className="sup-empty">{t("sup.empty")}</p>,
+    tiers: () => (
+      <div className="sup-groups">
+        {byTier.map(({ tier, list }) => (
+          <div key={tier} className={`sup-group tier-${tier}`}>
+            <div className="sup-tier"><Icon name={TIER_ICON[tier]} size={15} /> {t(`sup.tier${tier}`)}</div>
+            <div className="sup-names">
+              {list.map((s, i) => (
+                <span key={i} className="sup-name" title={s.msg || ""}>{s.name}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+    kofi: () => (
+      <a className="btn gold" href={kofi} target="_blank" rel="noopener noreferrer"
+        style={{ display: "inline-block", marginTop: 8, width: "auto" }}>
+        <Icon name="coffee" size={15} /> {t("sup.kofi")}
+      </a>
+    ),
+  };
+  const ctx = { hasTiers: byTier.length > 0, isEmpty: byTier.length === 0, hasKofi: !!kofi };
+  const slot = (region) => <Slots screen={UI_SCREEN.SUPPORTERS} region={region} ctx={ctx} slots={SLOTS} />;
+
   return (
     <div className="page-card">
       <div className="page-head">
@@ -27,29 +58,8 @@ export default function SupportersScreen({ onBack }) {
 
       <div className="page-body scrolly">
         <div className="center-stack">
-          <p style={{ opacity: 0.8, fontSize: 13, margin: "4px 0" }}>{t("sup.body")}</p>
-
-          {byTier.length === 0 && <p className="sup-empty">{t("sup.empty")}</p>}
-
-          <div className="sup-groups">
-            {byTier.map(({ tier, list }) => (
-              <div key={tier} className={`sup-group tier-${tier}`}>
-                <div className="sup-tier"><Icon name={TIER_ICON[tier]} size={15} /> {t(`sup.tier${tier}`)}</div>
-                <div className="sup-names">
-                  {list.map((s, i) => (
-                    <span key={i} className="sup-name" title={s.msg || ""}>{s.name}</span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {kofi && (
-            <a className="btn gold" href={kofi} target="_blank" rel="noopener noreferrer"
-              style={{ display: "inline-block", marginTop: 8, width: "auto" }}>
-              <Icon name="coffee" size={15} /> {t("sup.kofi")}
-            </a>
-          )}
+          {slot("main")}
+          {slot("footer")}
         </div>
       </div>
     </div>

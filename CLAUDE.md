@@ -1418,6 +1418,42 @@ tormenta, la ARRANCA; una etapa autorada además la SOSTIENE, porque que escampe
 a los noventa segundos convierte su nombre en mentira a media partida. Es el
 mismo patrón que ya mordió con las ordas de gaviotas.
 
+**LAS DIECISÉIS PANTALLAS SE ARMAN DESDE `src/ui/screens.json`** (migración
+cerrada el 2026-08-28). El contrato no cambió: **el JSON selecciona y ordena, el
+motor implementa**. Un slot es un componente de React con nombre — no hay
+posiciones, ni estilos, ni anidamiento, ni expresiones —, cada pantalla conserva
+su esqueleto y monta `<Slots region>` donde va una lista de bloques, y `when` es
+una LLAVE del contexto que la pantalla construye, nunca un predicado que
+`Slots.jsx` interprete.
+
+Dos formas de decidir qué NO es un slot, y las dos se usaron:
+
+* **el MARCO no es contenido.** El agua del arranque, la fila de herramientas de
+  la portada, las flechas de la carrusela, las pestañas de la tienda y el paso
+  de diapositiva del intro están en todos los renders de su pantalla y no hay
+  ninguna decisión por pantalla en ellos. Un registro que los listara estaría
+  describiendo el marco como si fuera contenido;
+* **un encabezado de grupo es esqueleto, y por eso los tres grupos de Ajustes
+  son REGIONES** (`app`, `gameplay`, `account`) y no bloques. Un `<h2>` suelto en
+  la lista habría que mantenerlo en orden con lo que encabeza — la clase de
+  acoplamiento que el registro existe para quitar.
+
+**Y HAY UNA PRUEBA QUE `tests/test_screens.py` NO PUEDE HACER.** Ese archivo
+comprueba que los ids del registro y los componentes coinciden, que ningún
+`when` está sin proveer y que no entró maquetado; lo que no puede ver es si la
+pantalla sigue DIBUJANDO. Un slot que devuelve `null`, una región que nadie monta
+o un `import` que falta pintan una pantalla que se ve deliberada, sin excepción y
+sin advertencia. En esta misma migración **la tienda quedó ENTERA en blanco por
+un `import Slots` que faltaba, y `pnpm build` y las 472 pruebas de Python pasaron
+las dos**. `pnpm smoke:screens` recorre las quince pantallas alcanzables y exige
+que sus bloques estén en el DOM — y **pulsa por ESTRUCTURA, nunca por texto**,
+porque el idioma sale de `localStorage` y un `has-text("Siguiente")` falla al
+cambiar de idioma o de una palabra de la copia, dos cosas que no tienen nada que
+ver con si la pantalla dibuja. Comprueba además que un bloque condicional está
+AUSENTE cuando toca (la columna de mejoras no sale en Historia, que las arma en
+el brief): es la única forma de distinguir «el `when` funciona» de «el bloque no
+aparece nunca».
+
 **RECORRER SON DOS PUNTARENAS, Y EL REALM DECIDE EL MEDIO.** `ciudad` es la
 península en carro; `estero` es el estuario en lancha. No es un quinto
 `GameMode` a propósito —el reloj (ninguno), el marcador, el ciclo del día y la

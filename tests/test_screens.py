@@ -25,12 +25,31 @@ from churchill.world.config import ROOT
 REGISTRY = os.path.join(ROOT, "src", "ui", "screens.json")
 SLOTS_JS = os.path.join(ROOT, "src", "ui", "Slots.jsx")
 APP = os.path.join(ROOT, "src", "ui", "App.jsx")
-SCREENS_DIR = os.path.join(ROOT, "src", "ui", "screens")
+UI_DIR = os.path.join(ROOT, "src", "ui")
 VOCAB = os.path.join(ROOT, "src", "assets", "vocabulary.generated.json")
 
-#: Which component file renders each slot-driven screen.
-IMPLEMENTED = {"over": "ResultsScreen.jsx", "title": "TitleScreen.jsx",
-               "realmpick": "RealmPick.jsx", "passage": "PassageScreen.jsx"}
+#: Which component file renders each slot-driven screen, relative to `src/ui`.
+#: Two of them are NOT in `screens/`: the vehicle picker is shared by every mode
+#: (it is not one screen's component, it is the picker) and the HUD is what the
+#: `playing` screen shows.
+IMPLEMENTED = {
+    "boot": "screens/BootScreen.jsx",
+    "intro": "screens/IntroScreen.jsx",
+    "title": "screens/TitleScreen.jsx",
+    "stagepick": "screens/StageSelect.jsx",
+    "realmpick": "screens/RealmPick.jsx",
+    "brief": "screens/StageBrief.jsx",
+    "modebrief": "screens/ModeBrief.jsx",
+    "tutbrief": "screens/TutorialBrief.jsx",
+    "vehpick": "VehiclePicker.jsx",
+    "passage": "screens/PassageScreen.jsx",
+    "playing": "screens/HUD.jsx",
+    "paused": "screens/PauseScreen.jsx",
+    "over": "screens/ResultsScreen.jsx",
+    "settings": "screens/SettingsScreen.jsx",
+    "supporters": "screens/SupportersScreen.jsx",
+    "shop": "screens/ShopScreen.jsx",
+}
 
 
 def read(path):
@@ -62,7 +81,7 @@ class RegistryTests(unittest.TestCase):
         `Slots` warns once to the console and carries on, which is right at
         runtime and invisible in review."""
         for sid, rec in self.screens.items():
-            src = read(os.path.join(SCREENS_DIR, IMPLEMENTED[sid]))
+            src = read(os.path.join(UI_DIR, IMPLEMENTED[sid]))
             body = src.split("const SLOTS = {", 1)[1].split("\n  };", 1)[0]
             have = set(re.findall(r"^\s{4}(\w+):", body, re.M))
             for slot in rec["slots"]:
@@ -71,7 +90,7 @@ class RegistryTests(unittest.TestCase):
 
     def test_no_component_is_unreachable(self):
         for sid, rec in self.screens.items():
-            src = read(os.path.join(SCREENS_DIR, IMPLEMENTED[sid]))
+            src = read(os.path.join(UI_DIR, IMPLEMENTED[sid]))
             body = src.split("const SLOTS = {", 1)[1].split("\n  };", 1)[0]
             have = set(re.findall(r"^\s{4}(\w+):", body, re.M))
             listed = {s["id"] for s in rec["slots"]}
@@ -83,7 +102,7 @@ class RegistryTests(unittest.TestCase):
         """A `when` the screen's context does not define is `undefined`, which
         is falsey — so the block never appears, on every run, silently."""
         for sid, rec in self.screens.items():
-            src = read(os.path.join(SCREENS_DIR, IMPLEMENTED[sid]))
+            src = read(os.path.join(UI_DIR, IMPLEMENTED[sid]))
             ctx = src.split("const ctx = {", 1)[1].split("\n  };", 1)[0]
             keys = set(re.findall(r"(\w+)\s*[:,]", ctx))
             for slot in rec["slots"]:

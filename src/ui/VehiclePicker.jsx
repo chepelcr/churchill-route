@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Game } from "../game/index.js";
-import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
+import { UI_SCREEN, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { VEHICLES, vehicleMedium } from "../game/vehicles.js";
 import { economy, VEHICLE_PRICES, BOOSTS, COLORS } from "../game/economy.js";
 import { sfx } from "../game/audio.js";
@@ -9,6 +9,7 @@ import VehiclePreview from "./VehiclePreview.jsx";
 import FitScale from "./FitScale.jsx";
 import CoinIcon from "./CoinIcon.jsx";
 import Icon from "./Icon.jsx";
+import Slots from "./Slots.jsx";
 
 // Pre-run picker for every mode: Arcade / Recorrer arm boosts here too, while
 // Historia (storyMode) hides them — the StageBrief owns boost-arming there.
@@ -67,6 +68,89 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false,
     onGo(veh, armed);
   };
 
+  // LOS BLOQUES DEL SELECTOR. La fila de arriba —volver, título, monedas— es el
+  // marco de la tarjeta y está en todos los renders, así que no es un slot. Lo
+  // que sí es una decisión por pantalla son las TRES columnas: la moto, su
+  // pintura y lo que uno se lleva. Historia arma sus mejoras en el StageBrief,
+  // así que ahí la tercera no va.
+  const SLOTS = {
+    vehicle: () => (
+      <div className="glass-card picker-veh">
+        <VehiclePreview vehKey={veh} color={equippedCol?.hex || null} />
+        <div className="vehicles-col">
+          {vehKeys.map((k) => {
+            const has = economy.ownsVehicle(k);
+            return (
+              <button key={k} className={"vchip " + (veh === k ? "active" : "") + (has ? "" : " locked")}
+                onClick={() => pick(k)}>
+                {has ? VEHICLES[k].name : <><Icon name="lock" size={12} /> {VEHICLES[k].name}</>}
+              </button>
+            );
+          })}
+        </div>
+        {!owned && (
+          <button className="btn secondary picker-getbtn" onClick={() => onShop({ tab: "vehicles", veh })}>
+            <Icon name="lock" size={13} /> {t("picker.locked")} · <CoinIcon size={13} /> {VEHICLE_PRICES[veh]}
+          </button>
+        )}
+        <button className="btn gold hero-play" onClick={go} disabled={!owned}>{t("picker.go")}</button>
+      </div>
+    ),
+    color: () => (
+      <div className="glass-card picker-side">
+        <div className="vehicle-card-title">{t("picker.color")}</div>
+        <div className="swatches">
+          <button className={"swatch stock" + (!equippedCol ? " equipped" : "")}
+            title={t("shop.stock")} onClick={() => pickColor(null)}>↺</button>
+          {COLORS.map((c) => {
+            const has = economy.ownsColor(c.id);
+            const eq = equippedCol?.id === c.id;
+            return (
+              <button key={c.id} className={"swatch" + (eq ? " equipped" : "") + (has ? "" : " locked")}
+                style={{ background: c.hex }} title={`${c.name}${has ? "" : ` · ${c.price}`}`}
+                onClick={() => pickColor(c.id)}>
+                {!has && <Icon name="lock" size={11} />}{eq && "✓"}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ),
+    // BOOSTS GET THEIR OWN COLUMN. Stacked under the paint swatches they made
+    // one tall, ragged card; side by side the picker reads as three decisions —
+    // the ride, its paint, what you take with you. And an EMPTY slot is not
+    // hidden: it shows its price and buys in place, because sending somebody to
+    // the shop and back to arm a boost is three screens for one tap.
+    boosts: () => (
+      <div className="glass-card picker-boostcol">
+        <div className="vehicle-card-title">{t("picker.boosts", { n: totalBoosts })}</div>
+        <div className="boost-list">
+          {Object.keys(BOOSTS).map((id) => {
+            const n = economy.boostCount(id);
+            const b = BOOSTS[id];
+            const name = b.editorItem ? b.name : t(`shop.${id}.name`);
+            const afford = economy.coins >= b.price;
+            return (
+              <button key={id}
+                className={"btn boost-row " + (n > 0 ? (armed[id] ? "gold" : "secondary") : "secondary empty")}
+                onClick={() => (n > 0 ? toggleBoost(id) : buyBoost(id))}
+                disabled={n <= 0 && !afford}
+                title={n > 0 ? name : t("picker.buyboost", { price: b.price })}>
+                <Icon name={b.icon} size={14} />
+                <span className="boost-name">{name}</span>
+                {n > 0
+                  ? <span className="boost-n">×{n}</span>
+                  : <span className="boost-buy">{b.price} ₡</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ),
+  };
+  const ctx = { armsBoosts: !storyMode };
+  const slot = (region) => <Slots screen={UI_SCREEN.VEHPICK} region={region} ctx={ctx} slots={SLOTS} />;
+
   return (
     <div className="title-bg">
       <div className="title-shell shell-col">
@@ -79,82 +163,7 @@ export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false,
         </div>
         <FitScale pad={110}>
           <div className="picker-wrap">
-            <div className="picker-layout">
-              {/* vehicle card */}
-              <div className="glass-card picker-veh">
-                <VehiclePreview vehKey={veh} color={equippedCol?.hex || null} />
-                <div className="vehicles-col">
-                  {vehKeys.map((k) => {
-                    const has = economy.ownsVehicle(k);
-                    return (
-                      <button key={k} className={"vchip " + (veh === k ? "active" : "") + (has ? "" : " locked")}
-                        onClick={() => pick(k)}>
-                        {has ? VEHICLES[k].name : <><Icon name="lock" size={12} /> {VEHICLES[k].name}</>}
-                      </button>
-                    );
-                  })}
-                </div>
-                {!owned && (
-                  <button className="btn secondary picker-getbtn" onClick={() => onShop({ tab: "vehicles", veh })}>
-                    <Icon name="lock" size={13} /> {t("picker.locked")} · <CoinIcon size={13} /> {VEHICLE_PRICES[veh]}
-                  </button>
-                )}
-                <button className="btn gold hero-play" onClick={go} disabled={!owned}>{t("picker.go")}</button>
-              </div>
-
-              {/* options card: paint colours + boosts */}
-              <div className="glass-card picker-side">
-                <div className="vehicle-card-title">{t("picker.color")}</div>
-                <div className="swatches">
-                  <button className={"swatch stock" + (!equippedCol ? " equipped" : "")}
-                    title={t("shop.stock")} onClick={() => pickColor(null)}>↺</button>
-                  {COLORS.map((c) => {
-                    const has = economy.ownsColor(c.id);
-                    const eq = equippedCol?.id === c.id;
-                    return (
-                      <button key={c.id} className={"swatch" + (eq ? " equipped" : "") + (has ? "" : " locked")}
-                        style={{ background: c.hex }} title={`${c.name}${has ? "" : ` · ${c.price}`}`}
-                        onClick={() => pickColor(c.id)}>
-                        {!has && <Icon name="lock" size={11} />}{eq && "✓"}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* BOOSTS GET THEIR OWN COLUMN. Stacked under the paint swatches
-                  they made one tall, ragged card; side by side the picker reads
-                  as three decisions — the ride, its paint, what you take with
-                  you. And an EMPTY slot is not hidden: it shows its price and
-                  buys in place, because sending somebody to the shop and back
-                  to arm a boost is three screens for one tap. */}
-              {!storyMode && (
-                <div className="glass-card picker-boostcol">
-                  <div className="vehicle-card-title">{t("picker.boosts", { n: totalBoosts })}</div>
-                  <div className="boost-list">
-                    {Object.keys(BOOSTS).map((id) => {
-                      const n = economy.boostCount(id);
-                      const b = BOOSTS[id];
-                      const name = b.editorItem ? b.name : t(`shop.${id}.name`);
-                      const afford = economy.coins >= b.price;
-                      return (
-                        <button key={id}
-                          className={"btn boost-row " + (n > 0 ? (armed[id] ? "gold" : "secondary") : "secondary empty")}
-                          onClick={() => (n > 0 ? toggleBoost(id) : buyBoost(id))}
-                          disabled={n <= 0 && !afford}
-                          title={n > 0 ? name : t("picker.buyboost", { price: b.price })}>
-                          <Icon name={b.icon} size={14} />
-                          <span className="boost-name">{name}</span>
-                          {n > 0
-                            ? <span className="boost-n">×{n}</span>
-                            : <span className="boost-buy">{b.price} ₡</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+            <div className="picker-layout">{slot("main")}</div>
           </div>
         </FitScale>
       </div>

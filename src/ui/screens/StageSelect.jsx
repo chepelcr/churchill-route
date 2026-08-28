@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../../game/index.js";
-import { STAGE_KIND } from "../../domain/vocabulary.generated.js";
+import { STAGE_KIND, UI_SCREEN } from "../../domain/vocabulary.generated.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { isMvpLocked } from "../../game/progress.js";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import FitScale from "../FitScale.jsx";
 import Icon from "../Icon.jsx";
+import Slots from "../Slots.jsx";
 import { gateCount, crossingCondition } from "../../game/crossing.js";
 import { crossingRuns } from "../../game/progress.js";
 
@@ -97,6 +98,65 @@ export default function StageSelect({ onStart, onBack }) {
   const locked = isLocked(cur);
   const done = cleared.includes(s.id);
 
+  // LOS BLOQUES DE LA CARRUSELA. Las flechas no son slots: son el control de la
+  // carrusela misma —está en los dos lados y siempre— mientras que lo que la
+  // TARJETA dice de un nivel sí es contenido, y ahí es donde una travesía se
+  // describe distinto de una entrega.
+  const SLOTS = {
+    badges: () => <>
+      <span className="hero-num">{String(s.num).padStart(2, "0")}</span>
+      <span className="hero-count">{t("select.of", { n: s.num, total: stages.length })}</span>
+      {done && <span className="hero-badge ok">{t("select.done")}</span>}
+      {locked && <span className="hero-badge no">{isMvp(cur) ? t("select.soon") : <><Icon name="lock" size={12} /> {t("select.locked")}</>}</span>}
+    </>,
+    name: () => <div className="hero-name">{stageName(s)}</div>,
+    brief: () => (
+      <p className="hero-brief">{locked
+        ? (isMvp(cur) ? t("select.soonBrief")
+           // THE STAGE THAT ACTUALLY GATES, not `num - 1`. With a stage
+           // standing outside the chain the one before is not necessarily the
+           // one to clear, and telling a player to finish a level that was
+           // never in their way is worse than saying nothing.
+           : t("select.lockedBrief", { n: stages[gate(cur)]?.num ?? s.num - 1 }))
+        : stageBrief(s)}</p>
+    ),
+    // A CROSSING HAS NO DELIVERIES AND NO FIXED SKY. The carousel described s8
+    // as "0 deliveries · Sunny" — the same two wrong facts the brief used to
+    // show, and the first thing a player reads about the level. Gates come from
+    // the lancha's own route; the weather is whichever of the four conditions
+    // this attempt will actually be sailed in.
+    meta: () => (
+      <div className="hero-meta">
+        {s.kind === STAGE_KIND.CROSSING
+          ? <span><b>{gateCount(s)}</b> {t("select.gates")}</span>
+          : <span><b>{s.targetDeliveries}</b> {t("select.deliveries")}</span>}
+        <span><b>{s.timeLimit}s</b> {t("select.time")}</span>
+        {(() => {
+          const w = s.kind === STAGE_KIND.CROSSING
+            ? crossingCondition(crossingRuns(s.id)).weather : s.weather;
+          return <span><Icon name={WEATHER_ICON[w] || "sun"} size={14} /> {t(`weather.${w}`)}</span>;
+        })()}
+      </div>
+    ),
+    play: () => (
+      <button className="btn gold hero-play" onClick={() => play(cur)} disabled={locked}>
+        {locked ? (isMvp(cur) ? t("select.playSoon") : t("select.playLocked")) : t("select.play")}
+      </button>
+    ),
+    dots: () => (
+      <div className="stage-dots">
+        {stages.map((sg, i) => (
+          <button key={sg.id}
+            className={"dot" + (i === cur ? " on" : "") + (cleared.includes(sg.id) ? " cleared" : "") + (isLocked(i) ? " locked" : "")}
+            onClick={() => { if (i !== cur) { sfx.play("menu_move"); setCur(i); } }}
+            aria-label={t("select.level", { n: sg.num })}></button>
+        ))}
+      </div>
+    ),
+  };
+  const ctx = { always: true };
+  const slot = (region) => <Slots screen={UI_SCREEN.STAGEPICK} region={region} ctx={ctx} slots={SLOTS} />;
+
   return (
     <div className="title-bg">
       <div className="title-shell shell-col">
@@ -112,56 +172,15 @@ export default function StageSelect({ onStart, onBack }) {
               <button className="carousel-arrow" onClick={() => moveStage(-1)} disabled={cur === 0} aria-label="Anterior">‹</button>
 
               <div className={"stage-hero glass-card" + (locked ? " locked" : "") + (done ? " done" : "")}>
-                <div className="hero-top">
-                  <span className="hero-num">{String(s.num).padStart(2, "0")}</span>
-                  <span className="hero-count">{t("select.of", { n: s.num, total: stages.length })}</span>
-                  {done && <span className="hero-badge ok">{t("select.done")}</span>}
-                  {locked && <span className="hero-badge no">{isMvp(cur) ? t("select.soon") : <><Icon name="lock" size={12} /> {t("select.locked")}</>}</span>}
-                </div>
-                <div className="hero-name">{stageName(s)}</div>
-                <p className="hero-brief">{locked
-                  ? (isMvp(cur) ? t("select.soonBrief")
-                     // THE STAGE THAT ACTUALLY GATES, not `num - 1`. With a
-                     // stage standing outside the chain the one before is not
-                     // necessarily the one to clear, and telling a player to
-                     // finish a level that was never in their way is worse
-                     // than saying nothing.
-                     : t("select.lockedBrief", { n: stages[gate(cur)]?.num ?? s.num - 1 }))
-                  : stageBrief(s)}</p>
-                {/* A CROSSING HAS NO DELIVERIES AND NO FIXED SKY. The carousel
-                    described s8 as "0 deliveries · Sunny" — the same two wrong
-                    facts the brief used to show, and the first thing a player
-                    reads about the level. Gates come from the lancha's own
-                    route; the weather is whichever of the four conditions this
-                    attempt will actually be sailed in. */}
-                <div className="hero-meta">
-                  {s.kind === STAGE_KIND.CROSSING
-                    ? <span><b>{gateCount(s)}</b> {t("select.gates")}</span>
-                    : <span><b>{s.targetDeliveries}</b> {t("select.deliveries")}</span>}
-                  <span><b>{s.timeLimit}s</b> {t("select.time")}</span>
-                  {(() => {
-                    const w = s.kind === STAGE_KIND.CROSSING
-                      ? crossingCondition(crossingRuns(s.id)).weather : s.weather;
-                    return <span><Icon name={WEATHER_ICON[w] || "sun"} size={14} /> {t(`weather.${w}`)}</span>;
-                  })()}
-                </div>
-                <button className="btn gold hero-play" onClick={() => play(cur)} disabled={locked}>
-                  {locked ? (isMvp(cur) ? t("select.playSoon") : t("select.playLocked")) : t("select.play")}
-                </button>
+                <div className="hero-top">{slot("head")}</div>
+                {slot("main")}
               </div>
 
               <button className="carousel-arrow" onClick={() => moveStage(1)} disabled={cur === stages.length - 1} aria-label="Siguiente">›</button>
             </div>
           </div>
 
-          <div className="stage-dots">
-            {stages.map((sg, i) => (
-              <button key={sg.id}
-                className={"dot" + (i === cur ? " on" : "") + (cleared.includes(sg.id) ? " cleared" : "") + (isLocked(i) ? " locked" : "")}
-                onClick={() => { if (i !== cur) { sfx.play("menu_move"); setCur(i); } }}
-                aria-label={t("select.level", { n: sg.num })}></button>
-            ))}
-          </div>
+          {slot("footer")}
         </div>
         </FitScale>
       </div>

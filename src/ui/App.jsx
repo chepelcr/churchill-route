@@ -319,7 +319,7 @@ export default function App() {
           {screen === UI_SCREEN.INTRO && <IntroScreen onDone={() => setScreen(UI_SCREEN.TUTBRIEF)} />}
           {screen === UI_SCREEN.TITLE && <TitleScreen editorConfig={WORLD.EDITOR_UI?.screens?.title} onPickMode={pickMode} onSettings={() => openSettings(UI_SCREEN.TITLE)} onSupporters={() => setScreen(UI_SCREEN.SUPPORTERS)} onShop={() => { setShopCtx(null); shopFrom.current = UI_SCREEN.TITLE; setScreen(UI_SCREEN.SHOP); }} />}
           {screen === UI_SCREEN.SUPPORTERS && <SupportersScreen onBack={() => setScreen(UI_SCREEN.TITLE)} />}
-          {screen === UI_SCREEN.SHOP && <ShopScreen ctx={shopCtx} onBack={() => { setShopCtx(null); const back = shopFrom.current; shopFrom.current = UI_SCREEN.TITLE; setScreen(back); }} />}
+          {screen === UI_SCREEN.SHOP && <ShopScreen deepLink={shopCtx} onBack={() => { setShopCtx(null); const back = shopFrom.current; shopFrom.current = UI_SCREEN.TITLE; setScreen(back); }} />}
           {/* The medium the pending run needs — see `runMedium`. A crossing
               stage is sailed and so is Recorrer del Estero, so the picker must
               offer boats and only boats; everything else is driven. */}

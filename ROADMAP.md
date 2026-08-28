@@ -135,26 +135,25 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
 ## 3. Las pantallas
 
-- [ ] **Las doce que faltan — PEDIDAS POR EL USUARIO (2026-08-28).** Hoy se
-      arman desde `src/ui/screens.json` cuatro: `over`, `title` y las dos
-      nuevas, `realmpick` y `passage`, que nacieron ahí porque una pantalla
-      nueva no tiene por qué nacer fuera del registro. **Las otras doce**
-      (`boot`, `intro`, `stagepick`, `brief`, `modebrief`, `tutbrief`,
-      `vehpick`, `playing`, `paused`, `settings`, `supporters`, `shop`) siguen
-      tomando sólo su acento y su fondo de `applyScreen`.
+- [x] ~~**Las doce que faltan.**~~ **Cerrado el 2026-08-28**: las DIECISÉIS
+      pantallas se arman desde `src/ui/screens.json`. `over` y `title` fueron
+      las dos primeras, `realmpick` y `passage` nacieron ahí, y las doce
+      restantes se migraron de una tirada.
 
-      Convertirlas todas de una es donde esto deja de ser un registro y pasa a
-      ser una reescritura, así que van **de a una**, y cada una es: nombrar sus
-      bloques como slots, montar `<Slots region>` donde va cada lista, y su fila
-      en `IMPLEMENTED` de `tests/test_screens.py` —que es lo que hace fallar un
-      slot sin componente, el fallo que si no es SILENCIOSO: la pantalla dibuja,
-      se ve deliberada, y el bloque simplemente no está.
+      Lo que NO entró está decidido y no pendiente: el agua del arranque, la
+      fila de herramientas de la portada, las flechas de la carrusela, las
+      pestañas de la tienda y el paso de diapositiva del intro son el MARCO —
+      están en todos los renders de su pantalla y no hay ninguna decisión por
+      pantalla en ellos.
 
-      El orden que se sugiere es por rendimiento decreciente: `shop` y
-      `settings` (las más largas y las que más pide el editor), luego
-      `stagepick` y `modebrief`, y `playing`/`paused` de últimas — el HUD no es
-      una lista de bloques y forzarlo a serlo es la reescritura que esta fila
-      dice que no se haga.
+      Y salió una prueba que faltaba. `tests/test_screens.py` comprueba que los
+      ids del registro y los componentes coinciden, que ningún `when` está sin
+      proveer y que el registro no lleva maquetado — pero **no puede ver si la
+      pantalla sigue DIBUJANDO**. En esta misma migración la tienda quedó en
+      blanco por un `import Slots` que faltaba, y `pnpm build` y las 472 pruebas
+      pasaron igual. `pnpm smoke:screens` recorre las quince pantallas
+      alcanzables y exige que sus bloques estén en el DOM; la decimosexta la
+      cubre `smoke:passage`.
 
 ---
 

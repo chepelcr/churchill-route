@@ -9,6 +9,8 @@ import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
 import { paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
 import { drawStreetLamps } from "./lights.js";
 import { aabbInView } from "./gfx.js";
+import { depthKey } from "./depth.js";
+import { state } from "../../game/state.js";
 import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
 } from "./ground.js";
@@ -51,8 +53,23 @@ function drawWorld2D(view, t) {
   drawKioskPaths(view);
   drawPiers(view, true);
   phase("worldStreets");
-  // buildings
-  for (const tile of vts) for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) paintBuilding(b);
+  // LOS EDIFICIOS, DE LEJOS A CERCA. Se pintaban en orden de TILE, que daba
+  // igual mientras eran rellenos planos — pero con pared, una que se extiende
+  // hacia el viewer tapa mal a su vecina, y no hay z-buffer que lo arregle.
+  // Con la cámara a plomo sobre el centro, lo más excéntrico está más lejos en
+  // 3-D: se recolecta, se ordena por distancia radial descendente y se pinta.
+  //
+  // Recolectar no rompe el streaming por tile —sólo separa juntar de pintar— y
+  // ordenar unas decenas de referencias por cuadro es ruido: el viewport
+  // encuadra 160 m y los edificios enteros costaban 0,21 ms.
+  const inView = [];
+  for (const tile of vts) {
+    for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) inView.push(b);
+  }
+  const cam = state.cam;
+  inView.sort((p, q) => depthKey(cam, (p.aabb.x0 + p.aabb.x1) / 2, (p.aabb.y0 + p.aabb.y1) / 2)
+                      - depthKey(cam, (q.aabb.x0 + q.aabb.x1) / 2, (q.aabb.y0 + q.aabb.y1) / 2));
+  for (const b of inView) paintBuilding(b);
   phase("worldBuildings");
   // flora. The street trees go down FIRST: they line the acera, so a crown that
   // meets the world's own planting on the cuadra behind it should pass under

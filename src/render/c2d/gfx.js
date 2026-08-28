@@ -259,7 +259,7 @@ function parcelFrame(P) {
 export {
   ACERA_PX, CUAD, VIEW_WIDTH_PX, aabbInView, areaLabel, canvas, computeZoom,
   beginScreenOverlay, ctx, ctxRotation, dpr, endScreenOverlay,
-  flatAABB, flatMultiPath, flatPath, hash01, label, lastT,
+  flatAABB, flatMultiPath, flatPath, hash01, label, lastT, mixColor,
   parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, upright,
   weatherColors, ZOOM,
 };

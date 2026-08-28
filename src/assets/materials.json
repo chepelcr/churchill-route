@@ -190,7 +190,10 @@
             }
           ]
         }
-      ]
+      ],
+      "_wall": "LAS PAREDES DEL FALSO 3-D. Se mezcla el color del cuerpo hacia estas tintas: `wallLit` la cara que da al sol, `wallDark` la que no. Las tintas son DATA y el factor de mezcla vive en effects.json -> parallax.wallShade; el motor sólo multiplica.",
+      "wallLit": "#fff6e2",
+      "wallDark": "#2b2536"
     },
     "bridge": {
       "_note": "EL PUENTE DE MATA LIMÓN, colgante: torres, cables, tablero y barandas. Es la única estructura del mundo con obra de arte propia a esta escala.",

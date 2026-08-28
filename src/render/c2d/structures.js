@@ -4,10 +4,11 @@ import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
-import { ctx, flatPath, label } from "./gfx.js";
+import { ctx, flatPath, label, mixColor } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
 import { buildingHeightM, sunShadow } from "./shadows.js";
 import { roundedPath } from "./curves.js";
+import { facingEdges, paintSweep, parallaxOffset } from "./depth.js";
 import { resolveAssetFormulaMap } from "./shapes.js";
 import { paintStructureParts } from "./structureShapes.js";
 import { paintLight } from "./lights.js";
@@ -29,11 +30,20 @@ function paintBuilding(b) {
   // a la derecha, a las tres de la tarde y a las seis igual, y del mismo largo
   // para una casa que para el mercado. La altura se infiere de la huella porque
   // nada en el mundo emitido la trae — ver `buildingHeightM`.
-  const sh = sunShadow(buildingHeightM(b));
+  const heightM = buildingHeightM(b);
+  const sh = sunShadow(heightM);
+  // LA SOMBRA DE UN SÓLIDO ES SU BARRIDO, no una copia despegada. Esto era la
+  // huella corrida y nada más, lo que en un edificio alto deja un HUECO entre
+  // el cuerpo y su propia sombra — el sol no alcanza a colarse por debajo de
+  // una bodega. Se pinta la base, la copia corrida y los costados que unen las
+  // dos, que es la misma clasificación de aristas que decide las paredes, con
+  // el vector del sol en vez del radial.
   ctx.save();
-  ctx.translate(sh.dx, sh.dy);
   ctx.globalAlpha = sh.alpha;
   ctx.fillStyle = S.building.shadow;
+  paintSweep(ctx, b.pts, sh.dx, sh.dy, facingEdges(b.pts, -sh.dx, -sh.dy));
+  ctx.fill(path);
+  ctx.translate(sh.dx, sh.dy);
   ctx.fill(path);
   ctx.restore();
   // …Y EL COLOR SALE DE LO QUE EL EDIFICIO ES, si se sabe. El respaldo es el
@@ -47,7 +57,40 @@ function paintBuilding(b) {
   // la casa de al lado, que es justo lo que hacía que los doce barrios se
   // vieran iguales.
   const st = buildingStyle(b) || districtBuildingStyle(b);
-  ctx.fillStyle = (st && st.color) || b.color || S.building.fallback; ctx.fill(path);
+  const body = (st && st.color) || b.color || S.building.fallback;
+
+  // LAS PAREDES. La tapa se corre HACIA AFUERA en proporción a lo excéntrico
+  // que esté el edificio —el pinhole de siempre— y entre la huella y la tapa
+  // quedan los costados. Sólo se dibujan los que miran AL CENTRO: los de afuera
+  // los tapa la propia tapa, que va encima.
+  //
+  // Se lee `state.cam` y no el marco de la cámara a propósito: el marco lleva
+  // la SACUDIDA sumada, y unas paredes que tiemblan con cada golpe se leen como
+  // un error de dibujo y no como un golpe.
+  const ro = parallaxOffset(state.cam, (a.x0 + a.x1) / 2, (a.y0 + a.y1) / 2,
+                            heightM, W.PX_PER_M);
+  if (ro.dx || ro.dy) {
+    const wall = new Set(facingEdges(b.pts, ro.dx, ro.dy));
+    // …Y CADA PARED SABE SI LE DA EL SOL. Es casi gratis —la misma
+    // clasificación con el vector del sol— y es lo que separa un cuerpo de un
+    // bloque: sin esto las cuatro caras salen del mismo gris y el edificio
+    // vuelve a leerse plano, sólo que más alto.
+    const sunlit = new Set(facingEdges(b.pts, sh.dx, sh.dy));
+    const lit = [...wall].filter((i) => sunlit.has(i));
+    const dark = [...wall].filter((i) => !sunlit.has(i));
+    // LA PARED TIENE QUE CONTRASTAR CON EL TECHO O NO ES UNA PARED. La primera
+    // versión mezclaba un 28 % y el resultado era del mismo color que el
+    // cuerpo: el edificio salía corrido, no levantado.
+    ctx.fillStyle = mixColor(body, S.building.wallDark, PAR.wallMixDark ?? 0);
+    paintSweep(ctx, b.pts, ro.dx, ro.dy, dark);
+    ctx.fillStyle = mixColor(body, S.building.wallLit, PAR.wallMixLit ?? 0);
+    paintSweep(ctx, b.pts, ro.dx, ro.dy, lit);
+    ctx.save();
+    ctx.translate(ro.dx, ro.dy);
+  } else {
+    ctx.save();   // el cuerpo va a plomo: se está justo bajo la cámara
+  }
+  ctx.fillStyle = body; ctx.fill(path);
   ctx.save(); ctx.clip(path);
   ctx.translate(a.x0, a.y0);
   const vars = resolveAssetFormulaMap(S.building.values, {
@@ -68,6 +111,7 @@ function paintBuilding(b) {
   });
   ctx.restore();
   ctx.strokeStyle = S.building.outline; ctx.lineWidth = 1; ctx.stroke(path);
+  ctx.restore();   // cierra el translate de la tapa
 }
 
 // Per-tile Ferrocarril rail pieces: ballast bed + ties + two steel rails.
@@ -89,6 +133,7 @@ const PIER_STYLES = MATERIALS.pier;
 // mundo dibujadas con los colores escritos adentro de su propia función.
 const S = MATERIALS.structure;
 const ORGANIC = EFFECTS.organic || {};
+const PAR = EFFECTS.parallax || {};
 
 function structureColor(palette, spec, vars = {}) {
   if (typeof spec === "string" && spec.startsWith("$")) {

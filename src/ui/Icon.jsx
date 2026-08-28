@@ -34,6 +34,10 @@ const P = {
   phone:   <g fill="none" stroke="currentColor" strokeWidth="2"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10.5 18.5h3" strokeLinecap="round" /></g>,
   bolt:    <path d="M13.5 2L5 13.5h5L9.5 22 19 10h-5.5L13.5 2z" fill="#ffe06b" stroke="#b3841e" strokeWidth="1" />,
   car:     <g fill="currentColor"><path d="M4 13l1.6-4.2A2.5 2.5 0 0 1 8 7h8a2.5 2.5 0 0 1 2.4 1.8L20 13v5h-2.5v-1.5h-11V18H4v-5z" /><circle cx="8" cy="17.8" r="1.7" /><circle cx="16" cy="17.8" r="1.7" /></g>,
+  // La lancha del estero, de perfil: casco, cabina y el bigote de la estela.
+  // Dibujada con el mismo trazo que `car` porque las dos son la misma pregunta
+  // en la pantalla del realm — por cuál de las dos Puntarenas agarra.
+  boat:    <g fill="currentColor"><path d="M3.5 13.5h17l-2.2 4.2a2 2 0 0 1-1.8 1.1H7.5a2 2 0 0 1-1.8-1.1L3.5 13.5z" /><path d="M7.5 12V8.2a1 1 0 0 1 1-1h4.2a1 1 0 0 1 .84.46L15.6 12H7.5z" /><path d="M2 20.8c1.6 0 1.6 1 3.2 1s1.6-1 3.2-1 1.6 1 3.2 1 1.6-1 3.2-1 1.6 1 3.2 1 1.6-1 3.2-1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.65" /></g>,
 };
 
 export default function Icon({ name, size = 18, style }) {

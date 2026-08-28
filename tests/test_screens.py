@@ -29,7 +29,8 @@ SCREENS_DIR = os.path.join(ROOT, "src", "ui", "screens")
 VOCAB = os.path.join(ROOT, "src", "assets", "vocabulary.generated.json")
 
 #: Which component file renders each slot-driven screen.
-IMPLEMENTED = {"over": "ResultsScreen.jsx", "title": "TitleScreen.jsx"}
+IMPLEMENTED = {"over": "ResultsScreen.jsx", "title": "TitleScreen.jsx",
+               "realmpick": "RealmPick.jsx", "passage": "PassageScreen.jsx"}
 
 
 def read(path):
@@ -129,7 +130,32 @@ class VocabularyTests(unittest.TestCase):
         raw_modes = re.findall(r'(?:mode|pendingMode)\s*[!=]==\s*"(\w+)"', src)
         self.assertEqual(raw_modes, [], f"App.jsx compares modes to raw strings: {raw_modes}")
 
+    def test_the_picker_medium_is_the_runs_not_a_leftover_stages(self):
+        """`pendingStage` outlived the run that set it, and the picker read the
+        medium straight off it.
+
+        So once La Traves\u00eda had been chosen in a session, `briefStage.kind`
+        stayed CROSSING for ever and every later Arcade or Recorrer opened the
+        vehicle picker on BOATS — for a run that is driven. Two things close it,
+        and this asserts both: `pickMode` clears the stage for a non-story mode,
+        and the medium is derived PER MODE, so a stage that does not belong to
+        this run cannot reach the answer at all.
+        """
+        src = code(APP)
+        self.assertIn("setPendingStage(mode === GAME_MODE.STORY ? pendingStage : null)", src,
+                      "pickMode no longer clears the stale pendingStage")
+        m = re.search(r"const runMedium = (.*?);\n", src, re.S)
+        self.assertIsNotNone(m, "the picker medium is not derived through `runMedium`")
+        self.assertIn("pendingMode === GAME_MODE.STORY", m.group(1),
+                      "runMedium does not ask which mode is starting")
+        # the stage may only be consulted inside the story branch
+        head = m.group(1).split("?", 1)[0]
+        self.assertNotIn("briefStage", head,
+                         "runMedium reaches for briefStage before asking the mode")
+        self.assertNotIn("medium={briefStage", src,
+                         "the picker still reads its medium straight off a stage")
+
     def test_both_vocabularies_reached_the_client(self):
         vocab = json.loads(read(VOCAB))["enums"]
-        self.assertEqual(len(vocab["UI_SCREEN"]), 15)
+        self.assertEqual(len(vocab["UI_SCREEN"]), 16)
         self.assertEqual(set(vocab["GAME_MODE"]), {"story", "arcade", "explore", "tutorial"})

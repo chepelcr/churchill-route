@@ -1418,6 +1418,79 @@ tormenta, la ARRANCA; una etapa autorada además la SOSTIENE, porque que escampe
 a los noventa segundos convierte su nombre en mentira a media partida. Es el
 mismo patrón que ya mordió con las ordas de gaviotas.
 
+**RECORRER SON DOS PUNTARENAS, Y EL REALM DECIDE EL MEDIO.** `ciudad` es la
+península en carro; `estero` es el estuario en lancha. No es un quinto
+`GameMode` a propósito —el reloj (ninguno), el marcador, el ciclo del día y la
+analítica son idénticos, y partirlo habría bifurcado cada una de esas ramas para
+decir dos veces lo mismo— sino un `ExploreRealm` que se escoge en una pantalla
+propia **ANTES del selector de vehículos**, porque un selector tiene que abrir ya
+sabiendo si ofrece carros o cascos.
+
+Y eso era exactamente el bug que se arrastraba. **`pendingStage` no se limpiaba
+nunca**: lo ponía `pickStage` y nadie lo quitaba, así que en cuanto se hubiera
+escogido la Travesía una vez en la sesión, `briefStage.kind` seguía siendo
+`CROSSING` para siempre y **cualquier Arcade o Recorrer posterior abría el
+selector en LANCHAS** — para una corrida que se maneja. Se cierra por los dos
+lados: `pickMode` limpia la etapa de un modo que no es Historia, y el medio se
+deriva POR MODO (`runMedium`), de manera que una etapa que no es de esta corrida
+ya no puede llegar a la respuesta. `tests/test_screens.py` fija las dos cosas.
+
+El estero abierto NO es la regata: `startCrossing(…, { level: false })` apaga
+portones, contramano, hundirse a las tres y marcador, y deja lo que sí es el
+lugar — las boyas como marcas, las pangas, los cardúmenes, las gaviotas y los
+remolinos. **Llegar a Pitahaya no lo termina**: cerrar la sesión al tocar el
+fondo dejaba al jugador flotando en un estero apagado y sin manera de
+devolverse. Se anuncia una vez (`_crossing.arrived`) y la vida sigue. Tampoco
+reparte: los clientes están todos en tierra —medido: **cero** al norte de la
+mitad de la ruta— así que darle un destino a quien va en lancha es apuntarlo a
+una casa a la que su casco no llega.
+
+**EL NORTE DEL MAPA NO ESTÁ CONECTADO POR TIERRA, Y ESTÁ MEDIDO.** Sobre el
+mundo emitido, la red manejable tiene **69 componentes**. La península es la #4
+(4 228 466 celdas); **Pitahaya y toda la tierra firme de esa orilla son la #3
+(162 945 celdas)**, y en 600 px a la redonda se acercan en **UN SOLO PUNTO**: un
+corte de 95 px al final de la Calle del Arreo, entre dos vías `unclassified` sin
+nombre que terminan en (58000, 8351) y (57951, 8433) —o sea 10.00803,-84.75133 a
+10.00779,-84.75148— con ~45 px de `CLS_LAND` macizo y la acera de cada una en
+medio. Es una laguna del mapeo aguas arriba, no un fallo del builder. Media isla
+que se ve y no se llega.
+
+**LA PUERTA DEL MUELLE ES UNA PUERTA, NO UN BARCO** (`crossTheEstero`). Mientras
+ese corte siga ahí, cruzar es la única forma de llegar. No se navega, no se
+aborda y no se cambia de vehículo: se entra al muelle, se pregunta, y una
+cortina de agua deja al jugador del otro lado con su mismo carro. Sólo Recorrer
+y Arcade —en Historia una puerta que salta media península convierte cualquier
+objetivo en un atajo— y sólo en tierra, porque quien anda en lancha ya puede
+navegar hasta la otra orilla. La ruta de la lancha se usa **sólo por su
+geometría**: sus dos extremos son los dos muelles, ya resueltos por el build
+contra la costa de verdad. Tres cosas que costaron:
+
+* **la oferta es un FLANCO, no un estado.** Se sale PARADO ENCIMA del muelle de
+  destino, así que una prueba de «¿estoy en un muelle?» vuelve a preguntar en el
+  cuadro siguiente, para siempre. Se compara contra el muelle del cuadro
+  anterior, y eso da gratis la regla de «hay que salirse y volver a entrar» y el
+  «ahorita no» sin bandera propia;
+* **se desembarca en SUELO MANEJABLE, no en el punto de la ruta.** El extremo de
+  la ruta es la ORILLA —la última celda de agua antes de la tierra, que es donde
+  un casco se arrima— y dejar ahí un carro lo deja medio dentro de una pared;
+* **y hay que ESPERAR AL OTRO LADO, con la cámara ya encima.** Ésta es la que
+  muerde. `W.ready()` devuelve una PROMESA y `surfaceAt` contesta **AGUA** para
+  todo tile que no ha llegado, así que buscar el desembarcadero sin esperar es
+  preguntarle a un mapa en blanco: `reachablePointNear` devolvía el propio punto
+  de la ruta y el carro salía del agua dentro del agua. Pero esperar tampoco
+  basta — **`W.update(cam)` EVICTA todo tile a más de cinco de la cámara y el
+  lazo de dibujo lo llama cada cuadro**, así que con la cámara todavía en
+  Puntarenas los tiles recién traídos se los llevaba el cuadro siguiente, entre
+  el `await` y la lectura. Es una carrera contra el lazo: fallaba una de cada
+  dos, y se lee como «el sitio está mal» y no como «la cámara se movió». Se
+  mueve la CÁMARA primero, se espera, y entonces se busca. `null` es una
+  respuesta —mejor no cruzar que aparecer flotando en tierra firme— y quien
+  llama lo dice. `pnpm smoke:passage` mide las tres, y **afirma el lugar además
+  del hecho**: los muelles se preguntan a la ruta que el mundo emite, nunca a un
+  píxel escrito a mano. Su propia comprobación previa cayó en la misma carrera
+  hasta que se hizo EN PAUSA, porque la cámara tiene dos dueños que la escriben
+  cada cuadro (`attractTick` en el menú, el seguimiento en `update`).
+
 **EL HUD TAMBIÉN VIVE EN LA CÁMARA.** `state.cam.rot` lo leían sólo `canvas2d.js`
 y `input.js`, así que en El Cocal —la única etapa rotada— el minimapa apuntaba al
 norte del MUNDO y la flecha señalaba noventa grados fuera del cliente. Giran el

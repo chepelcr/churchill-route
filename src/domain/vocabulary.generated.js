@@ -233,16 +233,23 @@ export const GAME_MODE = Object.freeze({
 });
 export const GAME_MODE_VALUES = Object.freeze(["story", "arcade", "explore", "tutorial"]);
 
+export const EXPLORE_REALM = Object.freeze({
+  CIUDAD: "ciudad",
+  ESTERO: "estero",
+});
+export const EXPLORE_REALM_VALUES = Object.freeze(["ciudad", "estero"]);
+
 export const UI_SCREEN = Object.freeze({
   BOOT: "boot",
   INTRO: "intro",
   TITLE: "title",
   STAGEPICK: "stagepick",
+  REALMPICK: "realmpick",
   BRIEF: "brief",
   MODEBRIEF: "modebrief",
   TUTBRIEF: "tutbrief",
   VEHPICK: "vehpick",
-  LANCHAPICK: "lanchapick",
+  PASSAGE: "passage",
   PLAYING: "playing",
   PAUSED: "paused",
   OVER: "over",
@@ -250,7 +257,7 @@ export const UI_SCREEN = Object.freeze({
   SUPPORTERS: "supporters",
   SHOP: "shop",
 });
-export const UI_SCREEN_VALUES = Object.freeze(["boot", "intro", "title", "stagepick", "brief", "modebrief", "tutbrief", "vehpick", "lanchapick", "playing", "paused", "over", "settings", "supporters", "shop"]);
+export const UI_SCREEN_VALUES = Object.freeze(["boot", "intro", "title", "stagepick", "realmpick", "brief", "modebrief", "tutbrief", "vehpick", "passage", "playing", "paused", "over", "settings", "supporters", "shop"]);
 
 export const COIN_TYPE = Object.freeze({
   GOLD: "gold",

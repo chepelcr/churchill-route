@@ -135,15 +135,60 @@ descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
 ## 3. Las pantallas
 
-- [ ] **Las trece que faltan.** `over` y `title` se arman desde
-      `src/ui/screens.json`; las otras trece siguen tomando sólo su acento y su
-      fondo de `applyScreen`. Convertirlas todas de una es donde esto deja de
-      ser un registro y pasa a ser una reescritura, así que van de a una y sólo
-      cuando haya razón.
+- [ ] **Las doce que faltan — PEDIDAS POR EL USUARIO (2026-08-28).** Hoy se
+      arman desde `src/ui/screens.json` cuatro: `over`, `title` y las dos
+      nuevas, `realmpick` y `passage`, que nacieron ahí porque una pantalla
+      nueva no tiene por qué nacer fuera del registro. **Las otras doce**
+      (`boot`, `intro`, `stagepick`, `brief`, `modebrief`, `tutbrief`,
+      `vehpick`, `playing`, `paused`, `settings`, `supporters`, `shop`) siguen
+      tomando sólo su acento y su fondo de `applyScreen`.
+
+      Convertirlas todas de una es donde esto deja de ser un registro y pasa a
+      ser una reescritura, así que van **de a una**, y cada una es: nombrar sus
+      bloques como slots, montar `<Slots region>` donde va cada lista, y su fila
+      en `IMPLEMENTED` de `tests/test_screens.py` —que es lo que hace fallar un
+      slot sin componente, el fallo que si no es SILENCIOSO: la pantalla dibuja,
+      se ve deliberada, y el bloque simplemente no está.
+
+      El orden que se sugiere es por rendimiento decreciente: `shop` y
+      `settings` (las más largas y las que más pide el editor), luego
+      `stagepick` y `modebrief`, y `playing`/`paused` de últimas — el HUD no es
+      una lista de bloques y forzarlo a serlo es la reescritura que esta fila
+      dice que no se haga.
 
 ---
 
 ## 4. El mundo: medido y sin cerrar
+
+- [ ] **EL NORTE NO SE CONECTA POR TIERRA — un corte de 95 m… de 95 PÍXELES.**
+      Medido el 2026-08-28 sobre el mundo emitido, decodificando los tiles (sin
+      pagar corrida): la red manejable tiene **69 componentes**. La península es
+      la **#4** (4 228 466 celdas); **Pitahaya y toda la tierra firme de esa
+      orilla son la #3** (162 945 celdas, x 22 530..60 440), y **en 600 px a la
+      redonda se acercan en UN SOLO PUNTO**.
+
+      Ese punto es el final de la **Calle del Arreo**, que termina en
+      (57908, 8495) y empalma con una vía `unclassified` sin nombre de 3 puntos
+      que muere en **(57951, 8433)**. Enfrente, otra `unclassified` sin nombre
+      arranca en **(58000, 8351)** y sigue al norte. Entre las dos: **~45 px de
+      `CLS_LAND` macizo** más la acera de cada una. En geo, **10.00779,-84.75148
+      → 10.00803,-84.75133**: unos 30 m sin mapear.
+
+      Es una **laguna del mapeo aguas arriba**, no un fallo del builder — las dos
+      vías existen y no comparten nodo. Mientras siga ahí, la única forma de
+      llegar es la puerta del muelle (`crossTheEstero`), que es lo que se
+      implementó ese día.
+
+      Lo que falta decidir es **cómo se cierra**, y el riesgo está en la regla
+      general: soldar automáticamente todo par de extremos de vía a menos de N px
+      es barato de escribir y caro de verificar —puede unir calles que en la
+      vida real no se tocan, en todo el mapa, y sólo se vería conduciendo—. Antes
+      de escribirla hay que **contar cuántos cortes así hay**: si es sólo éste,
+      lo honesto es autorarlo por geo en un registro (la regla de la casa: cada
+      ancla es geo) y que el build lo cosa; si son decenas, entonces sí una regla
+      con tolerancia apretada y su recuento en el log. Cuesta una corrida
+      completa (~33 min) de cualquier forma, así que va con otro cambio del
+      mundo, no sola.
 
 - [x] ~~**EL ESTERO SE ABRE.**~~ **Implementado el 2026-08-23.** El usuario pidió
       «un estero completamente abierto y manejable, pero **con las boyas** de la

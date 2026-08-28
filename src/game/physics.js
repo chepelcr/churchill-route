@@ -2,7 +2,7 @@
 // (cuadras, buildings, barriers, traffic, pedestrians), delivery proximity,
 // melt, camera follow, and entity advancement.
 import { WORLD2D as W } from "../world2d/index.js";
-import { GEOMETRY_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
+import { GAME_MODE, GEOMETRY_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { state, traffic, pedestrians, gulls, boats, trains, schools, gullFlocks, pushFloat } from "./state.js";
 import { isTimed } from "./timers.js";
 import { SURFACE, SURFACE_MUL } from "./surfaces.js";
@@ -18,9 +18,8 @@ import { economy, COINS_PER_PICKUP } from "./economy.js";
 import ACTORS from "../assets/actors.json" with { type: "json" };
 import SIM from "../content/simulation.json" with { type: "json" };
 import { tuning } from "./tuning.js";
-import { advanceFerries, carry, deckAt, ferries, routePoint } from "./ferries.js";
+import { advanceFerries, carry, deckAt, ferries, muelleAt, routePoint } from "./ferries.js";
 import { advanceCrossing, advanceEstero, boostReady, catchFish, crossingState, spendBoost } from "./crossing.js";
-import { leaveTheLancha } from "./modes.js";
 import { updateDayCycle , wetGrip } from "./daynight.js";
 import { tornadoPull, updateTornado } from "./tornado.js";
 import { updateTide } from "./tides.js";
@@ -39,45 +38,31 @@ const SUBSTEP_MAX = 8;
 // surface classes pedestrians walk on (aceras only — never the road)
 const PED_CLS = [SURFACE.ACERA]; // fallback for free (stadium) peds; rail peds cross via advancePed
 
-//: how close to the berth, and how slow, before the lancha is offered. Parking
-//: is the consent: driving PAST a muelle must never put you in a boat.
-const LANCHA_TAKE_R = 90;
-const LANCHA_TAKE_SPEED = 40;
+//: parqueado, no de paso. Cruzar el estero no puede pasarle a alguien que iba
+//: pasando por el muelle a toda.
+const PASSAGE_SPEED = 40;
 
 /**
- * The Recorrer swap, both ways.
+ * LA PUERTA DEL MUELLE — se pregunta al ENTRAR, no mientras se está.
  *
- * Kept out of `update` proper because it is a MODE's rule rather than physics,
- * and because both halves are one-shot: without the `landVehicleKey` guard the
- * board test fires again on the frame after landing and puts you straight back
- * out to sea.
+ * La diferencia importa y es la regla que pidió el diseño: al cruzar se sale
+ * parado ENCIMA del muelle del otro lado, así que una prueba de «¿estoy en un
+ * muelle?» volvería a preguntar en el cuadro siguiente, para siempre. Se
+ * compara contra el muelle del cuadro anterior, de modo que la oferta es un
+ * FLANCO: hay que salirse y volver a entrar. Lo mismo vale para el «ahorita
+ * no», que así no necesita su propia bandera.
+ *
+ * El sim sólo LEVANTA la oferta; contestarla es de la UI, porque el sim no
+ * sabe qué es una pantalla.
  */
-function maintainLanchaSwap(p, veh, cross) {
-  const afloatNow = veh.medium === VEHICLE_MEDIUM.WATER;
-  if (!cross.active && !afloatNow && !state.landVehicleKey) {
-    // The nearest one-way berth within reach, if any. Resolved as ONE answer
-    // rather than a loop with side effects, because leaving the berth has to
-    // clear both the offer and the decline, and a `continue` per ferry cannot
-    // tell "no berth near me" from "not this berth".
-    let at = null;
-    for (const f of ferries()) {
-      if (!f.oneWay) continue;
-      const b = routePoint(f, 0);
-      if (Math.hypot(p.x - b.x, p.y - b.y) <= LANCHA_TAKE_R) { at = f; break; }
-    }
-    if (!at) { state.lanchaOffer = null; state.lanchaDeclined = null; return; }
-    // Parking is the consent: driving PAST a muelle must never put you in a
-    // boat, and neither must having said no thirty frames ago.
-    if (p.speed > LANCHA_TAKE_SPEED) { state.storyTip = t("crossing.take"); return; }
-    if (state.lanchaDeclined === at.id) return;
-    // RAISE THE OFFER AND STOP. `acceptLancha` / `declineLancha` are the UI's,
-    // because which hull you cross in is a choice and the sim has no screens.
-    state.lanchaOffer = at.id;
-    return;
-  }
-  // Ashore again: the crossing ended (landed, or she was sailed home) and the
-  // car is still stashed. `leaveTheLancha` finds the apron the build paved.
-  if (!cross.active && afloatNow && state.landVehicleKey) leaveTheLancha();
+function maintainPassageOffer(p) {
+  const here = muelleAt(p.x, p.y);
+  const was = state.passageMuelle;
+  state.passageMuelle = here < 0 ? null : here;
+  if (here < 0) { state.passageOffer = null; return; }
+  if (was !== null) return;                      // ya estaba aquí: no es un flanco
+  if (p.speed > PASSAGE_SPEED) return;           // iba pasando, no parqueando
+  state.passageOffer = here;
 }
 
 // ----- Polygon collision helpers ------------------------------------------
@@ -742,13 +727,20 @@ export function update(dt) {
   }
   // RECORRER: the muelle is where the road runs out and the lancha starts.
   // Park on the pier and you take your own boat; land at the far shore and you
-  // get your car back. Only in explore — in a stage the crossing IS the level,
-  // and in arcade a three-minute clock should not be spent on a 5,7 km passage.
-  if (state.mode === "explore") maintainLanchaSwap(p, veh, cross);
+  // LA PUERTA DEL MUELLE — Recorrer y Arcade, nunca Historia. En una etapa el
+  // recorrido ES el nivel, y una puerta que salta media península convierte
+  // cualquier objetivo en un atajo. Y sólo en tierra: el que anda en lancha ya
+  // puede navegar hasta la otra orilla, que es de lo que trata su mitad del
+  // modo — ofrecerle un teletransporte sería ofrecerle saltarse el juego.
+  if ((state.mode === GAME_MODE.EXPLORE || state.mode === GAME_MODE.ARCADE) && !afloat) {
+    maintainPassageOffer(p);
+  } else if (state.passageOffer !== null || state.passageMuelle !== null) {
+    state.passageOffer = null; state.passageMuelle = null;
+  }
 
   // District identity: fire a "you entered X" title card when the player
   // crosses into a new band (free-roam modes only), and age out the card.
-  if (state.mode === "explore" || state.mode === "arcade") {
+  if (state.mode === GAME_MODE.EXPLORE || state.mode === GAME_MODE.ARCADE) {
     const d = W.districtAt(p.x, p.y);
     if (d && d.id !== state.district) {
       // suppress the very first assignment (spawn) so it doesn't pop on start

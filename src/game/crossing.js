@@ -385,6 +385,9 @@ const _crossing = {
   boost: 0, near: 0, streak: 0, streakT: 0, bestStreak: 0, jumps: 0,
   // the last gate passed, as a respawn pose — see `respawn()`
   checkpoint: null,
+  //: llegó al fondo del estuario. Sólo lo lee Recorrer del Estero, donde
+  //: llegar se anuncia UNA vez y no cierra la sesión (`finish`).
+  arrived: false,
 };
 
 export function crossingState() { return _crossing; }
@@ -409,6 +412,7 @@ export function startCrossing(ferry, { level = false } = {}) {
   _crossing.boost = 0;
   _crossing.near = 0; _crossing.streak = 0; _crossing.streakT = 0;
   _crossing.bestStreak = 0; _crossing.jumps = 0;
+  _crossing.arrived = false;
   // THE START LINE IS A CHECKPOINT, and leaving it null was a silent killer.
   // `respawn()` used to call `endCrossing(CROSSING_OUTCOME.SWAMPED)` when there was nothing to
   // go back to — and NOTHING IN THIS CODEBASE READS `done`. So sinking before
@@ -455,6 +459,7 @@ export function resetCrossing() {
   _crossing.gateIndex = 0;
   _crossing.progress = 0;
   _crossing.checkpoint = null;
+  _crossing.arrived = false;
   esteroThings.length = 0;
   state.crossing = _crossing;
 }
@@ -469,9 +474,22 @@ export function resetCrossing() {
  * carousel and the save file must not be able to tell the difference.
  */
 function finish() {
+  // LLEGAR NO TERMINA UN PASEO. En la etapa, Pitahaya es la meta y aquí se
+  // cierra la travesía. En Recorrer el estero es el MODO —no un trasbordo con
+  // un carro esperando al otro lado— así que cerrar la sesión al tocar el
+  // fondo del estuario dejaba al jugador flotando en un estero apagado, sin
+  // boyas, sin pangas y sin manera de devolverse. Se anuncia una sola vez y la
+  // vida del estuario sigue corriendo.
+  if (!_crossing.level) {
+    if (_crossing.arrived) return;
+    _crossing.arrived = true;
+    pushFloat(state.p.x, state.p.y - 40, t("crossing.landed"), "#9fd7ef");
+    state.storyTip = t("tip.estero.arrived");
+    return;
+  }
   endCrossing(CROSSING_OUTCOME.LANDED);
   pushFloat(state.p.x, state.p.y - 40, t("crossing.landed"), "#9fd7ef");
-  if (!_crossing.level || !state.stage) return;   // Recorrer: arriving is its own reward
+  if (!state.stage) return;
   // Time left and fish caught ARE the score here: there are no deliveries to
   // total, and a crossing that scored zero would rank last on the results
   // screen no matter how well it was sailed.
@@ -646,10 +664,12 @@ export function advanceCrossing(dt, p) {
   // at Pitahaya is stamped ROAD and therefore a WALL to a hull, so waiting for
   // her to touch it would wait forever.
   //
-  // ARRIVING ENDS IT IN BOTH MODES. `finish()` decides what arriving MEANS —
-  // a stage clear under level rules, just a landing in Recorrer — but gating
-  // the call on `level` left a Recorrer crossing running for ever, and it is
-  // the end of the crossing that hands the player back their car.
+  // ARRIVING MEANS TWO DIFFERENT THINGS, and `finish()` is where that is
+  // decided: a stage clear under level rules, and in Recorrer del Estero just
+  // arriving — announced once, with the estuary still alive around you. This
+  // used to END the session in both, because back then a Recorrer crossing was
+  // a TRASBORDO and its end was what handed the player back their car. There
+  // is no car now: the estero is the mode.
   if (near.s >= ch.total - FINISH_PAD) finish();
   return true;
 }

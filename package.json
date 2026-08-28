@@ -15,6 +15,7 @@
     "smoke": "node tools/smoke.mjs",
     "smoke:boat": "node tools/smoke_boat.mjs",
     "smoke:crossing": "node tools/smoke_crossing.mjs",
+    "smoke:passage": "node tools/smoke_passage.mjs",
     "smoke:feria": "node tools/smoke-feria.mjs",
     "smoke:rotated": "node tools/smoke-rotated.mjs",
     "smoke:theme": "node tools/smoke-theme.mjs",

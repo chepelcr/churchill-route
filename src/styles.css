@@ -1150,3 +1150,49 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .set-group:first-child { margin-top: 0; }
 .drive-tuning { margin: 10px 0 4px; }
 .drive-tuning-hint { margin: 6px 0 0; opacity: 0.7; }
+
+/* EL AGUA DEL PASAJE — la cortina que tapa el salto entre los dos muelles.
+   Sube desde abajo, se queda un instante llena, y baja del otro lado. Es una
+   sola capa con dos gradientes: el cuerpo del agua y una cresta más clara
+   arriba, que es lo que la hace leer como agua subiendo y no como un fundido a
+   azul. `pointer-events: none` porque durante la transición no hay nada que
+   tocar y el mundo ya está pausado detrás. */
+.passage-veil {
+  position: fixed; inset: 0; z-index: 60;
+  pointer-events: none; overflow: hidden;
+}
+.passage-water {
+  position: absolute; left: -5%; width: 110%; height: 130%;
+  bottom: 0;
+  /* Los tres colores son tokens: la cresta es la espuma de `--ice`, el cuerpo
+     baja de `--sky` por `--teal` hasta `--deep`. Escritos a mano quedaban
+     fuera del alcance del editor, que es exactamente lo que el barrido de
+     tokens cerró. */
+  background:
+    radial-gradient(120% 18% at 50% 0%, rgba(var(--ice-rgb),0.55), rgba(var(--ice-rgb),0) 70%),
+    linear-gradient(180deg, var(--sky) 0%, var(--teal) 42%, var(--deep-lit) 100%);
+  border-radius: 46% 54% 0 0 / 7% 7% 0 0;
+  will-change: transform;
+}
+.passage-veil.rising .passage-water { animation: passage-rise 620ms cubic-bezier(.45,0,.35,1) forwards; }
+.passage-veil.falling .passage-water { animation: passage-fall 620ms cubic-bezier(.65,0,.55,1) forwards; }
+@keyframes passage-rise {
+  from { transform: translateY(102%); }
+  to   { transform: translateY(-14%); }
+}
+@keyframes passage-fall {
+  from { transform: translateY(-14%); }
+  to   { transform: translateY(102%); }
+}
+/* Quien pidió menos movimiento recibe un fundido: la cortina sigue tapando el
+   salto, que es su trabajo, sin el barrido. */
+@media (prefers-reduced-motion: reduce) {
+  .passage-veil.rising .passage-water,
+  .passage-veil.falling .passage-water {
+    animation: none; transform: translateY(-14%);
+  }
+  .passage-veil.rising { animation: passage-fade-in 300ms linear forwards; }
+  .passage-veil.falling { animation: passage-fade-out 300ms linear forwards; }
+}
+@keyframes passage-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes passage-fade-out { from { opacity: 1; } to { opacity: 0; } }

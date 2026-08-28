@@ -84,26 +84,52 @@ class GameMode(StrEnum):
     TUTORIAL = "tutorial"
 
 
+class ExploreRealm(StrEnum):
+    """WHICH PUNTARENAS RECORRER OPENS ON — and it decides the MEDIUM.
+
+    Recorrer is one mode with two halves of the same town, so this is not a
+    fifth `GameMode`: the clock, the scoring, the day cycle and the analytics
+    grouping are identical either way, and splitting the mode would have forked
+    every one of those branches to say the same thing twice.
+
+    What it does decide is which hull the picker offers, because `ciudad` is
+    driven and `estero` is sailed. That makes it the second thing in the
+    codebase that answers `VehicleMedium` (a crossing STAGE is the first), and
+    it has to be asked BEFORE the vehicle picker opens rather than after — a
+    picker that opens on the wrong medium is the bug this shipped with, where a
+    stale crossing stage left Arcade offering boats.
+
+    `estero` used to be reachable only by parking on the muelle in mid-run and
+    accepting a boat, which then started the Travesía's whole race — gates,
+    clock and all — inside a mode that has no clock. Choosing it at the menu is
+    what let that offer be deleted.
+
+    src/game/modes.js `startExplore`, src/ui/App.jsx, src/ui/screens/RealmPick.jsx."""
+    CIUDAD = "ciudad"
+    ESTERO = "estero"
+
+
 class UIScreen(StrEnum):
     """React's screen state machine — a finite internal vocabulary.
 
-    `App.jsx` branches on these fifteen strings in about thirty places, and
-    three of them (`settings`, `shop`, `lanchapick`) also decide whether the
+    `App.jsx` branches on these sixteen strings in about thirty places, and
+    three of them (`settings`, `shop`, `realmpick`) also decide whether the
     simulation is PAUSED and whether the attract camera runs, so a typo is not
     a blank screen: it is a live game running behind a menu.
 
     They are also the keys of `src/ui/screens.json`, the per-screen registry the
     world editor authors, and of the manifest's `editorUI.screens` block. Three
-    files keyed by the same fifteen names is exactly the shape that drifts."""
+    files keyed by the same sixteen names is exactly the shape that drifts."""
     BOOT = "boot"
     INTRO = "intro"
     TITLE = "title"
     STAGEPICK = "stagepick"
+    REALMPICK = "realmpick"
     BRIEF = "brief"
     MODEBRIEF = "modebrief"
     TUTBRIEF = "tutbrief"
     VEHPICK = "vehpick"
-    LANCHAPICK = "lanchapick"
+    PASSAGE = "passage"
     PLAYING = "playing"
     PAUSED = "paused"
     OVER = "over"

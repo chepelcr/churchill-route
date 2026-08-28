@@ -10,13 +10,29 @@ export const state = {
 
   mode: "arcade",           // arcade | story | explore
   stageIdx: 0,              // index into WORLD.STAGES
+  // WHICH PUNTARENAS RECORRER IS SHOWING — `ciudad` or `estero`, null in every
+  // other mode. It is chosen at the menu because it decides the MEDIUM, and a
+  // medium has to be known before the vehicle picker opens rather than after.
+  exploreRealm: null,
+  // EL PASAJE — los dos muelles del estero como UNA PUERTA, no como un barco.
+  //
+  // El norte del mapa no está conectado por tierra (una sola aproximación en
+  // 600 px, y es un corte de 95 px), así que cruzar es la única forma de llegar.
+  // No se navega ni se cambia de vehículo: se entra al muelle, se pregunta, y
+  // una transición de agua deja al jugador del otro lado.
+  //
+  // `passageOffer` es el muelle en el que se está y que todavía no se ha
+  // contestado; `passageMuelle` es en cuál se está, punto. La oferta sólo se
+  // levanta al ENTRAR (muelle ahora, ninguno el cuadro pasado), y eso es lo
+  // que hace que salir del agua no vuelva a preguntar en el acto — uno
+  // desembarca ya parado encima. Hay que salirse y volver a entrar.
+  //
+  // `passage` es la transición misma, `{ phase, t }`, publicada por el sim y
+  // dibujada por la UI.
+  passageOffer: null, passageMuelle: null, passage: null,
   weather: "sunny",
   timeOfDay: 0.55,
   vehicleKey: "scooter", veh: VEHICLES.scooter,
-  // The muelle's offer, and the "not now" that keeps it from reopening every
-  // frame while the car is still parked on the deck. Physics raises them; the
-  // UI clears them — see `offeredLancha` / `acceptLancha` / `declineLancha`.
-  lanchaOffer: null, lanchaDeclined: null, landVehicleKey: null,
   p: { x: 1500, y: 760, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 },
   // the renderer publishes zoom/vw/vh on cam — mutate it, never replace it
   cam: { x: 1500, y: 760, shake: 0 },

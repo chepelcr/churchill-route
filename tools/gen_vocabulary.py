@@ -82,6 +82,7 @@ STR_ENUMS = (
     ("VEHICLE_KIND", game.VehicleKind),
     ("RENDERER_BACKEND", game.RendererBackend),
     ("GAME_MODE", game.GameMode),
+    ("EXPLORE_REALM", game.ExploreRealm),
     ("UI_SCREEN", game.UIScreen),
     ("COIN_TYPE", game.CoinType),
     ("LIGHT_TYPE", game.LightType),

@@ -210,16 +210,21 @@
       "explore",
       "tutorial"
     ],
+    "EXPLORE_REALM": [
+      "ciudad",
+      "estero"
+    ],
     "UI_SCREEN": [
       "boot",
       "intro",
       "title",
       "stagepick",
+      "realmpick",
       "brief",
       "modebrief",
       "tutbrief",
       "vehpick",
-      "lanchapick",
+      "passage",
       "playing",
       "paused",
       "over",

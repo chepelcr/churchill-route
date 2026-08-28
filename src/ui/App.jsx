@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../game/index.js";
 import { addTime } from "../game/timers.js";
-import { GAME_MODE, STAGE_KIND, UI_SCREEN, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
+import { EXPLORE_REALM, GAME_MODE, STAGE_KIND, UI_SCREEN, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { WORLD2D as WORLD } from "../world2d/index.js";
 import TitleScreen from "./screens/TitleScreen.jsx";
 import StageSelect from "./screens/StageSelect.jsx";
@@ -10,6 +10,8 @@ import PauseScreen from "./screens/PauseScreen.jsx";
 import ResultsScreen from "./screens/ResultsScreen.jsx";
 import StageBrief from "./screens/StageBrief.jsx";
 import ModeBrief from "./screens/ModeBrief.jsx";
+import RealmPick from "./screens/RealmPick.jsx";
+import PassageScreen from "./screens/PassageScreen.jsx";
 import TutorialBrief from "./screens/TutorialBrief.jsx";
 import BootScreen from "./screens/BootScreen.jsx";
 import IntroScreen, { introSeen } from "./screens/IntroScreen.jsx";
@@ -43,6 +45,7 @@ export default function App() {
   const [screen, setScreen] = useState(UI_SCREEN.BOOT);
   const [pendingStage, setPendingStage] = useState(null);
   const [pendingMode, setPendingMode] = useState(null); // story | arcade | explore
+  const [pendingRealm, setPendingRealm] = useState(null); // ciudad | estero, Recorrer only
   const [pendingRun, setPendingRun] = useState(null);   // { vehicleKey, armedBoosts } awaiting the mode brief
   const [shopCtx, setShopCtx] = useState(null);         // { tab?, veh? } deep-link into the shop
   const canvasRef = useRef(null);
@@ -87,11 +90,11 @@ export default function App() {
       // snapping straight to the menu.
       if (Game.state.over && screenRef.current === UI_SCREEN.PLAYING)
         setScreen(UI_SCREEN.OVER);
-      // THE MUELLE'S OFFER. The sim raises `lanchaOffer` when the car is parked
-      // at a berth; the pick is the UI's, so pause and show the boats. Only
-      // from "playing" — an offer standing while the pause menu is open must
-      // not shove a picker in front of it.
-      if (Game.state.lanchaOffer && screenRef.current === UI_SCREEN.PLAYING) setScreen(UI_SCREEN.LANCHAPICK);
+      // LA PUERTA DEL MUELLE. El sim la levanta al ENTRAR al muelle; contestarla
+      // es de aquí. Sólo desde "playing" — una oferta en pie mientras el menú de
+      // pausa está abierto no puede meterle una pregunta por delante.
+      if (Game.state.passageOffer !== null && screenRef.current === UI_SCREEN.PLAYING)
+        setScreen(UI_SCREEN.PASSAGE);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -123,12 +126,10 @@ export default function App() {
 
   // THE ONE PLACE THAT OWNS `paused`. It recomputes on every screen change, so
   // anything that pauses by writing the flag directly is undone the moment the
-  // screen it opened lands here. The muelle picker (and a shop trip out of it)
-  // suspends the world the same way the pause menu does.
+  // screen it opened lands here.
   useEffect(() => {
-    Game.state.paused = screen === UI_SCREEN.PAUSED || screen === UI_SCREEN.LANCHAPICK
-      || (screen === UI_SCREEN.SETTINGS && settingsFrom.current === UI_SCREEN.PAUSED)
-      || (screen === UI_SCREEN.SHOP && shopFrom.current === UI_SCREEN.LANCHAPICK);
+    Game.state.paused = screen === UI_SCREEN.PAUSED || screen === UI_SCREEN.PASSAGE
+      || (screen === UI_SCREEN.SETTINGS && settingsFrom.current === UI_SCREEN.PAUSED);
   }, [screen]);
 
   // World-editor screen contract: each main screen can override the shared
@@ -189,9 +190,21 @@ export default function App() {
       setScreen(UI_SCREEN.TUTBRIEF);
     } else {
       setPendingMode(mode);
-      // story picks a level first; arcade / explore go straight to the picker
-      setScreen(mode === GAME_MODE.STORY ? UI_SCREEN.STAGEPICK : UI_SCREEN.VEHPICK);
+      // A RUN THAT IS NOT A STAGE HAS NO STAGE — and saying so is the fix for a
+      // real bug. `pendingStage` was set by `pickStage` and never cleared, so
+      // once La Travesía had been selected in a session `briefStage.kind` stayed
+      // CROSSING and every later Arcade or Recorrer opened the picker on BOATS.
+      setPendingStage(mode === GAME_MODE.STORY ? pendingStage : null);
+      setPendingRealm(null);
+      // Historia picks a level first; Recorrer picks which Puntarenas, because
+      // that decides the medium; Arcade goes straight to the picker.
+      setScreen(mode === GAME_MODE.STORY ? UI_SCREEN.STAGEPICK
+        : mode === GAME_MODE.EXPLORE ? UI_SCREEN.REALMPICK : UI_SCREEN.VEHPICK);
     }
+  }
+  function pickRealm(realm) {
+    setPendingRealm(realm);
+    setScreen(UI_SCREEN.VEHPICK);
   }
   // vehicle picked on the vehpick page (every mode): story continues to the
   // stage brief (which owns boost-arming there); arcade / explore start now
@@ -210,7 +223,7 @@ export default function App() {
     enterImmersive();
     Game.state.armedBoosts = pendingRun.armedBoosts;
     // Recorrer turns its own day; Arcade takes the sky the brief picked.
-    if (pendingMode === GAME_MODE.EXPLORE) Game.startExplore({ vehicleKey: pendingRun.vehicleKey });
+    if (pendingMode === GAME_MODE.EXPLORE) Game.startExplore({ vehicleKey: pendingRun.vehicleKey, realm: pendingRealm });
     else Game.startArcade({ vehicleKey: pendingRun.vehicleKey, weather: opts.weather });
     setScreen(UI_SCREEN.PLAYING);
   }
@@ -251,7 +264,9 @@ export default function App() {
     enterImmersive();
     const k = Game.state.vehicleKey;
     if (Game.state.mode === GAME_MODE.TUTORIAL) Game.startTutorial({ vehicleKey: k });
-    else if (Game.state.mode === GAME_MODE.EXPLORE) Game.startExplore({ vehicleKey: k });
+    // …and Recorrer restarts in the SAME Puntarenas: re-running the estuary as
+    // the city would put a hull on the Paseo.
+    else if (Game.state.mode === GAME_MODE.EXPLORE) Game.startExplore({ vehicleKey: k, realm: Game.state.exploreRealm });
     else if (Game.state.stage) Game.startStage(Game.state.stageIdx, k);
     else Game.startArcade({ vehicleKey: k });
     setScreen(UI_SCREEN.PLAYING);
@@ -285,32 +300,37 @@ export default function App() {
   }
 
   const briefStage = pendingStage ? WORLD.STAGES[pendingStage.idx] : null;
+  // THE MEDIUM IS THE RUN'S, NOT A STAGE'S. It used to be read straight off
+  // `briefStage.kind`, which is only the right question when the run being
+  // started IS that stage — and `pendingStage` outlived the run that set it, so
+  // Arcade inherited the Travesía's water. Asked per mode, a stage that does
+  // not belong to this run cannot reach the answer at all.
+  const runMedium = pendingMode === GAME_MODE.STORY
+    ? (briefStage?.kind === STAGE_KIND.CROSSING ? VEHICLE_MEDIUM.WATER : VEHICLE_MEDIUM.LAND)
+    : pendingMode === GAME_MODE.EXPLORE && pendingRealm === EXPLORE_REALM.ESTERO
+      ? VEHICLE_MEDIUM.WATER : VEHICLE_MEDIUM.LAND;
 
   return (
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
       {screen === UI_SCREEN.BOOT && <BootScreen onDone={() => setScreen(introSeen() ? UI_SCREEN.TITLE : UI_SCREEN.INTRO)} />}
-      {(screen === UI_SCREEN.INTRO || screen === UI_SCREEN.TITLE || screen === UI_SCREEN.STAGEPICK || screen === UI_SCREEN.BRIEF || screen === UI_SCREEN.MODEBRIEF || screen === UI_SCREEN.TUTBRIEF || screen === UI_SCREEN.OVER || screen === UI_SCREEN.SETTINGS || screen === UI_SCREEN.SUPPORTERS || screen === UI_SCREEN.SHOP || screen === UI_SCREEN.VEHPICK || screen === UI_SCREEN.LANCHAPICK) && (
+      {(screen === UI_SCREEN.INTRO || screen === UI_SCREEN.TITLE || screen === UI_SCREEN.STAGEPICK || screen === UI_SCREEN.BRIEF || screen === UI_SCREEN.MODEBRIEF || screen === UI_SCREEN.TUTBRIEF || screen === UI_SCREEN.OVER || screen === UI_SCREEN.SETTINGS || screen === UI_SCREEN.SUPPORTERS || screen === UI_SCREEN.SHOP || screen === UI_SCREEN.VEHPICK || screen === UI_SCREEN.REALMPICK) && (
         <div className="screen-anim" key={screen}>
           {screen === UI_SCREEN.INTRO && <IntroScreen onDone={() => setScreen(UI_SCREEN.TUTBRIEF)} />}
           {screen === UI_SCREEN.TITLE && <TitleScreen editorConfig={WORLD.EDITOR_UI?.screens?.title} onPickMode={pickMode} onSettings={() => openSettings(UI_SCREEN.TITLE)} onSupporters={() => setScreen(UI_SCREEN.SUPPORTERS)} onShop={() => { setShopCtx(null); shopFrom.current = UI_SCREEN.TITLE; setScreen(UI_SCREEN.SHOP); }} />}
           {screen === UI_SCREEN.SUPPORTERS && <SupportersScreen onBack={() => setScreen(UI_SCREEN.TITLE)} />}
           {screen === UI_SCREEN.SHOP && <ShopScreen ctx={shopCtx} onBack={() => { setShopCtx(null); const back = shopFrom.current; shopFrom.current = UI_SCREEN.TITLE; setScreen(back); }} />}
-          {/* The medium the pending run needs: a crossing stage is sailed, so
-              the picker must offer boats and only boats. Every other mode is
-              driven — Recorrer swaps to a boat at the muelle, not in the menu. */}
-          {screen === UI_SCREEN.VEHPICK && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === GAME_MODE.STORY} medium={briefStage?.kind === STAGE_KIND.CROSSING ? VEHICLE_MEDIUM.WATER : VEHICLE_MEDIUM.LAND} onShop={(ctx) => { setShopCtx(ctx || null); shopFrom.current = UI_SCREEN.VEHPICK; setScreen(UI_SCREEN.SHOP); }} onBack={() => setScreen(pendingMode === GAME_MODE.STORY ? UI_SCREEN.STAGEPICK : UI_SCREEN.TITLE)} />}
-          {/* Which hull you cross in is a real choice — the three lanchas
-              handle differently enough that it is the difficulty setting — so
-              arriving at the muelle opens the same picker a run does, scoped to
-              boats. Backing out declines until you drive away. */}
-          {screen === UI_SCREEN.LANCHAPICK && <VehiclePicker storyMode medium={VEHICLE_MEDIUM.WATER}
-            onGo={(vehicleKey) => { Game.acceptLancha(vehicleKey); setScreen(UI_SCREEN.PLAYING); }}
-            onShop={(ctx) => { setShopCtx(ctx || null); shopFrom.current = UI_SCREEN.LANCHAPICK; setScreen(UI_SCREEN.SHOP); }}
-            onBack={() => { Game.declineLancha(); setScreen(UI_SCREEN.PLAYING); }} />}
+          {/* The medium the pending run needs — see `runMedium`. A crossing
+              stage is sailed and so is Recorrer del Estero, so the picker must
+              offer boats and only boats; everything else is driven. */}
+          {screen === UI_SCREEN.VEHPICK && <VehiclePicker onGo={beginFromPicker} storyMode={pendingMode === GAME_MODE.STORY} medium={runMedium} onShop={(ctx) => { setShopCtx(ctx || null); shopFrom.current = UI_SCREEN.VEHPICK; setScreen(UI_SCREEN.SHOP); }} onBack={() => setScreen(pendingMode === GAME_MODE.STORY ? UI_SCREEN.STAGEPICK : pendingMode === GAME_MODE.EXPLORE ? UI_SCREEN.REALMPICK : UI_SCREEN.TITLE)} />}
+          {screen === UI_SCREEN.REALMPICK && <RealmPick onPick={pickRealm} onBack={() => setScreen(UI_SCREEN.TITLE)} />}
           {screen === UI_SCREEN.STAGEPICK && <StageSelect onStart={pickStage} onBack={() => setScreen(UI_SCREEN.TITLE)} />}
           {screen === UI_SCREEN.BRIEF && briefStage && <StageBrief stage={briefStage} onGo={beginStage} />}
-          {screen === UI_SCREEN.MODEBRIEF && <ModeBrief mode={pendingMode} onGo={beginMode} />}
+          {/* Recorrer del Estero gets its OWN card. Handing it the ciudad's
+              copy would promise kiosks and deliveries to somebody about to
+              spend the run on open water. */}
+          {screen === UI_SCREEN.MODEBRIEF && <ModeBrief mode={pendingMode} brief={pendingMode === GAME_MODE.EXPLORE && pendingRealm === EXPLORE_REALM.ESTERO ? "estero" : pendingMode} onGo={beginMode} />}
           {screen === UI_SCREEN.TUTBRIEF && <TutorialBrief onGo={startTutorialRun} />}
           {screen === UI_SCREEN.OVER && <ResultsScreen onAgain={again} onNext={nextStage} onMenu={() => setScreen(UI_SCREEN.TITLE)} onContinue={continueRun} />}
           {screen === UI_SCREEN.SETTINGS && (
@@ -322,6 +342,12 @@ export default function App() {
         </div>
       )}
       {screen === UI_SCREEN.PLAYING && <><HUD onPause={() => setScreen(UI_SCREEN.PAUSED)} /><TouchControls />{Game.state.tutorial && <TutorialOverlay />}</>}
+      {/* El pasaje va SOBRE el mundo, no en el grupo de menús: la cortina de
+          agua tiene que tapar el canvas vivo, y la pregunta se hace de pie en
+          el muelle. Metida en el grupo, `screen-anim` la habría desmontado. */}
+      {screen === UI_SCREEN.PASSAGE && <><HUD /><PassageScreen
+        onDone={() => setScreen(UI_SCREEN.PLAYING)}
+        onCancel={() => { Game.declinePassage(); setScreen(UI_SCREEN.PLAYING); }} /></>}
       {screen === UI_SCREEN.PAUSED && <><HUD /><PauseScreen onResume={() => setScreen(UI_SCREEN.PLAYING)} onRestart={canRestart ? again : null} onSettings={() => openSettings(UI_SCREEN.PAUSED)} onQuit={quit} /></>}
       {(screen === UI_SCREEN.PLAYING || screen === UI_SCREEN.PAUSED) && <GameTweaks />}
       <div className="rotate-overlay">

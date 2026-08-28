@@ -2,11 +2,11 @@
 import { WORLD2D as W } from "../world2d/index.js";
 import { px } from "../domain/units.js";
 import UNITS from "../assets/world-units.json" with { type: "json" };
-import { STAGE_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
-import { state, pushFloat } from "./state.js";
+import { EXPLORE_REALM, STAGE_KIND, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
+import { state } from "./state.js";
 import { VEHICLES, vehicleMedium } from "./vehicles.js";
 import { spawnTraffic, spawnPedestrians, spawnGulls, spawnBoats } from "./spawns.js";
-import { ferries, resetFerries, routePoint } from "./ferries.js";
+import { esteroMuelles, ferries, muelleAt, resetFerries, routePoint } from "./ferries.js";
 import { startCrossing, crossingCondition, resetCrossing } from "./crossing.js";
 import { setTide } from "./tides.js";
 import { forceStorm, setDayCycle } from "./daynight.js";
@@ -14,7 +14,7 @@ import { pickCustomer, pickCustomerNear } from "./delivery.js";
 import { rebuildBarriers, bumpCrossingRuns } from "./progress.js";
 import { initTutorial } from "./tutorial.js";
 import { ARCADE_DURATION_S, DEFAULT_STAGE_DURATION_S, UNTIMED } from "./timers.js";
-import { economy, FREE_VEHICLES, VEHICLE_PRICES } from "./economy.js";
+import { economy, FREE_VEHICLES } from "./economy.js";
 import { t, stageBrief } from "../i18n/index.js";
 import { analytics } from "../monetize/analytics.js";
 import { resetEditorTriggers } from "./editorGameplay.js";
@@ -89,82 +89,108 @@ function startAtBerth(f) {
   return { x: q.x, y: q.y, a: q.a };
 }
 
-// ---- Recorrer: taking the lancha -------------------------------------------
-// In a stage the crossing IS the level, so the boat is what you picked in the
-// menu. In Recorrer you arrive by road, and the muelle is a place where the
-// road runs out — so the swap happens there, in the world, rather than in a
-// screen. Park on the pier, and you get into your own lancha; land at Pitahaya,
-// and you get your car back. That is why the car key is STASHED rather than
-// re-derived: a player who drove out in a bought pickup must not come home in
-// the free scooter.
-export function takeTheLancha(ferry, vehicleKey = null) {
-  if (!ferry) return false;
-  state.landVehicleKey = state.vehicleKey;
-  const rv = resolveVehicle(vehicleKey || bestOwnedBoat(), VEHICLE_MEDIUM.WATER);
-  state.vehicleKey = rv.key; state.veh = rv.veh;
-  const q = startAtBerth(ferry);
-  state.p.x = q.x; state.p.y = q.y; state.p.a = q.a;
-  state.p.vx = 0; state.p.vy = 0; state.p.speed = 0; state.p.drift = 0;
-  pushFloatSafe(t("crossing.take"));
-  startCrossing(ferry, { level: false });
-  return true;
+/** La lancha del estero: la única ruta de un solo sentido que el mundo emite.
+ *
+ *  Se pregunta por su CONDUCTA y no por su id. Los dos ferris del golfo son
+ *  `doubleEnded` y hacen ida y vuelta con horario; la del estero deja al
+ *  pasajero en la otra orilla y se queda ahí, que es lo que `oneWay` dice.
+ *  Buscarla por `"pitahaya"` habría atado el modo al nombre de un trayecto de
+ *  OSM — y `content/world/ferries.json` existe precisamente para que ese
+ *  nombre sea contenido editable. */
+function oneWayFerry() {
+  return ferries().find((f) => f.oneWay) || null;
 }
 
-/** Back onto the road at whichever shore she was left at. */
-export function leaveTheLancha() {
-  const key = state.landVehicleKey || "scooter";
-  const rv = resolveVehicle(key, VEHICLE_MEDIUM.LAND);
-  state.vehicleKey = rv.key; state.veh = rv.veh;
-  state.landVehicleKey = null;
-  // The apron at either end is stamped ROAD, so the nearest drivable cell IS
-  // the ramp the build paved — no separate landing point has to be authored.
-  const spot = W.reachablePointNear(state.p.x, state.p.y, 320);
-  state.p.x = spot.x; state.p.y = spot.y;
-  state.p.vx = 0; state.p.vy = 0; state.p.speed = 0; state.p.drift = 0;
-}
-
-// ---- the offer at the muelle ------------------------------------------------
-// Parking at the berth used to put you straight into a boat the game chose for
-// you. It picks the hull now, which is the same decision every other run in the
-// game gets to make — and it matters more here than in a menu, because the
-// three lanchas handle so differently that "which one am I crossing in" IS the
-// difficulty setting.
+// ---- Recorrer: el estero es un DESTINO, no un trasbordo -------------------
 //
-// Physics only RAISES the offer; the UI owns the rest. The sim must not know
-// what a screen is, and the player must not be dropped into a picker by driving
-// past — hence the decline, which stands until they leave the berth.
+// Aquí vivían `takeTheLancha`, `leaveTheLancha` y la oferta del muelle: parquear
+// en el atracadero abría un selector de lanchas, y aceptar arrancaba
+// `startCrossing` — o sea la Travesía entera, con sus boyas, sus portones y su
+// director de carrera — en medio de un modo que no tiene reloj. Uno salía a
+// pasear por el puerto y terminaba corriendo una regata que no había pedido, y
+// la única forma de no correrla era no parquear ahí.
+//
+// El estero es hoy la otra mitad de Recorrer y se escoge en el menú, con su
+// propio selector de cascos. Eso borra las dos razones por las que el trasbordo
+// existía —elegir el barco y llegar al agua— así que se fue entero, y con él
+// `state.landVehicleKey`: ya no hay un carro guardado que devolver, porque
+// quien sale al estero salió al estero.
+//
+// ---- El pasaje: los dos muelles son UNA PUERTA ----------------------------
+//
+// Lo que quedaba sin resolver es que el norte —Pitahaya y toda la tierra firme
+// de esa orilla— **no está conectado por tierra**. Medido sobre el mundo
+// emitido: la red manejable tiene 69 componentes, el norte es la #3 (162 945
+// celdas) y la península la #4 (4 228 466), y en 600 px a la redonda se acercan
+// en UN solo punto — un corte de 95 px al final de la Calle del Arreo. Sin algo
+// que cruce, esa mitad del mapa se ve y no se llega.
+//
+// Y lo que cruza NO ES UN BARCO. No se navega, no se aborda, no se cambia de
+// vehículo y no hay una lancha que esperar: se entra al muelle, se pregunta, y
+// el agua tapa la pantalla y lo deja a uno del otro lado. Es una PUERTA entre
+// dos puntos del mapa con una transición encima, y decirlo así es lo que evita
+// que vuelva a crecer hasta ser la regata que se borró aquí arriba.
+//
+// La ruta de la lancha del estero se usa sólo por su GEOMETRÍA: sus dos
+// extremos son los dos muelles, ya resueltos por el build contra la costa de
+// verdad. Es de donde sale dónde están las puertas, no qué las cruza.
 
-/** The ferry currently being offered, or null. */
-export function offeredLancha() {
-  return ferries().find((f) => f.id === state.lanchaOffer) || null;
+/**
+ * Cruzar: del muelle en el que se está al del otro lado.
+ *
+ * ES ASÍNCRONA, Y ESO NO ES UN DETALLE. El otro lado está a 15 000 px y no está
+ * en memoria; `surfaceAt` contesta AGUA para todo tile que no ha llegado, así
+ * que buscar el desembarcadero antes de esperar el streaming es preguntarle a
+ * un mapa en blanco. La primera versión lo hacía —`W.ready()` devuelve una
+ * promesa y nadie la esperaba— y `reachablePointNear` devolvía el propio punto
+ * de la ruta con clase 0: el carro salía del agua dentro del agua. Lo cazó
+ * `smoke:passage` y no se ve en ninguna captura, porque el mundo termina de
+ * cargar un segundo después y para entonces el carro ya está mal puesto.
+ *
+ * Se espera con la cortina de agua arriba, que es justo para lo que sirve.
+ *
+ * SALE EN SUELO MANEJABLE, no en el punto de la ruta: el extremo de la ruta es
+ * la ORILLA —la última celda de agua antes de la tierra, donde un casco puede
+ * arrimarse— y dejar ahí un carro lo deja medio dentro de una pared.
+ * `reachablePointNear` encuentra la rampa que el build pavimentó.
+ *
+ * Devuelve a dónde salió, o null si no se estaba en un muelle o si no hay suelo
+ * al que salir. NULL ES UNA RESPUESTA: mejor no cruzar que aparecer flotando en
+ * tierra firme, y quien llama tiene que decirlo.
+ */
+export async function crossTheEstero() {
+  const ms = esteroMuelles();
+  const here = muelleAt(state.p.x, state.p.y);
+  if (!ms || here < 0) return null;
+  const q = ms[here === 0 ? 1 : 0];
+  // LA CÁMARA VA PRIMERO, y ése es el arreglo entero. El lazo de dibujo llama
+  // a `W.update(cam)` en CADA cuadro y esa función además EVICTA todo tile a
+  // más de cinco de la cámara. Con la cámara todavía en Puntarenas, los tiles
+  // de Pitahaya que este `await` acababa de traer se los llevaba el cuadro
+  // siguiente, antes de que `reachablePointNear` pudiera leerlos — y como es
+  // una carrera contra el lazo, fallaba una vez de cada dos. Movida la cámara,
+  // el propio lazo los mantiene. No se ve nada raro: el mundo está en pausa y
+  // el agua tapa la pantalla.
+  const home = { x: state.cam.x, y: state.cam.y };
+  state.cam.x = q.x; state.cam.y = q.y;
+  W.update(q.x, q.y);
+  await W.ready(q.x, q.y, state.cam.vw || 1600, state.cam.vh || 1000);
+  const spot = W.reachablePointNear(q.x, q.y, 640);
+  if (!spot) { state.cam.x = home.x; state.cam.y = home.y; return null; }
+  state.p.x = spot.x; state.p.y = spot.y; state.p.a = q.a;
+  state.p.vx = 0; state.p.vy = 0; state.p.speed = 0; state.p.drift = 0;
+  state.cam.x = spot.x; state.cam.y = spot.y; state.cam.shake = 0;
+  // Se llega parado ENCIMA del muelle de destino, así que hay que decirlo o la
+  // oferta se levantaría en el cuadro siguiente y preguntaría otra vez. Hay que
+  // salirse y volver a entrar, que es la regla que pidió el diseño.
+  state.passageMuelle = here === 0 ? 1 : 0;
+  state.passageOffer = null;
+  state.district = null; state.districtToast = null;   // la otra orilla se anuncia sola
+  return { x: spot.x, y: spot.y };
 }
 
-/** Take the offered lancha in `vehicleKey` (or the best one owned). */
-export function acceptLancha(vehicleKey = null) {
-  const f = offeredLancha();
-  state.lanchaOffer = null;
-  return f ? takeTheLancha(f, vehicleKey) : false;
-}
+export function declinePassage() { state.passageOffer = null; }
 
-/** "Not now" — remembered so the offer does not reopen on the next frame while
- *  the car is still sitting on the muelle. Cleared when they drive away. */
-export function declineLancha() {
-  state.lanchaDeclined = state.lanchaOffer;
-  state.lanchaOffer = null;
-}
-
-//: the best boat the player actually owns — the default the picker opens on,
-//: and what a caller that does not care gets.
-function bestOwnedBoat() {
-  const boats = Object.keys(VEHICLES)
-    .filter((k) => vehicleMedium(k) === VEHICLE_MEDIUM.WATER && economy.ownsVehicle(k))
-    .sort((a, b) => (VEHICLE_PRICES[b] || 0) - (VEHICLE_PRICES[a] || 0));
-  return boats[0] || "panga";
-}
-
-function pushFloatSafe(text) {
-  pushFloat(state.p.x, state.p.y - 44, text, "#9fd7ef");
-}
 // Player start beside a kiosk: use the build-authored `spawn` (snapped to the
 // nearest drivable street), never the kiosk's beach-facing icon position — that
 // dropped the car onto the sand beside sand kiosks.
@@ -367,12 +393,30 @@ export function startArcade(opts = {}) {
   analytics.track("run_start", { mode: "arcade", vehicle: state.vehicleKey });
 }
 
+/**
+ * RECORRER — y son DOS Puntarenas, no dos modos.
+ *
+ * `ciudad` es lo de siempre: la península en carro, sin reloj, con el día
+ * dando la vuelta. `estero` es la otra mitad del mismo lugar, en lancha, desde
+ * la boca del estuario hacia adentro.
+ *
+ * Lo que el realm decide es el MEDIO, y por eso se escoge en el menú y no aquí:
+ * el selector de vehículos tiene que abrir ya sabiendo si ofrece carros o
+ * cascos. Todo lo demás —el reloj (ninguno), el marcador, el ciclo del día, la
+ * analítica— es idéntico en las dos mitades, que es exactamente la razón por la
+ * que esto NO es un quinto `GameMode`: partirlo habría bifurcado cada una de
+ * esas ramas para decir dos veces lo mismo.
+ */
 export function startExplore(opts = {}) {
   resetCrossing();
   state.stage = null;
   state.cam.rot = 0;
   state.stageIdx = 0;
   state.mode = "explore";
+  const realm = opts.realm === EXPLORE_REALM.ESTERO
+    ? EXPLORE_REALM.ESTERO : EXPLORE_REALM.CIUDAD;
+  state.exploreRealm = realm;
+  const afloat = realm === EXPLORE_REALM.ESTERO;
   // RECORRER GETS A DAY. Ten real minutes for a full turn — sunny, atardecer,
   // night, amanecer — with a storm rolling in now and then and handing the sky
   // back where it left off. An explicit `weather` still wins: asking for one
@@ -380,7 +424,11 @@ export function startExplore(opts = {}) {
   applyWeather(opts.weather || authoredWeather());
   setDayCycle(!opts.weather, Math.random());
   state.timeLeft = UNTIMED;
-  const rv = resolveVehicle(authoredVehicle("explore", opts.vehicleKey));
+  // EL MEDIO SALE DEL REALM, y `resolveVehicle` lo hace cumplir: quien no tiene
+  // lancha sale en la panga y no en la moto, que es la diferencia entre
+  // empezar en el agua y empezar dentro de una pared.
+  const rv = resolveVehicle(authoredVehicle("explore", opts.vehicleKey),
+                            afloat ? VEHICLE_MEDIUM.WATER : VEHICLE_MEDIUM.LAND);
   state.vehicleKey = rv.key; state.veh = rv.veh;
   armRun();
   state.score = 0; state.combo = 1; state.comboTimer = 0;
@@ -394,13 +442,20 @@ export function startExplore(opts = {}) {
   const editorSpawn = Number.isFinite(opts.x) && Number.isFinite(opts.y)
     ? { x: opts.x, y: opts.y }
     : null;
+  // EL ESTERO ARRANCA EN LA BOCA, sobre la misma línea de salida que la
+  // Travesía — `startAtBerth` ya sabe dejar atrás a la lancha atracada, que es
+  // el margen que la etapa aprendió a las malas. Un `authoredSpawn` de la
+  // ciudad aquí sería un casco en medio del Paseo.
+  const esteroFerry = afloat ? oneWayFerry() : null;
+  const esteroStart = esteroFerry ? startAtBerth(esteroFerry) : null;
   const kf = W.landmarkById("kios_faro"), f0 = W.landmarkById("faro");
   const fallback = (kf && kf.spawn) ? { x: kf.spawn[0], y: kf.spawn[1] } : null;
-  const sp = authoredSpawn("explore", fallback, editorSpawn);
+  const sp = esteroStart || authoredSpawn("explore", fallback, editorSpawn);
   state.p = sp ? { x: sp.x ?? sp[0], y: sp.y ?? sp[1], a: sp.a ?? opts.angle ?? 0, vx: 0, vy: 0, speed: 0, drift: 0 }
                : { x: f0.x + 60, y: f0.y, a: 0, vx: 0, vy: 0, speed: 0, drift: 0 };
   state.cam.x = state.p.x; state.cam.y = state.p.y; state.cam.shake = 0;
-  state.storyTip = t("tip.explore", { n: state.progress.unlocked.length });
+  state.storyTip = afloat ? t("tip.estero")
+    : t("tip.explore", { n: state.progress.unlocked.length });
   rebuildBarriers();
   state.district = null; state.districtToast = null;
   state.tutorial = null;
@@ -411,8 +466,19 @@ export function startExplore(opts = {}) {
   spawnTraffic(); spawnPedestrians(); spawnGulls(); spawnBoats();
   resetFerries();   // both ferries home and available again every run
   resetEditorTriggers();
-  pickCustomer();
-  analytics.track("run_start", { mode: "explore", vehicle: state.vehicleKey });
+  // EL ESTERO NO REPARTE. Los clientes están todos en tierra —medido: cero al
+  // norte de la mitad de la ruta— así que darle un destino a quien va en lancha
+  // es apuntarlo a una casa a la que su casco no llega. Lo que sí tiene el
+  // estuario es la vida que `startCrossing` siembra: las boyas como marcas de
+  // navegación, las pangas, los cardúmenes, las gaviotas y los remolinos.
+  //
+  // `level: false` es lo que lo mantiene un LUGAR y no una regata: sin
+  // portones, sin contramano, sin hundirse a las tres, sin marcador. Ese
+  // camino ya existía porque el trasbordo del muelle lo usaba; lo que cambió es
+  // que ahora se escoge, en vez de aparecer por parquear en el sitio equivocado.
+  if (afloat) { if (esteroFerry) startCrossing(esteroFerry, { level: false }); }
+  else pickCustomer();
+  analytics.track("run_start", { mode: "explore", realm, vehicle: state.vehicleKey });
 }
 
 // Tutorial: timerless guided run at the Paseo kiosk; the step machine in

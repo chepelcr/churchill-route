@@ -96,6 +96,38 @@ export function routePoint(f, s) {
   return { x: ax + (bx - ax) * t, y: ay + (by - ay) * t, a: Math.atan2(by - ay, bx - ax) };
 }
 
+// ---- LOS DOS MUELLES DEL ESTERO -------------------------------------------
+//
+// Vive aquí y no en `modes.js` porque es GEOMETRÍA DE LA RUTA: los dos extremos
+// de la travesía son los dos muelles, ya resueltos por el build contra la costa
+// de verdad, y este módulo es el que sabe leer una ruta. Ponerlo en `modes.js`
+// obligaba a `physics.js` a importar los modos para hacer una prueba de
+// distancia — un ciclo por una cuenta de Pitágoras.
+//
+// Ojo: son la geometría del pasaje, no un barco que se aborda. Lo que cruza es
+// una transición de agua; ver `crossTheEstero` en `modes.js`.
+
+//: qué tan cerca del muelle cuenta como estar en él. Es el mismo radio con el
+//: que se ofrece y con el que se deja de ofrecer, a propósito: dos radios
+//: distintos dan una banda donde la oferta parpadea.
+export const MUELLE_R = 90;
+
+/** Los dos extremos de la ruta del estero, o null si este mundo no la trae. */
+export function esteroMuelles() {
+  const f = ferries().find((x) => x.oneWay);
+  return f ? [routePoint(f, 0), routePoint(f, f.total)] : null;
+}
+
+/** En cuál de los dos muelles está (x, y): 0, 1, o -1 si en ninguno. */
+export function muelleAt(x, y, r = MUELLE_R) {
+  const ms = esteroMuelles();
+  if (!ms) return -1;
+  for (let i = 0; i < 2; i++) {
+    if (Math.hypot(x - ms[i].x, y - ms[i].y) <= r) return i;
+  }
+  return -1;
+}
+
 // A double-ended ferry has no fixed bow: either ramp may lead. Keep this pure
 // so the visual/physics contract is explicit and independently auditable.
 export function ferryHeading(routeHeading, returning, doubleEnded) {

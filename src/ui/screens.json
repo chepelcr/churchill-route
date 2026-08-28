@@ -1,58 +1,153 @@
 {
   "_note": "LAS PANTALLAS — which blocks each screen shows, in what order, and under what condition. The last surface the editor could not reach: the copy has been fully authored for a while (259 keys, es+en) and every colour goes through a token since 2026-08-14, but WHICH blocks a screen has was still shape welded into the JSX.",
-
   "version": 1,
-
   "_contract": "THE JSON SELECTS AND ORDERS; THE ENGINE IMPLEMENTS. A slot is a named React component, not a description of layout — there are no positions here, no styles, no nesting, no expressions. That is the line that keeps this from becoming a homegrown layout language, which is a worse trade than the JSX it would replace. Same split as `world-props.json` -> `shapes.js` and `effects.json` -> `EFFECT_PAINTERS`.",
-
   "_regions": "A screen's own JSX keeps its skeleton — the cards, the scroll body, the button row — and mounts `<Slots region=\"…\">` where a list of blocks belongs. So the CSS wrappers stay in CSS's language and the ORDER stays here. A slot with no `region` is in `main`.",
-
   "_when": "`when` is a KEY OF THE SCREEN'S CONTEXT, never an expression. The screen already computes these — `canContinue` is 'a timed run was lost, an ad is ready, and this run has not used one' — so the registry names the decision and the screen owns it. Negations are provided by the screen as their own keys (`notTutorial`) rather than parsed here, deliberately: the moment this file can express `!a && b` it has become a language. `tests/test_screens.py` fails on a `when` no screen provides, because that is a block that never appears and says nothing.",
-
   "_editor": "An editor may REORDER a screen's slots and hide one (`\"hidden\": true`). It may not invent a slot id — an unknown id has no component and would silently render nothing, which is the failure this registry exists to make impossible.",
-
   "screens": {
     "over": {
       "name": "Resultados",
       "accent": "gold",
       "background": "editorScreenBg",
       "slots": [
-        { "id": "title", "region": "head" },
-        { "id": "stageName", "region": "head", "when": "isStage" },
-
-        { "id": "score", "region": "stats" },
-        { "id": "crossingStats", "region": "stats", "when": "isCrossing",
-          "note": "A CROSSING HAS NO DELIVERIES AND NO COMBO. Showing '0/0 entregas' after a 7 km run down the channel describes a delivery the player never attempted; what they earned is fish, gates and the clock." },
-        { "id": "deliveryStats", "region": "stats", "when": "notCrossing" },
-        { "id": "rank", "region": "stats", "when": "notTutorial" },
-
-        { "id": "coinsBand", "region": "coins", "when": "earnedCoins",
-          "note": "the run's haul, front and centre before leaving the screen" },
-
-        { "id": "continueAd", "region": "actions", "when": "canContinue" },
-        { "id": "nextStage", "region": "actions", "when": "hasNext" },
-        { "id": "again", "region": "actions" },
-        { "id": "menu", "region": "actions" },
-
-        { "id": "kofi", "region": "footer", "when": "hasKofi",
-          "note": "a gentle post-level nudge: the game is free and supporters keep it alive" }
+        {
+          "id": "title",
+          "region": "head"
+        },
+        {
+          "id": "stageName",
+          "region": "head",
+          "when": "isStage"
+        },
+        {
+          "id": "score",
+          "region": "stats"
+        },
+        {
+          "id": "crossingStats",
+          "region": "stats",
+          "when": "isCrossing",
+          "note": "A CROSSING HAS NO DELIVERIES AND NO COMBO. Showing '0/0 entregas' after a 7 km run down the channel describes a delivery the player never attempted; what they earned is fish, gates and the clock."
+        },
+        {
+          "id": "deliveryStats",
+          "region": "stats",
+          "when": "notCrossing"
+        },
+        {
+          "id": "rank",
+          "region": "stats",
+          "when": "notTutorial"
+        },
+        {
+          "id": "coinsBand",
+          "region": "coins",
+          "when": "earnedCoins",
+          "note": "the run's haul, front and centre before leaving the screen"
+        },
+        {
+          "id": "continueAd",
+          "region": "actions",
+          "when": "canContinue"
+        },
+        {
+          "id": "nextStage",
+          "region": "actions",
+          "when": "hasNext"
+        },
+        {
+          "id": "again",
+          "region": "actions"
+        },
+        {
+          "id": "menu",
+          "region": "actions"
+        },
+        {
+          "id": "kofi",
+          "region": "footer",
+          "when": "hasKofi",
+          "note": "a gentle post-level nudge: the game is free and supporters keep it alive"
+        }
       ]
     },
-
+    "passage": {
+      "name": "Pasaje del estero",
+      "accent": "sky",
+      "background": "editorScreenBg",
+      "_why": "LA PREGUNTA DEL MUELLE. Sus slots son sólo los de la pregunta: la cortina de agua no es un bloque del registro sino la transición misma, y un registro que la listara estaría describiendo el marco como si fuera contenido — la misma línea que la fila de herramientas de `title`.",
+      "slots": [
+        {
+          "id": "prompt",
+          "region": "main",
+          "when": "asking"
+        },
+        {
+          "id": "note",
+          "region": "footer",
+          "when": "asking",
+          "note": "el norte no está conectado por tierra, así que conviene decir que es la única forma de llegar"
+        },
+        {
+          "id": "actions",
+          "region": "actions",
+          "when": "asking"
+        }
+      ]
+    },
+    "realmpick": {
+      "name": "Recorrer: ¿por dónde?",
+      "accent": "mint",
+      "background": "editorScreenBg",
+      "_why": "EL REALM DECIDE EL MEDIO, y por eso esta pantalla va ANTES del selector de vehículos y no después: un selector que abre en el medio equivocado ofrece lanchas para manejar en tierra. La misma clase de error que Arcade arrastraba por una etapa de travesía olvidada.",
+      "slots": [
+        {
+          "id": "heading",
+          "region": "main"
+        },
+        {
+          "id": "realms",
+          "region": "main"
+        },
+        {
+          "id": "esteroNote",
+          "region": "footer",
+          "note": "el estero no reparte: todos los clientes están en tierra, así que decirlo aquí evita que se lea como un modo roto"
+        }
+      ]
+    },
     "title": {
       "name": "Portada",
       "accent": "gold",
       "background": "editorScreenBg",
       "_head": "The tools row (shop, supporters, settings, mute) is NOT a slot: it is the card's chrome, it is present on every render, and nothing about it is a per-screen decision. A registry that listed it would be describing the frame as if it were content.",
       "slots": [
-        { "id": "wordmark", "region": "main" },
-        { "id": "iosHint", "region": "main", "when": "showIosHint" },
-        { "id": "modes", "region": "main" },
-        { "id": "apk", "region": "main", "when": "canDownloadApk" },
-        { "id": "controlsHint", "region": "footer", "when": "hasKeyboard" }
+        {
+          "id": "wordmark",
+          "region": "main"
+        },
+        {
+          "id": "iosHint",
+          "region": "main",
+          "when": "showIosHint"
+        },
+        {
+          "id": "modes",
+          "region": "main"
+        },
+        {
+          "id": "apk",
+          "region": "main",
+          "when": "canDownloadApk"
+        },
+        {
+          "id": "controlsHint",
+          "region": "footer",
+          "when": "hasKeyboard"
+        }
       ]
     }
   },
-
-  "_partial": "Only these two are slot-rendered today, and that is on purpose rather than unfinished: `over` has the richest conditional structure in the game (nine blocks, seven of them conditional) and `title` already carried the editor hook. Converting all fifteen in one pass is the point where this stops being a registry and becomes a rewrite — the other thirteen still take their accent and background from `applyScreen`, which has always read them per screen."
+  "_partial": "Sólo `over`, `title`, `realmpick` y `passage` se pintan por slots hoy, y eso es a propósito y no algo a medio hacer: `over` tiene la estructura condicional más rica del juego (nueve bloques, siete condicionales), `title` ya cargaba el gancho del editor, y `realmpick` nació aquí porque una pantalla nueva no tiene por qué nacer fuera del registro. Convertir las quince de un solo tirón es el punto en que esto deja de ser un registro y se vuelve una reescritura — las otras once siguen tomando su acento y su fondo de `applyScreen`, que siempre los ha leído por pantalla."
 }

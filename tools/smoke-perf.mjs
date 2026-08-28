@@ -109,6 +109,44 @@ if (!(on.minimapMs > 0) || off.minimapMs !== 0) {
   process.exit(1);
 }
 
+// ---- EL PRESUPUESTO, QUE HASTA HOY NO SE AFIRMABA --------------------------
+//
+// Este archivo medía con cuidado —medianas de corridas intercaladas, desglose
+// por fase— y después no exigía NADA. Un arnés que sólo informa es un arnés que
+// nadie mira: la degradación entra de a 0,2 ms por cambio y no hay ningún
+// momento en el que algo se ponga rojo.
+//
+// El número sale de lo que hay: el cuadro entero a 60 Hz son **16,7 ms** y el
+// render medía **1,14 ms** antes de la primera fase del trabajo visual. El tope
+// se pone en 4,0 ms — casi cuatro veces el costo actual, y aun así menos de un
+// cuarto del cuadro — porque el margen sobra y lo que hay que cazar no es un
+// milisegundo de más sino un ORDEN DE MAGNITUD: la capa que se dibuja por
+// entidad en vez de por vista, el gradiente que se genera por cuadro en vez de
+// cachearse. Es el mismo criterio con el que `smoke-night.mjs` fija en 5,5 ms
+// el costo del alumbrado, y por la misma razón escrita al lado.
+//
+// Si algún día esto falla legítimamente —porque una capa nueva vale su precio—
+// el tope se sube A PROPÓSITO y con la medición al lado, que es exactamente lo
+// que no podía pasar cuando no había tope.
+const RENDER_BUDGET_MS = 4.0;
+if (on.renderMs > RENDER_BUDGET_MS) {
+  console.error(`[perf] FAIL — el render tarda ${on.renderMs.toFixed(2)} ms y el `
+    + `presupuesto es ${RENDER_BUDGET_MS} (el cuadro entero son 16,7). `
+    + `Fases: mundo ${on.world.toFixed(2)} · piezas ${on.setpieces.toFixed(2)} · `
+    + `hitos ${on.landmarks.toFixed(2)} · entidades ${on.entities.toFixed(2)} · `
+    + `HUD ${on.overlays.toFixed(2)}`);
+  process.exit(1);
+}
+// EL SIM NO ES EL RENDER. Se afirma aparte para que un cuadro caro diga cuál de
+// los dos se encareció — sin esto, un `update` que se dispara se lee como un
+// problema de dibujo y se busca donde no está.
+const SIM_BUDGET_MS = 2.0;
+if (on.updateMs > SIM_BUDGET_MS) {
+  console.error(`[perf] FAIL — el sim tarda ${on.updateMs.toFixed(2)} ms `
+    + `(presupuesto ${SIM_BUDGET_MS})`);
+  process.exit(1);
+}
+
 console.log(`[perf] Centro, 1280×720 — medianas de 5 corridas intercaladas × 120 cuadros`);
 console.log(`[perf]   con mapa  ${on.frameMs.toFixed(2)} ms rAF | ${on.updateMs.toFixed(2)} ms sim | `
   + `${on.renderMs.toFixed(2)} ms render `
@@ -121,6 +159,8 @@ console.log(`[perf]   fases      mundo ${on.world.toFixed(2)} | piezas ${on.setp
   + `hitos ${on.landmarks.toFixed(2)} | entidades ${on.entities.toFixed(2)} | HUD ${on.overlays.toFixed(2)} ms`);
 console.log(`[perf]   mundo      suelo ${on.worldGround.toFixed(2)} | calles ${on.worldStreets.toFixed(2)} | `
   + `edificios ${on.worldBuildings.toFixed(2)} | flora/rótulos ${on.worldFlora.toFixed(2)} ms`);
+console.log(`[perf]   presupuesto render ${on.renderMs.toFixed(2)} / ${RENDER_BUDGET_MS} ms `
+  + `· sim ${on.updateMs.toFixed(2)} / ${SIM_BUDGET_MS} ms · el cuadro entero a 60 Hz son 16,7`);
 console.log(`[perf]   culling    peds ${on.pedCandidates.toFixed(0)} → x ${on.pedXPass.toFixed(0)} `
   + `(y quitó ${on.pedYCulled.toFixed(0)}) | tráfico ${on.trafficCandidates.toFixed(0)} → `
   + `x ${on.trafficXPass.toFixed(0)} (y quitó ${on.trafficYCulled.toFixed(0)})`);

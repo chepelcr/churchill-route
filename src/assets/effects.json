@@ -263,5 +263,14 @@
         "_": "la terminal, el mercado, la catedral"
       }
     ]
+  },
+  "_organic": "ADIÓS A LO CUADRADO. Los datos vectoriales trazan esquinas de 90 grados perfectas y eso es lo que hace que el mapa se lea rígido. `cornerPx` redondea la ESQUINA sin mover la arista (ver c2d/curves.js: Chaikin encoge el polígono entero y por eso abre costuras contra la calle de al lado). `shoreJitterPx` ondula la costa, y SU TOPE LO MANDA EL RÁSTER: la celda mide 5 px y la arena dibujada ES la arena, así que por encima de una celda el dibujo mentiría sobre dónde el colisionador pone el agua. Un cero apaga cada cosa y el cuadro sale idéntico al de antes, que es lo que hace la migración demostrable.",
+  "organic": {
+    "buildingCornerPx": 2.2,
+    "parcelCornerPx": 5.0,
+    "greenCornerPx": 9.0,
+    "shoreJitterPx": 3.6,
+    "shoreJitterFreqPx": 90.0,
+    "shoreResamplePx": 14.0
   }
 }

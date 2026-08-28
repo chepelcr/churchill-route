@@ -1,21 +1,29 @@
 // Hand-drawn set pieces: buildings, the two muelles and the Mata de Limón
 // suspension bridge. The painterly tile pass doesn't cover these.
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ctx, flatPath, label } from "./gfx.js";
 import { ferries } from "../../game/ferries.js";
 import { buildingHeightM, sunShadow } from "./shadows.js";
+import { roundedPath } from "./curves.js";
 import { resolveAssetFormulaMap } from "./shapes.js";
 import { paintStructureParts } from "./structureShapes.js";
 import { paintLight } from "./lights.js";
 import { buildingStyle } from "./buildingStyle.js";
+import { districtBuildingStyle } from "./districts.js";
 import { lightsOn } from "../../game/daynight.js";
 import { registerLampSource } from "./nightlights.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
-  const a = b.aabb, path = (b._path || (b._path = flatPath(b.pts, true)));
+  // LA HUELLA REDONDEADA, cacheada igual que la recta. `roundedPath` recorta el
+  // VÉRTICE y deja las aristas donde estaban, así que la casa sigue tocando su
+  // acera en todo el frente y sólo se despega en la esquina — que es lo que se
+  // ve bien y lo que evita las costuras que abre encoger el polígono entero.
+  // Con `buildingCornerPx: 0` devuelve el camino recto de siempre.
+  const a = b.aabb, path = (b._path || (b._path = roundedPath(b.pts, ORGANIC.buildingCornerPx, true)));
   const bw = a.x1 - a.x0, bh = a.y1 - a.y0;
   // LA SOMBRA SIGUE AL SOL Y CRECE CON LA ALTURA. Era `translate(4, 4)`: abajo y
   // a la derecha, a las tres de la tarde y a las seis igual, y del mismo largo
@@ -31,7 +39,14 @@ function paintBuilding(b) {
   // …Y EL COLOR SALE DE LO QUE EL EDIFICIO ES, si se sabe. El respaldo es el
   // color que el build emitió, así que una huella sin categoría se ve igual que
   // siempre: es lo que hace la migración demostrable edificio por edificio.
-  const st = buildingStyle(b);
+  // …Y SI NO SE SABE QUÉ ES, AL MENOS SE SABE DÓNDE ESTÁ. El orden es
+  // deliberado: lo que un edificio ES gana sobre dónde está, porque una iglesia
+  // es una iglesia en El Cocal y en Esparza y teñirla del color del barrio
+  // borraría la señal que `building-styles.json` existe para dar. El barrio
+  // sólo tiñe lo que no tiene categoría — que es la mayoría del tejido, o sea
+  // la casa de al lado, que es justo lo que hacía que los doce barrios se
+  // vieran iguales.
+  const st = buildingStyle(b) || districtBuildingStyle(b);
   ctx.fillStyle = (st && st.color) || b.color || S.building.fallback; ctx.fill(path);
   ctx.save(); ctx.clip(path);
   ctx.translate(a.x0, a.y0);
@@ -73,6 +88,7 @@ const PIER_STYLES = MATERIALS.pier;
 // puente de Mata y el casco del ferry eran las dos últimas piezas grandes del
 // mundo dibujadas con los colores escritos adentro de su propia función.
 const S = MATERIALS.structure;
+const ORGANIC = EFFECTS.organic || {};
 
 function structureColor(palette, spec, vars = {}) {
   if (typeof spec === "string" && spec.startsWith("$")) {

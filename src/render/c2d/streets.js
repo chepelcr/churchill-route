@@ -11,6 +11,8 @@ import { evalOn } from "../vehicleShapes.js";
 import { dashPath, roadPath } from "./cache.js";
 import { nearestOnPoly } from "./flora.js";
 import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, parcelFrame, upright } from "./gfx.js";
+import EFFECTS from "../../assets/effects.json" with { type: "json" };
+import { roundedMultiPath, roundedPath } from "./curves.js";
 import { propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
@@ -50,6 +52,7 @@ function fieldFrame(S) {
 //: el caño son GEOMETRÍA derivada de la clase de vía, no una paleta. De qué
 //: color sale cada cosa sí lo es.
 const ST = MATERIALS.streets;
+const ORGANIC = EFFECTS.organic || {};
 const ACERA_GREY = MATERIALS.street.acera;
 // …and the caño: the drainage channel at the kerb, cast in the same concrete
 // but permanently damp and stained, so it reads a full step darker.
@@ -212,7 +215,16 @@ function paintParcels(view) {
     // by the build (their exact cells still own collision and occupancy), so a
     // diagonal manzana reads as one direct edge instead of 4 px stair steps.
     const hasPolys = P.polys && P.polys.length;
-    const path = P._path || (P._path = hasPolys ? flatMultiPath(P.polys) : flatPath(P.poly, true));
+    // …Y REDONDEADA. Se recorta el vértice y NO la arista, así que el frente de
+    // la parcela sigue pegado a su calle en todo el largo y sólo se abre en la
+    // esquina — donde asoma la acera que `paintRoads` ya dejó pintada debajo,
+    // que es lo correcto y además lo que se ve bien. Un contorno de varios
+    // anillos (el residual del Parque Marino, las bandas del malecón) mantiene
+    // su relleno even-odd: cada anillo se redondea por separado y los agujeros
+    // siguen siendo agujeros.
+    const path = P._path || (P._path = hasPolys
+      ? roundedMultiPath(P.polys, ORGANIC.parcelCornerPx)
+      : roundedPath(P.poly, ORGANIC.parcelCornerPx, true));
     // EL COLOR DE ESTA PARCELA, y sólo si no, el de su `use`. 193 parques
     // compartían una perilla: no había forma de darle a UN parque su verde.
     // UNA CANCHA DE CEMENTO NO LLEVA ORILLA VERDE. El dilatado que tapa los

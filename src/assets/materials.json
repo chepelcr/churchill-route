@@ -1599,5 +1599,59 @@
     "beach": "#f4d77a",
     "barro": "#9c7a4f",
     "gravel": "#a99d8b"
+  },
+  "_districts": "CADA BARRIO SE VE COMO ÉL MISMO. Los doce distritos viajan en el manifest desde siempre y el renderer sólo los usaba para un contorno de depuración, así que el puerto entero se pintaba con una paleta. Aquí un barrio anula lo que quiera; SIN ANULACIÓN SE VE COMO HOY, que es lo que hace la migración demostrable barrio por barrio. `building.walls`/`roofs` son listas y se eligen por el id de la huella, igual que en building-styles.json, así que dos casas vecinas no salen del mismo color ni cambian al volver a mirarlas. Motor: c2d/districts.js.",
+  "districts": {
+    "cocal": {
+      "_note": "El Cocal es arenal y madera: casa de playa, palma y zinc descolorido por la sal.",
+      "building": {
+        "walls": [
+          "#e6d5b8",
+          "#dcc9a6",
+          "#cbb894",
+          "#e9dcc4",
+          "#d3c0a2"
+        ],
+        "roofs": [
+          "#8a7f6d",
+          "#9c8d76",
+          "#7d7a68"
+        ]
+      }
+    },
+    "centro": {
+      "_note": "El Centro es denso y comercial: pared encalada y mucho zinc.",
+      "building": {
+        "walls": [
+          "#ded8cc",
+          "#e8e2d6",
+          "#d2ccbe",
+          "#cfd4d2",
+          "#e3dccd"
+        ],
+        "roofs": [
+          "#8d9498",
+          "#7e868a",
+          "#98a0a4"
+        ]
+      }
+    },
+    "paseo": {
+      "_note": "El Paseo es frente de balneario: pasteles de puerto, más saturados que el resto.",
+      "building": {
+        "walls": [
+          "#f2d9c4",
+          "#efd0d6",
+          "#dfe6d3",
+          "#d8e3ee",
+          "#f6e6c8"
+        ],
+        "roofs": [
+          "#b08268",
+          "#a8757f",
+          "#7f9a86"
+        ]
+      }
+    }
   }
 }

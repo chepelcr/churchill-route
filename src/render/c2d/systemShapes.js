@@ -533,7 +533,7 @@ function endpointDiscs(g, road, color, radius) {
 /** The game's complete multi-pass road/intersection ribbon. */
 export function paintRoadNetwork(g, roads, {
   materials, sidewalkPx, canoPx, pathFor, dashPathFor,
-  beforeAcera, afterAcera,
+  beforeAcera, afterAcera, textures,
 } = {}) {
   const street = materials.street;
   const roadway = materials.streets.roadway;
@@ -560,6 +560,18 @@ export function paintRoadNetwork(g, roads, {
   for (const road of roads) {
     if (road.bridge || road.cls === "bridge") continue;
     endpointDiscs(g, road, street.acera, road.w / 2 + sidewalkPx);
+  }
+  // EL GRANO DE LA ACERA, sobre la banda que se acaba de trazar. Va como una
+  // SEGUNDA pasada con el mismo ancho y no como un color: la textura es tinta
+  // sobre transparente, así que el concreto conserva su gris de siempre y con
+  // el registro vacío esta pasada sencillamente no ocurre.
+  if (textures && textures.acera) {
+    g.strokeStyle = textures.acera;
+    for (const road of roads) {
+      if (road.bridge || road.cls === "bridge") continue;
+      g.lineWidth = road.w + 2 * sidewalkPx;
+      g.stroke(pathFor(road));
+    }
   }
   afterAcera?.();
   g.lineJoin = "round";
@@ -601,6 +613,16 @@ export function paintRoadNetwork(g, roads, {
     g.lineWidth = road.w;
     g.stroke(pathFor(road));
     endpointDiscs(g, road, color, road.w / 2 - 0.4);
+  }
+  // EL ÁRIDO DE LA CALZADA. Se salta el barro y el lastre: ésos ya son suelo
+  // suelto y su tinta —una mota blanca sobre negro— ahí se leería como polvo.
+  if (textures && textures.asphalt) {
+    g.strokeStyle = textures.asphalt;
+    for (const road of roads) {
+      if (road.barro || road.gravel) continue;
+      g.lineWidth = road.w;
+      g.stroke(pathFor(road));
+    }
   }
   for (const road of roads) {
     if (road.barro || road.gravel) continue;

@@ -7,11 +7,13 @@ import WATER from "../../assets/water.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
+import { SURFACE } from "../../game/surfaces.js";
 import { ensureRenderCache } from "./cache.js";
 import {
   floraSeed, paintFloraSpecies, resolveFloraMixSpecies,
 } from "./floraShapes.js";
-import { aabbInView, ctx, flatMultiPath, weatherColors } from "./gfx.js";
+import { aabbInView, ctx, flatMultiPath, textureScale, weatherColors } from "./gfx.js";
+import { overlayTexture, paintScatter } from "./materials.js";
 import {
   drawCurrents, drawRipples, drawShoreBreak, drawSwell, isBalneario,
   paintBalneario, updateWater,
@@ -67,7 +69,18 @@ function paintWaterBody(w, view, t) {
 function drawLandBase(view, t) {
   const _pt0 = performance.now();
   const rc = ensureRenderCache(), C = weatherColors();
-  ctx.fillStyle = C.land; for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
+  // EL SUELO YA NO ES UN HEX. La tierra se rellena con su color de siempre y
+  // encima le pasa su grano — manchas grandes y suaves, porque a este zoom una
+  // manzana entera cabe en pantalla y un relleno liso se lee como cartón. Sin
+  // textura autorada el segundo pase no ocurre y el cuadro sale como ayer.
+  const tex = textureScale();
+  ctx.fillStyle = C.land;
+  for (const l of rc.land) if (aabbInView(l.aabb, view, 4)) ctx.fill(l.path);
+  // EL SUELO DECIDE, NO EL POLÍGONO — `surfaceAt` es una consulta al tile y
+  // además excluye de una vez las calles, la arena y las aceras, que es más de
+  // lo que la silueta de la tierra sabe. Es la misma contención que
+  // `paintWoods` usa para plantar un bosque.
+  paintScatter(ctx, "land", view, (x, y) => W.surfaceAt(x, y) === SURFACE.LAND, tex);
   // park / plaza cuadras: green IS their base ground colour (global manifest
   // outline polys, so no sand flash before a tile streams in) — waters, beach
   // wet line and streets all paint on top of it.
@@ -91,7 +104,10 @@ function drawLandBase(view, t) {
   // note on `RC.sand` in cache.js. The per-ring AABBs are still the cull: if no
   // ring is in view there is no beach on screen and the fill is skipped.
   ctx.fillStyle = C.sand;
-  if (rc.beach.some((b) => aabbInView(b.aabb, view, 4))) ctx.fill(rc.sand, "evenodd");
+  if (rc.beach.some((b) => aabbInView(b.aabb, view, 4))) {
+    ctx.fill(rc.sand, "evenodd");
+    overlayTexture(ctx, "sand", tex, () => ctx.fill(rc.sand, "evenodd"));
+  }
   // LA ROMPIENTE, over the sand and under the streets: the swash runs up the
   // beach and back, and where it reaches is a function of the tide.
   drawShoreBreak(view, t);
@@ -109,11 +125,18 @@ function drawLandBase(view, t) {
 // Kept as a flat fill underneath so a streaming seam can never show sand
 // through the middle of it, and matched to that palette's `fill`.
 const GREEN_COLORS = MATERIALS.green;
+//: Cuáles de esos verdes son CÉSPED de verdad. `pool` es agua y
+//: `esplanade` es la piedra del faro; ninguna de las dos se peina.
+const GRASS_GREENS = new Set(["park", "plaza", "stadium", "marine"]);
 function drawPlazaGreen(pz, view) {
   const [px, py, pw, ph] = pz;
   if (px + pw < view.x0 || px > view.x1 || py + ph < view.y0 || py > view.y1) return;
-  ctx.fillStyle = GREEN_COLORS[pz[4]] || GREEN_COLORS.park;
+  const col = GREEN_COLORS[pz[4]] || GREEN_COLORS.park;
+  ctx.fillStyle = col;
   ctx.fillRect(px, py, pw, ph);
+  if (GRASS_GREENS.has(pz[4])) {
+    overlayTexture(ctx, "grass", textureScale(), () => ctx.fillRect(px, py, pw, ph));
+  }
 }
 
 // Park/plaza lawn: one or more outline rings per green cuadra (raster-traced,
@@ -143,6 +166,12 @@ function drawGreenPoly(gp, view) {
   if (!gp._path) gp._path = flatMultiPath(polys);
   const col = GREEN_COLORS[gp.type] || GREEN_COLORS.park;
   ctx.fillStyle = col; ctx.fill(gp._path, "evenodd");
+  // EL PASTO SE PEINA, EL AGUA NO. `GREEN_COLORS` cubre también la piscina del
+  // balneario y la plazoleta del faro, y una brizna de césped sobre el agua o
+  // sobre la piedra sería el registro dibujando lo que no es.
+  if (GRASS_GREENS.has(gp.type)) {
+    overlayTexture(ctx, "grass", textureScale(), () => ctx.fill(gp._path, "evenodd"));
+  }
   if (m) {
     ctx.strokeStyle = col; ctx.lineWidth = m; ctx.lineJoin = "round";
     ctx.stroke(gp._path);

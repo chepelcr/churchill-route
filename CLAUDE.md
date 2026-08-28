@@ -51,6 +51,7 @@ The procedure is three steps and it is not optional:
 | a muelle's size, width, style | `content/world/piers.json` |
 | how an OSM site fits its cuadra (`trace`/`cuadra`/`rect`/`kiosco`) | `content/world/site-decor.json` |
 | a surface class's colour and speed | `src/assets/surfaces.json` |
+| **el GRANO de una superficie** — la arena, el árido, la brizna, el desgaste del zinc | `src/assets/materials.json` → `textures` (verbos: `c2d/materials.js`) |
 | a length two runtimes must agree about, IN METRES | `src/assets/world-units.json` |
 | **un largo que UN registro autora** (un `dx`, un ancho, el radio de un juego) | en METROS y en su propio registro, con sufijo `M` — `content.py` → `METRE_KEYS` lo pasa a px al cargar. **Nunca en píxeles**: sólo son verdad a la escala en que se afinaron, y este mundo lleva cuatro reescalados |
 | the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` |
@@ -1222,6 +1223,66 @@ or land. 198 of 781 were in the roadway. With no lamps in view the painter paint
 which is what keeps the change honest. `pnpm smoke:night` measures the cost by
 interleaving day and night medians — a single before/after comparison measures
 warm-up, which is how it first reported 50 ms.
+
+**EL GRANO ES LA TINTA, NUNCA EL COLOR — Y UN PATRÓN NO SIRVE PARA TODO**
+(`c2d/materials.js`, `materials.json → textures`). El mundo se pintaba con
+relleno sólido: ~266 hex planos entre `materials.json` y `surfaces.json` y **cero
+`createPattern`** en todo el repositorio. Lo que le faltaba a una manzana para
+leerse como suelo no era otro color, era grano.
+
+**La textura va SÓLO como tinta sobre transparente, encima del relleno de
+siempre**, y eso es la mitad del diseño: el color de este mundo no es fijo
+—`weatherColors()` lo mezcla entre dos fases del cielo cada cuadro, y
+`surfaces.json` da uno de día y otro de noche—, así que un patrón con fondo
+tendría que regenerarse con cada paso de esa mezcla, 64 por transición y por
+superficie. Separados, la clave de caché es `nombre@escala` y nada más, la
+textura hereda el clima sin saber que existe, y **una superficie sin entrada en
+el registro se ve exactamente como ayer** — que es lo que hace la migración
+demostrable superficie por superficie. Cada tinta es un `rgb` y una `a` aparte y
+no un `rgba()` armado, por la razón que `alphaColor` ya documenta y porque es lo
+que deja a una mancha desvanecerse hasta alfa cero sin escribir un color dentro
+del intérprete, cosa que `tests/test_materials.py` prohíbe.
+
+**PERO UN RELLENO CON PATRÓN CUESTA ~10 ns POR PÍXEL, Y ESO ESTÁ MEDIDO.** Con el
+perfilador del juego, en el Centro a 1280x720, con todo lo demás apagado:
+
+```
+sin texturas    17.32 ms de cuadro
+sólo la arena   17.08   (una franja de playa: gratis)
+sólo el asfalto 18.51
+sólo el césped  18.66
+sólo el techo   19.48
+sólo la acera   19.90
+sólo LA TIERRA  32.95   <-- casi el doble del cuadro entero
+```
+
+La tierra no es cara por su tinta: es que **cubre la pantalla entera**. Bajarle el
+mosaico de 180 px a 48, o rasterizarlo a escala 1, la deja en 26,5 — sigue
+costando 9 ms. No hay perilla que arregle un relleno con patrón del tamaño del
+viewport; lo que hay que cambiar es el método. Por eso el registro tiene **dos
+caminos y no uno**: `speckle`/`hatch` son MOSAICO, para lo que no cubre la
+pantalla, y `scatter` es SEMBRADO sobre el rectángulo visible, para lo que sí.
+El sembrado es el patrón que `paintWoods` ya usaba —retícula global recorrida
+sólo sobre la vista, contención por `surfaceAt`, disco pre-renderizado a un
+sprite que se blitea como el charco de luz de `nightlights.js`— y baja la tierra
+de 32,95 a **17,85 ms**, o sea 0,05 ms de render.
+
+Dos cosas más que valen su línea. La **acera queda apagada en el registro con su
+número al lado**: su banda se traza por calle con `ancho + 2·acera`, así que en
+cada cruce se repinta sobre sí misma, y son 2,7 ms de un cuadro de 17,3 por el
+grano de una franja que casi no se ve; encenderla es quitar una línea. Y el
+`CanvasPattern` **se cachea junto al mosaico y con el contexto que lo emitió**,
+porque un techo se pinta por edificio y fabricarlo dentro de `overlayTexture` son
+sesenta `createPattern` por cuadro para sesenta dibujos.
+
+**Y EL RELOJ DEL RENDER NO VE TODO EL CUADRO.** `renderMs` mide las llamadas de
+dibujo; lo que el navegador tarda en RASTERIZAR lo que se le pidió no está ahí.
+Al texturizar el suelo el render en JS subió de 1,24 a 1,42 ms —dentro de
+presupuesto y sin una sola alarma— mientras el cuadro real pasaba de 17,3 a 32,9.
+`smoke:perf` afirma ahora también el cuadro entero (26 ms, blando a propósito
+porque en headless el rasterizado es por software), y su mensaje de fallo dice
+dónde mirar: un relleno con patrón, un clip o una sombra que cubra buena parte de
+la pantalla.
 
 **LA MANZANA ES UN ANILLO DE CASONAS CON UN PATIO ADENTRO** — y sólo en el
 puerto viejo. Toda cuadra bajo `SMALL_BLOCK_CUADS` (188 cuadrículas = 1,2 ha) se

@@ -137,6 +137,26 @@ if (on.renderMs > RENDER_BUDGET_MS) {
     + `HUD ${on.overlays.toFixed(2)}`);
   process.exit(1);
 }
+// **Y EL RELOJ DEL RENDER NO VE TODO EL CUADRO.** `renderMs` mide las llamadas
+// de dibujo; lo que el navegador tarda en RASTERIZAR lo que se le pidió no está
+// ahí, y esa mitad se puede disparar sola. Medido el 2026-08-28 al texturizar el
+// suelo: el render en JS subió de 1,24 a 1,42 ms —dentro de presupuesto y sin
+// una sola alarma— mientras el cuadro real pasaba de 17,3 a 32,9. Un relleno con
+// patrón del tamaño del viewport cuesta ~10 ns por píxel y NADA en JS lo dice.
+//
+// Así que el cuadro entero también se afirma. El número es blando a propósito y
+// depende de la máquina —en headless el rasterizado es por software, así que la
+// línea base son ~17 ms y no el 1,4 del render—, por eso el tope es 2x esa base
+// y no un valor apretado: lo que hay que cazar es una capa que DUPLICA el
+// cuadro, no medio milisegundo.
+const FRAME_BUDGET_MS = 26.0;
+if (on.frameMs > FRAME_BUDGET_MS) {
+  console.error(`[perf] FAIL — el cuadro entero tarda ${on.frameMs.toFixed(2)} ms `
+    + `(presupuesto ${FRAME_BUDGET_MS}) con el render en sólo ${on.renderMs.toFixed(2)}. `
+    + `La diferencia es RASTERIZADO, no dibujo: buscá un relleno con patrón, un `
+    + `clip o una sombra que cubra buena parte de la pantalla.`);
+  process.exit(1);
+}
 // EL SIM NO ES EL RENDER. Se afirma aparte para que un cuadro caro diga cuál de
 // los dos se encareció — sin esto, un `update` que se dispara se lee como un
 // problema de dibujo y se busca donde no está.
@@ -160,7 +180,8 @@ console.log(`[perf]   fases      mundo ${on.world.toFixed(2)} | piezas ${on.setp
 console.log(`[perf]   mundo      suelo ${on.worldGround.toFixed(2)} | calles ${on.worldStreets.toFixed(2)} | `
   + `edificios ${on.worldBuildings.toFixed(2)} | flora/rótulos ${on.worldFlora.toFixed(2)} ms`);
 console.log(`[perf]   presupuesto render ${on.renderMs.toFixed(2)} / ${RENDER_BUDGET_MS} ms `
-  + `· sim ${on.updateMs.toFixed(2)} / ${SIM_BUDGET_MS} ms · el cuadro entero a 60 Hz son 16,7`);
+  + `· sim ${on.updateMs.toFixed(2)} / ${SIM_BUDGET_MS} ms · cuadro ${on.frameMs.toFixed(2)} / `
+  + `${FRAME_BUDGET_MS} ms · a 60 Hz el cuadro son 16,7`);
 console.log(`[perf]   culling    peds ${on.pedCandidates.toFixed(0)} → x ${on.pedXPass.toFixed(0)} `
   + `(y quitó ${on.pedYCulled.toFixed(0)}) | tráfico ${on.trafficCandidates.toFixed(0)} → `
   + `x ${on.trafficXPass.toFixed(0)} (y quitó ${on.trafficYCulled.toFixed(0)})`);

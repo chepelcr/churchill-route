@@ -4,7 +4,8 @@ import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
-import { ctx, flatPath, label, mixColor } from "./gfx.js";
+import { ctx, flatPath, label, mixColor, textureScale } from "./gfx.js";
+import { overlayTexture } from "./materials.js";
 import { ferries } from "../../game/ferries.js";
 import { buildingHeightM, sunShadow } from "./shadows.js";
 import { roundedPath } from "./curves.js";
@@ -91,6 +92,11 @@ function paintBuilding(b) {
     ctx.save();   // el cuerpo va a plomo: se está justo bajo la cámara
   }
   ctx.fillStyle = body; ctx.fill(path);
+  // EL TECHO SE GASTA. Una mota clara y una oscura sobre el mismo cuerpo: es lo
+  // que separa un zinc de veinte años de un rectángulo de color. Va antes del
+  // recorte para que las partes autoradas —la banda del alero, las ventanas—
+  // sigan pintándose sobre él y no debajo.
+  overlayTexture(ctx, "roof", textureScale(), () => ctx.fill(path));
   ctx.save(); ctx.clip(path);
   ctx.translate(a.x0, a.y0);
   const vars = resolveAssetFormulaMap(S.building.values, {

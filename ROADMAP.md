@@ -282,20 +282,33 @@ faltaban eran las técnicas.
       con la rotación gratis, sombra como barrido en vez de copia despegada, y
       orden de pintado por distancia radial. Falta escoger `cameraHeightM` con
       el ojo: `logs/depth-{150,80,45}m.png`.
-- [ ] **Fase 1b — materiales: patrones y textura.** Hoy `materials.json` y
-      `surfaces.json` son ~266 hex planos y hay **cero `createPattern`** en todo
-      el repo. Falta la noción `flat | gradient | pattern` con caché por
-      `nombre@zoom` (el precedente es `nightlights.js:49`, que cachea el sprite
-      del charco: generar por cuadro es lo que hace inviable la cobertura). El
-      asfalto, el pasto, la arena y los techos siguen siendo relleno sólido.
+- [x] ~~**Fase 1b — materiales: patrones y textura.**~~ 2026-08-28:
+      `c2d/materials.js` + `materials.json -> textures`. La tinta va aparte del
+      color (el clima lo mezcla cada cuadro, así que un patrón con fondo no se
+      podría cachear) y **son DOS caminos, no uno**: `speckle`/`hatch` en
+      mosaico para lo que no cubre la pantalla, `scatter` sembrado sobre el
+      rectángulo visible para lo que sí — un relleno con patrón cuesta ~10 ns
+      por píxel y la tierra sola pasaba el cuadro de 17,3 a 32,9 ms. Y la
+      paleta pasó de pastel a **color vivo**: 51 valores escritos a mano, con
+      diez de las once hojas de arte IDÉNTICAS como prueba de que no se derramó.
 - [ ] **Fase 3 — el mundo bajo un cielo.** Sombras de nubes en `multiply` a
-      media resolución, atadas a `stormLevel()` y a la hora.
+      media resolución, atadas a `stormLevel()` y a la hora. **Ojo con lo que ya
+      está medido**: una capa que cubre la pantalla NO puede ser un relleno con
+      patrón ni un `fill` por cuadro — mismo presupuesto que la tierra, mismo
+      camino (capa a media resolución reusada entre cuadros, como
+      `nightlights.js`).
 - [ ] **El relieve del terreno.** `residentElevationTiles` está construido desde
       hace tiempo y **no lo consume nadie**, y la ranura
       `effects.json -> terrainShadow` está documentada en CLAUDE.md y nunca se
       escribió. Ojo con el dato: la cota es del IGN y el arenal es plano de
       verdad, así que sólo se notará tierra adentro — hay que decirlo o parecerá
       que no funciona.
+- [ ] **El grano de la acera, apagado y con su número.** `textures.acera` está
+      en el registro con `"off": true`: su banda se traza por calle con
+      `ancho + 2·acera`, así que se repinta en cada cruce — 2,7 ms de un cuadro
+      de 17,3, más que ninguna otra textura, por una franja que casi no se ve.
+      Si alguna vez el trazado de la acera deja de solaparse consigo mismo,
+      encenderla es quitar una línea.
 - [ ] **Dos archivos que este trabajo dejó grandes.** `systemShapes.js` (669) y
       `streets.js` (649) siguen enteros; el plan preveía sacarles
       `paintRoadNetwork` y el suelo de parcelas a sus propios módulos, y no hizo

@@ -10,7 +10,8 @@ import { t } from "../../i18n/index.js";
 import { evalOn } from "../vehicleShapes.js";
 import { dashPath, roadPath } from "./cache.js";
 import { nearestOnPoly } from "./flora.js";
-import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, parcelFrame, upright } from "./gfx.js";
+import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, parcelFrame, textureScale, upright } from "./gfx.js";
+import { textureFor, overlayTexture } from "./materials.js";
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { roundedMultiPath, roundedPath } from "./curves.js";
 import { propParts } from "./props.js";
@@ -291,8 +292,16 @@ function paintRoads(roads, view) {
   // Parcelas van antes de la acera y los estadios entre acera y asfalto. Esas
   // dos callbacks son geometría mundial; todas las pasadas de la calle viven en
   // el compositor compartido que también ejecuta el fixture del editor.
+  // Las texturas se RESUELVEN aquí y se pasan ya hechas: el compositor de la
+  // calle vive en `systemShapes.js`, que recibe su `g` por parámetro y no sabe
+  // nada de la cámara. `null` es una respuesta y la pasada no ocurre.
+  const tex = textureScale();
   paintRoadNetwork(ctx, roads, {
     materials: MATERIALS,
+    textures: {
+      asphalt: textureFor(ctx, "asphalt", tex),
+      acera: textureFor(ctx, "acera", tex),
+    },
     sidewalkPx: ACERA_PX,
     canoPx: CANO_PX,
     pathFor: roadPath,

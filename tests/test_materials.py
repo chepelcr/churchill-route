@@ -178,3 +178,86 @@ class MaterialRegistryTests(unittest.TestCase):
                 self.assertEqual(found, [],
                                  f"{os.path.relpath(path, ROOT)} authors colours {found}; "
                                  "move them to the relevant JSON registry")
+
+
+class TextureRegistryTests(unittest.TestCase):
+    """EL GRANO DE CADA SUPERFICIE — `materials.json -> textures`.
+
+    Tres fallos que este bloque puede tener y que NO SE VEN, que es lo que los
+    hace peligrosos: los tres se dibujan como «no pasó nada».
+
+      * **un verbo que el intérprete no implementa.** `textureFor` devuelve
+        `null` a propósito para que una superficie sin textura se vea como
+        ayer, así que un `kind` mal escrito es indistinguible de no haber
+        autorado nada;
+      * **un nombre que ningún pintor pide.** Una entrada huérfana es trabajo
+        de autoría que no llega a la pantalla;
+      * **un pintor que pide un nombre que no existe.** El mismo silencio, del
+        otro lado.
+    """
+
+    doc = json.load(open(MATERIALS))
+    textures = {k: v for k, v in doc["textures"].items() if not k.startswith("_")}
+
+    def _kinds(self):
+        source = read(os.path.join(ROOT, "src", "render", "c2d", "materials.js"))
+        block = re.search(r"const VERBS = \{([^}]*)\}", source)
+        self.assertIsNotNone(block, "materials.js no expone su tabla de verbos")
+        kinds = set(re.findall(r"(\w+):", block.group(1)))
+        # `scatter` no está en esa tabla porque NO es un mosaico: se siembra
+        # sobre el rectángulo visible en vez de rellenarse. Se comprueba que el
+        # intérprete lo reconozca por su nombre, que es lo que decide la rama.
+        if 'spec.kind !== "scatter"' in source:
+            kinds.add("scatter")
+        return kinds
+
+    def test_every_texture_names_a_kind_the_interpreter_implements(self):
+        kinds = self._kinds()
+        for name, spec in self.textures.items():
+            self.assertIn(spec.get("kind"), kinds,
+                          f"texture {name} usa el verbo {spec.get('kind')!r}, "
+                          f"que `c2d/materials.js` no implementa — se dibujaría "
+                          f"como si no existiera")
+
+    def test_inks_are_rgb_triplets_with_their_own_alpha(self):
+        """Un `rgba()` armado dejaría la opacidad como una perilla muerta, y
+        `mottle` no podría desvanecer su propia tinta sin escribir un color."""
+        for name, spec in self.textures.items():
+            inks = spec.get("inks")
+            self.assertTrue(inks, f"texture {name} no tiene tintas")
+            for ink in inks:
+                channels = str(ink["rgb"]).split(",")
+                self.assertEqual(len(channels), 3, f"{name}: rgb debe ser r,g,b")
+                for channel in channels:
+                    self.assertTrue(0 <= int(channel) <= 255, f"{name}: canal fuera de rango")
+                self.assertTrue(0 < float(ink["a"]) <= 1, f"{name}: alfa fuera de rango")
+
+    def test_each_kind_carries_what_its_verb_reads(self):
+        """Un mosaico se llena por CUENTA y un sembrado por DENSIDAD.
+
+        No son la misma perilla con dos nombres: `count` es cuántos elementos
+        caben en un mosaico de lado `tile`, y `density` qué fracción de las
+        celdas de una retícula global de paso `tile` lleva mancha. Escribir uno
+        donde va el otro se dibuja como una superficie vacía, sin error.
+        """
+        for name, spec in self.textures.items():
+            self.assertGreater(spec.get("tile", 0), 0, f"{name}: sin `tile`")
+            if spec["kind"] == "scatter":
+                self.assertTrue(0 < spec.get("density", 0) <= 1, f"{name}: sin `density`")
+                self.assertEqual(len(spec.get("r", [])), 2, f"{name}: `r` debe ser [min, max]")
+            else:
+                self.assertGreater(spec.get("count", 0), 0, f"{name}: sin `count`")
+
+    def test_registry_and_painters_ask_for_the_same_names(self):
+        asked = set()
+        for dirpath, _, files in os.walk(os.path.join(ROOT, "src", "render")):
+            for name in files:
+                if not name.endswith(".js") or name == "materials.js":
+                    continue
+                source = read(os.path.join(dirpath, name))
+                asked |= set(re.findall(
+                    r'(?:overlayTexture|textureFor|paintScatter)\(\w+,\s*"([^"]+)"', source))
+        self.assertEqual(asked - set(self.textures), set(),
+                         "un pintor pide una textura que el registro no trae")
+        self.assertEqual(set(self.textures) - asked, set(),
+                         "una textura autorada que ningún pintor pide no llega a la pantalla")

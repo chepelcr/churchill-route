@@ -156,6 +156,16 @@ function weatherColors() {
 // re-exported below at their historical signatures so nothing else changed.
 
 
+/** Cuántos píxeles de DISPOSITIVO mide hoy un píxel de mundo — `zoom · dpr`.
+ *
+ * Es lo único que `c2d/materials.js` necesita de la cámara, y pedirlo por
+ * parámetro es lo que lo deja utilizable por una hoja de arte y por el editor,
+ * que no tienen ni cámara ni estado. Vive aquí porque los dos valores son
+ * ENLACES VIVOS de este archivo: leerlos una vez y guardárselos daría una
+ * textura afinada para el zoom que había al arrancar.
+ */
+function textureScale() { return ZOOM * dpr; }
+
 function flatAABB(pts) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (let i = 0; i < pts.length; i += 2) {
@@ -261,5 +271,5 @@ export {
   beginScreenOverlay, ctx, ctxRotation, dpr, endScreenOverlay,
   flatAABB, flatMultiPath, flatPath, hash01, label, lastT, mixColor,
   parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, upright,
-  weatherColors, ZOOM,
+  textureScale, weatherColors, ZOOM,
 };

@@ -3,6 +3,159 @@
   "version": 1,
   "_scope": "MEASURED, not assumed. The audit row said 'duplicated Canvas/Pixi/editor colors'; scanning the tree found canvas ∩ pixi = ZERO — the Pixi backend has no hex literals at all since it started reading surfaces.json — and canvas ∩ editor = 40. Those 40 are what is here, minus the ones that merely SHARE A NUMBER: `#e85d75` is the scooter's paint, a feria cabin and the editor's default feature colour, and `#f3c969` is the tuk-tuk, a ride's trim and a gold coin. Per §13's own rule, an identical number in two files is not automatically one constant, and merging those would only move the hard-coding.",
   "_stays_local": "A shadow alpha, a lamp glow, a bezier ratio or a highlight inside ONE drawing recipe is not a material and stays in that recipe. The test for a row here is whether two runtimes have to agree about it.",
+  "textures": {
+    "_note": "EL GRANO DE CADA SUPERFICIE — la tinta, nunca el color. Se dibuja ENCIMA del relleno de siempre (`c2d/materials.js`), así que hereda el clima y la hora sin saber que existen, y una superficie sin entrada aquí se ve exactamente como ayer. Las medidas son en píxeles de MUNDO: `tile` es el lado del mosaico, y el grano se queda pegado al suelo al hacer zoom — que es la diferencia entre una textura y un papel tapiz.",
+    "_kinds": "`speckle` motas | `hatch` briznas → MOSAICO, para superficies que no cubren la pantalla. `scatter` manchas → SEMBRADO sobre el rectángulo visible, para las que sí. La distinción está MEDIDA y vive en `c2d/materials.js`: un relleno con patrón cuesta ~10 ns por píxel, así que la tierra —que cubre el viewport— pasaba el cuadro de 17,3 ms a 32,9. La lista de verbos la exporta el intérprete (`TEXTURE_KINDS`); uno que no implementa se ignora y la superficie cae a su hex.",
+    "_inks": "Cada tinta es un TRIPLETE `rgb` y una `a` aparte, no un `rgba()` armado. Es la convención que `alphaColor` ya documenta —un rgba completo deja la opacidad como una perilla muerta— y aquí además es lo que deja a `mottle` desvanecer su propia tinta hasta alfa cero sin que el intérprete tenga que escribir un color.",
+    "sand": {
+      "kind": "speckle",
+      "tile": 76,
+      "count": 300,
+      "r": [
+        0.5,
+        1.6
+      ],
+      "inks": [
+        {
+          "rgb": "255,255,255",
+          "a": 0.34
+        },
+        {
+          "rgb": "255,244,214",
+          "a": 0.26
+        },
+        {
+          "rgb": "168,120,54",
+          "a": 0.2
+        },
+        {
+          "rgb": "120,84,38",
+          "a": 0.12
+        }
+      ],
+      "_note": "La playa: mica que brilla y granos oscuros. Cuatro tintas y no una, porque una sola mota repetida 300 veces se lee como una trama de impresión."
+    },
+    "land": {
+      "kind": "scatter",
+      "tile": 68,
+      "density": 0.82,
+      "r": [
+        20,
+        52
+      ],
+      "inks": [
+        {
+          "rgb": "255,255,255",
+          "a": 0.11
+        },
+        {
+          "rgb": "126,158,64",
+          "a": 0.16
+        },
+        {
+          "rgb": "146,100,40",
+          "a": 0.15
+        },
+        {
+          "rgb": "214,176,92",
+          "a": 0.14
+        }
+      ],
+      "_note": "El suelo de la manzana: no es de un solo tono. `tile` aquí es el PASO de la retícula global, no el lado de un mosaico, y `density` cuántas de sus celdas llevan mancha — sembrarlas todas se lee como un huerto, que es la misma lección que `paintWoods` ya escribió con los árboles."
+    },
+    "grass": {
+      "kind": "hatch",
+      "tile": 64,
+      "count": 210,
+      "len": [
+        2.2,
+        5.5
+      ],
+      "width": 1.1,
+      "ang": -0.42,
+      "jitter": 0.55,
+      "inks": [
+        {
+          "rgb": "255,255,255",
+          "a": 0.16
+        },
+        {
+          "rgb": "214,255,168",
+          "a": 0.14
+        },
+        {
+          "rgb": "12,72,30",
+          "a": 0.2
+        }
+      ],
+      "_note": "El césped de un parque o una cancha. El `jitter` no es adorno: con todas las briznas paralelas el pasto se lee como pana."
+    },
+    "asphalt": {
+      "kind": "speckle",
+      "tile": 96,
+      "count": 110,
+      "r": [
+        0.35,
+        0.9
+      ],
+      "inks": [
+        {
+          "rgb": "255,255,255",
+          "a": 0.035
+        },
+        {
+          "rgb": "190,190,205",
+          "a": 0.03
+        },
+        {
+          "rgb": "0,0,0",
+          "a": 0.1
+        }
+      ],
+      "_note": "El árido de la calzada. La densidad está MEDIDA sobre una foto del Paseo: a 0,074 motas por píxel de mundo la calle se leía como estática de televisor. La calle es el fondo sobre el que se ven el carro y las marcas, no un protagonista."
+    },
+    "acera": {
+      "kind": "speckle",
+      "tile": 64,
+      "count": 70,
+      "r": [
+        0.4,
+        1.1
+      ],
+      "inks": [
+        {
+          "rgb": "0,0,0",
+          "a": 0.05
+        },
+        {
+          "rgb": "255,255,255",
+          "a": 0.09
+        }
+      ],
+      "_note": "Concreto colado: poro claro y oscuro sobre el mismo gris. APAGADA, y con el número: la banda de acera se traza POR CALLE con `ancho + 2·acera`, así que en cada cruce se vuelve a pintar sobre sí misma — medido, 2,7 ms de un cuadro de 17,3, más que ninguna otra textura del registro, y por el grano de una franja de metro y medio que casi no se ve. Encenderla es quitar esta línea.",
+      "off": true
+    },
+    "roof": {
+      "kind": "speckle",
+      "tile": 64,
+      "count": 55,
+      "r": [
+        0.5,
+        1.3
+      ],
+      "inks": [
+        {
+          "rgb": "255,255,255",
+          "a": 0.09
+        },
+        {
+          "rgb": "0,0,0",
+          "a": 0.07
+        }
+      ],
+      "_note": "El desgaste de un techo de zinc. Flojo, porque una casa de El Cocal mide 30 px y a la densidad de la playa se leía como lija. NO es la corrugación: una acanaladura con una sola dirección para toda la ciudad se lee como papel tapiz, y la dirección real de cada techo el mundo no la emite."
+    }
+  },
   "parcel": {
     "_note": "Ground fill per ParcelUse — `PARCEL_FILL` in c2d/streets.js and the editor's own parcel palette, which is exactly the pair that drifted before (`market` was live in the manifest and missing from the editor's list).",
     "_key": "churchill/world/enums/features.py :: ParcelUse",
@@ -29,11 +182,11 @@
   "green": {
     "_note": "A green cuadra's fill per GreenType — `GREEN_COLORS` in c2d/ground.js.",
     "_key": "churchill/world/enums/features.py :: GreenType",
-    "park": "#4f9d5b",
-    "plaza": "#5ba362",
-    "pool": "#5faec7",
-    "stadium": "#4f9d5b",
-    "marine": "#46a98f",
+    "park": "#3faa53",
+    "plaza": "#4bb15c",
+    "pool": "#37b6dd",
+    "stadium": "#3faa53",
+    "marine": "#2ab89a",
     "esplanade": "#c9c6bf",
     "_esplanade_note": "matched to the `clear` fill of the esplanade band's own weather palette (c2d/malecon.js), and kept as a flat fill underneath so a streaming seam can never show sand through the middle of it"
   },
@@ -104,14 +257,14 @@
   },
   "street": {
     "_note": "The inks the roadway is drawn with, shared by c2d/streets.js and the editor's road preview.",
-    "acera": "#b8b6b0",
+    "acera": "#c2bdb0",
     "aceraNote": "poured concrete, the colour the aceras actually are in the port",
-    "cano": "#807e77",
+    "cano": "#8a857a",
     "canoNote": "the drainage channel at the kerb — the same concrete, permanently damp and stained, so it reads a full step darker",
-    "asphalt": "#3a3540",
+    "asphalt": "#38333f",
     "kioskPathWidth": 28,
-    "paseo": "#f4dca3",
-    "majorDash": "#f8d76b",
+    "paseo": "#f9dc93",
+    "majorDash": "#ffd54a",
     "minorDash": "rgba(255,255,255,0.45)",
     "mark": "rgba(255,255,255,0.75)",
     "markNote": "every line on a field is this one white"
@@ -122,7 +275,7 @@
     "building": {
       "_note": "Las huellas OSM y sintéticas. El COLOR de cada edificio lo trae el mundo (`b.color`, del muestrario de `palettes.json`); acá va lo que no es suyo — su sombra, su contorno y las ventanas que prenden de noche.",
       "shadow": "rgba(0,0,0,0.22)",
-      "fallback": "#caa089",
+      "fallback": "#d9a17f",
       "fallbackNote": "cuando la huella no trae color propio.",
       "outline": "rgba(0,0,0,0.25)",
       "windowsDay": "rgba(255,255,255,0.55)",
@@ -1482,14 +1635,14 @@
     "_note": "LAS MARCAS DE LA CALZADA Y LO QUE SE PINTA SOBRE UNA CANCHA. `paintRoads` se queda en código y eso no es pereza: el casing, los guiones y el caño son GEOMETRÍA DERIVADA de la clase de vía —cuánto mide, cómo se cruza, dónde termina un guión— y no una paleta. Lo que sí es paleta es de qué color sale cada cosa.",
     "field": {
       "_note": "La cancha: césped, sus rayas de corte y las líneas de fútbol. Todo se dibuja en el marco de la parcela (`P.ang`), nunca en el de la pantalla.",
-      "grass": "#4f9d5b",
+      "grass": "#3faa53",
       "court": "#9a9c93",
       "courtNote": "una cancha DURA (baloncesto, multiuso) es cemento y no césped.",
       "lines": "rgba(240,238,230,0.5)",
       "mow": "rgba(30,88,50,0.16)",
       "mowNote": "las rayas de la podadora, a lo largo de la cancha — lo que la hace leerse como césped cuidado y no como un rectángulo verde.",
       "goals": "rgba(255,255,255,0.92)",
-      "stadiumRing": "#4f9d5b"
+      "stadiumRing": "#3faa53"
     },
     "court": {
       "_note": "Las marcas de una cancha dura: el perímetro, la línea de tiro y el aro.",
@@ -1510,11 +1663,11 @@
     "roadway": {
       "_note": "La calzada. El COLOR por clase de superficie, más el caño y el casing.",
       "casing": "rgba(0,0,0,0.30)",
-      "asphalt": "#3a3540",
+      "asphalt": "#38333f",
       "boulevard": "#d9d6cd",
       "_boulevardNote": "UNA CALLE PEATONAL SE PAVIMENTA EN PIEDRA, no en asfalto. `Surface.BOULEVARD` sólo salía de una PARCELA, así que el Bulevar de la Catedral —que es una parcela— se dibujaba en piedra mientras el Bulevar de la Casa de la Cultura —que es una CALLE— salía negro al lado, siendo el mismo bulevar. El propio `blocks.json` lo tenía anotado como pendiente: «se estampa pero todavía no se dibuja en piedra, y el renderer no puede arreglarlo solo», porque `paintStone` se llama únicamente desde `paintParcels`. Es el MISMO hex que `parcel.boulevard` a propósito: son el mismo suelo y tienen que leerse continuos.",
-      "barro": "#9c7a4f",
-      "gravel": "#a99d8b",
+      "barro": "#a87940",
+      "gravel": "#b0a289",
       "paseo": "#f4dca3",
       "cano": "rgba(0,0,0,0.35)",
       "canoNote": "una banda más oscura trazada después del casing y antes del asfalto, con topes rectos para que corte cuadrado en la boca de la intersección.",
@@ -1555,30 +1708,30 @@
     "_note": "The sky, sea, sand, land and tint of each weather. Not a water palette — `ground.js` fills the playas and the land base from it, `estero.js` matches the mangrove's shore to `sand`, `canvas2d.js` lays the tint over the finished frame, and `water.js` DERIVES the whole living-sea palette from `waterTop`/`waterBot` (the ratios are in water.json). Five consumers, one table.",
     "_key": "churchill/world/enums/features.py :: Weather",
     "sunny": {
-      "sky1": "#9fd9ec",
-      "sky2": "#ffe6b3",
-      "waterTop": "#62c2c9",
-      "waterBot": "#2e8090",
-      "sand": "#f1d29a",
-      "land": "#cfb27a",
+      "sky1": "#6ec9ee",
+      "sky2": "#ffdb8a",
+      "waterTop": "#2fc4d6",
+      "waterBot": "#0d6f8f",
+      "sand": "#f8d485",
+      "land": "#d9b05f",
       "tint": "rgba(255,235,200,0.04)"
     },
     "sunset": {
-      "sky1": "#ff8b5a",
-      "sky2": "#ff3d80",
-      "waterTop": "#d28a6a",
-      "waterBot": "#7a4060",
-      "sand": "#f4c98b",
-      "land": "#cda06a",
+      "sky1": "#ff7a3d",
+      "sky2": "#ff2f74",
+      "waterTop": "#e08a5e",
+      "waterBot": "#6f2f5c",
+      "sand": "#fac97c",
+      "land": "#d69a53",
       "tint": "rgba(255,80,80,0.12)"
     },
     "storm": {
       "sky1": "#3a4a5e",
       "sky2": "#5a6a7e",
-      "waterTop": "#3b6f7a",
+      "waterTop": "#2f7386",
       "waterBot": "#244b56",
-      "sand": "#a89870",
-      "land": "#8a9c70",
+      "sand": "#b09a66",
+      "land": "#839e63",
       "tint": "rgba(40,55,80,0.35)"
     },
     "night": {
@@ -1586,73 +1739,73 @@
       "sky2": "#222244",
       "waterTop": "#1a2a44",
       "waterBot": "#0a1428",
-      "sand": "#6a5a48",
-      "land": "#4a5040",
+      "sand": "#6b5a42",
+      "land": "#414a37",
       "tint": "rgba(10,10,30,0.45)"
     }
   },
   "terrain": {
     "_note": "Presets for an editor-authored patch of ground. They overlap the surface registry on purpose and are NOT the same question: surfaces.json says what class 8 looks like everywhere, this says what swatch the editor offers when somebody paints a region by hand. The browns are deliberately the road vectors' browns, so an authored patch of barro and the calle de barro beside it are one surface to the eye as well as to the car.",
-    "cuadra": "#e8d5a0",
-    "park": "#4f9d5b",
+    "cuadra": "#edd188",
+    "park": "#3faa53",
     "plaza": "#cbc6ba",
-    "stadium": "#4f9d5b",
-    "balneario": "#2a7fa8",
-    "water": "#2a7fa8",
-    "beach": "#f4d77a",
-    "barro": "#9c7a4f",
-    "gravel": "#a99d8b"
+    "stadium": "#3faa53",
+    "balneario": "#1a93c4",
+    "water": "#1a93c4",
+    "beach": "#f8d867",
+    "barro": "#a87940",
+    "gravel": "#b0a289"
   },
   "_districts": "CADA BARRIO SE VE COMO ÉL MISMO. Los doce distritos viajan en el manifest desde siempre y el renderer sólo los usaba para un contorno de depuración, así que el puerto entero se pintaba con una paleta. Aquí un barrio anula lo que quiera; SIN ANULACIÓN SE VE COMO HOY, que es lo que hace la migración demostrable barrio por barrio. `building.walls`/`roofs` son listas y se eligen por el id de la huella, igual que en building-styles.json, así que dos casas vecinas no salen del mismo color ni cambian al volver a mirarlas. Motor: c2d/districts.js.",
   "districts": {
     "cocal": {
-      "_note": "El Cocal es arenal y madera: casa de playa, palma y zinc descolorido por la sal.",
+      "_note": "El Cocal es arenal y madera: casa de playa y palma. La sal descolora el zinc, no la pintura — así que la pared va viva y el techo apagado, que es justo el contraste que hace que se lea como un rancho de playa y no como un bloque.",
       "building": {
         "walls": [
-          "#e6d5b8",
-          "#dcc9a6",
-          "#cbb894",
-          "#e9dcc4",
-          "#d3c0a2"
+          "#f6dda6",
+          "#f0c884",
+          "#e2ae63",
+          "#fbecc6",
+          "#e8c391"
         ],
         "roofs": [
-          "#8a7f6d",
-          "#9c8d76",
-          "#7d7a68"
+          "#8d7b5e",
+          "#a08768",
+          "#776f5b"
         ]
       }
     },
     "centro": {
-      "_note": "El Centro es denso y comercial: pared encalada y mucho zinc.",
+      "_note": "El Centro es denso y comercial, y NO es blanco: es cal y pintura de comercio —mango, menta, teja— sobre mucho zinc. Pintarlo de grises fue el error de la primera pasada: el barrio con más edificios del mapa era el más muerto.",
       "building": {
         "walls": [
-          "#ded8cc",
-          "#e8e2d6",
-          "#d2ccbe",
-          "#cfd4d2",
-          "#e3dccd"
+          "#f9edd2",
+          "#ffd985",
+          "#8ddccb",
+          "#f7b0a2",
+          "#cbe78e"
         ],
         "roofs": [
-          "#8d9498",
-          "#7e868a",
-          "#98a0a4"
+          "#8a969c",
+          "#72828a",
+          "#9aa7ad"
         ]
       }
     },
     "paseo": {
-      "_note": "El Paseo es frente de balneario: pasteles de puerto, más saturados que el resto.",
+      "_note": "El Paseo es frente de balneario: el barrio más saturado del puerto a propósito, porque es donde el juego pasa más tiempo y el que primero se ve al arrancar.",
       "building": {
         "walls": [
-          "#f2d9c4",
-          "#efd0d6",
-          "#dfe6d3",
-          "#d8e3ee",
-          "#f6e6c8"
+          "#ffbe72",
+          "#ff9aab",
+          "#93e2ae",
+          "#79c9f4",
+          "#ffdc6b"
         ],
         "roofs": [
-          "#b08268",
-          "#a8757f",
-          "#7f9a86"
+          "#c4784c",
+          "#b94f66",
+          "#4ea37b"
         ]
       }
     }

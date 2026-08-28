@@ -1454,6 +1454,67 @@ AUSENTE cuando toca (la columna de mejoras no sale en Historia, que las arma en
 el brief): es la única forma de distinguir «el `when` funciona» de «el bloque no
 aparece nunca».
 
+**ADIÓS A LO CUADRADO: SE REDONDEA LA ESQUINA, NUNCA EL POLÍGONO**
+(`c2d/curves.js`). El camino obvio —y el que pedía `docs/investigacion-2d-avanzado.md`—
+es Chaikin, y no sirve aquí: **encoge la figura ENTERA**, aristas incluidas. Sobre
+un mapa donde la parcela está pegada a la calle y la calle a la acera, eso abre
+una costura por cada borde, que es exactamente el bug de «espacios vacíos» que
+ese documento describe y luego intenta tapar con uniones booleanas o solapamiento
+intencional. La respuesta barata es no crear el hueco: se camina media arista
+hacia cada lado del vértice y se pasa el vértice como control de una cuadrática,
+así que **las aristas no se mueven** y una parcela redondeada sigue tocando su
+calle en todo el frente. El radio se recorta a media arista o dos esquinas
+seguidas se comen el segmento de en medio y el contorno se cruza consigo mismo —
+que en un relleno even-odd sale como un AGUJERO, no como un error.
+
+`roundedOutline` devuelve una LISTA DE ÓRDENES y `roundedPath` la vuelve
+`Path2D`, por dos razones y ninguna estética: `Path2D` no existe fuera del
+navegador, así que una geometría que sólo sabe fabricarlo no se puede medir en
+node —y la propiedad a medir es justo la que decide si hay costuras—; y una
+lista de órdenes es lo que un backend WebGL podría teselar. `pnpm smoke:curves`
+corre sin navegador por eso.
+
+**EL RUIDO SE SIEMBRA EN `hash01`** (`c2d/noise.js`), que ya existía. No es
+ahorro: es la misma razón por la que `hash01` es un hash y no un `Math.random`.
+Dos fuentes de variación darían dos estabilidades — la costa temblando mientras
+los árboles se están quietos. Y **su amplitud la manda el RÁSTER**: la casa ya
+decidió que *la arena dibujada ES la arena*, así que una costa ondulada 20 px
+diría que hay agua donde el colisionador dice tierra. El tope es menos de una
+celda (5 px), o sea por debajo de la resolución con la que el mundo decide qué
+es qué.
+
+**CADA BARRIO SE VE COMO ÉL MISMO** (`c2d/districts.js`, `materials.json →
+districts`). Los doce distritos viajan en el manifest desde siempre y el renderer
+los usaba para un contorno de depuración y la píldora del nombre de calle, así
+que el puerto entero se pintaba con una paleta. Tres cosas deliberadas: **no
+reimplementa `W.districtAt`** —que hace más de lo que uno escribiría, probando
+primero los polígonos autorados y sólo después el centroide—; **cachea la
+respuesta en el objeto** como `_path`, porque un edificio no se muda; y **lo que
+un edificio ES gana sobre dónde está**, porque una iglesia es una iglesia en El
+Cocal y en Esparza, y teñirla del barrio borraría la señal que
+`building-styles.json` existe para dar. El barrio sólo tiñe lo que no tiene
+categoría: la casa de al lado. Sin anulación un distrito se ve como hoy, que es
+lo que hace la migración demostrable barrio por barrio.
+
+**Y LAS HOJAS DE ARTE SE DIFERENCIAN CON UN SERVIDOR FRESCO POR CADA LADO.** La
+sección de arte de más arriba ya avisa que un `:8734` de larga vida parte el
+grafo de módulos para una herramienta que importa por ruta lisa; **las hojas caen
+en lo mismo** y no estaba escrito, porque todas hacen
+`import("/src/render/c2d/…")`. Editar `effects.json` entre dos capturas contra el
+MISMO servidor dio `scenes` 15,8 %, `lights` 13,5 % y `stands` 7,2 % cambiadas —
+todo mentira. Reiniciando por lado: sólo `parcels` cambia (5,07 %) y las otras
+cinco salen IDÉNTICAS. **El piso de ruido de estas hojas es CERO** (una hoja
+contra sí misma sale idéntica), así que cualquier píxel distinto es real y no
+hace falta tolerancia — pero sólo si el servidor no lleva un ciclo de edición
+encima.
+
+**Y `smoke:perf` YA EXIGE ALGO.** Medía con cuidado y no afirmaba nada más que
+el interruptor del minimapa; hoy topa el render en 4,0 ms y el sim en 2,0, con
+el desglose por fase en el mensaje de fallo. El número sale de lo medido —el
+cuadro entero son 16,7 ms y el render costaba 1,14— y es holgado a propósito:
+lo que hay que cazar no es un milisegundo sino un orden de magnitud, la capa que
+se dibuja por entidad en vez de por vista.
+
 **RECORRER SON DOS PUNTARENAS, Y EL REALM DECIDE EL MEDIO.** `ciudad` es la
 península en carro; `estero` es el estuario en lancha. No es un quinto
 `GameMode` a propósito —el reloj (ninguno), el marcador, el ciclo del día y la

@@ -79,6 +79,12 @@ def _tuples(node, key=None):
 #: `dx`, `w`, `at`; lo que cambia es de dónde sale el número. Una llave en px se
 #: sigue aceptando y gana, para que un registro a medio migrar no se rompa en
 #: silencio — pero `tests/test_content.py` pide que no quede ninguna.
+#: OJO AL AÑADIR UNA LLAVE AQUÍ: la conversión BORRA la llave en metros, así que
+#: cualquier lector que hoy haga `px(spec["algoM"])` se queda sin ella. `reachM`
+#: es el caso vivo — lo autoran `piers.json` y `railway.json` y lo convierten a
+#: mano TRES servicios (`build_stage`, `lancha`, `railway`), de modo que meterlo
+#: aquí revienta el build a 25 minutos de haber arrancado. Antes de agregar una,
+#: buscar la llave en metros por todo `churchill/`.
 METRE_KEYS = {
     "dxM": "dx", "dyM": "dy",
     "wM": "w", "hM": "h", "rM": "r",
@@ -134,6 +140,11 @@ PROBE_SEA = [tuple(p) for p in _geo["probeSea"]]
 DISTRICT_DEFS = _geo["districts"]
 DISTRICT_BOUNDS_GEO = [tuple(p) for p in _geo["districtBoundsGeo"]]
 INLAND_DISTRICT_DEFS = _geo["inlandDistricts"]
+
+#: LOS EMPALMES DE CALLE — dos puntas que el mapeador dejó sin unir. Autorados
+#: en geo y cosidos por `service/roadlink.py`, que explica por qué esto se
+#: autora uno por uno en vez de resolverse con una regla general.
+ROAD_LINK_DEFS = _geo.get("roadLinks", [])
 
 _ki = _load("kiosks.json")
 _pr = _load("products.json")

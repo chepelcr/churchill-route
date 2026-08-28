@@ -72,6 +72,10 @@ class WorldContext:
     #: plain geometry; the final gate/log reads this instead of shipping audit
     #: bookkeeping to every client tile.
     rail_alignment: list = field(default_factory=list)
+    #: BUILD-ONLY, igual que el de los rieles: qué empalme de calle se cosió,
+    #: dónde y de qué largo. El gate final lo lee para exigir que las dos puntas
+    #: hayan quedado de verdad en la misma componente manejable.
+    road_links: list = field(default_factory=list)
     beaches: list = field(default_factory=list)
     waters: list = field(default_factory=list)
     land_polys: list = field(default_factory=list)

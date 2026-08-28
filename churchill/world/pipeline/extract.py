@@ -13,7 +13,7 @@ import time
 from collections import defaultdict
 
 from ..config import DILATION_ON
-from ..content import RAILWAY_DEF
+from ..content import RAILWAY_DEF, ROAD_LINK_DEFS
 from ..context import WorldContext
 from ..logging import log, warn
 from ..service.dilation import build as dilation_build
@@ -24,8 +24,10 @@ from ..service.osm import (
 )
 from ..service.projection import planar_setup
 from ..service.railway import align_rails
+from ..service.roadlink import link_roads
 from ..service.signs import build_signs
 from ..service.street import StreetIndex
+from ..util.geometry import to_m
 from ..util.raster import Raster
 
 
@@ -68,6 +70,13 @@ def extract_world(osm_source):
     # León Cortés end-barro + dirt cross streets (coordinate-agnostic).
     barro_leon_continuation(roads)
     propagate_barro_to_crossings(roads)
+    # LOS EMPALMES, ANTES DE QUE NADIE MÁS MIRE LAS CALLES. Un empalme es el
+    # pedazo que le faltaba a una calle que ya existe, así que tiene que estar
+    # en la lista antes del ráster, del índice de calles, de las aceras y de las
+    # lámparas — si no, sería una calle de segunda que no aparece en ninguna de
+    # las preguntas que el resto del build le hace a la red.
+    ctx.road_links = link_roads(roads, lambda lat, lon: sp.project(to_m(lat, lon))[:2],
+                                ROAD_LINK_DEFS)
     ctx.roads = roads
 
     ctx.rails = extract_rails(sp, ways, dims.w, dims.h)

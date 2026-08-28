@@ -178,5 +178,21 @@
   "maleconEastLl": [
     9.97747,
     -84.82532
+  ],
+  "_roadLinks": "LOS EMPALMES: dos puntas de calle que el mapeador dejó sin unir, y que el build cose. Medido sobre el mundo emitido, la red manejable tiene 69 componentes y el norte —Pitahaya y toda su tierra firme, 162 945 celdas— se acerca a la península en UN SOLO PUNTO. La lista es corta A PROPÓSITO: hay 1 568 extremos libres y 128 pares a menos de 100 px, así que una regla que los soldara sola inventaría calles por todo el mapa. Ver churchill/world/service/roadlink.py. Un empalme que no resuelve FALLA el build.",
+  "roadLinks": [
+    {
+      "id": "arreo",
+      "note": "El final de la Calle del Arreo. Sus dos puntas son vías `unclassified` SIN NOMBRE que mueren a 95,5 px una de otra con ~45 px de tierra maciza en medio, así que ninguna regla por nombre las alcanza. Sin este empalme, Pitahaya y toda la tierra firme del norte sólo se ven: no se llega manejando desde el puerto.",
+      "from": [
+        10.00803,
+        -84.75133
+      ],
+      "to": [
+        10.00779,
+        -84.75148
+      ],
+      "reachM": 40.0
+    }
   ]
 }

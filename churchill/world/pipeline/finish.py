@@ -201,9 +201,29 @@ def field_escape_status(raster, parcel):
 
 def verify(ctx, *, spawn, gate_pois):
     """The build's gate. Appends to ctx.failures; the runner raises on any."""
+    cols, rows, cell = ctx.raster.cols, ctx.raster.rows, ctx.raster.cell
     unreachable, reached = verify_connectivity(ctx.raster, spawn, gate_pois,
                                                reach=GATE_REACH_CELLS)
     ctx.failures.extend("unreachable " + u for u in unreachable)
+    # UN EMPALME QUE NO UNE NADA ES UNA CALLE PINTADA EN EL AIRE, y hasta hoy
+    # nada comprobaba que el mapa fuera alcanzable. Medido antes de coserlo: la
+    # red manejable tenía 69 componentes y el norte entero —Pitahaya y su tierra
+    # firme, 162 945 celdas— era una de ellas, alcanzable sólo por agua.
+    #
+    # La pregunta se le hace a la MÁSCARA DEL SPAWN, no a una BFS local: que las
+    # dos puntas se toquen entre sí no sirve de nada si el par sigue suelto del
+    # resto del mundo. Aquí «¿llega el spawn?» SÍ es la pregunta correcta —lo
+    # contrario de lo que vale para una cancha de Esparza, a la que se llega en
+    # lancha y con razón— porque un empalme existe precisamente para que se
+    # pueda llegar manejando.
+    for link in ctx.road_links:
+        for label, (lx, ly) in (("A", link["a"]), ("B", link["b"])):
+            lc, lr = int(lx // GRID_CELL), int(ly // GRID_CELL)
+            if not (0 <= lc < cols and 0 <= lr < rows
+                    and reached[lr * cols + lc]):
+                ctx.failures.append(
+                    f"roadlink {link['id']}(punta {label} fuera de la red que "
+                    f"alcanza el spawn: el empalme no unió nada)")
     # EL FERROCARRIL TIENE DERECHO DE VÍA, no centro de calzada.  The analytic
     # proof comes from the same named road geometry used to align it, not from
     # a raster cell that may also have been painted by a plaza or apron later.
@@ -222,7 +242,6 @@ def verify(ctx, *, spawn, gate_pois):
     # Muelle de Pitahaya spent a release standing off the end of every street,
     # its "connector" a 38 px stub paved to nothing. So take each pier's
     # LANDWARD end and require it on the drivable component the spawn reaches.
-    cols, cell = ctx.raster.cols, ctx.raster.cell
     for pier in ctx.piers:
         # A RAMP IS THE CONNECTION, NOT A PLACE. `apron` is the ferry/lancha
         # ramp; `malecon` is a bajada down to the sand, paved as promenade. Both

@@ -420,7 +420,7 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
     return landmarks, customers, failures, mlm, pier, BUILDING_LM, NO_PAD_LM, resolve
 
 
-def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_islands, BUILDING_LM, NO_PAD_LM):
+def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_islands, BUILDING_LM, NO_PAD_LM, raw_bldgs=()):
     raster = ctx.raster
     grid = raster.buf
     GRID_COLS, GRID_ROWS = ctx.dims.cols, ctx.dims.rows
@@ -735,7 +735,23 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
     old_port_x1 = next((d["x1"] for d in districts if d["id"] == "cocal"),
                        next((d["x1"] for d in districts if d["id"] == "carmen"),
                             next((d["x1"] for d in districts if d["id"] == "faro"), None)))
-    blocks, plazas = detect_blocks(raster, old_port_x1=old_port_x1)
+    # DÓNDE HAY UN EDIFICIO CON NOMBRE, en cuadrículas. `detect_blocks` no puede
+    # saberlo solo: mira componentes de tierra y las clasifica por tamaño, y una
+    # manzana angosta con una imprenta encima se le parece a una cuña de cruce.
+    # Se pasan los VÉRTICES y el centro, no la caja: la caja de una huella
+    # diagonal toca cuñas vecinas que sí son cuñas.
+    named_cells = set()
+    for raw in raw_bldgs or ():
+        if not raw.get("name") or not raw.get("pts"):
+            continue
+        pts = raw["pts"]
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        named_cells.add((int(cx // CUAD), int(cy // CUAD)))
+        for (px_, py_) in pts:
+            named_cells.add((int(px_ // CUAD), int(py_ // CUAD)))
+    blocks, plazas = detect_blocks(raster, old_port_x1=old_port_x1,
+                                   named_cells=named_cells)
     # Faro esplanade: paint the paved sand-tip as a gray ground fill by TYPE
     # (single draw — no sand shows under it; follows the sand, never the street).
     if faro_esp:

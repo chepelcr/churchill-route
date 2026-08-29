@@ -318,13 +318,14 @@ faltaban eran las técnicas.
 
 ### Lo que sigue abierto del mapa
 
-- [ ] **26 huellas con nombre siguen pisando la acera, y no tienen suelo.** No
-      es por falta de intentarlo: `docs/changelog/2026-08-28.md` trae la tabla de
-      las cuatro palancas probadas y las cuatro dan el mismo 26, incluida
-      `MANZANA_FIT_MIN_SCALE=0.7`, que encoge 133 edificios y no mueve el
-      residuo. Las únicas salidas que quedan son encogerlas a 0,22-0,34 (dejan
-      de parecerse a lo mapeado) o borrarlas (ya costó 32 edificios con nombre
-      una vez). Lo que HAY es la medición: el log dice el número en cada corrida.
+- [ ] **Las huellas del frente del Paseo siguen sin solar.** Lo demás se cerró
+      perdonando el sliver que aloja una huella con nombre (ver CLAUDE.md, con
+      la tabla de las cinco palancas y por qué las otras cuatro daban el mismo
+      número). Lo que queda son los edificios cuya tierra está bajo una avenida
+      de 196 px: sólo caben encogiéndolos a 0,22-0,34 —dejan de parecerse a lo
+      mapeado, por eso el piso está en 0,42— o borrándolos, que ya costó 32
+      edificios con nombre una vez. **El número a comparar está en el log de
+      cada corrida** (`… named footprints STILL TOUCH a street class`).
 
 ---
 

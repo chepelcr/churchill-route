@@ -69,7 +69,7 @@ def main():
      balneario, balneario_cells, marine_site) = place_kiosks_and_blocks(
         ctx, landmarks=landmarks, customers=customers, districts=districts,
         junction_islands=junction_islands, BUILDING_LM=BUILDING_LM,
-        NO_PAD_LM=NO_PAD_LM)
+        NO_PAD_LM=NO_PAD_LM, raw_bldgs=raw_bldgs)
     # Two block helpers bound to THIS build's raster and block list. They are
     # passed to the later stages rather than re-derived, so every stage traces
     # the same cuadra outlines.

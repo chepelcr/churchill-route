@@ -245,7 +245,7 @@ def cells_to_rects(cells, cell_px):
 
 
 
-def detect_blocks(raster, old_port_x1=None):
+def detect_blocks(raster, old_port_x1=None, named_cells=None):
     """Classify every CLS_LAND component (after roads/aceras/pads are stamped)
     at cuadrícula resolution:
       - block: fits a BLOCK_MIN_CUADS square of buildable CUAD cells somewhere
@@ -360,6 +360,7 @@ def detect_blocks(raster, old_port_x1=None):
     # classify
     blocks, paved_ids = [], set()
     n_green = 0
+    n_named_kept = 0
     for cid in range(1, len(comp_n)):
         area_cuads = comp_n[cid] / (CUAD_CELLS * CUAD_CELLS)
         cells = comp_cells[cid]
@@ -375,6 +376,30 @@ def detect_blocks(raster, old_port_x1=None):
             blocks.append({"cells": cells, "green": False})
         elif in_band and comp_ins[cid] >= 2 and area_cuads >= 4:
             blocks.append({"cells": cells, "green": False})
+        elif named_cells and (cells & named_cells):
+            # UNA MANZANA CON UN EDIFICIO CON NOMBRE NO ES UNA ESQUINA DE ACERA.
+            #
+            # El resto de esta rama pavimenta el sobrante pequeño porque casi
+            # siempre ES un sobrante: la cuña que queda en un cruce, el pico
+            # entre dos calles que se juntan. Pero el mapeador dibujó ahí una
+            # imprenta, una torre, una pulpería — y lo que pasa entonces es lo
+            # peor de los dos mundos: el suelo se convierte en acera, la cadena
+            # de colocación descubre que el edificio no tiene dónde pararse, y
+            # acaba de `ghost` DIBUJADO ENCIMA DE LA ACERA que se acaba de crear.
+            #
+            # Medido sondeando el mundo emitido alrededor de la Antigua Torre
+            # Millicom y la Imprenta La Violeta: **en 80 px a la redonda no hay
+            # ni una celda de LAND** — sólo acera, calzada y barro. No es que la
+            # cadena no supiera moverlas: es que no quedaba suelo al que
+            # moverlas, y este pavimentado es quien se lo llevó.
+            #
+            # Entra como bloque VERDE, que en esta función significa «sin relleno
+            # sintético, pero las huellas reales de OSM pueden asentarse encima»
+            # — que es exactamente lo que hace falta. Un sobrante de cruce no
+            # tiene edificios mapeados, así que la regla no puede rescatar una
+            # cuña de verdad.
+            blocks.append({"cells": comp_cells[cid] or cells, "green": True})
+            n_named_kept += 1
         elif area_cuads <= SLIVER_MAX_CUADS:
             paved_ids.add(cid)
         else:
@@ -393,6 +418,7 @@ def detect_blocks(raster, old_port_x1=None):
     # The bar is in the line on purpose: this census is only readable against
     # the threshold that produced it, and that threshold used to be invisible.
     log("blocks", f"{n_comps} land components -> {n_cuadras} cuadras, "
-          f"{len(paved_ids)} paved slivers, {n_green} green "
+          f"{len(paved_ids)} paved slivers, {n_green} green, "
+          f"{n_named_kept} slivers SPARED for holding a named footprint "
           f"(bar {BLOCK_MIN_M:.0f} m = {BLOCK_MIN_CUADS}x{BLOCK_MIN_CUADS} cuadrículas)")
     return blocks, []

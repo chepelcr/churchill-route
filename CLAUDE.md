@@ -971,38 +971,58 @@ the fit it had. Dropping them cost four escuelas, four gasolineras, the INA and
 a dozen iglesias the first time. Buildings were never the problem —
 `_push_off_street` already pushes named footprints off the acera.
 
-**LAS QUE SIGUEN PISANDO LA ACERA NO TIENEN SUELO — Y ESTÁ MEDIDO CUATRO VECES.**
-Sobre el mundo emitido: de **546 huellas con nombre, 86 tocan acera o calzada**
-(1,18 % de su suelo sobre acera, 2,02 % sobre duro), y **45 de ésas son `ghost`
-a propósito**. En la ventana del centro son **26 de 279, y sólo 1 pisa la
-calzada**. Antes de intentar arreglarlo otra vez, éstas son las cuatro palancas
-que se probaron el 2026-08-28 y lo que dio cada una, todas contra la misma vara:
+**UNA MANZANA CON UN EDIFICIO CON NOMBRE NO ES UNA ESQUINA DE ACERA** —
+`detect_blocks`, parámetro `named_cells`. Es la causa de raíz de «hay edificios
+parados sobre la acera», y la respuesta NO estaba en la cadena de colocación.
+
+`detect_blocks` clasifica cada componente de tierra por TAMAÑO, y pavimenta como
+SLIVER de acera todo sobrante pequeño que no aloje un cuadrado de 4x4
+cuadrículas. Casi siempre acierta: es la cuña de un cruce, el pico entre dos
+calles que se juntan. Pero cuando el mapeador dibujó ahí una imprenta o una
+torre, pasa lo peor de los dos mundos: **el suelo se convierte en acera, la
+cadena de colocación descubre que el edificio no tiene dónde pararse, y acaba de
+`ghost` dibujado justo encima de la acera que se acaba de crear.**
+
+Sondeando el mundo emitido alrededor de la Antigua Torre Millicom y la Imprenta
+La Violeta: **en 80 px a la redonda no hay ni una celda de LAND** — sólo acera,
+calzada y barro. No es que la cadena no supiera moverlas; es que no quedaba
+suelo, y este pavimentado se lo había llevado.
+
+**Y POR ESO NINGUNA PALANCA DE LA CADENA SERVÍA.** Antes de llegar aquí se
+probaron cuatro, todas contra la misma vara y sobre la ventana del centro:
 
 | palanca | residuo |
 |---|---|
-| como está hoy | **26** |
+| como estaba | **26 de 279** |
 | que el reasiento pregunte al SUELO y no a `cell_block` | 26 |
 | `STREETISH` ampliado a `STREET_CLASSES` (malecón y bulevar incluidos) | 26 |
 | escalera de encogido hasta 0,22 en vez de 0,42 | 27 |
 | **`MANZANA_FIT_MIN_SCALE=0.7`** — encoge 133 huellas, mediana 0,80 | **26** |
+| **perdonar el sliver que aloja una huella con nombre** | **16** |
 
-La última es la decisiva: el ajuste por grupo, que es LA operación diseñada para
-esto, encoge ciento treinta y tres edificios y **no mueve el residuo ni uno**.
-La razón es que esas 26 no pertenecen a ninguna manzana DETECTADA —
-`detect_blocks` pavimenta como sliver de acera toda cuadra sin un cuadrado de
-6x6 celdas edificables— o son el frente del Paseo, cuyo solar quedó bajo una
-avenida de 196 px. El ajuste por grupo sólo toca huellas de un bloque detectado,
-así que a éstas ni las mira.
+La quinta fila es la única que mueve el número, y la penúltima explica por qué:
+el ajuste por grupo —LA operación diseñada para esto— encoge ciento treinta y
+tres edificios y no cambia nada, porque sólo toca huellas de un bloque
+DETECTADO y éstas no pertenecen a ninguno. **El problema nunca estuvo en cómo se
+colocan; estuvo en que el suelo dejó de existir un paso antes.**
 
-Lo que sí las metería dentro de una cuadra es **encogerlas a 0,22–0,34** (dejan
-de parecerse a lo mapeado; por eso el piso está en 0,42) o **borrarlas**, que es
-lo que se hacía antes y costó la Parroquia del Carmen entre otras 31. Mientras
-no cambie eso, el residuo es el precio de tener calles por las que caben dos
-carros. **Y el número a comparar entre corridas es el del log**
-(`… named footprints STILL TOUCH a street class`), no los contadores de la
-cadena: una guarda que impide reasentar al otro lado de la calle baja
-«reseated» de 51 a 42 y sube «ghost» de 21 a 24 sin mover el residuo, y sin esa
-línea eso se lee como una regresión.
+El sliver perdonado entra como bloque VERDE, que en esa función significa «sin
+relleno sintético, pero las huellas reales de OSM pueden asentarse encima» —
+exactamente lo que hace falta. Una cuña de cruce de verdad no tiene edificios
+mapeados, así que la regla no puede rescatar una cuña por error.
+
+**El número a comparar entre corridas es el del log**
+(`… named footprints STILL TOUCH a street class`), nunca los contadores de la
+cadena: se mueven en direcciones contrarias entre sí. Medido, una guarda que
+impide reasentar al otro lado de la calle baja «reseated» de 51 a 42 y sube
+«ghost» de 21 a 24 **sin mover el residuo ni un edificio**, y sin esa línea eso
+se lee como una regresión.
+
+Lo que queda después de esto son las huellas del frente del Paseo, cuyo solar
+está bajo una avenida de 196 px. Ésas sólo caben encogiéndolas a 0,22-0,34
+(dejan de parecerse a lo mapeado; por eso el piso está en 0,42) o borrándolas,
+que es lo que se hacía antes y costó 32 edificios con nombre, la Parroquia del
+Carmen entre ellos.
 
 **A LANDMARK AND AN OSM SITE ARE RELATED BY CONTAINMENT, NOT BY ID.** Measured:
 the 38 landmarks and the 429 sites are DISJOINT sets of places here (the nearest

@@ -50,8 +50,8 @@ desaparecer en silencio con un WARN que nadie lee.
 """
 import math
 
-from ..config import px
-from ..logging import die, log
+from ..config import PLANAR_CLIPPED, px
+from ..logging import die, log, warn
 
 
 def _ends(roads):
@@ -108,6 +108,18 @@ def link_roads(roads, project, links):
         # su calle es lo mismo que el centro cívico que dejó de existir con dos
         # WARN por toda explicación.
         if a is None or b is None:
+            # …SALVO EN UNA CORRIDA RECORTADA, donde no encontrarla es lo
+            # ESPERADO: `PLANAR_BBOX` tira todo lo que queda fuera de la ventana
+            # y este empalme vive en el noreste. Sin esta salida el smoke moría
+            # en `extract_world` —la primera etapa de nueve— y dejaba de poder
+            # probar nada de lo que viene después, que es justo para lo que
+            # existe. En la corrida completa sigue siendo un fallo duro, por la
+            # misma razón que el centro cívico: un elemento hecho a mano que
+            # resuelve a nada no puede desaparecer en silencio.
+            if PLANAR_CLIPPED:
+                warn("roadlink", f"empalme {lid}: fuera de la ventana recortada, "
+                                 f"se omite (en la corrida completa esto FALLA)")
+                continue
             die("roadlink", f"empalme {lid}: no hay punta de calle a "
                             f"{reach:.0f} px de "
                             f"{'la primera ancla' if a is None else 'la segunda'}")

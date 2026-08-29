@@ -316,6 +316,18 @@ faltaban eran las técnicas.
 
 ---
 
+### Lo que sigue abierto del mapa
+
+- [ ] **26 huellas con nombre siguen pisando la acera, y no tienen suelo.** No
+      es por falta de intentarlo: `docs/changelog/2026-08-28.md` trae la tabla de
+      las cuatro palancas probadas y las cuatro dan el mismo 26, incluida
+      `MANZANA_FIT_MIN_SCALE=0.7`, que encoge 133 edificios y no mueve el
+      residuo. Las únicas salidas que quedan son encogerlas a 0,22-0,34 (dejan
+      de parecerse a lo mapeado) o borrarlas (ya costó 32 edificios con nombre
+      una vez). Lo que HAY es la medición: el log dice el número en cada corrida.
+
+---
+
 ## 5. Juego y balance
 
 - [x] ~~**La carga se dibuja por VEHÍCULO, no por comida.**~~ **Cerrado el

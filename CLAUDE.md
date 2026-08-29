@@ -971,6 +971,39 @@ the fit it had. Dropping them cost four escuelas, four gasolineras, the INA and
 a dozen iglesias the first time. Buildings were never the problem —
 `_push_off_street` already pushes named footprints off the acera.
 
+**LAS QUE SIGUEN PISANDO LA ACERA NO TIENEN SUELO — Y ESTÁ MEDIDO CUATRO VECES.**
+Sobre el mundo emitido: de **546 huellas con nombre, 86 tocan acera o calzada**
+(1,18 % de su suelo sobre acera, 2,02 % sobre duro), y **45 de ésas son `ghost`
+a propósito**. En la ventana del centro son **26 de 279, y sólo 1 pisa la
+calzada**. Antes de intentar arreglarlo otra vez, éstas son las cuatro palancas
+que se probaron el 2026-08-28 y lo que dio cada una, todas contra la misma vara:
+
+| palanca | residuo |
+|---|---|
+| como está hoy | **26** |
+| que el reasiento pregunte al SUELO y no a `cell_block` | 26 |
+| `STREETISH` ampliado a `STREET_CLASSES` (malecón y bulevar incluidos) | 26 |
+| escalera de encogido hasta 0,22 en vez de 0,42 | 27 |
+| **`MANZANA_FIT_MIN_SCALE=0.7`** — encoge 133 huellas, mediana 0,80 | **26** |
+
+La última es la decisiva: el ajuste por grupo, que es LA operación diseñada para
+esto, encoge ciento treinta y tres edificios y **no mueve el residuo ni uno**.
+La razón es que esas 26 no pertenecen a ninguna manzana DETECTADA —
+`detect_blocks` pavimenta como sliver de acera toda cuadra sin un cuadrado de
+6x6 celdas edificables— o son el frente del Paseo, cuyo solar quedó bajo una
+avenida de 196 px. El ajuste por grupo sólo toca huellas de un bloque detectado,
+así que a éstas ni las mira.
+
+Lo que sí las metería dentro de una cuadra es **encogerlas a 0,22–0,34** (dejan
+de parecerse a lo mapeado; por eso el piso está en 0,42) o **borrarlas**, que es
+lo que se hacía antes y costó la Parroquia del Carmen entre otras 31. Mientras
+no cambie eso, el residuo es el precio de tener calles por las que caben dos
+carros. **Y el número a comparar entre corridas es el del log**
+(`… named footprints STILL TOUCH a street class`), no los contadores de la
+cadena: una guarda que impide reasentar al otro lado de la calle baja
+«reseated» de 51 a 42 y sube «ghost» de 21 a 24 sin mover el residuo, y sin esa
+línea eso se lee como una regresión.
+
 **A LANDMARK AND AN OSM SITE ARE RELATED BY CONTAINMENT, NOT BY ID.** Measured:
 the 38 landmarks and the 429 sites are DISJOINT sets of places here (the nearest
 compatible site to `parquemar`/`estadio`/`cocal_park` is 588–4 593 px away), so
@@ -1813,6 +1846,15 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
   `src/world2d/`** — which is exactly what makes it safe to run against a dirty
   tree. What you are reading it for is a `Traceback`. A `NameError` in
   `decorate` is 25 minutes into a full build and one minute into a smoke.
+
+  **Y UNA COMPUERTA DE AUTORÍA PUEDE MATAR EL SMOKE EN LA ETAPA CERO.** El
+  empalme de la Calle del Arreo vive en el noreste y `link_roads` FALLA el build
+  cuando no resuelve — correcto en la corrida completa, fatal en una recortada,
+  porque corre en `extract_world`, la PRIMERA de nueve etapas: un smoke sobre el
+  centro moría antes de llegar a ninguna de las que uno quería probar. Por eso
+  existe `PLANAR_CLIPPED`: fuera de la ventana el empalme se OMITE con un WARN y
+  en la corrida completa sigue siendo un fallo duro. Cualquier compuerta nueva
+  sobre un elemento autorado tiene que preguntárselo.
 
   **Y ESE MISMO «never reaches `write_world`» ES SU PUNTO CIEGO.** Nada de lo que
   vive en `write_world` o en `pipeline/emit.py` está cubierto por el smoke: un

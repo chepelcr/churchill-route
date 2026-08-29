@@ -209,6 +209,15 @@ ROAD_WIDTH_M = {
 # with PLANAR_BBOX (e.g. a small centro sub-bbox for a fast smoke).
 PLANAR_FULL_BBOX = "-84.9188,9.8539,-84.6328,10.0304"
 PLANAR_BBOX = os.environ.get("PLANAR_BBOX") or PLANAR_FULL_BBOX
+# ¿ES UNA CORRIDA RECORTADA? Lo pregunta cualquier compuerta que valide un
+# elemento AUTORADO, porque el recorte le quita el suelo a los de afuera y una
+# compuerta que no lo sepa convierte el smoke en inservible: el empalme de la
+# Calle del Arreo está en el noreste, así que un smoke sobre el centro moría en
+# `extract_world` —la PRIMERA etapa— y ya no llegaba a ninguna de las que uno
+# quería probar. El smoke existe para cazar un `Traceback` a un minuto en vez de
+# a veinticinco; una compuerta de autoría que lo mata en el minuto cero se lo
+# come entero.
+PLANAR_CLIPPED = PLANAR_BBOX != PLANAR_FULL_BBOX
 
 # StreetIndex search spans, in METRES (`world-units.json` -> `world.street`,
 # which carries why each one is what it is). All four move together.

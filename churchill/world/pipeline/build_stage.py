@@ -1146,6 +1146,30 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
     if n_pushed:
         log("buildings", f"{n_pushed} named footprints pushed back off the acera "
             f"(up to {PUSH_MAX} px, along the nearest street's normal)")
+    # …Y CUÁNTAS SIGUEN PISANDO LA CALLE, que es lo único de todo esto que se ve
+    # desde el carro.
+    #
+    # Las seis líneas de arriba cuentan los ESLABONES de la cadena —empujadas,
+    # anchas, reasentadas, encogidas, suavizadas, `ghost`— y ninguna responde esa
+    # pregunta. Peor: los eslabones se mueven en direcciones contrarias entre sí,
+    # así que comparar dos corridas por ellos lleva a la conclusión EQUIVOCADA.
+    # Medido el 2026-08-28 probando cuatro palancas sobre la ventana del centro:
+    # una guarda que impide reasentar al otro lado de la calle baja «reseated»
+    # de 51 a 42 y sube «ghost» de 21 a 24, y el residuo real no se mueve ni un
+    # edificio. Sin esta línea eso se lee como una regresión.
+    #
+    # LA VARA ES FIJA — el conjunto COMPLETO de clases de calle, no `STREETISH`.
+    # `STREETISH` es la definición que DECIDE dónde puede pararse un edificio, y
+    # medir contra ella hace que ampliarla empeore el número aunque el mundo
+    # mejore. `STREET_CLASSES` incluye además el malecón y el bulevar, que la
+    # cadena hoy no comprueba: un edificio sobre el paseo marítimo también está
+    # parado donde no debe.
+    _yard = tuple(STREET_CLASSES)
+    _still = [raw for raw in named_raw if _poly_over(raw["pts"], _yard)]
+    _hard = [raw for raw in _still if _poly_over(raw["pts"], ROADISH)]
+    log("buildings", f"{len(_still)} of {len(named_raw)} named footprints STILL TOUCH "
+        f"a street class ({len(_hard)} the calzada itself) — the residue the chain "
+        f"could not seat, and the number to compare between runs")
     if n_reseat:
         log("buildings", f"{n_reseat} named footprints reseated onto cuadra land "
             f"(the straight push had nowhere to go; the real outline is kept)")

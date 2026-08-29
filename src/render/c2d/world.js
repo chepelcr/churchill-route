@@ -8,13 +8,15 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
 import { paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
 import { drawStreetLamps } from "./lights.js";
-import { aabbInView } from "./gfx.js";
+import { aabbInView, ctx, textureScale } from "./gfx.js";
 import { depthKey } from "./depth.js";
 import { state } from "../../game/state.js";
 import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
 } from "./ground.js";
 import { drawMalecon } from "./malecon.js";
+import { paintRelief } from "./relief.js";
+import { paintSkyCover } from "./skycover.js";
 import { drawStreetLabels2D, medianPairs, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
 import { drawPiers, paintBuilding } from "./structures.js";
 
@@ -52,6 +54,12 @@ function drawWorld2D(view, t) {
   // the ferry ramps, which are piers drawn at ground level for the same reason
   drawKioskPaths(view);
   drawPiers(view, true);
+  // EL RELIEVE, sobre el suelo terminado y bajo lo que se levanta de él. La
+  // ladera lleva la calle encima, así que sombrear antes de las calles diría que
+  // el asfalto es plano cuando el cerro no lo es; y sombrear DESPUÉS de los
+  // edificios les pasaría la ladera por la fachada, que ya tienen su propia
+  // sombra solar.
+  paintRelief(ctx, view);
   phase("worldStreets");
   // LOS EDIFICIOS, DE LEJOS A CERCA. Se pintaban en orden de TILE, que daba
   // igual mientras eran rellenos planos — pero con pared, una que se extiende
@@ -87,6 +95,11 @@ function drawWorld2D(view, t) {
   // luz lo abre el compositor de noche (`nightlights.js`); esto es la lámpara.
   drawStreetLamps(view);
   drawStreetLabels2D(roads, view);
+  // LA SOMBRA DE LAS NUBES, al final del pase del mundo: una nube tapa el suelo,
+  // los techos y los árboles por igual, y es eso lo que la hace leerse como algo
+  // que está ENTRE el sol y el pueblo. No alcanza al carro ni al HUD a propósito
+  // — el jugador tiene que poder verse siempre.
+  paintSkyCover(ctx, view, t, textureScale());
   phase("worldFlora");
 }
 

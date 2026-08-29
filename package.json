@@ -28,6 +28,8 @@
     "smoke:sceneshadows": "node tools/smoke-scene-shadows.mjs",
     "smoke:standshadow": "node tools/smoke-stand-shadow.mjs",
     "smoke:grade": "node tools/smoke-grade.mjs",
+    "smoke:relief": "node tools/smoke-relief.mjs",
+    "smoke:clouds": "node tools/smoke-clouds.mjs",
     "smoke:perf": "node tools/smoke-perf.mjs",
     "smoke:product-hud": "node tools/smoke-product-hud.mjs",
     "audio:render": "node tools/render-audio.mjs",

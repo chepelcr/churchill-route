@@ -60,7 +60,8 @@ The procedure is three steps and it is not optional:
 | **de qué color es un edificio de OSM** | `src/assets/building-styles.json`, por `cat` |
 | **la lluvia, sus salpicaduras y la calle encharcada** | `src/assets/hud.json` → `weather.{rain,splash,roadSplash,flood}` |
 | **cómo se ve un puesto según lo que vende** | `src/assets/world-props.json` → `landmarks["kiosk:<product>"]` |
-| **how a shadow answers the sun; how tall a building is; the terrain shadow-map budget** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` / `terrainShadow` |
+| **how a shadow answers the sun; how tall a building is** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` |
+| **el relieve del terreno y la sombra de las nubes** | `src/assets/effects.json` → `terrainShadow` / `skyCover` (verbos: `c2d/relief.js`, `c2d/skycover.js`) |
 | what a vehicle DOES: wake, shadow, turn wind, **headlights** | `src/assets/effects.json` |
 | landmarks, signs, parcel props, scenes | `src/assets/world-props.json` |
 | the world's palettes: estero, malecón, structures, streets, weather, piers | `src/assets/materials.json` |
@@ -108,9 +109,10 @@ stopped being one.
   clean. `sunVector()` sweeps in the same breath, which is what makes it read as
   a real regression. **LAS SMOKES QUE IMPORTAN MÓDULOS FUENTE VAN CONTRA UN SERVIDOR FRESCO**, en
   otro puerto (`pnpm dev --port 8736 --strictPort`), nunca contra un `:8734` que
-  lleve un ciclo de edición encima. Son **seis** y se reconocen porque hacen
+  lleve un ciclo de edición encima. Son **ocho** y se reconocen porque hacen
   `import("/src/…")`: `smoke:sky`, `smoke:shadows`, `smoke:sceneshadows`,
-  `smoke:standshadow`, `smoke:feria` y `smoke:grade`. Las de producción
+  `smoke:standshadow`, `smoke:feria`, `smoke:grade`, `smoke:relief` y
+  `smoke:clouds`. Las de producción
   (`smoke`, `boat`, `crossing`, `theme`, `sponsor`, `night`) toman
   `vite preview` y no les afecta.
 
@@ -1223,6 +1225,56 @@ or land. 198 of 781 were in the roadway. With no lamps in view the painter paint
 which is what keeps the change honest. `pnpm smoke:night` measures the cost by
 interleaving day and night medians — a single before/after comparison measures
 warm-up, which is how it first reported 50 ms.
+
+**EL RELIEVE Y LAS NUBES — LAS DOS CAPAS QUE SE LEEN COMO «NO FUNCIONA»**
+(`c2d/relief.js`, `c2d/skycover.js`). Comparten un modo de fallo y por eso van
+juntas aquí: **las dos dibujan poco a propósito**, así que una perilla que falta
+no se ve como un error sino como una capa apagada. Cada una tiene su smoke
+(`smoke:relief`, `smoke:clouds`) porque una captura no puede probar ninguna de
+las dos cosas que importan.
+
+**EL ARENAL ES PLANO DE VERDAD, Y HAY QUE DECIRLO PRIMERO.** La cota es del IGN
+—el faro está a 2,49 m— así que en el Paseo, el Centro o El Cocal el relieve NO
+DIBUJA NADA, y eso es correcto. Donde se ve es tierra adentro: el tile del este
+va de 81,5 a 229 m y sale sombreado en el 96 % de su cuadro. Quien lo pruebe en
+la península y concluya que está roto es que no leyó esta línea.
+
+El descarte va **por TILE y no por muestra**, y eso costó una medición: muestra a
+muestra la península no sale llana, porque las curvas del IGN vienen cada 2 m y
+las muestras de la malla cada 26, así que cruzar una curva da una pendiente local
+del 7,7 % sobre terreno que sube 2,15 m en 800. Eso no es una ladera, es la
+interpolación entre dos curvas — y sombrearla le costaba **2,3 ms de cuadro al
+puerto entero** por dibujar algo que nadie puede ver. `minTileReliefM` lo cierra;
+`minSlope` se queda como suavizado de la muestra suelta.
+
+Y **es un `drawImage` de una imagen diminuta**, no un relleno: el sombreado es un
+valor por MUESTRA y la malla es gruesa (32x32 alturas por tile de 2 500 px), así
+que se escriben esas 1 024 muestras en un canvas de 32x32 px y se estira sobre el
+tile con `imageSmoothingEnabled` — la interpolación bilineal la pone el
+navegador. Uno a cuatro `drawImage` por cuadro. Ojo con el **medio texel**: la
+muestra 0 está en el BORDE del tile y el píxel 0 de una imagen estirada cae en su
+CENTRO; sin corregirlo aparece una costura recta cada 2 500 px, que es justo lo
+que la malla evita computando su halo.
+
+**LA SOMBRA DE LAS NUBES NO ES UNA CAPA A PANTALLA COMPLETA.** El plan pedía
+`multiply` con ruido fbm a media resolución; el grano del suelo ya dejó escrito
+por qué no. Una sombra de nube **es** unos cuantos discos suaves, así que la
+pinta el MISMO verbo que las manchas del suelo (`paintBlobs`, en
+`c2d/materials.js`) con su receta en `effects.json` — dos registros componiendo
+un verbo del motor, que es exactamente el contrato de la casa. Tres cosas que
+tienen que ser ciertas o se lee como otra cosa:
+
+* **la nube DERIVA ENTERA**: el desplazamiento se aplica a la RETÍCULA y no a
+  cada disco. Moverlos sueltos deshace la nube y lo que se ve es un hervidero;
+* **el paso de la retícula tiene que ser bastante MENOR que la vista.** A 1 500
+  px de paso con una vista de ~1 400 toda la pantalla cae en una sola celda y las
+  nubes aparecen y desaparecen de golpe — `smoke:clouds` lo delató con cero tinta
+  a mediodía, con el código correcto;
+* **de noche no hay sombra de nube**, porque no hay sol que la proyecte. La luz
+  del día sale de `skyBlend()`, que es el dueño de ese continuo. Y las horas
+  salen del REGISTRO: en `simulation.json` la noche es 0,60–0,88 del día, así que
+  «medianoche» no es 0,5 ni 0,92 — las dos son atardecer. La primera versión de
+  la prueba pidió las dos y falló con el cielo perfectamente bien.
 
 **EL GRANO ES LA TINTA, NUNCA EL COLOR — Y UN PATRÓN NO SIRVE PARA TODO**
 (`c2d/materials.js`, `materials.json → textures`). El mundo se pintaba con

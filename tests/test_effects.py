@@ -365,3 +365,71 @@ class SunShadowRegistry(unittest.TestCase):
                       "la silueta JSON no está consumiendo el vector solar")
         self.assertIn('"y": "$shadowDy"', actor_data,
                       "la silueta JSON no está consumiendo el vector solar")
+
+
+class GroundAndSkyLayerTests(unittest.TestCase):
+    """EL RELIEVE Y LAS NUBES — las dos capas que se leen como «no funciona».
+
+    Comparten un modo de fallo y por eso comparten prueba: **las dos dibujan
+    poco a propósito**, así que una perilla que falta no se ve como un error
+    sino como una capa apagada. `undefined` en esta aritmética es `NaN`, y `NaN`
+    no dibuja nada — sin excepción y sin advertencia.
+
+    Y las dos tienen un umbral que NO es una optimización sino el límite de su
+    dato o de su diseño: `minTileReliefM` (un tile que no varía ocho metros no
+    tiene ladera; las curvas del IGN vienen cada 2 m) y `phaseLight.night` (de
+    noche no hay sol que proyecte una sombra de nube). Si alguien los pone en
+    cero, esta prueba lo dice.
+    """
+
+    doc = json.load(open(EFFECTS))
+    RELIEF = os.path.join(ROOT, "src", "render", "c2d", "relief.js")
+    SKY = os.path.join(ROOT, "src", "render", "c2d", "skycover.js")
+
+    def _reads(self, path, holder):
+        source = open(path).read()
+        source = re.sub(r"^\s*//.*$", "", source, flags=re.M)
+        return set(re.findall(rf"{holder}\.(\w+)", source))
+
+    def test_every_knob_the_relief_reads_is_defined(self):
+        for key in self._reads(self.RELIEF, "R"):
+            self.assertIn(key, self.doc["terrainShadow"],
+                          f"c2d/relief.js lee `{key}` y `terrainShadow` no lo trae — "
+                          f"undefined es NaN y NaN no dibuja nada, en silencio")
+
+    def test_every_knob_the_clouds_read_is_defined(self):
+        for key in self._reads(self.SKY, "SKY"):
+            self.assertIn(key, self.doc["skyCover"],
+                          f"c2d/skycover.js lee `{key}` y `skyCover` no lo trae")
+
+    def test_no_relief_knob_is_dead(self):
+        reads = self._reads(self.RELIEF, "R")
+        for key in self.doc["terrainShadow"]:
+            if key.startswith("_"):
+                continue
+            self.assertIn(key, reads, f"`terrainShadow.{key}` no lo lee nadie")
+
+    def test_no_cloud_knob_is_dead(self):
+        reads = self._reads(self.SKY, "SKY")
+        # `paintBlobs` consume la receta entera (tile, density, r, inks), así que
+        # esas cuatro las lee el verbo compartido y no este archivo.
+        shared = {"tile", "density", "r", "inks"}
+        for key in self.doc["skyCover"]:
+            if key.startswith("_"):
+                continue
+            self.assertIn(key, reads | shared, f"`skyCover.{key}` no lo lee nadie")
+
+    def test_the_flat_peninsula_is_discarded_by_a_real_threshold(self):
+        """El arenal es plano DE VERDAD (2,15 m de rango en el tile del Centro).
+
+        Sin este umbral la interpolación entre curvas del IGN da pendientes
+        locales del 7,7 % sobre terreno llano, y sombrearlas costaba 2,3 ms de
+        cuadro en todo el puerto por dibujar algo que nadie ve.
+        """
+        self.assertGreater(self.doc["terrainShadow"]["minTileReliefM"], 2.15,
+                           "el umbral tiene que descartar el tile del Centro")
+
+    def test_a_cloud_needs_a_sun(self):
+        self.assertEqual(self.doc["skyCover"]["phaseLight"]["night"], 0,
+                         "de noche no hay sol que proyecte una sombra de nube")
+        self.assertGreater(self.doc["skyCover"]["phaseLight"]["sunny"], 0)

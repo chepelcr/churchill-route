@@ -298,37 +298,70 @@ function blobSprite(name, ink, radius, q) {
 }
 
 /**
- * Sembrar las manchas de `name` sobre el rectángulo visible.
+ * EL VERBO: sembrar discos suaves sobre el rectángulo visible.
  *
- * `contains(x, y)` lo pone quien llama, porque sólo él sabe sobre qué suelo
- * tiene sentido esta mancha — y porque preguntárselo al mundo desde aquí ataría
- * este archivo al accesor, que es justo lo que lo deja utilizable fuera del
- * juego. Una textura que no es `scatter` no hace nada: `null` sigue siendo una
- * respuesta.
+ * Recibe la RECETA, no el nombre de una textura, y por eso lo componen dos
+ * registros distintos: `materials.json -> textures` para el suelo de la manzana
+ * y `effects.json -> skyCover` para la sombra de las nubes. Son la misma
+ * geometría —unos cuantos discos suaves sembrados en una retícula— con dos
+ * autorías, que es exactamente lo que un verbo del motor tiene que permitir.
+ *
+ * `opts.contains(x, y)` lo pone quien llama, porque sólo él sabe sobre qué suelo
+ * tiene sentido esta mancha — preguntárselo al mundo desde aquí ataría este
+ * archivo al accesor, que es lo que lo deja utilizable fuera del juego. Una nube
+ * no contiene nada y no lo pasa.
+ *
+ * `opts.dx`/`opts.dy` DESPLAZAN LA RETÍCULA, no los discos: se busca la celda en
+ * el marco corrido y se dibuja en el de la pantalla, así que una nube deriva
+ * entera en vez de deshacerse. Sin eso el sembrado es estático por
+ * construcción, que es lo correcto para el suelo y falso para el cielo.
  */
-export function paintScatter(g, name, view, contains, worldToDevice) {
-  const spec = TEXTURES[name];
-  if (!spec || spec.off || spec.kind !== "scatter") return;
+export function paintBlobs(g, spec, view, opts = {}) {
+  if (!spec || spec.off) return;
   const inks = spec.inks || [];
   if (!inks.length) return;
+  const alphaScale = opts.alphaScale ?? 1;
+  if (alphaScale <= 0) return;
   const step = spec.tile || 120;
-  const q = Math.max(0.25, Math.min(4, Math.round((worldToDevice || 1) * 2) / 2));
+  const q = Math.max(0.25, Math.min(4, Math.round((opts.worldToDevice || 1) * 2) / 2));
   const rMax = Array.isArray(spec.r) ? spec.r[1] : spec.r;
+  const dx = opts.dx || 0, dy = opts.dy || 0;
+  const seed = opts.seed || 0;
+  const key = opts.key || "blob";
+  const contains = opts.contains;
   // El padding es el radio máximo: una mancha cuyo CENTRO cae fuera de la vista
   // todavía asoma dentro de ella, y sin esto aparecerían y desaparecerían en el
   // borde de la pantalla.
-  const gx0 = Math.floor((view.x0 - rMax) / step), gx1 = Math.ceil((view.x1 + rMax) / step);
-  const gy0 = Math.floor((view.y0 - rMax) / step), gy1 = Math.ceil((view.y1 + rMax) / step);
+  const gx0 = Math.floor((view.x0 - dx - rMax) / step), gx1 = Math.ceil((view.x1 - dx + rMax) / step);
+  const gy0 = Math.floor((view.y0 - dy - rMax) / step), gy1 = Math.ceil((view.y1 - dy + rMax) / step);
   for (let gx = gx0; gx <= gx1; gx++) {
     for (let gy = gy0; gy <= gy1; gy++) {
-      const h = hash01(gx * 1.87 + gy * 4.53);
+      const h = hash01(gx * 1.87 + gy * 4.53 + seed);
       if (h > (spec.density ?? 1)) continue;
-      const x = (gx + 0.5 + (hash01(gx * 9.31 + gy * 2.77) - 0.5) * 0.9) * step;
-      const y = (gy + 0.5 + (hash01(gx * 3.19 + gy * 12.7) - 0.5) * 0.9) * step;
-      if (!contains(x, y)) continue;
-      const r = lerp(spec.r[0], spec.r[1], hash01(gx * 5.51 + gy * 7.93));
-      const ink = inks[Math.floor(hash01(gx * 2.11 + gy * 6.37) * inks.length) % inks.length];
-      g.drawImage(blobSprite(name, ink, rMax, q), x - r, y - r, r * 2, r * 2);
+      const x = (gx + 0.5 + (hash01(gx * 9.31 + gy * 2.77 + seed) - 0.5) * 0.9) * step + dx;
+      const y = (gy + 0.5 + (hash01(gx * 3.19 + gy * 12.7 + seed) - 0.5) * 0.9) * step + dy;
+      if (contains && !contains(x, y)) continue;
+      const r = lerp(spec.r[0], spec.r[1], hash01(gx * 5.51 + gy * 7.93 + seed));
+      const ink = inks[Math.floor(hash01(gx * 2.11 + gy * 6.37 + seed) * inks.length) % inks.length];
+      if (alphaScale === 1) {
+        g.drawImage(blobSprite(key, ink, rMax, q), x - r, y - r, r * 2, r * 2);
+      } else {
+        // El sprite se cachea por su tinta, así que un alfa que cambia cada
+        // cuadro —la nube que se va cerrando— NO puede entrar en la clave: se
+        // aplica al dibujar. Un sprite por paso de alfa sería una caché nueva
+        // por cuadro, que es lo contrario de una caché.
+        const prev = g.globalAlpha;
+        g.globalAlpha = prev * alphaScale;
+        g.drawImage(blobSprite(key, ink, rMax, q), x - r, y - r, r * 2, r * 2);
+        g.globalAlpha = prev;
+      }
     }
   }
+}
+
+/** El sembrado de una textura del registro de superficies, por su nombre. */
+export function paintScatter(g, name, view, contains, worldToDevice) {
+  const spec = TEXTURES[name];
+  if (!spec || spec.kind !== "scatter") return;
+  paintBlobs(g, spec, view, { contains, worldToDevice, key: name });
 }

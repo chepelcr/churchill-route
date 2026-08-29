@@ -264,6 +264,58 @@
       }
     ]
   },
+  "terrainShadow": {
+    "_note": "EL RELIEVE DEL TERRENO — la ranura que CLAUDE.md documentaba y que nunca se había escrito. La malla de altura del mundo (`residentElevationTiles`) llevaba tiempo emitida sin un solo consumidor: se construyó para un compositor 3-D que se borró entero el 2026-08-26. Verbo: `c2d/relief.js`.",
+    "_flat": "Y DECILO ANTES DE QUE PAREZCA ROTO: la cota es del IGN y el arenal es plano de VERDAD (2,49 m en el faro), así que en el Paseo, el Centro o El Cocal esto casi no dibuja. Donde se ve es tierra adentro, en el este, donde hay pendientes del 51 %.",
+    "strength": 2.6,
+    "minSlope": 0.02,
+    "_minSlope": "el limite del DATO, no una optimizacion: las curvas del IGN vienen cada 2 m y el juego nacional cada 50, asi que una pendiente por debajo del 2 % no es terreno sino la interpolacion entre dos curvas. Sombrearla pinta una ladera donde el levantamiento no dice que la haya — y hacia que la peninsula entera, que es plana de verdad, pagara 1,9 ms por dibujar nada visible.",
+    "minTileReliefM": 8.0,
+    "_minTileReliefM": "y el DESCARTE de verdad va por tile, no por muestra: muestra a muestra la peninsula no sale llana, porque las curvas del IGN vienen cada 2 m y las muestras cada 26, asi que cruzar una curva da un 7,7 % de pendiente local sobre un terreno que sube 2,15 m en 800. Un tile que no varia ni ocho metros de punta a punta no tiene ladera que sombrear — y medir esto ahorro 2,3 ms de cuadro en todo el puerto.",
+    "_strength": "ganancia sobre la pendiente adimensional. Una ladera del 10 % con el sol de costado da 0,26 de alfa; la península, con pendientes de milésimas, no da nada — que es correcto.",
+    "maxAlpha": 0.3,
+    "lit": "255,246,222",
+    "shade": "26,34,58",
+    "_inks": "la ladera que mira al sol se aclara con luz cálida y la contraria se oscurece en frío. Son las dos mitades de la misma pregunta, igual que las paredes de un edificio.",
+    "sunSteps": 16,
+    "_sunSteps": "cuántas direcciones distintas de sol se cachean en un día. El sol es un continuo; sin cuantizarlo habría que rehacer 1 024 muestras por tile y por cuadro, que es el «generar en vez de blitear» que `nightlights.js` prohíbe."
+  },
+  "skyCover": {
+    "_note": "LA SOMBRA DE LAS NUBES. Verbo: `c2d/skycover.js`, que compone el MISMO sembrado de discos que el suelo (`paintBlobs`) — no una capa a pantalla completa, porque eso ya está medido en ~10 ns por píxel, o sea 9 ms de un cuadro de 16,7.",
+    "tile": 620,
+    "density": 0.52,
+    "r": [
+      170,
+      380
+    ],
+    "driftPxPerS": [
+      11.0,
+      3.5
+    ],
+    "_drift": "el viento, en píxeles de mundo por SEGUNDO. Desplaza la RETÍCULA, no cada disco: mover los discos sueltos deshace la nube y lo que se ve es un hervidero.",
+    "baseAlpha": 0.17,
+    "stormAlpha": 0.2,
+    "_alpha": "la cobertura sube mientras la tormenta se ARMA y vuelve a bajar cuando se cierra del todo: con el cielo tapado no hay sombras marcadas, hay penumbra pareja, y de eso se encarga la paleta.",
+    "phaseLight": {
+      "sunny": 1.0,
+      "sunset": 0.55,
+      "storm": 0.7,
+      "night": 0.0
+    },
+    "_phaseLight": "cuánta luz de sol hay en cada fase para proyectar una sombra. De noche no hay sombra de nube porque no hay sol; se pregunta por `skyBlend()`, que es el dueño de ese continuo, y no con un `state.weather === \"night\"` — el segundo umbral para una sola pregunta es el error que la noche ya tuvo con las lámparas.",
+    "seed": 137.0,
+    "inks": [
+      {
+        "rgb": "20,26,44",
+        "a": 0.55
+      },
+      {
+        "rgb": "32,40,62",
+        "a": 0.42
+      }
+    ],
+    "_tile": "el paso de la reticula, en pixeles de MUNDO. Tiene que ser bastante menor que la vista (~500 px de ancho a esta camara) o toda la pantalla cae dentro de una sola celda y las nubes aparecen y desaparecen de golpe en vez de cruzar — que es como estaba la primera vez y como lo delato  con cero tinta a mediodia."
+  },
   "_organic": "ADIÓS A LO CUADRADO. Los datos vectoriales trazan esquinas de 90 grados perfectas y eso es lo que hace que el mapa se lea rígido. `cornerPx` redondea la ESQUINA sin mover la arista (ver c2d/curves.js: Chaikin encoge el polígono entero y por eso abre costuras contra la calle de al lado). `shoreJitterPx` ondula la costa, y SU TOPE LO MANDA EL RÁSTER: la celda mide 5 px y la arena dibujada ES la arena, así que por encima de una celda el dibujo mentiría sobre dónde el colisionador pone el agua. Un cero apaga cada cosa y el cuadro sale idéntico al de antes, que es lo que hace la migración demostrable.",
   "organic": {
     "buildingCornerPx": 2.2,

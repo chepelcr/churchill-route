@@ -291,18 +291,18 @@ faltaban eran las técnicas.
       por píxel y la tierra sola pasaba el cuadro de 17,3 a 32,9 ms. Y la
       paleta pasó de pastel a **color vivo**: 51 valores escritos a mano, con
       diez de las once hojas de arte IDÉNTICAS como prueba de que no se derramó.
-- [ ] **Fase 3 — el mundo bajo un cielo.** Sombras de nubes en `multiply` a
-      media resolución, atadas a `stormLevel()` y a la hora. **Ojo con lo que ya
-      está medido**: una capa que cubre la pantalla NO puede ser un relleno con
-      patrón ni un `fill` por cuadro — mismo presupuesto que la tierra, mismo
-      camino (capa a media resolución reusada entre cuadros, como
-      `nightlights.js`).
-- [ ] **El relieve del terreno.** `residentElevationTiles` está construido desde
-      hace tiempo y **no lo consume nadie**, y la ranura
-      `effects.json -> terrainShadow` está documentada en CLAUDE.md y nunca se
-      escribió. Ojo con el dato: la cota es del IGN y el arenal es plano de
-      verdad, así que sólo se notará tierra adentro — hay que decirlo o parecerá
-      que no funciona.
+- [x] ~~**Fase 3 — el mundo bajo un cielo.**~~ 2026-08-28: `c2d/skycover.js`.
+      **No** es la capa en `multiply` que pedía el plan: una sombra de nube ES
+      unos discos suaves, así que la pinta el mismo verbo que las manchas del
+      suelo y sale gratis. De noche no hay ninguna, porque no hay sol que la
+      proyecte. `pnpm smoke:clouds`.
+- [x] ~~**El relieve del terreno.**~~ 2026-08-28: `c2d/relief.js` consume por fin
+      `residentElevationTiles` y llena la ranura `terrainShadow`. Y sí, sólo se
+      ve tierra adentro (96 % del cuadro sombreado en el tile del este, 0 % en la
+      península), porque el arenal es plano de verdad. El descarte va por TILE y
+      no por muestra: las curvas del IGN vienen cada 2 m y las muestras cada 26,
+      así que cruzar una curva da un 7,7 % de pendiente falsa que costaba 2,3 ms
+      de cuadro. `pnpm smoke:relief`.
 - [ ] **El grano de la acera, apagado y con su número.** `textures.acera` está
       en el registro con `"off": true`: su banda se traza por calle con
       `ancho + 2·acera`, así que se repinta en cada cruce — 2,7 ms de un cuadro

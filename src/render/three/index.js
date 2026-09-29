@@ -20,7 +20,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { sunDirection3 } from "../sun.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
-import { claimForThree, releaseAll } from "../owners.js";
+import { claimForThree, releaseAll, threeOwns } from "../owners.js";
 import { leanDeg, pinholeM, quality } from "../view3d.js";
 import { applyFrame, projectToScreen } from "./camera.js";
 import { buildingStats, setupBuildings, syncBuildings } from "./buildings.js";
@@ -123,13 +123,13 @@ export async function setupThree(mainCanvas) {
 
   setupTint(THREE);
   setupBuildings(THREE, root);
-  setupFlora(THREE);
+  setupFlora(THREE, { low: !HIGH });
   setupLamps(THREE);
   setupVehicles(THREE, root);
   setupCoast(THREE);
   setupLandmarks(THREE);
   setupDebug(scene);
-  claimForThree(["buildings", "flora", "lamps", "vehicles", "faro"]);
+  claimForThree(["buildings", "flora", "woods", "lamps", "vehicles", "faro"]);
   ready = true;
   stats.ready = true;
   stats.revision = THREE.REVISION;
@@ -210,7 +210,7 @@ export function renderThree(tSeconds, frame) {
     return n;
   };
   const casters = timed("buildings", () => syncBuildings(root, frame.view, frameNo, warm))
-    + timed("flora", () => syncFlora(root, frame.view, frameNo, warm))
+    + timed("flora", () => syncFlora(root, frame.view, frameNo, warm, threeOwns("woods")))
     + timed("lamps", () => syncLamps(root, frame.view, frameNo, warm))
     + timed("coast", () => syncCoast(root, frame.view, frameNo, warm))
     + timed("landmarks", () => syncLandmarks(root, frame.view));

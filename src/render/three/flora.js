@@ -22,7 +22,7 @@ import { groundBase } from "./ground.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { hash01 } from "../c2d/primitives.js";
-import { roadsideTrees, tileTrees } from "../c2d/flora.js";
+import { forEachWoodTree, roadsideTrees, tileTrees } from "../c2d/flora.js";
 import { medianPairs } from "../c2d/streets.js";
 import { tintMaterial } from "./tint.js";
 
@@ -41,14 +41,16 @@ let T = null;
 let geo = null, mat = null;
 const tiles = new Map();
 
-export function setupFlora(THREE) {
+export function setupFlora(THREE, { low = false } = {}) {
   T = THREE;
   const trunk = new T.CylinderGeometry(0.5, 0.7, 1, 5, 1, true);
   trunk.rotateX(Math.PI / 2); trunk.translate(0, 0, 0.5);      // base en z=0, alto 1
   const blob = new T.IcosahedronGeometry(1, 1);
   const cone = new T.ConeGeometry(1, 1, 7, 1);
   cone.rotateX(Math.PI / 2); cone.translate(0, 0, 0.5);
-  geo = { trunk, blob, cone, fronds: frondGeometry() };
+  // el monte son miles de copas por tile: en calidad baja, un icosaedro pelado
+  const woodBlob = low ? new T.IcosahedronGeometry(1, 0) : blob;
+  geo = { trunk, blob, cone, woodBlob, fronds: frondGeometry() };
   mat = {
     trunk: new T.MeshLambertMaterial({ vertexColors: false }),
     // El follaje se ilumina en facetas y la mitad de ellas mira lejos del sol:
@@ -87,7 +89,7 @@ function speciesOf(k, fallback) {
 }
 
 /** Todas las plantas del tile, en coordenadas de mundo y con su especie. */
-function tilePlants(tile) {
+function tilePlants(tile, woods) {
   const out = [];
   const x0 = tile.x, y0 = tile.y, x1 = x0 + W.TILE_PX, y1 = y0 + W.TILE_PX;
   for (const tr of tileTrees(tile, medianPairs(tile).pairs)) out.push({ x: tr.x, y: tr.y, s: tr.s || 1, sp: speciesOf(tr.k, DEF_TREE) });
@@ -103,6 +105,18 @@ function tilePlants(tile) {
       }
     }
   }
+  // EL MONTE: el mismo retículo que Canvas recorre por vista, recorrido una vez
+  // por tile. Miles de árboles por tile de campo, así que van marcados `wood`
+  // y salen con una copa sola, sin tronco (desde arriba no se ve) ni realce.
+  if (woods) {
+    for (const cu of W.CUADRAS || []) {
+      if (!cu.wood || cu.x1 < x0 || cu.x0 > x1 || cu.y1 < y0 || cu.y0 > y1) continue;
+      forEachWoodTree(cu, x0, y0, x1, y1, (tr) => {
+        if (tr.x < x0 || tr.x >= x1 || tr.y < y0 || tr.y >= y1) return;
+        out.push({ x: tr.x, y: tr.y, s: tr.s, sp: speciesOf(tr.k, DEF_TREE), wood: true });
+      });
+    }
+  }
   for (const r of tile.roads) {
     for (const tr of roadsideTrees(r)) {
       // una calle cruza bordes: su arboleda la planta el tile que la contiene
@@ -113,11 +127,11 @@ function tilePlants(tile) {
   return out;
 }
 
-function buildTile(tile) {
-  const plants = tilePlants(tile);
+function buildTile(tile, woods) {
+  const plants = tilePlants(tile, woods);
   if (!plants.length) return null;
   const pxm = W.PX_PER_M;
-  const lists = { trunk: [], blob: [], cone: [], fronds: [] };
+  const lists = { trunk: [], blob: [], cone: [], fronds: [], wood: [] };
   for (const p of plants) {
     const form = FORMS[p.sp.form] || {};
     const body = BODY[form.generator] || "crown";
@@ -141,6 +155,10 @@ function buildTile(tile) {
       const w = body === "column" ? R * 0.55 : R * 0.9;
       lists.trunk.push({ x: p.x, y: p.y, z: z0, sx: 1.6 * s, sz: H * 0.3, c: bark, rot });
       lists.cone.push({ x: p.x, y: p.y, z: z0 + H * 0.18, sx: w, sz: H * 0.9, c: leaf, rot });
+    } else if (p.wood) {
+      const sx = R * ((form.crown && form.crown.scaleX) || 1);
+      const crownH = R * 0.7;
+      lists.wood.push({ x: p.x, y: p.y, z: z0 + H - crownH * 0.5, sx, sz: crownH, c: body === "bare" ? bark : leaf, rot });
     } else if (body === "bush") {
       lists.blob.push({ x: p.x, y: p.y, z: z0 + R * 0.25, sx: R * 0.85, sz: R * 0.45, c: leaf, rot });
     } else {
@@ -184,12 +202,13 @@ function buildTile(tile) {
   add(lists.blob, geo.blob, mat.leaf, true);
   add(lists.cone, geo.cone, mat.leaf, true);
   add(lists.fronds, geo.fronds, mat.frond, true);
+  add(lists.wood, geo.woodBlob, mat.leaf, true);
   group.userData.plants = plants.length;
   return group;
 }
 
 /** Igual que `syncBuildings`: sigue a los tiles residentes alrededor de la vista. */
-export function syncFlora(root, view, frameNo, budget = 1) {
+export function syncFlora(root, view, frameNo, budget = 1, woods = false) {
   const pad = 300;
   const vts = W.visibleTiles(view.x0 - pad, view.y0 - pad, view.x1 + pad, view.y1 + pad);
   let changed = 0;
@@ -200,7 +219,7 @@ export function syncFlora(root, view, frameNo, budget = 1) {
     if (!e) {
       if (budget <= 0) continue;
       budget--;
-      e = { group: buildTile(tile), tile, used: frameNo };
+      e = { group: buildTile(tile, woods), tile, used: frameNo };
       tiles.set(key, e);
       if (e.group) { root.add(e.group); changed++; }
     }

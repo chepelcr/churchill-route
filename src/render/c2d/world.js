@@ -88,7 +88,7 @@ function drawWorld2D(view, t) {
   // median's two interleaved rows merged onto its centre (see flora.js).
   // EL MONTE first: it is the ground cover of the countryside, so the town's own
   // planting and the street trees stand over it rather than in a gap in it.
-  paintWoods(view);
+  paintWoods(view, { trees: canvasOwns("woods") });
   // La arboleda del pueblo (calle, manzana, palmas) es de la capa 3-D cuando
   // ella la tomó (`three/flora.js`); el monte de arriba sigue siendo de Canvas.
   const flora = canvasOwns("flora");

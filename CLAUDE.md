@@ -252,13 +252,33 @@ renderer (the "view") lives behind a seam so backends can be swapped.
 - `src/render/` — `Renderer.js` is the seam and `camera.js` is the ONE camera
   authority shared by its backends. `canvas2d.js` paints the complete shipped
   world; the transparent `pixi/` layer above carries migrated landmark
-  structures (currently none are owned there). **There is no three.js layer**:
-  one was built to stages 1-3 (terrain relief + a real mountain shadow map) and
-  then to a full 3-D town, and the whole of it was removed on 2026-08-26 — the
-  work is preserved at the tag `3d-attempt-2026-08-26` if it is ever wanted
-  back. `src/render/camera.js` and `src/render/sun.js` SURVIVED it on purpose:
-  they are the single camera and single sun authorities the 2-D game now reads,
-  and neither contains any three.js.
+  structures (currently none are owned there). **The three.js layer is back,
+  opt-in (`?render=3d`, or Ajustes → «Vista 2.5D (beta)»), rebuilt from zero
+  on 2026-09-29** — the first attempt (removed 2026-08-26) stays at the tag
+  `3d-attempt-2026-08-26`. It is a SANDWICH, not a second world:
+  `#game-canvas` (Canvas2D: ground + everything flat) → `#three-canvas`
+  (`src/render/three/`: the things with HEIGHT — buildings with windows,
+  flora, lamp posts, vehicles, the coast's seawall + riprap, the Faro tower)
+  → `#game-overlay-canvas` (rain, vignette, HUD). Rules that make it work:
+  * **the ground never moves**: `three/camera.js` builds the projection from
+    the SAME frame as `cameraAffine`; `view3d.js` holds the two knobs
+    (`leanDeg` oblique lift, `pinholeM` eye height, in `effects.json` →
+    `view3d`), and at h = 0 both are the identity, so input/physics are
+    untouched. Everything stands at h = 0 (`three/ground.js`) until the ground
+    itself is a mesh.
+  * **one owner per class** (`src/render/owners.js`): a Canvas painter asks
+    `canvasOwns("buildings")`, never "is 3-D on?"; `?own=buildings:canvas`
+    hands a class back to bisect.
+  * **the sky tint is ONE authority**: it stays on the ground canvas and
+    `three/tint.js` applies the same sRGB `mix` in the shaders, so a roof at
+    night is exactly as dark as the street; emissive things (lit windows,
+    lamp heads, the lantern) lower `uTintK` and cut through.
+  * the scene hangs from a root with `scale.y = −1` (y is SOUTH), so catalog
+    geometry keeps its front faces; content is authored in game coordinates.
+  * `tools/smoke-3d.mjs` (`pnpm smoke:3d`); F1 in 3-D shows the layer's
+    stats, F2 wireframe.
+  `src/render/camera.js` and `src/render/sun.js` are the single camera and sun
+  authorities for Canvas, Pixi and Three alike.
   **`c2d/shapes.js` — the shape interpreter — IMPORTS NO PART OF THE GAME, and
   `tests/test_shape_interpreter.py` keeps it that way.** It is the engine's half
   of every art catalog, and the editor loads it to preview the record it is

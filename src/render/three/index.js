@@ -29,6 +29,7 @@ import { lampStats, setLampNight, setupLamps, syncLamps } from "./lamps.js";
 import { setupVehicles, syncVehicles } from "./vehicles.js";
 import { coastStats, setupCoast, syncCoast } from "./coast.js";
 import { setLandmarkNight, setupLandmarks, syncLandmarks } from "./landmarks.js";
+import { debugFrame, setupDebug } from "./debug.js";
 import { setupTint, updateTint } from "./tint.js";
 import { setWindowNight } from "./buildings.js";
 import { lightsOn } from "../../game/daynight.js";
@@ -127,6 +128,7 @@ export async function setupThree(mainCanvas) {
   setupVehicles(THREE, root);
   setupCoast(THREE);
   setupLandmarks(THREE);
+  setupDebug(scene);
   claimForThree(["buildings", "flora", "lamps", "vehicles", "faro"]);
   ready = true;
   stats.ready = true;
@@ -231,6 +233,7 @@ export function renderThree(tSeconds, frame) {
   stats.lean = leanDeg(); stats.pinhole = pinholeM();
   if (frameNo % 10 === 0) { stats.buildings = buildingStats(); stats.flora = floraStats(); stats.lamps = lampStats(); stats.coast = coastStats(); }
   stats.night = +nightRamp.toFixed(2);
+  debugFrame(stats);
   publish();
 }
 

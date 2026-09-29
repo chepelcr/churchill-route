@@ -58,6 +58,10 @@ function setPixiLandmarks(v) { PIXI_LANDMARKS = !!v; }
 // now: the church→Pixi pilot wasn't visible, so canvas draws all landmarks
 // until the Pixi landmark path is verified.
 const PIXI_MIGRATED = new Set();
+// When true the screen pass (tint, night, weather, HUD) draws on the separate
+// overlay canvas ABOVE the three.js layer instead of on the world canvas.
+let SCREEN_OVERLAY = false;
+function setScreenOverlay(v) { SCREEN_OVERLAY = !!v; }
 
 function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.js)
   if (!ctx) return;
@@ -288,7 +292,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   phase("entities");
 
   // Overlays
-  const separateOverlay = beginScreenOverlay(false);
+  const separateOverlay = beginScreenOverlay(SCREEN_OVERLAY);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const C = weatherColors();
   // LOS POZOS DE LUZ SON DE LA NOCHE **Y DE LA TORMENTA**. Un cielo cerrado a
@@ -365,4 +369,4 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   if (separateOverlay) endScreenOverlay();
 }
 
-export { setupCanvas, render, paintVehicle, setOverlayMode, setPixiLandmarks };
+export { setupCanvas, render, paintVehicle, setOverlayMode, setPixiLandmarks, setScreenOverlay };

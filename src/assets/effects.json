@@ -331,5 +331,11 @@
     "maxOffsetPx": 26.0,
     "wallMixLit": 0.22,
     "wallMixDark": 0.55
+  },
+  "_view3d": "LA VISTA 2.5D (opt-in, `?render=3d`). Los edificios, la flora y los postes pasan a ser geometría de three.js sobre el suelo que Canvas sigue pintando. Las dos perillas de cámara dejan el SUELO exactamente donde Canvas lo pinta — ver `src/render/view3d.js`. `leanDeg` corre lo alto hacia arriba en pantalla (fachadas del lado de la cámara); `pinholeM` es la altura del ojo a plomo (0 = ortográfica), que abre lo alto hacia afuera desde el centro como la paralaje de `c2d/depth.js`.",
+  "view3d": {
+    "leanDeg": 30,
+    "maxLeanDeg": 45,
+    "pinholeM": 170
   }
 }

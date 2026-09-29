@@ -86,6 +86,16 @@ function lampsInView(view) {
  * has always looked like away from a lamp. What changes is that it is no longer
  * the last word.
  */
+/**
+ * El tinte de la noche tal como lo pinta `drawNightLights` lejos de un poste —
+ * con la luna ya descontada. La capa 3-D lo aplica a sus materiales para que un
+ * edificio de noche quede exactamente tan oscuro como la calle que lo rodea.
+ */
+export function nightTint(tint) {
+  const moon = moonlight();
+  return moon > 0 ? lightenTint(tint, moon * 0.34) : tint;
+}
+
 export function drawNightLights(vw, vh, view, tint, toScreen) {
   // LA LUNA DECIDE CUÁNTO SE VE. Luna llena y luna nueva son dos noches
   // distintas y el jugador lo nota antes de saber por qué: en llena el tinte se

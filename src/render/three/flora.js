@@ -22,6 +22,7 @@ import FLORA from "../../assets/flora.json" with { type: "json" };
 import { hash01 } from "../c2d/primitives.js";
 import { roadsideTrees, tileTrees } from "../c2d/flora.js";
 import { medianPairs } from "../c2d/streets.js";
+import { tintMaterial } from "./tint.js";
 
 const SPECIES = FLORA.species;
 const FORMS = FLORA.forms;
@@ -53,6 +54,7 @@ export function setupFlora(THREE) {
     leaf: new T.MeshLambertMaterial({ flatShading: true, color: new T.Color(1.3, 1.3, 1.3) }),
     frond: new T.MeshLambertMaterial({ side: T.DoubleSide, flatShading: true, color: new T.Color(1.2, 1.2, 1.2) }),
   };
+  for (const m of Object.values(mat)) tintMaterial(m);
 }
 
 // Un penacho: ocho hojas que salen del centro y caen hacia la punta. Radio 1,

@@ -25,6 +25,10 @@ import { leanDeg, pinholeM, quality } from "../view3d.js";
 import { applyFrame, projectToScreen } from "./camera.js";
 import { buildingStats, setupBuildings, syncBuildings } from "./buildings.js";
 import { floraStats, setupFlora, syncFlora } from "./flora.js";
+import { lampStats, setLampNight, setupLamps, syncLamps } from "./lamps.js";
+import { setupTint, updateTint } from "./tint.js";
+import { setWindowNight } from "./buildings.js";
+import { lightsOn } from "../../game/daynight.js";
 
 const RECEIVER_BELOW_M = 0.04; // coplanar con la base = NINGUNA sombra (ROADMAP §6)
 const SUN_SHARE = 0.5;
@@ -42,6 +46,12 @@ let canvas = null, ready = false, failed = false;
 let frameNo = 0, sizeKey = "";
 const HIGH = quality() === "high";
 let lastFrame = null;
+let nightRamp = 0, lastT = null;
+function frameDt(t) {
+  const dt = lastT === null ? 0 : Math.max(0, Math.min(0.1, t - lastT));
+  lastT = t;
+  return dt;
+}
 
 const stats = { ready: false, frames: 0, calls: 0, triangles: 0, ms: 0, buildings: null, lean: 0, pinhole: 0 };
 function publish() { if (typeof window !== "undefined") window.__three = stats; }
@@ -107,9 +117,11 @@ export async function setupThree(mainCanvas) {
   receiver.renderOrder = -1;
   root.add(receiver);
 
+  setupTint(THREE);
   setupBuildings(THREE, root);
   setupFlora(THREE);
-  claimForThree(["buildings", "flora"]);
+  setupLamps(THREE);
+  claimForThree(["buildings", "flora", "lamps"]);
   ready = true;
   stats.ready = true;
   stats.revision = THREE.REVISION;
@@ -181,7 +193,14 @@ export function renderThree(tSeconds, frame) {
   applyFrame(camera, frame, lean, pinhole);
   const warm = frameNo < 30 ? 4 : 1;
   const casters = syncBuildings(root, frame.view, frameNo, warm)
-    + syncFlora(root, frame.view, frameNo, warm);
+    + syncFlora(root, frame.view, frameNo, warm)
+    + syncLamps(root, frame.view, frameNo, warm);
+  // LA NOCHE ENTRA DE A POCO: ventanas y faroles se prenden con una rampa, no
+  // en el cuadro en que `lightsOn()` cambia de opinión.
+  nightRamp += ((lightsOn() ? 1 : 0) - nightRamp) * Math.min(1, frameDt(tSeconds) * 1.5);
+  setWindowNight(nightRamp);
+  setLampNight(nightRamp);
+  updateTint();
   placeSun(frame, casters > 0);
   renderer.render(scene, camera);
   stats.frames = frameNo;
@@ -189,7 +208,8 @@ export function renderThree(tSeconds, frame) {
   stats.triangles = renderer.info.render.triangles;
   stats.ms = +(performance.now() - started).toFixed(2);
   stats.lean = leanDeg(); stats.pinhole = pinholeM();
-  if (frameNo % 30 === 0) { stats.buildings = buildingStats(); stats.flora = floraStats(); }
+  if (frameNo % 30 === 0) { stats.buildings = buildingStats(); stats.flora = floraStats(); stats.lamps = lampStats(); }
+  stats.night = +nightRamp.toFixed(2);
   publish();
 }
 

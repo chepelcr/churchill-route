@@ -292,7 +292,6 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   phase("entities");
 
   // Overlays
-  const separateOverlay = beginScreenOverlay(SCREEN_OVERLAY);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const C = weatherColors();
   // LOS POZOS DE LUZ SON DE LA NOCHE **Y DE LA TORMENTA**. Un cielo cerrado a
@@ -312,6 +311,13 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   } else {
     ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
   }
+  // EL CIELO SE QUEDA EN EL SUELO; LO DE ENCIMA DE LA CÁMARA SUBE. Con la capa
+  // 3-D, el tinte y los pozos de luz de arriba quedan en este lienzo (bajo los
+  // edificios, que se tiñen con el mismo color en su propio sombreador) y todo
+  // lo que sigue —lluvia, viñeta, relámpago, minimapa— va al lienzo de pantalla
+  // sobre la capa 3-D. Sin ella, `beginScreenOverlay(false)` no cambia nada.
+  const separateOverlay = beginScreenOverlay(SCREEN_OVERLAY);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   // LA LLUVIA ENTRA CON LA RAMPA, no con el nombre: primero el cielo plomizo,
   // después el agua. Antes caía a plomo en el mismo cuadro en que el clima
   // cambiaba, que es lo que hacía que una tormenta se sintiera un interruptor.

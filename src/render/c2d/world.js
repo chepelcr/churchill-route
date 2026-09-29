@@ -99,7 +99,7 @@ function drawWorld2D(view, t) {
   }
   // …y los postes del alumbrado, sobre la acera y bajo los rótulos. El pozo de
   // luz lo abre el compositor de noche (`nightlights.js`); esto es la lámpara.
-  drawStreetLamps(view);
+  if (canvasOwns("lamps")) drawStreetLamps(view);
   drawStreetLabels2D(roads, view);
   // LA SOMBRA DE LAS NUBES, al final del pase del mundo: una nube tapa el suelo,
   // los techos y los árboles por igual, y es eso lo que la hace leerse como algo

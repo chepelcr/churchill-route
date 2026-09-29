@@ -419,15 +419,17 @@ faltaban eran las técnicas.
       tinte del cielo en el sombreador. Falta, en orden:
       * [ ] **Revisarlo en un teléfono y en el APK** (`?q=low` es el tier por
             defecto en táctil) y elegir `leanDeg`/`pinholeM` con el ojo.
-      * [ ] El monte (`paintWoods`) y los manglares en 3-D — hoy siguen planos.
+      * [x] ~~El monte en 3-D~~ (`forEachWoodTree`, la misma retícula que
+            Canvas). [ ] Los manglares siguen planos: su arte lleva raíces en
+            el barro que una copa sola no dice.
       * [ ] Más hitos con cuerpo: catedral, mercado, estadios (sus escenas ya
             declaran partes; falta leerlas a tres dimensiones).
       * [ ] El suelo como MALLA con `groundZAt` (Barranca → Esparza tiene cerros
             de verdad): recién ahí `three/ground.js` deja de devolver 0, y lo
             plano que todavía pinta Canvas (peatones, puestos, animales,
             partículas) tiene que pasar a la capa 3-D en el mismo gesto.
-      * [ ] Luces de verdad cerca del jugador (un puñado de PointLights sobre
-            los postes más cercanos) para que el pozo ilumine también fachadas.
+      * [x] ~~Que el pozo de un poste alumbre también las fachadas~~: el
+            sombreador descuenta el velo con la misma máscara que Canvas.
       * [ ] Voltear el modo por defecto cuando lo anterior esté y rinda.
 
 - [ ] **Milestone C — backend PixiJS/WebGL** detrás de `src/render/Renderer.js`.

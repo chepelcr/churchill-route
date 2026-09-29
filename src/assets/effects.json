@@ -336,6 +336,6 @@
   "view3d": {
     "leanDeg": 30,
     "maxLeanDeg": 45,
-    "pinholeM": 170
+    "pinholeM": 260
   }
 }

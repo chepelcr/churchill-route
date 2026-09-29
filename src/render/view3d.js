@@ -49,7 +49,7 @@ function num(v, fallback) {
 
 const view = {
   leanDeg: num(query().get("lean") ?? stored("churchill_lean"), V.leanDeg ?? 30),
-  pinholeM: num(query().get("pinhole") ?? stored("churchill_pinhole"), V.pinholeM ?? 170),
+  pinholeM: num(query().get("pinhole") ?? stored("churchill_pinhole"), V.pinholeM ?? 260),
 };
 
 /** Grados de inclinación oblicua (0 = a plomo). */

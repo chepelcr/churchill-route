@@ -27,6 +27,7 @@ import { buildingStats, setupBuildings, syncBuildings } from "./buildings.js";
 import { floraStats, setupFlora, syncFlora } from "./flora.js";
 import { lampStats, setLampNight, setupLamps, syncLamps } from "./lamps.js";
 import { setupVehicles, syncVehicles } from "./vehicles.js";
+import { coastStats, setupCoast, syncCoast } from "./coast.js";
 import { setupTint, updateTint } from "./tint.js";
 import { setWindowNight } from "./buildings.js";
 import { lightsOn } from "../../game/daynight.js";
@@ -123,6 +124,7 @@ export async function setupThree(mainCanvas) {
   setupFlora(THREE);
   setupLamps(THREE);
   setupVehicles(THREE, root);
+  setupCoast(THREE);
   claimForThree(["buildings", "flora", "lamps", "vehicles"]);
   ready = true;
   stats.ready = true;
@@ -196,7 +198,8 @@ export function renderThree(tSeconds, frame) {
   const warm = frameNo < 30 ? 4 : 1;
   const casters = syncBuildings(root, frame.view, frameNo, warm)
     + syncFlora(root, frame.view, frameNo, warm)
-    + syncLamps(root, frame.view, frameNo, warm);
+    + syncLamps(root, frame.view, frameNo, warm)
+    + syncCoast(root, frame.view, frameNo, warm);
   // LA NOCHE ENTRA DE A POCO: ventanas y faroles se prenden con una rampa, no
   // en el cuadro en que `lightsOn()` cambia de opinión.
   nightRamp += ((lightsOn() ? 1 : 0) - nightRamp) * Math.min(1, frameDt(tSeconds) * 1.5);
@@ -211,7 +214,7 @@ export function renderThree(tSeconds, frame) {
   stats.triangles = renderer.info.render.triangles;
   stats.ms = +(performance.now() - started).toFixed(2);
   stats.lean = leanDeg(); stats.pinhole = pinholeM();
-  if (frameNo % 30 === 0) { stats.buildings = buildingStats(); stats.flora = floraStats(); stats.lamps = lampStats(); }
+  if (frameNo % 10 === 0) { stats.buildings = buildingStats(); stats.flora = floraStats(); stats.lamps = lampStats(); stats.coast = coastStats(); }
   stats.night = +nightRamp.toFixed(2);
   publish();
 }

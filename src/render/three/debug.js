@@ -31,9 +31,6 @@ export function debugFrame(stats) {
   if (!el) {
     el = document.createElement("pre");
     el.id = "three-debug";
-    el.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:50;margin:0;padding:8px 10px;"
-      + "font:11px/1.35 'JetBrains Mono',monospace;color:#e8f0ff;background:rgba(10,14,28,.78);"
-      + "border-radius:8px;pointer-events:none;white-space:pre;";
     document.body.appendChild(el);
   }
   const p = state.p;

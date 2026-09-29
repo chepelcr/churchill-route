@@ -20,6 +20,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { groundBase } from "./ground.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
+import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { hash01 } from "../c2d/primitives.js";
 import { roadsideTrees, tileTrees } from "../c2d/flora.js";
 import { medianPairs } from "../c2d/streets.js";
@@ -91,6 +92,17 @@ function tilePlants(tile) {
   const x0 = tile.x, y0 = tile.y, x1 = x0 + W.TILE_PX, y1 = y0 + W.TILE_PX;
   for (const tr of tileTrees(tile, medianPairs(tile).pairs)) out.push({ x: tr.x, y: tr.y, s: tr.s || 1, sp: speciesOf(tr.k, DEF_TREE) });
   for (const pa of tile.palms) out.push({ x: pa.x, y: pa.y, s: pa.s || 1, sp: speciesOf(pa.k || DEF_PALM, DEF_PALM) });
+  // …y las palmas de la escena del faro (`world-props.json` → scenes.faro),
+  // que Canvas deja de pintar cuando la capa 3-D es dueña de `faro`
+  for (const lm of W.LANDMARKS || []) {
+    if (lm.type !== "lighthouse" || lm.x < x0 || lm.x >= x1 || lm.y < y0 || lm.y >= y1) continue;
+    for (const part of PROPS.scenes.faro.parts) {
+      if (part.verb !== "flora-placements") continue;
+      for (const [dx, dy] of part.positions || []) {
+        out.push({ x: lm.x + dx, y: lm.y + dy, s: Number(part.scale ?? 1), sp: speciesOf(part.species, DEF_PALM) });
+      }
+    }
+  }
   for (const r of tile.roads) {
     for (const tr of roadsideTrees(r)) {
       // una calle cruza bordes: su arboleda la planta el tile que la contiene

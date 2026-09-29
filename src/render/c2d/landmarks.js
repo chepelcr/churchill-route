@@ -12,6 +12,7 @@ import FLORA from "../../assets/flora.json" with { type: "json" };
 import { paintSceneParts } from "./sceneShapes.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { PX_PER_M } from "../../domain/units.js";
+import { canvasOwns } from "../owners.js";
 import { content } from "../../content/remote.js";
 import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect, upright } from "./gfx.js";
 import { drawParada, paintProp, propParts } from "./props.js";
@@ -19,6 +20,22 @@ import { shadowInk, sunShadow } from "./shadows.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
+// Lo que se levanta del faro —la torre y las tres palmas— es de la capa 3-D
+// cuando ella lo tomó (`three/landmarks.js`, `three/flora.js`); Canvas pinta
+// entonces sólo el suelo de la escena: la escollera del borde y las comas.
+const FARO_RAISED = new Set(["lighthouse-tower", "flora-placements"]);
+let faroGround = null;
+function faroGroundRegistry() {
+  if (!faroGround) {
+    const scene = PROPS.scenes.faro;
+    faroGround = {
+      ...PROPS,
+      scenes: { ...PROPS.scenes, faro: { ...scene, parts: scene.parts.filter((p) => !FARO_RAISED.has(p.verb)) } },
+    };
+  }
+  return faroGround;
+}
+
 function drawFaroScene(lm) {
   const x = lm.x, y = lm.y;
   // La Punta plaza: the GRAY esplanade GROUND is drawn by the tile plaza layer
@@ -33,10 +50,12 @@ function drawFaroScene(lm) {
   const rim = (lm.rim || []).map(([rx, ry]) => [rx - x, ry - y]);
   ctx.save();
   ctx.translate(x, y);
-  paintSceneParts(ctx, PROPS, "faro", {
+  const frame = {
     X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
     vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT }, timeMs: lastT,
-  });
+  };
+  if (canvasOwns("faro")) paintSceneParts(ctx, PROPS, "faro", frame);
+  else paintSceneParts(ctx, faroGroundRegistry(), "faro", frame);
   ctx.restore();
 }
 

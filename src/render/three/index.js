@@ -28,6 +28,7 @@ import { floraStats, setupFlora, syncFlora } from "./flora.js";
 import { lampStats, setLampNight, setupLamps, syncLamps } from "./lamps.js";
 import { setupVehicles, syncVehicles } from "./vehicles.js";
 import { coastStats, setupCoast, syncCoast } from "./coast.js";
+import { setLandmarkNight, setupLandmarks, syncLandmarks } from "./landmarks.js";
 import { setupTint, updateTint } from "./tint.js";
 import { setWindowNight } from "./buildings.js";
 import { lightsOn } from "../../game/daynight.js";
@@ -55,7 +56,7 @@ function frameDt(t) {
   return dt;
 }
 
-const stats = { ready: false, frames: 0, calls: 0, triangles: 0, ms: 0, buildings: null, lean: 0, pinhole: 0 };
+const stats = { build: {}, ready: false, frames: 0, calls: 0, triangles: 0, ms: 0, buildings: null, lean: 0, pinhole: 0 };
 function publish() { if (typeof window !== "undefined") window.__three = stats; }
 
 /** Monta la capa. Devuelve una promesa; si WebGL falla, Canvas sigue siendo dueño de todo. */
@@ -125,7 +126,8 @@ export async function setupThree(mainCanvas) {
   setupLamps(THREE);
   setupVehicles(THREE, root);
   setupCoast(THREE);
-  claimForThree(["buildings", "flora", "lamps", "vehicles"]);
+  setupLandmarks(THREE);
+  claimForThree(["buildings", "flora", "lamps", "vehicles", "faro"]);
   ready = true;
   stats.ready = true;
   stats.revision = THREE.REVISION;
@@ -196,19 +198,32 @@ export function renderThree(tSeconds, frame) {
   const pinhole = pinholeM() * W.PX_PER_M;
   applyFrame(camera, frame, lean, pinhole);
   const warm = frameNo < 30 ? 4 : 1;
-  const casters = syncBuildings(root, frame.view, frameNo, warm)
-    + syncFlora(root, frame.view, frameNo, warm)
-    + syncLamps(root, frame.view, frameNo, warm)
-    + syncCoast(root, frame.view, frameNo, warm);
+  // cada capa construye a lo sumo `warm` tiles por cuadro; lo que tarda cada
+  // una queda en `__three.build` (ms del último tile construido), que es lo
+  // que hay que mirar cuando un cuadro se traba al entrar a un barrio nuevo
+  const timed = (key, fn) => {
+    const t0 = performance.now();
+    const n = fn();
+    if (n) stats.build[key] = +(performance.now() - t0).toFixed(1);
+    return n;
+  };
+  const casters = timed("buildings", () => syncBuildings(root, frame.view, frameNo, warm))
+    + timed("flora", () => syncFlora(root, frame.view, frameNo, warm))
+    + timed("lamps", () => syncLamps(root, frame.view, frameNo, warm))
+    + timed("coast", () => syncCoast(root, frame.view, frameNo, warm))
+    + timed("landmarks", () => syncLandmarks(root, frame.view));
   // LA NOCHE ENTRA DE A POCO: ventanas y faroles se prenden con una rampa, no
   // en el cuadro en que `lightsOn()` cambia de opinión.
   nightRamp += ((lightsOn() ? 1 : 0) - nightRamp) * Math.min(1, frameDt(tSeconds) * 1.5);
   setWindowNight(nightRamp);
   setLampNight(nightRamp);
+  setLandmarkNight(nightRamp);
   updateTint();
   stats.vehicles = syncVehicles(frame.view);
   placeSun(frame, casters > 0);
+  const r0 = performance.now();
   renderer.render(scene, camera);
+  stats.renderMs = +(performance.now() - r0).toFixed(1);
   stats.frames = frameNo;
   stats.calls = renderer.info.render.calls;
   stats.triangles = renderer.info.render.triangles;

@@ -10,9 +10,9 @@
 //   node tools/smoke-3d.mjs http://localhost:8799/
 //
 // Headless Chromium rasterises WebGL in SOFTWARE (SwiftShader), so a frame
-// here costs ~100 ms that a phone's GPU pays in two. The movement bar is
-// therefore far below smoke.mjs's — this checks that the loop is ALIVE under
-// the layer, not how fast it is. Speed is `smoke:perf`'s job on real hardware.
+// here costs ~100 ms that a phone's GPU pays in two. So this counts FRAMES and
+// asks for movement at all, far below smoke.mjs's bar — it checks that the
+// loop is ALIVE under the layer, not how fast it is. Speed is for real hardware.
 const url = process.argv[2] || "http://localhost:8799/";
 const sep = url.includes("?") ? "&" : "?";
 
@@ -57,6 +57,7 @@ if (ready && !(layer.calls > 0)) fail("the layer issued no draw calls");
 
 const drive = await page.evaluate(async () => {
   const p = window.Game.state.p;
+  const frames0 = window.__three.frames;
   const start = { x: p.x, y: p.y };
   let best = 0;
   for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
@@ -67,15 +68,18 @@ const drive = await page.evaluate(async () => {
     best = Math.max(best, Math.hypot(p.x - start.x, p.y - start.y));
     await new Promise((r) => setTimeout(r, 200));
   }
-  return Math.round(best);
+  return { px: Math.round(best), frames: window.__three.frames - frames0 };
 });
-if (drive < 40) fail(`the car only moved ${drive} px in 2 s under the 3-D layer — the loop is dead`);
+// ALIVE, not fast: the layer drew frames AND the sim moved the car. How far it
+// got depends on how slow software GL happens to be on this machine.
+if (drive.frames < 10) fail(`the 3-D layer drew only ${drive.frames} frames in ~9 s — the loop is dead`);
+if (drive.px < 10) fail(`the car only moved ${drive.px} px under the 3-D layer — the sim is not advancing`);
 if (errors.length) fail(`${errors.length} page error(s)`);
 for (const e of errors.slice(0, 8)) console.log("   " + e);
 
 await browser.close();
 if (!bad) {
   console.log(`[smoke-3d] ok — three r${layer.revision}, ${layer.buildings.buildings} buildings / `
-    + `${layer.flora.plants} plants resident, ${layer.calls} draw calls, drove ${drive} px, no page errors`);
+    + `${layer.flora.plants} plants resident, ${layer.calls} draw calls, drove ${drive.px} px over ${drive.frames} frames, no page errors`);
 }
 process.exit(bad ? 1 : 0);

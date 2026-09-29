@@ -179,6 +179,8 @@
   "settings.muted": "Silenciado",
   "settings.poiNames": "Nombres de negocios",
   "settings.poiNames.desc": "Mostrar los rótulos reales sobre el mapa",
+  "settings.view3d": "Vista 2.5D (beta)",
+  "settings.view3d.desc": "Edificios, árboles y orilla con volumen. Recarga el juego.",
   "settings.privacy": "Política de privacidad",
   "settings.removeAds": "Quitar anuncios",
   "settings.removeAds.desc": "Pago único. Sin anuncios para siempre.",

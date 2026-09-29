@@ -68,7 +68,7 @@ export function registerLampSource(fn) { sources.push(fn); }
 
 /** Every lamp whose pool can reach the view, from the streamed tiles. The pad
  *  is the pool's own reach: a lamp just off-screen still lights what is on it. */
-function lampsInView(view) {
+export function lampsInView(view) {
   const out = W.lampsIn ? W.lampsIn(view, LAMP_POOL_R) : [];
   if (!sources.length) return out;
   const extra = [];

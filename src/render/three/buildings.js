@@ -69,21 +69,17 @@ function makeWindowMaterial() {
   const lit = new T.Color().setStyle(S.building.windowsNight.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, "rgb($1,$2,$3)"));
   const m = new T.MeshBasicMaterial({ color: 0xffffff });
   const uDay = { value: day.multiplyScalar(0.72) }, uLit = { value: lit };
-  const inner = tintMaterial(m);
-  const tintCompile = m.onBeforeCompile;
-  m.onBeforeCompile = (shader) => {
-    tintCompile(shader);
+  tintMaterial(m, null, (shader) => {
     shader.uniforms.uDay = uDay; shader.uniforms.uLit = uLit; shader.uniforms.uNight = night;
     shader.vertexShader = shader.vertexShader
       .replace("void main() {", "attribute float lit;\nvarying float vLit;\nvoid main() {\n\tvLit = lit;");
     shader.fragmentShader = shader.fragmentShader
-      .replace("void main() {", "uniform vec3 uDay;\nuniform vec3 uLit;\nuniform float uNight;\nvarying float vLit;\nvoid main() {")
+      .replace("uniform vec4 uTint;", "uniform vec3 uDay;\nuniform vec3 uLit;\nuniform float uNight;\nvarying float vLit;\nuniform vec4 uTint;")
       .replace("vec4 diffuseColor = vec4( diffuse, opacity );",
         "float glow = vLit * uNight;\n\tvec4 diffuseColor = vec4( mix( uDay * (1.0 - 0.55 * uNight), uLit, glow ), opacity );")
-      .replace("uTint.a * uTintK", "uTint.a * uTintK * (1.0 - glow)");
-  };
+      .replace("veil() * uTintK", "veil() * uTintK * (1.0 - glow)");
+  });
   m.customProgramCacheKey = () => "windows";
-  inner.value = 1;
   return m;
 }
 

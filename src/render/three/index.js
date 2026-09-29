@@ -220,7 +220,7 @@ export function renderThree(tSeconds, frame) {
   setWindowNight(nightRamp);
   setLampNight(nightRamp);
   setLandmarkNight(nightRamp);
-  updateTint();
+  updateTint(frame.view, frame.x, frame.y);
   stats.vehicles = syncVehicles(frame.view);
   placeSun(frame, casters > 0);
   const r0 = performance.now();

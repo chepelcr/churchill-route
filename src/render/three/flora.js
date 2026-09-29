@@ -18,6 +18,7 @@
 // EL MONTE (`paintWoods`) y los manglares se quedan en Canvas por ahora: son
 // cientos de miles de árboles de campo y se migran con su propio presupuesto.
 import { WORLD2D as W } from "../../world2d/index.js";
+import { groundBase } from "./ground.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
 import { hash01 } from "../c2d/primitives.js";
 import { roadsideTrees, tileTrees } from "../c2d/flora.js";
@@ -43,7 +44,7 @@ export function setupFlora(THREE) {
   T = THREE;
   const trunk = new T.CylinderGeometry(0.5, 0.7, 1, 5, 1, true);
   trunk.rotateX(Math.PI / 2); trunk.translate(0, 0, 0.5);      // base en z=0, alto 1
-  const blob = new T.IcosahedronGeometry(1, 0);
+  const blob = new T.IcosahedronGeometry(1, 1);
   const cone = new T.ConeGeometry(1, 1, 7, 1);
   cone.rotateX(Math.PI / 2); cone.translate(0, 0, 0.5);
   geo = { trunk, blob, cone, fronds: frondGeometry() };
@@ -112,7 +113,7 @@ function buildTile(tile) {
     const s = p.s * (0.9 + seed * 0.2);
     const H = Math.max(2, (p.sp.heightM || 8)) * pxm * s * 0.62;
     const R = (p.sp.r || 10) * s;
-    const z0 = (W.groundZAt ? W.groundZAt(p.x, p.y) || 0 : 0) * pxm;
+    const z0 = groundBase();
     // sin copa (el indio desnudo, el seco) es rama pelada; sin tronco (los
     // mangles) es copa sola — los dos colores vienen siempre del registro
     const canopy = p.sp.canopy || [p.sp.trunk];

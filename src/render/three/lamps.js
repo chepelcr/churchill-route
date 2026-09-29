@@ -10,6 +10,7 @@
 // es que la cabeza, de noche, ATRAVIESE el velo (`uTintK` → 0): es lo que se ve
 // brillar desde arriba, y lo que explica el pozo.
 import { WORLD2D as W } from "../../world2d/index.js";
+import { groundBase } from "./ground.js";
 import LIGHTS from "../../assets/lights.json" with { type: "json" };
 import { tintMaterial } from "./tint.js";
 
@@ -52,7 +53,7 @@ function buildTile(tile) {
   const c = new T.Color(), up = new T.Vector3(0, 0, 1);
   list.forEach((l, i) => {
     const spec = TYPES[l.type] || TYPES.warm;
-    const z0 = (W.groundZAt ? W.groundZAt(l.x, l.y) || 0 : 0) * pxm;
+    const z0 = groundBase();
     // la luminaria cruza la calle: perpendicular al rumbo de la vía (`ang`)
     const ang = (Number.isFinite(l.ang) ? l.ang : 0) + Math.PI / 2;
     q.setFromAxisAngle(up, ang);

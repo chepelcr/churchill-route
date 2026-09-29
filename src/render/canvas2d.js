@@ -40,6 +40,7 @@ import {
 import { drawEditorWorld } from "./c2d/editorWorld.js";
 import HUD from "../assets/hud.json" with { type: "json" };
 import { alphaColor, upright } from "./c2d/primitives.js";
+import { canvasOwns } from "./owners.js";
 import { paintSpeedLines } from "./c2d/systemShapes.js";
 import { beginCameraFrame, cameraAffine, worldToScreen } from "./camera.js";
 
@@ -203,7 +204,10 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       if (G.ball.x < view.x0 - 20 || G.ball.x > view.x1 + 20) continue;
       drawBeachBall(G);
     }
-    for (const pk of parked) {
+    // Los carros con cuerpo son de la capa 3-D cuando ella los tomó
+    // (`three/vehicles.js`); la estela y los faros del jugador siguen acá.
+    const cars = canvasOwns("vehicles");
+    if (cars) for (const pk of parked) {
       if (pk.x < view.x0 - 20 || pk.x > view.x1 + 20 || pk.y < view.y0 - 20 || pk.y > view.y1 + 20) continue;
       drawCar(pk);
     }
@@ -216,7 +220,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       drawAnimal(an);
     }
     if (prof) prof.trafficCandidates = (prof.trafficCandidates || 0) + traffic.length;
-    for (const car of traffic) {
+    if (cars) for (const car of traffic) {
       if (car.x < view.x0 - 20 || car.x > view.x1 + 20) continue;
       if (prof) {
         prof.trafficXPass = (prof.trafficXPass || 0) + 1;
@@ -250,7 +254,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   if (!state.attract) {
     drawTargetCustomer(t);
     if (OVERLAY) drawPlayerCarrying(state.p, state.veh);
-    else drawPlayer(state.p, state.veh);
+    else drawPlayer(state.p, state.veh, { body: canvasOwns("vehicles") });
   }
   // True over-player layer. Covered lanes and stadium roofs live here while
   // physics independently decides whether the vehicle may drive below them.

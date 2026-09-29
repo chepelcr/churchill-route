@@ -26,6 +26,7 @@ import { applyFrame, projectToScreen } from "./camera.js";
 import { buildingStats, setupBuildings, syncBuildings } from "./buildings.js";
 import { floraStats, setupFlora, syncFlora } from "./flora.js";
 import { lampStats, setLampNight, setupLamps, syncLamps } from "./lamps.js";
+import { setupVehicles, syncVehicles } from "./vehicles.js";
 import { setupTint, updateTint } from "./tint.js";
 import { setWindowNight } from "./buildings.js";
 import { lightsOn } from "../../game/daynight.js";
@@ -121,7 +122,8 @@ export async function setupThree(mainCanvas) {
   setupBuildings(THREE, root);
   setupFlora(THREE);
   setupLamps(THREE);
-  claimForThree(["buildings", "flora", "lamps"]);
+  setupVehicles(THREE, root);
+  claimForThree(["buildings", "flora", "lamps", "vehicles"]);
   ready = true;
   stats.ready = true;
   stats.revision = THREE.REVISION;
@@ -201,6 +203,7 @@ export function renderThree(tSeconds, frame) {
   setWindowNight(nightRamp);
   setLampNight(nightRamp);
   updateTint();
+  stats.vehicles = syncVehicles(frame.view);
   placeSun(frame, casters > 0);
   renderer.render(scene, camera);
   stats.frames = frameNo;

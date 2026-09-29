@@ -261,6 +261,17 @@ function parcelFrame(P) {
   return (P._pframe = { cx, cy, ang, hw, hh });
 }
 
+// PINTAR EN OTRA SUPERFICIE CON LOS MISMOS PINTORES. La capa 3-D usa el arte
+// de Canvas como textura (el techo de un carro es su sprite de siempre), y los
+// ~30 dibujantes escriben en el `ctx` compartido. Cambiar el enlace vivo el
+// tiempo que dura `fn` es lo que evita enseñarle a cada uno otra superficie —
+// el mismo movimiento que `beginScreenOverlay` hace para la capa de pantalla.
+function withSurface(g, fn) {
+  const prevCanvas = canvas, prevCtx = ctx;
+  canvas = g.canvas; ctx = g;
+  try { return fn(); } finally { canvas = prevCanvas; ctx = prevCtx; }
+}
+
 // LA PARADITA used to be here, as raw Canvas calls. It is `props.parada` in
 // world-props.json now, drawn by `c2d/props.js` — which cannot live in this file
 // because gfx is the BOTTOM of the renderer and the shape interpreter sits on
@@ -271,5 +282,5 @@ export {
   beginScreenOverlay, ctx, ctxRotation, dpr, endScreenOverlay,
   flatAABB, flatMultiPath, flatPath, hash01, label, lastT, mixColor,
   parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, upright,
-  textureScale, weatherColors, ZOOM,
+  textureScale, weatherColors, withSurface, ZOOM,
 };

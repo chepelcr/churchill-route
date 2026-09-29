@@ -449,9 +449,12 @@ const EFFECT_PAINTERS = {
 };
 
 
-function drawPlayer(p, veh) {
+function drawPlayer(p, veh, { body = true } = {}) {
   const lift = (state.elev || 0) * 7;   // the barro avenue rides ~1 m up
-  const effects = vehicleEffects(state.vehicleKey);
+  // Sin cuerpo (la capa 3-D lo dibuja y le tira su propia sombra con el sol):
+  // quedan sólo lo que va SOBRE EL SUELO — la estela, el viento, los faros.
+  const effects = vehicleEffects(state.vehicleKey)
+    .filter(({ id }) => body || id !== "shadow");
   ctx.save();
   // Under the body: the wash, the swirls, then the shadow over them. PAINT
   // ORDER IS THE REPOSITORY'S, not each vehicle's — a boat that happened to
@@ -460,6 +463,7 @@ function drawPlayer(p, veh) {
   for (const { id, effect, cfg } of effects) {
     if (effect.layer === "under") EFFECT_PAINTERS[id]?.paint?.(p, veh, cfg);
   }
+  if (!body) { ctx.restore(); return; }
   ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
   for (const { id, effect, cfg } of effects) {
     if (effect.layer === "transform") EFFECT_PAINTERS[id]?.transform?.(p, veh, cfg);

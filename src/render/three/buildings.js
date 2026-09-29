@@ -16,6 +16,7 @@
 // tile que contiene el centro de su caja, o saldrían dos cuerpos coplanares
 // peleándose el z-buffer.
 import { WORLD2D as W } from "../../world2d/index.js";
+import { groundBase } from "./ground.js";
 import { buildingHeightM } from "../c2d/shadows.js";
 import { buildingStyle } from "../c2d/buildingStyle.js";
 import { districtBuildingStyle } from "../c2d/districts.js";
@@ -160,7 +161,7 @@ function buildTile(tile) {
     if (n < 3) continue;
     const hM = buildingHeightM(b);
     const h = (hM + ROOF_LIFT_M) * pxm;
-    const base = W.groundZAt ? (W.groundZAt(mx, my) || 0) * pxm : 0;
+    const base = groundBase();
     const top = base + h;
     const st = styleOf(b);
     color.a.setStyle(st.body);

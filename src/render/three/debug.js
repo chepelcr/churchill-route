@@ -44,6 +44,7 @@ export function debugFrame(stats) {
     `lean ${stats.lean}°  pinhole ${stats.pinhole} m  noche ${stats.night}`,
     `edificios ${stats.buildings?.buildings ?? 0}  plantas ${stats.flora?.plants ?? 0}  postes ${stats.lamps?.lamps ?? 0}  vehículos ${stats.vehicles ?? 0}`,
     `último tile (ms): edif ${b.buildings ?? "-"} flora ${b.flora ?? "-"} postes ${b.lamps ?? "-"} orilla ${b.coast ?? "-"}`,
+    `suelo: ${stats.terrain?.chunks ?? 0} trozos (paso ${stats.terrain?.stride ?? "-"} px)  zCam ${stats.terrain?.zCam ?? 0} m  escenas ${stats.scenes?.volumes ?? 0}`,
     `sombra: ${stats.shadowUpdates ?? 0} mapas   F2 alambre ${wire ? "sí" : "no"}`,
   ].join("\n");
 }

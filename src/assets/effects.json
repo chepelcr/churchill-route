@@ -336,6 +336,23 @@
   "view3d": {
     "leanDeg": 30,
     "maxLeanDeg": 45,
-    "pinholeM": 260
+    "pinholeM": 260,
+    "_levels": "LOS NIVELES DEL SUELO, en METROS sobre la calzada, por NOMBRE de clase de superficie. Exagerados a propósito (un bordillo real mide 15 cm, que a esta escala es un tercio de píxel): la acera sube un escalón que se lee, la manzana otro, la arena baja hacia el agua y el agua queda abajo — el talud de la orilla sale solo de esa diferencia. `elevated` es lo que se suma a una calle marcada `elev` (la avenida del Ferrocarril, que va en terraplén). Motor: `three/terrain.js`.",
+    "levels": {
+      "road": 0,
+      "paseo": 0,
+      "bridge": 0,
+      "barro": 0,
+      "gravel": 0,
+      "boulevard": 0.4,
+      "acera": 1.5,
+      "malecon": 1.2,
+      "land": 1.8,
+      "beach": -0.6,
+      "water": -3.0,
+      "elevated": 1.0
+    },
+    "_terrainScale": "cuánto de la cota REAL del IGN (`W.groundZAt`) se levanta: 1 = la verdad. La escena se corre por la cota bajo la cámara, así que lo que importa es la diferencia DENTRO de la vista: en el arenal son centímetros, tierra adentro decenas de metros.",
+    "terrainScale": 1.0
   }
 }

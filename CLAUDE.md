@@ -264,8 +264,25 @@ renderer (the "view") lives behind a seam so backends can be swapped.
     the SAME frame as `cameraAffine`; `view3d.js` holds the two knobs
     (`leanDeg` oblique lift, `pinholeM` eye height, in `effects.json` →
     `view3d`), and at h = 0 both are the identity, so input/physics are
-    untouched. Everything stands at h = 0 (`three/ground.js`) until the ground
-    itself is a mesh.
+    untouched.
+  * **the ground IS the Canvas frame, draped** (since 2026-09-30): Canvas keeps
+    painting the whole flat world every frame, and `three/canvasTexture.js`
+    uploads that canvas and projects it IN PLAN (same `cameraAffine`) onto
+    `three/terrain.js` — 256 px chunks whose height is a LEVEL per surface
+    class (`view3d.levels`, metres: acera and manzana up, arena and agua down)
+    plus the IGN elevation × `terrainScale`. Corners average their 4 cells, so a
+    kerb is a one-cell bevel, never a 4 px staircase. Nothing flat had to
+    migrate: pedestrians, wakes and labels drape by themselves. The scene hangs
+    at `−zCam` (elevation under the camera), so the car's neighbourhood stays
+    at h ≈ 0. `groundBase(x, y)` (`three/ground.js`) is what everything with a
+    base stands on. Three's Lambert divides by π, so both lights carry `× π` —
+    without it every 3-D colour was 1/π in linear light.
+  * **a scene that declares heights gets volume** (`three/scenes.js`): the
+    parcel scene is painted into its own canvas with the shadow pass ONLY
+    (`frame.shadowOnly`, one ink per band via `sh.ink`, composite `lighten`),
+    each band is contoured (`three/contour.js`) and extruded, and roofs/walls
+    sample the live canvas — so the cathedral's roof is the roof Canvas paints.
+    `"volume": false` on a scene opts out (the patio: its casters are crowns).
   * **one owner per class** (`src/render/owners.js`): a Canvas painter asks
     `canvasOwns("buildings")`, never "is 3-D on?"; `?own=buildings:canvas`
     hands a class back to bisect.

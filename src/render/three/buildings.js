@@ -157,7 +157,7 @@ function buildTile(tile) {
     if (n < 3) continue;
     const hM = buildingHeightM(b);
     const h = (hM + ROOF_LIFT_M) * pxm;
-    const base = groundBase();
+    const base = groundBase(mx, my);
     const top = base + h;
     const st = styleOf(b);
     color.a.setStyle(st.body);

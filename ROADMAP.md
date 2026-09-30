@@ -422,12 +422,15 @@ faltaban eran las técnicas.
       * [x] ~~El monte en 3-D~~ (`forEachWoodTree`, la misma retícula que
             Canvas). [ ] Los manglares siguen planos: su arte lleva raíces en
             el barro que una copa sola no dice.
-      * [ ] Más hitos con cuerpo: catedral, mercado, estadios (sus escenas ya
-            declaran partes; falta leerlas a tres dimensiones).
-      * [ ] El suelo como MALLA con `groundZAt` (Barranca → Esparza tiene cerros
-            de verdad): recién ahí `three/ground.js` deja de devolver 0, y lo
-            plano que todavía pinta Canvas (peatones, puestos, animales,
-            partículas) tiene que pasar a la capa 3-D en el mismo gesto.
+      * [x] ~~Hitos con cuerpo desde las alturas de su escena~~ (2026-09-30):
+            la manzana cívica entera — catedral, curia, casa de la cultura,
+            biblioteca, escuelas, gasolineras, kioscos. [ ] Falta el MERCADO,
+            el Tioga, Las Brisas y la Capitanía: sus props (`landmarks` en
+            world-props.json) no declaran `heightM`, así que no hay qué leer.
+      * [x] ~~El suelo como malla con niveles y cota~~ (2026-09-30): el cuadro
+            de Canvas drapeado sobre `three/terrain.js`, así que lo plano no
+            tuvo que migrar. [ ] Medir el costo de subir el lienzo cada cuadro
+            en un teléfono (`q=low` lo sube a 1×).
       * [x] ~~Que el pozo de un poste alumbre también las fachadas~~: el
             sombreador descuenta el velo con la misma máscara que Canvas.
       * [ ] Voltear el modo por defecto cuando lo anterior esté y rinda.

@@ -53,7 +53,7 @@ function buildTile(tile) {
   const c = new T.Color(), up = new T.Vector3(0, 0, 1);
   list.forEach((l, i) => {
     const spec = TYPES[l.type] || TYPES.warm;
-    const z0 = groundBase();
+    const z0 = groundBase(l.x, l.y);
     // la luminaria cruza la calle: perpendicular al rumbo de la vía (`ang`)
     const ang = (Number.isFinite(l.ang) ? l.ang : 0) + Math.PI / 2;
     q.setFromAxisAngle(up, ang);

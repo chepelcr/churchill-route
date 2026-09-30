@@ -60,7 +60,9 @@ function drawWorld2D(view, t) {
   // el asfalto es plano cuando el cerro no lo es; y sombrear DESPUÉS de los
   // edificios les pasaría la ladera por la fachada, que ya tienen su propia
   // sombra solar.
-  paintRelief(ctx, view);
+  // …salvo que el suelo ya tenga relieve de verdad (la malla de `three/terrain.js`,
+  // iluminada por el mismo sol): sombrearlo acá además sería oscurecer dos veces.
+  if (canvasOwns("ground")) paintRelief(ctx, view);
   phase("worldStreets");
   // LOS EDIFICIOS, DE LEJOS A CERCA. Se pintaban en orden de TILE, que daba
   // igual mientras eran rellenos planos — pero con pared, una que se extiende

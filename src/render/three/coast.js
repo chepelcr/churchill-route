@@ -14,6 +14,12 @@
 //     orilla que mira al norte la cara baja hacia el sur de la pantalla, por
 //     encima del suelo pintado, y sin el plato se vería a través de él.
 //
+// CON EL SUELO EN 3-D (`three/terrain.js`) el talud ya no hace falta: el agua
+// está `levels.water` abajo y el bisel de la malla ENTRE la manzana y el agua
+// es el talud, con el arte de Canvas encima. Queda la escollera, sentada al
+// nivel del agua. El talud y el plato sólo se arman sin el suelo 3-D
+// (`?own=ground:canvas`), que es el sándwich de antes.
+//
 // Qué borde es escollera y cuál es playa lo decide el SUELO: el talud va donde
 // una celda dura (ni agua ni arena) toca una de agua. Donde hay arena de por
 // medio la playa baja sola y no hay talud.
@@ -22,6 +28,7 @@ import { SURFACE } from "../../game/surfaces.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import { hash01 } from "../c2d/primitives.js";
 import { tintMaterial } from "./tint.js";
+import { groundActive, groundBase } from "./ground.js";
 
 const C = MATERIALS.coast;
 const PROBE_PX = 3;         // a cuánto de cada lado se pregunta al suelo
@@ -110,6 +117,7 @@ function buildTile(tile) {
     if (a === SURFACE.WATER && isShore(b)) { /* n ya mira al agua */ }
     else if (b === SURFACE.WATER && isShore(a)) { nx = -nx; ny = -ny; }
     else continue;   // orilla dura contra arena: la playa baja sola
+    const flat = !groundActive();
     // la cara: del borde (h≈0) al pie (h = −D), avanzando hacia el agua
     const fx = nx * SLOPE_PX, fy = ny * SLOPE_PX;
     const top0 = [x0, y0, -0.05], top1 = [x1, y1, -0.05];
@@ -117,29 +125,37 @@ function buildTile(tile) {
     // normal: hacia el agua y hacia arriba, por la pendiente del talud
     const nl = Math.hypot(D, SLOPE_PX);
     const nn = [nx * D / nl, ny * D / nl, SLOPE_PX / nl];
-    pushTri(pos, nor, top0, bot0, bot1, nn);
-    pushTri(pos, nor, top0, bot1, top1, nn);
+    if (flat) {
+      pushTri(pos, nor, top0, bot0, bot1, nn);
+      pushTri(pos, nor, top0, bot1, top1, nn);
+    }
     // la escollera al pie: rocas cada pocos px, tamaño y gris por hash
     for (let t = ROCK_PITCH_PX / 2; t < len; t += ROCK_PITCH_PX) {
       const px = x0 + (ex / len) * t, py = y0 + (ey / len) * t;
       const h = hash01(px * 0.73 + py * 1.37);
       const out = SLOPE_PX + 0.5 + h * 3.5;
+      const rx = px + nx * out, ry = py + ny * out;
+      const rs = 1.6 + hash01(px * 2.1 + py * 0.3) * 2.2;
       rocks.push({
-        x: px + nx * out, y: py + ny * out, z: -D * (0.35 + h * 0.3),
-        s: 1.6 + hash01(px * 2.1 + py * 0.3) * 2.2,
+        x: rx, y: ry,
+        // con suelo 3-D: medio hundida en el agua, al pie del talud de la malla
+        z: flat ? -D * (0.35 + h * 0.3) : groundBase(rx, ry) + rs * 0.25,
+        s: rs,
         c: C.rocks[(h * C.rocks.length) | 0], r: h * 6.28,
       });
     }
   }
-  if (!pos.length) return null;
+  if (!pos.length && !rocks.length) return null;
   const group = new T.Group();
-  const g = new T.BufferGeometry();
-  g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
-  g.setAttribute("normal", new T.Float32BufferAttribute(nor, 3));
-  g.computeBoundingSphere();
-  const wall = new T.Mesh(g, mat.wall);
-  wall.receiveShadow = true;
-  group.add(wall);
+  if (pos.length) {
+    const g = new T.BufferGeometry();
+    g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
+    g.setAttribute("normal", new T.Float32BufferAttribute(nor, 3));
+    g.computeBoundingSphere();
+    const wall = new T.Mesh(g, mat.wall);
+    wall.receiveShadow = true;
+    group.add(wall);
+  }
   if (rocks.length) {
     const im = new T.InstancedMesh(rockGeo, mat.rock, rocks.length);
     const m4 = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler(), v = new T.Vector3(), sc = new T.Vector3();
@@ -154,9 +170,9 @@ function buildTile(tile) {
     im.computeBoundingSphere();
     group.add(im);
   }
-  const plate = landPlate(tile);
+  const plate = groundActive() ? null : landPlate(tile);
   if (plate) group.add(plate);
-  group.userData.segments = pos.length / 18;
+  group.userData.segments = rocks.length;
   return group;
 }
 

@@ -54,9 +54,9 @@ export function setupFlora(THREE, { low = false } = {}) {
   mat = {
     trunk: new T.MeshLambertMaterial({ vertexColors: false }),
     // El follaje se ilumina en facetas y la mitad de ellas mira lejos del sol:
-    // el realce devuelve la copa al tono que Canvas pinta de un solo color.
-    leaf: new T.MeshLambertMaterial({ flatShading: true, color: new T.Color(1.3, 1.3, 1.3) }),
-    frond: new T.MeshLambertMaterial({ side: T.DoubleSide, flatShading: true, color: new T.Color(1.2, 1.2, 1.2) }),
+    // un realce chico devuelve la copa al tono que Canvas pinta de un solo color.
+    leaf: new T.MeshLambertMaterial({ flatShading: true, color: new T.Color(1.08, 1.08, 1.08) }),
+    frond: new T.MeshLambertMaterial({ side: T.DoubleSide, flatShading: true, color: new T.Color(1.05, 1.05, 1.05) }),
   };
   for (const m of Object.values(mat)) tintMaterial(m);
 }
@@ -139,7 +139,7 @@ function buildTile(tile, woods) {
     const s = p.s * (0.9 + seed * 0.2);
     const H = Math.max(2, (p.sp.heightM || 8)) * pxm * s * 0.62;
     const R = (p.sp.r || 10) * s;
-    const z0 = groundBase();
+    const z0 = groundBase(p.x, p.y);
     // sin copa (el indio desnudo, el seco) es rama pelada; sin tronco (los
     // mangles) es copa sola — los dos colores vienen siempre del registro
     const canopy = p.sp.canopy || [p.sp.trunk];

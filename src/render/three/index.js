@@ -15,8 +15,17 @@
 // transparente 4 cm bajo el suelo, así que oscurece la calle Y al carro que
 // pasa por ella.
 //
-// El tinte del cielo va EN LA CAPA DE ARRIBA: la noche oscurece los edificios
-// con el mismo color que oscurece la calle, sin una segunda autoridad del día.
+// El tinte del cielo se queda en el lienzo del suelo y `tint.js` lo aplica en
+// los sombreadores: una sola autoridad del día para la calle y el edificio.
+//
+// ## Y el suelo, con relieve
+//
+// Cuando la capa es dueña de `ground`, el lienzo de Canvas deja de ser el
+// fondo y pasa a ser TEXTURA: `terrain.js` levanta una malla con los niveles
+// de cada superficie y la cota real, y le proyecta encima el cuadro de Canvas
+// en planta (`canvasTexture.js`). La escena entera se corre por la cota bajo la
+// cámara (`zCam`), así que alrededor del carro todo sigue a h ≈ 0 y el volante
+// no se entera; lo que sube o baja es lo de alrededor.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { sunDirection3 } from "../sun.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
@@ -30,6 +39,10 @@ import { setupVehicles, syncVehicles } from "./vehicles.js";
 import { coastStats, setupCoast, syncCoast } from "./coast.js";
 import { setLandmarkNight, setupLandmarks, syncLandmarks } from "./landmarks.js";
 import { debugFrame, setupDebug } from "./debug.js";
+import { setupCanvasTexture, updateCanvasTexture } from "./canvasTexture.js";
+import { setupTerrain, syncTerrain, terrainStats } from "./terrain.js";
+import { sceneStats, setupScenes, syncScenes } from "./scenes.js";
+import { groundActive, reliefM, setGroundActive } from "./ground.js";
 import { setupTint, updateTint } from "./tint.js";
 import { setWindowNight } from "./buildings.js";
 import { lightsOn } from "../../game/daynight.js";
@@ -50,7 +63,7 @@ let canvas = null, ready = false, failed = false;
 let frameNo = 0, sizeKey = "";
 const HIGH = quality() === "high";
 let lastFrame = null;
-let nightRamp = 0, lastT = null;
+let nightRamp = 0, lastT = null, zCam = 0;
 function frameDt(t) {
   const dt = lastT === null ? 0 : Math.max(0, Math.min(0.1, t - lastT));
   lastT = t;
@@ -101,9 +114,15 @@ export async function setupThree(mainCanvas) {
   // se sostiene cuadro a cuadro: el sol sólo decide qué PARED se ilumina y
   // cuál queda en sombra. El color del día lo pone el tinte de la capa de
   // arriba, que es la misma autoridad para la calle y para el edificio.
-  hemi = new THREE.AmbientLight(0xffffff, 0.55);
+  //
+  // Y LAS DOS INTENSIDADES VAN POR π. El Lambert de three divide el albedo por
+  // π (`BRDF_Lambert`) y no le devuelve ese π a la luz, así que «ambiente + sol
+  // = 1» sin él pinta todo a 1/π en lineal — el techo salía un 38 % más oscuro
+  // que el mismo color en Canvas, y la copa de los árboles necesitaba un realce
+  // que sólo tapaba esto.
+  hemi = new THREE.AmbientLight(0xffffff, 0.55 * Math.PI);
   root.add(hemi);
-  sun = new THREE.DirectionalLight(0xffffff, SUN_SHARE);
+  sun = new THREE.DirectionalLight(0xffffff, SUN_SHARE * Math.PI);
   sunTarget = new THREE.Object3D();
   root.add(sunTarget);
   sun.target = sunTarget;
@@ -114,12 +133,21 @@ export async function setupThree(mainCanvas) {
   sun.shadow.autoUpdate = false;
   root.add(sun);
 
-  receiverMat = new THREE.ShadowMaterial({ opacity: 0.3, depthWrite: false });
-  receiver = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), receiverMat);
-  receiver.receiveShadow = true;
-  receiver.position.z = -RECEIVER_BELOW_M * W.PX_PER_M;
-  receiver.renderOrder = -1;
-  root.add(receiver);
+  claimForThree(["ground"]);
+  setGroundActive(threeOwns("ground"));
+  // el receptor transparente sólo hace falta si el suelo sigue siendo el plano
+  // de Canvas (`?own=ground:canvas`); con malla, la malla recibe la sombra
+  if (!groundActive()) {
+    receiverMat = new THREE.ShadowMaterial({ opacity: 0.3, depthWrite: false });
+    receiver = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), receiverMat);
+    receiver.receiveShadow = true;
+    receiver.position.z = -RECEIVER_BELOW_M * W.PX_PER_M;
+    receiver.renderOrder = -1;
+    root.add(receiver);
+  }
+  setupCanvasTexture(THREE, mainCanvas);
+  setupTerrain(THREE, { low: !HIGH });
+  setupScenes(THREE);
 
   setupTint(THREE);
   setupBuildings(THREE, root);
@@ -129,7 +157,7 @@ export async function setupThree(mainCanvas) {
   setupCoast(THREE);
   setupLandmarks(THREE);
   setupDebug(scene);
-  claimForThree(["buildings", "flora", "woods", "lamps", "vehicles", "faro"]);
+  claimForThree(["buildings", "flora", "woods", "lamps", "vehicles", "faro", "scenes"]);
   ready = true;
   stats.ready = true;
   stats.revision = THREE.REVISION;
@@ -182,11 +210,18 @@ function placeSun(frame, castersChanged) {
     sun.shadow.needsUpdate = true;
     stats.shadowUpdates = (stats.shadowUpdates || 0) + 1;
   }
-  hemi.intensity = Math.max(0.2, 1 - SUN_SHARE * lz);
-  receiverMat.opacity = SHADOW_INK * d.shadowAlpha;
+  hemi.intensity = Math.max(0.2, 1 - SUN_SHARE * lz) * Math.PI;
+  // LA SOMBRA SOBRE EL SUELO TIENE LA TINTA DE CANVAS. Sin receptor aparte, lo
+  // que oscurece es quitar la parte del sol: sobre lo plano eso es SUN_SHARE·Lz,
+  // y la intensidad de la sombra se ajusta para que quite exactamente la tinta
+  // de una sombra de edificio de Canvas (materials.json) a esta hora.
+  sun.shadow.intensity = Math.min(1, (SHADOW_INK * d.shadowAlpha) / (SUN_SHARE * lz));
+  if (receiverMat) receiverMat.opacity = SHADOW_INK * d.shadowAlpha;
   stats.sun = { x: +lx.toFixed(3), y: +ly.toFixed(3), z: +lz.toFixed(3), alpha: +d.shadowAlpha.toFixed(3) };
-  receiver.scale.set(half * 2.4, half * 2.4, 1);
-  receiver.position.x = frame.x; receiver.position.y = frame.y;
+  if (receiver) {
+    receiver.scale.set(half * 2.4, half * 2.4, 1);
+    receiver.position.x = frame.x; receiver.position.y = frame.y;
+  }
 }
 
 /** Un cuadro, con el MISMO marco que acaba de usar Canvas. */
@@ -209,14 +244,26 @@ export function renderThree(tSeconds, frame) {
     if (n) stats.build[key] = +(performance.now() - t0).toFixed(1);
     return n;
   };
-  const casters = timed("buildings", () => syncBuildings(root, frame.view, frameNo, warm))
+  const dt = frameDt(tSeconds);
+  let terrainChanged = 0;
+  if (groundActive()) {
+    updateCanvasTexture(frame);
+    terrainChanged = timed("terrain", () => syncTerrain(root, frame.view, frameNo, warm));
+    // la escena se corre por la cota bajo la cámara, suavizada: el carro y su
+    // barrio quedan a h ≈ 0 y el volante sigue exacto
+    const target = reliefM(frame.x, frame.y);
+    zCam = frameNo < 3 ? target : zCam + (target - zCam) * Math.min(1, dt * 3);
+    root.position.z = -zCam * W.PX_PER_M;
+  }
+  const casters = terrainChanged + timed("buildings", () => syncBuildings(root, frame.view, frameNo, warm))
     + timed("flora", () => syncFlora(root, frame.view, frameNo, warm, threeOwns("woods")))
     + timed("lamps", () => syncLamps(root, frame.view, frameNo, warm))
     + timed("coast", () => syncCoast(root, frame.view, frameNo, warm))
-    + timed("landmarks", () => syncLandmarks(root, frame.view));
+    + timed("landmarks", () => syncLandmarks(root, frame.view))
+    + timed("scenes", () => syncScenes(root, frame.view, frameNo, warm));
   // LA NOCHE ENTRA DE A POCO: ventanas y faroles se prenden con una rampa, no
   // en el cuadro en que `lightsOn()` cambia de opinión.
-  nightRamp += ((lightsOn() ? 1 : 0) - nightRamp) * Math.min(1, frameDt(tSeconds) * 1.5);
+  nightRamp += ((lightsOn() ? 1 : 0) - nightRamp) * Math.min(1, dt * 1.5);
   setWindowNight(nightRamp);
   setLampNight(nightRamp);
   setLandmarkNight(nightRamp);
@@ -231,7 +278,7 @@ export function renderThree(tSeconds, frame) {
   stats.triangles = renderer.info.render.triangles;
   stats.ms = +(performance.now() - started).toFixed(2);
   stats.lean = leanDeg(); stats.pinhole = pinholeM();
-  if (frameNo % 10 === 0) { stats.buildings = buildingStats(); stats.flora = floraStats(); stats.lamps = lampStats(); stats.coast = coastStats(); }
+  if (frameNo % 10 === 0) { stats.buildings = buildingStats(); stats.flora = floraStats(); stats.lamps = lampStats(); stats.coast = coastStats(); stats.terrain = { ...terrainStats(), zCam: +zCam.toFixed(2) }; stats.scenes = sceneStats(); }
   stats.night = +nightRamp.toFixed(2);
   debugFrame(stats);
   publish();

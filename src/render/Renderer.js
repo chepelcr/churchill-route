@@ -23,7 +23,7 @@ import {
 } from "./canvas2d.js";
 import { setupPixi, renderPixi } from "./pixi/index.js";
 import { beginCameraFrame } from "./camera.js";
-import { render3dRequested } from "./view3d.js";
+import { quality, render3dRequested } from "./view3d.js";
 
 const WANT_3D = (() => {
   try { return render3dRequested(); } catch { return false; }
@@ -44,7 +44,7 @@ export function setupCanvas(canvasEl) {
   // In 3-D the screen pass (sky tint, night, rain, minimap) gets its own canvas
   // ABOVE the three layer, so the night darkens the buildings exactly as much
   // as the street under them.
-  c2dSetup(canvasEl, { separateOverlay: WANT_3D });
+  c2dSetup(canvasEl, { separateOverlay: WANT_3D, maxDpr: WANT_3D && quality() === "low" ? 1 : 2 });
   if (PIXI_LM) {
     setPixiLandmarks(true);
     setupPixi(canvasEl, () => setPixiLandmarks(false)); // no WebGL → canvas stands

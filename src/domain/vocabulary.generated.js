@@ -256,8 +256,9 @@ export const UI_SCREEN = Object.freeze({
   SETTINGS: "settings",
   SUPPORTERS: "supporters",
   SHOP: "shop",
+  RAILWAY: "railway",
 });
-export const UI_SCREEN_VALUES = Object.freeze(["boot", "intro", "title", "stagepick", "realmpick", "brief", "modebrief", "tutbrief", "vehpick", "passage", "playing", "paused", "over", "settings", "supporters", "shop"]);
+export const UI_SCREEN_VALUES = Object.freeze(["boot", "intro", "title", "stagepick", "realmpick", "brief", "modebrief", "tutbrief", "vehpick", "passage", "playing", "paused", "over", "settings", "supporters", "shop", "railway"]);
 
 export const COIN_TYPE = Object.freeze({
   GOLD: "gold",

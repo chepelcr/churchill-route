@@ -1,0 +1,22 @@
+id,name,level,km_measured,lon,lat,snap_m,source,confidence
+pacifico,Estación del Pacífico,1,0.0,-84.0810605,9.9254769,0.0,osm:node/4636012380,mapped_or_photo
+sabana,La Sabana / Contraloría,1,2.59,-84.1014187,9.9326573,0.0,osm:node/278449879,mapped_or_photo
+pavas,Pavas,1,6.45,-84.1335334,9.9399761,0.0,osm:node/4636012386,mapped_or_photo
+belen,San Antonio de Belén,2,14.34,-84.1849399,9.9784607,0.0,osm:node/4638218346,mapped_or_photo
+ojo-agua,Ojo de Agua,2,18.61,-84.2230223,9.9724193,0.0,osm:node/276524920,mapped_or_photo
+turrucares,Turrúcares,3,30.23,-84.3177926,9.962559,29.3,station-list secondary; snap to OSM,review
+rio-grande,Entorno del puente Río Grande (foto),3,36.96,-84.3519231,9.9628743,41.7,"Commons geotag; camera position, not bridge center; exact bridge/river intersection in river-crossings.json",review
+atenas,Estación Atenas / Río Grande,4,37.29,-84.3538859,9.9607942,13.4,station-list secondary; photo cross-check,review
+balsa,Balsa,4,41.56,-84.3800437,9.9420886,19.4,station-list secondary; snap to OSM,review
+escobal,Escobal,5,49.84,-84.4350641,9.9347631,17.4,Commons photo geotag 2026-01-24,mapped_or_photo
+quebradas,Quebradas,5,52.29,-84.4526074,9.9321041,19.1,station-list secondary; heritage source verifies name,review
+orotina,Orotina,6,66.13,-84.5264403,9.9127611,31.3,station-list secondary; municipality photo cross-check,review
+coyolar,Coyolar,6,70.82,-84.5605518,9.896121,11.3,station-list secondary; snap to OSM,review
+ceiba,La Ceiba,7,76.26,-84.5998623,9.8995348,22.4,station-list secondary; snap to OSM,review
+salinas,Salinas,8,88.8,-84.6918447,9.9297862,25.3,osm:node/6727793700,mapped_or_photo
+caldera,Estación de Caldera,8,92.98,-84.7238044,9.9369078,23.5,Commons geotag; matches OSM station outline,mapped_or_photo
+barranca,Barranca,9,101.8,-84.7108417,9.9902319,6.6,osm:way/1226582149 station outline centroid,mapped_or_photo
+roble,El Roble,9,105.72,-84.7422531,9.9780717,39.7,osm:node/13396370937,mapped_or_photo
+chacarita,Chacarita,9,109.53,-84.7768917,9.980167,15.5,station-list secondary; snap to OSM,review
+puntarenas,Estación histórica de Puntarenas,9,115.0,-84.8264251,9.9774325,17.8,station-list secondary; exact footprint still to validate,review
+muelle,Espuela del muelle de Puntarenas,9,115.78,-84.833455,9.9762588,57.3,OSM mapped railway spur; not an operating station,mapped_or_photo

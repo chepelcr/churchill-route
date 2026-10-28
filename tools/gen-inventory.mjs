@@ -138,6 +138,7 @@ const REGISTRIES = [
   { id: "npc-types", path: "src/game/npcTypes.json", reads: "spawns, editor",
     count: (d) => (d.types || []).length },
   { id: "economy", path: "src/content/economy.json", reads: "wallet, shop, IAP" },
+  { id: "pacific-railway", path: "src/content/pacific-railway.json", reads: "RailwayMode level and train selection" },
   { id: "simulation", path: "src/content/simulation.json", reads: "spawns, buses, daynight, tides" },
   { id: "progression", path: "src/content/progression.json", reads: "tutorial, progress, modes",
     count: (d) => (d.tutorial?.steps || []).length },

@@ -112,14 +112,14 @@ class ExploreRealm(StrEnum):
 class UIScreen(StrEnum):
     """React's screen state machine — a finite internal vocabulary.
 
-    `App.jsx` branches on these sixteen strings in about thirty places, and
+    `App.jsx` branches on these screen IDs in about thirty places, and
     three of them (`settings`, `shop`, `realmpick`) also decide whether the
     simulation is PAUSED and whether the attract camera runs, so a typo is not
     a blank screen: it is a live game running behind a menu.
 
     They are also the keys of `src/ui/screens.json`, the per-screen registry the
     world editor authors, and of the manifest's `editorUI.screens` block. Three
-    files keyed by the same sixteen names is exactly the shape that drifts."""
+    files keyed by the same names is exactly the shape that drifts."""
     BOOT = "boot"
     INTRO = "intro"
     TITLE = "title"
@@ -136,6 +136,7 @@ class UIScreen(StrEnum):
     SETTINGS = "settings"
     SUPPORTERS = "supporters"
     SHOP = "shop"
+    RAILWAY = "railway"
 
 
 class CoinType(StrEnum):

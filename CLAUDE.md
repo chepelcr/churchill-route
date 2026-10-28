@@ -1,3 +1,7 @@
+# Pacific Railway · rama de trabajo
+
+En `feature/pacific-railway`, empezar por `docs/PACIFIC_RAILWAY_HANDOFF.md`. El juego incluye el MVP y la investigación; `railway-builder/` es un repositorio independiente ignorado, como `world-editor/`. El modo se integra en el menú principal, con nivel y tren, y se publica con Churchill.
+
 # CLAUDE.md
 
 Guidance for Claude Code when working in this repo.

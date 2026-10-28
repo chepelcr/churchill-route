@@ -22,19 +22,20 @@ const MODE_IDS = [
   { id: "story",    swatch: "var(--amber)" },
   { id: "explore",  swatch: "var(--mint)" },
   { id: "arcade",   swatch: "var(--rose)" },
+  { id: "pacific-railway", swatch: "var(--mint)" },
 ];
 
-export default function TitleScreen({ editorConfig, onPickMode, onSettings, onSupporters, onShop }) {
+export default function TitleScreen({ editorConfig, onPickMode, onRailway, onSettings, onSupporters, onShop }) {
   const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [info, setInfo] = useState(false);
   const [iosHint, setIosHint] = useState(needsIosFullscreenHint());
   const infoRef = useRef(null);
   const firstRun = !tutorialDone();
-  const pick = (id) => { sfx.play("menu_select"); onPickMode(id); };
+  const pick = (id) => { sfx.play("menu_select"); if(id === "pacific-railway")onRailway();else onPickMode(id); };
   const [idx, setIdx] = useMenuNav({
     count: MODE_IDS.length,
-    cols: MODE_IDS.length,
+    cols: 2,
     onSelect: (i) => pick(MODE_IDS[i].id),
   });
 
@@ -64,7 +65,7 @@ export default function TitleScreen({ editorConfig, onPickMode, onSettings, onSu
       </div>
     ),
     modes: () => (
-      <div className="modes" style={{ gridTemplateColumns: `repeat(${MODE_IDS.length}, 1fr)`, maxWidth: 760, margin: "16px auto" }}>
+      <div className="modes" style={{ gridTemplateColumns: "repeat(2, 1fr)", maxWidth: 760, margin: "16px auto" }}>
         {MODE_IDS.map((m, i) => (
           <button key={m.id}
             className={"mode" + (idx === i ? " focused" : "")}

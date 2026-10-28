@@ -1,0 +1,10 @@
+.railway-mode{position:absolute;inset:0;z-index:12;background:var(--editor-screen-bg);color:var(--paper)}
+.railway-select{width:min(760px,90vw)}
+.railway-trains{padding:24px;text-align:center}
+.railway-train-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}
+.railway-train-grid .mode{min-width:0;padding:16px 10px}
+.railway-train{display:flex;align-items:end;justify-content:center;margin:8px 0 20px}
+.railway-train img{width:34%;height:auto;min-width:0}
+.railway-play,.railway-play iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.railway-result-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:24px}
+@media(max-width:600px){.railway-train-grid{gap:6px}.railway-train-grid .mode{padding:8px 4px}.railway-train-grid strong{font-size:12px}}

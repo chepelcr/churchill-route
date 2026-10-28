@@ -587,6 +587,33 @@
           "note": "Historia arma sus mejoras en el StageBrief, así que ahí esta columna no va — apiladas bajo la pintura hacían una tarjeta alta y despareja"
         }
       ]
+    },
+    "railway": {
+      "name": "Tren al Puerto",
+      "accent": "mint",
+      "background": "editorScreenBg",
+      "slots": [
+        {
+          "id": "levels",
+          "region": "main",
+          "when": "levels"
+        },
+        {
+          "id": "trains",
+          "region": "main",
+          "when": "trains"
+        },
+        {
+          "id": "playing",
+          "region": "main",
+          "when": "playing"
+        },
+        {
+          "id": "results",
+          "region": "main",
+          "when": "results"
+        }
+      ]
     }
   },
   "_partial": "LAS DIECISÉIS ESTÁN. `over` y `title` fueron las dos primeras, `realmpick` y `passage` nacieron aquí, y las doce restantes se migraron el 2026-08-28. Lo que NO entró está decidido y no pendiente: el agua del arranque, la fila de herramientas de la portada, las flechas de la carrusela, las pestañas de la tienda y el paso de diapositiva del intro son el MARCO — están en todos los renders de su pantalla y no hay ninguna decisión por pantalla en ellos. Un registro que los listara estaría describiendo el marco como si fuera contenido, y ésa es la misma línea que impide que esto se vuelva un lenguaje de maquetado."

@@ -10,6 +10,9 @@ dist-dbg/
 # Separate private visual world editor (owns its own Git repository)
 /world-editor/
 
+# Separate railway authoring tool (chepelcr/roller-coaster)
+/railway-builder/
+
 # Android (Capacitor) build outputs — the android/ project itself is committed
 android/.gradle/
 android/build/

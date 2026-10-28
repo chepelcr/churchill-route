@@ -4,6 +4,7 @@ import { addTime } from "../game/timers.js";
 import { EXPLORE_REALM, GAME_MODE, STAGE_KIND, UI_SCREEN, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { WORLD2D as WORLD } from "../world2d/index.js";
 import TitleScreen from "./screens/TitleScreen.jsx";
+import RailwayMode from "./screens/RailwayMode.jsx";
 import StageSelect from "./screens/StageSelect.jsx";
 import HUD from "./screens/HUD.jsx";
 import PauseScreen from "./screens/PauseScreen.jsx";
@@ -128,7 +129,7 @@ export default function App() {
   // anything that pauses by writing the flag directly is undone the moment the
   // screen it opened lands here.
   useEffect(() => {
-    Game.state.paused = screen === UI_SCREEN.PAUSED || screen === UI_SCREEN.PASSAGE
+    Game.state.paused = screen === UI_SCREEN.RAILWAY || screen === UI_SCREEN.PAUSED || screen === UI_SCREEN.PASSAGE
       || (screen === UI_SCREEN.SETTINGS && settingsFrom.current === UI_SCREEN.PAUSED);
   }, [screen]);
 
@@ -313,11 +314,12 @@ export default function App() {
   return (
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
+      {screen === UI_SCREEN.RAILWAY && <RailwayMode onBack={() => setScreen(UI_SCREEN.TITLE)} />}
       {screen === UI_SCREEN.BOOT && <BootScreen onDone={() => setScreen(introSeen() ? UI_SCREEN.TITLE : UI_SCREEN.INTRO)} />}
       {(screen === UI_SCREEN.INTRO || screen === UI_SCREEN.TITLE || screen === UI_SCREEN.STAGEPICK || screen === UI_SCREEN.BRIEF || screen === UI_SCREEN.MODEBRIEF || screen === UI_SCREEN.TUTBRIEF || screen === UI_SCREEN.OVER || screen === UI_SCREEN.SETTINGS || screen === UI_SCREEN.SUPPORTERS || screen === UI_SCREEN.SHOP || screen === UI_SCREEN.VEHPICK || screen === UI_SCREEN.REALMPICK) && (
         <div className="screen-anim" key={screen}>
           {screen === UI_SCREEN.INTRO && <IntroScreen onDone={() => setScreen(UI_SCREEN.TUTBRIEF)} />}
-          {screen === UI_SCREEN.TITLE && <TitleScreen editorConfig={WORLD.EDITOR_UI?.screens?.title} onPickMode={pickMode} onSettings={() => openSettings(UI_SCREEN.TITLE)} onSupporters={() => setScreen(UI_SCREEN.SUPPORTERS)} onShop={() => { setShopCtx(null); shopFrom.current = UI_SCREEN.TITLE; setScreen(UI_SCREEN.SHOP); }} />}
+          {screen === UI_SCREEN.TITLE && <TitleScreen editorConfig={WORLD.EDITOR_UI?.screens?.title} onPickMode={pickMode} onRailway={() => { enterImmersive(); setScreen(UI_SCREEN.RAILWAY); }} onSettings={() => openSettings(UI_SCREEN.TITLE)} onSupporters={() => setScreen(UI_SCREEN.SUPPORTERS)} onShop={() => { setShopCtx(null); shopFrom.current = UI_SCREEN.TITLE; setScreen(UI_SCREEN.SHOP); }} />}
           {screen === UI_SCREEN.SUPPORTERS && <SupportersScreen onBack={() => setScreen(UI_SCREEN.TITLE)} />}
           {screen === UI_SCREEN.SHOP && <ShopScreen deepLink={shopCtx} onBack={() => { setShopCtx(null); const back = shopFrom.current; shopFrom.current = UI_SCREEN.TITLE; setScreen(back); }} />}
           {/* The medium the pending run needs — see `runMedium`. A crossing

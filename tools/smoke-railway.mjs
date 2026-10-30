@@ -65,6 +65,26 @@ const full = drive(createRailwayRun("pacifico-belen", starter.id, maxed));
 check(full.stars === 3, `con el taller al tope saca las tres estrellas (${full.stars})`);
 check(full.elapsed < base.elapsed, `y llega antes (${full.elapsed.toFixed(0)}s < ${base.elapsed.toFixed(0)}s)`);
 
+// CON EL TALLER AL TOPE LAS MÁQUINAS NO CONVERGEN. Es lo que `caps` existe para
+// evitar y lo único que lo prueba es correrlas: si al tope todas terminan en el
+// mismo tiempo, comprar la siguiente no compra nada.
+console.log("— al tope del taller, cada una sigue siendo ella —");
+{
+  const times = RAILWAY_CATALOG.trains.map((train) => {
+    const caps = Object.fromEntries(RAILWAY_CATALOG.upgrades.ladders
+      .map((l) => [l.id, RAILWAY_CATALOG.upgrades.maxLevel]));
+    const r = drive(createRailwayRun("pacifico-belen", train.id, caps));
+    return { id: train.id, s: r.elapsed, fuel: r.usedL, top: r.topSpeed * 3.6 };
+  });
+  for (const r of times) {
+    console.log(`  ${r.id.padEnd(14)} ${r.s.toFixed(0)}s  ${r.fuel.toFixed(0)}L  ${r.top.toFixed(0)}km/h`);
+  }
+  const span = Math.max(...times.map((r) => r.s)) - Math.min(...times.map((r) => r.s));
+  check(span > 12, `al tope se reparten ${span.toFixed(0)} s entre la más lenta y la más rápida`);
+  const tops = new Set(times.map((r) => Math.round(r.top)));
+  check(tops.size === times.length, "y ninguna alcanza la punta de otra");
+}
+
 console.log("— el rizo grande, entrando frenado —");
 {
   const game = createRailwayRun("pacifico-belen", starter.id, {});

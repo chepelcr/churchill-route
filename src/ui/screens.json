@@ -597,13 +597,19 @@
           "id": "levels",
           "region": "main",
           "when": "levels",
-          "note": "El tramo, con el paisaje de la campaña pasando en vivo detrás"
+          "note": "LA LÍNEA ENTERA en vertical y arriba: los nueve tramos de Pacífico a Puntarenas, el jugable y los ocho que esperan su arte. Un selector de un solo tramo no enseña a dónde va la campaña."
+        },
+        {
+          "id": "trains",
+          "region": "main",
+          "when": "trains",
+          "note": "Elegir máquina es una decisión propia y tiene su propia pantalla: seis trenes no caben de paso en el taller"
         },
         {
           "id": "garage",
           "region": "main",
           "when": "garage",
-          "note": "La máquina y las cuatro barras — motor, velocidad, freno y combustible"
+          "note": "El taller: las cuatro barras de la máquina elegida, cada una con el TOPE de esa máquina"
         },
         {
           "id": "playing",

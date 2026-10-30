@@ -11,7 +11,7 @@
 // `localStorage` es entrada del usuario: una mejora en el nivel 90, un tren
 // comprado que ya no está en el catálogo o `coins: NaN` tienen que salir
 // saneados y no romper una pantalla.
-import { clampLevel } from "./stats.js";
+import { capOf, clampLevel } from "./stats.js";
 
 const KEY = "churchill.railway.v2";
 
@@ -40,9 +40,10 @@ export function loadProgress(catalog, storage = safeStorage()) {
   for (const id of owned) {
     const saved = raw.upgrades?.[id];
     if (!saved || typeof saved !== "object") continue;
+    const train = catalog.trains.find((t) => t.id === id);
     const row = {};
     for (const ladder of catalog.upgrades.ladders) {
-      const level = clampLevel(saved[ladder.id], catalog);
+      const level = clampLevel(saved[ladder.id], catalog, capOf(train, ladder, catalog));
       if (level) row[ladder.id] = level;
     }
     if (Object.keys(row).length) upgrades[id] = row;
@@ -106,8 +107,10 @@ export function buyTrain(progress, train) {
 
 /** Subir una barra un escalón. */
 export function buyUpgrade(progress, trainId, ladder, catalog) {
-  const level = clampLevel(progress.upgrades[trainId]?.[ladder.id], catalog);
-  if (level >= catalog.upgrades.maxLevel) return progress;
+  const train = catalog.trains.find((t) => t.id === trainId);
+  const cap = capOf(train, ladder, catalog);
+  const level = clampLevel(progress.upgrades[trainId]?.[ladder.id], catalog, cap);
+  if (level >= cap) return progress;
   const cost = ladder.costs[level];
   if (progress.coins < cost) return progress;
   return {

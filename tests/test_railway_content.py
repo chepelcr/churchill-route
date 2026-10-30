@@ -196,6 +196,44 @@ class CatalogTests(unittest.TestCase):
                     self.assertIn(field, train["stats"],
                                   f"{ladder['id']} mueve {field}, que {train['id']} no tiene")
 
+    def test_every_train_has_its_own_ceiling_and_no_ladder_is_dead(self):
+        # CADA MÁQUINA SU TOPE: con uno común las seis convergían a la misma y
+        # la última comprada era estrictamente mejor. Y si NINGUNA llegara al
+        # tope de una barra, esa escalera tendría escalones que nadie puede
+        # comprar — un coste en el registro que no compra nada.
+        ids = [l["id"] for l in CAT_D["upgrades"]["ladders"]]
+        maxlevel = CAT_D["upgrades"]["maxLevel"]
+        reach = {i: 0 for i in ids}
+        for train in CAT_D["trains"]:
+            caps = train.get("caps")
+            self.assertIsNotNone(caps, f"{train['id']}: sin `caps`")
+            self.assertEqual(sorted(caps), sorted(ids), train["id"])
+            for ladder, cap in caps.items():
+                self.assertTrue(1 <= cap <= maxlevel, f"{train['id']}.{ladder} = {cap}")
+                reach[ladder] = max(reach[ladder], cap)
+        for ladder, top in reach.items():
+            self.assertEqual(top, maxlevel,
+                             f"ninguna máquina llega al tope de «{ladder}»: sus últimos escalones "
+                             f"son un coste que nadie puede pagar")
+        spread = {t["id"]: sorted(t["caps"].values()) for t in CAT_D["trains"]}
+        self.assertGreater(len({tuple(v) for v in spread.values()}), 1,
+                           "si todas las máquinas tienen el mismo reparto de topes, no hay elección")
+
+    def test_the_line_covers_the_whole_corridor_in_order(self):
+        line = CAT_D["line"]
+        self.assertEqual([row["number"] for row in line], list(range(1, len(line) + 1)))
+        for a, b in zip(line, line[1:]):
+            self.assertAlmostEqual(a["toKm"], b["fromKm"], places=2,
+                                   msg=f"hueco entre {a['id']} y {b['id']}")
+            self.assertLess(a["fromKm"], a["toKm"], a["id"])
+        for row in line:
+            self.assertIn(row["scene"], ART_D["scenes"], row["id"])
+            if row["level"] is not None:
+                self.assertIn(row["level"], LEVEL_D, row["id"])
+        playable = [row for row in line if row["level"]]
+        self.assertEqual([row["level"] for row in playable], CAT_D["campaign"],
+                         "la campaña y los tramos jugables de la línea son la misma lista")
+
     def test_every_train_resolves_its_art_and_its_consist(self):
         for train in CAT_D["trains"]:
             self.assertIn(train["art"], ART_D["stock"], train["id"])
@@ -321,6 +359,7 @@ class CopyTests(unittest.TestCase):
                      f"railway.fuel.{train['fuelKind']}"}
         for ladder in CAT_D["upgrades"]["ladders"]:
             keys |= {ladder["nameKey"], ladder["descKey"]}
+        keys |= {row["nameKey"] for row in CAT_D["line"]}
         for level in LEVEL_D.values():
             keys |= {level["nameKey"], level["briefKey"]}
             keys |= {s["nameKey"] for s in level["stations"]}

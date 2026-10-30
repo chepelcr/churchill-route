@@ -15,10 +15,10 @@ import { RAILWAY_ART, RAILWAY_SIM, railwayScenes } from "../../../game/railway/i
 import { paintBackdrop } from "../../../render/railway/backdrop.js";
 import { paintCar } from "../../../render/railway/paint.js";
 
-export default function ScenePreview({ consist = [], className = "", onScene }) {
+export default function ScenePreview({ consist = [], className = "", onScene, pinned = null }) {
   const canvas = useRef(null);
-  const live = useRef({ consist, onScene });
-  live.current = { consist, onScene };
+  const live = useRef({ consist, onScene, pinned });
+  live.current = { consist, onScene, pinned };
 
   useEffect(() => {
     const el = canvas.current;
@@ -48,13 +48,22 @@ export default function ScenePreview({ consist = [], className = "", onScene }) 
       last = now;
       t += dt;
       held += dt;
-      if (held > S.previewHoldS + S.previewFadeS) {
+      // UN TRAMO ELEGIDO FIJA SU PAISAJE. Es la respuesta a «¿y ese tramo que
+      // todavía no se juega, cómo se ve?»: su escena existe desde hoy y se
+      // puede mirar, que es lo que convierte una lista de nombres en una línea.
+      const pin = live.current.pinned;
+      if (pin && scenes.includes(pin) && scenes[index] !== pin) {
+        index = scenes.indexOf(pin);
+        held = 0;
+        live.current.onScene?.(scenes[index]);
+      }
+      if (!pin && held > S.previewHoldS + S.previewFadeS) {
         held = 0;
         index = (index + 1) % scenes.length;
         live.current.onScene?.(scenes[index]);
       }
       const next = scenes[(index + 1) % scenes.length];
-      const fade = Math.max(0, (held - S.previewHoldS) / S.previewFadeS);
+      const fade = pin ? 0 : Math.max(0, (held - S.previewHoldS) / S.previewFadeS);
 
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.clearRect(0, 0, w, h);

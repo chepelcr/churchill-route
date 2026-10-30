@@ -79,7 +79,8 @@
           1800
         ]
       }
-    ]
+    ],
+    "_caps": "CADA MÁQUINA TIENE SU PROPIO TOPE POR BARRA (`caps` en el tren), y eso es lo que hace que comprar la siguiente valga la pena. Con un tope común las seis convergían a la misma máquina: subir las cuatro barras al cinco borraba el carácter de cada una y la última comprada era estrictamente mejor, que es la forma más cara de no tener elección. La María Cecilia llega al cinco en motor y en combustible y se queda en dos de velocidad —es una máquina de 1898—; la AEG es al revés. El coste de cada escalón sigue siendo el de la escalera: lo que cambia es hasta dónde llega."
   },
   "economy": {
     "startCoins": 240,
@@ -127,6 +128,12 @@
         "burnIdle": 0.34,
         "burnPerPull": 1.05,
         "burnEfficiency": 1
+      },
+      "caps": {
+        "engine": 5,
+        "speed": 2,
+        "brake": 3,
+        "fuel": 5
       }
     },
     {
@@ -166,6 +173,12 @@
         "burnIdle": 0.24,
         "burnPerPull": 0.82,
         "burnEfficiency": 1
+      },
+      "caps": {
+        "engine": 5,
+        "speed": 3,
+        "brake": 4,
+        "fuel": 4
       }
     },
     {
@@ -205,6 +218,12 @@
         "burnIdle": 0.22,
         "burnPerPull": 0.74,
         "burnEfficiency": 1
+      },
+      "caps": {
+        "engine": 4,
+        "speed": 4,
+        "brake": 4,
+        "fuel": 4
       }
     },
     {
@@ -240,6 +259,12 @@
         "burnIdle": 0.18,
         "burnPerPull": 0.62,
         "burnEfficiency": 1
+      },
+      "caps": {
+        "engine": 3,
+        "speed": 5,
+        "brake": 5,
+        "fuel": 3
       }
     },
     {
@@ -275,6 +300,12 @@
         "burnIdle": 0.12,
         "burnPerPull": 0.52,
         "burnEfficiency": 1
+      },
+      "caps": {
+        "engine": 2,
+        "speed": 5,
+        "brake": 5,
+        "fuel": 5
       }
     },
     {
@@ -310,9 +341,99 @@
         "burnIdle": 0.16,
         "burnPerPull": 0.55,
         "burnEfficiency": 1
+      },
+      "caps": {
+        "engine": 3,
+        "speed": 5,
+        "brake": 5,
+        "fuel": 4
       }
     }
   ],
   "_fuelKind": "Tres clases de energía con la misma mecánica de depósito: leña, diésel y catenaria. La aguja se llama por lo que la máquina quema (`railway.fuel.<kind>`), que es lo único que cambia entre ellas.",
-  "_trains": "SEIS MÁQUINAS DEL CORREDOR, por orden de llegada al garaje y no por año. La gratuita va PRIMERA porque el garaje abre en `trains[0]`: si no lo fuera, el jugador entraría a una pantalla que sólo le ofrece comprar. Las cinco de pago suben en precio y en punta, y cada una nombra su referencia fotográfica en `fiche`; el arte es dibujo propio y no se redistribuye ninguna imagen."
+  "_trains": "SEIS MÁQUINAS DEL CORREDOR, por orden de llegada al garaje y no por año. La gratuita va PRIMERA porque el garaje abre en `trains[0]`: si no lo fuera, el jugador entraría a una pantalla que sólo le ofrece comprar. Las cinco de pago suben en precio y en punta, y cada una nombra su referencia fotográfica en `fiche`; el arte es dibujo propio y no se redistribuye ninguna imagen.",
+  "line": [
+    {
+      "number": 1,
+      "id": "pacifico-belen",
+      "nameKey": "railway.tramo.pacifico-belen",
+      "fromKm": 0.0,
+      "toKm": 14.34,
+      "scene": "pacifico-urbano",
+      "level": "pacifico-belen"
+    },
+    {
+      "number": 2,
+      "id": "belen-turrucares",
+      "nameKey": "railway.tramo.belen-turrucares",
+      "fromKm": 14.34,
+      "toKm": 30.23,
+      "scene": "belen-cafetal",
+      "level": null
+    },
+    {
+      "number": 3,
+      "id": "turrucares-atenas",
+      "nameKey": "railway.tramo.turrucares-atenas",
+      "fromKm": 30.23,
+      "toKm": 37.29,
+      "scene": "rio-grande-canon",
+      "level": null
+    },
+    {
+      "number": 4,
+      "id": "atenas-escobal",
+      "nameKey": "railway.tramo.atenas-escobal",
+      "fromKm": 37.29,
+      "toKm": 49.84,
+      "scene": "rio-grande-canon",
+      "level": null
+    },
+    {
+      "number": 5,
+      "id": "escobal-orotina",
+      "nameKey": "railway.tramo.escobal-orotina",
+      "fromKm": 49.84,
+      "toKm": 66.13,
+      "scene": "orotina-agricola",
+      "level": null
+    },
+    {
+      "number": 6,
+      "id": "orotina-ceiba",
+      "nameKey": "railway.tramo.orotina-ceiba",
+      "fromKm": 66.13,
+      "toKm": 76.26,
+      "scene": "orotina-agricola",
+      "level": null
+    },
+    {
+      "number": 7,
+      "id": "ceiba-salinas",
+      "nameKey": "railway.tramo.ceiba-salinas",
+      "fromKm": 76.26,
+      "toKm": 88.8,
+      "scene": "caldera-costa",
+      "level": null
+    },
+    {
+      "number": 8,
+      "id": "salinas-barranca",
+      "nameKey": "railway.tramo.salinas-barranca",
+      "fromKm": 88.8,
+      "toKm": 101.8,
+      "scene": "caldera-costa",
+      "level": null
+    },
+    {
+      "number": 9,
+      "id": "barranca-puntarenas",
+      "nameKey": "railway.tramo.barranca-puntarenas",
+      "fromKm": 101.8,
+      "toKm": 115.0,
+      "scene": "puntarenas-estero",
+      "level": null
+    }
+  ],
+  "_line": "LA LÍNEA ENTERA, de Pacífico a Puntarenas, para que el selector enseñe a dónde va la campaña y no sólo dónde está. Los nueve tramos y sus kilómetros son los de docs/research/pacific-railway/data/levels.proposed.json, medidos sobre el snapshot de OSM; `level` nombra el registro jugable cuando existe y es `null` mientras el tramo sea sólo propuesta. Un tramo sin nivel NO es un nivel apagado: es un trecho de vía que todavía no se ha construido, y el selector lo dice con esas palabras."
 }

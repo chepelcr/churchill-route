@@ -8,9 +8,11 @@
 // en el garaje y en la vía, y la validación del resultado dejó de ser un
 // contrato entre ventanas para ser una llamada a una función.
 //
-// Las cuatro pantallas son el bucle de Hill Climb: TRAMO → GARAJE → VIAJE →
-// RESULTADO, y del resultado se vuelve al garaje con las fichas que el viaje
-// pagó. Las fichas ferroviarias NO son la economía de las entregas de churchill
+// Las cinco pantallas son el bucle de Hill Climb: TRAMO → MÁQUINA → TALLER →
+// VIAJE → RESULTADO, y del resultado se vuelve al taller con las fichas que el
+// viaje pagó. Elegir máquina y mejorarla son DOS decisiones y por eso son dos
+// pantallas: seis trenes con su retrato no caben de paso en una columna del
+// taller, y mezclarlas obligaba a elegir con la mitad de la información. Las fichas ferroviarias NO son la economía de las entregas de churchill
 // y viven en su propia llave (`churchill.railway.v2`).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
@@ -37,6 +39,7 @@ export default function RailwayMode({ onBack }) {
   const t = useT();
   const [progress, setProgress] = useState(() => loadProgress(RAILWAY_CATALOG));
   const [phase, setPhase] = useState("levels");
+  const [pinned, setPinned] = useState(null);
   const [levelId, setLevelId] = useState(RAILWAY_CATALOG.campaign[0]);
   const [trainId, setTrainId] = useState(progress.train);
   const [game, setGame] = useState(null);
@@ -56,7 +59,6 @@ export default function RailwayMode({ onBack }) {
   const level = railwayLevel(levelId);
   const train = railwayTrain(trainId);
   const upgrades = progress.upgrades[trainId] || {};
-  const owned = progress.owned.includes(trainId);
   const stats = useMemo(() => trainStats(train, upgrades, RAILWAY_CATALOG), [train, upgrades]);
   const consist = useMemo(() => buildConsist(train, RAILWAY_ART), [train]);
   const ladders = RAILWAY_CATALOG.upgrades.ladders
@@ -83,10 +85,11 @@ export default function RailwayMode({ onBack }) {
     setPhase("results");
   }, [commit, economy, levelId]);
 
+  const BACK = { trains: "levels", garage: "trains", results: "levels" };
   const back = useCallback(() => {
     if (phase === "levels") { onBack(); return; }
     if (phase === "playing") { setPaused(true); return; }
-    setPhase("levels");
+    setPhase(BACK[phase] || "levels");
   }, [onBack, phase]);
 
   useEffect(() => {
@@ -99,12 +102,14 @@ export default function RailwayMode({ onBack }) {
     return () => window.removeEventListener("keydown", key);
   }, [back, phase]);
 
+  const BACK_KEY = { levels: "select.back", trains: "railway.backLevels",
+    garage: "railway.backTrains", results: "railway.backLevels" };
   const page = (title, pill, children) => (
     <div className="title-bg railway-page">
       <div className="title-shell shell-col">
         <div className="shell-nav">
           <button className="btn secondary" onClick={back}>
-            {t(phase === "levels" ? "select.back" : "railway.backLevels")}
+            {t(BACK_KEY[phase] || "railway.backLevels")}
           </button>
           <h1 className="title-main shell-title">{title}</h1>
           <span className="title-pill">{pill}</span>
@@ -116,23 +121,52 @@ export default function RailwayMode({ onBack }) {
 
   const coinPill = <span className="railway-coins">◈ {progress.coins}</span>;
 
+  const line = RAILWAY_CATALOG.line;
+  const owned = progress.owned.includes(trainId);
+
   const SLOTS = {
     levels: () => page(t("mode.pacific-railway"), t("railway.pill"), (
       <div className="railway-select">
         <div className="railway-level glass-card">
-          <ScenePreview consist={consist} onScene={setSceneId} />
-          <div className="railway-level-body">
-            <div className="railway-level-head">
-              <span className="railway-num">{String(level.number).padStart(2, "0")}</span>
-              <div>
-                <strong>{t(level.nameKey)}</strong>
-                <small>{t("railway.corridor", {
-                  from: level.corridor.fromKm.toFixed(0),
-                  to: level.corridor.toKm.toFixed(2),
-                })}</small>
-              </div>
+          <ScenePreview consist={consist} onScene={setSceneId} pinned={pinned} />
+          <div className="railway-line">
+            <div className="railway-line-head">
+              <p className="railway-kicker">{t("railway.line")}</p>
               {coinPill}
             </div>
+            <ul>
+              {line.map((row) => {
+                const playable = !!row.level;
+                const rec = playable
+                  ? (progress.levels[row.level] || { stars: 0, bestS: null })
+                  : null;
+                const on = playable && row.level === levelId;
+                return (
+                  <li key={row.id}>
+                    <button
+                      className={`railway-tramo${on ? " on" : ""}${playable ? "" : " soon"}`}
+                      aria-current={on || undefined}
+                      onClick={() => {
+                        sfx.play("menu_move");
+                        setPinned(row.scene);
+                        if (playable) setLevelId(row.level);
+                      }}
+                    >
+                      <span className="railway-num">{String(row.number).padStart(2, "0")}</span>
+                      <span className="railway-tramo-name">
+                        <strong>{t(row.nameKey)}</strong>
+                        <small>km {row.fromKm.toFixed(2)} – {row.toKm.toFixed(2)}</small>
+                      </span>
+                      {playable
+                        ? <b className="railway-tramo-stars">{stars(rec.stars)}</b>
+                        : <em className="railway-tramo-soon">{t("railway.soon")}</em>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <div className="railway-level-body">
             <p className="railway-brief">{t(level.briefKey)}</p>
             <ul className="railway-facts">
               <li><b>{stars(record.stars)}</b><span>{t("railway.stars")}</span></li>
@@ -146,18 +180,18 @@ export default function RailwayMode({ onBack }) {
               </p>
             )}
             {error && <p className="railway-error" role="alert">{error}</p>}
-            <button className="btn gold hero-play" onClick={() => { sfx.play("menu_select"); setPhase("garage"); }}>
+            <button className="btn gold hero-play" onClick={() => { sfx.play("menu_select"); setPhase("trains"); }}>
               {t("railway.toGarage")}
             </button>
-            <p className="railway-note">{t("railway.levelNote")}</p>
+            <p className="railway-note">{t("railway.soonNote")}</p>
           </div>
         </div>
       </div>
     )),
 
-    garage: () => page(t("railway.garage"), t("railway.garagePill"), (
-      <div className="railway-select railway-garage">
-        <div className="glass-card railway-garage-main">
+    trains: () => page(t("railway.trains"), t("railway.trainsPill"), (
+      <div className="railway-select">
+        <div className="glass-card railway-roster">
           <div className="railway-garage-head">
             <div>
               <p className="railway-kicker">{t("railway.pickTrain")}</p>
@@ -166,61 +200,34 @@ export default function RailwayMode({ onBack }) {
             </div>
             {coinPill}
           </div>
-          <TrainFigure consist={consist} />
-          <div className="railway-train-row">
+          <div className="railway-roster-grid">
             {RAILWAY_CATALOG.trains.map((option) => {
               const has = progress.owned.includes(option.id);
+              const picked = option.id === trainId;
               return (
                 <button
                   key={option.id}
-                  className={`railway-train-chip${option.id === trainId ? " on" : ""}${has ? "" : " locked"}`}
-                  aria-pressed={option.id === trainId}
+                  className={`railway-card${picked ? " on" : ""}${has ? "" : " locked"}`}
+                  aria-pressed={picked}
                   onClick={() => { sfx.play("menu_move"); setTrainId(option.id); }}
                 >
-                  <b>{t(option.nameKey)}</b>
-                  <small>{has ? t(option.fiche.yearKey) : `◈ ${option.price}`}</small>
+                  <TrainFigure consist={buildConsist(option, RAILWAY_ART)} rolling={picked} />
+                  <strong>{t(option.nameKey)}</strong>
+                  <small>{t(option.fiche.yearKey)}</small>
+                  <span className={has ? "railway-tag owned" : "railway-tag price"}>
+                    {has ? (progress.train === option.id ? t("railway.inUse") : t("railway.use"))
+                      : `◈ ${option.price}`}
+                  </span>
                 </button>
               );
             })}
           </div>
-          <p className="railway-fiche">{t(train.fiche.yearKey)}</p>
-        </div>
-
-        <div className="glass-card railway-upgrades">
-          <p className="railway-kicker">{t("railway.upgrades")}</p>
-          {ladders.map((ladder) => (
-            <div key={ladder.id} className="railway-ladder">
-              <div className="railway-ladder-head">
-                <b>{t(ladder.nameKey)}</b>
-                <span>{ladder.level}/{ladder.max}</span>
-              </div>
-              <div className="railway-pips">
-                {Array.from({ length: ladder.max }, (_, i) => (
-                  <span key={i} className={i < ladder.level ? "on" : ""} />
-                ))}
-              </div>
-              <small>{t(ladder.descKey)}</small>
-              <button
-                className="btn secondary railway-buy"
-                disabled={!owned || ladder.cost === null || progress.coins < ladder.cost}
-                onClick={() => {
-                  sfx.play("menu_select");
-                  commit(buyUpgrade(persist.current, trainId,
-                    RAILWAY_CATALOG.upgrades.ladders.find((l) => l.id === ladder.id), RAILWAY_CATALOG));
-                }}
-              >
-                {ladder.cost === null ? t("railway.maxed") : `◈ ${ladder.cost}`}
-              </button>
-            </div>
-          ))}
-          <dl className="railway-stats">
-            <div><dt>{t("railway.stat.pull")}</dt><dd>{stats.pullMax.toFixed(2)} m/s²</dd></div>
-            <div><dt>{t("railway.stat.top")}</dt><dd>{Math.round(stats.topSpeed * 3.6)} km/h</dd></div>
-            <div><dt>{t("railway.stat.brake")}</dt><dd>{stats.brake.toFixed(1)} m/s²</dd></div>
-            <div><dt>{t("railway.stat.tank")}</dt><dd>{Math.round(stats.tankL)} L</dd></div>
-          </dl>
           {owned ? (
-            <button className="btn gold hero-play" onClick={depart}>{t("railway.depart")}</button>
+            <button className="btn gold hero-play" onClick={() => {
+              sfx.play("menu_select");
+              commit({ ...persist.current, train: trainId });
+              setPhase("garage");
+            }}>{t("railway.toWorkshop")}</button>
           ) : (
             <button
               className="btn gold hero-play"
@@ -232,7 +239,62 @@ export default function RailwayMode({ onBack }) {
                 : t("railway.unlock", { n: train.price })}
             </button>
           )}
-          <p className="railway-note">{t("railway.fuelNote", { kind: t(`railway.fuel.${train.fuelKind}`) })}</p>
+          <p className="railway-note">{t(train.fiche.yearKey)} · {t("railway.fuelNote",
+            { kind: t(`railway.fuel.${train.fuelKind}`) })}</p>
+        </div>
+      </div>
+    )),
+
+    garage: () => page(t("railway.workshopTitle"), t(train.fiche.yearKey), (
+      <div className="railway-select railway-garage">
+        <div className="glass-card railway-garage-main">
+          <div className="railway-garage-head">
+            <div>
+              <p className="railway-kicker">{t(level.nameKey)}</p>
+              <strong>{t(train.nameKey)}</strong>
+              <small>{t(train.taglineKey)}</small>
+            </div>
+            {coinPill}
+          </div>
+          <TrainFigure consist={consist} />
+          <dl className="railway-stats">
+            <div><dt>{t("railway.stat.pull")}</dt><dd>{stats.pullMax.toFixed(2)} m/s²</dd></div>
+            <div><dt>{t("railway.stat.top")}</dt><dd>{Math.round(stats.topSpeed * 3.6)} km/h</dd></div>
+            <div><dt>{t("railway.stat.brake")}</dt><dd>{stats.brake.toFixed(1)} m/s²</dd></div>
+            <div><dt>{t("railway.stat.tank")}</dt><dd>{Math.round(stats.tankL)} L</dd></div>
+          </dl>
+          <button className="btn gold hero-play" onClick={depart}>{t("railway.depart")}</button>
+        </div>
+
+        <div className="glass-card railway-upgrades">
+          <p className="railway-kicker">{t("railway.upgrades")}</p>
+          {ladders.map((ladder) => (
+            <div key={ladder.id} className="railway-ladder">
+              <div className="railway-ladder-head">
+                <b>{t(ladder.nameKey)}</b>
+                <span>{ladder.level}/{ladder.cap}</span>
+              </div>
+              <div className="railway-pips">
+                {Array.from({ length: ladder.max }, (_, i) => (
+                  <span key={i} className={i < ladder.level ? "on" : i < ladder.cap ? "" : "capped"} />
+                ))}
+              </div>
+              <small>{ladder.cost === null ? t("railway.capped") : t(ladder.descKey)}</small>
+              <button
+                className="btn secondary railway-buy"
+                disabled={ladder.cost === null || progress.coins < ladder.cost}
+                onClick={() => {
+                  sfx.play("menu_select");
+                  commit(buyUpgrade(persist.current, trainId,
+                    RAILWAY_CATALOG.upgrades.ladders.find((l) => l.id === ladder.id), RAILWAY_CATALOG));
+                }}
+              >
+                {ladder.cost === null ? t("railway.maxed") : `◈ ${ladder.cost}`}
+              </button>
+            </div>
+          ))}
+          <p className="railway-note">{t("railway.fuelNote",
+            { kind: t(`railway.fuel.${train.fuelKind}`) })}</p>
         </div>
       </div>
     )),
@@ -308,6 +370,7 @@ export default function RailwayMode({ onBack }) {
 
   const ctx = {
     levels: phase === "levels",
+    trains: phase === "trains",
     garage: phase === "garage",
     playing: phase === "playing",
     results: phase === "results",

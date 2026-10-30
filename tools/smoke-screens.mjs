@@ -219,20 +219,30 @@ await page.goto(url, { waitUntil: "load" });
 await page.waitForTimeout(6200);
 await click(".modes .mode", 3);           // Tren al Puerto es la cuarta tarjeta
 await page.waitForTimeout(900);
-await seen(".railway-level .railway-num", 1, "railway.levels: el número del tramo");
 await seen(".railway-level canvas.railway-preview", 1, "railway.levels: el paisaje en vivo");
+await seen(".railway-line .railway-tramo", 9, "railway.levels: los nueve tramos de la línea");
+await seen(".railway-line .railway-tramo.soon", 8, "railway.levels: los ocho que esperan su arte");
 await seen(".railway-facts li", 4, "railway.levels: las fichas del tramo");
 report.push("railway.levels");
 
 await click(".railway-level-body .btn.gold");
 await page.waitForTimeout(600);
+await seen(".railway-roster-grid .railway-card", 6, "railway.trains: las seis máquinas");
+await seen(".railway-roster-grid canvas.railway-figure", 6, "railway.trains: los seis retratos");
+report.push("railway.trains");
+
+await click(".railway-roster .btn.gold");
+await page.waitForTimeout(600);
 await seen(".railway-garage canvas.railway-figure", 1, "railway.garage: el retrato del convoy");
-await seen(".railway-train-row .railway-train-chip", 3, "railway.garage: las tres máquinas");
 await seen(".railway-upgrades .railway-ladder", 4, "railway.garage: las cuatro barras");
-await seen(".railway-upgrades .railway-stats > div", 4, "railway.garage: la ficha técnica");
+await seen(".railway-garage-main .railway-stats > div", 4, "railway.garage: la ficha técnica");
+// EL TOPE SE VE EN LA BARRA. La máquina de salida llega a 2 de 5 en velocidad,
+// así que tiene que haber casillas apagadas: si no las hay, `caps` no llegó al
+// dibujo y las seis máquinas vuelven a converger en la misma.
+await seen(".railway-upgrades .railway-pips span.capped", 1, "railway.garage: el tope de la máquina");
 report.push("railway.garage");
 
-await click(".railway-upgrades .btn.gold");
+await click(".railway-garage-main .btn.gold");
 await page.waitForTimeout(900);
 await seen(".railway-stage canvas.railway-canvas", 1, "railway.playing: el lienzo");
 await seen(".railway-pedals .railway-pedal", 2, "railway.playing: los dos pedales");

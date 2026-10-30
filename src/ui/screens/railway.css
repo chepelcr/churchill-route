@@ -26,6 +26,44 @@
 .railway-num{font-family:'Bungee',sans-serif;font-size:clamp(26px,4vw,40px);color:var(--gold);letter-spacing:.02em}
 .railway-coins{background:#0003;border:1px solid #ffffff22;border-radius:999px;padding:6px 14px;
   font-weight:700;color:var(--gold);white-space:nowrap}
+/* LA LÍNEA, EN VERTICAL Y ARRIBA. Los nueve tramos de Pacífico a Puntarenas:
+ * el jugable y los ocho que esperan su arte. Una sola tarjeta de tramo no
+ * enseñaba a dónde va la campaña, y la lista cabe porque un tramo es una fila. */
+.railway-line{padding:14px 18px 2px}
+.railway-line-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.railway-line ul{list-style:none;margin:8px 0 0;padding:0;max-height:min(40vh,300px);
+  overflow-y:auto;scrollbar-width:thin}
+.railway-tramo{display:flex;align-items:center;gap:12px;width:100%;padding:7px 10px;
+  border:1px solid transparent;border-radius:11px;background:none;color:inherit;
+  cursor:pointer;text-align:left;transition:background .14s,border-color .14s}
+.railway-tramo:hover{background:#ffffff0d}
+.railway-tramo.on{background:#ffd16a14;border-color:var(--gold)}
+.railway-tramo.soon{opacity:.62}
+.railway-tramo .railway-num{font-size:clamp(16px,2vw,22px);min-width:2.1em}
+.railway-tramo-name{flex:1;min-width:0}
+.railway-tramo-name strong{display:block;font-size:14px;line-height:1.2}
+.railway-tramo-name small{display:block;font-size:10.5px;opacity:.6;letter-spacing:.03em}
+.railway-tramo-stars{color:var(--gold);letter-spacing:.08em;font-size:13px}
+.railway-tramo-soon{font-style:normal;font-size:9px;letter-spacing:.12em;opacity:.7;
+  border:1px solid #ffffff2a;border-radius:999px;padding:3px 9px;white-space:nowrap}
+
+/* ---- la cochera: seis retratos ---------------------------------------- */
+.railway-roster{padding:18px 20px}
+.railway-roster-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+  margin:12px 0 16px}
+.railway-card{background:#ffffff0d;border:1px solid #ffffff1f;border-radius:14px;padding:10px 8px;
+  color:inherit;cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.railway-card:hover{background:#ffffff14}
+.railway-card.on{border-color:var(--gold);background:#ffd16a14}
+.railway-card .railway-figure{height:clamp(56px,9vh,86px);margin:0 0 6px}
+.railway-card strong{display:block;font-size:13px;line-height:1.2}
+.railway-card small{display:block;font-size:10px;opacity:.58;margin-top:2px}
+.railway-tag{display:inline-block;margin-top:7px;font-size:10px;letter-spacing:.07em;
+  border-radius:999px;padding:3px 10px}
+.railway-tag.owned{background:#8fd6a01f;color:#9fe0b6;border:1px solid #8fd6a044}
+.railway-tag.price{background:#ffd16a1a;color:var(--gold);border:1px solid #ffd16a44}
+.railway-card.locked .railway-figure{opacity:.5}
+
 .railway-brief{margin:0 0 14px;opacity:.86;line-height:1.5;max-width:62ch}
 .railway-facts{list-style:none;display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px;padding:0}
 .railway-facts li{background:#ffffff0f;border:1px solid #ffffff1a;border-radius:10px;
@@ -67,6 +105,10 @@
 .railway-pips{grid-column:1;display:flex;gap:4px}
 .railway-pips span{flex:1;height:7px;border-radius:3px;background:#ffffff1c}
 .railway-pips span.on{background:linear-gradient(90deg,var(--gold),#ffe9a8)}
+/* Las casillas por encima del TOPE DE ESTA MÁQUINA se dibujan apagadas y
+ * rayadas: «hasta acá llega ésta» se lee mejor en la barra que en un rótulo. */
+.railway-pips span.capped{background:repeating-linear-gradient(135deg,#ffffff14 0 3px,#0000 3px 6px);
+  box-shadow:inset 0 0 0 1px #ffffff14}
 .railway-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:14px 0;padding:12px 0;
   border-top:1px solid #ffffff14;border-bottom:1px solid #ffffff14}
 .railway-stats>div{display:flex;justify-content:space-between;gap:8px;font-size:12px}

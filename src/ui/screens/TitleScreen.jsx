@@ -1,25 +1,42 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useMenuNav } from "../useMenuNav.js";
 import { sfx } from "../../game/audio.js";
+import { tutorialDone } from "../../game/tutorial.js";
+import { economy } from "../../game/economy.js";
+import { needsIosFullscreenHint, dismissIosFullscreenHint } from "../immersive.js";
+import { useT } from "../../i18n/index.js";
+import CoinIcon from "../CoinIcon.jsx";
+import Icon from "../Icon.jsx";
+import Slots from "../Slots.jsx";
+import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
 
 // Hide the APK download in the native app (only offer it on the web).
 const IS_NATIVE = typeof window !== "undefined" && !!window.Capacitor;
 
-export const MODE_CARDS = [
-  { id: "story",   name: "Historia",  swatch: "#ffe06b", tag: "7 niveles, de El Faro hasta el puerto de Caldera." },
-  { id: "explore", name: "Recorrer",  swatch: "#6fbf99", tag: "Mundo abierto. Completá niveles para abrir nuevos distritos." },
-  { id: "arcade",  name: "Arcade",    swatch: "#ff3d80", tag: "3 minutos, península libre, combo a tope." },
+// The swatch is the mode's accent, and each of these three was an exact
+// duplicate of a theme token (`--amber`, `--mint`, `--rose`) written out again
+// — the styles.css sweep took the stylesheet and never looked at the inline
+// styles in the JSX. An icon's internal fills stay in the icon, because those
+// are one drawing's own recipe; a mode's accent is the theme's.
+const MODE_IDS = [
+  { id: "story",    swatch: "var(--amber)" },
+  { id: "explore",  swatch: "var(--mint)" },
+  { id: "arcade",   swatch: "var(--rose)" },
+  { id: "pacific-railway", swatch: "var(--mint)" },
 ];
 
-export default function TitleScreen({ onPickMode }) {
+export default function TitleScreen({ editorConfig, onPickMode, onRailway, onSettings, onSupporters, onShop }) {
+  const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [info, setInfo] = useState(false);
+  const [iosHint, setIosHint] = useState(needsIosFullscreenHint());
   const infoRef = useRef(null);
-  const pick = (id) => { sfx.play("menu_select"); onPickMode(id); };
+  const firstRun = !tutorialDone();
+  const pick = (id) => { sfx.play("menu_select"); if(id === "pacific-railway")onRailway();else onPickMode(id); };
   const [idx, setIdx] = useMenuNav({
-    count: MODE_CARDS.length,
-    cols: MODE_CARDS.length,
-    onSelect: (i) => pick(MODE_CARDS[i].id),
+    count: MODE_IDS.length,
+    cols: 2,
+    onSelect: (i) => pick(MODE_IDS[i].id),
   });
 
   // close the info bubble on any click/tap outside it
@@ -30,62 +47,95 @@ export default function TitleScreen({ onPickMode }) {
     return () => document.removeEventListener("pointerdown", onDown);
   }, [info]);
 
+  const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
+  // The blocks this screen can show — `src/ui/screens.json` decides which of
+  // them appear and in what order. The tools row stays in the shell below
+  // because it is the card's chrome, not a block of the page.
+  const SLOTS = {
+    wordmark: () => <>
+      <h1 className="title-main">{editorConfig?.title || t("title.main")}</h1>
+      <div className="title-sub">{editorConfig?.subtitle || t("title.sub")}</div>
+    </>,
+    iosHint: () => (
+      <div className="ios-hint">
+        <span><Icon name="phone" size={14} /> {t("ios.hint")}</span>
+        <button className="tool-pill" aria-label="✕"
+          onClick={() => { dismissIosFullscreenHint(); setIosHint(false); }}>✕</button>
+      </div>
+    ),
+    modes: () => (
+      <div className="modes" style={{ gridTemplateColumns: "repeat(2, 1fr)", maxWidth: 760, margin: "16px auto" }}>
+        {MODE_IDS.map((m, i) => (
+          <button key={m.id}
+            className={"mode" + (idx === i ? " focused" : "")}
+            onMouseEnter={() => setIdx(i)} onClick={() => pick(m.id)}>
+            <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{t(`mode.${m.id}`)}</div>
+            <div className="ms">{t(`mode.${m.id}.tag`)}</div>
+          </button>
+        ))}
+      </div>
+    ),
+    apk: () => (
+      <a className="apk-btn" href="/churchill.apk" download>
+        <span aria-hidden="true">↓</span> {t("title.apk")}
+      </a>
+    ),
+    controlsHint: () => (
+      <div className="controls-hint">
+        {coarse ? (
+          <span>{t("title.hint.touch")}</span>
+        ) : (
+          <>
+            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> {t("title.hint.drive")}</span>
+            <span><kbd>Space</kbd> {t("title.hint.drift")}</span>
+            <span><kbd>X</kbd> {t("title.hint.turbo")}</span>
+            <span><kbd>P</kbd> {t("title.hint.pause")}</span>
+            <span>{t("title.hint.pad")}</span>
+          </>
+        )}
+      </div>
+    ),
+  };
+  // Negations and compounds are KEYS, never expressions — `Slots` cannot parse
+  // one, deliberately.
+  const ctx = {
+    showIosHint: !!iosHint,
+    canDownloadApk: !IS_NATIVE,
+    hasKeyboard: true,
+  };
+  const slot = (region) => <Slots screen={UI_SCREEN.TITLE} region={region} ctx={ctx} slots={SLOTS} />;
+
   return (
-    <div className="title-bg">
-      <div className="title-shell">
-        <div className="title-card">
-          <span className="title-pill"><span className="dot"></span>PUNTARENAS · COSTA RICA · ARCADE 2026</span>
-          <div className="title-tools">
-            <div className="info-wrap" ref={infoRef}>
-              <button className="tool-pill" onClick={() => { sfx.play("menu_move"); setInfo((v) => !v); }}
-                aria-label="Cómo se juega" aria-expanded={info}>{info ? "✕" : "ⓘ"}</button>
-              {info && (
-                <div className="info-bubble" role="dialog" aria-label="Cómo se juega">
-                  <div className="info-bubble-title">CÓMO SE JUEGA</div>
-                  <p>
-                    Sos repartidor de Churchills en El Puerto. Recogé en el kiosco rojo y blanco del{" "}
-                    <em>Paseo de los Turistas</em> y llegá al cliente antes que el hielo se derrita. Hacé drift,
-                    esquivá gaviotas y atravesá Carmen, el Mercado y Las Playitas hasta Mata de Limón.
-                  </p>
-                </div>
-              )}
-            </div>
-            <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
-              aria-label={muted ? "Activar sonido" : "Silenciar"}>{muted ? "🔇" : "🔊"}</button>
-          </div>
-          <h1 className="title-main">LA RUTA DEL CHURCHILL</h1>
-          <div className="title-sub">¡PURA VIDA!</div>
-
-          <div className="modes" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: 760, margin: "16px auto" }}>
-            {MODE_CARDS.map((m, i) => (
-              <button key={m.id} className={"mode" + (idx === i ? " focused" : "")}
-                onMouseEnter={() => setIdx(i)} onClick={() => pick(m.id)}>
-                <div className="mt"><span className="sw" style={{ background: m.swatch }}></span>{m.name}</div>
-                <div className="ms">{m.tag}</div>
-              </button>
-            ))}
-          </div>
-
-          {!IS_NATIVE && (
-            <a className="apk-btn" href="/churchill.apk" download>
-              <span aria-hidden="true">⬇</span> Descargar para Android
-            </a>
-          )}
-
-          <div className="controls-hint">
-            {typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches ? (
-              <span>Mantené el dedo donde querés ir · ✋ drift · ⚡ turbo</span>
-            ) : (
-              <>
-                <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> manejar</span>
-                <span><kbd>Space</kbd> drift</span>
-                <span><kbd>X</kbd> turbo</span>
-                <span><kbd>P</kbd> pausa</span>
-                <span>controller / touch OK</span>
-              </>
-            )}
-          </div>
+    <div className="page-card title-page">
+      <div className="page-head">
+        <span className="title-pill"><span className="dot"></span>{t("title.pill")}</span>
+        <div className="title-tools">
+              <div className="info-wrap" ref={infoRef}>
+                <button className="tool-pill" onClick={() => { sfx.play("menu_move"); setInfo((v) => !v); }}
+                  aria-label={t("title.how.title")} aria-expanded={info}>{info ? "✕" : "ⓘ"}</button>
+                {info && (
+                  <div className="info-bubble" role="dialog" aria-label={t("title.how.title")}>
+                    <div className="info-bubble-title">{t("title.how.title")}</div>
+                    <p>{t("title.how.body")}</p>
+                  </div>
+                )}
+              </div>
+              <button className={"tool-pill" + (firstRun ? " pulse" : "")}
+                onClick={() => pick("tutorial")} aria-label={t("mode.tutorial")}><Icon name="cap" /></button>
+              <button className="tool-pill coin-tool" onClick={() => { sfx.play("menu_move"); onShop(); }}
+                aria-label={t("shop.title")}><Icon name="cart" /> <CoinIcon size={14} /> {economy.coins.toLocaleString()}</button>
+              <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSupporters(); }}
+                aria-label={t("sup.title")}><Icon name="heart" /></button>
+              <button className="tool-pill" onClick={() => { sfx.play("menu_move"); onSettings(); }}
+                aria-label={t("settings.title")}><Icon name="gear" /></button>
+          <button className="tool-pill" onClick={() => setMuted(sfx.toggleMuted())}
+            aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} /></button>
         </div>
+      </div>
+      <div className="page-body">
+          {slot("main")}
+          {slot("footer")}
       </div>
     </div>
   );

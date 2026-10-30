@@ -1,0 +1,7037 @@
+{
+  "_note": "EL ARTE DEL TREN, DIBUJADO DESDE DATOS. Ni un PNG: cada máquina, cada estación y cada paisaje es una lista de partes que interpreta `c2d/shapes.js` —el mismo intérprete que pinta la ciudad— así que el modo tren hereda el grano, la sombra solar y las hojas de arte de la casa, y reteñir una locomotora cuesta una recarga y no un exportador.",
+  "version": 1,
+  "units": "metres",
+  "_frame": "MARCO DEL MATERIAL RODANTE: el origen es el CENTRO del coche a la altura del hongo del riel. +x es el sentido de marcha (la locomotora mira a +x), -y es arriba. Todo en METROS: la escala la pone `railway-sim.json → view.pxPerM` en un solo sitio, así que el mismo dibujo sirve para el juego, para la ficha del garaje y para la hoja de arte.",
+  "_wheels": "LAS RUEDAS NO SON PARTES. Giran con la distancia recorrida y los bielas con el ángulo de la manivela: geometría DERIVADA, que es lo que esta casa deja en el motor. Cada registro declara DÓNDE y DE QUÉ TAMAÑO están (`wheels`) y el pintor las hace rodar.",
+  "stock": {
+    "maria-cecilia": {
+      "nameKey": "railway.train.maria-cecilia",
+      "lengthM": 11.4,
+      "heightM": 5.0,
+      "palette": {
+        "outline": "#141619",
+        "boiler": "#2b3138",
+        "boilerLite": "#454e58",
+        "boilerTop": "#5b6672",
+        "smokebox": "#1b1f24",
+        "brass": "#d7ac4f",
+        "brassLite": "#f2d184",
+        "iron": "#5d656e",
+        "ironLite": "#858f9a",
+        "wood": "#8a5529",
+        "woodLite": "#b07a42",
+        "woodDark": "#5f3618",
+        "roof": "#232830",
+        "trim": "#c04434",
+        "glass": "#aed4dd",
+        "glassLite": "#dcf0f3",
+        "ink": "#f3ece0",
+        "wheel": "#2b3036",
+        "tyre": "#99a1aa",
+        "hub": "#d7ac4f",
+        "rod": "#7b848e"
+      },
+      "wheels": [
+        {
+          "x": -1.9,
+          "r": 0.82,
+          "rod": true
+        },
+        {
+          "x": 0.3,
+          "r": 0.82,
+          "rod": true,
+          "crank": true
+        },
+        {
+          "x": 2.5,
+          "r": 0.82,
+          "rod": true
+        },
+        {
+          "x": 4.4,
+          "r": 0.46
+        }
+      ],
+      "stackM": {
+        "x": 4.1,
+        "y": -4.5
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -5.89,
+          "y": -4.79,
+          "w": 3.84,
+          "h": 3.54,
+          "r": 0.67,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -2.87,
+          "y": -3.4699999999999998,
+          "w": 7.4399999999999995,
+          "h": 2.29,
+          "r": 1.1199999999999999,
+          "fill": "$outline"
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              3.52,
+              -3.3
+            ],
+            [
+              4.84,
+              -3.3
+            ],
+            [
+              5.02,
+              -4.74
+            ],
+            [
+              3.3,
+              -4.74
+            ]
+          ],
+          "fill": "$outline"
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              4.62,
+              -1.98
+            ],
+            [
+              5.95,
+              -0.02
+            ],
+            [
+              4.62,
+              -0.02
+            ]
+          ],
+          "fill": "$outline"
+        },
+        {
+          "shape": "fan",
+          "pts": [
+            [
+              4.76,
+              -1.8
+            ],
+            [
+              5.8,
+              -0.04
+            ],
+            [
+              4.76,
+              -0.04
+            ]
+          ],
+          "fill": "$ironLite"
+        },
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                4.84,
+                -1.6
+              ],
+              [
+                5.56,
+                -0.14
+              ]
+            ],
+            [
+              [
+                5.0,
+                -1.64
+              ],
+              [
+                5.68,
+                -0.44
+              ]
+            ],
+            [
+              [
+                4.78,
+                -1.08
+              ],
+              [
+                5.34,
+                -0.08
+              ]
+            ]
+          ],
+          "stroke": "$iron",
+          "width": 0.1
+        },
+        {
+          "shape": "roundRect",
+          "x": 4.6,
+          "y": -2.0,
+          "w": 0.42,
+          "h": 0.94,
+          "r": 0.14,
+          "fill": "$trim"
+        },
+        {
+          "shape": "roundRect",
+          "x": -5.0,
+          "y": -1.54,
+          "w": 10.0,
+          "h": 0.38,
+          "r": 0.18,
+          "fill": "$iron"
+        },
+        {
+          "shape": "roundRect",
+          "x": -2.5,
+          "y": -3.14,
+          "w": 6.7,
+          "h": 1.66,
+          "r": 0.8,
+          "fill": "$boiler"
+        },
+        {
+          "shape": "roundRect",
+          "x": -2.38,
+          "y": -3.06,
+          "w": 6.46,
+          "h": 0.49799999999999994,
+          "r": 0.48,
+          "fill": "#ffffff30"
+        },
+        {
+          "shape": "roundRect",
+          "x": -2.4,
+          "y": -2.1108000000000002,
+          "w": 6.5,
+          "h": 0.5508000000000001,
+          "r": 0.5599999999999999,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "fit",
+          "length": 5.6,
+          "pitch": 1.9,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -1.8,
+              "y": -3.1,
+              "w": 0.16,
+              "h": 1.58,
+              "r": 0.07,
+              "fill": "$brass"
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -2.6,
+          "y": -1.72,
+          "w": 7.3,
+          "h": 0.24,
+          "r": 0.1,
+          "fill": "$ironLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": 4.0,
+          "y": -3.32,
+          "w": 1.16,
+          "h": 2.0,
+          "r": 0.62,
+          "fill": "$smokebox"
+        },
+        {
+          "shape": "roundRect",
+          "x": 4.9,
+          "y": -3.2,
+          "w": 0.3,
+          "h": 1.76,
+          "r": 0.14,
+          "fill": "$iron"
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              3.7,
+              -3.2
+            ],
+            [
+              4.66,
+              -3.2
+            ],
+            [
+              4.84,
+              -4.5
+            ],
+            [
+              3.52,
+              -4.5
+            ]
+          ],
+          "fill": "$smokebox"
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.3,
+          "y": -4.84,
+          "w": 1.76,
+          "h": 0.42,
+          "r": 0.2,
+          "fill": "$iron"
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.4,
+          "y": -4.8,
+          "w": 1.56,
+          "h": 0.14,
+          "r": 0.07,
+          "fill": "$ironLite"
+        },
+        {
+          "shape": "arc",
+          "cx": 1.1,
+          "cy": -3.12,
+          "r": 0.62,
+          "start": 0.5,
+          "end": 1,
+          "fill": "$brass"
+        },
+        {
+          "shape": "arc",
+          "cx": 1.1,
+          "cy": -3.26,
+          "r": 0.36,
+          "start": 0.5,
+          "end": 1,
+          "fill": "$brassLite"
+        },
+        {
+          "shape": "arc",
+          "cx": 2.72,
+          "cy": -3.12,
+          "r": 0.5,
+          "start": 0.5,
+          "end": 1,
+          "fill": "$boilerTop"
+        },
+        {
+          "shape": "arc",
+          "cx": 2.1,
+          "cy": -3.18,
+          "r": 0.22,
+          "start": 0.5,
+          "end": 1,
+          "fill": "$brassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.72,
+          "y": -4.42,
+          "w": 1.0,
+          "h": 0.88,
+          "r": 0.2,
+          "fill": "$brass"
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.82,
+          "y": -4.34,
+          "w": 0.8,
+          "h": 0.2,
+          "r": 0.1,
+          "fill": "$brassLite"
+        },
+        {
+          "shape": "disc",
+          "cx": 4.22,
+          "cy": -3.98,
+          "r": 0.29,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -5.6,
+          "y": -4.5,
+          "w": 3.3,
+          "h": 3.0,
+          "r": 0.4,
+          "fill": "$wood"
+        },
+        {
+          "shape": "fit",
+          "length": 2.9,
+          "pitch": 0.48,
+          "parts": [
+            {
+              "shape": "rect",
+              "x": -5.45,
+              "y": -4.3,
+              "w": 0.07,
+              "h": 2.7,
+              "fill": "$woodDark"
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -5.5,
+          "y": -2.64,
+          "w": 3.0999999999999996,
+          "h": 1.06,
+          "r": 0.27999999999999997,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "roundRect",
+          "x": -5.6,
+          "y": -2.6,
+          "w": 3.3,
+          "h": 0.22,
+          "r": 0.1,
+          "fill": "$woodLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -4.5,
+          "y": -4.22,
+          "w": 1.3,
+          "h": 1.12,
+          "r": 0.22,
+          "fill": "$glass"
+        },
+        {
+          "shape": "roundRect",
+          "x": -4.5,
+          "y": -4.22,
+          "w": 1.3,
+          "h": 0.34,
+          "r": 0.16,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -5.42,
+          "y": -4.22,
+          "w": 0.78,
+          "h": 1.12,
+          "r": 0.2,
+          "fill": "$glass"
+        },
+        {
+          "shape": "repeat",
+          "n": 1,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -4.12,
+              "y": -3.54,
+              "w": 0.68,
+              "h": 0.62,
+              "r": 0.26,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "disc",
+              "cx": -3.78,
+              "cy": -3.7199999999999998,
+              "r": 0.27,
+              "fill": "#c99069"
+            },
+            {
+              "shape": "arc",
+              "cx": -3.78,
+              "cy": -3.78,
+              "r": 0.3,
+              "start": 0.5,
+              "end": 1,
+              "fill": "$trim"
+            }
+          ],
+          "bob": {
+            "speed": 0.55,
+            "amp": 0.07
+          },
+          "phase": 0.1
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.02,
+          "y": -4.86,
+          "w": 4.1,
+          "h": 0.42,
+          "r": 0.2,
+          "fill": "$roof"
+        },
+        {
+          "shape": "roundRect",
+          "x": -5.92,
+          "y": -4.82,
+          "w": 3.9,
+          "h": 0.16,
+          "r": 0.08,
+          "fill": "$trim"
+        },
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                -2.2,
+                -4.56
+              ],
+              [
+                1.45,
+                -4.56
+              ]
+            ],
+            [
+              [
+                -2.32,
+                -4.58
+              ],
+              [
+                -2.32,
+                -3.1
+              ]
+            ],
+            [
+              [
+                1.45,
+                -4.58
+              ],
+              [
+                1.45,
+                -3.1
+              ]
+            ]
+          ],
+          "stroke": "$iron",
+          "width": 0.12
+        },
+        {
+          "shape": "arc",
+          "cx": 1.95,
+          "cy": -3.56,
+          "r": 0.24,
+          "start": 0.5,
+          "end": 1,
+          "fill": "$brassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -2.05,
+          "y": -2.3,
+          "w": 1.3,
+          "h": 0.78,
+          "r": 0.16,
+          "fill": "$iron"
+        },
+        {
+          "shape": "text",
+          "x": -3.9,
+          "y": -2.96,
+          "text": "1",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Bungee', 'Space Grotesk', sans-serif"
+          },
+          "fill": "$ink",
+          "upright": false
+        }
+      ],
+      "fonts": {
+        "plate": 0.62
+      }
+    },
+    "tender-lena": {
+      "lengthM": 6.8,
+      "heightM": 3.4,
+      "palette": {
+        "outline": "#2a1708",
+        "body": "#6d4421",
+        "bodyLite": "#8d5c2c",
+        "bodyDark": "#4a2c12",
+        "iron": "#5d656e",
+        "log": "#9a6c3c",
+        "logEnd": "#c49a62",
+        "logDark": "#714c27",
+        "wheel": "#33383e",
+        "tyre": "#9aa1a9",
+        "hub": "#c0a479",
+        "rod": "#5a6168"
+      },
+      "wheels": [
+        {
+          "x": -2.0,
+          "r": 0.5
+        },
+        {
+          "x": -0.7,
+          "r": 0.5
+        },
+        {
+          "x": 0.7,
+          "r": 0.5
+        },
+        {
+          "x": 2.0,
+          "r": 0.5
+        }
+      ],
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -3.4699999999999998,
+          "y": -3.27,
+          "w": 6.9399999999999995,
+          "h": 2.0,
+          "r": 0.51,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -3.1,
+          "y": -1.58,
+          "w": 6.2,
+          "h": 0.34,
+          "r": 0.16,
+          "fill": "$iron"
+        },
+        {
+          "shape": "roundRect",
+          "x": -3.3,
+          "y": -3.1,
+          "w": 6.6,
+          "h": 1.66,
+          "r": 0.34,
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": -3.3,
+          "y": -3.06,
+          "w": 6.6,
+          "h": 0.24,
+          "r": 0.12,
+          "fill": "$bodyLite"
+        },
+        {
+          "shape": "fit",
+          "length": 6.3,
+          "pitch": 0.54,
+          "parts": [
+            {
+              "shape": "rect",
+              "x": -3.15,
+              "y": -3.0,
+              "w": 0.07,
+              "h": 1.5,
+              "fill": "$bodyDark"
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -3.1999999999999997,
+          "y": -2.0376000000000003,
+          "w": 6.3999999999999995,
+          "h": 0.5176,
+          "r": 0.238,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "scatter",
+          "cx": 0,
+          "cy": -3.3,
+          "rx": 2.5,
+          "ry": 0.26,
+          "n": 13,
+          "seed": 7,
+          "scaleMin": 0.8,
+          "scaleRange": 0.45,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -0.54,
+              "y": -0.24,
+              "w": 1.08,
+              "h": 0.48,
+              "r": 0.24,
+              "fill": "$log"
+            },
+            {
+              "shape": "disc",
+              "cx": 0.46,
+              "cy": 0,
+              "r": 0.21,
+              "fill": "$logEnd"
+            },
+            {
+              "shape": "arc",
+              "cx": 0.46,
+              "cy": 0,
+              "r": 0.12,
+              "start": 0,
+              "end": 1,
+              "fill": "$logDark"
+            }
+          ]
+        }
+      ]
+    },
+    "coach-wood": {
+      "lengthM": 12.2,
+      "heightM": 4.1,
+      "palette": {
+        "outline": "#10261c",
+        "body": "#2f6b4f",
+        "bodyLite": "#438c66",
+        "bodyDark": "#1c4532",
+        "cream": "#f2e6c4",
+        "roof": "#9a978d",
+        "roofDark": "#767369",
+        "iron": "#4a4f55",
+        "glass": "#9ec6d4",
+        "glassLite": "#cfe6ea",
+        "wheel": "#2f343a",
+        "tyre": "#878e96",
+        "hub": "#b7bcc2",
+        "rod": "#555c64",
+        "rider1": "#c8503f",
+        "rider2": "#3f7fb0",
+        "rider3": "#d9a93f",
+        "rider4": "#5d9e6a",
+        "skin1": "#cf9a6f",
+        "skin2": "#a9714a"
+      },
+      "wheels": [
+        {
+          "x": -4.2,
+          "r": 0.5
+        },
+        {
+          "x": -2.9,
+          "r": 0.5
+        },
+        {
+          "x": 2.9,
+          "r": 0.5
+        },
+        {
+          "x": 4.2,
+          "r": 0.5
+        }
+      ],
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -6.27,
+          "y": -3.61,
+          "w": 12.54,
+          "h": 2.34,
+          "r": 0.59,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.3,
+          "y": -4.06,
+          "w": 12.6,
+          "h": 0.76,
+          "r": 0.36,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -5.9,
+          "y": -1.56,
+          "w": 11.8,
+          "h": 0.32,
+          "r": 0.15,
+          "fill": "$iron"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.1,
+          "y": -3.44,
+          "w": 12.2,
+          "h": 2.0,
+          "r": 0.42,
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": -5.9799999999999995,
+          "y": -3.36,
+          "w": 11.959999999999999,
+          "h": 0.56,
+          "r": 0.252,
+          "fill": "#ffffff30"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.1,
+          "y": -2.5,
+          "w": 12.2,
+          "h": 0.3,
+          "r": 0.14,
+          "fill": "$cream"
+        },
+        {
+          "shape": "fit",
+          "length": 11.0,
+          "pitch": 1.42,
+          "gap": 0.5,
+          "bob": {
+            "speed": 0.5,
+            "amp": 0.045
+          },
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -5.94,
+              "y": -3.24,
+              "w": 0.88,
+              "h": 0.86,
+              "r": 0.18,
+              "fill": "$glass"
+            },
+            {
+              "shape": "roundRect",
+              "x": -5.94,
+              "y": -3.24,
+              "w": 0.88,
+              "h": 0.258,
+              "r": 0.144,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "roundRect",
+              "x": -5.764,
+              "y": -2.724,
+              "w": 0.528,
+              "h": 0.36119999999999997,
+              "r": 0.1936,
+              "fill": [
+                "$rider1",
+                "$rider2",
+                "$rider3",
+                "$rider4"
+              ]
+            },
+            {
+              "shape": "disc",
+              "cx": -5.5,
+              "cy": -2.7928,
+              "r": 0.1634,
+              "fill": [
+                "$skin1",
+                "$skin2"
+              ]
+            },
+            {
+              "shape": "strokeRect",
+              "x": -5.94,
+              "y": -3.24,
+              "w": 0.88,
+              "h": 0.86,
+              "stroke": "$bodyDark",
+              "width": 0.08
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.0,
+          "y": -2.16,
+          "w": 12.0,
+          "h": 0.64,
+          "r": 0.294,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.22,
+          "y": -3.84,
+          "w": 12.44,
+          "h": 0.46,
+          "r": 0.22,
+          "fill": "$roof"
+        },
+        {
+          "shape": "roundRect",
+          "x": -4.4,
+          "y": -4.1,
+          "w": 8.8,
+          "h": 0.38,
+          "r": 0.18,
+          "fill": "$roofDark"
+        },
+        {
+          "shape": "fit",
+          "length": 8.2,
+          "pitch": 1.1,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -4.3,
+              "y": -4.04,
+              "w": 0.42,
+              "h": 0.24,
+              "r": 0.1,
+              "fill": "$glassLite"
+            }
+          ]
+        }
+      ]
+    },
+    "siemens-130": {
+      "nameKey": "railway.train.siemens-130",
+      "lengthM": 14.6,
+      "heightM": 4.5,
+      "palette": {
+        "outline": "#2a1f08",
+        "body": "#e8a921",
+        "bodyLite": "#f7c552",
+        "bodyDark": "#a8731a",
+        "band": "#b93a2c",
+        "roof": "#4e545b",
+        "skirt": "#24282d",
+        "iron": "#3c4046",
+        "glass": "#9ec6d4",
+        "glassLite": "#cfe6ea",
+        "louver": "#c08f1e",
+        "ink": "#2a2206",
+        "wheel": "#2a2e33",
+        "tyre": "#8c939b",
+        "hub": "#e8a921",
+        "rod": "#555c64"
+      },
+      "wheels": [
+        {
+          "x": -5.3,
+          "r": 0.56
+        },
+        {
+          "x": -3.9,
+          "r": 0.56
+        },
+        {
+          "x": 3.9,
+          "r": 0.56
+        },
+        {
+          "x": 5.3,
+          "r": 0.56
+        }
+      ],
+      "stackM": {
+        "x": -1.2,
+        "y": -4.3
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -7.47,
+          "y": -4.47,
+          "w": 14.94,
+          "h": 3.38,
+          "r": 0.51,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.9,
+          "y": -1.72,
+          "w": 13.8,
+          "h": 0.5,
+          "r": 0.2,
+          "fill": "$skirt"
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              -7.3,
+              -1.26
+            ],
+            [
+              7.3,
+              -1.26
+            ],
+            [
+              7.3,
+              -4.3
+            ],
+            [
+              1.4,
+              -4.3
+            ],
+            [
+              1.0,
+              -3.86
+            ],
+            [
+              -7.3,
+              -3.86
+            ]
+          ],
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": -7.2,
+          "y": -3.8,
+          "w": 8.1,
+          "h": 0.42,
+          "r": 0.18,
+          "fill": "$bodyLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": 1.5,
+          "y": -4.24,
+          "w": 5.7,
+          "h": 0.42,
+          "r": 0.18,
+          "fill": "$bodyLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -7.3,
+          "y": -2.42,
+          "w": 14.6,
+          "h": 0.46,
+          "r": 0.12,
+          "fill": "$band"
+        },
+        {
+          "shape": "roundRect",
+          "x": -7.3,
+          "y": -2.0,
+          "w": 14.6,
+          "h": 0.14,
+          "r": 0.06,
+          "fill": "$bodyDark"
+        },
+        {
+          "shape": "fit",
+          "length": 7.6,
+          "pitch": 0.76,
+          "gap": 0.22,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -7.12,
+              "y": -3.6,
+              "w": 0.54,
+              "h": 0.92,
+              "r": 0.1,
+              "fill": "$louver"
+            },
+            {
+              "shape": "fit",
+              "length": 0.54,
+              "pitch": 0.18,
+              "along": "y",
+              "parts": [
+                {
+                  "shape": "rect",
+                  "x": -7.12,
+                  "y": -3.54,
+                  "w": 0.54,
+                  "h": 0.06,
+                  "fill": "$bodyDark"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": 1.9,
+          "y": -4.0,
+          "w": 2.2,
+          "h": 1.18,
+          "r": 0.18,
+          "fill": "$glass"
+        },
+        {
+          "shape": "roundRect",
+          "x": 1.9,
+          "y": -4.0,
+          "w": 2.2,
+          "h": 0.32,
+          "r": 0.15,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": 4.5,
+          "y": -4.0,
+          "w": 2.4,
+          "h": 1.18,
+          "r": 0.18,
+          "fill": "$glass"
+        },
+        {
+          "shape": "roundRect",
+          "x": 4.5,
+          "y": -4.0,
+          "w": 2.4,
+          "h": 0.32,
+          "r": 0.15,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -7.2,
+          "y": -2.86,
+          "w": 14.3,
+          "h": 0.92,
+          "r": 0.2,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "repeat",
+          "n": 2,
+          "dx": 2.6,
+          "parts": [
+            {
+              "shape": "arc",
+              "cx": -5.2,
+              "cy": -3.88,
+              "r": 0.46,
+              "start": 0.5,
+              "end": 1,
+              "fill": "$roof"
+            },
+            {
+              "shape": "arc",
+              "cx": -5.2,
+              "cy": -3.88,
+              "r": 0.28,
+              "start": 0.5,
+              "end": 1,
+              "fill": "$iron"
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": 6.96,
+          "y": -3.3,
+          "w": 0.6,
+          "h": 0.46,
+          "r": 0.14,
+          "fill": "$bodyLite"
+        },
+        {
+          "shape": "disc",
+          "cx": 7.26,
+          "cy": -3.07,
+          "r": 0.2,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": 7.3,
+          "y": -1.9,
+          "w": 0.36,
+          "h": 0.64,
+          "r": 0.12,
+          "fill": "$band"
+        },
+        {
+          "shape": "roundRect",
+          "x": -7.66,
+          "y": -1.9,
+          "w": 0.36,
+          "h": 0.64,
+          "r": 0.12,
+          "fill": "$band"
+        },
+        {
+          "shape": "text",
+          "x": -2.6,
+          "y": -2.82,
+          "text": "130",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Bungee', 'Space Grotesk', sans-serif"
+          },
+          "fill": "$ink",
+          "upright": false
+        }
+      ],
+      "fonts": {
+        "plate": 0.56
+      }
+    },
+    "aeg-3": {
+      "nameKey": "railway.train.aeg-3",
+      "lengthM": 12.8,
+      "heightM": 5.5,
+      "palette": {
+        "outline": "#0d2019",
+        "body": "#2c5d4d",
+        "bodyLite": "#438a72",
+        "bodyDark": "#1a3b31",
+        "cream": "#efe3bd",
+        "roof": "#3a4047",
+        "iron": "#555c64",
+        "copper": "#c07a3f",
+        "glass": "#a3c6d4",
+        "glassLite": "#cfe6ea",
+        "ink": "#efe3bd",
+        "wheel": "#2d3238",
+        "tyre": "#8a919a",
+        "hub": "#c07a3f",
+        "rod": "#555c64",
+        "rider1": "#c8503f",
+        "rider2": "#3f7fb0",
+        "rider3": "#d9a93f",
+        "rider4": "#5d9e6a",
+        "skin1": "#cf9a6f",
+        "skin2": "#a9714a"
+      },
+      "wheels": [
+        {
+          "x": -4.4,
+          "r": 0.58
+        },
+        {
+          "x": -2.9,
+          "r": 0.58
+        },
+        {
+          "x": 2.9,
+          "r": 0.58
+        },
+        {
+          "x": 4.4,
+          "r": 0.58
+        }
+      ],
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -6.57,
+          "y": -4.13,
+          "w": 13.14,
+          "h": 3.0,
+          "r": 0.7200000000000001,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.0,
+          "y": -1.74,
+          "w": 12.0,
+          "h": 0.44,
+          "r": 0.2,
+          "fill": "$roof"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.4,
+          "y": -3.96,
+          "w": 12.8,
+          "h": 2.66,
+          "r": 0.55,
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.26,
+          "y": -3.88,
+          "w": 12.5,
+          "h": 0.5,
+          "r": 0.24,
+          "fill": "$bodyLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.4,
+          "y": -2.6,
+          "w": 12.8,
+          "h": 0.34,
+          "r": 0.14,
+          "fill": "$cream"
+        },
+        {
+          "shape": "fit",
+          "length": 11.2,
+          "pitch": 1.6,
+          "gap": 0.6,
+          "bob": {
+            "speed": 0.5,
+            "amp": 0.045
+          },
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -5.6,
+              "y": -3.7,
+              "w": 1.0,
+              "h": 0.98,
+              "r": 0.16,
+              "fill": "$glass"
+            },
+            {
+              "shape": "roundRect",
+              "x": -5.6,
+              "y": -3.7,
+              "w": 1.0,
+              "h": 0.294,
+              "r": 0.128,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "roundRect",
+              "x": -5.3999999999999995,
+              "y": -3.112,
+              "w": 0.6,
+              "h": 0.41159999999999997,
+              "r": 0.22,
+              "fill": [
+                "$rider1",
+                "$rider2",
+                "$rider3",
+                "$rider4"
+              ]
+            },
+            {
+              "shape": "disc",
+              "cx": -5.1,
+              "cy": -3.1904000000000003,
+              "r": 0.1862,
+              "fill": [
+                "$skin1",
+                "$skin2"
+              ]
+            },
+            {
+              "shape": "strokeRect",
+              "x": -5.6,
+              "y": -3.7,
+              "w": 1.0,
+              "h": 0.98,
+              "stroke": "$bodyDark",
+              "width": 0.08
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.3,
+          "y": -2.1,
+          "w": 12.6,
+          "h": 0.76,
+          "r": 0.3,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.5,
+          "y": -4.24,
+          "w": 13.0,
+          "h": 0.42,
+          "r": 0.2,
+          "fill": "$roof"
+        },
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                -1.9,
+                -4.24
+              ],
+              [
+                -1.0,
+                -5.4
+              ]
+            ],
+            [
+              [
+                1.0,
+                -5.4
+              ],
+              [
+                1.9,
+                -4.24
+              ]
+            ],
+            [
+              [
+                -1.0,
+                -5.4
+              ],
+              [
+                1.0,
+                -5.4
+              ]
+            ],
+            [
+              [
+                -1.0,
+                -5.4
+              ],
+              [
+                -1.9,
+                -4.6
+              ]
+            ],
+            [
+              [
+                1.0,
+                -5.4
+              ],
+              [
+                1.9,
+                -4.6
+              ]
+            ]
+          ],
+          "stroke": "$iron",
+          "width": 0.13,
+          "join": "round",
+          "cap": "round"
+        },
+        {
+          "shape": "roundRect",
+          "x": -1.35,
+          "y": -5.56,
+          "w": 2.7,
+          "h": 0.18,
+          "r": 0.09,
+          "fill": "$copper"
+        },
+        {
+          "shape": "roundRect",
+          "x": 5.6,
+          "y": -3.36,
+          "w": 0.72,
+          "h": 0.48,
+          "r": 0.14,
+          "fill": "$cream"
+        },
+        {
+          "shape": "disc",
+          "cx": 5.96,
+          "cy": -3.12,
+          "r": 0.19,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "text",
+          "x": -3.2,
+          "y": -2.44,
+          "text": "3",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Bungee', 'Space Grotesk', sans-serif"
+          },
+          "fill": "$bodyDark",
+          "upright": false
+        }
+      ],
+      "fonts": {
+        "plate": 0.5
+      }
+    },
+    "coach-steel": {
+      "lengthM": 16.4,
+      "heightM": 4.2,
+      "palette": {
+        "outline": "#2a2e33",
+        "body": "#9aa0a8",
+        "bodyLite": "#b6bbc2",
+        "bodyDark": "#70757c",
+        "band": "#c03e2f",
+        "roof": "#5f656c",
+        "iron": "#3c4046",
+        "glass": "#9ec6d4",
+        "glassLite": "#cfe6ea",
+        "wheel": "#30353b",
+        "tyre": "#9aa1a9",
+        "hub": "#b7bcc2",
+        "rod": "#555c64",
+        "rider1": "#c8503f",
+        "rider2": "#3f7fb0",
+        "rider3": "#d9a93f",
+        "rider4": "#5d9e6a",
+        "skin1": "#cf9a6f",
+        "skin2": "#a9714a"
+      },
+      "wheels": [
+        {
+          "x": -5.9,
+          "r": 0.5
+        },
+        {
+          "x": -4.6,
+          "r": 0.5
+        },
+        {
+          "x": 4.6,
+          "r": 0.5
+        },
+        {
+          "x": 5.9,
+          "r": 0.5
+        }
+      ],
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -8.37,
+          "y": -3.67,
+          "w": 16.74,
+          "h": 2.48,
+          "r": 0.5700000000000001,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.4,
+          "y": -4.0,
+          "w": 16.8,
+          "h": 0.64,
+          "r": 0.32,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -7.9,
+          "y": -1.56,
+          "w": 15.8,
+          "h": 0.34,
+          "r": 0.16,
+          "fill": "$iron"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.2,
+          "y": -3.5,
+          "w": 16.4,
+          "h": 2.14,
+          "r": 0.4,
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.08,
+          "y": -3.42,
+          "w": 16.16,
+          "h": 0.5992000000000001,
+          "r": 0.24,
+          "fill": "#ffffff30"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.2,
+          "y": -2.04,
+          "w": 16.4,
+          "h": 0.32,
+          "r": 0.15,
+          "fill": "$band"
+        },
+        {
+          "shape": "fit",
+          "length": 15.0,
+          "pitch": 1.68,
+          "gap": 0.56,
+          "bob": {
+            "speed": 0.5,
+            "amp": 0.045
+          },
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -8.02,
+              "y": -3.26,
+              "w": 1.12,
+              "h": 0.94,
+              "r": 0.2,
+              "fill": "$glass"
+            },
+            {
+              "shape": "roundRect",
+              "x": -8.02,
+              "y": -3.26,
+              "w": 1.12,
+              "h": 0.282,
+              "r": 0.16000000000000003,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "roundRect",
+              "x": -7.795999999999999,
+              "y": -2.6959999999999997,
+              "w": 0.672,
+              "h": 0.3948,
+              "r": 0.24640000000000004,
+              "fill": [
+                "$rider1",
+                "$rider2",
+                "$rider3",
+                "$rider4"
+              ]
+            },
+            {
+              "shape": "disc",
+              "cx": -7.459999999999999,
+              "cy": -2.7712,
+              "r": 0.17859999999999998,
+              "fill": [
+                "$skin1",
+                "$skin2"
+              ]
+            },
+            {
+              "shape": "strokeRect",
+              "x": -8.02,
+              "y": -3.26,
+              "w": 1.12,
+              "h": 0.94,
+              "stroke": "$bodyDark",
+              "width": 0.08
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.1,
+          "y": -2.1304,
+          "w": 16.2,
+          "h": 0.6904,
+          "r": 0.27999999999999997,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.3,
+          "y": -3.9,
+          "w": 16.6,
+          "h": 0.46,
+          "r": 0.22,
+          "fill": "$roof"
+        }
+      ]
+    },
+    "incofer-55": {
+      "nameKey": "railway.train.incofer-55",
+      "lengthM": 13.2,
+      "heightM": 4.5,
+      "_ref": "Locomotora diésel N.º 55 del Ferrocarril al Pacífico: capota azul, franja blanca con filete rojo, quitapiedras con cebrado amarillo y cabina en un extremo. Dibujo propio sobre fotografía de referencia; no se reproduce ninguna imagen con derechos.",
+      "palette": {
+        "outline": "#0e1a22",
+        "body": "#2e6485",
+        "bodyLite": "#4a86a8",
+        "bodyDark": "#1d4761",
+        "band": "#f0ece2",
+        "stripe": "#bb3a2c",
+        "skirt": "#191d21",
+        "iron": "#454b52",
+        "grille": "#24536e",
+        "glass": "#a8cfdb",
+        "glassLite": "#d8eef2",
+        "warn": "#e3b231",
+        "ink": "#f3ece0",
+        "wheel": "#23282d",
+        "tyre": "#8d949c",
+        "hub": "#e3b231",
+        "rod": "#5a6168"
+      },
+      "wheels": [
+        {
+          "x": -4.5,
+          "r": 0.56
+        },
+        {
+          "x": -3.2,
+          "r": 0.56
+        },
+        {
+          "x": 3.2,
+          "r": 0.56
+        },
+        {
+          "x": 4.5,
+          "r": 0.56
+        }
+      ],
+      "stackM": {
+        "x": 1.4,
+        "y": -4.2
+      },
+      "fonts": {
+        "plate": 0.6
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -6.77,
+          "y": -3.67,
+          "w": 10.54,
+          "h": 2.54,
+          "r": 0.47,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.13,
+          "y": -4.47,
+          "w": 3.6399999999999997,
+          "h": 3.34,
+          "r": 0.51,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.4,
+          "y": -1.74,
+          "w": 13.0,
+          "h": 0.5,
+          "r": 0.2,
+          "fill": "$skirt"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.6,
+          "y": -3.5,
+          "w": 10.2,
+          "h": 2.2,
+          "r": 0.3,
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.4799999999999995,
+          "y": -3.42,
+          "w": 9.959999999999999,
+          "h": 0.5720000000000001,
+          "r": 0.18,
+          "fill": "#ffffff30"
+        },
+        {
+          "shape": "fit",
+          "length": 6.6,
+          "pitch": 0.82,
+          "gap": 0.24,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -6.2,
+              "y": -3.26,
+              "w": 0.58,
+              "h": 1.0,
+              "r": 0.1,
+              "fill": "$grille"
+            },
+            {
+              "shape": "fit",
+              "length": 0.58,
+              "pitch": 0.2,
+              "along": "y",
+              "parts": [
+                {
+                  "shape": "rect",
+                  "x": -6.2,
+                  "y": -3.2,
+                  "w": 0.58,
+                  "h": 0.07,
+                  "fill": "$bodyDark"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.3,
+          "y": -4.3,
+          "w": 3.3,
+          "h": 3.0,
+          "r": 0.34,
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.42,
+          "y": -4.22,
+          "w": 3.0599999999999996,
+          "h": 0.78,
+          "r": 0.20400000000000001,
+          "fill": "#ffffff30"
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.55,
+          "y": -4.06,
+          "w": 1.5,
+          "h": 1.06,
+          "r": 0.16,
+          "fill": "$glass"
+        },
+        {
+          "shape": "roundRect",
+          "x": 5.2,
+          "y": -4.06,
+          "w": 1.18,
+          "h": 1.06,
+          "r": 0.16,
+          "fill": "$glass"
+        },
+        {
+          "shape": "roundRect",
+          "x": 3.55,
+          "y": -4.06,
+          "w": 1.5,
+          "h": 0.3,
+          "r": 0.14,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.6,
+          "y": -2.5,
+          "w": 13.2,
+          "h": 0.42,
+          "r": 0.1,
+          "fill": "$band"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.6,
+          "y": -2.2,
+          "w": 13.2,
+          "h": 0.16,
+          "r": 0.07,
+          "fill": "$stripe"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.5,
+          "y": -2.048,
+          "w": 10.0,
+          "h": 0.6680000000000001,
+          "r": 0.21,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "roundRect",
+          "x": 6.3,
+          "y": -1.9,
+          "w": 0.5,
+          "h": 1.3,
+          "r": 0.12,
+          "fill": "$warn"
+        },
+        {
+          "shape": "fit",
+          "length": 1.3,
+          "pitch": 0.34,
+          "along": "y",
+          "parts": [
+            {
+              "shape": "rect",
+              "x": 6.3,
+              "y": -1.9,
+              "w": 0.5,
+              "h": 0.16,
+              "fill": "$skirt"
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.8,
+          "y": -1.9,
+          "w": 0.44,
+          "h": 1.0,
+          "r": 0.1,
+          "fill": "$warn"
+        },
+        {
+          "shape": "roundRect",
+          "x": 5.0,
+          "y": -4.62,
+          "w": 0.8,
+          "h": 0.42,
+          "r": 0.14,
+          "fill": "$iron"
+        },
+        {
+          "shape": "disc",
+          "cx": 5.4,
+          "cy": -4.4,
+          "r": 0.2,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": 1.1,
+          "y": -4.2,
+          "w": 0.58,
+          "h": 0.74,
+          "r": 0.14,
+          "fill": "$iron"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.6,
+          "y": -3.62,
+          "w": 10.2,
+          "h": 0.2,
+          "r": 0.09,
+          "fill": "$iron"
+        },
+        {
+          "shape": "text",
+          "x": 4.9,
+          "y": -2.68,
+          "text": "55",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Bungee', 'Space Grotesk', sans-serif"
+          },
+          "fill": "$ink",
+          "upright": false
+        }
+      ]
+    },
+    "apolo-2400": {
+      "nameKey": "railway.train.apolo-2400",
+      "lengthM": 17.6,
+      "heightM": 4.3,
+      "_ref": "Automotor Apolo 2400 de Incofer: caja blanca, franja amarilla al nivel del antepecho, frente plano y dos faros redondos en el techo. Dibujo propio sobre fotografía de referencia.",
+      "palette": {
+        "outline": "#1e2227",
+        "body": "#f1f0ec",
+        "bodyLite": "#ffffff",
+        "bodyDark": "#c9c7c0",
+        "band": "#e9c22e",
+        "bandDark": "#c39d18",
+        "skirt": "#2b2f34",
+        "roof": "#d8d6d0",
+        "iron": "#4a5057",
+        "glass": "#8fb8c9",
+        "glassLite": "#c6e0e8",
+        "ink": "#2b2f34",
+        "wheel": "#23282d",
+        "tyre": "#8d949c",
+        "hub": "#e9c22e",
+        "rod": "#5a6168",
+        "rider1": "#c8503f",
+        "rider2": "#3f7fb0",
+        "rider3": "#d9a93f",
+        "rider4": "#5d9e6a",
+        "skin1": "#cf9a6f",
+        "skin2": "#a9714a"
+      },
+      "wheels": [
+        {
+          "x": -6.2,
+          "r": 0.52
+        },
+        {
+          "x": -4.9,
+          "r": 0.52
+        },
+        {
+          "x": 4.9,
+          "r": 0.52
+        },
+        {
+          "x": 6.2,
+          "r": 0.52
+        }
+      ],
+      "fonts": {
+        "plate": 0.52
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -8.97,
+          "y": -3.89,
+          "w": 17.94,
+          "h": 2.7399999999999998,
+          "r": 0.53,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.4,
+          "y": -1.8,
+          "w": 16.8,
+          "h": 0.56,
+          "r": 0.22,
+          "fill": "$skirt"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.8,
+          "y": -3.72,
+          "w": 17.6,
+          "h": 2.4,
+          "r": 0.36,
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.680000000000001,
+          "y": -3.64,
+          "w": 17.360000000000003,
+          "h": 0.624,
+          "r": 0.216,
+          "fill": "#ffffff30"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.8,
+          "y": -2.22,
+          "w": 17.6,
+          "h": 0.5,
+          "r": 0.14,
+          "fill": "$band"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.8,
+          "y": -1.78,
+          "w": 17.6,
+          "h": 0.1,
+          "r": 0.05,
+          "fill": "$bandDark"
+        },
+        {
+          "shape": "fit",
+          "length": 15.4,
+          "pitch": 1.62,
+          "gap": 0.48,
+          "bob": {
+            "speed": 0.5,
+            "amp": 0.045
+          },
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -8.0,
+              "y": -3.44,
+              "w": 1.1,
+              "h": 1.02,
+              "r": 0.16,
+              "fill": "$glass"
+            },
+            {
+              "shape": "roundRect",
+              "x": -8.0,
+              "y": -3.44,
+              "w": 1.1,
+              "h": 0.306,
+              "r": 0.128,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "roundRect",
+              "x": -7.78,
+              "y": -2.828,
+              "w": 0.66,
+              "h": 0.4284,
+              "r": 0.24200000000000002,
+              "fill": [
+                "$rider1",
+                "$rider2",
+                "$rider3",
+                "$rider4"
+              ]
+            },
+            {
+              "shape": "disc",
+              "cx": -7.45,
+              "cy": -2.9096,
+              "r": 0.1938,
+              "fill": [
+                "$skin1",
+                "$skin2"
+              ]
+            },
+            {
+              "shape": "strokeRect",
+              "x": -8.0,
+              "y": -3.44,
+              "w": 1.1,
+              "h": 1.02,
+              "stroke": "$bodyDark",
+              "width": 0.08
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": 6.5,
+          "y": -3.5,
+          "w": 2.1,
+          "h": 1.3,
+          "r": 0.2,
+          "fill": "$glass"
+        },
+        {
+          "shape": "roundRect",
+          "x": 6.5,
+          "y": -3.5,
+          "w": 2.1,
+          "h": 0.34,
+          "r": 0.16,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.700000000000001,
+          "y": -2.136,
+          "w": 17.400000000000002,
+          "h": 0.7360000000000001,
+          "r": 0.252,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.9,
+          "y": -4.04,
+          "w": 17.8,
+          "h": 0.4,
+          "r": 0.2,
+          "fill": "$roof"
+        },
+        {
+          "shape": "roundRect",
+          "x": 6.9,
+          "y": -4.36,
+          "w": 1.4,
+          "h": 0.4,
+          "r": 0.18,
+          "fill": "$iron"
+        },
+        {
+          "shape": "disc",
+          "cx": 7.3,
+          "cy": -4.16,
+          "r": 0.19,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "disc",
+          "cx": 7.9,
+          "cy": -4.16,
+          "r": 0.19,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "text",
+          "x": -5.4,
+          "y": -1.92,
+          "text": "2415",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Bungee', 'Space Grotesk', sans-serif"
+          },
+          "fill": "$ink",
+          "upright": false
+        }
+      ]
+    },
+    "incofer-200": {
+      "nameKey": "railway.train.incofer-200",
+      "lengthM": 19.4,
+      "heightM": 4.5,
+      "_ref": "Unidad 200-3122 de Incofer: morro azul redondeado, cinta roja y blanca que lo envuelve, caja blanca abajo y franja azul arriba. Dibujo propio sobre fotografía de referencia.",
+      "palette": {
+        "outline": "#0d1526",
+        "body": "#eef1f5",
+        "bodyLite": "#ffffff",
+        "bodyDark": "#c3c9d2",
+        "blue": "#1b3f82",
+        "blueLite": "#2f5aa8",
+        "red": "#c8202f",
+        "skirt": "#15181c",
+        "iron": "#444a52",
+        "glass": "#86aec6",
+        "glassLite": "#c2dce8",
+        "ink": "#1b3f82",
+        "wheel": "#1e2228",
+        "tyre": "#8d949c",
+        "hub": "#c3c9d2",
+        "rod": "#5a6168",
+        "rider1": "#c8503f",
+        "rider2": "#3f7fb0",
+        "rider3": "#d9a93f",
+        "rider4": "#5d9e6a",
+        "skin1": "#cf9a6f",
+        "skin2": "#a9714a"
+      },
+      "wheels": [
+        {
+          "x": -6.9,
+          "r": 0.5
+        },
+        {
+          "x": -5.6,
+          "r": 0.5
+        },
+        {
+          "x": 5.6,
+          "r": 0.5
+        },
+        {
+          "x": 6.9,
+          "r": 0.5
+        }
+      ],
+      "fonts": {
+        "plate": 0.5
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -9.87,
+          "y": -4.07,
+          "w": 19.74,
+          "h": 2.94,
+          "r": 0.67,
+          "fill": "$outline"
+        },
+        {
+          "shape": "roundRect",
+          "x": -9.4,
+          "y": -1.84,
+          "w": 18.8,
+          "h": 0.6,
+          "r": 0.24,
+          "fill": "$skirt"
+        },
+        {
+          "shape": "roundRect",
+          "x": -9.7,
+          "y": -3.9,
+          "w": 19.4,
+          "h": 2.6,
+          "r": 0.5,
+          "fill": "$body"
+        },
+        {
+          "shape": "roundRect",
+          "x": -9.7,
+          "y": -3.9,
+          "w": 19.4,
+          "h": 0.78,
+          "r": 0.42,
+          "fill": "$blue"
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              5.6,
+              -3.9
+            ],
+            [
+              9.7,
+              -3.9
+            ],
+            {
+              "q": [
+                9.9,
+                -2.6
+              ],
+              "to": [
+                9.5,
+                -1.3
+              ]
+            },
+            [
+              5.6,
+              -1.3
+            ]
+          ],
+          "fill": "$blue"
+        },
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              -9.7,
+              -3.5
+            ],
+            [
+              6.6,
+              -3.5
+            ],
+            {
+              "q": [
+                8.9,
+                -3.5
+              ],
+              "to": [
+                8.95,
+                -2.5
+              ]
+            },
+            {
+              "q": [
+                9.0,
+                -1.62
+              ],
+              "to": [
+                7.1,
+                -1.6
+              ]
+            },
+            [
+              -9.7,
+              -1.6
+            ]
+          ],
+          "stroke": "$red",
+          "width": 0.46,
+          "join": "round",
+          "cap": "round"
+        },
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              -9.7,
+              -3.14
+            ],
+            [
+              6.7,
+              -3.14
+            ],
+            {
+              "q": [
+                8.52,
+                -3.14
+              ],
+              "to": [
+                8.56,
+                -2.5
+              ]
+            },
+            {
+              "q": [
+                8.6,
+                -1.97
+              ],
+              "to": [
+                7.1,
+                -1.96
+              ]
+            },
+            [
+              -9.7,
+              -1.96
+            ]
+          ],
+          "stroke": "$bodyLite",
+          "width": 0.3,
+          "join": "round",
+          "cap": "round"
+        },
+        {
+          "shape": "fit",
+          "length": 13.6,
+          "pitch": 1.7,
+          "gap": 0.5,
+          "bob": {
+            "speed": 0.5,
+            "amp": 0.045
+          },
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -8.9,
+              "y": -2.98,
+              "w": 1.2,
+              "h": 1.0,
+              "r": 0.14,
+              "fill": "$glass"
+            },
+            {
+              "shape": "roundRect",
+              "x": -8.9,
+              "y": -2.98,
+              "w": 1.2,
+              "h": 0.3,
+              "r": 0.11200000000000002,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "roundRect",
+              "x": -8.66,
+              "y": -2.38,
+              "w": 0.72,
+              "h": 0.42,
+              "r": 0.264,
+              "fill": [
+                "$rider1",
+                "$rider2",
+                "$rider3",
+                "$rider4"
+              ]
+            },
+            {
+              "shape": "disc",
+              "cx": -8.3,
+              "cy": -2.46,
+              "r": 0.19,
+              "fill": [
+                "$skin1",
+                "$skin2"
+              ]
+            },
+            {
+              "shape": "strokeRect",
+              "x": -8.9,
+              "y": -2.98,
+              "w": 1.2,
+              "h": 1.0,
+              "stroke": "$bodyDark",
+              "width": 0.08
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": 6.0,
+          "y": -3.1,
+          "w": 2.5,
+          "h": 1.22,
+          "r": 0.26,
+          "fill": "$glass"
+        },
+        {
+          "shape": "roundRect",
+          "x": 6.0,
+          "y": -3.1,
+          "w": 2.5,
+          "h": 0.32,
+          "r": 0.16,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -9.6,
+          "y": -2.1839999999999997,
+          "w": 19.2,
+          "h": 0.8040000000000002,
+          "r": 0.35,
+          "fill": "#00000026"
+        },
+        {
+          "shape": "roundRect",
+          "x": 8.9,
+          "y": -2.0,
+          "w": 0.6,
+          "h": 0.3,
+          "r": 0.12,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "text",
+          "x": -3.2,
+          "y": -2.46,
+          "text": "200-3122",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Space Grotesk', sans-serif"
+          },
+          "fill": "$ink",
+          "upright": false
+        }
+      ]
+    }
+  },
+  "_track": "LA VÍA ES GEOMETRÍA DERIVADA, no una lista de partes: el carril, los durmientes y el balasto siguen la curva que el nivel produce, incluido el rizo, y una curva no se puede autorar como `pts`. El registro pone las medidas y las tintas; `render/railway/track.js` pone el recorrido. Es la misma línea que `paintRoads` ya traza en la ciudad.",
+  "track": {
+    "railM": 0.15,
+    "railHeadM": 0.07,
+    "sleeperWM": 0.3,
+    "sleeperHM": 0.2,
+    "sleeperPitchM": 0.72,
+    "ballastDepthM": 0.62,
+    "ballastFlareM": 1.5,
+    "rail": "#5f666d",
+    "railHead": "#c3c8cc",
+    "railShade": "#3f454a",
+    "sleeper": "#6b4a2c",
+    "sleeperAlt": "#56391f",
+    "ballast": "#8e857a",
+    "ballastDark": "#6f675d",
+    "embankment": "#a1917a"
+  },
+  "_structures": "MARCO DE UNA ESTRUCTURA: el origen está en el eje de la vía a la altura del hongo del riel, +x hacia Puntarenas, -y arriba. Una estación se dibuja DETRÁS del tren y su andén por delante, así que lleva sus partes partidas en `parts` (atrás) y `front` (adelante).",
+  "structures": {
+    "station-deco": {
+      "nameKey": "railway.stop.pacifico",
+      "heightM": 12,
+      "_ref": "Estación del Ferrocarril al Pacífico, San José (hoy Incofer): cuerpo blanco horizontal, volumen central redondeado y más alto, zócalo y marcos en verde petróleo, marquesina baja sobre la entrada y mástil en el techo. El edificio actual es de 1941 y no hay que confundirlo con la apertura de la línea en 1910. Dibujo propio sobre fotografía.",
+      "fonts": {
+        "plate": 0.92
+      },
+      "palette": {
+        "outline": "#5f6a6c",
+        "wall": "#f2f1ec",
+        "wallLite": "#ffffff",
+        "wallDark": "#d5d4ce",
+        "teal": "#2c6b6b",
+        "tealDark": "#1d4a4a",
+        "tealLite": "#3f8c8a",
+        "glass": "#7ea3ad",
+        "glassLite": "#b4d2d8",
+        "plinth": "#b9b6ad",
+        "iron": "#55606a",
+        "mast": "#9aa2a8",
+        "antenna": "#b5473a",
+        "ink": "#2c3a3c"
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -21,
+          "y": -8.4,
+          "w": 42,
+          "h": 8.4,
+          "r": 0.6,
+          "fill": "$wall"
+        },
+        {
+          "shape": "roundRect",
+          "x": -21,
+          "y": -8.4,
+          "w": 42,
+          "h": 0.7,
+          "r": 0.3,
+          "fill": "$wallLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.4,
+          "y": -12.4,
+          "w": 16.8,
+          "h": 4.6,
+          "r": 2.2,
+          "fill": "$wall"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.9,
+          "y": -12.9,
+          "w": 17.8,
+          "h": 0.8,
+          "r": 0.4,
+          "fill": "$wallLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -6.2,
+          "y": -13.9,
+          "w": 12.4,
+          "h": 1.2,
+          "r": 0.6,
+          "fill": "$wall"
+        },
+        {
+          "shape": "fit",
+          "length": 40,
+          "pitch": 2.5,
+          "gap": 1.0,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -20.75,
+              "y": -7.4,
+              "w": 1.5,
+              "h": 4.3,
+              "r": 0.12,
+              "fill": "$glass"
+            },
+            {
+              "shape": "roundRect",
+              "x": -20.75,
+              "y": -7.4,
+              "w": 1.5,
+              "h": 1.0,
+              "r": 0.1,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "fit",
+              "length": 1.5,
+              "pitch": 0.38,
+              "parts": [
+                {
+                  "shape": "rect",
+                  "x": -20.75,
+                  "y": -7.4,
+                  "w": 0.09,
+                  "h": 4.3,
+                  "fill": "$teal"
+                }
+              ]
+            },
+            {
+              "shape": "strokeRect",
+              "x": -20.75,
+              "y": -7.4,
+              "w": 1.5,
+              "h": 4.3,
+              "stroke": "$teal",
+              "width": 0.18
+            }
+          ]
+        },
+        {
+          "shape": "fit",
+          "length": 15.6,
+          "pitch": 2.0,
+          "gap": 0.8,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -7.8,
+              "y": -11.9,
+              "w": 1.2,
+              "h": 3.2,
+              "r": 0.1,
+              "fill": "$glass"
+            },
+            {
+              "shape": "roundRect",
+              "x": -7.8,
+              "y": -11.9,
+              "w": 1.2,
+              "h": 0.8,
+              "r": 0.1,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "strokeRect",
+              "x": -7.8,
+              "y": -11.9,
+              "w": 1.2,
+              "h": 3.2,
+              "stroke": "$teal",
+              "width": 0.16
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -21,
+          "y": -2.5,
+          "w": 42,
+          "h": 2.5,
+          "r": 0.3,
+          "fill": "$teal"
+        },
+        {
+          "shape": "roundRect",
+          "x": -21,
+          "y": -2.5,
+          "w": 42,
+          "h": 0.26,
+          "r": 0.12,
+          "fill": "$tealLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -21,
+          "y": -8.95,
+          "w": 42,
+          "h": 0.4,
+          "r": 0.18,
+          "fill": "$tealDark"
+        },
+        {
+          "shape": "text",
+          "x": 0,
+          "y": -10.0,
+          "text": "$name",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Space Grotesk', sans-serif"
+          },
+          "fill": "$ink",
+          "upright": false
+        },
+        {
+          "shape": "roundRect",
+          "x": -0.14,
+          "y": -16.6,
+          "w": 0.28,
+          "h": 2.8,
+          "r": 0.14,
+          "fill": "$mast"
+        },
+        {
+          "shape": "disc",
+          "cx": 0,
+          "cy": -16.7,
+          "r": 0.26,
+          "fill": "$iron"
+        },
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                15.4,
+                -0.2
+              ],
+              [
+                16.6,
+                -14.0
+              ]
+            ],
+            [
+              [
+                18.6,
+                -0.2
+              ],
+              [
+                17.4,
+                -14.0
+              ]
+            ]
+          ],
+          "stroke": "$antenna",
+          "width": 0.3
+        },
+        {
+          "shape": "fit",
+          "length": 13.4,
+          "pitch": 1.5,
+          "along": "y",
+          "parts": [
+            {
+              "shape": "stroke",
+              "pts": [
+                [
+                  15.5,
+                  -13.6
+                ],
+                [
+                  18.5,
+                  -13.0
+                ]
+              ],
+              "stroke": "$antenna",
+              "width": 0.16
+            }
+          ]
+        },
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              17.0,
+              -14.0
+            ],
+            [
+              17.0,
+              -15.6
+            ]
+          ],
+          "stroke": "$antenna",
+          "width": 0.2
+        }
+      ],
+      "front": [
+        {
+          "shape": "roundRect",
+          "x": -24,
+          "y": -0.5,
+          "w": 48,
+          "h": 0.5,
+          "r": 0.12,
+          "fill": "$plinth"
+        },
+        {
+          "shape": "roundRect",
+          "x": -24,
+          "y": -0.5,
+          "w": 48,
+          "h": 0.16,
+          "r": 0.08,
+          "fill": "$wallDark"
+        },
+        {
+          "shape": "roundRect",
+          "x": -9,
+          "y": -5.5,
+          "w": 18,
+          "h": 0.5,
+          "r": 0.24,
+          "fill": "$wallLite"
+        },
+        {
+          "shape": "roundRect",
+          "x": -9,
+          "y": -5.0,
+          "w": 18,
+          "h": 0.18,
+          "r": 0.08,
+          "fill": "$teal"
+        },
+        {
+          "shape": "fit",
+          "length": 17.0,
+          "pitch": 4.2,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -8.6,
+              "y": -5.0,
+              "w": 0.26,
+              "h": 4.6,
+              "r": 0.12,
+              "fill": "$teal"
+            }
+          ]
+        }
+      ]
+    },
+    "station-wood": {
+      "heightM": 7.6,
+      "_ref": "Estación rural del Ferrocarril al Pacífico: forro de madera azul, marcos blancos, puertas rojas, zócalo de concreto, andén con baranda roja y columna de agua. Dibujo propio sobre fotografía de referencia.",
+      "fonts": {
+        "plate": 0.62
+      },
+      "palette": {
+        "outline": "#16243a",
+        "wall": "#3f5f86",
+        "wallLite": "#53789f",
+        "wallDark": "#2b4663",
+        "trim": "#f2f1ec",
+        "door": "#b8362c",
+        "doorDark": "#8d241c",
+        "roof": "#e8e6df",
+        "roofDark": "#c3c1b8",
+        "plinth": "#a9a69d",
+        "plinthDark": "#8b887f",
+        "glass": "#8fb4c4",
+        "glassLite": "#c4dde6",
+        "iron": "#4d5259",
+        "rail": "#b8362c",
+        "sign": "#f2f1ec",
+        "ink": "#23303f"
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -8.6,
+          "y": -1.5,
+          "w": 17.2,
+          "h": 1.5,
+          "r": 0.14,
+          "fill": "$plinth"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.6,
+          "y": -1.5,
+          "w": 17.2,
+          "h": 0.2,
+          "r": 0.08,
+          "fill": "$plinthDark"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.2,
+          "y": -5.9,
+          "w": 16.4,
+          "h": 4.4,
+          "r": 0.18,
+          "fill": "$wall"
+        },
+        {
+          "shape": "fit",
+          "length": 4.4,
+          "pitch": 0.42,
+          "along": "y",
+          "parts": [
+            {
+              "shape": "rect",
+              "x": -8.2,
+              "y": -5.9,
+              "w": 16.4,
+              "h": 0.07,
+              "fill": "$wallDark"
+            }
+          ]
+        },
+        {
+          "shape": "fit",
+          "length": 15.0,
+          "pitch": 3.2,
+          "gap": 1.5,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -7.86,
+              "y": -5.3,
+              "w": 1.5,
+              "h": 3.8,
+              "r": 0.1,
+              "fill": "$trim"
+            },
+            {
+              "shape": "roundRect",
+              "x": -7.72,
+              "y": -5.16,
+              "w": 1.22,
+              "h": 3.52,
+              "r": 0.08,
+              "fill": "$door"
+            },
+            {
+              "shape": "roundRect",
+              "x": -7.6,
+              "y": -5.0,
+              "w": 0.98,
+              "h": 1.3,
+              "r": 0.06,
+              "fill": "$doorDark"
+            },
+            {
+              "shape": "roundRect",
+              "x": -7.6,
+              "y": -3.4,
+              "w": 0.98,
+              "h": 1.5,
+              "r": 0.06,
+              "fill": "$doorDark"
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": 4.6,
+          "y": -5.3,
+          "w": 2.4,
+          "h": 2.4,
+          "r": 0.1,
+          "fill": "$trim"
+        },
+        {
+          "shape": "roundRect",
+          "x": 4.75,
+          "y": -5.15,
+          "w": 2.1,
+          "h": 2.1,
+          "r": 0.08,
+          "fill": "$glass"
+        },
+        {
+          "shape": "roundRect",
+          "x": 4.75,
+          "y": -5.15,
+          "w": 2.1,
+          "h": 0.5,
+          "r": 0.08,
+          "fill": "$glassLite"
+        },
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                5.8,
+                -5.15
+              ],
+              [
+                5.8,
+                -3.05
+              ]
+            ],
+            [
+              [
+                4.75,
+                -4.1
+              ],
+              [
+                6.85,
+                -4.1
+              ]
+            ]
+          ],
+          "stroke": "$trim",
+          "width": 0.12
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              -9.6,
+              -5.9
+            ],
+            [
+              9.6,
+              -5.9
+            ],
+            [
+              6.2,
+              -7.6
+            ],
+            [
+              -6.2,
+              -7.6
+            ]
+          ],
+          "fill": "$roof"
+        },
+        {
+          "shape": "roundRect",
+          "x": -9.6,
+          "y": -6.14,
+          "w": 19.2,
+          "h": 0.34,
+          "r": 0.16,
+          "fill": "$roofDark"
+        },
+        {
+          "shape": "roundRect",
+          "x": -2.6,
+          "y": -7.0,
+          "w": 5.2,
+          "h": 1.0,
+          "r": 0.1,
+          "fill": "$sign"
+        },
+        {
+          "shape": "strokeRect",
+          "x": -2.6,
+          "y": -7.0,
+          "w": 5.2,
+          "h": 1.0,
+          "stroke": "$ink",
+          "width": 0.08
+        },
+        {
+          "shape": "text",
+          "x": 0,
+          "y": -6.24,
+          "text": "$name",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Space Grotesk', sans-serif"
+          },
+          "fill": "$ink",
+          "upright": false
+        },
+        {
+          "shape": "roundRect",
+          "x": -10.6,
+          "y": -6.4,
+          "w": 0.34,
+          "h": 6.4,
+          "r": 0.16,
+          "fill": "$rail"
+        },
+        {
+          "shape": "roundRect",
+          "x": -11.5,
+          "y": -6.9,
+          "w": 2.1,
+          "h": 0.5,
+          "r": 0.2,
+          "fill": "$rail"
+        }
+      ],
+      "front": [
+        {
+          "shape": "roundRect",
+          "x": -11,
+          "y": -0.42,
+          "w": 22,
+          "h": 0.42,
+          "r": 0.1,
+          "fill": "$plinth"
+        },
+        {
+          "shape": "roundRect",
+          "x": -11,
+          "y": -0.42,
+          "w": 22,
+          "h": 0.14,
+          "r": 0.07,
+          "fill": "$plinthDark"
+        },
+        {
+          "shape": "roundRect",
+          "x": -10.4,
+          "y": -4.8,
+          "w": 20.8,
+          "h": 0.4,
+          "r": 0.18,
+          "fill": "$roof"
+        },
+        {
+          "shape": "roundRect",
+          "x": -10.4,
+          "y": -4.45,
+          "w": 20.8,
+          "h": 0.16,
+          "r": 0.07,
+          "fill": "$roofDark"
+        },
+        {
+          "shape": "fit",
+          "length": 19.6,
+          "pitch": 3.3,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -9.9,
+              "y": -4.4,
+              "w": 0.22,
+              "h": 4.0,
+              "r": 0.1,
+              "fill": "$trim"
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": 8.4,
+          "y": -1.5,
+          "w": 2.6,
+          "h": 0.18,
+          "r": 0.08,
+          "fill": "$rail"
+        },
+        {
+          "shape": "fit",
+          "length": 2.6,
+          "pitch": 0.62,
+          "parts": [
+            {
+              "shape": "rect",
+              "x": 8.4,
+              "y": -1.5,
+              "w": 0.12,
+              "h": 1.5,
+              "fill": "$rail"
+            }
+          ]
+        }
+      ]
+    },
+    "station-halt": {
+      "heightM": 4.2,
+      "palette": {
+        "post": "#6e5436",
+        "roof": "#9c8a5e",
+        "roofDark": "#7a6a45",
+        "bench": "#8a6a3e",
+        "plinth": "#938a7e",
+        "ink": "#3a2a1a"
+      },
+      "parts": [
+        {
+          "shape": "rect",
+          "x": -3.4,
+          "y": -0.5,
+          "w": 6.8,
+          "h": 0.5,
+          "fill": "$plinth"
+        },
+        {
+          "shape": "rect",
+          "x": -2.9,
+          "y": -1.5,
+          "w": 5.8,
+          "h": 0.26,
+          "fill": "$bench"
+        },
+        {
+          "shape": "repeat",
+          "n": 2,
+          "dx": 5.2,
+          "parts": [
+            {
+              "shape": "rect",
+              "x": -2.7,
+              "y": -4.14,
+              "w": 0.2,
+              "h": 2.9,
+              "fill": "$post"
+            }
+          ]
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              -3.6,
+              -4.14
+            ],
+            [
+              3.6,
+              -4.14
+            ],
+            [
+              2.4,
+              -4.9
+            ],
+            [
+              -2.4,
+              -4.9
+            ]
+          ],
+          "fill": "$roof"
+        },
+        {
+          "shape": "rect",
+          "x": -3.6,
+          "y": -4.3,
+          "w": 7.2,
+          "h": 0.22,
+          "fill": "$roofDark"
+        },
+        {
+          "shape": "text",
+          "x": 0,
+          "y": -3.3,
+          "text": "$name",
+          "fill": "$ink",
+          "align": "center",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Bungee', 'Space Grotesk', sans-serif"
+          },
+          "upright": false
+        }
+      ],
+      "fonts": {
+        "plate": 0.7
+      }
+    },
+    "station-two": {
+      "heightM": 10.5,
+      "_ref": "Estación de dos plantas del corredor: planta baja crema con zócalo y carpintería azul, techo de zinc rojo sobre el corredor, piso alto con frontón y óculo, y mástil de telégrafo de celosía al costado. Dibujo propio sobre fotografía de referencia.",
+      "fonts": {
+        "plate": 0.66
+      },
+      "palette": {
+        "outline": "#5a5146",
+        "wall": "#ebe4d3",
+        "wallLite": "#f7f2e4",
+        "wallDark": "#cdc4ae",
+        "blue": "#5a7f9c",
+        "blueDark": "#3f6179",
+        "zinc": "#b2503a",
+        "zincDark": "#8d3b28",
+        "glass": "#8aa8b5",
+        "glassLite": "#c2d9e0",
+        "iron": "#4d5259",
+        "mast": "#a0463a",
+        "plinth": "#a39b8d",
+        "ink": "#4a4034"
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -8.4,
+          "y": -1.0,
+          "w": 16.8,
+          "h": 1.0,
+          "r": 0.12,
+          "fill": "$plinth"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.0,
+          "y": -5.4,
+          "w": 16.0,
+          "h": 4.4,
+          "r": 0.16,
+          "fill": "$wall"
+        },
+        {
+          "shape": "roundRect",
+          "x": -8.0,
+          "y": -2.6,
+          "w": 16.0,
+          "h": 1.6,
+          "r": 0.12,
+          "fill": "$blue"
+        },
+        {
+          "shape": "fit",
+          "length": 14.6,
+          "pitch": 2.6,
+          "gap": 1.1,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -7.5,
+              "y": -4.9,
+              "w": 1.5,
+              "h": 3.9,
+              "r": 0.1,
+              "fill": "$blue"
+            },
+            {
+              "shape": "roundRect",
+              "x": -7.36,
+              "y": -4.76,
+              "w": 1.22,
+              "h": 2.0,
+              "r": 0.08,
+              "fill": "$wallLite"
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -7.0,
+          "y": -9.2,
+          "w": 14.0,
+          "h": 3.9,
+          "r": 0.16,
+          "fill": "$wall"
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              -7.6,
+              -9.2
+            ],
+            [
+              7.6,
+              -9.2
+            ],
+            [
+              0,
+              -11.6
+            ]
+          ],
+          "fill": "$wallLite"
+        },
+        {
+          "shape": "disc",
+          "cx": 0,
+          "cy": -10.1,
+          "r": 0.46,
+          "fill": "$ink"
+        },
+        {
+          "shape": "fit",
+          "length": 12.6,
+          "pitch": 3.2,
+          "gap": 1.4,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -6.4,
+              "y": -8.7,
+              "w": 1.8,
+              "h": 1.9,
+              "r": 0.1,
+              "fill": "$glass"
+            },
+            {
+              "shape": "roundRect",
+              "x": -6.4,
+              "y": -8.7,
+              "w": 1.8,
+              "h": 0.5,
+              "r": 0.1,
+              "fill": "$glassLite"
+            },
+            {
+              "shape": "strokeRect",
+              "x": -6.4,
+              "y": -8.7,
+              "w": 1.8,
+              "h": 1.9,
+              "stroke": "$wallDark",
+              "width": 0.12
+            }
+          ]
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              -9.6,
+              -5.4
+            ],
+            [
+              9.6,
+              -5.4
+            ],
+            [
+              8.2,
+              -6.5
+            ],
+            [
+              -8.2,
+              -6.5
+            ]
+          ],
+          "fill": "$zinc"
+        },
+        {
+          "shape": "fit",
+          "length": 19.2,
+          "pitch": 0.5,
+          "parts": [
+            {
+              "shape": "stroke",
+              "pts": [
+                [
+                  -9.6,
+                  -5.4
+                ],
+                [
+                  -8.2,
+                  -6.5
+                ]
+              ],
+              "stroke": "$zincDark",
+              "width": 0.07
+            }
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "x": -9.7,
+          "y": -5.62,
+          "w": 19.4,
+          "h": 0.3,
+          "r": 0.14,
+          "fill": "$zincDark"
+        },
+        {
+          "shape": "text",
+          "x": 0,
+          "y": -6.9,
+          "text": "$name",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Space Grotesk', sans-serif"
+          },
+          "fill": "$ink",
+          "upright": false
+        },
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                -12.2,
+                -0.2
+              ],
+              [
+                -11.4,
+                -11.0
+              ]
+            ],
+            [
+              [
+                -10.2,
+                -0.2
+              ],
+              [
+                -11.0,
+                -11.0
+              ]
+            ]
+          ],
+          "stroke": "$mast",
+          "width": 0.26
+        },
+        {
+          "shape": "fit",
+          "length": 10.4,
+          "pitch": 1.2,
+          "along": "y",
+          "parts": [
+            {
+              "shape": "stroke",
+              "pts": [
+                [
+                  -12.1,
+                  -10.6
+                ],
+                [
+                  -10.3,
+                  -10.2
+                ]
+              ],
+              "stroke": "$mast",
+              "width": 0.14
+            }
+          ]
+        }
+      ],
+      "front": [
+        {
+          "shape": "roundRect",
+          "x": -10.5,
+          "y": -0.36,
+          "w": 21,
+          "h": 0.36,
+          "r": 0.1,
+          "fill": "$plinth"
+        },
+        {
+          "shape": "fit",
+          "length": 18.4,
+          "pitch": 3.1,
+          "parts": [
+            {
+              "shape": "roundRect",
+              "x": -9.2,
+              "y": -5.3,
+              "w": 0.24,
+              "h": 5.0,
+              "r": 0.1,
+              "fill": "$blue"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "_bridges": "UN PUENTE SE DERIVA DE SU VANO. El tablero sale del perfil del nivel y el cañón de abajo, del suelo; la celosía, las pilas y los tirantes los cuenta `render/railway/structures.js` sobre ese largo. Autorar un puente como `pts` lo ataría al vano que tuviera el día que se dibujó, y los cinco de este nivel miden entre 100 y 170 m.",
+  "bridges": {
+    "truss": {
+      "depthM": 6.4,
+      "panelM": 9.5,
+      "chord": "#5a6168",
+      "chordLite": "#7b838b",
+      "web": "#4a5057",
+      "deck": "#6b4a2c",
+      "pier": "#8d8579",
+      "pierDark": "#6d6660",
+      "pierWM": 2.6,
+      "pierPitchM": 42,
+      "side": "through",
+      "portalM": 1.2,
+      "far": "#8d959c",
+      "farWeb": "#79828a",
+      "near": "#aeb6bd",
+      "nearWeb": "#98a1a9",
+      "topChord": "#b8c0c7"
+    },
+    "girder": {
+      "depthM": 3.0,
+      "panelM": 6.0,
+      "chord": "#56606b",
+      "chordLite": "#78838e",
+      "web": "#454e58",
+      "deck": "#6b4a2c",
+      "pier": "#8d8579",
+      "pierDark": "#6d6660",
+      "pierWM": 2.0,
+      "pierPitchM": 28,
+      "side": "below"
+    },
+    "trestle": {
+      "_note": "El caballete de madera no es un puente autorado sino lo que sostiene el tablero cuando el terreno cae poco: la cadena lo pone sola donde el hueco no llega a `bridgeMinM`. Lleva BANDERINES Y BOMBILLOS porque este corredor pasa por pueblos que ponen turno: es el detalle que separa una obra de ingeniería de un lugar donde vive gente, y es el mismo vocabulario que la feria del malecón ya usa en la ciudad.",
+      "postWM": 0.34,
+      "pitchM": 4.6,
+      "wood": "#6b4a2c",
+      "woodDark": "#4e3419",
+      "brace": "#5a3e22",
+      "buntingDropM": 1.1,
+      "buntingSpanM": 3.2,
+      "buntingDepthM": 0.62,
+      "bunting": [
+        "#e4b63c",
+        "#c8503f",
+        "#eae2cf",
+        "#3f7fb0",
+        "#5d9e6a"
+      ],
+      "bulbM": 0.22,
+      "bulbPitchM": 1.6,
+      "bulbs": [
+        "#ffd978",
+        "#ff9d6e",
+        "#9fe0c0",
+        "#9fc8ff"
+      ],
+      "cord": "#5a4a33"
+    },
+    "_note": "UN PUENTE SE DERIVA DE SU VANO. El tablero sale del perfil del nivel y el cañón de abajo, del suelo; la celosía, el arco, las pilas y los tirantes los cuenta `render/railway/structures.js` sobre ese largo. Autorar un puente como `pts` lo ataría al vano que tuviera el día que se dibujó, y los cinco del nivel 1 miden entre 100 y 170 m.\n\n`side` dice de qué lado del tren va la estructura: `below` cuelga del tablero (viga, arco) y `through` lo envuelve —el tren pasa POR DENTRO del cajón— así que se pinta en dos pasadas, una detrás del convoy y otra delante. Es la diferencia que se ve en cualquier foto del Virilla y la que hace que un puente de celosía no parezca una valla.",
+    "arch": {
+      "_ref": "Puente del Ferrocarril al Pacífico sobre el Río Grande: arco parabólico de acero con montantes de tímpano y tablero de celosía, apoyado en estribos de mampostería sobre el cañón. Dibujo propio sobre la tarjeta postal «Memorias de Costa Rica».",
+      "side": "below",
+      "depthM": 2.6,
+      "panelM": 7.5,
+      "riseK": 0.5,
+      "chord": "#7d858c",
+      "chordLite": "#9aa2a9",
+      "web": "#636c74",
+      "arch": "#6d757d",
+      "archLite": "#8d959c",
+      "deck": "#6b4a2c",
+      "pier": "#8d8579",
+      "pierDark": "#6d6660",
+      "pierWM": 3.4,
+      "pierPitchM": 1000000000.0,
+      "abutM": 5.0,
+      "_riseK": "La flecha del arco como fracción del vano. Media luz es la proporción de la postal del Río Grande; más y el arco baja más allá del fondo del cañón, menos y deja de leerse como arco."
+    }
+  },
+  "_props": "MARCO DE UN ACCESORIO: el origen está en el SUELO, -y arriba, metros. `heightM` es para la sombra solar; `anchor` dice si se siembra en la tierra (`ground`) o pegado a la vía (`rail`).",
+  "props": {
+    "palma": {
+      "heightM": 9,
+      "anchor": "ground",
+      "palette": {
+        "trunk": "#8a7352",
+        "trunkDark": "#6b573b",
+        "frond": "#3f7a46",
+        "frondLite": "#56a05a",
+        "coco": "#6f5a34"
+      },
+      "parts": [
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              0,
+              0
+            ],
+            {
+              "q": [
+                0.9,
+                -4.5
+              ],
+              "to": [
+                0.5,
+                -8.2
+              ]
+            }
+          ],
+          "stroke": "$trunk",
+          "width": 0.52,
+          "cap": "round"
+        },
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              0.1,
+              -0.4
+            ],
+            {
+              "q": [
+                0.95,
+                -4.4
+              ],
+              "to": [
+                0.56,
+                -8.0
+              ]
+            }
+          ],
+          "stroke": "$trunkDark",
+          "width": 0.16,
+          "cap": "round"
+        },
+        {
+          "shape": "orbit",
+          "cx": 0.5,
+          "cy": -8.2,
+          "r": 0.1,
+          "n": 7,
+          "spin": 0,
+          "parts": [
+            {
+              "shape": "poly",
+              "pts": [
+                [
+                  0,
+                  0
+                ],
+                {
+                  "q": [
+                    1.5,
+                    -1.3
+                  ],
+                  "to": [
+                    3.4,
+                    -0.5
+                  ]
+                },
+                {
+                  "q": [
+                    1.6,
+                    -0.2
+                  ],
+                  "to": [
+                    0,
+                    0.3
+                  ]
+                }
+              ],
+              "fill": "$frond"
+            }
+          ]
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              0.5,
+              -8.2
+            ],
+            {
+              "q": [
+                2.0,
+                -9.6
+              ],
+              "to": [
+                3.9,
+                -8.5
+              ]
+            },
+            {
+              "q": [
+                2.0,
+                -8.3
+              ],
+              "to": [
+                0.5,
+                -7.8
+              ]
+            }
+          ],
+          "fill": "$frondLite"
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              0.5,
+              -8.2
+            ],
+            {
+              "q": [
+                -1.0,
+                -9.7
+              ],
+              "to": [
+                -2.9,
+                -8.6
+              ]
+            },
+            {
+              "q": [
+                -1.1,
+                -8.3
+              ],
+              "to": [
+                0.5,
+                -7.8
+              ]
+            }
+          ],
+          "fill": "$frondLite"
+        },
+        {
+          "shape": "disc",
+          "cx": 0.72,
+          "cy": -7.6,
+          "r": 0.3,
+          "fill": "$coco"
+        },
+        {
+          "shape": "disc",
+          "cx": 0.2,
+          "cy": -7.5,
+          "r": 0.26,
+          "fill": "$coco"
+        }
+      ]
+    },
+    "higueron": {
+      "heightM": 13,
+      "anchor": "ground",
+      "palette": {
+        "trunk": "#7b6a56",
+        "trunkDark": "#5d4e3c",
+        "crown": "#2f6b3c",
+        "crownLite": "#49884b",
+        "crownDark": "#20492a"
+      },
+      "parts": [
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                0,
+                0
+              ],
+              [
+                0.1,
+                -5.4
+              ]
+            ],
+            [
+              [
+                0.05,
+                -3.4
+              ],
+              [
+                -1.5,
+                -5.6
+              ]
+            ],
+            [
+              [
+                0.08,
+                -4.0
+              ],
+              [
+                1.7,
+                -6.0
+              ]
+            ]
+          ],
+          "stroke": "$trunk",
+          "width": 0.7,
+          "cap": "round"
+        },
+        {
+          "shape": "disc",
+          "cx": -2.0,
+          "cy": -7.1,
+          "r": 2.6,
+          "fill": "$crownDark"
+        },
+        {
+          "shape": "disc",
+          "cx": 2.3,
+          "cy": -7.4,
+          "r": 2.8,
+          "fill": "$crownDark"
+        },
+        {
+          "shape": "disc",
+          "cx": -1.2,
+          "cy": -8.6,
+          "r": 2.9,
+          "fill": "$crown"
+        },
+        {
+          "shape": "disc",
+          "cx": 1.6,
+          "cy": -9.0,
+          "r": 3.1,
+          "fill": "$crown"
+        },
+        {
+          "shape": "disc",
+          "cx": 0.1,
+          "cy": -10.4,
+          "r": 2.7,
+          "fill": "$crownLite"
+        },
+        {
+          "shape": "disc",
+          "cx": -2.6,
+          "cy": -9.4,
+          "r": 1.7,
+          "fill": "$crownLite"
+        },
+        {
+          "shape": "disc",
+          "cx": 3.0,
+          "cy": -9.6,
+          "r": 1.6,
+          "fill": "$crownLite"
+        }
+      ]
+    },
+    "cafetal": {
+      "heightM": 2.1,
+      "anchor": "ground",
+      "palette": {
+        "leaf": "#2e5e36",
+        "leafLite": "#447a42",
+        "berry": "#b3332a",
+        "stem": "#5d4a2c"
+      },
+      "parts": [
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              -1.1
+            ]
+          ],
+          "stroke": "$stem",
+          "width": 0.14
+        },
+        {
+          "shape": "disc",
+          "cx": -0.5,
+          "cy": -1.2,
+          "r": 0.66,
+          "fill": "$leaf"
+        },
+        {
+          "shape": "disc",
+          "cx": 0.55,
+          "cy": -1.3,
+          "r": 0.7,
+          "fill": "$leaf"
+        },
+        {
+          "shape": "disc",
+          "cx": 0.02,
+          "cy": -1.75,
+          "r": 0.66,
+          "fill": "$leafLite"
+        },
+        {
+          "shape": "scatter",
+          "cx": 0,
+          "cy": -1.4,
+          "rx": 0.7,
+          "ry": 0.5,
+          "n": 5,
+          "seed": 3,
+          "parts": [
+            {
+              "shape": "disc",
+              "cx": 0,
+              "cy": 0,
+              "r": 0.11,
+              "fill": "$berry"
+            }
+          ]
+        }
+      ]
+    },
+    "casa-zinc": {
+      "heightM": 5.4,
+      "anchor": "ground",
+      "palette": {
+        "wall": "#dcc9a4",
+        "wallAlt": "#b9c9cf",
+        "wallDark": "#a8936e",
+        "roof": "#8e5a40",
+        "roofAlt": "#6f7e86",
+        "door": "#5f4328",
+        "glass": "#7f9fae",
+        "sill": "#c9b58e"
+      },
+      "parts": [
+        {
+          "shape": "rect",
+          "x": -3.2,
+          "y": -3.4,
+          "w": 6.4,
+          "h": 3.4,
+          "fill": [
+            "$wall",
+            "$wallAlt"
+          ]
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              -3.7,
+              -3.4
+            ],
+            [
+              3.7,
+              -3.4
+            ],
+            [
+              2.9,
+              -5.0
+            ],
+            [
+              -2.9,
+              -5.0
+            ]
+          ],
+          "fill": [
+            "$roof",
+            "$roofAlt"
+          ]
+        },
+        {
+          "shape": "fit",
+          "length": 7.2,
+          "pitch": 0.46,
+          "parts": [
+            {
+              "shape": "stroke",
+              "pts": [
+                [
+                  -3.6,
+                  -5.0
+                ],
+                [
+                  -3.2,
+                  -3.4
+                ]
+              ],
+              "stroke": "#00000022",
+              "width": 0.07
+            }
+          ]
+        },
+        {
+          "shape": "rect",
+          "x": -3.7,
+          "y": -3.56,
+          "w": 7.4,
+          "h": 0.2,
+          "fill": "$wallDark"
+        },
+        {
+          "shape": "rect",
+          "x": -1.9,
+          "y": -2.5,
+          "w": 1.3,
+          "h": 1.0,
+          "fill": "$glass"
+        },
+        {
+          "shape": "strokeRect",
+          "x": -1.9,
+          "y": -2.5,
+          "w": 1.3,
+          "h": 1.0,
+          "stroke": "$sill",
+          "width": 0.12
+        },
+        {
+          "shape": "rect",
+          "x": 0.7,
+          "y": -2.3,
+          "w": 1.0,
+          "h": 2.3,
+          "fill": "$door"
+        }
+      ]
+    },
+    "torre-agua": {
+      "heightM": 11,
+      "anchor": "rail",
+      "palette": {
+        "leg": "#5a6168",
+        "tank": "#7d6a4e",
+        "tankDark": "#5d4d35",
+        "band": "#4a5157",
+        "spout": "#44494f"
+      },
+      "parts": [
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                -1.6,
+                0
+              ],
+              [
+                -1.1,
+                -6.4
+              ]
+            ],
+            [
+              [
+                1.6,
+                0
+              ],
+              [
+                1.1,
+                -6.4
+              ]
+            ],
+            [
+              [
+                -1.45,
+                -2.2
+              ],
+              [
+                1.45,
+                -2.2
+              ]
+            ],
+            [
+              [
+                -1.28,
+                -4.3
+              ],
+              [
+                1.28,
+                -4.3
+              ]
+            ],
+            [
+              [
+                -1.6,
+                0
+              ],
+              [
+                1.45,
+                -2.2
+              ]
+            ],
+            [
+              [
+                1.6,
+                0
+              ],
+              [
+                -1.45,
+                -2.2
+              ]
+            ]
+          ],
+          "stroke": "$leg",
+          "width": 0.17
+        },
+        {
+          "shape": "roundRect",
+          "x": -2.1,
+          "y": -10.4,
+          "w": 4.2,
+          "h": 4.1,
+          "r": 0.4,
+          "fill": "$tank"
+        },
+        {
+          "shape": "rect",
+          "x": -2.1,
+          "y": -8.8,
+          "w": 4.2,
+          "h": 0.26,
+          "fill": "$band"
+        },
+        {
+          "shape": "poly",
+          "pts": [
+            [
+              -2.4,
+              -10.4
+            ],
+            [
+              2.4,
+              -10.4
+            ],
+            [
+              1.7,
+              -11.2
+            ],
+            [
+              -1.7,
+              -11.2
+            ]
+          ],
+          "fill": "$tankDark"
+        },
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              2.0,
+              -7.4
+            ],
+            [
+              3.3,
+              -7.4
+            ],
+            [
+              3.3,
+              -5.2
+            ]
+          ],
+          "stroke": "$spout",
+          "width": 0.26,
+          "join": "round"
+        }
+      ]
+    },
+    "poste-telegrafo": {
+      "heightM": 8,
+      "anchor": "rail",
+      "palette": {
+        "post": "#6e5a3c",
+        "postDark": "#4f3f28",
+        "arm": "#5b4a30",
+        "wire": "#4a4f55",
+        "cup": "#cfe0e4"
+      },
+      "parts": [
+        {
+          "shape": "rect",
+          "x": -0.14,
+          "y": -8,
+          "w": 0.28,
+          "h": 8,
+          "fill": "$post"
+        },
+        {
+          "shape": "rect",
+          "x": 0.04,
+          "y": -8,
+          "w": 0.1,
+          "h": 8,
+          "fill": "$postDark"
+        },
+        {
+          "shape": "rect",
+          "x": -1.3,
+          "y": -7.5,
+          "w": 2.6,
+          "h": 0.17,
+          "fill": "$arm"
+        },
+        {
+          "shape": "rect",
+          "x": -1.0,
+          "y": -6.6,
+          "w": 2.0,
+          "h": 0.15,
+          "fill": "$arm"
+        },
+        {
+          "shape": "repeat",
+          "n": 3,
+          "dx": 1.1,
+          "parts": [
+            {
+              "shape": "disc",
+              "cx": -1.1,
+              "cy": -7.66,
+              "r": 0.13,
+              "fill": "$cup"
+            }
+          ]
+        }
+      ]
+    },
+    "semaforo": {
+      "heightM": 7,
+      "anchor": "rail",
+      "palette": {
+        "post": "#55595f",
+        "arm": "#c8402f",
+        "armTip": "#f0e3c6",
+        "lamp": "#6f8f52",
+        "base": "#7d756a"
+      },
+      "parts": [
+        {
+          "shape": "rect",
+          "x": -0.6,
+          "y": -0.7,
+          "w": 1.2,
+          "h": 0.7,
+          "fill": "$base"
+        },
+        {
+          "shape": "rect",
+          "x": -0.16,
+          "y": -7,
+          "w": 0.32,
+          "h": 6.4,
+          "fill": "$post"
+        },
+        {
+          "shape": "rect",
+          "x": 0.1,
+          "y": -6.5,
+          "w": 2.5,
+          "h": 0.42,
+          "fill": "$arm"
+        },
+        {
+          "shape": "rect",
+          "x": 2.1,
+          "y": -6.5,
+          "w": 0.5,
+          "h": 0.42,
+          "fill": "$armTip"
+        },
+        {
+          "shape": "disc",
+          "cx": 0,
+          "cy": -5.5,
+          "r": 0.4,
+          "fill": "$lamp"
+        },
+        {
+          "shape": "ring",
+          "cx": 0,
+          "cy": -5.5,
+          "r": 0.4,
+          "stroke": "$post",
+          "width": 0.1
+        }
+      ]
+    },
+    "mojon": {
+      "heightM": 1.3,
+      "anchor": "rail",
+      "palette": {
+        "stone": "#dcd6c6",
+        "stoneDark": "#b4ad9a",
+        "ink": "#3a3127"
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -0.42,
+          "y": -1.3,
+          "w": 0.84,
+          "h": 1.3,
+          "r": 0.34,
+          "fill": "$stone"
+        },
+        {
+          "shape": "rect",
+          "x": -0.42,
+          "y": -0.5,
+          "w": 0.84,
+          "h": 0.12,
+          "fill": "$stoneDark"
+        },
+        {
+          "shape": "text",
+          "x": 0,
+          "y": -0.78,
+          "text": "$km",
+          "fill": "$ink",
+          "align": "center",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Bungee', 'Space Grotesk', sans-serif"
+          },
+          "upright": false
+        }
+      ],
+      "fonts": {
+        "plate": 0.42
+      }
+    },
+    "vaca": {
+      "heightM": 1.6,
+      "anchor": "ground",
+      "palette": {
+        "hide": "#e6ddcd",
+        "spot": "#4a3a2c",
+        "hoof": "#3a2f26",
+        "horn": "#cbbf9f"
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -1.1,
+          "y": -1.5,
+          "w": 2.2,
+          "h": 0.95,
+          "r": 0.4,
+          "fill": "$hide"
+        },
+        {
+          "shape": "disc",
+          "cx": -0.45,
+          "cy": -1.15,
+          "r": 0.3,
+          "fill": "$spot"
+        },
+        {
+          "shape": "disc",
+          "cx": 0.5,
+          "cy": -0.95,
+          "r": 0.22,
+          "fill": "$spot"
+        },
+        {
+          "shape": "roundRect",
+          "x": 0.95,
+          "y": -1.62,
+          "w": 0.7,
+          "h": 0.52,
+          "r": 0.2,
+          "fill": "$hide"
+        },
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              1.45,
+              -1.6
+            ],
+            [
+              1.6,
+              -1.78
+            ]
+          ],
+          "stroke": "$horn",
+          "width": 0.1
+        },
+        {
+          "shape": "stroke",
+          "runs": [
+            [
+              [
+                -0.75,
+                -0.6
+              ],
+              [
+                -0.75,
+                0
+              ]
+            ],
+            [
+              [
+                -0.35,
+                -0.6
+              ],
+              [
+                -0.35,
+                0
+              ]
+            ],
+            [
+              [
+                0.6,
+                -0.6
+              ],
+              [
+                0.6,
+                0
+              ]
+            ],
+            [
+              [
+                0.95,
+                -0.6
+              ],
+              [
+                0.95,
+                0
+              ]
+            ]
+          ],
+          "stroke": "$hoof",
+          "width": 0.14
+        },
+        {
+          "shape": "stroke",
+          "pts": [
+            [
+              -1.1,
+              -1.35
+            ],
+            [
+              -1.5,
+              -0.75
+            ]
+          ],
+          "stroke": "$hide",
+          "width": 0.12
+        }
+      ]
+    },
+    "bidon": {
+      "heightM": 1.1,
+      "anchor": "rail",
+      "palette": {
+        "drum": "#c96a28",
+        "drumLite": "#e5924a",
+        "drumDark": "#8f4716",
+        "band": "#f2dfb6",
+        "ink": "#3a2a14"
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "x": -0.4,
+          "y": -1.1,
+          "w": 0.8,
+          "h": 1.1,
+          "r": 0.14,
+          "fill": "$drum"
+        },
+        {
+          "shape": "rect",
+          "x": -0.4,
+          "y": -1.1,
+          "w": 0.26,
+          "h": 1.1,
+          "fill": "$drumLite"
+        },
+        {
+          "shape": "rect",
+          "x": 0.2,
+          "y": -1.1,
+          "w": 0.2,
+          "h": 1.1,
+          "fill": "$drumDark"
+        },
+        {
+          "shape": "rect",
+          "x": -0.4,
+          "y": -0.82,
+          "w": 0.8,
+          "h": 0.1,
+          "fill": "$band"
+        },
+        {
+          "shape": "rect",
+          "x": -0.4,
+          "y": -0.42,
+          "w": 0.8,
+          "h": 0.1,
+          "fill": "$band"
+        },
+        {
+          "shape": "ellipse",
+          "cx": 0,
+          "cy": -1.1,
+          "rx": 0.4,
+          "ry": 0.11,
+          "fill": "$drumLite"
+        }
+      ]
+    },
+    "ficha": {
+      "heightM": 1.1,
+      "anchor": "rail",
+      "palette": {
+        "gold": "#f2c84b",
+        "goldLite": "#ffe694",
+        "goldDark": "#b88a1c",
+        "ink": "#6a4c0a"
+      },
+      "parts": [
+        {
+          "shape": "disc",
+          "cx": 0.0,
+          "cy": 0.0,
+          "r": 1.08,
+          "fill": "$goldDark"
+        },
+        {
+          "shape": "disc",
+          "cx": 0.0,
+          "cy": -0.09000000000000001,
+          "r": 0.9720000000000001,
+          "fill": "$gold"
+        },
+        {
+          "shape": "arc",
+          "cx": 0.0,
+          "cy": -0.09000000000000001,
+          "r": 0.756,
+          "start": 0.56,
+          "end": 0.94,
+          "fill": "$goldLite"
+        },
+        {
+          "shape": "text",
+          "x": 0.0,
+          "y": 0.25200000000000006,
+          "text": "¢",
+          "fill": "$ink",
+          "align": "center",
+          "font": {
+            "size": "$plate",
+            "weight": "bold",
+            "family": "'Bungee', 'Space Grotesk', sans-serif"
+          },
+          "upright": false
+        }
+      ],
+      "fonts": {
+        "plate": 1.1
+      }
+    }
+  },
+  "_scenes": "EL PAISAJE CRUZA EL NIVEL, no hay un fondo por nivel. Cada escena es cielo + capas de silueta + paleta de suelo + siembra, y el nivel dice en qué kilómetro empieza cada una (`scenes` en el nivel); `railway-sim.json → scenes.crossfadeM` las disuelve. Una capa es un MOSAICO: `pts` en 0..1 dentro del mosaico, el primero y el último a `y:1` para que empalme consigo mismo sin costura. `tileW`/`bandH`/`horizon` son FRACCIONES DEL CUADRO y no metros, a propósito: una cordillera a 12 km no cambia de tamaño porque la cámara se acerque al tren.",
+  "scenes": {
+    "pacifico-urbano": {
+      "nameKey": "railway.scene.pacifico-urbano",
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#1f4f82"
+          ],
+          [
+            0.36,
+            "#4d84b4"
+          ],
+          [
+            0.66,
+            "#9fc3d8"
+          ],
+          [
+            1,
+            "#e6d8c0"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.74,
+        "y": 0.2,
+        "r": 0.034,
+        "core": "#fff4d2",
+        "glow": "#ffdf9e",
+        "fade": "#ffffff00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 7,
+        "fill": "#ffffff5c",
+        "parallax": 0.1,
+        "yBand": [
+          0.1,
+          0.42
+        ],
+        "scale": 1.25,
+        "seed": 11
+      },
+      "layers": [
+        {
+          "id": "cordillera",
+          "parallax": 0.05,
+          "yParallax": 0.012,
+          "tileW": 2.1,
+          "bandH": 0.3,
+          "horizon": 0.635,
+          "fill": "#6d87a4",
+          "crest": "#89a2bb",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.05,
+              0.56
+            ],
+            [
+              0.12,
+              0.74
+            ],
+            [
+              0.2,
+              0.3
+            ],
+            [
+              0.28,
+              0.48
+            ],
+            [
+              0.36,
+              0.14
+            ],
+            [
+              0.45,
+              0.4
+            ],
+            [
+              0.54,
+              0.22
+            ],
+            [
+              0.63,
+              0.56
+            ],
+            [
+              0.72,
+              0.34
+            ],
+            [
+              0.82,
+              0.62
+            ],
+            [
+              0.91,
+              0.44
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "cerros",
+          "parallax": 0.12,
+          "yParallax": 0.022,
+          "tileW": 1.5,
+          "bandH": 0.19,
+          "horizon": 0.652,
+          "fill": "#5a7a6a",
+          "crest": "#6e9079",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.08,
+              0.62
+            ],
+            [
+              0.18,
+              0.78
+            ],
+            [
+              0.3,
+              0.44
+            ],
+            [
+              0.42,
+              0.66
+            ],
+            [
+              0.55,
+              0.38
+            ],
+            [
+              0.68,
+              0.7
+            ],
+            [
+              0.8,
+              0.5
+            ],
+            [
+              0.9,
+              0.72
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "ciudad",
+          "parallax": 0.26,
+          "yParallax": 0.034,
+          "tileW": 1.76,
+          "bandH": 0.169,
+          "horizon": 0.664,
+          "fill": "#7d7a84",
+          "crest": "#95929c",
+          "windows": {
+            "fill": "#f6e4b47a",
+            "pitch": 0.013,
+            "rows": 7
+          },
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              0.52
+            ],
+            [
+              0.07,
+              0.52
+            ],
+            [
+              0.07,
+              0.3
+            ],
+            [
+              0.13,
+              0.3
+            ],
+            [
+              0.13,
+              0.62
+            ],
+            [
+              0.22,
+              0.62
+            ],
+            [
+              0.22,
+              0.14
+            ],
+            [
+              0.3,
+              0.14
+            ],
+            [
+              0.3,
+              0.46
+            ],
+            [
+              0.4,
+              0.46
+            ],
+            [
+              0.4,
+              0.66
+            ],
+            [
+              0.5,
+              0.66
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.58,
+              0.36
+            ],
+            [
+              0.58,
+              0.58
+            ],
+            [
+              0.68,
+              0.58
+            ],
+            [
+              0.68,
+              0.22
+            ],
+            [
+              0.76,
+              0.22
+            ],
+            [
+              0.76,
+              0.5
+            ],
+            [
+              0.86,
+              0.5
+            ],
+            [
+              0.86,
+              0.68
+            ],
+            [
+              1,
+              0.68
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "arbolado",
+          "parallax": 0.42,
+          "yParallax": 0.046,
+          "tileW": 0.8,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#3f6a44",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.04,
+              0.5
+            ],
+            [
+              0.1,
+              0.72
+            ],
+            [
+              0.17,
+              0.34
+            ],
+            [
+              0.25,
+              0.6
+            ],
+            [
+              0.34,
+              0.3
+            ],
+            [
+              0.43,
+              0.58
+            ],
+            [
+              0.52,
+              0.26
+            ],
+            [
+              0.62,
+              0.56
+            ],
+            [
+              0.72,
+              0.36
+            ],
+            [
+              0.83,
+              0.62
+            ],
+            [
+              0.93,
+              0.44
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#6b8c4e",
+        "grassLite": "#84a560",
+        "soil": "#9b7f58",
+        "soilDark": "#7a6244",
+        "rock": "#95908a",
+        "cut": "#ab9272"
+      },
+      "scatter": [
+        {
+          "art": "casa-zinc",
+          "pitchM": 52,
+          "seed": 3,
+          "scaleMin": 0.9,
+          "scaleRange": 0.35,
+          "offMin": 7,
+          "offRange": 9
+        },
+        {
+          "art": "higueron",
+          "pitchM": 118,
+          "seed": 17,
+          "scaleMin": 0.7,
+          "scaleRange": 0.4,
+          "offMin": 11,
+          "offRange": 14
+        },
+        {
+          "art": "poste-telegrafo",
+          "pitchM": 46,
+          "seed": 5,
+          "scaleMin": 0.95,
+          "scaleRange": 0.12,
+          "offMin": 5.4,
+          "offRange": 0.8
+        }
+      ]
+    },
+    "sabana-parque": {
+      "nameKey": "railway.scene.sabana-parque",
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#2b6193"
+          ],
+          [
+            0.4,
+            "#6498c1"
+          ],
+          [
+            0.72,
+            "#b2d0de"
+          ],
+          [
+            1,
+            "#eee0c6"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.62,
+        "y": 0.15,
+        "r": 0.036,
+        "core": "#fff8de",
+        "glow": "#ffe6ab",
+        "fade": "#ffffff00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 9,
+        "fill": "#ffffff66",
+        "parallax": 0.11,
+        "yBand": [
+          0.08,
+          0.4
+        ],
+        "scale": 1.5,
+        "seed": 23
+      },
+      "layers": [
+        {
+          "id": "cordillera",
+          "parallax": 0.05,
+          "yParallax": 0.012,
+          "tileW": 2.3,
+          "bandH": 0.3,
+          "horizon": 0.635,
+          "fill": "#7792ab",
+          "crest": "#93abc0",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.07,
+              0.6
+            ],
+            [
+              0.16,
+              0.26
+            ],
+            [
+              0.26,
+              0.5
+            ],
+            [
+              0.37,
+              0.18
+            ],
+            [
+              0.49,
+              0.44
+            ],
+            [
+              0.6,
+              0.22
+            ],
+            [
+              0.72,
+              0.52
+            ],
+            [
+              0.85,
+              0.32
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "torres",
+          "parallax": 0.2,
+          "yParallax": 0.022,
+          "tileW": 2.56,
+          "bandH": 0.169,
+          "horizon": 0.664,
+          "fill": "#8a8792",
+          "crest": "#a3a0aa",
+          "windows": {
+            "fill": "#fbead266",
+            "pitch": 0.013,
+            "rows": 7
+          },
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.1,
+              1
+            ],
+            [
+              0.1,
+              0.46
+            ],
+            [
+              0.17,
+              0.46
+            ],
+            [
+              0.17,
+              0.08
+            ],
+            [
+              0.25,
+              0.08
+            ],
+            [
+              0.25,
+              0.5
+            ],
+            [
+              0.4,
+              0.5
+            ],
+            [
+              0.4,
+              0.68
+            ],
+            [
+              0.55,
+              0.68
+            ],
+            [
+              0.55,
+              0.3
+            ],
+            [
+              0.63,
+              0.3
+            ],
+            [
+              0.63,
+              0.64
+            ],
+            [
+              0.8,
+              0.64
+            ],
+            [
+              0.8,
+              0.46
+            ],
+            [
+              0.9,
+              0.46
+            ],
+            [
+              0.9,
+              0.72
+            ],
+            [
+              1,
+              0.72
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "arboleda",
+          "parallax": 0.38,
+          "yParallax": 0.034,
+          "tileW": 0.74,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#2f6338",
+          "crest": "#3d7a43",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.03,
+              0.42
+            ],
+            [
+              0.09,
+              0.2
+            ],
+            [
+              0.16,
+              0.5
+            ],
+            [
+              0.24,
+              0.24
+            ],
+            [
+              0.33,
+              0.52
+            ],
+            [
+              0.42,
+              0.18
+            ],
+            [
+              0.52,
+              0.46
+            ],
+            [
+              0.62,
+              0.22
+            ],
+            [
+              0.73,
+              0.5
+            ],
+            [
+              0.84,
+              0.28
+            ],
+            [
+              0.94,
+              0.54
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#79a052",
+        "grassLite": "#94b968",
+        "soil": "#9f8257",
+        "soilDark": "#7d6642",
+        "rock": "#9a948c",
+        "cut": "#b09776"
+      },
+      "scatter": [
+        {
+          "art": "higueron",
+          "pitchM": 58,
+          "seed": 9,
+          "scaleMin": 0.85,
+          "scaleRange": 0.45,
+          "offMin": 9,
+          "offRange": 13
+        },
+        {
+          "art": "poste-telegrafo",
+          "pitchM": 46,
+          "seed": 5,
+          "scaleMin": 0.95,
+          "scaleRange": 0.12,
+          "offMin": 5.4,
+          "offRange": 0.8
+        }
+      ]
+    },
+    "pavas-barrio": {
+      "nameKey": "railway.scene.pavas-barrio",
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#3a6f9c"
+          ],
+          [
+            0.42,
+            "#79a5c6"
+          ],
+          [
+            0.74,
+            "#c0d8e1"
+          ],
+          [
+            1,
+            "#f2e3c6"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.5,
+        "y": 0.12,
+        "r": 0.038,
+        "core": "#fffbe8",
+        "glow": "#ffeec0",
+        "fade": "#ffffff00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 8,
+        "fill": "#ffffff52",
+        "parallax": 0.12,
+        "yBand": [
+          0.12,
+          0.44
+        ],
+        "scale": 1.3,
+        "seed": 41
+      },
+      "layers": [
+        {
+          "id": "cerros",
+          "parallax": 0.08,
+          "yParallax": 0.012,
+          "tileW": 1.9,
+          "bandH": 0.3,
+          "horizon": 0.635,
+          "fill": "#73899b",
+          "crest": "#8da1b0",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.09,
+              0.52
+            ],
+            [
+              0.2,
+              0.7
+            ],
+            [
+              0.32,
+              0.34
+            ],
+            [
+              0.44,
+              0.56
+            ],
+            [
+              0.57,
+              0.3
+            ],
+            [
+              0.7,
+              0.6
+            ],
+            [
+              0.84,
+              0.4
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "barrio",
+          "parallax": 0.24,
+          "yParallax": 0.022,
+          "tileW": 1.0,
+          "bandH": 0.135,
+          "horizon": 0.664,
+          "fill": "#8b7b6d",
+          "crest": "#a08f7e",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.04,
+              0.68
+            ],
+            [
+              0.1,
+              0.5
+            ],
+            [
+              0.16,
+              0.5
+            ],
+            [
+              0.2,
+              0.74
+            ],
+            [
+              0.3,
+              0.74
+            ],
+            [
+              0.34,
+              0.46
+            ],
+            [
+              0.42,
+              0.46
+            ],
+            [
+              0.46,
+              0.7
+            ],
+            [
+              0.56,
+              0.7
+            ],
+            [
+              0.6,
+              0.4
+            ],
+            [
+              0.68,
+              0.4
+            ],
+            [
+              0.72,
+              0.66
+            ],
+            [
+              0.84,
+              0.66
+            ],
+            [
+              0.88,
+              0.48
+            ],
+            [
+              0.95,
+              0.48
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "monte",
+          "parallax": 0.44,
+          "yParallax": 0.034,
+          "tileW": 0.7,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#3a6b40",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.05,
+              0.46
+            ],
+            [
+              0.13,
+              0.68
+            ],
+            [
+              0.22,
+              0.32
+            ],
+            [
+              0.33,
+              0.58
+            ],
+            [
+              0.45,
+              0.28
+            ],
+            [
+              0.57,
+              0.56
+            ],
+            [
+              0.7,
+              0.34
+            ],
+            [
+              0.85,
+              0.6
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#6f9148",
+        "grassLite": "#88aa5c",
+        "soil": "#a4855a",
+        "soilDark": "#806745",
+        "rock": "#948e86",
+        "cut": "#b19873"
+      },
+      "scatter": [
+        {
+          "art": "casa-zinc",
+          "pitchM": 38,
+          "seed": 13,
+          "scaleMin": 0.82,
+          "scaleRange": 0.3,
+          "offMin": 6.5,
+          "offRange": 7
+        },
+        {
+          "art": "palma",
+          "pitchM": 96,
+          "seed": 31,
+          "scaleMin": 0.72,
+          "scaleRange": 0.3,
+          "offMin": 10,
+          "offRange": 10
+        },
+        {
+          "art": "poste-telegrafo",
+          "pitchM": 46,
+          "seed": 5,
+          "scaleMin": 0.95,
+          "scaleRange": 0.12,
+          "offMin": 5.4,
+          "offRange": 0.8
+        }
+      ]
+    },
+    "canon-virilla": {
+      "nameKey": "railway.scene.canon-virilla",
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#2d5f87"
+          ],
+          [
+            0.44,
+            "#6d9cba"
+          ],
+          [
+            0.78,
+            "#bcd3d6"
+          ],
+          [
+            1,
+            "#dfd3bb"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.3,
+        "y": 0.14,
+        "r": 0.03,
+        "core": "#fff6dc",
+        "glow": "#ffe3ad",
+        "fade": "#ffffff00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 5,
+        "fill": "#ffffff44",
+        "parallax": 0.09,
+        "yBand": [
+          0.1,
+          0.34
+        ],
+        "scale": 1.1,
+        "seed": 57
+      },
+      "layers": [
+        {
+          "id": "paredon",
+          "parallax": 0.1,
+          "yParallax": 0.012,
+          "tileW": 1.7,
+          "bandH": 0.3,
+          "horizon": 0.635,
+          "fill": "#6b6f6b",
+          "crest": "#848779",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.04,
+              0.3
+            ],
+            [
+              0.1,
+              0.46
+            ],
+            [
+              0.15,
+              0.12
+            ],
+            [
+              0.24,
+              0.34
+            ],
+            [
+              0.3,
+              0.08
+            ],
+            [
+              0.4,
+              0.3
+            ],
+            [
+              0.48,
+              0.18
+            ],
+            [
+              0.56,
+              0.42
+            ],
+            [
+              0.66,
+              0.2
+            ],
+            [
+              0.76,
+              0.44
+            ],
+            [
+              0.86,
+              0.26
+            ],
+            [
+              0.95,
+              0.5
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "ladera",
+          "parallax": 0.22,
+          "yParallax": 0.022,
+          "tileW": 1.2,
+          "bandH": 0.135,
+          "horizon": 0.664,
+          "fill": "#2f5a3a",
+          "crest": "#3c7044",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.06,
+              0.34
+            ],
+            [
+              0.14,
+              0.56
+            ],
+            [
+              0.23,
+              0.22
+            ],
+            [
+              0.34,
+              0.48
+            ],
+            [
+              0.45,
+              0.18
+            ],
+            [
+              0.56,
+              0.44
+            ],
+            [
+              0.68,
+              0.24
+            ],
+            [
+              0.8,
+              0.5
+            ],
+            [
+              0.92,
+              0.3
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "selva",
+          "parallax": 0.46,
+          "yParallax": 0.034,
+          "tileW": 0.62,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#1f4529",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.04,
+              0.4
+            ],
+            [
+              0.11,
+              0.62
+            ],
+            [
+              0.2,
+              0.28
+            ],
+            [
+              0.31,
+              0.56
+            ],
+            [
+              0.43,
+              0.24
+            ],
+            [
+              0.55,
+              0.5
+            ],
+            [
+              0.68,
+              0.3
+            ],
+            [
+              0.82,
+              0.54
+            ],
+            [
+              0.94,
+              0.36
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#4a7a42",
+        "grassLite": "#5f9450",
+        "soil": "#8a7352",
+        "soilDark": "#6a583d",
+        "rock": "#7e7a72",
+        "cut": "#8e8176"
+      },
+      "water": {
+        "fill": "#4e7a86",
+        "shine": "#9fc4c8",
+        "foam": "#dfeeee"
+      },
+      "scatter": [
+        {
+          "art": "higueron",
+          "pitchM": 46,
+          "seed": 61,
+          "scaleMin": 0.8,
+          "scaleRange": 0.5,
+          "offMin": 8,
+          "offRange": 12
+        },
+        {
+          "art": "palma",
+          "pitchM": 72,
+          "seed": 67,
+          "scaleMin": 0.8,
+          "scaleRange": 0.3,
+          "offMin": 9,
+          "offRange": 9
+        }
+      ]
+    },
+    "belen-cafetal": {
+      "nameKey": "railway.scene.belen-cafetal",
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#3e74a0"
+          ],
+          [
+            0.4,
+            "#84afcc"
+          ],
+          [
+            0.72,
+            "#cadde2"
+          ],
+          [
+            1,
+            "#f6e6c4"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.82,
+        "y": 0.18,
+        "r": 0.04,
+        "core": "#fff9e4",
+        "glow": "#ffecbb",
+        "fade": "#ffffff00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 10,
+        "fill": "#ffffff5e",
+        "parallax": 0.1,
+        "yBand": [
+          0.06,
+          0.38
+        ],
+        "scale": 1.6,
+        "seed": 73
+      },
+      "layers": [
+        {
+          "id": "barva",
+          "parallax": 0.04,
+          "yParallax": 0.012,
+          "tileW": 2.6,
+          "bandH": 0.3,
+          "horizon": 0.635,
+          "fill": "#7b93a8",
+          "crest": "#9bb0c2",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.1,
+              0.66
+            ],
+            [
+              0.22,
+              0.44
+            ],
+            [
+              0.33,
+              0.12
+            ],
+            [
+              0.4,
+              0.08
+            ],
+            [
+              0.48,
+              0.2
+            ],
+            [
+              0.6,
+              0.48
+            ],
+            [
+              0.74,
+              0.34
+            ],
+            [
+              0.88,
+              0.58
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "lomas",
+          "parallax": 0.13,
+          "yParallax": 0.022,
+          "tileW": 1.6,
+          "bandH": 0.135,
+          "horizon": 0.664,
+          "fill": "#5d7f5c",
+          "crest": "#739469",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.1,
+              0.6
+            ],
+            [
+              0.24,
+              0.76
+            ],
+            [
+              0.38,
+              0.46
+            ],
+            [
+              0.52,
+              0.68
+            ],
+            [
+              0.66,
+              0.42
+            ],
+            [
+              0.8,
+              0.7
+            ],
+            [
+              0.92,
+              0.52
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "cafetal-lejos",
+          "parallax": 0.34,
+          "yParallax": 0.034,
+          "tileW": 0.52,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#3c7140",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.08,
+              0.56
+            ],
+            [
+              0.2,
+              0.74
+            ],
+            [
+              0.32,
+              0.5
+            ],
+            [
+              0.46,
+              0.7
+            ],
+            [
+              0.6,
+              0.48
+            ],
+            [
+              0.74,
+              0.72
+            ],
+            [
+              0.88,
+              0.54
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#78a04e",
+        "grassLite": "#93b966",
+        "soil": "#a68153",
+        "soilDark": "#836642",
+        "rock": "#9a9288",
+        "cut": "#b59a71"
+      },
+      "scatter": [
+        {
+          "art": "cafetal",
+          "pitchM": 7.5,
+          "seed": 79,
+          "scaleMin": 0.82,
+          "scaleRange": 0.4,
+          "offMin": 6,
+          "offRange": 20
+        },
+        {
+          "art": "higueron",
+          "pitchM": 96,
+          "seed": 83,
+          "scaleMin": 0.9,
+          "scaleRange": 0.4,
+          "offMin": 12,
+          "offRange": 10
+        },
+        {
+          "art": "casa-zinc",
+          "pitchM": 140,
+          "seed": 89,
+          "scaleMin": 0.9,
+          "scaleRange": 0.2,
+          "offMin": 9,
+          "offRange": 8
+        },
+        {
+          "art": "vaca",
+          "pitchM": 180,
+          "seed": 97,
+          "scaleMin": 0.9,
+          "scaleRange": 0.25,
+          "offMin": 8,
+          "offRange": 12
+        }
+      ]
+    },
+    "rio-grande-canon": {
+      "nameKey": "railway.scene.rio-grande-canon",
+      "preview": true,
+      "_preview": "Escenas de tramos todavía no jugables. Viven aquí para que el selector muestre a dónde va la campaña; ningún nivel las nombra todavía.",
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#24547e"
+          ],
+          [
+            0.42,
+            "#6693b4"
+          ],
+          [
+            0.78,
+            "#b9cfd3"
+          ],
+          [
+            1,
+            "#dccfb6"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.22,
+        "y": 0.1,
+        "r": 0.03,
+        "core": "#fff4d6",
+        "glow": "#ffdfa4",
+        "fade": "#ffffff00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 4,
+        "fill": "#ffffff3d",
+        "parallax": 0.08,
+        "yBand": [
+          0.08,
+          0.3
+        ],
+        "scale": 1.0,
+        "seed": 101
+      },
+      "layers": [
+        {
+          "id": "pared-alta",
+          "parallax": 0.07,
+          "yParallax": 0.012,
+          "tileW": 1.5,
+          "bandH": 0.3,
+          "horizon": 0.635,
+          "fill": "#5f6563",
+          "crest": "#7b7f71",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.03,
+              0.2
+            ],
+            [
+              0.08,
+              0.38
+            ],
+            [
+              0.13,
+              0.06
+            ],
+            [
+              0.2,
+              0.26
+            ],
+            [
+              0.27,
+              0.04
+            ],
+            [
+              0.35,
+              0.24
+            ],
+            [
+              0.43,
+              0.1
+            ],
+            [
+              0.52,
+              0.32
+            ],
+            [
+              0.62,
+              0.12
+            ],
+            [
+              0.71,
+              0.36
+            ],
+            [
+              0.8,
+              0.16
+            ],
+            [
+              0.9,
+              0.4
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "peñascos",
+          "parallax": 0.2,
+          "yParallax": 0.022,
+          "tileW": 1.0,
+          "bandH": 0.135,
+          "horizon": 0.664,
+          "fill": "#73695f",
+          "crest": "#8c8174",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.05,
+              0.26
+            ],
+            [
+              0.12,
+              0.5
+            ],
+            [
+              0.2,
+              0.14
+            ],
+            [
+              0.3,
+              0.42
+            ],
+            [
+              0.42,
+              0.12
+            ],
+            [
+              0.54,
+              0.38
+            ],
+            [
+              0.66,
+              0.18
+            ],
+            [
+              0.78,
+              0.44
+            ],
+            [
+              0.9,
+              0.24
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "verde-canon",
+          "parallax": 0.44,
+          "yParallax": 0.034,
+          "tileW": 0.6,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#1d4426",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.05,
+              0.42
+            ],
+            [
+              0.14,
+              0.64
+            ],
+            [
+              0.25,
+              0.3
+            ],
+            [
+              0.38,
+              0.56
+            ],
+            [
+              0.52,
+              0.26
+            ],
+            [
+              0.66,
+              0.52
+            ],
+            [
+              0.8,
+              0.32
+            ],
+            [
+              0.93,
+              0.56
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#45743e",
+        "grassLite": "#598d4b",
+        "soil": "#857049",
+        "soilDark": "#665636",
+        "rock": "#7a736a",
+        "cut": "#8a7d70"
+      },
+      "water": {
+        "fill": "#49707c",
+        "shine": "#96bcc0",
+        "foam": "#dcecec"
+      },
+      "scatter": [
+        {
+          "art": "higueron",
+          "pitchM": 52,
+          "seed": 103,
+          "scaleMin": 0.8,
+          "scaleRange": 0.5,
+          "offMin": 9,
+          "offRange": 13
+        },
+        {
+          "art": "palma",
+          "pitchM": 84,
+          "seed": 107,
+          "scaleMin": 0.85,
+          "scaleRange": 0.3,
+          "offMin": 10,
+          "offRange": 9
+        }
+      ]
+    },
+    "orotina-agricola": {
+      "nameKey": "railway.scene.orotina-agricola",
+      "preview": true,
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#4a82a8"
+          ],
+          [
+            0.38,
+            "#92b8cd"
+          ],
+          [
+            0.7,
+            "#dbe3d8"
+          ],
+          [
+            1,
+            "#fbeec6"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.56,
+        "y": 0.09,
+        "r": 0.046,
+        "core": "#fffdf0",
+        "glow": "#fff2c6",
+        "fade": "#ffffff00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 11,
+        "fill": "#ffffff6b",
+        "parallax": 0.1,
+        "yBand": [
+          0.05,
+          0.36
+        ],
+        "scale": 1.8,
+        "seed": 109
+      },
+      "layers": [
+        {
+          "id": "montes-lejos",
+          "parallax": 0.05,
+          "yParallax": 0.012,
+          "tileW": 2.4,
+          "bandH": 0.3,
+          "horizon": 0.635,
+          "fill": "#8aa0ad",
+          "crest": "#a3b6c0",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.12,
+              0.6
+            ],
+            [
+              0.26,
+              0.74
+            ],
+            [
+              0.4,
+              0.44
+            ],
+            [
+              0.55,
+              0.66
+            ],
+            [
+              0.7,
+              0.42
+            ],
+            [
+              0.86,
+              0.68
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "mangales",
+          "parallax": 0.2,
+          "yParallax": 0.022,
+          "tileW": 0.9,
+          "bandH": 0.135,
+          "horizon": 0.664,
+          "fill": "#4e7d44",
+          "crest": "#639355",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.07,
+              0.5
+            ],
+            [
+              0.17,
+              0.7
+            ],
+            [
+              0.29,
+              0.42
+            ],
+            [
+              0.42,
+              0.66
+            ],
+            [
+              0.56,
+              0.4
+            ],
+            [
+              0.7,
+              0.64
+            ],
+            [
+              0.85,
+              0.46
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "potreros",
+          "parallax": 0.4,
+          "yParallax": 0.034,
+          "tileW": 0.6,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#79934a",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.1,
+              0.62
+            ],
+            [
+              0.26,
+              0.78
+            ],
+            [
+              0.42,
+              0.56
+            ],
+            [
+              0.6,
+              0.76
+            ],
+            [
+              0.78,
+              0.58
+            ],
+            [
+              0.92,
+              0.76
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#90a14a",
+        "grassLite": "#a9b85e",
+        "soil": "#b48e52",
+        "soilDark": "#8e7040",
+        "rock": "#a39a8c",
+        "cut": "#c0a371"
+      },
+      "scatter": [
+        {
+          "art": "higueron",
+          "pitchM": 66,
+          "seed": 113,
+          "scaleMin": 0.9,
+          "scaleRange": 0.5,
+          "offMin": 10,
+          "offRange": 14
+        },
+        {
+          "art": "vaca",
+          "pitchM": 92,
+          "seed": 127,
+          "scaleMin": 0.95,
+          "scaleRange": 0.2,
+          "offMin": 7,
+          "offRange": 16
+        },
+        {
+          "art": "casa-zinc",
+          "pitchM": 150,
+          "seed": 131,
+          "scaleMin": 0.95,
+          "scaleRange": 0.2,
+          "offMin": 9,
+          "offRange": 7
+        }
+      ]
+    },
+    "caldera-costa": {
+      "nameKey": "railway.scene.caldera-costa",
+      "preview": true,
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#2f6fa0"
+          ],
+          [
+            0.36,
+            "#7fb0cc"
+          ],
+          [
+            0.66,
+            "#cfe0e2"
+          ],
+          [
+            1,
+            "#ffe9bf"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.18,
+        "y": 0.22,
+        "r": 0.05,
+        "core": "#fff2cd",
+        "glow": "#ffd896",
+        "fade": "#ffffff00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 8,
+        "fill": "#ffffff5c",
+        "parallax": 0.09,
+        "yBand": [
+          0.08,
+          0.34
+        ],
+        "scale": 1.6,
+        "seed": 137
+      },
+      "layers": [
+        {
+          "id": "mar",
+          "parallax": 0.03,
+          "yParallax": 0.012,
+          "tileW": 1.0,
+          "bandH": 0.1,
+          "horizon": 0.648,
+          "fill": "#4d8396",
+          "crest": "#7fb0bc",
+          "flat": true,
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "roca-carballo",
+          "parallax": 0.14,
+          "yParallax": 0.022,
+          "tileW": 1.3,
+          "bandH": 0.135,
+          "horizon": 0.664,
+          "fill": "#6e6a63",
+          "crest": "#88837a",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.06,
+              0.44
+            ],
+            [
+              0.14,
+              0.26
+            ],
+            [
+              0.24,
+              0.5
+            ],
+            [
+              0.34,
+              0.2
+            ],
+            [
+              0.46,
+              0.46
+            ],
+            [
+              0.58,
+              0.22
+            ],
+            [
+              0.7,
+              0.48
+            ],
+            [
+              0.84,
+              0.3
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "cocoteros",
+          "parallax": 0.38,
+          "yParallax": 0.034,
+          "tileW": 0.66,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#37673c",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.06,
+              0.44
+            ],
+            [
+              0.16,
+              0.66
+            ],
+            [
+              0.28,
+              0.32
+            ],
+            [
+              0.42,
+              0.58
+            ],
+            [
+              0.56,
+              0.3
+            ],
+            [
+              0.7,
+              0.54
+            ],
+            [
+              0.86,
+              0.36
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#7d9a4c",
+        "grassLite": "#95b260",
+        "soil": "#c2a976",
+        "soilDark": "#9a8458",
+        "rock": "#8d867c",
+        "cut": "#cbb389"
+      },
+      "water": {
+        "fill": "#4d8396",
+        "shine": "#a6cbd2",
+        "foam": "#edf6f6"
+      },
+      "scatter": [
+        {
+          "art": "palma",
+          "pitchM": 34,
+          "seed": 139,
+          "scaleMin": 0.85,
+          "scaleRange": 0.4,
+          "offMin": 7,
+          "offRange": 13
+        },
+        {
+          "art": "casa-zinc",
+          "pitchM": 170,
+          "seed": 149,
+          "scaleMin": 0.9,
+          "scaleRange": 0.2,
+          "offMin": 9,
+          "offRange": 6
+        }
+      ]
+    },
+    "puntarenas-estero": {
+      "nameKey": "railway.scene.puntarenas-estero",
+      "preview": true,
+      "sky": {
+        "stops": [
+          [
+            0,
+            "#8a4f7a"
+          ],
+          [
+            0.3,
+            "#cf7a5e"
+          ],
+          [
+            0.6,
+            "#f0ae6b"
+          ],
+          [
+            1,
+            "#ffe0a8"
+          ]
+        ]
+      },
+      "sun": {
+        "x": 0.14,
+        "y": 0.52,
+        "r": 0.062,
+        "core": "#fff0c2",
+        "glow": "#ff9f5e",
+        "fade": "#ff9f5e00",
+        "glowK": 4.2
+      },
+      "clouds": {
+        "n": 9,
+        "fill": "#ffd9a866",
+        "parallax": 0.09,
+        "yBand": [
+          0.14,
+          0.44
+        ],
+        "scale": 1.7,
+        "seed": 151
+      },
+      "layers": [
+        {
+          "id": "golfo",
+          "parallax": 0.03,
+          "yParallax": 0.012,
+          "tileW": 1.0,
+          "bandH": 0.1,
+          "horizon": 0.648,
+          "fill": "#7a6a82",
+          "crest": "#c08a74",
+          "flat": true,
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "nicoya",
+          "parallax": 0.08,
+          "yParallax": 0.022,
+          "tileW": 2.0,
+          "bandH": 0.19,
+          "horizon": 0.652,
+          "fill": "#5c5570",
+          "crest": "#7b6c7e",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.15,
+              0.6
+            ],
+            [
+              0.3,
+              0.8
+            ],
+            [
+              0.46,
+              0.5
+            ],
+            [
+              0.62,
+              0.74
+            ],
+            [
+              0.78,
+              0.54
+            ],
+            [
+              0.92,
+              0.78
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "muelle",
+          "parallax": 0.22,
+          "yParallax": 0.034,
+          "tileW": 1.4,
+          "bandH": 0.135,
+          "horizon": 0.664,
+          "fill": "#54505a",
+          "crest": "#6f6a73",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.08,
+              1
+            ],
+            [
+              0.08,
+              0.6
+            ],
+            [
+              0.12,
+              0.6
+            ],
+            [
+              0.12,
+              0.1
+            ],
+            [
+              0.16,
+              0.1
+            ],
+            [
+              0.16,
+              0.56
+            ],
+            [
+              0.3,
+              0.56
+            ],
+            [
+              0.3,
+              0.72
+            ],
+            [
+              0.52,
+              0.72
+            ],
+            [
+              0.52,
+              0.4
+            ],
+            [
+              0.58,
+              0.4
+            ],
+            [
+              0.58,
+              0.68
+            ],
+            [
+              0.76,
+              0.68
+            ],
+            [
+              0.76,
+              0.5
+            ],
+            [
+              0.84,
+              0.5
+            ],
+            [
+              0.84,
+              0.74
+            ],
+            [
+              1,
+              0.74
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "manglar",
+          "parallax": 0.42,
+          "yParallax": 0.046,
+          "tileW": 0.56,
+          "bandH": 0.095,
+          "horizon": 0.674,
+          "fill": "#2a4a34",
+          "pts": [
+            [
+              0,
+              1
+            ],
+            [
+              0.07,
+              0.52
+            ],
+            [
+              0.18,
+              0.72
+            ],
+            [
+              0.3,
+              0.44
+            ],
+            [
+              0.44,
+              0.68
+            ],
+            [
+              0.58,
+              0.42
+            ],
+            [
+              0.72,
+              0.66
+            ],
+            [
+              0.87,
+              0.48
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ],
+      "ground": {
+        "grass": "#6f8a4a",
+        "grassLite": "#87a35c",
+        "soil": "#cdb288",
+        "soilDark": "#a38f68",
+        "rock": "#8d867c",
+        "cut": "#d8bd93"
+      },
+      "water": {
+        "fill": "#6d6a85",
+        "shine": "#d1a087",
+        "foam": "#f3e2d4"
+      },
+      "scatter": [
+        {
+          "art": "palma",
+          "pitchM": 28,
+          "seed": 157,
+          "scaleMin": 0.8,
+          "scaleRange": 0.45,
+          "offMin": 6,
+          "offRange": 14
+        },
+        {
+          "art": "casa-zinc",
+          "pitchM": 64,
+          "seed": 163,
+          "scaleMin": 0.85,
+          "scaleRange": 0.25,
+          "offMin": 8,
+          "offRange": 7
+        }
+      ]
+    }
+  },
+  "_fonts": "EL TAMAÑO DE UN TEXTO NO PASA POR EL MARCO. `shapes.js` lee `font.size` crudo, así que en un marco que mide en metros un `0.62` saldría de 0,62 px. Cada registro que escribe declara sus tamaños EN METROS en `fonts` y la parte los nombra con `$`: el pintor los convierte una vez y el intérprete los recibe ya en píxeles, por el mismo canal `vars` que ya usaba. Y van con `upright: false`: una placa de numeración gira con su máquina — en un rizo, boca abajo con ella.",
+  "_horizons": "TODAS LAS CAPAS SE APOYAN EN LA MISMA LÍNEA. La cámara sigue al tren, así que el suelo cae SIEMPRE cerca de `view.anchorY`: una capa con el horizonte en 0,86 queda entera debajo de la tierra y no se ve nunca. Repartidas por el cuadro —que es como se autoraron primero— la ciudad y el arbolado de la salida del Pacífico sencillamente no existían. Se apilan entre 0,63 y 0,68 y lo que las separa es el ALTO de la banda: cuanto más lejos, más alta sube sobre el horizonte, que es como se lee una cordillera detrás de un cerro.",
+  "_fitFrame": "`fit` Y `repeat` NO TIENEN MARCO PROPIO: sus hijos se dibujan en el marco del PADRE y la cuenta sólo les suma el paso. Escribir `x`/`y` en el verbo no es un error que avise — se ignora, la fila arranca en el origen del registro y las ventanas de un coche se van marchando hacia afuera y hacia abajo de su propia carrocería. La hoja de arte lo destapó en cinco registros de seis. Los hijos llevan la coordenada ABSOLUTA de donde empieza la fila; los únicos verbos con ancla propia son `scatter` y `orbit`, que sí trasladan a `cx`/`cy`.",
+  "_yParallax": "EL FONDO SE MUEVE CON LA ALTURA RELATIVA, NUNCA CON LA `y` DEL MUNDO. El nivel 1 baja 365 metros dibujados —cuatro mil píxeles— así que un `camY` absoluto por 0,3 corre el horizonte ochocientos píxeles fuera del cuadro y el relleno bajo la banda pinta la pantalla entera de verde: no se ve como un fondo mal puesto, se ve como que no hay cielo. El pintor recibe la altura del tren RESPECTO AL MEDIO DEL NIVEL y el desplazamiento va acotado a una fracción del cuadro; estos factores son lo poco que hace falta para que una loma se note en el horizonte.",
+  "loopFrame": {
+    "_note": "EL RIZO ES UNA ESTRUCTURA, NO UN TRAZO. Dibujado sólo como carril es un alambre flotando sobre el paisaje: lo que lo hace leer como obra es el mástil que lo sostiene por el eje y los dos tirantes a la base. Las medidas son FRACCIONES DEL RADIO —el mismo marco que usa la feria— así que el rizo pequeño y el grande comparten receta sin compartir un número.",
+    "mast": "#4a5057",
+    "mastLite": "#6d757d",
+    "tie": "#3e444a",
+    "footing": "#8d8579",
+    "mastWK": 0.1,
+    "tieWK": 0.055,
+    "footWK": 0.42,
+    "footHK": 0.1,
+    "spreadK": 0.9
+  },
+  "_sunFade": "EL BORDE DEL RESPLANDOR TAMBIÉN ES TINTA. Un `#ffffff00` escrito dentro del pintor es un color autorado sin superficie de edición, que es justo lo que `tests/test_materials.py` prohíbe en todo `src/render` — y con razón: el amanecer de Puntarenas quiere desvanecer a naranja, no a blanco.",
+  "_wheelInk": "CADA COCHE DECLARA LA TINTA DE SUS RUEDAS (`wheel`, `tyre`, `hub`, `rod`). La rueda la dibuja el motor —gira con la distancia, y eso es geometría derivada— pero el COLOR no es del motor: un respaldo escrito en el pintor es un color autorado sin superficie de edición, y `tests/test_materials.py` lo rechaza en todo `src/render` por la misma razón que rechaza los otros ~420 que esta casa ya pagó. Sin estas cuatro llaves el registro falla la prueba, no se pinta gris.",
+  "eras": {
+    "_note": "LA ÉPOCA ES UN BAÑO SOBRE EL CUADRO, no un segundo juego de paletas. La campaña va de 1898 a hoy y un tramo de vapor no puede verse igual que uno del 200-3122; autorar dos paletas por escena serían dieciocho juegos de colores que se despegan el día que alguien retiñe uno. El nivel declara `era` y `render/railway/era.js` lo aplica al final del cuadro. `moderno` no tiene `wash` y por eso no cuesta nada ni cambia un píxel — que es lo que hace la migración demostrable tramo por tramo.",
+    "moderno": {
+      "nameKey": "railway.era.moderno"
+    },
+    "sepia": {
+      "nameKey": "railway.era.sepia",
+      "grey": "#808080",
+      "desaturate": 0.86,
+      "wash": "#b98f55",
+      "washAlpha": 0.5,
+      "paper": "#f0dfb8",
+      "paperAlpha": 0.26,
+      "vignette": 0.42,
+      "vignetteInner": 0.42,
+      "vignetteClear": "#2a1c0a00",
+      "vignetteEdge": "#2a1c0aff"
+    },
+    "nocturno": {
+      "nameKey": "railway.era.nocturno",
+      "grey": "#808080",
+      "desaturate": 0.34,
+      "wash": "#5a6fa8",
+      "washAlpha": 0.46,
+      "paper": "#9fb4e0",
+      "paperAlpha": 0.12,
+      "vignette": 0.5,
+      "vignetteInner": 0.38,
+      "vignetteClear": "#060a1800",
+      "vignetteEdge": "#060a18ff"
+    }
+  },
+  "_sunGlow": "El halo del sol, en radios del disco. A 7 —el valor con el que salió— el resplandor se come un tercio del cielo y lo deja lavado; a 4,2 el sol sigue siendo el punto más brillante del cuadro sin borrar las nubes que tiene al lado."
+}

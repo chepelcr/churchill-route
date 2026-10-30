@@ -1,0 +1,306 @@
+{
+  "_note": "LOS HITOS — los lugares que el juego nombra. `osm` resuelve el ancla contra un rasgo mapeado por nombre; `ll` la ancla directo. `dx`/`dy` corren el arte respecto del ancla en px de mundo, y por eso son px y no metros: son un desplazamiento de dibujo, no una distancia sobre el suelo. LOS KIOSCOS YA NO ESTÁN AQUÍ: son el arranque de una entrega y tienen producto, así que viven en `kiosks.json`.",
+  "_marine": "Parque Marino's cuadra is partitioned by hand — `marineSiteOsmId` is the theme-park way that decides which footprints belong to the aquarium, and `marineBuildingNames` are externally verified facility labels the local OSM ways do not carry. NEVER infer a new footprint/name assignment from list order.",
+  "landmarks": [
+    {
+      "id": "faro",
+      "name": "El Faro",
+      "type": "lighthouse",
+      "district": "faro",
+      "osm": "faro de la punta",
+      "dxM": -4.8,
+      "dyM": 55.2
+    },
+    {
+      "id": "balneario",
+      "name": "Balneario Municipal",
+      "type": "pool",
+      "district": "faro",
+      "osm": "faro de la punta",
+      "dxM": 55.2,
+      "dyM": 4.8
+    },
+    {
+      "id": "muellecruc",
+      "name": "Muelle de Cruceros",
+      "type": "cruise",
+      "district": "paseo",
+      "osm": "muelle de cruceros",
+      "ll": [
+        9.9745,
+        -84.8345
+      ],
+      "dxM": 340.0
+    },
+    {
+      "id": "ferrycr",
+      "name": "Terminal de Ferry",
+      "type": "ferry",
+      "district": "carmen",
+      "osm": "terminal de ferry puntarenas"
+    },
+    {
+      "id": "playa",
+      "name": "Playa Puntarenas",
+      "type": "beachsign",
+      "district": "carmen",
+      "ll": [
+        9.975,
+        -84.843
+      ]
+    },
+    {
+      "id": "carmenig",
+      "name": "Iglesia del Carmen",
+      "type": "church",
+      "district": "carmen",
+      "osm": "iglesia del carmen",
+      "ll": [
+        9.9765,
+        -84.844
+      ]
+    },
+    {
+      "id": "tioga",
+      "name": "Hotel Tioga",
+      "type": "hotel",
+      "district": "paseo",
+      "osm": "tioga",
+      "ll": [
+        9.975,
+        -84.836
+      ]
+    },
+    {
+      "id": "brisas",
+      "name": "Hotel Las Brisas",
+      "type": "hotel",
+      "district": "carmen",
+      "_ll": "way/380158921, tourism=hotel, building:levels=3 — anchored by ll and not by name because OSM carries four Las Brisas here (the hotel, a plain building, Las Brisas 2 and Urb. Las Brisas) and a name match would take whichever came first.",
+      "ll": [
+        9.97496,
+        -84.84754
+      ]
+    },
+    {
+      "id": "capitania",
+      "name": "Capitanía de Puerto",
+      "type": "civic",
+      "district": "paseo",
+      "_ll": "way/380233859, MOPT - Capitanía de Puerto Puntarenas. Su propio addr:street dice `Muelle de Cruceros`: está al oeste del muelle y lo gobierna.",
+      "ll": [
+        9.97534,
+        -84.83159
+      ]
+    },
+    {
+      "id": "casafait",
+      "name": "Casa Fait",
+      "type": "house",
+      "district": "paseo",
+      "osm": "casa fait",
+      "ll": [
+        9.977,
+        -84.829
+      ]
+    },
+    {
+      "id": "parquemar",
+      "name": "Parque Marino del Pacífico",
+      "type": "park",
+      "district": "playitas",
+      "osm": "parque marino",
+      "ll": [
+        9.976,
+        -84.823
+      ]
+    },
+    {
+      "id": "mercado",
+      "name": "Mercado Central",
+      "type": "market",
+      "district": "centro",
+      "osm": "mercado municipal de puntarenas",
+      "block": {
+        "calles": [
+          [
+            "Calle 2 Presbíterio Florencio del Castillo",
+            "Calle 2"
+          ],
+          [
+            "Calle 4"
+          ]
+        ],
+        "ave_north": [
+          "Avenida 5"
+        ],
+        "ave_south": [
+          "Avenida 3 Filiberto Sinfontes",
+          "Avenida 3"
+        ]
+      }
+    },
+    {
+      "id": "pali",
+      "name": "Supermercado Palí",
+      "type": "super",
+      "district": "centro",
+      "osm": "palí",
+      "ll": [
+        9.9765,
+        -84.829
+      ]
+    },
+    {
+      "id": "catedral",
+      "name": "Catedral de Puntarenas",
+      "type": "cathedral",
+      "district": "centro",
+      "osm": "catedral",
+      "near": [
+        9.97762,
+        -84.83486
+      ]
+    },
+    {
+      "id": "cultura",
+      "name": "Casa de la Cultura",
+      "type": "civic",
+      "district": "centro",
+      "osm": "casa de la cultura elsie",
+      "near": [
+        9.97765,
+        -84.83404
+      ],
+      "ll": [
+        9.97765,
+        -84.83404
+      ]
+    },
+    {
+      "id": "estadio",
+      "name": "Estadio Lito Pérez",
+      "type": "stadium",
+      "district": "carmen",
+      "ll": [
+        9.9768,
+        -84.8388
+      ]
+    },
+    {
+      "id": "estadio_playitas",
+      "name": "Plaza Las Playitas",
+      "type": "stadium",
+      "district": "playitas",
+      "ll": [
+        9.9796,
+        -84.8252
+      ]
+    },
+    {
+      "id": "yatch",
+      "name": "Yacht Club",
+      "type": "marina",
+      "district": "cocal",
+      "osm": "yacht",
+      "ll": [
+        9.979,
+        -84.812
+      ]
+    },
+    {
+      "id": "cocal_park",
+      "name": "Parque El Cocal",
+      "type": "park",
+      "district": "cocal",
+      "ll": [
+        9.9795,
+        -84.795
+      ]
+    },
+    {
+      "id": "puente",
+      "name": "Puente de Mata de Limón",
+      "type": "bridge",
+      "district": "mata",
+      "osm": "puente colgante mata de limón"
+    },
+    {
+      "id": "leda",
+      "name": "Marisquería Leda",
+      "type": "restaurant",
+      "district": "mata",
+      "osm": "leda",
+      "ll": [
+        9.9235,
+        -84.7078
+      ]
+    },
+    {
+      "id": "matalimon",
+      "name": "Estero Mata de Limón",
+      "type": "estuary",
+      "district": "mata",
+      "osm": "estero mata de limón"
+    },
+    {
+      "id": "caldera_blvd",
+      "name": "Caldera Bulevar",
+      "type": "sign",
+      "district": "caldera",
+      "ll": [
+        9.918,
+        -84.713
+      ]
+    },
+    {
+      "id": "tren",
+      "name": "Estación Tren Caldera",
+      "type": "trainstation",
+      "district": "caldera",
+      "osm": "estación tren",
+      "ll": [
+        9.915,
+        -84.715
+      ]
+    },
+    {
+      "id": "puerto",
+      "name": "Puerto de Caldera",
+      "type": "port",
+      "district": "caldera",
+      "osm": "puerto internacional caldera"
+    },
+    {
+      "id": "villach",
+      "name": "Villa Champán",
+      "type": "village",
+      "district": "caldera",
+      "ll": [
+        9.916,
+        -84.7125
+      ]
+    },
+    {
+      "id": "ruta27",
+      "name": "Ruta 27 · Autopista",
+      "type": "highway",
+      "district": "caldera",
+      "ll": [
+        9.91,
+        -84.71
+      ]
+    }
+  ],
+  "marineSiteOsmId": 316422305,
+  "marineBuildingNames": {
+    "911250909": "Módulo Productivo · LABM",
+    "911250910": "Recepción de Visitantes",
+    "911250911": "Antigua Estación del Ferrocarril",
+    "911250912": "Acuario · Sala de Exhibiciones Temporales",
+    "911250913": "Centro de Rescate · CRRAM",
+    "911250914": "Boletería",
+    "911250915": "Servicios Sanitarios",
+    "911250916": "Oficinas Administrativas"
+  }
+}

@@ -1,0 +1,212 @@
+// The two Puntarenas ferries — the Easter egg at the west end of the spit.
+//
+// Park on either deck (Paquera or Playa Naranjo), wait, and it casts off and
+// takes you out over the gulf and back. It is the only MOVING GROUND in the
+// game: everything else the car drives on is a static cell in the surface
+// raster, so the deck needs three things the raster cannot give it —
+//
+//   * deckAt()   a point test the collider consults BEFORE the raster, so the
+//                deck is drivable while the water it floats on stays a wall.
+//                That also gives the rails for free: drive off the edge and
+//                the next cell is sea, which is already solid.
+//   * carry()    the player moves with the ferry, position AND heading, or it
+//                would simply slide out from under them on the first turn.
+//   * one shot   `used` — once a ferry has come home it stays home. A ride you
+//                cannot get off of is not a treat.
+//
+// The berths, headings and route SHAPES are real: OSM has the two
+// ferry_terminal nodes and both `route=ferry` ways. The build extracts a short
+// playable segment of each line; it does not pretend the rest of the 90-minute
+// crossing fits inside this world (churchill/world/service/ferry.py).
+import { WORLD2D as W } from "../world2d/index.js";
+import { FERRY_DECK_L, FERRY_DECK_W, FERRY_DOCK_S } from "../domain/units.js";
+
+const BOARD_WAIT = 7;           // s parked aboard at the berth before it leaves
+const SPEED = 82;               // px/s — 1800 px out and back is ~44 s
+// The DECK and the docked offset come FROM THE WORLD (`deck`, `dockS`), not
+// from constants here. The build needs the same three numbers: the boarding
+// ramp it paves has to reach the stern at rest, and where the stern is at rest
+// is a function of all of them. Two copies of that would drift, and the failure
+// is silent — a ferry you can see and cannot board. The fallbacks below are
+// only for a manifest built before the fields existed.
+//
+// They are PER FERRY. Reading them off FERRIES[0] worked only while both boats
+// were the same size, and the editor can now give one of them her own deck —
+// at which point a global would collide the player against the other's.
+//
+// The fallbacks themselves stopped being px literals on 2026-08-14: a ferry is
+// a real boat (49.6 m × 18.4 m), so her size is metres in
+// `src/assets/world-units.json` and the builder derives the SAME numbers from
+// the same file. There were three copies of `124`/`46`/`28` — here, the
+// builder's service and the DTO's default — and the DTO's is simply gone, since
+// a schema default can only ever paper over a producer that stopped emitting.
+
+let _ferries = null;
+
+function build() {
+  return (W.FERRIES || []).map((f) => {
+    const pts = [];
+    for (let i = 0; i < f.route.length; i += 2) pts.push({ x: f.route[i], y: f.route[i + 1] });
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++)
+      cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+    const dock = f.dockS ?? FERRY_DOCK_S;
+    return {
+      id: f.id, name: f.name, destination: f.destination,
+      vesselName: f.vesselName || f.name, doubleEnded: !!f.doubleEnded,
+      pts, cum, total: cum[cum.length - 1] || 1,
+      x: f.berth[0], y: f.berth[1], a: f.ang,
+      dl: f.deck?.[0] || FERRY_DECK_L, dw: f.deck?.[1] || FERRY_DECK_W, dock,
+      // A CROSSING, not a scenic loop: the lancha over the estero LANDS you on
+      // the far shore and waits there. The two ferries sail out and come home
+      // because the real crossing ends on the Nicoya side, where this world has
+      // no shore to arrive at; the estero has one, so `oneWay` says so.
+      oneWay: !!f.oneWay, v: f.speed || SPEED,
+      s: dock, phase: "docked", wait: 0, used: false, far: false,
+      dx: 0, dy: 0, da: 0,
+    };
+  });
+}
+export function ferries() {
+  if (!_ferries) _ferries = build();
+  return _ferries;
+}
+// Every run starts with both ferries home and available again.
+export function resetFerries() {
+  for (const f of ferries()) {
+    f.s = f.dock; f.phase = "docked"; f.wait = 0; f.used = false; f.far = false;
+    f.dx = f.dy = f.da = 0;
+    const q = routePoint(f, f.dock);
+    f.x = q.x; f.y = q.y; f.a = q.a;
+  }
+}
+
+// Pose at arclength `s` along the route. Exported because the crossing needs
+// the same walk to put the PLAYER's boat on the start line: two copies of an
+// arclength sampler over one polyline is exactly the kind of duplication that
+// drifts silently when the route changes.
+export function routePoint(f, s) {
+  const { pts, cum, total } = f;
+  const u = Math.max(0, Math.min(total, s));
+  let i = 1;
+  while (i < cum.length - 1 && cum[i] < u) i++;
+  const seg = cum[i] - cum[i - 1] || 1;
+  const t = (u - cum[i - 1]) / seg;
+  const ax = pts[i - 1].x, ay = pts[i - 1].y, bx = pts[i].x, by = pts[i].y;
+  return { x: ax + (bx - ax) * t, y: ay + (by - ay) * t, a: Math.atan2(by - ay, bx - ax) };
+}
+
+// ---- LOS DOS MUELLES DEL ESTERO -------------------------------------------
+//
+// Vive aquí y no en `modes.js` porque es GEOMETRÍA DE LA RUTA: los dos extremos
+// de la travesía son los dos muelles, ya resueltos por el build contra la costa
+// de verdad, y este módulo es el que sabe leer una ruta. Ponerlo en `modes.js`
+// obligaba a `physics.js` a importar los modos para hacer una prueba de
+// distancia — un ciclo por una cuenta de Pitágoras.
+//
+// Ojo: son la geometría del pasaje, no un barco que se aborda. Lo que cruza es
+// una transición de agua; ver `crossTheEstero` en `modes.js`.
+
+//: qué tan cerca del muelle cuenta como estar en él. Es el mismo radio con el
+//: que se ofrece y con el que se deja de ofrecer, a propósito: dos radios
+//: distintos dan una banda donde la oferta parpadea.
+export const MUELLE_R = 90;
+
+/** Los dos extremos de la ruta del estero, o null si este mundo no la trae. */
+export function esteroMuelles() {
+  const f = ferries().find((x) => x.oneWay);
+  return f ? [routePoint(f, 0), routePoint(f, f.total)] : null;
+}
+
+/** En cuál de los dos muelles está (x, y): 0, 1, o -1 si en ninguno. */
+export function muelleAt(x, y, r = MUELLE_R) {
+  const ms = esteroMuelles();
+  if (!ms) return -1;
+  for (let i = 0; i < 2; i++) {
+    if (Math.hypot(x - ms[i].x, y - ms[i].y) <= r) return i;
+  }
+  return -1;
+}
+
+// A double-ended ferry has no fixed bow: either ramp may lead. Keep this pure
+// so the visual/physics contract is explicit and independently auditable.
+export function ferryHeading(routeHeading, returning, doubleEnded) {
+  return returning && !doubleEnded ? routeHeading + Math.PI : routeHeading;
+}
+
+// The ferry whose DECK contains (x, y), or null. The test is in the ferry's own
+// frame, which is why a diagonal berth needs no special case.
+export function deckAt(x, y) {
+  for (const f of ferries()) {
+    const ca = Math.cos(-f.a), sa = Math.sin(-f.a);
+    const rx = x - f.x, ry = y - f.y;
+    const u = rx * ca - ry * sa, v = rx * sa + ry * ca;
+    if (Math.abs(u) <= f.dl / 2 && Math.abs(v) <= f.dw / 2) return f;
+  }
+  return null;
+}
+
+// Advance both ferries. `aboard` is the ferry the player is standing on this
+// frame (or null) — a ferry only counts down while someone is actually on it.
+//
+// THERE IS NO `steeredId` ANY MORE. This used to take one, for the days when
+// the Travesía was a ride on a deck and the crossing owned the lancha's
+// arclength. Nothing has passed a non-null one since the player started sailing
+// it herself, so the branch was unreachable — and an unreachable branch that
+// moves the player is exactly the kind of thing you go looking for when the
+// boat feels like it is driving itself.
+export function advanceFerries(dt, aboard) {
+  for (const f of ferries()) {
+    const px = f.x, py = f.y, pa = f.a;
+    if (f.phase === "docked") {
+      // the countdown RESETS if you leave: a ferry that sailed because you
+      // drove past it eight seconds ago is a trap, not an Easter egg
+      f.wait = (aboard === f && !f.used) ? f.wait + dt : 0;
+      if (f.wait >= BOARD_WAIT) {
+        // A one-way boat sitting at the far shore sails BACK when you board her
+        // there. She is transport, so she is never `used` up — the two gulf
+        // ferries are the ride you get once.
+        f.phase = f.far ? "back" : "out";
+        f.wait = 0; f.justSailed = true;
+      }
+    } else if (f.phase === "out") {
+      f.s += f.v * dt;
+      if (f.s >= f.total) {
+        f.s = f.total;
+        if (f.oneWay) { f.phase = "docked"; f.far = true; f.justLanded = true; }
+        else f.phase = "back";
+      }
+    } else if (f.phase === "back") {
+      f.s -= f.v * dt;
+      if (f.s <= f.dock) {
+        f.s = f.dock; f.phase = "docked"; f.far = false;
+        f.used = !f.oneWay; f.justHome = true;
+      }
+    }
+    const q = routePoint(f, f.s);
+    f.x = q.x; f.y = q.y;
+    // A conventional single-ended boat turns to run the line backwards. The
+    // gulf ferries are double-ended: both ends carry the same ramp and either
+    // end can lead, so the hull stays parallel to the route and simply reverses
+    // through it. That avoids a fake 180° pirouette at the far endpoint.
+    const returning = f.phase === "back" || (f.far && f.phase === "docked");
+    f.a = ferryHeading(q.a, returning, f.doubleEnded);
+    f.dx = f.x - px; f.dy = f.y - py;
+    let da = f.a - pa;
+    while (da > Math.PI) da -= Math.PI * 2;
+    while (da < -Math.PI) da += Math.PI * 2;
+    f.da = da;
+  }
+}
+
+// Move the player with the deck under them: translation AND rotation about the
+// ferry's centre. Translation alone leaves the car sliding across the deck on
+// every bend of the route, and the route is a real sailing line, so it bends.
+export function carry(f, p) {
+  if (!f.dx && !f.dy && !f.da) return;
+  const rx = p.x - (f.x - f.dx), ry = p.y - (f.y - f.dy);
+  const ca = Math.cos(f.da), sa = Math.sin(f.da);
+  p.x = f.x + (rx * ca - ry * sa);
+  p.y = f.y + (rx * sa + ry * ca);
+  p.a += f.da;
+}

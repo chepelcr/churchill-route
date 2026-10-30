@@ -1,0 +1,177 @@
+// Remote content layer — supporters (greetings page), server NPCs and
+// sponsored lotes come from ONE JSON endpoint so they can change without an
+// app release. Today that "server" is a static file deployed with the site
+// (public/content.json → https://churchill.jcampos.dev/content.json, editable
+// on its own); later a real API can serve the SAME schema at the same URL.
+//
+// Schema (version 1):
+// {
+//   "version": 1,
+//   "meta":       { "kofi": "https://ko-fi.com/..." },
+//   "supporters": [ { "name", "tier": 1|2|3|4, "msg"? } ],
+//   "npcs":       [ { "id", "name", "line", "lat", "lon" } ]   // OR x/y
+//   "lotes":      [ { "id", "kind": "billboard"|"store", "name", "label",
+//                     "lat", "lon" (or x/y), "tone"? } ]
+// }
+// Rules: if `npcs` is non-empty it REPLACES the bundled customer pool (the
+// long-term plan: ALL NPCs come from the server). `line` ≤ 26 chars (delivery
+// float truncates). Offline behavior: last good copy from localStorage, else
+// the checked-in default — the game must always work with no network.
+import { WORLD2D as W } from "../world2d/index.js";
+import DEFAULT_CONTENT from "./default.json";
+import SERVICES from "./services.json" with { type: "json" };
+
+// THE ONE THING FETCHED RATHER THAN BUNDLED — see `services.json`.
+const CONTENT_URL = SERVICES.content.url;
+const CACHE_KEY = "churchill_content_v1";
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // re-fetch after 6h (and on every boot)
+const FETCH_TIMEOUT_MS = 6000;
+
+const listeners = new Set();
+let data = { ...DEFAULT_CONTENT };
+
+function emit() { for (const fn of listeners) fn(); }
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { at, body } = JSON.parse(raw);
+    return { fresh: Date.now() - at < CACHE_TTL_MS, body };
+  } catch { return null; }
+}
+function saveCache(body) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), body })); } catch { /* private */ }
+}
+
+// Project a content item to world coords: accepts explicit x/y, or lat/lon
+// via the manifest's geo affine. Returns null if it can't be placed.
+function toWorld(item) {
+  if (Number.isFinite(item.x) && Number.isFinite(item.y)) return { x: item.x, y: item.y };
+  if (!Number.isFinite(item.lat) || !Number.isFinite(item.lon)) return null;
+  // UN SOLO DUEÑO DE LA PREGUNTA. Esto se calculaba aquí con la afín cruda, y
+  // desde que el mundo se DILATA dentro de cada pueblo la afín se queda corta
+  // por hasta unos cientos de px — media manzana. `W.geoToWorld` ya aplica la
+  // corrección; hacerlo por segunda vez acá es cómo se acaba plantando un
+  // patrocinio en la cuadra de al lado.
+  const p = W.geoToWorld(item.lat, item.lon);
+  if (!p) return null;
+  if (p.x < 0 || p.y < 0 || p.x > W.W || p.y > W.H) return null;
+  return { x: Math.round(p.x), y: Math.round(p.y) };
+}
+
+// The authored UI block: design tokens and copy overrides. Values are strings
+// applied to CSS custom properties and to the i18n layer, so anything that is
+// not a string is dropped rather than trusted.
+function sanitizeUi(ui) {
+  if (!ui || typeof ui !== "object") return {};
+  const theme = {};
+  for (const [id, value] of Object.entries(ui.theme || {})) {
+    if (typeof value === "string" && value.trim()) theme[id] = value.trim().slice(0, 120);
+  }
+  const strings = {};
+  for (const [langId, table] of Object.entries(ui.strings || {})) {
+    if (!table || typeof table !== "object") continue;
+    const clean = {};
+    for (const [key, text] of Object.entries(table)) {
+      if (typeof text === "string") clean[key] = text.slice(0, 400);
+    }
+    if (Object.keys(clean).length) strings[langId] = clean;
+  }
+  // SONIDOS PERSONALIZADOS. Same treatment as `theme` and `strings`: this is
+  // untrusted content fetched over the network, so it is validated to the
+  // recipe vocabulary here rather than handed to WebAudio. A step that is not
+  // a tone or a noise, a gain outside 0..1 or a duration that is not a positive
+  // number is DROPPED — a recipe cannot be a way to make somebody's speakers
+  // do something unexpected.
+  const sounds = {};
+  for (const [id, spec] of Object.entries(ui.sounds || {})) {
+    if (!/^[a-z][a-z0-9_]{0,31}$/.test(id) || !Array.isArray(spec?.steps)) continue;
+    const steps = [];
+    for (const step of spec.steps.slice(0, 24)) {
+      const kind = step.tone ? "tone" : step.noise ? "noise" : null;
+      if (!kind) continue;
+      const v = step[kind];
+      const num = (x, lo, hi, dflt) => (Number.isFinite(x) && x >= lo && x <= hi ? x : dflt);
+      const clean = {
+        dur: num(v.dur, 0.001, 5, null),
+        gain: num(v.gain, 0, 1, null),
+        at: num(v.at, 0, 10, 0),
+      };
+      if (clean.dur === null || clean.gain === null) continue;
+      if (kind === "tone") {
+        clean.from = num(v.from, 20, 20000, null);
+        if (clean.from === null) continue;
+        if (Number.isFinite(v.to)) clean.to = num(v.to, 20, 20000, clean.from);
+        if (Number.isFinite(v.filterHz)) clean.filterHz = num(v.filterHz, 20, 20000, null);
+        if (["sine", "square", "sawtooth", "triangle"].includes(v.type)) clean.type = v.type;
+      } else if (Number.isFinite(v.band)) {
+        clean.band = num(v.band, 20, 20000, null);
+      }
+      steps.push({ [kind]: clean });
+    }
+    if (steps.length) {
+      sounds[id] = {
+        bus: ["sfx", "engine", "ambience", "music"].includes(spec.bus) ? spec.bus : "sfx",
+        steps,
+      };
+    }
+  }
+  return { theme, strings, sounds };
+}
+
+function sanitize(body) {
+  if (!body || typeof body !== "object" || (body.version | 0) < 1) return null;
+  const out = { version: body.version | 0, meta: body.meta || {}, supporters: [], npcs: [], lotes: [], ui: sanitizeUi(body.ui) };
+  for (const s of body.supporters || []) {
+    if (s && s.name) out.supporters.push({ name: String(s.name).slice(0, 40), tier: Math.min(4, Math.max(1, s.tier | 0 || 1)), msg: s.msg ? String(s.msg).slice(0, 80) : null });
+  }
+  for (const n of body.npcs || []) {
+    const pt = n && toWorld(n);
+    if (!pt || !n.id || !n.name) continue;
+    const d = W.districtAt(pt.x, pt.y);
+    out.npcs.push({ id: `srv_${n.id}`, name: String(n.name).slice(0, 26), line: String(n.line || "¡Pura vida!").slice(0, 26), x: pt.x, y: pt.y, district: d ? d.id : null });
+  }
+  for (const l of body.lotes || []) {
+    if (!l || !l.id || !l.name) continue;
+    // A lote either STANDS somewhere (x/y or lat/lon) or CLAIMS A PARCEL by id,
+    // in which case the world's own `slot` rect supplies position and size —
+    // that is how a sponsor's plate lands inside the Lito Pérez pitch instead
+    // of floating over the map. drawParcels() matches on `parcel`, so dropping
+    // the field here made every parcel sponsor unreachable.
+    const parcel = l.parcel ? String(l.parcel) : null;
+    const pt = toWorld(l);
+    if (!pt && !parcel) continue;
+    out.lotes.push({ id: String(l.id), kind: l.kind === "store" ? "store" : "billboard", name: String(l.name).slice(0, 30), label: String(l.label || l.name).slice(0, 14).toUpperCase(), x: pt ? pt.x : null, y: pt ? pt.y : null, parcel, tone: l.tone || "#f3c969" });
+  }
+  return out;
+}
+
+export const content = {
+  get supporters() { return data.supporters; },
+  get npcs() { return data.npcs; },
+  get lotes() { return data.lotes; },
+  get meta() { return data.meta || {}; },
+  get ui() { return data.ui || {}; },
+  onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+
+  // Call once at app start. Serves cache immediately, then refreshes from the
+  // network in the background (stale-while-revalidate).
+  async load() {
+    const cached = loadCache();
+    if (cached) {
+      const ok = sanitize(cached.body);
+      if (ok) { data = ok; emit(); }
+    }
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+      const res = await fetch(CONTENT_URL, { signal: ctrl.signal, cache: "no-cache" });
+      clearTimeout(timer);
+      if (!res.ok) return;
+      const body = await res.json();
+      const ok = sanitize(body);
+      if (ok) { data = ok; saveCache(body); emit(); }
+    } catch { /* offline / timeout — cache or default already active */ }
+  },
+};

@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "status": "research_proposal_not_executable_game_levels",
+  "route": "pacifico-puntarenas-route.geojson",
+  "distance_basis": "Haversine metres measured on OSM snapshot 2026-10-27; not official chainage",
+  "levels": [
+    {
+      "id": "pacific-01",
+      "number": 1,
+      "from_checkpoint": "pacifico",
+      "to_checkpoint": "belen",
+      "source_s_start_m": 0,
+      "source_s_end_m": 14337.6,
+      "source_length_m": 14337.6,
+      "scene": "urban-central-valley",
+      "checkpoint_ids": [
+        "pacifico",
+        "sabana",
+        "pavas",
+        "belen"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    },
+    {
+      "id": "pacific-02",
+      "number": 2,
+      "from_checkpoint": "belen",
+      "to_checkpoint": "turrucares",
+      "source_s_start_m": 14337.6,
+      "source_s_end_m": 30232.8,
+      "source_length_m": 15895.2,
+      "scene": "valley-rural",
+      "checkpoint_ids": [
+        "belen",
+        "ojo-agua",
+        "turrucares"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    },
+    {
+      "id": "pacific-03",
+      "number": 3,
+      "from_checkpoint": "turrucares",
+      "to_checkpoint": "atenas",
+      "source_s_start_m": 30232.8,
+      "source_s_end_m": 37285.4,
+      "source_length_m": 7052.6,
+      "scene": "rio-grande-gorge",
+      "checkpoint_ids": [
+        "turrucares",
+        "rio-grande",
+        "atenas"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    },
+    {
+      "id": "pacific-04",
+      "number": 4,
+      "from_checkpoint": "atenas",
+      "to_checkpoint": "escobal",
+      "source_s_start_m": 37285.4,
+      "source_s_end_m": 49840.0,
+      "source_length_m": 12554.6,
+      "scene": "atenas-gorges",
+      "checkpoint_ids": [
+        "atenas",
+        "balsa",
+        "escobal"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    },
+    {
+      "id": "pacific-05",
+      "number": 5,
+      "from_checkpoint": "escobal",
+      "to_checkpoint": "orotina",
+      "source_s_start_m": 49840.0,
+      "source_s_end_m": 66131.7,
+      "source_length_m": 16291.7,
+      "scene": "rural-stations",
+      "checkpoint_ids": [
+        "escobal",
+        "quebradas",
+        "orotina"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    },
+    {
+      "id": "pacific-06",
+      "number": 6,
+      "from_checkpoint": "orotina",
+      "to_checkpoint": "ceiba",
+      "source_s_start_m": 66131.7,
+      "source_s_end_m": 76255.6,
+      "source_length_m": 10123.9,
+      "scene": "orotina-agriculture",
+      "checkpoint_ids": [
+        "orotina",
+        "coyolar",
+        "ceiba"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    },
+    {
+      "id": "pacific-07",
+      "number": 7,
+      "from_checkpoint": "ceiba",
+      "to_checkpoint": "salinas",
+      "source_s_start_m": 76255.6,
+      "source_s_end_m": 88797.7,
+      "source_length_m": 12542.1,
+      "scene": "pacific-descent",
+      "checkpoint_ids": [
+        "ceiba",
+        "salinas"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    },
+    {
+      "id": "pacific-08",
+      "number": 8,
+      "from_checkpoint": "salinas",
+      "to_checkpoint": "barranca",
+      "source_s_start_m": 88797.7,
+      "source_s_end_m": 101801.4,
+      "source_length_m": 13003.7,
+      "scene": "caldera-coast",
+      "checkpoint_ids": [
+        "salinas",
+        "caldera",
+        "barranca"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    },
+    {
+      "id": "pacific-09",
+      "number": 9,
+      "from_checkpoint": "barranca",
+      "to_checkpoint": "puntarenas",
+      "source_s_start_m": 101801.4,
+      "source_s_end_m": 114998.5,
+      "source_length_m": 13197.1,
+      "scene": "puntarenas-peninsula",
+      "checkpoint_ids": [
+        "barranca",
+        "roble",
+        "chacarita",
+        "puntarenas"
+      ],
+      "game_speed_limits": null,
+      "rail_deck_profile": null,
+      "status": "proposal_requires_art_and_game_validation"
+    }
+  ],
+  "epilogue": {
+    "from_checkpoint": "puntarenas",
+    "to_checkpoint": "muelle",
+    "status": "historical_alignment_and_terminal_review_required"
+  }
+}

@@ -1,0 +1,218 @@
+{
+  "_note": "LA FERIA DEL MALECÓN y las bajadas a la arena. A ride's `at` is an offset in world px from the feria's own centre, not a geo anchor — the campo is placed as a whole and the rides are laid out inside it. The beach accesses ARE geo, because each one is a real gap in a real kerb.",
+  "feria": {
+    "id": "feria_paseo",
+    "name": "Campo Ferial del Paseo",
+    "host": "La Takería",
+    "wM": 224.0,
+    "hM": 80.0,
+    "_units": "wM/hM: el suelo del campo ferial EN METROS. Eran 560x200 px afinados a 2.5 px/m; el reescalado del 2026-08-27 los habria dejado un 20 % cortos."
+  },
+  "attractions": [
+    {
+      "id": "rueda",
+      "name": "La Rueda de Chicago",
+      "kind": "rueda",
+      "atM": [
+        -92.8,
+        -4.0
+      ],
+      "rM": 8.8
+    },
+    {
+      "id": "pulpo",
+      "name": "El Pulpo",
+      "kind": "pulpo",
+      "atM": [
+        -56.8,
+        -5.6
+      ],
+      "rM": 7.6
+    },
+    {
+      "id": "martillo",
+      "name": "El Martillo",
+      "kind": "martillo",
+      "atM": [
+        -18.4,
+        -6.4
+      ],
+      "rM": 6.8
+    },
+    {
+      "id": "sillas",
+      "name": "Las Sillas Voladoras",
+      "kind": "sillas",
+      "atM": [
+        17.6,
+        -5.6
+      ],
+      "rM": 6.8
+    },
+    {
+      "id": "terror",
+      "name": "La Casa del Terror",
+      "kind": "terror",
+      "atM": [
+        56.0,
+        -5.6
+      ],
+      "rM": 7.2
+    },
+    {
+      "id": "carrusel",
+      "name": "El Carrusel",
+      "kind": "carrusel",
+      "atM": [
+        92.8,
+        -4.8
+      ],
+      "rM": 6.8
+    },
+    {
+      "id": "tagada",
+      "name": "La Tagada",
+      "kind": "tagada",
+      "atM": [
+        -82.4,
+        20.8
+      ],
+      "rM": 7.6
+    },
+    {
+      "id": "chocones",
+      "name": "Los Chocones",
+      "kind": "chocones",
+      "atM": [
+        -44.0,
+        21.6
+      ],
+      "rM": 8.4
+    },
+    {
+      "id": "barco",
+      "name": "El Barco Pirata",
+      "kind": "barco",
+      "atM": [
+        -4.0,
+        20.8
+      ],
+      "rM": 7.6
+    },
+    {
+      "id": "gusano",
+      "name": "El Gusanito",
+      "kind": "gusano",
+      "atM": [
+        32.0,
+        21.6
+      ],
+      "rM": 6.0
+    },
+    {
+      "id": "argollas",
+      "name": "Tiro al Blanco",
+      "kind": "argollas",
+      "atM": [
+        63.2,
+        21.6
+      ],
+      "rM": 5.2
+    },
+    {
+      "id": "tombola",
+      "name": "La Tómbola",
+      "kind": "tombola",
+      "atM": [
+        91.2,
+        21.6
+      ],
+      "rM": 4.8
+    },
+    {
+      "id": "chin_canton",
+      "name": "Arroz Cantonés",
+      "kind": "chinamo",
+      "food": "canton",
+      "atM": [
+        -33.6,
+        5.6
+      ],
+      "rM": 5.6
+    },
+    {
+      "id": "chin_manzanas",
+      "name": "Manzanas Escarchadas",
+      "kind": "chinamo",
+      "food": "manzana",
+      "atM": [
+        0.0,
+        5.6
+      ],
+      "rM": 5.6
+    },
+    {
+      "id": "chin_churros",
+      "name": "Churros Rellenos",
+      "kind": "chinamo",
+      "food": "churro",
+      "atM": [
+        33.6,
+        5.6
+      ],
+      "rM": 5.6
+    },
+    {
+      "id": "dj_urtech",
+      "name": "DJ Urtech",
+      "kind": "dj",
+      "at": [
+        9.97495,
+        -84.84405
+      ],
+      "_at": "ANCLA GEO, no un desplazamiento. El DJ se sienta en la FRONTERA del edificio real que toca (`host`), así que su sitio es una coordenada del mundo y no una posición dentro del campo ferial — al contrario que los juegos, cuyo `atM` es un offset en metros desde el centro del campo. La migración de metros del 2026-08-27 estuvo a punto de convertir esto y dejar al DJ en (4, -34).",
+      "rM": 8.0,
+      "host": "La Takería"
+    }
+  ],
+  "beachAccesses": [
+    {
+      "id": "muelle_oeste",
+      "name": "Bajada Muelle Oeste",
+      "at": [
+        9.97481,
+        -84.83187
+      ],
+      "wM": 13.6
+    },
+    {
+      "id": "muelle_este",
+      "name": "Bajada Muelle Este",
+      "at": [
+        9.97481,
+        -84.83105
+      ],
+      "wM": 13.6
+    },
+    {
+      "id": "caldera_playa",
+      "name": "Bajada Playa Caldera",
+      "at": [
+        9.92983,
+        -84.71084
+      ],
+      "wM": 12.0
+    },
+    {
+      "id": "tivives",
+      "name": "Bajada Tivives",
+      "at": [
+        9.85763,
+        -84.6986
+      ],
+      "wM": 12.0
+    }
+  ],
+  "_size": "EL TAMAÑO ES EN PÍXELES DE MUNDO y a 2,5 px/m se lee en metros. Estaban de más: un chinamo con r=44 mide 35 m de ancho —un puesto de comida— y el carrusel con r=26 medía 21 m contra los 10–12 de uno real. Ahora la rueda mide ~18 m de diámetro, el carrusel ~14 y un chinamo ~11 de frente, que es un chinamo grande. Y el radio es también el COLISIONADOR (`actors.json -> attraction`), así que achicarlos no sólo se ve mejor: deja pasar entre ellos.",
+  "_layoutNote": "EL TURNO CABE EN LA CALZADA QUE CIERRA, y nada suyo se para en la que queda abierta. Los tres chinamos estaban en `at.y = -74`, que medido sobre el mundo emitido los ponía en y 15868-15880: el CENTRO de la calzada norte del Paseo (15852-15912), la que el diseño promete dejar pasar. Tres puestos de 44 px de radio la tapaban de punta a punta, así que por el campo ferial no se podía pasar por ningún lado — que es lo que se reportó. La calzada sur cerrada mide 28 px (15932-15960) y el malecón sigue hacia el mar, de modo que el reparto es: los juegos grandes sobre la calzada cerrada (`at.y` ~ -24), los chinamos justo al sur de ella sobre el malecón (+14) y los juegos chicos más afuera (+52). Nada al norte de la mediana de palmas."
+}

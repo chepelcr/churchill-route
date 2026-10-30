@@ -21,6 +21,15 @@
             </intent-filter>
         </activity>
 
+        <!-- AdMob application id. This is Google's PUBLIC TEST id — replace
+             with the real AdMob App ID from https://apps.admob.com before the
+             Play Store release (also swap the test ad-unit ids in
+             src/monetize/ads.js). -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3090812928887940~1823467103"
+        />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

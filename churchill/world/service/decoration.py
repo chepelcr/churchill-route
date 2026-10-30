@@ -1,0 +1,227 @@
+"""The plantings: the separator strips down the middle of the paseos, and the
+mangrove line along the estero.
+
+Two different plantings, and mixing them up is a mistake we have already made:
+the Paseo de los Turistas carries a DASHED PALM MEDIAN — solid blocking
+segments with deliberate gaps to cross — while Paseo León Cortés carries a
+continuous tree line. The gaps are not decorative spacing: they are ALIGNED TO
+THE CROSS STREETS, wide enough to turn into each one.
+
+The strips are stamped CLS_ACERA, not CLS_LAND: equally blocking in physics
+(walls are land+acera), but invisible to block detection and building
+placement, which only consider CLS_LAND. And they are stamped AFTER
+acera_fringe, so the fringe never re-rings them into ordinary sidewalk.
+
+A stamped wall must be at least as wide as the DRAWN feature (including its
+round cap) or the car slips into the drawn-but-unstamped rim and the
+both-ends-blocked snap-back traps it — which is why the stamp is
+PASEO_MEDIAN_W + 6 while the renderer draws PASEO_MEDIAN_W.
+"""
+from collections import defaultdict
+
+from ..config import (
+    CLS_ACERA, CLS_WATER, MANGROVE_PITCH_PX,
+    MANGROVE_R_MAX, MANGROVE_R_MIN, MANGROVE_SEED, STREET_CLASSES,
+    flora_registry, px,
+)
+from ..logging import log
+from .street import resample_centerline
+
+
+# The Paseo de los Turistas is a divided avenue: a dashed palm median runs down
+# the centerline as a solid (blocking) separator between the two sides, with
+# periodic gaps ("aperturas") where you can cross from one side to the other.
+
+
+
+def paseo_roads(roads):
+    runs = flora_registry()["plantingRuns"]
+    names = tuple(str(record.get("streetName") or "").lower()
+                  for record in runs.values() if isinstance(record, dict)
+                  and record.get("streetName"))
+    return [r for r in roads
+            if any(n in (r.get("name") or "").lower() for n in names)]
+
+def paseo_median_runs(roads, pieces, spec=None):
+    """Solid-median runs along the given avenue pieces, with gaps ALIGNED TO
+    THE CROSS STREETS: a gap opens wherever another street meets the avenue,
+    wide enough to turn into it (street width + PASEO_GAP_MARGIN per side).
+    Returns [(samples, [(k0, k1), ...])] — resampled centerline points and
+    index ranges of the solid runs. Used by both the median stamp and the
+    palm planting so they always agree."""
+    spec = spec or flora_registry()["plantingRuns"]["paseo_median"]
+    sample_step = px(spec["sampleStepM"])
+    gap_margin = px(spec["gapMarginM"])
+    min_dash = px(spec["minimumRunM"])
+    paseo_ids = set(map(id, paseo_roads(roads)))
+    segs = []
+    for r in roads:
+        if id(r) in paseo_ids or r["cls"] == "bridge":
+            continue
+        p = r["pts"]
+        hw = r["w"] / 2 + gap_margin
+        for i in range(0, len(p) - 2, 2):
+            segs.append((p[i], p[i + 1], p[i + 2], p[i + 3], hw))
+    CS = 256
+    cellmap = defaultdict(list)
+    for idx, s in enumerate(segs):
+        for cx in range(int(min(s[0], s[2]) - 200) // CS, int(max(s[0], s[2]) + 200) // CS + 1):
+            for cy in range(int(min(s[1], s[3]) - 200) // CS, int(max(s[1], s[3]) + 200) // CS + 1):
+                cellmap[(cx, cy)].append(idx)
+
+    def in_crossing(px, py):
+        c0, r0 = int(px) // CS, int(py) // CS
+        for dc in (-1, 0, 1):
+            for dr in (-1, 0, 1):
+                for idx in cellmap.get((c0 + dc, r0 + dr), ()):
+                    x0, y0, x1, y1, hw = segs[idx]
+                    dx, dy = x1 - x0, y1 - y0
+                    L2 = dx * dx + dy * dy
+                    t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+                    if (px - (x0 + t * dx)) ** 2 + (py - (y0 + t * dy)) ** 2 <= hw * hw:
+                        return True
+        return False
+
+    out = []
+    for r in pieces:
+        samples = resample_centerline(r["pts"], sample_step)
+        solid = [not in_crossing(x, y) for (_, x, y) in samples]
+        runs, k = [], 0
+        while k < len(samples):
+            if solid[k]:
+                k0 = k
+                while k < len(samples) and solid[k]:
+                    k += 1
+                if samples[k - 1][0] - samples[k0][0] >= min_dash:
+                    runs.append((k0, k - 1))
+            else:
+                k += 1
+        out.append((samples, runs))
+    return out
+
+def stamp_paseo_median(raster, median_runs, spec=None):
+    """Stamp the separator strips (paseo palm median + tree lines) and return
+    their polylines (for rendering the planted strip). Stamped as CLS_ACERA:
+    equally blocking in physics (walls are land+acera) but invisible to block
+    detection and building placement, which only consider CLS_LAND. Run AFTER
+    acera_fringe so the strip stays a blocking separator, not sidewalk."""
+    spec = spec or flora_registry()["plantingRuns"]["paseo_median"]
+    width = px(spec["widthM"])
+    collision_pad = px(spec["collisionPadM"])
+    dashes = []
+    for samples, runs in median_runs:
+        for (k0, k1) in runs:
+            flat = [v for (_, x, y) in samples[k0:k1 + 1] for v in (x, y)]
+            if len(flat) >= 4:
+                # Stamp the collision wall WIDER than the drawn curb (draw is
+                # m.w+3 ≈ 13px with a ~6.5px round cap) so the car stops at the
+                # visual green and can't slip into a drawn-but-unstamped round
+                # cap corner (that trapped it half-in). Manifest `w` stays the
+                # drawn value, so rendering is unchanged.
+                raster.stamp_polyline(flat, width + collision_pad, CLS_ACERA)
+                dashes.append({"pts": [round(v) for v in flat], "w": round(width)})
+    return dashes
+
+
+def mangrove_line(raster, band, pitch_px=MANGROVE_PITCH_PX, seed=MANGROVE_SEED):
+    """Mangrove clumps standing IN THE ESTUARY, at its waterline (`{x, y, r}`).
+
+    This is the other half of the estero having no beach: the bank the sand
+    fringe leaves alone is mangrove, and this plants it. It walks the shore
+    instead of scattering in a bbox — the scatter it replaces ringed an ellipse
+    fitted to the largest water polygon near the Mata de Limón bridge, which put
+    every clump in open ground kilometres from any bank.
+
+    EVERY water/land boundary inside `band` (see service.surface.estero_band) is
+    a candidate bank: the spit's north shore, the estuary's far shore, and both
+    sides of each island between them. Three rules then decide whether a
+    mangrove may actually stand there, and each one was learned from a clump the
+    player found in a street:
+
+      * IT GROWS IN THE ESTUARY. `band` is the only thing on this map that tells
+        estuary water from open sea, so the walk stays inside it — the same rule
+        that keeps the sand fringe off this shore, reused rather than
+        re-derived.
+      * THE BANK IS NATURAL GROUND. A water/land edge whose LANDWARD cell is
+        road, acera, paseo, deck, boulevard, barro or lastre is not a bank: it
+        is a sea wall, an esplanade or a muelle. The faro's paved sand tip alone
+        was planting a dozen clumps on its own pedestrian plaza.
+      * THE CANOPY CLEARS THE TOWN. A clump is 16–40 px of drawn root and leaf,
+        so a centre one cell off the asphalt still paints tentacles across the
+        lane. The whole disc has to be clear of built surface — and the centre
+        has to be WATER, which the ±1 cell jitter is quite capable of undoing on
+        its own, so a jitter that lands ashore is dropped rather than the clump.
+
+    Deterministic: a fixed column stride and the seeded `rng` — no `random`. A
+    candidate draws its three numbers BEFORE it can be rejected, so the sequence
+    does not depend on how many survive.
+    """
+    cols, rows, cell, grid = raster.cols, raster.rows, raster.cell, raster.buf
+    step = max(1, pitch_px // cell)
+    state = seed
+
+    def rng():
+        nonlocal state
+        state = (state * 9301 + 49297) % 233280
+        return state / 233280
+
+    def canopy_clear(px, py, radius):
+        """No street, sidewalk or deck anywhere under the drawn clump."""
+        c0, c1 = int((px - radius) // cell), int((px + radius) // cell)
+        r0, r1 = int((py - radius) // cell), int((py + radius) // cell)
+        rr2 = radius * radius
+        for r in range(max(0, r0), min(rows, r1 + 1)):
+            row = r * cols
+            dy = (r + 0.5) * cell - py
+            for c in range(max(0, c0), min(cols, c1 + 1)):
+                if grid[row + c] not in STREET_CLASSES:
+                    continue
+                dx = (c + 0.5) * cell - px
+                if dx * dx + dy * dy <= rr2:
+                    return False
+        return True
+
+    out = []
+    n_built_bank = n_unjittered = n_over_street = 0
+    for c in range(0, min(cols, len(band)), step):
+        seg = band[c]
+        if seg is None:
+            continue
+        top, bot = seg
+        col = grid[c::cols]
+        was_water = col[max(0, top - 1)] == CLS_WATER
+        for r in range(max(1, top), min(rows, bot + 2)):
+            is_water = col[r] == CLS_WATER
+            if is_water == was_water:
+                continue
+            was_water = is_water
+            edge = r if is_water else r - 1     # always the water side of the bank
+            if col[r - 1 if is_water else r] in STREET_CLASSES:
+                n_built_bank += 1               # sea wall, esplanade or muelle
+                continue
+            x = c * cell + cell / 2 + (rng() - 0.5) * cell * 2
+            y = edge * cell + cell / 2 + (rng() - 0.5) * cell * 2
+            rad = MANGROVE_R_MIN + rng() * (MANGROVE_R_MAX - MANGROVE_R_MIN)
+            # THE JITTER MAY NOT PUT IT ASHORE. It is a ±1 cell nudge, there to
+            # break the line up, and on a bank one cell wide that is enough to
+            # stand the mangrove on the mud instead of in the water — a quarter
+            # of them were. Fall back to the edge cell's own centre, which is
+            # water by construction; dropping the clump instead just thinned the
+            # fringe the pitch was chosen to keep dense.
+            cc, cr = int(x // cell), int(y // cell)
+            if not (0 <= cc < cols and 0 <= cr < rows) or grid[cr * cols + cc] != CLS_WATER:
+                x, y = c * cell + cell / 2, edge * cell + cell / 2
+                n_unjittered += 1
+            if not canopy_clear(x, y, rad):
+                n_over_street += 1
+                continue
+            out.append({"x": round(x), "y": round(y), "r": round(rad)})
+    xs = [m["x"] for m in out]
+    ys = [m["y"] for m in out]
+    log("manglar", f"{len(out)} mangrove clumps along the estero waterline "
+        f"(every {pitch_px}px of shore), "
+        + (f"x {min(xs)}..{max(xs)}, y {min(ys)}..{max(ys)}" if out else "none placed"))
+    log("manglar", f"rejected {n_built_bank} built banks (esplanade/muelle/calle) "
+        f"+ {n_over_street} canopies reaching a street; "
+        f"{n_unjittered} re-centred on their water cell")
+    return out

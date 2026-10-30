@@ -1,0 +1,156 @@
+// Churchill coins economy — catalog (pure data) + wallet/ownership ops.
+// Everything persists inside state.progress (progress.js localStorage), so
+// old saves migrate silently via ensureEconomy(). Catalog growth (future
+// vehicles, more colors) = new entries here, no schema changes.
+import { state } from "./state.js";
+import { saveProgress } from "./progress.js";
+import { FREE_VEHICLES, VEHICLES, VEHICLE_PRICES } from "./vehicles.js";
+import CATALOG from "../content/economy.json" with { type: "json" };
+
+// WHICH VEHICLES ARE FREE AND WHAT THE REST COST BELONG TO THE VEHICLE, not to
+// the wallet. They were two hand-kept lists here, so the answer to "does this
+// vehicle exist" and the answer to "what does it cost" lived in different files
+// and could disagree — a price for a key with no vehicle simply did nothing,
+// and a vehicle whose medium had no free entry stranded the player.
+// `src/assets/vehicles.json` owns both now; this module re-exports them because
+// the shop and the picker have always asked economy for a price.
+//
+// EVERY MEDIUM STILL NEEDS A FREE ENTRY. The ownership fallback in modes.js
+// picks the first free vehicle of the medium a run requires, so a player who
+// owns no boat gets the panga on the estero instead of a scooter in the sea.
+// `tests/test_vehicles.py` is the gate.
+export { FREE_VEHICLES, VEHICLE_PRICES };
+
+// THE CATALOG IS DATA — `src/content/economy.json`. Prices, names, icons, the
+// effect ladders, the paint swatches and the IAP product ids all moved there on
+// 2026-08-14: they are exactly what a designer expects to change without
+// touching the engine, and one of them (a Play Billing product id) is a string
+// that has to match a console entry character for character.
+//
+// What stays here is the WALLET: crediting, spending, ownership, and
+// `ensureEconomy`, which is a MIGRATION — it fills in the fields an old
+// localStorage save does not have, and getting it wrong loses somebody's coins.
+export const COINS_PER_DELIVERY = CATALOG.earn.perDelivery;
+export const COINS_PERFECT_BONUS = CATALOG.earn.perfectBonus;
+export const COINS_PER_PICKUP = CATALOG.earn.perPickup;
+
+const strip = (obj) => Object.fromEntries(
+  Object.entries(obj).filter(([k]) => !k.startsWith("_")));
+
+/** Upgrade lines: `levels` is the EFFECT at each level, index 0 being none. */
+export const UPGRADES = strip(CATALOG.upgrades);
+/** Consumable boosts, armed per run. */
+export const BOOSTS = strip(CATALOG.boosts);
+/** Cosmetic paint, equipped per vehicle. */
+export const COLORS = CATALOG.colors.list;
+/** Play Billing consumable products. */
+export const COIN_PACKS = CATALOG.coinPacks.list;
+
+// ---- persistence shape ------------------------------------------------------
+// Called from loadProgress(): fills in economy fields on old saves.
+export function ensureEconomy(p) {
+  if (!Number.isFinite(p.coins)) p.coins = 0;
+  if (!Array.isArray(p.owned) || !p.owned.length) p.owned = [...FREE_VEHICLES];
+  for (const v of FREE_VEHICLES) if (!p.owned.includes(v)) p.owned.push(v);
+  if (!p.upgrades || typeof p.upgrades !== "object") p.upgrades = {};
+  if (!p.boosts || typeof p.boosts !== "object") p.boosts = {};
+  if (!p.colors || typeof p.colors !== "object") p.colors = {};
+  if (!Array.isArray(p.ownedColors)) p.ownedColors = [];
+  if (!Array.isArray(p.ownedItems)) p.ownedItems = [];
+  return p;
+}
+
+const listeners = new Set();
+function emit() { saveProgress(); for (const fn of listeners) fn(); }
+
+export const economy = {
+  onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+
+  get coins() { return state.progress?.coins || 0; },
+  addCoins(n) {
+    state.progress.coins = Math.max(0, (state.progress.coins || 0) + Math.round(n));
+    emit();
+  },
+  canAfford(n) { return this.coins >= n; },
+  spend(n) {
+    if (!this.canAfford(n)) return false;
+    state.progress.coins -= n;
+    emit();
+    return true;
+  },
+
+  // --- vehicles ---
+  ownsVehicle(key) { return state.progress.owned.includes(key); },
+  vehiclePrice(key) { return VEHICLE_PRICES[key] ?? 0; },
+  buyVehicle(key) {
+    if (this.ownsVehicle(key) || !VEHICLES[key]) return false;
+    if (!this.spend(this.vehiclePrice(key))) return false;
+    state.progress.owned.push(key);
+    emit();
+    return true;
+  },
+
+  // --- upgrades (permanent, leveled) ---
+  upgradeLevel(line) { return state.progress.upgrades[line] || 0; },
+  upgradeEffect(line) {
+    const u = UPGRADES[line];
+    return u ? u.levels[Math.min(this.upgradeLevel(line), u.levels.length - 1)] : 1;
+  },
+  nextUpgradePrice(line) {
+    const u = UPGRADES[line], lv = this.upgradeLevel(line);
+    return u && lv < u.prices.length ? u.prices[lv] : null;
+  },
+  buyUpgrade(line) {
+    const price = this.nextUpgradePrice(line);
+    if (price === null || !this.spend(price)) return false;
+    state.progress.upgrades[line] = this.upgradeLevel(line) + 1;
+    emit();
+    return true;
+  },
+
+  // --- consumable boosts ---
+  boostCount(id) { return state.progress.boosts[id] || 0; },
+  buyBoost(id) {
+    const b = BOOSTS[id];
+    if (!b || !this.spend(b.price)) return false;
+    state.progress.boosts[id] = this.boostCount(id) + 1;
+    emit();
+    return true;
+  },
+  useBoost(id) {
+    if (this.boostCount(id) <= 0) return false;
+    state.progress.boosts[id] -= 1;
+    emit();
+    return true;
+  },
+
+  // --- colors (buy once, equip per vehicle) ---
+  ownsColor(id) { return state.progress.ownedColors.includes(id); },
+  buyColor(id) {
+    const c = COLORS.find((c) => c.id === id);
+    if (!c || this.ownsColor(id) || !this.spend(c.price)) return false;
+    state.progress.ownedColors.push(id);
+    emit();
+    return true;
+  },
+  equippedColor(vehKey) {
+    const id = state.progress.colors[vehKey];
+    return COLORS.find((c) => c.id === id) || null;
+  },
+  equipColor(vehKey, colorId) {
+    if (colorId && !this.ownsColor(colorId)) return false;
+    if (colorId) state.progress.colors[vehKey] = colorId;
+    else delete state.progress.colors[vehKey]; // back to stock paint
+    emit();
+    return true;
+  },
+
+  // --- editor-authored generic parts/cosmetics ---
+  ownsItem(id) { return state.progress.ownedItems.includes(id); },
+  buyItem(item) {
+    if (!item?.id || this.ownsItem(item.id) || !this.spend(Number(item.price) || 0)) return false;
+    state.progress.ownedItems.push(item.id);
+    emit();
+    return true;
+  },
+};

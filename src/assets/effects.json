@@ -1,0 +1,335 @@
+{
+  "_note": "EL REPERTORIO DE EFECTOS — what a vehicle DOES, as opposed to what it is made of. `vehicles.json` says a boat is a hull and a cabin; this says she leaves a wake, heels into her turns and sits in the water rather than above it. A vehicle picks the effects it carries and tunes them; the ALGORITHM of each one stays in `src/render/c2d/entities.js`, because a widening V astern is control flow, not a parts list.",
+  "version": 1,
+  "_why": "Every one of these was welded into `drawPlayer` as an `if (afloat)`. That is the same shape the 26-branch landmark switch had before world-props.json: the engine deciding, by vehicle, what a vehicle looks like. So an editor-authored boat got a car's turn-swirls and a car's hard shadow, and there was no way to say otherwise — the alternative to this file is editing the renderer to add a vehicle, which is precisely what docs/inventory.md §12 exists to end.",
+  "_contract": "An effect is CODE the engine implements plus PARAMS the author owns. Data may select an effect and retune it; it may not invent one. `tests/test_effects.py` fails if a vehicle names an effect with no painter, and if a painter exists that this file does not list — art with nothing to select it is drift too, which is the lesson SignKind taught.",
+  "assetPreview": {
+    "_note": "Truthful asset fixtures use these authored inks instead of carrying a private editor palette. The two backgrounds expose a silhouette on day/night ground; checkerA/B expose alpha; missingColor makes an unresolved token impossible to overlook.",
+    "light": "#dfe6d5",
+    "dark": "#101511",
+    "checkerA": "#141a15",
+    "checkerB": "#101511",
+    "sheetBackground": "#d9d3c5",
+    "sheetLabel": "#28252c",
+    "missingColor": "#ff00ff",
+    "spriteBounds": "rgba(255,255,255,0.62)",
+    "spriteAnchor": "#ff3d80"
+  },
+  "vehicle": {
+    "_note": "Whole-vehicle effects, drawn around the body. `layer` says when: `under` before the sprite, `over` after it. `space` says in which frame: `world` is drawn before the body's rotate (so it trails the heading and does not spin with her), `body` after it. `transform` effects do not paint at all — they bend the frame the sprite is then drawn in.",
+    "turnWind": {
+      "name": "Remolino de giro",
+      "layer": "under",
+      "space": "world",
+      "medium": [
+        "land"
+      ],
+      "note": "Arc streaks whipping around the car in the direction it is turning — it sells a fast pivot. Deliberately land-only: swirls read as air rushing past a kart, and what a boat actually leaves behind is her wash, so a hull takes `wake` instead.",
+      "params": {
+        "minRate": 1.2,
+        "rampRate": 4.0,
+        "arcs": 3,
+        "arcGap": 3,
+        "radiusK": 0.75,
+        "radiusPad": 6,
+        "span": 0.7,
+        "spanK": 0.8,
+        "drift": 0.02,
+        "alpha": 0.1,
+        "alphaK": 0.22,
+        "width": 1.4,
+        "color": "255,255,255",
+        "minRateNote": "rad/s below which nothing draws — a gentle corner should not smoke the tyres"
+      }
+    },
+    "wake": {
+      "name": "Olas / estela",
+      "layer": "under",
+      "space": "body",
+      "medium": [
+        "water"
+      ],
+      "note": "The widening V astern, longer and brighter the faster she runs, plus the churn right at the transom where the outboard is actually working.",
+      "params": {
+        "refSpeed": 260,
+        "minSpeed": 0.08,
+        "spread": 0.7,
+        "spreadK": 1.1,
+        "length": 14,
+        "lengthK": 46,
+        "mouth": 0.4,
+        "alpha": 0.1,
+        "alphaK": 0.22,
+        "churn": 4,
+        "churnGap": 5,
+        "churnLead": 3,
+        "churnR": 2.2,
+        "churnTaper": 0.4,
+        "churnSpread": 0.3,
+        "churnRate": 0.012,
+        "churnPhase": 1.7,
+        "churnAlpha": 0.18,
+        "churnAlphaK": 0.3,
+        "color": "255,255,255",
+        "refSpeedNote": "px/s at which the wake is full size; it is NOT the vehicle's top speed, so a faster boat does not automatically get a bigger one"
+      }
+    },
+    "shadow": {
+      "name": "Sombra",
+      "layer": "under",
+      "space": "world",
+      "note": "The body's OWN silhouette dropped behind it — never a generic ellipse, which is why `traceVehicleSilhouette` exists. The defaults are the land ones; a hull SITS IN the water, so the boats override to a much tighter, softer offset. The same offset that reads as a car above tarmac reads as a boat flying above the sea.",
+      "params": {
+        "offX": 4,
+        "offY": 6,
+        "color": "0,0,0",
+        "alpha": 0.35,
+        "liftX": 0.6,
+        "liftY": 1.0,
+        "liftFade": 0.02,
+        "colorNote": "`r,g,b` with NO wrapper and NO alpha, like every other effect here — the painter composes `rgba(color, alpha)` so the alpha can be a function of something. The shadow's fades as she climbs the ramp.",
+        "liftNote": "the barro avenue rides ~1 m up (`state.elev`); the shadow slides further out and fades as she climbs"
+      }
+    },
+    "headlights": {
+      "name": "Faros",
+      "layer": "under",
+      "space": "vehicle",
+      "note": "LOS FAROS. De noche todo vehículo que se mueve alumbra por delante — y no es decoración: la ciudad ahora tiene pozos de luz y oscuridad entre ellos, así que un carro sin faros es un carro que va a ciegas por una calle negra. Se dibuja sólo de noche, en el marco del vehículo, y el CONO va DEBAJO del casco para que la luz salga de la trompa y no encima de ella.",
+      "_night": "Sólo de noche, que es comportamiento y por eso lo decide el pintor y no este archivo — igual que el halo de una luminaria.",
+      "beamNote": "cuánto alcanza el cono por delante de la trompa, en px del mundo. Un poco menos que el pozo de una farola (65 px) para que el carro no compita con el alumbrado.",
+      "spreadNote": "medio ángulo del cono, en radianes. Ancho: un cono angosto se lee como un láser y no como un faro.",
+      "colorNote": "El triplete y no una cadena, la misma convención que toda esta familia: el alfa se compone en el pintor.",
+      "lampNote": "los dos focos en la trompa, que es lo que se ve del carro de frente.",
+      "tailColorNote": "las calaveras. Lo único que se ve de un carro que se aleja, así que sin ellas el tráfico de noche desaparece por detrás.",
+      "params": {
+        "beam": 74,
+        "spread": 0.42,
+        "color": "255,238,190",
+        "alpha": 0.2,
+        "lampR": 2.1,
+        "lampAlpha": 0.92,
+        "tailColor": "255,90,70",
+        "tailAlpha": 0.55
+      }
+    },
+    "speedLines": {
+      "name": "Viento de velocidad",
+      "layer": "screen",
+      "space": "screen",
+      "note": "The rush of air at speed: streaks raked down the edge of the VIEWPORT, not around the car. It is the one effect drawn in screen space, in the overlay pass with the minimap and the rain, which is why it lived at the very bottom of `render()` with no name and no comment on it.",
+      "params": {
+        "minSpeed": 240,
+        "count": 12,
+        "margin": 20,
+        "length": 40,
+        "lengthSpread": 60,
+        "alpha": 0.22,
+        "width": 1,
+        "color": "255,255,255",
+        "edge": "right"
+      },
+      "_shipped_quirks": "Two things here are the behaviour as shipped, kept deliberately rather than tidied while making it data. (1) It is a THRESHOLD, not a ramp: at 239 px/s there is nothing and at 241 there is the full set, where every other effect in this file fades in. (2) The streaks are re-randomised every frame and always rake down the RIGHT edge, whichever way the car is pointing — so it reads as flicker rather than as air streaming past. Both are now numbers somebody can change; neither was changed here, because that is a feel decision and this commit is a migration.",
+      "_speeds": "The threshold is global today and the boats cross it too — a panga tops 440 px/s, so she has always drawn these. Being per-vehicle now, a hull can be given her own."
+    },
+    "heel": {
+      "name": "Escora y cabeceo",
+      "layer": "transform",
+      "space": "body",
+      "medium": [
+        "water"
+      ],
+      "note": "SHE HEELS, AND SHE BOBS. A car is a rigid body on a flat plane and looks right as a rotated sprite; a hull that only rotated read as a boat-shaped car. From directly above, heel shows as the deck FORESHORTENING — so the beam squashes toward the inside of the turn and the whole body shifts a little that way, driven by the angular velocity the renderer already has. The bob is the swell, and it never stops, which is what keeps her alive sitting still at the muelle.",
+      "params": {
+        "maxRate": 2.2,
+        "shift": 0.16,
+        "squash": 0.16,
+        "swellRate": 0.0016,
+        "swellSpace": 0.004,
+        "swellShift": 0.7,
+        "swellSquash": 0.02,
+        "swellSpaceNote": "the swell is a function of WHERE she is as well as when, so two boats a hundred metres apart are not bobbing in lockstep"
+      }
+    },
+    "_order": "THE KEY ORDER OF THIS OBJECT IS THE PAINT ORDER, and it is deliberate: the swirls and the wash go down first and the shadow lies over them, which is how the shipped renderer had it. A vehicle's own `effects` map is a SELECTION, not a z-order — sorting it differently must not change the frame."
+  },
+  "cargo": {
+    "_note": "How a vehicle CARRIES a churchill. This was a three-way `if (key === \"pickup\") … else if (key === \"cart\")` on the vehicle key — the last place in the renderer that knew a vehicle by name. This registry owns selection and mount; `actors.json.cargo` owns the three visible recipes and their melt-aware forms; the renderer only executes the finite placement verbs.",
+    "bag": {
+      "name": "Mochila térmica",
+      "note": "The courier's insulated backpack. On the two-wheelers and the kart the straps reach forward over the rider, so it reads as WORN rather than as a box bolted to the chassis; the tuk-tuk carries the same bag in its rear compartment and therefore wears no straps.",
+      "mount": {
+        "x": -4.4,
+        "y": 0,
+        "scale": 0.75,
+        "straps": true
+      }
+    },
+    "cooler": {
+      "name": "Hielera",
+      "note": "The pickup's cooler in the bed: a white box with a red band that DROPS as the churchill melts.",
+      "mount": {
+        "x": -8,
+        "y": 0,
+        "scale": 1,
+        "straps": false
+      }
+    },
+    "freezer": {
+      "name": "Congelador del carretillo",
+      "note": "The cart's open freezer lid, sized from the vehicle's own body rather than a fixed rect — it is the whole front of the carretillo.",
+      "mount": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "straps": false
+      }
+    },
+    "_fallback": "bag",
+    "_fallbackNote": "An editor-authored vehicle with no `cargo` carries the bag at a mount derived from its own width, which is the behaviour the old `else` branch had."
+  },
+  "partMotion": {
+    "_note": "THE MOTION VERBS A SINGLE PART MAY CARRY, interpreted by `src/render/c2d/shapes.js`. They are the feria's, verbatim: `attractions.js` has animated its rides from data since the campo ferial shipped, so the carrusel was more editable than the player's own car. One vocabulary, both catalogs.",
+    "_units": "`speed`/`spin` are TURNS PER SECOND, never radians — a turn times TAU is exact in binary floating point and a JSON file holds no irrational literal. `phase` is turns too.",
+    "spin": {
+      "of": "turns/s",
+      "note": "rotate the part about the frame origin — a wheel, a rueda de Chicago"
+    },
+    "bob": {
+      "of": "{speed, amp}",
+      "note": "translate on y, sinusoidally — a float, a hull at rest"
+    },
+    "swing": {
+      "of": "{speed, amp, phase}",
+      "note": "rotate back and forth about the origin — a pendulum, a hanging sign"
+    },
+    "pump": {
+      "of": "{speed, amp}",
+      "note": "scale up and down about the origin — a bulb, a breathing highlight"
+    },
+    "_none_today": "NO vehicle part declares one yet, and that is deliberate: adding the verbs is inert until somebody authors motion, which is what let this land with a zero-pixel diff. A spinning wheel is a design change and belongs in its own commit."
+  },
+  "sunShadow": {
+    "_note": "LA SOMBRA SIGUE AL SOL, y es UNA sola respuesta para todo lo que la tira. Antes había DIECINUEVE desplazamientos fijos repartidos en cuatro archivos —cada peatón, los barcos, la boya, el banco, la caseta, el ferry, la placa de un hito y todo edificio— y ninguno sabía qué hora era: `ctx.translate(4, 4)`, abajo y a la derecha, a las tres de la tarde y a las seis. Los árboles ya seguían al sol desde el ciclo continuo; esto es esa misma regla, escrita una vez.",
+    "_2_5d": "Y es lo que la hace leer como PROFUNDIDAD en vez de como una manchita que se desliza: el largo es proporcional a la ALTURA del objeto. Sin eso un peatón y una bodega tiran la misma sombra y la escena se aplana.",
+    "reachAtNoon": 0.18,
+    "reachAtDusk": 0.95,
+    "_reach": "múltiplos de la altura del objeto. Al cenit la sombra queda casi debajo (0.18) y al ras del horizonte se estira (0.95). Son los números que `plantShadow` ya usaba con los árboles, que es la única parte de esto que llevaba meses viéndose bien.",
+    "alphaAtDusk": 0.45,
+    "alphaAtNoon": 1.0,
+    "_alpha": "una sombra de mediodía es DURA y una de atardecer es larga y lavada. Se multiplica por el alpha propio de cada cosa, no lo reemplaza.",
+    "squashY": 0.62,
+    "_squashY": "el mundo se ve desde arriba pero no en planta pura: la componente norte-sur de la sombra se acorta, o al mediodía se vería la sombra tan larga hacia el sur como hacia el este.",
+    "color": "0,0,0",
+    "figureHeightM": 1.7,
+    "_figureHeightM": "una persona de pie. El corrimiento solar que le toca va de medio pixel al mediodia a cuatro al atardecer — poco, y es lo correcto: una persona no tira la sombra de una bodega. El ANCLA de los pies no sale de aca, la pone cada dibujante, porque es donde estan los pies de ESA figura y no una propiedad del sol."
+  },
+  "buildingHeight": {
+    "_note": "CUÁN ALTO ES UN EDIFICIO, y por qué se infiere. Nada en el mundo emitido lo sabe: un edificio lleva `pts`, `color`, `roof` y `wnd`. Medido sobre el mundo publicado, **10 de 45 218 traen la etiqueta `building` de OSM y 9 de esas dicen `yes`**, así que la etiqueta no alcanza para nada — no es que no se haya querido usar, es que no está.",
+    "_source": "Lo que sí hay es la HUELLA. En un puerto de una y dos plantas el área es la mejor señal disponible: una casa son ~90 m2 y una plaza de mercado 11 000. `wnd` ayuda a distinguir una construcción con pisos de una bodega o un galpón.",
+    "_units": "área en METROS CUADRADOS, altura en METROS. El área se calcula del AABB de la huella dividido por `pxPerMeter` al cuadrado.",
+    "storeyM": 3.2,
+    "windowlessScale": 0.62,
+    "_windowlessScale": "sin ventanas emitidas es un galpón, una bodega o un anexo: ancho y bajo.",
+    "bands": [
+      {
+        "maxAreaM2": 60,
+        "storeys": 1,
+        "_": "un cuartito, una caseta"
+      },
+      {
+        "maxAreaM2": 140,
+        "storeys": 1,
+        "_": "la casa de puerto típica — la mediana del mundo cae acá"
+      },
+      {
+        "maxAreaM2": 320,
+        "storeys": 2,
+        "_": "casa grande, local con altos"
+      },
+      {
+        "maxAreaM2": 900,
+        "storeys": 3,
+        "_": "un edificio de esquina, una escuela"
+      },
+      {
+        "maxAreaM2": 2500,
+        "storeys": 4,
+        "_": "un bloque entero"
+      },
+      {
+        "maxAreaM2": null,
+        "storeys": 5,
+        "_": "la terminal, el mercado, la catedral"
+      }
+    ]
+  },
+  "terrainShadow": {
+    "_note": "EL RELIEVE DEL TERRENO — la ranura que CLAUDE.md documentaba y que nunca se había escrito. La malla de altura del mundo (`residentElevationTiles`) llevaba tiempo emitida sin un solo consumidor: se construyó para un compositor 3-D que se borró entero el 2026-08-26. Verbo: `c2d/relief.js`.",
+    "_flat": "Y DECILO ANTES DE QUE PAREZCA ROTO: la cota es del IGN y el arenal es plano de VERDAD (2,49 m en el faro), así que en el Paseo, el Centro o El Cocal esto casi no dibuja. Donde se ve es tierra adentro, en el este, donde hay pendientes del 51 %.",
+    "strength": 2.6,
+    "minSlope": 0.02,
+    "_minSlope": "el limite del DATO, no una optimizacion: las curvas del IGN vienen cada 2 m y el juego nacional cada 50, asi que una pendiente por debajo del 2 % no es terreno sino la interpolacion entre dos curvas. Sombrearla pinta una ladera donde el levantamiento no dice que la haya — y hacia que la peninsula entera, que es plana de verdad, pagara 1,9 ms por dibujar nada visible.",
+    "minTileReliefM": 8.0,
+    "_minTileReliefM": "y el DESCARTE de verdad va por tile, no por muestra: muestra a muestra la peninsula no sale llana, porque las curvas del IGN vienen cada 2 m y las muestras cada 26, asi que cruzar una curva da un 7,7 % de pendiente local sobre un terreno que sube 2,15 m en 800. Un tile que no varia ni ocho metros de punta a punta no tiene ladera que sombrear — y medir esto ahorro 2,3 ms de cuadro en todo el puerto.",
+    "_strength": "ganancia sobre la pendiente adimensional. Una ladera del 10 % con el sol de costado da 0,26 de alfa; la península, con pendientes de milésimas, no da nada — que es correcto.",
+    "maxAlpha": 0.3,
+    "lit": "255,246,222",
+    "shade": "26,34,58",
+    "_inks": "la ladera que mira al sol se aclara con luz cálida y la contraria se oscurece en frío. Son las dos mitades de la misma pregunta, igual que las paredes de un edificio.",
+    "sunSteps": 16,
+    "_sunSteps": "cuántas direcciones distintas de sol se cachean en un día. El sol es un continuo; sin cuantizarlo habría que rehacer 1 024 muestras por tile y por cuadro, que es el «generar en vez de blitear» que `nightlights.js` prohíbe."
+  },
+  "skyCover": {
+    "_note": "LA SOMBRA DE LAS NUBES. Verbo: `c2d/skycover.js`, que compone el MISMO sembrado de discos que el suelo (`paintBlobs`) — no una capa a pantalla completa, porque eso ya está medido en ~10 ns por píxel, o sea 9 ms de un cuadro de 16,7.",
+    "tile": 620,
+    "density": 0.52,
+    "r": [
+      170,
+      380
+    ],
+    "driftPxPerS": [
+      11.0,
+      3.5
+    ],
+    "_drift": "el viento, en píxeles de mundo por SEGUNDO. Desplaza la RETÍCULA, no cada disco: mover los discos sueltos deshace la nube y lo que se ve es un hervidero.",
+    "baseAlpha": 0.17,
+    "stormAlpha": 0.2,
+    "_alpha": "la cobertura sube mientras la tormenta se ARMA y vuelve a bajar cuando se cierra del todo: con el cielo tapado no hay sombras marcadas, hay penumbra pareja, y de eso se encarga la paleta.",
+    "phaseLight": {
+      "sunny": 1.0,
+      "sunset": 0.55,
+      "storm": 0.7,
+      "night": 0.0
+    },
+    "_phaseLight": "cuánta luz de sol hay en cada fase para proyectar una sombra. De noche no hay sombra de nube porque no hay sol; se pregunta por `skyBlend()`, que es el dueño de ese continuo, y no con un `state.weather === \"night\"` — el segundo umbral para una sola pregunta es el error que la noche ya tuvo con las lámparas.",
+    "seed": 137.0,
+    "inks": [
+      {
+        "rgb": "20,26,44",
+        "a": 0.55
+      },
+      {
+        "rgb": "32,40,62",
+        "a": 0.42
+      }
+    ],
+    "_tile": "el paso de la reticula, en pixeles de MUNDO. Tiene que ser bastante menor que la vista (~500 px de ancho a esta camara) o toda la pantalla cae dentro de una sola celda y las nubes aparecen y desaparecen de golpe en vez de cruzar — que es como estaba la primera vez y como lo delato  con cero tinta a mediodia."
+  },
+  "_organic": "ADIÓS A LO CUADRADO. Los datos vectoriales trazan esquinas de 90 grados perfectas y eso es lo que hace que el mapa se lea rígido. `cornerPx` redondea la ESQUINA sin mover la arista (ver c2d/curves.js: Chaikin encoge el polígono entero y por eso abre costuras contra la calle de al lado). `shoreJitterPx` ondula la costa, y SU TOPE LO MANDA EL RÁSTER: la celda mide 5 px y la arena dibujada ES la arena, así que por encima de una celda el dibujo mentiría sobre dónde el colisionador pone el agua. Un cero apaga cada cosa y el cuadro sale idéntico al de antes, que es lo que hace la migración demostrable.",
+  "organic": {
+    "buildingCornerPx": 2.2,
+    "parcelCornerPx": 5.0,
+    "greenCornerPx": 9.0,
+    "shoreJitterPx": 3.6,
+    "shoreJitterFreqPx": 90.0,
+    "shoreResamplePx": 14.0
+  },
+  "_parallax": "EL FALSO 3-D. La tapa de un cuerpo se corre HACIA AFUERA en proporción a lo excéntrico que esté —el pinhole de siempre— y entre la huella y la tapa se dibujan las paredes. `cameraHeightM` es LA perilla que decide entre «tapete de ciudad» y «ciudad isométrica»: MÁS ALTO ES MÁS PLANO. Ojo con pasarse de alto: a 200 m una casa de un piso (3,2 m) a 250 px del centro corre 4 px, o sea nada — el efecto tiene que leerse en la casa corriente y no sólo en el Mercado. `wallMixLit`/`wallMixDark` son CUÁNTO se mezcla el color del cuerpo hacia las tintas de materials.json; si son muy chicos la pared sale del mismo color que el techo y el edificio se ve plano, sólo que corrido. Un `cameraHeightM` de CERO lo apaga entero. Motor: c2d/depth.js.",
+  "parallax": {
+    "cameraHeightM": 80.0,
+    "maxOffsetPx": 26.0,
+    "wallMixLit": 0.22,
+    "wallMixDark": 0.55
+  }
+}

@@ -184,7 +184,7 @@ function useTweaks(defaults) {
 // The close button posts __edit_mode_dismissed so the host's toolbar toggle
 // flips off in lockstep; the host echoes __deactivate_edit_mode back which
 // is what actually hides the panel.
-function TweaksPanel({ title = 'Tweaks', noDeckControls = false, children }) {
+function TweaksPanel({ title = 'Tweaks', noDeckControls = false, onOpenChange = null, children }) {
   const [open, setOpen] = React.useState(false);
   const dragRef = React.useRef(null);
   // Auto-inject a rail toggle when a <deck-stage> is on the page. The
@@ -252,16 +252,22 @@ function TweaksPanel({ title = 'Tweaks', noDeckControls = false, children }) {
   React.useEffect(() => {
     const onMsg = (e) => {
       const t = e?.data?.type;
-      if (t === '__activate_edit_mode') setOpen(true);
-      else if (t === '__deactivate_edit_mode') setOpen(false);
+      if (t === '__activate_edit_mode') {
+        setOpen(true);
+        onOpenChange?.(true);
+      } else if (t === '__deactivate_edit_mode') {
+        setOpen(false);
+        onOpenChange?.(false);
+      }
     };
     window.addEventListener('message', onMsg);
     window.parent.postMessage({ type: '__edit_mode_available' }, '*');
     return () => window.removeEventListener('message', onMsg);
-  }, []);
+  }, [onOpenChange]);
 
   const dismiss = () => {
     setOpen(false);
+    onOpenChange?.(false);
     window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
   };
 

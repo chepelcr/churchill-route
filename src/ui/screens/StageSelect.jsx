@@ -1,45 +1,59 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../../game/index.js";
-import { WORLD } from "../../world/index.js";
+import { STAGE_KIND, UI_SCREEN } from "../../domain/vocabulary.generated.js";
+import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
-import VehiclePreview from "../VehiclePreview.jsx";
+import { isMvpLocked } from "../../game/progress.js";
+import { useT, stageName, stageBrief } from "../../i18n/index.js";
+import FitScale from "../FitScale.jsx";
+import Icon from "../Icon.jsx";
+import Slots from "../Slots.jsx";
+import { gateCount, crossingCondition } from "../../game/crossing.js";
+import { crossingRuns } from "../../game/progress.js";
 
-const WEATHER_ES = { sunny: "Soleado", sunset: "Atardecer", storm: "Tormenta", night: "Noche" };
-const WEATHER_ICON = { sunny: "☀", sunset: "🌅", storm: "⛈", night: "🌙" };
+export const WEATHER_ICON = { sunny: "sun", sunset: "sunset", storm: "storm", night: "moon" };
 
 export default function StageSelect({ onStart, onBack }) {
+  const t = useT();
   const stages = WORLD.STAGES;
-  const vehicles = Game.VEHICLES;
-  const vehKeys = Object.keys(vehicles);
   const cleared = Game.state.progress.clearedStages;
-  const isLocked = (i) => i > 0 && !cleared.includes(stages[i - 1].id);
+  // MVP: stages set in the gated eastern districts ship in a later release
+  const isMvp = (i) => isMvpLocked(stages[i].district);
+  // A STAGE MAY STAND OUTSIDE THE CHAIN, and that is TWO properties, not one:
+  // an `openAlways` stage never locks, AND never gates the one after it. Only
+  // the first half would have left everything behind it still behind it, which
+  // is the exact bug this removes — la Travesía sat fourth and put Las
+  // Playitas, El Cocal, Mata de Limón and Caldera behind the one level that
+  // still needs tuning. Written as a property of the STAGE and not as "the
+  // crossing", so the next side challenge is a row of JSON.
+  const opens = (i) => i >= 0 && Boolean(stages[i].openAlways);
+  const gate = (i) => {                       // the nearest stage before `i` that gates
+    for (let j = i - 1; j >= 0; j--) if (!opens(j)) return j;
+    return -1;
+  };
+  const isLocked = (i) => {
+    if (isMvp(i)) return true;
+    if (opens(i)) return false;
+    const g = gate(i);
+    return g >= 0 && !cleared.includes(stages[g].id);
+  };
   // start on the first not-yet-cleared stage so you land on "where you are"
-  const firstOpen = Math.max(0, stages.findIndex((s) => !cleared.includes(s.id)));
+  const firstOpen = Math.max(0, stages.findIndex((s, i) => !cleared.includes(s.id) && !isMvp(i)));
 
   const [cur, setCur] = useState(firstOpen < 0 ? 0 : firstOpen);
-  const [veh, setVeh] = useState(Game.state.vehicleKey || "scooter");
-  const [confirming, setConfirming] = useState(false);
-  const [, bump] = useState(0);
-
-  const doReset = () => { Game.resetProgress(); setConfirming(false); bump((n) => n + 1); };
 
   // keep the latest values reachable from the mount-once key/pad handlers
   const st = useRef({});
-  st.current = { cur, veh };
+  st.current = { cur };
 
   const moveStage = (d) => setCur((c) => {
     const n = Math.max(0, Math.min(stages.length - 1, c + d));
     if (n !== c) sfx.play("menu_move");
     return n;
   });
-  const moveVeh = (d) => setVeh((k) => {
-    const i = (vehKeys.indexOf(k) + d + vehKeys.length) % vehKeys.length;
-    sfx.play("menu_move");
-    return vehKeys[i];
-  });
   const play = (i) => {
     if (isLocked(i)) { sfx.play("menu_denied"); return; }
-    sfx.play("menu_select"); onStart(i, st.current.veh);
+    sfx.play("menu_select"); onStart(i);
   };
 
   useEffect(() => {
@@ -47,8 +61,6 @@ export default function StageSelect({ onStart, onBack }) {
       switch (e.key) {
         case "ArrowLeft": e.preventDefault(); moveStage(-1); break;
         case "ArrowRight": e.preventDefault(); moveStage(1); break;
-        case "ArrowUp": e.preventDefault(); moveVeh(-1); break;
-        case "ArrowDown": e.preventDefault(); moveVeh(1); break;
         case "Enter": case " ": e.preventDefault(); play(st.current.cur); break;
         case "Escape": case "Backspace": e.preventDefault(); onBack(); break;
         default: break;
@@ -62,15 +74,11 @@ export default function StageSelect({ onStart, onBack }) {
       if (p) {
         const now = performance.now();
         const pressed = (i) => !!(p.buttons[i] && p.buttons[i].pressed);
-        const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
-        const d = {
-          l: pressed(14) || ax < -0.5, r: pressed(15) || ax > 0.5,
-          u: pressed(12) || ay < -0.5, dn: pressed(13) || ay > 0.5,
-        };
+        const ax = p.axes[0] || 0;
+        const d = { l: pressed(14) || ax < -0.5, r: pressed(15) || ax > 0.5 };
         for (const k in d) {
           if (d[k] && (!prev[k] || now - last > 240)) {
-            if (k === "l") moveStage(-1); else if (k === "r") moveStage(1);
-            else if (k === "u") moveVeh(-1); else moveVeh(1);
+            k === "l" ? moveStage(-1) : moveStage(1);
             last = now;
           }
           prev[k] = d[k];
@@ -90,77 +98,91 @@ export default function StageSelect({ onStart, onBack }) {
   const locked = isLocked(cur);
   const done = cleared.includes(s.id);
 
+  // LOS BLOQUES DE LA CARRUSELA. Las flechas no son slots: son el control de la
+  // carrusela misma —está en los dos lados y siempre— mientras que lo que la
+  // TARJETA dice de un nivel sí es contenido, y ahí es donde una travesía se
+  // describe distinto de una entrega.
+  const SLOTS = {
+    badges: () => <>
+      <span className="hero-num">{String(s.num).padStart(2, "0")}</span>
+      <span className="hero-count">{t("select.of", { n: s.num, total: stages.length })}</span>
+      {done && <span className="hero-badge ok">{t("select.done")}</span>}
+      {locked && <span className="hero-badge no">{isMvp(cur) ? t("select.soon") : <><Icon name="lock" size={12} /> {t("select.locked")}</>}</span>}
+    </>,
+    name: () => <div className="hero-name">{stageName(s)}</div>,
+    brief: () => (
+      <p className="hero-brief">{locked
+        ? (isMvp(cur) ? t("select.soonBrief")
+           // THE STAGE THAT ACTUALLY GATES, not `num - 1`. With a stage
+           // standing outside the chain the one before is not necessarily the
+           // one to clear, and telling a player to finish a level that was
+           // never in their way is worse than saying nothing.
+           : t("select.lockedBrief", { n: stages[gate(cur)]?.num ?? s.num - 1 }))
+        : stageBrief(s)}</p>
+    ),
+    // A CROSSING HAS NO DELIVERIES AND NO FIXED SKY. The carousel described s8
+    // as "0 deliveries · Sunny" — the same two wrong facts the brief used to
+    // show, and the first thing a player reads about the level. Gates come from
+    // the lancha's own route; the weather is whichever of the four conditions
+    // this attempt will actually be sailed in.
+    meta: () => (
+      <div className="hero-meta">
+        {s.kind === STAGE_KIND.CROSSING
+          ? <span><b>{gateCount(s)}</b> {t("select.gates")}</span>
+          : <span><b>{s.targetDeliveries}</b> {t("select.deliveries")}</span>}
+        <span><b>{s.timeLimit}s</b> {t("select.time")}</span>
+        {(() => {
+          const w = s.kind === STAGE_KIND.CROSSING
+            ? crossingCondition(crossingRuns(s.id)).weather : s.weather;
+          return <span><Icon name={WEATHER_ICON[w] || "sun"} size={14} /> {t(`weather.${w}`)}</span>;
+        })()}
+      </div>
+    ),
+    play: () => (
+      <button className="btn gold hero-play" onClick={() => play(cur)} disabled={locked}>
+        {locked ? (isMvp(cur) ? t("select.playSoon") : t("select.playLocked")) : t("select.play")}
+      </button>
+    ),
+    dots: () => (
+      <div className="stage-dots">
+        {stages.map((sg, i) => (
+          <button key={sg.id}
+            className={"dot" + (i === cur ? " on" : "") + (cleared.includes(sg.id) ? " cleared" : "") + (isLocked(i) ? " locked" : "")}
+            onClick={() => { if (i !== cur) { sfx.play("menu_move"); setCur(i); } }}
+            aria-label={t("select.level", { n: sg.num })}></button>
+        ))}
+      </div>
+    ),
+  };
+  const ctx = { always: true };
+  const slot = (region) => <Slots screen={UI_SCREEN.STAGEPICK} region={region} ctx={ctx} slots={SLOTS} />;
+
   return (
     <div className="title-bg">
-      <div className="title-shell">
+      <div className="title-shell shell-col">
+        <div className="shell-nav">
+          <button className="btn secondary" onClick={onBack}>{t("select.back")}</button>
+          <h1 className="title-main shell-title">LA RUTA</h1>
+          <span className="title-pill"><span className="dot"></span>{t("select.pill")}</span>
+        </div>
+        <FitScale pad={110}>
         <div className="stage-select-wrap">
-          <button className="btn secondary back-btn" onClick={onBack}>← Menú</button>
-
-          <div className="stage-head">
-            <span className="title-pill"><span className="dot"></span>MODO HISTORIA · ELEGÍ NIVEL</span>
-            <h1 className="title-main stage-title">LA RUTA</h1>
-          </div>
-
           <div className="stage-layout">
             <div className="stage-carousel">
               <button className="carousel-arrow" onClick={() => moveStage(-1)} disabled={cur === 0} aria-label="Anterior">‹</button>
 
               <div className={"stage-hero glass-card" + (locked ? " locked" : "") + (done ? " done" : "")}>
-                <div className="hero-top">
-                  <span className="hero-num">{String(s.num).padStart(2, "0")}</span>
-                  <span className="hero-count">Nivel {s.num} / {stages.length}</span>
-                  {done && <span className="hero-badge ok">✓ COMPLETADO</span>}
-                  {locked && <span className="hero-badge no">⛔ BLOQUEADO</span>}
-                </div>
-                <div className="hero-name">{s.name}</div>
-                <p className="hero-brief">{locked ? `Completá el nivel ${s.num - 1} para desbloquear este.` : s.brief}</p>
-                <div className="hero-meta">
-                  <span><b>{s.targetDeliveries}</b> entregas</span>
-                  <span><b>{s.timeLimit}s</b> tiempo</span>
-                  <span>{WEATHER_ICON[s.weather] || "☀"} {WEATHER_ES[s.weather] || "—"}</span>
-                </div>
-                <button className="btn gold hero-play" onClick={() => play(cur)} disabled={locked}>
-                  {locked ? "Bloqueado" : "▸ Jugar"}
-                </button>
+                <div className="hero-top">{slot("head")}</div>
+                {slot("main")}
               </div>
 
               <button className="carousel-arrow" onClick={() => moveStage(1)} disabled={cur === stages.length - 1} aria-label="Siguiente">›</button>
             </div>
-
-            <div className="glass-card vehicle-card">
-              <div className="vehicle-card-title">TU VEHÍCULO</div>
-              <VehiclePreview vehKey={veh} />
-              <div className="vehicles-col">
-                {vehKeys.map((k) => (
-                  <button key={k} className={"vchip " + (veh === k ? "active" : "")}
-                    onClick={() => { sfx.play("menu_select"); setVeh(k); }}>
-                    {vehicles[k].name}
-                  </button>
-                ))}
-              </div>
-              <div className="reset-row">
-                {confirming ? (
-                  <>
-                    <span>¿Borrar progreso?</span>
-                    <button className="btn" onClick={doReset}>Sí</button>
-                    <button className="btn secondary" onClick={() => setConfirming(false)}>No</button>
-                  </>
-                ) : (
-                  <button className="btn secondary" onClick={() => setConfirming(true)}>↺ Resetear progreso</button>
-                )}
-              </div>
-            </div>
           </div>
 
-          <div className="stage-dots">
-            {stages.map((sg, i) => (
-              <button key={sg.id}
-                className={"dot" + (i === cur ? " on" : "") + (cleared.includes(sg.id) ? " cleared" : "") + (isLocked(i) ? " locked" : "")}
-                onClick={() => { if (i !== cur) { sfx.play("menu_move"); setCur(i); } }}
-                aria-label={`Nivel ${sg.num}`}></button>
-            ))}
-          </div>
+          {slot("footer")}
         </div>
+        </FitScale>
       </div>
     </div>
   );

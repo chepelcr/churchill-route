@@ -1,0 +1,25 @@
+{
+  "_note": "LOS SPRITES: la manera de que un lugar CONCRETO se vea como es. Todo el arte de este juego es vectorial y para casi todo eso es lo correcto — escala a cualquier zoom, pesa nada, y se edita campo por campo. Lo que el vector no cubre es un edificio que uno quiere que sea ESE edificio: la Catedral de Puntarenas no es «una catedral del tamaño de su lote». Para eso una imagen dibujada a mano gana.",
+  "_units": "wM/hM en METROS, como todo largo que dos runtimes comparten. Un tamaño en píxeles sólo es verdad a la escala a la que se afinó, y este mundo ya se reescaló tres veces — la última se llevó el centro cívico entero.",
+  "_src": "Ruta servida desde `public/`, así que `/sprites/x.png` en dev y en el bundle. NO se referencian archivos de `src/`: Vite los renombra con un hash y la ruta escrita a mano deja de existir en producción, que es un 404 que sólo se ve al desplegar.",
+  "_anchor": "De qué punto de la imagen cuelga el sprite, en fracciones de su propio tamaño. `[0.5, 0.5]` es el centro; `[0.5, 1]` es la base, que es lo que quiere un edificio visto en perspectiva — crece hacia arriba desde su huella.",
+  "_placeholder": "El color que se pinta MIENTRAS carga, y para siempre si nunca llega. Existe para que un sprite roto se VEA: un bloque liso del tamaño correcto donde debería estar el edificio, en vez de un hueco que parece que ahí no había nada. Un 404 silencioso en el arte del mundo es el peor de los dos.",
+  "_howToAdd": "Una fila acá + el PNG en `public/sprites/`. Después, en el catálogo de arte, una parte `{\"shape\": \"sprite\", \"src\": \"<id>\", ...}` — o `\"sprite\": \"<id>\"` en el `use` de una parcela, que hace que TODA parcela de ese uso se dibuje con la imagen en vez de con su escena vectorial. `tests/test_sprites.py` exige que cada fila apunte a un archivo que exista.",
+  "version": 1,
+  "sprites": {
+    "casa_prueba": {
+      "_note": "LA FILA DE PRUEBA, y se queda. Una capacidad sin un caso que la ejercite es una capacidad que se rompe sin que nadie se entere: el verbo `sprite` se probaria contra un mock y el dia que alguien agregue el primer edificio de verdad descubriria que la ruta, el ancla o los metros nunca funcionaron. Esta apunta a un PNG real de 16x24 en `public/sprites/`, la dibuja `tools/shot-sprites.mjs` y `tests/test_sprites.py` exige que el archivo exista.",
+      "src": "/sprites/casa-prueba.png",
+      "wM": 6.4,
+      "hM": 9.6,
+      "_size": "16x24 px a 2.5 px/m = 6.4 x 9.6 m, o sea una casa de puerto. Los metros son la verdad; el PNG puede cambiar de resolucion sin mover el edificio.",
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "_anchor": "cuelga de su BASE: un edificio crece hacia arriba desde su huella.",
+      "placeholder": "#c9bda8"
+    }
+  },
+  "_first": "La primera fila es `casa_prueba` y no se borra: es la que mantiene honesto al verbo. Un registro vacio con un verbo que nadie ejercita es la forma mas facil de que la capacidad este rota el dia que se necesite."
+}

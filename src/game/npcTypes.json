@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "note": "The world's NPC registry. WHICH type uses which movement, how many of them, how fast and WHERE THEY MAY STAND is data; the movements themselves stay code, because they are physics. Edited by the world editor (source id npc-types) and read by src/game/npcs.js.",
+  "movements": {
+    "rail": "walks a road's arclength at a fixed acera offset, crossing now and then (advancePed)",
+    "bounded-random": "random walk contained by an area, turning back at its edge (advanceFieldPed / advanceSwimmer)",
+    "route": "follows an authored polyline (advanceEditorRoute), or a bus (advancePassenger)",
+    "stationary": "stands where it was placed"
+  },
+  "hostVocabulary": "A hosts entry is either a SURFACE class name from src/game/surfaces.js (water, land, beach, road, paseo, bridge, acera, boulevard, barro, gravel, malecon) or a host reference kind:use (parcel:pool, parcel:stadium, cuadra, landmark). The surface entries are checked against the raster; the host entries against properties.host.",
+  "types": [
+    {
+      "id": "walker",
+      "name": "Peatón",
+      "movement": "rail",
+      "hosts": [
+        "acera"
+      ],
+      "density": {
+        "target": 64
+      },
+      "speed": [
+        14,
+        26
+      ],
+      "art": "walker",
+      "builtin": true,
+      "note": "The city's ambient crowd. Rail-bound to a road so it can never wander into a cuadra interior."
+    },
+    {
+      "id": "fan",
+      "name": "Aficionado",
+      "movement": "bounded-random",
+      "hosts": [
+        "parcel:stadium",
+        "parcel:plaza",
+        "road"
+      ],
+      "density": {
+        "perBox": 17,
+        "boxes": 6,
+        "min": 3,
+        "max": 12
+      },
+      "speed": [
+        7,
+        16
+      ],
+      "art": "fan",
+      "gap": 17,
+      "inset": 26,
+      "builtin": true,
+      "note": "The crowd on a cancha. gap is enforced twice — at spawn and every frame — because two random walks on one pitch meet. inset keeps it off the acera band the renderer paints over the block edge."
+    },
+    {
+      "id": "swimmer",
+      "name": "Bañista",
+      "movement": "bounded-random",
+      "hosts": [
+        "water"
+      ],
+      "density": {
+        "count": 6
+      },
+      "speed": [
+        5,
+        11
+      ],
+      "art": "swimmer",
+      "radius": 6,
+      "builtin": true,
+      "note": "radius is the body clearance from the kerb: testing the centre alone let them ride half-on the balneario's inner acera."
+    },
+    {
+      "id": "passenger",
+      "name": "Pasajero",
+      "movement": "route",
+      "hosts": [
+        "acera"
+      ],
+      "speed": [
+        14,
+        22
+      ],
+      "art": "passenger",
+      "temporary": true,
+      "builtin": true,
+      "note": "The one TEMPORARY kind: joinTheSidewalk drops both the flag and the type when an alighting passenger reaches the acera, so a person who got off a bus simply IS a person walking."
+    },
+    {
+      "id": "playero",
+      "name": "Playero",
+      "movement": "bounded-random",
+      "hosts": [
+        "beach"
+      ],
+      "density": {
+        "target": 16
+      },
+      "speed": [
+        6,
+        14
+      ],
+      "art": "playero",
+      "builtin": true,
+      "note": "The people on the sand: walking down to the water, standing in the shallows, lying on a towel. Hosted on the BEACH class, so they follow the real playa wherever it is — Playitas and Caldera get them exactly like the Paseo does. A third of them are stationary (the towels)."
+    },
+    {
+      "id": "jugador",
+      "name": "Jugador de playa",
+      "movement": "bounded-random",
+      "hosts": [
+        "beach"
+      ],
+      "density": {
+        "perBox": 22,
+        "boxes": 5,
+        "min": 4,
+        "max": 8
+      },
+      "speed": [
+        14,
+        26
+      ],
+      "art": "jugador",
+      "gap": 20,
+      "builtin": true,
+      "note": "A mejenga on the sand. Unlike a fan, a jugador is not wandering: the game owns a BALL and everyone runs at it, which is what makes a cluster read as a game rather than as a crowd standing on a beach."
+    },
+    {
+      "id": "paseante",
+      "name": "Paseante",
+      "movement": "bounded-random",
+      "hosts": [
+        "malecon",
+        "boulevard"
+      ],
+      "density": {
+        "target": 22
+      },
+      "speed": [
+        10,
+        20
+      ],
+      "art": "paseante",
+      "builtin": true,
+      "note": "The malecón's own crowd: families, couples, somebody with a churchill. Hosted on the promenade classes, so they exist wherever there is paving to stroll — the sea front and the centro's bulevar."
+    },
+    {
+      "id": "fisher",
+      "name": "Pescador",
+      "movement": "stationary",
+      "hosts": [
+        "water"
+      ],
+      "speed": [
+        0,
+        0
+      ],
+      "art": "fisher",
+      "builtin": true,
+      "note": "He is seated in HIS BOAT'S frame, not standing on a surface: the estero's pangas draw him inside their own transform so he leans and bobs with the hull. That is why his host is water — the ground under him is the panga, and the only thing the world can check is that she is floating."
+    },
+    {
+      "id": "muellero",
+      "name": "Pescador de muelle",
+      "movement": "stationary",
+      "hosts": [
+        "bridge"
+      ],
+      "speed": [
+        0,
+        0
+      ],
+      "art": "muellero",
+      "builtin": true,
+      "gap": 46,
+      "note": "People used to fish off the Muelle de Cruceros and do not any more; this is that, kept. He STANDS on the deck (host `bridge` — class 5 is the pier), unlike `fisher`, who is seated in a boat, so he carries the side of the muelle he is leaning over: the caña has to go out over the water, and which way that is depends on which edge he picked."
+    },
+    {
+      "id": "resident",
+      "name": "Vecino",
+      "movement": "stationary",
+      "hosts": [
+        "acera",
+        "boulevard",
+        "malecon",
+        "paseo",
+        "beach",
+        "parcel",
+        "cuadra"
+      ],
+      "speed": [
+        0,
+        0
+      ],
+      "art": "person"
+    },
+    {
+      "id": "tourist",
+      "name": "Turista",
+      "movement": "route",
+      "hosts": [
+        "acera",
+        "boulevard",
+        "malecon",
+        "paseo",
+        "beach"
+      ],
+      "speed": [
+        16,
+        22
+      ],
+      "art": "person"
+    },
+    {
+      "id": "vendor",
+      "name": "Vendedor",
+      "movement": "stationary",
+      "hosts": [
+        "acera",
+        "beach",
+        "boulevard",
+        "malecon",
+        "paseo",
+        "parcel"
+      ],
+      "speed": [
+        0,
+        0
+      ],
+      "art": "vendor"
+    },
+    {
+      "id": "worker",
+      "name": "Trabajador",
+      "movement": "route",
+      "hosts": [
+        "acera",
+        "road",
+        "boulevard",
+        "malecon",
+        "paseo"
+      ],
+      "speed": [
+        14,
+        20
+      ],
+      "art": "worker"
+    },
+    {
+      "id": "supporter",
+      "name": "Hincha",
+      "movement": "bounded-random",
+      "hosts": [
+        "parcel:stadium",
+        "parcel:plaza",
+        "acera"
+      ],
+      "density": {
+        "perBox": 20,
+        "boxes": 6,
+        "min": 2,
+        "max": 10
+      },
+      "speed": [
+        8,
+        15
+      ],
+      "art": "fan"
+    },
+    {
+      "id": "mascot",
+      "name": "Mascota",
+      "movement": "stationary",
+      "hosts": [
+        "parcel:stadium",
+        "parcel:plaza",
+        "acera",
+        "beach"
+      ],
+      "speed": [
+        0,
+        0
+      ],
+      "art": "mascot"
+    }
+  ]
+}

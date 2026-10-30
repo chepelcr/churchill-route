@@ -1,0 +1,31 @@
+name: Pacific Railway checks
+on:
+  push:
+    branches: [feature/pacific-railway]
+  pull_request:
+    paths:
+      - 'public/pacific-railway/**'
+      - 'src/ui/screens/RailwayMode.jsx'
+      - 'src/game/railway.js'
+      - 'src/content/pacific-railway.json'
+      - 'tests/pacific-railway/**'
+      - 'docs/research/pacific-railway/**'
+      - '.github/workflows/pacific-railway.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:railway
+      - run: pnpm validate:railway public/pacific-railway/examples/valley-run.json
+      - run: python3 docs/research/pacific-railway/validate_research.py
+      - run: python3 -m unittest tests.test_screens tests.test_vocabulary tests.test_i18n
+      - run: pnpm build

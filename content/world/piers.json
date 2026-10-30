@@ -1,0 +1,83 @@
+{
+  "_note": "LOS MUELLES — lo que se puede decidir de un muelle sin editar el builder. El ASPECTO ya era data (`materials.json` → `pier`, cinco recetas). Los REGISTROS emitidos ya estaban tipados (`style`, `surface`, `seaEnd`, validados por el DTO). Lo que faltaba era el TAMAÑO: cuán largo, cuán ancho — que estaba escrito en píxeles adentro de `poi_stage.py`.",
+  "version": 1,
+
+  "_whyNotGeo": "LOS EXTREMOS NO SE AUTORAN, Y ESO NO ES UNA LIMITACIÓN — ES LA PARTE QUE YA FUNCIONA. Un muelle no nace en un punto que alguien escogió: nace en LA ORILLA RESUELTA (`botY[col]`, la línea de costa que el build acaba de rasterizar) o en la punta norte de una calle con nombre, o en la popa de un barco en reposo. Esa derivación es la que sobrevive un reescalado — la orilla se mueve y el muelle se mueve con ella. Un ancla geo, por segura que sea contra la escala, se queda donde la puso el topógrafo: después de un rescale puede caer en el agua o tierra adentro, y el muelle sale flotando o enterrado. Así que acá va el TAMAÑO y el ESTILO; el sitio lo sigue resolviendo el build.",
+
+  "_lengths": "EN METROS, por la misma razón que todo lo demás del mundo: `docs/RESCALE.md`. `630` y `260` eran píxeles calibrados a una escala que ya cambió tres veces — un muelle de 630 px medía 394 m a 1.6 px/m y mide 252 m a 2.5. Nadie decidió ese acortamiento.",
+
+  "decks": {
+    "muelle_nacional": {
+      "name": "Muelle Nacional",
+      "note": "El muelle de verdad de Puntarenas, al final de Calle Central. Sale de la orilla sur hacia el Pacífico.",
+      "lengthM": 252.0,
+      "lengthNote": "630 px. Es el largo LIBRE mar adentro; el build lo recorta si toparía con el borde del mundo.",
+      "widthM": 16.0,
+      "widthNote": "2 cuadrículas. Dos carros se cruzan en la cubierta, que es lo que hace que valga la pena manejar hasta la punta.",
+      "style": "concrete",
+      "surface": "bridge",
+      "seaEnd": "last",
+      "anchorNote": "x de Calle Central resuelta, y de la orilla sur. El build le suma un conector al norte hasta la primera calle."
+    },
+    "muelle_pitahaya": {
+      "name": "Muelle de Pitahaya",
+      "note": "El gemelo, hacia el norte al estero. ESTÁ AL FINAL DE SU PROPIA CALLE y tiene que estarlo: reusaba la x del Nacional creyendo que un eje alineaba los dos, pero Calle Central se ladea 122 px entre sus dos puntas y el gemelo quedaba fuera del final de toda calle.",
+      "lengthM": 104.0,
+      "lengthNote": "260 px, más corto que el Nacional a propósito: el canal de la Travesía pasa cerca de esta orilla y una cubierta que lo cruce es un muro sobre el agua que la lancha necesita.",
+      "widthM": 16.0,
+      "style": "concrete",
+      "surface": "bridge",
+      "seaEnd": "last",
+      "anchorNote": "punta norte de la calle del muelle, y la orilla del estero."
+    },
+    "calle_muelle_pitahaya": {
+      "name": "Calle del Muelle de Pitahaya",
+      "note": "LA ENTRADA ES UNA CALLE, no un muñón. La calle termina antes del agua —la última cuadra antes del estero es la orilla misma—, así que la base del muelle y el final de la calle se unen con una calle auxiliar de verdad, emitida como muelle (el mismo registro que usan las rampas y las bajadas) en vez de ser celdas manejables invisibles.",
+      "widthM": 16.0,
+      "style": "calzada",
+      "styleNote": "`calzada`, no `apron`: se dibuja en el CONCRETO GRIS del muelle y no en asfalto, para que la superficie bajo el carro no cambie entre la calle y la cubierta. Los muelles ya eran concreto; esta era la pieza que seguía negra.",
+      "surface": "road",
+      "seaEnd": null,
+      "seaEndNote": "ningún extremo cuelga sobre el agua, así que no se le acorta el tope: los dos caps redondos caen sobre tierra que ya es manejable.",
+      "lengthNote": "NO lleva largo — va de la calle a la base del muelle, y ese es el largo que haya. Escribirlo sería fijar la distancia entre dos cosas que el build ubica."
+    },
+    "muelle_faro": {
+      "name": "Muelle del Faro",
+      "note": "El muellito de madera de La Punta, hacia el suroeste desde la línea de playa. Sobre su cubierta se para el Kiosco del Faro, que es el único kiosco al que se le perdona el agua cerca.",
+      "offsetM": [-56.0, 56.0],
+      "offsetNote": "7 cuadrículas al oeste y 7 al sur desde la base — es diagonal, así que lo que se autora es el VECTOR y no un largo: un largo pediría además un rumbo, y serían dos números para decir lo que dice uno.",
+      "widthM": 16.0,
+      "style": "timber",
+      "styleNote": "madera, no concreto — es la única cubierta de tablas del mundo.",
+      "surface": "bridge",
+      "seaEnd": "last",
+      "anchorNote": "la celda de línea de playa más cercana al faro."
+    }
+  },
+
+  "aprons": {
+    "_note": "LAS PIEZAS DERIVADAS. Van de una cosa a otra que el build ubicó, así que su LARGO no es autorable —es la distancia que resulte— y sólo su ancho y su receta lo son. Emitirlas como muelles y no como celdas sueltas es lo que las hace visibles y editables.",
+    "ferryRamp": {
+      "note": "De la popa del ferry en reposo a la calle más cercana. Un pelo más angosta que la cubierta, así que la rampa mide lo que la puerta por la que se entra y no lo que un andén.",
+      "widthM": 16.0,
+      "reachM": 104.0,
+      "reachNote": "hasta dónde se busca calle. Sin calle no hay rampa y el build lo dice — una rampa a ninguna parte es peor que ninguna.",
+      "style": "apron",
+      "surface": "road"
+    },
+    "lanchaRamp": {
+      "note": "Igual, pero para la lancha del estero. SU ANCHO SALE DE LA LANCHA (`deck[1]`), no de acá: una rampa más angosta que el barco es una rampa que no se puede usar, y la lancha ya se autora.",
+      "widthFrom": "vessel.deckWidth",
+      "reachM": 104.0,
+      "style": "apron",
+      "surface": "road"
+    },
+    "bajada": {
+      "note": "Las bajadas a la arena del Paseo. ESTAMPADAS COMO CALLE, DIBUJADAS COMO MALECÓN — y en un muelle la superficie y el estilo son cosas separadas justo para esto. Una bajada era `MALECON` mientras el malecón era manejable; ahora que no lo es, estamparla así convertiría los únicos caminos marcados a la arena en muros, que es exactamente lo contrario de para lo que existe una bajada.",
+      "widthM": 12.0,
+      "widthNote": "por defecto; cada bajada puede traer el suyo en `attractions.json` → `beachAccesses`.",
+      "style": "malecon",
+      "surface": "road"
+    }
+  }
+}

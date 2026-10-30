@@ -1,0 +1,4860 @@
+[
+  {
+    "id": 6553390,
+    "version": 53,
+    "timestamp": "2025-07-30 19:37:26+00:00",
+    "tags": {
+      "from": "Estación Atlántico",
+      "name": "Atlántico - Alajuela",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "2",
+      "route": "train",
+      "to": "Alajuela",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-urbano-alajuela-rio-segundo/",
+      "wikidata": "Q124434665"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 5824465670,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4629001928,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628887533,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627531199,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627549200,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627544910,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627535655,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1436030709,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 5571341451,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 10267672054,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 468564875,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422043,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 627670973,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422048,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544851,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153037,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153038,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544852,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772052,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772051,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544846,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891840,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891841,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549799,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625559,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625554,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549798,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695599,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695603,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771721,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771720,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880156,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880155,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 260383309,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 468564876,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 38782808,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 130351362,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 219838734,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 219838735,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 130351363,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440814505,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 200659039,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421854703,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 468571231,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 316308490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771718,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1077530368,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1077530367,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771717,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771715,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771716,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357578237,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357578238,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357578240,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6559533,
+    "version": 43,
+    "timestamp": "2024-07-16 22:19:36+00:00",
+    "tags": {
+      "from": "Estación Cartago",
+      "name": "Estación Cartago - Estación Atlántico",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "4",
+      "route": "train",
+      "to": "Estación Atlántico",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-urbano-cartago-estacion-atlantico/",
+      "wikidata": "Q124434629"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4638296442,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332993893,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638296440,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3317453261,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4386029998,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333003843,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999925,
+        "role": "platform"
+      },
+      {
+        "type": "w",
+        "ref": 1221658783,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1221658784,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 172579195,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 479832893,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 479832894,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107709724,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107709749,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107708941,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107708958,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 97200952,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 97200939,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511825,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 443582049,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1301851263,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 443582046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011513,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1301846345,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011514,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 461996473,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011510,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011511,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 268517182,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 268517185,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 530373948,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716760620,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716760621,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 712182782,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 303395136,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 304573535,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 304573532,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846585,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846586,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440835490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511791,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6559776,
+    "version": 36,
+    "timestamp": "2024-07-16 22:19:36+00:00",
+    "tags": {
+      "from": "Estación Atlántico",
+      "name": "Estación Atlántico - Cartago",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "4",
+      "route": "train",
+      "to": "Estación Cartago",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-urbano-cartago-estacion-atlantico/",
+      "wikidata": "Q124434629"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999925,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333003843,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4386029998,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3317453261,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638296440,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332993893,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638296442,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511791,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440835490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846586,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846585,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 304573532,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 304573535,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 303395136,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 712182782,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716760621,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716760620,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 530373948,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 268517185,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 268517182,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011511,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011510,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 461996473,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011514,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1301846345,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011513,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 443582046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1301851263,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 443582049,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511825,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 97200939,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 97200952,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107708958,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107708941,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107709749,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107709724,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 479832894,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 479832893,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 172579195,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1221658784,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1221658783,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6562389,
+    "version": 26,
+    "timestamp": "2025-03-01 20:18:49+00:00",
+    "tags": {
+      "from": "Estación Belén",
+      "name": "Estación Belén - Estación Pacífico",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "1",
+      "route": "train",
+      "to": "Estación Pacífico",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-interurbano-belen-estacion-pacifico/",
+      "wikidata": "Q124433546"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4638218346,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1086909644,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 10267922561,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4638218345,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 276525196,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332793717,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012388,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332765262,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012387,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3338240544,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012386,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332778643,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012385,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332802682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012384,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332814242,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 289555266,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1004568682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 278449879,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012382,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012381,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332821832,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012380,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 25369694,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369867,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582537,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582536,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553374,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553375,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968787,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428217,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1363897409,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440833925,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196790,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831896,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831899,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107828913,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25841648,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 446753979,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6562498,
+    "version": 22,
+    "timestamp": "2025-03-01 20:18:49+00:00",
+    "tags": {
+      "from": "Estación Pacífico",
+      "name": "Estación Pacífico - Estación Belén",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "1",
+      "route": "train",
+      "to": "Estación Belén",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-interurbano-belen-estacion-pacifico/",
+      "wikidata": "Q124433546"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4636012380,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332821832,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012381,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012382,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 278449879,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1004568682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 289555266,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332814242,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012384,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332802682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012385,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332778643,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012386,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3338240544,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012387,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332765262,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012388,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332793717,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 276525196,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4638218345,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 10267922561,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1086909644,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638218346,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 446753979,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25841648,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107828913,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831899,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831896,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196790,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440833925,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1363897409,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428217,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968787,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553375,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553374,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582536,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582537,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369867,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369694,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6562632,
+    "version": 38,
+    "timestamp": "2025-07-30 19:37:26+00:00",
+    "tags": {
+      "from": "Estación Heredia",
+      "name": "Heredia - U. Latina",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "2",
+      "route": "train",
+      "to": "U. Latina",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-interurbano-heredia-estacion-atlantico-u-latina/"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4627549200,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627531199,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628887533,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4629001928,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 5824465670,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "w",
+        "ref": 260383309,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880155,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880156,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771720,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771721,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695603,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695599,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549798,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625554,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625559,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549799,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891841,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891840,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544846,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772051,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772052,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544852,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153038,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153037,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544851,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422048,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 627670973,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422043,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 468564875,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6562672,
+    "version": 38,
+    "timestamp": "2025-07-30 19:37:26+00:00",
+    "tags": {
+      "from": "U. Latina",
+      "name": "U. Latina - Heredia",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "2",
+      "route": "train",
+      "to": "Estación Heredia",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-interurbano-heredia-estacion-atlantico-u-latina/",
+      "wikidata": "Q124434665"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 5824465670,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4629001928,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628887533,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627531199,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627549200,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 468564875,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422043,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 627670973,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422048,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544851,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153037,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153038,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544852,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772052,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772051,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544846,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891840,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891841,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549799,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625559,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625554,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549798,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695599,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695603,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771721,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771720,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880156,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880155,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 260383309,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6562922,
+    "version": 36,
+    "timestamp": "2025-03-01 20:18:49+00:00",
+    "tags": {
+      "from": "Metrópoli",
+      "name": "Metrópoli - CFIA",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "1",
+      "route": "train",
+      "to": "CFIA",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-interurbano-belen-estacion-pacifico/",
+      "wikidata": "Q124433546"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 276525196,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332793717,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012388,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332765262,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012387,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3338240544,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012386,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332778643,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012385,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332802682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012384,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332814242,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 289555266,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1004568682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 278449879,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012382,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012381,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332821832,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012380,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012379,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 10719766598,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012378,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999925,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4386029998,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333003843,
+        "role": "platform"
+      },
+      {
+        "type": "w",
+        "ref": 1363897409,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440833925,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196790,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831896,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831899,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107828913,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25841648,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 446753979,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440793505,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 298488302,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 457238514,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 413413663,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934239,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440619830,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511791,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440835490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846586,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846585,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6908011,
+    "version": 35,
+    "timestamp": "2025-07-30 19:37:26+00:00",
+    "tags": {
+      "from": "Alajuela",
+      "name": "Alajuela - Atlántico",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "2",
+      "route": "train",
+      "to": "Estación Atlántico",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-urbano-alajuela-rio-segundo/",
+      "wikidata": "Q124434665"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 10267672054,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 5571341451,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1436030709,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627535655,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627544910,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627549200,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627531199,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628887533,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4629001928,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 5824465670,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 357578240,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357578238,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357578237,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771716,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771715,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771717,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1077530367,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1077530368,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771718,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 316308490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 468571231,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421854703,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 200659039,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440814505,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 130351363,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 219838735,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 219838734,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 130351362,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 38782808,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 468564876,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 260383309,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880155,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880156,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771720,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771721,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695603,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695599,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549798,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625554,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625559,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549799,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891841,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891840,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544846,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772051,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772052,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544852,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153038,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153037,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544851,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422048,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 627670973,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422043,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 468564875,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6908041,
+    "version": 22,
+    "timestamp": "2025-07-30 19:37:26+00:00",
+    "tags": {
+      "from": "Estación Atlántico",
+      "name": "Atlántico - Heredia",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "2",
+      "route": "train",
+      "to": "Estación Heredia",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-urbano-alajuela-rio-segundo/",
+      "wikidata": "Q124434665"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 5824465670,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4629001928,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628887533,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627531199,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627549200,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 468564875,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422043,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 627670973,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422048,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544851,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153037,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153038,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544852,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772052,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772051,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544846,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891840,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891841,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549799,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625559,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625554,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549798,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695599,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695603,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771721,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771720,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880156,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880155,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 260383309,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 6908042,
+    "version": 22,
+    "timestamp": "2025-07-30 19:37:26+00:00",
+    "tags": {
+      "from": "Estación Heredia",
+      "name": "Heredia - Atlántico",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "2",
+      "route": "train",
+      "to": "Estación Atlántico",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-urbano-alajuela-rio-segundo/",
+      "wikidata": "Q124434665"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4627549200,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4627531199,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628887533,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4629001928,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 5824465670,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 260383309,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880155,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227880156,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771720,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716771721,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695603,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117695599,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549798,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625554,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1416625559,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25549799,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891841,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 227891840,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544846,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772051,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716772052,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544852,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153038,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1168153037,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25544851,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422048,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 627670973,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 31422043,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 468564875,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 7357187,
+    "version": 15,
+    "timestamp": "2025-03-01 20:18:49+00:00",
+    "tags": {
+      "from": "CFIA",
+      "name": "CFIA - Estación Belén",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "1",
+      "route": "train",
+      "to": "Estación Belén",
+      "type": "route"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4386029998,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333003843,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999925,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012378,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012379,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 10719766598,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012380,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012381,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332821832,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 278449879,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012382,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 289555266,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1004568682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012384,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332814242,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012385,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332802682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012386,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332778643,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012387,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3338240544,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012388,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332765262,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 276525196,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332793717,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638218345,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 10267922561,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1086909644,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638218346,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 1122846585,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846586,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440835490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511791,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440619830,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934239,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 413413663,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 457238514,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 298488302,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440793505,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 446753979,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25841648,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107828913,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831899,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831896,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196790,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440833925,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1363897409,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428217,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968787,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553375,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553374,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582536,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582537,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369867,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369694,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 7357188,
+    "version": 5,
+    "timestamp": "2025-03-01 20:18:49+00:00",
+    "tags": {
+      "from": "Metrópoli",
+      "name": "Metrópoli - Pacífico",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "1",
+      "route": "train",
+      "to": "Estación Pacífico",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-interurbano-belen-estacion-pacifico/",
+      "wikidata": "Q124433546"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 276525196,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332793717,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012388,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332765262,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012387,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3338240544,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012386,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332778643,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012385,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332802682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012384,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332814242,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 289555266,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1004568682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 278449879,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012382,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012381,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332821832,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012380,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 1363897409,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440833925,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196790,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831896,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831899,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107828913,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25841648,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 446753979,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 7357207,
+    "version": 5,
+    "timestamp": "2025-03-01 20:18:49+00:00",
+    "tags": {
+      "from": "Estación Pacífico",
+      "name": "Estación Pacífico - Metrópoli",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "1",
+      "route": "train",
+      "to": "Metrópoli",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-interurbano-belen-estacion-pacifico/",
+      "wikidata": "Q124433546"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4636012380,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332821832,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012381,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012382,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 278449879,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1004568682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 289555266,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332814242,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012384,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332802682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012385,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332778643,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012386,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3338240544,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012387,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332765262,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012388,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332793717,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 276525196,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 446753979,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25841648,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107828913,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831899,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831896,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196790,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440833925,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1363897409,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 7357210,
+    "version": 13,
+    "timestamp": "2025-03-01 20:18:49+00:00",
+    "tags": {
+      "from": "Estación Atlántico",
+      "name": "Estación Atlántico - Estación Belén",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "1",
+      "route": "train",
+      "to": "Estación Belén",
+      "type": "route",
+      "wikidata": "Q124433546"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999925,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012378,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012379,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 10719766598,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012380,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012381,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332821832,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 278449879,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4636012382,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 289555266,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1004568682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012384,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332814242,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012385,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332802682,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012386,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332778643,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012387,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3338240544,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4636012388,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332765262,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 276525196,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332793717,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638218345,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 10267922561,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1086909644,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638218346,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440619830,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934239,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 413413663,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 457238514,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 298488302,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440793505,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 446753979,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25841648,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107828913,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831899,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831896,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196790,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440833925,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1363897409,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428217,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968787,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553375,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553374,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582536,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582537,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369867,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369694,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 7358193,
+    "version": 21,
+    "timestamp": "2024-07-16 22:19:36+00:00",
+    "tags": {
+      "from": "Los Ángeles",
+      "name": "Los Ángeles - Estación Atlántico",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "4",
+      "route": "train",
+      "to": "Estación Atlántico",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-urbano-cartago-estacion-atlantico/",
+      "wikidata": "Q124434629"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 1950179942,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4638296442,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332993893,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638296440,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3317453261,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4386029998,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333003843,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999925,
+        "role": "platform"
+      },
+      {
+        "type": "w",
+        "ref": 503382579,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1221658783,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1221658784,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 172579195,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 479832893,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 479832894,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107709724,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107709749,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107708941,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107708958,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 97200952,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 97200939,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511825,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 443582049,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1301851263,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 443582046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011513,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1301846345,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011514,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 461996473,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011510,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011511,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 268517182,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 268517185,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 530373948,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716760620,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716760621,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 712182782,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 303395136,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 304573535,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 304573532,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846585,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846586,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440835490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511791,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 7799195,
+    "version": 9,
+    "timestamp": "2024-02-06 11:27:36+00:00",
+    "tags": {
+      "from": "CFIA",
+      "name": "CFIA - Estación Atlántico",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "1",
+      "route": "train",
+      "to": "Estación Atlántico",
+      "type": "route",
+      "wikidata": "Q124433546"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4386029998,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333003843,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999925,
+        "role": "platform"
+      },
+      {
+        "type": "w",
+        "ref": 1122846585,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846586,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440835490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511791,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 7799200,
+    "version": 19,
+    "timestamp": "2024-07-16 22:19:36+00:00",
+    "tags": {
+      "from": "Estación Atlántico",
+      "name": "Estación Atlántico - Los Ángeles",
+      "network": "Tren Urbano",
+      "operator": "Incofer",
+      "public_transport:version": "2",
+      "ref": "4",
+      "route": "train",
+      "to": "Los Ángeles",
+      "type": "route",
+      "url": "http://www.incofer.go.cr/tren-urbano-cartago-estacion-atlantico/",
+      "wikidata": "Q124434629"
+    },
+    "members": [
+      {
+        "type": "n",
+        "ref": 4628999924,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 4628999925,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008845,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 3333008585,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3333003843,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4386029998,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3317453261,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638296440,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 3332993893,
+        "role": "platform"
+      },
+      {
+        "type": "n",
+        "ref": 4638296442,
+        "role": "stop"
+      },
+      {
+        "type": "n",
+        "ref": 1950179942,
+        "role": "stop"
+      },
+      {
+        "type": "w",
+        "ref": 1038934246,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428318,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1207582823,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698189,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 491698188,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342834,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342835,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 452573164,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25342833,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 421857678,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511791,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440835490,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846586,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122846585,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 304573532,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 304573535,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 303395136,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 712182782,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716760621,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716760620,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 530373948,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 268517185,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 268517182,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011511,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011510,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 461996473,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011514,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1301846345,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39011513,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 443582046,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1301851263,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 443582049,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25511825,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 97200939,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 97200952,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107708958,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107708941,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107709749,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107709724,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 479832894,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 479832893,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 172579195,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1221658784,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1221658783,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 503382579,
+        "role": ""
+      }
+    ]
+  },
+  {
+    "id": 14070544,
+    "version": 5,
+    "timestamp": "2025-03-01 20:18:49+00:00",
+    "tags": {
+      "name": "Ferrocarril al Pacífico",
+      "route": "railway",
+      "type": "route",
+      "wikidata": "Q104540812"
+    },
+    "members": [
+      {
+        "type": "w",
+        "ref": 446753979,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25841648,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 107828913,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831899,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117831896,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196790,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 361196789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440833925,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1363897409,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 26428217,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968789,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 65968787,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553375,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25553374,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582536,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 357582537,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369867,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369694,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 469522582,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 440784583,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 230071001,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 230070992,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 814998309,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 381125652,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 25369805,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 627437577,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 330171735,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1122692830,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 293433268,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 293433269,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716757129,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716757130,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 293539305,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 293539304,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716743187,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 69965792,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 99445797,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 68846134,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 68846135,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 100398689,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 100398688,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 370366713,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 691445171,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 691445165,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 419585721,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 419585717,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 314301408,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 314301409,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 39197685,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 992787211,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 117959326,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 100401043,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716797376,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716797375,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 221522098,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 218578642,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 419586860,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 419586861,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 221521681,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 138007854,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716809328,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716809329,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 419589107,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 419589108,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 38560313,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 38560312,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716809330,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 101352943,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 321562109,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 321562110,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716813806,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716813807,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 1227910683,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 716813808,
+        "role": ""
+      },
+      {
+        "type": "w",
+        "ref": 419589109,
+        "role": ""
+      }
+    ]
+  }
+]

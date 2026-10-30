@@ -1,0 +1,114 @@
+"""Stage 1: read the map and project it.
+
+Everything downstream measures in world px, so this is where OSM's metres stop.
+The order inside is forced, not stylistic: the world's SIZE is computed from the
+ways themselves, so the projection has to exist before a single feature can be
+extracted or clipped.
+
+Out: a WorldContext with the projection, the dims, an empty raster of the right
+size, and every extracted feature family. Nothing is placed or rasterised yet —
+a building here still sits at its true OSM footprint.
+"""
+import time
+from collections import defaultdict
+
+from ..config import DILATION_ON
+from ..content import RAILWAY_DEF, ROAD_LINK_DEFS
+from ..context import WorldContext
+from ..logging import log, warn
+from ..service.dilation import build as dilation_build
+from ..service.ferry import extract_ferries
+from ..service.osm import (
+    barro_leon_continuation, extract_areas, extract_buildings, extract_pois,
+    extract_rails, extract_roads, extract_sites, propagate_barro_to_crossings,
+)
+from ..service.projection import planar_setup
+from ..service.railway import align_rails
+from ..service.roadlink import link_roads
+from ..service.signs import build_signs
+from ..service.street import StreetIndex
+from ..util.geometry import to_m
+from ..util.raster import Raster
+
+
+def extract_world(osm_source):
+    """Read the OSM source, project it, and return the world under construction
+    plus the raw building footprints (which are placed by a later stage, not
+    kept on the context: they are consumed, not shared)."""
+    t0 = time.time()
+    nodes, ways, named, relations, poi_nodes, sign_nodes = osm_source.load()
+    log("parse", f"{len(nodes)} nodes, {len(ways)} kept ways, "
+                 f"{len(named)} named features ({time.time()-t0:.1f}s)")
+
+    sp, dims = planar_setup(ways)
+    ctx = WorldContext(dims=dims, projection=sp)
+    ctx.nodes, ctx.ways, ctx.named = nodes, ways, named
+    ctx.relations, ctx.poi_nodes = relations, poi_nodes
+    ctx.sign_nodes = sign_nodes
+    ctx.raster = Raster(dims.cols, dims.rows, dims.cell)
+
+    # LA DILATACIÓN, y por qué son DOS pasadas sobre las calles.
+    #
+    # El campo que le devuelve su suelo a las manzanas se calcula A PARTIR de la
+    # red de calles, y la red de calles sale de la proyección — así que hay un
+    # huevo y una gallina. Se rompe barato: se extraen las calles con la
+    # proyección afín (rápido; lo caro fue el parseo, y ya está hecho), se
+    # construye el campo con eso, se instala en la proyección, y se vuelve a
+    # extraer. A partir de ahí TODO lo que se proyecte sale ya separado y
+    # ninguna etapa aguas abajo se entera de que esto existe.
+    if DILATION_ON:
+        probe_roads, _ = extract_roads(sp, ways, dims.w, dims.h)
+        # …y el AGUA, para clavarla. Sin esto el pueblo se mete en el corredor
+        # navegable al separarse: el canal de la Travesía se cerró a 12 px de
+        # media caña contra un casco de 34 y la etapa dejó de poderse jugar.
+        _pb, probe_waters = extract_areas(sp, ways, relations, dims.w, dims.h)
+        sp.warp = dilation_build(probe_roads, waters=probe_waters)
+    else:
+        log("dilate", "apagada (DILATION=0): las calles siguen comiéndose la manzana")
+
+    roads, bridge_road = extract_roads(sp, ways, dims.w, dims.h)
+    # León Cortés end-barro + dirt cross streets (coordinate-agnostic).
+    barro_leon_continuation(roads)
+    propagate_barro_to_crossings(roads)
+    # LOS EMPALMES, ANTES DE QUE NADIE MÁS MIRE LAS CALLES. Un empalme es el
+    # pedazo que le faltaba a una calle que ya existe, así que tiene que estar
+    # en la lista antes del ráster, del índice de calles, de las aceras y de las
+    # lámparas — si no, sería una calle de segunda que no aparece en ninguna de
+    # las preguntas que el resto del build le hace a la red.
+    ctx.road_links = link_roads(roads, lambda lat, lon: sp.project(to_m(lat, lon))[:2],
+                                ROAD_LINK_DEFS)
+    ctx.roads = roads
+
+    ctx.rails = extract_rails(sp, ways, dims.w, dims.h)
+    aligned_rails, rail_alignment = align_rails(
+        ctx.rails, roads, StreetIndex(roads), RAILWAY_DEF)
+    # Mutate the context collections in place: services that captured one must
+    # keep seeing the growing world (WorldContext's central contract).
+    ctx.rails[:] = aligned_rails
+    ctx.rail_alignment.extend(rail_alignment)
+    log("rails", f"{len(ctx.rails)} rail pieces")
+    n_by_cls = defaultdict(int)
+    for r in roads:
+        n_by_cls[r["cls"]] += 1
+    log("roads", f"{len(roads)} pieces: {dict(n_by_cls)}")
+    if bridge_road is None:
+        warn("roads", "Puente colgante way not found — synthesizing later")
+
+    raw_bldgs = extract_buildings(sp, ways, roads, dims.w, dims.h)
+    # The GROUND a place occupies (a park, a schoolyard, a church's plot) as
+    # opposed to a building standing on it. Placed much later, once the cuadras
+    # exist — here it is still the mapper's outline, same as a building.
+    ctx.sites = extract_sites(sp, ways, dims.w, dims.h)
+    ctx.beaches, ctx.waters = extract_areas(sp, ways, relations, dims.w, dims.h)
+    ctx.pois = extract_pois(sp, ways, poi_nodes, dims.w, dims.h)
+    # Street furniture: the semáforos, paradas, crossings and topes OSM records,
+    # plus the ALTOs derived from the street network — OSM has not one mapped
+    # `highway=stop` on this map, and an esquina without one reads as unfinished.
+    ctx.signs = build_signs(sp, sign_nodes, roads, dims.w, dims.h)
+    # The ferry berths and their sailing lines. It reads `pois` for the two
+    # ferry_terminal nodes, so it has to run after them — and it is here, in
+    # EXTRACT, because every part of it comes straight out of the OSM file;
+    # nothing about it depends on the raster or on where the blocks landed.
+    ctx.ferries = extract_ferries(sp, ways, ctx.pois, dims.w, dims.h)
+    log("areas", f"{len(ctx.beaches)} beach, {len(ctx.waters)} water polys")
+    return ctx, raw_bldgs, bridge_road

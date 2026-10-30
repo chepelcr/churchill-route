@@ -1,0 +1,5086 @@
+{
+  "_note": "LO QUE HAY EN EL MUNDO, as data. What each landmark type, each street sign and each parcel prop LOOKS like — the same three `switch`es the renderer used to carry as raw Canvas calls. The world says WHERE a thing stands (churchill/world/content.py -> manifest.landmarks / .signs / .parcels); this says what is drawn there, in the same spirit as feriaAssets.json and vehicles.json.",
+  "version": 2,
+  "_geometry": "Plain PIXEL offsets from the landmark's anchor, +y down — the frame the art was already written in (`ctx.fillRect(x - 16, y - 8, 32, 18)` becomes `x: -16, y: -8, w: 32, h: 18`). Parts are drawn in order, so later ones sit on top.",
+  "_shapes": "The finite vocabulary in src/render/c2d/shapes.js, shared with the vehicle catalog: rect, roundRect, poly, fan, ellipse, disc, stripes, stroke, strokeRect, text, label, areaLabel, repeat, grid. Data composes these and never invents one.",
+  "_scenes": "A scene may consume host geometry, clipping, time or tide, but its authored appearance is JSON: palettes, parts and a finite `values` formula tree. Parcel scenes use the generic interpreter; animated or irregular world scenes call the finite family verbs in sceneShapes.js. Code owns placement and traced footprints, never an asset's editable identity.",
+  "defaults": {
+    "landmarkShadow": {
+      "parts": [
+        {
+          "shape": "ellipse",
+          "fill": "rgba(0,0,0,0.22)",
+          "cx": 4,
+          "cy": 8,
+          "rx": 18,
+          "ry": 5
+        }
+      ]
+    },
+    "noLandmarkShadow": [
+      "stadium",
+      "pool",
+      "park"
+    ]
+  },
+  "landmarks": {
+    "kiosk": {
+      "note": "EL PUESTO GENÉRICO — el de churchill, que es el producto del juego. Blanco y NARANJA; la bebida se queda roja porque ése es el sirope. Los otros productos entran por `kiosk:<product>`, que `propFor` prueba entre el id y el tipo: los 17 kioscos son puntos de recogida de cinco comidas y los diecisiete se dibujaban ASÍ, con la palabra CHURCHILL en el rótulo — vigorones, ceviches y papicarnes incluidos. Un producto sin arte propio sigue cayendo aquí a propósito: agregar una comida no obliga a dibujarla el mismo día.",
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -16,
+          "y": -8,
+          "w": 32,
+          "h": 18
+        },
+        {
+          "shape": "stripes",
+          "n": 4,
+          "palette": [
+            "#f08a5d",
+            "#fff"
+          ],
+          "x": -16,
+          "y": -14,
+          "w": 32,
+          "h": 6
+        },
+        {
+          "shape": "rect",
+          "fill": "rgba(255,255,255,0.9)",
+          "x": -4,
+          "y": -4,
+          "w": 8,
+          "h": 12
+        },
+        {
+          "shape": "rect",
+          "fill": "#ff3d80",
+          "x": -4,
+          "y": 0,
+          "w": 8,
+          "h": 6
+        },
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -4,
+          "y": -4,
+          "w": 8,
+          "h": 3
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "CHURCHILL",
+          "fg": "#fff",
+          "bg": "#f08a5d"
+        }
+      ]
+    },
+    "ferry": {
+      "note": "THE TERMINAL IS A PLACE, NOT A BOAT. This used to paint a hull in the middle of the terminal's own streets — a second, fake ferry parked on the asphalt beside the two real ones you can drive onto. The landmark keeps its name pill and nothing else.",
+      "parts": [
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -12,
+          "text": "TERMINAL FERRY",
+          "fg": "#fff",
+          "bg": "#3a6f8a"
+        }
+      ]
+    },
+    "cruise": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -28,
+          "y": -10,
+          "w": 56,
+          "h": 22
+        },
+        {
+          "shape": "rect",
+          "fill": "#f4d77a",
+          "x": -28,
+          "y": -14,
+          "w": 56,
+          "h": 4
+        },
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -6,
+          "y": -22,
+          "w": 12,
+          "h": 8
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -28,
+          "text": "MUELLE",
+          "fg": "#fff",
+          "bg": "#3a6f8a"
+        }
+      ]
+    },
+    "church": {
+      "note": "the shared `props.church` building — nave, bell tower, spire, cross — plus the rose window on the tower and the name pill. The building itself is inlined rather than copied, because a `church` PARCEL draws the same one on its own manzana and the two used to be written out in two different files.",
+      "label": "IGLESIA",
+      "parts": [
+        {
+          "shape": "prop",
+          "ref": "church"
+        },
+        {
+          "shape": "rect",
+          "fill": "#7fa8c8",
+          "x": -3,
+          "y": -26,
+          "w": 6,
+          "h": 8
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -54,
+          "text": "$label",
+          "fg": "#fff",
+          "bg": "#9e6f4a"
+        }
+      ]
+    },
+    "cathedral": {
+      "note": "the same building, its own word on the pill — stone, grey and larger is the PARCEL's job, not the pin's",
+      "label": "CATEDRAL",
+      "sameAs": "church"
+    },
+    "market": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#f3c969",
+          "x": -24,
+          "y": -12,
+          "w": 48,
+          "h": 24
+        },
+        {
+          "shape": "stripes",
+          "n": 6,
+          "palette": [
+            "#6fbf99",
+            "#fff"
+          ],
+          "x": -24,
+          "y": -16,
+          "w": 48,
+          "h": 4
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "MERCADO",
+          "fg": "#fff",
+          "bg": "#3a3540"
+        }
+      ]
+    },
+    "super": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#ffec70",
+          "x": -18,
+          "y": -12,
+          "w": 36,
+          "h": 22
+        },
+        {
+          "shape": "rect",
+          "fill": "#e85d75",
+          "x": -18,
+          "y": -16,
+          "w": 36,
+          "h": 4
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "SÚPER",
+          "fg": "#fff",
+          "bg": "#e85d75"
+        }
+      ]
+    },
+    "hotel": {
+      "note": "the pill takes the SECOND word of the hotel's real name when it has one — `Hotel Tioga` reads TIOGA",
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#5fb0d6",
+          "x": -16,
+          "y": -22,
+          "w": 32,
+          "h": 32
+        },
+        {
+          "shape": "grid",
+          "fill": "rgba(255,255,255,0.6)",
+          "x": -14,
+          "y": -20,
+          "cols": 3,
+          "rows": 4,
+          "dx": 10,
+          "dy": 8,
+          "w": 5,
+          "h": 4
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -30,
+          "text": "$second",
+          "fg": "#fff",
+          "bg": "#3a6f8a"
+        }
+      ]
+    },
+    "park": {
+      "note": "the green space and its fountain are scene recipes selected by drawGreenSpace from the landmark's own w/h — this pin only carries the area label. A marine park composes the shared JSON pool recipe over its mapped pool anchors.",
+      "areaOnly": true,
+      "parts": [
+        {
+          "shape": "areaLabel",
+          "w": "$w",
+          "h": "$h",
+          "text": "PARQUE",
+          "fg": "#fff",
+          "bg": "#2e7d44"
+        }
+      ]
+    },
+    "museum": {
+      "note": "neoclassical facade: a portico of five columns under a pediment",
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#eae3d2",
+          "x": -22,
+          "y": -12,
+          "w": 44,
+          "h": 24
+        },
+        {
+          "shape": "fan",
+          "fill": "#d8cfb8",
+          "pts": [
+            [
+              -24,
+              -12
+            ],
+            [
+              0,
+              -24
+            ],
+            [
+              24,
+              -12
+            ]
+          ]
+        },
+        {
+          "shape": "repeat",
+          "n": 5,
+          "dx": 9,
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": "#c3b79a",
+              "x": -20,
+              "y": -10,
+              "w": 4,
+              "h": 20
+            }
+          ]
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -28,
+          "text": "MUSEO",
+          "fg": "#fff",
+          "bg": "#8a6f4a"
+        }
+      ]
+    },
+    "civic": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#6fbf99",
+          "x": -20,
+          "y": -10,
+          "w": 40,
+          "h": 22
+        },
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -6,
+          "y": -6,
+          "w": 12,
+          "h": 12
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -18,
+          "text": "CULTURA",
+          "fg": "#fff",
+          "bg": "#2e7d44"
+        }
+      ]
+    },
+    "marina": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#5fb0d6",
+          "x": -18,
+          "y": -8,
+          "w": 36,
+          "h": 16
+        },
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -4,
+          "y": -18,
+          "w": 2,
+          "h": 10
+        },
+        {
+          "shape": "fan",
+          "fill": "#fff",
+          "pts": [
+            [
+              -4,
+              -18
+            ],
+            [
+              6,
+              -12
+            ],
+            [
+              -4,
+              -8
+            ]
+          ]
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -24,
+          "text": "YACHT",
+          "fg": "#fff",
+          "bg": "#3a6f8a"
+        }
+      ]
+    },
+    "pool": {
+      "note": "El Balneario Municipal at La Punta is a SEA-WATER inlet: its cuadra is painted by the living-sea effect (the outline is in W.WATERS) with a boat and swimmers inside, so the landmark only tags it.",
+      "areaOnly": true,
+      "defaultW": 120,
+      "defaultH": 60,
+      "parts": [
+        {
+          "shape": "areaLabel",
+          "w": "$w",
+          "h": "$h",
+          "text": "BALNEARIO",
+          "fg": "#fff",
+          "bg": "#3a6f8a"
+        }
+      ]
+    },
+    "house": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#c084d6",
+          "x": -14,
+          "y": -10,
+          "w": 28,
+          "h": 20
+        },
+        {
+          "shape": "fan",
+          "fill": "#fff",
+          "pts": [
+            [
+              -16,
+              -10
+            ],
+            [
+              0,
+              -22
+            ],
+            [
+              16,
+              -10
+            ]
+          ]
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -26,
+          "text": "CASA FAIT",
+          "fg": "#fff",
+          "bg": "#c084d6"
+        }
+      ]
+    },
+    "estuary": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#3a6f8a",
+          "x": -16,
+          "y": -6,
+          "w": 32,
+          "h": 12
+        },
+        {
+          "shape": "rect",
+          "fill": "#6fbf99",
+          "x": -16,
+          "y": -12,
+          "w": 8,
+          "h": 8
+        },
+        {
+          "shape": "rect",
+          "fill": "#6fbf99",
+          "x": 8,
+          "y": -12,
+          "w": 8,
+          "h": 8
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -20,
+          "text": "MATA LIMÓN",
+          "fg": "#fff",
+          "bg": "#2e7d44"
+        }
+      ]
+    },
+    "restaurant": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#e85d75",
+          "x": -14,
+          "y": -10,
+          "w": 28,
+          "h": 20
+        },
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -6,
+          "y": -4,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -18,
+          "text": "MARISQ.",
+          "fg": "#fff",
+          "bg": "#e85d75"
+        }
+      ]
+    },
+    "beachsign": {
+      "parts": [
+        {
+          "shape": "stroke",
+          "stroke": "#3a3540",
+          "width": 2,
+          "pts": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              -14
+            ]
+          ]
+        },
+        {
+          "shape": "rect",
+          "fill": "#6fbf99",
+          "x": -22,
+          "y": -18,
+          "w": 44,
+          "h": 8
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -24,
+          "text": "PLAYA",
+          "fg": "#fff",
+          "bg": "#2e7d44"
+        }
+      ]
+    },
+    "trainstation": {
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#caa089",
+          "x": -20,
+          "y": -14,
+          "w": 40,
+          "h": 24
+        },
+        {
+          "shape": "rect",
+          "fill": "#3a3540",
+          "x": -22,
+          "y": 10,
+          "w": 44,
+          "h": 4
+        },
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -6,
+          "y": -8,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "TREN",
+          "fg": "#fff",
+          "bg": "#9e6f4a"
+        }
+      ]
+    },
+    "port": {
+      "note": "the quay, a gantry crane, and four containers in four colours",
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#5fb0d6",
+          "x": -28,
+          "y": -8,
+          "w": 56,
+          "h": 18
+        },
+        {
+          "shape": "stroke",
+          "stroke": "#f4d77a",
+          "width": 2,
+          "runs": [
+            [
+              [
+                -18,
+                -22
+              ],
+              [
+                -18,
+                -8
+              ]
+            ],
+            [
+              [
+                -18,
+                -22
+              ],
+              [
+                6,
+                -22
+              ],
+              [
+                6,
+                -16
+              ]
+            ]
+          ]
+        },
+        {
+          "shape": "repeat",
+          "n": 4,
+          "dx": 12,
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": [
+                "#e85d75",
+                "#f3c969",
+                "#6fbf99",
+                "#5fb0d6"
+              ],
+              "x": -24,
+              "y": -3,
+              "w": 10,
+              "h": 8
+            }
+          ]
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -30,
+          "text": "PUERTO",
+          "fg": "#fff",
+          "bg": "#3a6f8a"
+        }
+      ]
+    },
+    "sign": {
+      "note": "a gantry sign over the bulevar — free text, no pill",
+      "parts": [
+        {
+          "shape": "stroke",
+          "stroke": "#3a3540",
+          "width": 2,
+          "pts": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              -18
+            ]
+          ]
+        },
+        {
+          "shape": "rect",
+          "fill": "#3a6f8a",
+          "x": -30,
+          "y": -24,
+          "w": 60,
+          "h": 12
+        },
+        {
+          "shape": "text",
+          "fill": "#fff",
+          "font": "bold 8px 'JetBrains Mono', monospace",
+          "x": 0,
+          "y": -15,
+          "text": "BULEVAR"
+        }
+      ]
+    },
+    "village": {
+      "note": "a cluster of three small houses, each its own colour",
+      "parts": [
+        {
+          "shape": "repeat",
+          "n": 3,
+          "dx": 14,
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": [
+                "#e85d75",
+                "#f3c969",
+                "#6fbf99"
+              ],
+              "x": -20,
+              "y": -6,
+              "w": 12,
+              "h": 10
+            },
+            {
+              "shape": "fan",
+              "fill": "#9e6f4a",
+              "pts": [
+                [
+                  -21,
+                  -6
+                ],
+                [
+                  -14,
+                  -12
+                ],
+                [
+                  -7,
+                  -6
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -18,
+          "text": "VILLA",
+          "fg": "#fff",
+          "bg": "#9e6f4a"
+        }
+      ]
+    },
+    "highway": {
+      "note": "a route shield with its number set in the display face",
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#3a6f8a",
+          "x": -18,
+          "y": -12,
+          "w": 36,
+          "h": 22
+        },
+        {
+          "shape": "text",
+          "fill": "#fff",
+          "font": "bold 12px 'Bungee', sans-serif",
+          "x": 0,
+          "y": 2,
+          "text": "27"
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -18,
+          "text": "RUTA 27",
+          "fg": "#fff",
+          "bg": "#3a3540"
+        }
+      ]
+    },
+    "anchor": {
+      "note": "a nautical anchor monument on a low round plinth: shank, ring, stock, and two curved flukes",
+      "strokeNote": "THE GROUPING IS LOAD-BEARING. Each `stroke` part is one stroke() call, and two calls that overlap composite their antialiased edges TWICE — so merging the shank, the stock and the arms into one path lightens every crossing by ~30 levels. Measured: 384 pixels, all of them exactly where the stock crosses the shank and where the arms meet it. Keep them apart.",
+      "parts": [
+        {
+          "shape": "ellipse",
+          "fill": "#b8b0a0",
+          "cx": 0,
+          "cy": 6,
+          "rx": 14,
+          "ry": 5
+        },
+        {
+          "shape": "stroke",
+          "stroke": "#4a5560",
+          "width": 3,
+          "cap": "round",
+          "join": "round",
+          "note": "shank",
+          "pts": [
+            [
+              0,
+              -22
+            ],
+            [
+              0,
+              4
+            ]
+          ]
+        },
+        {
+          "shape": "ring",
+          "stroke": "#4a5560",
+          "width": 3,
+          "cap": "round",
+          "cx": 0,
+          "cy": -25,
+          "r": 3.5
+        },
+        {
+          "shape": "stroke",
+          "stroke": "#4a5560",
+          "width": 3,
+          "cap": "round",
+          "join": "round",
+          "note": "the stock, its crossbar",
+          "pts": [
+            [
+              -9,
+              -16
+            ],
+            [
+              9,
+              -16
+            ]
+          ]
+        },
+        {
+          "shape": "stroke",
+          "stroke": "#4a5560",
+          "width": 3,
+          "cap": "round",
+          "join": "round",
+          "note": "arms and curved flukes — ONE path, four subpaths, as they were",
+          "runs": [
+            [
+              [
+                -11,
+                -2
+              ],
+              {
+                "q": [
+                  -12,
+                  5
+                ],
+                "to": [
+                  -4,
+                  4
+                ]
+              }
+            ],
+            [
+              [
+                11,
+                -2
+              ],
+              {
+                "q": [
+                  12,
+                  5
+                ],
+                "to": [
+                  4,
+                  4
+                ]
+              }
+            ],
+            [
+              [
+                0,
+                4
+              ],
+              [
+                -11,
+                -2
+              ]
+            ],
+            [
+              [
+                0,
+                4
+              ],
+              [
+                11,
+                -2
+              ]
+            ]
+          ]
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -32,
+          "text": "EL ANCLA",
+          "fg": "#fff",
+          "bg": "#4a5560"
+        }
+      ]
+    },
+    "bridge": {
+      "note": "drawn separately by drawBridge, from the world's own span geometry — the pin adds nothing",
+      "parts": []
+    },
+    "tioga": {
+      "note": "EL TIOGA — no es 'un hotel', es EL hotel del Paseo: un bloque LARGO y bajo de tres plantas que ocupa el frente entero de su cuadra, en vinotinto. El genérico lo dibujaba como una caja celeste de 32x32 igual que cualquier otro, que es justo lo que hace irreconocible a un hito.",
+      "sameAs": "hotel",
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#7d2b3d",
+          "x": -34,
+          "y": -20,
+          "w": 68,
+          "h": 30
+        },
+        {
+          "_": "la cornisa clara que corona el bloque",
+          "shape": "rect",
+          "fill": "#c9b6a8",
+          "x": -34,
+          "y": -23,
+          "w": 68,
+          "h": 4
+        },
+        {
+          "_": "tres plantas de ventanas a lo largo",
+          "shape": "grid",
+          "fill": "rgba(255,255,255,0.72)",
+          "x": -30,
+          "y": -18,
+          "cols": 8,
+          "rows": 3,
+          "dx": 8,
+          "dy": 8,
+          "w": 5,
+          "h": 5
+        },
+        {
+          "_": "el zaguán central",
+          "shape": "rect",
+          "fill": "#3c1520",
+          "x": -5,
+          "y": 2,
+          "w": 10,
+          "h": 8
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -30,
+          "text": "TIOGA",
+          "fg": "#fff",
+          "bg": "#7d2b3d"
+        }
+      ]
+    },
+    "brisas": {
+      "note": "LAS BRISAS — blanco, DOS plantas, y de ESQUINA: su gracia es que dobla, así que el cuerpo es una L y no un rectángulo. OSM le da building:levels=3; se dibuja como la lee el jugador desde la calle.",
+      "sameAs": "hotel",
+      "parts": [
+        {
+          "_": "el ala larga",
+          "shape": "rect",
+          "fill": "#f2efe6",
+          "x": -22,
+          "y": -18,
+          "w": 44,
+          "h": 20
+        },
+        {
+          "_": "el ala corta que dobla la esquina",
+          "shape": "rect",
+          "fill": "#f2efe6",
+          "x": -22,
+          "y": -18,
+          "w": 18,
+          "h": 34
+        },
+        {
+          "_": "el zócalo, que es lo que separa las dos plantas de lejos",
+          "shape": "rect",
+          "fill": "#cfc6b4",
+          "x": -22,
+          "y": -9,
+          "w": 44,
+          "h": 3
+        },
+        {
+          "shape": "grid",
+          "fill": "rgba(90,120,140,0.55)",
+          "x": -18,
+          "y": -15,
+          "cols": 5,
+          "rows": 2,
+          "dx": 8,
+          "dy": 9,
+          "w": 5,
+          "h": 5
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -26,
+          "text": "BRISAS",
+          "fg": "#3a6f8a",
+          "bg": "#f2efe6"
+        }
+      ]
+    },
+    "capitania": {
+      "note": "LA CAPITANÍA DE PUERTO, al oeste del Muelle de Cruceros — madera VERDE y techo de ZINC ROJO, dos plantas. Es el edificio del MOPT que gobierna el muelle, y no se parece a nada más en la costa; con el genérico `civic` salía como una caja verde con un cuadro blanco.",
+      "parts": [
+        {
+          "_": "el cuerpo de madera, dos plantas",
+          "shape": "rect",
+          "fill": "#3f7d54",
+          "x": -20,
+          "y": -16,
+          "w": 40,
+          "h": 26
+        },
+        {
+          "_": "LAS TABLAS. `stripes` reparte n bandas sobre w y toma su color de una paleta ciclada — que es exactamente una pared de madera, y por eso son dos verdes y no un rayado encima.",
+          "shape": "stripes",
+          "x": -20,
+          "y": -16,
+          "w": 40,
+          "h": 26,
+          "n": 8,
+          "palette": [
+            "#3f7d54",
+            "#457f58"
+          ]
+        },
+        {
+          "_": "el entrepiso — lo que hace que se lean DOS plantas",
+          "shape": "rect",
+          "fill": "#2c5c3d",
+          "x": -20,
+          "y": -4,
+          "w": 40,
+          "h": 2
+        },
+        {
+          "_": "EL TECHO DE ZINC ROJO, a dos aguas",
+          "shape": "fan",
+          "fill": "#b8412f",
+          "pts": [
+            [
+              -23,
+              -16
+            ],
+            [
+              0,
+              -27
+            ],
+            [
+              23,
+              -16
+            ]
+          ]
+        },
+        {
+          "_": "el caballete",
+          "shape": "rect",
+          "fill": "#8e2f22",
+          "x": -23,
+          "y": -17,
+          "w": 46,
+          "h": 2
+        },
+        {
+          "shape": "grid",
+          "fill": "rgba(255,255,255,0.70)",
+          "x": -15,
+          "y": -13,
+          "cols": 4,
+          "rows": 2,
+          "dx": 9,
+          "dy": 9,
+          "w": 5,
+          "h": 5
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -32,
+          "text": "CAPITANÍA",
+          "fg": "#fff",
+          "bg": "#2c5c3d"
+        }
+      ]
+    },
+    "kiosk:vigoron": {
+      "note": "VIGORÓN: se sirve sobre HOJA DE PLÁTANO, así que el puesto es verde y lo que se ve en el mostrador es el bulto de la hoja con el chicharrón encima, no un vaso.",
+      "parts": [
+        {
+          "_": "el cuerpo",
+          "shape": "rect",
+          "fill": "#f4f1e4",
+          "x": -16,
+          "y": -8,
+          "w": 32,
+          "h": 18
+        },
+        {
+          "_": "el toldo",
+          "shape": "stripes",
+          "n": 4,
+          "palette": [
+            "#2f8f4e",
+            "#fff"
+          ],
+          "x": -16,
+          "y": -14,
+          "w": 32,
+          "h": 6
+        },
+        {
+          "_": "la hoja de plátano, doblada",
+          "shape": "ellipse",
+          "fill": "#3e9b57",
+          "cx": 0,
+          "cy": 0,
+          "rx": 9,
+          "ry": 6
+        },
+        {
+          "_": "el chicharrón",
+          "shape": "disc",
+          "fill": "#c98a3f",
+          "cx": -2,
+          "cy": -1,
+          "r": 3
+        },
+        {
+          "_": "el repollo",
+          "shape": "disc",
+          "fill": "#e6efd8",
+          "cx": 3,
+          "cy": 1,
+          "r": 2.5
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "VIGORÓN",
+          "fg": "#fff",
+          "bg": "#2f8f4e"
+        }
+      ]
+    },
+    "kiosk:ceviche": {
+      "note": "CEVICHE: azul de mar y blanco, y en el mostrador el vaso plástico con el pescado curtido y su limón. Es el que peor aguanta el SOL, no la distancia — de ahí su `spoil`.",
+      "parts": [
+        {
+          "_": "el cuerpo",
+          "shape": "rect",
+          "fill": "#f2f6f8",
+          "x": -16,
+          "y": -8,
+          "w": 32,
+          "h": 18
+        },
+        {
+          "_": "el toldo",
+          "shape": "stripes",
+          "n": 4,
+          "palette": [
+            "#2b6fa8",
+            "#fff"
+          ],
+          "x": -16,
+          "y": -14,
+          "w": 32,
+          "h": 6
+        },
+        {
+          "_": "el vaso",
+          "shape": "rect",
+          "fill": "rgba(255,255,255,0.92)",
+          "x": -5,
+          "y": -4,
+          "w": 10,
+          "h": 12
+        },
+        {
+          "_": "el ceviche",
+          "shape": "rect",
+          "fill": "#eae2cf",
+          "x": -5,
+          "y": 0,
+          "w": 10,
+          "h": 6
+        },
+        {
+          "_": "el limón",
+          "shape": "disc",
+          "fill": "#c3d94a",
+          "cx": 4,
+          "cy": -5,
+          "r": 2.4
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "CEVICHE",
+          "fg": "#fff",
+          "bg": "#2b6fa8"
+        }
+      ]
+    },
+    "kiosk:papicarne": {
+      "note": "PAPI-CARNE: la soda de barrio, roja y amarilla, con su PLANCHA humeando y la caja de papas. Es el producto más repetido del mapa porque es la comida de calle de toda la zona.",
+      "parts": [
+        {
+          "_": "el cuerpo",
+          "shape": "rect",
+          "fill": "#f7e9c9",
+          "x": -16,
+          "y": -8,
+          "w": 32,
+          "h": 18
+        },
+        {
+          "_": "el toldo",
+          "shape": "stripes",
+          "n": 4,
+          "palette": [
+            "#c8352e",
+            "#fff"
+          ],
+          "x": -16,
+          "y": -14,
+          "w": 32,
+          "h": 6
+        },
+        {
+          "_": "la plancha",
+          "shape": "rect",
+          "fill": "#4a4238",
+          "x": -12,
+          "y": -3,
+          "w": 11,
+          "h": 9
+        },
+        {
+          "_": "la carne encima",
+          "shape": "rect",
+          "fill": "#8a4a2c",
+          "x": -10,
+          "y": -1,
+          "w": 7,
+          "h": 4
+        },
+        {
+          "_": "la caja de papas",
+          "shape": "rect",
+          "fill": "#e8b93f",
+          "x": 2,
+          "y": -3,
+          "w": 9,
+          "h": 10
+        },
+        {
+          "_": "las papas asomando",
+          "shape": "rect",
+          "fill": "#f6dd8a",
+          "x": 3.5,
+          "y": -5,
+          "w": 6,
+          "h": 3
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "PAPI-CARNE",
+          "fg": "#fff",
+          "bg": "#c8352e"
+        }
+      ]
+    },
+    "kiosk:mariscada": {
+      "note": "MARISCADA: no es un puesto, es una MARISQUERÍA — por eso es ANCHA y no un cuadrito. Restaurante Tabaris ocupa un local horizontal de verdad, y un carrito de 32 px de frente no se le parecía en nada. Turquesa de local de playa, con su mostrador largo y la olla.",
+      "parts": [
+        {
+          "_": "el cuerpo",
+          "shape": "rect",
+          "fill": "#f0efe6",
+          "x": -26,
+          "y": -8,
+          "w": 52,
+          "h": 18
+        },
+        {
+          "_": "el toldo",
+          "shape": "stripes",
+          "n": 6,
+          "palette": [
+            "#1f8a8a",
+            "#fff"
+          ],
+          "x": -26,
+          "y": -14,
+          "w": 52,
+          "h": 6
+        },
+        {
+          "_": "el mostrador largo",
+          "shape": "rect",
+          "fill": "#d9d2bd",
+          "x": -24,
+          "y": 2,
+          "w": 48,
+          "h": 6
+        },
+        {
+          "_": "la olla",
+          "shape": "disc",
+          "fill": "#6f7276",
+          "cx": -13,
+          "cy": -1,
+          "r": 5
+        },
+        {
+          "_": "lo que hierve",
+          "shape": "disc",
+          "fill": "#d8683f",
+          "cx": -13,
+          "cy": -2,
+          "r": 3
+        },
+        {
+          "_": "la bandeja de pescado",
+          "shape": "rect",
+          "fill": "#e7eef0",
+          "x": 2,
+          "y": -4,
+          "w": 16,
+          "h": 9
+        },
+        {
+          "_": "el pescado",
+          "shape": "ellipse",
+          "fill": "#9aa7ad",
+          "cx": 10,
+          "cy": 0,
+          "rx": 6,
+          "ry": 2.4
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -22,
+          "text": "MARISCADA",
+          "fg": "#fff",
+          "bg": "#1f8a8a"
+        }
+      ]
+    }
+  },
+  "_signs": "LA SEÑALIZACIÓN, keyed by SignKind. Costa Rica signs to the Manual Centroamericano de Dispositivos Uniformes, so these are the real shapes: an ALTO is a red OCTAGON carrying the word (not `STOP`), a CEDA EL PASO is an inverted white triangle with a red border, and a tope is the yellow-hatched hump every calle de barrio has. Sizes are world px at the game's framing (~20 cuadrículas across), so a sign reads at a glance without swallowing the lane it stands beside.",
+  "_signFrame": "`turn: true` means the sign is drawn INSIDE a rotation by its own `ang` — the world measured that angle against the kerb, and a bench or a zebra painted square to the screen is a bench in the wrong street. `flip: \"side\"` adds a half turn when the roadway is on the far side. `extent: [w, h]` switches the frame from plain pixels to half-extents ([k, px] = k·half + px), which is how one caseta serves a 34 px mapped parada and whatever size the civic block asks for.",
+  "signs": {
+    "alto": {
+      "note": "the octagon on its post, and at this size the word is a bar",
+      "parts": [
+        {
+          "shape": "stroke",
+          "stroke": "#8b8f96",
+          "width": 1.2,
+          "pts": [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        {
+          "shape": "polyN",
+          "fill": "rgba(0,0,0,0.25)",
+          "cx": 0.8,
+          "cy": 0.8,
+          "r": 4.6,
+          "n": 8,
+          "rot": 0.0625
+        },
+        {
+          "shape": "polyN",
+          "fill": "#c0392b",
+          "cx": 0,
+          "cy": 0,
+          "r": 4.6,
+          "n": 8,
+          "rot": 0.0625
+        },
+        {
+          "shape": "polyN",
+          "stroke": "#f4f1e8",
+          "width": 0.7,
+          "cx": 0,
+          "cy": 0,
+          "r": 3.5,
+          "n": 8,
+          "rot": 0.0625
+        },
+        {
+          "shape": "rect",
+          "fill": "#f4f1e8",
+          "x": -2.6,
+          "y": -0.7,
+          "w": 5.2,
+          "h": 1.4
+        }
+      ]
+    },
+    "ceda": {
+      "note": "ONE path, filled white and stroked red. Two parts would composite the border's antialiased edge twice — the anchor's lesson, from the other side.",
+      "parts": [
+        {
+          "shape": "stroke",
+          "stroke": "#8b8f96",
+          "width": 1.2,
+          "pts": [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        {
+          "shape": "poly",
+          "fill": "#f4f1e8",
+          "stroke": "#c0392b",
+          "width": 1.4,
+          "pts": [
+            [
+              -4.6,
+              -3.6
+            ],
+            [
+              4.6,
+              -3.6
+            ],
+            [
+              0,
+              4.2
+            ]
+          ]
+        }
+      ]
+    },
+    "semaforo": {
+      "note": "the pole-mounted head at the kerb: three lenses in a dark box",
+      "parts": [
+        {
+          "shape": "stroke",
+          "stroke": "#8b8f96",
+          "width": 1.2,
+          "pts": [
+            [
+              0,
+              7
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#2b2f36",
+          "x": -2,
+          "y": -7,
+          "w": 4,
+          "h": 9,
+          "r": 1.2
+        },
+        {
+          "shape": "disc",
+          "fill": "#e0483a",
+          "cx": 0,
+          "cy": -5.2,
+          "r": 1.05
+        },
+        {
+          "shape": "disc",
+          "fill": "#f0c44a",
+          "cx": 0,
+          "cy": -2.6,
+          "r": 1.05
+        },
+        {
+          "shape": "disc",
+          "fill": "#4fbf6a",
+          "cx": 0,
+          "cy": 0,
+          "r": 1.05
+        }
+      ]
+    },
+    "semaforo_centered": {
+      "note": "gantry-mounted LATAM signal: pole at the edge, a horizontal arm over the street, one head centred above the lanes",
+      "turn": true,
+      "parts": [
+        {
+          "shape": "stroke",
+          "stroke": "#596066",
+          "width": 1.8,
+          "pts": [
+            [
+              -12,
+              7
+            ],
+            [
+              -12,
+              -9
+            ],
+            [
+              12,
+              -9
+            ]
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#2b2f36",
+          "x": -2,
+          "y": -9,
+          "w": 4,
+          "h": 9,
+          "r": 1.2
+        },
+        {
+          "shape": "disc",
+          "fill": "#e0483a",
+          "cx": 0,
+          "cy": -7,
+          "r": 1.05
+        },
+        {
+          "shape": "disc",
+          "fill": "#f0c44a",
+          "cx": 0,
+          "cy": -4.4,
+          "r": 1.05
+        },
+        {
+          "shape": "disc",
+          "fill": "#4fbf6a",
+          "cx": 0,
+          "cy": -1.8,
+          "r": 1.05
+        }
+      ]
+    },
+    "semaforo_overhead": {
+      "note": "the same gantry with a longer arm and TWO heads, for the avenidas wide enough to need one over each lane",
+      "turn": true,
+      "parts": [
+        {
+          "shape": "stroke",
+          "stroke": "#596066",
+          "width": 1.8,
+          "pts": [
+            [
+              -17,
+              7
+            ],
+            [
+              -17,
+              -9
+            ],
+            [
+              17,
+              -9
+            ]
+          ]
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#2b2f36",
+          "x": -8.8,
+          "y": -9,
+          "w": 4,
+          "h": 9,
+          "r": 1.2
+        },
+        {
+          "shape": "disc",
+          "fill": "#e0483a",
+          "cx": -6.8,
+          "cy": -7,
+          "r": 1.05
+        },
+        {
+          "shape": "disc",
+          "fill": "#f0c44a",
+          "cx": -6.8,
+          "cy": -4.4,
+          "r": 1.05
+        },
+        {
+          "shape": "disc",
+          "fill": "#4fbf6a",
+          "cx": -6.8,
+          "cy": -1.8,
+          "r": 1.05
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#2b2f36",
+          "x": 7.52,
+          "y": -9,
+          "w": 4,
+          "h": 9,
+          "r": 1.2
+        },
+        {
+          "shape": "disc",
+          "fill": "#e0483a",
+          "cx": 9.52,
+          "cy": -7,
+          "r": 1.05
+        },
+        {
+          "shape": "disc",
+          "fill": "#f0c44a",
+          "cx": 9.52,
+          "cy": -4.4,
+          "r": 1.05
+        },
+        {
+          "shape": "disc",
+          "fill": "#4fbf6a",
+          "cx": 9.52,
+          "cy": -1.8,
+          "r": 1.05
+        }
+      ]
+    },
+    "speed_limit": {
+      "note": "a PAVEMENT MARKING, not a sign on a post: white numerals inside a white ring, aligned to the lane. `$value` is the world's own limit.",
+      "turn": true,
+      "parts": [
+        {
+          "shape": "ellipse",
+          "stroke": "rgba(244,241,232,.82)",
+          "width": 1.6,
+          "cx": 0,
+          "cy": 0,
+          "rx": 8,
+          "ry": 12
+        },
+        {
+          "shape": "text",
+          "fill": "rgba(244,241,232,.9)",
+          "font": "bold 7px 'JetBrains Mono', monospace",
+          "baseline": "middle",
+          "x": 0,
+          "y": 0,
+          "text": "$value"
+        }
+      ]
+    },
+    "crossing": {
+      "note": "la zebra, across the lane",
+      "turn": true,
+      "parts": [
+        {
+          "shape": "repeat",
+          "n": 5,
+          "dx": 3.4,
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": "rgba(244,241,232,0.82)",
+              "x": -7.9,
+              "y": -7,
+              "w": 2.2,
+              "h": 14
+            }
+          ]
+        }
+      ]
+    },
+    "tope": {
+      "note": "el muerto: the hump, in yellow hatching",
+      "turn": true,
+      "parts": [
+        {
+          "shape": "repeat",
+          "n": 5,
+          "dx": 3.2,
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": "rgba(240,196,74,0.85)",
+              "x": -7.4,
+              "y": -6,
+              "w": 2.0,
+              "h": 12
+            }
+          ]
+        }
+      ]
+    },
+    "banca": {
+      "note": "LA BANCA DEL MALECÓN. `ang` is the direction it LOOKS — the world takes the sea's side of the promenade's own normal, so on a wandering coast every bench still faces the water. The respaldo goes BEHIND the seat, which is the only thing that makes a 10 px bench read as a bench from above.",
+      "turn": true,
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "rgba(0,0,0,0.22)",
+          "x": -2.4,
+          "y": -5.4,
+          "w": 6,
+          "h": 11
+        },
+        {
+          "shape": "rect",
+          "fill": "#8a6a45",
+          "x": -3.4,
+          "y": -6,
+          "w": 1.8,
+          "h": 12
+        },
+        {
+          "shape": "rect",
+          "fill": "#c69a63",
+          "x": -1.6,
+          "y": -6,
+          "w": 4.6,
+          "h": 12
+        },
+        {
+          "shape": "stroke",
+          "stroke": "rgba(90,66,40,0.55)",
+          "width": 0.5,
+          "runs": [
+            [
+              [
+                -1.6,
+                -2
+              ],
+              [
+                3,
+                -2
+              ]
+            ],
+            [
+              [
+                -1.6,
+                2
+              ],
+              [
+                3,
+                2
+              ]
+            ]
+          ]
+        }
+      ]
+    },
+    "bus": {
+      "note": "LA PARADA — the SAME caseta the civic block's stop uses, inlined from `props`. Which list a parada came out of, the hand-authored manzana or the 87 mapped `highway=bus_stop` nodes, is not something the player can see, so it must not change what it looks like. `side` says which way the roadway is: a stop on the far kerb turns a half-circle more so it still opens onto it.",
+      "turn": true,
+      "flip": "side",
+      "extent": [
+        34,
+        12
+      ],
+      "parts": [
+        {
+          "shape": "prop",
+          "ref": "parada"
+        }
+      ]
+    }
+  },
+  "_props": "PIEZAS COMPARTIDAS — a prop that more than one thing in the world is made of, or that a scene stands on its ground. The frame is the CALLER's, exactly as for a landmark: `paintProp` translates to the anchor, turns by `ang`, scales by `scale`, and switches to a half-extent frame when it is given an `extent`.",
+  "props": {
+    "parada": {
+      "note": "one caseta, drawn the same wherever a bus stops. Measured in HALF-EXTENTS ([k, px] = k·half + px) because the only thing that differs between a mapped parada and the civic block's is its size — `ang` is the street's angle and the shelter's back is uphill of the bench.",
+      "frame": "extent",
+      "parts": [
+        {
+          "shape": "roundRect",
+          "fill": "rgba(0,0,0,0.24)",
+          "x": [
+            -1,
+            2
+          ],
+          "y": [
+            -1,
+            3
+          ],
+          "w": [
+            2,
+            0
+          ],
+          "h": [
+            2,
+            0
+          ],
+          "r": 2
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#3a6f8a",
+          "x": [
+            -1,
+            0
+          ],
+          "y": [
+            -1,
+            0
+          ],
+          "w": [
+            2,
+            0
+          ],
+          "h": [
+            2,
+            0
+          ],
+          "r": 2
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#5b9ec2",
+          "x": [
+            -1,
+            2
+          ],
+          "y": [
+            -1,
+            2
+          ],
+          "w": [
+            2,
+            -4
+          ],
+          "h": [
+            2,
+            -6
+          ],
+          "r": 1.5
+        },
+        {
+          "shape": "rect",
+          "fill": "#e7ddc8",
+          "x": [
+            -1,
+            4
+          ],
+          "y": [
+            1,
+            -4
+          ],
+          "w": [
+            2,
+            -8
+          ],
+          "h": 2.5
+        },
+        {
+          "shape": "rect",
+          "fill": "#f08a5d",
+          "x": [
+            1,
+            -3
+          ],
+          "y": [
+            -1,
+            -5
+          ],
+          "w": 1.6,
+          "h": 6
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#f08a5d",
+          "x": [
+            1,
+            -6
+          ],
+          "y": [
+            -1,
+            -9
+          ],
+          "w": 6,
+          "h": 5,
+          "r": 1
+        }
+      ]
+    },
+    "church": {
+      "note": "pale stucco nave, a bell tower with a spire tall enough that it reads as a church and not a house, and a bold white cross on top. Inlined by the `church` LANDMARK (which adds a rose window and a name pill) and by a `church` PARCEL (which adds a ground shadow and is scaled to its own lot) — it was written out twice before, in two files.",
+      "parts": [
+        {
+          "shape": "rect",
+          "fill": "#e7ddc8",
+          "x": -20,
+          "y": -12,
+          "w": 40,
+          "h": 24
+        },
+        {
+          "shape": "rect",
+          "fill": "#b98a5e",
+          "x": -20,
+          "y": -12,
+          "w": 40,
+          "h": 4
+        },
+        {
+          "shape": "rect",
+          "fill": "#e7ddc8",
+          "x": -6,
+          "y": -30,
+          "w": 12,
+          "h": 20
+        },
+        {
+          "shape": "fan",
+          "fill": "#9e6f4a",
+          "pts": [
+            [
+              -8,
+              -28
+            ],
+            [
+              0,
+              -40
+            ],
+            [
+              8,
+              -28
+            ]
+          ]
+        },
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -1.5,
+          "y": -50,
+          "w": 3,
+          "h": 11
+        },
+        {
+          "shape": "rect",
+          "fill": "#fff",
+          "x": -5,
+          "y": -46,
+          "w": 10,
+          "h": 3
+        }
+      ]
+    },
+    "churchLot": {
+      "note": "the Parroquia standing on its own manzana: the same building on a ground shadow, drawn in the CUADRA's frame (P.ang) and scaled so it fits the lot",
+      "parts": [
+        {
+          "shape": "ellipse",
+          "fill": "rgba(0,0,0,0.22)",
+          "cx": 4,
+          "cy": 14,
+          "rx": 20,
+          "ry": 5
+        },
+        {
+          "shape": "prop",
+          "ref": "church"
+        }
+      ]
+    },
+    "statue": {
+      "note": "a figure on a plinth. `P.statue` names the kind; the Virgen stands at her park's edge NEAREST the catedral, which is placement and stays with the world. The two greys are the catedral's own stone — the same masonry across the calle, not a coincidence worth a registry.",
+      "parts": [
+        {
+          "shape": "ellipse",
+          "fill": "rgba(0,0,0,0.22)",
+          "cx": 1,
+          "cy": 5,
+          "rx": 9,
+          "ry": 3.4
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#8b867d",
+          "x": -7,
+          "y": -2,
+          "w": 14,
+          "h": 9,
+          "r": 1.5
+        },
+        {
+          "shape": "roundRect",
+          "fill": "#c2bcb1",
+          "x": -5.5,
+          "y": -4,
+          "w": 11,
+          "h": 3,
+          "r": 1
+        },
+        {
+          "shape": "poly",
+          "fill": "#eef1f5",
+          "pts": [
+            [
+              -4,
+              -4
+            ],
+            [
+              -2.4,
+              -14
+            ],
+            [
+              2.4,
+              -14
+            ],
+            [
+              4,
+              -4
+            ]
+          ]
+        },
+        {
+          "shape": "poly",
+          "fill": "#9fc0e8",
+          "pts": [
+            [
+              -3.2,
+              -6
+            ],
+            [
+              -2,
+              -14.5
+            ],
+            [
+              2,
+              -14.5
+            ],
+            [
+              3.2,
+              -6
+            ]
+          ]
+        },
+        {
+          "shape": "disc",
+          "fill": "#eef1f5",
+          "cx": 0,
+          "cy": -16,
+          "r": 2.4
+        },
+        {
+          "shape": "ring",
+          "stroke": "#f4d77a",
+          "width": 1,
+          "cx": 0,
+          "cy": -16,
+          "r": 3.6
+        }
+      ]
+    }
+  },
+  "_parcels": "POR USO: what a parcel is CALLED on the map and what stands on it. The ground colour is a MATERIAL and lives in materials.json (`parcel`), keyed by the same ParcelUse. `pill` is the word a parcel wears when it IS a landmark; `tone` is the ink of its own name; `label: false` means the ground says everything and a caption sitting in the middle of it would cover exactly what it names.",
+  "_parcelScenes": "LAS ESCENAS DE PARCELA SON JSON COMPLETO: `parts` declara capas y formas; `palette` declara toda tinta; `values` declara incluso el marco, proporciones cruzadas, condiciones y giro como árboles de fórmula con un vocabulario finito. El intérprete aporta `min/max/mul/if`, `fit`, `group` y `scatter`; no conoce una catedral, una escuela o una gasolinera y `landmarks.js` no contiene `drawCathedral` ni ramas equivalentes. El mundo sólo entrega hechos del host (`hw`, `hh`, uso y decoraciones).\n\n`shot-parcels` dibuja los 18 usos y tiene que salir idéntico: esta migración es una transcripción, no un rediseño.",
+  "parcels": {
+    "defaultTone": "#8a6f4a",
+    "labelFg": "#fff",
+    "sponsor": {
+      "plate": "rgba(12,10,22,0.55)",
+      "defaultTone": "#f3c969",
+      "text": "#26222c"
+    },
+    "uses": {
+      "church": {
+        "prop": "churchLot",
+        "fit": 22,
+        "drawsBuilding": true,
+        "pill": {
+          "text": "IGLESIA",
+          "tone": "#9e6f4a"
+        }
+      },
+      "cathedral": {
+        "scene": "cathedral",
+        "drawsBuilding": true,
+        "pill": {
+          "text": "CATEDRAL",
+          "tone": "#9e6f4a"
+        }
+      },
+      "civic": {
+        "scene": "civicBuilding",
+        "drawsBuilding": true,
+        "pill": {
+          "text": "CULTURA",
+          "tone": "#2e7d44"
+        }
+      },
+      "market": {
+        "pill": {
+          "text": "MERCADO",
+          "tone": "#3a3540"
+        }
+      },
+      "plaza": {
+        "tone": "#2e7d44"
+      },
+      "stadium": {
+        "tone": "#2e7d44"
+      },
+      "school": {
+        "scene": "school",
+        "tone": "#3a6f8a",
+        "wall": "#f0e4c4",
+        "roof": "#7f93a6"
+      },
+      "kinder": {
+        "scene": "school",
+        "tone": "#3a6f8a",
+        "wall": "#f6dcc0",
+        "roof": "#c98a6a"
+      },
+      "campus": {
+        "scene": "school",
+        "tone": "#3a6f8a",
+        "wall": "#e6e0cb",
+        "roof": "#6f8496"
+      },
+      "park": {
+        "scene": "garden",
+        "label": false
+      },
+      "garden": {
+        "scene": "garden",
+        "label": false
+      },
+      "fuel": {
+        "scene": "fuel"
+      },
+      "boulevard": {
+        "label": false
+      },
+      "patio": {
+        "_": "EL PATIO DE MANZANA — lo que el anillo de casonas deja adentro. No es un parque: no se entra, se ve desde arriba por encima de los techos. Por eso no lleva placa (`label: false`) y su verde es más apagado que el de `park`. Los árboles van en las ESQUINAS INTERIORES, que es donde quedan en un patio de verdad — el centro se deja libre, y en tres manzanas del centro lo ocupa una fuente autorada.",
+        "scene": "patio",
+        "label": false
+      }
+    },
+    "decor": {
+      "statue": {
+        "prop": "statue",
+        "at": [
+          0.5,
+          0.2
+        ]
+      },
+      "bus": {
+        "prop": "parada"
+      },
+      "kiosco": {
+        "scene": "kiosco"
+      },
+      "river": {
+        "scene": "parkRiver"
+      },
+      "fountain": {
+        "scene": "fountain"
+      }
+    }
+  },
+  "scenes": {
+    "_note": "Per-scene palettes and parts. The interpreter owns fit counts, clamps, nested frames and deterministic scatter; a caller only resolves derived values that combine parcel axes.",
+    "faro": {
+      "note": "El Faro de Puntarenas on its plazoleta at La Punta. The riprap follows `lm.rim`, which the BUILD measured against the real sand/water edge — that is world geometry and not a knob.",
+      "palette": {
+        "rockDark": "#4a4d52",
+        "rockLight": "#5a5e64",
+        "comma": "#c34a3c",
+        "towerShadow": "rgba(0,0,0,0.22)",
+        "towerBody": "#fff",
+        "towerBand": "#d63a30",
+        "towerEdge": "rgba(0,0,0,0.2)",
+        "gallery": "#3a3540",
+        "lantern": "#ffe06b",
+        "pillFg": "#fff",
+        "pillBg": "#3a3540"
+      },
+      "comma": {
+        "radius": 7,
+        "headY": 0.5,
+        "headR": 0.6,
+        "innerX": -0.45,
+        "innerY": 0.4,
+        "innerControlX": -0.2,
+        "innerControlY": -0.35,
+        "tipX": 0.12,
+        "tipY": -1.2,
+        "outerControlX": 0.72,
+        "outerControlY": -0.35,
+        "outerX": 0.55,
+        "outerY": 0.4
+      },
+      "parts": [
+        {
+          "shape": "family",
+          "verb": "riprap",
+          "dark": "$rockDark",
+          "light": "$rockLight",
+          "minR": 1.8,
+          "radiusRange": 2.4,
+          "stretch": 1.4,
+          "darkEvery": 3,
+          "seedMul": 7.13,
+          "step": 12.9,
+          "rotStep": 9.4
+        },
+        {
+          "shape": "family",
+          "verb": "flora-placements",
+          "species": "palma",
+          "positions": [
+            [
+              22,
+              -12
+            ],
+            [
+              27,
+              11
+            ],
+            [
+              -4,
+              19
+            ]
+          ],
+          "scale": 0.8,
+          "seed": 0.31
+        },
+        {
+          "shape": "family",
+          "verb": "lighthouse-tower",
+          "shadow": "$towerShadow",
+          "shadowDx": 5,
+          "shadowDy": 4,
+          "shadowRx": 9,
+          "shadowRy": 3,
+          "body": "$towerBody",
+          "band": "$towerBand",
+          "edge": "$towerEdge",
+          "gallery": "$gallery",
+          "lantern": "$lantern",
+          "baseHalf": 6,
+          "topHalf": 4,
+          "height": 34,
+          "foot": 2,
+          "bands": 3,
+          "bandTop": 29,
+          "bandGap": 11,
+          "bandH": 5,
+          "edgeWidth": 1,
+          "galleryY": 36,
+          "galleryW": 12,
+          "galleryH": 2.5,
+          "lanternY": 40,
+          "lanternR": 4,
+          "finialY": 45.5,
+          "finialW": 6,
+          "finialH": 2
+        },
+        {
+          "shape": "label",
+          "x": 0,
+          "y": -52,
+          "text": "FARO",
+          "fg": "$pillFg",
+          "bg": "$pillBg"
+        }
+      ]
+    },
+    "greenSpace": {
+      "note": "A park or a standalone field. A PARK (`ground: false`) has its green painted by the block footprint, so this only adds the perimeter trees and the fountain; a standalone keeps the legacy self-drawn grass rect.",
+      "palette": {
+        "shadow": "rgba(0,0,0,0.18)",
+        "grass": "#4f9d5b",
+        "gravelPath": "rgba(232,226,210,0.55)",
+        "pitchLine": "rgba(255,255,255,0.7)"
+      },
+      "params": {
+        "parkInset": 14,
+        "parkMinRx": 20,
+        "parkMinRy": 18,
+        "parkTreesPer": 26,
+        "parkTreesMin": 6,
+        "parkJitter": 0.35,
+        "parkRadiusVar": 0.16,
+        "parkRadiusBase": 0.82,
+        "treeScaleBase": 0.8,
+        "treeScaleVar": 0.35,
+        "ringTreesPer": 24,
+        "ringInset": 10,
+        "ringJitter": 8,
+        "ringScaleVar": 0.4
+      },
+      "values": {
+        "left": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            -1
+          ]
+        },
+        "top": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            -1
+          ]
+        },
+        "width": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            2
+          ]
+        },
+        "height": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            2
+          ]
+        },
+        "shadowX": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "left"
+            },
+            3
+          ]
+        },
+        "shadowY": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "top"
+            },
+            4
+          ]
+        },
+        "pathX": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "left"
+            },
+            5
+          ]
+        },
+        "pathY": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "top"
+            },
+            5
+          ]
+        },
+        "pathW": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "width"
+            },
+            10
+          ]
+        },
+        "pathH": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "height"
+            },
+            10
+          ]
+        },
+        "pitchX": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "left"
+            },
+            16
+          ]
+        },
+        "pitchY": {
+          "op": "add",
+          "args": [
+            {
+              "ref": "top"
+            },
+            14
+          ]
+        },
+        "pitchW": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "width"
+            },
+            32
+          ]
+        },
+        "pitchH": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "height"
+            },
+            28
+          ]
+        },
+        "pitchBottom": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            14
+          ]
+        }
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "fill": "$shadow",
+          "x": "$shadowX",
+          "y": "$shadowY",
+          "w": "$width",
+          "h": "$height",
+          "r": 12
+        },
+        {
+          "shape": "roundRect",
+          "fill": "$grass",
+          "x": "$left",
+          "y": "$top",
+          "w": "$width",
+          "h": "$height",
+          "r": 12
+        },
+        {
+          "shape": "roundRect",
+          "stroke": "$gravelPath",
+          "width": 3,
+          "x": "$pathX",
+          "y": "$pathY",
+          "w": "$pathW",
+          "h": "$pathH",
+          "r": 9
+        },
+        {
+          "shape": "strokeRect",
+          "when": "$pitch",
+          "stroke": "$pitchLine",
+          "width": 2,
+          "x": "$pitchX",
+          "y": "$pitchY",
+          "w": "$pitchW",
+          "h": "$pitchH"
+        },
+        {
+          "shape": "stroke",
+          "when": "$pitch",
+          "stroke": "$pitchLine",
+          "width": 2,
+          "pts": [
+            [
+              0,
+              "$pitchY"
+            ],
+            [
+              0,
+              "$pitchBottom"
+            ]
+          ]
+        },
+        {
+          "shape": "ring",
+          "when": "$pitch",
+          "stroke": "$pitchLine",
+          "width": 2,
+          "cx": 0,
+          "cy": 0,
+          "r": 14
+        }
+      ],
+      "_shadow": "ESTA SÍ SE QUEDA, y no es una excepción sino la distinción: no es la sombra de un cuerpo sino el canto de la LOSA de césped contra el suelo del parque. Un parque no tiene altura sobre su propia parcela, así que no hay metros que declarar y no hay sol al que seguir."
+    },
+    "fountain": {
+      "note": "La fuente in the middle of a plaza. Animated off the shared clock, so the ripple count and the jet period are knobs but the phase is not.",
+      "palette": {
+        "rim": "#b9b3a4",
+        "kerb": "#d6d0c0",
+        "water": "#4fb4d6",
+        "ripple": "rgba(255,255,255,0.55)",
+        "jet": "rgba(206,236,246,0.9)"
+      },
+      "parts": [
+        {
+          "shape": "disc",
+          "fill": "$rim",
+          "cx": 0,
+          "cy": 0,
+          "r": 17
+        },
+        {
+          "shape": "disc",
+          "fill": "$kerb",
+          "cx": 0,
+          "cy": 0,
+          "r": 14
+        },
+        {
+          "shape": "family",
+          "verb": "fountain-water",
+          "water": "$water",
+          "ripple": "$ripple",
+          "jet": "$jet",
+          "waterR": 12,
+          "ripples": 3,
+          "rippleWidth": 1,
+          "rippleSpeed": 0.003,
+          "jetBase": 9,
+          "jetBob": 2,
+          "jetSpeed": 6,
+          "jetHalfW": 2,
+          "droplets": 5,
+          "dropletR": 1.2,
+          "dropletSpread": 9,
+          "dropletBase": 3,
+          "dropletSpeed": 22,
+          "dropletPhase": 2.5,
+          "dropletRise": 2,
+          "dropletSpin": 2
+        }
+      ]
+    },
+    "pool": {
+      "note": "A landscaped pool — the Balneario and the Parque Marino's tanks. `s` scales the whole thing; these are its unscaled proportions.",
+      "palette": {
+        "deck": "#e8e2d2",
+        "coping": "#ccc4ae",
+        "water": "#4fbdd8",
+        "deep": "rgba(40,120,160,0.35)",
+        "shallow": "#aeeaf2",
+        "shimmer": "rgba(255,255,255,0.5)",
+        "slide": "#f3c969"
+      },
+      "parts": [
+        {
+          "shape": "ellipse",
+          "fill": "$deck",
+          "cx": 0,
+          "cy": 0,
+          "rx": 78,
+          "ry": 48
+        },
+        {
+          "shape": "ellipse",
+          "stroke": "$coping",
+          "width": 5,
+          "cx": 0,
+          "cy": 0,
+          "rx": 72,
+          "ry": 43
+        },
+        {
+          "shape": "family",
+          "verb": "pool-water",
+          "water": "$water",
+          "deep": "$deep",
+          "shallow": "$shallow",
+          "shimmer": "$shimmer",
+          "waterRx": 66,
+          "waterRy": 38,
+          "deepX": 6,
+          "deepY": 4,
+          "deepRx": 42,
+          "deepRy": 24,
+          "shallowX": -42,
+          "shallowY": 8,
+          "shallowRx": 22,
+          "shallowRy": 12,
+          "shimmerLines": 4,
+          "shimmerTop": -28,
+          "shimmerGap": 15,
+          "shimmerAmp": 3,
+          "shimmerWave": 2.5,
+          "shimmerStep": 8,
+          "shimmerWidth": 2,
+          "speed": 0.0022,
+          "shimmerSpeedA": 3,
+          "shimmerFreq": 0.08,
+          "shimmerSpeedB": 4
+        },
+        {
+          "shape": "disc",
+          "fill": "$slide",
+          "cx": -54,
+          "cy": 22,
+          "r": 6
+        },
+        {
+          "shape": "family",
+          "when": "$palms",
+          "verb": "flora-placements",
+          "species": "palma",
+          "positions": [
+            [
+              60,
+              -30
+            ],
+            [
+              -62,
+              -22
+            ]
+          ],
+          "scale": 0.7,
+          "seed": 0.57
+        }
+      ]
+    },
+    "stadium": {
+      "note": "Estadio — el rótulo y LA GRADERÍA. The pitch itself is painted in the acera pass (`paintStadiumCuadras`), because it is a colour choice on ground that already exists; the stand is a STRUCTURE that stands on that ground, so it is drawn here.",
+      "palette": {
+        "pillFg": "#fff",
+        "pillBg": "#2e7d44"
+      },
+      "stands": {
+        "_note": "LA GRADERÍA. The builder emits `lm.stands.quads` from the stadium's real footprint edges, and stamps those same trapezoids as wall cells. The renderer only paints that geometry: art and collision cannot disagree.",
+        "_history": "The first version derived one west-side trapezoid in Canvas and left every cell below it drivable. Emitting quads made four stands, corner-only entrances and collision one world contract.",
+        "_side": "Authored placement accepts `sides` and the legacy singular `side`; the builder resolves each name against edge midpoints, never the bbox.",
+        "_outward": "Each emitted stand sits outside the pitch on the real acera ring and stops short at both ends, leaving a road wedge at every corner.",
+        "depth": 15,
+        "depthNote": "px from the pitch edge outward: exactly the whole-cuadra acera ring, ACERA_CELLS x GRID_CELL. The builder owns the emitted geometry; this value documents and tests the art recipe against it. ERA 12 (3 x 4 px) y se movió a 15 (3 x 5) con el reescalado a 3.125 px/m del 2026-08-27 — la acera sigue midiendo los mismos 4.8 m, que es el punto: lo que cambió es a cuantos pixeles equivalen. `tests/test_stands.py` compara este numero contra STAND_DEPTH_PX, asi que un olvido aqui falla en vez de dibujar la graderia sobre la cancha.",
+        "heightM": 6,
+        "heightNote": "Structural height used by sunShadow; unlike the old fixed 3 px sliver, its direction, reach and opacity now follow the time of day.",
+        "tiers": 5,
+        "tiersNote": "stepped bands, back to front. More than about seven and they stop resolving at play zoom.",
+        "rake": 0.34,
+        "rakeNote": "how much narrower each tier is than the one below, as a fraction of the depth — this is what makes it read as banked seating rather than a striped rectangle.",
+        "palette": {
+          "structure": "#4a4a52",
+          "tierA": "#b9bec9",
+          "tierB": "#9aa1ae",
+          "rail": "rgba(0,0,0,0.45)",
+          "row": "rgba(0,0,0,0.16)"
+        },
+        "_palette": "The default is bare concrete, which is what an unnamed cancha has. A stadium with painted seats overrides the two tier colours below — and they alternate, because a real grandstand's seats are laid in blocks.",
+        "roofFrom": 0.45,
+        "roofFromNote": "where the roofed part starts, as a fraction of the depth. The two tones are split by DEPTH, not striped — front rows in the open, back rows in shade. Alternating whole tiers and ruling a row line every few px both read as a BARCODE at play zoom; each was tried."
+      },
+      "towers": {
+        "_note": "LAS TORRES DE ILUMINACIÓN. Cuál luminaria es lo dice `src/assets/lights.json` (el tipo `stadium`); acá sólo va dónde se paran. Mismo trato que la gradería: se arman sobre el `footprint` que emitió el build, así que no llevan geometría propia.",
+        "_corners": "Una en cada esquina de la cancha, que es donde se paran de verdad — nunca a media línea de banda, porque ahí el mástil estorba al juego y a la gradería. La esquina se resuelve contra el POLÍGONO (el vértice más lejano en cada diagonal), no contra su bbox: en una manzana torcida la esquina del bbox cae fuera de la cancha.",
+        "type": "stadium",
+        "inset": 14,
+        "insetNote": "px hacia adentro desde el vértice. Suficiente para que la base quede en el césped y no en la calle."
+      }
+    },
+    "marinePark": {
+      "note": "Parque Marino — its green is the cuadra's RESIDUAL after every other lot takes its space, filled multi-ring even-odd. Only the pill is here.",
+      "palette": {
+        "pillFg": "#fff",
+        "pillBg": "#2e7d44"
+      }
+    },
+    "cathedral": {
+      "note": "La Catedral — stone, not stucco, sized off its parcel and facing east onto the calle peatonal. A placeholder for a proper mockup, so everything is derived from the lot.",
+      "palette": {
+        "step": "rgba(232,226,210,0.85)",
+        "cross": "#fff",
+        "stone": "#a9a49b",
+        "stoneDark": "#8b867d",
+        "stoneLite": "#c2bcb1"
+      },
+      "inset": 0.86,
+      "_frame": "`values` posee también el marco: `X` mide en L; `Y` y `S` en W2=min(hh·inset, L·0.62). +x es el ESTE (fachada hacia el bulevar), +y es el SUR. Ninguna de estas proporciones vive en `landmarks.js`.",
+      "_vars": "Cada nodo es `{op,args}` o `{ref}` y sólo usa el vocabulario finito exportado por shapes.js. Los nombres resueltos alimentan `$tw`, `$dome`, `$towerX` y las otras dimensiones de `parts`; no son strings ejecutables ni comandos Canvas.",
+      "values": {
+        "L": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            0.86
+          ]
+        },
+        "insetH": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            0.86
+          ]
+        },
+        "W2": {
+          "op": "min",
+          "args": [
+            {
+              "ref": "insetH"
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "L"
+                },
+                0.62
+              ]
+            }
+          ]
+        },
+        "frameHw": {
+          "ref": "L"
+        },
+        "frameHh": {
+          "ref": "W2"
+        },
+        "frameSize": {
+          "ref": "W2"
+        },
+        "tw": {
+          "op": "max",
+          "args": [
+            10,
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "L"
+                },
+                0.26
+              ]
+            }
+          ]
+        },
+        "th": {
+          "op": "min",
+          "args": [
+            {
+              "ref": "insetH"
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                1.45
+              ]
+            }
+          ]
+        },
+        "tr": {
+          "op": "max",
+          "args": [
+            5,
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                0.42
+              ]
+            }
+          ]
+        },
+        "dome": {
+          "op": "min",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                0.72
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "tw"
+                },
+                0.9
+              ]
+            }
+          ]
+        },
+        "towerX": {
+          "op": "sub",
+          "args": [
+            {
+              "ref": "L"
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "tr"
+                },
+                0.5
+              ]
+            }
+          ]
+        },
+        "towerTop": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                -1,
+                {
+                  "ref": "W2"
+                }
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                -1,
+                {
+                  "ref": "tr"
+                },
+                0.7
+              ]
+            }
+          ]
+        },
+        "towerStep": {
+          "op": "mul",
+          "args": [
+            2,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "ref": "tr"
+                    },
+                    0.7
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "crossX": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "L"
+                },
+                0.05
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "W2"
+                },
+                0.11
+              ]
+            }
+          ]
+        },
+        "crossW": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "W2"
+            },
+            0.22
+          ]
+        }
+      },
+      "parts": [
+        {
+          "_": "la nave",
+          "shape": "roundRect",
+          "fill": "$stone",
+          "x": [
+            -1,
+            0
+          ],
+          "y": [
+            -1,
+            0
+          ],
+          "w": [
+            2,
+            0
+          ],
+          "h": [
+            2,
+            0
+          ],
+          "r": 3,
+          "heightM": 8,
+          "castsShadow": true
+        },
+        {
+          "_": "EL CRUCERO: los brazos de la cruz. Mide en $tw x $th, asi que adentro todo vuelve a ser una fraccion — que es la razon de ser del verbo `group`.",
+          "shape": "group",
+          "x": [
+            0.05,
+            0
+          ],
+          "y": 0,
+          "hw": "$tw",
+          "hh": "$th",
+          "parts": [
+            {
+              "shape": "roundRect",
+              "fill": "$stone",
+              "x": [
+                -1,
+                0
+              ],
+              "y": [
+                -1,
+                0
+              ],
+              "w": [
+                2,
+                0
+              ],
+              "h": [
+                2,
+                0
+              ],
+              "r": 3
+            },
+            {
+              "_": "la cumbrera clara cruzando el crucero",
+              "shape": "rect",
+              "fill": "$stoneLite",
+              "x": [
+                -0.34,
+                0
+              ],
+              "y": [
+                -1,
+                2
+              ],
+              "w": [
+                0.68,
+                0
+              ],
+              "h": [
+                2,
+                -4
+              ]
+            }
+          ],
+          "heightM": 8,
+          "castsShadow": true
+        },
+        {
+          "_": "la cumbrera clara bajando la nave",
+          "shape": "rect",
+          "fill": "$stoneLite",
+          "x": [
+            -1,
+            2
+          ],
+          "y": [
+            -0.3,
+            0
+          ],
+          "w": [
+            2,
+            -4
+          ],
+          "h": [
+            0.6,
+            0
+          ]
+        },
+        {
+          "_": "EL CIMBORRIO sobre el cruce. Su radio es min(W2*0.72, tw*0.9): un min entre dos escalares distintos, asi que entra resuelto como `$dome` y el grupo mide en el.",
+          "shape": "group",
+          "x": [
+            0.05,
+            0
+          ],
+          "y": 0,
+          "s": "$dome",
+          "parts": [
+            {
+              "shape": "disc",
+              "fill": "$stoneDark",
+              "cx": 0,
+              "cy": 0,
+              "r": [
+                1,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$stoneLite",
+              "cx": 0,
+              "cy": 0,
+              "r": [
+                0.62,
+                0
+              ]
+            }
+          ],
+          "heightM": 14,
+          "castsShadow": true
+        },
+        {
+          "_": "el abside: el remate redondo del OESTE. `S` de esta escena ES W2, asi que 0.9 de W2 se escribe limpio.",
+          "shape": "disc",
+          "fill": "$stone",
+          "cx": [
+            -1,
+            0
+          ],
+          "cy": 0,
+          "r": [
+            0.9,
+            0
+          ],
+          "heightM": 8,
+          "castsShadow": true
+        },
+        {
+          "_": "LA FACHADA ESTE: dos campanarios flanqueando la puerta. El `for (const s of [-1, 1])` es un `repeat` de dos; su y arranca en $towerTop y salta $towerStep, los dos en pixeles porque dependen de `tr` y de W2 a la vez.",
+          "shape": "repeat",
+          "n": 2,
+          "dy": "$towerStep",
+          "parts": [
+            {
+              "shape": "group",
+              "x": "$towerX",
+              "y": "$towerTop",
+              "s": "$tr",
+              "parts": [
+                {
+                  "shape": "disc",
+                  "fill": "$stoneDark",
+                  "cx": 0,
+                  "cy": 0,
+                  "r": [
+                    1,
+                    0
+                  ]
+                },
+                {
+                  "shape": "disc",
+                  "fill": "$stoneLite",
+                  "cx": 0,
+                  "cy": 0,
+                  "r": [
+                    0.55,
+                    0
+                  ]
+                }
+              ]
+            }
+          ],
+          "heightM": 18,
+          "castsShadow": true
+        },
+        {
+          "_": "el atrio: las gradas palidas saliendo de la puerta hacia el bulevar. `max(6, L*0.12)` es la forma acotada.",
+          "shape": "roundRect",
+          "fill": "$step",
+          "x": [
+            1,
+            -1
+          ],
+          "y": [
+            -0.42,
+            0
+          ],
+          "w": {
+            "k": 0.12,
+            "px": 0,
+            "min": 6
+          },
+          "h": [
+            0.84,
+            0
+          ],
+          "r": 2
+        },
+        {
+          "_": "la cruz en la cumbrera — el palo",
+          "shape": "rect",
+          "fill": "$cross",
+          "x": [
+            0.05,
+            -1
+          ],
+          "y": [
+            -0.14,
+            0
+          ],
+          "w": 2,
+          "h": [
+            0.28,
+            0
+          ]
+        },
+        {
+          "_": "…y el travesano. Su x es tx - W2*0.11: mezcla las dos escalas, asi que va resuelto.",
+          "shape": "rect",
+          "fill": "$cross",
+          "x": "$crossX",
+          "y": -1,
+          "w": "$crossW",
+          "h": 2
+        }
+      ],
+      "heightM": 8,
+      "castsShadow": false,
+      "_heights": "LA CATEDRAL NO ES UN CUERPO. La primera parte era literalmente 'la sombra: el mismo cuerpo corrido +3,+5' — un roundRect que sólo cubría la NAVE, ignoraba crucero, ábside, cimborrio, torres y cruz, y no sabía qué hora era. Ahora cada masa declara su altura EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow` va en false por defecto para que la cumbrera, el atrio y la cruz —detalle sobre otra masa— no tiren una segunda sombra encima de la que ya tira lo que las sostiene."
+    },
+    "civicBuilding": {
+      "note": "La Casa de la Cultura, drawn to fill its parcel.",
+      "palette": {
+        "wall": "#e7ddc8",
+        "roof": "#b98a5e",
+        "stoneLite": "@cathedral.stoneLite",
+        "_stoneLite": "Apunta a la paleta de la catedral, que es donde vive ese gris. `@escena.clave` es un salto y solo uno: el resolvedor no persigue cadenas. Copiar el hex aca seria la clase de duplicado que hizo que `materials.street.majorDash` y `paintRoads` tuvieran cada uno el suyo — mover la perilla cambiaba todos los guiones del juego menos los de la calle."
+      },
+      "_frame": "PARTES EN EL MARCO DE LA PARCELA. `X`/`Y` miden en medio-extensiones del lote (ya reducidas por `inset`), así que `[-1, 4]` es «el borde izquierdo, mas cuatro pixeles» — exactamente lo que decia `-w/2 + 4`. `S` mide en la dimension caracteristica de la escena (la menor de las dos), para radios y grosores.",
+      "inset": 0.86,
+      "_inset": "el edificio se planta al 86% del lote: el resto es su retiro, que es lo que hace que lea como un edificio en su terreno y no como el terreno pintado.",
+      "parts": [
+        {
+          "shape": "roundRect",
+          "fill": "$wall",
+          "x": [
+            -1,
+            4
+          ],
+          "y": [
+            -1,
+            4
+          ],
+          "w": [
+            2,
+            -8
+          ],
+          "h": [
+            2,
+            -8
+          ],
+          "r": 3,
+          "_": "el cuerpo de repello",
+          "heightM": 8,
+          "castsShadow": true
+        },
+        {
+          "shape": "rect",
+          "fill": "$roof",
+          "x": [
+            -1,
+            4
+          ],
+          "y": [
+            -1,
+            4
+          ],
+          "w": [
+            2,
+            -8
+          ],
+          "h": {
+            "k": 0.32,
+            "px": -1.28,
+            "min": 3
+          },
+          "_": "la banda de teja. `max(3, h*0.16)` con h = 2*hh-8, o sea 0.32 de la media altura menos 1.28, con piso de 3 px: sin ese piso la banda desaparece en una parcela angosta."
+        },
+        {
+          "shape": "fit",
+          "along": "y",
+          "length": [
+            2,
+            -8
+          ],
+          "pitch": 12,
+          "min": 3,
+          "_": "las columnas del portico sobre la cara oeste (la del bulevar). `round(h/12)` con piso de 3 — la cuenta la deriva `fit` del largo y el paso, no el JSON.",
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": "$stoneLite",
+              "x": [
+                -1,
+                6
+              ],
+              "y": [
+                -1,
+                2.4
+              ],
+              "w": 4,
+              "h": 3.2
+            }
+          ]
+        }
+      ],
+      "heightM": 8,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
+    },
+    "school": {
+      "note": "Escuela / kínder / campus: a swept yard with pavilions along one edge and a marked court when the lot is big enough. HOW MANY pavilions is a function of the frontage, which is why this is a scene.",
+      "_frame": "`values` elige el eje largo, gira un cuarto de vuelta cuando corresponde y deriva L, D, la cancha y los límites de pabellones. El host sólo aporta hw/hh/use.",
+      "palette": {
+        "yard": "rgba(214,206,180,0.55)",
+        "court": "rgba(240,238,230,0.55)",
+        "courtLine": "rgba(90,80,60,0.45)",
+        "pavilion": "rgba(240,238,230,0.85)",
+        "useWall": "#f0e4c4",
+        "useRoof": "#7f93a6",
+        "roof": "#e85d75"
+      },
+      "values": {
+        "along": {
+          "op": "gte",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "longHalf": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "shortHalf": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            {
+              "ref": "hh"
+            },
+            {
+              "ref": "hw"
+            }
+          ]
+        },
+        "L": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "longHalf"
+            },
+            1.64
+          ]
+        },
+        "D": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "shortHalf"
+            },
+            0.62
+          ]
+        },
+        "ph": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "D"
+            },
+            0.95
+          ]
+        },
+        "frameHw": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "L"
+            },
+            0.5
+          ]
+        },
+        "frameHh": {
+          "ref": "D"
+        },
+        "frameSize": {
+          "ref": "D"
+        },
+        "rotateTurns": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            0,
+            0.25
+          ]
+        },
+        "court": {
+          "op": "and",
+          "args": [
+            {
+              "op": "gt",
+              "args": [
+                {
+                  "ref": "L"
+                },
+                70
+              ]
+            },
+            {
+              "op": "gt",
+              "args": [
+                {
+                  "ref": "ph"
+                },
+                22
+              ]
+            }
+          ]
+        },
+        "courtR": {
+          "op": "mul",
+          "args": [
+            {
+              "op": "min",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "ref": "L"
+                    },
+                    0.52
+                  ]
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "ref": "ph"
+                    },
+                    0.62
+                  ]
+                }
+              ]
+            },
+            0.2
+          ]
+        },
+        "campus": {
+          "op": "eq",
+          "args": [
+            {
+              "ref": "use"
+            },
+            "campus"
+          ]
+        },
+        "minPavilions": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "campus"
+            },
+            2,
+            1
+          ]
+        },
+        "maxPavilions": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "campus"
+            },
+            4,
+            1
+          ]
+        }
+      },
+      "parts": [
+        {
+          "_": "El patio barrido: relleno, no el rectángulo blanco vacío que antes se pintaba sobre 85 escuelas.",
+          "shape": "rect",
+          "fill": "$yard",
+          "x": [
+            -0.84,
+            0
+          ],
+          "y": [
+            -0.1,
+            0
+          ],
+          "w": [
+            1.68,
+            0
+          ],
+          "h": [
+            0.95,
+            0
+          ]
+        },
+        {
+          "_": "La cancha sólo entra cuando el llamador confirma L > 70 y ph > 22.",
+          "shape": "strokeRect",
+          "when": "court",
+          "stroke": "$court",
+          "width": 1,
+          "x": [
+            -0.52,
+            0
+          ],
+          "y": [
+            0.0805,
+            0
+          ],
+          "w": [
+            1.04,
+            0
+          ],
+          "h": [
+            0.589,
+            0
+          ]
+        },
+        {
+          "shape": "stroke",
+          "when": "court",
+          "stroke": "$court",
+          "width": 1,
+          "pts": [
+            [
+              0,
+              [
+                0.0805,
+                0
+              ]
+            ],
+            [
+              0,
+              [
+                0.6695,
+                0
+              ]
+            ]
+          ]
+        },
+        {
+          "shape": "ring",
+          "when": "court",
+          "stroke": "$court",
+          "width": 1,
+          "cx": 0,
+          "cy": [
+            0.375,
+            0
+          ],
+          "r": "$courtR"
+        },
+        {
+          "_": "`fit` cuenta uno, o 2–4 para campus, desde L/46. Reparte L+6 para que cada vano mida exactamente (L-(n-1)*6)/n y deja ese ancho como `$fitWidth`.",
+          "shape": "fit",
+          "along": "x",
+          "length": [
+            2,
+            0
+          ],
+          "spreadLength": [
+            2,
+            6
+          ],
+          "pitch": 46,
+          "min": "$minPavilions",
+          "max": "$maxPavilions",
+          "gap": 6,
+          "anchor": "start",
+          "parts": [
+            {
+              "shape": "roundRect",
+              "fill": "$useWall",
+              "x": [
+                -1,
+                0
+              ],
+              "y": [
+                -1,
+                -3
+              ],
+              "w": "$fitWidth",
+              "h": [
+                1,
+                0
+              ],
+              "r": 2
+            },
+            {
+              "shape": "rect",
+              "fill": "$useRoof",
+              "x": [
+                -1,
+                0
+              ],
+              "y": [
+                -1,
+                -3
+              ],
+              "w": "$fitWidth",
+              "h": {
+                "k": 0.28,
+                "px": 0,
+                "min": 2
+              }
+            },
+            {
+              "_": "Las puertas se vuelven a ajustar dentro del ancho REAL del pabellón, a paso de 11 px.",
+              "shape": "fit",
+              "along": "x",
+              "length": "$fitWidth",
+              "pitch": 11,
+              "min": 1,
+              "parts": [
+                {
+                  "shape": "rect",
+                  "fill": "$courtLine",
+                  "x": [
+                    -1,
+                    -1.4
+                  ],
+                  "y": [
+                    -0.34,
+                    -3
+                  ],
+                  "w": 2.8,
+                  "h": [
+                    0.3,
+                    0
+                  ]
+                }
+              ]
+            }
+          ],
+          "heightM": 6,
+          "castsShadow": true
+        },
+        {
+          "_": "El asta, al borde del patio.",
+          "shape": "stroke",
+          "stroke": "$pavilion",
+          "width": 1.2,
+          "pts": [
+            [
+              [
+                0.88,
+                0
+              ],
+              [
+                0.2,
+                0
+              ]
+            ],
+            [
+              [
+                0.88,
+                0
+              ],
+              [
+                -0.5,
+                0
+              ]
+            ]
+          ]
+        },
+        {
+          "shape": "rect",
+          "fill": "$roof",
+          "x": [
+            0.88,
+            0
+          ],
+          "y": [
+            -0.5,
+            0
+          ],
+          "w": {
+            "k": 0.1,
+            "px": 0,
+            "min": 3
+          },
+          "h": 2.6
+        }
+      ],
+      "heightM": 6,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
+    },
+    "garden": {
+      "note": "El arbolado de parque: values posee visibilidad, cantidad, seeds y claro central; la silueta de cada especie viene de flora.json.",
+      "values": {
+        "visible": {
+          "op": "and",
+          "args": [
+            {
+              "ref": "decor"
+            },
+            {
+              "op": "not",
+              "args": [
+                {
+                  "ref": "whole"
+                }
+              ]
+            }
+          ]
+        },
+        "perimeter": {
+          "op": "add",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "hw"
+                },
+                2
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "ref": "hh"
+                },
+                2
+              ]
+            }
+          ]
+        },
+        "seedX": {
+          "ref": "x0"
+        },
+        "seedY": {
+          "ref": "y0"
+        },
+        "hasCentre": {
+          "op": "or",
+          "args": [
+            {
+              "ref": "hasKiosco"
+            },
+            {
+              "ref": "hasStatue"
+            },
+            {
+              "ref": "hasFountain"
+            }
+          ]
+        },
+        "clear": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "hasCentre"
+            },
+            {
+              "op": "max",
+              "args": [
+                14,
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "op": "min",
+                      "args": [
+                        {
+                          "ref": "hw"
+                        },
+                        {
+                          "ref": "hh"
+                        }
+                      ]
+                    },
+                    0.62
+                  ]
+                }
+              ]
+            },
+            0
+          ]
+        }
+      },
+      "parts": [
+        {
+          "shape": "scatter",
+          "paint": "tree",
+          "species": "almendro",
+          "layout": "box",
+          "fit": {
+            "length": "$perimeter",
+            "pitch": 26,
+            "min": 3
+          },
+          "width": [
+            2,
+            0
+          ],
+          "height": [
+            2,
+            0
+          ],
+          "xMul": 0.7,
+          "yMul": 0.62,
+          "seedX": "$seedX",
+          "seedY": "$seedY",
+          "xStep": 3.7,
+          "yStep": 8.1,
+          "clear": "$clear",
+          "boundX": [
+            0.92,
+            0
+          ],
+          "boundY": [
+            0.92,
+            0
+          ],
+          "scaleMin": 0.7,
+          "scaleRange": 0.35,
+          "scaleSeed": "$seedX",
+          "scaleStep": 1
+        }
+      ]
+    },
+    "fuel": {
+      "note": "La gasolinera: a canopy over its islands, with the pumps.",
+      "_frame": "X es la media extensión LARGA y Y la CORTA; values da el cuarto de vuelta cuando la larga no es la x del host.",
+      "palette": {
+        "canopy": "#e9e3d4",
+        "band": "#d94f3d",
+        "shop": "#f0efe9",
+        "pump": "#9aa0a8",
+        "pumpDark": "#5c6169"
+      },
+      "values": {
+        "along": {
+          "op": "gte",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "frameHw": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "frameHh": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            {
+              "ref": "hh"
+            },
+            {
+              "ref": "hw"
+            }
+          ]
+        },
+        "rotateTurns": {
+          "op": "if",
+          "args": [
+            {
+              "ref": "along"
+            },
+            0,
+            0.25
+          ]
+        }
+      },
+      "parts": [
+        {
+          "shape": "roundRect",
+          "fill": "$canopy",
+          "x": [
+            -1,
+            1
+          ],
+          "y": [
+            -1,
+            1
+          ],
+          "w": [
+            0.68,
+            0
+          ],
+          "h": [
+            0.6,
+            0
+          ],
+          "r": 2,
+          "heightM": 5.5,
+          "castsShadow": true
+        },
+        {
+          "shape": "rect",
+          "fill": "$band",
+          "x": [
+            -1,
+            1
+          ],
+          "y": [
+            -1,
+            1
+          ],
+          "w": [
+            0.68,
+            0
+          ],
+          "h": {
+            "k": 0.18,
+            "px": 0,
+            "min": 1.6
+          }
+        },
+        {
+          "shape": "roundRect",
+          "fill": "$shop",
+          "x": [
+            -0.12,
+            -2
+          ],
+          "y": [
+            -0.56,
+            0
+          ],
+          "w": [
+            1.12,
+            0
+          ],
+          "h": [
+            1.12,
+            0
+          ],
+          "r": 2,
+          "heightM": 4,
+          "castsShadow": true
+        },
+        {
+          "shape": "rect",
+          "fill": "$band",
+          "x": [
+            -0.12,
+            -2
+          ],
+          "y": [
+            -0.56,
+            0
+          ],
+          "w": [
+            1.12,
+            0
+          ],
+          "h": {
+            "k": 0.2016,
+            "px": 0,
+            "min": 1.4
+          }
+        },
+        {
+          "shape": "rect",
+          "fill": "$pump",
+          "x": [
+            -0.12,
+            0.5
+          ],
+          "y": [
+            -0.56,
+            2
+          ],
+          "w": 1.6,
+          "h": 1.6
+        },
+        {
+          "shape": "rect",
+          "fill": "$pump",
+          "x": [
+            1,
+            -5.5
+          ],
+          "y": [
+            -0.56,
+            2
+          ],
+          "w": 1.6,
+          "h": 1.6
+        },
+        {
+          "shape": "rect",
+          "fill": "$pump",
+          "x": [
+            -0.12,
+            0.5
+          ],
+          "y": [
+            0.56,
+            -3
+          ],
+          "w": 1.6,
+          "h": 1.6
+        },
+        {
+          "shape": "rect",
+          "fill": "$pump",
+          "x": [
+            1,
+            -5.5
+          ],
+          "y": [
+            0.56,
+            -3
+          ],
+          "w": 1.6,
+          "h": 1.6
+        },
+        {
+          "_": "Una a tres bombas según cuántas caben a paso de 16 px bajo la marquesina.",
+          "shape": "fit",
+          "along": "x",
+          "length": [
+            1.12,
+            0
+          ],
+          "pitch": 16,
+          "min": 1,
+          "max": 3,
+          "parts": [
+            {
+              "shape": "rect",
+              "fill": "$pumpDark",
+              "x": [
+                -0.12,
+                -3.4
+              ],
+              "y": [
+                -0.0896,
+                0
+              ],
+              "w": 2.8,
+              "h": {
+                "k": 0.224,
+                "px": 0,
+                "min": 2.4
+              }
+            }
+          ]
+        }
+      ],
+      "heightM": 4,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
+    },
+    "kiosco": {
+      "note": "El kiosco/templete at a park's centre — the Parque Victoria's bandstand.",
+      "turn": false,
+      "_turn": "El templete es radial y su techo mira a la pantalla, como el pintor original: no hereda el ángulo de la manzana.",
+      "palette": {
+        "base": "#cfc7b4",
+        "wall": "#e7ddc8",
+        "step": "#b9b2a0",
+        "roof": "#7f6a52",
+        "highlight": "rgba(255,255,255,0.18)",
+        "post": "#5d5040"
+      },
+      "values": {
+        "size": {
+          "op": "min",
+          "args": [
+            {
+              "ref": "hw"
+            },
+            {
+              "ref": "hh"
+            }
+          ]
+        },
+        "frameHw": {
+          "ref": "size"
+        },
+        "frameHh": {
+          "ref": "size"
+        },
+        "frameSize": {
+          "ref": "size"
+        }
+      },
+      "parts": [
+        {
+          "_": "El caller entrega min(hw,hh); el grupo declara r = clamp(0.42*s, 7, 15) una sola vez para sus dos ejes y sus tamaños.",
+          "shape": "group",
+          "hwS": {
+            "k": 0.42,
+            "px": 0,
+            "min": 7,
+            "max": 15
+          },
+          "hhS": {
+            "k": 0.42,
+            "px": 0,
+            "min": 7,
+            "max": 15
+          },
+          "s": {
+            "k": 0.42,
+            "px": 0,
+            "min": 7,
+            "max": 15
+          },
+          "parts": [
+            {
+              "shape": "ellipse",
+              "fill": "$base",
+              "cx": 0,
+              "cy": [
+                0.3,
+                0
+              ],
+              "rx": [
+                1.1,
+                0
+              ],
+              "ry": [
+                0.5,
+                0
+              ]
+            },
+            {
+              "shape": "ellipse",
+              "fill": "$wall",
+              "cx": 0,
+              "cy": [
+                0.16,
+                0
+              ],
+              "rx": [
+                0.9,
+                0
+              ],
+              "ry": [
+                0.42,
+                0
+              ]
+            },
+            {
+              "_": "Las ocho columnas son ocho strokes, no un path compuesto: Canvas compone el antialias de cada llamada por separado y ésa es parte de la imagen de referencia.",
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    0.78,
+                    0
+                  ],
+                  0
+                ],
+                [
+                  [
+                    0.78,
+                    0
+                  ],
+                  [
+                    -0.62,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    0.5515432893255071,
+                    0
+                  ],
+                  [
+                    0.24041630560342617,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    0.5515432893255071,
+                    0
+                  ],
+                  [
+                    -0.3795836943965738,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    4.7761225166746774e-17,
+                    0
+                  ],
+                  [
+                    0.34,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    4.7761225166746774e-17,
+                    0
+                  ],
+                  [
+                    -0.27999999999999997,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    -0.551543289325507,
+                    0
+                  ],
+                  [
+                    0.2404163056034262,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -0.551543289325507,
+                    0
+                  ],
+                  [
+                    -0.3795836943965738,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    -0.78,
+                    0
+                  ],
+                  [
+                    4.163799117101001e-17,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -0.78,
+                    0
+                  ],
+                  [
+                    -0.62,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    -0.5515432893255072,
+                    0
+                  ],
+                  [
+                    -0.24041630560342617,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -0.5515432893255072,
+                    0
+                  ],
+                  [
+                    -0.8604163056034262,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    -1.4328367550024033e-16,
+                    0
+                  ],
+                  [
+                    -0.34,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -1.4328367550024033e-16,
+                    0
+                  ],
+                  [
+                    -0.96,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$step",
+              "width": 1.4,
+              "pts": [
+                [
+                  [
+                    0.551543289325507,
+                    0
+                  ],
+                  [
+                    -0.24041630560342622,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    0.551543289325507,
+                    0
+                  ],
+                  [
+                    -0.8604163056034262,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "fan",
+              "fill": "$roof",
+              "pts": [
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -1.35,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    1.05,
+                    0
+                  ],
+                  [
+                    -0.5,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    -1.05,
+                    0
+                  ],
+                  [
+                    -0.5,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "fan",
+              "fill": "$highlight",
+              "pts": [
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -1.35,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    1.05,
+                    0
+                  ],
+                  [
+                    -0.5,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -0.5,
+                    0
+                  ]
+                ]
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$post",
+              "width": 1,
+              "pts": [
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -1.35,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    -1.7,
+                    0
+                  ]
+                ]
+              ]
+            }
+          ],
+          "heightM": 4.5,
+          "castsShadow": true
+        }
+      ],
+      "heightM": 4.5,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
+    },
+    "parkRiver": {
+      "note": "The channelled river through a park's parcel.",
+      "inset": 0.86,
+      "palette": {
+        "bank": "#7d8f6a",
+        "water": "#4f86a8",
+        "sheen": "rgba(255,255,255,0.30)",
+        "stoneLite": "@cathedral.stoneLite",
+        "stoneDark": "@cathedral.stoneDark"
+      },
+      "values": {
+        "frameSize": {
+          "op": "mul",
+          "args": [
+            {
+              "ref": "hh"
+            },
+            0.86
+          ]
+        }
+      },
+      "parts": [
+        {
+          "_": "El ancho del agua es clamp(0.34*hh, 7, 13). Todo lo que depende de w vive dentro de este marco S; X/Y siguen siendo las extensiones del parque.",
+          "shape": "group",
+          "s": {
+            "k": 0.34,
+            "px": 0,
+            "min": 7,
+            "max": 13
+          },
+          "parts": [
+            {
+              "_": "El cauce es el mismo Bézier perezoso repetido con tres tintas. `S` es el ancho ya acotado del agua.",
+              "shape": "stroke",
+              "stroke": "$bank",
+              "width": [
+                1,
+                5
+              ],
+              "cap": "round",
+              "pts": [
+                [
+                  [
+                    -1,
+                    0
+                  ],
+                  [
+                    -0.42,
+                    0
+                  ]
+                ],
+                {
+                  "c": [
+                    [
+                      [
+                        -0.3,
+                        0
+                      ],
+                      [
+                        0.55,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        0.3,
+                        0
+                      ],
+                      [
+                        -0.55,
+                        0
+                      ]
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      0.42,
+                      0
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$water",
+              "width": [
+                1,
+                0
+              ],
+              "cap": "round",
+              "pts": [
+                [
+                  [
+                    -1,
+                    0
+                  ],
+                  [
+                    -0.42,
+                    0
+                  ]
+                ],
+                {
+                  "c": [
+                    [
+                      [
+                        -0.3,
+                        0
+                      ],
+                      [
+                        0.55,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        0.3,
+                        0
+                      ],
+                      [
+                        -0.55,
+                        0
+                      ]
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      0.42,
+                      0
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "shape": "stroke",
+              "stroke": "$sheen",
+              "width": [
+                0.28,
+                0
+              ],
+              "cap": "round",
+              "pts": [
+                [
+                  [
+                    -1,
+                    0
+                  ],
+                  [
+                    -0.42,
+                    0
+                  ]
+                ],
+                {
+                  "c": [
+                    [
+                      [
+                        -0.3,
+                        0
+                      ],
+                      [
+                        0.55,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        0.3,
+                        0
+                      ],
+                      [
+                        -0.55,
+                        0
+                      ]
+                    ]
+                  ],
+                  "to": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      0.42,
+                      0
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "_": "El puente deriva sus dos medias extensiones del ancho ya acotado: max(5,w*0.55)/2 y (w+12)/2.",
+              "shape": "group",
+              "hwS": {
+                "k": 0.55,
+                "px": 0,
+                "min": 5
+              },
+              "hwScale": 0.5,
+              "hhS": [
+                1,
+                12
+              ],
+              "hhScale": 0.5,
+              "parts": [
+                {
+                  "shape": "roundRect",
+                  "fill": "$stoneLite",
+                  "x": [
+                    -1,
+                    0
+                  ],
+                  "y": [
+                    -1,
+                    0
+                  ],
+                  "w": [
+                    2,
+                    0
+                  ],
+                  "h": [
+                    2,
+                    0
+                  ],
+                  "r": 2
+                },
+                {
+                  "shape": "rect",
+                  "fill": "$stoneDark",
+                  "x": [
+                    -1,
+                    0
+                  ],
+                  "y": [
+                    -1,
+                    0
+                  ],
+                  "w": [
+                    2,
+                    0
+                  ],
+                  "h": 1.6
+                },
+                {
+                  "shape": "rect",
+                  "fill": "$stoneDark",
+                  "x": [
+                    -1,
+                    0
+                  ],
+                  "y": [
+                    1,
+                    -1.6
+                  ],
+                  "w": [
+                    2,
+                    0
+                  ],
+                  "h": 1.6
+                }
+              ],
+              "heightM": 1.5,
+              "castsShadow": true
+            }
+          ]
+        }
+      ],
+      "heightM": 1.5,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
+    },
+    "lote": {
+      "note": "A SPONSORED lote — a storefront or a billboard. `lo.tone` is the sponsor's own colour and stays dynamic; these are the fixed parts around it.",
+      "palette": {
+        "storeBody": "#f4f0e4",
+        "awningLight": "#fff",
+        "door": "rgba(20,40,60,0.55)",
+        "window": "rgba(255,255,255,0.7)",
+        "post": "#6a5a48",
+        "billboardPill": "rgba(20,16,40,0.85)"
+      },
+      "parts": [
+        {
+          "shape": "rect",
+          "when": "$store",
+          "fill": "$storeBody",
+          "x": -16,
+          "y": -10,
+          "w": 32,
+          "h": 18,
+          "heightM": 4,
+          "castsShadow": true
+        },
+        {
+          "shape": "stripes",
+          "when": "$store",
+          "x": -16,
+          "y": -15,
+          "w": 32,
+          "h": 5,
+          "n": 4,
+          "palette": [
+            "$tone",
+            "$awningLight"
+          ]
+        },
+        {
+          "shape": "rect",
+          "when": "$store",
+          "fill": "$door",
+          "x": -4,
+          "y": -2,
+          "w": 8,
+          "h": 10
+        },
+        {
+          "shape": "rect",
+          "when": "$store",
+          "fill": "$window",
+          "x": -13,
+          "y": -6,
+          "w": 7,
+          "h": 5
+        },
+        {
+          "shape": "label",
+          "when": "$store",
+          "x": 0,
+          "y": -22,
+          "text": "$label",
+          "fg": "$awningLight",
+          "bg": "$tone"
+        },
+        {
+          "shape": "stroke",
+          "unless": "$store",
+          "stroke": "$post",
+          "width": 2,
+          "runs": [
+            [
+              [
+                -10,
+                4
+              ],
+              [
+                -10,
+                -12
+              ]
+            ],
+            [
+              [
+                10,
+                4
+              ],
+              [
+                10,
+                -12
+              ]
+            ]
+          ]
+        },
+        {
+          "shape": "rect",
+          "unless": "$store",
+          "fill": "$awningLight",
+          "x": -17,
+          "y": -26,
+          "w": 34,
+          "h": 15
+        },
+        {
+          "shape": "rect",
+          "unless": "$store",
+          "fill": "$tone",
+          "x": -15,
+          "y": -24,
+          "w": 30,
+          "h": 11
+        },
+        {
+          "shape": "label",
+          "unless": "$store",
+          "x": 0,
+          "y": -30,
+          "text": "$label",
+          "fg": "$awningLight",
+          "bg": "$billboardPill"
+        }
+      ],
+      "heightM": 4,
+      "castsShadow": false,
+      "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
+    },
+    "patio": {
+      "note": "El interior de una manzana. Cuatro árboles en las esquinas, la acera que las une contra la cara interior de las casonas, y el centro libre para que una fuente autorada tenga dónde ir.",
+      "palette": {
+        "kerb": "rgba(232,226,210,0.55)",
+        "crown": "#4f7f46",
+        "crownLite": "#5f9553",
+        "trunk": "#6b4a2f"
+      },
+      "heightM": 6,
+      "castsShadow": false,
+      "parts": [
+        {
+          "_": "los cuatro árboles de esquina, escritos uno por uno",
+          "shape": "group",
+          "x": 0,
+          "y": 0,
+          "parts": [
+            {
+              "shape": "disc",
+              "fill": "$trunk",
+              "cx": [
+                -0.52,
+                0
+              ],
+              "cy": [
+                -0.52,
+                0
+              ],
+              "r": [
+                0.05,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$crown",
+              "cx": [
+                -0.52,
+                0
+              ],
+              "cy": [
+                -0.48,
+                0
+              ],
+              "r": [
+                0.17,
+                0
+              ],
+              "heightM": 6,
+              "castsShadow": true
+            },
+            {
+              "shape": "disc",
+              "fill": "$crownLite",
+              "cx": [
+                -0.48,
+                0
+              ],
+              "cy": [
+                -0.44,
+                0
+              ],
+              "r": [
+                0.09,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$trunk",
+              "cx": [
+                0.52,
+                0
+              ],
+              "cy": [
+                -0.52,
+                0
+              ],
+              "r": [
+                0.05,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$crown",
+              "cx": [
+                0.52,
+                0
+              ],
+              "cy": [
+                -0.48,
+                0
+              ],
+              "r": [
+                0.17,
+                0
+              ],
+              "heightM": 6,
+              "castsShadow": true
+            },
+            {
+              "shape": "disc",
+              "fill": "$crownLite",
+              "cx": [
+                0.48,
+                0
+              ],
+              "cy": [
+                -0.44,
+                0
+              ],
+              "r": [
+                0.09,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$trunk",
+              "cx": [
+                -0.52,
+                0
+              ],
+              "cy": [
+                0.52,
+                0
+              ],
+              "r": [
+                0.05,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$crown",
+              "cx": [
+                -0.52,
+                0
+              ],
+              "cy": [
+                0.48,
+                0
+              ],
+              "r": [
+                0.17,
+                0
+              ],
+              "heightM": 6,
+              "castsShadow": true
+            },
+            {
+              "shape": "disc",
+              "fill": "$crownLite",
+              "cx": [
+                -0.48,
+                0
+              ],
+              "cy": [
+                0.44,
+                0
+              ],
+              "r": [
+                0.09,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$trunk",
+              "cx": [
+                0.52,
+                0
+              ],
+              "cy": [
+                0.52,
+                0
+              ],
+              "r": [
+                0.05,
+                0
+              ]
+            },
+            {
+              "shape": "disc",
+              "fill": "$crown",
+              "cx": [
+                0.52,
+                0
+              ],
+              "cy": [
+                0.48,
+                0
+              ],
+              "r": [
+                0.17,
+                0
+              ],
+              "heightM": 6,
+              "castsShadow": true
+            },
+            {
+              "shape": "disc",
+              "fill": "$crownLite",
+              "cx": [
+                0.48,
+                0
+              ],
+              "cy": [
+                0.44,
+                0
+              ],
+              "r": [
+                0.09,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "_coords": "LAS COORDENADAS VAN EN `[k, px]`. `evalOn` devuelve un número suelto TAL CUAL —es un absoluto en píxeles— y sólo la forma de arreglo lo lee como fracción del marco. Escrito `cx: -0.66` los cuatro árboles salieron como discos de medio píxel en el centro de la parcela: sin error, sin warning, simplemente no había patio.",
+      "_inset": "Y VAN A 0,52 DEL MARCO, NO A 0,66. El marco de una parcela es su rectángulo de medias extensiones, pero el SUELO que se pinta es el contorno trazado del interior de la manzana, que es irregular: a 0,66 las esquinas del rectángulo caen fuera del verde y el árbol queda parado en el techo de una casona. No se dibuja el canto por la misma razón — `paintParcels` ya perfila la parcela con su forma REAL, y un `strokeRect` encima es un rectángulo sobre un polígono."
+    }
+  }
+}

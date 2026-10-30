@@ -1,0 +1,172 @@
+import React, { useState, useEffect } from "react";
+import { Game } from "../game/index.js";
+import { UI_SCREEN, VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
+import { VEHICLES, vehicleMedium } from "../game/vehicles.js";
+import { economy, VEHICLE_PRICES, BOOSTS, COLORS } from "../game/economy.js";
+import { sfx } from "../game/audio.js";
+import { useT } from "../i18n/index.js";
+import VehiclePreview from "./VehiclePreview.jsx";
+import FitScale from "./FitScale.jsx";
+import CoinIcon from "./CoinIcon.jsx";
+import Icon from "./Icon.jsx";
+import Slots from "./Slots.jsx";
+
+// Pre-run picker for every mode: Arcade / Recorrer arm boosts here too, while
+// Historia (storyMode) hides them — the StageBrief owns boost-arming there.
+// Two scale-to-fit cards side by side: the vehicle carousel and an options
+// card (paint colours you own + boosts to arm for this run). Locked vehicles
+// deep-link to the Shop; boosts are consumed at mode start by armRun.
+export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false, medium = VEHICLE_MEDIUM.LAND }) {
+  const t = useT();
+  // THE CAROUSEL IS SCOPED TO THE RUN'S MEDIUM. Offering a scooter for the
+  // Travesía is not a cosmetic mistake — modes.js would refuse it and swap in
+  // the panga, so the player would pick one boat and start in another.
+  const inMedium = (k) => vehicleMedium(k) === medium;
+  const fallbackKey = medium === VEHICLE_MEDIUM.WATER ? "panga" : "scooter";
+  const startKey = economy.ownsVehicle(Game.state.vehicleKey) && inMedium(Game.state.vehicleKey)
+    ? Game.state.vehicleKey : fallbackKey;
+  const [veh, setVeh] = useState(startKey);
+  const [armed, setArmed] = useState({});
+  const [, bump] = useState(0);
+  useEffect(() => economy.onChange(() => bump((n) => n + 1)), []);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape" || e.key === "Backspace") { e.preventDefault(); onBack(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const vehKeys = Object.keys(VEHICLES).filter(inMedium);
+  const owned = economy.ownsVehicle(veh);
+  const totalBoosts = Object.keys(BOOSTS).reduce((s, id) => s + economy.boostCount(id), 0);
+  const equippedCol = economy.equippedColor(veh);
+
+  const pick = (k) => { sfx.play(economy.ownsVehicle(k) ? "menu_move" : "menu_denied"); setVeh(k); };
+  const toggleBoost = (id) => {
+    if (economy.boostCount(id) <= 0) { sfx.play("menu_denied"); return; }
+    sfx.play("menu_move");
+    setArmed((a) => ({ ...a, [id]: !a[id] }));
+  };
+  // Equip an owned paint inline; unowned colours deep-link to the Shop's
+  // colors tab WITH this car selected (so the buy equips to the right ride).
+  const pickColor = (id) => {
+    if (!id || economy.ownsColor(id)) { economy.equipColor(veh, id); sfx.play("menu_move"); }
+    else { sfx.play("menu_denied"); onShop({ tab: "colors", veh }); }
+  };
+  // Buy a boost without leaving the picker. The economy owns the transaction —
+  // this only asks it, and arms what it just bought, which is what somebody
+  // pressing a boost's price meant.
+  const buyBoost = (id) => {
+    if (!economy.buyBoost(id)) { sfx.play("menu_denied"); return; }
+    sfx.play("menu_ok");
+    setArmed((a) => ({ ...a, [id]: true }));
+  };
+  const go = () => {
+    if (!owned) { sfx.play("menu_denied"); return; }
+    sfx.play("menu_select");
+    onGo(veh, armed);
+  };
+
+  // LOS BLOQUES DEL SELECTOR. La fila de arriba —volver, título, monedas— es el
+  // marco de la tarjeta y está en todos los renders, así que no es un slot. Lo
+  // que sí es una decisión por pantalla son las TRES columnas: la moto, su
+  // pintura y lo que uno se lleva. Historia arma sus mejoras en el StageBrief,
+  // así que ahí la tercera no va.
+  const SLOTS = {
+    vehicle: () => (
+      <div className="glass-card picker-veh">
+        <VehiclePreview vehKey={veh} color={equippedCol?.hex || null} />
+        <div className="vehicles-col">
+          {vehKeys.map((k) => {
+            const has = economy.ownsVehicle(k);
+            return (
+              <button key={k} className={"vchip " + (veh === k ? "active" : "") + (has ? "" : " locked")}
+                onClick={() => pick(k)}>
+                {has ? VEHICLES[k].name : <><Icon name="lock" size={12} /> {VEHICLES[k].name}</>}
+              </button>
+            );
+          })}
+        </div>
+        {!owned && (
+          <button className="btn secondary picker-getbtn" onClick={() => onShop({ tab: "vehicles", veh })}>
+            <Icon name="lock" size={13} /> {t("picker.locked")} · <CoinIcon size={13} /> {VEHICLE_PRICES[veh]}
+          </button>
+        )}
+        <button className="btn gold hero-play" onClick={go} disabled={!owned}>{t("picker.go")}</button>
+      </div>
+    ),
+    color: () => (
+      <div className="glass-card picker-side">
+        <div className="vehicle-card-title">{t("picker.color")}</div>
+        <div className="swatches">
+          <button className={"swatch stock" + (!equippedCol ? " equipped" : "")}
+            title={t("shop.stock")} onClick={() => pickColor(null)}>↺</button>
+          {COLORS.map((c) => {
+            const has = economy.ownsColor(c.id);
+            const eq = equippedCol?.id === c.id;
+            return (
+              <button key={c.id} className={"swatch" + (eq ? " equipped" : "") + (has ? "" : " locked")}
+                style={{ background: c.hex }} title={`${c.name}${has ? "" : ` · ${c.price}`}`}
+                onClick={() => pickColor(c.id)}>
+                {!has && <Icon name="lock" size={11} />}{eq && "✓"}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ),
+    // BOOSTS GET THEIR OWN COLUMN. Stacked under the paint swatches they made
+    // one tall, ragged card; side by side the picker reads as three decisions —
+    // the ride, its paint, what you take with you. And an EMPTY slot is not
+    // hidden: it shows its price and buys in place, because sending somebody to
+    // the shop and back to arm a boost is three screens for one tap.
+    boosts: () => (
+      <div className="glass-card picker-boostcol">
+        <div className="vehicle-card-title">{t("picker.boosts", { n: totalBoosts })}</div>
+        <div className="boost-list">
+          {Object.keys(BOOSTS).map((id) => {
+            const n = economy.boostCount(id);
+            const b = BOOSTS[id];
+            const name = b.editorItem ? b.name : t(`shop.${id}.name`);
+            const afford = economy.coins >= b.price;
+            return (
+              <button key={id}
+                className={"btn boost-row " + (n > 0 ? (armed[id] ? "gold" : "secondary") : "secondary empty")}
+                onClick={() => (n > 0 ? toggleBoost(id) : buyBoost(id))}
+                disabled={n <= 0 && !afford}
+                title={n > 0 ? name : t("picker.buyboost", { price: b.price })}>
+                <Icon name={b.icon} size={14} />
+                <span className="boost-name">{name}</span>
+                {n > 0
+                  ? <span className="boost-n">×{n}</span>
+                  : <span className="boost-buy">{b.price} ₡</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ),
+  };
+  const ctx = { armsBoosts: !storyMode };
+  const slot = (region) => <Slots screen={UI_SCREEN.VEHPICK} region={region} ctx={ctx} slots={SLOTS} />;
+
+  return (
+    <div className="title-bg">
+      <div className="title-shell shell-col">
+        <div className="shell-nav">
+          <button className="btn secondary" onClick={onBack}>{t("select.back")}</button>
+          <h2 className="title-main shell-title">{t("picker.title")}</h2>
+          <button className="btn secondary" onClick={() => onShop({ veh })}>
+            <Icon name="cart" size={14} /> <CoinIcon size={13} /> {economy.coins.toLocaleString()}
+          </button>
+        </div>
+        <FitScale pad={110}>
+          <div className="picker-wrap">
+            <div className="picker-layout">{slot("main")}</div>
+          </div>
+        </FitScale>
+      </div>
+    </div>
+  );
+}

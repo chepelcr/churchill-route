@@ -1,0 +1,177 @@
+{
+  "_note": "LAS ETAPAS de Historia. `timeLimit` is SECONDS and speeds are px/s, so a rescale changes how long a delivery takes — `config.py` says to re-measure these rather than assume. `kiosks` names where the churchill is picked up; `unlock` is the district the stage opens.",
+  "stages": [
+    {
+      "id": "s1",
+      "num": 1,
+      "name": "El Faro",
+      "district": "carmen",
+      "brief": "Repartí el primer pedido del día. Llegan cruceros — los gringos quieren probar el dichoso Churchill.",
+      "kiosks": [
+        "kios_faro"
+      ],
+      "targetDeliveries": 3,
+      "timeLimit": 115,
+      "weather": "sunny",
+      "customers": [
+        "c1",
+        "c2"
+      ],
+      "unlock": "paseo"
+    },
+    {
+      "id": "s2",
+      "num": 2,
+      "name": "Paseo de los Turistas",
+      "district": "paseo",
+      "brief": "El boulevard está lleno. Atravesá la peatonal esquivando turistas y comparsas de carnaval.",
+      "kiosks": [
+        "kios_paseo1",
+        "kios_paseo2"
+      ],
+      "targetDeliveries": 4,
+      "timeLimit": 150,
+      "weather": "sunny",
+      "customers": [
+        "c3",
+        "c4",
+        "c5"
+      ],
+      "unlock": "centro"
+    },
+    {
+      "id": "s3",
+      "num": 3,
+      "name": "Mercado y Catedral",
+      "district": "centro",
+      "brief": "Las calles del centro son angostas y el tráfico no perdona. Ojo con los gatos — y el Padre Ramírez no es de esperar.",
+      "kiosks": [
+        "kios_centro",
+        "kios_paseo2"
+      ],
+      "targetDeliveries": 4,
+      "timeLimit": 165,
+      "weather": "sunny",
+      "customers": [
+        "c6",
+        "c7",
+        "c8",
+        "c9"
+      ],
+      "unlock": "playitas"
+    },
+    {
+      "id": "s4",
+      "num": 4,
+      "name": "Atardecer en Las Playitas",
+      "district": "playitas",
+      "brief": "Atardece sobre el Yacht Club. Abrí gas por la Ruta 17, pero cuidado: el equipo de fútbol anda entrenando.",
+      "kiosks": [
+        "kios_play",
+        "kios_centro"
+      ],
+      "targetDeliveries": 5,
+      "timeLimit": 175,
+      "weather": "sunset",
+      "customers": [
+        "c10",
+        "c11",
+        "c12"
+      ],
+      "unlock": "cocal"
+    },
+    {
+      "id": "s5",
+      "num": 5,
+      "name": "Tormenta en El Cocal",
+      "district": "cocal",
+      "brief": "Cayó el aguacero y el asfalto resbala. Llegá a la Ruta 17 antes de que la tormenta empeore.",
+      "kiosks": [
+        "kios_cocal2"
+      ],
+      "targetDeliveries": 5,
+      "timeLimit": 200,
+      "weather": "storm",
+      "customers": [
+        "c13",
+        "c14"
+      ],
+      "unlock": "mata",
+      "_hazards": "LAS ORDAS DE GAVIOTAS DEL COCAL. El resto de las etapas se juega igual y eso las vuelve intercambiables; ésta pide otra cosa. Las gaviotas ambientales no sirven: `spawnOneGull` las siembra sobre AGUA ABIERTA y en el Cocal la cámara va tierra adentro por el arenal, así que no encuentra dónde ponerlas y no sale casi ninguna — que es exactamente lo que se veía. Una orda es una BANDADA sobre el arenal, con su propio centro que deriva, y hay que esquivarla: atravesarla ciega la pantalla y puede tumbarte el churchill.",
+      "hazards": {
+        "gullFlocks": 5
+      },
+      "_rotate": "EL COCAL SE JUEGA DE CANTO. El barrio corre a lo largo del arenal —de oeste a este— así que en pantalla ocupa una franja y deja el resto vacío. Girada 90°, la ruta baja por el lado LARGO. Es un cambio de CÁMARA: el mundo no se toca, ninguna coordenada cambia, y el control de un dedo se corrige por el mismo ángulo para que el dedo siga apuntando a donde el jugador cree.",
+      "rotate": 90
+    },
+    {
+      "id": "s6",
+      "num": 6,
+      "name": "Puente · Mata de Limón",
+      "district": "mata",
+      "brief": "Cruzá el puente colgante sobre el estero. Llegá al kiosco de Mata de Limón y a la Marisquería Leda.",
+      "kiosks": [
+        "kios_mata"
+      ],
+      "targetDeliveries": 4,
+      "timeLimit": 150,
+      "weather": "night",
+      "customers": [
+        "c15",
+        "c16"
+      ],
+      "unlock": "mata"
+    },
+    {
+      "id": "s7",
+      "num": 7,
+      "name": "Caldera · Final",
+      "district": "caldera",
+      "brief": "Por la Ruta 27 hasta el Puerto de Caldera. Ya sale el sol — una última entrega y se acaba la jornada.",
+      "kiosks": [
+        "kios_caldera",
+        "kios_mata"
+      ],
+      "targetDeliveries": 4,
+      "timeLimit": 215,
+      "weather": "sunny",
+      "customers": [
+        "c17",
+        "c18"
+      ],
+      "unlock": "caldera"
+    }
+  ],
+  "crossingStages": [
+    {
+      "id": "s8",
+      "after": "s7",
+      "kind": "crossing",
+      "ferry": "pitahaya",
+      "name": "Travesía del Estero",
+      "district": "centro",
+      "brief": "Llevá la lancha hasta Pitahaya siguiendo las boyas. Esquivá las pangas, los yates y las redes de los pescadores — rozalos de cerca y ganás impulso. Cruzá los cardúmenes: el que llega con peces, llega mejor.",
+      "kiosks": [],
+      "customers": [],
+      "targetDeliveries": 0,
+      "timeLimit": 150,
+      "weather": "sunny",
+      "unlock": null,
+      "_openAlways": "La Travesía no encadena. Va al FINAL de la Historia porque es la que falta afinar, y abierta porque si no cuatro etapas de entrega quedarían detrás de la que no está lista. Una etapa `openAlways` nunca se bloquea Y nunca bloquea a la siguiente: las dos cosas, o moverla mañana vuelve a tapar lo que venga detrás.",
+      "openAlways": true
+    }
+  ],
+  "lanchas": [
+    {
+      "id": "pitahaya",
+      "name": "Lancha a Pitahaya",
+      "berth_pier": "muelle_pitahaya",
+      "landing": [
+        10.02539,
+        -84.82923
+      ],
+      "speedMS": 60.0,
+      "_units": "deck y dockS los pone src/assets/world-units.json -> vessels.lancha, en metros. Estaban aqui en px (86x34, dockS 20) y coincidian con el registro SOLO a 2.5 px/m: el reescalado del 2026-08-27 los separo y `tests/test_world_units.py` lo cazo. speedMS es m/s."
+    }
+  ]
+}

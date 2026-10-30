@@ -1,0 +1,26 @@
+{
+  "_note": "LOS DOS FERRIS DEL GOLFO. El id técnico puede seguir nombrando el trayecto OSM histórico, pero el destino que ve el jugador, el nombre pintado en el buque y la conducta bidireccional son contenido editable. `terminalOsmName` y `routeOsmName` son las llaves con que el build resuelve los nodos y ways reales; la ruta emitida conserva esa geometría.",
+  "version": 1,
+  "ferries": [
+    {
+      "id": "paquera",
+      "name": "Ferry a Tambor",
+      "destination": "Tambor",
+      "vesselName": "Tambor",
+      "terminalOsmName": "ferry paquera",
+      "routeOsmName": "ruta puntarenas - paquera",
+      "doubleEnded": true,
+      "note": "La fuente cartográfica local todavía nombra Paquera porque ése es el puerto del trazado. La presentación solicitada para el juego es Tambor; mantener ambas cosas separadas evita falsificar la unión OSM para cambiar un rótulo."
+    },
+    {
+      "id": "naranjo",
+      "name": "Ferry a Playa Naranjo",
+      "destination": "Playa Naranjo",
+      "vesselName": "San Lucas 3",
+      "terminalOsmName": "ferry a playa naranjo",
+      "routeOsmName": "ruta puntarenas - playa naranjo",
+      "doubleEnded": true,
+      "note": "Buque rotulado San Lucas 3. Como ambos ferris son double-ended, cualquiera de sus rampas puede ser entrada o salida y el casco conserva su orientación al recorrer la ruta en sentido inverso."
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+"""The vocabulary the GAME switches on — as opposed to the world's contents.
+
+`features.py` names what the builder puts in the manifest. These name the closed
+states the *runtime* branches on, and they are here for one reason: the client
+must not invent them either. A stage whose `kind` is misspelled is a level
+nobody can start; a vehicle whose `medium` is wrong is not slow or awkward, it
+is spawned inside a wall.
+
+They reach the client through `tools/gen_vocabulary.py` like every other enum,
+and each one names the files that must agree with it.
+"""
+from enum import StrEnum
+
+
+class StageKind(StrEnum):
+    """What a level ASKS of you, and therefore which whole flow starts.
+
+    Not cosmetic and not a label: `modes.js` reads it to pick the required
+    medium (a crossing needs a hull), the win condition, the brief, the results
+    screen and the vehicle picker. `startStage` in src/game/modes.js,
+    StageSelect/StageBrief/ResultsScreen in src/ui/screens/.
+
+    It was a bare `str` on the DTO, so a typo produced a stage that loaded,
+    listed, and then started as a delivery run with no kiosk."""
+    DELIVERY = "delivery"
+    CROSSING = "crossing"
+
+
+class VehicleMedium(StrEnum):
+    """THE GROUND A VEHICLE IS ALLOWED TO EXIST ON — the only concept in the
+    vehicle record the collider reads (`isWall` in src/game/physics.js).
+
+    A land vehicle treats water as a wall; a water one treats everything BUT
+    water as a wall. Two consequences, both recorded in src/game/vehicles.js:
+    the wrong medium is a spawn inside a wall, not a handling quirk; and the
+    ownership fallback is per-medium (`resolveVehicle`), so every medium needs
+    at least one free vehicle or a player who owns no boat gets a moped in the
+    estero."""
+    LAND = "land"
+    WATER = "water"
+
+
+class VehicleKind(StrEnum):
+    """Which silhouette family draws it — shared by the sprite painter and the
+    backend-agnostic path trace (src/render/c2d/entities.js `paintVehicle`,
+    src/render/vehicleShapes.js `traceVehicleSilhouette`).
+
+    The vehicle ID stays a REGISTRY key, deliberately: a designer adds a vehicle
+    by adding a record, and only a genuinely new BODY PLAN is a member here."""
+    BIKE = "bike"
+    CAR = "car"
+    BOAT = "boat"
+
+
+class RendererBackend(StrEnum):
+    """Which backend owns a visual family, and the value the escape hatch
+    stores. `localStorage.churchill_renderer = "canvas"` (or `?canvas`) drops
+    the Pixi layer — see src/render/Renderer.js, where the seam lives.
+
+    Canvas2D paints the whole painterly world and the entities; a transparent
+    Pixi layer above it carries the structures Canvas cannot do justice. Both
+    ship, so "which one draws this family" is a real question that a registry
+    has to answer per family rather than globally."""
+    CANVAS = "canvas"
+    PIXI = "pixi"
+
+
+class GameMode(StrEnum):
+    """The four ways to play, and every one of them changes a rule.
+
+    Not a label. `physics.js` asks it whether the run has a clock; `modes.js`
+    picks the sky and the day cycle from it; `delivery.js` pays a different
+    bonus per mode; `progress.js` decides whether a restart button exists;
+    the results screen and the analytics both group by it.
+
+    It was a raw string in a dozen comparisons — `state.mode === "explore"` —
+    and that list was already WRONG in one place: the timer branch handled
+    arcade and story and then handled explore separately with a treadmill that
+    counted 999 down and reset it, while the HUD asked for a different pair of
+    names to decide whether to draw a clock at all."""
+    STORY = "story"
+    ARCADE = "arcade"
+    EXPLORE = "explore"
+    TUTORIAL = "tutorial"
+
+
+class ExploreRealm(StrEnum):
+    """WHICH PUNTARENAS RECORRER OPENS ON — and it decides the MEDIUM.
+
+    Recorrer is one mode with two halves of the same town, so this is not a
+    fifth `GameMode`: the clock, the scoring, the day cycle and the analytics
+    grouping are identical either way, and splitting the mode would have forked
+    every one of those branches to say the same thing twice.
+
+    What it does decide is which hull the picker offers, because `ciudad` is
+    driven and `estero` is sailed. That makes it the second thing in the
+    codebase that answers `VehicleMedium` (a crossing STAGE is the first), and
+    it has to be asked BEFORE the vehicle picker opens rather than after — a
+    picker that opens on the wrong medium is the bug this shipped with, where a
+    stale crossing stage left Arcade offering boats.
+
+    `estero` used to be reachable only by parking on the muelle in mid-run and
+    accepting a boat, which then started the Travesía's whole race — gates,
+    clock and all — inside a mode that has no clock. Choosing it at the menu is
+    what let that offer be deleted.
+
+    src/game/modes.js `startExplore`, src/ui/App.jsx, src/ui/screens/RealmPick.jsx."""
+    CIUDAD = "ciudad"
+    ESTERO = "estero"
+
+
+class UIScreen(StrEnum):
+    """React's screen state machine — a finite internal vocabulary.
+
+    `App.jsx` branches on these screen IDs in about thirty places, and
+    three of them (`settings`, `shop`, `realmpick`) also decide whether the
+    simulation is PAUSED and whether the attract camera runs, so a typo is not
+    a blank screen: it is a live game running behind a menu.
+
+    They are also the keys of `src/ui/screens.json`, the per-screen registry the
+    world editor authors, and of the manifest's `editorUI.screens` block. Three
+    files keyed by the same names is exactly the shape that drifts."""
+    BOOT = "boot"
+    INTRO = "intro"
+    TITLE = "title"
+    STAGEPICK = "stagepick"
+    REALMPICK = "realmpick"
+    BRIEF = "brief"
+    MODEBRIEF = "modebrief"
+    TUTBRIEF = "tutbrief"
+    VEHPICK = "vehpick"
+    PASSAGE = "passage"
+    PLAYING = "playing"
+    PAUSED = "paused"
+    OVER = "over"
+    SETTINGS = "settings"
+    SUPPORTERS = "supporters"
+    SHOP = "shop"
+    RAILWAY = "railway"
+
+
+class CoinType(StrEnum):
+    """The four coins, and each one is a different PROMISE to the player.
+
+    `gold` is the ordinary street coin. `silver` is the estadio's coin rain —
+    bigger, worth many times a gold one, and a different METAL so a glance tells
+    you the burst on the pitch is not just more of the same. The other two are
+    implemented and unspawned, which is deliberate: art with no value to select
+    it is drift, so naming them is what keeps the palette honest.
+
+    The palette itself stays a registry (`COIN_TYPES` in c2d/entities.js) — a
+    rim, a face, a mark and a radius are properties, not identity."""
+    GOLD = "gold"
+    SILVER = "silver"
+    BONUS = "bonus"
+    FROZEN = "frozen"
+
+
+class LightType(StrEnum):
+    """WHAT A LAMP IS — the fixture, never where it stands.
+
+    The two halves of a light were split down the middle: its POSITION has been
+    authored in the editor since editor features shipped (`W.LIGHTS`), while
+    what it looks like was a four-branch if/else with the colours inline and the
+    geometry as ternaries on `type === "stadium"`. So a light could be put
+    anywhere and a fifth kind could not be designed at all.
+
+    This is the identity; `src/assets/lights.json` holds the properties — core,
+    halo, radius and the fixture's own part list — exactly the split
+    `surfaces.json` makes for a surface class. A `stadium` fixture is not a
+    brighter street lamp: it is a mast with a crossbar of four floodlights, and
+    that is why it is a member here rather than a radius.
+
+    Read by src/render/c2d/lights.js and the editor's light inspector."""
+    WARM = "warm"
+    LED = "led"
+    AMBER = "amber"
+    STADIUM = "stadium"
+
+
+class CrossingOutcome(StrEnum):
+    """How la Travesía ended, and it decides PROGRESSION versus failure.
+
+    It was a free string passed to `endCrossing`, which is the one place it must
+    not be: landing at Pitahaya clears the stage, unlocks the next district and
+    writes the save; swamping in the mangrove does none of that. Before the win
+    path existed at all, those two were the same outcome — `endCrossing`
+    recorded a result nothing in the codebase read."""
+    LANDED = "landed"
+    SWAMPED = "swamped"
+
+
+class EsteroEncounterKind(StrEnum):
+    """What you can meet in the estuary — eight behaviours, not eight sprites.
+
+    They are deliberately not one collision: a `panga` costs you and MOVES, so
+    it has to be read rather than memorised; a `fish` school PAYS you for
+    leaving the racing line; `gulls` take the view away without touching you; a
+    `remolino` is not a collision at all but a current that keeps working on you
+    the whole time you are in it. `advanceEstero` branches on this."""
+    PANGA = "panga"
+    FISH = "fish"
+    GULLS = "gulls"
+    ROOTS = "roots"
+    REMOLINO = "remolino"
+    PESCADOR = "pescador"
+    YATE = "yate"
+    BANCO = "banco"
+
+
+class NpcMovement(StrEnum):
+    """How a person GETS ABOUT — the algorithm `physics.js` advances them with.
+
+    JSON chooses among code-owned movers, which is the whole shape of
+    `npcTypes.json`: an authored type may pick `rail` and walk the sidewalks
+    like everybody else, but it cannot invent a way of moving. A type naming one
+    that does not exist simply stands still forever, which reads as a bug in the
+    world rather than a typo in a registry."""
+    RAIL = "rail"
+    BOUNDED_RANDOM = "bounded-random"
+    ROUTE = "route"
+    STATIONARY = "stationary"

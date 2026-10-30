@@ -1,15 +1,22 @@
 // Input: keyboard, gamepad and touch. Exposes the shared `input` axis object
-// that physics reads each frame. Touch is "point-to-drive": hold a finger on
-// the play area and the car steers toward it (attachAim + applyTouchAim),
-// plus on-screen brake/boost pedals (attachTouch).
+// that physics reads each frame. Touch is ONE-FINGER point-to-drive (the
+// original scheme, back by popular demand): hold a finger on the play area
+// and the car steers TOWARD it; the finger's distance to the vehicle is the
+// throttle — near = slow, far = fast, very far = TURBO. Brake ✋ is a pedal.
 
 export const keys = {};
-export const input = { up: 0, down: 0, left: 0, right: 0, brake: 0, boost: 0 };
+// snapT: brief "go THERE now" window opened when the drive finger is lifted and
+// placed again — tighter steering + extra turn authority (physics reads it).
+// While the finger is merely held, the base drift feel is untouched.
+export const input = { up: 0, down: 0, left: 0, right: 0, brake: 0, boost: 0, snapT: 0 };
 
-// One aim finger tracked by touch identifier so a second finger can hold the
-// brake/boost pedals at the same time. Coordinates are client (screen) px.
-const touchAim = { active: false, x: 0, y: 0, id: null };
-let touchBrake = false, touchBoost = false;
+// drive finger (canvas) — distance mapping in css px
+const THR_DEAD = 30;    // closer than this = coast
+const THR_FULL = 170;   // this far = full throttle
+const THR_TURBO = 235;  // beyond this = turbo
+
+const aim = { active: false, id: null, x: 0, y: 0 };          // drive finger
+let touchBrake = false;
 
 if (typeof window !== "undefined") {
   window.addEventListener("keydown", (e) => {
@@ -27,32 +34,49 @@ export function readInput() {
   input.brake = (keys[" "] || keys.shift) ? 1 : 0;
   input.boost = (keys.x) ? 1 : 0;
   if (touchBrake) input.brake = 1;
-  if (touchBoost) input.boost = 1;
 }
 
-// Point-to-drive: steer the car toward the held finger. Runs after readInput
-// so it max-merges with keyboard/gamepad. Works in SCREEN space (the camera
-// transform is uniform scale+translate, so angles are preserved) — the car is
-// projected to screen because the camera leads it (lookahead ≠ center).
-export function applyTouchAim(cam, p) {
-  if (!touchAim.active) return;
-  // fall back if the renderer hasn't published the view yet (same spirit as
-  // the camera clamp fallback in physics.js)
+// Touch → axes, run after readInput (max-merges with keyboard/gamepad).
+// Point-to-drive: the camera transform is a uniform scale+translate, so a
+// screen angle IS a world angle — project the car to screen, steer toward
+// the finger, throttle by distance (behind-the-car damping keeps U-turns
+// controllable), turbo past the far threshold.
+// THE MODEL IS NOT NEGOTIABLE AND DOES NOT CHANGE: one finger, steer toward it,
+// throttle by distance, far = turbo, and the held-finger drift feel is the whole
+// point of it. AND IT IS THE SAME MODEL IN BOTH MEDIA.
+//
+// `0.35 + 0.65*cos(e)` is the behind-the-vehicle damping: pointing backwards
+// should mean a slow, drifty U-turn. There used to be a `WATER_THR_FLOOR = 0.62`
+// here so a hull kept steerage way through it — the reasoning being that a boat
+// needs way IN ORDER to turn. She does not any more: `hullPivot` in `boat.js`
+// pays for the pointing directly, so the throttle goes back to being the
+// player's in both media. A boat under 62% power whenever a finger is down is a
+// boat that is driving itself.
+export function applyTouch(cam, p, veh) {
+  if (!aim.active) return;
   const zoom = cam.zoom || 5.5;
   const vw = cam.vw || window.innerWidth, vh = cam.vh || window.innerHeight;
   const sx = (p.x - cam.x) * zoom + vw / 2;
   const sy = (p.y - cam.y) * zoom + vh / 2;
-  const dx = touchAim.x - sx, dy = touchAim.y - sy;
+  const dx = aim.x - sx, dy = aim.y - sy;
   const d = Math.hypot(dx, dy);
-  if (d < 24) return;                                  // dead zone: coast
-  let e = Math.atan2(dy, dx) - p.a;
+  if (d < THR_DEAD) return;                            // dead zone: coast
+  // …MENOS EL GIRO DE LA CÁMARA. `atan2` da un ángulo de PANTALLA y `p.a` es de
+  // MUNDO; hoy coinciden porque no hay giro, y en un nivel girado no. Sin este
+  // término el dedo apunta 90° al lado de donde el jugador cree — que es la
+  // única forma de arruinar el control de un dedo.
+  let e = Math.atan2(dy, dx) - (cam.rot || 0) - p.a;
   e = Math.atan2(Math.sin(e), Math.cos(e));            // shortest angle diff
-  const steer = Math.max(-1, Math.min(1, e / 0.35));   // full lock past ~20°
+  const snap = input.snapT > 0;
+  if (snap && Math.abs(e) < 0.2) input.snapT = 0;      // facing the finger: snap done
+  const steer = Math.max(-1, Math.min(1, e / (snap ? 0.28 : 0.35))); // full lock past ~16°/20°
   if (steer > 0) input.right = Math.max(input.right, steer);
   else input.left = Math.max(input.left, -steer);
-  let thr = Math.max(0, Math.min(1, (d - 48) / 96));   // far finger = faster
-  thr *= 0.35 + 0.65 * Math.max(0, Math.cos(e));       // behind = slow U-turn
+  let thr = Math.min(1, (d - THR_DEAD) / (THR_FULL - THR_DEAD));
+  thr *= snap ? 0.55 + 0.45 * Math.max(0, Math.cos(e))  // snap: keep pace through the pivot
+              : 0.35 + 0.65 * Math.max(0, Math.cos(e)); // held: behind = slow U-turn (drift feel)
   input.up = Math.max(input.up, thr);
+  if (d > THR_TURBO && Math.cos(e) > 0.3) input.boost = 1; // far & ahead = turbo
 }
 
 export function pollGamepad() {
@@ -70,35 +94,48 @@ export function pollGamepad() {
   }
 }
 
-// Claim ONE finger on the play canvas as the aim finger; pedals keep their
-// own fingers (touches starting on a pedal never reach the canvas).
-export function attachAim(canvasEl) {
+// The drive finger lives on the play canvas (below all UI), so HUD buttons
+// and the brake pedal never fight it.
+export function attachThrottle(canvasEl) {
   if (!canvasEl) return;
   canvasEl.addEventListener("touchstart", (e) => {
     e.preventDefault();
-    if (touchAim.id === null && e.changedTouches.length) {
+    // Stale claim? A finger that slid OFF the screen edge never fires
+    // touchend on the canvas, leaving aim.id pointing at a dead touch and
+    // ignoring every new finger ("car won't move anymore"). If the claimed
+    // id is no longer among the active touches, release it first.
+    if (aim.id !== null) {
+      let alive = false;
+      for (const t of e.touches) if (t.identifier === aim.id) alive = true;
+      if (!alive) { aim.id = null; aim.active = false; }
+    }
+    if (aim.id === null && e.changedTouches.length) {
       const t = e.changedTouches[0];
-      touchAim.id = t.identifier;
-      touchAim.active = true;
-      touchAim.x = t.clientX; touchAim.y = t.clientY;
+      aim.id = t.identifier; aim.active = true;
+      aim.x = t.clientX; aim.y = t.clientY;
+      input.snapT = 0.6; // fresh finger = snap-turn window
     }
   }, { passive: false });
   const track = (e) => {
     for (const t of e.changedTouches) {
-      if (t.identifier === touchAim.id) { touchAim.x = t.clientX; touchAim.y = t.clientY; }
+      if (t.identifier === aim.id) { aim.x = t.clientX; aim.y = t.clientY; }
     }
   };
   const release = (e) => {
     for (const t of e.changedTouches) {
-      if (t.identifier === touchAim.id) { touchAim.id = null; touchAim.active = false; }
+      if (t.identifier === aim.id) { aim.id = null; aim.active = false; }
     }
   };
   canvasEl.addEventListener("touchmove", track, { passive: true });
   canvasEl.addEventListener("touchend", release);
   canvasEl.addEventListener("touchcancel", release);
+  // release also at the window level: end/cancel for a finger that left the
+  // viewport lands here, not on the canvas
+  window.addEventListener("touchend", release);
+  window.addEventListener("touchcancel", release);
 }
 
-export function attachTouch(brakeEl, boostEl) {
+export function attachTouch(brakeEl) {
   const bind = (el, set) => {
     if (!el) return;
     el.addEventListener("touchstart", (e) => { e.preventDefault(); set(true); }, { passive: false });
@@ -106,5 +143,4 @@ export function attachTouch(brakeEl, boostEl) {
     el.addEventListener("touchcancel", () => set(false));
   };
   bind(brakeEl, (v) => { touchBrake = v; });
-  bind(boostEl, (v) => { touchBoost = v; });
 }

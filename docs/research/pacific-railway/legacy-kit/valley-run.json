@@ -1,0 +1,37 @@
+{
+  "$schema": "../schema/level.schema.json",
+  "kitVersion": "1.0.0",
+  "start": {
+    "x": 128,
+    "y": 460
+  },
+  "background": "alpine-loop",
+  "train": {
+    "cars": 3,
+    "spacing": 168,
+    "skin": "classic"
+  },
+  "id": "valley-run",
+  "name": "Paseo por el valle",
+  "description": "Nivel 1 del MVP.",
+  "pieces": [
+    "station",
+    "straight",
+    "flat-to-up",
+    "chain-up",
+    "up-to-flat",
+    "straight",
+    "flat-to-down",
+    "slope-down",
+    "down-to-flat",
+    "straight",
+    "loop-small",
+    "straight",
+    "flat-to-down",
+    "down-to-flat",
+    "flat-to-up",
+    "up-to-flat",
+    "straight",
+    "brake"
+  ]
+}

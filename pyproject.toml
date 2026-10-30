@@ -1,0 +1,27 @@
+[project]
+name = "churchill"
+version = "2.0.0"
+description = "La Ruta del Churchill — world pipeline and (later) the backend it shares its models with"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.9",
+]
+
+[project.optional-dependencies]
+# The future accounts / device-sync / management service. It reuses
+# churchill.world.dto (the same Pydantic models the builder emits) and the
+# repository Protocols, so a route can serve a Parcel without redefining it.
+server = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+]
+
+[project.scripts]
+churchill-world = "churchill.world.pipeline.runner:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["churchill*"]

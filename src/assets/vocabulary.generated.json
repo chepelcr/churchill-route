@@ -1,0 +1,328 @@
+{
+  "_generated": "tools/gen_vocabulary.py from churchill/world/enums/ — read-only; the Python enums are the authority",
+  "version": 1,
+  "surface": {
+    "classes": [
+      "water",
+      "land",
+      "beach",
+      "road",
+      "paseo",
+      "bridge",
+      "acera",
+      "boulevard",
+      "barro",
+      "gravel",
+      "malecon"
+    ],
+    "byName": {
+      "water": 0,
+      "land": 1,
+      "beach": 2,
+      "road": 3,
+      "paseo": 4,
+      "bridge": 5,
+      "acera": 6,
+      "boulevard": 7,
+      "barro": 8,
+      "gravel": 9,
+      "malecon": 10
+    },
+    "roles": {
+      "DRIVABLE": [
+        "road",
+        "paseo",
+        "bridge",
+        "beach",
+        "boulevard",
+        "barro",
+        "gravel"
+      ],
+      "WALL": [
+        "land",
+        "acera"
+      ],
+      "STREET": [
+        "road",
+        "paseo",
+        "bridge",
+        "acera",
+        "boulevard",
+        "barro",
+        "gravel",
+        "malecon"
+      ],
+      "CARRIAGEWAY": [
+        "road",
+        "paseo",
+        "bridge",
+        "barro",
+        "gravel"
+      ],
+      "CALLE": [
+        "road",
+        "paseo",
+        "barro",
+        "gravel"
+      ]
+    }
+  },
+  "enums": {
+    "BLOCK_LAYOUT": [
+      "bands",
+      "streets-quad",
+      "footprint-lots",
+      "water-inlet"
+    ],
+    "PARCEL_USE": [
+      "church",
+      "cathedral",
+      "garden",
+      "park",
+      "plaza",
+      "stadium",
+      "boulevard",
+      "civic",
+      "lot",
+      "school",
+      "kinder",
+      "campus",
+      "fuel",
+      "market",
+      "patio"
+    ],
+    "GREEN_TYPE": [
+      "park",
+      "plaza",
+      "pool",
+      "stadium",
+      "marine",
+      "esplanade"
+    ],
+    "LANDMARK_TYPE": [
+      "kiosk",
+      "ferry",
+      "cruise",
+      "port",
+      "marina",
+      "trainstation",
+      "lighthouse",
+      "church",
+      "cathedral",
+      "market",
+      "super",
+      "restaurant",
+      "hotel",
+      "house",
+      "civic",
+      "park",
+      "pool",
+      "stadium",
+      "beachsign",
+      "sign",
+      "bridge",
+      "estuary",
+      "highway",
+      "village",
+      "museum",
+      "anchor"
+    ],
+    "PATH_SURFACE": [
+      "paved",
+      "sand"
+    ],
+    "WEATHER": [
+      "sunny",
+      "sunset",
+      "storm",
+      "night"
+    ],
+    "ROAD_CLASS": [
+      "trunk",
+      "trunk_link",
+      "primary",
+      "primary_link",
+      "secondary",
+      "tertiary",
+      "tertiary_link",
+      "residential",
+      "unclassified",
+      "living_street",
+      "service",
+      "pedestrian",
+      "paseo",
+      "bridge"
+    ],
+    "ISLAND_KIND": [
+      "median",
+      "cuadra"
+    ],
+    "SIGN_KIND": [
+      "alto",
+      "ceda",
+      "semaforo",
+      "semaforo_centered",
+      "semaforo_overhead",
+      "speed_limit",
+      "crossing",
+      "tope",
+      "banca",
+      "bus"
+    ],
+    "PIER_STYLE": [
+      "concrete",
+      "timber",
+      "apron",
+      "calzada",
+      "malecon"
+    ],
+    "LINE_END": [
+      "first",
+      "last"
+    ],
+    "FIELD_SPORT": [
+      "soccer",
+      "basketball",
+      "skateboard",
+      "baseball",
+      "tennis"
+    ],
+    "STAGE_KIND": [
+      "delivery",
+      "crossing"
+    ],
+    "VEHICLE_MEDIUM": [
+      "land",
+      "water"
+    ],
+    "VEHICLE_KIND": [
+      "bike",
+      "car",
+      "boat"
+    ],
+    "RENDERER_BACKEND": [
+      "canvas",
+      "pixi"
+    ],
+    "GAME_MODE": [
+      "story",
+      "arcade",
+      "explore",
+      "tutorial"
+    ],
+    "EXPLORE_REALM": [
+      "ciudad",
+      "estero"
+    ],
+    "UI_SCREEN": [
+      "boot",
+      "intro",
+      "title",
+      "stagepick",
+      "realmpick",
+      "brief",
+      "modebrief",
+      "tutbrief",
+      "vehpick",
+      "passage",
+      "playing",
+      "paused",
+      "over",
+      "settings",
+      "supporters",
+      "shop",
+      "railway"
+    ],
+    "COIN_TYPE": [
+      "gold",
+      "silver",
+      "bonus",
+      "frozen"
+    ],
+    "LIGHT_TYPE": [
+      "warm",
+      "led",
+      "amber",
+      "stadium"
+    ],
+    "CROSSING_OUTCOME": [
+      "landed",
+      "swamped"
+    ],
+    "ESTERO_ENCOUNTER": [
+      "panga",
+      "fish",
+      "gulls",
+      "roots",
+      "remolino",
+      "pescador",
+      "yate",
+      "banco"
+    ],
+    "NPC_MOVEMENT": [
+      "rail",
+      "bounded-random",
+      "route",
+      "stationary"
+    ],
+    "HOST_KIND": [
+      "cuadra",
+      "parcel",
+      "landmark",
+      "stadium",
+      "green"
+    ],
+    "GEOMETRY_KIND": [
+      "point",
+      "line",
+      "polygon"
+    ],
+    "EDITOR_OPERATION": [
+      "add",
+      "modify"
+    ]
+  },
+  "field": {
+    "roles": {
+      "COURT": [
+        "basketball",
+        "skateboard"
+      ]
+    }
+  },
+  "road": {
+    "rank": {
+      "service": 0,
+      "pedestrian": 1,
+      "living_street": 2,
+      "residential": 2,
+      "unclassified": 3,
+      "tertiary": 4,
+      "tertiary_link": 4,
+      "secondary": 5,
+      "primary_link": 6,
+      "primary": 7,
+      "trunk_link": 8,
+      "trunk": 9,
+      "paseo": 10,
+      "bridge": 11
+    },
+    "roles": {
+      "YIELDS_TO": [
+        "trunk",
+        "trunk_link",
+        "primary",
+        "primary_link",
+        "secondary",
+        "paseo"
+      ],
+      "TRAFFIC_MAIN": [
+        "trunk",
+        "trunk_link",
+        "primary",
+        "primary_link",
+        "secondary"
+      ]
+    }
+  }
+}

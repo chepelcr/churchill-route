@@ -1,0 +1,28 @@
+{
+  "snapshot": "2026-10-27T21:23:59Z",
+  "method": "Undirected Dijkstra over actual OSM node connections; haversine lengths; no fabricated gap connectors",
+  "source_relation": 14070544,
+  "relation_version": 5,
+  "relation_components": 2,
+  "relation_member_ways": 75,
+  "route_way_runs": 85,
+  "route_unique_ways": 82,
+  "additional_way_ids": [
+    326847210,
+    370366715,
+    1122692832,
+    1226582150,
+    1226582151,
+    1227048063,
+    1227910684
+  ],
+  "point_count": 1761,
+  "length_to_depot_km": 114.999,
+  "length_to_muelle_spur_km": 115.781,
+  "railway_tags_km": {
+    "rail": 18.792,
+    "disused": 96.988
+  },
+  "checkpoints_over_100m_from_route": [],
+  "warning": "Graph continuity is not proof that track exists, is safe, passable, or in service. Lifecycle tags and imagery require review."
+}

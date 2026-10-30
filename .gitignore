@@ -1,7 +1,17 @@
 .DS_Store
 node_modules/
+.pnpm-store/
 dist/
+# unminified debug builds (`vite build --minify false --outDir dist-dbg`),
+# used to read a production-only stack trace. Never committed.
+dist-dbg/
 *.local
+
+# Separate private visual world editor (owns its own Git repository)
+/world-editor/
+
+# Separate railway authoring tool (chepelcr/roller-coaster)
+/railway-builder/
 
 # Android (Capacitor) build outputs — the android/ project itself is committed
 android/.gradle/
@@ -12,3 +22,14 @@ android/.idea/
 *.keystore
 *.jks
 android/keystore/
+
+# Python bytecode cache (build tools)
+__pycache__/
+*.pyc
+
+# Claude Code: the /roadmap command is shared, the rest is per-machine
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Logs del servidor de desarrollo (./reboot-server.sh)
+logs/

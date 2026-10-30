@@ -1,341 +1,530 @@
-# La Ruta del Churchill — Roadmap
+# La Ruta del Churchill — trabajo abierto
 
-Audit date: 2026-07-05, comparing `docs/GAME_DESIGN.md` against the implementation.
-The OSM world pipeline (`tools/build_world.py` → `src/world/data.js`) and the three
-game modes are live; the items below are what remains.
+**Sólo lo que falta.** Todo lo hecho está en `docs/ROADMAP-ARCHIVE.md` (el
+registro de planificación, con el porqué de cada decisión) y en
+`docs/changelog/YYYY-MM-DD.md` (las notas de entrega, listas para publicar).
 
-## ✅ Game-feel + mobile + APK pass — done 2026-07-10/11
+Este archivo llegó a 2 400 líneas y el 2026-08-14 se podó: varias de sus
+secciones más viejas afirmaban cosas que habían dejado de ser ciertas —que no
+había audio, que toda la interfaz estaba en español duro, que el mapa 2-D estaba
+pendiente, que había 770 edificios— y un roadmap que miente es peor que ninguno.
+**Cada afirmación se verificó contra el árbol antes de tocarla**; las que se
+cayeron están al final, listadas en vez de borradas en silencio.
 
-- [x] **Separator final fix** (Calle 21 zone): removed the 2A tree-line
-      conversion — Avenida 2A is a normal drivable street again and the
-      **palm median runs inline through the whole Paseo de los Turistas**;
-      León Cortés tree strip starts at the first cuadra corner (curve stays
-      drivable); `connect_leon_calle20()` extends the paseo tip so Calle 20
-      T-junctions instead of dying on sand. (`tools/build_world.py`)
-- [x] **Text pass**: removed every "mae"; humanized the telegraphic stage
-      briefs, customer lines and mode tips; player-facing wording is now
-      **"nivel" + "completá"** (was "etapa"/"limpiá") across title, HUD,
-      brief, results, barriers.
-- [x] **Mobile controls fix**: touch steering was dead on the first
-      fullscreen entry — mode starts replaced `state.cam`, wiping the
-      renderer-published `zoom/vw/vh`. Now the cam is mutated in place,
-      `setupCanvas` re-runs resize on `fullscreenchange`, and `applyTouchAim`
-      falls back to window size instead of bailing.
-- [x] **Pause button** (⏸) + mute (🔊) in the HUD; auto-pause when the tab/app
-      backgrounds. Touch players can finally pause.
-- [x] **Attract-mode menus**: the live world (sunset, traffic, gulls, boats)
-      drifts behind the title + level select instead of a flat gradient
-      (`src/game/attract.js`, `advanceEntities(dt, withPlayer)` extracted from
-      `physics.update`); animated screen transitions; keyboard + gamepad menu
-      navigation (`useMenuNav`); scrollbars/`confirm()` dialog removed.
-- [x] **Procedural WebAudio SFX** (`src/game/audio.js`, no asset files):
-      engine hum + drift, pickup/delivery/perfect/combo/melt-fail, menu blips;
-      **per-vehicle engine voices** (bici freewheel → turbo kart saw); mute
-      persisted to localStorage.
-- [x] **Level select redesign**: Geometry-Dash-style **carousel** — one big
-      readable level card with prev/next arrows + dots — beside a separate
-      **vehicle card** with a live in-game sprite preview (`paintVehicle`
-      exposed via the Renderer seam) and stat bars. Title screen's intro moved
-      behind an ⓘ toggle so mode buttons stay above the fold on mobile.
-- [x] **Self-hosted fonts** (`@fontsource`): Google Fonts links removed, game
-      renders fully offline; SW cache → `churchill-v3`.
-- [x] **Android APK (Capacitor)**: committed `android/` Gradle project
-      (`dev.jcampos.churchill`), landscape + sticky-immersive, SW/immersive
-      skipped in the WebView; new churchill-glass icon + splash. Release
-      signing via a persistent keystore (secrets), and the **Pages deploy
-      workflow now builds a signed APK published at `/churchill.apk`** on every
-      push to `main`.
+---
 
-## 🚧 Modernization initiative (2026-07-06) — beautify, modularize, tool-up
+## 1. El mundo — decisiones que esperan al usuario
 
-Goal: match the reference art (`how-look-puntarenas/…hhm9…png`), fix the small/
-uneven cuadras, and make the codebase maintainable. Guided by
-`docs/Librería Gráfica para Juego 2D (1).md` (concludes PixiJS/WebGL).
-Full plan lives in the approved plan file; status tracked here.
+- [x] ~~**El reescalado: elegir el encuadre EN UN TELÉFONO.**~~ **Cerrado el
+      2026-08-27 en p = 3.125** (`ARCADE_STREET_MUL` 1,856). El encuadre se deja
+      en 160 m, así que la vista en metros no cambia en ninguna pantalla y lo
+      que encoge es el carro: 10,4 m → 8,3, o sea 57 → 46 px de pantalla en
+      teléfono. Las doce clases de vía conservan su ancho pintado AL PÍXEL —la
+      restricción siempre fue en píxeles— y la calle encoge en metros, 16,4 →
+      13,1, que es el suelo que la manzana recupera (+8,9 % en la cuadra del
+      Mercado). La retícula del ráster no se mueve: 19 850 × 12 445 celdas en
+      1 000 tiles, mismo suelo a la misma resolución.
 
-- [x] **Milestone A — Tooling foundation** _(done 2026-07-06)_
-  - [x] pnpm + Vite build (npm React, drop CDN + in-browser Babel); scripts
-        `dev`/`build`/`preview`/`inventory`/`world:build`; `dist/` for Pages.
-  - [x] Split monolithic `engine.js`/`world.js`/`ui.jsx`/`tweaks-panel.jsx` into
-        ES modules: `src/game`, `src/world`, `src/render` (Renderer seam →
-        Canvas2D backend), `src/ui` (App + screen components + tweaks).
-  - [x] `pnpm inventory` → `inventory.json` (element catalogs + world counts +
-        `src/` module map) so elements are trackable without reading all code.
-  - [x] Deploy workflow builds with pnpm and publishes `dist/`; `public/sw.js`
-        rewritten for Vite hashed assets; `build_world.py` emits ESM data.
-  - [x] Verified: builds clean, runs under Vite with zero console errors,
-        deterministic `world:build` reproduces identical data.
-- [x] **Milestone B — Cuadras, Paseo avenue & relaxed driving** _(done 2026-07-06)_
-  - [x] Unify cuadras: drop minor alleys/paths (service/pedestrian) so blocks
-        read bigger/explorable; main grid + intersections + El Roble bridge +
-        splits kept. Synth buildings only on cuadra land (never aceras/streets);
-        interiors may stay open (frontage band).
-  - [x] Paseo de los Turistas → principal street with a dashed **palm median**
-        (solid blocking separator + periodic crossing gaps).
-  - [x] Engine feel: zoom 2.4→3.2; slower higher-grip vehicles + slower traffic
-        (relaxed cruise); pedestrians walk aceras + cross streets; vendor carts
-        back on the Paseo aceras; smoother cuadra/building/traffic/water bumps.
-  - [x] Feel iteration (2026-07-07): wider "giant" streets; zoom →5.5; **aceras
-        non-drivable** (drive only the streets, slide along curbs); no parked
-        cars; bigger vehicles/traffic; **planted green Paseo median** (emitted
-        geometry + render); buildings never overlap street/acera; drivable POI
-        aprons. Map deformed wider (CROSS_EXAG 1.95, canvas 8800×1640). Verified
-        all 24 POIs reachable (97.6% connectivity).
-- [x] **Milestone B★ — Cuadrícula standardization** _(done 2026-07-10)_ —
-      make cuadra/street sizes uniform and identical across devices by laying
-      the city on a tile grid (a *cuadrícula* = one tile). Spec:
-  - **Cuadrícula unit** `CUAD` px, emitted in `meta.cuad`; everything is a
-    whole number of cuadrículas.
-  - **Streets**: secondary = **4 cuadrículas** (2 per lane); principal = **6
-    cuadrículas** (3 per drive side).
-  - **Cuadras (blocks)**: minimum **6×6 cuadrículas** of buildable land **+ 1
-    cuadrícula of acera on every side** (so ≥8×8 footprint). A block **grows to
-    fit the summatory of its buildings' sizes** — buildings may differ in size
-    (each a whole number of cuadrículas), and the cuadra's dimensions are the
-    sum of its lots (+ gaps + the acera ring), snapped to the grid, never below
-    the 6×6 minimum.
-  - **Keep all OSM streets** (faithful map): the grid standardizes sizes by
-    **snapping streets/blocks to the cuadrícula**, not by dropping streets.
-  - **Shapes preserved**: blocks are built from cuadrícula cells but keep
-    organic shapes where the network makes them — squares, triangles,
-    trapeziums, rounds, and L-shapes (e.g. the L-cuadra at El Faro).
-  - **Buildings snap to the cuadrícula** inside each block, inset by the acera
-    ring, so they never overlap aceras or streets and read uniform.
-  - **Device standardization**: at most **12 cuadrículas per view**; the engine
-    computes a **responsive zoom** = `viewportWidth / (cuadsPerView × CUAD)` so
-    every device shows the same amount of city (nice, surprising exploration).
-  - Care at **intersections** (grid-align crossings; don't orphan blocks).
-  - Steps: (1) emit `meta.cuad`/`cuadsPerView` + responsive zoom [done first];
-    (2) quantize acera to 1 cuadrícula + grid-snap building lots; (3) prune/snap
-    the road network to enforce min 6×6 blocks while preserving shapes; (4)
-    regen, verify connectivity + look, tune.
-  - **Shipped 2026-07-10** (decisions: keep OSM centerlines, quantize widths
-    only; undersized blocks pave to plaza; width tiers principal/standard/minor
-    = 6/4/2 CUAD): streets 120/80/40px + 1-CUAD aceras; **3× world scale**
-    (26400×4920 — at the old scale the corridors consumed the centro; 44 real
-    cuadras + 243 plazas + 122 green strips now); `detect_blocks()` three-way
-    classification preserves organic shapes; all 8000 buildings are whole-CUAD
-    rects placed inside one block each (overlap impossible by construction);
-    zoom = width/(12·CUAD), floor 3.5, no upper clamp; **build gate** fails on
-    any unreachable POI (flood-fill from spawn) + prints the block census.
-    Gate also fixed two pre-existing unreachable POIs (parquemar, matalimon).
-  - Follow-ups: **feel pass for the 3× world** — vehicle speeds/timers tuned
-    for longer trips, sprite scale vs 120px streets, traffic/ped spawn pitch;
-    `tools/headless-check.js` is stale (pre-Milestone-A file layout) — the
-    Python build gate replaces it for world checks.
-- [ ] **Milestone C — PixiJS / WebGL render backend** behind `src/render/Renderer.js`
-  - [ ] `PIXI.Application({ resolution: dpr, autoDensity })`, `NEAREST` scale +
-        CSS `image-rendering`, integer-multiple camera (kills jitter).
-  - [ ] Layered containers (water → land → blocks/roofs → roads → shadows →
-        landmarks → entities → weather → overlays); static world cached once.
-  - [ ] Water `DisplacementFilter` (+ optional `ReflectionFilter`); per-weather
-        `ColorMatrixFilter` grading; normal-map roof/Faro lighting (stretch).
-  - [ ] Match reference palette (terracotta/green roofs, turquoise gulf, sand).
+      Los pasos 3-5 fueron con él: `GRID_CELL` y `CUAD` se derivan solos desde
+      el paso 0, las velocidades subieron por 1,25 (px/s), los relojes de etapa
+      **se conservan por construcción** —distancias y velocidades escalan
+      juntas— y el substepping de física entró en la misma tanda.
 
-- [ ] **Milestone D — Full 2-D real-Puntarenas map (transitable)** _(requirement,
-      2026-07-11; depends on Milestone C)_
-  **Objective:** the game must be traversable over the *real* Puntarenas, not just
-  the unrolled route strip. Today the world is a **corridor-unroll** (`x` =
-  arclength along the Faro→Caldera spine, `y` = exaggerated perpendicular offset)
-  clipped to a **~900 m half-width corridor** — so ~2,160 of 2,666 OSM streets
-  (Barranca, El Roble, Esparza, Chacarita, the north bank, the real *Avenida del
-  Ferrocarril*) are omitted **by design**. This milestone replaces that with a
-  true planar 2-D map of the whole OSM extent.
-  - **Can Pixi do it? Yes — Pixi is the enabler, not the whole job.** WebGL/Pixi
-    is what makes a full-town 2-D map viable at 60 fps (thousands of sprites,
-    tiled culling, free pan/zoom); the Canvas2D backend can't scale to it. But
-    the *heart* of the change is the **world projection**, independent of the
-    renderer.
-  - **Projection (`tools/build_world.py`)** — swap the corridor-unroll for a
-    **planar local projection** (ENU metres / Web-Mercator) of the full OSM
-    bounds. Keep it deterministic. Districts become **2-D polygonal regions**
-    (not `x`-bands); barriers become region borders.
-  - **World data / budget** — a full-town RLE surface grid + all roads/buildings
-    will blow the current 2 MB `data.js` budget → **chunk/stream** the world
-    (tiled grid + per-tile road/building lists) and load lazily.
-  - **Renderer (Pixi, Milestone C seam)** — tiled static-world containers with
-    viewport culling; **free 2-D camera** (pan/zoom), route-follow demoted to an
-    optional guided-story view; minimap becomes a real 2-D map.
-  - **Sim** — physics/collision already grid-based (`surfaceAt`), scales to 2-D;
-    `reachablePointNear`, `nearestKiosk`, delivery are already 2-D. Re-anchor
-    stages/kiosks/customers to 2-D geo. Traffic/ped spawns per-tile.
-  - **Migration path** — land the Pixi backend (C) first, then swap projection +
-    world-gen behind the `Renderer.js` seam so Canvas2D/corridor stays runnable
-    until D is verified.
-  - **Brings in for free:** the real Avenida del Ferrocarril, Cocal-entrance and
-    Chacarita/20-Nov street topology (the in-corridor "revoltijo" is partly an
-    unroll artifact), and true block shapes — several World-fidelity items below
-    fold into this.
+      Y hubo un cuarto paso que `RESCALE.md` no podía prever: **deshacer el
+      campo de dilatación**, que era exactamente la proyección no uniforme
+      contra la que ese documento advierte. Medido en la ventana del centro,
+      el reescalado le gana de frente: **31 `ghost` sin campo a 2,5, 26 con
+      campo, 21 con el reescalado** — más edificios encajados y las calles
+      rectas.
 
-## ✅ City-feel + mobile pass — done 2026-07-10
+- [x] ~~**La gradería: los otros tres lados, y por dónde se entra.**~~
+      **Cerrado el 2026-08-23.** Lito Pérez emite cuatro bandas de 12 px con las
+      bocas libres en las esquinas y colisión SÓLO bajo esas bandas
+      (`3 029 celdas manejables / 365 bajo gradería`); los cuadriláteros viajan
+      en el landmark, así que el arte y la colisión no pueden derivar. La sombra
+      dejó de ser el `quad(-3,0,0,0)` fijo y sigue al sol, con `dy < 0` forzado
+      para que caiga al norte: offsets medidos **(9,30, −3,41), (0, −0,92),
+      (−9,30, −3,41), (−9,04, −4,23) px**. `smoke:standshadow` nuevo. El
+      validador del editor acepta `sides` plural o `side` legado y rechaza
+      duplicados y mezclas. Las Playitas conserva su lado único, que es lo que
+      prueba que el camino de compatibilidad sigue vivo.
 
-- [x] **Beachfront avenue separators (final layout, user-iterated)**:
-  - Paseo de los Turistas keeps its classic **palm median** — dashes with
-    crossing gaps aligned to the coming streets (`paseo_median_runs`).
-  - Two **continuous tree lines** (no gaps): the 3-carril merge stretch
-    (Avenida 2A's middle carril replaced along its exact curve,
-    `extract_treelines`) and the kiosks street (Paseo León Cortés, promoted
-    to principal; its dual-carriageway twin deduped) up to the muelle.
-  - Beyond the muelle street: normal streets, no separators. Beach palms
-    are a separate system and were never touched.
-- [x] **Muelle de Cruceros** moved to its real spot: the end of Calle Central
-      beside the kioscos; the entrance tail keeps only its LEFT carril
-      (2 CUAD) flush with the pier centerline (`narrow_muelle_approach`).
-- [x] **La Punta layout** per `how-look-puntarenas/faro.jpg`: lighthouse on
-      the rocky tip outside the road loop; **Balneario Municipal** pool added
-      inside the loop (new `pool` landmark type with lagoon render).
-- [x] **HUD minimap fixed** (still used the pre-OSM world's centerY=700 /
-      320px half-span — silhouette collapsed after the 3× scale).
-- [x] **Mobile overhaul**: point-to-drive touch controls (hold a finger where
-      you want to go; brake ✋ + turbo ⚡ pedals; multi-touch, safe-area
-      insets), fullscreen + landscape lock on play (`src/ui/immersive.js`),
-      CSS rotate-overlay for portrait, orientation-aware canvas resize.
-- [x] **Objective compass** pinned top-center of the screen (rotating arrow +
-      distance in meters) replacing the easily-lost in-world arrow; **camera
-      hard clamp** — the vehicle can never leave the middle of the screen
-      (lookahead now scales with the real view instead of a fixed 70px).
+      Sigue abierta la pregunta de diseño: si una plaza de barrio lleva el mismo
+      asset a menor escala o uno propio.
 
-## ✅ Fixed during this audit
+- [ ] **Torres de luz en las canchas de barrio.** Los dos estadios ya las
+      tienen (`blocks.json` → el bloque, cuatro en las esquinas del
+      `footprint`). Lo abierto es el resto: una cancha de barrio es una
+      PARCELA, no un estadio —no tiene `footprint`, tiene `hw`/`hh` y un `ang`—
+      así que darle torres es decidir si una parcela `field`/`plaza` las lleva
+      por defecto y a qué escala.
 
-- [x] Story-mode deliveries now extend the timer (+10 s / +5 s) as the GDD specifies — previously only Arcade/Recorrer got extensions.
-- [x] Recorrer barrier signs now show the correct required stage (stage whose clear unlocks the district) instead of the district's array index.
-- [x] `bridge=yes` OSM segments (Río Barranca at El Roble, estero arms on Vía 23) get a concrete deck render + bridge surface class.
-- [x] Muelle pier connected to the street grid (drivable network 99% reachable from spawn; the unreachable 1% is canvas-clipped fragments at the top edge outside the play area).
+- [ ] **La ruta del bus: hoy es voraz, no un camino.** Desde el 2026-08-15 un
+      bus se fija la próxima parada y resuelve cada cruce hacia ella, que ya se
+      lee como una ruta. Pero **no hay búsqueda de camino** y es a propósito:
+      el cliente no tiene el grafo de calles, sólo los tramos del tile que
+      mira. Si un destino queda detrás de una manzana el bus da vueltas hasta
+      encontrarlo. Cerrar esto de verdad pide líneas de bus AUTORADAS (una
+      secuencia de paradas por ruta), que es un archivo nuevo y no un algoritmo.
 
-## ✅ City-feel pass — done 2026-07-05 PM
+---
 
-- [x] **Vehicle sprites per type** — bikes (bici/scooter) render as two-wheeler with rider + helmet; cars keep the body/roof/windshield box. Stretch remains: distinct silhouettes per car (tuktuk 3-wheel, pickup bed, cart canopy).
-- [x] **More zoom** — engine `ZOOM` 1.8 → 2.4, street-level city driving.
-- [x] **Aceras** — surface class 6: 8px sidewalk fringe on all roads in the grid + concrete band render (w+16) + 0.62 traction; synthesized houses front the acera leaving ~6px of visible sidewalk.
-- [x] **Solid cuadras** — class-1 land is now a wall with slide-along-edges physics. Drivable: streets/aceras/beach/paseo/bridges/pier + plaza pads stamped under every kiosk, customer, and the Faro plaza. Verified: all 6 kiosks + 18 customers reachable from spawn through the drivable network (97.9% connectivity, pier included).
-- [x] **Waiting customer figure** — the active delivery target now renders as a waving person on a concrete pad with a pulse ring (was an invisible point + arrow).
-- [x] **Alive city** — pedestrians walk the aceras of every local street (240 cap, Paseo stays densest), ~220 parked cars along curbs (kept clear of kiosks), vendor carts with swaying parasols on the Paseo and beside every kiosk, 14 stray dogs/cats that amble across streets and pause.
-- [x] **Vehicle + traffic variations** — player: bici (thin frame + rear cooler box), scooter (deck + leg shield), tuktuk (teardrop 3-wheeler with canopy), cart (striped canopy + freezer lid), pickup (cab + open bed with cooler), turbo (exposed-wheel kart with spoiler). Traffic on main roads mixes cars, box trucks (15%), and orange buses (9%, slower, window rows).
-- [ ] Alive city 2: peds react to horn, occasional cyclists, market crowd at the Mercado, night windows lighting up.
-- Note: Chrome fully suspends requestAnimationFrame for hidden/occluded windows — game and screenshots pause; not a bug (verified `document.visibilityState === "hidden"` during every observed "freeze").
+## 2. Verticalidad 2.5D del mundo
 
-## 🎯 Gameplay gaps vs the GDD
+La migración artística y sus cuatro herramientas complementarias cerraron el
+2026-08-17: laboratorios animados, biblioteca/importador de sprites, autoría
+semántica de siembras y fixtures de geometría mundial. El cierre está archivado
+en `docs/ROADMAP-ARCHIVE.md` y auditado en
+`docs/HAND_DRAWN_ASSET_AUDIT.md`. No se inició elevación en ese bloque.
 
-- [ ] **Audio** — no music or SFX anywhere in the codebase (no `Audio`/`AudioContext` usage). Needs: engine SFX (pickup, deliver, drop, splash, combo), ambient loop, weather layer.
-- [ ] **Turbo boost semantics** — GDD says X multiplies current velocity ×1.35 one-shot; implementation is a continuous ramp (`vx *= 1 + 0.7·dt`) plus a ×1.35 speed-cap raise. Decide which feel is wanted and align GDD or code.
-- [ ] **Seagull drop chance** — effective ~0.15%/frame (two nested rolls) vs GDD's ~0.5%/frame. Balance decision.
-- [ ] **i18n / English mode** — target audience includes international tourists but every UI string is hard-coded Spanish. Needs a string table + language toggle.
-- [ ] **Handbrake turn boost** (×1.35 while braking) exists in code but not in the GDD — document or remove.
+Flora, actores y ferry ya declaran `heightM`; los edificios infieren altura y
+esas familias desplazan sus sombras con el sol. Éste es ahora el siguiente plan,
+descrito por `docs/HANDOFF-verticality-2_5d.md`:
 
-## 🗺️ World / map roadmap
+- [x] ~~**Bandas de altura de escenas.**~~ **Hecho el 2026-08-20.**
+      `heightM`/`castsShadow` se heredan por parts/groups y `paintParts` hace una
+      primera pasada sobre las mismas partes, con el sol entrando por el frame.
+      La catedral fue el fixture —nave 8 m, crucero 8, cimborrio 14, campanarios
+      18— y se retiró su `$shadow`, más las de civicBuilding, school, fuel,
+      kiosco, parkRiver y lote. Siete hojas de arte salieron idénticas y
+      `pnpm smoke:sceneshadows` mide que la sombra barre 50 px en el día.
 
-- [ ] **Mata de Limón bridge span** — the marquee suspension bridge is only ~55 px long because the coast leg is compressed by the x-warp. Add a local scale boost around the estero so stage 6's crossing feels substantial.
-- [ ] **Route 27 / Caldera edge** — roads clip abruptly at the canvas east edge; add a stylized "A SAN JOSÉ →" vanishing treatment.
-- [ ] **Building density pass 2** — 770 buildings placed; blocks in Barranca/El Roble (north bank) and rural coast are still sparse. Raise synth caps / add second-row placement for deep blocks.
-- [ ] **Estero de Puntarenas north bank** — mangrove/wetland texture band along the estero side of the spit (currently plain land).
-- [ ] **Named intersections** — El Roble junction and the Angostura narrows could carry signage landmarks like Caldera Bulevar does.
+- [x] ~~**La fuente: las curvas de nivel del IGN.**~~ **Hecha el 2026-08-20.**
+      `content/world/contours.json`: 16 499 curvas del WFS de SNIT, commiteadas
+      como `docs/map.osm`. **Hacen falta LOS DOS juegos** — `curvas_1000` (2 m)
+      hace honesto el arenal pero es cartografía urbana y no cubre Alto Cascabel
+      ni Juanilama; `curvas_5000` (50 m) es el nacional y sí. Un DEM global habría
+      levantado Carmen/Paseo/Centro/Playitas 6–8 m de TECHOS.
 
-### 🛠️ World-fidelity pass (2026-07-11, from playtest feedback)
+- [x] ~~**Canal de elevación del terreno.**~~ **Hecho el 2026-08-20.**
+      `service/elevation.py` → campo a 80 px, `(cuenta:uint8, valor:uint16 LE)`
+      propio, emitido sólo donde el tile no es plano; `groundZAt`/`groundGradeAt`
+      en el cliente, bilineales. No se renumeró ninguna clase de superficie.
 
-- [ ] **Ferrocarril avenue** (barro/dirt street) — _in progress_
-  - [x] **Barro rendering machinery** — a `barro` road flag (set in the world
-        build) renders a raised packed-earth surface: drop-shadow bank (~1 m
-        lift), dirt shoulders, no lane markings, sunlit curb highlight
-        (`drawStreets` in `canvas2d.js`).
-  - [x] **Correct barro avenue = Avenida 2 del Ferrocarril** (OSM-misspelled
-        "Farrocarril", x≈5568–8359) — flagged `barro` (match "rrocarril").
-        (Was wrongly Avenida Centenario; now un-flagged.) Paseo León Cortés
-        ends at x≈5565, right where the barro avenue begins.
-  - [x] **Tree line** on the north shoulder of Av. 2 del Ferrocarril
-        (x≈6892→end), separating it from Av. Alberto Echandi Montero;
-        decorative + gapped at cross streets (67 trees).
-  - [x] **Elevation ramp** — the raised barro avenue: `WORLD.onBarro()` +
-        `state.elev` lerp + `drawPlayer` lift so the car climbs on / ramps off
-        at intersections.
-  - [x] **Rail line rendered** — `extract_rails()` + `drawRails()` draw the
-        disused Ferrocarril al Pacífico (ballast + ties + steel rails) where it
-        crosses the corridor (5 pieces, x≈5278–24433).
-  - [x] **El Ancla monument** at the Cocal-split island (xy 8139,2379) via a new
-        `xy` landmark-placement option (direct world coords off the 📍 overlay).
-  - [ ] **Cocal-split dual carriageway** (x≈8139→11921, the split up to the
-        estero): the avenues should be **divided — 2 lanes each side**, not one
-        merged slab. Part of the road-stamping / separate-carriageway work
-        below; folds into **Milestone D**.
-  - [ ] **Real OSM "Avenida del Ferrocarril"** (Barranca) + full off-corridor
-        town — arrives with **Milestone D** / full 2-D map.
-- [ ] **Road-stamping / cuadra separation** — where OSM roads run close together
-      `raster_stamp_polyline` floods the cuadra interior with road, so no solid
-      `CLS_LAND` core survives → you can drive through blocks and junctions read
-      as one merged slab. Root cause of: collision gaps ("enter cuadras"), the
-      **Cocal entrance / CLUB DE LEONES** merge, and the **Chacarita / Barrio 20
-      de Noviembre** revoltijo. Fix: guarantee a minimum cuadra core between
-      parallel ways; split merged junctions.
-- [ ] **Mercado cuadra size** — the Mercado Central block renders as a tiny land
-      spot (below `BLOCK_MIN_CUADS`/small OSM footprint); should be a full ≥6×6
-      cuadra. Targeted block-classification fix.
-- [x] **Delivery targets** — customers were static POIs (same spot every time,
-      some stranded on the beach). Now each order snaps to a random reachable
-      street point near the customer's anchor (`WORLD.reachablePointNear`).
-- [x] **Debug coordinate overlay** — 📍 HUD toggle: world-coordinate grid +
-      live `x/y · surface · district` readout (persisted).
+- [ ] **Perfiles por porciones de calle.** Autorizar tramos `flat`, `slope` y
+      transiciones por arclength: cuesta → recta alta → bajada → recta baja. Los
+      extremos compartidos deben resolver la misma cota y las intersecciones
+      deben generar una transición alcanzable hacia la calle conectada.
 
-## 📔 GDD updates needed (implemented but undocumented)
+- [ ] **Editor de perfiles.** Vista lateral y mapa enlazados, handles de cota,
+      pendiente en %, validación de saltos/pendiente máxima y herramientas para
+      empatar otra porción. Ferrocarril será el primer caso real que sustituya
+      su lift visual actual.
 
-- [ ] Drivable **Muelle Nacional pier** (guard hut, lamps, blue rails; class-5 surface).
-- [ ] **Boats** — ferries + pangas animate offshore.
-- [ ] Landmark types `house`, `beachsign`, `sign`, `civic` render but aren't in the GDD type list; data has 30 landmarks, GDD says 29.
-- [ ] Camera **ZOOM = 1.8** and the corridor-unroll map projection (world no longer matches the GDD's original synthetic-profile description).
+- [x] ~~**Física por pendiente.**~~ **Hecha, y este archivo no se había
+      enterado** (verificado el 2026-08-23 contra el árbol). No salió de un
+      perfil autorado sino del campo de cota del IGN: `physics.js:729` persigue
+      `W.groundGradeAt` proyectado sobre el RUMBO del vehículo, y `:427` / `:493`
+      lo pagan en aceleración Y en techo (`simulation.json` → `grade`:
+      `accelPerGrade -1.8`, `topPerGrade -0.9`, con topes porque el campo es
+      interpolado). Colisión y navegación siguen en planta, como decía la fila.
 
-## 🧹 Technical debt
+- [ ] **NADIE DIBUJA LA COTA.** El campo se emite, la física lo corre y el único
+      consumidor VISUAL es el charco de la tormenta (`c2d/downpour.js:94-106`).
+      `state.zM` se escribe y no lo lee nadie. Esto es lo que el 2026-08-23 pasó
+      a ser la capa three.js — ver §6.
 
-- [ ] Dead state: `state.rainT`, `state.timeOfDay`, `boat.wake`, unused `Game.pause()` API (React drives pause directly).
-- [ ] `weatherColors()` allocated per-object per-frame (drawHills/drawLand/drawEstuary) — cache per frame.
-- [ ] `drawLandmark` has no `default:` case — a new landmark type would silently render only its shadow.
-- [x] Touch controls double-gated — resolved 2026-07-10: the joystick is gone
-      (point-to-drive aims via the canvas on any device); the coarse-pointer
-      gate only controls the brake/turbo pedals.
-- [ ] Headless smoke harness lives in a session scratchpad — move `headless.js` into `tools/` and wire a CI check.
+- [x] ~~**`groundZAt` da un escalón en cada borde de tile.**~~ **Cerrado el
+      2026-08-23.** `zSampleAt(gcx, gcy)` consulta la retícula GLOBAL y la
+      bilineal puede tomar sus cuatro esquinas de tiles vecinos. La regresión
+      primero reprodujo **23,00 m** de salto; después midió 678 bordes
+      residentes con máximo **0,0057 m**. `smoke:grade` conserva además la
+      prueba física: cuesta abajo sigue siendo 3,58× más rápido que cuesta arriba.
 
-## ✅ Completed 2026-07-05 (was "in progress")
+---
 
-- [x] **Pushed to `main`** and deployed: https://churchill.jcampos.dev (GitHub Pages, build_type=workflow; the first run failed racing the legacy-mode switch — re-dispatch succeeded).
-- [x] **Vehicles verified** — all 6 GDD vehicles selectable in the UI (`ui.jsx:94` maps every `Game.VEHICLES` entry) with stats matching the GDD table. Only divergence: turbo boost is a ramp, not a one-shot ×1.35 (tracked above).
-- [x] **Customer/delivery spread enforced** — c3 was 64px from kiosk 1 (instant deliveries); the pipeline now guarantees every customer ≥150px from all kiosks and ≥120px from other customers (expanding-ring reposition on land within the customer's district), verified zero violations across all 18.
+## 3. Las pantallas
 
-## 🚀 Deployment
+- [x] ~~**Las doce que faltan.**~~ **Cerrado el 2026-08-28**: las DIECISÉIS
+      pantallas se arman desde `src/ui/screens.json`. `over` y `title` fueron
+      las dos primeras, `realmpick` y `passage` nacieron ahí, y las doce
+      restantes se migraron de una tirada.
 
-- [x] GitHub Actions → GitHub Pages workflow (`.github/workflows/deploy.yml`), deploys on push to `main`.
-- [x] PWA: `manifest.webmanifest` (fullscreen landscape, es, generated churchill-cup icons 192/512) + `sw.js` service worker — network-first for game files (so `world-data.js` never goes stale — covers the cache-busting item), cache fallback offline, cache-first for versioned CDN assets.
-- [x] Touch controls CSS fix: hidden by `(pointer: fine)` instead of `min-width: 880px`, so landscape tablets get the joystick/pedals.
-- [ ] Mobile QA pass on real devices (iPhone/Android/tablet): touch feel, fullscreen/safe-area, frame rate.
-- [ ] Deploy flake: push-triggered `deploy-pages` sometimes fails with GitHub's transient "Deployment failed, try again later" (twice so far); manual re-dispatch always succeeds. Consider a retry step in the workflow.
+      Lo que NO entró está decidido y no pendiente: el agua del arranque, la
+      fila de herramientas de la portada, las flechas de la carrusela, las
+      pestañas de la tienda y el paso de diapositiva del intro son el MARCO —
+      están en todos los renders de su pantalla y no hay ninguna decisión por
+      pantalla en ellos.
 
-## 🧰 Toolchain (pnpm + Vite)
+      Y salió una prueba que faltaba. `tests/test_screens.py` comprueba que los
+      ids del registro y los componentes coinciden, que ningún `when` está sin
+      proveer y que el registro no lleva maquetado — pero **no puede ver si la
+      pantalla sigue DIBUJANDO**. En esta misma migración la tienda quedó en
+      blanco por un `import Slots` que faltaba, y `pnpm build` y las 472 pruebas
+      pasaron igual. `pnpm smoke:screens` recorre las quince pantallas
+      alcanzables y exige que sus bloques estén en el DOM; la decimosexta la
+      cubre `smoke:passage`.
 
-The app is a Vite project (ES modules under `src/`, React via `@vitejs/plugin-react`).
+---
+
+## 4. El mundo: medido y sin cerrar
+
+- [x] ~~**EL NORTE NO SE CONECTA POR TIERRA.**~~ **Cerrado el 2026-08-28.** Se
+      autoró el empalme en geo (`geography.json` -> `roadLinks`, motor en
+      `service/roadlink.py`) y el mundo se reconstruyó: **69 -> 68 componentes**,
+      con la que queda en 4 391 519 celdas = 4 228 466 + 162 945 + las 108 del
+      corredor. NO se escribió una regla general, y está medido por qué: hay
+      1 568 extremos libres y 128 pares a menos de 100 px, de los que sólo 9
+      comparten nombre — y las dos puntas de la Calle del Arreo son anónimas, así
+      que una regla o se pierde la que importa o suelda las 128.
+      `finish.verify` exige ahora que las puntas queden en la componente que
+      alcanza el spawn: la invariante de alcanzabilidad que no existía.
+
+- [x] ~~**EL ESTERO SE ABRE.**~~ **Implementado el 2026-08-23.** El usuario pidió
+      «un estero completamente abierto y manejable, pero **con las boyas** de la
+      Travesía para que el nivel se pueda jugar», así que las boyas se quedaron
+      y pasaron a ser un CAMPO DE REGATA sobre agua abierta: se fue la pintura
+      de pasillo (banda, límites, estrías) y `laneAt` quedó topado a 190 px.
+
+      El dragado se borró y la cuenca se INUNDA en `rasterise_surface`, antes de
+      `trace_land_contours` — `basin opened 17 743 LAND cells to WATER`, con un
+      borde de manglar de 40 px conservado y las celdas reclamadas por calles,
+      sitios, POIs y anclas autoradas respetadas. Ninguna boya ni portón quedó
+      en seco (antes: 82 de 170 sobre tierra firme).
+
+      **Y destapó dos cosas que llevaban tiempo escondidas**, las dos cerradas:
+
+      * `measure_channel` suavizaba el CENTRO del canal y podía sacarlo del agua
+        en una curva. La estación informaba entonces media caña 0 —con toda
+        honestidad— y el carril desaparecía donde el estero mide 200 px. Ahora
+        una estación conserva el centro suavizado sólo mientras le deje tanta
+        agua como su propia medición ya ofrecía. Medido: **min 0 → 36 px, 120
+        estaciones mejoradas, 0 empeoradas**.
+      * `trace_land_contours` guardaba las aristas de frontera en un diccionario
+        `inicio -> fin`, así que un pellizco diagonal pisaba una arista y el lazo
+        entero se descartaba **en silencio**. Bastó uno para borrar el lazo de
+        24 200 vértices que es toda la tierra firme más el arenal: los patios de
+        El Cocal se dibujaban como mar. Ahora es un multimapa y una cadena que no
+        cierra se avisa. Medido sobre un fixture de dos bloques que se tocan por
+        una esquina, el código viejo daba **0 lazos y 17 cadenas descartadas**.
+
+- [x] ~~**EL COCAL: calles sí, manzanas no.**~~ **Cerrado el 2026-08-23.** La
+      causa no era el veto por huella de OSM sino la clasificación `green` de
+      `detect_blocks`: una cuadra que no inscribe su cuadrado se marcaba verde y
+      `synth_buildings` se saltaba TODA la síntesis en ella. El rescate ahora
+      recibe el borde este del distrito `cocal` autorado en vez del viejo límite
+      Carmen/Faro. Medido sobre el mundo emitido, edificios por tile:
+      `13_7` 131 → **190**, `14_7` 101 → **180**, `15_7` 13 → **75**,
+      `17_7` 0 → **19** — por encima incluso de antes de la dilatación. 64
+      cuadras en el distrito, una sola marcada bosque.
+
+- [x] ~~**EL FERROCARRIL VA ENCIMA DE LA CALLE.**~~ **Cerrado el 2026-08-23.**
+      Hay `content/world/railway.json` (registro v1, en el inventario, con
+      validador estricto de nombres/metros en el editor) y un servicio de
+      alineación que corre justo después de `extract_rails`, así que todo
+      consumidor río abajo ve la geometría ya corrida. La `Calle del
+      Ferrocarril` resultó ser un ramal N–S de ~75 m: la continuidad real la dan
+      `Avenida del Ferrocarril` y `Avenida Alberto Echandi Montero`. Barrido de
+      las 23 piezas emitidas: **9 alineadas**, 6 698/6 886 muestras comprobadas,
+      **hombro sobre calzada 0/0**, errores entre-ejes/punto-medio **0/0**,
+      `alignment_failures=[]`. Verificado además a ojo en El Cocal: la vía corre
+      por el hombro, fuera del asfalto. Queda una brecha real de OSM de 53,1 m
+      que no se une, y el par del Cocal se autoró con 14 m de tolerancia porque
+      los ejes quedan a 8,5–11,9 m.
+
+- [ ] **`smoke_sea` falla dos aserciones de pescadores** — verificado que falla
+      por el harness, no por el mundo.
+- [x] ~~**El Muelle de Cruceros no lo tocan las calles del frente.**~~
+      **Medido el 2026-08-20 y cerrado sin tocar nada**: la cubierta inunda hacia
+      una componente manejable que va del faro a El Cocal — no está aislada. Su
+      RAÍZ está en la línea de agua (20 px a cada lado es arena y mar), así que no
+      hay calles del frente que enlazar y el acceso por el norte es el correcto.
+      Se escribió un portón que cruzara el paseo, se midió que no tenía a qué
+      llegar, y se revirtió.
+
+- [x] ~~**El malecón: 6 bandas, y no todas tocan la calzada.**~~ **Hecho el
+      2026-08-20.** Se pavimenta EN UNA SOLA CORRIDA desde el cordón hacia el
+      mar, sin tope de distancia: el guardia es la CLASE, no los píxeles. El tope
+      de 150 px protegía manzanas que hacia el mar NO EXISTEN — medido, lo que
+      separaba el cordón del malecón era acera y arena. Ahora **4 bandas y las 4
+      alcanzan la calzada**, 1 281 cortes desde el cordón.
+- [ ] **El malecón se corta entre el Faro y x≈15500** — entre el Paseo y la
+      arena hay solar que la sonda no cruza a ese ancho.
+- [x] ~~**Las atracciones no bloquean.**~~ **Hecho el 2026-08-20, y su premisa
+      era falsa.** Los dos kioscos del Paseo están sobre sus PROPIOS pads de
+      calle (172 y 108 px), no sobre la banda de 60 del malecón. Y la solución no
+      necesitó medir nada: una atracción NO SE ESTAMPA, así que la compuerta de
+      red ni la ve — el estorbo es del cliente. Ver `smoke:feria`.
+- [x] ~~**El Parque del Muellero no existía**~~ **(2026-08-20).** Salía a 252x96
+      px de una huella de 1 336x463 —el 4 %— con el rótulo flotando fuera. Su
+      suelo es MALECÓN y ARENA, no tierra, y encima se lo sentaba «dentro de su
+      manzana», que una cinta del frente marítimo no tiene. `shore` en
+      `site-decor.json`; ahora 904x316 px con su contorno diagonal.
+
+- [ ] **36 parcelas pisan >25 % de acera** — capillas, escuelas y gasolineras
+      cuyo lote no se puede re-encajar sin perderlo.
+- [ ] **El Faro "vacío"**: el debug map muestra que el barrio SÍ tiene manzanas;
+      en juego se ve pelado.
+- [ ] **Route 27 / borde de Caldera** — las calles se cortan a pique en el borde
+      este. Falta un tratamiento de fuga ("A SAN JOSÉ →").
+- [ ] **Intersecciones con nombre** — el cruce de El Roble y la Angostura
+      podrían llevar rótulo como Caldera Bulevar.
+- [ ] **El puente de Mata de Limón**: 96 px de vano. Era ~55, y la razón que
+      daba este archivo —"lo comprime el x-warp"— ya no existe (la proyección
+      corridor se borró el 2026-07-25). Si sigue leyéndose corto es una decisión
+      de escala, no un artefacto.
+
+---
+
+## 4b. El aspecto: tapete de ciudad CON profundidad
+
+Plan en `docs/investigacion-2d-avanzado.md`, con la premisa corregida: **el
+render cuesta 1,24 ms de un cuadro de 16,7**, así que el salto a WebGL que ese
+documento propone resuelve un problema que no existe. Canvas2D se queda y lo que
+faltaban eran las técnicas.
+
+- [x] ~~**Fase 1 — el suelo vuelve a ser lugares.**~~ 2026-08-28: `c2d/noise.js`
+      (ruido de valor sobre el `hash01` que ya existía), `c2d/curves.js`
+      (redondeo por esquina — NO Chaikin, que encoge el polígono y abre las
+      costuras) y `c2d/districts.js` (El Cocal arenal, el Centro cal y zinc, el
+      Paseo pasteles de balneario).
+- [x] ~~**Fase 2 — el pueblo gana volumen.**~~ 2026-08-28: paredes por paralaje
+      con la rotación gratis, sombra como barrido en vez de copia despegada, y
+      orden de pintado por distancia radial. Falta escoger `cameraHeightM` con
+      el ojo: `logs/depth-{150,80,45}m.png`.
+- [x] ~~**Fase 1b — materiales: patrones y textura.**~~ 2026-08-28:
+      `c2d/materials.js` + `materials.json -> textures`. La tinta va aparte del
+      color (el clima lo mezcla cada cuadro, así que un patrón con fondo no se
+      podría cachear) y **son DOS caminos, no uno**: `speckle`/`hatch` en
+      mosaico para lo que no cubre la pantalla, `scatter` sembrado sobre el
+      rectángulo visible para lo que sí — un relleno con patrón cuesta ~10 ns
+      por píxel y la tierra sola pasaba el cuadro de 17,3 a 32,9 ms. Y la
+      paleta pasó de pastel a **color vivo**: 51 valores escritos a mano, con
+      diez de las once hojas de arte IDÉNTICAS como prueba de que no se derramó.
+- [x] ~~**Fase 3 — el mundo bajo un cielo.**~~ 2026-08-28: `c2d/skycover.js`.
+      **No** es la capa en `multiply` que pedía el plan: una sombra de nube ES
+      unos discos suaves, así que la pinta el mismo verbo que las manchas del
+      suelo y sale gratis. De noche no hay ninguna, porque no hay sol que la
+      proyecte. `pnpm smoke:clouds`.
+- [x] ~~**El relieve del terreno.**~~ 2026-08-28: `c2d/relief.js` consume por fin
+      `residentElevationTiles` y llena la ranura `terrainShadow`. Y sí, sólo se
+      ve tierra adentro (96 % del cuadro sombreado en el tile del este, 0 % en la
+      península), porque el arenal es plano de verdad. El descarte va por TILE y
+      no por muestra: las curvas del IGN vienen cada 2 m y las muestras cada 26,
+      así que cruzar una curva da un 7,7 % de pendiente falsa que costaba 2,3 ms
+      de cuadro. `pnpm smoke:relief`.
+- [ ] **El grano de la acera, apagado y con su número.** `textures.acera` está
+      en el registro con `"off": true`: su banda se traza por calle con
+      `ancho + 2·acera`, así que se repinta en cada cruce — 2,7 ms de un cuadro
+      de 17,3, más que ninguna otra textura, por una franja que casi no se ve.
+      Si alguna vez el trazado de la acera deja de solaparse consigo mismo,
+      encenderla es quitar una línea.
+- [ ] **Dos archivos que este trabajo dejó grandes.** `systemShapes.js` (669) y
+      `streets.js` (649) siguen enteros; el plan preveía sacarles
+      `paintRoadNetwork` y el suelo de parcelas a sus propios módulos, y no hizo
+      falta para lo de arriba. `hud.js` (781) y `landmarks.js` (672) van después.
+
+---
+
+### Lo que sigue abierto del mapa
+
+- [ ] **Las huellas del frente del Paseo siguen sin solar.** Lo demás se cerró
+      perdonando el sliver que aloja una huella con nombre (ver CLAUDE.md, con
+      la tabla de las cinco palancas y por qué las otras cuatro daban el mismo
+      número). Lo que queda son los edificios cuya tierra está bajo una avenida
+      de 196 px: sólo caben encogiéndolos a 0,22-0,34 —dejan de parecerse a lo
+      mapeado, por eso el piso está en 0,42— o borrándolos, que ya costó 32
+      edificios con nombre una vez. **El número a comparar está en el log de
+      cada corrida** (`… named footprints STILL TOUCH a street class`).
+
+---
+
+## 5. Juego y balance
+
+- [x] ~~**La carga se dibuja por VEHÍCULO, no por comida.**~~ **Cerrado el
+      2026-08-23.** Desde ese día el
+      producto viaja con el pedido y manda en el reloj, el presupuesto, la barra
+      del HUD y lo que dice el cliente. Ahora el vehículo pone el RECIPIENTE
+      (`bag`/`cooler`/`freezer`) y el producto pone el contenido (`cup`/`box`/
+      `leaf`), incluidas las formas nuevas en `actors.json`. Gate visual:
+      **103/607.600 px (0,0170 %)** cambiaron, todos dentro de los cinco ejemplos
+      de carga y **0 fuera**.
+
+- [x] ~~**La etiqueta de una frase no llegaba al juego.**~~ **Cerrado el
+      2026-08-23, y lo encontró el propio `smoke:product-hud`.** `product` en una
+      frase se autora en `customers.json` y **el mundo emitido no lo llevaba**
+      —0 de 24 clientes— así que `customerLine` tomaba siempre la rama «esta
+      frase sirve para cualquiera» y los repuestos por producto **no se usaron
+      nunca**: el HUD decía «¡La mía sin tanto rojo!» —el sirope de cola de un
+      churchill— sobre un vigorón en hoja. Se resuelve en el CLIENTE leyendo la
+      tabla autorada, porque la etiqueta es una propiedad de la COPIA y no del
+      sitio donde para el cliente, y afinarla no puede costar 48 minutos.
+
+      **La lección está en la compuerta, no en el arreglo.** El primer barrido
+      que se escribió le pasaba a `customerLine` los registros AUTORADOS —que ya
+      traen la etiqueta— y por eso **seguía verde con el arreglo revertido**,
+      mientras el HUD decía «Rojito bien fuerte.» sobre un vigorón. El sujeto de
+      una prueba así tiene que ser lo que el juego ve (`W.CUSTOMERS`); la
+      expectativa es lo que dice el archivo. Corregida, reporta **48 frases sobre
+      la comida equivocada** con el arreglo quitado y ninguna con él puesto.
+
+- [ ] **Semántica del turbo** — el GDD dice que X multiplica la velocidad actual
+      ×1.35 una vez; la implementación es una rampa continua más un techo de
+      velocidad ×1.35. Decidir cuál se quiere y alinear el otro.
+- [ ] **Probabilidad de la gaviota** — efectiva ~0,15 %/cuadro (dos tiradas
+      anidadas) contra el ~0,5 % del GDD. Decisión de balance.
+- [ ] **Freno de mano ×1.35** existe en el código y no en el GDD: documentarlo o
+      quitarlo.
+- [ ] **Ciudad viva 2** — peatones que reaccionen al pito, ciclistas ocasionales,
+      gentío en el Mercado, ventanas que se encienden de noche.
+
+- [x] ~~**EL JUEGO SE PUSO LENTO, Y NO HABÍA CON QUÉ MEDIRLO.**~~ Medido y
+      primer arreglo retenido el 2026-08-23. `GameTweaks` muestra mediana/p95/FPS
+      sólo mientras el panel está abierto y `smoke:perf` calienta e intercala
+      variantes. El sospechoso principal no era el culpable: el minimapa cuesta
+      **0,08 ms (~6 %)**. La sonda sí encontró culling sólo en X: 17/18 peatones
+      y 3/3 carros que pasaban X estaban fuera de Y. El culling 2-D bajó entidades
+      **0,32→0,11 ms** y render **1,34→1,09 ms** (~19 %). Una caché de sombras
+      no movió sus 0,19 ms y se revirtió.
+
+---
+
+## 6. Motor
+
+- [ ] **PERSPECTIVA: ABIERTA OTRA VEZ, Y DESDE CERO.** Se construyó y se
+      RETIRÓ entera el 2026-08-26, a pedido del usuario. El código vive en el
+      tag `3d-attempt-2026-08-26`; esto es lo que costó averiguar, para que la
+      próxima no lo vuelva a pagar:
+
+      * **Una ortográfica inclinada SÍ registra con la afín 2-D.** El mapa del
+        suelo a la pantalla sigue siendo `ScaleY(cosφ)·Rot(θ)`, así que las
+        ~2 500 líneas de dibujo de suelo NO se reescriben. Sólo el levante por
+        cota queda fuera de Canvas.
+      * **Pero el achatamiento llega al VOLANTE.** `applyTouch` compara un
+        ángulo de PANTALLA contra un rumbo de MUNDO. La corrección correcta es
+        des-achatar el ÁNGULO y sacar el acelerador de la distancia de pantalla
+        CRUDA; des-achatar las dos cosas cambia el tacto y se siente mal.
+      * **A 0° no se ve un solo costado** — es geometría, no implementación. Lo
+        único que dice que hay volumen es la SOMBRA, y a 10° de latitud el sol
+        de mediodía está a 86°: la sombra de un bloque de 16 m mide 2,5 px. Al
+        amanecer y al atardecer mide 35.
+      * **Un techo a dos aguas visto a plomo se lee como una PIRÁMIDE**, no como
+        un techo: cuatro faldones con luz distinta y las limatesas cruzando la
+        planta. A 0.34 de la altura el centro salía como un campo de carpas.
+      * **El receptor de sombra NO puede ser coplanar con la base** de lo que
+        proyecta, o no sale NINGUNA sombra (no ruido: nada). Cuatro centímetros
+        abajo alcanzan — es lo que `terrainShadow.receiverBelowM` ya decía.
+      * **El mapa de sombras tiene que invalidarse con el conjunto de CASTERS**,
+        no sólo con el sol y la cámara: los tiles llegan por streaming.
+      * `src/render/camera.js` y `src/render/sun.js` se quedaron: son las
+        autoridades únicas de cámara y de sol del juego 2-D, sin three adentro.
+
+- [ ] **Milestone C — backend PixiJS/WebGL** detrás de `src/render/Renderer.js`.
+      Sigue abierto y sigue siendo opt-in: hoy Canvas2D pinta el mundo entero y
+      una capa Pixi transparente encima lleva lo que Canvas no puede hacer bien.
+      El detalle (contenedores por capa, filtros de agua, grading por clima) está
+      en el archivo. **Y hoy no dibuja nada**: `_MIGRATED` está vacío.
+
+- [x] ~~**Pixi confundía segundos con milisegundos.**~~ Cerrado el 2026-08-23:
+      la conversión de rAF se hace una sola vez y Canvas, Pixi y Three reciben
+      `tSeconds`; ola, monedas y rebotes expresan sus ritmos en segundos.
+- [ ] **Deuda técnica, ya verificada**: `state.rainT` se escribe y no se lee, y
+      `Game.pause()` no lo usa nadie (React maneja la pausa). El resto de esa
+      lista vieja ya no era cierto — ver la tabla del final.
+
+---
+
+## 6b. EL CORTE EN DOS REPOSITORIOS
+
+Decidido el 2026-08-17. El juego público queda con **sólo el juego**; el builder
+se va con el mapa y el contenido autorado, y **el editor se va con el builder**
+porque el editor AUTORA lo que el builder consume: son las dos mitades de una
+herramienta, no dos herramientas.
 
 ```
-pnpm install          # deps (Node 20+; pnpm via corepack)
-pnpm dev              # HMR dev server (http://localhost:8734)
-pnpm build            # -> dist/ (static; what GitHub Pages publishes)
-pnpm preview          # serve the production build
-pnpm inventory        # regenerate inventory.json (element catalog + module map)
-pnpm world:build      # rebuild src/world/data.js from docs/map.osm
+churchill-route   (público)   el juego. Consume artefactos publicados.
+churchill-world   (privado)   churchill/ + tools/ + docs/map.osm +
+                              content/world/ + el editor
 ```
 
-`inventory.json` (repo root) is the machine-readable index of every game element
-(districts, stages, vehicles, landmarks, customers, surfaces) plus world counts
-and a map of `src/` modules with their exports — read it instead of the code.
-Refresh it with `pnpm inventory` after any world or module change.
+**El paso habilitante ya está hecho**: `CHURCHILL_GAME_ROOT` — el nombre que el
+editor ya usaba, no uno nuevo. La frontera resultó **angosta y medida: ocho
+rutas en cuatro archivos**, y `tests/test_game_root.py` la fija, así que una
+novena tiene que ser una decisión y no un descuido. Probado de verdad: un build
+completo escribiendo en un game root aparte, sin tocar el repo real.
 
-Source layout: `src/game/` (state, physics, input, spawns, delivery, modes),
-`src/world/` (data + accessor), `src/render/` (Renderer seam → Canvas2D backend;
-PixiJS backend lands here in Milestone C), `src/ui/` (React screens + tweaks).
+Lo que queda, en orden:
 
-## 🔁 How to regenerate the map (for any tool/session)
+- [ ] **Portar los 21 módulos de prueba que examinan el JUEGO a JS.** Este es el
+      trabajo de verdad y la razón por la que el corte no es un `git mv`. De los
+      24 módulos de Python, **21 leen `src/`**: no son pruebas del builder, son
+      compuertas de deriva entre un registro y su pintor (`actors.json` contra
+      `entities.js`, `lights.json` contra `lights.js`). Pertenecen al juego, en
+      un repo que no va a tener Python.
 
-```
-pnpm world:build      # rebuilds src/world/data.js + tools/debug_map.png + debug_features.svg
-pnpm dev              # serve; open http://localhost:8734
-```
-Knobs at the top of `tools/build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`, `ROAD_WIDTH_PX`
-(6/4/2 CUAD tiers), `CUAD`/`CUADS_PER_VIEW`, `BLOCK_MIN_CUADS`/`SLIVER_MAX_CUADS`,
-`SYNTH_MAX_TOTAL`/`FRONTAGE_DEPTH`, `BUILDING_SCALE`, `DISTRICT_BOUNDS_GEO`,
-`LANDMARK_DEFS`/`CUSTOMER_DEFS` (geo anchors; build fails listing unresolved POIs —
-and on any POI unreachable through the drivable network). Camera zoom is responsive
-(`computeZoom` in `src/render/canvas2d.js`, ≤12 cuadrículas per view).
+      Lo que lo hace posible es justamente el diseño de artefactos publicados:
+      hoy esas pruebas importan los enums de Python, y contra el artefacto
+      (`vocabulary.generated.json`) la misma aserción se escribe en JS. Sólo 3
+      son del builder de verdad: `test_content`, `test_piers`,
+      `test_world_editor_patch`.
+
+- [ ] **`src/world2d/` SE QUEDA versionado** en el repo público (decidido): son
+      15 MB de mundo generado, y el precio se paga para que un clon del juego
+      corra solo. Cada reconstrucción es un diff grande y eso es aceptado.
+
+- [ ] **La cirugía**, al final y sólo cuando las pruebas ya no cruzan: mover con
+      historia (`git filter-repo` o un subtree), no con `cp`. `docs/map.osm`
+      (12 MB) y `content/world/` (72 KB) van al privado; el editor pasa de
+      `world-editor/` a `editor/` ahí.
+
+- [ ] **Y una pregunta abierta que el corte hace urgente**: quién OWNS
+      `surfaces.json`, `flora.json` y `world-units.json`. Hoy los leen los dos.
+      Si el builder los publica como los artefactos del vocabulario, el juego no
+      los edita; si los autora el editor, el builder los lee del game root. Las
+      dos funcionan — pero hay que escoger una, porque un archivo con dos dueños
+      es el patrón que este proyecto lleva dos días desarmando.
+
+---
+
+## 7. Producto
+
+- [ ] **QA en dispositivos reales** (usuario): controles táctiles, coach-marks
+      del tutorial, tienda/monedas, iPhone dvh + hint A2HS.
+- [ ] **Play Console**: cuenta, productos (`remove_ads` + 3 packs), AdMob real
+      (App ID + unidades + consentimiento UMP), URL de política de privacidad,
+      ficha, pruebas cerradas 12×14. Checklist en `docs/MONETIZATION.md`.
+- [ ] **Merge a `main`** cuando el MVP esté validado (y sacar `world-2d` del
+      workflow de deploy al hacerlo).
+- [ ] **Post-MVP**: ~~abrir El Cocal→Caldera~~ **(hecho el 2026-08-15: la valla
+      se bajó y `mvpLocked` quedó VACÍA, no borrada, para que volver a cerrar un
+      barrio siga siendo una fila)**, anillos 2-D de distritos, puente a desnivel
+      Barranca/El Roble, backend de contenido (webhook de ko-fi → NPCs, reservas
+      de lotes), Tier 4 (kiosco/vehículo brandeado).
+- [ ] **Backend real, cuando el volumen lo pida**: API + panel admin. Hoy el
+      contenido en vivo es un `content.json` servido del propio dominio, que es
+      lo único del juego que no se compila dentro del bundle.
+
+---
+
+## Fuera de alcance, decidido
+
+- **La estructura JSX de las pantallas a un esquema de slots completo.** Cambiar
+  React legible por un lenguaje de layout casero es un mal negocio. El registro
+  de slots que existe **selecciona y ordena**: no posiciona, no estiliza, no
+  anida y no evalúa expresiones, y hay una prueba por cada una de esas cuatro.
+- **Reproducir samples de audio dentro del juego.** El sonido es procedural y la
+  banda sonora completa cuesta cero bytes de descarga; eso se conserva. Exportar
+  a WAV para un trailer ya se puede (`pnpm audio:render`). Meter samples pide un
+  presupuesto de descarga que nadie ha decidido, con el mundo ya en 16,7 MB.
+- **La proyección corridor-unroll.** Borrada el 2026-07-25. Costaba distancias
+  reales, calles rectas y cada gore de intersección hecho a mano. No revivirla.
+
+---
+
+## Lo que se cayó al verificarlo (2026-08-14)
+
+Filas que este archivo llevaba como pendientes y que ya no eran ciertas. Se
+listan en vez de borrarlas en silencio, porque el punto es justamente que **una
+fila puede pudrirse sin que nadie lo note**:
+
+| decía | está |
+|---|---|
+| "no music or SFX anywhere in the codebase" | `audio.js`, 628 líneas: 10 recetas, 7 voces continuas, mezclador de 4 buses y exportación a WAV |
+| "every UI string is hard-coded Spanish" | 260 llaves, español e inglés completos, cero faltantes |
+| "Milestone D — full 2-D map _(pending)_" | 1 000 tiles emitidos; la proyección corridor se borró hace tres semanas |
+| "770 buildings placed" | 44 884 |
+| "estero north bank — currently plain land" | el manglar se dibuja (`drawMangroves`) |
+| "`drawLandmark` has no `default:` case" | tiene cinco |
+| "headless harness lives in a session scratchpad" | seis smokes en `tools/`, todos en `package.json` |
+| "`state.timeOfDay` is dead" | lo leen `tides.js` y `daynight.js` |
+| "zoom: `CUADS_PER_VIEW = 20`, piso 2.2" | la cámara encuadra METROS; el piso es px de pantalla por metro |

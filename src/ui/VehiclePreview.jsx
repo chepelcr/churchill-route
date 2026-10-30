@@ -2,18 +2,36 @@
 // the render backend), big, on a little asphalt swatch, plus stat bars.
 import React, { useRef, useEffect } from "react";
 import { paintVehicle } from "../render/Renderer.js";
+import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
+import { traceVehicleSilhouette } from "../render/vehicleShapes.js";
 import { VEHICLES } from "../game/vehicles.js";
+import { useT } from "../i18n/index.js";
+import Icon from "./Icon.jsx";
 
-const STAT_RANGE = (() => {
-  const vs = Object.values(VEHICLES);
-  const r = (f) => [Math.min(...vs.map(f)), Math.max(...vs.map(f))];
-  return { top: r(v => v.top), accel: r(v => v.accel), grip: r(v => v.grip) };
-})();
+// THE BARS ARE NORMALISED WITHIN A MEDIUM, not across the whole roster. A bar
+// answers "how does this compare to the others I could pick for this run", and
+// nobody ever chooses between a bicycle and a speedboat. Ranging them together
+// also flattens the cars: the deslizador's 340 top is nearly the turbo's, but
+// the panga's 190 would drag the floor down and squash every car's bar toward
+// full. Computed per medium, memoised once — VEHICLES is mutated at boot by the
+// world editor, so this reads it lazily rather than at module scope.
+const _ranges = new Map();
+function statRange(medium) {
+  if (!_ranges.has(medium)) {
+    const vs = Object.values(VEHICLES).filter((v) => (v.medium || VEHICLE_MEDIUM.LAND) === medium);
+    const pool = vs.length ? vs : Object.values(VEHICLES);
+    const r = (f) => [Math.min(...pool.map(f)), Math.max(...pool.map(f))];
+    _ranges.set(medium, { top: r(v => v.top), accel: r(v => v.accel), grip: r(v => v.grip) });
+  }
+  return _ranges.get(medium);
+}
 const norm = ([lo, hi], v) => 0.15 + 0.85 * ((v - lo) / (hi - lo || 1));
 
-export default function VehiclePreview({ vehKey }) {
+export default function VehiclePreview({ vehKey, color = null }) {
+  const t = useT();
   const ref = useRef(null);
-  const veh = VEHICLES[vehKey];
+  // optional paint override (equipped shop color) — paintVehicle reads veh.color
+  const veh = VEHICLES[vehKey] && color ? { ...VEHICLES[vehKey], color } : VEHICLES[vehKey];
 
   useEffect(() => {
     const c = ref.current;
@@ -36,20 +54,21 @@ export default function VehiclePreview({ vehKey }) {
     g.save();
     g.translate(w / 2 + 3 * (scale / 5), h / 2 + 4 * (scale / 5));
     g.scale(scale, scale);
-    g.fillStyle = "rgba(0,0,0,0.35)"; g.fillRect(-veh.w / 2, -veh.h / 2, veh.w, veh.h);
+    g.fillStyle = "rgba(0,0,0,0.35)"; traceVehicleSilhouette(g, vehKey, veh); g.fill();
     g.restore();
     g.save();
     g.translate(w / 2, h / 2);
     g.scale(scale, scale);
     paintVehicle(g, vehKey, veh);
     g.restore();
-  }, [vehKey, veh]);
+  }, [vehKey, veh, color]);
 
   if (!veh) return null;
+  const range = statRange(veh.medium || VEHICLE_MEDIUM.LAND);
   const bars = [
-    ["Velocidad", norm(STAT_RANGE.top, veh.top), "var(--gold)"],
-    ["Arranque", norm(STAT_RANGE.accel, veh.accel), "var(--coral)"],
-    ["Agarre", norm(STAT_RANGE.grip, veh.grip), "var(--teal)"],
+    [t("veh.speed"), norm(range.top, veh.top), "var(--gold)"],
+    [t("veh.accel"), norm(range.accel, veh.accel), "var(--coral)"],
+    [t("veh.grip"), norm(range.grip, veh.grip), "var(--teal)"],
   ];
   return (
     <div className="veh-preview">
@@ -63,8 +82,9 @@ export default function VehiclePreview({ vehKey }) {
           </div>
         ))}
         <div className="veh-stat">
-          <span className="lbl">Hielo</span>
-          <span className="ice">{veh.melt <= 0.6 ? "❄❄❄" : veh.melt <= 0.9 ? "❄❄" : "❄"}</span>
+          <span className="lbl">{t("veh.ice")}</span>
+          <span className="ice">{Array.from({ length: veh.melt <= 0.6 ? 3 : veh.melt <= 0.9 ? 2 : 1 },
+            (_, i) => <Icon key={i} name="snow" size={13} />)}</span>
         </div>
       </div>
     </div>

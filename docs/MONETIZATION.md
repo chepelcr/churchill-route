@@ -1,0 +1,184 @@
+# Monetización — estado de implementación y pasos operativos
+
+Basado en el plan `churchill_monetization_funding.md` (AdMob + IAP vía plugins
+de Capacitor). Este doc registra **qué ya está en el código** y **qué falta
+hacer en consolas externas** antes del release de Play Store.
+
+## Implementado en el código (branch world-2d)
+
+- **`src/monetize/ads.js`** — AdMob vía `@capacitor-community/admob@8`:
+  - *Interstitial* cada **3 partidas terminadas** (pantalla de resultados);
+    se omite si el jugador compró "Quitar anuncios". Contador en localStorage.
+  - *Rewarded video* = botón **"Seguir +60s (ver anuncio)"** en resultados
+    cuando se pierde una partida con timer (arcade/historia), una vez por
+    partida (`state.usedAdContinue`). La recompensa se otorga SOLO en el
+    evento `Rewarded` del plugin.
+  - En web / dev todo es no-op (import dinámico; no infla el bundle web).
+  - **IDs actuales = IDs PÚBLICOS DE PRUEBA de Google** (`ca-app-pub-394025…`).
+- **`src/monetize/iap.js`** — `cordova-plugin-purchase@13`:
+  - Producto único **`remove_ads`** (NON_CONSUMABLE, Google Play).
+  - Flujo: `approved → verify → verified → finish`; entitlement persistido en
+    localStorage (`churchill_noads_v1`) + restaurable con "Restaurar compras".
+    Sin backend (suficiente para un unlock único, como indica el plan).
+- **`AndroidManifest.xml`** — `com.google.android.gms.ads.APPLICATION_ID`
+  con el App ID de PRUEBA (comentario TODO al lado).
+- **UI** — Ajustes (⚙): comprar/restaurar "Quitar anuncios" (precio localizado
+  cuando la tienda carga); Resultados: botón de continue con rewarded.
+
+## Pendiente (consolas externas — no es código)
+
+1. **AdMob** — ✅ HECHO (2026-07-17): cuenta creada, App ID real en el
+   AndroidManifest y unidades reales Interstitial + Rewarded en
+   `src/monetize/ads.js` (`AD_INTERSTITIAL`/`AD_REWARDED`);
+   `initializeForTesting` eliminado. Para depurar anuncios, registrar el
+   dispositivo como test device EN LA CONSOLA de AdMob (no volver a poner el
+   flag). Ojo: los anuncios reales pueden tardar horas en servirse en una
+   app/unidad recién creada.
+2. **Play Console**: cuenta de desarrollador ($25), cuenta de mercader,
+   producto gestionado **`remove_ads`**; **pruebas cerradas: 20 testers ×
+   14 días** antes de producción (política para cuentas nuevas).
+3. **Ficha**: política de privacidad (URL pública — ahora obligatoria además
+   por AdMob), clasificación de contenido, ícono 512, capturas.
+4. **Target SDK ≥ 34** — verificar `android/variables.gradle` al armar el AAB
+   (`bundleRelease`, no APK, para Play).
+
+## Economía de monedas Churchill (2026-07-16)
+
+- **Ganancia:** +3 por entrega, +2 extra si es "perfecta" (~10–15 por partida
+  honesta); rewarded ad opcional en resultados **duplica** las monedas de la
+  partida (1 vez por partida). El tutorial no paga.
+- **Sumideros:** vehículos (cart 350 / pickup 900 / turbo 1500 — bici, scooter
+  y tuktuk GRATIS), mejoras cooler/turbotank (200/500/1000 × 3 niveles),
+  boosts consumibles (icepack 60, headstart 40), colores (80 c/u).
+- **Productos de Play Console** (crear los 4):
+
+| Product ID  | Tipo           | Contenido        | Precio  |
+|-------------|----------------|------------------|---------|
+| remove_ads  | No consumible  | Sin anuncios     | ~$2.99  |
+| coins_500   | Consumible     | 500 monedas      | $0.99   |
+| coins_2000  | Consumible     | 2 000 monedas    | $2.99   |
+| coins_4000  | Consumible     | 4 000 monedas    | $4.99   |
+
+Código: `src/game/economy.js` (catálogo/wallet), `src/monetize/iap.js`
+(productos), `src/ui/screens/ShopScreen.jsx` (tienda). Los packs se acreditan
+en el evento `verified` y se consumen con `finish()`.
+
+## Anuncios en la versión WEB (H5 Games Ads)
+
+AdMob es un SDK nativo — NO sirve anuncios en navegadores. La web usa
+**Google H5 Games Ads** (Ad Placement API de AdSense, `adBreak`), ya cableado
+en `src/monetize/ads.js` con el mismo publisher (`ca-pub-3090812928887940`) y
+las MISMAS superficies suaves (interstitial cada 5ª partida + rewarded
+opcional). Mientras el sitio no esté aprobado, `adBreak` es un no-op
+silencioso y el juego sigue normal.
+
+**ads.txt — ✅ HECHO (2026-07-17):** AdSense exige el `ads.txt` en el
+**dominio raíz** (`jcampos.dev`), que no tenía registro DNS. Infra creada en
+AWS (cuenta PACIFIC-PROD, us-east-1):
+
+- S3 privado `jcampos-dev-apex-ads` con el `ads.txt`
+  (`google.com, pub-3090812928887940, DIRECT, f08c47fec0942fa0`), servido
+  solo vía CloudFront OAC.
+- CloudFront `E12PR4F6X0UGV7` con cert ACM para `jcampos.dev` y una CF
+  Function: `/ads.txt` → S3; cualquier otra ruta → 301 a
+  `https://www.jcampos.dev` (misma ruta).
+- Route53: A/AAAA alias del apex → la distribución (`www` sigue en GitHub
+  Pages, intacto). Verificado: `https://jcampos.dev/ads.txt` → 200.
+- El mismo `ads.txt` vive ahora en `public/ads.txt` → se publica en
+  `churchill.jcampos.dev/ads.txt` con el deploy (antes estaba en la raíz del
+  repo y Vite no lo publicaba).
+- Para actualizarlo: `aws s3 cp public/ads.txt s3://jcampos-dev-apex-ads/ads.txt
+  --profile PACIFIC-PROD` + invalidación de `/ads.txt` en la distribución.
+
+**Política de privacidad — ✅ HECHO (2026-07-17):** páginas estáticas
+bilingües (ES/EN) publicadas en:
+- `https://churchill.jcampos.dev/privacy/` (`public/privacy/index.html` en
+  este repo) — cubre AdMob/AAID, AdSense web, Play Billing, UMP; enlazada
+  desde Ajustes (`settings.privacy`). Es la URL para la ficha de Play y la
+  Data Safety form.
+- `https://www.jcampos.dev/privacy/` (`client/public/privacy/index.html` en
+  chepelcr.github.io) — política del dominio raíz; en ese repo también se
+  movió `ads.txt` a `client/public/` (estaba en la raíz y Vite no lo
+  publicaba — daba 404).
+
+**Nota AdSense "sitio ya añadido":** AdSense gestiona sitios por DOMINIO
+RAÍZ. `jcampos.dev` ya figura en Sitios, y `churchill.jcampos.dev` queda
+cubierto como subdominio — no se puede (ni hace falta) añadir aparte. Lo que
+debe quedar aprobado/"Listo" es la entrada `jcampos.dev`.
+
+**Pasos pendientes (consola de AdSense, misma cuenta Google que AdMob):**
+1. En https://adsense.google.com → Sitios → entrada `jcampos.dev`: solicitar
+   la revisión (el ads.txt del dominio raíz y la política ya responden).
+2. Habilitar **H5 Games Ads** (Ad Placement API) para el sitio.
+3. Configurar el mensaje de consentimiento EEA en AdSense (Privacy &
+   messaging), igual que en AdMob.
+4. Para probar antes de la aprobación: agregar `data-adbreak-test="on"` al
+   script en `initWebAds()` TEMPORALMENTE (nunca comitear activado).
+
+## Formato de publicación: AAB (obligatorio)
+
+**Sí, Play Store exige `.aab`** para apps nuevas desde agosto 2021 — el `.apk`
+NO se puede subir a producción. El APK del sitio (`/churchill.apk`) sigue
+siendo válido para instalar por fuera de Play (sideload). Para Play:
+
+```
+pnpm build && npx cap sync android
+cd android && ./gradlew bundleRelease
+# -> android/app/build/outputs/bundle/release/app-release.aab
+```
+
+Firmado con el mismo keystore; al crear la app en Play Console conviene
+activar **Play App Signing** (Google guarda la clave de firma final y tu
+keystore pasa a ser la "upload key").
+
+## Checklist de cumplimiento — políticas de Google Play
+
+Estado a 2026-07 (verificar contra las políticas vigentes al momento del
+release en https://play.google.com/console → Policy Center):
+
+1. **Data Safety form (obligatoria)** — AdMob recolecta identificadores de
+   dispositivo (AAID) e info de diagnóstico aunque el juego no recolecte nada:
+   declarar "Device or other IDs" + "Advertising" como propósito, compartido
+   con terceros (Google). Sin esto la app se rechaza.
+2. **Política de privacidad (obligatoria, doblemente)** — Play la exige para
+   toda app con Data Safety, y AdMob la exige por contrato. URL pública (puede
+   vivir en churchill.jcampos.dev/privacy). Debe mencionar AdMob/identificadores
+   y el enlace a los ads settings de Google.
+3. **Consentimiento (GDPR/EEA + UMP)** — AdMob exige el **User Messaging
+   Platform (UMP)** para usuarios del EEE/UK: crear el mensaje de consentimiento
+   en AdMob → Privacy & messaging, y llamar `AdMob.requestConsentInfo()` /
+   `showConsentForm()` antes de cargar ads (el plugin `@capacitor-community/
+   admob` los expone). TODO en `ads.init()` cuando existan los IDs reales.
+4. **Ads policy** — cumplimos por diseño: interstitials solo entre partidas
+   (pantalla de resultados, nunca "unexpected"), cerrables, sin banners que
+   tapen gameplay, rewarded 100% opt-in con recompensa clara. NO mostrar ads
+   en el primer arranque (grace de 3 partidas lo garantiza).
+5. **Target audience & Families** — el juego es familiar visualmente; si se
+   declara audiencia que incluye <13, aplican las **Families Ads Policies**
+   (solo redes certificadas, sin AAID). Recomendación: declarar **13+** para
+   usar AdMob normal; el content rating (IARC) saldrá "Everyone" igualmente.
+6. **Content rating (IARC)** — cuestionario en Play Console; sin violencia
+   real/apuestas → rating bajo. Declarar que contiene ads y compras.
+7. **Target API level** — desde el **31-ago-2026** las apps NUEVAS deben
+   apuntar a **API 36** (Android 16); las existentes a ≥35. Nuestro
+   `android/variables.gradle` ya está en `targetSdkVersion = 36` ✓ (verificado
+   2026-07-16; extensión posible hasta nov-2026 si hiciera falta).
+8. **Cuenta nueva: pruebas cerradas** — **12 testers × 14 días continuos**
+   antes de pedir acceso a producción (política para cuentas personales
+   creadas después de nov-2023; Google la bajó de 20 a 12 en dic-2024 — el
+   plan original decía 20). No aplica a cuentas de organización.
+9. **Declaración de compras** — "Quitar anuncios" aparece en la ficha como
+   "In-app purchases"; el flujo IAP ya usa Google Play Billing (obligatorio;
+   pasarelas externas prohibidas para bienes digitales).
+10. **Sin login/cuentas** — no aplica la política de account deletion.
+
+## Decisiones de diseño
+
+- El rewarded "continue" NO se bloquea con la compra de quitar anuncios —
+  es un beneficio que el jugador pide, no publicidad intrusiva.
+- Sin banners: en un juego de manejo tapan la vista; solo interstitial de
+  baja frecuencia + rewarded opcional.
+- Funding/crowdfunding (tiers Kickstarter/Patreon/SINPE del plan) queda
+  fuera del código por ahora; los tiers 2/3 (NPC patrocinado, valla en el
+  Paseo) se pueden implementar como `CUSTOMER_DEFS`/landmarks cuando haya
+  patrocinadores reales.

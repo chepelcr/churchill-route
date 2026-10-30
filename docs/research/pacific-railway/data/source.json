@@ -1,0 +1,28 @@
+{
+  "source_url": "https://download.geofabrik.de/central-america/costa-rica-261027.osm.pbf",
+  "source_bytes": 39120189,
+  "sha256": "b0816b47df644e2b1ca4be369f54aa5c0e638e84f1fa7a990342f907d6c101cb",
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "bbox": [
+    -84.9,
+    9.8,
+    -84.02,
+    10.12
+  ],
+  "railway_ways": 279,
+  "stations": 41,
+  "context_features": 3020,
+  "route_relations": 19,
+  "railway_tags": {
+    "rail": 152,
+    "disused": 119,
+    "abandoned": 4,
+    "razed": 4
+  },
+  "header": {
+    "osmosis_replication_timestamp": "2026-10-27T21:23:59Z",
+    "osmosis_replication_sequence_number": "2087",
+    "generator": "osmium/1.16.0"
+  }
+}

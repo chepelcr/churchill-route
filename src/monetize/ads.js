@@ -1,0 +1,145 @@
+// Ads, both platforms — the SAME gentle surface everywhere (the app is a
+// tourism showcase first; ads must never get in the way of that):
+//  - INTERSTITIAL only every 5th finished run, and NEVER during the player's
+//    first 3 runs ever (let tourists fall in love first), never after the
+//    tutorial, skipped entirely with the "remove ads" purchase (native).
+//  - REWARDED video = "continue +60s" / "double coins" — 100% player-
+//    initiated, so it doesn't count as intrusive.
+//  - NO banners: they'd cover the road while driving.
+//
+// Backends:
+//  - NATIVE (Android APK): AdMob via @capacitor-community/admob (dynamic
+//    import, never in the web bundle). PRODUCTION ad-unit ids; the matching
+//    APPLICATION_ID lives in AndroidManifest.xml. For ad-debugging, register
+//    the device as a test device in the AdMob console.
+//  - WEB: Google H5 Games Ads (AdSense Ad Placement API, `adBreak`) under
+//    the same publisher (ca-pub-…). It serves once the site is approved in
+//    AdSense with H5 Games Ads enabled; until then adBreak calls are silent
+//    no-ops and the game just continues (see docs/MONETIZATION.md).
+import { iap } from "./iap.js";
+import SERVICES from "../content/services.json" with { type: "json" };
+
+const NATIVE = typeof window !== "undefined" && !!window.Capacitor;
+const BROWSER = typeof window !== "undefined" && !NATIVE;
+const COUNT_KEY = "churchill_runs_since_ad_v1";
+const TOTAL_KEY = "churchill_runs_total_v1";
+// THE RULES ARE CONTENT, and they are as much a product decision as a
+// config — see `services.json`, which says why each number is what it is.
+// THE RULES ARE THE SAME ON BOTH PLATFORMS; THE PLUMBING IS NOT. Web is H5
+// Games Ads (the `adBreak` API) and the app is AdMob — different ids, different
+// placement names, a different way of asking for an ad — so `services.json`
+// keeps them as two blocks under one policy rather than one flat list, which is
+// how an app id ends up where a web one belonged.
+const POLICY = SERVICES.ads.policy;
+const WEB = SERVICES.ads.web;
+const APP = SERVICES.ads.app;
+const INTERSTITIAL_EVERY = POLICY.interstitialEvery;
+const GRACE_RUNS = POLICY.graceRuns;   // none at all for a player's first runs
+
+let AdMob = null;          // native plugin module once loaded
+let RewardAdPluginEvents = null;
+let ready = false;         // native SDK initialized
+let webReady = false;      // adsbygoogle tag injected
+
+// Shared frequency gate: true when THIS finished run should show an
+// interstitial (counts the run either way; respects grace + cadence).
+function interstitialDue() {
+  let total = 0, n = 0;
+  try { total = (parseInt(localStorage.getItem(TOTAL_KEY), 10) || 0) + 1; } catch { total = 1; }
+  try { localStorage.setItem(TOTAL_KEY, String(total)); } catch { /* private */ }
+  if (total <= GRACE_RUNS) return false;
+  try { n = (parseInt(localStorage.getItem(COUNT_KEY), 10) || 0) + 1; } catch { n = 1; }
+  try { localStorage.setItem(COUNT_KEY, String(n % INTERSTITIAL_EVERY)); } catch { /* private */ }
+  return n >= INTERSTITIAL_EVERY;
+}
+
+function initWebAds() {
+  if (!BROWSER || webReady || typeof document === "undefined") return;
+  webReady = true;
+  window.adsbygoogle = window.adsbygoogle || [];
+  // adBreak/adConfig forward into the adsbygoogle queue (official pattern)
+  window.adBreak = window.adConfig = function (o) { window.adsbygoogle.push(o); };
+  const s = document.createElement("script");
+  s.async = true;
+  s.crossOrigin = "anonymous";
+  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${WEB.client}`;
+  // a pacing net ON TOP of the cadence gate; the stricter of the two wins
+  s.setAttribute("data-ad-frequency-hint", WEB.frequencyHint);
+  document.head.appendChild(s);
+  window.adConfig({ preloadAdBreaks: WEB.preloadAdBreaks, sound: WEB.sound });
+}
+
+export const ads = {
+  async init() {
+    if (BROWSER) { initWebAds(); return; }
+    if (!NATIVE || ready) return;
+    try {
+      const mod = await import("@capacitor-community/admob");
+      AdMob = mod.AdMob;
+      RewardAdPluginEvents = mod.RewardAdPluginEvents;
+      await AdMob.initialize();
+      ready = true;
+    } catch (e) {
+      console.warn("[ads] init failed (plugin missing on this platform?)", e);
+    }
+  },
+
+  // Every INTERSTITIAL_EVERY finished runs, show a full-screen ad — unless
+  // the player bought "remove ads", is still in the first-runs grace period,
+  // or just finished the tutorial. Fire-and-forget from the results screen.
+  async maybeShowInterstitial(mode) {
+    if (POLICY.skipAfterTutorial && mode === "tutorial") return;
+    if (POLICY.removedByPurchase && iap.owned) return;
+    if (ready) {
+      if (!interstitialDue()) return;
+      try {
+        await AdMob.prepareInterstitial({ adId: APP.placements.interstitial });
+        await AdMob.showInterstitial();
+      } catch (e) { console.warn("[ads] interstitial failed", e); }
+    } else if (webReady && window.adBreak) {
+      if (!interstitialDue()) return;
+      window.adBreak(WEB.placements.runFinished);
+    }
+  },
+
+  // true iff a rewarded ad can be offered right now
+  canOfferRewarded() { return ready || (webReady && !!window.adBreak); },
+
+  // Shows the rewarded video; resolves true if the player earned the reward.
+  showRewarded() {
+    if (ready) {
+      return new Promise(async (resolve) => {
+        let rewarded = false;
+        const subs = [];
+        try {
+          subs.push(await AdMob.addListener(RewardAdPluginEvents.Rewarded, () => { rewarded = true; }));
+          subs.push(await AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
+            for (const s of subs) s.remove();
+            resolve(rewarded);
+          }));
+          await AdMob.prepareRewardVideoAd({ adId: APP.placements.rewarded });
+          await AdMob.showRewardVideoAd();
+        } catch (e) {
+          console.warn("[ads] rewarded failed", e);
+          for (const s of subs) if (s && s.remove) s.remove();
+          resolve(false);
+        }
+      });
+    }
+    if (webReady && window.adBreak) {
+      return new Promise((resolve) => {
+        let granted = false, done = false;
+        const finish = () => { if (!done) { done = true; resolve(granted); } };
+        window.adBreak({
+          ...WEB.placements.reward,
+          beforeReward(showAdFn) { showAdFn(); }, // a reward ad is available: show it
+          adViewed() { granted = true; },
+          adDismissed() { /* skipped: no reward */ },
+          adBreakDone() { finish(); },            // always fires (even no-fill)
+        });
+        setTimeout(finish, WEB.rewardTimeoutMs);  // belt-and-braces timeout
+      });
+    }
+    return Promise.resolve(false);
+  },
+};

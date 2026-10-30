@@ -1,0 +1,25 @@
+{
+  "_note": "The colours the build hands to synthesized buildings. A NAMED footprint may carry its own; these are for the rest, picked by a deterministic hash so the same house is the same colour every build.",
+  "building": [
+    "#f3c969",
+    "#e85d75",
+    "#6fbf99",
+    "#5fb0d6",
+    "#f08a5d",
+    "#c084d6",
+    "#f4d77a",
+    "#7ed6b5",
+    "#e7a3b7",
+    "#9bc4d4",
+    "#fff2cc",
+    "#ffd8b1"
+  ],
+  "roof": [
+    "#9e6f4a",
+    "#3a3540",
+    "#e85d75",
+    "#6fbf99",
+    "#f08a5d",
+    "#3a6f8a"
+  ]
+}

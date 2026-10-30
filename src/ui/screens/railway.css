@@ -1,10 +1,184 @@
+/* EL TREN AL PUERTO — tres pantallas de menú y una de partida.
+ *
+ * Los tokens son los del juego (`--paper`, `--gold`, `--mint`, `glass-card`,
+ * `btn`): el modo entra por el menú principal y tiene que verse como la misma
+ * aplicación. Lo único propio es la vía — el oro del combustible, el rojo del
+ * freno — y el canvas a sangre, que es lo que hace que la partida se lea como
+ * una partida y no como una tarjeta más. */
 .railway-mode{position:absolute;inset:0;z-index:12;background:var(--editor-screen-bg);color:var(--paper)}
-.railway-select{width:min(760px,90vw)}
-.railway-trains{padding:24px;text-align:center}
-.railway-train-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}
-.railway-train-grid .mode{min-width:0;padding:16px 10px}
-.railway-train{display:flex;align-items:end;justify-content:center;margin:8px 0 20px}
-.railway-train img{width:34%;height:auto;min-width:0}
-.railway-play,.railway-play iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-.railway-result-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:24px}
-@media(max-width:600px){.railway-train-grid{gap:6px}.railway-train-grid .mode{padding:8px 4px}.railway-train-grid strong{font-size:12px}}
+.railway-page{position:absolute;inset:0}
+.railway-select{width:min(980px,94vw)}
+
+/* ---- el tramo ---------------------------------------------------------- */
+.railway-level{overflow:hidden;padding:0}
+/* `styles.css` pone TODO canvas en `position:absolute; inset:0` — el juego vive
+ * en uno a pantalla completa. Los tres canvas de este modo que SÍ son contenido
+ * de una tarjeta tienen que salirse de esa regla, o se montan encima del texto
+ * de su propia tarjeta: la vista previa tapaba el nombre del tramo y las fichas
+ * sin una sola advertencia. */
+.railway-preview,.railway-figure{position:relative;inset:auto}
+.railway-preview{display:block;width:100%;height:clamp(150px,26vh,260px);border-bottom:1px solid #0003}
+.railway-level-body{padding:18px 22px 22px}
+.railway-level-head{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.railway-level-head>div{flex:1;min-width:0}
+.railway-level-head strong{display:block;font-size:clamp(18px,2.6vw,26px);line-height:1.1}
+.railway-level-head small{display:block;opacity:.68;font-size:12px;letter-spacing:.04em}
+.railway-num{font-family:'Bungee',sans-serif;font-size:clamp(26px,4vw,40px);color:var(--gold);letter-spacing:.02em}
+.railway-coins{background:#0003;border:1px solid #ffffff22;border-radius:999px;padding:6px 14px;
+  font-weight:700;color:var(--gold);white-space:nowrap}
+.railway-brief{margin:0 0 14px;opacity:.86;line-height:1.5;max-width:62ch}
+.railway-facts{list-style:none;display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px;padding:0}
+.railway-facts li{background:#ffffff0f;border:1px solid #ffffff1a;border-radius:10px;
+  padding:8px 13px;text-align:center;min-width:84px}
+.railway-facts b{display:block;font-size:17px;letter-spacing:.02em}
+.railway-facts span{font-size:10px;text-transform:uppercase;letter-spacing:.09em;opacity:.62}
+.railway-scene-tag{margin:0 0 12px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
+.railway-scene-tag b{color:var(--mint)}
+.railway-note{margin:12px 0 0;font-size:11px;line-height:1.5;opacity:.52;max-width:70ch}
+.railway-error{margin:0 0 10px;color:#ff9b7a;font-size:13px}
+.railway-reward{margin:4px 0 14px;font-weight:700;color:var(--gold);font-size:17px}
+.railway-kicker{margin:0 0 4px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.6}
+
+/* ---- el garaje -------------------------------------------------------- */
+.railway-garage{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start}
+.railway-garage-main,.railway-upgrades{padding:18px 20px}
+.railway-garage-head{display:flex;align-items:flex-start;gap:12px}
+.railway-garage-head>div{flex:1;min-width:0}
+.railway-garage-head strong{display:block;font-size:clamp(17px,2.3vw,23px)}
+.railway-garage-head small{display:block;opacity:.7;font-size:12px;margin-top:2px}
+.railway-figure{display:block;width:100%;height:clamp(110px,18vh,180px);margin:8px 0 12px}
+.railway-train-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.railway-train-chip{background:#ffffff0d;border:1px solid #ffffff1f;border-radius:12px;padding:10px 8px;
+  color:inherit;cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.railway-train-chip b{display:block;font-size:13px}
+.railway-train-chip small{display:block;font-size:10px;opacity:.6;margin-top:3px}
+.railway-train-chip.on{border-color:var(--gold);background:#ffd16a1a}
+.railway-train-chip.locked small{color:var(--gold);opacity:.95}
+.railway-fiche{margin:12px 0 0;font-size:11px;opacity:.5}
+
+.railway-ladder{border-top:1px solid #ffffff14;padding:10px 0 12px;
+  display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}
+.railway-ladder:first-of-type{border-top:0}
+.railway-ladder-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.railway-ladder-head b{font-size:14px}
+.railway-ladder-head span{font-size:11px;opacity:.6}
+.railway-ladder small{grid-column:1;font-size:11px;opacity:.6;line-height:1.4}
+.railway-ladder .railway-buy{grid-column:2;grid-row:1/4;min-width:86px;white-space:nowrap}
+.railway-pips{grid-column:1;display:flex;gap:4px}
+.railway-pips span{flex:1;height:7px;border-radius:3px;background:#ffffff1c}
+.railway-pips span.on{background:linear-gradient(90deg,var(--gold),#ffe9a8)}
+.railway-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:14px 0;padding:12px 0;
+  border-top:1px solid #ffffff14;border-bottom:1px solid #ffffff14}
+.railway-stats>div{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.railway-stats dt{opacity:.6}
+.railway-stats dd{margin:0;font-weight:700}
+
+/* ---- la partida ------------------------------------------------------- */
+.railway-play,.railway-stage{position:absolute;inset:0;overflow:hidden}
+.railway-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* La barra de arriba: combustible y fichas a la izquierda, el tramo en medio,
+ * el reloj y la pausa a la derecha. Nada de ella intercepta el puntero salvo el
+ * botón: el lienzo de abajo es lo que se conduce. */
+.railway-hud{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;gap:14px;
+  padding:12px 14px;pointer-events:none;background:linear-gradient(180deg,#0b1a24a8,#0b1a2400)}
+.railway-hud-left{display:flex;flex-direction:column;gap:7px;flex:none}
+.railway-hud-mid{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.railway-hud-right{display:flex;align-items:center;gap:8px;flex:none}
+.railway-pause{pointer-events:auto;background:#0b1a24b0;border:1px solid #ffffff2b;color:var(--paper);
+  width:38px;height:38px;border-radius:11px;font-size:13px;cursor:pointer}
+.railway-chip{background:#0b1a24a8;border:1px solid #ffffff22;border-radius:999px;padding:4px 11px;
+  font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.railway-fuel{display:flex;align-items:center;gap:8px;
+  background:#0b1a24a8;border:1px solid #ffffff22;border-radius:999px;padding:5px 12px 5px 7px}
+.railway-can{width:17px;height:19px;flex:none;border-radius:3px 3px 4px 4px;background:#d4553a;
+  box-shadow:inset 0 -5px 0 #a83f28, inset 0 4px 0 #e8795e;position:relative}
+.railway-can::after{content:"";position:absolute;top:-4px;left:4px;width:9px;height:4px;
+  border-radius:2px 2px 0 0;background:#8d3420}
+.railway-meter{width:clamp(70px,12vw,150px);height:10px;border-radius:5px;background:#ffffff1f;overflow:hidden}
+.railway-fuel-bar{display:block;height:100%;width:100%;border-radius:5px;
+  background:linear-gradient(90deg,#6fcf8c,#b8e07a);transition:background .3s}
+.railway-fuel-bar.warn{background:linear-gradient(90deg,#f0bf5a,#f5d98a)}
+.railway-fuel-bar.low{background:linear-gradient(90deg,#e4603f,#f09a6a)}
+.railway-fuel-read{font-size:12px;font-variant-numeric:tabular-nums;min-width:42px;text-align:right}
+.railway-purse{display:flex;align-items:center;gap:7px;align-self:flex-start;
+  background:#0b1a24a8;border:1px solid #ffffff22;border-radius:999px;padding:4px 13px 4px 6px;
+  font-variant-numeric:tabular-nums;color:var(--gold);font-weight:700}
+.railway-coin{width:18px;height:18px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 34% 30%,#ffe694,#f2c84b 58%,#b88a1c);
+  box-shadow:inset 0 0 0 1.5px #9d7314}
+
+/* El tramo, con su banderín de llegada — como la cinta de distancia del
+ * referente: lo que importa no es el número sino cuánto falta. */
+.railway-route{position:relative;width:min(380px,46vw);height:6px;border-radius:3px;
+  background:#0b1a2499;border:1px solid #ffffff22}
+.railway-route-done{display:block;height:100%;width:0;border-radius:3px;
+  background:linear-gradient(90deg,var(--mint),var(--gold))}
+.railway-route-flag{position:absolute;right:-6px;top:-13px;font-size:14px;color:var(--gold);
+  text-shadow:0 1px 3px #000a}
+
+.railway-flags{position:absolute;top:84px;left:0;right:0;display:flex;flex-direction:column;
+  align-items:center;gap:6px;pointer-events:none}
+.railway-flag{opacity:0;transform:translateY(-6px);transition:opacity .18s,transform .18s;
+  font-family:'Bungee',sans-serif;font-size:13px;letter-spacing:.08em;padding:5px 15px;border-radius:999px}
+.railway-flag.on{opacity:1;transform:none}
+.railway-flag.loop{background:#2f6b4fcc;border:1px solid #8fd6a077}
+.railway-flag.stall{background:#b23327d9;border:1px solid #ffb9a277}
+
+/* Los dos cuadrantes, abajo en el centro. */
+.railway-dials{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center;
+  align-items:flex-end;gap:clamp(8px,2vw,26px);pointer-events:none}
+.railway-dial{position:relative;width:clamp(74px,10vw,104px);text-align:center}
+.railway-dial svg{width:100%;height:auto;display:block;filter:drop-shadow(0 4px 10px #0009)}
+.dial-face{fill:#101d26e0}
+.dial-rim{fill:none;stroke:#cdd6dc;stroke-width:4}
+.dial-tick{stroke:#cdd6dc;stroke-width:3;stroke-linecap:round}
+.dial-tick.hot{stroke:#e4603f}
+.dial-needle{transform-origin:50px 50px;transition:transform .09s linear}
+.dial-needle line{stroke:#f2f1ec;stroke-width:4;stroke-linecap:round}
+.railway-dial.warm .dial-needle line{stroke:#ffd978}
+.dial-pin{fill:#cdd6dc}
+.dial-read{position:absolute;left:0;right:0;bottom:30%;font-variant-numeric:tabular-nums;
+  font-family:'Bungee',sans-serif;font-size:clamp(13px,1.7vw,19px);text-shadow:0 2px 6px #000b;
+  display:flex;align-items:baseline;justify-content:center;gap:3px}
+.dial-read i{font-style:normal;font-family:inherit;font-size:.5em;opacity:.7}
+.dial-label{display:block;margin-top:4px;font-size:9px;letter-spacing:.12em;opacity:.65;
+  text-shadow:0 1px 3px #000a}
+
+/* Los pedales: chapa con agujeros, como los del referente. */
+.railway-pedals{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:12px;padding:14px 16px 20px;pointer-events:none}
+.railway-pedal{pointer-events:auto;position:relative;overflow:hidden;
+  width:clamp(96px,14vw,150px);height:clamp(62px,10vh,92px);border-radius:16px;
+  border:1px solid #ffffff44;color:var(--paper);cursor:pointer;touch-action:none;
+  display:grid;place-items:center;
+  background:linear-gradient(180deg,#8d969d,#5d666e 58%,#454d54);
+  box-shadow:inset 0 2px 0 #cdd6dc88, 0 6px 14px #0007}
+.railway-pedal::before{content:"";position:absolute;inset:9px 12px auto 12px;height:22px;
+  background-image:radial-gradient(circle,#2d343a 42%,#00000000 46%);
+  background-size:20px 20px;opacity:.75}
+.railway-pedal b{position:relative;margin-top:16px;font-family:'Bungee',sans-serif;
+  font-size:clamp(11px,1.4vw,15px);letter-spacing:.07em;color:#f2f1ec;text-shadow:0 2px 4px #0009}
+.railway-pedal:active{box-shadow:inset 0 3px 8px #0009}
+.railway-pedal-fill{position:absolute;inset:auto 0 0 0;height:100%;width:0;transition:width .08s linear}
+.railway-pedal.gas .railway-pedal-fill{background:linear-gradient(0deg,#2f6b4fcc,#8fd6a03a)}
+.railway-pedal.brake .railway-pedal-fill{background:linear-gradient(0deg,#b23327cc,#e4603f3a)}
+/* La ayuda de teclado vive bajo la cinta del tramo. Abajo, entre los pedales,
+ * chocaba con los cuadrantes: la leyenda quedaba DETRÁS de las agujas. */
+.railway-keyhint{margin:0;font-size:11px;letter-spacing:.05em;opacity:.5;text-shadow:0 1px 4px #000a}
+
+.railway-overlay{position:absolute;inset:0;display:grid;place-items:center;background:#06111ab8;z-index:3}
+.railway-pause-card{padding:26px 32px;text-align:center;max-width:min(460px,90vw)}
+.railway-pause-card strong{display:block;font-size:22px;margin-bottom:16px}
+.railway-result-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+
+@media(max-width:860px){
+  .railway-garage{grid-template-columns:1fr}
+  .railway-facts li{min-width:70px;padding:7px 10px}
+}
+@media(max-width:600px){
+  .railway-level-body{padding:14px 15px 18px}
+  .railway-keyhint{display:none}
+  .railway-flags{top:50px}
+}

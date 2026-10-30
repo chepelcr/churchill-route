@@ -1,0 +1,318 @@
+{
+  "_note": "LO QUE EL MODO TREN CONTIENE: las máquinas, sus mejoras y su economía. La física que las mueve vive en src/assets/railway-sim.json; el arte que las dibuja, en src/assets/railway-art.json; los niveles, en levels/. Las tres referencias de locomotora salen de docs/research/pacific-railway (fichas y créditos en PHOTO-REFERENCES.md).",
+  "version": 1,
+  "campaign": [
+    "pacifico-belen"
+  ],
+  "_campaign": "El orden de la campaña. Hoy un nivel: los ocho tramos restantes están propuestos en docs/research/pacific-railway/data/levels.proposed.json y sus escenas ya existen en el registro de arte, que es lo que el selector muestra como avance.",
+  "upgrades": {
+    "_note": "CUATRO BARRAS, COMO EN HILL CLIMB. Cada una multiplica un número de la máquina y nada más: `stat = base · (1 + perLevel · nivel)`. Seis escalones, coste creciente. El nivel 0 es la máquina tal como se documenta; los cinco siguientes son taller, no historia.",
+    "maxLevel": 5,
+    "ladders": [
+      {
+        "id": "engine",
+        "nameKey": "railway.up.engine",
+        "descKey": "railway.up.engine.desc",
+        "icon": "piston",
+        "affects": [
+          "pullMax",
+          "pullPower"
+        ],
+        "perLevel": 0.19,
+        "costs": [
+          220,
+          420,
+          760,
+          1300,
+          2150
+        ]
+      },
+      {
+        "id": "speed",
+        "nameKey": "railway.up.speed",
+        "descKey": "railway.up.speed.desc",
+        "icon": "gear",
+        "affects": [
+          "topSpeed"
+        ],
+        "perLevel": 0.12,
+        "costs": [
+          200,
+          390,
+          700,
+          1200,
+          2000
+        ]
+      },
+      {
+        "id": "brake",
+        "nameKey": "railway.up.brake",
+        "descKey": "railway.up.brake.desc",
+        "icon": "shoe",
+        "affects": [
+          "brake"
+        ],
+        "perLevel": 0.16,
+        "costs": [
+          150,
+          300,
+          560,
+          980,
+          1650
+        ]
+      },
+      {
+        "id": "fuel",
+        "nameKey": "railway.up.fuel",
+        "descKey": "railway.up.fuel.desc",
+        "icon": "drum",
+        "affects": [
+          "tankL",
+          "burnEfficiency"
+        ],
+        "perLevel": 0.17,
+        "costs": [
+          180,
+          340,
+          620,
+          1080,
+          1800
+        ]
+      }
+    ]
+  },
+  "economy": {
+    "startCoins": 240,
+    "coinPerM": 0.012,
+    "_coinPerM": "La distancia paga, como en Hill Climb: el tramo recorrido es la recompensa del intento que no llegó.",
+    "finishBonus": 150,
+    "starBonus": 60,
+    "firstClearBonus": 300
+  },
+  "trains": [
+    {
+      "id": "maria-cecilia",
+      "nameKey": "railway.train.maria-cecilia",
+      "taglineKey": "railway.train.maria-cecilia.tag",
+      "art": "maria-cecilia",
+      "fuelKind": "lena",
+      "price": 0,
+      "fiche": {
+        "yearKey": "railway.fiche.maria-cecilia",
+        "source": "docs/research/pacific-railway/PHOTO-REFERENCES.md#maria-cecilia",
+        "_note": "Dickson de 1898. La ficha de la foto tiene discrepancia entre fecha declarada y EXIF; la investigación advierte no reconstruir de ahí una fecha exacta."
+      },
+      "consist": [
+        {
+          "art": "maria-cecilia",
+          "lengthM": 11.4
+        },
+        {
+          "art": "tender-lena",
+          "lengthM": 6.8
+        },
+        {
+          "art": "coach-wood",
+          "lengthM": 12.2
+        }
+      ],
+      "stats": {
+        "pullMax": 3.4,
+        "pullPower": 34,
+        "topSpeed": 29,
+        "brake": 4.4,
+        "rollDrag": 0.32,
+        "airDrag": 0.0046,
+        "tankL": 110,
+        "burnIdle": 0.34,
+        "burnPerPull": 1.05,
+        "burnEfficiency": 1
+      }
+    },
+    {
+      "id": "incofer-55",
+      "nameKey": "railway.train.incofer-55",
+      "taglineKey": "railway.train.incofer-55.tag",
+      "art": "incofer-55",
+      "fuelKind": "diesel",
+      "price": 1200,
+      "fiche": {
+        "yearKey": "railway.fiche.incofer-55",
+        "source": "docs/research/pacific-railway/README.md",
+        "_note": "Locomotora diésel N.º 55 del Ferrocarril al Pacífico, de la librea azul con franja blanca y filete rojo. Arte dibujado sobre fotografía de referencia aportada por el autor; no se redistribuye ninguna imagen."
+      },
+      "consist": [
+        {
+          "art": "incofer-55",
+          "lengthM": 13.2
+        },
+        {
+          "art": "coach-steel",
+          "lengthM": 16.4
+        },
+        {
+          "art": "coach-steel",
+          "lengthM": 16.4
+        }
+      ],
+      "stats": {
+        "pullMax": 3.3,
+        "pullPower": 42,
+        "topSpeed": 34,
+        "brake": 5.0,
+        "rollDrag": 0.28,
+        "airDrag": 0.0045,
+        "tankL": 96,
+        "burnIdle": 0.24,
+        "burnPerPull": 0.82,
+        "burnEfficiency": 1
+      }
+    },
+    {
+      "id": "siemens-130",
+      "nameKey": "railway.train.siemens-130",
+      "taglineKey": "railway.train.siemens-130.tag",
+      "art": "siemens-130",
+      "fuelKind": "diesel",
+      "price": 1800,
+      "fiche": {
+        "yearKey": "railway.fiche.siemens-130",
+        "source": "docs/research/pacific-railway/README.md",
+        "_note": "Henschel–Siemens 130–133, llegadas en 1957. La fotografía municipal de la 130 es referencia; no se identificó licencia abierta para redistribuirla, así que el arte es dibujo propio."
+      },
+      "consist": [
+        {
+          "art": "siemens-130",
+          "lengthM": 14.6
+        },
+        {
+          "art": "coach-steel",
+          "lengthM": 16.4
+        },
+        {
+          "art": "coach-steel",
+          "lengthM": 16.4
+        }
+      ],
+      "stats": {
+        "pullMax": 3.1,
+        "pullPower": 48,
+        "topSpeed": 41,
+        "brake": 5.6,
+        "rollDrag": 0.26,
+        "airDrag": 0.0041,
+        "tankL": 90,
+        "burnIdle": 0.22,
+        "burnPerPull": 0.74,
+        "burnEfficiency": 1
+      }
+    },
+    {
+      "id": "apolo-2400",
+      "nameKey": "railway.train.apolo-2400",
+      "taglineKey": "railway.train.apolo-2400.tag",
+      "art": "apolo-2400",
+      "fuelKind": "diesel",
+      "price": 2600,
+      "fiche": {
+        "yearKey": "railway.fiche.apolo-2400",
+        "source": "docs/research/pacific-railway/README.md",
+        "_note": "Automotor Apolo 2400 de Incofer, librea blanca con franja amarilla. Arte dibujado sobre fotografía de referencia aportada por el autor."
+      },
+      "consist": [
+        {
+          "art": "apolo-2400",
+          "lengthM": 17.6
+        },
+        {
+          "art": "apolo-2400",
+          "lengthM": 17.6
+        }
+      ],
+      "stats": {
+        "pullMax": 2.9,
+        "pullPower": 52,
+        "topSpeed": 44,
+        "brake": 5.8,
+        "rollDrag": 0.23,
+        "airDrag": 0.0038,
+        "tankL": 80,
+        "burnIdle": 0.18,
+        "burnPerPull": 0.62,
+        "burnEfficiency": 1
+      }
+    },
+    {
+      "id": "aeg-3",
+      "nameKey": "railway.train.aeg-3",
+      "taglineKey": "railway.train.aeg-3.tag",
+      "art": "aeg-3",
+      "fuelKind": "electrica",
+      "price": 3200,
+      "fiche": {
+        "yearKey": "railway.fiche.aeg-3",
+        "source": "docs/research/pacific-railway/PHOTO-REFERENCES.md#aeg",
+        "_note": "AEG eléctricas, N.º 3 entre ellas; la electrificación se inicia alrededor de 1930. Obras e inauguración son fechas distintas y la investigación pide no condensarlas."
+      },
+      "consist": [
+        {
+          "art": "aeg-3",
+          "lengthM": 12.8
+        },
+        {
+          "art": "coach-steel",
+          "lengthM": 16.4
+        }
+      ],
+      "stats": {
+        "pullMax": 2.6,
+        "pullPower": 58,
+        "topSpeed": 47,
+        "brake": 6.2,
+        "rollDrag": 0.21,
+        "airDrag": 0.0036,
+        "tankL": 72,
+        "burnIdle": 0.12,
+        "burnPerPull": 0.52,
+        "burnEfficiency": 1
+      }
+    },
+    {
+      "id": "incofer-200",
+      "nameKey": "railway.train.incofer-200",
+      "taglineKey": "railway.train.incofer-200.tag",
+      "art": "incofer-200",
+      "fuelKind": "diesel",
+      "price": 4800,
+      "fiche": {
+        "yearKey": "railway.fiche.incofer-200",
+        "source": "docs/research/pacific-railway/README.md",
+        "_note": "Unidad 200-3122 de Incofer, la librea azul, blanca y roja de hoy. Arte dibujado sobre fotografía de referencia aportada por el autor."
+      },
+      "consist": [
+        {
+          "art": "incofer-200",
+          "lengthM": 19.4
+        },
+        {
+          "art": "incofer-200",
+          "lengthM": 19.4
+        }
+      ],
+      "stats": {
+        "pullMax": 3.0,
+        "pullPower": 64,
+        "topSpeed": 52,
+        "brake": 6.6,
+        "rollDrag": 0.19,
+        "airDrag": 0.0032,
+        "tankL": 86,
+        "burnIdle": 0.16,
+        "burnPerPull": 0.55,
+        "burnEfficiency": 1
+      }
+    }
+  ],
+  "_fuelKind": "Tres clases de energía con la misma mecánica de depósito: leña, diésel y catenaria. La aguja se llama por lo que la máquina quema (`railway.fuel.<kind>`), que es lo único que cambia entre ellas.",
+  "_trains": "SEIS MÁQUINAS DEL CORREDOR, por orden de llegada al garaje y no por año. La gratuita va PRIMERA porque el garaje abre en `trains[0]`: si no lo fuera, el jugador entraría a una pantalla que sólo le ofrece comprar. Las cinco de pago suben en precio y en punta, y cada una nombra su referencia fotográfica en `fiche`; el arte es dibujo propio y no se redistribuye ninguna imagen."
+}

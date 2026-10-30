@@ -596,12 +596,14 @@
         {
           "id": "levels",
           "region": "main",
-          "when": "levels"
+          "when": "levels",
+          "note": "El tramo, con el paisaje de la campaña pasando en vivo detrás"
         },
         {
-          "id": "trains",
+          "id": "garage",
           "region": "main",
-          "when": "trains"
+          "when": "garage",
+          "note": "La máquina y las cuatro barras — motor, velocidad, freno y combustible"
         },
         {
           "id": "playing",

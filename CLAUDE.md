@@ -50,6 +50,9 @@ The procedure is three steps and it is not optional:
 | a place: landmark, customer, stage, district, feria ride, beach access | `content/world/{landmarks,customers,stages,geography,attractions}.json` |
 | **a hand-made manzana** — the civic block, El Carmen, a stadium/plaza, the Marino's partition, the Balneario | `content/world/blocks.json` (each names its `BlockLayout`) |
 | **where the disused railway runs relative to named streets** | `content/world/railway.json` — names and metres only; never world px or geo anchors |
+| **el modo Tren al Puerto: una máquina, un rizo, un paisaje, una época** | `src/assets/railway-art.json` (lo que se ve) · `src/assets/railway-sim.json` (lo que la física hace) |
+| **las máquinas, sus cuatro mejoras y su economía** | `src/content/railway/catalog.json` |
+| **un tramo del corredor Pacífico–Puntarenas** | `src/content/railway/levels/*.json` — el perfil lo escribe `tools/gen_railway_profile.py` |
 | **the ground of one manzana or one parcel** | `content/world/blocks.json` → `manzanas` (BY GEO) / `parcels` (by id) |
 | **who stands on a pitch** | `content/world/blocks.json` → `crowd`; what a type IS → `src/game/npcTypes.json` |
 | a muelle's size, width, style | `content/world/piers.json` |
@@ -1803,6 +1806,114 @@ Se estampa el grueso y el fino encima. El campo tiene resolución PROPIA
 `(cuenta:uint8, valor:uint16 LE)`, emitido sólo donde el tile no es plano, porque
 una cota en decímetros no cabe en el byte de una clase de superficie y meterlas
 juntas obligaría a renumerar las clases.
+
+## EL TREN AL PUERTO — el segundo juego dentro del juego
+
+Vista lateral, cuatro registros y un motor que los compone. Vive entero bajo
+`src/game/railway/` (modelo, sin DOM) y `src/render/railway/` (pintor), con sus
+pantallas en `src/ui/screens/RailwayMode.jsx`. **Ya no hay `iframe`**: el MVP
+corría como aplicación aparte y se hablaba con el juego por `postMessage`, que
+era lo correcto mientras se decidía el motor y dejó de serlo cuando el modo pasó
+a correr dentro. Lo que eso compró se ve en dos sitios: el arte del tren es el
+mismo en el selector, en el garaje y en la vía, y validar un resultado dejó de
+ser un contrato entre ventanas.
+
+**LA FORMA DEL PERFIL ES LA DEL DEM; EL LARGO NO.** Un nivel declara qué
+kilómetros del corredor real cubre y cuántos metros de juego dura — 14,34 km de
+Pacífico a Belén en 3 km jugables. La compresión horizontal (×4,78) ya multiplica
+la pendiente por sí sola: el DEM baja 1,6 % y en juego eso llega al 19 % en la
+bajada de la Sabana. `play.verticalExaggeration` es lo poco que se le suma, y se
+suma en `game/railway/level.js` para que ningún lector crea que lee metros de la
+vía de verdad. **El tablero no es el suelo**: `deckM` es la plataforma (suelo
+suavizado, pendiente limitada, cuerda recta sobre cada puente) y `groundM` el
+terreno. Que el tren vuele sobre un hueco es LA SEÑAL de que ahí hay una obra.
+
+**UN RIZO NO AVANZA EL CORREDOR.** El kit de fantasía mete su hueco en el eje de
+JUEGO y deja el kilometraje quieto, así que el perfil pasa plano por debajo y
+una licencia de diseño no altera la cota del corredor. Por eso el mapa
+play↔corredor es una lineal a trozos con una meseta por rizo. Y el rizo va
+declarado en `loops`, fuera de `structures`: la investigación dice por escrito
+que el rizo vertical no pertenece a la vía histórica, así que ninguna vía futura
+puede heredarlo por descuido. `tests/test_railway_content.py` exige la nota.
+
+**LA VÍA ES UNA CURVA, NO UN PERFIL.** Casi todo el recorrido es una función de
+la x, y por eso daba la tentación de guardarlo como un perfil. El rizo lo
+prohíbe: dentro del lazo hay CUATRO alturas para la misma x. Todo se pregunta en
+metros recorridos. El ángulo del rizo es analítico y da vuelta entera —derivado
+de los vecinos con `atan2` sale acotado a (-π/2, π/2) y el tren se endereza al
+pasar la cima— y se interpola por el arco más corto, como `cam.rot` en la ciudad.
+
+**LA VELOCIDAD PUEDE SER NEGATIVA, Y ESO ES CÓMO FALLA UN RIZO.** Sin ella
+habría que inventar un estado «rizo fallido» y una animación para él; con ella
+el tren se queda sin impulso, vuelve a bajar y uno toma carrera otra vez. Lo que
+SÍ es código es el **sostén de pestaña**: en la cima del lazo la vía está
+horizontal, la gravedad a lo largo vale cero y la física pura deja pasar un tren
+a 0,1 m/s boca abajo. Por debajo de `railGrip·gR` pierde el riel. Y la gravedad
+DEL RIZO está declarada aparte (`loops.gravityFactor`) con su medición al lado:
+a gravedad real un lazo circular de 20 m pide 124 km/h de entrada y ninguna de
+las máquinas documentadas llega, así que el rizo bloquearía el nivel en vez de
+premiarlo.
+
+**EL GASTO ES POTENCIA, NO TIEMPO.** `burnPerPull · tirón · velocidad /
+powerRefSpeed`, más el ralentí. Subir una cuesta a todo gas cuesta lo que debe y
+bajar rodando no cuesta nada — que es lo que hace que el jugador aprenda a
+soltar. Con el factor crudo de 0,1 que tuvo primero, la María Cecilia quemaba
+7,5 L/s y se quedaba seca en el kilómetro uno.
+
+**EL ARTE ES DATA Y LO PINTA `c2d/shapes.js`**, el mismo intérprete de la ciudad:
+el modo hereda el grano, la sombra y las hojas de arte de la casa, y reteñir una
+locomotora cuesta una recarga. Tres cosas que el intérprete NO hace y que por eso
+se resuelven en `render/railway/paint.js`:
+
+* **`fit` y `repeat` no tienen marco propio.** Sus hijos viven en el marco del
+  padre y escribir `x`/`y` en el verbo NO es un error que avise: se ignora, la
+  fila arranca en el origen del registro y las ventanas de un coche se van
+  marchando fuera de su carrocería. Pasó en cinco de los seis registros de
+  material rodante y lo destapó la hoja de arte. Los únicos verbos con ancla
+  propia son `scatter` y `orbit`. Hay una prueba.
+* **El tamaño de un texto no pasa por el marco** (`font.size` se lee crudo), así
+  que cada registro declara sus tamaños EN METROS en `fonts` y la parte los
+  nombra con `$`.
+* **La rueda no es una parte**: gira con la distancia y la biela con el ángulo
+  de la manivela, o sea geometría derivada. El registro dice dónde está cada eje
+  y de qué tamaño; su TINTA también es del registro (`wheel`, `tyre`, `hub`,
+  `rod`), porque un respaldo escrito en el pintor es un color autorado sin
+  superficie de edición.
+
+**EL PAISAJE CRUZA EL NIVEL.** No hay un fondo por nivel: hay escenas, y el
+nivel dice en qué kilómetro empieza cada una. **Todas las capas se apoyan en la
+misma línea**, entre 0,63 y 0,68 del cuadro: la cámara sigue al tren, así que el
+suelo cae siempre cerca de `view.anchorY` y una capa con el horizonte en 0,86
+queda entera debajo de la tierra y no se ve nunca — repartidas por el cuadro, la
+ciudad y el arbolado de la salida del Pacífico sencillamente no existían. Lo que
+las separa es el ALTO de la banda. Y **el fondo se mueve con la altura RELATIVA,
+nunca con la `y` del mundo**: el nivel 1 baja cuatro mil píxeles, así que un
+`camY` absoluto corre el horizonte fuera del cuadro y el relleno bajo la banda
+pinta la pantalla entera de verde.
+
+**LA ÉPOCA ES UN BAÑO SOBRE EL CUADRO TERMINADO** (`railway-art.json → eras`,
+`render/railway/era.js`). La campaña va de 1898 a hoy y un tramo de vapor no
+puede verse igual que uno del 200-3122; autorar dos paletas por escena serían
+dieciocho juegos de colores que se despegan el día que alguien retiñe uno. Son
+cuatro rellenos a pantalla completa y ningún lienzo auxiliar — `saturation`,
+`multiply`, `overlay` y una viñeta — y `moderno` no tiene `wash`, así que sale
+del paso en la primera línea y no cambia un píxel.
+
+**EL FONDO DEL VALLE ES LA `y` MÁXIMA.** En este marco -y es arriba, así que
+buscar el cauce con un `min` pone el agua a la cota MÁS ALTA del tramo, por
+encima del tablero — y el tren cruza por debajo del río. Es exactamente lo que
+se vio.
+
+**`drawRailway` NO TOCA LA TRANSFORMACIÓN NI BORRA EL LIENZO**: el dueño de la
+superficie es quien llama. Reponiendo `setTransform` ahí, el pintor ignoraba el
+`translate` y el `clip` de la hoja de arte y pintaba los ocho tramos encima del
+mismo rincón. Misma lección que ya tiene escrita `paintAt`.
+
+Compuertas: `pnpm smoke:railway` (la partida entera en Node: las seis máquinas
+llegan, los tres rizos se pasan, el depósito aprieta y entrar frenado al rizo
+grande devuelve el tren), `pnpm shot:railway` (la hoja de arte, contra un
+SERVIDOR FRESCO como las otras que importan módulos fuente), `pnpm smoke:screens`
+y `tests/test_railway_content.py`.
 
 ## inventory.json
 

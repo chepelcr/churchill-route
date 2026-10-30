@@ -375,6 +375,11 @@
           "region": "gameplay"
         },
         {
+          "id": "view3d",
+          "region": "gameplay",
+          "note": "opt-in de la vista 2.5D (three.js); recarga el juego porque three se descarga al arrancar"
+        },
+        {
           "id": "removeAds",
           "region": "account"
         },

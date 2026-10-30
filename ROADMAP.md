@@ -381,8 +381,8 @@ faltaban eran las técnicas.
 
 ## 6. Motor
 
-- [ ] **PERSPECTIVA: ABIERTA OTRA VEZ, Y DESDE CERO.** Se construyó y se
-      RETIRÓ entera el 2026-08-26, a pedido del usuario. El código vive en el
+- [ ] **PERSPECTIVA: SEGUNDO INTENTO EN CURSO (2026-09-29), opt-in.** El
+      primero se construyó y se RETIRÓ entero el 2026-08-26, a pedido del usuario. El código vive en el
       tag `3d-attempt-2026-08-26`; esto es lo que costó averiguar, para que la
       próxima no lo vuelva a pagar:
 
@@ -408,6 +408,32 @@ faltaban eran las técnicas.
         no sólo con el sol y la cámara: los tiles llegan por streaming.
       * `src/render/camera.js` y `src/render/sun.js` se quedaron: son las
         autoridades únicas de cámara y de sol del juego 2-D, sin three adentro.
+
+      **El segundo, desde cero** (`src/render/three/`, `?render=3d` o Ajustes →
+      «Vista 2.5D (beta)»): cámara con INCLINACIÓN OBLICUA (`leanDeg` 30°) y
+      pinhole a plomo (`pinholeM` 260 m), las dos con el suelo intacto — lo que
+      el primero no se animó a hacer y por lo que no se veía un solo costado.
+      Hecho: edificios con ventanas (prendidas de noche) y alero, arboleda del
+      pueblo instanciada, postes, vehículos con su sprite de techo, talud y
+      escollera en la orilla dura, la torre del Faro, sombra de sol cacheada,
+      tinte del cielo en el sombreador. Falta, en orden:
+      * [ ] **Revisarlo en un teléfono y en el APK** (`?q=low` es el tier por
+            defecto en táctil) y elegir `leanDeg`/`pinholeM` con el ojo.
+      * [x] ~~El monte en 3-D~~ (`forEachWoodTree`, la misma retícula que
+            Canvas). [ ] Los manglares siguen planos: su arte lleva raíces en
+            el barro que una copa sola no dice.
+      * [x] ~~Hitos con cuerpo desde las alturas de su escena~~ (2026-09-30):
+            la manzana cívica entera — catedral, curia, casa de la cultura,
+            biblioteca, escuelas, gasolineras, kioscos. [ ] Falta el MERCADO,
+            el Tioga, Las Brisas y la Capitanía: sus props (`landmarks` en
+            world-props.json) no declaran `heightM`, así que no hay qué leer.
+      * [x] ~~El suelo como malla con niveles y cota~~ (2026-09-30): el cuadro
+            de Canvas drapeado sobre `three/terrain.js`, así que lo plano no
+            tuvo que migrar. [ ] Medir el costo de subir el lienzo cada cuadro
+            en un teléfono (`q=low` lo sube a 1×).
+      * [x] ~~Que el pozo de un poste alumbre también las fachadas~~: el
+            sombreador descuenta el velo con la misma máscara que Canvas.
+      * [ ] Voltear el modo por defecto cuando lo anterior esté y rinda.
 
 - [ ] **Milestone C — backend PixiJS/WebGL** detrás de `src/render/Renderer.js`.
       Sigue abierto y sigue siendo opt-in: hoy Canvas2D pinta el mundo entero y

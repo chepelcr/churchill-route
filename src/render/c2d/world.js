@@ -11,6 +11,7 @@ import { drawStreetLamps } from "./lights.js";
 import { aabbInView, ctx, textureScale } from "./gfx.js";
 import { depthKey } from "./depth.js";
 import { state } from "../../game/state.js";
+import { canvasOwns } from "../owners.js";
 import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
 } from "./ground.js";
@@ -59,7 +60,9 @@ function drawWorld2D(view, t) {
   // el asfalto es plano cuando el cerro no lo es; y sombrear DESPUÉS de los
   // edificios les pasaría la ladera por la fachada, que ya tienen su propia
   // sombra solar.
-  paintRelief(ctx, view);
+  // …salvo que el suelo ya tenga relieve de verdad (la malla de `three/terrain.js`,
+  // iluminada por el mismo sol): sombrearlo acá además sería oscurecer dos veces.
+  if (canvasOwns("ground")) paintRelief(ctx, view);
   phase("worldStreets");
   // LOS EDIFICIOS, DE LEJOS A CERCA. Se pintaban en orden de TILE, que daba
   // igual mientras eran rellenos planos — pero con pared, una que se extiende
@@ -70,8 +73,10 @@ function drawWorld2D(view, t) {
   // Recolectar no rompe el streaming por tile —sólo separa juntar de pintar— y
   // ordenar unas decenas de referencias por cuadro es ruido: el viewport
   // encuadra 160 m y los edificios enteros costaban 0,21 ms.
+  // …salvo que la capa 3-D sea su dueña: entonces son volumen de verdad allá
+  // arriba (`three/buildings.js`) y aquí no se pintan ni ellos ni su sombra.
   const inView = [];
-  for (const tile of vts) {
+  if (canvasOwns("buildings")) for (const tile of vts) {
     for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) inView.push(b);
   }
   const cam = state.cam;
@@ -85,15 +90,18 @@ function drawWorld2D(view, t) {
   // median's two interleaved rows merged onto its centre (see flora.js).
   // EL MONTE first: it is the ground cover of the countryside, so the town's own
   // planting and the street trees stand over it rather than in a gap in it.
-  paintWoods(view);
-  paintRoadsideTrees(roads, view);
-  for (const tile of vts) {
+  paintWoods(view, { trees: canvasOwns("woods") });
+  // La arboleda del pueblo (calle, manzana, palmas) es de la capa 3-D cuando
+  // ella la tomó (`three/flora.js`); el monte de arriba sigue siendo de Canvas.
+  const flora = canvasOwns("flora");
+  if (flora) paintRoadsideTrees(roads, view);
+  if (flora) for (const tile of vts) {
     for (const tr of tileTrees(tile, medianPairs(tile).pairs)) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
     for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
   }
   // …y los postes del alumbrado, sobre la acera y bajo los rótulos. El pozo de
   // luz lo abre el compositor de noche (`nightlights.js`); esto es la lámpara.
-  drawStreetLamps(view);
+  if (canvasOwns("lamps")) drawStreetLamps(view);
   drawStreetLabels2D(roads, view);
   // LA SOMBRA DE LAS NUBES, al final del pase del mundo: una nube tapa el suelo,
   // los techos y los árboles por igual, y es eso lo que la hace leerse como algo

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { render3dRequested, setRender3d } from "../../render/view3d.js";
 import { Game } from "../../game/index.js";
 import { sfx } from "../../game/audio.js";
 import { useT, getLang, setLang } from "../../i18n/index.js";
@@ -17,6 +18,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   const [spd, setSpd] = useState(Math.round(tuning.speed * 100));
   const [zoom, setZoom] = useState(Math.round(tuning.zoom * 100));
   const [poi, setPoi] = useState(tuning.poiNames);
+  const view3d = render3dRequested();
   const [confirming, setConfirming] = useState(false);
   const [, bump] = useState(0);
   useEffect(() => iap.onChange(() => bump((n) => n + 1)), []);
@@ -90,6 +92,26 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
           <button className={"btn " + (poi ? "gold" : "secondary")}
             onClick={() => { const v = !poi; setPoi(v); tuning.setPoiNames(v); sfx.play("menu_select"); }}>
             {poi ? t("select.yes") : t("select.no")}
+          </button>
+        </div>
+      </div>
+    ),
+    // LA VISTA 2.5D es opt-in y se aplica AL ARRANCAR: three.js se descarga
+    // sólo si se pidió, así que cambiarla guarda la preferencia y recarga.
+    view3d: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.view3d")}</span>
+        <div className="lang-toggle">
+          <span className="set-desc">{t("settings.view3d.desc")}</span>
+          <button className={"btn " + (view3d ? "gold" : "secondary")}
+            onClick={() => {
+              sfx.play("menu_select");
+              setRender3d(!view3d);
+              const url = new URL(window.location.href);
+              url.searchParams.delete("render");
+              window.location.replace(url.toString());
+            }}>
+            {view3d ? t("select.yes") : t("select.no")}
           </button>
         </div>
       </div>

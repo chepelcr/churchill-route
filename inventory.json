@@ -12254,6 +12254,7 @@
         "speed",
         "zoom",
         "poiNames",
+        "view3d",
         "removeAds",
         "tutorial",
         "supporters",
@@ -12910,7 +12911,7 @@
       ]
     },
     "src/render/Renderer.js": {
-      "lines": 48,
+      "lines": 73,
       "exports": [
         "paintVehicle",
         "render",
@@ -12995,7 +12996,7 @@
       ]
     },
     "src/render/c2d/entities.js": {
-      "lines": 485,
+      "lines": 489,
       "exports": [
         "drawAnimal",
         "drawArcadeCoin",
@@ -13034,9 +13035,10 @@
       ]
     },
     "src/render/c2d/flora.js": {
-      "lines": 283,
+      "lines": 298,
       "exports": [
         "floraSolar",
+        "forEachWoodTree",
         "nearestOnPoly",
         "paintPalm",
         "paintRoadsideTrees",
@@ -13062,7 +13064,7 @@
       ]
     },
     "src/render/c2d/gfx.js": {
-      "lines": 276,
+      "lines": 289,
       "exports": [
         "ACERA_PX",
         "CUAD",
@@ -13091,7 +13093,8 @@
         "setupCanvas",
         "textureScale",
         "upright",
-        "weatherColors"
+        "weatherColors",
+        "withSurface"
       ]
     },
     "src/render/c2d/ground.js": {
@@ -13128,7 +13131,7 @@
       ]
     },
     "src/render/c2d/landmarks.js": {
-      "lines": 673,
+      "lines": 739,
       "exports": [
         "drawFaroScene",
         "drawFountain",
@@ -13140,7 +13143,10 @@
         "drawPool",
         "drawStadium",
         "landmarkProp",
-        "propVars"
+        "paintParcelHeights",
+        "parcelSceneNames",
+        "propVars",
+        "sceneHasHeight"
       ]
     },
     "src/render/c2d/lights.js": {
@@ -13171,9 +13177,11 @@
       ]
     },
     "src/render/c2d/nightlights.js": {
-      "lines": 164,
+      "lines": 174,
       "exports": [
         "drawNightLights",
+        "lampsInView",
+        "nightTint",
         "registerLampSource",
         "setLightZoom"
       ]
@@ -13241,7 +13249,7 @@
       ]
     },
     "src/render/c2d/shapes.js": {
-      "lines": 854,
+      "lines": 860,
       "exports": [
         "ASSET_FORMULA_OPS",
         "SHAPE_NAMES",
@@ -13350,7 +13358,7 @@
       ]
     },
     "src/render/c2d/world.js": {
-      "lines": 107,
+      "lines": 115,
       "exports": [
         "drawWorld2D"
       ]
@@ -13367,13 +13375,25 @@
       ]
     },
     "src/render/canvas2d.js": {
-      "lines": 369,
+      "lines": 383,
       "exports": [
         "paintVehicle",
         "render",
         "setOverlayMode",
         "setPixiLandmarks",
+        "setScreenOverlay",
         "setupCanvas"
+      ]
+    },
+    "src/render/owners.js": {
+      "lines": 44,
+      "exports": [
+        "CANVAS",
+        "THREE",
+        "canvasOwns",
+        "claimForThree",
+        "releaseAll",
+        "threeOwns"
       ]
     },
     "src/render/pixi/World2DRenderer.js": {
@@ -13450,6 +13470,129 @@
         "sunShadow2"
       ]
     },
+    "src/render/three/buildings.js": {
+      "lines": 255,
+      "exports": [
+        "buildingStats",
+        "setWindowNight",
+        "setupBuildings",
+        "syncBuildings"
+      ]
+    },
+    "src/render/three/camera.js": {
+      "lines": 77,
+      "exports": [
+        "applyFrame",
+        "projectToScreen"
+      ]
+    },
+    "src/render/three/canvasTexture.js": {
+      "lines": 75,
+      "exports": [
+        "projectedMaterial",
+        "setupCanvasTexture",
+        "updateCanvasTexture"
+      ]
+    },
+    "src/render/three/coast.js": {
+      "lines": 257,
+      "exports": [
+        "coastStats",
+        "setupCoast",
+        "syncCoast"
+      ]
+    },
+    "src/render/three/contour.js": {
+      "lines": 133,
+      "exports": [
+        "maskLoops"
+      ]
+    },
+    "src/render/three/debug.js": {
+      "lines": 51,
+      "exports": [
+        "debugFrame",
+        "setupDebug"
+      ]
+    },
+    "src/render/three/flora.js": {
+      "lines": 246,
+      "exports": [
+        "floraStats",
+        "setupFlora",
+        "syncFlora"
+      ]
+    },
+    "src/render/three/ground.js": {
+      "lines": 46,
+      "exports": [
+        "ELEVATED_M",
+        "groundActive",
+        "groundBase",
+        "levelM",
+        "levelOfClass",
+        "reliefM",
+        "setGroundActive"
+      ]
+    },
+    "src/render/three/index.js": {
+      "lines": 294,
+      "exports": [
+        "renderThree",
+        "screenOf",
+        "setupThree"
+      ]
+    },
+    "src/render/three/lamps.js": {
+      "lines": 110,
+      "exports": [
+        "lampStats",
+        "setLampNight",
+        "setupLamps",
+        "syncLamps"
+      ]
+    },
+    "src/render/three/landmarks.js": {
+      "lines": 105,
+      "exports": [
+        "setLandmarkNight",
+        "setupLandmarks",
+        "syncLandmarks"
+      ]
+    },
+    "src/render/three/scenes.js": {
+      "lines": 155,
+      "exports": [
+        "sceneStats",
+        "setupScenes",
+        "syncScenes"
+      ]
+    },
+    "src/render/three/terrain.js": {
+      "lines": 178,
+      "exports": [
+        "setupTerrain",
+        "syncTerrain",
+        "terrainStats"
+      ]
+    },
+    "src/render/three/tint.js": {
+      "lines": 119,
+      "exports": [
+        "MAX_POOLS",
+        "setupTint",
+        "tint",
+        "tintMaterial",
+        "updateTint"
+      ]
+    },
+    "src/render/three/vehicles.js": {
+      "lines": 183,
+      "exports": [
+        "setupVehicles",
+        "syncVehicles"
+      ]
+    },
     "src/render/vehicleShapes.js": {
       "lines": 115,
       "exports": [
@@ -13457,6 +13600,18 @@
         "evalOn",
         "tracePart",
         "traceVehicleSilhouette"
+      ]
+    },
+    "src/render/view3d.js": {
+      "lines": 83,
+      "exports": [
+        "leanDeg",
+        "pinholeM",
+        "quality",
+        "render3dRequested",
+        "setLeanDeg",
+        "setPinholeM",
+        "setRender3d"
       ]
     },
     "src/ui/App.jsx": {
@@ -13612,7 +13767,7 @@
       ]
     },
     "src/ui/screens/SettingsScreen.jsx": {
-      "lines": 188,
+      "lines": 210,
       "exports": [
         "SettingsScreen",
         "default"

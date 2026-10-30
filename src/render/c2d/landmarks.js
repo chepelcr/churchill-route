@@ -12,6 +12,7 @@ import FLORA from "../../assets/flora.json" with { type: "json" };
 import { paintSceneParts } from "./sceneShapes.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { PX_PER_M } from "../../domain/units.js";
+import { canvasOwns } from "../owners.js";
 import { content } from "../../content/remote.js";
 import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect, upright } from "./gfx.js";
 import { drawParada, paintProp, propParts } from "./props.js";
@@ -19,6 +20,22 @@ import { shadowInk, sunShadow } from "./shadows.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
+// Lo que se levanta del faro —la torre y las tres palmas— es de la capa 3-D
+// cuando ella lo tomó (`three/landmarks.js`, `three/flora.js`); Canvas pinta
+// entonces sólo el suelo de la escena: la escollera del borde y las comas.
+const FARO_RAISED = new Set(["lighthouse-tower", "flora-placements"]);
+let faroGround = null;
+function faroGroundRegistry() {
+  if (!faroGround) {
+    const scene = PROPS.scenes.faro;
+    faroGround = {
+      ...PROPS,
+      scenes: { ...PROPS.scenes, faro: { ...scene, parts: scene.parts.filter((p) => !FARO_RAISED.has(p.verb)) } },
+    };
+  }
+  return faroGround;
+}
+
 function drawFaroScene(lm) {
   const x = lm.x, y = lm.y;
   // La Punta plaza: the GRAY esplanade GROUND is drawn by the tile plaza layer
@@ -33,10 +50,12 @@ function drawFaroScene(lm) {
   const rim = (lm.rim || []).map(([rx, ry]) => [rx - x, ry - y]);
   ctx.save();
   ctx.translate(x, y);
-  paintSceneParts(ctx, PROPS, "faro", {
+  const frame = {
     X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
     vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT }, timeMs: lastT,
-  });
+  };
+  if (canvasOwns("faro")) paintSceneParts(ctx, PROPS, "faro", frame);
+  else paintSceneParts(ctx, faroGroundRegistry(), "faro", frame);
   ctx.restore();
 }
 
@@ -400,7 +419,43 @@ function drawSponsorSlot(P, lote) {
  * mismo registro que sus partes; no queda una función `drawCathedral` que sea
  * la autoridad artística escondida.
  */
-function paintParcelScene(P, name) {
+// ¿La escena declara ALTURA en alguna parte? Es la pregunta que decide si la
+// capa 3-D le levanta volumen (`three/scenes.js`) — y, cuando lo hace, que
+// Canvas no le tire además su sombra plana.
+const _sceneHeight = new Map();
+function sceneHasHeight(name) {
+  if (_sceneHeight.has(name)) return _sceneHeight.get(name);
+  const scene = PROPS.scenes[name];
+  const walk = (parts) => (parts || []).some((p) => p && typeof p === "object"
+    && ((p.heightM > 0 && p.castsShadow !== false) || p.castsShadow === true || walk(p.parts)));
+  // `volume: false` es la escena que dice «mis masas no son cuerpos» (el patio:
+  // sus alturas son copas de árbol, que extruidas saldrían cilindros)
+  const has = Boolean(scene && scene.volume !== false && (scene.heightM > 0 || walk(scene.parts)));
+  _sceneHeight.set(name, has);
+  return has;
+}
+
+/** Las escenas que dibuja una parcela: la de su uso y la de su mobiliario. */
+function parcelSceneNames(P) {
+  const U = PARCEL_USES[P.use] || NO_USE;
+  const out = [];
+  if (U.scene) out.push(U.scene);
+  for (const [key, decor] of Object.entries(PARCEL_DECOR)) if (decor.scene && P[key]) out.push(decor.scene);
+  return out;
+}
+
+/**
+ * LAS ALTURAS DE UNA ESCENA, pintadas en vez de su arte: cada masa que
+ * proyecta sale del color `ink(heightM)`, en el mismo marco que el juego usa.
+ * Es la primera pasada de siempre (la de la sombra) con desplazamiento cero y
+ * sin el arte detrás. La capa 3-D la pinta en su propio lienzo con `lighten`
+ * para quedarse con la masa más alta donde dos se pisan.
+ */
+function paintParcelHeights(P, name, ink) {
+  return paintParcelScene(P, name, { heights: ink });
+}
+
+function paintParcelScene(P, name, opts = {}) {
   const scene = PROPS.scenes[name];
   if (!scene || !scene.parts) return false;
   const F = parcelFrame(P);
@@ -442,15 +497,23 @@ function paintParcelScene(P, name) {
     // de modo que una escena sin ellos no tiene primera pasada y sale idéntica.
     heightM: scene.heightM,
     castsShadow: scene.castsShadow,
-    shadow: scene.heightM || scene.castsShadow ? sunShadow : null,
+    // Con volumen 3-D la sombra la tira el volumen, con el sol de verdad: la
+    // plana de Canvas sería una segunda sombra corrida bajo la misma masa.
+    shadow: scene.heightM || scene.castsShadow
+      ? (canvasOwns("scenes") || !sceneHasHeight(name) ? sunShadow : null) : null,
     shadowInk: shadowInk(1),
   };
+  if (opts.heights) {
+    frame.shadow = (h) => ({ dx: 0, dy: 0, alpha: 1, ink: opts.heights(h) });
+    frame.shadowInk = opts.heights(0);
+    frame.shadowOnly = true;
+  }
   // A garden's PLACEMENT is scene data; a tree's SILHOUETTE deliberately is
   // not. `paintTree` remains the renderer's perturbed spline, while `scatter`
   // supplies local points that are turned into world coordinates here, before
   // the parcel transform, so the crowns stay screen-oriented exactly as before.
   const procedural = scene.parts.filter((part) => part.shape === "scatter" && part.paint === "tree");
-  if (procedural.length) {
+  if (procedural.length && !opts.heights) {
     const ca = Math.cos(F.ang), sa = Math.sin(F.ang);
     for (const part of procedural) {
       scatterPlacements(part, frame, (_i, at) => {
@@ -669,4 +732,7 @@ function drawLote(lo) {
   ctx.restore();
 }
 
-export { drawParcels, drawFaroScene, drawFountain, drawGreenSpace, drawLandmark, drawLote, drawMarinePark, drawPool, drawStadium };
+export {
+  drawParcels, drawFaroScene, drawFountain, drawGreenSpace, drawLandmark, drawLote, drawMarinePark, drawPool, drawStadium,
+  paintParcelHeights, parcelSceneNames, sceneHasHeight,
+};

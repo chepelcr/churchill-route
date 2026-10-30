@@ -391,12 +391,18 @@ export function paintParts(g, parts, frame) {
         _shadowPass: true,
         X: (v) => rawX(v) + sh.dx,
         Y: (v) => rawY(v) + sh.dy,
-        color: () => frame.shadowInk,
+        // una banda puede traer su PROPIA tinta: así la capa 3-D lee la altura
+        // de cada masa pintándola de un color por banda (`sh.ink`)
+        color: () => sh.ink ?? frame.shadowInk,
         skip: (part) => !allow.has(part) || skip(part),
       });
       g.globalAlpha = prevAlpha;
     }
   }
+  // …y SÓLO la silueta, si eso es lo que se pidió: la capa 3-D recorre las
+  // mismas partes para saber qué masa tiene qué altura y no quiere el arte.
+  // Sin `shadowOnly` (todo el juego y el editor) esto no existe.
+  if (frame.shadowOnly && !frame._shadowPass) return;
   const resolveSprite = sprite || ((id) => ({
     record: spriteRecord(id), image: spriteImage(id),
   }));

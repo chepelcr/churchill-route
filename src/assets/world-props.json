@@ -4869,6 +4869,8 @@
       },
       "heightM": 6,
       "castsShadow": false,
+      "volume": false,
+      "_volume": "La vista 2.5D levanta volumen desde las alturas de una escena (`three/scenes.js`); aquí las cuatro masas que proyectan son COPAS de árbol, no cuerpos, y extruidas salen cilindros de seis metros. Se quedan planas y con su sombra de Canvas.",
       "parts": [
         {
           "_": "los cuatro árboles de esquina, escritos uno por uno",

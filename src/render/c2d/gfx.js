@@ -36,7 +36,7 @@ const CUAD = W.CUAD;                       // still wanted: the debug grid
 // default. This used to fall back to 8 while the sim fell back to 12 — the
 // renderer and the spawner disagreeing about where the sidewalk is.
 const ACERA_PX = W.ACERA_PX;
-function setupCanvas(c, { separateOverlay = false } = {}) {
+function setupCanvas(c, { separateOverlay = false, maxDpr = 2 } = {}) {
   mainCanvas = c; mainCtx = c.getContext("2d");
   canvas = mainCanvas; ctx = mainCtx;
   if (separateOverlay && !overlayCanvas) {
@@ -49,7 +49,9 @@ function setupCanvas(c, { separateOverlay = false } = {}) {
     overlayCtx = overlayCanvas.getContext("2d");
   }
   const resize = () => {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // `maxDpr` lo baja la vista 2.5D en calidad baja: el lienzo se sube como
+    // textura cada cuadro, y a 2× son cuatro veces los bytes.
+    dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
     const w = c.clientWidth, h = c.clientHeight;
     c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
     if (overlayCanvas) {
@@ -261,6 +263,17 @@ function parcelFrame(P) {
   return (P._pframe = { cx, cy, ang, hw, hh });
 }
 
+// PINTAR EN OTRA SUPERFICIE CON LOS MISMOS PINTORES. La capa 3-D usa el arte
+// de Canvas como textura (el techo de un carro es su sprite de siempre), y los
+// ~30 dibujantes escriben en el `ctx` compartido. Cambiar el enlace vivo el
+// tiempo que dura `fn` es lo que evita enseñarle a cada uno otra superficie —
+// el mismo movimiento que `beginScreenOverlay` hace para la capa de pantalla.
+function withSurface(g, fn) {
+  const prevCanvas = canvas, prevCtx = ctx;
+  canvas = g.canvas; ctx = g;
+  try { return fn(); } finally { canvas = prevCanvas; ctx = prevCtx; }
+}
+
 // LA PARADITA used to be here, as raw Canvas calls. It is `props.parada` in
 // world-props.json now, drawn by `c2d/props.js` — which cannot live in this file
 // because gfx is the BOTTOM of the renderer and the shape interpreter sits on
@@ -271,5 +284,5 @@ export {
   beginScreenOverlay, ctx, ctxRotation, dpr, endScreenOverlay,
   flatAABB, flatMultiPath, flatPath, hash01, label, lastT, mixColor,
   parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, upright,
-  textureScale, weatherColors, ZOOM,
+  textureScale, weatherColors, withSurface, ZOOM,
 };

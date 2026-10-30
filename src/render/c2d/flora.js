@@ -100,8 +100,46 @@ function woodSpecies(mix, gx, gy) {
   );
 }
 
-/** Plant every wood that reaches the view. */
-function paintWoods(view) {
+/**
+ * Walk the wood lattice of one cuadra inside [x0,x1]×[y0,y1] and hand each
+ * tree to `fn({x, y, k, s})`. The ONE place the scatter lives: Canvas walks it
+ * over the view every frame, and the 3-D layer walks it once per tile — the
+ * same lattice, the same hashes, so a tree stands in the same spot in both.
+ */
+function forEachWoodTree(cu, x0, y0, x1, y1, fn) {
+  const mix = MIXES[cu.wood];
+  if (!mix) return;
+  const step = Math.sqrt(mix.d);
+  // the lattice is GLOBAL, so a tree does not move when the camera does
+  const gx0 = Math.floor(Math.max(cu.x0, x0) / step);
+  const gx1 = Math.ceil(Math.min(cu.x1, x1) / step);
+  const gy0 = Math.floor(Math.max(cu.y0, y0) / step);
+  const gy1 = Math.ceil(Math.min(cu.y1, y1) / step);
+  for (let gy = gy0; gy <= gy1; gy++) {
+    for (let gx = gx0; gx <= gx1; gx++) {
+      const h = hash01(gx * 1.93 + gy * 5.17);
+      if (h < 0.18) continue;                       // clearings, and they matter:
+      // a tree in EVERY lattice cell reads as an orchard. The jitter is nearly
+      // a whole cell for the same reason — at ±0.4 the rows were still visible.
+      const x = (gx + 0.5 + (hash01(gx * 11.7 + gy * 2.3) - 0.5) * 0.96) * step;
+      const y = (gy + 0.5 + (hash01(gx * 4.1 + gy * 13.9) - 0.5) * 0.96) * step;
+      // THE GROUND DECIDES, not the polygon. `surfaceAt` is one tile lookup and
+      // it is the exact question — solid cuadra interior is the countryside,
+      // and it already excludes the roads, the sand, the water and the aceras
+      // that a 6 000-vertex point-in-polygon test would have cost a frame to
+      // answer less well.
+      if (W.surfaceAt(x, y) !== SURFACE.LAND) continue;
+      fn({ x, y, k: woodSpecies(mix, gx, gy),
+           s: 0.85 + hash01(gx * 8.3 + gy * 3.7) * 0.4 });
+    }
+  }
+}
+
+/**
+ * Plant every wood that reaches the view. `trees: false` paints only the
+ * forest FLOOR — the 3-D layer stands the trees up itself (`three/flora.js`).
+ */
+function paintWoods(view, { trees = true } = {}) {
   const woods = W.CUADRAS;
   if (!woods || !woods.length) return;
   for (const cu of woods) {
@@ -122,30 +160,7 @@ function paintWoods(view) {
       ctx.fillStyle = mix.floor;
       ctx.fill(cu._woodPath);
     }
-    const step = Math.sqrt(mix.d);
-    // the lattice is GLOBAL, so a tree does not move when the camera does
-    const gx0 = Math.floor(Math.max(cu.x0, view.x0 - 40) / step);
-    const gx1 = Math.ceil(Math.min(cu.x1, view.x1 + 40) / step);
-    const gy0 = Math.floor(Math.max(cu.y0, view.y0 - 40) / step);
-    const gy1 = Math.ceil(Math.min(cu.y1, view.y1 + 40) / step);
-    for (let gy = gy0; gy <= gy1; gy++) {
-      for (let gx = gx0; gx <= gx1; gx++) {
-        const h = hash01(gx * 1.93 + gy * 5.17);
-        if (h < 0.18) continue;                       // clearings, and they matter:
-        // a tree in EVERY lattice cell reads as an orchard. The jitter is nearly
-        // a whole cell for the same reason — at ±0.4 the rows were still visible.
-        const x = (gx + 0.5 + (hash01(gx * 11.7 + gy * 2.3) - 0.5) * 0.96) * step;
-        const y = (gy + 0.5 + (hash01(gx * 4.1 + gy * 13.9) - 0.5) * 0.96) * step;
-        // THE GROUND DECIDES, not the polygon. `surfaceAt` is one tile lookup and
-        // it is the exact question — solid cuadra interior is the countryside,
-        // and it already excludes the roads, the sand, the water and the aceras
-        // that a 6 000-vertex point-in-polygon test would have cost a frame to
-        // answer less well.
-        if (W.surfaceAt(x, y) !== SURFACE.LAND) continue;
-        paintTree({ x, y, k: woodSpecies(mix, gx, gy),
-                    s: 0.85 + hash01(gx * 8.3 + gy * 3.7) * 0.4 });
-      }
-    }
+    if (trees) forEachWoodTree(cu, view.x0 - 40, view.y0 - 40, view.x1 + 40, view.y1 + 40, paintTree);
   }
 }
 
@@ -277,6 +292,6 @@ function tileTrees(tile, pairs) {
 }
 
 export {
-  nearestOnPoly, paintPalm, paintRoadsideTrees, paintTree, species,
+  forEachWoodTree, nearestOnPoly, paintPalm, paintRoadsideTrees, paintTree, species,
   paintWoods, roadsideTrees, tileTrees,
 };

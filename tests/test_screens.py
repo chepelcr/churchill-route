@@ -49,6 +49,7 @@ IMPLEMENTED = {
     "settings": "screens/SettingsScreen.jsx",
     "supporters": "screens/SupportersScreen.jsx",
     "shop": "screens/ShopScreen.jsx",
+    "railway": "screens/RailwayMode.jsx",
 }
 
 
@@ -176,5 +177,5 @@ class VocabularyTests(unittest.TestCase):
 
     def test_both_vocabularies_reached_the_client(self):
         vocab = json.loads(read(VOCAB))["enums"]
-        self.assertEqual(len(vocab["UI_SCREEN"]), 16)
+        self.assertEqual(len(vocab["UI_SCREEN"]), 17)
         self.assertEqual(set(vocab["GAME_MODE"]), {"story", "arcade", "explore", "tutorial"})

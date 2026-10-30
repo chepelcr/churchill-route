@@ -1,0 +1,10 @@
+[out:json][timeout:90];
+(
+  way["railway"~"^(rail|disused|abandoned|construction|razed)$"](9.80,-84.90,10.12,-84.02);
+  way["disused:railway"="rail"](9.80,-84.90,10.12,-84.02);
+  way["abandoned:railway"="rail"](9.80,-84.90,10.12,-84.02);
+  nwr["railway"~"^(station|halt|stop)$"](9.80,-84.90,10.12,-84.02);
+);
+out meta;
+>;
+out skel qt;

@@ -1,0 +1,9 @@
+{
+  "origin": "https://github.com/chepelcr/roller-coaster",
+  "sourceCommit": "38540c9e69773153b660080852d748bb9df21e93",
+  "kitVersion": "1.0.0",
+  "role": "Initial gameplay snapshot; runtime authority transfers to churchill-route. Builder stays in its separate repository.",
+  "followUpSourceCommits": [
+    "8279235b7baaf60c8cb32aec9ffaac684d81cd62"
+  ]
+}

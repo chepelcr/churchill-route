@@ -1,0 +1,109 @@
+{
+  "_note": "LA FÍSICA DEL TREN, EN METROS Y SEGUNDOS. Lo que un tren ES vive en src/content/railway/catalog.json; lo que el MUNDO le hace vive aquí. Ninguna de estas constantes es un píxel: `view.pxPerM` es la única que convierte, y lo hace en un solo sitio (render/railway/camera.js).",
+  "version": 1,
+  "physics": {
+    "g": 9.81,
+    "_g": "Gravedad real. La pendiente que la multiplica SÍ está exagerada (ver `play.verticalExaggeration` del nivel), así que una loma empuja más de lo que empujaría en la vía de verdad — a propósito.",
+    "idleRoll": 0.35,
+    "_idleRoll": "Por debajo de esta velocidad (m/s) y sin acelerador el tren se deja frenar del todo: sin esto la resistencia asintótica lo deja temblando para siempre a 0,02 m/s y el cronómetro nunca cierra.",
+    "startGrace": 0.6,
+    "_startGrace": "Segundos de gracia antes de que el cronómetro arranque, para que soltar la pantalla de salida no cueste tiempo.",
+    "gradeSmoothM": 14,
+    "_gradeSmoothM": "La pendiente que siente la física se mide sobre este largo del tablero, no en el punto. Es el largo de un bogie: medida en el punto, cada vértice del perfil da un tirón y el tren vibra en una recta.",
+    "powerRefSpeed": 40,
+    "_powerRefSpeed": "El gasto es POTENCIA —tirón por velocidad— y esto es la velocidad de referencia que lo normaliza, en m/s: a 40 m/s y a tope de tirón, `burnPerPull` ES litros por segundo. Sin un referente declarado el coeficiente del registro no significa nada y afinar el consumo es adivinar: con el factor crudo de 0,1 que tuvo primero, la María Cecilia quemaba 7,5 L/s y se quedaba seca en el kilómetro uno."
+  },
+  "brakes": {
+    "slideThreshold": 0.82,
+    "_slideThreshold": "Fracción del freno máximo a partir de la cual las ruedas chillan y echan chispas. Es un umbral de ARTE y de sonido; la desaceleración no cambia.",
+    "holdSpeed": 1.2,
+    "_holdSpeed": "Con el freno puesto y por debajo de esta velocidad el tren queda clavado: un tren frenado en una cuesta no resbala hacia atrás."
+  },
+  "fuel": {
+    "canL": 26,
+    "_canL": "Lo que repone un bidón. Autorados por kilómetro en el nivel: dónde hay combustible es diseño de nivel, cuánto trae es del registro.",
+    "emptyCoast": true,
+    "_emptyCoast": "Sin combustible NO se detiene en seco: pierde tracción y rueda. Un corte brusco se lee como un fallo del juego.",
+    "warnFraction": 0.22,
+    "lowFraction": 0.08
+  },
+  "loops": {
+    "_note": "EL RIZO ES DEL KIT CREATIVO, NO DEL CORREDOR. Cada medida en metros; `advanceM` es el hueco horizontal que el rizo consume del recorrido, así que el tablero pasa plano por debajo y la cota del perfil no se altera.",
+    "sizes": {
+      "small": {
+        "radiusM": 10,
+        "leadM": 22,
+        "advanceM": 44
+      },
+      "medium": {
+        "radiusM": 15,
+        "leadM": 32,
+        "advanceM": 64
+      },
+      "large": {
+        "radiusM": 20,
+        "leadM": 42,
+        "advanceM": 84
+      }
+    },
+    "railGrip": 0.46,
+    "_railGrip": "LA PESTAÑA SOSTIENE. Una vagoneta suelta necesita v² ≥ gR en la cima; una rueda de riel va enganchada, así que se le pide `railGrip·gR`. Sin esta fracción el rizo grande pide 128 km/h de entrada y el nivel 1 se vuelve imposible con el tren de salida.",
+    "stallMargin": 0.92,
+    "_stallMargin": "Por debajo de esta fracción de la velocidad necesaria el tren se queda sin impulso antes de la cima y rueda de vuelta. No descarrila: volver a tomar carrera es el juego.",
+    "cameraEaseM": 46,
+    "_cameraEaseM": "Metros antes y después del rizo en los que la cámara se abre para que el lazo entre entero en cuadro.",
+    "_sizes": "`leadM` es la mitad de `advanceM` a propósito: así el círculo queda CENTRADO en el hueco que el rizo le quita al recorrido y no se monta sobre la vía de aproximación. El tablero pasa plano por debajo del hueco entero.",
+    "gravityFactor": 0.55,
+    "_gravityFactor": "EL RIZO ES VÍA DE FANTASÍA Y SU GRAVEDAD TAMBIÉN, declarada aquí en vez de escondida en un empujón. Un lazo CIRCULAR de 24 m pide, a gravedad real, sqrt(4gR + grip·gR) = 124 km/h de entrada: más de lo que alcanza cualquiera de las tres máquinas documentadas, así que el rizo grande bloquearía el nivel en vez de premiarlo. (Las montañas rusas de verdad resuelven esto con una clotoide, no con un círculo; un círculo en vista lateral es lo que se lee como rizo.) A 0,55 el grande (20 m) pide 79 km/h y el pequeño (10 m) 56. La María Cecilia de salida se arrima a 86 km/h en llano, así que el rizo grande se pasa SIN comprar nada pero sólo llegando lanzado: frenar antes de la entrada es perderlo, que es justo la decisión que uno quiere que exista."
+  },
+  "coins": {
+    "pitchM": 46,
+    "_pitchM": "Una moneda cada tantos metros de recorrido, sembradas con el hash de la casa (`hash01`), no con `Math.random`: una moneda tiene que estar en el mismo sitio en cada intento o no se puede aprender el nivel. Autorar cuarenta monedas a mano sería ruido en el registro del nivel.",
+    "jitterM": 14,
+    "heightM": 2.6,
+    "pickupM": 4.6,
+    "seed": 1910,
+    "_seed": "1910 — el año en que la línea al Pacífico llegó a Puntarenas. Es una semilla, no un dato histórico del nivel.",
+    "value": 1,
+    "loopBonus": 12,
+    "_loopBonus": "Completar un rizo paga. Es la única recompensa del kit de fantasía y la razón de jugarlo."
+  },
+  "view": {
+    "pxPerM": 14,
+    "_pxPerM": "La ÚNICA constante que convierte metros a píxeles en todo el modo. A 14 px/m la locomotora mide 160 px —un octavo del ancho de un cuadro de 1280— y la vista abarca 91 m de vía. A los 8 con que empezó, el convoy se leía como una calcomanía en una esquina: el tren tiene que ser el objeto más grande del cuadro después del paisaje.",
+    "minZoom": 0.42,
+    "maxZoom": 1.25,
+    "aheadM": 10,
+    "_aheadM": "LA CÁMARA SE ADELANTA CON LA VELOCIDAD, no siempre. Sumado fijo se apila sobre `anchorX` y el tren termina pegado al borde izquierdo: con 26 m fijos y el ancla en 0,30 la locomotora salía a 115 px de 1280, o sea en el 9 % del cuadro. Proporcional a la velocidad, parado el tren está donde el ancla dice y lanzado la cámara mira hacia donde va.",
+    "easePerS": 3.4,
+    "anchorX": 0.42,
+    "anchorY": 0.72,
+    "_anchor": "DÓNDE SE PARA LA LOCOMOTORA EN EL CUADRO, en fracciones. A 0,36 de ancho queda el convoy entero por detrás y vía por delante. A 0,72 de alto el tablero se apoya abajo y el cielo y la montaña se quedan con casi tres cuartos del cuadro — que es lo que hay que ver. Subirlo deja el tercio inferior convertido en una plancha de tierra, que fue exactamente lo que pasó a 0,66.",
+    "loopFitFraction": 0.74,
+    "_loopFitFraction": "Fracción del alto del cuadro que tiene que ocupar un rizo entero. De ahí sale el zoom que la cámara busca al entrar al lazo: el grande mide 54 m de alto y a 8 px/m no cabe en 720 px sin abrirse.",
+    "speedPullBack": 0.1,
+    "_speedPullBack": "Cuánto se abre la cámara a tope de velocidad. Abrirse con la velocidad es la sensación de velocidad; es lo mismo que hace la cámara de la ciudad y vale más que cualquier estela.",
+    "zoomEasePerS": 2.2
+  },
+  "smoke": {
+    "_note": "La chimenea. `rate` es penachos por segundo a plena carga; un tren parado humea poco y uno cuesta arriba humea mucho, que es la única telemetría honesta que tiene el jugador del esfuerzo del motor. Y es un PENACHO, no una estela: con `lifeS` y `r1M` al doble, el humo salía como una salchicha blanca de media pantalla que tapaba el paisaje que el modo existe para enseñar.",
+    "idleRate": 2.0,
+    "fullRate": 15,
+    "lifeS": 1.9,
+    "riseMPerS": 5.2,
+    "driftMPerS": -1.2,
+    "r0M": 0.7,
+    "r1M": 3.1,
+    "alpha": 0.36,
+    "max": 70,
+    "rgb": "228,226,220",
+    "_rgb": "La tinta del penacho, como triplete: la opacidad la rampa el pintor cada cuadro (`alphaColor`), así que guardar un `rgba()` completo dejaría el alfa como una perilla muerta."
+  },
+  "scenes": {
+    "crossfadeM": 320,
+    "_crossfadeM": "Metros de corredor en los que una escena se disuelve en la siguiente. El fondo cambia al avanzar: no es un fondo por nivel sino un paisaje que cruza el nivel.",
+    "previewHoldS": 6.5,
+    "previewFadeS": 1.4,
+    "_preview": "El selector de niveles muestra el paisaje vivo y lo va cambiando entre las escenas del modo, incluidas las de los tramos que todavía no se juegan: es el avance de la campaña."
+  }
+}

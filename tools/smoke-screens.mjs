@@ -209,6 +209,60 @@ await seen(".results-stats .row", 2, "over: las filas del marcador");
 await seen(".page-body .btn-row .btn", 2, "over: los botones");
 report.push("over");
 
+// ---- Tren al Puerto: tramo -> garaje -> partida ----------------------------
+// LA PARTIDA DEL MODO TREN ES UN CANVAS, y por eso tiene que estar acá: ni
+// `tests/test_screens.py` ni `tests/test_railway_content.py` pueden ver si el
+// lazo de dibujo arrancó. Un `<canvas>` montado y vacío se ve exactamente igual
+// que uno pintando, así que además de contar bloques se le pregunta al propio
+// estado de la partida si avanzó.
+await page.goto(url, { waitUntil: "load" });
+await page.waitForTimeout(6200);
+await click(".modes .mode", 3);           // Tren al Puerto es la cuarta tarjeta
+await page.waitForTimeout(900);
+await seen(".railway-level canvas.railway-preview", 1, "railway.levels: el paisaje en vivo");
+await seen(".railway-line .railway-tramo", 9, "railway.levels: los nueve tramos de la línea");
+await seen(".railway-line .railway-tramo.soon", 8, "railway.levels: los ocho que esperan su arte");
+await seen(".railway-facts li", 4, "railway.levels: las fichas del tramo");
+report.push("railway.levels");
+
+await click(".railway-level-body .btn.gold");
+await page.waitForTimeout(600);
+await seen(".railway-roster-grid .railway-card", 6, "railway.trains: las seis máquinas");
+await seen(".railway-roster-grid canvas.railway-figure", 6, "railway.trains: los seis retratos");
+report.push("railway.trains");
+
+await click(".railway-roster .btn.gold");
+await page.waitForTimeout(600);
+await seen(".railway-garage canvas.railway-figure", 1, "railway.garage: el retrato del convoy");
+await seen(".railway-upgrades .railway-ladder", 4, "railway.garage: las cuatro barras");
+await seen(".railway-garage-main .railway-stats > div", 4, "railway.garage: la ficha técnica");
+// EL TOPE SE VE EN LA BARRA. La máquina de salida llega a 2 de 5 en velocidad,
+// así que tiene que haber casillas apagadas: si no las hay, `caps` no llegó al
+// dibujo y las seis máquinas vuelven a converger en la misma.
+await seen(".railway-upgrades .railway-pips span.capped", 1, "railway.garage: el tope de la máquina");
+report.push("railway.garage");
+
+await click(".railway-garage-main .btn.gold");
+await page.waitForTimeout(900);
+await seen(".railway-stage canvas.railway-canvas", 1, "railway.playing: el lienzo");
+await seen(".railway-pedals .railway-pedal", 2, "railway.playing: los dos pedales");
+await seen(".railway-dials .railway-dial", 2, "railway.playing: los dos cuadrantes");
+await seen(".railway-dials .dial-needle", 2, "railway.playing: las agujas");
+await seen(".railway-hud .railway-fuel .railway-meter", 1, "railway.playing: la aguja de combustible");
+{
+  // El tren arranca DETENIDO a propósito. Se acelera de verdad y se exige que
+  // el kilometraje del HUD se mueva: medir sólo que el canvas existe prueba que
+  // React montó, no que el juego corre.
+  const km = () => page.locator(".railway-hud-mid .railway-chip").first().innerText();
+  const before = await km();
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(2500);
+  await page.keyboard.up("ArrowRight");
+  const after = await km();
+  if (before === after) fail(`railway.playing: el tren no se movió (${before} -> ${after})`);
+}
+report.push("railway.playing");
+
 if (errors.length) fail("errores de página:\n   " + errors.join("\n   "));
 if (bad) { await browser.close(); process.exit(1); }
 console.log(`[screens] ok — ${report.length} pantallas recorridas y con sus bloques en el DOM: `

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riel.local/schema/level.schema.json",
+  "title": "Riel level v1",
+  "description": "Estructura de nivel. El validador semántico comprueba pendientes, estación, frenos y longitud.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kitVersion",
+    "id",
+    "name",
+    "start",
+    "background",
+    "train",
+    "pieces"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "kitVersion": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "\\S"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "start": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": -100000,
+          "maximum": 100000
+        },
+        "y": {
+          "type": "number",
+          "minimum": -100000,
+          "maximum": 100000
+        }
+      }
+    },
+    "background": {
+      "const": "alpine-loop"
+    },
+    "train": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cars",
+        "spacing"
+      ],
+      "properties": {
+        "cars": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 8
+        },
+        "spacing": {
+          "type": "number",
+          "minimum": 160,
+          "maximum": 220
+        },
+        "skin": {
+          "enum": [
+            "classic",
+            "mint",
+            "midnight"
+          ]
+        }
+      }
+    },
+    "pieces": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 400,
+      "items": {
+        "enum": [
+          "straight",
+          "flat-to-up",
+          "slope-up",
+          "up-to-flat",
+          "flat-to-down",
+          "slope-down",
+          "down-to-flat",
+          "crest",
+          "valley",
+          "station",
+          "brake",
+          "chain-up",
+          "loop-small",
+          "loop-medium",
+          "loop-large"
+        ]
+      }
+    }
+  }
+}

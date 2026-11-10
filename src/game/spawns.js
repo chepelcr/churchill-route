@@ -504,11 +504,9 @@ function topUp(arr, target, make, isDead) {
 // streets or wander the city like ordinary peds. They WANDER THE PITCH, well
 // inside it — never the perimeter.
 //
-// The perimeter walk this replaced looked like the fans were standing on the
-// sidewalk: a field's ring is only FIELD_ACERA_CELLS deep (8 px), so a ring
-// point 10 px further in still sat under the 20 px acera band the renderer
-// paints over the block edge. FIELD_INSET is measured from the footprint edge
-// and is wider than that band, so a fan is always visibly on the grass.
+// The perimeter walk this replaced put fans on the touchlines and among the
+// goals. FIELD_INSET is measured from the actual pitch footprint, keeping the
+// crowd visibly on the grass and clear of the field markings.
 const FAN = npcType("fan");
 const FIELD_INSET = FAN.inset ?? 26;   // px of clearance from the pitch edge
 // HOW FAR APART A CROWD STANDS. A fan is drawn ~9 px wide with its shadow, so

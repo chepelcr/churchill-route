@@ -399,8 +399,7 @@ at the repo root, shared with the future accounts/sync/management server:
 churchill/world/
   config.py      every tuning knob + paths  (PLANAR_PX_PER_M, ARCADE_STREET_MUL
                  + ROAD_WIDTH_M, PLANAR_FULL_BBOX — a smaller PLANAR_BBOX gives
-                 a fast smoke build — CUAD, ACERA_CELLS / FIELD_ACERA_CELLS,
-                 BUILDING_SCALE)
+                 a fast smoke build — CUAD, ACERA_CELLS, BUILDING_SCALE)
   content.py     the hand-authored map: DISTRICT_DEFS, LANDMARK_DEFS,
                  CUSTOMER_DEFS, STAGES, RAILWAY_DEF, probes  (geo anchors —
                  the build FAILS listing unresolved POIs)
@@ -589,7 +588,8 @@ becomes a parcel on the cuadra under it. The parts that are load-bearing:
   covered 540 ROAD cells that way. The inscribed fallback is rechecked at
   raster-cell centres before `rect_poly` emits it; already-safe sites keep their
   established percentile geometry.
-- **The acera ring is GRADED** (`ACERA_CELLS` → `FIELD_ACERA_CELLS` → 1 → 0).
+- **The acera ring is GRADED only when a small site cannot afford it**
+  (`ACERA_CELLS` → 1 → 0); buildings and open fields start at the same depth.
   A hard-surface-spilling rect is INSCRIBED in strict LAND from what the erosion
   left; an ACERA-only fit keeps the frontage the site already owns. Judge the
   depth by whether what survives is still a PLOT (`SITE_MIN_SIDE`), never by how
@@ -1005,10 +1005,9 @@ rail-bound to. So `paintParcels` moved ahead of the band in `paintRoads` — the
 asphalt still wins over both. **`paintStadiumCuadras` stays AFTER it**, and that
 is not an inconsistency: a whole-cuadra estadio is stamped drivable over its own
 manzana, so it has no acera in the raster at all and that grey ring IS its
-sidewalk — moving it up with the parcels is what erased it. For the same reason
-the ring is eroded by `ACERA_CELLS` (a manzana's 12 px) and not by
-`FIELD_ACERA_CELLS` (a parcel's 8): Lito Pérez shipped with `aceras: True` and
-no sidewalk anybody could see. On the build side
+sidewalk — moving it up with the parcels is what erased it. Buildings and open
+fields both use the full `ACERA_CELLS` inset, and the field painters must not
+dilate the pitch back over that ring. On the build side
 `PARCEL_ACERA_MAX` re-fits a plot inside strict LAND when it spills onto the
 sidewalk, but **only as an improvement**: a HARD spill that cannot be re-fitted
 is dropped (a park over the roadway is worse than no park), an acera one keeps

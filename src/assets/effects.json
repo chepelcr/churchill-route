@@ -327,10 +327,18 @@
   },
   "_parallax": "EL FALSO 3-D. La tapa de un cuerpo se corre HACIA AFUERA en proporción a lo excéntrico que esté —el pinhole de siempre— y entre la huella y la tapa se dibujan las paredes. `cameraHeightM` es LA perilla que decide entre «tapete de ciudad» y «ciudad isométrica»: MÁS ALTO ES MÁS PLANO. Ojo con pasarse de alto: a 200 m una casa de un piso (3,2 m) a 250 px del centro corre 4 px, o sea nada — el efecto tiene que leerse en la casa corriente y no sólo en el Mercado. `wallMixLit`/`wallMixDark` son CUÁNTO se mezcla el color del cuerpo hacia las tintas de materials.json; si son muy chicos la pared sale del mismo color que el techo y el edificio se ve plano, sólo que corrido. Un `cameraHeightM` de CERO lo apaga entero. Motor: c2d/depth.js.",
   "parallax": {
-    "cameraHeightM": 80.0,
+    "cameraHeightM": 60.0,
     "maxOffsetPx": 26.0,
-    "wallMixLit": 0.22,
-    "wallMixDark": 0.55
+    "wallMixLit": 0.3,
+    "wallMixDark": 0.65
+  },
+  "vehicleParallax": {
+    "cameraHeightM": 105.0,
+    "maxOffsetPx": 5.0,
+    "wallMixLit": 0.18,
+    "wallMixDark": 0.58,
+    "wallLit": "#fff6e2",
+    "wallDark": "#2b2536"
   },
   "_view3d": "LA VISTA 2.5D (opt-in, `?render=3d`). Los edificios, la flora y los postes pasan a ser geometría de three.js sobre el suelo que Canvas sigue pintando. Las dos perillas de cámara dejan el SUELO exactamente donde Canvas lo pinta — ver `src/render/view3d.js`. `leanDeg` corre lo alto hacia arriba en pantalla (fachadas del lado de la cámara); `pinholeM` es la altura del ojo a plomo (0 = ortográfica), que abre lo alto hacia afuera desde el centro como la paralaje de `c2d/depth.js`.",
   "view3d": {

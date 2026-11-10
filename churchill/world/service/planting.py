@@ -20,6 +20,7 @@ DERIVED_PLANTING_STRATEGIES = (
     "leon-corner-window",
     "elevated-road-shoulder",
     "divided-avenue-midline",
+    "authored-points",
 )
 MAX_PLANTS = 20_000
 

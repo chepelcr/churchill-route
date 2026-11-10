@@ -120,6 +120,9 @@ REAUTHORED = {
     "LANDMARK_DEFS[kios_esp].name": "-> Soda Torrejas, el negocio real del ancla",
     "LANDMARK_DEFS[kios_centro].name": "-> El Cevichito, real y además el puesto de ceviche",
     "LANDMARK_DEFS[kios_cocal].name": "-> Pata Larga, el negocio real del ancla",
+    "LANDMARK_DEFS[kios_play].name": "-> Puesto de Las Playitas, el puesto de la plaza",
+    "LANDMARK_DEFS[kios_play].ll[0]": "-> acera sur de Las Playitas, fuera de la calzada",
+    "LANDMARK_DEFS[kios_play].ll[1]": "-> acera sur de Las Playitas, fuera de la calzada",
     "CROSSING_STAGES[s8].after":
         "la Travesía pasó de seguir a s3 a seguir a s7: iba cuarta y dejaba "
         "Las Playitas, El Cocal, Mata de Limón y Caldera detrás de la única "

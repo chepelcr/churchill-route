@@ -1,0 +1,60 @@
+{
+  "title": "Las Playitas — satellite boundary mockup",
+  "source": {
+    "attachment": "kimi-file://f_ed0aa50a-8096-4f4d-b295-8d7956fb0112",
+    "width": 1080,
+    "height": 894
+  },
+  "coordinateSpace": "source image pixels; origin at the upper-left",
+  "spaces": [
+    {
+      "id": "church",
+      "number": 1,
+      "name": "Iglesia de Las Playitas",
+      "color": "#ffad66",
+      "polygon": [[67, 58], [103, 68], [164, 121], [226, 169], [330, 241], [329, 320], [278, 307], [269, 284], [85, 273], [75, 218], [62, 153]],
+      "marker": [203, 242]
+    },
+    {
+      "id": "basketball",
+      "number": 2,
+      "name": "Cancha multiuso + techo del graderío",
+      "color": "#59d7ff",
+      "polygon": [[90, 280], [269, 304], [273, 330], [278, 347], [307, 353], [284, 491], [249, 479], [213, 499], [190, 499], [160, 485], [111, 464], [91, 420], [83, 350]],
+      "marker": [168, 390]
+    },
+    {
+      "id": "football",
+      "number": 3,
+      "name": "Cancha de fútbol",
+      "color": "#60ff8a",
+      "polygon": [[330, 241], [890, 337], [889, 350], [899, 351], [891, 405], [995, 415], [1000, 365], [952, 814], [260, 657], [284, 492], [307, 353], [329, 320]],
+      "marker": [637, 579]
+    },
+    {
+      "id": "park",
+      "number": 4,
+      "name": "Parque triangular — fuera de la cancha",
+      "color": "#ffe66d",
+      "polygon": [[1000, 365], [1029, 831], [952, 814]],
+      "marker": [1000, 652]
+    },
+    {
+      "id": "kiosk",
+      "number": 5,
+      "name": "Puesto de Las Playitas",
+      "color": "#ff7f91",
+      "polygon": [[183, 500], [244, 505], [265, 548], [257, 584], [200, 568], [179, 539]],
+      "marker": [221, 542]
+    }
+  ],
+  "notes": [
+    "The church is north of the basketball court.",
+    "The gray court and its roofed stand are one basketball space.",
+    "The football field starts at the church's upper corner at [330,241].",
+    "The football field and park share [1000,365] and [952,814]; [260,657], [952,814] and [1029,831] form one straight southern boundary beside the sidewalk.",
+    "The football boundary steps around the small northeast building.",
+    "The small south building is the Puesto de Las Playitas.",
+    "Lines are a visual interpretation of the satellite reference, not surveyed geometry."
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "title": "Las Playitas — rectangular game-design mockup",
+  "status": "approved reference; implemented by the geographic authored geometry in content/world/blocks.json",
+  "camera": {
+    "x": 31615,
+    "y": 18425,
+    "zoom": 1.7
+  },
+  "referenceMapping": {
+    "type": "four-corner projective transform with a rectangular football parcel",
+    "sourceAnchors": [[330, 241], [1000, 365], [1029, 831], [260, 657]],
+    "gameAnchors": [[31528, 18311], [31810, 18365], [31820, 18585], [31495, 18491]]
+  },
+  "parcels": {
+    "osm_worship_964081187": {
+      "poly": [31429, 18231, 31443, 18235, 31465, 18258, 31488, 18279, 31528, 18311, 31527, 18348, 31507, 18342, 31503, 18331, 31433, 18328, 31430, 18303, 31426, 18274],
+      "cx": 31477,
+      "cy": 18290,
+      "ang": 0.19,
+      "slot": [31458, 18275, 48, 45]
+    },
+    "playitas_multiuso": {
+      "poly": [31435, 18331, 31503, 18341, 31504, 18353, 31506, 18361, 31517, 18363, 31507, 18427, 31493, 18422, 31479, 18431, 31470, 18431, 31458, 18425, 31440, 18415, 31433, 18395, 31431, 18363],
+      "cx": 31474,
+      "cy": 18381,
+      "ang": 0.19,
+      "slot": [31452, 18355, 30, 56]
+    },
+    "playitas_cancha": {
+      "poly": [31528,18311, 31810,18365, 31785,18575, 31495,18491],
+      "cx": 31652,
+      "cy": 18443,
+      "ang": 0.19,
+      "hw": 145,
+      "hh": 102,
+      "boxes": "penalty",
+      "slot": [31595, 18407, 78, 86]
+    },
+    "playitas_parque": {
+      "poly": [31810,18365, 31820,18585, 31785,18575],
+      "cx": 31805,
+      "cy": 18518,
+      "ang": 0.19,
+      "slot": [31800, 18490, 12, 50],
+      "decor": false
+    }
+  },
+  "buildings": {
+    "Iglesia de Las Playitas": {
+      "match": [31483, 18284],
+      "pts": [31429, 18231, 31443, 18235, 31465, 18258, 31488, 18279, 31528, 18311, 31527, 18348, 31507, 18342, 31503, 18331, 31433, 18328, 31430, 18303, 31426, 18274],
+      "color": "#d8a086",
+      "roof": "#a65345"
+    },
+    "Edificio norte de Las Playitas": {
+      "pts": [31761, 18358, 31810, 18365, 31807, 18390, 31761, 18385],
+      "color": "#d8a086",
+      "roof": "#a65345",
+      "wnd": 1
+    }
+  },
+  "stadium": {
+    "footprint": [31429, 18231, 31488, 18279, 31528, 18311, 31810, 18365, 31820, 18585, 31785, 18575, 31495, 18491, 31455, 18470, 31445, 18470, 31426, 18274],
+    "outline": [31419, 18221, 31515, 18275, 31820, 18360, 31840, 18620, 31470, 18505, 31420, 18470],
+    "cx": 31620,
+    "cy": 18435,
+    "x0": 31419,
+    "y0": 18221,
+    "x1": 31840,
+    "y1": 18620
+  },
+  "grayAreas": [
+    {
+      "id": "playitas_left_acera",
+      "poly": [31440, 18415, 31458, 18425, 31470, 18431, 31479, 18431, 31493, 18422, 31507, 18427, 31495, 18491, 31455, 18470, 31445, 18470],
+      "groundColor": "#c2bdb0",
+      "kerbColor": "#c2bdb0"
+    }
+  ],
+  "landmarks": {
+    "estadio_playitas": {
+      "x": 31620,
+      "y": 18435,
+      "towers": null,
+      "stands": {
+        "side": "west",
+        "palette": {
+          "tierA": "#f1f4f7",
+          "tierB": "#2f6fb8",
+          "structure": "#24476e"
+        },
+        "quads": [
+          [31507, 18427, 31517, 18363, 31506, 18361, 31493, 18422],
+          [31570, 18318, 31635, 18330, 31633, 18320, 31568, 18308],
+          [31655, 18333, 31720, 18345, 31718, 18335, 31653, 18323]
+        ]
+      }
+    },
+    "kios_play": {
+      "name": "Puesto de Las Playitas",
+      "x": 31474,
+      "y": 18462,
+      "ang": 0.46,
+      "spawn": [31480, 18462]
+    }
+  },
+  "lights": [
+    { "id": "playitas_flood_nw", "point": [31527, 18299], "lightType": "stadium" },
+    { "id": "playitas_flood_ne", "point": [31815, 18358], "lightType": "stadium" },
+    { "id": "playitas_flood_sw", "point": [31491, 18490], "lightType": "stadium" },
+    { "id": "playitas_flood_se", "point": [31788, 18581], "lightType": "stadium" },
+    { "id": "playitas_multiuso_lamp", "point": [31448, 18355], "lightType": "warm" },
+    { "id": "playitas_park_lamp", "point": [31810, 18520], "lightType": "warm" }
+  ],
+  "trees": [
+    [31525, 18501, 0.78],
+    [31575, 18516, 0.84],
+    [31625, 18532, 0.76],
+    [31675, 18548, 0.86],
+    [31725, 18565, 0.79],
+    [31775, 18582, 0.85],
+    [31812, 18596, 0.76],
+    [31808, 18420, 0.68],
+    [31806, 18485, 0.72],
+    [31804, 18540, 0.68],
+    [31796, 18570, 0.62]
+  ],
+  "relationships": [
+    "The football plaza is a simple four-sided rectangle-like parcel with a straight green northern edge.",
+    "The two northern grandstands sit on green ground along that edge.",
+    "The larger triangular park is restored.",
+    "The southern plaza edge follows Avenida 1 with a continuous acera between the field and asphalt.",
+    "Trees are distributed along the full southern acera, with four smaller trees retained inside the triangular park.",
+    "The Puesto de Las Playitas follows the local southwestern acera angle at 0.46 radians.",
+    "Its anchor and rotated body remain within the southern acera, clear of the asphalt.",
+    "The football penalty areas and porterías follow the four real field sides, flush with the touchlines.",
+    "Four stadium floodlights mark the football corners; warm lamps serve the basketball plaza and park."
+  ]
+}

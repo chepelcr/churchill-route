@@ -4,7 +4,7 @@
   "_layouts": "CADA BLOQUE NOMBRA SU ESTRATEGIA, y el motor la implementa. Son cuatro maneras genuinamente distintas de repartir una manzana, no cuatro nombres para una: `bands` corta columnas y filas con pesos; `streets-quad` arma un cuadrilátero con las LÍNEAS de las calles que lo bordean; `footprint-lots` le da a cada huella mapeada el suelo más cercano y guarda el residual; `water-inlet` convierte la cuadra entera en mar. El JSON escoge y parametriza; el algoritmo se queda en código, que es la misma línea que `docs/inventory.md` §12 traza para las formas.",
   "_anchors": "EL ANCLA ES GEO, SIEMPRE. `carmen` y `centro` fueron las dos últimas anclas en PÍXELES que quedaban en el build, calibradas a 1.6 px/m: el reescalado a 2.5 movió la manzana real 4 000 px, las cuatro calles resolvieron a `None` y EL CENTRO CÍVICO ENTERO DEJÓ DE EXISTIR —sin Parroquia del Carmen, sin Jardín, sin Plaza Deportes El Carmen, sin Catedral, sin Casa de la Cultura, sin Biblioteca— con dos líneas WARN en un log de 900 para contarlo. Hoy una cuadra hecha a mano que no resuelve HACE FALLAR EL BUILD: alguien se sentó a dibujar estos bloques y el build no puede decidir que son opcionales.",
   "_streets": "Las calles y avenidas se dan como LISTAS DE CANDIDATOS con los nombres que OSM realmente trae acá: las calles impares suelen no tener nombre (se cae a la par que la flanquea) y la avenida central es «Avenida Centenario», no «Avenida 0».",
-  "_aceras": "`aceras: true` erosiona la parte según la profundidad de acera, así que lo que se pare encima (una iglesia) nunca cae sobre la acera. `aceras: false` le deja el anillo y la parte llena la cuadra de borde a borde — que es como Plaza Las Playitas se lee como un solo campo abierto.",
+  "_aceras": "`aceras: true` erosiona la parte según la profundidad de acera, así que lo que se pare encima (una iglesia o una cancha) nunca cae sobre la acera. `aceras: false` conserva el anillo y deja que la parte llegue al borde; se reserva para sitios de orilla o pavimento continuo que de verdad no tengan una acera interior.",
   "_manzanas": "EL SUELO DE UNA MANZANA CUALQUIERA. Las 976 cuadras que el mundo deriva no tenían color propio: el interior de toda manzana es UN relleno global por clima sobre 27 siluetas de isla, así que no había forma de decir «ésta es distinta». Acá se dice, y se direcciona POR PUNTO GEO — nunca por id, porque el id de una cuadra es el hash de su contorno (`cuadra_<hash>`) y su nombre es posicional: un edificio nuevo o un reescalado lo cambian y el override se despega en silencio. Un ancla que no cae en ninguna cuadra HACE FALLAR EL BUILD.",
   "_manzanaFields": "`ground` y `acera.color` son apariencia y alimentan el pintor que YA existe y llega vacío (`drawSurfaceStyleGround` / `drawSurfaceStyleAceras`). `surface` es opcional y cambia la CLASE de superficie, o sea la manejabilidad — y por eso el paso corre antes de `verify`, para que una manzana convertida en muro haga fallar el build en vez de dejar una entrega inalcanzable.",
   "manzanas": [
@@ -95,9 +95,9 @@
           ],
           "use": "plaza",
           "name": "Plaza Deportes El Carmen",
-          "aceras": false,
+          "aceras": true,
           "straighten_cells": 2,
-          "_note": "columna derecha, abarcando LAS DOS filas. La cancha ocupa su media cuadra entera; dos celdas de tolerancia vectorial colapsan las escaleras del norte y del este en los cuatro lados directos del paralelogramo alineado a la calle."
+          "_note": "columna derecha, abarcando LAS DOS filas. La cancha se retira de las aceras que dan a las calles, pero conserva el borde común con la parroquia; dos celdas de tolerancia vectorial colapsan las escaleras del norte y del este en los cuatro lados directos del paralelogramo alineado a la calle."
         }
       ]
     },
@@ -322,6 +322,10 @@
       "id": "estadio_playitas",
       "layout": "streets-quad",
       "name": "Plaza Las Playitas",
+      "labelLL": [9.97883799, -84.82833022],
+      "outlineLL": [[9.9794575, -84.82891688], [9.97930117, -84.82863669], [9.97905511, -84.82774647], [9.97830244, -84.8276881], [9.97863535, -84.82876803], [9.97873667, -84.82891397]],
+      "footprintLL": [[9.97942855, -84.8288877], [9.97928959, -84.82871549], [9.97919696, -84.82859874], [9.97904063, -84.82777566], [9.97840376, -84.82774647], [9.97843271, -84.82784863], [9.97867588, -84.82869506], [9.97873667, -84.82881181], [9.97873667, -84.828841], [9.97930407, -84.82889645]],
+      "ang": 0.19,
       "stands": {
         "side": "west",
         "palette": {
@@ -329,79 +333,103 @@
           "tierB": "#2f6fb8",
           "structure": "#24476e"
         },
-        "_note": "Plaza Las Playitas — blanco y azul."
-      },
-      "towers": {
-        "type": "stadium",
-        "_note": "cancha más chica, halo más chico — si no, los cuatro halos se funden en uno y la plaza entera queda blanca.",
-        "insetM": 4.0,
-        "radiusM": 29.6
-      },
-      "crowd": [
-        {
-          "type": "supporter"
-        },
-        {
-          "type": "mascot",
-          "count": 1
-        }
-      ],
-      "_crowd": "LA MULTITUD SE ESCOGE POR CANCHA. `supporter` y `mascot` estaban definidos en `npcTypes.json`, hospedaban `parcel:plaza` y `parcel:stadium`, y NO SE GENERABAN NUNCA — entradas muertas del registro, como los cuatro alfas muertos de las luces. Una lista vacía significa sin gente; ausente significa el `fan` de siempre.",
-      "_ll": "Las Playitas: Calle 6-8, entre Avenida Centenario y la orilla",
-      "calles": [
-        [
-          "Calle 6"
-        ],
-        [
-          "Calle 8"
+        "quadsLL": [
+          [[9.97886115, -84.82866004], [9.97904642, -84.82863085], [9.97905221, -84.82866295], [9.97887563, -84.8287009]],
+          [[9.97917669, -84.82847616], [9.97914196, -84.82828644], [9.9791709, -84.82829228], [9.97920564, -84.82848199]],
+          [[9.97913327, -84.82822806], [9.97909853, -84.82803835], [9.97912748, -84.82804418], [9.97916222, -84.8282339]]
         ]
-      ],
-      "ave_north": [
-        "Avenida 1",
-        "Avenida 1 Dr. Sergio Fallas Badilla"
-      ],
-      "ave_south": [
-        "Avenida Centenario"
-      ],
+      },
+      "crowd": [{"type": "supporter"}, {"type": "mascot", "count": 1}],
+      "calles": [["Calle 6"], ["Calle 8"]],
+      "ave_north": ["Avenida 1", "Avenida 1 Dr. Sergio Fallas Badilla"],
+      "ave_south": ["Avenida Centenario"],
       "aceras": true,
       "beach": true,
-      "_beach": "la cuadra corre hasta la arena.",
-      "edge": [
-        "Calle 8"
-      ],
-      "_edge": "pared derecha sobre la LÍNEA de Calle 8, extendida.",
-      "straighten_cells": 3,
-      "_straighten": "su límite oeste es una diagonal larga. Tres celdas de ráster quitan los hombros cortos residuales para que se dibuje como un solo lado directo.",
+      "edge": ["Calle 8"],
       "use": "plaza",
-      "_use": "es una PLAZA DE BARRIO, no un estadio. Con `ParcelUse.PLAZA` de verdad se dibuja como lo que es — y además `npcTypes.json` ya hospedaba `parcel:plaza` en tres tipos que nunca calzaban con nada, porque ninguna parcela usaba ese valor.",
-      "cols": [
-        1,
-        1.6
-      ],
-      "rows": [
-        1
-      ],
-      "_bands": "la cancha ocupa la banda ancha del este; la angosta del oeste es donde caben las piezas que le faltaban a Las Playitas.",
       "parts": [
         {
-          "id": "playitas_cancha",
-          "col": 1,
-          "row": 0,
-          "use": "plaza",
-          "name": "Cancha de Las Playitas",
-          "aceras": false,
-          "sport": "soccer"
+          "id": "osm_worship_964081187",
+          "use": "church",
+          "name": "Iglesia de Las Playitas",
+          "polyLL": [[9.97942855, -84.8288877], [9.97941697, -84.82884683], [9.97935039, -84.82878262], [9.97928959, -84.82871549], [9.97919696, -84.82859874], [9.97908985, -84.82860166], [9.97910722, -84.82866004], [9.97913906, -84.82867171], [9.97914774, -84.82887602], [9.97922012, -84.82888478], [9.97930407, -84.82889645]],
+          "centerLL": [9.97925775, -84.8287476],
+          "osmId": 964081187,
+          "built": true
         },
         {
           "id": "playitas_multiuso",
-          "col": 0,
-          "row": 0,
           "use": "plaza",
           "name": "Cancha multiuso",
-          "aceras": false,
           "sport": "basketball",
-          "_note": "cancha DURA: `sport` decide que se dibujen marcas de cancha y no de fútbol, y `COURT_SPORTS` ya nombra cuáles lo son."
+          "polyLL": [[9.97913906, -84.82887018], [9.97911011, -84.82867171], [9.97907537, -84.82866879], [9.97905221, -84.82866295], [9.97904642, -84.82863085], [9.97886115, -84.82866004], [9.97887563, -84.8287009], [9.97884957, -84.82874176], [9.97884957, -84.82876803], [9.97886694, -84.82880305], [9.97889589, -84.82885559], [9.97895379, -84.82887602], [9.97904642, -84.82888186]],
+          "centerLL": [9.97899432, -84.82875635]
+        },
+        {
+          "id": "playitas_cancha",
+          "use": "plaza",
+          "name": "Cancha de Las Playitas",
+          "sport": "soccer",
+          "boxes": "penalty",
+          "polyLL": [[9.97919696, -84.82859874], [9.97904063, -84.82777566], [9.97843271, -84.82784863], [9.97867588, -84.82869506]],
+          "centerLL": [9.97881483, -84.82823682]
+        },
+        {
+          "id": "playitas_parque",
+          "use": "park",
+          "name": "Parque Las Playitas",
+          "decor": false,
+          "polyLL": [[9.97904063, -84.82777566], [9.97840376, -84.82774647], [9.97843271, -84.82784863]],
+          "centerLL": [9.97859772, -84.82779025]
+        },
+        {
+          "id": "playitas_left_acera",
+          "use": "lot",
+          "name": "Acera oeste de Las Playitas",
+          "label": false,
+          "decor": false,
+          "groundColor": "#c2bdb0",
+          "kerbColor": "#c2bdb0",
+          "polyLL": [[9.97889589, -84.82885559], [9.97886694, -84.82880305], [9.97884957, -84.82876803], [9.97884957, -84.82874176], [9.97887563, -84.8287009], [9.97886115, -84.82866004], [9.97867588, -84.82869506], [9.97873667, -84.82881181], [9.97873667, -84.828841]]
         }
+      ],
+      "buildings": [
+        {
+          "name": "Iglesia de Las Playitas",
+          "replace": true,
+          "polyLL": [[9.97942855, -84.8288877], [9.97941697, -84.82884683], [9.97935039, -84.82878262], [9.97928959, -84.82871549], [9.97919696, -84.82859874], [9.97908985, -84.82860166], [9.97910722, -84.82866004], [9.97913906, -84.82867171], [9.97914774, -84.82887602], [9.97922012, -84.82888478], [9.97930407, -84.82889645]],
+          "color": "#d8a086",
+          "roof": "#a65345",
+          "wnd": 1
+        },
+        {
+          "name": "Edificio norte de Las Playitas",
+          "polyLL": [[9.9790609, -84.82791868], [9.97904063, -84.82777566], [9.97896826, -84.82778442], [9.97898274, -84.82791868]],
+          "color": "#d8a086",
+          "roof": "#a65345",
+          "wnd": 1
+        }
+      ],
+      "trees": [
+        {"ll": [9.97864693, -84.8286075], "s": 0.78},
+        {"ll": [9.97860351, -84.82846156], "s": 0.84},
+        {"ll": [9.97855719, -84.82831563], "s": 0.76},
+        {"ll": [9.97851087, -84.82816969], "s": 0.86},
+        {"ll": [9.97846166, -84.82802375], "s": 0.79},
+        {"ll": [9.97841245, -84.82787781], "s": 0.85},
+        {"ll": [9.97837192, -84.82776982], "s": 0.76},
+        {"ll": [9.97888142, -84.8277815], "s": 0.68},
+        {"ll": [9.97869325, -84.82778733], "s": 0.72},
+        {"ll": [9.97853403, -84.82779317], "s": 0.68},
+        {"ll": [9.97844718, -84.82781652], "s": 0.62}
+      ],
+      "lamps": [
+        {"id": "playitas_flood_nw", "ll": [9.9792317, -84.82860166], "type": "stadium"},
+        {"id": "playitas_flood_ne", "ll": [9.9790609, -84.82776107], "type": "stadium"},
+        {"id": "playitas_flood_sw", "ll": [9.97867877, -84.82870674], "type": "stadium"},
+        {"id": "playitas_flood_se", "ll": [9.97841534, -84.82783987], "type": "stadium"},
+        {"id": "playitas_multiuso_lamp", "ll": [9.97906958, -84.82883224], "type": "warm"},
+        {"id": "playitas_park_lamp", "ll": [9.97859193, -84.82777566], "type": "warm"}
       ]
     },
     {

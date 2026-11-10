@@ -1636,16 +1636,17 @@
     "field": {
       "_note": "La cancha: césped, sus rayas de corte y las líneas de fútbol. Todo se dibuja en el marco de la parcela (`P.ang`), nunca en el de la pantalla.",
       "grass": "#3faa53",
-      "court": "#9a9c93",
-      "courtNote": "una cancha DURA (baloncesto, multiuso) es cemento y no césped.",
+      "court": "#7f929b",
+      "courtNote": "una cancha DURA (baloncesto, multiuso) tiene cemento pintado de azul grisáceo, no césped ni un patio gris.",
       "lines": "rgba(240,238,230,0.5)",
       "mow": "rgba(30,88,50,0.16)",
       "mowNote": "las rayas de la podadora, a lo largo de la cancha — lo que la hace leerse como césped cuidado y no como un rectángulo verde.",
-      "goals": "rgba(255,255,255,0.92)",
-      "stadiumRing": "#3faa53"
+      "goals": "rgba(255,255,255,0.92)"
     },
     "court": {
-      "_note": "Las marcas de una cancha dura: el perímetro, la línea de tiro y el aro.",
+      "_note": "La superficie y las marcas de una cancha dura: azul grisáceo, zonas terracota, áreas restringidas arena, líneas y aros.",
+      "end": "#b9756c",
+      "key": "#c7bc7d",
       "lines": "rgba(240,238,230,0.72)",
       "paint": "rgba(240,238,230,0.9)",
       "hoop": "#e07a42"

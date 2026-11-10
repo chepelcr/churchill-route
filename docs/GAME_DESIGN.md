@@ -191,7 +191,7 @@ There are 29 landmarks spread across all districts. Six are active **kiosks** �
 | `kios_paseo1` | Kiosco Doña Lela | Paseo |
 | `kios_paseo2` | Churchill El Mariachi | Paseo |
 | `kios_centro` | Kiosco La Porteña | Centro |
-| `kios_play` | Kiosco Playitas | Playitas |
+| `kios_play` | Puesto de Las Playitas | Playitas |
 | `kios_cocal` | Kiosco El Cocal | Cocal |
 | `kios_mata` | Kiosco Mata de Limón | Mata |
 

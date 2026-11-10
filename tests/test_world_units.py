@@ -94,11 +94,6 @@ class DerivationTests(unittest.TestCase):
                          self.m["meta"]["aceraPx"])
         self.assertEqual(config.px(UNITS["kerb"]["sidewalkM"]),
                          self.m["meta"]["aceraPx"])
-        self.assertEqual(config.FIELD_ACERA_CELLS * config.GRID_CELL,
-                         config.px(UNITS["kerb"]["fieldSidewalkM"]))
-        self.assertLess(config.FIELD_ACERA_CELLS, config.ACERA_CELLS,
-                        "a parcel's ring is shallower than a manzana's — all it "
-                        "has to do is keep the pitch's lines off the asphalt")
 
     def test_the_camera_framing_is_still_the_advisory_the_manifest_carries(self):
         # `meta.cuadsPerView` is advisory and the renderer owns the real

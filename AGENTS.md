@@ -141,8 +141,8 @@ at the repo root, shared with the future accounts/sync/management server:
 churchill/world/
   config.py      every tuning knob + paths (PLANAR_PX_PER_M, ROAD_WIDTH_M,
                  ARCADE_STREET_MUL, PLANAR_FULL_BBOX — a smaller PLANAR_BBOX
-                 gives a fast smoke build — CUAD, ACERA_CELLS /
-                 FIELD_ACERA_CELLS, BUILDING_SCALE)
+                 gives a fast smoke build — CUAD, ACERA_CELLS,
+                 BUILDING_SCALE)
   content.py     the hand-authored map: DISTRICT_DEFS, LANDMARK_DEFS,
                  CUSTOMER_DEFS, STAGES, RAILWAY_DEF, probes (geo anchors — the
                  build FAILS listing unresolved POIs)

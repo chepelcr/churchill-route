@@ -4,6 +4,8 @@
     "trace": "keep this site's own SOURCE-SUPPORTED cuadra cells and emit their straightened contour, instead of fitting a rectangle. For a place whose identity is the angled contour. NOTE: it keeps the ground OSM already says is the site's — it cannot invent a shape the data does not have.",
     "cuadra": "the mapped outline IS a manzana, calle to calle. Implies `trace`, and skips the manzana seat because the site is inside its block by construction.",
     "rect": "a sub-rectangle of the fitted rect, in FRACTIONS (u east, v south) as [u0, u1, v0, v1] — for when OSM maps the whole block but the building occupies one corner of it.",
+    "sizeM": "the site's real [width, height] in metres, centred on the fitted rect and reduced only if needed to keep it off a roadway.",
+    "offsetM": "a fine [east, south] centre correction in metres, applied before sizeM; for aligning a mapped sketch to a known frontage.",
     "kiosco": "the parcel carries a kiosco/templete at its centre."
   },
   "_schema": "keys are parcel ids (`osm_<use>_<wayid>`); values are the options above plus an optional `note`.",
@@ -47,11 +49,16 @@
       "shore": true,
       "use": "plaza",
       "sport": "basketball",
-      "note": "LA CANCHA MULTIUSOS del Paseo, frente a la Clínica San Rafael. En OSM es `way/964080190`, con el nombre mal escrito («Cqancha de Futbol Playa Puntarenas»), etiquetada `leisure=park` y SIN `sport` — así que el mundo la dibujaba como un parque y, al estar sobre el malecón, la prueba de LAND/ACERA la dejaba en 73x17 px. Es una cancha de baloncesto multiuso: `plaza` le da el pintor de campo abierto y `sport` las marcas. `aceras: false` porque una cancha sobre la arena no tiene acera de la que apartarse: la erosión le comía la mitad de una huella que ya es de 91x31 px. Y `sizeM`: el contorno del mapeador es un BOCETO — 91x31 px, o sea 36 x 12 m. Una cancha multiuso de verdad tiene el doble de fondo, así que la del Paseo se leía como una tira. Ninguna fracción de `rect` podía arreglarlo porque `rect` sólo recorta lo dibujado. 36 x 22 m conserva el ancho que el mapeador sí midió y le devuelve el fondo; medido sobre el mundo emitido, la calzada más cercana está a 44 px al norte y 56 al sur del centro, y media cancha son 27.5 px, así que cabe entera sobre el malecón sin tocar asfalto.",
+      "name": "Cancha Multiuso La Perla del Pacífico",
+      "note": "LA CANCHA MULTIUSOS del Paseo, frente a la Clínica San Rafael. OSM la tiene como `way/964080190`, con el nombre mal escrito y sin `sport`. El contorno mapeado es un boceto de 36 x 12 m: `sizeM` le devuelve el fondo real de una cancha multiuso y `offsetM` la acerca al borde interior de la acera del Paseo, sin subirla a la calzada. Su superficie dura usa el pintor de cancha azul, terracota y arena, no un patio gris.",
       "aceras": false,
       "sizeM": [
         36,
         22
+      ],
+      "offsetM": [
+        0,
+        -4
       ]
     }
   }

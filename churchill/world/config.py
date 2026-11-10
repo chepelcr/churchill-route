@@ -399,12 +399,6 @@ CLS_MALECON = Surface.MALECON
 # reason this was worth converting: at a 6 px cell, `3` would quietly have become
 # 18 px of sidewalk, and nothing in the build would have mentioned it.
 ACERA_CELLS = max(1, round(px(UNITS["kerb"]["sidewalkM"]) / GRID_CELL))
-# A FIELD's ring is shallower than a block's. All it has to do is keep the
-# pitch's white lines off the asphalt, and every px of it is grass and markings
-# the player doesn't get: at full depth the Carmen plaza went from 84x92 to
-# 60x48. 8 px still reads as a kerb strip (the drawn sidewalk band is 20 px, so
-# the pitch tucks under most of it, exactly like a park's green skirt).
-FIELD_ACERA_CELLS = max(1, round(px(UNITS["kerb"]["fieldSidewalkM"]) / GRID_CELL))
 # see enums.surface: an acera exists only where there is a street to walk beside
 STREET_CLASSES = surface_enum.STREET
 # what a vehicle may drive on (BEACH included: the sand is slow, not a wall)

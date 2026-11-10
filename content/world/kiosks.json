@@ -49,13 +49,15 @@
     },
     {
       "id": "kios_play",
-      "name": "Kiosco Playitas",
+      "name": "Puesto de Las Playitas",
       "district": "playitas",
       "product": "papicarne",
       "ll": [
-        9.9784,
-        -84.8264
-      ]
+        9.97875983,
+        -84.82875635
+      ],
+      "fixed": true,
+      "ang": 0.46
     },
     {
       "id": "kios_cocal",

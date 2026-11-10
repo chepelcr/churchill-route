@@ -27,12 +27,16 @@ export const DERIVED_PLANTING_STRATEGY_NAMES = Object.freeze([
   'leon-corner-window',
   'elevated-road-shoulder',
   'divided-avenue-midline',
+  'authored-points',
 ]);
 
-// A derived strategy is an engine verb, so its required arguments belong beside
-// that verb rather than in a second editor-only schema. The authored VALUES stay
-// in flora.json; this only says which values the finite interpreter needs.
+// A run strategy's required arguments belong beside that strategy rather than
+// in a second editor-only schema. Authored points carry their coordinates in
+// blocks.json, so they need no derivation arguments here.
 export const DERIVED_PLANTING_STRATEGY_CONTRACTS = Object.freeze({
+  'authored-points': Object.freeze({
+    form: 'free', align: 'free', treeKind: 'tree', blocks: false,
+  }),
   'paseo-crossing-runs': Object.freeze({
     form: 'strip', align: 'street', treeKind: 'palm', blocks: true,
     strings: Object.freeze(['streetName']),

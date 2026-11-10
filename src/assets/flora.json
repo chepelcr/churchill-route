@@ -475,7 +475,7 @@
     "_geometry": "strip uses a line; disc uses a point; triangle/square/free use polygons with 3/4/3+ vertices. align=street may name `streetName`; without one the drawn line is already the authored street alignment."
   },
   "plantingRuns": {
-    "_note": "The four shipped derived plantings. Their geometry strategies stay finite engine verbs; every species, size, spacing, width, alignment, collision decision and street selector is authored here.",
+    "_note": "The four shipped derived plantings plus Las Playitas' explicitly authored points. Derived geometry strategies stay finite engine verbs; every species, size, spacing, width, alignment, collision decision and street selector is authored here.",
     "paseo_median": {
       "name": "Mediana de palmas · Paseo de los Turistas",
       "strategy": "paseo-crossing-runs",
@@ -541,6 +541,16 @@
       "sampleStepM": 4,
       "matchToleranceM": 36,
       "maxSeparationM": 48,
+      "mix": "parque",
+      "treeKind": "tree",
+      "scale": [0.9, 1.2],
+      "blocks": false
+    },
+    "estadio_playitas_authored": {
+      "name": "Árboles · Plaza Las Playitas",
+      "strategy": "authored-points",
+      "form": "free",
+      "align": "free",
       "mix": "parque",
       "treeKind": "tree",
       "scale": [0.9, 1.2],

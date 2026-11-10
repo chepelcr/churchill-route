@@ -249,7 +249,7 @@ class StadiumIsOneRecordTests(unittest.TestCase):
         with_stands = {b["id"] for b in self.quads if b.get("stands")}
         with_towers = {b["id"] for b in self.quads if b.get("towers")}
         self.assertEqual(with_stands, {"estadio", "estadio_playitas"})
-        self.assertEqual(with_towers, with_stands)
+        self.assertEqual(with_towers, {"estadio"})
 
     def test_a_stand_names_a_real_side(self):
         for block in self.quads:
@@ -325,6 +325,36 @@ class PlazaIdentityTests(unittest.TestCase):
         mats = json.loads(read(os.path.join(ROOT, "src", "assets", "materials.json")))
         self.assertNotEqual(mats["parcel"]["plaza"], mats["parcel"]["stadium"],
                             "a barrio plaza still paints as a stadium")
+
+    def test_carmen_plaza_keeps_its_pitch_inside_the_aceras(self):
+        carmen = next(b for b in content.BLOCKS if b["id"] == "carmen")
+        plaza = next(p for p in carmen["parts"] if p["id"] == "carmen_plaza")
+        self.assertTrue(plaza["aceras"])
+
+    def test_playitas_uses_the_authored_geographic_spaces(self):
+        block = next(b for b in content.BLOCKS if b["id"] == "estadio_playitas")
+        parts = {p["id"]: p for p in block["parts"]}
+        self.assertEqual(set(parts), {"osm_worship_964081187", "playitas_multiuso",
+                                     "playitas_cancha", "playitas_parque",
+                                     "playitas_left_acera"})
+        self.assertEqual(parts["playitas_cancha"]["boxes"], "penalty")
+        self.assertEqual(len(parts["playitas_cancha"]["polyLL"]), 4)
+        self.assertEqual(len(parts["playitas_parque"]["polyLL"]), 3)
+        self.assertFalse(parts["playitas_parque"]["decor"])
+        self.assertEqual(len(block["stands"]["quadsLL"]), 3)
+        self.assertEqual(len(block["trees"]), 11)
+        self.assertEqual(len(block["lamps"]), 6)
+        for polygon in [block["outlineLL"], block["footprintLL"],
+                        *(p["polyLL"] for p in parts.values())]:
+            for lat, lon in polygon:
+                self.assertTrue(9.97 < lat < 9.99 and -84.84 < lon < -84.82)
+
+    def test_paseo_multiuso_has_a_real_size_and_promenade_alignment(self):
+        court = content.SITE_DECOR["osm_park_964080190"]
+        self.assertEqual(court["name"], "Cancha Multiuso La Perla del Pacífico")
+        self.assertEqual(court["sport"], "basketball")
+        self.assertEqual(court["sizeM"], [36, 22])
+        self.assertEqual(court["offsetM"], [0, -4])
 
 
 class ManzanaStyleTests(unittest.TestCase):

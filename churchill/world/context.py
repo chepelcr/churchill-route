@@ -116,6 +116,8 @@ class WorldContext:
     #: outline rings plus the frame its two rows are laid out in.
     feria: list = field(default_factory=list)
     buildings: list = field(default_factory=list)
+    authored_trees: list = field(default_factory=list)
+    authored_lamps: list = field(default_factory=list)
     #: Semantic additions the current runtime does not render yet. Preserving
     #: them in the manifest is part of the editor contract: no valid edit is
     #: silently dropped merely because its entity catalog lands in a later

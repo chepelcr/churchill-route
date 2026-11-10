@@ -222,12 +222,18 @@ class FieldTowerTests(unittest.TestCase):
         for kind in kinds:
             self.assertIn(kind, self.lights, f"towers name a light type nobody designed: {kind}")
 
-    def test_both_stadiums_get_towers(self):
-        """The same two the gradería covers — a lit stand and an unlit pitch
-        beside it would read as two different places."""
+    def test_both_stadiums_are_lit(self):
+        """Lito Pérez derives towers from its footprint; Las Playitas authors
+        the four corner floodlights and two ordinary lamps from the mockup."""
         from churchill.world.content import blocks_by_layout
-        stands = {b["id"] for b in blocks_by_layout("streets-quad") if b.get("stands")}
-        self.assertEqual(set(self.own), stands)
+        blocks = blocks_by_layout("streets-quad")
+        stands = {b["id"] for b in blocks if b.get("stands")}
+        explicit = {b["id"] for b in blocks if b.get("lamps")}
+        self.assertEqual(set(self.own) | explicit, stands)
+        self.assertEqual(set(self.own), {"estadio"})
+        playitas = next(b for b in blocks if b["id"] == "estadio_playitas")
+        self.assertEqual(len(playitas["lamps"]), 6)
+        self.assertEqual(sum(l["type"] == "stadium" for l in playitas["lamps"]), 4)
 
     def test_the_corner_is_the_polygons_and_not_the_bboxs(self):
         """A cuadra here is not square to the screen (the avenidas run -5.4° and

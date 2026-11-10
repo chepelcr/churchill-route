@@ -173,6 +173,10 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
         # etapa se distingue de otra sólo por sus coordenadas.
         if spec.get("product"):
             rec["product"] = spec["product"]
+        if spec.get("fixed"):
+            rec["fixed"] = True
+        if spec.get("ang") is not None:
+            rec["ang"] = spec["ang"]
         landmarks.append(rec)
     # Customers: nudge to land, then ENFORCE spread so every delivery is a
     # real trip — ≥150px from any kiosk, ≥120px from every other customer.

@@ -16,9 +16,7 @@
   "kerb": {
     "_note": "Sidewalk depth per side, carved INTO the manzana — every centimetre of it is block frontage the town does not get. See ACERA_CELLS in config.py for what 10 m of it did to 245 named footprints.",
     "sidewalkM": 4.8,
-    "sidewalkNote": "a manzana's acera ring: 12 px = 3 raster cells today. Still wider than a real Puntarenas sidewalk (1.5-2 m), because an arcade one has to be walkable and legible at game zoom.",
-    "fieldSidewalkM": 3.2,
-    "fieldSidewalkNote": "a PARCEL's ring is shallower: all it has to do is keep the pitch's white lines off the asphalt. 8 px = 2 cells."
+    "sidewalkNote": "a manzana's acera ring, shared by buildings and open grounds: 12 px = 3 raster cells today. Still wider than a real Puntarenas sidewalk (1.5-2 m), because an arcade one has to be walkable and legible at game zoom."
   },
   "camera": {
     "_note": "THE CUADRÍCULA IS NOT A SCREEN UNIT, and this is where it stopped being one. The framing was `CUADS_PER_VIEW * CUAD` px — a screen decision expressed in the block-detection grid, so a rescale that resized the grid resized the camera with it, for no reason anybody had chosen.",

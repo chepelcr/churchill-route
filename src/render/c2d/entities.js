@@ -4,7 +4,8 @@ import { state } from "../../game/state.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
-import { sunShadow } from "./shadows.js";
+import { shadowInk, sunShadow } from "./shadows.js";
+import { facingEdges, paintSweep, parallaxOffset } from "./depth.js";
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { npcArt } from "../../game/npcs.js";
 import { paintParts } from "./shapes.js";
@@ -14,7 +15,7 @@ import {
 } from "./systemShapes.js";
 import { actorAnimationValues, paintActor, paintActorForm, resolveActorRecord } from "./actorShapes.js";
 import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
-import { ctx, lastT } from "./gfx.js";
+import { ctx, lastT, mixColor } from "./gfx.js";
 import ACTORS from "../../assets/actors.json" with { type: "json" };
 import PRODUCTS_JSON from "../../../content/world/products.json" with { type: "json" };
 
@@ -146,9 +147,17 @@ function drawSwimmer(pe) {
   paintActor(ctx, ACTORS, "swimmer", actorFrame("swimmer", pe));
 }
 function drawCar(c) {
+  const kind = A.traffic.kinds[c.kind] || A.traffic.kinds.car;
+  const volume = EFFECTS.vehicleParallax || {};
+  const heightM = kind.heightM ?? A.traffic.heightM;
+  const angle = c.ang || 0, ca = Math.cos(angle), sa = Math.sin(angle);
+  const local = (v) => ({ dx: v.dx * ca + v.dy * sa, dy: -v.dx * sa + v.dy * ca });
+  const sh = local(sunShadow(heightM));
+  const ro = local(parallaxOffset(state.cam, c.x, c.y, heightM, PX_PER_M, volume));
   ctx.save();
-  ctx.translate(c.x, c.y); ctx.rotate(c.ang || 0);
+  ctx.translate(c.x, c.y); ctx.rotate(angle);
   const hw = c.w / 2, hh = c.h / 2;
+  const outline = [-hw, -hh, hw, -hh, hw, hh, -hw, hh];
   const vars = {
     hw, hh, negHw: -hw, negHh: -hh, width: c.w, height: c.h,
   };
@@ -159,25 +168,34 @@ function drawCar(c) {
     }
     return spec;
   };
-  paintParts(ctx, A.traffic.underParts, {
-    X: (v) => v || 0, Y: (v) => v || 0, vars, color,
-  });
+  ctx.fillStyle = shadowInk(sh.alpha);
+  paintSweep(ctx, outline, sh.dx, sh.dy, facingEdges(outline, -sh.dx, -sh.dy));
+  ctx.beginPath(); ctx.rect(-hw, -hh, c.w, c.h); ctx.fill();
+  ctx.beginPath(); ctx.rect(-hw + sh.dx, -hh + sh.dy, c.w, c.h); ctx.fill();
   // EL TRÁFICO TAMBIÉN ALUMBRA. Un carro sin faros en una calle con pozos de
   // luz y oscuridad entre ellos es un carro invisible que se te viene encima —
   // y las calaveras son lo único que se ve de uno que se aleja.
-  if (state.weather === "night") paintHeadlights(ctx, c.w / 2, c.h / 2);
-  // …Y SU CUERPO ES UNA LISTA DE PARTES, como el del carro que uno maneja. Eran
-  // tres ramas de código a punta de rectángulos, así que un taxi o una moto
-  // pedían editar el renderer. El marco es de MEDIO-EXTENSIONES, que es lo que
-  // deja la misma receta servir a un carro de 23 px y a un bus de 34.
-  const kind = A.traffic.kinds[c.kind] || A.traffic.kinds.car;
+  if (state.weather === "night") paintHeadlights(ctx, hw, hh);
+  if (ro.dx || ro.dy) {
+    const walls = facingEdges(outline, ro.dx, ro.dy);
+    const sunlit = new Set(facingEdges(outline, sh.dx, sh.dy));
+    const lit = walls.filter((i) => sunlit.has(i));
+    const dark = walls.filter((i) => !sunlit.has(i));
+    ctx.fillStyle = mixColor(c.color, volume.wallDark, volume.wallMixDark ?? 0);
+    paintSweep(ctx, outline, ro.dx, ro.dy, dark);
+    ctx.fillStyle = mixColor(c.color, volume.wallLit, volume.wallMixLit ?? 0);
+    paintSweep(ctx, outline, ro.dx, ro.dy, lit);
+  }
+  paintParts(ctx, A.traffic.overParts, {
+    X: (v) => v || 0, Y: (v) => v || 0, vars, color,
+  });
+  // La carrocería es la tapa del sólido; las llantas quedan sobre el suelo.
+  ctx.translate(ro.dx, ro.dy);
   paintParts(ctx, kind.parts, {
     X: (v) => (v || 0) * hw,
     Y: (v) => (v || 0) * hh,
+    S: (v) => (v || 0) * Math.min(hw, hh),
     color,
-  });
-  paintParts(ctx, A.traffic.overParts, {
-    X: (v) => v || 0, Y: (v) => v || 0, vars, color,
   });
   ctx.restore();
 }

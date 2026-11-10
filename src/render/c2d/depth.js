@@ -49,8 +49,8 @@ function signedArea(pts) {
  * o cuando el cuerpo cae justo bajo la cámara — que es correcto: se está viendo
  * a plomo. Quien llame tiene que aguantar el cero sin parpadear.
  */
-export function parallaxOffset(cam, x, y, heightM, pxPerM) {
-  const camH = P.cameraHeightM;
+export function parallaxOffset(cam, x, y, heightM, pxPerM, settings = P) {
+  const camH = settings.cameraHeightM;
   if (!camH || !(heightM > 0)) return { dx: 0, dy: 0 };
   const ex = x - cam.x, ey = y - cam.y;
   const k = (heightM * pxPerM) / (camH * pxPerM);
@@ -59,7 +59,7 @@ export function parallaxOffset(cam, x, y, heightM, pxPerM) {
   // pantalla ancha se estira hasta despegarse de su propia huella y la pared
   // deja de leerse como pared. Se recorta el LARGO y no cada eje, o el tope
   // torcería la dirección.
-  const cap = P.maxOffsetPx || 0;
+  const cap = settings.maxOffsetPx || 0;
   if (cap > 0) {
     const len = Math.hypot(dx, dy);
     if (len > cap) { dx = dx * cap / len; dy = dy * cap / len; }

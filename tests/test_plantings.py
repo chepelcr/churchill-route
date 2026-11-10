@@ -1,4 +1,4 @@
-"""LAS SIEMBRAS — the derived planting runs, and what makes one editable.
+"""LAS SIEMBRAS — named planting runs, and what makes one editable.
 
 The Paseo's palm median, the León Cortés strip, the Ferrocarril shoulder and the
 Cocal divided-avenue median are all DERIVED in `pipeline/build_stage.py`: from
@@ -6,6 +6,7 @@ the streets named after the Paseo, from a measured cuadra corner, from the norma
 to a centreline. That derivation is the good part — it survives a rescale, which
 a hand-placed coordinate does not, and this repo has twice found a corridor-era
 px anchor still sitting in the builder pointing 15 000 px away from anything.
+Las Playitas instead keeps its eleven explicit geographic points in blocks.json.
 
 What it cost was identity. Every one of these is emitted as LOOSE TREES, and the
 editor derives a tree's id from its geometry — so a human could hide one tree of
@@ -29,20 +30,22 @@ import unittest
 from churchill.world.config import ROOT
 
 BUILD_STAGE = os.path.join(ROOT, "churchill", "world", "pipeline", "build_stage.py")
+FIELD_SERVICE = os.path.join(ROOT, "churchill", "world", "service", "field.py")
 EDITOR_CFG = os.path.join(ROOT, "world-editor", "vite.config.js")
 FLORA = os.path.join(ROOT, "src", "assets", "flora.json")
 MANIFEST_DIR = os.path.join(ROOT, "src", "world2d", "tiles")
 
-#: The four runs the build derives, with the count each emitted when the `line`
-#: field landed. Counts are asserted as a FLOOR rather than an equality: the
-#: geometry may legitimately shift with the map, but a run dropping to zero is
-#: the failure this file exists to catch — the Cocal median planted NOTHING for
-#: as long as the planar world existed and no test noticed.
+#: Four derived runs and Las Playitas' authored planting, with the count each
+#: emitted when the `line` field landed. Counts are asserted as a FLOOR rather
+#: than an equality: the geometry may legitimately shift with the map, but a run
+#: dropping to zero is the failure this file exists to catch — the Cocal median
+#: planted NOTHING for as long as the planar world existed and no test noticed.
 RUNS = {
     "paseo_median": 106,
     "leon_cortes": 34,
     "ferrocarril": 79,
     "cocal_median": 14,
+    "estadio_playitas_authored": 11,
 }
 
 
@@ -85,11 +88,12 @@ class PlantingRunTests(unittest.TestCase):
             self.assertIn(line, RUNS, f"the world emits a run '{line}' this test "
                                       f"does not know; add it here and to flora.json")
 
-    def test_the_builder_names_all_four(self):
-        src = read(BUILD_STAGE)
+    def test_the_builder_names_every_run(self):
+        src = read(BUILD_STAGE) + read(FIELD_SERVICE)
         for line in RUNS:
-            self.assertIn(f'"{line}"', src,
-                          f"build_stage.py no longer names the {line} run")
+            marker = "_authored" if line.endswith("_authored") else f'"{line}"'
+            self.assertIn(marker, src,
+                          f"the builder no longer names the {line} run")
 
     def test_the_editor_labels_every_run(self):
         # The editor turns each run into one source; an unlabelled one is

@@ -139,6 +139,8 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     for lm in landmarks:
         if lm["type"] != "kiosk":
             continue
+        if lm.get("fixed"):
+            continue
         if lm["id"] in beach_kiosks:
             keep_off_the_sea(lm)
             stamp_pad(raster, lm["x"], lm["y"], 44)   # apron for the beach stand
@@ -1347,6 +1349,11 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             rec["ghost"] = 1
             n_ghost += 1
         buildings.append(rec)
+    for authored in fields.authored_buildings:
+        if authored.get("replace"):
+            buildings[:] = [b for b in buildings if b.get("name") != authored["name"]]
+        buildings.append({k: authored[k] for k in
+                          ("pts", "name", "color", "roof", "wnd")})
     log("buildings", f"{len(named_raw)} NAMED buildings kept at their real OSM footprint"
         + (f" ({n_ghost} of them `ghost`: drawn, not collidable)" if n_ghost else ""))
     # The Balneario cuadra is a SEA inlet, so any building whose real footprint
@@ -1409,6 +1416,8 @@ def place_structures(ctx, *, landmarks, roads, blocks, greens, plazas, beaches, 
             linked += 1
             break
     log("parcel", f"{linked} buildings linked to the parcel they stand on")
+    ctx.authored_trees.extend(fields.authored_trees)
+    ctx.authored_lamps.extend(fields.authored_lamps)
 
     return buildings, occ, stadiums, parcels
 
@@ -1814,7 +1823,9 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
                 n_mal_trees += 1
     if n_bancas:
         log("malecon", f"{n_bancas} bancas facing the sea")
+    trees.extend(ctx.authored_trees)
     log("verde", f"{n_patio} patio/park trees, {n_beach_palms} beach palms, "
-        f"{n_mal_palms} palmas + {n_mal_trees} almendros on the malecón")
+        f"{n_mal_palms} palmas + {n_mal_trees} almendros on the malecón; "
+        f"{len(ctx.authored_trees)} authored plaza trees")
 
     return bridge, est, trees, palms, mangroves

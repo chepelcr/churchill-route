@@ -100,6 +100,7 @@ class Landmark(WorldModel):
     # QUÉ VENDE ESTE PUNTO DE RECOGIDA. Sólo un kiosco lo lleva, y sin él toda
     # etapa es el mismo trabajo en otras coordenadas.
     product: str | None = None
+    ang: float = Field(default=0.0, description="kiosk frontage angle in radians")
     w: int | None = None
     h: int | None = None
     # NOT a flag: the build-authored player start [x, y], snapped to the
@@ -179,6 +180,7 @@ class Parcel(WorldModel):
     hw: float | None = Field(default=None, description="half-width along ang")
     hh: float | None = Field(default=None, description="half-height along ang")
     sport: str | None = Field(default=None, description="a cancha's sport, from OSM")
+    boxes: str | bool | None = Field(default=None, description="pitch marking style; penalty follows a quad's real sides")
     whole: bool | None = Field(default=None, description="a whole cuadra; ground already painted")
     built: bool | None = Field(default=None, description="the footprint IS a building")
     # Civic furniture the renderer draws ON the parcel. The world only says
@@ -266,7 +268,7 @@ class Stadium(WorldModel):
     y1: int
     cx: int
     cy: int
-    footprint: FlatPoly = Field(description="the drawn pitch")
+    footprint: FlatPoly = Field(description="the drawn pitch, or a sectioned plaza's base")
     outline: FlatPoly = Field(description="the whole drivable cuadra")
     # The pitch's own frame. The match sim places the goals off it, and the
     # renderer draws the markings in it instead of fitting the traced polygon.
@@ -275,6 +277,7 @@ class Stadium(WorldModel):
     hh: float | None = Field(default=None, description="half-height along ang")
     sport: str | None = Field(default=None, description="drives the markings + the match")
     aceras: bool = Field(default=True, description="pitch is inset from a visible sidewalk ring")
+    parts: list[str] | None = Field(default=None, description="parcel ids painted over a sectioned plaza's base")
 
 
 class Sign(WorldModel):

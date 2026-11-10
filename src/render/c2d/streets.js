@@ -24,13 +24,11 @@ const SIGNS = PROPS.signs;
 // Estadios are NOT a structure drawn over the ground — they are a COLOUR
 // CHOICE inside the acera pass. The build traces each one from the real cuadra
 // (S.footprint, organic, following the manzana's true grid angles), and here
-// that polygon is simply painted as grass with its pitch markings instead of
-// the usual concrete. Drawn between the acera band and the casing/asphalt, so
-// (a) it covers the sidewalk band the road pass just laid over the block —
-// which is what lets Las Playitas read as ONE green field edge to edge — while
-// the asphalt pass repaints anything that reached the roadway, and (b) street
-// name pills, buildings and flora still land on top, instead of being buried
-// the way they were when the stadium was a later layer.
+// that polygon is painted inside the visible acera ring instead of the usual
+// concrete. Drawn between the acera band and the casing/asphalt, so the asphalt
+// pass repaints anything that reached the roadway, while street name pills,
+// buildings and flora still land on top. Las Playitas emits a sectioned base:
+// its central football parcel, basketball court and eastern park paint above it.
 // Centre, tilt and half-extents of a field, all of them now from the WORLD:
 // every parcel and both estadios emit `ang`, `hw` and `hh`. The principal-axis
 // fallback this used to carry is gone — these polygons are RASTER-TRACED, so
@@ -44,7 +42,7 @@ function fieldFrame(S) {
   // their goals at the west/east centres; El Carmen's taller parcel takes this
   // quarter turn and puts its smaller goals at the north/south centres.
   if (hh > hw) { ang += Math.PI / 2; const t = hw; hw = hh; hh = t; }
-  return (S._frame = { cx, cy, ang, hw, hh });
+  return (S._frame = { cx, cy, ang, hw, hh, boxes: S.boxes, poly: S.poly || S.footprint });
 }
 
 // Poured concrete, the colour the aceras actually are in the port.
@@ -92,11 +90,9 @@ function paintField(path, F, sport) {
     ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.stroke(path);
     return;
   }
-  // THE TOUCHLINE IS THE CUADRA'S OWN EDGE — there is no second boundary. A
-  // strokeRect off the frame's extents drew a rectangle INSIDE the traced
-  // outline: two white boundaries on every field, and the inner one the wrong
-  // shape on an organic or diagonal block. The one line left is the footprint
-  // itself, stroked once below.
+  // THE TOUCHLINE IS THE PITCH FOOTPRINT, at the acera's inner edge — there is
+  // no second boundary. A strokeRect off the frame's extents drew a rectangle
+  // inside the traced outline, the wrong shape on an organic or diagonal block.
   //
   // Everything else is drawn at FULL extent and trimmed by the clip, so a
   // marking meets the touchline exactly instead of guessing where the edge is.
@@ -109,21 +105,66 @@ function paintField(path, F, sport) {
   ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.fillStyle = MARK;
   ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(0, hh); ctx.stroke();       // halfway line
   ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
-  paintGoals(hw, hh);
-  if (hw >= 80 && hh >= 55) {
-    ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();          // centre spot
+  const flush = F.boxes === "penalty" && F.poly?.length === 8;
+  if (flush) {
+    ctx.save();
+    ctx.rotate(-F.ang); ctx.translate(-F.cx, -F.cy);
+    paintFlushAreasAndGoals(F);
+    ctx.restore();
+  } else if (F.boxes !== "penalty") paintGoals(hw, hh);
+  ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();          // centre spot
+  if (!flush && F.boxes !== false && hw >= 80 && hh >= 55) {
     const bw = Math.min(hw * 0.28, hh * 0.9);              // penalty area depth
     const bh = Math.max(12, Math.min(hh - m - 4, hh * 0.60));
+    const inset = F.boxes === "penalty" ? 0 : m;
     for (const sd of [-1, 1]) {
-      const x0 = sd < 0 ? -hw + m : hw - m - bw;
+      const x0 = sd < 0 ? -hw + inset : hw - inset - bw;
       ctx.strokeRect(x0, -bh, bw, bh * 2);                                     // penalty area
-      const gx = sd < 0 ? -hw + m : hw - m - bw * 0.38;
-      ctx.strokeRect(gx, -bh * 0.45, bw * 0.38, bh * 0.9);                     // goal box
-      ctx.beginPath(); ctx.arc(sd * (hw - m - bw * 0.72), 0, 1.6, 0, Math.PI * 2); ctx.fill();
+      if (F.boxes !== "penalty") {
+        const gx = sd < 0 ? -hw + m : hw - m - bw * 0.38;
+        ctx.strokeRect(gx, -bh * 0.45, bw * 0.38, bh * 0.9);                   // goal box
+      }
+      ctx.beginPath(); ctx.arc(sd * (hw - inset - bw * 0.72), 0, 1.6, 0, Math.PI * 2); ctx.fill();
     }
   }
   ctx.restore();
-  ctx.strokeStyle = MARK; ctx.lineWidth = 2; ctx.stroke(path);   // touchline = kerb = the cuadra
+  ctx.strokeStyle = MARK; ctx.lineWidth = F.boxes === false ? 2.6 : 2;
+  ctx.stroke(path);                                             // pitch touchline
+}
+
+function paintFlushAreasAndGoals(F) {
+  const p = F.poly;
+  const cx = (p[0] + p[2] + p[4] + p[6]) / 4;
+  const cy = (p[1] + p[3] + p[5] + p[7]) / 4;
+  const depth = Math.min(F.hw * 0.28, F.hh * 0.9);
+  const mouth = Math.max(5, Math.min(18, F.hh * 0.24));
+  const goalDepth = Math.max(3, Math.min(8, mouth * 0.42));
+  for (const [ai, bi] of [[0, 3], [1, 2]]) {
+    const ax = p[ai * 2], ay = p[ai * 2 + 1];
+    const bx = p[bi * 2], by = p[bi * 2 + 1];
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    const tx = dx / len, ty = dy / len;
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    let nx = ty, ny = -tx;
+    if (nx * (cx - mx) + ny * (cy - my) < 0) { nx = -nx; ny = -ny; }
+    const at = (t, inset = 0) => [ax + dx * t + nx * inset, ay + dy * t + ny * inset];
+    const a = at(0.2), b = at(0.8);
+    const ai2 = at(0.2, depth), bi2 = at(0.8, depth);
+    ctx.strokeStyle = MARK; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(...a); ctx.lineTo(...ai2); ctx.lineTo(...bi2); ctx.lineTo(...b);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(mx + nx * depth * 0.72, my + ny * depth * 0.72, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ST.field.goals;
+    ctx.lineWidth = Math.max(1.4, Math.min(2.4, F.hh * 0.035));
+    ctx.beginPath();
+    ctx.moveTo(mx - tx * mouth, my - ty * mouth);
+    ctx.lineTo(mx - tx * mouth + nx * goalDepth, my - ty * mouth + ny * goalDepth);
+    ctx.lineTo(mx + tx * mouth + nx * goalDepth, my + ty * mouth + ny * goalDepth);
+    ctx.lineTo(mx + tx * mouth, my + ty * mouth);
+    ctx.stroke();
+  }
 }
 
 // Goal frames sit at the centre of the two scoring ends. Their mouth and depth
@@ -154,14 +195,30 @@ function paintGoals(hw, hh) {
 // gets the plain slab.
 function paintCourt(hw, hh) {
   if (Math.min(hw, hh) < 14) return;
-  ctx.strokeStyle = ST.court.lines; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(0, hh); ctx.stroke();   // halfway
-  ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
   const kw = Math.min(hw * 0.30, hh * 0.85), kh = Math.min(hh * 0.52, hw * 0.5);
   for (const sd of [-1, 1]) {
     const x0 = sd < 0 ? -hw + 2 : hw - 2 - kw;
+    const freeThrowX = sd < 0 ? x0 + kw : x0;
+    ctx.fillStyle = ST.court.end;
+    ctx.beginPath(); ctx.arc(freeThrowX, 0, hh * 0.82, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = ST.court.key;
+    ctx.fillRect(x0, -kh, kw, kh * 2);
+  }
+  ctx.fillStyle = ST.court.key;
+  ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = ST.court.lines; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(0, hh); ctx.stroke();   // halfway
+  ctx.beginPath(); ctx.arc(0, 0, Math.min(hw, hh) * 0.26, 0, Math.PI * 2); ctx.stroke();
+  for (const sd of [-1, 1]) {
+    const x0 = sd < 0 ? -hw + 2 : hw - 2 - kw;
+    const freeThrowX = sd < 0 ? x0 + kw : x0;
     ctx.strokeRect(x0, -kh, kw, kh * 2);                                  // the key
-    ctx.beginPath(); ctx.arc(sd < 0 ? x0 + kw : x0, 0, kh * 0.55, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(freeThrowX, 0, kh * 0.55, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(sd * (hw - 5), 0, hh * 0.88,
+            sd < 0 ? -Math.PI / 2 : Math.PI / 2,
+            sd < 0 ? Math.PI / 2 : Math.PI * 1.5);
+    ctx.stroke();
     // the hoop: backboard on the end line with the ring in front of it
     ctx.fillStyle = ST.court.paint;
     ctx.fillRect(sd < 0 ? -hw + 1 : hw - 3, -3.2, 2, 6.4);
@@ -174,25 +231,30 @@ function paintCourt(hw, hh) {
 function paintStadiumCuadras(view) {
   const arr = W.STADIUMS;
   if (!arr || !arr.length) return;
+  const sectioned = new Set();
   for (const S of arr) {
     if (S.x1 + 40 < view.x0 || S.x0 - 40 > view.x1 || S.y1 + 40 < view.y0 || S.y0 - 40 > view.y1) continue;
     if (!S.footprint) continue;
     // The builder emits two real polygons: `outline` is the entire stadium
-    // cuadra and `footprint` is the cancha inset by FIELD_ACERA_CELLS. Paint
-    // the full outer shape first; the pitch below covers its centre and leaves
-    // precisely the generated acera ring visible around it.
+    // cuadra and `footprint` is the pitch or sectioned base inset by ACERA_CELLS.
+    // Paint the outer shape first, leaving the generated acera ring visible.
     if (S.outline && S.aceras !== false) {
       const acera = S._acera || (S._acera = flatPath(S.outline, true));
       ctx.fillStyle = S.aceraColor || ACERA_GREY;
       ctx.fill(acera, "evenodd");
     }
     const pitch = S._pitch || (S._pitch = flatPath(S.footprint, true));
-    // 4 px of grass dilation first: the traced pitch steps in 4 px raster
-    // increments, so its edge and the acera band don't meet exactly and a hair
-    // of bare ground shows through at the seam.
-    ctx.strokeStyle = ST.field.stadiumRing; ctx.lineWidth = 8; ctx.lineJoin = "miter"; ctx.stroke(pitch);
-    paintField(pitch, fieldFrame(S), S.sport);
+    if (S.parts?.length) {
+      for (const id of S.parts) sectioned.add(id);
+      ctx.fillStyle = ST.field.grass;
+      ctx.fill(pitch, "evenodd");
+    } else {
+      paintField(pitch, fieldFrame(S), S.sport);
+    }
   }
+  // A sectioned plaza is a base, not one giant football pitch. Its real courts
+  // and park paint last so the full-cuadra layer cannot erase their identity.
+  if (sectioned.size) paintParcels(view, sectioned);
 }
 
 // Parcel ground. Same reasoning as the estadios: a parcel is a colour choice
@@ -203,10 +265,13 @@ function paintStadiumCuadras(view) {
 //: paints the same table, and `market` being live here and missing there is
 //: exactly the drift this file closes.
 const PARCEL_FILL = MATERIALS.parcel;
-function paintParcels(view) {
+function paintParcels(view, only = null) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;
+  const deferred = only ? null : new Set((W.STADIUMS || []).flatMap((S) => S.parts || []));
   for (const P of arr) {
+    if (only && !only.has(P.id)) continue;
+    if (deferred?.has(P.id)) continue;
     if (P.x1 + 40 < view.x0 || P.x0 - 40 > view.x1 || P.y1 + 40 < view.y0 || P.y0 - 40 > view.y1) continue;
     // `whole` = a full cuadra already painted by paintStadiumCuadras; `built` =
     // the footprint IS a building. Either way the ground is not ours to paint,
@@ -226,25 +291,19 @@ function paintParcels(view) {
     const path = P._path || (P._path = hasPolys
       ? roundedMultiPath(P.polys, ORGANIC.parcelCornerPx)
       : roundedPath(P.poly, ORGANIC.parcelCornerPx, true));
-    // EL COLOR DE ESTA PARCELA, y sólo si no, el de su `use`. 193 parques
-    // compartían una perilla: no había forma de darle a UN parque su verde.
-    // UNA CANCHA DE CEMENTO NO LLEVA ORILLA VERDE. El dilatado que tapa los
-    // escalones del raster se hacía SIEMPRE con el color del `use`, y el pintor
-    // de campo que viene después rellena el camino pero no vuelve a dilatarlo —
-    // así que a una cancha de baloncesto le quedaba un reborde verde de 4 px
-    // por lado. En la del Paseo, que mide 25 px de alto, ese reborde es la
-    // mayor parte de lo que se ve: la cancha se leía verde teniendo el cemento
-    // debajo. El color del dilatado tiene que ser el mismo con el que se va a
-    // rellenar, no el del `use`.
-    const isCourt = (P.use === "plaza" || P.use === "stadium")
-      && FIELD_SPORT_ROLE.COURT.includes(P.sport);
+    // EL COLOR DE ESTA PARCELA, y sólo si no, el de su `use`. Una cancha dura
+    // usa cemento tanto en el relleno como en cualquier dilatado del raster.
+    const openField = P.use === "plaza" || P.use === "stadium";
+    const isCourt = openField && FIELD_SPORT_ROLE.COURT.includes(P.sport);
     ctx.fillStyle = isCourt ? ST.field.court
       : (P.groundColor || PARCEL_FILL[P.use] || ST.parcel.fallback);
     ctx.lineJoin = "miter";
-    if (!hasPolys) {
+    if (!hasPolys && !openField) {
       ctx.lineWidth = 8;
       ctx.strokeStyle = ctx.fillStyle; ctx.stroke(path); // hide the 4px raster steps
     }
+    // An open field keeps its exact footprint inside the acera; do not dilate
+    // its grass or concrete back over the sidewalk to hide raster steps.
     ctx.fill(path, "evenodd");
     // An open field gets the estadio's own painter, in the MANZANA's frame
     // (P.ang) — the markings used to be strokeRect'd off the bbox, which put a

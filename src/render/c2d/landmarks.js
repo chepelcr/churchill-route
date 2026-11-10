@@ -667,7 +667,15 @@ function drawLandmark(lm) {
   // no obliga a dibujarla el mismo día.
   const prop = landmarkProp(lm);
   if (!prop) return;
+  const ang = lm.type === "kiosk" ? (lm.ang || 0) : 0;
+  if (ang) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ang);
+    ctx.translate(-x, -y);
+  }
   paintAt(prop.parts, x, y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars: propVars(lm, prop) });
+  if (ang) ctx.restore();
 }
 
 /** LA ESCALERA DE RESOLUCIÓN, con nombre y exportada — id, luego tipo:producto,

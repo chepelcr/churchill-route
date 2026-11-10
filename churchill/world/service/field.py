@@ -16,9 +16,8 @@ most to learn:
   not resolve.
 * AN ACERA EXISTS WHERE THERE IS A STREET. The ring is eroded directionally, so
   Las Playitas still runs into the sand on its north and the Carmen plaza stays
-  flush against the parroquia on its west. A field's ring is shallower than a
-  block's (FIELD_ACERA_CELLS): it only has to stop the white lines before the
-  asphalt, and every px of it is grass the player does not get.
+  flush against the parroquia on its west. Buildings and open grounds use the
+  same full-depth ring, so neither paints over the sidewalk.
 
 The drivable stamp uses a part's UN-eroded cells. Stadium stands are the one
 explicit exception: only the emitted stand trapezoids become wall, while their
@@ -28,9 +27,8 @@ import math
 from collections import Counter, defaultdict
 
 from ..config import (
-    ACERA_CELLS, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_MALECON,
-    CLS_ROAD, CUAD,
-    FIELD_ACERA_CELLS, GRID_CELL, STREET_CLASSES, STREET_SPAN_M,
+    ACERA_CELLS, CLASS_NAMES, CLS_ACERA, CLS_BEACH, CLS_BOULEVARD, CLS_LAND, CLS_MALECON,
+    CLS_ROAD, CUAD, GRID_CELL, STREET_CLASSES, STREET_SPAN_M,
     px, street_span_px,
 )
 from ..content import PARCEL_STYLES, SITE_DECOR
@@ -343,6 +341,13 @@ def fit_inscribed_rect(cells, ang, cell_px):
     return None
 
 
+def _project_geo_poly(project_ll, points):
+    flat = []
+    for lat, lon in points:
+        flat.extend(round(v) for v in project_ll(lat, lon))
+    return flat
+
+
 def _frame_extent(flat_poly, cx, cy, ang):
     """(hw, hh) — half-extents of a flat polygon about (cx, cy), along `ang`."""
     ca, sa = math.cos(ang), math.sin(ang)
@@ -469,6 +474,9 @@ class FieldService:
         self.stadiums = stadiums
         self.parcels = parcels
         self.occ = occ
+        self.authored_buildings = []
+        self.authored_trees = []
+        self.authored_lamps = []
         # RASTER cells this service has already handed to a field or a parcel.
         # `occ` cannot answer that question — it also holds the POI keep-outs,
         # so a park next to a customer would read as taken — and it is CUAD
@@ -529,14 +537,9 @@ class FieldService:
             else:
                 clip = half_plane(line, ((xa + xb) / 2, (ylo + yhi) / 2), spec.get("edge_gap", 18))
         outer_cells = cuadra_cells(self.raster, xa, ylo, xb, yhi, classes, clip)
-        # A WHOLE-CUADRA ESTADIO GETS THE BLOCK'S SIDEWALK, NOT A FIELD'S.
-        # `FIELD_ACERA_CELLS` (8 px) is the shallow ring a PARCEL takes — it
-        # only has to stop the white lines before the asphalt, and every px of
-        # it is grass the player does not get. But this cuadra is stamped
-        # drivable over its own manzana, so the ring drawn here is the ONLY
-        # acera the block has, and at 8 px it read as a seam rather than as the
-        # 12 px sidewalk every other manzana in the port has. Lito Pérez had
-        # `aceras: True` and no sidewalk anybody could see.
+        # A whole-cuadra field gets the same full sidewalk as any other block.
+        # This ring is the only acera on its drivable manzana, and the pitch
+        # begins at its inner edge rather than painting back over the pavement.
         inner_cells = (outer_cells if spec.get("aceras") is False
                        else erode_cells(outer_cells, ACERA_CELLS, STREET_CLASSES, self.raster.at)) if outer_cells else set()
         # A whole-cuadra field can request a slightly stronger display-only
@@ -546,6 +549,12 @@ class FieldService:
         tolerance = GRID_CELL * spec.get("straighten_cells", 1)
         outline = outline_poly(outer_cells, GRID_CELL, tolerance) if outer_cells else None
         footprint = outline_poly(inner_cells, GRID_CELL, tolerance) if inner_cells else None
+        if spec.get("outlineLL") and spec.get("footprintLL"):
+            outline = _project_geo_poly(self.project_ll, spec["outlineLL"])
+            footprint = _project_geo_poly(self.project_ll, spec["footprintLL"])
+            classes = range(len(CLASS_NAMES))
+            outer_cells = raster_cells_in_poly(outline, self.raster, classes)
+            inner_cells = raster_cells_in_poly(footprint, self.raster, classes)
         if not outline or not footprint:
             log("estadio", f"WARN {spec['id']} no cuadra in rect "
                   f"({round(xa)},{round(ylo)})-({round(xb)},{round(yhi)})"); return
@@ -559,18 +568,20 @@ class FieldService:
             if not b.get("green") and any(c in cuad_cells for c in b["cells"]):
                 b["green"] = True
         # Start with a drivable traced cuadra. A stand is the one exception: its
-        # emitted quad is also its collision footprint, so only the ring cells
-        # UNDER that quad become ACERA (a wall). Each trapezoid stops one ring
-        # depth short of its edge's two vertices, leaving four ROAD wedges into
-        # Lito Perez rather than an invisible wall or an entirely open pitch.
+        # emitted quad is also its collision footprint. Generated stands occupy
+        # only the acera ring; authored quads may also sit between interior parts.
         for (c, r) in outer_cells:
             self.raster.set(c, r, CLS_ROAD)
         stand_quads = []
         stand_cells = set()
         if spec.get("stands"):
-            stand_quads = stadium_stand_quads(footprint, spec["stands"])
-            stand_cells = stadium_stand_cells(outer_cells - inner_cells,
-                                              stand_quads)
+            authored_quads = spec["stands"].get("quadsLL")
+            stand_quads = ([_project_geo_poly(self.project_ll, quad)
+                            for quad in authored_quads] if authored_quads
+                           else stadium_stand_quads(footprint, spec["stands"]))
+            stand_cells = stadium_stand_cells(
+                outer_cells if authored_quads else outer_cells - inner_cells,
+                stand_quads)
         fx = footprint[0::2]; fy = footprint[1::2]
         bx0, by0, bx1, by1 = min(fx), min(fy), max(fx), max(fy)
         # drop any pre-existing green/plaza whose CENTRE falls on this block,
@@ -582,6 +593,8 @@ class FieldService:
                                 sum(gg["pts"][1::2]) / (len(gg["pts"]) / 2))]
         self.greens.append(g)
         cxpx = int(sum(fx) / len(fx)); cypx = int(sum(fy) / len(fy))
+        if spec.get("labelLL"):
+            cxpx, cypx = (round(v) for v in self.project_ll(*spec["labelLL"]))
         lm["x"], lm["y"] = cxpx, cypx
         lm["footprint"] = footprint      # the pitch (grass + white markings)
         lm["outline"] = outline          # the whole drivable cuadra
@@ -595,7 +608,8 @@ class FieldService:
         # se queda en `world-props.json`, como la receta de una luminaria se
         # queda en `lights.json`.
         if spec.get("stands"):
-            lm["stands"] = {**spec["stands"], "quads": stand_quads}
+            lm["stands"] = {k: v for k, v in spec["stands"].items() if k != "quadsLL"}
+            lm["stands"]["quads"] = stand_quads
         if spec.get("towers"):
             lm["towers"] = spec["towers"]
         # The pitch's own FRAME, not just its bbox. The match sim places the two
@@ -604,13 +618,15 @@ class FieldService:
         # outline's principal axis lands on the contrary diagonal.
         sang = self.streets.direction(spec["ave_north"], ref, "x") or \
             self.streets.direction(spec["ave_south"], ref, "x")
-        sa = math.atan2(sang[1], sang[0]) if sang else 0.0
+        sa = spec.get("ang", math.atan2(sang[1], sang[0]) if sang else 0.0)
         shw, shh = _frame_extent(footprint, cxpx, cypx, sa)
         self.stadiums.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1,
                          "cx": cxpx, "cy": cypx, "footprint": footprint,
                          "outline": outline, "ang": round(sa, 4),
                          "hw": shw, "hh": shh, "sport": "soccer",
                          "aceras": spec.get("aceras", True),
+                         **({"parts": [p["id"] for p in spec["parts"]]}
+                            if spec.get("parts") else {}),
                          # QUIÉN ESTÁ EN ESTA CANCHA. `maintainStadiumPeds`
                          # tenía "fan" escrito cuatro veces, así que toda cancha
                          # del mundo recibía la misma multitud y no había forma
@@ -641,20 +657,34 @@ class FieldService:
         # no se quería tocar. El mismo repartidor de bandas que usa una cuadra
         # hecha a mano, sobre el marco del quad y no sobre su caja.
         if spec.get("parts"):
-            av = self.streets.direction(spec["ave_north"], ref, "x") or \
-                self.streets.direction(spec["ave_south"], ref, "x")
-            cl = self.streets.direction(spec["calles"][0], ref, "y") or \
-                self.streets.direction(spec["calles"][1], ref, "y")
-            if av and cl:
-                mx = sum(c[0] for c in outer_cells) / len(outer_cells)
-                my = sum(c[1] for c in outer_cells) / len(outer_cells)
-                shallow = erode_cells(outer_cells, FIELD_ACERA_CELLS,
-                                      STREET_CLASSES, self.raster.at)
-                self._band_parts(spec, outer_cells, inner_cells, shallow, sa,
-                                 (cl[1], -cl[0]), (-av[1], av[0]), mx, my)
+            if all(part.get("polyLL") for part in spec["parts"]):
+                self._authored_parts(spec, outer_cells, sa)
             else:
-                log("estadio", f"WARN {spec['id']} parts skipped — street "
-                    f"direction unresolved (avenida {av}, calle {cl})")
+                av = self.streets.direction(spec["ave_north"], ref, "x") or \
+                    self.streets.direction(spec["ave_south"], ref, "x")
+                cl = self.streets.direction(spec["calles"][0], ref, "y") or \
+                    self.streets.direction(spec["calles"][1], ref, "y")
+                if av and cl:
+                    mx = sum(c[0] for c in outer_cells) / len(outer_cells)
+                    my = sum(c[1] for c in outer_cells) / len(outer_cells)
+                    self._band_parts(spec, outer_cells, inner_cells, inner_cells, sa,
+                                     (cl[1], -cl[0]), (-av[1], av[0]), mx, my)
+                else:
+                    log("estadio", f"WARN {spec['id']} parts skipped — street "
+                        f"direction unresolved (avenida {av}, calle {cl})")
+        for building in spec.get("buildings", []):
+            self.authored_buildings.append({
+                **building,
+                "pts": _project_geo_poly(self.project_ll, building["polyLL"]),
+            })
+        for tree in spec.get("trees", []):
+            x, y = self.project_ll(*tree["ll"])
+            self.authored_trees.append({"x": round(x), "y": round(y), "s": tree["s"],
+                                        "line": f"{spec['id']}_authored"})
+        for lamp in spec.get("lamps", []):
+            x, y = self.project_ll(*lamp["ll"])
+            self.authored_lamps.append({"id": lamp["id"], "x": round(x), "y": round(y),
+                                        "ang": sa, "type": lamp["type"]})
         # Parts may stamp their own open fields ROAD, so the structural wall is
         # the stadium's LAST surface word. This matters at Las Playitas, whose
         # one legacy west stand shares the same cuadra with two emitted courts.
@@ -666,6 +696,17 @@ class FieldService:
               f"pitch ({bx0},{by0})-({bx1},{by1})px {len(footprint)//2}v, "
               f"{len(outer_cells) - len(stand_cells)} cells drivable, "
               f"{len(stand_cells)} under stands")
+
+    def _authored_parts(self, spec, outer_cells, ang):
+        for part in spec["parts"]:
+            poly = _project_geo_poly(self.project_ll, part["polyLL"])
+            cells = cells_in_poly(outer_cells, poly, GRID_CELL)
+            if not cells:
+                raise ValueError(f"authored stadium part {part['id']} has no raster cells")
+            rec = self._emit_parcel(spec["id"], part, cells, cells, ang, poly)
+            if part.get("centerLL"):
+                rec["cx"], rec["cy"] = (round(v) for v in self.project_ll(*part["centerLL"]))
+            rec["hw"], rec["hh"] = _frame_extent(poly, rec["cx"], rec["cy"], ang)
 
     def _emit_parcel(self, spec_id, part, cells, keep_cells, ang=0.0, poly=None):
         # `poly` given = the caller already knows the shape. A site parcel is a
@@ -714,7 +755,7 @@ class FieldService:
         # de qué color es SU suelo, no el de su `use`. Las tres son de la
         # INSTANCIA, que es justo lo que faltaba: 193 parques compartían una
         # perilla y toda cancha del mundo recibía la misma multitud.
-        for k in ("label", "osmId", "marine", "whole", "built", "decor",
+        for k in ("label", "osmId", "marine", "whole", "built", "decor", "boxes",
                   "polys", "crowd", "groundColor", "kerbColor"):
             if k in part:
                 rec[k] = part[k]
@@ -1007,10 +1048,9 @@ class FieldService:
         # left 4px slivers. `aceras: True` therefore means "respect the block's
         # ring", and a part just takes its cells from the eroded set.
         inner = erode_cells(outer, ACERA_CELLS, STREET_CLASSES, self.raster.at)
-        # …and a shallower one for the open fields (see FIELD_ACERA_CELLS): a
-        # church must clear the whole sidewalk, a pitch only has to stop at the
-        # kerb, and on a small cuadra the difference is most of the plaza.
-        field = erode_cells(outer, FIELD_ACERA_CELLS, STREET_CLASSES, self.raster.at)
+        # Open fields use that same ring: plaza or pitch, the ground begins at
+        # the acera's inner edge rather than covering the pedestrians' pavement.
+        field = inner
         # THE BLOCK'S FRAME COMES FROM ITS BOUNDING STREETS, not from a fit of
         # its own cells. A principal-axis fit (_cell_frame) is wrong here twice
         # over: on a square-ish cuadra sxx≈syy, the fit is degenerate and snaps
@@ -1532,9 +1572,8 @@ class FieldService:
                 log("site", f"skip {site['id']} {site['kind']} "
                     f"{(site['name'] or '—')[:34]}: no drawable ground fits")
                 continue
-            # An acera exists where there is a street: a building plot pulls back
-            # the full sidewalk, an open field only far enough to keep its white
-            # lines off the asphalt (the split place_parcels makes).
+            # An acera exists where there is a street: buildings and open fields
+            # both pull back by the full sidewalk (the split place_parcels makes).
             #
             # …but a hand-authored parcel is a QUARTER OF A MANZANA and a site
             # can be a 33x40 px chapel, where a 20 px ring on every side leaves
@@ -1558,12 +1597,9 @@ class FieldService:
             # tiene cordón del que apartarse, y a 91x31 px de huella real dos
             # celdas por lado se llevan la mitad. Una sola celda, no cero: a
             # cero el filtro de «esto sigue siendo un lote» la rechaza entera.
-            deep = (1 if _decor0.get("shore")
-                    else FIELD_ACERA_CELLS
-                    if use in (ParcelUse.PARK, ParcelUse.STADIUM, ParcelUse.FUEL)
-                    else ACERA_CELLS)
+            deep = 1 if _decor0.get("shore") else ACERA_CELLS
             keep, krect, used = set(), None, 0
-            for depth in [d for d in (deep, FIELD_ACERA_CELLS, 1, 0) if d <= deep]:
+            for depth in [d for d in (deep, 1, 0) if d <= deep]:
                 used = depth
                 keep = _largest_part(erode_cells(own, depth, STREET_CLASSES, raster.at)
                                      if depth else own)
@@ -1757,6 +1793,10 @@ class FieldService:
             # calles (south +), so (0, .85, .65, 1) is "the west 85%, the south
             # 35%" — the SW corner, landscape.
             fr = decor.pop("rect", None)
+            # `offsetM`: ajuste fino del CENTRO en el marco de la manzana, en
+            # metros. La cancha del Paseo debe tocar el borde interior de la
+            # acera, no quedar separada por el centro aproximado del boceto OSM.
+            off = decor.pop("offsetM", None)
             # `sizeM`: el tamaño REAL del lugar, en METROS, centrado en el ajuste
             # que sobrevivió. `rect` sólo sabe recortar fracciones de lo que el
             # mapeador dibujó, y a veces lo que el mapeador dibujó es un boceto:
@@ -1776,6 +1816,11 @@ class FieldService:
                 part["hh"] = round((krect[3] - krect[2]) / 2, 1)
                 log("site", f"{pid}: rect overridden to {fr} -> "
                     f"{part['hw'] * 2:.0f}x{part['hh'] * 2:.0f}px")
+            if off:
+                du, dv = px(off[0]), px(off[1])
+                u0, u1, v0, v1, cu, cv = krect
+                krect = (u0 + du, u1 + du, v0 + dv, v1 + dv, cu, cv)
+                log("site", f"{pid}: centre offset by {off[0]}x{off[1]} m")
             if sz:
                 u0, u1, v0, v1, cu, cv = krect
                 mu, mv = (u0 + u1) / 2, (v0 + v1) / 2

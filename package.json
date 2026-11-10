@@ -34,6 +34,7 @@
     "smoke:perf": "node tools/smoke-perf.mjs",
     "smoke:product-hud": "node tools/smoke-product-hud.mjs",
     "audio:render": "node tools/render-audio.mjs",
+    "audio:stations": "node tools/render-stations.mjs",
     "shot:kiosks": "node tools/shot-kiosks.mjs",
     "smoke:railway": "node tools/smoke-railway.mjs",
     "shot:railway": "node tools/shot-railway.mjs"

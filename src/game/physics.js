@@ -881,7 +881,11 @@ export function update(dt) {
   // is — because that is what a sound system on the Paseo does — and the level
   // opens his lowpass as well as his gain, so from down the street you get the
   // kick and only up close the whole set.
-  sfx.dj(djLevel(p));
+  const dj = djLevel(p);
+  sfx.dj(dj);
+  // LA RADIO, the station picked in Ajustes. It ducks under Urtech's set by his
+  // own level, so the closer you get to the booth the more it is his music.
+  sfx.radio(dj);
 
   if (state.weather === "storm") state.rainT += dt;
 

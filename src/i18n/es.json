@@ -194,7 +194,7 @@
   "settings.supporters": "Agradecimientos",
   "settings.title": "AJUSTES",
   "settings.tutorial": "Volver a jugar el tutorial",
-  "settings.volume": "Volumen",
+  "settings.volume": "Volumen general",
   "settings.zoom": "Zoom de la cámara",
   "shop.buy": "Comprar",
   "shop.confirmNo": "Cancelar",
@@ -422,5 +422,15 @@
   "railway.capped": "TOPE DE ESTA MÁQUINA",
   "railway.ownedCount": "{n} de {total}",
   "railway.soonNote": "Los ocho tramos restantes están medidos sobre el corredor real y esperan su arte. Mientras tanto, su paisaje ya pasa en la pantalla.",
-  "railway.workshopTitle": "EL TALLER"
+  "railway.workshopTitle": "EL TALLER",
+  "settings.music": "Música",
+  "settings.sfx": "Efectos",
+  "settings.station": "Emisora",
+  "settings.station.desc": "La música que suena mientras manejás",
+  "radio.off": "Apagada",
+  "radio.tropical": "Tropical",
+  "radio.techno": "Techno",
+  "radio.retro": "Retro",
+  "radio.chiptune": "8-bit",
+  "hud.radio": "Cambiar emisora"
 }

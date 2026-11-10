@@ -10,11 +10,15 @@ import Icon from "../Icon.jsx";
 import Slots from "../Slots.jsx";
 
 // App config — a FULL-SCREEN page (edge to edge): language, volume/mute,
+// music + effects volumes and the radio station,
 // remove-ads purchase, tutorial replay, supporters, progress reset.
 export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
   const [vol, setVol] = useState(Math.round(sfx.volume * 100));
+  const [musicVol, setMusicVol] = useState(Math.round(sfx.musicVolume * 100));
+  const [sfxVol, setSfxVol] = useState(Math.round(sfx.sfxVolume * 100));
+  const [station, setStation] = useState(sfx.station);
   const [spd, setSpd] = useState(Math.round(tuning.speed * 100));
   const [zoom, setZoom] = useState(Math.round(tuning.zoom * 100));
   const [poi, setPoi] = useState(tuning.poiNames);
@@ -22,6 +26,14 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   const [confirming, setConfirming] = useState(false);
   const [, bump] = useState(0);
   useEffect(() => iap.onChange(() => bump((n) => n + 1)), []);
+
+  // LA EMISORA SE OYE AQUÍ MISMO. Picking a station by its name alone is a
+  // guess, so while Ajustes is open the selected one previews a shade quieter
+  // than in a run — and stops the moment the page closes.
+  useEffect(() => {
+    const id = setInterval(() => sfx.radio(0, true), 200);
+    return () => { clearInterval(id); sfx.radioStop(); };
+  }, []);
 
   const changeVol = (v) => {
     setVol(v);
@@ -44,6 +56,43 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
             <button key={l} className={"btn " + (getLang() === l ? "gold" : "secondary")}
               onClick={() => { setLang(l); sfx.play("menu_select"); }}>
               {l === "es" ? "Español" : "English"}
+            </button>
+          ))}
+        </div>
+      </div>
+    ),
+    musicVolume: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.music")}</span>
+        <div className="vol-wrap">
+          <input type="range" min="0" max="100" value={musicVol}
+            onChange={(e) => { const v = +e.target.value; setMusicVol(v); sfx.setMusicVolume(v / 100); }}
+            aria-label={t("settings.music")} />
+          <span className="vol-pct">{musicVol}%</span>
+        </div>
+      </div>
+    ),
+    sfxVolume: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.sfx")}</span>
+        <div className="vol-wrap">
+          <input type="range" min="0" max="100" value={sfxVol}
+            onChange={(e) => { const v = +e.target.value; setSfxVol(v); sfx.setSfxVolume(v / 100); }}
+            onPointerUp={() => sfx.play("coin")}
+            aria-label={t("settings.sfx")} />
+          <span className="vol-pct">{sfxVol}%</span>
+        </div>
+      </div>
+    ),
+    station: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.station")}</span>
+        <div className="lang-toggle station-pick">
+          <span className="set-desc">{t("settings.station.desc")}</span>
+          {sfx.stations.map((id) => (
+            <button key={id} className={"btn " + (station === id ? "gold" : "secondary")}
+              onClick={() => { setStation(sfx.setStation(id)); sfx.play("menu_select"); }}>
+              {t(`radio.${id}`)}
             </button>
           ))}
         </div>

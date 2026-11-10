@@ -194,7 +194,7 @@
   "settings.supporters": "Supporters",
   "settings.title": "SETTINGS",
   "settings.tutorial": "Replay the tutorial",
-  "settings.volume": "Volume",
+  "settings.volume": "Master volume",
   "settings.zoom": "Camera zoom",
   "shop.buy": "Buy",
   "shop.confirmNo": "Cancel",
@@ -422,5 +422,15 @@
   "railway.capped": "THIS ENGINE'S CEILING",
   "railway.ownedCount": "{n} of {total}",
   "railway.soonNote": "The eight remaining sections are measured on the real corridor and are waiting for their art. Their scenery already runs on screen.",
-  "railway.workshopTitle": "THE WORKSHOP"
+  "railway.workshopTitle": "THE WORKSHOP",
+  "settings.music": "Music",
+  "settings.sfx": "Sound effects",
+  "settings.station": "Radio station",
+  "settings.station.desc": "The music that plays while you drive",
+  "radio.off": "Off",
+  "radio.tropical": "Tropical",
+  "radio.techno": "Techno",
+  "radio.retro": "Retro",
+  "radio.chiptune": "8-bit",
+  "hud.radio": "Change station"
 }

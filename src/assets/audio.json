@@ -27,6 +27,25 @@
         "gain": 1.0,
         "note": "the ice-cream cart's melody and DJ Urtech's set"
       }
+    },
+    "groups": {
+      "_note": "WHAT THE PLAYER MIXES. Ajustes has two sliders on top of the general volume, and each moves a GROUP of buses: the bus gain becomes `buses.<id>.gain × group volume`. Every bus belongs to exactly one group, so nothing escapes both sliders.",
+      "music": {
+        "name": "Música",
+        "buses": [
+          "music"
+        ],
+        "default": 0.8
+      },
+      "sfx": {
+        "name": "Efectos",
+        "buses": [
+          "sfx",
+          "engine",
+          "ambience"
+        ],
+        "default": 1.0
+      }
     }
   },
   "recipes": {
@@ -370,6 +389,398 @@
         "farHz": 260,
         "nearHz": 4000
       }
+    },
+    "radio": {
+      "bus": "music",
+      "note": "LA RADIO — the stations (`stations`, played by `src/audio/radio.js`). It answers to the Music slider and steps aside for DJ Urtech by `radio.duck`."
+    }
+  },
+  "radio": {
+    "_note": "LA RADIO: which stations exist, in what order Ajustes and the HUD button cycle them, which plays by default, and how loud the radio sits under the game. `duck` is how much of the radio DJ Urtech's set takes away at the booth — arriving there should still feel like arriving.",
+    "order": [
+      "tropical",
+      "techno",
+      "retro",
+      "chiptune"
+    ],
+    "default": "tropical",
+    "level": 0.55,
+    "duck": 0.9
+  },
+  "stations": {
+    "_note": "THE STATION IS DATA, THE BAND IS CODE (`src/audio/radio.js`). A track names a VERB (radio.js → RADIO_VERBS) and 16-step patterns: `x` hit, `X` accent, `.` rest, `-` holds the previous note. Bass letters pick the note — `x` chord root, `3` its third, `5` a fifth up, `8` the octave; a hat's `o` is open; a snare's `g` is a ghost. `root` is a MIDI note, `scale` semitones, `progression` one scale degree per bar. `patterns` variants change per 4-bar phrase, `fill` replaces the last bar of every `fillEvery`. `density` (0..1) thins a melodic line so it breathes.",
+    "tropical": {
+      "name": "Tropical",
+      "note": "cumbia del puerto: güiro, marimba y un bajo de tónica-quinta",
+      "bpm": 96,
+      "swing": 0.08,
+      "root": 55,
+      "scale": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "progression": [
+        0,
+        3,
+        4,
+        4
+      ],
+      "fillEvery": 8,
+      "level": 1.0,
+      "tracks": [
+        {
+          "verb": "kick",
+          "gain": 0.42,
+          "patterns": [
+            "x.......x......."
+          ]
+        },
+        {
+          "verb": "shaker",
+          "gain": 0.045,
+          "band": 4200,
+          "patterns": [
+            "X.xxX.xxX.xxX.xx"
+          ]
+        },
+        {
+          "verb": "snare",
+          "gain": 0.12,
+          "band": 2600,
+          "hz": 320,
+          "patterns": [
+            "....x.......x...",
+            "....x..g....x..g"
+          ],
+          "fill": "....x.......x.xx"
+        },
+        {
+          "verb": "bass",
+          "osc": "triangle",
+          "octave": -2,
+          "gain": 0.24,
+          "filterHz": 1100,
+          "q": 1,
+          "sweep": false,
+          "sustain": 0.8,
+          "gate": 0.7,
+          "patterns": [
+            "x...5...x...5...",
+            "x..x5...x..x5..."
+          ]
+        },
+        {
+          "verb": "pluck",
+          "octave": 0,
+          "gain": 0.08,
+          "patterns": [
+            "..x.x..x..x.x..x",
+            "x.x..x.x..x.x.x."
+          ]
+        },
+        {
+          "verb": "lead",
+          "osc": "square",
+          "octave": 1,
+          "gain": 0.035,
+          "filterHz": 2000,
+          "detune": 10,
+          "density": 0.8,
+          "low": 0,
+          "high": 9,
+          "patterns": [
+            "x.-.x.x.x-..x...",
+            "x-..x.x.x.x.x-.."
+          ]
+        }
+      ]
+    },
+    "techno": {
+      "name": "Techno",
+      "note": "cuatro al piso con un bajo ácido — primo del set de DJ Urtech",
+      "bpm": 126,
+      "swing": 0,
+      "root": 45,
+      "scale": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "progression": [
+        0,
+        0,
+        0,
+        5
+      ],
+      "fillEvery": 8,
+      "level": 0.9,
+      "tracks": [
+        {
+          "verb": "kick",
+          "gain": 0.5,
+          "patterns": [
+            "x...x...x...x..."
+          ]
+        },
+        {
+          "verb": "clap",
+          "gain": 0.15,
+          "patterns": [
+            "....x.......x..."
+          ],
+          "fill": "....x.......x.xx"
+        },
+        {
+          "verb": "hat",
+          "gain": 0.06,
+          "patterns": [
+            "..x...x...x...x.",
+            "..x.x.x...x.x.xo"
+          ]
+        },
+        {
+          "verb": "hat",
+          "gain": 0.022,
+          "high": 9000,
+          "patterns": [
+            "xxxxxxxxxxxxxxxx"
+          ]
+        },
+        {
+          "verb": "bass",
+          "osc": "sawtooth",
+          "octave": 0,
+          "gain": 0.11,
+          "filterHz": 950,
+          "q": 9,
+          "gate": 0.6,
+          "patterns": [
+            "x.x5x.8.x.x5x.3.",
+            "xx.5x.x8.x5.x.x."
+          ]
+        },
+        {
+          "verb": "pad",
+          "octave": 1,
+          "gain": 0.018,
+          "filterHz": 800,
+          "attack": 0.8,
+          "release": 0.6,
+          "patterns": [
+            "x---------------"
+          ]
+        }
+      ]
+    },
+    "retro": {
+      "name": "Retro",
+      "note": "synthwave de los ochenta: arpegios, caja con cola y un pad tibio",
+      "bpm": 100,
+      "swing": 0,
+      "root": 52,
+      "scale": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "progression": [
+        0,
+        5,
+        2,
+        6
+      ],
+      "fillEvery": 8,
+      "level": 1.0,
+      "tracks": [
+        {
+          "verb": "kick",
+          "gain": 0.45,
+          "patterns": [
+            "x.......x.x....."
+          ]
+        },
+        {
+          "verb": "snare",
+          "gain": 0.24,
+          "band": 1700,
+          "dur": 0.28,
+          "patterns": [
+            "....X.......X..."
+          ],
+          "fill": "....X.......XxXx"
+        },
+        {
+          "verb": "hat",
+          "gain": 0.035,
+          "patterns": [
+            "x.x.x.x.x.x.x.x."
+          ]
+        },
+        {
+          "verb": "bass",
+          "osc": "sawtooth",
+          "octave": -1,
+          "gain": 0.13,
+          "filterHz": 600,
+          "q": 3,
+          "gate": 0.5,
+          "patterns": [
+            "x.x.x.x.x.x.x.x."
+          ]
+        },
+        {
+          "verb": "arp",
+          "osc": "sawtooth",
+          "octave": 1,
+          "gain": 0.028,
+          "filterHz": 2200,
+          "order": [
+            0,
+            1,
+            2,
+            3,
+            2,
+            1
+          ],
+          "patterns": [
+            "xxxxxxxxxxxxxxxx"
+          ]
+        },
+        {
+          "verb": "pad",
+          "octave": 0,
+          "gain": 0.03,
+          "attack": 0.5,
+          "detune": 12,
+          "patterns": [
+            "x---------------"
+          ]
+        },
+        {
+          "verb": "lead",
+          "osc": "sawtooth",
+          "octave": 1,
+          "gain": 0.03,
+          "attack": 0.03,
+          "detune": 12,
+          "density": 0.7,
+          "low": 2,
+          "high": 9,
+          "patterns": [
+            "x--.x-..x--.x.x.",
+            "x---x-x.x---..x."
+          ]
+        }
+      ]
+    },
+    "chiptune": {
+      "name": "8-bit",
+      "note": "consola de bolsillo: cuadradas, triangular de bajo y caja de ruido",
+      "bpm": 140,
+      "swing": 0,
+      "root": 60,
+      "scale": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "progression": [
+        0,
+        5,
+        3,
+        4
+      ],
+      "fillEvery": 8,
+      "level": 0.9,
+      "tracks": [
+        {
+          "verb": "kick",
+          "gain": 0.38,
+          "toHz": 50,
+          "click": false,
+          "patterns": [
+            "x.......x.x....."
+          ]
+        },
+        {
+          "verb": "snare",
+          "gain": 0.14,
+          "band": 3200,
+          "patterns": [
+            "....x.......x..."
+          ],
+          "fill": "....x...x.x.xxxx"
+        },
+        {
+          "verb": "hat",
+          "gain": 0.03,
+          "high": 9500,
+          "patterns": [
+            "x.x.x.x.x.x.x.x."
+          ]
+        },
+        {
+          "verb": "bass",
+          "osc": "triangle",
+          "octave": -2,
+          "gain": 0.22,
+          "filterHz": 4000,
+          "q": 0.5,
+          "sweep": false,
+          "sustain": 1,
+          "gate": 0.5,
+          "patterns": [
+            "x.x.8.x.x.x.8.x."
+          ]
+        },
+        {
+          "verb": "arp",
+          "osc": "square",
+          "octave": 0,
+          "gain": 0.026,
+          "filterHz": 6000,
+          "order": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "patterns": [
+            "xxxxxxxxxxxxxxxx"
+          ]
+        },
+        {
+          "verb": "lead",
+          "osc": "square",
+          "octave": 1,
+          "gain": 0.04,
+          "filterHz": 6000,
+          "density": 0.9,
+          "low": 0,
+          "high": 11,
+          "patterns": [
+            "x.x.x-x.x-..x.x.",
+            "x-x.x.x-x.x.x---"
+          ]
+        }
+      ]
     }
   }
 }

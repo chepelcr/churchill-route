@@ -57,6 +57,7 @@ The procedure is three steps and it is not optional:
 | **who stands on a pitch** | `content/world/blocks.json` → `crowd`; what a type IS → `src/game/npcTypes.json` |
 | a muelle's size, width, style | `content/world/piers.json` |
 | how an OSM site fits its cuadra (`trace`/`cuadra`/`rect`/`kiosco`) | `content/world/site-decor.json` |
+| **una emisora de la radio, el mezclador, un sonido** | `src/assets/audio.json` → `stations` / `radio` / `mixer` (verbos: `src/audio/radio.js`) |
 | a surface class's colour and speed | `src/assets/surfaces.json` |
 | **el GRANO de una superficie** — la arena, el árido, la brizna, el desgaste del zinc | `src/assets/materials.json` → `textures` (verbos: `c2d/materials.js`) |
 | a length two runtimes must agree about, IN METRES | `src/assets/world-units.json` |
@@ -1843,6 +1844,27 @@ Se estampa el grueso y el fino encima. El campo tiene resolución PROPIA
 `(cuenta:uint8, valor:uint16 LE)`, emitido sólo donde el tile no es plano, porque
 una cota en decímetros no cabe en el byte de una clase de superficie y meterlas
 juntas obligaría a renumerar las clases.
+
+**LA RADIO: LA EMISORA ES DATA, LA BANDA ES CÓDIGO** (`src/audio/radio.js`,
+`audio.json → stations`). Cuatro emisoras procedurales —sigue sin haber un solo
+archivo de audio— autoradas como tempo, escala, progresión y pistas de 16 pasos
+que nombran un VERBO (`RADIO_VERBS`). Qué nota camina una melodía o cuándo un
+compás es un redoble es código; un registro con esa regla dejaría de serlo. Tres
+cosas que sostienen el resto:
+
+* **toda voz continua pasa por SU bus** (`busOf(voice)`), nunca por el master.
+  Hasta la radio sólo los efectos cortos usaban los buses, así que un deslizador
+  de Música no habría alcanzado a DJ Urtech. `test_no_continuous_voice_skips_its_bus`
+  cuenta las conexiones al master: son exactamente los dos lazos de buses;
+* **el jugador mezcla por GRUPO** (`mixer.groups`): Música y Efectos, y cada bus
+  pertenece a exactamente uno. La ganancia del bus es `gain × volumen del grupo`,
+  y los buses autorados siguen en 1.0;
+* **cada compás suena en su propio nodo de ganancia**, programado uno por
+  adelantado como el set de Urtech, para que pausar o cambiar de emisora corte lo
+  que ya estaba en cola. La variación es un hash del compás, nunca
+  `Math.random`: la frase se repite —eso es lo que la hace música— y un render
+  offline es reproducible. `pnpm audio:stations` renderiza cada emisora y MIDE
+  su tempo, que es la única forma de oírla sin oídos.
 
 ## EL TREN AL PUERTO — el segundo juego dentro del juego
 

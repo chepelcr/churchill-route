@@ -284,3 +284,85 @@ class AuthoredSoundTests(unittest.TestCase):
         # An export has to show what the game will PLAY. Reading the static
         # registry would export the stock sound while the game plays the custom.
         self.assertIn("AUTHORED[name] || AUDIO.recipes[name]", self.js)
+
+
+class RadioTests(unittest.TestCase):
+    """LA RADIO — `audio.json → stations/radio/mixer.groups` and `src/audio/radio.js`.
+
+    The station is data and the band is code, so the checks here are the seam
+    between them: a verb nobody implements, a pattern of the wrong length or a
+    station with no name on screen all fail SILENTLY in the game — the track
+    simply never plays, which sounds like a sparse arrangement, not a bug.
+    """
+
+    RADIO_JS = os.path.join(ROOT, "src", "audio", "radio.js")
+
+    def setUp(self):
+        self.doc = json.loads(read(AUDIO_JSON))
+        self.radio = read(self.RADIO_JS)
+        self.js = read(AUDIO_JS)
+        m = re.search(r"export const RADIO_VERBS = \[([^\]]*)\]", self.radio)
+        self.verbs = set(re.findall(r'"(\w+)"', m.group(1)))
+        self.stations = {k: v for k, v in self.doc["stations"].items() if not k.startswith("_")}
+
+    def test_every_station_in_the_order_exists_and_vice_versa(self):
+        order = self.doc["radio"]["order"]
+        self.assertEqual(set(order), set(self.stations), "radio.order and stations disagree")
+        self.assertIn(self.doc["radio"]["default"], order + ["off"])
+        self.assertNotIn("off", self.stations, "'off' is the absence of a station, not one")
+
+    def test_every_track_names_a_verb_the_band_implements(self):
+        for sid, st in self.stations.items():
+            for i, tr in enumerate(st["tracks"]):
+                self.assertIn(tr["verb"], self.verbs, f"{sid} track {i}: unknown verb {tr['verb']}")
+                self.assertIn(f"  {tr['verb']}(c, d, b, t, tr", self.radio,
+                              f"verb {tr['verb']} is listed but has no player")
+
+    def test_every_pattern_is_sixteen_steps_of_the_alphabet(self):
+        for sid, st in self.stations.items():
+            for i, tr in enumerate(st["tracks"]):
+                pats = list(tr["patterns"]) + ([tr["fill"]] if "fill" in tr else [])
+                self.assertTrue(tr["patterns"], f"{sid} track {i} has no pattern")
+                for p in pats:
+                    self.assertEqual(len(p), 16, f"{sid} track {i}: '{p}' is not 16 steps")
+                    self.assertTrue(set(p) <= set("xX.-358og"), f"{sid} track {i}: '{p}' has a stray letter")
+
+    def test_the_music_theory_is_in_range(self):
+        for sid, st in self.stations.items():
+            self.assertTrue(60 <= st["bpm"] <= 180, f"{sid}: bpm {st['bpm']}")
+            self.assertTrue(24 <= st["root"] <= 84, f"{sid}: root is a MIDI note")
+            self.assertEqual(st["scale"][0], 0, f"{sid}: a scale starts on its root")
+            self.assertTrue(all(0 <= s < 12 for s in st["scale"]))
+            self.assertTrue(st["progression"], f"{sid}: no chords")
+            for tr in st["tracks"]:
+                self.assertTrue(0 < tr.get("gain", 0.1) <= 0.6, f"{sid} {tr['verb']}: gain")
+
+    def test_every_station_has_a_name_in_every_language(self):
+        for lang in ("es", "en"):
+            cat = json.loads(read(os.path.join(ROOT, "src", "i18n", f"{lang}.json")))
+            for sid in list(self.stations) + ["off"]:
+                self.assertIn(f"radio.{sid}", cat, f"{lang}: no name for station {sid}")
+
+    def test_every_bus_belongs_to_exactly_one_player_group(self):
+        """Nothing escapes both sliders, and nothing answers to two."""
+        groups = {k: v for k, v in self.doc["mixer"]["groups"].items() if not k.startswith("_")}
+        self.assertEqual(set(groups), {"music", "sfx"})
+        seen = [b for g in groups.values() for b in g["buses"]]
+        buses = {b for b in self.doc["mixer"]["buses"] if not b.startswith("_")}
+        self.assertEqual(sorted(seen), sorted(buses))
+
+    def test_no_continuous_voice_skips_its_bus(self):
+        """Every voice used to hang off the master, so a Music slider could not
+        reach DJ Urtech. The only nodes connected to the master are the buses."""
+        self.assertEqual(self.js.count("connect(master)"), 2,
+                         "only the live and the offline bus loops may connect to the master")
+        for vid, spec in self.doc["voices"].items():
+            if not vid.startswith("_"):
+                self.assertIn("bus", spec, f"voice {vid} names no bus")
+
+    def test_the_band_is_pure(self):
+        code = re.sub(r"/\*.*?\*/", "", self.radio, flags=re.S)
+        code = re.sub(r"//[^\n]*", "", code)
+        self.assertNotIn("import ", code)
+        for forbidden in ("window", "document", "Math.random", "localStorage"):
+            self.assertNotIn(forbidden, code, f"radio.js must not touch {forbidden}")

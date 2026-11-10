@@ -10,9 +10,15 @@ import {
   encodeWav, noise as noiseStep, playRecipe, recipeDuration, renderRecipe,
   seededNoise, tone as toneStep,
 } from "../audio/recipe.js";
+import { createRadio } from "../audio/radio.js";
 
 const MUTE_KEY = "churchill_muted_v1";
 const VOL_KEY = "churchill_volume_v1";
+const GROUP_KEY = (g) => `churchill_${g}_vol_v1`;   // churchill_music_vol_v1, churchill_sfx_vol_v1
+const STATION_KEY = "churchill_station_v1";
+const GROUPS = Object.fromEntries(
+  Object.entries(AUDIO.mixer.groups || {}).filter(([id]) => !id.startsWith("_")));
+const RADIO = AUDIO.radio || { order: [], default: null, level: 0.5, duck: 0.9 };
 const BROWSER = typeof window !== "undefined";
 
 let ctx = null;         // AudioContext, created on first gesture
@@ -33,6 +39,7 @@ let poolV = null;       // { lap, edge, level }        — the Balneario
 let wavesV = null;      // { swell, foam, lfo*, level } — surf out on the muelles
 let iceCreamV = null;   // { gain, nextAt } — cart melody while carrying
 let djV = null;         // { gain, filter, nextAt, bar } — DJ Urtech on the Paseo
+let radioV = null;      // createRadio(…) — the stations, on the music bus
 
 function loadMuted() {
   try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
@@ -49,6 +56,36 @@ function loadVolume() {
 function saveVolume(v) {
   try { localStorage.setItem(VOL_KEY, String(v)); } catch { /* private mode */ }
 }
+function loadGroupVolume(g) {
+  try {
+    const v = parseFloat(localStorage.getItem(GROUP_KEY(g)));
+    if (Number.isFinite(v)) return Math.max(0, Math.min(1, v));
+  } catch { /* private mode */ }
+  return GROUPS[g]?.default ?? 1;
+}
+function loadStation() {
+  try {
+    const v = localStorage.getItem(STATION_KEY);
+    if (v === "off" || RADIO.order.includes(v)) return v;
+  } catch { /* private mode */ }
+  return RADIO.default || "off";
+}
+// Which player group a bus belongs to (the slider that moves it).
+function groupOf(bus) {
+  for (const [g, spec] of Object.entries(GROUPS)) if (spec.buses.includes(bus)) return g;
+  return null;
+}
+function busGain(id) {
+  const g = groupOf(id);
+  return AUDIO.mixer.buses[id].gain * (g ? sfx.groupVolume[g] : 1);
+}
+// THE VOICES GO THROUGH THEIR BUS. Until the radio, every continuous voice was
+// connected straight to the master and only the one-shots used the buses — so
+// a Music slider would have moved the menu blips and left DJ Urtech alone.
+// Each voice names its bus in `audio.json → voices`.
+function busOf(voice) {
+  return buses[AUDIO.voices[voice]?.bus] || master;
+}
 
 function unlock() {
   if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
@@ -62,9 +99,9 @@ function unlock() {
   for (const [id, spec] of Object.entries(AUDIO.mixer.buses)) {
     if (id.startsWith("_")) continue;
     const g = ctx.createGain();
-    g.gain.value = spec.gain;
     g.connect(master);
     buses[id] = g;
+    g.gain.value = busGain(id);
   }
 
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -78,7 +115,7 @@ function unlock() {
   const ef = ctx.createBiquadFilter();
   ef.type = "lowpass"; ef.frequency.value = 500; ef.Q.value = 0.7;
   const eg = ctx.createGain(); eg.gain.value = 0;
-  oscA.connect(ef); oscB.connect(ef); ef.connect(eg); eg.connect(master);
+  oscA.connect(ef); oscB.connect(ef); ef.connect(eg); eg.connect(busOf("engine"));
   oscA.start(); oscB.start();
   engineV = { oscA, oscB, filter: ef, gain: eg };
 
@@ -88,7 +125,7 @@ function unlock() {
   const df = ctx.createBiquadFilter();
   df.type = "bandpass"; df.frequency.value = 1400; df.Q.value = 1.2;
   const dg = ctx.createGain(); dg.gain.value = 0;
-  src.connect(df); df.connect(dg); dg.connect(master);
+  src.connect(df); df.connect(dg); dg.connect(busOf("drift"));
   src.start();
   driftV = { src, filter: df, gain: dg };
 
@@ -104,21 +141,21 @@ function unlock() {
   const wJetF = ctx.createBiquadFilter();
   wJetF.type = "bandpass"; wJetF.frequency.value = 5200; wJetF.Q.value = 2.2;
   const wJetG = ctx.createGain(); wJetG.gain.value = 0;
-  wJet.connect(wJetF); wJetF.connect(wJetG); wJetG.connect(master);
+  wJet.connect(wJetF); wJetF.connect(wJetG); wJetG.connect(busOf("fountain"));
   wJet.start();
   const wSpray = ctx.createBufferSource();
   wSpray.buffer = noiseBuf; wSpray.loop = true;
   const wSprayF = ctx.createBiquadFilter();
   wSprayF.type = "bandpass"; wSprayF.frequency.value = 2400; wSprayF.Q.value = 0.6;
   const wSprayG = ctx.createGain(); wSprayG.gain.value = 0;
-  wSpray.connect(wSprayF); wSprayF.connect(wSprayG); wSprayG.connect(master);
+  wSpray.connect(wSprayF); wSprayF.connect(wSprayG); wSprayG.connect(busOf("fountain"));
   wSpray.start();
   const wBody = ctx.createBufferSource();
   wBody.buffer = noiseBuf; wBody.loop = true;
   const wBodyF = ctx.createBiquadFilter();
   wBodyF.type = "lowpass"; wBodyF.frequency.value = 620; wBodyF.Q.value = 0.5;
   const wBodyG = ctx.createGain(); wBodyG.gain.value = 0;
-  wBody.connect(wBodyF); wBodyF.connect(wBodyG); wBodyG.connect(master);
+  wBody.connect(wBodyF); wBodyF.connect(wBodyG); wBodyG.connect(busOf("fountain"));
   wBody.start();
   // …and the one periodic thing a fountain DOES have: the jet flutters. Fast
   // and shallow (2.6 Hz, tiny depth) — enough that the bed is not frozen, far
@@ -141,14 +178,14 @@ function unlock() {
   const pLapF = ctx.createBiquadFilter();
   pLapF.type = "lowpass"; pLapF.frequency.value = 520; pLapF.Q.value = 0.7;
   const pLapG = ctx.createGain(); pLapG.gain.value = 0;
-  pLap.connect(pLapF); pLapF.connect(pLapG); pLapG.connect(master);
+  pLap.connect(pLapF); pLapF.connect(pLapG); pLapG.connect(busOf("pool"));
   pLap.start();
   const pEdge = ctx.createBufferSource();
   pEdge.buffer = noiseBuf; pEdge.loop = true;
   const pEdgeF = ctx.createBiquadFilter();
   pEdgeF.type = "bandpass"; pEdgeF.frequency.value = 1800; pEdgeF.Q.value = 1.1;
   const pEdgeG = ctx.createGain(); pEdgeG.gain.value = 0;
-  pEdge.connect(pEdgeF); pEdgeF.connect(pEdgeG); pEdgeG.connect(master);
+  pEdge.connect(pEdgeF); pEdgeF.connect(pEdgeG); pEdgeG.connect(busOf("pool"));
   pEdge.start();
   const lapLfo = ctx.createOscillator();
   lapLfo.type = "sine"; lapLfo.frequency.value = 0.35;
@@ -168,14 +205,14 @@ function unlock() {
   const sSwellF = ctx.createBiquadFilter();
   sSwellF.type = "lowpass"; sSwellF.frequency.value = 380; sSwellF.Q.value = 0.4;
   const sSwellG = ctx.createGain(); sSwellG.gain.value = 0;
-  sSwell.connect(sSwellF); sSwellF.connect(sSwellG); sSwellG.connect(master);
+  sSwell.connect(sSwellF); sSwellF.connect(sSwellG); sSwellG.connect(busOf("waves"));
   sSwell.start();
   const sFoam = ctx.createBufferSource();
   sFoam.buffer = noiseBuf; sFoam.loop = true;
   const sFoamF = ctx.createBiquadFilter();
   sFoamF.type = "bandpass"; sFoamF.frequency.value = 1500; sFoamF.Q.value = 0.5;
   const sFoamG = ctx.createGain(); sFoamG.gain.value = 0;
-  sFoam.connect(sFoamF); sFoamF.connect(sFoamG); sFoamG.connect(master);
+  sFoam.connect(sFoamF); sFoamF.connect(sFoamG); sFoamG.connect(busOf("waves"));
   sFoam.start();
   const lfo = ctx.createOscillator();
   lfo.type = "sine"; lfo.frequency.value = 0.11;
@@ -202,7 +239,7 @@ function unlock() {
   const djG = ctx.createGain(); djG.gain.value = 0;
   const djF = ctx.createBiquadFilter();
   djF.type = "lowpass"; djF.frequency.value = 260; djF.Q.value = 0.9;
-  djF.connect(djG); djG.connect(master);
+  djF.connect(djG); djG.connect(busOf("dj"));
   djV = { gain: djG, filter: djF, nextAt: 0, bar: 0, level: 0 };
 
   // ICE-CREAM CART — its music-box speaker is silent unless the cart is
@@ -211,8 +248,13 @@ function unlock() {
   // immediately instead of waiting for the last scheduled note to finish.
   const iceCreamG = ctx.createGain();
   iceCreamG.gain.value = 0;
-  iceCreamG.connect(master);
+  iceCreamG.connect(busOf("icecream"));
   iceCreamV = { gain: iceCreamG, nextAt: 0 };
+
+  // LA RADIO — see `src/audio/radio.js`. It lives on the music bus, so the
+  // Music slider is all it answers to besides the general volume and mute.
+  radioV = createRadio(ctx, busOf("radio"), noiseBuf, AUDIO.stations || {});
+  radioV.setStation(sfx.station === "off" ? null : sfx.station);
 }
 
 if (BROWSER) {
@@ -418,6 +460,41 @@ export { encodeWav };
 export const sfx = {
   muted: BROWSER ? loadMuted() : true,
   volume: BROWSER ? loadVolume() : 1,
+  // the two player sliders on top of the general volume, by mixer GROUP
+  groupVolume: Object.fromEntries(Object.keys(GROUPS).map((g) => [g, BROWSER ? loadGroupVolume(g) : 1])),
+  station: BROWSER ? loadStation() : "off",
+
+  setGroupVolume(group, v) {
+    if (!GROUPS[group]) return 0;
+    const val = Math.max(0, Math.min(1, v));
+    this.groupVolume[group] = val;
+    try { localStorage.setItem(GROUP_KEY(group), String(val)); } catch { /* private mode */ }
+    if (ctx) {
+      for (const id of GROUPS[group].buses) {
+        if (buses[id]) buses[id].gain.setTargetAtTime(busGain(id), ctx.currentTime, 0.02);
+      }
+    }
+    return val;
+  },
+  setMusicVolume(v) { return this.setGroupVolume("music", v); },
+  setSfxVolume(v) { return this.setGroupVolume("sfx", v); },
+  get musicVolume() { return this.groupVolume.music ?? 1; },
+  get sfxVolume() { return this.groupVolume.sfx ?? 1; },
+
+  /** The station list in display order, with `off` first. */
+  get stations() { return ["off", ...RADIO.order]; },
+  setStation(id) {
+    const v = id === "off" || RADIO.order.includes(id) ? id : "off";
+    this.station = v;
+    try { localStorage.setItem(STATION_KEY, v); } catch { /* private mode */ }
+    if (radioV) radioV.setStation(v === "off" ? null : v);
+    return v;
+  },
+  /** Next station in the cycle (the HUD button). */
+  nextStation() {
+    const all = this.stations;
+    return this.setStation(all[(all.indexOf(this.station) + 1) % all.length]);
+  },
 
   setVolume(v) {
     this.volume = Math.max(0, Math.min(1, v));
@@ -591,6 +668,30 @@ export const sfx = {
     djV.nextAt = t0 + bar;
   },
 
+  // LA RADIO: call every frame while it should be heard. `duck` is DJ Urtech's
+  // level — the station steps aside as his set comes in, so arriving at the
+  // booth still sounds like arriving. `preview` is Ajustes, a shade quieter.
+  radio(duck = 0, preview = false) {
+    if (!radioV || !ctx || ctx.state !== "running") return;
+    const station = AUDIO.stations?.[this.station];
+    const lvl = (station?.level ?? 1) * RADIO.level * (preview ? 0.7 : 1)
+      // √: Urtech's own level is squared (it only LANDS in the last block), so
+      // the radio steps aside over the last couple of blocks instead of only
+      // once you are standing on his tarima
+      * (1 - (RADIO.duck ?? 0.9) * Math.sqrt(Math.max(0, Math.min(1, duck))));
+    radioV.tick(this.station === "off" ? 0 : lvl);
+  },
+  radioStop() { if (radioV && ctx) radioV.stop(); },
+  /** What the mix is doing right now — for a probe or the console, never logic. */
+  get mix() {
+    return {
+      radio: radioV ? radioV.level : null,
+      station: radioV ? radioV.station : null,
+      dj: djV ? djV.gain.gain.value : null,
+      buses: Object.fromEntries(Object.entries(buses).map(([id, g]) => [id, g.gain.value])),
+    };
+  },
+
   // silence the continuous voices (menus, pause, results) but keep the
   // context alive so menu blips still play
   quiet() {
@@ -609,6 +710,7 @@ export const sfx = {
       djV.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
       djV.nextAt = ctx.currentTime;
     }
+    if (radioV) radioV.stop();
   },
   // Has the AudioContext actually unlocked? A one-shot fired before the first
   // gesture is silently dropped by the autoplay policy, so the boot horn needs

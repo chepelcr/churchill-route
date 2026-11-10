@@ -9,6 +9,7 @@ const P = {
   heart:   <path d="M12 20s-7-4.6-9.2-9C1.2 7.7 3 4.5 6.2 4.5c2 0 3.3 1.1 4 2.3.4.7 1.2.7 1.6 0 .7-1.2 2-2.3 4-2.3 3.2 0 5 3.2 3.4 6.5C17 15.4 12 20 12 20z" fill="currentColor" />,
   gear:    <g fill="none" stroke="currentColor"><circle cx="12" cy="12" r="5.6" strokeWidth="2.2" /><circle cx="12" cy="12" r="1.9" fill="currentColor" stroke="none" /><path d="M12 3.2v3M12 17.8v3M3.2 12h3M17.8 12h3M5.8 5.8l2.1 2.1M16.1 16.1l2.1 2.1M18.2 5.8l-2.1 2.1M7.9 16.1l-2.1 2.1" strokeWidth="2.6" strokeLinecap="round" /></g>,
   sound:   <g fill="currentColor"><path d="M4 9v6h4l5 4V5L8 9H4z" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></g>,
+  radio:   <g fill="currentColor"><path d="M9 17.5V6.2l10-2.2v11.2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><ellipse cx="6.6" cy="17.6" rx="2.6" ry="2.1" /><ellipse cx="16.6" cy="15.4" rx="2.6" ry="2.1" /></g>,
   mute:    <g fill="currentColor"><path d="M4 9v6h4l5 4V5L8 9H4z" /><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></g>,
   pin:     <g fill="currentColor"><path d="M12 2a6.5 6.5 0 0 0-6.5 6.5C5.5 13 12 21 12 21s6.5-8 6.5-12.5A6.5 6.5 0 0 0 12 2z" /><circle cx="12" cy="8.5" r="2.6" fill="#fff" /></g>,
   pause:   <g fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1.2" /><rect x="14" y="4.5" width="4" height="15" rx="1.2" /></g>,

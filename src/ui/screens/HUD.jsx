@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Game } from "../../game/index.js";
+import { pushFloat } from "../../game/state.js";
 import { WORLD2D as WORLD } from "../../world2d/index.js";
 import { sfx } from "../../game/audio.js";
 import { isTimed } from "../../game/timers.js";
@@ -14,6 +15,14 @@ const SURF = ["agua", "cuadra", "playa", "calle", "paseo", "puente", "acera"];
 export default function HUD({ onPause }) {
   const t = useT();
   const [muted, setMuted] = useState(sfx.muted);
+  const [station, setStation] = useState(sfx.station);
+  // LA EMISORA SE CAMBIA SIN PARAR. One tap cycles to the next station and
+  // says which over the car for a moment; Ajustes is where they are listed.
+  const cycleStation = () => {
+    const id = sfx.nextStation();
+    setStation(id);
+    if (s.p) pushFloat(s.p.x, s.p.y - 28, "♪ " + t(`radio.${id}`), "#ffe06b");
+  };
   const [debug, setDebug] = useState(Game.state.debug);
   const s = Game.state;
   const district = s.p ? WORLD.districtAt(s.p.x, s.p.y) : null;
@@ -89,6 +98,8 @@ export default function HUD({ onPause }) {
       <div className="hud-right">
         <button className={"hud-btn" + (debug ? " on" : "")} onClick={toggleDebug}
           aria-label="debug"><Icon name="pin" size={20} /></button>
+        <button className={"hud-btn" + (station !== "off" ? " on" : "")} onClick={cycleStation}
+          aria-label={t("hud.radio")} title={t(`radio.${station}`)}><Icon name="radio" size={20} /></button>
         <button className="hud-btn" onClick={() => setMuted(sfx.toggleMuted())}
           aria-label={t("settings.muted")}><Icon name={muted ? "mute" : "sound"} size={20} /></button>
         <button className="hud-btn" onClick={onPause} aria-label={t("pause.title")}><Icon name="pause" size={20} /></button>

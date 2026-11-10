@@ -363,6 +363,20 @@
           "region": "app"
         },
         {
+          "id": "musicVolume",
+          "region": "app"
+        },
+        {
+          "id": "sfxVolume",
+          "region": "app",
+          "note": "efectos, motor y ambiente: todo lo que no es música"
+        },
+        {
+          "id": "station",
+          "region": "app",
+          "note": "la emisora se previsualiza mientras Ajustes está abierto"
+        },
+        {
           "id": "speed",
           "region": "gameplay"
         },

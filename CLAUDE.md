@@ -790,9 +790,9 @@ happens at the kerb: brake, dwell, alight, board. Two things are load-bearing:
 **La feria del malecón + DJ Urtech** (`ATTRACTION_DEFS` in `content.py`,
 `service/attraction.py`, `src/render/c2d/attractions.js`). Rides are geo-anchored
 like every other POI and snapped onto whatever promenade the build produced, and
-they are **drawn, never stamped**: the band is 60 px deep and it is the only way
-the two Paseo kiosks are reached, so a 40 px carrusel stamped blocking would take
-a delivery target off the network. The DJ is seated on the FRONTAGE of the real
+they are **drawn, never stamped**: the fairground itself is the drivable deck,
+and the two Paseo kiosks are served from their nearby-street spawn, so a 40 px
+carrusel stamped blocking would take usable space off the platform. The DJ is seated on the FRONTAGE of the real
 OSM building he plays outside (`host: "La Takería"`), not on a coordinate. His
 sound is a fourth continuous voice in `src/game/audio.js` beside
 `fountain`/`pool`/`waves` — and **distance is a FILTER, not a fader**:

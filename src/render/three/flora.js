@@ -22,7 +22,7 @@ import { groundBase } from "./ground.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { hash01 } from "../c2d/primitives.js";
-import { forEachWoodTree, roadsideTrees, tileTrees } from "../c2d/flora.js";
+import { forEachWoodTree, onFeriaDeck, roadsideTrees, tileTrees } from "../c2d/flora.js";
 import { medianPairs } from "../c2d/streets.js";
 import { tintMaterial } from "./tint.js";
 
@@ -92,8 +92,12 @@ function speciesOf(k, fallback) {
 function tilePlants(tile, woods) {
   const out = [];
   const x0 = tile.x, y0 = tile.y, x1 = x0 + W.TILE_PX, y1 = y0 + W.TILE_PX;
-  for (const tr of tileTrees(tile, medianPairs(tile).pairs)) out.push({ x: tr.x, y: tr.y, s: tr.s || 1, sp: speciesOf(tr.k, DEF_TREE) });
-  for (const pa of tile.palms) out.push({ x: pa.x, y: pa.y, s: pa.s || 1, sp: speciesOf(pa.k || DEF_PALM, DEF_PALM) });
+  for (const tr of tileTrees(tile, medianPairs(tile).pairs)) {
+    if (!onFeriaDeck(tr.x, tr.y)) out.push({ x: tr.x, y: tr.y, s: tr.s || 1, sp: speciesOf(tr.k, DEF_TREE) });
+  }
+  for (const pa of tile.palms) {
+    if (!onFeriaDeck(pa.x, pa.y)) out.push({ x: pa.x, y: pa.y, s: pa.s || 1, sp: speciesOf(pa.k || DEF_PALM, DEF_PALM) });
+  }
   // …y las palmas de la escena del faro (`world-props.json` → scenes.faro),
   // que Canvas deja de pintar cuando la capa 3-D es dueña de `faro`
   for (const lm of W.LANDMARKS || []) {

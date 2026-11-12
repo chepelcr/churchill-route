@@ -17,6 +17,7 @@ that makes the rule non-obvious: it is a PAIR OF LISTS (the candidate names for
 each of a block's two bounding calles), so "a list whose first item is a list
 stays a list" gets it wrong. Arity is what makes a tuple here, not content.
 """
+import base64
 import json
 import math
 import os
@@ -442,6 +443,45 @@ class KioskTests(unittest.TestCase):
                     d, 40, f"{a['id']} y {b['id']} caen a {round(d)} px: "
                            f"son el mismo punto de recogida")
 
+    def test_paseo_kiosks_serve_from_the_street_without_a_connector(self):
+        """El malecón queda peatonal: el pickup es la calle próxima, no un cabo
+        de asfalto terminado en rotonda alrededor del puesto."""
+        from churchill.world.enums.surface import CARRIAGEWAY
+
+        ids = {"kios_paseo1", "kios_paseo2"}
+        self.assertEqual({k["id"] for k in self.kiosks if k.get("streetOnly")}, ids)
+        man = os.path.join(ROOT, "src", "world2d", "manifest.json")
+        if not os.path.exists(man):
+            self.skipTest("el mundo no está construido")
+        with open(man, encoding="utf-8") as fh:
+            world = json.load(fh)
+        landmarks = {lm["id"]: lm for lm in world["landmarks"]}
+        meta = world["meta"]
+        for kid in ids:
+            lm = landmarks[kid]
+            self.assertTrue(lm.get("streetOnly"), f"{kid} perdió streetOnly en el emit")
+            spawn = lm.get("spawn")
+            self.assertIsNotNone(spawn, f"{kid} no tiene punto de recogida en la calle")
+            self.assertNotEqual(spawn, [lm["x"], lm["y"]])
+            for path in world["kioskPaths"]:
+                pts = path["pts"]
+                for x, y in (pts[:2], pts[-2:]):
+                    self.assertGreater(math.hypot(x - lm["x"], y - lm["y"]), 1,
+                                       f"{kid} todavía tiene una calle auxiliar")
+            tc, tr = (int(v // meta["tilePx"]) for v in spawn)
+            tile_path = os.path.join(ROOT, "src", "world2d", "tiles", f"{tc}_{tr}.json")
+            with open(tile_path, encoding="utf-8") as fh:
+                tile = json.load(fh)
+            rle = base64.b64decode(tile["rle"])
+            cells = bytearray()
+            for count, surface in zip(rle[::2], rle[1::2]):
+                cells.extend([surface] * count)
+            col = int((spawn[0] - tile["x"]) // meta["cell"])
+            row = int((spawn[1] - tile["y"]) // meta["cell"])
+            surface = cells[row * tile["cols"] + col]
+            self.assertIn(surface, CARRIAGEWAY,
+                          f"{kid}: el spawn {spawn} no cae en una calle transitable")
+
     def test_every_kiosk_has_an_anchor(self):
         for k in self.kiosks:
             self.assertTrue(k.get("osm") or k.get("ll"),
@@ -582,29 +622,28 @@ class AuthoredLengthsAreMetresTests(unittest.TestCase):
                 walk(json.load(fh), "", os.path.basename(path))
         self.assertEqual(offenders, [], "authored in pixels; use the metre key")
 
-    def test_every_ride_offset_is_metres(self):
-        """La otra mitad de lo de arriba: `at` se excluye por estar sobrecargada,
-        así que los juegos —los únicos cuyo `at` ES un offset— se comprueban por
-        su nombre."""
+    def test_every_ride_is_mapped_in_lat_lon(self):
+        """LA FERIA SE MAPEA COMO UNA CUADRA HECHA A MANO. Los juegos eran un
+        offset en metros (`atM`) desde el centro de un lote que el build
+        asentaba frente a un edificio; hoy cada uno lleva su lat/lon y el
+        tablado su contorno, así que lo autorado es lo que sale y se puede ver
+        antes de construir (`tools/preview_feria.py`). Ni `at` —la llave
+        sobrecargada— ni `atM`: una sola forma de decir dónde."""
         with open(os.path.join(CONTENT_DIR, "attractions.json"), encoding="utf-8") as fh:
             raw = json.load(fh)
         for ride in raw["attractions"]:
-            if ride["id"] == "dj_urtech":
-                continue                      # ancla geo, ver la prueba de abajo
-            self.assertIn("atM", ride, f"{ride['id']} sigue con su offset en px")
-            self.assertNotIn("at", ride, f"{ride['id']} tiene las dos llaves")
-
-    def test_the_dj_keeps_a_GEO_anchor_and_not_an_offset(self):
-        """LA EXCEPCIÓN, y casi se pierde en la migración. Los juegos llevan un
-        offset EN METROS desde el centro del campo ferial; el DJ se sienta en la
-        FRONTERA del edificio real que toca, así que su `at` es una lat/lon. La
-        conversión automática lo tomó por un offset y lo dejó en (4, -34) — a
-        cuatro metros del origen del mundo, en el golfo."""
-        from churchill.world.content import ATTRACTION_DEFS
-        dj = next(a for a in ATTRACTION_DEFS if a["id"] == "dj_urtech")
-        lat, lon = dj["at"]
-        self.assertTrue(9.8 < lat < 10.1, f"el DJ perdió su latitud: {lat}")
-        self.assertTrue(-85.0 < lon < -84.6, f"el DJ perdió su longitud: {lon}")
+            lat, lon = ride["ll"]
+            self.assertTrue(9.8 < lat < 10.1, f"{ride['id']}: latitud {lat}")
+            self.assertTrue(-85.0 < lon < -84.6, f"{ride['id']}: longitud {lon}")
+            for key in ("at", "atM"):
+                self.assertNotIn(key, ride, f"{ride['id']} tiene dos formas de decir dónde")
+        outline = raw["feria"]["outlineLL"]
+        self.assertGreaterEqual(len(outline), 3, "el tablado es un polígono")
+        for lat, lon in outline:
+            self.assertTrue(9.8 < lat < 10.1 and -85.0 < lon < -84.6,
+                            f"vértice del tablado fuera de Puntarenas: {lat}, {lon}")
+        for key in ("w", "h", "wM", "hM"):
+            self.assertNotIn(key, raw["feria"], "el tablado es su contorno, no un ancho y un fondo")
 
     def test_the_lancha_takes_her_deck_from_the_vessel_registry(self):
         """No se autora aquí: `world-units.json` -> vessels.lancha la tiene en

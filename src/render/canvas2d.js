@@ -27,7 +27,7 @@ import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawChannel, drawEstero } from "./c2d/estero.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
-import { drawAttractions } from "./c2d/attractions.js";
+import { drawAttractions, drawFeriaNightEffects } from "./c2d/attractions.js";
 import {
   drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawGullFlock, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
@@ -280,8 +280,9 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     for (const f of state.floats) {
       ctx.globalAlpha = Math.max(0, 1 - f.t / f.ttl);
       ctx.fillStyle = f.color;
+      // la subida va DESPUÉS de enderezar: es de pantalla, no del mundo
       const stood = upright(ctx, f.x, f.y, rot);
-      ctx.fillText(f.text, stood ? 0 : f.x, stood ? 0 : f.y);
+      ctx.fillText(f.text, stood ? 0 : f.x, (stood ? 0 : f.y) - (f.rise || 0));
       if (stood) ctx.restore();
       ctx.globalAlpha = 1;
     }
@@ -310,8 +311,9 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     // en la vista, `drawNightLights` pinta exactamente el mismo tinte y nada
     // cambia, que es lo que mantiene honesto el cambio.
     setLightZoom(ZOOM);
-    drawNightLights(vw, vh, view, C.tint,
-                    (wx, wy) => worldToScreen(camera, wx, wy));
+    const toScreen = (wx, wy) => worldToScreen(camera, wx, wy);
+    drawNightLights(vw, vh, view, C.tint, toScreen);
+    drawFeriaNightEffects(view, t, toScreen, camera.zoom);
   } else {
     ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
   }
@@ -359,7 +361,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       if (window.__prof) window.__prof.minimap = (window.__prof.minimap || 0)
         + performance.now() - _miniT0;
     }
-    drawCompass(vw, vh);
+    drawCompass(vw, vh, camera);
     drawCrossingHud(vw, vh);
   }
   phase("overlays");

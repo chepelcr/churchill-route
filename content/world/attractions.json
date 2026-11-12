@@ -1,178 +1,313 @@
 {
-  "_note": "LA FERIA DEL MALECÓN y las bajadas a la arena. A ride's `at` is an offset in world px from the feria's own centre, not a geo anchor — the campo is placed as a whole and the rides are laid out inside it. The beach accesses ARE geo, because each one is a real gap in a real kerb.",
+  "_note": "LA FERIA DEL MALECÓN y las bajadas a la arena. TODO ES GEO, como una cuadra hecha a mano de `blocks.json`: el tablado es un polígono en lat/lon (`feria.outlineLL`) y cada juego tiene su propia lat/lon (`ll`). Se mapea, se mira el preview (`tools/preview_feria.py` + `tools/shot-feria-preview.mjs`, sin reconstruir) y sólo aprobado se construye.",
   "feria": {
     "id": "feria_paseo",
     "name": "Campo Ferial del Paseo",
     "host": "La Takería",
-    "wM": 224.0,
-    "hM": 80.0,
-    "_units": "wM/hM: el suelo del campo ferial EN METROS. Eran 560x200 px afinados a 2.5 px/m; el reescalado del 2026-08-27 los habria dejado un 20 % cortos."
+    "_host": "Sólo referencia: el negocio real frente al que está mapeado el tablado. El build ya no cuelga el lote de este edificio — manda `outlineLL`.",
+    "outlineLL": [
+      [
+        9.97433014,
+        -84.84497138
+      ],
+      [
+        9.9743375,
+        -84.84476705
+      ],
+      [
+        9.97433717,
+        -84.84456215
+      ],
+      [
+        9.97433683,
+        -84.84435725
+      ],
+      [
+        9.9743365,
+        -84.84415235
+      ],
+      [
+        9.97433809,
+        -84.84394759
+      ],
+      [
+        9.97433776,
+        -84.84374269
+      ],
+      [
+        9.9743432,
+        -84.84353822
+      ],
+      [
+        9.97435249,
+        -84.84333404
+      ],
+      [
+        9.97436177,
+        -84.84312986
+      ],
+      [
+        9.97437395,
+        -84.84255908
+      ],
+      [
+        9.97350141,
+        -84.84255908
+      ],
+      [
+        9.97348924,
+        -84.84308388
+      ],
+      [
+        9.97347995,
+        -84.84328806
+      ],
+      [
+        9.97347066,
+        -84.84349224
+      ],
+      [
+        9.97346522,
+        -84.84369671
+      ],
+      [
+        9.97346555,
+        -84.84390161
+      ],
+      [
+        9.97346396,
+        -84.84410637
+      ],
+      [
+        9.9734643,
+        -84.84431127
+      ],
+      [
+        9.97346463,
+        -84.84451618
+      ],
+      [
+        9.97346496,
+        -84.84472108
+      ],
+      [
+        9.9734576,
+        -84.8449254
+      ]
+    ],
+    "_outlineLL": "EL TABLADO, mapeado a mano vértice por vértice, como el contorno de una cuadra: el frente SIGUE EL CORDÓN del Paseo y toda la plataforma se extiende POR IGUAL hacia el mar. Cruza el paseo y la playa (`overSand`) y continúa sobre pilotes (`overWater`). Sólo se entra por `entranceLL`; nunca se entabla calzada. Su ángulo —por donde corren las tablas— es el eje largo del polígono.",
+    "_floor": "EL TURNO TIENE SU PROPIO SUELO: un tablado de madera ELEVADO junto a la calle, no encima. Se estampa `Surface.BRIDGE` —la clase de las cubiertas de muelle: se maneja sobre ella y no es una calle a la que enlazar— y `materials.json -> feria.deck` dice cómo se ve: tablas, pilotes perimetrales, baranda, sombra y cartel.",
+    "entranceLL": [
+      [
+        9.97451915,
+        -84.84408997
+      ],
+      [
+        9.97453809,
+        -84.84383383
+      ],
+      [
+        9.9743389,
+        -84.84381887
+      ],
+      [
+        9.97431996,
+        -84.84407501
+      ]
+    ],
+    "_entranceLL": "LA ENTRADA: una rampa de 28 m de ancho desde la calle hasta el frente del tablado. Los dos PRIMEROS vértices van metidos en la calzada (el build sólo entabla lo que es paseo o acera, así que la calle no pierde nada y la rampa la toca seguro); los dos ÚLTIMOS son la boca sobre el tablado, donde se abre la baranda.",
+    "sign": "FERIA DEL PASEO",
+    "_sign": "El texto del cartel de la entrada, sobre el tramo de la rampa QUE DA A LA CALLE para que se lea desde el Paseo. `materials.json -> feria.deck.sign.rampFraction` decide qué tan cerca queda de la boca (0) o de la calle (1).",
+    "overSand": true,
+    "_overSand": "EL TABLADO SALE A LA PLAYA: dentro del contorno también se entabla la arena, como un muelle que se mete sobre la playa. Sin esta llave el lote sólo toma paseo y sus rendijas estrechas.",
+    "overWater": true,
+    "_overWater": "LA AMPLIACIÓN DE LOS JUEGOS SIGUE SOBRE PILOTES: el contorno puede cubrir agua para que las cuatro hileras tengan calles de circulación entre ellas. Nunca entabla calzada."
   },
   "attractions": [
+    {
+      "id": "chin_canton",
+      "name": "Arroz Cantonés",
+      "kind": "chinamo",
+      "ll": [9.97426409, -84.84487947],
+      "food": "canton",
+      "rM": 5.6,
+      "ang": 3.14159265
+    },
+    {
+      "id": "chin_manzanas",
+      "name": "Manzanas Escarchadas",
+      "kind": "chinamo",
+      "ll": [9.97426409, -84.84470435],
+      "food": "manzana",
+      "rM": 5.6,
+      "ang": -1.57079633
+    },
+    {
+      "id": "chin_churros",
+      "name": "Churros Rellenos",
+      "kind": "chinamo",
+      "ll": [9.97409039, -84.84487947],
+      "food": "churro",
+      "rM": 5.6,
+      "ang": 3.14159265
+    },
+    {
+      "id": "chin_pinto",
+      "name": "Gallo Pinto",
+      "kind": "chinamo",
+      "ll": [9.97409039, -84.84470435],
+      "food": "pinto",
+      "rM": 5.6,
+      "ang": 0.0
+    },
+    {
+      "id": "chin_ceviche",
+      "name": "Ceviche",
+      "kind": "chinamo",
+      "ll": [9.9739167, -84.84487947],
+      "food": "ceviche",
+      "rM": 5.6,
+      "ang": 3.14159265
+    },
+    {
+      "id": "chin_algodon",
+      "name": "Algodón de Azúcar",
+      "kind": "chinamo",
+      "ll": [9.9739167, -84.84470435],
+      "food": "algodon",
+      "rM": 5.6,
+      "ang": 0.0
+    },
+    {
+      "id": "chin_granizados",
+      "name": "Granizados",
+      "kind": "chinamo",
+      "ll": [9.97374301, -84.84487947],
+      "food": "granizado",
+      "rM": 5.6,
+      "ang": 3.14159265
+    },
+    {
+      "id": "chin_vigoron",
+      "name": "Vigorón",
+      "kind": "chinamo",
+      "ll": [9.97374301, -84.84470435],
+      "food": "vigoron",
+      "rM": 5.6,
+      "ang": 0.0
+    },
+    {
+      "id": "chin_helados",
+      "name": "Helados",
+      "kind": "chinamo",
+      "ll": [9.97354037, -84.84486488],
+      "food": "helado",
+      "rM": 5.6,
+      "ang": 3.14159265
+    },
+    {
+      "id": "chin_mango",
+      "name": "Mango Verde",
+      "kind": "chinamo",
+      "ll": [9.97354037, -84.84470435],
+      "food": "mango",
+      "rM": 5.6,
+      "ang": 1.57079633
+    },
+    {
+      "id": "dj_urtech",
+      "name": "DJ Urtech",
+      "kind": "dj",
+      "ll": [9.97364169, -84.84404763],
+      "_ll": "ANCLA GEO del CENTRO del escenario, en la parte INFERIOR del tablado ampliado, a mitad de camino entre comidas y juegos. El público queda frente a la tarima, hacia la calle.",
+      "rM": 16.0,
+      "audience": 18,
+      "host": "La Takería"
+    },
     {
       "id": "rueda",
       "name": "La Rueda de Chicago",
       "kind": "rueda",
-      "atM": [
-        -92.8,
-        -4.0
-      ],
+      "ll": [9.97423514, -84.84286554],
       "rM": 8.8
-    },
-    {
-      "id": "pulpo",
-      "name": "El Pulpo",
-      "kind": "pulpo",
-      "atM": [
-        -56.8,
-        -5.6
-      ],
-      "rM": 7.6
     },
     {
       "id": "martillo",
       "name": "El Martillo",
       "kind": "martillo",
-      "atM": [
-        -18.4,
-        -6.4
-      ],
-      "rM": 6.8
-    },
-    {
-      "id": "sillas",
-      "name": "Las Sillas Voladoras",
-      "kind": "sillas",
-      "atM": [
-        17.6,
-        -5.6
-      ],
+      "ll": [9.97417724, -84.84420816],
       "rM": 6.8
     },
     {
       "id": "terror",
       "name": "La Casa del Terror",
       "kind": "terror",
-      "atM": [
-        56.0,
-        -5.6
-      ],
+      "ll": [9.97423514, -84.84447085],
       "rM": 7.2
-    },
-    {
-      "id": "carrusel",
-      "name": "El Carrusel",
-      "kind": "carrusel",
-      "atM": [
-        92.8,
-        -4.8
-      ],
-      "rM": 6.8
     },
     {
       "id": "tagada",
       "name": "La Tagada",
       "kind": "tagada",
-      "atM": [
-        -82.4,
-        20.8
-      ],
+      "ll": [9.9739167, -84.84362441],
       "rM": 7.6
     },
     {
-      "id": "chocones",
-      "name": "Los Chocones",
-      "kind": "chocones",
-      "atM": [
-        -44.0,
-        21.6
-      ],
-      "rM": 8.4
+      "id": "pulpo",
+      "name": "El Pulpo",
+      "kind": "pulpo",
+      "ll": [9.97359826, -84.84362441],
+      "rM": 7.6
+    },
+    {
+      "id": "sillas",
+      "name": "Las Sillas Voladoras",
+      "kind": "sillas",
+      "ll": [9.97359826, -84.84447085],
+      "rM": 6.8
     },
     {
       "id": "barco",
       "name": "El Barco Pirata",
       "kind": "barco",
-      "atM": [
-        -4.0,
-        20.8
-      ],
+      "ll": [9.97417724, -84.84362441],
       "rM": 7.6
     },
     {
       "id": "gusano",
       "name": "El Gusanito",
       "kind": "gusano",
-      "atM": [
-        32.0,
-        21.6
-      ],
+      "ll": [9.97423514, -84.84327417],
       "rM": 6.0
     },
     {
       "id": "argollas",
       "name": "Tiro al Blanco",
       "kind": "argollas",
-      "atM": [
-        63.2,
-        21.6
-      ],
+      "ll": [9.9739167, -84.84327417],
       "rM": 5.2
+    },
+    {
+      "id": "carrusel",
+      "name": "El Carrusel",
+      "kind": "carrusel",
+      "ll": [9.97359826, -84.84327417],
+      "rM": 6.8
     },
     {
       "id": "tombola",
       "name": "La Tómbola",
       "kind": "tombola",
-      "atM": [
-        91.2,
-        21.6
-      ],
+      "ll": [9.9739167, -84.84447085],
       "rM": 4.8
     },
     {
-      "id": "chin_canton",
-      "name": "Arroz Cantonés",
-      "kind": "chinamo",
-      "food": "canton",
-      "atM": [
-        -33.6,
-        5.6
-      ],
-      "rM": 5.6
-    },
-    {
-      "id": "chin_manzanas",
-      "name": "Manzanas Escarchadas",
-      "kind": "chinamo",
-      "food": "manzana",
-      "atM": [
-        0.0,
-        5.6
-      ],
-      "rM": 5.6
-    },
-    {
-      "id": "chin_churros",
-      "name": "Churros Rellenos",
-      "kind": "chinamo",
-      "food": "churro",
-      "atM": [
-        33.6,
-        5.6
-      ],
-      "rM": 5.6
-    },
-    {
-      "id": "dj_urtech",
-      "name": "DJ Urtech",
-      "kind": "dj",
-      "at": [
-        9.97495,
-        -84.84405
-      ],
-      "_at": "ANCLA GEO, no un desplazamiento. El DJ se sienta en la FRONTERA del edificio real que toca (`host`), así que su sitio es una coordenada del mundo y no una posición dentro del campo ferial — al contrario que los juegos, cuyo `atM` es un offset en metros desde el centro del campo. La migración de metros del 2026-08-27 estuvo a punto de convertir esto y dejar al DJ en (4, -34).",
-      "rM": 8.0,
-      "host": "La Takería"
+      "id": "chocones",
+      "name": "Los Chocones",
+      "kind": "chocones",
+      "ll": [9.97382985, -84.84290932],
+      "rM": 32.0,
+      "ang": 1.57079633
     }
   ],
   "beachAccesses": [
@@ -213,6 +348,6 @@
       "wM": 12.0
     }
   ],
-  "_size": "EL TAMAÑO ES EN PÍXELES DE MUNDO y a 2,5 px/m se lee en metros. Estaban de más: un chinamo con r=44 mide 35 m de ancho —un puesto de comida— y el carrusel con r=26 medía 21 m contra los 10–12 de uno real. Ahora la rueda mide ~18 m de diámetro, el carrusel ~14 y un chinamo ~11 de frente, que es un chinamo grande. Y el radio es también el COLISIONADOR (`actors.json -> attraction`), así que achicarlos no sólo se ve mejor: deja pasar entre ellos.",
-  "_layoutNote": "EL TURNO CABE EN LA CALZADA QUE CIERRA, y nada suyo se para en la que queda abierta. Los tres chinamos estaban en `at.y = -74`, que medido sobre el mundo emitido los ponía en y 15868-15880: el CENTRO de la calzada norte del Paseo (15852-15912), la que el diseño promete dejar pasar. Tres puestos de 44 px de radio la tapaban de punta a punta, así que por el campo ferial no se podía pasar por ningún lado — que es lo que se reportó. La calzada sur cerrada mide 28 px (15932-15960) y el malecón sigue hacia el mar, de modo que el reparto es: los juegos grandes sobre la calzada cerrada (`at.y` ~ -24), los chinamos justo al sur de ella sobre el malecón (+14) y los juegos chicos más afuera (+52). Nada al norte de la mediana de palmas."
+  "_size": "LOS TAMAÑOS SE AUTORAN EN METROS con `rM`; el contenido los convierte con la escala del mundo. La rueda mide ~18 m de diámetro, el carrusel ~14 y un chinamo ~11 de frente. El escenario de DJ Urtech tiene 32 m de diámetro de composición y los chocones 64 m de diámetro, con espacio libre alrededor para que los carros se lean en movimiento. El radio también es el COLISIONADOR (`actors.json -> attraction`).",
+  "_layoutNote": "COMIDA A LA IZQUIERDA, ESCENARIO AL CENTRO INFERIOR, JUEGOS A LA DERECHA. El tablado se amplía por igual hacia el mar en todo su frente. Diez chinamos llenan cinco hileras de dos en el extremo oeste: la columna izquierda mira a la izquierda; el puesto superior derecho mira arriba, los centrales miran a la derecha y el inferior derecho mira abajo. DJ Urtech queda en el borde inferior, a la misma distancia de Sillas Voladoras y Pulpo, con 18 NPC de público frente a la tarima. Terror y Martillo quedan al oeste de la entrada y las Sillas Voladoras alineadas con Terror. Al este hay dos columnas alineadas: Barco/Tagada/Pulpo y Gusanito/Argollas/Carrusel. La Tómbola queda a mitad de camino entre Terror y las Sillas Voladoras; la rueda ocupa la esquina superior exterior y los chocones la inferior, con pasos de circulación entre todos los juegos. Nada se para en la calzada: las dos vías del Paseo quedan abiertas."
 }

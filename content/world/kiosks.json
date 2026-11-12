@@ -20,7 +20,8 @@
       "product": "churchill",
       "osm": "kioscos paseo de los turistas",
       "dxM": -30.0,
-      "dyM": 40.0
+      "dyM": 40.0,
+      "streetOnly": true
     },
     {
       "id": "kios_paseo2",
@@ -31,7 +32,8 @@
       "_wasName": "Churchill El Mariachi",
       "_renameWhy": "vendía vigorón y se anunciaba como churchill; no tiene negocio real detrás, así que conserva el personaje y corrige la comida",
       "dxM": 30.0,
-      "dyM": 40.0
+      "dyM": 40.0,
+      "streetOnly": true
     },
     {
       "id": "kios_centro",

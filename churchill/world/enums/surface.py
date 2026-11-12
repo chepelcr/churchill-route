@@ -61,11 +61,11 @@ SurfaceName = StrEnum("SurfaceName", {s.name: s.label for s in Surface})
 #: crawl among people") was to make driving it unpleasant, and the honest
 #: version of "unpleasant" is "not a road". It also stopped being necessary:
 #: the promenade used to be the only way the two Paseo kiosks were reached, so
-#: walling it would have taken two delivery targets off the network, and both
-#: now stand on their own stamped calle auxiliar.
+#: walling it would have taken two delivery targets off the network. Both are
+#: now served from their nearby-street spawn, with no auxiliary road or ring.
 #: Two things had to move with it — the bajadas onto the sand are stamped as
 #: ROAD (drawn in the promenade's own pavers, but a ramp you take a vehicle
-#: down), and the campo ferial is BARRO, so the fairground stays enterable.
+#: down), and the fairground deck is BRIDGE, so it stays enterable.
 DRIVABLE = (Surface.ROAD, Surface.PASEO, Surface.BRIDGE, Surface.BEACH,
             Surface.BOULEVARD, Surface.BARRO, Surface.GRAVEL)
 

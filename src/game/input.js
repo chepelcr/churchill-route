@@ -37,8 +37,8 @@ export function readInput() {
 }
 
 // Touch → axes, run after readInput (max-merges with keyboard/gamepad).
-// Point-to-drive: the camera transform is a uniform scale+translate, so a
-// screen angle IS a world angle — project the car to screen, steer toward
+// Point-to-drive: project the car to screen THROUGH THE CAMERA (it can be
+// rolled — El Cocal is played at 90°), steer toward
 // the finger, throttle by distance (behind-the-car damping keeps U-turns
 // controllable), turbo past the far threshold.
 // THE MODEL IS NOT NEGOTIABLE AND DOES NOT CHANGE: one finger, steer toward it,
@@ -56,8 +56,14 @@ export function applyTouch(cam, p, veh) {
   if (!aim.active) return;
   const zoom = cam.zoom || 5.5;
   const vw = cam.vw || window.innerWidth, vh = cam.vh || window.innerHeight;
-  const sx = (p.x - cam.x) * zoom + vw / 2;
-  const sy = (p.y - cam.y) * zoom + vh / 2;
+  // Dónde está el carro EN PANTALLA: la misma proyección que `worldToScreen`
+  // (render/camera.js), escrita aquí porque el modelo no importa al renderer.
+  // Sin el giro, con la cámara adelantada al carro el punto caía fuera de él a
+  // 90° y torcía tanto el rumbo como la distancia del acelerador.
+  const rc = Math.cos(cam.rot || 0), rs = Math.sin(cam.rot || 0);
+  const ox = p.x - cam.x, oy = p.y - cam.y;
+  const sx = vw / 2 + zoom * (rc * ox - rs * oy);
+  const sy = vh / 2 + zoom * (rs * ox + rc * oy);
   const dx = aim.x - sx, dy = aim.y - sy;
   const d = Math.hypot(dx, dy);
   if (d < THR_DEAD) return;                            // dead zone: coast

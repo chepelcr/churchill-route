@@ -15,6 +15,7 @@
 // its shadow, its scale and its seed from the same three lines as the rest.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { SURFACE } from "../../game/surfaces.js";
+import { state } from "../../game/state.js";
 import { ACERA_PX, ctx, flatPath, hash01 } from "./gfx.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
@@ -48,31 +49,77 @@ export function floraSolar() {
   return { sun: sunVector(), model: EFFECTS.sunShadow };
 }
 
+/**
+ * UN ÁRBOL SE DIBUJA EN ALZADO, Y LO QUE ESTÁ EN ALZADO SE PARA EN LA PANTALLA.
+ *
+ * El tronco sube en -y del MUNDO. Con la cámara derecha eso es «arriba»; en El
+ * Cocal (90°) es «a la derecha», y cada árbol, palmera y poste del nivel salía
+ * ACOSTADO. Se gira de vuelta alrededor de su PIE, que es lo único que toca el
+ * suelo. El sol entra girado al revés para que, deshecho el giro, la sombra
+ * caiga hacia donde cae la de un edificio: el sol es del mundo, no de la cámara.
+ *
+ * Sin giro no hay `save()` ni sol nuevo: el cuadro sale idéntico al de antes.
+ */
+export function standing(g, x, y, paint) {
+  const rot = state.cam.rot || 0;
+  if (!rot) { paint(floraSolar()); return; }
+  const base = floraSolar(), c = Math.cos(rot), s = Math.sin(rot);
+  const sun = { ...base.sun, x: c * base.sun.x - s * base.sun.y, y: s * base.sun.x + c * base.sun.y };
+  g.save(); g.translate(x, y); g.rotate(-rot); g.translate(-x, -y);
+  paint({ ...base, sun });
+  g.restore();
+}
+
+/** NADA ECHA RAÍCES EN UN TABLADO, ni deja su copa encima. El build ya estampa
+ *  la feria antes de plantar; este guard también cubre el preview, que inyecta
+ *  el lote nuevo sobre tiles emitidos con la arboleda vieja. El margen retira
+ *  las palmas del borde cuyas hojas todavía entraban en el campo. */
+export function onFeriaDeck(x, y, margin = 32) {
+  for (const L of W.FERIA || []) {
+    if (x < L.x0 - margin || x > L.x1 + margin || y < L.y0 - margin || y > L.y1 + margin) continue;
+    for (const ring of L.polys || []) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+        const xi = ring[i], yi = ring[i + 1], xj = ring[j], yj = ring[j + 1];
+        if ((yi > y) !== (yj > y)
+          && x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi) inside = !inside;
+        const dx = xj - xi, dy = yj - yi;
+        const q = Math.max(0, Math.min(1, ((x - xi) * dx + (y - yi) * dy) / (dx * dx + dy * dy || 1)));
+        if (Math.hypot(x - xi - q * dx, y - yi - q * dy) <= margin) return true;
+      }
+      if (inside) return true;
+    }
+  }
+  return false;
+}
+
 /** Draw one tree of any species. `tr.k` names it; no `k` is the almendro. */
 function paintTree(tr) {
+  if (onFeriaDeck(tr.x, tr.y)) return;
   const sp = species(tr.k);
-  paintFloraSpecies(ctx, sp, FLORA.forms[sp.form], {
+  standing(ctx, tr.x, tr.y, (solar) => paintFloraSpecies(ctx, sp, FLORA.forms[sp.form], {
     x: tr.x,
     y: tr.y,
     s: tr.s || 1,
     seed: floraSeed(tr.x, tr.y),
-    solar: floraSolar(),
-  });
+    solar,
+  }));
 }
 
 // A palm keeps its clock/instance phase in this placement module; the authored
 // trunk/frond silhouette is executed by the same shared family interpreter.
 function paintPalm(pa, t) {
+  if (onFeriaDeck(pa.x, pa.y)) return;
   const sp = species(pa.k || DEFAULT_PALM);
-  paintFloraSpecies(ctx, sp, FLORA.forms[sp.form], {
+  standing(ctx, pa.x, pa.y, (solar) => paintFloraSpecies(ctx, sp, FLORA.forms[sp.form], {
     x: pa.x,
     y: pa.y,
     s: pa.s || 1,
     seed: floraSeed(pa.x, pa.y),
     tMs: t,
     phase: pa.sway || 0,
-    solar: floraSolar(),
-  });
+    solar,
+  }));
 }
 
 // --------------------------------------------------------------- monte ----

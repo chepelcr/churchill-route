@@ -308,6 +308,14 @@ MANZANA_FIT_MIN_SCALE = float(os.environ.get("MANZANA_FIT_MIN_SCALE", "1.0"))
 #: ver `PLANAR_PX_PER_M` arriba—, que por construcción no puede torcer una recta.
 #: En 1 vuelve el campo, para poder medirlo otra vez sin tocar código.
 DILATION_ON = os.environ.get("DILATION", "0") not in ("0", "off", "false")
+#: LA VÍA DEL TREN VA POR SU LÍNEA ORIGINAL DE OSM. La alineación contra calles
+#: con nombre (`service/railway.py`, `content/world/railway.json`) FABRICABA un
+#: quiebre a la entrada de El Cocal: en ~140 m encadena tres relevos —hombro de
+#: Av. 2 del Farrocarril, hombro de Alberto Echandi, cruda— y la vía, que en OSM
+#: va recta a ~-15°, salía con una S de -49° en (32848, 18719) y corrida hasta
+#: 14,6 m. Apagada se emite `extract_rails` tal cual. El servicio, su registro y
+#: sus pruebas se conservan: `RAIL_ALIGN=1` la enciende para corregirla con calma.
+RAIL_ALIGN_ON = os.environ.get("RAIL_ALIGN", "0") not in ("0", "off", "false")
 #: The rest of the audit list, in metres (`world-units.json` -> `world`).
 W = UNITS["world"]
 POI_NUDGE_PX = px(W["poi"]["nudgeM"])

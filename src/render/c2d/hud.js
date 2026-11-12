@@ -15,6 +15,7 @@ import HUD from "../../assets/hud.json" with { type: "json" };
 import SIM from "../../content/simulation.json" with { type: "json" };
 import { moonPhase, moonlight } from "../../game/daynight.js";
 import { alphaColor, ctxRotation, upright } from "./primitives.js";
+import { screenBearing } from "../camera.js";
 import {
   paintCompassDial, paintGullBlind, paintMinimapPlayer, paintMinimapRim,
   paintNightVignette, paintRain, paintRainSplash,
@@ -51,9 +52,10 @@ function drawPoiTags(view, zoom) {
   const rot = ctxRotation(ctx);
   for (const p of pois) {
     if (p.x < view.x0 || p.x > view.x1 || p.y < view.y0 || p.y > view.y1) continue;
-    const ty = p.y - 8 / zoom;
-    const stood = upright(ctx, p.x, ty, rot);
-    const tx = stood ? 0 : p.x, tty = stood ? 0 : ty;
+    // el rótulo va ENCIMA de su punto en la pantalla: se endereza en el punto
+    // y se sube después, o con la cámara girada queda al lado
+    const stood = upright(ctx, p.x, p.y, rot);
+    const tx = stood ? 0 : p.x, tty = (stood ? 0 : p.y) - 8 / zoom;
     ctx.strokeText(p.name, tx, tty);
     ctx.fillText(p.name, tx, tty);
     if (stood) ctx.restore();
@@ -119,9 +121,9 @@ function drawDebugGrid(view, zoom) {
 }
 
 // Objective compass: pinned at the top-center of the SCREEN (never lost
-// off-view), rotating to point at the target. Screen angle = world angle
-// (the camera transform is uniform scale + translate).
-function drawCompass(vw, vh) {
+// off-view), rotating to point at the target. The needle's angle is the
+// target's bearing ON SCREEN, taken from the camera's own projection.
+function drawCompass(vw, vh, frame) {
   const p = state.p;
   // ON THE ESTERO THE ARROW POINTS AT THE NEXT PAIR OF BUOYS. The crossing used
   // to refuse a compass on principle — the estuary was meant to be read
@@ -140,10 +142,12 @@ function drawCompass(vw, vh) {
   if (!target) return;
   const dx = target.x - p.x, dy = target.y - p.y;
   const d = Math.hypot(dx, dy);
+  // …y el rumbo es el de PANTALLA, sacado de la proyección (`screenBearing`).
+  // Aquí decía `atan2(dy, dx) - camRot()`: el signo al revés, 180° fuera a 90°.
+  const a = frame ? screenBearing(frame, p.x, p.y, target.x, target.y)
+    : Math.atan2(dy, dx) + camRot();
+  if (typeof window !== "undefined") window.__compassAngle = a;   // smoke:rotated
   if (d < C.minDistance) return;
-  // …y el rumbo se pasa a coordenadas de PANTALLA. `atan2` da un ángulo del
-  // mundo, que es lo que hay que apuntar sólo mientras la cámara no gire.
-  const a = Math.atan2(dy, dx) - camRot();
   const cx = vw / 2, cy = C.centreY;
   const mode = cross ? "crossing" : state.carrying ? "carrying" : "idle";
   paintCompassDial(ctx, C, cx, cy, a, mode);
@@ -431,11 +435,11 @@ function miniMuelles(mv, roads) {
 // stay two full passes over all of them — which is the whole reason crossings
 // look clean.
 //
-// It is not just the road polylines. The build also carves a short paved
-// connector from each churchill stand, and from the end of the faro muelle,
+// It is not just the road polylines. The build also carves short paved
+// connectors from most churchill stands, and from the end of the faro muelle,
 // out to the nearest street (`kioskPaths`). Those are stamped drivable but are
-// not roads, so the dial had them missing: every kiosk — the thing you are
-// actually being sent to — looked cut off from the network.
+// not roads, so the dial had them missing. Street-only Paseo stands have no
+// connector: their spawn/pickup point is already on the street.
 // Each ribbon carries a RANK, and the fill pass walks them in rank order. That
 // is what decides who wins a crossing, and it has to be importance — not tile
 // order, and not "whoever is drawn last". A calle de barro painted after the

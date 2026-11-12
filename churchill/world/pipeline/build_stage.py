@@ -79,9 +79,9 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     GRID_COLS, GRID_ROWS = ctx.dims.cols, ctx.dims.rows
     # --- TOWN kiosks: seat each on a NEARBY cuadra FRONTAGE cell (solid land next
     # to a street, never the roadway/acera/median) and carve a short paved
-    # connector + apron to the nearest street. Bounded to a small radius so a
-    # kiosk with no cuadra beside it (e.g. on the Paseo boardwalk) stays put and
-    # just gets the pad+connector instead of teleporting to a far block.
+    # connector to the nearest street. Bounded to a small radius so a kiosk with
+    # no cuadra beside it (e.g. on the Paseo boardwalk) stays put. Street-only
+    # Paseo stands keep that boardwalk intact and use their street spawn instead.
     KIOSK_SNAP_CUAD = 10                       # ≤ this many cuadrículas from anchor
     # How far the paved connector will reach for a street. In CUADRÍCULAS, not
     # px: a frontage cell is against its cuadra's edge, so the asphalt is half a
@@ -141,9 +141,24 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
             continue
         if lm.get("fixed"):
             continue
+        # UN KIOSCO ES DONDE TERMINA SU CALLE, NO UNA ROTONDA. Aquí se estampaba
+        # además un apron (`stamp_pad`, 44 px de radio: un cuadrado de ~100 px de
+        # calzada alrededor del puesto) que NO SE DIBUJA: lo que se ve es la
+        # calle auxiliar llegando al kiosco, y lo que se manejaba era un anillo
+        # invisible a su alrededor, cercado de malecón o de acera. Entrar era
+        # fácil y salir no — había que encontrar a tientas la boca de la calle
+        # desde un cuadro que no se veía. Ahora la calle termina EN el puesto,
+        # con la cabeza redonda que `stamp_polyline` ya le pone al cabo, y lo
+        # manejable es exactamente lo pintado. Los puestos `streetOnly` son la
+        # excepción: se atienden desde la calle próxima y no reciben ningún cabo.
         if lm["id"] in beach_kiosks:
+            ox, oy = lm["x"], lm["y"]
             keep_off_the_sea(lm)
-            stamp_pad(raster, lm["x"], lm["y"], 44)   # apron for the beach stand
+            if (ox, oy) != (lm["x"], lm["y"]) and not lm.get("streetOnly"):
+                # la calle auxiliar se estampó hasta el ancla vieja: se alarga
+                raster.stamp_polyline([ox, oy, lm["x"], lm["y"]], 1.4 * CUAD, CLS_ROAD)
+                kiosk_paths.append({"pts": [round(ox), round(oy), lm["x"], lm["y"]],
+                                    "surface": "paved"})
             continue
         spot = _kiosk_frontage(lm["x"], lm["y"])
         if spot:
@@ -159,7 +174,10 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         # Kiosco Playitas stopped touching its calle — which is the failure the
         # gate then caught.
         tgt = _nearest_cell(lm["x"], lm["y"], CARRIAGEWAY_CLASSES, KIOSK_LINK_R)
-        stamp_pad(raster, lm["x"], lm["y"], 44)            # drivable pocket
+        if not tgt:
+            # sin calle a la vista no hay a dónde llevar un cabo: el apron de
+            # antes, que al menos lo deja pisable desde lo que tenga al lado
+            stamp_pad(raster, lm["x"], lm["y"], 44)
         if tgt:
             raster.stamp_polyline([lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
             kiosk_paths.append({"pts": [round(lm["x"]), round(lm["y"]),
@@ -1431,9 +1449,9 @@ def decorate(ctx, *, sp, roads, blocks, occ, waters, topY, botY, bridge_road, pa
     # same reason everything else in it is: the rides snap onto the FINISHED
     # promenade, and the DJ onto the frontage of a building that only exists
     # once place_structures has run.
-    # The campo ferial is laid out in the PASEO'S frame, so this stage needs a
-    # street index of its own — `decorate` never had one, and reaching for the
-    # name that exists in `place_structures` is how this failed the first time.
+    # The fairground has its own mapped outline; this stage still needs a street
+    # index to resolve the entrance and stage facing. `decorate` never had one,
+    # and reaching for the name in `place_structures` is how this failed before.
     ctx.attractions.extend(place_attractions(
         ctx, lambda lat, lon: ctx.projection.project(to_m(lat, lon))[:2],
         buildings, StreetIndex(roads)))

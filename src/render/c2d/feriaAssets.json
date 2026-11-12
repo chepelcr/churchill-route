@@ -68,13 +68,14 @@
     "fallbackNote": "el gris de `pick()` cuando una paleta viene vacía."
   },
   "$chrome": {
-    "$note": "Lo que NO es de un juego en particular: las guirnaldas que cruzan el campo, la sombra que cada atracción tira y el suelo de tierra del ferial.",
+    "$note": "Lo que NO es de un juego en particular: las guirnaldas entre las hileras de comida y la sombra que cada atracción tira. El tablado y sus luces se describen en materials.json.",
     "banderines": "rgba(240,244,248,0.7)",
     "bannerSeam": "rgba(255,255,255,0.18)",
     "awningShadow": "rgba(0,0,0,0.12)",
     "rideShadow": "rgba(0,0,0,0.16)",
+    "stageShadow": "rgba(0,0,0,0.3)",
     "$speedNote": "LAS VELOCIDADES SON VUELTAS POR SEGUNDO (`t*spin*TAU`), no un número de gusto. Estaban 2–4 veces de más: la tómbola a 0.6 son 36 rpm y el carrusel a 0.18 son 11, cuando un carrusel de verdad hace 4–5 y una rueda 1–1,5. Un turno que gira demasiado rápido no se lee como una feria, se lee como un error. Referencias: rueda 1–1,5 rpm · carrusel 4–5 · sillas voladoras 8–10 · pulpo 6–8 · tagada 8–12.",
-    "_groundNote": "EL SUELO NO SE PINTA. Aquí vivieron `ground`/`groundMottle`/`groundEdge`: primero una losa de barro opaca (el build estampaba `Surface.BARRO` debajo), luego un lavado translúcido con canto pálido que pretendía dejar ver el asfalto y no lo dejaba. El turno CIERRA la calzada sur del Paseo y no estampa nada, así que la calle que está debajo ES el campo ferial y cualquier relleno encima vuelve a pintar el frente del mar de café. Lo que dice que hay feria son los juegos."
+    "_groundNote": "EL SUELO ES UN TABLADO ELEVADO. Su receta vive en `materials.json -> feria.deck`; este catálogo sólo dibuja lo que se para encima."
   },
   "rueda": {
     "name": "La Rueda de Chicago",
@@ -142,6 +143,13 @@
           "#ffd166",
           "#ff8fa3"
         ]
+      },
+      {
+        "shape": "sign",
+        "text": "LA RUEDA",
+        "dyPx": -1.25,
+        "fill": "#0f1720",
+        "bg": "#ffd166"
       }
     ]
   },
@@ -259,6 +267,16 @@
         "fill": "#4a4a55"
       },
       {
+        "shape": "bulbs",
+        "n": 12,
+        "r": 0.9,
+        "radiusPx": 1.4,
+        "palette": [
+          "#fff3c4",
+          "#ffd166"
+        ]
+      },
+      {
         "shape": "sign",
         "text": "MARTILLO",
         "dyPx": -1.5,
@@ -365,6 +383,13 @@
         "palette": [
           "#fff3c4"
         ]
+      },
+      {
+        "shape": "sign",
+        "text": "SILLAS",
+        "dyPx": -1.4,
+        "fill": "#0f1720",
+        "bg": "#ffd166"
       }
     ]
   },
@@ -425,6 +450,13 @@
           "#fff3c4",
           "#ffd166"
         ]
+      },
+      {
+        "shape": "sign",
+        "text": "CARRUSEL",
+        "dyPx": -1.4,
+        "fill": "#0f1720",
+        "bg": "#ffd166"
       }
     ]
   },
@@ -518,6 +550,16 @@
         "fill": "#4a4a55"
       },
       {
+        "shape": "bulbs",
+        "n": 12,
+        "r": 0.9,
+        "radiusPx": 1.4,
+        "palette": [
+          "#fff3c4",
+          "#ffd166"
+        ]
+      },
+      {
         "shape": "sign",
         "text": "EL BARCO",
         "dyPx": -1.4,
@@ -569,6 +611,13 @@
         "palette": [
           "#ffd166"
         ]
+      },
+      {
+        "shape": "sign",
+        "text": "GUSANITO",
+        "dyPx": -1.4,
+        "fill": "#0f1720",
+        "bg": "#8fd6ae"
       }
     ]
   },
@@ -656,6 +705,13 @@
         "palette": [
           "#fff3c4"
         ]
+      },
+      {
+        "shape": "sign",
+        "text": "ARGOLLAS",
+        "dyPx": -1.4,
+        "fill": "#0f1720",
+        "bg": "#ffd166"
       }
     ]
   },
@@ -694,6 +750,16 @@
         "dyPx": -6
       },
       {
+        "shape": "bulbs",
+        "n": 8,
+        "r": 0.9,
+        "radiusPx": 1.4,
+        "palette": [
+          "#fff3c4",
+          "#ffd166"
+        ]
+      },
+      {
         "shape": "sign",
         "text": "TÓMBOLA",
         "dyPx": -1.5,
@@ -704,15 +770,16 @@
   },
   "chinamo": {
     "name": "Chinamo",
+    "facing": "+y",
     "note": [
       "REDRAWN FROM A PHOTOGRAPH of the real thing on the Paseo, and almost",
       "nothing of the first guess survived. It was built as a lone booth with a",
       "red-and-cream striped awning and a hand-painted board. What is actually",
       "there is:",
-      "  * ONE CONTINUOUS ROW. The chinamos share a frame and run off into the",
-      "    distance; they are not separate stalls with gaps. So the three are",
-      "    placed CONTIGUOUSLY in content.py and each draws a module wide enough",
-      "    to butt against its neighbours.",
+      "  * TEN STALLS IN FIVE ROWS OF TWO fill the west side of the fair.",
+      "    The left column faces west. The top and bottom right stalls are",
+      "    horizontal and face outward; the middle right stalls face east.",
+      "    Warm bulbs run only between the rows, never north or south of them.",
       "  * A CORRUGATED ZINC ROOF, dark and ribbed, on a slight pitch — not a",
       "    striped awning and not canvas. (Some rows are blue sponsored tarp",
       "    instead; `roofStyle` switches, and `tarp` is still in the catalog.)",
@@ -801,102 +868,218 @@
         "label": "CHURROS RELLENOS",
         "ink": "#ffd400",
         "accent": "#8a5a35",
-        "goods": [
-          "#e8b45c",
-          "#d8a04a",
-          "#f0c878",
-          "#e8b45c"
-        ],
+        "goods": ["#e8b45c", "#d8a04a", "#f0c878", "#e8b45c"],
         "note": "churros rellenos, dorados, en su bandeja"
+      },
+      "pinto": {
+        "label": "GALLO PINTO",
+        "ink": "#ffd400",
+        "accent": "#7d4b2a",
+        "goods": ["#c98a63", "#e8c07a", "#c9ced4", "#8a5a35"],
+        "note": "gallo pinto, tortilla y café"
+      },
+      "ceviche": {
+        "label": "CEVICHE",
+        "ink": "#7ee0f2",
+        "accent": "#2f6fc0",
+        "goods": ["#eef1f4", "#6fbf99", "#f08a5d", "#c9ced4"],
+        "note": "ceviche frío con culantro y limón"
+      },
+      "algodon": {
+        "label": "ALGODÓN DE AZÚCAR",
+        "ink": "#ff8fa3",
+        "accent": "#8b5fb0",
+        "goods": ["#ff8fa3", "#7ee0f2", "#f3c969", "#c08ae0"],
+        "note": "algodones de colores en sus palitos"
+      },
+      "granizado": {
+        "label": "GRANIZADOS",
+        "ink": "#fff3c4",
+        "accent": "#5fb0d6",
+        "goods": ["#7ee0f2", "#ff8fa3", "#f6e7c8", "#5fb0d6"],
+        "note": "granizados de colores con leche condensada"
+      },
+      "vigoron": {
+        "label": "VIGORÓN",
+        "ink": "#a8ff60",
+        "accent": "#6fbf99",
+        "goods": ["#6fbf99", "#e8c07a", "#e0483f", "#f6e7c8"],
+        "note": "vigorón con repollo, chicharrón y yuca"
+      },
+      "helado": {
+        "label": "HELADOS",
+        "ink": "#fff3c4",
+        "accent": "#c08ae0",
+        "goods": ["#f6e7c8", "#ff8fa3", "#c08ae0", "#7ee0f2"],
+        "note": "helados de vainilla, fresa y colores"
+      },
+      "mango": {
+        "label": "MANGO VERDE",
+        "ink": "#a8ff60",
+        "accent": "#e0483f",
+        "goods": ["#6fbf99", "#a8ff60", "#e0483f", "#f3c969"],
+        "note": "mango verde con sal, limón y chile"
       }
     }
   },
   "dj": {
     "name": "DJ Urtech",
     "facing": "+y",
-    "facingNote": "HACIA DÓNDE MIRA ESTE ARTE EN SU PROPIO MARCO. La tarima se dibuja mirando a +y (el telón arriba, la consola abajo), pero el mundo resuelve el rumbo como la NORMAL DE LA CALLE que da al mar, que es un ángulo medido desde +x. Rotar el arte por ese ángulo sin más le mete un cuarto de vuelta: el DJ salió tocando de cara al oeste, calle abajo, en vez de a la playa. El arte declara su eje y el intérprete lo compensa — lo contrario sería escribir el cuarto de vuelta dentro de la física o dentro del build, donde nadie lo encontraría.",
-    "note": "DJ Urtech en el malecón, DE CARA A LA PLAYA. No es un juego: una tarima, dos tornamesas, dos bocinas y un hombre trabajando. El mundo le resuelve el rumbo desde la normal de la calle que da al mar, así que la tarima se dibuja mirando hacia +y en su propio marco y el `ang` la orienta. El sonido es procedural (sfx.dj) y de aquí sale.",
+    "facingNote": "HACIA DÓNDE MIRA ESTE ARTE EN SU PROPIO MARCO. El escenario se dibuja mirando a +y (telón y dosel atrás, consola y público delante). El mundo emite el rumbo HACIA LA CALLE; el intérprete compensa el eje del arte con `facing` en vez de esconder un cuarto de vuelta en el build.",
+    "note": "DJ URTECH, UN ESCENARIO COMPLETO en el CENTRO INFERIOR del turno y DE CARA A LA CALLE: plataforma, telón, dosel, truss, luces, dos torres de bocinas, consola y DJ en el centro. El tamaño viene de `content/world/attractions.json` (`rM: 16`) y el público son 18 NPC reales que `spawns.js` dispone frente a la tarima. El sonido procedural sigue siendo `sfx.dj`.",
+    "stage": {
+      "heightM": 1.8,
+      "x": -1.0,
+      "y": -0.62,
+      "w": 2.0,
+      "h": 1.4
+    },
     "parts": [
       {
-        "_": "EL TELÓN, a espaldas del DJ — va primero porque todo lo demás va delante",
+        "_": "la estructura y el canto de la plataforma",
         "shape": "box",
-        "x": -0.85,
-        "y": -0.78,
-        "w": 1.7,
+        "x": -1.0,
+        "y": -0.62,
+        "w": 2.0,
+        "h": 1.4,
+        "fill": "#463225",
+        "roundPx": 5
+      },
+      {
+        "_": "el piso del escenario",
+        "shape": "box",
+        "x": -0.96,
+        "y": -0.66,
+        "w": 1.92,
+        "h": 1.3,
+        "fill": "#9c7650",
+        "roundPx": 4
+      },
+      {
+        "_": "las tablas del piso",
+        "shape": "box",
+        "x": -0.96,
+        "y": -0.28,
+        "w": 1.92,
+        "h": 0.045,
+        "fill": "#c39a68"
+      },
+      {
+        "_": "el telón central, a espaldas del DJ",
+        "shape": "box",
+        "x": -0.82,
+        "y": -0.58,
+        "w": 1.64,
         "h": 0.34,
-        "fill": "#2a2233",
+        "fill": "#291d38",
         "roundPx": 2
       },
       {
-        "_": "la tarima: entablado de madera, claro para que lo negro encima se lea",
+        "_": "los dos montantes del truss",
         "shape": "box",
-        "x": -0.95,
-        "y": -0.5,
-        "w": 1.9,
-        "h": 1.2,
-        "fill": "#8a6f4e",
+        "x": -0.98,
+        "y": -0.72,
+        "w": 0.07,
+        "h": 1.38,
+        "fill": "#a7a4b2"
+      },
+      {
+        "shape": "box",
+        "x": 0.91,
+        "y": -0.72,
+        "w": 0.07,
+        "h": 1.38,
+        "fill": "#a7a4b2"
+      },
+      {
+        "_": "el dintel del truss",
+        "shape": "box",
+        "x": -0.98,
+        "y": -0.72,
+        "w": 1.96,
+        "h": 0.08,
+        "fill": "#c7c3cf"
+      },
+      {
+        "_": "el dosel, más ancho que la tarima",
+        "shape": "box",
+        "x": -1.04,
+        "y": -0.88,
+        "w": 2.08,
+        "h": 0.18,
+        "fill": "#7b3fa0",
         "roundPx": 3
       },
       {
-        "_": "las tablas",
-        "shape": "box",
-        "x": -0.95,
-        "y": -0.5,
-        "w": 1.9,
-        "h": 0.06,
-        "fill": "#9c8059"
+        "_": "las luces recorren el perímetro del escenario",
+        "shape": "bulbs",
+        "n": 24,
+        "rect": {
+          "w": 1.9,
+          "h": 1.25
+        },
+        "radiusPx": 1.8,
+        "palette": [
+          "#fff3c4",
+          "#ff5d73",
+          "#7ee0f2",
+          "#c08ae0"
+        ]
       },
       {
-        "_": "el canto en sombra — lo que la levanta del malecón",
-        "shape": "box",
-        "x": -0.95,
-        "y": 0.58,
-        "w": 1.9,
-        "h": 0.16,
-        "fill": "#5e4a33"
-      },
-      {
+        "_": "dos torres de bocinas, en las esquinas delanteras",
         "shape": "speakers",
-        "offset": 0.78,
-        "wPx": 9,
-        "hPx": 17,
+        "offset": 0.8,
+        "dy": 0.26,
+        "wPx": 18,
+        "hPx": 36,
         "fill": "#141019",
-        "cone": "#6a5f80",
+        "cone": "#8b7ca7",
         "pump": {
           "amp": 0.14,
           "speed": 2.0
         }
       },
       {
-        "_": "la consola",
+        "_": "la consola, frente al DJ y en el eje central",
         "shape": "box",
-        "x": -0.42,
+        "x": -0.4,
         "y": -0.02,
-        "w": 0.84,
-        "h": 0.4,
+        "w": 0.8,
+        "h": 0.38,
         "fill": "#241d2e",
-        "roundPx": 2
+        "roundPx": 3
       },
       {
         "_": "la cara iluminada de la consola",
         "shape": "box",
         "x": -0.34,
-        "y": 0.06,
+        "y": 0.07,
         "w": 0.68,
-        "h": 0.14,
+        "h": 0.13,
         "fill": "#f4d77a"
       },
       {
-        "_": "el DJ, entre la consola y el telón",
+        "_": "el cuerpo del DJ, detrás de la consola",
+        "shape": "box",
+        "x": -0.12,
+        "y": -0.34,
+        "w": 0.24,
+        "h": 0.22,
+        "fill": "#5fb0d6",
+        "roundPx": 3
+      },
+      {
+        "_": "la cabeza del DJ, hacia la consola y el público",
         "shape": "disc",
-        "r": 0.15,
+        "r": 0.13,
         "fill": "#f1c8a4",
-        "dyPx": -14
+        "dyPx": -5
       },
       {
         "shape": "sign",
         "text": "DJ URTECH",
-        "dyPx": -1.5,
+        "dyPx": -0.77,
         "fill": "#fff",
         "bg": "#7b3fa0"
       }

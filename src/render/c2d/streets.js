@@ -9,7 +9,7 @@ import { PX_PER_M } from "../../domain/units.js";
 import { t } from "../../i18n/index.js";
 import { evalOn } from "../vehicleShapes.js";
 import { dashPath, roadPath } from "./cache.js";
-import { nearestOnPoly } from "./flora.js";
+import { nearestOnPoly, onFeriaDeck } from "./flora.js";
 import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, parcelFrame, textureScale, upright } from "./gfx.js";
 import { textureFor, overlayTexture } from "./materials.js";
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
@@ -724,6 +724,7 @@ function drawSigns(view) {
   if (!arr || !arr.length) return;
   for (const s of arr) {
     if (s.x < view.x0 - 20 || s.x > view.x1 + 20 || s.y < view.y0 - 20 || s.y > view.y1 + 20) continue;
+    if (s.kind === "banca" && onFeriaDeck(s.x, s.y, 0)) continue;
     drawSign(s);
   }
 }

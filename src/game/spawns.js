@@ -644,6 +644,31 @@ function maintainStadiumPeds() {
   }
 }
 
+// EL PÚBLICO DEL DJ. Son peatones reales, no figuras dentro del asset: dos
+// hileras en arco frente a la tarima, todos mirando al centro y sin vagar por
+// encima del escenario. El tamaño del arco sale del radio de la tarima.
+function maintainFeriaAudience() {
+  for (const A of W.ATTRACTIONS || []) {
+    const want = A.kind === "dj" ? (A.audience || 0) : 0;
+    if (!want || Math.hypot(A.x - _cam.x, A.y - _cam.y) > SPAWN_R + 400) continue;
+    let have = 0;
+    for (const pe of pedestrians) if (pe.fairAudience === A.id) have++;
+    const slots = Math.ceil(want / 2);
+    for (let i = have; i < want; i++) {
+      const row = i % 2, slot = Math.floor(i / 2);
+      const spread = slots > 1 ? -1.08 + 2.16 * slot / (slots - 1) : 0;
+      const a = (A.ang || 0) + spread;
+      const d = A.r * (1.12 + row * 0.34);
+      pedestrians.push({
+        x: A.x + Math.cos(a) * d, y: A.y + Math.sin(a) * d,
+        ang: a + Math.PI, v: 0, hue: (i * 47 + Math.round(A.x)) % 360,
+        ph: i * 0.73, kind: "fan", fairAudience: A.id,
+        stationary: true, persistent: true,
+      });
+    }
+  }
+}
+
 // Balneario Municipal: a sea-water inlet. Swimmers (kind "swimmer") bob inside
 // its bbox and a leisure boat drifts back and forth — both CONTAINED, another
 // NPC type distinct from city walkers and stadium fans.
@@ -812,6 +837,7 @@ export function maintainStreaming() {
   maintainStadiumPeds();
   maintainBalneario();
   maintainPierFishers();
+  maintainFeriaAudience();
   maintainSurfaceCrowds();
   maintainBeachGames();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);

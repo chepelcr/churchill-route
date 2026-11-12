@@ -189,7 +189,8 @@ function openReachablePoint(x, y) {
 export function nearestKiosk(p) {
   let best = null, bd = Infinity;
   for (const lm of activeKiosks()) {
-    const d = Math.hypot(p.x - lm.x, p.y - lm.y);
+    const access = lm.streetOnly && lm.spawn ? { x: lm.spawn[0], y: lm.spawn[1] } : lm;
+    const d = Math.hypot(p.x - access.x, p.y - access.y);
     if (d < bd) { bd = d; best = lm; }
   }
   return { lm: best, d: bd };
@@ -253,7 +254,7 @@ export function pickUpOrder(kioskLm) {
   };
   state.pendingOrder = null;
   state.storyTip = t("tip.deliverTo", { name: state.carrying.customer.name });
-  pushFloat(kioskLm.x, kioskLm.y - 24,
+  pushFloat(kioskLm.x, kioskLm.y, 24,
             t("float.pickup", { product: productOf(product).short }), "#fff");
   sfx.play("pickup");
   analytics.track("pickup", { kiosk_id: kioskLm.id, product, mode: state.mode });
@@ -273,8 +274,8 @@ export function deliverOrder() {
   const comboUp = meltPct < 0.4;
   state.combo = Math.min(8, state.combo + (comboUp ? 1 : 0));
   state.comboTimer = 7;
-  pushFloat(state.p.x, state.p.y - 24, `+${total}`, meltPct < 0.25 ? "#ffe06b" : "#fff");
-  if (meltPct < 0.25) pushFloat(state.p.x, state.p.y - 44, t("float.perfect"), "#ff3d80");
+  pushFloat(state.p.x, state.p.y, 24, `+${total}`, meltPct < 0.25 ? "#ffe06b" : "#fff");
+  if (meltPct < 0.25) pushFloat(state.p.x, state.p.y, 44, t("float.perfect"), "#ff3d80");
   // Churchill coins: the run's spending money (tutorial runs don't pay)
   if (state.mode !== "tutorial") {
     const earned = COINS_PER_DELIVERY + (meltPct < 0.25 ? COINS_PERFECT_BONUS : 0);
@@ -282,11 +283,11 @@ export function deliverOrder() {
     state.runCoins = (state.runCoins || 0) + earned;
     // ₡ (colón) instead of the old ⛁ glyph — U+26C1 has no glyph on many
     // Android/WebView fonts, while the colón sign ships everywhere we run
-    pushFloat(state.p.x + 20, state.p.y - 34, `+₡${earned}`, "#f3c969");
+    pushFloat(state.p.x + 20, state.p.y, 34, `+₡${earned}`, "#f3c969");
   }
   sfx.play(meltPct < 0.25 ? "perfect" : "delivery");
   if (comboUp && state.combo > 1) sfx.play("combo", state.combo);
-  pushFloat(c.customer.x, c.customer.y - 22,
+  pushFloat(c.customer.x, c.customer.y, 22,
             customerLine(c.customer, c.product).slice(0, 26), "#fff");
   // Per-business exposure: which named customer/district got this delivery
   // (the stat sponsored spots are sold on).
@@ -325,7 +326,7 @@ export function dropOrder() {
   // mariscada es la misma mentira que la barra de hielo: la copia va por el
   // MODELO de deterioro, que es lo que el jugador acaba de vivir.
   const spoil = carriedProduct().spoil || "melt";
-  pushFloat(state.p.x, state.p.y - 18, t(`float.spoiled.${spoil}`), "#ff3d80");
+  pushFloat(state.p.x, state.p.y, 18, t(`float.spoiled.${spoil}`), "#ff3d80");
   state.carrying = null;
   state.combo = 1;
   state.storyTip = t(`tip.spoiled.${spoil}`);

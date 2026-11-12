@@ -191,8 +191,8 @@ export function update(dt) {
   // Easter egg firing. The flags are one-shot, cleared as they are consumed.
   for (const f of [aboard]) {
     if (!f) continue;
-    if (f.justSailed) { f.justSailed = false; pushFloat(p.x, p.y - 50, "⛴️ " + f.name.toUpperCase(), "#9fd7ef"); }
-    if (f.justHome) { f.justHome = false; pushFloat(p.x, p.y - 50, "⚓ PUNTARENAS", "#9fd7ef"); }
+    if (f.justSailed) { f.justSailed = false; pushFloat(p.x, p.y, 50, "⛴️ " + f.name.toUpperCase(), "#9fd7ef"); }
+    if (f.justHome) { f.justHome = false; pushFloat(p.x, p.y, 50, "⚓ PUNTARENAS", "#9fd7ef"); }
   }
   updateDayCycle(dt);          // the sky, when the mode asked for a clock
   updateTide(dt);              // …and the water under it, always
@@ -264,9 +264,9 @@ export function update(dt) {
     // at 0.55 — "you crawl among people" — which was an attempt to say "this is
     // not really for you" in the only vocabulary the surface table had. The
     // honest version is that a promenade is somewhere people walk. The two
-    // Paseo kiosks standing on it are reached by their own stamped calle
-    // auxiliar, the bajadas onto the sand are stamped ROAD, and the campo
-    // ferial is packed earth, so nothing that has to be reachable went with it.
+    // Paseo kiosks standing on it are served from their nearby-street spawn,
+    // the bajadas onto the sand are stamped ROAD, and the campo ferial is a
+    // BRIDGE deck, so nothing that has to be reachable went with it.
     return c === SURFACE.LAND || c === SURFACE.ACERA || c === SURFACE.WATER ||
            c === SURFACE.MALECON;
   };
@@ -827,9 +827,16 @@ export function update(dt) {
   const ty = p.y + Math.sin(p.a) * look;
   cam.x += (tx - cam.x) * Math.min(1, dt * 4);
   cam.y += (ty - cam.y) * Math.min(1, dt * 4);
+  // El tope es de PANTALLA: se acota en el marco de la cámara y se devuelve al
+  // mundo. En ejes de mundo, con la cámara a 90° el medio ancho de la pantalla
+  // limitaba el desplazamiento VERTICAL y el carro se iba casi al borde.
   const maxOx = viewHw * 0.35, maxOy = viewHh * 0.35;
-  cam.x = Math.max(p.x - maxOx, Math.min(p.x + maxOx, cam.x));
-  cam.y = Math.max(p.y - maxOy, Math.min(p.y + maxOy, cam.y));
+  const rc = Math.cos(cam.rot || 0), rs = Math.sin(cam.rot || 0);
+  const ox = cam.x - p.x, oy = cam.y - p.y;
+  const cxs = Math.max(-maxOx, Math.min(maxOx, rc * ox - rs * oy));
+  const cys = Math.max(-maxOy, Math.min(maxOy, rs * ox + rc * oy));
+  cam.x = p.x + rc * cxs + rs * cys;
+  cam.y = p.y - rs * cxs + rc * cys;
   cam.shake = Math.max(0, cam.shake - dt * 22);
 
   // Stream tiles around the camera and keep camera-local ambient life topped up.
@@ -956,7 +963,7 @@ function maintainArcadeCoins(dt) {
       const val = c.v || COINS_PER_PICKUP;
       economy.addCoins(val);
       state.runCoins = (state.runCoins || 0) + val;
-      pushFloat(c.x, c.y - 12, `+₡${val}`, c.silver ? "#dfe6ef" : "#f3c969");
+      pushFloat(c.x, c.y, 12, `+₡${val}`, c.silver ? "#dfe6ef" : "#f3c969");
       sfx.play("coin");
       if (c.editorSpawnId) state.editorCoinCooldown[c.editorSpawnId] = c.respawn || 5;
       arr.splice(i, 1); continue;
@@ -1062,7 +1069,7 @@ export function advanceEntities(dt, withPlayer = true) {
   const p = state.p;
 
   // Floats / particles
-  for (const f of state.floats) { f.t += dt; f.y -= 16 * dt; }
+  for (const f of state.floats) { f.t += dt; f.rise += 16 * dt; }
   state.floats = state.floats.filter(f => f.t < f.ttl);
   for (const pt of state.particles) { pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.life -= dt; }
   state.particles = state.particles.filter(pt => pt.life > 0);
@@ -1179,7 +1186,7 @@ export function advanceEntities(dt, withPlayer = true) {
       const coins = 40;
       economy.addCoins(coins);
       state.runCoins = (state.runCoins || 0) + coins;
-      pushFloat(p.x, p.y - 40, `+${coins} 🐟`, "#9fd7ef");
+      pushFloat(p.x, p.y, 40, `+${coins} 🐟`, "#9fd7ef");
     }
   }
 }

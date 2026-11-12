@@ -97,4 +97,18 @@ export function worldToScreen(frame, worldX, worldY) {
   ];
 }
 
+/**
+ * EL RUMBO EN PANTALLA de un punto del mundo visto desde otro, en radianes.
+ *
+ * Sale de la PROYECCIÓN y no de `atan2(mundo) ± rot`: el signo de ese término
+ * ya se escribió al revés una vez (la brújula de entrega restaba el giro y en
+ * El Cocal, a 90°, apuntaba 180° fuera del cliente). Proyectando los dos puntos
+ * no hay signo que recordar.
+ */
+export function screenBearing(frame, fromX, fromY, toX, toY) {
+  const [ax, ay] = worldToScreen(frame, fromX, fromY);
+  const [bx, by] = worldToScreen(frame, toX, toY);
+  return Math.atan2(by - ay, bx - ax);
+}
+
 export { VIEW_WIDTH_PX };

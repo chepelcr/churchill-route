@@ -289,7 +289,9 @@ export class PixiScene {
     this.playerShadow.position.set(p.x + 4 + lift * 0.6, p.y + 6 + lift);
     this.playerShadow.rotation = p.a;
     this.playerShadow.alpha = Math.max(0.1, 1 - lift * 0.06);
-    this.playerSprite.position.set(p.x, p.y - lift);
+    // «arriba» es de la PANTALLA: con la cámara girada no es el norte del mundo
+    const rr = state.cam.rot || 0;
+    this.playerSprite.position.set(p.x - Math.sin(rr) * lift, p.y - Math.cos(rr) * lift);
     this.playerSprite.rotation = p.a;
   }
 

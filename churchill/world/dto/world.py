@@ -105,8 +105,10 @@ class Landmark(WorldModel):
     h: int | None = None
     # NOT a flag: the build-authored player start [x, y], snapped to the
     # nearest drivable street. The kiosk's own x/y is its beach-facing icon, and
-    # spawning there dropped the car on the sand.
+    # spawning there dropped the car on the sand. For `streetOnly` kiosks this
+    # is also the pickup point; no auxiliary road reaches the stand itself.
     spawn: list[int] | None = Field(default=None, min_length=2, max_length=2)
+    streetOnly: bool = False
     footprint: FlatPoly | None = Field(default=None, description="drawn shape (a pitch)")
     outline: FlatPoly | None = Field(default=None, description="whole drivable cuadra")
 
@@ -315,11 +317,11 @@ class MaleconBand(WorldModel):
 
 
 class Attraction(WorldModel):
-    """A ride on the malecón — or the DJ outside La Takería.
+    """A ride, food stall or the DJ stage on the fairground deck.
 
-    `kind` drives a `switch` in src/render/c2d/attractions.js, and an unknown
-    one draws nothing rather than a generic pin: a feria is art, not a marker.
-    Nothing here is stamped into the raster, so `r` is a DRAWN radius only.
+    `kind` selects the art in src/render/c2d/attractions.js. Nothing is stamped
+    into the raster; the client uses `r` for both the drawing and its collider.
+    A DJ stage may also request a stationary `audience` of real NPCs.
     """
     id: str
     name: str
@@ -327,6 +329,8 @@ class Attraction(WorldModel):
     x: int
     y: int
     r: int = 24
+    ang: float | None = None
+    audience: int = 0
 
 
 class KioskPath(WorldModel):

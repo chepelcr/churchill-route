@@ -439,16 +439,17 @@ export const FERIA_SHAPES = {
   },
 
   speakers(g, p, r, t) {
-    const off = (p.offset || 0.7) * r, w = p.wPx || 7, h = p.hPx || 12;
+    const off = (p.offset || 0.7) * r, dy = (p.dy || 0) * r;
+    const w = p.wPx || 7, h = p.hPx || 12;
     const pump = p.pump ? 1 + Math.sin(t * (p.pump.speed || 2) * TAU) * p.pump.amp : 1;
     for (const side of [-1, 1]) {
       g.fillStyle = p.fill || D.speaker;
-      roundRect(g, side * off - w / 2, -h / 2, w, h, 1.5, true, false);
+      roundRect(g, side * off - w / 2, dy - h / 2, w, h, 1.5, true, false);
       g.fillStyle = p.cone || D.speakerCone;
       g.beginPath();
-      g.arc(side * off, -h * 0.18, w * 0.3 * pump, 0, TAU); g.fill();
+      g.arc(side * off, dy - h * 0.24, w * 0.22 * pump, 0, TAU); g.fill();
       g.beginPath();
-      g.arc(side * off, h * 0.24, w * 0.22 * pump, 0, TAU); g.fill();
+      g.arc(side * off, dy + h * 0.18, w * 0.3 * pump, 0, TAU); g.fill();
     }
   },
 

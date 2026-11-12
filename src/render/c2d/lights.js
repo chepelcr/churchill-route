@@ -46,12 +46,17 @@ const isNight = lightsOn;
  * is not a design, it is a white screen.
  */
 export function paintLight(type, x, y, opts = {}) {
+  // Un poste está en ALZADO: con la cámara girada (El Cocal) se para en la
+  // pantalla girando alrededor de su pie, igual que un árbol (`standing`).
+  const rot = state.cam.rot || 0;
+  if (rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(-rot); ctx.translate(-x, -y); }
   paintLuminaire(ctx, LIGHTS, type, x, y, {
     ...opts, night: opts.night ?? isNight(),
   }, (parts, px, py, spec) => paintAt(parts, px, py, {
     g: ctx, pxPerM: PX_PER_M,
     color: (color) => (color === "$core" ? spec.core : color),
   }));
+  if (rot) ctx.restore();
 }
 
 /** An authored point light from the editor (`W.LIGHTS`). */

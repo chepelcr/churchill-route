@@ -56,6 +56,27 @@ function actorFrame(id, entity = {}, timeMs = lastT, extra = {}) {
   };
 }
 
+/**
+ * UNA FIGURA EN ALZADO SE PARA EN LA PANTALLA. La gente se dibuja de pie —la
+ * cabeza en -y del MUNDO— y con la cámara girada (El Cocal, 90°) peatones,
+ * vendedores y el cliente que espera salían ACOSTADOS. Se gira de vuelta
+ * alrededor de sus pies, y el offset solar entra girado al revés para que la
+ * sombra siga cayendo hacia donde cae la de un edificio. Lo visto desde arriba
+ * (carros, lanchas, gaviotas, cardúmenes) NO pasa por aquí.
+ */
+function paintStanding(id, frame) {
+  const rot = state.cam.rot || 0;
+  if (!rot) return paintActor(ctx, ACTORS, id, frame);
+  const c = Math.cos(rot), s = Math.sin(rot);
+  const { shadowDx: dx, shadowDy: dy } = frame;
+  ctx.save();
+  ctx.translate(frame.x, frame.y); ctx.rotate(-rot); ctx.translate(-frame.x, -frame.y);
+  const out = paintActor(ctx, ACTORS, id,
+    { ...frame, shadowDx: c * dx - s * dy, shadowDy: s * dx + c * dy });
+  ctx.restore();
+  return out;
+}
+
 function paintHull(g, L, H, topsides = ACTORS.hull.topsides) {
   paintActorForm(g, ACTORS, ACTORS.hull.form, { L, H, topsides });
 }
@@ -73,7 +94,7 @@ function drawArcadeCoin(c, t) {
 function drawPed(pe) {
   const art = pe.editorNpc ? (pe.drawStyle || "person") : npcArt(pe.kind || "walker");
   const id = ACTORS.artMap[art] || ACTORS.artMap.walker;
-  paintActor(ctx, ACTORS, id, actorFrame(id, pe));
+  paintStanding(id, actorFrame(id, pe));
 }
 
 // EL PLAYERO. A person on the sand is a person in a swimsuit, and from above
@@ -81,7 +102,7 @@ function drawPed(pe) {
 // is not walking. The sunbather is drawn LYING DOWN — a standing figure that
 // happens not to move reads as somebody waiting for a bus on the beach.
 function drawPlayero(pe) {
-  paintActor(ctx, ACTORS, "playero", actorFrame("playero", pe));
+  paintStanding("playero", actorFrame("playero", pe));
 }
 
 // EL JUGADOR. Leaning into the run, arms out for balance, facing the ball —
@@ -101,7 +122,7 @@ function drawBeachBall(G) {
 
 function drawEditorNpc(pe, style = pe.drawStyle) {
   const id = ACTORS.artMap[style] || ACTORS.artMap.person;
-  paintActor(ctx, ACTORS, id, actorFrame(id, pe));
+  paintStanding(id, actorFrame(id, pe));
 }
 // Somebody at a parada. The whole point of the type is the WAITING: standing
 // still with a bag, looking down the street the bus comes from, which is what
@@ -110,7 +131,7 @@ function drawEditorNpc(pe, style = pe.drawStyle) {
 // are about to become, so the handover to `advancePed` has no visible seam.
 // This branch is TEMPORARY per person: `joinTheSidewalk` drops the kind.
 function drawPassenger(pe) {
-  paintActor(ctx, ACTORS, "passenger", actorFrame("passenger", pe));
+  paintStanding("passenger", actorFrame("passenger", pe));
 }
 // EL PESCADOR. He is the same person as everyone else in the puerto — the same
 // narrow body in his own `hue`, the same 2.2 px head, the same soft shadow —
@@ -126,7 +147,7 @@ function drawPassenger(pe) {
 // draws him, and world coordinates when he is an authored NPC; the drawing is
 // the same either way, and the caller owns the transform.
 function drawFisher(pe) {
-  paintActor(ctx, ACTORS, "fisher", actorFrame("fisher", pe));
+  paintStanding("fisher", actorFrame("fisher", pe));
 }
 // EL MUELLERO. People used to fish off the Muelle de Cruceros and do not any
 // more, and this is that, kept — drive to the end of the muelle and they are
@@ -139,7 +160,7 @@ function drawFisher(pe) {
 // edge he picked, so a muelle that runs north-south and one that runs at 45°
 // both get people facing the water instead of facing screen-right.
 function drawMuellero(pe) {
-  paintActor(ctx, ACTORS, "muellero", actorFrame("muellero", pe));
+  paintStanding("muellero", actorFrame("muellero", pe));
 }
 
 // A swimmer: a head just above the water with a ripple wake + stroking arms.
@@ -230,10 +251,19 @@ function drawGull(g) {
  *  `lift` es lo que hace legible el estorbo ANTES de llegar: la bandada se alza
  *  cuando el carro se acerca, así que se ve venir y se puede rodear. Una nube
  *  que sólo reacciona al chocarla sería un castigo, no un obstáculo. */
+/** «ARRIBA DE LA PANTALLA», en el mundo: lo que se levanta del suelo sube en
+ *  la pantalla, no hacia el norte. Con la cámara derecha es (0, -k), lo de
+ *  siempre; en El Cocal (90°) el norte del mundo es la derecha de la pantalla
+ *  y el carro «subía» de costado al pisar la avenida de barro. */
+function screenUp(k) {
+  const r = state.cam.rot || 0;
+  return r ? [-Math.sin(r) * k, -Math.cos(r) * k] : [0, -k];
+}
+
 function drawGullFlock(f) {
   for (const b of f.birds) {
-    const lift = b.lift * 9;
-    drawGull({ x: f.x + b.dx, y: f.y + b.dy - lift,
+    const [ux, uy] = screenUp(b.lift * 9);
+    drawGull({ x: f.x + b.dx + ux, y: f.y + b.dy + uy,
                vx: f.vx || 1, vy: f.vy, ph: b.ph });
   }
 }
@@ -287,7 +317,7 @@ function drawSchool(sc, t) {
 
 // Street vendor cart: box cart with a striped parasol
 function drawVendor(vn, t) {
-  paintActor(ctx, ACTORS, "vendor", actorFrame("vendor", vn, t));
+  paintStanding("vendor", actorFrame("vendor", vn, t));
 }
 
 // Stray dog / cat ambling around the streets
@@ -301,7 +331,7 @@ function drawAnimal(an) {
 function drawTargetCustomer(t) {
   if (!state.carrying) return;
   const c = state.carrying.customer;
-  paintActor(ctx, ACTORS, "targetCustomer", actorFrame("targetCustomer", c, t));
+  paintStanding("targetCustomer", actorFrame("targetCustomer", c, t));
 }
 
 // THE VEHICLE SPRITE IS AN INTERPRETER NOW.
@@ -482,7 +512,7 @@ function drawPlayer(p, veh, { body = true } = {}) {
     if (effect.layer === "under") EFFECT_PAINTERS[id]?.paint?.(p, veh, cfg);
   }
   if (!body) { ctx.restore(); return; }
-  ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
+  { const [ux, uy] = screenUp(lift); ctx.translate(p.x + ux, p.y + uy); } ctx.rotate(p.a);
   for (const { id, effect, cfg } of effects) {
     if (effect.layer === "transform") EFFECT_PAINTERS[id]?.transform?.(p, veh, cfg);
   }
@@ -497,7 +527,7 @@ function drawPlayerCarrying(p, veh) {
   if (!state.carrying) return;
   const lift = (state.elev || 0) * 7;
   ctx.save();
-  ctx.translate(p.x, p.y - lift); ctx.rotate(p.a);
+  { const [ux, uy] = screenUp(lift); ctx.translate(p.x + ux, p.y + uy); } ctx.rotate(p.a);
   drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();
 }

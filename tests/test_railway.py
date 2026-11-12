@@ -249,5 +249,27 @@ class ChordVersusBandTests(unittest.TestCase):
         self.assertGreater(reports[0]["pairChordErrors"], 0)
 
 
+class AlignmentSwitchTests(unittest.TestCase):
+    """LA VÍA VA POR SU LÍNEA DE OSM mientras la alineación se corrige."""
+
+    def test_it_is_off_unless_asked_for(self):
+        import os
+        from churchill.world import config
+        if "RAIL_ALIGN" not in os.environ:
+            self.assertFalse(config.RAIL_ALIGN_ON,
+                             "apagada por defecto: encendida fabrica el quiebre de El Cocal")
+
+    def test_the_gate_accepts_an_unaligned_world_only_when_told(self):
+        self.assertEqual(alignment_failures([], require_alignment=False), [])
+        self.assertEqual(alignment_failures([]),
+                         ["railway registry matched no rail samples"])
+
+    def test_the_stage_and_the_gate_read_the_same_switch(self):
+        import pathlib
+        root = pathlib.Path(__file__).resolve().parent.parent / "churchill/world/pipeline"
+        self.assertIn("if RAIL_ALIGN_ON:", (root / "extract.py").read_text())
+        self.assertIn("require_alignment=RAIL_ALIGN_ON", (root / "finish.py").read_text())
+
+
 if __name__ == "__main__":
     unittest.main()

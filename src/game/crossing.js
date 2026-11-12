@@ -483,12 +483,12 @@ function finish() {
   if (!_crossing.level) {
     if (_crossing.arrived) return;
     _crossing.arrived = true;
-    pushFloat(state.p.x, state.p.y - 40, t("crossing.landed"), "#9fd7ef");
+    pushFloat(state.p.x, state.p.y, 40, t("crossing.landed"), "#9fd7ef");
     state.storyTip = t("tip.estero.arrived");
     return;
   }
   endCrossing(CROSSING_OUTCOME.LANDED);
-  pushFloat(state.p.x, state.p.y - 40, t("crossing.landed"), "#9fd7ef");
+  pushFloat(state.p.x, state.p.y, 40, t("crossing.landed"), "#9fd7ef");
   if (!state.stage) return;
   // Time left and fish caught ARE the score here: there are no deliveries to
   // total, and a crossing that scored zero would rank last on the results
@@ -554,7 +554,7 @@ function respawn() {
   // happens to cross on the way.
   p.prevX = p.x; p.prevY = p.y;
   state.cam.shake = Math.max(state.cam.shake, 4);
-  pushFloat(p.x, p.y - 40, t("crossing.swamped"), "#e85d75");
+  pushFloat(p.x, p.y, 40, t("crossing.swamped"), "#e85d75");
 }
 
 /**
@@ -620,7 +620,7 @@ export function advanceCrossing(dt, p) {
           if (off < (g.hw || LANE_HW) * BOOST_GATE_BAND) {
             _crossing.boost = 1;
             state.score += 80;
-            pushFloat(p.x, p.y - 62, t("crossing.boostReady"), "#ffd166");
+            pushFloat(p.x, p.y, 62, t("crossing.boostReady"), "#ffd166");
           }
         }
         // one knock back every two gates: an arcade water level should not have
@@ -629,7 +629,7 @@ export function advanceCrossing(dt, p) {
         // The float is the REWARD, the tip is the RULE. Two channels, so the
         // "+6s" popping off the bow never has to compete with the explanation
         // of why sinking from here will not cost you the whole passage.
-        pushFloat(p.x, p.y - 40, t("crossing.gateBonus", { s: GATE_BONUS }), "#9fd7ef");
+        pushFloat(p.x, p.y, 40, t("crossing.gateBonus", { s: GATE_BONUS }), "#9fd7ef");
         state.storyTip = t("crossing.checkpoint");
       }
       continue;
@@ -639,7 +639,7 @@ export function advanceCrossing(dt, p) {
     // silence reads as the bonus being broken rather than as a line you blew.
     if (!g.missed && _crossing.level && near.s > g.s + GATE_MISS_PAD) {
       g.missed = true;
-      pushFloat(p.x, p.y - 40, t("crossing.gateMissed"), "#e85d75");
+      pushFloat(p.x, p.y, 40, t("crossing.gateMissed"), "#e85d75");
     }
   }
   p.prevX = p.x; p.prevY = p.y;
@@ -686,7 +686,7 @@ function segmentsCross(ax, ay, bx, by, cx, cy, dx, dy) {
 /** A knock: a panga, or a root. Returns true when it sank her. */
 export function knock(what) {
   _crossing.knocks += 1;
-  pushFloat(state.p.x, state.p.y - 40, t(`crossing.hit.${what}`), "#e85d75");
+  pushFloat(state.p.x, state.p.y, 40, t(`crossing.hit.${what}`), "#e85d75");
   state.cam.shake = Math.max(state.cam.shake, 3);
   if (_crossing.level && _crossing.knocks >= KNOCKS) { respawn(); return true; }
   // In Recorrer a knock only costs time, because there the estero is a place
@@ -698,7 +698,7 @@ export function knock(what) {
 export function catchFish(n) {
   _crossing.fish += n;
   addBoost(FISH_BOOST);
-  pushFloat(state.p.x, state.p.y - 40, `+${n} 🐟`, "#9fd7ef");
+  pushFloat(state.p.x, state.p.y, 40, `+${n} 🐟`, "#9fd7ef");
 }
 
 // ---- el impulso: the economy that makes this a game -----------------------
@@ -764,7 +764,7 @@ function nearMiss(e, d, reach) {
     _crossing.bestStreak = Math.max(_crossing.bestStreak || 0, _crossing.streak);
     addBoost(NEAR_BOOST);
     state.score += 15 * _crossing.streak;
-    pushFloat(state.p.x, state.p.y - 40,
+    pushFloat(state.p.x, state.p.y, 40,
       _crossing.streak > 1 ? `${t("crossing.nearMiss")} x${_crossing.streak}`
         : t("crossing.nearMiss"), "#9fd7ef");
   } else if (edge > NEAR_R * 2) {
@@ -1037,7 +1037,7 @@ export function advanceEstero(dt, p, veh) {
           addBoost(JUMP_BOOST);
           _crossing.jumps = (_crossing.jumps || 0) + 1;
           state.score += 60;
-          pushFloat(p.x, p.y - 40, t("crossing.jump"), "#9fd7ef");
+          pushFloat(p.x, p.y, 40, t("crossing.jump"), "#9fd7ef");
         } else if (sp <= 200) {
           p.a += (e.run > 0 ? 1 : -1) * dt * 0.8;
         }
@@ -1070,7 +1070,7 @@ export function advanceEstero(dt, p, veh) {
         p.vx *= 0.55; p.vy *= 0.55;
         if (!e.fouled) {
           e.fouled = true;
-          pushFloat(p.x, p.y - 40, t("crossing.hit.red"), "#e8c07a");
+          pushFloat(p.x, p.y, 40, t("crossing.hit.red"), "#e8c07a");
           state.cam.shake = Math.max(state.cam.shake, 1.5);
         }
       } else if (d > reach + 40) {
@@ -1110,7 +1110,7 @@ export function advanceEstero(dt, p, veh) {
         p.vx *= bite; p.vy *= bite;
         if (!e.aground) {
           e.aground = true;
-          pushFloat(p.x, p.y - 40, t("crossing.aground"), "#e8c07a");
+          pushFloat(p.x, p.y, 40, t("crossing.aground"), "#e8c07a");
           state.cam.shake = Math.max(state.cam.shake, 2);
           // Driving ONTO a bank at speed is a different event from drifting
           // onto one: that is a grounding hard enough to open her up.

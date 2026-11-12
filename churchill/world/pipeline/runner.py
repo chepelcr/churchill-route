@@ -141,7 +141,9 @@ def main():
             (landmarks[0]["x"], landmarks[0]["y"]) if landmarks else (CANVAS_W // 2, CANVAS_H // 2)))
     # scenery landmarks (no drivable pad) aren't delivery targets → exclude
     # them from the reachability gate
-    gate_pois = [l for l in landmarks if l["type"] not in NO_PAD_LM] + customers
+    gate_pois = [dict(l, x=l["spawn"][0], y=l["spawn"][1])
+                 if l.get("streetOnly") and l.get("spawn") else l
+                 for l in landmarks if l["type"] not in NO_PAD_LM] + customers
     verify(ctx, spawn=spawn, gate_pois=gate_pois)
 
     mata_x0 = next(d["x0"] for d in districts if d["id"] == "mata")

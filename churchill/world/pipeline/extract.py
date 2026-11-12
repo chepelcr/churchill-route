@@ -12,7 +12,7 @@ a building here still sits at its true OSM footprint.
 import time
 from collections import defaultdict
 
-from ..config import DILATION_ON
+from ..config import DILATION_ON, RAIL_ALIGN_ON
 from ..content import RAILWAY_DEF, ROAD_LINK_DEFS
 from ..context import WorldContext
 from ..logging import log, warn
@@ -80,12 +80,15 @@ def extract_world(osm_source):
     ctx.roads = roads
 
     ctx.rails = extract_rails(sp, ways, dims.w, dims.h)
-    aligned_rails, rail_alignment = align_rails(
-        ctx.rails, roads, StreetIndex(roads), RAILWAY_DEF)
-    # Mutate the context collections in place: services that captured one must
-    # keep seeing the growing world (WorldContext's central contract).
-    ctx.rails[:] = aligned_rails
-    ctx.rail_alignment.extend(rail_alignment)
+    if RAIL_ALIGN_ON:
+        aligned_rails, rail_alignment = align_rails(
+            ctx.rails, roads, StreetIndex(roads), RAILWAY_DEF)
+        # Mutate the context collections in place: services that captured one
+        # must keep seeing the growing world (WorldContext's central contract).
+        ctx.rails[:] = aligned_rails
+        ctx.rail_alignment.extend(rail_alignment)
+    else:
+        log("rails", "alineación apagada (RAIL_ALIGN=0): la vía va por su línea de OSM")
     log("rails", f"{len(ctx.rails)} rail pieces")
     n_by_cls = defaultdict(int)
     for r in roads:

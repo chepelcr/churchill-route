@@ -8,9 +8,10 @@ interior. The reachability gate at the end of the build is what proves it
 worked; everything here is the attempt.
 
 The kiosks get their own treatment because they are where a delivery STARTS:
-a beach kiosk keeps its sand position but gains a path to the street and an
-authored `spawn` on that street, since dropping the car at the icon put it on
-the sand. Town kiosks are seated on a cuadra frontage cell instead.
+a beach kiosk keeps its sand position but usually gains a path to the street;
+all have an authored `spawn` on that street, since dropping the car at the icon
+put it on the sand. Street-only Paseo kiosks use that spawn for pickup too and
+get no path. Town kiosks are seated on a cuadra frontage cell instead.
 
 Block detection runs here too: once roads, aceras and pads are stamped, the
 land that is left IS the cuadras, and everything placed later needs them.
@@ -175,6 +176,8 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
             rec["product"] = spec["product"]
         if spec.get("fixed"):
             rec["fixed"] = True
+        if spec.get("streetOnly"):
+            rec["streetOnly"] = True
         if spec.get("ang") is not None:
             rec["ang"] = spec["ang"]
         landmarks.append(rec)
@@ -443,9 +446,9 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
 
     # --- Kiosk placement: real aceras are respected everywhere (walls), so
     #   (a) kiosks sitting mid-lane shift onto the adjacent sidewalk, and
-    #   (b) BEACH kiosks get a drivable SAND PATH from the nearest street so
-    #       you can actually reach them. Runs BEFORE the pad stamp so the apron
-    #       lands at the final position.
+    #   (b) BEACH kiosks get a drivable SAND PATH from the nearest street, or
+    #       serve directly from it when authored `streetOnly`. Runs BEFORE the
+    #       pad stamp so the apron lands at the final position.
     _cell_cls = lambda cc, cr: cell_class(raster, cc, cr)
     _nearest_cell = lambda x, y, classes, max_cells: nearest_cell(raster, x, y, classes, max_cells)
     # BEACH kiosks: keep them on the sand and carve a drivable SAND PATH from the
@@ -470,9 +473,9 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
     #
     # A landmark that has to be moved to be reachable is a landmark whose
     # ACCESS is missing, so the access is what gets built: the stand stays on
-    # the geo anchor the mapper gave it, east of the muelle, and a drivable
-    # connector is stamped from the nearest street. That is the "calle
-    # auxiliar" these two have always had.
+    # the geo anchor the mapper gave it and a drivable connector reaches the
+    # nearest street. A `streetOnly` stand instead keeps the promenade intact:
+    # its nearby-street spawn is also its pickup point.
     STAND_SURFACES = (CLS_BEACH, CLS_MALECON)
     for lm in landmarks:
         if lm["type"] != "kiosk" or lm["id"] == "kios_faro":
@@ -480,6 +483,10 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
         kx, ky = lm["x"], lm["y"]
         surf = _cell_cls(int(kx // GRID_CELL), int(ky // GRID_CELL))
         if surf in STAND_SURFACES:
+            beach_kiosks.add(lm["id"])
+            if lm.get("streetOnly"):
+                log("kiosk", f"{lm['id']} atiende desde la calle; sin calle auxiliar")
+                continue
             # Sand is slow and loose and the promenade is slower still, but a
             # kiosk with no paved way to it is a delivery that starts in a dune.
             tgt = _nearest_cell(kx, ky, (CLS_ROAD, CLS_BRIDGE, CLS_BARRO, CLS_GRAVEL), 260)
@@ -492,7 +499,6 @@ def place_kiosks_and_blocks(ctx, *, landmarks, customers, districts, junction_is
             else:
                 warn("kiosk", f"{lm['id']} stands on surf {surf} with no street "
                      f"within 260px — no calle auxiliar")
-            beach_kiosks.add(lm["id"])
 
     for lm in landmarks:
         # scenery (buildings + green areas) gets NO drivable apron; kiosks get

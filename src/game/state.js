@@ -96,6 +96,11 @@ export const schools = [];
 // them would let a ball roll away from the game it belongs to.
 export const beachGames = [];
 
-export function pushFloat(x, y, text, color) {
-  state.floats.push({ x, y, text, color, t: 0, ttl: 1.6 });
+// `lift` ES CUÁNTO SUBE EL TEXTO SOBRE SU ANCLA, **en la pantalla**. Antes cada
+// llamador restaba esos píxeles a la `y` del MUNDO, y con la cámara girada
+// (El Cocal, 90°) «arriba del mundo» es «a la derecha de la pantalla»: el
+// `+120` y el `¡PERFECTO!` salían uno al lado del otro y se iban de costado.
+// El ancla se queda en el mundo; la subida la aplica el pintor ya enderezado.
+export function pushFloat(x, y, lift, text, color) {
+  state.floats.push({ x, y, rise: lift, text, color, t: 0, ttl: 1.6 });
 }

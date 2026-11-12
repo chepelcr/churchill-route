@@ -136,7 +136,7 @@ function apply(silent) {
   // it hands back the right hour when the rain stops.
   if (!cycle.stormLeft) state.weather = PHASES[i].w;
   if (!silent && !cycle.stormLeft) {
-    pushFloat(state.p.x, state.p.y - 60, t(`sky.${PHASES[i].w}`), "#f4d77a");
+    pushFloat(state.p.x, state.p.y, 60, t(`sky.${PHASES[i].w}`), "#f4d77a");
   }
 }
 
@@ -165,7 +165,7 @@ function startStorm() {
   // El aviso llega con el CIELO, no con el agua: el nombre del clima cambia ya
   // (las luces y la paleta lo leen) y la lluvia entra con la rampa.
   state.weather = "storm";
-  pushFloat(state.p.x, state.p.y - 60, t("sky.storm"), "#9fd7ef");
+  pushFloat(state.p.x, state.p.y, 60, t("sky.storm"), "#9fd7ef");
 }
 
 /** La rampa: sube mientras la tormenta está encima, baja cuando pasa. */
@@ -186,7 +186,7 @@ function advanceStorm(dt) {
       // el cielo vuelve a la hora que sea, no a la que era
       state.weather = PHASES[phaseAt(cycle.t)].w;
       cycle.stormIn = rand(STORM_EVERY);
-      pushFloat(state.p.x, state.p.y - 60, t("sky.clearing"), "#9fd7ef");
+      pushFloat(state.p.x, state.p.y, 60, t("sky.clearing"), "#9fd7ef");
     }
     return;
   }

@@ -21,11 +21,11 @@ export default function HUD({ onPause }) {
   const cycleStation = () => {
     const id = sfx.nextStation();
     setStation(id);
-    if (s.p) pushFloat(s.p.x, s.p.y - 28, "♪ " + t(`radio.${id}`), "#ffe06b");
+    if (s.p) pushFloat(s.p.x, s.p.y, 28, "♪ " + t(`radio.${id}`), "#ffe06b");
   };
   const [debug, setDebug] = useState(Game.state.debug);
-  const s = Game.state;
   const [dismissedTip, setDismissedTip] = useState("");
+  const s = Game.state;
   const visibleTip = s.storyTip && s.storyTip !== dismissedTip ? s.storyTip : "";
   const dismissToast = (e) => {
     e.preventDefault(); e.stopPropagation();

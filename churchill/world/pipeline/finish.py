@@ -17,7 +17,7 @@ from ..config import (
     DRIVABLE_CLASSES, GRID_CELL, KIOSK_WATER_CLEAR_PX,
     MARINE_POOL_GROUND_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
-    TILE_PX,
+    RAIL_ALIGN_ON, TILE_PX,
 )
 from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, SITE_DECOR, STAGES
 from ..enums import SignKind
@@ -236,7 +236,10 @@ def verify(ctx, *, spawn, gate_pois):
     # the strict true/painted target of zero.
     for rail_report in ctx.rail_alignment:
         log("railway", alignment_log_line(rail_report))
-    ctx.failures.extend(alignment_failures(ctx.rail_alignment))
+    # Con la alineación apagada no hay reportes, y «no alineó ninguna muestra»
+    # es entonces lo pedido y no un registro que dejó de casar.
+    ctx.failures.extend(alignment_failures(
+        ctx.rail_alignment, require_alignment=RAIL_ALIGN_ON))
     # A MUELLE THE PLAYER CANNOT DRIVE ONTO IS DECORATION. The POI gate does not
     # cover the piers — they are not landmarks — and that is exactly how the
     # Muelle de Pitahaya spent a release standing off the end of every street,
@@ -476,9 +479,8 @@ def verify(ctx, *, spawn, gate_pois):
 
 #: Furniture that BELONGS on the asphalt: a zebra and a tope are painted on it.
 #: A `banca` is here for the opposite reason — it is not on the asphalt at all,
-#: it is on the malecón, which is drivable ground because a promenade you may
-#: cross is still a promenade. Without this the sweep would push all of them
-#: inland off the sea front they exist to look at, and drop the ones with
+#: it is on the pedestrian malecón. Without this the sweep would push all of
+#: them inland off the sea front they exist to look at, and drop the ones with
 #: nowhere to go.
 ON_THE_ROAD_OK = (SignKind.CROSSING, SignKind.TOPE, SignKind.BANCA)
 

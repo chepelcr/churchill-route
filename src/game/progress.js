@@ -85,7 +85,7 @@ export function unlockDistrict(id) {
   if (!state.progress.unlocked.includes(id)) {
     state.progress.unlocked.push(id);
     saveProgress();
-    pushFloat(state.p.x, state.p.y - 50, t("float.unlocked", { district: id.toUpperCase() }), "#ffe06b");
+    pushFloat(state.p.x, state.p.y, 50, t("float.unlocked", { district: id.toUpperCase() }), "#ffe06b");
     analytics.track("district_unlock", { district: id });
   }
 }

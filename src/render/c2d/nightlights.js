@@ -122,6 +122,7 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
   }
   lctx.setTransform(1, 0, 0, 1, 0, 0);
   lctx.globalCompositeOperation = "source-over";
+  lctx.globalAlpha = 1;
   lctx.clearRect(0, 0, w, h);
   lctx.fillStyle = tint;
   lctx.fillRect(0, 0, w, h);
@@ -135,9 +136,11 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
   for (const lamp of lamps) {
     const [sx, sy] = toScreen(lamp.x, lamp.y);
     const sprite = poolSprite(lamp.type || "warm", r);
+    lctx.globalAlpha = Math.max(0, Math.min(1, lamp.intensity ?? 1));
     lctx.drawImage(sprite, sx * s - r, sy * s - r, r * 2, r * 2);
   }
   lctx.globalCompositeOperation = "source-over";
+  lctx.globalAlpha = 1;
 
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -150,6 +153,7 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
   for (const lamp of lamps) {
     const spec = LIGHTS.types[lamp.type] || LIGHTS.types.warm;
     const [sx, sy] = toScreen(lamp.x, lamp.y);
+    ctx.globalAlpha = Math.max(0, Math.min(1, lamp.intensity ?? 1));
     paintLightWarmPool(ctx, LIGHTS, spec, sx * dpr, sy * dpr, warmR * dpr);
   }
   ctx.restore();

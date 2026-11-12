@@ -112,8 +112,8 @@ class WorldContext:
     kiosk_paths: list = field(default_factory=list)
     #: the turno on the malecón: the rides, the chinamos and the DJ
     attractions: list = field(default_factory=list)
-    #: …and the GROUND they stand on — the campo ferial's packed-earth lot,
-    #: outline rings plus the frame its two rows are laid out in.
+    #: …and the GROUND they stand on — the fairground's raised wooden deck,
+    #: outline rings plus the frame that organizes its three areas.
     feria: list = field(default_factory=list)
     buildings: list = field(default_factory=list)
     authored_trees: list = field(default_factory=list)

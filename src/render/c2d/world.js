@@ -16,6 +16,7 @@ import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
 } from "./ground.js";
 import { drawMalecon } from "./malecon.js";
+import { drawFeriaDeck } from "./attractions.js";
 import { paintRelief } from "./relief.js";
 import { paintSkyCover } from "./skycover.js";
 import { drawStreetLabels2D, medianPairs, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
@@ -45,6 +46,8 @@ function drawWorld2D(view, t) {
   }
   roads.sort((a, b) => (ROAD_ORDER[a.cls] || 0) - (ROAD_ORDER[b.cls] || 0));
   paintRoads(roads, view);
+  // el tablado de la feria: junto a la calle y sobre el malecón, nunca sobre el asfalto
+  drawFeriaDeck(view);
   drawSurfaceStyleAceras(view);
   // rails (old Ferrocarril line) + paseo separator ground strips, on top of
   // the asphalt but under buildings/flora

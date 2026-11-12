@@ -43,8 +43,29 @@ const out = await page.evaluate(async () => {
     // mundo -> pantalla es una rotación por `rot`
     const sxv = Math.cos(p.a) * Math.cos(rot) - Math.sin(p.a) * Math.sin(rot);
     const syv = Math.cos(p.a) * Math.sin(rot) + Math.sin(p.a) * Math.cos(rot);
+    // LA BRÚJULA Y LOS FLOTANTES, en pausa para que nada se mueva debajo.
+    // La brújula no se compara contra un objetivo adivinado: se lee con la
+    // cámara girada y derecha sobre la MISMA escena, y la diferencia tiene que
+    // ser exactamente el giro. Con el signo al revés da -giro (180° fuera a 90°).
+    const frames = async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); };
+    st.paused = true;
+    await frames(3);
+    const aRot = window.__compassAngle;
+    st.cam.rot = 0; await frames(3);
+    const aFlat = window.__compassAngle;
+    st.cam.rot = rot;
+    let dA = aRot - aFlat - rot;
+    dA = Math.atan2(Math.sin(dA), Math.cos(dA));
+    st.paused = false;
+    st.floats.length = 0;
+    st.floats.push({ x: p.x, y: p.y, rise: 24, text: "+1", color: "#fff", t: 0, ttl: 1.6 });
+    const f = st.floats[0], fx = f.x, fy = f.y;
+    await frames(20);
     rows.push({ rot: +(rot * 180 / Math.PI).toFixed(0), worldA: +p.a.toFixed(2),
-                screenY: +syv.toFixed(2), screenX: +sxv.toFixed(2) });
+                screenY: +syv.toFixed(2), screenX: +sxv.toFixed(2),
+                compassErr: aRot === undefined ? null : +dA.toFixed(4),
+                floatAnchorMoved: +(Math.hypot(f.x - fx, f.y - fy)).toFixed(3),
+                floatRise: +(f.rise - 24).toFixed(2) });
   }
   return rows;
 });
@@ -56,10 +77,16 @@ for (const r of out) {
   console.log(`[rot] cámara ${String(r.rot).padStart(3)}°  rumbo mundo ${r.worldA}  `
     + `-> en pantalla (${r.screenX}, ${r.screenY})  ${up ? "sube ✓" : "NO sube ✗"}`);
   if (!up) bad++;
+  const cOk = r.compassErr !== null && Math.abs(r.compassErr) < 0.02;
+  console.log(`[rot]   brújula: error ${r.compassErr} rad ${cOk ? "✓" : "✗ (no gira con la cámara)"}`);
+  if (!cOk) bad++;
+  const fOk = r.floatAnchorMoved < 0.01 && r.floatRise > 1;
+  console.log(`[rot]   flotante: ancla movida ${r.floatAnchorMoved} px, subida +${r.floatRise} ${fOk ? "✓" : "✗ (sube en el mundo, no en la pantalla)"}`);
+  if (!fOk) bad++;
 }
 if (bad) {
-  console.error("[rot] FAIL — tocando arriba el carro no va hacia arriba en pantalla: "
-    + "el control no está corrigiendo el giro de la cámara");
+  console.error("[rot] FAIL — con la cámara girada algo no sigue a la PANTALLA: "
+    + "el dedo, la brújula de entrega o un texto flotante");
   process.exit(1);
 }
 console.log("[rot] ok — el dedo apunta a donde el jugador cree, gire o no la cámara");

@@ -68,18 +68,9 @@ const drive = await page.evaluate(async () => {
   // speed of 0. The run's own spawn is the better test — if THAT is not
   // drivable the game is broken — but a spawn is an apron, so east is not
   // necessarily open. Try the four headings and keep the best.
-  // …Y CADA INTENTO ARRANCA DONDE ARRANCÓ EL PRIMERO. Esto no volvía al punto
-  // de partida entre rumbos: cada uno salía de donde el anterior hubiera dejado
-  // el carro, así que probar «las cuatro direcciones» era en realidad probar un
-  // recorrido de cuatro tramos. Con un spawn en la calle auxiliar que baja al
-  // kiosco del Paseo —40 px de ancho entre dos paredes de malecón— los tres
-  // primeros rumbos aparcan el carro contra la pared y el cuarto, que es el
-  // BUENO, sale de una esquina y no llega a ningún lado.
-  //
-  // Medido sobre el mundo de 3.125 px/m: desde el spawn el rumbo norte recorre
-  // 154 px a 266 px/s, muy por encima del umbral; encadenado detrás de los
-  // otros tres, el mejor de los cuatro daba 82. El juego estaba bien y la
-  // prueba se estaba estorbando a sí misma.
+  // Every attempt starts at the same spawn. Chaining the headings would test a
+  // four-leg route rather than four independent ways out of the spawn, and a
+  // wall met by an earlier leg could hide the open heading.
   const start = { x: p.x, y: p.y, a: p.a };
   let best = { travelled: 0, top: 0 };
   for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {

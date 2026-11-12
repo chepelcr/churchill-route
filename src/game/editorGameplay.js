@@ -26,7 +26,7 @@ function runAction(feature) {
   } else if (action === "score") {
     const amount = Number(value) || 100;
     state.score += amount;
-    pushFloat(state.p.x, state.p.y - 18, `+${amount}`, "#f4d77a");
+    pushFloat(state.p.x, state.p.y, 18, `+${amount}`, "#f4d77a");
   } else if (action === "teleport") {
     const targetId = properties.targetId || value;
     const spawn = W.EDITOR_FEATURES.find((item) => (

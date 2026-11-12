@@ -4,6 +4,8 @@ import { useT } from "../../i18n/index.js";
 import { sfx } from "../../game/audio.js";
 import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
 import Slots from "../Slots.jsx";
+import pacificLogo from "../../assets/branding/pacific-code-labs-reverse.webp?inline";
+import routeArt from "../../assets/branding/ruta-churchill-loading.webp?inline";
 
 // Boot sequence (Hill-Climb style), shown on every launch:
 //   phase 0 — Pacific Code Labs logo over a LIVE PIXI WATER backdrop (the same
@@ -109,10 +111,10 @@ export default function BootScreen({ onDone }) {
   // dos pantallas que la secuencia muestra encima.
   const SLOTS = {
     logo: () => (
-      <img className="boot-logo" src="/branding/pacific-code-labs.png" alt="Pacific Code Labs" />
+      <img className="boot-logo" src={pacificLogo} alt="Pacific Code Labs" />
     ),
     art: () => (
-      <img className="boot-art" src="/branding/ruta-churchill-loading.png" alt="La Ruta del Churchill" />
+      <img className="boot-art" src={routeArt} alt="La Ruta del Churchill" />
     ),
     bar: () => (
       <div className="boot-bar-wrap">

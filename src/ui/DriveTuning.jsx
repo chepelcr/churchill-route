@@ -1,16 +1,15 @@
 import React, { useState } from "react";
 import { useT } from "../i18n/index.js";
 import { tuning } from "../game/tuning.js";
+import { sfx } from "../game/audio.js";
 
-// The two "how does it drive" dials — vehicle speed and camera zoom — as one
-// reusable block. Shown UP FRONT at the tutorial (so a first-time player sets
-// a comfortable feel before learning anything else) and again in Settings.
-// `hint` prints the "you can change this later" line; the Settings copy hides
-// it, since that IS the later.
+// Speed, camera zoom and music are set up front, before the tutorial starts.
+// `hint` points to Settings, where the same choices remain available.
 export default function DriveTuning({ hint = false }) {
   const t = useT();
   const [spd, setSpd] = useState(Math.round(tuning.speed * 100));
   const [zoom, setZoom] = useState(Math.round(tuning.zoom * 100));
+  const [station, setStation] = useState(sfx.station);
   return (
     <div className="settings-rows drive-tuning">
       <div className="set-row">
@@ -29,6 +28,17 @@ export default function DriveTuning({ hint = false }) {
             onChange={(e) => { const v = +e.target.value; setZoom(v); tuning.setZoom(v / 100); }}
             aria-label={t("settings.zoom")} />
           <span className="vol-pct">{zoom}%</span>
+        </div>
+      </div>
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.station")}</span>
+        <div className="lang-toggle station-pick">
+          {sfx.stations.map((id) => (
+            <button key={id} className={"btn " + (station === id ? "gold" : "secondary")}
+              onClick={() => { setStation(sfx.setStation(id)); sfx.play("menu_select"); }}>
+              {t(`radio.${id}`)}
+            </button>
+          ))}
         </div>
       </div>
       {hint && <p className="set-desc drive-tuning-hint">{t("tuning.later")}</p>}

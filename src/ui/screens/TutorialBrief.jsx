@@ -4,10 +4,10 @@ import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
 import DriveTuning from "../DriveTuning.jsx";
 import Slots from "../Slots.jsx";
 
-// Shown once before the tutorial: set how the car feels (speed) and how much
-// city you see (zoom) BEFORE learning the controls, rather than discovering
-// halfway through that the default doesn't suit you. Both stay in Settings,
-// and the hint line says so.
+// Shown once before the tutorial: set how the car feels (speed), how much city
+// you see (zoom) and which music plays BEFORE learning the controls, rather
+// than discovering halfway through that the defaults don't suit you. The hint
+// line says where to change them later.
 export default function TutorialBrief({ onGo }) {
   const t = useT();
   const SLOTS = {
@@ -19,7 +19,7 @@ export default function TutorialBrief({ onGo }) {
     ),
     body: () => <p style={{ opacity: 0.85, lineHeight: 1.5, fontSize: 13 }}>{t("tutbrief.body")}</p>,
     // EL AJUSTE ES UN BLOQUE, y por eso vale que esté aquí: si algún día se
-    // decide que el tutorial no debe abrir con dos deslizadores encima, se
+    // decide que el tutorial no debe abrir con estos controles encima, se
     // quita del registro en vez de comentarse en el JSX.
     tuning: () => <DriveTuning hint />,
     go: () => <button className="btn gold" onClick={onGo}>{t("brief.go")}</button>,

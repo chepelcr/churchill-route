@@ -25,6 +25,16 @@ export default function HUD({ onPause }) {
   };
   const [debug, setDebug] = useState(Game.state.debug);
   const s = Game.state;
+  const [dismissedTip, setDismissedTip] = useState("");
+  const visibleTip = s.storyTip && s.storyTip !== dismissedTip ? s.storyTip : "";
+  const dismissToast = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    Game.state.districtToast = null;
+  };
+  const dismissTip = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (s.storyTip) setDismissedTip(s.storyTip);
+  };
   const district = s.p ? WORLD.districtAt(s.p.x, s.p.y) : null;
   const toggleDebug = () => {
     const v = !Game.state.debug;
@@ -119,13 +129,19 @@ export default function HUD({ onPause }) {
       </div>
     ),
     districtToast: () => (
-      <div className="district-toast" style={{ opacity: toastOpacity, borderColor: toast.tone }}>
+      <button type="button" className="district-toast" style={{ opacity: toastOpacity, borderColor: toast.tone }}
+        onPointerDown={dismissToast} onClick={dismissToast} aria-label={t("hud.dismiss")} title={t("hud.dismiss")}>
         <div className="dt-kicker" style={{ color: toast.tone }}>{t("hud.enter")}</div>
         <div className="dt-name">{toast.name}</div>
         <div className="dt-rule" style={{ background: toast.tone }}></div>
-      </div>
+      </button>
     ),
-    storyTip: () => <div className="story-tip">↳ {s.storyTip}</div>,
+    storyTip: () => (
+      <button type="button" className="story-tip" onPointerDown={dismissTip} onClick={dismissTip}
+        aria-label={t("hud.dismiss")} title={t("hud.dismiss")}>
+        ↳ {visibleTip}<span className="banner-close" aria-hidden="true">×</span>
+      </button>
+    ),
     cargo: () => (
       <div className="melt-bar">
         <div className="row">
@@ -145,7 +161,7 @@ export default function HUD({ onPause }) {
     canPause: !!onPause,
     debugOn: !!debug,
     hasToast: !!toast && toastOpacity > 0,
-    hasTip: !!s.storyTip,
+    hasTip: !!visibleTip,
     carrying: !!s.carrying,
   };
   const slot = (region) => <Slots screen={UI_SCREEN.PLAYING} region={region} ctx={ctx} slots={SLOTS} />;

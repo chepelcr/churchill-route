@@ -42,8 +42,11 @@ const GATES = {
     return false;
   },
   brakeAtSpeed: (T, st, dt, S) => {
-    if (input.brake && st.p.speed > S.speed) { T.brake += dt; return T.brake > S.seconds; }
-    return false;
+    if (!input.brake) { T.brakeArmed = false; return false; }
+    if (st.p.speed > S.speed) T.brakeArmed = true;
+    if (!T.brakeArmed) return false;
+    T.brake += dt;
+    return T.brake > S.seconds;
   },
   carrying: (T, st) => !!st.carrying,
   delivered: (T, st, dt, S) => st.deliveries >= (S.count || 1),
@@ -53,7 +56,7 @@ const GATES = {
 export function initTutorial() {
   state.tutorial = {
     step: 0, total: TUT_TOTAL,
-    dist: 0, turn: 0, fast: 0, boost: 0, brake: 0, doneT: 0,
+    dist: 0, turn: 0, fast: 0, boost: 0, brake: 0, brakeArmed: false, doneT: 0,
     lastX: state.p.x, lastY: state.p.y, lastA: state.p.a,
   };
 }

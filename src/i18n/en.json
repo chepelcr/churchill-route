@@ -2,6 +2,7 @@
   "arcade.cycle": "Day/night cycle",
   "arcade.sky": "Sky",
   "boot.loading": "LOADING THE PORT...",
+  "hud.dismiss": "Dismiss message",
   "brief.gates": "{n} buoys",
   "brief.go": "▸ Let's go!",
   "brief.level": "LEVEL {n}",

@@ -2,6 +2,7 @@
   "arcade.cycle": "Ciclo día/noche",
   "arcade.sky": "Cielo",
   "boot.loading": "CARGANDO EL PUERTO...",
+  "hud.dismiss": "Cerrar aviso",
   "brief.gates": "{n} boyas",
   "brief.go": "▸ ¡Vamos!",
   "brief.level": "NIVEL {n}",

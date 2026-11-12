@@ -2,9 +2,7 @@ import React, { useRef, useLayoutEffect } from "react";
 
 // Scale-to-fit wrapper for menu cards: measures the child at natural size and
 // transform:scale()s it down so the WHOLE card always fits the viewport —
-// game-menu feel, no scrolling. Below MIN_SCALE the shell's overflow scroll
-// remains as a last resort (extreme aspect ratios).
-const MIN_SCALE = 0.55;
+// game-menu feel, no scrolling, including narrow phone screens.
 const PAD = 24; // breathing room around the card (px, both axes)
 
 // `pad` reserves extra vertical room (e.g. a fixed nav bar above the card).
@@ -19,7 +17,7 @@ export default function FitScale({ children, pad = PAD }) {
       inner.style.transform = "none";
       const w = inner.offsetWidth, h = inner.offsetHeight;
       const vw = window.innerWidth - PAD, vh = window.innerHeight - pad;
-      const s = Math.max(MIN_SCALE, Math.min(1, vw / (w || 1), vh / (h || 1)));
+      const s = Math.min(1, vw / (w || 1), vh / (h || 1));
       inner.style.transform = s < 1 ? `scale(${s})` : "none";
       // shrink the layout box so flex centering uses the SCALED size
       outer.style.width = `${(w || 0) * s}px`;

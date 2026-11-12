@@ -13,8 +13,8 @@ import Slots from "./Slots.jsx";
 
 // Pre-run picker for every mode: Arcade / Recorrer arm boosts here too, while
 // Historia (storyMode) hides them — the StageBrief owns boost-arming there.
-// Two scale-to-fit cards side by side: the vehicle carousel and an options
-// card (paint colours you own + boosts to arm for this run). Locked vehicles
+// Three scale-to-fit cards side by side: the vehicle carousel, paint colours
+// you own, and boosts to arm for this run. Locked vehicles
 // deep-link to the Shop; boosts are consumed at mode start by armRun.
 export default function VehiclePicker({ onGo, onShop, onBack, storyMode = false, medium = VEHICLE_MEDIUM.LAND }) {
   const t = useT();

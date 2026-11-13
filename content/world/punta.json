@@ -273,14 +273,22 @@
   "_along": "la guía de este tramo no se traza: es la línea de centro de estas calles, tal como el mundo las emite, de oeste a este.",
   "until": {
    "pier": "muelle_nacional",
-   "marginM": 30.0,
+   "marginM": 20.0,
    "_note": "el Muelle de Cruceros: el frente llega hasta su bajada oeste."
   },
   "shore": {
-   "smoothM": 70.0,
-   "maxM": 190.0,
+   "smoothM": 110.0,
+   "maxM": 150.0,
    "_note": "la orilla se MIDE sobre el ráster emitido —desde la calle hacia el mar, hasta donde empieza el agua abierta— y se alisa con una media de `smoothM` a cada lado: el borde de la playa sale regular sin dejar kioscos en el mar. `maxM` es hasta dónde se busca."
-  }
+  },
+  "joinM": 70.0,
+  "_joinM": "LA UNIÓN CON LA EXPLANADA no es un corte: a lo largo de estos metros la piedra gris se angosta en un triángulo de lados curvos que muere contra el borde del malecón, mientras el malecón de baldosa, el verde y la playa nacen y crecen a su lado. Las dos secciones quedan cosidas.",
+  "endM": 45.0,
+  "_endM": "y el otro extremo tampoco: frente al Muelle de Cruceros el verde y la playa se cierran con la misma curva en vez de terminar a escuadra.",
+  "riprap": true,
+  "_riprap": "la línea de piedra sigue: viene por el borde de la explanada, baja por la unión y continúa ENTRE el malecón y el verde hasta el final.",
+  "straightFrom": "Paseo León Cortés Castro",
+  "_straightFrom": "donde empieza esta calle el Paseo se abre tierra adentro hacia el Muelle de Cruceros y deja una plazoleta con los kioscos. Las franjas NO doblan con ella: siguen derechas, con el rumbo que traían, y la cuña que queda entre la calle y ellas es malecón de baldosa — la plazoleta de los kioscos. Doblar con la calle era lo que plegaba el verde y la playa sobre sí mismos."
  },
  "muelle": {
   "_note": "EL MUELLE DEL FARO SE QUEDA, con su kiosco: nace en el borde del malecón nuevo. Su calle auxiliar también se queda, y sigue siendo manejable, pero NO SE PINTA — por encima se ve piso de malecón, y quien la encuentre llega en carro hasta el kiosco. Un huevo de pascua.",

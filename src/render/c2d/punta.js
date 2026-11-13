@@ -70,7 +70,7 @@ function wavePath(w, outline) {
   return (w._path = p);
 }
 
-function paintRiprap(line) {
+function paintRiprap(line, view) {
   if (!line._rocks) {
     const rocks = [], step = M.riprap.stepM * W.PX_PER_M, [r0, r1] = M.riprap.rockM;
     for (let i = 0; i + 3 < line.pts.length; i += 2) {
@@ -89,7 +89,9 @@ function paintRiprap(line) {
   }
   ctx.strokeStyle = M.riprap.bed; ctx.lineWidth = line.w; ctx.lineCap = "round"; ctx.lineJoin = "round";
   ctx.stroke(line._path);
+  const x0 = view.x0 - 8, x1 = view.x1 + 8, y0 = view.y0 - 8, y1 = view.y1 + 8;
   for (const [x, y, r, ink] of line._rocks) {
+    if (x < x0 || x > x1 || y < y0 || y > y1) continue;       // la línea mide kilómetros: sólo lo que se ve
     ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   }
 }
@@ -105,7 +107,7 @@ function drawPunta(view, t = 0) {
   // la playa entre lengua y lengua, y la del frente del Paseo: la arena del mundo
   ctx.fillStyle = weatherColors().sand;
   for (const sd of P.sands || []) ctx.fill(shape(sd));
-  for (const line of P.riprap || []) paintRiprap(line);
+  for (const line of P.riprap || []) paintRiprap(line, view);
   // el suelo, en el orden en que el mundo lo trae: terreno, deck, malecones…
   for (const g of P.grounds || []) {
     ctx.fillStyle = g.use === "deck" ? POOL.deck : (M.ground[g.use] || M.ground.park);

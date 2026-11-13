@@ -262,9 +262,9 @@
  "paseo": {
   "_note": "EL FRENTE DEL PASEO, desde donde termina la explanada del Faro hasta el Muelle de Cruceros, en TRES franjas regulares paralelas a la calle: el malecón de siempre contra la acera (su baldosa color arena, `malecon.band`), después el verde, y la playa al frente. Reemplaza la franja de contorno irregular que dejó el ráster.",
   "greenM": 17.0,
-  "beachM": 22.0,
+  "beachM": 24.0,
   "green": "park",
-  "_widths": "ancho de cada franja, de la acera hacia el mar: malecón, verde, playa. `beachM` es el MÍNIMO de playa: el frente de hoy es mucho más hondo en partes (hasta 150 m frente al Muelle de Cruceros, con kioscos parados en esa arena), así que la playa llega hasta la orilla que el mundo ya tiene, alisada.",
+  "_widths": "ancho de cada franja, de la acera hacia el mar: malecón, verde, playa. La playa mide lo mismo que la que va entre lengua y lengua de la explanada (`malecon.cove.beachM`): es UNA playa, del mismo fondo de punta a punta.",
   "maleconM": 14.0,
   "along": [
    "Paseo de Los Turistas",
@@ -273,13 +273,8 @@
   "_along": "la guía de este tramo no se traza: es la línea de centro de estas calles, tal como el mundo las emite, de oeste a este.",
   "until": {
    "pier": "muelle_nacional",
-   "marginM": 20.0,
-   "_note": "el Muelle de Cruceros: el frente llega hasta su bajada oeste."
-  },
-  "shore": {
-   "smoothM": 110.0,
-   "maxM": 150.0,
-   "_note": "la orilla se MIDE sobre el ráster emitido —desde la calle hacia el mar, hasta donde empieza el agua abierta— y se alisa con una media de `smoothM` a cada lado: el borde de la playa sale regular sin dejar kioscos en el mar. `maxM` es hasta dónde se busca."
+   "pastM": 45.0,
+   "_note": "el Muelle de Cruceros: las franjas pasan por DEBAJO del muelle y cierran poco después."
   },
   "joinM": 70.0,
   "_joinM": "LA UNIÓN CON LA EXPLANADA no es un corte: a lo largo de estos metros la piedra gris se angosta en un triángulo de lados curvos que muere contra el borde del malecón, mientras el malecón de baldosa, el verde y la playa nacen y crecen a su lado. Las dos secciones quedan cosidas.",
@@ -289,6 +284,41 @@
   "_riprap": "la línea de piedra sigue: viene por el borde de la explanada, baja por la unión y continúa ENTRE el malecón y el verde hasta el final.",
   "straightFrom": "Paseo León Cortés Castro",
   "_straightFrom": "donde empieza esta calle el Paseo se abre tierra adentro hacia el Muelle de Cruceros y deja una plazoleta con los kioscos. Las franjas NO doblan con ella: siguen derechas, con el rumbo que traían, y la cuña que queda entre la calle y ellas es malecón de baldosa — la plazoleta de los kioscos. Doblar con la calle era lo que plegaba el verde y la playa sobre sí mismos."
+ },
+ "cruceros": {
+  "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle: calle y muelle son una sola línea, y la playa pasa por debajo. En la boca va un arco como el de la feria, con el nombre en letras blancas sobre azul. La caseta va a la IZQUIERDA del muelle, no en el medio.",
+  "pier": "muelle_nacional",
+  "street": "Calle Central",
+  "landmark": "muellecruc",
+  "casetaSide": "west",
+  "casetaOffM": [
+   17.0,
+   12.0
+  ],
+  "gate": {
+   "text": "MUELLE DE CRUCEROS",
+   "widthM": 31.0
+  },
+  "capitania": {
+   "landmark": "capitania",
+   "replacesBuilding": "MOPT - Capitanía de Puerto Puntarenas",
+   "dropParcel": "lote_capitania",
+   "_note": "la Capitanía de Puerto estaba dibujada en la cuadra equivocada, sobre una parcela con fondo y borde blanco; va donde OSM tiene el edificio del MOPT, y ese edificio genérico sale."
+  },
+  "kiosks": {
+   "ids": [
+    "kios_paseo1",
+    "kios_paseo2"
+   ],
+   "hiddenLanes": true,
+   "fromRocksM": 11.0,
+   "_note": "los dos kioscos suben de la arena al malecón de baldosa, del lado de la calle de la línea de piedra, y sus calles auxiliares siguen manejables pero no se pintan."
+  },
+  "dropPiers": [
+   "bajada_muelle_oeste",
+   "bajada_muelle_este"
+  ],
+  "_dropPiers": "las dos bajadas a la arena salían de la plazoleta vieja del muelle; con el muelle pegado a la calle y la playa pasando por debajo quedan sueltas sobre la arena."
  },
  "muelle": {
   "_note": "EL MUELLE DEL FARO SE QUEDA, con su kiosco: nace en el borde del malecón nuevo. Su calle auxiliar también se queda, y sigue siendo manejable, pero NO SE PINTA — por encima se ve piso de malecón, y quien la encuentre llega en carro hasta el kiosco. Un huevo de pascua.",
@@ -1740,7 +1770,7 @@
   "_note": "EL JUEGO ENSANCHA LAS CALLES y el trazo es a escala real: puesto tal cual, la Calle 39 del juego tapa el piso de abanicos y el borde del deck. Así que el trazo se ACOMODA a la calle del juego, y nunca vértice por vértice sobre lo rígido: lo de AFUERA del lazo (malecones, Faro) se corre hacia el mar lo que la calle creció; lo de ADENTRO (piscina, edificios, árboles) se encoge como UN grupo con una sola escala hacia el lado este, que es donde la cuadra del juego tiene campo — una semejanza, así que nada se dobla y todo conserva su arreglo.",
   "realRoadHalfM": 4.0,
   "interiorRangeM": 45.0,
-  "oldCoastM": 110.0,
+  "oldCoastM": 175.0,
   "_oldCoastM": "sólo para el preview: hasta dónde llega la tierra de la plazoleta vieja más allá del borde nuevo, para taparla con agua mientras el build no la devuelve al mar.",
   "interiorScale": 0.82,
   "interiorAbout": "bldg_este"

@@ -1939,6 +1939,20 @@
       "rockM": [0.9, 1.9],
       "bed": "#6f6b63"
     },
+    "gate": {
+      "_note": "EL ARCO DE ENTRADA (el del Muelle de Cruceros): dos postes y un rótulo entre las puntas, como el de la feria, en azul con letras blancas. El texto y el ancho vienen del mundo.",
+      "board": "#2f6fb8",
+      "trim": "#ffffff",
+      "ink": "#ffffff",
+      "post": "#e9edf2",
+      "shadow": "rgba(20,30,50,0.25)",
+      "postPx": 4,
+      "postHeightM": 7.5,
+      "boardM": 4.2,
+      "overhangM": 1.0,
+      "fontM": 2.5,
+      "font": "JetBrains Mono"
+    },
     "props": {
       "cabana": "#fbf9f2",
       "cabanaM": 2.6,

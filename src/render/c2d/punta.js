@@ -20,7 +20,8 @@
 // Se pinta después del malecón y ANTES de las calles, así que la banda de
 // acera y el asfalto siguen tapando lo que llegue al cordón.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01, weatherColors } from "./gfx.js";
+import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01, upright, weatherColors } from "./gfx.js";
+import { sunShadow } from "./shadows.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 
@@ -199,4 +200,36 @@ function drawPunta(view, t = 0) {
   ctx.fill(P._all);
 }
 
-export { drawPunta };
+// LOS ARCOS DE ENTRADA, en alzado y por encima de calles y muelles: el carro pasa
+// por DEBAJO del rótulo, que se endereza contra la cámara como todo texto. Es el
+// mismo dibujo que el cartel de la feria, con su propia tinta.
+function drawPuntaGates(view) {
+  const P = W.PUNTA;
+  if (!P || !P.gates) return;
+  const G = M.gate, ppm = W.PX_PER_M, H = G.postHeightM * ppm, B = G.boardM * ppm, sh = sunShadow(G.postHeightM);
+  for (const gate of P.gates) {
+    if (gate.x < view.x0 - 200 || gate.x > view.x1 + 200 || gate.y < view.y0 - 200 || gate.y > view.y1 + 200) continue;
+    const tx = Math.cos(gate.ang || 0), ty = Math.sin(gate.ang || 0);
+    const ax = gate.x - tx * gate.w / 2, ay = gate.y - ty * gate.w / 2, bx = gate.x + tx * gate.w / 2, by = gate.y + ty * gate.w / 2;
+    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = G.postPx;
+    ctx.strokeStyle = G.shadow;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + sh.dx, ay + sh.dy); ctx.lineTo(bx + sh.dx, by + sh.dy); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.strokeStyle = G.post;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax, ay - H); ctx.moveTo(bx, by); ctx.lineTo(bx, by - H); ctx.stroke();
+    const ox = tx * G.overhangM * ppm, oy = ty * G.overhangM * ppm;
+    ctx.beginPath();
+    ctx.moveTo(ax - ox, ay - oy - H); ctx.lineTo(bx + ox, by + oy - H);
+    ctx.lineTo(bx + ox, by + oy - H + B); ctx.lineTo(ax - ox, ay - oy - H + B);
+    ctx.closePath();
+    ctx.fillStyle = G.board; ctx.fill();
+    ctx.strokeStyle = G.trim; ctx.lineWidth = 1.2; ctx.stroke();
+    const mx = (ax + bx) / 2, my = (ay + by) / 2 - H + B / 2, stood = upright(mx, my);
+    ctx.font = `${(G.fontM * ppm).toFixed(2)}px '${G.font}', sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = G.ink;
+    ctx.fillText(gate.text, stood ? 0 : mx, (stood ? 0 : my) + 0.4);
+    ctx.textBaseline = "alphabetic";
+    if (stood) ctx.restore();
+  }
+}
+
+export { drawPunta, drawPuntaGates };

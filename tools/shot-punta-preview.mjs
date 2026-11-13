@@ -54,7 +54,7 @@ const tc = Math.floor(groundsRaw[0] / tilePx), tr = Math.floor(groundsRaw[1] / t
 const tile = JSON.parse(readFileSync(`src/world2d/tiles/${tc}_${tr}.json`, "utf8"));
 const FIT = doc.gameFit, ACERA = manifest.meta.aceraPx, realHalf = FIT.realRoadHalfM * ppm, range = FIT.interiorRangeM * ppm;
 // las calles de TODO el frente: el tile de La Punta y los del Paseo hasta el Muelle de Cruceros
-const untilX = manifest.piers.find((q) => q.id === doc.paseo.until.pier).pts[0] - doc.paseo.until.marginM * ppm;
+const cruPier = manifest.piers.find((q) => q.id === doc.paseo.until.pier), untilX = cruPier.pts[0] + doc.paseo.until.pastM * ppm;
 const frontTiles = [];
 for (let c = tc; c <= Math.floor(untilX / tilePx); c++) for (const r of [tr, tr + 1]) {
   if (c === tc && r === tr) continue;
@@ -168,24 +168,6 @@ const baseAt = (i) => widthAt(i);
 const spurMid = (sp) => { const c = sp.polygonLL.map(xy); return [(c[0][0] + c[1][0] + c[2][0] + c[3][0]) / 4, (c[0][1] + c[1][1] + c[2][1] + c[3][1]) / 4]; };
 // el Paseo, de ahí en adelante: verde contra la acera y playa al frente, las dos regulares
 const kerbS = centre.map((_, i) => { let t = 0, n = 0; for (let k = Math.max(0, i - 14); k <= Math.min(N - 1, i + 14); k++) { t += centre[k][2]; n++; } return t / n; });
-// LA ORILLA DE HOY, medida sobre el ráster: desde la calle hacia el mar, hasta el agua abierta
-const grids = new Map();
-for (const [key, t] of [[`${tc}_${tr}`, tile], ...frontTiles]) {
-  const rle = Buffer.from(t.rle, "base64"), g = new Uint8Array(t.cols * t.rows); let o = 0;
-  for (let i = 0; i + 1 < rle.length; i += 2) { g.fill(rle[i + 1], o, o + rle[i]); o += rle[i]; }
-  grids.set(key, { g, x: t.x, y: t.y, cols: t.cols });
-}
-const CELL = manifest.meta.cell;
-const surf = (x, y) => { const t = grids.get(`${Math.floor(x / tilePx)}_${Math.floor(y / tilePx)}`); return t ? t.g[Math.floor((y - t.y) / CELL) * t.cols + Math.floor((x - t.x) / CELL)] : 0; };
-const shoreRaw = centre.map((c, i) => {
-  if (i <= endI) return 0;
-  let last = c[2], wet = 0;
-  for (let dd = c[2]; dd < doc.paseo.shore.maxM * ppm; dd += CELL) {
-    const [x, y] = offset(i, dd);
-    if (surf(x, y) === 0) { wet += CELL; if (wet > 30 * ppm) break; } else { last = dd; wet = 0; }
-  }
-  return last;
-});
 const PS = doc.paseo, JOIN = Math.round(PS.joinM), END = Math.round(PS.endM);
 // la unión y el remate: 0 en el extremo, 1 cuando la franja ya tiene su ancho
 const grow = (i) => ease(Math.min((i - endI) / JOIN, (N - 1 - i) / END));
@@ -196,9 +178,8 @@ const greyOut = (i) => widthAt(endI) + (warmD(i) - widthAt(endI)) * joinK(i);
 const greyIn = (i) => warmD(i) * joinK(i);
 // …y el verde y la playa nacen a su lado
 const greenD = (i) => greyOut(i) + PS.greenM * ppm * grow(i);
-const SM = Math.round(PS.shore.smoothM), shoreS = centre.map((_, i) => { if (i <= endI) return 0; let t = 0, n = 0; for (let k = Math.max(endI + 1, i - SM); k <= Math.min(N - 1, i + SM); k++) { t += shoreRaw[k]; n++; } return t / n; });
-// la playa llega a la orilla alisada, nunca menos que su mínimo
-const sandD = (i) => { const min = greenD(i) + PS.beachM * ppm * Math.max(grow(i), i - endI < JOIN ? 1 : 0), blend = Math.min(joinK(i), ease((N - 1 - i) / END)); return min + Math.max(0, shoreS[i] - min) * blend; };
+// la playa: el mismo fondo que la de entre lenguas, de punta a punta, y cierra en curva al final
+const sandD = (i) => greenD(i) + PS.beachM * ppm * ease((N - 1 - i) / END);
 const seaAt = (i) => (i <= endI ? baseAt(i) : sandD(i));
 // los cinco malecones: el rectángulo de OSM, engordado, y corrido hasta que salga al mar
 const spurs = ML.spurs.at.map((sp) => {
@@ -242,7 +223,7 @@ manifest.malecon.push({ polys: [band], ang: old.ang, ...bbox(band), style: ML.st
 for (const [k, tg] of tongues.entries()) manifest.malecon.push({ polys: [tg], ang: old.ang, ...bbox(tg), style: ML.style, id: `punta_lengua_${k}` });
 // la arena vieja de este tramo: los anillos que caen enteros se van; al que sigue
 // hacia el este se le quitan los vértices de acá (un corte recto: es un preview)
-const seaward = (x, y) => { const i = nearestI([x, y]); return (x - centre[i][0]) * normal[i][0] + (y - centre[i][1]) * normal[i][1] > 0 && Math.hypot(x - centre[i][0], y - centre[i][1]) < (doc.paseo.shore.maxM + 40) * ppm; };
+const seaward = (x, y) => { const i = nearestI([x, y]); return (x - centre[i][0]) * normal[i][0] + (y - centre[i][1]) * normal[i][1] > 0 && Math.hypot(x - centre[i][0], y - centre[i][1]) < FIT.oldCoastM * ppm; };
 let sandCut = 0;
 manifest.beaches = manifest.beaches.map((ring) => {
   const keep = [];
@@ -333,6 +314,37 @@ if (lane) {
 {
   const all = Array.from({ length: N }, (_, i) => i);
   manifest.waters.push(strip(all, (i) => outerD[i] + 1, (i) => outerD[i] + FIT.oldCoastM * ppm));
+}
+// ---- LA ENTRADA DEL MUELLE DE CRUCEROS
+const CR = doc.cruceros;
+{
+  // el muelle se corre al norte hasta el final de su calle: una sola línea, y la playa pasa por debajo
+  const st = streets.filter((r) => r.name === CR.street).map((r) => [[r.pts[0], r.pts[1]], [r.pts[r.pts.length - 2], r.pts[r.pts.length - 1]]]).flat()
+    .sort((a, b) => Math.hypot(a[0] - cruPier.pts[0], a[1] - cruPier.pts[1]) - Math.hypot(b[0] - cruPier.pts[0], b[1] - cruPier.pts[1]))[0];
+  cruPier.pts[0] = st[0]; cruPier.pts[1] = st[1] - 4;
+  const west = CR.casetaSide === "west" ? -1 : 1, [offX, offY] = CR.casetaOffM.map((m) => m * ppm);
+  for (const lm of manifest.landmarks) {
+    if (lm.id === CR.landmark) { lm.x = Math.round(cruPier.pts[0] + west * (cruPier.w / 2 + offX)); lm.y = Math.round(cruPier.pts[1] + offY); }
+  }
+  punta.gates = [{ x: cruPier.pts[0], y: cruPier.pts[1] + 10, w: CR.gate.widthM * ppm, ang: 0, text: CR.gate.text }];
+  // la Capitanía, donde OSM tiene el edificio del MOPT
+  for (const [, nb] of frontTiles) {
+    const b = (nb.buildings || []).find((q) => q.name === CR.capitania.replacesBuilding);
+    if (!b) continue;
+    const [bx, by3] = centroid(b.pts);
+    nb.buildings = nb.buildings.filter((q) => q !== b);
+    for (const lm of manifest.landmarks) if (lm.id === CR.capitania.landmark) { lm.x = Math.round(bx); lm.y = Math.round(by3); }
+  }
+  manifest.parcels = manifest.parcels.filter((q) => q.id !== CR.capitania.dropParcel);
+  manifest.piers = manifest.piers.filter((q) => !CR.dropPiers.includes(q.id));
+  // los kioscos suben al malecón de baldosa; su calle auxiliar se queda, sin pintar
+  for (const id of CR.kiosks.ids) {
+    const lm = manifest.landmarks.find((q) => q.id === id);
+    const lane = manifest.kioskPaths.find((k) => Math.hypot(k.pts[0] - lm.x, k.pts[1] - lm.y) < 30 || Math.hypot(k.pts[2] - lm.x, k.pts[3] - lm.y) < 30);
+    const i = nearestI([lm.x, lm.y]), [nx2, ny2] = offset(i, warmD(i) - CR.kiosks.fromRocksM * ppm).map(Math.round);
+    if (lane) { const k = Math.hypot(lane.pts[0] - lm.x, lane.pts[1] - lm.y) < 30 ? 0 : 2; lane.pts[k] = nx2; lane.pts[k + 1] = ny2; lane.hidden = !!CR.kiosks.hiddenLanes; }
+    lm.x = nx2; lm.y = ny2;
+  }
 }
 manifest.punta = punta;
 let neighbours = [];

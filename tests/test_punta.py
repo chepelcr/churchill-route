@@ -73,7 +73,9 @@ class PuntaRegistryTests(unittest.TestCase):
         self.assertGreaterEqual(w["tip"], 15 + 2 * self.doc["faro"]["plazaRM"] + 2)
         self.assertEqual(self.doc["paseo"]["until"]["pier"], "muelle_nacional")
         self.assertEqual(self.doc["muelle"]["pier"], "muelle_faro")
-        self.assertGreater(self.doc["paseo"]["beachM"], 0)
+        # UNA playa: la del Paseo mide lo que la de entre lenguas
+        self.assertEqual(self.doc["paseo"]["beachM"], ml["cove"]["beachM"])
+        self.assertEqual(self.doc["cruceros"]["pier"], self.doc["paseo"]["until"]["pier"])
         self.assertGreaterEqual(len(ml["alongLL"]), 10)
         self.assertEqual(len(ml["spurs"]["at"]), 5, "los cinco malecones de OSM")
 

@@ -1889,6 +1889,68 @@
     "barro": "#a87940",
     "gravel": "#b0a289"
   },
+  "punta": {
+    "_note": "LA PUNTA — El Faro y el Balneario (`c2d/punta.js`). El mundo dice DÓNDE está cada figura (`manifest.punta`, trazada sobre la imagen satelital en docs/punta-satellite-mockup.json); esto dice de qué está hecha. Los dos pisos del malecón son distintos a propósito: abanicos al norte del Faro, olas al sur.",
+    "ground": {
+      "_note": "el suelo por `use` de cada figura",
+      "park": "#c9b48c",
+      "deck": "#e9dfca",
+      "malecon": "#e2d5ba",
+      "plaza": "#ddd2bc",
+      "parking": "#8f8c87",
+      "planter": "#5e9a58"
+    },
+    "kerb": "rgba(120,104,80,0.55)",
+    "sky": {
+      "_note": "LA HORA, como un velo sobre el lugar entero. Los colores de arriba son los de mediodía; en vez de autorar cada uno cuatro veces, el cielo le pasa UNA tinta por encima a todo el suelo de La Punta — las mismas cuatro llaves que la paleta del malecón, mezcladas por `blendPalette`.",
+      "clear": { "veil": "rgba(0,0,0,0)" },
+      "storm": { "veil": "rgba(52,58,66,0.30)" },
+      "sunset": { "veil": "rgba(214,120,60,0.14)" },
+      "night": { "veil": "rgba(16,20,38,0.58)" }
+    },
+    "pool": {
+      "_note": "el agua por zona, el brocal claro que la rodea y los muritos que la parten",
+      "pool": "#5fa3d6",
+      "pool-shallow": "#b9a3dc",
+      "pool-deep": "#4a8fcb",
+      "rim": "#f3eee2",
+      "rimWidthM": 0.9,
+      "wall": "#e6e1d4",
+      "wallWidthM": 0.7,
+      "glint": "rgba(255,255,255,0.22)"
+    },
+    "fan": {
+      "_note": "EL ABANICO del malecón norte: un sector con el vértice hacia el Faro. `halfAngleDeg` es la mitad de su apertura; el radio y el rumbo de cada uno vienen del mundo.",
+      "ink": "#c4ad8b",
+      "edge": "rgba(140,118,88,0.55)",
+      "halfAngleDeg": 60,
+      "bench": "#f4f0e6",
+      "benchShadow": "rgba(60,48,36,0.35)",
+      "benchM": [2.2, 0.8],
+      "benchAlong": 0.5,
+      "benchOffsetM": 0.9,
+      "benchNote": "dos bancas por abanico, una a cada lado: `benchM` es largo x fondo, `benchAlong` a qué fracción del canto recto va, `benchOffsetM` cuánto se separa de él hacia afuera"
+    },
+    "wave": {
+      "_note": "LA OLA del malecón sur: una hoja en S. `outline` es su contorno UNITARIO — `u` a lo largo del eje (0 = punta norte, 1 = punta sur), `v` de través en fracciones del largo, positivo hacia la calle. El largo y el rumbo de cada una vienen del mundo.",
+      "ink": "#c4ad8b",
+      "edge": "rgba(140,118,88,0.55)",
+      "outline": [[0, 0], [0.12, 0.09], [0.25, 0.13], [0.5, 0.17], [0.75, 0.06], [0.9, 0.01], [1, 0], [0.9, -0.08], [0.75, -0.15], [0.5, -0.15], [0.35, -0.06], [0.25, 0], [0.12, 0.03]],
+      "rotondaWidthM": 1.6
+    },
+    "riprap": {
+      "_note": "la escollera: piedras sembradas por hash a lo ancho de la línea. Los grises son los de `coast.rocks`; acá sólo la densidad y el tamaño.",
+      "stepM": 1.5,
+      "rockM": [0.9, 1.9],
+      "bed": "#6f6b63"
+    },
+    "props": {
+      "play-structure": "#f2d04a",
+      "cabana": "#fbf9f2",
+      "cabanaM": 2.6,
+      "shadow": "rgba(40,34,28,0.28)"
+    }
+  },
   "coast": {
     "_note": "LA ORILLA CON CUERPO (vista 2.5D, `three/coast.js`). Donde la tierra toca el mar sin playa de por medio, el borde deja de ser una línea: es un talud de piedra que baja hacia el agua con la escollera al pie — La Punta es concreto y roca, no arena. En 2-D no se usa.",
     "wall": "#8f8a7e",

@@ -22,11 +22,24 @@
   ],
   "anchor": "nodo OSM 2968005496, Faro de La Punta",
   "fit": "la Calle 39, el Faro y los edificios del este calzan a ~2 m. La piscina y Punta Pirata de OSM quedan ~3 m al este de la imagen: ahí manda la imagen.",
+  "angles": "`axisDeg` va en el marco del MUNDO: 0° = este, positivo en el sentido del reloj (y hacia el sur), igual que `ang` en el manifest.",
   "formula": "dx=(x-anchorPx.x)/pxPerMetre, dy=(y-anchorPx.y)/pxPerMetre; este=cos(r)·dx+sin(r)·dy; sur=-sin(r)·dx+cos(r)·dy"
  },
  "keep": {
   "muelle_faro": "El Muelle del Faro (content/world/piers.json) y el kiosco Churchill La Punta sobre su cubierta NO se tocan: salen de la plazoleta del Faro hacia el suroeste, cruzando la escollera sur.",
   "calle_39": "El lazo de la Calle 39 sigue saliendo de OSM; estas figuras se trazaron contra sus cordones."
+ },
+ "gameFit": {
+  "_note": "EL JUEGO ENSANCHA LAS CALLES y el trazo es a escala real: puesto tal cual, la Calle 39 del juego tapa el piso de abanicos y el borde del deck. Así que el trazo se ACOMODA a la calle del juego, y nunca vértice por vértice sobre lo rígido: lo de AFUERA del lazo (malecones, Faro) se corre hacia el mar lo que la calle creció; lo de ADENTRO (piscina, edificios, árboles) se encoge como UN grupo con una sola escala hacia el lado este, que es donde la cuadra del juego tiene campo — una semejanza, así que nada se dobla y todo conserva su arreglo.",
+  "realRoadHalfM": 4.0,
+  "interiorRangeM": 45.0,
+  "interiorScale": 0.82,
+  "interiorAbout": "bldg_este",
+  "skip": [
+   "escollera",
+   "escollera_sur"
+  ],
+  "_skip": "la costa del juego es ~20 m más ancha que la real a propósito y ya trae su propia escollera; la del trazo quedaría tierra adentro."
  },
  "shapes": [
   {
@@ -2296,110 +2309,145 @@
    ],
    "pattern": {
     "type": "abanicos",
-    "r": 30,
+    "rM": 5.8,
+    "halfAngleDeg": 60,
+    "leanDeg": 9,
     "color": "#c2ab8a",
-    "note": "medias lunas café; la cuerda mira a la calle y el arco al mar",
-    "centers": [
-     [
-      640,
-      427
-     ],
-     [
-      587,
-      443
-     ],
-     [
-      527,
-      470
-     ],
-     [
-      473,
-      503
-     ],
-     [
-      427,
-      530
-     ],
-     [
-      373,
-      577
-     ],
-     [
-      313,
-      623
-     ],
-     [
-      247,
-      667
-     ],
-     [
-      200,
-      727
-     ],
-     [
-      160,
-      790
-     ],
-     [
-      127,
-      870
-     ],
-     [
-      121,
-      943
-     ]
-    ],
-    "centersLL": [
-     [
-      9.9773752,
-      -84.850751
-     ],
-     [
-      9.97735328,
-      -84.8508036
-     ],
-     [
-      9.97731943,
-      -84.85086219
-     ],
-     [
-      9.97728012,
-      -84.85091398
-     ],
-     [
-      9.97724777,
-      -84.85095822
-     ],
-     [
-      9.97719423,
-      -84.85100851
-     ],
-     [
-      9.97714108,
-      -84.85106505
-     ],
-     [
-      9.97708931,
-      -84.85112796
-     ],
-     [
-      9.97702331,
-      -84.85116967
-     ],
-     [
-      9.97695501,
-      -84.85120388
-     ],
-     [
-      9.97687018,
-      -84.85122909
-     ],
-     [
-      9.97679535,
-      -84.85122737
-     ]
-    ],
-    "rM": 3.39
+    "note": "ABANICOS, no círculos: sectores de ~120° con el vértice hacia el Faro y el arco abriendo a lo largo del malecón, ladeados ~9° hacia la calle. Dos bancas por abanico, una a cada lado, junto a cada canto recto. Medido en el acercamiento Screenshot_20261113_103355.",
+    "fans": [
+     {
+      "apex": [
+       613,
+       431
+      ],
+      "axisDeg": 346.2,
+      "apexLL": [
+       9.97736825,
+       -84.85077824
+      ]
+     },
+     {
+      "apex": [
+       560,
+       447
+      ],
+      "axisDeg": 346.2,
+      "apexLL": [
+       9.97734633,
+       -84.85083084
+      ]
+     },
+     {
+      "apex": [
+       501,
+       477
+      ],
+      "axisDeg": 338.8,
+      "apexLL": [
+       9.97730954,
+       -84.85088808
+      ]
+     },
+     {
+      "apex": [
+       448,
+       513
+      ],
+      "axisDeg": 331.6,
+      "apexLL": [
+       9.97726729,
+       -84.85093853
+      ]
+     },
+     {
+      "apex": [
+       402,
+       540
+      ],
+      "axisDeg": 332.6,
+      "apexLL": [
+       9.97723493,
+       -84.85098277
+      ]
+     },
+     {
+      "apex": [
+       350,
+       591
+      ],
+      "axisDeg": 322.0,
+      "apexLL": [
+       9.97717755,
+       -84.85103057
+      ]
+     },
+     {
+      "apex": [
+       289,
+       636
+      ],
+      "axisDeg": 325.5,
+      "apexLL": [
+       9.9771253,
+       -84.85108825
+      ]
+     },
+     {
+      "apex": [
+       222,
+       678
+      ],
+      "axisDeg": 329.3,
+      "apexLL": [
+       9.97707546,
+       -84.8511524
+      ]
+     },
+     {
+      "apex": [
+       180,
+       746
+      ],
+      "axisDeg": 311.1,
+      "apexLL": [
+       9.97700187,
+       -84.85118812
+      ]
+     },
+     {
+      "apex": [
+       142,
+       810
+      ],
+      "axisDeg": 305.4,
+      "apexLL": [
+       9.97693276,
+       -84.85122017
+      ]
+     },
+     {
+      "apex": [
+       113,
+       893
+      ],
+      "axisDeg": 295.4,
+      "apexLL": [
+       9.97684531,
+       -84.85124096
+      ]
+     },
+     {
+      "apex": [
+       115,
+       969
+      ],
+      "axisDeg": 277.7,
+      "apexLL": [
+       9.97676829,
+       -84.85123072
+      ]
+     }
+    ]
    },
    "polygonLL": [
     [
@@ -3032,87 +3080,77 @@
     ]
    ],
    "pattern": {
-    "type": "commas",
+    "type": "olas",
+    "lenM": 11.0,
+    "leanDeg": -32,
     "color": "#c2ab8a",
-    "note": "olas/comas café alternadas, la cola hacia el sur; la última es una rotonda",
-    "commas": [
+    "note": "OLAS, no círculos: una hoja en S de ~11 m, panza arriba cerca de la punta norte y panza abajo cerca de la sur, las dos colas en punta. Todas con la misma orientación, ~32° más atravesadas que el malecón, una cada ~13 m. Medido en el acercamiento Screenshot_20261113_103404. El contorno unitario vive en materials.json → punta.wave.",
+    "waves": [
      {
       "at": [
        193,
        1264
       ],
-      "r": 34,
-      "turn": 1,
+      "axisDeg": 33.6,
       "ll": [
        9.97647682,
        -84.85111899
-      ],
-      "rM": 3.84
+      ]
      },
      {
       "at": [
        236,
        1393
       ],
-      "r": 36,
-      "turn": -1,
+      "axisDeg": 32.5,
       "ll": [
        9.97635031,
        -84.85106102
-      ],
-      "rM": 4.07
+      ]
      },
      {
       "at": [
        279,
        1507
       ],
-      "r": 36,
-      "turn": 1,
+      "axisDeg": 27.9,
       "ll": [
        9.97623904,
        -84.85100466
-      ],
-      "rM": 4.07
+      ]
      },
      {
       "at": [
        360,
        1670
       ],
-      "r": 40,
-      "turn": -1,
+      "axisDeg": 24.3,
       "ll": [
        9.97608204,
        -84.85090408
-      ],
-      "rM": 4.52
+      ]
      },
      {
       "at": [
        432,
        1798
       ],
-      "r": 44,
-      "turn": 1,
+      "axisDeg": 18.8,
       "ll": [
        9.97595965,
        -84.85081649
-      ],
-      "rM": 4.97
+      ]
      },
      {
       "at": [
        512,
        1902
       ],
-      "r": 48,
-      "turn": -1,
+      "axisDeg": 14.4,
       "ll": [
        9.9758625,
        -84.85072329
-      ],
-      "rM": 5.42
+      ]
      }
     ],
     "rotonda": {
@@ -3941,7 +3979,7 @@
   }
  ],
  "notes": [
-  "Los dos pisos del malecón son distintos a propósito: al NORTE del Faro, una fila de ABANICOS (medias lunas) entre la escollera y la calle; al SUR, COMAS grandes alternadas que rematan en una rotonda.",
+  "Los dos pisos del malecón son distintos a propósito: al NORTE del Faro, una fila de ABANICOS (sectores, no círculos) entre la escollera y la calle; al SUR, OLAS en S que rematan en una rotonda.",
   "La piscina es UNA sola lámina en forma de coma (yin-yang) con tres zonas: el lóbulo norte infantil (fondo lila, barco de juegos), el cuerpo principal y el lóbulo sur detrás de la isla de palmeras. Aparte hay una piscina redonda de niños.",
   "El terreno del Balneario deja de ser agua: es tierra y jardín con arboleda al este, deck claro alrededor de la piscina y los edificios en su sitio.",
   "El lindero este del terreno (x≈1125–1135) y el borde sur bajo los árboles son estimados: la imagen no los muestra limpios.",

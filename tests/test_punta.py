@@ -58,10 +58,14 @@ class PuntaRegistryTests(unittest.TestCase):
     def test_figures_carry_degrees_and_metres(self):
         ml = self.doc["malecon"]
         for family, size in (("fans", "rM"), ("waves", "lenM")):
-            self.assertTrue(2 < ml[family][size] < 20, f"{family}.{size} no parece metros")
-            self.assertGreater(ml[family]["rowM"], 0)
-            for item in ml[family]["at"]:
-                self.assertTrue(0 <= item["axisDeg"] < 360, f"{family}: rumbo fuera de grados")
+            spec = ml[family]
+            self.assertTrue(2 < spec[size] < 30, f"{family}.{size} no parece metros")
+            self.assertGreater(spec["rowM"], 0)
+            self.assertGreater(spec["spacingM"], spec["halfExtentM"])
+            self.assertTrue(-90 <= spec["leanDeg"] <= 90, f"{family}: ladeo fuera de grados")
+        w = ml["widthM"]
+        self.assertGreater(w["tip"], max(w["north"], w["south"]), "la punta es lo más ancho")
+        self.assertGreaterEqual(len(ml["alongLL"]), 10)
 
     def test_there_is_one_malecon_and_it_is_the_faros(self):
         self.assertEqual(self.doc["malecon"]["style"], "esplanade")

@@ -3,414 +3,133 @@
  "_status": "Lo lee `tools/shot-punta-preview.mjs` para el preview sin reconstruir. `content.py` lo carga como `PUNTA_DEF`, pero todavía NINGUNA etapa del builder lo consume: mientras tanto la cuadra sigue saliendo como `water-inlet` desde blocks.json.",
  "version": 1,
  "malecon": {
-  "_note": "UN SOLO MALECÓN, Y ES EL DEL FARO. No se dibuja un piso nuevo encima del viejo: la plazoleta que el mundo ya emite (`manifest.malecon`, `style: esplanade`) es el piso, con su piedra gris y su mosaico, y acá sólo se dice HASTA DÓNDE SE EXTIENDE ahora y qué figuras lleva. Las figuras —abanicos al norte del Faro, olas al sur— llevan la tinta de las comas rojas de siempre (`world-props.json` → `scenes.faro.palette.comma`), que es lo que hace que el lugar se siga viendo como él mismo.",
+  "_note": "UN SOLO MALECÓN, Y ES EL DEL FARO: su piedra gris y su mosaico (`style: esplanade`, o sea `materials.json` → `malecon.esplanade`) y el rojo de sus comas (`world-props.json` → `scenes.faro.palette.comma`). Lo que cambia es la FORMA: deja de ser la mancha que el ráster dejó y pasa a ser una banda limpia que sigue la calle.",
   "style": "esplanade",
-  "extend": [
-   {
-    "id": "malecon_norte",
-    "name": "Malecón norte — piso de abanicos",
-    "polygonLL": [
-     [
-      9.97748608,
-      -84.85074202
-     ],
-     [
-      9.97739409,
-      -84.8508359
-     ],
-     [
-      9.97732013,
-      -84.85092444
-     ],
-     [
-      9.977242,
-      -84.85101357
-     ],
-     [
-      9.97717895,
-      -84.85109601
-     ],
-     [
-      9.97710868,
-      -84.85117872
-     ],
-     [
-      9.97704129,
-      -84.85123375
-     ],
-     [
-      9.97696893,
-      -84.85126753
-     ],
-     [
-      9.97688474,
-      -84.85128659
-     ],
-     [
-      9.9767882,
-      -84.85129604
-     ],
-     [
-      9.97672075,
-      -84.85128268
-     ],
-     [
-      9.97673036,
-      -84.85119043
-     ],
-     [
-      9.97675078,
-      -84.85109311
-     ],
-     [
-      9.97685556,
-      -84.85110318
-     ],
-     [
-      9.97692472,
-      -84.85110015
-     ],
-     [
-      9.97699527,
-      -84.85108379
-     ],
-     [
-      9.97706662,
-      -84.8510499
-     ],
-     [
-      9.97713326,
-      -84.85100204
-     ],
-     [
-      9.97719529,
-      -84.85093919
-     ],
-     [
-      9.97725059,
-      -84.85086214
-     ],
-     [
-      9.97727946,
-      -84.8507823
-     ],
-     [
-      9.97729421,
-      -84.85068023
-     ],
-     [
-      9.97736839,
-      -84.8506881
-     ]
-    ]
-   },
-   {
-    "id": "faro_plaza",
-    "name": "Plazoleta del Faro",
-    "polygonLL": [
-     [
-      9.97672075,
-      -84.85128268
-     ],
-     [
-      9.97673036,
-      -84.85119043
-     ],
-     [
-      9.97675078,
-      -84.85109311
-     ],
-     [
-      9.97664915,
-      -84.85108234
-     ],
-     [
-      9.97655939,
-      -84.85105624
-     ],
-     [
-      9.97647198,
-      -84.85100759
-     ],
-     [
-      9.97646664,
-      -84.85105884
-     ],
-     [
-      9.97643371,
-      -84.85117764
-     ],
-     [
-      9.97652968,
-      -84.85124273
-     ],
-     [
-      9.97656937,
-      -84.85125627
-     ],
-     [
-      9.97662864,
-      -84.85127913
-     ]
-    ]
-   },
-   {
-    "id": "mirador_oeste",
-    "name": "Mirador La Punta (área de descanso, sale del cuadro al oeste)",
-    "osmId": 964078510,
-    "note": "La imagen la corta; su largo real sale de la vía OSM 964078510.",
-    "polygonLL": [
-     [
-      9.97672011,
-      -84.85128883
-     ],
-     [
-      9.97669604,
-      -84.85134224
-     ],
-     [
-      9.97657206,
-      -84.85132909
-     ],
-     [
-      9.97656937,
-      -84.85125627
-     ]
-    ]
-   },
-   {
-    "id": "malecon_sur",
-    "name": "Malecón sur — piso de comas",
-    "polygonLL": [
-     [
-      9.97643371,
-      -84.85117764
-     ],
-     [
-      9.97646664,
-      -84.85105884
-     ],
-     [
-      9.97647198,
-      -84.85100759
-     ],
-     [
-      9.97645209,
-      -84.85100134
-     ],
-     [
-      9.97631017,
-      -84.85095314
-     ],
-     [
-      9.97615692,
-      -84.85087575
-     ],
-     [
-      9.97606351,
-      -84.85078605
-     ],
-     [
-      9.97596958,
-      -84.85070148
-     ],
-     [
-      9.97587393,
-      -84.85063331
-     ],
-     [
-      9.97575463,
-      -84.85049631
-     ],
-     [
-      9.97571559,
-      -84.85057507
-     ],
-     [
-      9.97569263,
-      -84.85079544
-     ],
-     [
-      9.97575265,
-      -84.85081113
-     ],
-     [
-      9.97585257,
-      -84.8508383
-     ],
-     [
-      9.97594907,
-      -84.85089828
-     ],
-     [
-      9.97604471,
-      -84.85096645
-     ],
-     [
-      9.97614068,
-      -84.85103155
-     ],
-     [
-      9.97623847,
-      -84.85107922
-     ],
-     [
-      9.97633593,
-      -84.85112996
-     ]
-    ]
-   }
-  ],
-  "_extend": "suelo que se SUMA a la plazoleta emitida, en su mismo estilo: el brazo norte hasta la Avenida 3 y el brazo sur hasta la rotonda.",
-  "fans": {
-   "_note": "ABANICOS, no círculos: sectores de ~120° con el vértice hacia el Faro y el arco abriendo a lo largo del malecón, ladeados ~9° hacia la calle. Dos bancas por abanico, una a cada lado, junto a cada canto recto. Medido en el acercamiento Screenshot_20261113_103355.",
-   "rM": 5.8,
-   "rowM": 10.5,
-   "rows": 14,
-   "at": [
-    {
-     "ll": [
-      9.97736825,
-      -84.85077824
-     ],
-     "axisDeg": 346.2
-    },
-    {
-     "ll": [
-      9.97734633,
-      -84.85083084
-     ],
-     "axisDeg": 346.2
-    },
-    {
-     "ll": [
-      9.97730954,
-      -84.85088808
-     ],
-     "axisDeg": 338.8
-    },
-    {
-     "ll": [
-      9.97726729,
-      -84.85093853
-     ],
-     "axisDeg": 331.6
-    },
-    {
-     "ll": [
-      9.97723493,
-      -84.85098277
-     ],
-     "axisDeg": 332.6
-    },
-    {
-     "ll": [
-      9.97717755,
-      -84.85103057
-     ],
-     "axisDeg": 322.0
-    },
-    {
-     "ll": [
-      9.9771253,
-      -84.85108825
-     ],
-     "axisDeg": 325.5
-    },
-    {
-     "ll": [
-      9.97707546,
-      -84.8511524
-     ],
-     "axisDeg": 329.3
-    },
-    {
-     "ll": [
-      9.97700187,
-      -84.85118812
-     ],
-     "axisDeg": 311.1
-    },
-    {
-     "ll": [
-      9.97693276,
-      -84.85122017
-     ],
-     "axisDeg": 305.4
-    },
-    {
-     "ll": [
-      9.97684531,
-      -84.85124096
-     ],
-     "axisDeg": 295.4
-    },
-    {
-     "ll": [
-      9.97676829,
-      -84.85123072
-     ],
-     "axisDeg": 277.7
-    }
+  "alongLL": [
+   [
+    9.97731914,
+    -84.85037198
+   ],
+   [
+    9.9773082,
+    -84.85052627
+   ],
+   [
+    9.97729421,
+    -84.85068023
+   ],
+   [
+    9.97727946,
+    -84.8507823
+   ],
+   [
+    9.97725059,
+    -84.85086214
+   ],
+   [
+    9.97719529,
+    -84.85093919
+   ],
+   [
+    9.97713326,
+    -84.85100204
+   ],
+   [
+    9.97706662,
+    -84.8510499
+   ],
+   [
+    9.97699527,
+    -84.85108379
+   ],
+   [
+    9.97692472,
+    -84.85110015
+   ],
+   [
+    9.97685556,
+    -84.85110318
+   ],
+   [
+    9.97675078,
+    -84.85109311
+   ],
+   [
+    9.97664915,
+    -84.85108234
+   ],
+   [
+    9.97655939,
+    -84.85105624
+   ],
+   [
+    9.97645209,
+    -84.85100134
+   ],
+   [
+    9.97631017,
+    -84.85095314
+   ],
+   [
+    9.97615692,
+    -84.85087575
+   ],
+   [
+    9.97606351,
+    -84.85078605
+   ],
+   [
+    9.97596958,
+    -84.85070148
+   ],
+   [
+    9.97587393,
+    -84.85063331
+   ],
+   [
+    9.97575463,
+    -84.85049631
    ]
+  ],
+  "_along": "el cordón de mar de la Calle 39, trazado sobre la imagen de norte a sur. No es el borde del piso: es la GUÍA. Cada punto se ajusta a la línea de centro de la calle del juego, y el piso nace AHÍ, debajo del asfalto, para que entre calle y malecón no quede ni una franja de arena.",
+  "widthM": {
+   "north": 34.0,
+   "tip": 78.0,
+   "south": 44.0,
+   "tipAtLL": [
+    9.97667409,
+    -84.85115856
+   ]
+  },
+  "_widthM": "cuánto se abre el piso desde la línea de centro de la calle: angosto en el brazo norte, ancho en la punta frente al Faro, medio en el brazo sur, y entre uno y otro una sola curva suave. Medidas DEL JUEGO, no de la imagen: la calle del juego mide 15 m de centro a cordón (la real, 4) y la costa del juego es más ancha, así que el malecón real de 11 m no alcanzaría ni a salir de debajo de la acera.",
+  "riprap": {
+   "widthM": 4.5,
+   "_note": "la escollera nueva, sembrada sobre el borde de mar del piso; reemplaza el anillo de piedras de la plazoleta vieja (`lm.rim`)."
+  },
+  "fans": {
+   "_note": "ABANICOS al norte del Faro: sectores con el vértice hacia el Faro y el arco abriendo a lo largo del malecón, ladeados hacia la calle, con dos bancas, una junto a cada canto recto. En la imagen miden 5,8 m y van cada 8,6; acá van a la escala del piso del juego.",
+   "rM": 8.5,
+   "spacingM": 15.0,
+   "rowM": 17.0,
+   "leanDeg": 9,
+   "halfExtentM": 8.0
   },
   "waves": {
-   "_note": "OLAS, no círculos: una hoja en S de ~11 m, panza arriba cerca de la punta norte y panza abajo cerca de la sur, las dos colas en punta. Todas con la misma orientación, ~32° más atravesadas que el malecón, una cada ~13 m. Medido en el acercamiento Screenshot_20261113_103404. El contorno unitario vive en materials.json → punta.wave.",
-   "lenM": 11.0,
-   "rowM": 7.0,
-   "rows": 14,
-   "at": [
-    {
-     "ll": [
-      9.97647682,
-      -84.85111899
-     ],
-     "axisDeg": 33.6
-    },
-    {
-     "ll": [
-      9.97635031,
-      -84.85106102
-     ],
-     "axisDeg": 32.5
-    },
-    {
-     "ll": [
-      9.97623904,
-      -84.85100466
-     ],
-     "axisDeg": 27.9
-    },
-    {
-     "ll": [
-      9.97608204,
-      -84.85090408
-     ],
-     "axisDeg": 24.3
-    },
-    {
-     "ll": [
-      9.97595965,
-      -84.85081649
-     ],
-     "axisDeg": 18.8
-    },
-    {
-     "ll": [
-      9.9758625,
-      -84.85072329
-     ],
-     "axisDeg": 14.4
-    }
-   ]
+   "_note": "OLAS al sur del Faro: hojas en S, todas con la misma orientación, más atravesadas que el malecón. En la imagen miden 11 m y van cada 13; acá a la escala del piso del juego. El contorno unitario vive en materials.json → punta.wave.",
+   "lenM": 17.0,
+   "spacingM": 20.0,
+   "rowM": 12.5,
+   "leanDeg": -32,
+   "halfExtentM": 6.5
   },
-  "_rows": "LAS FIGURAS LLENAN EL PISO. `at` es la primera fila, la que se trazó sobre la imagen junto a la calle; la misma fila se repite hacia el mar cada `rowM` metros, hasta `rows` veces, y se queda con las que caben ENTERAS en el malecón. Así el piso se llena hasta la orilla del juego, que es más ancha que la real.",
+  "_rows": "LAS FIGURAS LLENAN EL PISO EN FILAS PARALELAS A LA CALLE: la primera pegada a la acera y las demás cada `rowM` hacia el mar, cada fila con su propio paso de `spacingM` medido sobre ELLA (afuera el arco es más largo y caben más). Sólo entran las que caben enteras (`halfExtentM` es lo que una figura ocupa de través).",
+  "clearFaroM": 13.0,
   "rotonda": {
    "centerLL": [
     9.97579831,
     -84.8507082
    ],
-   "rM": 6.33
+   "rM": 8.0
   }
  },
  "balneario": {

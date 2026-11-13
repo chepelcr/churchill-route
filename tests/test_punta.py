@@ -68,7 +68,10 @@ class PuntaRegistryTests(unittest.TestCase):
             self.assertGreater(spec["spacingM"], spec["halfExtentM"])
             self.assertTrue(-90 <= spec["leanDeg"] <= 90, f"{family}: ladeo fuera de grados")
         w = ml["widthM"]
-        self.assertTrue(all(18 < w[k] < 40 for k in ("north", "tip", "south")))
+        self.assertTrue(all(18 < w[k] < 60 for k in ("north", "tip", "south")))
+        self.assertIn(ml["greyEnd"]["afterSpur"], [sp["osmId"] for sp in ml["spurs"]["at"]])
+        self.assertEqual(self.doc["muelle"]["pier"], "muelle_faro")
+        self.assertGreater(self.doc["paseo"]["beachM"], 0)
         self.assertGreaterEqual(len(ml["alongLL"]), 10)
         self.assertEqual(len(ml["spurs"]["at"]), 5, "los cinco malecones de OSM")
 

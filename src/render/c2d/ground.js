@@ -332,6 +332,8 @@ function drawKioskPaths(view) {
   ctx.strokeStyle = MATERIALS.street.asphalt;
   ctx.lineWidth = MATERIALS.street.kioskPathWidth;
   for (const p of paths) {
+    // `hidden`: la calle existe y se maneja, pero no se pinta (el huevo de pascua de La Punta)
+    if (p.hidden) continue;
     const [x0, y0, x1, y1] = p.pts;
     if (Math.max(x0, x1) < view.x0 - 40 || Math.min(x0, x1) > view.x1 + 40 ||
         Math.max(y0, y1) < view.y0 - 40 || Math.min(y0, y1) > view.y1 + 40) continue;

@@ -20,7 +20,7 @@
 // Se pinta después del malecón y ANTES de las calles, así que la banda de
 // acera y el asfalto siguen tapando lo que llegue al cordón.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01 } from "./gfx.js";
+import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01, weatherColors } from "./gfx.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 
@@ -99,6 +99,9 @@ function drawPunta(view, t = 0) {
   if (!P || !aabbInView(P, view, 40)) return;
   const ppm = W.PX_PER_M;
   ctx.lineJoin = "round"; ctx.lineCap = "round";
+  // la playa entre lengua y lengua, y la del frente del Paseo: la arena del mundo
+  ctx.fillStyle = weatherColors().sand;
+  for (const sd of P.sands || []) ctx.fill(shape(sd));
   for (const line of P.riprap || []) paintRiprap(line);
   // el suelo, en el orden en que el mundo lo trae: terreno, deck, malecones…
   for (const g of P.grounds || []) {

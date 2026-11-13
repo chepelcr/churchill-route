@@ -273,8 +273,8 @@
   "_along": "la guía de este tramo no se traza: es la línea de centro de estas calles, tal como el mundo las emite, de oeste a este.",
   "until": {
    "pier": "muelle_nacional",
-   "pastM": 45.0,
-   "_note": "el Muelle de Cruceros: las franjas pasan por DEBAJO del muelle y cierran poco después."
+   "pastM": 4.0,
+   "_note": "el Muelle de Cruceros: el malecón de baldosa y su playa llegan hasta él; la playa pasa por debajo y sigue en el tramo del parque (`cruceros.park`)."
   },
   "joinM": 70.0,
   "_joinM": "LA UNIÓN CON LA EXPLANADA no es un corte: a lo largo de estos metros la piedra gris se angosta en un triángulo de lados curvos que muere contra el borde del malecón, mientras el malecón de baldosa, el verde y la playa nacen y crecen a su lado. Las dos secciones quedan cosidas.",
@@ -283,17 +283,18 @@
   "riprap": true,
   "_riprap": "la línea de piedra sigue: viene por el borde de la explanada, baja por la unión y continúa ENTRE el malecón y el verde hasta el final.",
   "straightFrom": "Paseo León Cortés Castro",
-  "_straightFrom": "donde empieza esta calle el Paseo se abre tierra adentro hacia el Muelle de Cruceros y deja una plazoleta con los kioscos. Las franjas NO doblan con ella: siguen derechas, con el rumbo que traían, y la cuña que queda entre la calle y ellas es malecón de baldosa — la plazoleta de los kioscos. Doblar con la calle era lo que plegaba el verde y la playa sobre sí mismos."
+  "_straightFrom": "donde empieza esta calle el Paseo se abre tierra adentro hacia el Muelle de Cruceros y deja una plazoleta con los kioscos. Las franjas NO doblan con ella: siguen derechas, con el rumbo que traían, y la cuña que queda entre la calle y ellas es malecón de baldosa — la plazoleta de los kioscos. Doblar con la calle era lo que plegaba el verde y la playa sobre sí mismos.",
+  "greenUntil": "straightFrom",
+  "_greenUntil": "el verde se cierra ANTES de donde empieza el Paseo León Cortés: en el tramo de los kioscos y de ahí en adelante hay sólo malecón y playa."
  },
  "cruceros": {
-  "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle: calle y muelle son una sola línea, y la playa pasa por debajo. En la boca va un arco como el de la feria, con el nombre en letras blancas sobre azul. La caseta va a la IZQUIERDA del muelle, no en el medio.",
+  "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle: calle y muelle son una sola línea, y la playa pasa por debajo. En la boca va un arco como el de la feria, con el nombre en letras blancas sobre azul. La caseta va a la IZQUIERDA del muelle y sobre el malecón, no en la arena, y sin rótulo: el nombre ya lo dice el arco.",
   "pier": "muelle_nacional",
   "street": "Calle Central",
   "landmark": "muellecruc",
   "casetaSide": "west",
   "casetaOffM": [
-   17.0,
-   12.0
+   17.0
   ],
   "gate": {
    "text": "MUELLE DE CRUCEROS",
@@ -303,7 +304,8 @@
    "landmark": "capitania",
    "replacesBuilding": "MOPT - Capitanía de Puerto Puntarenas",
    "dropParcel": "lote_capitania",
-   "_note": "la Capitanía de Puerto estaba dibujada en la cuadra equivocada, sobre una parcela con fondo y borde blanco; va donde OSM tiene el edificio del MOPT, y ese edificio genérico sale."
+   "_note": "la Capitanía de Puerto estaba dibujada en la cuadra equivocada, sobre una parcela con fondo y borde blanco; va donde OSM tiene el edificio del MOPT, y ese edificio genérico sale.",
+   "southM": 9.0
   },
   "kiosks": {
    "ids": [
@@ -318,7 +320,14 @@
    "bajada_muelle_oeste",
    "bajada_muelle_este"
   ],
-  "_dropPiers": "las dos bajadas a la arena salían de la plazoleta vieja del muelle; con el muelle pegado a la calle y la playa pasando por debajo quedan sueltas sobre la arena."
+  "_dropPiers": "las dos bajadas a la arena salían de la plazoleta vieja del muelle; con el muelle pegado a la calle y la playa pasando por debajo quedan sueltas sobre la arena.",
+  "casetaFromRocksM": 9.0,
+  "park": {
+   "_note": "AL ESTE DEL MUELLE el malecón de baldosa se acaba: el Parque del Muellero —que ya existe, a lo largo del Paseo León Cortés— es su remate, con una cuña de baldosa que muere contra él. Al frente del parque va sólo playa, una franja regular del mismo fondo, y la línea de piedra entre parque y playa. Reemplaza la plazoleta de contorno irregular que había ahí.",
+   "parcel": "osm_park_270515697",
+   "along": "Paseo León Cortés Castro",
+   "blendM": 80.0
+  }
  },
  "muelle": {
   "_note": "EL MUELLE DEL FARO SE QUEDA, con su kiosco: nace en el borde del malecón nuevo. Su calle auxiliar también se queda, y sigue siendo manejable, pero NO SE PINTA — por encima se ve piso de malecón, y quien la encuentre llega en carro hasta el kiosco. Un huevo de pascua.",

@@ -119,16 +119,9 @@
           "y": -22,
           "w": 12,
           "h": 8
-        },
-        {
-          "shape": "label",
-          "x": 0,
-          "y": -28,
-          "text": "MUELLE",
-          "fg": "#fff",
-          "bg": "#3a6f8a"
         }
-      ]
+      ],
+      "note": "La caseta del Muelle de Cruceros. Sin rótulo: el nombre lo dice el arco de la entrada (`materials.json` → `punta.gate`)."
     },
     "church": {
       "note": "the shared `props.church` building — nave, bell tower, spire, cross — plus the rose window on the tower and the name pill. The building itself is inlined rather than copied, because a `church` PARCEL draws the same one on its own manzana and the two used to be written out in two different files.",

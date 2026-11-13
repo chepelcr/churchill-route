@@ -236,8 +236,8 @@ const green = paseoI.length ? strip(paseoI, (i) => greyOut(i) - 1, greenD) : nul
 // la playa: al frente del verde en el Paseo, y ENTRE lengua y lengua en la piedra
 const sands = paseoI.length ? [strip(paseoI, (i) => greenD(i) - 1, sandD)] : [];
 if (eastIdx.length) sands.push(strip(eastIdx, (i) => rockE(i) - 1, sandE));
-// la cuña de baldosa que muere contra el parque
-const warmE = eastIdx.length ? strip(eastIdx.filter((i) => i - eastI <= BLEND), () => parkOut - 2, rockE) : null;
+// al este del muelle la franja del parque es malecón de baldosa, de la calle a la línea de piedra
+const warmE = eastIdx.length ? strip(eastIdx, () => 0, rockE) : null;
 const firstSpurEnd = Math.max(...idx.filter((i) => spurD[i] > 0 && i < endI - 20 && Math.abs(i - spurs[0].i) < 60), tipI);
 for (const r of runs((i) => spurD[i] === 0, firstSpurEnd, endI)) if (r.length > 12) sands.push(strip(r, (i) => baseAt(i) - 1, (i) => baseAt(i) + ML.cove.beachM * ppm));
 // el frente viejo que todo esto reemplaza: la plazoleta, las bandas color arena y su playa irregular
@@ -247,7 +247,7 @@ const replaced = manifest.malecon.filter((b) => within((b.x0 + b.x1) / 2, (b.y0 
 manifest.malecon = manifest.malecon.filter((b) => !replaced.includes(b));
 manifest.plazas = (manifest.plazas || []).filter((p) => p[4] !== ML.style);
 if (warm) manifest.malecon.push({ polys: [warm], ang: replaced.find((b) => !b.style)?.ang ?? old.ang, ...bbox(warm), id: "punta_paseo" });
-if (warmE) manifest.malecon.push({ polys: [warmE], ang: replaced.find((b) => !b.style)?.ang ?? old.ang, ...bbox(warmE), kerb: false, id: "punta_parque" });
+if (warmE) manifest.malecon.push({ polys: [warmE], ang: replaced.find((b) => !b.style)?.ang ?? old.ang, ...bbox(warmE), id: "punta_parque" });
 manifest.malecon.push({ polys: [band], ang: old.ang, ...bbox(band), style: ML.style, id: "punta" });
 for (const [k, tg] of tongues.entries()) manifest.malecon.push({ polys: [tg], ang: old.ang, ...bbox(tg), style: ML.style, id: `punta_lengua_${k}` });
 // la arena vieja de este tramo: los anillos que caen enteros se van; al que sigue
@@ -365,6 +365,7 @@ const CR = doc.cruceros;
     for (const lm of manifest.landmarks) if (lm.id === CR.capitania.landmark) { lm.x = Math.round(bx); lm.y = Math.round(by3 + CR.capitania.southM * ppm); }
   }
   manifest.parcels = manifest.parcels.filter((q) => q.id !== CR.capitania.dropParcel);
+  if (CR.park.dropParcel) manifest.parcels = manifest.parcels.filter((q) => q.id !== CR.park.parcel);
   manifest.piers = manifest.piers.filter((q) => !CR.dropPiers.includes(q.id));
   // los kioscos suben al malecón de baldosa; su calle auxiliar se queda, sin pintar
   for (const id of CR.kiosks.ids) {

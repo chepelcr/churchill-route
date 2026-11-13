@@ -323,10 +323,12 @@
   "_dropPiers": "las dos bajadas a la arena salían de la plazoleta vieja del muelle; con el muelle pegado a la calle y la playa pasando por debajo quedan sueltas sobre la arena.",
   "casetaFromRocksM": 9.0,
   "park": {
-   "_note": "AL ESTE DEL MUELLE el malecón de baldosa se acaba: el Parque del Muellero —que ya existe, a lo largo del Paseo León Cortés— es su remate, con una cuña de baldosa que muere contra él. Al frente del parque va sólo playa, una franja regular del mismo fondo, y la línea de piedra entre parque y playa. Reemplaza la plazoleta de contorno irregular que había ahí.",
+   "_note": "AL ESTE DEL MUELLE el malecón de baldosa SIGUE: la franja que hoy es el Parque del Muellero —a lo largo del Paseo León Cortés— pasa a ser malecón, con su misma baldosa color arena, y el parque verde sale. Al frente va sólo playa, una franja regular del mismo fondo, con la línea de piedra entre malecón y playa. Reemplaza también la plazoleta de contorno irregular que había ahí.",
    "parcel": "osm_park_270515697",
    "along": "Paseo León Cortés Castro",
-   "blendM": 80.0
+   "blendM": 80.0,
+   "style": "malecon",
+   "dropParcel": true
   }
  },
  "muelle": {

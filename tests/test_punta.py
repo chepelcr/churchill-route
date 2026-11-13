@@ -23,10 +23,12 @@ def lls(node):
     """Every [lat, lon] pair under a node."""
     if isinstance(node, dict):
         for key, value in node.items():
-            if key in ("ll", "towerLL", "centerLL"):
-                yield value
-            elif key.endswith("LL"):
-                yield from value
+            if key == "ll" or key.endswith("LL"):
+                # un ancla suelta es un par; una figura, una lista de pares
+                if value and isinstance(value[0], (int, float)):
+                    yield value
+                else:
+                    yield from value
             else:
                 yield from lls(value)
     elif isinstance(node, list):

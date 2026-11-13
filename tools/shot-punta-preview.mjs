@@ -129,24 +129,26 @@ const reach = (i, poly) => {
 const plazaR = doc.faro.plazaRM * ppm;
 const faroXY = offset(tipI, centre[tipI][2] + plazaR + ppm).map(Math.round);
 const circle = Array.from({ length: 40 }, (_, k) => [faroXY[0] + Math.cos(k / 40 * 2 * Math.PI) * plazaR, faroXY[1] + Math.sin(k / 40 * 2 * Math.PI) * plazaR]).flat();
-const baseAt = (i) => Math.max(widthAt(i), reach(i, circle));
+// el círculo del Faro NO empuja el borde: el malecón es lo bastante ancho para tenerlo adentro
+const baseAt = (i) => widthAt(i);
 // hasta dónde llega la piedra gris: pasando la lengua que el registro nombra
 const spurMid = (sp) => { const c = sp.polygonLL.map(xy); return [(c[0][0] + c[1][0] + c[2][0] + c[3][0]) / 4, (c[0][1] + c[1][1] + c[2][1] + c[3][1]) / 4]; };
 const endSpur = ML.spurs.at.findIndex((sp) => sp.osmId === ML.greyEnd.afterSpur);
 const endI = Math.min(N - 1, nearestI(spurMid(ML.spurs.at[endSpur])) + Math.round(ML.greyEnd.marginM));
 // el Paseo, de ahí en adelante: verde contra la acera y playa al frente, las dos regulares
 const kerbS = centre.map((_, i) => { let t = 0, n = 0; for (let k = Math.max(0, i - 14); k <= Math.min(N - 1, i + 14); k++) { t += centre[k][2]; n++; } return t / n; });
-const PS = doc.paseo, greenD = (i) => kerbS[i] + PS.greenM * ppm, sandD = (i) => greenD(i) + PS.beachM * ppm;
+const PS = doc.paseo, warmD = (i) => kerbS[i] + PS.maleconM * ppm, greenD = (i) => warmD(i) + PS.greenM * ppm, sandD = (i) => greenD(i) + PS.beachM * ppm;
 const seaAt = (i) => (i <= endI ? baseAt(i) : sandD(i));
 // los cinco malecones: el rectángulo de OSM, engordado, y corrido hasta que salga al mar
 const spurs = ML.spurs.at.map((sp) => {
   const c = sp.polygonLL.map(xy), [cx, cy] = spurMid(sp);
-  const i = nearestI([cx, cy]), g = ML.spurs.growM * ppm;
+  const i = nearestI([cx, cy]), K2 = ML.spurs.scale;
   const along = c.map(([x, y]) => (x - centre[i][0]) * normal[i][0] + (y - centre[i][1]) * normal[i][1]);
   // en la piedra arranca en su borde; en el Paseo, a media playa, y cruza las dos franjas
   const root = i <= endI ? baseAt(i) - 2 * ppm : greenD(i) + PS.beachM * ppm * 0.45;
   const shift = Math.max(0, root - Math.min(...along));
-  return { i, poly: c.flatMap(([x, y]) => { const L = Math.hypot(x - cx, y - cy) || 1; return [x + (x - cx) / L * g * 1.4 + normal[i][0] * shift, y + (y - cy) / L * g * 1.4 + normal[i][1] * shift]; }) };
+  const lift = (K2 - 1) * (Math.max(...along) - Math.min(...along)) / 2;   // crece hacia el mar, no hacia la calle
+  return { i, poly: c.flatMap(([x, y]) => [cx + (x - cx) * K2 + normal[i][0] * (shift + lift), cy + (y - cy) * K2 + normal[i][1] * (shift + lift)]) };
 });
 const spurD = centre.map((_, i) => Math.max(0, ...spurs.map((sp) => reach(i, sp.poly))));
 const outerD = centre.map((_, i) => Math.max(seaAt(i), spurD[i]));
@@ -159,7 +161,8 @@ const runs = (test, from, to) => { const out = []; let cur = null; for (let i = 
 const tongues = runs((i) => spurD[i] > 0, endI + 1, N - 1).map((r) => [...r.map((i) => offset(i, centre[i][2] - 2)), ...r.slice().reverse().map((i) => offset(i, spurD[i]))].flat().map(Math.round));
 const strip = (r, d0, d1) => [...r.map((i) => offset(i, d0(i))), ...r.slice().reverse().map((i) => offset(i, d1(i)))].flat().map(Math.round);
 const paseoI = Array.from({ length: N - 1 - endI }, (_, k) => endI + 1 + k);
-const green = paseoI.length ? strip(paseoI, () => 0, greenD) : null;
+const warm = paseoI.length ? strip(paseoI, () => 0, warmD) : null;
+const green = paseoI.length ? strip(paseoI, (i) => warmD(i) - 1, greenD) : null;
 // la playa: al frente del verde en el Paseo, y ENTRE lengua y lengua en la piedra
 const sands = paseoI.length ? [strip(paseoI, greenD, sandD)] : [];
 const firstSpurEnd = Math.max(...idx.filter((i) => spurD[i] > 0 && i < endI - 20 && Math.abs(i - spurs[0].i) < 60), tipI);
@@ -171,6 +174,7 @@ const replaced = manifest.malecon.filter((b) => within((b.x0 + b.x1) / 2, (b.y0 
 manifest.malecon = manifest.malecon.filter((b) => !replaced.includes(b));
 manifest.plazas = (manifest.plazas || []).filter((p) => p[4] !== ML.style);
 manifest.malecon.push({ polys: [band], ang: old.ang, ...bbox(band), style: ML.style, id: "punta" });
+if (warm) manifest.malecon.push({ polys: [warm], ang: replaced.find((b) => !b.style)?.ang ?? old.ang, ...bbox(warm), id: "punta_paseo" });
 for (const [k, tg] of tongues.entries()) manifest.malecon.push({ polys: [tg], ang: old.ang, ...bbox(tg), style: ML.style, id: `punta_lengua_${k}` });
 if (green) manifest.greens.push({ pts: green, type: PS.green });
 // la arena vieja de este tramo: los anillos que caen enteros se van; al que sigue
@@ -183,7 +187,7 @@ manifest.beaches = manifest.beaches.map((ring) => {
   if (keep.length !== ring.length) sandCut++;
   return keep;
 }).filter((ring) => ring.length >= 6);
-const arms = [{ polys: [band] }, ...tongues.map((tg) => ({ polys: [tg] }))];
+const arms = [{ polys: [band] }, ...tongues.map((tg) => ({ polys: [tg] })), ...(warm ? [{ polys: [warm] }] : [])];
 const parking = outer(B0.grounds.find((g) => g.use === "parking").polygonLL);
 
 // las figuras: UNA fila al centro del malecón, remuestreada sobre sí misma
@@ -225,7 +229,8 @@ const punta = {
   fans, waves,
   riprap,
   sands: sands.map((pts) => ({ pts })),
-  rotondas: [{ x: rot[0], y: rot[1], r: ML.rotonda.rM * ppm }, { x: faroXY[0], y: faroXY[1], r: plazaR - 1.6 * ppm }],
+  rotondas: [{ x: rot[0], y: rot[1], r: ML.rotonda.rM * ppm }],
+  discs: [{ x: faroXY[0], y: faroXY[1], r: plazaR }],
   props: B0.props.map((p) => (p.polygonLL ? { kind: p.kind, pts: rigid(p.polygonLL) } : { kind: p.kind, x: shrink(xy(p.ll))[0], y: shrink(xy(p.ll))[1] })),
 };
 Object.assign(punta, bbox([...punta.grounds.flatMap((g) => g.pts), ...floor.flat(), ...sands.flat(), ...tongues.flat()]));

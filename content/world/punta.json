@@ -110,17 +110,16 @@
   "_along": "la GUÍA, de norte a sur: el cordón de mar de la Calle 39 trazado sobre la imagen y, de ahí en adelante, un punto por cada área de descanso de OSM a lo largo del Paseo. Cada punto se ajusta a la línea de centro de la calle del juego, y el piso nace AHÍ, debajo del asfalto, para que entre calle y malecón no quede ni una franja de arena.",
   "widthM": {
    "north": 37.0,
-   "tip": 39.0,
+   "tip": 57.0,
    "south": 45.0,
    "tipAtLL": [
     9.97667409,
     -84.85115856
    ]
   },
-  "_widthM": "cuánto se abre el piso desde la línea de centro de la calle. La calle del juego mide 15 m de centro a cordón, así que esto deja ~22 m de malecón al norte y ~30 al sur: el doble del real, que es la escala a la que el juego dibuja sus calles.",
+  "_widthM": "cuánto se abre el piso desde la línea de centro de la calle (que mide 15 m de centro a cordón): ~22 m de malecón al norte, ~30 al sur, y frente al Faro lo que haga falta para que su círculo quepa ENTERO adentro — el círculo no empuja el borde, el malecón le hace campo.",
   "spurs": {
-   "_note": "LOS CINCO MALECONES: las cinco vías `Malecón - Área de Descanso` (place=square) de OSM, de la del Faro a la última del Paseo. Cada una es una lengua de piedra gris que sale al mar con la escollera rodeándola, y ENTRE una y la siguiente hay playa. `growM` las engorda por lado para la escala del juego.",
-   "growM": 4.0,
+   "_note": "LOS CINCO MALECONES: las cinco vías `Malecón - Área de Descanso` (place=square) de OSM, de la del Faro a la última del Paseo. Cada una es una lengua de piedra gris que sale al mar con la escollera rodeándola, y ENTRE una y la siguiente hay playa. `scale` las agranda parejo (largo y ancho) a la escala del juego: mapeadas miden ~20 x 4,5 m.",
    "at": [
     {
      "osmId": 964078510,
@@ -227,7 +226,8 @@
       ]
      ]
     }
-   ]
+   ],
+   "scale": 2.3
   },
   "riprap": {
    "widthM": 3.5,
@@ -265,12 +265,13 @@
   }
  },
  "paseo": {
-  "_note": "EL OTRO MALECÓN, el del Paseo: de la rotonda en adelante el frente de mar deja de ser la franja color arena de contorno irregular que dejó el ráster y pasa a ser DOS franjas regulares paralelas a la calle — verde contra la acera, playa al frente — con las lenguas de piedra cruzándolas hasta el mar.",
+  "_note": "EL FRENTE DEL PASEO, de la rotonda en adelante, en TRES franjas regulares paralelas a la calle: el malecón de siempre contra la acera (su baldosa color arena, `malecon.band`), después el verde, y la playa al frente. Lo que se reemplaza es el OTRO espacio — la franja de contorno irregular que había entre el malecón y el mar—, no el malecón. Las lenguas de piedra cruzan las tres hasta el mar.",
   "greenM": 17.0,
   "beachM": 26.0,
   "green": "park",
-  "_widths": "ancho de cada franja, medido desde la acera hacia el mar.",
-  "_extent": "llega hasta donde llega la guía (`malecon.alongLL`): la quinta área de descanso. El resto del Paseo, hacia el este, sigue como está."
+  "_widths": "ancho de cada franja, de la acera hacia el mar: malecón, verde, playa.",
+  "_extent": "llega hasta donde llega la guía (`malecon.alongLL`): la quinta área de descanso. El Paseo sigue 3 km más al este con kioscos de playa, la feria y las canchas sentados sobre ese frente: extenderlo es otra pasada, no un número.",
+  "maleconM": 14.0
  },
  "muelle": {
   "_note": "EL MUELLE DEL FARO SE QUEDA, con su kiosco: nace en el borde del malecón nuevo. Su calle auxiliar también se queda, y sigue siendo manejable, pero NO SE PINTA — por encima se ve piso de malecón, y quien la encuentre llega en carro hasta el kiosco. Un huevo de pascua.",
@@ -1091,7 +1092,7 @@
  "faro": {
   "scale": 1.6,
   "plazaRM": 18.0,
-  "_plaza": "el Faro más grande y con su plazoleta redonda: un círculo del mismo piso alrededor de la torre, con un aro.",
+  "_plaza": "el Faro más grande y sobre un círculo RELLENO del color de las figuras, entero dentro del malecón.",
   "towerLL": [
    9.97667409,
    -84.85115856

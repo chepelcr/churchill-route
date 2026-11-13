@@ -111,6 +111,11 @@ function drawPunta(view, t = 0) {
   }
   // los dos pisos: recortados a SU malecón, para que nada se salga a la calle
   const half = M.fan.halfAngleDeg * RAD;
+  // el círculo del Faro: relleno, del color de las figuras
+  for (const dsc of P.discs || []) {
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(dsc.x, dsc.y, dsc.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = M.fan.edge; ctx.lineWidth = 1.5; ctx.stroke();
+  }
   for (const f of P.fans || []) {
     ctx.fillStyle = INK; ctx.fill(fanPath(f, half));
     ctx.strokeStyle = M.fan.edge; ctx.lineWidth = 1.2; ctx.stroke(f._path);

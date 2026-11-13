@@ -198,6 +198,13 @@ FERRY_DEFS = _fe["ferries"]
 #: y dónde dos calzadas forman una vía dividida. Ver service/railway.py.
 RAILWAY_DEF = _ra["railway"]
 
+#: LA PUNTA — El Faro y el Balneario trazados (`content/world/punta.json`).
+#: Cargado y validado en forma por `tests/test_punta.py`; TODAVÍA NINGUNA ETAPA
+#: LO CONSUME: la cuadra sigue saliendo como `water-inlet` desde blocks.json
+#: hasta que el layout nuevo exista. Hoy lo lee el preview sin reconstruir
+#: (`tools/shot-punta-preview.mjs`), directo del archivo y en metros.
+PUNTA_DEF = _load("punta.json")
+
 #: LAS CUADRAS HECHAS A MANO — el superbloque cívico, la manzana del Carmen,
 #: los dos estadios/plazas, la cuadra del Parque Marino y el Balneario. Cada una
 #: NOMBRA su estrategia (`layout`) y el motor la implementa; el JSON escoge y

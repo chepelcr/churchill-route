@@ -4,8 +4,8 @@
 //   ./reboot-server.sh 8736
 //   node tools/shot-punta-preview.mjs [devUrl] [dirSalida]
 //
-// Lee `docs/punta-satellite-mockup.json` (el trazo sobre la imagen satelital,
-// en lat/lon), lo lleva a píxeles de mundo con la afín del manifest y le
+// Lee `content/world/punta.json` (el registro del lugar, en lat/lon; su trazo
+// sobre la imagen queda en docs/punta-satellite-mockup.json), lo lleva a píxeles de mundo con la afín del manifest y le
 // entrega al juego un manifest y un tile PARCHADOS EN EL CAMINO — la página
 // nunca ve los de disco, así que no hay caché que invalidar y `src/world2d/`
 // no se toca. Lo que el juego recibe es lo que el builder emitirá después:
@@ -20,14 +20,12 @@ import path from "node:path";
 
 const url = process.argv[2] || "http://localhost:8736/";
 const out = process.argv[3] || "logs";
-const doc = JSON.parse(readFileSync("docs/punta-satellite-mockup.json", "utf8"));
+const doc = JSON.parse(readFileSync("content/world/punta.json", "utf8"));
 const manifest = JSON.parse(readFileSync("src/world2d/manifest.json", "utf8"));
 const { geo, pxPerMeter: ppm, tilePx } = manifest.meta;
 mkdirSync(out, { recursive: true });
 
 const xy = ([lat, lon]) => [Math.round(geo.ax * lon + geo.bx), Math.round(geo.ay * lat + geo.by)];
-const flat = (lls) => lls.flatMap(xy);
-const by = Object.fromEntries(doc.shapes.map((s) => [s.id, s]));
 const inside = (x, y, pts) => {
   let hit = false;
   for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
@@ -41,10 +39,17 @@ const centroid = (pts) => {
   for (let i = 0; i < pts.length; i += 2) { x += pts[i]; y += pts[i + 1]; }
   return [x / n, y / n];
 };
+const bbox = (pts) => {
+  const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+};
+const B0 = doc.balneario, ML = doc.malecon;
+const raw = (lls) => lls.flatMap(xy);
 
-// ---- EL ACOMODO A LA CALLE DEL JUEGO (`gameFit` en el JSON dice por qué)
-const tcG = Math.floor(xy(by.pool_main.polygonLL[0])[0] / tilePx), trG = Math.floor(xy(by.pool_main.polygonLL[0])[1] / tilePx);
-const tile = JSON.parse(readFileSync(`src/world2d/tiles/${tcG}_${trG}.json`, "utf8"));
+// ---- EL ACOMODO A LA CALLE DEL JUEGO (`gameFit` en el registro dice por qué)
+const groundsRaw = raw(B0.grounds[0].polygonLL);
+const tc = Math.floor(groundsRaw[0] / tilePx), tr = Math.floor(groundsRaw[1] / tilePx);
+const tile = JSON.parse(readFileSync(`src/world2d/tiles/${tc}_${tr}.json`, "utf8"));
 const FIT = doc.gameFit, ACERA = manifest.meta.aceraPx, realHalf = FIT.realRoadHalfM * ppm, range = FIT.interiorRangeM * ppm;
 const streets = tile.roads.filter((r) => r.w >= 40);
 function nearestStreet(x, y) {
@@ -55,55 +60,61 @@ function nearestStreet(x, y) {
       const L2 = (bx - ax) ** 2 + (by2 - ay) ** 2 || 1;
       const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by2 - ay)) / L2));
       const qx = ax + (bx - ax) * t, qy = ay + (by2 - ay) * t, d = Math.hypot(x - qx, y - qy);
-      if (!best || d < best.d) best = { d, qx, qy, grow: Math.max(0, r.w / 2 + ACERA - realHalf) };
+      if (!best || d < best.d) best = { d, qx, qy, kerb: r.w / 2 + ACERA, grow: Math.max(0, r.w / 2 + ACERA - realHalf) };
     }
   }
   return best;
 }
 // cuánto y hacia dónde se corre un punto: entero afuera del lazo, decreciendo adentro
-function push(x, y, inner) {
+function push(x, y, inner, extra = 0) {
   const n = nearestStreet(x, y);
-  if (!n || n.d < 1 || n.d > 70 * ppm) return [0, 0];
+  if (!n || n.d < 1 || n.d > 70 * ppm) return [x, y];
   const k = inner ? Math.max(0, 1 - Math.max(0, n.d - realHalf) / range) : 1;
-  return [(x - n.qx) / n.d * n.grow * k, (y - n.qy) / n.d * n.grow * k];
+  return [Math.round(x + (x - n.qx) / n.d * (n.grow * k + extra)), Math.round(y + (y - n.qy) / n.d * (n.grow * k + extra))];
 }
-const OUTER = new Set(["malecon", "faro", "coast"]);
-const groundsRaw = by.balneario_grounds.polygonLL.flatMap(xy);
-const about = centroid(by[FIT.interiorAbout].polygonLL.flatMap(xy)), K = FIT.interiorScale;
+const about = centroid(raw(doc.buildings.find((b) => b.id === FIT.interiorAbout).polygonLL)), K = FIT.interiorScale;
 const shrink = ([x, y]) => [Math.round(about[0] + (x - about[0]) * K), Math.round(about[1] + (y - about[1]) * K)];
-const pushed = (inner) => ([x, y]) => { const v = push(x, y, inner); return [Math.round(x + v[0]), Math.round(y + v[1])]; };
+const outer = (lls) => lls.map(xy).flatMap(([x, y]) => push(x, y, false));
+const rigid = (lls) => lls.map(xy).flatMap(shrink);
 // el terreno es suelo y se acomoda al cordón; todo lo demás de adentro es rígido
-const mover = (id, group) => (OUTER.has(group) ? pushed(false) : id === "balneario_grounds" ? pushed(true) : shrink);
-const flatOf = (s) => (s.polygonLL || s.polylineLL).map(xy).map(mover(s.id, s.group)).flat();
-const at = (ll, id, group) => mover(id, group)(xy(ll));
-const pointAt = (p) => { const q = xy(p.ll); return mover(null, inside(q[0], q[1], groundsRaw) ? "balneario" : "malecon")(q); };
-const SKIP = new Set(FIT.skip);
+const groundOf = (g) => (g.id === "balneario_grounds" ? g.polygonLL.map(xy).flatMap(([x, y]) => push(x, y, true))
+  : g.use === "parking" ? outer(g.polygonLL) : rigid(g.polygonLL));
+
+// ---- UN SOLO MALECÓN: la plazoleta que el mundo YA emite, extendida en su mismo estilo
+const esplanade = manifest.malecon.find((b) => b.style === ML.style);
+if (!esplanade) { console.error(`[punta-preview] el mundo no trae un malecón de estilo ${ML.style}`); process.exit(1); }
+const arms = ML.extend.map((e) => { const pts = outer(e.polygonLL); return { polys: [pts], ang: esplanade.ang, ...bbox(pts), style: ML.style, kerb: false, id: e.id }; });
+// (sin cordón propio: al reconstruir, el build traza UN contorno para todo el piso)
+manifest.malecon.push(...arms);
+const floor = [...esplanade.polys, ...arms.map((a) => a.polys[0])];
+const onFloor = (x, y) => floor.some((p) => inside(x, y, p));
+const clear = (x, y) => { const n = nearestStreet(x, y); return onFloor(x, y) && (!n || n.d > n.kerb + 2); };
+// las figuras llenan el piso: la fila trazada, repetida hacia el mar, y sólo las que caben enteras
+const HALF = 60 * Math.PI / 180;
+const fans = [], waves = [];
+for (let row = 0; row < ML.fans.rows; row++) for (const f of ML.fans.at) {
+  const [x0, y0] = xy(f.ll), [x, y] = push(x0, y0, false, row * ML.fans.rowM * ppm), ang = f.axisDeg * Math.PI / 180, r = ML.fans.rM * ppm;
+  const probes = [[x, y], [x + Math.cos(ang) * r, y + Math.sin(ang) * r], ...[-1, 1].map((s) => [x + Math.cos(ang + s * HALF) * r, y + Math.sin(ang + s * HALF) * r])];
+  if (probes.every(([px, py]) => clear(px, py))) fans.push({ x, y, ang, r });
+}
+for (let row = 0; row < ML.waves.rows; row++) for (const w of ML.waves.at) {
+  const [x0, y0] = xy(w.ll), [x, y] = push(x0, y0, false, row * ML.waves.rowM * ppm), ang = w.axisDeg * Math.PI / 180, len = ML.waves.lenM * ppm;
+  const probes = [[x, y], ...[-0.5, 0.5].map((u) => [x + Math.cos(ang) * u * len, y + Math.sin(ang) * u * len])];
+  if (probes.every(([px, py]) => clear(px, py))) waves.push({ x, y, ang, len });
+}
 
 // ---- manifest.punta: lo que `c2d/punta.js` pinta
-const ground = (id) => ({ id, use: by[id].use, pts: flatOf(by[id]) });
-const north = by.malecon_norte.pattern, south = by.malecon_sur.pattern;
+const rot = push(...xy(ML.rotonda.centerLL), false);
 const punta = {
-  grounds: ["balneario_grounds", "pool_deck", "malecon_norte", "faro_plaza", "mirador_oeste", "malecon_sur", "parqueo_faro"].map(ground),
-  pools: [
-    { id: "pool_main", use: "pool", pts: flatOf(by.pool_main) },
-    { id: "pool_kids_zone", use: "pool-shallow", zone: true, pts: flatOf(by.pool_kids_zone) },
-    { id: "pool_south_lobe", use: "pool-deep", zone: true, pts: flatOf(by.pool_south_lobe) },
-    { id: "pool_kiddie_round", use: "pool", pts: flatOf(by.pool_kiddie_round) },
-  ],
-  walls: doc.lines.map((l) => ({ id: l.id, pts: l.polylineLL.map(xy).map(mover(l.id, "balneario")).flat() })),
-  islands: [ground("pool_island")],
-  fans: north.fans.map((f) => { const [x, y] = at(f.apexLL, null, "malecon"); return { x, y, ang: f.axisDeg * Math.PI / 180, r: north.rM * ppm }; }),
-  waves: south.waves.map((w) => { const [x, y] = at(w.ll, null, "malecon"); return { x, y, ang: w.axisDeg * Math.PI / 180, len: south.lenM * ppm }; }),
-  rotondas: [(() => { const [x, y] = at(south.rotonda.centerLL, null, "malecon"); return { x, y, r: south.rotonda.rM * ppm }; })()],
-  riprap: doc.shapes.filter((s) => s.use === "riprap" && !SKIP.has(s.id)).map((s) => ({ id: s.id, pts: flatOf(s), w: s.widthM * ppm })),
-  props: [
-    { kind: "play-structure", pts: flatOf(by.pool_play_ship) },
-    ...doc.points.filter((p) => p.kind === "cabana").map((p) => { const [x, y] = shrink(xy(p.ll)); return { kind: "cabana", x, y }; }),
-  ],
+  grounds: B0.grounds.map((g) => ({ id: g.id, use: g.use, pts: groundOf(g) })),
+  pools: B0.pools.map((p) => ({ id: p.id, use: p.use, zone: !!p.zone, pts: rigid(p.polygonLL) })),
+  walls: B0.walls.map((l) => ({ id: l.id, pts: rigid(l.polylineLL) })),
+  islands: B0.islands.map((g) => ({ id: g.id, use: g.use, pts: rigid(g.polygonLL) })),
+  fans, waves,
+  rotondas: [{ x: rot[0], y: rot[1], r: ML.rotonda.rM * ppm }],
+  props: B0.props.map((p) => (p.polygonLL ? { kind: p.kind, pts: rigid(p.polygonLL) } : { kind: p.kind, x: shrink(xy(p.ll))[0], y: shrink(xy(p.ll))[1] })),
 };
-const all = [...punta.grounds, ...punta.riprap].flatMap((g) => g.pts);
-punta.x0 = Math.min(...all.filter((_, i) => i % 2 === 0)); punta.x1 = Math.max(...all.filter((_, i) => i % 2 === 0));
-punta.y0 = Math.min(...all.filter((_, i) => i % 2 === 1)); punta.y1 = Math.max(...all.filter((_, i) => i % 2 === 1));
+Object.assign(punta, bbox([...punta.grounds.flatMap((g) => g.pts), ...floor.flat()]));
 const G = punta.grounds[0].pts;
 
 // ---- el manifest parchado: la ensenada deja de existir y el Faro va a su torre
@@ -117,7 +128,7 @@ manifest.waters = manifest.waters.filter((p) => !inBaln(p));
 manifest.greens = (manifest.greens || []).filter((g) => !(g.type === "pool" && inBaln(g.pts)));
 delete manifest.balneario;
 manifest.parcels = manifest.parcels.filter((p) => { const hit = inside(p.cx, p.cy, G); dropped.parcels += hit; return !hit; });
-const tower = at(by.faro_torre.circle.centerLL, "faro_torre", "faro"), poolC = centroid(punta.pools[0].pts);
+const tower = push(...xy(doc.faro.towerLL), false), poolC = centroid(punta.pools[0].pts);
 for (const lm of manifest.landmarks) {
   if (lm.id === "faro") { lm.x = tower[0]; lm.y = tower[1]; lm.commas = []; }
   if (lm.id === "balneario") { lm.x = Math.round(poolC[0]); lm.y = Math.round(poolC[1]); }
@@ -125,26 +136,19 @@ for (const lm of manifest.landmarks) {
 manifest.punta = punta;
 
 // ---- el tile parchado: edificios, palmas y árboles van donde van los de todos
-const tc = tcG, tr = trG;
 tile.buildings = tile.buildings.filter((b) => { const hit = inside(...centroid(b.pts), G); dropped.buildings += hit; return !hit; });
-const isRoof = (s) => s.use === "canopy" || s.use === "pergola";
-for (const s of doc.shapes) {
-  if (s.kind !== "building" || s.use === "lighthouse") continue;
-  tile.buildings.push({ pts: flatOf(s), color: s.color, roof: s.roof, wnd: isRoof(s) ? 0 : 1, name: s.name });
-}
-const crown = (rM) => Math.max(0.6, Math.min(1.9, rM * ppm / 17));
+const isRoof = (b) => b.use === "canopy" || b.use === "pergola";
+for (const b of doc.buildings) tile.buildings.push({ pts: rigid(b.polygonLL), color: b.color, roof: b.roof, wnd: isRoof(b) ? 0 : 1, name: b.name });
 // lo ya sembrado sobre el suelo nuevo se quita: no se planta dos veces
-const onNew = (o) => punta.grounds.some((g) => inside(o.x, o.y, g.pts));
+const onNew = (o) => punta.grounds.some((g) => inside(o.x, o.y, g.pts)) || arms.some((a) => inside(o.x, o.y, a.polys[0]));
 tile.palms = tile.palms.filter((o) => !onNew(o));
 tile.trees = tile.trees.filter((o) => !onNew(o));
-for (const p of doc.points) {
-  const [x, y] = pointAt(p);
-  if (p.kind === "palm") tile.palms.push({ x, y, s: 1.0, sway: (x * 0.37 + y * 0.11) % 6.28 });
-  if (p.kind === "tree") tile.trees.push({ x, y, s: crown(p.rM) });
-}
-{ const [x, y] = at(by.faro_arbol.circle.centerLL, null, "faro"); tile.trees.push({ x, y, s: crown(by.faro_arbol.circle.rM) }); }
+const crown = (rM) => Math.max(0.6, Math.min(1.9, rM * ppm / 17));
+const seat = (ll) => { const q = xy(ll); return inside(q[0], q[1], groundsRaw) ? shrink(q) : push(q[0], q[1], false); };
+for (const p of doc.palms) { const [x, y] = seat(p.ll); tile.palms.push({ x, y, s: 1.0, sway: (x * 0.37 + y * 0.11) % 6.28 }); }
+for (const p of [...doc.trees, doc.faro.tree]) { const [x, y] = seat(p.ll); tile.trees.push({ x, y, s: crown(p.rM) }); }
 console.log(`[punta-preview] fuera: ${dropped.waters} agua, ${dropped.parcels} parcelas, ${dropped.buildings} edificios · ` +
-  `dentro: ${punta.grounds.length} suelos, ${punta.pools.length} piscinas, ${punta.fans.length} abanicos, ${punta.waves.length} olas`);
+  `dentro: ${punta.grounds.length} suelos, ${punta.pools.length} piscinas, ${arms.length} brazos de malecón, ${fans.length} abanicos, ${waves.length} olas`);
 
 // PW_CHROMIUM: un Chromium ya instalado, cuando el de Playwright no está en la máquina
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
@@ -186,7 +190,7 @@ const shot = async (name, weather, x, y, zoom) => {
   return file;
 };
 
-const fan = punta.fans[8], wave = punta.waves[1];
+const fan = fans[Math.min(8, fans.length - 1)], wave = waves[Math.min(1, waves.length - 1)];
 const whole = await shot("punta", "sunny", cx + 40, cy, 1.55);
 await shot("piscina", "sunny", poolC[0] + 30, poolC[1], 3.4);
 await shot("abanicos", "sunny", fan.x + 40, fan.y, 4.2);

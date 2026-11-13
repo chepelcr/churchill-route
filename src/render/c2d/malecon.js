@@ -70,6 +70,9 @@ function drawMalecon(view) {
     paintBaldosas(B, view, C);
     // the sea wall: a kerb all the way round, so the promenade reads as a
     // defined space rather than as a differently-coloured stretch of sand
+    // `kerb: false` es un brazo que se SUMA a otra banda: su contorno pasaría
+    // por la mitad del piso que comparten, y ahí no hay ningún muro
+    if (B.kerb === false) continue;
     ctx.strokeStyle = C.kerb; ctx.lineWidth = 2; ctx.lineJoin = "round";
     ctx.stroke(path);
   }

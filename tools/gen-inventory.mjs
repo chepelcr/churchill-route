@@ -124,6 +124,8 @@ const REGISTRIES = [
     count: (d) => Object.keys(d.types || {}).length },
   { id: "hud", path: "src/assets/hud.json", reads: "canvas HUD + minimap" },
   { id: "flora", path: "src/assets/flora.json", reads: "builder, canvas flora" },
+  { id: "punta", path: "content/world/punta.json",
+    reads: "preview de La Punta (tools/shot-punta-preview.mjs); el builder todavía no" },
   { id: "railway", path: "content/world/railway.json",
     reads: "builder (named-street rail alignment), editor",
     count: (d) => (d.railway?.pairRules || []).length + (d.railway?.dividedRules || []).length },

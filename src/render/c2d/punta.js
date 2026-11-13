@@ -1,11 +1,15 @@
 // LA PUNTA — El Faro y el Balneario, como el lugar que son.
 //
-// Hasta ahora la cuadra entera del Balneario era una ensenada de mar y la
-// plazoleta del Faro un piso gris con comas rojas. El mundo trae ahora las
-// figuras de verdad (`manifest.punta`, trazadas sobre la imagen satelital en
-// docs/punta-satellite-mockup.json): el terreno, el deck, la piscina en forma
-// de coma con sus tres zonas, la piscina redonda, y los DOS pisos del malecón,
-// que son distintos a propósito — abanicos al norte del Faro, olas al sur.
+// Hasta ahora la cuadra entera del Balneario era una ensenada de mar. El mundo
+// trae ahora las figuras de verdad (`manifest.punta`, autoradas en
+// content/world/punta.json): el terreno, el deck, la piscina en forma de coma
+// con sus tres zonas y la piscina redonda.
+//
+// EL MALECÓN NO SE PINTA ACÁ, Y ES A PROPÓSITO: es la plazoleta del Faro de
+// siempre, piedra gris y mosaico, y la sigue pintando `malecon.js` desde
+// `manifest.malecon`. Lo único que este archivo le pone encima son sus
+// figuras — abanicos al norte del Faro, olas al sur — en el rojo de las comas
+// que ya tenía. Un solo piso, el de antes, con el dibujo nuevo.
 //
 // El mundo dice DÓNDE; `materials.json → punta` dice de qué está hecho. Los
 // verbos de acá son tres y son geometría: `sector` (el abanico), `outline`
@@ -18,9 +22,13 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01 } from "./gfx.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import PROPS from "../../assets/world-props.json" with { type: "json" };
 
 const M = MATERIALS.punta;
 const ROCKS = MATERIALS.coast.rocks;
+// LA TINTA DE LAS FIGURAS ES LA DE LAS COMAS DE SIEMPRE: el piso del Faro cambia
+// de dibujo, no de identidad. Se LEE de la escena del faro; no hay copia acá.
+const INK = PROPS.scenes.faro.palette.comma;
 const RAD = Math.PI / 180;
 
 function shape(s) {
@@ -98,13 +106,8 @@ function drawPunta(view) {
   }
   // los dos pisos: recortados a SU malecón, para que nada se salga a la calle
   const half = M.fan.halfAngleDeg * RAD;
-  if (!P._floor) {
-    P._floor = new Path2D();
-    for (const g of P.grounds || []) if (g.use === "malecon" || g.use === "plaza") P._floor.addPath(shape(g));
-  }
-  ctx.save(); ctx.clip(P._floor);
   for (const f of P.fans || []) {
-    ctx.fillStyle = M.fan.ink; ctx.fill(fanPath(f, half));
+    ctx.fillStyle = INK; ctx.fill(fanPath(f, half));
     ctx.strokeStyle = M.fan.edge; ctx.lineWidth = 1.2; ctx.stroke(f._path);
     // DOS bancas por abanico, una a cada lado: afuera de cada canto recto,
     // a media vara, y alineada con él
@@ -120,14 +123,13 @@ function drawPunta(view) {
     }
   }
   for (const w of P.waves || []) {
-    ctx.fillStyle = M.wave.ink; ctx.fill(wavePath(w, M.wave.outline));
+    ctx.fillStyle = INK; ctx.fill(wavePath(w, M.wave.outline));
     ctx.strokeStyle = M.wave.edge; ctx.lineWidth = 1.2; ctx.stroke(w._path);
   }
   for (const r of P.rotondas || []) {
-    ctx.strokeStyle = M.wave.ink; ctx.lineWidth = M.wave.rotondaWidthM * ppm;
+    ctx.strokeStyle = INK; ctx.lineWidth = M.wave.rotondaWidthM * ppm;
     ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
   }
-  ctx.restore();
   // el agua: brocal claro por fuera, la lámina, y encima sus zonas
   for (const pool of P.pools || []) {
     const path = shape(pool);

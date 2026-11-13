@@ -51,7 +51,18 @@ const groundsRaw = raw(B0.grounds[0].polygonLL);
 const tc = Math.floor(groundsRaw[0] / tilePx), tr = Math.floor(groundsRaw[1] / tilePx);
 const tile = JSON.parse(readFileSync(`src/world2d/tiles/${tc}_${tr}.json`, "utf8"));
 const FIT = doc.gameFit, ACERA = manifest.meta.aceraPx, realHalf = FIT.realRoadHalfM * ppm, range = FIT.interiorRangeM * ppm;
-const streets = tile.roads.filter((r) => r.w >= 40);
+// las calles de TODO el frente: el tile de La Punta y los del Paseo hasta el Muelle de Cruceros
+const untilX = manifest.piers.find((q) => q.id === doc.paseo.until.pier).pts[0] - doc.paseo.until.marginM * ppm;
+const frontTiles = [];
+for (let c = tc; c <= Math.floor(untilX / tilePx); c++) for (const r of [tr, tr + 1]) {
+  if (c === tc && r === tr) continue;
+  try { frontTiles.push([`${c}_${r}`, JSON.parse(readFileSync(`src/world2d/tiles/${c}_${r}.json`, "utf8"))]); } catch { /* mar abierto: no hay tile */ }
+}
+const seen = new Set(), streets = [];
+for (const t of [tile, ...frontTiles.map((f) => f[1])]) for (const r of t.roads || []) {
+  const key = r.pts.slice(0, 4).join(",") + r.pts.length;
+  if (r.w >= 40 && !seen.has(key)) { seen.add(key); streets.push(r); }
+}
 function nearestStreet(x, y) {
   let best = null;
   for (const r of streets) {
@@ -95,6 +106,22 @@ for (let i = 0; i + 1 < guide.length; i++) {
     if (!last || Math.hypot(s2.qx - last[0], s2.qy - last[1]) > ppm * 0.6) centre.push([s2.qx, s2.qy, s2.kerb]);
   }
 }
+// LA EXPLANADA TERMINA DONDE TERMINA SU GUÍA; de ahí al Muelle de Cruceros la guía
+// es la línea de centro del Paseo, tal como el mundo la emite
+const endI = centre.length - 1;
+{
+  const chain = streets.filter((r) => doc.paseo.along.includes(r.name))
+    .map((r) => { const q = []; for (let i = 0; i < r.pts.length; i += 2) q.push([r.pts[i], r.pts[i + 1]]); return q[0][0] <= q[q.length - 1][0] ? q : q.reverse(); })
+    .sort((a, b) => a[0][0] - b[0][0]).flat();
+  const kerb = 81 / 2 + ACERA, from = centre[endI][0];
+  for (let i = 0; i + 1 < chain.length; i++) {
+    const [ax, ay] = chain[i], [bx, by2] = chain[i + 1], n = Math.max(1, Math.round(Math.hypot(bx - ax, by2 - ay) / ppm));
+    for (let k = 0; k < n; k++) {
+      const x = ax + (bx - ax) * k / n, y = ay + (by2 - ay) * k / n, last = centre[centre.length - 1];
+      if (x > from + ppm && x < untilX && Math.hypot(x - last[0], y - last[1]) > ppm * 0.6) centre.push([x, y, kerb]);
+    }
+  }
+}
 // normales suaves hacia AFUERA (el lado contrario a la piscina), y el largo recorrido
 const N = centre.length, cum = [0], WIN = 12;
 for (let i = 1; i < N; i++) cum.push(cum[i - 1] + Math.hypot(centre[i][0] - centre[i - 1][0], centre[i][1] - centre[i - 1][1]));
@@ -131,13 +158,31 @@ const faroXY = offset(tipI, centre[tipI][2] + plazaR + ppm).map(Math.round);
 const circle = Array.from({ length: 40 }, (_, k) => [faroXY[0] + Math.cos(k / 40 * 2 * Math.PI) * plazaR, faroXY[1] + Math.sin(k / 40 * 2 * Math.PI) * plazaR]).flat();
 // el círculo del Faro NO empuja el borde: el malecón es lo bastante ancho para tenerlo adentro
 const baseAt = (i) => widthAt(i);
-// hasta dónde llega la piedra gris: pasando la lengua que el registro nombra
 const spurMid = (sp) => { const c = sp.polygonLL.map(xy); return [(c[0][0] + c[1][0] + c[2][0] + c[3][0]) / 4, (c[0][1] + c[1][1] + c[2][1] + c[3][1]) / 4]; };
-const endSpur = ML.spurs.at.findIndex((sp) => sp.osmId === ML.greyEnd.afterSpur);
-const endI = Math.min(N - 1, nearestI(spurMid(ML.spurs.at[endSpur])) + Math.round(ML.greyEnd.marginM));
 // el Paseo, de ahí en adelante: verde contra la acera y playa al frente, las dos regulares
 const kerbS = centre.map((_, i) => { let t = 0, n = 0; for (let k = Math.max(0, i - 14); k <= Math.min(N - 1, i + 14); k++) { t += centre[k][2]; n++; } return t / n; });
-const PS = doc.paseo, warmD = (i) => kerbS[i] + PS.maleconM * ppm, greenD = (i) => warmD(i) + PS.greenM * ppm, sandD = (i) => greenD(i) + PS.beachM * ppm;
+// LA ORILLA DE HOY, medida sobre el ráster: desde la calle hacia el mar, hasta el agua abierta
+const grids = new Map();
+for (const [key, t] of [[`${tc}_${tr}`, tile], ...frontTiles]) {
+  const rle = Buffer.from(t.rle, "base64"), g = new Uint8Array(t.cols * t.rows); let o = 0;
+  for (let i = 0; i + 1 < rle.length; i += 2) { g.fill(rle[i + 1], o, o + rle[i]); o += rle[i]; }
+  grids.set(key, { g, x: t.x, y: t.y, cols: t.cols });
+}
+const CELL = manifest.meta.cell;
+const surf = (x, y) => { const t = grids.get(`${Math.floor(x / tilePx)}_${Math.floor(y / tilePx)}`); return t ? t.g[Math.floor((y - t.y) / CELL) * t.cols + Math.floor((x - t.x) / CELL)] : 0; };
+const shoreRaw = centre.map((c, i) => {
+  if (i <= endI) return 0;
+  let last = c[2], wet = 0;
+  for (let dd = c[2]; dd < doc.paseo.shore.maxM * ppm; dd += CELL) {
+    const [x, y] = offset(i, dd);
+    if (surf(x, y) === 0) { wet += CELL; if (wet > 30 * ppm) break; } else { last = dd; wet = 0; }
+  }
+  return last;
+});
+const PS = doc.paseo, warmD = (i) => kerbS[i] + PS.maleconM * ppm, greenD = (i) => warmD(i) + PS.greenM * ppm;
+const SM = Math.round(PS.shore.smoothM), shoreS = centre.map((_, i) => { if (i <= endI) return 0; let t = 0, n = 0; for (let k = Math.max(endI + 1, i - SM); k <= Math.min(N - 1, i + SM); k++) { t += shoreRaw[k]; n++; } return t / n; });
+// la playa llega a la orilla alisada, nunca menos que su mínimo; y arranca en el mínimo junto a la explanada
+const sandD = (i) => { const min = greenD(i) + PS.beachM * ppm, blend = Math.min(1, (i - endI) / (2 * SM)); return min + Math.max(0, shoreS[i] - min) * blend; };
 const seaAt = (i) => (i <= endI ? baseAt(i) : sandD(i));
 // los cinco malecones: el rectángulo de OSM, engordado, y corrido hasta que salga al mar
 const spurs = ML.spurs.at.map((sp) => {
@@ -176,10 +221,9 @@ manifest.plazas = (manifest.plazas || []).filter((p) => p[4] !== ML.style);
 manifest.malecon.push({ polys: [band], ang: old.ang, ...bbox(band), style: ML.style, id: "punta" });
 if (warm) manifest.malecon.push({ polys: [warm], ang: replaced.find((b) => !b.style)?.ang ?? old.ang, ...bbox(warm), id: "punta_paseo" });
 for (const [k, tg] of tongues.entries()) manifest.malecon.push({ polys: [tg], ang: old.ang, ...bbox(tg), style: ML.style, id: `punta_lengua_${k}` });
-if (green) manifest.greens.push({ pts: green, type: PS.green });
 // la arena vieja de este tramo: los anillos que caen enteros se van; al que sigue
 // hacia el este se le quitan los vértices de acá (un corte recto: es un preview)
-const seaward = (x, y) => { const i = nearestI([x, y]); return (x - centre[i][0]) * normal[i][0] + (y - centre[i][1]) * normal[i][1] > 0 && Math.hypot(x - centre[i][0], y - centre[i][1]) < 130 * ppm; };
+const seaward = (x, y) => { const i = nearestI([x, y]); return (x - centre[i][0]) * normal[i][0] + (y - centre[i][1]) * normal[i][1] > 0 && Math.hypot(x - centre[i][0], y - centre[i][1]) < (doc.paseo.shore.maxM + 40) * ppm; };
 let sandCut = 0;
 manifest.beaches = manifest.beaches.map((ring) => {
   const keep = [];
@@ -229,11 +273,12 @@ const punta = {
   fans, waves,
   riprap,
   sands: sands.map((pts) => ({ pts })),
+  greens: green ? [{ pts: green, type: PS.green }] : [],
   rotondas: [{ x: rot[0], y: rot[1], r: ML.rotonda.rM * ppm }],
   discs: [{ x: faroXY[0], y: faroXY[1], r: plazaR }],
   props: B0.props.map((p) => (p.polygonLL ? { kind: p.kind, pts: rigid(p.polygonLL) } : { kind: p.kind, x: shrink(xy(p.ll))[0], y: shrink(xy(p.ll))[1] })),
 };
-Object.assign(punta, bbox([...punta.grounds.flatMap((g) => g.pts), ...floor.flat(), ...sands.flat(), ...tongues.flat()]));
+Object.assign(punta, bbox([...punta.grounds.flatMap((g) => g.pts), ...floor.flat(), ...sands.flat(), ...tongues.flat(), ...(green || [])]));
 const G = punta.grounds[0].pts;
 
 // ---- el manifest parchado: la ensenada deja de existir y el Faro va a su torre
@@ -292,11 +337,10 @@ console.log(`[punta-preview] fuera: ${dropped.waters} agua, ${dropped.parcels} p
   `dentro: ${punta.grounds.length} suelos, ${punta.pools.length} piscinas, 1 malecón de ${Math.round(cum[N - 1] / ppm)} m (${Math.round(cum[endI] / ppm)} de piedra) con ${spurs.length} lenguas, ${sands.length} playas (reemplaza ${replaced.length} bandas, recorta ${sandCut} anillos de arena), ${fans.length} abanicos, ${waves.length} olas`);
 
 // PW_CHROMIUM: un Chromium ya instalado, cuando el de Playwright no está en la máquina
-// los tiles vecinos sólo pierden lo que quedó sembrado en el mar nuevo
-for (const [dc, dr] of [[0, 1], [1, 0], [1, 1]]) {
-  let nb; try { nb = JSON.parse(readFileSync(`src/world2d/tiles/${tc + dc}_${tr + dr}.json`, "utf8")); } catch { continue; }
+// los tiles del frente sólo pierden lo que quedó sembrado en el mar nuevo
+for (const [key, nb] of frontTiles) {
   nb.palms = (nb.palms || []).filter((o) => !inNewSea(o)); nb.trees = (nb.trees || []).filter((o) => !inNewSea(o));
-  neighbours.push([`${tc + dc}_${tr + dr}`, nb]);
+  neighbours.push([key, nb]);
 }
 if (Array.isArray(manifest.signs)) manifest.signs = manifest.signs.filter((o) => !(typeof o.x === "number" && inNewSea(o)));
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
@@ -346,7 +390,10 @@ await shot("faro", "sunny", faroXY[0] + 30, faroXY[1] + 20, 3.2);
 await shot("piscina", "sunny", poolC[0] + 30, poolC[1], 3.4);
 await shot("abanicos", "sunny", fan.x + 40, fan.y, 4.2);
 await shot("olas", "sunny", wave.x + 40, wave.y + 20, 3.4);
-await shot("paseo", "sunny", centre[Math.round((endI + N) / 2)][0] - 60, centre[Math.round((endI + N) / 2)][1] + 60, 1.3);
+await shot("paseo", "sunny", centre[Math.round(endI * 0.8)][0] - 40, centre[Math.round(endI * 0.8)][1] + 80, 1.3);
+await shot("union", "sunny", centre[endI][0] + 60, centre[endI][1] + 80, 1.5);
+await shot("frente", "sunny", centre[Math.round((endI + N) / 2)][0], centre[Math.round((endI + N) / 2)][1] + 90, 1.0);
+await shot("cruceros", "sunny", centre[N - 1][0] - 180, centre[N - 1][1] + 90, 1.3);
 await shot("noche", "night", px0, py0, 1.55);
 copyFileSync(whole, "docs/punta-space-mockup.png");
 await browser.close();

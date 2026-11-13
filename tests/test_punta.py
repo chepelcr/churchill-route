@@ -71,7 +71,7 @@ class PuntaRegistryTests(unittest.TestCase):
         self.assertTrue(all(18 < w[k] < 70 for k in ("north", "tip", "south")))
         # el círculo del Faro cabe entero en el malecón: no empuja el borde
         self.assertGreaterEqual(w["tip"], 15 + 2 * self.doc["faro"]["plazaRM"] + 2)
-        self.assertIn(ml["greyEnd"]["afterSpur"], [sp["osmId"] for sp in ml["spurs"]["at"]])
+        self.assertEqual(self.doc["paseo"]["until"]["pier"], "muelle_nacional")
         self.assertEqual(self.doc["muelle"]["pier"], "muelle_faro")
         self.assertGreater(self.doc["paseo"]["beachM"], 0)
         self.assertGreaterEqual(len(ml["alongLL"]), 10)

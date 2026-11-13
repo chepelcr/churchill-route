@@ -99,6 +99,9 @@ function drawPunta(view, t = 0) {
   if (!P || !aabbInView(P, view, 40)) return;
   const ppm = W.PX_PER_M;
   ctx.lineJoin = "round"; ctx.lineCap = "round";
+  // el verde del Paseo. Se pinta ACÁ y no con los verdes del mundo porque aquéllos van
+  // antes que las aguas interiores, y sobre este frente hay agua vieja que lo taparía
+  for (const gr of P.greens || []) { ctx.fillStyle = MATERIALS.green[gr.type]; ctx.fill(shape(gr)); }
   // la playa entre lengua y lengua, y la del frente del Paseo: la arena del mundo
   ctx.fillStyle = weatherColors().sand;
   for (const sd of P.sands || []) ctx.fill(shape(sd));

@@ -3,7 +3,7 @@
  "_status": "Lo lee `tools/shot-punta-preview.mjs` para el preview sin reconstruir. `content.py` lo carga como `PUNTA_DEF`, pero todavía NINGUNA etapa del builder lo consume: mientras tanto la cuadra sigue saliendo como `water-inlet` desde blocks.json.",
  "version": 1,
  "malecon": {
-  "_note": "UN SOLO MALECÓN DE PIEDRA, Y ES EL DEL FARO: su piedra gris y su mosaico (`style: esplanade`). Es una banda limpia que sigue la calle desde la Avenida 3, da la vuelta a La Punta y termina pasando el segundo malecón, el de la rotonda. De ahí en adelante el frente de mar es OTRO lugar — ver `paseo`.",
+  "_note": "LA EXPLANADA DEL FARO: su piedra gris y su mosaico (`style: esplanade`). Es una banda limpia que sigue la calle desde la Avenida 3, da la vuelta a La Punta y baja por el Paseo hasta pasar la quinta área de descanso: LOS CINCO MALECONES SON DE LA EXPLANADA. Donde ella termina empieza el frente del Paseo — ver `paseo`.",
   "style": "esplanade",
   "alongLL": [
    [
@@ -254,24 +254,33 @@
    ],
    "rM": 9.0
   },
-  "greyEnd": {
-   "afterSpur": 964078454,
-   "marginM": 14.0,
-   "_note": "hasta dónde llega la piedra gris: pasando esta lengua. Las figuras del sur no siguen más allá del Faro, así que tampoco el piso que las lleva."
-  },
   "cove": {
    "beachM": 24.0,
-   "_note": "la playa ENTRE la lengua del Faro y la de la rotonda: una franja regular de arena pegada al borde del malecón, más corta que las lenguas para que éstas sigan saliendo al mar."
+   "_note": "la playa ENTRE lengua y lengua, a todo lo largo de la explanada: una franja regular de arena pegada a su borde, más corta que las lenguas para que éstas sigan saliendo al mar."
   }
  },
  "paseo": {
-  "_note": "EL FRENTE DEL PASEO, de la rotonda en adelante, en TRES franjas regulares paralelas a la calle: el malecón de siempre contra la acera (su baldosa color arena, `malecon.band`), después el verde, y la playa al frente. Lo que se reemplaza es el OTRO espacio — la franja de contorno irregular que había entre el malecón y el mar—, no el malecón. Las lenguas de piedra cruzan las tres hasta el mar.",
+  "_note": "EL FRENTE DEL PASEO, desde donde termina la explanada del Faro hasta el Muelle de Cruceros, en TRES franjas regulares paralelas a la calle: el malecón de siempre contra la acera (su baldosa color arena, `malecon.band`), después el verde, y la playa al frente. Reemplaza la franja de contorno irregular que dejó el ráster.",
   "greenM": 17.0,
-  "beachM": 26.0,
+  "beachM": 22.0,
   "green": "park",
-  "_widths": "ancho de cada franja, de la acera hacia el mar: malecón, verde, playa.",
-  "_extent": "llega hasta donde llega la guía (`malecon.alongLL`): la quinta área de descanso. El Paseo sigue 3 km más al este con kioscos de playa, la feria y las canchas sentados sobre ese frente: extenderlo es otra pasada, no un número.",
-  "maleconM": 14.0
+  "_widths": "ancho de cada franja, de la acera hacia el mar: malecón, verde, playa. `beachM` es el MÍNIMO de playa: el frente de hoy es mucho más hondo en partes (hasta 150 m frente al Muelle de Cruceros, con kioscos parados en esa arena), así que la playa llega hasta la orilla que el mundo ya tiene, alisada.",
+  "maleconM": 14.0,
+  "along": [
+   "Paseo de Los Turistas",
+   "Paseo León Cortés Castro"
+  ],
+  "_along": "la guía de este tramo no se traza: es la línea de centro de estas calles, tal como el mundo las emite, de oeste a este.",
+  "until": {
+   "pier": "muelle_nacional",
+   "marginM": 30.0,
+   "_note": "el Muelle de Cruceros: el frente llega hasta su bajada oeste."
+  },
+  "shore": {
+   "smoothM": 70.0,
+   "maxM": 190.0,
+   "_note": "la orilla se MIDE sobre el ráster emitido —desde la calle hacia el mar, hasta donde empieza el agua abierta— y se alisa con una media de `smoothM` a cada lado: el borde de la playa sale regular sin dejar kioscos en el mar. `maxM` es hasta dónde se busca."
+  }
  },
  "muelle": {
   "_note": "EL MUELLE DEL FARO SE QUEDA, con su kiosco: nace en el borde del malecón nuevo. Su calle auxiliar también se queda, y sigue siendo manejable, pero NO SE PINTA — por encima se ve piso de malecón, y quien la encuentre llega en carro hasta el kiosco. Un huevo de pascua.",

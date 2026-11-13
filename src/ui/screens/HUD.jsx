@@ -25,15 +25,24 @@ export default function HUD({ onPause }) {
   };
   const [debug, setDebug] = useState(Game.state.debug);
   const [dismissedTip, setDismissedTip] = useState("");
+  const [dismissing, setDismissing] = useState(null);
   const s = Game.state;
   const visibleTip = s.storyTip && s.storyTip !== dismissedTip ? s.storyTip : "";
   const dismissToast = (e) => {
     e.preventDefault(); e.stopPropagation();
-    Game.state.districtToast = null;
+    if (!dismissing) setDismissing({ kind: "toast", value: s.districtToast });
   };
   const dismissTip = (e) => {
     e.preventDefault(); e.stopPropagation();
-    if (s.storyTip) setDismissedTip(s.storyTip);
+    if (!dismissing && visibleTip) setDismissing({ kind: "tip", value: visibleTip });
+  };
+  const finishToastDismiss = () => {
+    if (Game.state.districtToast === dismissing.value) Game.state.districtToast = null;
+    setDismissing(null);
+  };
+  const finishTipDismiss = () => {
+    setDismissedTip(dismissing.value);
+    setDismissing(null);
   };
   const district = s.p ? WORLD.districtAt(s.p.x, s.p.y) : null;
   const toggleDebug = () => {
@@ -129,15 +138,19 @@ export default function HUD({ onPause }) {
       </div>
     ),
     districtToast: () => (
-      <button type="button" className="district-toast" style={{ opacity: toastOpacity, borderColor: toast.tone }}
-        onPointerDown={dismissToast} onClick={dismissToast} aria-label={t("hud.dismiss")} title={t("hud.dismiss")}>
+      <button type="button" className={"district-toast" + (dismissing?.kind === "toast" ? " banner-leaving" : "")}
+        style={{ opacity: toastOpacity, borderColor: toast.tone }} onPointerDown={dismissToast} onClick={dismissToast}
+        onAnimationEnd={dismissing?.kind === "toast" ? finishToastDismiss : undefined}
+        aria-label={t("hud.dismiss")} title={t("hud.dismiss")}>
         <div className="dt-kicker" style={{ color: toast.tone }}>{t("hud.enter")}</div>
         <div className="dt-name">{toast.name}</div>
         <div className="dt-rule" style={{ background: toast.tone }}></div>
       </button>
     ),
     storyTip: () => (
-      <button type="button" className="story-tip" onPointerDown={dismissTip} onClick={dismissTip}
+      <button type="button" className={"story-tip" + (dismissing?.kind === "tip" ? " banner-leaving" : "")}
+        onPointerDown={dismissTip} onClick={dismissTip}
+        onAnimationEnd={dismissing?.kind === "tip" ? finishTipDismiss : undefined}
         aria-label={t("hud.dismiss")} title={t("hud.dismiss")}>
         ↳ {visibleTip}<span className="banner-close" aria-hidden="true">×</span>
       </button>
@@ -160,7 +173,7 @@ export default function HUD({ onPause }) {
     inStage: !!s.stage, freeRun: !s.stage,
     canPause: !!onPause,
     debugOn: !!debug,
-    hasToast: !!toast && toastOpacity > 0,
+    hasToast: !!toast && (toastOpacity > 0 || dismissing?.kind === "toast"),
     hasTip: !!visibleTip,
     carrying: !!s.carrying,
   };

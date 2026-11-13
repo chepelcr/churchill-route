@@ -96,7 +96,7 @@ export function nightTint(tint) {
   return moon > 0 ? lightenTint(tint, moon * 0.34) : tint;
 }
 
-export function drawNightLights(vw, vh, view, tint, toScreen) {
+export function drawNightLights(vw, vh, view, tint, toScreen, strength = 1) {
   // LA LUNA DECIDE CUÁNTO SE VE. Luna llena y luna nueva son dos noches
   // distintas y el jugador lo nota antes de saber por qué: en llena el tinte se
   // aligera y se maneja por la calle, en nueva la ciudad son los pozos de luz y
@@ -136,7 +136,7 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
   for (const lamp of lamps) {
     const [sx, sy] = toScreen(lamp.x, lamp.y);
     const sprite = poolSprite(lamp.type || "warm", r);
-    lctx.globalAlpha = Math.max(0, Math.min(1, lamp.intensity ?? 1));
+    lctx.globalAlpha = Math.max(0, Math.min(1, (lamp.intensity ?? 1) * strength));
     lctx.drawImage(sprite, sx * s - r, sy * s - r, r * 2, r * 2);
   }
   lctx.globalCompositeOperation = "source-over";
@@ -153,7 +153,7 @@ export function drawNightLights(vw, vh, view, tint, toScreen) {
   for (const lamp of lamps) {
     const spec = LIGHTS.types[lamp.type] || LIGHTS.types.warm;
     const [sx, sy] = toScreen(lamp.x, lamp.y);
-    ctx.globalAlpha = Math.max(0, Math.min(1, lamp.intensity ?? 1));
+    ctx.globalAlpha = Math.max(0, Math.min(1, (lamp.intensity ?? 1) * strength));
     paintLightWarmPool(ctx, LIGHTS, spec, sx * dpr, sy * dpr, warmR * dpr);
   }
   ctx.restore();

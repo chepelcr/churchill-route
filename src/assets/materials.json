@@ -1532,7 +1532,7 @@
   "feria": {
     "_note": "EL TABLADO DEL TURNO. El mundo dice cuál suelo es (`manifest.feria`: el contorno del lote que `service/attraction.py` corta del malecón y estampa `Surface.BRIDGE`) y esto dice cómo se ve: tablas PERPENDICULARES a la calle, en dos tonos alternados, costuras, travesaños y PILOTES perimetrales que dejan ver la estructura bajo el canto. Largos en METROS (`…M`); una tabla por clima, como el malecón que lo rodea. ESTÁ ELEVADO: `heightM` es cuánto se levanta del paseo, y de ahí sale el largo de su sombra con el sol (la misma `sunShadow` de un edificio). La baranda rodea todo el contorno salvo la boca de la entrada; `postM` es cada cuánto va un poste y `pileM` cada cuánto va un pilote. El cartel (`sign`) son dos postes y un rótulo sobre la rampa QUE DA A LA CALLE; `rampFraction` lo ubica entre la boca (0) y la calle (1). `lighting` añade guirnaldas ámbar con pozos de luz reales y el show de láseres nocturno del DJ.",
     "deck": {
-      "pileM": 5.5,
+      "pileM": 10.0,
       "pilePx": 5,
       "pileOffsetPx": 5,
       "pile": "#4c3322",
@@ -1621,7 +1621,7 @@
       }
     },
     "lighting": {
-      "_note": "DOS SISTEMAS, SIN GUIRNALDAS SOBRE LA TARIMA. Los cables cruzan SOLAMENTE entre las cinco hileras de comida —ninguno al norte ni al sur— con bombillos más espaciados y tenues. Farolas suaves ocupan los pasillos entre juegos y una marca cada esquina de los chocones; las atracciones ya no emiten cada una su propio pozo. El DJ no recibe pozo cálido: su show se dibuja DESPUÉS del tinte para conservar el color y brillo de los láseres.",
+      "_note": "SIN GUIRNALDAS SOBRE LA TARIMA. Los cables cruzan SOLAMENTE entre las cinco hileras de comida —ninguno al norte ni al sur— con bombillos espaciados y tenues. Farolas suaves ocupan los pasillos entre juegos y una marca cada esquina de los chocones; una luz más tenue corona cada pilote perimetral. El DJ no recibe pozo cálido: su show se dibuja DESPUÉS del tinte para conservar el color y brillo de los láseres.",
       "strandMarginM": 3,
       "bulbSpacingM": 11,
       "sagPx": 6,
@@ -1632,7 +1632,13 @@
       "bulbGlow": "rgba(255,193,74,0.12)",
       "poolEvery": 3,
       "foodIntensity": 0.7,
+      "choconesMarginPx": 3,
+      "choconesSagPx": 3,
+      "choconesBulbSpacingM": 4,
+      "choconesIntensity": 0.6,
+      "choconesPoolEvery": 3,
       "areaIntensity": 0.45,
+      "pileIntensity": 0.28,
       "rowClusterM": 7,
       "lasers": {
         "count": 8,
@@ -1860,6 +1866,15 @@
       "sand": "#6b5a42",
       "land": "#414a37",
       "tint": "rgba(10,10,30,0.45)"
+    },
+    "dawn": {
+      "sky1": "#91b8d1",
+      "sky2": "#f2b7a5",
+      "waterTop": "#78aebc",
+      "waterBot": "#426d86",
+      "sand": "#d9bd91",
+      "land": "#b7ad79",
+      "tint": "rgba(190,205,225,0.08)"
     }
   },
   "terrain": {

@@ -334,11 +334,13 @@ export function paintLuminaire(g, lights, type, x, y, opts, paintPartsAt) {
   const radius = Math.max(limits.radiusMin,
     Math.min(limits.radiusMax, Number(opts?.radius) || spec.radius));
   paintPartsAt(spec.parts, x, y, spec);
-  if (!opts?.night || intensity <= 0) return;
+  const night = typeof opts?.night === "number"
+    ? Math.max(0, Math.min(1, opts.night)) : opts?.night ? 1 : 0;
+  if (!night || intensity <= 0) return;
   const [hx, hy] = spec.haloAt;
   const halo = g.createRadialGradient(x + hx, y + hy, 0, x + hx, y + hy, radius);
   halo.addColorStop(0, rgba(spec.halo,
-    Math.min(lights.haloAlpha.max, intensity * lights.haloAlpha.perUnit)));
+    Math.min(lights.haloAlpha.max, intensity * night * lights.haloAlpha.perUnit)));
   halo.addColorStop(1, rgba(spec.halo, 0));
   g.fillStyle = halo;
   g.beginPath();

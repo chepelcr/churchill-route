@@ -8,7 +8,8 @@
 // The water itself stays open: no painted ribbon, limits or current streaks
 // turn the estuary back into a corridor. Las boyas — red to port, green to
 // starboard, bobbing and blinking at night — are the regatta course you steer.
-import { ctx, hash01, weatherColors } from "./gfx.js";
+import { ctx, hash01, mixColor, weatherColors } from "./gfx.js";
+import { nightLevel } from "../../game/daynight.js";
 import {
   actorAnimationValues, paintActor, resolveActorRecord,
 } from "./actorShapes.js";
@@ -101,13 +102,16 @@ function drawBuoy(b, view, t) {
   }
   // at night they blink, out of phase with each other — the lantern is the one
   // thing you see of her, so it gets a halo on the water.
-  const lit = state.weather === "night" && Math.sin(t * 2.4 + b.ph * 3) > 0.2;
+  const night = nightLevel();
+  const lit = night > 0.001 && Math.sin(t * 2.4 + b.ph * 3) > 0.2;
   if (lit) {
+    ctx.save(); ctx.globalAlpha = night;
     ctx.fillStyle = MARK.halo;
     ctx.beginPath(); ctx.arc(x, y, R + 7, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
-  ctx.fillStyle = lit ? MARK.lamp : E.buoy.lampOff;
-  ctx.beginPath(); ctx.arc(x, y, lit ? 2.6 : 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = lit ? mixColor(E.buoy.lampOff, MARK.lamp, night) : E.buoy.lampOff;
+  ctx.beginPath(); ctx.arc(x, y, lit ? 1.5 + night * 1.1 : 1.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 

@@ -15,7 +15,7 @@ import { paintStructureParts } from "./structureShapes.js";
 import { paintLight } from "./lights.js";
 import { buildingStyle } from "./buildingStyle.js";
 import { districtBuildingStyle } from "./districts.js";
-import { lightsOn } from "../../game/daynight.js";
+import { lightLevel } from "../../game/daynight.js";
 import { registerLampSource } from "./nightlights.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
@@ -102,12 +102,7 @@ function paintBuilding(b) {
   const vars = resolveAssetFormulaMap(S.building.values, {
     bw, bh, roof: (st && st.roof) || b.roof || S.roof,
     windows: Boolean(st && st.wnd !== undefined ? st.wnd : b.wnd),
-    // LO PREGUNTA `lightsOn()`, que es el dueño. Era `state.weather === "night"`:
-    // una tormenta a mediodía cierra el cielo y prende el alumbrado de la ciudad,
-    // pero las ventanas de los edificios se quedaban apagadas — dos umbrales
-    // para una sola pregunta, que es exactamente el error que la noche ya tuvo
-    // una vez con las lámparas.
-    windowInk: lightsOn() ? S.building.windowsNight : S.building.windowsDay,
+    windowInk: mixColor(S.building.windowsDay, S.building.windowsNight, lightLevel()),
   });
   paintStructureParts(ctx, S.building.parts, {
     X: (value) => value || 0,

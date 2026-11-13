@@ -3,6 +3,7 @@
 // are layered objects whose draw order matters (furniture, lights, roofs).
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
+import { nightLevel } from "../../game/daynight.js";
 import { ctx } from "./gfx.js";
 import { drawLight } from "./lights.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
@@ -63,7 +64,7 @@ function drawRoof(feature) {
   const path = pathFor(feature);
   const properties = feature.properties || {};
   ctx.save();
-  ctx.globalAlpha = state.weather === "night" ? A.nightAlpha : A.dayAlpha;
+  ctx.globalAlpha = A.dayAlpha + (A.nightAlpha - A.dayAlpha) * nightLevel();
   ctx.fillStyle = feature.style?.color || properties.roofColor || A.fill;
   ctx.fill(path);
   ctx.globalAlpha = 1;

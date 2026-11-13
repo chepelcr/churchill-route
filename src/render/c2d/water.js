@@ -38,8 +38,9 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { SURFACE } from "../../game/surfaces.js";
 import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { boats, pedestrians, state } from "../../game/state.js";
+import { stormLevel } from "../../game/daynight.js";
 import { ensureRenderCache } from "./cache.js";
-import { aabbInView, ctx, hash01, weatherColors } from "./gfx.js";
+import { aabbInView, blendPalette, ctx, hash01, weatherColors } from "./gfx.js";
 import {
   deriveWaterPalette, paintWaterCurrents, paintWaterSwell, rgba,
 } from "./systemShapes.js";
@@ -53,10 +54,11 @@ const TAU = Math.PI * 2;
 // toward black. That way sunset stays warm and night stays cold for free.
 let palKey = "", pal = null;
 function seaPalette() {
-  const key = state.weather || "sunny";
+  const colors = weatherColors();
+  const key = `${colors.waterTop}|${colors.waterBot}|${colors.sand}`;
   if (key === palKey && pal) return pal;
   palKey = key;
-  pal = deriveWaterPalette(WATER, weatherColors());
+  pal = deriveWaterPalette(WATER, colors);
   return pal;
 }
 
@@ -66,7 +68,7 @@ function seaPalette() {
 // moonlit sheen on the crest faces, so the sea is still legibly moving in the
 // dark without turning into a light show.
 const SEA = WATER.swell;
-function seaCfg() { return SEA[state.weather] || SEA.sunny; }
+function seaCfg() { return blendPalette(SEA); }
 //: the editor's weather zones publish this; everything else leaves it at 1.
 function intensity() {
   const v = state.weatherIntensity;
@@ -88,7 +90,8 @@ function tideLevel() { return Number.isFinite(state.tide) ? Math.max(0, Math.min
  */
 function drawSwell(box, t, shelter = 0) {
   paintWaterSwell(ctx, box, t, {
-    water: WATER, weatherColors: weatherColors(), weather: state.weather,
+    water: { ...WATER, swell: { sunny: seaCfg() } },
+    weatherColors: weatherColors(), weather: "sunny",
     intensity: intensity(), shelter,
   });
 }
@@ -296,7 +299,7 @@ function drawShoreBreak(view, t) {
   const polys = W.BEACHES || [];
   const P = seaPalette(), cfg = seaCfg(), wi = intensity();
   const tide = tideLevel();
-  const storm = state.weather === "storm" ? wi : 0;
+  const storm = stormLevel() * wi;
   // Where the mean waterline sits on this beach: up the sand at pleamar, out
   // past the polygon's own edge at bajamar.
   const tideOff = -(tide - 0.5) * 26;

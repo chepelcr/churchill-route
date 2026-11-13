@@ -105,10 +105,8 @@ class Landmark(WorldModel):
     h: int | None = None
     # NOT a flag: the build-authored player start [x, y], snapped to the
     # nearest drivable street. The kiosk's own x/y is its beach-facing icon, and
-    # spawning there dropped the car on the sand. For `streetOnly` kiosks this
-    # is also the pickup point; no auxiliary road reaches the stand itself.
+    # spawning there dropped the car on the sand.
     spawn: list[int] | None = Field(default=None, min_length=2, max_length=2)
-    streetOnly: bool = False
     footprint: FlatPoly | None = Field(default=None, description="drawn shape (a pitch)")
     outline: FlatPoly | None = Field(default=None, description="whole drivable cuadra")
 

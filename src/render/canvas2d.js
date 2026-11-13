@@ -22,7 +22,7 @@ import { drawWorld2D } from "./c2d/world.js";
 import { drawNightLights, setLightZoom } from "./c2d/nightlights.js";
 import { drawFloodedStreets, drawRoadSplashes } from "./c2d/downpour.js";
 import { drawTornado } from "./c2d/tornado.js";
-import { lightning, lightsOn, stormForce, stormLevel, wetLevel } from "../game/daynight.js";
+import { lightLevel, lightning, nightLevel, stormForce, stormLevel, wetLevel } from "../game/daynight.js";
 import { drawBarriers, drawSigns } from "./c2d/streets.js";
 import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawChannel, drawEstero } from "./c2d/estero.js";
@@ -303,8 +303,8 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   // mediodía prende el alumbrado, y si el compositor sólo mirara el nombre del
   // clima esas lámparas se dibujarían sin abrir su pozo — el mismo error que
   // tenía la noche, otra vez.
-  const lit = lightsOn();
-  if (lit) {
+  const lit = lightLevel();
+  if (lit > 0.001) {
     // LA NOCHE ES UNA CAPA QUE LAS LÁMPARAS PERFORAN, no una manta. El tinte
     // plano sigue siendo lo que se ve LEJOS de un poste — que es como el juego
     // se ha visto siempre — pero deja de ser la última palabra. Sin alumbrado
@@ -312,7 +312,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     // cambia, que es lo que mantiene honesto el cambio.
     setLightZoom(ZOOM);
     const toScreen = (wx, wy) => worldToScreen(camera, wx, wy);
-    drawNightLights(vw, vh, view, C.tint, toScreen);
+    drawNightLights(vw, vh, view, C.tint, toScreen, lit);
     drawFeriaNightEffects(view, t, toScreen, camera.zoom);
   } else {
     ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
@@ -334,7 +334,12 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     // cerca: una gota en el parabrisas tapa la lluvia del fondo, no al revés.
     drawRainSplash(vw, vh, t, stormForce());
   }
-  if (state.weather === "night") drawNightVignette(vw, vh);
+  const night = nightLevel();
+  if (night > 0.001) {
+    ctx.save(); ctx.globalAlpha = night;
+    drawNightVignette(vw, vh);
+    ctx.restore();
+  }
   // EL RELÁMPAGO va encima de TODO —del tinte, de la lluvia, del viñeteado—
   // porque un relámpago ilumina la escena entera y no una capa de ella. Dura
   // fracciones de segundo, así que es lo único de la tormenta que se dibuja como

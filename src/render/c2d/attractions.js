@@ -20,8 +20,8 @@
 // ferial's raised wooden deck and that is what the car interacts with; a ride
 // is scenery you drive around, like a vendor's cart or a parada.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { aabbInView, ctx, flatMultiPath, hash01 } from "./gfx.js";
-import { state } from "../../game/state.js";
+import { aabbInView, blendPalette, ctx, flatMultiPath, hash01 } from "./gfx.js";
+import { lightLevel, nightLevel } from "../../game/daynight.js";
 import { PX_PER_M } from "../../domain/units.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import { sunShadow } from "./shadows.js";
@@ -153,37 +153,63 @@ function warnMissingShape(shape, kind) {
 const DECK = MATERIALS.feria.deck;
 const LIGHTING = MATERIALS.feria.lighting;
 
-function deckColors() { return DECK[state.weather] || DECK.clear; }
+function deckColors() { return blendPalette(DECK, "clear"); }
 
 let foodStrings = [], foodStringsKey = "";
 
 function feriaStrings() {
-  const stalls = (W.ATTRACTIONS || []).filter((A) => A.kind === "chinamo")
+  const attractions = W.ATTRACTIONS || [];
+  const stalls = attractions.filter((A) => A.kind === "chinamo")
     .sort((a, b) => a.y - b.y || a.x - b.x);
-  const key = stalls.map((A) => `${A.id}:${A.x},${A.y}`).join("|");
+  const bumperCars = attractions.filter((A) => A.kind === "chocones");
+  const key = [...stalls, ...bumperCars]
+    .map((A) => `${A.id}:${A.x},${A.y},${A.r},${A.ang || 0}`).join("|");
   if (key === foodStringsKey) return foodStrings;
   foodStringsKey = key;
   foodStrings = [];
-  if (!stalls.length) return foodStrings;
-  const margin = LIGHTING.strandMarginM * PX_PER_M;
-  const x0 = Math.min(...stalls.map((A) => A.x)) - margin;
-  const x1 = Math.max(...stalls.map((A) => A.x)) + margin;
-  const rows = [...new Set(stalls.map((A) => A.y))];
-  const strandYs = rows.slice(1).map((y, i) => (rows[i] + y) / 2);
-  const spacing = LIGHTING.bulbSpacingM * PX_PER_M;
-  for (const y of strandYs) {
+
+  const addString = (a, b, sag, spacing, intensity, poolEvery) => {
     const cable = [], bulbs = [];
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
     for (let i = 0; i <= 20; i++) {
       const q = i / 20;
-      cable.push({ x: x0 + (x1 - x0) * q, y: y + LIGHTING.sagPx * 4 * q * (1 - q) });
+      cable.push({ x: a.x + (b.x - a.x) * q,
+        y: a.y + (b.y - a.y) * q + sag * 4 * q * (1 - q) });
     }
-    const n = Math.max(2, Math.round((x1 - x0) / spacing));
+    const n = Math.max(2, Math.round(length / spacing));
     for (let i = 0; i <= n; i++) {
-      const q = i / n, x = x0 + (x1 - x0) * q;
-      const wire = { x, y: y + LIGHTING.sagPx * 4 * q * (1 - q) };
-      bulbs.push({ x, y: wire.y + 2.4, wire });
+      const q = i / n;
+      const wire = { x: a.x + (b.x - a.x) * q,
+        y: a.y + (b.y - a.y) * q + sag * 4 * q * (1 - q) };
+      bulbs.push({ x: wire.x, y: wire.y + 2.4, wire });
     }
-    foodStrings.push({ cable, bulbs });
+    foodStrings.push({ cable, bulbs, intensity, poolEvery });
+  };
+
+  if (stalls.length) {
+    const margin = LIGHTING.strandMarginM * PX_PER_M;
+    const x0 = Math.min(...stalls.map((A) => A.x)) - margin;
+    const x1 = Math.max(...stalls.map((A) => A.x)) + margin;
+    const rows = [...new Set(stalls.map((A) => A.y))];
+    const strandYs = rows.slice(1).map((y, i) => (rows[i] + y) / 2);
+    for (const y of strandYs) addString({ x: x0, y }, { x: x1, y },
+      LIGHTING.sagPx, LIGHTING.bulbSpacingM * PX_PER_M,
+      LIGHTING.foodIntensity, LIGHTING.poolEvery);
+  }
+
+  const body = ASSETS.chocones.parts.find((p) => p.shape === "box");
+  if (body) for (const A of bumperCars) {
+    const c = Math.cos(A.ang || 0), s = Math.sin(A.ang || 0), m = LIGHTING.choconesMarginPx;
+    const corners = [[body.x - m / A.r, body.y - m / A.r],
+      [body.x + body.w + m / A.r, body.y - m / A.r],
+      [body.x + body.w + m / A.r, body.y + body.h + m / A.r],
+      [body.x - m / A.r, body.y + body.h + m / A.r]]
+      .map(([x, y]) => ({ x: A.x + (x * c - y * s) * A.r,
+        y: A.y + (x * s + y * c) * A.r }));
+    for (let i = 0; i < corners.length; i++) addString(corners[i], corners[(i + 1) % corners.length],
+      i % 2 === 0 ? -LIGHTING.choconesSagPx : LIGHTING.choconesSagPx,
+      LIGHTING.choconesBulbSpacingM * PX_PER_M,
+      LIGHTING.choconesIntensity, LIGHTING.choconesPoolEvery);
   }
   return foodStrings;
 }
@@ -191,14 +217,13 @@ function feriaStrings() {
 let areaLights = [], areaLightsKey = "";
 
 function feriaAreaLights() {
-  const rides = (W.ATTRACTIONS || []).filter((A) => A.kind !== "dj" && A.kind !== "chinamo");
+  const rides = (W.ATTRACTIONS || []).filter((A) => !["dj", "chinamo", "chocones"].includes(A.kind));
   const key = rides.map((A) => `${A.id}:${A.x},${A.y},${A.r},${A.ang || 0}`).join("|");
   if (key === areaLightsKey) return areaLights;
   areaLightsKey = key;
   areaLights = [];
-  const grid = rides.filter((A) => A.kind !== "chocones");
   const rows = [];
-  for (const A of [...grid].sort((a, b) => a.y - b.y)) {
+  for (const A of [...rides].sort((a, b) => a.y - b.y)) {
     const row = rows[rows.length - 1];
     if (row && A.y - row[row.length - 1].y < LIGHTING.rowClusterM * PX_PER_M) row.push(A);
     else rows.push([A]);
@@ -218,29 +243,28 @@ function feriaAreaLights() {
       areaLights.push({ x, y, type: "warm", intensity: LIGHTING.areaIntensity });
     }
   }
-  const body = ASSETS.chocones.parts.find((p) => p.shape === "box");
-  for (const A of rides.filter((ride) => ride.kind === "chocones")) {
-    if (!body) continue;
-    const c = Math.cos(A.ang || 0), s = Math.sin(A.ang || 0);
-    for (const dx of [0, 1]) for (const dy of [0, 1]) {
-      const lx = (body.x + body.w * dx) * A.r, ly = (body.y + body.h * dy) * A.r;
-      areaLights.push({ x: A.x + lx * c - ly * s, y: A.y + lx * s + ly * c,
-        type: "warm", intensity: LIGHTING.areaIntensity });
-    }
-  }
   return areaLights;
+}
+
+function feriaLightPilings(L) {
+  const gate = L.entrance;
+  if (!gate) return feriaPilings(L);
+  return feriaPilings(L).filter((p) => Math.hypot(p.x - gate.x, p.y - gate.y) >= gate.w / 2 + 1);
 }
 
 function feriaLampsIn(view, pad) {
   const out = [];
   const visible = (p) => p.x >= view.x0 - pad && p.x <= view.x1 + pad && p.y >= view.y0 - pad && p.y <= view.y1 + pad;
   for (const strand of feriaStrings()) {
-    for (let i = 0; i < strand.bulbs.length; i += LIGHTING.poolEvery) {
+    for (let i = 0; i < strand.bulbs.length; i += strand.poolEvery) {
       const b = strand.bulbs[i];
-      if (visible(b)) out.push({ x: b.x, y: b.y, type: "warm", intensity: LIGHTING.foodIntensity });
+      if (visible(b)) out.push({ x: b.x, y: b.y, type: "warm", intensity: strand.intensity });
     }
   }
   for (const lamp of feriaAreaLights()) if (visible(lamp)) out.push(lamp);
+  for (const L of W.FERIA || []) for (const pile of feriaLightPilings(L)) {
+    if (visible(pile)) out.push({ x: pile.x, y: pile.y, type: "pile", intensity: LIGHTING.pileIntensity });
+  }
   return out;
 }
 
@@ -267,11 +291,17 @@ function drawFeriaAreaLights() {
   for (const lamp of feriaAreaLights()) {
     paintLight(lamp.type, lamp.x, lamp.y, { intensity: lamp.intensity });
   }
+  for (const L of W.FERIA || []) for (const pile of feriaLightPilings(L)) {
+    paintLight("pile", pile.x, pile.y, { intensity: LIGHTING.pileIntensity });
+  }
 }
 
 function drawFeriaNightEffects(view, t, toScreen, zoom) {
+  const lamps = lightLevel(), night = nightLevel();
+  if (lamps <= 0.001) return;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = lamps;
   for (const strand of feriaStrings()) for (const b of strand.bulbs) {
     if (b.x < view.x0 || b.x > view.x1 || b.y < view.y0 || b.y > view.y1) continue;
     const [x, y] = toScreen(b.x, b.y), r = Math.max(1.2, LIGHTING.bulbPx * zoom);
@@ -280,7 +310,7 @@ function drawFeriaNightEffects(view, t, toScreen, zoom) {
     ctx.fillStyle = LIGHTING.bulbCore;
     ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
   }
-  if (state.weather === "night") {
+  if (night > 0.001) {
     const laser = LIGHTING.lasers;
     for (const A of W.ATTRACTIONS || []) {
       if (A.kind !== "dj") continue;
@@ -298,9 +328,9 @@ function drawFeriaNightEffects(view, t, toScreen, zoom) {
         const [x1, y1] = toScreen(sx + Math.cos(a) * len, sy + Math.sin(a) * len);
         ctx.strokeStyle = laser.colors[i % laser.colors.length];
         ctx.lineCap = "round";
-        ctx.globalAlpha = 0.15; ctx.lineWidth = laser.haloWidthPx;
+        ctx.globalAlpha = night * 0.15; ctx.lineWidth = laser.haloWidthPx;
         ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-        ctx.globalAlpha = 0.88; ctx.lineWidth = laser.widthPx;
+        ctx.globalAlpha = night * 0.88; ctx.lineWidth = laser.widthPx;
         ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
         ctx.fillStyle = laser.colors[i % laser.colors.length];
         ctx.beginPath(); ctx.arc(x1, y1, 2.2, 0, TAU); ctx.fill();
@@ -334,10 +364,12 @@ function railRing(g, ring, gate, step) {
   return posts;
 }
 
-/** LOS PILOTES quedan medio salidos del canto: el piso se pinta después y tapa
- *  su mitad interior, dejando la cabeza y la sombra visibles bajo el tablado. */
-function drawFeriaPilings(L, C, sh) {
-  const step = DECK.pileM * PX_PER_M, rad = DECK.pilePx;
+const pilingsByLot = new WeakMap();
+
+function feriaPilings(L) {
+  const cached = pilingsByLot.get(L);
+  if (cached) return cached;
+  const piles = [], step = DECK.pileM * PX_PER_M;
   for (const ring of L.polys) {
     const n = ring.length / 2;
     for (let i = 0; i < n; i++) {
@@ -349,15 +381,25 @@ function drawFeriaPilings(L, C, sh) {
       for (let j = 0; j < k; j++) {
         const x = ax + (bx - ax) * (j / k), y = ay + (by - ay) * (j / k);
         const dx = x - L.cx, dy = y - L.cy, d = Math.hypot(dx, dy) || 1;
-        const px = x + dx / d * DECK.pileOffsetPx, py = y + dy / d * DECK.pileOffsetPx;
-        ctx.fillStyle = C.shadow;
-        ctx.beginPath(); ctx.ellipse(px + sh.dx * 0.7, py + sh.dy * 0.7, rad * 1.15, rad * 0.75, 0, 0, TAU); ctx.fill();
-        ctx.fillStyle = DECK.pile;
-        ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU); ctx.fill();
-        ctx.fillStyle = DECK.pileCap;
-        ctx.beginPath(); ctx.arc(px - 1, py - 1, rad * 0.55, 0, TAU); ctx.fill();
+        piles.push({ x: x + dx / d * DECK.pileOffsetPx, y: y + dy / d * DECK.pileOffsetPx });
       }
     }
+  }
+  pilingsByLot.set(L, piles);
+  return piles;
+}
+
+/** LOS PILOTES quedan medio salidos del canto: el piso se pinta después y tapa
+ *  su mitad interior, dejando la cabeza y la sombra visibles bajo el tablado. */
+function drawFeriaPilings(L, C, sh) {
+  const rad = DECK.pilePx;
+  for (const { x: px, y: py } of feriaPilings(L)) {
+    ctx.fillStyle = C.shadow;
+    ctx.beginPath(); ctx.ellipse(px + sh.dx * 0.7, py + sh.dy * 0.7, rad * 1.15, rad * 0.75, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = DECK.pile;
+    ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU); ctx.fill();
+    ctx.fillStyle = DECK.pileCap;
+    ctx.beginPath(); ctx.arc(px - 1, py - 1, rad * 0.55, 0, TAU); ctx.fill();
   }
 }
 

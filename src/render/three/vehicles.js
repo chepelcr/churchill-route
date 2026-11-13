@@ -12,6 +12,7 @@
 // que las distingue (clase, color, tamaño, faros prendidos).
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state, traffic, parked } from "../../game/state.js";
+import { nightLevel } from "../../game/daynight.js";
 import { withSurface } from "../c2d/gfx.js";
 import { drawCar, drawPlayerCarrying, paintVehicle } from "../c2d/entities.js";
 import { groundBase } from "./ground.js";
@@ -90,7 +91,7 @@ function sideMaterial(color) {
 }
 
 function carSprite(c) {
-  const night = state.weather === "night" ? 1 : 0;
+  const night = Math.round(nightLevel() * 8);
   const key = `${c.kind || "car"}|${c.color}|${c.w}|${c.h}|${night}`;
   let s = sprites.get(key);
   if (!s) {

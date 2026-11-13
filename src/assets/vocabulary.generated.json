@@ -243,7 +243,8 @@
       "warm",
       "led",
       "amber",
-      "stadium"
+      "stadium",
+      "pile"
     ],
     "CROSSING_OUTCOME": [
       "landed",

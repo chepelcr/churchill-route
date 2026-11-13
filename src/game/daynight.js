@@ -23,7 +23,10 @@ import SIM from "../content/simulation.json" with { type: "json" };
 //: a whole day, in real seconds. Four phases, so ~2.5 min each.
 export const DAY_SECONDS = SIM.day.seconds;
 //: the running order of a day. `sunny` is midday and gets the longest share.
-const PHASES = SIM.day.phases.map((p) => ({ w: p.weather, share: p.share }));
+const PHASES = SIM.day.phases.map((p) => ({
+  w: p.weather, visual: p.palette || p.phase || p.weather,
+  label: p.phase || p.weather, share: p.share,
+}));
 //: how often a storm rolls in, and how long it stays.
 const STORM_EVERY = SIM.day.stormEverySeconds;   // s, random inside the range
 const STORM_LASTS = SIM.day.stormLastsSeconds;
@@ -136,7 +139,7 @@ function apply(silent) {
   // it hands back the right hour when the rain stops.
   if (!cycle.stormLeft) state.weather = PHASES[i].w;
   if (!silent && !cycle.stormLeft) {
-    pushFloat(state.p.x, state.p.y, 60, t(`sky.${PHASES[i].w}`), "#f4d77a");
+    pushFloat(state.p.x, state.p.y, 60, t(`sky.${PHASES[i].label}`), "#f4d77a");
   }
 }
 
@@ -208,8 +211,19 @@ function advanceStorm(dt) {
  * Escrita dos veces, un umbral distinto en cada lado da lámparas encendidas sin
  * luz alrededor — que es exactamente el bug que tuvo la noche la primera vez.
  */
+export function nightLevel() {
+  const { from, to, k } = skyBlend();
+  const a = from === "night" ? 1 : 0, b = to === "night" ? 1 : 0;
+  return a + (b - a) * k;
+}
+
+export function lightLevel() {
+  const storm = Math.max(0, Math.min(1, (cycle.storm - 0.15) / 0.6));
+  return Math.max(nightLevel(), storm * storm * (3 - 2 * storm));
+}
+
 export function lightsOn() {
-  return state.weather === "night" || cycle.storm > 0.45;
+  return lightLevel() > 0.45;
 }
 
 /** Cuánta tormenta hay encima, 0..1 — la RAMPA (cuán metidos estamos en ella). */
@@ -273,9 +287,7 @@ export function wetGrip() {
  */
 export function skyBlend() {
   if (!cycle.on) {
-    // Sin reloj (una etapa) el cielo es fijo, y la tormenta sigue pudiendo
-    // cerrarlo encima.
-    return { from: state.weather, to: "storm", k: cycle.storm };
+    return { from: state.weather, to: state.weather, k: 0, storm: cycle.storm };
   }
   const u = (cycle.t % DAY_SECONDS) / DAY_SECONDS;
   let acc = 0, i = 0;
@@ -291,12 +303,7 @@ export function skyBlend() {
   // atardecer, y el día pierde sus horas.
   const EDGE = 0.34;
   const k = within > 1 - EDGE ? (within - (1 - EDGE)) / EDGE : 0;
-  const base = { from: PHASES[i].w, to: next.w, k };
-  if (cycle.storm <= 0) return base;
-  // …y la tormenta encima de lo que haya: se mezcla desde el cielo de la hora
-  // hacia el de tormenta, así que una tormenta de día y una de noche son dos
-  // cosas distintas, que es como se ven de verdad.
-  return { from: base.k > 0.5 ? base.to : base.from, to: "storm", k: cycle.storm };
+  return { from: PHASES[i].visual, to: next.visual, k, storm: cycle.storm };
 }
 
 /**

@@ -12,7 +12,7 @@
 // test, and the radial gradient — which is not a shape the vocabulary has.
 import LIGHTS from "../../assets/lights.json" with { type: "json" };
 import { state } from "../../game/state.js";
-import { lightsOn } from "../../game/daynight.js";
+import { lightLevel } from "../../game/daynight.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { ctx } from "./gfx.js";
@@ -35,7 +35,7 @@ export const lightSpec = (type) => TYPES[type] || TYPES[FALLBACK];
  * RAMPA y no al nombre del clima, así que las luces entran cuando el cielo ya
  * está plomizo y no en el cuadro en que empieza a llover.
  */
-const isNight = lightsOn;
+const isNight = lightLevel;
 
 /**
  * Paint one luminaire at (x, y) in world pixels.

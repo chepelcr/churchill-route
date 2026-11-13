@@ -22,6 +22,7 @@ import SIM from "../content/simulation.json" with { type: "json" };
 const PULL = SIM.day.tornadoPull;
 const R = SIM.day.tornadoRadius;
 const SPEED = SIM.day.tornadoSpeed;
+const [SPAWN_MIN, SPAWN_MAX] = SIM.day.tornadoSpawnDistance;
 
 //: Uno a la vez. Dos tornados sobre una ciudad de este tamaño no es una tormenta
 //: peor, es una escena distinta — y con uno ya no se sabe por dónde salir.
@@ -33,7 +34,7 @@ export function tornado() { return live; }
 function spawn() {
   // Lo bastante lejos para verlo llegar; lo bastante cerca para que importe.
   const a = Math.random() * Math.PI * 2;
-  const d = 520 + Math.random() * 380;
+  const d = SPAWN_MIN + Math.random() * (SPAWN_MAX - SPAWN_MIN);
   // Cruza en una dirección que lo trae hacia la zona del jugador sin apuntarle:
   // el rumbo se desvía hasta un cuarto de vuelta, así que a veces pasa de largo.
   const heading = a + Math.PI + (Math.random() - 0.5) * (Math.PI / 2);

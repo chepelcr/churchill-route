@@ -41,12 +41,12 @@ const SKY = EFFECTS.skyCover || {};
 //: continuo del que sale la paleta, así que la nube se apaga al anochecer al
 //: mismo ritmo con el que el suelo se pone azul.
 function daylight() {
-  const { from, to, k } = skyBlend();
+  const { from, to, k, storm = 0 } = skyBlend();
   const w = (phase) => (SKY.phaseLight && SKY.phaseLight[phase] != null
     ? SKY.phaseLight[phase]
-    : 1);
-  const a = w(from);
-  return a + (w(to) - a) * (k > 0 ? k : 0);
+    : phase === "dawn" ? w("sunset") : 1);
+  const base = w(from) + (w(to) - w(from)) * k;
+  return base + (w("storm") - base) * storm;
 }
 
 /**

@@ -89,6 +89,17 @@
         ] }
       ],
       "_repeatOffset": "Las cuatro lámparas se escriben en su sitio real (la primera en x −10.4) y `repeat` las corre 5.6 px: −10.4, −4.8, 0.8, 6.4. `repeat` no tiene desplazamiento inicial —la copia 0 se dibuja en las coordenadas de la sublista—, así que centrar la fila es cuestión de dónde se escribe la primera, no de un parámetro."
+    },
+
+    "pile": {
+      "note": "Bombillo cálido montado directamente sobre el pilote del campo ferial: sin mástil ni pieza de soporte adicional.",
+      "core": "#ffe4a3",
+      "halo": [255, 205, 112],
+      "radius": 38,
+      "haloAt": [0, 0],
+      "parts": [
+        { "shape": "roundRect", "fill": "$core", "x": -2, "y": -2, "w": 4, "h": 4, "r": 1.2 }
+      ]
     }
   }
 }

@@ -1,6 +1,7 @@
 // Moving things + the player: peds, swimmers, traffic, trains, gulls, boats,
 // vendors, animals, the delivery target, arcade coins and the vehicle sprite.
 import { state } from "../../game/state.js";
+import { nightLevel } from "../../game/daynight.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
@@ -196,7 +197,7 @@ function drawCar(c) {
   // EL TRÁFICO TAMBIÉN ALUMBRA. Un carro sin faros en una calle con pozos de
   // luz y oscuridad entre ellos es un carro invisible que se te viene encima —
   // y las calaveras son lo único que se ve de uno que se aleja.
-  if (state.weather === "night") paintHeadlights(ctx, hw, hh);
+  if (nightLevel() > 0.001) paintHeadlights(ctx, hw, hh);
   if (ro.dx || ro.dy) {
     const walls = facingEdges(outline, ro.dx, ro.dy);
     const sunlit = new Set(facingEdges(outline, sh.dx, sh.dy));
@@ -280,7 +281,7 @@ function drawBoat(b) {
   const size = record.variants[variant].values;
   const source = { timeMs: lastT, worldX: b.x, worldY: b.y };
   const { bob = 0 } = actorAnimationValues(record.animations, source);
-  if (state.weather === "night") {
+  if (nightLevel() > 0.001) {
     ctx.save();
     ctx.translate(b.x, b.y + bob); ctx.scale(dir, 1);
     paintHeadlights(ctx, size.L, size.H);
@@ -458,7 +459,9 @@ const HEADLIGHTS = EFFECTS.vehicle.headlights.params;
  *  vía de efectos, y el tráfico y las lanchas directo — un carro del tráfico no
  *  tiene registro del que escoger un efecto y aun así tiene que alumbrar. */
 export function paintHeadlights(g, hw, hh, c = HEADLIGHTS) {
+  g.save(); g.globalAlpha *= nightLevel();
   paintSystemHeadlights(g, hw, hh, c);
+  g.restore();
 }
 
 const EFFECT_PAINTERS = {
@@ -467,7 +470,7 @@ const EFFECT_PAINTERS = {
   headlights: {
     under: true,
     paint: (p, veh, c) => {
-      if (state.weather !== "night") return;
+      if (nightLevel() <= 0.001) return;
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.a);

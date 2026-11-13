@@ -299,6 +299,7 @@
     "phaseLight": {
       "sunny": 1.0,
       "sunset": 0.55,
+      "dawn": 0.65,
       "storm": 0.7,
       "night": 0.0
     },

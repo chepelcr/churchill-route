@@ -39687,8 +39687,8 @@
 <circle cx="71518" cy="40248" r="12" fill="red"/><text x="71532" y="40248" font-size="26">villach</text>
 <circle cx="71978" cy="41992" r="12" fill="red"/><text x="71992" y="41992" font-size="26">ruta27</text>
 <circle cx="23586" cy="19563" r="12" fill="red"/><text x="23600" y="19563" font-size="26">kios_faro</text>
-<circle cx="30128" cy="19798" r="12" fill="red"/><text x="30142" y="19798" font-size="26">kios_paseo1</text>
-<circle cx="30312" cy="19798" r="12" fill="red"/><text x="30326" y="19798" font-size="26">kios_paseo2</text>
+<circle cx="30128" cy="19768" r="12" fill="red"/><text x="30142" y="19768" font-size="26">kios_paseo1</text>
+<circle cx="30312" cy="19748" r="12" fill="red"/><text x="30326" y="19748" font-size="26">kios_paseo2</text>
 <circle cx="29762" cy="19362" r="12" fill="red"/><text x="29776" y="19362" font-size="26">kios_centro</text>
 <circle cx="31472" cy="18462" r="12" fill="red"/><text x="31486" y="18462" font-size="26">kios_play</text>
 <circle cx="42338" cy="17662" r="12" fill="red"/><text x="42352" y="17662" font-size="26">kios_cocal</text>

@@ -128,26 +128,43 @@ function mixColor(a, b, k) {
   return `#${((1 << 24) | (m(ar, br) << 16) | (m(ag, bg) << 8) | m(ab, bb)).toString(16).slice(1)}`;
 }
 
-function weatherColors() {
-  // The per-weather palette lives in the shared material registry: five modules
-  // read it — this one for the sky, `ground.js` for the playas and the land
-  // base, `estero.js` for the mangrove's shoreline, `canvas2d.js` for the tint
-  // over the finished frame, and `water.js`, which DERIVES the entire living-sea
-  // palette from `waterTop`/`waterBot` rather than authoring one.
-  const W = MATERIALS.weather;
-  const { from, to, k } = skyBlend();
-  const a = W[from] || W.sunny;
-  if (!(k > 0)) return a;
-  const b = W[to] || a;
-  if (a === b) return a;
+const _paletteIds = new WeakMap();
+let _nextPaletteId = 1;
+
+function paletteEntry(table, key, fallback) {
+  return table[key] || (key === "dawn" ? table.sunset : null) || table[fallback];
+}
+
+function mixPalettePair(a, b, k, key) {
+  if (!(k > 0) || a === b) return a;
   const step = Math.round(k * 64) / 64;
-  const key = `${from}>${to}@${step}`;
-  const had = _mixCache.get(key);
+  const cacheKey = `${key}@${step}`;
+  const had = _mixCache.get(cacheKey);
   if (had) return had;
   const out = {};
-  for (const field of Object.keys(a)) out[field] = mixColor(a[field], b[field] ?? a[field], step);
-  _mixCache.set(key, out);
+  for (const field of Object.keys(a)) {
+    const av = a[field], bv = b[field] ?? av;
+    out[field] = typeof av === "number" && typeof bv === "number"
+      ? av + (bv - av) * step : mixColor(av, bv, step);
+  }
+  _mixCache.set(cacheKey, out);
   return out;
+}
+
+function blendPalette(table, fallback = "sunny") {
+  const { from, to, k, storm = 0 } = skyBlend();
+  let id = _paletteIds.get(table);
+  if (!id) { id = _nextPaletteId++; _paletteIds.set(table, id); }
+  const base = mixPalettePair(
+    paletteEntry(table, from, fallback), paletteEntry(table, to, fallback), k,
+    `${id}:${from}>${to}`,
+  );
+  return mixPalettePair(base, paletteEntry(table, "storm", fallback) || base,
+    storm, `${id}:storm:${from}>${to}@${Math.round(k * 64)}`);
+}
+
+function weatherColors() {
+  return blendPalette(MATERIALS.weather);
 }
 
 
@@ -281,7 +298,7 @@ function withSurface(g, fn) {
 
 export {
   ACERA_PX, CUAD, VIEW_WIDTH_PX, aabbInView, areaLabel, canvas, computeZoom,
-  beginScreenOverlay, ctx, ctxRotation, dpr, endScreenOverlay,
+  beginScreenOverlay, blendPalette, ctx, ctxRotation, dpr, endScreenOverlay,
   flatAABB, flatMultiPath, flatPath, hash01, label, lastT, mixColor,
   parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, upright,
   textureScale, weatherColors, withSurface, ZOOM,

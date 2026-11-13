@@ -273,8 +273,9 @@ export const LIGHT_TYPE = Object.freeze({
   LED: "led",
   AMBER: "amber",
   STADIUM: "stadium",
+  PILE: "pile",
 });
-export const LIGHT_TYPE_VALUES = Object.freeze(["warm", "led", "amber", "stadium"]);
+export const LIGHT_TYPE_VALUES = Object.freeze(["warm", "led", "amber", "stadium", "pile"]);
 
 export const CROSSING_OUTCOME = Object.freeze({
   LANDED: "landed",

@@ -176,6 +176,7 @@ class LightType(StrEnum):
     LED = "led"
     AMBER = "amber"
     STADIUM = "stadium"
+    PILE = "pile"
 
 
 class CrossingOutcome(StrEnum):

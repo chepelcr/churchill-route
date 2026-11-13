@@ -18,8 +18,7 @@
 // square to the screen, and paving that ignores that reads as a rug thrown over
 // the coast.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { state } from "../../game/state.js";
-import { aabbInView, ctx, flatMultiPath } from "./gfx.js";
+import { aabbInView, blendPalette, ctx, flatMultiPath } from "./gfx.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import { paintMaleconPattern } from "./systemShapes.js";
 
@@ -33,7 +32,7 @@ const BALDOSA = 14;
 const M = MATERIALS.malecon;
 function maleconColors(band) {
   const table = band && band.style === "esplanade" ? M.esplanade : M.band;
-  return table[state.weather] || table.clear;
+  return blendPalette(table, "clear");
 }
 
 function bandPath(B) {

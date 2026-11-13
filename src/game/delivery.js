@@ -189,8 +189,7 @@ function openReachablePoint(x, y) {
 export function nearestKiosk(p) {
   let best = null, bd = Infinity;
   for (const lm of activeKiosks()) {
-    const access = lm.streetOnly && lm.spawn ? { x: lm.spawn[0], y: lm.spawn[1] } : lm;
-    const d = Math.hypot(p.x - access.x, p.y - access.y);
+    const d = Math.hypot(p.x - lm.x, p.y - lm.y);
     if (d < bd) { bd = d; best = lm; }
   }
   return { lm: best, d: bd };

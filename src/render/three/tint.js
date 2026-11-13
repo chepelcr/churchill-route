@@ -22,7 +22,7 @@
 import LIGHTS from "../../assets/lights.json" with { type: "json" };
 import { weatherColors } from "../c2d/gfx.js";
 import { lampsInView, nightTint } from "../c2d/nightlights.js";
-import { lightsOn } from "../../game/daynight.js";
+import { lightLevel } from "../../game/daynight.js";
 import { LAMP_POOL_R } from "../../domain/units.js";
 
 export const MAX_POOLS = 16;
@@ -47,16 +47,19 @@ function parseRgba(str) {
 /** Una vez por cuadro: el tinte de la hora y, de noche, los pozos cercanos. */
 export function updateTint(view, cx, cy) {
   const C = weatherColors();
-  const lit = lightsOn();
-  const str = lit ? nightTint(C.tint) : C.tint;
+  const lit = lightLevel();
+  const str = lit > 0.001 ? nightTint(C.tint) : C.tint;
   if (str !== lastKey) { lastKey = str; tint.value.set(...parseRgba(str)); }
   const slots = pools.value;
   let n = 0;
-  if (lit && view) {
+  if (lit > 0.001 && view) {
     const lamps = lampsInView(view)
       .map((l) => ({ l, d: (l.x - cx) ** 2 + (l.y - cy) ** 2 }))
       .sort((a, b) => a.d - b.d);
-    for (; n < Math.min(MAX_POOLS, lamps.length); n++) slots[n].set(lamps[n].l.x, -lamps[n].l.y, 1);
+    for (; n < Math.min(MAX_POOLS, lamps.length); n++) {
+      const lamp = lamps[n].l;
+      slots[n].set(lamp.x, -lamp.y, lit * (lamp.intensity ?? 1));
+    }
   }
   for (let i = n; i < MAX_POOLS; i++) slots[i].z = 0;
 }

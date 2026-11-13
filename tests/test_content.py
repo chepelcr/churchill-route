@@ -17,7 +17,6 @@ that makes the rule non-obvious: it is a PAIR OF LISTS (the candidate names for
 each of a block's two bounding calles), so "a list whose first item is a list
 stays a list" gets it wrong. Arity is what makes a tuple here, not content.
 """
-import base64
 import json
 import math
 import os
@@ -443,44 +442,27 @@ class KioskTests(unittest.TestCase):
                     d, 40, f"{a['id']} y {b['id']} caen a {round(d)} px: "
                            f"son el mismo punto de recogida")
 
-    def test_paseo_kiosks_serve_from_the_street_without_a_connector(self):
-        """El malecón queda peatonal: el pickup es la calle próxima, no un cabo
-        de asfalto terminado en rotonda alrededor del puesto."""
-        from churchill.world.enums.surface import CARRIAGEWAY
-
+    def test_paseo_kiosks_have_connectors_without_aprons(self):
+        """La calle llega hasta el puesto; no se estampa una rotonda alrededor."""
         ids = {"kios_paseo1", "kios_paseo2"}
-        self.assertEqual({k["id"] for k in self.kiosks if k.get("streetOnly")}, ids)
+        self.assertFalse(any(k.get("streetOnly") for k in self.kiosks))
         man = os.path.join(ROOT, "src", "world2d", "manifest.json")
         if not os.path.exists(man):
             self.skipTest("el mundo no está construido")
         with open(man, encoding="utf-8") as fh:
             world = json.load(fh)
         landmarks = {lm["id"]: lm for lm in world["landmarks"]}
-        meta = world["meta"]
         for kid in ids:
             lm = landmarks[kid]
-            self.assertTrue(lm.get("streetOnly"), f"{kid} perdió streetOnly en el emit")
-            spawn = lm.get("spawn")
-            self.assertIsNotNone(spawn, f"{kid} no tiene punto de recogida en la calle")
-            self.assertNotEqual(spawn, [lm["x"], lm["y"]])
-            for path in world["kioskPaths"]:
-                pts = path["pts"]
-                for x, y in (pts[:2], pts[-2:]):
-                    self.assertGreater(math.hypot(x - lm["x"], y - lm["y"]), 1,
-                                       f"{kid} todavía tiene una calle auxiliar")
-            tc, tr = (int(v // meta["tilePx"]) for v in spawn)
-            tile_path = os.path.join(ROOT, "src", "world2d", "tiles", f"{tc}_{tr}.json")
-            with open(tile_path, encoding="utf-8") as fh:
-                tile = json.load(fh)
-            rle = base64.b64decode(tile["rle"])
-            cells = bytearray()
-            for count, surface in zip(rle[::2], rle[1::2]):
-                cells.extend([surface] * count)
-            col = int((spawn[0] - tile["x"]) // meta["cell"])
-            row = int((spawn[1] - tile["y"]) // meta["cell"])
-            surface = cells[row * tile["cols"] + col]
-            self.assertIn(surface, CARRIAGEWAY,
-                          f"{kid}: el spawn {spawn} no cae en una calle transitable")
+            self.assertFalse(lm.get("streetOnly"))
+            links = [path for path in world["kioskPaths"]
+                     if any(math.hypot(x - lm["x"], y - lm["y"]) <= 1
+                            for x, y in (path["pts"][:2], path["pts"][-2:]))]
+            self.assertTrue(links, f"{kid} perdió su calle auxiliar")
+            for path in links:
+                self.assertEqual(path["surface"], "paved")
+                self.assertEqual(lm["spawn"], path["pts"][-2:],
+                                 f"{kid} debe arrancar en la calle pública")
 
     def test_every_kiosk_has_an_anchor(self):
         for k in self.kiosks:

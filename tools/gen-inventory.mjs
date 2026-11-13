@@ -176,9 +176,7 @@ const npcTypes = readJson("src/game/npcTypes.json") || {};
 const screens = readJson("src/ui/screens.json");
 const audio = readJson("src/assets/audio.json");
 const effects = readJson("src/assets/effects.json");
-//: The four the renderer implements (`lightPalette` in c2d/editorWorld.js).
-//: NOT a generated vocabulary yet — see the ROADMAP row on light design.
-const LIGHT_TYPES = ["warm", "led", "amber", "stadium"];
+const LIGHT_TYPES = vocab?.enums?.LIGHT_TYPE || [];
 
 const inventory = {
   generatedAt: new Date().toISOString(),

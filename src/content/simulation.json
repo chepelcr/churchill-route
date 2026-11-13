@@ -81,8 +81,9 @@
       },
       {
         "weather": "sunset",
+        "phase": "dawn",
         "share": 0.12,
-        "note": "el amanecer: the same palette, the other end of the day"
+        "note": "el amanecer: its own cool palette; the gameplay weather stays sunset"
       }
     ],
     "_storm": "UNA TORMENTA DEL PACÍFICO NO LLEGA DE GOLPE, y antes llegaba: `state.weather = \"storm\"` en un cuadro y ya estaba lloviendo. Ahora entra en TRES ACTOS y el cielo se lo cuenta primero — se pone plomizo, después truena y relampaguea, y sólo entonces cae el agua. Puede pasar a cualquier hora: de día se ve venir, de noche los relámpagos son lo que se ve.",
@@ -104,6 +105,8 @@
     "rainCapNote": "EL TECHO DE LEGIBILIDAD, y es lo que hace jugable una tormenta fuerte. La lluvia arrecia con la fuerza, pero su opacidad NUNCA pasa de acá: una pantalla que no deja ver la calle no es difícil, es injusta — y este juego se maneja mirando dos cuadras adelante. `smoke:sky` lo mide en píxeles en vez de creerlo.",
     "tornadoAbove": 0.82,
     "tornadoAboveNote": "sólo las tormentas de verdad sacan tornado. Si saliera en cualquier chubasco dejaría de ser un evento y pasaría a ser el clima.",
+    "tornadoSpawnDistance": [300, 430],
+    "tornadoSpawnDistanceNote": "distancia inicial al jugador en world px: entra en la escena, pero fuera del radio de succión",
     "tornadoPull": 34,
     "tornadoPullNote": "cuánto tira, en px/s². Es un REMOLINO DE TIERRA y usa el mismo modelo que el del estero — no es un choque, es una corriente que sigue trabajando sobre uno mientras esté adentro, y le tuerce la trompa además de moverlo.",
     "tornadoRadius": 150,

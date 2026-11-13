@@ -80,8 +80,7 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
     # --- TOWN kiosks: seat each on a NEARBY cuadra FRONTAGE cell (solid land next
     # to a street, never the roadway/acera/median) and carve a short paved
     # connector to the nearest street. Bounded to a small radius so a kiosk with
-    # no cuadra beside it (e.g. on the Paseo boardwalk) stays put. Street-only
-    # Paseo stands keep that boardwalk intact and use their street spawn instead.
+    # no cuadra beside it (e.g. on the Paseo boardwalk) stays put.
     KIOSK_SNAP_CUAD = 10                       # ≤ this many cuadrículas from anchor
     # How far the paved connector will reach for a street. In CUADRÍCULAS, not
     # px: a frontage cell is against its cuadra's edge, so the asphalt is half a
@@ -149,12 +148,11 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         # fácil y salir no — había que encontrar a tientas la boca de la calle
         # desde un cuadro que no se veía. Ahora la calle termina EN el puesto,
         # con la cabeza redonda que `stamp_polyline` ya le pone al cabo, y lo
-        # manejable es exactamente lo pintado. Los puestos `streetOnly` son la
-        # excepción: se atienden desde la calle próxima y no reciben ningún cabo.
+        # manejable es exactamente lo pintado.
         if lm["id"] in beach_kiosks:
             ox, oy = lm["x"], lm["y"]
             keep_off_the_sea(lm)
-            if (ox, oy) != (lm["x"], lm["y"]) and not lm.get("streetOnly"):
+            if (ox, oy) != (lm["x"], lm["y"]):
                 # la calle auxiliar se estampó hasta el ancla vieja: se alarga
                 raster.stamp_polyline([ox, oy, lm["x"], lm["y"]], 1.4 * CUAD, CLS_ROAD)
                 kiosk_paths.append({"pts": [round(ox), round(oy), lm["x"], lm["y"]],
@@ -164,15 +162,9 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
         if spot:
             lm["x"], lm["y"] = round(spot[0]), round(spot[1])
         keep_off_the_sea(lm)
-        # WHERE THE STREET IS — asked BEFORE the apron is stamped. `stamp_pad`
-        # paints a 44 px CLS_ROAD pocket around the kiosk, so asking afterwards
-        # finds the POCKET ITSELF: the "connector" comes out a 4 px stub from a
-        # cell to its neighbour, and the pad stays an island ringed by acera,
-        # which the car cannot cross. Five of the fourteen town kiosks shipped
-        # with a stub like that; they only played because the pad happened to
-        # overlap the asphalt. Rescaling the world moved the cuadras apart and
-        # Kiosco Playitas stopped touching its calle — which is the failure the
-        # gate then caught.
+        # WHERE THE STREET IS — asked BEFORE the connector is stamped. Asking
+        # afterwards finds the connector itself and produces a 4 px stub rather
+        # than a route to the public street.
         tgt = _nearest_cell(lm["x"], lm["y"], CARRIAGEWAY_CLASSES, KIOSK_LINK_R)
         if not tgt:
             # sin calle a la vista no hay a dónde llevar un cabo: el apron de
@@ -182,16 +174,21 @@ def seat_town_kiosks(ctx, *, landmarks, customers, roads, waters, blocks, greens
             raster.stamp_polyline([lm["x"], lm["y"], tgt[0], tgt[1]], 1.4 * CUAD, CLS_ROAD)
             kiosk_paths.append({"pts": [round(lm["x"]), round(lm["y"]),
                                         round(tgt[0]), round(tgt[1])], "surface": "paved"})
+            lm["spawn"] = [round(tgt[0]), round(tgt[1])]
             log("kiosk", f"{lm['id']} -> cuadra frontage ({lm['x']},{lm['y']}), paved connector")
     log("kiosk", f"{n_dry} kiosk(s) pushed clear of the water "
         f"({KIOSK_WATER_CLEAR_PX}px of dry ground around the stand)")
 
-    # Player spawn per kiosk: run starts place the player beside the run's first
-    # kiosk. Snap that point to the nearest DRIVABLE street cell now (build time,
-    # so modes.js never spawns on the beach beside a sand kiosk and never probes
-    # tiles that aren't resident yet). kios_faro keeps its muelle-deck spawn.
+    # A connector starts the player at its public-street end, not underneath the
+    # kiosk. The remaining kiosks snap to their nearest drivable street cell at
+    # build time; kios_faro keeps its muelle-deck spawn.
     for lm in landmarks:
         if lm["type"] != "kiosk" or lm.get("spawn"):
+            continue
+        here = [round(lm["x"]), round(lm["y"])]
+        link = next((path for path in kiosk_paths if path["pts"][:2] == here), None)
+        if link:
+            lm["spawn"] = link["pts"][-2:]
             continue
         tgt = _nearest_cell(lm["x"], lm["y"], CARRIAGEWAY_CLASSES, 260)
         if tgt:

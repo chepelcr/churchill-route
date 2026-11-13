@@ -45,7 +45,7 @@ import { sceneStats, setupScenes, syncScenes } from "./scenes.js";
 import { groundActive, reliefM, setGroundActive } from "./ground.js";
 import { setupTint, updateTint } from "./tint.js";
 import { setWindowNight } from "./buildings.js";
-import { lightsOn } from "../../game/daynight.js";
+import { lightLevel } from "../../game/daynight.js";
 
 const RECEIVER_BELOW_M = 0.04; // coplanar con la base = NINGUNA sombra (ROADMAP §6)
 const SUN_SHARE = 0.5;
@@ -263,7 +263,7 @@ export function renderThree(tSeconds, frame) {
     + timed("scenes", () => syncScenes(root, frame.view, frameNo, warm));
   // LA NOCHE ENTRA DE A POCO: ventanas y faroles se prenden con una rampa, no
   // en el cuadro en que `lightsOn()` cambia de opinión.
-  nightRamp += ((lightsOn() ? 1 : 0) - nightRamp) * Math.min(1, dt * 1.5);
+  nightRamp += (lightLevel() - nightRamp) * Math.min(1, dt * 1.5);
   setWindowNight(nightRamp);
   setLampNight(nightRamp);
   setLandmarkNight(nightRamp);

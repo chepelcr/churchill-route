@@ -3,7 +3,7 @@
  "_status": "Lo lee `tools/shot-punta-preview.mjs` para el preview sin reconstruir. `content.py` lo carga como `PUNTA_DEF`, pero todavía NINGUNA etapa del builder lo consume: mientras tanto la cuadra sigue saliendo como `water-inlet` desde blocks.json.",
  "version": 1,
  "malecon": {
-  "_note": "UN SOLO MALECÓN, Y ES EL DEL FARO: su piedra gris y su mosaico (`style: esplanade`, o sea `materials.json` → `malecon.esplanade`) y el rojo de sus comas (`world-props.json` → `scenes.faro.palette.comma`). Lo que cambia es la FORMA: deja de ser la mancha que el ráster dejó y pasa a ser una banda limpia que sigue la calle.",
+  "_note": "UN SOLO MALECÓN, Y ES EL DEL FARO: su piedra gris y su mosaico (`style: esplanade`, o sea `materials.json` → `malecon.esplanade`). Lo que cambia es la FORMA: deja de ser la mancha que el ráster dejó y pasa a ser una banda limpia que sigue la calle desde la Avenida 3, da la vuelta a La Punta y baja por el Paseo hasta la última área de descanso, con sus cinco malecones de verdad saliendo al mar.",
   "style": "esplanade",
   "alongLL": [
    [
@@ -89,47 +89,170 @@
    [
     9.97575463,
     -84.85049631
+   ],
+   [
+    9.9750323,
+    -84.8498899
+   ],
+   [
+    9.9746332,
+    -84.8491147
+   ],
+   [
+    9.9742731,
+    -84.8480936
+   ],
+   [
+    9.9741651,
+    -84.8477873
    ]
   ],
-  "_along": "el cordón de mar de la Calle 39, trazado sobre la imagen de norte a sur. No es el borde del piso: es la GUÍA. Cada punto se ajusta a la línea de centro de la calle del juego, y el piso nace AHÍ, debajo del asfalto, para que entre calle y malecón no quede ni una franja de arena.",
+  "_along": "la GUÍA, de norte a sur: el cordón de mar de la Calle 39 trazado sobre la imagen y, de ahí en adelante, un punto por cada área de descanso de OSM a lo largo del Paseo. Cada punto se ajusta a la línea de centro de la calle del juego, y el piso nace AHÍ, debajo del asfalto, para que entre calle y malecón no quede ni una franja de arena.",
   "widthM": {
-   "north": 34.0,
-   "tip": 78.0,
-   "south": 44.0,
+   "north": 26.0,
+   "tip": 28.0,
+   "south": 30.0,
    "tipAtLL": [
     9.97667409,
     -84.85115856
    ]
   },
-  "_widthM": "cuánto se abre el piso desde la línea de centro de la calle: angosto en el brazo norte, ancho en la punta frente al Faro, medio en el brazo sur, y entre uno y otro una sola curva suave. Medidas DEL JUEGO, no de la imagen: la calle del juego mide 15 m de centro a cordón (la real, 4) y la costa del juego es más ancha, así que el malecón real de 11 m no alcanzaría ni a salir de debajo de la acera.",
+  "_widthM": "cuánto se abre el piso desde la línea de centro de la calle. La calle del juego mide 15 m de centro a cordón, así que esto deja ~11 m de malecón al norte (lo que mide el real) y ~15 al sur, que es un poco más ancho.",
+  "spurs": {
+   "_note": "LOS CINCO MALECONES: las cinco vías `Malecón - Área de Descanso` (place=square) de OSM, de la del Faro a la última del Paseo. Cada una es una lengua del mismo piso que sale al mar, con la escollera rodeándola. `growM` las engorda por lado: mapeadas miden ~4,5 m de ancho y en la imagen se ven de ~8.",
+   "growM": 2.2,
+   "at": [
+    {
+     "osmId": 964078510,
+     "polygonLL": [
+      [
+       9.9765697,
+       -84.8513983
+      ],
+      [
+       9.9765334,
+       -84.8513843
+      ],
+      [
+       9.9765928,
+       -84.8512167
+      ],
+      [
+       9.9766313,
+       -84.8512302
+      ]
+     ]
+    },
+    {
+     "osmId": 964078454,
+     "polygonLL": [
+      [
+       9.9757855,
+       -84.8507314
+      ],
+      [
+       9.9756689,
+       -84.8508262
+      ],
+      [
+       9.9756443,
+       -84.8507998
+      ],
+      [
+       9.975761,
+       -84.8507006
+      ]
+     ]
+    },
+    {
+     "osmId": 964078452,
+     "polygonLL": [
+      [
+       9.9751506,
+       -84.8498462
+      ],
+      [
+       9.9749374,
+       -84.8499707
+      ],
+      [
+       9.9749108,
+       -84.8499308
+      ],
+      [
+       9.9751306,
+       -84.8498119
+      ]
+     ]
+    },
+    {
+     "osmId": 964078372,
+     "polygonLL": [
+      [
+       9.9747686,
+       -84.8490767
+      ],
+      [
+       9.9745163,
+       -84.8491901
+      ],
+      [
+       9.9744991,
+       -84.8491531
+      ],
+      [
+       9.9747488,
+       -84.8490391
+      ]
+     ]
+    },
+    {
+     "osmId": 964078345,
+     "polygonLL": [
+      [
+       9.9744002,
+       -84.8480394
+      ],
+      [
+       9.9744113,
+       -84.8480772
+      ],
+      [
+       9.9741482,
+       -84.8481528
+      ],
+      [
+       9.9741325,
+       -84.8481051
+      ]
+     ]
+    }
+   ]
+  },
   "riprap": {
-   "widthM": 4.5,
-   "_note": "la escollera nueva, sembrada sobre el borde de mar del piso; reemplaza el anillo de piedras de la plazoleta vieja (`lm.rim`)."
+   "widthM": 3.5,
+   "_note": "la escollera nueva, sembrada sobre el borde de mar del piso —lenguas y círculo del Faro incluidos—; reemplaza el anillo de piedras de la plazoleta vieja (`lm.rim`)."
   },
   "fans": {
-   "_note": "ABANICOS al norte del Faro: sectores con el vértice hacia el Faro y el arco abriendo a lo largo del malecón, ladeados hacia la calle, con dos bancas, una junto a cada canto recto. En la imagen miden 5,8 m y van cada 8,6; acá van a la escala del piso del juego.",
-   "rM": 8.5,
-   "spacingM": 15.0,
-   "rowM": 17.0,
+   "_note": "ABANICOS al norte del Faro, UNA sola fila que ocupa el ancho del malecón: sectores con el vértice hacia el Faro y el arco abriendo a lo largo, ladeados hacia la calle, con dos bancas, una junto a cada canto recto. Miden lo que en la imagen.",
+   "rM": 5.6,
+   "spacingM": 9.2,
    "leanDeg": 9,
-   "halfExtentM": 8.0
+   "halfExtentM": 4.9
   },
   "waves": {
-   "_note": "OLAS al sur del Faro: hojas en S, todas con la misma orientación, más atravesadas que el malecón. En la imagen miden 11 m y van cada 13; acá a la escala del piso del juego. El contorno unitario vive en materials.json → punta.wave.",
-   "lenM": 17.0,
-   "spacingM": 20.0,
-   "rowM": 12.5,
+   "_note": "OLAS al sur del Faro, UNA sola fila, un poco más anchas que en la imagen (11 m): hojas en S, todas con la misma orientación, más atravesadas que el malecón. El contorno unitario vive en materials.json → punta.wave.",
+   "lenM": 14.0,
+   "spacingM": 15.5,
    "leanDeg": -32,
-   "halfExtentM": 6.5
+   "halfExtentM": 5.4
   },
-  "_rows": "LAS FIGURAS LLENAN EL PISO EN FILAS PARALELAS A LA CALLE: la primera pegada a la acera y las demás cada `rowM` hacia el mar, cada fila con su propio paso de `spacingM` medido sobre ELLA (afuera el arco es más largo y caben más). Sólo entran las que caben enteras (`halfExtentM` es lo que una figura ocupa de través).",
-  "clearFaroM": 13.0,
   "rotonda": {
    "centerLL": [
     9.97579831,
     -84.8507082
    ],
-   "rM": 8.0
+   "rM": 6.3
   }
  },
  "balneario": {
@@ -942,7 +1065,31 @@
    }
   ]
  },
+ "foodCourt": {
+  "_note": "EL PATIO DE COMIDAS DEL FARO: un tipo de puesto nuevo. Reemplaza al Muelle del Faro y a su calle auxiliar — el puesto deja de estar al final de un muelle y pasa a dar DIRECTO a la Calle 39, a la par del parqueo del Faro, vendiendo hamburguesas.",
+  "replaces": {
+   "kiosk": "kios_faro",
+   "pier": "muelle_faro"
+  },
+  "kind": "food-court",
+  "product": "hamburguesa",
+  "name": "Food Court del Faro",
+  "ll": [
+   9.97609102,
+   -84.85083767
+  ],
+  "sizeM": [
+   18.0,
+   7.5
+  ],
+  "color": "#f3e9d2",
+  "roof": "#b5524a",
+  "_pending": "PROPUESTA: esto todavía no está en kiosks.json, products.json ni piers.json. `hamburguesa` no existe como producto (hoy hay churchill, papicarne, vigorón, ceviche y mariscada) y la etapa 1 de Historia recoge un CHURCHILL en `kios_faro`."
+ },
  "faro": {
+  "scale": 1.6,
+  "plazaRM": 13.0,
+  "_plaza": "el Faro más grande y con su plazoleta redonda: un círculo del mismo piso alrededor de la torre, con un aro.",
   "towerLL": [
    9.97667409,
    -84.85115856
@@ -1573,6 +1720,8 @@
   "_note": "EL JUEGO ENSANCHA LAS CALLES y el trazo es a escala real: puesto tal cual, la Calle 39 del juego tapa el piso de abanicos y el borde del deck. Así que el trazo se ACOMODA a la calle del juego, y nunca vértice por vértice sobre lo rígido: lo de AFUERA del lazo (malecones, Faro) se corre hacia el mar lo que la calle creció; lo de ADENTRO (piscina, edificios, árboles) se encoge como UN grupo con una sola escala hacia el lado este, que es donde la cuadra del juego tiene campo — una semejanza, así que nada se dobla y todo conserva su arreglo.",
   "realRoadHalfM": 4.0,
   "interiorRangeM": 45.0,
+  "oldCoastM": 95.0,
+  "_oldCoastM": "sólo para el preview: hasta dónde llega la tierra de la plazoleta vieja más allá del borde nuevo, para taparla con agua mientras el build no la devuelve al mar.",
   "interiorScale": 0.82,
   "interiorAbout": "bldg_este"
  }

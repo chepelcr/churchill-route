@@ -47,9 +47,13 @@ function drawFaroScene(lm) {
   // `lm.rim` is WORLD GEOMETRY — the build measured it against the real
   // sand/water edge — so it is not a knob and never will be. Everything else
   // here comes from the catalog.
-  const rim = (lm.rim || []).map(([rx, ry]) => [rx - x, ry - y]);
+  // `lm.scale`: el Faro puede venir más grande que el del catálogo. El anillo
+  // de piedras es geometría del mundo, así que se deshace la escala en él.
+  const k = lm.scale || 1;
+  const rim = (lm.rim || []).map(([rx, ry]) => [(rx - x) / k, (ry - y) / k]);
   ctx.save();
   ctx.translate(x, y);
+  ctx.scale(k, k);
   const frame = {
     X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
     vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT }, timeMs: lastT,

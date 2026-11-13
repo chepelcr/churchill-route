@@ -8,8 +8,8 @@
 // EL MALECÓN NO SE PINTA ACÁ, Y ES A PROPÓSITO: es la plazoleta del Faro de
 // siempre, piedra gris y mosaico, y la sigue pintando `malecon.js` desde
 // `manifest.malecon`. Lo único que este archivo le pone encima son sus
-// figuras — abanicos al norte del Faro, olas al sur — en el rojo de las comas
-// que ya tenía. Un solo piso, el de antes, con el dibujo nuevo.
+// figuras — abanicos al norte del Faro, olas al sur — en un rojo apagado, el
+// de las comas de antes pasado por gris. Un solo piso, con el dibujo nuevo.
 //
 // El mundo dice DÓNDE; `materials.json → punta` dice de qué está hecho. Los
 // verbos de acá son tres y son geometría: `sector` (el abanico), `outline`
@@ -26,9 +26,11 @@ import PROPS from "../../assets/world-props.json" with { type: "json" };
 
 const M = MATERIALS.punta;
 const ROCKS = MATERIALS.coast.rocks;
-// LA TINTA DE LAS FIGURAS ES LA DE LAS COMAS DE SIEMPRE: el piso del Faro cambia
-// de dibujo, no de identidad. Se LEE de la escena del faro; no hay copia acá.
-const INK = PROPS.scenes.faro.palette.comma;
+// LA PISCINA SE PINTA COMO LAS DEL PARQUE MARINO: la misma paleta de la escena
+// `pool` (deck, brocal, agua, hondo, bajo, brillo), sobre la forma de verdad.
+// Se LEE de esa escena; acá no hay copia.
+const POOL = PROPS.scenes.pool.palette;
+const INK = M.figures.ink;
 const RAD = Math.PI / 180;
 
 function shape(s) {
@@ -92,7 +94,7 @@ function paintRiprap(line) {
   }
 }
 
-function drawPunta(view) {
+function drawPunta(view, t = 0) {
   const P = W.PUNTA;
   if (!P || !aabbInView(P, view, 40)) return;
   const ppm = W.PX_PER_M;
@@ -100,7 +102,7 @@ function drawPunta(view) {
   for (const line of P.riprap || []) paintRiprap(line);
   // el suelo, en el orden en que el mundo lo trae: terreno, deck, malecones…
   for (const g of P.grounds || []) {
-    ctx.fillStyle = M.ground[g.use] || M.ground.park;
+    ctx.fillStyle = g.use === "deck" ? POOL.deck : (M.ground[g.use] || M.ground.park);
     ctx.fill(shape(g));
     ctx.strokeStyle = M.kerb; ctx.lineWidth = 1.5; ctx.stroke(g._path);
   }
@@ -130,26 +132,44 @@ function drawPunta(view) {
     ctx.strokeStyle = INK; ctx.lineWidth = M.wave.rotondaWidthM * ppm;
     ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
   }
-  // el agua: brocal claro por fuera, la lámina, y encima sus zonas
-  for (const pool of P.pools || []) {
-    const path = shape(pool);
-    if (!pool.zone) {
-      ctx.strokeStyle = M.pool.rim; ctx.lineWidth = M.pool.rimWidthM * ppm * 2; ctx.stroke(path);
-    }
-    ctx.fillStyle = M.pool[pool.use] || M.pool.pool; ctx.fill(path);
+  // el agua, con el estilo de las piscinas del Parque Marino sobre su forma
+  // de verdad: brocal, lámina, la zona honda y la baja, y el brillo que se mueve
+  const whole = (P.pools || []).filter((pool) => !pool.zone);
+  for (const pool of whole) {
+    ctx.strokeStyle = POOL.coping; ctx.lineWidth = M.pool.rimWidthM * ppm * 2; ctx.stroke(shape(pool));
+    ctx.fillStyle = POOL.water; ctx.fill(pool._path);
   }
-  ctx.strokeStyle = M.pool.wall; ctx.lineWidth = M.pool.wallWidthM * ppm;
+  for (const pool of P.pools || []) if (pool.zone) { ctx.fillStyle = POOL[M.pool.zones[pool.use]]; ctx.fill(shape(pool)); }
+  const S = M.pool.shimmer, gap = S.gapM * ppm, amp = S.ampM * ppm;
+  ctx.strokeStyle = POOL.shimmer; ctx.lineWidth = S.widthM * ppm;
+  for (const pool of whole) {
+    const a = pool._aabb;
+    ctx.save(); ctx.clip(pool._path);
+    for (let y = a.y0 + gap / 2, n = 0; y < a.y1; y += gap, n++) {
+      const drift = (t * S.speed * ppm + n * 37) % (S.dashM * ppm * 2);
+      ctx.setLineDash([S.dashM * ppm, S.dashM * ppm]); ctx.lineDashOffset = -drift;
+      ctx.beginPath();
+      for (let x = a.x0; x <= a.x1; x += 6) {
+        const yy = y + Math.sin((x + n * 50) * S.freq + t * S.wobble) * amp;
+        if (x === a.x0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.setLineDash([]);
+  ctx.strokeStyle = POOL.coping; ctx.lineWidth = M.pool.wallWidthM * ppm;
   for (const wall of P.walls || []) {
     if (!wall._path) wall._path = flatPath(wall.pts, false);
     ctx.stroke(wall._path);
   }
   // la isla y lo que flota: van DESPUÉS del agua
   for (const g of P.islands || []) {
-    ctx.strokeStyle = M.pool.rim; ctx.lineWidth = M.pool.rimWidthM * ppm * 2; ctx.stroke(shape(g));
+    ctx.strokeStyle = POOL.coping; ctx.lineWidth = M.pool.rimWidthM * ppm * 2; ctx.stroke(shape(g));
     ctx.fillStyle = M.ground.planter; ctx.fill(g._path);
   }
   for (const pr of P.props || []) {
-    if (pr.pts) { ctx.fillStyle = M.props[pr.kind] || M.props.cabana; ctx.fill(shape(pr)); continue; }
+    if (pr.pts) { ctx.fillStyle = pr.kind === "play-structure" ? POOL.slide : M.props.cabana; ctx.fill(shape(pr)); continue; }
     const s = M.props.cabanaM * ppm;
     ctx.fillStyle = M.props.shadow; ctx.fillRect(pr.x - s / 2 + 2, pr.y - s / 2 + 3, s, s);
     ctx.fillStyle = M.props.cabana; ctx.fillRect(pr.x - s / 2, pr.y - s / 2, s, s);

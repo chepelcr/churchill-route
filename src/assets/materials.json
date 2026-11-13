@@ -1890,11 +1890,10 @@
     "gravel": "#b0a289"
   },
   "punta": {
-    "_note": "LA PUNTA — El Faro y el Balneario (`c2d/punta.js`). El mundo dice DÓNDE está cada figura (`manifest.punta`, autorada en content/world/punta.json); esto dice de qué está hecha. El piso del malecón NO está acá: es `malecon.esplanade`, el de siempre. Y la tinta de sus figuras tampoco: es `world-props.json` → `scenes.faro.palette.comma`, el rojo de las comas. Acá sólo la FORMA del abanico y de la ola.",
+    "_note": "LA PUNTA — El Faro y el Balneario (`c2d/punta.js`). El mundo dice DÓNDE está cada figura (`manifest.punta`, autorada en content/world/punta.json); esto dice de qué está hecha. El piso del malecón NO está acá: es `malecon.esplanade`, el de siempre. Acá van la FORMA del abanico y de la ola y su tinta (`figures`).",
     "ground": {
       "_note": "el suelo por `use` de cada figura",
       "park": "#c9b48c",
-      "deck": "#e9dfca",
       "parking": "#8f8c87",
       "planter": "#5e9a58"
     },
@@ -1907,19 +1906,19 @@
       "night": { "veil": "rgba(16,20,38,0.58)" }
     },
     "pool": {
-      "_note": "el agua por zona, el brocal claro que la rodea y los muritos que la parten",
-      "pool": "#5fa3d6",
-      "pool-shallow": "#b9a3dc",
-      "pool-deep": "#4a8fcb",
-      "rim": "#f3eee2",
+      "_note": "LA PISCINA USA LA PALETA DE LAS DEL PARQUE MARINO (`world-props.json` → `scenes.pool.palette`); acá no hay colores. `zones` dice qué tono de esa paleta lleva cada zona, y `shimmer` cómo se mueve el brillo sobre una lámina que no es una elipse.",
+      "zones": { "pool-shallow": "shallow", "pool-deep": "deep" },
       "rimWidthM": 0.9,
-      "wall": "#e6e1d4",
       "wallWidthM": 0.7,
-      "glint": "rgba(255,255,255,0.22)"
+      "shimmer": { "gapM": 4.2, "ampM": 0.5, "widthM": 0.45, "dashM": 5.0, "freq": 0.09, "speed": 0.9, "wobble": 1.3 }
+    },
+    "figures": {
+      "_note": "LA TINTA DE ABANICOS, OLAS Y AROS: el rojo de las comas del Faro (`#c34a3c`) pasado por gris. El rojo vivo, repetido en cuarenta figuras grandes, gritaba; éste se lee como baldosa de color.",
+      "ink": "#b08079"
     },
     "fan": {
       "_note": "EL ABANICO del malecón norte: un sector con el vértice hacia el Faro. `halfAngleDeg` es la mitad de su apertura; el radio y el rumbo de cada uno vienen del mundo.",
-      "edge": "rgba(96,30,24,0.55)",
+      "edge": "rgba(104,70,66,0.5)",
       "halfAngleDeg": 60,
       "bench": "#f4f0e6",
       "benchShadow": "rgba(60,48,36,0.35)",
@@ -1930,7 +1929,7 @@
     },
     "wave": {
       "_note": "LA OLA del malecón sur: una hoja en S. `outline` es su contorno UNITARIO — `u` a lo largo del eje (0 = punta norte, 1 = punta sur), `v` de través en fracciones del largo, positivo hacia la calle. El largo y el rumbo de cada una vienen del mundo.",
-      "edge": "rgba(96,30,24,0.55)",
+      "edge": "rgba(104,70,66,0.5)",
       "outline": [[0, 0], [0.12, 0.09], [0.25, 0.13], [0.5, 0.17], [0.75, 0.06], [0.9, 0.01], [1, 0], [0.9, -0.08], [0.75, -0.15], [0.5, -0.15], [0.35, -0.06], [0.25, 0], [0.12, 0.03]],
       "rotondaWidthM": 1.6
     },
@@ -1941,7 +1940,6 @@
       "bed": "#6f6b63"
     },
     "props": {
-      "play-structure": "#f2d04a",
       "cabana": "#fbf9f2",
       "cabanaM": 2.6,
       "shadow": "rgba(40,34,28,0.28)"

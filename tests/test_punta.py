@@ -45,39 +45,42 @@ class PuntaRegistryTests(unittest.TestCase):
         pairs = list(lls(self.doc))
         self.assertGreater(len(pairs), 200)
         for lat, lon in pairs:
-            self.assertTrue(9.974 < lat < 9.979 and -84.853 < lon < -84.848,
+            self.assertTrue(9.9735 < lat < 9.979 and -84.853 < lon < -84.847,
                             f"[{lat}, {lon}] no cae en La Punta — ¿píxeles, o lon/lat al revés?")
 
     def test_every_use_has_a_material(self):
-        ground, pool = self.mat["punta"]["ground"], self.mat["punta"]["pool"]
+        punta = self.mat["punta"]
+        pool = json.load(open(os.path.join(ROOT, "src", "assets", "world-props.json"),
+                              encoding="utf-8"))["scenes"]["pool"]["palette"]
         for g in self.doc["balneario"]["grounds"] + self.doc["balneario"]["islands"]:
-            self.assertIn(g["use"], ground, f"{g['id']}: sin color de suelo")
+            if g["use"] != "deck":            # el deck es el del Parque Marino
+                self.assertIn(g["use"], punta["ground"], f"{g['id']}: sin color de suelo")
         for p in self.doc["balneario"]["pools"]:
-            self.assertIn(p["use"], pool, f"{p['id']}: sin color de agua")
-        for p in self.doc["balneario"]["props"]:
-            self.assertIn(p["kind"], self.mat["punta"]["props"], f"{p['id']}: sin arte")
+            if p.get("zone"):
+                self.assertIn(punta["pool"]["zones"][p["use"]], pool, f"{p['id']}: sin tono de agua")
 
     def test_figures_carry_degrees_and_metres(self):
         ml = self.doc["malecon"]
         for family, size in (("fans", "rM"), ("waves", "lenM")):
             spec = ml[family]
             self.assertTrue(2 < spec[size] < 30, f"{family}.{size} no parece metros")
-            self.assertGreater(spec["rowM"], 0)
+            self.assertNotIn("rowM", spec, f"{family}: es UNA fila")
             self.assertGreater(spec["spacingM"], spec["halfExtentM"])
             self.assertTrue(-90 <= spec["leanDeg"] <= 90, f"{family}: ladeo fuera de grados")
         w = ml["widthM"]
-        self.assertGreater(w["tip"], max(w["north"], w["south"]), "la punta es lo más ancho")
+        self.assertTrue(all(18 < w[k] < 40 for k in ("north", "tip", "south")))
         self.assertGreaterEqual(len(ml["alongLL"]), 10)
+        self.assertEqual(len(ml["spurs"]["at"]), 5, "los cinco malecones de OSM")
 
     def test_there_is_one_malecon_and_it_is_the_faros(self):
         self.assertEqual(self.doc["malecon"]["style"], "esplanade")
         self.assertIn("esplanade", self.mat["malecon"])
-        # ni piso ni tinta propios: el piso es `malecon.esplanade`, la tinta las comas
+        # ni piso propio ni colores de piscina propios: el piso es `malecon.esplanade`
+        # y la piscina es la del Parque Marino
         self.assertNotIn("malecon", self.mat["punta"]["ground"])
-        for family in ("fan", "wave"):
-            self.assertNotIn("ink", self.mat["punta"][family])
+        self.assertNotIn("deck", self.mat["punta"]["ground"])
         source = open(PAINTER, encoding="utf-8").read()
-        self.assertIn("scenes.faro.palette.comma", source)
+        self.assertIn("scenes.pool.palette", source)
 
     def test_the_fit_names_a_building_that_exists(self):
         ids = {b["id"] for b in self.doc["buildings"]}

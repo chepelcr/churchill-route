@@ -474,9 +474,10 @@ let capAt = null, capRow = null;
     const lane = manifest.kioskPaths.find((k) => Math.hypot(k.pts[0] - lm.x, k.pts[1] - lm.y) < 30 || Math.hypot(k.pts[2] - lm.x, k.pts[3] - lm.y) < 30);
     const i = Math.min(eastI - 1, nearestI([lm.x, lm.y])), [nx2, ny2] = offset(i, rowD(i)).map(Math.round);
     // la calle auxiliar: CORTA, del borde de la calzada derecho al kiosco, no hasta donde llegaba antes
-    const [kx2, ky2] = offset(i, realKerb(i) - ACERA - 2).map(Math.round);
-    if (lane) { lane.pts = [kx2, ky2, nx2, ny2]; lane.hidden = !!CR.kiosks.hiddenLanes; }
-    lm.spawn = offset(i, realKerb(i) - ACERA - 10).map(Math.round);
+    // contrato del juego (tests/test_content): la calle va DEL kiosco A la calle pública, y la recogida es su punta de calle
+    const [kx2, ky2] = offset(i, realKerb(i) - ACERA - 12).map(Math.round);
+    if (lane) { lane.pts = [nx2, ny2, kx2, ky2]; lane.hidden = !!CR.kiosks.hiddenLanes; }
+    lm.spawn = [kx2, ky2];
     lm.x = nx2; lm.y = ny2;
   }
 }
@@ -486,7 +487,7 @@ for (const k of CR.kiosks.add || []) {
   const [a1, a2] = k.between.map((id) => manifest.landmarks.find((q) => q.id === id));
   const i = Math.min(eastI - 1, nearestI([(a1.x + a2.x) / 2, (a1.y + a2.y) / 2])), [x, y] = offset(i, rowD(i)).map(Math.round), sp = offset(i, realKerb(i) - ACERA - 12).map(Math.round);
   manifest.landmarks.push({ id: k.id, name: k.name, x, y, type: "kiosk", district: a1.district, product: k.product, spawn: sp });
-  { const [kx2, ky2] = offset(i, realKerb(i) - ACERA - 2).map(Math.round); manifest.kioskPaths.push({ pts: [kx2, ky2, x, y], surface: "paved", hidden: !!CR.kiosks.hiddenLanes }); }   // y su calle auxiliar corta, como los otros
+  manifest.kioskPaths.push({ pts: [x, y, sp[0], sp[1]], surface: "paved", hidden: !!CR.kiosks.hiddenLanes });   // su calle auxiliar corta, del kiosco a la calle   // y su calle auxiliar corta, como los otros
 }
 // ---- EL NORTE: de la explanada a la terminal de ferris, por la Avenida 3
 {
@@ -852,7 +853,14 @@ if (process.argv.includes("--emit")) {
   // 1b) las calles auxiliares viejas (las que cambiaron o se movieron) dejan de ser calle: vuelven a
   // arena, y la playa y el malecón de abajo las cubren como a lo demás
   { const now = new Set(manifest.kioskPaths.map((k) => k.pts.join(",")));
-    for (const k of JSON.parse(readWorld("manifest.json")).kioskPaths || []) if (!now.has(k.pts.join(","))) strip(k.pts, 34, C.beach, S(), "calles viejas"); }
+    for (const k of JSON.parse(readWorld("manifest.json")).kioskPaths || []) { if (now.has(k.pts.join(","))) continue;
+      // sólo lo que queda FUERA de la calzada: la punta de calle se recorta, o se come el carril
+      let [ax, ay, bx, by2] = k.pts; const na = nearestStreet(ax, ay), nb2 = nearestStreet(bx, by2);
+      if (na.d < nb2.d) [ax, ay, bx, by2] = [bx, by2, ax, ay];
+      const L = Math.hypot(bx - ax, by2 - ay) || 1, cut = 34; if (L <= cut) continue;
+      bx -= (bx - ax) / L * cut; by2 -= (by2 - ay) / L * cut;
+      fill((() => { const nx = -(by2 - ay) / L * 26, ny = (bx - ax) / L * 26; return [ax + nx, ay + ny, bx + nx, by2 + ny, bx - nx, by2 - ny, ax - nx, ay - ny]; })(), C.beach, S(), "calles viejas"); }
+  }
   // 2) la playa, 3) el malecón (todas sus bandas nuevas), 4) el verde
   for (const sd of punta.sands || []) fill(sd.pts, C.beach, S(C.road, C.bridge, C.boulevard), "playa");
   for (const b of manifest.malecon.filter((q) => /^(punta|norte)/.test(q.id || ""))) for (const p of b.polys) fill(p, C.malecon, S(C.road, C.acera, C.bridge, C.boulevard), "malecón");

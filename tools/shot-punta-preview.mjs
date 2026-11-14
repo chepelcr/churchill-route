@@ -323,7 +323,8 @@ if (eastIdx.length) sands.push(strip(eastIdx, (i) => rockE(i) - 1, sandE));
 const warmE = eastIdx.length ? strip(eastIdx, () => 0, rockE) : null;
 const firstSpurEnd = Math.max(...idx.filter((i) => spurD[i] > 0 && i < endI - 20 && Math.abs(i - spurs[0].i) < 60), tipI);
 // la playa también frente al brazo norte, desde la lengua del Faro hasta el final de la explanada
-if (doc.norte.northArmBeach) { const s0 = idx.findIndex((i) => spurD[i] > 0); const r = idx.filter((i) => i < (s0 < 0 ? tipI : s0)); if (r.length > 4) sands.push(strip(r, (i) => greyD[i] - 1, (i) => greyD[i] + ML.cove.beachM * ppm)); }
+if (doc.norte.northArmBeach) { const s0 = idx.findIndex((i) => spurD[i] > 0); let e0 = s0; while (s0 >= 0 && e0 + 1 < idx.length && spurD[e0 + 1] > 0) e0++;   // hasta el final de la lengua: la arena entra debajo de ella, sin rendija
+  const r = idx.filter((i) => i <= (s0 < 0 ? tipI : e0)); if (r.length > 4) sands.push(strip(r, (i) => baseAt(i) - 1, (i) => baseAt(i) + ML.cove.beachM * ppm)); }
 for (const r of runs((i) => spurD[i] === 0, firstSpurEnd, endI)) if (r.length > 12) sands.push(strip(r, (i) => baseAt(i) - 1, (i) => baseAt(i) + ML.cove.beachM * ppm));
 // el frente viejo que todo esto reemplaza: la plazoleta, las bandas color arena y su playa irregular
 const bb = bbox([...band, ...(green || []), ...sands.flat()]);

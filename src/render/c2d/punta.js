@@ -357,11 +357,6 @@ function drawPunta(view, t = 0) {
   // el verde del Paseo. Se pinta ACÁ y no con los verdes del mundo porque aquéllos van
   // antes que las aguas interiores, y sobre este frente hay agua vieja que lo taparía
   for (const gr of P.greens || []) { ctx.fillStyle = MATERIALS.green[gr.type]; ctx.fill(shape(gr)); }
-  // la playa entre lengua y lengua, y la del frente del Paseo: la arena del mundo
-  ctx.fillStyle = weatherColors().sand;
-  for (const sd of P.sands || []) ctx.fill(shape(sd));
-  // el MISMO grano que la playa del mundo, para que no haya dos arenas
-  { const tex = textureScale(); for (const sd of P.sands || []) overlayTexture(ctx, "sand", tex, () => ctx.fill(sd._path)); }
   // el patio de la terminal de ferris: asfalto redondeado y sus toldos
   if (P.yard) {
     const Y = M.yard; ctx.fillStyle = Y.asphalt; ctx.fill(shape(P.yard));
@@ -549,9 +544,15 @@ function drawPuntaNight(view, t, toScreen, zoom, night) {
 // después del suelo base y antes del malecón, como el mar de verdad.
 function drawPuntaSea(view, t) {
   const P = W.PUNTA;
-  if (!P || !P.seaPatch || !P.seaPatch.length || !aabbInView(P, view, 900)) return;
-  if (!P._sea) { P._sea = new Path2D(); for (const ring of P.seaPatch) P._sea.addPath(flatPath(ring, true)); }
-  ctx.save(); ctx.clip(P._sea, "nonzero"); drawWaterAll(view, t); ctx.restore();
+  if (!P || !aabbInView(P, view, 900)) return;
+  if (P.seaPatch && P.seaPatch.length && !P._sea) { P._sea = new Path2D(); for (const ring of P.seaPatch) P._sea.addPath(flatPath(ring, true)); }
+  if (P._sea) { ctx.save(); ctx.clip(P._sea, "nonzero"); drawWaterAll(view, t); ctx.restore(); }
+  // la playa —entre lengua y lengua, al frente del Paseo y al norte— va ANTES del malecón,
+  // así las lenguas de piedra la tapan donde se montan y no queda rendija de agua entre las dos
+  ctx.fillStyle = weatherColors().sand;
+  for (const sd of P.sands || []) ctx.fill(shape(sd));
+  // el MISMO grano que la playa del mundo, para que no haya dos arenas
+  { const tex = textureScale(); for (const sd of P.sands || []) overlayTexture(ctx, "sand", tex, () => ctx.fill(sd._path)); }
 }
 
 export { drawPunta, drawPuntaGates, drawPuntaNight, drawPuntaSea };

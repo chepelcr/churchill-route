@@ -267,21 +267,46 @@ function paintMonument(mo, ppm) {
     ctx.fillStyle = C.block; ctx.fillRect(-h * 0.3, -h * 0.3, h * 0.6, h * 0.6);
     ctx.fillStyle = C.base; ctx.fillRect(-h * 0.2, -h * 0.2, h * 0.4, h * 0.4);
   } else if (mo.kind === "shell") {
-    const R = mo.size || C.rM * ppm, step = R * 0.42 / C.tiers;   // `size`: la Concha que llena su malecón
-    // las gradas, del lado de la calle; el escenario y la concha, del lado del mar
+    // local: +y hacia el mar (la calle detrás de las gradas), el radio total es R
+    const R = mo.size || C.rM * ppm;
+    // gradas en arco, del lado de la calle
+    const t0 = R * 0.62, step = R * 0.34 / C.tiers;
     for (let k = C.tiers; k >= 1; k--) {
-      ctx.beginPath(); ctx.arc(0, 0, R * 0.58 + step * k, Math.PI, 2 * Math.PI); ctx.lineTo(0, 0); ctx.closePath();
+      ctx.beginPath(); ctx.arc(0, 0, t0 + step * k, Math.PI * 1.02, Math.PI * 1.98); ctx.lineTo(0, 0); ctx.closePath();
       ctx.fillStyle = C.tier; ctx.fill(); ctx.strokeStyle = C.tierEdge; ctx.lineWidth = 1; ctx.stroke();
     }
-    ctx.beginPath(); ctx.arc(0, 0, R * 0.58, 0, 2 * Math.PI); ctx.fillStyle = C.floor; ctx.fill();
-    ctx.save(); ctx.translate(3, 4); ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI); ctx.closePath(); ctx.fillStyle = K.shadow; ctx.fill(); ctx.restore();
-    for (let k = 0; k < C.petals; k++) {
-      const a0 = Math.PI * k / C.petals, a1 = Math.PI * (k + 1) / C.petals, am = (a0 + a1) / 2;
-      ctx.beginPath(); ctx.moveTo(0, R * 0.12);
-      ctx.quadraticCurveTo(Math.cos(a0) * R * 0.9, Math.sin(a0) * R * 0.9 + R * 0.05, Math.cos(am) * R * 1.04, Math.sin(am) * R * 1.04);
-      ctx.quadraticCurveTo(Math.cos(a1) * R * 0.9, Math.sin(a1) * R * 0.9 + R * 0.05, 0, R * 0.12);
-      ctx.fillStyle = k % 2 ? C.petalAlt : C.petal; ctx.fill();
-      ctx.strokeStyle = C.rib; ctx.lineWidth = 1.2; ctx.stroke();
+    // la plaza de adoquín con su aro amarillo
+    ctx.beginPath(); ctx.arc(0, 0, t0, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, t0 * 0.9, Math.PI * 1.05, Math.PI * 1.95); ctx.strokeStyle = C.ring; ctx.lineWidth = Math.max(1, 0.25 * ppm); ctx.stroke();
+    // el escenario: media luna turquesa con sus escalones blancos
+    const sr = R * 0.42;
+    ctx.beginPath(); ctx.arc(0, R * 0.04, sr, 0, Math.PI); ctx.closePath(); ctx.fillStyle = C.stage; ctx.fill();
+    ctx.strokeStyle = C.stageStep; ctx.lineWidth = Math.max(1, 0.3 * ppm);
+    for (const f of [0.82, 0.66]) { ctx.beginPath(); ctx.arc(0, R * 0.04, sr * f, 0.08, Math.PI - 0.08); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(-sr, R * 0.04); ctx.lineTo(sr, R * 0.04); ctx.stroke();
+    // las nueve hojas en abanico detrás del escenario, cada una sobre su pilar
+    const n = C.leaves, arc = C.leafArcDeg * RAD, base = R * 0.6, L = R * C.leafLen, Wd = R * C.leafW;
+    const leaves = [];
+    for (let k = 0; k < n; k++) leaves.push(Math.PI / 2 - arc / 2 + arc * k / (n - 1));
+    // de los extremos al centro, para que las del medio queden encima como en la foto
+    leaves.sort((a, b) => Math.abs(b - Math.PI / 2) - Math.abs(a - Math.PI / 2));
+    for (const a of leaves) {
+      ctx.save(); ctx.rotate(a - Math.PI / 2); ctx.translate(0, base);
+      const p = R * 0.07;
+      ctx.fillStyle = K.shadow; ctx.fillRect(-p / 2 + 2, -p / 2 + 3, p, p);
+      ctx.fillStyle = C.pillar; ctx.fillRect(-p / 2, -p / 2, p, p); ctx.strokeStyle = C.pillarEdge; ctx.lineWidth = 1; ctx.strokeRect(-p / 2, -p / 2, p, p);
+      const leaf = new Path2D();
+      leaf.moveTo(0, -L * 0.06);
+      leaf.bezierCurveTo(Wd, L * 0.12, Wd * 1.05, L * 0.62, 0, L);
+      leaf.bezierCurveTo(-Wd * 1.05, L * 0.62, -Wd, L * 0.12, 0, -L * 0.06);
+      ctx.save(); ctx.translate(2, 3); ctx.fillStyle = K.shadow; ctx.fill(leaf); ctx.restore();
+      ctx.fillStyle = C.leaf; ctx.fill(leaf);
+      ctx.strokeStyle = C.leafEdge; ctx.lineWidth = Math.max(1, 0.15 * ppm); ctx.stroke(leaf);
+      ctx.strokeStyle = C.vein; ctx.lineWidth = Math.max(0.7, 0.08 * ppm); ctx.beginPath();
+      for (let v = 1; v <= 5; v++) { const y = L * (0.12 + v * 0.14), sp = Wd * (0.95 - v * 0.1); ctx.moveTo(0, y - L * 0.05); ctx.quadraticCurveTo(sp * 0.5, y, sp, y + L * 0.06); ctx.moveTo(0, y - L * 0.05); ctx.quadraticCurveTo(-sp * 0.5, y, -sp, y + L * 0.06); }
+      ctx.stroke();
+      ctx.strokeStyle = C.rib; ctx.lineWidth = Math.max(1, 0.22 * ppm); ctx.beginPath(); ctx.moveTo(0, -L * 0.04); ctx.lineTo(0, L * 0.96); ctx.stroke();
+      ctx.restore();
     }
   } else if (mo.kind === "letters") {
     // la plazoleta redonda de adoquín, sobre el malecón

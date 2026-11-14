@@ -529,29 +529,51 @@ for (const k of CR.kiosks.add || []) {
   { const avR = allRoads.filter((r) => r.name === NO.along); const xs = P0.map((q) => q[0]); const x0 = Math.min(...xs), x1 = Math.max(...xs);
     for (const r of avR) for (let k = 0; k + 3 < r.pts.length; k += 2) for (const x of [x0, x1]) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3]; if ((x - ax) * (x - bx) <= 0 && ax !== bx) P0.push([x, ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2]); } }
   if (T.eastToX) { for (const r of allRoads.filter((q) => q.name === NO.along)) for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3], x = T.eastToX; if ((x - ax) * (x - bx) <= 0 && ax !== bx) { const yk = ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2; P0.push([x, yk], [x - 6 * ppm, yk - 22 * ppm]); } } }
-  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const hull = (() => { const pts = P0.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), lo = [], up = [];
-    for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
-    for (const q of pts.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
-    return lo.slice(0, -1).concat(up.slice(0, -1)); })();
-  // engordada y redondeada de verdad: lados rectos paralelos a la envolvente y esquinas en arco
-  const hx = hull.reduce((a, q) => a + q[0], 0) / hull.length, hy = hull.reduce((a, q) => a + q[1], 0) / hull.length, pad = T.padM * ppm, yard = [];
-  const ccw = hull.reduce((a, q, k) => { const n = hull[(k + 1) % hull.length]; return a + (q[0] * n[1] - n[0] * q[1]); }, 0) > 0 ? 1 : -1;
-  for (let k = 0; k < hull.length; k++) {
-    const pv = hull[(k - 1 + hull.length) % hull.length], q = hull[k], nx2 = hull[(k + 1) % hull.length];
-    const n1 = [(q[1] - pv[1]) * ccw, -(q[0] - pv[0]) * ccw], n2 = [(nx2[1] - q[1]) * ccw, -(nx2[0] - q[0]) * ccw];
-    const L1 = Math.hypot(...n1) || 1, L2 = Math.hypot(...n2) || 1;
-    let a1 = Math.atan2(n1[1] / L1, n1[0] / L1), a2 = Math.atan2(n2[1] / L2, n2[0] / L2);
-    while (a2 - a1 > Math.PI) a2 -= 2 * Math.PI; while (a2 - a1 < -Math.PI) a2 += 2 * Math.PI;
-    const steps = Math.max(1, Math.ceil(Math.abs(a2 - a1) / 0.15));
-    for (let j = 0; j <= steps; j++) { const a = a1 + (a2 - a1) * j / steps; yard.push([q[0] + Math.cos(a) * pad, q[1] + Math.sin(a) * pad]); }
-  }
   // la Avenida 3 es el borde de tierra: ni el patio ni su mar pasan de su cordón de mar
   const avAll = allRoads.filter((r) => r.name === NO.along);
   const avEdge = (x) => { for (const r of avAll) for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3]; if ((x - ax) * (x - bx) <= 0 && ax !== bx) return ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2; } return Infinity; };
-  // el patio llega hasta debajo de la calle (que lo tapa): ni agua ni tierra vieja entre los dos
-  // y su borde de tierra ES la calle: lo que quede cerca de la Avenida 3 baja hasta debajo de su acera, sin cuñas
-  for (const q of yard) { const e = avEdge(q[0]); if (Number.isFinite(e) && q[1] > e - 22 * ppm) q[1] = e + 2 * ACERA; else q[1] = Math.min(q[1], e + 2 * ACERA); }
+  const pads = {};
+  // EL PATIO: la envolvente de sus puntos, engordada con lados rectos y esquinas en arco, y con su borde de tierra en la calle
+  const buildYard = (P0) => {
+    const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const hull = (() => { const pts = P0.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), lo = [], up = [];
+      for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+      for (const q of pts.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+      return lo.slice(0, -1).concat(up.slice(0, -1)); })();
+    // engordada y redondeada de verdad: lados rectos paralelos a la envolvente y esquinas en arco
+    const hx = hull.reduce((a, q) => a + q[0], 0) / hull.length, hy = hull.reduce((a, q) => a + q[1], 0) / hull.length, pad = T.padM * ppm, yard = [];
+      pads.pad = pad;
+    const ccw = hull.reduce((a, q, k) => { const n = hull[(k + 1) % hull.length]; return a + (q[0] * n[1] - n[0] * q[1]); }, 0) > 0 ? 1 : -1;
+    for (let k = 0; k < hull.length; k++) {
+      const pv = hull[(k - 1 + hull.length) % hull.length], q = hull[k], nx2 = hull[(k + 1) % hull.length];
+      const n1 = [(q[1] - pv[1]) * ccw, -(q[0] - pv[0]) * ccw], n2 = [(nx2[1] - q[1]) * ccw, -(nx2[0] - q[0]) * ccw];
+      const L1 = Math.hypot(...n1) || 1, L2 = Math.hypot(...n2) || 1;
+      let a1 = Math.atan2(n1[1] / L1, n1[0] / L1), a2 = Math.atan2(n2[1] / L2, n2[0] / L2);
+      while (a2 - a1 > Math.PI) a2 -= 2 * Math.PI; while (a2 - a1 < -Math.PI) a2 += 2 * Math.PI;
+      const steps = Math.max(1, Math.ceil(Math.abs(a2 - a1) / 0.15));
+      for (let j = 0; j <= steps; j++) { const a = a1 + (a2 - a1) * j / steps; yard.push([q[0] + Math.cos(a) * pad, q[1] + Math.sin(a) * pad]); }
+    }
+    // el patio llega hasta debajo de la calle (que lo tapa): ni agua ni tierra vieja entre los dos
+    // y su borde de tierra ES la calle: lo que quede cerca de la Avenida 3 baja hasta debajo de su acera, sin cuñas
+    for (const q of yard) { const e = avEdge(q[0]); if (Number.isFinite(e) && q[1] > e - 22 * ppm) q[1] = e + 2 * ACERA; else q[1] = Math.min(q[1], e + 2 * ACERA); }
+    return { yard, hull, hx, hy };
+  };
+  // LAS RAMPAS SON PARTE DEL PATIO: un primer patio da dónde sale cada rampa; su frente (a escuadra, del ancho de la rampa)
+  // entra a la envolvente y el patio se rehace con él, así una sola escollera lo rodea todo
+  const termRoads = allRoads.filter((r) => T.roads.includes(r.name));
+  const rampDir = (fid, rname) => { const r = termRoads.find((q) => q.name === rname), f = manifest.ferries.find((q) => q.id === fid); if (!r || !f) return null;
+    const A = [r.pts[0], r.pts[1]], B = [r.pts[r.pts.length - 2], r.pts[r.pts.length - 1]], endAtB = Math.hypot(B[0] - f.berth[0], B[1] - f.berth[1]) < Math.hypot(A[0] - f.berth[0], A[1] - f.berth[1]);
+    const e = endAtB ? B : A, pv = endAtB ? [r.pts[r.pts.length - 4], r.pts[r.pts.length - 3]] : [r.pts[2], r.pts[3]];
+    const dl = Math.hypot(e[0] - pv[0], e[1] - pv[1]) || 1, th = ((T.rotDeg || {})[fid] || 0) * Math.PI / 180, ux0 = (e[0] - pv[0]) / dl, uy0 = (e[1] - pv[1]) / dl;
+    return { e, f, ux: ux0 * Math.cos(th) - uy0 * Math.sin(th), uy: ux0 * Math.sin(th) + uy0 * Math.cos(th) }; };
+  const exitYard = (yd, e, ux, uy) => { const yp = yd.flat(); let st = [...e]; for (let k = 0; k < 400 && inside(st[0], st[1], yp); k++) st = [st[0] + ux * ppm * 0.5, st[1] + uy * ppm * 0.5]; return st; };
+  const RAMPS = [["paquera", "ramp_paquera", "Ingreso Ferry Paquera"], ["naranjo", "ramp_naranjo", "Ingreso Ferry Playa Naranjo"]];
+  let Y = buildYard(P0);
+  for (const [fid, , rname] of RAMPS) { const d = rampDir(fid, rname); if (!d) continue; const st = exitYard(Y.yard, d.e, d.ux, d.uy), out = (T.abutmentM[0] * 0.4 + ML.riprap.widthM / 2) * ppm, F = [st[0] + d.ux * out, st[1] + d.uy * out];
+    const hw = (d.f.deck?.[1] || 57) / 2 + T.abutmentM[1] * ppm - pads.pad, px2 = -d.uy, py2 = d.ux;
+    for (const sg of [1, -1]) P0.push([F[0] - d.ux * pads.pad + px2 * hw * sg, F[1] - d.uy * pads.pad + py2 * hw * sg]); }
+  Y = buildYard(P0);
+  const { yard, hull, hx, hy } = Y;
   seaPatch.push(yard.flatMap(([x, y]) => { const sx = hx + (x - hx) * 2.4, sy = hy + (y - hy) * 2.4; return [Math.round(sx), Math.round(Math.min(sy, avEdge(sx) - ACERA))]; }));
   // y todo lo que queda entre el final de la playa, el patio y la calle es mar: una franja continua
   { const xa = nc[Math.max(0, M2 - 90)][0], xb = Math.max(...yard.map((q) => q[0])) + 70 * ppm, band = [];
@@ -576,19 +598,11 @@ for (const k of CR.kiosks.add || []) {
     if (bestR >= 0) { const run = flip ? rimRuns[bestR].slice().reverse() : rimRuns[bestR]; northRock.pts.push(...run.flat().map(Math.round)); rimRuns.splice(bestR, 1); }
   }
   for (const [n, run] of rimRuns.entries()) if (run.length > 2) punta.riprap.push({ id: `escollera_terminal_${n}`, pts: run.flat().map(Math.round), w: ML.riprap.widthM * ppm });
-  // LAS RAMPAS salen del borde del patio sobre el agua, y el ferry se atraca más allá de su punta
-  const termRoads = allRoads.filter((r) => T.roads.includes(r.name)), abut = [], abutRocks = [];
-  for (const [fid, rid, rname] of [["paquera", "ramp_paquera", "Ingreso Ferry Paquera"], ["naranjo", "ramp_naranjo", "Ingreso Ferry Playa Naranjo"]]) {
-    const r = termRoads.find((q) => q.name === rname), f = manifest.ferries.find((q) => q.id === fid), rp = manifest.piers.find((q) => q.id === rid);
-    if (!r || !f || !rp) continue;
-    // el extremo de la calle que da al mar es el más cercano al atracadero
-    const A = [r.pts[0], r.pts[1]], B = [r.pts[r.pts.length - 2], r.pts[r.pts.length - 1]];
-    const endAtB = Math.hypot(B[0] - f.berth[0], B[1] - f.berth[1]) < Math.hypot(A[0] - f.berth[0], A[1] - f.berth[1]);
-    const e = endAtB ? B : A, pv = endAtB ? [r.pts[r.pts.length - 4], r.pts[r.pts.length - 3]] : [r.pts[2], r.pts[3]];
-    const dl = Math.hypot(e[0] - pv[0], e[1] - pv[1]) || 1, th = ((T.rotDeg || {})[fid] || 0) * Math.PI / 180, ux0 = (e[0] - pv[0]) / dl, uy0 = (e[1] - pv[1]) / dl;
-    const ux = ux0 * Math.cos(th) - uy0 * Math.sin(th), uy = ux0 * Math.sin(th) + uy0 * Math.cos(th);
-    const yardPoly = yard.flat();
-    let st = [...e]; for (let k = 0; k < 200 && inside(st[0], st[1], yardPoly); k++) st = [st[0] + ux * ppm * 0.5, st[1] + uy * ppm * 0.5];
+  // LAS RAMPAS salen del frente del patio sobre el agua, y el ferry se atraca más allá de su punta
+  for (const [fid, rid] of RAMPS.map((q) => [q[0], q[1], q[2]])) {
+    const rname = RAMPS.find((q) => q[0] === fid)[2], d = rampDir(fid, rname), rp = manifest.piers.find((q) => q.id === rid);
+    if (!d || !rp) continue;
+    const { f, ux, uy } = d, st = exitYard(yard, d.e, ux, uy);
     // la plataforma gris del atracadero ES la rampa, girada 90° para que su largo vaya a lo largo de la calle:
     // su receta mide `dw + 12` de largo y va centrada, así que su centro va a media rampa del borde del patio
     const half = (f.deck?.[0] || 155) / 2, rampLen = (f.deck?.[1] || 57) + 12;
@@ -598,18 +612,13 @@ for (const k of CR.kiosks.add || []) {
     f.dockS = Math.round(rampLen + half + 1.5 * ppm);
     const cen = [r0[0] + ux * f.dockS, r0[1] + uy * f.dockS];
     manifest.piers = manifest.piers.filter((q) => q.id !== rid);            // la rampa oscura sale
-    { const [inM, sideM] = T.abutmentM, hw2 = (f.deck?.[1] || 57) / 2 - 9 + sideM * ppm + 9, px2 = -uy, py2 = ux, a0 = [st[0] - ux * inM * ppm, st[1] - uy * inM * ppm], a1 = [st[0] + ux * (ML.riprap.widthM / 2 + 0.6) * ppm, st[1] + uy * (ML.riprap.widthM / 2 + 0.6) * ppm];   // sale por encima de la escollera
-      abut.push([a0[0] + px2 * hw2, a0[1] + py2 * hw2, a1[0] + px2 * hw2, a1[1] + py2 * hw2, a1[0] - px2 * hw2, a1[1] - py2 * hw2, a0[0] - px2 * hw2, a0[1] - py2 * hw2].map(Math.round));
-      // la escollera da la vuelta al estribo: por sus dos costados (desde donde salen del patio) y por su frente, bajo la rampa
-      const yp0 = yard.flat(), exitOf = (sg) => { for (let t = 0; t <= 1; t += 0.02) { const x = a0[0] + px2 * hw2 * sg + (a1[0] - a0[0]) * t, y = a0[1] + py2 * hw2 * sg + (a1[1] - a0[1]) * t; if (!inside(x, y, yp0)) return [x, y]; } return [a1[0] + px2 * hw2 * sg, a1[1] + py2 * hw2 * sg]; };
-      abutRocks.push([...exitOf(1), a1[0] + px2 * hw2, a1[1] + py2 * hw2, a1[0] - px2 * hw2, a1[1] - py2 * hw2, ...exitOf(-1)].map(Math.round)); }
     let rest = []; for (let k = 0; k < f.route.length; k += 2) if (Math.hypot(f.route[k] - f.berth[0], f.route[k + 1] - f.berth[1]) > half * 2) { rest = f.route.slice(k); break; }
     f.route = [Math.round(r0[0]), Math.round(r0[1]), Math.round(cen[0] + ux * half * 2), Math.round(cen[1] + uy * half * 2), ...rest];
     f.berth = cen.map(Math.round); f.ang = Math.atan2(uy, ux);
   }
   // el patio reemplaza a sus calles: todo él es la superficie manejable
   if (T.hideRoads) for (const t of [tile, ...frontTiles.map((q) => q[1])]) t.roads = (t.roads || []).filter((q) => !T.roads.includes(q.name));
-  punta.yard = { abutments: abut, abutRocks: abutRocks.map((pts) => ({ pts, w: ML.riprap.widthM * ppm })), pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[0], rp.pts[1]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
+  punta.yard = { pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[0], rp.pts[1]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
   // la arena vieja de este tramo sale: la nueva playa y el patio la reemplazan
   const sideN = (x, y) => { let bi = 0, bd = Infinity; for (let i = 0; i < M2; i++) { const dd = Math.hypot(nc[i][0] - x, nc[i][1] - y); if (dd < bd) { bd = dd; bi = i; } } const dd = (x - nc[bi][0]) * sm[bi][0] + (y - nc[bi][1]) * sm[bi][1]; return { i: bi, dd, off: Math.hypot(x - nc[bi][0] - sm[bi][0] * dd, y - nc[bi][1] - sm[bi][1] * dd) }; };
   const oldSand = (x, y) => { const q = sideN(x, y); return q.dd > nc[q.i][2] && q.dd < 220 * ppm && q.off < 40 * ppm; };

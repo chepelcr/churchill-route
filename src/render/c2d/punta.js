@@ -192,7 +192,7 @@ function paintMonument(mo, ppm) {
     ctx.fillStyle = C.block; ctx.fillRect(-h * 0.3, -h * 0.3, h * 0.6, h * 0.6);
     ctx.fillStyle = C.base; ctx.fillRect(-h * 0.2, -h * 0.2, h * 0.4, h * 0.4);
   } else if (mo.kind === "shell") {
-    const R = C.rM * ppm, step = R * 0.42 / C.tiers;
+    const R = mo.size || C.rM * ppm, step = R * 0.42 / C.tiers;   // `size`: la Concha que llena su malecón
     // las gradas, del lado de la calle; el escenario y la concha, del lado del mar
     for (let k = C.tiers; k >= 1; k--) {
       ctx.beginPath(); ctx.arc(0, 0, R * 0.58 + step * k, Math.PI, 2 * Math.PI); ctx.lineTo(0, 0); ctx.closePath();

@@ -1894,6 +1894,7 @@
     "ground": {
       "_note": "el suelo por `use` de cada figura",
       "park": "#c9b48c",
+      "lawn": "#8fc66f",
       "parking": "#8f8c87",
       "planter": "#5e9a58"
     },

@@ -287,16 +287,13 @@
   "greenUntil": "straightFrom",
   "_greenUntil": "el verde se cierra ANTES de donde empieza el Paseo León Cortés: en el tramo de los kioscos y de ahí en adelante hay sólo malecón y playa.",
   "plazaFrom": "straightFrom",
-  "_plaza": "donde el verde se cierra, el malecón de baldosa OCUPA su franja: en el tramo de los kioscos mide malecón + verde de ancho, y ahí caben la Concha Acústica, las letras y los Cañones. La línea de la playa no se mueve."
+  "_plaza": "donde el verde se cierra, el malecón de baldosa se ensancha SÓLO `plazaExtraM` en el tramo de los kioscos —lo justo para la Concha, las letras y los Cañones— y la playa se arrima con él.",
+  "plazaExtraM": 6.0
  },
  "cruceros": {
   "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle y mide de ancho lo que su arco. En la boca va el arco con el nombre en blanco sobre azul; la caseta azul va a la izquierda, sobre el malecón, y a los dos lados del muelle hay banderas de Costa Rica.",
   "pier": "muelle_nacional",
   "street": "Calle Central",
-  "casetaSide": "west",
-  "casetaOffM": [
-   17.0
-  ],
   "gate": {
    "text": "MUELLE DE CRUCEROS",
    "widthM": 31.0
@@ -314,15 +311,16 @@
     "kios_paseo2"
    ],
    "hiddenLanes": true,
-   "fromRocksM": 11.0,
-   "_note": "los dos kioscos suben de la arena al malecón de baldosa, del lado de la calle de la línea de piedra, y sus calles auxiliares siguen manejables pero no se pintan."
+   "_note": "los dos kioscos van sobre el malecón EN FILA CON LA CAPITANÍA: a la misma distancia de la calle, igual que los Cañones. Sus calles auxiliares siguen manejables pero no se pintan.",
+   "alignTo": "capitania",
+   "rowNudgeM": 4.0,
+   "_rowNudge": "el dibujo de la Capitanía se levanta unos metros sobre su ancla; la fila se corre eso hacia la calle para que los cuerpos —no las anclas— queden alineados."
   },
   "dropPiers": [
    "bajada_muelle_oeste",
    "bajada_muelle_este"
   ],
   "_dropPiers": "las dos bajadas a la arena salían de la plazoleta vieja del muelle; con el muelle pegado a la calle y la playa pasando por debajo quedan sueltas sobre la arena.",
-  "casetaFromRocksM": 9.0,
   "park": {
    "_note": "AL ESTE DEL MUELLE el malecón de baldosa SIGUE: la franja que hoy es el Parque del Muellero —a lo largo del Paseo León Cortés— pasa a ser malecón, con su misma baldosa color arena, y el parque verde sale. Al frente va sólo playa, una franja regular del mismo fondo, con la línea de piedra entre malecón y playa. Reemplaza también la plazoleta de contorno irregular que había ahí.",
    "parcel": "osm_park_270515697",
@@ -330,7 +328,8 @@
    "style": "malecon",
    "dropParcel": true,
    "_union": "este tramo ARRANCA en la calle auxiliar y el muelle, con su ancho entero desde el primer metro — sin cuña ni mezcla — y cierra en curva al final.",
-   "_end": "en el extremo este el MALECÓN se cierra en curva con su línea de piedra contra la acera; la playa no se cierra: sigue derecha, con su ancho y su color, hasta el final del tramo."
+   "_end": "en el extremo este el MALECÓN se cierra en curva con su línea de piedra contra la acera; la playa no se cierra: sigue derecha, con su ancho y su color, hasta el final del tramo.",
+   "_width": "el malecón al este del muelle mide EXACTAMENTE lo que el del oeste: su línea de piedra y su playa siguen las de enfrente al otro lado del muelle, y de ahí acompañan la calle."
   },
   "dropLandmark": "muellecruc",
   "_caseta": "la estructura blanca sale; la caseta azul del muelle ocupa su sitio.",
@@ -338,6 +337,12 @@
    "everyM": 38.0,
    "firstM": 24.0,
    "count": 7
+  },
+  "caseta": {
+   "column": "capitania",
+   "northM": 6.0,
+   "clearM": 13.0,
+   "_note": "la caseta azul del muelle va en la MISMA COLUMNA que la Capitanía, al sur de ella y un poco más al norte de donde estaba."
   }
  },
  "muelle": {
@@ -351,8 +356,8 @@
   "grounds": [
    {
     "id": "balneario_grounds",
-    "use": "park",
-    "name": "Terreno del Balneario (tierra y jardín)",
+    "use": "lawn",
+    "name": "Césped del Balneario",
     "polygonLL": [
      [
       9.97726168,
@@ -1350,7 +1355,9 @@
    "bldg_mirador_b",
    "bldg_norte_alero"
   ],
-  "_dropBuildings": "cajas trazadas de OSM que no aportan: salen. Quedan los dos restaurantes, el edificio de entradas, el toldo, la terraza y la pérgola."
+  "_dropBuildings": "cajas trazadas de OSM que no aportan: salen. Quedan los dos restaurantes, el edificio de entradas, el toldo, la terraza y la pérgola.",
+  "simple": true,
+  "_simple": "EL BALNEARIO ES SÓLO LA PISCINA: en toda la cuadra no queda ni una estructura —ni las huellas de OSM ni los edificios trazados, ni toldos ni piezas—, sólo el césped, el deck, la piscina con sus zonas, la piscina redonda, la isla y sus palmeras. Lo trazado se conserva en este archivo por si vuelve. El césped cubre la cuadra ENTERA —el contorno de la ensenada vieja, que es la cuadra tal como el build la detectó— y los nombres de los negocios que ya no están (Punta Pirata, sus entradas, el Mirador) salen del mapa."
  },
  "faro": {
   "scale": 1.6,
@@ -2002,7 +2009,7 @@
   "palmPastRocksM": 4.5,
   "keepStreetTreesM": 7.0,
   "clearMonumentsM": 24.0,
-  "clearBuildingsM": 30.0,
+  "clearBuildingsM": 48.0,
   "_clearBuildings": "las huellas genéricas de OSM paradas donde va un monumento salen: el monumento ES ese lugar (la Concha y el Parador Fotográfico venían como cajas)."
  },
  "monuments": [
@@ -2028,8 +2035,10 @@
     -84.8333505
    ],
    "_note": "en la curva de la calle, frente al Burger King y SOBRE el malecón: las gradas en media luna del lado de la calle (noroeste) y la concha verde agua hacia el sureste. Trazado sobre la imagen satelital.",
-   "fromRocksM": 16.0,
-   "rotDeg": -35
+   "rotDeg": -35,
+   "fill": true,
+   "walkM": 3.0,
+   "_fill": "la Concha llena el malecón de la acera a la piedra y deja sólo `walkM` del lado de la playa para que la gente pase."
   },
   {
    "id": "canones",
@@ -2039,9 +2048,9 @@
     9.975176,
     -84.8318969
    ],
-   "fromRocksM": 15.0,
    "_note": "entre el kiosco del vigorón y la Capitanía: CUATRO cañones sobre una base cuadrada con las esquinas a los puntos cardinales y cada cañón apuntando a un subcardinal. No gira con la calle.",
-   "compass": true
+   "compass": true,
+   "alignTo": "capitania"
   }
  ]
 }

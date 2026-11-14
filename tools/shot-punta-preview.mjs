@@ -577,7 +577,7 @@ for (const k of CR.kiosks.add || []) {
   }
   for (const [n, run] of rimRuns.entries()) if (run.length > 2) punta.riprap.push({ id: `escollera_terminal_${n}`, pts: run.flat().map(Math.round), w: ML.riprap.widthM * ppm });
   // LAS RAMPAS salen del borde del patio sobre el agua, y el ferry se atraca más allá de su punta
-  const termRoads = allRoads.filter((r) => T.roads.includes(r.name)), abut = [];
+  const termRoads = allRoads.filter((r) => T.roads.includes(r.name)), abut = [], abutRocks = [];
   for (const [fid, rid, rname] of [["paquera", "ramp_paquera", "Ingreso Ferry Paquera"], ["naranjo", "ramp_naranjo", "Ingreso Ferry Playa Naranjo"]]) {
     const r = termRoads.find((q) => q.name === rname), f = manifest.ferries.find((q) => q.id === fid), rp = manifest.piers.find((q) => q.id === rid);
     if (!r || !f || !rp) continue;
@@ -598,15 +598,18 @@ for (const k of CR.kiosks.add || []) {
     f.dockS = Math.round(rampLen + half + 1.5 * ppm);
     const cen = [r0[0] + ux * f.dockS, r0[1] + uy * f.dockS];
     manifest.piers = manifest.piers.filter((q) => q.id !== rid);            // la rampa oscura sale
-    { const [inM, sideM] = T.abutmentM, hw2 = (f.deck?.[1] || 57) / 2 - 9 + sideM * ppm + 9, px2 = -uy, py2 = ux, a0 = [st[0] - ux * inM * ppm, st[1] - uy * inM * ppm], a1 = [st[0] + ux * 1.5, st[1] + uy * 1.5];
-      abut.push([a0[0] + px2 * hw2, a0[1] + py2 * hw2, a1[0] + px2 * hw2, a1[1] + py2 * hw2, a1[0] - px2 * hw2, a1[1] - py2 * hw2, a0[0] - px2 * hw2, a0[1] - py2 * hw2].map(Math.round)); }
+    { const [inM, sideM] = T.abutmentM, hw2 = (f.deck?.[1] || 57) / 2 - 9 + sideM * ppm + 9, px2 = -uy, py2 = ux, a0 = [st[0] - ux * inM * ppm, st[1] - uy * inM * ppm], a1 = [st[0] + ux * (ML.riprap.widthM / 2 + 0.6) * ppm, st[1] + uy * (ML.riprap.widthM / 2 + 0.6) * ppm];   // sale por encima de la escollera
+      abut.push([a0[0] + px2 * hw2, a0[1] + py2 * hw2, a1[0] + px2 * hw2, a1[1] + py2 * hw2, a1[0] - px2 * hw2, a1[1] - py2 * hw2, a0[0] - px2 * hw2, a0[1] - py2 * hw2].map(Math.round));
+      // la escollera da la vuelta al estribo: por sus dos costados (desde donde salen del patio) y por su frente, bajo la rampa
+      const yp0 = yard.flat(), exitOf = (sg) => { for (let t = 0; t <= 1; t += 0.02) { const x = a0[0] + px2 * hw2 * sg + (a1[0] - a0[0]) * t, y = a0[1] + py2 * hw2 * sg + (a1[1] - a0[1]) * t; if (!inside(x, y, yp0)) return [x, y]; } return [a1[0] + px2 * hw2 * sg, a1[1] + py2 * hw2 * sg]; };
+      abutRocks.push([...exitOf(1), a1[0] + px2 * hw2, a1[1] + py2 * hw2, a1[0] - px2 * hw2, a1[1] - py2 * hw2, ...exitOf(-1)].map(Math.round)); }
     let rest = []; for (let k = 0; k < f.route.length; k += 2) if (Math.hypot(f.route[k] - f.berth[0], f.route[k + 1] - f.berth[1]) > half * 2) { rest = f.route.slice(k); break; }
     f.route = [Math.round(r0[0]), Math.round(r0[1]), Math.round(cen[0] + ux * half * 2), Math.round(cen[1] + uy * half * 2), ...rest];
     f.berth = cen.map(Math.round); f.ang = Math.atan2(uy, ux);
   }
   // el patio reemplaza a sus calles: todo él es la superficie manejable
   if (T.hideRoads) for (const t of [tile, ...frontTiles.map((q) => q[1])]) t.roads = (t.roads || []).filter((q) => !T.roads.includes(q.name));
-  punta.yard = { abutments: abut, pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[0], rp.pts[1]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
+  punta.yard = { abutments: abut, abutRocks: abutRocks.map((pts) => ({ pts, w: ML.riprap.widthM * ppm })), pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[0], rp.pts[1]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
   // la arena vieja de este tramo sale: la nueva playa y el patio la reemplazan
   const sideN = (x, y) => { let bi = 0, bd = Infinity; for (let i = 0; i < M2; i++) { const dd = Math.hypot(nc[i][0] - x, nc[i][1] - y); if (dd < bd) { bd = dd; bi = i; } } const dd = (x - nc[bi][0]) * sm[bi][0] + (y - nc[bi][1]) * sm[bi][1]; return { i: bi, dd, off: Math.hypot(x - nc[bi][0] - sm[bi][0] * dd, y - nc[bi][1] - sm[bi][1] * dd) }; };
   const oldSand = (x, y) => { const q = sideN(x, y); return q.dd > nc[q.i][2] && q.dd < 220 * ppm && q.off < 40 * ppm; };

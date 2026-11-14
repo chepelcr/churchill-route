@@ -319,8 +319,6 @@ function drawPunta(view, t = 0) {
   // el patio de la terminal de ferris: asfalto redondeado y sus toldos
   if (P.yard) {
     const Y = M.yard; ctx.fillStyle = Y.asphalt; ctx.fill(shape(P.yard));
-    // los estribos de las rampas: patio a escuadra con cada rampa
-    for (const ab of P.yard.abutments || []) ctx.fill(flatPath(ab, true));
     for (const tn of P.yard.tents) {
       ctx.fillStyle = Y.tentShadow; ctx.fillRect(tn.x - tn.s / 2 + 3, tn.y - tn.s / 2 + 4, tn.s, tn.s);
       ctx.fillStyle = Y.tent; ctx.fillRect(tn.x - tn.s / 2, tn.y - tn.s / 2, tn.s, tn.s);
@@ -328,6 +326,10 @@ function drawPunta(view, t = 0) {
       ctx.moveTo(tn.x - tn.s / 2, tn.y - tn.s / 2); ctx.lineTo(tn.x + tn.s / 2, tn.y + tn.s / 2); ctx.moveTo(tn.x + tn.s / 2, tn.y - tn.s / 2); ctx.lineTo(tn.x - tn.s / 2, tn.y + tn.s / 2); ctx.stroke();
     }
   }  for (const line of P.riprap || []) paintRiprap(line, view);
+  // los estribos de las rampas, ENCIMA de la escollera: la piedra pasa por debajo de cada rampa
+  if (P.yard) { ctx.fillStyle = M.yard.asphalt; for (const ab of P.yard.abutments || []) { if (!ab._p) ab._p = flatPath(ab, true); ctx.fill(ab._p); } }
+  // …y su propia escollera alrededor, que el tablero de la rampa (los ferris, más tarde) tapa al pasar por encima
+  if (P.yard) for (const line of P.yard.abutRocks || []) paintRiprap(line, view);
 
   // el suelo, en el orden en que el mundo lo trae: terreno, deck, malecones…
   for (const g of P.grounds || []) {

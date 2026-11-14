@@ -64,6 +64,7 @@ function build() {
       oneWay: !!f.oneWay, v: f.speed || SPEED,
       s: dock, phase: "docked", wait: 0, used: false, far: false,
       dx: 0, dy: 0, da: 0,
+      berthPose: f.berthPose || null,
     };
   });
 }

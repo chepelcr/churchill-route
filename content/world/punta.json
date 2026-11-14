@@ -2601,8 +2601,8 @@
   "along": "Avenida 3 Filiberto Sinfontes",
   "joinM": 28.0,
   "sidewalkM": 4.0,
-  "untilX": 24470,
-  "_until": "la playa llega hasta aquí (px de mundo: el arranque del patio de la terminal).",
+  "untilX": 24640,
+  "_until": "el tramo corre hasta meterse debajo del patio de la terminal: acera, escollera y mar llegan hasta él sin dejar hueco.",
   "beachM": [
    [
     0.0,
@@ -2653,6 +2653,8 @@
   "northArmBeach": true,
   "_northArmBeach": "la playa corre también frente al brazo norte de la explanada, desde la lengua del Faro, y empalma con la de Cocos/Pura Vida",
   "unifiedRocks": true,
-  "_unifiedRocks": "una sola escollera: baja de la explanada, corre entre la acera y la playa y entra al patio de la terminal, donde sigue por su borde de mar."
+  "_unifiedRocks": "una sola escollera: baja de la explanada, corre entre la acera y la playa y entra al patio de la terminal, donde sigue por su borde de mar.",
+  "endPaveM": 7.0,
+  "_endPave": "donde la playa ya se cerró, la acera de la explanada se ensancha a esto hasta el patio, con la escollera en su borde."
  }
 }

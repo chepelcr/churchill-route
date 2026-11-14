@@ -474,12 +474,13 @@ for (const k of CR.kiosks.add || []) {
   const off = (i, dd) => [nc[i][0] + sm[i][0] * dd, nc[i][1] + sm[i][1] * dd];
   const ncum = [0]; for (let i = 1; i < M2; i++) ncum.push(ncum[i - 1] + Math.hypot(nc[i][0] - nc[i - 1][0], nc[i][1] - nc[i - 1][1]));
   const total = ncum[M2 - 1] || 1, prof = NO.beachM;
-  const depth = (i) => { const f = ncum[i] / total; for (let k = 0; k + 1 < prof.length; k++) if (f >= prof[k][0] && f <= prof[k + 1][0]) return (prof[k][1] + (prof[k + 1][1] - prof[k][1]) * (f - prof[k][0]) / (prof[k + 1][0] - prof[k][0])) * ppm; return prof[prof.length - 1][1] * ppm; };
+  const beachEnd = total - 40 * ppm;   // la playa se cierra antes; lo último va debajo del patio
+  const depth = (i) => { const f = Math.min(1, ncum[i] / (total - 40 * ppm)); for (let k = 0; k + 1 < prof.length; k++) if (f >= prof[k][0] && f <= prof[k + 1][0]) return (prof[k][1] + (prof[k + 1][1] - prof[k][1]) * (f - prof[k][0]) / (prof[k + 1][0] - prof[k][0])) * ppm; return prof[prof.length - 1][1] * ppm; };
   const J = NO.joinM * ppm, w0 = widthAt(0);
   // la explanada se cierra en curva contra la acera; la arena nace a su lado
-  const greyN = (i) => { const k = ease(ncum[i] / J); return w0 + (nc[i][2] + NO.sidewalkM * ppm - w0) * k; };
+  const greyN = (i) => { const k = ease(ncum[i] / J), side = NO.sidewalkM + (NO.endPaveM - NO.sidewalkM) * (1 - ease((total - ncum[i] - 40 * ppm) / (NO.endCurveM * ppm))); return w0 + (nc[i][2] + side * ppm - w0) * k; };
   // continua con la playa del brazo norte, y se cierra en curva antes del patio
-  const endK = (i) => ease((total - ncum[i]) / (NO.endCurveM * ppm));
+  const endK = (i) => ease((beachEnd - ncum[i]) / (NO.endCurveM * ppm));
   // arranca con el fondo de la playa del brazo norte (sin costura) y crece hacia el perfil medido
   const startD = w0 + ML.cove.beachM * ppm, blendK = (i) => ease(ncum[i] / (60 * ppm));
   const sandN = (i) => { const g = greyN(i), prof2 = Math.max(g + 2 * ppm, nc[i][2] + depth(i)), full = startD + (prof2 - startD) * blendK(i); return g + (Math.max(full, g + 2 * ppm) - g) * endK(i); };
@@ -522,8 +523,13 @@ for (const k of CR.kiosks.add || []) {
   // la Avenida 3 es el borde de tierra: ni el patio ni su mar pasan de su cordón de mar
   const avAll = allRoads.filter((r) => r.name === NO.along);
   const avEdge = (x) => { for (const r of avAll) for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3]; if ((x - ax) * (x - bx) <= 0 && ax !== bx) return ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2; } return Infinity; };
-  for (const q of yard) q[1] = Math.min(q[1], avEdge(q[0]) + 4);
-  seaPatch.push(yard.flatMap(([x, y]) => { const sx = hx + (x - hx) * 1.7, sy = hy + (y - hy) * 1.7; return [Math.round(sx), Math.round(Math.min(sy, avEdge(sx) - ACERA))]; }));
+  // el patio llega hasta debajo de la calle (que lo tapa): ni agua ni tierra vieja entre los dos
+  for (const q of yard) q[1] = Math.min(q[1], avEdge(q[0]) + 2 * ACERA);
+  seaPatch.push(yard.flatMap(([x, y]) => { const sx = hx + (x - hx) * 2.4, sy = hy + (y - hy) * 2.4; return [Math.round(sx), Math.round(Math.min(sy, avEdge(sx) - ACERA))]; }));
+  // y todo lo que queda entre el final de la playa, el patio y la calle es mar: una franja continua
+  { const xa = nc[Math.max(0, M2 - 90)][0], xb = Math.max(...yard.map((q) => q[0])), band = [];
+    for (let x = xa; x <= xb; x += 3 * ppm) { const e = avEdge(x); if (Number.isFinite(e)) band.push([x, e - ACERA - 2]); }
+    if (band.length > 2) seaPatch.push([...band, ...band.slice().reverse().map(([x, y]) => [x, y - 160 * ppm])].flat().map(Math.round)); }
   // la escollera, por el lado de mar del patio (lejos de la Avenida 3)
   const av = streets.filter((r) => r.name === NO.along);
   const nearAv = (x, y) => av.some((r) => { for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3], L2 = (bx - ax) ** 2 + (by2 - ay) ** 2 || 1, t2 = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by2 - ay)) / L2)); if (Math.hypot(x - ax - (bx - ax) * t2, y - ay - (by2 - ay) * t2) < r.w / 2 + ACERA + 8 * ppm) return true; } return false; });
@@ -553,9 +559,13 @@ for (const k of CR.kiosks.add || []) {
     const ux = ux0 * Math.cos(th) - uy0 * Math.sin(th), uy = ux0 * Math.sin(th) + uy0 * Math.cos(th);
     const yardPoly = yard.flat();
     let st = [...e]; for (let k = 0; k < 200 && inside(st[0], st[1], yardPoly); k++) st = [st[0] + ux * ppm * 0.5, st[1] + uy * ppm * 0.5];
-    // la plataforma gris del atracadero ES la rampa: su receta va de -14 a +32 px sobre la ruta desde route[0]
-    const r0 = [st[0] + ux * 14, st[1] + uy * 14], half = (f.deck?.[0] || 155) / 2;
-    f.dockS = Math.round(32 + half + 2 * ppm);
+    // la plataforma gris del atracadero ES la rampa, girada 90° para que su largo vaya a lo largo de la calle:
+    // su receta mide `dw + 12` de largo y va centrada, así que su centro va a media rampa del borde del patio
+    const half = (f.deck?.[0] || 155) / 2, rampLen = (f.deck?.[1] || 57) + 12;
+    const pc = [st[0] + ux * rampLen / 2, st[1] + uy * rampLen / 2];
+    f.berthPose = [Math.round(pc[0] - uy * 9), Math.round(pc[1] + ux * 9), Math.atan2(uy, ux) + Math.PI / 2];
+    const r0 = [st[0], st[1]];
+    f.dockS = Math.round(rampLen + half + 1.5 * ppm);
     const cen = [r0[0] + ux * f.dockS, r0[1] + uy * f.dockS];
     manifest.piers = manifest.piers.filter((q) => q.id !== rid);            // la rampa oscura sale
     let rest = []; for (let k = 0; k < f.route.length; k += 2) if (Math.hypot(f.route[k] - f.berth[0], f.route[k + 1] - f.berth[1]) > half * 2) { rest = f.route.slice(k); break; }
@@ -565,7 +575,13 @@ for (const k of CR.kiosks.add || []) {
   // el patio reemplaza a sus calles: todo él es la superficie manejable
   if (T.hideRoads) for (const t of [tile, ...frontTiles.map((q) => q[1])]) t.roads = (t.roads || []).filter((q) => !T.roads.includes(q.name));
   punta.yard = { pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[0], rp.pts[1]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
-  console.log(`[punta-preview] norte: ${Math.round(total / ppm)} m de playa, patio de ${hull.length} vértices`);
+  // la arena vieja de este tramo sale: la nueva playa y el patio la reemplazan
+  const sideN = (x, y) => { let bi = 0, bd = Infinity; for (let i = 0; i < M2; i++) { const dd = Math.hypot(nc[i][0] - x, nc[i][1] - y); if (dd < bd) { bd = dd; bi = i; } } const dd = (x - nc[bi][0]) * sm[bi][0] + (y - nc[bi][1]) * sm[bi][1]; return { i: bi, dd, off: Math.hypot(x - nc[bi][0] - sm[bi][0] * dd, y - nc[bi][1] - sm[bi][1] * dd) }; };
+  const oldSand = (x, y) => { const q = sideN(x, y); return q.dd > nc[q.i][2] && q.dd < 220 * ppm && q.off < 40 * ppm; };
+  let cutN = 0;
+  manifest.beaches = manifest.beaches.map((ring) => { const keep = []; for (let k = 0; k < ring.length; k += 2) if (!oldSand(ring[k], ring[k + 1])) keep.push(ring[k], ring[k + 1]); if (keep.length !== ring.length) cutN++; return keep; }).filter((r) => r.length >= 6);
+  for (const t of [tile, ...frontTiles.map((q) => q[1])]) { t.palms = (t.palms || []).filter((o) => !oldSand(o.x, o.y) || sideN(o.x, o.y).dd < greyN(sideN(o.x, o.y).i)); t.trees = (t.trees || []).filter((o) => !oldSand(o.x, o.y)); }
+  console.log(`[punta-preview] norte: ${Math.round(total / ppm)} m de playa, patio de ${hull.length} vértices, ${cutN} anillos de arena vieja recortados`);
 }
 punta.seaPatch = seaPatch;
 manifest.punta = punta;

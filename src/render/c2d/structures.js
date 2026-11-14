@@ -347,6 +347,18 @@ function drawFerry(f, view) {
 // The berth she sails from: a concrete apron at the quay, so an empty berth
 // still reads as a place a ferry belongs rather than a gap in the sea wall.
 function drawBerth(f, view) {
+  // `berthPose` [x, y, ang]: el mundo puede poner la plataforma donde va la rampa
+  // de verdad —a lo largo de su calle— en vez de en el arranque de la ruta
+  if (f.berthPose) {
+    const [px, py, pa] = f.berthPose;
+    if (px + 90 < view.x0 || px - 90 > view.x1 || py + 90 < view.y0 || py - 90 > view.y1) return;
+    ctx.save(); ctx.translate(px, py); ctx.rotate(pa);
+    const B = f.dw / 2;
+    paintStructureParts(ctx, S.berth.parts, { X: (v) => v || 0, Y: (v) => v || 0,
+      vars: { dw: f.dw, negB: -B, apronY: -B - 6, apronH: f.dw + 12 }, color: (spec) => structureColor(S.berth, spec) });
+    ctx.restore();
+    return;
+  }
   const bx = f.pts[0].x, by = f.pts[0].y;
   if (bx + 90 < view.x0 || bx - 90 > view.x1 || by + 90 < view.y0 || by - 90 > view.y1) return;
   ctx.save();

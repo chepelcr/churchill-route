@@ -720,7 +720,13 @@ const tilesByKey = new Map([[`${tc}_${tr}`, tile], ...frontTiles]);
     arcs: MU.arcs.map((a) => { const [x, y] = muAt(a.at), i = iOfU(a.at[0]); return { x, y, r: a.rM * ppm * 0.92, a0: a.fromDeg, a1: a.toDeg, planter: !!a.planter, ang: Math.atan2(normal[i][1], normal[i][0]) }; }),
     benches: MU.benches.map((b) => ({ kind: b.kind, pts: b.spine.flatMap(muAt), w: b.wM * ppm * 0.8 })),
     plaza: (() => { const [x, y] = muAt(MU.plaza.at), i = iOfU(MU.plaza.at[0]); return { x, y, r: MU.plaza.rM * ppm * 0.82, ang: Math.atan2(normal[i][1], normal[i][0]) }; })(),
-    pancitas: pancitas.map((q) => { const i = iOfU(q.u), base = eastBase(i); return { kind: q.kind, x: Math.round(offset(i, base)[0]), y: Math.round(offset(i, base)[1]), len: q.lengthM * ppm, out: q.outM * ppm, ang: Math.atan2(normal[i][1], normal[i][0]), fanR: (q.fanRM || 0) * ppm, stalls: q.stalls || 0, bay: (q.bayM || 0) * ppm, kerbOff: base - centre[i][2] }; }),
+    pancitas: pancitas.map((q) => { const i = iOfU(q.u), base = eastBase(i);
+      // el lecho, con la MISMA geometría del abombe de la escollera: plano en el borde del malecón y su curva al 85 %
+      const bed = []; { const i0 = iOfU(q.u - q.lengthM / 2), i1 = iOfU(q.u + q.lengthM / 2), ids2 = []; for (let k = i0; k <= i1; k++) ids2.push(k);
+        const inner = ids2.map((k) => offset(k, eastBase(k))), outer = ids2.map((k) => offset(k, eastBase(k) + pancOut(uOf(k)) * ppm * 0.82)).reverse();
+        for (const [x, y] of [...inner, ...outer]) bed.push(Math.round(x), Math.round(y));
+        q._rim = ids2.map((k) => offset(k, eastBase(k) + pancOut(uOf(k)) * ppm * 0.82)).flat().map(Math.round); }
+      return { bed, rim: q._rim, kind: q.kind, x: Math.round(offset(i, base)[0]), y: Math.round(offset(i, base)[1]), len: q.lengthM * ppm, out: q.outM * ppm, ang: Math.atan2(normal[i][1], normal[i][0]), fanR: (q.fanRM || 0) * ppm, stalls: q.stalls || 0, bay: (q.bayM || 0) * ppm, kerbOff: base - centre[i][2] }; }),
   };
 }
 const tileAt = (x, y) => tilesByKey.get(`${Math.floor(x / tilePx)}_${Math.floor(y / tilePx)}`);

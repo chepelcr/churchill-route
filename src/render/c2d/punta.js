@@ -220,6 +220,15 @@ function paintMuellero(Q, ppm) {
     ctx.strokeStyle = C.shadow; ctx.lineWidth = C.spineM * ppm; ctx.save(); ctx.translate(1.5, 2); ctx.stroke(w._path); ctx.restore();
     ctx.strokeStyle = C.spine; ctx.stroke(w._path);
   }
+  // los lechos de las medialunas, en coordenadas de mundo con la misma geometría que su escollera:
+  // rojo apagado de las figuras del Faro y su orilla de piedras sobre la curva
+  for (const q of Q.pancitas) {
+    if (q.kind === "parking" || !q.bed || q.bed.length < 6) continue;
+    if (!q._bed) q._bed = flatPath(q.bed, true);
+    ctx.fillStyle = M.figures.ink; ctx.fill(q._bed);
+    ctx.strokeStyle = C.lensEdge; ctx.lineWidth = 1.2; ctx.stroke(q._bed);
+    stonesAlong(q.rim, stoneStep, stoneR, C.stone);
+  }
   // las pancitas: una lente verde con su borde de piedras del lado de la calle; la del parqueo, un abanico rojo y sus cajones
   for (const q of Q.pancitas) {
     ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.ang);           // +x: hacia el mar; +y: a lo largo
@@ -237,9 +246,7 @@ function paintMuellero(Q, ppm) {
       for (let k = 0; k <= 6; k++) { const a = -Math.PI / 2 + Math.PI * k / 6; ctx.moveTo(cx, 0); ctx.lineTo(cx + Math.cos(a) * R, Math.sin(a) * R); }
       ctx.stroke(); ctx.beginPath(); ctx.arc(cx, 0, R, -Math.PI / 2, Math.PI / 2); ctx.stroke();
     } else {
-      ctx.fillStyle = C.lens; ctx.beginPath(); ctx.ellipse(q.out * 0.12, 0, q.out * 0.62, half * 0.7, 0, -Math.PI / 2, Math.PI / 2); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = C.lensEdge; ctx.lineWidth = 1; ctx.stroke();
-      stonesAlong(arcPts(q.out * 0.35, 0, 1, 0, 0, 1).length ? (() => { const o = []; for (let k = 0; k <= 16; k++) { const a = Math.PI / 2 + Math.PI * k / 16; o.push(q.out * 0.12 + Math.cos(a - Math.PI) * q.out * 0.62, Math.sin(a - Math.PI) * half * 0.7); } return o; })() : [], stoneStep, stoneR, C.stone);
+      // el lecho va en coordenadas de mundo (ver abajo); acá no se dibuja nada girado
     }
     ctx.restore();
   }

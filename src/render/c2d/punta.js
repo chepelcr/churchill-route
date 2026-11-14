@@ -289,7 +289,7 @@ function paintMonument(mo, ppm) {
     // las nueve hojas en abanico detrás del escenario: cada pilar en el borde de mar y su hoja volcada sobre el escenario
     // LAS HOJAS siguen el MISMO ANILLO que las gradas, del lado del mar: cada pilar sobre ese círculo
     // y su hoja nace justo en él y se vuelca hacia adentro, entrando al escenario y montándose con las vecinas
-    const n = C.leaves, arc = C.leafArcDeg * RAD, ringR = t0 + step * C.tiers * 0.5, L = R * C.leafLen, Wd = R * C.leafW;
+    const n = C.leaves, arc = C.leafArcDeg * RAD, ringR = R * 0.93, L = R * C.leafLen, Wd = R * C.leafW;
     const leaves = [];
     for (let k = 0; k < n; k++) leaves.push(Math.PI / 2 - arc / 2 + arc * k / (n - 1));
     leaves.sort((a, b) => Math.abs(b - Math.PI / 2) - Math.abs(a - Math.PI / 2));   // las del centro encima

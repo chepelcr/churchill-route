@@ -1356,7 +1356,12 @@
   "_simple": "EL BALNEARIO ES SÓLO LA PISCINA: en toda la cuadra no queda ni una estructura —ni las huellas de OSM ni los edificios trazados, ni toldos ni piezas—, sólo el césped, el deck, la piscina con sus zonas, la piscina redonda, la isla y sus palmeras. Lo trazado se conserva en este archivo por si vuelve. El césped cubre la cuadra ENTERA —el contorno de la ensenada vieja, que es la cuadra tal como el build la detectó— y los nombres de los negocios que ya no están (Punta Pirata, sus entradas, el Mirador) salen del mapa.",
   "lawnDilateM": 12.0,
   "_lawnDilate": "el césped se extiende hasta debajo de las calles que rodean la cuadra: las calles y las aceras lo tapan, y no queda ninguna franja del suelo viejo entre el césped y el cordón.",
-  "_parking": "el parqueo en batería al sur de la explanada salía como una franja gris suelta: se quitó. Su trazo queda en docs/punta-satellite-mockup.json."
+  "_parking": "el parqueo en batería al sur de la explanada salía como una franja gris suelta: se quitó. Su trazo queda en docs/punta-satellite-mockup.json.",
+  "dropLots": {
+   "parcelPrefix": "balneario_lote_",
+   "buildingName": "^Balneario \\d+$",
+   "_note": "los lotes «Balneario 1…13» de la cuadra vecina venían de la ensenada vieja: salen, parcelas y edificios."
+  }
  },
  "faro": {
   "scale": 1.6,

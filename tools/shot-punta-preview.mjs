@@ -659,6 +659,14 @@ for (const k of CR.kiosks.add || []) {
 }
 punta.seaPatch = seaPatch;
 for (const [id, e] of Object.entries(doc.districtEdges || {})) { const k = manifest.districts.findIndex((q) => q.id === id); if (k >= 0) { manifest.districts[k].x0 = e.x0; if (k > 0) manifest.districts[k - 1].x1 = e.x0; } }
+// los lotes «Balneario N» de la ensenada vieja salen: parcelas y sus edificios
+if (B0.dropLots) {
+  const re = new RegExp(B0.dropLots.buildingName), before = manifest.parcels.length;
+  const dropped0 = manifest.parcels.filter((q) => q.id.startsWith(B0.dropLots.parcelPrefix) && re.test(q.name || "")).map((q) => q.id);
+  manifest.parcels = manifest.parcels.filter((q) => !(q.id.startsWith(B0.dropLots.parcelPrefix) && re.test(q.name || "")));
+  let nb = 0; for (const t of [tile, ...frontTiles.map((q) => q[1])]) { const n0 = (t.buildings || []).length; const gone = new Set(dropped0); t.buildings = (t.buildings || []).filter((b) => !re.test(b.name || "") && !gone.has(b.parcelId)); nb += n0 - t.buildings.length; }
+  console.log(`[punta-preview] lotes del Balneario viejo: ${before - manifest.parcels.length} parcelas, ${nb} edificios fuera`);
+}
 manifest.punta = punta;
 // el tablado de la feria, desde su contorno autorado (la orilla este se corrió)
 { const at = JSON.parse(readFileSync("content/world/attractions.json", "utf8")).feria, L = manifest.feria.find((q) => q.id === at.id); if (L) { const east = Math.max(...L.polys[0].filter((_, k) => k % 2 === 0)), want = Math.max(...at.outlineLL.map(xy).map((q) => q[0])); L.polys = L.polys.map((p) => p.map((v, k) => (k % 2 === 0 && Math.abs(v - east) < 3 ? want : v))); L.x1 = want; } }

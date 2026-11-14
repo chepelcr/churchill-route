@@ -494,7 +494,7 @@ for (const k of CR.kiosks.add || []) {
   if (MUE.moveTo && MUE.moveTo.stretch === "norte") {
     const fp = manifest.piers.find((q) => q.id === MUE.pier), fi = Math.round((M2 - 1) * MUE.moveTo.atFraction);
     const len0 = Math.hypot(fp.pts[2] - fp.pts[0], fp.pts[3] - fp.pts[1]), a0 = greyN(fi) - 1 * ppm;
-    const [sx, sy] = off(fi, a0), [ex, ey] = off(fi, a0 + Math.max(len0, sandN(fi) - a0 + 25 * ppm));
+    const [sx, sy] = off(fi, a0), [ex, ey] = off(fi, sandN(fi) - MUE.moveTo.endOnBeachM * ppm);
     fp.pts = [Math.round(sx), Math.round(sy), Math.round(ex), Math.round(ey)];
     const L = Math.hypot(ex - sx, ey - sy), kb = MUE.moveTo.kioskBackM * ppm;
     const kio = manifest.landmarks.find((q) => q.id === MUE.kiosk);
@@ -529,6 +529,16 @@ for (const k of CR.kiosks.add || []) {
   const nearAv = (x, y) => av.some((r) => { for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3], L2 = (bx - ax) ** 2 + (by2 - ay) ** 2 || 1, t2 = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by2 - ay)) / L2)); if (Math.hypot(x - ax - (bx - ax) * t2, y - ay - (by2 - ay) * t2) < r.w / 2 + ACERA + 8 * ppm) return true; } return false; });
   const rimRuns = []; let cur = null;
   for (let k = 0; k <= yard.length; k++) { const q = yard[k % yard.length]; if (!nearAv(q[0], q[1])) { (cur || (cur = [], rimRuns.push(cur), cur)).push(q); } else cur = null; }
+  const northRock = punta.riprap.find((q) => q.id === "escollera_norte");
+  if (NO.unifiedRocks && northRock) {
+    // una sola escollera: la de la explanada sigue por todo el tramo entre acera y playa…
+    northRock.pts = ids.map((i) => off(i, greyN(i))).flat().map(Math.round);
+    // …y entra al patio, uniéndose con la tramo más cercano de su borde de mar
+    const ex = northRock.pts[northRock.pts.length - 2], ey = northRock.pts[northRock.pts.length - 1];
+    let bestR = -1, bestD = Infinity, flip = false;
+    for (const [n, run] of rimRuns.entries()) { if (run.length < 3) continue; const da = Math.hypot(run[0][0] - ex, run[0][1] - ey), db = Math.hypot(run[run.length - 1][0] - ex, run[run.length - 1][1] - ey); if (Math.min(da, db) < bestD) { bestD = Math.min(da, db); bestR = n; flip = db < da; } }
+    if (bestR >= 0) { const run = flip ? rimRuns[bestR].slice().reverse() : rimRuns[bestR]; northRock.pts.push(...run.flat().map(Math.round)); rimRuns.splice(bestR, 1); }
+  }
   for (const [n, run] of rimRuns.entries()) if (run.length > 2) punta.riprap.push({ id: `escollera_terminal_${n}`, pts: run.flat().map(Math.round), w: ML.riprap.widthM * ppm });
   // LAS RAMPAS salen del borde del patio sobre el agua, y el ferry se atraca más allá de su punta
   const termRoads = allRoads.filter((r) => T.roads.includes(r.name));
@@ -539,15 +549,15 @@ for (const k of CR.kiosks.add || []) {
     const A = [r.pts[0], r.pts[1]], B = [r.pts[r.pts.length - 2], r.pts[r.pts.length - 1]];
     const endAtB = Math.hypot(B[0] - f.berth[0], B[1] - f.berth[1]) < Math.hypot(A[0] - f.berth[0], A[1] - f.berth[1]);
     const e = endAtB ? B : A, pv = endAtB ? [r.pts[r.pts.length - 4], r.pts[r.pts.length - 3]] : [r.pts[2], r.pts[3]];
-    const dl = Math.hypot(e[0] - pv[0], e[1] - pv[1]) || 1, ux = (e[0] - pv[0]) / dl, uy = (e[1] - pv[1]) / dl;
+    const dl = Math.hypot(e[0] - pv[0], e[1] - pv[1]) || 1, th = ((T.rotDeg || {})[fid] || 0) * Math.PI / 180, ux0 = (e[0] - pv[0]) / dl, uy0 = (e[1] - pv[1]) / dl;
+    const ux = ux0 * Math.cos(th) - uy0 * Math.sin(th), uy = ux0 * Math.sin(th) + uy0 * Math.cos(th);
     const yardPoly = yard.flat();
     let st = [...e]; for (let k = 0; k < 200 && inside(st[0], st[1], yardPoly); k++) st = [st[0] + ux * ppm * 0.5, st[1] + uy * ppm * 0.5];
-    const en = [st[0] + ux * T.rampM * ppm, st[1] + uy * T.rampM * ppm];
-    rp.pts = [Math.round(st[0]), Math.round(st[1]), Math.round(en[0]), Math.round(en[1])];
-    rp.w = Math.round(r.w + 2 * ppm);
-    const half = (f.deck?.[0] || 155) / 2, dock = f.dockS ?? 35;
-    const cen = [en[0] + ux * (half + 1.5 * ppm), en[1] + uy * (half + 1.5 * ppm)], r0 = [cen[0] - ux * dock, cen[1] - uy * dock];
-    // la ruta arranca en el atracadero nuevo y retoma la vieja donde ya va mar adentro
+    // la plataforma gris del atracadero ES la rampa: su receta va de -14 a +32 px sobre la ruta desde route[0]
+    const r0 = [st[0] + ux * 14, st[1] + uy * 14], half = (f.deck?.[0] || 155) / 2;
+    f.dockS = Math.round(32 + half + 2 * ppm);
+    const cen = [r0[0] + ux * f.dockS, r0[1] + uy * f.dockS];
+    manifest.piers = manifest.piers.filter((q) => q.id !== rid);            // la rampa oscura sale
     let rest = []; for (let k = 0; k < f.route.length; k += 2) if (Math.hypot(f.route[k] - f.berth[0], f.route[k + 1] - f.berth[1]) > half * 2) { rest = f.route.slice(k); break; }
     f.route = [Math.round(r0[0]), Math.round(r0[1]), Math.round(cen[0] + ux * half * 2), Math.round(cen[1] + uy * half * 2), ...rest];
     f.berth = cen.map(Math.round); f.ang = Math.atan2(uy, ux);

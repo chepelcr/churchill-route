@@ -371,7 +371,9 @@
    "stretch": "norte",
    "atFraction": 0.42,
    "_at": "a qué fracción del tramo norte (la playa más ancha, frente a Pura Vida)",
-   "kioskBackM": 7.0
+   "kioskBackM": 7.0,
+   "endOnBeachM": 3.0,
+   "_end": "el muelle termina sobre la playa, `endOnBeachM` antes de la orilla"
   }
  },
  "balneario": {
@@ -2638,11 +2640,19 @@
    "tentM": 8.0,
    "_note": "el patio es la envolvente de sus dos calles de ingreso engordada `padM` y redondeada: es TODO manejable (en el build: asfalto estampado) y reemplaza a las dos calles. Termina donde arrancan las rampas: cada rampa sale del borde del patio `rampM` sobre el agua, en la dirección de su calle, y el ferry se atraca más allá de su punta, alineado con ella, para que la rampa se vea.",
    "rampM": 14.0,
-   "hideRoads": true
+   "hideRoads": true,
+   "rotDeg": {
+    "naranjo": 18.0,
+    "paquera": 42.0
+   },
+   "_rotDeg": "giro de cada atracadero respecto de su calle de ingreso: los dos se abren hacia el norte en abanico, el San Lucas 3 para no quedar encima de la playa y el Tambor para no chocar con él.",
+   "_berth": "la plataforma gris del atracadero (la de `materials.json` → `structure.berth`) ES la rampa: arranca en el borde del patio, alineada, y el ferry atraca justo después de su punta. Las rampas oscuras salen."
   },
   "endCurveM": 32.0,
   "_endCurve": "la playa se cierra en curva estos metros antes del patio de la terminal",
   "northArmBeach": true,
-  "_northArmBeach": "la playa corre también frente al brazo norte de la explanada, desde la lengua del Faro, y empalma con la de Cocos/Pura Vida"
+  "_northArmBeach": "la playa corre también frente al brazo norte de la explanada, desde la lengua del Faro, y empalma con la de Cocos/Pura Vida",
+  "unifiedRocks": true,
+  "_unifiedRocks": "una sola escollera: baja de la explanada, corre entre la acera y la playa y entra al patio de la terminal, donde sigue por su borde de mar."
  }
 }

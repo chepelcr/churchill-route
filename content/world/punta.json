@@ -297,7 +297,9 @@
   "street": "Calle Central",
   "gate": {
    "text": "MUELLE DE CRUCEROS",
-   "widthM": 31.0
+   "widthM": 31.0,
+   "fitStreet": true,
+   "_fitStreet": "el muelle y su arco miden lo que su calle con sus dos aceras: no se salen de ellas."
   },
   "capitania": {
    "landmark": "capitania",
@@ -346,9 +348,9 @@
   "dropLandmark": "muellecruc",
   "_caseta": "la estructura blanca sale; la caseta azul del muelle ocupa su sitio.",
   "flags": {
-   "everyM": 38.0,
-   "firstM": 24.0,
-   "count": 7
+   "between": "lamps",
+   "count": 7,
+   "_note": "una bandera de cada lado a MEDIO CAMINO entre dos luces del muelle (la receta de luces es `materials.json` → `pier.<estilo>.lamp`), empezando por la primera pareja."
   },
   "caseta": {
    "column": "capitania",
@@ -620,37 +622,6 @@
      [
       9.97708733,
       -84.85081168
-     ]
-    ]
-   },
-   {
-    "id": "parqueo_faro",
-    "use": "parking",
-    "name": "Parqueo en batería (lado mar de la Calle 39)",
-    "polygonLL": [
-     [
-      9.97645701,
-      -84.85105264
-     ],
-     [
-      9.97645209,
-      -84.85100134
-     ],
-     [
-      9.97631017,
-      -84.85095314
-     ],
-     [
-      9.97615692,
-      -84.85087575
-     ],
-     [
-      9.97612975,
-      -84.8509195
-     ],
-     [
-      9.97629793,
-      -84.85100158
      ]
     ]
    }
@@ -1374,7 +1345,8 @@
   "simple": true,
   "_simple": "EL BALNEARIO ES SÓLO LA PISCINA: en toda la cuadra no queda ni una estructura —ni las huellas de OSM ni los edificios trazados, ni toldos ni piezas—, sólo el césped, el deck, la piscina con sus zonas, la piscina redonda, la isla y sus palmeras. Lo trazado se conserva en este archivo por si vuelve. El césped cubre la cuadra ENTERA —el contorno de la ensenada vieja, que es la cuadra tal como el build la detectó— y los nombres de los negocios que ya no están (Punta Pirata, sus entradas, el Mirador) salen del mapa.",
   "lawnDilateM": 12.0,
-  "_lawnDilate": "el césped se extiende hasta debajo de las calles que rodean la cuadra: las calles y las aceras lo tapan, y no queda ninguna franja del suelo viejo entre el césped y el cordón."
+  "_lawnDilate": "el césped se extiende hasta debajo de las calles que rodean la cuadra: las calles y las aceras lo tapan, y no queda ninguna franja del suelo viejo entre el césped y el cordón.",
+  "_parking": "el parqueo en batería al sur de la explanada salía como una franja gris suelta: se quitó. Su trazo queda en docs/punta-satellite-mockup.json."
  },
  "faro": {
   "scale": 1.6,
@@ -2080,5 +2052,533 @@
   "along": "Paseo León Cortés Castro",
   "treeEveryM": 15.0,
   "treeScale": 1.75
+ },
+ "muellero": {
+  "_note": "EL PARQUE DEL MUELLERO (y de los Cañones), al este del Muelle de Cruceros, trazado sobre la imagen satelital (docs/muellero-satellite-mockup.json). Todo va en el MARCO DE LA CALLE: `uM` = metros a lo largo del Paseo León Cortés desde el eje del muelle, `vM` = metros desde el cordón de mar hacia el mar. El muro ondulado entre el parque y la playa es la línea de piedra del malecón; los bancos en forma de ESQUELETO DE BALLENA, las medialunas de piedra, los árboles con su aro y las pancitas de más allá son piezas que pinta c2d/punta.js.",
+  "acrossScale": 0.85,
+  "_acrossScale": "el parque real mide 20-36 m de fondo y el malecón del juego ~19: todo lo de través (`vM`) se multiplica por esto para que el parque quepa en el frente del juego sin cambiar lo largo, que es geo.",
+  "easeM": 20.0,
+  "_easeM": "cuántos metros tarda el borde en pasar del ancho del malecón vecino al del parque, en sus dos extremos.",
+  "wall": [
+   [
+    177.42,
+    10.75
+   ],
+   [
+    174.94,
+    12.82
+   ],
+   [
+    166.67,
+    17.78
+   ],
+   [
+    162.53,
+    21.51
+   ],
+   [
+    158.4,
+    24.81
+   ],
+   [
+    156.74,
+    25.64
+   ],
+   [
+    153.43,
+    24.81
+   ],
+   [
+    150.95,
+    22.33
+   ],
+   [
+    148.47,
+    19.85
+   ],
+   [
+    145.99,
+    19.02
+   ],
+   [
+    141.85,
+    19.85
+   ],
+   [
+    137.72,
+    20.68
+   ],
+   [
+    133.58,
+    21.09
+   ],
+   [
+    129.45,
+    23.57
+   ],
+   [
+    126.96,
+    24.81
+   ],
+   [
+    123.66,
+    25.23
+   ],
+   [
+    117.04,
+    24.4
+   ],
+   [
+    112.9,
+    24.23
+   ],
+   [
+    108.77,
+    24.4
+   ],
+   [
+    104.63,
+    24.81
+   ],
+   [
+    100.5,
+    25.64
+   ],
+   [
+    96.36,
+    26.47
+   ],
+   [
+    92.22,
+    28.12
+   ],
+   [
+    87.26,
+    29.36
+   ],
+   [
+    82.3,
+    29.36
+   ],
+   [
+    75.68,
+    28.95
+   ],
+   [
+    67.41,
+    28.78
+   ],
+   [
+    59.14,
+    29.36
+   ],
+   [
+    50.87,
+    31.43
+   ],
+   [
+    46.73,
+    33.5
+   ],
+   [
+    42.6,
+    35.15
+   ],
+   [
+    37.63,
+    34.33
+   ],
+   [
+    34.33,
+    34.33
+   ],
+   [
+    30.19,
+    35.57
+   ],
+   [
+    26.05,
+    36.39
+   ],
+   [
+    21.92,
+    36.39
+   ],
+   [
+    17.78,
+    35.98
+   ],
+   [
+    13.65,
+    35.57
+   ],
+   [
+    9.51,
+    35.98
+   ],
+   [
+    5.79,
+    36.39
+   ]
+  ],
+  "whales": [
+   {
+    "id": "ballena_norte",
+    "name": "Ballena norte (S larga)",
+    "spine": [
+     [
+      141.85,
+      11.58
+     ],
+     [
+      135.24,
+      12.41
+     ],
+     [
+      131.93,
+      9.93
+     ],
+     [
+      128.62,
+      8.68
+     ],
+     [
+      125.31,
+      9.1
+     ],
+     [
+      122.0,
+      10.34
+     ],
+     [
+      118.69,
+      12.41
+     ],
+     [
+      115.38,
+      14.89
+     ],
+     [
+      112.08,
+      16.13
+     ],
+     [
+      108.77,
+      15.72
+     ],
+     [
+      105.46,
+      14.06
+     ],
+     [
+      102.15,
+      12.41
+     ],
+     [
+      98.43,
+      11.58
+     ]
+    ]
+   },
+   {
+    "id": "ballena_arco",
+    "name": "Ballena del medio (arco)",
+    "spine": [
+     [
+      92.22,
+      8.27
+     ],
+     [
+      89.74,
+      9.93
+     ],
+     [
+      87.26,
+      13.23
+     ],
+     [
+      86.27,
+      16.96
+     ],
+     [
+      87.92,
+      19.85
+     ],
+     [
+      90.57,
+      20.84
+     ]
+    ]
+   },
+   {
+    "id": "ballena_sur",
+    "name": "Ballena sur (S larga)",
+    "spine": [
+     [
+      71.55,
+      20.26
+     ],
+     [
+      67.41,
+      19.85
+     ],
+     [
+      63.28,
+      18.61
+     ],
+     [
+      59.14,
+      17.37
+     ],
+     [
+      55.0,
+      17.78
+     ],
+     [
+      50.87,
+      19.02
+     ],
+     [
+      46.73,
+      21.51
+     ],
+     [
+      42.6,
+      23.16
+     ],
+     [
+      38.46,
+      23.99
+     ],
+     [
+      34.33,
+      23.57
+     ],
+     [
+      30.19,
+      21.92
+     ],
+     [
+      26.05,
+      20.68
+     ],
+     [
+      21.92,
+      20.68
+     ],
+     [
+      17.78,
+      22.75
+     ],
+     [
+      14.06,
+      25.64
+     ]
+    ]
+   }
+  ],
+  "whale": {
+   "ribM": 4.0,
+   "ribEveryM": 0.9,
+   "_whale": "las costillas salen del espinazo hacia la calle, como un esqueleto de ballena tendido"
+  },
+  "circles": [
+   {
+    "id": "aro_piedras",
+    "kind": "stones",
+    "at": [
+     110.42,
+     7.86
+    ],
+    "rM": 3.72
+   },
+   {
+    "id": "arbol_norte",
+    "kind": "tree-ring",
+    "at": [
+     78.99,
+     9.1
+    ],
+    "rM": 4.96
+   },
+   {
+    "id": "arbol_sur",
+    "kind": "tree-ring",
+    "at": [
+     38.05,
+     8.68
+    ],
+    "rM": 6.62
+   },
+   {
+    "id": "piedra_norte",
+    "kind": "boulder",
+    "at": [
+     173.7,
+     9.26
+    ],
+    "rM": 2.15
+   }
+  ],
+  "arcs": [
+   {
+    "id": "medialuna_1",
+    "at": [
+     95.12,
+     18.61
+    ],
+    "rM": 2.65,
+    "fromDeg": -70,
+    "toDeg": 70
+   },
+   {
+    "id": "medialuna_2",
+    "at": [
+     52.11,
+     21.67
+    ],
+    "rM": 3.31,
+    "fromDeg": -80,
+    "toDeg": 80,
+    "planter": true
+   },
+   {
+    "id": "medialuna_3",
+    "at": [
+     24.81,
+     26.47
+    ],
+    "rM": 2.98,
+    "fromDeg": -70,
+    "toDeg": 70
+   }
+  ],
+  "benches": [
+   {
+    "id": "banca_oscura",
+    "kind": "pergola",
+    "spine": [
+     [
+      161.29,
+      7.86
+     ],
+     [
+      158.4,
+      4.96
+     ],
+     [
+      155.09,
+      3.72
+     ],
+     [
+      151.78,
+      4.55
+     ],
+     [
+      149.71,
+      6.62
+     ]
+    ],
+    "wM": 2.15
+   },
+   {
+    "id": "banca_clara",
+    "kind": "bench",
+    "spine": [
+     [
+      160.88,
+      19.44
+     ],
+     [
+      158.4,
+      17.37
+     ],
+     [
+      155.91,
+      16.54
+     ],
+     [
+      153.43,
+      16.96
+     ],
+     [
+      150.95,
+      18.86
+     ]
+    ],
+    "wM": 0.99
+   }
+  ],
+  "plaza": {
+   "at": [
+    156.74,
+    21.09
+   ],
+   "rM": 4.14
+  },
+  "trees": [
+   [
+    158.4,
+    10.75
+   ],
+   [
+    153.43,
+    9.93
+   ],
+   [
+    97.19,
+    14.06
+   ],
+   [
+    57.49,
+    28.95
+   ]
+  ],
+  "pancitas": {
+   "anchorLL": [
+    9.9759179,
+    -84.8290347
+   ],
+   "_anchor": "el nodo OSM 11446667649, Parque del Aeropuerto de los Pensionados; su pancita está `anchorBackM` antes, hacia el muelle (medido en la captura a 20 m).",
+   "anchorBackM": 19.5,
+   "lens": {
+    "lengthM": 20.0,
+    "outM": 8.5
+   },
+   "parking": {
+    "lengthM": 41.0,
+    "outM": 14.0,
+    "fanRM": 7.0,
+    "stalls": 7
+   },
+   "items": [
+    {
+     "id": "pancita_pensionados",
+     "fromPensionadosM": 0,
+     "kind": "lens"
+    },
+    {
+     "id": "pancita_biologia",
+     "fromPensionadosM": 51.6,
+     "kind": "lens"
+    },
+    {
+     "id": "pancita_3",
+     "fromPensionadosM": 173.2,
+     "kind": "lens"
+    },
+    {
+     "id": "pancita_4",
+     "fromPensionadosM": 231.0,
+     "kind": "lens"
+    },
+    {
+     "id": "pancita_parqueo",
+     "fromPensionadosM": 303.0,
+     "kind": "parking"
+    }
+   ],
+   "_size": "las pancitas van a su TAMAÑO REAL (no se escalan de través como el parque): son piezas sueltas sobre la playa."
+  }
  }
 }

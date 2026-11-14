@@ -170,6 +170,75 @@ function paintFun(f, ppm, t) {
   ctx.restore();
 }
 
+// EL PARQUE DEL MUELLERO. Las piedras son puntos a lo largo de una curva; el
+// esqueleto de ballena, un espinazo con costillas hacia la calle.
+function stonesAlong(pts, step, r, ink) {
+  ctx.fillStyle = ink;
+  let run = step / 2;
+  for (let k = 0; k + 3 < pts.length; k += 2) {
+    const ax = pts[k], ay = pts[k + 1], bx = pts[k + 2], by = pts[k + 3], L = Math.hypot(bx - ax, by - ay);
+    for (let d = run; d < L; d += step) { ctx.beginPath(); ctx.arc(ax + (bx - ax) * d / L, ay + (by - ay) * d / L, r, 0, Math.PI * 2); ctx.fill(); }
+    run = (run - L) % step; if (run < 0) run += step;
+  }
+}
+function arcPts(x, y, r, a0, a1, n = 24) { const out = []; for (let k = 0; k <= n; k++) { const a = a0 + (a1 - a0) * k / n; out.push(x + Math.cos(a) * r, y + Math.sin(a) * r); } return out; }
+function paintMuellero(Q, ppm) {
+  const C = M.muellero, stoneR = C.stoneM * ppm / 2, stoneStep = C.stoneEveryM * ppm;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  if (Q.plaza) { const p = Q.plaza; ctx.fillStyle = C.plaza; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, p.ang - Math.PI / 2, p.ang + Math.PI / 2); ctx.closePath(); ctx.fill(); }
+  for (const c of Q.circles) {
+    if (c.kind === "boulder") { ctx.fillStyle = C.boulder; ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill(); continue; }
+    stonesAlong(arcPts(c.x, c.y, c.r, 0, Math.PI * 2, 40), stoneStep, stoneR, C.stone);
+  }
+  for (const a of Q.arcs) {
+    const a0 = a.ang + a.a0 * RAD, a1 = a.ang + a.a1 * RAD;
+    if (a.planter) { ctx.fillStyle = C.planter; ctx.beginPath(); ctx.arc(a.x, a.y, a.r, a0, a1); ctx.closePath(); ctx.fill(); }
+    stonesAlong(arcPts(a.x, a.y, a.r, a0, a1), stoneStep, stoneR, C.stone);
+  }
+  for (const b of Q.benches) {
+    if (!b._path) b._path = flatPath(b.pts, false);
+    ctx.save(); ctx.translate(2, 3); ctx.strokeStyle = C.shadow; ctx.lineWidth = b.w; ctx.stroke(b._path); ctx.restore();
+    ctx.strokeStyle = b.kind === "pergola" ? C.pergola : C.bench; ctx.lineWidth = b.w; ctx.stroke(b._path);
+  }
+  // los esqueletos de ballena: costillas primero (con su sombra), el espinazo encima
+  for (const w of Q.whales) {
+    if (!w._ribs) {
+      const ribs = [], [sx, sy] = w.toStreet; let run = 0;
+      for (let k = 0; k + 3 < w.pts.length; k += 2) {
+        const ax = w.pts[k], ay = w.pts[k + 1], bx = w.pts[k + 2], by = w.pts[k + 3], L = Math.hypot(bx - ax, by - ay) || 1;
+        let nx = -(by - ay) / L, ny = (bx - ax) / L; if (nx * sx + ny * sy < 0) { nx = -nx; ny = -ny; }
+        for (let d = run; d < L; d += Q.ribEveryPx) { const x = ax + (bx - ax) * d / L, y = ay + (by - ay) * d / L; ribs.push([x, y, x + nx * Q.ribPx, y + ny * Q.ribPx]); }
+        run = (run - L) % Q.ribEveryPx; if (run < 0) run += Q.ribEveryPx;
+      }
+      w._ribs = ribs; w._path = flatPath(w.pts, false);
+    }
+    ctx.lineWidth = C.ribM * ppm;
+    ctx.strokeStyle = C.ribShadow; ctx.beginPath(); for (const [x0, y0, x1, y1] of w._ribs) { ctx.moveTo(x0 + 1.5, y0 + 2); ctx.lineTo(x1 + 1.5, y1 + 2); } ctx.stroke();
+    ctx.strokeStyle = C.rib; ctx.beginPath(); for (const [x0, y0, x1, y1] of w._ribs) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); } ctx.stroke();
+    ctx.strokeStyle = C.shadow; ctx.lineWidth = C.spineM * ppm; ctx.save(); ctx.translate(1.5, 2); ctx.stroke(w._path); ctx.restore();
+    ctx.strokeStyle = C.spine; ctx.stroke(w._path);
+  }
+  // las pancitas: una lente verde con su borde de piedras del lado de la calle; la del parqueo, un abanico rojo y sus cajones
+  for (const q of Q.pancitas) {
+    ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.ang);           // +x: hacia el mar; +y: a lo largo
+    const half = q.len / 2;
+    if (q.kind === "parking") {
+      const R = Math.min(q.fanR, q.out * 0.85);
+      ctx.fillStyle = C.fan; ctx.beginPath(); ctx.arc(0, 0, R, -Math.PI / 2, Math.PI / 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = C.fanLine; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let k = 0; k <= 6; k++) { const a = -Math.PI / 2 + Math.PI * k / 6; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R); }
+      ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, R, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+      ctx.strokeStyle = C.stall; ctx.lineWidth = 1;
+      for (let k = 0; k <= q.stalls; k++) { const y = -half * 0.7 + k * (half * 1.4 / q.stalls); ctx.beginPath(); ctx.moveTo(-q.out * 0.2, y); ctx.lineTo(-q.out * 0.2 - 5.2 * ppm, y); ctx.stroke(); }
+    } else {
+      ctx.fillStyle = C.lens; ctx.beginPath(); ctx.ellipse(q.out * 0.12, 0, q.out * 0.62, half * 0.7, 0, -Math.PI / 2, Math.PI / 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = C.lensEdge; ctx.lineWidth = 1; ctx.stroke();
+      stonesAlong(arcPts(q.out * 0.35, 0, 1, 0, 0, 1).length ? (() => { const o = []; for (let k = 0; k <= 16; k++) { const a = Math.PI / 2 + Math.PI * k / 16; o.push(q.out * 0.12 + Math.cos(a - Math.PI) * q.out * 0.62, Math.sin(a - Math.PI) * half * 0.7); } return o; })() : [], stoneStep, stoneR, C.stone);
+    }
+    ctx.restore();
+  }
+}
+
 // LOS MONUMENTOS, desde arriba y girados con la calle: local +y es hacia el mar.
 function paintMonument(mo, ppm) {
   const K = M.monuments, C = K[mo.kind];
@@ -324,6 +393,7 @@ function drawPunta(view, t = 0) {
   for (const f of P.fun || []) paintFun(f, ppm, t);
   for (const rf of P.roofs || []) paintRoof(rf, ppm);
   for (const mo of P.monuments || []) paintMonument(mo, ppm);
+  if (P.muellero) paintMuellero(P.muellero, ppm);
   // la hora: UN velo sobre todo el suelo del lugar, en un solo relleno para
   // que donde dos figuras se montan no oscurezca dos veces
   // (el deck y el parqueo van DENTRO de otra figura: sumarlos abriría un hueco
@@ -374,7 +444,10 @@ function drawPuntaGates(view, t = 0) {
     ctx.fillStyle = G.board; ctx.fill();
     ctx.strokeStyle = G.trim; ctx.lineWidth = 1.2; ctx.stroke();
     const mx = (ax + bx) / 2, my = (ay + by) / 2 - H + B / 2, stood = upright(mx, my);
-    ctx.font = `${(G.fontM * ppm).toFixed(2)}px '${G.font}', sans-serif`;
+    // el rótulo cabe en su tablero: si el texto es más ancho, la letra se achica
+    let fpx = G.fontM * ppm; ctx.font = `${fpx.toFixed(2)}px '${G.font}', sans-serif`;
+    const room = Math.hypot(bx - ax, by - ay) + 2 * G.overhangM * ppm - 1.2 * ppm, tw = ctx.measureText(gate.text).width;
+    if (tw > room) { fpx *= room / tw; ctx.font = `${fpx.toFixed(2)}px '${G.font}', sans-serif`; }
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = G.ink;
     ctx.fillText(gate.text, stood ? 0 : mx, (stood ? 0 : my) + 0.4);
     ctx.textBaseline = "alphabetic";

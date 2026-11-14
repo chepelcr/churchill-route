@@ -638,9 +638,8 @@ for (const k of CR.kiosks.add || []) {
     const half = (f.deck?.[0] || 155) / 2, rampLen = (f.deck?.[1] || 57) + 12;
     const pc = [st[0] + ux * rampLen / 2, st[1] + uy * rampLen / 2];
     f.berthPose = [Math.round(pc[0] + uy * 9), Math.round(pc[1] - ux * 9), Math.atan2(uy, ux) + Math.PI / 2];   // la receta va de -14 a +32 de través: su centro (9) cae sobre la línea de la rampa
-    const r0 = [st[0], st[1]];
-    f.dockS = Math.round(rampLen + half + 1.5 * ppm);
-    const cen = [r0[0] + ux * f.dockS, r0[1] + uy * f.dockS];
+    // el ferry atraca más allá de la punta de su rampa; la ruta arranca `dockS` antes (el atraque es del registro, no se toca)
+    const dock = f.dockS ?? 35, cen = [st[0] + ux * (rampLen + half + 1.5 * ppm), st[1] + uy * (rampLen + half + 1.5 * ppm)], r0 = [cen[0] - ux * dock, cen[1] - uy * dock];
     manifest.piers = manifest.piers.filter((q) => q.id !== rid);            // la rampa oscura sale
     let rest = []; for (let k = 0; k < f.route.length; k += 2) if (Math.hypot(f.route[k] - f.berth[0], f.route[k + 1] - f.berth[1]) > half * 2) { rest = f.route.slice(k); break; }
     f.route = [Math.round(r0[0]), Math.round(r0[1]), Math.round(cen[0] + ux * half * 2), Math.round(cen[1] + uy * half * 2), ...rest];
@@ -791,7 +790,7 @@ console.log(`[punta-preview] fuera: ${dropped.waters} agua, ${dropped.parcels} p
     let run = MD.treeEveryM * ppm / 2;
     for (let k = 0; k + 3 < one.pts.length; k += 2) {
       const ax = one.pts[k], ay = one.pts[k + 1], bx = one.pts[k + 2], by2 = one.pts[k + 3], L = Math.hypot(bx - ax, by2 - ay);
-      for (let u = 0; u < L; u += ppm) { run += ppm; if (run >= MD.treeEveryM * ppm) { run = 0; const x = Math.round(ax + (bx - ax) * u / L), y = Math.round(ay + (by2 - ay) * u / L), t = tileAt(x, y); if (t) t.trees.push({ x, y, s: MD.treeScale }); } }
+      for (let u = 0; u < L; u += ppm) { run += ppm; if (run >= MD.treeEveryM * ppm) { run = 0; const x = Math.round(ax + (bx - ax) * u / L), y = Math.round(ay + (by2 - ay) * u / L), t = tileAt(x, y); if (t) t.trees.push({ x, y, s: MD.treeScale, line: MD.line }); } }
     }
   }
   console.log(`[punta-preview] camellón: ${merged.length} pares de franjas → una`);
@@ -845,7 +844,9 @@ if (process.argv.includes("--emit")) {
   for (const is of punta.islands || []) fill(is.pts, C.land, S(C.road), "piscina");
   // 6) lo manejable va al final: el patio de la terminal, sus rampas, los muelles y las calles escondidas
   if (punta.yard) fill(punta.yard.pts, C.road, S(), "patio");
-  for (const f of manifest.ferries.filter((q) => q.berthPose)) { const [ax, ay, bx, by2] = f.route, L = Math.hypot(bx - ax, by2 - ay) || 1, len = (f.deck?.[1] || 57) + 12; strip([ax, ay, ax + (bx - ax) / L * len, ay + (by2 - ay) / L * len], 46, C.road, S(), "rampas"); }
+  // la rampa: se reconstruye de la pose de su plataforma (centro corrido 9 px de través, ángulo +90°)
+  for (const f of manifest.ferries.filter((q) => q.berthPose)) { const [px, py, pa] = f.berthPose, a = pa - Math.PI / 2, ux = Math.cos(a), uy = Math.sin(a), len = (f.deck?.[1] || 57) + 12, cx = px - uy * 9, cy = py + ux * 9;
+    strip([cx - ux * len / 2, cy - uy * len / 2, cx + ux * len / 2, cy + uy * len / 2], 46, C.road, S(), "rampas"); }
   for (const id of ["muelle_faro", "muelle_nacional"]) { const p = manifest.piers.find((q) => q.id === id); if (p) strip(p.pts, p.w, C.bridge, S(), "muelles"); }
   for (const k of manifest.kioskPaths.filter((q) => q.hidden)) strip(k.pts, 28, C.road, S(), "calles escondidas");
   for (const [key, t] of all) t.rle = enc(grids.get(key));

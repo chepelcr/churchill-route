@@ -2060,8 +2060,11 @@
  "medians": {
   "_note": "EL CAMELLÓN DEL LEÓN CORTÉS eran dos franjas verdes con una fila de árboles cada una: pasa a ser UNA franja con una sola fila de árboles grandes al centro.",
   "along": "Paseo León Cortés Castro",
-  "treeEveryM": 15.0,
-  "treeScale": 1.75
+  "treeEveryM": 12.0,
+  "treeScale": 1.75,
+  "line": "leon_cortes",
+  "_line": "la etiqueta de plantación (flora.json → plantings) que llevan sus árboles",
+  "_treeEvery": "una sola fila, árboles grandes, cada 12 m: la mitad de los que plantaba la doble fila (tests/test_plantings pide no bajar de la mitad)"
  },
  "muellero": {
   "_note": "EL PARQUE DEL MUELLERO (y de los Cañones), al este del Muelle de Cruceros, trazado sobre la imagen satelital (docs/muellero-satellite-mockup.json). Todo va en el MARCO DE LA CALLE: `uM` = metros a lo largo del Paseo León Cortés desde el eje del muelle, `vM` = metros desde el cordón de mar hacia el mar. El muro ondulado entre el parque y la playa es la línea de piedra del malecón; los bancos en forma de ESQUELETO DE BALLENA, las medialunas de piedra, los árboles con su aro y las pancitas de más allá son piezas que pinta c2d/punta.js.",

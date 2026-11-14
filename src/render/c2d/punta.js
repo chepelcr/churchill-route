@@ -120,23 +120,77 @@ function paintRoof(rf, ppm) {
   ctx.strokeStyle = R.canopyEdge; ctx.lineWidth = 1.6; ctx.stroke(path);
 }
 
+// LAS PIEZAS DEL BALNEARIO, desde arriba: sombrilla, camas de sol, flotador, tobogán, barco.
+function paintFun(f, ppm, t) {
+  const F = M.fun;
+  if (f.kind === "slide") {
+    if (!f._path) f._path = flatPath(f.pts, false);
+    const w = F.slideM * ppm, tw = F.slideTowerM * ppm;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.save(); ctx.translate(3, 4); ctx.strokeStyle = F.shadow; ctx.lineWidth = w; ctx.stroke(f._path); ctx.restore();
+    ctx.strokeStyle = f.color; ctx.lineWidth = w; ctx.stroke(f._path);
+    ctx.strokeStyle = F.slideRail; ctx.lineWidth = w * 0.3; ctx.stroke(f._path);
+    ctx.fillStyle = F.slideTower; ctx.fillRect(f.pts[0] - tw / 2, f.pts[1] - tw / 2, tw, tw);
+    ctx.strokeStyle = f.color; ctx.lineWidth = 2; ctx.strokeRect(f.pts[0] - tw / 2, f.pts[1] - tw / 2, tw, tw);
+    return;
+  }
+  ctx.save(); ctx.translate(f.x, f.y);
+  if (f.kind === "umbrella") {
+    const r = F.umbrellaM * ppm / 2;
+    ctx.fillStyle = F.shadow; ctx.beginPath(); ctx.arc(3, 4, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = F.umbrellaRib; ctx.lineWidth = 1; ctx.beginPath();
+    for (let k = 0; k < F.umbrellaRibs; k++) { const a = k * Math.PI * 2 / F.umbrellaRibs; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.stroke();
+    ctx.fillStyle = F.umbrellaTip; ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, Math.PI * 2); ctx.fill();
+  } else if (f.kind === "loungers") {
+    const [l, w] = F.loungerM.map((m) => m * ppm);
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = F.shadow; ctx.fillRect(side * w * 0.75 - w / 2 + 1.5, -l / 2 + 2, w, l);
+      ctx.fillStyle = F.lounger; ctx.fillRect(side * w * 0.75 - w / 2, -l / 2, w, l);
+      ctx.fillStyle = f.color; ctx.fillRect(side * w * 0.75 - w / 2, -l / 2, w, l * 0.3);
+    }
+  } else if (f.kind === "float") {
+    const r = F.floatM * ppm / 2, bob = F.floatBobM * ppm, ph = f.x * 0.013 + f.y * 0.007;
+    ctx.translate(Math.sin(t * F.floatSpeed + ph) * bob, Math.cos(t * F.floatSpeed * 0.8 + ph) * bob);
+    ctx.strokeStyle = f.color; ctx.lineWidth = r * (1 - F.floatHole) * 1.3;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.7, 0, Math.PI * 2); ctx.stroke();
+  } else if (f.kind === "ship") {
+    const S = F.ship, L = S.lengthM * ppm, B = S.beamM * ppm;
+    ctx.rotate(-0.5);
+    ctx.fillStyle = F.shadow; ctx.beginPath(); ctx.ellipse(3, 4, L / 2, B / 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = S.hull; ctx.beginPath(); ctx.moveTo(L / 2, 0); ctx.quadraticCurveTo(L * 0.2, -B * 0.62, -L / 2, -B * 0.38); ctx.lineTo(-L / 2, B * 0.38); ctx.quadraticCurveTo(L * 0.2, B * 0.62, L / 2, 0); ctx.fill();
+    ctx.fillStyle = S.deck; ctx.beginPath(); ctx.ellipse(-L * 0.04, 0, L * 0.36, B * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    for (const mx of [-L * 0.18, L * 0.12]) {
+      ctx.fillStyle = S.sail; ctx.fillRect(mx - 1.5, -B * 0.52, 3, B * 1.04);
+      ctx.fillStyle = S.mast; ctx.beginPath(); ctx.arc(mx, 0, 2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = S.flag; ctx.fillRect(-L * 0.46, -2.5, 7, 5);
+  }
+  ctx.restore();
+}
+
 // LOS MONUMENTOS, desde arriba y girados con la calle: local +y es hacia el mar.
 function paintMonument(mo, ppm) {
   const K = M.monuments, C = K[mo.kind];
   if (!C) return;
   ctx.save(); ctx.translate(mo.x, mo.y); ctx.rotate(mo.ang);
   if (mo.kind === "cannons") {
-    const L = C.armM * ppm, w = C.armWM * ppm, b = C.barrelM * ppm;
-    ctx.fillStyle = K.shadow; ctx.fillRect(-L + 3, -w / 2 + 4, 2 * L, w); ctx.fillRect(-w / 2 + 3, -L * 0.62 + 4, w, L * 1.24);
-    ctx.fillStyle = C.base; ctx.fillRect(-L, -w / 2, 2 * L, w); ctx.fillRect(-w / 2, -L * 0.62, w, L * 1.24);
-    ctx.strokeStyle = C.baseTrim; ctx.lineWidth = 1; ctx.strokeRect(-L + 2, -w / 2 + 2, 2 * L - 4, w - 4);
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = C.carriage; ctx.fillRect(side * L * 0.34 - w * 0.36, -w * 0.3, w * 0.72, w * 0.6);
-      ctx.strokeStyle = C.barrel; ctx.lineCap = "round"; ctx.lineWidth = 0.75 * ppm;
-      ctx.beginPath(); ctx.moveTo(side * L * 0.14, -w * 0.05); ctx.lineTo(side * (L * 0.14 + b), -w * 0.24); ctx.stroke();
+    // un cuadro con las esquinas a los puntos cardinales; un cañón sobre cada lado, apuntando al subcardinal
+    const h = C.sideM * ppm / 2, b = C.barrelM * ppm;
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = K.shadow; ctx.fillRect(-h + 3, -h + 4, 2 * h, 2 * h);
+    ctx.fillStyle = C.base; ctx.fillRect(-h, -h, 2 * h, 2 * h);
+    ctx.strokeStyle = C.baseTrim; ctx.lineWidth = 1.2; ctx.strokeRect(-h + 2.5, -h + 2.5, 2 * h - 5, 2 * h - 5);
+    for (let k = 0; k < 4; k++) {
+      ctx.save(); ctx.rotate(k * Math.PI / 2);
+      ctx.fillStyle = C.carriage; ctx.fillRect(h * 0.3, -h * 0.26, h * 0.5, h * 0.52);
+      ctx.strokeStyle = C.barrel; ctx.lineCap = "round"; ctx.lineWidth = C.barrelWM * ppm;
+      ctx.beginPath(); ctx.moveTo(h * 0.28, 0); ctx.lineTo(h * 0.28 + b, 0); ctx.stroke();
+      ctx.restore();
     }
-    ctx.fillStyle = C.block; ctx.fillRect(-w * 0.3, -w * 0.3, w * 0.6, w * 0.6);
-    ctx.fillStyle = C.base; ctx.fillRect(-w * 0.2, -w * 0.2, w * 0.4, w * 0.4);
+    ctx.fillStyle = C.block; ctx.fillRect(-h * 0.3, -h * 0.3, h * 0.6, h * 0.6);
+    ctx.fillStyle = C.base; ctx.fillRect(-h * 0.2, -h * 0.2, h * 0.4, h * 0.4);
   } else if (mo.kind === "shell") {
     const R = C.rM * ppm, step = R * 0.42 / C.tiers;
     // las gradas, del lado de la calle; el escenario y la concha, del lado del mar
@@ -155,6 +209,8 @@ function paintMonument(mo, ppm) {
       ctx.strokeStyle = C.rib; ctx.lineWidth = 1.2; ctx.stroke();
     }
   } else if (mo.kind === "letters") {
+    // la plazoleta redonda de adoquín, sobre el malecón
+    if (mo.r) { ctx.beginPath(); ctx.arc(0, 0, mo.r, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill(); ctx.strokeStyle = C.plazaEdge; ctx.lineWidth = 2; ctx.stroke(); }
     const text = mo.text || "", n = text.length, step = C.stepM * ppm, H = C.heightM * ppm, half = (n - 1) * step / 2, sag = step * 1.1;
     // la base curva: un arco bajo de concreto, y cada letra parada sobre él
     ctx.strokeStyle = C.baseEdge; ctx.lineWidth = H * 0.62; ctx.lineCap = "round";
@@ -257,12 +313,12 @@ function drawPunta(view, t = 0) {
     ctx.fillStyle = M.ground.planter; ctx.fill(g._path);
   }
   for (const pr of P.props || []) {
-    if (pr.pts) { ctx.fillStyle = pr.kind === "play-structure" ? POOL.slide : M.props.cabana; ctx.fill(shape(pr)); continue; }
     const s = M.props.cabanaM * ppm;
     ctx.fillStyle = M.props.shadow; ctx.fillRect(pr.x - s / 2 + 2, pr.y - s / 2 + 3, s, s);
     ctx.fillStyle = M.props.cabana; ctx.fillRect(pr.x - s / 2, pr.y - s / 2, s, s);
   }
   // los techos sin paredes y los monumentos van con el suelo, bajo los árboles
+  for (const f of P.fun || []) paintFun(f, ppm, t);
   for (const rf of P.roofs || []) paintRoof(rf, ppm);
   for (const mo of P.monuments || []) paintMonument(mo, ppm);
   // la hora: UN velo sobre todo el suelo del lugar, en un solo relleno para
@@ -280,9 +336,23 @@ function drawPunta(view, t = 0) {
 // LOS ARCOS DE ENTRADA, en alzado y por encima de calles y muelles: el carro pasa
 // por DEBAJO del rótulo, que se endereza contra la cámara como todo texto. Es el
 // mismo dibujo que el cartel de la feria, con su propia tinta.
-function drawPuntaGates(view) {
+function drawPuntaGates(view, t = 0) {
   const P = W.PUNTA;
   if (!P || !P.gates) return;
+  // las banderas del muelle: asta en alzado y el paño ondeando
+  const FL = M.flag, fp = W.PX_PER_M, pole = FL.poleM * fp, [fw, fh] = FL.sizeM.map((m) => m * fp), fsh = sunShadow(FL.poleM);
+  for (const fl of P.flags || []) {
+    if (fl.x < view.x0 - 60 || fl.x > view.x1 + 60 || fl.y < view.y0 - 60 || fl.y > view.y1 + 60) continue;
+    ctx.lineCap = "round"; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = FL.shadow; ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(fl.x + fsh.dx, fl.y + fsh.dy); ctx.stroke();
+    ctx.strokeStyle = FL.pole; ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(fl.x, fl.y - pole); ctx.stroke();
+    const n = FL.stripes.length, sh2 = fh / n, lift = Math.sin(t * 2.2 + fl.y * 0.01) * FL.wave;
+    for (let k = 0; k < n; k++) {
+      ctx.fillStyle = FL.stripes[k];
+      ctx.beginPath(); ctx.moveTo(fl.x, fl.y - pole + k * sh2); ctx.lineTo(fl.x + fw, fl.y - pole + k * sh2 + lift);
+      ctx.lineTo(fl.x + fw, fl.y - pole + (k + 1) * sh2 + lift); ctx.lineTo(fl.x, fl.y - pole + (k + 1) * sh2); ctx.closePath(); ctx.fill();
+    }
+  }
   const G = M.gate, ppm = W.PX_PER_M, H = G.postHeightM * ppm, B = G.boardM * ppm, sh = sunShadow(G.postHeightM);
   for (const gate of P.gates) {
     if (gate.x < view.x0 - 200 || gate.x > view.x1 + 200 || gate.y < view.y0 - 200 || gate.y > view.y1 + 200) continue;

@@ -285,13 +285,14 @@
   "straightFrom": "Paseo León Cortés Castro",
   "_straightFrom": "donde empieza esta calle el Paseo se abre tierra adentro hacia el Muelle de Cruceros y deja una plazoleta con los kioscos. Las franjas NO doblan con ella: siguen derechas, con el rumbo que traían, y la cuña que queda entre la calle y ellas es malecón de baldosa — la plazoleta de los kioscos. Doblar con la calle era lo que plegaba el verde y la playa sobre sí mismos.",
   "greenUntil": "straightFrom",
-  "_greenUntil": "el verde se cierra ANTES de donde empieza el Paseo León Cortés: en el tramo de los kioscos y de ahí en adelante hay sólo malecón y playa."
+  "_greenUntil": "el verde se cierra ANTES de donde empieza el Paseo León Cortés: en el tramo de los kioscos y de ahí en adelante hay sólo malecón y playa.",
+  "plazaFrom": "straightFrom",
+  "_plaza": "donde el verde se cierra, el malecón de baldosa OCUPA su franja: en el tramo de los kioscos mide malecón + verde de ancho, y ahí caben la Concha Acústica, las letras y los Cañones. La línea de la playa no se mueve."
  },
  "cruceros": {
-  "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle: calle y muelle son una sola línea, y la playa pasa por debajo. En la boca va un arco como el de la feria, con el nombre en letras blancas sobre azul. La caseta va a la IZQUIERDA del muelle y sobre el malecón, no en la arena, y sin rótulo: el nombre ya lo dice el arco.",
+  "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle y mide de ancho lo que su arco. En la boca va el arco con el nombre en blanco sobre azul; la caseta azul va a la izquierda, sobre el malecón, y a los dos lados del muelle hay banderas de Costa Rica.",
   "pier": "muelle_nacional",
   "street": "Calle Central",
-  "landmark": "muellecruc",
   "casetaSide": "west",
   "casetaOffM": [
    17.0
@@ -328,7 +329,15 @@
    "along": "Paseo León Cortés Castro",
    "style": "malecon",
    "dropParcel": true,
-   "_union": "este tramo ARRANCA en la calle auxiliar y el muelle, con su ancho entero desde el primer metro — sin cuña ni mezcla — y cierra en curva al final."
+   "_union": "este tramo ARRANCA en la calle auxiliar y el muelle, con su ancho entero desde el primer metro — sin cuña ni mezcla — y cierra en curva al final.",
+   "_end": "en el extremo este el MALECÓN se cierra en curva con su línea de piedra contra la acera; la playa no se cierra: sigue derecha, con su ancho y su color, hasta el final del tramo."
+  },
+  "dropLandmark": "muellecruc",
+  "_caseta": "la estructura blanca sale; la caseta azul del muelle ocupa su sitio.",
+  "flags": {
+   "everyM": 38.0,
+   "firstM": 24.0,
+   "count": 7
   }
  },
  "muelle": {
@@ -1088,32 +1097,6 @@
   ],
   "props": [
    {
-    "id": "pool_play_ship",
-    "kind": "play-structure",
-    "polygonLL": [
-     [
-      9.9770224,
-      -84.85080376
-     ],
-     [
-      9.97703903,
-      -84.85077236
-     ],
-     [
-      9.97698971,
-      -84.85077231
-     ],
-     [
-      9.9769573,
-      -84.85078753
-     ],
-     [
-      9.97698629,
-      -84.85080511
-     ]
-    ]
-   },
-   {
     "id": "toldo_0",
     "kind": "cabana",
     "ll": [
@@ -1145,7 +1128,229 @@
      -84.85041628
     ]
    }
-  ]
+  ],
+  "fun": [
+   {
+    "kind": "loungers",
+    "ll": [
+     9.97711682,
+     -84.85077626
+    ],
+    "color": "#e4572e"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.97708355,
+     -84.85072361
+    ],
+    "color": "#f2a541"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.97698784,
+     -84.85072098
+    ],
+    "color": "#2e86ab"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.97666447,
+     -84.85056895
+    ],
+    "color": "#2e86ab"
+   },
+   {
+    "kind": "loungers",
+    "ll": [
+     9.97660101,
+     -84.8505132
+    ],
+    "color": "#3fa66b"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.97649467,
+     -84.85052762
+    ],
+    "color": "#d1495b"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.97641199,
+     -84.85061326
+    ],
+    "color": "#f6e27f"
+   },
+   {
+    "kind": "loungers",
+    "ll": [
+     9.97638249,
+     -84.85074117
+    ],
+    "color": "#e4572e"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.97643482,
+     -84.85086451
+    ],
+    "color": "#f2a541"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.97656082,
+     -84.850947
+    ],
+    "color": "#2e86ab"
+   },
+   {
+    "kind": "loungers",
+    "ll": [
+     9.97674324,
+     -84.85098441
+    ],
+    "color": "#3fa66b"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.9769116,
+     -84.85096698
+    ],
+    "color": "#d1495b"
+   },
+   {
+    "kind": "umbrella",
+    "ll": [
+     9.97702513,
+     -84.85090362
+    ],
+    "color": "#f6e27f"
+   },
+   {
+    "kind": "loungers",
+    "ll": [
+     9.97710619,
+     -84.85080971
+    ],
+    "color": "#e4572e"
+   },
+   {
+    "kind": "float",
+    "ll": [
+     9.97649445,
+     -84.85064023
+    ],
+    "color": "#e4572e"
+   },
+   {
+    "kind": "float",
+    "ll": [
+     9.97655775,
+     -84.85083177
+    ],
+    "color": "#f2a541"
+   },
+   {
+    "kind": "float",
+    "ll": [
+     9.97655775,
+     -84.85057638
+    ],
+    "color": "#2e86ab"
+   },
+   {
+    "kind": "float",
+    "ll": [
+     9.97662106,
+     -84.85076792
+    ],
+    "color": "#3fa66b"
+   },
+   {
+    "kind": "float",
+    "ll": [
+     9.97674767,
+     -84.85089562
+    ],
+    "color": "#d1495b"
+   },
+   {
+    "kind": "float",
+    "ll": [
+     9.97681098,
+     -84.85083177
+    ],
+    "color": "#f6e27f"
+   },
+   {
+    "kind": "slide",
+    "color": "#e4572e",
+    "pathLL": [
+     [
+      9.97715731,
+      -84.85085359
+     ],
+     [
+      9.97712113,
+      -84.85075326
+     ],
+     [
+      9.97705783,
+      -84.8508171
+     ],
+     [
+      9.97701261,
+      -84.85076238
+     ]
+    ]
+   },
+   {
+    "kind": "slide",
+    "color": "#2e86ab",
+    "pathLL": [
+     [
+      9.97672054,
+      -84.8505399
+     ],
+     [
+      9.97667532,
+      -84.85060375
+     ],
+     [
+      9.9767115,
+      -84.85065847
+     ],
+     [
+      9.97666628,
+      -84.85070408
+     ]
+    ]
+   },
+   {
+    "kind": "ship",
+    "ll": [
+     9.97699452,
+     -84.8507715
+    ],
+    "_note": "el barco pirata de Punta Pirata, en la zona infantil"
+   }
+  ],
+  "_fun": "LO DIVERTIDO DEL BALNEARIO, por piezas como la feria: sombrillas y camas de sol alrededor de la piscina, flotadores que se mecen en el agua, dos toboganes y el barco pirata de la zona infantil. `kind` nombra la pieza; su arte vive en materials.json → punta.fun.",
+  "dropBuildings": [
+   "bldg_vestidores",
+   "bldg_mirador_a",
+   "bldg_mirador_b",
+   "bldg_norte_alero"
+  ],
+  "_dropBuildings": "cajas trazadas de OSM que no aportan: salen. Quedan los dos restaurantes, el edificio de entradas, el toldo, la terraza y la pérgola."
  },
  "faro": {
   "scale": 1.6,
@@ -1201,8 +1406,8 @@
   {
    "id": "bldg_norte",
    "name": "Edificio norte (restaurante, techo blanco largo)",
-   "color": "#f1ede2",
-   "roof": "#e4dfd2",
+   "color": "#f6d9a8",
+   "roof": "#d9694a",
    "polygonLL": [
     [
      9.9772274,
@@ -1367,8 +1572,8 @@
    "id": "bldg_este",
    "name": "Edificio este / Entradas del Balneario (tres techos blancos)",
    "osmId": 897238192,
-   "color": "#f3f0e8",
-   "roof": "#e2ded2",
+   "color": "#cfe8e4",
+   "roof": "#2fa7a0",
    "polygonLL": [
     [
      9.97661571,
@@ -1432,8 +1637,8 @@
    "id": "bldg_punta_pirata",
    "name": "Restaurante Punta Pirata (media luna)",
    "osmId": 395461272,
-   "color": "#f2efe6",
-   "roof": "#55585f",
+   "color": "#fbe9c9",
+   "roof": "#c2463b",
    "polygonLL": [
     [
      9.97626877,
@@ -1810,8 +2015,9 @@
     9.9750399,
     -84.8330002
    ],
-   "_note": "el Parador Fotográfico, a la izquierda del kiosco de churchill: las letras de colores sobre su base curva, del lado del mar para que se lean contra la playa.",
-   "pastRocksM": 8.0
+   "_note": "el Parador Fotográfico: una plazoleta redonda de adoquín rojizo SOBRE el malecón, al este de la Concha, con las letras en arco al centro. Trazado sobre la imagen satelital.",
+   "fromRocksM": 13.0,
+   "plazaRM": 11.5
   },
   {
    "id": "concha_acustica",
@@ -1821,8 +2027,9 @@
     9.9750602,
     -84.8333505
    ],
-   "pastRocksM": 13.0,
-   "_note": "frente al Burger King: las gradas en media luna y la concha verde agua sobre el escenario, del lado del mar."
+   "_note": "en la curva de la calle, frente al Burger King y SOBRE el malecón: las gradas en media luna del lado de la calle (noroeste) y la concha verde agua hacia el sureste. Trazado sobre la imagen satelital.",
+   "fromRocksM": 16.0,
+   "rotDeg": -35
   },
   {
    "id": "canones",
@@ -1832,8 +2039,9 @@
     9.975176,
     -84.8318969
    ],
-   "fromRocksM": 13.0,
-   "_note": "entre el kiosco del vigorón y la Capitanía: la base naranja en cruz, el bloque blanco al centro y los dos cañones negros."
+   "fromRocksM": 15.0,
+   "_note": "entre el kiosco del vigorón y la Capitanía: CUATRO cañones sobre una base cuadrada con las esquinas a los puntos cardinales y cada cañón apuntando a un subcardinal. No gira con la calle.",
+   "compass": true
   }
  ]
 }

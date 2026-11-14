@@ -160,7 +160,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   // La feria del malecón — the rides and DJ Urtech, with the landmarks because
   // that is what they are: things standing on ground somebody else painted.
   drawAttractions(view, t);
-  drawPuntaGates(view);   // el arco del Muelle de Cruceros, por encima de calle y muelle
+  drawPuntaGates(view, t);   // el arco del Muelle de Cruceros, por encima de calle y muelle
   // Landmarks (the bridge has its own drawer)
   for (const lm of W.LANDMARKS) {
     // Area landmarks can span well beyond their anchor (Parque Marino's exact

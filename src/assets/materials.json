@@ -1975,9 +1975,23 @@
     "monuments": {
       "_note": "LOS MONUMENTOS DEL FRENTE, vistos desde arriba. Cañones: la base naranja en cruz, el bloque blanco con tapa naranja y los dos tubos negros sobre sus cureñas blancas. Letras: la base curva de concreto y las letras de colores. Concha: las gradas en media luna, el escenario y los gajos verde agua.",
       "shadow": "rgba(40,34,28,0.25)",
-      "cannons": { "base": "#d9591f", "baseTrim": "#f4efe6", "block": "#f1ede4", "barrel": "#2b2d33", "carriage": "#ece8df", "armM": 7.0, "armWM": 3.4, "barrelM": 6.0 },
-      "letters": { "base": "#c9c4b8", "baseEdge": "#aaa598", "inks": ["#e4572e", "#f2a541", "#2e86ab", "#3fa66b", "#d1495b", "#8e5fb3"], "shade": "rgba(30,26,22,0.55)", "heightM": 5.2, "stepM": 4.1, "font": "Bungee" },
-      "shell": { "tier": "#e3ded2", "tierEdge": "#b9b3a4", "floor": "#7ccfc9", "petal": "#2fa7a0", "petalAlt": "#48bdb4", "rib": "#1c6f6b", "rM": 11.5, "tiers": 4, "petals": 7 }
+      "cannons": { "base": "#d9591f", "baseTrim": "#f4efe6", "block": "#f1ede4", "barrel": "#2b2d33", "carriage": "#ece8df", "sideM": 7.5, "barrelM": 5.2, "barrelWM": 0.8 },
+      "letters": { "base": "#c9c4b8", "baseEdge": "#aaa598", "inks": ["#e4572e", "#f2a541", "#2e86ab", "#3fa66b", "#d1495b", "#8e5fb3"], "shade": "rgba(30,26,22,0.55)", "heightM": 3.6, "stepM": 2.2, "font": "Bungee", "plaza": "#c98f7a", "plazaEdge": "#a8705e" },
+      "shell": { "tier": "#e3ded2", "tierEdge": "#b9b3a4", "floor": "#7ccfc9", "petal": "#2fa7a0", "petalAlt": "#48bdb4", "rib": "#1c6f6b", "rM": 9.0, "tiers": 4, "petals": 7 }
+    },
+    "fun": {
+      "_note": "LAS PIEZAS DEL BALNEARIO (`balneario.fun` en punta.json), vistas desde arriba. El color de cada sombrilla, flotador y tobogán viene del mundo; acá la forma.",
+      "umbrellaM": 3.4, "umbrellaRibs": 8, "umbrellaRib": "rgba(255,255,255,0.55)", "umbrellaTip": "#ffffff",
+      "loungerM": [2.1, 0.8], "lounger": "#fdfcf8", "loungerPad": "#7fc8d6",
+      "floatM": 1.5, "floatHole": 0.5, "floatBobM": 0.5, "floatSpeed": 0.9,
+      "slideM": 1.7, "slideRail": "rgba(255,255,255,0.75)", "slideTower": "#f4efe6", "slideTowerM": 3.2,
+      "ship": { "hull": "#8a5a36", "deck": "#c99a66", "mast": "#4a3424", "sail": "#f6f1e4", "flag": "#22242a", "lengthM": 9.5, "beamM": 3.4 },
+      "shadow": "rgba(40,34,28,0.24)"
+    },
+    "flag": {
+      "_note": "LA BANDERA DE COSTA RICA, en asta, a los lados del Muelle de Cruceros: azul, blanco, rojo doble, blanco, azul.",
+      "stripes": ["#002b7f", "#ffffff", "#ce1126", "#ce1126", "#ffffff", "#002b7f"],
+      "pole": "#e9edf2", "shadow": "rgba(20,30,50,0.25)", "poleM": 5.0, "sizeM": [3.4, 2.0], "wave": 0.9
     },
     "props": {
       "cabana": "#fbf9f2",

@@ -264,8 +264,9 @@ function drawPierHut(P, hw) {
   const a = Math.atan2(by - ay, bx - ax);
   const ux = Math.cos(a), uy = Math.sin(a);        // along the pier, seaward
   const nx = -Math.sin(a), ny = Math.cos(a);       // off the deck, to one side
-  const cx = ax + nx * (hw + 13) + ux * 18;
-  const cy = ay + ny * (hw + 13) + uy * 18;
+  // `hutAt`: el mundo puede decir dónde va la caseta (la del Muelle de Cruceros va sobre el malecón)
+  const cx = P.hutAt ? P.hutAt[0] : ax + nx * (hw + 13) + ux * 18;
+  const cy = P.hutAt ? P.hutAt[1] : ay + ny * (hw + 13) + uy * 18;
   const vars = resolveAssetFormulaMap(S.pierHut.values, { nx, ny });
   ctx.save();
   ctx.translate(cx, cy);

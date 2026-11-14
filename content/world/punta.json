@@ -287,8 +287,8 @@
   "greenUntil": "straightFrom",
   "_greenUntil": "el verde se cierra ANTES de donde empieza el Paseo León Cortés: en el tramo de los kioscos y de ahí en adelante hay sólo malecón y playa.",
   "plazaFrom": "straightFrom",
-  "_plaza": "donde el verde se cierra, el malecón de baldosa se ensancha SÓLO `plazaExtraM` en el tramo de los kioscos —lo justo para la Concha, las letras y los Cañones— y la playa se arrima con él.",
-  "plazaExtraM": 6.0
+  "_plaza": "donde el verde se cierra, el malecón de baldosa mide `maleconM + plazaExtraM` DESDE EL CORDÓN DE LA CALLE DE VERDAD: donde la calle se curva hacia el León Cortés, el malecón —y la playa con él— se curvan igual, y la Concha Acústica ocupa esa curva.",
+  "plazaExtraM": 3.0
  },
  "cruceros": {
   "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle y mide de ancho lo que su arco. En la boca va el arco con el nombre en blanco sobre azul; la caseta azul va a la izquierda, sobre el malecón, y a los dos lados del muelle hay banderas de Costa Rica.",
@@ -303,7 +303,9 @@
    "replacesBuilding": "MOPT - Capitanía de Puerto Puntarenas",
    "dropParcel": "lote_capitania",
    "_note": "la Capitanía de Puerto estaba dibujada en la cuadra equivocada, sobre una parcela con fondo y borde blanco; va donde OSM tiene el edificio del MOPT, y ese edificio genérico sale.",
-   "southM": 9.0
+   "southM": 9.0,
+   "onRow": false,
+   "_onRow": "la Capitanía NO va en la fila: se queda en su edificio de OSM, cerca de la calle; los kioscos y los Cañones van más al sur, en la línea media del malecón."
   },
   "kiosks": {
    "ids": [
@@ -311,10 +313,19 @@
     "kios_paseo2"
    ],
    "hiddenLanes": true,
-   "_note": "los dos kioscos van sobre el malecón EN FILA CON LA CAPITANÍA: a la misma distancia de la calle, igual que los Cañones. Sus calles auxiliares siguen manejables pero no se pintan.",
-   "alignTo": "capitania",
-   "rowNudgeM": 4.0,
-   "_rowNudge": "el dibujo de la Capitanía se levanta unos metros sobre su ancla; la fila se corre eso hacia la calle para que los cuerpos —no las anclas— queden alineados."
+   "_note": "los kioscos van sobre la línea media del malecón (`cruceros.row`); sus calles auxiliares siguen manejables pero no se pintan.",
+   "add": [
+    {
+     "id": "kios_paseo3",
+     "name": "Papi-carne del Paseo",
+     "product": "papicarne",
+     "between": [
+      "kios_paseo1",
+      "kios_paseo2"
+     ],
+     "_note": "PROPUESTA: un tercer kiosco, de papi-carne, a medio camino entre el de churchill y el del vigorón. Todavía no está en kiosks.json."
+    }
+   ]
   },
   "dropPiers": [
    "bajada_muelle_oeste",
@@ -340,9 +351,12 @@
   },
   "caseta": {
    "column": "capitania",
-   "northM": 6.0,
-   "clearM": 13.0,
-   "_note": "la caseta azul del muelle va en la MISMA COLUMNA que la Capitanía, al sur de ella y un poco más al norte de donde estaba."
+   "southM": 12.0,
+   "_note": "la caseta azul del muelle va en la MISMA COLUMNA que la Capitanía, `southM` al sur de ella, siempre sobre el malecón."
+  },
+  "row": {
+   "_note": "LA FILA DEL MALECÓN: kioscos, Cañones y Capitanía van sobre la línea MEDIA del malecón de baldosa —ni en la acera ni en la arena—, siguiendo su curva.",
+   "shiftM": 0.0
   }
  },
  "muelle": {
@@ -1357,7 +1371,9 @@
   ],
   "_dropBuildings": "cajas trazadas de OSM que no aportan: salen. Quedan los dos restaurantes, el edificio de entradas, el toldo, la terraza y la pérgola.",
   "simple": true,
-  "_simple": "EL BALNEARIO ES SÓLO LA PISCINA: en toda la cuadra no queda ni una estructura —ni las huellas de OSM ni los edificios trazados, ni toldos ni piezas—, sólo el césped, el deck, la piscina con sus zonas, la piscina redonda, la isla y sus palmeras. Lo trazado se conserva en este archivo por si vuelve. El césped cubre la cuadra ENTERA —el contorno de la ensenada vieja, que es la cuadra tal como el build la detectó— y los nombres de los negocios que ya no están (Punta Pirata, sus entradas, el Mirador) salen del mapa."
+  "_simple": "EL BALNEARIO ES SÓLO LA PISCINA: en toda la cuadra no queda ni una estructura —ni las huellas de OSM ni los edificios trazados, ni toldos ni piezas—, sólo el césped, el deck, la piscina con sus zonas, la piscina redonda, la isla y sus palmeras. Lo trazado se conserva en este archivo por si vuelve. El césped cubre la cuadra ENTERA —el contorno de la ensenada vieja, que es la cuadra tal como el build la detectó— y los nombres de los negocios que ya no están (Punta Pirata, sus entradas, el Mirador) salen del mapa.",
+  "lawnDilateM": 12.0,
+  "_lawnDilate": "el césped se extiende hasta debajo de las calles que rodean la cuadra: las calles y las aceras lo tapan, y no queda ninguna franja del suelo viejo entre el césped y el cordón."
  },
  "faro": {
   "scale": 1.6,
@@ -2023,8 +2039,13 @@
     -84.8330002
    ],
    "_note": "el Parador Fotográfico: una plazoleta redonda de adoquín rojizo SOBRE el malecón, al este de la Concha, con las letras en arco al centro. Trazado sobre la imagen satelital.",
-   "fromRocksM": 13.0,
-   "plazaRM": 11.5
+   "onRow": true,
+   "shiftM": -1.0,
+   "ovalM": [
+    13.5,
+    0
+   ],
+   "_oval": "la plazoleta es un ÓVALO tendido a lo largo del malecón: `ovalM[0]` de semieje a lo largo; el de través (0 = automático) es lo que dé el malecón menos un paso a cada lado."
   },
   {
    "id": "concha_acustica",
@@ -2036,9 +2057,12 @@
    ],
    "_note": "en la curva de la calle, frente al Burger King y SOBRE el malecón: las gradas en media luna del lado de la calle (noroeste) y la concha verde agua hacia el sureste. Trazado sobre la imagen satelital.",
    "rotDeg": -35,
-   "fill": true,
    "walkM": 3.0,
-   "_fill": "la Concha llena el malecón de la acera a la piedra y deja sólo `walkM` del lado de la playa para que la gente pase."
+   "_fill": "la Concha tiene su tamaño (`sizeM`, radio) y arranca en el cordón de la calle; el malecón se ABOMBA alrededor de su forma redonda —un arco que sigue la curva de la calle— dejando `walkM` de paso del lado de la playa.",
+   "sizeM": 13.0,
+   "bulge": true,
+   "bulgeSpanX": 2.2,
+   "_bulgeSpan": "el abombe es una CAMPANA suave que abarca `bulgeSpanX` radios a cada lado: el borde del malecón sigue la curva de la calle y rodea la Concha sin esquinas; la orilla del mar no se mueve, la playa se angosta."
   },
   {
    "id": "canones",
@@ -2050,7 +2074,13 @@
    ],
    "_note": "entre el kiosco del vigorón y la Capitanía: CUATRO cañones sobre una base cuadrada con las esquinas a los puntos cardinales y cada cañón apuntando a un subcardinal. No gira con la calle.",
    "compass": true,
-   "alignTo": "capitania"
+   "onRow": true
   }
- ]
+ ],
+ "medians": {
+  "_note": "EL CAMELLÓN DEL LEÓN CORTÉS eran dos franjas verdes con una fila de árboles cada una: pasa a ser UNA franja con una sola fila de árboles grandes al centro.",
+  "along": "Paseo León Cortés Castro",
+  "treeEveryM": 15.0,
+  "treeScale": 1.75
+ }
 }

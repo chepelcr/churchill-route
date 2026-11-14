@@ -488,7 +488,8 @@ export const FERIA_SHAPES = {
       text = food.label; fill = food.fill; bg = food.bg;
     }
     if (!text) return;
-    label(g, 0, (p.dyPx || -1.4) * r, text, fill, bg);
+    // `dxPx`: un juego GIRADO (los chocones, a 90°) pone su letrero de lado; con dx el letrero vuelve a quedar debajo
+    label(g, (p.dxPx ?? 0) * r, (p.dyPx ?? -1.4) * r, text, fill, bg);
   },
 };
 

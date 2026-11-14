@@ -156,6 +156,9 @@ const normal = centre.map((c, i) => {
   return [nx * side, ny * side, (b[0] - a[0]) / L, (b[1] - a[1]) / L];
 });
 const nearestI = ([x, y]) => { let best = 0, bd = Infinity; for (let i = 0; i < N; i++) { const d = Math.hypot(centre[i][0] - x, centre[i][1] - y); if (d < bd) { bd = d; best = i; } } return best; };
+// la calle DE VERDAD, medida desde la guía recta: donde se curva hacia el León Cortés, se va tierra adentro
+const inlandRaw = centre.map((c, i) => { if (i <= endI || i >= eastI) return 0; const q = nearestStreet(c[0], c[1]); return Math.min(0, (q.qx - c[0]) * normal[i][0] + (q.qy - c[1]) * normal[i][1]); });
+const inland = centre.map((_, i) => { let t = 0, n = 0; for (let k = Math.max(0, i - 30); k <= Math.min(N - 1, i + 30); k++) { t += inlandRaw[k]; n++; } return t / n; });
 const tipI = nearestI(xy(ML.widthM.tipAtLL));
 const ease = (u) => (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, u)))) / 2;
 const widthAt = (i) => ppm * (i <= tipI
@@ -189,14 +192,33 @@ const joinK = (i) => ease((i - endI) / JOIN);
 const grow = (i) => ease(Math.min((i - endI) / JOIN, (bendI - i) / END));
 // donde el verde se cierra, el malecón ocupa su franja: la plazoleta de los kioscos y los monumentos
 const plazaK = (i) => (i >= eastI ? 0 : ease((i - (bendI - END)) / END));
-const warmD = (i) => kerbS[i] + PS.maleconM * ppm + PS.plazaExtraM * ppm * plazaK(i);
+// en el tramo de los kioscos el malecón se mide desde el cordón de la calle DE VERDAD: sigue su curva
+const realKerb = (i) => Math.min(0, inland[i]) + centre[i][2];
+const warmD0 = (i) => kerbS[i] + PS.maleconM * ppm + (realKerb(i) - kerbS[i] + PS.plazaExtraM * ppm) * plazaK(i);
+// LA CONCHA: su forma redonda arranca en el cordón y el malecón se abomba alrededor de ella
+const conchaDef = doc.monuments.find((mo) => mo.kind === "shell" && mo.bulge);
+const concha = (() => {
+  if (!conchaDef) return null;
+  const i = nearestI(xy(conchaDef.ll)), R = conchaDef.sizeM * ppm, d = realKerb(i) + ppm + R * 1.04, [x, y] = offset(i, d);
+  return { i, R, x, y, ring: Array.from({ length: 48 }, (_, k) => [x + Math.cos(k / 48 * 2 * Math.PI) * (R * 1.04 + conchaDef.walkM * ppm), y + Math.sin(k / 48 * 2 * Math.PI) * (R * 1.04 + conchaDef.walkM * ppm)]).flat() };
+})();
+// …una campana suave alrededor de la Concha: sin esquinas, y siempre por fuera de su anillo
+const bulge = (() => {
+  if (!concha) return () => 0;
+  const need = reach(concha.i, concha.ring) - warmD0(concha.i), span = (concha.R * 1.04 + conchaDef.walkM * ppm) * conchaDef.bulgeSpanX;
+  return (i) => { if (i >= eastI) return 0; const dd = Math.abs(cum[i] - cum[concha.i]); return dd >= span ? 0 : need * 0.5 * (1 + Math.cos(Math.PI * dd / span)); };
+})();
+const warmD = (i) => { const w = warmD0(i) + bulge(i); return concha && i < eastI && Math.abs(i - concha.i) < 160 ? Math.max(w, reach(i, concha.ring)) : w; };
+// la línea media del malecón: ahí van kioscos, Cañones y Capitanía
+const rowD = (i) => (realKerb(i) + warmD(i)) / 2 + (doc.cruceros.row.shiftM || 0) * ppm;
 // la piedra gris se angosta hasta morir contra el borde del malecón de baldosa…
 const greyOutW = (i) => widthAt(endI) + (warmD(i) - widthAt(endI)) * joinK(i);
 const greyIn = (i) => warmD(i) * joinK(i);
 // …y el verde y la playa nacen a su lado
 // el verde se angosta a nada donde empieza la plazoleta de los kioscos, y la playa se arrima con él
-const greenDW = (i) => Math.max(greyOutW(i), widthAt(endI) + (kerbS[i] + PS.maleconM * ppm - widthAt(endI)) * joinK(i) + PS.greenM * ppm * joinK(i) * (1 - plazaK(i)));
-const sandDW = (i) => greenDW(i) + PS.beachM * ppm;
+const greenDW = (i) => { const g = Math.max(greyOutW(i), widthAt(endI) + (kerbS[i] + PS.maleconM * ppm - widthAt(endI)) * joinK(i) + PS.greenM * ppm * joinK(i)); return g + (greyOutW(i) - g) * plazaK(i); };
+// la orilla del mar NO se abomba con la Concha: la playa se angosta ahí y nunca baja de unos metros
+const sandDW = (i) => Math.max(greenDW(i) - bulge(i) + PS.beachM * ppm, greenDW(i) + 6 * ppm);
 // EL TRAMO DEL PARQUE: el parque es el remate del malecón; al frente, sólo playa.
 // Sus dos líneas arrancan donde terminan las del tramo de los kioscos y se acomodan al parque.
 const PK = doc.cruceros.park;
@@ -236,8 +258,6 @@ const band = [...idx.map((i) => [centre[i][0], centre[i][1]]), ...joinI.map((i) 
 const runs = (test, from, to) => { const out = []; let cur = null; for (let i = from; i <= to; i++) { if (test(i)) { (cur || (cur = [], out.push(cur), cur)).push(i); } else cur = null; } return out; };
 const tongues = runs((i) => spurD[i] > 0, endI + JOIN + 1, N - 1).map((r) => [...r.map((i) => offset(i, centre[i][2] - 2)), ...r.slice().reverse().map((i) => offset(i, spurD[i]))].flat().map(Math.round));
 const strip = (r, d0, d1) => [...r.map((i) => offset(i, d0(i))), ...r.slice().reverse().map((i) => offset(i, d1(i)))].flat().map(Math.round);
-const inlandRaw = centre.map((c, i) => { if (i <= endI || i >= eastI) return 0; const q = nearestStreet(c[0], c[1]); return Math.min(0, (q.qx - c[0]) * normal[i][0] + (q.qy - c[1]) * normal[i][1]); });
-const inland = centre.map((_, i) => { let t = 0, n = 0; for (let k = Math.max(0, i - 10); k <= Math.min(N - 1, i + 10); k++) { t += inlandRaw[k]; n++; } return t / n; });
 const warm = paseoI.length ? strip(paseoI, (i) => inland[i], warmD) : null;
 const green = paseoI.length ? strip(paseoI, (i) => greyOut(i) - 1, greenD) : null;
 // la playa: al frente del verde en el Paseo, y ENTRE lengua y lengua en la piedra
@@ -302,7 +322,7 @@ const riprap = [{ id: "escollera", pts: [...idx.map((i) => offset(i, greyD[i])),
 // ---- manifest.punta: lo que `c2d/punta.js` pinta
 const rot = offset(rotI, (centre[rotI][2] + widthAt(rotI)) / 2).map(Math.round);
 const punta = {
-  grounds: [...(B0.simple ? inletRings.map((pts, k) => ({ id: `balneario_cuadra_${k}`, use: "lawn", pts })) : []), ...B0.grounds.filter((g) => !(B0.simple && g.id === "balneario_grounds")).map((g) => ({ id: g.id, use: g.use, pts: g.use === "parking" ? parking : groundOf(g) }))],
+  grounds: [...(B0.simple ? inletRings.map((pts, k) => ({ id: `balneario_cuadra_${k}`, use: "lawn", pts, dilate: B0.lawnDilateM * ppm })) : []), ...B0.grounds.filter((g) => !(B0.simple && g.id === "balneario_grounds")).map((g) => ({ id: g.id, use: g.use, pts: g.use === "parking" ? parking : groundOf(g) }))],
   pools: B0.pools.map((p) => ({ id: p.id, use: p.use, zone: !!p.zone, pts: rigid(p.polygonLL) })),
   walls: B0.walls.map((l) => ({ id: l.id, pts: rigid(l.polylineLL) })),
   islands: B0.islands.map((g) => ({ id: g.id, use: g.use, pts: rigid(g.polygonLL) })),
@@ -378,22 +398,32 @@ let capAt = null, capRow = null;
   }
   manifest.parcels = manifest.parcels.filter((q) => q.id !== CR.capitania.dropParcel);
   // LA FILA DE LA CAPITANÍA: kioscos y Cañones van a su misma distancia de la calle
-  { const ic = Math.min(eastI - 1, nearestI(capAt)); capRow = along(capAt, ic) - CR.kiosks.rowNudgeM * ppm; }
+  { const ic = Math.min(eastI - 1, nearestI(capAt));
+    if (CR.capitania.onRow) { const [, ry] = offset(ic, rowD(ic)); capAt = [capAt[0], Math.round(ry)]; for (const lm of manifest.landmarks) if (lm.id === CR.capitania.landmark) lm.y = capAt[1]; }
+    capRow = along(capAt, ic); }
   // la caseta, en la columna de la Capitanía: al sur de ella y un poco más al norte de donde estaba
-  cruPier.hutAt = [capAt[0], Math.round(Math.max(capAt[1] + CR.caseta.clearM * ppm, hutY0 - CR.caseta.northM * ppm))];
+  { const ic = Math.min(eastI - 1, nearestI(capAt)), [, rockY] = offset(ic, warmD(ic) - 3 * ppm); cruPier.hutAt = [capAt[0], Math.round(Math.min(rockY, capAt[1] + CR.caseta.southM * ppm))]; }
   if (CR.park.dropParcel) manifest.parcels = manifest.parcels.filter((q) => q.id !== CR.park.parcel);
   manifest.piers = manifest.piers.filter((q) => !CR.dropPiers.includes(q.id));
   // los kioscos suben al malecón de baldosa; su calle auxiliar se queda, sin pintar
   for (const id of CR.kiosks.ids) {
     const lm = manifest.landmarks.find((q) => q.id === id);
     const lane = manifest.kioskPaths.find((k) => Math.hypot(k.pts[0] - lm.x, k.pts[1] - lm.y) < 30 || Math.hypot(k.pts[2] - lm.x, k.pts[3] - lm.y) < 30);
-    const i = Math.min(eastI - 1, nearestI([lm.x, lm.y])), [nx2, ny2] = offset(i, Math.min(capRow, warmD(i) - 5 * ppm)).map(Math.round);
+    const i = Math.min(eastI - 1, nearestI([lm.x, lm.y])), [nx2, ny2] = offset(i, rowD(i)).map(Math.round);
     if (lane) { const k = Math.hypot(lane.pts[0] - lm.x, lane.pts[1] - lm.y) < 30 ? 0 : 2; lane.pts[k] = nx2; lane.pts[k + 1] = ny2; lane.hidden = !!CR.kiosks.hiddenLanes; }
     lm.x = nx2; lm.y = ny2;
   }
 }
 if (B0.simple) manifest.pois = (manifest.pois || []).filter((q) => !(inletRings.some((r) => inside(q.x, q.y, r)) || inside(q.x, q.y, groundsRaw)));
+// los kioscos nuevos: a medio camino entre dos que ya existen, sobre la misma fila
+for (const k of CR.kiosks.add || []) {
+  const [a1, a2] = k.between.map((id) => manifest.landmarks.find((q) => q.id === id));
+  const i = Math.min(eastI - 1, nearestI([(a1.x + a2.x) / 2, (a1.y + a2.y) / 2])), [x, y] = offset(i, rowD(i)).map(Math.round), sp = offset(i, realKerb(i) - ACERA - 12).map(Math.round);
+  manifest.landmarks.push({ id: k.id, name: k.name, x, y, type: "kiosk", district: a1.district, product: k.product, spawn: sp });
+}
 manifest.punta = punta;
+// el tablado de la feria, desde su contorno autorado (la orilla este se corrió)
+{ const at = JSON.parse(readFileSync("content/world/attractions.json", "utf8")).feria, L = manifest.feria.find((q) => q.id === at.id); if (L) { const east = Math.max(...L.polys[0].filter((_, k) => k % 2 === 0)), want = Math.max(...at.outlineLL.map(xy).map((q) => q[0])); L.polys = L.polys.map((p) => p.map((v, k) => (k % 2 === 0 && Math.abs(v - east) < 3 ? want : v))); L.x1 = want; } }
 let neighbours = [];
 
 // ---- el tile parchado: edificios, palmas y árboles van donde van los de todos
@@ -439,8 +469,11 @@ punta.monuments = doc.monuments.map((mo) => {
   const i = Math.min(eastI - 1, nearestI(xy(mo.ll)));
   // la Concha llena el malecón: de la acera de la calle de verdad a la piedra, menos el paso del lado de la playa
   const start = Math.min(0, inland[i]) + centre[i][2], size = mo.fill ? (rockAt(i) - start - mo.walkM * ppm - ppm) / 2.1 : 0;
-  const dd = mo.fill ? start + ppm + size * 1.04 : mo.alignTo ? Math.min(capRow, rockAt(i) - 8 * ppm) : rockAt(i) - mo.fromRocksM * ppm, [x, y] = offset(i, dd).map(Math.round);
-  return { id: mo.id, kind: mo.kind, text: mo.text, x, y, r: (mo.plazaRM || 0) * ppm, size, ang: mo.compass ? 0 : Math.atan2(normal[i][3], normal[i][2]) + (mo.rotDeg || 0) * Math.PI / 180 };
+  const dd = mo.bulge && concha ? null : mo.fill ? start + ppm + size * 1.04 : mo.onRow ? rowD(i) + (mo.shiftM || 0) * ppm : rockAt(i) - mo.fromRocksM * ppm;
+  const [x, y] = dd == null ? [0, 0] : offset(i, dd).map(Math.round);
+  if (mo.bulge && concha) return { id: mo.id, kind: mo.kind, x: Math.round(concha.x), y: Math.round(concha.y), size: concha.R, ang: Math.atan2(normal[concha.i][3], normal[concha.i][2]) + (mo.rotDeg || 0) * Math.PI / 180 };
+  const oval = mo.ovalM ? [mo.ovalM[0] * ppm, mo.ovalM[1] ? mo.ovalM[1] * ppm : (warmD(i) - realKerb(i)) / 2 - 1.5 * ppm] : null;
+  return { id: mo.id, kind: mo.kind, text: mo.text, x, y, r: (mo.plazaRM || 0) * ppm, oval, size, ang: mo.compass ? 0 : Math.atan2(normal[i][3], normal[i][2]) + (mo.rotDeg || 0) * Math.PI / 180 };
 });
 // lo que quede parado SOBRE el malecón de baldosa sale: el malecón es de la gente, los kioscos y los monumentos
 for (const t of tilesByKey.values()) t.buildings = (t.buildings || []).filter((b) => !(warm && inside(...centroid(b.pts), warm)));
@@ -468,6 +501,44 @@ console.log(`[punta-preview] fuera: ${dropped.waters} agua, ${dropped.parcels} p
   `dentro: ${punta.grounds.length} suelos, ${punta.pools.length} piscinas, 1 malecón de ${Math.round(cum[N - 1] / ppm)} m (${Math.round(cum[endI] / ppm)} de piedra) con ${spurs.length} lenguas, ${sands.length} playas (reemplaza ${replaced.length} bandas, recorta ${sandCut} anillos de arena), ${fans.length} abanicos, ${waves.length} olas, ${planted} palmeras en fila, ${benches.length} bancas (de ${oldBenches.length} sueltas), ${punta.monuments.length} monumentos`);
 
 // PW_CHROMIUM: un Chromium ya instalado, cuando el de Playwright no está en la máquina
+// EL CAMELLÓN: dos franjas paralelas se vuelven una, con una fila de árboles grandes al centro
+{
+  const MD = doc.medians;
+  const near = (o, pts, r) => { for (let k = 0; k + 3 < pts.length; k += 2) { const ax = pts[k], ay = pts[k + 1], bx = pts[k + 2], by2 = pts[k + 3], L2 = (bx - ax) ** 2 + (by2 - ay) ** 2 || 1, t2 = Math.max(0, Math.min(1, ((o.x - ax) * (bx - ax) + (o.y - ay) * (by2 - ay)) / L2)); if (Math.hypot(o.x - ax - (bx - ax) * t2, o.y - ay - (by2 - ay) * t2) < r) return true; } return false; };
+  const merged = [];
+  for (const t of tilesByKey.values()) {
+    const ms = t.medians || [], used = new Set(), out = [];
+    for (let a = 0; a < ms.length; a++) {
+      if (used.has(a)) continue;
+      const A = ms[a]; let pair = -1;
+      const rev = (p) => { const q = []; for (let k = p.length - 2; k >= 0; k -= 2) q.push(p[k], p[k + 1]); return q; };
+      let Bp = null;
+      for (let b = a + 1; b < ms.length; b++) {
+        const B = ms[b]; if (used.has(b) || B.pts.length !== A.pts.length) continue;
+        const cand = Math.hypot(B.pts[0] - A.pts[0], B.pts[1] - A.pts[1]) < 40 ? B.pts : (() => { const r = rev(B.pts); return Math.hypot(r[0] - A.pts[0], r[1] - A.pts[1]) < 40 ? r : null; })();
+        if (cand) { pair = b; Bp = cand; break; }
+      }
+      if (pair < 0) { out.push(A); continue; }
+      used.add(pair);
+      const B = ms[pair], pts = A.pts.map((v, k) => Math.round((v + Bp[k]) / 2)), gap = Math.hypot(Bp[0] - A.pts[0], Bp[1] - A.pts[1]);
+      const one = { pts, w: Math.round(A.w + gap) };
+      out.push(one); merged.push({ t, one, A, B });
+    }
+    t.medians = out;
+  }
+  // los árboles de las dos franjas salen; una fila de árboles grandes sobre la del centro
+  const seen = new Set();
+  for (const { A, B } of merged) for (const t of tilesByKey.values()) t.trees = (t.trees || []).filter((o) => !(near(o, A.pts, A.w + 8) || near(o, B.pts, B.w + 8)));
+  for (const { one } of merged) {
+    const key = one.pts.slice(0, 4).join(","); if (seen.has(key)) continue; seen.add(key);
+    let run = MD.treeEveryM * ppm / 2;
+    for (let k = 0; k + 3 < one.pts.length; k += 2) {
+      const ax = one.pts[k], ay = one.pts[k + 1], bx = one.pts[k + 2], by2 = one.pts[k + 3], L = Math.hypot(bx - ax, by2 - ay);
+      for (let u = 0; u < L; u += ppm) { run += ppm; if (run >= MD.treeEveryM * ppm) { run = 0; const x = Math.round(ax + (bx - ax) * u / L), y = Math.round(ay + (by2 - ay) * u / L), t = tileAt(x, y); if (t) t.trees.push({ x, y, s: MD.treeScale }); } }
+    }
+  }
+  console.log(`[punta-preview] camellón: ${merged.length} pares de franjas → una`);
+}
 for (const [key, nb] of frontTiles) neighbours.push([key, nb]);
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1.25 });
@@ -487,8 +558,8 @@ await page.waitForFunction(() => window.Game?.state && window.WORLD2D, null, { t
 await page.waitForTimeout(2500);
 if (!(await page.evaluate(() => !!window.WORLD2D.PUNTA))) { console.error("[punta-preview] el juego no recibió el manifest parchado"); process.exit(1); }
 
-const shot = async (name, weather, x, y, zoom) => {
-  if (process.env.PUNTA_ONLY && !process.env.PUNTA_ONLY.split(",").includes(name)) return null;
+const shot = async (name, weather, x, y, zoom, force = false) => {
+  if (!force && process.env.PUNTA_ONLY && !process.env.PUNTA_ONLY.split(",").includes(name)) return null;
   await page.evaluate(async ({ weather, x, y, zoom }) => {
     const G = window.Game, W = window.WORLD2D, st = G.state;
     G.setAttract(false);
@@ -513,6 +584,18 @@ const shot = async (name, weather, x, y, zoom) => {
 const fan = fans[Math.max(0, fans.length - 4)], wave = waves[Math.min(3, waves.length - 1)];
 const px0 = (faroXY[0] + poolC[0]) / 2 + 60, py0 = (faroXY[1] + poolC[1]) / 2 + 40;
 const whole = await shot("punta", "sunny", px0, py0, 1.55);
+{ const F = manifest.feria[0]; await shot("feria", "sunny", (F.x0 + F.x1) / 2, (F.y0 + F.y1) / 2, 1.5); }
+// EL RECORRIDO, del Faro al Parque Marino: un cuadro cada ~1 100 px de mundo sobre la línea del frente
+if (!process.env.PUNTA_ONLY || process.env.PUNTA_ONLY.includes("recorrido")) {
+  const marino = manifest.landmarks.find((q) => q.id === "parquemar"), stops = [];
+  let acc = 1e9;
+  for (let i = 0; i < N; i++) { if (i > 0 && i !== eastI) acc += Math.hypot(centre[i][0] - centre[i - 1][0], centre[i][1] - centre[i - 1][1]); if (acc >= 1100) { acc = 0; stops.push(offset(i, outerD[i] * 0.5)); } }
+  if (marino) stops.push([marino.x, marino.y]);
+  for (const [k, [x, y]] of stops.entries()) {
+    const name = `recorrido-${String(k + 1).padStart(2, "0")}`;
+    await shot(name, "sunny", x, y, 1.05, true);
+  }
+}
 await shot("faro", "sunny", faroXY[0] + 30, faroXY[1] + 20, 3.2);
 await shot("piscina", "sunny", poolC[0] + 30, poolC[1], 3.4);
 await shot("abanicos", "sunny", fan.x + 40, fan.y, 4.2);

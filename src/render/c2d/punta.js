@@ -210,7 +210,8 @@ function paintMonument(mo, ppm) {
     }
   } else if (mo.kind === "letters") {
     // la plazoleta redonda de adoquín, sobre el malecón
-    if (mo.r) { ctx.beginPath(); ctx.arc(0, 0, mo.r, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill(); ctx.strokeStyle = C.plazaEdge; ctx.lineWidth = 2; ctx.stroke(); }
+    if (mo.oval) { ctx.beginPath(); ctx.ellipse(0, 0, mo.oval[0], mo.oval[1], 0, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill(); ctx.strokeStyle = C.plazaEdge; ctx.lineWidth = 2; ctx.stroke(); }
+    else if (mo.r) { ctx.beginPath(); ctx.arc(0, 0, mo.r, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill(); ctx.strokeStyle = C.plazaEdge; ctx.lineWidth = 2; ctx.stroke(); }
     const text = mo.text || "", n = text.length, step = C.stepM * ppm, H = C.heightM * ppm, half = (n - 1) * step / 2, sag = step * 1.1;
     // la base curva: un arco bajo de concreto, y cada letra parada sobre él
     ctx.strokeStyle = C.baseEdge; ctx.lineWidth = H * 0.62; ctx.lineCap = "round";
@@ -241,8 +242,10 @@ function drawPunta(view, t = 0) {
   for (const line of P.riprap || []) paintRiprap(line, view);
   // el suelo, en el orden en que el mundo lo trae: terreno, deck, malecones…
   for (const g of P.grounds || []) {
-    ctx.fillStyle = g.use === "deck" ? POOL.deck : (M.ground[g.use] || M.ground.park);
-    ctx.fill(shape(g));
+    const ink = g.use === "deck" ? POOL.deck : (M.ground[g.use] || M.ground.park);
+    ctx.fillStyle = ink; ctx.fill(shape(g));
+    // `dilate`: el suelo se mete debajo de las calles que lo rodean (que lo tapan), sin cordón propio
+    if (g.dilate) { ctx.strokeStyle = ink; ctx.lineWidth = g.dilate * 2; ctx.stroke(g._path); continue; }
     ctx.strokeStyle = M.kerb; ctx.lineWidth = 1.5; ctx.stroke(g._path);
   }
   // los dos pisos: recortados a SU malecón, para que nada se salga a la calle

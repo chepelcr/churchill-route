@@ -48,11 +48,11 @@
       ],
       [
         9.97437395,
-        -84.84255908
+        -84.84268459
       ],
       [
         9.97350141,
-        -84.84255908
+        -84.84268459
       ],
       [
         9.97348924,
@@ -121,7 +121,8 @@
     "overSand": true,
     "_overSand": "EL TABLADO SALE A LA PLAYA: dentro del contorno también se entabla la arena, como un muelle que se mete sobre la playa. Sin esta llave el lote sólo toma paseo y sus rendijas estrechas.",
     "overWater": true,
-    "_overWater": "LA AMPLIACIÓN DE LOS JUEGOS SIGUE SOBRE PILOTES: el contorno puede cubrir agua para que las cuatro hileras tengan calles de circulación entre ellas. Nunca entabla calzada."
+    "_overWater": "LA AMPLIACIÓN DE LOS JUEGOS SIGUE SOBRE PILOTES: el contorno puede cubrir agua para que las cuatro hileras tengan calles de circulación entre ellas. Nunca entabla calzada.",
+    "_rightMargin": "el borde este del tablado se corrió 13,8 m hacia adentro: deja junto a los chocones el MISMO paso que abajo."
   },
   "attractions": [
     {

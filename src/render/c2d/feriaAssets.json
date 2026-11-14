@@ -515,7 +515,9 @@
       {
         "shape": "sign",
         "text": "CHOCONES",
-        "dyPx": -0.9,
+        "dxPx": 1.1,
+        "dyPx": 0,
+        "_dxPx": "los chocones van girados 90°: el letrero se corre en x del marco del juego, que en pantalla es HACIA ABAJO",
         "fill": "#0f1720",
         "bg": "#f3c969"
       }

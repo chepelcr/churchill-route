@@ -287,8 +287,9 @@
   "greenUntil": "straightFrom",
   "_greenUntil": "el verde se cierra ANTES de donde empieza el Paseo León Cortés: en el tramo de los kioscos y de ahí en adelante hay sólo malecón y playa.",
   "plazaFrom": "straightFrom",
-  "_plaza": "donde el verde se cierra, el malecón de baldosa mide `maleconM + plazaExtraM` DESDE EL CORDÓN DE LA CALLE DE VERDAD: donde la calle se curva hacia el León Cortés, el malecón —y la playa con él— se curvan igual, y la Concha Acústica ocupa esa curva.",
-  "plazaExtraM": 3.0
+  "_plaza": "donde el verde se cierra, el malecón de baldosa se ensancha `plazaExtraM` en el tramo de los kioscos y sigue DERECHO, paralelo a la guía —sin curvarse con la calle—; la playa se arrima con él.",
+  "plazaExtraM": 4.5,
+  "plazaCurve": false
  },
  "cruceros": {
   "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle y mide de ancho lo que su arco. En la boca va el arco con el nombre en blanco sobre azul; la caseta azul va a la izquierda, sobre el malecón, y a los dos lados del muelle hay banderas de Costa Rica.",
@@ -2058,11 +2059,8 @@
    "_note": "en la curva de la calle, frente al Burger King y SOBRE el malecón: las gradas en media luna del lado de la calle (noroeste) y la concha verde agua hacia el sureste. Trazado sobre la imagen satelital.",
    "rotDeg": -35,
    "walkM": 3.0,
-   "_fill": "la Concha tiene su tamaño (`sizeM`, radio) y arranca en el cordón de la calle; el malecón se ABOMBA alrededor de su forma redonda —un arco que sigue la curva de la calle— dejando `walkM` de paso del lado de la playa.",
-   "sizeM": 13.0,
-   "bulge": true,
-   "bulgeSpanX": 2.2,
-   "_bulgeSpan": "el abombe es una CAMPANA suave que abarca `bulgeSpanX` radios a cada lado: el borde del malecón sigue la curva de la calle y rodea la Concha sin esquinas; la orilla del mar no se mueve, la playa se angosta."
+   "_fill": "la Concha llena el malecón de la acera a la piedra y deja sólo `walkM` del lado de la playa para que la gente pase.",
+   "fill": true
   },
   {
    "id": "canones",

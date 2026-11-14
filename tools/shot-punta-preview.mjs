@@ -194,7 +194,8 @@ const grow = (i) => ease(Math.min((i - endI) / JOIN, (bendI - i) / END));
 const plazaK = (i) => (i >= eastI ? 0 : ease((i - (bendI - END)) / END));
 // en el tramo de los kioscos el malecón se mide desde el cordón de la calle DE VERDAD: sigue su curva
 const realKerb = (i) => Math.min(0, inland[i]) + centre[i][2];
-const warmD0 = (i) => kerbS[i] + PS.maleconM * ppm + (realKerb(i) - kerbS[i] + PS.plazaExtraM * ppm) * plazaK(i);
+// `plazaCurve`: si el malecón se mide desde el cordón de la calle de verdad (y se curva con ella) o sigue derecho
+const warmD0 = (i) => kerbS[i] + PS.maleconM * ppm + ((PS.plazaCurve ? realKerb(i) - kerbS[i] : 0) + PS.plazaExtraM * ppm) * plazaK(i);
 // LA CONCHA: su forma redonda arranca en el cordón y el malecón se abomba alrededor de ella
 const conchaDef = doc.monuments.find((mo) => mo.kind === "shell" && mo.bulge);
 const concha = (() => {
@@ -472,7 +473,8 @@ punta.monuments = doc.monuments.map((mo) => {
   const dd = mo.bulge && concha ? null : mo.fill ? start + ppm + size * 1.04 : mo.onRow ? rowD(i) + (mo.shiftM || 0) * ppm : rockAt(i) - mo.fromRocksM * ppm;
   const [x, y] = dd == null ? [0, 0] : offset(i, dd).map(Math.round);
   if (mo.bulge && concha) return { id: mo.id, kind: mo.kind, x: Math.round(concha.x), y: Math.round(concha.y), size: concha.R, ang: Math.atan2(normal[concha.i][3], normal[concha.i][2]) + (mo.rotDeg || 0) * Math.PI / 180 };
-  const oval = mo.ovalM ? [mo.ovalM[0] * ppm, mo.ovalM[1] ? mo.ovalM[1] * ppm : (warmD(i) - realKerb(i)) / 2 - 1.5 * ppm] : null;
+  // un óvalo TENDIDO: el semieje de través nunca pasa de poco más de la mitad del de a lo largo
+  const oval = mo.ovalM ? [mo.ovalM[0] * ppm, mo.ovalM[1] ? mo.ovalM[1] * ppm : Math.min((warmD(i) - realKerb(i)) / 2 - 1.5 * ppm, mo.ovalM[0] * ppm * 0.55)] : null;
   return { id: mo.id, kind: mo.kind, text: mo.text, x, y, r: (mo.plazaRM || 0) * ppm, oval, size, ang: mo.compass ? 0 : Math.atan2(normal[i][3], normal[i][2]) + (mo.rotDeg || 0) * Math.PI / 180 };
 });
 // lo que quede parado SOBRE el malecón de baldosa sale: el malecón es de la gente, los kioscos y los monumentos

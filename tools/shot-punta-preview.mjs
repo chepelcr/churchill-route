@@ -137,7 +137,7 @@ let bendI = 0, eastI = 0;
     const [ax, ay] = chain[i], [bx, by2] = chain[i + 1], n = Math.max(1, Math.round(Math.hypot(bx - ax, by2 - ay) / ppm));
     for (let k = 0; k < n; k++) {
       const x = ax + (bx - ax) * k / n, y = ay + (by2 - ay) * k / n;
-      if (x > cruPier.pts[0] + cruPier.w / 2 + 6 && x < eastX) centre.push([x, y, kerb]);
+      if (x > cruPier.pts[0] - cruPier.w / 2 + 6 && x < eastX) centre.push([x, y, kerb]);   // arranca DEBAJO del muelle
     }
   }
 }
@@ -194,13 +194,12 @@ const greenDW = (i) => greyOutW(i) + PS.greenM * ppm * grow(i);
 const sandDW = (i) => greenDW(i) + PS.beachM * ppm;
 // EL TRAMO DEL PARQUE: el parque es el remate del malecón; al frente, sólo playa.
 // Sus dos líneas arrancan donde terminan las del tramo de los kioscos y se acomodan al parque.
-const PK = doc.cruceros.park, BLEND = Math.round(PK.blendM), lastW = eastI - 1;
+const PK = doc.cruceros.park;
 const along = (pt, i) => (pt[0] - centre[i][0]) * normal[i][0] + (pt[1] - centre[i][1]) * normal[i][1];
 const parkOut = (() => { const i = eastI + Math.round((N - eastI) / 2); let best = i, bd = Infinity; for (let k = eastI; k < N; k++) { const dd = Math.hypot(centre[k][0] - parkP.cx, centre[k][1] - parkP.cy); if (dd < bd) { bd = dd; best = k; } } return along([parkP.cx, parkP.cy], best) + parkP.hh + 3; })();
-const rock0 = eastI < N ? along(offset(lastW, warmD(lastW)), eastI) : 0, sea0 = eastI < N ? along(offset(lastW, sandDW(lastW)), eastI) : 0;
-const eK = (i) => ease((i - eastI) / BLEND);
-const rockE = (i) => rock0 + (parkOut - rock0) * eK(i);
-const sandE = (i) => { const full = sea0 + (parkOut + PS.beachM * ppm - sea0) * eK(i); return rockE(i) + (full - rockE(i)) * ease((N - 1 - i) / END); };
+// (ancho entero desde el primer metro: la unión con el tramo de los kioscos es un corte derecho)
+const rockE = () => parkOut;
+const sandE = (i) => parkOut + PS.beachM * ppm * ease((N - 1 - i) / END);
 const greyOut = (i) => (i >= eastI ? rockE(i) : greyOutW(i));
 const greenD = (i) => (i >= eastI ? rockE(i) : greenDW(i));
 const sandD = (i) => (i >= eastI ? sandE(i) : sandDW(i));
@@ -382,12 +381,59 @@ let neighbours = [];
 // ---- el tile parchado: edificios, palmas y árboles van donde van los de todos
 tile.buildings = tile.buildings.filter((b) => { const hit = inside(...centroid(b.pts), G); dropped.buildings += hit; return !hit; });
 const isRoof = (b) => b.use === "canopy" || b.use === "pergola";
-for (const b of doc.buildings) tile.buildings.push({ pts: rigid(b.polygonLL), color: b.color, roof: b.roof, wnd: isRoof(b) ? 0 : 1, name: b.name });
+// NINGÚN EDIFICIO SOBRE LA CALLE: el que quede con un vértice dentro del cordón se corre, entero, lo que le falte
+const offStreet = (pts) => {
+  for (let pass = 0; pass < 4; pass++) {
+    let worst = null;
+    for (let i = 0; i < pts.length; i += 2) { const n = nearestStreet(pts[i], pts[i + 1]), lack = n.kerb + 4 - n.d; if (lack > 0 && (!worst || lack > worst.lack)) worst = { lack, ux: (pts[i] - n.qx) / (n.d || 1), uy: (pts[i + 1] - n.qy) / (n.d || 1) }; }
+    if (!worst) break;
+    for (let i = 0; i < pts.length; i += 2) { pts[i] = Math.round(pts[i] + worst.ux * worst.lack); pts[i + 1] = Math.round(pts[i + 1] + worst.uy * worst.lack); }
+  }
+  return pts;
+};
+const roofs = [];
+for (const b of doc.buildings) {
+  const pts = offStreet(rigid(b.polygonLL));
+  if (isRoof(b)) roofs.push({ kind: b.use, pts });            // toldos y pérgola: techos de verdad, los pinta c2d/punta.js
+  else tile.buildings.push({ pts, color: b.color, roof: b.roof, wnd: 1, name: b.name });
+}
+punta.roofs = roofs;
 // lo ya sembrado sobre el suelo nuevo se quita: no se planta dos veces
-const inNewSea = (o) => { const i = nearestI([o.x, o.y]), d = (o.x - centre[i][0]) * normal[i][0] + (o.y - centre[i][1]) * normal[i][1]; return d > outerD[i] - 2 && d < outerD[i] + FIT.oldCoastM * ppm && Math.hypot(o.x - centre[i][0] - normal[i][0] * d, o.y - centre[i][1] - normal[i][1] * d) < 20 * ppm; };
-const onNew = (o) => inNewSea(o) || Math.hypot(o.x - faroXY[0], o.y - faroXY[1]) < plazaR || (seaward(o.x, o.y) && within(o.x, o.y, 30) && !inside(o.x, o.y, band)) || punta.grounds.some((g) => inside(o.x, o.y, g.pts)) || arms.some((a) => inside(o.x, o.y, a.polys[0]));
-tile.palms = tile.palms.filter((o) => !onNew(o));
-tile.trees = tile.trees.filter((o) => !onNew(o));
+// EL MOBILIARIO Y LAS PALMERAS, EN ORDEN. Todo lo que el mundo tenía sembrado del lado
+// del mar de este frente sale (menos los árboles de la acera) y se pone en fila.
+const FU = doc.furniture;
+const rockAt = (i) => (i <= endI ? greyD[i] : greyOut(i));
+const sideOf = (o) => { const i = nearestI([o.x, o.y]), dd = (o.x - centre[i][0]) * normal[i][0] + (o.y - centre[i][1]) * normal[i][1]; return { i, dd, off: Math.hypot(o.x - centre[i][0] - normal[i][0] * dd, o.y - centre[i][1] - normal[i][1] * dd) }; };
+const inFront = (o, from = 0) => { const q = sideOf(o); return q.off < 45 * ppm && q.dd > centre[q.i][2] + from && q.dd < outerD[q.i] + FIT.oldCoastM * ppm; };
+const inNewSea = (o) => { const q = sideOf(o); return q.off < 20 * ppm && q.dd > outerD[q.i] - 2 && q.dd < outerD[q.i] + FIT.oldCoastM * ppm; };
+const tilesByKey = new Map([[`${tc}_${tr}`, tile], ...frontTiles]);
+const tileAt = (x, y) => tilesByKey.get(`${Math.floor(x / tilePx)}_${Math.floor(y / tilePx)}`);
+for (const t of tilesByKey.values()) {
+  t.palms = (t.palms || []).filter((o) => !inFront(o) && Math.hypot(o.x - faroXY[0], o.y - faroXY[1]) > plazaR);
+  t.trees = (t.trees || []).filter((o) => !inFront(o, FU.keepStreetTreesM * ppm));
+}
+// una fila sobre SU línea: `d` dice a qué distancia de la calle, `ok` dónde sí
+const along2 = (stepM, d, ok) => { const out = []; let run = 0, prev = null; for (let i = 0; i < N; i++) { if (i === eastI) prev = null; const pt = offset(i, d(i)); if (prev) run += Math.hypot(pt[0] - prev[0], pt[1] - prev[1]); prev = pt; if (run >= stepM * ppm) { run = 0; if (ok(i)) out.push({ i, x: Math.round(pt[0]), y: Math.round(pt[1]) }); } } return out; };
+const calm = (i) => spurD[i] === 0 && (i < endI || i > endI + JOIN) && N - 1 - i > END && Math.hypot(centre[i][0] - cruPier.pts[0], centre[i][1] - cruPier.pts[1]) > 40 * ppm;
+// LOS MONUMENTOS, sobre el frente: cada uno en su punto, girado con la calle
+punta.monuments = doc.monuments.map((mo) => {
+  const i = Math.min(eastI - 1, nearestI(xy(mo.ll))), dd = mo.pastRocksM != null ? rockAt(i) + mo.pastRocksM * ppm : rockAt(i) - mo.fromRocksM * ppm, [x, y] = offset(i, dd).map(Math.round);
+  return { id: mo.id, kind: mo.kind, text: mo.text, x, y, ang: Math.atan2(normal[i][3], normal[i][2]) };
+});
+for (const t of tilesByKey.values()) t.buildings = (t.buildings || []).filter((b) => { const [bx, by3] = centroid(b.pts); return !(inFront({ x: bx, y: by3 }) && punta.monuments.some((mo) => mo.kind !== "cannons" && Math.hypot(mo.x - bx, mo.y - by3) < FU.clearBuildingsM * ppm)); });
+const nearMonument = (q) => punta.monuments.some((mo) => Math.hypot(mo.x - q.x, mo.y - q.y) < FU.clearMonumentsM * ppm);
+let planted = 0;
+for (const q of along2(FU.palmEveryM, (i) => rockAt(i) + FU.palmPastRocksM * ppm, (i) => calm(i) && i > firstSpurEnd)) {
+  const t = tileAt(q.x, q.y); if (!t || nearMonument(q)) continue;
+  (t.palms || (t.palms = [])).push({ x: q.x, y: q.y, s: 1.0, sway: (q.x * 0.37 + q.y * 0.11) % 6.28 }); planted++;
+}
+const oldBenches = (manifest.signs || []).filter((o) => o.kind === "banca" && inFront(o, -ACERA));
+manifest.signs = (manifest.signs || []).filter((o) => !oldBenches.includes(o) && !(typeof o.x === "number" && inNewSea(o)));
+const benches = along2(FU.benchEveryM, (i) => rockAt(i) - FU.benchFromRocksM * ppm, (i) => calm(i) && rockAt(i) - FU.benchFromRocksM * ppm > centre[i][2] + 2 * ppm);
+for (const q of benches) if (!nearMonument(q)) manifest.signs.push({ x: q.x, y: q.y, kind: "banca", ang: Math.round(Math.atan2(normal[q.i][1], normal[q.i][0]) * 1000) / 1000 });
+// el haz del Faro: sale de la linterna, arriba de la torre
+const towerArt = JSON.parse(readFileSync("src/assets/world-props.json", "utf8")).scenes.faro.parts.find((q) => q.verb === "lighthouse-tower");
+punta.beams = doc.faro.beam ? [{ x: faroXY[0], y: Math.round(faroXY[1] - towerArt.height * towerArt.lean * doc.faro.scale) }] : [];
 const crown = (rM) => Math.max(0.6, Math.min(1.9, rM * ppm / 17));
 const seat = (ll) => { const q = xy(ll); return inside(q[0], q[1], groundsRaw) ? shrink(q) : push(q[0], q[1], false); };
 const faroTree = offset(tipI + Math.round(plazaR / ppm) + 8, centre[tipI][2] + 5 * ppm).map(Math.round);
@@ -395,15 +441,10 @@ for (const p of doc.palms) { const [x, y] = seat(p.ll); tile.palms.push({ x, y, 
 for (const p of doc.trees) { const [x, y] = seat(p.ll); tile.trees.push({ x, y, s: crown(p.rM) }); }
 tile.trees.push({ x: faroTree[0], y: faroTree[1], s: crown(doc.faro.tree.rM) });   // el almendro, a la par del círculo
 console.log(`[punta-preview] fuera: ${dropped.waters} agua, ${dropped.parcels} parcelas, ${dropped.buildings} edificios · ` +
-  `dentro: ${punta.grounds.length} suelos, ${punta.pools.length} piscinas, 1 malecón de ${Math.round(cum[N - 1] / ppm)} m (${Math.round(cum[endI] / ppm)} de piedra) con ${spurs.length} lenguas, ${sands.length} playas (reemplaza ${replaced.length} bandas, recorta ${sandCut} anillos de arena), ${fans.length} abanicos, ${waves.length} olas`);
+  `dentro: ${punta.grounds.length} suelos, ${punta.pools.length} piscinas, 1 malecón de ${Math.round(cum[N - 1] / ppm)} m (${Math.round(cum[endI] / ppm)} de piedra) con ${spurs.length} lenguas, ${sands.length} playas (reemplaza ${replaced.length} bandas, recorta ${sandCut} anillos de arena), ${fans.length} abanicos, ${waves.length} olas, ${planted} palmeras en fila, ${benches.length} bancas (de ${oldBenches.length} sueltas), ${punta.monuments.length} monumentos`);
 
 // PW_CHROMIUM: un Chromium ya instalado, cuando el de Playwright no está en la máquina
-// los tiles del frente sólo pierden lo que quedó sembrado en el mar nuevo
-for (const [key, nb] of frontTiles) {
-  nb.palms = (nb.palms || []).filter((o) => !inNewSea(o)); nb.trees = (nb.trees || []).filter((o) => !inNewSea(o));
-  neighbours.push([key, nb]);
-}
-if (Array.isArray(manifest.signs)) manifest.signs = manifest.signs.filter((o) => !(typeof o.x === "number" && inNewSea(o)));
+for (const [key, nb] of frontTiles) neighbours.push([key, nb]);
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1.25 });
 const errors = [];
@@ -459,6 +500,8 @@ await shot("cruceros", "sunny", cruPier.pts[0] - 60, cruPier.pts[1] - 10, 1.3);
 await shot("parque", "sunny", (cruPier.pts[0] + eastX) / 2, centre[Math.round((eastI + N) / 2)][1] + 100, 0.85);
 await shot("kioscos", "sunny", centre[bendI][0] + 60, centre[bendI][1] + 60, 1.2);
 await shot("noche", "night", px0, py0, 1.55);
+await shot("faro-noche", "night", faroXY[0] + 30, faroXY[1] + 40, 2.2);
+await shot("monumentos", "sunny", (punta.monuments[0].x + punta.monuments[2].x) / 2, punta.monuments[0].y + 10, 1.75);
 if (whole) copyFileSync(whole, "docs/punta-space-mockup.png");
 await browser.close();
 if (errors.length) { console.error(`[punta-preview] errores de página: ${errors.join(" | ")}`); process.exit(1); }

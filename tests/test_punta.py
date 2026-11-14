@@ -45,8 +45,8 @@ class PuntaRegistryTests(unittest.TestCase):
         pairs = list(lls(self.doc))
         self.assertGreater(len(pairs), 200)
         for lat, lon in pairs:
-            self.assertTrue(9.9735 < lat < 9.979 and -84.853 < lon < -84.847,
-                            f"[{lat}, {lon}] no cae en La Punta — ¿píxeles, o lon/lat al revés?")
+            self.assertTrue(9.9735 < lat < 9.979 and -84.853 < lon < -84.82,
+                            f"[{lat}, {lon}] no cae en el frente de La Punta al Muelle de Cruceros — ¿píxeles, o lon/lat al revés?")
 
     def test_every_use_has_a_material(self):
         punta = self.mat["punta"]

@@ -56,32 +56,31 @@ const FAMILY = Object.freeze({
     }
   },
 
+  // EL FARO SE VE DESDE ARRIBA, como todo lo construido en este mundo: la torre es
+  // un cilindro que se angosta, tendido hacia el norte por su altura, y sus franjas
+  // son anillos. Era un alzado plano —una torre de perfil parada sobre un mapa—,
+  // que es la única cosa del juego que se dibujaba así.
   "lighthouse-tower"(g, part, frame) {
-    const p = part;
+    const p = part, H = Number(p.height) * Number(p.lean), R0 = Number(p.baseHalf), R1 = Number(p.topHalf);
     g.fillStyle = frame.color(p.shadow);
-    g.beginPath(); g.ellipse(Number(p.shadowDx), Number(p.shadowDy),
-      Number(p.shadowRx), Number(p.shadowRy), 0, 0, TAU); g.fill();
-    const tower = new Path2D();
-    tower.moveTo(-Number(p.baseHalf), Number(p.foot));
-    tower.lineTo(-Number(p.topHalf), -Number(p.height));
-    tower.lineTo(Number(p.topHalf), -Number(p.height));
-    tower.lineTo(Number(p.baseHalf), Number(p.foot));
-    tower.closePath();
-    g.fillStyle = frame.color(p.body); g.fill(tower);
-    g.save(); g.clip(tower);
-    g.fillStyle = frame.color(p.band);
-    for (let i = 0; i < Number(p.bands); i++) {
-      g.fillRect(-Number(p.baseHalf) - 1, -Number(p.bandTop) + i * Number(p.bandGap),
-        Number(p.baseHalf) * 2 + 2, Number(p.bandH));
+    g.beginPath(); g.ellipse(Number(p.shadowDx), Number(p.shadowDy), Number(p.shadowRx), Number(p.shadowRy), 0, 0, TAU); g.fill();
+    const steps = Number(p.steps), bands = p.bandsAt || [];
+    for (let k = 0; k <= steps; k++) {
+      const f = k / steps, banded = bands.some(([a, b]) => f >= a && f < b);
+      g.fillStyle = frame.color(banded ? p.band : p.body);
+      g.beginPath(); g.arc(0, -H * f, R0 + (R1 - R0) * f, 0, TAU); g.fill();
     }
-    g.restore();
-    g.strokeStyle = frame.color(p.edge); g.lineWidth = Number(p.edgeWidth); g.stroke(tower);
+    g.strokeStyle = frame.color(p.edge); g.lineWidth = Number(p.edgeWidth);
+    g.beginPath(); g.arc(0, -H, R1, 0, TAU); g.stroke();
+    // la galería con su baranda, la linterna de vidrio y el techo
     g.fillStyle = frame.color(p.gallery);
-    g.fillRect(-Number(p.galleryW) / 2, -Number(p.galleryY), Number(p.galleryW), Number(p.galleryH));
+    g.beginPath(); g.arc(0, -H - Number(p.galleryH), Number(p.galleryW) / 2, 0, TAU); g.fill();
+    g.fillStyle = frame.color(p.body);
+    g.beginPath(); g.arc(0, -H - Number(p.galleryH), Number(p.galleryW) / 2 - Number(p.railW), 0, TAU); g.fill();
     g.fillStyle = frame.color(p.lantern);
-    g.beginPath(); g.arc(0, -Number(p.lanternY), Number(p.lanternR), 0, TAU); g.fill();
+    g.beginPath(); g.arc(0, -H - Number(p.lanternY), Number(p.lanternR), 0, TAU); g.fill();
     g.fillStyle = frame.color(p.gallery);
-    g.fillRect(-Number(p.finialW) / 2, -Number(p.finialY), Number(p.finialW), Number(p.finialH));
+    g.beginPath(); g.arc(0, -H - Number(p.finialY), Number(p.finialW) / 2, 0, TAU); g.fill();
   },
 
   "fountain-water"(g, part, frame) {

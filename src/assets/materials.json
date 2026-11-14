@@ -1953,6 +1953,32 @@
       "fontM": 2.5,
       "font": "JetBrains Mono"
     },
+    "beam": {
+      "_note": "EL HAZ DEL FARO, de noche: dos haces opuestos que giran, anchos y amarillos. Es luz —se suma al cuadro, por encima de la oscuridad— y se desvanece hacia la punta.",
+      "rgb": "255,226,130",
+      "alpha": 0.42,
+      "lengthM": 110,
+      "halfAngleDeg": 10,
+      "turnsPerSec": 0.06,
+      "glowM": 5.5
+    },
+    "roofs": {
+      "_note": "LOS TECHOS SIN PAREDES de La Punta: el toldo tensado (lona clara con sus limatesas al centro) y la pérgola (viguetas sobre el piso). Los edificios con paredes siguen siendo edificios.",
+      "canopy": "#f6f3ea",
+      "canopyRidge": "rgba(150,140,120,0.55)",
+      "canopyEdge": "#cfc8b6",
+      "pergola": "#d9c7a2",
+      "pergolaBeam": "#8a6f4b",
+      "beamEveryM": 1.6,
+      "shadow": "rgba(40,34,28,0.22)"
+    },
+    "monuments": {
+      "_note": "LOS MONUMENTOS DEL FRENTE, vistos desde arriba. Cañones: la base naranja en cruz, el bloque blanco con tapa naranja y los dos tubos negros sobre sus cureñas blancas. Letras: la base curva de concreto y las letras de colores. Concha: las gradas en media luna, el escenario y los gajos verde agua.",
+      "shadow": "rgba(40,34,28,0.25)",
+      "cannons": { "base": "#d9591f", "baseTrim": "#f4efe6", "block": "#f1ede4", "barrel": "#2b2d33", "carriage": "#ece8df", "armM": 7.0, "armWM": 3.4, "barrelM": 6.0 },
+      "letters": { "base": "#c9c4b8", "baseEdge": "#aaa598", "inks": ["#e4572e", "#f2a541", "#2e86ab", "#3fa66b", "#d1495b", "#8e5fb3"], "shade": "rgba(30,26,22,0.55)", "heightM": 5.2, "stepM": 4.1, "font": "Bungee" },
+      "shell": { "tier": "#e3ded2", "tierEdge": "#b9b3a4", "floor": "#7ccfc9", "petal": "#2fa7a0", "petalAlt": "#48bdb4", "rib": "#1c6f6b", "rM": 11.5, "tiers": 4, "petals": 7 }
+    },
     "props": {
       "cabana": "#fbf9f2",
       "cabanaM": 2.6,

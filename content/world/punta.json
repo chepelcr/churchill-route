@@ -273,8 +273,8 @@
   "_along": "la guía de este tramo no se traza: es la línea de centro de estas calles, tal como el mundo las emite, de oeste a este.",
   "until": {
    "pier": "muelle_nacional",
-   "pastM": 4.0,
-   "_note": "el Muelle de Cruceros: el malecón de baldosa y su playa llegan hasta él; la playa pasa por debajo y sigue en el tramo del parque (`cruceros.park`)."
+   "pastM": -3.0,
+   "_note": "el Muelle de Cruceros: el malecón de baldosa y su playa llegan hasta él y cortan DERECHO, como la unión con la explanada; el tramo del parque arranca ahí mismo, debajo del muelle."
   },
   "joinM": 70.0,
   "_joinM": "LA UNIÓN CON LA EXPLANADA no es un corte: a lo largo de estos metros la piedra gris se angosta en un triángulo de lados curvos que muere contra el borde del malecón, mientras el malecón de baldosa, el verde y la playa nacen y crecen a su lado. Las dos secciones quedan cosidas.",
@@ -326,9 +326,9 @@
    "_note": "AL ESTE DEL MUELLE el malecón de baldosa SIGUE: la franja que hoy es el Parque del Muellero —a lo largo del Paseo León Cortés— pasa a ser malecón, con su misma baldosa color arena, y el parque verde sale. Al frente va sólo playa, una franja regular del mismo fondo, con la línea de piedra entre malecón y playa. Reemplaza también la plazoleta de contorno irregular que había ahí.",
    "parcel": "osm_park_270515697",
    "along": "Paseo León Cortés Castro",
-   "blendM": 80.0,
    "style": "malecon",
-   "dropParcel": true
+   "dropParcel": true,
+   "_union": "este tramo ARRANCA en la calle auxiliar y el muelle, con su ancho entero desde el primer metro — sin cuña ni mezcla — y cierra en curva al final."
   }
  },
  "muelle": {
@@ -1162,6 +1162,9 @@
     -84.85109719
    ],
    "rM": 7.01
+  },
+  "beam": {
+   "_note": "de noche el Faro alumbra: dos haces amarillos y anchos que giran y barren la playa. La forma y el color viven en materials.json → punta.beam."
   }
  },
  "buildings": [
@@ -1785,5 +1788,52 @@
   "_oldCoastM": "sólo para el preview: hasta dónde llega la tierra de la plazoleta vieja más allá del borde nuevo, para taparla con agua mientras el build no la devuelve al mar.",
   "interiorScale": 0.82,
   "interiorAbout": "bldg_este"
- }
+ },
+ "furniture": {
+  "_note": "EL MOBILIARIO VA SOBRE EL MALECÓN, no en la arena ni donde cayera. Las bancas que el mundo trae sobre este frente se recogen y se ponen en fila, del lado de la calle de la línea de piedra, mirando al mar. Las palmeras igual: en fila, sobre la arena y pegadas al malecón.",
+  "benchEveryM": 34.0,
+  "benchFromRocksM": 3.2,
+  "palmEveryM": 17.0,
+  "palmPastRocksM": 4.5,
+  "keepStreetTreesM": 7.0,
+  "clearMonumentsM": 24.0,
+  "clearBuildingsM": 30.0,
+  "_clearBuildings": "las huellas genéricas de OSM paradas donde va un monumento salen: el monumento ES ese lugar (la Concha y el Parador Fotográfico venían como cajas)."
+ },
+ "monuments": [
+  {
+   "id": "letras_puntarenas",
+   "kind": "letters",
+   "text": "PUNTARENAS",
+   "name": "Letras de Puntarenas",
+   "ll": [
+    9.9750399,
+    -84.8330002
+   ],
+   "_note": "el Parador Fotográfico, a la izquierda del kiosco de churchill: las letras de colores sobre su base curva, del lado del mar para que se lean contra la playa.",
+   "pastRocksM": 8.0
+  },
+  {
+   "id": "concha_acustica",
+   "kind": "shell",
+   "name": "Anfiteatro La Concha Acústica",
+   "ll": [
+    9.9750602,
+    -84.8333505
+   ],
+   "pastRocksM": 13.0,
+   "_note": "frente al Burger King: las gradas en media luna y la concha verde agua sobre el escenario, del lado del mar."
+  },
+  {
+   "id": "canones",
+   "kind": "cannons",
+   "name": "Los Cañones de Puntarenas",
+   "ll": [
+    9.975176,
+    -84.8318969
+   ],
+   "fromRocksM": 13.0,
+   "_note": "entre el kiosco del vigorón y la Capitanía: la base naranja en cruz, el bloque blanco al centro y los dos cañones negros."
+  }
+ ]
 }

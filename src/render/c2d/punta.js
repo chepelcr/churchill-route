@@ -97,6 +97,80 @@ function paintRiprap(line, view) {
   }
 }
 
+// EL TOLDO Y LA PÉRGOLA: techo, no edificio. El toldo es lona con sus limatesas del
+// borde al centro; la pérgola, viguetas a lo ancho sobre el piso que deja ver.
+function paintRoof(rf, ppm) {
+  const R = M.roofs, path = shape(rf), a = rf._aabb, cx = (a.x0 + a.x1) / 2, cy = (a.y0 + a.y1) / 2;
+  ctx.save(); ctx.translate(3, 4); ctx.fillStyle = R.shadow; ctx.fill(path); ctx.restore();
+  if (rf.kind === "pergola") {
+    ctx.save(); ctx.clip(path);
+    ctx.fillStyle = R.pergola; ctx.fill(path);
+    ctx.strokeStyle = R.pergolaBeam; ctx.lineWidth = 0.35 * ppm;
+    const step = R.beamEveryM * ppm;
+    ctx.beginPath();
+    for (let k = a.x0 + a.y0 - a.y1; k < a.x1; k += step) { ctx.moveTo(k, a.y0); ctx.lineTo(k + (a.y1 - a.y0), a.y1); }
+    ctx.stroke(); ctx.restore();
+    return;
+  }
+  ctx.fillStyle = R.canopy; ctx.fill(path);
+  ctx.strokeStyle = R.canopyRidge; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < rf.pts.length; i += 2) { ctx.moveTo(rf.pts[i], rf.pts[i + 1]); ctx.lineTo(cx, cy); }
+  ctx.stroke();
+  ctx.strokeStyle = R.canopyEdge; ctx.lineWidth = 1.6; ctx.stroke(path);
+}
+
+// LOS MONUMENTOS, desde arriba y girados con la calle: local +y es hacia el mar.
+function paintMonument(mo, ppm) {
+  const K = M.monuments, C = K[mo.kind];
+  if (!C) return;
+  ctx.save(); ctx.translate(mo.x, mo.y); ctx.rotate(mo.ang);
+  if (mo.kind === "cannons") {
+    const L = C.armM * ppm, w = C.armWM * ppm, b = C.barrelM * ppm;
+    ctx.fillStyle = K.shadow; ctx.fillRect(-L + 3, -w / 2 + 4, 2 * L, w); ctx.fillRect(-w / 2 + 3, -L * 0.62 + 4, w, L * 1.24);
+    ctx.fillStyle = C.base; ctx.fillRect(-L, -w / 2, 2 * L, w); ctx.fillRect(-w / 2, -L * 0.62, w, L * 1.24);
+    ctx.strokeStyle = C.baseTrim; ctx.lineWidth = 1; ctx.strokeRect(-L + 2, -w / 2 + 2, 2 * L - 4, w - 4);
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = C.carriage; ctx.fillRect(side * L * 0.34 - w * 0.36, -w * 0.3, w * 0.72, w * 0.6);
+      ctx.strokeStyle = C.barrel; ctx.lineCap = "round"; ctx.lineWidth = 0.75 * ppm;
+      ctx.beginPath(); ctx.moveTo(side * L * 0.14, -w * 0.05); ctx.lineTo(side * (L * 0.14 + b), -w * 0.24); ctx.stroke();
+    }
+    ctx.fillStyle = C.block; ctx.fillRect(-w * 0.3, -w * 0.3, w * 0.6, w * 0.6);
+    ctx.fillStyle = C.base; ctx.fillRect(-w * 0.2, -w * 0.2, w * 0.4, w * 0.4);
+  } else if (mo.kind === "shell") {
+    const R = C.rM * ppm, step = R * 0.42 / C.tiers;
+    // las gradas, del lado de la calle; el escenario y la concha, del lado del mar
+    for (let k = C.tiers; k >= 1; k--) {
+      ctx.beginPath(); ctx.arc(0, 0, R * 0.58 + step * k, Math.PI, 2 * Math.PI); ctx.lineTo(0, 0); ctx.closePath();
+      ctx.fillStyle = C.tier; ctx.fill(); ctx.strokeStyle = C.tierEdge; ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.58, 0, 2 * Math.PI); ctx.fillStyle = C.floor; ctx.fill();
+    ctx.save(); ctx.translate(3, 4); ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI); ctx.closePath(); ctx.fillStyle = K.shadow; ctx.fill(); ctx.restore();
+    for (let k = 0; k < C.petals; k++) {
+      const a0 = Math.PI * k / C.petals, a1 = Math.PI * (k + 1) / C.petals, am = (a0 + a1) / 2;
+      ctx.beginPath(); ctx.moveTo(0, R * 0.12);
+      ctx.quadraticCurveTo(Math.cos(a0) * R * 0.9, Math.sin(a0) * R * 0.9 + R * 0.05, Math.cos(am) * R * 1.04, Math.sin(am) * R * 1.04);
+      ctx.quadraticCurveTo(Math.cos(a1) * R * 0.9, Math.sin(a1) * R * 0.9 + R * 0.05, 0, R * 0.12);
+      ctx.fillStyle = k % 2 ? C.petalAlt : C.petal; ctx.fill();
+      ctx.strokeStyle = C.rib; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+  } else if (mo.kind === "letters") {
+    const text = mo.text || "", n = text.length, step = C.stepM * ppm, H = C.heightM * ppm, half = (n - 1) * step / 2, sag = step * 1.1;
+    // la base curva: un arco bajo de concreto, y cada letra parada sobre él
+    ctx.strokeStyle = C.baseEdge; ctx.lineWidth = H * 0.62; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-half - step * 0.6, -sag * 0.2); ctx.quadraticCurveTo(0, sag, half + step * 0.6, -sag * 0.2); ctx.stroke();
+    ctx.strokeStyle = C.base; ctx.lineWidth = H * 0.5; ctx.stroke();
+    ctx.font = `${H.toFixed(1)}px '${C.font}', sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let k = 0; k < n; k++) {
+      const u = n > 1 ? k / (n - 1) : 0.5, x = -half + k * step, y = (1 - (2 * u - 1) ** 2) * sag * 0.52 - sag * 0.12;
+      ctx.fillStyle = C.shade; ctx.fillText(text[k], x + 1.5, y + 2);
+      ctx.fillStyle = C.inks[k % C.inks.length]; ctx.fillText(text[k], x, y);
+    }
+    ctx.textBaseline = "alphabetic";
+  }
+  ctx.restore();
+}
+
 function drawPunta(view, t = 0) {
   const P = W.PUNTA;
   if (!P || !aabbInView(P, view, 40)) return;
@@ -188,6 +262,9 @@ function drawPunta(view, t = 0) {
     ctx.fillStyle = M.props.shadow; ctx.fillRect(pr.x - s / 2 + 2, pr.y - s / 2 + 3, s, s);
     ctx.fillStyle = M.props.cabana; ctx.fillRect(pr.x - s / 2, pr.y - s / 2, s, s);
   }
+  // los techos sin paredes y los monumentos van con el suelo, bajo los árboles
+  for (const rf of P.roofs || []) paintRoof(rf, ppm);
+  for (const mo of P.monuments || []) paintMonument(mo, ppm);
   // la hora: UN velo sobre todo el suelo del lugar, en un solo relleno para
   // que donde dos figuras se montan no oscurezca dos veces
   // (el deck y el parqueo van DENTRO de otra figura: sumarlos abriría un hueco
@@ -232,4 +309,29 @@ function drawPuntaGates(view) {
   }
 }
 
-export { drawPunta, drawPuntaGates };
+// EL HAZ DEL FARO. Es luz: se pinta en pantalla, DESPUÉS de la oscuridad y sumando
+// —igual que los láseres de la feria—, o quedaría debajo del velo de la noche.
+function drawPuntaNight(view, t, toScreen, zoom, night) {
+  const P = W.PUNTA;
+  if (!P || !P.beams || night <= 0.001) return;
+  const B = M.beam, ppm = W.PX_PER_M, reach = B.lengthM * ppm, half = B.halfAngleDeg * RAD;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const bm of P.beams) {
+    if (bm.x + reach < view.x0 || bm.x - reach > view.x1 || bm.y + reach < view.y0 || bm.y - reach > view.y1) continue;
+    const [sx, sy] = toScreen(bm.x, bm.y), L = reach * zoom, turn = t * B.turnsPerSec * Math.PI * 2;
+    for (const flip of [0, Math.PI]) {
+      const a = turn + flip, grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, L);
+      grad.addColorStop(0, `rgba(${B.rgb},${(B.alpha * night).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(${B.rgb},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.arc(sx, sy, L, a - half, a + half); ctx.closePath(); ctx.fill();
+    }
+    const g = B.glowM * ppm * zoom, glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, g);
+    glow.addColorStop(0, `rgba(${B.rgb},${(0.9 * night).toFixed(3)})`); glow.addColorStop(1, `rgba(${B.rgb},0)`);
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx, sy, g, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+export { drawPunta, drawPuntaGates, drawPuntaNight };

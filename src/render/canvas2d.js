@@ -28,7 +28,7 @@ import { drawBridge, drawFerries, drawPiers } from "./c2d/structures.js";
 import { drawChannel, drawEstero } from "./c2d/estero.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import { drawAttractions, drawFeriaNightEffects } from "./c2d/attractions.js";
-import { drawPuntaGates } from "./c2d/punta.js";
+import { drawPuntaGates, drawPuntaNight } from "./c2d/punta.js";
 import {
   drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawGullFlock, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
@@ -316,6 +316,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     const toScreen = (wx, wy) => worldToScreen(camera, wx, wy);
     drawNightLights(vw, vh, view, C.tint, toScreen, lit);
     drawFeriaNightEffects(view, t, toScreen, camera.zoom);
+    drawPuntaNight(view, t, toScreen, camera.zoom, nightLevel());   // el haz del Faro
   } else {
     ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
   }

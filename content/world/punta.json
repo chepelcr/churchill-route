@@ -2657,7 +2657,9 @@
    ],
    "_abutment": "la BASE de cada rampa es parte del patio: un cuadro que sobresale `baseOutM` del borde, del ancho de la rampa más `abutmentM[1]` por lado, a escuadra con ella; el contorno —y con él la escollera— le da la vuelta, y la rampa arranca sobre la piedra de su frente.",
    "_rocks": "la escollera rodea TODO el patio menos su lado de calle, y empalma con la del tramo norte.",
-   "baseOutM": 10.0
+   "baseOutM": 10.0,
+   "rampInsetM": 5.0,
+   "_rampInset": "cuánto se mete cada rampa dentro de su base: arranca sobre el asfalto, no justo en el borde."
   },
   "endCurveM": 32.0,
   "_endCurve": "la playa se cierra en curva estos metros antes del patio de la terminal",

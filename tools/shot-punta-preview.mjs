@@ -622,7 +622,7 @@ for (const k of CR.kiosks.add || []) {
   for (const [fid, rid] of RAMPS.map((q) => [q[0], q[1], q[2]])) {
     const rname = RAMPS.find((q) => q[0] === fid)[2], d = rampDir(fid, rname), rp = manifest.piers.find((q) => q.id === rid);
     if (!d || !rp) continue;
-    const { f, ux, uy } = d, face = rampFace[fid], st = face ? [face[0] - ux * (ML.riprap.widthM / 2) * ppm, face[1] - uy * (ML.riprap.widthM / 2) * ppm] : exitYard(yard, d.e, ux, uy);   // la rampa arranca sobre la escollera del frente de su base
+    const { f, ux, uy } = d, face = rampFace[fid], st = face ? [face[0] - ux * (ML.riprap.widthM / 2 + (T.rampInsetM || 0)) * ppm, face[1] - uy * (ML.riprap.widthM / 2 + (T.rampInsetM || 0)) * ppm] : exitYard(yard, d.e, ux, uy);   // la rampa arranca sobre la escollera del frente de su base
     // la plataforma gris del atracadero ES la rampa, girada 90° para que su largo vaya a lo largo de la calle:
     // su receta mide `dw + 12` de largo y va centrada, así que su centro va a media rampa del borde del patio
     const half = (f.deck?.[0] || 155) / 2, rampLen = (f.deck?.[1] || 57) + 12;

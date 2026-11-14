@@ -372,7 +372,7 @@ function row(spec, from, to, axisOf) {
 const tangent = (i) => Math.atan2(normal[i][3], normal[i][2]);      // de norte a sur
 const fans = row(ML.fans, 0, tipI, (i) => tangent(i) + Math.PI + ML.fans.leanDeg * Math.PI / 180).map((f) => ({ ...f, r: ML.fans.rM * ppm }));
 const rotI = Math.min(endI, nearestI(xy(ML.rotonda.centerLL)));
-const waves = row(ML.waves, tipI, rotI - Math.round(ML.rotonda.rM), (i) => tangent(i) + ML.waves.leanDeg * Math.PI / 180).map((w) => ({ ...w, len: ML.waves.lenM * ppm }));
+const waves = row(ML.waves, tipI, ML.rotonda.asWave ? rotI + Math.round(ML.rotonda.rM * 2) : rotI - Math.round(ML.rotonda.rM), (i) => tangent(i) + ML.waves.leanDeg * Math.PI / 180).map((w) => ({ ...w, len: ML.waves.lenM * ppm }));
 const floor = [band];
 // la escollera: el borde de mar del brazo norte hasta rodear la lengua del Faro, y cada otra lengua
 // la escollera es UNA línea: el borde de la explanada —lenguas incluidas—, la unión, y de ahí entre el malecón y el verde
@@ -389,7 +389,7 @@ const punta = {
   riprap,
   sands: sands.map((pts) => ({ pts })),
   greens: green ? [{ pts: green, type: PS.green }] : [],
-  rotondas: [{ x: rot[0], y: rot[1], r: ML.rotonda.rM * ppm }],
+  rotondas: ML.rotonda.asWave ? [] : [{ x: rot[0], y: rot[1], r: ML.rotonda.rM * ppm }],
   discs: [{ x: faroXY[0], y: faroXY[1], r: plazaR }],
   fun: B0.simple ? [] : B0.fun.map((f) => (f.pathLL ? { kind: f.kind, color: f.color, pts: rigid(f.pathLL) } : { kind: f.kind, color: f.color, x: shrink(xy(f.ll))[0], y: shrink(xy(f.ll))[1] })),
   props: B0.simple ? [] : B0.props.map((p) => (p.polygonLL ? { kind: p.kind, pts: rigid(p.polygonLL) } : { kind: p.kind, x: shrink(xy(p.ll))[0], y: shrink(xy(p.ll))[1] })),
@@ -665,6 +665,7 @@ if (B0.dropLots) {
   const dropped0 = manifest.parcels.filter((q) => q.id.startsWith(B0.dropLots.parcelPrefix) && re.test(q.name || "")).map((q) => q.id);
   manifest.parcels = manifest.parcels.filter((q) => !(q.id.startsWith(B0.dropLots.parcelPrefix) && re.test(q.name || "")));
   let nb = 0; for (const t of [tile, ...frontTiles.map((q) => q[1])]) { const n0 = (t.buildings || []).length; const gone = new Set(dropped0); t.buildings = (t.buildings || []).filter((b) => !re.test(b.name || "") && !gone.has(b.parcelId)); nb += n0 - t.buildings.length; }
+  console.log(`[punta-preview] olas: ${waves.length}`);
   console.log(`[punta-preview] lotes del Balneario viejo: ${before - manifest.parcels.length} parcelas, ${nb} edificios fuera`);
 }
 manifest.punta = punta;

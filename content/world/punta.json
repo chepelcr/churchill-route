@@ -241,7 +241,7 @@
    "halfExtentM": 9.6
   },
   "waves": {
-   "_note": "OLAS al sur del Faro, UNA sola fila, sólo hasta la rotonda: hojas en S, todas con la misma orientación, más atravesadas que el malecón. El contorno unitario vive en materials.json → punta.wave.",
+   "_note": "OLAS al sur del Faro, UNA sola fila de cuatro, hasta donde estaba la rotonda: hojas en S, todas con la misma orientación, más atravesadas que el malecón. El contorno unitario vive en materials.json → punta.wave.",
    "lenM": 24.0,
    "spacingM": 26.0,
    "leanDeg": -32,
@@ -252,7 +252,9 @@
     9.97579831,
     -84.8507082
    ],
-   "rM": 9.0
+   "rM": 9.0,
+   "asWave": true,
+   "_asWave": "el aro del final se cambia por una cuarta ola, como en la explanada de verdad: la fila de olas llega hasta donde estaba el aro."
   },
   "cove": {
    "beachM": 24.0,

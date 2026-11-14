@@ -301,6 +301,20 @@ function paintMonument(mo, ppm) {
       ctx.fillStyle = C.pillar; ctx.fillRect(-pil / 2, -pil / 2, pil, pil); ctx.strokeStyle = C.pillarEdge; ctx.lineWidth = 1; ctx.strokeRect(-pil / 2, -pil / 2, pil, pil);
       ctx.restore();
     }
+    // la sombra de cada hoja en el piso: el techo está alto, así que cae corrida con el sol
+    const lsh = sunShadow(C.leafHeightM || 5);
+    // un techo alto siempre tira una sombra que se lee: nunca más corta que `leafShadowMinM`
+    { const mag = Math.hypot(lsh.dx, lsh.dy) || 1, min = (C.leafShadowMinM || 1.4) * ppm; if (mag < min) { lsh.dx = (lsh.dx || 0.6) / mag * min; lsh.dy = (lsh.dy || 0.8) / mag * min; } }
+    const ca = Math.cos(-(mo.ang || 0)), sa = Math.sin(-(mo.ang || 0)), sdx = lsh.dx * ca - lsh.dy * sa, sdy = lsh.dx * sa + lsh.dy * ca;   // el sol, en el marco girado de la Concha
+    for (const a of leaves) {
+      ctx.save(); ctx.translate(Math.cos(a) * ringR + sdx, Math.sin(a) * ringR + sdy); ctx.rotate(a + Math.PI / 2);
+      const leaf = new Path2D();
+      leaf.moveTo(0, 0);
+      leaf.bezierCurveTo(Wd, L * 0.16, Wd * 1.05, L * 0.64, 0, L);
+      leaf.bezierCurveTo(-Wd * 1.05, L * 0.64, -Wd, L * 0.16, 0, 0);
+      ctx.globalAlpha = Math.min(1, Math.max(C.leafShadowAlpha || 0.55, lsh.alpha * 1.4)); ctx.fillStyle = K.shadow; ctx.fill(leaf);
+      ctx.restore();
+    }
     for (const a of leaves) {
       ctx.save(); ctx.translate(Math.cos(a) * ringR, Math.sin(a) * ringR); ctx.rotate(a + Math.PI / 2);   // +y local: hacia el centro
       const leaf = new Path2D();

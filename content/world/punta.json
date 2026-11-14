@@ -2546,10 +2546,12 @@
     "outM": 8.5
    },
    "parking": {
-    "lengthM": 41.0,
-    "outM": 14.0,
-    "fanRM": 7.0,
-    "stalls": 7
+    "lengthM": 46.0,
+    "outM": 20.0,
+    "fanRM": 8.5,
+    "stalls": 9,
+    "bayM": 6.0,
+    "_note": "la PANCITA GRANDE del Parque Marino: una media luna de malecón con una bahía de parqueo en batería contra la calle (asfalto y cajones) y, hacia el mar, el abanico rojo."
    },
    "items": [
     {
@@ -2574,11 +2576,62 @@
     },
     {
      "id": "pancita_parqueo",
-     "fromPensionadosM": 303.0,
-     "kind": "parking"
+     "kind": "parking",
+     "atBuilding": "Recepción de Visitantes",
+     "_at": "frente a la entrada del Parque Marino: el edificio de recepción, proyectado sobre la calle."
     }
    ],
    "_size": "las pancitas van a su TAMAÑO REAL (no se escalan de través como el parque): son piezas sueltas sobre la playa."
+  },
+  "_after": "más allá del parque el malecón mide lo que mide el parque en su punta norte (`endWidth`: el muro en su último punto), así que las pancitas salen casi desde la calle."
+ },
+ "seaPatch": {
+  "_note": "el agua que tapa la costa vieja se pinta como el MISMO MAR del golfo (el pintor de mar abierto, recortado), no como un cuerpo de agua interior: así no hay dos mares.",
+  "widthM": 175.0
+ },
+ "norte": {
+  "_note": "DE LA EXPLANADA A LA TERMINAL DE FERRIS, por la Avenida 3. Como en la imagen satelital: la explanada se cierra en curva con su escollera contra una acera angosta, y de ahí sigue la playa —Playa Cocos, Playa Pura Vida, Playa Tiki— ancha al principio y angostándose hasta la terminal. La terminal es un patio de asfalto redondeado con su escollera, las dos rampas de los ferris y dos toldos.",
+  "along": "Avenida 3 Filiberto Sinfontes",
+  "joinM": 28.0,
+  "sidewalkM": 4.0,
+  "untilX": 24470,
+  "_until": "la playa llega hasta aquí (px de mundo: el arranque del patio de la terminal).",
+  "beachM": [
+   [
+    0.0,
+    44.0
+   ],
+   [
+    0.25,
+    49.0
+   ],
+   [
+    0.5,
+    42.0
+   ],
+   [
+    0.72,
+    31.0
+   ],
+   [
+    0.88,
+    19.0
+   ],
+   [
+    1.0,
+    12.0
+   ]
+  ],
+  "_beachM": "fondo de la playa desde el cordón, por fracción del tramo, medido en la captura a 40 m.",
+  "terminal": {
+   "roads": [
+    "Ingreso Ferry Paquera",
+    "Ingreso Ferry Playa Naranjo"
+   ],
+   "padM": 11.0,
+   "tents": 2,
+   "tentM": 8.0,
+   "_note": "el patio es la envolvente de sus dos calles de ingreso y de las rampas, engordada `padM` y redondeada; la escollera va por su borde de mar."
   }
  }
 }

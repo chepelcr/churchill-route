@@ -46,6 +46,7 @@ const bbox = (pts) => {
   return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
 };
 const B0 = doc.balneario, ML = doc.malecon;
+const seaPatch = [];   // el agua que tapa la costa vieja: se pinta como el mar del golfo
 // la ensenada vieja del Balneario ES su cuadra: su contorno es el césped del Balneario sencillo
 const inletRings = (() => { const B = manifest.balneario; if (!B) return []; return manifest.waters.filter((p) => { const xs = p.filter((_, i) => i % 2 === 0), ys = p.filter((_, i) => i % 2 === 1); return Math.min(...xs) >= B.x0 - 60 && Math.max(...xs) <= B.x1 + 60 && Math.min(...ys) >= B.y0 - 60 && Math.max(...ys) <= B.y1 + 60; }); })();
 const raw = (lls) => lls.flatMap(xy);
@@ -59,7 +60,7 @@ const FIT = doc.gameFit, ACERA = manifest.meta.aceraPx, realHalf = FIT.realRoadH
 const cruPier = manifest.piers.find((q) => q.id === doc.paseo.until.pier), untilX = cruPier.pts[0] + doc.paseo.until.pastM * ppm;
 // el frente del este llega hasta pasar la última pancita del Muellero
 const MU = doc.muellero, pancAnchor = xy(MU.pancitas.anchorLL);
-const parkP = manifest.parcels.find((q) => q.id === doc.cruceros.park.parcel), eastX = Math.max(parkP.x1 - 30, pancAnchor[0] + (Math.max(...MU.pancitas.items.map((q) => q.fromPensionadosM)) + 60) * ppm);
+const parkP = manifest.parcels.find((q) => q.id === doc.cruceros.park.parcel), eastX = Math.max(parkP.x1 - 30, pancAnchor[0] + (Math.max(...MU.pancitas.items.map((q) => q.fromPensionadosM || 0)) + 60) * ppm, 32000);
 const frontTiles = [];
 for (let c = tc; c <= Math.floor(eastX / tilePx); c++) for (const r of [tr, tr + 1]) {
   if (c === tc && r === tr) continue;
@@ -242,14 +243,23 @@ const wallUV = MU.wall.slice().sort((a, b) => a[0] - b[0]), wU0 = wallUV[0][0], 
 const wallV = (u) => { for (let k = 0; k + 1 < wallUV.length; k++) { const [u0, v0] = wallUV[k], [u1, v1] = wallUV[k + 1]; if (u >= u0 && u <= u1) return v0 + (v1 - v0) * (u - u0) / ((u1 - u0) || 1); } return null; };
 // las pancitas: medias elipses que salen del borde hacia la playa
 const pancU0 = (() => { let best = eastI, bd = Infinity; for (let i = eastI; i < N; i++) { const dd = Math.hypot(centre[i][0] - pancAnchor[0], centre[i][1] - pancAnchor[1]); if (dd < bd) { bd = dd; best = i; } } return uOf(best) - MU.pancitas.anchorBackM; })();
-const pancitas = MU.pancitas.items.map((q) => ({ ...q, u: pancU0 + q.fromPensionadosM, ...(MU.pancitas[q.kind]) }));
+const buildingAt = (name) => { for (const [, t] of [[0, tile], ...frontTiles]) for (const b of t.buildings || []) if (b.name === name) return centroid(b.pts); return null; };
+let pancitas = MU.pancitas.items.map((q) => {
+  const at = q.atBuilding && buildingAt(q.atBuilding);
+  const u = at ? uOf(Math.max(eastI, nearestI(at))) : pancU0 + q.fromPensionadosM;
+  return { ...q, u, ...(MU.pancitas[q.kind]) };
+});
+for (const pk of pancitas.filter((q) => q.kind === "parking")) for (let k = pancitas.length - 1; k >= 0; k--) { const q = pancitas[k]; if (q.kind !== "parking" && Math.abs(q.u - pk.u) < (q.lengthM + pk.lengthM) / 2 + 6) pancitas.splice(k, 1); }
 const pancOut = (u) => Math.max(0, ...pancitas.map((q) => { const t = (u - q.u) / (q.lengthM / 2); return Math.abs(t) < 1 ? q.outM * Math.sqrt(1 - t * t) : 0; }));
 // el borde del malecón: el muro del parque donde hay parque, el ancho vecino fuera, y una transición suave entre los dos
+// más allá del parque el malecón mide lo que el parque en su punta: las pancitas salen casi desde la calle
+const endV = wallUV[wallUV.length - 1][1];
+const eastBase = (i) => (uOf(i) > wU1 ? centre[i][2] + endV * KX * ppm : rockW);
 const parkEdge = (i) => {
-  const u = uOf(i), base = rockW, wv = wallV(u);
-  if (wv == null) return base + pancOut(u) * ppm;
-  const park = centre[i][2] + wv * KX * ppm, k = Math.min(ease((u - wU0) / MU.easeM), ease((wU1 - u) / MU.easeM));
-  return base + (park - base) * k;
+  const u = uOf(i), wv = wallV(u);
+  if (wv == null) return eastBase(i) + pancOut(u) * ppm;
+  const park = centre[i][2] + wv * KX * ppm, k = ease((u - wU0) / MU.easeM);
+  return rockW + (park - rockW) * k;
 };
 const rockE = (i) => centre[i][2] + (parkEdge(i) - centre[i][2]) * ease((N - 1 - i) / END);
 const sandE = (i) => Math.max(sandW, rockE(i) + 6 * ppm);
@@ -298,7 +308,7 @@ manifest.malecon = manifest.malecon.filter((b) => !replaced.includes(b));
 manifest.plazas = (manifest.plazas || []).filter((p) => p[4] !== ML.style);
 if (warm) manifest.malecon.push({ polys: [warm], ang: replaced.find((b) => !b.style)?.ang ?? old.ang, ...bbox(warm), id: "punta_paseo" });
 if (warmE) manifest.malecon.push({ polys: [warmE], ang: replaced.find((b) => !b.style)?.ang ?? old.ang, ...bbox(warmE), id: "punta_parque" });
-manifest.malecon.push({ polys: [band], ang: old.ang, ...bbox(band), style: ML.style, id: "punta" });
+manifest.malecon.push({ polys: [band], ang: old.ang, ...bbox(band), style: ML.style, kerb: false, id: "punta" });   // sin cordón: su borde de mar es la escollera y su extremo norte sigue en la acera
 for (const [k, tg] of tongues.entries()) manifest.malecon.push({ polys: [tg], ang: old.ang, ...bbox(tg), style: ML.style, id: `punta_lengua_${k}` });
 // la arena vieja de este tramo: los anillos que caen enteros se van; al que sigue
 // hacia el este se le quitan los vértices de acá (un corte recto: es un preview)
@@ -393,7 +403,7 @@ if (lane) {
 // en el ráster. El build lo devolverá al mar; acá se tapa con una franja de agua.
 {
   const all = Array.from({ length: N }, (_, i) => i);
-  manifest.waters.push(strip(all, (i) => outerD[i] + 1, (i) => outerD[i] + FIT.oldCoastM * ppm));
+  seaPatch.push(strip(all, (i) => outerD[i] + 1, (i) => outerD[i] + doc.seaPatch.widthM * ppm));
 }
 // ---- LA ENTRADA DEL MUELLE DE CRUCEROS
 const CR = doc.cruceros;
@@ -447,6 +457,62 @@ for (const k of CR.kiosks.add || []) {
   const i = Math.min(eastI - 1, nearestI([(a1.x + a2.x) / 2, (a1.y + a2.y) / 2])), [x, y] = offset(i, rowD(i)).map(Math.round), sp = offset(i, realKerb(i) - ACERA - 12).map(Math.round);
   manifest.landmarks.push({ id: k.id, name: k.name, x, y, type: "kiosk", district: a1.district, product: k.product, spawn: sp });
 }
+// ---- EL NORTE: de la explanada a la terminal de ferris, por la Avenida 3
+{
+  const NO = doc.norte, d0 = [centre[0][0] - centre[8][0], centre[0][1] - centre[8][1]], L0 = Math.hypot(...d0);
+  let dir = [d0[0] / L0, d0[1] / L0], p = [centre[0][0], centre[0][1]], nrm = [normal[0][0], normal[0][1]];
+  const nc = [[centre[0][0], centre[0][1], centre[0][2], normal[0][0], normal[0][1]]];   // [x, y, kerb, nx, ny] — arranca EN el final de la explanada
+  for (let k = 0; k < 600 && p[0] < NO.untilX; k++) {
+    const q = nearestStreet(p[0] + dir[0] * ppm, p[1] + dir[1] * ppm), np = [q.qx, q.qy], L = Math.hypot(np[0] - p[0], np[1] - p[1]) || 1;
+    dir = [(np[0] - p[0]) / L, (np[1] - p[1]) / L];
+    let n2 = [-dir[1], dir[0]]; if (n2[0] * nrm[0] + n2[1] * nrm[1] < 0) n2 = [-n2[0], -n2[1]];
+    nrm = n2; p = np; nc.push([p[0], p[1], q.kerb, nrm[0], nrm[1]]);
+  }
+  const M2 = nc.length, sm = nc.map((_, i) => { let x = 0, y = 0; for (let k = Math.max(0, i - 15); k <= Math.min(M2 - 1, i + 15); k++) { x += nc[k][3]; y += nc[k][4]; } const L = Math.hypot(x, y) || 1; const k = Math.min(1, i / 25); const bx = normal[0][0] * (1 - k) + x / L * k, by = normal[0][1] * (1 - k) + y / L * k, B = Math.hypot(bx, by) || 1; return [bx / B, by / B]; });
+  const off = (i, dd) => [nc[i][0] + sm[i][0] * dd, nc[i][1] + sm[i][1] * dd];
+  const ncum = [0]; for (let i = 1; i < M2; i++) ncum.push(ncum[i - 1] + Math.hypot(nc[i][0] - nc[i - 1][0], nc[i][1] - nc[i - 1][1]));
+  const total = ncum[M2 - 1] || 1, prof = NO.beachM;
+  const depth = (i) => { const f = ncum[i] / total; for (let k = 0; k + 1 < prof.length; k++) if (f >= prof[k][0] && f <= prof[k + 1][0]) return (prof[k][1] + (prof[k + 1][1] - prof[k][1]) * (f - prof[k][0]) / (prof[k + 1][0] - prof[k][0])) * ppm; return prof[prof.length - 1][1] * ppm; };
+  const J = NO.joinM * ppm, w0 = widthAt(0);
+  // la explanada se cierra en curva contra la acera; la arena nace a su lado
+  const greyN = (i) => { const k = ease(ncum[i] / J); return w0 + (nc[i][2] + NO.sidewalkM * ppm - w0) * k; };
+  const sandN = (i) => Math.max(greyN(i) + 2 * ppm, nc[i][2] + depth(i) * ease(ncum[i] / (J * 1.4)));
+  const ids = nc.map((_, i) => i), str = (d0f, d1f) => [...ids.map((i) => off(i, d0f(i))), ...ids.slice().reverse().map((i) => off(i, d1f(i)))].flat().map(Math.round);
+  const acera = str(() => 0, greyN);
+  manifest.malecon.push({ polys: [acera], ang: old.ang, ...bbox(acera), style: ML.style, kerb: false, id: "norte_acera" });
+  punta.sands.push({ pts: str((i) => greyN(i) - 1, sandN) });
+  const jIds = ids.filter((i) => ncum[i] <= J * 1.1);
+  punta.riprap.push({ id: "escollera_norte", pts: jIds.map((i) => off(i, greyN(i))).flat().map(Math.round), w: ML.riprap.widthM * ppm });
+  seaPatch.push(str((i) => sandN(i) + 1, (i) => sandN(i) + doc.seaPatch.widthM * ppm));
+  // LA TERMINAL: un patio de asfalto redondeado alrededor de sus calles de ingreso y las rampas
+  const T = NO.terminal, P0 = [];
+  const allRoads = [tile, ...frontTiles.map((f) => f[1])].flatMap((t) => t.roads || []);
+  for (const r of allRoads.filter((r) => T.roads.includes(r.name))) for (let k = 0; k < r.pts.length; k += 2) P0.push([r.pts[k], r.pts[k + 1]]);
+  for (const id of ["ramp_paquera", "ramp_naranjo"]) { const rp = manifest.piers.find((q) => q.id === id); if (rp) for (let k = 0; k < rp.pts.length; k += 2) P0.push([rp.pts[k], rp.pts[k + 1]]); }
+  P0.push(off(M2 - 1, 0));
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const hull = (() => { const pts = P0.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), lo = [], up = [];
+    for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (const q of pts.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    return lo.slice(0, -1).concat(up.slice(0, -1)); })();
+  // engordada y redondeada: el borde a `padM` de la envolvente, medido por ángulos
+  const hx = hull.reduce((a, q) => a + q[0], 0) / hull.length, hy = hull.reduce((a, q) => a + q[1], 0) / hull.length, pad = T.padM * ppm, yard = [];
+  for (let k = 0; k < 72; k++) { const a = k / 72 * 2 * Math.PI, ux = Math.cos(a), uy = Math.sin(a); let far = 0; for (const q of hull) far = Math.max(far, (q[0] - hx) * ux + (q[1] - hy) * uy); yard.push([hx + ux * (far + pad), hy + uy * (far + pad)]); }
+  // la Avenida 3 es el borde de tierra: ni el patio ni su mar pasan de su cordón de mar
+  const avAll = allRoads.filter((r) => r.name === NO.along);
+  const avEdge = (x) => { for (const r of avAll) for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3]; if ((x - ax) * (x - bx) <= 0 && ax !== bx) return ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2; } return Infinity; };
+  for (const q of yard) q[1] = Math.min(q[1], avEdge(q[0]) + 4);
+  seaPatch.push(yard.flatMap(([x, y]) => { const sx = hx + (x - hx) * 1.7, sy = hy + (y - hy) * 1.7; return [Math.round(sx), Math.round(Math.min(sy, avEdge(sx) - ACERA))]; }));
+  // la escollera, por el lado de mar del patio (lejos de la Avenida 3)
+  const av = streets.filter((r) => r.name === NO.along);
+  const nearAv = (x, y) => av.some((r) => { for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3], L2 = (bx - ax) ** 2 + (by2 - ay) ** 2 || 1, t2 = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by2 - ay)) / L2)); if (Math.hypot(x - ax - (bx - ax) * t2, y - ay - (by2 - ay) * t2) < r.w / 2 + ACERA + 8 * ppm) return true; } return false; });
+  const rimRuns = []; let cur = null;
+  for (let k = 0; k <= yard.length; k++) { const q = yard[k % yard.length]; if (!nearAv(q[0], q[1])) { (cur || (cur = [], rimRuns.push(cur), cur)).push(q); } else cur = null; }
+  for (const [n, run] of rimRuns.entries()) if (run.length > 2) punta.riprap.push({ id: `escollera_terminal_${n}`, pts: run.flat().map(Math.round), w: ML.riprap.widthM * ppm });
+  punta.yard = { pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[2], rp.pts[3]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.4), y: Math.round(y + (hy - y) * 0.4), s: T.tentM * ppm }; }) };
+  console.log(`[punta-preview] norte: ${Math.round(total / ppm)} m de playa, patio de ${hull.length} vértices`);
+}
+punta.seaPatch = seaPatch;
 manifest.punta = punta;
 // el tablado de la feria, desde su contorno autorado (la orilla este se corrió)
 { const at = JSON.parse(readFileSync("content/world/attractions.json", "utf8")).feria, L = manifest.feria.find((q) => q.id === at.id); if (L) { const east = Math.max(...L.polys[0].filter((_, k) => k % 2 === 0)), want = Math.max(...at.outlineLL.map(xy).map((q) => q[0])); L.polys = L.polys.map((p) => p.map((v, k) => (k % 2 === 0 && Math.abs(v - east) < 3 ? want : v))); L.x1 = want; } }
@@ -492,7 +558,7 @@ const tilesByKey = new Map([[`${tc}_${tr}`, tile], ...frontTiles]);
     arcs: MU.arcs.map((a) => { const [x, y] = muAt(a.at), i = iOfU(a.at[0]); return { x, y, r: a.rM * ppm * 0.92, a0: a.fromDeg, a1: a.toDeg, planter: !!a.planter, ang: Math.atan2(normal[i][1], normal[i][0]) }; }),
     benches: MU.benches.map((b) => ({ kind: b.kind, pts: b.spine.flatMap(muAt), w: b.wM * ppm * 0.8 })),
     plaza: (() => { const [x, y] = muAt(MU.plaza.at), i = iOfU(MU.plaza.at[0]); return { x, y, r: MU.plaza.rM * ppm * 0.82, ang: Math.atan2(normal[i][1], normal[i][0]) }; })(),
-    pancitas: pancitas.map((q) => { const i = iOfU(q.u), base = rockW; return { kind: q.kind, x: Math.round(offset(i, base)[0]), y: Math.round(offset(i, base)[1]), len: q.lengthM * ppm, out: q.outM * ppm, ang: Math.atan2(normal[i][1], normal[i][0]), fanR: (q.fanRM || 0) * ppm, stalls: q.stalls || 0, kerb: centre[i][2] }; }),
+    pancitas: pancitas.map((q) => { const i = iOfU(q.u), base = eastBase(i); return { kind: q.kind, x: Math.round(offset(i, base)[0]), y: Math.round(offset(i, base)[1]), len: q.lengthM * ppm, out: q.outM * ppm, ang: Math.atan2(normal[i][1], normal[i][0]), fanR: (q.fanRM || 0) * ppm, stalls: q.stalls || 0, bay: (q.bayM || 0) * ppm, kerbOff: base - centre[i][2] }; }),
   };
 }
 const tileAt = (x, y) => tilesByKey.get(`${Math.floor(x / tilePx)}_${Math.floor(y / tilePx)}`);
@@ -628,6 +694,8 @@ const shot = async (name, weather, x, y, zoom, force = false) => {
 const fan = fans[Math.max(0, fans.length - 4)], wave = waves[Math.min(3, waves.length - 1)];
 const px0 = (faroXY[0] + poolC[0]) / 2 + 60, py0 = (faroXY[1] + poolC[1]) / 2 + 40;
 const whole = await shot("punta", "sunny", px0, py0, 1.55);
+// PUNTA_AT="x,y,zoom[,nombre]": una captura suelta donde se pida
+if (process.env.PUNTA_AT) { const [ax, ay, az, an] = process.env.PUNTA_AT.split(","); await shot(an || "at", "sunny", +ax, +ay, +az, true); }
 { const F = manifest.feria[0]; await shot("feria", "sunny", (F.x0 + F.x1) / 2, (F.y0 + F.y1) / 2, 1.5); }
 // EL RECORRIDO, del Faro al Parque Marino: un cuadro cada ~1 100 px de mundo sobre la línea del frente
 if (!process.env.PUNTA_ONLY || process.env.PUNTA_ONLY.includes("recorrido")) {
@@ -653,6 +721,7 @@ await shot("parque", "sunny", (cruPier.pts[0] + eastX) / 2, centre[Math.round((e
 { const q = pancitas[Math.min(1, pancitas.length - 1)], [mx, my] = muAt([q.u + 40, 10]); await shot("pancitas", "sunny", mx, my, 1.1); }
 { const q = pancitas[pancitas.length - 1], [mx, my] = muAt([q.u, 12]); await shot("parqueo", "sunny", mx, my, 1.9); }
 await shot("flags", "sunny", cruPier.pts[0], cruPier.pts[1] + 140, 2.4);
+await shot("norte", "sunny", 24350, 18800, 1.4);
 await shot("kioscos", "sunny", centre[bendI][0] + 60, centre[bendI][1] + 60, 1.2);
 await shot("noche", "night", px0, py0, 1.55);
 await shot("faro-noche", "night", faroXY[0] + 30, faroXY[1] + 40, 2.2);

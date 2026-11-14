@@ -2002,6 +2002,10 @@
       "lens": "#86b56a", "lensEdge": "#5e8a49", "fan": "#b5604e", "fanLine": "#f4efe6", "stall": "rgba(255,255,255,0.75)",
       "shadow": "rgba(40,34,28,0.25)"
     },
+    "yard": {
+      "_note": "EL PATIO DE LA TERMINAL DE FERRIS y las bahías de parqueo: asfalto, y los toldos blancos de la terminal.",
+      "asphalt": "#5d5a62", "tent": "#f4f1ea", "tentRidge": "rgba(150,140,120,0.6)", "tentShadow": "rgba(30,26,22,0.3)"
+    },
     "props": {
       "cabana": "#fbf9f2",
       "cabanaM": 2.6,

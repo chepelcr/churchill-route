@@ -22,6 +22,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01, upright, weatherColors } from "./gfx.js";
 import { sunShadow } from "./shadows.js";
+import { drawWaterAll } from "./ground.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 
@@ -223,13 +224,17 @@ function paintMuellero(Q, ppm) {
     ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.ang);           // +x: hacia el mar; +y: a lo largo
     const half = q.len / 2;
     if (q.kind === "parking") {
-      const R = Math.min(q.fanR, q.out * 0.85);
-      ctx.fillStyle = C.fan; ctx.beginPath(); ctx.arc(0, 0, R, -Math.PI / 2, Math.PI / 2); ctx.closePath(); ctx.fill();
+      // la bahía de parqueo, contra la calle (asfalto y cajones en batería) …
+      const x0 = -q.kerbOff, bay = q.bay, L = half * 0.82;
+      ctx.fillStyle = M.yard.asphalt; ctx.fillRect(x0, -L, bay, 2 * L);
+      ctx.strokeStyle = C.stall; ctx.lineWidth = 1.2;
+      for (let k = 0; k <= q.stalls; k++) { const y = -L + k * (2 * L / q.stalls); ctx.beginPath(); ctx.moveTo(x0 + bay * 0.25, y); ctx.lineTo(x0 + bay, y); ctx.stroke(); }
+      // … y el abanico rojo hacia el mar, en la media luna
+      const R = Math.min(q.fanR, q.out * 0.75), cx = Math.max(x0 + bay + R * 0.15, q.out * 0.1);
+      ctx.fillStyle = C.fan; ctx.beginPath(); ctx.arc(cx, 0, R, -Math.PI / 2, Math.PI / 2); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = C.fanLine; ctx.lineWidth = 1.2; ctx.beginPath();
-      for (let k = 0; k <= 6; k++) { const a = -Math.PI / 2 + Math.PI * k / 6; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R); }
-      ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, R, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-      ctx.strokeStyle = C.stall; ctx.lineWidth = 1;
-      for (let k = 0; k <= q.stalls; k++) { const y = -half * 0.7 + k * (half * 1.4 / q.stalls); ctx.beginPath(); ctx.moveTo(-q.out * 0.2, y); ctx.lineTo(-q.out * 0.2 - 5.2 * ppm, y); ctx.stroke(); }
+      for (let k = 0; k <= 6; k++) { const a = -Math.PI / 2 + Math.PI * k / 6; ctx.moveTo(cx, 0); ctx.lineTo(cx + Math.cos(a) * R, Math.sin(a) * R); }
+      ctx.stroke(); ctx.beginPath(); ctx.arc(cx, 0, R, -Math.PI / 2, Math.PI / 2); ctx.stroke();
     } else {
       ctx.fillStyle = C.lens; ctx.beginPath(); ctx.ellipse(q.out * 0.12, 0, q.out * 0.62, half * 0.7, 0, -Math.PI / 2, Math.PI / 2); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = C.lensEdge; ctx.lineWidth = 1; ctx.stroke();
@@ -309,6 +314,16 @@ function drawPunta(view, t = 0) {
   ctx.fillStyle = weatherColors().sand;
   for (const sd of P.sands || []) ctx.fill(shape(sd));
   for (const line of P.riprap || []) paintRiprap(line, view);
+  // el patio de la terminal de ferris: asfalto redondeado y sus toldos
+  if (P.yard) {
+    const Y = M.yard; ctx.fillStyle = Y.asphalt; ctx.fill(shape(P.yard));
+    for (const tn of P.yard.tents) {
+      ctx.fillStyle = Y.tentShadow; ctx.fillRect(tn.x - tn.s / 2 + 3, tn.y - tn.s / 2 + 4, tn.s, tn.s);
+      ctx.fillStyle = Y.tent; ctx.fillRect(tn.x - tn.s / 2, tn.y - tn.s / 2, tn.s, tn.s);
+      ctx.strokeStyle = Y.tentRidge; ctx.lineWidth = 1; ctx.beginPath();
+      ctx.moveTo(tn.x - tn.s / 2, tn.y - tn.s / 2); ctx.lineTo(tn.x + tn.s / 2, tn.y + tn.s / 2); ctx.moveTo(tn.x + tn.s / 2, tn.y - tn.s / 2); ctx.lineTo(tn.x - tn.s / 2, tn.y + tn.s / 2); ctx.stroke();
+    }
+  }
   // el suelo, en el orden en que el mundo lo trae: terreno, deck, malecones…
   for (const g of P.grounds || []) {
     const ink = g.use === "deck" ? POOL.deck : (M.ground[g.use] || M.ground.park);
@@ -480,4 +495,13 @@ function drawPuntaNight(view, t, toScreen, zoom, night) {
   ctx.restore();
 }
 
-export { drawPunta, drawPuntaGates, drawPuntaNight };
+// EL MAR QUE TAPA LA COSTA VIEJA: el MISMO pintor del golfo, recortado. Va justo
+// después del suelo base y antes del malecón, como el mar de verdad.
+function drawPuntaSea(view, t) {
+  const P = W.PUNTA;
+  if (!P || !P.seaPatch || !P.seaPatch.length || !aabbInView(P, view, 900)) return;
+  if (!P._sea) { P._sea = new Path2D(); for (const ring of P.seaPatch) P._sea.addPath(flatPath(ring, true)); }
+  ctx.save(); ctx.clip(P._sea, "nonzero"); drawWaterAll(view, t); ctx.restore();
+}
+
+export { drawPunta, drawPuntaGates, drawPuntaNight, drawPuntaSea };

@@ -16,7 +16,7 @@ import {
   drawFaroCommas, drawKioskPaths, drawLandBase, drawSurfaceStyleAceras,
 } from "./ground.js";
 import { drawMalecon } from "./malecon.js";
-import { drawPunta } from "./punta.js";
+import { drawPunta, drawPuntaSea } from "./punta.js";
 import { drawFeriaDeck } from "./attractions.js";
 import { paintRelief } from "./relief.js";
 import { paintSkyCover } from "./skycover.js";
@@ -36,6 +36,7 @@ function drawWorld2D(view, t) {
   drawLandBase(view, t);   // includes the park/plaza green ground rects
   // el malecón, over the sand and under the streets: the acera band and the
   // asphalt still paint over anything of its paving that reached the kerb.
+  drawPuntaSea(view, t);   // el mar que tapa la costa vieja: el mismo del golfo, antes del malecón
   drawMalecon(view);
   drawPunta(view, t);       // El Faro y el Balneario: suelo, piscinas y los dos pisos
   phase("worldGround");

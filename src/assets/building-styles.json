@@ -3,6 +3,10 @@
   "_key": "el `cat` de un edificio, tal como lo emite churchill/world/service/osm.py (`poi_category`)",
   "version": 1,
   "_paletteNote": "`walls` y `roofs` son LISTAS y se escoge por el id de OSM, no por azar de cuadro: dos sodas vecinas no pueden salir del mismo color y ninguna puede cambiar de color al volver a mirarla. Una lista de un solo color es una decisión válida — un banco es institucional y no tiene por qué variar.",
+  "show": {
+    "unnamed": false,
+    "_note": "QUÉ HUELLAS SE CARGAN. El mapa traía ~37 000 edificios genéricos —huellas de OSM sin nombre y los lotes y casonas que el build sintetiza— y se leía saturado. Con `unnamed: false` el cliente sólo carga las ~570 huellas CON nombre, más las que pertenecen a una parcela autorada (`parcelId`) o a la cuadra del Parque Marino (`osmId`). Se filtra al decodificar el tile, así que el dibujo, la capa 3-D y la colisión de edificios ven lo mismo; la manzana sigue siendo tierra (muro) en el ráster. `true` devuelve todo sin reconstruir."
+  },
   "byCat": {
     "tourism=hotel": {
       "_": "cal y arena con teja: el hotel de playa del Pacífico",

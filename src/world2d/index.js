@@ -11,6 +11,7 @@
 // Call `WORLD2D.ready(x, y)` once before the sim starts, and `WORLD2D.update(x,
 // y)` each frame to keep the tiles around the camera resident.
 import manifest from "./manifest.json";
+import BUILDING_STYLES from "../assets/building-styles.json";
 // The grid's vocabulary, generated from churchill/world/enums/surface.py — the
 // same enum whose values are the bytes this file decodes out of the RLE.
 import { SURFACE } from "../domain/vocabulary.generated.js";
@@ -283,7 +284,10 @@ export const WORLD2D = (function () {
     if (zCols && zColsPerTile && zColsPerTile !== zCols)
       throw new Error(`inconsistent elevation lattice: ${zColsPerTile} vs ${zCols}`);
     const z = raw.zRle ? decodeZ(raw.zRle, zCols * zCols) : null;
-    const buildings = (raw.buildings || []).map((b) => ({
+    // SÓLO LAS HUELLAS CON NOMBRE (o de una parcela autorada), salvo que el registro pida todas:
+    // `building-styles.json` → `show.unnamed`. Se filtra aquí para que dibujo y colisión coincidan.
+    const showAll = BUILDING_STYLES.show?.unnamed !== false;
+    const buildings = (raw.buildings || []).filter((b) => showAll || b.name || b.parcelId || b.osmId).map((b) => ({
       pts: b.pts, aabb: flatAABB(b.pts), color: b.color, roof: b.roof, wnd: b.wnd,
     }));
     // 64px building hash local to the tile (buildingsNear hits only same tile;

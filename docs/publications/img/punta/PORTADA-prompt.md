@@ -1,0 +1,15 @@
+# Prompt para la portada — «La Punta y el Paseo, como son»
+
+Formato: horizontal 1.91:1 (Instagram, 1080 × 566), o cuadrado 1:1 si se recorta para el feed.
+
+## Prompt (español)
+
+Ilustración vectorial plana y alegre, vista cenital ligeramente inclinada, del frente de mar de Puntarenas, Costa Rica, al atardecer dorado. En primer plano, a la izquierda, el Faro de La Punta: una torre blanca con dos franjas naranja, sobre una plazoleta redonda de color terracota, rodeada de palmeras; de su linterna sale un haz de luz amarillo cálido que barre la arena. A su alrededor, una explanada de baldosa gris con figuras en forma de abanico y de ola en rojo apagado, bordeada por una escollera de piedras grises, y cinco pequeños malecones que entran al mar turquesa con playa de arena dorada entre ellos. Al fondo, a la derecha, el Paseo de los Turistas se aleja en curva: malecón de baldosa color arena, franja de césped, playa y palmeras alineadas; se distinguen la Concha Acústica con nueve hojas turquesa traslúcidas sobre un escenario semicircular, letras de colores que dicen PUNTARENAS, y un largo muelle de cruceros con un arco azul y banderas de Costa Rica. Un ferry blanco atracado en una terminal redondeada con escollera, a la izquierda del fondo. Un carrito pequeño con un vaso de churchill (granizado de colores con helado) en la calle. Paleta: turquesa, arena dorada, gris piedra, verde palmera, terracota y toques de rojo y azul de la bandera. Estilo de videojuego indie, formas limpias, sombras suaves, sin texto adicional salvo las letras de PUNTARENAS, espacio libre arriba a la derecha para el título.
+
+## Prompt (English)
+
+Cheerful flat vector illustration, slightly tilted top-down view of the Puntarenas, Costa Rica seafront at golden sunset. Foreground left: La Punta lighthouse, a white tower with two orange bands on a round terracotta plaza ringed by palm trees, its lantern casting a warm yellow beam sweeping across the sand. Around it, a grey stone-tiled esplanade with muted-red fan-shaped and wave-shaped inlays, edged by a grey boulder breakwater, with five small piers reaching into the turquoise sea and golden sand beaches between them. In the background right, the seaside promenade curves away: sand-coloured tiled walkway, a strip of lawn, beach and a row of palms; visible along it, an open-air amphitheatre with nine translucent turquoise leaf-shaped canopies over a semicircular stage, colourful letters spelling PUNTARENAS, and a long cruise pier with a blue entrance arch and Costa Rican flags. A white ferry docked at a rounded terminal with a breakwater in the left background. A small car carrying a cup of churchill (colourful shaved ice with ice cream) on the street. Palette: turquoise, golden sand, stone grey, palm green, terracotta, with accents of the flag's red and blue. Indie video-game art style, clean shapes, soft shadows, no extra text except the PUNTARENAS letters, empty space top-right for the title.
+
+## Título sugerido sobre la imagen
+
+**La Punta y el Paseo** — *como son*

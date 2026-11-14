@@ -23,6 +23,7 @@ separaron el 2026-08-17, porque son dos cosas distintas:
 | `2026-08-14-estadios-y-plazas.md` | 📄 material de fondo | graderías, torres, Las Playitas, el monte |
 | `2026-08-15-la-noche.md` | 📄 material de fondo | 16 663 lámparas, faros, el mapa abierto |
 | `2026-08-17-el-cielo.md` | 📄 material de fondo | transiciones, sol, tormentas, tornado, luna |
+| **`2026-11-14-la-punta-y-el-paseo.md`** | 📝 escrita, sin publicar | del Faro al Parque Marino: explanada, terminal de ferris, Concha, Muellero |
 
 ## Por qué un hito y no once posts
 

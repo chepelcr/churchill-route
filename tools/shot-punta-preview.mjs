@@ -17,13 +17,23 @@
 // LO QUE NO MUESTRA: la física. El ráster sigue diciendo que la cuadra es agua;
 // la superficie sólo cambia al reconstruir el mundo.
 import { chromium } from "playwright";
-import { readFileSync, mkdirSync, copyFileSync } from "node:fs";
+import { readFileSync, mkdirSync, copyFileSync, writeFileSync, existsSync } from "node:fs";
+import { execSync } from "node:child_process";
+// el mundo PRÍSTINO (el que deja build_world.py): si src/world2d ya trae La Punta, se lee su copia
+const WORLD = "src/world2d", PRISTINE = "logs/world-pristine";
+const liveManifest = JSON.parse(readFileSync(`${WORLD}/manifest.json`, "utf8")), emitted = !!liveManifest.punta;
+function readWorld(rel) {
+  if (!emitted) return readFileSync(`${WORLD}/${rel}`, "utf8");
+  if (existsSync(`${PRISTINE}/${rel}`)) return readFileSync(`${PRISTINE}/${rel}`, "utf8");
+  if (!liveManifest.meta.puntaBase) throw new Error(`[punta] el mundo ya trae La Punta y no hay copia prística de ${rel}`);
+  return execSync(`git show ${liveManifest.meta.puntaBase}:${WORLD}/${rel}`, { encoding: "utf8", maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "ignore"] });
+}
 import path from "node:path";
 
 const url = process.argv[2] || "http://localhost:8736/";
 const out = process.argv[3] || "logs";
 const doc = JSON.parse(readFileSync("content/world/punta.json", "utf8"));
-const manifest = JSON.parse(readFileSync("src/world2d/manifest.json", "utf8"));
+const manifest = JSON.parse(readWorld("manifest.json"));
 const { geo, pxPerMeter: ppm, tilePx } = manifest.meta;
 mkdirSync(out, { recursive: true });
 
@@ -54,7 +64,7 @@ const raw = (lls) => lls.flatMap(xy);
 // ---- EL ACOMODO A LA CALLE DEL JUEGO (`gameFit` en el registro dice por qué)
 const groundsRaw = raw(B0.grounds[0].polygonLL);
 const tc = Math.floor(groundsRaw[0] / tilePx), tr = Math.floor(groundsRaw[1] / tilePx);
-const tile = JSON.parse(readFileSync(`src/world2d/tiles/${tc}_${tr}.json`, "utf8"));
+const tile = JSON.parse(readWorld(`tiles/${tc}_${tr}.json`));
 const FIT = doc.gameFit, ACERA = manifest.meta.aceraPx, realHalf = FIT.realRoadHalfM * ppm, range = FIT.interiorRangeM * ppm;
 // las calles de TODO el frente: el tile de La Punta y los del Paseo hasta el Muelle de Cruceros
 const cruPier = manifest.piers.find((q) => q.id === doc.paseo.until.pier), untilX = cruPier.pts[0] + doc.paseo.until.pastM * ppm;
@@ -62,11 +72,11 @@ const cruPier = manifest.piers.find((q) => q.id === doc.paseo.until.pier), until
 const MU = doc.muellero, pancAnchor = xy(MU.pancitas.anchorLL);
 const parkP = manifest.parcels.find((q) => q.id === doc.cruceros.park.parcel), eastX = Math.max(parkP.x1 - 30, pancAnchor[0] + (Math.max(...MU.pancitas.items.map((q) => q.fromPensionadosM || 0)) + 60) * ppm);
 // la playa sigue hasta el final del asfalto del León Cortés (más allá, la calle es de barro)
-const beachX = (() => { let mx = eastX; for (let c = 11; c <= 14; c++) { try { for (const r of JSON.parse(readFileSync(`src/world2d/tiles/${c}_7.json`, "utf8")).roads) if (r.name === doc.cruceros.park.beachUntil) for (let k = 0; k < r.pts.length; k += 2) mx = Math.max(mx, r.pts[k]); } catch { /* sin tile */ } } return mx; })();
+const beachX = (() => { let mx = eastX; for (let c = 11; c <= 14; c++) { try { for (const r of JSON.parse(readWorld(`tiles/${c}_7.json`)).roads) if (r.name === doc.cruceros.park.beachUntil) for (let k = 0; k < r.pts.length; k += 2) mx = Math.max(mx, r.pts[k]); } catch { /* sin tile */ } } return mx; })();
 const frontTiles = [];
 for (let c = tc; c <= Math.floor(beachX / tilePx) + 1; c++) for (const r of [tr, tr + 1]) {
   if (c === tc && r === tr) continue;
-  try { frontTiles.push([`${c}_${r}`, JSON.parse(readFileSync(`src/world2d/tiles/${c}_${r}.json`, "utf8"))]); } catch { /* mar abierto: no hay tile */ }
+  try { frontTiles.push([`${c}_${r}`, JSON.parse(readWorld(`tiles/${c}_${r}.json`))]); } catch { /* mar abierto: no hay tile */ }
 }
 const seen = new Set(), streets = [];
 for (const t of [tile, ...frontTiles.map((f) => f[1])]) for (const r of t.roads || []) {
@@ -787,14 +797,76 @@ console.log(`[punta-preview] fuera: ${dropped.waters} agua, ${dropped.parcels} p
   console.log(`[punta-preview] camellón: ${merged.length} pares de franjas → una`);
 }
 for (const [key, nb] of frontTiles) neighbours.push([key, nb]);
+// ---- --emit: ESTO ES EL BUILD. Escribe el mundo con La Punta y el Paseo en src/world2d: el manifest y los
+// tiles tocados, y ESTAMPA el ráster (agua, arena, malecón, patio manejable, rampas, muelles, calles
+// escondidas) para que la física vea lo mismo que se dibuja. Corre sobre el mundo PRÍSTINO que deja
+// `tools/build_world.py` (o su copia en logs/world-pristine); `pnpm world:build` lo encadena.
+if (process.argv.includes("--emit")) {
+  const C = { water: 0, land: 1, beach: 2, road: 3, bridge: 5, acera: 6, boulevard: 7, malecon: 10 };
+  const CELL = manifest.meta.cell, all = new Map([[`${tc}_${tr}`, tile], ...frontTiles]);
+  const dec = (t) => { const rle = Buffer.from(t.rle, "base64"), g = new Uint8Array(t.cols * t.rows); let o = 0; for (let k = 0; k + 1 < rle.length; k += 2) { g.fill(rle[k + 1], o, o + rle[k]); o += rle[k]; } return g; };
+  const enc = (g) => { const out = []; let k = 0; while (k < g.length) { const v = g[k]; let n = 1; while (k + n < g.length && g[k + n] === v && n < 255) n++; out.push(n, v); k += n; } return Buffer.from(out).toString("base64"); };
+  const grids = new Map([...all].map(([k, t]) => [k, dec(t)]));
+  const counts = {};
+  // relleno por renglones (par-impar): barato aun con polígonos de miles de vértices
+  function fill(pts, cls, except = new Set(), tag = "") {
+    if (!pts || pts.length < 6) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let k = 0; k < pts.length; k += 2) { x0 = Math.min(x0, pts[k]); x1 = Math.max(x1, pts[k]); y0 = Math.min(y0, pts[k + 1]); y1 = Math.max(y1, pts[k + 1]); }
+    for (const [key, t] of all) {
+      if (t.x > x1 || t.x + t.cols * CELL < x0 || t.y > y1 || t.y + t.rows * CELL < y0) continue;
+      const g = grids.get(key), r0 = Math.max(0, Math.floor((y0 - t.y) / CELL)), r1 = Math.min(t.rows - 1, Math.ceil((y1 - t.y) / CELL));
+      for (let r = r0; r <= r1; r++) {
+        const y = t.y + (r + 0.5) * CELL, xs = [];
+        for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) { const yi = pts[i + 1], yj = pts[j + 1]; if ((yi > y) !== (yj > y)) xs.push(pts[i] + (pts[j] - pts[i]) * (y - yi) / (yj - yi)); }
+        xs.sort((a, b) => a - b);
+        for (let q = 0; q + 1 < xs.length; q += 2) {
+          const c0 = Math.max(0, Math.ceil((xs[q] - t.x) / CELL - 0.5)), c1 = Math.min(t.cols - 1, Math.floor((xs[q + 1] - t.x) / CELL - 0.5));
+          for (let c = c0; c <= c1; c++) { const at = r * t.cols + c; if (!except.has(g[at]) && g[at] !== cls) { g[at] = cls; counts[tag] = (counts[tag] || 0) + 1; } }
+        }
+      }
+    }
+  }
+  const strip = (pts, w, cls, except, tag) => { for (let k = 0; k + 3 < pts.length; k += 2) { const ax = pts[k], ay = pts[k + 1], bx = pts[k + 2], by2 = pts[k + 3], L = Math.hypot(bx - ax, by2 - ay) || 1, nx = -(by2 - ay) / L * w / 2, ny = (bx - ax) / L * w / 2, ex = (bx - ax) / L * w / 4, ey = (by2 - ay) / L * w / 4;
+    fill([ax - ex + nx, ay - ey + ny, bx + ex + nx, by2 + ey + ny, bx + ex - nx, by2 + ey - ny, ax - ex - nx, ay - ey - ny], cls, except, tag); } };
+  const S = (...v) => new Set(v);
+  // 1) el mar que tapa la costa vieja (nunca sobre una calle)
+  for (const ring of punta.seaPatch || []) fill(ring, C.water, S(C.road, C.boulevard), "mar");
+  // y el pedazo de tablado que la feria soltó al este
+  { const feriaOld = JSON.parse(readWorld("manifest.json")).feria || []; for (const L of feriaOld) { const nu = manifest.feria.find((q) => q.id === L.id); if (!nu) continue; const newP = nu.polys[0], oldP = L.polys[0];
+      const mx = Math.max(...newP.filter((_, k) => k % 2 === 0)); const cut = []; for (let k = 0; k < oldP.length; k += 2) cut.push(Math.max(oldP[k], mx + 1), oldP[k + 1]); fill(cut, C.water, S(C.road), "feria"); } }
+  // 2) la playa, 3) el malecón (todas sus bandas nuevas), 4) el verde
+  for (const sd of punta.sands || []) fill(sd.pts, C.beach, S(C.road, C.bridge, C.boulevard), "playa");
+  for (const b of manifest.malecon.filter((q) => /^(punta|norte)/.test(q.id || ""))) for (const p of b.polys) fill(p, C.malecon, S(C.road, C.acera, C.bridge, C.boulevard), "malecón");
+  for (const gr of punta.greens || []) fill(gr.pts, C.land, S(C.road, C.acera, C.bridge), "verde");
+  // 5) el Balneario: césped y deck son tierra; la piscina, agua
+  for (const gd of punta.grounds || []) fill(gd.pts, C.land, S(C.road, C.acera), "balneario");
+  for (const pl of (punta.pools || []).filter((q) => !q.zone)) fill(pl.pts, C.water, S(C.road), "piscina");
+  for (const is of punta.islands || []) fill(is.pts, C.land, S(C.road), "piscina");
+  // 6) lo manejable va al final: el patio de la terminal, sus rampas, los muelles y las calles escondidas
+  if (punta.yard) fill(punta.yard.pts, C.road, S(), "patio");
+  for (const f of manifest.ferries.filter((q) => q.berthPose)) { const [ax, ay, bx, by2] = f.route, L = Math.hypot(bx - ax, by2 - ay) || 1, len = (f.deck?.[1] || 57) + 12; strip([ax, ay, ax + (bx - ax) / L * len, ay + (by2 - ay) / L * len], 46, C.road, S(), "rampas"); }
+  for (const id of ["muelle_faro", "muelle_nacional"]) { const p = manifest.piers.find((q) => q.id === id); if (p) strip(p.pts, p.w, C.bridge, S(), "muelles"); }
+  for (const k of manifest.kioskPaths.filter((q) => q.hidden)) strip(k.pts, 28, C.road, S(), "calles escondidas");
+  for (const [key, t] of all) t.rle = enc(grids.get(key));
+  for (const t of all.values()) delete t._g;   // la caché del ráster que leyó la orilla no se escribe
+  // copia prístina de lo que se toca, para que el preview y el próximo emit partan de ahí
+  mkdirSync(`${PRISTINE}/tiles`, { recursive: true });
+  if (!emitted) { copyFileSync(`${WORLD}/manifest.json`, `${PRISTINE}/manifest.json`); for (const key of all.keys()) copyFileSync(`${WORLD}/tiles/${key}.json`, `${PRISTINE}/tiles/${key}.json`); }
+  manifest.meta.puntaBase = emitted ? liveManifest.meta.puntaBase : execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+  writeFileSync(`${WORLD}/manifest.json`, JSON.stringify(manifest));
+  for (const [key, t] of all) writeFileSync(`${WORLD}/tiles/${key}.json`, JSON.stringify(t));
+  console.log(`[punta-emit] ${all.size} tiles + manifest escritos · celdas estampadas: ${Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(", ")}`);
+  process.exit(0);
+}
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1.25 });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 const asModule = (obj) => ({ status: 200, contentType: "text/javascript", body: `export default ${JSON.stringify(obj)};` });
-await page.route("**/src/world2d/manifest.json*", (route) => route.fulfill(asModule(manifest)));
-await page.route(`**/src/world2d/tiles/${tc}_${tr}.json*`, (route) => route.fulfill(asModule(tile)));
-for (const [key, nb] of neighbours) await page.route(`**/src/world2d/tiles/${key}.json*`, (route) => route.fulfill(asModule(nb)));
+if (!(emitted && process.env.PUNTA_LIVE)) await page.route("**/src/world2d/manifest.json*", (route) => route.fulfill(asModule(manifest)));
+if (!(emitted && process.env.PUNTA_LIVE)) await page.route(`**/src/world2d/tiles/${tc}_${tr}.json*`, (route) => route.fulfill(asModule(tile)));
+if (!(emitted && process.env.PUNTA_LIVE)) for (const [key, nb] of neighbours) await page.route(`**/src/world2d/tiles/${key}.json*`, (route) => route.fulfill(asModule(nb)));
 await page.addInitScript(() => {
   localStorage.setItem("churchill_intro_seen_v1", "1");
   localStorage.setItem("churchill_lang_v1", "es");
@@ -863,6 +935,7 @@ await shot("este", "sunny", 32900, 18950, 0.9);
 await shot("kioscos", "sunny", centre[bendI][0] + 60, centre[bendI][1] + 60, 1.2);
 await shot("noche", "night", px0, py0, 1.55);
 await shot("faro-noche", "night", faroXY[0] + 30, faroXY[1] + 40, 2.2);
+{ const cm = punta.monuments.find((q) => q.kind === "shell"); if (cm) await shot("concha", "sunny", cm.x, cm.y, 6); }
 await shot("monumentos", "sunny", (punta.monuments[0].x + punta.monuments[2].x) / 2, punta.monuments[0].y + 10, 1.75);
 if (whole) copyFileSync(whole, "docs/punta-space-mockup.png");
 await browser.close();

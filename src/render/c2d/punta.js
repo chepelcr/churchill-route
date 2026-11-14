@@ -284,8 +284,8 @@ function paintMonument(mo, ppm) {
     ctx.strokeStyle = C.stageStep; ctx.lineWidth = Math.max(1, 0.3 * ppm);
     for (const f of [0.82, 0.66]) { ctx.beginPath(); ctx.arc(0, R * 0.04, sr * f, 0.08, Math.PI - 0.08); ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(-sr, R * 0.04); ctx.lineTo(sr, R * 0.04); ctx.stroke();
-    // las nueve hojas en abanico detrás del escenario, cada una sobre su pilar
-    const n = C.leaves, arc = C.leafArcDeg * RAD, base = R * 0.6, L = R * C.leafLen, Wd = R * C.leafW;
+    // las nueve hojas en abanico detrás del escenario: cada pilar en el borde de mar y su hoja volcada sobre el escenario
+    const n = C.leaves, arc = C.leafArcDeg * RAD, base = R * 1.02, L = R * C.leafLen, Wd = R * C.leafW;
     const leaves = [];
     for (let k = 0; k < n; k++) leaves.push(Math.PI / 2 - arc / 2 + arc * k / (n - 1));
     // de los extremos al centro, para que las del medio queden encima como en la foto
@@ -295,6 +295,8 @@ function paintMonument(mo, ppm) {
       const p = R * 0.07;
       ctx.fillStyle = K.shadow; ctx.fillRect(-p / 2 + 2, -p / 2 + 3, p, p);
       ctx.fillStyle = C.pillar; ctx.fillRect(-p / 2, -p / 2, p, p); ctx.strokeStyle = C.pillarEdge; ctx.lineWidth = 1; ctx.strokeRect(-p / 2, -p / 2, p, p);
+      // la hoja nace en su pilar, del lado del mar, y se inclina HACIA el escenario: el tallo afuera, la punta adentro
+      ctx.rotate(Math.PI);
       const leaf = new Path2D();
       leaf.moveTo(0, -L * 0.06);
       leaf.bezierCurveTo(Wd, L * 0.12, Wd * 1.05, L * 0.62, 0, L);

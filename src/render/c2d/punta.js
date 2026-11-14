@@ -220,14 +220,13 @@ function paintMuellero(Q, ppm) {
     ctx.strokeStyle = C.shadow; ctx.lineWidth = C.spineM * ppm; ctx.save(); ctx.translate(1.5, 2); ctx.stroke(w._path); ctx.restore();
     ctx.strokeStyle = C.spine; ctx.stroke(w._path);
   }
-  // los lechos de las medialunas, en coordenadas de mundo con la misma geometría que su escollera:
-  // rojo apagado de las figuras del Faro y su orilla de piedras sobre la curva
-  for (const q of Q.pancitas) {
-    if (q.kind === "parking" || !q.bed || q.bed.length < 6) continue;
-    if (!q._bed) q._bed = flatPath(q.bed, true);
-    ctx.fillStyle = M.figures.ink; ctx.fill(q._bed);
-    ctx.strokeStyle = C.lensEdge; ctx.lineWidth = 1.2; ctx.stroke(q._bed);
-    stonesAlong(q.rim, stoneStep, stoneR, C.stone);
+  // las bancas de las medialunas: bloques blancos en su arco, girados con él
+  for (const q of Q.pancitas) for (const [x, y, a] of q.benches || []) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    const bw = C.benchM[0] * ppm, bh = C.benchM[1] * ppm;
+    ctx.fillStyle = C.shadow; ctx.fillRect(-bw / 2 + 1, -bh / 2 + 1.5, bw, bh);
+    ctx.fillStyle = C.bench; ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
+    ctx.restore();
   }
   // las pancitas: una lente verde con su borde de piedras del lado de la calle; la del parqueo, un abanico rojo y sus cajones
   for (const q of Q.pancitas) {
@@ -373,7 +372,13 @@ function drawPunta(view, t = 0) {
       ctx.strokeStyle = Y.tentRidge; ctx.lineWidth = 1; ctx.beginPath();
       ctx.moveTo(tn.x - tn.s / 2, tn.y - tn.s / 2); ctx.lineTo(tn.x + tn.s / 2, tn.y + tn.s / 2); ctx.moveTo(tn.x + tn.s / 2, tn.y - tn.s / 2); ctx.lineTo(tn.x - tn.s / 2, tn.y + tn.s / 2); ctx.stroke();
     }
-  }  for (const line of P.riprap || []) paintRiprap(line, view);
+  }  // los lechos rojos de las medialunas van ANTES de la escollera: la piedra tapa su orilla
+  for (const q of (P.muellero && P.muellero.pancitas) || []) {
+    if (q.kind === "parking" || !q.bed || q.bed.length < 6) continue;
+    if (!q._bed) q._bed = flatPath(q.bed, true);
+    ctx.fillStyle = M.figures.ink; ctx.fill(q._bed);
+  }
+  for (const line of P.riprap || []) paintRiprap(line, view);
 
 
   // el suelo, en el orden en que el mundo lo trae: terreno, deck, malecones…

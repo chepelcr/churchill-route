@@ -721,12 +721,21 @@ const tilesByKey = new Map([[`${tc}_${tr}`, tile], ...frontTiles]);
     benches: MU.benches.map((b) => ({ kind: b.kind, pts: b.spine.flatMap(muAt), w: b.wM * ppm * 0.8 })),
     plaza: (() => { const [x, y] = muAt(MU.plaza.at), i = iOfU(MU.plaza.at[0]); return { x, y, r: MU.plaza.rM * ppm * 0.82, ang: Math.atan2(normal[i][1], normal[i][0]) }; })(),
     pancitas: pancitas.map((q) => { const i = iOfU(q.u), base = eastBase(i);
-      // el lecho, con la MISMA geometría del abombe de la escollera: plano en el borde del malecón y su curva al 85 %
-      const bed = []; { const i0 = iOfU(q.u - q.lengthM / 2), i1 = iOfU(q.u + q.lengthM / 2), ids2 = []; for (let k = i0; k <= i1; k++) ids2.push(k);
-        const inner = ids2.map((k) => offset(k, eastBase(k))), outer = ids2.map((k) => offset(k, eastBase(k) + pancOut(uOf(k)) * ppm * 0.82)).reverse();
+      // el lecho: hacia el mar llega hasta la escollera (la piedra lo tapa); hacia la calle NO es recto,
+      // es la parte de arriba de un corazón — dos lóbulos y un pico en el medio. Las bancas, en tres
+      // tramos sobre un arco que se arquea HACIA LA CALLE (al revés que el muro), como en la foto.
+      const bed = [], benches = []; { const i0 = iOfU(q.u - q.lengthM / 2), i1 = iOfU(q.u + q.lengthM / 2), ids2 = []; for (let k = i0; k <= i1; k++) ids2.push(k);
+        const tOf = (k) => (uOf(k) - (q.u - q.lengthM / 2)) / q.lengthM, lobe = q.outM * 0.32 * ppm;
+        const inner = ids2.map((k) => offset(k, eastBase(k) - lobe * Math.abs(Math.sin(2 * Math.PI * Math.min(1, Math.max(0, tOf(k))))) * 0.9));
+        const outer = ids2.map((k) => offset(k, eastBase(k) + pancOut(uOf(k)) * ppm + 0.6 * ppm)).reverse();
         for (const [x, y] of [...inner, ...outer]) bed.push(Math.round(x), Math.round(y));
-        q._rim = ids2.map((k) => offset(k, eastBase(k) + pancOut(uOf(k)) * ppm * 0.82)).flat().map(Math.round); }
-      return { bed, rim: q._rim, kind: q.kind, x: Math.round(offset(i, base)[0]), y: Math.round(offset(i, base)[1]), len: q.lengthM * ppm, out: q.outM * ppm, ang: Math.atan2(normal[i][1], normal[i][0]), fanR: (q.fanRM || 0) * ppm, stalls: q.stalls || 0, bay: (q.bayM || 0) * ppm, kerbOff: base - centre[i][2] }; }),
+        const benchD = (t) => q.outM * ppm * (0.22 + 0.5 * (2 * t - 1) ** 2);
+        for (const [t0, t1] of [[0.2, 0.34], [0.41, 0.59], [0.66, 0.8]]) {
+          const g = []; for (let t = t0; t <= t1 + 1e-6; t += 0.045) { const u = q.u - q.lengthM / 2 + t * q.lengthM, k = iOfU(u); g.push(offset(k, eastBase(k) + benchD(t))); }
+          // cada banca se gira con el tramo de su grupo (de la anterior a la siguiente): sin saltos
+          g.forEach(([x, y], n) => { const a2 = g[Math.max(0, n - 1)], b2 = g[Math.min(g.length - 1, n + 1)]; benches.push([Math.round(x), Math.round(y), Math.atan2(b2[1] - a2[1], b2[0] - a2[0])]); });
+        } }
+      return { bed, benches, kind: q.kind, x: Math.round(offset(i, base)[0]), y: Math.round(offset(i, base)[1]), len: q.lengthM * ppm, out: q.outM * ppm, ang: Math.atan2(normal[i][1], normal[i][0]), fanR: (q.fanRM || 0) * ppm, stalls: q.stalls || 0, bay: (q.bayM || 0) * ppm, kerbOff: base - centre[i][2] }; }),
   };
 }
 const tileAt = (x, y) => tilesByKey.get(`${Math.floor(x / tilePx)}_${Math.floor(y / tilePx)}`);

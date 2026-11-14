@@ -1998,7 +1998,7 @@
       "_note": "EL PARQUE DEL MUELLERO desde arriba (`muellero` en punta.json): los bancos en ESQUELETO DE BALLENA —un espinazo blanco con costillas de concreto hacia la calle—, los aros y medialunas de piedra blanca, los dos bancos curvos del norte con su medio disco, y las pancitas de la playa.",
       "spine": "#f2eee5", "spineM": 1.2, "rib": "#e7e2d6", "ribM": 0.42, "ribShadow": "rgba(40,30,24,0.45)",
       "stone": "#f4f1ea", "stoneM": 0.45, "stoneEveryM": 1.1, "planter": "#7aa65a", "boulder": "#9a958c",
-      "pergola": "#5a4636", "bench": "#ece7dc", "plaza": "#d9d3c6",
+      "pergola": "#5a4636", "bench": "#ece7dc", "benchM": [1.0, 0.55], "plaza": "#d9d3c6",
       "lensEdge": "rgba(104,70,66,0.5)", "fan": "#b5604e", "fanLine": "#f4efe6", "stall": "rgba(255,255,255,0.75)",
       "shadow": "rgba(40,34,28,0.25)"
     },

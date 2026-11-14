@@ -269,6 +269,8 @@ function paintMonument(mo, ppm) {
   } else if (mo.kind === "shell") {
     // local: +y hacia el mar (la calle detrás de las gradas), el radio total es R
     const R = mo.size || C.rM * ppm;
+    // el piso gris que llena el círculo entero de la Concha, gradas y hojas incluidas
+    ctx.beginPath(); ctx.arc(0, 0, R * 1.04, 0, Math.PI * 2); ctx.fillStyle = C.floor; ctx.fill(); ctx.strokeStyle = C.floorEdge; ctx.lineWidth = 1.5; ctx.stroke();
     // gradas en arco, del lado de la calle
     const t0 = R * 0.62, step = R * 0.34 / C.tiers;
     for (let k = C.tiers; k >= 1; k--) {

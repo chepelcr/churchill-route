@@ -484,6 +484,22 @@ for (const k of CR.kiosks.add || []) {
   const jIds = ids.filter((i) => ncum[i] <= J * 1.1);
   punta.riprap.push({ id: "escollera_norte", pts: jIds.map((i) => off(i, greyN(i))).flat().map(Math.round), w: ML.riprap.widthM * ppm });
   seaPatch.push(str((i) => sandN(i) + 1, (i) => sandN(i) + doc.seaPatch.widthM * ppm));
+  // EL MUELLE DEL FARO SE MUDA AQUÍ: de la acera, a través de la playa, mar adentro con su largo de siempre
+  if (MUE.moveTo && MUE.moveTo.stretch === "norte") {
+    const fp = manifest.piers.find((q) => q.id === MUE.pier), fi = Math.round((M2 - 1) * MUE.moveTo.atFraction);
+    const len0 = Math.hypot(fp.pts[2] - fp.pts[0], fp.pts[3] - fp.pts[1]), a0 = greyN(fi) - 1 * ppm;
+    const [sx, sy] = off(fi, a0), [ex, ey] = off(fi, a0 + Math.max(len0, sandN(fi) - a0 + 25 * ppm));
+    fp.pts = [Math.round(sx), Math.round(sy), Math.round(ex), Math.round(ey)];
+    const L = Math.hypot(ex - sx, ey - sy), kb = MUE.moveTo.kioskBackM * ppm;
+    const kio = manifest.landmarks.find((q) => q.id === MUE.kiosk);
+    if (kio) { kio.x = Math.round(ex - (ex - sx) / L * kb); kio.y = Math.round(ey - (ey - sy) / L * kb); const [kx, ky] = off(fi, nc[fi][2] - ACERA - 10); kio.spawn = [Math.round(kx), Math.round(ky)]; }
+    // la calle auxiliar: de la calle al arranque del muelle, manejable y sin pintar
+    const ln = manifest.kioskPaths.find((k) => k.hidden && Math.hypot(k.pts[0] - 23735, k.pts[1] - 19415) < 400) || manifest.kioskPaths.find((k) => k.hidden);
+    const [lx, ly] = off(fi, nc[fi][2] - ACERA);
+    if (ln) ln.pts = [Math.round(lx), Math.round(ly), Math.round(sx), Math.round(sy)];
+    else manifest.kioskPaths.push({ pts: [Math.round(lx), Math.round(ly), Math.round(sx), Math.round(sy)], surface: "paved", hidden: true });
+    console.log(`[punta-preview] muelle del Faro al norte: ${Math.round(L / ppm)} m`);
+  }
   // LA TERMINAL: un patio de asfalto redondeado alrededor de sus calles de ingreso y las rampas
   const T = NO.terminal, P0 = [];
   const allRoads = [tile, ...frontTiles.map((f) => f[1])].flatMap((t) => t.roads || []);

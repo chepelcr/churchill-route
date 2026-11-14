@@ -363,10 +363,16 @@
   }
  },
  "muelle": {
-  "_note": "EL MUELLE DEL FARO SE QUEDA, con su kiosco: nace en el borde del malecón nuevo. Su calle auxiliar también se queda, y sigue siendo manejable, pero NO SE PINTA — por encima se ve piso de malecón, y quien la encuentre llega en carro hasta el kiosco. Un huevo de pascua.",
+  "_note": "EL MUELLE DEL FARO, con su kiosco, se muda al norte: sale de la acera de la Avenida 3 donde ya terminó la explanada —Playa Cocos / Pura Vida—, cruza la playa y entra al mar con su largo de siempre. Su calle auxiliar se queda manejable y sin pintar, de la calle al arranque del muelle: el huevo de pascua.",
   "pier": "muelle_faro",
   "kiosk": "kios_faro",
-  "hiddenLane": true
+  "hiddenLane": true,
+  "moveTo": {
+   "stretch": "norte",
+   "atFraction": 0.42,
+   "_at": "a qué fracción del tramo norte (la playa más ancha, frente a Pura Vida)",
+   "kioskBackM": 7.0
+  }
  },
  "balneario": {
   "_note": "la cuadra deja de ser una ensenada: terreno, deck, y la piscina con sus zonas.",

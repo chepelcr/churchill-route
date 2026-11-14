@@ -473,7 +473,10 @@ let capAt = null, capRow = null;
     const lm = manifest.landmarks.find((q) => q.id === id);
     const lane = manifest.kioskPaths.find((k) => Math.hypot(k.pts[0] - lm.x, k.pts[1] - lm.y) < 30 || Math.hypot(k.pts[2] - lm.x, k.pts[3] - lm.y) < 30);
     const i = Math.min(eastI - 1, nearestI([lm.x, lm.y])), [nx2, ny2] = offset(i, rowD(i)).map(Math.round);
-    if (lane) { const k = Math.hypot(lane.pts[0] - lm.x, lane.pts[1] - lm.y) < 30 ? 0 : 2; lane.pts[k] = nx2; lane.pts[k + 1] = ny2; lane.hidden = !!CR.kiosks.hiddenLanes; }
+    // la calle auxiliar: CORTA, del borde de la calzada derecho al kiosco, no hasta donde llegaba antes
+    const [kx2, ky2] = offset(i, realKerb(i) - ACERA - 2).map(Math.round);
+    if (lane) { lane.pts = [kx2, ky2, nx2, ny2]; lane.hidden = !!CR.kiosks.hiddenLanes; }
+    lm.spawn = offset(i, realKerb(i) - ACERA - 10).map(Math.round);
     lm.x = nx2; lm.y = ny2;
   }
 }
@@ -483,6 +486,7 @@ for (const k of CR.kiosks.add || []) {
   const [a1, a2] = k.between.map((id) => manifest.landmarks.find((q) => q.id === id));
   const i = Math.min(eastI - 1, nearestI([(a1.x + a2.x) / 2, (a1.y + a2.y) / 2])), [x, y] = offset(i, rowD(i)).map(Math.round), sp = offset(i, realKerb(i) - ACERA - 12).map(Math.round);
   manifest.landmarks.push({ id: k.id, name: k.name, x, y, type: "kiosk", district: a1.district, product: k.product, spawn: sp });
+  { const [kx2, ky2] = offset(i, realKerb(i) - ACERA - 2).map(Math.round); manifest.kioskPaths.push({ pts: [kx2, ky2, x, y], surface: "paved", hidden: !!CR.kiosks.hiddenLanes }); }   // y su calle auxiliar corta, como los otros
 }
 // ---- EL NORTE: de la explanada a la terminal de ferris, por la Avenida 3
 {
@@ -524,12 +528,13 @@ for (const k of CR.kiosks.add || []) {
     fp.pts = [Math.round(sx), Math.round(sy), Math.round(ex), Math.round(ey)];
     const L = Math.hypot(ex - sx, ey - sy), kb = MUE.moveTo.kioskBackM * ppm;
     const kio = manifest.landmarks.find((q) => q.id === MUE.kiosk);
-    if (kio) { kio.x = Math.round(ex - (ex - sx) / L * kb); kio.y = Math.round(ey - (ey - sy) / L * kb); const [kx, ky] = off(fi, nc[fi][2] - ACERA - 10); kio.spawn = [Math.round(kx), Math.round(ky)]; }
+    if (kio) { kio.x = Math.round(ex - (ex - sx) / L * kb); kio.y = Math.round(ey - (ey - sy) / L * kb); kio.spawn = [Math.round(sx + (ex - sx) * 0.45), Math.round(sy + (ey - sy) * 0.45)]; }   // el punto de recogida, sobre la madera del muelle, no en la calle
     // la calle auxiliar: de la calle al arranque del muelle, manejable y sin pintar
     const ln = manifest.kioskPaths.find((k) => k.hidden && Math.hypot(k.pts[0] - 23735, k.pts[1] - 19415) < 400) || manifest.kioskPaths.find((k) => k.hidden);
     const [lx, ly] = off(fi, nc[fi][2] - ACERA);
-    if (ln) ln.pts = [Math.round(lx), Math.round(ly), Math.round(sx), Math.round(sy)];
-    else manifest.kioskPaths.push({ pts: [Math.round(lx), Math.round(ly), Math.round(sx), Math.round(sy)], surface: "paved", hidden: true });
+    // del ancho del muelle, para que se entre derecho
+    if (ln) { ln.pts = [Math.round(lx), Math.round(ly), Math.round(sx), Math.round(sy)]; ln.w = fp.w; }
+    else manifest.kioskPaths.push({ pts: [Math.round(lx), Math.round(ly), Math.round(sx), Math.round(sy)], surface: "paved", hidden: true, w: fp.w });
     console.log(`[punta-preview] muelle del Faro al norte: ${Math.round(L / ppm)} m`);
   }
   // LA TERMINAL: un patio de asfalto redondeado alrededor de sus calles de ingreso y las rampas
@@ -844,6 +849,10 @@ if (process.argv.includes("--emit")) {
   // y el pedazo de tablado que la feria soltó al este
   { const feriaOld = JSON.parse(readWorld("manifest.json")).feria || []; for (const L of feriaOld) { const nu = manifest.feria.find((q) => q.id === L.id); if (!nu) continue; const newP = nu.polys[0], oldP = L.polys[0];
       const mx = Math.max(...newP.filter((_, k) => k % 2 === 0)); const cut = []; for (let k = 0; k < oldP.length; k += 2) cut.push(Math.max(oldP[k], mx + 1), oldP[k + 1]); fill(cut, C.water, S(C.road), "feria"); } }
+  // 1b) las calles auxiliares viejas (las que cambiaron o se movieron) dejan de ser calle: vuelven a
+  // arena, y la playa y el malecón de abajo las cubren como a lo demás
+  { const now = new Set(manifest.kioskPaths.map((k) => k.pts.join(",")));
+    for (const k of JSON.parse(readWorld("manifest.json")).kioskPaths || []) if (!now.has(k.pts.join(","))) strip(k.pts, 34, C.beach, S(), "calles viejas"); }
   // 2) la playa, 3) el malecón (todas sus bandas nuevas), 4) el verde
   for (const sd of punta.sands || []) fill(sd.pts, C.beach, S(C.road, C.bridge, C.boulevard), "playa");
   for (const b of manifest.malecon.filter((q) => /^(punta|norte)/.test(q.id || ""))) for (const p of b.polys) fill(p, C.malecon, S(C.road, C.acera, C.bridge, C.boulevard), "malecón");
@@ -858,7 +867,7 @@ if (process.argv.includes("--emit")) {
   for (const f of manifest.ferries.filter((q) => q.berthPose)) { const [px, py, pa] = f.berthPose, a = pa - Math.PI / 2, ux = Math.cos(a), uy = Math.sin(a), len = (f.deck?.[1] || 57) + 12, cx = px - uy * 9, cy = py + ux * 9;
     strip([cx - ux * len / 2, cy - uy * len / 2, cx + ux * len / 2, cy + uy * len / 2], 46, C.road, S(), "rampas"); }
   for (const id of ["muelle_faro", "muelle_nacional"]) { const p = manifest.piers.find((q) => q.id === id); if (p) strip(p.pts, p.w, C.bridge, S(), "muelles"); }
-  for (const k of manifest.kioskPaths.filter((q) => q.hidden)) strip(k.pts, 28, C.road, S(), "calles escondidas");
+  for (const k of manifest.kioskPaths.filter((q) => q.hidden)) strip(k.pts, k.w || 28, C.road, S(), "calles escondidas");
   for (const [key, t] of all) t.rle = enc(grids.get(key));
   for (const t of all.values()) delete t._g;   // la caché del ráster que leyó la orilla no se escribe
   // copia prístina de lo que se toca, para que el preview y el próximo emit partan de ahí

@@ -20,7 +20,8 @@
 // Se pinta después del malecón y ANTES de las calles, así que la banda de
 // acera y el asfalto siguen tapando lo que llegue al cordón.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01, upright, weatherColors } from "./gfx.js";
+import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01, textureScale, upright, weatherColors } from "./gfx.js";
+import { overlayTexture } from "./materials.js";
 import { sunShadow } from "./shadows.js";
 import { drawWaterAll } from "./ground.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
@@ -313,6 +314,8 @@ function drawPunta(view, t = 0) {
   // la playa entre lengua y lengua, y la del frente del Paseo: la arena del mundo
   ctx.fillStyle = weatherColors().sand;
   for (const sd of P.sands || []) ctx.fill(shape(sd));
+  // el MISMO grano que la playa del mundo, para que no haya dos arenas
+  { const tex = textureScale(); for (const sd of P.sands || []) overlayTexture(ctx, "sand", tex, () => ctx.fill(sd._path)); }
   for (const line of P.riprap || []) paintRiprap(line, view);
   // el patio de la terminal de ferris: asfalto redondeado y sus toldos
   if (P.yard) {

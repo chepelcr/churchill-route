@@ -61,8 +61,10 @@ const cruPier = manifest.piers.find((q) => q.id === doc.paseo.until.pier), until
 // el frente del este llega hasta pasar la última pancita del Muellero
 const MU = doc.muellero, pancAnchor = xy(MU.pancitas.anchorLL);
 const parkP = manifest.parcels.find((q) => q.id === doc.cruceros.park.parcel), eastX = Math.max(parkP.x1 - 30, pancAnchor[0] + (Math.max(...MU.pancitas.items.map((q) => q.fromPensionadosM || 0)) + 60) * ppm);
+// la playa sigue hasta el final del asfalto del León Cortés (más allá, la calle es de barro)
+const beachX = (() => { let mx = eastX; for (let c = 11; c <= 14; c++) { try { for (const r of JSON.parse(readFileSync(`src/world2d/tiles/${c}_7.json`, "utf8")).roads) if (r.name === doc.cruceros.park.beachUntil) for (let k = 0; k < r.pts.length; k += 2) mx = Math.max(mx, r.pts[k]); } catch { /* sin tile */ } } return mx; })();
 const frontTiles = [];
-for (let c = tc; c <= Math.floor(eastX / tilePx); c++) for (const r of [tr, tr + 1]) {
+for (let c = tc; c <= Math.floor(beachX / tilePx) + 1; c++) for (const r of [tr, tr + 1]) {
   if (c === tc && r === tr) continue;
   try { frontTiles.push([`${c}_${r}`, JSON.parse(readFileSync(`src/world2d/tiles/${c}_${r}.json`, "utf8"))]); } catch { /* mar abierto: no hay tile */ }
 }
@@ -142,7 +144,7 @@ let bendI = 0, eastI = 0;
     const [ax, ay] = chain[i], [bx, by2] = chain[i + 1], n = Math.max(1, Math.round(Math.hypot(bx - ax, by2 - ay) / ppm));
     for (let k = 0; k < n; k++) {
       const x = ax + (bx - ax) * k / n, y = ay + (by2 - ay) * k / n;
-      if (x > cruPier.pts[0] - cruPier.w / 2 + 6 && x < eastX) centre.push([x, y, kerb]);   // arranca DEBAJO del muelle
+      if (x > cruPier.pts[0] - cruPier.w / 2 + 6 && x < beachX) centre.push([x, y, kerb]);   // arranca DEBAJO del muelle; la playa sigue hasta el final del asfalto
     }
   }
 }
@@ -261,8 +263,19 @@ const parkEdge = (i) => {
   const park = centre[i][2] + wv * KX * ppm, k = ease((u - wU0) / MU.easeM);
   return rockW + (park - rockW) * k;
 };
-const rockE = (i) => centre[i][2] + (parkEdge(i) - centre[i][2]) * ease((N - 1 - i) / END);
-const sandE = (i) => Math.max(sandW, rockE(i) + 6 * ppm);
+// el malecón se cierra donde siempre (frente al final del parque del este); la playa sigue sola hasta el final del asfalto
+const closeI = (() => { let k = N - 1; while (k > eastI && centre[k][0] > eastX) k--; return k; })();
+const rockE = (i) => centre[i][2] + (parkEdge(Math.min(i, closeI)) - centre[i][2]) * ease((closeI - i) / END);
+// la orilla vieja de El Cocal, medida sobre el ráster al final del tramo: la nueva se le va acercando
+const oldShore = (() => {
+  const grid = (t) => { if (t._g) return t._g; const rle = Buffer.from(t.rle, "base64"), g = new Uint8Array(t.cols * t.rows); let o = 0; for (let k = 0; k + 1 < rle.length; k += 2) { g.fill(rle[k + 1], o, o + rle[k]); o += rle[k]; } return (t._g = g); };
+  const surf = (x, y) => { const key = `${Math.floor(x / tilePx)}_${Math.floor(y / tilePx)}`; let t = key === `${tc}_${tr}` ? tile : (frontTiles.find((f) => f[0] === key) || [])[1]; if (!t) return 0; return grid(t)[Math.floor((y - t.y) / manifest.meta.cell) * t.cols + Math.floor((x - t.x) / manifest.meta.cell)]; };
+  // por índice: desde la calle hacia el mar, hasta el agua abierta; luego alisada
+  const raw = centre.map((c, i) => { if (i <= closeI) return 0; let last = c[2]; for (let dd = c[2]; dd < 160 * ppm; dd += manifest.meta.cell) { const [x, y] = offset(i, dd); if (surf(x, y) !== 0) last = dd; else if (dd - last > 12 * ppm) break; } return last; });
+  return raw.map((_, i) => { if (i <= closeI) return 0; let t = 0, n = 0; for (let k = Math.max(closeI + 1, i - 40); k <= Math.min(N - 1, i + 40); k++) { t += raw[k]; n++; } return t / n; });
+})();
+// más allá del malecón la playa va de la calle a la orilla de verdad (alisada), así cubre la tierra vieja y empalma con El Cocal
+const sandE = (i) => { const base = Math.max(sandW, rockE(i) + 6 * ppm); if (i <= closeI) return base; const k = ease((i - closeI) / 60); return base + (Math.max(oldShore[i], base) - base) * k; };
 const greyOut = (i) => (i >= eastI ? rockE(i) : greyOutW(i));
 const greenD = (i) => (i >= eastI ? rockE(i) : greenDW(i));
 const sandD = (i) => (i >= eastI ? sandE(i) : sandDW(i));
@@ -314,7 +327,8 @@ manifest.malecon.push({ polys: [band], ang: old.ang, ...bbox(band), style: ML.st
 for (const [k, tg] of tongues.entries()) manifest.malecon.push({ polys: [tg], ang: old.ang, ...bbox(tg), style: ML.style, id: `punta_lengua_${k}` });
 // la arena vieja de este tramo: los anillos que caen enteros se van; al que sigue
 // hacia el este se le quitan los vértices de acá (un corte recto: es un preview)
-const seaward = (x, y) => { const i = nearestI([x, y]); return (x - centre[i][0]) * normal[i][0] + (y - centre[i][1]) * normal[i][1] > 0 && Math.hypot(x - centre[i][0], y - centre[i][1]) < FIT.oldCoastM * ppm; };
+// sólo la arena que queda DE FRENTE a la guía: lo que está más allá de sus extremos (la playa vieja de El Cocal) se queda
+const seaward = (x, y) => { const i = nearestI([x, y]), dd = (x - centre[i][0]) * normal[i][0] + (y - centre[i][1]) * normal[i][1], off = Math.hypot(x - centre[i][0] - normal[i][0] * dd, y - centre[i][1] - normal[i][1] * dd); return dd > 0 && dd < FIT.oldCoastM * ppm && off < 12 * ppm; };
 let sandCut = 0;
 manifest.beaches = manifest.beaches.map((ring) => {
   const keep = [];
@@ -352,7 +366,7 @@ const waves = row(ML.waves, tipI, rotI - Math.round(ML.rotonda.rM), (i) => tange
 const floor = [band];
 // la escollera: el borde de mar del brazo norte hasta rodear la lengua del Faro, y cada otra lengua
 // la escollera es UNA línea: el borde de la explanada —lenguas incluidas—, la unión, y de ahí entre el malecón y el verde
-const riprap = [{ id: "escollera", pts: [...idx.map((i) => offset(i, greyD[i])), ...(PS.riprap ? [...paseoI, ...eastIdx].map((i) => offset(i, greyOut(i))) : [])].flat().map(Math.round), w: ML.riprap.widthM * ppm }];
+const riprap = [{ id: "escollera", pts: [...idx.map((i) => offset(i, greyD[i])), ...(PS.riprap ? [...paseoI, ...eastIdx.filter((i) => i <= closeI + 2)].map((i) => offset(i, greyOut(i))) : [])].flat().map(Math.round), w: ML.riprap.widthM * ppm }];
 
 // ---- manifest.punta: lo que `c2d/punta.js` pinta
 const rot = offset(rotI, (centre[rotI][2] + widthAt(rotI)) / 2).map(Math.round);
@@ -512,22 +526,34 @@ for (const k of CR.kiosks.add || []) {
   const allRoads = [tile, ...frontTiles.map((f) => f[1])].flatMap((t) => t.roads || []);
   for (const r of allRoads.filter((r) => T.roads.includes(r.name))) for (let k = 0; k < r.pts.length; k += 2) P0.push([r.pts[k], r.pts[k + 1]]);
 
+  { const avR = allRoads.filter((r) => r.name === NO.along); const xs = P0.map((q) => q[0]); const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    for (const r of avR) for (let k = 0; k + 3 < r.pts.length; k += 2) for (const x of [x0, x1]) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3]; if ((x - ax) * (x - bx) <= 0 && ax !== bx) P0.push([x, ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2]); } }
   const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
   const hull = (() => { const pts = P0.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), lo = [], up = [];
     for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
     for (const q of pts.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
     return lo.slice(0, -1).concat(up.slice(0, -1)); })();
-  // engordada y redondeada: el borde a `padM` de la envolvente, medido por ángulos
+  // engordada y redondeada de verdad: lados rectos paralelos a la envolvente y esquinas en arco
   const hx = hull.reduce((a, q) => a + q[0], 0) / hull.length, hy = hull.reduce((a, q) => a + q[1], 0) / hull.length, pad = T.padM * ppm, yard = [];
-  for (let k = 0; k < 72; k++) { const a = k / 72 * 2 * Math.PI, ux = Math.cos(a), uy = Math.sin(a); let far = 0; for (const q of hull) far = Math.max(far, (q[0] - hx) * ux + (q[1] - hy) * uy); yard.push([hx + ux * (far + pad), hy + uy * (far + pad)]); }
+  const ccw = hull.reduce((a, q, k) => { const n = hull[(k + 1) % hull.length]; return a + (q[0] * n[1] - n[0] * q[1]); }, 0) > 0 ? 1 : -1;
+  for (let k = 0; k < hull.length; k++) {
+    const pv = hull[(k - 1 + hull.length) % hull.length], q = hull[k], nx2 = hull[(k + 1) % hull.length];
+    const n1 = [(q[1] - pv[1]) * ccw, -(q[0] - pv[0]) * ccw], n2 = [(nx2[1] - q[1]) * ccw, -(nx2[0] - q[0]) * ccw];
+    const L1 = Math.hypot(...n1) || 1, L2 = Math.hypot(...n2) || 1;
+    let a1 = Math.atan2(n1[1] / L1, n1[0] / L1), a2 = Math.atan2(n2[1] / L2, n2[0] / L2);
+    while (a2 - a1 > Math.PI) a2 -= 2 * Math.PI; while (a2 - a1 < -Math.PI) a2 += 2 * Math.PI;
+    const steps = Math.max(1, Math.ceil(Math.abs(a2 - a1) / 0.15));
+    for (let j = 0; j <= steps; j++) { const a = a1 + (a2 - a1) * j / steps; yard.push([q[0] + Math.cos(a) * pad, q[1] + Math.sin(a) * pad]); }
+  }
   // la Avenida 3 es el borde de tierra: ni el patio ni su mar pasan de su cordón de mar
   const avAll = allRoads.filter((r) => r.name === NO.along);
   const avEdge = (x) => { for (const r of avAll) for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3]; if ((x - ax) * (x - bx) <= 0 && ax !== bx) return ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2; } return Infinity; };
   // el patio llega hasta debajo de la calle (que lo tapa): ni agua ni tierra vieja entre los dos
-  for (const q of yard) q[1] = Math.min(q[1], avEdge(q[0]) + 2 * ACERA);
+  // y su borde de tierra ES la calle: lo que quede cerca de la Avenida 3 baja hasta debajo de su acera, sin cuñas
+  for (const q of yard) { const e = avEdge(q[0]); if (Number.isFinite(e) && q[1] > e - 22 * ppm) q[1] = e + 2 * ACERA; else q[1] = Math.min(q[1], e + 2 * ACERA); }
   seaPatch.push(yard.flatMap(([x, y]) => { const sx = hx + (x - hx) * 2.4, sy = hy + (y - hy) * 2.4; return [Math.round(sx), Math.round(Math.min(sy, avEdge(sx) - ACERA))]; }));
   // y todo lo que queda entre el final de la playa, el patio y la calle es mar: una franja continua
-  { const xa = nc[Math.max(0, M2 - 90)][0], xb = Math.max(...yard.map((q) => q[0])), band = [];
+  { const xa = nc[Math.max(0, M2 - 90)][0], xb = Math.max(...yard.map((q) => q[0])) + 70 * ppm, band = [];
     for (let x = xa; x <= xb; x += 3 * ppm) { const e = avEdge(x); if (Number.isFinite(e)) band.push([x, e - ACERA - 2]); }
     if (band.length > 2) seaPatch.push([...band, ...band.slice().reverse().map(([x, y]) => [x, y - 160 * ppm])].flat().map(Math.round)); }
   // la escollera, por el lado de mar del patio (lejos de la Avenida 3)
@@ -563,7 +589,7 @@ for (const k of CR.kiosks.add || []) {
     // su receta mide `dw + 12` de largo y va centrada, así que su centro va a media rampa del borde del patio
     const half = (f.deck?.[0] || 155) / 2, rampLen = (f.deck?.[1] || 57) + 12;
     const pc = [st[0] + ux * rampLen / 2, st[1] + uy * rampLen / 2];
-    f.berthPose = [Math.round(pc[0] - uy * 9), Math.round(pc[1] + ux * 9), Math.atan2(uy, ux) + Math.PI / 2];
+    f.berthPose = [Math.round(pc[0] + uy * 9), Math.round(pc[1] - ux * 9), Math.atan2(uy, ux) + Math.PI / 2];   // la receta va de -14 a +32 de través: su centro (9) cae sobre la línea de la rampa
     const r0 = [st[0], st[1]];
     f.dockS = Math.round(rampLen + half + 1.5 * ppm);
     const cen = [r0[0] + ux * f.dockS, r0[1] + uy * f.dockS];
@@ -793,6 +819,7 @@ await shot("parque", "sunny", (cruPier.pts[0] + eastX) / 2, centre[Math.round((e
 { const q = pancitas[pancitas.length - 1], [mx, my] = muAt([q.u, 12]); await shot("parqueo", "sunny", mx, my, 1.9); }
 await shot("flags", "sunny", cruPier.pts[0], cruPier.pts[1] + 140, 2.4);
 await shot("norte", "sunny", 24350, 18800, 1.4);
+await shot("este", "sunny", 32900, 18950, 0.9);
 await shot("kioscos", "sunny", centre[bendI][0] + 60, centre[bendI][1] + 60, 1.2);
 await shot("noche", "night", px0, py0, 1.55);
 await shot("faro-noche", "night", faroXY[0] + 30, faroXY[1] + 40, 2.2);

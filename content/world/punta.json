@@ -343,7 +343,9 @@
    "dropParcel": true,
    "_union": "este tramo ARRANCA en la calle auxiliar y el muelle, con su ancho entero desde el primer metro — sin cuña ni mezcla — y cierra en curva al final.",
    "_end": "en el extremo este el MALECÓN se cierra en curva con su línea de piedra contra la acera; la playa no se cierra: sigue derecha, con su ancho y su color, hasta el final del tramo.",
-   "_width": "el malecón al este del muelle mide EXACTAMENTE lo que el del oeste: su línea de piedra y su playa siguen las de enfrente al otro lado del muelle, y de ahí acompañan la calle."
+   "_width": "el malecón al este del muelle mide EXACTAMENTE lo que el del oeste: su línea de piedra y su playa siguen las de enfrente al otro lado del muelle, y de ahí acompañan la calle.",
+   "beachUntil": "Paseo León Cortés Castro",
+   "_beachUntil": "la playa sigue, con la misma arena y el mismo grano, hasta donde termina el asfalto del Paseo León Cortés; en ese tramo su orilla se va acercando a la de la playa vieja de El Cocal para empalmar con ella."
   },
   "dropLandmark": "muellecruc",
   "_caseta": "la estructura blanca sale; la caseta azul del muelle ocupa su sitio.",

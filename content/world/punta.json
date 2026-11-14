@@ -2583,8 +2583,7 @@
     {
      "id": "pancita_parqueo",
      "kind": "parking",
-     "atBuilding": "Recepción de Visitantes",
-     "_at": "frente a la entrada del Parque Marino: el edificio de recepción, proyectado sobre la calle."
+     "fromPensionadosM": 303.0
     }
    ],
    "_size": "las pancitas van a su TAMAÑO REAL (no se escalan de través como el parque): son piezas sueltas sobre la playa."
@@ -2634,10 +2633,16 @@
     "Ingreso Ferry Paquera",
     "Ingreso Ferry Playa Naranjo"
    ],
-   "padM": 11.0,
+   "padM": 8.0,
    "tents": 2,
    "tentM": 8.0,
-   "_note": "el patio es la envolvente de sus dos calles de ingreso y de las rampas, engordada `padM` y redondeada; la escollera va por su borde de mar."
-  }
+   "_note": "el patio es la envolvente de sus dos calles de ingreso engordada `padM` y redondeada: es TODO manejable (en el build: asfalto estampado) y reemplaza a las dos calles. Termina donde arrancan las rampas: cada rampa sale del borde del patio `rampM` sobre el agua, en la dirección de su calle, y el ferry se atraca más allá de su punta, alineado con ella, para que la rampa se vea.",
+   "rampM": 14.0,
+   "hideRoads": true
+  },
+  "endCurveM": 32.0,
+  "_endCurve": "la playa se cierra en curva estos metros antes del patio de la terminal",
+  "northArmBeach": true,
+  "_northArmBeach": "la playa corre también frente al brazo norte de la explanada, desde la lengua del Faro, y empalma con la de Cocos/Pura Vida"
  }
 }

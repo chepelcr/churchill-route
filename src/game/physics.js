@@ -247,11 +247,15 @@ export function update(dt) {
   const isWall = (x, y) => {
     if (deckAt(x, y)) return false;
     if (W.driveUnderAt(x, y)) return false;
-    // BEACH IS NOT A WALL. The world has always said so — `DRIVABLE` in
-    // churchill/world/enums/surface.py includes it, and SURFACE_MUL[BEACH] is
-    // a speed for driving on sand — but the collider walled it off, so 78,830
-    // cells of beach were drivable in the build's own reachability gate and
-    // untouchable in the game. The sand is slow and loose, not a barrier.
+    // LA ARENA ES PARED PARA UN CARRO (2026-11-14). Fue manejable un tiempo —el
+    // build la cuenta en `DRIVABLE` y SURFACE_MUL[BEACH] le da una velocidad—,
+    // pero la playa es de la gente: el frente nuevo de La Punta y el Paseo la
+    // dibuja entre el malecón y el mar, y meterle el carro la convertía en otra
+    // calle. Lo que tiene que alcanzarse sigue alcanzable: las entregas caen
+    // en asfalto o muelle (`reachablePointNear`), los kioscos se sirven desde
+    // su calle auxiliar y las bajadas y el Muelle del Faro son ROAD/BRIDGE.
+    // El build todavía la cuenta en DRIVABLE para su compuerta de alcance; eso
+    // sólo la hace más permisiva, nunca deja una entrega sin calle.
     const c = W.surfaceAt(x, y);
     // A BOAT'S WORLD IS THE INVERSE OF A CAR'S. Water is the only ground she
     // has, and everything else is a wall — including the muelle deck (BRIDGE),
@@ -268,7 +272,7 @@ export function update(dt) {
     // the bajadas onto the sand are stamped ROAD, and the campo ferial is a
     // BRIDGE deck, so nothing that has to be reachable went with it.
     return c === SURFACE.LAND || c === SURFACE.ACERA || c === SURFACE.WATER ||
-           c === SURFACE.MALECON;
+           c === SURFACE.MALECON || c === SURFACE.BEACH;
   };
   // On a pier deck the only wall is the surrounding water, so the
   // usual 20% overhang forgiveness reads as "half off the muelle" — probe at
@@ -552,11 +556,8 @@ export function update(dt) {
     }
     stuck = hit;          // sigue dentro tras cuatro pasadas
   }
-  // Solid cuadras + aceras + open water: LAND, ACERA (the kerb) and WATER are
-  // the walls you slide along. THE SAND IS NOT ONE — see `isWall` above: beach
-  // is drivable, slow and loose, and the MALECON beside it is a wall for a car,
-  // like the acera. What keeps you off the beach is that nothing
-  // leads there any more except the bajadas, not a wall.
+  // Solid cuadras + aceras + open water + malecón + ARENA: the walls a car
+  // slides along. See `isWall` above for why the beach joined them.
   if (hit0) {
     // La posición ya quedó resuelta arriba, sub-paso a sub-paso; aquí sólo va
     // la respuesta de VELOCIDAD, que es una por cuadro y no una por sub-paso.

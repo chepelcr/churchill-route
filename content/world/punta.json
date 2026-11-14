@@ -2653,10 +2653,11 @@
    "_eastTo": "el patio se extiende al este hasta aquí (px de mundo): la tierra vieja a la derecha de la terminal pasa a ser patio gris; lo que había encima (árboles, edificios) sale.",
    "abutmentM": [
     7.0,
-    3.0
+    4.5
    ],
-   "_abutment": "el frente de cada rampa es PARTE DEL PATIO: un primer patio da dónde sale la rampa, su frente a escuadra (del ancho de la rampa más `abutmentM[1]` por lado, salido `abutmentM[0]`·0,4 más media escollera) entra a la envolvente y el patio se rehace, así una sola escollera rodea todo y las rampas arrancan de un borde recto.",
-   "_rocks": "la escollera rodea TODO el patio menos su lado de calle, y empalma con la del tramo norte."
+   "_abutment": "la BASE de cada rampa es parte del patio: un cuadro que sobresale `baseOutM` del borde, del ancho de la rampa más `abutmentM[1]` por lado, a escuadra con ella; el contorno —y con él la escollera— le da la vuelta, y la rampa arranca sobre la piedra de su frente.",
+   "_rocks": "la escollera rodea TODO el patio menos su lado de calle, y empalma con la del tramo norte.",
+   "baseOutM": 10.0
   },
   "endCurveM": 32.0,
   "_endCurve": "la playa se cierra en curva estos metros antes del patio de la terminal",

@@ -567,13 +567,33 @@ for (const k of CR.kiosks.add || []) {
     const dl = Math.hypot(e[0] - pv[0], e[1] - pv[1]) || 1, th = ((T.rotDeg || {})[fid] || 0) * Math.PI / 180, ux0 = (e[0] - pv[0]) / dl, uy0 = (e[1] - pv[1]) / dl;
     return { e, f, ux: ux0 * Math.cos(th) - uy0 * Math.sin(th), uy: ux0 * Math.sin(th) + uy0 * Math.cos(th) }; };
   const exitYard = (yd, e, ux, uy) => { const yp = yd.flat(); let st = [...e]; for (let k = 0; k < 400 && inside(st[0], st[1], yp); k++) st = [st[0] + ux * ppm * 0.5, st[1] + uy * ppm * 0.5]; return st; };
+  const rampFace = {};
   const RAMPS = [["paquera", "ramp_paquera", "Ingreso Ferry Paquera"], ["naranjo", "ramp_naranjo", "Ingreso Ferry Playa Naranjo"]];
-  let Y = buildYard(P0);
-  for (const [fid, , rname] of RAMPS) { const d = rampDir(fid, rname); if (!d) continue; const st = exitYard(Y.yard, d.e, d.ux, d.uy), out = (T.abutmentM[0] * 0.4 + ML.riprap.widthM / 2) * ppm, F = [st[0] + d.ux * out, st[1] + d.uy * out];
-    const hw = (d.f.deck?.[1] || 57) / 2 + T.abutmentM[1] * ppm - pads.pad, px2 = -d.uy, py2 = d.ux;
-    for (const sg of [1, -1]) P0.push([F[0] - d.ux * pads.pad + px2 * hw * sg, F[1] - d.uy * pads.pad + py2 * hw * sg]); }
-  Y = buildYard(P0);
-  const { yard, hull, hx, hy } = Y;
+  const Y = buildYard(P0), { hull, hx, hy } = Y;
+  // LAS BASES DE LAS RAMPAS SON PARTE DEL PATIO: un cuadro que sobresale del borde, a escuadra con su rampa,
+  // y el contorno del patio le da la vuelta — así la escollera rodea la base y pasa POR DEBAJO de la rampa
+  const dense = []; { const R = Y.yard; for (let k = 0; k < R.length; k++) { const a2 = R[k], b2 = R[(k + 1) % R.length], n = Math.max(1, Math.ceil(Math.hypot(b2[0] - a2[0], b2[1] - a2[1]) / ppm)); for (let j = 0; j < n; j++) dense.push([a2[0] + (b2[0] - a2[0]) * j / n, a2[1] + (b2[1] - a2[1]) * j / n]); } }
+  let yard = dense;
+  for (const [fid, , rname] of RAMPS) {
+    const d = rampDir(fid, rname); if (!d) continue;
+    const st = exitYard(yard, d.e, d.ux, d.uy), [inM, sideM] = T.abutmentM, out = (T.baseOutM || inM * 0.45 + ML.riprap.widthM / 2) * ppm;
+    const hw = 23 + sideM * ppm, px2 = -d.uy, py2 = d.ux;   // 23 = media plataforma (la receta mide 46 de través)
+    const a0 = [st[0] - d.ux * inM * ppm, st[1] - d.uy * inM * ppm], a1 = [st[0] + d.ux * out, st[1] + d.uy * out];
+    const rect = [a0[0] + px2 * hw, a0[1] + py2 * hw, a1[0] + px2 * hw, a1[1] + py2 * hw, a1[0] - px2 * hw, a1[1] - py2 * hw, a0[0] - px2 * hw, a0[1] - py2 * hw];
+    const inR = yard.map((q) => inside(q[0], q[1], rect));
+    // el tramo del contorno que cae dentro del cuadro se cambia por los tres lados de afuera del cuadro
+    let s0 = inR.findIndex((v, k) => v && !inR[(k - 1 + inR.length) % inR.length]); if (s0 < 0) continue;
+    let e0 = s0; while (inR[(e0 + 1) % inR.length]) e0 = (e0 + 1) % inR.length;
+    const before = yard[(s0 - 1 + yard.length) % yard.length];
+    const sideP = [a1[0] + px2 * hw, a1[1] + py2 * hw], sideM2 = [a1[0] - px2 * hw, a1[1] - py2 * hw];
+    const exitOf = (sg) => { for (let t = 0; t <= 1; t += 0.01) { const x = a0[0] + px2 * hw * sg + (a1[0] - a0[0]) * t, y = a0[1] + py2 * hw * sg + (a1[1] - a0[1]) * t; if (!inside(x, y, Y.yard.flat())) return [x, y]; } return [a0[0] + px2 * hw * sg, a0[1] + py2 * hw * sg]; };
+    let ins = [exitOf(1), sideP, sideM2, exitOf(-1)];
+    if (Math.hypot(ins[0][0] - before[0], ins[0][1] - before[1]) > Math.hypot(ins[3][0] - before[0], ins[3][1] - before[1])) ins = ins.reverse();
+    const rot = [...yard.slice(s0), ...yard.slice(0, s0)], runLen = ((e0 - s0 + yard.length) % yard.length) + 1;
+    yard = [...ins, ...rot.slice(runLen)];
+    d.face = [(sideP[0] + sideM2[0]) / 2, (sideP[1] + sideM2[1]) / 2];
+    rampFace[fid] = d.face;
+  }
   seaPatch.push(yard.flatMap(([x, y]) => { const sx = hx + (x - hx) * 2.4, sy = hy + (y - hy) * 2.4; return [Math.round(sx), Math.round(Math.min(sy, avEdge(sx) - ACERA))]; }));
   // y todo lo que queda entre el final de la playa, el patio y la calle es mar: una franja continua
   { const xa = nc[Math.max(0, M2 - 90)][0], xb = Math.max(...yard.map((q) => q[0])) + 70 * ppm, band = [];
@@ -602,7 +622,7 @@ for (const k of CR.kiosks.add || []) {
   for (const [fid, rid] of RAMPS.map((q) => [q[0], q[1], q[2]])) {
     const rname = RAMPS.find((q) => q[0] === fid)[2], d = rampDir(fid, rname), rp = manifest.piers.find((q) => q.id === rid);
     if (!d || !rp) continue;
-    const { f, ux, uy } = d, st = exitYard(yard, d.e, ux, uy);
+    const { f, ux, uy } = d, face = rampFace[fid], st = face ? [face[0] - ux * (ML.riprap.widthM / 2) * ppm, face[1] - uy * (ML.riprap.widthM / 2) * ppm] : exitYard(yard, d.e, ux, uy);   // la rampa arranca sobre la escollera del frente de su base
     // la plataforma gris del atracadero ES la rampa, girada 90° para que su largo vaya a lo largo de la calle:
     // su receta mide `dw + 12` de largo y va centrada, así que su centro va a media rampa del borde del patio
     const half = (f.deck?.[0] || 155) / 2, rampLen = (f.deck?.[1] || 57) + 12;

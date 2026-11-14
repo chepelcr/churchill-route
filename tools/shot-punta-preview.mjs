@@ -528,6 +528,7 @@ for (const k of CR.kiosks.add || []) {
 
   { const avR = allRoads.filter((r) => r.name === NO.along); const xs = P0.map((q) => q[0]); const x0 = Math.min(...xs), x1 = Math.max(...xs);
     for (const r of avR) for (let k = 0; k + 3 < r.pts.length; k += 2) for (const x of [x0, x1]) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3]; if ((x - ax) * (x - bx) <= 0 && ax !== bx) P0.push([x, ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2]); } }
+  if (T.eastToX) { for (const r of allRoads.filter((q) => q.name === NO.along)) for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3], x = T.eastToX; if ((x - ax) * (x - bx) <= 0 && ax !== bx) { const yk = ay + (by2 - ay) * (x - ax) / (bx - ax) - r.w / 2; P0.push([x, yk], [x - 6 * ppm, yk - 22 * ppm]); } } }
   const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
   const hull = (() => { const pts = P0.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), lo = [], up = [];
     for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
@@ -559,12 +560,15 @@ for (const k of CR.kiosks.add || []) {
   // la escollera, por el lado de mar del patio (lejos de la Avenida 3)
   const av = streets.filter((r) => r.name === NO.along);
   const nearAv = (x, y) => av.some((r) => { for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], bx = r.pts[k + 2], by2 = r.pts[k + 3], L2 = (bx - ax) ** 2 + (by2 - ay) ** 2 || 1, t2 = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by2 - ay)) / L2)); if (Math.hypot(x - ax - (bx - ax) * t2, y - ay - (by2 - ay) * t2) < r.w / 2 + ACERA + 8 * ppm) return true; } return false; });
-  const rimRuns = []; let cur = null;
-  for (let k = 0; k <= yard.length; k++) { const q = yard[k % yard.length]; if (!nearAv(q[0], q[1])) { (cur || (cur = [], rimRuns.push(cur), cur)).push(q); } else cur = null; }
+  // la escollera rodea todo el patio menos el lado de la calle: un solo tramo, empezando y terminando en la calle
+  const onStreet = yard.map((q) => { const e = avEdge(q[0]); return Number.isFinite(e) && q[1] >= e + ACERA; });
+  let k0 = onStreet.findIndex((v, k) => v && !onStreet[(k + 1) % yard.length]); if (k0 < 0) k0 = 0;
+  const rimRuns = [[]]; for (let j = 1; j <= yard.length; j++) { const k = (k0 + j) % yard.length; if (onStreet[k] && rimRuns[0].length) { rimRuns[0].push(yard[k]); break; } if (!onStreet[k] || !rimRuns[0].length) rimRuns[0].push(yard[k]); }
   const northRock = punta.riprap.find((q) => q.id === "escollera_norte");
   if (NO.unifiedRocks && northRock) {
     // una sola escollera: la de la explanada sigue por todo el tramo entre acera y playa…
-    northRock.pts = ids.map((i) => off(i, greyN(i))).flat().map(Math.round);
+    const ypts = yard.flat();
+    northRock.pts = ids.map((i) => off(i, greyN(i))).filter(([x, y]) => !inside(x, y, ypts)).flat().map(Math.round);   // hasta el borde del patio, no adentro
     // …y entra al patio, uniéndose con la tramo más cercano de su borde de mar
     const ex = northRock.pts[northRock.pts.length - 2], ey = northRock.pts[northRock.pts.length - 1];
     let bestR = -1, bestD = Infinity, flip = false;
@@ -573,7 +577,7 @@ for (const k of CR.kiosks.add || []) {
   }
   for (const [n, run] of rimRuns.entries()) if (run.length > 2) punta.riprap.push({ id: `escollera_terminal_${n}`, pts: run.flat().map(Math.round), w: ML.riprap.widthM * ppm });
   // LAS RAMPAS salen del borde del patio sobre el agua, y el ferry se atraca más allá de su punta
-  const termRoads = allRoads.filter((r) => T.roads.includes(r.name));
+  const termRoads = allRoads.filter((r) => T.roads.includes(r.name)), abut = [];
   for (const [fid, rid, rname] of [["paquera", "ramp_paquera", "Ingreso Ferry Paquera"], ["naranjo", "ramp_naranjo", "Ingreso Ferry Playa Naranjo"]]) {
     const r = termRoads.find((q) => q.name === rname), f = manifest.ferries.find((q) => q.id === fid), rp = manifest.piers.find((q) => q.id === rid);
     if (!r || !f || !rp) continue;
@@ -594,22 +598,26 @@ for (const k of CR.kiosks.add || []) {
     f.dockS = Math.round(rampLen + half + 1.5 * ppm);
     const cen = [r0[0] + ux * f.dockS, r0[1] + uy * f.dockS];
     manifest.piers = manifest.piers.filter((q) => q.id !== rid);            // la rampa oscura sale
+    { const [inM, sideM] = T.abutmentM, hw2 = (f.deck?.[1] || 57) / 2 - 9 + sideM * ppm + 9, px2 = -uy, py2 = ux, a0 = [st[0] - ux * inM * ppm, st[1] - uy * inM * ppm], a1 = [st[0] + ux * 1.5, st[1] + uy * 1.5];
+      abut.push([a0[0] + px2 * hw2, a0[1] + py2 * hw2, a1[0] + px2 * hw2, a1[1] + py2 * hw2, a1[0] - px2 * hw2, a1[1] - py2 * hw2, a0[0] - px2 * hw2, a0[1] - py2 * hw2].map(Math.round)); }
     let rest = []; for (let k = 0; k < f.route.length; k += 2) if (Math.hypot(f.route[k] - f.berth[0], f.route[k + 1] - f.berth[1]) > half * 2) { rest = f.route.slice(k); break; }
     f.route = [Math.round(r0[0]), Math.round(r0[1]), Math.round(cen[0] + ux * half * 2), Math.round(cen[1] + uy * half * 2), ...rest];
     f.berth = cen.map(Math.round); f.ang = Math.atan2(uy, ux);
   }
   // el patio reemplaza a sus calles: todo él es la superficie manejable
   if (T.hideRoads) for (const t of [tile, ...frontTiles.map((q) => q[1])]) t.roads = (t.roads || []).filter((q) => !T.roads.includes(q.name));
-  punta.yard = { pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[0], rp.pts[1]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
+  punta.yard = { abutments: abut, pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[0], rp.pts[1]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
   // la arena vieja de este tramo sale: la nueva playa y el patio la reemplazan
   const sideN = (x, y) => { let bi = 0, bd = Infinity; for (let i = 0; i < M2; i++) { const dd = Math.hypot(nc[i][0] - x, nc[i][1] - y); if (dd < bd) { bd = dd; bi = i; } } const dd = (x - nc[bi][0]) * sm[bi][0] + (y - nc[bi][1]) * sm[bi][1]; return { i: bi, dd, off: Math.hypot(x - nc[bi][0] - sm[bi][0] * dd, y - nc[bi][1] - sm[bi][1] * dd) }; };
   const oldSand = (x, y) => { const q = sideN(x, y); return q.dd > nc[q.i][2] && q.dd < 220 * ppm && q.off < 40 * ppm; };
   let cutN = 0;
   manifest.beaches = manifest.beaches.map((ring) => { const keep = []; for (let k = 0; k < ring.length; k += 2) if (!oldSand(ring[k], ring[k + 1])) keep.push(ring[k], ring[k + 1]); if (keep.length !== ring.length) cutN++; return keep; }).filter((r) => r.length >= 6);
   for (const t of [tile, ...frontTiles.map((q) => q[1])]) { t.palms = (t.palms || []).filter((o) => !oldSand(o.x, o.y) || sideN(o.x, o.y).dd < greyN(sideN(o.x, o.y).i)); t.trees = (t.trees || []).filter((o) => !oldSand(o.x, o.y)); }
+  { const yp = yard.flat(); for (const t of [tile, ...frontTiles.map((q) => q[1])]) { t.trees = (t.trees || []).filter((o) => !inside(o.x, o.y, yp)); t.palms = (t.palms || []).filter((o) => !inside(o.x, o.y, yp)); t.buildings = (t.buildings || []).filter((b) => !inside(...centroid(b.pts), yp)); t.mangroves = (t.mangroves || []).filter((o) => { const x = o.x ?? o.pts?.[0], y = o.y ?? o.pts?.[1]; return x == null || !inside(x, y, yp); }); } }
   console.log(`[punta-preview] norte: ${Math.round(total / ppm)} m de playa, patio de ${hull.length} vértices, ${cutN} anillos de arena vieja recortados`);
 }
 punta.seaPatch = seaPatch;
+for (const [id, e] of Object.entries(doc.districtEdges || {})) { const k = manifest.districts.findIndex((q) => q.id === id); if (k >= 0) { manifest.districts[k].x0 = e.x0; if (k > 0) manifest.districts[k - 1].x1 = e.x0; } }
 manifest.punta = punta;
 // el tablado de la feria, desde su contorno autorado (la orilla este se corrió)
 { const at = JSON.parse(readFileSync("content/world/attractions.json", "utf8")).feria, L = manifest.feria.find((q) => q.id === at.id); if (L) { const east = Math.max(...L.polys[0].filter((_, k) => k % 2 === 0)), want = Math.max(...at.outlineLL.map(xy).map((q) => q[0])); L.polys = L.polys.map((p) => p.map((v, k) => (k % 2 === 0 && Math.abs(v - east) < 3 ? want : v))); L.x1 = want; } }

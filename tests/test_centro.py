@@ -136,6 +136,23 @@ class CentroRegistryTests(unittest.TestCase):
         west_edge = min(u for u, _v in cat["own"])
         self.assertGreater(west_tip - west_edge, 13, "el ábside vuelve a quedar sobre la acera de la Calle 7")
 
+    def test_the_park_is_as_the_author_described_it(self):
+        """Cuatro murales alrededor del tanque, y UN cilindro en el Palacio, sobre las alas."""
+        mora = next(p for p in self.doc["places"] if p["id"] == "mora")
+        murals = [s for s in mora["structures"] if str(s.get("id", "")).startswith("mural_")]
+        self.assertEqual(len(murals), 4)
+        palacio = next(s for s in mora["structures"] if s.get("id") == "palacio")
+        discs = [t for t in palacio["tiers"] if "disc" in t]
+        self.assertEqual(len(discs), 1, "el Palacio lleva un solo cilindro")
+        self.assertGreater(discs[0]["z"][1], palacio["arms"]["floorsM"][-1], "el cilindro sobresale de las alas")
+        self.assertEqual(palacio["arms"]["fromM"], 0, "las alas llegan al centro: el cilindro va encima, no entre ellas")
+
+    def test_a_diagonal_mouth_names_where_its_path_comes_from(self):
+        for pid, mid in (("mora", "diagonal"), ("catedral", "sur")):
+            place = next(p for p in self.doc["places"] if p["id"] == pid)
+            mouth = next(m for m in place["mouths"] if m["id"] == mid)
+            self.assertIn("from", mouth, f"{pid}/{mid}: sin `from` la boca sale a escuadra de la calle")
+
     def test_the_build_chain_runs_centro_after_punta(self):
         scripts = json.load(open(os.path.join(ROOT, "package.json"), encoding="utf-8"))["scripts"]
         for name in ("world:build", "world:punta"):
@@ -231,6 +248,16 @@ class CentroEmittedWorldTests(unittest.TestCase):
         x = p["ox"] + (u * math.cos(a) - v * math.sin(a)) * ppm
         y = p["oy"] + (u * math.sin(a) + v * math.cos(a)) * ppm
         self.assertEqual(self.cls_at(x, y), ACERA)
+
+    def test_the_cathedral_block_is_fused_to_its_bulevar(self):
+        """Sin acera del lado este: de la cuadra a la calle peatonal es todo boulevard."""
+        p = self.place("catedral")
+        self.assertTrue(p.get("fused"), "falta la franja pegada al Bulevar de la Casa de la Cultura")
+        ppm, a = self.meta["pxPerMeter"], p["ang"]
+        for u in (122.5, 124.5, 127, 130):          # del final del paseo central al medio de la calle
+            x = p["ox"] + (u * math.cos(a) - 1 * math.sin(a)) * ppm
+            y = p["oy"] + (u * math.sin(a) + 1 * math.cos(a)) * ppm
+            self.assertEqual(self.cls_at(x, y), BOULEVARD, f"hay un corte entre el paseo y el Bulevar en u = {u} m")
 
     def test_the_landmarks_sit_on_their_buildings(self):
         lms = {lm["id"]: lm for lm in self.manifest["landmarks"]}

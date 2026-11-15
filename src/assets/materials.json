@@ -2034,7 +2034,9 @@
       "losa": { "fill": "#b7b0a2", "joint": "rgba(92,82,66,0.34)", "inlay": "rgba(255,255,255,0.12)", "tileM": 2.1, "angDeg": 0, "_note": "la losa de piedra del atrio de la Catedral" }
     },
     "steps": { "lite": "#ece8dd", "dark": "#bcb6a8" },
-    "mouth": { "edge": "#f1ecdf", "edgeWidth": 1.6 },
+    "mouth": { "paint": false, "edge": "#f1ecdf", "edgeWidth": 1.6, "_paint": "las bocas son TRANSPARENTES: no se pintan, la acera sigue de largo y el carro la cruza. En `true` se pintan con el piso del lugar entre dos cordones." },
+    "river": { "_note": "el riachuelo del jardín de la Catedral", "bank": "#b9c99a", "bankM": 0.6, "water": "#5fb3d8", "shine": "rgba(255,255,255,0.5)", "shineDash": [5, 9] },
+    "bridge": { "_note": "su puente: tablones y dos barandas", "deck": "#b98a5a", "joint": "rgba(70,44,22,0.5)", "rail": "#7a5632", "railWidth": 1.4, "planks": 9, "shadow": "rgba(0,0,0,0.22)" },
     "shadow": "rgba(0,0,0,0.22)",
     "_shadow": "la misma tinta que la sombra de un edificio (`structure.building.shadow`): se multiplica por el alfa del sol",
     "shadowMinM": 0.4,

@@ -149,7 +149,6 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   drawSigns(view);      // ALTO, semáforos, paradas, zebras, topes
   drawEditorWorld(view, "elements");
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
-  drawCentroStructures(view);   // el tanque, el Palacio, la Catedral y lo demás que se levanta en el centro cívico
   phase("setpieces");
   // EL AGUACERO SOBRE EL SUELO, antes de que se dibuje nada que ande encima:
   // el agua está en la calle, no sobre los carros ni sobre la gente.
@@ -239,6 +238,11 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       drawTrain(tr, t);
     }
   }
+  // EL CENTRO CÍVICO, DESPUÉS DE LA GENTE Y DEL TRÁFICO. Sus edificios se levantan: la tapa y las
+  // paredes se corren hacia afuera del centro de la pantalla y pisan el suelo que queda DETRÁS. Lo
+  // que camina por ahí está tapado de verdad; pintado después, un peatón salía parado en el techo.
+  // Nunca tapa lo que está delante, porque un cuerpo sólo se corre alejándose de la cámara.
+  drawCentroStructures(view);   // el tanque, el Palacio, la Catedral y lo demás que se levanta
   // Arcade collectable coins on the streets
   if (!state.attract && state.arcadeCoins && state.arcadeCoins.length) {
     for (const c of state.arcadeCoins) {

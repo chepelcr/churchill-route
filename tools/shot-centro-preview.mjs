@@ -212,18 +212,43 @@ for (const P of doc.places) {
     const [x, y] = F.at(mo.at), st = nearestStreet(x, y);
     if (!st || st.d > 40 * ppm) throw new Error(`[centro] la boca ${P.id}/${mo.id} no encuentra calle`);
     const nx = (st.qx - x) / st.d, ny = (st.qy - y) / st.d;              // hacia la calle
-    const ex = st.qx - nx * st.w / 2, ey = st.qy - ny * st.w / 2;        // el borde del asfalto
-    const hw = mo.wM * ppm / 2, depth = aceraPx + 2, over = 1;        // un pelo sobre el asfalto: sin rendija
-    const q = (along, side, h = hw) => [ex + nx * along - ny * side * h, ey + ny * along + nx * side * h];
+    const e0x = st.qx - nx * st.w / 2, e0y = st.qy - ny * st.w / 2;      // un punto del borde del asfalto
+    // EL RUMBO de la boca: a escuadra de la calle, o el del sendero que llega (`from`), para que
+    // una entrada en diagonal cruce la acera en diagonal y no doble a escuadra en el cordón
+    let dx = nx, dy = ny;
+    if (mo.from) { const [fx, fy] = F.at(mo.from), L = Math.hypot(x - fx, y - fy); dx = (x - fx) / L; dy = (y - fy) / L; }
+    const dn = dx * nx + dy * ny;
+    if (dn < 0.4) throw new Error(`[centro] la boca ${P.id}/${mo.id} llega casi paralela a su calle`);
+    const s0 = ((e0x - x) * nx + (e0y - y) * ny) / dn, ex = x + dx * s0, ey = y + dy * s0;   // donde su eje toca el asfalto
+    const tx = -ny, ty = nx, hs = mo.wM * ppm / 2 / dn, depth = aceraPx + 2, over = 1;       // un pelo sobre el asfalto: sin rendija
+    // `a`: cuánto hacia la calle, medido a escuadra de ella; `side`·`h`: a lo largo del cordón
+    const q = (a, side, h = hs) => [ex + dx * a / dn + tx * side * h, ey + dy * a / dn + ty * side * h];
     // lo que se ESTAMPA va una celda más allá por cada lado: el ráster de la calzada no cae justo
     // donde el trazo de la calle, y la boca tiene que tocar asfalto de verdad (nunca lo cambia)
-    const stamp = [...q(2 * CELL, -1, hw + CELL / 2), ...q(2 * CELL, 1, hw + CELL / 2), ...q(-depth - CELL, 1, hw + CELL / 2), ...q(-depth - CELL, -1, hw + CELL / 2)];
+    const stamp = [...q(2 * CELL, -1, hs + CELL / 2), ...q(2 * CELL, 1, hs + CELL / 2), ...q(-depth - CELL, 1, hs + CELL / 2), ...q(-depth - CELL, -1, hs + CELL / 2)];
     return { id: mo.id, street: st.name || "", stamp, pts: [...q(over, -1), ...q(over, 1), ...q(-depth, 1), ...q(-depth, -1)].map(r1) };
+  });
+
+  // el riachuelo y su puente: dibujo sobre el jardín
+  place.rivers = (P.rivers || []).map((rv) => ({ pts: F.flat(rv.line), w: r1(rv.wM * ppm) }));
+  place.bridges = (P.bridges || []).map((bg) => ({ pts: F.flat(footprint({ box: bg.size, rotDeg: bg.rotDeg }, bg.at, 0)) }));
+
+  // PEGADA A UNA CALLE PEATONAL: la franja entre la cuadra y el eje de esa calle, a lo largo de
+  // `v`. Se pinta con la piedra de la calle (tapa su acera de este lado) y se estampa boulevard.
+  place.fused = (P.fused || []).map((fu) => {
+    const [x, y] = F.at(fu.at), st = nearestStreet(x, y);
+    if (!st || st.name !== fu.street) throw new Error(`[centro] ${P.id}: la calle pegada «${fu.street}» no está junto a la cuadra (hallé «${st && st.name}»)`);
+    const nx = (x - st.qx) / st.d, ny = (y - st.qy) / st.d;              // de la calle hacia la cuadra
+    const reach = st.w / 2 + aceraPx + 4, [a0, a1] = fu.v.map((v) => F.at([fu.at[0], v]));
+    // los dos cabos, proyectados sobre el eje de la calle
+    const foot = ([px, py]) => { const k = (px - st.qx) * st.tx + (py - st.qy) * st.ty; return [st.qx + st.tx * k, st.qy + st.ty * k]; };
+    const [f0, f1] = [foot(a0), foot(a1)];
+    return { street: st.name, pts: wound([f0[0], f0[1], f1[0], f1[1], f1[0] + nx * reach, f1[1] + ny * reach, f0[0] + nx * reach, f0[1] + ny * reach].map(r1)) };
   });
 
   // las estructuras: pilas de cuerpos, de abajo hacia arriba
   place.structures = [];
-  const solids = [];
+  const solids = [], bodies = [];
   for (const S0 of P.structures) {
     const kit = S0.kit ? doc.kits[S0.kit] : null;
     if (S0.kit && !kit) throw new Error(`[centro] kit desconocido: ${S0.kit}`);
@@ -257,7 +282,8 @@ for (const P of doc.places) {
     if (S0.label) st.label = S0.label;
     place.structures.push(st);
     if (S0.solid) for (const t of tiersOut) if (t.z0 === 0) solids.push(t.pts);
-    if (S0.name && !S0.kit && !/^(norte_|muro_)/.test(st.id)) pois.push({ x: Math.round(cx), y: Math.round(cy), name: S0.name, cat: "centro" });
+    if (!S0.kit) for (const t of tiersOut) if (t.z0 === 0) bodies.push(t.pts);
+    if (S0.name && !S0.kit && !/^(norte_|mural_)/.test(st.id)) pois.push({ x: Math.round(cx), y: Math.round(cy), name: S0.name, cat: "centro" });
     else if (S0.name && S0.kit && S0.kit !== "bench") pois.push({ x: Math.round(cx), y: Math.round(cy), name: S0.name, cat: "centro" });
     count("estructuras");
   }
@@ -286,9 +312,12 @@ for (const P of doc.places) {
   for (const uv of P.palms || []) { const [x, y] = F.at(uv).map(Math.round); flora.palms.push({ x, y, s: 1.0, sway: +((x * 0.37 + y * 0.11) % 6.28).toFixed(2) }); }
   for (const uv of P.lamps || []) { const [x, y] = F.at(uv).map(Math.round); flora.lamps.push({ x, y, ang: 0, type: "led" }); }
 
-  Object.assign(place, { x0: Math.floor(B.x0), y0: Math.floor(B.y0), x1: Math.ceil(B.x1), y1: Math.ceil(B.y1) });
   places.push(place);
-  stamps.push({ place, own, B, solids });
+  // el cuadro del lugar: su cuadra y todo lo que dibuja fuera de ella (los maceteros del Bulevar)
+  for (const st of place.structures) bbox([st.x0, st.y0, st.x1, st.y1], B);
+  for (const fu of place.fused) bbox(fu.pts, B);
+  Object.assign(place, { x0: Math.floor(B.x0), y0: Math.floor(B.y0), x1: Math.ceil(B.x1), y1: Math.ceil(B.y1) });
+  stamps.push({ place, own, B: bbox(own), solids, bodies });
 }
 
 // ───────────────────────────── el ráster ─────────────────────────────
@@ -297,7 +326,7 @@ for (const P of doc.places) {
 const near = Math.ceil(aceraPx / CELL);
 const disc = [];
 for (let dy = -near; dy <= near; dy++) for (let dx = -near; dx <= near; dx++) if (dx * dx + dy * dy <= near * near) disc.push([dx, dy]);
-for (const { place, own, B, solids } of stamps) {
+for (const { place, own, B, solids, bodies } of stamps) {
   const cells = [];
   for (let y = Math.floor(B.y0 / CELL) * CELL + CELL / 2; y < B.y1; y += CELL) {
     for (let x = Math.floor(B.x0 / CELL) * CELL + CELL / 2; x < B.x1; x += CELL) {
@@ -322,6 +351,18 @@ for (const { place, own, B, solids } of stamps) {
   for (const c of cells) {
     if (c.q.T.g[c.q.i] !== c.cls) { c.q.T.g[c.q.i] = c.cls; c.q.T.dirty = true; count("celdas cambiadas"); }
     count(c.cls === C.boulevard ? `${place.id}: piso` : c.cls === C.acera ? `${place.id}: acera` : `${place.id}: tierra`);
+  }
+  // 5) la franja pegada a su calle peatonal: tierra y acera pasan a boulevard, menos bajo un edificio.
+  // Sale del contorno `own` a propósito (la acera de la calle no es de la cuadra); una celda de
+  // calzada o ya boulevard no cambia, así que repetirlo da lo mismo.
+  for (const fu of place.fused) {
+    const fb = bbox(fu.pts);
+    for (let y = Math.floor(fb.y0 / CELL) * CELL + CELL / 2; y < fb.y1; y += CELL) for (let x = Math.floor(fb.x0 / CELL) * CELL + CELL / 2; x < fb.x1; x += CELL) {
+      if (!inside(x, y, fu.pts) || bodies.some((b) => inside(x, y, b))) continue;
+      const q = cellAt(x, y), cls = q.T.g[q.i];
+      if (cls !== C.land && cls !== C.acera) continue;
+      q.T.g[q.i] = C.boulevard; q.T.dirty = true; count(`${place.id}: pegado`);
+    }
   }
   // cada boca tiene que LLEGAR: del asfalto al piso sin una celda de pared en medio
   for (const mo of place.mouths) {

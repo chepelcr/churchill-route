@@ -70,6 +70,15 @@ function drawCentro(view) {
       if (!f._path) f._path = flatPath(f.pts, false);
       ctx.lineWidth = f.w; ctx.stroke(f._path);
     }
+    // el riachuelo del jardín: orilla, agua y un brillo — y encima el puente por donde cruza el sendero
+    for (const rv of place.rivers || []) {
+      if (!rv._path) rv._path = flatPath(rv.pts, false);
+      const R = M.river;
+      ctx.strokeStyle = R.bank; ctx.lineWidth = rv.w + R.bankM * ppm * 2; ctx.stroke(rv._path);
+      ctx.strokeStyle = R.water; ctx.lineWidth = rv.w; ctx.stroke(rv._path);
+      ctx.strokeStyle = R.shine; ctx.lineWidth = rv.w * 0.22; ctx.setLineDash(R.shineDash); ctx.stroke(rv._path); ctx.setLineDash([]);
+    }
+    for (const bg of place.bridges || []) paintBridge(bg);
     // el piso gris. Primero TODOS los cordones y después todos los rellenos:
     // donde dos figuras se montan, el relleno de una tapa el cordón de la otra
     // y la unión queda con un solo borde.
@@ -104,13 +113,31 @@ function drawCentro(view) {
   }
 }
 
-// LAS BOCAS: el piso del parque cruza la acera hasta el asfalto, entre dos
-// cordones. Es lo que le dice al jugador por dónde se entra.
+// el puente del jardín: tablones a lo ancho entre dos barandas. `pts` es su caja: el lado 0→1 es el largo.
+function paintBridge(bg) {
+  const p = bg.pts, B = M.bridge, n = B.planks;
+  const at = (a, b) => [p[0] + (p[2] - p[0]) * a + (p[6] - p[0]) * b, p[1] + (p[3] - p[1]) * a + (p[7] - p[1]) * b];
+  ctx.fillStyle = B.shadow; ctx.beginPath(); ctx.moveTo(p[0] + 1.5, p[1] + 2); for (let i = 2; i < 8; i += 2) ctx.lineTo(p[i] + 1.5, p[i + 1] + 2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = B.deck; ctx.fill(pathOf(bg));
+  ctx.strokeStyle = B.joint; ctx.lineWidth = 0.6; ctx.lineCap = "butt"; ctx.beginPath();
+  for (let k = 1; k < n; k++) { const a = at(k / n, 0), b = at(k / n, 1); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+  ctx.stroke();
+  ctx.strokeStyle = B.rail; ctx.lineWidth = B.railWidth; ctx.lineCap = "round"; ctx.beginPath();
+  for (const v of [0, 1]) { const a = at(0, v), b = at(1, v); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+  ctx.stroke();
+}
+
+// LO QUE VA SOBRE LA ACERA de la calle: la franja pegada a un bulevar, y las bocas.
 function drawCentroStreetside(view) {
   const C = W.CENTRO;
   if (!C || !aabbInView(C, view, 40)) return;
   for (const place of C.places) {
     if (!aabbInView(place, view, 40)) continue;
+    // la franja pegada a una calle peatonal: la misma piedra de esa calle, sobre su acera y su caño
+    for (const fu of place.fused || []) { ctx.fillStyle = MATERIALS.streets.roadway.boulevard; ctx.fill(pathOf(fu)); }
+    // LAS BOCAS SON TRANSPARENTES: la acera se queda como es y el carro pasa por encima. `mouth.paint`
+    // las vuelve a pintar con el piso del lugar, entre dos cordones, si hace falta verlas.
+    if (!M.mouth.paint) continue;
     const first = floorsOf(place)[0];
     if (!first) continue;
     const floor = M.floors[first.floor];

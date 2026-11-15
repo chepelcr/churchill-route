@@ -2,7 +2,7 @@
   "_note": "EL CENTRO CÍVICO, TRAZADO — el Parque Mora y Cañas (con su tanque, sus astas, sus bustos y el Antiguo Palacio Municipal) y la manzana de la Catedral (Catedral, Curia, Capilla, Biblioteca, Casa de la Cultura y Museo). Todo lo que este mundo dice de esas dos cuadras que OSM no dice solo. Mismo método que La Punta (`punta.json`): se traza sobre la imagen satelital y sobre lo que OSM sí trae, y `tools/shot-centro-preview.mjs` lo lleva al mundo — preview sin reconstruir, y `--emit` para escribirlo.",
   "_frame": "CADA LUGAR TIENE SU MARCO: `originLL` es un punto que OSM trae (el tanque; el centro de la huella de la Catedral) y `axisDeg` el rumbo de su eje +u en el marco del mundo (0 = este, positivo en el sentido del reloj). Adentro TODO va en METROS: `[u, v]`, +u al este de la cuadra y +v al sur. Los ángulos de una pieza (`rotDeg`) son en ese mismo marco. Nunca píxeles: este mundo lleva cuatro reescalados.",
   "_gameFit": "EL JUEGO ENSANCHA LAS CALLES, así que la cuadra del juego es más chica que la real (Mora y Cañas: 61 m de ancho útil contra 73; la manzana de la Catedral: 78 m de fondo contra 98). El trazo se ACOMODA a la cuadra del juego conservando el arreglo: cada edificio en su sitio relativo, encogido lo justo. Las huellas reales en este marco quedan anotadas en `_osm` de cada pieza para poder volver a medirlas.",
-  "_surface": "QUÉ SE PUEDE RECORRER. Lo `paved` es el piso gris: se estampa `boulevard` (transitable, lento) y es lo único manejable. Todo lo demás de la cuadra —las islas verdes, los edificios— es `land`, o sea pared. El anillo de acera se conserva y sólo se abre en las `mouths`, que son las bocas por donde un carro entra desde la calle. `solid: true` en una estructura la vuelve pared aunque esté parada sobre el piso gris (el tanque, la plataforma de los bustos).",
+  "_surface": "QUÉ SE PUEDE RECORRER. Lo `paved` es el piso gris: se estampa `boulevard` (transitable, lento) y es lo único manejable. Todo lo demás de la cuadra —las islas verdes, los edificios— es `land`, o sea pared. El anillo de acera se conserva y sólo se abre en las `mouths`, que son las bocas por donde un carro entra desde la calle. `solid: true` en una estructura la vuelve pared aunque esté parada sobre el piso gris (el tanque, la plataforma de los bustos). Una boca con `from` sigue el rumbo del sendero que llega (una entrada en diagonal). `fused` pega la cuadra a una calle peatonal quitándole la acera de ese lado.",
   "_structures": "UNA ESTRUCTURA ES UNA PILA DE CUERPOS (`tiers`), cada uno una huella (`box` [largo, fondo] | `disc` radio | `arc` {rM, a0, a1} | `poly`) levantada de `z[0]` a `z[1]` metros. El pintor (`c2d/centro.js`) los levanta con el mismo pinhole que los edificios del mundo, así que la torre de la Catedral y el tanque se ven desde arriba con sus paredes. `wall`/`cap` y las tintas de `roof`, `bands`, `openings` y `windows` son LLAVES de `materials.json → centro.inks`: acá no hay colores. `kits` son estructuras que se repiten (una banca, un busto): se nombran con `kit` y se ponen con `at` y `rotDeg`.",
   "version": 1,
   "kits": {
@@ -166,17 +166,27 @@
       ]
     },
     "planter": {
+      "_note": "un macetero redondo de cemento con su arbusto",
       "tiers": [
         {
-          "disc": 1.6,
-          "n": 12,
+          "disc": 1.5,
+          "n": 14,
           "z": [
             0,
-            0.45
+            0.7
           ],
           "wall": "cementDark",
-          "cap": "shrub",
-          "edge": "cement"
+          "cap": "cement"
+        },
+        {
+          "disc": 1.15,
+          "n": 12,
+          "z": [
+            0.7,
+            1.5
+          ],
+          "wall": "shrubDark",
+          "cap": "shrub"
         }
       ]
     }
@@ -380,35 +390,12 @@
               -9
             ],
             [
-              27,
-              -25
+              36,
+              -32.6
             ]
           ],
           "wM": 8.5,
-          "_note": "la diagonal a la Calle 9 (way/1178476001)"
-        },
-        {
-          "id": "diagonal_boca",
-          "floor": "adoquin",
-          "poly": [
-            [
-              21,
-              -31.5
-            ],
-            [
-              33,
-              -31.5
-            ],
-            [
-              33,
-              -21.5
-            ],
-            [
-              21,
-              -21.5
-            ]
-          ],
-          "_note": "…y su descanso contra la acera, para que la boca salga derecha a la calle"
+          "_note": "la diagonal a la Calle 9 (way/1178476001). Llega DERECHA hasta el cordón: termina en diagonal contra la acera, sin descanso cuadrado."
         }
       ],
       "mouths": [
@@ -441,9 +428,14 @@
           "id": "diagonal",
           "at": [
             29,
-            -26.5
+            -26.7
           ],
-          "wM": 9.5
+          "wM": 8.5,
+          "from": [
+            8,
+            -9
+          ],
+          "_note": "`from`: de dónde viene el sendero. La boca sigue ESE rumbo en vez de salir a escuadra de la calle."
         }
       ],
       "steps": [
@@ -682,19 +674,43 @@
           ]
         },
         {
-          "id": "muro_oeste",
-          "name": "Muro de los murales",
+          "id": "mural_se",
+          "name": "Mural del tanque",
           "at": [
-            -8.4,
-            3.9
+            9.5,
+            9.5
           ],
-          "rotDeg": 0,
+          "rotDeg": 135,
           "solid": true,
-          "_note": "los dos muros blancos a los lados del tanque, con sus murales del lado de la plaza",
           "tiers": [
             {
               "box": [
-                8.6,
+                6.4,
+                0.6
+              ],
+              "z": [
+                0,
+                2.3
+              ],
+              "wall": "mural",
+              "cap": "white"
+            }
+          ],
+          "_note": "LOS MURALES SON CUATRO, uno entre cada entrada a la rotonda del tanque. El del noreste va un poco más afuera, en la cuña de césped entre el paseo central y la diagonal: sobre el aro de la rotonda ese cuadrante lo ocupa la diagonal entera."
+        },
+        {
+          "id": "mural_so",
+          "name": "Mural del tanque",
+          "at": [
+            -9.5,
+            9.5
+          ],
+          "rotDeg": 45,
+          "solid": true,
+          "tiers": [
+            {
+              "box": [
+                6.4,
                 0.6
               ],
               "z": [
@@ -707,18 +723,42 @@
           ]
         },
         {
-          "id": "muro_este",
-          "name": "Muro de los murales",
+          "id": "mural_no",
+          "name": "Mural del tanque",
           "at": [
-            8.4,
-            3.9
+            -9.5,
+            -9.5
           ],
-          "rotDeg": 0,
+          "rotDeg": 135,
           "solid": true,
           "tiers": [
             {
               "box": [
-                8.6,
+                6.4,
+                0.6
+              ],
+              "z": [
+                0,
+                2.3
+              ],
+              "wall": "mural",
+              "cap": "white"
+            }
+          ]
+        },
+        {
+          "id": "mural_ne",
+          "name": "Mural del tanque",
+          "at": [
+            11.3,
+            -23
+          ],
+          "rotDeg": 35,
+          "solid": true,
+          "tiers": [
+            {
+              "box": [
+                6.4,
                 0.6
               ],
               "z": [
@@ -805,7 +845,7 @@
           "arms": {
             "_note": "las cuatro alas de la X, en una sola regla: `dirDeg` hacia dónde sale, `wM` su ancho. Cada ala son tres cuerpos que vuelan uno sobre otro en la punta.",
             "reachM": 16.5,
-            "fromM": 2.4,
+            "fromM": 0,
             "stepM": 0.9,
             "floorsM": [
               0,
@@ -874,74 +914,26 @@
           },
           "tiers": [
             {
-              "disc": 1.8,
-              "n": 14,
-              "at": [
-                5.8,
-                0
-              ],
+              "_": "UN solo cilindro grande —la escalera— y va SOBRE las alas: nace en el cruce y sobresale de los techos",
+              "disc": 5.0,
+              "n": 28,
               "z": [
                 0,
-                14.6
-              ],
-              "wall": "paTower",
-              "cap": "paTowerCap"
-            },
-            {
-              "disc": 1.8,
-              "n": 14,
-              "at": [
-                -5.8,
-                0
-              ],
-              "z": [
-                0,
-                14.6
-              ],
-              "wall": "paTower",
-              "cap": "paTowerCap"
-            },
-            {
-              "disc": 1.8,
-              "n": 14,
-              "at": [
-                0,
-                5.8
-              ],
-              "z": [
-                0,
-                14.6
-              ],
-              "wall": "paTower",
-              "cap": "paTowerCap"
-            },
-            {
-              "disc": 1.8,
-              "n": 14,
-              "at": [
-                0,
-                -5.8
-              ],
-              "z": [
-                0,
-                14.6
-              ],
-              "wall": "paTower",
-              "cap": "paTowerCap"
-            },
-            {
-              "disc": 3.5,
-              "n": 22,
-              "z": [
-                0,
-                16.8
+                19.5
               ],
               "wall": "paTower",
               "cap": "paTowerCap",
               "stains": "paStain",
+              "bands": [
+                [
+                  0.72,
+                  0.75,
+                  "concreteDark"
+                ]
+              ],
               "roof": {
                 "kind": "dome",
-                "riseM": 1.5,
+                "riseM": 2.2,
                 "ink": "paTowerCap",
                 "ink2": "paTowerLite"
               }
@@ -1027,30 +1019,6 @@
             49
           ],
           "rotDeg": 84
-        },
-        {
-          "kit": "bench",
-          "at": [
-            -9.3,
-            -9.3
-          ],
-          "rotDeg": 45
-        },
-        {
-          "kit": "bench",
-          "at": [
-            9.3,
-            9.3
-          ],
-          "rotDeg": 45
-        },
-        {
-          "kit": "bench",
-          "at": [
-            -9.3,
-            9.3
-          ],
-          "rotDeg": -45
         }
       ],
       "poles": {
@@ -1372,76 +1340,46 @@
           "floor": "losa",
           "poly": [
             [
-              26.5,
+              31,
               -48
             ],
             [
-              35.5,
+              40,
               -48
             ],
             [
-              35.5,
+              40,
               -14
             ],
             [
-              26.5,
+              31,
               -14
             ]
           ],
-          "_note": "el sendero del jardín norte, hasta la Avenida 1 (way/1293298450)"
+          "_note": "el sendero del jardín norte, hasta la Avenida 1 — ALINEADO con el atrio: su canto oeste es el canto oeste de la explanada"
         },
         {
-          "id": "sur_a",
+          "id": "sur",
           "floor": "losa",
-          "poly": [
+          "line": [
             [
-              5,
-              12
+              36.9,
+              8
             ],
             [
-              36,
-              12
-            ],
-            [
-              36,
-              21
-            ],
-            [
-              5,
-              21
+              6.6,
+              50
             ]
           ],
-          "_note": "al costado sur de la Catedral…"
-        },
-        {
-          "id": "sur_b",
-          "floor": "losa",
-          "poly": [
-            [
-              5,
-              12
-            ],
-            [
-              14,
-              12
-            ],
-            [
-              14,
-              46
-            ],
-            [
-              5,
-              46
-            ]
-          ],
-          "_note": "…y bajando entre la Curia y la Capilla a la Avenida Centenario (way/1376577661)"
+          "wM": 9,
+          "_note": "la entrada del sur, EN DIAGONAL: de la esquina del atrio a la Avenida Centenario, entre la Curia y la Capilla"
         }
       ],
       "mouths": [
         {
           "id": "norte",
           "at": [
-            31,
+            35.5,
             -42.5
           ],
           "wM": 9
@@ -1449,8 +1387,12 @@
         {
           "id": "sur",
           "at": [
-            9.5,
-            40
+            11.66,
+            43
+          ],
+          "from": [
+            34,
+            12
           ],
           "wM": 9
         }
@@ -1514,19 +1456,6 @@
         {
           "line": [
             [
-              -12,
-              -22
-            ],
-            [
-              -10,
-              -34
-            ]
-          ],
-          "wM": 2.0
-        },
-        {
-          "line": [
-            [
               8,
               -24
             ],
@@ -1540,7 +1469,7 @@
         {
           "line": [
             [
-              37,
+              41,
               -30
             ],
             [
@@ -1553,19 +1482,6 @@
             ]
           ],
           "wM": 2.2
-        },
-        {
-          "line": [
-            [
-              14,
-              30
-            ],
-            [
-              20,
-              28
-            ]
-          ],
-          "wM": 2.0
         }
       ],
       "structures": [
@@ -2052,7 +1968,8 @@
                 "cross": "cross"
               }
             }
-          ]
+          ],
+          "solid": true
         },
         {
           "id": "curia",
@@ -2157,7 +2074,8 @@
                 "ink2": "tileShade"
               }
             }
-          ]
+          ],
+          "solid": true
         },
         {
           "id": "capilla",
@@ -2233,7 +2151,8 @@
                 "cross": "cross"
               }
             }
-          ]
+          ],
+          "solid": true
         },
         {
           "id": "oficina",
@@ -2272,7 +2191,8 @@
                 "ink2": "tileShade"
               }
             }
-          ]
+          ],
+          "solid": true
         },
         {
           "id": "biblioteca",
@@ -2318,7 +2238,8 @@
                 "ink2": "zincShade"
               }
             }
-          ]
+          ],
+          "solid": true
         },
         {
           "id": "cultura",
@@ -2590,7 +2511,8 @@
                 "ink2": "tileShade"
               }
             }
-          ]
+          ],
+          "solid": true
         },
         {
           "id": "norte_2",
@@ -2795,10 +2717,11 @@
           "id": "virgen",
           "name": "Virgen del Carmen",
           "at": [
-            20.5,
-            30
+            8,
+            17
           ],
-          "label": ""
+          "label": "",
+          "_note": "donde la marcó el autor: en el césped al costado sur de la Catedral, junto a la esquina de la Curia"
         },
         {
           "kit": "bench",
@@ -2874,9 +2797,51 @@
         },
         {
           "kit": "planter",
+          "id": "macetero_1",
           "at": [
-            118.5,
-            1
+            125.25,
+            -36
+          ],
+          "_note": "LOS MACETEROS DEL BULEVAR, en fila por el centro del bulevar YA PEGADO (la calle más la franja que era acera). Son dibujo y no pared: un macetero macizo en el medio de 9 m de calle la cerraría para cualquier carro."
+        },
+        {
+          "kit": "planter",
+          "id": "macetero_2",
+          "at": [
+            125.05,
+            -23
+          ]
+        },
+        {
+          "kit": "planter",
+          "id": "macetero_3",
+          "at": [
+            124.9,
+            -10
+          ]
+        },
+        {
+          "kit": "planter",
+          "id": "macetero_4",
+          "at": [
+            124.7,
+            12
+          ]
+        },
+        {
+          "kit": "planter",
+          "id": "macetero_5",
+          "at": [
+            124.55,
+            25
+          ]
+        },
+        {
+          "kit": "planter",
+          "id": "macetero_6",
+          "at": [
+            124.4,
+            37
           ]
         }
       ],
@@ -2898,8 +2863,8 @@
           6.4
         ],
         [
-          30,
-          -32
+          28.5,
+          -30
         ],
         [
           10,
@@ -2910,15 +2875,15 @@
         {
           "at": [
             -17,
-            -30
+            -35.5
           ],
           "s": 1.5,
           "k": "guanacaste"
         },
         {
           "at": [
-            -4,
-            -27
+            -5,
+            -24
           ],
           "s": 1.25,
           "k": "almendro"
@@ -2933,8 +2898,8 @@
         },
         {
           "at": [
-            18,
-            -27
+            20,
+            -24.5
           ],
           "s": 1.35,
           "k": "higueron"
@@ -2989,16 +2954,8 @@
         },
         {
           "at": [
-            22,
-            37
-          ],
-          "s": 1.15,
-          "k": "almendro"
-        },
-        {
-          "at": [
-            18,
-            23.5
+            14,
+            24.5
           ],
           "s": 0.9,
           "k": "cana_fistula"
@@ -3030,7 +2987,71 @@
           16
         ]
       ],
-      "labels": []
+      "labels": [],
+      "fused": [
+        {
+          "street": "Bulevar de la Casa de la Cultura",
+          "at": [
+            124,
+            0
+          ],
+          "v": [
+            -42,
+            39.5
+          ],
+          "_note": "SIN ACERA DEL LADO ESTE: el paseo central y el Bulevar de la Casa de la Cultura quedan pegados. La franja entre la cuadra y el centro de esa calle se pinta con la piedra del Bulevar (tapa su acera y su caño de este lado) y se estampa `boulevard`. `v`: de dónde a dónde, a lo largo de la calle."
+        }
+      ],
+      "rivers": [
+        {
+          "line": [
+            [
+              -22,
+              -30.5
+            ],
+            [
+              -14,
+              -28
+            ],
+            [
+              -5,
+              -30
+            ],
+            [
+              4,
+              -27
+            ],
+            [
+              10.5,
+              -28
+            ],
+            [
+              18,
+              -31
+            ],
+            [
+              24.5,
+              -28.5
+            ]
+          ],
+          "wM": 4.2,
+          "_note": "el riachuelo del jardín norte. Es dibujo: su suelo es `land`, como todo el jardín."
+        }
+      ],
+      "bridges": [
+        {
+          "at": [
+            10.5,
+            -28
+          ],
+          "rotDeg": -58,
+          "size": [
+            7.5,
+            3.2
+          ],
+          "_note": "EL PUENTE: el sendero que cruza el riachuelo (el tramo de [8,-24] a [13,-32])"
+        }
+      ]
     }
   ]
 }

@@ -253,8 +253,13 @@ export function startStage(stageIdx, vehicleKey) {
   // pantalla en vez de cruzarla. Es de la CÁMARA, no del mundo — ninguna
   // coordenada cambia — y se limpia al salir, o el giro se filtra al siguiente.
   state.cam.rot = (stg.rotate || 0) * Math.PI / 180;
-  applyWeather(stg.weather, { hold: true });
+  // EL RELOJ SE APAGA ANTES DE PONER EL CLIMA. `setDayCycle` deja
+  // `stormLeft` en 0, así que llamado después borraba la tormenta SOSTENIDA
+  // que `applyWeather` acababa de poner: «Tormenta en El Cocal» llovía los
+  // primeros diez segundos (`stormEaseSeconds`) y el resto del nivel era sólo
+  // la paleta, sin una gota.
   setDayCycle(false);          // a stage's sky is part of its brief
+  applyWeather(stg.weather, { hold: true });
   // …EXCEPT THE TRAVESÍA, whose sky and tide ARE the brief. The estero is a
   // different course at bajamar than at pleamar and a different one again in an
   // aguacero, so the crossing rotates through its four conditions by attempt

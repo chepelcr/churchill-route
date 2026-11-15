@@ -187,12 +187,13 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
       ctx.beginPath(); wallQuad(T, i, 0, 1, zAt(f0), zAt(f1)); ctx.fill();
     }
     const j = (i + 2) % n, len = Math.hypot(pts[j] - pts[i], pts[j + 1] - pts[i + 1]), lenM = len / ppm;
-    if (mural && lenM > 3) {
-      // el mural: franjas de color a lo largo del muro, estables por posición
-      const cols = Math.max(3, Math.round(lenM / M.mural.everyM));
+    if (mural && lenM > M.mural.minM) {
+      // el mural: paños de color a lo largo del muro, estables por posición. Un muro recto se parte
+      // en paños; en uno curvo cada tramo del arco ya es un paño.
+      const cols = Math.max(1, Math.round(lenM / M.mural.everyM));
       for (let k = 0; k < cols; k++) {
         ctx.fillStyle = M.mural.inks[Math.floor(hash01(pts[i] * 0.31 + pts[i + 1] * 0.17 + k * 7.7) * M.mural.inks.length)];
-        ctx.beginPath(); wallQuad(T, i, (k + 0.08) / cols, (k + 0.92) / cols, zAt(0.14), zAt(0.9)); ctx.fill();
+        ctx.beginPath(); wallQuad(T, i, (k + 0.06) / cols, (k + 0.94) / cols, zAt(0.14), zAt(0.9)); ctx.fill();
       }
     }
     const Wn = T.windows;

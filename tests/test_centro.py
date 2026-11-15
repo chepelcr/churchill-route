@@ -119,7 +119,7 @@ class CentroRegistryTests(unittest.TestCase):
                 for t in tiers:
                     self.assertLessEqual(t["z"][0], t["z"][1])
                     self.assertLess(t["z"][1], 40, f"{s.get('id')}: {t['z'][1]} m es más alto que nada en Puntarenas")
-                    self.assertEqual(sum(k in t for k in ("box", "disc", "arc", "poly")), 1,
+                    self.assertEqual(sum(k in t for k in ("box", "disc", "arc", "ring", "poly")), 1,
                                      f"{s.get('id')}: un cuerpo lleva exactamente una huella")
 
     def test_benches_are_cement(self):
@@ -137,15 +137,21 @@ class CentroRegistryTests(unittest.TestCase):
         self.assertGreater(west_tip - west_edge, 13, "el ábside vuelve a quedar sobre la acera de la Calle 7")
 
     def test_the_park_is_as_the_author_described_it(self):
-        """Cuatro murales alrededor del tanque, y UN cilindro en el Palacio, sobre las alas."""
+        """Cuatro murales en arco alrededor del tanque, y UN cilindro en el Palacio, entre las alas."""
         mora = next(p for p in self.doc["places"] if p["id"] == "mora")
         murals = [s for s in mora["structures"] if str(s.get("id", "")).startswith("mural_")]
         self.assertEqual(len(murals), 4)
+        for m in murals:                                  # …arcos concéntricos con el tanque
+            tier = m["tiers"][0]
+            self.assertIn("ring", tier, f"{m['id']}: un mural es un muro curvo")
+            self.assertEqual([m["at"][0] + tier["at"][0], m["at"][1] + tier["at"][1]], [0, 0],
+                             f"{m['id']}: el arco no está centrado en el tanque")
         palacio = next(s for s in mora["structures"] if s.get("id") == "palacio")
         discs = [t for t in palacio["tiers"] if "disc" in t]
         self.assertEqual(len(discs), 1, "el Palacio lleva un solo cilindro")
-        self.assertGreater(discs[0]["z"][1], palacio["arms"]["floorsM"][-1], "el cilindro sobresale de las alas")
-        self.assertEqual(palacio["arms"]["fromM"], 0, "las alas llegan al centro: el cilindro va encima, no entre ellas")
+        self.assertLess(discs[0]["z"][1] - palacio["arms"]["floorsM"][-1], 3, "el cilindro va ENTRE las alas, no encima")
+        self.assertGreater(palacio["arms"]["fromM"], 0, "las alas nacen de la pared del cilindro")
+        self.assertLess(palacio["arms"]["fromM"], discs[0]["disc"], "…sin dejar hueco entre ala y cilindro")
 
     def test_a_diagonal_mouth_names_where_its_path_comes_from(self):
         for pid, mid in (("mora", "diagonal"), ("catedral", "sur")):

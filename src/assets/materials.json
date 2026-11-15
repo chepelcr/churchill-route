@@ -2048,7 +2048,7 @@
     "parapet": { "width": 2.4, "dash": [2.6, 1.8] },
     "cross": { "riseM": 1.6, "sizePx": 3.2, "shade": "rgba(30,26,20,0.55)" },
     "pole": { "ink": "#7f8789", "finial": "#a9b0b1", "widthPx": 1.5 },
-    "mural": { "everyM": 1.1, "inks": ["#e4553f", "#f2b632", "#3f8fd0", "#49a86b", "#8a5bb5", "#f08a5d", "#2a9d8f"] },
+    "mural": { "everyM": 1.1, "minM": 0.7, "inks": ["#e4553f", "#f2b632", "#3f8fd0", "#49a86b", "#8a5bb5", "#f08a5d", "#2a9d8f"] },
     "label": { "fg": "#ffffff", "bg": "#3a3540", "place": "#2e7d44" },
     "inks": {
       "_note": "LAS TINTAS, por llave. Concreto y cemento para el parque; `pa*` es el Palacio; piedra, zinc y teja para la manzana de la Catedral.",

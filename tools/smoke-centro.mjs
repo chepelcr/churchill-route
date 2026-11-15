@@ -63,6 +63,8 @@ await page.evaluate(async (p0) => {
   await new Promise((r) => setTimeout(r, 1500));
 }, centro.places[0]);
 
+// …y se pregunta si PISÓ el piso, no dónde quedó: por una boca que da a un paseo corto el carro
+// entra, lo cruza entero y sale por la boca de enfrente en los dos segundos del tramo.
 // ENTRAR es cruzar la acera y quedar sobre el piso: una boca que da a un descanso corto (la
 // diagonal del parque) no deja correr 60 px en línea recta, y no por eso está cerrada
 const IN_PX = 30;
@@ -74,7 +76,7 @@ for (const place of centro.places) {
     const r = await leg(ox - ux * 16, oy - uy * 16, Math.atan2(uy, ux));
     const tag = `${place.id}/${mo.id}`;
     if (r.from !== ROAD) fail(`${tag}: el carro no arrancó sobre calle (clase ${r.from}) — el mundo se movió debajo de la prueba`);
-    else if (r.to !== BOULEVARD || r.moved < IN_PX) fail(`${tag}: no se entra por la boca — avanzó ${r.moved} px y quedó sobre la clase ${r.to} (pisó ${r.seen})`);
+    else if (!r.seen.includes(BOULEVARD) || r.moved < IN_PX) fail(`${tag}: no se entra por la boca — avanzó ${r.moved} px y quedó sobre la clase ${r.to} (pisó ${r.seen})`);
     else console.log(`[smoke:centro] ${tag}: entra — ${r.moved} px, del asfalto al piso`);
   }
 }

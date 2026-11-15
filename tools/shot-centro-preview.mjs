@@ -91,6 +91,10 @@ function footprint(t, base, rot) {
   } else if (t.arc) {
     const { rM: r, a0, a1, n = 12 } = t.arc;
     loc = Array.from({ length: n + 1 }, (_, k) => { const a = (a0 + (a1 - a0) * k / n) * RAD; return [Math.cos(a) * r, Math.sin(a) * r]; });
+  } else if (t.ring) {
+    // un muro curvo: el arco de afuera de ida y el de adentro de vuelta
+    const { rM, wM, a0, a1, n = 10 } = t.ring, arc = (r, k) => { const a = (a0 + (a1 - a0) * k / n) * RAD; return [Math.cos(a) * r, Math.sin(a) * r]; };
+    loc = [...Array.from({ length: n + 1 }, (_, k) => arc(rM, k)), ...Array.from({ length: n + 1 }, (_, k) => arc(rM - wM, n - k))];
   } else if (t.poly) loc = t.poly;
   else throw new Error(`[centro] cuerpo sin huella: ${JSON.stringify(t).slice(0, 80)}`);
   const tr = (t.rotDeg || 0) * RAD, ct = Math.cos(tr), st = Math.sin(tr);

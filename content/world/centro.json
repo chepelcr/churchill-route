@@ -3,7 +3,7 @@
   "_frame": "CADA LUGAR TIENE SU MARCO: `originLL` es un punto que OSM trae (el tanque; el centro de la huella de la Catedral) y `axisDeg` el rumbo de su eje +u en el marco del mundo (0 = este, positivo en el sentido del reloj). Adentro TODO va en METROS: `[u, v]`, +u al este de la cuadra y +v al sur. Los ángulos de una pieza (`rotDeg`) son en ese mismo marco. Nunca píxeles: este mundo lleva cuatro reescalados.",
   "_gameFit": "EL JUEGO ENSANCHA LAS CALLES, así que la cuadra del juego es más chica que la real (Mora y Cañas: 61 m de ancho útil contra 73; la manzana de la Catedral: 78 m de fondo contra 98). El trazo se ACOMODA a la cuadra del juego conservando el arreglo: cada edificio en su sitio relativo, encogido lo justo. Las huellas reales en este marco quedan anotadas en `_osm` de cada pieza para poder volver a medirlas.",
   "_surface": "QUÉ SE PUEDE RECORRER. Lo `paved` es el piso gris: se estampa `boulevard` (transitable, lento) y es lo único manejable. Todo lo demás de la cuadra —las islas verdes, los edificios— es `land`, o sea pared. El anillo de acera se conserva y sólo se abre en las `mouths`, que son las bocas por donde un carro entra desde la calle. `solid: true` en una estructura la vuelve pared aunque esté parada sobre el piso gris (el tanque, la plataforma de los bustos). Una boca con `from` sigue el rumbo del sendero que llega (una entrada en diagonal). `fused` pega la cuadra a una calle peatonal quitándole la acera de ese lado.",
-  "_structures": "UNA ESTRUCTURA ES UNA PILA DE CUERPOS (`tiers`), cada uno una huella (`box` [largo, fondo] | `disc` radio | `arc` {rM, a0, a1} | `poly`) levantada de `z[0]` a `z[1]` metros. El pintor (`c2d/centro.js`) los levanta con el mismo pinhole que los edificios del mundo, así que la torre de la Catedral y el tanque se ven desde arriba con sus paredes. `wall`/`cap` y las tintas de `roof`, `bands`, `openings` y `windows` son LLAVES de `materials.json → centro.inks`: acá no hay colores. `kits` son estructuras que se repiten (una banca, un busto): se nombran con `kit` y se ponen con `at` y `rotDeg`.",
+  "_structures": "UNA ESTRUCTURA ES UNA PILA DE CUERPOS (`tiers`), cada uno una huella (`box` [largo, fondo] | `disc` radio | `arc` {rM, a0, a1} | `ring` {rM, wM, a0, a1}, un muro curvo | `poly`) levantada de `z[0]` a `z[1]` metros. El pintor (`c2d/centro.js`) los levanta con el mismo pinhole que los edificios del mundo, así que la torre de la Catedral y el tanque se ven desde arriba con sus paredes. `wall`/`cap` y las tintas de `roof`, `bands`, `openings` y `windows` son LLAVES de `materials.json → centro.inks`: acá no hay colores. `kits` son estructuras que se repiten (una banca, un busto): se nombran con `kit` y se ponen con `at` y `rotDeg`.",
   "version": 1,
   "kits": {
     "_note": "Lo que se repite. Una banca del parque es de CEMENTO (losa sobre dos patas), no de madera como las del malecón.",
@@ -386,16 +386,16 @@
           "floor": "adoquin",
           "line": [
             [
-              8,
-              -9
+              5,
+              -20
             ],
             [
-              36,
-              -32.6
+              37,
+              -31.4
             ]
           ],
           "wM": 8.5,
-          "_note": "la diagonal a la Calle 9 (way/1178476001). Llega DERECHA hasta el cordón: termina en diagonal contra la acera, sin descanso cuadrado."
+          "_note": "la diagonal a la Calle 9. Sale del PASEO CENTRAL, más arriba que el sendero de OSM (way/1178476001, que nace en la rotonda): así el cuadrante noreste de la rotonda queda libre para su mural. Llega derecha hasta el cordón."
         }
       ],
       "mouths": [
@@ -427,13 +427,13 @@
         {
           "id": "diagonal",
           "at": [
-            29,
-            -26.7
+            29.5,
+            -28.75
           ],
           "wM": 8.5,
           "from": [
-            8,
-            -9
+            5,
+            -20
           ],
           "_note": "`from`: de dónde viene el sendero. La boca sigue ESE rumbo en vez de salir a escuadra de la calle."
         }
@@ -480,6 +480,131 @@
         }
       ],
       "structures": [
+        {
+          "id": "mural_ne",
+          "name": "Mural del tanque",
+          "at": [
+            11.48,
+            -9.02
+          ],
+          "rotDeg": 0,
+          "solid": true,
+          "tiers": [
+            {
+              "ring": {
+                "rM": 14.9,
+                "wM": 0.6,
+                "a0": -55.1,
+                "a1": -21.2,
+                "n": 8
+              },
+              "at": [
+                -11.48,
+                9.02
+              ],
+              "z": [
+                0,
+                2.3
+              ],
+              "wall": "mural",
+              "cap": "white"
+            }
+          ],
+          "_note": "LOS MURALES SON CUATRO ARCOS, concéntricos con el tanque: cada uno ocupa el hueco entre dos entradas de la rotonda y sigue su ángulo, de canto a canto (`a0`…`a1`, medidos desde el centro del tanque; el `at` del cuerpo devuelve el arco a ese centro)."
+        },
+        {
+          "id": "mural_se",
+          "name": "Mural del tanque",
+          "at": [
+            12.05,
+            8.24
+          ],
+          "rotDeg": 0,
+          "solid": true,
+          "tiers": [
+            {
+              "ring": {
+                "rM": 14.9,
+                "wM": 0.6,
+                "a0": 21.2,
+                "a1": 47.5,
+                "n": 8
+              },
+              "at": [
+                -12.05,
+                -8.24
+              ],
+              "z": [
+                0,
+                2.3
+              ],
+              "wall": "mural",
+              "cap": "white"
+            }
+          ]
+        },
+        {
+          "id": "mural_so",
+          "name": "Mural del tanque",
+          "at": [
+            -12.05,
+            8.24
+          ],
+          "rotDeg": 0,
+          "solid": true,
+          "tiers": [
+            {
+              "ring": {
+                "rM": 14.9,
+                "wM": 0.6,
+                "a0": 132.5,
+                "a1": 158.8,
+                "n": 8
+              },
+              "at": [
+                12.05,
+                -8.24
+              ],
+              "z": [
+                0,
+                2.3
+              ],
+              "wall": "mural",
+              "cap": "white"
+            }
+          ]
+        },
+        {
+          "id": "mural_no",
+          "name": "Mural del tanque",
+          "at": [
+            -11.48,
+            -9.02
+          ],
+          "rotDeg": 0,
+          "solid": true,
+          "tiers": [
+            {
+              "ring": {
+                "rM": 14.9,
+                "wM": 0.6,
+                "a0": 201.2,
+                "a1": 235.1,
+                "n": 8
+              },
+              "at": [
+                11.48,
+                9.02
+              ],
+              "z": [
+                0,
+                2.3
+              ],
+              "wall": "mural",
+              "cap": "white"
+            }
+          ]
+        },
         {
           "id": "tanque",
           "name": "Tanque de Agua",
@@ -674,103 +799,6 @@
           ]
         },
         {
-          "id": "mural_se",
-          "name": "Mural del tanque",
-          "at": [
-            9.5,
-            9.5
-          ],
-          "rotDeg": 135,
-          "solid": true,
-          "tiers": [
-            {
-              "box": [
-                6.4,
-                0.6
-              ],
-              "z": [
-                0,
-                2.3
-              ],
-              "wall": "mural",
-              "cap": "white"
-            }
-          ],
-          "_note": "LOS MURALES SON CUATRO, uno entre cada entrada a la rotonda del tanque. El del noreste va un poco más afuera, en la cuña de césped entre el paseo central y la diagonal: sobre el aro de la rotonda ese cuadrante lo ocupa la diagonal entera."
-        },
-        {
-          "id": "mural_so",
-          "name": "Mural del tanque",
-          "at": [
-            -9.5,
-            9.5
-          ],
-          "rotDeg": 45,
-          "solid": true,
-          "tiers": [
-            {
-              "box": [
-                6.4,
-                0.6
-              ],
-              "z": [
-                0,
-                2.3
-              ],
-              "wall": "mural",
-              "cap": "white"
-            }
-          ]
-        },
-        {
-          "id": "mural_no",
-          "name": "Mural del tanque",
-          "at": [
-            -9.5,
-            -9.5
-          ],
-          "rotDeg": 135,
-          "solid": true,
-          "tiers": [
-            {
-              "box": [
-                6.4,
-                0.6
-              ],
-              "z": [
-                0,
-                2.3
-              ],
-              "wall": "mural",
-              "cap": "white"
-            }
-          ]
-        },
-        {
-          "id": "mural_ne",
-          "name": "Mural del tanque",
-          "at": [
-            11.3,
-            -23
-          ],
-          "rotDeg": 35,
-          "solid": true,
-          "tiers": [
-            {
-              "box": [
-                6.4,
-                0.6
-              ],
-              "z": [
-                0,
-                2.3
-              ],
-              "wall": "mural",
-              "cap": "white"
-            }
-          ]
-        },
-        {
           "id": "plataforma",
           "name": "Bustos de Mora y Cañas",
           "at": [
@@ -845,7 +873,7 @@
           "arms": {
             "_note": "las cuatro alas de la X, en una sola regla: `dirDeg` hacia dónde sale, `wM` su ancho. Cada ala son tres cuerpos que vuelan uno sobre otro en la punta.",
             "reachM": 16.5,
-            "fromM": 0,
+            "fromM": 3.6,
             "stepM": 0.9,
             "floorsM": [
               0,
@@ -914,26 +942,19 @@
           },
           "tiers": [
             {
-              "_": "UN solo cilindro grande —la escalera— y va SOBRE las alas: nace en el cruce y sobresale de los techos",
-              "disc": 5.0,
+              "_": "UN solo cilindro —la escalera— METIDO ENTRE LAS ALAS: ellas nacen de su pared y él apenas sobresale de sus techos",
+              "disc": 4.3,
               "n": 28,
               "z": [
                 0,
-                19.5
+                15.2
               ],
               "wall": "paTower",
               "cap": "paTowerCap",
               "stains": "paStain",
-              "bands": [
-                [
-                  0.72,
-                  0.75,
-                  "concreteDark"
-                ]
-              ],
               "roof": {
                 "kind": "dome",
-                "riseM": 2.2,
+                "riseM": 1.2,
                 "ink": "paTowerCap",
                 "ink2": "paTowerLite"
               }
@@ -1047,12 +1068,12 @@
           -48
         ],
         [
-          11.4,
-          -11.4
+          15,
+          -15
         ],
         [
-          -11.4,
-          11.4
+          -15,
+          15
         ],
         [
           14.4,
@@ -1116,8 +1137,8 @@
         },
         {
           "at": [
-            20,
-            -14
+            21,
+            -13
           ],
           "s": 1.15,
           "k": "cortez"
@@ -1189,7 +1210,7 @@
         {
           "at": [
             27,
-            -40
+            -41
           ],
           "s": 1.0,
           "k": "almendro"
@@ -1421,8 +1442,8 @@
               -19
             ],
             [
-              26,
-              -21
+              31.5,
+              -21.5
             ]
           ],
           "wM": 2.2,
@@ -1447,7 +1468,7 @@
               -32
             ],
             [
-              26,
+              31.5,
               -36
             ]
           ],
@@ -1469,7 +1490,7 @@
         {
           "line": [
             [
-              41,
+              39.5,
               -30
             ],
             [
@@ -1477,8 +1498,8 @@
               -27
             ],
             [
-              62,
-              -32
+              66.5,
+              -32.5
             ]
           ],
           "wM": 2.2
@@ -2799,7 +2820,7 @@
           "kit": "planter",
           "id": "macetero_1",
           "at": [
-            125.25,
+            127.35,
             -36
           ],
           "_note": "LOS MACETEROS DEL BULEVAR, en fila por el centro del bulevar YA PEGADO (la calle más la franja que era acera). Son dibujo y no pared: un macetero macizo en el medio de 9 m de calle la cerraría para cualquier carro."
@@ -2808,7 +2829,7 @@
           "kit": "planter",
           "id": "macetero_2",
           "at": [
-            125.05,
+            127.15,
             -23
           ]
         },
@@ -2816,7 +2837,7 @@
           "kit": "planter",
           "id": "macetero_3",
           "at": [
-            124.9,
+            127.0,
             -10
           ]
         },
@@ -2824,7 +2845,7 @@
           "kit": "planter",
           "id": "macetero_4",
           "at": [
-            124.7,
+            126.8,
             12
           ]
         },
@@ -2832,7 +2853,7 @@
           "kit": "planter",
           "id": "macetero_5",
           "at": [
-            124.55,
+            126.65,
             25
           ]
         },
@@ -2840,7 +2861,7 @@
           "kit": "planter",
           "id": "macetero_6",
           "at": [
-            124.4,
+            126.5,
             37
           ]
         }
@@ -2971,12 +2992,12 @@
       ],
       "palms": [
         [
-          29,
-          -11
+          27,
+          -15
         ],
         [
-          29,
-          9.5
+          23.5,
+          13.5
         ],
         [
           -21.5,
@@ -3030,7 +3051,7 @@
               -31
             ],
             [
-              24.5,
+              31.5,
               -28.5
             ]
           ],

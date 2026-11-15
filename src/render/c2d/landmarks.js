@@ -17,6 +17,7 @@ import { content } from "../../content/remote.js";
 import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect, upright } from "./gfx.js";
 import { drawParada, paintProp, propParts } from "./props.js";
 import { shadowInk, sunShadow } from "./shadows.js";
+import { centroOwnsLandmark } from "./centro.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -636,6 +637,14 @@ function drawParcelLandmarkPill(lm, P) {
 // use a `prop` or `scene` in world-props.json, then set the flag — that is where
 // it plugs in.
 function drawLandmark(lm) {
+  // la Catedral y la Casa de la Cultura las dibuja el centro cívico (`c2d/centro.js`):
+  // acá queda sólo la píldora con su palabra, encima del edificio
+  if (centroOwnsLandmark(lm.id)) {
+    const prop = landmarkProp(lm) || {}, part = (prop.parts || []).find((q) => q.shape === "label") || {};
+    const text = prop.label || part.text;
+    if (text) label(lm.x, lm.y - 40, text, part.fg || PARCELS.labelFg, part.bg || PARCELS.defaultTone);
+    return;
+  }
   const owner = ownedByParcel().get(lm.id);
   if (owner && (PARCEL_USES[owner.use] || NO_USE).drawsBuilding) {
     drawParcelLandmarkPill(lm, owner); return;

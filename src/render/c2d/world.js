@@ -17,6 +17,7 @@ import {
 } from "./ground.js";
 import { drawMalecon } from "./malecon.js";
 import { drawPunta, drawPuntaSea, drawPuntaStreetside } from "./punta.js";
+import { drawCentro, drawCentroStreetside } from "./centro.js";
 import { drawFeriaDeck } from "./attractions.js";
 import { paintRelief } from "./relief.js";
 import { paintSkyCover } from "./skycover.js";
@@ -39,6 +40,7 @@ function drawWorld2D(view, t) {
   drawPuntaSea(view, t);   // el mar que tapa la costa vieja: el mismo del golfo, antes del malecón
   drawMalecon(view);
   drawPunta(view, t);       // El Faro y el Balneario: suelo, piscinas y los dos pisos
+  drawCentro(view);         // el centro cívico: césped y piso del Parque Mora y Cañas y de la manzana de la Catedral
   phase("worldGround");
   const vts = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
   // roads: gather in-view segments across tiles, minor → major so arterials paint on top
@@ -52,6 +54,7 @@ function drawWorld2D(view, t) {
   // el tablado de la feria: junto a la calle y sobre el malecón, nunca sobre el asfalto
   drawFeriaDeck(view);
   drawPuntaStreetside(view);   // la bahía del parqueo del Parque Marino, sobre la acera de la calle
+  drawCentroStreetside(view);  // las bocas del parque y de la Catedral: el piso que cruza la acera
   drawSurfaceStyleAceras(view);
   // rails (old Ferrocarril line) + paseo separator ground strips, on top of
   // the asphalt but under buildings/flora

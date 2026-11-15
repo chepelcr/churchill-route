@@ -1,0 +1,3036 @@
+{
+  "_note": "EL CENTRO CÍVICO, TRAZADO — el Parque Mora y Cañas (con su tanque, sus astas, sus bustos y el Antiguo Palacio Municipal) y la manzana de la Catedral (Catedral, Curia, Capilla, Biblioteca, Casa de la Cultura y Museo). Todo lo que este mundo dice de esas dos cuadras que OSM no dice solo. Mismo método que La Punta (`punta.json`): se traza sobre la imagen satelital y sobre lo que OSM sí trae, y `tools/shot-centro-preview.mjs` lo lleva al mundo — preview sin reconstruir, y `--emit` para escribirlo.",
+  "_frame": "CADA LUGAR TIENE SU MARCO: `originLL` es un punto que OSM trae (el tanque; el centro de la huella de la Catedral) y `axisDeg` el rumbo de su eje +u en el marco del mundo (0 = este, positivo en el sentido del reloj). Adentro TODO va en METROS: `[u, v]`, +u al este de la cuadra y +v al sur. Los ángulos de una pieza (`rotDeg`) son en ese mismo marco. Nunca píxeles: este mundo lleva cuatro reescalados.",
+  "_gameFit": "EL JUEGO ENSANCHA LAS CALLES, así que la cuadra del juego es más chica que la real (Mora y Cañas: 61 m de ancho útil contra 73; la manzana de la Catedral: 78 m de fondo contra 98). El trazo se ACOMODA a la cuadra del juego conservando el arreglo: cada edificio en su sitio relativo, encogido lo justo. Las huellas reales en este marco quedan anotadas en `_osm` de cada pieza para poder volver a medirlas.",
+  "_surface": "QUÉ SE PUEDE RECORRER. Lo `paved` es el piso gris: se estampa `boulevard` (transitable, lento) y es lo único manejable. Todo lo demás de la cuadra —las islas verdes, los edificios— es `land`, o sea pared. El anillo de acera se conserva y sólo se abre en las `mouths`, que son las bocas por donde un carro entra desde la calle. `solid: true` en una estructura la vuelve pared aunque esté parada sobre el piso gris (el tanque, la plataforma de los bustos).",
+  "_structures": "UNA ESTRUCTURA ES UNA PILA DE CUERPOS (`tiers`), cada uno una huella (`box` [largo, fondo] | `disc` radio | `arc` {rM, a0, a1} | `poly`) levantada de `z[0]` a `z[1]` metros. El pintor (`c2d/centro.js`) los levanta con el mismo pinhole que los edificios del mundo, así que la torre de la Catedral y el tanque se ven desde arriba con sus paredes. `wall`/`cap` y las tintas de `roof`, `bands`, `openings` y `windows` son LLAVES de `materials.json → centro.inks`: acá no hay colores. `kits` son estructuras que se repiten (una banca, un busto): se nombran con `kit` y se ponen con `at` y `rotDeg`.",
+  "version": 1,
+  "kits": {
+    "_note": "Lo que se repite. Una banca del parque es de CEMENTO (losa sobre dos patas), no de madera como las del malecón.",
+    "bench": {
+      "tiers": [
+        {
+          "box": [
+            2.6,
+            0.8
+          ],
+          "z": [
+            0,
+            0.5
+          ],
+          "wall": "cementDark",
+          "cap": "cement",
+          "edge": "cementEdge"
+        }
+      ]
+    },
+    "bust": {
+      "_note": "pedestal blanco en talud con su banda de granito negro arriba, y el busto encima",
+      "tiers": [
+        {
+          "box": [
+            2.38,
+            2.38
+          ],
+          "z": [
+            0,
+            0.3
+          ],
+          "wall": "granite",
+          "cap": "granite"
+        },
+        {
+          "box": [
+            1.88,
+            1.88
+          ],
+          "z": [
+            0.3,
+            1.7
+          ],
+          "wall": "white",
+          "cap": "granite",
+          "bands": [
+            [
+              0.82,
+              1,
+              "granite"
+            ]
+          ]
+        },
+        {
+          "disc": 0.62,
+          "n": 8,
+          "z": [
+            1.7,
+            2.5
+          ],
+          "wall": "bronze",
+          "cap": "bronzeLite"
+        }
+      ]
+    },
+    "statue": {
+      "_note": "la figura del medio, más alta que los bustos",
+      "tiers": [
+        {
+          "box": [
+            2.5,
+            2.5
+          ],
+          "z": [
+            0,
+            0.3
+          ],
+          "wall": "granite",
+          "cap": "granite"
+        },
+        {
+          "box": [
+            2.0,
+            2.0
+          ],
+          "z": [
+            0.3,
+            1.9
+          ],
+          "wall": "white",
+          "cap": "granite",
+          "bands": [
+            [
+              0.84,
+              1,
+              "granite"
+            ]
+          ]
+        },
+        {
+          "disc": 0.74,
+          "n": 8,
+          "z": [
+            1.9,
+            3.4
+          ],
+          "wall": "statueStone",
+          "cap": "statueStoneLite"
+        }
+      ]
+    },
+    "virgen": {
+      "_note": "la Virgen con el Niño, en bronce oscuro sobre su roca",
+      "tiers": [
+        {
+          "disc": 2.3,
+          "n": 9,
+          "z": [
+            0,
+            0.5
+          ],
+          "wall": "rockDark",
+          "cap": "rock"
+        },
+        {
+          "disc": 1.3,
+          "n": 8,
+          "z": [
+            0.5,
+            1.3
+          ],
+          "wall": "rockDark",
+          "cap": "rock"
+        },
+        {
+          "disc": 0.62,
+          "n": 8,
+          "z": [
+            1.3,
+            3.3
+          ],
+          "wall": "bronze",
+          "cap": "bronzeLite"
+        },
+        {
+          "disc": 0.3,
+          "n": 6,
+          "at": [
+            0.32,
+            -0.1
+          ],
+          "z": [
+            2.4,
+            3.1
+          ],
+          "wall": "bronze",
+          "cap": "bronzeLite"
+        }
+      ]
+    },
+    "planter": {
+      "tiers": [
+        {
+          "disc": 1.6,
+          "n": 12,
+          "z": [
+            0,
+            0.45
+          ],
+          "wall": "cementDark",
+          "cap": "shrub",
+          "edge": "cement"
+        }
+      ]
+    }
+  },
+  "places": [
+    {
+      "id": "mora",
+      "name": "Parque Mora y Cañas",
+      "_sources": "OSM: el parque (way/232390078), el tanque (way/1178451782, `man_made=tower`), los dos bustos (node/10947647668 y …669), el Antiguo Edificio Municipal (way/545111073, `building=ruins`) y diez senderos (`footway`): el eje norte-sur, el aro del tanque, el aro de los bustos, los dos pasos este-oeste y la diagonal a la Calle 9. La imagen satelital y las fotos de calle dan lo demás: el ancho del piso, las astas en arco, la plataforma blanca de los bustos, los muros con murales a los lados del tanque, las bancas de cemento y dónde están los árboles.",
+      "originLL": [
+        9.978648,
+        -84.836542
+      ],
+      "_origin": "el centro del tanque (way/1178451782)",
+      "axisDeg": -3.15,
+      "_axis": "el eje del paseo central, medido sobre el sendero way/1178476006",
+      "own": [
+        [
+          -47,
+          -62
+        ],
+        [
+          -46,
+          -78
+        ],
+        [
+          -22,
+          -87
+        ],
+        [
+          0,
+          -91
+        ],
+        [
+          40,
+          -99
+        ],
+        [
+          78,
+          -100
+        ],
+        [
+          79,
+          -66
+        ],
+        [
+          72,
+          -52
+        ],
+        [
+          56,
+          -42
+        ],
+        [
+          41,
+          -36
+        ],
+        [
+          38.5,
+          -28
+        ],
+        [
+          38.5,
+          70
+        ],
+        [
+          -36.5,
+          70
+        ],
+        [
+          -41,
+          20
+        ]
+      ],
+      "_own": "la cuadra, de eje de calle a eje de calle. Adentro de este contorno todo lo que no sea calzada es de este registro.",
+      "drop": {
+        "parcels": [
+          "osm_park_232390078"
+        ]
+      },
+      "lawn": "lawn",
+      "paved": [
+        {
+          "id": "tanque",
+          "floor": "adoquin",
+          "disc": 14,
+          "at": [
+            0,
+            0
+          ],
+          "_note": "la rotonda del tanque"
+        },
+        {
+          "id": "eje",
+          "floor": "adoquin",
+          "poly": [
+            [
+              -7.5,
+              -60
+            ],
+            [
+              7.5,
+              -60
+            ],
+            [
+              7.5,
+              -10
+            ],
+            [
+              -7.5,
+              -10
+            ]
+          ],
+          "_note": "el paseo central, del tanque a los bustos"
+        },
+        {
+          "id": "bustos",
+          "floor": "adoquin",
+          "disc": 11.5,
+          "at": [
+            0,
+            -66
+          ],
+          "_note": "la plazoleta de los bustos"
+        },
+        {
+          "id": "plaza",
+          "floor": "adoquin",
+          "poly": [
+            [
+              -9,
+              9
+            ],
+            [
+              9,
+              9
+            ],
+            [
+              14,
+              58
+            ],
+            [
+              -12,
+              58
+            ]
+          ],
+          "_note": "la plaza de adoquín que baja del tanque a la Avenida 1"
+        },
+        {
+          "id": "oeste",
+          "floor": "adoquin",
+          "poly": [
+            [
+              -35,
+              -4
+            ],
+            [
+              -10,
+              -4.5
+            ],
+            [
+              -10,
+              4.5
+            ],
+            [
+              -35,
+              5
+            ]
+          ],
+          "_note": "el paso a la Calle 11"
+        },
+        {
+          "id": "este",
+          "floor": "adoquin",
+          "poly": [
+            [
+              10,
+              -4.5
+            ],
+            [
+              32,
+              -4.5
+            ],
+            [
+              32,
+              4.5
+            ],
+            [
+              10,
+              4.5
+            ]
+          ],
+          "_note": "el paso a la Calle 9"
+        },
+        {
+          "id": "diagonal",
+          "floor": "adoquin",
+          "line": [
+            [
+              8,
+              -9
+            ],
+            [
+              27,
+              -25
+            ]
+          ],
+          "wM": 8.5,
+          "_note": "la diagonal a la Calle 9 (way/1178476001)"
+        },
+        {
+          "id": "diagonal_boca",
+          "floor": "adoquin",
+          "poly": [
+            [
+              21,
+              -31.5
+            ],
+            [
+              33,
+              -31.5
+            ],
+            [
+              33,
+              -21.5
+            ],
+            [
+              21,
+              -21.5
+            ]
+          ],
+          "_note": "…y su descanso contra la acera, para que la boca salga derecha a la calle"
+        }
+      ],
+      "mouths": [
+        {
+          "id": "sur",
+          "at": [
+            1,
+            56
+          ],
+          "wM": 24,
+          "_note": "la boca ancha de la Avenida 1"
+        },
+        {
+          "id": "oeste",
+          "at": [
+            -31,
+            0.5
+          ],
+          "wM": 9
+        },
+        {
+          "id": "este",
+          "at": [
+            28.5,
+            0
+          ],
+          "wM": 9
+        },
+        {
+          "id": "diagonal",
+          "at": [
+            29,
+            -26.5
+          ],
+          "wM": 9.5
+        }
+      ],
+      "steps": [
+        {
+          "at": [
+            -13.5,
+            -74
+          ],
+          "rotDeg": -62,
+          "size": [
+            5,
+            6.5
+          ],
+          "n": 5,
+          "_note": "las gradas que bajan de los bustos a la Avenida 3 (way/1178476003)"
+        },
+        {
+          "at": [
+            13.5,
+            -74
+          ],
+          "rotDeg": 62,
+          "size": [
+            5,
+            6.5
+          ],
+          "n": 5,
+          "_note": "…y las del otro lado (way/1178476004)"
+        },
+        {
+          "at": [
+            -8.2,
+            -68.5
+          ],
+          "rotDeg": 0,
+          "size": [
+            2.6,
+            5
+          ],
+          "n": 4,
+          "_note": "las gradas de la plataforma, del lado de la Calle 11"
+        }
+      ],
+      "structures": [
+        {
+          "id": "tanque",
+          "name": "Tanque de Agua",
+          "at": [
+            0,
+            0
+          ],
+          "rotDeg": 0,
+          "solid": true,
+          "label": "TANQUE",
+          "_osm": "way/1178451782: 12 x 10 m. La torre de las fotos: base cuadrada de dos cuerpos con portones de hierro abajo y vanos ochavados arriba, aletas en las esquinas, el balcón, el tanque cilíndrico y su cúpula.",
+          "tiers": [
+            {
+              "box": [
+                7.8,
+                7.8
+              ],
+              "z": [
+                0,
+                11.5
+              ],
+              "wall": "concrete",
+              "cap": "concreteDark",
+              "bands": [
+                [
+                  0.5,
+                  0.58,
+                  "concreteLite"
+                ],
+                [
+                  0.96,
+                  1,
+                  "concreteLite"
+                ]
+              ],
+              "openings": [
+                {
+                  "f": [
+                    0.13,
+                    0.43
+                  ],
+                  "z": [
+                    0,
+                    5.4
+                  ],
+                  "ink": "gate"
+                },
+                {
+                  "f": [
+                    0.57,
+                    0.87
+                  ],
+                  "z": [
+                    0,
+                    5.4
+                  ],
+                  "ink": "gate"
+                },
+                {
+                  "f": [
+                    0.15,
+                    0.41
+                  ],
+                  "z": [
+                    7.0,
+                    10.3
+                  ],
+                  "ink": "void"
+                },
+                {
+                  "f": [
+                    0.59,
+                    0.85
+                  ],
+                  "z": [
+                    7.0,
+                    10.3
+                  ],
+                  "ink": "void"
+                }
+              ]
+            },
+            {
+              "box": [
+                1.3,
+                1.3
+              ],
+              "at": [
+                -3.9,
+                -3.9
+              ],
+              "z": [
+                0,
+                13.2
+              ],
+              "wall": "concrete",
+              "cap": "concreteLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.3
+              ],
+              "at": [
+                3.9,
+                -3.9
+              ],
+              "z": [
+                0,
+                13.2
+              ],
+              "wall": "concrete",
+              "cap": "concreteLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.3
+              ],
+              "at": [
+                3.9,
+                3.9
+              ],
+              "z": [
+                0,
+                13.2
+              ],
+              "wall": "concrete",
+              "cap": "concreteLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.3
+              ],
+              "at": [
+                -3.9,
+                3.9
+              ],
+              "z": [
+                0,
+                13.2
+              ],
+              "wall": "concrete",
+              "cap": "concreteLite"
+            },
+            {
+              "disc": 4.7,
+              "n": 24,
+              "z": [
+                11.5,
+                11.9
+              ],
+              "wall": "concreteDark",
+              "cap": "concreteLite",
+              "edge": "rail"
+            },
+            {
+              "disc": 4.0,
+              "n": 24,
+              "z": [
+                11.9,
+                17.6
+              ],
+              "wall": "tank",
+              "cap": "tankTop",
+              "bands": [
+                [
+                  0.9,
+                  1,
+                  "concreteDark"
+                ]
+              ],
+              "stains": "tankStain"
+            },
+            {
+              "disc": 4.0,
+              "n": 24,
+              "z": [
+                17.6,
+                17.6
+              ],
+              "wall": "tankTop",
+              "cap": "dome",
+              "roof": {
+                "kind": "dome",
+                "riseM": 3.3,
+                "ink": "dome",
+                "ink2": "domeLite"
+              }
+            }
+          ]
+        },
+        {
+          "id": "muro_oeste",
+          "name": "Muro de los murales",
+          "at": [
+            -8.4,
+            3.9
+          ],
+          "rotDeg": 0,
+          "solid": true,
+          "_note": "los dos muros blancos a los lados del tanque, con sus murales del lado de la plaza",
+          "tiers": [
+            {
+              "box": [
+                8.6,
+                0.6
+              ],
+              "z": [
+                0,
+                2.3
+              ],
+              "wall": "mural",
+              "cap": "white"
+            }
+          ]
+        },
+        {
+          "id": "muro_este",
+          "name": "Muro de los murales",
+          "at": [
+            8.4,
+            3.9
+          ],
+          "rotDeg": 0,
+          "solid": true,
+          "tiers": [
+            {
+              "box": [
+                8.6,
+                0.6
+              ],
+              "z": [
+                0,
+                2.3
+              ],
+              "wall": "mural",
+              "cap": "white"
+            }
+          ]
+        },
+        {
+          "id": "plataforma",
+          "name": "Bustos de Mora y Cañas",
+          "at": [
+            0,
+            -69.5
+          ],
+          "rotDeg": 0,
+          "solid": true,
+          "_note": "la plataforma blanca con su banda negra donde están los bustos (fotos de la Calle 11 y la Avenida 3)",
+          "tiers": [
+            {
+              "box": [
+                13.5,
+                6.5
+              ],
+              "z": [
+                0,
+                0.8
+              ],
+              "wall": "white",
+              "cap": "platform",
+              "bands": [
+                [
+                  0.7,
+                  1,
+                  "granite"
+                ]
+              ],
+              "edge": "granite"
+            }
+          ]
+        },
+        {
+          "kit": "bust",
+          "id": "busto_canas",
+          "name": "General José María Cañas",
+          "at": [
+            -4.2,
+            -69.5
+          ],
+          "_osm": "node/10947647668"
+        },
+        {
+          "kit": "statue",
+          "id": "estatua",
+          "name": "Monumento",
+          "at": [
+            0,
+            -70.4
+          ]
+        },
+        {
+          "kit": "bust",
+          "id": "busto_mora",
+          "name": "Presidente Juan Rafael Mora",
+          "at": [
+            4.2,
+            -69.5
+          ],
+          "_osm": "node/10947647669"
+        },
+        {
+          "id": "palacio",
+          "name": "Antiguo Palacio Municipal",
+          "label": "PALACIO MUNICIPAL",
+          "at": [
+            44,
+            -71
+          ],
+          "rotDeg": 0,
+          "_osm": "way/545111073 (`building=ruins`, 6 niveles): una X de cuatro alas de ~22 m con el cilindro de la escalera al centro; el ala del noreste es más ancha. Acá a 0,75 para caber en el lóbulo de la cuadra del juego. De las fotos: cada piso vuela sobre el de abajo en la punta del ala, bandas celestes entre losas de concreto, y la celosía de concreto coronando el techo.",
+          "arms": {
+            "_note": "las cuatro alas de la X, en una sola regla: `dirDeg` hacia dónde sale, `wM` su ancho. Cada ala son tres cuerpos que vuelan uno sobre otro en la punta.",
+            "reachM": 16.5,
+            "fromM": 2.4,
+            "stepM": 0.9,
+            "floorsM": [
+              0,
+              4.6,
+              9.2,
+              13.8
+            ],
+            "wall": "paConcrete",
+            "cap": "paRoof",
+            "bands": [
+              [
+                0,
+                0.2,
+                "paBlue"
+              ],
+              [
+                0.2,
+                0.42,
+                "paWindow"
+              ],
+              [
+                0.42,
+                0.5,
+                "paConcrete"
+              ],
+              [
+                0.5,
+                0.7,
+                "paBlue"
+              ],
+              [
+                0.7,
+                0.92,
+                "paWindow"
+              ],
+              [
+                0.92,
+                1,
+                "paConcrete"
+              ]
+            ],
+            "truss": {
+              "ink": "paTruss",
+              "hM": 2.4,
+              "everyM": 2.6
+            },
+            "stains": "paStain",
+            "list": [
+              {
+                "dirDeg": 45,
+                "wM": 9
+              },
+              {
+                "dirDeg": 135,
+                "wM": 9
+              },
+              {
+                "dirDeg": 225,
+                "wM": 9
+              },
+              {
+                "dirDeg": 315,
+                "wM": 12
+              }
+            ]
+          },
+          "tiers": [
+            {
+              "disc": 1.8,
+              "n": 14,
+              "at": [
+                5.8,
+                0
+              ],
+              "z": [
+                0,
+                14.6
+              ],
+              "wall": "paTower",
+              "cap": "paTowerCap"
+            },
+            {
+              "disc": 1.8,
+              "n": 14,
+              "at": [
+                -5.8,
+                0
+              ],
+              "z": [
+                0,
+                14.6
+              ],
+              "wall": "paTower",
+              "cap": "paTowerCap"
+            },
+            {
+              "disc": 1.8,
+              "n": 14,
+              "at": [
+                0,
+                5.8
+              ],
+              "z": [
+                0,
+                14.6
+              ],
+              "wall": "paTower",
+              "cap": "paTowerCap"
+            },
+            {
+              "disc": 1.8,
+              "n": 14,
+              "at": [
+                0,
+                -5.8
+              ],
+              "z": [
+                0,
+                14.6
+              ],
+              "wall": "paTower",
+              "cap": "paTowerCap"
+            },
+            {
+              "disc": 3.5,
+              "n": 22,
+              "z": [
+                0,
+                16.8
+              ],
+              "wall": "paTower",
+              "cap": "paTowerCap",
+              "stains": "paStain",
+              "roof": {
+                "kind": "dome",
+                "riseM": 1.5,
+                "ink": "paTowerCap",
+                "ink2": "paTowerLite"
+              }
+            }
+          ]
+        },
+        {
+          "kit": "bench",
+          "at": [
+            -8.4,
+            -22
+          ],
+          "rotDeg": 90
+        },
+        {
+          "kit": "bench",
+          "at": [
+            8.4,
+            -22
+          ],
+          "rotDeg": 90
+        },
+        {
+          "kit": "bench",
+          "at": [
+            -8.4,
+            -42
+          ],
+          "rotDeg": 90
+        },
+        {
+          "kit": "bench",
+          "at": [
+            8.4,
+            -42
+          ],
+          "rotDeg": 90
+        },
+        {
+          "kit": "bench",
+          "at": [
+            -10.6,
+            22
+          ],
+          "rotDeg": 96
+        },
+        {
+          "kit": "bench",
+          "at": [
+            11.3,
+            22
+          ],
+          "rotDeg": 84
+        },
+        {
+          "kit": "bench",
+          "at": [
+            -11.4,
+            36
+          ],
+          "rotDeg": 96
+        },
+        {
+          "kit": "bench",
+          "at": [
+            12.7,
+            36
+          ],
+          "rotDeg": 84
+        },
+        {
+          "kit": "bench",
+          "at": [
+            -12.1,
+            49
+          ],
+          "rotDeg": 96
+        },
+        {
+          "kit": "bench",
+          "at": [
+            14,
+            49
+          ],
+          "rotDeg": 84
+        },
+        {
+          "kit": "bench",
+          "at": [
+            -9.3,
+            -9.3
+          ],
+          "rotDeg": 45
+        },
+        {
+          "kit": "bench",
+          "at": [
+            9.3,
+            9.3
+          ],
+          "rotDeg": 45
+        },
+        {
+          "kit": "bench",
+          "at": [
+            -9.3,
+            9.3
+          ],
+          "rotDeg": -45
+        }
+      ],
+      "poles": {
+        "_note": "LAS ASTAS: nueve, en arco del lado de la Avenida 3, cada una sobre su cubo blanco, con un arbusto entre asta y asta. En las fotos están sin bandera.",
+        "arc": {
+          "at": [
+            0,
+            -68
+          ],
+          "rM": 11.2,
+          "fromDeg": 205,
+          "toDeg": 335,
+          "count": 9
+        },
+        "hM": 11,
+        "baseM": 0.95,
+        "shrubs": true
+      },
+      "lamps": [
+        [
+          -9.6,
+          -30
+        ],
+        [
+          9.6,
+          -48
+        ],
+        [
+          11.4,
+          -11.4
+        ],
+        [
+          -11.4,
+          11.4
+        ],
+        [
+          14.4,
+          34
+        ],
+        [
+          -13.4,
+          50
+        ]
+      ],
+      "_lamps": "los postes LED del parque (los de las fotos), `lights.json → led`. POCOS Y SEPARADOS: de noche cada uno abre su charco de luz y los charcos se SUMAN — doce postes juntos dejaban el parque quemado en blanco.",
+      "trees": [
+        {
+          "at": [
+            -20,
+            -46
+          ],
+          "s": 1.5,
+          "k": "guanacaste"
+        },
+        {
+          "at": [
+            -23,
+            -27
+          ],
+          "s": 1.25,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            -17,
+            -15
+          ],
+          "s": 1.1,
+          "k": "cana_fistula"
+        },
+        {
+          "at": [
+            -27,
+            -58
+          ],
+          "s": 1.0,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            18,
+            -62
+          ],
+          "s": 1.75,
+          "k": "guanacaste",
+          "_note": "el árbol grande entre las astas y el Palacio"
+        },
+        {
+          "at": [
+            17,
+            -44
+          ],
+          "s": 1.2,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            20,
+            -14
+          ],
+          "s": 1.15,
+          "k": "cortez"
+        },
+        {
+          "at": [
+            -21,
+            14
+          ],
+          "s": 1.3,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            -23,
+            30
+          ],
+          "s": 1.5,
+          "k": "higueron"
+        },
+        {
+          "at": [
+            -19,
+            45
+          ],
+          "s": 1.25,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            -24,
+            52
+          ],
+          "s": 1.0,
+          "k": "cana_fistula"
+        },
+        {
+          "at": [
+            19,
+            16
+          ],
+          "s": 1.2,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            21,
+            31
+          ],
+          "s": 1.35,
+          "k": "cortez"
+        },
+        {
+          "at": [
+            20,
+            46
+          ],
+          "s": 1.3,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            24,
+            53
+          ],
+          "s": 0.95,
+          "k": "cana_fistula"
+        },
+        {
+          "at": [
+            27,
+            -40
+          ],
+          "s": 1.0,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            62,
+            -62
+          ],
+          "s": 1.3,
+          "k": "almendro",
+          "_note": "los de la esquina del Palacio"
+        },
+        {
+          "at": [
+            27,
+            -78
+          ],
+          "s": 1.1,
+          "k": "almendro"
+        }
+      ],
+      "palms": [
+        [
+          23,
+          8.5
+        ],
+        [
+          26,
+          -9
+        ],
+        [
+          -26,
+          -8
+        ],
+        [
+          -25,
+          9
+        ]
+      ],
+      "labels": [
+        {
+          "at": [
+            0,
+            30
+          ],
+          "text": "PARQUE MORA Y CAÑAS"
+        }
+      ]
+    },
+    {
+      "id": "catedral",
+      "name": "La manzana de la Catedral",
+      "_sources": "OSM: la huella de la Catedral (way/232193919, 52 x 23 m, con la torre al ESTE y el ábside al oeste), la Curia (way/518942377), la Capilla (way/395461264), la Oficina Parroquial (way/998566437), la Biblioteca (way/518942376), la Casa de la Cultura (way/232393634), el Museo Histórico (way/1178476008), las seis huellas de la fila norte (way/1293298442…447) y los senderos: el eje central que sale del atrio hacia el Bulevar (way/233891243), los del jardín norte (way/1293298448…450) y el que baja entre la Curia y la Capilla (way/1376577661). La imagen satelital da los techos (blancos y rojos) y el jardín; las fotos, la piedra de la Catedral y la Casa de la Cultura.",
+      "_layout": "LA T DE PIEDRA NO EXISTE EN LA VIDA REAL. Lo que hay es un EJE este-oeste: la Catedral al fondo (oeste), su atrio de losa al frente, y de ahí el paseo central hasta el Bulevar de la Casa de la Cultura, con edificios a los dos lados. El paso norte-sur se conserva como los dos senderos que sí existen: el del jardín norte y el que baja entre la Curia y la Capilla. Y la Catedral se corre 5 m al este de donde la pone OSM: con la calle del juego más ancha, el ábside quedaba SOBRE la acera de la Calle 7.",
+      "originLL": [
+        9.97769,
+        -84.83483
+      ],
+      "_origin": "el centro de la huella de la Catedral (way/232193919)",
+      "axisDeg": -5.6,
+      "_axis": "el rumbo de las avenidas en esta manzana (Avenida Centenario, -5,6°)",
+      "own": [
+        [
+          -33,
+          -52.5
+        ],
+        [
+          125,
+          -52.5
+        ],
+        [
+          122.9,
+          52
+        ],
+        [
+          -38,
+          52
+        ]
+      ],
+      "_own": "de eje de calle a eje de calle por tres lados; por el este llega justo al cordón del Bulevar de la Casa de la Cultura, que es calle y no es de este registro.",
+      "drop": {
+        "parcels": [
+          "centro_"
+        ],
+        "_parcels": "todas las partes del superbloque `centro` de blocks.json (prefijo): este registro las reemplaza"
+      },
+      "lawn": "lawn",
+      "landmarks": {
+        "catedral": [
+          5,
+          -2
+        ],
+        "cultura": [
+          97,
+          19
+        ]
+      },
+      "paved": [
+        {
+          "id": "atrio",
+          "floor": "losa",
+          "poly": [
+            [
+              31,
+              -16
+            ],
+            [
+              62,
+              -16
+            ],
+            [
+              62,
+              14
+            ],
+            [
+              31,
+              14
+            ]
+          ],
+          "_note": "el atrio de losa frente a la puerta"
+        },
+        {
+          "id": "eje",
+          "floor": "losa",
+          "poly": [
+            [
+              60,
+              -6
+            ],
+            [
+              125.5,
+              -6
+            ],
+            [
+              125.5,
+              8
+            ],
+            [
+              60,
+              8
+            ]
+          ],
+          "_note": "el paseo central, del atrio al Bulevar (way/233891243)"
+        },
+        {
+          "id": "norte",
+          "floor": "losa",
+          "poly": [
+            [
+              26.5,
+              -48
+            ],
+            [
+              35.5,
+              -48
+            ],
+            [
+              35.5,
+              -14
+            ],
+            [
+              26.5,
+              -14
+            ]
+          ],
+          "_note": "el sendero del jardín norte, hasta la Avenida 1 (way/1293298450)"
+        },
+        {
+          "id": "sur_a",
+          "floor": "losa",
+          "poly": [
+            [
+              5,
+              12
+            ],
+            [
+              36,
+              12
+            ],
+            [
+              36,
+              21
+            ],
+            [
+              5,
+              21
+            ]
+          ],
+          "_note": "al costado sur de la Catedral…"
+        },
+        {
+          "id": "sur_b",
+          "floor": "losa",
+          "poly": [
+            [
+              5,
+              12
+            ],
+            [
+              14,
+              12
+            ],
+            [
+              14,
+              46
+            ],
+            [
+              5,
+              46
+            ]
+          ],
+          "_note": "…y bajando entre la Curia y la Capilla a la Avenida Centenario (way/1376577661)"
+        }
+      ],
+      "mouths": [
+        {
+          "id": "norte",
+          "at": [
+            31,
+            -42.5
+          ],
+          "wM": 9
+        },
+        {
+          "id": "sur",
+          "at": [
+            9.5,
+            40
+          ],
+          "wM": 9
+        }
+      ],
+      "footpaths": [
+        {
+          "line": [
+            [
+              -20,
+              -17
+            ],
+            [
+              -12,
+              -22
+            ],
+            [
+              -2,
+              -19
+            ],
+            [
+              8,
+              -24
+            ],
+            [
+              18,
+              -19
+            ],
+            [
+              26,
+              -21
+            ]
+          ],
+          "wM": 2.2,
+          "_note": "los senderos curvos del jardín norte"
+        },
+        {
+          "line": [
+            [
+              -19,
+              -40
+            ],
+            [
+              -10,
+              -34
+            ],
+            [
+              2,
+              -37
+            ],
+            [
+              13,
+              -32
+            ],
+            [
+              26,
+              -36
+            ]
+          ],
+          "wM": 2.2
+        },
+        {
+          "line": [
+            [
+              -12,
+              -22
+            ],
+            [
+              -10,
+              -34
+            ]
+          ],
+          "wM": 2.0
+        },
+        {
+          "line": [
+            [
+              8,
+              -24
+            ],
+            [
+              13,
+              -32
+            ]
+          ],
+          "wM": 2.0
+        },
+        {
+          "line": [
+            [
+              37,
+              -30
+            ],
+            [
+              50,
+              -27
+            ],
+            [
+              62,
+              -32
+            ]
+          ],
+          "wM": 2.2
+        },
+        {
+          "line": [
+            [
+              14,
+              30
+            ],
+            [
+              20,
+              28
+            ]
+          ],
+          "wM": 2.0
+        }
+      ],
+      "structures": [
+        {
+          "id": "catedral",
+          "name": "Catedral del Sagrado Corazón de Jesús",
+          "at": [
+            5,
+            -1
+          ],
+          "rotDeg": 0,
+          "_osm": "way/232193919. En el marco de la huella: nave de 40 x 15,6 m, ábside redondo al oeste, dos brazos de crucero cerca del ábside, la torre de 6,4 m al frente (este) y la torrecilla de la escalera a su lado. Piedra a la vista, techo de zinc blanco.",
+          "tiers": [
+            {
+              "arc": {
+                "rM": 7.6,
+                "a0": 90,
+                "a1": 270,
+                "n": 14
+              },
+              "at": [
+                -19,
+                -0.8
+              ],
+              "z": [
+                0,
+                8
+              ],
+              "wall": "stone",
+              "cap": "zincShade",
+              "windows": {
+                "everyM": 4.2,
+                "wM": 1.3,
+                "z": [
+                  2.4,
+                  5.8
+                ],
+                "ink": "glass"
+              },
+              "roof": {
+                "kind": "fan",
+                "riseM": 2.6,
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            },
+            {
+              "box": [
+                10.9,
+                5
+              ],
+              "at": [
+                -9.1,
+                -10.1
+              ],
+              "z": [
+                0,
+                7.6
+              ],
+              "wall": "stone",
+              "cap": "zinc",
+              "roof": {
+                "kind": "gable",
+                "riseM": 2.4,
+                "axis": "short",
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            },
+            {
+              "box": [
+                9.6,
+                4.6
+              ],
+              "at": [
+                -9.1,
+                8.4
+              ],
+              "z": [
+                0,
+                7.6
+              ],
+              "wall": "stone",
+              "cap": "zinc",
+              "roof": {
+                "kind": "gable",
+                "riseM": 2.4,
+                "axis": "short",
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                -16.0,
+                -9.2
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite",
+              "_": "los contrafuertes: seis por costado, que es el ritmo que se ve desde arriba"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                -16.0,
+                7.6
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                -9.4,
+                -9.2
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                -9.4,
+                7.6
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                -2.8000000000000007,
+                -9.2
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                -2.8000000000000007,
+                7.6
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                3.799999999999997,
+                -9.2
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                3.799999999999997,
+                7.6
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                10.399999999999999,
+                -9.2
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                10.399999999999999,
+                7.6
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                17.0,
+                -9.2
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.6
+              ],
+              "at": [
+                17.0,
+                7.6
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                40,
+                15.6
+              ],
+              "at": [
+                1,
+                -0.8
+              ],
+              "z": [
+                0,
+                9.6
+              ],
+              "wall": "stone",
+              "cap": "stoneLite",
+              "bands": [
+                [
+                  0,
+                  0.12,
+                  "stoneDark"
+                ],
+                [
+                  0.93,
+                  1,
+                  "stoneLite"
+                ]
+              ],
+              "windows": {
+                "everyM": 6.4,
+                "wM": 1.7,
+                "z": [
+                  3,
+                  7.2
+                ],
+                "ink": "glass"
+              }
+            },
+            {
+              "_": "el techo de zinc blanco, metido del pretil de piedra",
+              "box": [
+                39,
+                12.6
+              ],
+              "at": [
+                1,
+                -0.8
+              ],
+              "z": [
+                9.6,
+                9.6
+              ],
+              "wall": "stone",
+              "cap": "zinc",
+              "roof": {
+                "kind": "gable",
+                "riseM": 4.2,
+                "axis": "long",
+                "ink": "zinc",
+                "ink2": "zincShade",
+                "seamsM": 2.2
+              }
+            },
+            {
+              "box": [
+                1.3,
+                1.3
+              ],
+              "at": [
+                21.2,
+                -8.3
+              ],
+              "z": [
+                0,
+                11.4
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "box": [
+                1.3,
+                1.3
+              ],
+              "at": [
+                21.2,
+                6.7
+              ],
+              "z": [
+                0,
+                11.4
+              ],
+              "wall": "stone",
+              "cap": "stoneLite"
+            },
+            {
+              "disc": 1.8,
+              "n": 12,
+              "at": [
+                20.4,
+                4.4
+              ],
+              "z": [
+                0,
+                12.6
+              ],
+              "wall": "stone",
+              "cap": "stoneRoof",
+              "roof": {
+                "kind": "pyramid",
+                "riseM": 2.8,
+                "ink": "stoneRoofLite",
+                "ink2": "stoneRoof"
+              }
+            },
+            {
+              "box": [
+                7.2,
+                7.2
+              ],
+              "at": [
+                24.4,
+                -1.2
+              ],
+              "z": [
+                0,
+                23
+              ],
+              "wall": "stone",
+              "cap": "stoneRoof",
+              "bands": [
+                [
+                  0.34,
+                  0.37,
+                  "stoneLite"
+                ],
+                [
+                  0.63,
+                  0.66,
+                  "stoneLite"
+                ],
+                [
+                  0.96,
+                  1,
+                  "stoneLite"
+                ]
+              ],
+              "openings": [
+                {
+                  "edge": 1,
+                  "f": [
+                    0.28,
+                    0.72
+                  ],
+                  "z": [
+                    0,
+                    4.8
+                  ],
+                  "ink": "door"
+                },
+                {
+                  "f": [
+                    0.3,
+                    0.7
+                  ],
+                  "z": [
+                    9.5,
+                    13.2
+                  ],
+                  "ink": "louvre"
+                },
+                {
+                  "f": [
+                    0.34,
+                    0.66
+                  ],
+                  "z": [
+                    15.5,
+                    19.2
+                  ],
+                  "ink": "louvre"
+                },
+                {
+                  "f": [
+                    0.38,
+                    0.62
+                  ],
+                  "z": [
+                    20.2,
+                    22.2
+                  ],
+                  "ink": "clock"
+                }
+              ],
+              "roof": {
+                "kind": "pyramid",
+                "riseM": 8.5,
+                "ink": "stoneRoofLite",
+                "ink2": "stoneRoof",
+                "cross": "cross"
+              }
+            }
+          ]
+        },
+        {
+          "id": "curia",
+          "name": "Curia Diocesana de Puntarenas",
+          "at": [
+            -10.5,
+            26.5
+          ],
+          "rotDeg": 0,
+          "_osm": "way/518942377: una L de 24 x 30 m pegada al costado sur de la Catedral. Techos de teja roja.",
+          "tiers": [
+            {
+              "box": [
+                12,
+                12
+              ],
+              "at": [
+                5.5,
+                5
+              ],
+              "z": [
+                0,
+                4.2
+              ],
+              "wall": "cream",
+              "cap": "zinc",
+              "windows": {
+                "everyM": 3.6,
+                "wM": 1.2,
+                "z": [
+                  1.2,
+                  3
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 1.8,
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            },
+            {
+              "box": [
+                11,
+                14.5
+              ],
+              "at": [
+                -6.5,
+                4.2
+              ],
+              "z": [
+                0,
+                6.6
+              ],
+              "wall": "cream",
+              "cap": "tile",
+              "windows": {
+                "everyM": 3.6,
+                "wM": 1.2,
+                "z": [
+                  1.4,
+                  3.4
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.6,
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            },
+            {
+              "box": [
+                25,
+                9.5
+              ],
+              "at": [
+                0,
+                -6.2
+              ],
+              "z": [
+                0,
+                6.6
+              ],
+              "wall": "cream",
+              "cap": "tile",
+              "windows": {
+                "everyM": 3.6,
+                "wM": 1.2,
+                "z": [
+                  1.4,
+                  3.4
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.8,
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            }
+          ]
+        },
+        {
+          "id": "capilla",
+          "name": "Capilla",
+          "at": [
+            37,
+            30.5
+          ],
+          "rotDeg": 0,
+          "_osm": "way/395461264 (`building=chapel`): la nave angosta al norte y el cuerpo ancho detrás.",
+          "tiers": [
+            {
+              "box": [
+                19,
+                9
+              ],
+              "at": [
+                0,
+                3.6
+              ],
+              "z": [
+                0,
+                5
+              ],
+              "wall": "chapel",
+              "cap": "zinc",
+              "windows": {
+                "everyM": 4,
+                "wM": 1.2,
+                "z": [
+                  1.4,
+                  3.6
+                ],
+                "ink": "glass"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.2,
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            },
+            {
+              "box": [
+                9,
+                8.5
+              ],
+              "at": [
+                0,
+                -3.9
+              ],
+              "z": [
+                0,
+                6.4
+              ],
+              "wall": "chapel",
+              "cap": "zinc",
+              "windows": {
+                "everyM": 3.4,
+                "wM": 1.1,
+                "z": [
+                  1.6,
+                  4.4
+                ],
+                "ink": "glass"
+              },
+              "roof": {
+                "kind": "gable",
+                "riseM": 2.6,
+                "axis": "short",
+                "ink": "zinc",
+                "ink2": "zincShade",
+                "cross": "cross"
+              }
+            }
+          ]
+        },
+        {
+          "id": "oficina",
+          "name": "Oficina Parroquial",
+          "at": [
+            53.5,
+            27
+          ],
+          "rotDeg": 0,
+          "_osm": "way/998566437",
+          "tiers": [
+            {
+              "box": [
+                10,
+                20
+              ],
+              "z": [
+                0,
+                4.4
+              ],
+              "wall": "cream",
+              "cap": "tile",
+              "windows": {
+                "everyM": 3.8,
+                "wM": 1.2,
+                "z": [
+                  1.2,
+                  3
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.2,
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            }
+          ]
+        },
+        {
+          "id": "biblioteca",
+          "name": "Biblioteca Pública de Puntarenas",
+          "at": [
+            73.5,
+            24.5
+          ],
+          "rotDeg": 0,
+          "_osm": "way/518942376: 21 x 35 m, techo blanco.",
+          "tiers": [
+            {
+              "box": [
+                21,
+                27
+              ],
+              "z": [
+                0,
+                6.2
+              ],
+              "wall": "library",
+              "cap": "zinc",
+              "bands": [
+                [
+                  0,
+                  0.1,
+                  "libraryBase"
+                ]
+              ],
+              "windows": {
+                "everyM": 3.8,
+                "wM": 1.5,
+                "z": [
+                  1.6,
+                  4.4
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.6,
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            }
+          ]
+        },
+        {
+          "id": "cultura",
+          "name": "Casa de la Cultura Elsie Canessa de Odio",
+          "at": [
+            97,
+            19.5
+          ],
+          "rotDeg": 0,
+          "_osm": "way/232393634: 24 x 21 m. Fachada durazno con ventanas de arco en marco café, techo de teja roja a cuatro aguas.",
+          "tiers": [
+            {
+              "box": [
+                24,
+                16
+              ],
+              "z": [
+                0,
+                5.4
+              ],
+              "wall": "peach",
+              "cap": "zinc",
+              "bands": [
+                [
+                  0,
+                  0.1,
+                  "peachBase"
+                ],
+                [
+                  0.9,
+                  1,
+                  "peachTrim"
+                ]
+              ],
+              "windows": {
+                "everyM": 4,
+                "wM": 1.6,
+                "z": [
+                  1.2,
+                  3.9
+                ],
+                "ink": "archBrown"
+              },
+              "openings": [
+                {
+                  "edge": 0,
+                  "f": [
+                    0.45,
+                    0.55
+                  ],
+                  "z": [
+                    0,
+                    3.8
+                  ],
+                  "ink": "door"
+                }
+              ],
+              "roof": {
+                "kind": "hip",
+                "riseM": 3,
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            }
+          ],
+          "_roof": "En la imagen satelital los techos del centro de este conjunto son BLANCOS y los rojos son los de la L del Museo que lo rodea."
+        },
+        {
+          "id": "museo",
+          "name": "Museo Histórico de la Ciudad de Puntarenas",
+          "at": [
+            103.5,
+            29
+          ],
+          "rotDeg": 0,
+          "_osm": "way/1178476008: la antigua Comandancia, una L de dos pisos alrededor de la Casa de la Cultura. Rosada, con sus almenas.",
+          "tiers": [
+            {
+              "box": [
+                24,
+                10
+              ],
+              "at": [
+                -6.5,
+                4
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "pink",
+              "cap": "pinkTrim",
+              "bands": [
+                [
+                  0,
+                  0.08,
+                  "pinkBase"
+                ],
+                [
+                  0.48,
+                  0.52,
+                  "pinkTrim"
+                ],
+                [
+                  0.9,
+                  1,
+                  "pinkTrim"
+                ]
+              ],
+              "windows": {
+                "everyM": 4.2,
+                "wM": 1.4,
+                "z": [
+                  1.6,
+                  3.6
+                ],
+                "ink": "archWhite"
+              },
+              "parapet": "pink"
+            },
+            {
+              "_": "el techo de teja detrás de las almenas",
+              "box": [
+                22.4,
+                8.4
+              ],
+              "at": [
+                -6.5,
+                4
+              ],
+              "z": [
+                8.2,
+                8.2
+              ],
+              "wall": "pink",
+              "cap": "tile",
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.2,
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            },
+            {
+              "box": [
+                13,
+                27
+              ],
+              "at": [
+                12,
+                -4.5
+              ],
+              "z": [
+                0,
+                8.2
+              ],
+              "wall": "pink",
+              "cap": "pinkTrim",
+              "bands": [
+                [
+                  0,
+                  0.08,
+                  "pinkBase"
+                ],
+                [
+                  0.48,
+                  0.52,
+                  "pinkTrim"
+                ],
+                [
+                  0.9,
+                  1,
+                  "pinkTrim"
+                ]
+              ],
+              "windows": {
+                "everyM": 4.2,
+                "wM": 1.4,
+                "z": [
+                  1.6,
+                  3.6
+                ],
+                "ink": "archWhite"
+              },
+              "parapet": "pink"
+            },
+            {
+              "box": [
+                11.4,
+                25.4
+              ],
+              "at": [
+                12,
+                -4.5
+              ],
+              "z": [
+                8.2,
+                8.2
+              ],
+              "wall": "pink",
+              "cap": "tile",
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.4,
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            },
+            {
+              "box": [
+                3.6,
+                3.6
+              ],
+              "at": [
+                17,
+                -17.2
+              ],
+              "z": [
+                0,
+                11
+              ],
+              "wall": "pink",
+              "cap": "pinkTrim",
+              "bands": [
+                [
+                  0.88,
+                  1,
+                  "pinkTrim"
+                ]
+              ],
+              "parapet": "pink"
+            }
+          ]
+        },
+        {
+          "id": "norte_1",
+          "name": "Fila norte",
+          "at": [
+            76.5,
+            -24.5
+          ],
+          "rotDeg": 0,
+          "_osm": "way/1293298442",
+          "tiers": [
+            {
+              "box": [
+                21,
+                33
+              ],
+              "z": [
+                0,
+                5.6
+              ],
+              "wall": "cream",
+              "cap": "tile",
+              "windows": {
+                "everyM": 4,
+                "wM": 1.3,
+                "z": [
+                  1.3,
+                  3.2
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.8,
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            }
+          ]
+        },
+        {
+          "id": "norte_2",
+          "name": "Fila norte",
+          "at": [
+            93,
+            -24.5
+          ],
+          "rotDeg": 0,
+          "_osm": "way/1293298443",
+          "tiers": [
+            {
+              "box": [
+                9.5,
+                33
+              ],
+              "z": [
+                0,
+                5.2
+              ],
+              "wall": "wallBlue",
+              "cap": "zinc",
+              "windows": {
+                "everyM": 4,
+                "wM": 1.3,
+                "z": [
+                  1.3,
+                  3.2
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "gable",
+                "riseM": 2,
+                "axis": "long",
+                "ink": "zinc",
+                "ink2": "zincShade",
+                "seamsM": 2.4
+              }
+            }
+          ]
+        },
+        {
+          "id": "norte_3",
+          "name": "Fila norte",
+          "at": [
+            102,
+            -24.5
+          ],
+          "rotDeg": 0,
+          "_osm": "way/1293298444",
+          "tiers": [
+            {
+              "box": [
+                8.5,
+                33
+              ],
+              "z": [
+                0,
+                4.8
+              ],
+              "wall": "wallOchre",
+              "cap": "tile",
+              "windows": {
+                "everyM": 4,
+                "wM": 1.3,
+                "z": [
+                  1.3,
+                  3.2
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "gable",
+                "riseM": 2,
+                "axis": "long",
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            }
+          ]
+        },
+        {
+          "id": "norte_4",
+          "name": "Fila norte",
+          "at": [
+            114.3,
+            -36
+          ],
+          "rotDeg": 0,
+          "_osm": "way/1293298445",
+          "tiers": [
+            {
+              "box": [
+                15,
+                10
+              ],
+              "z": [
+                0,
+                5
+              ],
+              "wall": "wallGreen",
+              "cap": "zinc",
+              "windows": {
+                "everyM": 3.6,
+                "wM": 1.2,
+                "z": [
+                  1.3,
+                  3.2
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2,
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            }
+          ]
+        },
+        {
+          "id": "colegio_economicas",
+          "name": "Colegio de Profesionales en Ciencias Económicas",
+          "at": [
+            114.3,
+            -24.5
+          ],
+          "rotDeg": 0,
+          "_osm": "way/1293298446",
+          "tiers": [
+            {
+              "box": [
+                15,
+                11
+              ],
+              "z": [
+                0,
+                5.4
+              ],
+              "wall": "cream",
+              "cap": "tile",
+              "windows": {
+                "everyM": 3.6,
+                "wM": 1.2,
+                "z": [
+                  1.3,
+                  3.2
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.2,
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            }
+          ]
+        },
+        {
+          "id": "norte_6",
+          "name": "Fila norte",
+          "at": [
+            113.8,
+            -13
+          ],
+          "rotDeg": 0,
+          "_osm": "way/1293298447",
+          "tiers": [
+            {
+              "box": [
+                16,
+                10
+              ],
+              "z": [
+                0,
+                4.8
+              ],
+              "wall": "wallOchre",
+              "cap": "zinc",
+              "windows": {
+                "everyM": 3.6,
+                "wM": 1.2,
+                "z": [
+                  1.3,
+                  3.2
+                ],
+                "ink": "window"
+              },
+              "roof": {
+                "kind": "hip",
+                "riseM": 2,
+                "ink": "zinc",
+                "ink2": "zincShade"
+              }
+            }
+          ]
+        },
+        {
+          "kit": "virgen",
+          "id": "virgen",
+          "name": "Virgen del Carmen",
+          "at": [
+            20.5,
+            30
+          ],
+          "label": ""
+        },
+        {
+          "kit": "bench",
+          "at": [
+            33.5,
+            -9
+          ],
+          "rotDeg": 90
+        },
+        {
+          "kit": "bench",
+          "at": [
+            33.5,
+            7
+          ],
+          "rotDeg": 90
+        },
+        {
+          "kit": "bench",
+          "at": [
+            46,
+            -14.4
+          ],
+          "rotDeg": 0
+        },
+        {
+          "kit": "bench",
+          "at": [
+            46,
+            12.4
+          ],
+          "rotDeg": 0
+        },
+        {
+          "kit": "bench",
+          "at": [
+            58,
+            -14.4
+          ],
+          "rotDeg": 0
+        },
+        {
+          "kit": "bench",
+          "at": [
+            72,
+            -4.6
+          ],
+          "rotDeg": 0
+        },
+        {
+          "kit": "bench",
+          "at": [
+            72,
+            6.6
+          ],
+          "rotDeg": 0
+        },
+        {
+          "kit": "bench",
+          "at": [
+            96,
+            -4.6
+          ],
+          "rotDeg": 0
+        },
+        {
+          "kit": "bench",
+          "at": [
+            96,
+            6.6
+          ],
+          "rotDeg": 0
+        },
+        {
+          "kit": "planter",
+          "at": [
+            118.5,
+            1
+          ]
+        }
+      ],
+      "lamps": [
+        [
+          37,
+          -12
+        ],
+        [
+          58,
+          10
+        ],
+        [
+          84,
+          -4.4
+        ],
+        [
+          108,
+          6.4
+        ],
+        [
+          30,
+          -32
+        ],
+        [
+          10,
+          30
+        ]
+      ],
+      "trees": [
+        {
+          "at": [
+            -17,
+            -30
+          ],
+          "s": 1.5,
+          "k": "guanacaste"
+        },
+        {
+          "at": [
+            -4,
+            -27
+          ],
+          "s": 1.25,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            6,
+            -40
+          ],
+          "s": 1.3,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            18,
+            -27
+          ],
+          "s": 1.35,
+          "k": "higueron"
+        },
+        {
+          "at": [
+            -21,
+            -19
+          ],
+          "s": 1.0,
+          "k": "cana_fistula"
+        },
+        {
+          "at": [
+            -19,
+            -38.5
+          ],
+          "s": 1.1,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            44,
+            -36
+          ],
+          "s": 1.3,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            56,
+            -24
+          ],
+          "s": 1.2,
+          "k": "cortez"
+        },
+        {
+          "at": [
+            43,
+            -22
+          ],
+          "s": 1.0,
+          "k": "cana_fistula"
+        },
+        {
+          "at": [
+            60,
+            -39
+          ],
+          "s": 1.0,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            22,
+            37
+          ],
+          "s": 1.15,
+          "k": "almendro"
+        },
+        {
+          "at": [
+            18,
+            23.5
+          ],
+          "s": 0.9,
+          "k": "cana_fistula"
+        },
+        {
+          "at": [
+            61.5,
+            16
+          ],
+          "s": 0.85,
+          "k": "cortez"
+        }
+      ],
+      "palms": [
+        [
+          29,
+          -11
+        ],
+        [
+          29,
+          9.5
+        ],
+        [
+          -21.5,
+          -11.5
+        ],
+        [
+          40,
+          16
+        ]
+      ],
+      "labels": []
+    }
+  ]
+}

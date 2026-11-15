@@ -1,7 +1,7 @@
 {
  "generated_from": "src/world2d tiles",
  "playable_max_x": 32820,
- "count": 416,
+ "count": 415,
  "lotes": [
   {
    "id": "L-b41473ce",
@@ -2711,16 +2711,6 @@
    "lon": -84.836561,
    "w": 46,
    "h": 46,
-   "district": "paseo"
-  },
-  {
-   "id": "L-60e0700f",
-   "x": 28824,
-   "y": 18450,
-   "lat": 9.978796,
-   "lon": -84.836492,
-   "w": 141,
-   "h": 127,
    "district": "paseo"
   },
   {

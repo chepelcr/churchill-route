@@ -29,6 +29,7 @@ import { drawChannel, drawEstero } from "./c2d/estero.js";
 import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import { drawAttractions, drawFeriaNightEffects } from "./c2d/attractions.js";
 import { drawPuntaGates, drawPuntaNight } from "./c2d/punta.js";
+import { drawCentroStructures } from "./c2d/centro.js";
 import {
   drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawGullFlock, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
@@ -148,6 +149,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   drawSigns(view);      // ALTO, semáforos, paradas, zebras, topes
   drawEditorWorld(view, "elements");
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
+  drawCentroStructures(view);   // el tanque, el Palacio, la Catedral y lo demás que se levanta en el centro cívico
   phase("setpieces");
   // EL AGUACERO SOBRE EL SUELO, antes de que se dibuje nada que ande encima:
   // el agua está en la calle, no sobre los carros ni sobre la gente.

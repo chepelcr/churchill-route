@@ -205,6 +205,15 @@ RAILWAY_DEF = _ra["railway"]
 #: (`tools/shot-punta-preview.mjs`), directo del archivo y en metros.
 PUNTA_DEF = _load("punta.json")
 
+#: EL CENTRO CÍVICO — el Parque Mora y Cañas y la manzana de la Catedral
+#: trazados (`content/world/centro.json`), en METROS dentro del marco de cada
+#: cuadra. Como La Punta, NINGUNA ETAPA DEL BUILDER LO CONSUME TODAVÍA: lo
+#: lleva al mundo `tools/shot-centro-preview.mjs --emit`, que `pnpm world:build`
+#: encadena detrás de La Punta y que reemplaza las partes del superbloque
+#: `centro` de blocks.json. `tests/test_centro.py` valida el registro Y el
+#: mundo emitido.
+CENTRO_DEF = _load("centro.json")
+
 #: LAS CUADRAS HECHAS A MANO — el superbloque cívico, la manzana del Carmen,
 #: los dos estadios/plazas, la cuadra del Parque Marino y el Balneario. Cada una
 #: NOMBRA su estrategia (`layout`) y el motor la implementa; el JSON escoge y

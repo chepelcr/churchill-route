@@ -649,7 +649,10 @@ export function paintRoadNetwork(g, roads, {
 }
 
 /** The clipped baldosa mosaic shared by the real malecón and its fixture. */
-export function paintMaleconPattern(g, band, view, colors, path, tileSize = 14) {
+// `rule`: la regla del recorte. Los anillos del malecón traen agujeros y piden `evenodd`; una
+// UNIÓN de figuras que se montan (el piso del centro cívico) pide `nonzero`, o el patrón
+// desaparece justo donde dos de ellas se cruzan.
+export function paintMaleconPattern(g, band, view, colors, path, tileSize = 14, rule = "evenodd") {
   const angle = band.ang || 0;
   const ca = Math.cos(-angle);
   const sa = Math.sin(-angle);
@@ -673,7 +676,7 @@ export function paintMaleconPattern(g, band, view, colors, path, tileSize = 14) 
   u0 = Math.floor(u0 / tileSize) * tileSize;
   v0 = Math.floor(v0 / tileSize) * tileSize;
   g.save();
-  g.clip(path, "evenodd");
+  g.clip(path, rule);
   g.translate(cx, cy);
   g.rotate(angle);
   g.strokeStyle = colors.joint;

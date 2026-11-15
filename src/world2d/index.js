@@ -124,6 +124,8 @@ export const WORLD2D = (function () {
   const BALNEARIO = manifest.balneario || null; // sea-water inlet bbox {x0,y0,x1,y1,cx,cy}
   // La Punta: el Faro y el Balneario trazados {x0,y0,x1,y1,grounds,pools,walls,fans,waves,…}
   const PUNTA = manifest.punta || null;
+  // El centro cívico: Parque Mora y Cañas y la manzana de la Catedral, trazados {x0,y0,x1,y1,places}
+  const CENTRO = manifest.centro || null;
   const KIOSK_PATHS = manifest.kioskPaths || []; // sand access paths to beach kiosks
   const PLAZAS = manifest.plazas || [];   // [x,y,w,h,type] ground rects (esplanade)
   const GREENS = manifest.greens || [];   // {pts:[x,y,...], type} park/plaza outline polys
@@ -727,7 +729,7 @@ export const WORLD2D = (function () {
   return {
     W, H, META, CELL, TILE_PX, TCOLS, TROWS, CLASSES, ACERA_PX, CUAD, PX_PER_M,
     DISTRICTS, LANDMARKS, CUSTOMERS, STAGES, EDITOR_UI, EDITOR_CONTENT,
-    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, PUNTA, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, FERIA, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
+    WATERS, BEACHES, LAND_POLYS, HILLS, BRIDGE, ESTUARY, PIERS, STADIUMS, BALNEARIO, PUNTA, CENTRO, KIOSK_PATHS, PLAZAS, GREENS, MALECON, ATTRACTIONS, FERIA, CUADRAS, SURFACE_STYLES, EDITOR_FEATURES, POIS, PARCELS, FERRIES, FIELDS, SIGNS, LIGHTS, ROOFS, NPCS, COIN_SPAWNS, WEATHER_ZONES,
     // streaming lifecycle
     ready, update, ensureView, visibleTiles, residentElevationTiles,
     loadTile, tileResident, lampsIn,

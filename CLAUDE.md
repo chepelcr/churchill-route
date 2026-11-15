@@ -53,6 +53,7 @@ The procedure is three steps and it is not optional:
 | **el modo Tren al Puerto: una máquina, un rizo, un paisaje, una época** | `src/assets/railway-art.json` (lo que se ve) · `src/assets/railway-sim.json` (lo que la física hace) |
 | **las máquinas, sus cuatro mejoras y su economía** | `src/content/railway/catalog.json` |
 | **un tramo del corredor Pacífico–Puntarenas** | `src/content/railway/levels/*.json` — el perfil lo escribe `tools/gen_railway_profile.py` |
+| **el Parque Mora y Cañas y la manzana de la Catedral** — su piso, sus bocas, el tanque, el Palacio, la Catedral, una banca | `content/world/centro.json` (METROS, en el marco de cada cuadra) → `pnpm world:centro`; tintas en `materials.json` → `centro`; pintor `c2d/centro.js` |
 | **the ground of one manzana or one parcel** | `content/world/blocks.json` → `manzanas` (BY GEO) / `parcels` (by id) |
 | **who stands on a pitch** | `content/world/blocks.json` → `crowd`; what a type IS → `src/game/npcTypes.json` |
 | a muelle's size, width, style | `content/world/piers.json` |

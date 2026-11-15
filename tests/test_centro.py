@@ -1,0 +1,247 @@
+"""EL CENTRO CÍVICO — `content/world/centro.json`: el Parque Mora y Cañas y la
+manzana de la Catedral, trazados.
+
+Lo que este registro puede tener mal y NO SE VE:
+
+* una tinta que no existe pinta el cuerpo en el magenta de `missing` — y un
+  cuerpo magenta dentro de un edificio de cuarenta se pierde en una captura;
+* un `kit` mal escrito no dibuja nada, sin error;
+* un largo en píxeles deja de ser verdad en el próximo reescalado;
+* y lo de fondo: lo que se DIBUJA y lo que se PISA tienen que ser lo mismo. El
+  piso gris es `boulevard` en el ráster, las islas verdes y los edificios son
+  pared, y cada boca tiene que llegar del asfalto al piso. Un parque dibujado
+  recorrible sobre un ráster que dice `land` es una pared invisible.
+
+Las pruebas de la segunda mitad leen el MUNDO EMITIDO, que es lo único que el
+juego ve: se rompen si alguien edita el registro y no corre `pnpm world:centro`.
+"""
+import base64
+import json
+import math
+import os
+import unittest
+
+from churchill.world.config import ROOT
+from churchill.world.content import CENTRO_DEF
+
+REG = os.path.join(ROOT, "content", "world", "centro.json")
+MATERIALS = os.path.join(ROOT, "src", "assets", "materials.json")
+WORLD = os.path.join(ROOT, "src", "world2d")
+LAND, ROAD, ACERA, BOULEVARD = 1, 3, 6, 7
+
+#: llaves de un cuerpo cuyo valor es una tinta de `materials.json → centro.inks`
+INK_KEYS = ("wall", "cap", "edge", "parapet", "stains")
+
+
+def tiers_of(doc, structure):
+    if structure.get("kit"):
+        return doc["kits"][structure["kit"]]["tiers"]
+    arms = structure.get("arms")
+    out = list(structure.get("tiers", []))
+    if arms:
+        out.append({"wall": arms["wall"], "cap": arms["cap"], "bands": arms["bands"],
+                    "truss": arms["truss"], "stains": arms["stains"], "z": [0, arms["floorsM"][-1]], "box": [1, 1]})
+    return out
+
+
+def inks_of(tier):
+    for key in INK_KEYS:
+        if tier.get(key):
+            yield tier[key]
+    for _f0, _f1, ink in tier.get("bands", []):
+        yield ink
+    for op in tier.get("openings", []):
+        yield op["ink"]
+    if tier.get("windows"):
+        yield tier["windows"]["ink"]
+    if tier.get("truss"):
+        yield tier["truss"]["ink"]
+    roof = tier.get("roof") or {}
+    for key in ("ink", "ink2", "cross"):
+        if roof.get(key):
+            yield roof[key]
+
+
+class CentroRegistryTests(unittest.TestCase):
+    def setUp(self):
+        self.doc = json.load(open(REG, encoding="utf-8"))
+        self.mat = json.load(open(MATERIALS, encoding="utf-8"))["centro"]
+
+    def test_the_builder_loads_the_same_file(self):
+        # `_load` quita las notas (`_…`): se compara lo que identifica, no el archivo crudo
+        self.assertEqual([p["id"] for p in CENTRO_DEF["places"]], [p["id"] for p in self.doc["places"]])
+        self.assertEqual(sorted(CENTRO_DEF["kits"]), sorted(k for k in self.doc["kits"] if not k.startswith("_")))
+
+    def test_every_place_is_anchored_in_geo_at_the_civic_centre(self):
+        self.assertEqual([p["id"] for p in self.doc["places"]], ["mora", "catedral"])
+        for place in self.doc["places"]:
+            lat, lon = place["originLL"]
+            self.assertTrue(9.977 < lat < 9.980 and -84.838 < lon < -84.833,
+                            f"{place['id']}: [{lat}, {lon}] no cae en el centro — ¿píxeles, o lon/lat al revés?")
+            self.assertTrue(-45 < place["axisDeg"] < 45, f"{place['id']}: el eje no parece grados")
+
+    def test_lengths_are_metres_inside_the_block(self):
+        """Ninguna cuadra de acá mide más de 200 m: un número mayor es un píxel."""
+        def walk(node, where):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    if key.startswith("_") or key in ("originLL", "n", "count", "inks"):
+                        continue
+                    walk(value, f"{where}.{key}")
+            elif isinstance(node, list):
+                for item in node:
+                    walk(item, where)
+            elif isinstance(node, (int, float)) and not isinstance(node, bool):
+                self.assertLessEqual(abs(node), 360, f"{where}: {node} no es metros ni grados")
+        walk(self.doc["places"], "places")
+        walk(self.doc["kits"], "kits")
+
+    def test_every_ink_and_floor_exists(self):
+        inks = self.mat["inks"]
+        for place in self.doc["places"]:
+            self.assertIn(place["lawn"], self.mat["lawn"])
+            for shape in place["paved"]:
+                self.assertIn(shape["floor"], self.mat["floors"], f"{place['id']}/{shape['id']}: piso sin material")
+            for s in place["structures"]:
+                if s.get("kit"):
+                    self.assertIn(s["kit"], self.doc["kits"], f"{place['id']}: kit desconocido {s['kit']}")
+                for tier in tiers_of(self.doc, s):
+                    for ink in inks_of(tier):
+                        if ink == "mural":           # el muro de murales: blanco + franjas de `mural.inks`
+                            continue
+                        self.assertIn(ink, inks, f"{place['id']}/{s.get('id', s.get('kit'))}: tinta «{ink}» sin color")
+
+    def test_every_body_stands_on_the_ground_or_on_another(self):
+        for place in self.doc["places"]:
+            for s in place["structures"]:
+                tiers = tiers_of(self.doc, s)
+                self.assertTrue(any(t["z"][0] == 0 for t in tiers), f"{s.get('id')}: nada toca el suelo")
+                for t in tiers:
+                    self.assertLessEqual(t["z"][0], t["z"][1])
+                    self.assertLess(t["z"][1], 40, f"{s.get('id')}: {t['z'][1]} m es más alto que nada en Puntarenas")
+                    self.assertEqual(sum(k in t for k in ("box", "disc", "arc", "poly")), 1,
+                                     f"{s.get('id')}: un cuerpo lleva exactamente una huella")
+
+    def test_benches_are_cement(self):
+        """Las bancas de este parque son de cemento; las de madera son del malecón."""
+        for tier in self.doc["kits"]["bench"]["tiers"]:
+            self.assertTrue(tier["cap"].startswith("cement") and tier["wall"].startswith("cement"))
+
+    def test_the_cathedral_stands_back_from_calle_7(self):
+        """El ábside se salía a la calle: OSM lo pone a 2 m del cordón y la calle del juego es más ancha."""
+        cat = next(p for p in self.doc["places"] if p["id"] == "catedral")
+        church = next(s for s in cat["structures"] if s.get("id") == "catedral")
+        apse = next(t for t in church["tiers"] if "arc" in t)
+        west_tip = church["at"][0] + apse["at"][0] - apse["arc"]["rM"]
+        west_edge = min(u for u, _v in cat["own"])
+        self.assertGreater(west_tip - west_edge, 13, "el ábside vuelve a quedar sobre la acera de la Calle 7")
+
+    def test_the_build_chain_runs_centro_after_punta(self):
+        scripts = json.load(open(os.path.join(ROOT, "package.json"), encoding="utf-8"))["scripts"]
+        for name in ("world:build", "world:punta"):
+            chain = scripts[name]
+            self.assertIn("shot-centro-preview.mjs --emit", chain, f"{name}: La Punta reescribe el tile del centro")
+            self.assertLess(chain.index("shot-punta-preview.mjs"), chain.index("shot-centro-preview.mjs"))
+
+
+class CentroEmittedWorldTests(unittest.TestCase):
+    """Lo que el juego recibe: `manifest.centro` y el ráster de su tile."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = json.load(open(REG, encoding="utf-8"))
+        cls.manifest = json.load(open(os.path.join(WORLD, "manifest.json"), encoding="utf-8"))
+        cls.meta = cls.manifest["meta"]
+        cls.tiles = {}
+
+    def cls_at(self, x, y):
+        tp, cell = self.meta["tilePx"], self.meta["cell"]
+        key = f"{int(x // tp)}_{int(y // tp)}"
+        if key not in self.tiles:
+            t = json.load(open(os.path.join(WORLD, "tiles", key + ".json"), encoding="utf-8"))
+            rle, grid = base64.b64decode(t["rle"]), bytearray()
+            for k in range(0, len(rle), 2):
+                grid += bytes([rle[k + 1]]) * rle[k]
+            self.tiles[key] = (t, grid)
+        t, grid = self.tiles[key]
+        return grid[int((y - t["y"]) // cell) * t["cols"] + int((x - t["x"]) // cell)]
+
+    def place(self, pid):
+        return next(p for p in self.manifest["centro"]["places"] if p["id"] == pid)
+
+    def test_the_world_carries_both_places(self):
+        centro = self.manifest.get("centro")
+        self.assertIsNotNone(centro, "el mundo no trae el centro cívico: falta `pnpm world:centro`")
+        self.assertEqual([p["id"] for p in centro["places"]], [p["id"] for p in self.doc["places"]])
+        for src, out in zip(self.doc["places"], centro["places"]):
+            self.assertEqual(len(out["paved"]), len(src["paved"]), f"{src['id']}: el registro cambió y no se emitió")
+            self.assertEqual(len(out["structures"]), len(src["structures"]))
+            self.assertEqual(len(out["mouths"]), len(src["mouths"]))
+
+    def test_the_old_parcels_are_gone(self):
+        ids = {p["id"] for p in self.manifest["parcels"]}
+        self.assertFalse({i for i in ids if i.startswith("centro_")}, "quedan parcelas del superbloque viejo")
+        self.assertNotIn("osm_park_232390078", ids)
+
+    def test_the_grey_floor_is_drivable_and_the_green_is_not(self):
+        for place in self.manifest["centro"]["places"]:
+            for shape in place["paved"]:
+                pts = shape["pts"]
+                cx = sum(pts[0::2]) / (len(pts) / 2)
+                cy = sum(pts[1::2]) / (len(pts) / 2)
+                if (place["id"], shape["id"]) in (("mora", "tanque"), ("mora", "bustos")):
+                    # en el centro de estas dos rotondas hay algo macizo (el tanque, la plataforma
+                    # de los bustos): no se atraviesa, pero 9 m al sur el piso sí se recorre
+                    self.assertEqual(self.cls_at(cx, cy), LAND, f"{shape['id']}: lo macizo del centro se atraviesa")
+                    south = 9 * self.meta["pxPerMeter"]
+                    cx, cy = cx - math.sin(place["ang"]) * south, cy + math.cos(place["ang"]) * south
+                self.assertEqual(self.cls_at(cx, cy), BOULEVARD, f"{place['id']}/{shape['id']}: el piso no se puede recorrer")
+        # una isla verde del parque y el jardín norte de la Catedral: pared
+        ppm = self.meta["pxPerMeter"]
+        for pid, (u, v) in (("mora", (-20, -30)), ("mora", (20, 30)), ("catedral", (0, -30))):
+            p = self.place(pid)
+            a = p["ang"]
+            x = p["ox"] + (u * math.cos(a) - v * math.sin(a)) * ppm
+            y = p["oy"] + (u * math.sin(a) + v * math.cos(a)) * ppm
+            self.assertEqual(self.cls_at(x, y), LAND, f"{pid}: la isla verde en ({u}, {v}) m se puede pisar")
+
+    def test_every_mouth_reaches_the_asphalt(self):
+        cell = self.meta["cell"]
+        for place in self.manifest["centro"]["places"]:
+            self.assertTrue(place["mouths"], f"{place['id']}: un lugar sin boca es una isla")
+            for mo in place["mouths"]:
+                ax, ay, bx, by, cx, cy, dx, dy = mo["pts"]
+                x0, y0, x1, y1 = (ax + bx) / 2, (ay + by) / 2, (cx + dx) / 2, (cy + dy) / 2
+                length = math.hypot(x1 - x0, y1 - y0)
+                ux, uy = (x1 - x0) / length, (y1 - y0) / length
+                self.assertEqual(self.cls_at(x0 - ux * 3 * cell, y0 - uy * 3 * cell), ROAD, f"{mo['id']}: no arranca en la calle")
+                seen = set()
+                s = 0.0
+                while s <= length + 3 * cell:
+                    seen.add(self.cls_at(x0 + ux * s, y0 + uy * s))
+                    s += cell / 2
+                self.assertLessEqual(seen, {ROAD, BOULEVARD}, f"{place['id']}/{mo['id']}: hay pared entre la calle y el piso")
+
+    def test_the_sidewalk_ring_survives_outside_the_mouths(self):
+        """La acera se abre SÓLO en las bocas: el resto del anillo sigue siendo acera."""
+        p = self.place("mora")
+        ppm, a = self.meta["pxPerMeter"], p["ang"]
+        # la acera de la Calle 11, lejos de la boca oeste (v = 0)
+        u, v = -30, 28
+        x = p["ox"] + (u * math.cos(a) - v * math.sin(a)) * ppm
+        y = p["oy"] + (u * math.sin(a) + v * math.cos(a)) * ppm
+        self.assertEqual(self.cls_at(x, y), ACERA)
+
+    def test_the_landmarks_sit_on_their_buildings(self):
+        lms = {lm["id"]: lm for lm in self.manifest["landmarks"]}
+        cat = self.place("catedral")
+        for lm_id, sid in (("catedral", "catedral"), ("cultura", "cultura")):
+            s = next(q for q in cat["structures"] if q["id"] == sid)
+            lm = lms[lm_id]
+            self.assertIn(lm_id, self.manifest["centro"]["landmarks"])
+            self.assertTrue(s["x0"] <= lm["x"] <= s["x1"] and s["y0"] <= lm["y"] <= s["y1"],
+                            f"{lm_id}: el hito no está sobre su edificio")
+
+
+if __name__ == "__main__":
+    unittest.main()

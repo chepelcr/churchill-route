@@ -292,11 +292,17 @@ const pancGeom = (q) => {
     const side = (r, k, sgn) => { const du = k - r, L = Math.hypot(du, b.depthM), nu = sgn * b.depthM / L, nv = Math.abs(du) / L;
       const p0 = [r + nu * w, nv * w]; return (v) => p0[0] + du * (v - p0[1]) / b.depthM; };   // u del borde exterior a la altura v
     const uW = side(b.roadU[0], b.kerbU[0], -1), uE = side(b.roadU[1], b.kerbU[1], 1);
-    const along = (U, H) => (u) => (u > U(0) && u < U(H) ? H * (u - U(0)) / (U(H) - U(0)) : H);   // v del costado a la altura u
-    const square = (u) => (u <= uW(0) || u >= uE(0) ? 0 : Math.min(chordV, (u < uW(chordV) ? along(uW, chordV)(u) : chordV), (u > uE(chordV) ? chordV * (uE(0) - u) / (uE(0) - uE(chordV)) : chordV)));
+    // la isla cuadrada: MÁS ANCHA que la bahía (`islandMarginM` de cada lado en su frente) para que se vea el
+    // paso a los costados de la media luna; sus costados son paralelos a las puntas de la bahía
+    const m = q.islandMarginM, sW = (b.kerbU[0] - b.roadU[0]) / b.depthM, sE = (b.kerbU[1] - b.roadU[1]) / b.depthM;
+    const iW = (v) => b.roadU[0] - m + sW * (v - chordV), iE = (v) => b.roadU[1] + m + sE * (v - chordV);
+    const square = (u) => { const lo = baseV; if (u <= iW(lo) || u >= iE(lo)) return 0;
+      if (u < iW(chordV)) return lo + (chordV - lo) * (u - iW(lo)) / (iW(chordV) - iW(lo));
+      if (u > iE(chordV)) return lo + (chordV - lo) * (iE(lo) - u) / (iE(lo) - iE(chordV));
+      return chordV; };
     const A = circ(q.arc.halfChordM, q.arc.sagM); A.c += chordV;
-    const uc = (uW(chordV) + uE(chordV)) / 2;   // la media luna, centrada en el frente de la isla cuadrada
-    Object.assign(g, { baseV, ringV, chordV, A, uW, uE, uc, uMin: uW(0), uMax: uE(0), B: benchCirc(q.bench, chordV) });
+    const uc = (iW(chordV) + iE(chordV)) / 2;   // la media luna, centrada en el frente de la isla cuadrada
+    Object.assign(g, { baseV, ringV, chordV, A, uW, uE, iW, iE, uc, uMin: Math.min(uW(0), iW(baseV)), uMax: Math.max(uE(0), iE(baseV)), B: benchCirc(q.bench, chordV) });
     g.v = (u) => Math.max(square(u), Math.abs(u - uc) < q.arc.halfChordM ? upper(A, u - uc) : 0);
   } else {
     const half = q.lengthM / 2, A = circ(half, q.outM);
@@ -432,7 +438,7 @@ const rockAlong = (ids, edge) => {
     if (q.kind !== "parking") { out.push(...arc(0)); continue; }
     // el parqueo: la piedra rodea la isla cuadrada por sus costados y su frente, y sale por la media luna
     const hc = q.arc.halfChordM;
-    out.push(g.at([g.uW(g.baseV), g.baseV]), g.at([g.uW(g.chordV), g.chordV]), g.at([g.uc - hc, g.chordV]), ...arc(g.chordV), g.at([g.uc + hc, g.chordV]), g.at([g.uE(g.chordV), g.chordV]), g.at([g.uE(g.baseV), g.baseV]));
+    out.push(g.at([g.iW(g.baseV), g.baseV]), g.at([g.iW(g.chordV), g.chordV]), g.at([g.uc - hc, g.chordV]), ...arc(g.chordV), g.at([g.uc + hc, g.chordV]), g.at([g.iE(g.chordV), g.chordV]), g.at([g.iE(g.baseV), g.baseV]));
   }
   return out;
 };

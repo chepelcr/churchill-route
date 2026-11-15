@@ -2571,6 +2571,8 @@
    "lens": {
     "lengthM": 20.0,
     "outM": 8.5,
+    "heartM": 2.4,
+    "_heart": "del lado de la calle el rojo no es recto: es la parte de arriba de un corazón, dos lóbulos de círculo que se meten `heartM` en el malecón y se juntan en un pico en el medio.",
     "_bench": "las bancas van sobre un arco que se arquea HACIA LA CALLE: `midM` del borde recto en el medio y `endM` a ±`endUM`. Medido en la captura (9 m = 460 px), a la escala de esta pancita, y corrido hacia la calle lo que mide media escollera para que las de las puntas no queden sobre la piedra.",
     "bench": {
      "midM": 2.0,
@@ -2591,6 +2593,8 @@
    "parking": {
     "lengthM": 43.0,
     "_note": "la PANCITA GRANDE del Parque Marino, medida en la captura (10 m = 295 px; `u` a lo largo, + hacia el Parque Marino, `v` desde el cordón). La BAHÍA es parte de la calle: asfalto pegado a la calzada, con los cajones en batería y sus dos puntas en diagonal. La ACERA DE LA CALLE no la cruza: pasa por detrás, con su mismo ancho, su mismo color y su caño, recta por detrás y con sus puntas en el mismo ángulo que las de la bahía, y por eso sale más allá del malecón. Del borde de esa acera cuelga el SEGMENTO de círculo (cuerda 21,7 m, flecha 7,3 m): piso del malecón hasta las bancas y, de ahí a la piedra, la lente roja en el mismo mosaico.",
+    "islandM": 5.0,
+    "_island": "LA ISLA ES DOBLE: del borde del malecón sale primero una isla cuadrada de `islandM` con la forma de la bahía —sus costados siguen el ángulo de las puntas de la bahía— y, CENTRADA en su frente, la media luna. Va a 5 m para que se lea: la escollera mide 3,5 de ancho y a 3 m se la comía. Las dos son piso del malecón con la escollera alrededor.",
     "arc": {
      "halfChordM": 10.85,
      "sagM": 7.3

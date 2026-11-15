@@ -285,15 +285,19 @@ const pancGeom = (q) => {
     // la bahía (asfalto, parte de la calle) y detrás la acera de la calle con su ancho de siempre, en un
     // RECTÁNGULO recto de punta a punta de la bahía; del borde de esa acera cuelga el segmento
     // el segmento cuelga del borde del MALECÓN; si la acera de la bahía llegara más allá, de ella
-    const baseV = (eastBase(i) - roadEdge(i)) / ppm, w = ACERA / ppm, b = q.bay, ringV = b.depthM + w, chordV = Math.max(ringV, baseV);
+    // LA ISLA ES DOBLE: una isla cuadrada que sale del malecón con la forma de la bahía (sus costados
+    // siguen las puntas de la bahía) y, de su borde, la media luna
+    const baseV = (eastBase(i) - roadEdge(i)) / ppm, w = ACERA / ppm, b = q.bay, ringV = b.depthM + w, chordV = Math.max(ringV, baseV) + q.islandM;
     // sus puntas siguen el ÁNGULO de las de la bahía: cada canto corrido un ancho de acera hacia afuera
     const side = (r, k, sgn) => { const du = k - r, L = Math.hypot(du, b.depthM), nu = sgn * b.depthM / L, nv = Math.abs(du) / L;
       const p0 = [r + nu * w, nv * w]; return (v) => p0[0] + du * (v - p0[1]) / b.depthM; };   // u del borde exterior a la altura v
     const uW = side(b.roadU[0], b.kerbU[0], -1), uE = side(b.roadU[1], b.kerbU[1], 1);
-    const ring = (u) => (u > uW(0) && u < uE(0) ? Math.min(ringV, u < uW(ringV) ? ringV * (u - uW(0)) / (uW(ringV) - uW(0)) : u > uE(ringV) ? ringV * (uE(0) - u) / (uE(0) - uE(ringV)) : ringV) : 0);
+    const along = (U, H) => (u) => (u > U(0) && u < U(H) ? H * (u - U(0)) / (U(H) - U(0)) : H);   // v del costado a la altura u
+    const square = (u) => (u <= uW(0) || u >= uE(0) ? 0 : Math.min(chordV, (u < uW(chordV) ? along(uW, chordV)(u) : chordV), (u > uE(chordV) ? chordV * (uE(0) - u) / (uE(0) - uE(chordV)) : chordV)));
     const A = circ(q.arc.halfChordM, q.arc.sagM); A.c += chordV;
-    Object.assign(g, { baseV, ringV, chordV, A, uW, uE, uMin: uW(0), uMax: uE(0), B: benchCirc(q.bench, chordV) });
-    g.v = (u) => Math.max(ring(u), Math.abs(u) < q.arc.halfChordM ? upper(A, u) : 0);
+    const uc = (uW(chordV) + uE(chordV)) / 2;   // la media luna, centrada en el frente de la isla cuadrada
+    Object.assign(g, { baseV, ringV, chordV, A, uW, uE, uc, uMin: uW(0), uMax: uE(0), B: benchCirc(q.bench, chordV) });
+    g.v = (u) => Math.max(square(u), Math.abs(u - uc) < q.arc.halfChordM ? upper(A, u - uc) : 0);
   } else {
     const half = q.lengthM / 2, A = circ(half, q.outM);
     g.A = A; g.uMin = -half; g.uMax = half;
@@ -424,11 +428,11 @@ const rockAlong = (ids, edge) => {
     const u = uOf(i), q = pancitas.find((p) => { const g = pancGeom(p), du = u - p.u; return du > g.uMin && du < g.uMax && (p.kind !== "parking" || g.v(du) > g.baseV); });
     if (!q) { out.push(offset(i, edge(i))); continue; }
     if (done.has(q)) continue; done.add(q);
-    const g = pancGeom(q), arc = (v0, a1 = 1) => { const a0 = Math.acos(Math.max(-1, Math.min(1, (v0 - g.A.c) / g.A.R))); return Array.from({ length: 49 }, (_, k) => { const a = -a0 + 2 * a0 * k / 48; return g.at([g.A.R * Math.sin(a), g.A.c + g.A.R * Math.cos(a)]); }); };
-    if (q.kind !== "parking" || g.ringV <= g.baseV) { out.push(...arc(q.kind === "parking" ? g.chordV : 0)); continue; }
-    // la acera de la bahía sale del malecón: la piedra la rodea, y sigue por el arco
+    const g = pancGeom(q), arc = (v0, a1 = 1) => { const a0 = Math.acos(Math.max(-1, Math.min(1, (v0 - g.A.c) / g.A.R))); return Array.from({ length: 49 }, (_, k) => { const a = -a0 + 2 * a0 * k / 48; return g.at([(g.uc || 0) + g.A.R * Math.sin(a), g.A.c + g.A.R * Math.cos(a)]); }); };
+    if (q.kind !== "parking") { out.push(...arc(0)); continue; }
+    // el parqueo: la piedra rodea la isla cuadrada por sus costados y su frente, y sale por la media luna
     const hc = q.arc.halfChordM;
-    out.push(g.at([g.uW(g.baseV), g.baseV]), g.at([g.uW(g.chordV), g.chordV]), g.at([-hc, g.chordV]), ...arc(g.chordV), g.at([hc, g.chordV]), g.at([g.uE(g.chordV), g.chordV]), g.at([g.uE(g.baseV), g.baseV]));
+    out.push(g.at([g.uW(g.baseV), g.baseV]), g.at([g.uW(g.chordV), g.chordV]), g.at([g.uc - hc, g.chordV]), ...arc(g.chordV), g.at([g.uc + hc, g.chordV]), g.at([g.uE(g.chordV), g.chordV]), g.at([g.uE(g.baseV), g.baseV]));
   }
   return out;
 };
@@ -790,9 +794,10 @@ const tilesByKey = new Map([[`${tc}_${tr}`, tile], ...frontTiles]);
       // por debajo de la escollera para que la piedra tape la orilla.
       // EL PARQUEO del Parque Marino: la bahía en batería pegada al asfalto, la acera gris detrás de los
       // carros con sus alas hasta la calle, y hacia la playa el segmento con su LENTE roja y sus bancas.
-      const g = pancGeom(q), firstLens = pancitas.findIndex((p2) => p2.kind !== "parking"), R = (pts) => pts.flatMap((p) => g.at(p)).map((x) => Math.round(x * 10) / 10);   // con un decimal: a pixel entero una diagonal suave sale en escalones
+      const g = pancGeom(q), firstLens = pancitas.findIndex((p2) => p2.kind !== "parking"), R = (pts) => pts.flatMap((p) => g.at(p)).map((x) => Math.round(x * 10) / 10);
+      const Ra = (pts) => R(pts.map(([u, v]) => [u + (g.uc || 0), v]));   // lo del arco: en el marco de su centro   // con un decimal: a pixel entero una diagonal suave sale en escalones
       const Aout = { c: g.A.c, R: g.A.R + 0.6 }, [um, vm] = meet(Aout, g.B);
-      const benches = benchSpots(g.B).map((phi) => { const [x, y] = g.at([g.B.R * Math.sin(phi), g.B.c - g.B.R * Math.cos(phi)]), du = Math.cos(phi), dv = Math.sin(phi);
+      const benches = benchSpots(g.B).map((phi) => { const [x, y] = g.at([(g.uc || 0) + g.B.R * Math.sin(phi), g.B.c - g.B.R * Math.cos(phi)]), du = Math.cos(phi), dv = Math.sin(phi);
         return [Math.round(x), Math.round(y), +Math.atan2(g.t[1] * du + g.n[1] * dv, g.t[0] * du + g.n[0] * dv).toFixed(4)]; });
       const lensIn = [...arcUV(g.B, lower, -um, um), ...arcUV(Aout, upper, um, -um)];   // dentro de los dos círculos
       if (q.kind === "parking") {
@@ -802,14 +807,18 @@ const tilesByKey = new Map([[`${tc}_${tr}`, tile], ...frontTiles]);
         const ring = R([[g.uW(-0.3), -0.3], [g.uW(g.ringV), g.ringV], [g.uE(g.ringV), g.ringV], [g.uE(-0.3), -0.3]]);
         // el caño se recorta a la acera: sus esquinas no asoman a la calzada
         const canoClip = R([[g.uW(0), 0], [g.uW(g.ringV), g.ringV], [g.uE(g.ringV), g.ringV], [g.uE(0), 0]]);
-        return { kind: q.kind, ring, canoClip, stamps: [ring], bed: R(lensIn), benches, stallLines: st,
+        return { kind: q.kind, ring, canoClip, stamps: [ring], bed: Ra(lensIn), benches, stallLines: st,
           bay: R([[b.roadU[0], -0.3], [b.roadU[1], -0.3], [b.kerbU[1], b.depthM], [b.kerbU[0], b.depthM]]),
           cano: R([[b.roadU[0], -0.3], [b.kerbU[0], b.depthM], [b.kerbU[1], b.depthM], [b.roadU[1], -0.3]]) };
       }
-      const ue = Math.sqrt(Aout.R * Aout.R - (-0.2 - Aout.c) ** 2);
-      if (n === firstLens) return { kind: q.kind, bed: R([[-ue, -0.2], [ue, -0.2], ...arcUV(Aout, upper, ue, -ue)]), benches };
+      // del lado de la calle, la parte de ARRIBA DE UN CORAZÓN: dos lóbulos de círculo exacto que se
+      // meten en el malecón y se juntan en un pico en el medio
+      const ue = Math.sqrt(Aout.R * Aout.R - Aout.c * Aout.c), L = circ(ue / 2, q.heartM);
+      const lobe = (uc, from, to) => arcUV(L, upper, from, to, 24).map(([x, v]) => [uc + x, -v]);
+      const heart = [...lobe(-ue / 2, -ue / 2, ue / 2), ...lobe(ue / 2, -ue / 2, ue / 2)];
+      if (n === firstLens) return { kind: q.kind, bed: R([...heart, ...arcUV(Aout, upper, ue, -ue)]), benches };
       return { kind: q.kind, benches,
-        bed: R([[-ue, -0.2], [ue, -0.2], ...arcUV(Aout, upper, ue, um, 16), ...arcUV(g.B, lower, um, -um), ...arcUV(Aout, upper, -um, -ue, 16)]) };
+        bed: R([...heart, ...arcUV(Aout, upper, ue, um, 16), ...arcUV(g.B, lower, um, -um), ...arcUV(Aout, upper, -um, -ue, 16)]) };
     }),
   };
 }

@@ -2,6 +2,8 @@
 // suspension bridge. The painterly tile pass doesn't cover these.
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
+import LIGHTS_REG from "../../assets/lights.json" with { type: "json" };
+const LIGHT_TYPES = LIGHTS_REG.types;
 import { WORLD2D as W } from "../../world2d/index.js";
 import { state } from "../../game/state.js";
 import { ctx, flatPath, label, mixColor, textureScale } from "./gfx.js";
@@ -143,6 +145,15 @@ function structureColor(palette, spec, vars = {}) {
   return spec;
 }
 
+/** Cuánto baja el PIE del poste de una luz respecto de su punto (el dibujo de `lights.json` la para encima
+ *  de él): para que el pilote de la baranda quede debajo del poste y no a media asta. */
+function lampFoot(type) {
+  const spec = LIGHT_TYPES[type];
+  let foot = 0;
+  for (const part of (spec && spec.parts) || []) for (const p of part.pts || []) foot = Math.max(foot, Number(p[1]) || 0);
+  return foot;
+}
+
 function pierInView(P, view, pad = 0) {
   const pts = P.pts, m = P.w / 2 + 40 + pad;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -170,7 +181,7 @@ function drawPier(P, view) {
       deck: style.deck, seam: style.seam, seamGap: style.seamGap,
       cap: style.cap, capVisible: Boolean(style.cap && last), rail: style.rail,
       centre: style.centre, centreStart: run ? 0 : 6, centreEnd: last ? len - 6 : len,
-      posts: style.posts,
+      posts: style.posts, postStart: style.postsAtLamps && style.lamp ? style.lamp.start + lampFoot(style.lamp.type) : style.postStart, postSize: style.postSize, pile: style.pile,
     };
     paintStructureParts(ctx, S.pierDeck.parts, {
       X: (value) => value || 0,

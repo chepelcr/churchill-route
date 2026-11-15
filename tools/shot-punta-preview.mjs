@@ -65,6 +65,7 @@ const raw = (lls) => lls.flatMap(xy);
 const groundsRaw = raw(B0.grounds[0].polygonLL);
 const tc = Math.floor(groundsRaw[0] / tilePx), tr = Math.floor(groundsRaw[1] / tilePx);
 const tile = JSON.parse(readWorld(`tiles/${tc}_${tr}.json`));
+const CANO_PX_WORLD = Number((readFileSync("src/render/c2d/streets.js", "utf8").match(/const CANO_PX = (\d+(?:\.\d+)?)/) || [])[1] || 4);   // el caño de la calle (`c2d/streets.js`)
 const FIT = doc.gameFit, ACERA = manifest.meta.aceraPx, realHalf = FIT.realRoadHalfM * ppm, range = FIT.interiorRangeM * ppm;
 // las calles de TODO el frente: el tile de La Punta y los del Paseo hasta el Muelle de Cruceros
 const cruPier = manifest.piers.find((q) => q.id === doc.paseo.until.pier), untilX = cruPier.pts[0] + doc.paseo.until.pastM * ppm;
@@ -514,7 +515,16 @@ let capAt = null, capRow = null;
   // las banderas, a medio camino entre dos luces del muelle (la misma receta que las pone)
   const lampSpec = JSON.parse(readFileSync("src/assets/materials.json", "utf8")).pier[cruPier.style].lamp;
   punta.flags = [];
-  for (let k = 0; k < CR.flags.count; k++) for (const sd of [-1, 1]) punta.flags.push({ x: cruPier.pts[0] + sd * (cruPier.w / 2 - lampSpec.sideInset), y: Math.round(cruPier.pts[1] + lampSpec.start + lampSpec.gap * (k + 0.5)) });
+  // cada `everyGaps` tramos de luz, de la boca a la punta: medio tramo después de una luz, nunca encima de otra
+  // las luces van alternando de lado (`pierLamps`): la k-ésima en `start + k·gap`, del lado −1 si k es par
+  // (normal (−uy, ux) del muelle). Cada bandera va en medio de dos luces SEGUIDAS DE SU LADO —o sea a la altura
+  // de la luz de enfrente—, así que también alternan y nunca quedan en parejas
+  { const P0 = cruPier.pts, n = P0.length, len = Math.hypot(P0[n - 2] - P0[0], P0[n - 1] - P0[1]), ux = (P0[n - 2] - P0[0]) / len, uy = (P0[n - 1] - P0[1]) / len, nx = -uy, ny = ux, off = cruPier.w / 2 - lampSpec.sideInset;
+    const lamps = []; for (let d = lampSpec.start; d < len - lampSpec.endInset; d += lampSpec.gap) lamps.push(d);
+    // la bandera se para donde se para la luz: sobre el pilote, que va bajo el PIE del poste de la luz
+    const LT = JSON.parse(readFileSync("src/assets/lights.json", "utf8")).types[lampSpec.type], foot = Math.max(0, ...((LT && LT.parts) || []).flatMap((p) => (p.pts || []).map((q) => Number(q[1]) || 0)));
+    for (let k = 0; k + 2 < lamps.length; k++) { const side = k % 2 ? 1 : -1, d = (lamps[k] + lamps[k + 2]) / 2;
+      punta.flags.push({ x: Math.round(P0[0] + ux * d + nx * side * off), y: Math.round(P0[1] + uy * d + ny * side * off + foot) }); } }
   punta.gates = [{ x: cruPier.pts[0], y: cruPier.pts[1] + 10, w: cruPier.w, ang: 0, text: CR.gate.text }];
   // la Capitanía, donde OSM tiene el edificio del MOPT
   for (const [, nb] of frontTiles) {
@@ -561,6 +571,41 @@ for (const id of (doc.customers && doc.customers.toMalecon) || []) {
   const i = Math.min(eastI - 1, nearestI([c.x, c.y])), [x, y] = offset(i, realKerb(i) + doc.customers.inM * ppm).map(Math.round);
   console.log(`[punta-preview] cliente ${id}: (${c.x}, ${c.y}) -> (${x}, ${y}) sobre el malecón`);
   c.x = x; c.y = y;
+}
+// LA BAHÍA DEL FARO, con la MISMA forma que la del Parque Marino: un trapecio de asfalto pegado a la calle,
+// con las puntas en diagonal, la acera de la calle rodeándolo con su caño y los cajones en batería contra su
+// fondo. Va donde la Calle 39 (angosta) empalma con el Paseo de los Turistas (ancho) y se traga la pancita del
+// remate de la Avenida Centenario. El marco: el arranque del Paseo, `u` a lo largo, `v` hacia la explanada,
+// en metros; el borde del asfalto es el de la Calle 39 antes del empalme y el del Paseo después.
+if (doc.faroBay) {
+  const FB = doc.faroBay, wide = streets.find((r) => r.name === FB.wide && streets.some((b) => b.name === FB.narrow && Math.hypot(b.pts[0] - r.pts[0], b.pts[1] - r.pts[1]) < 2)),
+    narrow = wide && streets.find((b) => b.name === FB.narrow && Math.hypot(b.pts[0] - wide.pts[0], b.pts[1] - wide.pts[1]) < 2);
+  if (!wide || !narrow) console.warn(`[punta-preview] bahía del Faro: no encontré el empalme ${FB.wide} / ${FB.narrow}`);
+  else {
+    const ox = wide.pts[0], oy = wide.pts[1], L = Math.hypot(wide.pts[2] - ox, wide.pts[3] - oy), tx = (wide.pts[2] - ox) / L, ty = (wide.pts[3] - oy) / L, nx = -ty * FB.side, ny = tx * FB.side;
+    const at = ([u, v]) => [ox + (tx * u + nx * v) * ppm, oy + (ty * u + ny * v) * ppm], Rb = (pts) => pts.flatMap(at).map((x) => Math.round(x * 10) / 10);
+    const e1 = narrow.w / 2 / ppm, e2 = wide.w / 2 / ppm, w = ACERA / ppm, b = FB.bay, K = e2 + b.depthM;   // e1/e2: borde del asfalto antes/después del empalme
+    const side = (r, rv, k, sgn) => { const du = k - r, dv = K - rv, Ln = Math.hypot(du, dv), nu = sgn * dv / Ln, nv = Math.abs(du) / Ln, p0 = [r + nu * w, rv + nv * w]; return (v) => p0[0] + du * (v - p0[1]) / dv; };
+    const uW = side(b.roadU[0], e1, b.kerbU[0], -1), uE = side(b.roadU[1], e2, b.kerbU[1], 1), o = 0.3;
+    const ring = Rb([[uW(e1 - o), e1 - o], [uW(K + w), K + w], [uE(K + w), K + w], [uE(e2 - o), e2 - o], [0, e2 - o], [0, e1 - o]]);
+    // el caño de la punta oeste arranca donde termina el ASFALTO DIBUJADO: ahí cae el disco del remate de la
+    // Avenida Centenario, que sale más allá del borde de la Calle 39. Se pregunta al TRAZO de las calles (cada
+    // una es una línea de su ancho con remates redondos, como se pinta), no al ráster: sus celdas miden 1,6 m
+    // y con ellas el caño seguía asomando un pelito. Se busca en los DOS cantos de la banda del caño —el de la
+    // bahía y el de afuera— y el recorte une esos dos puntos, que siguen el borde de la calle.
+    const onAsphalt = (x, y) => streets.some((r) => { const h = r.w / 2; for (let k = 0; k + 3 < r.pts.length; k += 2) { const ax = r.pts[k], ay = r.pts[k + 1], dx = r.pts[k + 2] - ax, dy = r.pts[k + 3] - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); if (Math.hypot(x - ax - t * dx, y - ay - t * dy) < h) return true; } return false; });
+    const du = b.kerbU[0] - b.roadU[0], dv = K - e1, Ld = Math.hypot(du, dv), cano = CANO_PX_WORLD / ppm, nu = -dv / Ld * cano, nv = du / Ld * cano;
+    const leave = (u0, v0) => { for (let f = 0; f <= 1; f += 0.005) { const p = [u0 + du * f, v0 + dv * f]; if (!onAsphalt(...at(p))) return [u0 + du * (f + 0.1 / Ld), v0 + dv * (f + 0.1 / Ld)]; } return [u0 + du, v0 + dv]; };
+    const pIn = leave(b.roadU[0], e1), pOut = leave(b.roadU[0] + nu, e1 + nv);
+    const canoClip = Rb([pOut, [uW(K + w), K + w], [uE(K + w), K + w], [uE(e2), e2], [0, e2], [0, e1], pIn]);
+    const st = []; for (let k = 0; k <= b.stalls.count; k++) { const u = b.stalls.u[0] + (b.stalls.u[1] - b.stalls.u[0]) * k / b.stalls.count; st.push(Rb([[u, K - b.stallM], [u, K]])); }
+    punta.bays = [{ id: "bahia_faro", ring, canoClip, stamps: [ring], stallLines: st,
+      bay: Rb([[b.roadU[0], e1 - o], [0, e1 - o], [0, e2 - o], [b.roadU[1], e2 - o], [b.kerbU[1], K], [b.kerbU[0], K]]),
+      cano: Rb([[b.roadU[0], e1 - o], [b.kerbU[0], K], [b.kerbU[1], K], [b.roadU[1], e2 - o]]) }];
+    // una señal de tránsito que quedó dentro de la bahía estorba un cajón: fuera
+    { const bp = punta.bays[0].bay, n0 = manifest.signs.length; manifest.signs = manifest.signs.filter((q) => !inside(q.x, q.y, bp)); if (manifest.signs.length < n0) console.log(`[punta-preview] bahía del Faro: ${n0 - manifest.signs.length} señal(es) fuera de los cajones`); }
+    console.log(`[punta-preview] bahía del Faro: ${b.stalls.count} cajones, ${Math.round(b.kerbU[1] - b.kerbU[0])} m de fondo, en ${ox},${oy}`);
+  }
 }
 // ---- EL NORTE: de la explanada a la terminal de ferris, por la Avenida 3
 {
@@ -833,7 +878,7 @@ for (const t of tilesByKey.values()) {
   t.palms = (t.palms || []).filter((o) => !inFront(o) && Math.hypot(o.x - faroXY[0], o.y - faroXY[1]) > plazaR);
   t.trees = (t.trees || []).filter((o) => !inFront(o, FU.keepStreetTreesM * ppm));
   // la bahía del parqueo es calle: ni árbol ni palmera parados en un cajón
-  for (const bay of ((punta.muellero && punta.muellero.pancitas) || []).filter((q) => q.bay).map((q) => q.bay)) { t.trees = t.trees.filter((o) => !inside(o.x, o.y, bay)); t.palms = t.palms.filter((o) => !inside(o.x, o.y, bay)); }
+  for (const bay of [...((punta.muellero && punta.muellero.pancitas) || []), ...(punta.bays || [])].filter((q) => q.bay).map((q) => q.bay)) { t.trees = t.trees.filter((o) => !inside(o.x, o.y, bay)); t.palms = t.palms.filter((o) => !inside(o.x, o.y, bay)); }
 }
 // una fila sobre SU línea: `d` dice a qué distancia de la calle, `ok` dónde sí
 const along2 = (stepM, d, ok) => { const out = []; let run = 0, prev = null; for (let i = 0; i < N; i++) { if (i === eastI) prev = null; const pt = offset(i, d(i)); if (prev) run += Math.hypot(pt[0] - prev[0], pt[1] - prev[1]); prev = pt; if (run >= stepM * ppm) { run = 0; if (ok(i)) out.push({ i, x: Math.round(pt[0]), y: Math.round(pt[1]) }); } } return out; };
@@ -978,11 +1023,16 @@ if (process.argv.includes("--emit")) {
   for (const is of punta.islands || []) fill(is.pts, C.land, S(C.road), "piscina");
   // 6) lo manejable va al final: el patio de la terminal, sus rampas, los muelles y las calles escondidas
   if (punta.yard) fill(punta.yard.pts, C.road, S(), "patio");
-  for (const q of (punta.muellero && punta.muellero.pancitas) || []) { if (q.bay) fill(q.bay, C.road, S(), "parqueo"); for (const p of q.stamps || []) fill(p, C.acera, S(C.road), "parqueo"); }
+  for (const q of [...((punta.muellero && punta.muellero.pancitas) || []), ...(punta.bays || [])]) { if (q.bay) fill(q.bay, C.road, S(), "parqueo"); for (const p of q.stamps || []) fill(p, C.acera, S(C.road), "parqueo"); }
   // la rampa: se reconstruye de la pose de su plataforma (centro corrido 9 px de través, ángulo +90°)
   for (const f of manifest.ferries.filter((q) => q.berthPose)) { const [px, py, pa] = f.berthPose, a = pa - Math.PI / 2, ux = Math.cos(a), uy = Math.sin(a), len = (f.deck?.[1] || 57) + 12, cx = px - uy * 9, cy = py + ux * 9;
     strip([cx - ux * len / 2, cy - uy * len / 2, cx + ux * len / 2, cy + uy * len / 2], 46, C.road, S(), "rampas"); }
   for (const id of ["muelle_faro", "muelle_nacional"]) { const p = manifest.piers.find((q) => q.id === id); if (p) strip(p.pts, p.w, C.bridge, S(), "muelles"); }
+  // …y la PUNTA corta donde termina el tablado dibujado: el remate redondo del build y el cuarto de ancho que
+  // `strip` agrega por cada lado dejaban 18–35 px de cubierta invisible y el carro salía al agua
+  for (const id of ["muelle_faro", "muelle_nacional"]) { const p = manifest.piers.find((q) => q.id === id); if (!p) continue;
+    const n = p.pts.length, bx = p.pts[n - 2], by = p.pts[n - 1], L = Math.hypot(bx - p.pts[n - 4], by - p.pts[n - 3]) || 1, ux = (bx - p.pts[n - 4]) / L, uy = (by - p.pts[n - 3]) / L, nx = -uy, ny = ux, hw = p.w / 2 + CELL, far = p.w / 2 + 3 * CELL;
+    fill([bx + nx * hw, by + ny * hw, bx + nx * hw + ux * far, by + ny * hw + uy * far, bx - nx * hw + ux * far, by - ny * hw + uy * far, bx - nx * hw, by - ny * hw], C.water, S(C.water, C.land, C.beach, C.road, 4, C.acera, C.boulevard, 8, 9, C.malecon), "punta del muelle"); }
   for (const k of manifest.kioskPaths.filter((q) => q.hidden)) strip(k.pts, k.w || 28, C.road, S(), "calles escondidas");
   for (const [key, t] of all) t.rle = enc(grids.get(key));
   for (const t of all.values()) delete t._g;   // la caché del ráster que leyó la orilla no se escribe

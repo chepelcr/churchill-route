@@ -367,6 +367,8 @@ function drawPunta(view, t = 0) {
     ctx.fillStyle = M.figures.ink; ctx.fill(q._bed);
     if (band) paintMaleconPattern(ctx, band, view, M.figures.mosaic, q._bed, BALDOSA_PX);
   }
+  // la acera que rodea las bahías sueltas (la del Faro), antes de la calle como la del parqueo
+  for (const q of P.bays || []) { if (!q.ring) continue; if (!q._ringP) q._ringP = flatPath(q.ring, true); ctx.fillStyle = MATERIALS.street.acera; ctx.fill(q._ringP); }
   for (const line of P.riprap || []) paintRiprap(line, view);
 
 
@@ -562,7 +564,8 @@ function drawPuntaStreetside(view) {
   const P = W.PUNTA;
   if (!P || !P.muellero || !aabbInView(P, view, 400)) return;
   const C = M.muellero;
-  for (const q of P.muellero.pancitas || []) {
+  // las bahías: la del parqueo del Parque Marino y la del Faro, la misma receta
+  for (const q of [...(P.muellero.pancitas || []), ...(P.bays || [])]) {
     if (!q.bay) continue;
     if (!q._bayP) { q._bayP = flatPath(q.bay, true); q._canoP = flatPath(q.cano, false); q._canoClip = flatPath(q.canoClip, true); }
     // el caño de la calle sigue el canto de la bahía, como en cualquier cordón: una banda más oscura

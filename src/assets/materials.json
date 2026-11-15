@@ -201,12 +201,17 @@
       "rail": "#2f6fb8",
       "centre": "#f8d76b",
       "hut": true,
+      "posts": 23,
+      "postsAtLamps": true,
+      "postSize": 5,
+      "pile": "#1d4f8c",
+      "_posts": "LA BARANDA VA EN PILOTES, como la del tablado de la feria: un poste cada MEDIO tramo de luz y, con `postsAtLamps`, arrancando bajo el PIE del poste de la primera luz (su dibujo en `lights.json` la para encima de su punto), así cada luz —y cada bandera, que va a la altura de la luz de enfrente— queda parada sobre un pilote. `sideInset: 1` pone la luz en el eje de la baranda.",
       "lamp": {
         "type": "amber",
         "gap": 46,
         "start": 24,
         "endInset": 8,
-        "sideInset": 3,
+        "sideInset": 1,
         "alternate": true
       },
       "_lampNote": "LA LÁMPARA DEL MUELLE ES UNA LUZ, no un dibujo del entablado. Era `lamps: 46` —un número de separación— y el poste, el bombillo y sus dos colores (día/noche) vivían dentro de la receta del deck como el verbo `pier-lamps`, con su propia geometría. O sea DOS sistemas de alumbrado: éste y `lights.json`, que ya tenía `amber` descrito literalmente como «la del muelle» y nunca se usó. Ahora el estilo dice DÓNDE (separación, arranque, retiro del canto, si alternan de lado) y `type` dice QUÉ LÁMPARA ES; el aspecto sale del registro de luces como el de cualquier farola. Cambiar un muelle a `led` o a `warm` es editar esta línea, y la luz que abre en la noche cambia con ella porque es la misma luz."

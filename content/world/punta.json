@@ -2,6 +2,19 @@
  "_note": "LA PUNTA — El Faro y el Balneario. Todo lo que este mundo dice de ese lugar que OSM no dice: la piscina en coma y sus zonas, los edificios como son, y el piso del malecón del Faro. Anclas GEO siempre ([lat, lon]); largos en METROS; rumbos en grados en el marco del mundo (0 = este, positivo en el sentido del reloj). El trazo sobre la imagen, con sus píxeles de origen, queda en docs/punta-satellite-mockup.json; ESTO es lo que el juego lee. Los colores no viven acá: `src/assets/materials.json` → `punta`.",
  "_status": "Lo lee `tools/shot-punta-preview.mjs` para el preview sin reconstruir. `content.py` lo carga como `PUNTA_DEF`, pero todavía NINGUNA etapa del builder lo consume: mientras tanto la cuadra sigue saliendo como `water-inlet` desde blocks.json.",
  "version": 1,
+ "faroBay": {
+  "_note": "LA BAHÍA DEL FARO, con la misma forma que la del Parque Marino: un trapecio de asfalto pegado a la calle, con las puntas en diagonal, la acera de la calle rodeándolo con su caño y los cajones en batería contra su fondo. Va donde la Calle 39 empalma con el Paseo de los Turistas y se traga la pancita del remate de la Avenida Centenario. `u` a lo largo desde el arranque del Paseo (+ hacia el Paseo), `v` hacia la explanada; `depthM` se mide desde el borde del asfalto del Paseo, así que donde la Calle 39 es más angosta la bahía tiene pasillo antes de los cajones. `side`: de qué lado del Paseo está la explanada (1 = a la izquierda de su sentido).",
+  "wide": "Paseo de Los Turistas",
+  "narrow": "Calle 39",
+  "side": 1,
+  "bay": {
+   "depthM": 5.5,
+   "roadU": [-41.0, 19.0],
+   "kerbU": [-37.0, 15.5],
+   "stallM": 5.0,
+   "stalls": { "count": 20, "u": [-36.5, 15.0] }
+  }
+ },
  "customers": {
   "_note": "los clientes cuya ancla geo cae donde este frente redibujó el mar: se sientan sobre el malecón, `inM` pasada la acera, a la altura de donde estaban. El Surfista canadiense quedaba ~15 m mar adentro frente al Paseo de los Turistas.",
   "toMalecon": [
@@ -360,8 +373,7 @@
   "_caseta": "la estructura blanca sale; la caseta azul del muelle ocupa su sitio.",
   "flags": {
    "between": "lamps",
-   "count": 7,
-   "_note": "una bandera de cada lado a MEDIO CAMINO entre dos luces del muelle (la receta de luces es `materials.json` → `pier.<estilo>.lamp`), empezando por la primera pareja."
+   "_note": "una bandera EN MEDIO DE CADA PAR DE LUCES DE SU LADO, de la boca a la punta (la receta de luces es `materials.json` → `pier.<estilo>.lamp`). Las luces alternan de lado, así que las banderas también: nunca quedan en parejas enfrentadas."
   },
   "caseta": {
    "column": "capitania",

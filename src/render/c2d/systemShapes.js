@@ -602,6 +602,13 @@ export function paintRoadNetwork(g, roads, {
     g.lineWidth = road.w + 2 * canoPx;
     g.stroke(pathFor(road));
   }
+  // EL CAÑO TAMBIÉN DA LA VUELTA. El asfalto y la acera llevan un disco en cada remate, y el caño no: en
+  // cada esquina redondeada —una calle que termina en otra, una pancita— el asfalto tocaba la acera sin
+  // caño. Donde el remate cae dentro de otra calzada, el asfalto que viene después lo tapa como siempre.
+  for (const road of roads) {
+    if (road.bridge || road.cls === "bridge" || road.barro || road.gravel) continue;
+    endpointDiscs(g, road, street.cano, road.w / 2 + canoPx);
+  }
   for (const road of roads) {
     // UNA CALLE PEATONAL NO ES ASFALTO. `Surface.BOULEVARD` sólo salía de una
     // parcela, así que el Bulevar de la Catedral se dibujaba en piedra y el de

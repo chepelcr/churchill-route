@@ -83,6 +83,17 @@ const FAMILY = Object.freeze({
     const len = Number(v.len), hw = Number(v.hw), run = Number(v.run);
     const gap = Number(v.posts);
     g.fillStyle = frame.color(part.fill);
+    // un estilo puede pedir pilotes CENTRADOS sobre la baranda, de su tamaño y desde su arranque (el de la
+    // receta de luces, así cada luz y cada bandera quedan paradas sobre uno); sin eso, como siempre
+    if (v.postSize != null) {
+      const size = Number(v.postSize), h = size / 2;
+      for (let s = Number(v.postStart) - (run % gap); s < len + h; s += gap) {
+        if (s < -h) continue;
+        g.fillRect(s - h, -hw + 1 - h, size, size);
+        g.fillRect(s - h, hw - 1 - h, size, size);
+      }
+      return;
+    }
     for (let s = Number(part.start) - (run % gap); s < len; s += gap) {
       g.fillRect(s, -hw - 1, Number(part.size), Number(part.size));
       g.fillRect(s, hw - 2, Number(part.size), Number(part.size));

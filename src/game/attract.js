@@ -18,7 +18,7 @@ let _route = null;
 // own axis (kiosks, the parroquia, the estadios, the catedral, the mercado), so
 // the drift stays over streets and inside the MVP-open districts.
 const CRUISE_STOPS = [
-  ["kios_faro", 12041, 10059],   // La Punta
+  ["faro", 12041, 10059],        // La Punta: el Faro, no su kiosco — el kiosco se mudó a la playa de la terminal de ferris
   ["carmenig", 13430, 9958],     // Parroquia del Carmen
   ["estadio", 14327, 9874],      // Lito Pérez
   ["tioga", 14010, 10046],       // Paseo de los Turistas

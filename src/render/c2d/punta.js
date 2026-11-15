@@ -24,6 +24,9 @@ import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01, textureScale
 import { overlayTexture } from "./materials.js";
 import { sunShadow } from "./shadows.js";
 import { drawWaterAll } from "./ground.js";
+import { CANO_PX } from "./streets.js";
+import { paintMaleconPattern } from "./systemShapes.js";
+import { BALDOSA_PX } from "./malecon.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 
@@ -228,27 +231,6 @@ function paintMuellero(Q, ppm) {
     ctx.fillStyle = C.bench; ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
     ctx.restore();
   }
-  // las pancitas: una lente verde con su borde de piedras del lado de la calle; la del parqueo, un abanico rojo y sus cajones
-  for (const q of Q.pancitas) {
-    ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.ang);           // +x: hacia el mar; +y: a lo largo
-    const half = q.len / 2;
-    if (q.kind === "parking") {
-      // la bahía de parqueo, contra la calle (asfalto y cajones en batería) …
-      const x0 = -q.kerbOff, bay = q.bay, L = half * 0.82;
-      ctx.fillStyle = M.yard.asphalt; ctx.fillRect(x0, -L, bay, 2 * L);
-      ctx.strokeStyle = C.stall; ctx.lineWidth = 1.2;
-      for (let k = 0; k <= q.stalls; k++) { const y = -L + k * (2 * L / q.stalls); ctx.beginPath(); ctx.moveTo(x0 + bay * 0.25, y); ctx.lineTo(x0 + bay, y); ctx.stroke(); }
-      // … y el abanico rojo hacia el mar, en la media luna
-      const R = Math.min(q.fanR, q.out * 0.75), cx = Math.max(x0 + bay + R * 0.15, q.out * 0.1);
-      ctx.fillStyle = C.fan; ctx.beginPath(); ctx.arc(cx, 0, R, -Math.PI / 2, Math.PI / 2); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = C.fanLine; ctx.lineWidth = 1.2; ctx.beginPath();
-      for (let k = 0; k <= 6; k++) { const a = -Math.PI / 2 + Math.PI * k / 6; ctx.moveTo(cx, 0); ctx.lineTo(cx + Math.cos(a) * R, Math.sin(a) * R); }
-      ctx.stroke(); ctx.beginPath(); ctx.arc(cx, 0, R, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-    } else {
-      // el lecho va en coordenadas de mundo (ver abajo); acá no se dibuja nada girado
-    }
-    ctx.restore();
-  }
 }
 
 // LOS MONUMENTOS, desde arriba y girados con la calle: local +y es hacia el mar.
@@ -373,10 +355,17 @@ function drawPunta(view, t = 0) {
       ctx.moveTo(tn.x - tn.s / 2, tn.y - tn.s / 2); ctx.lineTo(tn.x + tn.s / 2, tn.y + tn.s / 2); ctx.moveTo(tn.x + tn.s / 2, tn.y - tn.s / 2); ctx.lineTo(tn.x - tn.s / 2, tn.y + tn.s / 2); ctx.stroke();
     }
   }  // los lechos rojos de las medialunas van ANTES de la escollera: la piedra tapa su orilla
+  const band = (W.MALECON || []).find((b) => b.id === "punta_parque");
   for (const q of (P.muellero && P.muellero.pancitas) || []) {
-    if (q.kind === "parking" || !q.bed || q.bed.length < 6) continue;
+    if (!q.bed || q.bed.length < 6) continue;
+    // el parqueo: la acera de la calle que rodea la bahía y el segmento que cuelga de ella, del mismo
+    // concreto; encima la lente roja. La bahía y su caño van después de las calles (drawPuntaStreetside)
+    if (q.ring) { if (!q._ringP) q._ringP = flatPath(q.ring, true); ctx.fillStyle = MATERIALS.street.acera; ctx.fill(q._ringP); }
+    // el rojo lleva el MISMO mosaico que el malecón que lo rodea: la misma retícula de baldosas, en el
+    // marco de esa banda, para que las juntas sigan de un piso al otro
     if (!q._bed) q._bed = flatPath(q.bed, true);
     ctx.fillStyle = M.figures.ink; ctx.fill(q._bed);
+    if (band) paintMaleconPattern(ctx, band, view, M.figures.mosaic, q._bed, BALDOSA_PX);
   }
   for (const line of P.riprap || []) paintRiprap(line, view);
 
@@ -567,4 +556,23 @@ function drawPuntaSea(view, t) {
   { const tex = textureScale(); for (const sd of P.sands || []) overlayTexture(ctx, "sand", tex, () => ctx.fill(sd._path)); }
 }
 
-export { drawPunta, drawPuntaGates, drawPuntaNight, drawPuntaSea };
+// LO QUE VA SOBRE LA ACERA DE LA CALLE, pintado DESPUÉS de las calles: la bahía de parqueo en batería
+// pegada al asfalto, con la acera de la calle rodeándola y su caño por el canto
+function drawPuntaStreetside(view) {
+  const P = W.PUNTA;
+  if (!P || !P.muellero || !aabbInView(P, view, 400)) return;
+  const C = M.muellero;
+  for (const q of P.muellero.pancitas || []) {
+    if (!q.bay) continue;
+    if (!q._bayP) { q._bayP = flatPath(q.bay, true); q._canoP = flatPath(q.cano, false); q._canoClip = flatPath(q.canoClip, true); }
+    // el caño de la calle sigue el canto de la bahía, como en cualquier cordón: una banda más oscura
+    // trazada antes del asfalto, con topes rectos
+    ctx.save(); ctx.clip(q._canoClip); ctx.lineCap = "butt"; ctx.lineJoin = "miter"; ctx.strokeStyle = MATERIALS.street.cano; ctx.lineWidth = 2 * CANO_PX; ctx.stroke(q._canoP); ctx.restore();
+    ctx.fillStyle = MATERIALS.street.asphalt; ctx.fill(q._bayP);
+    ctx.strokeStyle = C.stall; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (const [x0, y0, x1, y1] of q.stallLines || []) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); }
+    ctx.stroke();
+  }
+}
+
+export { drawPunta, drawPuntaGates, drawPuntaNight, drawPuntaSea, drawPuntaStreetside };

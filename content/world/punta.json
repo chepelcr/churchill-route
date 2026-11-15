@@ -2,6 +2,13 @@
  "_note": "LA PUNTA — El Faro y el Balneario. Todo lo que este mundo dice de ese lugar que OSM no dice: la piscina en coma y sus zonas, los edificios como son, y el piso del malecón del Faro. Anclas GEO siempre ([lat, lon]); largos en METROS; rumbos en grados en el marco del mundo (0 = este, positivo en el sentido del reloj). El trazo sobre la imagen, con sus píxeles de origen, queda en docs/punta-satellite-mockup.json; ESTO es lo que el juego lee. Los colores no viven acá: `src/assets/materials.json` → `punta`.",
  "_status": "Lo lee `tools/shot-punta-preview.mjs` para el preview sin reconstruir. `content.py` lo carga como `PUNTA_DEF`, pero todavía NINGUNA etapa del builder lo consume: mientras tanto la cuadra sigue saliendo como `water-inlet` desde blocks.json.",
  "version": 1,
+ "customers": {
+  "_note": "los clientes cuya ancla geo cae donde este frente redibujó el mar: se sientan sobre el malecón, `inM` pasada la acera, a la altura de donde estaban. El Surfista canadiense quedaba ~15 m mar adentro frente al Paseo de los Turistas.",
+  "toMalecon": [
+   "c5"
+  ],
+  "inM": 1.5
+ },
  "malecon": {
   "_note": "LA EXPLANADA DEL FARO: su piedra gris y su mosaico (`style: esplanade`). Es una banda limpia que sigue la calle desde la Avenida 3, da la vuelta a La Punta y baja por el Paseo hasta pasar la quinta área de descanso: LOS CINCO MALECONES SON DE LA EXPLANADA. Donde ella termina empieza el frente del Paseo — ver `paseo`.",
   "style": "esplanade",
@@ -2563,15 +2570,55 @@
    "anchorBackM": 19.5,
    "lens": {
     "lengthM": 20.0,
-    "outM": 8.5
+    "outM": 8.5,
+    "_bench": "las bancas van sobre un arco que se arquea HACIA LA CALLE: `midM` del borde recto en el medio y `endM` a ±`endUM`. Medido en la captura (9 m = 460 px), a la escala de esta pancita, y corrido hacia la calle lo que mide media escollera para que las de las puntas no queden sobre la piedra.",
+    "bench": {
+     "midM": 2.0,
+     "endUM": 5.0,
+     "endM": 4.6
+    }
+   },
+   "benches": {
+    "_note": "el patrón de la foto: 4, 5 y 4 bancas, a `pitchM` una de otra y `gapM` entre tramos, centradas en el arco. Su tamaño está en materials.json → punta.muellero.benchM.",
+    "groups": [
+     4,
+     5,
+     4
+    ],
+    "pitchM": 0.8,
+    "gapM": 1.6
    },
    "parking": {
-    "lengthM": 46.0,
-    "outM": 20.0,
-    "fanRM": 8.5,
-    "stalls": 9,
-    "bayM": 6.0,
-    "_note": "la PANCITA GRANDE del Parque Marino: una media luna de malecón con una bahía de parqueo en batería contra la calle (asfalto y cajones) y, hacia el mar, el abanico rojo."
+    "lengthM": 43.0,
+    "_note": "la PANCITA GRANDE del Parque Marino, medida en la captura (10 m = 295 px; `u` a lo largo, + hacia el Parque Marino, `v` desde el cordón). La BAHÍA es parte de la calle: asfalto pegado a la calzada, con los cajones en batería y sus dos puntas en diagonal. La ACERA DE LA CALLE no la cruza: pasa por detrás, con su mismo ancho, su mismo color y su caño, recta por detrás y con sus puntas en el mismo ángulo que las de la bahía, y por eso sale más allá del malecón. Del borde de esa acera cuelga el SEGMENTO de círculo (cuerda 21,7 m, flecha 7,3 m): piso del malecón hasta las bancas y, de ahí a la piedra, la lente roja en el mismo mosaico.",
+    "arc": {
+     "halfChordM": 10.85,
+     "sagM": 7.3
+    },
+    "_bench": "las bancas, 4/5/4, sobre un arco que se arquea HACIA LA CALLE, medido desde el borde de la acera: 0,8 m en el medio y 3,5 m a ±6,3 m. El rojo es la LENTE entre ese arco y el borde de piedra.",
+    "bench": {
+     "midM": 0.8,
+     "endUM": 6.3,
+     "endM": 3.5
+    },
+    "bay": {
+     "depthM": 5.5,
+     "roadU": [
+      -19.0,
+      16.7
+     ],
+     "kerbU": [
+      -14.6,
+      14.0
+     ]
+    },
+    "stalls": {
+     "count": 11,
+     "u": [
+      -14.2,
+      13.6
+     ]
+    }
    },
    "items": [
     {

@@ -686,7 +686,7 @@ function drawBarriers(view) {
   }
 }
 
-export { drawBarriers, drawSigns, medianPairs, paintParcels, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };
+export { CANO_PX, drawBarriers, drawSigns, medianPairs, paintParcels, drawStreetLabels2D, paintRoads, paintTileMedians, paintTileRails, road2dPointAt };
 
 // ---------------------------------------------------------------- signs ----
 // Street furniture, drawn on top of the asphalt. THE ART IS DATA: what used to

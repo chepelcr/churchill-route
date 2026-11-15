@@ -78,4 +78,4 @@ function drawMalecon(view) {
   }
 }
 
-export { drawMalecon };
+export { BALDOSA as BALDOSA_PX, drawMalecon };

@@ -1915,7 +1915,9 @@
     },
     "figures": {
       "_note": "LA TINTA DE ABANICOS, OLAS Y AROS: el rojo de las comas del Faro (`#c34a3c`) pasado por gris. El rojo vivo, repetido en cuarenta figuras grandes, gritaba; éste se lee como baldosa de color.",
-      "ink": "#b08079"
+      "ink": "#b08079",
+      "mosaic": { "joint": "rgba(96,58,54,0.34)", "inlay": "rgba(255,255,255,0.16)" },
+      "_mosaic": "las juntas y la baldosa clara de vez en cuando sobre el rojo de las medialunas: el mismo patrón del malecón (`malecon.band`), con la junta oscurecida hacia el rojo."
     },
     "fan": {
       "_note": "EL ABANICO del malecón norte: un sector con el vértice hacia el Faro. `halfAngleDeg` es la mitad de su apertura; el radio y el rumbo de cada uno vienen del mundo.",
@@ -1998,8 +2000,8 @@
       "_note": "EL PARQUE DEL MUELLERO desde arriba (`muellero` en punta.json): los bancos en ESQUELETO DE BALLENA —un espinazo blanco con costillas de concreto hacia la calle—, los aros y medialunas de piedra blanca, los dos bancos curvos del norte con su medio disco, y las pancitas de la playa.",
       "spine": "#f2eee5", "spineM": 1.2, "rib": "#e7e2d6", "ribM": 0.42, "ribShadow": "rgba(40,30,24,0.45)",
       "stone": "#f4f1ea", "stoneM": 0.45, "stoneEveryM": 1.1, "planter": "#7aa65a", "boulder": "#9a958c",
-      "pergola": "#5a4636", "bench": "#ece7dc", "benchM": [1.0, 0.55], "plaza": "#d9d3c6",
-      "lensEdge": "rgba(104,70,66,0.5)", "fan": "#b5604e", "fanLine": "#f4efe6", "stall": "rgba(255,255,255,0.75)",
+      "pergola": "#5a4636", "bench": "#ece7dc", "benchM": [0.7, 0.4], "plaza": "#d9d3c6",
+      "stall": "rgba(255,255,255,0.75)",
       "shadow": "rgba(40,34,28,0.25)"
     },
     "yard": {

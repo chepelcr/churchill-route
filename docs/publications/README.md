@@ -24,6 +24,7 @@ separaron el 2026-08-17, porque son dos cosas distintas:
 | `2026-08-15-la-noche.md` | 📄 material de fondo | 16 663 lámparas, faros, el mapa abierto |
 | `2026-08-17-el-cielo.md` | 📄 material de fondo | transiciones, sol, tormentas, tornado, luna |
 | **`2026-11-14-la-punta-y-el-paseo.md`** | 📝 escrita, sin publicar | del Faro al Parque Marino: explanada, terminal de ferris, Concha, Muellero |
+| **`2026-11-14-trailer.md`** | 📝 preparada, sin publicar | el trailer de 38 s, horizontal y vertical, con su texto único para Facebook e Instagram |
 
 ## Por qué un hito y no once posts
 
@@ -51,9 +52,28 @@ julio era una **T** y hoy es una **H**, porque le entró el tramo del frente.
 
 ## Formato
 
-El kit de julio marcó la pauta y el hito la sigue: **tres largos** en el mismo
-archivo — 📱 WhatsApp/Instagram, 📘 Facebook, y 🧾 la nota larga para el post
-fijado o GitHub. Se copia el que corresponda.
+**Desde el 2026-11-14, un solo texto para Facebook e Instagram**, y se escribe
+junto con la pieza, sin esperar a que lo pidan. Cada publicación abre con
+`## Texto (Facebook e Instagram)` y un bloque ` ```text ` que se copia tal cual
+(GitHub le pone botón de copiar). Lo que hace que el mismo texto sirva en las
+dos redes:
+
+* **texto plano.** Ni `**negrita**`, ni `#` de título, ni `[enlaces](…)`:
+  Facebook e Instagram pegan los asteriscos tal cual. Los emojis hacen de viñeta.
+* **la primera línea es el gancho y se entiende sola**: las dos redes cortan
+  ahí con «más».
+* **el enlace escrito entero** —`churchill.jcampos.dev`— con «(enlace en el
+  perfil)», porque en un texto de Instagram no se puede tocar.
+* **de 3 a 6 hashtags al final**, los mismos en las dos; `#LaRutaDelChurchill`
+  siempre.
+* **menos de 2 200 caracteres**, el tope de Instagram.
+* **con la voz del juego**: voseo, como su interfaz («Recogé», «Manejá»).
+
+Debajo del texto va lo que es para el repo y no para la red: la pieza (archivos
+y medidas), su procedencia y cómo se hizo.
+
+Las publicaciones anteriores conservan el formato de julio —tres largos:
+📱 WhatsApp/Instagram, 📘 Facebook y 🧾 la nota larga— y no se reescriben.
 
 ## Capturas
 

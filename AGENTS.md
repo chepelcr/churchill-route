@@ -245,3 +245,8 @@ the game's contents without reading the code. Refresh after world/module changes
   caught this exact class of bug three times.
 - Changelogs live in `docs/changelog/`, one file per release date, named
   `YYYY-MM-DD.md` (nothing else).
+- A publication in `docs/publications/` ships WITH its copy, written in the same
+  job without being asked, and it is ONE text for Facebook and Instagram: plain
+  text in a ` ```text ` block under `## Texto (Facebook e Instagram)`. The rules
+  that make one text work on both networks are in `CLAUDE.md` (Conventions) and
+  `docs/publications/README.md` → Formato.

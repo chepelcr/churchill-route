@@ -2122,3 +2122,22 @@ from), and `content.json`'s `ui` block (`theme` → CSS custom properties,
 - Changelogs live in `docs/changelog/`, one file per release date, named
   `YYYY-MM-DD.md` (nothing else) — Spanish, ready-to-post copy up top and a
   `## 🧾 Changelog` section below it.
+- **UNA PUBLICACIÓN SE ENTREGA CON SU TEXTO, Y ES UN SOLO TEXTO PARA FACEBOOK E
+  INSTAGRAM** (`docs/publications/YYYY-MM-DD-<tema>.md`). Cuando se prepara algo
+  para redes —capturas, afiche, brochure, video— el texto se escribe en el mismo
+  trabajo, sin esperar a que lo pidan: una pieza sin texto no está lista para
+  publicar. Va primero, bajo `## Texto (Facebook e Instagram)`, en un bloque
+  ` ```text ` que se copia tal cual, y se muestra también en la respuesta. Lo que
+  hace que el mismo texto sirva en las dos redes:
+  * **texto plano** — ni `**`, ni `#`, ni enlaces markdown: las dos redes pegan
+    los asteriscos literales. Los emojis hacen de viñeta;
+  * **la primera línea es el gancho y se entiende sola**: las dos cortan ahí con
+    «más»;
+  * **el enlace escrito entero** (`churchill.jcampos.dev`) con «(enlace en el
+    perfil)», porque en un texto de Instagram no se puede tocar;
+  * **de 3 a 6 hashtags al final**, los mismos en las dos, `#LaRutaDelChurchill`
+    siempre; y **menos de 2 200 caracteres**, el tope de Instagram;
+  * **sólo lo que se ve jugando**, con la voz del juego: voseo, como su interfaz.
+  Debajo van la pieza, su procedencia y cómo se hizo, y la fila en la tabla de
+  `docs/publications/README.md`. Las publicaciones anteriores al 2026-11-14
+  conservan sus tres largos (📱/📘/🧾); no se reescriben.

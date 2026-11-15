@@ -13,6 +13,9 @@ dist-dbg/
 # Separate railway authoring tool (chepelcr/roller-coaster)
 /railway-builder/
 
+# The game's trailer, a HyperFrames project (private chepelcr/churchill-trailer)
+/trailer/
+
 # Android (Capacitor) build outputs — the android/ project itself is committed
 android/.gradle/
 android/build/

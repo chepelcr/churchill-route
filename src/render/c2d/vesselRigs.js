@@ -12,7 +12,8 @@
 // a la altura de su borda y `paintHullSides` pinta su costado —la franja de flotación y la obra
 // muerta— repitiendo su contorno del agua a la borda, como la silueta de un carro.
 import { state } from "../../game/state.js";
-import { mixColor } from "./gfx.js";
+import { hash01, lastT, mixColor } from "./gfx.js";
+import { paintDancer } from "./people3d.js";
 import { facingEdges, paintSweep, parallaxOffset } from "./depth.js";
 
 /**
@@ -34,7 +35,8 @@ export function ferryForm(R, { L, B, M }) {
   }
   // la superestructura a un costado: paredes blancas, la fila de ventanas, la franja magenta y el techo de paneles
   const sv0 = B * M.superK[0], sv1 = B, sl = L * M.superK[1], sv = (sv0 + sv1) / 2, sw = sv1 - sv0, zt = M.superTopM;
-  R.at(zt, () => R.box(0, sv, d, zt, 2 * sl, sw, { top: I.white, side: I.white }));
+  // la caja va ANTES de la losa de pasajeros (y fuera de lo que se desvanece cuando el jugador va a bordo)
+  R.at(zt - 0.35, () => R.box(0, sv, d, zt, 2 * sl, sw, { top: I.white, side: I.white }));
   R.at(zt + 0.01, () => {
     const [w0, w1] = M.windowsM;
     R.box(0, sv1 + 0.03, w0, w1, 2 * sl - 1, 0.06, I.window);
@@ -55,11 +57,46 @@ export function ferryForm(R, { L, B, M }) {
     for (const e of [-1, 1]) R.box(e * (bl / 2 + 0.05), bv, zb - 0.35, zb, 0.1, bw, I.stripe);
   });
   R.at(zb + M.mastM, () => { R.line([[0, bv, zb], [0, bv, zb + M.mastM]], 0.18, I.mast); R.dot([0, bv, zb + M.mastM], 0.3, I.mast); });
+  if (M.upper) upperDeck(R, { L, B, M, sv0, zt });
   // las rampas: el pórtico rosado en cada punta y la plancha que baja al muelle
   for (const e of [-1, 1]) {
     R.at(d - 0.05, () => R.box(e * (L + M.rampM / 2), 0, d - 0.25, d - 0.05, M.rampM, 2 * B * M.rampK, { top: I.deck, side: I.ramp }));
     for (const s of [-1, 1]) R.at(M.gantryM * 0.5, () => R.box(e * (L - 0.6), s * (B - 0.4), d, M.gantryM, 0.5, 0.5, I.ramp));
     R.at(M.gantryM + 0.2, () => R.box(e * (L - 0.6), 0, M.gantryM - 0.5, M.gantryM, 0.6, 2 * B - 0.3, I.ramp));
+  }
+}
+
+/**
+ * LA CUBIERTA DE PASAJEROS: la losa sobre la cubierta de carros, a la altura del techo de la
+ * superestructura, entre los dos pórticos; sus postes rosados a lo largo de la borda, la baranda
+ * blanca alrededor y la gente bailando encima. Todo lo que va de la losa para arriba usa alturas
+ * `> zt + 0.02`, que es lo que `drawFerry` desvanece cuando el jugador va abajo.
+ */
+function upperDeck(R, { L, B, M, sv0, zt }) {
+  const U = M.upper, I = U.inks, Lu = L * U.lenK, d = M.deckM, zs = zt - U.slabM;
+  const v0 = -B, v1 = sv0, vm = (v0 + v1) / 2, wv = v1 - v0;
+  // los postes, bajo la losa: en la borda libre y en las dos puntas de la losa
+  const posts = Math.max(1, Math.round(2 * Lu / U.postEveryM));
+  R.at(zs - 0.01, () => {
+    for (let k = 0; k <= posts; k++) {
+      const u = -Lu + 2 * Lu * k / posts + (k === 0 ? 0.4 : k === posts ? -0.4 : 0);
+      R.box(u, v0 + 0.4, d, zs, U.postM, U.postM, I.post);
+    }
+  });
+  R.at(zt + 0.03, () => R.box(0, vm, zs, zt, 2 * Lu, wv, { top: I.slab, side: I.slabSide }));
+  // la baranda: por la borda libre, por las dos puntas y por el lado del puente
+  R.at(zt + U.railM, () => {
+    const h0 = zt, h1 = zt + U.railM, w = U.railWM;
+    R.box(0, v0 + w / 2, h0, h1, 2 * Lu, w, I.rail);
+    for (const e of [-1, 1]) R.box(e * (Lu - w / 2), vm, h0, h1, w, wv, I.rail);
+  });
+  // la gente: dispersa por la losa, quieta en su lugar (un hash por índice) y brincando al compás
+  const D = U.dancers, t = lastT / 1000;
+  for (let i = 0; i < D.count; i++) {
+    const u = (-Lu + 1.8) + (2 * Lu - 3.6) * hash01(i * 7.31 + 0.5);
+    const v = (v0 + 1.6) + (wv - 3.0) * hash01(i * 3.17 + 2.1);
+    const ph = hash01(i * 5.9) * 6.283, hue = hash01(i * 1.7 + 0.3) * 360;
+    paintDancer(R, u, v, zt, { t, ph, hue, scale: D.scale, jumpM: D.jumpM, rate: D.rate, shirt: D.shirt, ang: ph });
   }
 }
 

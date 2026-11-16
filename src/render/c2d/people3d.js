@@ -26,6 +26,11 @@ const UNCAPPED = { ...PAR, maxOffsetPx: 0 };
 const TAU = Math.PI * 2;
 
 const hsl = (h, sl, k = 1) => `hsl(${Math.round(h)} ${sl[0]}% ${Math.round(sl[1] * k)}%)`;
+// la misma camisa en hex: las caras del aparejo se sombrean con `mixColor`, que no lee `hsl()`
+function hslHex(h, [sp, lp]) {
+  const s = sp / 100, l = lp / 100, f = (n) => { const k = (n + h / 30) % 12; return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return "#" + [f(0), f(8), f(4)].map((x) => Math.round(x * 255).toString(16).padStart(2, "0")).join("");
+}
 
 /** Hacia dónde mira: su rumbo si lo tiene, si no hacia donde se movió, si no su normal. */
 function facingOf(pe) {
@@ -138,5 +143,36 @@ export function paintRider(R, d, D, ink, hwM, hhM) {
     R.poly(R.circle([u, v, zh], [1, 0, 0], [0, 1, 0], hr, 14), d.helmet ? ink(d.helmet) : D.skin);
     if (!d.helmet) R.poly(R.circle([u - hr * 0.3, v, zh + 0.06], [1, 0, 0], [0, 1, 0], hr * 0.78, 12), D.hair);
     else R.poly(R.circle([u + hr * 0.45, v, zh - 0.05], [1, 0, 0], [0, 1, 0], hr * 0.45, 10), D.skin);
+  });
+}
+
+/**
+ * UNA PERSONA BAILANDO sobre el aparejo (`R`, metros), parada en (u, v) a `z0` de alto — la gente de
+ * la cubierta de pasajeros del ferry. Las mismas medidas y tintas que el peatón (`person3d`), con
+ * los brazos arriba que se mecen y un brinco al compás: `o` = { t (s), ph, hue, scale, jumpM, rate,
+ * shirt [s, l], ang }.
+ */
+export function paintDancer(R, u, v, z0, o) {
+  const S = P3, k = o.scale || 1, a = o.ang || 0, ca = Math.cos(a), sa = Math.sin(a);
+  const beat = o.t * o.rate + o.ph, z = z0 + Math.abs(Math.sin(beat)) * o.jumpM;
+  const [lw, ld, lh] = S.legsM.map((x) => x * k), [tw, td, th] = S.torsoM.map((x) => x * k), hr = S.headM * k;
+  const z1 = z + lh, z2 = z1 + th, zh = z2 + hr * 0.9;
+  const shirt = hslHex(o.hue, o.shirt || WALKER.shirt), skin = WALKER.skin;
+  const off = (fu, fv) => [u + fu * ca - fv * sa, v + fu * sa + fv * ca];
+  R.at(z1, () => R.box(u, v, z, z1, ld, lw, { top: S.pants, side: S.pantsSide }, a));
+  R.at(z2, () => R.box(u, v, z1, z2, td, tw, shirt, a));
+  R.at(z2 + S.raiseM * k, () => {
+    for (const s of [-1, 1]) {
+      const sw = Math.sin(beat * 1.3 + s) * 0.35 * k;
+      const sh = off(0, s * tw / 2), hd = off(sw, s * (tw / 2 + 0.3 * k));
+      const hand = [hd[0], hd[1], z2 + S.raiseM * k * (0.75 + 0.25 * Math.sin(beat + s))];
+      R.line([[sh[0], sh[1], z2 - 0.05], hand], S.armM * k, skin);
+      R.dot(hand, S.armM * k * 0.8, skin);
+    }
+  });
+  R.at(zh + hr, () => {
+    R.poly(R.circle([u, v, zh], [1, 0, 0], [0, 1, 0], hr, 12), skin);
+    const hp = off(-hr * 0.35, 0);
+    R.poly(R.circle([hp[0], hp[1], zh + 0.06], [1, 0, 0], [0, 1, 0], hr * 0.78, 10), S.hair[Math.floor(hash01(o.hue * 0.13 + 3.1) * S.hair.length)]);
   });
 }

@@ -19,6 +19,7 @@
 // Everything here is DRAWN, NEVER STAMPED. The ground under it is the campo
 // ferial's raised wooden deck and that is what the car interacts with; a ride
 // is scenery you drive around, like a vendor's cart or a parada.
+import { drawGate3d } from "./gate3d.js";
 import { WORLD2D as W } from "../../world2d/index.js";
 import { aabbInView, blendPalette, ctx, flatMultiPath, hash01, mixColor } from "./gfx.js";
 import { lightLevel, nightLevel } from "../../game/daynight.js";
@@ -691,8 +692,8 @@ function drawFeriaDeck(view) {
 
 /** EL CARTEL, SOBRE EL TRAMO DE LA RAMPA QUE DA A LA CALLE. `rampFraction`
  *  lo acerca a la boca sin devolverlo al interior: desde el Paseo se lee el
- *  nombre antes de subir. El carro pasa por DEBAJO del rótulo, que se endereza
- *  contra la cámara como todo texto. */
+ *  nombre antes de subir. El carro pasa por DEBAJO del rótulo: postes y tablero
+ *  en 3D, con el letrero sobre la cara que mira a la cámara. */
 function drawFeriaSign(L, view) {
   const gate = L.entrance;
   if (!gate || !L.sign) return;
@@ -701,39 +702,8 @@ function drawFeriaSign(L, view) {
   const along = S.rampFraction ?? 1;
   const x = gate.x - sx * gate.len * along, y = gate.y - sy * gate.len * along;
   if (x < view.x0 - 200 || x > view.x1 + 200 || y < view.y0 - 200 || y > view.y1 + 200) return;
-  const tx = Math.cos(L.ang || 0), ty = Math.sin(L.ang || 0);
-  const H = S.postHeightM * PX_PER_M, B = S.boardM * PX_PER_M;
-  const ax = x - tx * gate.w / 2, ay = y - ty * gate.w / 2;
-  const bx = x + tx * gate.w / 2, by = y + ty * gate.w / 2;
-  const sh = sunShadow(S.postHeightM);
-  // la sombra del arco, tirada en el suelo
-  ctx.strokeStyle = C.shadow; ctx.lineWidth = S.postPx; ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(ax, ay); ctx.lineTo(ax + sh.dx, ay + sh.dy);
-  ctx.lineTo(bx + sh.dx, by + sh.dy); ctx.lineTo(bx, by);
-  ctx.stroke();
-  // los postes, en alzado
-  ctx.strokeStyle = C.signPost;
-  ctx.beginPath();
-  ctx.moveTo(ax, ay); ctx.lineTo(ax, ay - H);
-  ctx.moveTo(bx, by); ctx.lineTo(bx, by - H);
-  ctx.stroke();
-  // el rótulo, entre las dos puntas
-  ctx.beginPath();
-  const ox = tx * S.overhangM * PX_PER_M, oy = ty * S.overhangM * PX_PER_M;
-  ctx.moveTo(ax - ox, ay - oy - H); ctx.lineTo(bx + ox, by + oy - H);
-  ctx.lineTo(bx + ox, by + oy - H + B); ctx.lineTo(ax - ox, ay - oy - H + B);
-  ctx.closePath();
-  ctx.fillStyle = C.signBoard; ctx.fill();
-  ctx.strokeStyle = C.signTrim; ctx.lineWidth = 1.2; ctx.lineJoin = "round"; ctx.stroke();
-  const mx = (ax + bx) / 2, my = (ay + by) / 2 - H + B / 2;
-  const stood = upright(ctx, mx, my);
-  ctx.font = `${(S.fontM * PX_PER_M).toFixed(2)}px '${S.font}', sans-serif`;
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = C.signInk;
-  ctx.fillText(L.sign, stood ? 0 : mx, (stood ? 0 : my) + 0.4);
-  ctx.textBaseline = "alphabetic";
-  if (stood) ctx.restore();
+  // EN 3D (`gate3d.js`): postes y tablero con su grosor, el letrero en la cara que mira a la cámara
+  drawGate3d(x, y, L.ang || 0, gate.w, L.sign, S, { post: C.signPost, board: C.signBoard, trim: C.signTrim, ink: C.signInk });
 }
 
 function drawAttractions(view, t) {

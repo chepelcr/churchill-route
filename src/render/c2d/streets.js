@@ -17,6 +17,7 @@ import { roundedMultiPath, roundedPath } from "./curves.js";
 import { propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
+import { canvasOwns } from "../owners.js";
 
 //: LA SEÑALIZACIÓN, keyed by SignKind — see the note above `drawSign`.
 const SIGNS = PROPS.signs;
@@ -347,6 +348,15 @@ function paintStone(path, P) {
 
 // Multi-pass road styling (acera band → casing → asphalt → lane dashes),
 // ported from the corridor renderer but fed per-tile road segments.
+// LA PROFUNDIDAD DE LA CALLE (`materials.json → street.depth`): cuánto sube la acera y cuánto se hunde
+// el caño, en METROS, convertido a la fracción de la altura de la cámara que es lo que el pinhole
+// escala. Sólo cuando Canvas pinta los cuerpos: en la vista 3-D el suelo ya se levanta por clase.
+function roadDepth() {
+  const SD = MATERIALS.street.depth, camH = EFFECTS.parallax?.cameraHeightM;
+  if (!SD || !camH || !canvasOwns("buildings")) return null;
+  return { about: [state.cam.x, state.cam.y], aceraK: SD.kerbM / camH, canoK: SD.canoM / camH, face: SD.face, wall: SD.wall };
+}
+
 function paintRoads(roads, view) {
   // Parcelas van antes de la acera y los estadios entre acera y asfalto. Esas
   // dos callbacks son geometría mundial; todas las pasadas de la calle viven en
@@ -367,6 +377,7 @@ function paintRoads(roads, view) {
     dashPathFor: dashPath,
     beforeAcera: () => paintParcels(view),
     afterAcera: () => paintStadiumCuadras(view),
+    depth: roadDepth(),
   });
 }
 

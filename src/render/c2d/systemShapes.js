@@ -535,10 +535,22 @@ function endpointDiscs(g, road, color, radius) {
 /** The game's complete multi-pass road/intersection ribbon. */
 export function paintRoadNetwork(g, roads, {
   materials, sidewalkPx, canoPx, pathFor, dashPathFor,
-  beforeAcera, afterAcera, textures,
+  beforeAcera, afterAcera, textures, depth,
 } = {}) {
   const street = materials.street;
   const roadway = materials.streets.roadway;
+  // LA ACERA Y EL CAÑO CON ALTURA (`depth`): la acera sube `aceraK` y el fondo del caño baja `canoK`
+  // (alturas sobre la de la cámara). Con el pinhole de la casa, levantar una capa PLANA es escalarla
+  // alrededor de la cámara por (1 + k) —es exactamente `parallaxOffset` aplicado a cada punto—, así que
+  // los mismos caminos cacheados sirven y la cuenta es una transformación por pasada, no por calle.
+  // Sin `depth` (el editor, la vista 3-D) todo queda a ras, como siempre.
+  const D = depth || null;
+  const at = (k, fn) => {
+    if (!D || !k) return fn();
+    g.save(); g.translate(D.about[0], D.about[1]); g.scale(1 + k, 1 + k); g.translate(-D.about[0], -D.about[1]);
+    fn(); g.restore();
+  };
+  const flat = (road) => road.bridge || road.cls === "bridge" || road.barro || road.gravel;
   g.lineJoin = "round";
   g.lineCap = "round";
   g.strokeStyle = roadway.casing;
@@ -553,28 +565,37 @@ export function paintRoadNetwork(g, roads, {
   beforeAcera?.();
   g.lineJoin = "round";
   g.lineCap = "round";
-  g.strokeStyle = street.acera;
-  for (const road of roads) {
-    if (road.bridge || road.cls === "bridge") continue;
-    g.lineWidth = road.w + 2 * sidewalkPx;
-    g.stroke(pathFor(road));
-  }
-  for (const road of roads) {
-    if (road.bridge || road.cls === "bridge") continue;
-    endpointDiscs(g, road, street.acera, road.w / 2 + sidewalkPx);
-  }
-  // EL GRANO DE LA ACERA, sobre la banda que se acaba de trazar. Va como una
-  // SEGUNDA pasada con el mismo ancho y no como un color: la textura es tinta
-  // sobre transparente, así que el concreto conserva su gris de siempre y con
-  // el registro vacío esta pasada sencillamente no ocurre.
-  if (textures && textures.acera) {
-    g.strokeStyle = textures.acera;
+  // la acera de las calles de tierra y lastre (y la del puente, que no tiene) se queda a ras
+  const band = (ink, which) => {
+    g.strokeStyle = ink;
     for (const road of roads) {
-      if (road.bridge || road.cls === "bridge") continue;
+      if (road.bridge || road.cls === "bridge" || !which(road)) continue;
       g.lineWidth = road.w + 2 * sidewalkPx;
       g.stroke(pathFor(road));
     }
+  };
+  const discs = (ink, which) => {
+    for (const road of roads) {
+      if (road.bridge || road.cls === "bridge" || !which(road)) continue;
+      endpointDiscs(g, road, ink, road.w / 2 + sidewalkPx);
+    }
+  };
+  const raised = D ? (road) => !flat(road) : () => false, low = (road) => !raised(road);
+  if (D) {
+    // EL CANTO DE LA ACERA: la banda entera a ras en la tinta del canto. Lo que la acera levantada deja
+    // al descubierto —su borde de afuera del lado de la cámara— es la pared del bloque
+    band(D.face, raised); discs(D.face, raised);
   }
+  at(D && D.aceraK, () => {
+    band(street.acera, raised); discs(street.acera, raised);
+    // EL GRANO DE LA ACERA, sobre la banda que se acaba de trazar. Va como una
+    // SEGUNDA pasada con el mismo ancho y no como un color: la textura es tinta
+    // sobre transparente, así que el concreto conserva su gris de siempre y con
+    // el registro vacío esta pasada sencillamente no ocurre.
+    if (textures && textures.acera) band(textures.acera, raised);
+  });
+  band(street.acera, low); discs(street.acera, low);
+  if (textures && textures.acera) band(textures.acera, low);
   afterAcera?.();
   g.lineJoin = "round";
   g.lineCap = "round";
@@ -591,24 +612,38 @@ export function paintRoadNetwork(g, roads, {
     g.stroke(pathFor(road));
   }
   g.lineCap = "butt";
-  g.strokeStyle = roadway.cano;
-  for (const road of roads) {
-    g.lineWidth = road.w + 4;
-    g.stroke(pathFor(road));
-  }
-  g.strokeStyle = street.cano;
-  for (const road of roads) {
-    if (road.bridge || road.cls === "bridge" || road.barro || road.gravel) continue;
-    g.lineWidth = road.w + 2 * canoPx;
-    g.stroke(pathFor(road));
-  }
-  // EL CAÑO TAMBIÉN DA LA VUELTA. El asfalto y la acera llevan un disco en cada remate, y el caño no: en
-  // cada esquina redondeada —una calle que termina en otra, una pancita— el asfalto tocaba la acera sin
-  // caño. Donde el remate cae dentro de otra calzada, el asfalto que viene después lo tapa como siempre.
-  for (const road of roads) {
-    if (road.bridge || road.cls === "bridge" || road.barro || road.gravel) continue;
-    endpointDiscs(g, road, street.cano, road.w / 2 + canoPx);
-  }
+  // EL CAÑO, HUNDIDO (`depth`): su pared —del fondo hasta el canto de la acera— se traza LEVANTADA a la
+  // altura de la acera en la tinta de la pared, y el fondo se traza HUNDIDO encima; lo que queda entre
+  // los dos del lado lejano de la calle es el cordón visto de frente. Del lado cercano la acera tapa.
+  if (D) at(D.aceraK, () => {
+    g.strokeStyle = D.wall;
+    for (const road of roads) {
+      if (flat(road)) continue;
+      g.lineWidth = road.w + 2 * canoPx;
+      g.stroke(pathFor(road));
+    }
+    for (const road of roads) if (!flat(road)) endpointDiscs(g, road, D.wall, road.w / 2 + canoPx);
+  });
+  at(D && -D.canoK, () => {
+    g.strokeStyle = roadway.cano;
+    for (const road of roads) {
+      g.lineWidth = road.w + 4;
+      g.stroke(pathFor(road));
+    }
+    g.strokeStyle = street.cano;
+    for (const road of roads) {
+      if (flat(road)) continue;
+      g.lineWidth = road.w + 2 * canoPx;
+      g.stroke(pathFor(road));
+    }
+    // EL CAÑO TAMBIÉN DA LA VUELTA. El asfalto y la acera llevan un disco en cada remate, y el caño no: en
+    // cada esquina redondeada —una calle que termina en otra, una pancita— el asfalto tocaba la acera sin
+    // caño. Donde el remate cae dentro de otra calzada, el asfalto que viene después lo tapa como siempre.
+    for (const road of roads) {
+      if (flat(road)) continue;
+      endpointDiscs(g, road, street.cano, road.w / 2 + canoPx);
+    }
+  });
   for (const road of roads) {
     // UNA CALLE PEATONAL NO ES ASFALTO. `Surface.BOULEVARD` sólo salía de una
     // parcela, así que el Bulevar de la Catedral se dibujaba en piedra y el de

@@ -273,7 +273,14 @@
     "majorDash": "#ffd54a",
     "minorDash": "rgba(255,255,255,0.45)",
     "mark": "rgba(255,255,255,0.75)",
-    "markNote": "every line on a field is this one white"
+    "markNote": "every line on a field is this one white",
+    "depth": {
+      "_note": "LA CALLE CON ALTURA (`c2d/systemShapes.js → paintRoadNetwork`, opción `depth`): la acera sube `kerbM` sobre la calzada y el fondo del caño baja `canoM`, con el mismo pinhole que los edificios — así el cordón se ve de frente del lado lejano de cada calle y el borde del bloque del lado cercano. `face` es el canto de la acera; `wall` la pared del caño hasta el canto. Las calles de tierra, de lastre y los puentes quedan a ras.",
+      "kerbM": 0.3,
+      "canoM": 0.12,
+      "face": "#8f897c",
+      "wall": "#7a7468"
+    }
   },
   "structure": {
     "_note": "Buildings, when the world does not carry a colour of its own — a named footprint may emit `roof` and it wins.",
@@ -1639,7 +1646,12 @@
         "overhangM": 3.2,
         "postPx": 4.5,
         "font": "Bungee",
-        "fontM": 2.05
+        "fontM": 2.05,
+        "_3d": "en 3D (`c2d/gate3d.js`): postes de `postM` de lado, tablero de `boardDepthM` de grosor con el letrero en la cara que mira a la cámara, y su sombra a `shadowAlpha`",
+        "postM": 0.5,
+        "boardDepthM": 0.7,
+        "shadowAlpha": 0.5,
+        "shade": { "side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612" }
       }
     },
     "lighting": {
@@ -2069,7 +2081,12 @@
       "boardM": 4.2,
       "overhangM": 1.0,
       "fontM": 2.5,
-      "font": "JetBrains Mono"
+      "font": "JetBrains Mono",
+      "_3d": "en 3D (`c2d/gate3d.js`), la misma pieza que el cartel de la feria: postes de `postM`, tablero de `boardDepthM` con el letrero en la cara que mira a la cámara, sombra a `shadowAlpha`",
+      "postM": 0.5,
+      "boardDepthM": 0.7,
+      "shadowAlpha": 0.5,
+      "shade": { "side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612" }
     },
     "beam": {
       "_note": "EL HAZ DEL FARO, de noche: dos haces opuestos que giran, anchos y amarillos. Es luz —se suma al cuadro, por encima de la oscuridad— y se desvanece hacia la punta.",

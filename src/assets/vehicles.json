@@ -233,24 +233,7 @@
           }
         ]
       },
-      {
-        "shape": "rect",
-        "fill": "rgba(255,255,255,0.5)",
-        "note": "the sheer highlight along the gunwale",
-        "x": [
-          -1,
-          3
-        ],
-        "y": [
-          -1,
-          1.5
-        ],
-        "w": [
-          2,
-          -7
-        ],
-        "h": 1
-      }
+      {"shape": "poly", "fill": "rgba(255,255,255,0.5)", "note": "the sheer highlight along the gunwale. FOLLOWS THE HULL'S CURVE: it was a straight rect, and where the hull narrows toward the bow it stuck out past her side as a loose white line", "pts": [[[-1, 3], [-1, 1.5]], {"q": [[0.15, 0], [-1, 1.4]], "to": [[0.78, 0], [-0.3, 0]]}, {"q": [[0.15, 0], [-1, 2.4]], "to": [[-1, 3], [-1, 2.5]]}]}
     ],
     "boatStern": [
       {

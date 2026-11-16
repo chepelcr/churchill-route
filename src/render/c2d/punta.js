@@ -29,6 +29,7 @@ import { paintMaleconPattern } from "./systemShapes.js";
 import { BALDOSA_PX } from "./malecon.js";
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { parallaxOffset } from "./depth.js";
+import { makeRig, withShadowLayer } from "./rig3d.js";
 import { state } from "../../game/state.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
@@ -319,6 +320,45 @@ function paintShellLeaves(mo, C, K, R, leaves, ringR, L, Wd, leafPath, ppm) {
   ctx.restore();
 }
 
+// LAS GRADAS Y EL ESCENARIO DE LA CONCHA, en 3D sobre el aparejo (`rig3d.js`, metros, marco del
+// monumento: +v hacia el mar). Cada grada es un anillo un escalón más alto que el de adentro: su
+// CONTRAHUELLA (la pared que mira al escenario), su huella arriba y sus dos cantos en las puntas; atrás
+// de la última, el muro. El escenario es una media luna con su costado curvo, su frente recto y los
+// escalones blancos en la tapa.
+function shellForm(Rg, Rm, C) {
+  const t0 = Rm * 0.62, step = Rm * 0.34 / C.tiers, a0 = Math.PI * 1.02, a1 = Math.PI * 1.98, N = 28;
+  const arc = (r, z, from, to, cx = 0, cy = 0) => Array.from({ length: N + 1 }, (_, i) => {
+    const a = from + (to - from) * i / N; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r, z];
+  });
+  for (let k = 1; k <= C.tiers; k++) {
+    const r0 = t0 + step * (k - 1), r1 = t0 + step * k, zl = C.tierRiseM * (k - 1), zh = C.tierRiseM * k;
+    Rg.at(zh - 0.002, () => {
+      Rg.poly([...arc(r0, zl, a0, a1), ...arc(r0, zh, a1, a0)], C.riser);
+      for (const a of [a0, a1]) {
+        const c = Math.cos(a), s = Math.sin(a);
+        Rg.poly([[c * r0, s * r0, 0], [c * r1, s * r1, 0], [c * r1, s * r1, zh], [c * r0, s * r0, zh]], C.riser);
+      }
+    });
+    Rg.at(zh, () => {
+      Rg.poly([...arc(r1, zh, a0, a1), ...arc(r0, zh, a1, a0)], C.tier);
+      if (!Rg.shadow) Rg.line(arc(r0, zh, a0, a1), 0.1, C.tierEdge);
+    });
+  }
+  const rN = t0 + step * C.tiers, zN = C.tierRiseM * C.tiers;
+  Rg.at(zN - 0.003, () => Rg.poly([...arc(rN, 0, a0, a1), ...arc(rN, zN, a1, a0)], C.riser));
+  const cy = Rm * 0.04, sr = Rm * 0.42, zs = C.stageM;
+  Rg.at(zs - 0.002, () => {
+    Rg.poly([...arc(sr, 0, 0, Math.PI, 0, cy), ...arc(sr, zs, Math.PI, 0, 0, cy)], C.stageSide);
+    Rg.poly([[-sr, cy, 0], [sr, cy, 0], [sr, cy, zs], [-sr, cy, zs]], C.stageSide);
+  });
+  Rg.at(zs, () => {
+    Rg.poly(arc(sr, zs, 0, Math.PI, 0, cy), C.stage);
+    if (Rg.shadow) return;
+    for (const f of [0.82, 0.66]) Rg.line(arc(sr * f, zs + 0.01, 0.08, Math.PI - 0.08, 0, cy), 0.28, C.stageStep);
+    Rg.line([[-sr, cy, zs + 0.01], [sr, cy, zs + 0.01]], 0.28, C.stageStep);
+  });
+}
+
 function paintMonument(mo, ppm) {
   const K = M.monuments, C = K[mo.kind];
   if (!C) return;
@@ -336,26 +376,10 @@ function paintMonument(mo, ppm) {
     const R = mo.size || C.rM * ppm, lift = liftOf(mo, ppm);
     // el piso gris que llena el círculo entero de la Concha, gradas y hojas incluidas
     ctx.beginPath(); ctx.arc(0, 0, R * 1.04, 0, Math.PI * 2); ctx.fillStyle = C.floor; ctx.fill(); ctx.strokeStyle = C.floorEdge; ctx.lineWidth = 1.5; ctx.stroke();
-    // LAS GRADAS SUBEN: cada una es un anillo un escalón más alto que la de adentro, con su contrahuella.
-    // De adentro hacia afuera, así la de atrás —más alta— tapa a la de adelante. Atrás de todo, el muro.
-    const t0 = R * 0.62, step = R * 0.34 / C.tiers, a0 = Math.PI * 1.02, a1 = Math.PI * 1.98;
-    const band = (r0, r1, o) => { ctx.beginPath(); ctx.arc(o[0], o[1], r1, a0, a1); ctx.arc(o[0], o[1], r0, a1, a0, true); ctx.closePath(); };
-    for (let k = 1; k <= C.tiers; k++) {
-      const r0 = t0 + step * (k - 1), r1 = t0 + step * k, lo = lift(C.tierRiseM * (k - 1)), hi = lift(C.tierRiseM * k);
-      band(r0, r1, lo); ctx.fillStyle = C.tierEdge; ctx.fill();
-      band(r0, r1, hi); ctx.fillStyle = C.tier; ctx.fill();
-      ctx.strokeStyle = C.tierEdge; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(hi[0], hi[1], r0, a0, a1); ctx.stroke();
-    }
-    // la plaza de adoquín con su aro amarillo
+    // la plaza de adoquín con su aro amarillo (en el suelo; las gradas y el escenario se levantan en 3D)
+    const t0 = R * 0.62;
     ctx.beginPath(); ctx.arc(0, 0, t0, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill();
     ctx.beginPath(); ctx.arc(0, 0, t0 * 0.9, Math.PI * 1.05, Math.PI * 1.95); ctx.strokeStyle = C.ring; ctx.lineWidth = Math.max(1, 0.25 * ppm); ctx.stroke();
-    // el escenario: media luna turquesa, levantada, con sus escalones blancos
-    const sr = R * 0.42, st = lift(C.stageM);
-    ctx.beginPath(); ctx.arc(0, R * 0.04, sr, 0, Math.PI); ctx.closePath(); ctx.fillStyle = C.stageSide; ctx.fill();
-    ctx.beginPath(); ctx.arc(st[0], R * 0.04 + st[1], sr, 0, Math.PI); ctx.closePath(); ctx.fillStyle = C.stage; ctx.fill();
-    ctx.strokeStyle = C.stageStep; ctx.lineWidth = Math.max(1, 0.3 * ppm);
-    for (const f of [0.82, 0.66]) { ctx.beginPath(); ctx.arc(st[0], R * 0.04 + st[1], sr * f, 0.08, Math.PI - 0.08); ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(st[0] - sr, R * 0.04 + st[1]); ctx.lineTo(st[0] + sr, R * 0.04 + st[1]); ctx.stroke();
     // las hojas: su sombra va acá, en el piso; las hojas y sus pilares se LEVANTAN y van con los cuerpos
     const n = C.leaves, arc = C.leafArcDeg * RAD, ringR = R * 0.93, L = R * C.leafLen, Wd = R * C.leafW;
     const leaves = [];
@@ -371,7 +395,12 @@ function paintMonument(mo, ppm) {
       ctx.restore();
     }
     ctx.restore();
-    queueBodyLike({ x: mo.x, y: mo.y, paint: (pp) => paintShellLeaves(mo, C, K, R, leaves, ringR, L, Wd, leafPath, pp) });
+    // LAS GRADAS Y EL ESCENARIO EN 3D (`shellForm`): su sombra de una vez, en el suelo; ellos, con los cuerpos
+    const Rm = R / ppm, topM = C.tierRiseM * C.tiers + 0.5;
+    const rig = (g, mode) => { const S = makeRig(g, mo.x, mo.y, mo.ang || 0, ppm, state.cam, mode, C.shade, topM); shellForm(S, Rm, C); S.flush(); };
+    const sun = sunShadow(1);
+    if (sun.alpha > 0) withShadowLayer(ctx, mo.x, mo.y, R * 1.3, sun.alpha * C.shadowAlpha, (g) => rig(g, "sun"));
+    queueBodyLike({ x: mo.x, y: mo.y, paint: (pp) => { rig(ctx, "cam"); paintShellLeaves(mo, C, K, R, leaves, ringR, L, Wd, leafPath, pp); } });
     return;
   }
   if (mo.kind === "letters") {

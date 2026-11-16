@@ -67,9 +67,11 @@ function drawFaroScene(lm) {
     // la sombra de la torre: la del sol de todos, llevada al marco (escalado) de la escena
     vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT, shadow: faroShadow(k), floraElsewhere: canvasOwns("flora") }, timeMs: lastT,
   };
-  if (canvasOwns("faro")) paintSceneParts(ctx, PROPS, "faro", frame);
-  else paintSceneParts(ctx, faroGroundRegistry(), "faro", frame);
+  // la escena pinta el SUELO (escollera y comas); la torre es un CUERPO 3D (`bodies.faro`), con su
+  // sombra al sol, que se levanta con el mismo pinhole que los edificios
+  paintSceneParts(ctx, faroGroundRegistry(), "faro", frame);
   ctx.restore();
+  if (canvasOwns("faro")) queueBody(bodyAt(PROPS.bodies.faro, x, y, 0, "faro"));
   // LAS PALMERAS DEL FARO SON PALMERAS COMO LAS DEMÁS: las pinta `paintPalm`, en 2.5D y con la
   // sombra del sol. El verbo `flora-placements` de la escena las dibujaba en alzado, con su elipse.
   if (canvasOwns("faro") && canvasOwns("flora")) for (const part of PROPS.scenes.faro.parts) {

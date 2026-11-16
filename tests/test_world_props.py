@@ -368,8 +368,12 @@ class WorldPropTests(unittest.TestCase):
         for verb in used:
             self.assertIn(f'"{verb}"', interpreter)
         landmarks = read(LANDMARKS_JS)
-        for scene in ("faro", "fountain", "pool", "lote"):
+        for scene in ("fountain", "pool", "lote"):
             self.assertIn(f'paintSceneParts(ctx, PROPS, "{scene}"', landmarks)
+        # EL FARO: la escena pinta su SUELO (sin la torre ni las palmas) y la torre es un cuerpo 3D
+        # (`bodies.faro`). `lighthouse-tower` sigue en la escena para la hoja de arte y el editor.
+        self.assertIn('paintSceneParts(ctx, faroGroundRegistry(), "faro"', landmarks)
+        self.assertIn("PROPS.bodies.faro", landmarks)
 
     def test_scene_interpreter_owns_no_authored_colours(self):
         js = re.sub(r"/\*.*?\*/", "", read(SCENE_SHAPES_JS), flags=re.S)

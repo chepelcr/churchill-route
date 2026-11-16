@@ -1501,7 +1501,29 @@
         0,
         0.12
       ],
-      "_originK": "corre la tarima entera dentro de su marco (fracción del radio; +v es hacia el público, arriba en pantalla) para que no la pise el rótulo"
+      "_originK": "corre la tarima entera dentro de su marco (fracción del radio; +v es hacia el público, arriba en pantalla) para que no la pise el rótulo",
+      "screen": {
+        "_note": "LA PANTALLA DEL DJ: un muro de LED sobre el telón, RECOSTADO `tiltDeg` hacia atrás (parado derecho, desde arriba sería una franja) y de `heightK` del alto del telón. De día está apagada (`off`, con su marco `frame`); de noche se enciende (se pinta en el pase nocturno, encima del velo, como los láseres). Un fondo `bg`, `bars` barras de ecualizador que laten a `beatHz` con los colores de `palette`, y una onda que se desliza. `insetK` deja el marco del telón a la vista.",
+        "bg": "#160b2a",
+        "palette": [
+          "#ff4fd8",
+          "#63f5ff",
+          "#a8ff60",
+          "#8b7cff",
+          "#ffd166"
+        ],
+        "bars": 16,
+        "beatHz": 2.0,
+        "insetK": 0.06,
+        "bgAlpha": 0.92,
+        "barAlpha": 0.85,
+        "wave": "#ffffff",
+        "waveAlpha": 0.55,
+        "tiltDeg": 42,
+        "heightK": 0.95,
+        "off": "#0d0a14",
+        "frame": "#2a2236"
+      }
     }
   },
   "$view3d": {

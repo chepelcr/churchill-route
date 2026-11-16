@@ -28,7 +28,7 @@ import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { parallaxOffset } from "./depth.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
-import { FERIA_FORMS, bumperCar } from "./feriaRigs.js";
+import { FERIA_FORMS, bumperCar, djScreenCorners } from "./feriaRigs.js";
 import { state } from "../../game/state.js";
 import { sunShadow } from "./shadows.js";
 import { upright } from "./primitives.js";
@@ -474,6 +474,7 @@ function drawFeriaNightEffects(view, t, toScreen, zoom) {
     ctx.fillStyle = LIGHTING.bulbCore;
     ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
   }
+  if (night > 0.001) for (const A of W.ATTRACTIONS || []) if (A.kind === "dj" && ASSETS.dj.view3d?.screen) drawDjScreen(A, t, toScreen, night, view);
   if (night > 0.001) {
     const laser = LIGHTING.lasers;
     for (const A of W.ATTRACTIONS || []) {
@@ -501,6 +502,41 @@ function drawFeriaNightEffects(view, t, toScreen, zoom) {
       }
     }
   }
+  ctx.restore();
+}
+
+// LA PANTALLA DEL DJ, PRENDIDA. La cara del telón que mira al público, proyectada con la MISMA
+// cámara que la tarima (el aparejo de `rig3d.js`, sin pintar nada con él), y llenada de noche con
+// visuales: se pinta en este pase, después del velo, así que brilla como los láseres. Si la cámara
+// está detrás del telón la cara no se ve y no se pinta.
+function drawDjScreen(A, t, toScreen, night, view) {
+  const spec = ASSETS.dj, V = spec.view3d, S = V.screen, r = A.r || 24, ppm = PX_PER_M, rM = r / ppm;
+  if (A.x + 2 * r < view.x0 || A.x - 2 * r > view.x1 || A.y + 2 * r < view.y0 || A.y - 2 * r > view.y1) return;
+  const rot = (A.ang || 0) + FACING_OFFSET[spec.facing || "+x"], cr = Math.cos(rot), sr = Math.sin(rot);
+  const [ou, ov] = (V.originK || [0, 0]).map((k) => k * r);
+  const R = makeRig(null, A.x + ou * cr - ov * sr, A.y + ou * sr + ov * cr, rot, ppm, state.cam, "cam", SHADE(), V.topM ?? V3.topM);
+  const c = djScreenCorners(V, rM);
+  // la cara mira hacia adelante y arriba: se ve si la cámara queda de ese lado de su plano
+  const th = V.screen.tiltDeg * Math.PI / 180;
+  if (!R.faces(c[0], [0, Math.cos(th), Math.sin(th)])) return;
+  const p00 = toScreen(...R.P(...c[0])), p10 = toScreen(...R.P(...c[1])), p01 = toScreen(...R.P(...c[3]));
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  // el cuadrado unidad es la pantalla: x de izquierda a derecha, y de abajo hacia arriba
+  ctx.transform(p10[0] - p00[0], p10[1] - p00[1], p01[0] - p00[0], p01[1] - p00[1], p00[0], p00[1]);
+  ctx.globalAlpha = night * S.bgAlpha; ctx.fillStyle = S.bg; ctx.fillRect(0, 0, 1, 1);
+  ctx.globalCompositeOperation = "lighter";
+  const n = S.bars, beat = t * S.beatHz * TAU;
+  for (let i = 0; i < n; i++) {
+    const h = 0.12 + 0.8 * Math.abs(Math.sin(beat * 0.5 + i * 0.7) * Math.sin(beat * 0.13 + i * 1.9));
+    ctx.globalAlpha = night * S.barAlpha;
+    ctx.fillStyle = S.palette[(i + Math.floor(t * S.beatHz)) % S.palette.length];
+    ctx.fillRect((i + 0.15) / n, 0.04, 0.7 / n, h * 0.9);
+  }
+  ctx.globalAlpha = night * S.waveAlpha; ctx.strokeStyle = S.wave;
+  ctx.lineWidth = 0.035; ctx.beginPath();
+  for (let k = 0; k <= 40; k++) { const u = k / 40, y = 0.55 + 0.25 * Math.sin(u * TAU * 2 + t * 3) * Math.sin(beat * 0.25); k ? ctx.lineTo(u, y) : ctx.moveTo(u, y); }
+  ctx.stroke();
   ctx.restore();
 }
 

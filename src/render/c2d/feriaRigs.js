@@ -171,6 +171,16 @@ function funhouse(R, { rM, t, V }) {
   });
 }
 
+/** La pantalla del DJ: las cuatro esquinas del muro de LED recostado sobre el telón, en metros del
+ *  marco del escenario — [abajo-izq, abajo-der, arriba-der, arriba-izq]. La usa la forma (de día,
+ *  apagada) y el pase nocturno de `attractions.js` (prendida), así que las dos caen en el mismo lugar. */
+export function djScreenCorners(V, rM) {
+  const S = V.screen, K = (k) => k * rM, [x0, , x1, y1] = V.curtainK.map(K);
+  const ins = (x1 - x0) * S.insetK, th = S.tiltDeg * Math.PI / 180, Ls = V.curtainM * S.heightK;
+  const v0 = y1 + 0.05, h0 = V.deckM + 0.3, v1 = v0 - Ls * Math.sin(th), h1 = h0 + Ls * Math.cos(th);
+  return [[x0 + ins, v0, h0], [x1 - ins, v0, h0], [x1 - ins, v1, h1], [x0 + ins, v1, h1]];
+}
+
 /** EL ESCENARIO DEL DJ: la tarima, el telón al fondo, el truss en el aire con su dosel, las dos torres
  *  de bocinas que laten, la consola con su franja de luz, y el DJ detrás de ella. Mira a +v (al público). */
 function stage(R, { rM, t, V }) {
@@ -184,6 +194,10 @@ function stage(R, { rM, t, V }) {
   });
   const [bx0, by0, bx1, by1] = V.curtainK.map(K);
   R.at(H + V.curtainM, () => R.box((bx0 + bx1) / 2, (by0 + by1) / 2, H, H + V.curtainM, bx1 - bx0, by1 - by0, { top: I.curtainTop, side: I.curtain }));
+  if (V.screen) R.at(H + V.curtainM + 0.05, () => {
+    const c = djScreenCorners(V, rM);
+    R.poly(c, R.shadow ? I.curtain : V.screen.off, R.shadow ? null : V.screen.frame, 0.25);
+  });
   const posts = [[x0 + 0.4, y0 + 0.4], [x1 - 0.4, y0 + 0.4], [x0 + 0.4, y1 - 0.4], [x1 - 0.4, y1 - 0.4]];
   for (const [u, v] of posts) R.at(T * 0.5, () => R.box(u, v, H, T, V.postM, V.postM, I.truss));
   R.at(T + 0.2, () => {

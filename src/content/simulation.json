@@ -37,9 +37,9 @@
     },
     "feriaAudience": {
       "_note": "EL PÚBLICO DEL DJ: dos hileras en arco frente a la tarima, a `firstRowK` radios del centro y `rowGapK` entre hileras, abiertas `spreadRad` a cada lado. La tarima se levanta en 3D y avanza hacia el público, así que la primera hilera tiene que quedar FUERA de ella o la tapa.",
-      "firstRowK": 1.4,
+      "firstRowK": 1.6,
       "rowGapK": 0.3,
-      "spreadRad": 0.78
+      "spreadRad": 0.72
     }
   },
   "beachGames": {

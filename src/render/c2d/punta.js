@@ -31,7 +31,7 @@ import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { liftPoint, parallaxOffset } from "./depth.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
 import { drawGate3d } from "./gate3d.js";
-import { drawBench3d } from "./furniture3d.js";
+import { drawBlock3d, drawLounger3d, drawRaisedStroke3d } from "./furniture3d.js";
 import { state } from "../../game/state.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
@@ -252,20 +252,22 @@ function paintFun(f, ppm, t) {
   }
   ctx.save(); ctx.translate(f.x, f.y);
   if (f.kind === "umbrella") {
-    const r = F.umbrellaM * ppm / 2;
-    ctx.fillStyle = F.shadow; ctx.beginPath(); ctx.arc(3, 4, r, 0, Math.PI * 2); ctx.fill();
+    // la sombrilla en 3D: su sombra al sol, el palo y la copa arriba, a `fun._3d.umbrellaM`
+    const r = F.umbrellaM * ppm / 2, H = F._3d.umbrellaM, sh = sunShadow(H), top = parallaxOffset(state.cam, f.x, f.y, H, ppm);
+    ctx.fillStyle = F.shadow; ctx.beginPath(); ctx.arc(sh.dx, sh.dy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = F._3d.pole; ctx.lineWidth = 0.12 * ppm; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(top.dx, top.dy); ctx.stroke();
+    ctx.translate(top.dx, top.dy);
     ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = F.umbrellaRib; ctx.lineWidth = 1; ctx.beginPath();
     for (let k = 0; k < F.umbrellaRibs; k++) { const a = k * Math.PI * 2 / F.umbrellaRibs; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
     ctx.stroke();
     ctx.fillStyle = F.umbrellaTip; ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, Math.PI * 2); ctx.fill();
   } else if (f.kind === "loungers") {
-    const [l, w] = F.loungerM.map((m) => m * ppm);
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = F.shadow; ctx.fillRect(side * w * 0.75 - w / 2 + 1.5, -l / 2 + 2, w, l);
-      ctx.fillStyle = F.lounger; ctx.fillRect(side * w * 0.75 - w / 2, -l / 2, w, l);
-      ctx.fillStyle = f.color; ctx.fillRect(side * w * 0.75 - w / 2, -l / 2, w, l * 0.3);
-    }
+    // dos tumbonas en 3D (`fun._3d`): bastidor bajo y respaldo levantado con el cojín de su color
+    const [lM, wM] = F.loungerM, w = wM * ppm;
+    ctx.restore();
+    for (const side of [-1, 1]) drawLounger3d(f.x + side * w * 0.75, f.y, -Math.PI / 2, lM, wM, { frame: F.lounger, side: F._3d.loungerSide, pad: f.color }, { ...BENCH3D, seatM: F._3d.seatM, backM: F._3d.backM });
+    return;
   } else if (f.kind === "float") {
     const r = F.floatM * ppm / 2, bob = F.floatBobM * ppm, ph = f.x * 0.013 + f.y * 0.007;
     ctx.translate(Math.sin(t * F.floatSpeed + ph) * bob, Math.cos(t * F.floatSpeed * 0.8 + ph) * bob);
@@ -311,10 +313,12 @@ function paintMuellero(Q, ppm) {
     if (a.planter) { ctx.fillStyle = C.planter; ctx.beginPath(); ctx.arc(a.x, a.y, a.r, a0, a1); ctx.closePath(); ctx.fill(); }
     stonesAlong(arcPts(a.x, a.y, a.r, a0, a1), stoneStep, stoneR, C.stone);
   }
+  // la banca corrida y la pérgola, con su altura (`muellero._3d`): la banca su cuerpo hasta la tapa, la
+  // pérgola sus postes y la viga arriba
+  const C3 = C._3d;
   for (const b of Q.benches) {
-    if (!b._path) b._path = flatPath(b.pts, false);
-    ctx.save(); ctx.translate(2, 3); ctx.strokeStyle = C.shadow; ctx.lineWidth = b.w; ctx.stroke(b._path); ctx.restore();
-    ctx.strokeStyle = b.kind === "pergola" ? C.pergola : C.bench; ctx.lineWidth = b.w; ctx.stroke(b._path);
+    if (b.kind === "pergola") drawRaisedStroke3d(b.pts, b.w, C3.pergolaM, { top: C.pergola, side: C3.pergolaSide, shadow: C.shadow }, { everyM: C3.postEveryM, wM: C3.postWM });
+    else drawRaisedStroke3d(b.pts, b.w, C3.benchM, { top: C.bench, side: C3.benchSide, shadow: C.shadow });
   }
   // los esqueletos de ballena: costillas primero (con su sombra), el espinazo encima
   for (const w of Q.whales) {
@@ -328,19 +332,37 @@ function paintMuellero(Q, ppm) {
       }
       w._ribs = ribs; w._path = flatPath(w.pts, false);
     }
-    ctx.lineWidth = C.ribM * ppm;
-    ctx.strokeStyle = C.ribShadow; ctx.beginPath(); for (const [x0, y0, x1, y1] of w._ribs) { ctx.moveTo(x0 + 1.5, y0 + 2); ctx.lineTo(x1 + 1.5, y1 + 2); } ctx.stroke();
-    ctx.strokeStyle = C.rib; ctx.beginPath(); for (const [x0, y0, x1, y1] of w._ribs) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); } ctx.stroke();
-    ctx.strokeStyle = C.shadow; ctx.lineWidth = C.spineM * ppm; ctx.save(); ctx.translate(1.5, 2); ctx.stroke(w._path); ctx.restore();
-    ctx.strokeStyle = C.spine; ctx.stroke(w._path);
+    // LA BALLENA ES UNA BANCA: costillas y espinazo con su altura (`_3d.benchM`), la sombra al sol en el
+    // piso y el cuerpo con los cuerpos —de lo bajo a lo alto, las costillas y después el espinazo—
+    const H = C3.benchM, sh = sunShadow(H);
+    if (sh.alpha > 0) {
+      ctx.save(); ctx.globalAlpha = sh.alpha; ctx.translate(sh.dx, sh.dy);
+      ctx.lineWidth = C.ribM * ppm; ctx.strokeStyle = C.ribShadow; ctx.beginPath(); for (const [x0, y0, x1, y1] of w._ribs) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); } ctx.stroke();
+      ctx.lineWidth = C.spineM * ppm; ctx.strokeStyle = C.shadow; ctx.stroke(w._path);
+      ctx.restore();
+    }
+    const ribs = w._ribs;
+    queueBodyLike({ x: w.pts[0], y: w.pts[1], paint: () => {
+      const up = (x, y, z) => { const o = parallaxOffset(state.cam, x, y, z, ppm); return [x + o.dx, y + o.dy]; };
+      const pass = (z, ink, wM, withSpine) => {
+        ctx.lineCap = "round"; ctx.strokeStyle = ink; ctx.lineWidth = C.ribM * ppm; ctx.beginPath();
+        for (const [x0, y0, x1, y1] of ribs) { const a = up(x0, y0, z), b = up(x1, y1, z); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+        ctx.stroke();
+        if (!withSpine) return;
+        ctx.lineWidth = wM; ctx.beginPath();
+        for (let k = 0; k + 1 < w.pts.length; k += 2) { const q = up(w.pts[k], w.pts[k + 1], z); k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+        ctx.stroke();
+      };
+      for (const f of [0, 0.5]) pass(H * f, C3.ribSide, C.spineM * ppm, true);
+      pass(H, C.rib, 0, false);
+      ctx.strokeStyle = C.spine; ctx.lineWidth = C.spineM * ppm; ctx.beginPath();
+      for (let k = 0; k + 1 < w.pts.length; k += 2) { const q = up(w.pts[k], w.pts[k + 1], H); k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+      ctx.stroke();
+    } });
   }
   // las bancas de las medialunas: bloques blancos en su arco, girados con él
   for (const q of Q.pancitas) for (const [x, y, a] of q.benches || []) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
-    const bw = C.benchM[0] * ppm, bh = C.benchM[1] * ppm;
-    ctx.fillStyle = C.shadow; ctx.fillRect(-bw / 2 + 1, -bh / 2 + 1.5, bw, bh);
-    ctx.fillStyle = C.bench; ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
-    ctx.restore();
+    drawBlock3d(x, y, a, C.benchM[0], C.benchM[1], C3.benchM, { top: C.bench, side: C3.benchSide }, BENCH3D);
   }
 }
 
@@ -586,8 +608,8 @@ function drawPunta(view, t = 0) {
       const e = f.ang + side * half, ex = Math.cos(e), ey = Math.sin(e);
       const bx = f.x + ex * f.r * M.fan.benchAlong - ey * side * off;
       const by = f.y + ey * f.r * M.fan.benchAlong + ex * side * off;
-      // la MISMA banca 3D del malecón (`signs.banca.view3d`), a lo largo del canto y mirando al abanico
-      drawBench3d(bx, by, e - side * Math.PI / 2, { ...BENCH3D, lenM: bl });
+      // un bloque de concreto blanco con su altura (`fan.benchHM`), a lo largo del canto
+      drawBlock3d(bx, by, e, bl, bw, M.fan.benchHM, { top: M.fan.bench, side: M.fan.benchSide }, BENCH3D);
     }
   }
   for (const w of P.waves || []) {

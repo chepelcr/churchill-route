@@ -77,3 +77,63 @@ export function drawPoleSign3d(rec, x, y, vars) {
     ctx.restore();
   } });
 }
+
+/**
+ * UN BLOQUE PARA SENTARSE —la banca de concreto de las medialunas y de los abanicos—: una caja de
+ * `lenM` x `depM` y `hM` de alto, con su tapa en `top` y sus caras en `side`. `V` da la sombra.
+ */
+export function drawBlock3d(x, y, ang, lenM, depM, hM, inks, V) {
+  rigged(x, y, ang, hM, V, (lenM + hM) * PX_PER_M * 1.3, (R) => {
+    R.at(hM, () => R.box(0, 0, 0, hM, lenM, depM, { top: inks.top, side: inks.side }));
+  });
+}
+
+/**
+ * UN TRAZO CON ALTURA —la banca corrida y la pérgola del Parque Marino, que el mundo trae como una
+ * polilínea con ancho—: la banca es el trazo a ras en la tinta del costado y otra vez arriba, a `hM`,
+ * en la de la tapa; la pérgola lleva además sus postes cada `everyM` y la viga arriba.
+ */
+export function drawRaisedStroke3d(pts, wPx, hM, inks, posts = null) {
+  const cam = state.cam, ppm = PX_PER_M;
+  const up = (x, y, z) => { const o = parallaxOffset(cam, x, y, z, ppm); return [x + o.dx, y + o.dy]; };
+  const sh = sunShadow(hM);
+  const line = (P, w, ink) => {
+    ctx.strokeStyle = ink; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); P.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+  };
+  const base = []; for (let i = 0; i + 1 < pts.length; i += 2) base.push([pts[i], pts[i + 1]]);
+  if (sh.alpha > 0 && inks.shadow) {
+    ctx.save(); ctx.globalAlpha = sh.alpha * 0.6; line(base.map(([x, y]) => [x + sh.dx, y + sh.dy]), wPx, inks.shadow); ctx.restore();
+  }
+  queueBodyLike({ x: base[0][0], y: base[0][1], paint: () => {
+    if (posts) {
+      // los postes, del piso a la viga
+      ctx.strokeStyle = inks.side; ctx.lineWidth = posts.wM * ppm; ctx.lineCap = "butt"; ctx.beginPath();
+      let run = 0;
+      for (let k = 0; k + 1 < base.length; k++) {
+        const [ax, ay] = base[k], [bx, by] = base[k + 1], L = Math.hypot(bx - ax, by - ay) || 1;
+        for (; run <= L; run += posts.everyM * ppm) {
+          const x = ax + (bx - ax) * run / L, y = ay + (by - ay) * run / L, t = up(x, y, hM);
+          ctx.moveTo(x, y); ctx.lineTo(t[0], t[1]);
+        }
+        run -= L;
+      }
+      ctx.stroke();
+    } else {
+      // la banca: su cuerpo, del piso a la tapa, en capas
+      for (const f of [0, 0.34, 0.67]) line(base.map(([x, y]) => up(x, y, hM * f)), wPx, inks.side);
+    }
+    line(base.map(([x, y]) => up(x, y, hM)), wPx, inks.top);
+  } });
+}
+
+/** UNA TUMBONA: el bastidor bajo y el respaldo levantado en la cabecera (+u), con su cojín de color. */
+export function drawLounger3d(x, y, ang, lenM, wM, inks, V) {
+  rigged(x, y, ang, V.backM, V, lenM * PX_PER_M * 1.3, (R) => {
+    R.at(V.seatM, () => R.box(-lenM * 0.15, 0, 0, V.seatM, lenM * 0.7, wM, { top: inks.frame, side: inks.side }));
+    R.at(V.backM, () => {
+      const u0 = lenM * 0.2, u1 = lenM / 2, h = wM / 2;
+      R.poly([[u0, -h, V.seatM], [u1, -h, V.backM], [u1, h, V.backM], [u0, h, V.seatM]], inks.pad);
+    });
+  });
+}

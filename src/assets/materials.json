@@ -2004,6 +2004,8 @@
         0.8
       ],
       "benchAlong": 0.5,
+      "benchHM": 0.45,
+      "benchSide": "#bdb6a6",
       "benchOffsetM": 0.9,
       "benchNote": "dos bancas por abanico, una a cada lado: `benchM` es largo x fondo, `benchAlong` a qué fracción del canto recto va, `benchOffsetM` cuánto se separa de él hacia afuera"
     },
@@ -2199,6 +2201,7 @@
     },
     "fun": {
       "_note": "LAS PIEZAS DEL BALNEARIO (`balneario.fun` en punta.json), vistas desde arriba. El color de cada sombrilla, flotador y tobogán viene del mundo; acá la forma.",
+      "_3d": { "_note": "EN 3D: la tumbona con su bastidor a `seatM` y el respaldo hasta `backM` (`furniture3d.js → drawLounger3d`); la sombrilla con su palo y la copa a `umbrellaM`.", "seatM": 0.35, "backM": 0.8, "loungerSide": "#9a958a", "umbrellaM": 2.3, "pole": "#d8d4cc" },
       "umbrellaM": 3.4,
       "umbrellaRibs": 8,
       "umbrellaRib": "rgba(255,255,255,0.55)",
@@ -2268,6 +2271,7 @@
       "stoneEveryM": 1.1,
       "planter": "#7aa65a",
       "boulder": "#9a958c",
+      "_3d": { "_note": "EN 3D (`punta.js → paintMuellero`, `furniture3d.js`): las bancas de concreto (los bloques de las medialunas, la banca corrida y la ballena —espinazo y costillas—) suben `benchM` con sus caras en `benchSide`; la pérgola sube `pergolaM` sobre postes cada `postEveryM`, de `postWM` de grueso, en `pergolaSide`.", "benchM": 0.45, "benchSide": "#bdb7aa", "pergolaM": 2.6, "pergolaSide": "#3e3026", "postEveryM": 2.4, "postWM": 0.22, "ribSide": "#b9b3a6" },
       "pergola": "#5a4636",
       "bench": "#ece7dc",
       "benchM": [

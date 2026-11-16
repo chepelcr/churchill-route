@@ -1,6 +1,6 @@
 // Landmark drawers: the faro scene, green spaces, the estadios, fountains,
 // pools, the Parque Marino and the sponsored lotes, behind drawLandmark().
-import { floraSolar, paintTree } from "./flora.js";
+import { floraSolar, paintPalm, paintTree } from "./flora.js";
 import {
   paintAt, paintParts, resolveAssetFormulaMap, scatterPlacements,
 } from "./shapes.js";
@@ -64,11 +64,20 @@ function drawFaroScene(lm) {
   const frame = {
     X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
     // la sombra de la torre: la del sol de todos, llevada al marco (escalado) de la escena
-    vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT, shadow: faroShadow(k) }, timeMs: lastT,
+    vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT, shadow: faroShadow(k), floraElsewhere: canvasOwns("flora") }, timeMs: lastT,
   };
   if (canvasOwns("faro")) paintSceneParts(ctx, PROPS, "faro", frame);
   else paintSceneParts(ctx, faroGroundRegistry(), "faro", frame);
   ctx.restore();
+  // LAS PALMERAS DEL FARO SON PALMERAS COMO LAS DEMÁS: las pinta `paintPalm`, en 2.5D y con la
+  // sombra del sol. El verbo `flora-placements` de la escena las dibujaba en alzado, con su elipse.
+  if (canvasOwns("faro") && canvasOwns("flora")) for (const part of PROPS.scenes.faro.parts) {
+    if (part.verb !== "flora-placements") continue;
+    for (const [px, py] of part.positions) {
+      const wx = x + px * k, wy = y + py * k;
+      paintPalm({ x: wx, y: wy, s: (part.scale || 1) * k, k: part.species, sway: (wx * 0.37 + wy * 0.11) % 6.28 }, lastT);
+    }
+  }
 }
 
 // A green space (park / stadium field): grass with mow stripes, a ring of

@@ -129,6 +129,14 @@ function paintFlora(sp, frame) {
   }
   const { x, y, s } = frame, h = (sp.heightM || F25.heightM) * s, radius = sp.r * s;
   const o = parallaxOffset(state.cam, x, y, h, W.PX_PER_M), sh = sunShadow(h);
+  // LA COPA SE CORRE SIEMPRE PARECIDO. El pinhole puro da cero bajo la cámara (sólo copa) y el tope
+  // entero en la orilla (puro tronco): en un mismo cuadro unos árboles parecían arbustos y otros
+  // postes. La DIRECCIÓN sigue siendo la del pinhole; el LARGO se acota a una fracción de la copa.
+  {
+    const len = Math.hypot(o.dx, o.dy), lo = radius * F25.leanMinR, hi = radius * F25.leanMaxR;
+    const want = Math.max(lo, Math.min(hi, len));
+    if (len > 0.01) { o.dx *= want / len; o.dy *= want / len; } else { o.dx = 0; o.dy = -want; }
+  }
   if (sh.alpha > 0) {
     ctx.save();
     ctx.globalAlpha = sh.alpha; ctx.fillStyle = F25.shadow; ctx.strokeStyle = F25.shadow;

@@ -284,19 +284,19 @@
           "floor": "adoquin",
           "poly": [
             [
-              -7.5,
+              -5,
               -60
             ],
             [
-              7.5,
+              5,
               -60
             ],
             [
-              7.5,
+              5,
               -10
             ],
             [
-              -7.5,
+              -5,
               -10
             ]
           ],
@@ -317,23 +317,23 @@
           "floor": "adoquin",
           "poly": [
             [
-              -9,
+              -6,
               9
             ],
             [
-              9,
+              6,
               9
             ],
             [
               14,
-              58
+              64
             ],
             [
               -12,
-              58
+              64
             ]
           ],
-          "_note": "la plaza de adoquín que baja del tanque a la Avenida 1"
+          "_note": "la plaza de adoquín que baja del tanque a la Avenida 1. Llega hasta DEBAJO de la acera: sin franja de césped entre la plaza y el cordón."
         },
         {
           "id": "oeste",
@@ -341,19 +341,19 @@
           "poly": [
             [
               -35,
-              -4
+              -3.5
             ],
             [
               -10,
-              -4.5
+              -3.5
             ],
             [
               -10,
-              4.5
+              3.5
             ],
             [
               -35,
-              5
+              3.5
             ]
           ],
           "_note": "el paso a la Calle 11"
@@ -364,19 +364,19 @@
           "poly": [
             [
               10,
-              -4.5
+              -3.5
             ],
             [
               32,
-              -4.5
+              -3.5
             ],
             [
               32,
-              4.5
+              3.5
             ],
             [
               10,
-              4.5
+              3.5
             ]
           ],
           "_note": "el paso a la Calle 9"
@@ -386,16 +386,61 @@
           "floor": "adoquin",
           "line": [
             [
-              5,
+              3,
               -20
             ],
             [
               37,
-              -31.4
+              -32.1
             ]
           ],
-          "wM": 8.5,
+          "wM": 7,
           "_note": "la diagonal a la Calle 9. Sale del PASEO CENTRAL, más arriba que el sendero de OSM (way/1178476001, que nace en la rotonda): así el cuadrante noreste de la rotonda queda libre para su mural. Llega derecha hasta el cordón."
+        },
+        {
+          "id": "isla_oeste",
+          "floor": "adoquin",
+          "poly": [
+            [
+              -35,
+              29.5
+            ],
+            [
+              -8,
+              29.5
+            ],
+            [
+              -8,
+              34.5
+            ],
+            [
+              -35,
+              34.5
+            ]
+          ],
+          "_note": "LAS DOS ISLAS DE ABAJO SE PARTEN EN CUATRO: un pasillo de 5 m a cada lado de la plaza, más angosto que los del centro y la diagonal. Llega a la acera pero no la abre: no es entrada de carro."
+        },
+        {
+          "id": "isla_este",
+          "floor": "adoquin",
+          "poly": [
+            [
+              8,
+              29.5
+            ],
+            [
+              32,
+              29.5
+            ],
+            [
+              32,
+              34.5
+            ],
+            [
+              8,
+              34.5
+            ]
+          ]
         }
       ],
       "mouths": [
@@ -405,7 +450,7 @@
             1,
             56
           ],
-          "wM": 24,
+          "wM": 22,
           "_note": "la boca ancha de la Avenida 1"
         },
         {
@@ -414,7 +459,7 @@
             -31,
             0.5
           ],
-          "wM": 9
+          "wM": 7
         },
         {
           "id": "este",
@@ -422,17 +467,17 @@
             28.5,
             0
           ],
-          "wM": 9
+          "wM": 7
         },
         {
           "id": "diagonal",
           "at": [
             29.5,
-            -28.75
+            -29.43
           ],
-          "wM": 8.5,
+          "wM": 7,
           "from": [
-            5,
+            3,
             -20
           ],
           "_note": "`from`: de dónde viene el sendero. La boca sigue ESE rumbo en vez de salir a escuadra de la calle."
@@ -484,8 +529,8 @@
           "id": "mural_ne",
           "name": "Mural del tanque",
           "at": [
-            11.48,
-            -9.02
+            10.88,
+            -9.73
           ],
           "rotDeg": 0,
           "solid": true,
@@ -494,13 +539,13 @@
               "ring": {
                 "rM": 14.9,
                 "wM": 0.6,
-                "a0": -55.1,
-                "a1": -21.2,
-                "n": 8
+                "a0": -65.1,
+                "a1": -18.5,
+                "n": 10
               },
               "at": [
-                -11.48,
-                9.02
+                -10.88,
+                9.73
               ],
               "z": [
                 0,
@@ -516,8 +561,8 @@
           "id": "mural_se",
           "name": "Mural del tanque",
           "at": [
-            12.05,
-            8.24
+            11.26,
+            9.3
           ],
           "rotDeg": 0,
           "solid": true,
@@ -526,13 +571,13 @@
               "ring": {
                 "rM": 14.9,
                 "wM": 0.6,
-                "a0": 21.2,
-                "a1": 47.5,
-                "n": 8
+                "a0": 18.5,
+                "a1": 60.6,
+                "n": 10
               },
               "at": [
-                -12.05,
-                -8.24
+                -11.26,
+                -9.3
               ],
               "z": [
                 0,
@@ -547,8 +592,8 @@
           "id": "mural_so",
           "name": "Mural del tanque",
           "at": [
-            -12.05,
-            8.24
+            -11.26,
+            9.3
           ],
           "rotDeg": 0,
           "solid": true,
@@ -557,13 +602,13 @@
               "ring": {
                 "rM": 14.9,
                 "wM": 0.6,
-                "a0": 132.5,
-                "a1": 158.8,
-                "n": 8
+                "a0": 119.4,
+                "a1": 161.5,
+                "n": 10
               },
               "at": [
-                12.05,
-                -8.24
+                11.26,
+                -9.3
               ],
               "z": [
                 0,
@@ -578,8 +623,8 @@
           "id": "mural_no",
           "name": "Mural del tanque",
           "at": [
-            -11.48,
-            -9.02
+            -10.88,
+            -9.73
           ],
           "rotDeg": 0,
           "solid": true,
@@ -588,13 +633,13 @@
               "ring": {
                 "rM": 14.9,
                 "wM": 0.6,
-                "a0": 201.2,
-                "a1": 235.1,
-                "n": 8
+                "a0": 198.5,
+                "a1": 245.1,
+                "n": 10
               },
               "at": [
-                11.48,
-                9.02
+                10.88,
+                9.73
               ],
               "z": [
                 0,
@@ -871,9 +916,9 @@
           "rotDeg": 0,
           "_osm": "way/545111073 (`building=ruins`, 6 niveles): una X de cuatro alas de ~22 m con el cilindro de la escalera al centro; el ala del noreste es más ancha. Acá a 0,75 para caber en el lóbulo de la cuadra del juego. De las fotos: cada piso vuela sobre el de abajo en la punta del ala, bandas celestes entre losas de concreto, y la celosía de concreto coronando el techo.",
           "arms": {
-            "_note": "las cuatro alas de la X, IGUALES: mismo ancho y misma altura. `dirDeg` hacia dónde sale cada una. Cada ala son tres cuerpos que vuelan uno sobre otro en la punta, y nacen de la pared del cilindro.",
+            "_note": "las cuatro alas de la X, IGUALES: mismo ancho, misma altura, y NO SE MONTAN — cada una arranca donde ya no toca a su vecina. Así ninguna queda pintada encima de otra, que era lo que las hacía verse de alturas distintas.",
             "reachM": 16.5,
-            "fromM": 3.4,
+            "fromM": 4.6,
             "stepM": 0.9,
             "floorsM": [
               0,
@@ -942,23 +987,24 @@
           },
           "tiers": [
             {
-              "_": "UN solo cilindro —la escalera— DENTRO de las alas: llega a la altura de sus techos y se pinta ANTES que ellos, así que las alas lo abrazan en vez de quedar debajo",
-              "disc": 4.4,
-              "n": 28,
+              "_": "UN solo cilindro —la escalera— en el cruce: llega a la altura de los techos, las alas lo abrazan y ASOMA en cada esquina interna de la X",
+              "disc": 8.6,
+              "n": 32,
               "z": [
                 0,
                 13.7
               ],
               "wall": "paTower",
-              "cap": "paTowerCap",
-              "stains": "paStain"
+              "cap": "paTowerLite",
+              "stains": "paStain",
+              "edge": "paTruss"
             }
           ]
         },
         {
           "kit": "bench",
           "at": [
-            -8.4,
+            -5.9,
             -22
           ],
           "rotDeg": 90
@@ -966,7 +1012,7 @@
         {
           "kit": "bench",
           "at": [
-            8.4,
+            5.9,
             -22
           ],
           "rotDeg": 90
@@ -974,23 +1020,23 @@
         {
           "kit": "bench",
           "at": [
+            -5.9,
+            -42
+          ],
+          "rotDeg": 90
+        },
+        {
+          "kit": "bench",
+          "at": [
+            5.9,
+            -42
+          ],
+          "rotDeg": 90
+        },
+        {
+          "kit": "bench",
+          "at": [
             -8.4,
-            -42
-          ],
-          "rotDeg": 90
-        },
-        {
-          "kit": "bench",
-          "at": [
-            8.4,
-            -42
-          ],
-          "rotDeg": 90
-        },
-        {
-          "kit": "bench",
-          "at": [
-            -10.6,
             22
           ],
           "rotDeg": 96
@@ -998,7 +1044,7 @@
         {
           "kit": "bench",
           "at": [
-            11.3,
+            8.9,
             22
           ],
           "rotDeg": 84
@@ -1006,7 +1052,7 @@
         {
           "kit": "bench",
           "at": [
-            -11.4,
+            -10.1,
             36
           ],
           "rotDeg": 96
@@ -1014,7 +1060,7 @@
         {
           "kit": "bench",
           "at": [
-            12.7,
+            11.2,
             36
           ],
           "rotDeg": 84
@@ -1022,7 +1068,7 @@
         {
           "kit": "bench",
           "at": [
-            -12.1,
+            -11.7,
             49
           ],
           "rotDeg": 96
@@ -1030,7 +1076,7 @@
         {
           "kit": "bench",
           "at": [
-            14,
+            13.3,
             49
           ],
           "rotDeg": 84
@@ -1054,11 +1100,11 @@
       },
       "lamps": [
         [
-          -9.6,
+          -7.2,
           -30
         ],
         [
-          9.6,
+          7.2,
           -48
         ],
         [
@@ -1071,7 +1117,7 @@
         ],
         [
           14.4,
-          34
+          40
         ],
         [
           -13.4,
@@ -1148,7 +1194,7 @@
         {
           "at": [
             -23,
-            30
+            23
           ],
           "s": 1.5,
           "k": "higueron"
@@ -1180,7 +1226,7 @@
         {
           "at": [
             21,
-            31
+            24
           ],
           "s": 1.35,
           "k": "cortez"
@@ -1973,8 +2019,8 @@
                 "ink": "stoneRoofLite",
                 "ink2": "stoneRoof",
                 "cross": "cross",
-                "crossDeg": 180,
-                "_cross": "la cruz sigue el eje de la nave, como la planta: cabeza hacia el ábside (oeste), pie hacia la puerta"
+                "crossDeg": 0,
+                "_cross": "la cruz mira al frente (este), hacia el atrio"
               }
             }
           ],
@@ -2219,8 +2265,8 @@
                 "ink2": "zincShade",
                 "cross": "cross",
                 "crossAt": "front",
-                "crossDeg": 90,
-                "_cross": "sobre el frente (norte), no en el fondo; `crossDeg`: hacia dónde apunta la cabeza de la cruz, en el marco de la cuadra"
+                "crossDeg": 270,
+                "_cross": "sobre el frente (norte) y MIRANDO al frente. `crossDeg`: hacia dónde mira la cruz, en el marco de la cuadra."
               }
             }
           ],

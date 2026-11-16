@@ -41,6 +41,8 @@ const FAMILY = Object.freeze({
   },
 
   "flora-placements"(g, part, frame) {
+    // quien pinta la escena puede sembrar estas plantas con SU pintor (el Faro las pasa a `paintPalm`, en 2.5D)
+    if (frame.vars && frame.vars.floraElsewhere) return;
     const registry = frame.vars.flora;
     const species = registry?.species?.[part.species];
     const form = species && registry.forms?.[species.form];

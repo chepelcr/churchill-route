@@ -221,7 +221,7 @@ class CentroEmittedWorldTests(unittest.TestCase):
                 self.assertEqual(self.cls_at(cx, cy), BOULEVARD, f"{place['id']}/{shape['id']}: el piso no se puede recorrer")
         # una isla verde del parque y el jardín norte de la Catedral: pared
         ppm = self.meta["pxPerMeter"]
-        for pid, (u, v) in (("mora", (-20, -30)), ("mora", (20, 30)), ("catedral", (0, -30))):
+        for pid, (u, v) in (("mora", (-20, -30)), ("mora", (20, 45)), ("catedral", (0, -30))):
             p = self.place(pid)
             a = p["ang"]
             x = p["ox"] + (u * math.cos(a) - v * math.sin(a)) * ppm

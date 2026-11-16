@@ -292,16 +292,19 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
   }
   if (!apex) { ctx.strokeStyle = M.roofRidge; ctx.lineWidth = 1.1; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(rx[0], ry[0]); ctx.lineTo(rx[1], ry[1]); ctx.stroke(); }
   if (R.cross) {
-    // la cruz, acostada sobre el techo: su cabeza apunta a `crossAng` (rumbo del mundo). Sin él queda de pie en la pantalla.
-    const first = R.crossAt === 0, c = at(T.z1 + R.rise + M.cross.riseM), s = M.cross.sizePx;
-    const x = (apex || first ? ax : bx) + c[0], y = (apex || first ? ay : by) + c[1];
-    const ang = R.crossAng == null ? -Math.PI / 2 : R.crossAng, ux = Math.cos(ang), uy = Math.sin(ang);
+    // LA CRUZ ESTÁ DE PIE, como todo lo demás: un palo que sube de la punta del techo y su travesaño
+    // a dos tercios, los dos corridos por el mismo pinhole. `crossAng` es hacia dónde MIRA (rumbo del
+    // mundo): el travesaño va a escuadra de esa mirada.
+    const first = R.crossAt === 0, K = M.cross, ppm = W.PX_PER_M;
+    const bx0 = apex || first ? ax : bx, by0 = apex || first ? ay : by, z0 = T.z1 + R.rise;
+    const foot = at(z0), head = at(z0 + K.heightM), mid = at(z0 + K.heightM * K.barAt);
+    const ang = R.crossAng == null ? 0 : R.crossAng, hx = -Math.sin(ang) * K.barM * ppm / 2, hy = Math.cos(ang) * K.barM * ppm / 2;
     ctx.lineCap = "butt";
-    for (const [color, w, dx, dy] of [[M.cross.shade, 2.6, 0.8, 1], [ink(R.cross), 1.6, 0, 0]]) {
-      const hx = x + dx + ux * s * 0.25, hy = y + dy + uy * s * 0.25;       // donde cruza el travesaño
+    for (const [color, w, dx, dy] of [[K.shade, K.widthPx + 1, 0.7, 0.9], [ink(R.cross), K.widthPx, 0, 0]]) {
       ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath();
-      ctx.moveTo(x + dx - ux * s, y + dy - uy * s); ctx.lineTo(x + dx + ux * s, y + dy + uy * s);
-      ctx.moveTo(hx + uy * s * 0.7, hy - ux * s * 0.7); ctx.lineTo(hx - uy * s * 0.7, hy + ux * s * 0.7); ctx.stroke();
+      ctx.moveTo(bx0 + foot[0] + dx, by0 + foot[1] + dy); ctx.lineTo(bx0 + head[0] + dx, by0 + head[1] + dy);
+      ctx.moveTo(bx0 + mid[0] - hx + dx, by0 + mid[1] - hy + dy); ctx.lineTo(bx0 + mid[0] + hx + dx, by0 + mid[1] + hy + dy);
+      ctx.stroke();
     }
   }
 }

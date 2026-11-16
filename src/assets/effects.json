@@ -228,7 +228,7 @@
         "palm": 1.25,
         "fan": 1.1,
         "conifer": 0.95,
-        "bare": 1.0
+        "bare": 1.25
       },
       "spin": {
         "palm": true,
@@ -239,7 +239,7 @@
       },
       "swaySpeed": 0.9,
       "swayRad": 0.05,
-      "parallaxK": 1.0,
+      "parallaxK": 0.35,
       "variants": 4,
       "maxQ": 4,
       "cacheMax": 48,
@@ -356,25 +356,53 @@
           "shrink": 0.62
         },
         "bare": {
+          "light": [
+            -0.55,
+            -0.6
+          ],
           "limbs": [
-            4,
-            6
+            5,
+            7
           ],
           "jitter": 0.6,
           "limbLen": [
-            0.38,
-            0.5
+            0.34,
+            0.44
           ],
+          "bend": 0.5,
           "fork": [
-            0.35,
-            0.6
+            0.32,
+            0.62
           ],
+          "triFork": 0.3,
           "shrink": [
-            0.55,
-            0.72
+            0.6,
+            0.76
           ],
           "depth": 2,
-          "widthR": 0.07
+          "widthR": 0.12,
+          "taper": 0.62,
+          "edge": "#4a3a2a",
+          "edgeR": 0.045,
+          "shine": "#d8c9a8",
+          "shineAlpha": 0.45,
+          "shineShift": 0.02,
+          "leaves": [
+            "#a39553",
+            "#8c8a4a",
+            "#b7a061",
+            "#7f7a45"
+          ],
+          "leafKeep": 0.95,
+          "leafPer": [
+            4,
+            6
+          ],
+          "leafSpread": 0.16,
+          "leafR": [
+            0.08,
+            0.13
+          ]
         }
       },
       "byForm": {
@@ -406,8 +434,26 @@
         },
         "flowering_round": {
           "highlights": 14
+        },
+        "indio_branch": {
+          "leaves": [
+            "#6f9a4a",
+            "#5c8a42",
+            "#86ab5a",
+            "#4f7a3a"
+          ],
+          "leafKeep": 0.85,
+          "leafPer": [
+            3,
+            5
+          ],
+          "edge": "#5a2e22",
+          "shine": "#e6b39b"
         }
-      }
+      },
+      "_parallaxK": "cuánto del pinhole de los edificios se lleva una copa. Entero, una copa de 11 m se iba casi su ancho hacia afuera y quedaba lejos de su sombra (que va hacia el sol): 0,35 basta para que se lea alta sin despegarse.",
+      "shadowMaxR": 0.75,
+      "_shadowMaxR": "el largo máximo de la sombra, en radios de la copa: la dirección es la del sol; el largo se acota para que la sombra quede pegada a su planta."
     }
   },
   "sunShadow": {

@@ -114,6 +114,15 @@ export function onFeriaDeck(x, y, margin = 32) {
 const F25 = EFFECTS.flora25;
 const TOP = F25.topdown;
 
+// LA SOMBRA NO SE DESPEGA DE SU PLANTA. Una palmera de 11 m al atardecer tira su copa a quince metros
+// del pie, y con la copa corrida hacia el otro lado por el pinhole quedaban dos plantas: la de verde y
+// la de sombra. Se conserva la DIRECCIÓN del sol; el LARGO se acota a una fracción de la copa.
+function castShadow(sh, max) {
+  const L = Math.hypot(sh.dx, sh.dy);
+  if (L <= max || L < 0.01) return sh;
+  return { ...sh, dx: sh.dx * max / L, dy: sh.dy * max / L };
+}
+
 function paintFlora(sp, frame) {
   const form = FLORA.forms[sp.form], kind = F25.enabled ? topdownKind(TOP, form) : null;
   if (!kind) {
@@ -126,7 +135,7 @@ function paintFlora(sp, frame) {
   paintTopdown(ctx, TOP, sp, form, kind, {
     x, y, s, seed: frame.seed, q: textureScale(), spin,
     crown: { dx: o.dx * TOP.parallaxK, dy: o.dy * TOP.parallaxK },
-    shadow: sunShadow(h),
+    shadow: castShadow(sunShadow(h), sp.r * s * TOP.shadowMaxR),
   });
 }
 
@@ -341,11 +350,17 @@ function nearestOnPoly(pts, x, y) {
 /** ¿Está este árbol sembrado sobre la acera? Se pregunta una vez y se guarda en el registro:
  *  un árbol no se muda. Con `roadside.enabled` en false ésos no se pintan. */
 function onAcera(tr) {
-  if (tr._acera === undefined && W.tileResident(tr.x, tr.y)) tr._acera = W.surfaceAt(tr.x, tr.y) === SURFACE.ACERA;
+  if (tr._acera === undefined && W.tileResident(tr.x, tr.y)) {
+    const c = W.surfaceAt(tr.x, tr.y);
+    tr._acera = c === SURFACE.ACERA;
+    tr._water = c === SURFACE.WATER;
+  }
   return !!tr._acera;
 }
 /** ¿Se pinta este árbol del mundo? No, si está sobre la acera y las aceras van despejadas. */
-function keepsTree(tr) { return FLORA.roadside.enabled || !onAcera(tr); }
+// …y NUNCA EN EL AGUA: 291 palmeras del mundo tienen el pie en una celda de mar o de piscina (sembradas
+// antes de que la costa o la piscina quedaran donde están). Una palma no echa raíz en el agua.
+function keepsTree(tr) { const acera = onAcera(tr); return !tr._water && (FLORA.roadside.enabled || !acera); }
 
 function tileTrees(tile, pairs) {
   if (tile._flora) return tile._flora;

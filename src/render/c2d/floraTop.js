@@ -166,25 +166,51 @@ function paintConiferTop(g, R, sp, P, rnd) {
   return (s) => star(s, R, P.points, rot0);
 }
 
-// el árbol pelado de la estación seca: desde arriba son sus RAMAS, abiertas desde el centro y
-// partiéndose dos veces. La especie no trae hoja (`paletteRoles: ["trunk"]`), así que todo es corteza.
+// el árbol de la estación seca, desde arriba: sus RAMAS abiertas desde el centro, con cuerpo —un canto
+// oscuro, la corteza y una luz del lado del sol— y unos racimos de hoja seca que le quedan en las puntas.
+// La especie trae sólo corteza (`paletteRoles: ["trunk"]`): las tintas de la hoja seca y del canto son
+// de la receta (`kinds.bare`), no de este archivo.
 function paintBareTop(g, R, sp, P, rnd) {
-  const segs = [];
+  const segs = [], tips = [];
   const grow = (x, y, a, len, w, depth) => {
+    const bend = (rnd() - 0.5) * P.bend, mx = x + Math.cos(a + bend) * len * 0.5, my = y + Math.sin(a + bend) * len * 0.5;
     const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
-    segs.push([x, y, ex, ey, w]);
-    if (depth <= 0) return;
-    for (const side of [-1, 1]) grow(ex, ey, a + side * between(rnd, P.fork), len * between(rnd, P.shrink), w * 0.62, depth - 1);
+    segs.push([x, y, mx, my, ex, ey, w]);
+    if (depth <= 0) { tips.push([ex, ey, a]); return; }
+    const k = rnd() < P.triFork ? 3 : 2;
+    for (let i = 0; i < k; i++) {
+      const off = k === 2 ? (i ? 1 : -1) * between(rnd, P.fork) : (i - 1) * between(rnd, P.fork);
+      grow(ex, ey, a + off, len * between(rnd, P.shrink), w * P.taper, depth - 1);
+    }
   };
   const n = Math.round(between(rnd, P.limbs));
   for (let i = 0; i < n; i++) grow(0, 0, (i / n) * TAU + (rnd() - 0.5) * P.jitter, R * between(rnd, P.limbLen), R * P.widthR, P.depth);
-  const stroke = (s2, ink) => {
-    s2.strokeStyle = ink; s2.lineCap = "round";
-    for (const [x0, y0, x1, y1, w] of segs) { s2.lineWidth = Math.max(0.5, w); s2.beginPath(); s2.moveTo(x0, y0); s2.lineTo(x1, y1); s2.stroke(); }
+  const L = Math.atan2(P.light[1], P.light[0]);
+  const limb = (s2, widen, dx, dy) => {
+    s2.lineCap = "round"; s2.lineJoin = "round";
+    for (const [x0, y0, mx, my, x1, y1, w] of segs) {
+      s2.lineWidth = Math.max(0.6, w + widen); s2.beginPath(); s2.moveTo(x0 + dx, y0 + dy); s2.quadraticCurveTo(mx + dx, my + dy, x1 + dx, y1 + dy); s2.stroke();
+    }
   };
-  stroke(g, sp.trunk);
-  g.fillStyle = sp.trunk; g.beginPath(); g.arc(0, 0, R * P.widthR * 1.1, 0, TAU); g.fill();
-  return (s2) => stroke(s2, s2.fillStyle);
+  // los racimos de hoja seca, primero: las ramas pasan por encima
+  const leaves = [];
+  for (const [x, y, a] of tips) {
+    if (rnd() > P.leafKeep) continue;
+    const c = Math.round(between(rnd, P.leafPer));
+    for (let i = 0; i < c; i++) { const aa = a + (rnd() - 0.5) * 1.6, d = R * rnd() * P.leafSpread; leaves.push([x + Math.cos(aa) * d, y + Math.sin(aa) * d, R * between(rnd, P.leafR), Math.floor(rnd() * P.leaves.length)]); }
+  }
+  for (const [x, y, r, i] of leaves) { g.fillStyle = P.leaves[i]; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+  g.strokeStyle = P.edge; limb(g, R * P.edgeR, 0, 0);
+  g.strokeStyle = sp.trunk; limb(g, 0, 0, 0);
+  g.strokeStyle = P.shine; g.globalAlpha = P.shineAlpha;
+  const sx = Math.cos(L) * R * P.shineShift, sy = Math.sin(L) * R * P.shineShift;
+  limb(g, -R * P.widthR * 0.55, sx, sy); g.globalAlpha = 1;
+  g.fillStyle = P.edge; g.beginPath(); g.arc(0, 0, R * P.widthR * 1.25, 0, TAU); g.fill();
+  g.fillStyle = sp.trunk; g.beginPath(); g.arc(0, 0, R * P.widthR * 0.95, 0, TAU); g.fill();
+  return (s2) => {
+    s2.strokeStyle = s2.fillStyle; limb(s2, R * P.edgeR, 0, 0);
+    s2.beginPath(); for (const [x, y, r] of leaves) { s2.moveTo(x + r, y); s2.arc(x, y, r, 0, TAU); } s2.fill();
+  };
 }
 
 const PAINTERS = { bare: paintBareTop, broadleaf: paintBroadleaf, palm: paintPalmTop, fan: paintFanTop, conifer: paintConiferTop };

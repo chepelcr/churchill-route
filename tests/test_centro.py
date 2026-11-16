@@ -54,6 +54,8 @@ def inks_of(tier):
         yield op["ink"]
     if tier.get("windows"):
         yield tier["windows"]["ink"]
+    # el mosaico de una tapa (`bodies.js → paintMosaic`): sus cuatro tintas también son de la casa
+    yield from (tier.get("mosaic") or {}).get("inks", [])
     if tier.get("truss"):
         yield tier["truss"]["ink"]
     roof = tier.get("roof") or {}

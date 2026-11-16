@@ -114,7 +114,7 @@ export function buildBody(spec, base, rot, F) {
     const uv = footprint(t, base, rot), o = { pts: flat(uv), z0: t.z[0], z1: t.z[1], wall: t.wall, cap: t.cap };
     const flip = area2(o.pts) < 0;
     if (flip) o.pts = wound(o.pts);
-    for (const k of ["edge", "bands", "windows", "parapet", "stains"]) if (t[k]) o[k] = t[k];
+    for (const k of ["edge", "bands", "windows", "parapet", "stains", "mosaic"]) if (t[k]) o[k] = t[k];
     if (t.decal) {
       // el estampado: en qué paredes va (índices de vértice, como `openings.edge`), re-numeradas si el giro se invirtió
       const n = o.pts.length / 2;

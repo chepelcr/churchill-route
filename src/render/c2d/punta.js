@@ -294,32 +294,6 @@ function paintLettersRaised(mo, C, ppm) {
   ctx.restore();
 }
 
-// LAS HOJAS DE LA CONCHA, en el aire: cada pilar sube de su base a la hoja, y la hoja —turquesa,
-// translúcida— queda a `leafHeightM`, corrida con el pinhole como un techo.
-function paintShellLeaves(mo, C, K, R, leaves, ringR, L, Wd, leafPath, ppm) {
-  const lift = liftOf(mo, ppm), hi = lift(C.leafHeightM || 5), pil = R * 0.055;
-  ctx.save(); ctx.translate(mo.x, mo.y); ctx.rotate(mo.ang);
-  for (const a of leaves) {
-    const bx = Math.cos(a) * ringR, by = Math.sin(a) * ringR;
-    ctx.strokeStyle = C.pillarEdge; ctx.lineWidth = pil * 1.25; ctx.lineCap = "butt";
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + hi[0], by + hi[1]); ctx.stroke();
-    ctx.strokeStyle = C.pillar; ctx.lineWidth = pil;
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + hi[0], by + hi[1]); ctx.stroke();
-  }
-  for (const a of leaves) {
-    ctx.save(); ctx.translate(Math.cos(a) * ringR + hi[0], Math.sin(a) * ringR + hi[1]); ctx.rotate(a + Math.PI / 2);
-    const leaf = leafPath();
-    ctx.fillStyle = C.leaf; ctx.fill(leaf);
-    ctx.strokeStyle = C.leafEdge; ctx.lineWidth = Math.max(1, 0.15 * ppm); ctx.stroke(leaf);
-    ctx.strokeStyle = C.vein; ctx.lineWidth = Math.max(0.7, 0.08 * ppm); ctx.beginPath();
-    for (let v = 1; v <= 5; v++) { const y = L * (0.1 + v * 0.14), sp = Wd * (0.95 - v * 0.1); ctx.moveTo(0, y - L * 0.05); ctx.quadraticCurveTo(sp * 0.5, y, sp, y + L * 0.06); ctx.moveTo(0, y - L * 0.05); ctx.quadraticCurveTo(-sp * 0.5, y, -sp, y + L * 0.06); }
-    ctx.stroke();
-    ctx.strokeStyle = C.rib; ctx.lineWidth = Math.max(1, 0.22 * ppm); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, L * 0.96); ctx.stroke();
-    ctx.restore();
-  }
-  ctx.restore();
-}
-
 // LAS GRADAS Y EL ESCENARIO DE LA CONCHA, en 3D sobre el aparejo (`rig3d.js`, metros, marco del
 // monumento: +v hacia el mar). Cada grada es un anillo un escalón más alto que el de adentro: su
 // CONTRAHUELLA (la pared que mira al escenario), su huella arriba y sus dos cantos en las puntas; atrás
@@ -357,6 +331,43 @@ function shellForm(Rg, Rm, C) {
     for (const f of [0.82, 0.66]) Rg.line(arc(sr * f, zs + 0.01, 0.08, Math.PI - 0.08, 0, cy), 0.28, C.stageStep);
     Rg.line([[-sr, cy, zs + 0.01], [sr, cy, zs + 0.01]], 0.28, C.stageStep);
   });
+  shellLeaves(Rg, Rm, C, cy);
+}
+
+// LAS HOJAS DE LA CONCHA, según la foto: abanicos turquesa translúcidos que nacen ANGOSTOS sobre un
+// pilar corto al borde del escenario y se abren hacia atrás y hacia arriba, hacia el mar, como la
+// concha acústica que son. Cada una apunta desde el centro (las bases no miran todas al mismo lado),
+// se traslapa con las vecinas, y no son iguales: las del centro, más grandes (`leafSizeK`). La
+// superficie se curva hacia arriba (`leafTopM`) y se ahueca de lado a lado (`leafCupM`); sus
+// nervios salen del pie como los de una concha. En 3D sobre el aparejo, sombra incluida.
+function shellLeaves(Rg, Rm, C, cy) {
+  const n = C.leaves, arc = C.leafArcDeg * RAD, [kSide, kMid] = C.leafSizeK;
+  const rb = Rm * C.leafFromK, zb = C.leafBaseM, H = C.leafTopM - zb, cup = C.leafCupM, tipK = 0.75;
+  const order = Array.from({ length: n }, (_, k) => k).sort((p, q) => Math.abs(p - (n - 1) / 2) < Math.abs(q - (n - 1) / 2) ? 1 : -1);
+  order.forEach((k, idx) => {
+    const a = Math.PI / 2 - arc / 2 + arc * k / (n - 1), off = Math.cos(a - Math.PI / 2), size = kSide + (kMid - kSide) * off * off;
+    const dx = Math.cos(a), dy = Math.sin(a), tx = -dy, ty = dx;
+    const L = Rm * C.leafLen * size, W = Rm * C.leafW * size, bx = dx * rb, by = cy + dy * rb;
+    const w = (q) => W * (q <= tipK ? Math.pow(Math.sin(Math.PI / 2 * q / tipK), 0.7) : Math.sqrt(Math.max(0, 1 - ((q - tipK) / (1 - tipK)) ** 2)));
+    const pt = (q, t) => {
+      const r = q * L, side = w(q) * t;
+      return [bx + dx * r + tx * side, by + dy * r + ty * side, zb + H * Math.sin(q * Math.PI * 0.6) / Math.sin(Math.PI * 0.6) - cup * t * t * q];
+    };
+    Rg.at(zb, () => Rg.box(bx, by, 0, zb, C.pillarM, C.pillarM, { top: C.pillar, side: C.pillar }, a));
+    Rg.at(C.leafTopM + 0.01 * idx, () => {
+      const N = 18, rim = [];
+      for (let i = 0; i <= N; i++) rim.push(pt(i / N, 1));
+      for (let i = N; i >= 0; i--) rim.push(pt(i / N, -1));
+      Rg.poly(rim, C.leaf, Rg.shadow ? null : C.leafEdge, 0.12);
+      if (Rg.shadow) return;
+      // los nervios: del pie al borde, en abanico
+      for (const f of [-1, -0.66, -0.33, 0.33, 0.66, 1]) {
+        const e = Math.abs(f), q1 = tipK + (1 - tipK) * Math.cos(e * Math.PI / 2), t1 = Math.sign(f) * Math.sin(e * Math.PI / 2) * 0.96;
+        Rg.line(Array.from({ length: 7 }, (_, i) => pt(0.04 + (q1 - 0.04) * i / 6, t1 * i / 6)), 0.07, C.vein);
+      }
+      Rg.line(Array.from({ length: 7 }, (_, i) => pt(0.02 + 0.96 * i / 6, 0)), 0.16, C.rib);
+    });
+  });
 }
 
 function paintMonument(mo, ppm) {
@@ -373,34 +384,20 @@ function paintMonument(mo, ppm) {
   }
   if (mo.kind === "shell") {
     // local: +y hacia el mar (la calle detrás de las gradas), el radio total es R
-    const R = mo.size || C.rM * ppm, lift = liftOf(mo, ppm);
+    const R = mo.size || C.rM * ppm;
     // el piso gris que llena el círculo entero de la Concha, gradas y hojas incluidas
     ctx.beginPath(); ctx.arc(0, 0, R * 1.04, 0, Math.PI * 2); ctx.fillStyle = C.floor; ctx.fill(); ctx.strokeStyle = C.floorEdge; ctx.lineWidth = 1.5; ctx.stroke();
     // la plaza de adoquín con su aro amarillo (en el suelo; las gradas y el escenario se levantan en 3D)
     const t0 = R * 0.62;
     ctx.beginPath(); ctx.arc(0, 0, t0, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill();
     ctx.beginPath(); ctx.arc(0, 0, t0 * 0.9, Math.PI * 1.05, Math.PI * 1.95); ctx.strokeStyle = C.ring; ctx.lineWidth = Math.max(1, 0.25 * ppm); ctx.stroke();
-    // las hojas: su sombra va acá, en el piso; las hojas y sus pilares se LEVANTAN y van con los cuerpos
-    const n = C.leaves, arc = C.leafArcDeg * RAD, ringR = R * 0.93, L = R * C.leafLen, Wd = R * C.leafW;
-    const leaves = [];
-    for (let k = 0; k < n; k++) leaves.push(Math.PI / 2 - arc / 2 + arc * k / (n - 1));
-    leaves.sort((a, b) => Math.abs(b - Math.PI / 2) - Math.abs(a - Math.PI / 2));   // las del centro encima
-    const leafPath = () => { const p = new Path2D(); p.moveTo(0, 0); p.bezierCurveTo(Wd, L * 0.16, Wd * 1.05, L * 0.64, 0, L); p.bezierCurveTo(-Wd * 1.05, L * 0.64, -Wd, L * 0.16, 0, 0); return p; };
-    const lsh = sunShadow(C.leafHeightM || 5);
-    { const mag = Math.hypot(lsh.dx, lsh.dy) || 1, min = (C.leafShadowMinM || 1.4) * ppm; if (mag < min) { lsh.dx = (lsh.dx || 0.6) / mag * min; lsh.dy = (lsh.dy || 0.8) / mag * min; } }
-    const ca = Math.cos(-(mo.ang || 0)), sa = Math.sin(-(mo.ang || 0)), sdx = lsh.dx * ca - lsh.dy * sa, sdy = lsh.dx * sa + lsh.dy * ca;
-    for (const a of leaves) {
-      ctx.save(); ctx.translate(Math.cos(a) * ringR + sdx, Math.sin(a) * ringR + sdy); ctx.rotate(a + Math.PI / 2);
-      ctx.globalAlpha = Math.min(1, Math.max(C.leafShadowAlpha || 0.55, lsh.alpha * 1.4)); ctx.fillStyle = K.shadow; ctx.fill(leafPath());
-      ctx.restore();
-    }
     ctx.restore();
-    // LAS GRADAS Y EL ESCENARIO EN 3D (`shellForm`): su sombra de una vez, en el suelo; ellos, con los cuerpos
-    const Rm = R / ppm, topM = C.tierRiseM * C.tiers + 0.5;
+    // LAS GRADAS, EL ESCENARIO Y LAS HOJAS EN 3D (`shellForm`): su sombra de una vez, en el suelo; ellos, con los cuerpos
+    const Rm = R / ppm, topM = Math.max(C.tierRiseM * C.tiers, C.leafTopM) + 0.5;
     const rig = (g, mode) => { const S = makeRig(g, mo.x, mo.y, mo.ang || 0, ppm, state.cam, mode, C.shade, topM); shellForm(S, Rm, C); S.flush(); };
     const sun = sunShadow(1);
     if (sun.alpha > 0) withShadowLayer(ctx, mo.x, mo.y, R * 1.3, sun.alpha * C.shadowAlpha, (g) => rig(g, "sun"));
-    queueBodyLike({ x: mo.x, y: mo.y, paint: (pp) => { rig(ctx, "cam"); paintShellLeaves(mo, C, K, R, leaves, ringR, L, Wd, leafPath, pp); } });
+    queueBodyLike({ x: mo.x, y: mo.y, paint: () => rig(ctx, "cam") });
     return;
   }
   if (mo.kind === "letters") {

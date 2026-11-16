@@ -76,6 +76,42 @@ function paintDecal(T, i, lo, hi, lit) {
   ctx.restore();
 }
 
+// EL MOSAICO ANTIGUO sobre una tapa: losetas de cemento de `everyM` alineadas con la PRIMERA arista
+// de la huella (la del marco del lugar), cada una con su fondo, su rombo y su centro, y un cuadro sí
+// y otro no con las tintas cambiadas — el piso de las iglesias viejas. `inks`: [fondo, rombo,
+// centro, fondo alterno]. Se pinta en tres trazos por tinta, no por loseta.
+function paintMosaic(T, cap, o, ppm) {
+  const { everyM, inks } = T.mosaic, pts = T.pts, n = pts.length, s = everyM * ppm;
+  if (!(s > 1.2)) return;
+  let ex = pts[2] - pts[0], ey = pts[3] - pts[1];
+  const el = Math.hypot(ex, ey) || 1; ex /= el; ey /= el;
+  const nx = -ey, ny = ex, ox = pts[0] + o[0], oy = pts[1] + o[1];
+  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+  for (let i = 0; i < n; i += 2) {
+    const dx = pts[i] + o[0] - ox, dy = pts[i + 1] + o[1] - oy, u = dx * ex + dy * ey, v = dx * nx + dy * ny;
+    u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+  }
+  const P = (u, v) => [ox + ex * u + nx * v, oy + ey * u + ny * v];
+  const quad = (path, pp) => { path.moveTo(pp[0][0], pp[0][1]); for (let k = 1; k < 4; k++) path.lineTo(pp[k][0], pp[k][1]); path.closePath(); };
+  const alt = new Path2D(), rhomb = [new Path2D(), new Path2D()], dot = new Path2D(), grout = new Path2D();
+  for (let i = Math.floor(u0 / s); i * s < u1; i++) for (let j = Math.floor(v0 / s); j * s < v1; j++) {
+    const a = i * s, b = j * s, c = (i + j) & 1, m = s / 2;
+    if (c) quad(alt, [P(a, b), P(a + s, b), P(a + s, b + s), P(a, b + s)]);
+    const r = s * 0.36;
+    quad(rhomb[c], [P(a + m, b + m - r), P(a + m + r, b + m), P(a + m, b + m + r), P(a + m - r, b + m)]);
+    const q = s * 0.11;
+    quad(dot, [P(a + m - q, b + m - q), P(a + m + q, b + m - q), P(a + m + q, b + m + q), P(a + m - q, b + m + q)]);
+    grout.moveTo(...P(a, b)); grout.lineTo(...P(a + s, b)); grout.moveTo(...P(a, b)); grout.lineTo(...P(a, b + s));
+  }
+  ctx.save(); ctx.clip(cap);
+  ctx.fillStyle = ink(inks[3] || inks[0]); ctx.fill(alt);
+  ctx.fillStyle = ink(inks[1]); ctx.fill(rhomb[0]);
+  ctx.fillStyle = ink(inks[0]); ctx.fill(rhomb[1]);
+  ctx.fillStyle = ink(inks[2]); ctx.fill(dot);
+  ctx.strokeStyle = ink(inks[2]); ctx.globalAlpha = 0.35; ctx.lineWidth = Math.max(0.4, s * 0.05); ctx.stroke(grout);
+  ctx.restore();
+}
+
 function paintTier(T, at, vis, sunlit, sun, ppm) {
   const h = T.z1 - T.z0, o0 = at(T.z0), o1 = at(T.z1), pts = T.pts, n = pts.length;
   const zAt = (f) => at(T.z0 + h * f);
@@ -132,6 +168,7 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
     }
     ctx.restore();
   }
+  if (T.mosaic) paintMosaic(T, cap, o1, ppm);
   if (T.edge) { ctx.strokeStyle = ink(T.edge); ctx.lineWidth = 1; ctx.stroke(cap); }
   if (T.parapet) {
     // las almenas: el pretil, con sus dientes

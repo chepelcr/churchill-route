@@ -14,10 +14,11 @@ import { ACERA_PX, aabbInView, ctx, flatAABB, flatMultiPath, flatPath, label, pa
 import { textureFor, overlayTexture } from "./materials.js";
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { roundedMultiPath, roundedPath } from "./curves.js";
-import { propParts } from "./props.js";
+import { drawParada, propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
 import { canvasOwns } from "../owners.js";
+import { drawBench3d, drawPoleSign3d } from "./furniture3d.js";
 
 //: LA SEÑALIZACIÓN, keyed by SignKind — see the note above `drawSign`.
 const SIGNS = PROPS.signs;
@@ -715,8 +716,13 @@ function drawSign(s) {
   const rec = SIGNS[s.kind];
   if (!rec) return;                                  // unknown kind: draw nothing
   const vars = { value: String(s.value || 40) };
+  // LO QUE TIENE ALTURA, EN 3D (`furniture3d.js`): la señal de poste, la caseta y la banca. La pintura
+  // del asfalto (velocidad, cebra, tope) se queda en el piso, que es donde está.
+  if (!rec.turn && rec.stand3d) return drawPoleSign3d(rec, s.x, s.y, vars);
   if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars }); return; }
   const ang = (s.ang || 0) + (rec.flip === "side" && (s.side || 1) < 0 ? Math.PI : 0);
+  if (rec.view3d === "parada" && rec.extent) return drawParada(s.x, s.y, ang, rec.extent[0], rec.extent[1]);
+  if (rec.view3d && rec.view3d.form === "bench") return drawBench3d(s.x, s.y, ang, rec.view3d);
   ctx.save();
   ctx.translate(s.x, s.y); ctx.rotate(ang);
   const hw = rec.extent ? rec.extent[0] / 2 : 0, hh = rec.extent ? rec.extent[1] / 2 : 0;

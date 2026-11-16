@@ -43,11 +43,13 @@ await page.evaluate(async () => {
 });
 
 const drew = await page.evaluate(async ([cell, cols]) => {
-  const [streets, gfx, { WORLD2D }, { SIGN_KIND }] = await Promise.all([
+  const [streets, gfx, { WORLD2D }, { SIGN_KIND }, bodies, { state }] = await Promise.all([
     import("/src/render/c2d/streets.js"),
     import("/src/render/c2d/gfx.js"),
     import("/src/world2d/index.js"),
     import("/src/domain/vocabulary.generated.js"),
+    import("/src/render/c2d/bodies.js"),
+    import("/src/game/state.js"),
   ]);
   // Two rows per kind: upright, then turned — see the note at the top.
   const kinds = Object.values(SIGN_KIND);
@@ -78,7 +80,13 @@ const drew = await page.evaluate(async ([cell, cols]) => {
   }));
   const prev = WORLD2D.SIGNS;
   WORLD2D.SIGNS = signs;
+  // LO QUE TIENE ALTURA SE ENCOLA CON LOS CUERPOS (`furniture3d.js`): la cámara se para en el centro de la
+  // hoja —así cada poste y cada caseta se levanta hacia afuera de ella— y la cola se vacía acá
+  const cam = { x: state.cam.x, y: state.cam.y };
+  state.cam.x = cv.width / 2; state.cam.y = cv.height / 2;
   streets.drawSigns({ x0: 0, y0: 0, x1: cv.width, y1: cv.height });
+  bodies.flushBodies();
+  state.cam.x = cam.x; state.cam.y = cam.y;
   WORLD2D.SIGNS = prev;
 
   g.fillStyle = "#e8e2d2";

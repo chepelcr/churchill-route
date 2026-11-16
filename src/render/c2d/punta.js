@@ -28,9 +28,10 @@ import { CANO_PX } from "./streets.js";
 import { paintMaleconPattern } from "./systemShapes.js";
 import { BALDOSA_PX } from "./malecon.js";
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
-import { parallaxOffset } from "./depth.js";
+import { liftPoint, parallaxOffset } from "./depth.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
 import { drawGate3d } from "./gate3d.js";
+import { drawBench3d } from "./furniture3d.js";
 import { state } from "../../game/state.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
@@ -43,6 +44,7 @@ const ROCKS = MATERIALS.coast.rocks;
 const POOL = PROPS.scenes.pool.palette;
 const INK = M.figures.ink;
 const RAD = Math.PI / 180;
+const BENCH3D = PROPS.signs.banca.view3d;
 
 function shape(s) {
   if (!s._path) { s._path = flatPath(s.pts, true); s._aabb = flatAABB(s.pts); }
@@ -81,9 +83,64 @@ function wavePath(w, outline) {
   return (w._path = p);
 }
 
+// LA ESCOLLERA EN 3D. Es UNA línea larga y hace dos trabajos distintos según lo que tenga del lado de
+// tierra, y eso se pregunta a las bandas del malecón (`W.MALECON`):
+//   * junto a la EXPLANADA del faro (banda `style: "esplanade"`) la sostiene: un TALUD que baja del
+//     canto de la explanada hacia la arena (`slopeM`);
+//   * junto al MALECÓN amarillo es una PARED de piedra que sube del malecón (`wallM`), más alta al
+//     centro, entre el paseo y la playa.
+// El lecho se pinta en tiras a lo ancho (`acrossN`), cada una levantada —o hundida— a su altura con el
+// pinhole de los edificios; encima van las piedras, cada una un cuerpo corto de su costado a su copa,
+// de lo bajo a lo alto. La clasificación de cada vértice se hace la primera vez que entra en cuadro.
+const RR = M.riprap;
+let _bands = null;
+function maleconBands() {
+  if (_bands) return _bands;
+  return (_bands = (W.MALECON || []).map((b) => ({ esp: b.style === "esplanade", polys: b.polys, x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 })));
+}
+function insidePoly(pts, x, y) {
+  let c = false;
+  for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
+    const yi = pts[i + 1], yj = pts[j + 1];
+    if ((yi > y) !== (yj > y) && x < pts[i] + (pts[j] - pts[i]) * (y - yi) / (yj - yi)) c = !c;
+  }
+  return c;
+}
+// qué banda hay en (x, y): "esp" (explanada), "band" (malecón) o null
+function bandAt(x, y) {
+  for (const b of maleconBands()) {
+    if (x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1) continue;
+    for (const pl of b.polys) if (insidePoly(pl, x, y)) return b.esp ? "esp" : "band";
+  }
+  return null;
+}
+const lifted = (x, y, z) => liftPoint(state.cam, x, y, z);
+// la altura de la escollera a través: u = -1 en el canto de tierra, +1 en el del mar
+function riprapZ(mode, u) {
+  return mode === "slope" ? -RR.slopeM * (u + 1) / 2 : RR.wallM * (1 - u * u);
+}
+function riprapGeom(line) {
+  if (line._v) return line._v;
+  const p = line.pts, n = p.length / 2, nx = new Float32Array(n), ny = new Float32Array(n);
+  for (let k = 0; k < n; k++) {
+    const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1);
+    const dx = p[b * 2] - p[a * 2], dy = p[b * 2 + 1] - p[a * 2 + 1], L = Math.hypot(dx, dy) || 1;
+    nx[k] = -dy / L; ny[k] = dx / L;
+  }
+  // por vértice: de qué lado está la tierra (±1 sobre la normal) y qué hace la piedra ahí; 0 = sin clasificar
+  return (line._v = { nx, ny, side: new Int8Array(n), mode: new Array(n) });
+}
+function classify(line, k) {
+  const V = riprapGeom(line);
+  if (V.side[k]) return;
+  const x = line.pts[k * 2], y = line.pts[k * 2 + 1], d = line.w * 0.9;
+  const a = bandAt(x + V.nx[k] * d, y + V.ny[k] * d), b = bandAt(x - V.nx[k] * d, y - V.ny[k] * d);
+  const side = a ? 1 : b ? -1 : 1, land = a || b;
+  V.side[k] = side; V.mode[k] = land === "esp" ? "slope" : "wall";
+}
 function paintRiprap(line, view) {
   if (!line._rocks) {
-    const rocks = [], step = M.riprap.stepM * W.PX_PER_M, [r0, r1] = M.riprap.rockM;
+    const rocks = [], step = RR.stepM * W.PX_PER_M, [r0, r1] = RR.rockM;
     for (let i = 0; i + 3 < line.pts.length; i += 2) {
       const ax = line.pts[i], ay = line.pts[i + 1], bx = line.pts[i + 2], by = line.pts[i + 3];
       const len = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / len, ny = (bx - ax) / len;
@@ -91,20 +148,69 @@ function paintRiprap(line, view) {
         for (let k = 0; k < 3; k++) {
           const h = hash01(ax * 7.13 + ay * 3.71 + s * 1.37 + k * 91.7), h2 = hash01(h * 977 + k);
           const off = (h - 0.5) * line.w;
+          // [x, y, radio px, tinta, vértice, a través (+1 hacia la normal), radio m]
+          const rM = (r0 + (r1 - r0) * h2) / 2;
           rocks.push([ax + (bx - ax) * s / len + nx * off, ay + (by - ay) * s / len + ny * off,
-            (r0 + (r1 - r0) * h2) * W.PX_PER_M / 2, ROCKS[(h2 * ROCKS.length) | 0]]);
+            rM * W.PX_PER_M, ROCKS[(h2 * ROCKS.length) | 0], i / 2, (h - 0.5) * 2, rM]);
         }
       }
     }
     line._rocks = rocks; line._path = flatPath(line.pts, false); line._aabb = flatAABB(line.pts);
   }
-  ctx.strokeStyle = M.riprap.bed; ctx.lineWidth = line.w; ctx.lineCap = "round"; ctx.lineJoin = "round";
-  ctx.stroke(line._path);
-  const x0 = view.x0 - 8, x1 = view.x1 + 8, y0 = view.y0 - 8, y1 = view.y1 + 8;
-  for (const [x, y, r, ink] of line._rocks) {
-    if (x < x0 || x > x1 || y < y0 || y > y1) continue;       // la línea mide kilómetros: sólo lo que se ve
-    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  const V = riprapGeom(line), p = line.pts, n = p.length / 2, hw = line.w / 2;
+  const x0 = view.x0 - 30, x1 = view.x1 + 30, y0 = view.y0 - 30, y1 = view.y1 + 30;
+  const seen = (k) => { const x = p[k * 2], y = p[k * 2 + 1]; return x > x0 && x < x1 && y > y0 && y < y1; };
+  // su sombra al sol, sobre la arena: la línea entera corrida por el sol a la altura de la pared
+  const sh = sunShadow(RR.wallM);
+  if (sh.alpha > 0) {
+    ctx.save(); ctx.globalAlpha = sh.alpha * RR.shadowAlpha; ctx.translate(sh.dx, sh.dy);
+    ctx.strokeStyle = RR.shadow; ctx.lineWidth = line.w; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(line._path);
+    ctx.restore();
   }
+  // el lecho, a ras: lo que el talud deja ver debajo
+  ctx.strokeStyle = RR.bed; ctx.lineWidth = line.w; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.stroke(line._path);
+  // el lecho con su altura, en tiras a lo ancho (de lo bajo a lo alto)
+  const N = RR.acrossN, us = Array.from({ length: N + 1 }, (_, j) => -1 + 2 * j / N);
+  const at = (k, u) => {
+    const m = V.mode[k], s = V.side[k], x = p[k * 2] - V.nx[k] * s * u * hw, y = p[k * 2 + 1] - V.ny[k] * s * u * hw;
+    return lifted(x, y, riprapZ(m, u));
+  };
+  const strips = [];
+  for (let k = 0; k + 1 < n; k++) {
+    if (!seen(k) && !seen(k + 1)) continue;
+    classify(line, k); classify(line, k + 1);
+    for (let j = 0; j < N; j++) {
+      const zm = (riprapZ(V.mode[k], us[j]) + riprapZ(V.mode[k], us[j + 1])) / 2;
+      strips.push([zm, k, j]);
+    }
+  }
+  strips.sort((A, B) => A[0] - B[0]);
+  for (const [, k, j] of strips) {
+    const u0 = us[j], u1 = us[j + 1], a = at(k, u0), b = at(k + 1, u0), c = at(k + 1, u1), d = at(k, u1);
+    // la cara que mira al mar (u creciente, bajando) en la tinta del costado; la de tierra, en la del lecho
+    const down = riprapZ(V.mode[k], u1) < riprapZ(V.mode[k], u0);
+    ctx.fillStyle = down ? RR.bedSide : RR.bed;
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath(); ctx.fill();
+  }
+  // las piedras: cada una de su asiento a su copa, de lo bajo a lo alto
+  const vis = [];
+  for (const r of line._rocks) {
+    const [x, y, , , k, t] = r;
+    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+    classify(line, k);
+    const u = -V.side[k] * t, zb = riprapZ(V.mode[k], u);
+    vis.push([zb + r[6] * RR.rockRiseK, zb, r]);
+  }
+  vis.sort((A, B) => A[0] - B[0]);
+  ctx.lineCap = "round";
+  for (const [zt, zb, r] of vis) {
+    const [x, y, rp, ink] = r, b0 = lifted(x, y, zb), t0 = lifted(x, y, zt);
+    ctx.strokeStyle = RR.rockSide; ctx.lineWidth = rp * 2;
+    ctx.beginPath(); ctx.moveTo(b0[0], b0[1]); ctx.lineTo(t0[0], t0[1]); ctx.stroke();
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(t0[0], t0[1], rp, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.lineCap = "butt";
 }
 
 // EL TOLDO Y LA PÉRGOLA: techo, no edificio. El toldo es lona con sus limatesas del
@@ -480,10 +586,8 @@ function drawPunta(view, t = 0) {
       const e = f.ang + side * half, ex = Math.cos(e), ey = Math.sin(e);
       const bx = f.x + ex * f.r * M.fan.benchAlong - ey * side * off;
       const by = f.y + ey * f.r * M.fan.benchAlong + ex * side * off;
-      ctx.save(); ctx.translate(bx, by); ctx.rotate(e);
-      ctx.fillStyle = M.fan.benchShadow; ctx.fillRect(-bl * ppm / 2 + 1, -bw * ppm / 2 + 1.5, bl * ppm, bw * ppm);
-      ctx.fillStyle = M.fan.bench; ctx.fillRect(-bl * ppm / 2, -bw * ppm / 2, bl * ppm, bw * ppm);
-      ctx.restore();
+      // la MISMA banca 3D del malecón (`signs.banca.view3d`), a lo largo del canto y mirando al abanico
+      drawBench3d(bx, by, e - side * Math.PI / 2, { ...BENCH3D, lenM: bl });
     }
   }
   for (const w of P.waves || []) {

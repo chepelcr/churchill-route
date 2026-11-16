@@ -193,6 +193,11 @@
   "pier": {
     "_note": "The full deck recipe per PierStyle — `PIER_STYLES` in c2d/structures.js. Not just a colour: which seams, which rails, whether it carries lamps or a hut, and whether it lies on the ground. This is the family whose gap shipped for a week — the builder emitted four `malecon` piers, the renderer had no recipe, and the lookup fell through to `concrete`, drawing four beach ramps as grey quays with blue railings and lamps on the sand.",
     "_key": "churchill/world/enums/features.py :: PierStyle",
+    "_3d": {
+      "_note": "EL MUELLE EN 3D (`c2d/structures.js → pierBelow/pierRail`): la cubierta queda a ras —el carro anda encima— y lo que da profundidad va HACIA ABAJO: el canto de la cubierta (`fasciaM`, en la tinta `cap` del estilo o `fascia`) y los pilotes hasta el agua (`pileM`, cada `pileEveryM`, de `pileWM` de grueso, en la tinta `pile` del estilo). Arriba, la baranda a `railM` sobre sus postes. Los muelles a ras (las rampas) no lo llevan.",
+      "fasciaM": 0.7, "pileM": 2.6, "pileEveryM": 5.0, "pileWM": 0.55, "railM": 1.0, "railWM": 0.18,
+      "fascia": "#8a8578", "pile": "#5b4a38"
+    },
     "concrete": {
       "deck": "#cfcfc8",
       "seam": "rgba(0,0,0,0.1)",
@@ -1200,6 +1205,7 @@
     },
     "berth": {
       "_note": "El atracadero al que llega. Concreto, dos tonos.",
+      "_3d": { "_note": "EN 3D (`structures.js → berthDepth`): la losa a ras (el carro sube por ella a la rampa), su canto hundiéndose `fasciaM` en el agua por los tres lados del mar y dos bolardos de `bollardM` en las esquinas.", "fasciaM": 1.0, "fascia": "#7d786b", "bollardM": 0.8, "bollardRM": 0.35, "bollard": "#3a3d44", "bollardSide": "#24262b" },
       "deck": "#b6b1a2",
       "edge": "#8f8a7c",
       "preview": {
@@ -2067,7 +2073,16 @@
         0.9,
         1.9
       ],
-      "bed": "#6f6b63"
+      "bed": "#6f6b63",
+      "_3d": "EN 3D (`punta.js → paintRiprap`): junto a la explanada del faro la escollera es un TALUD que baja `slopeM` del canto de la explanada a la arena (la sostiene); junto al malecón amarillo es una PARED que sube `wallM` del malecón, más alta al centro. El lecho va en `acrossN` tiras a lo ancho —`bedSide` la cara que mira al mar—, y cada piedra sube `rockRiseK` de su radio sobre su asiento, con su costado en `rockSide`; la sombra de la línea cae al sol a `shadowAlpha`.",
+      "slopeM": 1.6,
+      "wallM": 1.7,
+      "acrossN": 4,
+      "rockRiseK": 1.5,
+      "shadow": "#1a1612",
+      "shadowAlpha": 0.55,
+      "bedSide": "#55514a",
+      "rockSide": "#4a463f"
     },
     "gate": {
       "_note": "EL ARCO DE ENTRADA (el del Muelle de Cruceros): dos postes y un rótulo entre las puntas, como el de la feria, en azul con letras blancas. El texto y el ancho vienen del mundo.",
@@ -2471,6 +2486,8 @@
       "capTrim": "#eef3ea",
       "capTealLite": "#6fd3c2",
       "mosaicCream": "#e8dcc2",
+      "hutRoof": "#3f7fc4",
+      "hutRoofShade": "#2f62a0",
       "mosaicRed": "#b04a36",
       "mosaicDark": "#2e4b55",
       "mosaicOchre": "#d39b45",

@@ -68,6 +68,22 @@ export function parallaxOffset(cam, x, y, heightM, pxPerM, settings = P) {
 }
 
 /**
+ * Un punto a `heightM` metros —POSITIVO arriba, NEGATIVO abajo—, ya corrido con el pinhole de la casa.
+ * `parallaxOffset` sólo contesta alturas positivas (lo que sube: paredes, postes, techos); lo que BAJA
+ * del suelo —el canto de un muelle hacia el agua, un talud hacia la arena— se corre hacia la cámara con
+ * la misma cuenta y el mismo tope.
+ */
+export function liftPoint(cam, x, y, heightM, settings = P) {
+  const camH = settings.cameraHeightM;
+  if (!camH || !heightM) return [x, y];
+  const k = heightM / camH;
+  let dx = (x - cam.x) * k, dy = (y - cam.y) * k;
+  const cap = settings.maxOffsetPx || 0, len = Math.hypot(dx, dy);
+  if (cap > 0 && len > cap) { dx *= cap / len; dy *= cap / len; }
+  return [x + dx, y + dy];
+}
+
+/**
  * Las aristas cuya normal exterior mira EN CONTRA de `(vx, vy)`.
  *
  * Para las paredes se pasa la dirección radial: un edificio a la derecha de la

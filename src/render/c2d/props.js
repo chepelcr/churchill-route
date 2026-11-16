@@ -14,6 +14,7 @@ import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { evalOn } from "../vehicleShapes.js";
 import { ctx } from "./gfx.js";
 import { paintParts } from "./shapes.js";
+import { drawParada3d } from "./furniture3d.js";
 
 /** A named prop's parts — the resolver the `prop` part inlines through. */
 export function propParts(name) {
@@ -64,5 +65,8 @@ export function paintProp(name, x, y, opts = {}) {
 // `ang` is the street's angle: the shelter's back is uphill of the bench, so a
 // stop on the far kerb passes `ang + PI` and still opens onto the roadway.
 export function drawParada(cx, cy, ang, w, h) {
+  // EN 3D (`furniture3d.js`): techo, postes, fondo, banca y letrero con su altura
+  const V = PROPS.props.parada.view3d;
+  if (V) return drawParada3d(cx, cy, ang, w / 2, h / 2, V);
   paintProp("parada", cx, cy, { ang, extent: [w, h] });
 }

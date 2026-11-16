@@ -11,7 +11,7 @@ import { overlayTexture } from "./materials.js";
 import { ferries } from "../../game/ferries.js";
 import { buildingHeightM, sunShadow } from "./shadows.js";
 import { roundedPath } from "./curves.js";
-import { facingEdges, paintSweep, parallaxOffset } from "./depth.js";
+import { facingEdges, liftPoint, paintSweep, parallaxOffset } from "./depth.js";
 import { resolveAssetFormulaMap } from "./shapes.js";
 import { paintStructureParts } from "./structureShapes.js";
 import { paintLight } from "./lights.js";
@@ -21,7 +21,8 @@ import { lightLevel } from "../../game/daynight.js";
 import { registerLampSource } from "./nightlights.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
 import { ferryForm } from "./vesselRigs.js";
-import { queueBodyLike } from "./bodies.js";
+import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
+import PROPS from "../../assets/world-props.json" with { type: "json" };
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
@@ -167,10 +168,83 @@ function pierInView(P, view, pad = 0) {
   return !(x1 + m < view.x0 || x0 - m > view.x1 || y1 + m < view.y0 || y0 - m > view.y1);
 }
 
+// EL MUELLE EN 3D (`materials.json → pier._3d`). La cubierta se queda A RAS —el carro anda encima y se
+// dibuja en el suelo—, así que lo que da la profundidad va HACIA ABAJO: el canto de la cubierta y los
+// pilotes que se hunden en el agua, que se ven del lado que da a la cámara (lo que baja se corre hacia
+// ella; del otro lado queda debajo de la cubierta, que se pinta después y lo tapa). Arriba, la baranda
+// a su altura sobre sus postes. Los muelles a ras del suelo (las rampas de asfalto) no llevan nada.
+const PIER3D = PIER_STYLES._3d;
+function edgeRuns(P) {
+  // las dos orillas de la cubierta (±hw por la normal de cada vértice) y la punta del mar
+  const p = P.pts, n = p.length / 2, hw = P.w / 2, L = [], R = [];
+  for (let k = 0; k < n; k++) {
+    const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1), dx = p[b * 2] - p[a * 2], dy = p[b * 2 + 1] - p[a * 2 + 1], d = Math.hypot(dx, dy) || 1;
+    const nx = -dy / d, ny = dx / d;
+    L.push([p[k * 2] + nx * hw, p[k * 2 + 1] + ny * hw]); R.push([p[k * 2] - nx * hw, p[k * 2 + 1] - ny * hw]);
+  }
+  return { L, R };
+}
+function pierBelow(P, style) {
+  const cam = state.cam, D = PIER3D, { L, R } = P._edges || (P._edges = edgeRuns(P));
+  const down = (q, z) => liftPoint(cam, q[0], q[1], z);
+  // los pilotes, de la cubierta al agua, cada `pileEveryM` por cada orilla
+  const every = D.pileEveryM * W.PX_PER_M;
+  ctx.strokeStyle = style.pile || D.pile; ctx.lineWidth = D.pileWM * W.PX_PER_M; ctx.lineCap = "butt";
+  ctx.beginPath();
+  for (const E of [L, R]) {
+    let run = every / 2;
+    for (let k = 0; k + 1 < E.length; k++) {
+      const [ax, ay] = E[k], [bx, by] = E[k + 1], len = Math.hypot(bx - ax, by - ay);
+      for (; run < len; run += every) {
+        const q = [ax + (bx - ax) * run / len, ay + (by - ay) * run / len], t = down(q, -D.fasciaM), b = down(q, -D.pileM);
+        ctx.moveTo(t[0], t[1]); ctx.lineTo(b[0], b[1]);
+      }
+      run -= len;
+    }
+  }
+  ctx.stroke();
+  // el canto de la cubierta, de la orilla a `fasciaM` abajo, por las dos orillas y la punta
+  ctx.fillStyle = style.cap || D.fascia;
+  const face = (a, b) => { const a2 = down(a, -D.fasciaM), b2 = down(b, -D.fasciaM); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(a2[0], a2[1]); ctx.closePath(); };
+  ctx.beginPath();
+  for (const E of [L, R]) for (let k = 0; k + 1 < E.length; k++) face(E[k], E[k + 1]);
+  face(L[L.length - 1], R[R.length - 1]);
+  ctx.fill();
+}
+function pierRail(P, style) {
+  const cam = state.cam, D = PIER3D, ppm = W.PX_PER_M, hw = P.w / 2, p = P.pts;
+  const up = (x, y, z) => { const o = parallaxOffset(cam, x, y, z, ppm); return [x + o.dx, y + o.dy]; };
+  const gap = style.posts, start = style.postsAtLamps && style.lamp ? style.lamp.start + lampFoot(style.lamp.type) : (style.postStart ?? 10);
+  for (const side of [1, -1]) {
+    const line = [], posts = [];
+    let run = 0;
+    for (let i = 0; i + 3 < p.length; i += 2) {
+      const ax = p[i], ay = p[i + 1], bx = p[i + 2], by = p[i + 3], len = Math.hypot(bx - ax, by - ay) || 1;
+      const ux = (bx - ax) / len, uy = (by - ay) / len, nx = -uy * side * (hw - 1), ny = ux * side * (hw - 1);
+      if (!i) line.push([ax + nx, ay + ny]);
+      line.push([bx + nx, by + ny]);
+      if (gap) for (let s0 = start - (run % gap); s0 < len; s0 += gap) if (s0 >= 0) posts.push([ax + ux * s0 + nx, ay + uy * s0 + ny]);
+      run += len;
+    }
+    // los postes, del piso a la baranda
+    ctx.strokeStyle = style.pile || D.pile; ctx.lineWidth = Math.max(1, (style.postSize || 3) * 0.6); ctx.lineCap = "round";
+    ctx.beginPath();
+    for (const [x, y] of posts) { const t = up(x, y, D.railM); ctx.moveTo(x, y); ctx.lineTo(t[0], t[1]); }
+    ctx.stroke();
+    // la baranda, arriba
+    ctx.strokeStyle = style.rail; ctx.lineWidth = D.railWM * ppm; ctx.lineJoin = "round";
+    ctx.beginPath();
+    line.forEach(([x, y], k) => { const t = up(x, y, D.railM); k ? ctx.lineTo(t[0], t[1]) : ctx.moveTo(t[0], t[1]); });
+    ctx.stroke();
+  }
+}
+
 function drawPier(P, view) {
   if (!pierInView(P, view)) return;
   const style = PIER_STYLES[P.style] || PIER_STYLES.concrete;
   const hw = P.w / 2, pts = P.pts;
+  const deep = PIER3D && !style.ground && !style.round;
+  if (deep) pierBelow(P, style);
   let run = 0;                       // arclength so far, so seams and lamps
   for (let i = 0; i < pts.length - 2; i += 2) {   // never restart at a bend
     const ax = pts[i], ay = pts[i + 1], bx = pts[i + 2], by = pts[i + 3];
@@ -180,11 +254,11 @@ function drawPier(P, view) {
     ctx.translate(ax, ay); ctx.rotate(Math.atan2(by - ay, bx - ax));
     const vars = {
       len, hw, negHw: -hw, width: P.w, run, last,
-      round: Boolean(style.round), shadowVisible: !style.round,
+      round: Boolean(style.round), shadowVisible: !style.round && !deep,
       deck: style.deck, seam: style.seam, seamGap: style.seamGap,
-      cap: style.cap, capVisible: Boolean(style.cap && last), rail: style.rail,
+      cap: style.cap, capVisible: Boolean(style.cap && last), rail: deep ? null : style.rail,
       centre: style.centre, centreStart: run ? 0 : 6, centreEnd: last ? len - 6 : len,
-      posts: style.posts, postStart: style.postsAtLamps && style.lamp ? style.lamp.start + lampFoot(style.lamp.type) : style.postStart, postSize: style.postSize, pile: style.pile,
+      posts: deep ? null : style.posts, postStart: style.postsAtLamps && style.lamp ? style.lamp.start + lampFoot(style.lamp.type) : style.postStart, postSize: style.postSize, pile: style.pile,
     };
     paintStructureParts(ctx, S.pierDeck.parts, {
       X: (value) => value || 0,
@@ -195,6 +269,7 @@ function drawPier(P, view) {
     ctx.restore();
     run += len;
   }
+  if (deep && style.rail) pierRail(P, style);
   for (const L of pierLamps(P)) paintLight(L.type, L.x, L.y, { night: false, ang: L.ang, lamp: L });
   if (style.hut) drawPierHut(P, hw);
 }
@@ -281,6 +356,8 @@ function drawPierHut(P, hw) {
   // `hutAt`: el mundo puede decir dónde va la caseta (la del Muelle de Cruceros va sobre el malecón)
   const cx = P.hutAt ? P.hutAt[0] : ax + nx * (hw + 13) + ux * 18;
   const cy = P.hutAt ? P.hutAt[1] : ay + ny * (hw + 13) + uy * 18;
+  // LA CASETA ES UN CUERPO (`world-props.json → bodies.pierHut`), con su puerta hacia la cubierta
+  if (PROPS.bodies.pierHut) { queueBody(bodyAt(PROPS.bodies.pierHut, cx, cy, Math.atan2(-ny, -nx), "pierHut")); return; }
   const vars = resolveAssetFormulaMap(S.pierHut.values, { nx, ny });
   ctx.save();
   ctx.translate(cx, cy);
@@ -362,24 +439,51 @@ function drawFerry(f, view) {
 }
 // The berth she sails from: a concrete apron at the quay, so an empty berth
 // still reads as a place a ferry belongs rather than a gap in the sea wall.
+// EL ATRACADERO EN 3D (`structure.berth._3d`): la losa se queda a ras —el carro sube por ella a la
+// rampa—, y lo que la hace muelle va hacia abajo y hacia arriba: su canto hundiéndose en el agua por
+// los tres lados del mar y dos bolardos en las esquinas donde se amarra el ferry.
+function berthDepth(px, py, pa, dw) {
+  const D = S.berth._3d, ppm = W.PX_PER_M, cam = state.cam, c = Math.cos(pa), s = Math.sin(pa);
+  const at = (u, v) => [px + u * c - v * s, py + u * s + v * c];
+  const x0 = -14, x1 = 32, y0 = -dw / 2 - 6, y1 = dw / 2 + 6;
+  const corners = [at(x1, y0), at(x1, y1), at(x0, y1), at(x0, y0)];
+  ctx.fillStyle = D.fascia; ctx.beginPath();
+  for (const [a, b] of [[corners[3], corners[0]], [corners[0], corners[1]], [corners[1], corners[2]]]) {
+    const a2 = liftPoint(cam, a[0], a[1], -D.fasciaM), b2 = liftPoint(cam, b[0], b[1], -D.fasciaM);
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(a2[0], a2[1]); ctx.closePath();
+  }
+  ctx.fill();
+  return () => {
+    for (const v of [y0 + 3, y1 - 3]) {
+      const [bx, by] = at(x1 - 3, v), o = parallaxOffset(cam, bx, by, D.bollardM, ppm), r = D.bollardRM * ppm;
+      ctx.strokeStyle = D.bollardSide; ctx.lineWidth = r * 2; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + o.dx, by + o.dy); ctx.stroke();
+      ctx.fillStyle = D.bollard; ctx.beginPath(); ctx.arc(bx + o.dx, by + o.dy, r, 0, Math.PI * 2); ctx.fill();
+    }
+  };
+}
+
 function drawBerth(f, view) {
   // `berthPose` [x, y, ang]: el mundo puede poner la plataforma donde va la rampa
   // de verdad —a lo largo de su calle— en vez de en el arranque de la ruta
   if (f.berthPose) {
     const [px, py, pa] = f.berthPose;
     if (px + 90 < view.x0 || px - 90 > view.x1 || py + 90 < view.y0 || py - 90 > view.y1) return;
+    const top = S.berth._3d ? berthDepth(px, py, pa, f.dw) : null;
     ctx.save(); ctx.translate(px, py); ctx.rotate(pa);
     const B = f.dw / 2;
     paintStructureParts(ctx, S.berth.parts, { X: (v) => v || 0, Y: (v) => v || 0,
       vars: { dw: f.dw, negB: -B, apronY: -B - 6, apronH: f.dw + 12 }, color: (spec) => structureColor(S.berth, spec) });
     ctx.restore();
+    if (top) top();
     return;
   }
   const bx = f.pts[0].x, by = f.pts[0].y;
   if (bx + 90 < view.x0 || bx - 90 > view.x1 || by + 90 < view.y0 || by - 90 > view.y1) return;
+  const ba = f.pts.length > 1 ? Math.atan2(f.pts[1].y - by, f.pts[1].x - bx) : 0;
+  const top = S.berth._3d ? berthDepth(bx, by, ba, f.dw) : null;
   ctx.save();
-  ctx.translate(bx, by); ctx.rotate(f.pts.length > 1
-    ? Math.atan2(f.pts[1].y - by, f.pts[1].x - bx) : 0);
+  ctx.translate(bx, by); ctx.rotate(ba);
   const B = f.dw / 2;
   paintStructureParts(ctx, S.berth.parts, {
     X: (value) => value || 0,
@@ -388,6 +492,7 @@ function drawBerth(f, view) {
     color: (spec) => structureColor(S.berth, spec),
   });
   ctx.restore();
+  if (top) top();
 }
 function drawFerries(view) {
   for (const f of ferries()) { drawBerth(f, view); drawFerry(f, view); }

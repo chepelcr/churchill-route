@@ -111,15 +111,19 @@ function paintStanding(type, spec, x, y, opts) {
   ctx.beginPath(); ctx.arc(x, y, S.postPx * 0.9, 0, Math.PI * 2); ctx.fill();
   ctx.lineWidth = S.postPx;
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
-  // la cabeza vista desde arriba: carcasa y su lente (o la fila de lentes de una torre)
-  ctx.fillStyle = S.housing; head(hx, hy);
-  ctx.save(); ctx.translate(hx, hy); ctx.rotate(ha); ctx.fillStyle = spec.core;
+  // la cabeza vista desde arriba: la LENTE MIRA AL SUELO. Va un poco más abajo que la carcasa
+  // (`lensDropM`) y se pinta primero, así lo que se ve es la carcasa oscura y apenas el borde de luz
+  // que asoma del lado de la cámara — no un punto amarillo encima del poste.
+  const k = Math.max(0, (H - (S.lensDropM || 0)) / H);
+  const lx = hx0 + hd.dx * k, ly = hy0 + hd.dy * k;
+  ctx.save(); ctx.translate(lx, ly); ctx.rotate(ha); ctx.fillStyle = spec.core;
   const n = S.lamps || 1, cell = hl / n;
-  for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.roundRect(-hl / 2 + cell * (i + 0.18), -hw * 0.28, cell * 0.64, hw * 0.56, hw * 0.2); ctx.fill(); }
+  for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.roundRect(-hl / 2 + cell * (i + 0.06), -hw * 0.42, cell * 0.88, hw * 0.84, hw * 0.3); ctx.fill(); }
   ctx.restore();
+  ctx.fillStyle = S.housing; head(hx, hy);
   // de noche el halo sale de la cabeza: el mismo de siempre, centrado donde está la lente
   const [ox, oy] = spec.haloAt;
-  paintLuminaire(ctx, LIGHTS, type, hx - ox, hy - oy, { ...opts, night: opts.night ?? isNight() }, () => {});
+  paintLuminaire(ctx, LIGHTS, type, lx - ox, ly - oy, { ...opts, night: opts.night ?? isNight() }, () => {});
 }
 
 /** An authored point light from the editor (`W.LIGHTS`). */

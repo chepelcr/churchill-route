@@ -205,7 +205,8 @@
           "#ffd166",
           "#ff8fa3"
         ]
-      }
+      },
+      "topM": 19
     }
   },
   "tagada": {
@@ -404,7 +405,8 @@
           "#fff3c4",
           "#ffd166"
         ]
-      }
+      },
+      "topM": 15
     }
   },
   "pulpo": {
@@ -790,7 +792,8 @@
         "trim": "#f3c969",
         "bench": "#6b4428",
         "frame": "#8d949e"
-      }
+      },
+      "topM": 11
     }
   },
   "gusano": {
@@ -931,7 +934,8 @@
           "#ff5d73"
         ],
         "doorFrame": "#c08ae0"
-      }
+      },
+      "topM": 5.5
     }
   },
   "argollas": {
@@ -1098,7 +1102,8 @@
       "boardHM": 3.2,
       "drumK": 0.36,
       "drumTopM": 0.6,
-      "tiltDeg": 55
+      "tiltDeg": 55,
+      "topM": 6
     }
   },
   "chinamo": {
@@ -1402,9 +1407,10 @@
       {
         "shape": "sign",
         "text": "DJ URTECH",
-        "dyPx": -0.77,
+        "dyPx": -1.12,
         "fill": "#fff",
-        "bg": "#7b3fa0"
+        "bg": "#7b3fa0",
+        "_dyPx": "el rótulo va DETRÁS de la tarima y su dosel (en pantalla, debajo): sobre ella tapaba la plataforma"
       }
     ],
     "view3d": {
@@ -1502,7 +1508,8 @@
           "#c08ae0"
         ]
       },
-      "boundsK": 1.7
+      "boundsK": 1.7,
+      "topM": 11
     }
   },
   "$view3d": {
@@ -1523,6 +1530,8 @@
       "litK": 0.18,
       "darkK": 0.42,
       "bottomK": 0.55
-    }
+    },
+    "topM": 8,
+    "$topM": "`topM` (aquí y en cada `view3d`): lo más alto del juego, en metros. El tope de perspectiva de la casa (`effects.json → parallax.maxOffsetPx`) se reparte sobre esa altura: si el juego entero se correría más, se encoge TODA su altura por igual. Recortar punto por punto aplanaba la cima de la rueda."
   }
 }

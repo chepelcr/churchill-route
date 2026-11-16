@@ -19,21 +19,31 @@ import { parallaxOffset } from "./depth.js";
 import { sunShadow } from "./shadows.js";
 import { mixColor } from "./gfx.js";
 
-const CAM_H = (EFFECTS.parallax || {}).cameraHeightM || 60;
+const PARALLAX = EFFECTS.parallax || {};
+const CAM_H = PARALLAX.cameraHeightM || 60;
+const UNCAPPED = { ...PARALLAX, maxOffsetPx: 0 };
 const TAU = Math.PI * 2;
 
 /**
  * Un aparejo para un juego parado en (x, y) de mundo y girado `rot`.
  * `mode`: "cam" pinta lo que se ve; "sun" pinta su sombra (todo en `shade.shadow`).
  * `shade`: { side, litK, darkK, bottomK, shadow } — las mezclas de las caras, del registro.
+ * `topM`: lo más alto del juego; el tope de perspectiva se reparte sobre esa altura.
  */
-export function makeRig(g, x, y, rot, ppm, cam, mode, shade) {
+export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
   const c = Math.cos(rot), s = Math.sin(rot);
+  // EL TOPE DE LA PERSPECTIVA SE APLICA AL JUEGO ENTERO, NO A CADA PUNTO. Recortado punto por punto
+  // (como un edificio, que es UNA altura), todo lo que pasa de cierta altura cae al mismo corrimiento
+  // y la cima de la rueda salía PLANA. Se mide el corrimiento sin tope a la altura del juego (`topM`)
+  // y, si pasa del tope, se encoge TODA la altura por el mismo factor: la forma se conserva.
+  const raw = topM > 0 ? parallaxOffset(cam, x, y, topM, ppm, UNCAPPED) : { dx: 0, dy: 0 };
+  const rawLen = Math.hypot(raw.dx, raw.dy), cap = PARALLAX.maxOffsetPx || 0;
+  const squash = cap > 0 && rawLen > cap ? cap / rawLen : 1;
   const ground = (u, v) => [x + (u * c - v * s) * ppm, y + (u * s + v * c) * ppm];
   const sun1 = sunShadow(1);
   const P = mode === "sun"
     ? (u, v, h) => { const p = ground(u, v); return [p[0] + sun1.dx * h, p[1] + sun1.dy * h]; }
-    : (u, v, h) => { const p = ground(u, v); if (!(h > 0)) return p; const o = parallaxOffset(cam, p[0], p[1], h, ppm); return [p[0] + o.dx, p[1] + o.dy]; };
+    : (u, v, h) => { const p = ground(u, v); if (!(h > 0)) return p; const o = parallaxOffset(cam, p[0], p[1], h, ppm, UNCAPPED); return [p[0] + o.dx * squash, p[1] + o.dy * squash]; };
   // la cámara y la luz, en el marco del juego (metros)
   const ex = (cam.x - x) / ppm, ey = (cam.y - y) / ppm;
   const C = [ex * c + ey * s, -ex * s + ey * c, CAM_H];

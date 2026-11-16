@@ -226,7 +226,7 @@ function drawRide3d(A, spec, r, t, ph) {
   // ── UNA FORMA: la geometría del juego, en metros, la arma `feriaRigs.js` ──
   const form = V.form && FERIA_FORMS[V.form];
   if (form) {
-    const run = (g, mode) => { const R = makeRig(g, A.x, A.y, rot, ppm, state.cam, mode, SHADE()); form(R, { rM, t, ph, V, A }); R.flush(); };
+    const run = (g, mode) => { const R = makeRig(g, A.x, A.y, rot, ppm, state.cam, mode, SHADE(), V.topM ?? V3.topM); form(R, { rM, t, ph, V, A }); R.flush(); };
     if (lit) withShadow(A, r, sun.alpha * V3.shadowAlpha, (g) => run(g, "sun"));
     queueBodyLike({ x: A.x, y: A.y, paint: () => { run(ctx, "cam"); drawSigns(); } });
     return;
@@ -239,7 +239,7 @@ function drawRide3d(A, spec, r, t, ph) {
   // los carritos chocones: el mismo recorrido que el arte plano (`cars`), cada uno un carrito en 3D
   const drawCars = (g, mode) => {
     if (!carPart) return;
-    const R = makeRig(g, A.x, A.y, rot, ppm, state.cam, mode, SHADE()), p = carPart;
+    const R = makeRig(g, A.x, A.y, rot, ppm, state.cam, mode, SHADE(), V3.topM), p = carPart;
     const n = p.n || 6, w = (p.areaW || 1.6) * r, h = (p.areaH || 0.9) * r;
     for (let i = 0; i < n; i++) {
       const s = hash01(i * 3.7 + ph) * TAU;

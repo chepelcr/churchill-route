@@ -67,7 +67,8 @@ export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
     ink: (k) => (sh ? shade.shadow : k),
     /** encola un dibujo a la altura `h` (se pinta de lo bajo a lo alto) */
     at(h, fn) { items.push([h, items.length, fn]); },
-    flush() { items.sort((a, b) => a[0] - b[0] || a[1] - b[1]); for (const it of items) it[2](); items.length = 0; },
+    /** pinta lo encolado de lo bajo a lo alto; `keep(h)` elige qué alturas pinta esta vez */
+    flush(keep = null) { items.sort((a, b) => a[0] - b[0] || a[1] - b[1]); for (const it of items) if (!keep || keep(it[0])) it[2](); items.length = 0; },
     line(pts, wM, ink) {
       g.strokeStyle = R.ink(ink); g.lineWidth = Math.max(0.6, wM * ppm); g.lineCap = "round"; g.lineJoin = "round";
       path(pts); g.stroke();
@@ -119,4 +120,25 @@ export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
     faces(p, n) { return sh || (C[0] - p[0]) * n[0] + (C[1] - p[1]) * n[1] + (C[2] - p[2]) * n[2] > 0; },
   };
   return R;
+}
+
+// LA SOMBRA DE UN CUERPO EN MOVIMIENTO se pinta OPACA en su propio lienzo (del tamaño del cuerpo en
+// pantalla) y se compone con alfa UNA vez: así no se oscurece donde dos piezas se cruzan.
+// `g` es el lienzo destino (con su transformación de mundo); `draw(sg)` pinta la silueta en `sg`,
+// que ya trae esa misma transformación.
+let shadowCanvas = null;
+export function withShadowLayer(g, x, y, radiusPx, alpha, draw) {
+  if (typeof document === "undefined") return;
+  const m = g.getTransform(), sc = Math.hypot(m.a, m.b), c = m.transformPoint({ x, y });
+  const R = radiusPx * sc, bx = Math.floor(c.x - R), by = Math.floor(c.y - R), w = Math.ceil(2 * R), h = w;
+  if (w <= 0) return;
+  if (!shadowCanvas) shadowCanvas = document.createElement("canvas");
+  if (shadowCanvas.width < w) shadowCanvas.width = w;
+  if (shadowCanvas.height < h) shadowCanvas.height = h;
+  const sg = shadowCanvas.getContext("2d");
+  sg.setTransform(1, 0, 0, 1, 0, 0); sg.clearRect(0, 0, w, h);
+  sg.setTransform(m.a, m.b, m.c, m.d, m.e - bx, m.f - by);
+  draw(sg);
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = alpha;
+  g.drawImage(shadowCanvas, 0, 0, w, h, bx, by, w, h); g.restore();
 }

@@ -656,9 +656,10 @@ function maintainFeriaAudience() {
     const slots = Math.ceil(want / 2);
     for (let i = have; i < want; i++) {
       const row = i % 2, slot = Math.floor(i / 2);
-      const spread = slots > 1 ? -1.08 + 2.16 * slot / (slots - 1) : 0;
+      const AU = SIM.crowds.feriaAudience;
+      const spread = slots > 1 ? -AU.spreadRad + 2 * AU.spreadRad * slot / (slots - 1) : 0;
       const a = (A.ang || 0) + spread;
-      const d = A.r * (1.12 + row * 0.34);
+      const d = A.r * (AU.firstRowK + row * AU.rowGapK);
       pedestrians.push({
         x: A.x + Math.cos(a) * d, y: A.y + Math.sin(a) * d,
         ang: a + Math.PI, v: 0, hue: (i * 47 + Math.round(A.x)) % 360,

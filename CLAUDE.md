@@ -65,7 +65,7 @@ The procedure is three steps and it is not optional:
 | a length two runtimes must agree about, IN METRES | `src/assets/world-units.json` |
 | **un largo que UN registro autora** (un `dx`, un ancho, el radio de un juego) | en METROS y en su propio registro, con sufijo `M` — `content.py` → `METRE_KEYS` lo pasa a px al cargar. **Nunca en píxeles**: sólo son verdad a la escala en que se afinaron, y este mundo lleva cuatro reescalados |
 | the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` |
-| **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` |
+| **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` — **en 3D**: la gente es `person3d` (`c2d/people3d.js`), el tráfico es `traffic.kinds.<tipo>.body3d` + `vehicle3d` (cajas sobre `c2d/rig3d.js`; lo pegado a una cara lleva `face`), y el casco de cualquier barco toma costado con `vehicle3d.hullSide` (`c2d/vesselRigs.js`). El jugador se levanta a `heightM` de `vehicles.json`; el ferry es `materials.json → structure.ferry.model`. Hoja: `node tools/shot-traffic3d.mjs`; el juego vivo: `node tools/shot-live.mjs` |
 | **a light: street lamp, stadium tower, la del muelle** | `src/assets/lights.json` (+ `LightType`). DÓNDE se para la del muelle y de qué tipo es → `materials.json` → `pier.<style>.lamp` · **cómo se para en 2.5D** (alto, brazo a la calzada, cabeza vista desde arriba) → `stand25` en cada tipo y `stand` |
 | **de qué color es un edificio de OSM** | `src/assets/building-styles.json`, por `cat` |
 | **la lluvia, sus salpicaduras y la calle encharcada** | `src/assets/hud.json` → `weather.{rain,splash,roadSplash,flood}` |

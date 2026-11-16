@@ -27,7 +27,7 @@ import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { parallaxOffset } from "./depth.js";
-import { makeRig } from "./rig3d.js";
+import { makeRig, withShadowLayer } from "./rig3d.js";
 import { FERIA_FORMS, bumperCar } from "./feriaRigs.js";
 import { state } from "../../game/state.js";
 import { sunShadow } from "./shadows.js";
@@ -186,26 +186,9 @@ function drawPart(g, part, r, t, ph, A, spec) {
   g.restore();
 }
 
-// el lienzo de las sombras: una por juego, opaca, y se compone con alfa de una sola vez
-let shadowCanvas = null;
-function shadowLayer(w, h) {
-  if (!shadowCanvas) shadowCanvas = document.createElement("canvas");
-  if (shadowCanvas.width < w) shadowCanvas.width = Math.ceil(w);
-  if (shadowCanvas.height < h) shadowCanvas.height = Math.ceil(h);
-  return shadowCanvas;
-}
-
-// la sombra de un juego: se dibuja OPACA en su propio lienzo (del tamaño del juego en pantalla) y se
-// compone con alfa una sola vez, así no se oscurece donde dos piezas se cruzan
+// la sombra de un juego: opaca en su propio lienzo y compuesta con alfa una sola vez (`rig3d.js`)
 function withShadow(A, r, alpha, draw) {
-  const m = ctx.getTransform(), sc = Math.hypot(m.a, m.b), c = m.transformPoint({ x: A.x, y: A.y });
-  const R = r * (ASSETS[A.kind].view3d?.boundsK ?? V3.boundsK) * sc, bx = Math.floor(c.x - R), by = Math.floor(c.y - R), w = Math.ceil(2 * R), h = w;
-  const cv = shadowLayer(w, h), g = cv.getContext("2d");
-  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
-  g.setTransform(m.a, m.b, m.c, m.d, m.e - bx, m.f - by);
-  draw(g);
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha;
-  ctx.drawImage(cv, 0, 0, w, h, bx, by, w, h); ctx.restore();
+  withShadowLayer(ctx, A.x, A.y, r * (ASSETS[A.kind].view3d?.boundsK ?? V3.boundsK), alpha, draw);
 }
 
 const SHADE = () => ({ ...V3.shade, shadow: V3.shadowInk });

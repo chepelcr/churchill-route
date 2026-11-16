@@ -54,6 +54,7 @@ export const VEHICLES = Object.fromEntries(
     roof: v.roof,
     w: v.w,
     h: v.h,
+    heightM: v.heightM,
     kind: v.kind,
     medium: v.medium,
   }]),

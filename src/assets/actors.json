@@ -3368,6 +3368,37 @@
       ]
     }
   },
+  "vehicle3d": {
+    "_note": "EL TRÁFICO EN 3D: cada tipo trae `body3d`, una lista de cajas —`at` y `size` en fracciones del largo y el ancho del vehículo, `z` en metros, una tinta o `top`/`side`, y `key` para pintar después lo que va PEGADO a una cara (vidrios, focos), con `face` diciendo cuál: sólo se pinta si esa cara mira a la cámara, o su tapa asoma sobre el techo—, armadas con el aparejo de `c2d/rig3d.js`. Las caras se sombrean hacia `shade.side` según el sol; la pared que se aclaraba hacia blanco (`vehicleParallax.wallLit`) es lo que se veía como un borde claro debajo del bus.",
+    "shade": { "side": "#16141c", "litK": 0.28, "darkK": 0.5, "bottomK": 0.6, "shadow": "#000000" },
+    "_extrude": "EL VEHÍCULO DEL JUGADOR Y LOS BARCOS no tienen receta de cajas: su arte se levanta a su `heightM` y su silueta (o su casco) se repite del suelo a la tapa como costado, una vez cada `stepPx` del corrimiento y nunca más de `maxSteps` veces.",
+    "defaultHeightM": 1.3,
+    "hullSide": { "ink": "#16141c", "k": 0.3, "bandK": 0.35, "_": "el costado de un casco (`vesselRigs.paintHullSides`): la franja de flotación hasta `bandK` de la borda y la obra muerta arriba, oscurecidas `k` hacia `ink`" },
+    "yachtHull": [52, 0, 22, -15, -34, -14, -42, 0, -34, 14, 22, 15],
+    "yachtHullM": 2.0,
+    "stepPx": 0.8,
+    "maxSteps": 14
+  },
+  "person3d": {
+    "_note": "LA GENTE EN 3D (`c2d/people3d.js`), igual que el DJ de la feria: piernas, torso con la camisa de su color, cabeza y pelo, levantados con la perspectiva de la casa. Medidas en METROS y exageradas a propósito como lo estaba el dibujo plano (unos hombros de 1,6 m): a la distancia de juego una persona de verdad mide cinco píxeles. `topM` es la estatura sobre la que se reparte el tope de la perspectiva.",
+    "topM": 3.2,
+    "legsM": [1.1, 0.75, 0.9],
+    "torsoM": [1.6, 0.95, 0.85],
+    "headM": 0.72,
+    "raiseM": 0.9,
+    "armM": 0.3,
+    "bagM": [0.5, 0.8],
+    "rodM": 4.5,
+    "shadowWM": 1.1,
+    "bobM": 0.06,
+    "jumpRate": 1.7,
+    "sideK": 0.68,
+    "pants": "#3b4250",
+    "pantsSide": "#262b35",
+    "bodySide": "#2a5066",
+    "hair": ["#2a1d14", "#3b2a1c", "#1a1714", "#5a3a22", "#7a5a3a"],
+    "customer": { "padPx": 13, "ringPx": 18, "pulsePx": 3, "pulseRate": 0.005, "_": "la plataforma del cliente que espera y el aro que late (como el dibujo plano: aro de 18 ± 3 px a 0,005 por ms)" }
+  },
   "actors": {
     "walker": {
       "form": "walker",
@@ -3606,67 +3637,10 @@
       "_frame": "MEDIO-EXTENSIONES del cuerpo, igual que un vehículo del jugador: x=-1 es la popa y x=1 la trompa. Por eso la misma receta sirve para un carro de 23 px y para un bus de 41 sin números por tamaño.",
       "_inset": "UN CAMBIO CHICO Y DELIBERADO: los detalles ahora escalan con el vehículo. El código viejo metía la ventana 4 px hacia adentro —un número ABSOLUTO— y un marco de medio-extensiones no puede decir «4 px» sin aritmética, que el intérprete no tiene a propósito. Así que es una fracción, y la diferencia son 30 px en la hoja de arte, todos en el contorno de la ventana del carro. Es la versión que sobrevive un cambio de tamaño: las ventanas de un bus no tienen por qué meterse lo mismo que las de un carro.",
       "_join": "`kind` en el tráfico escoge la fila. Uno que nombre una que no existe cae al `car`, que es un carro — a diferencia de una superficie desconocida, que sería una suposición sobre dónde se puede manejar.",
-      "overParts": [
-        {
-          "shape": "rect",
-          "fill": "$tyres",
-          "x": "$negHw",
-          "y": {
-            "op": "sub",
-            "args": [
-              {
-                "ref": "negHh"
-              },
-              1
-            ]
-          },
-          "w": 3,
-          "h": {
-            "op": "add",
-            "args": [
-              {
-                "ref": "height"
-              },
-              2
-            ]
-          }
-        },
-        {
-          "shape": "rect",
-          "fill": "$tyres",
-          "x": {
-            "op": "sub",
-            "args": [
-              {
-                "ref": "hw"
-              },
-              3
-            ]
-          },
-          "y": {
-            "op": "sub",
-            "args": [
-              {
-                "ref": "negHh"
-              },
-              1
-            ]
-          },
-          "w": 3,
-          "h": {
-            "op": "add",
-            "args": [
-              {
-                "ref": "height"
-              },
-              2
-            ]
-          }
-        }
-      ],
       "kinds": {
         "car": {
           "name": "Carro",
+          "body3d": [{"at": [0.58, -0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [0.58, 0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [-0.58, -0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [-0.58, 0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"_": "la carrocería", "at": [0, 0], "size": [1, 0.94], "z": [0.3, 0.95], "ink": "$color"}, {"_": "la cabina: vidrios de costado, techo claro", "at": [-0.12, 0], "size": [0.56, 0.8], "z": [0.95, 1.55], "top": "$roof", "side": "$window"}, {"at": [0.995, -0.55], "size": [0.02, 0.2], "z": [0.55, 0.8], "ink": "$headlight", "key": 0.96, "face": [1, 0]}, {"at": [0.995, 0.55], "size": [0.02, 0.2], "z": [0.55, 0.8], "ink": "$headlight", "key": 0.96, "face": [1, 0]}, {"at": [-0.995, -0.55], "size": [0.02, 0.2], "z": [0.55, 0.8], "ink": "$taillight", "key": 0.96, "face": [-1, 0]}, {"at": [-0.995, 0.55], "size": [0.02, 0.2], "z": [0.55, 0.8], "ink": "$taillight", "key": 0.96, "face": [-1, 0]}],
           "heightM": 1.55,
           "parts": [
             { "shape": "roundRect", "fill": "$color", "x": -1, "y": -1, "w": 2, "h": 2, "r": 0.28 },
@@ -3681,6 +3655,7 @@
         },
         "truck": {
           "name": "Camión",
+          "body3d": [{"at": [0.66, -0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [0.66, 0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [-0.22, -0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [-0.22, 0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [-0.6, -0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [-0.6, 0.9], "size": [0.24, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"_": "el chasis", "at": [0, 0], "size": [1, 0.88], "z": [0.35, 0.8], "ink": "$tyres"}, {"_": "la cabina", "at": [0.62, 0], "size": [0.36, 0.94], "z": [0.5, 2.2], "ink": "$color"}, {"_": "el parabrisas", "at": [0.805, 0], "size": [0.012, 0.84], "z": [1.35, 2.05], "ink": "$window", "key": 2.21}, {"_": "la caja", "at": [-0.2, 0], "size": [0.6, 0.96], "z": [0.8, 2.7], "ink": "$roof"}, {"at": [0.81, -0.6], "size": [0.02, 0.2], "z": [0.6, 0.85], "ink": "$headlight", "key": 0.81, "face": [0, -1]}, {"at": [0.81, 0.6], "size": [0.02, 0.2], "z": [0.6, 0.85], "ink": "$headlight", "key": 0.81, "face": [0, 1]}, {"at": [-0.81, -0.6], "size": [0.02, 0.2], "z": [0.6, 0.85], "ink": "$taillight", "key": 0.81, "face": [0, -1]}, {"at": [-0.81, 0.6], "size": [0.02, 0.2], "z": [0.6, 0.85], "ink": "$taillight", "key": 0.81, "face": [0, 1]}],
           "heightM": 2.7,
           "_note": "cabina adelante y furgón atrás — la línea del vidrio es lo que los separa de un vistazo desde arriba.",
           "parts": [
@@ -3695,6 +3670,7 @@
         },
         "bus": {
           "name": "Bus",
+          "body3d": [{"at": [0.62, -0.92], "size": [0.2, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [0.62, 0.92], "size": [0.2, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [-0.58, -0.92], "size": [0.2, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"at": [-0.58, 0.92], "size": [0.2, 0.14], "z": [0, 0.62], "ink": "$tyres"}, {"_": "la carrocería, del color de la ruta", "at": [0, 0], "size": [1, 0.96], "z": [0.35, 3.0], "ink": "$color"}, {"_": "las dos filas de vidrios, una por costado", "at": [-0.04, 0.485], "size": [0.86, 0.012], "z": [1.55, 2.55], "ink": "$window", "key": 3.05, "face": [0, 1]}, {"at": [-0.04, -0.485], "size": [0.86, 0.012], "z": [1.55, 2.55], "ink": "$window", "key": 3.05, "face": [0, -1]}, {"_": "el parabrisas", "at": [0.995, 0], "size": [0.012, 0.86], "z": [1.45, 2.65], "ink": "$window", "key": 3.05, "face": [1, 0]}, {"_": "el techo claro y su aire acondicionado", "at": [0, 0], "size": [0.97, 0.9], "z": [3.0, 3.1], "ink": "$busRoof"}, {"at": [-0.12, 0], "size": [0.24, 0.42], "z": [3.1, 3.4], "ink": "$busRoof"}, {"at": [0.995, -0.6], "size": [0.02, 0.2], "z": [0.55, 0.85], "ink": "$headlight", "key": 3.01, "face": [1, 0]}, {"at": [0.995, 0.6], "size": [0.02, 0.2], "z": [0.55, 0.85], "ink": "$headlight", "key": 3.01, "face": [1, 0]}, {"at": [-0.995, -0.6], "size": [0.02, 0.2], "z": [0.55, 0.85], "ink": "$taillight", "key": 3.01, "face": [-1, 0]}, {"at": [-0.995, 0.6], "size": [0.02, 0.2], "z": [0.55, 0.85], "ink": "$taillight", "key": 3.01, "face": [-1, 0]}],
           "heightM": 3.15,
           "_note": "techo claro, franja del color de la ruta y dos filas de vidrios oscuros; el paralaje deja ver sus costados.",
           "parts": [

@@ -17,6 +17,8 @@ import { state } from "../../game/state.js";
 import { bancoExposed, buoyWet, channels, crossingState, esteroThings, laneAt } from "../../game/crossing.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import ACTORS from "../../assets/actors.json" with { type: "json" };
+import { hullOutline, paintHullSides } from "./vesselRigs.js";
+import { PX_PER_M } from "../../domain/units.js";
 import { alphaColor } from "./primitives.js";
 
 // LA PALETA DE LOS OCHO ENCUENTROS vive en `materials.json` -> `estero`. Cuáles
@@ -124,8 +126,12 @@ function drawBuoy(b, view, t) {
 function drawPanga(e, view, t) {
   const actor = resolveActorRecord(ACTORS, "esteroPanga");
   const motion = actorAnimationValues(actor.animations, { timeMs: t * 1000, phase: e.ph });
+  // su costado, del agua a la borda; ella y su pescador van levantados encima
+  const HS = ACTORS.vehicle3d.hullSide, PV = ACTORS.forms.esteroPanga.values;
+  const ro = paintHullSides(ctx, e.x, e.y + motion.bob, e.a + motion.yaw, 1, hullOutline(PV.L, PV.H), ACTORS.hull.heightM,
+    ACTORS.hull.boottop, actor.topsides, HS.bandK, HS, PX_PER_M);
   ctx.save();
-  ctx.translate(e.x, e.y + motion.bob);
+  ctx.translate(e.x + ro.dx, e.y + motion.bob + ro.dy);
   ctx.rotate(e.a + motion.yaw);
   paintActor(ctx, ACTORS, "esteroPanga", { phase: e.ph, timeMs: t * 1000 });
   // El pescador rides HER FRAME — after the hull, still inside her transform,
@@ -342,9 +348,14 @@ function drawPescador(e, view, t) {
 // is drawn as the two rings the collision pays out on, so "take the wake fast"
 // is a thing you can see rather than a thing you find out.
 function drawYate(e, view, t) {
+  const HS = ACTORS.vehicle3d.hullSide, Y = resolveActorRecord(ACTORS, "esteroYacht");
+  const ro = paintHullSides(ctx, e.x, e.y, e.a, 1, ACTORS.vehicle3d.yachtHull, ACTORS.vehicle3d.yachtHullM,
+    ACTORS.hull.boottop, Y.topsides, HS.bandK, HS, PX_PER_M);
+  ctx.save(); ctx.translate(ro.dx, ro.dy);
   paintActor(ctx, ACTORS, "esteroYacht", {
     x: e.x, y: e.y, rotation: e.a, phase: e.ph, timeMs: t * 1000, radius: e.r,
   });
+  ctx.restore();
 }
 
 /** The regatta course: open water, marked only by its buoys. */

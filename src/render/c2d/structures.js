@@ -19,6 +19,9 @@ import { buildingStyle } from "./buildingStyle.js";
 import { districtBuildingStyle } from "./districts.js";
 import { lightLevel } from "../../game/daynight.js";
 import { registerLampSource } from "./nightlights.js";
+import { makeRig, withShadowLayer } from "./rig3d.js";
+import { ferryForm } from "./vesselRigs.js";
+import { queueBodyLike } from "./bodies.js";
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
@@ -333,27 +336,25 @@ function drawBridge(view) {
 // code — and the DECK RECT drawn here is exactly the rect `deckAt` tests, which
 // is what keeps "looks like I am on it" and "am I on it" the same thing.
 function drawFerry(f, view) {
-  const R = f.dl / 2 + 40;
-  if (f.x + R < view.x0 || f.x - R > view.x1 || f.y + R < view.y0 || f.y - R > view.y1) return;
-  const L = f.dl / 2, B = f.dw / 2;
-  ctx.save();
-  ctx.translate(f.x, f.y); ctx.rotate(f.a);
-  const sh = sunShadow(S.ferry.heightM);
-  paintStructureParts(ctx, S.ferry.parts, {
-    X: (value) => value || 0,
-    Y: (value) => value || 0,
-    vars: {
-      L, B,
-      moving: f.phase === "out" || f.phase === "back",
-      travelDir: f.phase === "back" ? -1 : 1,
-      doubleEnded: f.doubleEnded,
-      shadowDx: sh.dx, shadowDy: sh.dy, shadowAlpha: sh.alpha,
-    },
-    color: (spec) => structureColor(S.ferry, spec),
-  });
+  const R0 = f.dl / 2 + 40;
+  if (f.x + R0 < view.x0 || f.x - R0 > view.x1 || f.y + R0 < view.y0 || f.y - R0 > view.y1) return;
+  const L = f.dl / 2, B = f.dw / 2, M = S.ferry.model, ppm = W.PX_PER_M;
+  const vars = { L, B, moving: f.phase === "out" || f.phase === "back", travelDir: f.phase === "back" ? -1 : 1, doubleEnded: f.doubleEnded, shadowAlpha: 0 };
+  // la estela sigue siendo la del registro (la primera parte de la receta plana): va en el agua
+  ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.a);
+  paintStructureParts(ctx, S.ferry.parts.slice(0, 1), { X: (v) => v || 0, Y: (v) => v || 0, vars, color: (spec) => structureColor(S.ferry, spec) });
   ctx.restore();
-  label(f.x, f.y - f.dw / 2 - 14, (f.vesselName || f.name).toUpperCase(),
-        S.ferry.nameFg, S.ferry.nameBg);
+  // EL FERRY ES UN CUERPO (`vesselRigs.js`): la sombra entera de una vez, el casco y la cubierta a ras
+  // del suelo (el carro sube a ella), y lo que se levanta sobre la cubierta, con los cuerpos
+  const dims = { L: L / ppm, B: B / ppm, M };
+  const run = (g, mode, keep) => { const R = makeRig(g, f.x, f.y, f.a, ppm, state.cam, mode, M.shade, M.gantryM + M.mastM); ferryForm(R, dims); R.flush(keep); };
+  const sun = sunShadow(1);
+  if (sun.alpha > 0) withShadowLayer(ctx, f.x, f.y, (L + M.rampM * ppm) * 1.7, sun.alpha * M.shadowAlpha, (g) => run(g, "sun"));
+  run(ctx, "cam", (h) => h <= M.splitM);
+  queueBodyLike({ x: f.x, y: f.y, paint: () => {
+    run(ctx, "cam", (h) => h > M.splitM);
+    label(f.x, f.y - f.dw / 2 - 14, (f.vesselName || f.name).toUpperCase(), S.ferry.nameFg, S.ferry.nameBg);
+  } });
 }
 // The berth she sails from: a concrete apron at the quay, so an empty berth
 // still reads as a place a ferry belongs rather than a gap in the sea wall.

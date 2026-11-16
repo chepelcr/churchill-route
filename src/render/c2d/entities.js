@@ -18,6 +18,9 @@ import { actorAnimationValues, paintActor, paintActorForm, resolveActorRecord } 
 import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, lastT, mixColor } from "./gfx.js";
 import ACTORS from "../../assets/actors.json" with { type: "json" };
+import { paintPerson3d } from "./people3d.js";
+import { makeRig } from "./rig3d.js";
+import { hullOutline, paintHullSides } from "./vesselRigs.js";
 import PRODUCTS_JSON from "../../../content/world/products.json" with { type: "json" };
 
 // actors.json is the visual source of truth. This file only maps simulation
@@ -92,10 +95,16 @@ function drawArcadeCoin(c, t) {
   });
 }
 
+// LA GENTE ES UN CUERPO (`people3d.js`): el papel de cada uno sólo dice qué viste y qué hace.
+function lookOf(id) {
+  const r = resolveActorRecord(ACTORS, id);
+  return { shirt: r.shirt, skin: r.skin, shadow: r.shadow, raised: Boolean(r.values?.raised),
+    jump: r.values?.raised ? ACTORS.person3d.raiseM * 0.4 : 0 };
+}
 function drawPed(pe) {
   const art = pe.editorNpc ? (pe.drawStyle || "person") : npcArt(pe.kind || "walker");
   const id = ACTORS.artMap[art] || ACTORS.artMap.walker;
-  paintStanding(id, actorFrame(id, pe));
+  paintPerson3d(pe, lookOf(id));
 }
 
 // EL PLAYERO. A person on the sand is a person in a swimsuit, and from above
@@ -103,14 +112,17 @@ function drawPed(pe) {
 // is not walking. The sunbather is drawn LYING DOWN — a standing figure that
 // happens not to move reads as somebody waiting for a bus on the beach.
 function drawPlayero(pe) {
-  paintStanding("playero", actorFrame("playero", pe));
+  // acostado en su toalla es plano de verdad: se queda en su dibujo; caminando, es un cuerpo
+  if (pe.stationary) { paintStanding("playero", actorFrame("playero", pe)); return; }
+  const r = resolveActorRecord(ACTORS, "playero");
+  paintPerson3d(pe, { shirt: r.swimsuit, skin: r.skin, shadow: r.shadow });
 }
 
 // EL JUGADOR. Leaning into the run, arms out for balance, facing the ball —
 // `ang` is set by the advancer every frame, which is what makes a mejenga read
 // as a game: eight people all looking at the same point.
 function drawJugador(pe) {
-  paintActor(ctx, ACTORS, "jugador", actorFrame("jugador", pe));
+  paintPerson3d(pe, lookOf("jugador"));
 }
 
 // LA BOLA. One per mejenga, drawn in the ped pass so it sits among the players
@@ -123,7 +135,7 @@ function drawBeachBall(G) {
 
 function drawEditorNpc(pe, style = pe.drawStyle) {
   const id = ACTORS.artMap[style] || ACTORS.artMap.person;
-  paintStanding(id, actorFrame(id, pe));
+  paintPerson3d(pe, lookOf(id));
 }
 // Somebody at a parada. The whole point of the type is the WAITING: standing
 // still with a bag, looking down the street the bus comes from, which is what
@@ -132,7 +144,8 @@ function drawEditorNpc(pe, style = pe.drawStyle) {
 // are about to become, so the handover to `advancePed` has no visible seam.
 // This branch is TEMPORARY per person: `joinTheSidewalk` drops the kind.
 function drawPassenger(pe) {
-  paintStanding("passenger", actorFrame("passenger", pe));
+  const r = resolveActorRecord(ACTORS, "passenger");
+  paintPerson3d(pe, { ...lookOf("passenger"), bag: r.bag });
 }
 // EL PESCADOR. He is the same person as everyone else in the puerto — the same
 // narrow body in his own `hue`, the same 2.2 px head, the same soft shadow —
@@ -161,28 +174,26 @@ function drawFisher(pe) {
 // edge he picked, so a muelle that runs north-south and one that runs at 45°
 // both get people facing the water instead of facing screen-right.
 function drawMuellero(pe) {
-  paintStanding("muellero", actorFrame("muellero", pe));
+  const r = resolveActorRecord(ACTORS, "muellero");
+  paintPerson3d(pe, { ...lookOf("muellero"), hat: { brim: r.hatBrim, crown: r.hatCrown }, rod: r.rod });
 }
 
 // A swimmer: a head just above the water with a ripple wake + stroking arms.
 function drawSwimmer(pe) {
   paintActor(ctx, ACTORS, "swimmer", actorFrame("swimmer", pe));
 }
+// EL TRÁFICO EN 3D. La sombra es el contorno corrido por el sol (como siempre) y el cuerpo es su
+// receta de cajas (`actors.json → traffic.kinds.<tipo>.body3d`), armada con el aparejo de la feria
+// con la MISMA perspectiva que los edificios: llantas, carrocería, cabina con sus vidrios, techo y
+// focos. `at`/`size` son fracciones del vehículo, así que un carro de 23 px y un bus de 41 salen de
+// recetas sin números por tamaño.
+const V3D = ACTORS.vehicle3d;
 function drawCar(c) {
   const kind = A.traffic.kinds[c.kind] || A.traffic.kinds.car;
-  const volume = EFFECTS.vehicleParallax || {};
   const heightM = kind.heightM ?? A.traffic.heightM;
   const angle = c.ang || 0, ca = Math.cos(angle), sa = Math.sin(angle);
   const local = (v) => ({ dx: v.dx * ca + v.dy * sa, dy: -v.dx * sa + v.dy * ca });
   const sh = local(sunShadow(heightM));
-  const ro = local(parallaxOffset(state.cam, c.x, c.y, heightM, PX_PER_M, volume));
-  ctx.save();
-  ctx.translate(c.x, c.y); ctx.rotate(angle);
-  const hw = c.w / 2, hh = c.h / 2;
-  const outline = [-hw, -hh, hw, -hh, hw, hh, -hw, hh];
-  const vars = {
-    hw, hh, negHw: -hw, negHh: -hh, width: c.w, height: c.h,
-  };
   const color = (spec) => {
     if (spec === "$color") return c.color;
     if (typeof spec === "string" && spec.startsWith("$")) {
@@ -190,6 +201,10 @@ function drawCar(c) {
     }
     return spec;
   };
+  ctx.save();
+  ctx.translate(c.x, c.y); ctx.rotate(angle);
+  const hw = c.w / 2, hh = c.h / 2;
+  const outline = [-hw, -hh, hw, -hh, hw, hh, -hw, hh];
   ctx.fillStyle = shadowInk(sh.alpha);
   paintSweep(ctx, outline, sh.dx, sh.dy, facingEdges(outline, -sh.dx, -sh.dy));
   ctx.beginPath(); ctx.rect(-hw, -hh, c.w, c.h); ctx.fill();
@@ -198,28 +213,16 @@ function drawCar(c) {
   // luz y oscuridad entre ellos es un carro invisible que se te viene encima —
   // y las calaveras son lo único que se ve de uno que se aleja.
   if (nightLevel() > 0.001) paintHeadlights(ctx, hw, hh);
-  if (ro.dx || ro.dy) {
-    const walls = facingEdges(outline, ro.dx, ro.dy);
-    const sunlit = new Set(facingEdges(outline, sh.dx, sh.dy));
-    const lit = walls.filter((i) => sunlit.has(i));
-    const dark = walls.filter((i) => !sunlit.has(i));
-    ctx.fillStyle = mixColor(c.color, volume.wallDark, volume.wallMixDark ?? 0);
-    paintSweep(ctx, outline, ro.dx, ro.dy, dark);
-    ctx.fillStyle = mixColor(c.color, volume.wallLit, volume.wallMixLit ?? 0);
-    paintSweep(ctx, outline, ro.dx, ro.dy, lit);
-  }
-  paintParts(ctx, A.traffic.overParts, {
-    X: (v) => v || 0, Y: (v) => v || 0, vars, color,
-  });
-  // La carrocería es la tapa del sólido; las llantas quedan sobre el suelo.
-  ctx.translate(ro.dx, ro.dy);
-  paintParts(ctx, kind.parts, {
-    X: (v) => (v || 0) * hw,
-    Y: (v) => (v || 0) * hh,
-    S: (v) => (v || 0) * Math.min(hw, hh),
-    color,
-  });
   ctx.restore();
+  const ppm = PX_PER_M, hwM = hw / ppm, hhM = hh / ppm;
+  const R = makeRig(ctx, c.x, c.y, angle, ppm, state.cam, "cam", V3D.shade, heightM);
+  for (const b of kind.body3d || []) {
+    // lo pegado a una cara sólo existe si esa cara mira a la cámara
+    if (b.face && !R.faces([b.at[0] * hwM, b.at[1] * hhM, (b.z[0] + b.z[1]) / 2], [b.face[0], b.face[1], 0])) continue;
+    const ink = { top: color(b.top || b.ink), side: color(b.side || b.ink) };
+    R.at(b.key ?? b.z[1], () => R.box(b.at[0] * hwM, b.at[1] * hhM, b.z[0], b.z[1], b.size[0] * 2 * hwM, b.size[1] * 2 * hhM, ink));
+  }
+  R.flush();
 }
 
 // The Ferrocarril heritage train: red loco + two cream wagons, each posed
@@ -287,9 +290,15 @@ function drawBoat(b) {
     paintHeadlights(ctx, size.L, size.H);
     ctx.restore();
   }
+  // EL CASCO TIENE COSTADO: del agua a la borda, y el arte de siempre arriba, levantado
+  const HS = V3D.hullSide;
+  const ro = paintHullSides(ctx, b.x, b.y + bob, 0, dir, hullOutline(size.L, size.H), ACTORS.hull.heightM,
+    ACTORS.hull.boottop, ACTORS.hull.topsides, HS.bandK, HS, PX_PER_M);
+  ctx.save(); ctx.translate(ro.dx, ro.dy);
   paintActor(ctx, ACTORS, "boat", actorFrame("boat", b, lastT, {
     variant, scaleX: dir, worldX: b.x, worldY: b.y,
   }));
+  ctx.restore();
 }
 
 // UN BANCO DE ATÚN. Out in the gulf a school working the surface is visible
@@ -331,8 +340,12 @@ function drawAnimal(an) {
 // The active delivery target: a waiting customer on a concrete pad, waving.
 function drawTargetCustomer(t) {
   if (!state.carrying) return;
-  const c = state.carrying.customer;
-  paintStanding("targetCustomer", actorFrame("targetCustomer", c, t));
+  const c = state.carrying.customer, r = resolveActorRecord(ACTORS, "targetCustomer");
+  // su plataforma y el aro que late quedan en el suelo; ella se para encima, saludando
+  const P = ACTORS.person3d.customer, pulse = P.ringPx + Math.sin(t * 1000 * P.pulseRate) * P.pulsePx;
+  ctx.fillStyle = r.pad; ctx.beginPath(); ctx.arc(c.x, c.y, P.padPx, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = r.ring; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c.x, c.y, pulse, 0, Math.PI * 2); ctx.stroke();
+  paintPerson3d({ ...c, ph: t * 4 }, { body: r.body, skin: r.skin, shadow: r.shadow, wave: true });
 }
 
 // THE VEHICLE SPRITE IS AN INTERPRETER NOW.
@@ -519,9 +532,36 @@ function drawPlayer(p, veh, { body = true } = {}) {
   for (const { id, effect, cfg } of effects) {
     if (effect.layer === "transform") EFFECT_PAINTERS[id]?.transform?.(p, veh, cfg);
   }
+  // EL VEHÍCULO TOMA PERSPECTIVA: su silueta, repetida del suelo a su alto (`heightM`) en la tinta
+  // de costado, es su carrocería vista de lado; encima va su arte de siempre, corrido por la cámara
+  // como el techo de un edificio. Mismo tope y misma cámara que todo lo demás.
+  const ro = bodyLift(p, veh);
+  paintVehicleSides(ctx, state.vehicleKey, veh, ro);
+  ctx.translate(ro[0], ro[1]);
   paintVehicle(ctx, state.vehicleKey, veh);
   if (state.carrying) drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();
+}
+
+/** El corrimiento de la tapa de un vehículo de `heightM`, ya en SU marco (girado `p.a`). */
+function bodyLift(p, veh) {
+  const h = veh.heightM ?? V3D.defaultHeightM;
+  const o = parallaxOffset(state.cam, p.x, p.y, h, PX_PER_M);
+  const c = Math.cos(-p.a), s = Math.sin(-p.a);
+  return [o.dx * c - o.dy * s, o.dx * s + o.dy * c];
+}
+
+/** Los costados: la silueta del cuerpo repetida del suelo a la tapa, oscurecida hacia `shade.side`. */
+function paintVehicleSides(g, key, veh, ro) {
+  const len = Math.hypot(ro[0], ro[1]);
+  if (len < 0.3) return;
+  const n = Math.min(V3D.maxSteps, Math.ceil(len / V3D.stepPx));
+  g.fillStyle = mixColor(veh.color, V3D.shade.side, V3D.shade.darkK);
+  for (let k = 0; k < n; k++) {
+    g.save(); g.translate(ro[0] * k / n, ro[1] * k / n);
+    traceVehicleSilhouette(g, key, veh); g.fill();
+    g.restore();
+  }
 }
 
 // Hybrid overlay: Pixi owns the player body/shadow; this draws only the
@@ -531,6 +571,7 @@ function drawPlayerCarrying(p, veh) {
   const lift = (state.elev || 0) * 7;
   ctx.save();
   { const [ux, uy] = screenUp(lift); ctx.translate(p.x + ux, p.y + uy); } ctx.rotate(p.a);
+  { const ro = bodyLift(p, veh); ctx.translate(ro[0], ro[1]); }
   drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();
 }

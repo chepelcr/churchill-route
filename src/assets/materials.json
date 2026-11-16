@@ -686,6 +686,16 @@
       "funnelCap": "#2b2b33",
       "nameFg": "#fff",
       "nameBg": "#2f4f68",
+      "model": {
+        "_note": "EL FERRY EN 3D (`c2d/vesselRigs.js → ferryForm`), según los del golfo: casco magenta en la flotación y obra muerta blanca, cubierta de carros abierta con sus franjas amarillas, la superestructura a un costado (de `superK[0]` de la manga a la banda, a lo largo de `superK[1]` de la eslora) con su fila de ventanas y paneles en el techo, el puente con su franja magenta y su mástil, y un pórtico con su rampa en CADA punta. Metros. La cubierta (`deckM`) va baja a propósito: el carro del jugador sube a ella y se dibuja a ras del suelo; lo que pasa de `splitM` se pinta con los cuerpos, encima de quien vaya a bordo.",
+        "deckM": 1.0, "boottopM": 0.55, "freeboardM": 2.0, "bulwarkM": 0.45, "laneK": 0.55, "laneM": 0.35,
+        "superK": [0.4, 0.62], "superTopM": 4.4, "windowsM": [2.3, 3.4],
+        "bridgeM": [6.0, 3.4, 2.4], "bridgeAtK": 0.45, "mastM": 3.2,
+        "rampM": 3.0, "rampK": 0.78, "gantryM": 5.4, "splitM": 1.05, "shadowAlpha": 0.75,
+        "shade": { "side": "#16141c", "litK": 0.12, "darkK": 0.34, "bottomK": 0.5, "shadow": "#000000" },
+        "inks": { "boottop": "#d6247a", "hull": "#f2f2ef", "white": "#f7f7f4", "deck": "#c9ccce", "lane": "#f2c230",
+          "window": "#24313b", "stripe": "#e0338a", "solar": "#3b4a5f", "raft": "#f07a2a", "mast": "#dde2e6", "ramp": "#e2559b" }
+      },
       "preview": {
         "L": 62,
         "B": 23,

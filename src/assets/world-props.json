@@ -43,7 +43,49 @@
         "awning": "#f08a5d",
         "awning2": "#ffffff"
       },
-      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
+      "decal": {
+        "box": [
+          -16,
+          -9,
+          32,
+          19
+        ],
+        "bg": "#fff",
+        "parts": [
+          {
+            "shape": "rect",
+            "fill": "rgba(255,255,255,0.9)",
+            "x": -4,
+            "y": -4,
+            "w": 8,
+            "h": 12
+          },
+          {
+            "shape": "rect",
+            "fill": "#ff3d80",
+            "x": -4,
+            "y": 0,
+            "w": 8,
+            "h": 6
+          },
+          {
+            "shape": "rect",
+            "fill": "#fff",
+            "x": -4,
+            "y": -4,
+            "w": 8,
+            "h": 3
+          }
+        ]
+      },
+      "_decal": "EL ESTAMPADO: el dibujo de lo que vende —el que el puesto tenía cuando era plano— impreso en la cara del toldo que da a la calle, la que el carro ve al llegar. Una pared no sirve: desde la cámara a plomo mide tres o cuatro píxeles. `box` es su marco [x, y, ancho, alto] en las medidas de esas partes; `bg` el fondo del cartel.",
+      "chinamo": {
+        "chinamoBody": "#f6f1e4",
+        "_": "la caseta y el cartel del chinamo de la feria; el toldo lleva los colores de su comida (`feriaAssets.json → chinamo.foods`)",
+        "chinamoPillPx": 6,
+        "chinamoPillFg": "#ffffff"
+      }
     },
     "ferry": {
       "note": "THE TERMINAL IS A PLACE, NOT A BOAT. This used to paint a hull in the middle of the terminal's own streets — a second, fake ferry parked on the asphalt beside the two real ones you can drive onto. The landmark keeps its name pill and nothing else.",
@@ -1001,7 +1043,43 @@
         "awning": "#2f8f4e",
         "awning2": "#ffffff"
       },
-      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
+      "decal": {
+        "box": [
+          -16,
+          -9,
+          32,
+          19
+        ],
+        "bg": "#f4f1e4",
+        "parts": [
+          {
+            "_": "la hoja de plátano, doblada",
+            "shape": "ellipse",
+            "fill": "#3e9b57",
+            "cx": 0,
+            "cy": 0,
+            "rx": 9,
+            "ry": 6
+          },
+          {
+            "_": "el chicharrón",
+            "shape": "disc",
+            "fill": "#c98a3f",
+            "cx": -2,
+            "cy": -1,
+            "r": 3
+          },
+          {
+            "_": "el repollo",
+            "shape": "disc",
+            "fill": "#e6efd8",
+            "cx": 3,
+            "cy": 1,
+            "r": 2.5
+          }
+        ]
+      }
     },
     "kiosk:ceviche": {
       "note": "CEVICHE: azul de mar y blanco, y en el mostrador el vaso plástico con el pescado curtido y su limón. Es el que peor aguanta el SOL, no la distancia — de ahí su `spoil`.",
@@ -1021,7 +1099,44 @@
         "awning": "#2b6fa8",
         "awning2": "#ffffff"
       },
-      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
+      "decal": {
+        "box": [
+          -16,
+          -9,
+          32,
+          19
+        ],
+        "bg": "#f2f6f8",
+        "parts": [
+          {
+            "_": "el vaso",
+            "shape": "rect",
+            "fill": "rgba(255,255,255,0.92)",
+            "x": -5,
+            "y": -4,
+            "w": 10,
+            "h": 12
+          },
+          {
+            "_": "el ceviche",
+            "shape": "rect",
+            "fill": "#eae2cf",
+            "x": -5,
+            "y": 0,
+            "w": 10,
+            "h": 6
+          },
+          {
+            "_": "el limón",
+            "shape": "disc",
+            "fill": "#c3d94a",
+            "cx": 4,
+            "cy": -5,
+            "r": 2.4
+          }
+        ]
+      }
     },
     "kiosk:papicarne": {
       "note": "PAPI-CARNE: la soda de barrio, roja y amarilla, con su PLANCHA humeando y la caja de papas. Es el producto más repetido del mapa porque es la comida de calle de toda la zona.",
@@ -1041,7 +1156,54 @@
         "awning": "#c8352e",
         "awning2": "#ffffff"
       },
-      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
+      "decal": {
+        "box": [
+          -16,
+          -9,
+          32,
+          19
+        ],
+        "bg": "#f7e9c9",
+        "parts": [
+          {
+            "_": "la plancha",
+            "shape": "rect",
+            "fill": "#4a4238",
+            "x": -12,
+            "y": -3,
+            "w": 11,
+            "h": 9
+          },
+          {
+            "_": "la carne encima",
+            "shape": "rect",
+            "fill": "#8a4a2c",
+            "x": -10,
+            "y": -1,
+            "w": 7,
+            "h": 4
+          },
+          {
+            "_": "la caja de papas",
+            "shape": "rect",
+            "fill": "#e8b93f",
+            "x": 2,
+            "y": -3,
+            "w": 9,
+            "h": 10
+          },
+          {
+            "_": "las papas asomando",
+            "shape": "rect",
+            "fill": "#f6dd8a",
+            "x": 3.5,
+            "y": -5,
+            "w": 6,
+            "h": 3
+          }
+        ]
+      }
     },
     "kiosk:mariscada": {
       "note": "MARISCADA: no es un puesto, es una MARISQUERÍA — por eso es ANCHA y no un cuadrito. Restaurante Tabaris ocupa un local horizontal de verdad, y un carrito de 32 px de frente no se le parecía en nada. Turquesa de local de playa, con su mostrador largo y la olla.",
@@ -1061,7 +1223,61 @@
         "awning": "#1f8a8a",
         "awning2": "#ffffff"
       },
-      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
+      "decal": {
+        "box": [
+          -26,
+          -9,
+          52,
+          19
+        ],
+        "bg": "#f0efe6",
+        "parts": [
+          {
+            "_": "el mostrador largo",
+            "shape": "rect",
+            "fill": "#d9d2bd",
+            "x": -24,
+            "y": 2,
+            "w": 48,
+            "h": 6
+          },
+          {
+            "_": "la olla",
+            "shape": "disc",
+            "fill": "#6f7276",
+            "cx": -13,
+            "cy": -1,
+            "r": 5
+          },
+          {
+            "_": "lo que hierve",
+            "shape": "disc",
+            "fill": "#d8683f",
+            "cx": -13,
+            "cy": -2,
+            "r": 3
+          },
+          {
+            "_": "la bandeja de pescado",
+            "shape": "rect",
+            "fill": "#e7eef0",
+            "x": 2,
+            "y": -4,
+            "w": 16,
+            "h": 9
+          },
+          {
+            "_": "el pescado",
+            "shape": "ellipse",
+            "fill": "#9aa7ad",
+            "cx": 10,
+            "cy": 0,
+            "rx": 6,
+            "ry": 2.4
+          }
+        ]
+      }
     }
   },
   "_signs": "LA SEÑALIZACIÓN, keyed by SignKind. Costa Rica signs to the Manual Centroamericano de Dispositivos Uniformes, so these are the real shapes: an ALTO is a red OCTAGON carrying the word (not `STOP`), a CEDA EL PASO is an inverted white triangle with a red border, and a tope is the yellow-hatched hump every calle de barrio has. Sizes are world px at the game's framing (~20 cuadrículas across), so a sign reads at a glance without swallowing the lane it stands beside.",
@@ -4857,26 +5073,26 @@
           "cap": "capTeal"
         },
         {
-          "_": "el techo oscuro a cuatro aguas; su alero vuela apenas sobre los corredores, que se ven alrededor",
+          "_": "el techo de teja roja a cuatro aguas: cubre la casa Y los corredores, hasta el borde (imagen satelital: desde arriba no asoma nada gris)",
           "box": [
-            14.6,
-            11.6
+            17.4,
+            14.4
           ],
           "z": [
             8.0,
             8.0
           ],
-          "wall": "capRoof",
-          "cap": "capRoof",
+          "wall": "tile",
+          "cap": "tile",
           "roof": {
             "kind": "hip",
             "riseM": 3.2,
-            "ink": "capRoof",
-            "ink2": "capRoofLite"
+            "ink": "tile",
+            "ink2": "tileShade"
           }
         },
         {
-          "_": "la linterna de techo rojo",
+          "_": "la linterna del centro del techo: oscura desde arriba, como en la imagen satelital",
           "box": [
             3.0,
             3.0
@@ -4899,24 +5115,49 @@
           "roof": {
             "kind": "pyramid",
             "riseM": 1.7,
-            "ink": "capCupola",
-            "ink2": "capCupolaShade"
+            "ink": "capRoof",
+            "ink2": "capRoofLite"
           }
         }
       ]
     },
     "kiosk": {
-      "_note": "EL QUIOSCO: caseta detrás, mostrador al frente (+v), dos postes y el toldo a rayas del color del producto. `$body`, `$awning`, `$awning2` los pone cada producto.",
+      "_note": "EL QUIOSCO: un toldo grande a rayas que cubre la caseta (atrás), el mostrador y el carril por donde entra el carro (+v, hacia la calle de la que llega). El carro pasa DEBAJO del toldo: `over` lo pinta encima del carro. Tintas: `$body`, `$awning`, `$awning2`.",
+      "over": true,
       "tiers": [
         {
-          "_": "el mostrador, al frente, con la franja del color del producto",
+          "_": "la caseta, atrás",
           "box": [
-            7,
-            2.4
+            10.120000000000001,
+            3.8
           ],
           "at": [
             0,
-            1.0
+            -3.1
+          ],
+          "z": [
+            0,
+            3.0
+          ],
+          "wall": "$body",
+          "cap": "$body",
+          "bands": [
+            [
+              0,
+              0.12,
+              "$awning"
+            ]
+          ]
+        },
+        {
+          "_": "el mostrador, del lado por el que entra el carro",
+          "box": [
+            10.120000000000001,
+            1.2
+          ],
+          "at": [
+            0,
+            -0.6000000000000002
           ],
           "z": [
             0,
@@ -4927,108 +5168,113 @@
           "bands": [
             [
               0,
-              0.25,
+              0.3,
               "$awning"
             ]
           ]
         },
         {
-          "_": "la caseta, detrás",
           "box": [
-            7,
-            2.1
+            0.32,
+            0.32
           ],
           "at": [
-            0,
-            -1.15
+            -5.2,
+            4.7
           ],
           "z": [
             0,
-            2.6
-          ],
-          "wall": "$body",
-          "cap": "$body",
-          "windows": {
-            "everyM": 2.2,
-            "wM": 0.9,
-            "z": [
-              1.2,
-              2.2
-            ],
-            "ink": "window"
-          }
-        },
-        {
-          "box": [
-            0.25,
-            0.25
-          ],
-          "at": [
-            -3.3,
-            2.1
-          ],
-          "z": [
-            1.1,
-            2.8
+            3.6
           ],
           "wall": "kioskPost",
           "cap": "kioskPost"
         },
         {
           "box": [
-            0.25,
-            0.25
+            0.32,
+            0.32
           ],
           "at": [
-            3.3,
-            2.1
+            5.2,
+            4.7
           ],
           "z": [
-            1.1,
-            2.8
+            0,
+            3.6
           ],
           "wall": "kioskPost",
           "cap": "kioskPost"
         },
         {
-          "_": "el toldo a rayas sobre la caseta: dos aguas, la cumbrera a lo largo. No cubre el mostrador, que es lo que se ve de frente.",
+          "_": "EL TOLDO A RAYAS: cubre la caseta, el mostrador y el carril entero —el carro entra DEBAJO a recoger— y lleva ESTAMPADO lo que vende en la cara que da a la calle",
           "box": [
-            7.6,
-            3.4
+            11.0,
+            10.0
           ],
           "at": [
             0,
-            -1.0
+            0
           ],
           "z": [
-            2.8,
-            2.8
+            3.6,
+            3.6
           ],
           "wall": "$awning",
           "cap": "$awning",
           "roof": {
             "kind": "gable",
-            "riseM": 0.9,
+            "riseM": 1.1,
             "axis": "long",
             "ink": "$awning",
             "ink2": "$awning2",
-            "stripes": 8
+            "stripes": 10
+          },
+          "decal": {
+            "edges": [
+              2
+            ],
+            "roof": true
           }
         }
       ]
     },
     "kiosk-wide": {
       "_note": "LA MARISQUERÍA: el mismo quiosco, ancho como un local de playa.",
+      "over": true,
       "tiers": [
         {
-          "_": "el mostrador, al frente, con la franja del color del producto",
+          "_": "la caseta, atrás",
           "box": [
-            12,
-            2.4
+            14.72,
+            3.8
           ],
           "at": [
             0,
-            1.0
+            -3.1
+          ],
+          "z": [
+            0,
+            3.0
+          ],
+          "wall": "$body",
+          "cap": "$body",
+          "bands": [
+            [
+              0,
+              0.12,
+              "$awning"
+            ]
+          ]
+        },
+        {
+          "_": "el mostrador, del lado por el que entra el carro",
+          "box": [
+            14.72,
+            1.2
+          ],
+          "at": [
+            0,
+            -0.6000000000000002
           ],
           "z": [
             0,
@@ -5039,92 +5285,72 @@
           "bands": [
             [
               0,
-              0.25,
+              0.3,
               "$awning"
             ]
           ]
         },
         {
-          "_": "la caseta, detrás",
           "box": [
-            12,
-            2.1
+            0.32,
+            0.32
           ],
           "at": [
-            0,
-            -1.15
+            -7.7,
+            4.7
           ],
           "z": [
             0,
-            2.6
-          ],
-          "wall": "$body",
-          "cap": "$body",
-          "windows": {
-            "everyM": 2.2,
-            "wM": 0.9,
-            "z": [
-              1.2,
-              2.2
-            ],
-            "ink": "window"
-          }
-        },
-        {
-          "box": [
-            0.25,
-            0.25
-          ],
-          "at": [
-            -5.8,
-            2.1
-          ],
-          "z": [
-            1.1,
-            2.8
+            3.6
           ],
           "wall": "kioskPost",
           "cap": "kioskPost"
         },
         {
           "box": [
-            0.25,
-            0.25
+            0.32,
+            0.32
           ],
           "at": [
-            5.8,
-            2.1
+            7.7,
+            4.7
           ],
           "z": [
-            1.1,
-            2.8
+            0,
+            3.6
           ],
           "wall": "kioskPost",
           "cap": "kioskPost"
         },
         {
-          "_": "el toldo a rayas sobre la caseta: dos aguas, la cumbrera a lo largo. No cubre el mostrador, que es lo que se ve de frente.",
+          "_": "EL TOLDO A RAYAS: cubre la caseta, el mostrador y el carril entero —el carro entra DEBAJO a recoger— y lleva ESTAMPADO lo que vende en la cara que da a la calle",
           "box": [
-            12.6,
-            3.4
+            16.0,
+            10.0
           ],
           "at": [
             0,
-            -1.0
+            0
           ],
           "z": [
-            2.8,
-            2.8
+            3.6,
+            3.6
           ],
           "wall": "$awning",
           "cap": "$awning",
           "roof": {
             "kind": "gable",
-            "riseM": 0.9,
+            "riseM": 1.1,
             "axis": "long",
             "ink": "$awning",
             "ink2": "$awning2",
-            "stripes": 12
+            "stripes": 14
+          },
+          "decal": {
+            "edges": [
+              2
+            ],
+            "roof": true
           }
         }
       ]
@@ -5388,6 +5614,122 @@
           ],
           "wall": "barrelDark",
           "cap": "barrel"
+        }
+      ]
+    },
+    "chinamo": {
+      "_note": "EL CHINAMO DE LA FERIA: el mismo quiosco, a la medida de su puesto. No es de recoger: el carro rebota contra él (`actors.json → attraction`), así que va bajo el carro como todo lo demás.",
+      "tiers": [
+        {
+          "_": "la caseta, atrás",
+          "box": [
+            6.44,
+            2.47
+          ],
+          "at": [
+            0,
+            -2.0149999999999997
+          ],
+          "z": [
+            0,
+            3.0
+          ],
+          "wall": "$body",
+          "cap": "$body",
+          "bands": [
+            [
+              0,
+              0.12,
+              "$awning"
+            ]
+          ]
+        },
+        {
+          "_": "el mostrador, del lado por el que entra el carro",
+          "box": [
+            6.44,
+            1.2
+          ],
+          "at": [
+            0,
+            -0.17999999999999983
+          ],
+          "z": [
+            0,
+            1.1
+          ],
+          "wall": "$body",
+          "cap": "kioskCounter",
+          "bands": [
+            [
+              0,
+              0.3,
+              "$awning"
+            ]
+          ]
+        },
+        {
+          "box": [
+            0.32,
+            0.32
+          ],
+          "at": [
+            -3.2,
+            2.95
+          ],
+          "z": [
+            0,
+            3.6
+          ],
+          "wall": "kioskPost",
+          "cap": "kioskPost"
+        },
+        {
+          "box": [
+            0.32,
+            0.32
+          ],
+          "at": [
+            3.2,
+            2.95
+          ],
+          "z": [
+            0,
+            3.6
+          ],
+          "wall": "kioskPost",
+          "cap": "kioskPost"
+        },
+        {
+          "_": "EL TOLDO A RAYAS: cubre la caseta, el mostrador y el carril entero —el carro entra DEBAJO a recoger— y lleva ESTAMPADO lo que vende en la cara que da a la calle",
+          "box": [
+            7.0,
+            6.5
+          ],
+          "at": [
+            0,
+            0
+          ],
+          "z": [
+            3.6,
+            3.6
+          ],
+          "wall": "$awning",
+          "cap": "$awning",
+          "roof": {
+            "kind": "gable",
+            "riseM": 1.1,
+            "axis": "long",
+            "ink": "$awning",
+            "ink2": "$awning2",
+            "stripes": 10
+          },
+          "decal": {
+            "edges": [
+              2
+            ],
+            "roof": true
+          }
         }
       ]
     }

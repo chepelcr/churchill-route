@@ -1654,7 +1654,12 @@
         "speed": 0.45,
         "widthPx": 1.2,
         "haloWidthPx": 8,
-        "colors": ["#63f5ff", "#ff4fd8", "#a8ff60", "#8b7cff"]
+        "colors": [
+          "#63f5ff",
+          "#ff4fd8",
+          "#a8ff60",
+          "#8b7cff"
+        ]
       }
     }
   },
@@ -1907,22 +1912,44 @@
     "kerb": "rgba(120,104,80,0.55)",
     "sky": {
       "_note": "LA HORA, como un velo sobre el lugar entero. Los colores de arriba son los de mediodía; en vez de autorar cada uno cuatro veces, el cielo le pasa UNA tinta por encima a todo el suelo de La Punta — las mismas cuatro llaves que la paleta del malecón, mezcladas por `blendPalette`.",
-      "clear": { "veil": "rgba(0,0,0,0)" },
-      "storm": { "veil": "rgba(52,58,66,0.30)" },
-      "sunset": { "veil": "rgba(214,120,60,0.14)" },
-      "night": { "veil": "rgba(16,20,38,0.58)" }
+      "clear": {
+        "veil": "rgba(0,0,0,0)"
+      },
+      "storm": {
+        "veil": "rgba(52,58,66,0.30)"
+      },
+      "sunset": {
+        "veil": "rgba(214,120,60,0.14)"
+      },
+      "night": {
+        "veil": "rgba(16,20,38,0.58)"
+      }
     },
     "pool": {
       "_note": "LA PISCINA USA LA PALETA DE LAS DEL PARQUE MARINO (`world-props.json` → `scenes.pool.palette`); acá no hay colores. `zones` dice qué tono de esa paleta lleva cada zona, y `shimmer` cómo se mueve el brillo sobre una lámina que no es una elipse.",
-      "zones": { "pool-shallow": "shallow", "pool-deep": "deep" },
+      "zones": {
+        "pool-shallow": "shallow",
+        "pool-deep": "deep"
+      },
       "rimWidthM": 0.9,
       "wallWidthM": 0.7,
-      "shimmer": { "gapM": 4.2, "ampM": 0.5, "widthM": 0.45, "dashM": 5.0, "freq": 0.09, "speed": 0.9, "wobble": 1.3 }
+      "shimmer": {
+        "gapM": 4.2,
+        "ampM": 0.5,
+        "widthM": 0.45,
+        "dashM": 5.0,
+        "freq": 0.09,
+        "speed": 0.9,
+        "wobble": 1.3
+      }
     },
     "figures": {
       "_note": "LA TINTA DE ABANICOS, OLAS Y AROS: el rojo de las comas del Faro (`#c34a3c`) pasado por gris. El rojo vivo, repetido en cuarenta figuras grandes, gritaba; éste se lee como baldosa de color.",
       "ink": "#b08079",
-      "mosaic": { "joint": "rgba(96,58,54,0.34)", "inlay": "rgba(255,255,255,0.16)" },
+      "mosaic": {
+        "joint": "rgba(96,58,54,0.34)",
+        "inlay": "rgba(255,255,255,0.16)"
+      },
       "_mosaic": "las juntas y la baldosa clara de vez en cuando sobre el rojo de las medialunas: el mismo patrón del malecón (`malecon.band`), con la junta oscurecida hacia el rojo."
     },
     "fan": {
@@ -1931,7 +1958,10 @@
       "halfAngleDeg": 60,
       "bench": "#f4f0e6",
       "benchShadow": "rgba(60,48,36,0.35)",
-      "benchM": [2.2, 0.8],
+      "benchM": [
+        2.2,
+        0.8
+      ],
       "benchAlong": 0.5,
       "benchOffsetM": 0.9,
       "benchNote": "dos bancas por abanico, una a cada lado: `benchM` es largo x fondo, `benchAlong` a qué fracción del canto recto va, `benchOffsetM` cuánto se separa de él hacia afuera"
@@ -1939,13 +1969,69 @@
     "wave": {
       "_note": "LA OLA del malecón sur: una hoja en S. `outline` es su contorno UNITARIO — `u` a lo largo del eje (0 = punta norte, 1 = punta sur), `v` de través en fracciones del largo, positivo hacia la calle. El largo y el rumbo de cada una vienen del mundo.",
       "edge": "rgba(104,70,66,0.5)",
-      "outline": [[0, 0], [0.12, 0.09], [0.25, 0.13], [0.5, 0.17], [0.75, 0.06], [0.9, 0.01], [1, 0], [0.9, -0.08], [0.75, -0.15], [0.5, -0.15], [0.35, -0.06], [0.25, 0], [0.12, 0.03]],
+      "outline": [
+        [
+          0,
+          0
+        ],
+        [
+          0.12,
+          0.09
+        ],
+        [
+          0.25,
+          0.13
+        ],
+        [
+          0.5,
+          0.17
+        ],
+        [
+          0.75,
+          0.06
+        ],
+        [
+          0.9,
+          0.01
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0.9,
+          -0.08
+        ],
+        [
+          0.75,
+          -0.15
+        ],
+        [
+          0.5,
+          -0.15
+        ],
+        [
+          0.35,
+          -0.06
+        ],
+        [
+          0.25,
+          0
+        ],
+        [
+          0.12,
+          0.03
+        ]
+      ],
       "rotondaWidthM": 1.6
     },
     "riprap": {
       "_note": "la escollera: piedras sembradas por hash a lo ancho de la línea. Los grises son los de `coast.rocks`; acá sólo la densidad y el tamaño.",
       "stepM": 1.5,
-      "rockM": [0.9, 1.9],
+      "rockM": [
+        0.9,
+        1.9
+      ],
       "bed": "#6f6b63"
     },
     "gate": {
@@ -1984,35 +2070,151 @@
     "monuments": {
       "_note": "LOS MONUMENTOS DEL FRENTE, vistos desde arriba. Cañones: la base naranja en cruz, el bloque blanco con tapa naranja y los dos tubos negros sobre sus cureñas blancas. Letras: la base curva de concreto y las letras de colores. Concha: las gradas en media luna, el escenario y los gajos verde agua.",
       "shadow": "rgba(40,34,28,0.25)",
-      "cannons": { "base": "#d9591f", "baseTrim": "#f4efe6", "block": "#f1ede4", "barrel": "#2b2d33", "carriage": "#ece8df", "sideM": 7.5, "barrelM": 5.2, "barrelWM": 0.8 },
-      "letters": { "base": "#c9c4b8", "baseEdge": "#aaa598", "inks": ["#e4572e", "#f2a541", "#2e86ab", "#3fa66b", "#d1495b", "#8e5fb3"], "shade": "rgba(30,26,22,0.55)", "heightM": 3.6, "stepM": 2.2, "font": "Bungee", "plaza": "#c98f7a", "plazaEdge": "#a8705e" },
-      "shell": { "_note": "LA CONCHA ACÚSTICA desde arriba, según la foto: gradas blancas en arco del lado de la calle, una plaza de adoquín rojizo con su aro amarillo, el escenario turquesa en media luna con sus escalones, y detrás —del lado del mar— NUEVE HOJAS turquesa traslúcidas en abanico, cada una con su nervio central oscuro y sus venas, sobre un pilar blanco cuadrado.", "floor": "#c9c6bf", "floorEdge": "#a9a69f", "tier": "#ece9e2", "tierEdge": "#c2bdb1", "plaza": "#c48a74", "ring": "#e8c547", "stage": "#3cc7c9", "stageStep": "#f1f5f4", "leaf": "rgba(46,176,196,0.55)", "leafEdge": "#1f6f80", "rib": "#17485a", "vein": "rgba(23,72,90,0.55)", "pillar": "#f2f3f1", "pillarEdge": "#c9ccc8", "rM": 9.0, "tiers": 3, "leaves": 9, "leafHeightM": 5.0, "leafShadowMinM": 1.4, "leafShadowAlpha": 0.55, "leafArcDeg": 176, "leafLen": 0.44, "leafW": 0.14 }
+      "cannons": {
+        "base": "#d9591f",
+        "baseTrim": "#f4efe6",
+        "block": "#f1ede4",
+        "barrel": "#2b2d33",
+        "carriage": "#ece8df",
+        "sideM": 7.5,
+        "barrelM": 5.2,
+        "barrelWM": 0.8
+      },
+      "letters": {
+        "base": "#c9c4b8",
+        "baseEdge": "#aaa598",
+        "inks": [
+          "#e4572e",
+          "#f2a541",
+          "#2e86ab",
+          "#3fa66b",
+          "#d1495b",
+          "#8e5fb3"
+        ],
+        "shade": "rgba(30,26,22,0.55)",
+        "heightM": 3.6,
+        "stepM": 2.2,
+        "font": "Bungee",
+        "plaza": "#c98f7a",
+        "plazaEdge": "#a8705e",
+        "liftM": 1.6,
+        "extrudePerM": 6,
+        "side": "#8a3b22",
+        "_3d": "las letras de cuerpo entero: `liftM` de alto, el canto en `side` repetido `extrudePerM` veces por metro, y la cara de color arriba"
+      },
+      "shell": {
+        "_note": "LA CONCHA ACÚSTICA desde arriba, según la foto: gradas blancas en arco del lado de la calle, una plaza de adoquín rojizo con su aro amarillo, el escenario turquesa en media luna con sus escalones, y detrás —del lado del mar— NUEVE HOJAS turquesa traslúcidas en abanico, cada una con su nervio central oscuro y sus venas, sobre un pilar blanco cuadrado.",
+        "floor": "#c9c6bf",
+        "floorEdge": "#a9a69f",
+        "tier": "#ece9e2",
+        "tierEdge": "#c2bdb1",
+        "plaza": "#c48a74",
+        "ring": "#e8c547",
+        "stage": "#3cc7c9",
+        "stageStep": "#f1f5f4",
+        "leaf": "rgba(46,176,196,0.55)",
+        "leafEdge": "#1f6f80",
+        "rib": "#17485a",
+        "vein": "rgba(23,72,90,0.55)",
+        "pillar": "#f2f3f1",
+        "pillarEdge": "#c9ccc8",
+        "rM": 9.0,
+        "tiers": 3,
+        "leaves": 9,
+        "leafHeightM": 5.0,
+        "leafShadowMinM": 1.4,
+        "leafShadowAlpha": 0.55,
+        "leafArcDeg": 176,
+        "leafLen": 0.44,
+        "leafW": 0.14,
+        "tierRiseM": 0.45,
+        "rimR": 0.05,
+        "rimM": 0.9,
+        "rim": "#2f3a3e",
+        "rimSide": "#1f272a",
+        "stageM": 0.7,
+        "stageSide": "#2a9fa1",
+        "_3d": "la Concha levantada: cada grada sube `tierRiseM` sobre la de adentro, el muro de atrás `rimM` sobre la última, el escenario `stageM`, y las hojas quedan a `leafHeightM` sobre sus pilares"
+      }
     },
     "fun": {
       "_note": "LAS PIEZAS DEL BALNEARIO (`balneario.fun` en punta.json), vistas desde arriba. El color de cada sombrilla, flotador y tobogán viene del mundo; acá la forma.",
-      "umbrellaM": 3.4, "umbrellaRibs": 8, "umbrellaRib": "rgba(255,255,255,0.55)", "umbrellaTip": "#ffffff",
-      "loungerM": [2.1, 0.8], "lounger": "#fdfcf8", "loungerPad": "#7fc8d6",
-      "floatM": 1.5, "floatHole": 0.5, "floatBobM": 0.5, "floatSpeed": 0.9,
-      "slideM": 1.7, "slideRail": "rgba(255,255,255,0.75)", "slideTower": "#f4efe6", "slideTowerM": 3.2,
-      "ship": { "hull": "#8a5a36", "deck": "#c99a66", "mast": "#4a3424", "sail": "#f6f1e4", "flag": "#22242a", "lengthM": 9.5, "beamM": 3.4 },
+      "umbrellaM": 3.4,
+      "umbrellaRibs": 8,
+      "umbrellaRib": "rgba(255,255,255,0.55)",
+      "umbrellaTip": "#ffffff",
+      "loungerM": [
+        2.1,
+        0.8
+      ],
+      "lounger": "#fdfcf8",
+      "loungerPad": "#7fc8d6",
+      "floatM": 1.5,
+      "floatHole": 0.5,
+      "floatBobM": 0.5,
+      "floatSpeed": 0.9,
+      "slideM": 1.7,
+      "slideRail": "rgba(255,255,255,0.75)",
+      "slideTower": "#f4efe6",
+      "slideTowerM": 3.2,
+      "ship": {
+        "hull": "#8a5a36",
+        "deck": "#c99a66",
+        "mast": "#4a3424",
+        "sail": "#f6f1e4",
+        "flag": "#22242a",
+        "lengthM": 9.5,
+        "beamM": 3.4
+      },
       "shadow": "rgba(40,34,28,0.24)"
     },
     "flag": {
       "_note": "LA BANDERA DE COSTA RICA, en asta, a los lados del Muelle de Cruceros: azul, blanco, rojo doble, blanco, azul.",
-      "stripes": ["#002b7f", "#ffffff", "#ce1126", "#ce1126", "#ffffff", "#002b7f"],
-      "pole": "#e9edf2", "shadow": "rgba(20,30,50,0.25)", "poleM": 5.0, "sizeM": [3.4, 2.0], "wave": 0.9
+      "stripes": [
+        "#002b7f",
+        "#ffffff",
+        "#ce1126",
+        "#ce1126",
+        "#ffffff",
+        "#002b7f"
+      ],
+      "pole": "#e9edf2",
+      "shadow": "rgba(20,30,50,0.25)",
+      "poleM": 5.0,
+      "sizeM": [
+        3.4,
+        2.0
+      ],
+      "wave": 0.9
     },
     "muellero": {
       "_note": "EL PARQUE DEL MUELLERO desde arriba (`muellero` en punta.json): los bancos en ESQUELETO DE BALLENA —un espinazo blanco con costillas de concreto hacia la calle—, los aros y medialunas de piedra blanca, los dos bancos curvos del norte con su medio disco, y las pancitas de la playa.",
-      "spine": "#f2eee5", "spineM": 1.2, "rib": "#e7e2d6", "ribM": 0.42, "ribShadow": "rgba(40,30,24,0.45)",
-      "stone": "#f4f1ea", "stoneM": 0.45, "stoneEveryM": 1.1, "planter": "#7aa65a", "boulder": "#9a958c",
-      "pergola": "#5a4636", "bench": "#ece7dc", "benchM": [0.7, 0.4], "plaza": "#d9d3c6",
+      "spine": "#f2eee5",
+      "spineM": 1.2,
+      "rib": "#e7e2d6",
+      "ribM": 0.42,
+      "ribShadow": "rgba(40,30,24,0.45)",
+      "stone": "#f4f1ea",
+      "stoneM": 0.45,
+      "stoneEveryM": 1.1,
+      "planter": "#7aa65a",
+      "boulder": "#9a958c",
+      "pergola": "#5a4636",
+      "bench": "#ece7dc",
+      "benchM": [
+        0.7,
+        0.4
+      ],
+      "plaza": "#d9d3c6",
       "stall": "rgba(255,255,255,0.75)",
       "shadow": "rgba(40,34,28,0.25)"
     },
     "yard": {
       "_note": "EL PATIO DE LA TERMINAL DE FERRIS y las bahías de parqueo: asfalto, y los toldos blancos de la terminal.",
-      "asphalt": "#5d5a62", "tent": "#f4f1ea", "tentRidge": "rgba(150,140,120,0.6)", "tentShadow": "rgba(30,26,22,0.3)"
+      "asphalt": "#5d5a62",
+      "tent": "#f4f1ea",
+      "tentRidge": "rgba(150,140,120,0.6)",
+      "tentShadow": "rgba(30,26,22,0.3)"
     },
     "props": {
       "cabana": "#fbf9f2",
@@ -2023,33 +2225,123 @@
   "centro": {
     "_note": "EL CENTRO CÍVICO — Parque Mora y Cañas y la manzana de la Catedral (`c2d/centro.js`). El mundo dice DÓNDE y de qué forma (`manifest.centro`, autorado en content/world/centro.json); esto dice de qué está hecho. Cada cuerpo de una estructura nombra una LLAVE de `inks`; una llave que no exista se pinta con `missing`, a propósito chillón, y `tests/test_centro.py` la hace fallar antes.",
     "missing": "#ff00ff",
-    "lawn": { "_note": "el césped de la cuadra, por `lawn` del lugar", "lawn": "#7cb86b" },
+    "lawn": {
+      "_note": "el césped de la cuadra, por `lawn` del lugar",
+      "lawn": "#7cb86b"
+    },
     "kerb": "#ddd7c9",
     "kerbWidthM": 0.32,
     "_kerb": "el cordón de concreto que separa el piso de las islas verdes",
     "footpath": "#cfc1a0",
     "floors": {
       "_note": "EL PISO QUE SE RECORRE, por `floor` de cada figura. `tileM` es el lado de la pieza y `angDeg` su giro respecto del eje de la cuadra. Usa el mismo verbo de mosaico que el malecón (`paintMaleconPattern`).",
-      "adoquin": { "fill": "#8f8a87", "joint": "rgba(52,46,46,0.30)", "inlay": "rgba(255,255,255,0.08)", "tileM": 1.15, "angDeg": 45, "_note": "el adoquín gris-rojizo del parque" },
-      "losa": { "fill": "#b7b0a2", "joint": "rgba(92,82,66,0.34)", "inlay": "rgba(255,255,255,0.12)", "tileM": 2.1, "angDeg": 0, "_note": "la losa de piedra del atrio de la Catedral" }
+      "adoquin": {
+        "fill": "#8f8a87",
+        "joint": "rgba(52,46,46,0.30)",
+        "inlay": "rgba(255,255,255,0.08)",
+        "tileM": 1.15,
+        "angDeg": 45,
+        "_note": "el adoquín gris-rojizo del parque"
+      },
+      "losa": {
+        "fill": "#b7b0a2",
+        "joint": "rgba(92,82,66,0.34)",
+        "inlay": "rgba(255,255,255,0.12)",
+        "tileM": 2.1,
+        "angDeg": 0,
+        "_note": "la losa de piedra del atrio de la Catedral"
+      }
     },
-    "steps": { "lite": "#ece8dd", "dark": "#bcb6a8" },
-    "mouth": { "paint": false, "edge": "#f1ecdf", "edgeWidth": 1.6, "_paint": "las bocas son TRANSPARENTES: no se pintan, la acera sigue de largo y el carro la cruza. En `true` se pintan con el piso del lugar entre dos cordones." },
-    "river": { "_note": "el riachuelo del jardín de la Catedral", "bank": "#b9c99a", "bankM": 0.6, "water": "#5fb3d8", "shine": "rgba(255,255,255,0.5)", "shineDash": [5, 9] },
-    "bridge": { "_note": "su puente: tablones y dos barandas", "deck": "#b98a5a", "joint": "rgba(70,44,22,0.5)", "rail": "#7a5632", "railWidth": 1.4, "planks": 9, "shadow": "rgba(0,0,0,0.22)" },
+    "steps": {
+      "lite": "#ece8dd",
+      "dark": "#bcb6a8"
+    },
+    "mouth": {
+      "paint": false,
+      "edge": "#f1ecdf",
+      "edgeWidth": 1.6,
+      "_paint": "las bocas son TRANSPARENTES: no se pintan, la acera sigue de largo y el carro la cruza. En `true` se pintan con el piso del lugar entre dos cordones."
+    },
+    "river": {
+      "_note": "el riachuelo del jardín de la Catedral",
+      "bank": "#b9c99a",
+      "bankM": 0.6,
+      "water": "#5fb3d8",
+      "shine": "rgba(255,255,255,0.5)",
+      "shineDash": [
+        5,
+        9
+      ]
+    },
+    "bridge": {
+      "_note": "su puente: tablones y dos barandas",
+      "deck": "#b98a5a",
+      "joint": "rgba(70,44,22,0.5)",
+      "rail": "#7a5632",
+      "railWidth": 1.4,
+      "planks": 9,
+      "shadow": "rgba(0,0,0,0.22)"
+    },
     "shadow": "rgba(0,0,0,0.22)",
     "_shadow": "la misma tinta que la sombra de un edificio (`structure.building.shadow`): se multiplica por el alfa del sol",
     "shadowMinM": 0.4,
     "lowM": 1.0,
+    "decalRoof": { "widthK": 0.62, "heightK": 0.78, "frame": "rgba(40,30,30,0.45)", "frameW": 0.8, "_": "el estampado en la cara del toldo: qué fracción del alero y de la caída ocupa como máximo (conserva su proporción) y su marco" },
+    "overUnderAlpha": 0.45,
+    "overUnderPadPx": 4,
+    "_overUnder": "un cuerpo que va ENCIMA del carro (el toldo de un quiosco) se vuelve así de translúcido cuando el carro está debajo",
+    "decalMinPx": 5,
+    "decalMargin": 0.08,
+    "decalShade": "rgba(20,18,30,0.28)",
+    "_decal": "el estampado de una pared (`c2d/bodies.js → paintDecal`): alto mínimo en pantalla para pintarlo, margen contra las esquinas, y el velo de la pared a la sombra",
     "_lowM": "hasta esta altura una estructura es PISO para el orden de pintado: la plataforma de los bustos va debajo de los bustos",
-    "wall": { "_note": "cómo responde una pared al sol: la que lo recibe se aclara, la otra se oscurece", "lit": "#ffffff", "litMix": 0.07, "dark": "#1d1c28", "darkMix": 0.3 },
+    "wall": {
+      "_note": "cómo responde una pared al sol: la que lo recibe se aclara, la otra se oscurece",
+      "lit": "#ffffff",
+      "litMix": 0.07,
+      "dark": "#1d1c28",
+      "darkMix": 0.3
+    },
     "roofSeam": "rgba(60,60,70,0.22)",
     "roofRidge": "rgba(255,255,255,0.55)",
-    "parapet": { "width": 2.4, "dash": [2.6, 1.8] },
-    "cross": { "heightM": 3.4, "barM": 2.2, "barAt": 0.68, "widthPx": 1.5, "shade": "rgba(30,26,20,0.55)", "_note": "la cruz de un techo, DE PIE: alto del palo, largo del travesaño y a qué fracción del palo va" },
-    "pole": { "ink": "#7f8789", "finial": "#a9b0b1", "widthPx": 1.5 },
-    "mural": { "everyM": 1.1, "minM": 0.7, "inks": ["#e4553f", "#f2b632", "#3f8fd0", "#49a86b", "#8a5bb5", "#f08a5d", "#2a9d8f"] },
-    "label": { "fg": "#ffffff", "bg": "#3a3540", "place": "#2e7d44" },
+    "parapet": {
+      "width": 2.4,
+      "dash": [
+        2.6,
+        1.8
+      ]
+    },
+    "cross": {
+      "heightM": 3.4,
+      "barM": 2.2,
+      "barAt": 0.68,
+      "widthPx": 1.5,
+      "shade": "rgba(30,26,20,0.55)",
+      "_note": "la cruz de un techo, DE PIE: alto del palo, largo del travesaño y a qué fracción del palo va"
+    },
+    "pole": {
+      "ink": "#7f8789",
+      "finial": "#a9b0b1",
+      "widthPx": 1.5
+    },
+    "mural": {
+      "everyM": 1.1,
+      "minM": 0.7,
+      "inks": [
+        "#e4553f",
+        "#f2b632",
+        "#3f8fd0",
+        "#49a86b",
+        "#8a5bb5",
+        "#f08a5d",
+        "#2a9d8f"
+      ]
+    },
+    "label": {
+      "fg": "#ffffff",
+      "bg": "#3a3540",
+      "place": "#2e7d44"
+    },
     "inks": {
       "_note": "LAS TINTAS, por llave. Concreto y cemento para el parque; `pa*` es el Palacio; piedra, zinc y teja para la manzana de la Catedral.",
       "white": "#f2f0ea",
@@ -2115,10 +2407,23 @@
       "pinkTrim": "#f9d9cd",
       "archWhite": "#5a4a52",
       "museoRoof": "#d9c3b8",
-      "capWhite": "#f6f3eb", "capTeal": "#43b0a0", "capTealDark": "#2c8576", "capDeck": "#c9c2b2", "capRoof": "#4b4448", "capRoofLite": "#625a5e", "capCupola": "#c9574b", "capCupolaShade": "#9d3f37",
-      "kioskCounter": "#d9d2bd", "kioskPost": "#efece4",
-      "cannonOrange": "#d9591f", "cannonOrangeLite": "#e8763d", "barrel": "#3a3c42", "barrelDark": "#22242a",
-      "oldCement": "#a9a598", "oldCementLite": "#c2beb1", "oldStain": "rgba(70,74,60,0.28)",
+      "capWhite": "#f6f3eb",
+      "capTeal": "#43b0a0",
+      "capTealDark": "#2c8576",
+      "capDeck": "#c9c2b2",
+      "capRoof": "#4b4448",
+      "capRoofLite": "#625a5e",
+      "capCupola": "#c9574b",
+      "capCupolaShade": "#9d3f37",
+      "kioskCounter": "#d9d2bd",
+      "kioskPost": "#efece4",
+      "cannonOrange": "#d9591f",
+      "cannonOrangeLite": "#e8763d",
+      "barrel": "#3a3c42",
+      "barrelDark": "#22242a",
+      "oldCement": "#a9a598",
+      "oldCementLite": "#c2beb1",
+      "oldStain": "rgba(70,74,60,0.28)",
       "wallBlue": "#bcd0de",
       "wallOchre": "#e3c27a",
       "wallGreen": "#b9d3bd"

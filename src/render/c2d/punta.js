@@ -27,7 +27,9 @@ import { drawWaterAll } from "./ground.js";
 import { CANO_PX } from "./streets.js";
 import { paintMaleconPattern } from "./systemShapes.js";
 import { BALDOSA_PX } from "./malecon.js";
-import { bodyAt, queueBody } from "./bodies.js";
+import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
+import { parallaxOffset } from "./depth.js";
+import { state } from "../../game/state.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 
@@ -235,6 +237,73 @@ function paintMuellero(Q, ppm) {
 }
 
 // LOS MONUMENTOS, desde arriba y girados con la calle: local +y es hacia el mar.
+// ── LO QUE SE LEVANTA DE LOS MONUMENTOS ──
+// `lift(h)`: cuánto se corre algo a `h` metros, con el mismo pinhole que los edificios, ya en el marco
+// girado del monumento. Las letras y las hojas de la Concha se pintan con los cuerpos (`bodies.js`),
+// después de la gente: están en el aire, y lo que camina debajo queda debajo.
+function liftOf(mo, ppm) {
+  const ca = Math.cos(-(mo.ang || 0)), sa = Math.sin(-(mo.ang || 0));
+  return (h) => {
+    if (!h) return [0, 0];
+    const o = parallaxOffset(state.cam, mo.x, mo.y, h, ppm);
+    return [o.dx * ca - o.dy * sa, o.dx * sa + o.dy * ca];
+  };
+}
+
+// la fila de letras en arco, con su base de concreto: `base`/`ink` dicen de qué color (la sombra la pide entera negra)
+function paintLetterRow(mo, C, ppm, base, ink, k = -1) {
+  const text = mo.text || "", n = text.length, step = C.stepM * ppm, H = C.heightM * ppm, half = (n - 1) * step / 2, sag = step * 1.1;
+  ctx.strokeStyle = base; ctx.lineWidth = H * 0.5; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-half - step * 0.6, -sag * 0.2); ctx.quadraticCurveTo(0, sag, half + step * 0.6, -sag * 0.2); ctx.stroke();
+  ctx.font = `${H.toFixed(1)}px '${C.font}', sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let i = 0; i < n; i++) {
+    const u = n > 1 ? i / (n - 1) : 0.5, x = -half + i * step, y = (1 - (2 * u - 1) ** 2) * sag * 0.52 - sag * 0.12;
+    ctx.fillStyle = typeof ink === "string" ? ink : ink[i % ink.length]; ctx.fillText(text[i], x, y);
+  }
+  ctx.textBaseline = "alphabetic";
+}
+
+// LAS LETRAS DE PUNTARENAS, de cuerpo entero: el canto (la misma fila, oscura, repetida del piso a la
+// altura) y la cara de color arriba. Así se leen como letras gruesas paradas en la plazoleta.
+function paintLettersRaised(mo, C, ppm) {
+  const lift = liftOf(mo, ppm), steps = Math.max(2, Math.round(C.liftM * C.extrudePerM));
+  ctx.save(); ctx.translate(mo.x, mo.y); ctx.rotate(mo.ang);
+  for (let k = 0; k < steps; k++) {
+    const o = lift(C.liftM * k / steps);
+    ctx.save(); ctx.translate(o[0], o[1]); paintLetterRow(mo, C, ppm, C.baseEdge, C.side); ctx.restore();
+  }
+  const top = lift(C.liftM);
+  ctx.translate(top[0], top[1]);
+  paintLetterRow(mo, C, ppm, C.base, C.inks);
+  ctx.restore();
+}
+
+// LAS HOJAS DE LA CONCHA, en el aire: cada pilar sube de su base a la hoja, y la hoja —turquesa,
+// translúcida— queda a `leafHeightM`, corrida con el pinhole como un techo.
+function paintShellLeaves(mo, C, K, R, leaves, ringR, L, Wd, leafPath, ppm) {
+  const lift = liftOf(mo, ppm), hi = lift(C.leafHeightM || 5), pil = R * 0.055;
+  ctx.save(); ctx.translate(mo.x, mo.y); ctx.rotate(mo.ang);
+  for (const a of leaves) {
+    const bx = Math.cos(a) * ringR, by = Math.sin(a) * ringR;
+    ctx.strokeStyle = C.pillarEdge; ctx.lineWidth = pil * 1.25; ctx.lineCap = "butt";
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + hi[0], by + hi[1]); ctx.stroke();
+    ctx.strokeStyle = C.pillar; ctx.lineWidth = pil;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + hi[0], by + hi[1]); ctx.stroke();
+  }
+  for (const a of leaves) {
+    ctx.save(); ctx.translate(Math.cos(a) * ringR + hi[0], Math.sin(a) * ringR + hi[1]); ctx.rotate(a + Math.PI / 2);
+    const leaf = leafPath();
+    ctx.fillStyle = C.leaf; ctx.fill(leaf);
+    ctx.strokeStyle = C.leafEdge; ctx.lineWidth = Math.max(1, 0.15 * ppm); ctx.stroke(leaf);
+    ctx.strokeStyle = C.vein; ctx.lineWidth = Math.max(0.7, 0.08 * ppm); ctx.beginPath();
+    for (let v = 1; v <= 5; v++) { const y = L * (0.1 + v * 0.14), sp = Wd * (0.95 - v * 0.1); ctx.moveTo(0, y - L * 0.05); ctx.quadraticCurveTo(sp * 0.5, y, sp, y + L * 0.06); ctx.moveTo(0, y - L * 0.05); ctx.quadraticCurveTo(-sp * 0.5, y, -sp, y + L * 0.06); }
+    ctx.stroke();
+    ctx.strokeStyle = C.rib; ctx.lineWidth = Math.max(1, 0.22 * ppm); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, L * 0.96); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 function paintMonument(mo, ppm) {
   const K = M.monuments, C = K[mo.kind];
   if (!C) return;
@@ -249,83 +318,63 @@ function paintMonument(mo, ppm) {
   }
   if (mo.kind === "shell") {
     // local: +y hacia el mar (la calle detrás de las gradas), el radio total es R
-    const R = mo.size || C.rM * ppm;
+    const R = mo.size || C.rM * ppm, lift = liftOf(mo, ppm);
     // el piso gris que llena el círculo entero de la Concha, gradas y hojas incluidas
     ctx.beginPath(); ctx.arc(0, 0, R * 1.04, 0, Math.PI * 2); ctx.fillStyle = C.floor; ctx.fill(); ctx.strokeStyle = C.floorEdge; ctx.lineWidth = 1.5; ctx.stroke();
-    // gradas en arco, del lado de la calle
-    const t0 = R * 0.62, step = R * 0.34 / C.tiers;
-    for (let k = C.tiers; k >= 1; k--) {
-      ctx.beginPath(); ctx.arc(0, 0, t0 + step * k, Math.PI * 1.02, Math.PI * 1.98); ctx.lineTo(0, 0); ctx.closePath();
-      ctx.fillStyle = C.tier; ctx.fill(); ctx.strokeStyle = C.tierEdge; ctx.lineWidth = 1; ctx.stroke();
+    // LAS GRADAS SUBEN: cada una es un anillo un escalón más alto que la de adentro, con su contrahuella.
+    // De adentro hacia afuera, así la de atrás —más alta— tapa a la de adelante. Atrás de todo, el muro.
+    const t0 = R * 0.62, step = R * 0.34 / C.tiers, a0 = Math.PI * 1.02, a1 = Math.PI * 1.98;
+    const band = (r0, r1, o) => { ctx.beginPath(); ctx.arc(o[0], o[1], r1, a0, a1); ctx.arc(o[0], o[1], r0, a1, a0, true); ctx.closePath(); };
+    for (let k = 1; k <= C.tiers; k++) {
+      const r0 = t0 + step * (k - 1), r1 = t0 + step * k, lo = lift(C.tierRiseM * (k - 1)), hi = lift(C.tierRiseM * k);
+      band(r0, r1, lo); ctx.fillStyle = C.tierEdge; ctx.fill();
+      band(r0, r1, hi); ctx.fillStyle = C.tier; ctx.fill();
+      ctx.strokeStyle = C.tierEdge; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(hi[0], hi[1], r0, a0, a1); ctx.stroke();
     }
+    { const top = C.tierRiseM * C.tiers, r0 = t0 + step * C.tiers, r1 = r0 + R * C.rimR;
+      band(r0, r1, lift(0)); ctx.fillStyle = C.rimSide; ctx.fill();
+      band(r0, r1, lift(top + C.rimM)); ctx.fillStyle = C.rim; ctx.fill(); }
     // la plaza de adoquín con su aro amarillo
     ctx.beginPath(); ctx.arc(0, 0, t0, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill();
     ctx.beginPath(); ctx.arc(0, 0, t0 * 0.9, Math.PI * 1.05, Math.PI * 1.95); ctx.strokeStyle = C.ring; ctx.lineWidth = Math.max(1, 0.25 * ppm); ctx.stroke();
-    // el escenario: media luna turquesa con sus escalones blancos
-    const sr = R * 0.42;
-    ctx.beginPath(); ctx.arc(0, R * 0.04, sr, 0, Math.PI); ctx.closePath(); ctx.fillStyle = C.stage; ctx.fill();
+    // el escenario: media luna turquesa, levantada, con sus escalones blancos
+    const sr = R * 0.42, st = lift(C.stageM);
+    ctx.beginPath(); ctx.arc(0, R * 0.04, sr, 0, Math.PI); ctx.closePath(); ctx.fillStyle = C.stageSide; ctx.fill();
+    ctx.beginPath(); ctx.arc(st[0], R * 0.04 + st[1], sr, 0, Math.PI); ctx.closePath(); ctx.fillStyle = C.stage; ctx.fill();
     ctx.strokeStyle = C.stageStep; ctx.lineWidth = Math.max(1, 0.3 * ppm);
-    for (const f of [0.82, 0.66]) { ctx.beginPath(); ctx.arc(0, R * 0.04, sr * f, 0.08, Math.PI - 0.08); ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(-sr, R * 0.04); ctx.lineTo(sr, R * 0.04); ctx.stroke();
-    // las nueve hojas en abanico detrás del escenario: cada pilar en el borde de mar y su hoja volcada sobre el escenario
-    // LAS HOJAS siguen el MISMO ANILLO que las gradas, del lado del mar: cada pilar sobre ese círculo
-    // y su hoja nace justo en él y se vuelca hacia adentro, entrando al escenario y montándose con las vecinas
+    for (const f of [0.82, 0.66]) { ctx.beginPath(); ctx.arc(st[0], R * 0.04 + st[1], sr * f, 0.08, Math.PI - 0.08); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(st[0] - sr, R * 0.04 + st[1]); ctx.lineTo(st[0] + sr, R * 0.04 + st[1]); ctx.stroke();
+    // las hojas: su sombra va acá, en el piso; las hojas y sus pilares se LEVANTAN y van con los cuerpos
     const n = C.leaves, arc = C.leafArcDeg * RAD, ringR = R * 0.93, L = R * C.leafLen, Wd = R * C.leafW;
     const leaves = [];
     for (let k = 0; k < n; k++) leaves.push(Math.PI / 2 - arc / 2 + arc * k / (n - 1));
     leaves.sort((a, b) => Math.abs(b - Math.PI / 2) - Math.abs(a - Math.PI / 2));   // las del centro encima
-    const pil = R * 0.055;
-    // los pilares primero, en el MISMO marco que su hoja: bajo el arranque, sobre el nervio
-    for (const a of leaves) {
-      ctx.save(); ctx.translate(Math.cos(a) * ringR, Math.sin(a) * ringR); ctx.rotate(a + Math.PI / 2); ctx.translate(0, L * 0.12);
-      ctx.fillStyle = K.shadow; ctx.fillRect(-pil / 2 + 2, -pil / 2 + 3, pil, pil);
-      ctx.fillStyle = C.pillar; ctx.fillRect(-pil / 2, -pil / 2, pil, pil); ctx.strokeStyle = C.pillarEdge; ctx.lineWidth = 1; ctx.strokeRect(-pil / 2, -pil / 2, pil, pil);
-      ctx.restore();
-    }
-    // la sombra de cada hoja en el piso: el techo está alto, así que cae corrida con el sol
+    const leafPath = () => { const p = new Path2D(); p.moveTo(0, 0); p.bezierCurveTo(Wd, L * 0.16, Wd * 1.05, L * 0.64, 0, L); p.bezierCurveTo(-Wd * 1.05, L * 0.64, -Wd, L * 0.16, 0, 0); return p; };
     const lsh = sunShadow(C.leafHeightM || 5);
-    // un techo alto siempre tira una sombra que se lee: nunca más corta que `leafShadowMinM`
     { const mag = Math.hypot(lsh.dx, lsh.dy) || 1, min = (C.leafShadowMinM || 1.4) * ppm; if (mag < min) { lsh.dx = (lsh.dx || 0.6) / mag * min; lsh.dy = (lsh.dy || 0.8) / mag * min; } }
-    const ca = Math.cos(-(mo.ang || 0)), sa = Math.sin(-(mo.ang || 0)), sdx = lsh.dx * ca - lsh.dy * sa, sdy = lsh.dx * sa + lsh.dy * ca;   // el sol, en el marco girado de la Concha
+    const ca = Math.cos(-(mo.ang || 0)), sa = Math.sin(-(mo.ang || 0)), sdx = lsh.dx * ca - lsh.dy * sa, sdy = lsh.dx * sa + lsh.dy * ca;
     for (const a of leaves) {
       ctx.save(); ctx.translate(Math.cos(a) * ringR + sdx, Math.sin(a) * ringR + sdy); ctx.rotate(a + Math.PI / 2);
-      const leaf = new Path2D();
-      leaf.moveTo(0, 0);
-      leaf.bezierCurveTo(Wd, L * 0.16, Wd * 1.05, L * 0.64, 0, L);
-      leaf.bezierCurveTo(-Wd * 1.05, L * 0.64, -Wd, L * 0.16, 0, 0);
-      ctx.globalAlpha = Math.min(1, Math.max(C.leafShadowAlpha || 0.55, lsh.alpha * 1.4)); ctx.fillStyle = K.shadow; ctx.fill(leaf);
+      ctx.globalAlpha = Math.min(1, Math.max(C.leafShadowAlpha || 0.55, lsh.alpha * 1.4)); ctx.fillStyle = K.shadow; ctx.fill(leafPath());
       ctx.restore();
     }
-    for (const a of leaves) {
-      ctx.save(); ctx.translate(Math.cos(a) * ringR, Math.sin(a) * ringR); ctx.rotate(a + Math.PI / 2);   // +y local: hacia el centro
-      const leaf = new Path2D();
-      leaf.moveTo(0, 0);
-      leaf.bezierCurveTo(Wd, L * 0.16, Wd * 1.05, L * 0.64, 0, L);
-      leaf.bezierCurveTo(-Wd * 1.05, L * 0.64, -Wd, L * 0.16, 0, 0);
-      ctx.fillStyle = C.leaf; ctx.fill(leaf);
-      ctx.strokeStyle = C.leafEdge; ctx.lineWidth = Math.max(1, 0.15 * ppm); ctx.stroke(leaf);
-      ctx.strokeStyle = C.vein; ctx.lineWidth = Math.max(0.7, 0.08 * ppm); ctx.beginPath();
-      for (let v = 1; v <= 5; v++) { const y = L * (0.1 + v * 0.14), sp = Wd * (0.95 - v * 0.1); ctx.moveTo(0, y - L * 0.05); ctx.quadraticCurveTo(sp * 0.5, y, sp, y + L * 0.06); ctx.moveTo(0, y - L * 0.05); ctx.quadraticCurveTo(-sp * 0.5, y, -sp, y + L * 0.06); }
-      ctx.stroke();
-      ctx.strokeStyle = C.rib; ctx.lineWidth = Math.max(1, 0.22 * ppm); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, L * 0.96); ctx.stroke();
-      ctx.restore();
-    }
-  } else if (mo.kind === "letters") {
-    // la plazoleta redonda de adoquín, sobre el malecón
+    ctx.restore();
+    queueBodyLike({ x: mo.x, y: mo.y, paint: (pp) => paintShellLeaves(mo, C, K, R, leaves, ringR, L, Wd, leafPath, pp) });
+    return;
+  }
+  if (mo.kind === "letters") {
+    // la plazoleta, en el suelo; las letras se levantan y van con los cuerpos
     if (mo.oval) { ctx.beginPath(); ctx.ellipse(0, 0, mo.oval[0], mo.oval[1], 0, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill(); ctx.strokeStyle = C.plazaEdge; ctx.lineWidth = 2; ctx.stroke(); }
     else if (mo.r) { ctx.beginPath(); ctx.arc(0, 0, mo.r, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill(); ctx.strokeStyle = C.plazaEdge; ctx.lineWidth = 2; ctx.stroke(); }
-    const text = mo.text || "", n = text.length, step = C.stepM * ppm, H = C.heightM * ppm, half = (n - 1) * step / 2, sag = step * 1.1;
-    // la base curva: un arco bajo de concreto, y cada letra parada sobre él
-    ctx.strokeStyle = C.baseEdge; ctx.lineWidth = H * 0.62; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(-half - step * 0.6, -sag * 0.2); ctx.quadraticCurveTo(0, sag, half + step * 0.6, -sag * 0.2); ctx.stroke();
-    ctx.strokeStyle = C.base; ctx.lineWidth = H * 0.5; ctx.stroke();
-    ctx.font = `${H.toFixed(1)}px '${C.font}', sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    for (let k = 0; k < n; k++) {
-      const u = n > 1 ? k / (n - 1) : 0.5, x = -half + k * step, y = (1 - (2 * u - 1) ** 2) * sag * 0.52 - sag * 0.12;
-      ctx.fillStyle = C.shade; ctx.fillText(text[k], x + 1.5, y + 2);
-      ctx.fillStyle = C.inks[k % C.inks.length]; ctx.fillText(text[k], x, y);
+    // su sombra en la plazoleta: la misma silueta, corrida por el sol
+    const sh = sunShadow(C.liftM), ca = Math.cos(-(mo.ang || 0)), sa = Math.sin(-(mo.ang || 0));
+    if (sh.alpha > 0) {
+      ctx.save(); ctx.translate(sh.dx * ca - sh.dy * sa, sh.dx * sa + sh.dy * ca); ctx.globalAlpha = sh.alpha;
+      paintLetterRow(mo, C, ppm, K.shadow, K.shadow); ctx.restore();
     }
-    ctx.textBaseline = "alphabetic";
+    ctx.restore();
+    queueBodyLike({ x: mo.x, y: mo.y, paint: (pp) => paintLettersRaised(mo, C, pp) });
+    return;
   }
   ctx.restore();
 }

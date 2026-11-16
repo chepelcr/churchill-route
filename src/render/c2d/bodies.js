@@ -25,6 +25,7 @@ import { ctx, hash01, label, mixColor } from "./gfx.js";
 import { sunShadow } from "./shadows.js";
 import { facingEdges, parallaxOffset } from "./depth.js";
 import { buildBody } from "./bodyGeometry.js";
+import { paintAt } from "./shapes.js";
 import { state } from "../../game/state.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 
@@ -52,6 +53,27 @@ function capPath(T, o) {
   for (let i = 2; i < pts.length; i += 2) p.lineTo(pts[i] + o[0], pts[i + 1] + o[1]);
   p.closePath();
   return p;
+}
+
+// EL ESTAMPADO: un cartel pintado en la pared `i`, del zócalo al alero. Sus partes vienen del hito
+// (`VARS._decal`: `parts` en su propio marco `box` [x, y, ancho, alto]) y se llevan a la pared con una
+// afín: el ancho del cartel a lo largo de la arista, su alto de la tapa al pie. Una pared que en la
+// pantalla mide menos de `decalMinPx` no lo lleva: sería una raya de colores.
+function paintDecal(T, i, lo, hi, lit) {
+  const D = VARS._decal, [bx, by, bw, bh] = D.box, pts = T.pts, j = (i + 2) % pts.length;
+  const ex = pts[j] - pts[i], ey = pts[j + 1] - pts[i + 1];
+  const hx = hi[0] - lo[0], hy = hi[1] - lo[1];
+  if (Math.hypot(hx, hy) < M.decalMinPx) return;
+  const m = M.decalMargin;   // el cartel no toca las esquinas ni el zócalo
+  const ox = pts[i] + ex * m + lo[0] + hx * (1 - m), oy = pts[i + 1] + ey * m + lo[1] + hy * (1 - m);
+  const ux = ex * (1 - 2 * m) / bw, uy = ey * (1 - 2 * m) / bw;            // una unidad del cartel a lo ancho
+  const vx = -hx * (1 - 2 * m) / bh, vy = -hy * (1 - 2 * m) / bh;          // …y a lo alto (+y del cartel = hacia el pie)
+  ctx.save();
+  ctx.transform(ux, uy, vx, vy, ox - ux * bx - vx * by, oy - uy * bx - vy * by);
+  ctx.fillStyle = D.bg; ctx.fillRect(bx, by, bw, bh);
+  paintAt(D.parts, 0, 0, { g: ctx });
+  if (!lit) { ctx.fillStyle = M.decalShade; ctx.fillRect(bx, by, bw, bh); }
+  ctx.restore();
 }
 
 function paintTier(T, at, vis, sunlit, sun, ppm) {
@@ -86,6 +108,7 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
       for (let k = 0; k < cnt; k++) { const c = (k + 0.5) / cnt; wallQuad(T, i, c - hw, c + hw, za, zb); }
       ctx.fill();
     }
+    if (T.decal && VARS && VARS._decal && T.decal.edges.includes(i / 2)) paintDecal(T, i, at(T.z0), at(T.z1), lit);
     for (const op of T.openings || []) {
       if (op.edge != null && op.edge * 2 !== i) continue;
       ctx.fillStyle = shade(ink(op.ink), lit);
@@ -174,6 +197,22 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
         ctx.closePath();
       }
       ctx.fill();
+    }
+    // EL ESTAMPADO DEL TOLDO: en la cara que da a la calle, sobre las rayas
+    if (T.decal && T.decal.roof && !tri && VARS && VARS._decal && T.decal.edges.includes(i / 2)) {
+      const D = VARS._decal, [bx0, by0, bw, bh] = D.box, F = M.decalRoof;
+      const ex = (qx - px), ey = (qy - py), mx = (px + qx) / 2 + eave[0], my = (py + qy) / 2 + eave[1];
+      const rmx = (rx[ea] + rx[eb]) / 2, rmy = (ry[ea] + ry[eb]) / 2;          // el medio de la cumbrera
+      const L = Math.hypot(ex, ey), ux = ex / L, uy = ey / L, hx = mx - rmx, hy = my - rmy;
+      const sw = Math.min(L * F.widthK, Math.hypot(hx, hy) * F.heightK * bw / bh);   // el cartel conserva su proporción
+      const cx = rmx + hx * 0.5, cy = rmy + hy * 0.5, H = Math.hypot(hx, hy) || 1;
+      const ax = ux * sw / bw, ay = uy * sw / bw, cxv = hx / H * sw * bh / bw / bh, cyv = hy / H * sw * bh / bw / bh;
+      ctx.save();
+      ctx.transform(ax, ay, cxv, cyv, cx - ax * (bx0 + bw / 2) - cxv * (by0 + bh / 2), cy - ay * (bx0 + bw / 2) - cyv * (by0 + bh / 2));
+      ctx.fillStyle = D.bg; ctx.fillRect(bx0, by0, bw, bh);
+      paintAt(D.parts, 0, 0, { g: ctx });
+      ctx.strokeStyle = F.frame; ctx.lineWidth = F.frameW; ctx.strokeRect(bx0, by0, bw, bh);
+      ctx.restore();
     }
     if (R.seams && !tri) {
       // las láminas de zinc: una costura cada tanto, del alero a la cumbrera
@@ -269,7 +308,7 @@ function paintStructure(S, ppm, pill = null) {
   }
   const top = at(S.zMax);
   if (S.label) label(S.x + top[0], S.y0 + top[1] - 9, S.label, M.label.fg, M.label.bg, 9);
-  if (pill) label(S.x + top[0], S.y0 + top[1] - 10, pill.text, pill.fg, pill.bg, 10);
+  if (pill) label(S.x + top[0], S.y0 + top[1] - (pill.size || 10), pill.text, pill.fg, pill.bg, pill.size || 10);
 }
 
 
@@ -277,7 +316,12 @@ function paintStructure(S, ppm, pill = null) {
 const queue = [];
 
 /** Encola un cuerpo ya armado. `vars`: sus tintas `$x`. `pill`: {text, fg, bg} sobre su techo. */
-export function queueBody(S, vars = null, pill = null) { queue.push({ S, vars, pill }); }
+export function queueBody(S, vars = null, pill = null, over = false) { queue.push({ S, vars, pill, over }); }
+
+// LO QUE VA ENCIMA DEL CARRO. Un quiosco es un toldo bajo el que el carro entra a recoger: su sombra
+// se pinta con las demás, pero el cuerpo espera a `flushOverBodies`, que el compositor llama
+// DESPUÉS del jugador. Lo demás sigue bajo él (el carro rebota contra un edificio; no pasa debajo).
+const overQueue = [];
 
 /** Encola cualquier otra cosa que se pinta con los cuerpos (un asta): `{x, y, paint(ppm)}`. */
 export function queueBodyLike(o) { queue.push({ S: o, other: true }); }
@@ -310,9 +354,28 @@ export function flushBodies() {
   for (const q of queue) if (!q.other) paintShadow(q.S);
   for (const q of queue) {
     if (q.other) { q.S.paint(ppm); continue; }
+    if (q.over) { overQueue.push(q); continue; }
     VARS = q.vars;
     paintStructure(q.S, ppm, q.pill);
   }
   VARS = null;
   queue.length = 0;
+}
+
+/** Pinta lo que va encima del carro (ver `queueBody(…, over)`). */
+export function flushOverBodies() {
+  if (!overQueue.length) return;
+  const ppm = W.PX_PER_M;
+  ctx.lineJoin = "round";
+  // CON EL CARRO DEBAJO, EL TOLDO SE VUELVE TRANSLÚCIDO: el jugador tiene que verse recogiendo
+  const p = state.p, pad = M.overUnderPadPx;
+  for (const q of overQueue) {
+    VARS = q.vars;
+    const under = p && p.x > q.S.x0 - pad && p.x < q.S.x1 + pad && p.y > q.S.y0 - pad && p.y < q.S.y1 + pad;
+    if (under) { ctx.save(); ctx.globalAlpha = M.overUnderAlpha; }
+    paintStructure(q.S, ppm, under ? null : q.pill);
+    if (under) { ctx.restore(); if (q.pill) { const S = q.S; label(S.x, S.y0 - (q.pill.size || 10), q.pill.text, q.pill.fg, q.pill.bg, q.pill.size || 10); } }
+  }
+  VARS = null;
+  overQueue.length = 0;
 }

@@ -115,6 +115,11 @@ export function buildBody(spec, base, rot, F) {
     const flip = area2(o.pts) < 0;
     if (flip) o.pts = wound(o.pts);
     for (const k of ["edge", "bands", "windows", "parapet", "stains"]) if (t[k]) o[k] = t[k];
+    if (t.decal) {
+      // el estampado: en qué paredes va (índices de vértice, como `openings.edge`), re-numeradas si el giro se invirtió
+      const n = o.pts.length / 2;
+      o.decal = { roof: !!t.decal.roof, edges: t.decal.edges.map((e) => (flip ? (n - 2 - e + n) % n : e)) };
+    }
     if (t.openings) {
       // `edge` se cuenta sobre la huella como se escribió; si el giro se invirtió, se re-numera
       const n = o.pts.length / 2;

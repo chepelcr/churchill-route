@@ -703,9 +703,17 @@ function drawLandmark(lm) {
   if (prop.body) {
     const spec = PROPS.bodies[prop.body];
     if (!spec) throw new Error(`[landmarks] ${lm.id}: cuerpo desconocido «${prop.body}»`);
-    const ang = (lm.type === "kiosk" ? (lm.ang || 0) : 0) + (spec.turnDeg || 0) * Math.PI / 180;
+    // EL FRENTE MIRA A LA CALLE DE LA QUE LLEGA EL CARRO. Un quiosco trae su `spawn` —el punto de la
+    // calle donde arranca su entrega— y la receta pone su mostrador en +v: se gira para que +v apunte ahí.
+    let ang = (lm.ang || 0);
+    if (lm.type === "kiosk" && lm.spawn) {
+      const dx = lm.spawn[0] - x, dy = lm.spawn[1] - y;
+      if (Math.hypot(dx, dy) > 1) ang = Math.atan2(-dx, dy);
+    } else if (lm.type !== "kiosk") ang = 0;
+    ang += (spec.turnDeg || 0) * Math.PI / 180;
     const pill = (prop.parts || []).find((q) => q.shape === "label");
-    queueBody(bodyAt(spec, x, y, ang, prop.body), prop.inks || null, pill ? { text: pill.text, fg: pill.fg, bg: pill.bg } : null);
+    const vars = prop.decal ? { ...(prop.inks || {}), _decal: prop.decal } : (prop.inks || null);
+    queueBody(bodyAt(spec, x, y, ang, prop.body), vars, pill ? { text: pill.text, fg: pill.fg, bg: pill.bg } : null, !!spec.over);
     return;
   }
   const ang = lm.type === "kiosk" ? (lm.ang || 0) : 0;

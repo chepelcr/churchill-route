@@ -24,6 +24,8 @@ import { aabbInView, blendPalette, ctx, flatMultiPath, hash01 } from "./gfx.js";
 import { lightLevel, nightLevel } from "../../game/daynight.js";
 import { PX_PER_M } from "../../domain/units.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import PROPS from "../../assets/world-props.json" with { type: "json" };
+import { bodyAt, queueBody } from "./bodies.js";
 import { sunShadow } from "./shadows.js";
 import { upright } from "./primitives.js";
 import { registerLampSource } from "./nightlights.js";
@@ -111,9 +113,30 @@ export function paintRide(g, kind, r, t = 0, ph = 0, A = { food: 0 }) {
 const FACING_OFFSET = Object.freeze({ "+x": 0, "+y": -Math.PI / 2,
   "-x": Math.PI, "-y": Math.PI / 2 });
 
+// EL CHINAMO ES UN QUIOSCO. Se levanta con el mismo cuerpo 2.5D que los quioscos del juego
+// (`world-props.json → bodies.chinamo`): toldo a rayas del color de su comida, mostrador al frente y su
+// comida estampada en la pared. El arte plano de `feriaAssets.json → chinamo` queda para la hoja de la
+// feria y el editor (`paintRide`).
+function queueChinamo(A) {
+  const food = foodOf(A), spec = PROPS.bodies.chinamo;
+  // el arte del chinamo mira a +y; el cuerpo pone su frente en +v: los dos giros coinciden en A.ang - π/2
+  const ang = (A.ang || 0) + FACING_OFFSET[ASSETS.chinamo.facing || "+x"];
+  const goods = (food.goods || []).map((fill, i) => ({ shape: "disc", fill, cx: -9 + i * 6, cy: 1, r: 2.6 }));
+  queueBody(bodyAt(spec, A.x, A.y, ang, `chinamo:${A.food}`),
+    { body: KIOSK.chinamoBody, awning: food.accent, awning2: food.ink,
+      _decal: { box: [-14, -6, 28, 13], bg: KIOSK.chinamoBody, parts: goods } },
+    { text: food.label, fg: KIOSK.chinamoPillFg, bg: food.accent, size: KIOSK.chinamoPillPx });
+}
+function foodOf(A) {
+  const foods = ASSETS.chinamo.foods, keys = Object.keys(foods);
+  return foods[A.food] || foods[keys[(Number(A.food) || 0) % keys.length]];
+}
+const KIOSK = PROPS.landmarks.kiosk.chinamo;
+
 function drawAttraction(A, t) {
   const spec = ASSETS[A.kind];
   if (!spec || !spec.parts) return;
+  if (A.kind === "chinamo" && PROPS.bodies?.chinamo) { queueChinamo(A); return; }
   const r = A.r || 24;
   const ph = phaseOf(A);
   ctx.save();

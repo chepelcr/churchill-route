@@ -31,6 +31,7 @@ import { drawAttractions, drawFeriaNightEffects } from "./c2d/attractions.js";
 import { drawPuntaGates, drawPuntaNight } from "./c2d/punta.js";
 import { drawCentroStructures } from "./c2d/centro.js";
 import { beginFloraBatch, endFloraBatch } from "./c2d/flora.js";
+import { flushOverBodies } from "./c2d/bodies.js";
 import {
   drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawGullFlock, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
@@ -267,6 +268,8 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     if (OVERLAY) drawPlayerCarrying(state.p, state.veh);
     else drawPlayer(state.p, state.veh, { body: canvasOwns("vehicles") });
   }
+  // los toldos de los quioscos: el carro entra DEBAJO a recoger (`bodies.js → flushOverBodies`)
+  flushOverBodies();
   // True over-player layer. Covered lanes and stadium roofs live here while
   // physics independently decides whether the vehicle may drive below them.
   drawEditorWorld(view, "roofs");

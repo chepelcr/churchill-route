@@ -29,6 +29,8 @@ FERIA = os.path.join(ROOT, "src", "render", "c2d", "feriaAssets.json")
 # quedó con lo suyo — dónde va cada juego y el suelo del campo ferial.
 ATTRACTIONS = os.path.join(ROOT, "src", "render", "c2d", "attractions.js")
 FERIA_SHAPES = os.path.join(ROOT, "src", "render", "c2d", "feriaShapes.js")
+FERIA_RIGS = os.path.join(ROOT, "src", "render", "c2d", "feriaRigs.js")
+RIG3D = os.path.join(ROOT, "src", "render", "c2d", "rig3d.js")
 EFFECTS = os.path.join(ROOT, "src", "assets", "effects.json")
 CONTENT = os.path.join(ROOT, "content", "world", "attractions.json")
 
@@ -117,6 +119,27 @@ class CatalogTests(unittest.TestCase):
             self.assertIn(a["kind"], self.rides,
                           f"attraction '{a['id']}' is a '{a['kind']}', which the "
                           f"feria catalog does not draw")
+
+    def test_every_3d_form_is_implemented_and_used(self):
+        """LA FERIA EN 3D: un juego que nombra una `view3d.form` que `feriaRigs.js`
+        no arma se queda SIN DIBUJO (el pintor no tiene arte plano de respaldo en
+        ese camino); y una forma que ningún juego nombra es geometría a la deriva."""
+        src = read(FERIA_RIGS)
+        block = re.search(r"FERIA_FORMS = Object\.freeze\(\{([^}]*)\}\)", src)
+        self.assertIsNotNone(block, "feriaRigs.js no exporta FERIA_FORMS")
+        forms = {f.strip() for f in block.group(1).split(",") if f.strip()}
+        named = {r["view3d"]["form"] for r in self.rides.values() if r.get("view3d", {}).get("form")}
+        self.assertTrue(named, "ningún juego se levanta con una forma")
+        self.assertEqual(named - forms, set(), "formas que nadie implementa")
+        self.assertEqual(forms - named, set(), "formas que ningún juego usa")
+
+    def test_the_3d_forms_author_no_colour(self):
+        """Toda tinta de una forma llega de `view3d.inks`: ni el aparejo ni las
+        formas escriben un color."""
+        for path in (FERIA_RIGS, RIG3D):
+            src = read(path)
+            self.assertEqual(re.findall(r"#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d", src), [],
+                             f"{os.path.basename(path)} trae colores escritos")
 
     def test_fractions_stay_fractions(self):
         """`r`, `spread` and `drop` are fractions of the ride's own radius;

@@ -78,7 +78,7 @@ The procedure is three steps and it is not optional:
 | the HUD, the minimap, the crossing card, the tide bar | `src/assets/hud.json` |
 | trees and wood mixes | `src/assets/flora.json` |
 | **cómo se ve un árbol desde ARRIBA** — lóbulos, luz, palma en estrella, ramas peladas, su sombra | `src/assets/effects.json` → `flora25.topdown` (trazos: `c2d/floraTop.js`); los árboles de acera se apagan en `flora.json` → `roadside` |
-| the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` (verbs: `c2d/feriaShapes.js`); **su vista 2.5D**: `$view3d`, y por pieza `liftM`/`baseM` (o `view3d.plane: "vertical"` para rueda, martillo y barco) |
+| the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` (verbs: `c2d/feriaShapes.js`); **su vista 2.5D**: `$view3d`, y por pieza `liftM`/`baseM`; lo que se MUEVE en 3D (rueda, martillo, barco, tómbola, casa del terror, escenario del DJ, carrito chocón) es una `view3d.form` con sus medidas y tintas, armada por `c2d/feriaRigs.js` sobre el aparejo `c2d/rig3d.js`; las guirnaldas cuelgan con `materials.json → feria.lighting` (`hangM`, `sagM`) |
 | spawn rates, buses, tides, the day cycle | `src/content/simulation.json` |
 | unlocks, the tutorial, **the MVP gate** | `src/content/progression.json` |
 | prices, coins, IAP | `src/content/economy.json` |

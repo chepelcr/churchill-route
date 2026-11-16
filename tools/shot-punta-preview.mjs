@@ -1089,8 +1089,8 @@ const shot = async (name, weather, x, y, zoom, force = false) => {
 const fan = fans[Math.max(0, fans.length - 4)], wave = waves[Math.min(3, waves.length - 1)];
 const px0 = (faroXY[0] + poolC[0]) / 2 + 60, py0 = (faroXY[1] + poolC[1]) / 2 + 40;
 const whole = await shot("punta", "sunny", px0, py0, 1.55);
-// PUNTA_AT="x,y,zoom[,nombre]": una captura suelta donde se pida
-if (process.env.PUNTA_AT) { const [ax, ay, az, an] = process.env.PUNTA_AT.split(","); await shot(an || "at", "sunny", +ax, +ay, +az, true); }
+// PUNTA_AT="x,y,zoom[,nombre]": una captura suelta donde se pida (PUNTA_WEATHER=night para la noche)
+if (process.env.PUNTA_AT) { const [ax, ay, az, an] = process.env.PUNTA_AT.split(","); await shot(an || "at", process.env.PUNTA_WEATHER || "sunny", +ax, +ay, +az, true); }
 { const F = manifest.feria[0]; await shot("feria", "sunny", (F.x0 + F.x1) / 2, (F.y0 + F.y1) / 2, 1.5); }
 // EL RECORRIDO, del Faro al Parque Marino: un cuadro cada ~1 100 px de mundo sobre la línea del frente
 if (!process.env.PUNTA_ONLY || process.env.PUNTA_ONLY.includes("recorrido")) {

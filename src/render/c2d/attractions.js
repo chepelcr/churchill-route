@@ -27,6 +27,8 @@ import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { parallaxOffset } from "./depth.js";
+import { makeRig } from "./rig3d.js";
+import { FERIA_FORMS, bumperCar } from "./feriaRigs.js";
 import { state } from "../../game/state.js";
 import { sunShadow } from "./shadows.js";
 import { upright } from "./primitives.js";
@@ -138,7 +140,7 @@ function drawAttraction(A, t) {
   if (A.kind === "chinamo" && PROPS.bodies?.chinamo) { queueChinamo(A); return; }
   const r = A.r || 24;
   const ph = phaseOf(A);
-  if (V3 && !spec.stage) { drawRide3d(A, spec, r, t, ph); return; }
+  if (V3 && (!spec.stage || spec.view3d?.form)) { drawRide3d(A, spec, r, t, ph); return; }
   ctx.save();
   ctx.translate(A.x, A.y);
   // UNA ATRACCIÓN PUEDE TENER RUMBO. Una rueda o un pulpo giran sobre su eje y
@@ -193,79 +195,94 @@ function shadowLayer(w, h) {
   return shadowCanvas;
 }
 
+// la sombra de un juego: se dibuja OPACA en su propio lienzo (del tamaño del juego en pantalla) y se
+// compone con alfa una sola vez, así no se oscurece donde dos piezas se cruzan
+function withShadow(A, r, alpha, draw) {
+  const m = ctx.getTransform(), sc = Math.hypot(m.a, m.b), c = m.transformPoint({ x: A.x, y: A.y });
+  const R = r * (ASSETS[A.kind].view3d?.boundsK ?? V3.boundsK) * sc, bx = Math.floor(c.x - R), by = Math.floor(c.y - R), w = Math.ceil(2 * R), h = w;
+  const cv = shadowLayer(w, h), g = cv.getContext("2d");
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
+  g.setTransform(m.a, m.b, m.c, m.d, m.e - bx, m.f - by);
+  draw(g);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha;
+  ctx.drawImage(cv, 0, 0, w, h, bx, by, w, h); ctx.restore();
+}
+
+const SHADE = () => ({ ...V3.shade, shadow: V3.shadowInk });
+
 function drawRide3d(A, spec, r, t, ph) {
   const ppm = PX_PER_M, rot = A.ang != null ? A.ang + FACING_OFFSET[spec.facing || "+x"] : 0;
   const ca = Math.cos(-rot), sa = Math.sin(-rot);
-  const local = (o, k = 1) => [(o.dx * ca - o.dy * sa) * k, (o.dx * sa + o.dy * ca) * k];
+  const local = (o) => [o.dx * ca - o.dy * sa, o.dx * sa + o.dy * ca];
   // cuánto se corre algo a `hM` metros: cada altura pasa por `parallaxOffset`, con su TOPE, igual que
   // los edificios (lineal sin tope, la rueda en la orilla de la vista se estiraba cien píxeles)
   const lift = (hM) => local(parallaxOffset(state.cam, A.x, A.y, hM, ppm));
-  const sun = sunShadow(1);
-  const vertical = spec.view3d?.plane === "vertical";
-  const parts = spec.parts.filter((p) => p.shape !== "sign"), signs = spec.parts.filter((p) => p.shape === "sign");
-  const casters = parts.filter((p) => !V3.noShadow.includes(p.shape));
+  const sun = sunShadow(1), V = spec.view3d || {}, rM = r / ppm;
+  const signs = spec.parts.filter((p) => p.shape === "sign");
   const enter = (g) => { g.translate(A.x, A.y); if (rot) g.rotate(rot); };
+  const drawSigns = () => { ctx.save(); enter(ctx); for (const p of signs) drawPart(ctx, p, r, t, ph, A, spec); ctx.restore(); };
+  const lit = sun.alpha > 0 && (sun.dx || sun.dy);
 
-  // EL PLANO VERTICAL: el alzado del juego se para sobre su eje x. Un punto (x, y) del arte queda en
-  // (x, 0) del suelo, a `hub − y` de alto; la cámara corre esa altura por `v` (más `minLean` hacia
-  // arriba de la pantalla, para que la rueda no desaparezca cuando se la ve de filo).
-  const hub = (spec.view3d?.hubK || 1) * r;
-  const plane = (g, v) => g.transform(1, 0, -v[0], -v[1], hub * v[0], hub * v[1]);
-  const camV = () => {
-    const topPx = hub + r, v = lift(topPx / ppm), lean = local({ dx: 0, dy: -V3.minLean }, 1);
-    return [v[0] / topPx + lean[0], v[1] / topPx + lean[1]];
+  // ── UNA FORMA: la geometría del juego, en metros, la arma `feriaRigs.js` ──
+  const form = V.form && FERIA_FORMS[V.form];
+  if (form) {
+    const run = (g, mode) => { const R = makeRig(g, A.x, A.y, rot, ppm, state.cam, mode, SHADE()); form(R, { rM, t, ph, V, A }); R.flush(); };
+    if (lit) withShadow(A, r, sun.alpha * V3.shadowAlpha, (g) => run(g, "sun"));
+    queueBodyLike({ x: A.x, y: A.y, paint: () => { run(ctx, "cam"); drawSigns(); } });
+    return;
+  }
+
+  // ── POR PIEZAS: cada una es un piso a `liftM`, con costados desde `baseM` ──
+  const parts = spec.parts.filter((p) => p.shape !== "sign" && !(V.car && p.shape === "cars"));
+  const casters = parts.filter((p) => !V3.noShadow.includes(p.shape));
+  const carPart = V.car && spec.parts.find((p) => p.shape === "cars");
+  // los carritos chocones: el mismo recorrido que el arte plano (`cars`), cada uno un carrito en 3D
+  const drawCars = (g, mode) => {
+    if (!carPart) return;
+    const R = makeRig(g, A.x, A.y, rot, ppm, state.cam, mode, SHADE()), p = carPart;
+    const n = p.n || 6, w = (p.areaW || 1.6) * r, h = (p.areaH || 0.9) * r;
+    for (let i = 0; i < n; i++) {
+      const s = hash01(i * 3.7 + ph) * TAU;
+      const x = Math.cos(t * (p.speed || 0.5) + s) * w * 0.4, y = Math.sin(t * (p.speed || 0.5) * 1.3 + s * 1.7) * h * 0.34;
+      bumperCar(R, x / ppm, y / ppm, Math.sin(t * 0.7 + s) * 0.9, p.liftM || 0, p.palette[i % p.palette.length], V.car, i, t);
+    }
+    R.flush();
   };
-
-  // ── la sombra: cada pieza que se levanta, corrida por el sol, en un solo trazo de tinta ──
-  if (sun.alpha > 0 && (sun.dx || sun.dy)) {
-    const m = ctx.getTransform(), sc = Math.hypot(m.a, m.b), c = m.transformPoint({ x: A.x, y: A.y });
-    const R = r * V3.boundsK * sc, bx = Math.floor(c.x - R), by = Math.floor(c.y - R), w = Math.ceil(2 * R), h = w;
-    const cv = shadowLayer(w, h), g = cv.getContext("2d");
-    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
-    g.setTransform(m.a, m.b, m.c, m.d, m.e - bx, m.f - by);
-    enter(g);
-    if (vertical) {
-      plane(g, local(sun, 1 / ppm));
-      for (const p of casters) drawPart(g, shadowOf(p), r, t, ph, A, spec);
-    } else {
-      for (const p of casters) {
-        const top = p.liftM || 0;
-        if (top <= 0) continue;
-        const b = p.baseM ?? top, n = b < top ? 3 : 1;
-        for (let k = 0; k < n; k++) {
-          const hM = n > 1 ? b + (top - b) * k / (n - 1) : top, o = local(sun, hM);
-          g.save(); g.translate(o[0], o[1]); drawPart(g, shadowOf(p), r, t, ph, A, spec); g.restore();
-        }
+  if (lit) withShadow(A, r, sun.alpha * V3.shadowAlpha, (g) => {
+    g.save(); enter(g);
+    for (const p of casters) {
+      const top = p.liftM || 0;
+      if (top <= 0) continue;
+      const b = p.baseM ?? top, n = b < top ? 3 : 1;
+      for (let k = 0; k < n; k++) {
+        const hM = n > 1 ? b + (top - b) * k / (n - 1) : top, o = local({ dx: sun.dx * hM, dy: sun.dy * hM });
+        g.save(); g.translate(o[0], o[1]); drawPart(g, shadowOf(p), r, t, ph, A, spec); g.restore();
       }
     }
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = sun.alpha * V3.shadowAlpha;
-    ctx.drawImage(cv, 0, 0, w, h, bx, by, w, h); ctx.restore();
-  }
+    g.restore();
+    drawCars(g, "sun");     // el aparejo lleva su propio marco de mundo
+  });
 
   // ── lo que se levanta va con los cuerpos: encima de la gente que pasa por debajo ──
   const paint = () => {
     ctx.save(); enter(ctx);
-    if (vertical) {
-      ctx.save(); plane(ctx, camV());
-      for (const p of parts) drawPart(ctx, p, r, t, ph, A, spec);
-      ctx.restore();
-    } else {
-      const order = parts.map((p, i) => [p, i]).sort((a, b) => (a[0].liftM || 0) - (b[0].liftM || 0) || a[1] - b[1]);
-      for (const [p] of order) {
-        const top = p.liftM || 0;
-        if (p.baseM != null && p.baseM < top) {
-          const n = Math.min(V3.maxSteps, Math.max(2, Math.ceil((top - p.baseM) * V3.extrudePerM)));
-          for (let k = 0; k < n; k++) {
-            const o = lift(p.baseM + (top - p.baseM) * k / n);
-            ctx.save(); ctx.translate(o[0], o[1]); drawPart(ctx, sideOf(p), r, t, ph, A, spec); ctx.restore();
-          }
+    const order = parts.map((p, i) => [p, i]).sort((a, b) => (a[0].liftM || 0) - (b[0].liftM || 0) || a[1] - b[1]);
+    for (const [p] of order) {
+      const top = p.liftM || 0;
+      if (p.baseM != null && p.baseM < top) {
+        const n = Math.min(V3.maxSteps, Math.max(2, Math.ceil((top - p.baseM) * V3.extrudePerM)));
+        for (let k = 0; k < n; k++) {
+          const o = lift(p.baseM + (top - p.baseM) * k / n);
+          ctx.save(); ctx.translate(o[0], o[1]); drawPart(ctx, sideOf(p), r, t, ph, A, spec); ctx.restore();
         }
-        const o = lift(top);
-        ctx.save(); ctx.translate(o[0], o[1]); drawPart(ctx, p, r, t, ph, A, spec); ctx.restore();
       }
+      const o = lift(top);
+      ctx.save(); ctx.translate(o[0], o[1]); drawPart(ctx, p, r, t, ph, A, spec); ctx.restore();
     }
-    for (const p of signs) drawPart(ctx, p, r, t, ph, A, spec);
     ctx.restore();
+    drawCars(ctx, "cam");
+    for (const strand of feriaStrings()) if (strand.owner === A.id) drawStrand(strand);
+    drawSigns();
   };
   queueBodyLike({ x: A.x, y: A.y, paint });
 }
@@ -312,22 +329,18 @@ function feriaStrings() {
   foodStringsKey = key;
   foodStrings = [];
 
-  const addString = (a, b, sag, spacing, intensity, poolEvery) => {
-    const cable = [], bulbs = [];
+  // UNA GUIRNALDA CUELGA EN EL AIRE: de un poste a otro a `hangM` de alto, con su comba HACIA ABAJO
+  // (`sagM`, en metros de alto, no hacia abajo de la pantalla). Se guarda en planta; la cámara la
+  // levanta en cada cuadro (`strandAt`). El bombillo, en planta, es donde cae su pozo de luz.
+  const addString = (a, b, sagM, spacing, intensity, poolEvery, hangM, owner = null) => {
+    const bulbs = [];
     const length = Math.hypot(b.x - a.x, b.y - a.y);
-    for (let i = 0; i <= 20; i++) {
-      const q = i / 20;
-      cable.push({ x: a.x + (b.x - a.x) * q,
-        y: a.y + (b.y - a.y) * q + sag * 4 * q * (1 - q) });
-    }
     const n = Math.max(2, Math.round(length / spacing));
     for (let i = 0; i <= n; i++) {
       const q = i / n;
-      const wire = { x: a.x + (b.x - a.x) * q,
-        y: a.y + (b.y - a.y) * q + sag * 4 * q * (1 - q) };
-      bulbs.push({ x: wire.x, y: wire.y + 2.4, wire });
+      bulbs.push({ x: a.x + (b.x - a.x) * q, y: a.y + (b.y - a.y) * q, q });
     }
-    foodStrings.push({ cable, bulbs, intensity, poolEvery });
+    foodStrings.push({ a, b, sagM, hangM, bulbs, intensity, poolEvery, owner });
   };
 
   if (stalls.length) {
@@ -337,8 +350,8 @@ function feriaStrings() {
     const rows = [...new Set(stalls.map((A) => A.y))];
     const strandYs = rows.slice(1).map((y, i) => (rows[i] + y) / 2);
     for (const y of strandYs) addString({ x: x0, y }, { x: x1, y },
-      LIGHTING.sagPx, LIGHTING.bulbSpacingM * PX_PER_M,
-      LIGHTING.foodIntensity, LIGHTING.poolEvery);
+      LIGHTING.sagM, LIGHTING.bulbSpacingM * PX_PER_M,
+      LIGHTING.foodIntensity, LIGHTING.poolEvery, LIGHTING.hangM);
   }
 
   const body = ASSETS.chocones.parts.find((p) => p.shape === "box");
@@ -351,9 +364,8 @@ function feriaStrings() {
       .map(([x, y]) => ({ x: A.x + (x * c - y * s) * A.r,
         y: A.y + (x * s + y * c) * A.r }));
     for (let i = 0; i < corners.length; i++) addString(corners[i], corners[(i + 1) % corners.length],
-      i % 2 === 0 ? -LIGHTING.choconesSagPx : LIGHTING.choconesSagPx,
-      LIGHTING.choconesBulbSpacingM * PX_PER_M,
-      LIGHTING.choconesIntensity, LIGHTING.choconesPoolEvery);
+      LIGHTING.choconesSagM, LIGHTING.choconesBulbSpacingM * PX_PER_M,
+      LIGHTING.choconesIntensity, LIGHTING.choconesPoolEvery, LIGHTING.choconesHangM, A.id);
   }
   return foodStrings;
 }
@@ -412,23 +424,44 @@ function feriaLampsIn(view, pad) {
   return out;
 }
 
-function drawFeriaStringLights(view) {
+// un punto de la guirnalda a la fracción `q`, `dropM` por debajo del cable, ya levantado por la cámara
+function strandAt(st, q, dropM = 0) {
+  const x = st.a.x + (st.b.x - st.a.x) * q, y = st.a.y + (st.b.y - st.a.y) * q;
+  const h = st.hangM - st.sagM * 4 * q * (1 - q) - dropM, o = parallaxOffset(state.cam, x, y, h, PX_PER_M);
+  return [x + o.dx, y + o.dy];
+}
+
+// la guirnalda: sus dos postes, el cable con su comba y los bombillos colgando un poco más abajo
+function drawStrand(st) {
   ctx.save();
-  ctx.strokeStyle = LIGHTING.cable;
-  ctx.lineWidth = LIGHTING.cablePx;
   ctx.lineCap = "round";
-  for (const strand of feriaStrings()) {
-    ctx.beginPath();
-    strand.cable.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-    ctx.stroke();
-    for (const b of strand.bulbs) {
-      if (b.x < view.x0 || b.x > view.x1 || b.y < view.y0 || b.y > view.y1) continue;
-      ctx.beginPath(); ctx.moveTo(b.wire.x, b.wire.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-      ctx.fillStyle = LIGHTING.bulbCore;
-      ctx.beginPath(); ctx.arc(b.x, b.y, LIGHTING.bulbPx, 0, TAU); ctx.fill();
-    }
+  ctx.strokeStyle = LIGHTING.post; ctx.lineWidth = LIGHTING.postPx;
+  for (const e of [st.a, st.b]) {
+    const o = parallaxOffset(state.cam, e.x, e.y, st.hangM + LIGHTING.postTopM, PX_PER_M);
+    ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + o.dx, e.y + o.dy); ctx.stroke();
+  }
+  ctx.strokeStyle = LIGHTING.cable; ctx.lineWidth = LIGHTING.cablePx;
+  ctx.beginPath();
+  for (let i = 0; i <= 20; i++) { const p = strandAt(st, i / 20); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+  ctx.stroke();
+  ctx.fillStyle = LIGHTING.bulbCore;
+  for (const b of st.bulbs) {
+    const w = strandAt(st, b.q), p = strandAt(st, b.q, LIGHTING.bulbDropM);
+    ctx.beginPath(); ctx.moveTo(w[0], w[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p[0], p[1], LIGHTING.bulbPx, 0, TAU); ctx.fill();
   }
   ctx.restore();
+}
+
+// las guirnaldas de la comida van con los cuerpos (encima de la gente); las de los chocones las pinta
+// su propio juego, DESPUÉS de la pista, o la pista las tapaba
+function drawFeriaStringLights(view) {
+  for (const strand of feriaStrings()) {
+    if (strand.owner) continue;
+    const x0 = Math.min(strand.a.x, strand.b.x), x1 = Math.max(strand.a.x, strand.b.x);
+    if (x1 < view.x0 || x0 > view.x1 || Math.max(strand.a.y, strand.b.y) < view.y0 - 40 || Math.min(strand.a.y, strand.b.y) > view.y1 + 40) continue;
+    queueBodyLike({ x: (strand.a.x + strand.b.x) / 2, y: (strand.a.y + strand.b.y) / 2, paint: () => drawStrand(strand) });
+  }
 }
 
 function drawFeriaAreaLights() {
@@ -448,7 +481,8 @@ function drawFeriaNightEffects(view, t, toScreen, zoom) {
   ctx.globalAlpha = lamps;
   for (const strand of feriaStrings()) for (const b of strand.bulbs) {
     if (b.x < view.x0 || b.x > view.x1 || b.y < view.y0 || b.y > view.y1) continue;
-    const [x, y] = toScreen(b.x, b.y), r = Math.max(1.2, LIGHTING.bulbPx * zoom);
+    const at = strandAt(strand, b.q, LIGHTING.bulbDropM);
+    const [x, y] = toScreen(at[0], at[1]), r = Math.max(1.2, LIGHTING.bulbPx * zoom);
     ctx.fillStyle = LIGHTING.bulbGlow;
     ctx.beginPath(); ctx.arc(x, y, r * 3.2, 0, TAU); ctx.fill();
     ctx.fillStyle = LIGHTING.bulbCore;

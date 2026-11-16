@@ -81,8 +81,8 @@
     "parts": [
       {
         "shape": "legs",
-        "spread": 0.62,
-        "drop": 1.12,
+        "spread": 0.72,
+        "drop": 0.62,
         "widthPx": 5,
         "stroke": "#8d949e"
       },
@@ -151,8 +151,61 @@
       }
     ],
     "view3d": {
-      "plane": "vertical",
-      "hubK": 1.12
+      "form": "wheel",
+      "wheelK": 0.95,
+      "clearM": 1.6,
+      "depthM": 2.4,
+      "legOutM": 0.8,
+      "legSpreadK": 0.62,
+      "spin": 0.02,
+      "cabins": 10,
+      "cabinM": [
+        1.5,
+        1.7,
+        1.4
+      ],
+      "hangM": 0.25,
+      "innerK": 0.72,
+      "spokes": 10,
+      "rimM": 0.3,
+      "spokeM": 0.12,
+      "legM": 0.45,
+      "axleM": 0.4,
+      "hubM": 0.6,
+      "bulbM": 0.22,
+      "baseM": [
+        12.5,
+        5.2,
+        0.5
+      ],
+      "inks": {
+        "rim": "#dfe5ec",
+        "rim2": "#c3cad3",
+        "spoke": "#b6bdc7",
+        "leg": "#8d949e",
+        "hub": "#4a4a55",
+        "base": "#5d6470",
+        "baseTop": "#9aa3ae",
+        "cabins": [
+          "#e85d75",
+          "#f3c969",
+          "#5fb0d6",
+          "#6fbf99",
+          "#f08a5d"
+        ],
+        "cabinRoof": [
+          "#ff9aac",
+          "#ffe08a",
+          "#9ad4ef",
+          "#a6e0c2",
+          "#ffb48f"
+        ],
+        "bulbs": [
+          "#fff3c4",
+          "#ffd166",
+          "#ff8fa3"
+        ]
+      }
     }
   },
   "tagada": {
@@ -229,7 +282,7 @@
         "x": -0.16,
         "y": -0.1,
         "w": 0.32,
-        "h": 1.1,
+        "h": 1.0,
         "fill": "#77808c"
       },
       {
@@ -293,8 +346,65 @@
       }
     ],
     "view3d": {
-      "plane": "vertical",
-      "hubK": 1.0
+      "form": "hammer",
+      "armK": 0.92,
+      "counterK": 0.3,
+      "clearM": 1.8,
+      "baseM": [
+        7.5,
+        5.2,
+        0.5
+      ],
+      "towerM": [
+        1.4,
+        1.8
+      ],
+      "armGapM": 0.45,
+      "armWM": 0.7,
+      "counterM": 0.7,
+      "gondolaM": [
+        2.6,
+        1.8,
+        1.8
+      ],
+      "swing": {
+        "amp": 2.7,
+        "speed": 0.09
+      },
+      "arms": [
+        {
+          "side": 1,
+          "phase": 0
+        },
+        {
+          "side": -1,
+          "phase": 3.14159
+        }
+      ],
+      "hubM": 0.55,
+      "bulbs": 10,
+      "bulbM": 0.2,
+      "inks": {
+        "base": "#5d6470",
+        "baseTop": "#77808c",
+        "tower": "#9aa3ae",
+        "towerTop": "#c7ccd3",
+        "arm": "#c7ccd3",
+        "counter": "#4a4a55",
+        "gondola": [
+          "#e85d75",
+          "#f3c969"
+        ],
+        "gondolaTop": [
+          "#ff9aac",
+          "#ffe08a"
+        ],
+        "hub": "#4a4a55",
+        "bulbs": [
+          "#fff3c4",
+          "#ffd166"
+        ]
+      }
     }
   },
   "pulpo": {
@@ -534,8 +644,7 @@
           "#f08a5d",
           "#c08ae0"
         ],
-        "liftM": 1.2,
-        "baseM": 0.45
+        "liftM": 0.4
       },
       {
         "shape": "bulbs",
@@ -560,7 +669,52 @@
         "fill": "#0f1720",
         "bg": "#f3c969"
       }
-    ]
+    ],
+    "view3d": {
+      "car": {
+        "bumperM": [
+          4.05,
+          2.7
+        ],
+        "bumperHM": 0.61,
+        "bodyM": [
+          3.38,
+          2.16
+        ],
+        "bodyHM": 1.28,
+        "noseM": [
+          0.94,
+          1.76
+        ],
+        "noseHM": 1.08,
+        "seatM": [
+          0.81,
+          1.62
+        ],
+        "seatHM": 1.96,
+        "headHM": 2.7,
+        "headM": 0.38,
+        "poleM": 3.6,
+        "poleWM": 0.07,
+        "sparkM": 0.2,
+        "inks": {
+          "bumper": "#24252b",
+          "seat": "#1d1f26",
+          "skin": "#f1c8a4",
+          "shirts": [
+            "#f6f1e4",
+            "#2f5d8a",
+            "#c08ae0",
+            "#3fa66b"
+          ],
+          "pole": "#8d949e",
+          "spark": "#fff3c4"
+        }
+      },
+      "postM": 0.18,
+      "post": "#5d6470",
+      "boundsK": 1.5
+    }
   },
   "barco": {
     "name": "El Barco Pirata",
@@ -568,8 +722,8 @@
     "parts": [
       {
         "shape": "legs",
-        "spread": 0.9,
-        "drop": 1.3,
+        "spread": 0.8,
+        "drop": 0.5,
         "widthPx": 5,
         "stroke": "#8d949e"
       },
@@ -609,8 +763,34 @@
       }
     ],
     "view3d": {
-      "plane": "vertical",
-      "hubK": 1.3
+      "form": "swingboat",
+      "pivotK": 0.62,
+      "clearM": 1.8,
+      "lengthK": 1.3,
+      "beamM": 3.0,
+      "legSpreadK": 0.72,
+      "frameOutM": 0.6,
+      "swing": {
+        "amp": 0.75,
+        "speed": 0.09
+      },
+      "sheerM": 1.1,
+      "depthM": 1.5,
+      "benches": 5,
+      "benchM": 0.18,
+      "trimM": 0.12,
+      "prowM": 1.4,
+      "hangK": 0.22,
+      "legM": 0.35,
+      "axleM": 0.35,
+      "armM": 0.22,
+      "inks": {
+        "hull": "#8a5a35",
+        "deck": "#b98a5c",
+        "trim": "#f3c969",
+        "bench": "#6b4428",
+        "frame": "#8d949e"
+      }
     }
   },
   "gusano": {
@@ -714,7 +894,45 @@
         "fill": "#7ee0f2",
         "bg": "#1b1024"
       }
-    ]
+    ],
+    "view3d": {
+      "form": "funhouse",
+      "widthK": 1.5,
+      "depthK": 0.95,
+      "heightM": 4.6,
+      "parapetM": 0.5,
+      "doorM": [
+        1.6,
+        2.6
+      ],
+      "doorAtK": 0.22,
+      "signM": [
+        3.0,
+        0.8
+      ],
+      "eyeK": 0.3,
+      "eyeHM": 3.3,
+      "eyeM": 0.5,
+      "blinkHz": 0.4,
+      "bulbs": 18,
+      "bulbM": 0.16,
+      "inks": {
+        "wall": "#4a3460",
+        "roof": "#241a30",
+        "trim": "#6b2f8f",
+        "door": "#0d0a12",
+        "sign": "#7ee0f2",
+        "sign2": "#ff5d73",
+        "eye": "#7ee0f2",
+        "eyeDim": "#3e6f78",
+        "bulbs": [
+          "#7ee0f2",
+          "#c08ae0",
+          "#ff5d73"
+        ],
+        "doorFrame": "#c08ae0"
+      }
+    }
   },
   "argollas": {
     "name": "Tiro al Blanco",
@@ -834,7 +1052,54 @@
         "fill": "#0f1720",
         "bg": "#f3c969"
       }
-    ]
+    ],
+    "view3d": {
+      "form": "wheelstall",
+      "drumOutM": 0.05,
+      "drumDepthM": 0.5,
+      "spin": 0.3,
+      "spokes": 8,
+      "spokeM": 0.07,
+      "rimM": 0.1,
+      "pointerM": 0.3,
+      "bulbs": 10,
+      "bulbM": 0.18,
+      "inks": {
+        "counter": "#2f5d8a",
+        "counterTop": "#f6e7c8",
+        "board": "#7a1f2e",
+        "boardTop": "#b3243b",
+        "drum": "#f3c969",
+        "drumBack": "#8a6a2a",
+        "drumRim": "#b3243b",
+        "spoke": "#b3243b",
+        "bulbs": [
+          "#fff3c4",
+          "#ffd166"
+        ],
+        "counterBand": "#f3c969",
+        "pointer": "#f6e7c8",
+        "wedges": [
+          "#f3c969",
+          "#e0483f",
+          "#f6e7c8",
+          "#5fb0d6"
+        ]
+      },
+      "counterK": [
+        1.4,
+        0.6
+      ],
+      "counterHM": 1.05,
+      "boardK": [
+        1.5,
+        0.07
+      ],
+      "boardHM": 3.2,
+      "drumK": 0.36,
+      "drumTopM": 0.6,
+      "tiltDeg": 55
+    }
   },
   "chinamo": {
     "name": "Chinamo",
@@ -1141,20 +1406,123 @@
         "fill": "#fff",
         "bg": "#7b3fa0"
       }
-    ]
+    ],
+    "view3d": {
+      "form": "stage",
+      "deckK": [
+        -1.0,
+        -0.62,
+        1.0,
+        0.78
+      ],
+      "deckM": 1.4,
+      "planks": 8,
+      "curtainK": [
+        -0.82,
+        -0.6,
+        0.82,
+        -0.5
+      ],
+      "curtainM": 5.5,
+      "trussM": 8.0,
+      "postM": 0.5,
+      "beamM": 0.45,
+      "doselK": [
+        -1.04,
+        -0.72,
+        1.04,
+        -0.56
+      ],
+      "doselM": 1.6,
+      "speakerAtK": [
+        0.8,
+        0.26
+      ],
+      "speakerM": [
+        3.0,
+        2.6,
+        5.2
+      ],
+      "cones": [
+        [
+          0.72,
+          0.7
+        ],
+        [
+          0.32,
+          1.0
+        ]
+      ],
+      "pump": {
+        "amp": 0.14,
+        "speed": 2.0
+      },
+      "consoleK": [
+        -0.3,
+        -0.04,
+        0.3,
+        0.2
+      ],
+      "consoleM": 1.2,
+      "djAtK": [
+        0,
+        -0.16
+      ],
+      "djM": [
+        1.8,
+        1.1,
+        2.2
+      ],
+      "headM": 0.75,
+      "djBobM": 0.08,
+      "bulbs": 24,
+      "bulbM": 0.25,
+      "inks": {
+        "deck": "#9c7650",
+        "deckSide": "#463225",
+        "plank": "#c39a68",
+        "curtain": "#291d38",
+        "curtainTop": "#3a2b4e",
+        "truss": "#a7a4b2",
+        "dosel": "#7b3fa0",
+        "doselSide": "#5a2c78",
+        "speaker": "#141019",
+        "cone": "#8b7ca7",
+        "console": "#241d2e",
+        "consoleSide": "#18121f",
+        "consoleLight": "#f4d77a",
+        "shirt": "#5fb0d6",
+        "shirtSide": "#3f86a8",
+        "skin": "#f1c8a4",
+        "hair": "#2a1d14",
+        "bulbs": [
+          "#fff3c4",
+          "#ff5d73",
+          "#7ee0f2",
+          "#c08ae0"
+        ]
+      },
+      "boundsK": 1.7
+    }
   },
   "$view3d": {
-    "$note": "LA FERIA EN 2.5D. Cada juego se ve desde arriba con la misma perspectiva que los edificios (`parallaxOffset`): una pieza con `liftM` es un PISO a esa altura, y con `baseM` además tiene COSTADOS de `baseM` a `liftM` (la misma pieza repetida, oscurecida hacia `sideInk`). Un juego con `view3d.plane: \"vertical\"` (la rueda, el martillo, el barco) gira en un plano VERTICAL a lo largo de su eje x: su arte de alzado se proyecta con la cámara, el centro (0,0) queda a `hubK` radios del suelo, y `minLean` es cuánto se asoma aunque la cámara lo vea de filo. Las sombras son la silueta de cada pieza corrida por el sol, pintada de una sola vez para que no se oscurezca donde dos piezas se cruzan. Los rótulos (`sign`) no se levantan, y lo que es luz (`noShadow`) no tira sombra.",
+    "$note": "LA FERIA EN 2.5D. Cada juego se ve desde arriba con la misma perspectiva que los edificios (`parallaxOffset`): una pieza con `liftM` es un PISO a esa altura, y con `baseM` además tiene COSTADOS de `baseM` a `liftM` (la misma pieza repetida, oscurecida hacia `sideInk`). Las sombras son la silueta de cada pieza corrida por el sol, pintada de una sola vez para que no se oscurezca donde dos piezas se cruzan. Los rótulos (`sign`) no se levantan, y lo que es luz (`noShadow`) no tira sombra.",
     "sideInk": "#15131a",
     "sideK": 0.42,
     "extrudePerM": 4,
     "maxSteps": 14,
     "shadowInk": "#1b1f26",
     "shadowAlpha": 0.5,
-    "minLean": 0.32,
     "boundsK": 3.2,
     "noShadow": [
       "bulbs"
-    ]
+    ],
+    "$forms": "UNA FORMA (`view3d.form`) ES GEOMETRÍA QUE SE MUEVE y vive en `c2d/feriaRigs.js` (rueda → wheel, martillo → hammer, barco → swingboat, tómbola → wheelstall, casa del terror → funhouse, escenario → stage). Acá quedan sus medidas —en metros, o en fracciones del radio del juego con sufijo K— y TODAS sus tintas. Un juego sin forma se sigue levantando por piezas con `liftM`/`baseM`.",
+    "shade": {
+      "side": "#15131a",
+      "litK": 0.18,
+      "darkK": 0.42,
+      "bottomK": 0.55
+    }
   }
 }

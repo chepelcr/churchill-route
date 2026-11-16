@@ -6,7 +6,7 @@
 // low-res land/water/beach backdrop covers unloaded gaps.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
-import { keepsTree, paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
+import { beginFloraBatch, endFloraBatch, keepsTree, paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
 import { drawStreetLamps } from "./lights.js";
 import { aabbInView, ctx, textureScale } from "./gfx.js";
 import { depthKey } from "./depth.js";
@@ -100,6 +100,7 @@ function drawWorld2D(view, t) {
   // median's two interleaved rows merged onto its centre (see flora.js).
   // EL MONTE first: it is the ground cover of the countryside, so the town's own
   // planting and the street trees stand over it rather than in a gap in it.
+  beginFloraBatch();   // todas las sombras de árbol primero, después todas las copas (`flora.js`)
   paintWoods(view, { trees: canvasOwns("woods") });
   // La arboleda del pueblo (calle, manzana, palmas) es de la capa 3-D cuando
   // ella la tomó (`three/flora.js`); el monte de arriba sigue siendo de Canvas.
@@ -111,6 +112,7 @@ function drawWorld2D(view, t) {
   }
   // …y los postes del alumbrado, sobre la acera y bajo los rótulos. El pozo de
   // luz lo abre el compositor de noche (`nightlights.js`); esto es la lámpara.
+  endFloraBatch();
   if (canvasOwns("lamps")) drawStreetLamps(view);
   drawStreetLabels2D(roads, view);
   // LA SOMBRA DE LAS NUBES, al final del pase del mundo: una nube tapa el suelo,

@@ -27,6 +27,7 @@ import { drawWaterAll } from "./ground.js";
 import { CANO_PX } from "./streets.js";
 import { paintMaleconPattern } from "./systemShapes.js";
 import { BALDOSA_PX } from "./malecon.js";
+import { bodyAt, queueBody } from "./bodies.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 
@@ -239,22 +240,14 @@ function paintMonument(mo, ppm) {
   if (!C) return;
   ctx.save(); ctx.translate(mo.x, mo.y); ctx.rotate(mo.ang);
   if (mo.kind === "cannons") {
-    // un cuadro con las esquinas a los puntos cardinales; un cañón sobre cada lado, apuntando al subcardinal
-    const h = C.sideM * ppm / 2, b = C.barrelM * ppm;
-    ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = K.shadow; ctx.fillRect(-h + 3, -h + 4, 2 * h, 2 * h);
-    ctx.fillStyle = C.base; ctx.fillRect(-h, -h, 2 * h, 2 * h);
-    ctx.strokeStyle = C.baseTrim; ctx.lineWidth = 1.2; ctx.strokeRect(-h + 2.5, -h + 2.5, 2 * h - 5, 2 * h - 5);
-    for (let k = 0; k < 4; k++) {
-      ctx.save(); ctx.rotate(k * Math.PI / 2);
-      ctx.fillStyle = C.carriage; ctx.fillRect(h * 0.3, -h * 0.26, h * 0.5, h * 0.52);
-      ctx.strokeStyle = C.barrel; ctx.lineCap = "round"; ctx.lineWidth = C.barrelWM * ppm;
-      ctx.beginPath(); ctx.moveTo(h * 0.28, 0); ctx.lineTo(h * 0.28 + b, 0); ctx.stroke();
-      ctx.restore();
-    }
-    ctx.fillStyle = C.block; ctx.fillRect(-h * 0.3, -h * 0.3, h * 0.6, h * 0.6);
-    ctx.fillStyle = C.base; ctx.fillRect(-h * 0.2, -h * 0.2, h * 0.4, h * 0.4);
-  } else if (mo.kind === "shell") {
+    // LOS CAÑONES SE LEVANTAN COMO LOS EDIFICIOS NUEVOS: su receta es un cuerpo 2.5D
+    // (`world-props.json → bodies.cannons`) y lo pinta la cola de cuerpos, con su sombra.
+    ctx.restore();
+    const spec = PROPS.bodies.cannons;
+    queueBody(bodyAt(spec, mo.x, mo.y, (mo.ang || 0) + (spec.turnDeg || 0) * RAD, "cannons"));
+    return;
+  }
+  if (mo.kind === "shell") {
     // local: +y hacia el mar (la calle detrás de las gradas), el radio total es R
     const R = mo.size || C.rM * ppm;
     // el piso gris que llena el círculo entero de la Concha, gradas y hojas incluidas

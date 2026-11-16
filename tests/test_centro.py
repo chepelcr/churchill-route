@@ -278,3 +278,38 @@ class CentroEmittedWorldTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BodyRecipeTests(unittest.TestCase):
+    """LOS CUERPOS DE RECETA (`world-props.json → bodies`): la Capitanía, los quioscos y los
+    cañones, pintados por `c2d/bodies.js` como los edificios del centro cívico.
+
+    Una tinta que no existe pinta en el magenta de `missing`, y una `$x` que el hito no
+    pone también: un quiosco con el toldo magenta se ve en el mundo y en ninguna prueba."""
+
+    def setUp(self):
+        self.props = json.load(open(os.path.join(ROOT, "src", "assets", "world-props.json"), encoding="utf-8"))
+        self.inks = json.load(open(MATERIALS, encoding="utf-8"))["centro"]["inks"]
+
+    def test_every_ink_exists_or_is_supplied_by_its_landmark(self):
+        bodies = {k: v for k, v in self.props["bodies"].items() if not k.startswith("_")}
+        users = {}
+        for key, rec in self.props["landmarks"].items():
+            if isinstance(rec, dict) and rec.get("body"):
+                self.assertIn(rec["body"], bodies, f"{key}: cuerpo desconocido «{rec['body']}»")
+                users.setdefault(rec["body"], []).append((key, rec.get("inks") or {}))
+        for name, spec in bodies.items():
+            for tier in spec["tiers"]:
+                self.assertEqual(sum(k in tier for k in ("box", "disc", "arc", "ring", "poly")), 1, f"{name}: un cuerpo lleva una huella")
+                for ink in inks_of(tier):
+                    if ink.startswith("$"):
+                        for key, given in users.get(name, []):
+                            self.assertIn(ink[1:], given, f"{key}: usa «{name}» y no pone la tinta {ink}")
+                    else:
+                        self.assertIn(ink, self.inks, f"{name}: tinta «{ink}» sin color")
+
+    def test_the_cannons_and_the_capitania_are_bodies(self):
+        self.assertEqual(self.props["landmarks"]["capitania"]["body"], "capitania")
+        self.assertIn("cannons", self.props["bodies"])
+        for product in ("kiosk", "kiosk:vigoron", "kiosk:ceviche", "kiosk:papicarne", "kiosk:mariscada"):
+            self.assertTrue(self.props["landmarks"][product].get("body"), f"{product}: el quiosco no se levanta")

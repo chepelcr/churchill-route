@@ -18,6 +18,7 @@ import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect,
 import { drawParada, paintProp, propParts } from "./props.js";
 import { shadowInk, sunShadow } from "./shadows.js";
 import { centroOwnsLandmark } from "./centro.js";
+import { bodyAt, queueBody } from "./bodies.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -666,7 +667,7 @@ function drawLandmark(lm) {
     drawParcelLandmarkPill(lm, owner); return;
   }
   const x = lm.x, y = lm.y;
-  if (!NO_SHADOW.has(lm.type)) {
+  if (!NO_SHADOW.has(lm.type) && !landmarkProp(lm)?.body) {
     paintAt(PROPS.defaults.landmarkShadow.parts, x, y, { g: ctx });
   }
   // THE ART IS DATA NOW. What used to be here: a 26-branch `switch` of raw
@@ -696,6 +697,17 @@ function drawLandmark(lm) {
   // no obliga a dibujarla el mismo día.
   const prop = landmarkProp(lm);
   if (!prop) return;
+  // UN HITO QUE SE LEVANTA COMO LOS EDIFICIOS NUEVOS: su receta es un cuerpo 2.5D
+  // (`world-props.json → bodies`), con las tintas del hito, y lo pinta la cola de cuerpos
+  // DESPUÉS de la gente (`c2d/bodies.js`). El rótulo va sobre su techo.
+  if (prop.body) {
+    const spec = PROPS.bodies[prop.body];
+    if (!spec) throw new Error(`[landmarks] ${lm.id}: cuerpo desconocido «${prop.body}»`);
+    const ang = (lm.type === "kiosk" ? (lm.ang || 0) : 0) + (spec.turnDeg || 0) * Math.PI / 180;
+    const pill = (prop.parts || []).find((q) => q.shape === "label");
+    queueBody(bodyAt(spec, x, y, ang, prop.body), prop.inks || null, pill ? { text: pill.text, fg: pill.fg, bg: pill.bg } : null);
+    return;
+  }
   const ang = lm.type === "kiosk" ? (lm.ang || 0) : 0;
   if (ang) {
     ctx.save();

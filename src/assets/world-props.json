@@ -29,50 +29,6 @@
       "note": "EL PUESTO GENÉRICO — el de churchill, que es el producto del juego. Blanco y NARANJA; la bebida se queda roja porque ése es el sirope. Los otros productos entran por `kiosk:<product>`, que `propFor` prueba entre el id y el tipo: los 17 kioscos son puntos de recogida de cinco comidas y los diecisiete se dibujaban ASÍ, con la palabra CHURCHILL en el rótulo — vigorones, ceviches y papicarnes incluidos. Un producto sin arte propio sigue cayendo aquí a propósito: agregar una comida no obliga a dibujarla el mismo día.",
       "parts": [
         {
-          "shape": "rect",
-          "fill": "#fff",
-          "x": -16,
-          "y": -8,
-          "w": 32,
-          "h": 18
-        },
-        {
-          "shape": "stripes",
-          "n": 4,
-          "palette": [
-            "#f08a5d",
-            "#fff"
-          ],
-          "x": -16,
-          "y": -14,
-          "w": 32,
-          "h": 6
-        },
-        {
-          "shape": "rect",
-          "fill": "rgba(255,255,255,0.9)",
-          "x": -4,
-          "y": -4,
-          "w": 8,
-          "h": 12
-        },
-        {
-          "shape": "rect",
-          "fill": "#ff3d80",
-          "x": -4,
-          "y": 0,
-          "w": 8,
-          "h": 6
-        },
-        {
-          "shape": "rect",
-          "fill": "#fff",
-          "x": -4,
-          "y": -4,
-          "w": 8,
-          "h": 3
-        },
-        {
           "shape": "label",
           "x": 0,
           "y": -22,
@@ -80,7 +36,14 @@
           "fg": "#fff",
           "bg": "#f08a5d"
         }
-      ]
+      ],
+      "body": "kiosk",
+      "inks": {
+        "body": "#ffffff",
+        "awning": "#f08a5d",
+        "awning2": "#ffffff"
+      },
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
     },
     "ferry": {
       "note": "THE TERMINAL IS A PLACE, NOT A BOAT. This used to paint a hull in the middle of the terminal's own streets — a second, fake ferry parked on the asphalt beside the two real ones you can drive onto. The landmark keeps its name pill and nothing else.",
@@ -1009,77 +972,6 @@
       "note": "LA CAPITANÍA DE PUERTO, al oeste del Muelle de Cruceros — madera VERDE y techo de ZINC ROJO, dos plantas. Es el edificio del MOPT que gobierna el muelle, y no se parece a nada más en la costa; con el genérico `civic` salía como una caja verde con un cuadro blanco.",
       "parts": [
         {
-          "_": "el cuerpo de madera, dos plantas",
-          "shape": "rect",
-          "fill": "#3f7d54",
-          "x": -20,
-          "y": -16,
-          "w": 40,
-          "h": 26
-        },
-        {
-          "_": "LAS TABLAS. `stripes` reparte n bandas sobre w y toma su color de una paleta ciclada — que es exactamente una pared de madera, y por eso son dos verdes y no un rayado encima.",
-          "shape": "stripes",
-          "x": -20,
-          "y": -16,
-          "w": 40,
-          "h": 26,
-          "n": 8,
-          "palette": [
-            "#3f7d54",
-            "#457f58"
-          ]
-        },
-        {
-          "_": "el entrepiso — lo que hace que se lean DOS plantas",
-          "shape": "rect",
-          "fill": "#2c5c3d",
-          "x": -20,
-          "y": -4,
-          "w": 40,
-          "h": 2
-        },
-        {
-          "_": "EL TECHO DE ZINC ROJO, a dos aguas",
-          "shape": "fan",
-          "fill": "#b8412f",
-          "pts": [
-            [
-              -23,
-              -16
-            ],
-            [
-              0,
-              -27
-            ],
-            [
-              23,
-              -16
-            ]
-          ]
-        },
-        {
-          "_": "el caballete",
-          "shape": "rect",
-          "fill": "#8e2f22",
-          "x": -23,
-          "y": -17,
-          "w": 46,
-          "h": 2
-        },
-        {
-          "shape": "grid",
-          "fill": "rgba(255,255,255,0.70)",
-          "x": -15,
-          "y": -13,
-          "cols": 4,
-          "rows": 2,
-          "dx": 9,
-          "dy": 9,
-          "w": 5,
-          "h": 5
-        },
-        {
           "shape": "label",
           "x": 0,
           "y": -32,
@@ -1087,58 +979,13 @@
           "fg": "#fff",
           "bg": "#2c5c3d"
         }
-      ]
+      ],
+      "body": "capitania",
+      "_body": "se levanta como los edificios nuevos (`bodies.capitania`); acá queda su rótulo."
     },
     "kiosk:vigoron": {
       "note": "VIGORÓN: se sirve sobre HOJA DE PLÁTANO, así que el puesto es verde y lo que se ve en el mostrador es el bulto de la hoja con el chicharrón encima, no un vaso.",
       "parts": [
-        {
-          "_": "el cuerpo",
-          "shape": "rect",
-          "fill": "#f4f1e4",
-          "x": -16,
-          "y": -8,
-          "w": 32,
-          "h": 18
-        },
-        {
-          "_": "el toldo",
-          "shape": "stripes",
-          "n": 4,
-          "palette": [
-            "#2f8f4e",
-            "#fff"
-          ],
-          "x": -16,
-          "y": -14,
-          "w": 32,
-          "h": 6
-        },
-        {
-          "_": "la hoja de plátano, doblada",
-          "shape": "ellipse",
-          "fill": "#3e9b57",
-          "cx": 0,
-          "cy": 0,
-          "rx": 9,
-          "ry": 6
-        },
-        {
-          "_": "el chicharrón",
-          "shape": "disc",
-          "fill": "#c98a3f",
-          "cx": -2,
-          "cy": -1,
-          "r": 3
-        },
-        {
-          "_": "el repollo",
-          "shape": "disc",
-          "fill": "#e6efd8",
-          "cx": 3,
-          "cy": 1,
-          "r": 2.5
-        },
         {
           "shape": "label",
           "x": 0,
@@ -1147,59 +994,18 @@
           "fg": "#fff",
           "bg": "#2f8f4e"
         }
-      ]
+      ],
+      "body": "kiosk",
+      "inks": {
+        "body": "#f4f1e4",
+        "awning": "#2f8f4e",
+        "awning2": "#ffffff"
+      },
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
     },
     "kiosk:ceviche": {
       "note": "CEVICHE: azul de mar y blanco, y en el mostrador el vaso plástico con el pescado curtido y su limón. Es el que peor aguanta el SOL, no la distancia — de ahí su `spoil`.",
       "parts": [
-        {
-          "_": "el cuerpo",
-          "shape": "rect",
-          "fill": "#f2f6f8",
-          "x": -16,
-          "y": -8,
-          "w": 32,
-          "h": 18
-        },
-        {
-          "_": "el toldo",
-          "shape": "stripes",
-          "n": 4,
-          "palette": [
-            "#2b6fa8",
-            "#fff"
-          ],
-          "x": -16,
-          "y": -14,
-          "w": 32,
-          "h": 6
-        },
-        {
-          "_": "el vaso",
-          "shape": "rect",
-          "fill": "rgba(255,255,255,0.92)",
-          "x": -5,
-          "y": -4,
-          "w": 10,
-          "h": 12
-        },
-        {
-          "_": "el ceviche",
-          "shape": "rect",
-          "fill": "#eae2cf",
-          "x": -5,
-          "y": 0,
-          "w": 10,
-          "h": 6
-        },
-        {
-          "_": "el limón",
-          "shape": "disc",
-          "fill": "#c3d94a",
-          "cx": 4,
-          "cy": -5,
-          "r": 2.4
-        },
         {
           "shape": "label",
           "x": 0,
@@ -1208,69 +1014,18 @@
           "fg": "#fff",
           "bg": "#2b6fa8"
         }
-      ]
+      ],
+      "body": "kiosk",
+      "inks": {
+        "body": "#f2f6f8",
+        "awning": "#2b6fa8",
+        "awning2": "#ffffff"
+      },
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
     },
     "kiosk:papicarne": {
       "note": "PAPI-CARNE: la soda de barrio, roja y amarilla, con su PLANCHA humeando y la caja de papas. Es el producto más repetido del mapa porque es la comida de calle de toda la zona.",
       "parts": [
-        {
-          "_": "el cuerpo",
-          "shape": "rect",
-          "fill": "#f7e9c9",
-          "x": -16,
-          "y": -8,
-          "w": 32,
-          "h": 18
-        },
-        {
-          "_": "el toldo",
-          "shape": "stripes",
-          "n": 4,
-          "palette": [
-            "#c8352e",
-            "#fff"
-          ],
-          "x": -16,
-          "y": -14,
-          "w": 32,
-          "h": 6
-        },
-        {
-          "_": "la plancha",
-          "shape": "rect",
-          "fill": "#4a4238",
-          "x": -12,
-          "y": -3,
-          "w": 11,
-          "h": 9
-        },
-        {
-          "_": "la carne encima",
-          "shape": "rect",
-          "fill": "#8a4a2c",
-          "x": -10,
-          "y": -1,
-          "w": 7,
-          "h": 4
-        },
-        {
-          "_": "la caja de papas",
-          "shape": "rect",
-          "fill": "#e8b93f",
-          "x": 2,
-          "y": -3,
-          "w": 9,
-          "h": 10
-        },
-        {
-          "_": "las papas asomando",
-          "shape": "rect",
-          "fill": "#f6dd8a",
-          "x": 3.5,
-          "y": -5,
-          "w": 6,
-          "h": 3
-        },
         {
           "shape": "label",
           "x": 0,
@@ -1279,76 +1034,18 @@
           "fg": "#fff",
           "bg": "#c8352e"
         }
-      ]
+      ],
+      "body": "kiosk",
+      "inks": {
+        "body": "#f7e9c9",
+        "awning": "#c8352e",
+        "awning2": "#ffffff"
+      },
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
     },
     "kiosk:mariscada": {
       "note": "MARISCADA: no es un puesto, es una MARISQUERÍA — por eso es ANCHA y no un cuadrito. Restaurante Tabaris ocupa un local horizontal de verdad, y un carrito de 32 px de frente no se le parecía en nada. Turquesa de local de playa, con su mostrador largo y la olla.",
       "parts": [
-        {
-          "_": "el cuerpo",
-          "shape": "rect",
-          "fill": "#f0efe6",
-          "x": -26,
-          "y": -8,
-          "w": 52,
-          "h": 18
-        },
-        {
-          "_": "el toldo",
-          "shape": "stripes",
-          "n": 6,
-          "palette": [
-            "#1f8a8a",
-            "#fff"
-          ],
-          "x": -26,
-          "y": -14,
-          "w": 52,
-          "h": 6
-        },
-        {
-          "_": "el mostrador largo",
-          "shape": "rect",
-          "fill": "#d9d2bd",
-          "x": -24,
-          "y": 2,
-          "w": 48,
-          "h": 6
-        },
-        {
-          "_": "la olla",
-          "shape": "disc",
-          "fill": "#6f7276",
-          "cx": -13,
-          "cy": -1,
-          "r": 5
-        },
-        {
-          "_": "lo que hierve",
-          "shape": "disc",
-          "fill": "#d8683f",
-          "cx": -13,
-          "cy": -2,
-          "r": 3
-        },
-        {
-          "_": "la bandeja de pescado",
-          "shape": "rect",
-          "fill": "#e7eef0",
-          "x": 2,
-          "y": -4,
-          "w": 16,
-          "h": 9
-        },
-        {
-          "_": "el pescado",
-          "shape": "ellipse",
-          "fill": "#9aa7ad",
-          "cx": 10,
-          "cy": 0,
-          "rx": 6,
-          "ry": 2.4
-        },
         {
           "shape": "label",
           "x": 0,
@@ -1357,7 +1054,14 @@
           "fg": "#fff",
           "bg": "#1f8a8a"
         }
-      ]
+      ],
+      "body": "kiosk-wide",
+      "inks": {
+        "body": "#f0efe6",
+        "awning": "#1f8a8a",
+        "awning2": "#ffffff"
+      },
+      "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador."
     }
   },
   "_signs": "LA SEÑALIZACIÓN, keyed by SignKind. Costa Rica signs to the Manual Centroamericano de Dispositivos Uniformes, so these are the real shapes: an ALTO is a red OCTAGON carrying the word (not `STOP`), a CEDA EL PASO is an inverted white triangle with a red border, and a tope is the yellow-hatched hump every calle de barrio has. Sizes are world px at the game's framing (~20 cuadrículas across), so a sign reads at a glance without swallowing the lane it stands beside.",
@@ -4921,6 +4625,771 @@
       ],
       "_coords": "LAS COORDENADAS VAN EN `[k, px]`. `evalOn` devuelve un número suelto TAL CUAL —es un absoluto en píxeles— y sólo la forma de arreglo lo lee como fracción del marco. Escrito `cx: -0.66` los cuatro árboles salieron como discos de medio píxel en el centro de la parcela: sin error, sin warning, simplemente no había patio.",
       "_inset": "Y VAN A 0,52 DEL MARCO, NO A 0,66. El marco de una parcela es su rectángulo de medias extensiones, pero el SUELO que se pinta es el contorno trazado del interior de la manzana, que es irregular: a 0,66 las esquinas del rectángulo caen fuera del verde y el árbol queda parado en el techo de una casona. No se dibuja el canto por la misma razón — `paintParcels` ya perfila la parcela con su forma REAL, y un `strokeRect` encima es un rectángulo sobre un polígono."
+    }
+  },
+  "bodies": {
+    "_note": "LOS CUERPOS 2.5D DE RECETA — lo que se levanta «como los edificios nuevos» sin venir del mundo emitido: la Capitanía, los quioscos, los cañones. Mismo formato que `content/world/centro.json` (bloques en METROS que suben de `z[0]` a `z[1]`; `box`/`disc`/`poly`; `roof`, `bands`, `windows`, `openings`), mismo pintor (`c2d/bodies.js`) y misma paleta (`materials.json → centro.inks`). Una tinta `$x` la pone el hito que usa la receta (`landmarks[*].inks`): así cada quiosco tiene su color sin una receta por producto. `turnDeg` gira la receta entera respecto del hito.",
+    "capitania": {
+      "_note": "LA CAPITANÍA DE PUERTO: casa de madera de dos plantas, blanca, con su CORREDOR VERDE AGUA que la rodea en las dos plantas (piso, baranda y columnas), techo oscuro a cuatro aguas de alero ancho y la linterna de techo rojo arriba. Fotos del autor.",
+      "tiers": [
+        {
+          "_": "el piso del corredor de abajo",
+          "box": [
+            16.6,
+            13.6
+          ],
+          "z": [
+            0,
+            0.6
+          ],
+          "wall": "capTealDark",
+          "cap": "capDeck"
+        },
+        {
+          "_": "la planta baja",
+          "box": [
+            12.5,
+            9.5
+          ],
+          "z": [
+            0.6,
+            3.8
+          ],
+          "wall": "capWhite",
+          "cap": "capWhite",
+          "bands": [
+            [
+              0,
+              0.14,
+              "capTeal"
+            ]
+          ],
+          "windows": {
+            "everyM": 2.6,
+            "wM": 1.2,
+            "z": [
+              1.4,
+              3.3
+            ],
+            "ink": "window"
+          }
+        },
+        {
+          "_": "el corredor de arriba: su piso y su baranda verde agua",
+          "box": [
+            16.6,
+            13.6
+          ],
+          "z": [
+            3.8,
+            4.9
+          ],
+          "wall": "capTeal",
+          "cap": "capDeck",
+          "bands": [
+            [
+              0,
+              0.3,
+              "capTealDark"
+            ]
+          ]
+        },
+        {
+          "_": "la planta alta",
+          "box": [
+            12.5,
+            9.5
+          ],
+          "z": [
+            4.9,
+            8.0
+          ],
+          "wall": "capWhite",
+          "cap": "capWhite",
+          "bands": [
+            [
+              0,
+              0.1,
+              "capTeal"
+            ],
+            [
+              0.86,
+              1,
+              "capWhite"
+            ]
+          ],
+          "windows": {
+            "everyM": 2.6,
+            "wM": 1.2,
+            "z": [
+              5.6,
+              7.4
+            ],
+            "ink": "window"
+          }
+        },
+        {
+          "box": [
+            0.45,
+            0.45
+          ],
+          "at": [
+            -7.8,
+            -6.3
+          ],
+          "z": [
+            0,
+            8.0
+          ],
+          "wall": "capTeal",
+          "cap": "capTeal"
+        },
+        {
+          "box": [
+            0.45,
+            0.45
+          ],
+          "at": [
+            0,
+            -6.3
+          ],
+          "z": [
+            0,
+            8.0
+          ],
+          "wall": "capTeal",
+          "cap": "capTeal"
+        },
+        {
+          "box": [
+            0.45,
+            0.45
+          ],
+          "at": [
+            7.8,
+            -6.3
+          ],
+          "z": [
+            0,
+            8.0
+          ],
+          "wall": "capTeal",
+          "cap": "capTeal"
+        },
+        {
+          "box": [
+            0.45,
+            0.45
+          ],
+          "at": [
+            7.8,
+            0
+          ],
+          "z": [
+            0,
+            8.0
+          ],
+          "wall": "capTeal",
+          "cap": "capTeal"
+        },
+        {
+          "box": [
+            0.45,
+            0.45
+          ],
+          "at": [
+            7.8,
+            6.3
+          ],
+          "z": [
+            0,
+            8.0
+          ],
+          "wall": "capTeal",
+          "cap": "capTeal"
+        },
+        {
+          "box": [
+            0.45,
+            0.45
+          ],
+          "at": [
+            0,
+            6.3
+          ],
+          "z": [
+            0,
+            8.0
+          ],
+          "wall": "capTeal",
+          "cap": "capTeal"
+        },
+        {
+          "box": [
+            0.45,
+            0.45
+          ],
+          "at": [
+            -7.8,
+            6.3
+          ],
+          "z": [
+            0,
+            8.0
+          ],
+          "wall": "capTeal",
+          "cap": "capTeal"
+        },
+        {
+          "box": [
+            0.45,
+            0.45
+          ],
+          "at": [
+            -7.8,
+            0
+          ],
+          "z": [
+            0,
+            8.0
+          ],
+          "wall": "capTeal",
+          "cap": "capTeal"
+        },
+        {
+          "_": "el techo oscuro a cuatro aguas; su alero vuela apenas sobre los corredores, que se ven alrededor",
+          "box": [
+            14.6,
+            11.6
+          ],
+          "z": [
+            8.0,
+            8.0
+          ],
+          "wall": "capRoof",
+          "cap": "capRoof",
+          "roof": {
+            "kind": "hip",
+            "riseM": 3.2,
+            "ink": "capRoof",
+            "ink2": "capRoofLite"
+          }
+        },
+        {
+          "_": "la linterna de techo rojo",
+          "box": [
+            3.0,
+            3.0
+          ],
+          "z": [
+            9.8,
+            11.6
+          ],
+          "wall": "capWhite",
+          "cap": "capWhite",
+          "windows": {
+            "everyM": 1.4,
+            "wM": 0.6,
+            "z": [
+              10.3,
+              11.2
+            ],
+            "ink": "window"
+          },
+          "roof": {
+            "kind": "pyramid",
+            "riseM": 1.7,
+            "ink": "capCupola",
+            "ink2": "capCupolaShade"
+          }
+        }
+      ]
+    },
+    "kiosk": {
+      "_note": "EL QUIOSCO: caseta detrás, mostrador al frente (+v), dos postes y el toldo a rayas del color del producto. `$body`, `$awning`, `$awning2` los pone cada producto.",
+      "tiers": [
+        {
+          "_": "el mostrador, al frente, con la franja del color del producto",
+          "box": [
+            7,
+            2.4
+          ],
+          "at": [
+            0,
+            1.0
+          ],
+          "z": [
+            0,
+            1.1
+          ],
+          "wall": "$body",
+          "cap": "kioskCounter",
+          "bands": [
+            [
+              0,
+              0.25,
+              "$awning"
+            ]
+          ]
+        },
+        {
+          "_": "la caseta, detrás",
+          "box": [
+            7,
+            2.1
+          ],
+          "at": [
+            0,
+            -1.15
+          ],
+          "z": [
+            0,
+            2.6
+          ],
+          "wall": "$body",
+          "cap": "$body",
+          "windows": {
+            "everyM": 2.2,
+            "wM": 0.9,
+            "z": [
+              1.2,
+              2.2
+            ],
+            "ink": "window"
+          }
+        },
+        {
+          "box": [
+            0.25,
+            0.25
+          ],
+          "at": [
+            -3.3,
+            2.1
+          ],
+          "z": [
+            1.1,
+            2.8
+          ],
+          "wall": "kioskPost",
+          "cap": "kioskPost"
+        },
+        {
+          "box": [
+            0.25,
+            0.25
+          ],
+          "at": [
+            3.3,
+            2.1
+          ],
+          "z": [
+            1.1,
+            2.8
+          ],
+          "wall": "kioskPost",
+          "cap": "kioskPost"
+        },
+        {
+          "_": "el toldo a rayas sobre la caseta: dos aguas, la cumbrera a lo largo. No cubre el mostrador, que es lo que se ve de frente.",
+          "box": [
+            7.6,
+            3.4
+          ],
+          "at": [
+            0,
+            -1.0
+          ],
+          "z": [
+            2.8,
+            2.8
+          ],
+          "wall": "$awning",
+          "cap": "$awning",
+          "roof": {
+            "kind": "gable",
+            "riseM": 0.9,
+            "axis": "long",
+            "ink": "$awning",
+            "ink2": "$awning2",
+            "stripes": 8
+          }
+        }
+      ]
+    },
+    "kiosk-wide": {
+      "_note": "LA MARISQUERÍA: el mismo quiosco, ancho como un local de playa.",
+      "tiers": [
+        {
+          "_": "el mostrador, al frente, con la franja del color del producto",
+          "box": [
+            12,
+            2.4
+          ],
+          "at": [
+            0,
+            1.0
+          ],
+          "z": [
+            0,
+            1.1
+          ],
+          "wall": "$body",
+          "cap": "kioskCounter",
+          "bands": [
+            [
+              0,
+              0.25,
+              "$awning"
+            ]
+          ]
+        },
+        {
+          "_": "la caseta, detrás",
+          "box": [
+            12,
+            2.1
+          ],
+          "at": [
+            0,
+            -1.15
+          ],
+          "z": [
+            0,
+            2.6
+          ],
+          "wall": "$body",
+          "cap": "$body",
+          "windows": {
+            "everyM": 2.2,
+            "wM": 0.9,
+            "z": [
+              1.2,
+              2.2
+            ],
+            "ink": "window"
+          }
+        },
+        {
+          "box": [
+            0.25,
+            0.25
+          ],
+          "at": [
+            -5.8,
+            2.1
+          ],
+          "z": [
+            1.1,
+            2.8
+          ],
+          "wall": "kioskPost",
+          "cap": "kioskPost"
+        },
+        {
+          "box": [
+            0.25,
+            0.25
+          ],
+          "at": [
+            5.8,
+            2.1
+          ],
+          "z": [
+            1.1,
+            2.8
+          ],
+          "wall": "kioskPost",
+          "cap": "kioskPost"
+        },
+        {
+          "_": "el toldo a rayas sobre la caseta: dos aguas, la cumbrera a lo largo. No cubre el mostrador, que es lo que se ve de frente.",
+          "box": [
+            12.6,
+            3.4
+          ],
+          "at": [
+            0,
+            -1.0
+          ],
+          "z": [
+            2.8,
+            2.8
+          ],
+          "wall": "$awning",
+          "cap": "$awning",
+          "roof": {
+            "kind": "gable",
+            "riseM": 0.9,
+            "axis": "long",
+            "ink": "$awning",
+            "ink2": "$awning2",
+            "stripes": 12
+          }
+        }
+      ]
+    },
+    "cannons": {
+      "_note": "LOS CAÑONES DEL PASEO: el pedestal en cruz naranja con su banda blanca, el pilar del centro y cuatro cañones negros sobre sus cureñas blancas, uno por brazo, apuntando afuera. Fotos del autor. `turnDeg: 45`: los brazos van a los puntos subcardinales, como estaban.",
+      "turnDeg": 45,
+      "tiers": [
+        {
+          "_": "el pedestal en cruz",
+          "poly": [
+            [
+              -1.7,
+              -4.8
+            ],
+            [
+              1.7,
+              -4.8
+            ],
+            [
+              1.7,
+              -2.6
+            ],
+            [
+              2.6,
+              -2.6
+            ],
+            [
+              2.6,
+              -1.7
+            ],
+            [
+              4.8,
+              -1.7
+            ],
+            [
+              4.8,
+              1.7
+            ],
+            [
+              2.6,
+              1.7
+            ],
+            [
+              2.6,
+              2.6
+            ],
+            [
+              1.7,
+              2.6
+            ],
+            [
+              1.7,
+              4.8
+            ],
+            [
+              -1.7,
+              4.8
+            ],
+            [
+              -1.7,
+              2.6
+            ],
+            [
+              -2.6,
+              2.6
+            ],
+            [
+              -2.6,
+              1.7
+            ],
+            [
+              -4.8,
+              1.7
+            ],
+            [
+              -4.8,
+              -1.7
+            ],
+            [
+              -2.6,
+              -1.7
+            ],
+            [
+              -2.6,
+              -2.6
+            ],
+            [
+              -1.7,
+              -2.6
+            ]
+          ],
+          "z": [
+            0,
+            1.2
+          ],
+          "wall": "cannonOrange",
+          "cap": "cannonOrangeLite",
+          "bands": [
+            [
+              0.3,
+              0.68,
+              "white"
+            ]
+          ]
+        },
+        {
+          "_": "el pilar del centro",
+          "box": [
+            1.8,
+            1.8
+          ],
+          "z": [
+            1.2,
+            2.7
+          ],
+          "wall": "white",
+          "cap": "cannonOrange",
+          "bands": [
+            [
+              0,
+              0.18,
+              "cannonOrange"
+            ]
+          ]
+        },
+        {
+          "box": [
+            2.4,
+            1.5
+          ],
+          "at": [
+            3.3,
+            0
+          ],
+          "rotDeg": 0,
+          "z": [
+            1.2,
+            2.3
+          ],
+          "wall": "white",
+          "cap": "white",
+          "_": "las cureñas blancas, una por brazo"
+        },
+        {
+          "box": [
+            2.4,
+            1.5
+          ],
+          "at": [
+            -3.3,
+            0
+          ],
+          "rotDeg": 0,
+          "z": [
+            1.2,
+            2.3
+          ],
+          "wall": "white",
+          "cap": "white"
+        },
+        {
+          "box": [
+            2.4,
+            1.5
+          ],
+          "at": [
+            0,
+            3.3
+          ],
+          "rotDeg": 90,
+          "z": [
+            1.2,
+            2.3
+          ],
+          "wall": "white",
+          "cap": "white"
+        },
+        {
+          "box": [
+            2.4,
+            1.5
+          ],
+          "at": [
+            0,
+            -3.3
+          ],
+          "rotDeg": 90,
+          "z": [
+            1.2,
+            2.3
+          ],
+          "wall": "white",
+          "cap": "white"
+        },
+        {
+          "box": [
+            3.8,
+            0.75
+          ],
+          "at": [
+            4.0,
+            0
+          ],
+          "rotDeg": 0,
+          "z": [
+            2.0,
+            2.75
+          ],
+          "wall": "barrelDark",
+          "cap": "barrel",
+          "_": "los cañones, cada uno más largo que su brazo"
+        },
+        {
+          "box": [
+            3.8,
+            0.75
+          ],
+          "at": [
+            -4.0,
+            0
+          ],
+          "rotDeg": 0,
+          "z": [
+            2.0,
+            2.75
+          ],
+          "wall": "barrelDark",
+          "cap": "barrel"
+        },
+        {
+          "box": [
+            3.8,
+            0.75
+          ],
+          "at": [
+            0,
+            4.0
+          ],
+          "rotDeg": 90,
+          "z": [
+            2.0,
+            2.75
+          ],
+          "wall": "barrelDark",
+          "cap": "barrel"
+        },
+        {
+          "box": [
+            3.8,
+            0.75
+          ],
+          "at": [
+            0,
+            -4.0
+          ],
+          "rotDeg": 90,
+          "z": [
+            2.0,
+            2.75
+          ],
+          "wall": "barrelDark",
+          "cap": "barrel"
+        }
+      ]
     }
   }
 }

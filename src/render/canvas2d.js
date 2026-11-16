@@ -30,6 +30,7 @@ import { drawLandmark, drawLote, drawParcels } from "./c2d/landmarks.js";
 import { drawAttractions, drawFeriaNightEffects } from "./c2d/attractions.js";
 import { drawPuntaGates, drawPuntaNight } from "./c2d/punta.js";
 import { drawCentroStructures } from "./c2d/centro.js";
+import { beginFloraBatch, endFloraBatch } from "./c2d/flora.js";
 import {
   drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawGullFlock, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
@@ -148,6 +149,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   drawBarriers(view);
   drawSigns(view);      // ALTO, semáforos, paradas, zebras, topes
   drawEditorWorld(view, "elements");
+  beginFloraBatch();   // los árboles de las escenas (patios, parques): sombras primero, copas después
   drawParcels(view);   // church + sponsor slots (their ground is in the acera pass)
   phase("setpieces");
   // EL AGUACERO SOBRE EL SUELO, antes de que se dibuje nada que ande encima:
@@ -182,6 +184,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     if (lo.x < view.x0 - 60 || lo.x > view.x1 + 60 || lo.y < view.y0 - 60 || lo.y > view.y1 + 60) continue;
     drawLote(lo);
   }
+  endFloraBatch();
   phase("landmarks");
   // Pedestrians, traffic (Pixi's in hybrid mode)
   if (!OVERLAY) {

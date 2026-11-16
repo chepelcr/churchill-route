@@ -26,6 +26,9 @@ const drew = await page.evaluate(async ({ COLS, CELL, ROW }) => {
     import("/src/render/c2d/shapes.js"),
     import("/src/domain/units.js"),
   ]);
+  const bodies = await import("/src/render/c2d/bodies.js");
+  const { state } = await import("/src/game/state.js");
+  const PROPS = (await import("/src/assets/world-props.json", { with: { type: "json" } })).default;
   const kiosks = w2.WORLD2D.LANDMARKS.filter((l) => l.type === "kiosk");
   const rows = Math.ceil(kiosks.length / COLS);
   const missing = [];
@@ -49,6 +52,14 @@ const drew = await page.evaluate(async ({ COLS, CELL, ROW }) => {
     if (!prop) { missing.push(k.id); return; }
     g.save();
     g.translate(cx, cy); g.scale(2.2, 2.2);
+    // EL PUESTO SE LEVANTA COMO LOS EDIFICIOS NUEVOS: su receta es un cuerpo 2.5D
+    // (`world-props.json → bodies`) con las tintas del producto. Se pinta acá mismo
+    // —encolar y vaciar— y después el rótulo, igual que en el juego.
+    if (prop.body) {
+      state.cam.x = 0; state.cam.y = 0;   // la cámara a plomo sobre la celda: la hoja no depende de dónde quedó el juego
+      bodies.queueBody(bodies.bodyAt(PROPS.bodies[prop.body], 0, 0, 0, `sheet:${prop.body}`), prop.inks || null);
+      bodies.flushBodies();
+    }
     sh.paintAt(prop.parts, 0, 0, { g, pxPerM: units.PX_PER_M, vars: lm.propVars(k, prop) });
     g.restore();
     g.fillStyle = "#26222c"; g.font = "11px monospace"; g.textAlign = "center";

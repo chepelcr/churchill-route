@@ -44,6 +44,8 @@ await page.evaluate(async () => {
 });
 
 const drew = await page.evaluate(async ([scenes, cell, cols]) => {
+  const bodies = await import("/src/render/c2d/bodies.js");
+  const { state } = await import("/src/game/state.js");
   const [{ drawLandmark }, gfx, { LANDMARK_TYPE }] = await Promise.all([
     import("/src/render/c2d/landmarks.js"),
     import("/src/render/c2d/gfx.js"),
@@ -84,6 +86,10 @@ const drew = await page.evaluate(async ([scenes, cell, cols]) => {
     const cx = (i % cols) * cell[0] + cell[0] / 2;
     const cy = Math.floor(i / cols) * cell[1] + cell[1] / 2 + 8;
     drawLandmark({ id: c.id, type: c.type, x: cx, y: cy, name: "Hotel Tioga", w: 116, h: 90 });
+    // un hito con cuerpo 2.5D (la Capitanía, los quioscos) se ENCOLA: en el juego lo pinta la
+    // cola de cuerpos después de la gente; en la hoja se vacía la cola acá mismo
+    state.cam.x = cx; state.cam.y = cy;   // a plomo sobre la celda
+    bodies.flushBodies();
     g.fillStyle = "#26222c";
     g.font = "11px monospace";
     g.textAlign = "center";

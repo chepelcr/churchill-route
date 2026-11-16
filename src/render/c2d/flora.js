@@ -132,11 +132,26 @@ function paintFlora(sp, frame) {
   const { x, y, s } = frame, h = (sp.heightM || F25.heightM) * s;
   const o = parallaxOffset(state.cam, x, y, h, W.PX_PER_M);
   const spin = TOP.spin[kind] && frame.tMs != null ? Math.sin(frame.tMs * 0.001 * TOP.swaySpeed + (frame.phase || 0)) * TOP.swayRad : 0;
-  paintTopdown(ctx, TOP, sp, form, kind, {
+  const args = {
     x, y, s, seed: frame.seed, q: textureScale(), spin,
     crown: { dx: o.dx * TOP.parallaxK, dy: o.dy * TOP.parallaxK },
     shadow: castShadow(sunShadow(h), sp.r * s * TOP.shadowMaxR),
-  });
+  };
+  if (batch) { batch.push([sp, form, kind, args]); return; }
+  paintTopdown(ctx, TOP, sp, form, kind, args);
+}
+
+// EL LOTE: NINGUNA SOMBRA ENCIMA DE OTRO ÁRBOL. Pintados uno por uno, la sombra del segundo caía
+// sobre la copa del primero. Entre `beginFloraBatch` y `endFloraBatch` los árboles se juntan y se
+// pintan en dos pasadas: todas las sombras —que son suelo— y después todas las copas.
+let batch = null;
+export function beginFloraBatch() { batch = []; }
+export function endFloraBatch() {
+  const list = batch;
+  batch = null;
+  if (!list || !list.length) return;
+  for (const [sp, form, kind, args] of list) paintTopdown(ctx, TOP, sp, form, kind, { ...args, only: "shadow" });
+  for (const [sp, form, kind, args] of list) paintTopdown(ctx, TOP, sp, form, kind, { ...args, only: "crown" });
 }
 
 /** Draw one tree of any species. `tr.k` names it; no `k` is the almendro. */

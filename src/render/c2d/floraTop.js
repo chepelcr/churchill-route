@@ -248,8 +248,9 @@ function sprite(T, sp, form, kind, R, variant, q) {
  *   crown    {dx, dy}: cuánto se corre la copa respecto del pie (el pinhole)
  *   shadow   {dx, dy, alpha}: la sombra del sol, desde el pie
  *   s, seed, q, spin   escala, semilla, escala de pantalla y giro extra (el vaivén de una palma)
+ *   only     "shadow" | "crown": sólo una de las dos (el lote de `flora.js` las separa)
  */
-export function paintTopdown(g, T, sp, form, kind, { x, y, s = 1, seed = 0, crown, shadow, q = 1, spin = 0 }) {
+export function paintTopdown(g, T, sp, form, kind, { x, y, s = 1, seed = 0, crown, shadow, q = 1, spin = 0, only = null }) {
   const R = sp.r * s * (T.radiusMul[kind] ?? 1), variant = Math.floor(hash01(seed * 3.1) * T.variants);
   const sq = Math.max(1, Math.min(T.maxQ, Math.round(q * 2) / 2));
   const S = sprite(T, sp, form, kind, Math.round(R * 2) / 2, variant, sq), h = S.half;
@@ -260,11 +261,11 @@ export function paintTopdown(g, T, sp, form, kind, { x, y, s = 1, seed = 0, crow
     if (!rot) { g.drawImage(img, cx - h, cy - h, h * 2, h * 2); return; }
     g.save(); g.translate(cx, cy); g.rotate(rot); g.drawImage(img, -h, -h, h * 2, h * 2); g.restore();
   };
-  if (shadow && shadow.alpha > 0) {
+  if (only !== "crown" && shadow && shadow.alpha > 0) {
     const prev = g.globalAlpha;
     g.globalAlpha = prev * shadow.alpha * T.shadowAlpha;
     blit(S.shadow, x + shadow.dx, y + shadow.dy);
     g.globalAlpha = prev;
   }
-  blit(S.crown, x + (crown?.dx || 0), y + (crown?.dy || 0));
+  if (only !== "shadow") blit(S.crown, x + (crown?.dx || 0), y + (crown?.dy || 0));
 }

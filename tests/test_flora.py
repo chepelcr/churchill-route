@@ -321,3 +321,34 @@ class FloraRegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TopdownFloraTests(unittest.TestCase):
+    """LA VISTA CENITAL (`effects.json → flora25.topdown`, trazos en `c2d/floraTop.js`).
+
+    Lo que se rompe en silencio: un tipo de copa que el pintor no implementa, o
+    una especie mandada a un tipo que pide hojas cuando ella no trae `canopy` —
+    el seco y el indio desnudo son corteza nada más, y un `broadleaf` sobre
+    ellos tiraba una excepción en el lazo de dibujo (el cuadro se congela)."""
+
+    def setUp(self):
+        import json, os, re
+        from churchill.world.config import ROOT
+        self.T = json.load(open(os.path.join(ROOT, "src", "assets", "effects.json"), encoding="utf-8"))["flora25"]["topdown"]
+        self.flora = json.load(open(os.path.join(ROOT, "src", "assets", "flora.json"), encoding="utf-8"))
+        src = open(os.path.join(ROOT, "src", "render", "c2d", "floraTop.js"), encoding="utf-8").read()
+        self.painters = set(re.search(r"const PAINTERS = \{([^}]*)\}", src).group(1).replace(" ", "").split(",")) - {""}
+        self.painters = {p.split(":")[0] for p in self.painters}
+
+    def test_every_kind_has_a_painter_and_a_recipe(self):
+        for gen, kind in self.T["byGenerator"].items():
+            self.assertIn(kind, self.painters, f"{gen} → {kind}: floraTop.js no lo pinta")
+            self.assertIn(kind, self.T["kinds"], f"{kind}: sin receta")
+            self.assertIn(kind, self.T["radiusMul"])
+            self.assertIn(kind, self.T["spin"])
+
+    def test_leafy_kinds_only_get_species_with_leaves(self):
+        for sid, sp in self.flora["species"].items():
+            kind = self.T["byGenerator"].get(self.flora["forms"][sp["form"]]["generator"])
+            if kind and kind != "bare":
+                self.assertGreaterEqual(len(sp.get("canopy", [])), 2, f"{sid}: la copa cenital `{kind}` pide tonos de hoja (`canopy`)")

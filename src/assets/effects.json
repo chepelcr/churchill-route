@@ -210,19 +210,205 @@
     "_none_today": "NO vehicle part declares one yet, and that is deliberate: adding the verbs is inert until somebody authors motion, which is what let this land with a zero-pixel diff. A spinning wheel is a design change and belongs in its own commit."
   },
   "flora25": {
-    "_note": "EL ÁRBOL EN 2.5D (`c2d/flora.js → paintFlora`). La copa se corre con el pinhole de los edificios según la altura de la especie y el tronco une pie y copa; la sombra es la del sol de todos (`sunShadow`). `generators`: las formas que son tronco + copa y se pintan así; las demás (las ramas peladas, el mangle con sus raíces) siguen en alzado. `crownScaleY` desachata la copa, que el generador dibuja como alzado.",
+    "_note": "EL ÁRBOL VISTO DESDE ARRIBA (`c2d/flora.js → paintFlora`, trazos en `c2d/floraTop.js`). Sin tronco: la copa vista desde arriba, corrida con el pinhole de los edificios según la altura de la especie, y su sombra = la silueta de la copa corrida por el sol (`sunShadow`). `topdown` es la receta de cada tipo de copa; los colores son los de la especie.",
     "enabled": true,
-    "generators": ["crown-stack", "tier-stack", "column-stack", "frond-ring", "fan-ring"],
     "heightM": 8,
-    "crownScaleY": 1.18,
-    "leanMinR": 0.3,
-    "leanMaxR": 0.7,
-    "_lean": "cuánto se corre la copa respecto de su pie, en fracciones del radio de la copa: nunca menos de `leanMinR` (siempre asoma algo de tronco) ni más de `leanMaxR` (nunca queda un poste con la copa lejos).",
-    "shadow": "rgba(0,0,0,0.22)",
-    "noTrunk": "rgba(0,0,0,0)",
-    "_noTrunk": "la tinta con que el generador pinta SU tronco de alzado cuando el árbol va en 2.5D: ninguna. El tronco de verdad lo traza `paintFlora`, del pie a la copa.",
-    "shadowR": 0.9,
-    "shadowSquashY": 0.8
+    "topdown": {
+      "_note": "`byGenerator`: qué tipo de copa cenital lleva cada generador de `flora.json → forms`; uno que no está (el mangle) sigue en alzado. `kinds`: la receta de cada tipo, en fracciones del radio de la copa. `byForm`: lo que una forma cambia de su receta. `light`: de dónde viene la luz que aclara la copa (fija: el sprite se pinta una vez; la SOMBRA sí sigue al sol).",
+      "byGenerator": {
+        "crown-stack": "broadleaf",
+        "branch-crown": "bare",
+        "tier-stack": "conifer",
+        "column-stack": "conifer",
+        "frond-ring": "palm",
+        "fan-ring": "fan"
+      },
+      "radiusMul": {
+        "broadleaf": 1.12,
+        "palm": 1.25,
+        "fan": 1.1,
+        "conifer": 0.95,
+        "bare": 1.0
+      },
+      "spin": {
+        "palm": true,
+        "fan": true,
+        "conifer": true,
+        "broadleaf": false,
+        "bare": true
+      },
+      "swaySpeed": 0.9,
+      "swayRad": 0.05,
+      "parallaxK": 1.0,
+      "variants": 4,
+      "maxQ": 4,
+      "cacheMax": 48,
+      "shadowInk": "#10160c",
+      "shadowAlpha": 0.34,
+      "kinds": {
+        "broadleaf": {
+          "light": [
+            -0.55,
+            -0.6
+          ],
+          "lobes": [
+            6,
+            8
+          ],
+          "jitter": 0.5,
+          "coreR": 0.62,
+          "lobeDist": [
+            0.42,
+            0.58
+          ],
+          "lobeR": [
+            0.36,
+            0.5
+          ],
+          "rimLeaves": 18,
+          "rimDist": [
+            0.78,
+            0.94
+          ],
+          "rimR": [
+            0.1,
+            0.17
+          ],
+          "midScale": 0.84,
+          "midShift": 0.16,
+          "midRimKeep": 0.55,
+          "topLobes": [
+            4,
+            6
+          ],
+          "topDist": [
+            0.14,
+            0.3
+          ],
+          "topR": [
+            0.22,
+            0.32
+          ],
+          "topShift": 0.34,
+          "highlights": 9,
+          "highlightDist": 0.38,
+          "highlightShift": 0.42,
+          "highlightR": [
+            0.05,
+            0.1
+          ],
+          "branches": null
+        },
+        "palm": {
+          "light": [
+            -0.55,
+            -0.6
+          ],
+          "fronds": [
+            8,
+            10
+          ],
+          "jitter": 0.35,
+          "len": [
+            0.82,
+            1.0
+          ],
+          "widthR": [
+            0.16,
+            0.22
+          ],
+          "pinnae": 6,
+          "pinnaW": 0.025,
+          "heartR": 0.14
+        },
+        "fan": {
+          "light": [
+            -0.55,
+            -0.6
+          ],
+          "leaves": [
+            6,
+            8
+          ],
+          "jitter": 0.4,
+          "dist": [
+            0.35,
+            0.5
+          ],
+          "leafR": [
+            0.42,
+            0.55
+          ],
+          "spread": 1.9,
+          "pleats": 7,
+          "pleatW": 0.02,
+          "petioleW": 0.05,
+          "heartR": 0.16
+        },
+        "conifer": {
+          "light": [
+            -0.55,
+            -0.6
+          ],
+          "rings": 4,
+          "points": 11,
+          "innerR": 0.72,
+          "shrink": 0.62
+        },
+        "bare": {
+          "limbs": [
+            4,
+            6
+          ],
+          "jitter": 0.6,
+          "limbLen": [
+            0.38,
+            0.5
+          ],
+          "fork": [
+            0.35,
+            0.6
+          ],
+          "shrink": [
+            0.55,
+            0.72
+          ],
+          "depth": 2,
+          "widthR": 0.07
+        }
+      },
+      "byForm": {
+        "_note": "una forma que se ve distinta desde arriba: el guanacaste más ancho y abierto, el cedro con ramas asomando, el florecido con más brillo",
+        "guanacaste_umbrella": {
+          "lobes": [
+            8,
+            10
+          ],
+          "lobeDist": [
+            0.5,
+            0.66
+          ],
+          "rimLeaves": 24
+        },
+        "cedro_open": {
+          "branches": {
+            "count": [
+              4,
+              5
+            ],
+            "len": [
+              0.5,
+              0.7
+            ],
+            "widthR": 0.05
+          },
+          "midRimKeep": 0.4
+        },
+        "flowering_round": {
+          "highlights": 14
+        }
+      }
+    }
   },
   "sunShadow": {
     "_note": "LA SOMBRA SIGUE AL SOL, y es UNA sola respuesta para todo lo que la tira. Antes había DIECINUEVE desplazamientos fijos repartidos en cuatro archivos —cada peatón, los barcos, la boya, el banco, la caseta, el ferry, la placa de un hito y todo edificio— y ninguno sabía qué hora era: `ctx.translate(4, 4)`, abajo y a la derecha, a las tres de la tarde y a las seis. Los árboles ya seguían al sol desde el ciclo continuo; esto es esa misma regla, escrita una vez.",

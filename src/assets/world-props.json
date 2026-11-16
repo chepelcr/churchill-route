@@ -17,7 +17,12 @@
         }
       ]
     },
-    "noLandmarkShadow": ["stadium", "pool", "park", "lighthouse"]
+    "noLandmarkShadow": [
+      "stadium",
+      "pool",
+      "park",
+      "lighthouse"
+    ]
   },
   "landmarks": {
     "kiosk": {
@@ -2244,7 +2249,9 @@
         },
         {
           "shape": "family",
-          "verb": "lighthouse-tower", "heightM": 22, "_heightM": "la altura de la torre, para su sombra: la tira el sol (`sunShadow`), no la elipse fija `shadowDx/Dy`, que queda sólo para la hoja de arte y el editor.",
+          "verb": "lighthouse-tower",
+          "heightM": 22,
+          "_heightM": "la altura de la torre, para su sombra: la tira el sol (`sunShadow`), no la elipse fija `shadowDx/Dy`, que queda sólo para la hoja de arte y el editor.",
           "shadow": "$towerShadow",
           "shadowDx": 7,
           "shadowDy": 5,
@@ -4853,221 +4860,59 @@
       "_shadow": "La sombra dejó de ser una parte pintada a mano. Era el mismo cuerpo corrido unos píxeles fijos: no sabía qué hora era, no crecía con la altura y no cubría lo que no fuera esa primera forma. Ahora la masa declara su ALTURA EN METROS y `paintParts` hace una primera pasada con el sol del día. `castsShadow: false` en la escena mantiene el detalle —bandas, puertas, columnas— sin tirar una segunda sombra encima de la que ya tira lo que lo sostiene."
     },
     "patio": {
-      "note": "El interior de una manzana. Cuatro árboles en las esquinas, la acera que las une contra la cara interior de las casonas, y el centro libre para que una fuente autorada tenga dónde ir.",
+      "note": "El interior de una manzana. Cuatro árboles en las esquinas —almendros de verdad, por el mismo pintor que todos— y el centro libre para que una fuente autorada tenga dónde ir.",
       "palette": {
-        "kerb": "rgba(232,226,210,0.55)",
-        "crown": "#4f7f46",
-        "crownLite": "#5f9553",
-        "trunk": "#6b4a2f"
+        "kerb": "rgba(232,226,210,0.55)"
       },
-      "heightM": 6,
       "castsShadow": false,
       "volume": false,
       "_volume": "La vista 2.5D levanta volumen desde las alturas de una escena (`three/scenes.js`); aquí las cuatro masas que proyectan son COPAS de árbol, no cuerpos, y extruidas salen cilindros de seis metros. Se quedan planas y con su sombra de Canvas.",
       "parts": [
         {
-          "_": "los cuatro árboles de esquina, escritos uno por uno",
-          "shape": "group",
-          "x": 0,
-          "y": 0,
-          "parts": [
+          "_": "los cuatro árboles de esquina: ÁRBOLES DE VERDAD, sembrados con `paintTree` (vista cenital, sombra del sol), no discos pintados",
+          "shape": "scatter",
+          "paint": "tree",
+          "species": "almendro",
+          "layout": "points",
+          "scale": 1.0,
+          "points": [
             {
-              "shape": "disc",
-              "fill": "$trunk",
-              "cx": [
+              "x": [
                 -0.52,
                 0
               ],
-              "cy": [
-                -0.52,
-                0
-              ],
-              "r": [
-                0.05,
-                0
-              ]
-            },
-            {
-              "shape": "disc",
-              "fill": "$crown",
-              "cx": [
-                -0.52,
-                0
-              ],
-              "cy": [
+              "y": [
                 -0.48,
                 0
-              ],
-              "r": [
-                0.17,
-                0
-              ],
-              "heightM": 6,
-              "castsShadow": true
+              ]
             },
             {
-              "shape": "disc",
-              "fill": "$crownLite",
-              "cx": [
+              "x": [
+                0.52,
+                0
+              ],
+              "y": [
                 -0.48,
-                0
-              ],
-              "cy": [
-                -0.44,
-                0
-              ],
-              "r": [
-                0.09,
                 0
               ]
             },
             {
-              "shape": "disc",
-              "fill": "$trunk",
-              "cx": [
-                0.52,
-                0
-              ],
-              "cy": [
+              "x": [
                 -0.52,
                 0
               ],
-              "r": [
-                0.05,
-                0
-              ]
-            },
-            {
-              "shape": "disc",
-              "fill": "$crown",
-              "cx": [
-                0.52,
-                0
-              ],
-              "cy": [
-                -0.48,
-                0
-              ],
-              "r": [
-                0.17,
-                0
-              ],
-              "heightM": 6,
-              "castsShadow": true
-            },
-            {
-              "shape": "disc",
-              "fill": "$crownLite",
-              "cx": [
+              "y": [
                 0.48,
                 0
-              ],
-              "cy": [
-                -0.44,
-                0
-              ],
-              "r": [
-                0.09,
-                0
               ]
             },
             {
-              "shape": "disc",
-              "fill": "$trunk",
-              "cx": [
-                -0.52,
-                0
-              ],
-              "cy": [
+              "x": [
                 0.52,
                 0
               ],
-              "r": [
-                0.05,
-                0
-              ]
-            },
-            {
-              "shape": "disc",
-              "fill": "$crown",
-              "cx": [
-                -0.52,
-                0
-              ],
-              "cy": [
+              "y": [
                 0.48,
-                0
-              ],
-              "r": [
-                0.17,
-                0
-              ],
-              "heightM": 6,
-              "castsShadow": true
-            },
-            {
-              "shape": "disc",
-              "fill": "$crownLite",
-              "cx": [
-                -0.48,
-                0
-              ],
-              "cy": [
-                0.44,
-                0
-              ],
-              "r": [
-                0.09,
-                0
-              ]
-            },
-            {
-              "shape": "disc",
-              "fill": "$trunk",
-              "cx": [
-                0.52,
-                0
-              ],
-              "cy": [
-                0.52,
-                0
-              ],
-              "r": [
-                0.05,
-                0
-              ]
-            },
-            {
-              "shape": "disc",
-              "fill": "$crown",
-              "cx": [
-                0.52,
-                0
-              ],
-              "cy": [
-                0.48,
-                0
-              ],
-              "r": [
-                0.17,
-                0
-              ],
-              "heightM": 6,
-              "castsShadow": true
-            },
-            {
-              "shape": "disc",
-              "fill": "$crownLite",
-              "cx": [
-                0.48,
-                0
-              ],
-              "cy": [
-                0.44,
-                0
-              ],
-              "r": [
-                0.09,
                 0
               ]
             }

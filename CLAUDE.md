@@ -76,6 +76,7 @@ The procedure is three steps and it is not optional:
 | the world's palettes: estero, malecón, structures, streets, weather, piers | `src/assets/materials.json` |
 | the HUD, the minimap, the crossing card, the tide bar | `src/assets/hud.json` |
 | trees and wood mixes | `src/assets/flora.json` |
+| **cómo se ve un árbol desde ARRIBA** — lóbulos, luz, palma en estrella, ramas peladas, su sombra | `src/assets/effects.json` → `flora25.topdown` (trazos: `c2d/floraTop.js`); los árboles de acera se apagan en `flora.json` → `roadside` |
 | the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` (verbs: `c2d/feriaShapes.js`) |
 | spawn rates, buses, tides, the day cycle | `src/content/simulation.json` |
 | unlocks, the tutorial, **the MVP gate** | `src/content/progression.json` |

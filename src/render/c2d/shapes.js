@@ -211,6 +211,12 @@ export function scatterPlacements(p, frame, draw) {
   }
   const seed = Number(value(p.seed)) || 0;
   const rx = xSize(p.rx ?? p.r ?? 0), ry = ySize(p.ry ?? p.r ?? 0);
+  // `points`: copias en lugares FIJOS, cada uno `{x, y}` en el marco (el patio planta sus cuatro
+  // árboles de esquina así). Las otras disposiciones son al azar por hash; ésta no.
+  if (p.layout === "points") {
+    (p.points || []).forEach((pt, i) => draw(i, { dx: X(value(pt.x)) - X(0), dy: Y(value(pt.y)) - Y(0), rot: 0, scale: Number(value(p.scale ?? 1)) }));
+    return;
+  }
   for (let i = 0; i < n; i++) {
     if (p.layout === "box") {
       const seedX = Number(value(p.seedX)) || 0, seedY = Number(value(p.seedY)) || 0;

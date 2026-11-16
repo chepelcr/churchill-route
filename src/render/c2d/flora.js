@@ -16,7 +16,8 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { SURFACE } from "../../game/surfaces.js";
 import { state } from "../../game/state.js";
-import { ACERA_PX, ctx, flatPath, hash01 } from "./gfx.js";
+import { ACERA_PX, ctx, flatPath, hash01, textureScale } from "./gfx.js";
+import { paintTopdown, topdownKind } from "./floraTop.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { sunVector } from "../../game/daynight.js";
@@ -95,65 +96,38 @@ export function onFeriaDeck(x, y, margin = 32) {
   return false;
 }
 
-// ───────────────────────── el árbol en 2.5D ─────────────────────────
-// UN ÁRBOL SE VE DESDE ARRIBA, COMO UN EDIFICIO. Se dibujaba en alzado —el
-// tronco subiendo en la pantalla y la copa encima— al lado de edificios que ya
-// se levantan con el pinhole de `depth.js`: dos perspectivas en la misma calle.
-// Ahora el pie se queda donde está, la COPA se corre hacia afuera del centro de
-// la pantalla según su altura (`heightM` de la especie, el mismo vector que
-// corre la tapa de un edificio) y el tronco es lo que une los dos. Bajo la
-// cámara la copa tapa su tronco, que es lo que se ve mirando un árbol a plomo.
+// ───────────────────────── el árbol, visto desde arriba ─────────────────────────
+// VISTA CENITAL, COMO TODO LO DEMÁS. La cámara mira a plomo, así que de un
+// árbol no se ve el tronco: se ve su COPA desde arriba y su SOMBRA en el suelo,
+// que es la silueta de esa copa corrida por el sol. Lo pinta `floraTop.js`; acá
+// sólo se decide dónde va cada cosa:
 //
-// LA COPA SIGUE SIENDO LA DEL REGISTRO: la pinta el mismo generador de siempre
-// (`floraShapes.js`), corrido para que su centro caiga en la copa y con el
-// tronco en tinta transparente — el tronco de alzado bajaría recto desde la
-// copa. Las formas que no son «tronco + copa» (`flora25.generators` dice cuáles
-// sí) siguen en alzado.
+// * la copa se corre con el MISMO pinhole que la tapa de un edificio, según la
+//   altura de la especie (`heightM`), así un árbol junto a una casa se inclina
+//   igual que ella — sin tronco que lo delate;
+// * la sombra sale del PIE y la corre `sunShadow(alto)`, el sol de todos: un
+//   árbol y la casa de al lado la tiran hacia el mismo lado y del largo que les
+//   da su altura.
 //
-// Y LA SOMBRA ES LA DEL SOL DE TODOS (`sunShadow(heightM)`), no la elipse propia
-// del generador: un árbol y la casa de al lado tiran la sombra hacia el mismo
-// lado y del largo que les da su altura.
+// Las formas sin versión cenital (`flora25.topdown.byGenerator` dice cuáles la
+// tienen: hoy todas menos el mangle, que tiene su propio pintor) siguen en alzado.
 const F25 = EFFECTS.flora25;
-const F25_FORMS = new Set(F25.generators);
-const GHOST = new WeakMap();
-function trunkless(sp) {
-  if (!GHOST.has(sp)) GHOST.set(sp, { ...sp, trunk: F25.noTrunk });
-  return GHOST.get(sp);
-}
+const TOP = F25.topdown;
 
 function paintFlora(sp, frame) {
-  const form = FLORA.forms[sp.form];
-  if (!F25.enabled || !F25_FORMS.has(form.generator)) {
+  const form = FLORA.forms[sp.form], kind = F25.enabled ? topdownKind(TOP, form) : null;
+  if (!kind) {
     standing(ctx, frame.x, frame.y, (solar) => paintFloraSpecies(ctx, sp, form, { ...frame, solar }));
     return;
   }
-  const { x, y, s } = frame, h = (sp.heightM || F25.heightM) * s, radius = sp.r * s;
-  const o = parallaxOffset(state.cam, x, y, h, W.PX_PER_M), sh = sunShadow(h);
-  // LA COPA SE CORRE SIEMPRE PARECIDO. El pinhole puro da cero bajo la cámara (sólo copa) y el tope
-  // entero en la orilla (puro tronco): en un mismo cuadro unos árboles parecían arbustos y otros
-  // postes. La DIRECCIÓN sigue siendo la del pinhole; el LARGO se acota a una fracción de la copa.
-  {
-    const len = Math.hypot(o.dx, o.dy), lo = radius * F25.leanMinR, hi = radius * F25.leanMaxR;
-    const want = Math.max(lo, Math.min(hi, len));
-    if (len > 0.01) { o.dx *= want / len; o.dy *= want / len; } else { o.dx = 0; o.dy = -want; }
-  }
-  if (sh.alpha > 0) {
-    ctx.save();
-    ctx.globalAlpha = sh.alpha; ctx.fillStyle = F25.shadow; ctx.strokeStyle = F25.shadow;
-    ctx.lineWidth = (form.trunk?.widthPx || 3) * s; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sh.dx, y + sh.dy); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(x + sh.dx, y + sh.dy, radius * F25.shadowR, radius * F25.shadowR * F25.shadowSquashY, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-  // el tronco: del pie a la copa
-  ctx.strokeStyle = sp.trunk; ctx.lineWidth = (form.trunk?.widthPx || 3) * s; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + o.dx, y + o.dy); ctx.stroke();
-  // la copa, vista desde arriba: el generador la dibuja achatada (es un alzado) y acá se desachata
-  const rise = (sp.trunkH || 0) * s, cx = x + o.dx, cy = y + o.dy;
-  ctx.save();
-  ctx.translate(cx, cy); ctx.scale(1, F25.crownScaleY); ctx.translate(-cx, -cy);
-  paintFloraSpecies(ctx, trunkless(sp), form, { ...frame, x: cx, y: cy + rise, showShadow: false });
-  ctx.restore();
+  const { x, y, s } = frame, h = (sp.heightM || F25.heightM) * s;
+  const o = parallaxOffset(state.cam, x, y, h, W.PX_PER_M);
+  const spin = TOP.spin[kind] && frame.tMs != null ? Math.sin(frame.tMs * 0.001 * TOP.swaySpeed + (frame.phase || 0)) * TOP.swayRad : 0;
+  paintTopdown(ctx, TOP, sp, form, kind, {
+    x, y, s, seed: frame.seed, q: textureScale(), spin,
+    crown: { dx: o.dx * TOP.parallaxK, dy: o.dy * TOP.parallaxK },
+    shadow: sunShadow(h),
+  });
 }
 
 /** Draw one tree of any species. `tr.k` names it; no `k` is the almendro. */

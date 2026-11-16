@@ -18,6 +18,9 @@ import { PX_PER_M } from "../../domain/units.js";
 import { ctx } from "./gfx.js";
 import { paintAt } from "./shapes.js";
 import { paintLuminaire } from "./systemShapes.js";
+import { parallaxOffset } from "./depth.js";
+import { sunShadow } from "./shadows.js";
+import { hasSurfaceRole } from "../../domain/vocabulary.generated.js";
 
 const TYPES = LIGHTS.types;
 //: A light with no type, or with one the registry does not know, is a street
@@ -46,6 +49,8 @@ const isNight = lightLevel;
  * is not a design, it is a white screen.
  */
 export function paintLight(type, x, y, opts = {}) {
+  const spec = lightSpec(type);
+  if (spec.stand25 && !opts.elevation) return paintStanding(type, spec, x, y, opts);
   // Un poste está en ALZADO: con la cámara girada (El Cocal) se para en la
   // pantalla girando alrededor de su pie, igual que un árbol (`standing`).
   const rot = state.cam.rot || 0;
@@ -57,6 +62,64 @@ export function paintLight(type, x, y, opts = {}) {
     color: (color) => (color === "$core" ? spec.core : color),
   }));
   if (rot) ctx.restore();
+}
+
+/**
+ * LA LUMINARIA EN 2.5D. El poste ya no es un trazo vertical en la pantalla —eso
+ * es ALZADO, y en un mundo visto desde arriba con perspectiva se lee plano—:
+ * sube de su pie con el mismo pinhole que los edificios, así que bajo la cámara
+ * es casi un punto y en el borde de la vista se inclina hacia afuera, como una
+ * pared. La cabeza cuelga de un brazo sobre la CALZADA y se ve desde arriba, y
+ * el sol le tira la sombra al suelo. Todo lo que tiene tamaño o color está en
+ * `lights.json` → `stand25` / `stand`.
+ */
+function armSide(lamp, ang, reach) {
+  if (lamp && lamp._arm !== undefined) return lamp._arm;
+  const nx = -Math.sin(ang), ny = Math.cos(ang);
+  const at = (k) => W.surfaceAt ? W.surfaceAt(lamp.x + nx * reach * k, lamp.y + ny * reach * k) : null;
+  const side = hasSurfaceRole("CARRIAGEWAY", at(1)) ? 1 : hasSurfaceRole("CARRIAGEWAY", at(-1)) ? -1 : 0;
+  if (lamp && W.tileResident && W.tileResident(lamp.x, lamp.y)) lamp._arm = side;
+  return side;
+}
+
+function paintStanding(type, spec, x, y, opts) {
+  const S = spec.stand25, G = LIGHTS.stand, ppm = PX_PER_M, H = S.heightM;
+  const ang = opts.ang ?? 0, side = S.armM ? armSide(opts.lamp || { x, y }, ang, G.armProbeM * ppm) : 0;
+  const nx = -Math.sin(ang) * side, ny = Math.cos(ang) * side, arm = S.armM * ppm;
+  const hx0 = x + nx * arm, hy0 = y + ny * arm;            // la cabeza, en planta
+  const top = parallaxOffset(state.cam, x, y, H, ppm), hd = parallaxOffset(state.cam, hx0, hy0, H, ppm);
+  const tx = x + top.dx, ty = y + top.dy, hx = hx0 + hd.dx, hy = hy0 + hd.dy;
+  const [hl, hw] = S.headM.map((m) => m * ppm);
+  // la cabeza mira a lo largo de la calle; sin brazo (la torre) atraviesa el poste
+  const ha = S.armM ? ang : ang + Math.PI / 2;
+  const head = (cx, cy) => {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ha);
+    ctx.beginPath(); ctx.roundRect(-hl / 2, -hw / 2, hl, hw, hw * 0.45); ctx.fill();
+    ctx.restore();
+  };
+  // la sombra: poste, brazo y cabeza, corridos por el sol sobre el suelo
+  const sh = sunShadow(H);
+  if (sh.alpha > 0 && (sh.dx || sh.dy)) {
+    ctx.save(); ctx.globalAlpha = sh.alpha; ctx.strokeStyle = G.shadow; ctx.fillStyle = G.shadow;
+    ctx.lineWidth = S.postPx; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sh.dx, y + sh.dy); ctx.lineTo(hx0 + sh.dx, hy0 + sh.dy); ctx.stroke();
+    head(hx0 + sh.dx, hy0 + sh.dy);
+    ctx.restore();
+  }
+  // el pie, el poste y el brazo
+  ctx.lineCap = "round"; ctx.strokeStyle = S.post; ctx.fillStyle = S.post;
+  ctx.beginPath(); ctx.arc(x, y, S.postPx * 0.9, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = S.postPx;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+  // la cabeza vista desde arriba: carcasa y su lente (o la fila de lentes de una torre)
+  ctx.fillStyle = S.housing; head(hx, hy);
+  ctx.save(); ctx.translate(hx, hy); ctx.rotate(ha); ctx.fillStyle = spec.core;
+  const n = S.lamps || 1, cell = hl / n;
+  for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.roundRect(-hl / 2 + cell * (i + 0.18), -hw * 0.28, cell * 0.64, hw * 0.56, hw * 0.2); ctx.fill(); }
+  ctx.restore();
+  // de noche el halo sale de la cabeza: el mismo de siempre, centrado donde está la lente
+  const [ox, oy] = spec.haloAt;
+  paintLuminaire(ctx, LIGHTS, type, hx - ox, hy - oy, { ...opts, night: opts.night ?? isNight() }, () => {});
 }
 
 /** An authored point light from the editor (`W.LIGHTS`). */
@@ -89,7 +152,7 @@ export function drawLight(feature) {
  */
 export function drawStreetLamps(view) {
   const lamps = W.lampsIn ? W.lampsIn(view, 24) : [];
-  for (const lamp of lamps) paintLight(lamp.type || "warm", lamp.x, lamp.y, { night: false });
+  for (const lamp of lamps) paintLight(lamp.type || "warm", lamp.x, lamp.y, { night: false, ang: lamp.ang, lamp });
 }
 
 /**
@@ -140,8 +203,12 @@ export function drawFieldTowers(lm, spec) {
   const type = own.type || spec.type;
   const inset = own.inset ?? spec.inset;
   const night = isNight();
+  let cx = 0, cy = 0;
+  for (let i = 0; i < pts.length; i += 2) { cx += pts[i]; cy += pts[i + 1]; }
+  cx /= pts.length / 2; cy /= pts.length / 2;
   for (const [dx, dy] of CORNERS) {
     const [x, y] = polyCorner(pts, dx, dy, inset);
-    paintLight(type, x, y, { radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity, night });
+    // la fila de focos mira a la cancha: atraviesa la línea que va del poste al centro
+    paintLight(type, x, y, { radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity, night, ang: Math.atan2(cy - y, cx - x) });
   }
 }

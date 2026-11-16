@@ -20,12 +20,14 @@
 // ferial's raised wooden deck and that is what the car interacts with; a ride
 // is scenery you drive around, like a vendor's cart or a parada.
 import { WORLD2D as W } from "../../world2d/index.js";
-import { aabbInView, blendPalette, ctx, flatMultiPath, hash01 } from "./gfx.js";
+import { aabbInView, blendPalette, ctx, flatMultiPath, hash01, mixColor } from "./gfx.js";
 import { lightLevel, nightLevel } from "../../game/daynight.js";
 import { PX_PER_M } from "../../domain/units.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
-import { bodyAt, queueBody } from "./bodies.js";
+import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
+import { parallaxOffset } from "./depth.js";
+import { state } from "../../game/state.js";
 import { sunShadow } from "./shadows.js";
 import { upright } from "./primitives.js";
 import { registerLampSource } from "./nightlights.js";
@@ -136,6 +138,7 @@ function drawAttraction(A, t) {
   if (A.kind === "chinamo" && PROPS.bodies?.chinamo) { queueChinamo(A); return; }
   const r = A.r || 24;
   const ph = phaseOf(A);
+  if (V3 && !spec.stage) { drawRide3d(A, spec, r, t, ph); return; }
   ctx.save();
   ctx.translate(A.x, A.y);
   // UNA ATRACCIÓN PUEDE TENER RUMBO. Una rueda o un pulpo giran sobre su eje y
@@ -144,6 +147,127 @@ function drawAttraction(A, t) {
   if (A.ang != null) ctx.rotate(A.ang + FACING_OFFSET[spec.facing || "+x"]);
   paintRide(ctx, A.kind, r, t, ph, A);
   ctx.restore();
+}
+
+// ---- LA FERIA EN 2.5D -------------------------------------------------------
+// `paintRide` sigue siendo el arte PLANO (la hoja de la feria y el editor lo usan); en el mundo cada
+// juego se levanta con la cámara, igual que los edificios. Todo lo que se puede afinar está en
+// `feriaAssets.json → $view3d` y en el `liftM`/`baseM` de cada pieza; acá queda la geometría.
+const V3 = ASSETS.$view3d;
+const isInk = (v) => typeof v === "string" && (v[0] === "#" || v.startsWith("rgb"));
+// la misma pieza en otra tinta: cada color que trae se pasa por `fn` (el costado la oscurece, la
+// sombra la vuelve una sola tinta). Se agregan `fill`/`stroke` por si el verbo cae a su omisión.
+const inkCache = new WeakMap();
+function inked(part, key, fn) {
+  let m = inkCache.get(part);
+  if (!m) inkCache.set(part, (m = new Map()));
+  if (m.has(key)) return m.get(key);
+  const walk = (v) => isInk(v) ? fn(v) : Array.isArray(v) ? v.map(walk)
+    : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)])) : v;
+  const out = walk(part);
+  if (out.fill == null) out.fill = fn(D.box);
+  if (out.stroke == null) out.stroke = fn(D.arms);
+  m.set(key, out);
+  return out;
+}
+const sideOf = (part) => inked(part, "side", (c) => mixColor(c, V3.sideInk, V3.sideK));
+const shadowOf = (part) => inked(part, "shadow", () => V3.shadowInk);
+
+function drawPart(g, part, r, t, ph, A, spec) {
+  const draw = SHAPES[part.shape];
+  if (!draw) { warnMissingShape(part.shape, A.kind); return; }
+  g.save();
+  const spinA = part.spin ? t * part.spin * TAU + ph : 0;
+  if (spinA) g.rotate(spinA);
+  if (part.bob) g.translate(0, Math.sin(t * part.bob.speed * TAU + ph) * part.bob.amp);
+  draw(g, part, r, t, ph, A, spec, spinA);
+  g.restore();
+}
+
+// el lienzo de las sombras: una por juego, opaca, y se compone con alfa de una sola vez
+let shadowCanvas = null;
+function shadowLayer(w, h) {
+  if (!shadowCanvas) shadowCanvas = document.createElement("canvas");
+  if (shadowCanvas.width < w) shadowCanvas.width = Math.ceil(w);
+  if (shadowCanvas.height < h) shadowCanvas.height = Math.ceil(h);
+  return shadowCanvas;
+}
+
+function drawRide3d(A, spec, r, t, ph) {
+  const ppm = PX_PER_M, rot = A.ang != null ? A.ang + FACING_OFFSET[spec.facing || "+x"] : 0;
+  const ca = Math.cos(-rot), sa = Math.sin(-rot);
+  const local = (o, k = 1) => [(o.dx * ca - o.dy * sa) * k, (o.dx * sa + o.dy * ca) * k];
+  // cuánto se corre algo a `hM` metros: cada altura pasa por `parallaxOffset`, con su TOPE, igual que
+  // los edificios (lineal sin tope, la rueda en la orilla de la vista se estiraba cien píxeles)
+  const lift = (hM) => local(parallaxOffset(state.cam, A.x, A.y, hM, ppm));
+  const sun = sunShadow(1);
+  const vertical = spec.view3d?.plane === "vertical";
+  const parts = spec.parts.filter((p) => p.shape !== "sign"), signs = spec.parts.filter((p) => p.shape === "sign");
+  const casters = parts.filter((p) => !V3.noShadow.includes(p.shape));
+  const enter = (g) => { g.translate(A.x, A.y); if (rot) g.rotate(rot); };
+
+  // EL PLANO VERTICAL: el alzado del juego se para sobre su eje x. Un punto (x, y) del arte queda en
+  // (x, 0) del suelo, a `hub − y` de alto; la cámara corre esa altura por `v` (más `minLean` hacia
+  // arriba de la pantalla, para que la rueda no desaparezca cuando se la ve de filo).
+  const hub = (spec.view3d?.hubK || 1) * r;
+  const plane = (g, v) => g.transform(1, 0, -v[0], -v[1], hub * v[0], hub * v[1]);
+  const camV = () => {
+    const topPx = hub + r, v = lift(topPx / ppm), lean = local({ dx: 0, dy: -V3.minLean }, 1);
+    return [v[0] / topPx + lean[0], v[1] / topPx + lean[1]];
+  };
+
+  // ── la sombra: cada pieza que se levanta, corrida por el sol, en un solo trazo de tinta ──
+  if (sun.alpha > 0 && (sun.dx || sun.dy)) {
+    const m = ctx.getTransform(), sc = Math.hypot(m.a, m.b), c = m.transformPoint({ x: A.x, y: A.y });
+    const R = r * V3.boundsK * sc, bx = Math.floor(c.x - R), by = Math.floor(c.y - R), w = Math.ceil(2 * R), h = w;
+    const cv = shadowLayer(w, h), g = cv.getContext("2d");
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
+    g.setTransform(m.a, m.b, m.c, m.d, m.e - bx, m.f - by);
+    enter(g);
+    if (vertical) {
+      plane(g, local(sun, 1 / ppm));
+      for (const p of casters) drawPart(g, shadowOf(p), r, t, ph, A, spec);
+    } else {
+      for (const p of casters) {
+        const top = p.liftM || 0;
+        if (top <= 0) continue;
+        const b = p.baseM ?? top, n = b < top ? 3 : 1;
+        for (let k = 0; k < n; k++) {
+          const hM = n > 1 ? b + (top - b) * k / (n - 1) : top, o = local(sun, hM);
+          g.save(); g.translate(o[0], o[1]); drawPart(g, shadowOf(p), r, t, ph, A, spec); g.restore();
+        }
+      }
+    }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = sun.alpha * V3.shadowAlpha;
+    ctx.drawImage(cv, 0, 0, w, h, bx, by, w, h); ctx.restore();
+  }
+
+  // ── lo que se levanta va con los cuerpos: encima de la gente que pasa por debajo ──
+  const paint = () => {
+    ctx.save(); enter(ctx);
+    if (vertical) {
+      ctx.save(); plane(ctx, camV());
+      for (const p of parts) drawPart(ctx, p, r, t, ph, A, spec);
+      ctx.restore();
+    } else {
+      const order = parts.map((p, i) => [p, i]).sort((a, b) => (a[0].liftM || 0) - (b[0].liftM || 0) || a[1] - b[1]);
+      for (const [p] of order) {
+        const top = p.liftM || 0;
+        if (p.baseM != null && p.baseM < top) {
+          const n = Math.min(V3.maxSteps, Math.max(2, Math.ceil((top - p.baseM) * V3.extrudePerM)));
+          for (let k = 0; k < n; k++) {
+            const o = lift(p.baseM + (top - p.baseM) * k / n);
+            ctx.save(); ctx.translate(o[0], o[1]); drawPart(ctx, sideOf(p), r, t, ph, A, spec); ctx.restore();
+          }
+        }
+        const o = lift(top);
+        ctx.save(); ctx.translate(o[0], o[1]); drawPart(ctx, p, r, t, ph, A, spec); ctx.restore();
+      }
+    }
+    for (const p of signs) drawPart(ctx, p, r, t, ph, A, spec);
+    ctx.restore();
+  };
+  queueBodyLike({ x: A.x, y: A.y, paint });
 }
 
 // A catalog this file cannot draw is the failure mode of making the art data:

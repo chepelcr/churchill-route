@@ -10,6 +10,12 @@
 
   "_halo": "EL HALO ES COMPORTAMIENTO Y SE QUEDA EN EL PINTOR: sólo de noche, y es un gradiente radial, que no es una forma del vocabulario. Lo que sí es data es todo lo que lo describe — el color, dónde se centra, el radio por defecto y la curva que convierte intensidad en alfa. `radius` e `intensity` los puede pisar la instancia desde el editor (`lightRadius` / `lightIntensity`), acotados por `limits`.",
 
+  "stand": {
+    "_note": "LA LUMINARIA EN 2.5D (`stand25` en cada tipo): el poste sale de su pie en el suelo y sube `heightM` con el mismo pinhole que los edificios (`parallaxOffset`), el brazo lleva la cabeza `armM` hacia la calzada —el lado lo decide el SUELO, igual que al sembrarla—, y la cabeza se ve desde arriba: la carcasa (`housing`) con su lente del color `core`. La sombra la pone el sol (`sunShadow`). Un tipo sin `stand25` se sigue dibujando en alzado con sus `parts` (la estaca de la feria).",
+    "shadow": "rgba(22,26,30,0.42)",
+    "armProbeM": 3.0
+  },
+
   "limits": {
     "intensityMax": 4,
     "radiusMin": 10,
@@ -38,6 +44,7 @@
       "halo": [255, 224, 125],
       "radius": 46,
       "haloAt": [0, -10],
+      "stand25": { "heightM": 7.5, "armM": 1.4, "postPx": 1.9, "post": "#3f4648", "housing": "#2c3236", "headM": [1.9, 0.8] },
       "parts": [
         { "shape": "stroke", "stroke": "#3f4648", "width": 1.4, "pts": [[0, 8], [0, -10]] },
         { "shape": "roundRect", "fill": "$core", "x": -3, "y": -13, "w": 6, "h": 4, "r": 1 }
@@ -50,6 +57,7 @@
       "halo": [155, 225, 255],
       "radius": 46,
       "haloAt": [0, -10],
+      "stand25": { "heightM": 7.5, "armM": 1.4, "postPx": 1.9, "post": "#3f4648", "housing": "#2c3236", "headM": [1.9, 0.8] },
       "parts": [
         { "shape": "stroke", "stroke": "#3f4648", "width": 1.4, "pts": [[0, 8], [0, -10]] },
         { "shape": "roundRect", "fill": "$core", "x": -3, "y": -13, "w": 6, "h": 4, "r": 1 }
@@ -62,6 +70,7 @@
       "halo": [255, 157, 57],
       "radius": 46,
       "haloAt": [0, -10],
+      "stand25": { "heightM": 7.5, "armM": 1.4, "postPx": 1.9, "post": "#3f4648", "housing": "#2c3236", "headM": [1.9, 0.8] },
       "parts": [
         { "shape": "stroke", "stroke": "#3f4648", "width": 1.4, "pts": [[0, 8], [0, -10]] },
         { "shape": "roundRect", "fill": "$core", "x": -3, "y": -13, "w": 6, "h": 4, "r": 1 }
@@ -74,6 +83,7 @@
       "halo": [240, 248, 255],
       "radius": 100,
       "haloAt": [0, -29],
+      "stand25": { "heightM": 22, "armM": 0, "postPx": 3.2, "post": "#3f4648", "housing": "#4c545a", "headM": [7.0, 1.3], "lamps": 4 },
       "parts": [
         { "shape": "ellipse", "fill": "rgba(0,0,0,0.22)", "cx": 0, "cy": 8, "rx": 7, "ry": 2.6 },
         { "shape": "poly", "fill": "#3f4648", "pts": [[-4.2, 8], [-1.6, -25], [1.6, -25], [4.2, 8]] },

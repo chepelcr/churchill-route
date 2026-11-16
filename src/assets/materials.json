@@ -2097,10 +2097,13 @@
         "font": "Bungee",
         "plaza": "#c98f7a",
         "plazaEdge": "#a8705e",
-        "liftM": 1.6,
+        "liftM": 2.0,
+        "baseLiftM": 0.6,
+        "baseK": 0.95,
+        "seatK": 0.3,
         "extrudePerM": 6,
         "side": "#8a3b22",
-        "_3d": "las letras de cuerpo entero: `liftM` de alto, el canto en `side` repetido `extrudePerM` veces por metro, y la cara de color arriba"
+        "_3d": "las letras de cuerpo entero, POSADAS en su losa: la losa gris sube `baseLiftM` y tiene `baseK` del alto de la letra de ancho; cada letra mete el pie `seatK` del ancho de la losa dentro de ella y sube hasta `liftM`, el canto en `side` repetido `extrudePerM` veces por metro, y la cara de color arriba"
       },
       "shell": {
         "_note": "LA CONCHA ACÚSTICA desde arriba, según la foto: gradas blancas en arco del lado de la calle, una plaza de adoquín rojizo con su aro amarillo, el escenario turquesa en media luna con sus escalones, y detrás —del lado del mar— NUEVE HOJAS turquesa traslúcidas en abanico, cada una con su nervio central oscuro y sus venas, sobre un pilar blanco cuadrado.",
@@ -2128,13 +2131,9 @@
         "leafLen": 0.44,
         "leafW": 0.14,
         "tierRiseM": 0.45,
-        "rimR": 0.05,
-        "rimM": 0.9,
-        "rim": "#2f3a3e",
-        "rimSide": "#1f272a",
         "stageM": 0.7,
         "stageSide": "#2a9fa1",
-        "_3d": "la Concha levantada: cada grada sube `tierRiseM` sobre la de adentro, el muro de atrás `rimM` sobre la última, el escenario `stageM`, y las hojas quedan a `leafHeightM` sobre sus pilares"
+        "_3d": "la Concha levantada: cada grada sube `tierRiseM` sobre la de adentro (sin muro oscuro detrás: se leía como una sombra que la Concha no tiene), el escenario `stageM`, y las hojas quedan a `leafHeightM` sobre sus pilares"
       }
     },
     "fun": {
@@ -2185,7 +2184,16 @@
         3.4,
         2.0
       ],
-      "wave": 0.9
+      "windDeg": 200,
+      "flapM": 0.45,
+      "flapHz": 1.1,
+      "droopM": 0.35,
+      "segments": 8,
+      "polePx": 1.6,
+      "finialM": 0.3,
+      "edge": "rgba(10,20,40,0.35)",
+      "finial": "#d9b44a",
+      "_3d": "en 2.5D: el asta sube `poleM` con el pinhole; el paño vuela hacia `windDeg` (grados de pantalla, 0 = este), flamea `flapM` de lado en su punta y cae `droopM` hacia la punta libre. Su sombra y la del asta las pone el sol."
     },
     "muellero": {
       "_note": "EL PARQUE DEL MUELLERO desde arriba (`muellero` en punta.json): los bancos en ESQUELETO DE BALLENA —un espinazo blanco con costillas de concreto hacia la calle—, los aros y medialunas de piedra blanca, los dos bancos curvos del norte con su medio disco, y las pancitas de la playa.",

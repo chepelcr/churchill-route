@@ -192,7 +192,7 @@ function drawPier(P, view) {
     ctx.restore();
     run += len;
   }
-  for (const L of pierLamps(P)) paintLight(L.type, L.x, L.y, { night: false });
+  for (const L of pierLamps(P)) paintLight(L.type, L.x, L.y, { night: false, ang: L.ang, lamp: L });
   if (style.hut) drawPierHut(P, hw);
 }
 
@@ -233,7 +233,7 @@ export function pierLamps(P) {
       const off = side * (hw - spec.sideInset);
       out.push({
         x: ax + ux * d + nx * off, y: ay + uy * d + ny * off,
-        type: spec.type,
+        type: spec.type, ang: Math.atan2(uy, ux),
       });
     }
     run += len;

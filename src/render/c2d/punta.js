@@ -250,31 +250,46 @@ function liftOf(mo, ppm) {
   };
 }
 
-// la fila de letras en arco, con su base de concreto: `base`/`ink` dicen de qué color (la sombra la pide entera negra)
-function paintLetterRow(mo, C, ppm, base, ink, k = -1) {
+// la fila de letras en arco. `part`: "base" pinta sólo la losa de concreto, "glyphs" sólo las letras,
+// y sin él las dos (la sombra la pide entera, de un color). Las letras se SIENTAN en la losa: su pie
+// cae `seatK` de su alto dentro de la banda gris, no flotan centradas sobre ella.
+function letterGeom(mo, C, ppm) {
   const text = mo.text || "", n = text.length, step = C.stepM * ppm, H = C.heightM * ppm, half = (n - 1) * step / 2, sag = step * 1.1;
-  ctx.strokeStyle = base; ctx.lineWidth = H * 0.5; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(-half - step * 0.6, -sag * 0.2); ctx.quadraticCurveTo(0, sag, half + step * 0.6, -sag * 0.2); ctx.stroke();
-  ctx.font = `${H.toFixed(1)}px '${C.font}', sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  for (let i = 0; i < n; i++) {
-    const u = n > 1 ? i / (n - 1) : 0.5, x = -half + i * step, y = (1 - (2 * u - 1) ** 2) * sag * 0.52 - sag * 0.12;
-    ctx.fillStyle = typeof ink === "string" ? ink : ink[i % ink.length]; ctx.fillText(text[i], x, y);
+  const yAt = (u) => (1 - (2 * u - 1) ** 2) * sag * 0.52 - sag * 0.12;
+  return { text, n, step, H, half, sag, yAt };
+}
+function paintLetterRow(mo, C, ppm, base, ink, part) {
+  const { text, n, step, H, half, sag, yAt } = letterGeom(mo, C, ppm), bw = H * (C.baseK || 0.5);
+  if (part !== "glyphs") {
+    ctx.strokeStyle = base; ctx.lineWidth = bw; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-half - step * 0.6, -sag * 0.2); ctx.quadraticCurveTo(0, sag, half + step * 0.6, -sag * 0.2); ctx.stroke();
   }
-  ctx.textBaseline = "alphabetic";
+  if (part === "base") return;
+  ctx.font = `${H.toFixed(1)}px '${C.font}', sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  const foot = bw * (C.seatK ?? 0);
+  for (let i = 0; i < n; i++) {
+    const u = n > 1 ? i / (n - 1) : 0.5;
+    ctx.fillStyle = typeof ink === "string" ? ink : ink[i % ink.length];
+    ctx.fillText(text[i], -half + i * step, yAt(u) + foot);
+  }
 }
 
-// LAS LETRAS DE PUNTARENAS, de cuerpo entero: el canto (la misma fila, oscura, repetida del piso a la
-// altura) y la cara de color arriba. Así se leen como letras gruesas paradas en la plazoleta.
+// LAS LETRAS DE PUNTARENAS, de cuerpo entero y POSADAS: primero la losa gris (baja, `baseLiftM`),
+// después cada letra sube de la losa a `liftM` —el canto oscuro repetido y la cara de color arriba—,
+// con el pie metido en la banda, así la losa las sostiene en vez de asomarse por debajo.
 function paintLettersRaised(mo, C, ppm) {
-  const lift = liftOf(mo, ppm), steps = Math.max(2, Math.round(C.liftM * C.extrudePerM));
+  const lift = liftOf(mo, ppm), b0 = C.baseLiftM || 0, steps = Math.max(2, Math.round((C.liftM - b0) * C.extrudePerM));
   ctx.save(); ctx.translate(mo.x, mo.y); ctx.rotate(mo.ang);
+  const bs = Math.max(1, Math.round(b0 * C.extrudePerM));
+  for (let k = 0; k < bs; k++) { const o = lift(b0 * k / bs); ctx.save(); ctx.translate(o[0], o[1]); paintLetterRow(mo, C, ppm, C.baseEdge, null, "base"); ctx.restore(); }
+  { const o = lift(b0); ctx.save(); ctx.translate(o[0], o[1]); paintLetterRow(mo, C, ppm, C.base, null, "base"); ctx.restore(); }
   for (let k = 0; k < steps; k++) {
-    const o = lift(C.liftM * k / steps);
-    ctx.save(); ctx.translate(o[0], o[1]); paintLetterRow(mo, C, ppm, C.baseEdge, C.side); ctx.restore();
+    const o = lift(b0 + (C.liftM - b0) * k / steps);
+    ctx.save(); ctx.translate(o[0], o[1]); paintLetterRow(mo, C, ppm, null, C.side, "glyphs"); ctx.restore();
   }
   const top = lift(C.liftM);
   ctx.translate(top[0], top[1]);
-  paintLetterRow(mo, C, ppm, C.base, C.inks);
+  paintLetterRow(mo, C, ppm, null, C.inks, "glyphs");
   ctx.restore();
 }
 
@@ -331,9 +346,6 @@ function paintMonument(mo, ppm) {
       band(r0, r1, hi); ctx.fillStyle = C.tier; ctx.fill();
       ctx.strokeStyle = C.tierEdge; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(hi[0], hi[1], r0, a0, a1); ctx.stroke();
     }
-    { const top = C.tierRiseM * C.tiers, r0 = t0 + step * C.tiers, r1 = r0 + R * C.rimR;
-      band(r0, r1, lift(0)); ctx.fillStyle = C.rimSide; ctx.fill();
-      band(r0, r1, lift(top + C.rimM)); ctx.fillStyle = C.rim; ctx.fill(); }
     // la plaza de adoquín con su aro amarillo
     ctx.beginPath(); ctx.arc(0, 0, t0, 0, Math.PI * 2); ctx.fillStyle = C.plaza; ctx.fill();
     ctx.beginPath(); ctx.arc(0, 0, t0 * 0.9, Math.PI * 1.05, Math.PI * 1.95); ctx.strokeStyle = C.ring; ctx.lineWidth = Math.max(1, 0.25 * ppm); ctx.stroke();
@@ -517,19 +529,47 @@ function drawPunta(view, t = 0) {
 function drawPuntaGates(view, t = 0) {
   const P = W.PUNTA;
   if (!P || !P.gates) return;
-  // las banderas del muelle: asta en alzado y el paño ondeando
-  const FL = M.flag, fp = W.PX_PER_M, pole = FL.poleM * fp, [fw, fh] = FL.sizeM.map((m) => m * fp), fsh = sunShadow(FL.poleM);
+  // LAS BANDERAS DEL MUELLE, en 2.5D: el asta sube con el pinhole como un poste de luz, y el paño es una
+  // tira VERTICAL que vuela con el viento (`windDeg`) y flamea de lado (`flapM`) — desde arriba se ve su
+  // canto ondeando y, al alejarse de la cámara, la cara con sus franjas. Su sombra y la del asta van al
+  // suelo ya; lo que se levanta se pinta con los cuerpos, encima de la gente.
+  const FL = M.flag, fp = W.PX_PER_M, [fwM, fhM] = FL.sizeM, wind = (FL.windDeg || 0) * RAD, wx = Math.cos(wind), wy = Math.sin(wind);
+  const N = FL.segments || 8, n = FL.stripes.length;
   for (const fl of P.flags || []) {
     if (fl.x < view.x0 - 60 || fl.x > view.x1 + 60 || fl.y < view.y0 - 60 || fl.y > view.y1 + 60) continue;
-    ctx.lineCap = "round"; ctx.lineWidth = 1.6;
-    ctx.strokeStyle = FL.shadow; ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(fl.x + fsh.dx, fl.y + fsh.dy); ctx.stroke();
-    ctx.strokeStyle = FL.pole; ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(fl.x, fl.y - pole); ctx.stroke();
-    const n = FL.stripes.length, sh2 = fh / n, lift = Math.sin(t * 2.2 + fl.y * 0.01) * FL.wave;
-    for (let k = 0; k < n; k++) {
-      ctx.fillStyle = FL.stripes[k];
-      ctx.beginPath(); ctx.moveTo(fl.x, fl.y - pole + k * sh2); ctx.lineTo(fl.x + fw, fl.y - pole + k * sh2 + lift);
-      ctx.lineTo(fl.x + fw, fl.y - pole + (k + 1) * sh2 + lift); ctx.lineTo(fl.x, fl.y - pole + (k + 1) * sh2); ctx.closePath(); ctx.fill();
+    const ph = t * (FL.flapHz || 1.4) * Math.PI * 2 + fl.y * 0.01 + fl.x * 0.007;
+    // un punto del paño: `u` a lo largo (0 el asta, 1 la punta libre) y `hM` de alto; `lift` dice si
+    // se levanta con la cámara (el paño) o se tumba con el sol (su sombra)
+    const at = (u, hM, lift) => {
+      const flap = Math.sin(ph - u * 3.2) * FL.flapM * fp * u, droop = u * u * (FL.droopM || 0);
+      const px = fl.x + wx * fwM * fp * u - wy * flap, py = fl.y + wy * fwM * fp * u + wx * flap, h = hM - droop;
+      const o = lift(px, py, h);
+      return [px + o.dx, py + o.dy];
+    };
+    const sun = (px, py, h) => sunShadow(h), cam = (px, py, h) => parallaxOffset(state.cam, px, py, h, fp);
+    const strip = (k, lift) => {
+      const h0 = FL.poleM - fhM * k / n, h1 = FL.poleM - fhM * (k + 1) / n;
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) { const q = at(i / N, h0, lift); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+      for (let i = N; i >= 0; i--) { const q = at(i / N, h1, lift); ctx.lineTo(q[0], q[1]); }
+      ctx.closePath();
+    };
+    const fsh = sunShadow(FL.poleM);
+    if (fsh.alpha > 0) {
+      ctx.save(); ctx.globalAlpha = fsh.alpha; ctx.strokeStyle = FL.shadow; ctx.fillStyle = FL.shadow; ctx.lineCap = "round"; ctx.lineWidth = FL.polePx || 1.6;
+      ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(fl.x + fsh.dx, fl.y + fsh.dy); ctx.stroke();
+      for (let k = 0; k < n; k++) { strip(k, sun); ctx.fill(); }
+      ctx.restore();
     }
+    queueBodyLike({ x: fl.x, y: fl.y, paint: () => {
+      const top = cam(fl.x, fl.y, FL.poleM + (FL.finialM || 0.3));
+      ctx.lineCap = "round"; ctx.lineWidth = FL.polePx || 1.6; ctx.strokeStyle = FL.pole;
+      ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(fl.x + top.dx, fl.y + top.dy); ctx.stroke();
+      for (let k = 0; k < n; k++) { ctx.fillStyle = FL.stripes[k]; strip(k, cam); ctx.fill(); }
+      // el canto del paño, para que se lea aunque la cámara lo vea de filo
+      ctx.strokeStyle = FL.edge; ctx.lineWidth = 0.8; strip(0, cam); ctx.stroke(); strip(n - 1, cam); ctx.stroke();
+      ctx.fillStyle = FL.finial; ctx.beginPath(); ctx.arc(fl.x + top.dx, fl.y + top.dy, (FL.polePx || 1.6) * 0.9, 0, Math.PI * 2); ctx.fill();
+    } });
   }
   const G = M.gate, ppm = W.PX_PER_M, H = G.postHeightM * ppm, B = G.boardM * ppm, sh = sunShadow(G.postHeightM);
   for (const gate of P.gates) {

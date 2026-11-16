@@ -57,9 +57,7 @@
     "bannerInk": "#ffd400",
     "bannerAccent": "#c8102e",
     "neon": "#7dff5a",
-    "goods": [
-      "#e8c07a"
-    ],
+    "goods": ["#e8c07a"],
     "speaker": "#1d1826",
     "speakerCone": "#5a5170",
     "signFg": "#fff",
@@ -83,8 +81,8 @@
     "parts": [
       {
         "shape": "legs",
-        "spread": 0.72,
-        "drop": 0.62,
+        "spread": 0.62,
+        "drop": 1.12,
         "widthPx": 5,
         "stroke": "#8d949e"
       },
@@ -151,7 +149,11 @@
         "fill": "#0f1720",
         "bg": "#ffd166"
       }
-    ]
+    ],
+    "view3d": {
+      "plane": "vertical",
+      "hubK": 1.12
+    }
   },
   "tagada": {
     "name": "La Tagada",
@@ -162,13 +164,16 @@
         "r": 1.0,
         "fill": "#2f3a4a",
         "rim": "#e0483f",
-        "rimPx": 5
+        "rimPx": 5,
+        "liftM": 1.0,
+        "baseM": 0.0
       },
       {
         "shape": "ring",
         "r": 0.78,
         "widthPx": 2,
-        "stroke": "#f3c969"
+        "stroke": "#f3c969",
+        "liftM": 1.4
       },
       {
         "shape": "cabins",
@@ -181,7 +186,8 @@
           "#f1c8a4",
           "#e8b48c",
           "#c98a63"
-        ]
+        ],
+        "liftM": 1.6
       },
       {
         "shape": "arms",
@@ -189,7 +195,8 @@
         "r": 1.14,
         "widthPx": 3,
         "stroke": "#c7ccd3",
-        "tiltPx": 0
+        "tiltPx": 0,
+        "liftM": 0.5
       },
       {
         "shape": "bulbs",
@@ -201,7 +208,8 @@
           "#ffd166",
           "#ff5d73",
           "#7ee0f2"
-        ]
+        ],
+        "liftM": 1.4
       },
       {
         "shape": "sign",
@@ -221,7 +229,7 @@
         "x": -0.16,
         "y": -0.1,
         "w": 0.32,
-        "h": 1.0,
+        "h": 1.1,
         "fill": "#77808c"
       },
       {
@@ -283,7 +291,11 @@
         "fill": "#0f1720",
         "bg": "#f3c969"
       }
-    ]
+    ],
+    "view3d": {
+      "plane": "vertical",
+      "hubK": 1.0
+    }
   },
   "pulpo": {
     "name": "El Pulpo",
@@ -292,7 +304,9 @@
       {
         "shape": "disc",
         "r": 0.34,
-        "fill": "#3a4553"
+        "fill": "#3a4553",
+        "liftM": 2.4,
+        "baseM": 0.0
       },
       {
         "shape": "arms",
@@ -309,13 +323,15 @@
             "#5fb0d6",
             "#6fbf99"
           ]
-        }
+        },
+        "liftM": 2.6
       },
       {
         "shape": "ring",
         "r": 0.34,
         "widthPx": 2,
-        "stroke": "#c08ae0"
+        "stroke": "#c08ae0",
+        "liftM": 2.4
       },
       {
         "shape": "bulbs",
@@ -326,7 +342,8 @@
         "palette": [
           "#ffd166",
           "#c08ae0"
-        ]
+        ],
+        "liftM": 2.4
       },
       {
         "shape": "sign",
@@ -344,18 +361,23 @@
       {
         "shape": "disc",
         "r": 0.2,
-        "fill": "#4a4a55"
+        "fill": "#4a4a55",
+        "liftM": 5.0,
+        "baseM": 0.0
       },
       {
         "shape": "disc",
         "r": 0.55,
-        "fill": "#e0483f"
+        "fill": "#e0483f",
+        "liftM": 5.3,
+        "baseM": 4.9
       },
       {
         "shape": "ring",
         "r": 0.55,
         "widthPx": 2,
-        "stroke": "#ffd166"
+        "stroke": "#ffd166",
+        "liftM": 5.3
       },
       {
         "shape": "arms",
@@ -372,7 +394,8 @@
             "#f3c969",
             "#e85d75"
           ]
-        }
+        },
+        "liftM": 3.2
       },
       {
         "shape": "bulbs",
@@ -382,7 +405,8 @@
         "spin": 0.15,
         "palette": [
           "#fff3c4"
-        ]
+        ],
+        "liftM": 5.3
       },
       {
         "shape": "sign",
@@ -400,13 +424,16 @@
       {
         "shape": "disc",
         "r": 1.0,
-        "fill": "#f6e7c8"
+        "fill": "#f6e7c8",
+        "liftM": 0.6,
+        "baseM": 0.0
       },
       {
         "shape": "ring",
         "r": 1.0,
         "widthPx": 3,
-        "stroke": "#e0483f"
+        "stroke": "#e0483f",
+        "liftM": 0.6
       },
       {
         "shape": "arms",
@@ -423,12 +450,15 @@
             "#c98a63",
             "#8a6a4a"
           ]
-        }
+        },
+        "liftM": 1.3
       },
       {
         "shape": "disc",
         "r": 0.22,
-        "fill": "#e0483f"
+        "fill": "#e0483f",
+        "liftM": 4.0,
+        "baseM": 0.6
       },
       {
         "shape": "canopy",
@@ -438,7 +468,9 @@
           "#e0483f",
           "#f6e7c8"
         ],
-        "spin": 0.07
+        "spin": 0.07,
+        "liftM": 4.2,
+        "baseM": 3.8
       },
       {
         "shape": "bulbs",
@@ -449,7 +481,8 @@
         "palette": [
           "#fff3c4",
           "#ffd166"
-        ]
+        ],
+        "liftM": 4.2
       },
       {
         "shape": "sign",
@@ -471,7 +504,9 @@
         "w": 2.0,
         "h": 1.24,
         "fill": "#3b4250",
-        "roundPx": 6
+        "roundPx": 6,
+        "liftM": 0.35,
+        "baseM": 0.0
       },
       {
         "shape": "box",
@@ -480,7 +515,8 @@
         "w": 1.8,
         "h": 1.04,
         "fill": "#2a303a",
-        "roundPx": 4
+        "roundPx": 4,
+        "liftM": 0.4
       },
       {
         "shape": "cars",
@@ -497,7 +533,9 @@
           "#6fbf99",
           "#f08a5d",
           "#c08ae0"
-        ]
+        ],
+        "liftM": 1.2,
+        "baseM": 0.45
       },
       {
         "shape": "bulbs",
@@ -510,7 +548,8 @@
         "palette": [
           "#ffd166",
           "#ff5d73"
-        ]
+        ],
+        "liftM": 0.5
       },
       {
         "shape": "sign",
@@ -529,8 +568,8 @@
     "parts": [
       {
         "shape": "legs",
-        "spread": 0.8,
-        "drop": 0.5,
+        "spread": 0.9,
+        "drop": 1.3,
         "widthPx": 5,
         "stroke": "#8d949e"
       },
@@ -568,7 +607,11 @@
         "fill": "#fff",
         "bg": "#2f5d8a"
       }
-    ]
+    ],
+    "view3d": {
+      "plane": "vertical",
+      "hubK": 1.3
+    }
   },
   "gusano": {
     "name": "El Gusanito",
@@ -578,13 +621,16 @@
         "shape": "track",
         "r": 1.0,
         "widthPx": 6,
-        "stroke": "#6a7280"
+        "stroke": "#6a7280",
+        "liftM": 0.8,
+        "baseM": 0.0
       },
       {
         "shape": "track",
         "r": 1.0,
         "widthPx": 2,
-        "stroke": "#9aa3ae"
+        "stroke": "#9aa3ae",
+        "liftM": 0.8
       },
       {
         "shape": "cabins",
@@ -597,12 +643,16 @@
           "#6fbf99",
           "#8fd6ae",
           "#4fa87f"
-        ]
+        ],
+        "liftM": 1.5,
+        "baseM": 0.8
       },
       {
         "shape": "disc",
         "r": 0.18,
-        "fill": "#4a4a55"
+        "fill": "#4a4a55",
+        "liftM": 0.6,
+        "baseM": 0.0
       },
       {
         "shape": "bulbs",
@@ -612,7 +662,8 @@
         "spin": 0.13,
         "palette": [
           "#ffd166"
-        ]
+        ],
+        "liftM": 1.6
       },
       {
         "shape": "sign",
@@ -637,7 +688,9 @@
           "w": 0.34,
           "h": 0.62,
           "fill": "#0d0a12"
-        }
+        },
+        "liftM": 4.2,
+        "baseM": 0.0
       },
       {
         "shape": "bulbs",
@@ -651,7 +704,8 @@
           "#7ee0f2",
           "#c08ae0",
           "#ff5d73"
-        ]
+        ],
+        "liftM": 4.25
       },
       {
         "shape": "sign",
@@ -671,7 +725,9 @@
         "w": 1.7,
         "h": 0.7,
         "fill": "#c1523a",
-        "top": "#f6e7c8"
+        "top": "#f6e7c8",
+        "liftM": 1.0,
+        "baseM": 0.0
       },
       {
         "shape": "awning",
@@ -681,7 +737,9 @@
           "#e0483f",
           "#f6e7c8"
         ],
-        "n": 8
+        "n": 8,
+        "liftM": 2.8,
+        "baseM": 2.5
       },
       {
         "shape": "prizes",
@@ -694,7 +752,8 @@
           "#5fb0d6",
           "#6fbf99",
           "#c08ae0"
-        ]
+        ],
+        "liftM": 1.6
       },
       {
         "shape": "bulbs",
@@ -706,7 +765,8 @@
         "radiusPx": 1.3,
         "palette": [
           "#fff3c4"
-        ]
+        ],
+        "liftM": 2.8
       },
       {
         "shape": "sign",
@@ -726,13 +786,16 @@
         "w": 1.4,
         "h": 0.6,
         "fill": "#2f5d8a",
-        "top": "#f6e7c8"
+        "top": "#f6e7c8",
+        "liftM": 1.0,
+        "baseM": 0.0
       },
       {
         "shape": "disc",
         "r": 0.62,
         "fill": "#f3c969",
-        "dyPx": -6
+        "dyPx": -6,
+        "liftM": 1.4
       },
       {
         "shape": "spokes",
@@ -742,14 +805,16 @@
         "widthPx": 1.4,
         "stroke": "#b3243b",
         "spin": 0.3,
-        "dyPx": -6
+        "dyPx": -6,
+        "liftM": 1.45
       },
       {
         "shape": "ring",
         "r": 0.62,
         "widthPx": 2,
         "stroke": "#b3243b",
-        "dyPx": -6
+        "dyPx": -6,
+        "liftM": 1.45
       },
       {
         "shape": "bulbs",
@@ -759,7 +824,8 @@
         "palette": [
           "#fff3c4",
           "#ffd166"
-        ]
+        ],
+        "liftM": 1.5
       },
       {
         "shape": "sign",
@@ -846,24 +912,14 @@
         "label": "CANTONÉS",
         "ink": "#ffd400",
         "accent": "#c8102e",
-        "goods": [
-          "#c9ced4",
-          "#e8c07a",
-          "#c9ced4",
-          "#c98a63"
-        ],
+        "goods": ["#c9ced4", "#e8c07a", "#c9ced4", "#c98a63"],
         "note": "arroz cantonés en la paila, entre las ollas de acero"
       },
       "manzana": {
         "label": "MANZANA ESCARCHADA",
         "ink": "#ff2d6f",
         "accent": "#e0483f",
-        "goods": [
-          "#e0483f",
-          "#c1523a",
-          "#e0483f",
-          "#e85d75"
-        ],
+        "goods": ["#e0483f", "#c1523a", "#e0483f", "#e85d75"],
         "note": "manzanas escarchadas, rojas y en su palito"
       },
       "churro": {
@@ -1085,6 +1141,20 @@
         "fill": "#fff",
         "bg": "#7b3fa0"
       }
+    ]
+  },
+  "$view3d": {
+    "$note": "LA FERIA EN 2.5D. Cada juego se ve desde arriba con la misma perspectiva que los edificios (`parallaxOffset`): una pieza con `liftM` es un PISO a esa altura, y con `baseM` además tiene COSTADOS de `baseM` a `liftM` (la misma pieza repetida, oscurecida hacia `sideInk`). Un juego con `view3d.plane: \"vertical\"` (la rueda, el martillo, el barco) gira en un plano VERTICAL a lo largo de su eje x: su arte de alzado se proyecta con la cámara, el centro (0,0) queda a `hubK` radios del suelo, y `minLean` es cuánto se asoma aunque la cámara lo vea de filo. Las sombras son la silueta de cada pieza corrida por el sol, pintada de una sola vez para que no se oscurezca donde dos piezas se cruzan. Los rótulos (`sign`) no se levantan, y lo que es luz (`noShadow`) no tira sombra.",
+    "sideInk": "#15131a",
+    "sideK": 0.42,
+    "extrudePerM": 4,
+    "maxSteps": 14,
+    "shadowInk": "#1b1f26",
+    "shadowAlpha": 0.5,
+    "minLean": 0.32,
+    "boundsK": 3.2,
+    "noShadow": [
+      "bulbs"
     ]
   }
 }

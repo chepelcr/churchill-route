@@ -66,7 +66,7 @@ The procedure is three steps and it is not optional:
 | **un largo que UN registro autora** (un `dx`, un ancho, el radio de un juego) | en METROS y en su propio registro, con sufijo `M` — `content.py` → `METRE_KEYS` lo pasa a px al cargar. **Nunca en píxeles**: sólo son verdad a la escala en que se afinaron, y este mundo lleva cuatro reescalados |
 | the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` |
 | **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` |
-| **a light: street lamp, stadium tower, la del muelle** | `src/assets/lights.json` (+ `LightType`). DÓNDE se para la del muelle y de qué tipo es → `materials.json` → `pier.<style>.lamp` |
+| **a light: street lamp, stadium tower, la del muelle** | `src/assets/lights.json` (+ `LightType`). DÓNDE se para la del muelle y de qué tipo es → `materials.json` → `pier.<style>.lamp` · **cómo se para en 2.5D** (alto, brazo a la calzada, cabeza vista desde arriba) → `stand25` en cada tipo y `stand` |
 | **de qué color es un edificio de OSM** | `src/assets/building-styles.json`, por `cat` |
 | **la lluvia, sus salpicaduras y la calle encharcada** | `src/assets/hud.json` → `weather.{rain,splash,roadSplash,flood}` |
 | **cómo se ve un puesto según lo que vende** | `src/assets/world-props.json` → `landmarks["kiosk:<product>"]` |
@@ -78,7 +78,7 @@ The procedure is three steps and it is not optional:
 | the HUD, the minimap, the crossing card, the tide bar | `src/assets/hud.json` |
 | trees and wood mixes | `src/assets/flora.json` |
 | **cómo se ve un árbol desde ARRIBA** — lóbulos, luz, palma en estrella, ramas peladas, su sombra | `src/assets/effects.json` → `flora25.topdown` (trazos: `c2d/floraTop.js`); los árboles de acera se apagan en `flora.json` → `roadside` |
-| the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` (verbs: `c2d/feriaShapes.js`) |
+| the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` (verbs: `c2d/feriaShapes.js`); **su vista 2.5D**: `$view3d`, y por pieza `liftM`/`baseM` (o `view3d.plane: "vertical"` para rueda, martillo y barco) |
 | spawn rates, buses, tides, the day cycle | `src/content/simulation.json` |
 | unlocks, the tutorial, **the MVP gate** | `src/content/progression.json` |
 | prices, coins, IAP | `src/content/economy.json` |

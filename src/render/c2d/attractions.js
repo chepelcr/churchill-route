@@ -36,6 +36,8 @@ import { registerLampSource } from "./nightlights.js";
 import { paintLight } from "./lights.js";
 import { FERIA_SHAPES } from "./feriaShapes.js";
 import ASSETS from "./feriaAssets.json";
+import SIM from "../../content/simulation.json" with { type: "json" };
+const AUDIENCE = SIM.crowds.feriaAudience;
 
 // LOS VALORES POR OMISIÓN Y EL DECORADO DEL CAMPO. Distinto del resto de las
 // paletas del juego, y vale decir por qué: acá los JUEGOS ya eran data desde
@@ -379,7 +381,8 @@ function feriaAreaLights() {
       const a = row[i], b = row[i + 1];
       const x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
       if (x - a.x < a.r + clearance || b.x - x < b.r + clearance) continue;
-      if (dj && Math.hypot(x - dj.x, y - dj.y) < dj.r + clearance * 2) continue;
+      // ni sobre la tarima ni entre su público: el hueco llega hasta la última fila (`feriaAudience`)
+      if (dj && Math.hypot(x - dj.x, y - dj.y) < dj.r * (AUDIENCE.firstRowK + AUDIENCE.rowGapK) + clearance * 2) continue;
       if (entrance && Math.abs(x - entrance.x) < entrance.w / 2 + clearance
         && Math.abs(y - entrance.y) < clearance * 2) continue;
       areaLights.push({ x, y, type: "warm", intensity: LIGHTING.areaIntensity });

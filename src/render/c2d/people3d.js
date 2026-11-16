@@ -111,3 +111,32 @@ export function paintPerson3d(pe, look = {}) {
   if (look.hat) { disc(0, 0, zh + 0.08, hr * 1.6, look.hat.brim); disc(0, 0, zh + 0.16, hr * 0.85, look.hat.crown); }
   else disc(-hr * 0.35, 0, zh + 0.06, hr * 0.78, S.hair[Math.floor(hash01(hue * 0.13 + 3.1) * S.hair.length)]);
 }
+
+/**
+ * EL CHOFER, sobre el aparejo de `rig3d.js` (`R`, en el marco del vehículo, metros): la misma gente
+ * que camina por el puerto, sentada en `d.at` con el asiento a `d.seatM` y las manos en `d.hands`.
+ * `D` es el registro del chofer (`vehicles.json → driver3d`); `ink` resuelve `$color`/`$roof`.
+ */
+export function paintRider(R, d, D, ink, hwM, hhM) {
+  const k = d.scale || 1, u = d.at[0] * hwM, v = d.at[1] * hhM, z0 = d.seatM;
+  const [td, tw, th] = D.torsoM.map((x) => x * k), hr = D.headM * k;
+  const zl = d.standing ? D.legsM[2] * k : 0;
+  if (d.standing) R.at(z0 + zl, () => R.box(u, v, z0, z0 + zl, D.legsM[0] * k, D.legsM[1] * k, D.pants));
+  const zt = z0 + zl, zs = zt + th, zh = zs + hr * 0.9;
+  R.at(zs, () => R.box(u, v, zt, zs, td, tw, D.shirt));
+  if (d.hands) {
+    const [hu, hv, hz] = d.hands;
+    R.at(zs + 0.01, () => {
+      for (const s of [-1, 1]) {
+        const hand = [hu * hwM, s * hv * hhM, hz];
+        R.line([[u + td * 0.2, v + s * tw * 0.45, zs - 0.12], hand], D.armM * k, D.skin);
+        R.dot(hand, D.armM * k * 0.8, D.skin);
+      }
+    });
+  }
+  R.at(zh + hr, () => {
+    R.poly(R.circle([u, v, zh], [1, 0, 0], [0, 1, 0], hr, 14), d.helmet ? ink(d.helmet) : D.skin);
+    if (!d.helmet) R.poly(R.circle([u - hr * 0.3, v, zh + 0.06], [1, 0, 0], [0, 1, 0], hr * 0.78, 12), D.hair);
+    else R.poly(R.circle([u + hr * 0.45, v, zh - 0.05], [1, 0, 0], [0, 1, 0], hr * 0.45, 10), D.skin);
+  });
+}

@@ -40,6 +40,12 @@
       "firstRowK": 1.6,
       "rowGapK": 0.3,
       "spreadRad": 0.72
+    },
+    "puntaPools": {
+      "_note": "LOS BAÑISTAS DE LAS PISCINAS DEL BALNEARIO DEL FARO: uno por cada `areaPerSwimmerM2` de lámina de agua, al menos `min` y nunca más de `max` por piscina. Las ZONAS (`zone: true`: la parte bajita y la honda) son pedazos de la piscina grande, no piscinas aparte. Nadan DENTRO del contorno de su piscina con el cuerpo entero, como los del Balneario Municipal dentro de su agua.",
+      "areaPerSwimmerM2": 120,
+      "min": 2,
+      "max": 12
     }
   },
   "beachGames": {

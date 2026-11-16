@@ -702,6 +702,50 @@ function maintainBalneario() {
     });
   }
 }
+// LAS PISCINAS DEL FARO. Su agua no es agua del ráster —es una lámina dibujada sobre la explanada—,
+// así que el bañista no pregunta a `surfaceAt` sino al CONTORNO de su piscina (`W.PUNTA.pools`), con
+// el cuerpo entero adentro y FUERA de los islotes (`W.PUNTA.islands`: el macetero de palmeras), igual
+// que `swimmerWater` hace en el Balneario Municipal.
+function poolWater(pool, x, y) {
+  const r = SWIM_R, P = pool.pts;
+  const wet = (px, py) => inPoly(px, py, P) && !(W.PUNTA.islands || []).some((I) => inPoly(px, py, I.pts));
+  return wet(x, y) && wet(x + r, y) && wet(x - r, y) && wet(x, y + r) && wet(x, y - r);
+}
+function maintainPuntaPools() {
+  const pools = W.PUNTA?.pools;
+  if (!pools) return;
+  const C = SIM.crowds.puntaPools, ppm = W.PX_PER_M;
+  for (const pool of pools) {
+    if (pool.zone || !pool.pts || pool.pts.length < 6) continue;
+    if (!pool._box) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, a = 0;
+      const P = pool.pts, n = P.length;
+      for (let i = 0; i < n; i += 2) {
+        x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); y0 = Math.min(y0, P[i + 1]); y1 = Math.max(y1, P[i + 1]);
+        const j = (i + 2) % n; a += P[i] * P[j + 1] - P[j] * P[i + 1];
+      }
+      const m2 = Math.abs(a) / 2 / (ppm * ppm);
+      pool._box = { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2,
+        want: Math.max(C.min, Math.min(C.max, Math.round(m2 / C.areaPerSwimmerM2))) };
+    }
+    const B = pool._box;
+    if (Math.hypot(B.cx - _cam.x, B.cy - _cam.y) > SPAWN_R + 400) continue;
+    let n = 0;
+    for (const pe of pedestrians) if (pe.pool === pool) n++;
+    let guard = 0;
+    while (n < B.want && guard++ < B.want * 12) {
+      const x = B.x0 + Math.random() * (B.x1 - B.x0), y = B.y0 + Math.random() * (B.y1 - B.y0);
+      if (!poolWater(pool, x, y)) continue;
+      pedestrians.push({
+        x, y, ang: Math.random() * Math.PI * 2, v: npcSpeed("swimmer"),
+        hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
+        pool, swim: true, kind: "swimmer",
+      });
+      n++;
+    }
+  }
+}
+
 // Advance a swimmer: slow drift that stays on ACTUAL water (SURFACE.WATER),
 // so it follows the inlet's real shape instead of the rectangular bbox — no
 // more swimmers wandering onto the streets at the block corners.
@@ -717,7 +761,7 @@ export function advanceSwimmer(pe, dt) {
   pe.ph += dt * 4;
   const nx = pe.x + Math.cos(pe.ang) * pe.v * dt;
   const ny = pe.y + Math.sin(pe.ang) * pe.v * dt;
-  if (swimmerWater(nx, ny)) { pe.x = nx; pe.y = ny; }
+  if (pe.pool ? poolWater(pe.pool, nx, ny) : swimmerWater(nx, ny)) { pe.x = nx; pe.y = ny; }
   else pe.ang += Math.PI * (0.6 + Math.random() * 0.8);   // hit the shore → turn back into the water
   if (Math.random() < 0.02) pe.ang += (Math.random() - 0.5) * 0.8;
 }
@@ -837,6 +881,7 @@ export function maintainStreaming() {
   topUp(traffic, TARGET.traffic, spawnOneCar, (e) => e.dead || (!e.persistent && far(e)));
   maintainStadiumPeds();
   maintainBalneario();
+  maintainPuntaPools();
   maintainPierFishers();
   maintainFeriaAudience();
   maintainSurfaceCrowds();

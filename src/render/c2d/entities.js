@@ -18,7 +18,8 @@ import { actorAnimationValues, paintActor, paintActorForm, resolveActorRecord } 
 import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, lastT, mixColor } from "./gfx.js";
 import ACTORS from "../../assets/actors.json" with { type: "json" };
-import { paintPerson3d } from "./people3d.js";
+import { paintPerson3d, paintRider } from "./people3d.js";
+import VEHICLE_REG from "../../assets/vehicles.json" with { type: "json" };
 import { makeRig } from "./rig3d.js";
 import { hullOutline, paintHullSides } from "./vesselRigs.js";
 import PRODUCTS_JSON from "../../../content/world/products.json" with { type: "json" };
@@ -216,12 +217,28 @@ function drawCar(c) {
   ctx.restore();
   const ppm = PX_PER_M, hwM = hw / ppm, hhM = hh / ppm;
   const R = makeRig(ctx, c.x, c.y, angle, ppm, state.cam, "cam", V3D.shade, heightM);
-  for (const b of kind.body3d || []) {
-    // lo pegado a una cara sólo existe si esa cara mira a la cámara
+  rigBoxes(R, kind.body3d || [], hwM, hhM, color);
+  R.flush();
+}
+
+/** Una receta de cajas (`body3d`) sobre el aparejo: `at`/`size` en fracciones del vehículo, `z` en
+ *  metros, y lo pegado a una cara sólo si esa cara mira a la cámara. La comparten el tráfico y el
+ *  vehículo del jugador. */
+function rigBoxes(R, recipe, hwM, hhM, color) {
+  for (const b of recipe) {
     if (b.face && !R.faces([b.at[0] * hwM, b.at[1] * hhM, (b.z[0] + b.z[1]) / 2], [b.face[0], b.face[1], 0])) continue;
     const ink = { top: color(b.top || b.ink), side: color(b.side || b.ink) };
     R.at(b.key ?? b.z[1], () => R.box(b.at[0] * hwM, b.at[1] * hhM, b.z[0], b.z[1], b.size[0] * 2 * hwM, b.size[1] * 2 * hhM, ink));
   }
+}
+
+/** El vehículo del jugador EN 3D: su receta de cajas y su chofer, donde está el carro (x, y). */
+function paintPlayer3d(x, y, a, veh, { body = true, rider = true } = {}) {
+  const ppm = PX_PER_M, hwM = veh.w / 2 / ppm, hhM = veh.h / 2 / ppm;
+  const R = makeRig(ctx, x, y, a, ppm, state.cam, "cam", V3D.shade, (veh.heightM || 1.5) + 1.5);
+  const ink = (spec) => partColor(spec, veh);
+  if (body && veh.body3d) rigBoxes(R, veh.body3d, hwM, hhM, ink);
+  if (rider && veh.driver) paintRider(R, veh.driver, VEHICLE_REG.driver3d, ink, hwM, hhM);
   R.flush();
 }
 
@@ -528,7 +545,20 @@ function drawPlayer(p, veh, { body = true } = {}) {
     if (effect.layer === "under") EFFECT_PAINTERS[id]?.paint?.(p, veh, cfg);
   }
   if (!body) { ctx.restore(); return; }
-  { const [ux, uy] = screenUp(lift); ctx.translate(p.x + ux, p.y + uy); } ctx.rotate(p.a);
+  const [ux, uy] = screenUp(lift);
+  // UN VEHÍCULO CON RECETA 3D es su receta de cajas y su chofer; la carga va donde va (`cargoM`)
+  if (veh.body3d) {
+    ctx.restore();
+    paintPlayer3d(p.x + ux, p.y + uy, p.a, veh);
+    if (state.carrying) {
+      ctx.save(); ctx.translate(p.x + ux, p.y + uy); ctx.rotate(p.a);
+      const ro = bodyLift(p, veh, veh.cargoM); ctx.translate(ro[0], ro[1]);
+      drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
+      ctx.restore();
+    }
+    return;
+  }
+  ctx.translate(p.x + ux, p.y + uy); ctx.rotate(p.a);
   for (const { id, effect, cfg } of effects) {
     if (effect.layer === "transform") EFFECT_PAINTERS[id]?.transform?.(p, veh, cfg);
   }
@@ -541,11 +571,13 @@ function drawPlayer(p, veh, { body = true } = {}) {
   paintVehicle(ctx, state.vehicleKey, veh);
   if (state.carrying) drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();
+  // y su chofer, sobre la cubierta levantada (las lanchas no tienen receta de cajas: su casco es su arte)
+  if (veh.driver) paintPlayer3d(p.x + ux, p.y + uy, p.a, veh, { body: false });
 }
 
 /** El corrimiento de la tapa de un vehículo de `heightM`, ya en SU marco (girado `p.a`). */
-function bodyLift(p, veh) {
-  const h = veh.heightM ?? V3D.defaultHeightM;
+function bodyLift(p, veh, heightM = null) {
+  const h = heightM ?? veh.heightM ?? V3D.defaultHeightM;
   const o = parallaxOffset(state.cam, p.x, p.y, h, PX_PER_M);
   const c = Math.cos(-p.a), s = Math.sin(-p.a);
   return [o.dx * c - o.dy * s, o.dx * s + o.dy * c];
@@ -571,7 +603,7 @@ function drawPlayerCarrying(p, veh) {
   const lift = (state.elev || 0) * 7;
   ctx.save();
   { const [ux, uy] = screenUp(lift); ctx.translate(p.x + ux, p.y + uy); } ctx.rotate(p.a);
-  { const ro = bodyLift(p, veh); ctx.translate(ro[0], ro[1]); }
+  { const ro = bodyLift(p, veh, veh.cargoM); ctx.translate(ro[0], ro[1]); }
   drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();
 }

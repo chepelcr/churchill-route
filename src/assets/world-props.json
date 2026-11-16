@@ -17,11 +17,7 @@
         }
       ]
     },
-    "noLandmarkShadow": [
-      "stadium",
-      "pool",
-      "park"
-    ]
+    "noLandmarkShadow": ["stadium", "pool", "park", "lighthouse"]
   },
   "landmarks": {
     "kiosk": {
@@ -2248,7 +2244,7 @@
         },
         {
           "shape": "family",
-          "verb": "lighthouse-tower",
+          "verb": "lighthouse-tower", "heightM": 22, "_heightM": "la altura de la torre, para su sombra: la tira el sol (`sunShadow`), no la elipse fija `shadowDx/Dy`, que queda sólo para la hoja de arte y el editor.",
           "shadow": "$towerShadow",
           "shadowDx": 7,
           "shadowDy": 5,

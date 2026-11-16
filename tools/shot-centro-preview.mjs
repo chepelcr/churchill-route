@@ -274,7 +274,12 @@ for (const P of doc.places) {
         o.roof = { kind: t.roof.kind, rise: t.roof.riseM, ink: t.roof.ink, ink2: t.roof.ink2 };
         if (rg) o.roof.ridge = [...F.at(rg[0]), ...F.at(rg[1])].map(r1);
         if (t.roof.seamsM) o.roof.seams = r1(t.roof.seamsM * ppm);
-        if (t.roof.cross) o.roof.cross = t.roof.cross;
+        if (t.roof.cross) {
+          // la cruz: en qué punta de la cumbrera va (`front` = la primera) y hacia dónde apunta su cabeza
+          o.roof.cross = t.roof.cross;
+          if (t.roof.crossAt === "front") o.roof.crossAt = 0;
+          if (t.roof.crossDeg != null) o.roof.crossAng = +(F.ang + t.roof.crossDeg * RAD).toFixed(4);
+        }
       }
       return o;
     });
@@ -407,6 +412,22 @@ for (const T of tiles.values()) {
 }
 // lo sembrado tiene que quedar ADENTRO: lo que cae sobre la acera no se quitaría en la corrida
 // siguiente (lo de la acera es de la calle) y se sembraría dos veces
+// NINGÚN ÁRBOL BAJO UN EDIFICIO: los edificios se pintan después y su techo se corre hacia afuera,
+// así que una copa pegada a un muro queda tapada. Cada árbol guarda su copa de distancia.
+{
+  const segD = (x, y, ax, ay, bx, by) => { const L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1, f = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2)); return Math.hypot(x - ax - (bx - ax) * f, y - ay - (by - ay) * f); };
+  const under = [];
+  for (const { place, bodies } of stamps) for (const kind of ["trees", "palms"]) for (const o of flora[kind]) {
+    if (o.x < place.x0 || o.x > place.x1 || o.y < place.y0 || o.y > place.y1) continue;
+    const need = (kind === "palms" ? 3.2 : 3.6 * (o.s || 1)) * ppm;
+    for (const b of bodies) {
+      let dmin = inside(o.x, o.y, b) ? 0 : Infinity;
+      for (let i = 0, j = b.length - 2; i < b.length && dmin > 0; j = i, i += 2) dmin = Math.min(dmin, segD(o.x, o.y, b[j], b[j + 1], b[i], b[i + 1]));
+      if (dmin < need) { const dx = (o.x - place.ox) / ppm, dy = (o.y - place.oy) / ppm, c = Math.cos(place.ang), s2 = Math.sin(place.ang); under.push(`${place.id} ${kind} (${(dx * c + dy * s2).toFixed(1)}, ${(-dx * s2 + dy * c).toFixed(1)}) a ${(dmin / ppm).toFixed(1)} m de un edificio (pide ${(need / ppm).toFixed(1)})`); break; }
+    }
+  }
+  if (under.length) throw new Error(`[centro] árboles bajo un edificio:\n  ${under.join("\n  ")}`);
+}
 const stray = ["trees", "palms", "lamps"].flatMap((kind) => flora[kind].filter((o) => !interior(o)).map((o) => `${kind} (${o.x},${o.y})`));
 if (stray.length) throw new Error(`[centro] sembrado fuera del interior de su cuadra (sobre acera o calle): ${stray.join(", ")}`);
 for (const kind of ["trees", "palms", "lamps"]) for (const o of flora[kind]) {

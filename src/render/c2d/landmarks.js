@@ -37,6 +37,12 @@ function faroGroundRegistry() {
   return faroGround;
 }
 
+const FARO_TOWER = PROPS.scenes.faro.parts.find((q) => q.verb === "lighthouse-tower");
+function faroShadow(k) {
+  const sh = sunShadow(FARO_TOWER.heightM);
+  return { dx: sh.dx / k, dy: sh.dy / k, alpha: sh.alpha };
+}
+
 function drawFaroScene(lm) {
   const x = lm.x, y = lm.y;
   // La Punta plaza: the GRAY esplanade GROUND is drawn by the tile plaza layer
@@ -57,7 +63,8 @@ function drawFaroScene(lm) {
   ctx.scale(k, k);
   const frame = {
     X: (value) => value || 0, Y: (value) => value || 0, S: (value) => value || 0,
-    vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT }, timeMs: lastT,
+    // la sombra de la torre: la del sol de todos, llevada al marco (escalado) de la escena
+    vars: { rim, seed: lm.x, flora: FLORA, solar: floraSolar(), timeMs: lastT, shadow: faroShadow(k) }, timeMs: lastT,
   };
   if (canvasOwns("faro")) paintSceneParts(ctx, PROPS, "faro", frame);
   else paintSceneParts(ctx, faroGroundRegistry(), "faro", frame);

@@ -1,6 +1,10 @@
 {
   "_note": "LA ARBOLEDA REGIONAL. Species identity, botanical status, habitat, palettes and complete silhouette recipes live here. The Canvas interpreter owns only a finite geometry vocabulary; it never branches on a species id. `observed_local` means documented in Puntarenas, not automatically native.",
   "version": 2,
+  "roadside": {
+    "_note": "LOS ÁRBOLES DE LA ACERA. `enabled: false` los quita TODOS: los que el renderer sembraba a lo largo de cada calle (`paintRoadsideTrees`) y los del mundo que caen sobre una celda de acera. Los de camellón, parque, patio y manzana se quedan: no están en la acera.",
+    "enabled": false
+  },
   "defaults": {
     "treeSpecies": "almendro",
     "palmSpecies": "palma",

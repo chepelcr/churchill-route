@@ -6,7 +6,7 @@
 // low-res land/water/beach backdrop covers unloaded gaps.
 import { WORLD2D as W } from "../../world2d/index.js";
 import { ROAD_ORDER, ensureTileCuts } from "./cache.js";
-import { paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
+import { keepsTree, paintPalm, paintRoadsideTrees, paintTree, paintWoods, tileTrees } from "./flora.js";
 import { drawStreetLamps } from "./lights.js";
 import { aabbInView, ctx, textureScale } from "./gfx.js";
 import { depthKey } from "./depth.js";
@@ -106,8 +106,8 @@ function drawWorld2D(view, t) {
   const flora = canvasOwns("flora");
   if (flora) paintRoadsideTrees(roads, view);
   if (flora) for (const tile of vts) {
-    for (const tr of tileTrees(tile, medianPairs(tile).pairs)) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30) paintTree(tr); }
-    for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30) paintPalm(pa, t); }
+    for (const tr of tileTrees(tile, medianPairs(tile).pairs)) { if (tr.x > view.x0 - 30 && tr.x < view.x1 + 30 && tr.y > view.y0 - 30 && tr.y < view.y1 + 30 && keepsTree(tr)) paintTree(tr); }
+    for (const pa of tile.palms) { if (pa.x > view.x0 - 30 && pa.x < view.x1 + 30 && pa.y > view.y0 - 30 && pa.y < view.y1 + 30 && keepsTree(pa)) paintPalm(pa, t); }
   }
   // …y los postes del alumbrado, sobre la acera y bajo los rótulos. El pozo de
   // luz lo abre el compositor de noche (`nightlights.js`); esto es la lámpara.

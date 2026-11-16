@@ -20,6 +20,8 @@ import { ACERA_PX, ctx, flatPath, hash01 } from "./gfx.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { sunVector } from "../../game/daynight.js";
+import { sunShadow } from "./shadows.js";
+import { parallaxOffset } from "./depth.js";
 import {
   floraSeed, paintFloraSpecies, resolveFloraMixSpecies,
 } from "./floraShapes.js";
@@ -93,33 +95,72 @@ export function onFeriaDeck(x, y, margin = 32) {
   return false;
 }
 
+// ───────────────────────── el árbol en 2.5D ─────────────────────────
+// UN ÁRBOL SE VE DESDE ARRIBA, COMO UN EDIFICIO. Se dibujaba en alzado —el
+// tronco subiendo en la pantalla y la copa encima— al lado de edificios que ya
+// se levantan con el pinhole de `depth.js`: dos perspectivas en la misma calle.
+// Ahora el pie se queda donde está, la COPA se corre hacia afuera del centro de
+// la pantalla según su altura (`heightM` de la especie, el mismo vector que
+// corre la tapa de un edificio) y el tronco es lo que une los dos. Bajo la
+// cámara la copa tapa su tronco, que es lo que se ve mirando un árbol a plomo.
+//
+// LA COPA SIGUE SIENDO LA DEL REGISTRO: la pinta el mismo generador de siempre
+// (`floraShapes.js`), corrido para que su centro caiga en la copa y con el
+// tronco en tinta transparente — el tronco de alzado bajaría recto desde la
+// copa. Las formas que no son «tronco + copa» (`flora25.generators` dice cuáles
+// sí) siguen en alzado.
+//
+// Y LA SOMBRA ES LA DEL SOL DE TODOS (`sunShadow(heightM)`), no la elipse propia
+// del generador: un árbol y la casa de al lado tiran la sombra hacia el mismo
+// lado y del largo que les da su altura.
+const F25 = EFFECTS.flora25;
+const F25_FORMS = new Set(F25.generators);
+const GHOST = new WeakMap();
+function trunkless(sp) {
+  if (!GHOST.has(sp)) GHOST.set(sp, { ...sp, trunk: F25.noTrunk });
+  return GHOST.get(sp);
+}
+
+function paintFlora(sp, frame) {
+  const form = FLORA.forms[sp.form];
+  if (!F25.enabled || !F25_FORMS.has(form.generator)) {
+    standing(ctx, frame.x, frame.y, (solar) => paintFloraSpecies(ctx, sp, form, { ...frame, solar }));
+    return;
+  }
+  const { x, y, s } = frame, h = (sp.heightM || F25.heightM) * s, radius = sp.r * s;
+  const o = parallaxOffset(state.cam, x, y, h, W.PX_PER_M), sh = sunShadow(h);
+  if (sh.alpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = sh.alpha; ctx.fillStyle = F25.shadow; ctx.strokeStyle = F25.shadow;
+    ctx.lineWidth = (form.trunk?.widthPx || 3) * s; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sh.dx, y + sh.dy); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(x + sh.dx, y + sh.dy, radius * F25.shadowR, radius * F25.shadowR * F25.shadowSquashY, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // el tronco: del pie a la copa
+  ctx.strokeStyle = sp.trunk; ctx.lineWidth = (form.trunk?.widthPx || 3) * s; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + o.dx, y + o.dy); ctx.stroke();
+  // la copa, vista desde arriba: el generador la dibuja achatada (es un alzado) y acá se desachata
+  const rise = (sp.trunkH || 0) * s, cx = x + o.dx, cy = y + o.dy;
+  ctx.save();
+  ctx.translate(cx, cy); ctx.scale(1, F25.crownScaleY); ctx.translate(-cx, -cy);
+  paintFloraSpecies(ctx, trunkless(sp), form, { ...frame, x: cx, y: cy + rise, showShadow: false });
+  ctx.restore();
+}
+
 /** Draw one tree of any species. `tr.k` names it; no `k` is the almendro. */
 function paintTree(tr) {
   if (onFeriaDeck(tr.x, tr.y)) return;
-  const sp = species(tr.k);
-  standing(ctx, tr.x, tr.y, (solar) => paintFloraSpecies(ctx, sp, FLORA.forms[sp.form], {
-    x: tr.x,
-    y: tr.y,
-    s: tr.s || 1,
-    seed: floraSeed(tr.x, tr.y),
-    solar,
-  }));
+  paintFlora(species(tr.k), { x: tr.x, y: tr.y, s: tr.s || 1, seed: floraSeed(tr.x, tr.y) });
 }
 
 // A palm keeps its clock/instance phase in this placement module; the authored
 // trunk/frond silhouette is executed by the same shared family interpreter.
 function paintPalm(pa, t) {
   if (onFeriaDeck(pa.x, pa.y)) return;
-  const sp = species(pa.k || DEFAULT_PALM);
-  standing(ctx, pa.x, pa.y, (solar) => paintFloraSpecies(ctx, sp, FLORA.forms[sp.form], {
-    x: pa.x,
-    y: pa.y,
-    s: pa.s || 1,
-    seed: floraSeed(pa.x, pa.y),
-    tMs: t,
-    phase: pa.sway || 0,
-    solar,
-  }));
+  paintFlora(species(pa.k || DEFAULT_PALM), {
+    x: pa.x, y: pa.y, s: pa.s || 1, seed: floraSeed(pa.x, pa.y), tMs: t, phase: pa.sway || 0,
+  });
 }
 
 // --------------------------------------------------------------- monte ----
@@ -273,6 +314,7 @@ function roadsideTrees(r) {
 
 // One pass over the streets in view, before the world's own flora.
 function paintRoadsideTrees(roads, view) {
+  if (!FLORA.roadside.enabled) return;   // las aceras, despejadas — ver `flora.json → roadside`
   for (const r of roads) {
     for (const tr of roadsideTrees(r)) {
       if (tr.x < view.x0 - 30 || tr.x > view.x1 + 30
@@ -314,6 +356,15 @@ function nearestOnPoly(pts, x, y) {
 // The tile's trees, with any standing on a merged median moved onto its centre
 // and thinned. Computed ONCE per tile — it is pure geometry off emitted data,
 // so it can never differ between two frames.
+/** ¿Está este árbol sembrado sobre la acera? Se pregunta una vez y se guarda en el registro:
+ *  un árbol no se muda. Con `roadside.enabled` en false ésos no se pintan. */
+function onAcera(tr) {
+  if (tr._acera === undefined && W.tileResident(tr.x, tr.y)) tr._acera = W.surfaceAt(tr.x, tr.y) === SURFACE.ACERA;
+  return !!tr._acera;
+}
+/** ¿Se pinta este árbol del mundo? No, si está sobre la acera y las aceras van despejadas. */
+function keepsTree(tr) { return FLORA.roadside.enabled || !onAcera(tr); }
+
 function tileTrees(tile, pairs) {
   if (tile._flora) return tile._flora;
   if (!pairs || !pairs.length) return (tile._flora = tile.trees);
@@ -339,6 +390,7 @@ function tileTrees(tile, pairs) {
 }
 
 export {
+  keepsTree,
   forEachWoodTree, nearestOnPoly, paintPalm, paintRoadsideTrees, paintTree, species,
   paintWoods, roadsideTrees, tileTrees,
 };

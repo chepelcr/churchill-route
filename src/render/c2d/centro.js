@@ -292,11 +292,16 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
   }
   if (!apex) { ctx.strokeStyle = M.roofRidge; ctx.lineWidth = 1.1; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(rx[0], ry[0]); ctx.lineTo(rx[1], ry[1]); ctx.stroke(); }
   if (R.cross) {
-    const c = at(T.z1 + R.rise + M.cross.riseM), x = (apex ? ax : bx) + c[0], y = (apex ? ay : by) + c[1], s = M.cross.sizePx;
+    // la cruz, acostada sobre el techo: su cabeza apunta a `crossAng` (rumbo del mundo). Sin él queda de pie en la pantalla.
+    const first = R.crossAt === 0, c = at(T.z1 + R.rise + M.cross.riseM), s = M.cross.sizePx;
+    const x = (apex || first ? ax : bx) + c[0], y = (apex || first ? ay : by) + c[1];
+    const ang = R.crossAng == null ? -Math.PI / 2 : R.crossAng, ux = Math.cos(ang), uy = Math.sin(ang);
     ctx.lineCap = "butt";
     for (const [color, w, dx, dy] of [[M.cross.shade, 2.6, 0.8, 1], [ink(R.cross), 1.6, 0, 0]]) {
+      const hx = x + dx + ux * s * 0.25, hy = y + dy + uy * s * 0.25;       // donde cruza el travesaño
       ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath();
-      ctx.moveTo(x + dx, y - s + dy); ctx.lineTo(x + dx, y + s + dy); ctx.moveTo(x - s * 0.7 + dx, y - s * 0.25 + dy); ctx.lineTo(x + s * 0.7 + dx, y - s * 0.25 + dy); ctx.stroke();
+      ctx.moveTo(x + dx - ux * s, y + dy - uy * s); ctx.lineTo(x + dx + ux * s, y + dy + uy * s);
+      ctx.moveTo(hx + uy * s * 0.7, hy - ux * s * 0.7); ctx.lineTo(hx - uy * s * 0.7, hy + ux * s * 0.7); ctx.stroke();
     }
   }
 }

@@ -209,6 +209,18 @@
     },
     "_none_today": "NO vehicle part declares one yet, and that is deliberate: adding the verbs is inert until somebody authors motion, which is what let this land with a zero-pixel diff. A spinning wheel is a design change and belongs in its own commit."
   },
+  "flora25": {
+    "_note": "EL ÁRBOL EN 2.5D (`c2d/flora.js → paintFlora`). La copa se corre con el pinhole de los edificios según la altura de la especie y el tronco une pie y copa; la sombra es la del sol de todos (`sunShadow`). `generators`: las formas que son tronco + copa y se pintan así; las demás (las ramas peladas, el mangle con sus raíces) siguen en alzado. `crownScaleY` desachata la copa, que el generador dibuja como alzado.",
+    "enabled": true,
+    "generators": ["crown-stack", "tier-stack", "column-stack", "frond-ring", "fan-ring"],
+    "heightM": 8,
+    "crownScaleY": 1.32,
+    "shadow": "rgba(0,0,0,0.22)",
+    "noTrunk": "rgba(0,0,0,0)",
+    "_noTrunk": "la tinta con que el generador pinta SU tronco de alzado cuando el árbol va en 2.5D: ninguna. El tronco de verdad lo traza `paintFlora`, del pie a la copa.",
+    "shadowR": 0.9,
+    "shadowSquashY": 0.8
+  },
   "sunShadow": {
     "_note": "LA SOMBRA SIGUE AL SOL, y es UNA sola respuesta para todo lo que la tira. Antes había DIECINUEVE desplazamientos fijos repartidos en cuatro archivos —cada peatón, los barcos, la boya, el banco, la caseta, el ferry, la placa de un hito y todo edificio— y ninguno sabía qué hora era: `ctx.translate(4, 4)`, abajo y a la derecha, a las tres de la tarde y a las seis. Los árboles ya seguían al sol desde el ciclo continuo; esto es esa misma regla, escrita una vez.",
     "_2_5d": "Y es lo que la hace leer como PROFUNDIDAD en vez de como una manchita que se desliza: el largo es proporcional a la ALTURA del objeto. Sin eso un peatón y una bodega tiran la misma sombra y la escena se aplana.",

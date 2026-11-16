@@ -62,8 +62,28 @@ const FAMILY = Object.freeze({
   // que es la única cosa del juego que se dibujaba así.
   "lighthouse-tower"(g, part, frame) {
     const p = part, H = Number(p.height) * Number(p.lean), R0 = Number(p.baseHalf), R1 = Number(p.topHalf);
+    // LA SOMBRA ES LA DEL SOL, UNA SOLA. Era una elipse fija (`shadowDx/Dy`) que no sabía qué hora
+    // era y que se sumaba a todo lo demás que ya sigue al sol. Quien pinta pasa `vars.shadow`
+    // (`sunShadow(heightM)`, en el marco de la escena): la torre tira su barrido, de la base a la
+    // punta. Sin él —la hoja de arte, el editor— queda la elipse de siempre.
+    const sun = frame.vars && frame.vars.shadow;
     g.fillStyle = frame.color(p.shadow);
-    g.beginPath(); g.ellipse(Number(p.shadowDx), Number(p.shadowDy), Number(p.shadowRx), Number(p.shadowRy), 0, 0, TAU); g.fill();
+    if (sun) {
+      const L = Math.hypot(sun.dx, sun.dy);
+      if (L > 0.01 && sun.alpha > 0) {
+        const nx = -sun.dy / L, ny = sun.dx / L, prev = g.globalAlpha;
+        g.globalAlpha = prev * sun.alpha;
+        g.beginPath();
+        g.moveTo(nx * R0, ny * R0); g.lineTo(sun.dx + nx * R1, sun.dy + ny * R1);
+        g.lineTo(sun.dx - nx * R1, sun.dy - ny * R1); g.lineTo(-nx * R0, -ny * R0); g.closePath();
+        g.moveTo(R0, 0); g.arc(0, 0, R0, 0, TAU);
+        g.moveTo(sun.dx + R1, sun.dy); g.arc(sun.dx, sun.dy, R1, 0, TAU);
+        g.fill("nonzero");
+        g.globalAlpha = prev;
+      }
+    } else {
+      g.beginPath(); g.ellipse(Number(p.shadowDx), Number(p.shadowDy), Number(p.shadowRx), Number(p.shadowRy), 0, 0, TAU); g.fill();
+    }
     const steps = Number(p.steps), bands = p.bandsAt || [];
     for (let k = 0; k <= steps; k++) {
       const f = k / steps, banded = bands.some(([a, b]) => f >= a && f < b);

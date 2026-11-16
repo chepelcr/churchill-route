@@ -871,9 +871,9 @@
           "rotDeg": 0,
           "_osm": "way/545111073 (`building=ruins`, 6 niveles): una X de cuatro alas de ~22 m con el cilindro de la escalera al centro; el ala del noreste es más ancha. Acá a 0,75 para caber en el lóbulo de la cuadra del juego. De las fotos: cada piso vuela sobre el de abajo en la punta del ala, bandas celestes entre losas de concreto, y la celosía de concreto coronando el techo.",
           "arms": {
-            "_note": "las cuatro alas de la X, en una sola regla: `dirDeg` hacia dónde sale, `wM` su ancho. Cada ala son tres cuerpos que vuelan uno sobre otro en la punta.",
+            "_note": "las cuatro alas de la X, IGUALES: mismo ancho y misma altura. `dirDeg` hacia dónde sale cada una. Cada ala son tres cuerpos que vuelan uno sobre otro en la punta, y nacen de la pared del cilindro.",
             "reachM": 16.5,
-            "fromM": 3.6,
+            "fromM": 3.4,
             "stepM": 0.9,
             "floorsM": [
               0,
@@ -936,28 +936,22 @@
               },
               {
                 "dirDeg": 315,
-                "wM": 12
+                "wM": 9
               }
             ]
           },
           "tiers": [
             {
-              "_": "UN solo cilindro —la escalera— METIDO ENTRE LAS ALAS: ellas nacen de su pared y él apenas sobresale de sus techos",
-              "disc": 4.3,
+              "_": "UN solo cilindro —la escalera— DENTRO de las alas: llega a la altura de sus techos y se pinta ANTES que ellos, así que las alas lo abrazan en vez de quedar debajo",
+              "disc": 4.4,
               "n": 28,
               "z": [
                 0,
-                15.2
+                13.7
               ],
               "wall": "paTower",
               "cap": "paTowerCap",
-              "stains": "paStain",
-              "roof": {
-                "kind": "dome",
-                "riseM": 1.2,
-                "ink": "paTowerCap",
-                "ink2": "paTowerLite"
-              }
+              "stains": "paStain"
             }
           ]
         },
@@ -1223,14 +1217,6 @@
           "s": 1.3,
           "k": "almendro",
           "_note": "los de la esquina del Palacio"
-        },
-        {
-          "at": [
-            27,
-            -78
-          ],
-          "s": 1.1,
-          "k": "almendro"
         }
       ],
       "palms": [
@@ -1986,7 +1972,9 @@
                 "riseM": 8.5,
                 "ink": "stoneRoofLite",
                 "ink2": "stoneRoof",
-                "cross": "cross"
+                "cross": "cross",
+                "crossDeg": 180,
+                "_cross": "la cruz sigue el eje de la nave, como la planta: cabeza hacia el ábside (oeste), pie hacia la puerta"
               }
             }
           ],
@@ -2003,13 +1991,14 @@
           "_osm": "way/518942377: una L de 24 x 30 m pegada al costado sur de la Catedral. Techos de teja roja.",
           "tiers": [
             {
+              "_": "el anexo bajo, pegado a la L sin montarse",
               "box": [
-                12,
-                12
+                12.5,
+                11
               ],
               "at": [
-                5.5,
-                5
+                5.25,
+                4.05
               ],
               "z": [
                 0,
@@ -2034,20 +2023,39 @@
               }
             },
             {
-              "box": [
-                11,
-                14.5
-              ],
-              "at": [
-                -6.5,
-                4.2
+              "_": "UNA sola L de un piso de alto: antes eran dos cajas montadas",
+              "poly": [
+                [
+                  -12.5,
+                  -10.95
+                ],
+                [
+                  12.5,
+                  -10.95
+                ],
+                [
+                  12.5,
+                  -1.45
+                ],
+                [
+                  -1,
+                  -1.45
+                ],
+                [
+                  -1,
+                  11.45
+                ],
+                [
+                  -12.5,
+                  11.45
+                ]
               ],
               "z": [
                 0,
                 6.6
               ],
               "wall": "cream",
-              "cap": "tile",
+              "cap": "tileShade",
               "windows": {
                 "everyM": 3.6,
                 "wM": 1.2,
@@ -2056,12 +2064,6 @@
                   3.4
                 ],
                 "ink": "window"
-              },
-              "roof": {
-                "kind": "hip",
-                "riseM": 2.6,
-                "ink": "tile",
-                "ink2": "tileShade"
               }
             },
             {
@@ -2074,23 +2076,36 @@
                 -6.2
               ],
               "z": [
-                0,
+                6.6,
                 6.6
               ],
               "wall": "cream",
               "cap": "tile",
-              "windows": {
-                "everyM": 3.6,
-                "wM": 1.2,
-                "z": [
-                  1.4,
-                  3.4
-                ],
-                "ink": "window"
-              },
               "roof": {
                 "kind": "hip",
-                "riseM": 2.8,
+                "riseM": 2.6,
+                "ink": "tile",
+                "ink2": "tileShade"
+              }
+            },
+            {
+              "box": [
+                11.5,
+                12.9
+              ],
+              "at": [
+                -6.75,
+                5
+              ],
+              "z": [
+                6.6,
+                6.6
+              ],
+              "wall": "cream",
+              "cap": "tile",
+              "roof": {
+                "kind": "hip",
+                "riseM": 2.6,
                 "ink": "tile",
                 "ink2": "tileShade"
               }
@@ -2109,6 +2124,58 @@
           "_osm": "way/395461264 (`building=chapel`): la nave angosta al norte y el cuerpo ancho detrás.",
           "tiers": [
             {
+              "_": "UNA sola altura: la nave y el cuerpo ancho son un mismo muro en T",
+              "poly": [
+                [
+                  -4.5,
+                  -8.15
+                ],
+                [
+                  4.5,
+                  -8.15
+                ],
+                [
+                  4.5,
+                  -0.9
+                ],
+                [
+                  9.5,
+                  -0.9
+                ],
+                [
+                  9.5,
+                  8.1
+                ],
+                [
+                  -9.5,
+                  8.1
+                ],
+                [
+                  -9.5,
+                  -0.9
+                ],
+                [
+                  -4.5,
+                  -0.9
+                ]
+              ],
+              "z": [
+                0,
+                5.6
+              ],
+              "wall": "chapel",
+              "cap": "zincShade",
+              "windows": {
+                "everyM": 4,
+                "wM": 1.2,
+                "z": [
+                  1.4,
+                  3.8
+                ],
+                "ink": "glass"
+              }
+            },
+            {
               "box": [
                 19,
                 9
@@ -2118,20 +2185,11 @@
                 3.6
               ],
               "z": [
-                0,
-                5
+                5.6,
+                5.6
               ],
               "wall": "chapel",
               "cap": "zinc",
-              "windows": {
-                "everyM": 4,
-                "wM": 1.2,
-                "z": [
-                  1.4,
-                  3.6
-                ],
-                "ink": "glass"
-              },
               "roof": {
                 "kind": "hip",
                 "riseM": 2.2,
@@ -2142,34 +2200,27 @@
             {
               "box": [
                 9,
-                8.5
+                7.6
               ],
               "at": [
                 0,
-                -3.9
+                -4.35
               ],
               "z": [
-                0,
-                6.4
+                5.6,
+                5.6
               ],
               "wall": "chapel",
               "cap": "zinc",
-              "windows": {
-                "everyM": 3.4,
-                "wM": 1.1,
-                "z": [
-                  1.6,
-                  4.4
-                ],
-                "ink": "glass"
-              },
               "roof": {
-                "kind": "gable",
-                "riseM": 2.6,
-                "axis": "short",
+                "kind": "hip",
+                "riseM": 2.2,
                 "ink": "zinc",
                 "ink2": "zincShade",
-                "cross": "cross"
+                "cross": "cross",
+                "crossAt": "front",
+                "crossDeg": 90,
+                "_cross": "sobre el frente (norte), no en el fondo; `crossDeg`: hacia dónde apunta la cabeza de la cruz, en el marco de la cuadra"
               }
             }
           ],
@@ -2339,13 +2390,32 @@
           "_osm": "way/1178476008: la antigua Comandancia, una L de dos pisos alrededor de la Casa de la Cultura. Rosada, con sus almenas.",
           "tiers": [
             {
-              "box": [
-                24,
-                10
-              ],
-              "at": [
-                -6.5,
-                4
+              "_": "UNA sola L: antes eran dos cajas y la del sur se montaba sobre la del este",
+              "poly": [
+                [
+                  -18.5,
+                  -1
+                ],
+                [
+                  5.5,
+                  -1
+                ],
+                [
+                  5.5,
+                  -18
+                ],
+                [
+                  18.5,
+                  -18
+                ],
+                [
+                  18.5,
+                  9
+                ],
+                [
+                  -18.5,
+                  9
+                ]
               ],
               "z": [
                 0,
@@ -2382,13 +2452,13 @@
               "parapet": "pink"
             },
             {
-              "_": "el techo de teja detrás de las almenas",
+              "_": "los techos de teja detrás de las almenas: el del sur de punta a punta y el del este hasta encontrarlo",
               "box": [
-                22.4,
+                35.4,
                 8.4
               ],
               "at": [
-                -6.5,
+                0,
                 4
               ],
               "z": [
@@ -2406,55 +2476,12 @@
             },
             {
               "box": [
-                13,
-                27
-              ],
-              "at": [
-                12,
-                -4.5
-              ],
-              "z": [
-                0,
-                8.2
-              ],
-              "wall": "pink",
-              "cap": "pinkTrim",
-              "bands": [
-                [
-                  0,
-                  0.08,
-                  "pinkBase"
-                ],
-                [
-                  0.48,
-                  0.52,
-                  "pinkTrim"
-                ],
-                [
-                  0.9,
-                  1,
-                  "pinkTrim"
-                ]
-              ],
-              "windows": {
-                "everyM": 4.2,
-                "wM": 1.4,
-                "z": [
-                  1.6,
-                  3.6
-                ],
-                "ink": "archWhite"
-              },
-              "parapet": "pink"
-            },
-            {
-              "box": [
                 11.4,
-                25.4
+                17.6
               ],
               "at": [
                 12,
-                -4.5
+                -8.6
               ],
               "z": [
                 8.2,
@@ -2463,24 +2490,25 @@
               "wall": "pink",
               "cap": "tile",
               "roof": {
-                "kind": "hip",
-                "riseM": 2.4,
+                "kind": "gable",
+                "riseM": 2.2,
+                "axis": "long",
                 "ink": "tile",
                 "ink2": "tileShade"
               }
             },
             {
               "box": [
-                3.6,
-                3.6
+                3.2,
+                3.2
               ],
               "at": [
-                17,
-                -17.2
+                16.7,
+                -16.2
               ],
               "z": [
-                0,
-                11
+                8.2,
+                10.6
               ],
               "wall": "pink",
               "cap": "pinkTrim",
@@ -2491,9 +2519,11 @@
                   "pinkTrim"
                 ]
               ],
-              "parapet": "pink"
+              "parapet": "pink",
+              "_": "la torrecita de la esquina, PARADA SOBRE EL TECHO: desde el suelo salía corrida y se veía flotando"
             }
-          ]
+          ],
+          "solid": true
         },
         {
           "id": "norte_1",
@@ -2864,6 +2894,115 @@
             126.5,
             37
           ]
+        },
+        {
+          "id": "puente",
+          "name": "Puente del jardín",
+          "at": [
+            10.5,
+            -28
+          ],
+          "rotDeg": -58,
+          "_note": "EL PUENTE: un arco viejo de cemento sobre el sendero del jardín. El riachuelo ya no está; el puente se queda, como en la vida real.",
+          "tiers": [
+            {
+              "box": [
+                8,
+                3.4
+              ],
+              "z": [
+                0,
+                1.3
+              ],
+              "wall": "oldCement",
+              "cap": "oldCementLite",
+              "stains": "oldStain",
+              "openings": [
+                {
+                  "edge": 0,
+                  "f": [
+                    0.22,
+                    0.78
+                  ],
+                  "z": [
+                    0,
+                    0.95
+                  ],
+                  "ink": "void"
+                },
+                {
+                  "edge": 2,
+                  "f": [
+                    0.22,
+                    0.78
+                  ],
+                  "z": [
+                    0,
+                    0.95
+                  ],
+                  "ink": "void"
+                }
+              ]
+            },
+            {
+              "box": [
+                8.4,
+                0.5
+              ],
+              "at": [
+                0,
+                -1.55
+              ],
+              "z": [
+                0,
+                2.1
+              ],
+              "wall": "oldCement",
+              "cap": "oldCementLite",
+              "openings": [
+                {
+                  "f": [
+                    0.22,
+                    0.78
+                  ],
+                  "z": [
+                    0,
+                    0.95
+                  ],
+                  "ink": "void"
+                }
+              ]
+            },
+            {
+              "box": [
+                8.4,
+                0.5
+              ],
+              "at": [
+                0,
+                1.55
+              ],
+              "z": [
+                0,
+                2.1
+              ],
+              "wall": "oldCement",
+              "cap": "oldCementLite",
+              "openings": [
+                {
+                  "f": [
+                    0.22,
+                    0.78
+                  ],
+                  "z": [
+                    0,
+                    0.95
+                  ],
+                  "ink": "void"
+                }
+              ]
+            }
+          ]
         }
       ],
       "lamps": [
@@ -2882,10 +3021,6 @@
         [
           108,
           6.4
-        ],
-        [
-          28.5,
-          -30
         ],
         [
           10,
@@ -2919,8 +3054,8 @@
         },
         {
           "at": [
-            20,
-            -24.5
+            21,
+            -39.5
           ],
           "s": 1.35,
           "k": "higueron"
@@ -2980,14 +3115,6 @@
           ],
           "s": 0.9,
           "k": "cana_fistula"
-        },
-        {
-          "at": [
-            61.5,
-            16
-          ],
-          "s": 0.85,
-          "k": "cortez"
         }
       ],
       "palms": [
@@ -3021,56 +3148,6 @@
             39.5
           ],
           "_note": "SIN ACERA DEL LADO ESTE: el paseo central y el Bulevar de la Casa de la Cultura quedan pegados. La franja entre la cuadra y el centro de esa calle se pinta con la piedra del Bulevar (tapa su acera y su caño de este lado) y se estampa `boulevard`. `v`: de dónde a dónde, a lo largo de la calle."
-        }
-      ],
-      "rivers": [
-        {
-          "line": [
-            [
-              -22,
-              -30.5
-            ],
-            [
-              -14,
-              -28
-            ],
-            [
-              -5,
-              -30
-            ],
-            [
-              4,
-              -27
-            ],
-            [
-              10.5,
-              -28
-            ],
-            [
-              18,
-              -31
-            ],
-            [
-              31.5,
-              -28.5
-            ]
-          ],
-          "wM": 4.2,
-          "_note": "el riachuelo del jardín norte. Es dibujo: su suelo es `land`, como todo el jardín."
-        }
-      ],
-      "bridges": [
-        {
-          "at": [
-            10.5,
-            -28
-          ],
-          "rotDeg": -58,
-          "size": [
-            7.5,
-            3.2
-          ],
-          "_note": "EL PUENTE: el sendero que cruza el riachuelo (el tramo de [8,-24] a [13,-32])"
         }
       ]
     }

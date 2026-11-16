@@ -38,6 +38,9 @@ import { FERIA_SHAPES } from "./feriaShapes.js";
 import ASSETS from "./feriaAssets.json";
 import SIM from "../../content/simulation.json" with { type: "json" };
 const AUDIENCE = SIM.crowds.feriaAudience;
+import ACTORS_REG from "../../assets/actors.json" with { type: "json" };
+/** El radio con que se DIBUJA y se choca un juego: el del mundo por su escala (`actors.json → attraction.scaleByKind`). */
+const attractionR = (A) => (A.r || 24) * (ACTORS_REG.attraction.scaleByKind?.[A.kind] ?? 1);
 
 // LOS VALORES POR OMISIÓN Y EL DECORADO DEL CAMPO. Distinto del resto de las
 // paletas del juego, y vale decir por qué: acá los JUEGOS ya eran data desde
@@ -140,7 +143,7 @@ function drawAttraction(A, t) {
   const spec = ASSETS[A.kind];
   if (!spec || !spec.parts) return;
   if (A.kind === "chinamo" && PROPS.bodies?.chinamo) { queueChinamo(A); return; }
-  const r = A.r || 24;
+  const r = attractionR(A);
   const ph = phaseOf(A);
   if (V3 && (!spec.stage || spec.view3d?.form)) { drawRide3d(A, spec, r, t, ph); return; }
   ctx.save();
@@ -382,7 +385,7 @@ function feriaAreaLights() {
       const x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
       if (x - a.x < a.r + clearance || b.x - x < b.r + clearance) continue;
       // ni sobre la tarima ni entre su público: el hueco llega hasta la última fila (`feriaAudience`)
-      if (dj && Math.hypot(x - dj.x, y - dj.y) < dj.r * (AUDIENCE.firstRowK + AUDIENCE.rowGapK) + clearance * 2) continue;
+      if (dj && Math.hypot(x - dj.x, y - dj.y) < attractionR(dj) * (AUDIENCE.firstRowK + AUDIENCE.rowGapK) + clearance * 2) continue;
       if (entrance && Math.abs(x - entrance.x) < entrance.w / 2 + clearance
         && Math.abs(y - entrance.y) < clearance * 2) continue;
       areaLights.push({ x, y, type: "warm", intensity: LIGHTING.areaIntensity });
@@ -489,8 +492,9 @@ function drawFeriaNightEffects(view, t, toScreen, zoom) {
         const side = i % 2 ? 1 : -1, band = Math.floor(i / 2);
         const spread = laser.spread * (band / Math.max(1, laser.count / 2 - 1) - 0.5);
         const a = facing + spread + Math.sin(t * laser.speed * TAU + i * 0.83) * laser.sweep;
-        const sx = A.x + Math.cos(sideAxis) * side * A.r * 0.68 - Math.cos(facing) * A.r * 0.35;
-        const sy = A.y + Math.sin(sideAxis) * side * A.r * 0.68 - Math.sin(facing) * A.r * 0.35;
+        const AR = attractionR(A);
+        const sx = A.x + Math.cos(sideAxis) * side * AR * 0.68 - Math.cos(facing) * AR * 0.35;
+        const sy = A.y + Math.sin(sideAxis) * side * AR * 0.68 - Math.sin(facing) * AR * 0.35;
         const len = reach * (0.86 + 0.14 * Math.sin(t * 0.7 + i));
         const [x0, y0] = toScreen(sx, sy);
         const [x1, y1] = toScreen(sx + Math.cos(a) * len, sy + Math.sin(a) * len);
@@ -513,7 +517,7 @@ function drawFeriaNightEffects(view, t, toScreen, zoom) {
 // visuales: se pinta en este pase, después del velo, así que brilla como los láseres. Si la cámara
 // está detrás del telón la cara no se ve y no se pinta.
 function drawDjScreen(A, t, toScreen, night, view) {
-  const spec = ASSETS.dj, V = spec.view3d, S = V.screen, r = A.r || 24, ppm = PX_PER_M, rM = r / ppm;
+  const spec = ASSETS.dj, V = spec.view3d, S = V.screen, r = attractionR(A), ppm = PX_PER_M, rM = r / ppm;
   if (A.x + 2 * r < view.x0 || A.x - 2 * r > view.x1 || A.y + 2 * r < view.y0 || A.y - 2 * r > view.y1) return;
   const rot = (A.ang || 0) + FACING_OFFSET[spec.facing || "+x"], cr = Math.cos(rot), sr = Math.sin(rot);
   const [ou, ov] = (V.originK || [0, 0]).map((k) => k * r);
@@ -738,7 +742,7 @@ function drawAttractions(view, t) {
   for (const L of W.FERIA || []) drawFeriaSign(L, view);
   if (!arr || !arr.length) return;
   for (const A of arr) {
-    const pad = (A.r || 24) * 2 + 30;
+    const pad = attractionR(A) * 2 + 30;
     if (A.x + pad < view.x0 || A.x - pad > view.x1
       || A.y + pad < view.y0 || A.y - pad > view.y1) continue;
     drawAttraction(A, t);

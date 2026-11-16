@@ -1519,7 +1519,7 @@
         "barAlpha": 0.85,
         "wave": "#ffffff",
         "waveAlpha": 0.55,
-        "tiltDeg": 42,
+        "tiltDeg": 16,
         "heightK": 0.95,
         "off": "#0d0a14",
         "frame": "#2a2236"

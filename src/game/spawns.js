@@ -12,6 +12,7 @@ import { SURFACE } from "./surfaces.js";
 import { ROAD_ROLE } from "../domain/vocabulary.generated.js";
 import { npcCrowdSize, npcMayStand, npcSpeed, npcSurfaceClasses, npcType } from "./npcs.js";
 import SIM from "../content/simulation.json" with { type: "json" };
+import ACTORS_REG from "../assets/actors.json" with { type: "json" };
 
 // The sidewalk's depth is a WORLD knob (ACERA_CELLS): the accessor resolves it
 // from the manifest and owns the single legacy default, so the sim and the
@@ -659,7 +660,7 @@ function maintainFeriaAudience() {
       const AU = SIM.crowds.feriaAudience;
       const spread = slots > 1 ? -AU.spreadRad + 2 * AU.spreadRad * slot / (slots - 1) : 0;
       const a = (A.ang || 0) + spread;
-      const d = A.r * (AU.firstRowK + row * AU.rowGapK);
+      const d = A.r * (ACTORS_REG.attraction.scaleByKind?.[A.kind] ?? 1) * (AU.firstRowK + row * AU.rowGapK);
       pedestrians.push({
         x: A.x + Math.cos(a) * d, y: A.y + Math.sin(a) * d,
         ang: a + Math.PI, v: 0, hue: (i * 47 + Math.round(A.x)) % 360,

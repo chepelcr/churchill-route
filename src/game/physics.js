@@ -648,7 +648,7 @@ export function update(dt) {
   // rebote no puede costar una reconstrucción del mundo.
   const AT = ACTORS.attraction;
   for (const A of W.ATTRACTIONS || []) {
-    const rr = (A.r || 24) * AT.radiusScale;
+    const rr = (A.r || 24) * (AT.scaleByKind?.[A.kind] ?? 1) * AT.radiusScale;
     const dx = p.x - A.x, dy = p.y - A.y;
     const d2 = dx * dx + dy * dy;
     const reach = rr + 9;

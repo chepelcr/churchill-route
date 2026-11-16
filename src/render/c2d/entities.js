@@ -5,8 +5,8 @@ import { nightLevel } from "../../game/daynight.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { evalOn, traceVehicleSilhouette } from "../vehicleShapes.js";
 import { partColor, vehicleCargo, vehicleEffects, vehicleParts } from "../../game/vehicles.js";
-import { shadowInk, sunShadow } from "./shadows.js";
-import { facingEdges, paintSweep, parallaxOffset } from "./depth.js";
+import { sunShadow } from "./shadows.js";
+import { parallaxOffset } from "./depth.js";
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { npcArt } from "../../game/npcs.js";
 import { paintParts } from "./shapes.js";
@@ -20,7 +20,7 @@ import { ctx, lastT, mixColor } from "./gfx.js";
 import ACTORS from "../../assets/actors.json" with { type: "json" };
 import { paintPerson3d, paintRider } from "./people3d.js";
 import VEHICLE_REG from "../../assets/vehicles.json" with { type: "json" };
-import { makeRig } from "./rig3d.js";
+import { makeRig, withShadowLayer } from "./rig3d.js";
 import { hullOutline, paintHullSides } from "./vesselRigs.js";
 import PRODUCTS_JSON from "../../../content/world/products.json" with { type: "json" };
 
@@ -202,23 +202,27 @@ function drawCar(c) {
     }
     return spec;
   };
-  ctx.save();
-  ctx.translate(c.x, c.y); ctx.rotate(angle);
-  const hw = c.w / 2, hh = c.h / 2;
-  const outline = [-hw, -hh, hw, -hh, hw, hh, -hw, hh];
-  ctx.fillStyle = shadowInk(sh.alpha);
-  paintSweep(ctx, outline, sh.dx, sh.dy, facingEdges(outline, -sh.dx, -sh.dy));
-  ctx.beginPath(); ctx.rect(-hw, -hh, c.w, c.h); ctx.fill();
-  ctx.beginPath(); ctx.rect(-hw + sh.dx, -hh + sh.dy, c.w, c.h); ctx.fill();
+  const hw = c.w / 2, hh = c.h / 2, ppm = PX_PER_M, hwM = hw / ppm, hhM = hh / ppm;
+  // la sombra es la de sus piezas: la misma receta con el mapeo del sol
+  rigShadow(c.x, c.y, Math.max(hw, hh) + Math.hypot(sh.dx, sh.dy) + 4, (g) => {
+    const S = makeRig(g, c.x, c.y, angle, ppm, state.cam, "sun", V3D.shade, heightM);
+    rigBoxes(S, kind.body3d || [], hwM, hhM, color); S.flush();
+  });
   // EL TRÁFICO TAMBIÉN ALUMBRA. Un carro sin faros en una calle con pozos de
   // luz y oscuridad entre ellos es un carro invisible que se te viene encima —
   // y las calaveras son lo único que se ve de uno que se aleja.
-  if (nightLevel() > 0.001) paintHeadlights(ctx, hw, hh);
-  ctx.restore();
-  const ppm = PX_PER_M, hwM = hw / ppm, hhM = hh / ppm;
+  if (nightLevel() > 0.001) {
+    ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(angle); paintHeadlights(ctx, hw, hh); ctx.restore();
+  }
   const R = makeRig(ctx, c.x, c.y, angle, ppm, state.cam, "cam", V3D.shade, heightM);
   rigBoxes(R, kind.body3d || [], hwM, hhM, color);
   R.flush();
+}
+
+/** La sombra de un cuerpo armado con el aparejo: opaca en su lienzo, compuesta una vez con su alfa. */
+function rigShadow(x, y, radiusPx, draw) {
+  const a = sunShadow(1).alpha * V3D.shadowAlpha;
+  if (a > 0.001) withShadowLayer(ctx, x, y, radiusPx, a, draw);
 }
 
 /** Una receta de cajas (`body3d`) sobre el aparejo: `at`/`size` en fracciones del vehículo, `z` en
@@ -233,13 +237,38 @@ function rigBoxes(R, recipe, hwM, hhM, color) {
 }
 
 /** El vehículo del jugador EN 3D: su receta de cajas y su chofer, donde está el carro (x, y). */
-function paintPlayer3d(x, y, a, veh, { body = true, rider = true } = {}) {
-  const ppm = PX_PER_M, hwM = veh.w / 2 / ppm, hhM = veh.h / 2 / ppm;
-  const R = makeRig(ctx, x, y, a, ppm, state.cam, "cam", V3D.shade, (veh.heightM || 1.5) + 1.5);
+function paintPlayer3d(x, y, a, veh, { body = true, rider = true, shadow = true } = {}) {
+  const ppm = PX_PER_M, hwM = veh.w / 2 / ppm, hhM = veh.h / 2 / ppm, topM = (veh.heightM || 1.5) + 1.5;
   const ink = (spec) => partColor(spec, veh);
-  if (body && veh.body3d) rigBoxes(R, veh.body3d, hwM, hhM, ink);
-  if (rider && veh.driver) paintRider(R, veh.driver, VEHICLE_REG.driver3d, ink, hwM, hhM);
-  R.flush();
+  const build = (R) => {
+    if (body && veh.body3d) rigBoxes(R, veh.body3d, hwM, hhM, ink);
+    if (rider && veh.driver) paintRider(R, veh.driver, VEHICLE_REG.driver3d, ink, hwM, hhM);
+    R.flush();
+  };
+  // la sombra es la de sus piezas y la de su chofer
+  if (shadow) {
+    const sh = sunShadow(topM);
+    rigShadow(x, y, Math.max(veh.w, veh.h) / 2 + Math.hypot(sh.dx, sh.dy) + 4,
+      (g) => build(makeRig(g, x, y, a, ppm, state.cam, "sun", V3D.shade, topM)));
+  }
+  build(makeRig(ctx, x, y, a, ppm, state.cam, "cam", V3D.shade, topM));
+}
+
+/** La sombra de una lancha del jugador: su SILUETA, corrida por el sol a la altura de su borda, y la
+ *  de su chofer — en el mismo lienzo, de una vez. */
+function paintBoatShadow(p, veh) {
+  const h = veh.heightM ?? V3D.defaultHeightM, sh = sunShadow(h), ppm = PX_PER_M;
+  const c = Math.cos(-p.a), s = Math.sin(-p.a), lx = sh.dx * c - sh.dy * s, ly = sh.dx * s + sh.dy * c;
+  rigShadow(p.x, p.y, Math.max(veh.w, veh.h) / 2 + Math.hypot(sh.dx, sh.dy) + 8, (g) => {
+    g.save(); g.translate(p.x, p.y); g.rotate(p.a); g.translate(lx, ly);
+    g.fillStyle = V3D.shade.shadow; traceVehicleSilhouette(g, state.vehicleKey, veh); g.fill();
+    g.restore();
+    if (veh.driver) {
+      const R = makeRig(g, p.x, p.y, p.a, ppm, state.cam, "sun", V3D.shade, h + 1.5);
+      paintRider(R, veh.driver, VEHICLE_REG.driver3d, (spec) => partColor(spec, veh), veh.w / 2 / ppm, veh.h / 2 / ppm);
+      R.flush();
+    }
+  });
 }
 
 // The Ferrocarril heritage train: red loco + two cream wagons, each posed
@@ -516,6 +545,9 @@ const EFFECT_PAINTERS = {
   // Never a generic ellipse — that is what `traceVehicleSilhouette` is for.
   shadow: {
     paint: (p, veh, c) => {
+      // EN 3D la sombra es la de sus piezas (`paintPlayer3d`); una lancha tira su silueta según el sol
+      if (veh.body3d) return;
+      if (veh.driver || veh.heightM) { paintBoatShadow(p, veh); return; }
       const lift = (state.elev || 0) * 7;
       paintVehicleShadow(ctx, p, veh, c, lift,
         (g, vehicle) => traceVehicleSilhouette(g, state.vehicleKey, vehicle));
@@ -572,7 +604,7 @@ function drawPlayer(p, veh, { body = true } = {}) {
   if (state.carrying) drawCarriedCargo(ctx, state.vehicleKey, veh, state.carrying);
   ctx.restore();
   // y su chofer, sobre la cubierta levantada (las lanchas no tienen receta de cajas: su casco es su arte)
-  if (veh.driver) paintPlayer3d(p.x + ux, p.y + uy, p.a, veh, { body: false });
+  if (veh.driver) paintPlayer3d(p.x + ux, p.y + uy, p.a, veh, { body: false, shadow: false });
 }
 
 /** El corrimiento de la tapa de un vehículo de `heightM`, ya en SU marco (girado `p.a`). */

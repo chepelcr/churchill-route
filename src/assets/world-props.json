@@ -82,9 +82,7 @@
       "_decal": "EL ESTAMPADO: el dibujo de lo que vende —el que el puesto tenía cuando era plano— impreso en la cara del toldo que da a la calle, la que el carro ve al llegar. Una pared no sirve: desde la cámara a plomo mide tres o cuatro píxeles. `box` es su marco [x, y, ancho, alto] en las medidas de esas partes; `bg` el fondo del cartel.",
       "chinamo": {
         "chinamoBody": "#f6f1e4",
-        "_": "la caseta y el cartel del chinamo de la feria; el toldo lleva los colores de su comida (`feriaAssets.json → chinamo.foods`)",
-        "chinamoPillPx": 6,
-        "chinamoPillFg": "#ffffff"
+        "_": "la caseta del chinamo de la feria (su toldo lleva los colores de su comida, `feriaAssets.json → chinamo.foods`)"
       }
     },
     "ferry": {
@@ -5618,90 +5616,10 @@
       ]
     },
     "chinamo": {
-      "_note": "EL CHINAMO DE LA FERIA: el mismo quiosco, a la medida de su puesto. No es de recoger: el carro rebota contra él (`actors.json → attraction`), así que va bajo el carro como todo lo demás.",
+      "_note": "EL CHINAMO DE LA FERIA: sólo el toldo a rayas del quiosco, en los colores de su comida y sin rótulo. No es de recoger: el carro rebota contra él (`actors.json → attraction`).",
       "tiers": [
         {
-          "_": "la caseta, atrás",
-          "box": [
-            6.44,
-            2.47
-          ],
-          "at": [
-            0,
-            -2.0149999999999997
-          ],
-          "z": [
-            0,
-            3.0
-          ],
-          "wall": "$body",
-          "cap": "$body",
-          "bands": [
-            [
-              0,
-              0.12,
-              "$awning"
-            ]
-          ]
-        },
-        {
-          "_": "el mostrador, del lado por el que entra el carro",
-          "box": [
-            6.44,
-            1.2
-          ],
-          "at": [
-            0,
-            -0.17999999999999983
-          ],
-          "z": [
-            0,
-            1.1
-          ],
-          "wall": "$body",
-          "cap": "kioskCounter",
-          "bands": [
-            [
-              0,
-              0.3,
-              "$awning"
-            ]
-          ]
-        },
-        {
-          "box": [
-            0.32,
-            0.32
-          ],
-          "at": [
-            -3.2,
-            2.95
-          ],
-          "z": [
-            0,
-            3.6
-          ],
-          "wall": "kioskPost",
-          "cap": "kioskPost"
-        },
-        {
-          "box": [
-            0.32,
-            0.32
-          ],
-          "at": [
-            3.2,
-            2.95
-          ],
-          "z": [
-            0,
-            3.6
-          ],
-          "wall": "kioskPost",
-          "cap": "kioskPost"
-        },
-        {
-          "_": "EL TOLDO A RAYAS: cubre la caseta, el mostrador y el carril entero —el carro entra DEBAJO a recoger— y lleva ESTAMPADO lo que vende en la cara que da a la calle",
+          "_": "sólo el toldo a rayas, en perspectiva: desde arriba el chinamo de la feria es su techo",
           "box": [
             7.0,
             6.5
@@ -5723,12 +5641,6 @@
             "ink": "$awning",
             "ink2": "$awning2",
             "stripes": 10
-          },
-          "decal": {
-            "edges": [
-              2
-            ],
-            "roof": true
           }
         }
       ]

@@ -113,19 +113,16 @@ export function paintRide(g, kind, r, t = 0, ph = 0, A = { food: 0 }) {
 const FACING_OFFSET = Object.freeze({ "+x": 0, "+y": -Math.PI / 2,
   "-x": Math.PI, "-y": Math.PI / 2 });
 
-// EL CHINAMO ES UN QUIOSCO. Se levanta con el mismo cuerpo 2.5D que los quioscos del juego
-// (`world-props.json → bodies.chinamo`): toldo a rayas del color de su comida, mostrador al frente y su
-// comida estampada en la pared. El arte plano de `feriaAssets.json → chinamo` queda para la hoja de la
+// EL CHINAMO ES EL TOLDO DE UN QUIOSCO. Se levanta con el mismo pintor 2.5D que los quioscos del juego
+// (`world-props.json → bodies.chinamo`): sólo su techo a rayas, en los colores de su comida, sin rótulo. El arte plano de `feriaAssets.json → chinamo` queda para la hoja de la
 // feria y el editor (`paintRide`).
 function queueChinamo(A) {
   const food = foodOf(A), spec = PROPS.bodies.chinamo;
-  // el arte del chinamo mira a +y; el cuerpo pone su frente en +v: los dos giros coinciden en A.ang - π/2
-  const ang = (A.ang || 0) + FACING_OFFSET[ASSETS.chinamo.facing || "+x"];
-  const goods = (food.goods || []).map((fill, i) => ({ shape: "disc", fill, cx: -9 + i * 6, cy: 1, r: 2.6 }));
+  // el arte plano del chinamo mira a +y; el cuerpo pone su frente en +v, que con este giro queda
+  // del lado contrario: se le suma media vuelta para que el mostrador dé al pasillo de la feria
+  const ang = (A.ang || 0) + FACING_OFFSET[ASSETS.chinamo.facing || "+x"] + Math.PI;
   queueBody(bodyAt(spec, A.x, A.y, ang, `chinamo:${A.food}`),
-    { body: KIOSK.chinamoBody, awning: food.accent, awning2: food.ink,
-      _decal: { box: [-14, -6, 28, 13], bg: KIOSK.chinamoBody, parts: goods } },
-    { text: food.label, fg: KIOSK.chinamoPillFg, bg: food.accent, size: KIOSK.chinamoPillPx });
+    { body: KIOSK.chinamoBody, awning: food.accent, awning2: food.ink });
 }
 function foodOf(A) {
   const foods = ASSETS.chinamo.foods, keys = Object.keys(foods);

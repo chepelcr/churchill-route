@@ -649,20 +649,6 @@
         "liftM": 0.4
       },
       {
-        "shape": "bulbs",
-        "n": 14,
-        "rect": {
-          "w": 2.0,
-          "h": 1.24
-        },
-        "radiusPx": 1.4,
-        "palette": [
-          "#ffd166",
-          "#ff5d73"
-        ],
-        "liftM": 0.5
-      },
-      {
         "shape": "sign",
         "text": "CHOCONES",
         "dxPx": 1.1,
@@ -716,7 +702,8 @@
       "postM": 0.18,
       "post": "#5d6470",
       "boundsK": 1.5
-    }
+    },
+    "_bulbs": "Los bombillos del borde son la GUIRNALDA de `materials.json → feria.lighting` (choconesHangM…), que cuelga sobre la baranda de la pista; una fila propia aquí se pintaba al lado de ella y eran dos."
   },
   "barco": {
     "name": "El Barco Pirata",
@@ -1509,7 +1496,12 @@
         ]
       },
       "boundsK": 1.7,
-      "topM": 11
+      "topM": 11,
+      "originK": [
+        0,
+        0.12
+      ],
+      "_originK": "corre la tarima entera dentro de su marco (fracción del radio; +v es hacia el público, arriba en pantalla) para que no la pise el rótulo"
     }
   },
   "$view3d": {

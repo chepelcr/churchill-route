@@ -226,7 +226,10 @@ function drawRide3d(A, spec, r, t, ph) {
   // ── UNA FORMA: la geometría del juego, en metros, la arma `feriaRigs.js` ──
   const form = V.form && FERIA_FORMS[V.form];
   if (form) {
-    const run = (g, mode) => { const R = makeRig(g, A.x, A.y, rot, ppm, state.cam, mode, SHADE(), V.topM ?? V3.topM); form(R, { rM, t, ph, V, A }); R.flush(); };
+    // `originK`: la forma entera corrida dentro de su marco (el rótulo se queda donde está)
+    const [ou, ov] = (V.originK || [0, 0]).map((k) => k * r), cr = Math.cos(rot), sr = Math.sin(rot);
+    const ox = A.x + ou * cr - ov * sr, oy = A.y + ou * sr + ov * cr;
+    const run = (g, mode) => { const R = makeRig(g, ox, oy, rot, ppm, state.cam, mode, SHADE(), V.topM ?? V3.topM); form(R, { rM, t, ph, V, A }); R.flush(); };
     if (lit) withShadow(A, r, sun.alpha * V3.shadowAlpha, (g) => run(g, "sun"));
     queueBodyLike({ x: A.x, y: A.y, paint: () => { run(ctx, "cam"); drawSigns(); } });
     return;

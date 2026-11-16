@@ -2148,7 +2148,7 @@
         "rM": 9.0,
         "tiers": 3,
         "leaves": 9,
-        "leafFromK": 0.47,
+        "leafFromK": 0.97,
         "leafBaseM": 1.2,
         "leafTopM": 6.5,
         "leafCupM": 0.6,
@@ -2162,7 +2162,7 @@
         "shadowAlpha": 0.5,
         "stageM": 1.0,
         "stageSide": "#2a9fa1",
-        "_3d": "la Concha en 3D (`punta.js → shellForm`, sobre el aparejo `rig3d.js`): cada grada sube `tierRiseM` sobre la de adentro con su contrahuella, sus cantos y el muro de atrás, y la sombra de todo cae de una vez (`shadowAlpha`) (sin muro oscuro detrás: se leía como una sombra que la Concha no tiene), el escenario `stageM`, y las hojas son abanicos que nacen sobre un pilar de `leafBaseM` al borde del escenario (a `leafFromK` del radio) y suben hacia el mar hasta `leafTopM`, ahuecadas `leafCupM`, las del centro más grandes (`leafSizeK`: costado, centro), traslapadas"
+        "_3d": "la Concha en 3D (`punta.js → shellForm`, sobre el aparejo `rig3d.js`): cada grada sube `tierRiseM` sobre la de adentro con su contrahuella, sus cantos y el muro de atrás, y la sombra de todo cae de una vez (`shadowAlpha`) (sin muro oscuro detrás: se leía como una sombra que la Concha no tiene), el escenario `stageM`, y las hojas son abanicos que nacen sobre un pilar de `leafBaseM` en el borde de atrás, del lado del mar (a `leafFromK` del radio), y se abren hacia el escenario subiendo hasta `leafTopM`, ahuecadas `leafCupM`, las del centro más grandes (`leafSizeK`: costado, centro), traslapadas"
       }
     },
     "fun": {

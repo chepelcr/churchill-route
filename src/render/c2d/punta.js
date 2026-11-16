@@ -335,11 +335,11 @@ function shellForm(Rg, Rm, C) {
 }
 
 // LAS HOJAS DE LA CONCHA, según la foto: abanicos turquesa translúcidos que nacen ANGOSTOS sobre un
-// pilar corto al borde del escenario y se abren hacia atrás y hacia arriba, hacia el mar, como la
-// concha acústica que son. Cada una apunta desde el centro (las bases no miran todas al mismo lado),
-// se traslapa con las vecinas, y no son iguales: las del centro, más grandes (`leafSizeK`). La
-// superficie se curva hacia arriba (`leafTopM`) y se ahueca de lado a lado (`leafCupM`); sus
-// nervios salen del pie como los de una concha. En 3D sobre el aparejo, sombra incluida.
+// pilar corto en el borde de atrás —del lado del mar, a `leafFromK` del radio— y se abren hacia
+// adentro y hacia arriba, sobre el escenario, como la concha acústica que son. Cada una apunta al
+// centro (las bases no miran todas al mismo lado), se traslapa con las vecinas, y no son iguales:
+// las del centro, más grandes (`leafSizeK`). La superficie sube hasta `leafTopM` y se ahueca de lado
+// a lado (`leafCupM`); sus nervios salen del pie como los de una concha. En 3D sobre el aparejo.
 function shellLeaves(Rg, Rm, C, cy) {
   const n = C.leaves, arc = C.leafArcDeg * RAD, [kSide, kMid] = C.leafSizeK;
   const rb = Rm * C.leafFromK, zb = C.leafBaseM, H = C.leafTopM - zb, cup = C.leafCupM, tipK = 0.75;
@@ -350,7 +350,7 @@ function shellLeaves(Rg, Rm, C, cy) {
     const L = Rm * C.leafLen * size, W = Rm * C.leafW * size, bx = dx * rb, by = cy + dy * rb;
     const w = (q) => W * (q <= tipK ? Math.pow(Math.sin(Math.PI / 2 * q / tipK), 0.7) : Math.sqrt(Math.max(0, 1 - ((q - tipK) / (1 - tipK)) ** 2)));
     const pt = (q, t) => {
-      const r = q * L, side = w(q) * t;
+      const r = -q * L, side = w(q) * t;   // del pie (afuera, del lado del mar) hacia el escenario
       return [bx + dx * r + tx * side, by + dy * r + ty * side, zb + H * Math.sin(q * Math.PI * 0.6) / Math.sin(Math.PI * 0.6) - cup * t * t * q];
     };
     Rg.at(zb, () => Rg.box(bx, by, 0, zb, C.pillarM, C.pillarM, { top: C.pillar, side: C.pillar }, a));

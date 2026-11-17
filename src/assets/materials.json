@@ -1851,10 +1851,16 @@
       "kerbFace": "#cfc3a3"
     },
     "rails": {
-      "_note": "El Ferrocarril: balasto, durmientes y los dos rieles.",
+      "_note": "El Ferrocarril: balasto, durmientes y los dos rieles. Las medidas van en METROS (`c2d/streets.js → paintTileRails`): el ancho del balasto, el largo, el grueso y el paso de los durmientes, la media trocha (del eje a cada riel) y el grueso del riel.",
       "ballast": "rgba(120,104,84,0.5)",
       "ties": "#5a4a38",
-      "steel": "#9aa0a6"
+      "steel": "#9aa0a6",
+      "ballastWM": 2.88,
+      "tieLenM": 3.2,
+      "tieWM": 0.512,
+      "tiePitchM": 2.24,
+      "gaugeHalfM": 1.024,
+      "railWM": 0.448
     },
     "labels": {
       "fg": "#fff",

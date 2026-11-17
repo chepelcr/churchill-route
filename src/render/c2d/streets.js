@@ -382,32 +382,35 @@ function paintRoads(roads, view) {
 }
 
 // Per-tile Ferrocarril rail pieces: ballast bed + ties + two steel rails.
-// Decorative (not drivable), drawn on the ground over the roads.
+// Decorative (not drivable), drawn on the ground over the roads. Every measure
+// is METRES in `materials.json → streets.rails`.
 function paintTileRails(rails, view) {
+  const R = ST.rails, ppm = PX_PER_M;
+  const tieHalf = R.tieLenM * ppm / 2, pitch = R.tiePitchM * ppm, gauge = R.gaugeHalfM * ppm;
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   for (const rl of rails) {
     if (!rl.aabb) rl.aabb = flatAABB(rl.pts);
     if (!aabbInView(rl.aabb, view, 12)) continue;
     const p = rl.pts;
     // ballast bed
-    ctx.strokeStyle = ST.rails.ballast; ctx.lineWidth = 9;
+    ctx.strokeStyle = R.ballast; ctx.lineWidth = R.ballastWM * ppm;
     ctx.stroke(rl._path || (rl._path = flatPath(p, false)));
     // ties
-    ctx.strokeStyle = ST.rails.ties; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = R.ties; ctx.lineWidth = R.tieWM * ppm;
     for (let i = 0; i + 3 < p.length; i += 2) {
       const x0 = p[i], y0 = p[i + 1], dx = p[i + 2] - x0, dy = p[i + 3] - y0;
       const len = Math.hypot(dx, dy); if (len < 0.001) continue;
       const nx = -dy / len, ny = dx / len;
-      for (let s = 0; s < len; s += 7) {
+      for (let s = 0; s < len; s += pitch) {
         const t = s / len, cx = x0 + dx * t, cy = y0 + dy * t;
         if (cx < view.x0 - 8 || cx > view.x1 + 8 || cy < view.y0 - 8 || cy > view.y1 + 8) continue;
         ctx.beginPath();
-        ctx.moveTo(cx - nx * 5, cy - ny * 5); ctx.lineTo(cx + nx * 5, cy + ny * 5); ctx.stroke();
+        ctx.moveTo(cx - nx * tieHalf, cy - ny * tieHalf); ctx.lineTo(cx + nx * tieHalf, cy + ny * tieHalf); ctx.stroke();
       }
     }
     // two steel rails, offset either side of the centerline
-    ctx.strokeStyle = ST.rails.steel; ctx.lineWidth = 1.4;
-    for (const sgn of [-3.2, 3.2]) {
+    ctx.strokeStyle = R.steel; ctx.lineWidth = R.railWM * ppm;
+    for (const sgn of [-gauge, gauge]) {
       ctx.beginPath();
       for (let i = 0; i < p.length; i += 2) {
         const ii = i + 2 < p.length ? i : (i >= 2 ? i - 2 : i);
@@ -418,7 +421,6 @@ function paintTileRails(rails, view) {
       ctx.stroke();
     }
   }
-  ctx.lineCap = "butt";
 }
 
 // Per-tile paseo/León Cortés separator strips: the planted green ground the

@@ -2543,3 +2543,67 @@ Knobs at the top of `tools/build_world.py`: `TOWN_FRACTION`, `CROSS_EXAG`, `ROAD
 `LANDMARK_DEFS`/`CUSTOMER_DEFS` (geo anchors; build fails listing unresolved POIs —
 and on any POI unreachable through the drivable network). Camera zoom is responsive
 (`computeZoom` in `src/render/canvas2d.js`, ≤12 cuadrículas per view).
+
+## Cerrado el 2026-11-17 — la perspectiva three.js, segundo intento, retirada
+
+La vista 2.5D de three.js (opt-in, `?render=3d`, Ajustes → «Vista 2.5D (beta)»)
+se retiró entera, con su opción: el 2.5D propio de Canvas (`c2d/depth.js`,
+`c2d/rig3d.js`, `c2d/bodies.js`, `c2d/floraTop.js`, `c2d/furniture3d.js`)
+terminó levantando todo lo que tiene altura —edificios, árboles, postes,
+vehículos, barcos, mobiliario, el puente, la vía, las boyas— y quedó como el
+único modo. El código vive en el tag `3d-attempt-2026-09-29`. La fila, tal como
+estaba:
+
+- [ ] **PERSPECTIVA: SEGUNDO INTENTO EN CURSO (2026-09-29), opt-in.** El
+      primero se construyó y se RETIRÓ entero el 2026-08-26, a pedido del usuario. El código vive en el
+      tag `3d-attempt-2026-08-26`; esto es lo que costó averiguar, para que la
+      próxima no lo vuelva a pagar:
+
+      * **Una ortográfica inclinada SÍ registra con la afín 2-D.** El mapa del
+        suelo a la pantalla sigue siendo `ScaleY(cosφ)·Rot(θ)`, así que las
+        ~2 500 líneas de dibujo de suelo NO se reescriben. Sólo el levante por
+        cota queda fuera de Canvas.
+      * **Pero el achatamiento llega al VOLANTE.** `applyTouch` compara un
+        ángulo de PANTALLA contra un rumbo de MUNDO. La corrección correcta es
+        des-achatar el ÁNGULO y sacar el acelerador de la distancia de pantalla
+        CRUDA; des-achatar las dos cosas cambia el tacto y se siente mal.
+      * **A 0° no se ve un solo costado** — es geometría, no implementación. Lo
+        único que dice que hay volumen es la SOMBRA, y a 10° de latitud el sol
+        de mediodía está a 86°: la sombra de un bloque de 16 m mide 2,5 px. Al
+        amanecer y al atardecer mide 35.
+      * **Un techo a dos aguas visto a plomo se lee como una PIRÁMIDE**, no como
+        un techo: cuatro faldones con luz distinta y las limatesas cruzando la
+        planta. A 0.34 de la altura el centro salía como un campo de carpas.
+      * **El receptor de sombra NO puede ser coplanar con la base** de lo que
+        proyecta, o no sale NINGUNA sombra (no ruido: nada). Cuatro centímetros
+        abajo alcanzan — es lo que `terrainShadow.receiverBelowM` ya decía.
+      * **El mapa de sombras tiene que invalidarse con el conjunto de CASTERS**,
+        no sólo con el sol y la cámara: los tiles llegan por streaming.
+      * `src/render/camera.js` y `src/render/sun.js` se quedaron: son las
+        autoridades únicas de cámara y de sol del juego 2-D, sin three adentro.
+
+      **El segundo, desde cero** (`src/render/three/`, `?render=3d` o Ajustes →
+      «Vista 2.5D (beta)»): cámara con INCLINACIÓN OBLICUA (`leanDeg` 30°) y
+      pinhole a plomo (`pinholeM` 260 m), las dos con el suelo intacto — lo que
+      el primero no se animó a hacer y por lo que no se veía un solo costado.
+      Hecho: edificios con ventanas (prendidas de noche) y alero, arboleda del
+      pueblo instanciada, postes, vehículos con su sprite de techo, talud y
+      escollera en la orilla dura, la torre del Faro, sombra de sol cacheada,
+      tinte del cielo en el sombreador. Falta, en orden:
+      * [ ] **Revisarlo en un teléfono y en el APK** (`?q=low` es el tier por
+            defecto en táctil) y elegir `leanDeg`/`pinholeM` con el ojo.
+      * [x] ~~El monte en 3-D~~ (`forEachWoodTree`, la misma retícula que
+            Canvas). [ ] Los manglares siguen planos: su arte lleva raíces en
+            el barro que una copa sola no dice.
+      * [x] ~~Hitos con cuerpo desde las alturas de su escena~~ (2026-09-30):
+            la manzana cívica entera — catedral, curia, casa de la cultura,
+            biblioteca, escuelas, gasolineras, kioscos. [ ] Falta el MERCADO,
+            el Tioga, Las Brisas y la Capitanía: sus props (`landmarks` en
+            world-props.json) no declaran `heightM`, así que no hay qué leer.
+      * [x] ~~El suelo como malla con niveles y cota~~ (2026-09-30): el cuadro
+            de Canvas drapeado sobre `three/terrain.js`, así que lo plano no
+            tuvo que migrar. [ ] Medir el costo de subir el lienzo cada cuadro
+            en un teléfono (`q=low` lo sube a 1×).
+      * [x] ~~Que el pozo de un poste alumbre también las fachadas~~: el
+            sombreador descuenta el velo con la misma máscara que Canvas.
+      * [ ] Voltear el modo por defecto cuando lo anterior esté y rinda.

@@ -101,7 +101,7 @@ stopped being one.
 
 * **art** → a synthetic sheet, diffed: `shot-vehicles` · `shot-actors` ·
   `shot-landmarks` · `shot-signs` · `shot-parcels` · `shot-scenes` ·
-  `shot-effects` · `shot-stands` · `shot-kiosks` · `shot-lights` · `shot-feria`, vs
+  `shot-effects` · `shot-stands` · `shot-kiosks` · `shot-lights` · `shot-feria` · `shot-rails`, vs
   `tools/png-diff.mjs`. **Never diff a world scene** — the noise floor is 2 % to
   86 %. The Vite process on `:8734` is persistent: client modules, JSON and new
   imports are handled by HMR, so **do not kill it or delete
@@ -263,50 +263,32 @@ renderer (the "view") lives behind a seam so backends can be swapped.
 - `src/render/` — `Renderer.js` is the seam and `camera.js` is the ONE camera
   authority shared by its backends. `canvas2d.js` paints the complete shipped
   world; the transparent `pixi/` layer above carries migrated landmark
-  structures (currently none are owned there). **The three.js layer is back,
-  opt-in (`?render=3d`, or Ajustes → «Vista 2.5D (beta)»), rebuilt from zero
-  on 2026-09-29** — the first attempt (removed 2026-08-26) stays at the tag
-  `3d-attempt-2026-08-26`. It is a SANDWICH, not a second world:
-  `#game-canvas` (Canvas2D: ground + everything flat) → `#three-canvas`
-  (`src/render/three/`: the things with HEIGHT — buildings with windows,
-  flora, lamp posts, vehicles, the coast's seawall + riprap, the Faro tower)
-  → `#game-overlay-canvas` (rain, vignette, HUD). Rules that make it work:
-  * **the ground never moves**: `three/camera.js` builds the projection from
-    the SAME frame as `cameraAffine`; `view3d.js` holds the two knobs
-    (`leanDeg` oblique lift, `pinholeM` eye height, in `effects.json` →
-    `view3d`), and at h = 0 both are the identity, so input/physics are
-    untouched.
-  * **the ground IS the Canvas frame, draped** (since 2026-09-30): Canvas keeps
-    painting the whole flat world every frame, and `three/canvasTexture.js`
-    uploads that canvas and projects it IN PLAN (same `cameraAffine`) onto
-    `three/terrain.js` — 256 px chunks whose height is a LEVEL per surface
-    class (`view3d.levels`, metres: acera and manzana up, arena and agua down)
-    plus the IGN elevation × `terrainScale`. Corners average their 4 cells, so a
-    kerb is a one-cell bevel, never a 4 px staircase. Nothing flat had to
-    migrate: pedestrians, wakes and labels drape by themselves. The scene hangs
-    at `−zCam` (elevation under the camera), so the car's neighbourhood stays
-    at h ≈ 0. `groundBase(x, y)` (`three/ground.js`) is what everything with a
-    base stands on. Three's Lambert divides by π, so both lights carry `× π` —
-    without it every 3-D colour was 1/π in linear light.
-  * **a scene that declares heights gets volume** (`three/scenes.js`): the
-    parcel scene is painted into its own canvas with the shadow pass ONLY
-    (`frame.shadowOnly`, one ink per band via `sh.ink`, composite `lighten`),
-    each band is contoured (`three/contour.js`) and extruded, and roofs/walls
-    sample the live canvas — so the cathedral's roof is the roof Canvas paints.
-    `"volume": false` on a scene opts out (the patio: its casters are crowns).
-  * **one owner per class** (`src/render/owners.js`): a Canvas painter asks
-    `canvasOwns("buildings")`, never "is 3-D on?"; `?own=buildings:canvas`
-    hands a class back to bisect.
-  * **the sky tint is ONE authority**: it stays on the ground canvas and
-    `three/tint.js` applies the same sRGB `mix` in the shaders, so a roof at
-    night is exactly as dark as the street; emissive things (lit windows,
-    lamp heads, the lantern) lower `uTintK` and cut through.
-  * the scene hangs from a root with `scale.y = −1` (y is SOUTH), so catalog
-    geometry keeps its front faces; content is authored in game coordinates.
-  * `tools/smoke-3d.mjs` (`pnpm smoke:3d`); F1 in 3-D shows the layer's
-    stats, F2 wireframe.
+  structures (currently none are owned there). **THERE IS NO three.js LAYER
+  ANY MORE — the 2.5D is Canvas's own, and it is the only mode** (2026-11-17).
+  The opt-in three.js view (`?render=3d`, Ajustes → «Vista 2.5D (beta)») was
+  retired with its setting: the code lives at the tag `3d-attempt-2026-09-29`
+  (the first attempt at `3d-attempt-2026-08-26`). What gives the world volume
+  is the Canvas pinhole of `c2d/depth.js`, and everything that stands up is
+  built on it:
+  * **`c2d/rig3d.js` — el aparejo**: points `(u, v, h)` in METRES in a thing's
+    own frame, projected with `parallaxOffset` (camera) or `sunShadow` (its
+    shadow — the same drawing, another mapping); oriented boxes show only the
+    faces that look at the camera and shade them by the sun.
+  * **`c2d/bodies.js` — the queue**: whatever stands up is ENQUEUED and painted
+    after people and traffic, far to near, all shadows first.
+  * **`c2d/furniture3d.js`** holds the small bodies on that rig — parada,
+    banca, pole signs, **the hung traffic light** (`signs.semaforo*.gantry3d`),
+    **the barricade** (`streets.barrier.view3d`), **the terminal tents**
+    (`punta.yard.view3d`), the bridge's towers — with its `rigged()` helper
+    (shadow layer + queued body). Every measure is METRES in the registry that
+    already owns the thing, exaggerated on purpose and saying so.
+  * the rest: trees (`floraTop.js`), vehicles and trains (`body3d` box
+    recipes), boats (`vesselRigs.js → paintHullSides`), buoys (`estero.js`),
+    the rails (`paintTileRails`, each point with its own parallax) and the
+    Mata de Limón bridge, which follows `W.BRIDGE.pts` and measures its
+    hanging span from the ground (`structures.js → drawBridge`).
   `src/render/camera.js` and `src/render/sun.js` are the single camera and sun
-  authorities for Canvas, Pixi and Three alike.
+  authorities for Canvas and Pixi.
   **`c2d/shapes.js` — the shape interpreter — IMPORTS NO PART OF THE GAME, and
   `tests/test_shape_interpreter.py` keeps it that way.** It is the engine's half
   of every art catalog, and the editor loads it to preview the record it is

@@ -234,3 +234,29 @@ export function drawBridgeTower3d(x, y, ang, halfM, V) {
     }
   });
 }
+
+/**
+ * UN TOLDO: cuatro postes y un techo de cuatro faldones, de `sPx` de lado (el del mundo), con el
+ * alero a `eaveHM` y la punta a `peakHM`. El faldón que mira al sol va en `tent` y los otros en
+ * `tentSide`; la cumbrera, en `ridge`.
+ */
+export function drawTent3d(x, y, sPx, V, tentInk) {
+  const ppm = PX_PER_M, h = sPx / 2 / ppm, I = V.inks, e = V.eaveHM, top = V.peakHM;
+  const sun = sunShadow(1), post = h * (1 - V.postInsetK);
+  rigged(x, y, 0, top, V, (h * 2 + top) * ppm * 1.4, (R) => {
+    for (const [su, sv] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      R.at(e, () => R.box(su * post, sv * post, 0, e, V.postM, V.postM, I.post));
+    }
+    R.at(top, () => {
+      const c = [[-h, -h, e], [h, -h, e], [h, h, e], [-h, h, e]], apex = [0, 0, top];
+      for (let k = 0; k < 4; k++) {
+        const a = c[k], b = c[(k + 1) % 4];
+        // la normal del faldón, en planta: hacia afuera del lado a→b
+        const nx = (a[0] + b[0]) / 2, ny = (a[1] + b[1]) / 2;
+        const lit = nx * sun.dx + ny * sun.dy < 0;
+        R.poly([a, b, apex], lit ? tentInk : I.tentSide);
+      }
+      for (const a of c) R.line([a, apex], 0.08, I.ridge);
+    });
+  });
+}

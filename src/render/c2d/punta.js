@@ -31,7 +31,7 @@ import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { liftPoint, parallaxOffset } from "./depth.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
 import { drawGate3d } from "./gate3d.js";
-import { drawBlock3d, drawLounger3d, drawRaisedStroke3d } from "./furniture3d.js";
+import { drawBlock3d, drawLounger3d, drawRaisedStroke3d, drawTent3d } from "./furniture3d.js";
 import { state } from "../../game/state.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
@@ -559,7 +559,9 @@ function drawPunta(view, t = 0) {
   // el patio de la terminal de ferris: asfalto redondeado y sus toldos
   if (P.yard) {
     const Y = M.yard; ctx.fillStyle = Y.asphalt; ctx.fill(shape(P.yard));
-    for (const tn of P.yard.tents) {
+    // LOS TOLDOS SON CUERPOS (`furniture3d.js → drawTent3d`): postes y techo de cuatro faldones
+    if (Y.view3d) for (const tn of P.yard.tents) drawTent3d(tn.x, tn.y, tn.s, Y.view3d, Y.tent);
+    else for (const tn of P.yard.tents) {
       ctx.fillStyle = Y.tentShadow; ctx.fillRect(tn.x - tn.s / 2 + 3, tn.y - tn.s / 2 + 4, tn.s, tn.s);
       ctx.fillStyle = Y.tent; ctx.fillRect(tn.x - tn.s / 2, tn.y - tn.s / 2, tn.s, tn.s);
       ctx.strokeStyle = Y.tentRidge; ctx.lineWidth = 1; ctx.beginPath();

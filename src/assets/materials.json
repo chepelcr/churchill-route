@@ -2052,7 +2052,17 @@
       "asphalt": "#5d5a62",
       "tent": "#f4f1ea",
       "tentRidge": "rgba(150,140,120,0.6)",
-      "tentShadow": "rgba(30,26,22,0.3)"
+      "tentShadow": "rgba(30,26,22,0.3)",
+      "view3d": {
+        "_": "EL TOLDO EN 3D (`furniture3d.js → drawTent3d`), en METROS: cuatro postes de `postM` metidos `postInsetK` del borde, el alero a `eaveHM` y la punta a `peakHM` —un techo de cuatro faldones—. El faldón que da al sol va en `tent` y el resto en `tentSide`.",
+        "eaveHM": 2.8,
+        "peakHM": 4.8,
+        "postM": 0.3,
+        "postInsetK": 0.08,
+        "shadowAlpha": 0.5,
+        "shade": {"side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612"},
+        "inks": {"post": "#b9b2a4", "tentSide": "#c4b9a2", "ridge": "#9a8f78"}
+      }
     },
     "props": {
       "cabana": "#fbf9f2",

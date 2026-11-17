@@ -12,7 +12,8 @@ import { ensureRenderCache } from "./cache.js";
 import {
   floraSeed, paintFloraSpecies, resolveFloraMixSpecies,
 } from "./floraShapes.js";
-import { aabbInView, ctx, flatMultiPath, textureScale, weatherColors } from "./gfx.js";
+import { beginFloraBatchIfIdle, endFloraBatch, paintFlora } from "./flora.js";
+import { aabbInView, ctx, flatMultiPath, hash01, textureScale, weatherColors } from "./gfx.js";
 import { overlayTexture, paintScatter } from "./materials.js";
 import {
   drawCurrents, drawRipples, drawShoreBreak, drawSwell, isBalneario,
@@ -202,6 +203,7 @@ const MANGROVE_SPECIES = MANGROVE_MIX.weights.map(([id]) => {
   if (!record) throw new Error(`unknown channel-edge mangrove species: ${id}`);
   return record;
 });
+const F25_TOP = (EFFECTS.flora25 && EFFECTS.flora25.enabled !== false && EFFECTS.flora25.topdown) || {};
 const MANGROVE_R = Math.max(...MANGROVE_SPECIES.map((record) => record.r));
 
 function mangroveSpecies(m) {
@@ -216,6 +218,23 @@ function mangroveSpecies(m) {
 
 export function paintMangrove(m, tide, t) {
   const record = mangroveSpecies(m);
+  // EL MANGLE ES UN ÁRBOL COMO LOS DEMÁS: copa vista desde arriba y su sombra al sol, por el mismo
+  // `paintFlora` (`effects.json → flora25.topdown.byGenerator`). Sólo si el registro lo saca de ahí
+  // cae al dibujo en alzado de siempre, con sus raíces y su barro.
+  if (F25_TOP.byGenerator?.[FLORA.forms[record.form]?.generator]) {
+    // …Y UNA MATA SON VARIOS ÁRBOLES de copa normal (`flora.json → mangroveClump`), no uno gigante
+    const C = FLORA.mangroveClump || {}, R = m.r || record.r, rT = (C.crownM || 4) * W.PX_PER_M;
+    const n = Math.max(1, Math.min(C.maxTrees || 1, Math.round((C.fill || 1) * (R * R) / (rT * rT))));
+    const seed = floraSeed(m.x, m.y), reach = Math.max(0, R - rT);
+    for (let k = 0; k < n; k++) {
+      const a = hash01(seed * 7.13 + k * 1.618) * Math.PI * 2;
+      const d = n === 1 ? 0 : Math.sqrt(hash01(seed * 3.71 + k * 2.414)) * reach;
+      const x = m.x + Math.cos(a) * d, y = m.y + Math.sin(a) * d;
+      const sp = mangroveSpecies({ x, y });
+      paintFlora(sp, { x, y, s: rT / sp.r, seed: floraSeed(x, y) });
+    }
+    return;
+  }
   paintFloraSpecies(ctx, record, FLORA.forms[record.form], {
     x: m.x,
     y: m.y,
@@ -240,6 +259,8 @@ function drawMangroves(view, t) {
   const tiles = W.visibleTiles(view.x0, view.y0, view.x1, view.y1);
   if (!tiles.length) return;
   const tide = Number.isFinite(state.tide) ? state.tide : 0.5;
+  // todas las sombras primero y después todas las copas, como la arboleda (`flora.js`)
+  const own = beginFloraBatchIfIdle();
   ctx.save();
   ctx.lineJoin = "round";
   for (const tile of tiles) {
@@ -252,6 +273,7 @@ function drawMangroves(view, t) {
     }
   }
   ctx.restore();
+  if (own) endFloraBatch();
 }
 
 const SURFACE_PRESET_COLORS = MATERIALS.terrain;

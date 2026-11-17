@@ -419,6 +419,12 @@
       "floor": "rgba(38,74,52,0.62)"
     }
   },
+  "_mangroveClump": "UNA MATA DE MANGLE SON VARIOS ÁRBOLES. El mundo emite cada manglar como una mata —un punto con su radio, de 20 a 50 px— y pintada como UN árbol salía una copa tres veces la de un almendro, con su sombra igual de grande. Ahora (`c2d/ground.js → paintMangrove`) cada mata se siembra con árboles de copa `crownM` (en METROS), tantos como cubran `fill` de su área (entre 1 y `maxTrees`), puestos por hash dentro del radio y cada uno de la especie que le toque de la mezcla.",
+  "mangroveClump": {
+    "crownM": 4.2,
+    "fill": 0.7,
+    "maxTrees": 9
+  },
   "mangroveMixes": {
     "_note": "The builder currently emits only waterline clumps. `channel_edge` is therefore the shipped mix; `interior` is editable and previewable but awaits interior habitat polygons.",
     "channel_edge": {

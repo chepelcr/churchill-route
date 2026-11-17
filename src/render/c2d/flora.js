@@ -146,6 +146,8 @@ function paintFlora(sp, frame) {
 // pintan en dos pasadas: todas las sombras —que son suelo— y después todas las copas.
 let batch = null;
 export function beginFloraBatch() { batch = []; }
+/** Abre un lote si no hay uno abierto; devuelve si lo abrió (y entonces le toca cerrarlo). */
+function beginFloraBatchIfIdle() { if (batch) return false; batch = []; return true; }
 export function endFloraBatch() {
   const list = batch;
   batch = null;
@@ -416,7 +418,7 @@ function tileTrees(tile, pairs) {
 }
 
 export {
-  keepsTree,
+  beginFloraBatchIfIdle, keepsTree, paintFlora,
   forEachWoodTree, nearestOnPoly, paintPalm, paintRoadsideTrees, paintTree, species,
   paintWoods, roadsideTrees, tileTrees,
 };

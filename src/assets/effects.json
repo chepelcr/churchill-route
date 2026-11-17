@@ -214,8 +214,9 @@
     "enabled": true,
     "heightM": 8,
     "topdown": {
-      "_note": "`byGenerator`: qué tipo de copa cenital lleva cada generador de `flora.json → forms`; uno que no está (el mangle) sigue en alzado. `kinds`: la receta de cada tipo, en fracciones del radio de la copa. `byForm`: lo que una forma cambia de su receta. `light`: de dónde viene la luz que aclara la copa (fija: el sprite se pinta una vez; la SOMBRA sí sigue al sol).",
+      "_note": "`byGenerator`: qué tipo de copa cenital lleva cada generador de `flora.json → forms`; uno que no está sigue en alzado. El mangle (`tidal-root-crown`) entró el 2026-11-17: era el único árbol del mundo con sombra fija (+3,+4) y un halo de barro de 1,3 copas que se leía como una sombra enorme. `kinds`: la receta de cada tipo, en fracciones del radio de la copa. `byForm`: lo que una forma cambia de su receta. `light`: de dónde viene la luz que aclara la copa (fija: el sprite se pinta una vez; la SOMBRA sí sigue al sol).",
       "byGenerator": {
+        "tidal-root-crown": "broadleaf",
         "crown-stack": "broadleaf",
         "branch-crown": "bare",
         "tier-stack": "conifer",

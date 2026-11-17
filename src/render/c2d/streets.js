@@ -17,7 +17,6 @@ import { roundedMultiPath, roundedPath } from "./curves.js";
 import { drawParada, propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
-import { canvasOwns } from "../owners.js";
 import { drawBench3d, drawPoleSign3d } from "./furniture3d.js";
 
 //: LA SEÑALIZACIÓN, keyed by SignKind — see the note above `drawSign`.
@@ -351,10 +350,10 @@ function paintStone(path, P) {
 // ported from the corridor renderer but fed per-tile road segments.
 // LA PROFUNDIDAD DE LA CALLE (`materials.json → street.depth`): cuánto sube la acera y cuánto se hunde
 // el caño, en METROS, convertido a la fracción de la altura de la cámara que es lo que el pinhole
-// escala. Sólo cuando Canvas pinta los cuerpos: en la vista 3-D el suelo ya se levanta por clase.
+// escala.
 function roadDepth() {
   const SD = MATERIALS.street.depth, camH = EFFECTS.parallax?.cameraHeightM;
-  if (!SD || !camH || !canvasOwns("buildings")) return null;
+  if (!SD || !camH) return null;
   return { about: [state.cam.x, state.cam.y], aceraK: SD.kerbM / camH, canoK: SD.canoM / camH, face: SD.face, wall: SD.wall };
 }
 

@@ -14,7 +14,7 @@ import {
 } from "../game/state.js";
 import { content } from "../content/remote.js";
 import {
-  beginScreenOverlay, canvas, ctx, dpr, endScreenOverlay, ZOOM,
+  canvas, ctx, dpr, ZOOM,
   setLastT, setupCanvas, weatherColors,
 } from "./c2d/gfx.js";
 import { drawMangroves, drawWaterAll } from "./c2d/ground.js";
@@ -44,7 +44,6 @@ import {
 import { drawEditorWorld } from "./c2d/editorWorld.js";
 import HUD from "../assets/hud.json" with { type: "json" };
 import { alphaColor, upright } from "./c2d/primitives.js";
-import { canvasOwns } from "./owners.js";
 import { paintSpeedLines } from "./c2d/systemShapes.js";
 import { beginCameraFrame, cameraAffine, worldToScreen } from "./camera.js";
 
@@ -63,10 +62,6 @@ function setPixiLandmarks(v) { PIXI_LANDMARKS = !!v; }
 // now: the church→Pixi pilot wasn't visible, so canvas draws all landmarks
 // until the Pixi landmark path is verified.
 const PIXI_MIGRATED = new Set();
-// When true the screen pass (tint, night, weather, HUD) draws on the separate
-// overlay canvas ABOVE the three.js layer instead of on the world canvas.
-let SCREEN_OVERLAY = false;
-function setScreenOverlay(v) { SCREEN_OVERLAY = !!v; }
 
 function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.js)
   if (!ctx) return;
@@ -211,10 +206,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       if (G.ball.x < view.x0 - 20 || G.ball.x > view.x1 + 20) continue;
       drawBeachBall(G);
     }
-    // Los carros con cuerpo son de la capa 3-D cuando ella los tomó
-    // (`three/vehicles.js`); la estela y los faros del jugador siguen acá.
-    const cars = canvasOwns("vehicles");
-    if (cars) for (const pk of parked) {
+    for (const pk of parked) {
       if (pk.x < view.x0 - 20 || pk.x > view.x1 + 20 || pk.y < view.y0 - 20 || pk.y > view.y1 + 20) continue;
       drawCar(pk);
     }
@@ -227,7 +219,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       drawAnimal(an);
     }
     if (prof) prof.trafficCandidates = (prof.trafficCandidates || 0) + traffic.length;
-    if (cars) for (const car of traffic) {
+    for (const car of traffic) {
       if (car.x < view.x0 - 20 || car.x > view.x1 + 20) continue;
       if (prof) {
         prof.trafficXPass = (prof.trafficXPass || 0) + 1;
@@ -266,7 +258,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   if (!state.attract) {
     drawTargetCustomer(t);
     if (OVERLAY) drawPlayerCarrying(state.p, state.veh);
-    else drawPlayer(state.p, state.veh, { body: canvasOwns("vehicles") });
+    else drawPlayer(state.p, state.veh);
   }
   // los toldos de los quioscos: el carro entra DEBAJO a recoger (`bodies.js → flushOverBodies`)
   flushOverBodies();
@@ -332,12 +324,6 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   } else {
     ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
   }
-  // EL CIELO SE QUEDA EN EL SUELO; LO DE ENCIMA DE LA CÁMARA SUBE. Con la capa
-  // 3-D, el tinte y los pozos de luz de arriba quedan en este lienzo (bajo los
-  // edificios, que se tiñen con el mismo color en su propio sombreador) y todo
-  // lo que sigue —lluvia, viñeta, relámpago, minimapa— va al lienzo de pantalla
-  // sobre la capa 3-D. Sin ella, `beginScreenOverlay(false)` no cambia nada.
-  const separateOverlay = beginScreenOverlay(SCREEN_OVERLAY);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   // LA LLUVIA ENTRA CON LA RAMPA, no con el nombre: primero el cielo plomizo,
   // después el agua. Antes caía a plomo en el mismo cuadro en que el clima
@@ -398,7 +384,6 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       paintSpeedLines(ctx, vw, vh, cfg, state.p.speed);
     }
   }
-  if (separateOverlay) endScreenOverlay();
 }
 
-export { setupCanvas, render, paintVehicle, setOverlayMode, setPixiLandmarks, setScreenOverlay };
+export { setupCanvas, render, paintVehicle, setOverlayMode, setPixiLandmarks };

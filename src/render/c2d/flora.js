@@ -231,7 +231,7 @@ function forEachWoodTree(cu, x0, y0, x1, y1, fn) {
 
 /**
  * Plant every wood that reaches the view. `trees: false` paints only the
- * forest FLOOR — the 3-D layer stands the trees up itself (`three/flora.js`).
+ * forest FLOOR.
  */
 function paintWoods(view, { trees = true } = {}) {
   const woods = W.CUADRAS;

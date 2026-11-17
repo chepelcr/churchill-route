@@ -13,22 +13,14 @@
 // localStorage churchill_renderer = "canvas" disables the Pixi layer
 // (canvas then draws fallback stands too, via setPixiLandmarks(false)).
 //
-// LA VISTA 2.5D (`?render=3d`, opt-in): a three.js layer between the Canvas
-// ground and the screen overlay takes the things that have HEIGHT — see
-// `src/render/three/index.js` and `src/render/owners.js`. Three is imported
-// dynamically, so the 2-D game never downloads it; if WebGL fails, Canvas
-// keeps owning everything and the game looks exactly as it always has.
+// LA VISTA 2.5D se retiró el 2026-11-17: el volumen lo pinta Canvas por
+// paralaje (`c2d/depth.js`, alturas en los registros). El código de three.js
+// vive en el tag `3d-attempt-2026-09-29`.
 import {
-  setupCanvas as c2dSetup, render as c2dRender, setPixiLandmarks, setScreenOverlay, paintVehicle,
+  setupCanvas as c2dSetup, render as c2dRender, setPixiLandmarks, paintVehicle,
 } from "./canvas2d.js";
 import { setupPixi, renderPixi } from "./pixi/index.js";
 import { beginCameraFrame } from "./camera.js";
-import { quality, render3dRequested } from "./view3d.js";
-
-const WANT_3D = (() => {
-  try { return render3dRequested(); } catch { return false; }
-})();
-let three = null;
 
 const PIXI_LM = (() => {
   try {
@@ -41,20 +33,10 @@ const PIXI_LM = (() => {
 export { paintVehicle };
 
 export function setupCanvas(canvasEl) {
-  // In 3-D the screen pass (sky tint, night, rain, minimap) gets its own canvas
-  // ABOVE the three layer, so the night darkens the buildings exactly as much
-  // as the street under them.
-  c2dSetup(canvasEl, { separateOverlay: WANT_3D, maxDpr: WANT_3D && quality() === "low" ? 1 : 2 });
+  c2dSetup(canvasEl);
   if (PIXI_LM) {
     setPixiLandmarks(true);
     setupPixi(canvasEl, () => setPixiLandmarks(false)); // no WebGL → canvas stands
-  }
-  if (WANT_3D) {
-    setScreenOverlay(true);
-    import("./three/index.js")
-      .then((m) => m.setupThree(canvasEl))
-      .then((api) => { three = api; })
-      .catch((e) => { console.warn("[three] layer unavailable — Canvas draws everything", e); });
   }
 }
 
@@ -64,7 +46,6 @@ export function render(tSeconds) {
   const camera = beginCameraFrame();
   c2dRender(tSeconds, camera);
   if (PIXI_LM) renderPixi(tSeconds, camera);
-  if (three) three.render(tSeconds, camera);
   if (prof) {
     prof.render = (prof.render || 0) + performance.now() - started;
     prof.frames = (prof.frames || 0) + 1;

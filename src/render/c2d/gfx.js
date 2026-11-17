@@ -13,8 +13,6 @@ import {
 } from "./primitives.js";
 
 let canvas, ctx, dpr = 1;
-let mainCanvas = null, mainCtx = null;
-let overlayCanvas = null, overlayCtx = null;
 // Camera zoom: >1 pulls the camera closer so streets/buildings read at
 // city-exploration scale. Recomputed responsively per viewport in setupCanvas().
 let ZOOM = 5.5;
@@ -36,28 +34,12 @@ const CUAD = W.CUAD;                       // still wanted: the debug grid
 // default. This used to fall back to 8 while the sim fell back to 12 — the
 // renderer and the spawner disagreeing about where the sidewalk is.
 const ACERA_PX = W.ACERA_PX;
-function setupCanvas(c, { separateOverlay = false, maxDpr = 2 } = {}) {
-  mainCanvas = c; mainCtx = c.getContext("2d");
-  canvas = mainCanvas; ctx = mainCtx;
-  if (separateOverlay && !overlayCanvas) {
-    overlayCanvas = document.createElement("canvas");
-    overlayCanvas.id = "game-overlay-canvas";
-    overlayCanvas.dataset.layer = "screen";
-    overlayCanvas.setAttribute("aria-hidden", "true");
-    overlayCanvas.style.pointerEvents = "none";
-    c.parentNode.insertBefore(overlayCanvas, c.nextSibling);
-    overlayCtx = overlayCanvas.getContext("2d");
-  }
+function setupCanvas(c) {
+  canvas = c; ctx = c.getContext("2d");
   const resize = () => {
-    // `maxDpr` lo baja la vista 2.5D en calidad baja: el lienzo se sube como
-    // textura cada cuadro, y a 2× son cuatro veces los bytes.
-    dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = c.clientWidth, h = c.clientHeight;
     c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
-    if (overlayCanvas) {
-      overlayCanvas.width = Math.round(w * dpr);
-      overlayCanvas.height = Math.round(h * dpr);
-    }
     ZOOM = resizeCamera(w, h);
   };
   resize(); window.addEventListener("resize", resize);
@@ -67,24 +49,6 @@ function setupCanvas(c, { separateOverlay = false, maxDpr = 2 } = {}) {
   // entering/leaving fullscreen doesn't fire resize on all mobile browsers
   document.addEventListener("fullscreenchange", () => setTimeout(resize, 60));
   document.addEventListener("webkitfullscreenchange", () => setTimeout(resize, 60));
-}
-
-// Switch the shared live bindings for the screen-space tail of canvas2d.render.
-// Every drawer already imports `ctx` from here, so one switch moves that entire
-// pass without teaching dozens of functions about another surface.
-function beginScreenOverlay(active = true) {
-  if (!overlayCanvas || !overlayCtx) return false;
-  const w = overlayCanvas.width / dpr, h = overlayCanvas.height / dpr;
-  overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  overlayCtx.clearRect(0, 0, w, h);
-  if (!active) return false;
-  canvas = overlayCanvas; ctx = overlayCtx;
-  return true;
-}
-
-function endScreenOverlay() {
-  if (!mainCanvas || !mainCtx) return;
-  canvas = mainCanvas; ctx = mainCtx;
 }
 
 // ---- EL CIELO ES UN CONTINUO, no cuatro estados -----------------------------
@@ -280,17 +244,6 @@ function parcelFrame(P) {
   return (P._pframe = { cx, cy, ang, hw, hh });
 }
 
-// PINTAR EN OTRA SUPERFICIE CON LOS MISMOS PINTORES. La capa 3-D usa el arte
-// de Canvas como textura (el techo de un carro es su sprite de siempre), y los
-// ~30 dibujantes escriben en el `ctx` compartido. Cambiar el enlace vivo el
-// tiempo que dura `fn` es lo que evita enseñarle a cada uno otra superficie —
-// el mismo movimiento que `beginScreenOverlay` hace para la capa de pantalla.
-function withSurface(g, fn) {
-  const prevCanvas = canvas, prevCtx = ctx;
-  canvas = g.canvas; ctx = g;
-  try { return fn(); } finally { canvas = prevCanvas; ctx = prevCtx; }
-}
-
 // LA PARADITA used to be here, as raw Canvas calls. It is `props.parada` in
 // world-props.json now, drawn by `c2d/props.js` — which cannot live in this file
 // because gfx is the BOTTOM of the renderer and the shape interpreter sits on
@@ -298,8 +251,8 @@ function withSurface(g, fn) {
 
 export {
   ACERA_PX, CUAD, VIEW_WIDTH_PX, aabbInView, areaLabel, canvas, computeZoom,
-  beginScreenOverlay, blendPalette, ctx, ctxRotation, dpr, endScreenOverlay,
+  blendPalette, ctx, ctxRotation, dpr,
   flatAABB, flatMultiPath, flatPath, hash01, label, lastT, mixColor,
   parcelFrame, polyBBox, roundRect, setLastT, setupCanvas, upright,
-  textureScale, weatherColors, withSurface, ZOOM,
+  textureScale, weatherColors, ZOOM,
 };

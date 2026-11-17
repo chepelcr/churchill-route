@@ -915,20 +915,6 @@ const oldBenches = (manifest.signs || []).filter((o) => o.kind === "banca" && in
 manifest.signs = (manifest.signs || []).filter((o) => !oldBenches.includes(o) && !(typeof o.x === "number" && inNewSea(o)));
 const benches = along2(FU.benchEveryM, (i) => rockAt(i) - FU.benchFromRocksM * ppm, (i) => calm(i) && !inMuellero(i) && rockAt(i) - FU.benchFromRocksM * ppm > centre[i][2] + 2 * ppm);
 for (const q of benches) if (!nearMonument(q)) manifest.signs.push({ x: q.x, y: q.y, kind: "banca", ang: Math.round(Math.atan2(normal[q.i][1], normal[q.i][0]) * 1000) / 1000 });
-// LAS PALMERAS DEL MALECÓN, sobre la baldosa. La limpieza de arriba saca TODO lo sembrado del lado del
-// mar —malecón incluido— y la fila de reemplazo va en la arena, así que el paseo se quedó sin una sola
-// palmera (57 → 3). Una fila más, tierra adentro de las bancas (`palmFromRocksM`), lejos de los kioscos
-// (`clearKiosksM`) y de los monumentos, y sólo donde todavía es malecón y no acera.
-const kiosksHere = manifest.landmarks.filter((q) => q.type === "kiosk");
-const nearKiosk = (q) => kiosksHere.some((k) => Math.hypot(k.x - q.x, k.y - q.y) < FU.clearKiosksM * ppm);
-let paved = 0;
-for (const q of along2(FU.palmEveryM, (i) => rockAt(i) - FU.palmFromRocksM * ppm,
-  (i) => calm(i) && !inMuellero(i) && rockAt(i) - FU.palmFromRocksM * ppm > centre[i][2] + FU.palmFromKerbM * ppm)) {
-  const t = tileAt(q.x, q.y); if (!t || nearMonument(q) || nearKiosk(q)) continue;
-  if (warm && q.i >= endI && q.i < eastI && !inside(q.x, q.y, warm)) continue;
-  (t.palms || (t.palms = [])).push({ x: q.x, y: q.y, s: 1.0, sway: (q.x * 0.37 + q.y * 0.11) % 6.28 }); paved++;
-}
-console.log(`[punta-preview] ${paved} palmeras sobre el malecón`);
 // el haz del Faro: sale de la linterna, arriba de la torre
 const towerArt = JSON.parse(readFileSync("src/assets/world-props.json", "utf8")).scenes.faro.parts.find((q) => q.verb === "lighthouse-tower");
 punta.beams = doc.faro.beam ? [{ x: faroXY[0], y: Math.round(faroXY[1] - towerArt.height * towerArt.lean * doc.faro.scale) }] : [];

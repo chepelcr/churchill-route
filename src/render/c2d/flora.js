@@ -372,10 +372,24 @@ function onAcera(tr) {
   }
   return !!tr._acera;
 }
+/** ¿Está este árbol en un CAMELLÓN del tile (`tile.medians`)? Se responde una vez y se guarda. */
+function onMedian(tr, medians) {
+  if (tr._median === undefined) {
+    tr._median = (medians || []).some((m) => nearestOnPoly(m.pts, tr.x, tr.y).d <= (m.w || 10) / 2 + 6);
+  }
+  return tr._median;
+}
 /** ¿Se pinta este árbol del mundo? No, si está sobre la acera y las aceras van despejadas. */
 // …y NUNCA EN EL AGUA: 291 palmeras del mundo tienen el pie en una celda de mar o de piscina (sembradas
 // antes de que la costa o la piscina quedaran donde están). Una palma no echa raíz en el agua.
-function keepsTree(tr) { const acera = onAcera(tr); return !tr._water && (FLORA.roadside.enabled || !acera); }
+// …PERO UN CAMELLÓN NO ES ACERA, aunque el ráster lo estampe con esa clase. Las filas del centro del
+// Paseo de los Turistas (116 palmeras) y del León Cortés están en celdas de ACERA, y despejar las
+// aceras se las llevó a todas: el Paseo quedó sin su separador. Lo que está sobre un camellón del
+// tile (`medians`) se queda.
+function keepsTree(tr, medians) {
+  const acera = onAcera(tr);
+  return !tr._water && (FLORA.roadside.enabled || !acera || onMedian(tr, medians));
+}
 
 function tileTrees(tile, pairs) {
   if (tile._flora) return tile._flora;

@@ -119,15 +119,27 @@ class MaterialRegistryTests(unittest.TestCase):
                     self.assertIsNone(re.search(pattern, text),
                                       f"{rel} authors {why}; materials.json owns it")
 
-    def test_building_bridge_ferry_and_berth_are_editable_recipes(self):
+    def test_building_ferry_and_berth_are_editable_recipes(self):
         structures = self.doc["structure"]
-        for asset in ("building", "bridge", "ferry", "berth"):
+        for asset in ("building", "ferry", "berth"):
             with self.subTest(asset=asset):
                 self.assertTrue(structures[asset].get("parts"))
                 self.assertIsInstance(structures[asset].get("preview"), dict)
         painter = read(STRUCTURES)
         self.assertIn("paintStructureParts(ctx, S.building.parts", painter)
-        self.assertIn("paintStructureParts(ctx, S.bridge.parts", painter)
+
+    def test_the_bridge_is_a_3d_body_measured_in_metres(self):
+        """El puente dejó de ser un alzado: se levanta sobre su vía con medidas en METROS."""
+        bridge = self.doc["structure"]["bridge"]
+        self.assertNotIn("parts", bridge, "el alzado del puente volvió: el puente es 3D (`view3d`)")
+        V = bridge["view3d"]
+        for key in ("towerHM", "railHM", "sagM", "anchorOutM", "hangerEveryM", "deckShadowM"):
+            with self.subTest(key=key):
+                self.assertGreater(V[key], 0)
+        self.assertLess(V["railHM"] + V["sagM"], V["towerHM"], "el cable colgaría por debajo de la baranda")
+        self.assertTrue(all(0 < k < 1 for k in V["towersK"]))
+        painter = read(STRUCTURES)
+        self.assertIn("S.bridge.view3d", painter)
 
     def test_double_ended_ferry_has_equivalent_ramps_at_both_ends(self):
         ferry = self.doc["structure"]["ferry"]

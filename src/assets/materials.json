@@ -367,26 +367,22 @@
       "wallDark": "#2b2536"
     },
     "bridge": {
-      "_note": "EL PUENTE DE MATA LIMÓN, colgante: torres, cables, tablero y barandas. Es la única estructura del mundo con obra de arte propia a esta escala.",
-      "ramp": "#7a6a55",
-      "deck": "#cfc3a3",
-      "asphalt": "#3a3540",
-      "dash": "#f8d76b",
-      "rail": "#b4bcc4",
-      "cable": "#e2e6ea",
-      "hanger": "rgba(228,233,238,0.9)",
-      "towerLeg": "#aeb6c0",
-      "towerCap": "#7d8791",
-      "towerBrace": "#7d8791",
+      "_note": "EL PUENTE DE MATA LIMÓN, colgante, en 3D sobre su vía (`structures.js → drawBridge`): torres, cables, péndolas, barandas y la sombra del tablero en el agua. `signBg`/`signFg` son el rótulo con su nombre.",
       "signBg": "rgba(20,16,40,0.78)",
       "signFg": "#fff",
       "view3d": {
         "_": "EL PUENTE EN 3D (`structures.js → drawBridge`), en METROS y sobre la vía de verdad (`W.BRIDGE.pts`), no sobre el alzado de antes. El tramo colgante es el que cruza el AGUA, medido del suelo; las torres van en `towersK` de ese tramo, en H —dos patas de `legM` a `legOutM` por fuera de cada orilla del tablero, con travesaños en `beamsK` de su alto—, los cables bajan de cada torre hasta su anclaje `anchorOutM` más allá del agua y cuelgan entre las dos hasta `sagM` sobre el tablero, con péndolas cada `hangerEveryM`. Las barandas suben `railHM` con un poste cada `railPostEveryM`. El tablero va a ras —el carro anda sobre él— pero tira sobre el agua la sombra de uno a `deckShadowM`: es lo que dice que el puente va en alto.",
         "towerHM": 24,
-        "towersK": [0.12, 0.88],
+        "towersK": [
+          0.12,
+          0.88
+        ],
         "legM": 1.7,
         "legOutM": 1.2,
-        "beamsK": [0.55, 0.95],
+        "beamsK": [
+          0.55,
+          0.95
+        ],
         "beamM": 1.1,
         "railHM": 1.3,
         "railWM": 0.45,
@@ -401,306 +397,23 @@
         "deckShadowK": 0.55,
         "labelOutM": 9,
         "shadowAlpha": 0.55,
-        "shade": {"side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612"},
-        "inks": {"leg": "#aeb6c0", "beam": "#7d8791", "rail": "#d4d9de", "railSide": "#8a9097", "cable": "#e2e6ea", "hanger": "#c8ced4", "shadow": "#1a1612"}
-      },
-      "values": {
-        "halfDeck": {
-          "op": "div",
-          "args": [
-            {
-              "ref": "deckW"
-            },
-            2
-          ]
+        "shade": {
+          "side": "#16141c",
+          "litK": 0.12,
+          "darkK": 0.36,
+          "bottomK": 0.5,
+          "shadow": "#1a1612"
         },
-        "negHalfDeck": {
-          "op": "mul",
-          "args": [
-            {
-              "ref": "halfDeck"
-            },
-            -1
-          ]
-        },
-        "deckY": {
-          "op": "sub",
-          "args": [
-            {
-              "ref": "negHalfDeck"
-            },
-            4
-          ]
-        },
-        "deckH": {
-          "op": "add",
-          "args": [
-            {
-              "ref": "deckW"
-            },
-            8
-          ]
-        },
-        "asphaltY": {
-          "op": "add",
-          "args": [
-            {
-              "ref": "negHalfDeck"
-            },
-            2
-          ]
-        },
-        "asphaltH": {
-          "op": "sub",
-          "args": [
-            {
-              "ref": "deckW"
-            },
-            4
-          ]
-        },
-        "railTop": {
-          "op": "sub",
-          "args": [
-            {
-              "ref": "negHalfDeck"
-            },
-            2
-          ]
-        },
-        "towerTop": {
-          "op": "mul",
-          "args": [
-            {
-              "ref": "towerH"
-            },
-            -1
-          ]
-        },
-        "sagY": -14,
-        "hangerDeck": -4,
-        "mid": {
-          "op": "div",
-          "args": [
-            {
-              "ref": "len"
-            },
-            2
-          ]
-        },
-        "labelY": {
-          "op": "add",
-          "args": [
-            {
-              "ref": "halfDeck"
-            },
-            14
-          ]
+        "inks": {
+          "leg": "#aeb6c0",
+          "beam": "#7d8791",
+          "rail": "#d4d9de",
+          "railSide": "#8a9097",
+          "cable": "#e2e6ea",
+          "hanger": "#c8ced4",
+          "shadow": "#1a1612"
         }
-      },
-      "preview": {
-        "len": 170,
-        "deckW": 24,
-        "tower0": 42,
-        "tower1": 128,
-        "towerH": 44,
-        "labelText": "PUENTE MATA LIMÓN"
-      },
-      "parts": [
-        {
-          "shape": "rect",
-          "fill": "$ramp",
-          "x": -32,
-          "y": "$deckY",
-          "w": 32,
-          "h": "$deckH"
-        },
-        {
-          "shape": "rect",
-          "fill": "$ramp",
-          "x": "$len",
-          "y": "$deckY",
-          "w": 32,
-          "h": "$deckH"
-        },
-        {
-          "shape": "rect",
-          "fill": "$deck",
-          "x": 0,
-          "y": "$deckY",
-          "w": "$len",
-          "h": "$deckH"
-        },
-        {
-          "shape": "rect",
-          "fill": "$asphalt",
-          "x": 0,
-          "y": "$asphaltY",
-          "w": "$len",
-          "h": "$asphaltH"
-        },
-        {
-          "shape": "stroke",
-          "stroke": "$dash",
-          "width": 2,
-          "dash": [
-            14,
-            14
-          ],
-          "pts": [
-            [
-              4,
-              0
-            ],
-            [
-              {
-                "op": "sub",
-                "args": [
-                  {
-                    "ref": "len"
-                  },
-                  4
-                ]
-              },
-              0
-            ]
-          ]
-        },
-        {
-          "shape": "rect",
-          "fill": "$rail",
-          "x": 0,
-          "y": "$railTop",
-          "w": "$len",
-          "h": 2
-        },
-        {
-          "shape": "rect",
-          "fill": "$rail",
-          "x": 0,
-          "y": "$halfDeck",
-          "w": "$len",
-          "h": 2
-        },
-        {
-          "shape": "stroke",
-          "stroke": "$cable",
-          "width": 2,
-          "pts": [
-            [
-              "$tower0",
-              "$towerTop"
-            ],
-            {
-              "q": [
-                "$mid",
-                -14
-              ],
-              "to": [
-                "$tower1",
-                "$towerTop"
-              ]
-            }
-          ]
-        },
-        {
-          "shape": "stroke",
-          "stroke": "$cable",
-          "width": 2,
-          "runs": [
-            [
-              [
-                -28,
-                4
-              ],
-              [
-                "$tower0",
-                "$towerTop"
-              ]
-            ],
-            [
-              [
-                {
-                  "op": "add",
-                  "args": [
-                    {
-                      "ref": "len"
-                    },
-                    28
-                  ]
-                },
-                4
-              ],
-              [
-                "$tower1",
-                "$towerTop"
-              ]
-            ]
-          ]
-        },
-        {
-          "shape": "family",
-          "verb": "bridge-hangers",
-          "stroke": "$hanger",
-          "width": 1,
-          "from": "tower0",
-          "to": "tower1",
-          "top": "towerTop",
-          "sag": "sagY",
-          "deck": "hangerDeck",
-          "gap": 6
-        },
-        {
-          "shape": "family",
-          "verb": "bridge-tower",
-          "x": "tower0",
-          "top": "towerTop",
-          "height": "towerH",
-          "legFill": "$towerLeg",
-          "capFill": "$towerCap",
-          "braceStroke": "$towerBrace",
-          "legGap": 4,
-          "legWidth": 3,
-          "legFoot": 4,
-          "capHalf": 6,
-          "capHeight": 4,
-          "braceHalf": 2.5,
-          "braceWidth": 1,
-          "panels": 4
-        },
-        {
-          "shape": "family",
-          "verb": "bridge-tower",
-          "x": "tower1",
-          "top": "towerTop",
-          "height": "towerH",
-          "legFill": "$towerLeg",
-          "capFill": "$towerCap",
-          "braceStroke": "$towerBrace",
-          "legGap": 4,
-          "legWidth": 3,
-          "legFoot": 4,
-          "capHalf": 6,
-          "capHeight": 4,
-          "braceHalf": 2.5,
-          "braceWidth": 1,
-          "panels": 4
-        },
-        {
-          "shape": "family",
-          "verb": "bridge-sign",
-          "x": "mid",
-          "y": "labelY",
-          "text": "labelText",
-          "fallback": "PUENTE MATA LIMÓN",
-          "bg": "$signBg",
-          "fg": "$signFg",
-          "font": "bold 9px 'JetBrains Mono', monospace",
-          "padX": 5,
-          "height": 12,
-          "baseline": 9
-        }
-      ]
+      }
     },
     "ferry": {
       "_note": "LOS FERRIS DEL GOLFO, COMPLETOS COMO DATOS. La receta tiene la misma rampa, casco y superestructura en ambos extremos: cualquiera puede ser proa operativa y el barco no necesita girar para volver. Todo se dibuja en su marco, así que la cubierta visible coincide con la caja de colisión.",

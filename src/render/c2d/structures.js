@@ -22,6 +22,8 @@ import { registerLampSource } from "./nightlights.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
 import { ferryForm } from "./vesselRigs.js";
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
+import { drawBridgeTower3d, drawRaisedStroke3d } from "./furniture3d.js";
+import { SURFACE } from "../../domain/vocabulary.generated.js";
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
@@ -383,29 +385,178 @@ function drawPiers(view, ground = false) {
   }
 }
 
-// Suspension bridge — towers, cables, deck, rails
+// EL PUENTE COLGANTE DE MATA DE LIMÓN, EN 3D — sobre la vía de verdad.
+//
+// Era un ALZADO: el dibujo de costado del puente (torres paradas hacia arriba de
+// la pantalla) pintado en horizontal entre `x0` y `x1`, cuando la vía que cruza
+// el estero corre de norte a sur. Ahora todo sigue `B.pts`:
+//   * el TRAMO COLGANTE es el que cruza el agua, y lo dice el suelo (a cada lado
+//     del tablero), no un número: se mide una vez, con los tiles ya cargados;
+//   * las torres en H (`furniture3d.js → drawBridgeTower3d`), los dos cables con
+//     su flecha bajando a sus anclajes, las péndolas y las barandas se levantan
+//     con el pinhole de los edificios;
+//   * el tablero va a ras (el carro anda sobre él) y tira sobre el agua la
+//     sombra de uno en alto: es lo que hace que se lea como un puente.
+const BV = S.bridge.view3d;
+const UNCAPPED = { ...(EFFECTS.parallax || {}), maxOffsetPx: 0 };
+
+/** Muestras de la vía cada `step` px: punto, tangente y largo acumulado. */
+function bridgeSamples(pts, step) {
+  const out = [];
+  let run = 0;
+  for (let i = 0; i + 3 < pts.length; i += 2) {
+    const ax = pts[i], ay = pts[i + 1], bx = pts[i + 2], by = pts[i + 3];
+    const L = Math.hypot(bx - ax, by - ay) || 1, tx = (bx - ax) / L, ty = (by - ay) / L;
+    for (let d = 0; d < L; d += step) out.push({ x: ax + tx * d, y: ay + ty * d, tx, ty, s: run + d });
+    run += L;
+  }
+  const n = pts.length;
+  const last = out[out.length - 1] || { tx: 1, ty: 0 };
+  out.push({ x: pts[n - 2], y: pts[n - 1], tx: last.tx, ty: last.ty, s: run });
+  return out;
+}
+
+/**
+ * EL TABLERO Y EL TRAMO SOBRE EL AGUA, medidos del suelo: desde cada muestra de
+ * la vía se camina hacia afuera hasta dejar la calzada (puente o calle) y se
+ * mira qué hay: agua de los dos lados es el tramo colgante. El medio ancho es la
+ * mediana de esas distancias — `deckW` del build es más angosto que la calzada
+ * estampada, y una baranda ahí quedaba adentro del asfalto. null hasta que los
+ * tiles estén cargados (`surfaceAt` contesta agua para uno que no llegó).
+ */
+function bridgeMeasure(B) {
+  if (B._measure !== undefined) return B._measure;
+  const smp = bridgeSamples(B.pts, 4), reach = 160, deckish = new Set([SURFACE.BRIDGE, SURFACE.ROAD]);
+  const edges = [], wet = [];
+  for (const q of smp) {
+    if (!W.tileResident(q.x, q.y)) return null;
+    const nx = -q.ty, ny = q.tx;
+    let both = true;
+    for (const sg of [-1, 1]) {
+      let r = 2, c = W.surfaceAt(q.x, q.y);
+      while (r < reach && deckish.has(c)) { r += 2; c = W.surfaceAt(q.x + nx * r * sg, q.y + ny * r * sg); }
+      if (r < reach) edges.push(r);
+      if (c !== SURFACE.WATER) both = false;
+    }
+    wet.push(both);
+  }
+  let best = null, cur = null;
+  smp.forEach((q, i) => {
+    if (wet[i]) { cur = cur || { s0: q.s, s1: q.s }; cur.s1 = q.s; if (!best || cur.s1 - cur.s0 > best.s1 - best.s0) best = cur; }
+    else cur = null;
+  });
+  edges.sort((a, b) => a - b);
+  const half = edges.length ? edges[Math.floor(edges.length / 2)] - 1 : B.deckW / 2;
+  const span = best && best.s1 - best.s0 > 20 ? best : { s0: 0, s1: smp[smp.length - 1].s };
+  B._measure = { half, span };
+  return B._measure;
+}
+
 function drawBridge(view) {
   if (!W.BRIDGE) return;
-  const B = W.BRIDGE;
-  if (B.x1 < view.x0 || B.x0 > view.x1) return;
-  const [tx0, tx1] = B.towers;
-  const vars = resolveAssetFormulaMap(S.bridge.values, {
-    len: B.x1 - B.x0,
-    deckW: B.deckW,
-    tower0: tx0 - B.x0,
-    tower1: tx1 - B.x0,
-    towerH: B.towerH,
-    labelText: "PUENTE MATA LIMÓN",
-  });
-  ctx.save();
-  ctx.translate(B.x0, B.cy);
-  paintStructureParts(ctx, S.bridge.parts, {
-    X: (value) => value || 0,
-    Y: (value) => value || 0,
-    vars,
-    color: (spec) => structureColor(S.bridge, spec, vars),
-  });
-  ctx.restore();
+  const B = W.BRIDGE, V = BV, ppm = W.PX_PER_M, I = V.inks;
+  const xs = B.pts.filter((_, i) => i % 2 === 0), ys = B.pts.filter((_, i) => i % 2 === 1);
+  const pad = 300;
+  if (Math.max(...xs) < view.x0 - pad || Math.min(...xs) > view.x1 + pad
+    || Math.max(...ys) < view.y0 - pad || Math.min(...ys) > view.y1 + pad) return;
+  const M = bridgeMeasure(B);
+  if (!M) return;
+  const half = M.half, halfM = half / ppm, span = M.span;
+  const smp = bridgeSamples(B.pts, 3);
+  const at = (s) => {
+    let k = 0;
+    while (k + 1 < smp.length && smp[k + 1].s < s) k++;
+    const a = smp[k], b = smp[Math.min(k + 1, smp.length - 1)], t = b.s > a.s ? (s - a.s) / (b.s - a.s) : 0;
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, tx: a.tx, ty: a.ty };
+  };
+  const L = span.s1 - span.s0;
+  const t0 = span.s0 + L * V.towersK[0], t1 = span.s0 + L * V.towersK[1];
+  const a0 = Math.max(0, span.s0 - V.anchorOutM * ppm), a1 = Math.min(smp[smp.length - 1].s, span.s1 + V.anchorOutM * ppm);
+  const H = V.towerHM, low = V.railHM + V.sagM;
+  // la altura del cable en el largo `s`: sube del anclaje a la torre, cuelga entre las dos
+  const cableZ = (s) => {
+    if (s <= t0) return V.anchorHM + (H - V.anchorHM) * (s - a0) / Math.max(1, t0 - a0);
+    if (s >= t1) return V.anchorHM + (H - V.anchorHM) * (a1 - s) / Math.max(1, a1 - t1);
+    const u = (2 * s - t0 - t1) / (t1 - t0);
+    return low + (H - low) * u * u;
+  };
+  // EL MISMO TOPE QUE LAS TORRES: el aparejo encoge su altura entera cuando el
+  // corrimiento pasa del tope, así que el cable se encoge con la torre más cercana
+  const cap = (EFFECTS.parallax || {}).maxOffsetPx || 0;
+  const squashAt = (x, y) => {
+    const o = parallaxOffset(state.cam, x, y, H, ppm, UNCAPPED), len = Math.hypot(o.dx, o.dy);
+    return cap > 0 && len > cap ? cap / len : 1;
+  };
+  const P0 = at(t0), P1 = at(t1), k0 = squashAt(P0.x, P0.y), k1 = squashAt(P1.x, P1.y);
+  const up = (x, y, h, s) => {
+    if (!(h > 0)) return [x, y];
+    const o = parallaxOffset(state.cam, x, y, h, ppm, UNCAPPED), k = Math.abs(s - t0) < Math.abs(s - t1) ? k0 : k1;
+    return [x + o.dx * k, y + o.dy * k];
+  };
+  const sun = sunShadow(1);
+  const side = (q, sg, out = 0) => { const r = (half + out) * sg; return [q.x - q.ty * r, q.y + q.tx * r]; };
+  const line = (P, w, ink) => {
+    ctx.strokeStyle = ink; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); P.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+  };
+  const cableS = []; for (let s = a0; s <= a1; s += 4) cableS.push(s); cableS.push(a1);
+  const legOut = V.legOutM * ppm;
+
+  // LA SOMBRA DEL TABLERO SOBRE EL AGUA, fuera del tablero mismo
+  if (sun.alpha > 0) {
+    const deck = [], back = [];
+    for (let s = span.s0; s <= span.s1; s += 4) { const q = at(s); deck.push(side(q, -1)); back.push(side(q, 1)); }
+    const poly = deck.concat(back.reverse());
+    const d = sunShadow(V.deckShadowM);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(view.x0 - pad, view.y0 - pad, view.x1 - view.x0 + 2 * pad, view.y1 - view.y0 + 2 * pad);
+    poly.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.clip("evenodd");
+    ctx.globalAlpha = sun.alpha * V.deckShadowK;
+    ctx.fillStyle = I.shadow;
+    ctx.beginPath();
+    poly.forEach(([x, y], k) => (k ? ctx.lineTo(x + d.dx, y + d.dy) : ctx.moveTo(x + d.dx, y + d.dy)));
+    ctx.closePath(); ctx.fill();
+    // …y la de los cables, en el agua también
+    ctx.globalAlpha = sun.alpha * 0.45;
+    for (const sg of [-1, 1]) {
+      line(cableS.map((s) => { const q = at(s), [x, y] = side(q, sg, legOut / 1); const z = cableZ(s), o = sunShadow(z); return [x + o.dx, y + o.dy]; }),
+        V.cableWM * ppm, I.shadow);
+    }
+    ctx.restore();
+  }
+
+  // LAS BARANDAS, a lo largo del tablero entero
+  for (const sg of [-1, 1]) {
+    const edge = [];
+    for (let s = 0; s <= smp[smp.length - 1].s; s += 6) { const [x, y] = side(at(s), sg); edge.push(x, y); }
+    drawRaisedStroke3d(edge, V.railWM * ppm, V.railHM, { side: I.railSide, top: I.rail, shadow: I.shadow },
+      { everyM: V.railPostEveryM, wM: V.railWM });
+  }
+
+  // LAS TORRES
+  for (const q of [P0, P1]) drawBridgeTower3d(q.x, q.y, Math.atan2(q.ty, q.tx), halfM, V);
+
+  // LOS CABLES Y LAS PÉNDOLAS, encima de lo que pase por el tablero
+  queueBodyLike({ x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2, paint: () => {
+    for (const sg of [-1, 1]) {
+      ctx.save(); ctx.strokeStyle = I.hanger; ctx.lineWidth = Math.max(0.6, V.hangerWM * ppm); ctx.beginPath();
+      for (let s = t0 + V.hangerEveryM * ppm; s < t1 - 1; s += V.hangerEveryM * ppm) {
+        const q = at(s), [x, y] = side(q, sg, legOut);
+        const b = up(x, y, V.railHM, s), c = up(x, y, cableZ(s), s);
+        ctx.moveTo(b[0], b[1]); ctx.lineTo(c[0], c[1]);
+      }
+      ctx.stroke(); ctx.restore();
+      line(cableS.map((s) => { const q = at(s), [x, y] = side(q, sg, legOut); return up(x, y, cableZ(s), s); }),
+        V.cableWM * ppm, I.cable);
+    }
+  } });
+
+  // el nombre, a un costado del medio del tramo
+  const mid = at((span.s0 + span.s1) / 2), [lx, ly] = side(mid, 1, V.labelOutM * ppm);
+  label(lx, ly, "PUENTE MATA LIMÓN", S.bridge.signFg, S.bridge.signBg);
 }
 
 // The two ferries and their berths. Everything is drawn in the ferry's own

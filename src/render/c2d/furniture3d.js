@@ -218,3 +218,19 @@ export function drawBarricade3d(c, V, inks) {
   });
 }
 
+
+/**
+ * UNA TORRE DE PUENTE COLGANTE: un pórtico en H a horcajadas del tablero —dos patas por fuera de cada
+ * orilla y sus travesaños—, girado con la vía (`ang`, +u a lo largo). `halfM` es el medio ancho del
+ * tablero; las medidas y tintas son `structure.bridge.view3d`.
+ */
+export function drawBridgeTower3d(x, y, ang, halfM, V) {
+  const I = V.inks, H = V.towerHM, v = halfM + V.legOutM;
+  rigged(x, y, ang, H, V, (v + H) * PX_PER_M * 1.3, (R) => {
+    for (const s of [-1, 1]) R.at(H, () => R.box(0, s * v, 0, H, V.legM, V.legM, I.leg));
+    for (const k of V.beamsK) {
+      const z = H * k;
+      R.at(z + 0.01, () => R.box(0, 0, z - V.beamM, z, V.beamM, 2 * v + V.legM, I.beam));
+    }
+  });
+}

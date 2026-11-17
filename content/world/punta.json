@@ -2031,7 +2031,7 @@
   "benchEveryM": 34.0,
   "benchFromRocksM": 3.2,
   "palmEveryM": 17.0,
-  "palmPastRocksM": 4.5,
+  "palmPastRocksM": 4.5, "palmFromRocksM": 7.0, "palmFromKerbM": 3.0, "clearKiosksM": 9.0, "_palmFromRocks": "la segunda fila de palmeras, SOBRE la baldosa del malecón: a `palmFromRocksM` tierra adentro de la piedra (más allá de las bancas), nunca a menos de `palmFromKerbM` del bordillo ni a menos de `clearKiosksM` de un kiosco.",
   "keepStreetTreesM": 7.0,
   "clearMonumentsM": 24.0,
   "clearBuildingsM": 48.0,

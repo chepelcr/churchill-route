@@ -104,3 +104,49 @@ class PuntaRegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PuntaEmittedWorldTests(unittest.TestCase):
+    """Lo que la emisión de La Punta deja en el mundo publicado (`src/world2d`)."""
+
+    WORLD = os.path.join(ROOT, "src", "world2d")
+    #: los tiles del frente del Paseo, de El Faro al muelle de cruceros
+    FRONT = ("9_7", "10_7", "11_7", "12_7")
+    MALECON = 10
+
+    def _tile(self, key):
+        with open(os.path.join(self.WORLD, "tiles", f"{key}.json"), encoding="utf-8") as fh:
+            return json.load(fh)
+
+    @staticmethod
+    def _grid(tile):
+        import base64
+        raw, out = base64.b64decode(tile["rle"]), bytearray()
+        for k in range(0, len(raw) - 1, 2):
+            out.extend([raw[k + 1]] * raw[k])
+        return out
+
+    def test_the_malecon_keeps_its_palms(self):
+        """LA LIMPIEZA DEL FRENTE SE LLEVÓ TODAS LAS PALMERAS DEL MALECÓN (57 → 3) y la fila de
+        reemplazo iba en la arena: el Paseo se veía pelado. La fila sobre la baldosa es la que
+        las devuelve; menos de la mitad de las de antes es que volvió a pasar."""
+        with open(os.path.join(self.WORLD, "manifest.json"), encoding="utf-8") as fh:
+            cell = json.load(fh)["meta"]["cell"]
+        on_malecon = 0
+        for key in self.FRONT:
+            tile = self._tile(key)
+            grid, cols = self._grid(tile), tile["cols"]
+            for palm in tile.get("palms", []):
+                c = int((palm["x"] - tile["x"]) // cell)
+                r = int((palm["y"] - tile["y"]) // cell)
+                if 0 <= c < cols and 0 <= r < tile["rows"] and grid[r * cols + c] == self.MALECON:
+                    on_malecon += 1
+        self.assertGreaterEqual(on_malecon, 60, f"sólo {on_malecon} palmeras sobre el malecón del Paseo")
+
+    def test_each_terminal_tent_stands_by_its_own_ramp(self):
+        """Los toldos del patio buscaban sus rampas DESPUÉS de que el bucle de las rampas las sacara
+        del manifest, y los dos caían al mismo punto de respaldo, uno encima del otro."""
+        with open(os.path.join(self.WORLD, "manifest.json"), encoding="utf-8") as fh:
+            tents = json.load(fh)["punta"]["yard"]["tents"]
+        spots = {(t["x"], t["y"]) for t in tents}
+        self.assertEqual(len(spots), len(tents), f"toldos apilados en el mismo punto: {tents}")

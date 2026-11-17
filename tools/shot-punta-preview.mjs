@@ -704,6 +704,9 @@ if (doc.faroBay) {
   const exitYard = (yd, e, ux, uy) => { const yp = yd.flat(); let st = [...e]; for (let k = 0; k < 400 && inside(st[0], st[1], yp); k++) st = [st[0] + ux * ppm * 0.5, st[1] + uy * ppm * 0.5]; return st; };
   const rampFace = {};
   const RAMPS = [["paquera", "ramp_paquera", "Ingreso Ferry Paquera"], ["naranjo", "ramp_naranjo", "Ingreso Ferry Playa Naranjo"]];
+  // dónde estaba cada rampa, ANTES de que el bucle de abajo las saque del manifest: los toldos se
+  // paran a su lado. Buscarlas después daba `undefined` y los dos caían al mismo punto de respaldo.
+  const rampAt = Object.fromEntries(RAMPS.map(([, rid]) => { const q = manifest.piers.find((pp) => pp.id === rid); return [rid, q ? [q.pts[0], q.pts[1]] : null]; }));
   const Y = buildYard(P0), { hull, hx, hy } = Y;
   // LAS BASES DE LAS RAMPAS SON PARTE DEL PATIO: un cuadro que sobresale del borde, a escuadra con su rampa,
   // y el contorno del patio le da la vuelta — así la escollera rodea la base y pasa POR DEBAJO de la rampa
@@ -772,7 +775,7 @@ if (doc.faroBay) {
   }
   // el patio reemplaza a sus calles: todo él es la superficie manejable
   if (T.hideRoads) for (const t of [tile, ...frontTiles.map((q) => q[1])]) t.roads = (t.roads || []).filter((q) => !T.roads.includes(q.name));
-  punta.yard = { pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const rp = manifest.piers.find((q) => q.id === (k ? "ramp_naranjo" : "ramp_paquera")); const [x, y] = rp ? [rp.pts[0], rp.pts[1]] : [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
+  punta.yard = { pts: yard.flat().map(Math.round), tents: Array.from({ length: T.tents }, (_, k) => { const [x, y] = rampAt[k ? "ramp_naranjo" : "ramp_paquera"] || [hx, hy]; return { x: Math.round(x + (hx - x) * 0.3), y: Math.round(y + (hy - y) * 0.3), s: T.tentM * ppm }; }) };
   // la arena vieja de este tramo sale: la nueva playa y el patio la reemplazan
   const sideN = (x, y) => { let bi = 0, bd = Infinity; for (let i = 0; i < M2; i++) { const dd = Math.hypot(nc[i][0] - x, nc[i][1] - y); if (dd < bd) { bd = dd; bi = i; } } const dd = (x - nc[bi][0]) * sm[bi][0] + (y - nc[bi][1]) * sm[bi][1]; return { i: bi, dd, off: Math.hypot(x - nc[bi][0] - sm[bi][0] * dd, y - nc[bi][1] - sm[bi][1] * dd) }; };
   const oldSand = (x, y) => { const q = sideN(x, y); return q.dd > nc[q.i][2] && q.dd < 220 * ppm && q.off < 40 * ppm; };
@@ -912,6 +915,20 @@ const oldBenches = (manifest.signs || []).filter((o) => o.kind === "banca" && in
 manifest.signs = (manifest.signs || []).filter((o) => !oldBenches.includes(o) && !(typeof o.x === "number" && inNewSea(o)));
 const benches = along2(FU.benchEveryM, (i) => rockAt(i) - FU.benchFromRocksM * ppm, (i) => calm(i) && !inMuellero(i) && rockAt(i) - FU.benchFromRocksM * ppm > centre[i][2] + 2 * ppm);
 for (const q of benches) if (!nearMonument(q)) manifest.signs.push({ x: q.x, y: q.y, kind: "banca", ang: Math.round(Math.atan2(normal[q.i][1], normal[q.i][0]) * 1000) / 1000 });
+// LAS PALMERAS DEL MALECÓN, sobre la baldosa. La limpieza de arriba saca TODO lo sembrado del lado del
+// mar —malecón incluido— y la fila de reemplazo va en la arena, así que el paseo se quedó sin una sola
+// palmera (57 → 3). Una fila más, tierra adentro de las bancas (`palmFromRocksM`), lejos de los kioscos
+// (`clearKiosksM`) y de los monumentos, y sólo donde todavía es malecón y no acera.
+const kiosksHere = manifest.landmarks.filter((q) => q.type === "kiosk");
+const nearKiosk = (q) => kiosksHere.some((k) => Math.hypot(k.x - q.x, k.y - q.y) < FU.clearKiosksM * ppm);
+let paved = 0;
+for (const q of along2(FU.palmEveryM, (i) => rockAt(i) - FU.palmFromRocksM * ppm,
+  (i) => calm(i) && !inMuellero(i) && rockAt(i) - FU.palmFromRocksM * ppm > centre[i][2] + FU.palmFromKerbM * ppm)) {
+  const t = tileAt(q.x, q.y); if (!t || nearMonument(q) || nearKiosk(q)) continue;
+  if (warm && q.i >= endI && q.i < eastI && !inside(q.x, q.y, warm)) continue;
+  (t.palms || (t.palms = [])).push({ x: q.x, y: q.y, s: 1.0, sway: (q.x * 0.37 + q.y * 0.11) % 6.28 }); paved++;
+}
+console.log(`[punta-preview] ${paved} palmeras sobre el malecón`);
 // el haz del Faro: sale de la linterna, arriba de la torre
 const towerArt = JSON.parse(readFileSync("src/assets/world-props.json", "utf8")).scenes.faro.parts.find((q) => q.verb === "lighthouse-tower");
 punta.beams = doc.faro.beam ? [{ x: faroXY[0], y: Math.round(faroXY[1] - towerArt.height * towerArt.lean * doc.faro.scale) }] : [];

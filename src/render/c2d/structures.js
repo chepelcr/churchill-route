@@ -25,9 +25,101 @@ import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { drawBridgeTower3d, drawRaisedStroke3d } from "./furniture3d.js";
 import { SURFACE } from "../../domain/vocabulary.generated.js";
 import PROPS from "../../assets/world-props.json" with { type: "json" };
+import STYLES from "../../assets/building-styles.json" with { type: "json" };
+import { area2, bbox, wound } from "./bodyGeometry.js";
+
+// ───────────── UNA HUELLA DE OSM, LEVANTADA COMO LOS EDIFICIOS NUEVOS ─────────────
+// Las reglas son DATA (`building-styles.json → body3d`); acá queda la geometría: el rectángulo
+// que mejor la contiene (para saber si es rectangular y dónde corre su eje largo), la cumbrera y
+// los pisos. El cuerpo se arma UNA vez por huella y se guarda en ella; lo pinta `bodies.js` con
+// la misma cola, la misma sombra y el mismo pinhole que el centro cívico.
+const BODY3D = STYLES.body3d || {};
+
+/** El rectángulo de área mínima que contiene la huella: centro, eje largo y semiejes (px). */
+function minRect(pts) {
+  const n = pts.length / 2;
+  let best = null;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, dx = pts[2 * j] - pts[2 * i], dy = pts[2 * j + 1] - pts[2 * i + 1], L = Math.hypot(dx, dy);
+    if (L < 1e-6) continue;
+    const ux = dx / L, uy = dy / L;
+    let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+    for (let k = 0; k < n; k++) {
+      const x = pts[2 * k], y = pts[2 * k + 1], u = x * ux + y * uy, v = -x * uy + y * ux;
+      u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+    }
+    const area = (u1 - u0) * (v1 - v0);
+    if (!best || area < best.area) {
+      const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
+      best = { area, cx: cu * ux - cv * uy, cy: cu * uy + cv * ux, ux, uy, hu: (u1 - u0) / 2, hv: (v1 - v0) / 2 };
+    }
+  }
+  if (!best) return null;
+  // el eje LARGO va en `u`
+  if (best.hv > best.hu) best = { ...best, ux: -best.uy, uy: best.ux, hu: best.hv, hv: best.hu };
+  return best;
+}
+
+function buildingBody(b, wall, roof, st) {
+  if (b._body && b._bodyKey === wall + roof) return b._body;
+  const B = BODY3D, ppm = W.PX_PER_M, pts = wound(b.pts), n = pts.length / 2;
+  const heightM = buildingHeightM(b), R = minRect(pts);
+  const areaPx = Math.abs(area2(pts)) / 2, areaM2 = areaPx / (ppm * ppm);
+  const rect = R ? areaPx / R.area : 0;
+  const P = B.pitched || {};
+  const shapeOk = R && rect >= P.minRect && n <= P.maxVerts && areaM2 <= P.maxAreaM2;
+  const kind = st && st.roofKind ? st.roofKind
+    : !shapeOk ? "flat" : R.hu / Math.max(1e-6, R.hv) >= P.gableRatio ? "gable" : "hip";
+  const pitched = kind !== "flat" && R;
+  const rise = pitched ? Math.max(B.minRiseM, Math.min(B.maxRiseM, (R.hv / ppm) * B.riseK)) : 0;
+  const storeys = Math.max(1, Math.min(B.maxStoreys, Math.round(heightM / EFFECTS.buildingHeight.storeyM)));
+  const wnd = Boolean(st && st.wnd !== undefined ? st.wnd : b.wnd), W3 = B.windows;
+  const tiers = [];
+  for (let k = 0; k < storeys; k++) {
+    const z0 = (heightM * k) / storeys, z1 = (heightM * (k + 1)) / storeys, last = k === storeys - 1;
+    const T = { pts, z0, z1, wall: "$wall", cap: last ? (pitched ? "$roof2" : "$flat") : "$wall" };
+    const bands = [];
+    if (k === 0) bands.push([0, B.plinthK * storeys, "$trim"]);
+    if (last) bands.push([1 - B.eaveK * storeys, 1, "$trim"]);
+    if (bands.length) T.bands = bands;
+    if (wnd) T.windows = { everyM: W3.everyM, wM: W3.wM, z: [z0 + (z1 - z0) * W3.zK[0], z0 + (z1 - z0) * W3.zK[1]], ink: "window" };
+    if (last && !pitched) T.edge = "$roof2";
+    if (last && pitched) {
+      // la cumbrera sobre el eje largo: a dos aguas de punta a punta, a cuatro aguas recortada medio fondo
+      const half = kind === "gable" ? R.hu : Math.max(0, R.hu - R.hv);
+      T.roof = {
+        kind, rise, ink: "$roof", ink2: "$roof2", seams: B.seamsM * ppm,
+        ridge: [R.cx - R.ux * half, R.cy - R.uy * half, R.cx + R.ux * half, R.cy + R.uy * half],
+      };
+    }
+    tiers.push(T);
+  }
+  const box = bbox(pts);
+  b._body = {
+    x: R ? R.cx : (box.x0 + box.x1) / 2, y: R ? R.cy : (box.y0 + box.y1) / 2, zMax: heightM + rise,
+    x0: Math.floor(box.x0), y0: Math.floor(box.y0), x1: Math.ceil(box.x1), y1: Math.ceil(box.y1), tiers,
+  };
+  b._bodyVars = {
+    wall, roof,
+    roof2: mixColor(roof, B.roofShade.to, B.roofShade.mix),
+    trim: mixColor(wall, B.trim.to, B.trim.mix),
+    flat: mixColor(roof, B.flatCap.to, B.flatCap.mix),
+  };
+  b._bodyKey = wall + roof;
+  return b._body;
+}
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
 function paintBuilding(b) {
+  // CON `body3d` LA HUELLA ES UN CUERPO, como el centro cívico: lo arma `buildingBody` y lo pinta la
+  // cola de `bodies.js` (sombra, paredes, ventanas y techo). Sin él, la caja de siempre de aquí abajo.
+  if (BODY3D.enabled) {
+    const st = buildingStyle(b) || districtBuildingStyle(b);
+    const wall = (st && st.color) || b.color || S.building.fallback;
+    const roof = (st && st.roof) || b.roof || S.roof;
+    queueBody(buildingBody(b, wall, roof, st), b._bodyVars);
+    return;
+  }
   // LA HUELLA REDONDEADA, cacheada igual que la recta. `roundedPath` recorta el
   // VÉRTICE y deja las aristas donde estaban, así que la casa sigue tocando su
   // acera en todo el frente y sólo se despega en la esquina — que es lo que se

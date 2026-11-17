@@ -7,8 +7,25 @@
     "unnamed": false,
     "_note": "QUÉ HUELLAS SE CARGAN. El mapa traía ~37 000 edificios genéricos —huellas de OSM sin nombre y los lotes y casonas que el build sintetiza— y se leía saturado. Con `unnamed: false` el cliente sólo carga las ~570 huellas CON nombre, más las que pertenecen a una parcela autorada (`parcelId`) o a la cuadra del Parque Marino (`osmId`). Se filtra al decodificar el tile, así que el dibujo, la capa 3-D y la colisión de edificios ven lo mismo; la manzana sigue siendo tierra (muro) en el ráster. `true` devuelve todo sin reconstruir."
   },
+  "_body3d": "CÓMO SE LEVANTA UNA HUELLA DE OSM, igual que los edificios nuevos (`c2d/bodies.js`). Cada huella con nombre se arma como un CUERPO (`structures.js → buildingBody`): paredes del color de su categoría con zócalo y alero, una fila de ventanas por piso si la categoría las lleva, y techo. EL TECHO SALE DE LA FORMA: una huella que se parece a su rectángulo (`pitched.minRect` de su área, hasta `maxVerts` vértices y `maxAreaM2`) lleva techo inclinado de zinc —a DOS AGUAS si es alargada (largo/ancho ≥ `gableRatio`), a CUATRO si no— con la cumbrera sobre su eje largo; el resto, azotea plana con su borde. Una categoría puede pedir el suyo con `roofKind` (`gable`, `hip` o `flat`). Todo en METROS: la pendiente es `riseK` del medio fondo, entre `minRiseM` y `maxRiseM`.",
+  "body3d": {
+    "enabled": true,
+    "pitched": { "minRect": 0.85, "maxVerts": 8, "maxAreaM2": 1500, "gableRatio": 1.6 },
+    "riseK": 0.42,
+    "minRiseM": 1.1,
+    "maxRiseM": 3.6,
+    "seamsM": 0.9,
+    "maxStoreys": 4,
+    "windows": { "everyM": 3.2, "wM": 1.2, "zK": [0.32, 0.78] },
+    "plinthK": 0.07,
+    "eaveK": 0.07,
+    "trim": { "to": "#ffffff", "mix": 0.45 },
+    "roofShade": { "to": "#1d1c28", "mix": 0.32 },
+    "flatCap": { "to": "#8a8578", "mix": 0.35 }
+  },
   "byCat": {
     "tourism=hotel": {
+      "roofKind": "hip",
       "_": "cal y arena con teja: el hotel de playa del Pacífico",
       "walls": [
         "#efe3cc",
@@ -24,6 +41,7 @@
       "wnd": 1
     },
     "amenity=place_of_worship": {
+      "roofKind": "gable",
       "_": "templo: cal blanca, techo de zinc envejecido",
       "walls": [
         "#f4f1e8",
@@ -97,6 +115,7 @@
       "wnd": 1
     },
     "shop=supermarket": {
+      "roofKind": "flat",
       "walls": [
         "#e6e9ea",
         "#d3dade"
@@ -151,6 +170,7 @@
       "wnd": 0
     },
     "office=government": {
+      "roofKind": "flat",
       "_": "institucional: blanco hueso, sobrio, sin variar mucho",
       "walls": [
         "#eae7de",
@@ -172,6 +192,7 @@
       "wnd": 1
     },
     "amenity=bank": {
+      "roofKind": "flat",
       "walls": [
         "#e9e6dd"
       ],
@@ -202,6 +223,7 @@
       "wnd": 1
     },
     "amenity=hospital": {
+      "roofKind": "flat",
       "walls": [
         "#f2f4f1"
       ],
@@ -243,6 +265,7 @@
       "wnd": 1
     },
     "shop=department_store": {
+      "roofKind": "flat",
       "walls": [
         "#dfe3e6",
         "#d2d8dd"

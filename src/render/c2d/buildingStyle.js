@@ -46,5 +46,6 @@ export function buildingStyle(b) {
     color: st.walls ? pick(st.walls, seed) : null,
     roof: st.roofs ? pick(st.roofs, seed * 1.61 + 11) : null,
     wnd: st.wnd,
+    roofKind: st.roofKind || null,
   };
 }

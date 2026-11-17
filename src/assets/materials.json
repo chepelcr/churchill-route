@@ -1860,7 +1860,13 @@
       "tieWM": 0.512,
       "tiePitchM": 2.24,
       "gaugeHalfM": 1.024,
-      "railWM": 0.448
+      "railWM": 0.448,
+      "_height": "EN 3D, con el pinhole de los edificios (`depth.js`): el durmiente sube `tieHM` y el riel `railHM` sobre el balasto, que se queda plano. EXAGERADOS a propósito, como los niveles del suelo: un riel de verdad mide 15 cm, que a esta escala es medio píxel y no se lee. `tieSide`/`steelSide` son sus costados y `shadow` la tinta de la sombra del riel al sol.",
+      "tieHM": 0.3,
+      "railHM": 0.75,
+      "tieSide": "#3b3024",
+      "steelSide": "#5b6067",
+      "shadow": "#1a1612"
     },
     "labels": {
       "fg": "#fff",

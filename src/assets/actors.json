@@ -3711,6 +3711,7 @@
     "train": {
       "form": "trainLoco",
       "heightM": 3.7,
+      "body3d": {"_": "EL TREN EN 3D: cajas sobre el aparejo (`rig3d.js`), igual que el tráfico. `halfPx` son los semiejes del coche (los de su forma plana), `at`/`size` fracciones de ellos y `z` metros; `$x` es una tinta de este registro. La locomotora lleva chasis, caldera, cabina, chimenea y el farol al frente; el vagón chasis, caja, techo crema con la franja roja de su dibujo plano y una fila de ventanas por costado.", "first": {"halfPx": [18, 7], "boxes": [{"at": [0, 0], "size": [0.96, 0.82], "z": [0, 0.9], "ink": "$smokebox"}, {"at": [0.18, 0], "size": [0.74, 0.78], "z": [0.9, 3.0], "ink": "$loco"}, {"at": [-0.72, 0], "size": [0.28, 1.0], "z": [0.9, 3.7], "ink": "$cab"}, {"at": [0.8, 0], "size": [0.1, 0.28], "z": [3.0, 4.1], "ink": "$smokebox"}, {"at": [0.97, 0], "size": [0.04, 0.3], "z": [1.8, 2.5], "ink": "$lamp", "face": [1, 0], "key": 4.2}]}, "rest": {"halfPx": [16, 6], "boxes": [{"at": [0, 0], "size": [0.96, 0.85], "z": [0, 0.9], "ink": "$smokebox"}, {"at": [0, 0], "size": [1, 1], "z": [0.9, 3.1], "ink": "$wagon"}, {"at": [0, 0.12], "size": [0.98, 0.8], "z": [3.1, 3.35], "ink": "$wagon"}, {"at": [0, -0.8], "size": [0.98, 0.2], "z": [3.1, 3.4], "ink": "$loco"}, {"at": [0, 0.99], "size": [0.78, 0.02], "z": [1.9, 2.6], "ink": "$windows", "face": [0, 1], "key": 3.5}, {"at": [0, -0.99], "size": [0.78, 0.02], "z": [1.9, 2.6], "ink": "$windows", "face": [0, -1], "key": 3.5}]}},
       "composition": {
         "first": "trainLoco",
         "rest": "trainWagon",

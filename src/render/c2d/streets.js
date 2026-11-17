@@ -18,6 +18,8 @@ import { drawParada, propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
 import { drawBench3d, drawGantrySignal3d, drawPoleSign3d } from "./furniture3d.js";
+import { parallaxOffset } from "./depth.js";
+import { sunShadow } from "./shadows.js";
 
 //: LA SEÑALIZACIÓN, keyed by SignKind — see the note above `drawSign`.
 const SIGNS = PROPS.signs;
@@ -384,9 +386,23 @@ function paintRoads(roads, view) {
 // Per-tile Ferrocarril rail pieces: ballast bed + ties + two steel rails.
 // Decorative (not drivable), drawn on the ground over the roads. Every measure
 // is METRES in `materials.json → streets.rails`.
+//
+// LA VÍA TIENE ALTURA. El balasto se queda plano; el durmiente sube `tieHM` y
+// el riel `railHM`, cada punto con su propio paralaje (el pinhole de los
+// edificios, `depth.js`), así que la vía se abre hacia afuera del centro de la
+// pantalla como todo lo demás. Un riel es un trazo: su costado se pinta como
+// capas del piso a la tapa (lo que hace `drawRaisedStroke3d` con la banca
+// corrida) y su sombra es el mismo trazo corrido por el sol.
 function paintTileRails(rails, view) {
-  const R = ST.rails, ppm = PX_PER_M;
+  const R = ST.rails, ppm = PX_PER_M, cam = state.cam;
   const tieHalf = R.tieLenM * ppm / 2, pitch = R.tiePitchM * ppm, gauge = R.gaugeHalfM * ppm;
+  const up = (x, y, h) => { if (!(h > 0)) return [x, y]; const o = parallaxOffset(cam, x, y, h, ppm); return [x + o.dx, y + o.dy]; };
+  const sun = sunShadow(R.railHM || 0);
+  const stroke = (pts, w, ink) => {
+    ctx.strokeStyle = ink; ctx.lineWidth = w; ctx.beginPath();
+    pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.stroke();
+  };
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   for (const rl of rails) {
     if (!rl.aabb) rl.aabb = flatAABB(rl.pts);
@@ -395,8 +411,24 @@ function paintTileRails(rails, view) {
     // ballast bed
     ctx.strokeStyle = R.ballast; ctx.lineWidth = R.ballastWM * ppm;
     ctx.stroke(rl._path || (rl._path = flatPath(p, false)));
-    // ties
-    ctx.strokeStyle = R.ties; ctx.lineWidth = R.tieWM * ppm;
+    // los dos rieles, a cada lado del eje: primero los puntos a ras
+    const lines = [-gauge, gauge].map((sgn) => {
+      const out = [];
+      for (let i = 0; i < p.length; i += 2) {
+        const ii = i + 2 < p.length ? i : (i >= 2 ? i - 2 : i);
+        const dx = (p[ii + 2] ?? p[ii]) - p[ii], dy = (p[ii + 3] ?? p[ii + 1]) - p[ii + 1];
+        const len = Math.hypot(dx, dy) || 1, nx = -dy / len * sgn, ny = dx / len * sgn;
+        out.push([p[i] + nx, p[i + 1] + ny]);
+      }
+      return out;
+    });
+    // la sombra de los rieles, al sol
+    if (R.railHM > 0 && sun.alpha > 0) {
+      ctx.save(); ctx.globalAlpha = sun.alpha * 0.6;
+      for (const ln of lines) stroke(ln.map(([x, y]) => [x + sun.dx, y + sun.dy]), R.railWM * ppm, R.shadow);
+      ctx.restore();
+    }
+    // ties: el costado a ras y la tapa levantada
     for (let i = 0; i + 3 < p.length; i += 2) {
       const x0 = p[i], y0 = p[i + 1], dx = p[i + 2] - x0, dy = p[i + 3] - y0;
       const len = Math.hypot(dx, dy); if (len < 0.001) continue;
@@ -404,21 +436,15 @@ function paintTileRails(rails, view) {
       for (let s = 0; s < len; s += pitch) {
         const t = s / len, cx = x0 + dx * t, cy = y0 + dy * t;
         if (cx < view.x0 - 8 || cx > view.x1 + 8 || cy < view.y0 - 8 || cy > view.y1 + 8) continue;
-        ctx.beginPath();
-        ctx.moveTo(cx - nx * tieHalf, cy - ny * tieHalf); ctx.lineTo(cx + nx * tieHalf, cy + ny * tieHalf); ctx.stroke();
+        const a = [cx - nx * tieHalf, cy - ny * tieHalf], b = [cx + nx * tieHalf, cy + ny * tieHalf];
+        if (R.tieHM > 0) stroke([a, b], R.tieWM * ppm, R.tieSide);
+        stroke([up(a[0], a[1], R.tieHM), up(b[0], b[1], R.tieHM)], R.tieWM * ppm, R.ties);
       }
     }
-    // two steel rails, offset either side of the centerline
-    ctx.strokeStyle = R.steel; ctx.lineWidth = R.railWM * ppm;
-    for (const sgn of [-gauge, gauge]) {
-      ctx.beginPath();
-      for (let i = 0; i < p.length; i += 2) {
-        const ii = i + 2 < p.length ? i : (i >= 2 ? i - 2 : i);
-        const dx = (p[ii + 2] ?? p[ii]) - p[ii], dy = (p[ii + 3] ?? p[ii + 1]) - p[ii + 1];
-        const len = Math.hypot(dx, dy) || 1, nx = -dy / len * sgn, ny = dx / len * sgn;
-        if (i === 0) ctx.moveTo(p[i] + nx, p[i + 1] + ny); else ctx.lineTo(p[i] + nx, p[i + 1] + ny);
-      }
-      ctx.stroke();
+    // two steel rails: el costado en capas, la tapa arriba
+    for (const ln of lines) {
+      if (R.railHM > 0) for (const f of [0, 0.34, 0.67]) stroke(ln.map(([x, y]) => up(x, y, R.railHM * f)), R.railWM * ppm, R.steelSide);
+      stroke(ln.map(([x, y]) => up(x, y, R.railHM)), R.railWM * ppm, R.steel);
     }
   }
 }

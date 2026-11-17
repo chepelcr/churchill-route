@@ -274,12 +274,34 @@ function paintBoatShadow(p, veh) {
 // The Ferrocarril heritage train: red loco + two cream wagons, each posed
 // on the rail by spawns.js (tr.cars[0] = loco).
 function drawTrain(tr, t) {
-  const C = resolveActorRecord(ACTORS, "train").composition;
-  for (let k = tr.cars.length - 1; k >= 0; k--) {
-    const c = tr.cars[k];
-    paintActorForm(ctx, ACTORS, k === 0 ? C.first : C.rest, {
-      x: c.x, y: c.y, rotation: c.ang, timeMs: t * 1000,
+  const rec = resolveActorRecord(ACTORS, "train");
+  const C = rec.composition, B = rec.body3d;
+  if (B) {
+    // EN 3D, como el tráfico: cajas del registro sobre el aparejo, primero todas
+    // las sombras y después los coches, del último al primero
+    const ppm = PX_PER_M, sh = sunShadow(rec.heightM);
+    const color = (spec) => (typeof spec === "string" && spec.startsWith("$") ? rec[spec.slice(1)] ?? spec : spec);
+    const each = (fn) => {
+      for (let k = tr.cars.length - 1; k >= 0; k--) {
+        const c = tr.cars[k], f = k === 0 ? B.first : B.rest;
+        fn(c, f, f.halfPx[0] / ppm, f.halfPx[1] / ppm);
+      }
+    };
+    each((c, f, hwM, hhM) => rigShadow(c.x, c.y, Math.max(...f.halfPx) + Math.hypot(sh.dx, sh.dy) + 4, (g) => {
+      const S = makeRig(g, c.x, c.y, c.ang, ppm, state.cam, "sun", V3D.shade, rec.heightM);
+      rigBoxes(S, f.boxes, hwM, hhM, color); S.flush();
+    }));
+    each((c, f, hwM, hhM) => {
+      const R = makeRig(ctx, c.x, c.y, c.ang, ppm, state.cam, "cam", V3D.shade, rec.heightM);
+      rigBoxes(R, f.boxes, hwM, hhM, color); R.flush();
     });
+  } else {
+    for (let k = tr.cars.length - 1; k >= 0; k--) {
+      const c = tr.cars[k];
+      paintActorForm(ctx, ACTORS, k === 0 ? C.first : C.rest, {
+        x: c.x, y: c.y, rotation: c.ang, timeMs: t * 1000,
+      });
+    }
   }
   const l = tr.cars[0];
   if (l) paintActorForm(ctx, ACTORS, C.smoke, {

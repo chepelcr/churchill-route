@@ -11,6 +11,7 @@
 // `signs.<tipo>.view3d` / `stand3d`); acá sólo la forma.
 import { state } from "../../game/state.js";
 import { PX_PER_M } from "../../domain/units.js";
+import { WORLD2D as W } from "../../world2d/index.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
 import { parallaxOffset } from "./depth.js";
 import { sunShadow } from "./shadows.js";
@@ -137,3 +138,45 @@ export function drawLounger3d(x, y, ang, lenM, wM, inks, V) {
     });
   });
 }
+
+/**
+ * EL SEMÁFORO COLGADO: el poste en la acera, el brazo sobre la calzada y las cabezas colgando de él,
+ * con sus tres luces en las caras que miran a la calle. `V` es `signs.<tipo>.gantry3d`.
+ *
+ * Con `s.hw` (los del mundo, que `seat_bus_stops` sentó en la acera) el brazo cruza hacia el eje de la
+ * calle: `side` dice de qué lado de la normal (−sin, cos) quedó el poste, así que el eje está en
+ * −side · normal, y una cabeza en `k` cuelga a `k` medias calzadas del bordillo. Sin `hw` (uno del
+ * editor) `ang` ya es el rumbo del brazo y (x, y) su medio, como en el dibujo plano.
+ */
+export function drawGantrySignal3d(V, s) {
+  const ppm = PX_PER_M;
+  let x = s.x, y = s.y, dir, at;
+  if (s.hw) {
+    const a = s.ang || 0, side = s.side || 1;
+    dir = Math.atan2(-side * Math.cos(a), side * Math.sin(a));
+    const kerbM = (V.kerbFromPoleK * W.CUAD) / ppm, hwM = s.hw / ppm;
+    at = (hwM > V.wideHwM ? V.wideHeadsK : V.headsK).map((k) => kerbM + k * hwM);
+  } else {
+    dir = s.ang || 0;
+    x -= Math.cos(dir) * V.armLenM * ppm / 2; y -= Math.sin(dir) * V.armLenM * ppm / 2;
+    at = V.headsK.map((k) => k * (V.armLenM - V.overhangM));
+  }
+  const I = V.inks, [hw, hd, hh] = V.headM, z = V.armM, L = Math.max(...at) + V.overhangM;
+  rigged(x, y, dir, V.poleM, V, (L + V.poleM) * ppm * 1.4, (R) => {
+    R.at(V.poleM, () => R.box(0, 0, 0, V.poleM, V.poleWM, V.poleWM, I.pole));
+    for (const u of at) {
+      const top = z - V.armWM / 2, bot = top - hh;
+      R.at(top - 0.01, () => {
+        R.box(u, 0, bot, top, hw, hd, I.head);
+        if (R.shadow) return;
+        // las tres luces, en las dos caras que miran a lo largo de la calle (±v)
+        for (const sg of [-1, 1]) {
+          if (!R.faces([u, sg * hd / 2, (top + bot) / 2], [0, sg, 0])) continue;
+          V.lensZK.forEach((k, i) => R.dot([u, sg * (hd / 2 + 0.02), bot + k * hh], V.lensRM, I.lenses[i]));
+        }
+      });
+    }
+    R.at(z + V.armWM / 2, () => R.box(L / 2, 0, z - V.armWM / 2, z + V.armWM / 2, L, V.armWM, I.arm));
+  });
+}
+

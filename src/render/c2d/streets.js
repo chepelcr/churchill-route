@@ -17,7 +17,7 @@ import { roundedMultiPath, roundedPath } from "./curves.js";
 import { drawParada, propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
-import { drawBench3d, drawPoleSign3d } from "./furniture3d.js";
+import { drawBench3d, drawGantrySignal3d, drawPoleSign3d } from "./furniture3d.js";
 
 //: LA SEÑALIZACIÓN, keyed by SignKind — see the note above `drawSign`.
 const SIGNS = PROPS.signs;
@@ -717,6 +717,8 @@ function drawSign(s) {
   const vars = { value: String(s.value || 40) };
   // LO QUE TIENE ALTURA, EN 3D (`furniture3d.js`): la señal de poste, la caseta y la banca. La pintura
   // del asfalto (velocidad, cebra, tope) se queda en el piso, que es donde está.
+  // el semáforo CUELGA sobre la calle: poste en la acera, brazo y cabezas (`gantry3d`)
+  if (rec.gantry3d) return drawGantrySignal3d(rec.gantry3d, s);
   if (!rec.turn && rec.stand3d) return drawPoleSign3d(rec, s.x, s.y, vars);
   if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars }); return; }
   const ang = (s.ang || 0) + (rec.flip === "side" && (s.side || 1) < 0 ? Math.PI : 0);

@@ -1380,6 +1380,7 @@
       ]
     },
     "semaforo": {
+      "gantry3d": {"_": "EL SEMÁFORO COLGADO, EN 3D (`furniture3d.js → drawGantrySignal3d`), en METROS: el poste sube en la acera hasta `poleM`, el brazo cruza a `armM` sobre la calzada y de él cuelgan las cabezas —una caja oscura de `headM` [ancho, fondo, alto] con sus tres luces en las caras que miran a la calle—. Con `hw` del mundo (media calzada) el brazo llega hasta `headsK` de la calle medido desde el bordillo, y una avenida de más de `wideHwM` lleva dos cabezas; sin `hw` (un semáforo del editor) el brazo mide `armLenM`. Todo exagerado a propósito, como los postes: una cabeza real de 30 cm sería un píxel.", "poleM": 6.2, "poleWM": 0.45, "armM": 5.8, "armWM": 0.45, "headM": [1.7, 1.5, 3.6], "lensRM": 0.52, "lensZK": [0.78, 0.5, 0.22], "headsK": [1.0], "wideHeadsK": [0.45, 0.95], "wideHwM": 9.0, "overhangM": 0.6, "kerbFromPoleK": 0.42, "_kerbFromPoleK": "a cuántas cuadrículas del bordillo quedó el poste: la misma fracción que `STOP_ACERA_PAD` en `churchill/world/service/signs.py`, que es quien lo sentó en la acera", "armLenM": 7.0, "shadowAlpha": 0.55, "shade": {"side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612"}, "inks": {"pole": "#8b8f96", "arm": "#596066", "head": "#2b2f36", "lenses": ["#e0483a", "#f0c44a", "#4fbf6a"]}},
       "stand3d": {"_": "EN 3D (`furniture3d.js → drawPoleSign3d`): el poste sube `poleM` y la placa —las partes después de la primera— va en la punta.", "poleM": 3.4, "poleWM": 0.12, "pole": "#8b8f96", "shadow": "#1a1612"},
       "note": "the pole-mounted head at the kerb: three lenses in a dark box",
       "parts": [
@@ -1431,6 +1432,7 @@
       ]
     },
     "semaforo_centered": {
+      "gantry3d": {"_": "EL SEMÁFORO COLGADO, EN 3D (`furniture3d.js → drawGantrySignal3d`), en METROS: el poste sube en la acera hasta `poleM`, el brazo cruza a `armM` sobre la calzada y de él cuelgan las cabezas —una caja oscura de `headM` [ancho, fondo, alto] con sus tres luces en las caras que miran a la calle—. Con `hw` del mundo (media calzada) el brazo llega hasta `headsK` de la calle medido desde el bordillo, y una avenida de más de `wideHwM` lleva dos cabezas; sin `hw` (un semáforo del editor) el brazo mide `armLenM`. Todo exagerado a propósito, como los postes: una cabeza real de 30 cm sería un píxel.", "poleM": 6.2, "poleWM": 0.45, "armM": 5.8, "armWM": 0.45, "headM": [1.7, 1.5, 3.6], "lensRM": 0.52, "lensZK": [0.78, 0.5, 0.22], "headsK": [1.0], "wideHeadsK": [0.45, 0.95], "wideHwM": 9.0, "overhangM": 0.6, "kerbFromPoleK": 0.42, "_kerbFromPoleK": "a cuántas cuadrículas del bordillo quedó el poste: la misma fracción que `STOP_ACERA_PAD` en `churchill/world/service/signs.py`, que es quien lo sentó en la acera", "armLenM": 7.7, "shadowAlpha": 0.55, "shade": {"side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612"}, "inks": {"pole": "#8b8f96", "arm": "#596066", "head": "#2b2f36", "lenses": ["#e0483a", "#f0c44a", "#4fbf6a"]}},
       "note": "gantry-mounted LATAM signal: pole at the edge, a horizontal arm over the street, one head centred above the lanes",
       "turn": true,
       "parts": [
@@ -1486,6 +1488,7 @@
       ]
     },
     "semaforo_overhead": {
+      "gantry3d": {"_": "EL SEMÁFORO COLGADO, EN 3D (`furniture3d.js → drawGantrySignal3d`), en METROS: el poste sube en la acera hasta `poleM`, el brazo cruza a `armM` sobre la calzada y de él cuelgan las cabezas —una caja oscura de `headM` [ancho, fondo, alto] con sus tres luces en las caras que miran a la calle—. Con `hw` del mundo (media calzada) el brazo llega hasta `headsK` de la calle medido desde el bordillo, y una avenida de más de `wideHwM` lleva dos cabezas; sin `hw` (un semáforo del editor) el brazo mide `armLenM`. Todo exagerado a propósito, como los postes: una cabeza real de 30 cm sería un píxel.", "poleM": 6.2, "poleWM": 0.45, "armM": 5.8, "armWM": 0.45, "headM": [1.7, 1.5, 3.6], "lensRM": 0.52, "lensZK": [0.78, 0.5, 0.22], "headsK": [0.5, 1.0], "wideHeadsK": [0.45, 0.95], "wideHwM": 9.0, "overhangM": 0.6, "kerbFromPoleK": 0.42, "_kerbFromPoleK": "a cuántas cuadrículas del bordillo quedó el poste: la misma fracción que `STOP_ACERA_PAD` en `churchill/world/service/signs.py`, que es quien lo sentó en la acera", "armLenM": 10.9, "shadowAlpha": 0.55, "shade": {"side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612"}, "inks": {"pole": "#8b8f96", "arm": "#596066", "head": "#2b2f36", "lenses": ["#e0483a", "#f0c44a", "#4fbf6a"]}},
       "note": "the same gantry with a longer arm and TWO heads, for the avenidas wide enough to need one over each lane",
       "turn": true,
       "parts": [

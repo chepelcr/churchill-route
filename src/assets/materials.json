@@ -1880,7 +1880,23 @@
       "trestle": "#fff",
       "signBg": "rgba(20,16,40,0.88)",
       "signTitle": "#ff3d80",
-      "signText": "#fff"
+      "signText": "#fff",
+      "view3d": {
+        "_": "LA VALLA EN 3D (`furniture3d.js → drawBarricade3d`), en METROS y en el marco de la calle (+u a lo largo, ±v de bordillo a bordillo): dos tablas a franjas (`boards`, cada una [desde, hasta] de alto) de `boardTM` de grueso, cruzando de `kerbPadM` más allá de cada bordillo, con franjas de `stripeM` y caballetes cada `legEveryM`; un cono a `coneOutM` de cada punta, de `coneM` [base, alto] en `coneTiers` escalones con la banda blanca en `bandK`. Exagerado como el resto del mobiliario: un cono de verdad son 70 cm.",
+        "boards": [[0.6, 1.2], [1.6, 2.3]],
+        "boardTM": 1.2,
+        "stripeM": 3.0,
+        "kerbPadM": 0.6,
+        "legEveryM": 4.0,
+        "legM": 0.4,
+        "coneOutM": 2.0,
+        "coneM": [2.6, 2.8],
+        "coneTiers": 4,
+        "bandK": 0.55,
+        "shadowAlpha": 0.5,
+        "shade": {"side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612"},
+        "inks": {"leg": "#e9e4d6", "coneBase": "#3a3540", "band": "#fff"}
+      }
     }
   },
   "tornado": {

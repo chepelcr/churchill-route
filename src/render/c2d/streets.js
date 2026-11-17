@@ -17,7 +17,7 @@ import { roundedMultiPath, roundedPath } from "./curves.js";
 import { drawParada, propParts } from "./props.js";
 import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
-import { drawBench3d, drawGantrySignal3d, drawPoleSign3d } from "./furniture3d.js";
+import { drawBarricade3d, drawBench3d, drawGantrySignal3d, drawPoleSign3d } from "./furniture3d.js";
 import { parallaxOffset } from "./depth.js";
 import { sunShadow } from "./shadows.js";
 
@@ -715,7 +715,12 @@ function drawBarriers(view) {
       for (const c of roadCrossings(ax, ay, bx, by, view)) crossings.push(c);
     }
     if (!crossings.length) continue;               // no calle reaches it here
-    for (const c of crossings) drawBarricade(c);
+    // LA VALLA ES UN CUERPO (`furniture3d.js → drawBarricade3d`): tablas, caballetes y conos con altura
+    const V3 = ST.barrier.view3d;
+    for (const c of crossings) {
+      if (V3) drawBarricade3d(c, V3, { tapeA: TAPE_A, tapeB: TAPE_B, cone: CONE });
+      else drawBarricade(c);
+    }
     let best = crossings[0], bd = Infinity;
     for (const c of crossings) {
       const d = Math.hypot(c.x - mid, c.y - midY);

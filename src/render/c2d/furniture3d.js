@@ -180,3 +180,41 @@ export function drawGantrySignal3d(V, s) {
   });
 }
 
+/**
+ * LA VALLA: dos tablas a franjas sobre caballetes cruzando la calle que cierra, y un cono en cada
+ * bordillo. `c` es el cruce que mide `roadCrossings` —el punto, el rumbo de la calle (`ang`) y su
+ * ancho en px—; el aparejo se gira con la calle, así que una avenida en diagonal queda cerrada en
+ * diagonal. `inks` trae la cinta y el cono del registro de la valla.
+ */
+export function drawBarricade3d(c, V, inks) {
+  const ppm = PX_PER_M, I = { ...V.inks, ...inks };
+  const half = c.w / 2 / ppm + V.kerbPadM, top = Math.max(...V.boards.map((b) => b[1]));
+  const [coneB, coneH] = V.coneM;
+  rigged(c.x, c.y, c.ang, Math.max(top, coneH), V, (half + V.coneOutM + coneB) * ppm * 1.5, (R) => {
+    // los caballetes
+    const n = Math.max(2, Math.round((2 * half) / V.legEveryM) + 1);
+    for (let i = 0; i < n; i++) {
+      const v = -half + (2 * half * i) / (n - 1);
+      R.at(top - 0.01, () => R.box(0, v, 0, top, V.legM * 2.4, V.legM, I.leg));
+    }
+    // las tablas, a franjas
+    for (const [z0, z1] of V.boards) {
+      const k = Math.max(1, Math.round((2 * half) / V.stripeM)), seg = (2 * half) / k;
+      R.at(z1, () => {
+        for (let i = 0; i < k; i++) R.box(0, -half + seg * (i + 0.5), z0, z1, V.boardTM, seg, i % 2 ? I.tapeA : I.tapeB);
+      });
+    }
+    // un cono en cada punta: escalones que se angostan, con su banda blanca
+    for (const sd of [-1, 1]) {
+      const v = sd * (half + V.coneOutM);
+      R.at(0.08, () => R.box(0, v, 0, 0.08, coneB, coneB, I.coneBase));
+      for (let j = 0; j < V.coneTiers; j++) {
+        const z0 = 0.08 + (coneH - 0.08) * j / V.coneTiers, z1 = 0.08 + (coneH - 0.08) * (j + 1) / V.coneTiers;
+        const w = coneB * 0.8 * (1 - (j + 0.5) / (V.coneTiers + 0.6));
+        const band = Math.abs((z0 + z1) / 2 / coneH - V.bandK) < 0.5 / V.coneTiers;
+        R.at(z1, () => R.box(0, v, z0, z1, w, w, band ? I.band : I.cone));
+      }
+    }
+  });
+}
+

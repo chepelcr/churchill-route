@@ -18,6 +18,7 @@ import { bancoExposed, buoyWet, channels, crossingState, esteroThings, laneAt } 
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import ACTORS from "../../assets/actors.json" with { type: "json" };
 import { hullOutline, paintHullSides } from "./vesselRigs.js";
+import { riggedBody } from "./furniture3d.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { alphaColor } from "./primitives.js";
 
@@ -73,6 +74,8 @@ function drawBuoy(b, view, t) {
   const R = 6 + swell * 0.25;
   const MARK = mark(b);
   const col = MARK.body, rim = MARK.rim, pale = MARK.pale;
+  const V3 = E.buoy.view3d;
+  if (V3) { drawBuoy3d(b, x, y, swell, t, MARK, V3); return; }
   ctx.save();
   ctx.fillStyle = E.buoy.shadow;                          // her shadow on the water
   ctx.beginPath(); ctx.ellipse(b.x + 2, b.y + 5, R + 0.5, (R + 0.5) * 0.42, 0, 0, Math.PI * 2); ctx.fill();
@@ -115,6 +118,44 @@ function drawBuoy(b, view, t) {
   ctx.fillStyle = lit ? mixColor(E.buoy.lampOff, MARK.lamp, night) : E.buoy.lampOff;
   ctx.beginPath(); ctx.arc(x, y, lit ? 1.5 + night * 1.1 : 1.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
+}
+
+// LA BOYA EN 3D: el tarro sale del agua, el mástil sube con su marca de tope —cuadrada a babor,
+// cónica a estribor, la misma regla de la vista plana— y arriba la linterna. Lo que es AGUA se queda
+// plano: la espuma alrededor y, de noche, el halo de su luz sobre el agua.
+function drawBuoy3d(b, x, y, swell, t, MARK, V) {
+  ctx.save();
+  ctx.strokeStyle = E.buoy.foam;                          // foam at the waterline
+  ctx.lineWidth = 1.2;
+  const R0 = V.radiusM * PX_PER_M;
+  ctx.beginPath();
+  ctx.ellipse(b.x, b.y + 1, R0 + 3.4 + swell * 0.9, (R0 + 3.4) * 0.58, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  const night = nightLevel();
+  const lit = night > 0.001 && Math.sin(t * 2.4 + b.ph * 3) > 0.2;
+  if (lit) {
+    ctx.globalAlpha = night;
+    ctx.fillStyle = MARK.halo;
+    ctx.beginPath(); ctx.arc(x, y, R0 + 7, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  const lamp = lit ? mixColor(E.buoy.lampOff, MARK.lamp, night) : E.buoy.lampOff;
+  const r = V.radiusM * (1 + swell * 0.04), H = V.bodyHM, n = V.layers;
+  riggedBody(x, y, 0, V.lampHM, V, (V.radiusM + V.lampHM) * PX_PER_M * 1.6, (R) => {
+    for (let k = 0; k <= n; k++) {
+      const z = H * k / n;
+      R.at(z, () => R.dot([0, 0, z], r, k === n ? MARK.body : MARK.rim));
+    }
+    R.at(H + 0.001, () => { if (!R.shadow) R.dot([-r * 0.3, -r * 0.35, H], r * 0.3, E.buoy.hilite); });
+    R.at(V.mastHM - V.markM, () => R.line([[0, 0, H], [0, 0, V.mastHM]], V.mastWM, V.inks.mast));
+    const m = V.markM, z0 = V.mastHM - m;
+    if (b.red) R.at(V.mastHM, () => R.box(0, 0, z0, V.mastHM, m, m, { top: MARK.pale, side: MARK.body }));
+    else for (let k = 0; k < 3; k++) {
+      const z = z0 + m * (k + 1) / 3;
+      R.at(z, () => R.dot([0, 0, z], (m / 2) * (1 - k / 3), k === 2 ? MARK.pale : MARK.body));
+    }
+    R.at(V.lampHM, () => R.dot([0, 0, V.lampHM], V.lampRM, lamp));
+  });
 }
 
 // A panga working the channel, with her fisher aboard. She is drawn from
@@ -337,8 +378,13 @@ function drawPescador(e, view, t) {
   // muellero on the pier rail), so inside this rotated frame it would draw
   // itself somewhere else entirely. He is two shapes; the net is the obstacle.
   ctx.restore();
+  // su costado, del agua a la borda, como la panga; el bote y su pescador van levantados encima
+  const HS = ACTORS.vehicle3d.hullSide, PB = ACTORS.forms.esteroPescadorBoat.values;
+  const actor = resolveActorRecord(ACTORS, "esteroPescadorBoat");
+  const ro = paintHullSides(ctx, e.x, e.y, e.a + Math.PI / 2, 1, hullOutline(PB.L, PB.H), ACTORS.hull.heightM,
+    ACTORS.hull.boottop, actor.topsides, HS.bandK, HS, PX_PER_M);
   paintActor(ctx, ACTORS, "esteroPescadorBoat", {
-    x: e.x, y: e.y, rotation: e.a + Math.PI / 2, phase: e.ph, timeMs: t * 1000,
+    x: e.x + ro.dx, y: e.y + ro.dy, rotation: e.a + Math.PI / 2, phase: e.ph, timeMs: t * 1000,
   });
 }
 

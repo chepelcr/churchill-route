@@ -260,3 +260,6 @@ export function drawTent3d(x, y, sPx, V, tentInk) {
     });
   });
 }
+
+/** El mismo aparejo con sombra para quien arma su propio cuerpo (las boyas del estero). */
+export { rigged as riggedBody };

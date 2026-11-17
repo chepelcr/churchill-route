@@ -1476,7 +1476,21 @@
       "foam": "rgba(255,255,255,0.40)",
       "hilite": "rgba(255,255,255,0.45)",
       "reflector": "rgba(255,255,255,0.7)",
-      "lampOff": "rgba(255,255,255,0.55)"
+      "lampOff": "rgba(255,255,255,0.55)",
+      "view3d": {
+        "_": "LA BOYA EN 3D (`estero.js → drawBuoy`), en METROS: un tarro de `radiusM` que sale `bodyHM` del agua, un mástil corto hasta `mastHM` con su marca de tope —cuadrada a babor, cónica a estribor, de `markM`— y la linterna en `lampHM`. Exagerada como todo lo que flota: el radio es el del disco plano de siempre.",
+        "radiusM": 1.92,
+        "bodyHM": 1.5,
+        "mastHM": 3.6,
+        "mastWM": 0.38,
+        "markM": 1.5,
+        "lampHM": 4.2,
+        "lampRM": 0.55,
+        "layers": 5,
+        "shadowAlpha": 0.45,
+        "shade": {"side": "#16141c", "litK": 0.12, "darkK": 0.36, "bottomK": 0.5, "shadow": "#1a1612"},
+        "inks": {"mast": "#3a3540"}
+      }
     },
     "banco": {
       "_note": "EL BANCO DE ARENA, que la marea descubre y tapa. Lo que se ve de él depende del agua que tenga encima, así que lleva un tono mojado y uno seco.",

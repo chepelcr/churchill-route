@@ -39,6 +39,7 @@
     "audio:stations": "node tools/render-stations.mjs",
     "shot:kiosks": "node tools/shot-kiosks.mjs",
     "shot:rails": "node tools/shot-rails.mjs",
+    "shot:roofs": "node tools/shot-roofs.mjs",
     "smoke:railway": "node tools/smoke-railway.mjs",
     "shot:railway": "node tools/shot-railway.mjs"
   },

@@ -67,7 +67,7 @@ The procedure is three steps and it is not optional:
 | the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` — **en 3D**: `body3d` (cajas, como el tráfico), `driver` (el chofer: `driver3d` + `c2d/people3d.js → paintRider`), `heightM`, `cargoM`. Hoja: `node tools/shot-player3d.mjs` |
 | **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` — **en 3D**: la gente es `person3d` (`c2d/people3d.js`), el tráfico es `traffic.kinds.<tipo>.body3d` + `vehicle3d` (cajas sobre `c2d/rig3d.js`; lo pegado a una cara lleva `face`), y el casco de cualquier barco toma costado con `vehicle3d.hullSide` (`c2d/vesselRigs.js`). El jugador se levanta a `heightM` de `vehicles.json`; el ferry es `materials.json → structure.ferry.model`. Hoja: `node tools/shot-traffic3d.mjs`; el juego vivo: `node tools/shot-live.mjs` |
 | **a light: street lamp, stadium tower, la del muelle** | `src/assets/lights.json` (+ `LightType`). DÓNDE se para la del muelle y de qué tipo es → `materials.json` → `pier.<style>.lamp` · **cómo se para en 2.5D** (alto, brazo a la calzada, cabeza vista desde arriba) → `stand25` en cada tipo y `stand` |
-| **de qué color es un edificio de OSM** | `src/assets/building-styles.json`, por `cat` |
+| **de qué color es un edificio de OSM, y cómo se levanta** | `src/assets/building-styles.json`, por `cat`; su cuerpo (pisos, ventanas, techo según la forma, huellas que se pisan) en `body3d` → `structures.js → paintBuildingsInView`. Hoja: `pnpm shot:roofs` |
 | **la lluvia, sus salpicaduras y la calle encharcada** | `src/assets/hud.json` → `weather.{rain,splash,roadSplash,flood}` |
 | **cómo se ve un puesto según lo que vende** | `src/assets/world-props.json` → `landmarks["kiosk:<product>"]` |
 | **how a shadow answers the sun; how tall a building is** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` |
@@ -101,7 +101,7 @@ stopped being one.
 
 * **art** → a synthetic sheet, diffed: `shot-vehicles` · `shot-actors` ·
   `shot-landmarks` · `shot-signs` · `shot-parcels` · `shot-scenes` ·
-  `shot-effects` · `shot-stands` · `shot-kiosks` · `shot-lights` · `shot-feria` · `shot-rails`, vs
+  `shot-effects` · `shot-stands` · `shot-kiosks` · `shot-lights` · `shot-feria` · `shot-rails` · `shot-roofs`, vs
   `tools/png-diff.mjs`. **Never diff a world scene** — the noise floor is 2 % to
   86 %. The Vite process on `:8734` is persistent: client modules, JSON and new
   imports are handled by HMR, so **do not kill it or delete

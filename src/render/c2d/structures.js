@@ -82,7 +82,7 @@ function buildingBody(b, wall, roof, st, src = b.pts) {
     if (k === 0) bands.push([0, B.plinthK * storeys, "$trim"]);
     if (last) bands.push([1 - B.eaveK * storeys, 1, "$trim"]);
     if (bands.length) T.bands = bands;
-    if (wnd) T.windows = { everyM: W3.everyM, wM: W3.wM, z: [z0 + (z1 - z0) * W3.zK[0], z0 + (z1 - z0) * W3.zK[1]], ink: "window" };
+    if (wnd) T.windows = { everyM: W3.everyM, wM: W3.wM, z: [z0 + (z1 - z0) * W3.zK[0], z0 + (z1 - z0) * W3.zK[1]], ink: "$window" };
     if (last && !pitched) T.edge = "$roof2";
     if (last && pitched) {
       // la cumbrera sobre el eje largo: a dos aguas de punta a punta, a cuatro aguas recortada medio fondo
@@ -198,12 +198,15 @@ function paintBuildingsInView(list, pool = list) {
   const groups = new Map();
   kept.forEach((k, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(k); });
   const ppm = W.PX_PER_M;
+  // LAS VENTANAS SE PRENDEN DE NOCHE, como en la caja de antes: del vidrio oscuro de los cuerpos
+  // (`centro.inks.window`) a la luz cálida de `structure.building.windowsNight`, con la luz del día
+  const windowInk = mixColor(MATERIALS.centro.inks.window, S.building.windowsNight, lightLevel());
   for (const g of groups.values()) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, H = 0;
     for (const k of g) { x0 = Math.min(x0, k.box.x0); y0 = Math.min(y0, k.box.y0); x1 = Math.max(x1, k.box.x1); y1 = Math.max(y1, k.box.y1); H = Math.max(H, k.S.zMax); }
     const o = parallaxOffset(state.cam, (x0 + x1) / 2, (y0 + y1) / 2, H, ppm);
     const lean = { dx: o.dx / (H || 1), dy: o.dy / (H || 1) };
-    for (const k of g) { k.S.leanPerM = lean; queueBody(k.S, k.b._bodyVars); }
+    for (const k of g) { k.S.leanPerM = lean; k.b._bodyVars.window = windowInk; queueBody(k.S, k.b._bodyVars); }
   }
 }
 

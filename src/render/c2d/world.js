@@ -21,7 +21,7 @@ import { drawFeriaDeck } from "./attractions.js";
 import { paintRelief } from "./relief.js";
 import { paintSkyCover } from "./skycover.js";
 import { drawStreetLabels2D, medianPairs, paintRoads, paintTileMedians, paintTileRails } from "./streets.js";
-import { drawPiers, paintBuilding } from "./structures.js";
+import { drawPiers, paintBuilding, paintBuildingsInView } from "./structures.js";
 
 // Orchestrate the painterly world from resident, in-view tiles.
 function drawWorld2D(view, t) {
@@ -80,14 +80,18 @@ function drawWorld2D(view, t) {
   // Recolectar no rompe el streaming por tile —sólo separa juntar de pintar— y
   // ordenar unas decenas de referencias por cuadro es ruido: el viewport
   // encuadra 160 m y los edificios enteros costaban 0,21 ms.
-  const inView = [];
+  // con un margen: una huella que se pisa con otra se resuelve con las dos presentes (`structures.js`)
+  const inView = [], pool = [];
   for (const tile of vts) {
-    for (const b of tile.buildings) if (aabbInView(b.aabb, view, 8)) inView.push(b);
+    for (const b of tile.buildings) {
+      if (aabbInView(b.aabb, view, 8)) inView.push(b);
+      if (aabbInView(b.aabb, view, 300)) pool.push(b);
+    }
   }
   const cam = state.cam;
   inView.sort((p, q) => depthKey(cam, (p.aabb.x0 + p.aabb.x1) / 2, (p.aabb.y0 + p.aabb.y1) / 2)
                       - depthKey(cam, (q.aabb.x0 + q.aabb.x1) / 2, (q.aabb.y0 + q.aabb.y1) / 2));
-  for (const b of inView) paintBuilding(b);
+  paintBuildingsInView(inView, pool);
   phase("worldBuildings");
   // flora. The street trees go down FIRST: they line the acera, so a crown that
   // meets the world's own planting on the cuadra behind it should pass under

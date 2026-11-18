@@ -60,9 +60,9 @@ function minRect(pts) {
   return best;
 }
 
-function buildingBody(b, wall, roof, st) {
+function buildingBody(b, wall, roof, st, src = b.pts) {
   if (b._body && b._bodyKey === wall + roof) return b._body;
-  const B = BODY3D, ppm = W.PX_PER_M, pts = wound(b.pts), n = pts.length / 2;
+  const B = BODY3D, ppm = W.PX_PER_M, pts = wound(src), n = pts.length / 2;
   const heightM = buildingHeightM(b), R = minRect(pts);
   const areaPx = Math.abs(area2(pts)) / 2, areaM2 = areaPx / (ppm * ppm);
   const rect = R ? areaPx / R.area : 0;
@@ -107,6 +107,104 @@ function buildingBody(b, wall, roof, st) {
   };
   b._bodyKey = wall + roof;
   return b._body;
+}
+
+// ───────────── LAS HUELLAS QUE SE PISAN Y LAS QUE SE TOCAN ─────────────
+// Una vez por huella (`FIT`, por su llave): se descarta, se encoge o se deja como vino. Lo decide la
+// MAYOR de cada par, y las mayores se resuelven primero, así una menor se mide contra lo que la mayor
+// ya quedó. Las llaves cubren las huellas que llegan repetidas en dos tiles (cruzan el borde).
+const FIT = new Map();
+const keyOf = (b) => (b.osmId != null ? `o${b.osmId}` : `${b.pts[0]},${b.pts[1]},${b.pts.length}`);
+function areaOf(pts) { return Math.abs(area2(pts)) / 2; }
+function insidePoly(x, y, pts) {
+  let hit = false;
+  for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
+    const xi = pts[i], yi = pts[i + 1], xj = pts[j], yj = pts[j + 1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) hit = !hit;
+  }
+  return hit;
+}
+function overlapArea(a, ba, b, bb, step) {
+  const x0 = Math.max(ba.x0, bb.x0), y0 = Math.max(ba.y0, bb.y0), x1 = Math.min(ba.x1, bb.x1), y1 = Math.min(ba.y1, bb.y1);
+  if (x1 <= x0 || y1 <= y0) return 0;
+  let n = 0;
+  for (let x = x0 + step / 2; x < x1; x += step) for (let y = y0 + step / 2; y < y1; y += step) {
+    if (insidePoly(x, y, a) && insidePoly(x, y, b)) n++;
+  }
+  return n * step * step;
+}
+function scaled(pts, k) {
+  let cx = 0, cy = 0; const n = pts.length / 2;
+  for (let i = 0; i < pts.length; i += 2) { cx += pts[i] / n; cy += pts[i + 1] / n; }
+  return pts.map((v, i) => (i % 2 ? cy + (v - cy) * k : cx + (v - cx) * k));
+}
+function fitFootprints(list) {
+  const O = BODY3D.overlap || {}, step = O.samplePx || 2;
+  const todo = list.filter((b) => !FIT.has(keyOf(b)));
+  if (!todo.length) return;
+  const all = list.map((b) => ({ b, key: keyOf(b), area: areaOf(b.pts) }))
+    .sort((p, q) => q.area - p.area || (p.key < q.key ? -1 : 1));
+  const placed = [];
+  for (const it of all) {
+    let fit = FIT.get(it.key);
+    if (!fit) {
+      let pts = it.b.pts, box = bbox(pts), drop = false;
+      const bigger = placed.filter((q) => q.box.x1 > box.x0 && q.box.x0 < box.x1 && q.box.y1 > box.y0 && q.box.y0 < box.y1);
+      const over = (p, bx) => bigger.reduce((s2, q) => s2 + overlapArea(p, bx, q.pts, q.box, step), 0);
+      const o = over(pts, box);
+      if (o > 0) {
+        if (o >= (O.dropK ?? 0.4) * it.area) drop = true;
+        else {
+          drop = true;
+          for (const k of O.shrink || []) {
+            const sp = scaled(it.b.pts, k), sb = bbox(sp);
+            if (over(sp, sb) === 0) { pts = sp; box = sb; drop = false; break; }
+          }
+        }
+      }
+      fit = { drop, pts, box };
+      FIT.set(it.key, fit);
+    }
+    if (!fit.drop) placed.push(fit);
+  }
+}
+
+/**
+ * LAS HUELLAS CON NOMBRE EN VISTA, levantadas como cuerpos. Cada una UNA vez aunque venga en dos
+ * tiles, sin pisarse con sus vecinas (`fitFootprints`) y, las que se tocan, inclinadas como un grupo:
+ * el vector por metro del centro del grupo a la altura de su más alta, con el mismo tope que todo lo
+ * demás (`parallax.maxOffsetPx`).
+ */
+function paintBuildingsInView(list, pool = list) {
+  if (!BODY3D.enabled) { for (const b of list) paintBuilding(b); return; }
+  fitFootprints(pool);
+  const seen = new Set(), kept = [];
+  for (const b of list) {
+    const key = keyOf(b), fit = FIT.get(key);
+    if (seen.has(key) || !fit || fit.drop) continue;
+    seen.add(key);
+    const st = buildingStyle(b) || districtBuildingStyle(b);
+    const wall = (st && st.color) || b.color || S.building.fallback;
+    const roof = (st && st.roof) || b.roof || S.roof;
+    kept.push({ b, S: buildingBody(b, wall, roof, st, fit.pts), box: fit.box });
+  }
+  // los grupos: union-find sobre las cajas que se tocan
+  const touch = (BODY3D.overlap || {}).touchPx ?? 4, parent = kept.map((_, i) => i);
+  const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  for (let i = 0; i < kept.length; i++) for (let j = i + 1; j < kept.length; j++) {
+    const a = kept[i].box, c = kept[j].box;
+    if (a.x1 + touch >= c.x0 && c.x1 + touch >= a.x0 && a.y1 + touch >= c.y0 && c.y1 + touch >= a.y0) parent[find(i)] = find(j);
+  }
+  const groups = new Map();
+  kept.forEach((k, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(k); });
+  const ppm = W.PX_PER_M;
+  for (const g of groups.values()) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, H = 0;
+    for (const k of g) { x0 = Math.min(x0, k.box.x0); y0 = Math.min(y0, k.box.y0); x1 = Math.max(x1, k.box.x1); y1 = Math.max(y1, k.box.y1); H = Math.max(H, k.S.zMax); }
+    const o = parallaxOffset(state.cam, (x0 + x1) / 2, (y0 + y1) / 2, H, ppm);
+    const lean = { dx: o.dx / (H || 1), dy: o.dy / (H || 1) };
+    for (const k of g) { k.S.leanPerM = lean; queueBody(k.S, k.b._bodyVars); }
+  }
 }
 
 // One building: drop shadow, body, roof band + windows (clipped), outline.
@@ -741,7 +839,7 @@ function drawFerries(view) {
   for (const f of ferries()) { drawBerth(f, view); drawFerry(f, view); }
 }
 
-export { drawBridge, drawFerries, drawPiers, paintBuilding };
+export { drawBridge, drawFerries, drawPiers, paintBuilding, paintBuildingsInView };
 
 // Y QUE LA NOCHE LAS CONOZCA. Sin esto se dibujan y no alumbran: el velo de la
 // noche se pinta encima y sólo lo perforan las lámparas que el compositor tiene

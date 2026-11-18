@@ -335,7 +335,10 @@ function paintShadow(S) {
 }
 
 function paintStructure(S, ppm, pill = null) {
-  const ro = parallaxOffset(state.cam, S.x, S.y, S.zMax, ppm);
+  // UN GRUPO DE CUERPOS PEGADOS SE INCLINA JUNTO: quien lo arma le pone a cada uno el MISMO vector
+  // por metro (`leanPerM`), así la pared que comparten dos vecinos sube a la par y ninguno le monta
+  // el techo al otro ni deja su base al descubierto. Sin él, el vector del centro de este cuerpo.
+  const ro = S.leanPerM ? { dx: S.leanPerM.dx * S.zMax, dy: S.leanPerM.dy * S.zMax } : parallaxOffset(state.cam, S.x, S.y, S.zMax, ppm);
   const at = (z) => { const k = z / S.zMax; return [ro.dx * k, ro.dy * k]; };
   const sun = sunShadow(S.zMax);
   for (const T of S.tiers) {

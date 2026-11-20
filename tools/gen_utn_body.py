@@ -11,13 +11,14 @@ sin reformatear el archivo.
 LAS MEDIDAS SALEN DE LAS FOTOS, y cada una dice de cuál:
 
 * EL FRENTE (foto desde el Paseo, 2026-11-20): la composición es SIMÉTRICA y va en el CENTRO —torre,
-  frontón, torre—, unos 21 m de los 72. Medido contra la altura del pretil de las alas (9 m): el
-  frontón remata a ~11,3 m, las torres a ~10,2, el alero a ~4,2; los tres ventanales del frontón son
-  de la planta alta (4,6 a 7,8 m) y el friso con su medallón va de ~8,7 a 10 m.
+  frontón, torre—, unos 21 m de los 72, y BAJO EL TECHO: remata por debajo del alero de la franja del
+  frente (frontón 9,9 m, torres 9,6). Los tres ventanales del frontón son de la planta alta (4,7 a
+  7,8 m), y encima el friso con su medallón.
 * EL TECHO (satélite de Google y la foto aérea), franja por franja — ver el bloque «EL TECHO» abajo:
-  la nave central y la franja del frente son UN techo en T (misma cumbrera); la franja del frente dobla
-  la esquina y llega hasta la mitad de cada costado (los brazos); la mitad trasera de los lados y las
-  franjas de adentro bajan hacia la calle, con los aleros para abajo y sus filas de tragaluces.
+  el techo alto es UNO: la franja del frente a dos aguas de lado a lado, cuya cumbrera cruza la de la
+  nave central (una T) y las de los brazos que la doblan hasta la mitad de cada costado (una U); la
+  mitad trasera de los lados va en V —la franja de adentro baja desde la nave y la de afuera desde la
+  calle, hasta una canal a la altura del pretil—, con sus filas de tragaluces.
 * LAS TORRES DE LAS ESQUINAS (foto de la torre de las anclas, 2026-11-20): las cuatro iguales, 9 x 9 m,
   BAJO EL TECHO: su cuerpo llega al pretil y el techo pasa por encima. En cada cara exterior la
   pilastra de la esquina y las ALETAS escalonadas, la CELOSÍA terracota con su retícula de huecos y el
@@ -170,7 +171,6 @@ NAVE = round(W * 0.344, 2)
 IS = round(W * 0.152, 2)                # la franja de adentro
 OS = round(HW - NAVE / 2 - IS, 2)       # la de afuera
 EAVE, RIDGE = 10.2, 14.0                # el techo alto: alero y cumbrera de la franja, la nave y los brazos
-MIDZ = 9.6                              # donde se encuentran la franja de adentro y la de afuera, ya bajando
 VF = HD - FW                            # el borde de atrás de la franja del frente
 ROOF = {"ink": "utnRoof", "ink2": "utnRoofShade", "seamsM": 1.2}
 
@@ -185,19 +185,21 @@ def block(box, at, z0, z1, roof=None, note=None):
 r2 = lambda v: round(v, 2)
 # primero lo BAJO (la mitad trasera y las franjas de adentro), después los brazos y la nave, al final la
 # franja del frente: a la misma altura de alero, el orden decide quién tapa la junta
-for s, hi in ((-1, "e"), (1, "w")):
-    tiers += block([OS, HD], [r2(s * (HW - OS / 2)), r2(-HD / 2)], Z2, Z2, {"kind": "shed", "high": hi, "riseM": r2(MIDZ - Z2)},
-                   "LA MITAD TRASERA de afuera, con el alero para abajo: baja hacia la calle" if s < 0 else None)
-    tiers += block([IS, r2(VF + HD)], [r2(s * (NAVE / 2 + IS / 2)), r2((VF - HD) / 2)], Z2, MIDZ, {"kind": "shed", "high": hi, "riseM": r2(EAVE - MIDZ)},
-                   "LA FRANJA DE ADENTRO, de Avenida 2 a la franja del frente, bajando desde la nave" if s < 0 else None)
+for s, hi, lo in ((-1, "e", "w"), (1, "w", "e")):
+    # LA MITAD TRASERA DE LOS LADOS VA EN V: la franja de adentro baja desde la nave y la de afuera
+    # desde el pretil de la calle, y se encuentran ABAJO, en una canal a la altura del pretil de las alas
+    tiers += block([OS, HD], [r2(s * (HW - OS / 2)), r2(-HD / 2)], Z2, Z2, {"kind": "shed", "high": lo, "riseM": r2(EAVE - Z2)},
+                   "LA MITAD TRASERA de afuera: baja desde la calle hasta la canal — la V de los lados de atrás" if s < 0 else None)
+    tiers += block([IS, r2(VF + HD)], [r2(s * (NAVE / 2 + IS / 2)), r2((VF - HD) / 2)], Z2, Z2, {"kind": "shed", "high": hi, "riseM": r2(EAVE - Z2)},
+                   "LA FRANJA DE ADENTRO, de Avenida 2 a la franja del frente: baja desde la nave hasta la canal" if s < 0 else None)
 for s in (-1, 1):
     tiers += block([OS, r2(VF)], [r2(s * (HW - OS / 2)), r2(VF / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
                    "LOS BRAZOS: el techo del frente que dobla la esquina y llega hasta la mitad del costado" if s < 0 else None)
 tiers += block([NAVE, r2(VF + HD)], [0, r2((VF - HD) / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
                "LA NAVE CENTRAL, a dos aguas: misma cumbrera que la franja del frente, un solo techo en T")
 tiers[-2]["windows"] = {"everyM": 3.4, "wM": 1.6, "z": [9.3, 10.0], "ink": "utnGlass"}
-tiers += block([W, FW], [0, r2(HD - FW / 2)], Z2, EAVE, {"kind": "hip", "axis": "x", "riseM": r2(RIDGE - EAVE)},
-               "LA FRANJA DEL FRENTE, a cuatro aguas: sube desde el Paseo y sus puntas doblan hacia los brazos")
+tiers += block([W, FW], [0, r2(HD - FW / 2)], Z2, EAVE, {"kind": "gable", "axis": "x", "riseM": r2(RIDGE - EAVE)},
+               "LA FRANJA DEL FRENTE, a dos aguas DE LADO A LADO: su cumbrera cruza las de los brazos y la de la nave, y así el techo alto es UNO — una U con la T de la nave")
 
 # los tragaluces, donde el satélite los pone: dos columnas en la nave junto a la cumbrera, una en cada
 # franja de adentro y una en cada mitad trasera de afuera; cada uno a la altura del techo bajo él
@@ -208,25 +210,25 @@ for v in rows:
     for u in (-W * 0.07, W * 0.07):                                   # la nave: a 0,07 W de la cumbrera
         tiers.append(skylight(u, v, EAVE + (RIDGE - EAVE) * (1 - abs(u) / (NAVE / 2))))
     for s in (-1, 1):
-        tiers.append(skylight(s * (NAVE / 2 + IS / 2), v, (EAVE + MIDZ) / 2))       # la franja de adentro
+        tiers.append(skylight(s * (NAVE / 2 + IS / 2), v, (EAVE + Z2) / 2))         # la franja de adentro
         if v < -2:
-            tiers.append(skylight(s * (HW - OS / 2), v, (MIDZ + Z2) / 2))          # la mitad trasera de afuera
+            tiers.append(skylight(s * (HW - OS / 2), v, (EAVE + Z2) / 2))           # la mitad trasera de afuera
 
 # ── EL FRENTE DEL PASEO: torre, frontón, torre — simétrico y en el centro ────────────────────────
 FV = HD + 1.0          # el frente de la composición sale 1 m sobre el de las alas
 FD = 7.0               # y se mete 7 m: llega bajo la franja del techo, no queda como un cartón suelto
-tiers.append({"_": "EL FRONTÓN, en el centro: la planta baja oscura de la entrada, los tres ventanales de la planta alta, el FRISO de relieves con su MEDALLÓN de granito, y el remate más alto del frente — pero por debajo de la cumbrera de la nave",
-  "box": [11.0, FD], "at": [0, FV - FD / 2], "z": [0, 11.3], "wall": "utnCream", "cap": "utnCream",
+tiers.append({"_": "EL FRONTÓN, en el centro: la planta baja oscura de la entrada, los tres ventanales de la planta alta, el FRISO de relieves con su MEDALLÓN de granito — y BAJO EL TECHO: remata por debajo del alero de la franja del frente, que lo cubre",
+  "box": [11.0, FD], "at": [0, FV - FD / 2], "z": [0, 9.9], "wall": "utnCream", "cap": "utnCream",
   "bands": [[0, 0.08, "utnBlue"], [0.38, 0.41, "utnTrim"], [0.77, 0.885, "utnFrieze"], [0.97, 1, "utnTrim"]],
   "openings": [{"edge": 2, "f": [0.06, 0.94], "z": [0.5, 4.0], "ink": "utnGlass"},
                {"edge": 2, "f": [0.07, 0.3], "z": [4.7, 7.8], "ink": "utnGlass"}, {"edge": 2, "f": [0.385, 0.615], "z": [4.7, 7.8], "ink": "utnGlass"},
-               {"edge": 2, "f": [0.7, 0.93], "z": [4.7, 7.8], "ink": "utnGlass"}, {"edge": 2, "f": [0.44, 0.56], "z": [8.5, 10.3], "ink": "utnMedallion"}]})
+               {"edge": 2, "f": [0.7, 0.93], "z": [4.7, 7.8], "ink": "utnGlass"}, {"edge": 2, "f": [0.44, 0.56], "z": [8.3, 9.6], "ink": "utnMedallion"}]})
 for s in (-1, 1):
     tiers.append({**({"_": "LAS DOS TORRES del frontón, MACIZAS: zócalo azul, blanco, la ventana alta y el emblema arriba, con su pilastra escalonada hacia afuera"} if s < 0 else {}),
-      "box": [5.2, FD], "at": [s * 8.1, FV - FD / 2], "z": [0, 10.2], "wall": "utnCream", "cap": "utnCream",
+      "box": [5.2, FD], "at": [s * 8.1, FV - FD / 2], "z": [0, 9.6], "wall": "utnCream", "cap": "utnCream",
       "bands": [[0, 0.18, "utnBlue"], [0.18, 0.41, "utnWhite"], [0.41, 0.44, "utnTrim"], [0.96, 1, "utnTrim"]],
-      "openings": [{"edge": 2, "f": [0.34, 0.66], "z": [4.9, 8.4], "ink": "utnGlass"}, {"edge": 2, "f": [0.41, 0.59], "z": [8.8, 9.7], "ink": "utnRelief"}]})
-    tiers.append({"box": [1.2, FD + 0.4], "at": [s * 10.3, FV - FD / 2 + 0.2], "z": [0, 10.7], "wall": "utnCream", "cap": "utnCream",
+      "openings": [{"edge": 2, "f": [0.34, 0.66], "z": [4.9, 8.4], "ink": "utnGlass"}, {"edge": 2, "f": [0.41, 0.59], "z": [8.6, 9.4], "ink": "utnRelief"}]})
+    tiers.append({"box": [1.2, FD + 0.4], "at": [s * 10.3, FV - FD / 2 + 0.2], "z": [0, 10.0], "wall": "utnCream", "cap": "utnCream",
                   "bands": [[0, 0.17, "utnBlue"]]})
 
 # ── LAS MACETERAS DEL FRENTE (fotos del autor, 2026-11-17): camas largas contra la fachada, con su

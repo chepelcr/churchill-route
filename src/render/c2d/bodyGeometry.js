@@ -71,6 +71,13 @@ export function ridgeOf(t, uv) {
   if (R.kind === "pyramid") return [cen, cen];
   if (R.kind === "fan") { const m = mid(uv[0], uv[uv.length - 1]); return [m, m]; }   // el centro del arco
   if (!t.box) throw new Error(`[centro] un techo ${R.kind} pide una huella \`box\``);
+  if (R.kind === "shed") {
+    // A UN AGUA: la cumbrera ES la arista alta (`high`: n/e/s/w en el marco de la caja) y el techo baja
+    // de ahí hasta la arista de enfrente — las naves de los lados de la Aduana, que bajan hacia la calle
+    const side = { n: [0, 1], e: [1, 2], s: [2, 3], w: [3, 0] }[R.high];
+    if (!side) throw new Error(`[centro] un techo a un agua pide \`high\`: n, e, s o w`);
+    return [uv[side[0]], uv[side[1]]];
+  }
   const [w, d] = t.box, alongX = R.axis === "x" || (R.axis === "long" ? w >= d : R.axis === "short" ? w < d : w >= d);
   // los puntos medios de los dos lados cortos de la cumbrera
   let a = alongX ? mid(uv[3], uv[0]) : mid(uv[0], uv[1]);

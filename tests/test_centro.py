@@ -346,6 +346,25 @@ class BodyRecipeTests(unittest.TestCase):
                     if not edge.startswith("_"):
                         self.assertIn(int(edge), range(4), f"{name}: arista {edge} fuera de la caja")
 
+    def test_a_shed_roof_says_which_side_is_high(self):
+        """`roof.kind: shed` (a un agua): sin `high` el armador no sabe cuál arista es la cumbrera."""
+        for name, spec in self.props["bodies"].items():
+            if name.startswith("_"):
+                continue
+            for tier in spec["tiers"]:
+                roof = tier.get("roof") or {}
+                if roof.get("kind") == "shed":
+                    self.assertIn("box", tier, f"{name}: un techo a un agua pide una `box`")
+                    self.assertIn(roof.get("high"), ("n", "e", "s", "w"), f"{name}: techo a un agua sin `high`")
+
+    def test_the_utn_recipe_is_what_its_generator_writes(self):
+        """`bodies.utn` lo escribe `tools/gen_utn_body.py`: editado a mano, la próxima corrida lo pisa."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gen_utn_body", os.path.join(ROOT, "tools", "gen_utn_body.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(self.props["bodies"]["utn"], json.loads(json.dumps(mod.body, ensure_ascii=False)))
+
     def test_the_cannons_and_the_capitania_are_bodies(self):
         self.assertEqual(self.props["landmarks"]["capitania"]["body"], "capitania")
         self.assertIn("cannons", self.props["bodies"])

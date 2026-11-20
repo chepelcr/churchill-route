@@ -216,7 +216,10 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
     const j = (i + 2) % n, px = pts[i], py = pts[i + 1], qx = pts[j], qy = pts[j + 1];
     const ea = end(px, py), eb = end(qx, qy), tri = ea === eb;
     // la cara: clara si le da el sol. Un hastial (la cara triangular de un dos aguas) es pared.
-    const gableEnd = tri && !apex && R.kind === "gable";
+    // Un techo a un agua tiene dos: los triángulos de sus puntas y la pared alta que corre bajo su cumbrera.
+    const under = R.kind === "shed" && !tri && Math.min(Math.hypot(px - ax, py - ay), Math.hypot(px - bx, py - by)) < 0.5
+      && Math.min(Math.hypot(qx - ax, qy - ay), Math.hypot(qx - bx, qy - by)) < 0.5;
+    const gableEnd = (tri && !apex && (R.kind === "gable" || R.kind === "shed")) || under;
     // una lona a rayas no tiene «cara clara de otro color»: las dos caras son la lona, con su luz o su sombra
     ctx.fillStyle = gableEnd ? shade(ink(T.wall), sunlit.has(i)) : R.stripes ? shade(ink(R.ink), sunlit.has(i)) : mixColor(ink(R.ink2), ink(R.ink), sunlit.has(i) ? 1 : 0.15);
     ctx.beginPath();

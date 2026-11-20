@@ -19,18 +19,30 @@ LAS MEDIDAS SALEN DE LAS FOTOS, y cada una dice de cuál:
   aguas; a cada lado una nave que BAJA hacia la calle (a un agua), y la FRANJA DEL FRENTE, que SUBE
   desde la fachada del Paseo hasta la nave central. El frontón y las torres quedan DEBAJO de la
   cumbrera central — en la aérea el techo grande asoma por encima de todo el frente.
-* LAS ESQUINAS: la del Paseo con Calle 3 es un pilono liso (foto de las alas); la torre de las anclas,
-  con su celosía, es la de Calle 3 y Avenida 2; hacia Avenida 2 va el ventanal de bloque de vidrio
-  (Street View, nov. 2024).
+* LAS ESQUINAS: las cuatro del mismo tamaño y BAJO el techo —suben hasta el pretil, y desde arriba
+  se ve el techo y no una tapa gris encima—. La del Paseo con Calle 3 es un pilono liso (foto de las
+  alas); la torre de las anclas, con su celosía, es la de Calle 3 y Avenida 2; hacia Avenida 2 va el
+  ventanal de bloque de vidrio (Street View, nov. 2024).
+* EL LUGAR: la cuadra medida en el ráster, no el lote del campus (ver `LAND_U`).
 """
 import json
 import re
 
-W, D = 71.6, 66.0           # la huella, hasta el borde del lote (u este, v sur): aristas 0 N, 1 E, 2 S (de este a oeste), 3 O
+# LA CUADRA, MEDIDA EN EL RÁSTER (`surfaceAt` == LAND en el marco de la parcela, a cinco alturas):
+# u de -37,8 a +42,6 m y v de -37,1 a +35,8 m — 80 x 73 m, y CORRIDA respecto del lote del campus, que
+# es un rectángulo inscrito más chico (72 x 67) porque Avenida 2 y Calle 3 corren en diagonal. El
+# edificio llena la cuadra y deja la franja VERDE del frente (las jardineras del Paseo, 3,5 m) y la de
+# atrás (el zacate tras la malla de Avenida 2, 3 m); su centro va corrido `PLACE_M` desde el del lote.
+LAND_U, LAND_V = (-37.8, 42.6), (-37.1, 35.8)
+GREEN = {"n": 3.0, "s": 3.5, "w": 0.5, "e": 1.5}
+U0, U1 = LAND_U[0] + GREEN["w"], LAND_U[1] - GREEN["e"]
+V0, V1 = LAND_V[0] + GREEN["n"], LAND_V[1] - GREEN["s"]
+W, D = round(U1 - U0, 1), round(V1 - V0, 1)   # la huella (u este, v sur): aristas 0 N, 1 E, 2 S (de este a oeste), 3 O
+PLACE_M = [round((U0 + U1) / 2, 2), round((V0 + V1) / 2, 2)]
 HW, HD = W / 2, D / 2
 Z1, ZM, Z2 = 4.4, 4.8, 9.0  # planta baja, alero, pretil de las alas
-NAVE = 24.6                 # el ancho de la nave central (satélite: 205 de 625 px de fachada)
-NAVE_S = 20.4               # donde la nave central y las de los lados se encuentran con la franja del frente
+NAVE = round(W * 205 / 625, 1)        # el ancho de la nave central: 205 de 625 px de fachada en el satélite
+NAVE_S = round(-HD + D * 485 / 600, 1)  # donde las naves se encuentran con la franja del frente: 485 de 600 px de fondo
 NAVE_N = -HD + 0.6
 EAVE_C, RISE_C = 11.0, 3.0  # la nave central: su alero y lo que sube su cumbrera
 SIDE_RISE = EAVE_C - Z2     # las de los lados bajan del alero central al pretil
@@ -75,7 +87,25 @@ tiers.append({"_": "LA PLANTA ALTA de las alas: crema hacia el Paseo y concreto 
   "box": [W, D], "z": [ZM, Z2], "wall": "utnCream", "cap": "utnRoofFlat", "bands": [[0.9, 0.95, "utnTrim"]],
   "faces": {"0": {"wall": "utnConcrete", "bands": [[0.9, 0.95, "utnConcreteDark"]]}, "1": {"wall": "utnConcrete", "bands": [[0.9, 0.95, "utnConcreteDark"]]},
             "3": {"wall": "utnConcrete", "bands": [[0.9, 0.95, "utnConcreteDark"]]}},
-  "openings": on(2, pairs(W, skip_s)) + on(3, pairs(D, [(D - 15, D)])) + on(0, pairs(W, [(0, 15), (HW + 0.5, HW + 12.5)]))})
+  "openings": on(2, pairs(W, skip_s)) + on(3, pairs(D, [(0, 8), (D - 8, D)])) + on(0, pairs(W, [(0, 8), (W - 8, W), (HW + 0.5, HW + 13.5)]))})
+
+# ── LAS CUATRO ESQUINAS, del mismo tamaño y BAJO EL TECHO: suben hasta el pretil y el techo las tapa ──
+# (se escriben ANTES que el techo: a la misma altura, el orden de la receta decide quién tapa a quién)
+CT = 7.0
+def corner(su, sv):
+    return [round(su * (HW - CT / 2), 2), round(sv * (HD - CT / 2), 2)]
+tiers.append({"_": "LA TORRE DE LAS ANCLAS, esquina de Calle 3 y Avenida 2: la CELOSÍA de ladrillo terracota en sus dos caras, el portón negro con el ancla blanca hacia Calle 3 y los relieves de ancla y caduceo arriba",
+  "box": [CT, CT], "at": corner(-1, -1), "z": [0, Z2], "wall": "utnConcrete", "cap": "utnRoof",
+  "bands": [[0, 0.05, "utnConcreteDark"]],
+  "openings": [{"edge": 3, "f": [0.2, 0.8], "z": [5.2, 8.4], "ink": "utnLattice"}, {"edge": 3, "f": [0.25, 0.75], "z": [0, 4.2], "ink": "utnDoor"},
+               {"edge": 3, "f": [0.44, 0.56], "z": [2.4, 3.6], "ink": "utnTrim"}, {"edge": 0, "f": [0.2, 0.8], "z": [5.2, 8.4], "ink": "utnLattice"}]})
+tiers.append({"_": "el pilono liso de Calle 3 y el Paseo", "box": [CT, CT], "at": corner(-1, 1), "z": [0, Z2], "wall": "utnConcrete", "cap": "utnRoof"})
+tiers.append({"box": [CT, CT], "at": corner(1, -1), "z": [0, Z2], "wall": "utnConcrete", "cap": "utnRoof"})
+tiers.append({"box": [CT, CT], "at": corner(1, 1), "z": [0, Z2], "wall": "utnCream", "cap": "utnRoof", "bands": [[0, 0.21, "utnBlue"], [0.21, 0.49, "utnWhite"]]})
+tiers.append({"_": "hacia Avenida 2, el VENTANAL ALTO de bloque de vidrio en su bahía, también bajo el techo", "box": [12.0, 2.0], "at": [7.0, round(-HD + 0.8, 2)], "z": [0, Z2],
+  "wall": "utnConcrete", "cap": "utnRoof", "bands": [[0, 0.2, "utnBlue"]],
+  "openings": [{"edge": 0, "f": [0.08, 0.36], "z": [4.9, 8.6], "ink": "utnGlassBlock"}, {"edge": 0, "f": [0.42, 0.6], "z": [4.9, 8.7], "ink": "utnGlass"},
+               {"edge": 0, "f": [0.66, 0.94], "z": [4.9, 8.6], "ink": "utnGlassBlock"}]})
 
 # ── EL TECHO: la nave central que sube, las de los lados que bajan y la franja del frente ─────────
 mid_v = (NAVE_N + NAVE_S) / 2
@@ -120,26 +150,10 @@ for s in (-1, 1):
     tiers.append({"box": [1.2, FD + 0.4], "at": [s * 10.3, FV - FD / 2 + 0.2], "z": [0, 10.7], "wall": "utnCream", "cap": "utnCream",
                   "bands": [[0, 0.17, "utnBlue"]]})
 
-# ── las esquinas ──────────────────────────────────────────────────────────────────────────────────
-tiers.append({"_": "LA TORRE DE LAS ANCLAS, esquina de Calle 3 y Avenida 2: concreto con la CELOSÍA de ladrillo terracota en sus dos caras, el portón negro con el ancla blanca hacia Calle 3 y los relieves de ancla y caduceo en lo alto",
-  "box": [15.0, 13.0], "at": [-HW + 7.5, -HD + 6.5], "z": [0, 11.6], "wall": "utnConcrete", "cap": "utnConcreteDark",
-  "bands": [[0, 0.04, "utnConcreteDark"], [0.95, 1, "utnTrim"]],
-  "openings": [{"edge": 3, "f": [0.2, 0.62], "z": [6.0, 10.6], "ink": "utnLattice"}, {"edge": 3, "f": [0.26, 0.56], "z": [0, 5.4], "ink": "utnDoor"},
-               {"edge": 3, "f": [0.38, 0.44], "z": [2.9, 4.4], "ink": "utnTrim"}, {"edge": 0, "f": [0.5, 0.82], "z": [5.6, 10.6], "ink": "utnLattice"},
-               {"edge": 3, "f": [0.8, 0.88], "z": [10.0, 11.0], "ink": "utnRelief"}, {"edge": 0, "f": [0.14, 0.24], "z": [10.0, 11.0], "ink": "utnRelief"}]})
-tiers.append({"box": [1.2, 13.4], "at": [-HW + 0.4, -HD + 6.5], "z": [0, 12.1], "wall": "utnConcrete", "cap": "utnConcreteDark"})
-tiers.append({"_": "el pilono liso de la esquina de Calle 3 y el Paseo: concreto, su bajante y nada más", "box": [6.0, 6.0], "at": [-HW + 3.0, HD - 3.0], "z": [0, 10.2],
-  "wall": "utnConcrete", "cap": "utnConcreteDark"})
-tiers.append({"box": [6.0, 6.8], "at": [HW - 3.0, -HD + 3.4], "z": [0, 10.2], "wall": "utnConcrete", "cap": "utnConcreteDark"})
-tiers.append({"box": [6.0, 6.8], "at": [HW - 3.0, HD - 3.4], "z": [0, 10.2], "wall": "utnCream", "cap": "utnTrim",
-              "bands": [[0, 0.18, "utnBlue"], [0.18, 0.43, "utnWhite"]]})
-tiers.append({"_": "hacia Avenida 2, el VENTANAL ALTO de bloque de vidrio en su bahía", "box": [12.0, 3.0], "at": [7.0, -HD + 1.2], "z": [0, 10.2],
-  "wall": "utnConcrete", "cap": "utnConcreteDark", "bands": [[0, 0.18, "utnBlue"]],
-  "openings": [{"edge": 0, "f": [0.08, 0.36], "z": [4.8, 9.4], "ink": "utnGlassBlock"}, {"edge": 0, "f": [0.42, 0.6], "z": [4.8, 9.6], "ink": "utnGlass"},
-               {"edge": 0, "f": [0.66, 0.94], "z": [4.8, 9.4], "ink": "utnGlassBlock"}]})
-
-body = {"_note": "LA UNIVERSIDAD TÉCNICA NACIONAL — Sede Tobías Vargas, la ANTIGUA ADUANA del puerto: la bodega art déco de Avenida 2 a Avenida 4 (el Paseo), entre Calle 3 Francisco de Paula Amador y Calle 1. El frente es SIMÉTRICO y va en el CENTRO —torre, frontón, torre—; el techo es una nave central a dos aguas que sube por encima de todo, dos naves de los lados que bajan hacia la calle y la franja del frente que sube desde el Paseo; las torres y el frontón quedan bajo la cumbrera. Medida contra las fotos del autor, Street View, el satélite y una aérea, y sobre la parcela del campus (`osm_campus_112244756`, ~72 x 67 m): la receta llena el lote; la huella real es de ~84 x 87 m. `u` va a lo largo de las avenidas (este), `v` hacia el Paseo (sur); aristas de una `box`: 0 norte, 1 este, 2 sur (de este a oeste), 3 oeste. La escribe `tools/gen_utn_body.py`, que dice de qué foto sale cada medida.",
-        "tiers": tiers}
+body = {"_note": "LA UNIVERSIDAD TÉCNICA NACIONAL — Sede Tobías Vargas, la ANTIGUA ADUANA del puerto: la bodega art déco de Avenida 2 a Avenida 4 (el Paseo), entre Calle 3 Francisco de Paula Amador y Calle 1. El frente es SIMÉTRICO y va en el CENTRO —torre, frontón, torre—; el techo es una nave central a dos aguas que sube por encima de todo, dos naves de los lados que bajan hacia la calle y la franja del frente que sube desde el Paseo; las torres y el frontón quedan bajo la cumbrera. Medida contra las fotos del autor, Street View, el satélite y una aérea, y ajustada a la CUADRA medida en el ráster (80 x 73 m, corrida `placeM` del centro del lote del campus `osm_campus_112244756`), con una franja verde al frente y atrás; la huella real es de ~84 x 87 m. `u` va a lo largo de las avenidas (este), `v` hacia el Paseo (sur); aristas de una `box`: 0 norte, 1 este, 2 sur (de este a oeste), 3 oeste. La escribe `tools/gen_utn_body.py`, que dice de qué foto sale cada medida.",
+        "tiers": tiers, "placeM": PLACE_M,
+        "ground": {"rectM": [LAND_U[0] - 4, LAND_V[0] - 4, LAND_U[1] + 4, LAND_V[1] + 4], "ink": "utnLawn",
+                   "_": "el piso VERDE de toda la cuadra, 4 m más allá de lo medido: la cuadra se curva hacia el Paseo, y la acera, que se pinta después, tapa lo que sobre"}}
 
 if __name__ == "__main__":
     import os

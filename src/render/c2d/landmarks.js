@@ -355,8 +355,12 @@ function drawParcels(view) {
     // lote, con su nombre en el techo — y no la escena genérica de su uso ni la etiqueta de área.
     const own = PARCEL_BY_ID[P.id];
     if (own && PROPS.bodies[own.body]) {
-      const F = parcelFrame(P), spec = PROPS.bodies[own.body];
-      queueBody(bodyAt(spec, F.cx, F.cy, F.ang + (spec.turnDeg || 0) * Math.PI / 180, P.id), own.inks || null,
+      // `placeM`: el cuerpo puede ir corrido del centro del lote, en metros de su marco — la UTN llena su
+      // CUADRA, y el lote del campus es un rectángulo inscrito más chico y corrido
+      const F = parcelFrame(P), spec = PROPS.bodies[own.body], [du, dv] = spec.placeM || [0, 0];
+      const ppm = W.PX_PER_M, c = Math.cos(F.ang), s = Math.sin(F.ang);
+      const bx = F.cx + (du * c - dv * s) * ppm, by = F.cy + (du * s + dv * c) * ppm;
+      queueBody(bodyAt(spec, bx, by, F.ang + (spec.turnDeg || 0) * Math.PI / 180, P.id), own.inks || null,
         own.pill ? { text: own.pill, fg: PARCELS.labelFg, bg: U.tone || PARCELS.defaultTone } : null);
       continue;
     }

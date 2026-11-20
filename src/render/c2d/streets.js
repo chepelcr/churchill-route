@@ -282,6 +282,11 @@ function paintParcels(view, only = null) {
     if (P.whole || P.built) continue;
     // un uso apagado en el registro (`parcels.uses.<use>.paint: false` — los patios) no pinta suelo
     if (PROPS.parcels.uses[P.use]?.paint === false) continue;
+    // UNA PARCELA QUE ES SU CUERPO (`parcels.byId`) puede traer su PISO (`bodies.<x>.ground`): un
+    // rectángulo en metros del marco del lote, en una tinta de la casa — el verde de la UTN, que cubre
+    // la cuadra entera y no sólo el lote inscrito
+    const own = PROPS.parcels.byId?.[P.id], G = own && PROPS.bodies[own.body]?.ground;
+    if (G) { paintOwnGround(P, G); continue; }
     // Preserve the emitted polygon. Raster-owned parcels are vector-straightened
     // by the build (their exact cells still own collision and occupancy), so a
     // diagonal manzana reads as one direct edge instead of 4 px stair steps.
@@ -317,6 +322,14 @@ function paintParcels(view, only = null) {
     if (P.use === "boulevard") { paintStone(path, P); continue; }
     ctx.strokeStyle = P.kerbColor || ST.parcel.kerb; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }
+}
+
+function paintOwnGround(P, G) {
+  const F = parcelFrame(P), ppm = PX_PER_M, [u0, v0, u1, v1] = G.rectM;
+  ctx.save(); ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
+  ctx.fillStyle = MATERIALS.centro.inks[G.ink] || MATERIALS.centro.missing;
+  ctx.fillRect(u0 * ppm, v0 * ppm, (u1 - u0) * ppm, (v1 - v0) * ppm);
+  ctx.restore();
 }
 
 // A calle peatonal: light-grey paving in a running-bond stone pattern, laid in

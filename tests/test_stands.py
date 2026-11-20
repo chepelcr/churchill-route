@@ -183,8 +183,12 @@ class Stadium3dTests(unittest.TestCase):
 
     def test_every_side_names_a_kind_the_painter_builds_and_every_ink_exists(self):
         for sid, c in self.stadiums().items():
+            palette = self.lms[sid]["stands"].get("palette") or {}
             for v in c.get("inks", {}).values():
-                self.assertIn(v, self.inks, f"{sid}: tinta «{v}» sin color")
+                if v.startswith("$"):     # la paleta del estadio que el mundo emite (`stands.palette`)
+                    self.assertIn(v[1:], palette, f"{sid}: «{v}» no está en la paleta del estadio")
+                else:
+                    self.assertIn(v, self.inks, f"{sid}: tinta «{v}» sin color")
             for side, s in c["sides"].items():
                 if side.startswith("_"):
                     continue

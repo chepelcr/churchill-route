@@ -10,6 +10,7 @@
 // So the identity is a generated enum (`LightType`), the properties are the
 // registry, and this file is what is genuinely engine: the clamps, the night
 // test, and the radial gradient — which is not a shape the vocabulary has.
+import { queueOverLike } from "./bodies.js";
 import LIGHTS from "../../assets/lights.json" with { type: "json" };
 import { state } from "../../game/state.js";
 import { lightLevel } from "../../game/daynight.js";
@@ -211,7 +212,13 @@ export function drawFieldTowers(lm, spec, spots = null) {
   for (let i = 0; i < pts.length; i += 2) { cx += pts[i]; cy += pts[i + 1]; }
   cx /= pts.length / 2; cy /= pts.length / 2;
   // `spots`: dónde las pone el registro del estadio (`stadiums3d.<id>.towers`), si las pone; si no, las esquinas
+  // …y con `spots` se pintan DESPUÉS de las graderías 3D (que van en la cola de encima del carro): pintadas
+  // en la pasada de hitos, las graderías les pasaban por encima y las torres quedaban debajo de los escalones
   for (const [x, y] of spots || CORNERS.map(([dx, dy]) => polyCorner(pts, dx, dy, inset))) {
+    if (spots) {
+      queueOverLike({ x, y, paint: () => paintLight(type, x, y, { radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity, night, ang: Math.atan2(cy - y, cx - x) }) }, true);
+      continue;
+    }
     // la fila de focos mira a la cancha: atraviesa la línea que va del poste al centro
     paintLight(type, x, y, { radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity, night, ang: Math.atan2(cy - y, cx - x) });
   }

@@ -275,7 +275,7 @@ function drawStadium(lm) {
   // LAS GRADERÍAS EN 3D (`stadium3d.js`, `world-props.json → stadiums3d`): si el registro las tiene, se
   // levantan como cuerpos sobre las mismas gradas que el mundo estampó, y las torres van donde él dice
   const S3 = PROPS.stadiums3d?.[lm.id], quads = stands ? standQuads(lm, stands) : [];
-  if (!(S3 && queueStadium3d(lm, quads, S3)) && stands) drawStands(lm, stands);
+  if (!(S3 && queueStadium3d(lm, quads, { roofFrom: stands?.roofFrom, ...S3 })) && stands) drawStands(lm, stands);
   // …and the masts after it: a corner tower stands OUTSIDE the stand's back
   // wall, so drawing it first would put the seating on top of the pole.
   drawFieldTowers(lm, PROPS.scenes.stadium.towers, S3?.towers ? stadiumTowerSpots(lm, quads, S3) : null);

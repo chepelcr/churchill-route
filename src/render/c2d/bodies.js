@@ -440,7 +440,11 @@ export function queueBodyLike(o) { queue.push({ S: o, other: true }); }
 
 /** …y lo mismo, pero ENCIMA del carro: un arco de entrada bajo el que el carro pasa (`gate3d.js`).
  *  Encolado con los cuerpos, el carro le pasaba POR ENCIMA al rótulo de la feria y al del muelle. */
-export function queueOverLike(o) { overQueue.push({ S: o, other: true }); }
+export function queueOverLike(o, top = false) { (top ? overTop : overQueue).push({ S: o, other: true }); }
+// …y lo que va encima de TODO lo de encima del carro: las torres de luz de un estadio, paradas sobre su
+// gradería. Las graderías 3D entran a `overQueue` recién durante `flushBodies`, o sea DESPUÉS de lo que
+// se encoló directo allí, y les pasaban por encima a las torres.
+const overTop = [];
 
 const built = new WeakMap();
 /**
@@ -480,7 +484,7 @@ export function flushBodies() {
 
 /** Pinta lo que va encima del carro (ver `queueBody(…, over)`). */
 export function flushOverBodies() {
-  if (!overQueue.length) return;
+  if (!overQueue.length && !overTop.length) return;
   const ppm = W.PX_PER_M;
   ctx.lineJoin = "round";
   // CON EL CARRO DEBAJO, EL TOLDO SE VUELVE TRANSLÚCIDO: el jugador tiene que verse recogiendo
@@ -497,4 +501,6 @@ export function flushOverBodies() {
   }
   VARS = null;
   overQueue.length = 0;
+  for (const q of overTop) q.S.paint(ppm);
+  overTop.length = 0;
 }

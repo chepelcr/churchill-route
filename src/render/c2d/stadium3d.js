@@ -62,7 +62,9 @@ function terrace(q, S, I, ppm) {
   for (let k = 0; k < N; k++) {
     const u0 = k / N, u1 = (k + 1) / N, z = zStep(k), zPrev = k ? zStep(k - 1) : 0;
     out.push(facet([[...at(u0, 0), zPrev], [...at(u0, 1), zPrev], [...at(u0, 1), z], [...at(u0, 0), z]], I.riser, null, true));
-    out.push(facet([[...at(u0, 0), z], [...at(u0, 1), z], [...at(u1, 1), z], [...at(u1, 0), z]], I.tread, I.treadShade));
+    // dos tonos por PROFUNDIDAD, como la grada plana de antes: adelante `tread`, atrás desde `roofFrom` `treadBack`
+    const ti = u0 >= (S.roofFrom ?? 1) && I.treadBack ? I.treadBack : I.tread;
+    out.push(facet([[...at(u0, 0), z], [...at(u0, 1), z], [...at(u1, 1), z], [...at(u1, 0), z]], ti, ti));
   }
   // los pasillos: UNA franja amarilla por pasillo, de la baranda a la espalda sobre las narices de los
   // escalones, pintada después de ellos (`sortM`)
@@ -70,7 +72,12 @@ function terrace(q, S, I, ppm) {
     const cnt = Math.max(1, Math.round(F.L / ppm / S.aisleEveryM)), hw = S.aisleM / 2 * ppm / F.L;
     for (let a = 1; a < cnt; a++) {
       const v = a / cnt;
-      out.push({ ...facet([[...at(0, v - hw), zf + 0.05], [...at(0, v + hw), zf + 0.05], [...at(1, v + hw), zb + 0.05], [...at(1, v - hw), zb + 0.05]], I.aisle), sortM: zb + 0.1 });
+      // CON LA FORMA DE LA ESCALERA: el borde de la franja sube peldaño por peldaño (huella y contrahuella)
+      // de un lado y baja del otro. Una sola cara —el pintor proyecta cada vértice a su altura, no le pide
+      // que sea plana—, así que un pasillo sigue costando un relleno
+      const side = (vv) => { const pts = []; for (let k = 0; k < N; k++) { const z = zStep(k) + 0.04, zp = k ? zStep(k - 1) + 0.04 : 0;
+        pts.push([...at(k / N, vv), zp], [...at(k / N, vv), z], [...at((k + 1) / N, vv), z]); } return pts; };
+      out.push({ ...facet([...side(v - hw), ...side(v + hw).reverse()], I.aisle), sortM: zb + 0.1 });
     }
   }
   // LA SOMBRA DE LA GRADA, de una vez: un bloque que sólo existe para tirarla
@@ -120,7 +127,7 @@ function buildStadium(lm, quads, cfg) {
   const ppm = PX_PER_M, sides = lm.stands?.sides || quads.map(() => lm.stands?.side);
   const groups = {};
   quads.forEach((q, i) => {
-    const S = { ...(cfg.sides.all || {}), ...(cfg.sides[sides[i]] || {}) };
+    const S = { roofFrom: cfg.roofFrom, ...(cfg.sides.all || {}), ...(cfg.sides[sides[i]] || {}) };
     if (!S.kind) return;
     const I = { ...(cfg.inks || {}), ...(S.inks || {}) };
     (groups[S.kind] ||= []).push(...(S.kind === "building" ? building(q, S, I, ppm) : terrace(q, S, I, ppm)));
@@ -140,7 +147,8 @@ export function queueStadium3d(lm, quads, cfg) {
   if (!cfg || !quads?.length) return false;
   let bodies = built.get(lm.id);
   if (!bodies) built.set(lm.id, (bodies = buildStadium(lm, quads, cfg)));
-  for (const S of bodies) queueBody(S, null, null, true);
+  // la paleta del estadio que el mundo emite (`$tierA`, `$tierB`, `$structure`)
+  for (const S of bodies) queueBody(S, lm.stands?.palette || null, null, true);
   return true;
 }
 

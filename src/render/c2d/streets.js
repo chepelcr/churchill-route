@@ -19,6 +19,7 @@ import { paintAt, paintParts } from "./shapes.js";
 import { paintRoadNetwork } from "./systemShapes.js";
 import { drawBarricade3d, drawBench3d, drawGantrySignal3d, drawPoleSign3d } from "./furniture3d.js";
 import { parallaxOffset } from "./depth.js";
+import { queueBodyLike } from "./bodies.js";
 import { sunShadow } from "./shadows.js";
 
 //: LA SEÑALIZACIÓN, keyed by SignKind — see the note above `drawSign`.
@@ -114,7 +115,7 @@ function paintField(path, F, sport) {
     ctx.rotate(-F.ang); ctx.translate(-F.cx, -F.cy);
     paintFlushAreasAndGoals(F);
     ctx.restore();
-  } else if (F.boxes !== "penalty") paintGoals(hw, hh);
+  } else if (F.boxes !== "penalty") paintGoals(hw, hh, F);
   ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, Math.PI * 2); ctx.fill();          // centre spot
   if (!flush && F.boxes !== false && hw >= 80 && hh >= 55) {
     const bw = Math.min(hw * 0.28, hh * 0.9);              // penalty area depth
@@ -133,6 +134,32 @@ function paintField(path, F, sport) {
   ctx.restore();
   ctx.strokeStyle = MARK; ctx.lineWidth = F.boxes === false ? 2.6 : 2;
   ctx.stroke(path);                                             // pitch touchline
+}
+
+// LA PORTERÍA DE PIE (`materials.json → streets.field.goal3d`). En el suelo queda el marco de atrás (lo
+// que ya se pintaba); los dos postes y el travesaño se levantan con el pinhole de la casa y la red baja del
+// travesaño al marco, translúcida. `a`, `b`: la boca (donde van los postes); `ba`, `bb`: el fondo de la red.
+// Va a la cola de cuerpos: se pinta con los edificios, encima de la gente que juega.
+const G3 = ST.field.goal3d;
+function queueGoal3d(a, b, ba, bb) {
+  if (!G3) return;
+  const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2;
+  queueBodyLike({ x, y, paint: (ppm) => {
+    const up = (p) => { const o = parallaxOffset(state.cam, p[0], p[1], G3.heightM, ppm); return [p[0] + o.dx, p[1] + o.dy]; };
+    const at = up(a), bt = up(b), sh = sunShadow(G3.heightM);
+    // la sombra de los postes y del travesaño, en el suelo
+    ctx.save(); ctx.globalAlpha = sh.alpha; ctx.strokeStyle = G3.postShade; ctx.lineWidth = G3.postPx; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(a[0] + sh.dx, a[1] + sh.dy); ctx.lineTo(b[0] + sh.dx, b[1] + sh.dy); ctx.lineTo(...b); ctx.stroke();
+    ctx.restore();
+    // la red: el techo (del travesaño al fondo) y los dos costados
+    ctx.fillStyle = G3.net; ctx.strokeStyle = G3.netLine; ctx.lineWidth = 0.6;
+    for (const poly of [[at, bt, bb, ba], [a, at, ba], [b, bt, bb]]) {
+      ctx.beginPath(); poly.forEach((p, i) => (i ? ctx.lineTo(...p) : ctx.moveTo(...p))); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    // los postes y el travesaño
+    ctx.strokeStyle = G3.post; ctx.lineWidth = G3.postPx; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...at); ctx.lineTo(...bt); ctx.lineTo(...b); ctx.stroke();
+  } });
 }
 
 function paintFlushAreasAndGoals(F) {
@@ -167,6 +194,9 @@ function paintFlushAreasAndGoals(F) {
     ctx.lineTo(mx + tx * mouth + nx * goalDepth, my + ty * mouth + ny * goalDepth);
     ctx.lineTo(mx + tx * mouth, my + ty * mouth);
     ctx.stroke();
+    // los postes en la boca —el lado de adentro, hacia la cancha— y la red hacia la línea de fondo
+    queueGoal3d([mx - tx * mouth + nx * goalDepth, my - ty * mouth + ny * goalDepth], [mx + tx * mouth + nx * goalDepth, my + ty * mouth + ny * goalDepth],
+      [mx - tx * mouth, my - ty * mouth], [mx + tx * mouth, my + ty * mouth]);
   }
 }
 
@@ -174,8 +204,10 @@ function paintFlushAreasAndGoals(F) {
 // come from the pitch's short side, so El Carmen gets recognisably smaller
 // porterías than the two full-size stadiums instead of a copied fixed graphic.
 // The frame opens toward the touchline and stays inside the field clip.
-function paintGoals(hw, hh) {
+function paintGoals(hw, hh, F = null) {
   const mouth = Math.max(5, Math.min(18, hh * 0.24));
+  // del marco de la cancha al mundo: la portería de pie se arma en píxeles de mundo
+  const W2 = F ? ((u, v) => [F.cx + u * Math.cos(F.ang) - v * Math.sin(F.ang), F.cy + u * Math.sin(F.ang) + v * Math.cos(F.ang)]) : null;
   const depth = Math.max(3, Math.min(8, mouth * 0.42));
   ctx.strokeStyle = ST.field.goals;
   ctx.lineWidth = Math.max(1.4, Math.min(2.4, hh * 0.035));
@@ -189,6 +221,7 @@ function paintGoals(hw, hh) {
     ctx.lineTo(inner, mouth);
     ctx.lineTo(x, mouth);
     ctx.stroke();
+    if (W2) queueGoal3d(W2(inner, -mouth), W2(inner, mouth), W2(x, -mouth), W2(x, mouth));
   }
 }
 

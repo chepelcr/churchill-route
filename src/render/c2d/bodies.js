@@ -28,29 +28,41 @@ import { buildBody } from "./bodyGeometry.js";
 import { paintAt } from "./shapes.js";
 import { state } from "../../game/state.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
+import EFFECTS from "../../assets/effects.json" with { type: "json" };
 
 const M = MATERIALS.centro;
 const INK = M.inks;
 let VARS = null;   // las tintas `$x` del cuerpo que se está pintando
+// CUÁNTO SE CORRE UN PUNTO (x, y) A `z` METROS — `off(x, y, z)` → [dx, dy]. Sin `perspective` en la
+// receta es el MISMO vector para todo el cuerpo (el de su centro), que es lo de siempre; con él, cada
+// punto se corre según dónde ESTÁ. A una altura dada el pinhole es una escala alrededor de la cámara,
+// así que un cuerpo grande —la UTN mide 75 m— deja de inclinarse entero hacia donde mira su centro: de
+// costado, la fachada se hundía hacia el fondo porque se corría como si estuviera en medio de la cuadra.
+let OFF = (x, y, z) => [0, 0];
+const PAR = EFFECTS.parallax;
 const ink = (key) => (key && key[0] === "$" ? VARS && VARS[key.slice(1)] : INK[key]) || M.missing;
 
 // ───────────────────────────── las estructuras ─────────────────────────────
 // una pared: el tramo [f0, f1] de la arista `i`, levantado de za a zb
-function wallQuad(T, i, f0, f1, a, b) {
+function wallQuad(T, i, f0, f1, za, zb) {
   const pts = T.pts, j = (i + 2) % pts.length;
   const px = pts[i], py = pts[i + 1], ex = pts[j] - px, ey = pts[j + 1] - py;
-  ctx.moveTo(px + ex * f0 + a[0], py + ey * f0 + a[1]);
-  ctx.lineTo(px + ex * f1 + a[0], py + ey * f1 + a[1]);
-  ctx.lineTo(px + ex * f1 + b[0], py + ey * f1 + b[1]);
-  ctx.lineTo(px + ex * f0 + b[0], py + ey * f0 + b[1]);
+  const x0 = px + ex * f0, y0 = py + ey * f0, x1 = px + ex * f1, y1 = py + ey * f1;
+  const a0 = OFF(x0, y0, za), a1 = OFF(x1, y1, za), b0 = OFF(x0, y0, zb), b1 = OFF(x1, y1, zb);
+  ctx.moveTo(x0 + a0[0], y0 + a0[1]);
+  ctx.lineTo(x1 + a1[0], y1 + a1[1]);
+  ctx.lineTo(x1 + b1[0], y1 + b1[1]);
+  ctx.lineTo(x0 + b0[0], y0 + b0[1]);
   ctx.closePath();
 }
 const shade = (color, lit) => (lit ? mixColor(color, M.wall.lit, M.wall.litMix) : mixColor(color, M.wall.dark, M.wall.darkMix));
 
-function capPath(T, o) {
+function capPath(T, z) {
   const p = new Path2D(), pts = T.pts;
-  p.moveTo(pts[0] + o[0], pts[1] + o[1]);
-  for (let i = 2; i < pts.length; i += 2) p.lineTo(pts[i] + o[0], pts[i + 1] + o[1]);
+  for (let i = 0; i < pts.length; i += 2) {
+    const o = OFF(pts[i], pts[i + 1], z);
+    if (i) p.lineTo(pts[i] + o[0], pts[i + 1] + o[1]); else p.moveTo(pts[i] + o[0], pts[i + 1] + o[1]);
+  }
   p.closePath();
   return p;
 }
@@ -117,7 +129,7 @@ function paintMosaic(T, cap, o, ppm) {
 function paintFacet(T, at, sun) {
   const P = T.facet;
   ctx.beginPath();
-  P.forEach(([x, y, z], i) => { const o = at(z); if (i) ctx.lineTo(x + o[0], y + o[1]); else ctx.moveTo(x + o[0], y + o[1]); });
+  P.forEach(([x, y, z], i) => { const o = OFF(x, y, z); if (i) ctx.lineTo(x + o[0], y + o[1]); else ctx.moveTo(x + o[0], y + o[1]); });
   ctx.closePath();
   // la normal del plano, en planta: hacia dónde baja la cara
   let nx = 0, ny = 0, nz = 0;
@@ -133,8 +145,8 @@ function paintFacet(T, at, sun) {
 
 function paintTier(T, at, vis, sunlit, sun, ppm) {
   if (T.facet) { paintFacet(T, at, sun); return; }
-  const h = T.z1 - T.z0, o0 = at(T.z0), o1 = at(T.z1), pts = T.pts, n = pts.length;
-  const zAt = (f) => at(T.z0 + h * f);
+  const h = T.z1 - T.z0, o1 = at(T.z1), pts = T.pts, n = pts.length;
+  const zAt = (f) => T.z0 + h * f;
   // ---- las paredes que miran a la cámara
   if (h > 0) for (const i of vis) {
     const lit = sunlit.has(i);
@@ -144,7 +156,7 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
     const wall = F && F.wall ? F.wall : T.wall, bands = F && F.bands ? F.bands : T.bands;
     const mural = wall === "mural";
     ctx.fillStyle = shade(ink(mural ? "white" : wall), lit);
-    ctx.beginPath(); wallQuad(T, i, 0, 1, o0, o1); ctx.fill();
+    ctx.beginPath(); wallQuad(T, i, 0, 1, T.z0, T.z1); ctx.fill();
     for (const [f0, f1, key] of bands || []) {
       ctx.fillStyle = shade(ink(key), lit);
       ctx.beginPath(); wallQuad(T, i, 0, 1, zAt(f0), zAt(f1)); ctx.fill();
@@ -162,21 +174,24 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
     const Wn = F && "windows" in F ? F.windows : T.windows;
     if (Wn && lenM > Wn.wM * 1.6) {
       const cnt = Math.max(1, Math.floor(lenM / Wn.everyM)), hw = Wn.wM / 2 / lenM;
-      const za = at(Wn.z[0]), zb = at(Wn.z[1]);
+      const za = Wn.z[0], zb = Wn.z[1];
       ctx.fillStyle = shade(ink(Wn.ink), lit);
       ctx.beginPath();
       for (let k = 0; k < cnt; k++) { const c = (k + 0.5) / cnt; wallQuad(T, i, c - hw, c + hw, za, zb); }
       ctx.fill();
     }
-    if (T.decal && VARS && VARS._decal && T.decal.edges.includes(i / 2)) paintDecal(T, i, at(T.z0), at(T.z1), lit);
+    if (T.decal && VARS && VARS._decal && T.decal.edges.includes(i / 2)) {
+      const mx = (pts[i] + pts[j]) / 2, my = (pts[i + 1] + pts[j + 1]) / 2;
+      paintDecal(T, i, OFF(mx, my, T.z0), OFF(mx, my, T.z1), lit);
+    }
     for (const op of T.openings || []) {
       if (op.edge != null && op.edge * 2 !== i) continue;
       ctx.fillStyle = shade(ink(op.ink), lit);
-      ctx.beginPath(); wallQuad(T, i, op.f[0], op.f[1], at(op.z[0]), at(op.z[1])); ctx.fill();
+      ctx.beginPath(); wallQuad(T, i, op.f[0], op.f[1], op.z[0], op.z[1]); ctx.fill();
     }
   }
   // ---- la tapa
-  const cap = capPath(T, o1);
+  const cap = capPath(T, T.z1);
   ctx.fillStyle = ink(T.cap); ctx.fill(cap);
   if (T.stains) {
     // el concreto manchado: unas cuantas manchas, quietas, recortadas a la tapa
@@ -228,12 +243,16 @@ function paintDome(T, R, at) {
 // un techo con cumbrera (dos aguas, cuatro aguas, pirámide, medio cono): cada
 // arista del alero sube a la punta de cumbrera que le queda más cerca
 function paintRidgeRoof(T, R, at, sun, sunlit) {
-  const pts = T.pts, n = pts.length, eave = at(T.z1), top = at(T.z1 + R.rise);
+  const pts = T.pts, n = pts.length, zt = T.z1 + R.rise;
   const [ax, ay, bx, by] = R.ridge, apex = ax === bx && ay === by;
   const end = (x, y) => (apex || Math.hypot(x - ax, y - ay) <= Math.hypot(x - bx, y - by) ? 0 : 1);
-  const rx = [ax + top[0], bx + top[0]], ry = [ay + top[1], by + top[1]];
+  const ta = OFF(ax, ay, zt), tb = OFF(bx, by, zt);
+  const rx = [ax + ta[0], bx + tb[0]], ry = [ay + ta[1], by + tb[1]];
   for (let i = 0; i < n; i += 2) {
     const j = (i + 2) % n, px = pts[i], py = pts[i + 1], qx = pts[j], qy = pts[j + 1];
+    // el alero de esta arista: su corrimiento en cada punta (iguales sin `perspective`); a lo largo, lineal
+    const ep = OFF(px, py, T.z1), eq = OFF(qx, qy, T.z1);
+    const eave = [ep[0], ep[1]], eAt = (f) => [px + (qx - px) * f + ep[0] + (eq[0] - ep[0]) * f, py + (qy - py) * f + ep[1] + (eq[1] - ep[1]) * f];
     const ea = end(px, py), eb = end(qx, qy), tri = ea === eb;
     // la cara: clara si le da el sol. Un hastial (la cara triangular de un dos aguas) es pared.
     // Un techo a un agua tiene dos: los triángulos de sus puntas y la pared alta que corre bajo su cumbrera.
@@ -243,7 +262,7 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
     // una lona a rayas no tiene «cara clara de otro color»: las dos caras son la lona, con su luz o su sombra
     ctx.fillStyle = gableEnd ? shade(ink(T.wall), sunlit.has(i)) : R.stripes ? shade(ink(R.ink), sunlit.has(i)) : mixColor(ink(R.ink2), ink(R.ink), sunlit.has(i) ? 1 : 0.15);
     ctx.beginPath();
-    ctx.moveTo(px + eave[0], py + eave[1]); ctx.lineTo(qx + eave[0], qy + eave[1]);
+    ctx.moveTo(px + ep[0], py + ep[1]); ctx.lineTo(qx + eq[0], qy + eq[1]);
     ctx.lineTo(rx[eb], ry[eb]);
     if (!tri) ctx.lineTo(rx[ea], ry[ea]);
     ctx.closePath(); ctx.fill();
@@ -254,8 +273,8 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
       ctx.beginPath();
       for (let k = 1; k < n; k += 2) {
         const f0 = k / n, f1 = (k + 1) / n;
-        ctx.moveTo(px + (qx - px) * f0 + eave[0], py + (qy - py) * f0 + eave[1]);
-        ctx.lineTo(px + (qx - px) * f1 + eave[0], py + (qy - py) * f1 + eave[1]);
+        ctx.moveTo(...eAt(f0));
+        ctx.lineTo(...eAt(f1));
         ctx.lineTo(rx[ea] + (rx[eb] - rx[ea]) * f1, ry[ea] + (ry[eb] - ry[ea]) * f1);
         ctx.lineTo(rx[ea] + (rx[eb] - rx[ea]) * f0, ry[ea] + (ry[eb] - ry[ea]) * f0);
         ctx.closePath();
@@ -265,7 +284,7 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
     // EL ESTAMPADO DEL TOLDO: en la cara que da a la calle, sobre las rayas
     if (T.decal && T.decal.roof && !tri && VARS && VARS._decal && T.decal.edges.includes(i / 2)) {
       const D = VARS._decal, [bx0, by0, bw, bh] = D.box, F = M.decalRoof;
-      const ex = (qx - px), ey = (qy - py), mx = (px + qx) / 2 + eave[0], my = (py + qy) / 2 + eave[1];
+      const ex = (qx - px), ey = (qy - py), [mx, my] = eAt(0.5);
       const rmx = (rx[ea] + rx[eb]) / 2, rmy = (ry[ea] + ry[eb]) / 2;          // el medio de la cumbrera
       const L = Math.hypot(ex, ey), ux = ex / L, uy = ey / L, hx = mx - rmx, hy = my - rmy;
       const sw = Math.min(L * F.widthK, Math.hypot(hx, hy) * F.heightK * bw / bh);   // el cartel conserva su proporción
@@ -284,7 +303,7 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
       ctx.strokeStyle = M.roofSeam; ctx.lineWidth = 0.6; ctx.beginPath();
       for (let k = 1; k < cnt; k++) {
         const f = k / cnt;
-        ctx.moveTo(px + (qx - px) * f + eave[0], py + (qy - py) * f + eave[1]);
+        ctx.moveTo(...eAt(f));
         ctx.lineTo(rx[ea] + (rx[eb] - rx[ea]) * f, ry[ea] + (ry[eb] - ry[ea]) * f);
       }
       ctx.stroke();
@@ -297,7 +316,7 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
     // mundo): el travesaño va a escuadra de esa mirada.
     const first = R.crossAt === 0, K = M.cross, ppm = W.PX_PER_M;
     const bx0 = apex || first ? ax : bx, by0 = apex || first ? ay : by, z0 = T.z1 + R.rise;
-    const foot = at(z0), head = at(z0 + K.heightM), mid = at(z0 + K.heightM * K.barAt);
+    const foot = OFF(bx0, by0, z0), head = OFF(bx0, by0, z0 + K.heightM), mid = OFF(bx0, by0, z0 + K.heightM * K.barAt);
     const ang = R.crossAng == null ? 0 : R.crossAng, hx = -Math.sin(ang) * K.barM * ppm / 2, hy = Math.cos(ang) * K.barM * ppm / 2;
     ctx.lineCap = "butt";
     for (const [color, w, dx, dy] of [[K.shade, K.widthPx + 1, 0.7, 0.9], [ink(R.cross), K.widthPx, 0, 0]]) {
@@ -361,19 +380,41 @@ function paintShadow(S) {
   ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = M.shadow; ctx.fill(); ctx.restore();
 }
 
+// las paredes que la cámara ve, arista por arista: la que tiene la cámara del lado de afuera
+function visibleEdges(pts, cam) {
+  const out = [];
+  for (let i = 0; i < pts.length; i += 2) {
+    const j = (i + 2) % pts.length, mx = (pts[i] + pts[j]) / 2, my = (pts[i + 1] + pts[j + 1]) / 2;
+    if (facingEdges(pts, mx - cam.x, my - cam.y).includes(i)) out.push(i);
+  }
+  return out;
+}
+
 function paintStructure(S, ppm, pill = null) {
   // UN GRUPO DE CUERPOS PEGADOS SE INCLINA JUNTO: quien lo arma le pone a cada uno el MISMO vector
   // por metro (`leanPerM`), así la pared que comparten dos vecinos sube a la par y ninguno le monta
   // el techo al otro ni deja su base al descubierto. Sin él, el vector del centro de este cuerpo.
   const ro = S.leanPerM ? { dx: S.leanPerM.dx * S.zMax, dy: S.leanPerM.dy * S.zMax } : parallaxOffset(state.cam, S.x, S.y, S.zMax, ppm);
-  const at = (z) => { const k = z / S.zMax; return [ro.dx * k, ro.dy * k]; };
+  const cam = state.cam;
+  if (S.perspective && !S.leanPerM) {
+    // la escala alrededor de la cámara, con el MISMO tope que todo lo demás: se mide el corrimiento sin
+    // tope en el centro del cuerpo a su altura máxima y, si pasa del tope, se encoge toda la altura
+    const H = PAR.cameraHeightM, cap = PAR.maxOffsetPx || 0;
+    const raw = Math.hypot(S.x - cam.x, S.y - cam.y) * S.zMax / H, sq = cap > 0 && raw > cap ? cap / raw : 1;
+    OFF = (x, y, z) => { const k = z / H * sq; return [(x - cam.x) * k, (y - cam.y) * k]; };
+  } else OFF = (x, y, z) => { const k = z / S.zMax; return [ro.dx * k, ro.dy * k]; };
   const sun = sunShadow(S.zMax);
   for (const T of S.tiers) {
-    const vis = ro.dx || ro.dy ? facingEdges(T.pts, ro.dx, ro.dy) : [];
+    // lo que se corre por el CENTRO del bloque (la cúpula, la celosía, las manchas de la tapa)
+    let tcx = 0, tcy = 0;
+    for (let i = 0; i < T.pts.length; i += 2) { tcx += T.pts[i]; tcy += T.pts[i + 1]; }
+    tcx /= T.pts.length / 2; tcy /= T.pts.length / 2;
+    const at = (z) => OFF(tcx, tcy, z);
+    const vis = S.perspective ? visibleEdges(T.pts, cam) : ro.dx || ro.dy ? facingEdges(T.pts, ro.dx, ro.dy) : [];
     const sunlit = new Set(facingEdges(T.pts, sun.dx, sun.dy));
     paintTier(T, at, vis, sunlit, sun, ppm);
   }
-  const top = at(S.zMax);
+  const top = OFF(S.x, S.y, S.zMax);
   if (S.label) label(S.x + top[0], S.y0 + top[1] - 9, S.label, M.label.fg, M.label.bg, 9);
   if (pill) label(S.x + top[0], S.y0 + top[1] - (pill.size || 10), pill.text, pill.fg, pill.bg, pill.size || 10);
 }

@@ -336,8 +336,17 @@ class BodyRecipeTests(unittest.TestCase):
         un cuerpo que no existe no avisa: la parcela vuelve a la escena genérica de su uso."""
         by_id = {k: v for k, v in self.props["parcels"].get("byId", {}).items() if not k.startswith("_")}
         self.assertIn("osm_campus_112244756", by_id, "la UTN dejó de levantarse")
+        fills = json.load(open(os.path.join(ROOT, "src", "assets", "materials.json"), encoding="utf-8"))["parcel"]
         for pid, rec in by_id.items():
-            self.assertIn(rec["body"], self.props["bodies"], f"{pid}: cuerpo desconocido «{rec['body']}»")
+            # una parcela es su cuerpo, o una cancha cuadrada (`courtM`), o el suelo de otro uso (`fill`)
+            self.assertTrue({"body", "courtM", "fill"} & set(rec), f"{pid}: no dice qué es")
+            if "body" in rec:
+                self.assertIn(rec["body"], self.props["bodies"], f"{pid}: cuerpo desconocido «{rec['body']}»")
+            if "courtM" in rec:
+                u0, v0, u1, v1 = rec["courtM"]
+                self.assertTrue(u0 < u1 and v0 < v1, f"{pid}: courtM al revés")
+            if "fill" in rec:
+                self.assertIn(rec["fill"], fills, f"{pid}: «{rec['fill']}» no es un suelo de parcela")
         manifest = json.load(open(os.path.join(ROOT, "src", "world2d", "manifest.json"), encoding="utf-8"))
         ids = {p["id"] for p in manifest["parcels"]}
         for pid in by_id:

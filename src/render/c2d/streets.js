@@ -364,6 +364,11 @@ function paintParcels(view, only = null) {
     // la cuadra entera y no sólo el lote inscrito
     const own = PROPS.parcels.byId?.[P.id], G = own && PROPS.bodies[own.body]?.ground;
     if (G) { paintOwnGround(P, G); continue; }
+    // UNA CANCHA CUADRADA (`parcels.byId.<id>.courtM`): el contorno trazado de un sitio de OSM es a veces
+    // un boceto con esquinas biseladas; la cancha se pinta como el rectángulo que dice el registro, en
+    // metros del marco del lote, con esquinas vivas. Lo que el contorno tenía de más queda del suelo de
+    // abajo (el césped de la plaza)
+    if (own?.courtM) { paintOwnCourt(P, own.courtM); continue; }
     // Preserve the emitted polygon. Raster-owned parcels are vector-straightened
     // by the build (their exact cells still own collision and occupancy), so a
     // diagonal manzana reads as one direct edge instead of 4 px stair steps.
@@ -382,8 +387,10 @@ function paintParcels(view, only = null) {
     // usa cemento tanto en el relleno como en cualquier dilatado del raster.
     const openField = P.use === "plaza" || P.use === "stadium";
     const isCourt = openField && FIELD_SPORT_ROLE.COURT.includes(P.sport);
+    // `parcels.byId.<id>.fill`: el lote se pinta con el suelo de OTRO uso (la franja bajo la cancha
+    // multiuso de Playitas, que el mundo emite como acera gris y es césped)
     ctx.fillStyle = isCourt ? ST.field.court
-      : (P.groundColor || PARCEL_FILL[P.use] || ST.parcel.fallback);
+      : (own?.fill ? PARCEL_FILL[own.fill] : (P.groundColor || PARCEL_FILL[P.use] || ST.parcel.fallback));
     ctx.lineJoin = "miter";
     if (!hasPolys && !openField) {
       ctx.lineWidth = 8;
@@ -402,8 +409,21 @@ function paintParcels(view, only = null) {
       continue;
     }
     if (P.use === "boulevard") { paintStone(path, P); continue; }
-    ctx.strokeStyle = P.kerbColor || ST.parcel.kerb; ctx.lineWidth = 2; ctx.stroke(path); // curb
+    ctx.strokeStyle = (!own?.fill && P.kerbColor) || ST.parcel.kerb; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }
+}
+
+function paintOwnCourt(P, rectM) {
+  if (!P._court) {
+    const F = parcelFrame(P), ppm = PX_PER_M, [u0, v0, u1, v1] = rectM;
+    const c = Math.cos(F.ang), s = Math.sin(F.ang);
+    const at = (u, v) => [F.cx + (u * c - v * s) * ppm, F.cy + (u * s + v * c) * ppm];
+    const pts = [at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)].flat();
+    const [mx, my] = at((u0 + u1) / 2, (v0 + v1) / 2);
+    const Q = { cx: mx, cy: my, ang: F.ang, hw: (u1 - u0) / 2 * ppm, hh: (v1 - v0) / 2 * ppm, poly: pts };
+    P._court = { path: flatPath(pts, true), frame: fieldFrame(Q) };
+  }
+  paintField(P._court.path, P._court.frame, P.sport);
 }
 
 function paintOwnGround(P, G) {

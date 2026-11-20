@@ -127,7 +127,11 @@ function buildStadium(lm, quads, cfg) {
   const ppm = PX_PER_M, sides = lm.stands?.sides || quads.map(() => lm.stands?.side);
   const groups = {};
   quads.forEach((q, i) => {
-    const S = { roofFrom: cfg.roofFrom, ...(cfg.sides.all || {}), ...(cfg.sides[sides[i]] || {}) };
+    const S = { roofFrom: cfg.roofFrom, ...(cfg.sides.all || {}), ...(cfg.sides[sides[i]] || {}), ...(cfg.quads?.[i] || {}) };
+    // `flip`: la grada mira al otro lado —la baranda en su espalda y la espalda contra la cancha—, sobre la
+    // MISMA franja que el mundo estampó, así que la colisión no se entera (la del oeste de Playitas mira a
+    // la cancha multiuso)
+    if (S.flip) q = [q[6], q[7], q[4], q[5], q[2], q[3], q[0], q[1]];
     if (!S.kind) return;
     const I = { ...(cfg.inks || {}), ...(S.inks || {}) };
     (groups[S.kind] ||= []).push(...(S.kind === "building" ? building(q, S, I, ppm) : terrace(q, S, I, ppm)));

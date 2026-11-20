@@ -120,6 +120,12 @@ export function buildBody(spec, base, rot, F) {
       const n = o.pts.length / 2;
       o.decal = { roof: !!t.decal.roof, edges: t.decal.edges.map((e) => (flip ? (n - 2 - e + n) % n : e)) };
     }
+    if (t.faces) {
+      // una cara distinta por arista (`bodies.js`), re-numerada como `openings` si el giro se invirtió
+      const n = o.pts.length / 2;
+      o.faces = Object.fromEntries(Object.entries(t.faces).filter(([e]) => !e.startsWith("_"))
+        .map(([e, f]) => [flip ? (n - 2 - +e + n) % n : +e, f]));
+    }
     if (t.openings) {
       // `edge` se cuenta sobre la huella como se escribió; si el giro se invirtió, se re-numera
       const n = o.pts.length / 2;

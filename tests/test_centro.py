@@ -52,6 +52,16 @@ def inks_of(tier):
         yield ink
     for op in tier.get("openings", []):
         yield op["ink"]
+    # una cara distinta por arista (`bodies.js → faces`): su pared, sus bandas y sus ventanas
+    for face in (tier.get("faces") or {}).values():
+        if not isinstance(face, dict):
+            continue
+        if face.get("wall"):
+            yield face["wall"]
+        for _f0, _f1, ink in face.get("bands") or []:
+            yield ink
+        if face.get("windows"):
+            yield face["windows"]["ink"]
     if tier.get("windows"):
         yield tier["windows"]["ink"]
     # el mosaico de una tapa (`bodies.js → paintMosaic`): sus cuatro tintas también son de la casa
@@ -304,11 +314,37 @@ class BodyRecipeTests(unittest.TestCase):
             for tier in spec["tiers"]:
                 self.assertEqual(sum(k in tier for k in ("box", "disc", "arc", "ring", "poly")), 1, f"{name}: un cuerpo lleva una huella")
                 for ink in inks_of(tier):
+                    if ink == "mural":           # el muro de murales: blanco + franjas de `mural.inks`
+                        continue
                     if ink.startswith("$"):
                         for key, given in users.get(name, []):
                             self.assertIn(ink[1:], given, f"{key}: usa «{name}» y no pone la tinta {ink}")
                     else:
                         self.assertIn(ink, self.inks, f"{name}: tinta «{ink}» sin color")
+
+    def test_a_parcel_that_is_itself_names_a_body_that_exists(self):
+        """`parcels.byId`: la UTN se levanta como su propio cuerpo (`bodies.utn`). Un id que nombra
+        un cuerpo que no existe no avisa: la parcela vuelve a la escena genérica de su uso."""
+        by_id = {k: v for k, v in self.props["parcels"].get("byId", {}).items() if not k.startswith("_")}
+        self.assertIn("osm_campus_112244756", by_id, "la UTN dejó de levantarse")
+        for pid, rec in by_id.items():
+            self.assertIn(rec["body"], self.props["bodies"], f"{pid}: cuerpo desconocido «{rec['body']}»")
+        manifest = json.load(open(os.path.join(ROOT, "src", "world2d", "manifest.json"), encoding="utf-8"))
+        ids = {p["id"] for p in manifest["parcels"]}
+        for pid in by_id:
+            self.assertIn(pid, ids, f"{pid}: el mundo no emite esa parcela")
+
+    def test_a_face_names_an_edge_of_its_footprint(self):
+        for name, spec in self.props["bodies"].items():
+            if name.startswith("_"):
+                continue
+            for tier in spec["tiers"]:
+                if not tier.get("faces"):
+                    continue
+                self.assertIn("box", tier, f"{name}: `faces` cuenta aristas de una `box`")
+                for edge in tier["faces"]:
+                    if not edge.startswith("_"):
+                        self.assertIn(int(edge), range(4), f"{name}: arista {edge} fuera de la caja")
 
     def test_the_cannons_and_the_capitania_are_bodies(self):
         self.assertEqual(self.props["landmarks"]["capitania"]["body"], "capitania")

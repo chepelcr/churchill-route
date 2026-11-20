@@ -3,7 +3,8 @@
 // The game loop (src/game/index.js) only knows this interface:
 //   setupCanvas(canvasEl)  — bind the canvas + size it to the viewport
 //   render(tSeconds)       — draw one frame on the renderer's seconds clock
-//   paintVehicle(ctx, key, veh) — vehicle sprite at (0,0) facing +x (UI preview)
+//   paintVehicle(ctx, key, veh) — the flat sprite at (0,0) facing +x
+//   paintVehicleModel(ctx, key, veh) — the 3D model the player drives (UI preview)
 //
 // The shipped balance (user call, 2026-07-18): canvas2d paints the WHOLE
 // painterly world + entities (the look we love), and a transparent Pixi
@@ -17,7 +18,7 @@
 // paralaje (`c2d/depth.js`, alturas en los registros). El código de three.js
 // vive en el tag `3d-attempt-2026-09-29`.
 import {
-  setupCanvas as c2dSetup, render as c2dRender, setPixiLandmarks, paintVehicle,
+  setupCanvas as c2dSetup, render as c2dRender, setPixiLandmarks, paintVehicle, paintVehicleModel, vehicleModelBounds,
 } from "./canvas2d.js";
 import { setupPixi, renderPixi } from "./pixi/index.js";
 import { beginCameraFrame } from "./camera.js";
@@ -30,7 +31,7 @@ const PIXI_LM = (() => {
   return true;
 })();
 
-export { paintVehicle };
+export { paintVehicle, paintVehicleModel, vehicleModelBounds };
 
 export function setupCanvas(canvasEl) {
   c2dSetup(canvasEl);

@@ -1381,7 +1381,7 @@
       "railPx": 3,
       "postPx": 5,
       "fasciaPx": 5,
-      "facePx": 7,
+      "sides": {"_note": "EL CANTO DEL TABLADO EN 3D (`attractions.js → drawFeriaSides`): baja `depthM` hasta el agua —más que los `heightM` de la sombra, EXAGERADO A PROPÓSITO: a 3,2 m desde una cámara a 60 el canto medía dos píxeles— por el pinhole de la casa. Se ve desde AFUERA —desde el Paseo la cara del norte, desde la playa la de su lado—: parado encima, ninguna cara mira a la cámara, como en cualquier muelle. La cara que mira al sol se aclara hacia `lit` y la otra se oscurece hacia `dark`; arriba va la viga del borde, de `beamM` de alto, en la tinta `edge` de la paleta del cielo. Reemplaza a `facePx`, el canto plano que se corría siempre hacia el sur de la pantalla.", "depthM": 5.5, "lit": "#ffe2b0", "litK": 0.12, "dark": "#1a120a", "darkK": 0.32, "beamM": 0.7},
       "sign": {
         "rampFraction": 0.55,
         "postHeightM": 8.5,
@@ -2301,7 +2301,7 @@
       "oldStain": "rgba(70,74,60,0.28)",
       "wallBlue": "#bcd0de",
       "wallOchre": "#e3c27a",
-      "wallGreen": "#b9d3bd"
+      "wallGreen": "#b9d3bd", "utnWhite": "#eeebe3", "utnBlue": "#2c4f9a", "utnConcrete": "#bdb7aa", "utnConcreteDark": "#8f8a7f", "utnCream": "#ddd2ae", "utnTrim": "#f2f0e9", "utnGlass": "#27324c", "utnGrille": "#1f2a38", "utnLattice": "#b25a3c", "utnDoor": "#1d1f23", "utnFrieze": "#57564f", "utnMedallion": "#a8a69e", "utnRoof": "#e6e8e5", "utnRoofShade": "#b8bdbc", "utnRoofFlat": "#cdd0cb", "utnRelief": "#77726a", "utnSkylight": "#8e9aa3"
     }
   },
   "coast": {

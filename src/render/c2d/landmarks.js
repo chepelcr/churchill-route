@@ -343,12 +343,22 @@ const PARCELS = PROPS.parcels;
 const PARCEL_USES = PARCELS.uses;
 const PARCEL_DECOR = PARCELS.decor;
 const NO_USE = {};
+const PARCEL_BY_ID = PARCELS.byId || {};
 function drawParcels(view) {
   const arr = W.PARCELS;
   if (!arr || !arr.length) return;
   for (const P of arr) {
     if (P.x1 + 60 < view.x0 || P.x0 - 60 > view.x1 || P.y1 + 60 < view.y0 || P.y0 - 60 > view.y1) continue;
     const U = PARCEL_USES[P.use] || NO_USE;
+    // UNA PARCELA QUE ES ELLA MISMA (`parcels.byId`): se levanta su cuerpo de receta, girado con su
+    // lote, con su nombre en el techo — y no la escena genérica de su uso ni la etiqueta de área.
+    const own = PARCEL_BY_ID[P.id];
+    if (own && PROPS.bodies[own.body]) {
+      const F = parcelFrame(P), spec = PROPS.bodies[own.body];
+      queueBody(bodyAt(spec, F.cx, F.cy, F.ang + (spec.turnDeg || 0) * Math.PI / 180, P.id), own.inks || null,
+        own.pill ? { text: own.pill, fg: PARCELS.labelFg, bg: U.tone || PARCELS.defaultTone } : null);
+      continue;
+    }
     // A catalog prop scaled to the lot — the parroquia. `fit` is the half-width
     // the drawing is authored at, so a smaller manzana shrinks it and a larger
     // one does not blow it up past its natural size.

@@ -205,3 +205,37 @@ class ActorRegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+SPAWNS_JS = os.path.join(ROOT, "src", "game", "spawns.js")
+SIMULATION = os.path.join(ROOT, "src", "content", "simulation.json")
+
+
+class SurfaceCrowdTests(unittest.TestCase):
+    """`simulation.json → crowds` guarda multitudes Y la configuración de otras (el público del DJ,
+    los bañistas del Faro). Leídas como tipo, `npcType` caía al `walker` y cada bloque sembraba
+    sesenta y cuatro caminantes al azar sobre las aceras — también las cuñas dentro de las cuadras."""
+
+    def setUp(self):
+        self.crowds = json.loads(read(SIMULATION))["crowds"]
+        self.types = {t["id"] for t in json.loads(read(NPC_TYPES))["types"]}
+        self.spawns = source(SPAWNS_JS)
+
+    def test_every_crowd_with_a_sitting_fraction_is_a_registered_type(self):
+        for kind, rec in self.crowds.items():
+            if kind.startswith("_") or not isinstance(rec, dict) or "sitting" not in rec:
+                continue
+            self.assertIn(kind, self.types, f"crowds.{kind}: multitud sin tipo en npcTypes.json")
+
+    def test_the_maintainer_only_reads_real_crowds(self):
+        block = self.spawns.split("const SURFACE_CROWDS", 1)[1].split(";", 1)[0]
+        self.assertIn("sitting", block)
+        self.assertIn("npcType(kind).id === kind", block)
+
+    def test_walkers_are_counted_on_their_own(self):
+        line = next(l for l in self.spawns.splitlines() if "topUp(pedestrians" in l)
+        self.assertIn("e.road", line, "la densidad de caminantes vuelve a depender de los hinchas cercanos")
+
+    def test_a_walker_turns_back_where_the_sidewalk_ends(self):
+        advance = self.spawns.split("export function advancePed", 1)[1].split("\nfunction ", 1)[0]
+        self.assertIn("onAcera(", advance)

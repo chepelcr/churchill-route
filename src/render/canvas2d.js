@@ -35,7 +35,7 @@ import { flushOverBodies } from "./c2d/bodies.js";
 import {
   drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawGullFlock, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
-  paintVehicle,
+  paintVehicle, paintVehicleModel, vehicleModelBounds,
 } from "./c2d/entities.js";
 import {
   drawCompass, drawCrossingHud, drawDebugGrid, drawGullBlind, drawMinimap,
@@ -386,4 +386,4 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   }
 }
 
-export { setupCanvas, render, paintVehicle, setOverlayMode, setPixiLandmarks };
+export { setupCanvas, render, paintVehicle, paintVehicleModel, vehicleModelBounds, setOverlayMode, setPixiLandmarks };

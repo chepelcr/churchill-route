@@ -1,7 +1,9 @@
-// Vehicle preview card content: the exact in-game sprite (paintVehicle from
-// the render backend), big, on a little asphalt swatch, plus stat bars.
+// Vehicle preview card content: the vehicle EXACTLY as it is driven —its 3D
+// boxes and its rider (`paintVehicleModel`)— big, on a little asphalt swatch,
+// plus stat bars. It used to paint `paintVehicle`, the flat art from before the
+// vehicles stood up, so the picker sold a car the game no longer draws.
 import React, { useRef, useEffect } from "react";
-import { paintVehicle } from "../render/Renderer.js";
+import { paintVehicleModel, vehicleModelBounds } from "../render/Renderer.js";
 import { VEHICLE_MEDIUM } from "../domain/vocabulary.generated.js";
 import { traceVehicleSilhouette } from "../render/vehicleShapes.js";
 import { VEHICLES } from "../game/vehicles.js";
@@ -49,17 +51,20 @@ export default function VehiclePreview({ vehKey, color = null }) {
     g.setLineDash([10, 12]);
     g.beginPath(); g.moveTo(8, h / 2); g.lineTo(w - 8, h / 2); g.stroke();
     g.setLineDash([]);
-    // sprite, scaled to fill (~4-5x its in-game size), facing right
-    const scale = Math.min((w * 0.6) / veh.w, (h * 0.6) / veh.h);
+    // the model, scaled to fill (~4-5x its in-game size), facing right. It stands up toward the
+    // top-right, so it is framed by what it OCCUPIES (`vehicleModelBounds`), not by its footprint.
+    const B = vehicleModelBounds(veh);
+    const scale = Math.min((w * 0.66) / B.w, (h * 0.74) / B.h);
+    const ox = w / 2 - B.cx * scale, oy = h / 2 - B.cy * scale;
     g.save();
-    g.translate(w / 2 + 3 * (scale / 5), h / 2 + 4 * (scale / 5));
+    g.translate(ox + 3 * (scale / 5), oy + 4 * (scale / 5));
     g.scale(scale, scale);
     g.fillStyle = "rgba(0,0,0,0.35)"; traceVehicleSilhouette(g, vehKey, veh); g.fill();
     g.restore();
     g.save();
-    g.translate(w / 2, h / 2);
+    g.translate(ox, oy);
     g.scale(scale, scale);
-    paintVehicle(g, vehKey, veh);
+    paintVehicleModel(g, vehKey, veh);
     g.restore();
   }, [vehKey, veh, color]);
 

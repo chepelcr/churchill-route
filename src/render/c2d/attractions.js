@@ -27,7 +27,7 @@ import { PX_PER_M } from "../../domain/units.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
-import { parallaxOffset } from "./depth.js";
+import { liftPoint, parallaxOffset } from "./depth.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
 import { FERIA_FORMS, bumperCar, djScreenCorners } from "./feriaRigs.js";
 import { state } from "../../game/state.js";
@@ -597,18 +597,53 @@ function feriaPilings(L) {
   return piles;
 }
 
-/** LOS PILOTES quedan medio salidos del canto: el piso se pinta después y tapa
- *  su mitad interior, dejando la cabeza y la sombra visibles bajo el tablado. */
-function drawFeriaPilings(L, C, sh) {
+/** EL TABLADO TIENE CANTO, Y EL CANTO BAJA HASTA EL AGUA. Era un relleno del mismo contorno corrido
+ *  `facePx` hacia abajo de la pantalla: el mismo canto a cualquier hora y desde cualquier lado, y
+ *  ninguno en los costados que no miraban al sur. Ahora la tabla de frente baja `sides.depthM` con el
+ *  pinhole de la casa (`liftPoint` con altura NEGATIVA: lo que baja del suelo se corre hacia la
+ *  cámara, como el canto de un muelle), cada cara con su luz según el sol, la viga del borde arriba
+ *  y los pilotes de pie del agua al tablado. Los juegos se paran sobre la cubierta, que sigue siendo
+ *  el plano del carro: el canto se mete por debajo y se ve sólo donde la cámara lo deja ver. */
+function drawFeriaSides(L, C, sh) {
+  const cam = state.cam, S3 = DECK.sides, H = S3.depthM;
+  const down = (x, y, z = H) => liftPoint(cam, x, y, -z);
+  const sun = sunShadow(1);
+  for (const ring of L.polys) {
+    const n = ring.length / 2;
+    const lit = new Set(facingEdgesOf(ring, sun.dx, sun.dy));
+    for (let i = 0; i < n; i++) {
+      const ax = ring[i * 2], ay = ring[i * 2 + 1], bx = ring[((i + 1) % n) * 2], by = ring[((i + 1) % n) * 2 + 1];
+      const a2 = down(ax, ay), b2 = down(bx, by);
+      ctx.fillStyle = mixColor(C.fascia, lit.has(i * 2) ? S3.lit : S3.dark, lit.has(i * 2) ? S3.litK : S3.darkK);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(a2[0], a2[1]); ctx.closePath(); ctx.fill();
+      // la viga del borde: una franja más oscura bajo la cubierta
+      const a3 = down(ax, ay, S3.beamM), b3 = down(bx, by, S3.beamM);
+      ctx.fillStyle = C.edge;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(b3[0], b3[1]); ctx.lineTo(a3[0], a3[1]); ctx.closePath(); ctx.fill();
+    }
+  }
+  // LOS PILOTES, de pie: del agua al canto, con su sombra en el agua y la cabeza al pie
   const rad = DECK.pilePx;
   for (const { x: px, y: py } of feriaPilings(L)) {
+    const foot = down(px, py);
     ctx.fillStyle = C.shadow;
-    ctx.beginPath(); ctx.ellipse(px + sh.dx * 0.7, py + sh.dy * 0.7, rad * 1.15, rad * 0.75, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = DECK.pile;
-    ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(foot[0] + sh.dx * 0.25, foot[1] + sh.dy * 0.25, rad * 1.15, rad * 0.75, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = DECK.pile; ctx.lineWidth = rad * 1.4; ctx.lineCap = "butt";
+    ctx.beginPath(); ctx.moveTo(foot[0], foot[1]); ctx.lineTo(px, py); ctx.stroke();
     ctx.fillStyle = DECK.pileCap;
-    ctx.beginPath(); ctx.arc(px - 1, py - 1, rad * 0.55, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(foot[0], foot[1], rad * 0.7, 0, TAU); ctx.fill();
   }
+}
+/** Las aristas de un anillo plano cuya normal exterior mira hacia (vx, vy) — al sol. */
+function facingEdgesOf(ring, vx, vy) {
+  let a = 0; const n = ring.length;
+  for (let i = 0; i < n; i += 2) { const j = (i + 2) % n; a += ring[i] * ring[j + 1] - ring[j] * ring[i + 1]; }
+  const sgn = a >= 0 ? 1 : -1, out = [];
+  for (let i = 0; i < n; i += 2) {
+    const j = (i + 2) % n, ex = ring[j] - ring[i], ey = ring[j + 1] - ring[i + 1];
+    if (ey * sgn * vx - ex * sgn * vy < 0) out.push(i);
+  }
+  return out;
 }
 
 function drawFeriaDeck(view) {
@@ -631,12 +666,7 @@ function drawFeriaDeck(view) {
     ctx.fill(L._path, "evenodd");
     if (L._ramp) ctx.fill(L._ramp, "evenodd");
     ctx.restore();
-    drawFeriaPilings(L, C, sh);
-    ctx.save();
-    ctx.translate(0, DECK.facePx);
-    ctx.fillStyle = C.fascia;
-    ctx.fill(L._path, "evenodd");
-    ctx.restore();
+    drawFeriaSides(L, C, sh);
     // la rampa: tablas más claras, del cordón a la boca
     if (L._ramp) { ctx.fillStyle = C.ramp; ctx.fill(L._ramp, "evenodd"); }
     ctx.fillStyle = C.plank;

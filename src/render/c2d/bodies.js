@@ -118,10 +118,14 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
   // ---- las paredes que miran a la cámara
   if (h > 0) for (const i of vis) {
     const lit = sunlit.has(i);
-    const mural = T.wall === "mural";
-    ctx.fillStyle = shade(ink(mural ? "white" : T.wall), lit);
+    // UNA CARA PUEDE SER DISTINTA DE LAS OTRAS (`faces`, por arista): la fachada de la UTN es azul y
+    // blanca, su costado de Calle 3 es de murales y el de atrás concreto pelado. Sin `faces`, igual que siempre.
+    const F = T.faces && T.faces[i / 2];
+    const wall = F && F.wall ? F.wall : T.wall, bands = F && F.bands ? F.bands : T.bands;
+    const mural = wall === "mural";
+    ctx.fillStyle = shade(ink(mural ? "white" : wall), lit);
     ctx.beginPath(); wallQuad(T, i, 0, 1, o0, o1); ctx.fill();
-    for (const [f0, f1, key] of T.bands || []) {
+    for (const [f0, f1, key] of bands || []) {
       ctx.fillStyle = shade(ink(key), lit);
       ctx.beginPath(); wallQuad(T, i, 0, 1, zAt(f0), zAt(f1)); ctx.fill();
     }
@@ -135,7 +139,7 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
         ctx.beginPath(); wallQuad(T, i, (k + 0.06) / cols, (k + 0.94) / cols, zAt(0.14), zAt(0.9)); ctx.fill();
       }
     }
-    const Wn = T.windows;
+    const Wn = F && "windows" in F ? F.windows : T.windows;
     if (Wn && lenM > Wn.wM * 1.6) {
       const cnt = Math.max(1, Math.floor(lenM / Wn.everyM)), hw = Wn.wM / 2 / lenM;
       const za = at(Wn.z[0]), zb = at(Wn.z[1]);

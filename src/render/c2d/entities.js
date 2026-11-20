@@ -646,6 +646,46 @@ function paintVehicleSides(g, key, veh, ro) {
   }
 }
 
+/**
+ * EL VEHÍCULO DE LA PANTALLA DE SELECCIÓN, EN 3D — el mismo que se maneja. La tarjeta pintaba
+ * `paintVehicle`, el arte PLANO de antes de las cajas, así que el selector y la tienda mostraban un
+ * carro que ya no existe en el juego. Esto arma el MISMO aparejo que `paintPlayer3d` (cajas de
+ * `body3d` y chofer de `driver`), o el costado levantado de una lancha, en el lienzo `g` y con una
+ * cámara de mentira al suroeste, para que se vean un costado y la trompa como en una vitrina.
+ * Centrado en (0, 0), trompa a +x, en píxeles de mundo: quien llama pone la escala.
+ */
+function paintVehicleModel(g, key, veh, { lean = MODEL_LEAN } = {}) {
+  const ppm = PX_PER_M, d = lean * PARALLAX_CAM_H * ppm;
+  const cam = { x: -0.45 * d, y: d };
+  if (veh.body3d || (veh.driver && !veh.heightM)) {
+    const hwM = veh.w / 2 / ppm, hhM = veh.h / 2 / ppm, topM = (veh.heightM || 1.5) + 1.5;
+    const R = makeRig(g, 0, 0, 0, ppm, cam, "cam", V3D.shade, topM);
+    if (veh.body3d) rigBoxes(R, veh.body3d, hwM, hhM, (spec) => partColor(spec, veh));
+    if (veh.driver) paintRider(R, veh.driver, VEHICLE_REG.driver3d, (spec) => partColor(spec, veh), hwM, hhM);
+    R.flush();
+    return;
+  }
+  // una lancha: su silueta levantada a la borda y su arte encima, como en el agua
+  const h = veh.heightM ?? V3D.defaultHeightM, o = parallaxOffset(cam, 0, 0, h, ppm), ro = [o.dx, o.dy];
+  paintVehicleSides(g, key, veh, ro);
+  g.save(); g.translate(ro[0], ro[1]); paintVehicle(g, key, veh); g.restore();
+  if (veh.driver) {
+    const R = makeRig(g, 0, 0, 0, ppm, cam, "cam", V3D.shade, h + 1.5);
+    paintRider(R, veh.driver, VEHICLE_REG.driver3d, (spec) => partColor(spec, veh), veh.w / 2 / ppm, veh.h / 2 / ppm);
+    R.flush();
+  }
+}
+const PARALLAX_CAM_H = EFFECTS.parallax?.cameraHeightM || 60;
+const MODEL_LEAN = 1.1;
+/** La caja que ocupa `paintVehicleModel` en pantalla (px de mundo, centro en 0,0): la huella más lo
+ *  que la tapa —y la cabeza del chofer— se corren hacia el noreste. La tarjeta escala y centra con
+ *  esto, o un tuktuk alto se sale por arriba de su tarjeta. */
+function vehicleModelBounds(veh, lean = MODEL_LEAN) {
+  const H = Math.max(veh.heightM ?? 1.5, veh.driver ? (veh.heightM ?? 0.8) + 1.2 : 0) * PX_PER_M * lean;
+  const x0 = -veh.w / 2, x1 = veh.w / 2 + 0.45 * H, y0 = -veh.h / 2 - H, y1 = veh.h / 2;
+  return { w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+}
+
 // Hybrid overlay: Pixi owns the player body/shadow; this draws only the
 // carried delivery bag / cooler / freezer state (game-critical UI, not bodywork).
 function drawPlayerCarrying(p, veh) {
@@ -659,4 +699,4 @@ function drawPlayerCarrying(p, veh) {
 }
 
 export {
-  drawGullFlock, drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawSchool, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle };
+  drawGullFlock, drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawFisher, drawGull, drawPed, drawSchool, drawPlayer, drawPlayerCarrying, drawSwimmer, drawTargetCustomer, drawTrain, drawTurnWind, drawVendor, paintHull, paintVehicle, paintVehicleModel, vehicleModelBounds };

@@ -247,11 +247,16 @@ function spawnOnePed() {
     return {
       road: r, s, side, baseOff, off: side * baseOff,
       v: (Math.random() < 0.5 ? 1 : -1) * npcSpeed("walker"),
-      crossing: false, crossPhase: 0,
+      crossing: false, crossPhase: 0, stuck: 0,
       x, y, hue: (Math.random() * 360) | 0, ph: Math.random() * Math.PI * 2,
     };
   }
   return null;
+}
+const WALKER_GROUND = npcSurfaceClasses("walker");
+function onAcera(r, s, off) {
+  const pt = roadPointAt(r, s);
+  return WALKER_GROUND.includes(W.surfaceAt(pt.x - Math.sin(pt.ang) * off, pt.y + Math.cos(pt.ang) * off));
 }
 // Advance a rail-bound pedestrian along its road (main-branch walk + cross).
 export function advancePed(pe, dt) {
@@ -267,7 +272,14 @@ export function advancePed(pe, dt) {
     pe.s += pe.v * dt;
     if (pe.s < 10) { pe.s = 10; pe.v = Math.abs(pe.v); }
     else if (pe.s > r.len - 10) { pe.s = r.len - 10; pe.v = -Math.abs(pe.v); }
-    if (Math.random() < 0.0016) { pe.crossing = true; pe.crossPhase = 0; }
+    if (Math.random() < 0.0016 && onAcera(r, pe.s, -pe.side * pe.baseOff)) { pe.crossing = true; pe.crossPhase = 0; }
+    // LA ACERA SE ACABA Y EL CAMINANTE SE DEVUELVE. Sólo se comprobaba al nacer: después caminaba
+    // el largo ENTERO de su calle a la misma distancia, y donde un costado deja de tener acera —una
+    // plaza, un lote, el final de una cuadra— seguía de largo por dentro de la manzana.
+    else if (!onAcera(r, pe.s, pe.off)) {
+      pe.s -= pe.v * dt; pe.v = -pe.v;
+      if (++pe.stuck > 30) pe.dead = true;
+    } else pe.stuck = 0;
   }
   const pt = roadPointAt(r, pe.s);
   pe.x = pt.x - Math.sin(pt.ang) * pe.off;
@@ -496,10 +508,14 @@ export function advanceSchool(sc, dt) {
 
 // Recycle far/dead entities and top each pool back up near the camera. Called
 // each frame (cheap: a few samples). Arrays are the same shared state arrays.
-function topUp(arr, target, make, isDead) {
+// `mine` cuenta sólo lo que esta llamada repone: la piscina de peatones es UNA para caminantes,
+// hinchas, bañistas y pasajeros, y contada entera la densidad de caminantes dependía de cuántos
+// hinchas hubiera cerca — junto a la feria no salía ninguno.
+function topUp(arr, target, make, isDead, mine = null) {
   for (let i = arr.length - 1; i >= 0; i--) if (isDead(arr[i])) arr.splice(i, 1);
+  let have = mine ? arr.reduce((n, e) => n + (mine(e) ? 1 : 0), 0) : arr.length;
   let guard = 0;
-  while (arr.length < target && guard++ < target * 3) { const e = make(); if (e) arr.push(e); }
+  while (have < target && guard++ < target * 3) { const e = make(); if (e) { arr.push(e); have++; } }
 }
 // Stadium spectators (kind "fan"), CONTAINED so they never spill onto the
 // streets or wander the city like ordinary peds. They WANDER THE PITCH, well
@@ -780,8 +796,15 @@ const TAU = Math.PI * 2;
 // COUNT is the NPC registry's (it belongs to the type); the SITTING FRACTION is
 // simulation.json's, and it is the whole trick — a beach where everybody is
 // walking reads as a corridor.
+//
+// UNA MULTITUD ES UN TIPO DEL REGISTRO CON SU `sitting`, Y NADA MÁS. `crowds` también guarda la
+// configuración de otras multitudes (`feriaAudience`, `puntaPools`), que NO son tipos: leídas como
+// tipo, `npcType` caía al `walker` y cada una sembraba SESENTA Y CUATRO caminantes al azar sobre
+// cualquier acera — también las cuñas que `detect_blocks` pavimenta DENTRO de una cuadra. Eran 128
+// figuras vagando por las manzanas, y además llenaban la piscina de peatones hasta que los
+// caminantes de acera de verdad no cabían.
 const SURFACE_CROWDS = Object.entries(SIM.crowds)
-  .filter(([kind]) => !kind.startsWith("_"))
+  .filter(([kind, c]) => !kind.startsWith("_") && typeof c?.sitting === "number" && npcType(kind).id === kind)
   .map(([kind, c]) => [kind, npcType(kind).density?.target ?? 16, c.sitting]);
 function maintainSurfaceCrowds() {
   for (const [kind, target, sitting] of SURFACE_CROWDS) {
@@ -888,7 +911,7 @@ export function maintainStreaming() {
   maintainSurfaceCrowds();
   maintainBeachGames();
   topUp(trains, TARGET.trains, spawnOneTrain, (e) => Math.hypot(e.x - _cam.x, e.y - _cam.y) > KEEP_R + 600);
-  topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || (!e.persistent && far(e)));
+  topUp(pedestrians, TARGET.pedestrians, spawnOnePed, (e) => e.dead || (!e.persistent && far(e)), (e) => !!e.road);
   topUp(vendors, TARGET.vendors, spawnOneVendor, far);
   topUp(animals, TARGET.animals, spawnOneAnimal, (e) => e.dead || far(e));
   topUp(gulls, TARGET.gulls, spawnOneGull, far);

@@ -215,7 +215,7 @@ for v in rows:
             tiers.append(skylight(s * (HW - OS / 2), v, (EAVE + Z2) / 2))           # la mitad trasera de afuera
 
 # ── EL FRENTE DEL PASEO: torre, frontón, torre — simétrico y en el centro ────────────────────────
-FV = HD + 1.0          # el frente de la composición sale 1 m sobre el de las alas
+FV = HD                # el frente de la composición va AL RAS de las alas: una sola línea de fachada, no un cuadro pegado
 FD = 7.0               # y se mete 7 m: llega bajo la franja del techo, no queda como un cartón suelto
 tiers.append({"_": "EL FRONTÓN, en el centro: la planta baja oscura de la entrada, los tres ventanales de la planta alta, el FRISO de relieves con su MEDALLÓN de granito — y BAJO EL TECHO: remata por debajo del alero de la franja del frente, que lo cubre",
   "box": [11.0, FD], "at": [0, FV - FD / 2], "z": [0, 9.9], "wall": "utnCream", "cap": "utnCream",
@@ -228,7 +228,7 @@ for s in (-1, 1):
       "box": [5.2, FD], "at": [s * 8.1, FV - FD / 2], "z": [0, 9.6], "wall": "utnCream", "cap": "utnCream",
       "bands": [[0, 0.18, "utnBlue"], [0.18, 0.41, "utnWhite"], [0.41, 0.44, "utnTrim"], [0.96, 1, "utnTrim"]],
       "openings": [{"edge": 2, "f": [0.34, 0.66], "z": [4.9, 8.4], "ink": "utnGlass"}, {"edge": 2, "f": [0.41, 0.59], "z": [8.6, 9.4], "ink": "utnRelief"}]})
-    tiers.append({"box": [1.2, FD + 0.4], "at": [s * 10.3, FV - FD / 2 + 0.2], "z": [0, 10.0], "wall": "utnCream", "cap": "utnCream",
+    tiers.append({"box": [1.2, FD], "at": [s * 10.3, FV - FD / 2], "z": [0, 9.9], "wall": "utnCream", "cap": "utnCream",
                   "bands": [[0, 0.17, "utnBlue"]]})
 
 # ── LAS MACETERAS DEL FRENTE (fotos del autor, 2026-11-17): camas largas contra la fachada, con su

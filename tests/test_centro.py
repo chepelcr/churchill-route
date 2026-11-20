@@ -340,8 +340,9 @@ class BodyRecipeTests(unittest.TestCase):
         ids = {p["id"] for p in manifest["parcels"]}
         fills = json.load(open(os.path.join(ROOT, "src", "assets", "materials.json"), encoding="utf-8"))["parcel"]
         for pid, rec in by_id.items():
-            # una parcela es su cuerpo, o una cancha cuadrada (`courtM`), o el suelo de otro uso (`fill`)
-            self.assertTrue({"body", "courtM", "fill"} & set(rec), f"{pid}: no dice qué es")
+            # una parcela es su cuerpo, o una cancha cuadrada (`courtM`), o el suelo de otro uso (`fill`), o
+            # apaga su suelo (`ground: false`) o la escena de su uso (`prop: false`)
+            self.assertTrue({"body", "courtM", "fill", "ground", "prop"} & set(rec), f"{pid}: no dice qué es")
             if "body" in rec:
                 self.assertIn(rec["body"], self.props["bodies"], f"{pid}: cuerpo desconocido «{rec['body']}»")
             if "courtM" in rec:

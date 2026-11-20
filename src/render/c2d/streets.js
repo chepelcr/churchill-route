@@ -81,7 +81,7 @@ function paintField(path, F, sport) {
   ctx.fillStyle = court ? ST.field.court : ST.field.grass; ctx.fill(path, "evenodd");
   ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
   const hw = F.hw, hh = F.hh;
-  if (court) { paintCourt(hw, hh); ctx.restore();
+  if (court) { paintCourt(hw, hh, F); ctx.restore();
     ctx.strokeStyle = ST.field.lines; ctx.lineWidth = 2; ctx.stroke(path); return; }
   ctx.fillStyle = ST.field.mow;                            // mow stripes, along the pitch
   for (let sy = -hh; sy < hh; sy += 14) ctx.fillRect(-hw, sy, hw * 2, 7);
@@ -162,6 +162,51 @@ function queueGoal3d(a, b, ba, bb) {
   } });
 }
 
+// EL ARO DE PIE (`materials.json → streets.field.hoop3d`): poste, brazo, tablero, aro y red, cada punto a su
+// altura con el pinhole de la casa, y su sombra en el suelo con el sol de la hora. `sd` es el extremo (-1/1)
+const H3 = ST.field.hoop3d;
+function queueHoop3d(W2, sd, hw) {
+  const m = PX_PER_M, uPole = sd * (hw + H3.poleBackM * m), uBoard = sd * (hw - H3.boardInM * m);
+  const uRim = sd * (hw - (H3.boardInM + H3.rimOutM) * m), bw = H3.boardWM / 2 * m, [z0, z1] = H3.boardZM;
+  const [x, y] = W2(sd * hw, 0);
+  queueBodyLike({ x, y, paint: (ppm) => {
+    const P = (u, v, z) => { const [px, py] = W2(u, v), o = parallaxOffset(state.cam, px, py, z, ppm); return [px + o.dx, py + o.dy]; };
+    const S = (u, v, z) => { const [px, py] = W2(u, v), o = sunShadow(z); return [px + o.dx, py + o.dy]; };
+    const line = (pts) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(...p) : ctx.moveTo(...p))); };
+    const rim = (f, z) => { const out = []; for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2;
+      out.push(f(uRim + Math.cos(a) * H3.rimRM * m, Math.sin(a) * H3.rimRM * m, z)); } return out; };
+    const zTop = z0 + (z1 - z0) * 0.5;
+    // la sombra: el poste, el brazo y el tablero
+    ctx.save(); ctx.globalAlpha = sunShadow(z1).alpha; ctx.strokeStyle = H3.shade; ctx.fillStyle = H3.shade;
+    ctx.lineWidth = H3.polePx; ctx.lineCap = "round";
+    line([W2(uPole, 0), S(uPole, 0, zTop), S(uBoard, 0, zTop)]); ctx.stroke();
+    line([S(uBoard, -bw, z0), S(uBoard, bw, z0), S(uBoard, bw, z1), S(uBoard, -bw, z1)]); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // el poste y el brazo
+    ctx.strokeStyle = H3.pole; ctx.lineWidth = H3.polePx; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    line([W2(uPole, 0), P(uPole, 0, zTop), P(uBoard, 0, zTop)]); ctx.stroke();
+    // la red, bajo el aro
+    ctx.strokeStyle = H3.net; ctx.lineWidth = 0.5;
+    const top = rim(P, H3.rimZM), low = rim((u, v, z) => P(uRim + (u - uRim) * 0.6, v * 0.6, z), H3.rimZM - H3.netM);
+    ctx.beginPath(); top.forEach((p, i) => { if (i % 2) return; ctx.moveTo(...p); ctx.lineTo(...low[i]); }); ctx.stroke();
+    line(low); ctx.closePath(); ctx.stroke();
+    // el tablero, con su grosor (`boardDM`): la cara de atrás, el canto de arriba y la cara a la cancha
+    const ub2 = uBoard + sd * (H3.boardDM || 0) * m;
+    ctx.fillStyle = H3.board; ctx.strokeStyle = H3.pole; ctx.lineWidth = 0.4;
+    for (const face of [
+      [P(ub2, -bw, z0), P(ub2, bw, z0), P(ub2, bw, z1), P(ub2, -bw, z1)],
+      [P(ub2, -bw, z1), P(ub2, bw, z1), P(uBoard, bw, z1), P(uBoard, -bw, z1)],
+      [P(uBoard, -bw, z0), P(uBoard, bw, z0), P(uBoard, bw, z1), P(uBoard, -bw, z1)],
+    ]) { line(face); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    const q = bw * 0.33, qz0 = H3.rimZM + 0.05, qz1 = qz0 + (z1 - z0) * 0.42;
+    ctx.strokeStyle = H3.boardLine; ctx.lineWidth = 0.8;
+    line([P(uBoard, -q, qz0), P(uBoard, q, qz0), P(uBoard, q, qz1), P(uBoard, -q, qz1)]); ctx.closePath(); ctx.stroke();
+    // el aro
+    ctx.strokeStyle = H3.rim; ctx.lineWidth = H3.rimPx || 1;
+    line(top); ctx.closePath(); ctx.stroke();
+  } });
+}
+
 function paintFlushAreasAndGoals(F) {
   const p = F.poly;
   const cx = (p[0] + p[2] + p[4] + p[6]) / 4;
@@ -229,8 +274,10 @@ function paintGoals(hw, hh, F = null) {
 // drawn in the court's own frame (already translated/rotated by the caller).
 // Same level-of-detail rule as the pitch — a court too small for its markings
 // gets the plain slab.
-function paintCourt(hw, hh) {
+function paintCourt(hw, hh, F = null) {
   if (Math.min(hw, hh) < 14) return;
+  // del marco de la cancha al mundo: el aro de pie se arma en píxeles de mundo
+  const W2 = F && H3 ? ((u, v) => [F.cx + u * Math.cos(F.ang) - v * Math.sin(F.ang), F.cy + u * Math.sin(F.ang) + v * Math.cos(F.ang)]) : null;
   const kw = Math.min(hw * 0.30, hh * 0.85), kh = Math.min(hh * 0.52, hw * 0.5);
   for (const sd of [-1, 1]) {
     const x0 = sd < 0 ? -hw + 2 : hw - 2 - kw;
@@ -255,7 +302,8 @@ function paintCourt(hw, hh) {
             sd < 0 ? -Math.PI / 2 : Math.PI / 2,
             sd < 0 ? Math.PI / 2 : Math.PI * 1.5);
     ctx.stroke();
-    // the hoop: backboard on the end line with the ring in front of it
+    // the hoop: de pie si el registro lo trae (`streets.field.hoop3d`); si no, el tablero y el aro planos
+    if (W2) { queueHoop3d(W2, sd, hw); continue; }
     ctx.fillStyle = ST.court.paint;
     ctx.fillRect(sd < 0 ? -hw + 1 : hw - 3, -3.2, 2, 6.4);
     ctx.strokeStyle = ST.court.hoop; ctx.lineWidth = 1.4;
@@ -368,6 +416,9 @@ function paintParcels(view, only = null) {
     // un boceto con esquinas biseladas; la cancha se pinta como el rectángulo que dice el registro, en
     // metros del marco del lote, con esquinas vivas. Lo que el contorno tenía de más queda del suelo de
     // abajo (el césped de la plaza)
+    // `ground: false`: el lote no pinta suelo — lo cubre el piso de otro (`floorM`) y su borde redondeado
+    // caía encima de la cancha
+    if (own?.ground === false) continue;
     if (own?.courtM) { if (own.floorM) paintOwnFloor(P, own.floorM); paintOwnCourt(P, own.courtM); continue; }
     // Preserve the emitted polygon. Raster-owned parcels are vector-straightened
     // by the build (their exact cells still own collision and occupancy), so a

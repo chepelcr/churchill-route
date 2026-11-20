@@ -381,7 +381,9 @@ function drawParcels(view) {
     // A catalog prop scaled to the lot — the parroquia. `fit` is the half-width
     // the drawing is authored at, so a smaller manzana shrinks it and a larger
     // one does not blow it up past its natural size.
-    if (U.prop) {
+    // `parcels.byId.<id>.prop: false`: el edificio ya lo levanta su huella (la Iglesia de Las Playitas, de
+    // `blocks.json → buildings`), y la iglesia de catálogo quedaba debajo
+    if (U.prop && own?.prop !== false) {
       const F = parcelFrame(P);
       paintProp(U.prop, F.cx, F.cy, { ang: F.ang, scale: Math.min(1, F.hw / U.fit) });
     }

@@ -368,7 +368,7 @@ function paintParcels(view, only = null) {
     // un boceto con esquinas biseladas; la cancha se pinta como el rectángulo que dice el registro, en
     // metros del marco del lote, con esquinas vivas. Lo que el contorno tenía de más queda del suelo de
     // abajo (el césped de la plaza)
-    if (own?.courtM) { paintOwnCourt(P, own.courtM); continue; }
+    if (own?.courtM) { if (own.floorM) paintOwnFloor(P, own.floorM); paintOwnCourt(P, own.courtM); continue; }
     // Preserve the emitted polygon. Raster-owned parcels are vector-straightened
     // by the build (their exact cells still own collision and occupancy), so a
     // diagonal manzana reads as one direct edge instead of 4 px stair steps.
@@ -411,6 +411,20 @@ function paintParcels(view, only = null) {
     if (P.use === "boulevard") { paintStone(path, P); continue; }
     ctx.strokeStyle = (!own?.fill && P.kerbColor) || ST.parcel.kerb; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }
+}
+
+// EL PISO DE UN LOTE (`parcels.byId.<id>.floorM`): un rectángulo en metros de su marco, recortado a la
+// huella de la parcela que lo contiene (`within`), en el gris de la acera
+function paintOwnFloor(P, spec) {
+  if (P._floor === undefined) {
+    const host = (W.PARCELS || []).find((q) => q.id === spec.within);
+    const F = parcelFrame(P), ppm = PX_PER_M, [u0, v0, u1, v1] = spec.rect;
+    const c = Math.cos(F.ang), s = Math.sin(F.ang);
+    const at = (u, v) => [F.cx + (u * c - v * s) * ppm, F.cy + (u * s + v * c) * ppm];
+    P._floor = host?.poly ? { clip: flatPath(host.poly, true), rect: flatPath([at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)].flat(), true) } : null;
+  }
+  if (!P._floor) return;
+  ctx.save(); ctx.clip(P._floor.clip); ctx.fillStyle = RING; ctx.fill(P._floor.rect); ctx.restore();
 }
 
 function paintOwnCourt(P, rectM) {

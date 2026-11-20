@@ -97,7 +97,8 @@ tiers.append({"_": "LA PLANTA ALTA de las alas: crema hacia el Paseo y concreto 
 # ── LAS CUATRO TORRES DE LAS ESQUINAS, iguales, como la de la foto ───────────────────────────────
 def corner(su, sv):
     return [round(su * (HW - CT / 2), 2), round(sv * (HD - CT / 2), 2)]
-TZ = 8.6                     # el panel del centro de cada cara; las pilastras rematan a 9,0 —el pretil— y el techo las cubre
+TZ = Z2                      # el cuerpo llega al pretil, AL RAS de las paredes del anillo: más bajo, el anillo (que se pinta
+                             # después por ser más alto) le tapaba la cara y con ella la celosía
 PW, PP = 1.4, 0.35           # las pilastras: su ancho a lo largo de la cara y lo que salen de ella
 
 def face_edge(axis, sgn):
@@ -187,6 +188,7 @@ FW = OS                                 # LA FRANJA DEL FRENTE MIDE DE FONDO LO 
                                         # las esquinas: ~15,7 m las dos), y por eso a cuatro aguas la punta de su
                                         # cumbrera cae justo sobre la de cada brazo: el techo alto dobla en L
 EAVE, RIDGE = 10.2, 14.0                # el techo alto: alero y cumbrera de la franja, la nave y los brazos
+GUTTER = 9.7                            # la canal llana entre la nave y cada brazo, en la mitad delantera
 VF = HD - FW                            # el borde de atrás de la franja del frente
 ROOF = {"ink": "utnRoof", "ink2": "utnRoofShade", "seamsM": 1.2}
 
@@ -206,8 +208,15 @@ for s, hi, lo in ((-1, "e", "w"), (1, "w", "e")):
     # desde el pretil de la calle, y se encuentran ABAJO, en una canal a la altura del pretil de las alas
     tiers += block([OS, HD], [r2(s * (HW - OS / 2)), r2(-HD / 2)], Z2, Z2, {"kind": "shed", "high": lo, "riseM": r2(EAVE - Z2)},
                    "LA MITAD TRASERA de afuera: baja desde la calle hasta la canal — la V de los lados de atrás" if s < 0 else None)
-    tiers += block([IS, r2(VF + HD)], [r2(s * (NAVE / 2 + IS / 2)), r2((VF - HD) / 2)], Z2, Z2, {"kind": "shed", "high": hi, "riseM": r2(EAVE - Z2)},
-                   "LA FRANJA DE ADENTRO, de Avenida 2 a la franja del frente: baja desde la nave hasta la canal" if s < 0 else None)
+    tiers += block([IS, HD], [r2(s * (NAVE / 2 + IS / 2)), r2(-HD / 2)], Z2, Z2, {"kind": "shed", "high": hi, "riseM": r2(EAVE - Z2)},
+                   "LA FRANJA DE ADENTRO, mitad trasera: baja desde la nave hasta la canal de la V" if s < 0 else None)
+    # …Y EN LA MITAD DELANTERA UNE LA NAVE CON EL BRAZO: dos aguas cortas que bajan de los dos aleros
+    # (10,2 m) a una canal llana a `GUTTER`; bajando hasta el pretil quedaba una zanja con una pared de
+    # cada lado, y la nave y los brazos se veían sueltos
+    for half, h in ((-1, hi), (1, lo)):
+        uc = s * (NAVE / 2 + IS / 4 + (IS / 2 if half > 0 else 0))
+        tiers += block([r2(IS / 2), r2(VF)], [r2(uc), r2(VF / 2)], Z2, GUTTER, {"kind": "shed", "high": h, "riseM": r2(EAVE - GUTTER)},
+                       "la franja de adentro, mitad delantera: la canal llana entre la nave y el brazo" if s < 0 and half < 0 else None)
 RL = HD - FW / 2                        # la línea de la cumbrera del frente: brazos y nave llegan HASTA ella
 for s in (-1, 1):
     tiers += block([OS, r2(RL)], [r2(s * (HW - OS / 2)), r2(RL / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
@@ -227,7 +236,7 @@ for v in rows:
     for u in (-W * 0.07, W * 0.07):                                   # la nave: a 0,07 W de la cumbrera
         tiers.append(skylight(u, v, EAVE + (RIDGE - EAVE) * (1 - abs(u) / (NAVE / 2))))
     for s in (-1, 1):
-        tiers.append(skylight(s * (NAVE / 2 + IS / 2), v, (EAVE + Z2) / 2))         # la franja de adentro
+        tiers.append(skylight(s * (NAVE / 2 + IS / 4), v, (EAVE + GUTTER) / 2 if v > 0 else (EAVE + Z2) / 2 + (EAVE - Z2) / 4))   # la franja de adentro
         if v < -2:
             tiers.append(skylight(s * (HW - OS / 2), v, (EAVE + Z2) / 2))           # la mitad trasera de afuera
 

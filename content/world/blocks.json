@@ -423,11 +423,12 @@
         {"ll": [9.97853403, -84.82779317], "s": 0.68},
         {"ll": [9.97844718, -84.82781652], "s": 0.62}
       ],
+      "_lamps": "LOS FOCOS DE LA CANCHA, 2 m afuera de cada esquina de la cancha CHICA (`world-props.json → stadiums3d.pitchInsets`: 7 m al este y al oeste), no de la huella.",
       "lamps": [
-        {"id": "playitas_flood_nw", "ll": [9.9792317, -84.82860166], "type": "stadium"},
-        {"id": "playitas_flood_ne", "ll": [9.9790609, -84.82776107], "type": "stadium"},
-        {"id": "playitas_flood_sw", "ll": [9.97867877, -84.82870674], "type": "stadium"},
-        {"id": "playitas_flood_se", "ll": [9.97841534, -84.82783987], "type": "stadium"},
+        {"id": "playitas_flood_nw", "ll": [9.97919868, -84.82854805], "type": "stadium"},
+        {"id": "playitas_flood_ne", "ll": [9.97906138, -84.82782261], "type": "stadium"},
+        {"id": "playitas_flood_sw", "ll": [9.97865081, -84.82865011], "type": "stadium"},
+        {"id": "playitas_flood_se", "ll": [9.97843657, -84.82789925], "type": "stadium"},
         {"id": "playitas_multiuso_lamp", "ll": [9.97906958, -84.82883224], "type": "warm"},
         {"id": "playitas_park_lamp", "ll": [9.97859193, -84.82777566], "type": "warm"}
       ]

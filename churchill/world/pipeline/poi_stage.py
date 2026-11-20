@@ -157,7 +157,11 @@ def place_pois(ctx, *, sp, roads, named, districts, botY):
                 x, y = seat
         # every landmark must sit near the street network so its stamped pad
         # merges with it (a pad enclosed by solid land is unreachable in-game)
-        pos = nudge_to_land(x, y, need_drivable=True)
+        # `exact`: EL ANCLA ES LA POSICIÓN FINAL. Un puesto sobre una plaza que `blocks.json` pavimenta MÁS
+        # TARDE (Las Playitas) no tiene calzada debajo todavía, y el empujón lo llevaba al cordón de la calle
+        # más cercana — por eso el de Playitas, ancle donde se ancle, salía con el toldo sobre la acera. La
+        # compuerta de alcance del final sigue preguntando si se llega
+        pos = (x, y) if spec.get("exact") else nudge_to_land(x, y, need_drivable=True)
         if pos is None:
             failures.append(spec["id"] + "(water)")
             continue

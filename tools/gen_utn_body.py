@@ -23,7 +23,8 @@ LAS MEDIDAS SALEN DE LAS FOTOS, y cada una dice de cuál:
   se ve el techo y no una tapa gris encima—. La del Paseo con Calle 3 es un pilono liso (foto de las
   alas); la torre de las anclas, con su celosía, es la de Calle 3 y Avenida 2; hacia Avenida 2 va el
   ventanal de bloque de vidrio (Street View, nov. 2024).
-* EL LUGAR: la cuadra medida en el ráster, no el lote del campus (ver `LAND_U`).
+* EL LUGAR: la cuadra medida en el ráster, no el lote del campus (ver `LAND_U`), pegado atrás.
+* LAS MACETERAS del frente: ver `BEDS` — un cuerpo bajo aparte (`low`) y sus árboles (`trees`).
 """
 import json
 import re
@@ -31,10 +32,10 @@ import re
 # LA CUADRA, MEDIDA EN EL RÁSTER (`surfaceAt` == LAND en el marco de la parcela, a cinco alturas):
 # u de -37,8 a +42,6 m y v de -37,1 a +35,8 m — 80 x 73 m, y CORRIDA respecto del lote del campus, que
 # es un rectángulo inscrito más chico (72 x 67) porque Avenida 2 y Calle 3 corren en diagonal. El
-# edificio llena la cuadra y deja la franja VERDE del frente (las jardineras del Paseo, 3,5 m) y la de
-# atrás (el zacate tras la malla de Avenida 2, 3 m); su centro va corrido `PLACE_M` desde el del lote.
+# edificio llena la cuadra PEGADO ATRÁS (a la acera de Avenida 2) y deja al frente 6,5 m para las
+# MACETERAS del Paseo; su centro va corrido `PLACE_M` desde el del lote.
 LAND_U, LAND_V = (-37.8, 42.6), (-37.1, 35.8)
-GREEN = {"n": 3.0, "s": 3.5, "w": 0.5, "e": 1.5}
+GREEN = {"n": 0.0, "s": 6.5, "w": 0.5, "e": 1.5}   # PEGADO ATRÁS, a Avenida 2; al frente, el ancho de las maceteras
 U0, U1 = LAND_U[0] + GREEN["w"], LAND_U[1] - GREEN["e"]
 V0, V1 = LAND_V[0] + GREEN["n"], LAND_V[1] - GREEN["s"]
 W, D = round(U1 - U0, 1), round(V1 - V0, 1)   # la huella (u este, v sur): aristas 0 N, 1 E, 2 S (de este a oeste), 3 O
@@ -150,8 +151,30 @@ for s in (-1, 1):
     tiers.append({"box": [1.2, FD + 0.4], "at": [s * 10.3, FV - FD / 2 + 0.2], "z": [0, 10.7], "wall": "utnCream", "cap": "utnCream",
                   "bands": [[0, 0.17, "utnBlue"]]})
 
+# ── LAS MACETERAS DEL FRENTE (fotos del autor, 2026-11-17): camas largas contra la fachada, con su
+# cordón de ladrillo rojo, el zacate, la baranda negra del lado de la acera, sus árboles de copa redonda
+# y las caña de indio rojas; se abren en la entrada del frontón y en la rampa de la izquierda.
+# Van en `low` —un cuerpo BAJO aparte, que se pinta antes que todo— y los árboles en `trees`: si las
+# maceteras fueran parte del edificio, se pintarían ENCIMA de las copas.
+PV0, PV1 = HD + 0.6, HD + 5.6
+BEDS = [(-HW + 1.0, -27.0), (-23.0, -12.6), (12.6, 23.0), (27.0, HW - 1.0)]
+low, trees = [], []
+for k, (a, b) in enumerate(BEDS):
+    L, cu, cv = b - a, (a + b) / 2, (PV0 + PV1) / 2
+    low.append({**({"_": "una macetera: el cordón de ladrillo y el zacate"} if k == 0 else {}),
+                "box": [round(L, 2), PV1 - PV0], "at": [round(cu, 2), round(cv, 2)], "z": [0, 0.45], "wall": "utnBrick", "cap": "utnLawn"})
+    low.append({**({"_": "la baranda negra, del lado de la acera"} if k == 0 else {}),
+                "box": [round(L, 2), 0.14], "at": [round(cu, 2), round(PV1 - 0.1, 2)], "z": [0.45, 1.0], "wall": "utnRail", "cap": "utnRail"})
+    n = max(1, round(L / 5.6))
+    for i in range(n):
+        u = a + L * (i + 0.5) / n
+        trees.append({"atM": [round(u, 2), round(cv - 0.3, 2)], "k": "almendro", "s": 0.78})
+        if i < n - 1:                                   # entre árbol y árbol, una caña de indio
+            uu = a + L * (i + 1) / n
+            low.append({"box": [0.7, 0.7], "at": [round(uu, 2), round(cv + 0.6, 2)], "z": [0.45, 0.95], "wall": "utnTiDark", "cap": "utnTi"})
+
 body = {"_note": "LA UNIVERSIDAD TÉCNICA NACIONAL — Sede Tobías Vargas, la ANTIGUA ADUANA del puerto: la bodega art déco de Avenida 2 a Avenida 4 (el Paseo), entre Calle 3 Francisco de Paula Amador y Calle 1. El frente es SIMÉTRICO y va en el CENTRO —torre, frontón, torre—; el techo es una nave central a dos aguas que sube por encima de todo, dos naves de los lados que bajan hacia la calle y la franja del frente que sube desde el Paseo; las torres y el frontón quedan bajo la cumbrera. Medida contra las fotos del autor, Street View, el satélite y una aérea, y ajustada a la CUADRA medida en el ráster (80 x 73 m, corrida `placeM` del centro del lote del campus `osm_campus_112244756`), con una franja verde al frente y atrás; la huella real es de ~84 x 87 m. `u` va a lo largo de las avenidas (este), `v` hacia el Paseo (sur); aristas de una `box`: 0 norte, 1 este, 2 sur (de este a oeste), 3 oeste. La escribe `tools/gen_utn_body.py`, que dice de qué foto sale cada medida.",
-        "tiers": tiers, "placeM": PLACE_M,
+        "tiers": tiers, "low": low, "trees": trees, "placeM": PLACE_M,
         "ground": {"rectM": [LAND_U[0] - 4, LAND_V[0] - 4, LAND_U[1] + 4, LAND_V[1] + 4], "ink": "utnLawn",
                    "_": "el piso VERDE de toda la cuadra, 4 m más allá de lo medido: la cuadra se curva hacia el Paseo, y la acera, que se pinta después, tapa lo que sobre"}}
 

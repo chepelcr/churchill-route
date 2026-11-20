@@ -311,7 +311,8 @@ class BodyRecipeTests(unittest.TestCase):
                 self.assertIn(rec["body"], bodies, f"{key}: cuerpo desconocido «{rec['body']}»")
                 users.setdefault(rec["body"], []).append((key, rec.get("inks") or {}))
         for name, spec in bodies.items():
-            for tier in spec["tiers"]:
+            # `low`: lo bajo de un lote que es su cuerpo (las maceteras de la UTN), un cuerpo aparte con las mismas reglas
+            for tier in spec["tiers"] + spec.get("low", []):
                 self.assertEqual(sum(k in tier for k in ("box", "disc", "arc", "ring", "poly")), 1, f"{name}: un cuerpo lleva una huella")
                 for ink in inks_of(tier):
                     if ink == "mural":           # el muro de murales: blanco + franjas de `mural.inks`
@@ -345,6 +346,20 @@ class BodyRecipeTests(unittest.TestCase):
                 for edge in tier["faces"]:
                     if not edge.startswith("_"):
                         self.assertIn(int(edge), range(4), f"{name}: arista {edge} fuera de la caja")
+
+    def test_low_stays_low_and_trees_name_a_species(self):
+        """`low` se pinta ANTES que todo por ser bajo (`centro.lowM`): un bloque de más altura dejaría de
+        serlo y taparía las copas; y un árbol de `trees` sin especie del registro no se siembra."""
+        flora = json.load(open(os.path.join(ROOT, "src", "assets", "flora.json"), encoding="utf-8"))
+        species = flora.get("species", flora)
+        low_m = json.load(open(MATERIALS, encoding="utf-8"))["centro"]["lowM"]
+        for name, spec in self.props["bodies"].items():
+            if name.startswith("_"):
+                continue
+            for tier in spec.get("low", []):
+                self.assertLessEqual(tier["z"][1], low_m, f"{name}: `low` con un bloque de {tier['z'][1]} m")
+            for tr in spec.get("trees", []):
+                self.assertIn(tr["k"], species, f"{name}: árbol de especie desconocida «{tr['k']}»")
 
     def test_a_shed_roof_says_which_side_is_high(self):
         """`roof.kind: shed` (a un agua): sin `high` el armador no sabe cuál arista es la cumbrera."""

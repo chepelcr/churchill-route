@@ -17,7 +17,7 @@ import { areaLabel, ctx, hash01, label, lastT, parcelFrame, polyBBox, roundRect,
 import { drawParada, paintProp, propParts } from "./props.js";
 import { shadowInk, sunShadow } from "./shadows.js";
 import { centroOwnsLandmark } from "./centro.js";
-import { bodyAt, queueBody } from "./bodies.js";
+import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -360,8 +360,18 @@ function drawParcels(view) {
       const F = parcelFrame(P), spec = PROPS.bodies[own.body], [du, dv] = spec.placeM || [0, 0];
       const ppm = W.PX_PER_M, c = Math.cos(F.ang), s = Math.sin(F.ang);
       const bx = F.cx + (du * c - dv * s) * ppm, by = F.cy + (du * s + dv * c) * ppm;
-      queueBody(bodyAt(spec, bx, by, F.ang + (spec.turnDeg || 0) * Math.PI / 180, P.id), own.inks || null,
+      const ang = F.ang + (spec.turnDeg || 0) * Math.PI / 180;
+      queueBody(bodyAt(spec, bx, by, ang, P.id), own.inks || null,
         own.pill ? { text: own.pill, fg: PARCELS.labelFg, bg: U.tone || PARCELS.defaultTone } : null);
+      // LO BAJO Y LO VERDE DEL LOTE: `low` es un cuerpo aparte de menos de un metro (las maceteras), que
+      // la cola pinta antes que todo; `trees` se siembran EN la cola, ordenados con el edificio por la
+      // cámara — sembrados con los demás árboles, el edificio y las maceteras les pintaban encima.
+      if (spec.low) queueBody(bodyAt(spec._low || (spec._low = { tiers: spec.low }), bx, by, ang, `${P.id}:low`), own.inks || null);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      for (const tr of spec.trees || []) {
+        const [tu, tv] = tr.atM, x = bx + (tu * ca - tv * sa) * ppm, y = by + (tu * sa + tv * ca) * ppm;
+        queueBodyLike({ x, y, paint: () => paintTree({ x, y, k: tr.k, s: tr.s }) });
+      }
       continue;
     }
     // A catalog prop scaled to the lot — the parroquia. `fit` is the half-width

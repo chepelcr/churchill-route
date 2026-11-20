@@ -1001,7 +1001,16 @@ if (process.argv.includes("--emit")) {
     fill([ax - ex + nx, ay - ey + ny, bx + ex + nx, by2 + ey + ny, bx + ex - nx, by2 + ey - ny, ax - ex - nx, ay - ey - ny], cls, except, tag); } };
   const S = (...v) => new Set(v);
   // 1) el mar que tapa la costa vieja (nunca sobre una calle)
-  for (const ring of punta.seaPatch || []) fill(ring, C.water, S(C.road, C.boulevard), "mar");
+  // …ni sobre el TABLADO DE LA FERIA: su cubierta (clase 5) sale sobre pilotes al mar a propósito
+  // (`attractions.json → feria.overWater`), y este parche la volvía agua — por eso el carro no pasaba de
+  // la línea de la playa aunque el builder entablara el lote entero
+  { const deck = [];
+    for (const L of manifest.feria || []) for (const ring of L.polys || []) deck.push(ring);
+    const onDeck = (x, y) => deck.some((P) => { let c = false; for (let i = 0, j = P.length - 2; i < P.length; j = i, i += 2) if ((P[i + 1] > y) !== (P[j + 1] > y) && x < P[i] + (P[j] - P[i]) * (y - P[i + 1]) / (P[j + 1] - P[i + 1])) c = !c; return c; });
+    const keep = new Map();
+    for (const [key, t] of all) { const g = grids.get(key); for (let r = 0; r < t.rows; r++) for (let c = 0; c < t.cols; c++) { const at = r * t.cols + c; if (g[at] === C.bridge && onDeck(t.x + (c + 0.5) * CELL, t.y + (r + 0.5) * CELL)) { if (!keep.has(key)) keep.set(key, []); keep.get(key).push(at); } } }
+    for (const ring of punta.seaPatch || []) fill(ring, C.water, S(C.road, C.boulevard), "mar");
+    for (const [key, list] of keep) { const g = grids.get(key); for (const at of list) g[at] = C.bridge; } }
   // y el pedazo de tablado que la feria soltó al este
   { const feriaOld = JSON.parse(readWorld("manifest.json")).feria || []; for (const L of feriaOld) { const nu = manifest.feria.find((q) => q.id === L.id); if (!nu) continue; const newP = nu.polys[0], oldP = L.polys[0];
       const mx = Math.max(...newP.filter((_, k) => k % 2 === 0)); const cut = []; for (let k = 0; k < oldP.length; k += 2) cut.push(Math.max(oldP[k], mx + 1), oldP[k + 1]); fill(cut, C.water, S(C.road), "feria"); } }

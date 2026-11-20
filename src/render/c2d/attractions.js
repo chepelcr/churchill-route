@@ -630,8 +630,10 @@ function drawFeriaSides(L, C, sh) {
     ctx.beginPath(); ctx.ellipse(foot[0] + sh.dx * 0.25, foot[1] + sh.dy * 0.25, rad * 1.15, rad * 0.75, 0, 0, TAU); ctx.fill();
     ctx.strokeStyle = DECK.pile; ctx.lineWidth = rad * 1.4; ctx.lineCap = "butt";
     ctx.beginPath(); ctx.moveTo(foot[0], foot[1]); ctx.lineTo(px, py); ctx.stroke();
+    // LA CABEZA VA ARRIBA, a ras del tablado: ahí está su luz (`feriaLampsIn`, `drawFeriaAreaLights`).
+    // Pintada al pie, en el agua, las luces se veían corridas de sus pilotes.
     ctx.fillStyle = DECK.pileCap;
-    ctx.beginPath(); ctx.arc(foot[0], foot[1], rad * 0.7, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, rad * 0.7, 0, TAU); ctx.fill();
   }
 }
 /** Las aristas de un anillo plano cuya normal exterior mira hacia (vx, vy) — al sol. */

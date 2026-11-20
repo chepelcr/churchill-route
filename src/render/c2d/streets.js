@@ -285,13 +285,57 @@ function paintStadiumCuadras(view) {
       ctx.fillStyle = ST.field.grass;
       ctx.fill(pitch, "evenodd");
     } else {
-      paintField(pitch, fieldFrame(S), S.sport);
+      // la cancha chica dentro de su anillo de concreto, si el registro la achica
+      const key = S._key ?? (S._key = stadiumKey(S) || null);
+      const small = S._small !== undefined ? S._small : (S._small = insetPitch(key, S.footprint, fieldFrame(S)));
+      if (small) { ctx.fillStyle = RING; ctx.fill(pitch, "evenodd"); paintField(small.path, small.frame, S.sport); }
+      else paintField(pitch, fieldFrame(S), S.sport);
     }
   }
   // A sectioned plaza is a base, not one giant football pitch. Its real courts
   // and park paint last so the full-cuadra layer cannot erase their identity.
   if (sectioned.size) paintParcels(view, sectioned);
 }
+
+// LA CANCHA, MÁS CHICA QUE SU HUELLA (`world-props.json → stadiums3d.pitchInsets`). Cada lado de un
+// cuadrilátero se mete los metros que dice el registro para la dirección hacia la que mira (norte, sur, este,
+// oeste), y las esquinas nuevas son los cruces de esas rectas. Devuelve el camino y el marco de la cancha
+// chica, o `null` si no hay entrada o la huella no es un cuadrilátero.
+const PITCH_INSETS = PROPS.stadiums3d?.pitchInsets || {};
+const RING = MATERIALS.street.acera;
+function insetPitch(key, pts, F) {
+  const I = PITCH_INSETS[key];
+  if (!I || !pts || pts.length !== 8) return null;
+  let cx = 0, cy = 0;
+  for (let i = 0; i < 8; i += 2) { cx += pts[i] / 4; cy += pts[i + 1] / 4; }
+  const lines = [];
+  for (let i = 0; i < 4; i++) {
+    const ax = pts[i * 2], ay = pts[i * 2 + 1], bx = pts[((i + 1) % 4) * 2], by = pts[((i + 1) % 4) * 2 + 1];
+    const ex = bx - ax, ey = by - ay, L = Math.hypot(ex, ey) || 1;
+    let nx = -ey / L, ny = ex / L;
+    if (nx * ((ax + bx) / 2 - cx) + ny * ((ay + by) / 2 - cy) < 0) { nx = -nx; ny = -ny; }
+    const dir = Math.abs(nx) > Math.abs(ny) ? (nx > 0 ? "east" : "west") : (ny > 0 ? "south" : "north");
+    const d = (I[dir] || 0) * PX_PER_M;
+    lines.push({ px: ax - nx * d, py: ay - ny * d, ex, ey });
+  }
+  const out = [];
+  for (let i = 0; i < 4; i++) {
+    const a = lines[(i + 3) % 4], b = lines[i], den = a.ex * b.ey - a.ey * b.ex;
+    const t = ((b.px - a.px) * b.ey - (b.py - a.py) * b.ex) / den;
+    out.push(a.px + a.ex * t, a.py + a.ey * t);
+  }
+  // el marco de la cancha chica: el mismo ángulo, sus medias medidas y su centro sobre ese ángulo
+  const ca = Math.cos(F.ang), sa = Math.sin(F.ang);
+  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+  for (let i = 0; i < 8; i += 2) {
+    const u = out[i] * ca + out[i + 1] * sa, v = -out[i] * sa + out[i + 1] * ca;
+    u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+  }
+  const um = (u0 + u1) / 2, vm = (v0 + v1) / 2;
+  const frame = { ...F, cx: um * ca - vm * sa, cy: um * sa + vm * ca, hw: (u1 - u0) / 2, hh: (v1 - v0) / 2, poly: out };
+  return { path: flatPath(out, true), frame };
+}
+const stadiumKey = (S) => (W.LANDMARKS || []).find((l) => l.type === "stadium" && Math.hypot(l.x - S.cx, l.y - S.cy) < 6)?.id;
 
 // Parcel ground. Same reasoning as the estadios: a parcel is a colour choice
 // on ground that already exists, painted between the acera band and the
@@ -351,7 +395,12 @@ function paintParcels(view, only = null) {
     // An open field gets the estadio's own painter, in the MANZANA's frame
     // (P.ang) — the markings used to be strokeRect'd off the bbox, which put a
     // square pitch on a slanted block.
-    if (P.use === "plaza" || P.use === "stadium") { paintField(path, fieldFrame(P), P.sport); continue; }
+    if (P.use === "plaza" || P.use === "stadium") {
+      const small = P._small !== undefined ? P._small : (P._small = insetPitch(P.id, P.poly, fieldFrame(P)));
+      if (small) { ctx.fillStyle = RING; ctx.fill(path, "evenodd"); paintField(small.path, small.frame, P.sport); }
+      else paintField(path, fieldFrame(P), P.sport);
+      continue;
+    }
     if (P.use === "boulevard") { paintStone(path, P); continue; }
     ctx.strokeStyle = P.kerbColor || ST.parcel.kerb; ctx.lineWidth = 2; ctx.stroke(path); // curb
   }

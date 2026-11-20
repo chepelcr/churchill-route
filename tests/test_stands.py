@@ -174,7 +174,19 @@ class Stadium3dTests(unittest.TestCase):
         self.lms = {l["id"]: l for l in man["landmarks"]}
 
     def stadiums(self):
-        return {k: v for k, v in self.cfg.items() if not k.startswith("_")}
+        return {k: v for k, v in self.cfg.items() if not k.startswith("_") and k != "pitchInsets"}
+
+    def test_pitch_insets_name_a_field_and_a_direction(self):
+        man = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                          "src", "world2d", "manifest.json"), encoding="utf-8"))
+        parcels = {p["id"] for p in man.get("parcels", [])}
+        for key, ins in self.cfg.get("pitchInsets", {}).items():
+            if key.startswith("_"):
+                continue
+            self.assertTrue(key in self.lms or key in parcels, f"pitchInsets.{key}: ni hito ni parcela")
+            for d, m in ins.items():
+                self.assertIn(d, ("north", "south", "east", "west"), f"pitchInsets.{key}: lado «{d}»")
+                self.assertTrue(isinstance(m, (int, float)) and 0 <= m < 20, f"pitchInsets.{key}.{d}: {m}")
 
     def test_every_stadium_is_a_landmark_with_stands(self):
         for sid in self.stadiums():

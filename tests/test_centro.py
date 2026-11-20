@@ -313,6 +313,14 @@ class BodyRecipeTests(unittest.TestCase):
         for name, spec in bodies.items():
             # `low`: lo bajo de un lote que es su cuerpo (las maceteras de la UTN), un cuerpo aparte con las mismas reglas
             for tier in spec["tiers"] + spec.get("low", []):
+                if tier.get("facet"):
+                    # una CARA DE TECHO no tiene huella: es un plano con la altura de cada vértice
+                    self.assertGreaterEqual(len(tier["facet"]), 3, f"{name}: una cara de techo pide 3 vértices")
+                    self.assertTrue(all(len(p) == 3 for p in tier["facet"]), f"{name}: cada vértice es [u, v, zM]")
+                    for key in ("ink", "ink2"):
+                        if tier.get(key):
+                            self.assertIn(tier[key], self.inks, f"{name}: tinta «{tier[key]}» sin color")
+                    continue
                 self.assertEqual(sum(k in tier for k in ("box", "disc", "arc", "ring", "poly")), 1, f"{name}: un cuerpo lleva una huella")
                 for ink in inks_of(tier):
                     if ink == "mural":           # el muro de murales: blanco + franjas de `mural.inks`

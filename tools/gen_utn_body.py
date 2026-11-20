@@ -14,7 +14,8 @@ LAS MEDIDAS SALEN DE LAS FOTOS, y cada una dice de cuál:
   frontón, torre—, unos 21 m de los 72, y BAJO EL TECHO: remata por debajo del alero de la franja del
   frente (frontón 9,9 m, torres 9,6). Los tres ventanales del frontón son de la planta alta (4,7 a
   7,8 m), y encima el friso con su medallón.
-* EL TECHO (satélite y sus acercamientos de las esquinas): el techo alto es UNO. La franja del frente
+* EL TECHO (satélite y sus acercamientos de las esquinas): el techo alto es UNO, y se dibuja CARA POR
+  CARA (`facet`) para que sus juntas sean diagonales de verdad. La franja del frente
   va a cuatro aguas y mide de fondo lo que los brazos de ancho (~15,7 m), así que la punta de su
   cumbrera cae sobre la de cada brazo y el techo dobla en L en cada esquina; brazos y nave llegan hasta
   la cumbrera del frente (la nave es la T). La mitad trasera de los lados va en V, con su canal abajo.
@@ -217,15 +218,52 @@ for s, hi, lo in ((-1, "e", "w"), (1, "w", "e")):
         uc = s * (NAVE / 2 + IS / 4 + (IS / 2 if half > 0 else 0))
         tiers += block([r2(IS / 2), r2(VF)], [r2(uc), r2(VF / 2)], Z2, GUTTER, {"kind": "shed", "high": h, "riseM": r2(EAVE - GUTTER)},
                        "la franja de adentro, mitad delantera: la canal llana entre la nave y el brazo" if s < 0 and half < 0 else None)
-RL = HD - FW / 2                        # la línea de la cumbrera del frente: brazos y nave llegan HASTA ella
+RL = HD - FW / 2                        # la línea de la cumbrera del frente
+VN = 0.0                                # donde empiezan los brazos: la mitad del costado
+UA = HW - OS / 2                        # la cumbrera de cada brazo
+UI = HW - OS                            # el alero de adentro de cada brazo
+NH = NAVE / 2
+E_, R_ = EAVE, RIDGE
+
+def wall(box, at, note=None):
+    """el muro que sube del pretil al alero bajo el techo alto"""
+    return {**({"_": note} if note else {}), "box": box, "at": at, "z": [Z2, EAVE], "wall": "utnConcrete", "cap": "utnRoof"}
+
+def face(pts, note=None, wall_ink=None):
+    """UNA CARA DEL TECHO ALTO, con la altura de cada vértice: así se cruzan las aguas con su canal en diagonal"""
+    out = {**({"_": note} if note else {}), "facet": [[r2(u), r2(v), r2(z)] for u, v, z in pts]}
+    if wall_ink:
+        out.update({"ink": wall_ink, "wallFacet": True})
+    else:
+        out.update({"ink": "utnRoof", "ink2": "utnRoofShade"})
+    return out
+
+# los muros bajo el techo alto: los brazos, la nave y la franja del frente
 for s in (-1, 1):
-    tiers += block([OS, r2(RL)], [r2(s * (HW - OS / 2)), r2(RL / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
-                   "LOS BRAZOS: de la mitad del costado hasta la cumbrera del frente, donde su cumbrera dobla en L" if s < 0 else None)
-tiers += block([NAVE, r2(RL + HD)], [0, r2((RL - HD) / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
-               "LA NAVE CENTRAL, a dos aguas, hasta la cumbrera del frente: misma cumbrera, un solo techo en T")
-tiers[-2]["windows"] = {"everyM": 3.4, "wM": 1.6, "z": [9.3, 10.0], "ink": "utnGlass"}
-tiers += block([W, FW], [0, r2(HD - FW / 2)], Z2, EAVE, {"kind": "hip", "axis": "x", "riseM": r2(RIDGE - EAVE)},
-               "LA FRANJA DEL FRENTE, a cuatro aguas de lado a lado: las puntas de su cumbrera caen sobre las de los brazos (una U que dobla en L en cada esquina) y la nave entra por el medio (la T)")
+    tiers.append(wall([OS, r2(HD - VN)], [r2(s * UA), r2((VN + HD) / 2)], "los muros bajo el techo alto, del pretil al alero" if s < 0 else None))
+tiers.append(wall([NAVE, r2(VF + HD)], [0, r2((VF - HD) / 2)]))
+tiers[-1]["windows"] = {"everyM": 3.4, "wM": 1.6, "z": [9.3, 10.0], "ink": "utnGlass"}
+tiers.append(wall([W, FW], [0, r2(HD - FW / 2)]))
+
+# EL TECHO ALTO, CARA POR CARA (los acercamientos del satélite y el dibujo del autor). La franja del frente
+# mide de fondo lo que un brazo de ancho, así que su cumbrera y la de cada brazo se encuentran en un punto
+# (±UA, RL): desde ahí baja la LIMATESA de la esquina hacia afuera (la L) y la CANAL en diagonal hacia
+# adentro. La nave llega con su cumbrera al CENTRO de la del frente (0, RL), y sus dos aguas se cortan
+# contra la cara norte del frente en dos canales en diagonal (la T).
+tiers.append(face([(-HW, HD, E_), (HW, HD, E_), (UA, RL, R_), (-UA, RL, R_)],
+                  "la cara sur del frente: del alero del Paseo a la cumbrera"))
+tiers.append(face([(-UI, VF, E_), (-UA, RL, R_), (UA, RL, R_), (UI, VF, E_), (NH, VF, E_), (0, RL, R_), (-NH, VF, E_)],
+                  "la cara norte del frente: entre las canales de los brazos y las de la nave"))
+for s in (-1, 1):
+    tiers.append(face([(s * HW, VN, E_), (s * UA, VN, R_), (s * UA, RL, R_), (s * HW, HD, E_)],
+                      "la cara de afuera de cada brazo: cierra en diagonal en la esquina — la L" if s < 0 else None))
+    tiers.append(face([(s * UA, VN, R_), (s * UI, VN, E_), (s * UI, VF, E_), (s * UA, RL, R_)],
+                      "la cara de adentro de cada brazo: cierra en diagonal contra la cara norte del frente" if s < 0 else None))
+    tiers.append(face([(s * HW, VN, E_), (s * UI, VN, E_), (s * UA, VN, R_)],
+                      "el hastial de cada brazo, a la mitad del costado" if s < 0 else None, wall_ink="utnConcrete"))
+    tiers.append(face([(s * NH, -HD, E_), (0, -HD, R_), (0, RL, R_), (s * NH, VF, E_)],
+                      "las dos aguas de la nave: llegan con su cumbrera al centro de la del frente — la T" if s < 0 else None))
+tiers.append(face([(-NH, -HD, E_), (NH, -HD, E_), (0, -HD, R_)], "el hastial de la nave sobre Avenida 2", wall_ink="utnConcrete"))
 
 # los tragaluces, donde el satélite los pone: dos columnas en la nave junto a la cumbrera, una en cada
 # franja de adentro y una en cada mitad trasera de afuera; cada uno a la altura del techo bajo él

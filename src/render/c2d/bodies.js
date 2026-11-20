@@ -112,7 +112,27 @@ function paintMosaic(T, cap, o, ppm) {
   ctx.restore();
 }
 
+// UNA CARA DE TECHO (`facet`): el plano entre sus vértices, cada uno corrido a SU altura. Clara si mira al
+// sol, como las caras de un techo con cumbrera; una cara de pared (un hastial) se sombrea como pared.
+function paintFacet(T, at, sun) {
+  const P = T.facet;
+  ctx.beginPath();
+  P.forEach(([x, y, z], i) => { const o = at(z); if (i) ctx.lineTo(x + o[0], y + o[1]); else ctx.moveTo(x + o[0], y + o[1]); });
+  ctx.closePath();
+  // la normal del plano, en planta: hacia dónde baja la cara
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0; i < P.length; i++) {
+    const a = P[i], b = P[(i + 1) % P.length];
+    nx += (a[1] - b[1]) * (a[2] + b[2]); ny += (a[2] - b[2]) * (a[0] + b[0]); nz += (a[0] - b[0]) * (a[1] + b[1]);
+  }
+  const lit = -(nx * sun.dx + ny * sun.dy) * Math.sign(nz || 1) > 0;
+  ctx.fillStyle = T.wallFacet ? shade(ink(T.ink), lit) : mixColor(ink(T.ink2), ink(T.ink), lit ? 1 : 0.15);
+  ctx.fill();
+  ctx.strokeStyle = M.roofSeam; ctx.lineWidth = 0.6; ctx.stroke();
+}
+
 function paintTier(T, at, vis, sunlit, sun, ppm) {
+  if (T.facet) { paintFacet(T, at, sun); return; }
   const h = T.z1 - T.z0, o0 = at(T.z0), o1 = at(T.z1), pts = T.pts, n = pts.length;
   const zAt = (f) => at(T.z0 + h * f);
   // ---- las paredes que miran a la cámara

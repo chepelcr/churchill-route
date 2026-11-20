@@ -118,6 +118,17 @@ export function buildBody(spec, base, rot, F) {
   const flat = (uv) => uv.flatMap((p) => F.at(p).map(r1));
   const src = [...(spec.arms ? armTiers(spec.arms) : []), ...(spec.tiers || [])];
   const tiersOut = src.map((t) => {
+    if (t.facet) {
+      // UNA CARA DE TECHO: un plano con su propia altura en cada vértice ([u, v, zM]). Así se arma un
+      // techo que una caja con `roof` no puede — dos aguas que se cruzan en L o en T, con su canal en
+      // diagonal. Se ordena por su altura MÁS BAJA, para que lo que está sobre ella (un tragaluz) se
+      // pinte después.
+      const [du, dv] = t.at || [0, 0], c = Math.cos(rot), sn = Math.sin(rot);
+      const p3 = t.facet.map(([u, v, z]) => { const lx = du + u, ly = dv + v; return [...F.at([base[0] + lx * c - ly * sn, base[1] + lx * sn + ly * c]).map(r1), z]; });
+      const zs = p3.map((p) => p[2]);
+      return { facet: p3, pts: p3.flatMap((p) => [p[0], p[1]]), z0: Math.min(...zs), z1: Math.max(...zs), sortZ: Math.min(...zs) + 0.01,
+        ink: t.ink, ink2: t.ink2, wallFacet: !!t.wallFacet };
+    }
     const uv = footprint(t, base, rot), o = { pts: flat(uv), z0: t.z[0], z1: t.z[1], wall: t.wall, cap: t.cap };
     const flip = area2(o.pts) < 0;
     if (flip) o.pts = wound(o.pts);
@@ -154,7 +165,7 @@ export function buildBody(spec, base, rot, F) {
     }
     return o;
   });
-  tiersOut.sort((a, b) => a.z1 - b.z1);       // lo más alto, al final: tapa lo de abajo
+  tiersOut.sort((a, b) => (a.sortZ ?? a.z1) - (b.sortZ ?? b.z1));       // lo más alto, al final: tapa lo de abajo
   const [cx, cy] = F.at(base), all = tiersOut.reduce((b, t) => bbox(t.pts, b), bbox([]));
   return { x: r1(cx), y: r1(cy), zMax: Math.max(...tiersOut.map((t) => t.z1 + (t.roof?.rise || 0) + (t.truss?.h || 0))),
     x0: Math.floor(all.x0), y0: Math.floor(all.y0), x1: Math.ceil(all.x1), y1: Math.ceil(all.y1), tiers: tiersOut };

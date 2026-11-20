@@ -60,10 +60,35 @@ function minRect(pts) {
   return best;
 }
 
+// LA HUELLA SIMPLIFICADA (Douglas–Peucker, tolerancia en px): un techo con cumbrera sube cada arista a
+// la punta más cercana, y sobre una huella de veinte escalones eso es un abanico de caras. Sólo para el
+// CUERPO dibujado — la colisión sigue con la huella entera
+function simplified(pts, tol) {
+  const P = []; for (let i = 0; i < pts.length; i += 2) P.push([pts[i], pts[i + 1]]);
+  const keep = new Array(P.length).fill(false); keep[0] = keep[P.length - 1] = true;
+  const rec = (a, b) => {
+    let best = -1, bd = tol;
+    const [ax, ay] = P[a], [bx, by] = P[b], L = Math.hypot(bx - ax, by - ay) || 1;
+    for (let i = a + 1; i < b; i++) {
+      const d = Math.abs((bx - ax) * (ay - P[i][1]) - (ax - P[i][0]) * (by - ay)) / L;
+      if (d > bd) { bd = d; best = i; }
+    }
+    if (best >= 0) { keep[best] = true; rec(a, best); rec(best, b); }
+  };
+  // el anillo se abre en el vértice más lejano del primero, para que el corte no caiga en una arista recta
+  let far = 0, fd = -1;
+  for (let i = 1; i < P.length; i++) { const d = Math.hypot(P[i][0] - P[0][0], P[i][1] - P[0][1]); if (d > fd) { fd = d; far = i; } }
+  keep[far] = true; rec(0, far);
+  P.push(P[0]); keep.push(true); rec(far, P.length - 1);
+  const out = P.slice(0, -1).filter((_, i) => keep[i]).flat();
+  return out.length >= 6 ? out : pts;
+}
+
 function buildingBody(b, wall, roof, st, src = b.pts) {
   if (b._body && b._bodyKey === wall + roof) return b._body;
+  if (st && st.simplifyM) src = simplified(src, st.simplifyM * W.PX_PER_M);
   const B = BODY3D, ppm = W.PX_PER_M, pts = wound(src), n = pts.length / 2;
-  const heightM = buildingHeightM(b), R = minRect(pts);
+  const heightM = (st && st.heightM) || buildingHeightM(b), R = minRect(pts);
   const areaPx = Math.abs(area2(pts)) / 2, areaM2 = areaPx / (ppm * ppm);
   const rect = R ? areaPx / R.area : 0;
   const P = B.pitched || {};
@@ -72,7 +97,7 @@ function buildingBody(b, wall, roof, st, src = b.pts) {
     : !shapeOk ? "flat" : R.hu / Math.max(1e-6, R.hv) >= P.gableRatio ? "gable" : "hip";
   const pitched = kind !== "flat" && R;
   const rise = pitched ? Math.max(B.minRiseM, Math.min(B.maxRiseM, (R.hv / ppm) * B.riseK)) : 0;
-  const storeys = Math.max(1, Math.min(B.maxStoreys, Math.round(heightM / EFFECTS.buildingHeight.storeyM)));
+  const storeys = (st && st.storeys) || Math.max(1, Math.min(B.maxStoreys, Math.round(heightM / EFFECTS.buildingHeight.storeyM)));
   const wnd = Boolean(st && st.wnd !== undefined ? st.wnd : b.wnd), W3 = B.windows;
   const tiers = [];
   for (let k = 0; k < storeys; k++) {

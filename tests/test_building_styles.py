@@ -115,3 +115,26 @@ class WorldTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ByNameTests(unittest.TestCase):
+    """`byName`: una huella autorada a mano se reconoce por su nombre. Un nombre que el mundo no emite
+    no avisa — el edificio sigue con su alto inferido del área y su techo plano."""
+
+    def test_every_name_is_a_building_the_world_emits(self):
+        names = set()
+        for name in os.listdir(TILES):
+            if name.endswith(".json"):
+                with open(os.path.join(TILES, name), encoding="utf-8") as fh:
+                    names.update(b.get("name") for b in json.load(fh).get("buildings", []))
+        for key, spec in load().get("byName", {}).items():
+            if key.startswith("_"):
+                continue
+            self.assertIn(key, names, f"byName: «{key}» no es un edificio del mundo")
+            if "roofKind" in spec:
+                self.assertIn(spec["roofKind"], ("gable", "hip", "flat"))
+            if "storeys" in spec:
+                self.assertTrue(isinstance(spec["storeys"], int) and 1 <= spec["storeys"] <= 8)
+            if "heightM" in spec:
+                self.assertTrue(0 < spec["heightM"] < 60)
+

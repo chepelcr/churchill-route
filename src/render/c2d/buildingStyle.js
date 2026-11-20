@@ -20,6 +20,7 @@ import { hash01 } from "./gfx.js";
 
 const BY_CAT = STYLES.byCat || {};
 const BY_ID = STYLES.byId || {};
+const BY_NAME = STYLES.byName || {};
 
 //: Un color de la lista, ELEGIDO POR EL ID y no por azar de cuadro. Dos sodas
 //: vecinas no pueden salir del mismo color y ninguna puede cambiar de color al
@@ -37,7 +38,9 @@ function pick(list, seed) {
  * arregla en OSM.
  */
 export function buildingStyle(b) {
-  const st = (b.osmId != null && BY_ID[String(b.osmId)]) || BY_CAT[b.cat];
+  // `byName`: la huella autorada a mano (`blocks.json → buildings`) no trae id de OSM ni categoría, y
+  // su nombre es lo único que la distingue — la Iglesia de Las Playitas
+  const st = (b.osmId != null && BY_ID[String(b.osmId)]) || (b.name && BY_NAME[b.name]) || BY_CAT[b.cat];
   if (!st) return null;
   // La semilla es el id de OSM cuando lo hay; si no, la primera esquina, que es
   // lo único estable que tiene una huella sintética.
@@ -47,5 +50,10 @@ export function buildingStyle(b) {
     roof: st.roofs ? pick(st.roofs, seed * 1.61 + 11) : null,
     wnd: st.wnd,
     roofKind: st.roofKind || null,
+    // cuántos pisos y de qué alto, cuando la huella miente: el alto se infiere del ÁREA (`buildingHeightM`)
+    // y una iglesia de una nave es grande y baja
+    storeys: st.storeys || null,
+    heightM: st.heightM || null,
+    simplifyM: st.simplifyM || null,
   };
 }

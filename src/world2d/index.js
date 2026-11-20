@@ -291,6 +291,8 @@ export const WORLD2D = (function () {
     const showAll = BUILDING_STYLES.show?.unnamed !== false;
     const buildings = (raw.buildings || []).filter((b) => showAll || b.name || b.parcelId || b.osmId).map((b) => ({
       pts: b.pts, aabb: flatAABB(b.pts), color: b.color, roof: b.roof, wnd: b.wnd,
+      // el nombre, para `building-styles.json → byName` (una huella autorada a mano no trae otra llave)
+      ...(b.name ? { name: b.name } : {}),
     }));
     // 64px building hash local to the tile (buildingsNear hits only same tile;
     // border buildings are duplicated into each overlapping tile by the emit)

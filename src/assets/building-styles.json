@@ -313,5 +313,9 @@
   "byId": {
     "_note": "UN LUGAR PUEDE TENER SU PROPIO COLOR, por id de OSM, y gana sobre su categoría. Es para el edificio que la gente reconoce por su color — no para corregir una categoría, que se corrige en OSM."
   },
+  "byName": {
+    "_note": "UNA HUELLA AUTORADA A MANO, por su nombre (`blocks.json → buildings` no trae id de OSM ni categoría). Además de colores puede decir sus PISOS y su ALTO en metros —el alto se infiere del área, y una iglesia de una nave es grande y baja— y la forma de su techo (`roofKind`: gable/hip/flat).",
+    "Iglesia de Las Playitas": {"storeys": 1, "heightM": 5.5, "roofKind": "hip", "simplifyM": 2.5, "_": "una sola nave, de un piso, con su techo a dos aguas sobre el eje largo"}
+  },
   "_dropped": "Vivieron aquí `amenity=school`, `building=industrial` y `building=warehouse`, y la prueba los sacó: el mundo no emite ninguno como `cat`. Las escuelas se dibujan como PARCELA con su propio arte, y `poi_category` no lee la etiqueta `building` — que es justamente la trampa que este registro documenta. Un estilo esperando un valor que no llega es deriva, igual que un `case` del renderer sin miembro que lo autorice."
 }

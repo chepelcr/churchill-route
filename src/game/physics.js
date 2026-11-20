@@ -379,7 +379,10 @@ export function update(dt) {
     if (deckAt(x, y)) return !blockedAt(x, y);
     const c = W.surfaceAt(x, y);
     if (afloat) return c === SURFACE.WATER && !blockedAt(x, y);
-    return (c === SURFACE.ROAD || c === SURFACE.BRIDGE) && !blockedAt(x, y);
+    // …Y PARA UN CARRO, TODO LO QUE NO ES PARED. Pedía asfalto o puente, y el piso gris de los parques
+    // (`boulevard`), el barro y el lastre se manejan igual: dentro del Parque Mora y Cañas el carro no
+    // tenía ningún empujoncito legal y, al trabarse en la boca diagonal, no podía girar.
+    return !isWall(x, y) && !blockedAt(x, y);
   };
 
   // Turning must never sweep the body INTO a wall (that penetration was the
@@ -597,7 +600,10 @@ export function update(dt) {
     // back on the road, never on a paseo/acera edge)
     // — and for a hull the drivable street IS the water, or the pose is never
     // recorded at all and the pocket fallback above can never fire.
-  } else if (afloat ? W.surfaceAt(p.x, p.y) === SURFACE.WATER : W.onRoad(p.x, p.y)) {
+  } else if (afloat ? W.surfaceAt(p.x, p.y) === SURFACE.WATER : !isWall(p.x, p.y)) {
+    // LA ÚLTIMA POSE LIBRE SE GUARDA EN CUALQUIER SUELO MANEJABLE, no sólo en asfalto: guardada sólo en
+    // la calle, un roce dentro de un parque (boulevard) devolvía el carro de un salto a la calle — «me
+    // regresa a la calle cuando entro por la diagonal del Mora y Cañas».
     p.freeX = p.x; p.freeY = p.y; p.freeA = p.a;
   }
   p.speed = Math.hypot(p.vx, p.vy);

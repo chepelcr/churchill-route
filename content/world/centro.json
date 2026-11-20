@@ -394,7 +394,7 @@
               -32.1
             ]
           ],
-          "wM": 7,
+          "wM": 8.5,
           "_note": "la diagonal a la Calle 9. Sale del PASEO CENTRAL, más arriba que el sendero de OSM (way/1178476001, que nace en la rotonda): así el cuadrante noreste de la rotonda queda libre para su mural. Llega derecha hasta el cordón."
         },
         {
@@ -475,7 +475,8 @@
             29.5,
             -29.43
           ],
-          "wM": 7,
+          "wM": 11,
+          "_wM": "MÁS ANCHA QUE SU SENDERO, A PROPÓSITO: entra en diagonal y la acera de la Calle 9 le dejaba una esquina aguda al norte. A 7 m, el carro que doblaba hacia el oeste viniendo del sur se trababa en esa punta y la física lo devolvía a la calle.",
           "from": [
             3,
             -20

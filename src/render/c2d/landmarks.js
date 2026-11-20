@@ -18,6 +18,7 @@ import { drawParada, paintProp, propParts } from "./props.js";
 import { shadowInk, sunShadow } from "./shadows.js";
 import { centroOwnsLandmark } from "./centro.js";
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
+import { queueStadium3d, stadiumTowerSpots } from "./stadium3d.js";
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -271,10 +272,13 @@ function drawStadium(lm) {
   }
   // The stand goes down BEFORE the pill, so the name still reads over it.
   const stands = PROPS.scenes.stadium.stands;
-  if (stands) drawStands(lm, stands);
+  // LAS GRADERÍAS EN 3D (`stadium3d.js`, `world-props.json → stadiums3d`): si el registro las tiene, se
+  // levantan como cuerpos sobre las mismas gradas que el mundo estampó, y las torres van donde él dice
+  const S3 = PROPS.stadiums3d?.[lm.id], quads = stands ? standQuads(lm, stands) : [];
+  if (!(S3 && queueStadium3d(lm, quads, S3)) && stands) drawStands(lm, stands);
   // …and the masts after it: a corner tower stands OUTSIDE the stand's back
   // wall, so drawing it first would put the seating on top of the pole.
-  drawFieldTowers(lm, PROPS.scenes.stadium.towers);
+  drawFieldTowers(lm, PROPS.scenes.stadium.towers, S3?.towers ? stadiumTowerSpots(lm, quads, S3) : null);
   const b = polyBBox(pts);
   areaLabel(b.x0, b.y0, b.x1, b.y1, (lm.name || "Estadio").toUpperCase(), C.pillFg, C.pillBg);
 }

@@ -127,12 +127,16 @@ export function buildBody(spec, base, rot, F) {
       const p3 = t.facet.map(([u, v, z]) => { const lx = du + u, ly = dv + v; return [...F.at([base[0] + lx * c - ly * sn, base[1] + lx * sn + ly * c]).map(r1), z]; });
       const zs = p3.map((p) => p[2]);
       return { facet: p3, pts: p3.flatMap((p) => [p[0], p[1]]), z0: Math.min(...zs), z1: Math.max(...zs), sortZ: Math.min(...zs) + 0.01,
-        ink: t.ink, ink2: t.ink2, wallFacet: !!t.wallFacet };
+        ink: t.ink, ink2: t.ink2, wallFacet: !!t.wallFacet, ...(t.sortM != null ? { sortZ: t.sortM } : {}),
+        ...(t.noShadow ? { noShadow: true } : {}), ...(t.seam === false ? { noSeam: true } : {}) };
     }
     const uv = footprint(t, base, rot), o = { pts: flat(uv), z0: t.z[0], z1: t.z[1], wall: t.wall, cap: t.cap };
+    // `sortM`: a qué altura entra este bloque en el orden de pintado, si no es la de su tapa. Los pilotes
+    // de una gradería suben hasta debajo de ella, pero se pintan PRIMERO: siempre quedan bajo el techo.
+    if (t.sortM != null) o.sortZ = t.sortM;
     const flip = area2(o.pts) < 0;
     if (flip) o.pts = wound(o.pts);
-    for (const k of ["edge", "bands", "windows", "parapet", "stains", "mosaic"]) if (t[k]) o[k] = t[k];
+    for (const k of ["edge", "bands", "windows", "parapet", "stains", "mosaic", "shadowOnly", "noShadow"]) if (t[k]) o[k] = t[k];
     if (t.decal) {
       // el estampado: en qué paredes va (índices de vértice, como `openings.edge`), re-numeradas si el giro se invirtió
       const n = o.pts.length / 2;
@@ -167,6 +171,6 @@ export function buildBody(spec, base, rot, F) {
   });
   tiersOut.sort((a, b) => (a.sortZ ?? a.z1) - (b.sortZ ?? b.z1));       // lo más alto, al final: tapa lo de abajo
   const [cx, cy] = F.at(base), all = tiersOut.reduce((b, t) => bbox(t.pts, b), bbox([]));
-  return { perspective: !!spec.perspective, x: r1(cx), y: r1(cy), zMax: Math.max(...tiersOut.map((t) => t.z1 + (t.roof?.rise || 0) + (t.truss?.h || 0))),
+  return { perspective: !!spec.perspective, noFade: !!spec.noFade, x: r1(cx), y: r1(cy), zMax: Math.max(...tiersOut.map((t) => t.z1 + (t.roof?.rise || 0) + (t.truss?.h || 0))),
     x0: Math.floor(all.x0), y0: Math.floor(all.y0), x1: Math.ceil(all.x1), y1: Math.ceil(all.y1), tiers: tiersOut };
 }

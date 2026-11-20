@@ -55,6 +55,7 @@ The procedure is three steps and it is not optional:
 | **un tramo del corredor Pacífico–Puntarenas** | `src/content/railway/levels/*.json` — el perfil lo escribe `tools/gen_railway_profile.py` |
 | **el Parque Mora y Cañas y la manzana de la Catedral** — su piso, sus bocas, el tanque, el Palacio, la Catedral, una banca | `content/world/centro.json` (METROS, en el marco de cada cuadra) → `pnpm world:centro`; tintas en `materials.json` → `centro`; pintor `c2d/centro.js` |
 | **algo que se levanta «como los edificios nuevos» sin venir del mundo** — la Capitanía, un quiosco, los cañones, **la UTN** | `src/assets/world-props.json` → `bodies` (bloques en METROS; tintas `$x` las pone el hito en `landmarks[*].inks`; `faces` cambia pared/bandas/ventanas por arista); una PARCELA que es ella misma lo nombra por su id en `parcels.byId` (la UTN: `tools/gen_utn_body.py` escribe su receta); pintor `c2d/bodies.js`, geometría `c2d/bodyGeometry.js` (la misma que emite el centro cívico) |
+| **las graderías de un estadio en 3D** — qué es cada lado (gradería que vuela sobre la calle, tribuna techada), sus pilotes, sus torres de luz | `src/assets/world-props.json` → `stadiums3d.<id del hito>`; pintor `c2d/stadium3d.js`, sobre las gradas que el mundo estampa (`lm.stands.quads`) |
 | **the ground of one manzana or one parcel** | `content/world/blocks.json` → `manzanas` (BY GEO) / `parcels` (by id) |
 | **who stands on a pitch** | `content/world/blocks.json` → `crowd`; what a type IS → `src/game/npcTypes.json` |
 | a muelle's size, width, style | `content/world/piers.json` |

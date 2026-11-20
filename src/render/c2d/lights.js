@@ -197,7 +197,7 @@ const CORNERS = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
  * needs no geometry of its own. That is what lets one record light two stadiums
  * whose blocks are different shapes and neither square to the screen.
  */
-export function drawFieldTowers(lm, spec) {
+export function drawFieldTowers(lm, spec, spots = null) {
   const pts = lm.footprint;
   if (!pts || pts.length < 6 || !spec) return;
   // …y las torres igual: el mundo dice cuál cancha las lleva, `lights.json`
@@ -210,8 +210,8 @@ export function drawFieldTowers(lm, spec) {
   let cx = 0, cy = 0;
   for (let i = 0; i < pts.length; i += 2) { cx += pts[i]; cy += pts[i + 1]; }
   cx /= pts.length / 2; cy /= pts.length / 2;
-  for (const [dx, dy] of CORNERS) {
-    const [x, y] = polyCorner(pts, dx, dy, inset);
+  // `spots`: dónde las pone el registro del estadio (`stadiums3d.<id>.towers`), si las pone; si no, las esquinas
+  for (const [x, y] of spots || CORNERS.map(([dx, dy]) => polyCorner(pts, dx, dy, inset))) {
     // la fila de focos mira a la cancha: atraviesa la línea que va del poste al centro
     paintLight(type, x, y, { radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity, night, ang: Math.atan2(cy - y, cx - x) });
   }

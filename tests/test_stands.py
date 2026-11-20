@@ -159,3 +159,44 @@ class StandContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Stadium3dTests(unittest.TestCase):
+    """LAS GRADERÍAS EN 3D (`world-props.json → stadiums3d`, `c2d/stadium3d.js`). Una tinta que no existe
+    pinta magenta, un `kind` que el pintor no conoce no levanta nada, y una torre en un lado que el
+    estadio no tiene simplemente no aparece: tres fallos callados."""
+
+    def setUp(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.cfg = json.load(open(os.path.join(root, "src", "assets", "world-props.json"), encoding="utf-8"))["stadiums3d"]
+        self.inks = json.load(open(os.path.join(root, "src", "assets", "materials.json"), encoding="utf-8"))["centro"]["inks"]
+        man = json.load(open(os.path.join(root, "src", "world2d", "manifest.json"), encoding="utf-8"))
+        self.lms = {l["id"]: l for l in man["landmarks"]}
+
+    def stadiums(self):
+        return {k: v for k, v in self.cfg.items() if not k.startswith("_")}
+
+    def test_every_stadium_is_a_landmark_with_stands(self):
+        for sid in self.stadiums():
+            self.assertIn(sid, self.lms, f"{sid}: no hay hito con ese id")
+            self.assertTrue(self.lms[sid].get("stands"), f"{sid}: el hito no trae gradas")
+
+    def test_every_side_names_a_kind_the_painter_builds_and_every_ink_exists(self):
+        for sid, c in self.stadiums().items():
+            for v in c.get("inks", {}).values():
+                self.assertIn(v, self.inks, f"{sid}: tinta «{v}» sin color")
+            for side, s in c["sides"].items():
+                if side.startswith("_"):
+                    continue
+                if "kind" in s:
+                    self.assertIn(s["kind"], ("terrace", "building"), f"{sid}/{side}: kind desconocido")
+                for v in s.get("inks", {}).values():
+                    self.assertIn(v, self.inks, f"{sid}/{side}: tinta «{v}» sin color")
+
+    def test_towers_stand_on_a_side_the_stadium_has(self):
+        for sid, c in self.stadiums().items():
+            st = self.lms[sid]["stands"]
+            sides = st.get("sides") or [st.get("side")]
+            for t in c.get("towers", []):
+                self.assertIn(t["side"], sides, f"{sid}: torre en el lado {t['side']}, que no tiene grada")
+                self.assertTrue(all(0 <= f <= 1 for f in t["at"]))

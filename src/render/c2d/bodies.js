@@ -140,7 +140,7 @@ function paintFacet(T, at, sun) {
   const lit = -(nx * sun.dx + ny * sun.dy) * Math.sign(nz || 1) > 0;
   ctx.fillStyle = T.wallFacet ? shade(ink(T.ink), lit) : mixColor(ink(T.ink2), ink(T.ink), lit ? 1 : 0.15);
   ctx.fill();
-  ctx.strokeStyle = M.roofSeam; ctx.lineWidth = 0.6; ctx.stroke();
+  if (!T.noSeam) { ctx.strokeStyle = M.roofSeam; ctx.lineWidth = 0.6; ctx.stroke(); }
 }
 
 function paintTier(T, at, vis, sunlit, sun, ppm) {
@@ -357,6 +357,9 @@ function paintShadow(S) {
     ctx.closePath();
   };
   for (const T of S.tiers) {
+    // `noShadow`: lo tapa la sombra de otro (los escalones de una grada, que tira su sombra de una vez
+    // con un bloque `shadowOnly`): cientos de caras con su barrido cada una costaban milisegundos
+    if (T.noShadow) continue;
     const top = T.z1 + (T.roof ? T.roof.rise * 0.6 : 0);
     if (top < M.shadowMinM) continue;
     const sh = sunShadow(top);
@@ -405,6 +408,7 @@ function paintStructure(S, ppm, pill = null) {
   } else OFF = (x, y, z) => { const k = z / S.zMax; return [ro.dx * k, ro.dy * k]; };
   const sun = sunShadow(S.zMax);
   for (const T of S.tiers) {
+    if (T.shadowOnly) continue;          // sólo existe para tirar la sombra (`paintShadow`)
     // lo que se corre por el CENTRO del bloque (la cúpula, la celosía, las manchas de la tapa)
     let tcx = 0, tcy = 0;
     for (let i = 0; i < T.pts.length; i += 2) { tcx += T.pts[i]; tcy += T.pts[i + 1]; }
@@ -484,7 +488,9 @@ export function flushOverBodies() {
   for (const q of overQueue) {
     if (q.other) { q.S.paint(ppm); continue; }
     VARS = q.vars;
-    const under = p && p.x > q.S.x0 - pad && p.x < q.S.x1 + pad && p.y > q.S.y0 - pad && p.y < q.S.y1 + pad;
+    // `noFade`: un cuerpo del tamaño de un estadio no se vuelve translúcido entero porque el carro esté
+    // en algún lugar de su caja — eso es para un toldo de quiosco, bajo el que el carro recoge
+    const under = !q.S.noFade && p && p.x > q.S.x0 - pad && p.x < q.S.x1 + pad && p.y > q.S.y0 - pad && p.y < q.S.y1 + pad;
     if (under) { ctx.save(); ctx.globalAlpha = M.overUnderAlpha; }
     paintStructure(q.S, ppm, under ? null : q.pill);
     if (under) { ctx.restore(); if (q.pill) { const S = q.S; label(S.x, S.y0 - (q.pill.size || 10), q.pill.text, q.pill.fg, q.pill.bg, q.pill.size || 10); } }

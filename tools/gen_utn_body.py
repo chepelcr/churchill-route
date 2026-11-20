@@ -14,16 +14,15 @@ LAS MEDIDAS SALEN DE LAS FOTOS, y cada una dice de cuál:
   frontón, torre—, unos 21 m de los 72, y BAJO EL TECHO: remata por debajo del alero de la franja del
   frente (frontón 9,9 m, torres 9,6). Los tres ventanales del frontón son de la planta alta (4,7 a
   7,8 m), y encima el friso con su medallón.
-* EL TECHO (satélite de Google y la foto aérea), franja por franja — ver el bloque «EL TECHO» abajo:
-  el techo alto es UNO: la franja del frente a dos aguas de lado a lado, cuya cumbrera cruza la de la
-  nave central (una T) y las de los brazos que la doblan hasta la mitad de cada costado (una U); la
-  mitad trasera de los lados va en V —la franja de adentro baja desde la nave y la de afuera desde la
-  calle, hasta una canal a la altura del pretil—, con sus filas de tragaluces.
-* LAS TORRES DE LAS ESQUINAS (foto de la torre de las anclas, 2026-11-20): las cuatro iguales, 9 x 9 m,
-  BAJO EL TECHO: su cuerpo llega al pretil y el techo pasa por encima. En cada cara exterior la
-  pilastra de la esquina y las ALETAS escalonadas, la CELOSÍA terracota con su retícula de huecos y el
-  relieve del ancla con su caduceo. El alero se corta contra ellas. La de Calle 3 y Avenida 2 lleva el
-  portón negro con el ancla blanca. Hacia Avenida 2, la salida de bloque de vidrio CENTRADA con la nave.
+* EL TECHO (satélite y sus acercamientos de las esquinas): el techo alto es UNO. La franja del frente
+  va a cuatro aguas y mide de fondo lo que los brazos de ancho (~15,7 m), así que la punta de su
+  cumbrera cae sobre la de cada brazo y el techo dobla en L en cada esquina; brazos y nave llegan hasta
+  la cumbrera del frente (la nave es la T). La mitad trasera de los lados va en V, con su canal abajo.
+* LAS TORRES DE LAS ESQUINAS (fotos de la torre y Street View de Calle 1, nov. 2024): las cuatro
+  iguales, ~6,5 m de cara, del alto del ala y BAJO EL TECHO. Cada cara de afuera: el PANEL del centro
+  metido entre dos PILASTRAS que salen, con ALETAS escalonadas hacia la esquina; la celosía terracota
+  con su remate ochavado y su retícula; el relieve del ancla arriba de cada pilastra y el escudo abajo.
+  Las de Avenida 2 llevan hacia su calle el portón negro con el ancla blanca bajo una repisa que vuela.
 * LOS DETALLES DE ARRIBA: el emblema de estrella con caduceo y olas sobre las ventanas, y las dos
   ESTRÍAS de la cornisa (foto del emblema).
 * EL LUGAR: la cuadra medida en el ráster, no el lote del campus (ver `LAND_U`), pegado atrás.
@@ -80,7 +79,7 @@ tiers.append({"_": "LA PLANTA BAJA: hacia el Paseo, zócalo AZUL hasta la cadera
   "faces": {"0": {"wall": "utnConcrete", "bands": [[0, 0.43, "utnBlue"]]}, "1": {"wall": "utnConcrete", "bands": [[0, 0.08, "utnConcreteDark"]]},
             "3": {"wall": "mural", "bands": [[0, 0.1, "utnConcreteDark"]]}},
   "openings": on(2, gates_s) + on(0, gates_n) + [{"edge": 1, "f": [0.44, 0.56], "z": [0, 3.4], "ink": "utnGrille"}]})
-CT = 9.0                    # las torres de las esquinas: 9 x 9 m (la foto de la torre de las anclas)
+CT = 6.5                    # las torres de las esquinas: ~6,5 m de cara (la foto de Calle 1: 730 px de ancho por 1 150 de alto, del alto del ala)
 # el ALERO vuela 1,8 m sobre las aceras ENTRE las torres: en la foto se corta contra cada una
 for k, (box, at) in enumerate((([W - 2 * CT, 1.8], [0, -HD - 0.9]), ([W - 2 * CT, 1.8], [0, HD + 0.9]),
                                ([1.8, D - 2 * CT], [-HW - 0.9, 0]), ([1.8, D - 2 * CT], [HW + 0.9, 0]))):
@@ -98,32 +97,61 @@ tiers.append({"_": "LA PLANTA ALTA de las alas: crema hacia el Paseo y concreto 
 # ── LAS CUATRO TORRES DE LAS ESQUINAS, iguales, como la de la foto ───────────────────────────────
 def corner(su, sv):
     return [round(su * (HW - CT / 2), 2), round(sv * (HD - CT / 2), 2)]
-TZ = Z2                      # LAS TORRES VAN BAJO EL TECHO: su cuerpo llega al pretil y el techo pasa por encima
+TZ = 8.6                     # el panel del centro de cada cara; las pilastras rematan a 9,0 —el pretil— y el techo las cubre
+PW, PP = 1.4, 0.35           # las pilastras: su ancho a lo largo de la cara y lo que salen de ella
 
-def tower(su, sv, note, openings, wall="utnConcrete", bands=None):
-    """una torre de esquina como la de la foto, bajo el techo: el cuerpo, la pilastra de la esquina y
-    las ALETAS escalonadas —tres que bajan hacia el centro de cada cara exterior y dos hacia el ala—,
-    que salen de la pared y por eso se leen aunque el techo las cubra"""
+def face_edge(axis, sgn):
+    """la arista de una caja que mira hacia afuera: eje v (norte/sur) o u (oeste/este)"""
+    return (0 if sgn < 0 else 2) if axis == "v" else (3 if sgn < 0 else 1)
+
+def tower(su, sv, note, door_axis=None):
+    """UNA TORRE DE ESQUINA, cara por cara como en la foto de Calle 1: el cuerpo, y en cada cara de
+    afuera el PANEL del centro, metido entre dos PILASTRAS que salen y suben más, con ALETAS que bajan
+    escalonadas hacia la esquina; en el panel la CELOSÍA terracota con su remate ochavado y su retícula,
+    y en la cara del portón la puerta negra con su ancla blanca bajo una REPISA que vuela; el relieve del
+    ancla arriba de cada pilastra y el escudo abajo en la de la esquina"""
     cu, cv = corner(su, sv)
-    out = [{**({"_": note} if note else {}), "box": [CT, CT], "at": [cu, cv], "z": [0, TZ], "wall": wall, "cap": "utnRoof",
-            "bands": (bands or []) + [[0, 0.04, "utnConcreteDark"], [0.96, 1, "utnConcreteDark"]], "openings": openings}]
-    ex, ey = cu + su * CT / 2, cv + sv * CT / 2            # la esquina de afuera
-    out.append({"box": [1.5, 1.5], "at": [round(ex - su * 0.45, 2), round(ey - sv * 0.45, 2)], "z": [0, TZ], "wall": wall, "cap": "utnConcreteLite"})
-    for k, d in enumerate((1.6, 2.3, 3.0)):               # las aletas que bajan hacia el centro de cada cara
-        z = round(TZ - 0.35 * (k + 1), 2)
-        out.append({"box": [0.55, 0.6], "at": [round(ex - su * d, 2), round(ey + sv * 0.2, 2)], "z": [0, z], "wall": wall, "cap": "utnConcreteLite"})
-        out.append({"box": [0.6, 0.55], "at": [round(ex + su * 0.2, 2), round(ey - sv * d, 2)], "z": [0, z], "wall": wall, "cap": "utnConcreteLite"})
-    for k, d in enumerate((0.45, 1.1)):                   # y las que bajan hacia el ala
-        z = round(TZ - 0.5 - 0.35 * k, 2)
-        out.append({"box": [0.55, 0.6], "at": [round(ex - su * (CT - d), 2), round(ey + sv * 0.2, 2)], "z": [0, z], "wall": wall, "cap": "utnConcreteLite"})
-        out.append({"box": [0.6, 0.55], "at": [round(ex + su * 0.2, 2), round(ey - sv * (CT - d), 2)], "z": [0, z], "wall": wall, "cap": "utnConcreteLite"})
-    return out
+    face_ops = {}
+    out = []
+    for axis, sgn in (("v", sv), ("u", su)):
+        e = face_edge(axis, sgn)
+        ops = lattice(e, 0.31, 0.69, 4.5, 7.8) + [
+            {"edge": e, "f": [0.36, 0.64], "z": [7.8, 8.15], "ink": "utnLattice"},        # el remate ochavado
+            {"edge": e, "f": [0.31, 0.69], "z": [7.8, 7.85], "ink": "utnLatticeHole"}]
+        if axis == door_axis:
+            ops += [{"edge": e, "f": [0.32, 0.68], "z": [0, 4.2], "ink": "utnDoor"},
+                    {"edge": e, "f": [0.455, 0.545], "z": [2.4, 3.6], "ink": "utnTrim"},       # el ancla blanca del portón
+                    {"edge": e, "f": [0.4, 0.6], "z": [3.4, 3.55], "ink": "utnTrim"}]
+        face_ops[e] = ops
+        # las dos pilastras de esta cara y sus aletas
+        for end in (1, -1):                                   # 1 = la de la esquina, -1 = la del lado del ala
+            off = (CT / 2 - PW / 2) * end
+            if axis == "v":
+                pu, pv, box = cu + su * off, cv + sv * (CT / 2 + PP / 2), [PW, PP]
+            else:
+                pu, pv, box = cu + su * (CT / 2 + PP / 2), cv + sv * off, [PP, PW]
+            rel = [{"edge": e, "f": [0.22, 0.78], "z": [7.5, 8.4], "ink": "utnRelief"}]
+            if end == 1 and axis == "v":
+                rel.append({"edge": e, "f": [0.28, 0.72], "z": [0.9, 1.7], "ink": "utnRelief"})   # el escudo de abajo
+            out.append({"box": box, "at": [round(pu, 2), round(pv, 2)], "z": [0, Z2], "wall": "utnConcrete", "cap": "utnConcreteLite", "openings": rel})
+            for k in range(2 if end == 1 else 1):            # las aletas: dos hacia la esquina, una hacia el ala
+                d = PW / 2 + 0.22 + 0.32 * k
+                z = round(Z2 - 0.25 * (k + 1), 2)
+                if axis == "v":
+                    fu_, fv_, fbox = pu + su * end * d, cv + sv * (CT / 2 + PP * 0.35), [0.28, PP * 0.7]
+                else:
+                    fu_, fv_, fbox = cu + su * (CT / 2 + PP * 0.35), pv + sv * end * d, [PP * 0.7, 0.28]
+                out.append({"box": fbox, "at": [round(fu_, 2), round(fv_, 2)], "z": [0, z], "wall": "utnConcrete", "cap": "utnConcreteLite"})
+        if axis == door_axis:                                 # la repisa que vuela sobre el portón
+            if axis == "v":
+                out.append({"box": [CT * 0.44, 0.5], "at": [cu, round(cv + sv * (CT / 2 + 0.25), 2)], "z": [4.2, 4.45], "wall": "utnConcreteDark", "cap": "utnConcreteLite"})
+            else:
+                out.append({"box": [0.5, CT * 0.44], "at": [round(cu + su * (CT / 2 + 0.25), 2), cv], "z": [4.2, 4.45], "wall": "utnConcreteDark", "cap": "utnConcreteLite"})
+    body = {**({"_": note} if note else {}), "box": [CT, CT], "at": [cu, cv], "z": [0, TZ], "wall": "utnConcrete", "cap": "utnRoof",
+            "bands": [[0, 0.04, "utnConcreteDark"]], "openings": [o for ops in face_ops.values() for o in ops]}
+    return [body] + out
 
-def faces_of(su, sv):
-    """las dos caras exteriores de la esquina (su, sv), como aristas de su caja"""
-    return (0 if sv < 0 else 2), (3 if su < 0 else 1)
-
-def lattice(edge, f0, f1, z0, z1, cols=5, rows=6):
+def lattice(edge, f0, f1, z0, z1, cols=5, rows=7):
     """LA CELOSÍA de ladrillo terracota: el paño y su retícula de huecos oscuros, que es lo que la
     hace celosía y no un cuadro de color (la foto de la torre)"""
     out = [{"edge": edge, "f": [f0, f1], "z": [z0, z1], "ink": "utnLattice"}]
@@ -134,24 +162,10 @@ def lattice(edge, f0, f1, z0, z1, cols=5, rows=6):
                         "z": [round(z0 + rh * (j + 0.25), 3), round(z0 + rh * (j + 0.75), 3)], "ink": "utnLatticeHole"})
     return out
 
-def lattice_tower(su, sv, note, door=False, wall="utnConcrete", bands=None):
-    fv, fu = faces_of(su, sv)
-    ops = []
-    for e in (fv, fu):
-        ops += lattice(e, 0.27, 0.73, 4.9, 8.3) + [
-                {"edge": e, "f": [0.27, 0.73], "z": [8.3, 8.45], "ink": "utnConcreteDark"},           # el ochavo de arriba de la celosía
-                {"edge": e, "f": [0.1, 0.22], "z": [7.4, 8.4], "ink": "utnRelief"},                   # el ancla con su caduceo, en las pilastras
-                {"edge": e, "f": [0.78, 0.9], "z": [7.4, 8.4], "ink": "utnRelief"}]
-    if door:
-        ops += [{"edge": fu, "f": [0.28, 0.72], "z": [0, 4.4], "ink": "utnDoor"},                     # el portón negro
-                {"edge": fu, "f": [0.45, 0.55], "z": [2.5, 3.8], "ink": "utnTrim"},                    # su ancla blanca
-                {"edge": fu, "f": [0.27, 0.73], "z": [4.4, 4.6], "ink": "utnConcreteDark"}]           # su dintel
-    return tower(su, sv, note, ops, wall=wall, bands=bands)
-
-tiers += lattice_tower(-1, -1, "LA TORRE DE LAS ANCLAS, esquina de Calle 3 y Avenida 2 (la foto de la torre): concreto hasta el pretil y BAJO EL TECHO, la pilastra de la esquina y las aletas escalonadas, la CELOSÍA de ladrillo terracota con su retícula en el panel de cada cara, el portón negro con el ancla blanca hacia Calle 3 y los relieves del ancla arriba", door=True)
-tiers += lattice_tower(1, -1, None)
-tiers += lattice_tower(-1, 1, "las dos torres del Paseo, también con su celosía terracota en cada cara")
-tiers += lattice_tower(1, 1, None)
+tiers += tower(-1, -1, "LA TORRE DE LAS ANCLAS, esquina de Calle 3 y Avenida 2, con su portón hacia Calle 3", door_axis="u")
+tiers += tower(1, -1, "las otras tres torres, iguales y con su portón hacia la calle de su costado (Street View de Calle 1)", door_axis="u")
+tiers += tower(-1, 1, None)
+tiers += tower(1, 1, None)
 tiers.append({"_": "hacia Avenida 2, el VENTANAL ALTO de bloque de vidrio en su bahía, CENTRADO con la nave del techo", "box": [12.0, 2.0], "at": [0, round(-HD + 0.8, 2)], "z": [0, Z2],
   "wall": "utnConcrete", "cap": "utnRoof", "bands": [[0, 0.2, "utnBlue"]],
   "openings": [{"edge": 0, "f": [0.08, 0.36], "z": [4.9, 8.6], "ink": "utnGlassBlock"}, {"edge": 0, "f": [0.42, 0.58], "z": [0, 8.7], "ink": "utnGlass"},
@@ -166,10 +180,12 @@ tiers.append({"_": "hacia Avenida 2, el VENTANAL ALTO de bloque de vidrio en su 
 #    altura — el techo del frente que dobla y llega hasta la mitad;
 #  · la MITAD TRASERA de los lados y la franja de adentro (15,2 %) de punta a punta: con los ALEROS
 #    PARA ABAJO, a un agua, bajando hacia la calle, con sus filas de tragaluces.
-FW = round(D * 0.19, 2)                 # la franja del frente
 NAVE = round(W * 0.344, 2)
 IS = round(W * 0.152, 2)                # la franja de adentro
-OS = round(HW - NAVE / 2 - IS, 2)       # la de afuera
+OS = round(HW - NAVE / 2 - IS, 2)       # la de afuera: el ancho de los brazos
+FW = OS                                 # LA FRANJA DEL FRENTE MIDE DE FONDO LO QUE LOS BRAZOS DE ANCHO (las fotos de
+                                        # las esquinas: ~15,7 m las dos), y por eso a cuatro aguas la punta de su
+                                        # cumbrera cae justo sobre la de cada brazo: el techo alto dobla en L
 EAVE, RIDGE = 10.2, 14.0                # el techo alto: alero y cumbrera de la franja, la nave y los brazos
 VF = HD - FW                            # el borde de atrás de la franja del frente
 ROOF = {"ink": "utnRoof", "ink2": "utnRoofShade", "seamsM": 1.2}
@@ -192,14 +208,15 @@ for s, hi, lo in ((-1, "e", "w"), (1, "w", "e")):
                    "LA MITAD TRASERA de afuera: baja desde la calle hasta la canal — la V de los lados de atrás" if s < 0 else None)
     tiers += block([IS, r2(VF + HD)], [r2(s * (NAVE / 2 + IS / 2)), r2((VF - HD) / 2)], Z2, Z2, {"kind": "shed", "high": hi, "riseM": r2(EAVE - Z2)},
                    "LA FRANJA DE ADENTRO, de Avenida 2 a la franja del frente: baja desde la nave hasta la canal" if s < 0 else None)
+RL = HD - FW / 2                        # la línea de la cumbrera del frente: brazos y nave llegan HASTA ella
 for s in (-1, 1):
-    tiers += block([OS, r2(VF)], [r2(s * (HW - OS / 2)), r2(VF / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
-                   "LOS BRAZOS: el techo del frente que dobla la esquina y llega hasta la mitad del costado" if s < 0 else None)
-tiers += block([NAVE, r2(VF + HD)], [0, r2((VF - HD) / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
-               "LA NAVE CENTRAL, a dos aguas: misma cumbrera que la franja del frente, un solo techo en T")
+    tiers += block([OS, r2(RL)], [r2(s * (HW - OS / 2)), r2(RL / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
+                   "LOS BRAZOS: de la mitad del costado hasta la cumbrera del frente, donde su cumbrera dobla en L" if s < 0 else None)
+tiers += block([NAVE, r2(RL + HD)], [0, r2((RL - HD) / 2)], Z2, EAVE, {"kind": "gable", "axis": "y", "riseM": r2(RIDGE - EAVE)},
+               "LA NAVE CENTRAL, a dos aguas, hasta la cumbrera del frente: misma cumbrera, un solo techo en T")
 tiers[-2]["windows"] = {"everyM": 3.4, "wM": 1.6, "z": [9.3, 10.0], "ink": "utnGlass"}
-tiers += block([W, FW], [0, r2(HD - FW / 2)], Z2, EAVE, {"kind": "gable", "axis": "x", "riseM": r2(RIDGE - EAVE)},
-               "LA FRANJA DEL FRENTE, a dos aguas DE LADO A LADO: su cumbrera cruza las de los brazos y la de la nave, y así el techo alto es UNO — una U con la T de la nave")
+tiers += block([W, FW], [0, r2(HD - FW / 2)], Z2, EAVE, {"kind": "hip", "axis": "x", "riseM": r2(RIDGE - EAVE)},
+               "LA FRANJA DEL FRENTE, a cuatro aguas de lado a lado: las puntas de su cumbrera caen sobre las de los brazos (una U que dobla en L en cada esquina) y la nave entra por el medio (la T)")
 
 # los tragaluces, donde el satélite los pone: dos columnas en la nave junto a la cumbrera, una en cada
 # franja de adentro y una en cada mitad trasera de afuera; cada uno a la altura del techo bajo él

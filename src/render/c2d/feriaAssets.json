@@ -1527,6 +1527,8 @@
     }
   },
   "$view3d": {
+    "signs": false,
+    "$signs": "LOS RÓTULOS DE CADA JUEGO, APAGADOS EN EL MUNDO (2026-11-20): la feria se lee por sus juegos y una píldora encima de cada uno tapaba media feria. Las piezas `sign` siguen en cada receta —la hoja de arte las dibuja— y encenderlas es poner esto en `true`.",
     "$note": "LA FERIA EN 2.5D. Cada juego se ve desde arriba con la misma perspectiva que los edificios (`parallaxOffset`): una pieza con `liftM` es un PISO a esa altura, y con `baseM` además tiene COSTADOS de `baseM` a `liftM` (la misma pieza repetida, oscurecida hacia `sideInk`). Las sombras son la silueta de cada pieza corrida por el sol, pintada de una sola vez para que no se oscurezca donde dos piezas se cruzan. Los rótulos (`sign`) no se levantan, y lo que es luz (`noShadow`) no tira sombra.",
     "sideInk": "#15131a",
     "sideK": 0.42,

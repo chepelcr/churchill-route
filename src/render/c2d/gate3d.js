@@ -14,7 +14,7 @@ import { state } from "../../game/state.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { makeRig, withShadowLayer } from "./rig3d.js";
 import { sunShadow } from "./shadows.js";
-import { queueBodyLike } from "./bodies.js";
+import { queueOverLike } from "./bodies.js";
 import { ctx } from "./gfx.js";
 
 /**
@@ -42,7 +42,9 @@ export function drawGate3d(x, y, ang, wPx, text, S, inks) {
   if (sun.alpha > 0) withShadowLayer(ctx, x, y, reach, sun.alpha * (S.shadowAlpha ?? 0.5), (g) => {
     const R = makeRig(g, x, y, ang, ppm, state.cam, "sun", S.shade, H); form(R, g); R.flush();
   });
-  queueBodyLike({ x, y, paint: () => { const R = makeRig(ctx, x, y, ang, ppm, state.cam, "cam", S.shade, H); form(R, ctx); R.flush(); } });
+  // EL CARRO PASA POR DEBAJO: postes y tablero se pintan después del jugador (`flushOverBodies`);
+  // la sombra, que es del suelo, se queda arriba con las demás
+  queueOverLike({ x, y, paint: () => { const R = makeRig(ctx, x, y, ang, ppm, state.cam, "cam", S.shade, H); form(R, ctx); R.flush(); } });
 }
 
 // el texto sobre la cara v = vf del tablero, de u = -half a +half y de z0 a z1 (metros)

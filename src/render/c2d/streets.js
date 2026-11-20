@@ -280,6 +280,8 @@ function paintParcels(view, only = null) {
     // the footprint IS a building. Either way the ground is not ours to paint,
     // only the sponsor slot on top of it.
     if (P.whole || P.built) continue;
+    // un uso apagado en el registro (`parcels.uses.<use>.paint: false` — los patios) no pinta suelo
+    if (PROPS.parcels.uses[P.use]?.paint === false) continue;
     // Preserve the emitted polygon. Raster-owned parcels are vector-straightened
     // by the build (their exact cells still own collision and occupancy), so a
     // diagonal manzana reads as one direct edge instead of 4 px stair steps.

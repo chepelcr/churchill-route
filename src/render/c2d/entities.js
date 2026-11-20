@@ -413,7 +413,11 @@ function drawTargetCustomer(t) {
   const P = ACTORS.person3d.customer, pulse = P.ringPx + Math.sin(t * 1000 * P.pulseRate) * P.pulsePx;
   ctx.fillStyle = r.pad; ctx.beginPath(); ctx.arc(c.x, c.y, P.padPx, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = r.ring; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c.x, c.y, pulse, 0, Math.PI * 2); ctx.stroke();
-  paintPerson3d({ ...c, ph: t * 4 }, { body: r.body, skin: r.skin, shadow: r.shadow, wave: true });
+  // MIRA AL CARRO QUE LE TRAE EL PEDIDO. Se pinta una copia por cuadro, y una copia no recuerda hacia
+  // dónde se movió: sin rumbo propio caía al respaldo de `facingOf` y giraba a un ángulo nuevo cada
+  // cuadro — la clienta temblaba en su plataforma.
+  const p = state.p, ang = p ? Math.atan2(p.y - c.y, p.x - c.x) : 0;
+  paintPerson3d({ ...c, ang, ph: t * 4 }, { body: r.body, skin: r.skin, shadow: r.shadow, wave: true });
 }
 
 // THE VEHICLE SPRITE IS AN INTERPRETER NOW.

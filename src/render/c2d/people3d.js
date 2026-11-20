@@ -43,7 +43,9 @@ function facingOf(pe) {
   }
   if (pe._fa != null) return pe._fa;
   if (pe.nx || pe.ny) return Math.atan2(pe.ny || 0, pe.nx || 0);
-  return hash01((pe.hue || 0) * 0.37 + (pe.ph || 0)) * TAU;
+  // …y si nunca se movió, un rumbo QUIETO por su lugar y su color. Con `ph` adentro —que corre cada
+  // cuadro— la persona giraba a un ángulo al azar en cada cuadro: temblaba.
+  return hash01((pe.hue || 0) * 0.37 + Math.round(pe.x || 0) * 0.013 + Math.round(pe.y || 0) * 0.007) * TAU;
 }
 
 /**

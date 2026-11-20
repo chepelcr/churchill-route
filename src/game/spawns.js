@@ -278,7 +278,7 @@ export function advancePed(pe, dt) {
     // plaza, un lote, el final de una cuadra— seguía de largo por dentro de la manzana.
     else if (!onAcera(r, pe.s, pe.off)) {
       pe.s -= pe.v * dt; pe.v = -pe.v;
-      if (++pe.stuck > 30) pe.dead = true;
+      if (++pe.stuck > 2) pe.dead = true;   // sin acera para ningún lado: que no tiemble, que se vaya
     } else pe.stuck = 0;
   }
   const pt = roadPointAt(r, pe.s);
@@ -621,7 +621,9 @@ export function advanceFieldPed(pe, dt) {
     const dx = pe.x - other.x, dy = pe.y - other.y;
     const d2 = dx * dx + dy * dy;
     if (d2 >= FAN_GAP * FAN_GAP || d2 < 1e-6) continue;
-    const d = Math.sqrt(d2), push = (FAN_GAP - d) * 0.5;
+    // SUAVE, y por tiempo: media superposición de golpe en cada cuadro hacía que dos que caminan uno
+    // hacia el otro se empujaran y volvieran cuadro a cuadro — en la cancha se veían temblar.
+    const d = Math.sqrt(d2), push = (FAN_GAP - d) * Math.min(0.5, dt * 2.5);
     const px = pe.x + (dx / d) * push, py = pe.y + (dy / d) * push;
     if (deepInside(px, py, S.footprint, pe.inset || 0)) { pe.x = px; pe.y = py; }
     else pe.ang = Math.atan2(-dy, -dx);   // pinned against the edge: turn away

@@ -370,6 +370,10 @@ const overQueue = [];
 /** Encola cualquier otra cosa que se pinta con los cuerpos (un asta): `{x, y, paint(ppm)}`. */
 export function queueBodyLike(o) { queue.push({ S: o, other: true }); }
 
+/** …y lo mismo, pero ENCIMA del carro: un arco de entrada bajo el que el carro pasa (`gate3d.js`).
+ *  Encolado con los cuerpos, el carro le pasaba POR ENCIMA al rótulo de la feria y al del muelle. */
+export function queueOverLike(o) { overQueue.push({ S: o, other: true }); }
+
 const built = new WeakMap();
 /**
  * Arma (una vez) un cuerpo de receta —`world-props.json → bodies`— parado en (x, y) de mundo y
@@ -414,6 +418,7 @@ export function flushOverBodies() {
   // CON EL CARRO DEBAJO, EL TOLDO SE VUELVE TRANSLÚCIDO: el jugador tiene que verse recogiendo
   const p = state.p, pad = M.overUnderPadPx;
   for (const q of overQueue) {
+    if (q.other) { q.S.paint(ppm); continue; }
     VARS = q.vars;
     const under = p && p.x > q.S.x0 - pad && p.x < q.S.x1 + pad && p.y > q.S.y0 - pad && p.y < q.S.y1 + pad;
     if (under) { ctx.save(); ctx.globalAlpha = M.overUnderAlpha; }

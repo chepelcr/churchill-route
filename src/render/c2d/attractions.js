@@ -207,7 +207,7 @@ function drawRide3d(A, spec, r, t, ph) {
   // los edificios (lineal sin tope, la rueda en la orilla de la vista se estiraba cien píxeles)
   const lift = (hM) => local(parallaxOffset(state.cam, A.x, A.y, hM, ppm));
   const sun = sunShadow(1), V = spec.view3d || {}, rM = r / ppm;
-  const signs = spec.parts.filter((p) => p.shape === "sign");
+  const signs = V3.signs === false ? [] : spec.parts.filter((p) => p.shape === "sign");
   const enter = (g) => { g.translate(A.x, A.y); if (rot) g.rotate(rot); };
   const drawSigns = () => { ctx.save(); enter(ctx); for (const p of signs) drawPart(ctx, p, r, t, ph, A, spec); ctx.restore(); };
   const lit = sun.alpha > 0 && (sun.dx || sun.dy);

@@ -104,7 +104,8 @@ function paintMosaic(T, cap, o, ppm) {
     u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
   }
   const P = (u, v) => [ox + ex * u + nx * v, oy + ey * u + ny * v];
-  const quad = (path, pp) => { path.moveTo(pp[0][0], pp[0][1]); for (let k = 1; k < 4; k++) path.lineTo(pp[k][0], pp[k][1]); path.closePath(); };
+  // sin `closePath`: sólo se rellenan, y en un camino de cientos de losetas el cierre es cuadrático (ver `paintShadow`)
+  const quad = (path, pp) => { path.moveTo(pp[0][0], pp[0][1]); for (let k = 1; k < 4; k++) path.lineTo(pp[k][0], pp[k][1]); };
   const alt = new Path2D(), rhomb = [new Path2D(), new Path2D()], dot = new Path2D(), grout = new Path2D();
   for (let i = Math.floor(u0 / s); i * s < u1; i++) for (let j = Math.floor(v0 / s); j * s < v1; j++) {
     const a = i * s, b = j * s, c = (i + j) & 1, m = s / 2;
@@ -351,10 +352,14 @@ function paintTruss(T, at) {
 function paintShadow(S) {
   let alpha = 0;
   ctx.beginPath();
+  // SIN `closePath`: este camino es sólo para RELLENAR, y `fill()` cierra cada subcamino por su cuenta
+  // —mismos píxeles—. En Chromium cada `closePath` cuesta proporcional al largo del camino entero, así
+  // que con cientos de costados en un solo camino el cierre explícito se vuelve CUADRÁTICO: medido,
+  // 1 600 cuadriláteros son 16,6 ms con cierre y 0,29 sin él, y estas sombras eran 4 ms de cuadro
+  // en el centro (ver `tools/bench-closepath.mjs`).
   const poly = (pts, dx, dy) => {
     ctx.moveTo(pts[0] + dx, pts[1] + dy);
     for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i] + dx, pts[i + 1] + dy);
-    ctx.closePath();
   };
   for (const T of S.tiers) {
     // `noShadow`: lo tapa la sombra de otro (los escalones de una grada, que tira su sombra de una vez
@@ -376,7 +381,6 @@ function paintShadow(S) {
       } else {
         ctx.moveTo(px, py); ctx.lineTo(px + sh.dx, py + sh.dy); ctx.lineTo(qx + sh.dx, qy + sh.dy); ctx.lineTo(qx, qy);
       }
-      ctx.closePath();
     }
   }
   if (!alpha) return;

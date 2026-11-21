@@ -32,6 +32,7 @@ import { drawPuntaGates, drawPuntaNight } from "./c2d/punta.js";
 import { drawCentroStructures } from "./c2d/centro.js";
 import { beginFloraBatch, endFloraBatch } from "./c2d/flora.js";
 import { flushOverBodies } from "./c2d/bodies.js";
+import { beginShadowBatch, flushShadowBatch } from "./c2d/rig3d.js";
 import {
   drawAnimal, drawArcadeCoin, drawBeachBall, drawBoat, drawCar, drawGull, drawGullFlock, drawPed, drawSchool,
   drawPlayer, drawPlayerCarrying, drawTargetCustomer, drawTrain, drawVendor,
@@ -72,6 +73,17 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     const now = performance.now();
     prof[key] = (prof[key] || 0) + now - phaseT;
     phaseT = now;
+    splitT = now;
+  };
+  // …y dentro de una fase, sus PARTES (`ePeds`, `eTraffic`, `eCentro`…) con su propio reloj, para que
+  // la fase siga midiendo la sección entera. Así se encontró que la cola de cuerpos 3D era el 60 % del
+  // render en el centro y la gente y el tráfico menos de medio milisegundo.
+  let splitT = phaseT;
+  const split = (key) => {
+    if (!prof) return;
+    const now = performance.now();
+    prof[key] = (prof[key] || 0) + now - splitT;
+    splitT = now;
   };
   // `lastT` alimenta `timeMs`, que es un contrato con nombre que los registros
   // de actores usan en MILISEGUNDOS (`rate` está afinado ahí). El arreglo no es
@@ -136,6 +148,10 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   // El manglar: ground, so it goes with the world pass — over the land
   // silhouette (it grows out of the bank, not behind it) and under the channel,
   // the boats and everything the crossing floats on top of them.
+  // LAS SOMBRAS DEL MOBILIARIO 3D, EN LOTE (`rig3d.js → withShadowLayer`): las bancas, las paradas, los
+  // arcos, las barricadas y los juegos de la feria se componen juntos al final de los hitos, en vez de
+  // una capa por cuerpo. Cierra ANTES de las copas de las escenas: las sombras van bajo los árboles.
+  beginShadowBatch();
   drawMangroves(view, t);
   drawChannel(view, t); // la corriente + las boyas: the estero's navigable lane
   drawPiers(view);      // the muelles, each a polyline deck over the water
@@ -180,6 +196,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     if (lo.x < view.x0 - 60 || lo.x > view.x1 + 60 || lo.y < view.y0 - 60 || lo.y > view.y1 + 60) continue;
     drawLote(lo);
   }
+  flushShadowBatch(ctx);
   endFloraBatch();
   phase("landmarks");
   // Pedestrians, traffic (Pixi's in hybrid mode)
@@ -201,6 +218,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       if (pe.y < view.y0 - 20 || pe.y > view.y1 + 20) continue;
       drawPed(pe);
     }
+    split("ePeds");
     // …and the ball each mejenga is played with, among its players
     for (const G of beachGames) {
       if (G.ball.x < view.x0 - 20 || G.ball.x > view.x1 + 20) continue;
@@ -229,6 +247,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       if (car.y < view.y0 - 20 || car.y > view.y1 + 20) continue;
       drawCar(car);
     }
+    split("eTraffic");
     for (const tr of trains) {
       if (tr.x < view.x0 - 140 || tr.x > view.x1 + 140 || tr.y < view.y0 - 140 || tr.y > view.y1 + 140) continue;
       drawTrain(tr, t);
@@ -239,6 +258,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   // que camina por ahí está tapado de verdad; pintado después, un peatón salía parado en el techo.
   // Nunca tapa lo que está delante, porque un cuerpo sólo se corre alejándose de la cámara.
   drawCentroStructures(view);   // el tanque, el Palacio, la Catedral y lo demás que se levanta
+  split("eCentro");
   // Arcade collectable coins on the streets
   if (!state.attract && state.arcadeCoins && state.arcadeCoins.length) {
     for (const c of state.arcadeCoins) {
@@ -260,8 +280,10 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     if (OVERLAY) drawPlayerCarrying(state.p, state.veh);
     else drawPlayer(state.p, state.veh);
   }
+  split("ePlayer");
   // los toldos de los quioscos: el carro entra DEBAJO a recoger (`bodies.js → flushOverBodies`)
   flushOverBodies();
+  split("eOverBodies");
   // True over-player layer. Covered lanes and stadium roofs live here while
   // physics independently decides whether the vehicle may drive below them.
   drawEditorWorld(view, "roofs");

@@ -21,6 +21,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   const [spd, setSpd] = useState(Math.round(tuning.speed * 100));
   const [zoom, setZoom] = useState(Math.round(tuning.zoom * 100));
   const [poi, setPoi] = useState(tuning.poiNames);
+  const [res, setRes] = useState(tuning.resolutionLevel());
   const [confirming, setConfirming] = useState(false);
   const [, bump] = useState(0);
   useEffect(() => iap.onChange(() => bump((n) => n + 1)), []);
@@ -140,6 +141,20 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
             onClick={() => { const v = !poi; setPoi(v); tuning.setPoiNames(v); sfx.play("menu_select"); }}>
             {poi ? t("select.yes") : t("select.no")}
           </button>
+        </div>
+      </div>
+    ),
+    resolution: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.resolution")}</span>
+        <div className="lang-toggle">
+          <span className="set-desc">{t("settings.resolution.desc")}</span>
+          {tuning.resolutionLevels.map((level) => (
+            <button key={level} className={"btn " + (res === level ? "gold" : "secondary")}
+              onClick={() => { tuning.setResolution(level); setRes(level); sfx.play("menu_select"); }}>
+              {t(`settings.resolution.${level}`)}
+            </button>
+          ))}
         </div>
       </div>
     ),

@@ -580,5 +580,15 @@
     "maxOffsetPx": 26.0,
     "wallMixLit": 0.3,
     "wallMixDark": 0.65
+  },
+  "_resolution": "LA RESOLUCIÓN DEL LIENZO, que el jugador escoge en Ajustes (`tuning.resolution` → `c2d/gfx.js → setupCanvas`). Es CUÁNTOS píxeles de lienzo hay por píxel CSS, con el `devicePixelRatio` del aparato como techo: un teléfono en horizontal mide ~900x400 CSS y a 2× el juego rasteriza 1,4 millones de píxeles por cuadro — todo relleno, sombra y trazo cuesta en proporción a eso, y en un WebView de gama media es lo que más pesa. A 1,5× es el 56 % de los píxeles y a 1× el 25 %. NO toca el encuadre ni la geometría, sólo la nitidez: el mundo es el mismo y se ve un poco más suave. El APK arranca en `defaultNative` porque ahí el cuadro es lo que se nota; la web en `defaultWeb`, que es lo que siempre tuvo.",
+  "resolution": {
+    "levels": {
+      "alta": 2.0,
+      "media": 1.5,
+      "baja": 1.0
+    },
+    "defaultWeb": "alta",
+    "defaultNative": "media"
   }
 }

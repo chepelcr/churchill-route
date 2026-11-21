@@ -126,12 +126,72 @@ export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
 // pantalla) y se compone con alfa UNA vez: así no se oscurece donde dos piezas se cruzan.
 // `g` es el lienzo destino (con su transformación de mundo); `draw(sg)` pinta la silueta en `sg`,
 // que ya trae esa misma transformación.
+//
+// …Y CON UN LOTE ABIERTO, SE COMPONE UNA VEZ POR LOTE, NO POR CUERPO. Componer un lienzo sobre otro
+// con `drawImage` obliga al navegador a terminar de pintar el primero antes de leerlo: medido, cada
+// capa costaba de 0,3 a 1 ms FIJOS, del tamaño que fuera, y el Paseo llegó a pedir noventa por cuadro
+// (en un teléfono, con la GPU, esa sincronización es todavía más cara). Entre `beginShadowBatch` y
+// `flushShadowBatch` cada silueta se pinta opaca en un lienzo compartido del tamaño de la vista —uno
+// por cada alfa, que son tres o cuatro: el sol por la constante de cada clase de cosa— y se compone
+// al cerrar. Lo único que cambia es que dos sombras VECINAS que se montan ya no se oscurecen dos
+// veces, que es la misma regla que dentro de un cuerpo y la de `bodies.js → paintShadow`.
+//
+// Sólo vale para quien ENCOLA su cuerpo (lo pinta `flushBodies`, después): quien pinta el cuerpo
+// enseguida de su sombra —el ferri, su casco bajo— pide `immediate`, o la sombra le caería encima.
 let shadowCanvas = null;
-export function withShadowLayer(g, x, y, radiusPx, alpha, draw) {
+const batch = { open: false, layers: new Map() };   // alfa → { canvas, g, alpha, x0, y0, x1, y1 }
+
+/** Abre un lote: las sombras que siguen se juntan hasta `flushShadowBatch`. */
+export function beginShadowBatch() { batch.open = true; }
+
+/** Compone lo juntado sobre `g` (una vez por alfa) y cierra el lote. */
+export function flushShadowBatch(g) {
+  batch.open = false;
+  for (const L of batch.layers.values()) {
+    if (!(L.x1 > L.x0)) continue;
+    const w = L.x1 - L.x0, h = L.y1 - L.y0;
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = L.alpha;
+    g.drawImage(L.canvas, L.x0, L.y0, w, h, L.x0, L.y0, w, h); g.restore();
+    L.g.setTransform(1, 0, 0, 1, 0, 0); L.g.clearRect(L.x0, L.y0, w, h);
+    L.x0 = L.y0 = Infinity; L.x1 = L.y1 = -Infinity;
+  }
+}
+
+function batchLayer(g, alpha) {
+  const key = Math.round(alpha * 1000);
+  let L = batch.layers.get(key);
+  if (!L) {
+    const canvas = document.createElement("canvas");
+    L = { canvas, g: canvas.getContext("2d"), alpha, x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    batch.layers.set(key, L);
+  }
+  L.alpha = alpha;
+  const W = g.canvas.width, H = g.canvas.height;
+  if (L.canvas.width !== W || L.canvas.height !== H) {
+    L.canvas.width = W; L.canvas.height = H;   // redimensionar ya lo deja en blanco
+    L.x0 = L.y0 = Infinity; L.x1 = L.y1 = -Infinity;
+  }
+  return L;
+}
+
+export function withShadowLayer(g, x, y, radiusPx, alpha, draw, immediate = false) {
   if (typeof document === "undefined") return;
   const m = g.getTransform(), sc = Math.hypot(m.a, m.b), c = m.transformPoint({ x, y });
   const R = radiusPx * sc, bx = Math.floor(c.x - R), by = Math.floor(c.y - R), w = Math.ceil(2 * R), h = w;
   if (w <= 0) return;
+  if (batch.open && !immediate && g.canvas) {
+    const L = batchLayer(g, alpha), cw = L.canvas.width, ch = L.canvas.height;
+    const x0 = Math.max(0, bx), y0 = Math.max(0, by), x1 = Math.min(cw, bx + w), y1 = Math.min(ch, by + h);
+    if (x1 <= x0 || y1 <= y0) return;   // fuera de la vista: nada que juntar
+    L.x0 = Math.min(L.x0, x0); L.y0 = Math.min(L.y0, y0); L.x1 = Math.max(L.x1, x1); L.y1 = Math.max(L.y1, y1);
+    // el mismo recorte que el lienzo propio: lo que la silueta pinte fuera de su caja no existía antes
+    L.g.save(); L.g.setTransform(1, 0, 0, 1, 0, 0);
+    L.g.beginPath(); L.g.rect(x0, y0, x1 - x0, y1 - y0); L.g.clip();
+    L.g.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+    draw(L.g);
+    L.g.restore();
+    return;
+  }
   if (!shadowCanvas) shadowCanvas = document.createElement("canvas");
   if (shadowCanvas.width < w) shadowCanvas.width = w;
   if (shadowCanvas.height < h) shadowCanvas.height = h;

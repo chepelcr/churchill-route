@@ -78,12 +78,58 @@ function roadPointAt(r, s) {
   const x1 = pts[i * 2], y1 = pts[i * 2 + 1];
   return { x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t, ang: Math.atan2(y1 - y0, x1 - x0) };
 }
-// Place the car at its (road, s, dir, lane): right-hand side of travel.
+// UNA CALZADA DE UNA AVENIDA DIVIDIDA NO ES UNA CALLE DE DOBLE SENTIDO. El Paseo León Cortés viene de
+// OSM como DOS polilíneas, una por sentido, a ~22 px una de otra con la mediana arbolada en medio — y
+// cada una se estampa con el ancho entero de la avenida (81 px). El tráfico las trataba como calles
+// sueltas: sentido al azar y `w/4` a la derecha, así que la mitad de los carros quedaba corrida justo
+// ENCIMA de la mediana, pasando por los árboles. La calzada se reconoce porque tiene una mediana del
+// mundo (`tile.medians`) a UN lado de su eje y no encima: en el Paseo de los Turistas, que es una sola
+// polilínea de doble sentido con la mediana al centro, el promedio da ~0 px y no cambia nada; en las
+// dos calzadas de León Cortés, de 5 a 11 px. Devuelve de qué lado de la marcha HACIA ADELANTE de la
+// polilínea queda la mediana (+1 la derecha, -1 la izquierda) o 0 si no es una calzada.
+const MEDIAN_SIDE_MIN_PX = 3;   // por debajo, la mediana va sobre el eje: calle de doble sentido
+function medianSide(r) {
+  if (r._medianSide !== undefined) return r._medianSide;
+  const p = r.pts, n = p.length / 2, reach = r.w / 2;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < p.length; i += 2) {
+    x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); y0 = Math.min(y0, p[i + 1]); y1 = Math.max(y1, p[i + 1]);
+  }
+  const medians = [];
+  for (const t of W.visibleTiles(x0 - reach, y0 - reach, x1 + reach, y1 + reach))
+    for (const m of t.medians || []) if (!medians.includes(m)) medians.push(m);
+  let sum = 0, hits = 0;
+  if (medians.length) for (let k = 0; k + 1 < n; k++) {
+    const ax = p[k * 2], ay = p[k * 2 + 1], bx = p[k * 2 + 2], by = p[k * 2 + 3];
+    const mx = (ax + bx) / 2, my = (ay + by) / 2, L = Math.hypot(bx - ax, by - ay) || 1;
+    const nx = -(by - ay) / L, ny = (bx - ax) / L;   // la derecha de la marcha (y crece hacia abajo)
+    let best = Infinity, off = 0;
+    for (const m of medians) {
+      const q = m.pts;
+      for (let i = 0; i + 3 < q.length; i += 2) {
+        const dx = q[i + 2] - q[i], dy = q[i + 3] - q[i + 1], l2 = dx * dx + dy * dy || 1;
+        const u = Math.max(0, Math.min(1, ((mx - q[i]) * dx + (my - q[i + 1]) * dy) / l2));
+        const cx = q[i] + dx * u - mx, cy = q[i + 1] + dy * u - my, d = Math.hypot(cx, cy);
+        if (d < best) { best = d; off = cx * nx + cy * ny; }
+      }
+    }
+    if (best < reach) { sum += off; hits++; }
+  }
+  const avg = hits ? sum / hits : 0;
+  return (r._medianSide = Math.abs(avg) > MEDIAN_SIDE_MIN_PX ? Math.sign(avg) : 0);
+}
+// el sentido que una calzada permite: el que deja la mediana a la IZQUIERDA (se maneja por la derecha)
+const carriagewayDir = (r) => -medianSide(r);
+
+// Place the car at its (road, s, dir, lane): right-hand side of travel — and
+// on a carriageway, always AWAY from the median, whatever way the car points.
 function placeCarOnRoad(c) {
   const pt = roadPointAt(c.road, c.s);
   const a = c.dir > 0 ? pt.ang : pt.ang + Math.PI;
-  c.x = pt.x + Math.cos(a + Math.PI / 2) * c.lane;
-  c.y = pt.y + Math.sin(a + Math.PI / 2) * c.lane;
+  const side = medianSide(c.road);
+  const n = side ? pt.ang + Math.PI / 2 : a + Math.PI / 2, lane = side ? -side * c.lane : c.lane;
+  c.x = pt.x + Math.cos(n) * lane;
+  c.y = pt.y + Math.sin(n) * lane;
   c.ang = a;
 }
 // Roads end at OSM way ends — i.e. intersections, which are constantly
@@ -120,6 +166,9 @@ function findNextRoad(c) {
       else if (Math.hypot(b1.x - E.x, b1.y - E.y) <= EPS_JOIN) cands.push({ road: r2, dir: -1 });
     }
   if (!cands.length) return null;
+  // una calzada se toma sólo en su sentido; si no queda otra salida, cualquiera (mejor eso que morir)
+  const legal = cands.filter((k) => !medianSide(k.road) || k.dir === carriagewayDir(k.road));
+  if (legal.length) cands.splice(0, cands.length, ...legal);
   // UN CARRO CUALQUIERA DOBLA AL AZAR; UNO CON RUMBO, HACIA SU DESTINO. `aim`
   // es el punto al que este vehículo va — hoy lo pone el bus con su próxima
   // parada. No es una búsqueda de camino: el cliente no tiene el grafo de
@@ -193,7 +242,7 @@ function spawnOneCar() {
   const main = MAIN_ROAD.has(r.cls);
   const car = {
     road: r, s: 20 + Math.random() * (r.len - 40),
-    dir: Math.random() < 0.5 ? 1 : -1,
+    dir: carriagewayDir(r) || (Math.random() < 0.5 ? 1 : -1),
     lane: r.w >= 30 ? r.w / 4 : 0, // wide street: keep to your side; narrow: center
     v: main ? 70 + Math.random() * 40 : 48 + Math.random() * 28,
     color: CAR_PALETTE[(Math.random() * CAR_PALETTE.length) | 0],

@@ -29,7 +29,7 @@ import { paintMaleconPattern } from "./systemShapes.js";
 import { BALDOSA_PX } from "./malecon.js";
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { liftPoint, parallaxOffset } from "./depth.js";
-import { makeRig, withShadowLayer } from "./rig3d.js";
+import { beginShadowBatch, flushShadowBatch, makeRig, withShadowLayer } from "./rig3d.js";
 import { drawGate3d } from "./gate3d.js";
 import { drawBlock3d, drawLounger3d, drawRaisedStroke3d, drawTent3d } from "./furniture3d.js";
 import { state } from "../../game/state.js";
@@ -300,7 +300,13 @@ function stonesAlong(pts, step, r, ink) {
   }
 }
 function arcPts(x, y, r, a0, a1, n = 24) { const out = []; for (let k = 0; k <= n; k++) { const a = a0 + (a1 - a0) * k / n; out.push(x + Math.cos(a) * r, y + Math.sin(a) * r); } return out; }
-function paintMuellero(Q, ppm) {
+// UNA BANCA FUERA DE LA VISTA NO SE DIBUJA. Las medialunas y los abanicos se recorrían enteros cada
+// cuadro —ochenta bancas, cada una con su sombra y su cuerpo en la cola de `flushBodies`— aunque en
+// pantalla hubiera cuatro. El margen cubre lo que la sombra y el pinhole corren una banca.
+const BLOCK_MARGIN_PX = 80;
+const inViewPt = (v, x, y, m) => x > v.x0 - m && x < v.x1 + m && y > v.y0 - m && y < v.y1 + m;
+
+function paintMuellero(Q, ppm, view = null) {
   const C = M.muellero, stoneR = C.stoneM * ppm / 2, stoneStep = C.stoneEveryM * ppm;
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   if (Q.plaza) { const p = Q.plaza; ctx.fillStyle = C.plaza; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, p.ang - Math.PI / 2, p.ang + Math.PI / 2); ctx.closePath(); ctx.fill(); }
@@ -362,6 +368,7 @@ function paintMuellero(Q, ppm) {
   }
   // las bancas de las medialunas: bloques blancos en su arco, girados con él
   for (const q of Q.pancitas) for (const [x, y, a] of q.benches || []) {
+    if (view && !inViewPt(view, x, y, BLOCK_MARGIN_PX)) continue;   // fuera de la vista no se encola nada
     drawBlock3d(x, y, a, C.benchM[0], C.benchM[1], C3.benchM, { top: C.bench, side: C3.benchSide }, BENCH3D);
   }
 }
@@ -560,7 +567,8 @@ function drawPunta(view, t = 0) {
   if (P.yard) {
     const Y = M.yard; ctx.fillStyle = Y.asphalt; ctx.fill(shape(P.yard));
     // LOS TOLDOS SON CUERPOS (`furniture3d.js → drawTent3d`): postes y techo de cuatro faldones
-    if (Y.view3d) for (const tn of P.yard.tents) drawTent3d(tn.x, tn.y, tn.s, Y.view3d, Y.tent);
+    // sus sombras en UN lote, compuesto aquí mismo: lo que sigue de este suelo va encima (`rig3d.js`)
+    if (Y.view3d) { beginShadowBatch(); for (const tn of P.yard.tents) drawTent3d(tn.x, tn.y, tn.s, Y.view3d, Y.tent); flushShadowBatch(ctx); }
     else for (const tn of P.yard.tents) {
       ctx.fillStyle = Y.tentShadow; ctx.fillRect(tn.x - tn.s / 2 + 3, tn.y - tn.s / 2 + 4, tn.s, tn.s);
       ctx.fillStyle = Y.tent; ctx.fillRect(tn.x - tn.s / 2, tn.y - tn.s / 2, tn.s, tn.s);
@@ -611,6 +619,7 @@ function drawPunta(view, t = 0) {
       const bx = f.x + ex * f.r * M.fan.benchAlong - ey * side * off;
       const by = f.y + ey * f.r * M.fan.benchAlong + ex * side * off;
       // un bloque de concreto blanco con su altura (`fan.benchHM`), a lo largo del canto
+      if (!inViewPt(view, bx, by, BLOCK_MARGIN_PX)) continue;
       drawBlock3d(bx, by, e, bl, bw, M.fan.benchHM, { top: M.fan.bench, side: M.fan.benchSide }, BENCH3D);
     }
   }
@@ -667,7 +676,7 @@ function drawPunta(view, t = 0) {
   for (const f of P.fun || []) paintFun(f, ppm, t);
   for (const rf of P.roofs || []) paintRoof(rf, ppm);
   for (const mo of P.monuments || []) paintMonument(mo, ppm);
-  if (P.muellero) paintMuellero(P.muellero, ppm);
+  if (P.muellero) paintMuellero(P.muellero, ppm, view);
   // la hora: UN velo sobre todo el suelo del lugar, en un solo relleno para
   // que donde dos figuras se montan no oscurezca dos veces
   // (el deck y el parqueo van DENTRO de otra figura: sumarlos abriría un hueco

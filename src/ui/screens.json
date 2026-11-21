@@ -389,6 +389,11 @@
           "region": "gameplay"
         },
         {
+          "id": "resolution",
+          "region": "gameplay",
+          "note": "la densidad del lienzo: la perilla de rendimiento que más pesa en un teléfono (`effects.json → resolution`)"
+        },
+        {
           "id": "removeAds",
           "region": "account"
         },

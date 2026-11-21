@@ -6,6 +6,7 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { skyBlend } from "../../game/daynight.js";
 import { computeZoom, resizeCamera, VIEW_WIDTH_PX } from "../camera.js";
+import { tuning } from "../../game/tuning.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import {
   areaLabel as rawAreaLabel, ctxRotation as rawCtxRotation, hash01,
@@ -37,7 +38,8 @@ const ACERA_PX = W.ACERA_PX;
 function setupCanvas(c) {
   canvas = c; ctx = c.getContext("2d");
   const resize = () => {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // la densidad del lienzo la escoge el jugador (`tuning.resolution`); el aparato es el techo
+    dpr = Math.min(window.devicePixelRatio || 1, tuning.resolutionScale());
     const w = c.clientWidth, h = c.clientHeight;
     c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
     ZOOM = resizeCamera(w, h);

@@ -263,8 +263,18 @@ renderer (the "view") lives behind a seam so backends can be swapped.
   samplers, building spatial hash, silhouettes).
 - `src/render/` — `Renderer.js` is the seam and `camera.js` is the ONE camera
   authority shared by its backends. `canvas2d.js` paints the complete shipped
-  world; the transparent `pixi/` layer above carries migrated landmark
-  structures (currently none are owned there). **THERE IS NO three.js LAYER
+  world; the transparent `pixi/` layer above would carry migrated landmark
+  structures, but none are owned there, so it is **OPT-IN** (`?pixi`) since
+  2026-11-21 — on by default it was an empty full-screen WebGL layer composited
+  over every frame, a quarter of the frame at 2× density.
+  **`closePath` IS QUADRATIC IN CHROMIUM** on a path with many subpaths: each
+  call costs in proportion to the whole path. A path that is only FILLED needs
+  none (`fill()` closes every subpath itself, same pixels) — that alone was 60 %
+  of the render in the centro (`bodies.js → paintShadow`;
+  `node tools/bench-closepath.mjs`). And a shadow painted on its own canvas and
+  composited with `drawImage` costs a fixed sync per call: open a
+  `beginShadowBatch`/`flushShadowBatch` around anything that does it in a loop
+  (`rig3d.js → withShadowLayer`). **THERE IS NO three.js LAYER
   ANY MORE — the 2.5D is Canvas's own, and it is the only mode** (2026-11-17).
   The opt-in three.js view (`?render=3d`, Ajustes → «Vista 2.5D (beta)») was
   retired with its setting: the code lives at the tag `3d-attempt-2026-09-29`

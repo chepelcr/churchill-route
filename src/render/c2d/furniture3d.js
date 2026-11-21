@@ -83,10 +83,45 @@ export function drawPoleSign3d(rec, x, y, vars) {
  * UN BLOQUE PARA SENTARSE —la banca de concreto de las medialunas y de los abanicos—: una caja de
  * `lenM` x `depM` y `hM` de alto, con su tapa en `top` y sus caras en `side`. `V` da la sombra.
  */
+//
+// SU SOMBRA NO PASA POR `withShadowLayer`. Una caja sola al sol tira un prisma, y la sombra de un
+// prisma es la ENVOLVENTE CONVEXA de sus ocho esquinas proyectadas: un polígono, rellenado una vez,
+// ya no se oscurece donde se cruzan dos caras — que es todo lo que el lienzo aparte compraba. Y el
+// lienzo cuesta: el Paseo pinta ~80 de estas bancas, y cada una limpiaba un lienzo, dibujaba y lo
+// componía con `drawImage` — 6 ms de cuadro en el Paseo, más de un tercio del render.
 export function drawBlock3d(x, y, ang, lenM, depM, hM, inks, V) {
-  rigged(x, y, ang, hM, V, (lenM + hM) * PX_PER_M * 1.3, (R) => {
+  const ppm = PX_PER_M, sun = sunShadow(1);
+  if (sun.alpha > 0) boxShadowHull(x, y, ang, lenM * ppm / 2, depM * ppm / 2, sun.dx * hM, sun.dy * hM,
+    V.shade.shadow, sun.alpha * (V.shadowAlpha ?? 0.5));
+  queueBodyLike({ x, y, paint: () => {
+    const R = makeRig(ctx, x, y, ang, ppm, state.cam, "cam", V.shade, hM);
     R.at(hM, () => R.box(0, 0, 0, hM, lenM, depM, { top: inks.top, side: inks.side }));
-  });
+    R.flush();
+  } });
+}
+
+// la sombra de una caja (semiejes `hu`×`hv` px, girada `ang`) cuya tapa el sol corre (`sx`, `sy`) px
+function boxShadowHull(x, y, ang, hu, hv, sx, sy, ink, alpha) {
+  const c = Math.cos(ang), s = Math.sin(ang), P = [];
+  for (const [u, v] of [[hu, hv], [-hu, hv], [-hu, -hv], [hu, -hv]]) {
+    const px = x + u * c - v * s, py = y + u * s + v * c;
+    P.push([px, py], [px + sx, py + sy]);
+  }
+  // la cadena monótona de Andrew: ocho puntos, sin asignaciones de más
+  P.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const H = [];
+  for (const pass of [P, P.slice().reverse()]) {
+    const start = H.length;
+    for (const p of pass) {
+      while (H.length >= start + 2 && cross(H[H.length - 2], H[H.length - 1], p) <= 0) H.pop();
+      H.push(p);
+    }
+    H.pop();
+  }
+  ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = ink; ctx.beginPath();
+  H.forEach(([hx, hy], k) => (k ? ctx.lineTo(hx, hy) : ctx.moveTo(hx, hy)));
+  ctx.fill(); ctx.restore();
 }
 
 /**

@@ -7,14 +7,29 @@
 //           ahead), above 1 pushes it in.
 //   poiNames — draw the real Puntarenas business names over the map. On by
 //           default (the map reads as the real port), off for a clean view.
-// speed + zoom are offered up front during the tutorial; all three live in
+//   resolution — how many canvas pixels per CSS pixel, capped by the device
+//           (`effects.json → resolution`). The single biggest knob on a phone:
+//           everything the renderer fills costs per pixel. `null` = the
+//           platform default (lower in the APK), so a player who never touched
+//           it follows that default if it is ever retuned.
+// speed + zoom are offered up front during the tutorial; all four live in
 // Settings' GAMEPLAY section.
+import EFFECTS from "../assets/effects.json" with { type: "json" };
+
 const KEY = "churchill_tuning_v1";
+const RES = EFFECTS.resolution;
+const isNative = () => typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.();
 
 export const tuning = {
   speed: 1,
   zoom: 1,
   poiNames: true,
+  resolution: null,
+  /** the level in effect: the player's pick, or this platform's default */
+  resolutionLevel() { return this.resolution || (isNative() ? RES.defaultNative : RES.defaultWeb); },
+  /** canvas px per CSS px for the level in effect (the device's own ratio still caps it) */
+  resolutionScale() { return RES.levels[this.resolutionLevel()] || RES.levels[RES.defaultWeb]; },
+  resolutionLevels: Object.keys(RES.levels),
   load() {
     try {
       if (typeof localStorage === "undefined") return;
@@ -22,16 +37,24 @@ export const tuning = {
       if (typeof d.speed === "number" && d.speed >= 0.7 && d.speed <= 1.2) this.speed = d.speed;
       if (typeof d.zoom === "number" && d.zoom >= 0.6 && d.zoom <= 1.4) this.zoom = d.zoom;
       if (typeof d.poiNames === "boolean") this.poiNames = d.poiNames;
+      if (typeof d.resolution === "string" && d.resolution in RES.levels) this.resolution = d.resolution;
     } catch { /* private mode */ }
   },
   save() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
-        speed: this.speed, zoom: this.zoom, poiNames: this.poiNames,
+        speed: this.speed, zoom: this.zoom, poiNames: this.poiNames, resolution: this.resolution,
       }));
     } catch { /* private mode */ }
   },
   setPoiNames(v) { this.poiNames = !!v; this.save(); },
+  setResolution(level) {
+    if (!(level in RES.levels)) return;
+    this.resolution = level;
+    this.save();
+    // the canvas is sized on resize — re-run it so the new density applies now
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("resize"));
+  },
   setSpeed(v) {
     this.speed = Math.max(0.7, Math.min(1.2, v));
     this.save();

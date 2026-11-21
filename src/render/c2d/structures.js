@@ -795,14 +795,15 @@ function drawFerry(f, view) {
   const dims = { L: L / ppm, B: B / ppm, M };
   const run = (g, mode, keep) => { const R = makeRig(g, f.x, f.y, f.a, ppm, state.cam, mode, M.shade, M.gantryM + M.mastM); ferryForm(R, dims); R.flush(keep); };
   const sun = sunShadow(1);
-  if (sun.alpha > 0) withShadowLayer(ctx, f.x, f.y, (L + M.rampM * ppm) * 1.7, sun.alpha * M.shadowAlpha, (g) => run(g, "sun"));
+  // `immediate`: el casco bajo se pinta en la línea de abajo, no con los cuerpos (`rig3d.js → withShadowLayer`)
+  if (sun.alpha > 0) withShadowLayer(ctx, f.x, f.y, (L + M.rampM * ppm) * 1.7, sun.alpha * M.shadowAlpha, (g) => run(g, "sun"), true);
   run(ctx, "cam", (h) => h <= M.splitM);
   // LA CUBIERTA DE PASAJEROS (`model.upper`) se desvanece cuando el jugador va abajo con su carro:
   // se pinta opaca en su propia capa y se compone a `fadeK`, así no se transparenta pieza contra pieza
   const fadeFrom = M.superTopM + 0.02, under = M.upper && state.aboard != null && state.aboard === f.id;
   queueBodyLike({ x: f.x, y: f.y, paint: () => {
     run(ctx, "cam", (h) => h > M.splitM && (!under || h < fadeFrom));
-    if (under) withShadowLayer(ctx, f.x, f.y, (L + M.rampM * ppm) * 1.7, M.upper.fadeK, (g) => run(g, "cam", (h) => h >= fadeFrom));
+    if (under) withShadowLayer(ctx, f.x, f.y, (L + M.rampM * ppm) * 1.7, M.upper.fadeK, (g) => run(g, "cam", (h) => h >= fadeFrom), true);
     label(f.x, f.y - f.dw / 2 - 14, (f.vesselName || f.name).toUpperCase(), S.ferry.nameFg, S.ferry.nameBg);
   } });
 }

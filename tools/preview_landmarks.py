@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""LOS QUIOSCOS, ANTES DE PAGAR LA RECONSTRUCCIÓN.
+"""LOS HITOS QUE SE AUTORAN EN GEO, ANTES DE PAGAR LA RECONSTRUCCIÓN.
 
-    python3 tools/preview_kiosks.py [id …] [--out salida.json]
+    python3 tools/preview_landmarks.py [id …] [--out salida.json]
 
-Coloca los quioscos de `content/world/kiosks.json` con el código DE VERDAD del builder —la proyección
-del ancla, y el arranque del jugador con `placement.nearest_cell` sobre la calzada— encima del mundo YA
-EMITIDO, y escribe lo que saldría. Sin ids, toma los `exact`. `tools/shot-kiosk-preview.mjs` lo inyecta en el
-juego corriendo y saca la captura. No escribe nada en el mundo emitido.
+Coloca con el código DE VERDAD del builder, encima del mundo YA EMITIDO, lo que se autora como lat/lon y el
+build sólo proyecta, y escribe lo que saldría. `tools/shot-landmark-preview.mjs` lo inyecta en el juego
+corriendo y saca las capturas. No escribe nada en el mundo emitido. Sin ids, toma todo lo que sabe hacer:
 
-Sólo responde por los quioscos que el build NO empuja: los `exact` (el ancla es la posición final, ver
-`poi_stage.py`). Un quiosco sin `exact` pasa por `nudge_to_land` y por el asiento de frontera ANTES de que la
-plaza o la cuadra existan en el ráster, y el mundo emitido ya no es ese ráster: ahí el preview mentiría, y
-por eso se niega en vez de adivinar.
-
-La comprobación de que el mundo emitido sirve para esto la hace él mismo: recalcula el arranque del
-quiosco PUBLICADO desde su posición publicada, y si no da el mismo que el build emitió, avisa y sale.
+* LOS QUIOSCOS `exact` (`content/world/kiosks.json`): la proyección del ancla, y el arranque del jugador con
+  `placement.nearest_cell` sobre la calzada. Sólo los que el build NO empuja: un quiosco sin `exact` pasa por
+  `nudge_to_land` y por el asiento de frontera ANTES de que la plaza o la cuadra existan en el ráster, y el
+  mundo emitido ya no es ese ráster — ahí el preview mentiría, y por eso se niega en vez de adivinar. Que el
+  mundo emitido sirve lo comprueba él mismo: recalcula el arranque PUBLICADO desde la posición publicada.
+* LAS GRADERÍAS AUTORADAS de un estadio (`content/world/blocks.json → stands.quadsLL`): cada esquina con
+  `_project_geo_poly`, la misma función del build. Esas franjas son también la COLISIÓN de la gradería; el
+  preview muestra el arte, la pared llega con la reconstrucción.
 """
 import json
 import os
@@ -24,7 +24,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
-from churchill.world.content import KIOSK_DEFS  # noqa: E402
+from churchill.world.content import BLOCKS, KIOSK_DEFS  # noqa: E402
+from churchill.world.service.field import _project_geo_poly  # noqa: E402
 from churchill.world.enums.surface import CARRIAGEWAY  # noqa: E402
 from churchill.world.service.placement import nearest_cell  # noqa: E402
 from preview_feria import EmittedRaster  # noqa: E402
@@ -67,9 +68,8 @@ class _ReadBuf:
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    out = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else os.path.join(ROOT, "logs", "kiosk-preview.json")
-    args = [a for a in args if a != out]
+    out = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else os.path.join(ROOT, "logs", "landmark-preview.json")
+    args = [a for a in sys.argv[1:] if not a.startswith("--") and a != out]
     raster = EmittedRaster()
     raster.paved = {int(c) for c in CARRIAGEWAY}
     raster.buf = _ReadBuf(raster)
@@ -77,13 +77,11 @@ def main():
     project = lambda lat, lon: (geo["ax"] * lon + geo["bx"], geo["ay"] * lat + geo["by"])
     classes = {int(c) for c in CARRIAGEWAY}
     published = {l["id"]: l for l in raster.manifest["landmarks"]}
-    specs = [k for k in KIOSK_DEFS if (k["id"] in args if args else k.get("exact"))]
-    if not specs:
-        print("[kiosk-preview] ningún quiosco que previsualizar"); return 1
     recs = []
-    for spec in specs:
+    # ── los quioscos `exact` ──────────────────────────────────────────────────────────────────────
+    for spec in [k for k in KIOSK_DEFS if (k["id"] in args if args else k.get("exact"))]:
         if not spec.get("exact"):
-            print(f"[kiosk-preview] {spec['id']}: sin `exact` el build lo empuja sobre un ráster que el mundo "
+            print(f"[preview] {spec['id']}: sin `exact` el build lo empuja sobre un ráster que el mundo "
                   f"emitido ya no es — no se previsualiza"); return 1
         old = published.get(spec["id"])
         if old and old.get("spawn"):         # ¿el mundo emitido contesta como el ráster del build?
@@ -93,21 +91,33 @@ def main():
             again = nearest_cell(raster, old["x"], old["y"], classes, SPAWN_REACH)
             off = None if not again else max(abs(again[0] - old["spawn"][0]), abs(again[1] - old["spawn"][1]))
             if off is None or off > 2 * raster.cell + 1:
-                print(f"[kiosk-preview] {spec['id']}: el arranque publicado {old['spawn']} no sale de nuevo ({again}) — "
+                print(f"[preview] {spec['id']}: el arranque publicado {old['spawn']} no sale de nuevo ({again}) — "
                       f"el mundo emitido no sirve para este preview"); return 1
-            print(f"[kiosk-preview] {spec['id']}: el arranque publicado sale de nuevo a {off:.0f} px — el preview vale")
         x, y = project(*spec["ll"])
         x, y = round(x + spec.get("dx", 0)), round(y + spec.get("dy", 0))
         tgt = nearest_cell(raster, x, y, classes, SPAWN_REACH)
-        rec = {**(old or {}), "x": x, "y": y, "ang": spec.get("ang", (old or {}).get("ang", 0))}
+        rec = {"id": spec["id"], "x": x, "y": y, "ang": spec.get("ang", (old or {}).get("ang", 0))}
         if tgt:
             rec["spawn"] = [round(tgt[0]), round(tgt[1])]
         recs.append(rec)
         moved = f" (antes {old['x']},{old['y']})" if old else ""
-        print(f"[kiosk-preview] {spec['id']} -> {x},{y}{moved} ang {rec['ang']} arranque {rec.get('spawn')}")
+        print(f"[preview] quiosco {spec['id']} -> {x},{y}{moved} ang {rec['ang']} arranque {rec.get('spawn')}")
+    # ── las graderías autoradas ───────────────────────────────────────────────────────────────────
+    for spec in BLOCKS:
+        lid = spec.get("lm") or spec.get("id")
+        quads = (spec.get("stands") or {}).get("quadsLL")
+        if not quads or lid not in published or (args and lid not in args):
+            continue
+        new = [_project_geo_poly(project, q) for q in quads]
+        old = (published[lid].get("stands") or {}).get("quads") or []
+        changed = sum(1 for a, b in zip(new, old) if a != b) + abs(len(new) - len(old))
+        recs.append({"id": lid, "stands": {"quads": new}})
+        print(f"[preview] graderías {lid}: {len(new)} franja(s), {changed} distinta(s) de las publicadas")
+    if not recs:
+        print("[preview] nada que previsualizar"); return 1
     os.makedirs(os.path.dirname(out), exist_ok=True)
     json.dump({"landmarks": recs}, open(out, "w"), ensure_ascii=False)
-    print(f"[kiosk-preview] -> {os.path.relpath(out, ROOT)}")
+    print(f"[preview] -> {os.path.relpath(out, ROOT)}")
     return 0
 
 

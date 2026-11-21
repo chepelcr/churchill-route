@@ -116,8 +116,11 @@ def bays(length, door_every=2, skip=()):
     return out
 
 CW, CD = W - 2 * VER, D - 2 * VER
-PAV = 3 * BAY                               # el pabellón de la entrada: tres arcos
-skip_s = [(CW / 2 - PAV / 2 - 0.3, CW / 2 + PAV / 2 + 0.3)]
+PAV = 3 * BAY                               # cada pabellón de la entrada: tres arcos
+# DOS PABELLONES, no uno: la postal muestra el de la izquierda y el otro queda fuera del cuadro. Simétricos,
+# a dos intercolumnios de cada esquina (la postal: tres columnas entre la esquina y el pabellón, en escorzo)
+PCS = (-r2(HW - 2 * BAY - PAV / 2), r2(HW - 2 * BAY - PAV / 2))
+skip_s = ()                                 # los arcos son ABIERTOS: detrás se ve la galería con sus puertas
 tiers.append({"_": "LA PARED DE ADENTRO DE LA GALERÍA (la postal): zócalo beige, puertas y ventanas altas de madera, una por intercolumnio, y el friso arriba",
               "box": [r2(CW), r2(CD)], "at": [CU, CV], "z": [ZF, ZE], "wall": "mkWall", "cap": "mkRoofShade",
               "bands": [[0, r2(PL / (ZE - ZF)), "mkPlinth"], [0.86, 1, "mkFrieze"]],
@@ -135,8 +138,8 @@ cr = rect(C_IN)
 first = True
 for s in range(4):
     for (u, v) in columns_on(cr[s], cr[(s + 1) % 4]):
-        if s == 2 and abs(u) < PAV / 2 + 0.1:
-            continue                        # el frente del pabellón lleva su arcada
+        if s == 2 and any(abs(u - pc) < PAV / 2 + 0.1 for pc in PCS):
+            continue                        # el frente de cada pabellón lleva su arcada
         tiers.append({**({"_": "UNA COLUMNA de la galería: blanca, con su basa y su capitel"} if first else {}),
                       "box": [0.42, 0.42], "at": [r2(u), r2(v)], "z": [ZF, ZC], "wall": "mkColumn", "cap": "mkColumn",
                       "bands": [[0, 0.06, "mkTrim"], [0.93, 1, "mkTrim"]]})
@@ -148,49 +151,77 @@ for s, (box, at) in enumerate((([W, 0.6], [CU, V0 + 0.3]), ([W, 0.6], [CU, V1 - 
                   "box": [r2(box[0]), r2(box[1])], "at": [r2(at[0]), r2(at[1])], "z": [ZC, ZE], "wall": "mkFrieze", "cap": "mkTrim",
                   "bands": [[0, 0.18, "mkTrim"], [0.45, 0.55, "mkGarland"], [0.84, 1, "mkTrim"]]})
 
-# ── EL TECHO (satélite) ───────────────────────────────────────────────────────────────────────────
+# ── EL TECHO: la planta del satélite, en BLANCO y ORDENADO como el de la UTN ───────────────────────
+# Del satélite salen las franjas (anillo, borde, linternilla) y CUÁNTAS hileras hay (seis); el zinc es
+# BLANCO y las hileras van PAREJAS —mismo fondo y misma separación—, con su costura y sus tragaluces en filas,
+# como la UTN: no la misma receta, la misma manera de ordenar un techo.
 tiers += ring(0, ZE, RING, Z_RING_HI, "mkRoof", "mkRoofShade",
-              "EL ANILLO BLANCO: cuatro aguas en inglete que bajan hacia la calle, sobre la galería (el satélite: las diagonales de las esquinas)")
-tiers += ring(RING, Z_RING_HI, RING, Z_STEP, "mkClerestory", None, "el escalón del claristorio entre el anillo y el zinc", wall=True)
-tiers += ring(RING, Z_STEP, RING + RIM, Z_RIM_HI, "mkZinc", "mkZincShade", "EL ZINC ROJO que rodea el patio de techos")
+              "EL ANILLO: cuatro aguas en inglete que bajan hacia la calle, sobre la galería (el satélite: las diagonales de las esquinas)")
+tiers += ring(RING, Z_RING_HI, RING, Z_STEP, "mkClerestory", None, "el escalón del claristorio entre el anillo y el borde", wall=True)
+tiers += ring(RING, Z_STEP, RING + RIM, Z_RIM_HI, "mkRoofShade", "mkRoofDeep", "EL BORDE que rodea el patio de techos, un tono más gris que el anillo")
 IN = RING + RIM
-tiers.append({"_": "LA LINTERNILLA: el piso blanco del patio de techos —lo que se ve entre hilera e hilera— y su costado de vidrio sobre el zinc rojo",
-              "box": [r2(W - 2 * IN), r2(D - 2 * IN)], "at": [CU, CV], "z": [r2(Z_RIM_HI - 0.05), r2(Z_LAN)], "wall": "mkClerestory", "cap": "mkLantern"})
-RU0, RU1 = U(S["rowsX"][0]), U(S["rowsX"][1])
-RU0, RU1 = max(RU0, -HW + IN + LAN), min(RU1, HW - IN - LAN)
-for j, (y0, y1) in enumerate(S["rowsRed"]):
-    v0, v1 = max(V(y0), V0 + IN + LAN * 0.5), min(V(y1), V1 - IN - LAN * 0.5)
-    tiers.append({**({"_": "LAS SEIS HILERAS DE ZINC, de este a oeste, a dos aguas, donde el satélite las pone"} if j == 0 else {}),
-                  "box": [r2(RU1 - RU0), r2(v1 - v0)], "at": [r2((RU0 + RU1) / 2), r2((v0 + v1) / 2)], "z": [r2(Z_LAN), r2(Z_LAN)],
-                  "wall": "mkLantern", "cap": "mkZinc",
-                  "roof": {"kind": "gable", "riseM": ROW_RISE, "ink": "mkZinc", "ink2": "mkZincShade", "seamsM": 0.9}})
+tiers.append({"_": "LA LINTERNILLA: el piso del patio de techos —lo que se ve entre hilera e hilera— y su costado de vidrio sobre el borde",
+              "box": [r2(W - 2 * IN), r2(D - 2 * IN)], "at": [CU, CV], "z": [r2(Z_RIM_HI - 0.05), r2(Z_LAN)], "wall": "mkClerestory", "cap": "mkRoofFlat"})
+NROWS, GAP = len(S["rowsRed"]), LAN    # las hileras del satélite, y entre una y otra el ancho de la linternilla
+RU = r2(HW - IN - LAN)
+FV0, FV1 = V0 + IN + LAN, V1 - IN - LAN
+RD = r2((FV1 - FV0 - GAP * (NROWS - 1)) / NROWS)
+SKY = 4.4                                   # el paso de los tragaluces a lo largo de cada agua
+for j in range(NROWS):
+    vc = r2(FV0 + RD / 2 + j * (RD + GAP))
+    tiers.append({**({"_": "LAS SEIS HILERAS, parejas, de este a oeste: zinc blanco a dos aguas con su costura"} if j == 0 else {}),
+                  "box": [r2(2 * RU), RD], "at": [CU, vc], "z": [r2(Z_LAN), r2(Z_LAN)], "wall": "mkRoofShade", "cap": "mkRoof",
+                  "roof": {"kind": "gable", "riseM": ROW_RISE, "ink": "mkRoof", "ink2": "mkRoofShade", "seamsM": 1.2}})
+    # los tragaluces: en fila sobre cada agua, alternados entre una y otra, a la altura del techo bajo ellos
+    n = int((2 * RU - 2) // SKY)
+    for i in range(n):
+        side = 1 if (i + j) % 2 else -1
+        u = -RU + 1 + SKY * (i + 0.5)
+        z = r2(Z_LAN + ROW_RISE / 2)
+        tiers.append({**({"_": "los tragaluces, en fila sobre cada agua y alternados"} if j == 0 and i == 0 else {}),
+                      "box": [1.4, r2(RD * 0.26)], "at": [r2(u), r2(vc + side * RD / 4)], "z": [r2(z - 0.05), r2(z + 0.08)],
+                      "wall": "mkSkylightDark", "cap": "mkSkylight"})
 
-# ── EL PABELLÓN DE LA ENTRADA, al frente (la postal) ──────────────────────────────────────────────
+# ── LOS DOS PABELLONES DE LA ENTRADA, al frente (la postal) ──────────────────────────────────────
+# Los arcos son ABIERTOS: pilares blancos, la viga de arriba y el arco escalonado contra cada pilar; por
+# el hueco se ve la galería, con su piso y las puertas de la pared de adentro.
 PV = V1 - 0.3
-arch = [{"edge": 2, "f": [r2((j + 0.16) / 3), r2((j + 0.84) / 3)], "z": [ZF, r2(OPEN + 0.5)], "ink": "mkArch"} for j in range(3)]
-arch += [{"edge": 2, "f": [r2((j + 0.3) / 3), r2((j + 0.7) / 3)], "z": [r2(OPEN + 0.5), r2(OPEN + 0.85)], "ink": "mkArch"} for j in range(3)]   # el medio punto, escalonado
-tiers.append({"_": "EL PABELLÓN DE LA ENTRADA: la arcada de tres arcos sobre Avenida 3, con sus pilares blancos",
-              "box": [r2(PAV), 0.6], "at": [CU, r2(PV)], "z": [ZF, ZE], "wall": "mkColumn", "cap": "mkTrim",
-              "bands": [[0, 0.05, "mkTrim"], [0.86, 1, "mkFrieze"]], "openings": arch})
 PZ1 = r2(ZE + k * 1.0 * (P["pavilion"]["parapet"][1] - P["pavilion"]["parapet"][0]) * COL_PX / P["pavilion"]["columnPx"])
 PZ2 = r2(PZ1 + k * (P["pavilion"]["upper"][1] - P["pavilion"]["upper"][0]) * COL_PX / P["pavilion"]["columnPx"])
 FZ = r2(PZ2 + k * (P["pavilion"]["upper"][0] - P["pavilion"]["finialTop"]) * COL_PX / P["pavilion"]["columnPx"])
-tiers.append({"_": "EL PRETIL del pabellón, con el letrero de MERCADO", "box": [r2(PAV), 0.6], "at": [CU, r2(PV)], "z": [ZE, PZ1],
-              "wall": "mkTrim", "cap": "mkTrim", "bands": [[0, 0.12, "mkFrieze"], [0.88, 1, "mkFrieze"]],
-              "openings": [{"edge": 2, "f": [0.22, 0.78], "z": [r2(ZE + 0.25), r2(PZ1 - 0.3)], "ink": "mkSign"}]})
-tiers.append({"_": "el cuerpo de arriba, con su letrero", "box": [r2(PAV * 0.42), 0.6], "at": [CU, r2(PV)], "z": [PZ1, PZ2],
-              "wall": "mkTrim", "cap": "mkTrim", "bands": [[0.85, 1, "mkFrieze"]],
-              "openings": [{"edge": 2, "f": [0.14, 0.86], "z": [r2(PZ1 + 0.2), r2(PZ2 - 0.25)], "ink": "mkSignDark"}]})
-for j, u in enumerate((-PAV / 2 + 0.25, PAV / 2 - 0.25, -PAV * 0.21 + 0.2, PAV * 0.21 - 0.2)):
-    z0 = ZE if j < 2 else PZ1
-    tiers.append({**({"_": "los PINÁCULOS: los postes con su remate en los extremos del pretil y del cuerpo de arriba"} if j == 0 else {}),
-                  "box": [0.45, 0.45], "at": [r2(u), r2(PV)], "z": [r2(z0), r2(FZ if j >= 2 else PZ2)], "wall": "mkColumn", "cap": "mkTrim"})
-    tiers.append({"box": [0.3, 0.3], "at": [r2(u), r2(PV)], "z": [r2(FZ if j >= 2 else PZ2), r2((FZ if j >= 2 else PZ2) + 0.45)], "wall": "mkTrim", "cap": "mkTrim"})
+AZ = r2(OPEN + 0.85)                        # la clave del arco: de ahí arriba es viga
+PW = 0.7                                    # el pilar
+for n_, pc in enumerate(PCS):
+    note = (lambda t: {"_": t} if n_ == 0 else {})
+    for j in range(4):                      # los cuatro pilares de los tres arcos
+        u = pc - PAV / 2 + j * BAY + (PW / 2 if j == 0 else -PW / 2 if j == 3 else 0)
+        tiers.append({**(note("LOS PILARES de la arcada, blancos, con su basa y su capitel") if j == 0 else {}),
+                      "box": [PW, 0.6], "at": [r2(u), r2(PV)], "z": [ZF, AZ], "wall": "mkColumn", "cap": "mkColumn",
+                      "bands": [[0, 0.06, "mkTrim"], [0.9, 1, "mkTrim"]]})
+    for j in range(3):                      # el arco: escalonado contra cada pilar, abierto en el medio
+        a0, a1 = pc - PAV / 2 + j * BAY + PW * (1 if j == 0 else 0.5), pc - PAV / 2 + (j + 1) * BAY - PW * (1 if j == 2 else 0.5)
+        for side, edge in ((1, a0), (-1, a1)):
+            for w, z0 in ((0.45, OPEN + 0.05), (0.95, OPEN + 0.45)):
+                tiers.append({**(note("EL ARCO, escalonado contra cada pilar: el hueco queda ABIERTO") if j == 0 and side == 1 and w < 0.5 else {}),
+                              "box": [w, 0.5], "at": [r2(edge + side * w / 2), r2(PV)], "z": [r2(z0), AZ], "wall": "mkColumn", "cap": "mkTrim"})
+    tiers.append({**note("LA VIGA de la arcada, con su friso"), "box": [r2(PAV), 0.6], "at": [r2(pc), r2(PV)], "z": [AZ, ZE],
+                  "wall": "mkColumn", "cap": "mkTrim", "bands": [[0, 0.2, "mkTrim"], [0.7, 1, "mkFrieze"]]})
+    tiers.append({**note("EL PRETIL del pabellón, con el letrero de MERCADO"), "box": [r2(PAV), 0.6], "at": [r2(pc), r2(PV)], "z": [ZE, PZ1],
+                  "wall": "mkTrim", "cap": "mkTrim", "bands": [[0, 0.12, "mkFrieze"], [0.88, 1, "mkFrieze"]],
+                  "openings": [{"edge": 2, "f": [0.22, 0.78], "z": [r2(ZE + 0.25), r2(PZ1 - 0.3)], "ink": "mkSign"}]})
+    tiers.append({**note("el cuerpo de arriba, con su letrero"), "box": [r2(PAV * 0.42), 0.6], "at": [r2(pc), r2(PV)], "z": [PZ1, PZ2],
+                  "wall": "mkTrim", "cap": "mkTrim", "bands": [[0.85, 1, "mkFrieze"]],
+                  "openings": [{"edge": 2, "f": [0.14, 0.86], "z": [r2(PZ1 + 0.2), r2(PZ2 - 0.25)], "ink": "mkSignDark"}]})
+    for j, du in enumerate((-PAV / 2 + 0.25, PAV / 2 - 0.25, -PAV * 0.21 + 0.2, PAV * 0.21 - 0.2)):
+        z0, z1 = (ZE, PZ2) if j < 2 else (PZ1, FZ)
+        tiers.append({**(note("los PINÁCULOS: los postes con su remate en los extremos del pretil y del cuerpo de arriba") if j == 0 else {}),
+                      "box": [0.45, 0.45], "at": [r2(pc + du), r2(PV)], "z": [r2(z0), r2(z1)], "wall": "mkColumn", "cap": "mkTrim"})
+        tiers.append({"box": [0.3, 0.3], "at": [r2(pc + du), r2(PV)], "z": [r2(z1), r2(z1 + 0.45)], "wall": "mkTrim", "cap": "mkTrim"})
 
 # ── EL FRENTE: el árbol grande y la parada de buses (satélite y foto de hoy) ──────────────────────────
 TU0, TU1 = U(S["treeCanopy"]["x"][0]), U(S["treeCanopy"]["x"][1])
 TV = V((S["treeCanopy"]["y"][0] + S["treeCanopy"]["y"][1]) / 2)
-trees = [{"atM": [r2(TU0 + (TU1 - TU0) * f), r2(max(TV, V1 + 3.4))], "k": "almendro", "s": s} for f, s in ((0.45, 0.9), (0.72, 1.05), (0.96, 0.85))]   # hacia Calle 2A, como la copa del satélite: así no tapan el pabellón
+trees = [{"atM": [r2(TU0 + (TU1 - TU0) * f), r2(max(TV, V1 + 3.4))], "k": "almendro", "s": s} for f, s in ((0.45, 0.9), (0.72, 1.05), (0.96, 0.85))]   # hacia Calle 2A, como la copa del satélite
 SU0, SU1 = U(S["shelterRoof"]["x"][0]), U(S["shelterRoof"]["x"][1])
 SV = 21.0                                   # contra el cordón: el lote termina en +22,2 y la acera sigue afuera
 # la parada va en `tiers` y no en `low`: `low` es para lo de menos de un metro (`centro.lowM`), que se pinta

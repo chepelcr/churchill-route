@@ -292,7 +292,11 @@ renderer (the "view") lives behind a seam so backends can be swapped.
   render change with CPU throttled** (`Emulation.setCPUThrottlingRate`, 4×) and
   interleaved A/B in ONE page (`__perfFlags`): headless rasterises in software,
   so a full-screen composite that is free on a phone GPU costs here — a half-res
-  warm-light layer measured WORSE and was reverted for that reason. **THERE IS NO three.js LAYER
+  warm-light layer measured WORSE and was reverted for that reason.
+  **A BIG AUTHORED SET IS CULLED PIECE BY PIECE, never by its outer box**:
+  `W.PUNTA` is 10 000 x 1 400 px and `drawPunta` used to paint all of it the
+  moment any corner touched the view (`punta.js → seenPts/seenDisc`, each piece
+  caches its `_box`). `W.CENTRO` already did this per place and per structure. **THERE IS NO three.js LAYER
   ANY MORE — the 2.5D is Canvas's own, and it is the only mode** (2026-11-17).
   The opt-in three.js view (`?render=3d`, Ajustes → «Vista 2.5D (beta)») was
   retired with its setting: the code lives at the tag `3d-attempt-2026-09-29`

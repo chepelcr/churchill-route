@@ -354,15 +354,36 @@ function arcPts(x, y, r, a0, a1, n = 24) { const out = []; for (let k = 0; k <= 
 const BLOCK_MARGIN_PX = 80;
 const inViewPt = (v, x, y, m) => x > v.x0 - m && x < v.x1 + m && y > v.y0 - m && y < v.y1 + m;
 
+// EL CONJUNTO SE PINTA POR PIEZAS, NO ENTERO. `W.PUNTA` mide 10 000 x 1 400 px —todo el frente, del
+// Faro al Parque Marino— y `drawPunta` sólo preguntaba UNA vez si esa caja tocaba la vista: con ver
+// una esquina se pintaba el conjunto completo, la Concha incluida a tres mil píxeles. Medido con la
+// CPU frenada 4×, en la feria eran ~4 ms por cuadro de piezas fuera de pantalla. Cada pieza se pregunta
+// por su propia caja (cacheada en `_box`), con `PIECE_MARGIN_PX` para lo que la sombra y la altura
+// corren fuera de ella.
+const PIECE_MARGIN_PX = 120;
+function boxOf(o, pts) {
+  if (o._box) return o._box;
+  if (!pts || !pts.length) return (o._box = { x0: -Infinity, y0: -Infinity, x1: Infinity, y1: Infinity });   // sin puntos: siempre a la vista
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i + 1 < pts.length; i += 2) { x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]); y0 = Math.min(y0, pts[i + 1]); y1 = Math.max(y1, pts[i + 1]); }
+  return (o._box = { x0, y0, x1, y1 });
+}
+const seenBox = (v, b, m = PIECE_MARGIN_PX) => b.x1 > v.x0 - m && b.x0 < v.x1 + m && b.y1 > v.y0 - m && b.y0 < v.y1 + m;
+const seenPts = (v, o, pts, m) => seenBox(v, boxOf(o, pts), m);
+const seenDisc = (v, x, y, r, m = PIECE_MARGIN_PX) => inViewPt(v, x, y, r + m);
+
 function paintMuellero(Q, ppm, view = null) {
   const C = M.muellero, stoneR = C.stoneM * ppm / 2, stoneStep = C.stoneEveryM * ppm;
   ctx.lineCap = "round"; ctx.lineJoin = "round";
-  if (Q.plaza) { const p = Q.plaza; ctx.fillStyle = C.plaza; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, p.ang - Math.PI / 2, p.ang + Math.PI / 2); ctx.closePath(); ctx.fill(); }
+  const near = (x, y, r) => !view || seenDisc(view, x, y, r);
+  if (Q.plaza && near(Q.plaza.x, Q.plaza.y, Q.plaza.r)) { const p = Q.plaza; ctx.fillStyle = C.plaza; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, p.ang - Math.PI / 2, p.ang + Math.PI / 2); ctx.closePath(); ctx.fill(); }
   for (const c of Q.circles) {
+    if (!near(c.x, c.y, c.r)) continue;
     if (c.kind === "boulder") { ctx.fillStyle = C.boulder; ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill(); continue; }
     stonesAlong(arcPts(c.x, c.y, c.r, 0, Math.PI * 2, 40), stoneStep, stoneR, C.stone);
   }
   for (const a of Q.arcs) {
+    if (!near(a.x, a.y, a.r)) continue;
     const a0 = a.ang + a.a0 * RAD, a1 = a.ang + a.a1 * RAD;
     if (a.planter) { ctx.fillStyle = C.planter; ctx.beginPath(); ctx.arc(a.x, a.y, a.r, a0, a1); ctx.closePath(); ctx.fill(); }
     stonesAlong(arcPts(a.x, a.y, a.r, a0, a1), stoneStep, stoneR, C.stone);
@@ -371,11 +392,13 @@ function paintMuellero(Q, ppm, view = null) {
   // pérgola sus postes y la viga arriba
   const C3 = C._3d;
   for (const b of Q.benches) {
+    if (view && !seenPts(view, b, b.pts)) continue;
     if (b.kind === "pergola") drawRaisedStroke3d(b.pts, b.w, C3.pergolaM, { top: C.pergola, side: C3.pergolaSide, shadow: C.shadow }, { everyM: C3.postEveryM, wM: C3.postWM });
     else drawRaisedStroke3d(b.pts, b.w, C3.benchM, { top: C.bench, side: C3.benchSide, shadow: C.shadow });
   }
   // los esqueletos de ballena: costillas primero (con su sombra), el espinazo encima
   for (const w of Q.whales) {
+    if (view && !seenPts(view, w, w.pts)) continue;
     if (!w._ribs) {
       const ribs = [], [sx, sy] = w.toStreet; let run = 0;
       for (let k = 0; k + 3 < w.pts.length; k += 2) {
@@ -556,9 +579,11 @@ function shellLeaves(Rg, Rm, C, cy) {
   });
 }
 
-function paintMonument(mo, ppm) {
+function paintMonument(mo, ppm, view = null) {
   const K = M.monuments, C = K[mo.kind];
   if (!C) return;
+  // la Concha mide `size` de radio y sus hojas se levantan otro tanto: se pregunta con eso de margen
+  if (view && !seenDisc(view, mo.x, mo.y, (mo.size || C.rM * ppm || 0) * 1.6)) return;
   ctx.save(); ctx.translate(mo.x, mo.y); ctx.rotate(mo.ang);
   if (mo.kind === "cannons") {
     // LOS CAÑONES SE LEVANTAN COMO LOS EDIFICIOS NUEVOS: su receta es un cuerpo 2.5D
@@ -611,9 +636,9 @@ function drawPunta(view, t = 0) {
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   // el verde del Paseo. Se pinta ACÁ y no con los verdes del mundo porque aquéllos van
   // antes que las aguas interiores, y sobre este frente hay agua vieja que lo taparía
-  for (const gr of P.greens || []) { ctx.fillStyle = MATERIALS.green[gr.type]; ctx.fill(shape(gr)); }
+  for (const gr of P.greens || []) { if (!seenPts(view, gr, gr.pts)) continue; ctx.fillStyle = MATERIALS.green[gr.type]; ctx.fill(shape(gr)); }
   // el patio de la terminal de ferris: asfalto redondeado y sus toldos
-  if (P.yard) {
+  if (P.yard && seenPts(view, P.yard, P.yard.pts)) {
     const Y = M.yard; ctx.fillStyle = Y.asphalt; ctx.fill(shape(P.yard));
     // LOS TOLDOS SON CUERPOS (`furniture3d.js → drawTent3d`): postes y techo de cuatro faldones
     if (Y.view3d) for (const tn of P.yard.tents) drawTent3d(tn.x, tn.y, tn.s, Y.view3d, Y.tent);
@@ -626,7 +651,7 @@ function drawPunta(view, t = 0) {
   }  // los lechos rojos de las medialunas van ANTES de la escollera: la piedra tapa su orilla
   const band = (W.MALECON || []).find((b) => b.id === "punta_parque");
   for (const q of (P.muellero && P.muellero.pancitas) || []) {
-    if (!q.bed || q.bed.length < 6) continue;
+    if (!q.bed || q.bed.length < 6 || !seenPts(view, q, q.ring || q.bed)) continue;
     // el parqueo: la acera de la calle que rodea la bahía y el segmento que cuelga de ella, del mismo
     // concreto; encima la lente roja. La bahía y su caño van después de las calles (drawPuntaStreetside)
     if (q.ring) { if (!q._ringP) q._ringP = flatPath(q.ring, true); ctx.fillStyle = MATERIALS.street.acera; ctx.fill(q._ringP); }
@@ -637,12 +662,13 @@ function drawPunta(view, t = 0) {
     if (band) paintMaleconPattern(ctx, band, view, M.figures.mosaic, q._bed, BALDOSA_PX);
   }
   // la acera que rodea las bahías sueltas (la del Faro), antes de la calle como la del parqueo
-  for (const q of P.bays || []) { if (!q.ring) continue; if (!q._ringP) q._ringP = flatPath(q.ring, true); ctx.fillStyle = MATERIALS.street.acera; ctx.fill(q._ringP); }
-  for (const line of P.riprap || []) paintRiprap(line, view);
+  for (const q of P.bays || []) { if (!q.ring || !seenPts(view, q, q.ring)) continue; if (!q._ringP) q._ringP = flatPath(q.ring, true); ctx.fillStyle = MATERIALS.street.acera; ctx.fill(q._ringP); }
+  for (const line of P.riprap || []) if (seenPts(view, line, line.pts, line.w + PIECE_MARGIN_PX)) paintRiprap(line, view);
 
 
   // el suelo, en el orden en que el mundo lo trae: terreno, deck, malecones…
   for (const g of P.grounds || []) {
+    if (!seenPts(view, g, g.pts)) continue;
     const ink = g.use === "deck" ? POOL.deck : (M.ground[g.use] || M.ground.park);
     ctx.fillStyle = ink; ctx.fill(shape(g));
     // `dilate`: el suelo se mete debajo de las calles que lo rodean (que lo tapan), sin cordón propio
@@ -653,10 +679,12 @@ function drawPunta(view, t = 0) {
   const half = M.fan.halfAngleDeg * RAD;
   // el círculo del Faro: relleno, del color de las figuras
   for (const dsc of P.discs || []) {
+    if (!seenDisc(view, dsc.x, dsc.y, dsc.r)) continue;
     ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(dsc.x, dsc.y, dsc.r, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = M.fan.edge; ctx.lineWidth = 1.5; ctx.stroke();
   }
   for (const f of P.fans || []) {
+    if (!seenDisc(view, f.x, f.y, f.r)) continue;
     ctx.fillStyle = INK; ctx.fill(fanPath(f, half));
     ctx.strokeStyle = M.fan.edge; ctx.lineWidth = 1.2; ctx.stroke(f._path);
     // DOS bancas por abanico, una a cada lado: afuera de cada canto recto,
@@ -672,21 +700,23 @@ function drawPunta(view, t = 0) {
     }
   }
   for (const w of P.waves || []) {
+    if (!seenDisc(view, w.x, w.y, w.len || 0)) continue;
     ctx.fillStyle = INK; ctx.fill(wavePath(w, M.wave.outline));
     ctx.strokeStyle = M.wave.edge; ctx.lineWidth = 1.2; ctx.stroke(w._path);
   }
   for (const r of P.rotondas || []) {
+    if (!seenDisc(view, r.x, r.y, r.r)) continue;
     ctx.strokeStyle = INK; ctx.lineWidth = M.wave.rotondaWidthM * ppm;
     ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
   }
   // el agua, con el estilo de las piscinas del Parque Marino sobre su forma
   // de verdad: brocal, lámina, la zona honda y la baja, y el brillo que se mueve
-  const whole = (P.pools || []).filter((pool) => !pool.zone);
+  const whole = (P.pools || []).filter((pool) => !pool.zone && seenPts(view, pool, pool.pts));
   for (const pool of whole) {
     ctx.strokeStyle = POOL.coping; ctx.lineWidth = M.pool.rimWidthM * ppm * 2; ctx.stroke(shape(pool));
     ctx.fillStyle = POOL.water; ctx.fill(pool._path);
   }
-  for (const pool of P.pools || []) if (pool.zone) { ctx.fillStyle = POOL[M.pool.zones[pool.use]]; ctx.fill(shape(pool)); }
+  for (const pool of P.pools || []) if (pool.zone && seenPts(view, pool, pool.pts)) { ctx.fillStyle = POOL[M.pool.zones[pool.use]]; ctx.fill(shape(pool)); }
   const S = M.pool.shimmer, gap = S.gapM * ppm, amp = S.ampM * ppm;
   ctx.strokeStyle = POOL.shimmer; ctx.lineWidth = S.widthM * ppm;
   for (const pool of whole) {
@@ -707,23 +737,26 @@ function drawPunta(view, t = 0) {
   ctx.setLineDash([]);
   ctx.strokeStyle = POOL.coping; ctx.lineWidth = M.pool.wallWidthM * ppm;
   for (const wall of P.walls || []) {
+    if (!seenPts(view, wall, wall.pts)) continue;
     if (!wall._path) wall._path = flatPath(wall.pts, false);
     ctx.stroke(wall._path);
   }
   // la isla y lo que flota: van DESPUÉS del agua
   for (const g of P.islands || []) {
+    if (!seenPts(view, g, g.pts)) continue;
     ctx.strokeStyle = POOL.coping; ctx.lineWidth = M.pool.rimWidthM * ppm * 2; ctx.stroke(shape(g));
     ctx.fillStyle = M.ground.planter; ctx.fill(g._path);
   }
   for (const pr of P.props || []) {
+    if (!inViewPt(view, pr.x, pr.y, PIECE_MARGIN_PX)) continue;
     const s = M.props.cabanaM * ppm;
     ctx.fillStyle = M.props.shadow; ctx.fillRect(pr.x - s / 2 + 2, pr.y - s / 2 + 3, s, s);
     ctx.fillStyle = M.props.cabana; ctx.fillRect(pr.x - s / 2, pr.y - s / 2, s, s);
   }
   // los techos sin paredes y los monumentos van con el suelo, bajo los árboles
-  for (const f of P.fun || []) paintFun(f, ppm, t);
-  for (const rf of P.roofs || []) paintRoof(rf, ppm);
-  for (const mo of P.monuments || []) paintMonument(mo, ppm);
+  for (const f of P.fun || []) if (inViewPt(view, f.x, f.y, PIECE_MARGIN_PX)) paintFun(f, ppm, t);
+  for (const rf of P.roofs || []) if (seenPts(view, rf, rf.pts)) paintRoof(rf, ppm);
+  for (const mo of P.monuments || []) paintMonument(mo, ppm, view);
   if (P.muellero) paintMuellero(P.muellero, ppm, view);
   // la hora: UN velo sobre todo el suelo del lugar, en un solo relleno para
   // que donde dos figuras se montan no oscurezca dos veces
@@ -823,14 +856,23 @@ function drawPuntaNight(view, t, toScreen, zoom, night) {
 function drawPuntaSea(view, t) {
   const P = W.PUNTA;
   if (!P || !aabbInView(P, view, 900)) return;
-  if (P.seaPatch && P.seaPatch.length && !P._sea) { P._sea = new Path2D(); for (const ring of P.seaPatch) P._sea.addPath(flatPath(ring, true)); }
-  if (P._sea) { ctx.save(); ctx.clip(P._sea, "nonzero"); drawWaterAll(view, t); ctx.restore(); }
+  // EL MAR SÓLO DONDE HAY UN PARCHE A LA VISTA. Esto vuelve a pintar el mar ENTERO —oleaje incluido,
+  // de lo más caro del suelo— recortado a los parches; el recorte no ahorra el trabajo, así que se
+  // pintaba dos veces por cuadro con sólo estar a 900 px del conjunto. Ahora se arma el recorte con los
+  // parches que tocan la vista, y si ninguno la toca, no se pinta.
+  const rings = (P.seaPatch || []).map((ring, i) => (P._seaRings || (P._seaRings = []))[i] || (P._seaRings[i] = { ring, path: flatPath(ring, true) }));
+  const sea = rings.filter((r) => seenPts(view, r, r.ring, 0));
+  if (sea.length) {
+    const clip = new Path2D(); for (const r of sea) clip.addPath(r.path);
+    ctx.save(); ctx.clip(clip, "nonzero"); drawWaterAll(view, t); ctx.restore();
+  }
   // la playa —entre lengua y lengua, al frente del Paseo y al norte— va ANTES del malecón,
   // así las lenguas de piedra la tapan donde se montan y no queda rendija de agua entre las dos
+  const sands = (P.sands || []).filter((sd) => seenPts(view, sd, sd.pts));
   ctx.fillStyle = weatherColors().sand;
-  for (const sd of P.sands || []) ctx.fill(shape(sd));
+  for (const sd of sands) ctx.fill(shape(sd));
   // el MISMO grano que la playa del mundo, para que no haya dos arenas
-  { const tex = textureScale(); for (const sd of P.sands || []) overlayTexture(ctx, "sand", tex, () => ctx.fill(sd._path)); }
+  { const tex = textureScale(); for (const sd of sands) overlayTexture(ctx, "sand", tex, () => ctx.fill(sd._path)); }
 }
 
 // LO QUE VA SOBRE LA ACERA DE LA CALLE, pintado DESPUÉS de las calles: la bahía de parqueo en batería
@@ -841,7 +883,7 @@ function drawPuntaStreetside(view) {
   const C = M.muellero;
   // las bahías: la del parqueo del Parque Marino y la del Faro, la misma receta
   for (const q of [...(P.muellero.pancitas || []), ...(P.bays || [])]) {
-    if (!q.bay) continue;
+    if (!q.bay || !seenPts(view, q, q.ring || q.bay)) continue;
     if (!q._bayP) { q._bayP = flatPath(q.bay, true); q._canoP = flatPath(q.cano, false); q._canoClip = flatPath(q.canoClip, true); }
     // el caño de la calle sigue el canto de la bahía, como en cualquier cordón: una banda más oscura
     // trazada antes del asfalto, con topes rectos

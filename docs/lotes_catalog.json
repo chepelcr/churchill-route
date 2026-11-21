@@ -1,7 +1,7 @@
 {
  "generated_from": "src/world2d tiles",
  "playable_max_x": 32820,
- "count": 415,
+ "count": 414,
  "lotes": [
   {
    "id": "L-b41473ce",
@@ -4011,16 +4011,6 @@
    "lon": -84.827993,
    "w": 29,
    "h": 24,
-   "district": "playitas"
-  },
-  {
-   "id": "L-d5cfcd5e",
-   "x": 31786,
-   "y": 18374,
-   "lat": 9.979015,
-   "lon": -84.827847,
-   "w": 49,
-   "h": 32,
    "district": "playitas"
   },
   {

@@ -419,7 +419,7 @@ function paintParcels(view, only = null) {
     // `ground: false`: el lote no pinta suelo — lo cubre el piso de otro (`floorM`) y su borde redondeado
     // caía encima de la cancha
     if (own?.ground === false) continue;
-    if (own?.courtM) { if (own.floorM) paintOwnFloor(P, own.floorM); paintOwnCourt(P, own.courtM); continue; }
+    if (own?.courtM) { if (own.floorM) paintOwnFloor(P, own.floorM); paintOwnCourt(P, own.courtM, own.courtTurnDeg || 0); continue; }
     // Preserve the emitted polygon. Raster-owned parcels are vector-straightened
     // by the build (their exact cells still own collision and occupancy), so a
     // diagonal manzana reads as one direct edge instead of 4 px stair steps.
@@ -478,14 +478,18 @@ function paintOwnFloor(P, spec) {
   ctx.save(); ctx.clip(P._floor.clip); ctx.fillStyle = RING; ctx.fill(P._floor.rect); ctx.restore();
 }
 
-function paintOwnCourt(P, rectM) {
+// `turnDeg`: la cancha gira sobre su propio centro respecto del lote — la multiuso de Playitas va al ángulo de
+// la acera de la Calle 6, que no es el de la cuadrícula del lote
+function paintOwnCourt(P, rectM, turnDeg = 0) {
   if (!P._court) {
     const F = parcelFrame(P), ppm = PX_PER_M, [u0, v0, u1, v1] = rectM;
     const c = Math.cos(F.ang), s = Math.sin(F.ang);
-    const at = (u, v) => [F.cx + (u * c - v * s) * ppm, F.cy + (u * s + v * c) * ppm];
-    const pts = [at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)].flat();
-    const [mx, my] = at((u0 + u1) / 2, (v0 + v1) / 2);
-    const Q = { cx: mx, cy: my, ang: F.ang, hw: (u1 - u0) / 2 * ppm, hh: (v1 - v0) / 2 * ppm, poly: pts };
+    const [mx, my] = [F.cx + (((u0 + u1) / 2) * c - ((v0 + v1) / 2) * s) * ppm, F.cy + (((u0 + u1) / 2) * s + ((v0 + v1) / 2) * c) * ppm];
+    const ang = F.ang + turnDeg * Math.PI / 180, c2 = Math.cos(ang), s2 = Math.sin(ang);
+    const hw = (u1 - u0) / 2, hh = (v1 - v0) / 2;
+    const at = (u, v) => [mx + (u * c2 - v * s2) * ppm, my + (u * s2 + v * c2) * ppm];
+    const pts = [at(-hw, -hh), at(hw, -hh), at(hw, hh), at(-hw, hh)].flat();
+    const Q = { cx: mx, cy: my, ang, hw: hw * ppm, hh: hh * ppm, poly: pts };
     P._court = { path: flatPath(pts, true), frame: fieldFrame(Q) };
   }
   paintField(P._court.path, P._court.frame, P.sport);

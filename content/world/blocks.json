@@ -429,7 +429,7 @@
         {"id": "playitas_flood_ne", "ll": [9.97906138, -84.82782261], "type": "stadium"},
         {"id": "playitas_flood_sw", "ll": [9.97865081, -84.82865011], "type": "stadium"},
         {"id": "playitas_flood_se", "ll": [9.97843657, -84.82789925], "type": "stadium"},
-        {"id": "playitas_multiuso_lamp", "ll": [9.97906958, -84.82883224], "type": "warm"},
+        {"id": "playitas_multiuso_lamp", "ll": [9.9791134, -84.82884939], "type": "warm", "_": "en la esquina noroeste AFUERA de la cancha cuadrada (antes caía adentro)"},
         {"id": "playitas_park_lamp", "ll": [9.97859193, -84.82777566], "type": "warm"}
       ]
     },

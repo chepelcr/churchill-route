@@ -60,7 +60,8 @@
       "fixed": true,
       "exact": true,
       "_exact": "la plaza se pavimenta después de colocar los hitos: sin esto el puesto se empujaba al cordón de la Calle 6",
-      "ang": 0.46
+      "ang": 0.58,
+      "_ang": "el ángulo de la Avenida 1 frente al puesto: con 0,46 quedaba torcido contra su acera"
     },
     {
       "id": "kios_cocal",

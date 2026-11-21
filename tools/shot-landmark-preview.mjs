@@ -54,7 +54,7 @@ await page.evaluate((parcels) => {
     for (const key of ["cx", "x0", "x1"]) if (P[key] != null) P[key] += q.dx;
     for (const key of ["cy", "y0", "y1"]) if (P[key] != null) P[key] += q.dy;
     if (P.slot) P.slot = [P.slot[0] + q.dx, P.slot[1] + q.dy, P.slot[2], P.slot[3]];
-    for (const key of ["_path", "_pframe", "_small", "_frame", "_floor", "_court"]) delete P[key];
+    for (const key of ["_path", "_pframe", "_small", "_frame", "_floor", "_court", "_paintBox"]) delete P[key];
   }
 }, data.parcels);
 // los edificios quitados se quitan del tile YA CARGADO, en cada toma: si el tile se desaloja y vuelve, vuelve entero

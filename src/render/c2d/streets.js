@@ -330,7 +330,8 @@ function paintStadiumCuadras(view) {
     const pitch = S._pitch || (S._pitch = flatPath(S.footprint, true));
     if (S.parts?.length) {
       for (const id of S.parts) sectioned.add(id);
-      ctx.fillStyle = ST.field.grass;
+      // la base de una plaza seccionada es el GRIS de su cuadra: lo que tiene color son sus partes
+      ctx.fillStyle = ST.field.sectionedBase || ST.field.grass;
       ctx.fill(pitch, "evenodd");
     } else {
       // la cancha chica dentro de su anillo de concreto, si el registro la achica
@@ -400,7 +401,10 @@ function paintParcels(view, only = null) {
   for (const P of arr) {
     if (only && !only.has(P.id)) continue;
     if (deferred?.has(P.id)) continue;
-    if (P.x1 + 40 < view.x0 || P.x0 - 40 > view.x1 || P.y1 + 40 < view.y0 || P.y0 - 40 > view.y1) continue;
+    // la caja de lo que el lote pinta: la suya y, si trae piso afuera (`floorM.polysM`), la de ese piso — si
+    // no, con el lote fuera de cuadro su piso de afuera desaparecía aunque estuviera en pantalla
+    const B = P._paintBox || (P._paintBox = paintBox(P));
+    if (B.x1 + 40 < view.x0 || B.x0 - 40 > view.x1 || B.y1 + 40 < view.y0 || B.y0 - 40 > view.y1) continue;
     // `whole` = a full cuadra already painted by paintStadiumCuadras; `built` =
     // the footprint IS a building. Either way the ground is not ours to paint,
     // only the sponsor slot on top of it.
@@ -474,21 +478,37 @@ function paintParcels(view, only = null) {
 // la acera y el asfalto se pintan después y tapan lo que sobre
 function paintOwnFloor(P, spec) {
   if (P._floor === undefined) {
-    const host = (W.PARCELS || []).find((q) => q.id === spec.within);
-    const F = parcelFrame(P), ppm = PX_PER_M, [u0, v0, u1, v1] = spec.rect;
+    const host = spec.within && (W.PARCELS || []).find((q) => q.id === spec.within);
+    const F = parcelFrame(P), ppm = PX_PER_M;
     const c = Math.cos(F.ang), s = Math.sin(F.ang);
     const at = (u, v) => [F.cx + (u * c - v * s) * ppm, F.cy + (u * s + v * c) * ppm];
-    P._floor = host?.poly ? { clip: flatPath(host.poly, true), rect: flatPath([at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)].flat(), true),
-      polys: (spec.polysM || []).map((poly) => flatPath(poly.flatMap(([u, v]) => at(u, v)), true)) } : null;
+    let rect = null;
+    if (spec.rect && host?.poly) {
+      const [u0, v0, u1, v1] = spec.rect;
+      rect = { clip: flatPath(host.poly, true), path: flatPath([at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)].flat(), true) };
+    }
+    P._floor = { rect, polys: (spec.polysM || []).map((poly) => flatPath(poly.flatMap(([u, v]) => at(u, v)), true)) };
   }
-  if (!P._floor) return;
   ctx.fillStyle = RING;
   for (const poly of P._floor.polys) ctx.fill(poly);
-  ctx.save(); ctx.clip(P._floor.clip); ctx.fill(P._floor.rect); ctx.restore();
+  if (P._floor.rect) { ctx.save(); ctx.clip(P._floor.rect.clip); ctx.fill(P._floor.rect.path); ctx.restore(); }
 }
 
 // `turnDeg`: la cancha gira sobre su propio centro respecto del lote — la multiuso de Playitas va al ángulo de
 // la acera de la Calle 6, que no es el de la cuadrícula del lote
+function paintBox(P) {
+  const B = { x0: P.x0, y0: P.y0, x1: P.x1, y1: P.y1 };
+  const polys = PROPS.parcels.byId?.[P.id]?.floorM?.polysM;
+  if (polys) {
+    const F = parcelFrame(P), c = Math.cos(F.ang), s = Math.sin(F.ang), ppm = PX_PER_M;
+    for (const poly of polys) for (const [u, v] of poly) {
+      const x = F.cx + (u * c - v * s) * ppm, y = F.cy + (u * s + v * c) * ppm;
+      B.x0 = Math.min(B.x0, x); B.y0 = Math.min(B.y0, y); B.x1 = Math.max(B.x1, x); B.y1 = Math.max(B.y1, y);
+    }
+  }
+  return B;
+}
+
 function paintOwnCourt(P, rectM, turnDeg = 0) {
   if (!P._court) {
     const F = parcelFrame(P), ppm = PX_PER_M, [u0, v0, u1, v1] = rectM;

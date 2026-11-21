@@ -349,7 +349,8 @@ class BodyRecipeTests(unittest.TestCase):
                 u0, v0, u1, v1 = rec["courtM"]
                 self.assertTrue(u0 < u1 and v0 < v1, f"{pid}: courtM al revés")
             if "floorM" in rec:
-                self.assertIn(rec["floorM"]["within"], ids, f"{pid}: floorM dentro de una parcela que no existe")
+                if "within" in rec["floorM"]:
+                    self.assertIn(rec["floorM"]["within"], ids, f"{pid}: floorM dentro de una parcela que no existe")
             if "fill" in rec:
                 self.assertIn(rec["fill"], fills, f"{pid}: «{rec['fill']}» no es un suelo de parcela")
         for pid in by_id:

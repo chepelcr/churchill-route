@@ -466,16 +466,22 @@ function paintParcels(view, only = null) {
 
 // EL PISO DE UN LOTE (`parcels.byId.<id>.floorM`): un rectángulo en metros de su marco, recortado a la
 // huella de la parcela que lo contiene (`within`), en el gris de la acera
+// `polysM`: polígonos en metros del marco, SIN recorte — el suelo que queda FUERA de la parcela que lo
+// contiene (entre la explanada de la iglesia y la acera de la Calle 6) y que llega hasta el eje de la calle:
+// la acera y el asfalto se pintan después y tapan lo que sobre
 function paintOwnFloor(P, spec) {
   if (P._floor === undefined) {
     const host = (W.PARCELS || []).find((q) => q.id === spec.within);
     const F = parcelFrame(P), ppm = PX_PER_M, [u0, v0, u1, v1] = spec.rect;
     const c = Math.cos(F.ang), s = Math.sin(F.ang);
     const at = (u, v) => [F.cx + (u * c - v * s) * ppm, F.cy + (u * s + v * c) * ppm];
-    P._floor = host?.poly ? { clip: flatPath(host.poly, true), rect: flatPath([at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)].flat(), true) } : null;
+    P._floor = host?.poly ? { clip: flatPath(host.poly, true), rect: flatPath([at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)].flat(), true),
+      polys: (spec.polysM || []).map((poly) => flatPath(poly.flatMap(([u, v]) => at(u, v)), true)) } : null;
   }
   if (!P._floor) return;
-  ctx.save(); ctx.clip(P._floor.clip); ctx.fillStyle = RING; ctx.fill(P._floor.rect); ctx.restore();
+  ctx.fillStyle = RING;
+  for (const poly of P._floor.polys) ctx.fill(poly);
+  ctx.save(); ctx.clip(P._floor.clip); ctx.fill(P._floor.rect); ctx.restore();
 }
 
 // `turnDeg`: la cancha gira sobre su propio centro respecto del lote — la multiuso de Playitas va al ángulo de

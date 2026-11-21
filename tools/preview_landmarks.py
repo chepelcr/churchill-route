@@ -28,7 +28,7 @@ from churchill.world.content import BLOCKS, KIOSK_DEFS  # noqa: E402
 from churchill.world.service.field import _project_geo_poly  # noqa: E402
 from churchill.world.enums.surface import CARRIAGEWAY  # noqa: E402
 from churchill.world.service.placement import nearest_cell  # noqa: E402
-from preview_feria import EmittedRaster  # noqa: E402
+from preview_feria import WORLD, EmittedRaster  # noqa: E402
 
 SPAWN_REACH = 260                           # las celdas que busca el build (`build_stage.py`, el arranque del quiosco)
 
@@ -65,6 +65,31 @@ class _ReadBuf:
             if self.cache[i]:
                 return 1                    # CLS_LAND: la cuadra del estadio, antes de estamparse
         return v
+
+
+def _block_buildings_index(raster):
+    """los edificios con nombre de los tiles emitidos que pertenecen a una parcela de manzana (`parcelId`)"""
+    if not hasattr(raster, "_bb"):
+        import glob
+        raster._bb = {}
+        for f in glob.glob(os.path.join(WORLD, "tiles", "*.json")):
+            for b in json.load(open(f)).get("buildings", []):
+                if b.get("name") and b.get("parcelId"):
+                    xs, ys = b["pts"][0::2], b["pts"][1::2]
+                    raster._bb.setdefault(b["parcelId"], {})[b["name"]] = (sum(xs) / len(xs), sum(ys) / len(ys))
+    return raster._bb
+
+
+def _published_block_buildings(raster, spec):
+    pid = f"{spec['id']}_field"
+    return set(_block_buildings_index(raster).get(pid, {}))
+
+
+def _published_building_at(raster, name):
+    for by_name in _block_buildings_index(raster).values():
+        if name in by_name:
+            return [round(v) for v in by_name[name]]
+    return [0, 0]
 
 
 def main():
@@ -113,10 +138,33 @@ def main():
         changed = sum(1 for a, b in zip(new, old) if a != b) + abs(len(new) - len(old))
         recs.append({"id": lid, "stands": {"quads": new}})
         print(f"[preview] graderías {lid}: {len(new)} franja(s), {changed} distinta(s) de las publicadas")
-    if not recs:
+    # ── las partes de una manzana a mano (`blocks.json → parts[*].polyLL`) y sus edificios ─────────────
+    parcels, drops = [], []
+    pub_parcels = {q["id"]: q for q in raster.manifest.get("parcels", [])}
+    for spec in BLOCKS:
+        if args and (spec.get("lm") or spec.get("id")) not in args:
+            continue
+        for part in spec.get("parts", []):
+            old = pub_parcels.get(part.get("id"))
+            if not old or not part.get("polyLL"):
+                continue
+            new = _project_geo_poly(project, part["polyLL"])
+            if new != old.get("poly") and len(new) == len(old["poly"]):
+                dx = sum(new[0::2]) / (len(new) / 2) - sum(old["poly"][0::2]) / (len(new) / 2)
+                dy = sum(new[1::2]) / (len(new) / 2) - sum(old["poly"][1::2]) / (len(new) / 2)
+                parcels.append({"id": part["id"], "poly": new, "dx": round(dx, 2), "dy": round(dy, 2)})
+                print(f"[preview] parcela {part['id']}: corrida ({dx:.1f}, {dy:.1f}) px")
+        # un edificio de la manzana que el mundo publicó y el registro ya no trae: se quita
+        names = {b.get("name") for b in spec.get("buildings", [])}
+        if spec.get("buildings") is not None:
+            for name in sorted(_published_block_buildings(raster, spec) - names):
+                x, y = _published_building_at(raster, name)
+                drops.append({"name": name, "x": x, "y": y})
+                print(f"[preview] edificio quitado: {name}")
+    if not recs and not parcels and not drops:
         print("[preview] nada que previsualizar"); return 1
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    json.dump({"landmarks": recs}, open(out, "w"), ensure_ascii=False)
+    json.dump({"landmarks": recs, "parcels": parcels, "dropBuildings": drops}, open(out, "w"), ensure_ascii=False)
     print(f"[preview] -> {os.path.relpath(out, ROOT)}")
     return 0
 

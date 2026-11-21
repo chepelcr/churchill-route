@@ -326,6 +326,7 @@
       "outlineLL": [[9.9794575, -84.82891688], [9.97930117, -84.82863669], [9.97905511, -84.82774647], [9.97830244, -84.8276881], [9.97863535, -84.82876803], [9.97873667, -84.82891397]],
       "footprintLL": [[9.97942855, -84.8288877], [9.97928959, -84.82871549], [9.97919696, -84.82859874], [9.97904063, -84.82777566], [9.97840376, -84.82774647], [9.97843271, -84.82784863], [9.97867588, -84.82869506], [9.97873667, -84.82881181], [9.97873667, -84.828841], [9.97930407, -84.82889645]],
       "ang": 0.19,
+      "_parque": "el parque del este, con sus árboles y su farol, corrido 2,5 m hacia la cancha (2026-11-21): pisaba la acera de la Calle 8. Y el edificio norte de la esquina se quitó: tapaba la esquina de la plaza.",
       "_stands": "la grada OESTE (la primera de `quadsLL`) va paralela a la cancha multiuso girada (`world-props.json → parcels.byId.playitas_multiuso.courtTurnDeg`), 0,4 m al este de su banda y centrada con ella: 20,7 x 4,8 m como antes. Las otras dos son las del norte. Se ve antes de reconstruir con `pnpm preview:landmarks`.",
       "stands": {
         "side": "west",
@@ -380,8 +381,8 @@
           "use": "park",
           "name": "Parque Las Playitas",
           "decor": false,
-          "polyLL": [[9.97904063, -84.82777566], [9.97840376, -84.82774647], [9.97843271, -84.82784863]],
-          "centerLL": [9.97859772, -84.82779025]
+          "polyLL": [[9.9790449, -84.82779805], [9.97840803, -84.82776886], [9.97843698, -84.82787102]],
+          "centerLL": [9.97860199, -84.82781264]
         },
         {
           "id": "playitas_left_acera",
@@ -402,13 +403,6 @@
           "color": "#d8a086",
           "roof": "#a65345",
           "wnd": 1
-        },
-        {
-          "name": "Edificio norte de Las Playitas",
-          "polyLL": [[9.9790609, -84.82791868], [9.97904063, -84.82777566], [9.97896826, -84.82778442], [9.97898274, -84.82791868]],
-          "color": "#d8a086",
-          "roof": "#a65345",
-          "wnd": 1
         }
       ],
       "trees": [
@@ -418,11 +412,11 @@
         {"ll": [9.97851087, -84.82816969], "s": 0.86},
         {"ll": [9.97846166, -84.82802375], "s": 0.79},
         {"ll": [9.97841245, -84.82787781], "s": 0.85},
-        {"ll": [9.97837192, -84.82776982], "s": 0.76},
-        {"ll": [9.97888142, -84.8277815], "s": 0.68},
-        {"ll": [9.97869325, -84.82778733], "s": 0.72},
-        {"ll": [9.97853403, -84.82779317], "s": 0.68},
-        {"ll": [9.97844718, -84.82781652], "s": 0.62}
+        {"ll": [9.97837619, -84.82779221], "s": 0.76},
+        {"ll": [9.97888569, -84.82780389], "s": 0.68},
+        {"ll": [9.97869752, -84.82780972], "s": 0.72},
+        {"ll": [9.9785383, -84.82781556], "s": 0.68},
+        {"ll": [9.97845145, -84.82783891], "s": 0.62}
       ],
       "_lamps": "LOS FOCOS DE LA CANCHA, 2 m afuera de cada esquina de la cancha CHICA (`world-props.json → stadiums3d.pitchInsets`: 7 m al este y al oeste), no de la huella.",
       "lamps": [
@@ -431,7 +425,7 @@
         {"id": "playitas_flood_sw", "ll": [9.97865081, -84.82865011], "type": "stadium"},
         {"id": "playitas_flood_se", "ll": [9.97843657, -84.82789925], "type": "stadium"},
         {"id": "playitas_multiuso_lamp", "ll": [9.9791134, -84.82884939], "type": "warm", "_": "en la esquina noroeste AFUERA de la cancha cuadrada (antes caía adentro)"},
-        {"id": "playitas_park_lamp", "ll": [9.97859193, -84.82777566], "type": "warm"}
+        {"id": "playitas_park_lamp", "ll": [9.9785962, -84.82779805], "type": "warm"}
       ]
     },
     {

@@ -419,6 +419,9 @@ function paintParcels(view, only = null) {
     // `ground: false`: el lote no pinta suelo — lo cubre el piso de otro (`floorM`) y su borde redondeado
     // caía encima de la cancha
     if (own?.ground === false) continue;
+    // `floorM` sin cancha: el piso gris DEBAJO del lote, que asoma alrededor de lo que el lote pinta (el parque
+    // de Playitas, corrido de la acera: donde estaba queda la base verde de la plaza si no)
+    if (own?.floorM && !own.courtM) paintOwnFloor(P, own.floorM);
     if (own?.courtM) { if (own.floorM) paintOwnFloor(P, own.floorM); paintOwnCourt(P, own.courtM, own.courtTurnDeg || 0); continue; }
     // Preserve the emitted polygon. Raster-owned parcels are vector-straightened
     // by the build (their exact cells still own collision and occupancy), so a

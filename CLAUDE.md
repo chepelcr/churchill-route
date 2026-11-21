@@ -204,8 +204,16 @@ Tres cosas que hace y que no son cosméticas:
 Y espera a que el puerto RESPONDA en vez de dormir un rato fijo: en frío Vite
 tarda más, y un `sleep` a ojo declara éxito antes de tiempo.
 
-Deploy: push to `main` → `.github/workflows/deploy.yml` builds with pnpm and
-publishes `dist/` to GitHub Pages (https://churchill.jcampos.dev, `CNAME`).
+Deploy: push to `main` **or `world-2d`** → `.github/workflows/deploy.yml` builds
+with pnpm and publishes `dist/` to GitHub Pages (https://churchill.jcampos.dev,
+`CNAME`). **EL MISMO FLUJO ACTUALIZA EL APK**: después del build hace
+`npx cap sync android` + `./gradlew assembleRelease`, firmado con el keystore de
+los secretos `ANDROID_KEYSTORE_B64`/`ANDROID_KEYSTORE_PASS`, con
+`versionCode` = número de corrida, y lo publica con el sitio en
+**`/churchill.apk`**. O sea que un push a esas ramas ES una versión nueva del APK:
+no hace falta armarlo a mano para probar en el teléfono. (Sin esos secretos el
+paso se salta con un warning.) Ojo con `concurrency: cancel-in-progress`: un
+segundo push mientras corre el primero CANCELA el despliegue anterior.
 
 ## Android APK (Capacitor)
 
@@ -226,7 +234,8 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 21)   # add to ~/.zshrc
 export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 ```
 
-Build loop:
+Build loop (local — **CI ya publica el APK firmado en `/churchill.apk`** con
+cada push a `main`/`world-2d`, ver «Deploy» arriba; esto es para depurar):
 
 ```
 pnpm build && npx cap sync android

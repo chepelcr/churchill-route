@@ -171,6 +171,6 @@ export function buildBody(spec, base, rot, F) {
   });
   tiersOut.sort((a, b) => (a.sortZ ?? a.z1) - (b.sortZ ?? b.z1));       // lo más alto, al final: tapa lo de abajo
   const [cx, cy] = F.at(base), all = tiersOut.reduce((b, t) => bbox(t.pts, b), bbox([]));
-  return { perspective: !!spec.perspective, noFade: !!spec.noFade, x: r1(cx), y: r1(cy), zMax: Math.max(...tiersOut.map((t) => t.z1 + (t.roof?.rise || 0) + (t.truss?.h || 0))),
+  return { perspective: !!spec.perspective, noFade: !!spec.noFade, ...(spec.under ? { under: true } : {}), x: r1(cx), y: r1(cy), zMax: Math.max(...tiersOut.map((t) => t.z1 + (t.roof?.rise || 0) + (t.truss?.h || 0))),
     x0: Math.floor(all.x0), y0: Math.floor(all.y0), x1: Math.ceil(all.x1), y1: Math.ceil(all.y1), tiers: tiersOut };
 }

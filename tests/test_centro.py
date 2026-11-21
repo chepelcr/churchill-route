@@ -312,7 +312,7 @@ class BodyRecipeTests(unittest.TestCase):
                 users.setdefault(rec["body"], []).append((key, rec.get("inks") or {}))
         for name, spec in bodies.items():
             # `low`: lo bajo de un lote que es su cuerpo (las maceteras de la UTN), un cuerpo aparte con las mismas reglas
-            for tier in spec["tiers"] + spec.get("low", []):
+            for tier in spec["tiers"] + spec.get("low", []) + spec.get("under", []):
                 if tier.get("facet"):
                     # una CARA DE TECHO no tiene huella: es un plano con la altura de cada vértice
                     self.assertGreaterEqual(len(tier["facet"]), 3, f"{name}: una cara de techo pide 3 vértices")

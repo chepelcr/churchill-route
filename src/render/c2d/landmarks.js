@@ -371,6 +371,8 @@ function drawParcels(view) {
       // la cola pinta antes que todo; `trees` se siembran EN la cola, ordenados con el edificio por la
       // cámara — sembrados con los demás árboles, el edificio y las maceteras les pintaban encima.
       if (spec.low) queueBody(bodyAt(spec._low || (spec._low = { tiers: spec.low }), bx, by, ang, `${P.id}:low`), own.inks || null);
+      // `under`: lo de la calle que va DEBAJO de los árboles aunque sea alto (las paradas), en la pasada de lo bajo
+      if (spec.under) queueBody(bodyAt(spec._under || (spec._under = { tiers: spec.under, under: true, perspective: spec.perspective }), bx, by, ang, `${P.id}:under`), own.inks || null);
       const ca = Math.cos(ang), sa = Math.sin(ang);
       for (const tr of spec.trees || []) {
         const [tu, tv] = tr.atM, x = bx + (tu * ca - tv * sa) * ppm, y = by + (tu * sa + tv * ca) * ppm;

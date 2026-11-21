@@ -468,7 +468,9 @@ export function bodyAt(spec, x, y, ang = 0, key = "") {
 export function flushBodies() {
   if (!queue.length) return;
   const ppm = W.PX_PER_M, cam = state.cam;
-  const low = (q) => (!q.other && q.S.zMax <= M.lowM ? 0 : 1);
+  // `under`: va con lo bajo aunque sea alto — el mobiliario de la calle que los árboles cubren (las paradas del
+  // Mercado), que si entrara por distancia saldría encima de las copas cuando la cámara está del otro lado
+  const low = (q) => (!q.other && (q.S.under || q.S.zMax <= M.lowM) ? 0 : 1);
   queue.sort((a, b) => low(a) - low(b) || Math.hypot(b.S.x - cam.x, b.S.y - cam.y) - Math.hypot(a.S.x - cam.x, a.S.y - cam.y));
   ctx.lineJoin = "round";
   for (const q of queue) if (!q.other) paintShadow(q.S);

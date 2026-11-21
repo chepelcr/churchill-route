@@ -222,30 +222,28 @@ for n_, pc in enumerate(PCS):
 TU0, TU1 = U(S["treeCanopy"]["x"][0]), U(S["treeCanopy"]["x"][1])
 TV = V((S["treeCanopy"]["y"][0] + S["treeCanopy"]["y"][1]) / 2)
 trees = [{"atM": [r2(TU0 + (TU1 - TU0) * f), r2(max(TV, V1 + 3.4))], "k": "almendro", "s": s} for f, s in ((0.45, 0.9), (0.72, 1.05), (0.96, 0.85))]   # hacia Calle 2A, como la copa del satélite
-SU0, SU1 = U(S["shelterRoof"]["x"][0]), U(S["shelterRoof"]["x"][1])
+# LA PARADA: UNA CASETA FRENTE A CADA ENTRADA, contra el cordón de Avenida 3 y DEBAJO de los árboles. El
+# satélite la pone frente al pabellón de la derecha (su techo blanco de 7,3 x 1,7 m, `shelterRoof`); la de la
+# izquierda es su gemela. Van en `under`: con lo bajo, antes que el edificio y los árboles, aunque midan 2,6 m
+SL = r2((S["shelterRoof"]["x"][1] - S["shelterRoof"]["x"][0]) / PXM / 2)   # media del techo del satélite: una caseta
 SV = 21.0                                   # contra el cordón: el lote termina en +22,2 y la acera sigue afuera
-# la parada va en `tiers` y no en `low`: `low` es para lo de menos de un metro (`centro.lowM`), que se pinta
-# antes que todo; una caseta de 2,6 m entra en el orden por su altura, como el resto del edificio
-low = tiers
-mods = 2
-for m in range(mods):
-    a = SU0 + (SU1 - SU0) * m / mods + 0.1
-    b = SU0 + (SU1 - SU0) * (m + 1) / mods - 0.1
-    cu, L = (a + b) / 2, b - a
+under = []
+for m, pc in enumerate(PCS):
+    a, b = pc - SL / 2, pc + SL / 2
     note = (lambda t: {"_": t} if m == 0 else {})
-    low.append({**note("LA PARADA (foto de hoy y el techo blanco del satélite): dos casetas de techo blanco contra el cordón; sus postes"),
-                "box": [0.12, 0.12], "at": [r2(a + 0.15), r2(SV - 0.7)], "z": [0, 2.45], "wall": "mkShelterPost", "cap": "mkShelterPost"})
-    low.append({"box": [0.12, 0.12], "at": [r2(b - 0.15), r2(SV - 0.7)], "z": [0, 2.45], "wall": "mkShelterPost", "cap": "mkShelterPost"})
-    low.append({**note("el vidrio de atrás, hacia el mercado"), "box": [r2(L - 0.3), 0.08], "at": [r2(cu), r2(SV - 0.72)], "z": [0.25, 2.2],
-                "wall": "mkShelterGlass", "cap": "mkShelterPost"})
-    low.append({**note("la banca"), "box": [r2(L - 0.6), 0.42], "at": [r2(cu), r2(SV - 0.45)], "z": [0.42, 0.5], "wall": "mkBench", "cap": "mkBench"})
-    low.append({**note("el techo, que vuela hacia la calle"), "box": [r2(L), 1.7], "at": [r2(cu), r2(SV - 0.1)], "z": [2.45, 2.6],
-                "wall": "mkShelterPost", "cap": "mkShelterRoof"})
+    under.append({**note("LA PARADA frente a cada entrada (el techo blanco del satélite y la foto de hoy): sus postes"),
+                  "box": [0.12, 0.12], "at": [r2(a + 0.15), r2(SV - 0.7)], "z": [0, 2.45], "wall": "mkShelterPost", "cap": "mkShelterPost"})
+    under.append({"box": [0.12, 0.12], "at": [r2(b - 0.15), r2(SV - 0.7)], "z": [0, 2.45], "wall": "mkShelterPost", "cap": "mkShelterPost"})
+    under.append({**note("el vidrio de atrás, hacia el mercado"), "box": [r2(SL - 0.3), 0.08], "at": [r2(pc), r2(SV - 0.72)], "z": [0.25, 2.2],
+                  "wall": "mkShelterGlass", "cap": "mkShelterPost"})
+    under.append({**note("la banca"), "box": [r2(SL - 0.6), 0.42], "at": [r2(pc), r2(SV - 0.45)], "z": [0.42, 0.5], "wall": "mkBench", "cap": "mkBench"})
+    under.append({**note("el techo, que vuela hacia la calle"), "box": [SL, 1.7], "at": [r2(pc), r2(SV - 0.1)], "z": [2.45, 2.6],
+                  "wall": "mkShelterPost", "cap": "mkShelterRoof"})
 
 body = {
     "_note": "EL MERCADO MUNICIPAL DE PUNTARENAS: la manzana de Avenida 5 a Avenida 3, entre Calle 0B y Calle 2A. La planta y el techo están CALCADOS del satélite (`tools/mercado_trace.json`): el anillo blanco en inglete sobre la galería, el zinc rojo que rodea el patio de techos, la linternilla y las seis hileras de zinc de este a oeste. La fachada es la de la postal sepia: galería de columnas blancas, friso con guirnaldas, zócalo beige, puertas y ventanas altas, y el pabellón de la entrada con tres arcos, letrero y pináculos hacia Avenida 3. Al frente, la acera ancha con el árbol grande y la parada de buses. La escribe `tools/gen_mercado_body.py`.",
     "perspective": True,
-    "tiers": tiers, "trees": trees, "placeM": [0, 0],
+    "tiers": tiers, "under": under, "trees": trees, "placeM": [0, 0],
     "ground": {"rectM": [-26.0, -26.0, 26.0, 26.5], "ink": "mkPavement",
                "_": "el piso de concreto de la cuadra entera: la acera ancha del frente y la galería; la acera de afuera, que se pinta después, tapa lo que sobre"},
 }

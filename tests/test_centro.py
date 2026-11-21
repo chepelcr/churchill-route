@@ -400,6 +400,15 @@ class BodyRecipeTests(unittest.TestCase):
         spec.loader.exec_module(mod)
         self.assertEqual(self.props["bodies"]["utn"], json.loads(json.dumps(mod.body, ensure_ascii=False)))
 
+    def test_the_mercado_recipe_is_what_its_generator_writes(self):
+        """`bodies.mercado` lo escribe `tools/gen_mercado_body.py` desde el calco `tools/mercado_trace.json`."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gen_mercado_body", os.path.join(ROOT, "tools", "gen_mercado_body.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(self.props["bodies"]["mercado"], json.loads(json.dumps(mod.body, ensure_ascii=False)))
+        self.assertEqual(self.props["parcels"]["byId"]["osm_market_1077016901"]["body"], "mercado")
+
     def test_the_cannons_and_the_capitania_are_bodies(self):
         self.assertEqual(self.props["landmarks"]["capitania"]["body"], "capitania")
         self.assertIn("cannons", self.props["bodies"])

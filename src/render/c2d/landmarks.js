@@ -651,7 +651,10 @@ function drawLandmark(lm) {
     return;
   }
   const owner = ownedByParcel().get(lm.id);
-  if (owner && (PARCEL_USES[owner.use] || NO_USE).drawsBuilding) {
+  // …y lo mismo si el lote se levanta como su propio CUERPO (`parcels.byId.<id>.body` — el Mercado): queda
+  // la píldora del hito sobre el edificio, no el ícono de catálogo en medio del techo
+  const ownBody = owner && PARCEL_BY_ID[owner.id] && PROPS.bodies[PARCEL_BY_ID[owner.id].body];
+  if (owner && (ownBody || (PARCEL_USES[owner.use] || NO_USE).drawsBuilding)) {
     drawParcelLandmarkPill(lm, owner); return;
   }
   const x = lm.x, y = lm.y;

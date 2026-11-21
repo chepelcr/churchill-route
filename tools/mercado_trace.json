@@ -1,0 +1,30 @@
+{
+  "_note": "EL MERCADO MUNICIPAL, CALCADO DE SUS IMÁGENES. Cada número es un PÍXEL de la imagen que se nombra, leído sobre una retícula (`python3 tools/gen_mercado_body.py --overlay` vuelve a dibujar estas mismas líneas encima de las imágenes, para revisarlas a ojo) y, donde se pudo, con un muestreo de color por columna y por fila (blanco = techo pintado o linternilla; rojo = zinc). `tools/gen_mercado_body.py` los pasa a METROS y escribe `world-props.json → bodies.mercado`. Las imágenes no se suben al repositorio (son capturas de Google Maps y una postal); el overlay las busca en `logs/mercado/`.",
+
+  "satellite": {
+    "_": "Google Maps satélite, captura del autor del 2026-11-20 (1228 x 2700). La cuadra sale a ESCUADRA en la captura: x de la imagen = u (a lo largo de las avenidas, hacia Calle 2A), y = v (hacia Avenida 3, el frente).",
+    "image": "sat-close.jpg",
+    "building": {"x": [95, 1144], "y": [873, 1751], "_": "el borde del techo blanco del anillo, de Calle 0B a Calle 2A y de Avenida 5 al frente"},
+    "ringBandPx": 80, "_ringBandPx": "el ANILLO de techo blanco con sus esquinas en inglete (las diagonales de las cuatro esquinas se ven): 84 / 75 / 82 / 83 px por lado, medido por fila (y 1320, 1560) y por columna (x 420)",
+    "rimPx": 40, "_rimPx": "el ZINC ROJO que rodea el patio de techos: 43 px a la izquierda, 36 arriba, 41 a la derecha",
+    "lanternRingPx": 28, "_lanternRingPx": "la franja blanca por dentro del borde rojo: la linternilla que corre alrededor (220–248 a la izquierda)",
+    "rowsRed": [[1017, 1048], [1074, 1152], [1178, 1288], [1310, 1384], [1442, 1535], [1565, 1612]],
+    "_rowsRed": "las SEIS hileras de zinc rojo de este a oeste; entre ellas, las linternillas blancas (991–1016, 1049–1073, 1153–1177, 1289–1309, 1385–1441, 1536–1564)",
+    "rowsX": [248, 1027], "_rowsX": "de dónde a dónde corren las hileras: de la linternilla oeste al borde rojo del este",
+    "front": {"y": [1751, 1880], "_": "el frente hacia Avenida 3: la acera ancha del árbol, la soda y las paradas"},
+    "treeCanopy": {"x": [640, 1080], "y": [1690, 1835], "_": "la copa del árbol grande del frente, de la mitad hacia Calle 2A"},
+    "shelterRoof": {"x": [727, 897], "y": [1838, 1878], "_": "el techo blanco de la PARADA, contra el cordón de Avenida 3"}
+  },
+
+  "sepia": {
+    "_": "La postal «Puntarenas, Costa Rica. Mercado. Marquet Building» (734 x 460, coloreada a mano, inicios del siglo XX). Da el CARÁCTER de la fachada, no las medidas: la galería de columnas blancas alrededor, el friso con guirnaldas, el zócalo beige bajo puertas y ventanas altas de madera, y el pabellón de la entrada con arcos y su remate escalonado con letrero y pináculos. Las proporciones se toman contra la columna de la esquina, que no tiene escorzo.",
+    "image": "sepia.jpg",
+    "cornerColumn": {"x": 662, "top": 118, "base": 325, "_": "207 px = la altura de una columna"},
+    "nextColumns": [[492, 140, 318], [367, 158, 310]], "_nextColumns": "x, arriba y base: el paso entre columnas es 0,82 de su altura (170 px contra 207, 125 contra 155)",
+    "entablature": {"top": 85, "bottom": 118, "_": "cornisa y friso con guirnaldas sobre la columna de la esquina: 33 px"},
+    "plinth": {"top": 275, "bottom": 300, "columnPx": 140, "_": "el zócalo beige bajo las ventanas, a la altura de la columna de x 550"},
+    "openingTop": 195, "_openingTop": "el dintel de puertas y ventanas, 105 px sobre el piso con la columna de 140",
+    "pavilion": {"x": [110, 265], "parapet": [120, 150], "upper": [95, 120], "finialTop": 80, "arches": 3, "columnPx": 115,
+      "_": "el PABELLÓN DE LA ENTRADA: tres arcos, el pretil ancho con su letrero, el cuerpo de arriba con el otro letrero y los pináculos en los extremos y arriba"}
+  }
+}

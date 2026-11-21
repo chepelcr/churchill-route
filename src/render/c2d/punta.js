@@ -29,7 +29,7 @@ import { paintMaleconPattern } from "./systemShapes.js";
 import { BALDOSA_PX } from "./malecon.js";
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { liftPoint, parallaxOffset } from "./depth.js";
-import { beginShadowBatch, flushShadowBatch, makeRig, withShadowLayer } from "./rig3d.js";
+import { fillRigShadow, makeRig } from "./rig3d.js";
 import { drawGate3d } from "./gate3d.js";
 import { drawBlock3d, drawLounger3d, drawRaisedStroke3d, drawTent3d } from "./furniture3d.js";
 import { state } from "../../game/state.js";
@@ -140,8 +140,9 @@ function classify(line, k) {
 }
 function paintRiprap(line, view) {
   if (!line._rocks) {
-    const rocks = [], step = RR.stepM * W.PX_PER_M, [r0, r1] = RR.rockM;
+    const rocks = [], segStart = [], step = RR.stepM * W.PX_PER_M, [r0, r1] = RR.rockM;
     for (let i = 0; i + 3 < line.pts.length; i += 2) {
+      segStart.push(rocks.length);
       const ax = line.pts[i], ay = line.pts[i + 1], bx = line.pts[i + 2], by = line.pts[i + 3];
       const len = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / len, ny = (bx - ax) / len;
       for (let s = 0; s < len; s += step) {
@@ -155,7 +156,8 @@ function paintRiprap(line, view) {
         }
       }
     }
-    line._rocks = rocks; line._path = flatPath(line.pts, false); line._aabb = flatAABB(line.pts);
+    segStart.push(rocks.length);
+    line._rocks = rocks; line._segStart = segStart; line._path = flatPath(line.pts, false); line._aabb = flatAABB(line.pts);
   }
   const V = riprapGeom(line), p = line.pts, n = p.length / 2, hw = line.w / 2;
   const x0 = view.x0 - 30, x1 = view.x1 + 30, y0 = view.y0 - 30, y1 = view.y1 + 30;
@@ -185,32 +187,78 @@ function paintRiprap(line, view) {
       strips.push([zm, k, j]);
     }
   }
+  // UN RELLENO POR ALTURA Y TINTA, no uno por tira: la altura de una tira sólo depende de su modo y de
+  // su lugar a lo ancho, así que hay a lo sumo 2·N alturas distintas y el orden de lo bajo a lo alto
+  // se conserva entero. Antes era un `fill` por tira, cientos por cuadro.
   strips.sort((A, B) => A[0] - B[0]);
-  for (const [, k, j] of strips) {
-    const u0 = us[j], u1 = us[j + 1], a = at(k, u0), b = at(k + 1, u0), c = at(k + 1, u1), d = at(k, u1);
-    // la cara que mira al mar (u creciente, bajando) en la tinta del costado; la de tierra, en la del lecho
-    const down = riprapZ(V.mode[k], u1) < riprapZ(V.mode[k], u0);
-    ctx.fillStyle = down ? RR.bedSide : RR.bed;
-    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath(); ctx.fill();
+  let g = 0;
+  while (g < strips.length) {
+    const zm = strips[g][0], fills = new Map();
+    for (; g < strips.length && strips[g][0] === zm; g++) {
+      const [, k, j] = strips[g];
+      const u0 = us[j], u1 = us[j + 1], a = at(k, u0), b = at(k + 1, u0), c = at(k + 1, u1), d = at(k, u1);
+      // la cara que mira al mar (u creciente, bajando) en la tinta del costado; la de tierra, en la del lecho
+      const ink = riprapZ(V.mode[k], u1) < riprapZ(V.mode[k], u0) ? RR.bedSide : RR.bed;
+      let P2 = fills.get(ink); if (!P2) fills.set(ink, (P2 = new Path2D()));
+      P2.moveTo(a[0], a[1]); P2.lineTo(b[0], b[1]); P2.lineTo(c[0], c[1]); P2.lineTo(d[0], d[1]);   // sin cierre: sólo se rellena
+    }
+    for (const [ink, P2] of fills) { ctx.fillStyle = ink; ctx.fill(P2); }
   }
   // las piedras: cada una de su asiento a su copa, de lo bajo a lo alto
-  const vis = [];
-  for (const r of line._rocks) {
-    const [x, y, , , k, t] = r;
-    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
-    classify(line, k);
-    const u = -V.side[k] * t, zb = riprapZ(V.mode[k], u);
-    vis.push([zb + r[6] * RR.rockRiseK, zb, r]);
+  // …y sólo las de los TRAMOS a la vista: recorrer las miles de la escollera entera por cuadro para
+  // quedarse con seiscientas era la mitad de lo que costaba (`_segStart`: dónde empieza cada tramo)
+  const vis = [], ss = line._segStart, m = line.w;
+  for (let k = 0; k + 1 < n; k++) {
+    const ax = p[k * 2], ay = p[k * 2 + 1], bx = p[k * 2 + 2], by = p[k * 2 + 3];
+    if (Math.max(ax, bx) + m < x0 || Math.min(ax, bx) - m > x1 || Math.max(ay, by) + m < y0 || Math.min(ay, by) - m > y1) continue;
+    for (let q = ss[k]; q < ss[k + 1]; q++) {
+      const r = line._rocks[q], [x, y, , , kk, t] = r;
+      if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+      classify(line, kk);
+      const u = -V.side[kk] * t, zb = riprapZ(V.mode[kk], u);
+      vis.push([zb + r[6] * RR.rockRiseK, zb, r]);
+    }
   }
   vis.sort((A, B) => A[0] - B[0]);
-  ctx.lineCap = "round";
-  for (const [zt, zb, r] of vis) {
-    const [x, y, rp, ink] = r, b0 = lifted(x, y, zb), t0 = lifted(x, y, zt);
-    ctx.strokeStyle = RR.rockSide; ctx.lineWidth = rp * 2;
-    ctx.beginPath(); ctx.moveTo(b0[0], b0[1]); ctx.lineTo(t0[0], t0[1]); ctx.stroke();
-    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(t0[0], t0[1], rp, 0, Math.PI * 2); ctx.fill();
+  // LAS PIEDRAS VAN EN CAPAS DE ALTURA, NO UNA POR UNA. Cada piedra eran dos llamadas —el costado como
+  // un trazo y la copa como un disco— y en el Paseo hay ~600 a la vista: 1 200 llamadas por cuadro, 1,9
+  // ms en escritorio y el cuádruple en un teléfono. Ahora se juntan las de una misma capa de
+  // `ROCK_BAND_M`: todos sus costados en UN relleno (la cápsula del trazo, como polígono + disco del pie)
+  // y sus copas en uno por tinta. Entre capas el orden sigue siendo de lo bajo a lo alto; dentro de una
+  // capa las copas van sobre los costados, que es lo que se ve de una escollera desde arriba.
+  let i = 0;
+  while (i < vis.length) {
+    const band = Math.floor(vis[i][0] / ROCK_BAND_M);
+    let j = i;
+    while (j < vis.length && Math.floor(vis[j][0] / ROCK_BAND_M) === band) j++;
+    const tops = new Map();
+    ctx.beginPath();
+    for (let k = i; k < j; k++) {
+      const [zt, zb, r] = vis[k], [x, y, rp, ink] = r, b0 = lifted(x, y, zb), t0 = lifted(x, y, zt);
+      rockSide(b0, t0, rp);
+      let list = tops.get(ink); if (!list) tops.set(ink, (list = []));
+      list.push(t0[0], t0[1], rp);
+    }
+    ctx.fillStyle = RR.rockSide; ctx.fill();
+    for (const [ink, list] of tops) {
+      ctx.beginPath();
+      for (let k = 0; k < list.length; k += 3) { ctx.moveTo(list[k] + list[k + 2], list[k + 1]); ctx.arc(list[k], list[k + 1], list[k + 2], 0, Math.PI * 2); }
+      ctx.fillStyle = ink; ctx.fill();
+    }
+    i = j;
   }
-  ctx.lineCap = "butt";
+}
+const ROCK_BAND_M = 0.12;   // el grueso de una capa: menos que la piedra más chica, para que no se note
+// el costado de una piedra —el trazo redondo de su pie a su copa— como RELLENO: el disco del pie y el
+// rectángulo hasta la copa (la copa misma tapa el otro extremo). Todo con el MISMO giro que `arc`, o en
+// un relleno `nonzero` lo que se monta con giros contrarios abre un hueco.
+function rockSide(b, t, r) {
+  ctx.moveTo(b[0] + r, b[1]); ctx.arc(b[0], b[1], r, 0, Math.PI * 2);
+  const dx = t[0] - b[0], dy = t[1] - b[1], L = Math.hypot(dx, dy);
+  if (L < 0.01) return;
+  const nx = -dy / L * r, ny = dx / L * r;
+  // b-n → t-n → t+n → b+n gira como `arc` (horario en pantalla)
+  ctx.moveTo(b[0] - nx, b[1] - ny); ctx.lineTo(t[0] - nx, t[1] - ny); ctx.lineTo(t[0] + nx, t[1] + ny); ctx.lineTo(b[0] + nx, b[1] + ny);
 }
 
 // EL TOLDO Y LA PÉRGOLA: techo, no edificio. El toldo es lona con sus limatesas del
@@ -532,9 +580,10 @@ function paintMonument(mo, ppm) {
     ctx.restore();
     // LAS GRADAS, EL ESCENARIO Y LAS HOJAS EN 3D (`shellForm`): su sombra de una vez, en el suelo; ellos, con los cuerpos
     const Rm = R / ppm, topM = Math.max(C.tierRiseM * C.tiers, C.leafTopM) + 0.5;
-    const rig = (g, mode) => { const S = makeRig(g, mo.x, mo.y, mo.ang || 0, ppm, state.cam, mode, C.shade, topM); shellForm(S, Rm, C); S.flush(); };
+    const rig = (g, mode) => { const S = makeRig(g, mo.x, mo.y, mo.ang || 0, ppm, state.cam, mode, C.shade, topM); shellForm(S, Rm, C); S.flush(); return S; };
     const sun = sunShadow(1);
-    if (sun.alpha > 0) withShadowLayer(ctx, mo.x, mo.y, R * 1.3, sun.alpha * C.shadowAlpha, (g) => rig(g, "sun"));
+    // la sombra en UN relleno, sin lienzo aparte (`rig3d.js → fillRigShadow`)
+    if (sun.alpha > 0) fillRigShadow(ctx, sun.alpha * C.shadowAlpha, C.shade.shadow, (m) => rig(ctx, m));
     queueBodyLike({ x: mo.x, y: mo.y, paint: () => rig(ctx, "cam") });
     return;
   }
@@ -567,8 +616,7 @@ function drawPunta(view, t = 0) {
   if (P.yard) {
     const Y = M.yard; ctx.fillStyle = Y.asphalt; ctx.fill(shape(P.yard));
     // LOS TOLDOS SON CUERPOS (`furniture3d.js → drawTent3d`): postes y techo de cuatro faldones
-    // sus sombras en UN lote, compuesto aquí mismo: lo que sigue de este suelo va encima (`rig3d.js`)
-    if (Y.view3d) { beginShadowBatch(); for (const tn of P.yard.tents) drawTent3d(tn.x, tn.y, tn.s, Y.view3d, Y.tent); flushShadowBatch(ctx); }
+    if (Y.view3d) for (const tn of P.yard.tents) drawTent3d(tn.x, tn.y, tn.s, Y.view3d, Y.tent);
     else for (const tn of P.yard.tents) {
       ctx.fillStyle = Y.tentShadow; ctx.fillRect(tn.x - tn.s / 2 + 3, tn.y - tn.s / 2 + 4, tn.s, tn.s);
       ctx.fillStyle = Y.tent; ctx.fillRect(tn.x - tn.s / 2, tn.y - tn.s / 2, tn.s, tn.s);

@@ -590,5 +590,11 @@
     },
     "defaultWeb": "alta",
     "defaultNative": "media"
+  },
+  "_frameRate": "CUÁNTOS CUADROS POR SEGUNDO DIBUJA EL JUEGO, que el jugador escoge en Ajustes (`tuning.frameRate` → `game/index.js → loop`). A 30 el lazo dibuja un cuadro de pantalla sí y otro no: la mitad del trabajo y un ritmo PAREJO. En un teléfono que no sostiene 60, un cuadro que oscila entre 20 y 45 ms se siente a tirones y uno quieto en 33 se siente fluido; además calienta menos, y un teléfono caliente se frena. El tiempo del juego no cambia: el sim corre con el reloj (subpasos), así que a 30 el carro va igual de rápido.",
+  "frameRate": {
+    "levels": [60, 30],
+    "defaultWeb": 60,
+    "defaultNative": 60
   }
 }

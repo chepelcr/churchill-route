@@ -12,7 +12,7 @@
 // (`materials.json → punta.gate`, `feriaAssets.json → deck.sign`).
 import { state } from "../../game/state.js";
 import { PX_PER_M } from "../../domain/units.js";
-import { makeRig, withShadowLayer } from "./rig3d.js";
+import { makeRig, fillRigShadow } from "./rig3d.js";
 import { sunShadow } from "./shadows.js";
 import { queueOverLike } from "./bodies.js";
 import { ctx } from "./gfx.js";
@@ -39,8 +39,9 @@ export function drawGate3d(x, y, ang, wPx, text, S, inks) {
     });
   };
   const sun = sunShadow(1), reach = (half + H) * ppm * 1.5;
-  if (sun.alpha > 0) withShadowLayer(ctx, x, y, reach, sun.alpha * (S.shadowAlpha ?? 0.5), (g) => {
-    const R = makeRig(g, x, y, ang, ppm, state.cam, "sun", S.shade, H); form(R, g); R.flush();
+  // la sombra en UN relleno, sin lienzo aparte (`rig3d.js → fillRigShadow`)
+  if (sun.alpha > 0) fillRigShadow(ctx, sun.alpha * (S.shadowAlpha ?? 0.5), S.shade.shadow, (m) => {
+    const R = makeRig(ctx, x, y, ang, ppm, state.cam, m, S.shade, H); form(R, ctx); R.flush(); return R;
   });
   // EL CARRO PASA POR DEBAJO: postes y tablero se pintan después del jugador (`flushOverBodies`);
   // la sombra, que es del suelo, se queda arriba con las demás

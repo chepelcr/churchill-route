@@ -7,6 +7,10 @@
 //           ahead), above 1 pushes it in.
 //   poiNames — draw the real Puntarenas business names over the map. On by
 //           default (the map reads as the real port), off for a clean view.
+//   frameRate — 60 or 30 frames per second (`effects.json → frameRate`). At 30
+//           the loop draws every other rAF: half the work and an EVEN beat,
+//           which on a phone that cannot hold 60 reads smoother. `null` = the
+//           platform default.
 //   resolution — how many canvas pixels per CSS pixel, capped by the device
 //           (`effects.json → resolution`). The single biggest knob on a phone:
 //           everything the renderer fills costs per pixel. `null` = the
@@ -18,6 +22,7 @@ import EFFECTS from "../assets/effects.json" with { type: "json" };
 
 const KEY = "churchill_tuning_v1";
 const RES = EFFECTS.resolution;
+const FPS = EFFECTS.frameRate;
 const isNative = () => typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.();
 
 export const tuning = {
@@ -30,6 +35,10 @@ export const tuning = {
   /** canvas px per CSS px for the level in effect (the device's own ratio still caps it) */
   resolutionScale() { return RES.levels[this.resolutionLevel()] || RES.levels[RES.defaultWeb]; },
   resolutionLevels: Object.keys(RES.levels),
+  frameRate: null,
+  /** the frame cap in effect (fps): the player's pick, or this platform's default */
+  frameRateCap() { return this.frameRate || (isNative() ? FPS.defaultNative : FPS.defaultWeb); },
+  frameRateLevels: FPS.levels,
   load() {
     try {
       if (typeof localStorage === "undefined") return;
@@ -38,16 +47,22 @@ export const tuning = {
       if (typeof d.zoom === "number" && d.zoom >= 0.6 && d.zoom <= 1.4) this.zoom = d.zoom;
       if (typeof d.poiNames === "boolean") this.poiNames = d.poiNames;
       if (typeof d.resolution === "string" && d.resolution in RES.levels) this.resolution = d.resolution;
+      if (FPS.levels.includes(d.frameRate)) this.frameRate = d.frameRate;
     } catch { /* private mode */ }
   },
   save() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
-        speed: this.speed, zoom: this.zoom, poiNames: this.poiNames, resolution: this.resolution,
+        speed: this.speed, zoom: this.zoom, poiNames: this.poiNames, resolution: this.resolution, frameRate: this.frameRate,
       }));
     } catch { /* private mode */ }
   },
   setPoiNames(v) { this.poiNames = !!v; this.save(); },
+  setFrameRate(fps) {
+    if (!FPS.levels.includes(fps)) return;
+    this.frameRate = fps;
+    this.save();
+  },
   setResolution(level) {
     if (!(level in RES.levels)) return;
     this.resolution = level;

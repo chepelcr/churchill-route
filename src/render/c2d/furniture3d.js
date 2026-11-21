@@ -12,7 +12,7 @@
 import { state } from "../../game/state.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { WORLD2D as W } from "../../world2d/index.js";
-import { makeRig, withShadowLayer } from "./rig3d.js";
+import { fillRigShadow, makeRig } from "./rig3d.js";
 import { parallaxOffset } from "./depth.js";
 import { sunShadow } from "./shadows.js";
 import { queueBodyLike } from "./bodies.js";
@@ -21,8 +21,9 @@ import { paintParts } from "./shapes.js";
 
 function rigged(x, y, ang, topM, V, reach, form) {
   const ppm = PX_PER_M, sun = sunShadow(1);
-  if (sun.alpha > 0) withShadowLayer(ctx, x, y, reach, sun.alpha * (V.shadowAlpha ?? 0.5), (g) => {
-    const R = makeRig(g, x, y, ang, ppm, state.cam, "sun", V.shade, topM); form(R); R.flush();
+  // la sombra en UN relleno, sin lienzo aparte (`rig3d.js → fillRigShadow`); `reach` ya no hace falta
+  if (sun.alpha > 0) fillRigShadow(ctx, sun.alpha * (V.shadowAlpha ?? 0.5), V.shade.shadow, (m) => {
+    const R = makeRig(ctx, x, y, ang, ppm, state.cam, m, V.shade, topM); form(R); R.flush(); return R;
   });
   queueBodyLike({ x, y, paint: () => { const R = makeRig(ctx, x, y, ang, ppm, state.cam, "cam", V.shade, topM); form(R); R.flush(); } });
 }

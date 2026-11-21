@@ -14,19 +14,36 @@ import { channels, esteroThings, laneAt } from "./crossing.js";
 import { setTide } from "./tides.js";
 import { loadProgress, saveProgress, rebuildBarriers } from "./progress.js";
 import { setupCanvas, render } from "../render/Renderer.js";
+import { tuning } from "./tuning.js";
 
 // Progression is loaded once at module init (before any mode start).
 state.progress = loadProgress();
 
 // ----- Loop ----------------------------------------------------------------
-let lastT = 0;
+// EL TIEMPO DEL JUEGO ES EL DEL RELOJ, AUNQUE EL CUADRO TARDE. `dt` se recortaba a 0,05 s y el sim
+// corría UNA vez por cuadro, así que un teléfono que tardaba 70 ms en dibujar jugaba en cámara lenta —
+// y a saltos, porque el recorte entraba y salía con cada cuadro caro, que se siente como «se pega».
+// Ahora se recorta a `MAX_DT` y se parte en SUBPASOS de a lo sumo `SUBSTEP`: el carro avanza lo que
+// debe sin dar pasos más largos que antes (más largos, atravesaría la banda de una acera). A 60 cuadros
+// por segundo es un paso, como siempre; a 30, también; sólo un cuadro lento paga dos o tres.
+const SUBSTEP = 0.035;   // s: un poco más que un cuadro a 30 Hz, para que el temblor de rAF no lo parta en dos
+const MAX_DT = 0.1;      // s: más que esto es una pausa (pestaña oculta, el GC), no un cuadro
+let lastT = 0, lastFrame = -Infinity;
 function loop(t) {
-  const dt = Math.min(0.05, (t - lastT) / 1000);
+  // EL TOPE DE CUADROS (`tuning.frameRate`): a 30, un cuadro de rAF sí y otro no. La mitad del trabajo y,
+  // sobre todo, un ritmo PAREJO — en un teléfono que no sostiene 60, el cuadro que oscila entre 20 y 45 ms
+  // se ve peor que uno quieto en 33. 2 ms de holgura porque rAF no llega exacto.
+  const gap = 1000 / tuning.frameRateCap();
+  if (t - lastFrame < gap - 2) { requestAnimationFrame(loop); return; }
+  lastFrame = t;
+  const dt = Math.min(MAX_DT, (t - lastT) / 1000);
   lastT = t;
   const prof = typeof window !== "undefined" ? window.__prof : null;
   const updateStarted = prof ? performance.now() : 0;
-  if (state.running) update(dt);
-  else if (state.attract) attractTick(dt);
+  if (state.running) {
+    const steps = Math.max(1, Math.ceil(dt / SUBSTEP));
+    for (let k = 0; k < steps; k++) update(dt / steps);
+  } else if (state.attract) attractTick(Math.min(0.05, dt));
   if (prof) prof.update = (prof.update || 0) + performance.now() - updateStarted;
   // EL RENDERER CUENTA EN SEGUNDOS, igual que el sim. `t` viene de rAF en
   // MILISEGUNDOS y aquí se convertía sólo para `dt`, así que el render recibía

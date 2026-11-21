@@ -22,6 +22,7 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
   const [zoom, setZoom] = useState(Math.round(tuning.zoom * 100));
   const [poi, setPoi] = useState(tuning.poiNames);
   const [res, setRes] = useState(tuning.resolutionLevel());
+  const [fps, setFps] = useState(tuning.frameRateCap());
   const [confirming, setConfirming] = useState(false);
   const [, bump] = useState(0);
   useEffect(() => iap.onChange(() => bump((n) => n + 1)), []);
@@ -153,6 +154,20 @@ export default function SettingsScreen({ onBack, onTutorial, onSupporters }) {
             <button key={level} className={"btn " + (res === level ? "gold" : "secondary")}
               onClick={() => { tuning.setResolution(level); setRes(level); sfx.play("menu_select"); }}>
               {t(`settings.resolution.${level}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+    ),
+    frameRate: () => (
+      <div className="set-row">
+        <span className="set-lbl">{t("settings.fps")}</span>
+        <div className="lang-toggle">
+          <span className="set-desc">{t("settings.fps.desc")}</span>
+          {tuning.frameRateLevels.map((n) => (
+            <button key={n} className={"btn " + (fps === n ? "gold" : "secondary")}
+              onClick={() => { tuning.setFrameRate(n); setFps(n); sfx.play("menu_select"); }}>
+              {n}
             </button>
           ))}
         </div>

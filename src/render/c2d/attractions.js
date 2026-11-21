@@ -28,7 +28,7 @@ import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import PROPS from "../../assets/world-props.json" with { type: "json" };
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { liftPoint, parallaxOffset } from "./depth.js";
-import { makeRig, withShadowLayer } from "./rig3d.js";
+import { fillRigShadow, makeRig, withShadowLayer } from "./rig3d.js";
 import { FERIA_FORMS, bumperCar, djScreenCorners } from "./feriaRigs.js";
 import { state } from "../../game/state.js";
 import { sunShadow } from "./shadows.js";
@@ -218,8 +218,9 @@ function drawRide3d(A, spec, r, t, ph) {
     // `originK`: la forma entera corrida dentro de su marco (el rótulo se queda donde está)
     const [ou, ov] = (V.originK || [0, 0]).map((k) => k * r), cr = Math.cos(rot), sr = Math.sin(rot);
     const ox = A.x + ou * cr - ov * sr, oy = A.y + ou * sr + ov * cr;
-    const run = (g, mode) => { const R = makeRig(g, ox, oy, rot, ppm, state.cam, mode, SHADE(), V.topM ?? V3.topM); form(R, { rM, t, ph, V, A }); R.flush(); };
-    if (lit) withShadow(A, r, sun.alpha * V3.shadowAlpha, (g) => run(g, "sun"));
+    const run = (g, mode) => { const R = makeRig(g, ox, oy, rot, ppm, state.cam, mode, SHADE(), V.topM ?? V3.topM); form(R, { rM, t, ph, V, A }); R.flush(); return R; };
+    // la sombra en UN relleno, sin lienzo aparte (`rig3d.js → fillRigShadow`)
+    if (lit) fillRigShadow(ctx, sun.alpha * V3.shadowAlpha, V3.shadowInk, (m) => run(ctx, m));
     queueBodyLike({ x: A.x, y: A.y, paint: () => { run(ctx, "cam"); drawSigns(); } });
     return;
   }

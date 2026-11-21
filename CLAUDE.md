@@ -281,9 +281,18 @@ renderer (the "view") lives behind a seam so backends can be swapped.
   none (`fill()` closes every subpath itself, same pixels) — that alone was 60 %
   of the render in the centro (`bodies.js → paintShadow`;
   `node tools/bench-closepath.mjs`). And a shadow painted on its own canvas and
-  composited with `drawImage` costs a fixed sync per call: open a
-  `beginShadowBatch`/`flushShadowBatch` around anything that does it in a loop
-  (`rig3d.js → withShadowLayer`). **THERE IS NO three.js LAYER
+  composited with `drawImage` costs a fixed sync per call — so **anything built
+  on the rig throws its shadow with `fillRigShadow`** (`rig3d.js`, mode `"sil"`):
+  every piece joins ONE path with the SAME winding (a box as the hull of its 8
+  sunward corners, a stroke as capsules) and a `nonzero` fill of that is their
+  union, dark once, no offscreen canvas. That took the throttled render of the
+  Paseo from ~54 to 35 ms. Only art that is not rig pieces (the feria's
+  «por piezas» rides, the boat's traced hull) still uses `withShadowLayer`, and
+  in a loop it goes inside `beginShadowBatch`/`flushShadowBatch`. **Measure a
+  render change with CPU throttled** (`Emulation.setCPUThrottlingRate`, 4×) and
+  interleaved A/B in ONE page (`__perfFlags`): headless rasterises in software,
+  so a full-screen composite that is free on a phone GPU costs here — a half-res
+  warm-light layer measured WORSE and was reverted for that reason. **THERE IS NO three.js LAYER
   ANY MORE — the 2.5D is Canvas's own, and it is the only mode** (2026-11-17).
   The opt-in three.js view (`?render=3d`, Ajustes → «Vista 2.5D (beta)») was
   retired with its setting: the code lives at the tag `3d-attempt-2026-09-29`

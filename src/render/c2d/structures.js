@@ -19,7 +19,7 @@ import { buildingStyle } from "./buildingStyle.js";
 import { districtBuildingStyle } from "./districts.js";
 import { lightLevel } from "../../game/daynight.js";
 import { registerLampSource } from "./nightlights.js";
-import { makeRig, withShadowLayer } from "./rig3d.js";
+import { fillRigShadow, makeRig, withShadowLayer } from "./rig3d.js";
 import { ferryForm } from "./vesselRigs.js";
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { drawBridgeTower3d, drawRaisedStroke3d } from "./furniture3d.js";
@@ -793,10 +793,10 @@ function drawFerry(f, view) {
   // EL FERRY ES UN CUERPO (`vesselRigs.js`): la sombra entera de una vez, el casco y la cubierta a ras
   // del suelo (el carro sube a ella), y lo que se levanta sobre la cubierta, con los cuerpos
   const dims = { L: L / ppm, B: B / ppm, M };
-  const run = (g, mode, keep) => { const R = makeRig(g, f.x, f.y, f.a, ppm, state.cam, mode, M.shade, M.gantryM + M.mastM); ferryForm(R, dims); R.flush(keep); };
+  const run = (g, mode, keep) => { const R = makeRig(g, f.x, f.y, f.a, ppm, state.cam, mode, M.shade, M.gantryM + M.mastM); ferryForm(R, dims); R.flush(keep); return R; };
   const sun = sunShadow(1);
-  // `immediate`: el casco bajo se pinta en la línea de abajo, no con los cuerpos (`rig3d.js → withShadowLayer`)
-  if (sun.alpha > 0) withShadowLayer(ctx, f.x, f.y, (L + M.rampM * ppm) * 1.7, sun.alpha * M.shadowAlpha, (g) => run(g, "sun"), true);
+  // la sombra en UN relleno, ya, antes del casco bajo que se pinta en la línea de abajo (`rig3d.js → fillRigShadow`)
+  if (sun.alpha > 0) fillRigShadow(ctx, sun.alpha * M.shadowAlpha, M.shade.shadow, (m) => run(ctx, m));
   run(ctx, "cam", (h) => h <= M.splitM);
   // LA CUBIERTA DE PASAJEROS (`model.upper`) se desvanece cuando el jugador va abajo con su carro:
   // se pinta opaca en su propia capa y se compone a `fadeK`, así no se transparenta pieza contra pieza

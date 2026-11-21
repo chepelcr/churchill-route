@@ -148,9 +148,10 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
   // El manglar: ground, so it goes with the world pass — over the land
   // silhouette (it grows out of the bank, not behind it) and under the channel,
   // the boats and everything the crossing floats on top of them.
-  // LAS SOMBRAS DEL MOBILIARIO 3D, EN LOTE (`rig3d.js → withShadowLayer`): las bancas, las paradas, los
-  // arcos, las barricadas y los juegos de la feria se componen juntos al final de los hitos, en vez de
-  // una capa por cuerpo. Cierra ANTES de las copas de las escenas: las sombras van bajo los árboles.
+  // LAS SOMBRAS QUE TODAVÍA VAN EN LIENZO APARTE, EN LOTE (`rig3d.js → withShadowLayer`): hoy sólo los
+  // juegos de la feria que se levantan «por piezas» (lo armado con cajas tira su silueta en un relleno,
+  // `fillRigShadow`). Se componen juntas al final de los hitos en vez de una capa por juego — medido en
+  // la feria, 63 → 46 ms de render con CPU frenada. Cierra ANTES de las copas: van bajo los árboles.
   beginShadowBatch();
   drawMangroves(view, t);
   drawChannel(view, t); // la corriente + las boyas: the estero's navigable lane
@@ -224,10 +225,10 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       if (G.ball.x < view.x0 - 20 || G.ball.x > view.x1 + 20) continue;
       drawBeachBall(G);
     }
-    for (const pk of parked) {
-      if (pk.x < view.x0 - 20 || pk.x > view.x1 + 20 || pk.y < view.y0 - 20 || pk.y > view.y1 + 20) continue;
-      drawCar(pk);
-    }
+    // los carros, en dos pasadas: primero todas las sombras y después las carrocerías (`drawCar`)
+    const parkedIn = parked.filter((pk) => !(pk.x < view.x0 - 20 || pk.x > view.x1 + 20 || pk.y < view.y0 - 20 || pk.y > view.y1 + 20));
+    for (const pk of parkedIn) drawCar(pk, "shadow");
+    for (const pk of parkedIn) drawCar(pk, "body");
     for (const vn of vendors) {
       if (vn.x < view.x0 - 20 || vn.x > view.x1 + 20 || vn.y < view.y0 - 20 || vn.y > view.y1 + 20) continue;
       drawVendor(vn, t);
@@ -237,6 +238,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
       drawAnimal(an);
     }
     if (prof) prof.trafficCandidates = (prof.trafficCandidates || 0) + traffic.length;
+    const carsIn = [];
     for (const car of traffic) {
       if (car.x < view.x0 - 20 || car.x > view.x1 + 20) continue;
       if (prof) {
@@ -245,8 +247,10 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
           prof.trafficYCulled = (prof.trafficYCulled || 0) + 1;
       }
       if (car.y < view.y0 - 20 || car.y > view.y1 + 20) continue;
-      drawCar(car);
+      carsIn.push(car);
     }
+    for (const car of carsIn) drawCar(car, "shadow");
+    for (const car of carsIn) drawCar(car, "body");
     split("eTraffic");
     for (const tr of trains) {
       if (tr.x < view.x0 - 140 || tr.x > view.x1 + 140 || tr.y < view.y0 - 140 || tr.y > view.y1 + 140) continue;

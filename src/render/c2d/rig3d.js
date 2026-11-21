@@ -41,15 +41,42 @@ export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
   const squash = cap > 0 && rawLen > cap ? cap / rawLen : 1;
   const ground = (u, v) => [x + (u * c - v * s) * ppm, y + (u * s + v * c) * ppm];
   const sun1 = sunShadow(1);
-  const P = mode === "sun"
+  // "sil": la SOMBRA, pero juntada en un camino en vez de pintada pieza por pieza (ver `silhouette` abajo)
+  const collect = mode === "sil";
+  const P = mode === "sun" || collect
     ? (u, v, h) => { const p = ground(u, v); return [p[0] + sun1.dx * h, p[1] + sun1.dy * h]; }
     : (u, v, h) => { const p = ground(u, v); if (!(h > 0)) return p; const o = parallaxOffset(cam, p[0], p[1], h, ppm, UNCAPPED); return [p[0] + o.dx * squash, p[1] + o.dy * squash]; };
   // la cámara y la luz, en el marco del juego (metros)
   const ex = (cam.x - x) / ppm, ey = (cam.y - y) / ppm;
   const C = [ex * c + ey * s, -ex * s + ey * c, CAM_H];
   const lx = -(sun1.dx * c + sun1.dy * s), ly = -(-sun1.dx * s + sun1.dy * c);   // hacia el sol, en planta
-  const sh = mode === "sun";
+  const sh = mode === "sun" || collect;
   const items = [];
+  // LA SILUETA, para pintar la sombra SIN LIENZO APARTE. Cada pieza entra al MISMO camino con el MISMO
+  // giro —el de `arc`, horario en pantalla—, y un relleno `nonzero` de piezas que giran igual es su UNIÓN:
+  // donde dos se montan no se oscurece dos veces, que es todo lo que `withShadowLayer` compraba con su
+  // lienzo y su `drawImage` por cuerpo. Una caja entra como la envolvente de sus 8 esquinas al sol (eso
+  // ES la sombra de un prisma), un polígono con su giro corregido, un punto como disco y un trazo como
+  // cápsulas.
+  const sil = collect ? new Path2D() : null;
+  const addPoly = (Q) => {
+    let a2 = 0;
+    for (let i = 0; i < Q.length; i++) { const p = Q[i], q = Q[(i + 1) % Q.length]; a2 += p[0] * q[1] - q[0] * p[1]; }
+    const n = Q.length;
+    for (let k = 0; k < n; k++) { const q = Q[a2 >= 0 ? k : n - 1 - k]; k ? sil.lineTo(q[0], q[1]) : sil.moveTo(q[0], q[1]); }
+  };
+  const addDisc = (x, y, r) => { sil.moveTo(x + r, y); sil.arc(x, y, r, 0, TAU); };
+  const hull = (Q) => {
+    Q.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const H = [];
+    for (const pass of [Q, Q.slice().reverse()]) {
+      const start = H.length;
+      for (const p of pass) { while (H.length >= start + 2 && cross(H[H.length - 2], H[H.length - 1], p) <= 0) H.pop(); H.push(p); }
+      H.pop();
+    }
+    return H;
+  };
 
   const face = (base, n) => {
     if (sh) return shade.shadow;
@@ -63,22 +90,35 @@ export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
   };
 
   const R = {
-    P, ppm, C, shadow: sh, items,
+    P, ppm, C, shadow: sh, items, silhouette: sil,
     ink: (k) => (sh ? shade.shadow : k),
     /** encola un dibujo a la altura `h` (se pinta de lo bajo a lo alto) */
     at(h, fn) { items.push([h, items.length, fn]); },
     /** pinta lo encolado de lo bajo a lo alto; `keep(h)` elige qué alturas pinta esta vez */
     flush(keep = null) { items.sort((a, b) => a[0] - b[0] || a[1] - b[1]); for (const it of items) if (!keep || keep(it[0])) it[2](); items.length = 0; },
     line(pts, wM, ink) {
+      if (collect) {
+        const r = Math.max(0.6, wM * ppm) / 2, Q = pts.map((p) => P(p[0], p[1], p[2]));
+        for (let i = 0; i < Q.length; i++) {
+          addDisc(Q[i][0], Q[i][1], r);
+          if (i + 1 < Q.length) {
+            const a = Q[i], b = Q[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            if (L > 0.01) { const nx = -(b[1] - a[1]) / L * r, ny = (b[0] - a[0]) / L * r; addPoly([[a[0] - nx, a[1] - ny], [b[0] - nx, b[1] - ny], [b[0] + nx, b[1] + ny], [a[0] + nx, a[1] + ny]]); }
+          }
+        }
+        return;
+      }
       g.strokeStyle = R.ink(ink); g.lineWidth = Math.max(0.6, wM * ppm); g.lineCap = "round"; g.lineJoin = "round";
       path(pts); g.stroke();
     },
     poly(pts, ink, edge = null, edgeM = 0.08) {
+      if (collect) { addPoly(pts.map((p) => P(p[0], p[1], p[2]))); return; }
       path(pts); g.closePath(); g.fillStyle = R.ink(ink); g.fill();
       if (edge && !sh) { g.strokeStyle = edge; g.lineWidth = Math.max(0.5, edgeM * ppm); g.stroke(); }
     },
     dot(p, rM, ink) {
       const q = P(p[0], p[1], p[2]);
+      if (collect) { addDisc(q[0], q[1], Math.max(0.7, rM * ppm)); return; }
       g.fillStyle = R.ink(ink); g.beginPath(); g.arc(q[0], q[1], Math.max(0.7, rM * ppm), 0, TAU); g.fill();
     },
     /** puntos de un círculo de radio `r` alrededor de `o`, en el plano de los ejes unitarios e1, e2 */
@@ -96,6 +136,13 @@ export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
      * Se pintan sólo las caras que miran a la cámara (en sombra, todas).
      */
     obox(o, a, b, d, ink) {
+      if (collect) {
+        const Q = [];
+        for (const i of [-1, 1]) for (const j of [-1, 1]) for (const k of [-1, 1])
+          Q.push(P(o[0] + a[0] * i + b[0] * j + d[0] * k, o[1] + a[1] * i + b[1] * j + d[1] * k, o[2] + a[2] * i + b[2] * j + d[2] * k));
+        addPoly(hull(Q));
+        return;
+      }
       const inks = typeof ink === "string" ? { top: ink, side: ink, bottom: ink } : ink;
       const ax = [a, b, d], faces = [];
       for (let i = 0; i < 3; i++) for (const sg of [-1, 1]) {
@@ -162,22 +209,40 @@ export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
 // Sólo vale para quien ENCOLA su cuerpo (lo pinta `flushBodies`, después): quien pinta el cuerpo
 // enseguida de su sombra —el ferri, su casco bajo— pide `immediate`, o la sombra le caería encima.
 let shadowCanvas = null;
-const batch = { open: false, layers: new Map() };   // alfa → { canvas, g, alpha, x0, y0, x1, y1 }
+const batch = { open: false, layers: new Map() };   // alfa → { canvas, g, alpha, rects }
 
-/** Abre un lote: las sombras que siguen se juntan hasta `flushShadowBatch`. */
-export function beginShadowBatch() { batch.open = true; }
+/** Abre un lote: las sombras que siguen se juntan hasta `flushShadowBatch`. `__perfFlags.noShadowBatch`
+ *  lo deja cerrado, para medir el lote contra la capa por cuerpo en la MISMA escena. */
+export function beginShadowBatch() { batch.open = !(typeof window !== "undefined" && window.__perfFlags?.noShadowBatch); }
 
-/** Compone lo juntado sobre `g` (una vez por alfa) y cierra el lote. */
+/** Compone lo juntado sobre `g` (una vez por alfa y por caja) y cierra el lote. */
 export function flushShadowBatch(g) {
   batch.open = false;
   for (const L of batch.layers.values()) {
-    if (!(L.x1 > L.x0)) continue;
-    const w = L.x1 - L.x0, h = L.y1 - L.y0;
+    if (!L.rects.length) continue;
     g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = L.alpha;
-    g.drawImage(L.canvas, L.x0, L.y0, w, h, L.x0, L.y0, w, h); g.restore();
-    L.g.setTransform(1, 0, 0, 1, 0, 0); L.g.clearRect(L.x0, L.y0, w, h);
-    L.x0 = L.y0 = Infinity; L.x1 = L.y1 = -Infinity;
+    L.g.setTransform(1, 0, 0, 1, 0, 0);
+    for (const [x0, y0, x1, y1] of L.rects) {
+      g.drawImage(L.canvas, x0, y0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0);
+      L.g.clearRect(x0, y0, x1 - x0, y1 - y0);
+    }
+    g.restore();
+    L.rects.length = 0;
   }
+}
+
+// UNA CAJA POR SOMBRA, Y SÓLO SE FUNDEN LAS QUE SE TOCAN. Con una sola caja que abarcara todo el lote,
+// dos carros en esquinas opuestas componían —y limpiaban— la pantalla entera. Separadas, cada región se
+// compone UNA vez (si dos se montaran, su cruce se oscurecería dos veces: por eso se funden).
+function addRect(rects, r) {
+  for (let i = 0; i < rects.length; i++) {
+    const q = rects[i];
+    if (r[0] < q[2] && q[0] < r[2] && r[1] < q[3] && q[1] < r[3]) {
+      rects.splice(i, 1);
+      return addRect(rects, [Math.min(r[0], q[0]), Math.min(r[1], q[1]), Math.max(r[2], q[2]), Math.max(r[3], q[3])]);
+    }
+  }
+  rects.push(r);
 }
 
 function batchLayer(g, alpha) {
@@ -185,14 +250,14 @@ function batchLayer(g, alpha) {
   let L = batch.layers.get(key);
   if (!L) {
     const canvas = document.createElement("canvas");
-    L = { canvas, g: canvas.getContext("2d"), alpha, x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    L = { canvas, g: canvas.getContext("2d"), alpha, rects: [] };
     batch.layers.set(key, L);
   }
   L.alpha = alpha;
   const W = g.canvas.width, H = g.canvas.height;
   if (L.canvas.width !== W || L.canvas.height !== H) {
     L.canvas.width = W; L.canvas.height = H;   // redimensionar ya lo deja en blanco
-    L.x0 = L.y0 = Infinity; L.x1 = L.y1 = -Infinity;
+    L.rects.length = 0;
   }
   return L;
 }
@@ -206,7 +271,7 @@ export function withShadowLayer(g, x, y, radiusPx, alpha, draw, immediate = fals
     const L = batchLayer(g, alpha), cw = L.canvas.width, ch = L.canvas.height;
     const x0 = Math.max(0, bx), y0 = Math.max(0, by), x1 = Math.min(cw, bx + w), y1 = Math.min(ch, by + h);
     if (x1 <= x0 || y1 <= y0) return;   // fuera de la vista: nada que juntar
-    L.x0 = Math.min(L.x0, x0); L.y0 = Math.min(L.y0, y0); L.x1 = Math.max(L.x1, x1); L.y1 = Math.max(L.y1, y1);
+    addRect(L.rects, [x0, y0, x1, y1]);
     // el mismo recorte que el lienzo propio: lo que la silueta pinte fuera de su caja no existía antes
     L.g.save(); L.g.setTransform(1, 0, 0, 1, 0, 0);
     L.g.beginPath(); L.g.rect(x0, y0, x1 - x0, y1 - y0); L.g.clip();
@@ -224,4 +289,17 @@ export function withShadowLayer(g, x, y, radiusPx, alpha, draw, immediate = fals
   draw(sg);
   g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = alpha;
   g.drawImage(shadowCanvas, 0, 0, w, h, bx, by, w, h); g.restore();
+}
+
+/**
+ * PINTA LA SOMBRA DE UN APAREJO EN UN SOLO RELLENO, sin lienzo aparte. `build(mode)` arma el aparejo en
+ * el modo que se le pide y lo vacía (`flush`); aquí se le pide `"sil"` y se rellena su silueta con el
+ * alfa sobre `g`. Mismo dibujo que `withShadowLayer` (la unión de las piezas al sol, oscura una sola
+ * vez) sin su `drawImage`, que en el Paseo eran decenas por cuadro.
+ */
+export function fillRigShadow(g, alpha, ink, build) {
+  if (!(alpha > 0.001)) return;
+  const R = build("sil");
+  if (!R || !R.silhouette) return;
+  g.save(); g.globalAlpha = alpha; g.fillStyle = ink; g.fill(R.silhouette); g.restore();
 }

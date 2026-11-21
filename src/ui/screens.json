@@ -394,6 +394,11 @@
           "note": "la densidad del lienzo: la perilla de rendimiento que más pesa en un teléfono (`effects.json → resolution`)"
         },
         {
+          "id": "frameRate",
+          "region": "gameplay",
+          "note": "60 o 30 cuadros por segundo: a 30, un ritmo parejo en un teléfono que no sostiene 60 (`effects.json → frameRate`)"
+        },
+        {
           "id": "removeAds",
           "region": "account"
         },

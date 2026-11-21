@@ -200,6 +200,8 @@
   "settings.resolution.alta": "Alta",
   "settings.resolution.media": "Media",
   "settings.resolution.baja": "Baja",
+  "settings.fps": "Cuadros por segundo",
+  "settings.fps.desc": "30 = más parejo y menos batería en teléfonos",
   "shop.buy": "Comprar",
   "shop.confirmNo": "Cancelar",
   "shop.confirmTitle": "¿Confirmar compra?",

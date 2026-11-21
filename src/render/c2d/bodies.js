@@ -93,14 +93,30 @@ function paintDecal(T, i, lo, hi, lit) {
 // y otro no con las tintas cambiadas — el piso de las iglesias viejas. `inks`: [fondo, rombo,
 // centro, fondo alterno]. Se pinta en tres trazos por tinta, no por loseta.
 function paintMosaic(T, cap, o, ppm) {
-  const { everyM, inks } = T.mosaic, pts = T.pts, n = pts.length, s = everyM * ppm;
+  const { everyM, inks } = T.mosaic, s = everyM * ppm;
   if (!(s > 1.2)) return;
+  // LAS LOSETAS SE ARMAN UNA VEZ. La tapa sólo se TRASLADA con la cámara (`o`, su corrimiento a esa
+  // altura), así que el mosaico entero es el mismo dibujo corrido: se arma sin corrimiento, se guarda
+  // en la huella y cada cuadro se pinta bajo un `translate`. Armarlo por cuadro eran cientos de
+  // losetas recalculadas en el piso de cada iglesia vieja a la vista.
+  const M2 = T._mosaic && T._mosaic.s === s ? T._mosaic : (T._mosaic = buildMosaic(T.pts, s));
+  ctx.save(); ctx.clip(cap); ctx.translate(o[0], o[1]);
+  ctx.fillStyle = ink(inks[3] || inks[0]); ctx.fill(M2.alt);
+  ctx.fillStyle = ink(inks[1]); ctx.fill(M2.rhomb[0]);
+  ctx.fillStyle = ink(inks[0]); ctx.fill(M2.rhomb[1]);
+  ctx.fillStyle = ink(inks[2]); ctx.fill(M2.dot);
+  ctx.strokeStyle = ink(inks[2]); ctx.globalAlpha = 0.35; ctx.lineWidth = Math.max(0.4, s * 0.05); ctx.stroke(M2.grout);
+  ctx.restore();
+}
+
+function buildMosaic(pts, s) {
+  const n = pts.length;
   let ex = pts[2] - pts[0], ey = pts[3] - pts[1];
   const el = Math.hypot(ex, ey) || 1; ex /= el; ey /= el;
-  const nx = -ey, ny = ex, ox = pts[0] + o[0], oy = pts[1] + o[1];
+  const nx = -ey, ny = ex, ox = pts[0], oy = pts[1];
   let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
   for (let i = 0; i < n; i += 2) {
-    const dx = pts[i] + o[0] - ox, dy = pts[i + 1] + o[1] - oy, u = dx * ex + dy * ey, v = dx * nx + dy * ny;
+    const dx = pts[i] - ox, dy = pts[i + 1] - oy, u = dx * ex + dy * ey, v = dx * nx + dy * ny;
     u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
   }
   const P = (u, v) => [ox + ex * u + nx * v, oy + ey * u + ny * v];
@@ -116,13 +132,7 @@ function paintMosaic(T, cap, o, ppm) {
     quad(dot, [P(a + m - q, b + m - q), P(a + m + q, b + m - q), P(a + m + q, b + m + q), P(a + m - q, b + m + q)]);
     grout.moveTo(...P(a, b)); grout.lineTo(...P(a + s, b)); grout.moveTo(...P(a, b)); grout.lineTo(...P(a, b + s));
   }
-  ctx.save(); ctx.clip(cap);
-  ctx.fillStyle = ink(inks[3] || inks[0]); ctx.fill(alt);
-  ctx.fillStyle = ink(inks[1]); ctx.fill(rhomb[0]);
-  ctx.fillStyle = ink(inks[0]); ctx.fill(rhomb[1]);
-  ctx.fillStyle = ink(inks[2]); ctx.fill(dot);
-  ctx.strokeStyle = ink(inks[2]); ctx.globalAlpha = 0.35; ctx.lineWidth = Math.max(0.4, s * 0.05); ctx.stroke(grout);
-  ctx.restore();
+  return { s, alt, rhomb, dot, grout };
 }
 
 // UNA CARA DE TECHO (`facet`): el plano entre sus vértices, cada uno corrido a SU altura. Clara si mira al

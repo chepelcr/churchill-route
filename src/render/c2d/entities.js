@@ -20,7 +20,7 @@ import { ctx, lastT, mixColor } from "./gfx.js";
 import ACTORS from "../../assets/actors.json" with { type: "json" };
 import { paintPerson3d, paintRider } from "./people3d.js";
 import VEHICLE_REG from "../../assets/vehicles.json" with { type: "json" };
-import { makeRig, withShadowLayer } from "./rig3d.js";
+import { fillRigShadow, makeRig, withShadowLayer } from "./rig3d.js";
 import { hullOutline, paintHullSides } from "./vesselRigs.js";
 import PRODUCTS_JSON from "../../../content/world/products.json" with { type: "json" };
 
@@ -189,7 +189,11 @@ function drawSwimmer(pe) {
 // focos. `at`/`size` son fracciones del vehículo, así que un carro de 23 px y un bus de 41 salen de
 // recetas sin números por tamaño.
 const V3D = ACTORS.vehicle3d;
-function drawCar(c) {
+// UN CARRO SON DOS PASADAS: `drawCar(c, "shadow")` y después `drawCar(c, "body")`. El compositor
+// pinta primero las sombras de TODOS los carros y después las carrocerías, así la sombra de un carro
+// ya no le cae encima al de al lado. La sombra es UN relleno de su silueta (`rigShadow`), sin el lienzo
+// aparte que costaba una sincronización por carro. Sin pasada, las dos, como antes.
+function drawCar(c, pass = null) {
   const kind = A.traffic.kinds[c.kind] || A.traffic.kinds.car;
   const heightM = kind.heightM ?? A.traffic.heightM;
   const angle = c.ang || 0, ca = Math.cos(angle), sa = Math.sin(angle);
@@ -204,10 +208,11 @@ function drawCar(c) {
   };
   const hw = c.w / 2, hh = c.h / 2, ppm = PX_PER_M, hwM = hw / ppm, hhM = hh / ppm;
   // la sombra es la de sus piezas: la misma receta con el mapeo del sol
-  rigShadow(c.x, c.y, Math.max(hw, hh) + Math.hypot(sh.dx, sh.dy) + 4, (g) => {
-    const S = makeRig(g, c.x, c.y, angle, ppm, state.cam, "sun", V3D.shade, heightM);
-    rigBoxes(S, kind.body3d || [], hwM, hhM, color); S.flush();
+  if (pass !== "body") rigShadow((m) => {
+    const S = makeRig(ctx, c.x, c.y, angle, ppm, state.cam, m, V3D.shade, heightM);
+    rigBoxes(S, kind.body3d || [], hwM, hhM, color); S.flush(); return S;
   });
+  if (pass === "shadow") return;
   // EL TRÁFICO TAMBIÉN ALUMBRA. Un carro sin faros en una calle con pozos de
   // luz y oscuridad entre ellos es un carro invisible que se te viene encima —
   // y las calaveras son lo único que se ve de uno que se aleja.
@@ -219,10 +224,10 @@ function drawCar(c) {
   R.flush();
 }
 
-/** La sombra de un cuerpo armado con el aparejo: opaca en su lienzo, compuesta una vez con su alfa. */
-function rigShadow(x, y, radiusPx, draw) {
-  const a = sunShadow(1).alpha * V3D.shadowAlpha;
-  if (a > 0.001) withShadowLayer(ctx, x, y, radiusPx, a, draw);
+/** La sombra de un cuerpo armado con el aparejo: su silueta en UN relleno, con su alfa, sin lienzo
+ *  aparte (`rig3d.js → fillRigShadow`). `build(mode)` arma el aparejo en ese modo, lo vacía y lo devuelve. */
+function rigShadow(build) {
+  fillRigShadow(ctx, sunShadow(1).alpha * V3D.shadowAlpha, V3D.shade.shadow, build);
 }
 
 /** Una receta de cajas (`body3d`) sobre el aparejo: `at`/`size` en fracciones del vehículo, `z` en
@@ -246,11 +251,7 @@ function paintPlayer3d(x, y, a, veh, { body = true, rider = true, shadow = true 
     R.flush();
   };
   // la sombra es la de sus piezas y la de su chofer
-  if (shadow) {
-    const sh = sunShadow(topM);
-    rigShadow(x, y, Math.max(veh.w, veh.h) / 2 + Math.hypot(sh.dx, sh.dy) + 4,
-      (g) => build(makeRig(g, x, y, a, ppm, state.cam, "sun", V3D.shade, topM)));
-  }
+  if (shadow) rigShadow((m) => { const R = makeRig(ctx, x, y, a, ppm, state.cam, m, V3D.shade, topM); build(R); return R; });
   build(makeRig(ctx, x, y, a, ppm, state.cam, "cam", V3D.shade, topM));
 }
 
@@ -259,7 +260,9 @@ function paintPlayer3d(x, y, a, veh, { body = true, rider = true, shadow = true 
 function paintBoatShadow(p, veh) {
   const h = veh.heightM ?? V3D.defaultHeightM, sh = sunShadow(h), ppm = PX_PER_M;
   const c = Math.cos(-p.a), s = Math.sin(-p.a), lx = sh.dx * c - sh.dy * s, ly = sh.dx * s + sh.dy * c;
-  rigShadow(p.x, p.y, Math.max(veh.w, veh.h) / 2 + Math.hypot(sh.dx, sh.dy) + 8, (g) => {
+  // el casco es una SILUETA trazada, no cajas: ésta sí va en su lienzo aparte
+  const a = sunShadow(1).alpha * V3D.shadowAlpha;
+  if (a > 0.001) withShadowLayer(ctx, p.x, p.y, Math.max(veh.w, veh.h) / 2 + Math.hypot(sh.dx, sh.dy) + 8, a, (g) => {
     g.save(); g.translate(p.x, p.y); g.rotate(p.a); g.translate(lx, ly);
     g.fillStyle = V3D.shade.shadow; traceVehicleSilhouette(g, state.vehicleKey, veh); g.fill();
     g.restore();
@@ -287,9 +290,9 @@ function drawTrain(tr, t) {
         fn(c, f, f.halfPx[0] / ppm, f.halfPx[1] / ppm);
       }
     };
-    each((c, f, hwM, hhM) => rigShadow(c.x, c.y, Math.max(...f.halfPx) + Math.hypot(sh.dx, sh.dy) + 4, (g) => {
-      const S = makeRig(g, c.x, c.y, c.ang, ppm, state.cam, "sun", V3D.shade, rec.heightM);
-      rigBoxes(S, f.boxes, hwM, hhM, color); S.flush();
+    each((c, f, hwM, hhM) => rigShadow((m) => {
+      const S = makeRig(ctx, c.x, c.y, c.ang, ppm, state.cam, m, V3D.shade, rec.heightM);
+      rigBoxes(S, f.boxes, hwM, hhM, color); S.flush(); return S;
     }));
     each((c, f, hwM, hhM) => {
       const R = makeRig(ctx, c.x, c.y, c.ang, ppm, state.cam, "cam", V3D.shade, rec.heightM);

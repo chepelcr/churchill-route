@@ -16,6 +16,7 @@ import { t } from "../i18n/index.js";
 import { tutorialTick } from "./tutorial.js";
 import { economy, COINS_PER_PICKUP } from "./economy.js";
 import ACTORS from "../assets/actors.json" with { type: "json" };
+import FERIA from "../render/c2d/feriaAssets.json" with { type: "json" };   // la tarima del DJ: su choque es su dibujo
 import SIM from "../content/simulation.json" with { type: "json" };
 import { tuning } from "./tuning.js";
 import { advanceFerries, carry, deckAt, ferries, muelleAt, routePoint } from "./ferries.js";
@@ -112,6 +113,40 @@ function collideBuilding(p, b) {
 // the causeway, which are over an estuary, not the sea. So the level comes from
 // how far ALONG a muelle you are: 0 at the landward end, full out at the sea
 // end, which also gives the ramp something to do as you drive out.
+// CON QUÉ CHOCA UN JUEGO DE LA FERIA. Casi todos son un disco —una rueda, un carrusel—, pero la tarima
+// del DJ es un RECTÁNGULO de 130 x 91 px y el disco que la representaba medía 47 de radio: por los
+// costados quedaban ~18 px de tablado dibujado fuera del choque, y por ahí el carro se metía a la
+// tarima. Un juego cuyo arte declara su tarima (`feriaAssets.json → <juego>.view3d.deckK`, en
+// fracciones del radio, en el marco del arte) choca contra ESE rectángulo, girado igual que el dibujo
+// (`attractions.js → drawRide3d`): rumbo del mundo + el eje del arte (`facing`). La medida es una sola.
+const CAR_PAD_PX = 9;   // medio carro: lo que el centro del jugador se queda afuera del borde
+const FACING_OFFSET = Object.freeze({ "+x": 0, "+y": -Math.PI / 2, "-x": Math.PI, "-y": Math.PI / 2 });   // = attractions.js
+function attractionContact(A, p, AT) {
+  const r = (A.r || 24) * (AT.scaleByKind?.[A.kind] ?? 1);
+  const dx = p.x - A.x, dy = p.y - A.y;
+  const art = FERIA[A.kind], deck = art?.view3d?.deckK;
+  if (deck) {
+    const rot = (A.ang || 0) + FACING_OFFSET[art.facing || "+x"], c = Math.cos(rot), s = Math.sin(rot);
+    // el jugador en el marco del arte, desde el ORIGEN de la forma: `originK` la corre dentro de su marco
+    const [ou, ov] = (art.view3d.originK || [0, 0]).map((k) => k * r);
+    const u = dx * c + dy * s - ou, v = -dx * s + dy * c - ov;
+    const u0 = deck[0] * r - CAR_PAD_PX, v0 = deck[1] * r - CAR_PAD_PX;
+    const u1 = deck[2] * r + CAR_PAD_PX, v1 = deck[3] * r + CAR_PAD_PX;
+    if (u <= u0 || u >= u1 || v <= v0 || v >= v1) return null;
+    // sale por el borde más cercano: de lado, por el costado; de frente, por el frente
+    const pen = [[u - u0, -1, 0], [u1 - u, 1, 0], [v - v0, 0, -1], [v1 - v, 0, 1]].sort((a, b) => a[0] - b[0])[0];
+    const lu = (pen[1] ? (pen[1] < 0 ? u0 : u1) : u) + ou, lv = (pen[2] ? (pen[2] < 0 ? v0 : v1) : v) + ov;
+    return { x: A.x + lu * c - lv * s, y: A.y + lu * s + lv * c, nx: pen[1] * c - pen[2] * s, ny: pen[1] * s + pen[2] * c };
+  }
+  const reach = r * AT.radiusScale + CAR_PAD_PX, d2 = dx * dx + dy * dy;
+  if (d2 > reach * reach) return null;
+  const d = Math.sqrt(d2) || 0.0001;
+  // Dead centre has no normal to leave by, so pick one rather than divide by
+  // zero and launch the car to NaN.
+  const nx = d2 > 1e-6 ? dx / d : 0, ny = d2 > 1e-6 ? dy / d : -1;
+  return { x: A.x + nx * reach, y: A.y + ny * reach, nx, ny };
+}
+
 // DJ URTECH. How loud his set is where the player is standing: 1 at the booth,
 // 0 past DJ_REACH. Much further than the pool's 340 px on purpose — a sound
 // system carries down the whole Paseo, and hearing it before you can see it is
@@ -654,17 +689,11 @@ export function update(dt) {
   // rebote no puede costar una reconstrucción del mundo.
   const AT = ACTORS.attraction;
   for (const A of W.ATTRACTIONS || []) {
-    const rr = (A.r || 24) * (AT.scaleByKind?.[A.kind] ?? 1) * AT.radiusScale;
-    const dx = p.x - A.x, dy = p.y - A.y;
-    const d2 = dx * dx + dy * dy;
-    const reach = rr + 9;
-    if (d2 > reach * reach) continue;
-    const d = Math.sqrt(d2) || 0.0001;
-    // Dead centre has no normal to leave by, so pick one rather than divide by
-    // zero and launch the car to NaN.
-    const nx = d2 > 1e-6 ? dx / d : 0, ny = d2 > 1e-6 ? dy / d : -1;
-    p.x = A.x + nx * reach;
-    p.y = A.y + ny * reach;
+    const hit = attractionContact(A, p, AT);
+    if (!hit) continue;
+    const { nx, ny } = hit;
+    p.x = hit.x;
+    p.y = hit.y;
     const vn = p.vx * nx + p.vy * ny;
     if (vn < 0) {
       p.vx -= vn * (1 + AT.restitution) * nx;

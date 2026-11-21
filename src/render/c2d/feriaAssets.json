@@ -1427,6 +1427,17 @@
         -0.56
       ],
       "doselM": 1.6,
+      "doselName": {
+        "_": "EL NOMBRE DEL DJ, PINTADO SOBRE EL DOSEL MORADO, SIN PÍLDORA (`feriaRigs.js → stage`, `rig3d.js → text`). Volvió cuando se apagaron los rótulos de los juegos (`$view3d.signs`): el del DJ se perdía con los demás. `heightK`: el alto de la letra en fondos del dosel; `widthK`: lo más ancho que puede ir, en anchos del dosel.",
+        "text": "DJ URTECH",
+        "ink": "#ffffff",
+        "heightK": 0.72,
+        "widthK": 0.86,
+        "font": {
+          "weight": "800",
+          "family": "'Space Grotesk', sans-serif"
+        }
+      },
       "speakerAtK": [
         0.8,
         0.26

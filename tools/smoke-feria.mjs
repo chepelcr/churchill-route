@@ -91,7 +91,53 @@ const out = await page.evaluate(() => {
            minD: +r.minD.toFixed(1), minVx: +Math.min(...r.vx).toFixed(1),
            restitution: r.restitution, frames: r.vx.length };
 });
+
+// LA TARIMA DEL DJ ES UN RECTÁNGULO, NO UN DISCO. Chocaba como un disco de 47 px contra un tablado de
+// 130 x 91: por los costados el centro del carro entraba 11 px DENTRO del tablado. Se embiste desde los
+// dos costados y desde el frente, con la MISMA geometría con la que se dibuja (`feriaAssets.json →
+// dj.view3d.deckK` + `originK`, girada por el rumbo y el `facing` del arte), y se mide cuánto entra.
+const dj = await page.evaluate(async () => {
+  const { WORLD2D: W } = await import("/src/world2d/index.js");
+  const ACTORS = (await import("/src/assets/actors.json", { with: { type: "json" } })).default;
+  const FERIA = (await import("/src/render/c2d/feriaAssets.json", { with: { type: "json" } })).default;
+  const A = (W.ATTRACTIONS || []).find((a) => a.kind === "dj");
+  if (!A) return null;
+  const V = FERIA.dj.view3d, r = (A.r || 24) * (ACTORS.attraction.scaleByKind?.dj ?? 1);
+  const off = { "+x": 0, "+y": -Math.PI / 2, "-x": Math.PI, "-y": Math.PI / 2 }[FERIA.dj.facing || "+x"];
+  const rot = (A.ang || 0) + off, c = Math.cos(rot), s = Math.sin(rot);
+  const [ou, ov] = (V.originK || [0, 0]).map((k) => k * r), [k0, k1, k2, k3] = V.deckK.map((k) => k * r);
+  const toW = (u, v) => [A.x + (u + ou) * c - (v + ov) * s, A.y + (u + ou) * s + (v + ov) * c];
+  const toL = (x, y) => { const dx = x - A.x, dy = y - A.y; return [dx * c + dy * s - ou, -dx * s + dy * c - ov]; };
+  const p = window.Game.state.p;
+  for (let i = 0; i < 240; i++) {
+    W.ensureView(A.x - 700, A.y - 700, A.x + 700, A.y + 700, 1);
+    if (W.tileResident(A.x, A.y)) break;
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+  const legs = { izquierda: [k0 - 50, (k1 + k3) / 2, 1, 0], derecha: [k2 + 50, (k1 + k3) / 2, -1, 0], frente: [0, k3 + 50, 0, -1] };
+  const out = {};
+  for (const [name, [u, v, du, dv]] of Object.entries(legs)) {
+    const [x, y] = toW(u, v), dx = du * c - dv * s, dy = du * s + dv * c;
+    p.x = x; p.y = y; p.a = Math.atan2(dy, dx); p.vx = dx * 220; p.vy = dy * 220; p.speed = 220;
+    let deepest = -Infinity;
+    for (let f = 0; f < 70; f++) {
+      await new Promise((r) => requestAnimationFrame(r));
+      const [lu, lv] = toL(p.x, p.y);
+      deepest = Math.max(deepest, Math.min(lu - k0, k2 - lu, lv - k1, k3 - lv));   // >0: el centro, dentro del tablado
+    }
+    out[name] = +deepest.toFixed(1);
+  }
+  return out;
+});
 await browser.close();
+if (!dj) { console.error("[feria] FAIL — el mundo no trae la tarima del DJ"); process.exit(1); }
+console.log(`[feria] tarima del DJ: lo más adentro que llegó el centro del carro (px, <0 = afuera) — `
+  + Object.entries(dj).map(([k, v]) => `${k} ${v}`).join(" · "));
+const breach = Object.entries(dj).filter(([, v]) => v > 0);
+if (breach.length) {
+  console.error(`[feria] FAIL — se mete a la tarima del DJ por: ${breach.map(([k, v]) => `${k} (${v}px)`).join(", ")}`);
+  process.exit(1);
+}
 if (errors.length) { console.error(`[feria] page errors: ${errors.join(" | ")}`); process.exit(1); }
 if (!out.rides) { console.error("[feria] FAIL — the world has no rides to hit"); process.exit(1); }
 if (out.notStreamed) {

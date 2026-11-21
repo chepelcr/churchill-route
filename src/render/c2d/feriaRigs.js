@@ -206,7 +206,13 @@ function stage(R, { rM, t, V }) {
     R.box(x0 + 0.4, cy, T, T + b, b, d - 0.4, I.truss); R.box(x1 - 0.4, cy, T, T + b, b, d - 0.4, I.truss);
   });
   const [dx0, dy0, dx1, dy1] = V.doselK.map(K);
-  R.at(T + 0.5, () => R.box((dx0 + dx1) / 2, (dy0 + dy1) / 2, T + 0.1, T + V.doselM, dx1 - dx0, dy1 - dy0, { top: I.dosel, side: I.doselSide }));
+  R.at(T + 0.5, () => {
+    R.box((dx0 + dx1) / 2, (dy0 + dy1) / 2, T + 0.1, T + V.doselM, dx1 - dx0, dy1 - dy0, { top: I.dosel, side: I.doselSide });
+    // el nombre, pintado sobre el dosel: sin píldora, las letras sobre la lona
+    const N = V.doselName;
+    if (N) R.text([(dx0 + dx1) / 2, (dy0 + dy1) / 2, T + V.doselM + 0.02], [1, 0, 0], N.text,
+      (dy1 - dy0) * N.heightK, (dx1 - dx0) * N.widthK, N.ink, N.font);
+  });
   const pump = 1 + Math.sin(t * V.pump.speed * TAU) * V.pump.amp, [sw, sd, shh] = V.speakerM;
   for (const e of [-1, 1]) {
     const u = e * K(V.speakerAtK[0]), v = K(V.speakerAtK[1]);

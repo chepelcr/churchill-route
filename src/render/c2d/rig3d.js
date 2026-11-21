@@ -116,6 +116,29 @@ export function makeRig(g, x, y, rot, ppm, cam, mode, shade, topM = 0) {
       const ca = Math.cos(ang), sa = Math.sin(ang);
       R.obox([u, v, (z0 + z1) / 2], [ca * w / 2, sa * w / 2, 0], [-sa * d / 2, ca * d / 2, 0], [0, 0, (z1 - z0) / 2], ink);
     },
+    /**
+     * UN RÓTULO PINTADO SOBRE UNA CARA HORIZONTAL: centrado en `o`, a lo largo del eje `e` (un vector en
+     * metros del marco del juego), de `hM` metros de alto y nunca más ancho que `maxM`. Se proyecta con
+     * la cámara como todo lo demás y se ENDEREZA: si el eje queda de cabeza en pantalla se lee al revés.
+     * `font` es `{ weight, family }` del registro. En sombra no se pinta: una letra no tira sombra.
+     */
+    text(o, e, str, hM, maxM, ink, font) {
+      if (sh || !str) return;
+      const a = P(o[0], o[1], o[2]), b = P(o[0] + e[0], o[1] + e[1], o[2]);
+      const m = g.getTransform();
+      let ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      const sx = m.a * Math.cos(ang) + m.c * Math.sin(ang), sy = m.b * Math.cos(ang) + m.d * Math.sin(ang);
+      if (Math.abs(Math.atan2(sy, sx)) > Math.PI / 2) ang += Math.PI;
+      const unit = Math.hypot(b[0] - a[0], b[1] - a[1]) / (Math.hypot(e[0], e[1]) || 1);   // px por metro, a esa altura
+      g.save(); g.translate(a[0], a[1]); g.rotate(ang);
+      let px = hM * unit;
+      g.font = `${font.weight} ${px}px ${font.family}`;
+      const w = g.measureText(str).width, max = maxM * unit;
+      if (w > max) { px *= max / w; g.font = `${font.weight} ${px}px ${font.family}`; }
+      g.fillStyle = ink; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(str, 0, 0);
+      g.restore();
+    },
     /** ¿la cara con normal `n` que pasa por `p` mira a la cámara? */
     faces(p, n) { return sh || (C[0] - p[0]) * n[0] + (C[1] - p[1]) * n[1] + (C[2] - p[2]) * n[2] > 0; },
   };

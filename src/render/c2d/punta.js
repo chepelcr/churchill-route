@@ -605,7 +605,7 @@ function paintMonument(mo, ppm, view = null) {
     ctx.restore();
     // LAS GRADAS, EL ESCENARIO Y LAS HOJAS EN 3D (`shellForm`): su sombra de una vez, en el suelo; ellos, con los cuerpos
     const Rm = R / ppm, topM = Math.max(C.tierRiseM * C.tiers, C.leafTopM) + 0.5;
-    const rig = (g, mode) => { const S = makeRig(g, mo.x, mo.y, mo.ang || 0, ppm, state.cam, mode, C.shade, topM); shellForm(S, Rm, C); S.flush(); return S; };
+    const rig = (g, mode) => { const S = makeRig(g, mo.x, mo.y, mo.ang || 0, ppm, state.cam, mode, C.shade, topM, { leanK: C.leanK ?? 1 }); shellForm(S, Rm, C); S.flush(); return S; };
     const sun = sunShadow(1);
     // la sombra en UN relleno, sin lienzo aparte (`rig3d.js → fillRigShadow`)
     if (sun.alpha > 0) fillRigShadow(ctx, sun.alpha * C.shadowAlpha, C.shade.shadow, (m) => rig(ctx, m));

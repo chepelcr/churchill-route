@@ -1965,6 +1965,8 @@
         "leafFromK": 0.97,
         "leafBaseM": 1.2,
         "leafTopM": 6.5,
+        "leanK": 0.35,
+        "_leanK": "CUÁNTO DEL PINHOLE SE LLEVA LA CONCHA (`rig3d.js → makeRig`, opción `leanK`). Entera, con la cámara a 60 m, la punta de una hoja (6,5 m) se corre casi seis veces lo que su pie (1,2 m): a un costado de la pantalla cada hoja se estiraba en una espiga de dos o tres veces su largo y la Concha entera se deshacía hacia afuera. No es el problema de la UTN —el aparejo ya corre cada punto según dónde está—: es una lámina INCLINADA y alta sobre un monumento de 9 m de radio. Es el mismo arreglo que ya tienen las copas (`effects.json → flora25.topdown.parallaxK`, 0,35): se lee alta sin despegarse. La sombra no cambia: es del sol.",
         "leafCupM": 0.6,
         "leafSizeK": [0.8, 1.15],
         "pillarM": 0.4,

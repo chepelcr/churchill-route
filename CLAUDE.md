@@ -824,19 +824,33 @@ así que el ALTO se DERIVA (calle menor que sale a una mayor); lo que sí trae c
 VÍA en la punta de entrada y NO HAY PASO en la de salida, y cada parada sentada lleva PARADA DE
 AUTOBUSES adelante y NO ESTACIONAR atrás. Tres cosas costaron una ronda cada una:
 
-* **el ALTO va en la esquina, y eso lo decide el RÁSTER**, no el eje de la calle mayor: en una
-  avenida ancha la muestra más cercana de su eje cae lejos. `settle_altos` (en `write_world`, sobre
-  la superficie terminada) camina por la acera hasta la calzada que se cruza, retrocede una acera y
-  pega el poste al bordillo. Ahí mismo tiende la ZEBRA de la esquina —sobre la calle que para, en
-  línea con la acera de la que se cruza— si hay una escuela, iglesia, parque, plaza o mercado a
-  menos de 120 m. Corre en el emit, así que **el smoke recortado no lo ve**: se prueba contra los
-  tiles publicados con un shim de ráster, como dice más abajo;
-* **la placa va PARADA y mira al conductor que llega**; la cara es el dibujo del registro
-  (`plate.face`, con la palabra) llevado al plano de la placa con una afín, y la palabra se endereza
-  sobre su punto para no salir de cabeza. **De qué lado se la mira se pregunta a ras de calle**
-  (normal horizontal): con la placa echada 12° y la cámara a 60 m, el aparejo decía «de frente»
-  estando detrás, y la palabra salía del lado que el jugador ve como espalda. Desde atrás: espalda
-  gris. La UNA VÍA (`keepX`) es de dos caras y su flecha apunta hacia donde se anda de los dos lados;
+* **el ALTO va en el CUADRO DE ACERA de la esquina, y lo decide la GEOMETRÍA, como a una lámpara**
+  (`streetlights.py`: eje + media calzada + media acera). `derive_altos` lo sienta donde se cruzan dos
+  rectas —paralela a la calle que se cruza a su media calzada + media acera, paralela a la propia a lo
+  mismo— y el ráster sólo CONFIRMA en `settle_altos`. Tres versiones antes lo resolvían de otro modo
+  y las tres se leían «lejos de la esquina»: los rellenos fijos (una acera entera atrás: la esquina
+  de las FACHADAS), y caminar el ráster hasta el bordillo (la PUNTA, con la placa echada colgando
+  sobre la calle). **En un cruce oblicuo el paso lateral también se acerca a la calle que se cruza**
+  (`side·(r·n)`); sin ese término el poste caía en su calzada, y hay una prueba a 60°. La ZEBRA es el
+  mismo punto corrido de vuelta al eje de la calle que para, si hay escuela, iglesia, parque, plaza o
+  mercado a menos de 120 m;
+* **`pnpm preview:signs` — LAS SEÑALES SIN RECONSTRUIR.** `tools/preview_signs.py` corre la cadena DE
+  VERDAD (`build_signs` → `settle_altos` → `clear_the_roadway`) sobre el mundo ya emitido: las calles
+  del OSM con la proyección del builder, la superficie de los tiles. 20 s contra 53 min.
+  `tools/shot-signs-preview.mjs` las pone en `W.SIGNS` y saca ANTES/DESPUÉS de las mismas esquinas
+  (`SIGNS_ZOOM=2` para acercar; `x,y` para elegirlas); `pnpm world:signs` escribe `manifest.signs` y
+  va `world_snapshot.py save` en el commit. **Su primera línea es la prueba**: con el código del
+  último build sale idéntico salvo 4 de 1 410, todos en La Punta y el Muelle de Cruceros, que
+  `world:punta` reestampa DESPUÉS del build. Y devuelve a la cuenta de zebras el Parque y la
+  Catedral, que `world:centro` saca de `parcels` después de que el build los vio;
+* **la placa mira al conductor que llega, y LA SEÑAL ENTERA SE ECHA `tiltDeg` (30°) DESDE SU PIE**,
+  palo y placa como una pieza: echando sólo la placa, una de 3 m tapaba desde arriba el palo de 2 m
+  parado bajo su centro y la señal flotaba. El punto emitido es donde se VE la placa; el pie va
+  detrás, en la acera propia, y el palo sale de ahí. **La palabra NO se endereza hacia el jugador**:
+  lee hacia el CONDUCTOR, como un mapa visto desde arriba, así que en la esquina de abajo el ALTO
+  sale de cabeza en pantalla y eso es lo correcto. De qué lado se ve se decide con la normal ECHADA
+  (la de verdad): desde bien atrás, espalda gris. La UNA VÍA (`keepX`) es de dos caras y sólo su
+  palabra se des-espeja vista desde atrás;
 * **una zebra de OSM es un nodo SOBRE la vía**: se emitía con `ang` 0 y se pintaba a escuadra con la
   pantalla. Se asienta en el eje con el rumbo y el medio ancho (`hw`) de su calle, y `drawZebra` la
   tiende de bordillo a bordillo. `pnpm test` → `tests/test_signs.py`.

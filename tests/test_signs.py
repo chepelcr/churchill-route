@@ -14,7 +14,7 @@ sys.path.insert(0, ROOT)
 from churchill.world.config import ACERA_CELLS, CLS_ACERA, CLS_LAND, CLS_ROAD, GRID_CELL  # noqa: E402
 from churchill.world.enums import SignKind  # noqa: E402
 from churchill.world.pipeline.finish import settle_altos  # noqa: E402
-from churchill.world.service.signs import derive_road_signs, extract_node_signs  # noqa: E402
+from churchill.world.service.signs import derive_altos, derive_road_signs, extract_node_signs  # noqa: E402
 
 
 def road(pts, **kw):
@@ -83,32 +83,45 @@ class _Grid:
 
 
 class SettleTests(unittest.TestCase):
-    def test_the_alto_walks_to_the_corner_and_lays_its_zebra_on_the_asphalt(self):
+    """La calle que para (vertical, 40 px, sube desde y = 300) sale a la que cruza (horizontal, 40 px,
+    en y = 0), como en `_Grid`. El cuadro de acera de la esquina, a la derecha del que sube, es
+    x, y ∈ [20, 35]: su centro, (27.5, 27.5), es donde va el ALTO."""
+
+    ROADS = [road([-400, 0, 400, 0], cls="secondary", w=40), road([0, 300, 0, 2], w=40)]
+
+    def alto(self):
+        return next(s for s in derive_altos(self.ROADS) if s["kind"] == SignKind.ALTO
+                    and math.sin(s["ang"]) < -0.9)
+
+    def test_the_alto_stands_in_the_middle_of_the_corner_square(self):
+        a = self.alto()
+        corner = 4 * GRID_CELL + ACERA_CELLS * GRID_CELL / 2
+        self.assertLess(abs(a["x"] - corner), 1.01, a)
+        self.assertLess(abs(a["y"] - corner), 1.01, a)
+        self.assertEqual(_Grid().at_px(a["x"], a["y"]), CLS_ACERA)
+
+    def test_an_oblique_junction_still_lands_on_the_crossing_sidewalk(self):
+        # la que para llega a 60° de la que cruza: medido a lo largo del eje, el retiro crece
+        k = 300 / math.tan(math.radians(60))
+        a = next(s for s in derive_altos([self.ROADS[0], road([k, 300, 0, 2], w=40)])
+                 if s["kind"] == SignKind.ALTO)
+        # la distancia al eje de la que cruza sigue siendo media calzada + media acera
+        self.assertLess(abs(a["y"] - (20 + ACERA_CELLS * GRID_CELL / 2)), 1.01, a)
+
+    def test_settle_keeps_the_corner_and_lays_the_zebra_on_its_axis(self):
         g = _Grid()
-        hw = 4 * GRID_CELL
-        # el conductor sube (ang -π/2) hacia la que cruza; su derecha es +x. El ALTO quedó media cuadra
-        # atrás, contra la pared
-        side = hw + 11
-        alto = {"x": round(side), "y": 16 * GRID_CELL, "kind": SignKind.ALTO, "ang": -math.pi / 2,
-                "_side": side, "_hw": hw}
-        out = settle_altos(g, [alto], [{"use": "school", "cx": 0, "cy": 60}])
+        a = self.alto()
+        out = settle_altos(g, [a], [{"use": "school", "cx": 0, "cy": 60}])
         a = next(s for s in out if s["kind"] == SignKind.ALTO)
         self.assertNotIn("_side", a)
-        self.assertEqual(g.at_px(a["x"], a["y"]), CLS_ACERA)
-        # en la esquina: a la altura donde termina la cuadra, no media cuadra atrás
-        corner_y = (4 + ACERA_CELLS) * GRID_CELL
-        self.assertLess(abs(a["y"] - corner_y), 2 * GRID_CELL, a)
         z = [s for s in out if s["kind"] == SignKind.CROSSING]
         self.assertEqual(len(z), 1, "cerca de una escuela, la esquina lleva zebra")
         self.assertEqual(g.at_px(z[0]["x"], z[0]["y"]), CLS_ROAD, "la zebra va en la calzada, no en la acera")
-        self.assertLess(abs(z[0]["x"]), GRID_CELL, "…y sobre el eje de la calle que para")
+        self.assertLess(abs(z[0]["x"]), 1.01, "…sobre el eje de la calle que para")
+        self.assertEqual(z[0]["y"], a["y"], "…en línea con la acera de la que se cruza")
 
     def test_no_zebra_far_from_where_people_cross(self):
-        g = _Grid()
-        hw = 4 * GRID_CELL
-        alto = {"x": round(hw + 11), "y": 30 * GRID_CELL, "kind": SignKind.ALTO, "ang": -math.pi / 2,
-                "_side": hw + 11, "_hw": hw}
-        out = settle_altos(g, [alto], [{"use": "school", "cx": 99999, "cy": 99999}])
+        out = settle_altos(_Grid(), [self.alto()], [{"use": "school", "cx": 99999, "cy": 99999}])
         self.assertFalse([s for s in out if s["kind"] == SignKind.CROSSING])
 
 

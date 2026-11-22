@@ -70,7 +70,8 @@ class EmittedRaster:
         if (c, r) in self._over:
             return self._over[(c, r)]
         t = self.tile(c // self.tc, r // self.tc)
-        return 0 if t is None else t[0][(r % self.tc) * self.tc + (c % self.tc)]
+        # un tile del borde es más angosto que `tc`: su fila mide lo que dice el tile
+        return 0 if t is None else t[0][(r % self.tc) * t[1].get("cols", self.tc) + (c % self.tc)]
 
     def features(self, key, x0, y0, x1, y1):
         seen, out = set(), []

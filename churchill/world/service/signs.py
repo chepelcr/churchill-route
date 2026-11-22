@@ -19,7 +19,7 @@ option: inventing them at random would put an ALTO in the middle of a block.
 """
 import math
 
-from ..config import CUAD
+from ..config import ACERA_CELLS, CUAD, GRID_CELL
 from ..enums.features import SignKind, YIELDS_TO
 from ..logging import log
 from .street import resample_centerline
@@ -44,12 +44,16 @@ MAJOR = YIELDS_TO
 #: …and one this narrow is a driveway, not an approach worth signing.
 MINOR_MIN_LEN = 60          # px
 JUNCTION_R = 1.3 * CUAD     # px: how close two road ends count as a junction
-# A sign stands ON THE CORNER, not in the road. Both offsets are measured from
-# the CARRIAGEWAY, not from a fixed number of cuadrículas: the Paseo is 71 px
-# wide and a barrio calle 36, so a flat 18 px offset put the ALTOs at the Faro
-# end of the Paseo in the middle of the asphalt.
-ALTO_SIDE_PAD = 0.45 * CUAD   # px beyond the minor road's own kerb
-ALTO_BACK_PAD = 0.6 * CUAD    # px beyond the major road's kerb, back down the approach
+# A sign stands ON THE CORNER, not in the road — and the corner is where the two
+# SIDEWALKS cross. It is found the way `streetlights.py` seats a lamp: from each
+# centreline, half its carriageway plus half the acera. Half the major street's
+# width + half an acera back from its centreline (measured along the approach,
+# so an oblique junction lands right), half the minor street's + half an acera
+# off its own: the middle of the corner square of acera. Both measured from the
+# CARRIAGEWAY, since the Paseo is 71 px wide and a barrio calle 36. The old
+# pads (a whole acera back, 11 px out) put the post at the inner, building-side
+# corner of that square, which from above reads as "not at the corner".
+ALTO_CORNER_IN = ACERA_CELLS * GRID_CELL * 0.5
 #: No two derived ALTOs stand closer than this. Where several ways end at the
 #: same esquina they each earn a sign, and the result is a thicket.
 ALTO_MIN_GAP = 2.2 * CUAD
@@ -178,16 +182,21 @@ def derive_altos(roads, limit=None):
     major = [r for r in roads if r.get("cls") in MAJOR and r.get("pts")]
     if not major:
         return []
-    # coarse bucket index over the major centrelines, so this is not 2000x2000
+    # coarse bucket index over the major centrelines, so this is not 2000x2000; each sample keeps its
+    # half-width AND its direction, which the corner needs to measure an oblique junction
     CELL = 128
     grid = {}
     for r in major:
         hw = r.get("w", 36) / 2
-        for (_, x, y) in resample_centerline(r["pts"], 10):
-            grid.setdefault((int(x // CELL), int(y // CELL)), []).append((x, y, hw))
+        sm = resample_centerline(r["pts"], 10)
+        for k, (_, x, y) in enumerate(sm):
+            a, b = sm[max(0, k - 1)], sm[min(len(sm) - 1, k + 1)]
+            d = math.hypot(b[1] - a[1], b[2] - a[2]) or 1.0
+            grid.setdefault((int(x // CELL), int(y // CELL)), []).append(
+                (x, y, hw, (b[1] - a[1]) / d, (b[2] - a[2]) / d))
 
     def major_near(x, y, rr):
-        """The half-width of the nearest major carriageway within rr, or None.
+        """The nearest major centreline sample within rr — (x, y, hw, dx, dy) — or None.
 
         The WIDTH is what the caller needs: a sign has to clear the road it is
         stopping for, and that road may be a 36 px calle or the 71 px Paseo.
@@ -196,10 +205,10 @@ def derive_altos(roads, limit=None):
         c0, r0 = int(x // CELL), int(y // CELL)
         for dc in (-1, 0, 1):
             for dr in (-1, 0, 1):
-                for (mx, my, hw) in grid.get((c0 + dc, r0 + dr), ()):
-                    d2 = (mx - x) ** 2 + (my - y) ** 2
+                for smp in grid.get((c0 + dc, r0 + dr), ()):
+                    d2 = (smp[0] - x) ** 2 + (smp[1] - y) ** 2
                     if d2 <= rr * rr and (best is None or d2 < best[0]):
-                        best = (d2, hw)
+                        best = (d2, smp)
         return best[1] if best else None
 
     out = []
@@ -215,22 +224,33 @@ def derive_altos(roads, limit=None):
             continue
         for at_start in (True, False):
             ex, ey = (p[0], p[1]) if at_start else (p[-2], p[-1])
-            major_hw = major_near(ex, ey, JUNCTION_R)
-            if major_hw is None:
+            hit = major_near(ex, ey, JUNCTION_R)
+            if hit is None:
                 continue
+            mx, my, major_hw, mdx, mdy = hit
             # heading INTO the junction, so the sign faces the driver
             ix, iy = (p[2], p[3]) if at_start else (p[-4], p[-3])
             ang = math.atan2(ey - iy, ex - ix)
-            # back far enough to clear the road being crossed, and out far
-            # enough to clear our own — the corner of the cuadra
-            back = major_hw + ALTO_BACK_PAD
-            side = r.get("w", 36) / 2 + ALTO_SIDE_PAD
-            bx = ex - math.cos(ang) * back
-            by = ey - math.sin(ang) * back
+            ux, uy = math.cos(ang), math.sin(ang)
+            # how far back down the approach the major's near kerb + half an acera lies: the signed
+            # distance from its centreline, n·(X - M), falls by (u·n) per px walked along u
+            nx, ny = -mdy, mdx
+            un = ux * nx + uy * ny
+            if abs(un) < 0.35:              # running alongside the major, not into it: no corner
+                continue
+            # the corner is where two lines cross: parallel to the major at `reach` from its centreline
+            # (on the approach side) and parallel to the minor at `side` (on the driver's right). The
+            # sideways step has a component across the major too, `side·(r·n)`, which an oblique
+            # junction makes large — leaving it out put the post in the crossing street's roadway.
+            dE = (ex - mx) * nx + (ey - my) * ny
+            reach = major_hw + ALTO_CORNER_IN
+            side = r.get("w", 36) / 2 + ALTO_CORNER_IN
+            rn = -uy * nx + ux * ny
+            back = (dE + side * rn + math.copysign(reach, un)) / un
+            bx, by = ex - ux * back, ey - uy * back
             # `_side`/`_hw`: lo que el asiento en la esquina (`finish.settle_altos`) necesita saber de
             # esta calle; no se emiten
-            out.append({"x": round(bx + math.cos(ang + math.pi / 2) * side),
-                        "y": round(by + math.sin(ang + math.pi / 2) * side),
+            out.append({"x": round(bx - uy * side), "y": round(by + ux * side),
                         "kind": SignKind.ALTO, "ang": round(ang, 3),
                         "_side": round(side, 1), "_hw": round(r.get("w", 36) / 2, 1)})
     # ONE ALTO PER CORNER, not one per approach that happens to end near it.

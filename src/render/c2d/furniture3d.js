@@ -362,16 +362,18 @@ export function drawCart3d(x, y, ang, V, look, sway = 0) {
 /**
  * UNA SEÑAL DE PLACA EN 3D, EN SU PALO —el ALTO, el CEDA— (`signs.<tipo>.stand3d.plate`), como las de
  * Costa Rica: un tubo que sube de la acera y la placa arriba, mirando al conductor que llega al cruce
- * (`ang` es su rumbo, como el mundo la emite), PARADA: apenas `tiltDeg` hacia atrás para no desaparecer de
- * canto justo bajo la cámara, y lo que la hace leerse es el pinhole, como las paredes de un edificio. Tiene canto
- * (`thickM`), espalda gris si se la mira desde atrás, y tira su sombra entera al sol con el palo.
+ * (`ang` es su rumbo, como el mundo la emite), ECHADA `tiltDeg` hacia atrás DESDE SU PIE, palo y placa
+ * como una pieza: lo bastante para que desde la cámara se vea qué señal es en cualquier lado de la
+ * pantalla y el palo asome siempre de la esquina hacia la placa. Tiene canto (`thickM`), espalda gris si de verdad se la mira desde
+ * atrás, y tira su sombra entera al sol con el palo.
  *
  * La CARA es el dibujo del registro (`plate.face`, en px de mundo y con su palabra), llevada al plano
- * de la placa con una afín: el intérprete pinta y la geometría sólo dice dónde. Y LA PALABRA SE
- * ENDEREZA DENTRO DE LA PLACA: vista desde arriba, el «arriba» de una placa sale hacia donde va el
- * conductor o hacia el centro de la pantalla, así que en la mitad de las esquinas el ALTO salía de cabeza. El octágono no
- * cambia; sólo el texto (`shape: "text"`) gira en el plano hasta quedar lo más derecho posible en la
- * pantalla.
+ * de la placa con una afín: el intérprete pinta y la geometría sólo dice dónde. **LA PALABRA NO SE
+ * ENDEREZA HACIA EL JUGADOR**: lee hacia el CONDUCTOR, como en un mapa visto desde arriba —el «arriba»
+ * de la placa echada cae hacia donde va el carro—, así que en una esquina de abajo el ALTO se lee de
+ * cabeza desde la pantalla y bien desde la calle. Girarla hacia la cámara la torcía contra su octágono
+ * y la hacía mentir sobre a quién le habla. La única excepción es la UNA VÍA (`keepX`), de dos caras:
+ * vista desde atrás su palabra se des-espeja y la flecha sigue apuntando hacia donde se anda.
  */
 function drawPlateSign3d(S, x, y, ang0, vars = null) {
   const Pl = S.plate, t = (Pl.tiltDeg ?? 12) * Math.PI / 180, ct = Math.cos(t), st = Math.sin(t);
@@ -380,9 +382,21 @@ function drawPlateSign3d(S, x, y, ang0, vars = null) {
   const ppm = PX_PER_M, rot = (Pl.rotDeg ?? 0) * Math.PI / 180;
   // la placa: un polígono regular de radio `rM` (`n` lados) o un rectángulo de `rectM` [ancho, alto]
   const half = Pl.rectM ? Pl.rectM[1] / 2 : Pl.rM, r = Pl.rM || Math.max(...(Pl.rectM || [1]));
-  const hc = S.poleM + half * ct;                   // `poleM` es la altura del borde de abajo de la placa
-  // en el marco de la señal: u hacia donde va el conductor, v a su derecha; (cx, cy) en la placa, cy arriba
-  const onPlate = (cx, cy, off = 0) => [st * cy + off * ct, cx, hc + ct * cy - off * st];
+  // LA SEÑAL ENTERA SE ECHA DESDE SU PIE, palo y placa juntos, como una pieza. Echar sólo la placa
+  // sobre el palo la ponía ENCIMA de él: una placa de 3 m echada 50° tapa desde arriba un palo de 2 m
+  // parado bajo su centro, y la señal se veía flotando. Echada desde el pie, el palo sale de la esquina
+  // hacia la placa y se ve siempre, a cualquier lado de la cámara.
+  // En el marco de la señal: u hacia donde va el conductor, v a su derecha, h arriba. `tilt3` lleva un
+  // punto de la señal PARADA (u0 detrás de la cara, h0 desde el suelo) a la señal echada.
+  // Y EL PUNTO QUE EMITE EL MUNDO ES DONDE SE VE LA PLACA, no el pie: el builder sienta la señal en el
+  // centro del cuadro de acera de la esquina, y echada desde ahí la placa colgaba sobre la calle que se
+  // cruza. Todo se corre hacia atrás lo que la placa se echa (`lean`), así que la placa queda sobre la
+  // esquina y el palo sale de la acera propia, por detrás, hacia ella.
+  const hc0 = S.poleM + half;                       // `poleM` es la altura del borde de abajo de la placa
+  const lean = hc0 * st;
+  const tilt3 = (u0, v, h0) => [u0 * ct + h0 * st - lean, v, h0 * ct - u0 * st];
+  // (cx, cy) en la placa, cy arriba; `off` detrás de la cara
+  const onPlate = (cx, cy, off = 0) => tilt3(off, cx, hc0 + cy);
   const outline = Pl.rectM
     ? [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => [i * Pl.rectM[0] / 2, j * Pl.rectM[1] / 2])
     : Array.from({ length: Pl.n }, (_, i) => { const a = rot + (i / Pl.n) * Math.PI * 2; return [Math.cos(a) * Pl.rM, Math.sin(a) * Pl.rM]; });
@@ -391,38 +405,32 @@ function drawPlateSign3d(S, x, y, ang0, vars = null) {
   const shapes = Pl.face.filter((p) => p.shape !== "text"), words = Pl.face.filter((p) => p.shape === "text");
   const k = Pl.faceR ? (r * ppm) / Pl.faceR : 1;    // el dibujo del registro, al tamaño de la placa
   const frame = { pxPerM: ppm, X: (v) => v || 0, Y: (v) => v || 0, vars: vars || {} };
-  rigged(x, y, ang, hc + half, S, 0, (R) => {
-    R.at(hc - half, () => R.line([[Pl.thickM * 1.5, 0, 0], [Pl.thickM * 1.5, 0, hc + half * 0.6]], S.poleWM, S.pole));
-    R.at(hc + half, () => {
+  const top = (hc0 + half) * ct + Pl.thickM * st;   // lo más alto de la señal echada
+  // el palo sube por DETRÁS de la placa hasta poco más arriba de su centro, como va atornillado
+  const poleTop = tilt3(Pl.thickM * 1.5, 0, hc0 + half * 0.6);
+  rigged(x, y, ang, top, S, 0, (R) => {
+    R.at(S.poleM * ct, () => R.line([tilt3(Pl.thickM * 1.5, 0, 0), poleTop], S.poleWM, S.pole));
+    R.at(top, () => {
       if (R.shadow) { R.poly(ring(), S.shade.shadow); return; }
-      // DE QUÉ LADO SE LA MIRA SE DECIDE A RAS DE CALLE. La placa va echada `tiltDeg` hacia atrás, y con
-      // la cámara a 60 m eso bastaba para que el aparejo dijera «de frente» aun parado detrás de ella: la
-      // palabra salía pintada del lado que el jugador ve como espalda. Lo que cuenta es de qué lado de la
-      // placa está la cámara EN EL SUELO, así que se pregunta con la normal horizontal. Desde atrás se ve
-      // la espalda gris, como en la calle; sólo una placa con flecha (`keepX`, la UNA VÍA, que en Costa
-      // Rica es de dos caras) muestra su cara de los dos lados, con la flecha hacia donde se anda.
-      const front = R.faces([0, 0, hc], [-1, 0, 0]), side = front ? 1 : -1;
+      // DE QUÉ LADO SE LA MIRA: con la normal de la placa ECHADA, que es la de verdad. A 12° eso dejaba
+      // ver la cara desde atrás por el pinhole y la palabra salía del lado equivocado, y por eso se
+      // preguntaba a ras de calle; echada lo que hace falta para leerla desde arriba, la geometría ya
+      // dice la verdad: la cara se ve salvo desde bien atrás, y entonces se ve la espalda gris.
+      const front = R.faces(tilt3(0, 0, hc0), normal), side = front ? 1 : -1;
       if (!front && !Pl.keepX) { R.poly(ring(), Pl.edge); R.poly(ring(Pl.thickM), Pl.back); return; }
       R.poly(ring(Pl.thickM * side), Pl.edge);     // el canto, asomando detrás
       // la afín: px del dibujo (x a la derecha del conductor, y hacia abajo) → el plano de la placa
-      // la UNA VÍA vista desde atrás: la flecha sigue apuntando hacia donde se anda y sólo las palabras
-      // se des-espejan
-      const sx = 1, wordMirror = Pl.keepX && side < 0;
-      const o = onPlate(0, 0), ex = onPlate(sx * k / ppm, 0), ey = onPlate(0, -k / ppm);
+      const o = onPlate(0, 0), ex = onPlate(k / ppm, 0), ey = onPlate(0, -k / ppm);
       const P0 = R.P(o[0], o[1], o[2]), PX = R.P(ex[0], ex[1], ex[2]), PY = R.P(ey[0], ey[1], ey[2]);
       ctx.save();
       ctx.transform(PX[0] - P0[0], PX[1] - P0[1], PY[0] - P0[0], PY[1] - P0[1], P0[0], P0[1]);
-      // el «arriba» de la pantalla, llevado al plano de la placa: cuánto habría que girar para leerla
-      const M = ctx.getTransform().inverse(), up = Math.atan2(-M.c, M.d);
-      const flip = Math.abs(up) > Math.PI / 2 ? Math.PI : 0;
-      if (Pl.upright === "face" && flip) ctx.rotate(flip);   // la placa entera, si salía de cabeza
       paintParts(ctx, shapes, frame);
       for (const w of words) {
-        // la palabra se endereza sobre su propio punto: del todo en una placa simétrica (el ALTO),
-        // sólo media vuelta en las demás, para no torcerla contra su placa
-        const th = Pl.upright === "face" ? 0 : Pl.upright === "flip" ? flip : up;
+        // la palabra va en el plano de la placa, derecha para el conductor; sólo la UNA VÍA vista desde
+        // atrás se des-espeja sobre su propio punto
+        if (!(Pl.keepX && side < 0)) { paintParts(ctx, [w], frame); continue; }
         const wx = w.x || 0, wy = w.y || 0;
-        ctx.save(); ctx.translate(wx, wy); if (wordMirror) ctx.scale(-1, 1); ctx.rotate(th);
+        ctx.save(); ctx.translate(wx, wy); ctx.scale(-1, 1);
         paintParts(ctx, [{ ...w, x: 0, y: 0 }], frame);
         ctx.restore();
       }

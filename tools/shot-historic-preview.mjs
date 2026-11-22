@@ -25,7 +25,8 @@ const parcels = data.parcels.filter((p) => !only || only.includes(p.historic));
 if (!parcels.length) { console.error("[historic-preview] el preview no trae lotes"); process.exit(1); }
 mkdirSync(out, { recursive: true });
 
-const browser = await chromium.launch();
+// PW_CHROMIUM: un Chromium ya instalado, cuando el de Playwright no está en la máquina (como las otras hojas)
+const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1.5 });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
@@ -56,13 +57,15 @@ const VIEWS = process.env.HISTORIC_VIEWS ? JSON.parse(process.env.HISTORIC_VIEWS
   : [["dia", 1.25, 0.3, 0, 0], ["frente", 1.7, 0.33, 0, -26], ["costado", 1.7, 0.36, -30, 4], ["noche", 1.25, 0.74, 0, -14]];
 for (const P of parcels) {
   for (const [tag, zoom, hour, du, dv] of VIEWS) {
-    await page.evaluate(async ({ P, zoom, hour, du, dv, drop, margin }) => {
+    await page.evaluate(async ({ P, zoom, hour, du, dv, drop, margin, gone }) => {
       const W = window.WORLD2D, st = window.Game.state;
       const dn = await import("/src/game/daynight.js"); dn.setDayCycle(true, hour);
-      // el lote del preview, en lugar del que el mundo traiga
+      // el lote del preview, en lugar del que el mundo traiga; y fuera las parcelas que un lugar reemplaza
+      // (`dropParcels`: la Antigua Fábrica de Hielo bajo el recinto del Matadero)
       const i = W.PARCELS.findIndex((q) => q.id === P.id);
       if (i >= 0) W.PARCELS.splice(i, 1);
       W.PARCELS.push(structuredClone(P));
+      for (let j = W.PARCELS.length - 1; j >= 0; j--) if (gone.includes(W.PARCELS[j].id)) W.PARCELS.splice(j, 1);
       const k = W.PX_PER_M, c = Math.cos(P.ang), s = Math.sin(P.ang);
       const cx = P.cx + (du * c - dv * s) * k, cy = P.cy + (du * s + dv * c) * k;
       st.cam.x = cx; st.cam.y = cy; st.cam.rot = 0; st.cam.zoom = window.__z0 * zoom;
@@ -81,7 +84,7 @@ for (const P of parcels) {
           return !inside(cx, cy, P.poly) && !(drop.includes(b.name) && near(cx, cy));
         });
       }
-    }, { P, zoom, hour, du, dv, drop: data.drops?.[P.id] || [], margin: data.margin || 0 });
+    }, { P, zoom, hour, du, dv, drop: data.drops?.[P.id] || [], margin: data.margin || 0, gone: data.dropParcels || [] });
     await page.waitForTimeout(1000);
     const file = path.join(out, `historic-${P.historic}-${tag}.png`);
     await page.screenshot({ path: file });

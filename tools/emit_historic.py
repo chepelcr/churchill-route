@@ -4,8 +4,8 @@
     python3 tools/emit_historic.py            # preview: calcula y cuenta, escribe logs/historic-preview.json
     python3 tools/emit_historic.py --emit     # ESTO ES EL BUILD de estos lugares: escribe src/world2d
 
-Lee `content/world/historic.json`. Cada lugar es un lote en la esquina de dos calles con nombre, y el
-marco se mide contra el mundo de HOY, como `world:centro` mide sus bocas: la esquina es donde se cruzan
+Lee `content/world/historic.json`. Cada lugar es un lote en la esquina de dos calles con nombre (o sobre
+UNA, con `side: null` y su punta en `cornerLL`), y el marco se mide contra el mundo de HOY, como `world:centro` mide sus bocas: la esquina es donde se cruzan
 los bordes de adentro de las dos aceras (eje de cada calle + media calzada + la acera, el mismo cálculo
 que sienta una lámpara o un ALTO), `u` corre a lo largo de `front` alejándose de `side` y `v` entra a la
 cuadra. Por eso un lote en metros sigue cayendo en su esquina aunque el mundo se reescale.
@@ -15,6 +15,8 @@ Lo que escribe `--emit` (la física ve lo que se dibuja):
 * la parcela `hist_<id>` en `manifest.parcels`, con el marco del lote (`ang`, `hw`, `hh`): la levanta
   `world-props.json → parcels.byId.hist_<id>.body`, su cuerpo de receta, que el cliente arma al cargar
   —reteñir el edificio cuesta una recarga, no una emisión—;
+* las parcelas que el lugar reemplaza (`dropParcels`: el cuadro de la Antigua Fábrica de Hielo, donde está
+  el recinto del Matadero), quitadas del manifest;
 * las huellas de los tiles que caen en el lote y los árboles, palmas y postes de adentro; y, por su
   nombre, las huellas y los puntos de OSM de `dropNamed` que quedan al lado («Repuestos Acón» es la
   bomba: su huella caía al este, donde están unos techos que no son de ella). El lote no agrega un punto
@@ -197,8 +199,23 @@ def intersect(p, d, q, e):
 
 def frame_of(world, P):
     ax, ay = world.ll(*P["anchorLL"])
-    front, side = nearest_on(world, P["front"], ax, ay), nearest_on(world, P["side"], ax, ay)
+    front = nearest_on(world, P["front"], ax, ay)
     pf, df, nf = kerb_line(world, front, ax, ay)
+    if P.get("side") is None:
+        # UN LOTE SOBRE UNA SOLA CALLE (`side: null`): no hay esquina que cruzar, así que la da `cornerLL`
+        # —un punto llevado al borde de adentro de la acera de `front`—. El salón del Matadero cierra la punta
+        # de Calle 10 mirando a la avenida: está sobre la avenida, no en una esquina de dos calles.
+        qx, qy = world.ll(*P["cornerLL"])
+        t = (qx - pf[0]) * df[0] + (qy - pf[1]) * df[1]
+        cx, cy = pf[0] + df[0] * t, pf[1] + df[1] * t
+        ux, uy = df
+        if (ax - cx) * ux + (ay - cy) * uy < 0:
+            ux, uy = -ux, -uy
+        vx, vy = -uy, ux
+        if (ax - cx) * vx + (ay - cy) * vy < 0:
+            raise SystemExit(f"[historic] {P['id']}: el ancla queda del otro lado de «{P['front']}»; `u` y `v` no forman un marco derecho")
+        return {"corner": (cx, cy), "u": (ux, uy), "v": (vx, vy), "ang": math.atan2(uy, ux), "skew": 0.0, "slope": 0.0}
+    side = nearest_on(world, P["side"], ax, ay)
     ps, ds, ns = kerb_line(world, side, ax, ay)
     cx, cy = intersect(pf, df, ps, ds)
     # u: a lo largo de `front`, alejándose de `side` (hacia donde queda el ancla); v: hacia adentro de la cuadra
@@ -253,6 +270,14 @@ def main():
     counts, parcels, log, drops = {}, [], [], {}
     margin = 4 * world.cell        # hasta dónde se busca una huella o un punto de `dropNamed` alrededor del lote
     bump = lambda k, n=1: counts.__setitem__(k, counts.get(k, 0) + n)
+    # `dropParcels`: las parcelas del mundo que un lugar REEMPLAZA y que se quitan antes de medir nada —el
+    # cuadro de la Antigua Fábrica de Hielo que OSM dibujó donde está el recinto del Matadero—. El build las
+    # vuelve a emitir y este paso, que corre al final de `world:build`, las vuelve a quitar
+    gone = {pid for P in doc["places"] if not P.get("draft") for pid in P.get("dropParcels", [])}
+    n0 = len(man["parcels"])
+    man["parcels"] = [p for p in man["parcels"] if p["id"] not in gone]
+    if n0 != len(man["parcels"]):
+        bump("parcelas reemplazadas", n0 - len(man["parcels"]))
 
     for P in doc["places"]:
         pid = PREFIX + P["id"]
@@ -384,8 +409,8 @@ def main():
             inside(p["x"], p["y"], lot)
             or (p.get("name") in drop and x0 - margin < p["x"] < x1 + margin and y0 - margin < p["y"] < y1 + margin))]
         bump(f"{P['id']}: pois fuera", n_poi - len(man["pois"]))
-        log.append(f"{pid}: esquina ({F['corner'][0]:.0f}, {F['corner'][1]:.0f}), {math.degrees(F['ang']):.1f}°, "
-                   f"lote {LU} x {LV} m, «{P['side']}» a {F['skew']:.1f}° de su escuadra (pendiente {F['slope']:.4f})"
+        log.append(f"{pid}: esquina ({F['corner'][0]:.0f}, {F['corner'][1]:.0f}), {math.degrees(F['ang']):.1f}°, lote {LU} x {LV} m, "
+                   + (f"«{P['side']}» a {F['skew']:.1f}° de su escuadra (pendiente {F['slope']:.4f})" if P.get("side") else f"sobre «{P['front']}» sola")
                    + ("  ← más que SKEW_WARN_DEG" if F["skew"] > SKEW_WARN_DEG else ""))
 
     man = js_numbers(man)
@@ -417,7 +442,7 @@ def main():
         out = os.path.join(ROOT, "logs", "historic-preview.json")
         # `drops`: las huellas y los puntos con nombre que el lote se lleva aunque caigan afuera, para que
         # el preview muestre lo mismo que va a quedar
-        json.dump({"parcels": parcels, "drops": drops, "margin": margin}, open(out, "w", encoding="utf-8"), ensure_ascii=False)
+        json.dump({"parcels": parcels, "drops": drops, "margin": margin, "dropParcels": sorted(gone)}, open(out, "w", encoding="utf-8"), ensure_ascii=False)
         print(f"[historic] preview -> {os.path.relpath(out, ROOT)} (el mundo no se tocó)")
     return 0
 

@@ -200,6 +200,7 @@ function paintFacet(T, at, sun) {
   ctx.fillStyle = T.wallFacet ? shade(ink(T.ink), lit) : mixColor(ink(T.ink2), ink(T.ink), lit ? 1 : 0.15);
   ctx.fill();
   if (!T.noSeam) { ctx.strokeStyle = M.roofSeam; ctx.lineWidth = 0.6; ctx.stroke(); }
+  if (T.capText) paintCapText(T);          // el nombre, sobre el último faldón que se pinta
 }
 
 function paintTier(T, at, vis, sunlit, sun, ppm) {
@@ -292,13 +293,14 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
   if (T.truss) paintTruss(T, at);
 }
 
-// EL NOMBRE PINTADO SOBRE EL TECHO (`capText`: {lines, atM, heightM, ink, maxWM?, weight?}), sin píldora —
+// EL NOMBRE PINTADO SOBRE EL TECHO (`capText`: {lines, atM, heightM, ink, maxWM?, weight?, rotDeg?, zM?}), sin píldora —
 // como el del DJ sobre su dosel (`feriaRigs.js → stage`)—. Una tapa plana con el pinhole es la huella
 // ESCALADA alrededor de la cámara (1 + z/H), así que las letras van al punto ya corrido y con esa misma
 // escala; sin perspectiva el corrimiento es parejo y la escala 1. `maxWM`: lo más ancho que puede ir la
-// línea más larga, en metros —si no cabe, se achica todo el bloque—.
+// línea más larga, en metros —si no cabe, se achica todo el bloque—. Sobre un faldón (`facet`) va a `zM`, la
+// altura a la que se lee el nombre en ese techo inclinado.
 function paintCapText(T) {
-  const C = T.capText, o = OFF(C.x, C.y, T.z1), d = OFF(C.x + 100, C.y, T.z1), s = 1 + (d[0] - o[0]) / 100;
+  const C = T.capText, z = C.zM ?? T.z1, o = OFF(C.x, C.y, z), d = OFF(C.x + 100, C.y, z), s = 1 + (d[0] - o[0]) / 100;
   const hPx = C.heightM * C.ppm, D = M.capText;
   ctx.save();
   ctx.translate(C.x + o[0], C.y + o[1]); ctx.rotate(C.ang); ctx.scale(s, s);

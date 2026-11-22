@@ -54,7 +54,7 @@ The procedure is three steps and it is not optional:
 | **las máquinas, sus cuatro mejoras y su economía** | `src/content/railway/catalog.json` |
 | **un tramo del corredor Pacífico–Puntarenas** | `src/content/railway/levels/*.json` — el perfil lo escribe `tools/gen_railway_profile.py` |
 | **el Parque Mora y Cañas y la manzana de la Catedral** — su piso, sus bocas, el tanque, el Palacio, la Catedral, una banca | `content/world/centro.json` (METROS, en el marco de cada cuadra) → `pnpm world:centro`; tintas en `materials.json` → `centro`; pintor `c2d/centro.js` |
-| **un edificio histórico que OSM no tiene** — la Bomba y Repuestos ACON, el Antiguo Matadero: su lote, lo manejable, sus bocas | `content/world/historic.json` (METROS desde el borde de adentro de las dos aceras de su esquina) → `pnpm world:historic` (`tools/emit_historic.py`; preview `pnpm preview:historic`); su cuerpo lo escribe `tools/gen_<id>_body.py` desde `tools/<id>_trace.json` → `world-props.json → bodies.<id>` |
+| **un edificio histórico que OSM no tiene** — la Bomba y Repuestos ACON, el Antiguo Matadero (su salón y su recinto): su lote, lo manejable, sus bocas, la parcela de OSM que reemplaza | `content/world/historic.json` (METROS desde el borde de adentro de las dos aceras de su esquina, o de una sola calle con `side: null` + `cornerLL`; `dropParcels`) → `pnpm world:historic` (`tools/emit_historic.py`; preview `pnpm preview:historic`); su cuerpo lo escribe `tools/gen_<id>_body.py` desde `tools/<id>_trace.json` → `world-props.json → bodies.<id>` |
 | **algo que se levanta «como los edificios nuevos» sin venir del mundo** — la Capitanía, un quiosco, los cañones, **la UTN** | `src/assets/world-props.json` → `bodies` (bloques en METROS; tintas `$x` las pone el hito en `landmarks[*].inks`; `faces` cambia pared/bandas/ventanas por arista); una PARCELA que es ella misma lo nombra por su id en `parcels.byId` (la UTN: `tools/gen_utn_body.py` escribe su receta); pintor `c2d/bodies.js`, geometría `c2d/bodyGeometry.js` (la misma que emite el centro cívico) |
 | **las graderías de un estadio en 3D** — qué es cada lado (gradería que vuela sobre la calle, tribuna techada), sus pilotes, sus torres de luz | `src/assets/world-props.json` → `stadiums3d.<id del hito>`; pintor `c2d/stadium3d.js`, sobre las gradas que el mundo estampa (`lm.stands.quads`) |
 | **the ground of one manzana or one parcel** | `content/world/blocks.json` → `manzanas` (BY GEO) / `parcels` (by id) |
@@ -1985,9 +1985,10 @@ cosas que sostienen el resto:
 
 ## LOS EDIFICIOS HISTÓRICOS QUE OSM NO TIENE (`content/world/historic.json`)
 
-La Bomba y Repuestos ACON (y, en camino, el Antiguo Matadero): un LOTE en la esquina de dos calles con
+La Bomba y Repuestos ACON y el Antiguo Matadero: un LOTE en la esquina de dos calles con
 nombre, medido en metros desde el borde de adentro de sus dos aceras —`front` es la calle a lo largo de la
-cual corre `u`, `side` la otra; `anchorLL` dice de qué lado de cada una—, y encima un cuerpo de receta que
+cual corre `u`, `side` la otra; `anchorLL` dice de qué lado de cada una— o sobre UNA sola (`side: null`, y
+`cornerLL` dice dónde está su punta), y encima un cuerpo de receta que
 escribe su generador desde su calco, como el Mercado. `tools/emit_historic.py --emit` lo lleva al mundo sin
 reconstruir (la parcela `hist_<id>`, las huellas y árboles y puntos de OSM que caen adentro y los de
 `dropNamed` al lado, lo manejable como `boulevard`, las bocas en la acera) y es repetible: deshace lo de la
@@ -2015,7 +2016,25 @@ corrida anterior antes de estampar. Corre AL FINAL de `world:build`, después de
   enrollándose con el MISMO continuo del cielo que apaga las sombras (`nightLevel`; `materials.json → centro.roll.band` dice en qué tramo, para
   que baje en unos segundos y no en hora y media de juego). Lo de adentro que se quiera ver va JUSTO DETRÁS
   de la cortina: la losa de encima tapa desde arriba todo lo que esté más al fondo. **`capText`**: el nombre pintado sobre la tapa,
-  sin píldora, como el del DJ sobre su dosel, escalado con el pinhole igual que la tapa.
+  sin píldora, como el del DJ sobre su dosel, escalado con el pinhole igual que la tapa — o sobre un faldón
+  (`facet`, a la altura `zM`), girado con `rotDeg` cuando el `u` del lote corre al revés de la lectura.
+* **ANTES DE MEDIR, AVERIGUÁ HACIA DÓNDE MIRA LA FACHADA.** El primer calco del Matadero ponía su fachada A LO
+  LARGO de Calle 10, al final del muro de los círculos, y el salón detrás. Estaba mal y lo decían tres fotos a
+  la vez: en el satélite el ático asoma al medio del lado CORTO del salón, con la calle debajo; en la vista
+  del portón del costado, el portón y la pilastra de la fachada salen en escorzo al fondo del muro de Calle 10
+  —un plano perpendicular a él—; y en la vista de la fachada el muro de Calle 10 baja hacia la cámara por la
+  derecha. La fachada CIERRA LA PUNTA DE CALLE 10 mirando al sur. De ahí sale todo lo demás: dos lotes y no
+  uno (el salón sobre la avenida, `side: null`; el recinto a lo largo de Calle 10), y el muro del recinto que
+  sigue fuera de su lote hasta el portón del costado. Dónde se tocan lo miden los dos marcos contra el mundo
+  (`gen_matadero_body.py → U_FACADE`), no un número escrito.
+* **`dropParcels`: UN LUGAR PUEDE REEMPLAZAR UNA PARCELA DE OSM.** El cuadro beige de la Antigua Fábrica de
+  Hielo (`osm_market_232393978`, un contorno de OSM de 2015 que cruza la avenida) ocupaba el suelo de la nave
+  larga y del patio de atrás del Matadero; el autor pidió quitarlo. El emit lo saca del manifest antes de
+  medir los lotes, y como corre al final de `world:build`, una reconstrucción que lo vuelva a emitir lo vuelve
+  a perder. Su punto de OSM sale por `dropNamed`.
+* **EL FONDO SE APRIETA, LA FACHADA NO.** El salón mide 21,5 x 33 m y la tierra entre la avenida y el estero
+  llega a 27: el calco aprieta el fondo (y con él cuánto pasa la nave la línea de la fachada) y deja la
+  fachada al 92 % y las alturas como en la foto.
 
 ## EL TREN AL PUERTO — el segundo juego dentro del juego
 

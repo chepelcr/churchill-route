@@ -113,6 +113,18 @@ export function armTiers(A) {
  * marco del lugar: `{ at([u, v]) → [x, y] px de mundo, ang, ppm }`.
  * Devuelve `{ tiers, x, y, zMax, x0, y0, x1, y1 }` en píxeles de mundo.
  */
+// EL NOMBRE PINTADO SOBRE UNA TAPA o un faldón (`bodies.js → paintCapText`): su punto `atM` en metros de
+// la estructura, llevado al lugar como cualquier huella, y el eje `u` de la estructura en pantalla —su giro
+// y cuántos px mide un metro—, así las letras corren con el edificio y no con la pantalla. `rotDeg` las gira
+// dentro de ese marco (un edificio cuyo `u` corre de sur a norte las lee de lado si no)
+function capTextOf(C, base, rot, F) {
+  const [du, dv] = C.atM || [0, 0], c = Math.cos(rot), sn = Math.sin(rot);
+  const p = F.at([base[0] + du * c - dv * sn, base[1] + du * sn + dv * c]);
+  const q = F.at([base[0] + (du + 1) * c - dv * sn, base[1] + (du + 1) * sn + dv * c]);
+  const ang = Math.atan2(q[1] - p[1], q[0] - p[0]) + (C.rotDeg || 0) * RAD;
+  return { ...C, x: r1(p[0]), y: r1(p[1]), ang: +ang.toFixed(4), ppm: Math.hypot(q[0] - p[0], q[1] - p[1]) };
+}
+
 export function buildBody(spec, base, rot, F) {
   const ppm = F.ppm;
   const flat = (uv) => uv.flatMap((p) => F.at(p).map(r1));
@@ -128,7 +140,8 @@ export function buildBody(spec, base, rot, F) {
       const zs = p3.map((p) => p[2]);
       return { facet: p3, pts: p3.flatMap((p) => [p[0], p[1]]), z0: Math.min(...zs), z1: Math.max(...zs), sortZ: Math.min(...zs) + 0.01,
         ink: t.ink, ink2: t.ink2, wallFacet: !!t.wallFacet, ...(t.sortM != null ? { sortZ: t.sortM } : {}),
-        ...(t.noShadow ? { noShadow: true } : {}), ...(t.seam === false ? { noSeam: true } : {}) };
+        ...(t.noShadow ? { noShadow: true } : {}), ...(t.seam === false ? { noSeam: true } : {}),
+        ...(t.capText ? { capText: capTextOf(t.capText, base, rot, F) } : {}) };
     }
     const uv = footprint(t, base, rot), o = { pts: flat(uv), z0: t.z[0], z1: t.z[1], wall: t.wall, cap: t.cap };
     // `sortM`: a qué altura entra este bloque en el orden de pintado, si no es la de su tapa. Los pilotes
@@ -153,15 +166,7 @@ export function buildBody(spec, base, rot, F) {
       const n = o.pts.length / 2;
       o.openings = t.openings.map((op) => (op.edge == null || !flip ? op : { ...op, edge: (n - 2 - op.edge + n) % n, f: [1 - op.f[1], 1 - op.f[0]] }));
     }
-    if (t.capText) {
-      // EL NOMBRE PINTADO SOBRE LA TAPA (`bodies.js → paintCapText`): su punto `atM` en metros de la
-      // estructura, llevado al lugar como cualquier huella, y el eje `u` de la estructura en pantalla —su
-      // giro y cuántos px mide un metro—, así las letras corren con el edificio y no con la pantalla
-      const [du, dv] = t.capText.atM || [0, 0], c = Math.cos(rot), sn = Math.sin(rot);
-      const p = F.at([base[0] + du * c - dv * sn, base[1] + du * sn + dv * c]);
-      const q = F.at([base[0] + (du + 1) * c - dv * sn, base[1] + (du + 1) * sn + dv * c]);
-      o.capText = { ...t.capText, x: r1(p[0]), y: r1(p[1]), ang: +Math.atan2(q[1] - p[1], q[0] - p[0]).toFixed(4), ppm: Math.hypot(q[0] - p[0], q[1] - p[1]) };
-    }
+    if (t.capText) o.capText = capTextOf(t.capText, base, rot, F);
     if (t.truss) o.truss = { ink: t.truss.ink, h: t.truss.hM, every: r1(t.truss.everyM * ppm) };
     if (t.roof) {
       const rg = ridgeOf(t, uv);

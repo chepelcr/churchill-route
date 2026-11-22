@@ -3,7 +3,8 @@
 Cada lugar es un lote en la esquina de dos calles con nombre que `tools/emit_historic.py` lleva al mundo
 sin reconstruir, y un cuerpo de receta que escribe su generador desde su calco. Lo que se fija aquí:
 
-* el registro dice lo que el emit necesita, y lo manejable cae ADENTRO del lote;
+* el registro dice lo que el emit necesita, y lo manejable cae ADENTRO del lote; un lote sobre UNA calle dice
+  dónde está su punta, y una parcela que un lugar reemplaza ya no está en el mundo;
 * cada lugar que no es borrador tiene su cuerpo y su parcela en el mundo emitido, y la parcela lo levanta;
 * el generador reproduce la receta que está en `world-props.json` (editar la receta a mano se pierde la
   próxima vez que alguien corra el generador, así que no se edita a mano);
@@ -17,6 +18,17 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load = lambda *p: json.load(open(os.path.join(ROOT, *p), encoding="utf-8"))
+_TOOLS = {}
+
+
+def load_tool(name):
+    """un generador de `tools/`, importado una vez: arma sus recetas al importarse y sólo escribe bajo `__main__`"""
+    if name not in _TOOLS:
+        spec = importlib.util.spec_from_file_location(name, os.path.join(ROOT, "tools", f"{name}.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _TOOLS[name] = mod
+    return _TOOLS[name]
 
 
 class HistoricRegistry(unittest.TestCase):
@@ -72,18 +84,48 @@ class HistoricRegistry(unittest.TestCase):
                 self.assertNotIn("hist_" + P["id"], parcels, f"{P['id']}: es borrador y ya está en el mundo")
 
     def test_the_generator_reproduces_the_recipe(self):
-        # `tools/gen_acon_body.py` arma la receta al importarse y sólo escribe bajo `__main__`
-        spec = importlib.util.spec_from_file_location("gen_acon_body", os.path.join(ROOT, "tools", "gen_acon_body.py"))
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        self.assertEqual(json.loads(json.dumps(mod.body)), self.props["bodies"]["acon"],
-                         "bodies.acon no es lo que escribe tools/gen_acon_body.py: corré el generador (no se edita a mano)")
+        # cada generador arma sus recetas al importarse y sólo escribe bajo `__main__`
+        for tool, bodies in (("gen_acon_body", {"acon": "body"}), ("gen_matadero_body", {"matadero": "hall", "matadero_muro": "muro"})):
+            mod = load_tool(tool)
+            for key, attr in bodies.items():
+                self.assertEqual(json.loads(json.dumps(getattr(mod, attr))), self.props["bodies"][key],
+                                 f"bodies.{key} no es lo que escribe tools/{tool}.py: corré el generador (no se edita a mano)")
+
+    def test_a_lot_on_one_street_names_its_end(self):
+        # el salón del Matadero cierra la punta de Calle 10: está sobre la avenida, no en una esquina
+        for P in self.places(drafts=True):
+            if P["side"] is None:
+                self.assertIn("cornerLL", P, f"{P['id']}: un lote sobre una sola calle dice dónde está su punta (`cornerLL`)")
+                self.assertEqual(P.get("sideSlope", 0.0), 0.0, f"{P['id']}: sin `side` no hay pendiente que seguir")
+                self.assertFalse([m for m in P.get("mouths", []) if m["street"] != P["front"]], f"{P['id']}: sin `side`, toda boca va a `front`")
+
+    def test_a_replaced_parcel_is_gone(self):
+        # `dropParcels`: el cuadro de la Antigua Fábrica de Hielo era el suelo del recinto del Matadero
+        ids = {p["id"] for p in self.manifest["parcels"]}
+        dropped = [pid for P in self.places() for pid in P.get("dropParcels", [])]
+        self.assertIn("osm_market_232393978", dropped)
+        for pid in dropped:
+            self.assertNotIn(pid, ids, f"{pid}: un lugar lo reemplaza y sigue en el mundo — falta `pnpm world:historic`")
+            self.assertNotIn(pid, self.props["parcels"]["byId"], f"{pid}: reemplazado, y todavía tiene receta en `parcels.byId`")
+
+    def test_the_matadero_closes_calle_10_and_its_wall_meets_the_gate(self):
+        # lo que costó leer en las fotos: la fachada mira al sur, por Calle 10 abajo, y el muro de los círculos y
+        # los arcos baja por Calle 10 desde el portón del costado. Los dos lotes se tocan ahí
+        mod = load_tool("gen_matadero_body")
+        hall = next(P for P in self.places() if P["id"] == "matadero")
+        muro = next(P for P in self.places() if P["id"] == "matadero_muro")
+        self.assertIsNone(hall["side"])
+        self.assertEqual(muro["front"], "Calle 10")
+        self.assertTrue(0 < mod.U_FACADE < muro["lotM"][0], "la línea de la fachada cae adentro del recinto, pasando la curva")
+        self.assertTrue(mod.U_GATE_E < 0, "el portón del costado sigue al este, fuera del lote del salón, hasta el muro del recinto")
+        self.assertGreater(mod.NAVE_U1, mod.U_FACADE, "la nave larga pasa la línea de la fachada, al lado del salón (el satélite)")
+        self.assertNotIn("pill", self.props["parcels"]["byId"]["hist_matadero"])
+        self.assertTrue(any(T.get("facet") and T.get("capText") for T in self.props["bodies"]["matadero"]["tiers"]),
+                        "el nombre del Matadero va sobre un faldón de su techo, sin píldora")
 
     def test_the_bay_is_narrower_than_the_block_and_sits_in_front_of_it(self):
         # lo que el autor señaló mirando las fotos: el balcón (sobre la bahía) es MÁS ANGOSTO que el bloque
-        spec = importlib.util.spec_from_file_location("gen_acon_body", os.path.join(ROOT, "tools", "gen_acon_body.py"))
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        mod = load_tool("gen_acon_body")
         self.assertLess(mod.BAY_U1 - mod.BAY_U0, (mod.MAIN_U1 - mod.GAP) / 2)
         self.assertGreater(mod.BAY_U0, mod.GAP)
         self.assertLess(mod.BAY_U1, mod.MAIN_U1)

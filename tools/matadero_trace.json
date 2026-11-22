@@ -1,0 +1,72 @@
+{
+  "_note": "EL ANTIGUO MATADERO MUNICIPAL (1901), CALCADO DE SUS IMÁGENES (capturas del autor del 2026-11-22: el satélite de Google Maps en tres tramos y cinco vistas de calle de nov. 2024). Cada número es un PÍXEL ORIGINAL de la imagen que se nombra, leído sobre una retícula; `python3 tools/gen_matadero_body.py --overlay` vuelve a dibujar estas marcas encima. Las imágenes no se suben (son capturas de Google); el overlay las busca en `logs/matadero/`. `tools/gen_matadero_body.py` las pasa a METROS y escribe `world-props.json → bodies.matadero` (el salón) y `bodies.matadero_muro` (el recinto).",
+  "_layout": "CÓMO ESTÁ PUESTO, que es lo primero que costó: el salón de 1901 CIERRA LA PUNTA DE CALLE 10. Su fachada mira al SUR, por Calle 10 abajo, y es el lado CORTO del salón (en el satélite el ático asoma al medio de ese lado y su cara se ve de canto contra la calle); la avenida que dobla al oeste le pasa por delante. El portón negro del costado queda al ESTE de la fachada, y ahí el muro del recinto —el de los círculos y arcos ciegos— dobla y baja por el lado este de Calle 10 hasta la avenida (Av. 2). En la vista de calle del portón, el portón y la pilastra de la fachada salen en escorzo al fondo del muro de Calle 10: están en un plano perpendicular a él. Detrás del muro corre la nave larga de techos a cuatro aguas; al fondo, contra Calle 12, los techos rojos del lado de la Fábrica de Hielo.",
+  "facade": {
+    "_": "LA FACHADA DE 1901 (sv-facade.jpg, 2700 x 1228), casi de frente: la cámara en Calle 10 mirando al NORTE, así que a la izquierda es el oeste. Simétrica: dos portones en arco —el del oeste de madera gris bajo su abanico de hierro, el del este de reja negra—, la hornacina al centro, dos paños color durazno a los lados, la cornisa, y arriba el ático con el círculo blanco y su aguja, el frontón y la placa con el año. Detrás asoma el zinc gris con su cenefa anaranjada.",
+    "image": "sv-facade.jpg",
+    "endsX": [287, 2437],
+    "widthM": 21.5,
+    "_widthM": "de punta a punta; los portones salen de 2,7 x 3,5 m, que es lo que mide un portón de carretas",
+    "groundY": 859,
+    "plinthTopY": 792,
+    "corniceY": [438, 462],
+    "eaveY": [395, 426],
+    "_eaveY": "la cenefa anaranjada del techo, detrás de la cornisa",
+    "attic": {"x": [1054, 1663], "corniceY": [200, 225], "panels": [[1159, 1276], [1448, 1571]], "panelY": [233, 380]},
+    "pediment": {"x": [1105, 1620], "baseY": 182, "apexY": 145},
+    "date": {"x": [1310, 1407], "y": [103, 140], "_": "la placa con el año, sobre la punta del frontón"},
+    "circle": {"cx": 1361, "cy": 310, "r": 79, "_": "el círculo blanco del ático, con su aguja"},
+    "niche": {"x": [1295, 1420], "topY": 511, "sillY": 731, "_": "la hornacina en arco, con su relieve"},
+    "gates": [
+      {"x": [645, 913], "crownY": 505, "kind": "madera", "_": "el portón del oeste: hojas de madera gris bajo un abanico de hierro"},
+      {"x": [1800, 2066], "crownY": 510, "kind": "reja", "_": "el portón del este: reja negra de arriba abajo"}
+    ],
+    "panels": [[380, 562], [2149, 2328]],
+    "panelY": [505, 731],
+    "strips": [[608, 627], [926, 941], [980, 1011], [1143, 1182], [1532, 1572], [1700, 1730], [1773, 1791], [2084, 2102]],
+    "stripY": [479, 736],
+    "_strips": "los listones color durazno entre pilastras",
+    "sideGate": {"_": "el portón negro del costado, al este de la fachada y un poco atrás, en un muro más bajo con su reja encima (sv-facade y sv-gate-wall)", "wM": 2.6, "zM": 2.6, "grilleZM": [2.75, 3.35]}
+  },
+  "hall": {
+    "_": "EL SALÓN DETRÁS DE LA FACHADA, desde el satélite (sat-hall.jpg, norte arriba): un cuadro de techo gris claro que sube de los cuatro aleros a una cumbrera en anillo y baja otra vez a un PATIO DE LUZ. La fachada es el lado de abajo (el ático se ve al medio de ese lado); x crece al este, y al sur.",
+    "image": "sat-hall.jpg",
+    "x": [170, 1020],
+    "y": [616, 1920],
+    "ridge": {"x": [390, 800], "y": [910, 1580]},
+    "court": {"x": [510, 660], "y": [1150, 1420]},
+    "wallM": 4.3,
+    "fasciaM": [4.3, 4.6],
+    "ridgeM": 6.2,
+    "_ridgeM": "la cumbrera: se asoma detrás del ático y queda bajo la cornisa del ático (6,34 m)"
+  },
+  "wall": {
+    "_": "EL MURO DEL RECINTO sobre Calle 10 y la avenida (sv-corner-c10, sv-corner-av, sv-window, sv-gate-wall): blanco con su albardilla, con CÍRCULOS y ARCOS CIEGOS color durazno de borde blanco y paños lisos entre ellos, y la esquina REDONDA con su grama. La secuencia de Calle 10 va de la esquina al portón del costado, en metros de verdad; los paños lisos salen de las vistas donde el muro se ve de frente (sv-window) o en escorzo (sv-gate-wall). Por la avenida: círculo, arco, círculo, y el muro alto del vecino.",
+    "heightM": 3.6,
+    "thickM": 0.35,
+    "cornerRM": 2.2,
+    "circle": {"dM": 1.5, "zM": 2.2},
+    "arch": {"wM": 1.4, "zM": [0.3, 2.9]},
+    "calle10": [["circle", 3.3], ["arch", 3.3], ["circle", 3.3], ["plain", 2.0], ["arch", 3.3], ["plain", 1.2], ["circle", 3.3], ["plain", 5.0],
+                ["window", 3.9], ["plain", 1.5], ["circle", 3.3], ["plain", 1.0], ["arch", 3.3], ["plain", 9.0]],
+    "avenue": [["circle", 3.3], ["arch", 3.3], ["circle", 3.3]],
+    "lawnM": 2.0,
+    "_lawnM": "la grama entre la acera de la avenida y el muro (sv-corner-av)",
+    "window": {"hM": 4.6, "glassWM": 2.1, "glassZM": [1.6, 4.0], "_": "el cuerpo más alto con la ventana grande en arco (sv-window, sv-gate-wall): la punta de la nave larga que llega al muro"}
+  },
+  "compound": {
+    "_": "LO DE ADENTRO, desde el satélite (sat-south.jpg y sat-mid.jpg, norte arriba, Calle 10 a la izquierda): la línea del muro en x 480 (sat-south), la nave larga blanca de 6,8 m de ancho a 1,3 m del muro, sus techos a cuatro aguas que se juntan en «V», la franja oscura de un cobertizo al este, los bloques bajos de techo plano al sur de la nave, el patio con el almendro y el muro de la avenida en y 1980 (sat-south). Las medidas, en metros desde la línea del muro (v) y desde el muro de la avenida (u), con la escala del salón (19,8 px/m de recorte → 39,6 px/m de la captura).",
+    "pxPerM": 39.6,
+    "wallLineX": 480,
+    "avenueWallY": 1980,
+    "nave": {"x": [530, 800], "_": "la nave larga: de 1,3 a 8,1 m del muro"},
+    "leanTo": {"x": [800, 900], "_": "el cobertizo oscuro al este de la nave"},
+    "lowBlocks": [{"x": [500, 860], "y": [1200, 1340]}, {"x": [510, 660], "y": [1340, 1620]}],
+    "yard": {"y": [1620, 1960]},
+    "almendro": {"x": [660, 1040], "y": [1360, 1820], "_": "la copa del almendro del patio"},
+    "naveSegmentsM": [14.6, 19.7],
+    "naveNorthM": 16.7,
+    "_naveNorthM": "cuánto pasa la punta norte de la nave la línea de la fachada del salón (sat-hall y sat-mid: la nave asoma al este del salón 330 px de recorte arriba de su fachada)",
+    "_naveSegmentsM": "los tramos de techo de la nave desde su punta norte, donde dos cuatro aguas se juntan en «V» (sat-mid)"
+  }
+}

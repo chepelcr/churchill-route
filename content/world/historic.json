@@ -7,28 +7,82 @@
       "name": "Bomba y Repuestos ACON",
       "use": "fuel",
       "body": "acon",
-      "anchorLL": [9.977402, -84.829197],
+      "anchorLL": [
+        9.977402,
+        -84.829197
+      ],
       "front": "Avenida Centenario",
       "side": "Calle 4",
-      "lotM": [32.3, 26],
+      "lotM": [
+        32.3,
+        26
+      ],
       "_lotM": "de la acera de Calle 4 hasta el fondo del edificio blanco del balcón (lo que el autor reconoce como el conjunto: la bomba de la esquina —que es también los Repuestos Acón—, la entrada y el patio, y el edificio blanco), y de la acera de la avenida al fondo del patio. Los techos planos blancos que siguen al este NO son de la bomba y se quedan fuera; lo que OSM llama «Repuestos Acón» sale con `dropNamed`",
       "sideSlope": 0.0493,
       "_sideSlope": "Calle 4 no llega a escuadra con la avenida: su acera se corre 0,0493 m hacia el este por cada metro que entra (2,8°). Lo mide `tools/emit_historic.py`, que falla si el mundo deja de tenerla; `tools/gen_acon_body.py` corre el cuerpo con la misma pendiente, así la bomba va pegada a la acera de Calle 4 en todo su fondo",
       "calle4GapM": 0.8,
       "_lineUp": "EL FONDO DE LA BOMBA SE ALINEA CON EL PORTÓN DEL CENTRO (el autor): la bomba —la bahía, el bloque, el ala de atrás y el porche— se corre hacia la avenida hasta que su fondo cae en la línea del portón bajo el puente, donde termina el edificio blanco, y el patio de atrás queda de un solo borde. `tools/gen_acon_body.py` saca ese corrimiento del satélite y el patio empieza ahí (`drive.yard`)",
       "_calle4GapM": "el concreto entre la acera de Calle 4 y la bomba: el autor pidió que no quedara pegada a la acera. Todo el conjunto se corre esto al este y el lote crece lo mismo",
-      "dropNamed": ["Repuestos Acón"],
+      "dropNamed": [
+        "Repuestos Acón"
+      ],
       "_dropNamed": "la huella de OSM «Repuestos Acón» (al este, donde están los techos planos blancos que no son de la bomba) y su punto, a 2 px de la esquina del lote: el nombre es de la bomba, y la parcela ya lo lleva en su píldora",
       "_drive": "LO MANEJABLE ES EL CONCRETO DE LA BOMBA: el frente sobre la avenida, el rincón al este de la bahía (donde se parquea, junto a la entrada), la ENTRADA DEL PATIO y el patio, que sale a Calle 4 por el portón de la malla amarilla. La entrada es más ancha que la de verdad, a propósito y sólo ahí: el carro del juego mide hasta 6 m de ancho (19 px), así que va a 7,2 m, y el patio va un poco más hondo para sus dos carriles. Lo demás conserva su proporción (`tools/gen_acon_body.py` saca la escala de que la bomba, de Calle 4 al porche, llene hasta la entrada) y se para fuera de estos rectángulos: el rincón al oeste de la bahía es concreto pero no cabe un carro",
       "drive": [
-        {"id": "front", "rectM": [0, 0, 14.07, 1.55], "_": "el frente de la bomba sobre la avenida, delante de la bahía"},
-        {"id": "pumps", "rectM": [7.86, 1.55, 14.07, 6.95], "_": "el rincón al este de la bahía, delante de la cara del bloque y del porche: donde se parquea"},
-        {"id": "driveway", "rectM": [14.07, 0, 21.27, 15.5], "_": "la entrada del patio, entre la bomba y el edificio blanco, bajo el puente del segundo piso"},
-        {"id": "yard", "rectM": [0, 15.5, 23.9, 25.6], "_": "el patio de atrás, con sus carriles: sale a Calle 4 por el portón de la malla amarilla"}
+        {
+          "id": "front",
+          "rectM": [
+            0,
+            0,
+            14.07,
+            1.55
+          ],
+          "_": "el frente de la bomba sobre la avenida, delante de la bahía"
+        },
+        {
+          "id": "pumps",
+          "rectM": [
+            7.86,
+            1.55,
+            14.07,
+            6.95
+          ],
+          "_": "el rincón al este de la bahía, delante de la cara del bloque y del porche: donde se parquea"
+        },
+        {
+          "id": "driveway",
+          "rectM": [
+            14.07,
+            0,
+            21.27,
+            15.5
+          ],
+          "_": "la entrada del patio, entre la bomba y el edificio blanco, bajo el puente del segundo piso"
+        },
+        {
+          "id": "yard",
+          "rectM": [
+            0,
+            15.5,
+            23.9,
+            25.6
+          ],
+          "_": "el patio de atrás, con sus carriles: sale a Calle 4 por el portón de la malla amarilla"
+        }
       ],
       "mouths": [
-        {"id": "front", "street": "Avenida Centenario", "fromM": 0.6, "toM": 20.8},
-        {"id": "yardgate", "street": "Calle 4", "fromM": 16.0, "toM": 25.2}
+        {
+          "id": "front",
+          "street": "Avenida Centenario",
+          "fromM": 0.6,
+          "toM": 20.8
+        },
+        {
+          "id": "yardgate",
+          "street": "Calle 4",
+          "fromM": 16.0,
+          "toM": 25.2
+        }
       ]
     },
     {
@@ -36,18 +90,55 @@
       "name": "Antiguo Matadero Municipal",
       "use": "civic",
       "body": "matadero",
-      "pill": "ANTIGUO MATADERO MUNICIPAL",
-      "draft": true,
-      "_draft": "el calco del matadero está en camino: hasta que exista `bodies.matadero`, el emit no agrega su lote",
-      "anchorLL": [9.97836, -84.826491],
-      "front": "Calle 10",
-      "side": "Avenida Centenario",
-      "lotM": [39.4, 15.5],
-      "_lotM": "por Calle 10 desde la acera de la avenida hasta el lote de la Antigua Fábrica de Hielo (la curva de Avenida 1), y de la acera de Calle 10 a la de Calle 12: el matadero contra la calle y, detrás, el sur de la fábrica",
-      "sideSlope": 0.0351,
+      "_": "EL SALÓN DE 1901, que CIERRA LA PUNTA DE CALLE 10: su fachada mira al sur, por Calle 10 abajo, y la avenida que dobla al oeste le pasa por delante (las vistas de calle y el satélite: la fachada es el lado corto del salón, el ático asoma al medio de ese lado, y el portón negro del costado está al este, donde el muro del recinto dobla hacia el sur por Calle 10). Por eso es un lote sobre UNA calle (`side: null`): `cornerLL` es su punta del este, contra el muro de `matadero_muro`, y `u` corre al oeste por la avenida",
+      "anchorLL": [
+        9.978809,
+        -84.8267541
+      ],
+      "_anchorLL": "adentro del salón, al oeste de donde la avenida dobla: así el tramo recto de la avenida es el más cercano y el lote la sigue a ella y no a la curva",
+      "front": "Avenida 1 Dr. Sergio Fallas Badilla",
+      "side": null,
+      "cornerLL": [
+        9.9786817,
+        -84.8265702
+      ],
+      "lotM": [
+        22.4,
+        25.0
+      ],
+      "_lotM": "de la punta del este (el portón del costado, 2,6 m) al oeste los 19,8 m de la fachada, y de la acera de la avenida 25 m adentro: el salón mide 21,5 x 33 m de verdad y aquí la tierra llega a 27 m antes del estero, así que su fondo se aprieta y la fachada no. El portón sigue al este, fuera del lote, hasta el muro del recinto",
+      "sideSlope": 0.0,
       "dropNamed": [],
       "drive": [],
       "mouths": []
+    },
+    {
+      "id": "matadero_muro",
+      "name": "Muro y patios del Antiguo Matadero",
+      "use": "civic",
+      "body": "matadero_muro",
+      "_": "EL RECINTO del Matadero sobre Calle 10, de la avenida (Av. 2, la Centenario) a detrás del salón: el muro blanco de círculos y arcos ciegos con su esquina redonda, el cuerpo de la ventana grande, la nave larga detrás del muro que sigue al norte de la curva junto al salón, el patio con su almendro, el patio de árboles del fondo, y contra Calle 12 los techos rojos",
+      "anchorLL": [
+        9.97836,
+        -84.826491
+      ],
+      "front": "Calle 10",
+      "side": "Avenida Centenario",
+      "lotM": [
+        76.0,
+        15.5
+      ],
+      "_lotM": "por Calle 10 desde la acera de la avenida, pasando la curva donde Calle 10 dobla, hasta detrás del salón —la punta norte de la nave larga y el patio de árboles del fondo, el suelo que tenía el cuadro de la Fábrica de Hielo—; y de la acera de Calle 10 a la de Calle 12",
+      "sideSlope": 0.0351,
+      "dropNamed": [
+        "Antigua Fábrica de Hielo Gutiérrez"
+      ],
+      "drive": [],
+      "mouths": [],
+      "dropParcels": [
+        "osm_market_232393978"
+      ],
+      "_dropParcels": "el cuadro beige de la Antigua Fábrica de Hielo Gutiérrez que OSM dibujó al norte de la curva: es suelo del recinto del Matadero (el autor: «borrá el cuadro de la fábrica para llenar el matadero completo»)"
     }
   ]
 }

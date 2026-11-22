@@ -359,38 +359,48 @@ export function drawCart3d(x, y, ang, V, look, sway = 0) {
 }
 
 /**
- * UNA SEÑAL DE PLACA EN 3D —el ALTO, el CEDA— (`signs.<tipo>.stand3d.plate`). Era el octágono pegado a
- * la punta del poste MIRANDO A LA PANTALLA: daba igual hacia dónde iba la calle, y su sombra era la del
- * palo nada más. Ahora la placa es una lámina en el espacio, en el marco de la señal (`ang` es el rumbo
- * del conductor que llega al cruce, que es como el mundo la emite): su cara mira hacia él, y va
- * INCLINADA hacia atrás `tiltDeg` —exagerado a propósito, como los postes: parada derecha, desde una
- * cámara a plomo sería una raya—. Tiene canto (`thickM`) y espalda gris, que es lo que se ve desde
- * detrás, y tira su sombra entera al sol junto con el poste.
+ * UNA SEÑAL DE PLACA EN 3D, EN SU PALO —el ALTO, el CEDA— (`signs.<tipo>.stand3d.plate`), como las de
+ * Costa Rica: un tubo que sube de la acera y la placa arriba, mirando al conductor que llega al cruce
+ * (`ang` es su rumbo, como el mundo la emite), PARADA: apenas `tiltDeg` hacia atrás para no desaparecer de
+ * canto justo bajo la cámara, y lo que la hace leerse es el pinhole, como las paredes de un edificio. Tiene canto
+ * (`thickM`), espalda gris si se la mira desde atrás, y tira su sombra entera al sol con el palo.
+ *
+ * La CARA es el dibujo del registro (`plate.face`, en px de mundo y con su palabra), llevada al plano
+ * de la placa con una afín: el intérprete pinta y la geometría sólo dice dónde. Y LA PALABRA SE
+ * ENDEREZA DENTRO DE LA PLACA: vista desde arriba, el «arriba» de una placa sale hacia donde va el
+ * conductor o hacia el centro de la pantalla, así que en la mitad de las esquinas el ALTO salía de cabeza. El octágono no
+ * cambia; sólo el texto (`shape: "text"`) gira en el plano hasta quedar lo más derecho posible en la
+ * pantalla.
  */
 function drawPlateSign3d(S, x, y, ang) {
-  const Pl = S.plate, t = (Pl.tiltDeg ?? 55) * Math.PI / 180, ct = Math.cos(t), st = Math.sin(t);
-  const r = Pl.rM, n = Pl.n, rot = (Pl.rotDeg ?? 0) * Math.PI / 180;
-  const hc = S.poleM + r * ct;
-  // e1 cruza la calle; e2 es el «arriba» de la placa, echado hacia +u (lejos del conductor)
-  const P = (a, k, off = 0) => [st * Math.sin(a) * r * k + off, Math.cos(a) * r * k, hc + ct * Math.sin(a) * r * k];
-  const ring = (k, off = 0) => { const out = []; for (let i = 0; i < n; i++) { const a = rot + (i / n) * Math.PI * 2; const p = P(a, k); out.push([p[0] + off * ct, p[1], p[2] - off * st]); } return out; };
-  // la placa en su plano: (cruzado, arriba) → punto
-  const at = (cx, cy) => [st * cy, cx, hc + ct * cy];
-  const normal = [-ct, 0, st];             // la cara: hacia el conductor y hacia arriba
+  const Pl = S.plate, t = (Pl.tiltDeg ?? 12) * Math.PI / 180, ct = Math.cos(t), st = Math.sin(t);
+  const r = Pl.rM, n = Pl.n, rot = (Pl.rotDeg ?? 0) * Math.PI / 180, ppm = PX_PER_M;
+  const hc = S.poleM + r * ct;                      // `poleM` es la altura del borde de abajo de la placa
+  // en el marco de la señal: u hacia donde va el conductor, v a su derecha; (cx, cy) en la placa, cy arriba
+  const onPlate = (cx, cy, off = 0) => [st * cy + off * ct, cx, hc + ct * cy - off * st];
+  const ring = (k, off = 0) => { const out = []; for (let i = 0; i < n; i++) { const a = rot + (i / n) * Math.PI * 2; out.push(onPlate(Math.cos(a) * r * k, Math.sin(a) * r * k, off)); } return out; };
+  const normal = [-ct, 0, st];                      // la cara: hacia el conductor y hacia arriba
+  const shapes = Pl.face.filter((p) => p.shape !== "text"), words = Pl.face.filter((p) => p.shape === "text");
+  const k = (r * ppm) / (Pl.faceR || r * ppm);      // el dibujo del registro, al radio de la placa
   rigged(x, y, ang, hc + r, S, 0, (R) => {
     R.at(hc * 0.5, () => R.line([[Pl.thickM * 1.5, 0, 0], [Pl.thickM * 1.5, 0, hc]], S.poleWM, S.pole));
     R.at(hc + r, () => {
-      const front = R.faces([0, 0, hc], normal);
-      const back = ring(1, Pl.thickM);
       if (R.shadow) { R.poly(ring(1), S.shade.shadow); return; }
-      if (!front) { R.poly(ring(1), Pl.edge); R.poly(back, Pl.back); return; }
-      R.poly(back, Pl.edge);                // el canto, asomando detrás
-      R.poly(ring(1), Pl.outer);
-      R.poly(ring(Pl.innerK), Pl.inner);
-      if (Pl.barM) {
-        const [bw, bh] = Pl.barM;
-        R.poly([at(-bw / 2, -bh / 2), at(bw / 2, -bh / 2), at(bw / 2, bh / 2), at(-bw / 2, bh / 2)], Pl.bar);
+      if (!R.faces([0, 0, hc], normal)) { R.poly(ring(1), Pl.edge); R.poly(ring(1, Pl.thickM), Pl.back); return; }
+      R.poly(ring(1, Pl.thickM), Pl.edge);         // el canto, asomando detrás
+      // la afín: px del dibujo (x a la derecha del conductor, y hacia abajo) → el plano de la placa
+      const o = onPlate(0, 0), ex = onPlate(k / ppm, 0), ey = onPlate(0, -k / ppm);
+      const P0 = R.P(o[0], o[1], o[2]), PX = R.P(ex[0], ex[1], ex[2]), PY = R.P(ey[0], ey[1], ey[2]);
+      ctx.save();
+      ctx.transform(PX[0] - P0[0], PX[1] - P0[1], PY[0] - P0[0], PY[1] - P0[1], P0[0], P0[1]);
+      paintParts(ctx, shapes, { pxPerM: ppm, X: (v) => v || 0, Y: (v) => v || 0 });
+      if (words.length) {
+        // el «arriba» de la pantalla, llevado al plano de la placa: hacia ahí se para la palabra
+        const M = ctx.getTransform().inverse(), ux = M.c * -1, uy = M.d * -1;
+        ctx.rotate(Math.atan2(ux, -uy));
+        paintParts(ctx, words, { pxPerM: ppm, X: (v) => v || 0, Y: (v) => v || 0 });
       }
+      ctx.restore();
     });
   });
 }

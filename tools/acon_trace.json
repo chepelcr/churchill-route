@@ -1,0 +1,434 @@
+{
+  "_note": "LA BOMBA Y LOS REPUESTOS ACON, CALCADOS DE SUS IMÁGENES (capturas del autor del 2026-11-22: el satélite de Google Maps, las vistas de calle de nov. 2024 y una foto de hace nueve años con la losa «BOMBA ACON S.A.»). Cada número es un PÍXEL ORIGINAL de la imagen que se nombra, leído sobre una retícula; `python3 tools/gen_acon_body.py --overlay` vuelve a dibujar estas mismas marcas encima de las imágenes para revisarlas a ojo. Las imágenes no se suben al repositorio (son capturas de Google); el overlay las busca en `logs/acon/`. `tools/gen_acon_body.py` las pasa a METROS —la planta del satélite, las caras de las vistas de calle EN PERSPECTIVA— y escribe `world-props.json → bodies.acon`.",
+  "satellite": {
+    "_": "Satélite, norte arriba, 1228 x 2700. x de la imagen = u (a lo largo de la avenida, hacia el este, desde la pared de Calle 4), y = v (hacia adentro de la cuadra, desde la línea de la avenida). Leído con un muestreo de color (zinc rojo, techo celeste, reborde blanco) además de a ojo.",
+    "image": "sat.jpg",
+    "calle4LineX": 185,
+    "_calle4LineX": "la pared oeste de la bomba contra la acera de Calle 4: la sombra que tira sobre la acera (x 95–182) termina ahí",
+    "avenueLineY": 1112,
+    "_avenueLineY": "el borde norte del techo del edificio blanco: la línea de propiedad contra la avenida",
+    "pxPerM": 21.0,
+    "_pxPerM": "el pick-up de la avenida (110 px, 5,2 m) y la avenida de cordón a cordón (240 px, ~11,5 m)",
+    "canopy": {
+      "x": [
+        186,
+        394
+      ],
+      "y": [
+        1176,
+        1350
+      ],
+      "_": "la marquesina de zinc rojo, de 10 x 8,3 m, que tapa la BAHÍA y su balcón desde el cielo. NO SE DIBUJA: el autor la quitó para que el balcón de las plantas se vea"
+    },
+    "mainBand": {
+      "x": [
+        185,
+        462
+      ],
+      "y": [
+        1355,
+        1405
+      ],
+      "_": "el techo plano celeste de la banda a dos pisos, de Calle 4 a la entrada del patio. Su canto norte es la CARA NORTE del bloque, 11,6 m adentro de la avenida: lo de adelante es la bahía, bajo la marquesina"
+    },
+    "arm": {
+      "x": [
+        185,
+        345
+      ],
+      "y": [
+        1405,
+        1545
+      ],
+      "_": "…y el brazo que baja por Calle 4, también a dos pisos: el techo celeste es una L"
+    },
+    "backWing": {
+      "x": [
+        345,
+        506
+      ],
+      "y": [
+        1405,
+        1550
+      ],
+      "_": "el ala de atrás, a un piso, con su zinc rojo: llena el hueco de la L"
+    },
+    "leanTo": {
+      "x": [
+        462,
+        509
+      ],
+      "y": [
+        1340,
+        1405
+      ],
+      "_": "la franja blanca entre la banda y la entrada del patio: el alerito del porche de reja, del lado de la entrada (la vista del portón)"
+    },
+    "driveway": {
+      "x": [
+        509,
+        595
+      ],
+      "_": "la entrada del patio, en la sombra del edificio blanco"
+    },
+    "white": {
+      "x": [
+        595,
+        860
+      ],
+      "y": [
+        1112,
+        1490
+      ],
+      "cornerR": 45,
+      "_": "el edificio blanco: techo de zinc rojo a cuatro aguas; su esquina noroeste —la de la entrada del patio— es REDONDA (45 px de radio)"
+    },
+    "workshop": {
+      "x": [
+        665,
+        880
+      ],
+      "y": [
+        1480,
+        1690
+      ],
+      "skylights": 6,
+      "_": "el taller detrás del edificio blanco: techo gris verdoso con seis tragaluces blancos"
+    },
+    "yard": {
+      "x": [
+        180,
+        660
+      ],
+      "y": [
+        1550,
+        1700
+      ],
+      "_": "el patio de atrás, con su portón a Calle 4 en la malla amarilla"
+    }
+  },
+  "avenueView": {
+    "_": "LA CARA NORTE desde la avenida (sv-blue-avenue.jpg, 2700 x 1228), RECONSTRUIDA EN PERSPECTIVA: no es un plano. La BAHÍA —la cortina entre sus dos columnas, con el balcón encima— SALE adelante del bloque, y a su derecha queda la cara del bloque (la celosía), más lejos: su pie cae más arriba en la imagen que el de la cortina. Cámara a nivel: el horizonte y el punto de fuga del sur salen de la baranda y el pie del edificio blanco y de Calle 4; el de la avenida, de la cortina; la focal, de que esas dos direcciones son perpendiculares; la altura de la cámara, de la cortina.",
+    "image": "sv-blue-avenue.jpg",
+    "size": [
+      2700,
+      1228
+    ],
+    "horizonY": 618,
+    "southVPX": 2092,
+    "eastVPX": -3136,
+    "shutterM": 2.8,
+    "_shutterM": "la cortina de la bahía: una cortina de local de 2,8 m es la única medida que se supone",
+    "shutterTopY": 553,
+    "ground": {
+      "colNE": [
+        1190,
+        853
+      ],
+      "colNW": [
+        1623,
+        883
+      ],
+      "bayJoin": [
+        1757,
+        808
+      ],
+      "cornerNW": [
+        2097,
+        820
+      ],
+      "_": "pies sobre el piso: las dos columnas de la bahía, donde el costado oeste de la bahía (la reja) se junta con la cara del bloque, y la esquina noroeste del bloque"
+    },
+    "bayFront": {
+      "slabY": [
+        380,
+        433
+      ],
+      "parapetY": [
+        280,
+        380
+      ],
+      "_": "el canto de la losa de la bahía y el pretil del balcón encima, cuya banda de arriba sigue alrededor como la banda de las ventanas del bloque"
+    },
+    "mainFace": {
+      "baseY": 813,
+      "slabY": [
+        447,
+        467
+      ],
+      "sillY": [
+        353,
+        380
+      ],
+      "windowsY": [
+        227,
+        353
+      ],
+      "roofY": [
+        165,
+        220
+      ],
+      "celosia": {
+        "x": [
+          1763,
+          2023
+        ],
+        "y": [
+          587,
+          740
+        ]
+      },
+      "upperWindowsX": [
+        1790,
+        2010
+      ],
+      "_": "la cara del bloque al oeste de la bahía: la losa del segundo piso, la banda bajo las ventanas, las ventanas, la losa del techo; la celosía de la oficina",
+      "_roofY": "la losa del techo: su canto azul arriba y donde su cielo raso, que vuela, llega a la pared"
+    }
+  },
+  "eastFace": {
+    "_": "La cara norte del bloque AL ESTE de la bahía (sv-yard-front.jpg y sv-gate.jpg): de la esquina noreste hasta el costado de la bahía, fracciones de ese tramo promediadas entre las dos vistas. La planta baja: dos ventanas, la puerta de reja azul y una celosía; arriba, la fila de ventanas.",
+    "windows": [
+      [
+        0.02,
+        0.15
+      ],
+      [
+        0.2,
+        0.42
+      ]
+    ],
+    "door": [
+      0.48,
+      0.62
+    ],
+    "celosia": [
+      0.82,
+      0.99
+    ],
+    "upperWindows": [
+      0.08,
+      0.92
+    ]
+  },
+  "calle4View": {
+    "_": "LA CARA OESTE, sobre Calle 4 (sv-blue-calle4.jpg), EN PERSPECTIVA: se ve de lado desde el suroeste. El horizonte cae en la línea donde una horizontal de la pared no se inclina (el alto de los portones), y el punto de fuga de la pared es donde su pie lo cruza; una posición a lo largo de la pared sale proyectiva entre la esquina noroeste y el pilar del suroeste, y una altura, del pie de la pared en esa misma x.",
+    "image": "sv-blue-calle4.jpg",
+    "size": [
+      2700,
+      1228
+    ],
+    "horizonY": 646,
+    "cornerNWX": 956,
+    "pillarSWX": 2027,
+    "base": [
+      [
+        981,
+        877
+      ],
+      [
+        1735,
+        931
+      ]
+    ],
+    "camM": 2.45,
+    "_camM": "la cámara de Google a 2,45 m: los portones de lata llegan justo al horizonte",
+    "garage": [
+      [
+        977,
+        1273
+      ],
+      [
+        1319,
+        1738
+      ]
+    ],
+    "grilleTopY": [
+      550,
+      523
+    ],
+    "door": {
+      "x": [
+        1823,
+        1962
+      ],
+      "y": [
+        685,
+        919
+      ],
+      "_": "la puerta azul de rombos, bajo su alerito de teja"
+    },
+    "alero": {
+      "x": [
+        1808,
+        1977
+      ],
+      "y": [
+        638,
+        662
+      ]
+    },
+    "slabY": [
+      442,
+      454
+    ],
+    "sillY": [
+      346,
+      377
+    ],
+    "upperWindows": [
+      [
+        1054,
+        1246
+      ],
+      [
+        1362,
+        1619
+      ]
+    ],
+    "upperWindowsY": [
+      [
+        277,
+        415
+      ],
+      [
+        208,
+        381
+      ]
+    ],
+    "roofY": [
+      92,
+      177
+    ],
+    "roofX": 1596,
+    "pillar": {
+      "x": [
+        1996,
+        2058
+      ],
+      "_": "el pilar azul del suroeste, donde empieza la malla del patio"
+    },
+    "measureX": 1735,
+    "_measureX": "la x donde se leyeron la losa y la banda de las ventanas (el borde derecho del portón grande)"
+  },
+  "oldPhoto": {
+    "_": "La foto de hace nueve años (old-photo.jpg, 1228 x 2700), tomada desde Calle 4 mirando al este: a través de la BAHÍA abierta se ve el costado del edificio blanco (su baranda y sus puertas azules) al otro lado de la entrada del patio. La losa que dice BOMBA ACON S.A. es el canto OESTE de la losa de la bahía, el que da a Calle 4, con la columna redonda azul en su esquina y la isla amarilla con sus bolardos.",
+    "image": "old-photo.jpg",
+    "fascia": {
+      "x": [
+        470,
+        860
+      ],
+      "y": [
+        870,
+        960
+      ],
+      "_": "las letras sobre el canto de la losa: ocupan menos de la mitad del canto"
+    },
+    "column": {
+      "x": [
+        310,
+        380
+      ],
+      "y": [
+        960,
+        1340
+      ]
+    },
+    "island": {
+      "x": [
+        280,
+        500
+      ],
+      "y": [
+        1320,
+        1380
+      ]
+    },
+    "plants": {
+      "x": [
+        365,
+        555
+      ],
+      "y": [
+        700,
+        750
+      ],
+      "_": "las matas del balcón, detrás del pretil, en su esquina noroeste"
+    },
+    "canto": {
+      "x": [
+        207,
+        1000
+      ],
+      "y": [
+        867,
+        953
+      ],
+      "_": "el canto entero de la losa, de su punta redonda (la esquina de la columna) a donde sube al bloque"
+    }
+  },
+  "yardCalle4": {
+    "_": "El patio desde Calle 4 (sv-yard-calle4.jpg, 1228 x 1325, nov. 2024): NO es un parqueo, son CARRILES de entrada y salida. La malla amarilla sobre la acera con dos portones —el de la derecha dice ENTRADA en el piso y su flecha entra; la de la izquierda sale hacia el norte, que es el sentido de Calle 4—, y entre los dos la ISLA con la vieja bomba: una columna azul con su capitel y bolardos a rayas amarillas y negras. Los carriles siguen hacia el portón negro del lado de la avenida (sv-gate-avenue.jpg), con sus flechas.",
+    "image": "sv-yard-calle4.jpg",
+    "fenceY": [
+      530,
+      745
+    ],
+    "_fenceY": "la malla: su borde de arriba y el de abajo, a la altura de los portones",
+    "gates": [
+      [
+        390,
+        600
+      ],
+      [
+        790,
+        1000
+      ]
+    ],
+    "_gates": "el portón de salida (izquierda) y el de ENTRADA (derecha)",
+    "pump": {
+      "x": [
+        622,
+        690
+      ],
+      "y": [
+        330,
+        640
+      ],
+      "_": "la columna azul de la vieja bomba, con su capitel"
+    },
+    "bollards": {
+      "x": [
+        600,
+        700
+      ],
+      "y": [
+        550,
+        650
+      ]
+    },
+    "arrowOut": {
+      "x": [
+        130,
+        270
+      ],
+      "y": [
+        830,
+        880
+      ],
+      "_": "la flecha que sale, hacia el norte"
+    },
+    "arrowIn": {
+      "x": [
+        1045,
+        1200
+      ],
+      "y": [
+        800,
+        910
+      ],
+      "_": "la flecha que entra, junto a ENTRADA"
+    }
+  }
+}

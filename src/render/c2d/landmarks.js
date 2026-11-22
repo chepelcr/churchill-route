@@ -373,6 +373,10 @@ function drawParcels(view) {
       if (spec.low) queueBody(bodyAt(spec._low || (spec._low = { tiers: spec.low }), bx, by, ang, `${P.id}:low`), own.inks || null);
       // `under`: lo de la calle que va DEBAJO de los árboles aunque sea alto (las paradas), en la pasada de lo bajo
       if (spec.under) queueBody(bodyAt(spec._under || (spec._under = { tiers: spec.under, under: true, perspective: spec.perspective }), bx, by, ang, `${P.id}:under`), own.inks || null);
+      // `overhead`: lo que va ENCIMA DEL CARRO —la marquesina de una bomba, el puente sobre la entrada de un
+      // patio—, un cuerpo aparte que la cola pinta después del jugador y vuelve translúcido cuando el carro
+      // pasa debajo (`flushOverBodies`). En el cuerpo de siempre el carro salía pintado ENCIMA de la marquesina
+      if (spec.overhead) queueBody(bodyAt(spec._overhead || (spec._overhead = { tiers: spec.overhead, perspective: spec.perspective }), bx, by, ang, `${P.id}:overhead`), own.inks || null, null, true);
       const ca = Math.cos(ang), sa = Math.sin(ang);
       for (const tr of spec.trees || []) {
         const [tu, tv] = tr.atM, x = bx + (tu * ca - tv * sa) * ppm, y = by + (tu * sa + tv * ca) * ppm;

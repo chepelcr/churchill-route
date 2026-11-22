@@ -140,7 +140,7 @@ export function buildBody(spec, base, rot, F) {
     if (t.decal) {
       // el estampado: en qué paredes va (índices de vértice, como `openings.edge`), re-numeradas si el giro se invirtió
       const n = o.pts.length / 2;
-      o.decal = { roof: !!t.decal.roof, edges: t.decal.edges.map((e) => (flip ? (n - 2 - e + n) % n : e)) };
+      o.decal = { roof: !!t.decal.roof, edges: t.decal.edges.map((e) => (flip ? (n - 2 - e + n) % n : e)), ...(t.decal.key ? { key: t.decal.key } : {}) };
     }
     if (t.faces) {
       // una cara distinta por arista (`bodies.js`), re-numerada como `openings` si el giro se invirtió
@@ -152,6 +152,15 @@ export function buildBody(spec, base, rot, F) {
       // `edge` se cuenta sobre la huella como se escribió; si el giro se invirtió, se re-numera
       const n = o.pts.length / 2;
       o.openings = t.openings.map((op) => (op.edge == null || !flip ? op : { ...op, edge: (n - 2 - op.edge + n) % n, f: [1 - op.f[1], 1 - op.f[0]] }));
+    }
+    if (t.capText) {
+      // EL NOMBRE PINTADO SOBRE LA TAPA (`bodies.js → paintCapText`): su punto `atM` en metros de la
+      // estructura, llevado al lugar como cualquier huella, y el eje `u` de la estructura en pantalla —su
+      // giro y cuántos px mide un metro—, así las letras corren con el edificio y no con la pantalla
+      const [du, dv] = t.capText.atM || [0, 0], c = Math.cos(rot), sn = Math.sin(rot);
+      const p = F.at([base[0] + du * c - dv * sn, base[1] + du * sn + dv * c]);
+      const q = F.at([base[0] + (du + 1) * c - dv * sn, base[1] + (du + 1) * sn + dv * c]);
+      o.capText = { ...t.capText, x: r1(p[0]), y: r1(p[1]), ang: +Math.atan2(q[1] - p[1], q[0] - p[0]).toFixed(4), ppm: Math.hypot(q[0] - p[0], q[1] - p[1]) };
     }
     if (t.truss) o.truss = { ink: t.truss.ink, h: t.truss.hM, every: r1(t.truss.everyM * ppm) };
     if (t.roof) {

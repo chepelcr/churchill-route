@@ -349,16 +349,41 @@ def derive_road_signs(roads, existing):
             out.append(s)
             placed.append(s)
 
+    # LA PUNTA DE UNA VÍA ES UN CRUCE. Las placas de la entrada y la salida se medían a una distancia FIJA
+    # del final del eje (`ONEWAY_IN`, `SPEED_IN`), y en una avenida de 81 px el final del eje es el medio
+    # de la avenida: la NO HAY PASO de Calle 4 quedaba parada en el cordón de la Avenida Centenario. Se
+    # miden pasada la calle que cruza —su medio ancho más media acera—, como el ALTO de esa esquina.
+    CELL = 128
+    grid = {}
+    for r in roads:
+        if r.get("pts") and len(r["pts"]) >= 4:
+            hw_r = r.get("w", 36) / 2
+            for (_, x, y) in resample_centerline(r["pts"], 10):
+                grid.setdefault((int(x // CELL), int(y // CELL)), []).append((x, y, hw_r, id(r)))
+
+    def past_the_crossing(x, y, own, base):
+        """cuánto entrar desde la punta (x, y): `base`, o pasada la calle más ancha que cruza ahí"""
+        widest = 0.0
+        for dc in (-1, 0, 1):
+            for dr in (-1, 0, 1):
+                for (sx, sy, hw_r, rid) in grid.get((int(x // CELL) + dc, int(y // CELL) + dr), ()):
+                    if rid != own and (sx - x) ** 2 + (sy - y) ** 2 <= JUNCTION_R * JUNCTION_R:
+                        widest = max(widest, hw_r)
+        return max(base, widest + ALTO_CORNER_IN) if widest else base
+
     speeds = []
     for r in sorted(roads, key=lambda r: (r.get("cls", ""), r["pts"][:2])):
         p = r.get("pts") or []
         if len(p) < 4 or r.get("cls") in UNSIGNED:
             continue
         L, hw, ow = _length(p), r.get("w", 36) / 2, r.get("oneway", 0)
+        in0 = past_the_crossing(p[0], p[1], id(r), 0.0)       # lo que ocupa la calle que cruza en cada punta
+        in1 = past_the_crossing(p[-2], p[-1], id(r), 0.0)
         if r.get("maxspeed") and L > 2 * SPEED_IN:
             for direction in ((1,) if ow == 1 else (-1,) if ow == -1 else (1, -1)):
-                s = SPEED_IN
-                while s < L - SPEED_IN:
+                a_in, b_in = (in0, in1) if direction == 1 else (in1, in0)
+                s = max(SPEED_IN, a_in)
+                while s < L - max(SPEED_IN, b_in):
                     d = s if direction == 1 else L - s
                     x, y, ux, uy = _along(p, d)
                     if direction == -1:
@@ -371,9 +396,13 @@ def derive_road_signs(roads, existing):
                     s += SPEED_EVERY
         if ow and L >= ONEWAY_MIN_LEN:
             q = p if ow == 1 else [v for i in range(len(p) - 2, -1, -2) for v in (p[i], p[i + 1])]
-            x, y, ux, uy = _along(q, ONEWAY_IN)
+            e_in, x_in = (in0, in1) if ow == 1 else (in1, in0)
+            e_in, x_in = max(ONEWAY_IN, e_in), max(ONEWAY_IN, x_in)
+            if e_in + x_in >= L:
+                continue                    # una cuadra que el cruce se come entera: nada que firmar
+            x, y, ux, uy = _along(q, e_in)
             add(_pole_at(x, y, ux, uy, hw, SignKind.UNA_VIA))
-            x, y, ux, uy = _along(q, L - ONEWAY_IN)
+            x, y, ux, uy = _along(q, L - x_in)
             # la de salida mira al que viene al revés: su rumbo es el contrario, y su derecha la otra acera
             add(_pole_at(x, y, -ux, -uy, hw, SignKind.NO_HAY_PASO))
     return out

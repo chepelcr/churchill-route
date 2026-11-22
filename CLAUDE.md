@@ -54,6 +54,7 @@ The procedure is three steps and it is not optional:
 | **las máquinas, sus cuatro mejoras y su economía** | `src/content/railway/catalog.json` |
 | **un tramo del corredor Pacífico–Puntarenas** | `src/content/railway/levels/*.json` — el perfil lo escribe `tools/gen_railway_profile.py` |
 | **el Parque Mora y Cañas y la manzana de la Catedral** — su piso, sus bocas, el tanque, el Palacio, la Catedral, una banca | `content/world/centro.json` (METROS, en el marco de cada cuadra) → `pnpm world:centro`; tintas en `materials.json` → `centro`; pintor `c2d/centro.js` |
+| **un edificio histórico que OSM no tiene** — la Bomba y Repuestos ACON, el Antiguo Matadero: su lote, lo manejable, sus bocas | `content/world/historic.json` (METROS desde el borde de adentro de las dos aceras de su esquina) → `pnpm world:historic` (`tools/emit_historic.py`; preview `pnpm preview:historic`); su cuerpo lo escribe `tools/gen_<id>_body.py` desde `tools/<id>_trace.json` → `world-props.json → bodies.<id>` |
 | **algo que se levanta «como los edificios nuevos» sin venir del mundo** — la Capitanía, un quiosco, los cañones, **la UTN** | `src/assets/world-props.json` → `bodies` (bloques en METROS; tintas `$x` las pone el hito en `landmarks[*].inks`; `faces` cambia pared/bandas/ventanas por arista); una PARCELA que es ella misma lo nombra por su id en `parcels.byId` (la UTN: `tools/gen_utn_body.py` escribe su receta); pintor `c2d/bodies.js`, geometría `c2d/bodyGeometry.js` (la misma que emite el centro cívico) |
 | **las graderías de un estadio en 3D** — qué es cada lado (gradería que vuela sobre la calle, tribuna techada), sus pilotes, sus torres de luz | `src/assets/world-props.json` → `stadiums3d.<id del hito>`; pintor `c2d/stadium3d.js`, sobre las gradas que el mundo estampa (`lm.stands.quads`) |
 | **the ground of one manzana or one parcel** | `content/world/blocks.json` → `manzanas` (BY GEO) / `parcels` (by id) |
@@ -851,6 +852,9 @@ AUTOBUSES adelante y NO ESTACIONAR atrás. Tres cosas costaron una ronda cada un
   sale de cabeza en pantalla y eso es lo correcto. De qué lado se ve se decide con la normal ECHADA
   (la de verdad): desde bien atrás, espalda gris. La UNA VÍA (`keepX`) es de dos caras y sólo su
   palabra se des-espeja vista desde atrás;
+* **la VELOCIDAD, la UNA VÍA y la NO HAY PASO se miden PASADA la calle que cruza** (`derive_road_signs →
+  past_the_crossing`), no desde la punta del eje: en una avenida de 81 px la punta del eje de la calle que
+  llega es el medio de la avenida, y la NO HAY PASO de Calle 4 quedaba parada en el cordón;
 * **una zebra de OSM es un nodo SOBRE la vía**: se emitía con `ang` 0 y se pintaba a escuadra con la
   pantalla. Se asienta en el eje con el rumbo y el medio ancho (`hw`) de su calle, y `drawZebra` la
   tiende de bordillo a bordillo. `pnpm test` → `tests/test_signs.py`.
@@ -1978,6 +1982,38 @@ cosas que sostienen el resto:
   `Math.random`: la frase se repite —eso es lo que la hace música— y un render
   offline es reproducible. `pnpm audio:stations` renderiza cada emisora y MIDE
   su tempo, que es la única forma de oírla sin oídos.
+
+## LOS EDIFICIOS HISTÓRICOS QUE OSM NO TIENE (`content/world/historic.json`)
+
+La Bomba y Repuestos ACON (y, en camino, el Antiguo Matadero): un LOTE en la esquina de dos calles con
+nombre, medido en metros desde el borde de adentro de sus dos aceras —`front` es la calle a lo largo de la
+cual corre `u`, `side` la otra; `anchorLL` dice de qué lado de cada una—, y encima un cuerpo de receta que
+escribe su generador desde su calco, como el Mercado. `tools/emit_historic.py --emit` lo lleva al mundo sin
+reconstruir (la parcela `hist_<id>`, las huellas y árboles y puntos de OSM que caen adentro y los de
+`dropNamed` al lado, lo manejable como `boulevard`, las bocas en la acera) y es repetible: deshace lo de la
+corrida anterior antes de estampar. Corre AL FINAL de `world:build`, después del centro, y después de
+`world:signs` si se vuelven a sacar las señales (las bocas son acera abierta). Lo que costó cada cosa:
+
+* **UNA VISTA DE CALLE NO ES UN PLANO.** Leída como una cara plana, la cara norte de la ACON juntaba la
+  cortina de la bahía con la celosía de la oficina, que está seis metros más atrás, y el balcón salió a todo
+  lo ancho del frente — el autor lo vio en las fotos. El calco reconstruye la cámara (horizonte y punto de
+  fuga del sur de las líneas del edificio vecino y de la calle, el de la avenida de la cortina, la focal de
+  que esas dos direcciones son perpendiculares, el alto de la cámara de una medida supuesta) y pasa cada
+  pie sobre el piso a metros; la prueba de que cuadra es que el costado de la bahía cae en la línea del
+  punto de fuga, y la escala la confirmó un carro parqueado. `--overlay` dibuja todo eso sobre las fotos.
+* **UN CUERPO ALTO EN UN SOLO BLOQUE LE PINTA ENCIMA A LO BAJO QUE SE LE ARRIMA.** Los bloques de un
+  cuerpo se ordenan por su tapa, y la pared entera del más alto —del piso al techo— salía sobre el zinc del
+  ala de atrás. Se parte en planta baja (con `sortM` bajo) y piso de arriba, y lo bajo queda entre los dos.
+* **`overhead` ES PARA LO QUE VA ENCIMA DEL CARRO, NO PARA LO QUE VA ENCIMA DEL EDIFICIO.** Se pinta al
+  final de todo: el balcón puesto ahí quedó encima del techo del bloque. Va con los demás bloques.
+* **DOS LOSAS DE TECHO SE VEN DOBLE.** Un reborde por bloque queda adentro, sobre la pared, con techo de los
+  dos lados. Es UNA losa en L con su vuelo, la tapa blanca es el reborde, y el techo celeste va adentro.
+* **EL PISO SIGUE AL LOTE TORCIDO** (`ground.polyM`) y se mete bajo las aceras, que se pintan después:
+  con el rectángulo asomaba una cuña de tierra en la esquina, y en el borde una raya.
+* **`roll`**: una cortina que de día está arriba y de noche abajo, enrollándose con el MISMO continuo del
+  cielo que apaga las sombras (`nightLevel`; `materials.json → centro.roll.band` dice en qué tramo, para
+  que baje en unos segundos y no en hora y media de juego). **`capText`**: el nombre pintado sobre la tapa,
+  sin píldora, como el del DJ sobre su dosel, escalado con el pinhole igual que la tapa.
 
 ## EL TREN AL PUERTO — el segundo juego dentro del juego
 

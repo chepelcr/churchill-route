@@ -49,6 +49,14 @@ class RoadSignTests(unittest.TestCase):
         una = [s for s in out if s["kind"] == SignKind.UNA_VIA][0]
         self.assertGreater(una["x"], 200)
 
+    def test_a_one_way_street_signs_past_the_avenue_it_ends_at(self):
+        """La NO HAY PASO de Calle 4 se paraba en el cordón de la avenida: se medía a 22,5 px del final
+        del eje, y el final del eje es el medio de una avenida de 81 px."""
+        avenue = road([-400, 0, 400, 0], cls="primary", w=81)
+        calle = road([0, 300, 0, 0], oneway=1)                 # sube de y = 300 a la avenida
+        nop = next(s for s in derive_road_signs([avenue, calle], []) if s["kind"] == SignKind.NO_HAY_PASO)
+        self.assertGreater(nop["y"], 40.5 + 3, f"la placa quedó en la calzada de la avenida: {nop}")
+
     def test_service_lanes_carry_no_speed(self):
         out = derive_road_signs([road([0, 0, 600, 0], cls="service", maxspeed=20)], [])
         self.assertEqual(out, [])

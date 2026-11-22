@@ -412,8 +412,8 @@ function paintParcels(view, only = null) {
     // un uso apagado en el registro (`parcels.uses.<use>.paint: false` — los patios) no pinta suelo
     if (PROPS.parcels.uses[P.use]?.paint === false) continue;
     // UNA PARCELA QUE ES SU CUERPO (`parcels.byId`) puede traer su PISO (`bodies.<x>.ground`): un
-    // rectángulo en metros del marco del lote, en una tinta de la casa — el verde de la UTN, que cubre
-    // la cuadra entera y no sólo el lote inscrito
+    // rectángulo (`rectM`) o un polígono (`polyM`) en metros del marco del lote, en una tinta de la casa —
+    // el verde de la UTN, que cubre la cuadra entera y no sólo el lote inscrito
     const own = PROPS.parcels.byId?.[P.id], G = own && PROPS.bodies[own.body]?.ground;
     if (G) { paintOwnGround(P, G); continue; }
     // UNA CANCHA CUADRADA (`parcels.byId.<id>.courtM`): el contorno trazado de un sitio de OSM es a veces
@@ -525,10 +525,20 @@ function paintOwnCourt(P, rectM, turnDeg = 0) {
 }
 
 function paintOwnGround(P, G) {
-  const F = parcelFrame(P), ppm = PX_PER_M, [u0, v0, u1, v1] = G.rectM;
+  const F = parcelFrame(P), ppm = PX_PER_M;
   ctx.save(); ctx.translate(F.cx, F.cy); ctx.rotate(F.ang);
   ctx.fillStyle = MATERIALS.centro.inks[G.ink] || MATERIALS.centro.missing;
-  ctx.fillRect(u0 * ppm, v0 * ppm, (u1 - u0) * ppm, (v1 - v0) * ppm);
+  if (G.polyM) {
+    // UN PISO QUE NO ES UN RECTÁNGULO (`polyM`, [[u, v], …] en metros del marco del lote): el lote de una
+    // esquina que no llega a escuadra (la de la ACON, corrido con Calle 4) — con un rectángulo asomaba
+    // una cuña de tierra contra la acera
+    ctx.beginPath();
+    G.polyM.forEach(([u, v], k) => (k ? ctx.lineTo(u * ppm, v * ppm) : ctx.moveTo(u * ppm, v * ppm)));
+    ctx.fill();
+  } else {
+    const [u0, v0, u1, v1] = G.rectM;
+    ctx.fillRect(u0 * ppm, v0 * ppm, (u1 - u0) * ppm, (v1 - v0) * ppm);
+  }
   ctx.restore();
 }
 

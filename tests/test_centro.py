@@ -52,6 +52,12 @@ def inks_of(tier):
         yield ink
     for op in tier.get("openings", []):
         yield op["ink"]
+        if op.get("rim"):                # el marco de un vano (`bodies.js → openingPath`)
+            yield op["rim"][0]
+        if op.get("roll"):               # la cortina que se enrolla con el día (`bodies.js → paintRoll`)
+            yield op["roll"]["inside"]
+            if op["roll"].get("slat"):
+                yield op["roll"]["slat"]
     # una cara distinta por arista (`bodies.js → faces`): su pared, sus bandas y sus ventanas
     for face in (tier.get("faces") or {}).values():
         if not isinstance(face, dict):
@@ -312,7 +318,7 @@ class BodyRecipeTests(unittest.TestCase):
                 users.setdefault(rec["body"], []).append((key, rec.get("inks") or {}))
         for name, spec in bodies.items():
             # `low`: lo bajo de un lote que es su cuerpo (las maceteras de la UTN), un cuerpo aparte con las mismas reglas
-            for tier in spec["tiers"] + spec.get("low", []) + spec.get("under", []):
+            for tier in spec["tiers"] + spec.get("low", []) + spec.get("under", []) + spec.get("overhead", []):
                 if tier.get("facet"):
                     # una CARA DE TECHO no tiene huella: es un plano con la altura de cada vértice
                     self.assertGreaterEqual(len(tier["facet"]), 3, f"{name}: una cara de techo pide 3 vértices")

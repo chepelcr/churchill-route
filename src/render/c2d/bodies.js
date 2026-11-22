@@ -27,6 +27,7 @@ import { facingEdges, parallaxOffset } from "./depth.js";
 import { buildBody } from "./bodyGeometry.js";
 import { paintAt } from "./shapes.js";
 import { state } from "../../game/state.js";
+import { nightLevel } from "../../game/daynight.js";
 import MATERIALS from "../../assets/materials.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 
@@ -57,6 +58,63 @@ function wallQuad(T, i, f0, f1, za, zb) {
 }
 const shade = (color, lit) => (lit ? mixColor(color, M.wall.lit, M.wall.litMix) : mixColor(color, M.wall.dark, M.wall.darkMix));
 
+// un punto de la pared `i`: `f` a lo largo de la arista (0…1) y `z` metros de alto, ya corrido por el pinhole
+function wallPt(T, i, f, z) {
+  const pts = T.pts, j = (i + 2) % pts.length;
+  const x = pts[i] + (pts[j] - pts[i]) * f, y = pts[i + 1] + (pts[j + 1] - pts[i + 1]) * f, o = OFF(x, y, z);
+  return [x + o[0], y + o[1]];
+}
+// EL CONTORNO DE UN VANO en la pared `i` (`openings`): un rectángulo, o —con `shape`— un ARCO (el
+// rectángulo coronado por su medio punto: el radio es medio ancho del vano y la clave queda en `z[1]`) o
+// un DISCO (el óculo, inscrito en su caja). Se arma en metros de la pared —el ancho del vano en metros,
+// con el largo de la arista— y cada punto se lleva a la pantalla como las esquinas de `wallQuad`, así un
+// medio punto sigue siendo redondo en una pared en escorzo. `grow` lo agranda parejo: el marco.
+const ARC_N = 14;
+function openingPath(T, i, op, lenM, grow) {
+  const [f0, f1] = op.f, [z0, z1] = op.z, g = grow || 0, gf = g / (lenM || 1);
+  if (!op.shape || op.shape === "rect" || !(lenM > 0)) { wallQuad(T, i, f0 - gf, f1 + gf, z0 - g, z1 + g); return; }
+  const fc = (f0 + f1) / 2, P = (f, z) => wallPt(T, i, f, z);
+  let pts;
+  if (op.shape === "arch") {
+    const r = (f1 - f0) * lenM / 2 + g, rf = r / lenM, zs = Math.max(z0 - g, z1 + g - r);
+    pts = [P(fc - rf, z0 - g), P(fc + rf, z0 - g)];
+    for (let k = 0; k <= ARC_N; k++) { const a = (k / ARC_N) * Math.PI; pts.push(P(fc + rf * Math.cos(a), zs + r * Math.sin(a))); }
+  } else {                                    // "disc"
+    const a = (f1 - f0) * lenM / 2 + g, b = (z1 - z0) / 2 + g, zc = (z0 + z1) / 2;
+    pts = [];
+    for (let k = 0; k < ARC_N * 2; k++) { const t = (k / (ARC_N * 2)) * Math.PI * 2; pts.push(P(fc + (a / lenM) * Math.cos(t), zc + b * Math.sin(t))); }
+  }
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+  ctx.closePath();
+}
+
+// LA CORTINA QUE SE ENROLLA CON EL DÍA (`openings[].roll`: {inside, slat}): de día el vano está ABIERTO
+// —se ve lo de adentro, `inside`— y de noche la cortina (`ink`) lo cierra; al atardecer baja y al amanecer
+// sube, siguiendo el MISMO continuo del cielo que apaga las sombras y prende las lámparas (`nightLevel`),
+// así que no hay un segundo reloj que se le pueda desfasar al cielo. `M.roll.band` dice en qué tramo de ese
+// continuo se mueve: entero tardaría un minuto —una hora y media de juego—, y una cortina baja de un tirón.
+// Sin ciclo del día (una etapa con su clima fijo) sigue al clima: de noche cerrada, si no abierta.
+function rolledDown() {
+  const [a, b] = M.roll.band, x = Math.max(0, Math.min(1, (nightLevel() - a) / (b - a)));
+  return x * x * (3 - 2 * x);
+}
+function paintRoll(T, i, op, lenM, lit) {
+  ctx.fillStyle = shade(ink(op.roll.inside), lit);
+  ctx.beginPath(); openingPath(T, i, op, lenM, 0); ctx.fill();
+  const c = rolledDown();
+  if (c <= 0.002) return;
+  const [z0, z1] = op.z, zc = z1 - (z1 - z0) * c;       // la cortina baja desde el dintel
+  ctx.fillStyle = shade(ink(op.ink), lit);
+  ctx.beginPath(); openingPath(T, i, { f: op.f, z: [zc, z1] }, lenM, 0); ctx.fill();
+  if (!op.roll.slat) return;
+  const every = M.roll.slatEveryM, w = M.roll.slatM;   // las tablillas, cada `slatEveryM` de lo que ya bajó
+  ctx.fillStyle = shade(ink(op.roll.slat), lit);
+  ctx.beginPath();
+  for (let z = z1 - every; z > zc + w; z -= every) openingPath(T, i, { f: op.f, z: [z - w, z] }, lenM, 0);
+  ctx.fill();
+}
+
 function capPath(T, z) {
   const p = new Path2D(), pts = T.pts;
   for (let i = 0; i < pts.length; i += 2) {
@@ -71,8 +129,11 @@ function capPath(T, z) {
 // (`VARS._decal`: `parts` en su propio marco `box` [x, y, ancho, alto]) y se llevan a la pared con una
 // afín: el ancho del cartel a lo largo de la arista, su alto de la tapa al pie. Una pared que en la
 // pantalla mide menos de `decalMinPx` no lo lleva: sería una raya de colores.
+// Un cuerpo puede llevar MÁS DE UN cartel: el bloque nombra el suyo con `decal.key` y el cartel sale de
+// `VARS._decal_<key>` (la losa de la bahía de la ACON dice BOMBA ACON S.A. en su canto de Calle 4); sin llave, `VARS._decal`.
+const decalOf = (T) => VARS && (T.decal.key ? VARS[`_decal_${T.decal.key}`] : VARS._decal);
 function paintDecal(T, i, lo, hi, lit) {
-  const D = VARS._decal, [bx, by, bw, bh] = D.box, pts = T.pts, j = (i + 2) % pts.length;
+  const D = decalOf(T), [bx, by, bw, bh] = D.box, pts = T.pts, j = (i + 2) % pts.length;
   const ex = pts[j] - pts[i], ey = pts[j + 1] - pts[i + 1];
   const hx = hi[0] - lo[0], hy = hi[1] - lo[1];
   if (Math.hypot(hx, hy) < M.decalMinPx) return;
@@ -191,14 +252,18 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
       for (let k = 0; k < cnt; k++) { const c = (k + 0.5) / cnt; wallQuad(T, i, c - hw, c + hw, za, zb); }
       ctx.fill();
     }
-    if (T.decal && VARS && VARS._decal && T.decal.edges.includes(i / 2)) {
+    if (T.decal && decalOf(T) && T.decal.edges.includes(i / 2)) {
       const mx = (pts[i] + pts[j]) / 2, my = (pts[i + 1] + pts[j + 1]) / 2;
       paintDecal(T, i, OFF(mx, my, T.z0), OFF(mx, my, T.z1), lit);
     }
     for (const op of T.openings || []) {
       if (op.edge != null && op.edge * 2 !== i) continue;
+      // `rim`: [tinta, metros] — el marco que rodea el vano (el cerco blanco de un óculo ciego), el mismo
+      // contorno crecido, pintado antes
+      if (op.rim) { ctx.fillStyle = shade(ink(op.rim[0]), lit); ctx.beginPath(); openingPath(T, i, op, lenM, op.rim[1]); ctx.fill(); }
+      if (op.roll) { paintRoll(T, i, op, lenM, lit); continue; }
       ctx.fillStyle = shade(ink(op.ink), lit);
-      ctx.beginPath(); wallQuad(T, i, op.f[0], op.f[1], op.z[0], op.z[1]); ctx.fill();
+      ctx.beginPath(); openingPath(T, i, op, lenM, 0); ctx.fill();
     }
   }
   // ---- la tapa
@@ -219,6 +284,7 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
     ctx.restore();
   }
   if (T.mosaic) paintMosaic(T, cap, o1, ppm);
+  if (T.capText) paintCapText(T);
   if (T.edge) { ctx.strokeStyle = ink(T.edge); ctx.lineWidth = 1; ctx.stroke(cap); }
   if (T.parapet) {
     // las almenas: el pretil, con sus dientes
@@ -230,6 +296,27 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
   if (R && R.kind === "dome") paintDome(T, R, at);
   else if (R && R.ridge) paintRidgeRoof(T, R, at, sun, sunlit);
   if (T.truss) paintTruss(T, at);
+}
+
+// EL NOMBRE PINTADO SOBRE EL TECHO (`capText`: {lines, atM, heightM, ink, maxWM?, weight?}), sin píldora —
+// como el del DJ sobre su dosel (`feriaRigs.js → stage`)—. Una tapa plana con el pinhole es la huella
+// ESCALADA alrededor de la cámara (1 + z/H), así que las letras van al punto ya corrido y con esa misma
+// escala; sin perspectiva el corrimiento es parejo y la escala 1. `maxWM`: lo más ancho que puede ir la
+// línea más larga, en metros —si no cabe, se achica todo el bloque—.
+function paintCapText(T) {
+  const C = T.capText, o = OFF(C.x, C.y, T.z1), d = OFF(C.x + 100, C.y, T.z1), s = 1 + (d[0] - o[0]) / 100;
+  const hPx = C.heightM * C.ppm, D = M.capText;
+  ctx.save();
+  ctx.translate(C.x + o[0], C.y + o[1]); ctx.rotate(C.ang); ctx.scale(s, s);
+  ctx.font = `${C.weight || D.weight} ${hPx.toFixed(2)}px ${D.family}`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = ink(C.ink);
+  if (C.maxWM) {
+    const w = Math.max(...C.lines.map((l) => ctx.measureText(l).width));
+    if (w > C.maxWM * C.ppm) { const k = C.maxWM * C.ppm / w; ctx.scale(k, k); }
+  }
+  const gap = (C.lineK || D.lineK) * hPx;
+  C.lines.forEach((l, i) => ctx.fillText(l, 0, (i - (C.lines.length - 1) / 2) * gap));
+  ctx.restore();
 }
 
 // la cúpula: la huella encogida hacia su centro mientras sube
@@ -293,8 +380,8 @@ function paintRidgeRoof(T, R, at, sun, sunlit) {
       ctx.fill();
     }
     // EL ESTAMPADO DEL TOLDO: en la cara que da a la calle, sobre las rayas
-    if (T.decal && T.decal.roof && !tri && VARS && VARS._decal && T.decal.edges.includes(i / 2)) {
-      const D = VARS._decal, [bx0, by0, bw, bh] = D.box, F = M.decalRoof;
+    if (T.decal && T.decal.roof && !tri && decalOf(T) && T.decal.edges.includes(i / 2)) {
+      const D = decalOf(T), [bx0, by0, bw, bh] = D.box, F = M.decalRoof;
       const ex = (qx - px), ey = (qy - py), [mx, my] = eAt(0.5);
       const rmx = (rx[ea] + rx[eb]) / 2, rmy = (ry[ea] + ry[eb]) / 2;          // el medio de la cumbrera
       const L = Math.hypot(ex, ey), ux = ex / L, uy = ey / L, hx = mx - rmx, hy = my - rmy;

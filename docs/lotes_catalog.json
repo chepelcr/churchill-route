@@ -1,7 +1,7 @@
 {
  "generated_from": "src/world2d tiles",
  "playable_max_x": 32820,
- "count": 411,
+ "count": 409,
  "lotes": [
   {
    "id": "L-b41473ce",
@@ -1994,16 +1994,6 @@
    "district": "centro"
   },
   {
-   "id": "L-5483104d",
-   "x": 31275,
-   "y": 18900,
-   "lat": 9.977492,
-   "lon": -84.829337,
-   "w": 46,
-   "h": 46,
-   "district": "centro"
-  },
-  {
    "id": "L-fd293f49",
    "x": 31290,
    "y": 18541,
@@ -2021,16 +2011,6 @@
    "lon": -84.82919,
    "w": 67,
    "h": 69,
-   "district": "centro"
-  },
-  {
-   "id": "L-8daca2c3",
-   "x": 31342,
-   "y": 18905,
-   "lat": 9.977477,
-   "lon": -84.829143,
-   "w": 67,
-   "h": 96,
    "district": "centro"
   },
   {

@@ -214,6 +214,15 @@ PUNTA_DEF = _load("punta.json")
 #: mundo emitido.
 CENTRO_DEF = _load("centro.json")
 
+#: LOS EDIFICIOS HISTÓRICOS QUE OSM NO TIENE — la Bomba y Repuestos ACON, el
+#: Antiguo Matadero (`content/world/historic.json`): un lote en la esquina de
+#: dos calles con nombre, en METROS desde el borde de adentro de sus aceras.
+#: Como el centro cívico, NINGUNA ETAPA DEL BUILDER LO CONSUME: lo lleva al
+#: mundo `tools/emit_historic.py --emit`, que `pnpm world:build` encadena al
+#: final, y su cuerpo de receta lo escribe `tools/gen_<id>_body.py`.
+#: `tests/test_historic.py` valida el registro Y el mundo emitido.
+HISTORIC_DEF = _load("historic.json")
+
 #: LAS CUADRAS HECHAS A MANO — el superbloque cívico, la manzana del Carmen,
 #: los dos estadios/plazas, la cuadra del Parque Marino y el Balneario. Cada una
 #: NOMBRA su estrategia (`layout`) y el motor la implementa; el JSON escoge y

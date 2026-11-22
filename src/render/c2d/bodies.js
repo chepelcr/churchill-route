@@ -442,7 +442,33 @@ function paintStructure(S, ppm, pill = null) {
 const queue = [];
 
 /** Encola un cuerpo ya armado. `vars`: sus tintas `$x`. `pill`: {text, fg, bg} sobre su techo. */
-export function queueBody(S, vars = null, pill = null, over = false) { queue.push({ S, vars, pill, over }); }
+export function queueBody(S, vars = null, pill = null, over = false) { queue.push({ S, vars, pill, over }); remember(S); }
+
+// LO QUE SE LEVANTA, RECORDADO PARA LOS ÁRBOLES. Los cuerpos de receta —la Catedral, el Mercado, la
+// UTN, lo del centro cívico— no viven en los tiles: se arman y se encolan cada cuadro. Un árbol que se
+// planta junto a uno necesita saber dónde está para no meterle la copa encima (`flora.js →
+// buildingFit`), y los árboles se pintan ANTES que la cola. Así que la cola recuerda la planta de cada
+// cuerpo que ve (sus pisos de `STAND_MIN_M` metros o más: las maceteras no tapan nada; ojo, `under` NO sirve de filtro, porque `buildBody` se lo copia también al cuerpo principal de una receta que trae `under`) y sube
+// `footprintVersion` cuando aparece uno nuevo: el árbol que preguntó antes vuelve a preguntar.
+const STANDING = new Map();   // cuerpo → { x0, y0, x1, y1, polys }
+let footprintVersion = 0;
+const STAND_MIN_M = 2;
+function remember(S) {
+  if (!S || STANDING.has(S) || !S.tiers) return;
+  const polys = [];
+  for (const T of S.tiers) if (!T.shadowOnly && (T.z1 ?? 0) >= STAND_MIN_M && T.pts && T.pts.length >= 6) polys.push(T.pts);
+  STANDING.set(S, polys.length ? (() => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of polys) for (let i = 0; i < p.length; i += 2) {
+      if (p[i] < x0) x0 = p[i]; if (p[i] > x1) x1 = p[i]; if (p[i + 1] < y0) y0 = p[i + 1]; if (p[i + 1] > y1) y1 = p[i + 1];
+    }
+    return { x0, y0, x1, y1, polys, zTop: S.zMax || Math.max(...S.tiers.map((T) => T.z1 || 0)) };
+  })() : null);
+  if (polys.length) footprintVersion++;
+}
+/** Las plantas de los cuerpos vistos hasta ahora, y su versión (cambia cuando aparece uno nuevo). */
+export function standingFootprints() { return STANDING.values(); }
+export function standingVersion() { return footprintVersion; }
 
 // LO QUE VA ENCIMA DEL CARRO. Un quiosco es un toldo bajo el que el carro entra a recoger: su sombra
 // se pinta con las demás, pero el cuerpo espera a `flushOverBodies`, que el compositor llama

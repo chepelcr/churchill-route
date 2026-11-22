@@ -18,7 +18,8 @@ import { actorAnimationValues, paintActor, paintActorForm, resolveActorRecord } 
 import { VEHICLE_MEDIUM } from "../../domain/vocabulary.generated.js";
 import { ctx, lastT, mixColor } from "./gfx.js";
 import ACTORS from "../../assets/actors.json" with { type: "json" };
-import { paintPerson3d, paintRider } from "./people3d.js";
+import { hslHex, paintPerson3d, paintRider } from "./people3d.js";
+import { drawCart3d } from "./furniture3d.js";
 import VEHICLE_REG from "../../assets/vehicles.json" with { type: "json" };
 import { fillRigShadow, makeRig, withShadowLayer } from "./rig3d.js";
 import { hullOutline, paintHullSides } from "./vesselRigs.js";
@@ -397,8 +398,21 @@ function drawSchool(sc, t) {
 }
 
 // Street vendor cart: box cart with a striped parasol
+// LA CARRETA EN 3D (`actors.vendor.view3d`, pintada por `furniture3d.js → drawCart3d`): la caja, las
+// ruedas, el palo y la sombrilla a su altura, encolada con los cuerpos, y el vendedor de pie en el
+// manubrio. Sin `view3d` queda el dibujo en alzado de siempre. El rumbo es de la carreta y fijo: sale
+// de su fase, que el mundo le da al nacer y no cambia.
 function drawVendor(vn, t) {
-  paintStanding("vendor", actorFrame("vendor", vn, t));
+  const rec = resolveActorRecord(ACTORS, "vendor"), V = rec.view3d;
+  if (!V) { paintStanding("vendor", actorFrame("vendor", vn, t)); return; }
+  const hue = Number.isFinite(vn.hue) ? vn.hue : 200, ang = vn.ph || 0;
+  const look = vn._look || (vn._look = { band: hslHex(hue, rec.band), parasol: hslHex(hue, rec.parasol) });
+  const sway = Math.sin((t || 0) * V.swayRate + (vn.ph || 0)) * V.swayRad;
+  if (V.person) {
+    const d = (V.boxM[0] / 2 + V.handleM + V.person.backM) * PX_PER_M, c = Math.cos(ang), s = Math.sin(ang);
+    paintPerson3d({ x: vn.x - c * d, y: vn.y - s * d, ang, ph: 0, hue: (hue + 180) % 360 }, {});
+  }
+  drawCart3d(vn.x, vn.y, ang, V, look, sway);
 }
 
 // Stray dog / cat ambling around the streets

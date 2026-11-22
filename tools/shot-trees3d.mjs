@@ -1,6 +1,8 @@
 // LA HOJA DE LOS ÁRBOLES EN 3D: cada especie con copa cenital, sembrada alrededor de la cámara (así
 // el pinhole la levanta hacia lados y largos distintos), a media tarde y de noche.
-//   node tools/shot-trees3d.mjs <out.png> http://localhost:8736/
+//   node tools/shot-trees3d.mjs <out.png> http://localhost:8736/ [especie,especie…] [zoom]
+// Con especies, sólo ésas (repetidas hasta llenar la hoja, así se ven en varios lugares respecto de la
+// cámara) y al zoom pedido: para mirar una de cerca.
 // Contra un SERVIDOR FRESCO, como toda hoja que importa módulos fuente.
 //
 // Lo que tiene que verse: el tronco asoma del lado del CENTRO (como la pared de un edificio), la copa
@@ -10,13 +12,15 @@ import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
 const out = process.argv[2] || "trees3d.png";
 const url = process.argv[3] || "http://localhost:8736/";
+const only = process.argv[4] ? process.argv[4].split(",") : null;
+const zoom = +process.argv[5] || 2;
 const W_PX = 1200, H_PX = 900;
 const b = await chromium.launch();
 const page = await b.newPage({ viewport: { width: W_PX, height: H_PX } });
 const errors = []; page.on("pageerror", (e) => errors.push(String(e)));
 await page.goto(url, { waitUntil: "domcontentloaded" });
 await page.waitForFunction(() => window.WORLD2D && window.Game?.state, null, { timeout: 60000 });
-const res = await page.evaluate(async ({ W_PX, H_PX }) => {
+const res = await page.evaluate(async ({ W_PX, H_PX, only, zoom }) => {
   const [flora, gfx, st, dn, floraDoc, effectsDoc] = await Promise.all([
     import("/src/render/c2d/flora.js"), import("/src/render/c2d/gfx.js"), import("/src/game/state.js"),
     import("/src/game/daynight.js"),
@@ -24,13 +28,14 @@ const res = await page.evaluate(async ({ W_PX, H_PX }) => {
     import("/src/assets/effects.json", { with: { type: "json" } }),
   ]);
   const F = floraDoc.default, T = effectsDoc.default.flora25.topdown;
-  const ids = Object.keys(F.species).filter((id) => !id.startsWith("_")
+  let ids = Object.keys(F.species).filter((id) => !id.startsWith("_")
     && T.byGenerator[F.forms[F.species[id].form]?.generator]);
+  if (only) { ids = []; for (let k = 0; k < 8; k++) ids.push(...only); }
   const cv = document.createElement("canvas"); cv.width = W_PX; cv.height = H_PX;
   document.body.replaceChildren(cv); document.body.style.margin = "0";
   gfx.setupCanvas(cv);
   const g = cv.getContext("2d");
-  const Z = 2, panelH = H_PX / 2, cols = 8, rows = Math.ceil(ids.length / cols);
+  const Z = zoom, panelH = H_PX / 2, cols = only ? 4 : 8, rows = Math.ceil(ids.length / cols);
   const cellW = W_PX / Z / cols, cellH = panelH / Z / rows;
   // dos paneles: la tarde (u = 0,36 — el sol bajando al oeste) y la noche
   [[0.36, "#c9ad74"], [0.74, "#3a3f4c"]].forEach(([u, bg], panel) => {
@@ -51,7 +56,7 @@ const res = await page.evaluate(async ({ W_PX, H_PX }) => {
     flora.endFloraBatch();
   });
   return cv.toDataURL("image/png").split(",")[1];
-}, { W_PX, H_PX });
+}, { W_PX, H_PX, only, zoom });
 writeFileSync(out, Buffer.from(res, "base64"));
 await b.close();
 if (errors.length) { console.error(errors.join(" | ")); process.exit(1); }

@@ -21,8 +21,9 @@ import { paintTopdown, topdownKind, topdownRecipe } from "./floraTop.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { sunVector } from "../../game/daynight.js";
-import { sunShadow } from "./shadows.js";
+import { buildingHeightM, sunShadow } from "./shadows.js";
 import { depthKey, parallaxOffset } from "./depth.js";
+import { standingFootprints, standingVersion } from "./bodies.js";
 import {
   floraSeed, paintFloraSpecies, resolveFloraMixSpecies,
 } from "./floraShapes.js";
@@ -124,6 +125,102 @@ function trunkInks(sp, P) {
   return (sp._inks3d = { trunk, trunkDark: mixColor(trunk, TOP.shadowInk, P.trunkDarkK ?? 0.4), roots: roots || trunk });
 }
 
+// NINGUNA COPA ENCIMA DE UN EDIFICIO. El mundo sembró ~640 árboles con la copa encima de una huella
+// —16 con el pie ADENTRO de una casa—, porque se plantan sobre la tierra y la tierra llega hasta la
+// pared. Pintados después de los edificios, se veían brotando del techo. Cada árbol pregunta UNA vez
+// (un árbol no se muda, y la respuesta se guarda por posición) qué tan cerca tiene la pared más
+// próxima: si el pie cae dentro de una huella no se planta; si la copa no cabe, se achica hasta caber
+// (alto incluido: es un árbol más joven, no una copa recortada); y si para caber tendría que quedar
+// por debajo de `buildingMinFit` de su tamaño, tampoco se planta. La pregunta es en PLANTA: el
+// edificio y el árbol se corren con el mismo pinhole, así que lo que no se pisa en el suelo no se
+// pisa arriba.
+const FIT = new Map();
+function pointInPoly(x, y, p) {
+  let inside = false;
+  for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+    const xi = p[i], yi = p[i + 1], xj = p[j], yj = p[j + 1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi) inside = !inside;
+  }
+  return inside;
+}
+function edgeDist(x, y, p) {
+  let best = Infinity;
+  for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+    const ax = p[j], ay = p[j + 1], dx = p[i] - ax, dy = p[i + 1] - ay, L = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L));
+    best = Math.min(best, Math.hypot(x - ax - t * dx, y - ay - t * dy));
+  }
+  return best;
+}
+/** Cuánto de su tamaño le cabe a una copa de radio `R0` plantada en (x, y): 1 entera, 0 no se planta. */
+function buildingFit(x, y, R0) {
+  const key = `${x | 0}:${y | 0}`, v = standingVersion();
+  const hit = FIT.get(key);
+  if (hit !== undefined && hit.v === v) return hit;
+  // un tile que no ha llegado no tiene edificios todavía: se contesta «cabe» pero NO se guarda
+  if (!W.tileResident(x, y) || !W.buildingsNear) return 1;
+  const seen = new Set(), near = [], reach = R0 + CAP + 4;
+  let minD = Infinity;
+  for (const [qx, qy] of [[x, y], [x - R0, y - R0], [x + R0, y - R0], [x - R0, y + R0], [x + R0, y + R0]]) {
+    for (const b of W.buildingsNear(qx, qy)) {
+      if (seen.has(b)) continue;
+      seen.add(b);
+      const a = b.aabb;
+      if (x < a.x0 - reach || x > a.x1 + reach || y < a.y0 - reach || y > a.y1 + reach) continue;
+      near.push({ polys: [b.pts], cx: (a.x0 + a.x1) / 2, cy: (a.y0 + a.y1) / 2, zTop: buildingHeightM(b) });
+      if (x < a.x0 - R0 || x > a.x1 + R0 || y < a.y0 - R0 || y > a.y1 + R0) continue;
+      if (pointInPoly(x, y, b.pts)) { minD = 0; break; }
+      minD = Math.min(minD, edgeDist(x, y, b.pts));
+    }
+    if (minD === 0) break;
+  }
+  // …y los cuerpos de receta que la cola de cuerpos ya vio (Catedral, Mercado, UTN, el centro cívico)
+  if (minD > 0) for (const F of standingFootprints()) {
+    if (!F || x < F.x0 - reach || x > F.x1 + reach || y < F.y0 - reach || y > F.y1 + reach) continue;
+    near.push({ polys: F.polys, cx: (F.x0 + F.x1) / 2, cy: (F.y0 + F.y1) / 2, zTop: F.zTop });
+    if (x < F.x0 - R0 || x > F.x1 + R0 || y < F.y0 - R0 || y > F.y1 + R0) continue;
+    for (const p of F.polys) {
+      if (pointInPoly(x, y, p)) { minD = 0; break; }
+      minD = Math.min(minD, edgeDist(x, y, p));
+    }
+    if (minD === 0) break;
+  }
+  let fit = minD >= R0 ? 1 : minD / R0;
+  if (fit < (TOP.buildingMinFit ?? 0.5)) fit = 0;
+  if (FIT.size > 60000) FIT.clear();
+  const out = { fit, v, near: fit > 0 ? near : null };
+  FIT.set(key, out);
+  return out;
+}
+
+/** La distancia de (x, y) al contorno de un edificio (0 si cae adentro). */
+function polysDist(x, y, polys) {
+  let d = Infinity;
+  for (const p of polys) { if (pointInPoly(x, y, p)) return 0; d = Math.min(d, edgeDist(x, y, p)); }
+  return d;
+}
+
+// …Y TAMPOCO SE LE INCLINA ENCIMA. En planta un árbol puede caber y aun así meter la copa sobre el
+// techo: los dos se corren hacia afuera de la pantalla con el pinhole, pero la copa (8 m) se corre más
+// que el techo de una casa (3 m). Lo que ocupa un edificio en pantalla es el barrido de su planta
+// desde el suelo hasta su techo; si la copa —corrida lo que le toca— lo pisa, el árbol se inclina
+// menos (`lean` de 1 a 0, en pasos) hasta que no lo pise. Sólo lo preguntan los árboles que tienen
+// un edificio a tiro (`near`, guardado con el ajuste), y son pocos.
+function leanClear(near, fx, fy, dx, dy, R) {
+  const cam = state.cam, ppm = W.PX_PER_M;
+  for (const lam of [1, 0.75, 0.5, 0.25]) {
+    const cx = fx + dx * lam, cy = fy + dy * lam;
+    let ok = true;
+    for (const F of near) {
+      const L = parallaxOffset(cam, F.cx, F.cy, F.zTop, ppm);
+      for (const t of [0, 0.5, 1]) if (polysDist(cx - L.dx * t, cy - L.dy * t, F.polys) < R) { ok = false; break; }
+      if (!ok) break;
+    }
+    if (ok) return lam;
+  }
+  return 0;
+}
+
 function paintFlora(sp, frame) {
   const form = FLORA.forms[sp.form], kind = F25.enabled ? topdownKind(TOP, form) : null;
   if (!kind) {
@@ -131,12 +228,16 @@ function paintFlora(sp, frame) {
     return;
   }
   const P = topdownRecipe(TOP, kind, sp.form);
-  const { x, y, s } = frame, ppm = W.PX_PER_M, hTop = (sp.heightM || F25.heightM) * s;
+  const { x, y } = frame;
+  const FITR = buildingFit(x, y, sp.r * frame.s * (TOP.radiusMul[kind] ?? 1) * (TOP.buildingClearR ?? 1));
+  const fit = typeof FITR === "number" ? FITR : FITR.fit;
+  if (fit <= 0) return;
+  const s = frame.s * fit, ppm = W.PX_PER_M, hTop = (sp.heightM || F25.heightM) * s;
   const hBase = hTop * (P.trunkFrac ?? 0.4);
   // el pinhole: medido sin tope a la cima, y si pasa del tope se encoge la altura entera
   const leanK = TOP.leanK ?? 1;
   const raw = parallaxOffset(state.cam, x, y, hTop, ppm, UNCAPPED), rawLen = Math.hypot(raw.dx, raw.dy) * leanK;
-  const k = (CAP > 0 && rawLen > CAP ? CAP / rawLen : 1) * leanK / (hTop || 1);
+  let k = (CAP > 0 && rawLen > CAP ? CAP / rawLen : 1) * leanK / (hTop || 1);
   // el sol es el mismo para todo el lote: se pregunta una vez (`sunShadow` recorre el cielo entero)
   const sun = batch ? (batchSun ||= sunShadow(1)) : sunShadow(1), sl = Math.hypot(sun.dx, sun.dy) || 1;
   // LA INCLINACIÓN es de la planta, no de la cámara: una palmera costera no crece a plomo. Fija por su
@@ -145,6 +246,10 @@ function paintFlora(sp, frame) {
   if (P.leanM) {
     const a = hash01(frame.seed * 9.7 + 0.3) * Math.PI * 2, m = (P.leanM[0] + (P.leanM[1] - P.leanM[0]) * hash01(frame.seed * 4.9 + 1.1)) * s * ppm;
     lean = { dx: Math.cos(a) * m, dy: Math.sin(a) * m };
+  }
+  if (FITR.near && FITR.near.length) {
+    const hMid = hTop * (1 + (P.trunkFrac ?? 0.4)) / 2, R = sp.r * s * (TOP.radiusMul[kind] ?? 1) * (TOP.buildingClearR ?? 1);
+    k *= leanClear(FITR.near, x + (lean?.dx || 0), y + (lean?.dy || 0), raw.dx * k * hMid, raw.dy * k * hMid, R);
   }
   const spin = TOP.spin[kind] && frame.tMs != null ? Math.sin(frame.tMs * 0.001 * TOP.swaySpeed + (frame.phase || 0)) * TOP.swayRad : 0;
   const args = {

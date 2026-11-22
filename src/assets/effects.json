@@ -219,7 +219,7 @@
         "tidal-root-crown": "broadleaf",
         "crown-stack": "broadleaf",
         "branch-crown": "bare",
-        "tier-stack": "conifer",
+        "tier-stack": "pine",
         "column-stack": "conifer",
         "frond-ring": "palm",
         "fan-ring": "fan"
@@ -229,14 +229,16 @@
         "palm": 1.25,
         "fan": 1.1,
         "conifer": 0.95,
-        "bare": 1.25
+        "bare": 1.25,
+        "pine": 1.05
       },
       "spin": {
         "palm": true,
         "fan": true,
         "conifer": true,
         "broadleaf": false,
-        "bare": true
+        "bare": true,
+        "pine": true
       },
       "swaySpeed": 0.9,
       "swayRad": 0.05,
@@ -250,6 +252,9 @@
       "shadowStretchMax": 1.8,
       "trunkShadowTuckR": 0.8,
       "trunkHiddenR": 0.8,
+      "buildingClearR": 1.1,
+      "buildingMinFit": 0.5,
+      "_building": "NINGUNA COPA SOBRE UN EDIFICIO (`flora.js → buildingFit`): un árbol con el pie dentro de una huella no se planta; uno cuya copa (`buildingClearR` radios) no cabe hasta la pared más cercana se achica hasta caber, y si para eso quedaría por debajo de `buildingMinFit` de su tamaño, tampoco se planta. Se mide en planta, una vez por árbol.",
       "lightR": 0.55,
       "_shadow": "LA SOMBRA SALE DEL PIE (`sunShadow`, la de los edificios): la silueta de la copa a la sombra de su CENTRO, estirada a lo largo del sol por lo alto que es la copa (hasta `shadowStretchMax`), y la del tronco del pie hasta donde empieza la de la copa (`trunkShadowTuckR` radios antes de su centro, para no oscurecer la junta dos veces). El tronco no se pinta mientras su pie quede a menos de `trunkHiddenR` radios del centro de la capa ancha de la copa: ahí está entero bajo ella. Antes era la copa corrida por el sol y ACOTADA a 0,75 radios (`shadowMaxR`) para que no se despegara: sin tronco no había nada que la atara. De noche se apaga con el sol (`sunShadow.phaseLight`).",
       "kinds": {
@@ -393,6 +398,31 @@
           "trunkDarkK": 0.42,
           "ringShift": 0.25,
           "layerMaxR": 0.75
+        },
+        "pine": {
+          "_": "EL PINO desde arriba: `tiers` pisos de ramas (verticilos de `whorl` ramas), del más ancho abajo al más chico arriba (`tierShrink`); cada rama de `branchLen` radios del piso, con mechones de agujas en las fracciones `tufts` de su largo (el de la punta `tipTuftK` más grande), `needles` agujas por mechón. Los pisos de arriba llevan menos ramas (`whorlTaper`) y, pasada la fracción `tipOnlyAbove` del alto, sólo el mechón de la punta; el núcleo de cada mechón es `coreK` de su radio (el resto son agujas sueltas) y las tintas no pasan del tono `maxTone` de la especie: un pino es oscuro. Cada piso es una capa a su altura (de 0 a 1 de la copa) y se corre `tierShift` hacia el sol.",
+          "tiers": 5,
+          "whorl": [5, 7],
+          "branchLen": [0.72, 1.0],
+          "tierShrink": 0.66,
+          "bend": 0.3,
+          "branchW": 0.045,
+          "tufts": [0.5, 0.78, 1.0],
+          "tuftR": [0.13, 0.19],
+          "tipTuftK": 1.3,
+          "needles": 16,
+          "needleW": 0.022,
+          "tierShift": 0.08,
+          "whorlTaper": 0.45,
+          "tipOnlyAbove": 0.55,
+          "coreK": 0.38,
+          "maxTone": 2,
+          "trunkFrac": 0.22,
+          "trunkWM": 0.45,
+          "trunkTaper": 0.7,
+          "trunkDarkK": 0.42,
+          "layerMaxR": 0.8,
+          "padR": 1.45
         },
         "bare": {
           "limbs": [

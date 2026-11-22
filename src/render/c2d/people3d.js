@@ -27,7 +27,7 @@ const TAU = Math.PI * 2;
 
 const hsl = (h, sl, k = 1) => `hsl(${Math.round(h)} ${sl[0]}% ${Math.round(sl[1] * k)}%)`;
 // la misma camisa en hex: las caras del aparejo se sombrean con `mixColor`, que no lee `hsl()`
-function hslHex(h, [sp, lp]) {
+export function hslHex(h, [sp, lp]) {
   const s = sp / 100, l = lp / 100, f = (n) => { const k = (n + h / 30) % 12; return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
   return "#" + [f(0), f(8), f(4)].map((x) => Math.round(x * 255).toString(16).padStart(2, "0")).join("");
 }

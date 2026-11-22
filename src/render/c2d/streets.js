@@ -967,7 +967,7 @@ function drawSign(s) {
   // del asfalto (velocidad, cebra, tope) se queda en el piso, que es donde está.
   // el semáforo CUELGA sobre la calle: poste en la acera, brazo y cabezas (`gantry3d`)
   if (rec.gantry3d) return drawGantrySignal3d(rec.gantry3d, s);
-  if (!rec.turn && rec.stand3d) return drawPoleSign3d(rec, s.x, s.y, vars);
+  if (!rec.turn && rec.stand3d) return drawPoleSign3d(rec, s.x, s.y, vars, Number.isFinite(s.ang) ? s.ang : null);
   if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars }); return; }
   const ang = (s.ang || 0) + (rec.flip === "side" && (s.side || 1) < 0 ? Math.PI : 0);
   if (rec.view3d === "parada" && rec.extent) return drawParada(s.x, s.y, ang, rec.extent[0], rec.extent[1]);

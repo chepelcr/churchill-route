@@ -66,7 +66,7 @@ The procedure is three steps and it is not optional:
 | a length two runtimes must agree about, IN METRES | `src/assets/world-units.json` |
 | **un largo que UN registro autora** (un `dx`, un ancho, el radio de un juego) | en METROS y en su propio registro, con sufijo `M` — `content.py` → `METRE_KEYS` lo pasa a px al cargar. **Nunca en píxeles**: sólo son verdad a la escala en que se afinaron, y este mundo lleva cuatro reescalados |
 | the player's vehicles (parts, stats, cargo) | `src/assets/vehicles.json` — **en 3D**: `body3d` (cajas, como el tráfico), `driver` (el chofer: `driver3d` + `c2d/people3d.js → paintRider`), `heightM`, `cargoM`. Hoja: `node tools/shot-player3d.mjs` |
-| **the traffic, the crowd, boats, coins, the carried cargo** | `src/assets/actors.json` — **en 3D**: la gente es `person3d` (`c2d/people3d.js`), el tráfico es `traffic.kinds.<tipo>.body3d` + `vehicle3d` (cajas sobre `c2d/rig3d.js`; lo pegado a una cara lleva `face`), y el casco de cualquier barco toma costado con `vehicle3d.hullSide` (`c2d/vesselRigs.js`). El jugador se levanta a `heightM` de `vehicles.json`; el ferry es `materials.json → structure.ferry.model`. Hoja: `node tools/shot-traffic3d.mjs`; el juego vivo: `node tools/shot-live.mjs` |
+| **the traffic, the crowd, boats, coins, the carried cargo** — y **la carreta de granizados con su sombrilla** (`actors.vendor.view3d` → `furniture3d.js → drawCart3d`) | `src/assets/actors.json` — **en 3D**: la gente es `person3d` (`c2d/people3d.js`), el tráfico es `traffic.kinds.<tipo>.body3d` + `vehicle3d` (cajas sobre `c2d/rig3d.js`; lo pegado a una cara lleva `face`), y el casco de cualquier barco toma costado con `vehicle3d.hullSide` (`c2d/vesselRigs.js`). El jugador se levanta a `heightM` de `vehicles.json`; el ferry es `materials.json → structure.ferry.model`. Hoja: `node tools/shot-traffic3d.mjs`; el juego vivo: `node tools/shot-live.mjs` |
 | **a light: street lamp, stadium tower, la del muelle** | `src/assets/lights.json` (+ `LightType`). DÓNDE se para la del muelle y de qué tipo es → `materials.json` → `pier.<style>.lamp` · **cómo se para en 2.5D** (alto, brazo a la calzada, cabeza vista desde arriba) → `stand25` en cada tipo y `stand` |
 | **de qué color es un edificio de OSM, y cómo se levanta** | `src/assets/building-styles.json`, por `cat`; su cuerpo (pisos, ventanas, techo según la forma, huellas que se pisan) en `body3d` → `structures.js → paintBuildingsInView`. Hoja: `pnpm shot:roofs` |
 | **la lluvia, sus salpicaduras y la calle encharcada** | `src/assets/hud.json` → `weather.{rain,splash,roadSplash,flood}` |
@@ -1301,6 +1301,21 @@ costaron una captura cada una:
 * **los troncos van en su propia pasada, bajo TODAS las copas**: en orden de
   distancia el tronco de una palmera cercana se pintaba encima de la corona de
   la vecina. El lote es sombras → troncos → copas (de lejos a cerca).
+
+**Y NINGUNA COPA SE METE EN UN EDIFICIO** (`flora.js → buildingFit`/`leanClear`).
+Un árbol pregunta una vez, por posición, qué tan cerca tiene la pared más
+próxima —las huellas del tile Y los cuerpos de receta, que la cola de cuerpos
+recuerda al encolarlos (`bodies.js → standingFootprints`, con versión para que el
+árbol que preguntó antes vuelva a preguntar)—: pie adentro, no se planta; copa
+que no cabe, se achica; y cada cuadro, el que tiene un edificio a tiro se inclina
+sólo lo que no le pise el barrido de ese edificio en pantalla. **`S.under` no
+sirve de filtro**: `buildBody` se lo copia al cuerpo principal de toda receta que
+trae `under`, y el Mercado entero quedaba fuera.
+
+**EL PINO ES SU PROPIO TIPO** (`kinds.pine`, `tier-stack`): pisos de ramas en
+verticilo con mechones de agujas, oscuro, cada piso a su altura. La estrella de
+`conifer` queda para el ciprés (`column-stack`). Hoja de cerca: `pnpm
+shot:trees3d <out> <url> pino 6`.
 
 Los sprites se pintan a tamaños escalonados (2^¼) y se escalan al blitear; con
 la clave al medio píxel cada árbol del monte pedía su propio juego de lienzos.

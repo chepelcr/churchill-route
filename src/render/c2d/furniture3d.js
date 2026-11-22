@@ -16,7 +16,7 @@ import { fillRigShadow, makeRig } from "./rig3d.js";
 import { parallaxOffset } from "./depth.js";
 import { sunShadow } from "./shadows.js";
 import { queueBodyLike } from "./bodies.js";
-import { ctx } from "./gfx.js";
+import { ctx, mixColor } from "./gfx.js";
 import { paintParts } from "./shapes.js";
 
 function rigged(x, y, ang, topM, V, reach, form) {
@@ -65,8 +65,10 @@ export function drawBench3d(x, y, ang, V) {
  * la primera, que era el palito del alzado— se pinta arriba, en la punta, mirando al cielo como la
  * cabeza de una farola. Su sombra: el poste tirado al sol.
  */
-export function drawPoleSign3d(rec, x, y, vars) {
-  const S = rec.stand3d, ppm = PX_PER_M, top = parallaxOffset(state.cam, x, y, S.poleM, ppm), sh = sunShadow(S.poleM);
+export function drawPoleSign3d(rec, x, y, vars, ang = null) {
+  const S = rec.stand3d;
+  if (S.plate && ang != null) return drawPlateSign3d(S, x, y, ang);
+  const ppm = PX_PER_M, top = parallaxOffset(state.cam, x, y, S.poleM, ppm), sh = sunShadow(S.poleM);
   if (sh.alpha > 0) {
     ctx.save(); ctx.globalAlpha = sh.alpha; ctx.strokeStyle = S.shadow; ctx.lineWidth = S.poleWM * ppm; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sh.dx, y + sh.dy); ctx.stroke(); ctx.restore();
@@ -299,3 +301,96 @@ export function drawTent3d(x, y, sPx, V, tentInk) {
 
 /** El mismo aparejo con sombra para quien arma su propio cuerpo (las boyas del estero). */
 export { rigged as riggedBody };
+
+/**
+ * LA CARRETA DE GRANIZADOS EN 3D (`actors.json → actors.vendor.view3d`). Era un dibujo en ALZADO —la
+ * caja de frente y la sombrilla como medio disco ENCIMA, en la pantalla—, así que desde una cámara a
+ * plomo la sombrilla caía sobre lo que estuviera arriba en la pantalla, y como se pintaba con la
+ * gente quedaba tapada por cualquier cuerpo que viniera después. Ahora son piezas a su altura sobre
+ * el aparejo: la caja con su franja de color y su tapa, las ruedas, el manubrio, el palo y la
+ * sombrilla —`panels` gajos alternando el tono de la carreta y el blanco, cada uno sombreado por el
+ * sol según hacia dónde mira, y meciéndose—, su sombra con las mismas piezas, y encolada con los
+ * cuerpos: lo que pase debajo de la sombrilla queda debajo.
+ *   x, y, ang   dónde y hacia dónde apunta el manubrio
+ *   V           la receta (`view3d`)
+ *   look        { band, parasol }: las tintas del tono de ESTA carreta (hex); `sway` el vaivén en rad
+ */
+export function drawCart3d(x, y, ang, V, look, sway = 0) {
+  const [L, D] = V.boxM, [z0, z1] = V.boxZ, zA = V.umbrellaZ, zR = zA - V.umbrellaDropM, rM = V.umbrellaRM;
+  const [pu, pv] = V.poleUV, n = V.panels, sun1 = sunShadow(1), c = Math.cos(ang), s = Math.sin(ang);
+  // hacia el sol, en el marco de la carreta: para saber qué gajo mira a la luz
+  const lu = -(sun1.dx * c + sun1.dy * s), lv = -(-sun1.dx * s + sun1.dy * c), lL = Math.hypot(lu, lv) || 1;
+  const I = V.inks, S = V.shade;
+  rigged(x, y, ang, zA, V, 0, (R) => {
+    // la caja, la franja y la tapa
+    R.at(z1, () => R.box(0, 0, z0, z1, L, D, { top: I.box, side: I.boxSide }));
+    R.at(z1 + 0.01, () => R.box(0, 0, z1 - V.bandM, z1, L + 0.05, D + 0.05, { top: I.box, side: look.band }));
+    R.at(z1 + 0.02, () => R.box(0, 0, z1, z1 + V.lidM, L * 0.96, D * 0.96, { top: I.lid, side: I.boxSide }));
+    // dos ruedas en un eje, y una pata del otro lado
+    for (const sg of [-1, 1]) R.at(V.wheelRM, () => R.box(V.axleU * L / 2, sg * (D / 2 + V.wheelWM / 2), 0, V.wheelRM * 2, V.wheelRM * 2, V.wheelWM, I.wheels));
+    R.at(z0, () => R.line([[-V.axleU * L / 2, 0, 0], [-V.axleU * L / 2, 0, z0]], V.legWM, I.pole));
+    // el manubrio, del lado de -u
+    const hu = -L / 2, hz = z1 - 0.1;
+    R.at(hz, () => R.line([[hu, -D * 0.32, hz], [hu - V.handleM, -D * 0.32, hz + 0.15], [hu - V.handleM, D * 0.32, hz + 0.15], [hu, D * 0.32, hz]], V.handleWM, I.pole));
+    // el palo
+    R.at(zA - 0.01, () => R.line([[pu, pv, z1], [pu, pv, zA]], V.poleWM, I.pole));
+    // la sombrilla: gajos del ápice al borde. El vaivén la inclina (el borde sube de un lado y baja del otro)
+    const rim = [];
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      rim.push([pu + Math.cos(a) * rM, pv + Math.sin(a) * rM, zR + Math.cos(a) * rM * sway]);
+    }
+    const apex = [pu, pv, zA];
+    R.at(zA, () => {
+      for (let k = 0; k < n; k++) {
+        const p = rim[k], q = rim[(k + 1) % n];
+        // la normal del gajo, y cuánto mira al sol en planta (de -1 a 1)
+        const e1 = [p[0] - apex[0], p[1] - apex[1], p[2] - apex[2]], e2 = [q[0] - apex[0], q[1] - apex[1], q[2] - apex[2]];
+        let nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0];
+        if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+        const nh = Math.hypot(nx, ny) || 1, dot = (nx * lu + ny * lv) / (nh * lL);
+        const base = k % 2 ? I.stripe : look.parasol;
+        const ink = R.shadow ? base : mixColor(base, S.side, S.litK + (S.darkK - S.litK) * (0.5 - 0.5 * dot));
+        R.poly([apex, p, q], ink);
+      }
+      if (!R.shadow) R.dot(apex, V.finialRM, I.finial);
+    });
+  });
+}
+
+/**
+ * UNA SEÑAL DE PLACA EN 3D —el ALTO, el CEDA— (`signs.<tipo>.stand3d.plate`). Era el octágono pegado a
+ * la punta del poste MIRANDO A LA PANTALLA: daba igual hacia dónde iba la calle, y su sombra era la del
+ * palo nada más. Ahora la placa es una lámina en el espacio, en el marco de la señal (`ang` es el rumbo
+ * del conductor que llega al cruce, que es como el mundo la emite): su cara mira hacia él, y va
+ * INCLINADA hacia atrás `tiltDeg` —exagerado a propósito, como los postes: parada derecha, desde una
+ * cámara a plomo sería una raya—. Tiene canto (`thickM`) y espalda gris, que es lo que se ve desde
+ * detrás, y tira su sombra entera al sol junto con el poste.
+ */
+function drawPlateSign3d(S, x, y, ang) {
+  const Pl = S.plate, t = (Pl.tiltDeg ?? 55) * Math.PI / 180, ct = Math.cos(t), st = Math.sin(t);
+  const r = Pl.rM, n = Pl.n, rot = (Pl.rotDeg ?? 0) * Math.PI / 180;
+  const hc = S.poleM + r * ct;
+  // e1 cruza la calle; e2 es el «arriba» de la placa, echado hacia +u (lejos del conductor)
+  const P = (a, k, off = 0) => [st * Math.sin(a) * r * k + off, Math.cos(a) * r * k, hc + ct * Math.sin(a) * r * k];
+  const ring = (k, off = 0) => { const out = []; for (let i = 0; i < n; i++) { const a = rot + (i / n) * Math.PI * 2; const p = P(a, k); out.push([p[0] + off * ct, p[1], p[2] - off * st]); } return out; };
+  // la placa en su plano: (cruzado, arriba) → punto
+  const at = (cx, cy) => [st * cy, cx, hc + ct * cy];
+  const normal = [-ct, 0, st];             // la cara: hacia el conductor y hacia arriba
+  rigged(x, y, ang, hc + r, S, 0, (R) => {
+    R.at(hc * 0.5, () => R.line([[Pl.thickM * 1.5, 0, 0], [Pl.thickM * 1.5, 0, hc]], S.poleWM, S.pole));
+    R.at(hc + r, () => {
+      const front = R.faces([0, 0, hc], normal);
+      const back = ring(1, Pl.thickM);
+      if (R.shadow) { R.poly(ring(1), S.shade.shadow); return; }
+      if (!front) { R.poly(ring(1), Pl.edge); R.poly(back, Pl.back); return; }
+      R.poly(back, Pl.edge);                // el canto, asomando detrás
+      R.poly(ring(1), Pl.outer);
+      R.poly(ring(Pl.innerK), Pl.inner);
+      if (Pl.barM) {
+        const [bw, bh] = Pl.barM;
+        R.poly([at(-bw / 2, -bh / 2), at(bw / 2, -bh / 2), at(bw / 2, bh / 2), at(-bw / 2, bh / 2)], Pl.bar);
+      }
+    });
+  });
+}

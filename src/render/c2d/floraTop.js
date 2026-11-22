@@ -205,6 +205,70 @@ function conifer(R, sp, P, rnd) {
   return { layers, sil: (s) => star(s, R, P.points, rot0) };
 }
 
+// EL PINO, desde arriba: no es una estrella sino PISOS DE RAMAS. Cada piso es un verticilo —cinco a
+// siete ramas que salen del tronco a la misma altura— y cada rama termina en mechones de agujas
+// largas que se abren en estrella. Los pisos se achican hacia la punta y cada uno va a SU altura,
+// así que el pinhole los abre en un cono, y entre rama y rama se ven las de abajo: lo que hace que un
+// pino se lea como pino y no como una bola verde. Las tintas son las de la especie (`canopy`): el
+// piso de abajo el más oscuro, las puntas de las agujas un tono más claras que su mechón.
+function pine(R, sp, P, rnd) {
+  const pal = sp.canopy, N = P.tiers, layers = [], silTufts = [], silLimbs = [];
+  let a0 = rnd() * TAU;
+  for (let i = 0; i < N; i++) {
+    const u = N > 1 ? i / (N - 1) : 1, ri = R * (1 - u * P.tierShrink);
+    // los pisos de arriba son ramas más cortas y menos: arriba un pino es la guía y poco más
+    const nb = Math.max(3, Math.round(between(rnd, P.whorl) * (1 - u * (P.whorlTaper ?? 0.4)))), limbs = [], tufts = [];
+    a0 += 2.39996;                                        // el ángulo áureo: un piso no tapa al de abajo
+    for (let j = 0; j < nb; j++) {
+      const a = a0 + (j / nb) * TAU + (rnd() - 0.5) * 0.5, len = ri * between(rnd, P.branchLen);
+      const bend = (rnd() - 0.5) * P.bend, mx = Math.cos(a + bend) * len * 0.5, my = Math.sin(a + bend) * len * 0.5;
+      const ex = Math.cos(a) * len, ey = Math.sin(a) * len;
+      limbs.push([mx, my, ex, ey]);
+      P.tufts.forEach((t, k) => {
+        if (u > (P.tipOnlyAbove ?? 0.6) && k < P.tufts.length - 1) return;   // arriba, sólo el mechón de la punta
+        // a lo largo de la rama (la curva, aproximada por sus dos tramos), el último en la punta y más grande
+        const q = t < 0.5 ? [mx * t * 2, my * t * 2] : [mx + (ex - mx) * (t - 0.5) * 2, my + (ey - my) * (t - 0.5) * 2];
+        const r = R * between(rnd, P.tuftR) * (k === P.tufts.length - 1 ? P.tipTuftK : 1) * (1 - u * 0.35);
+        tufts.push([q[0], q[1], r, a + (rnd() - 0.5) * 0.6, rnd()]);
+      });
+    }
+    if (i === N - 1) tufts.push([0, 0, R * P.tuftR[1] * P.tipTuftK, a0, rnd()]);   // la guía, en la punta
+    silLimbs.push(...limbs.map((l) => [l, Math.max(0.5, R * P.branchW)]));
+    silTufts.push(...tufts);
+    // un pino es OSCURO: los mechones se quedan en los tonos de abajo de la especie (`maxTone`)
+    const top = P.maxTone ?? 2, base = tone(pal, Math.min(Math.floor(u * top), top - 1)), tip = tone(pal, Math.min(Math.floor(u * top) + 1, top));
+    layers.push({ f: u, shift: u * P.tierShift, paint: (g) => {
+      // las ramas, en la tinta del tronco
+      g.strokeStyle = sp.trunk; g.lineCap = "round"; g.lineWidth = Math.max(0.5, R * P.branchW * (1 - u * 0.4));
+      g.beginPath(); for (const [mx, my, ex, ey] of limbs) { g.moveTo(0, 0); g.quadraticCurveTo(mx, my, ex, ey); } g.stroke();
+      // cada mechón: un núcleo oscuro y las agujas abriéndose en estrella, más claras hacia la punta
+      g.fillStyle = base; lobes(g, tufts.map(([x, y, r]) => [x, y, r * (P.coreK ?? 0.4)]));
+      g.lineWidth = Math.max(0.35, R * P.needleW);
+      g.strokeStyle = base; g.beginPath();
+      for (const [x, y, r, a, h] of tufts) for (let n = 0; n < P.needles; n++) {
+        const b = a + (n / P.needles) * TAU + h, L = r * (0.75 + ((n * 0.37 + h * 13) % 1) * 0.5);
+        g.moveTo(x, y); g.lineTo(x + Math.cos(b) * L, y + Math.sin(b) * L);
+      }
+      g.stroke();
+      g.strokeStyle = tip; g.beginPath();
+      for (const [x, y, r, a, h] of tufts) for (let n = 0; n < P.needles; n += 2) {
+        const b = a + (n / P.needles) * TAU + h + 0.15, L0 = r * 0.45, L = r * 0.95;
+        g.moveTo(x + Math.cos(b) * L0, y + Math.sin(b) * L0); g.lineTo(x + Math.cos(b) * L, y + Math.sin(b) * L);
+      }
+      g.stroke();
+    } });
+  }
+  return {
+    layers,
+    sil: (s2) => {
+      const ink = s2.fillStyle;
+      s2.strokeStyle = ink; s2.lineCap = "round";
+      for (const [[mx, my, ex, ey], w] of silLimbs) { s2.lineWidth = w; s2.beginPath(); s2.moveTo(0, 0); s2.quadraticCurveTo(mx, my, ex, ey); s2.stroke(); }
+      lobes(s2, silTufts.map(([x, y, r]) => [x, y, r * 0.9]));
+    },
+  };
+}
+
 // el árbol de la estación seca, desde arriba: sus RAMAS abiertas desde el centro, con cuerpo —un canto
 // oscuro, la corteza y una luz— y unos racimos de hoja seca en las puntas, que van más arriba.
 // La especie trae sólo corteza (`paletteRoles: ["trunk"]`): las tintas de la hoja seca y del canto son
@@ -259,7 +323,7 @@ function bare(R, sp, P, rnd) {
   };
 }
 
-const PAINTERS = { bare: bare, broadleaf: broadleaf, palm: palm, fan: fan, conifer: conifer };
+const PAINTERS = { bare: bare, broadleaf: broadleaf, palm: palm, fan: fan, conifer: conifer, pine: pine };
 export const TOPDOWN_KINDS = Object.freeze(Object.keys(PAINTERS));
 
 /** ¿Tiene esta forma su versión cenital? */

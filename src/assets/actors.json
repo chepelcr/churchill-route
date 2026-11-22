@@ -3916,7 +3916,33 @@
         75,
         60
       ],
-      "parasolHilite": "rgba(255,255,255,0.55)"
+      "parasolHilite": "rgba(255,255,255,0.55)",
+      "view3d": {
+        "_": "LA CARRETA EN 3D (`furniture3d.js → drawCart3d`), en METROS y exagerada a propósito como los postes y el tráfico: una de verdad mide 1,3 m y sería un punto. La caja de `boxM` [largo, fondo] entre `boxZ`, su franja de color (`bandM`, el tono de la carreta con `band`) y su tapa (`lidM`); dos ruedas en el eje a `axleU` del largo y una pata del otro lado; el manubrio sale `handleM` hacia atrás; el palo en `poleUV` —hacia el manubrio, para que desde arriba la caja de color asome delante de la sombrilla— sube hasta el ápice de la sombrilla (`umbrellaZ`), cuyo borde cae `umbrellaDropM` en un radio de `umbrellaRM`, en `panels` gajos que alternan el tono (`parasol`) y `inks.stripe`. Se mece `swayRad` a `swayRate`. `person`: el vendedor, de pie `backM` detrás del manubrio.",
+        "boxM": [3.4, 2.1],
+        "boxZ": [0.7, 2.2],
+        "bandM": 0.45,
+        "lidM": 0.12,
+        "axleU": 0.55,
+        "wheelRM": 0.55,
+        "wheelWM": 0.22,
+        "legWM": 0.16,
+        "handleM": 0.7,
+        "handleWM": 0.14,
+        "poleUV": [-0.75, 0],
+        "poleWM": 0.16,
+        "umbrellaZ": 5.0,
+        "umbrellaDropM": 0.9,
+        "umbrellaRM": 2.4,
+        "panels": 8,
+        "finialRM": 0.22,
+        "swayRad": 0.06,
+        "swayRate": 1.1,
+        "person": { "backM": 0.35 },
+        "shadowAlpha": 0.5,
+        "shade": { "side": "#16141c", "litK": 0.06, "darkK": 0.3, "bottomK": 0.5, "shadow": "#1a1612" },
+        "inks": { "box": "#ffffff", "boxSide": "#e4ded2", "lid": "#f4f1e8", "wheels": "#26222c", "pole": "#8a7355", "stripe": "#f4f1e8", "finial": "#f4f1e8" }
+      }
     },
     "animal": {
       "form": "animalDog",

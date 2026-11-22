@@ -54,10 +54,9 @@ def inks_of(tier):
         yield op["ink"]
         if op.get("rim"):                # el marco de un vano (`bodies.js → openingPath`)
             yield op["rim"][0]
-        if op.get("roll"):               # la cortina que se enrolla con el día (`bodies.js → paintRoll`)
-            yield op["roll"]["inside"]
-            if op["roll"].get("slat"):
-                yield op["roll"]["slat"]
+
+    if (tier.get("roll") or {}).get("slat"):   # las tablillas de la cortina que se enrolla (`bodies.js → roll`)
+        yield tier["roll"]["slat"]
     # una cara distinta por arista (`bodies.js → faces`): su pared, sus bandas y sus ventanas
     for face in (tier.get("faces") or {}).values():
         if not isinstance(face, dict):

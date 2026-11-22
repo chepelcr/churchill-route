@@ -17,6 +17,8 @@ el calco, no aquí—.
   ancho; reconstruida (horizonte, puntos de fuga, alto de la cámara), la bahía es lo que es: un cuerpo de
   ~4,3 m en el medio del frente, que SALE ~6,5 m adelante del bloque a dos pisos, con el BALCÓN DE LAS
   PLANTAS encima. Por eso el balcón es más angosto que el bloque.
+* LA BAHÍA ABRE DE DÍA Y CIERRA DE NOCHE: abierta se ven la isla y sus bombas bajo el balcón; su cortina y sus
+  rejas bajan al atardecer y suben al amanecer (`roll`).
 * SIN MARQUESINA: el autor la quitó para que el balcón —la losa que dice BOMBA ACON S.A. en su canto de
   Calle 4, como en la foto vieja, con su pretil y sus matas— se vea desde el cielo. La losa y el puente del
   patio son `overhead`: el carro pasa debajo de lo que vuela.
@@ -113,6 +115,7 @@ _main_s = avg(REL["bayJoin"][1], 0.0)
 BAY_DEPTH_R = _main_s - avg(REL["colNE"][1], REL["colNW"][1])         # cuánto sale la bahía, de verdad
 BAY_U0, BAY_U1 = r2(gu(avg(REL["colNW"][0], REL["bayJoin"][0]))), r2(gu(REL["colNE"][0]))
 BAY_V0, BAY_V1 = r2(gm(MAIN_VR - BAY_DEPTH_R) - DV), MAIN_V0
+BAY_C = r2((BAY_U0 + BAY_U1) / 2)
 _yb_bay = avg(AV["ground"]["colNE"][1], AV["ground"]["colNW"][1])
 _yb_main = AV["mainFace"]["baseY"]
 # lo que vuela la losa de la bahía más allá de sus columnas: el largo de su canto contra la cortina
@@ -227,6 +230,9 @@ for (a, b) in EF["windows"]:
 ops += cut(be["n"], n_lo, n_hi, ef(EF["door"][0]), ef(EF["door"][1]), [0.05, Z_DOOR[1]], "acDoorBlue")
 ops += cut(be["n"], n_lo, n_hi, ef(EF["celosia"][0]), ef(EF["celosia"][1]), Z_CEL, "acCelosiaHole", ["acCelosia", 0.12])
 ops += cut(be["n"], n_lo, n_hi, ef(EF["upperWindows"][0]), ef(EF["upperWindows"][1]), Z_WIN, "acGlass", ["acFrame", 0.08])
+# …y adentro de la bahía, la pared del fondo —se ve cuando está abierta—: la puerta a la oficina y una celosía
+ops += cut(be["n"], n_lo, n_hi, BAY_C - 0.55, BAY_C + 0.45, [0.05, Z_DOOR[1]], "acDoorBlue")
+ops += cut(be["n"], n_lo, n_hi, BAY_U0 + 0.45, BAY_C - 0.95, Z_CEL, "acCelosiaHole", ["acCelosia", 0.12])
 # la esquina noreste: las ventanas de arriba doblan hacia la entrada del patio
 ops += cut(be["e"], MAIN_V0 + RW, BAND_V1, MAIN_V0 + RW, BAND_V1 - 0.4, Z_WIN, "acGlass", ["acFrame", 0.08])
 
@@ -319,16 +325,40 @@ tiers.append(note({"poly": quad(GAP, r2(min(pa, ARM_V1 - 0.55)), GAP + 0.5, ARM_
                   "el pilar azul del suroeste, donde empieza la malla del patio", True))
 
 # ═════════════════ LA BAHÍA: el cuerpo de adelante, más angosto que el bloque ═════════════════
-# la vieja bahía de las bombas: hoy la cierra una cortina entre sus dos columnas y rejas a los lados
-tiers.append(note({"poly": quad(BAY_U0, BAY_V0, BAY_U1, BAY_V1), "z": [0, Z_BAYSLAB[0]], "wall": "acBlue", "cap": "acSlab",
-                   "bands": [[0, r2(Z_BASE / Z_BAYSLAB[0]), "acBase"]],
-                   "openings": [{"edge": 0, "f": [0.07, 0.93], "z": [0.1, Z_SHUTTER], "ink": "acShutter", "roll": {"inside": "acBayInside", "slat": "acShutterSlat"}},
-                                {"edge": 1, "f": [0.05, 0.95], "z": [0.1, Z_SHUTTER], "ink": "acGrille"},
-                                {"edge": 3, "f": [0.05, 0.95], "z": [0.1, Z_SHUTTER], "ink": "acGrille"}]},
-                  "LA BAHÍA, por donde pasaban los carros a la bomba (la vista de la avenida, en perspectiva): ~4,3 m de ancho en el medio del frente, sale ~6,5 m adelante del bloque. Su CORTINA entre las columnas se enrolla con el día (`roll`): abierta de día, baja al atardecer y sube al amanecer; una reja a cada lado", True))
+# ABIERTA DE DÍA, como en la foto vieja: la losa sobre sus dos columnas y, debajo, la isla con sus bombas.
+# De noche la cierran la CORTINA del frente y las REJAS de los lados, que bajan al atardecer y suben al
+# amanecer (`roll`: un bloque delgado cuyo borde de abajo sigue al cielo). Arriba de ellas, la caja donde
+# se enrollan, contra la losa
+Z_BOX = r2(Z_SHUTTER + 0.1)                              # el dintel: de ahí para arriba, la caja de la cortina
+PANEL = 0.1
+bay_sides = (("la cortina del frente", quad(BAY_U0, BAY_V0, BAY_U1, BAY_V0 + PANEL), "acShutter", "acShutterSlat"),
+             ("la reja de Calle 4", quad(BAY_U0, BAY_V0 + PANEL, BAY_U0 + PANEL, BAY_V1), "acGrille", "acGrilleBar"),
+             ("la reja de la entrada", quad(BAY_U1 - PANEL, BAY_V0 + PANEL, BAY_U1, BAY_V1), "acGrille", "acGrilleBar"))
+for i, (_name, poly, wall, slat) in enumerate(bay_sides):
+    tiers.append(note({"poly": poly, "z": [Z_BOX, Z_BAYSLAB[0]], "wall": "acBlue", "cap": "acSlab"},
+                      "LA BAHÍA, por donde pasaban los carros a la bomba (la vista de la avenida, en perspectiva): ~4,3 m de ancho en el medio del frente, sale ~6,5 m adelante del bloque. Su dintel, la caja de las cortinas, en sus tres lados", i == 0))
+    tiers.append(note({"poly": poly, "z": [0.08, Z_BOX], "wall": wall, "cap": wall, "roll": {"slat": slat}},
+                      "SU CORTINA Y SUS REJAS SE ENROLLAN CON EL DÍA (`roll`): arriba de día —la bahía abierta, con su isla y sus bombas—, abajo de noche; bajan al atardecer y suben al amanecer", i == 0))
 for i, uu in enumerate((BAY_U0, BAY_U1)):
     tiers.append(note({"disc": 0.24, "n": 12, "at": B(uu, BAY_V0), "z": [0, Z_BAYSLAB[0]], "wall": "acColumn", "cap": "acColumn"},
                       "las dos columnas redondas azules en las esquinas de la bahía (la foto vieja y la de hoy)", i == 0))
+# adentro, JUSTO DETRÁS DE LA CORTINA: la isla con dos bombas viejas —la columna azul con su capitel, como la
+# que quedó en el patio—. Ahí estaba la isla (el cordón amarillo de afuera es lo que queda de ella), y es lo
+# único de adentro que se ve desde arriba: la losa del balcón tapa el resto. Abierta, se ven; de noche la
+# cortina baja delante
+ISL_V0, ISL_V1 = r2(BAY_V0 + PANEL + 0.25), r2(BAY_V0 + PANEL + 1.0)
+low.append(note({"poly": quad(BAY_U0 + 0.55, ISL_V0, BAY_U1 - 0.55, ISL_V1), "z": [0, 0.16], "wall": "acKerb", "cap": "acIsland"},
+                "la isla de las bombas, detrás de la cortina, con su cordón amarillo", True))
+for i, uu in enumerate((BAY_C - 0.8, BAY_C + 0.8)):
+    tiers.append(note({"box": [0.6, 0.45], "at": B(uu, (ISL_V0 + ISL_V1) / 2), "z": [0.16, 1.75], "wall": "acPump", "cap": "acPump",
+                       "bands": [[0.55, 0.75, "acPumpFace"]]},
+                      "LAS BOMBAS DE GASOLINA, en su isla: el cuerpo azul con su carátula", i == 0))
+    tiers.append(note({"box": [0.76, 0.6], "at": B(uu, (ISL_V0 + ISL_V1) / 2), "z": [1.75, 2.15], "wall": "acPumpHead", "cap": "acPumpHead"},
+                      "…y su capitel blanco", i == 0))
+for i, uu in enumerate((BAY_U0 + 0.75, BAY_U1 - 0.75)):
+    low.append(note({"disc": 0.12, "n": 8, "at": B(uu, (ISL_V0 + ISL_V1) / 2), "z": [0, 0.9], "wall": "acKerb", "cap": "acKerb",
+                     "bands": [[0.2, 0.4, "acStripe"], [0.6, 0.8, "acStripe"]]},
+                    "los bolardos de las puntas de la isla", i == 0))
 
 # ═════════════════ EL BALCÓN DE LAS PLANTAS y el puente: van encima del carro ═════════════════
 S0, S1 = r2(BAY_U0 - SLAB_OUT_W), r2(BAY_U1 + SLAB_OUT_E)
@@ -478,7 +508,7 @@ for name, (a0, b0, a1, b1) in (("la bahía", (BAY_U0, BAY_V0, BAY_U1, BAY_V1)), 
             raise SystemExit(f"[acon] {name} se para sobre lo manejable «{did}»: corregí `drive` en content/world/historic.json")
 
 body = {
-    "_note": "LA BOMBA Y LOS REPUESTOS ACON, en la esquina de Calle 4 y la avenida: el bloque streamline celeste a dos pisos —que es también los Repuestos Acón— con la BAHÍA de las bombas adelante, más angosta y hoy cerrada con una cortina, y encima el balcón de las macetas cuya losa dice BOMBA ACON S.A. en su canto de Calle 4; el patio con sus carriles de entrada y salida a Calle 4, la isla de la vieja bomba y el puente de teja sobre la entrada; y el edificio blanco del balcón de esquina redonda, contra la acera. CALCADO de sus imágenes (`tools/acon_trace.json`, las caras en perspectiva); lo escribe `tools/gen_acon_body.py`. Lo manejable: `content/world/historic.json → acon.drive`.",
+    "_note": "LA BOMBA Y LOS REPUESTOS ACON, en la esquina de Calle 4 y la avenida: el bloque streamline celeste a dos pisos —que es también los Repuestos Acón— con la BAHÍA de las bombas adelante, más angosta —abierta de día, con su isla y sus bombas; cerrada de noche con su cortina y sus rejas—, y encima el balcón de las macetas cuya losa dice BOMBA ACON S.A. en su canto de Calle 4; el patio con sus carriles de entrada y salida a Calle 4, la isla de la vieja bomba y el puente de teja sobre la entrada; y el edificio blanco del balcón de esquina redonda, contra la acera. CALCADO de sus imágenes (`tools/acon_trace.json`, las caras en perspectiva); lo escribe `tools/gen_acon_body.py`. Lo manejable: `content/world/historic.json → acon.drive`.",
     "perspective": True,
     "tiers": tiers, "overhead": overhead, "low": low, "placeM": [0, 0],
     "ground": {"polyM": [B(-0.3, -0.3), B(LU + 0.3, -0.3), B(LU + 0.3, LV + 0.3), B(-0.3, LV + 0.3)], "ink": "acConcrete",

@@ -2010,9 +2010,11 @@ corrida anterior antes de estampar. Corre AL FINAL de `world:build`, después de
   dos lados. Es UNA losa en L con su vuelo, la tapa blanca es el reborde, y el techo celeste va adentro.
 * **EL PISO SIGUE AL LOTE TORCIDO** (`ground.polyM`) y se mete bajo las aceras, que se pintan después:
   con el rectángulo asomaba una cuña de tierra en la esquina, y en el borde una raya.
-* **`roll`**: una cortina que de día está arriba y de noche abajo, enrollándose con el MISMO continuo del
-  cielo que apaga las sombras (`nightLevel`; `materials.json → centro.roll.band` dice en qué tramo, para
-  que baje en unos segundos y no en hora y media de juego). **`capText`**: el nombre pintado sobre la tapa,
+* **`roll`** (en un BLOQUE, no en un vano): una cortina o una reja delgada que de día está enrollada en su caja
+  —la bahía ABIERTA, con sus bombas a la vista; pintada como un vano oscuro no se veía nada— y de noche abajo,
+  enrollándose con el MISMO continuo del cielo que apaga las sombras (`nightLevel`; `materials.json → centro.roll.band` dice en qué tramo, para
+  que baje en unos segundos y no en hora y media de juego). Lo de adentro que se quiera ver va JUSTO DETRÁS
+  de la cortina: la losa de encima tapa desde arriba todo lo que esté más al fondo. **`capText`**: el nombre pintado sobre la tapa,
   sin píldora, como el del DJ sobre su dosel, escalado con el pinhole igual que la tapa.
 
 ## EL TREN AL PUERTO — el segundo juego dentro del juego

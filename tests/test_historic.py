@@ -92,18 +92,18 @@ class HistoricRegistry(unittest.TestCase):
 
     def test_the_body_verbs_have_their_knobs(self):
         centro = self.mat["centro"]
+        rolls = [T for T in self.props["bodies"]["acon"]["tiers"] if T.get("roll")]
+        self.assertTrue(rolls, "la bahía de la ACON abre de día y cierra de noche: su cortina y sus rejas son `roll`")
+        self.assertIn("roll", centro, "una cortina que se enrolla necesita `centro.roll`")
+        a, b = centro["roll"]["band"]
+        self.assertTrue(0 <= a < b <= 1)
         for T in self.props["bodies"]["acon"]["tiers"]:
-            for op in T.get("openings", []):
-                if op.get("roll"):
-                    self.assertIn("roll", centro, "una cortina que se enrolla necesita `centro.roll`")
-                    a, b = centro["roll"]["band"]
-                    self.assertTrue(0 <= a < b <= 1)
             if T.get("capText"):
                 self.assertIn("capText", centro, "un nombre en el techo necesita `centro.capText`")
                 self.assertTrue(T["capText"]["lines"])
                 self.assertIn(T["capText"]["ink"], centro["inks"])
         src = open(os.path.join(ROOT, "src", "render", "c2d", "bodies.js"), encoding="utf-8").read()
-        for verb in ("function paintRoll", "function paintCapText"):
+        for verb in ("function rolledDown", "function paintCapText"):
             self.assertIn(verb, src)
 
     def test_no_badge_the_name_is_on_the_roof(self):

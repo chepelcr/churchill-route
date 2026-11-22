@@ -89,30 +89,17 @@ function openingPath(T, i, op, lenM, grow) {
   ctx.closePath();
 }
 
-// LA CORTINA QUE SE ENROLLA CON EL DÍA (`openings[].roll`: {inside, slat}): de día el vano está ABIERTO
-// —se ve lo de adentro, `inside`— y de noche la cortina (`ink`) lo cierra; al atardecer baja y al amanecer
-// sube, siguiendo el MISMO continuo del cielo que apaga las sombras y prende las lámparas (`nightLevel`),
-// así que no hay un segundo reloj que se le pueda desfasar al cielo. `M.roll.band` dice en qué tramo de ese
-// continuo se mueve: entero tardaría un minuto —una hora y media de juego—, y una cortina baja de un tirón.
-// Sin ciclo del día (una etapa con su clima fijo) sigue al clima: de noche cerrada, si no abierta.
+// LA CORTINA QUE SE ENROLLA CON EL DÍA (`tiers[].roll`: {slat}): un bloque delgado —la cortina del
+// frente de una bahía, sus rejas a los lados— que de día está ENROLLADO arriba, en su caja, y de noche
+// baja hasta el piso; al atardecer baja y al amanecer sube, siguiendo el MISMO continuo del cielo que apaga
+// las sombras y prende las lámparas (`nightLevel`), así que no hay un segundo reloj que se le desfase al
+// cielo. Abierta, lo de adentro se ve —en la ACON, la isla con sus bombas—, que es la diferencia con
+// pintarla como un vano oscuro. `M.roll.band` dice en qué tramo de ese continuo se mueve: entero tardaría
+// un minuto —hora y media de juego—, y una cortina baja de un tirón. Sin ciclo del día (una etapa con su
+// clima fijo) sigue al clima: de noche cerrada, si no abierta.
 function rolledDown() {
   const [a, b] = M.roll.band, x = Math.max(0, Math.min(1, (nightLevel() - a) / (b - a)));
   return x * x * (3 - 2 * x);
-}
-function paintRoll(T, i, op, lenM, lit) {
-  ctx.fillStyle = shade(ink(op.roll.inside), lit);
-  ctx.beginPath(); openingPath(T, i, op, lenM, 0); ctx.fill();
-  const c = rolledDown();
-  if (c <= 0.002) return;
-  const [z0, z1] = op.z, zc = z1 - (z1 - z0) * c;       // la cortina baja desde el dintel
-  ctx.fillStyle = shade(ink(op.ink), lit);
-  ctx.beginPath(); openingPath(T, i, { f: op.f, z: [zc, z1] }, lenM, 0); ctx.fill();
-  if (!op.roll.slat) return;
-  const every = M.roll.slatEveryM, w = M.roll.slatM;   // las tablillas, cada `slatEveryM` de lo que ya bajó
-  ctx.fillStyle = shade(ink(op.roll.slat), lit);
-  ctx.beginPath();
-  for (let z = z1 - every; z > zc + w; z -= every) openingPath(T, i, { f: op.f, z: [z - w, z] }, lenM, 0);
-  ctx.fill();
 }
 
 function capPath(T, z) {
@@ -233,6 +220,14 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
       ctx.fillStyle = shade(ink(key), lit);
       ctx.beginPath(); wallQuad(T, i, 0, 1, zAt(f0), zAt(f1)); ctx.fill();
     }
+    if (T.roll && T.roll.slat) {
+      // las tablillas quedan del tamaño que tienen: se cuentan desde la caja hacia abajo, no se aprietan
+      const every = M.roll.slatEveryM, w = M.roll.slatM;
+      ctx.fillStyle = shade(ink(T.roll.slat), lit);
+      ctx.beginPath();
+      for (let z = T.z1 - every; z > T.z0 + w; z -= every) wallQuad(T, i, 0, 1, z - w, z);
+      ctx.fill();
+    }
     const j = (i + 2) % n, len = Math.hypot(pts[j] - pts[i], pts[j + 1] - pts[i + 1]), lenM = len / ppm;
     if (mural && lenM > M.mural.minM) {
       // el mural: paños de color a lo largo del muro, estables por posición. Un muro recto se parte
@@ -261,7 +256,6 @@ function paintTier(T, at, vis, sunlit, sun, ppm) {
       // `rim`: [tinta, metros] — el marco que rodea el vano (el cerco blanco de un óculo ciego), el mismo
       // contorno crecido, pintado antes
       if (op.rim) { ctx.fillStyle = shade(ink(op.rim[0]), lit); ctx.beginPath(); openingPath(T, i, op, lenM, op.rim[1]); ctx.fill(); }
-      if (op.roll) { paintRoll(T, i, op, lenM, lit); continue; }
       ctx.fillStyle = shade(ink(op.ink), lit);
       ctx.beginPath(); openingPath(T, i, op, lenM, 0); ctx.fill();
     }
@@ -462,6 +456,7 @@ function paintShadow(S) {
     // `noShadow`: lo tapa la sombra de otro (los escalones de una grada, que tira su sombra de una vez
     // con un bloque `shadowOnly`): cientos de caras con su barrido cada una costaban milisegundos
     if (T.noShadow) continue;
+    if (T.roll && rolledDown() <= 0.002) continue;      // la cortina enrollada en su caja
     const top = T.z1 + (T.roof ? T.roof.rise * 0.6 : 0);
     if (top < M.shadowMinM) continue;
     const sh = sunShadow(top);
@@ -510,6 +505,12 @@ function paintStructure(S, ppm, pill = null) {
   const sun = sunShadow(S.zMax);
   for (const T of S.tiers) {
     if (T.shadowOnly) continue;          // sólo existe para tirar la sombra (`paintShadow`)
+    let z0 = null;
+    if (T.roll) {                        // la cortina: su borde de abajo baja desde la caja con el atardecer
+      const c = rolledDown();
+      if (c <= 0.002) continue;
+      z0 = T.z0; T.z0 = T.z1 - (T.z1 - z0) * c;
+    }
     // lo que se corre por el CENTRO del bloque (la cúpula, la celosía, las manchas de la tapa)
     let tcx = 0, tcy = 0;
     for (let i = 0; i < T.pts.length; i += 2) { tcx += T.pts[i]; tcy += T.pts[i + 1]; }
@@ -518,6 +519,7 @@ function paintStructure(S, ppm, pill = null) {
     const vis = S.perspective ? visibleEdges(T.pts, cam) : ro.dx || ro.dy ? facingEdges(T.pts, ro.dx, ro.dy) : [];
     const sunlit = new Set(facingEdges(T.pts, sun.dx, sun.dy));
     paintTier(T, at, vis, sunlit, sun, ppm);
+    if (z0 != null) T.z0 = z0;
   }
   const top = OFF(S.x, S.y, S.zMax);
   if (S.label) label(S.x + top[0], S.y0 + top[1] - 9, S.label, M.label.fg, M.label.bg, 9);

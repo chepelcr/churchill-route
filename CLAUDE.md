@@ -74,7 +74,7 @@ The procedure is three steps and it is not optional:
 | **how a shadow answers the sun; how tall a building is** — y **cuánto sol hay para tirarla** (de noche, ninguna) | `src/assets/effects.json` → `sunShadow` (`phaseLight`) / `buildingHeight` |
 | **el relieve del terreno y la sombra de las nubes** | `src/assets/effects.json` → `terrainShadow` / `skyCover` (verbos: `c2d/relief.js`, `c2d/skycover.js`) |
 | what a vehicle DOES: wake, shadow, turn wind, **headlights** | `src/assets/effects.json` |
-| landmarks, signs, parcel props, scenes | `src/assets/world-props.json` |
+| landmarks, signs, parcel props, scenes | `src/assets/world-props.json` — una señal de poste con placa (ALTO, CEDA, VELOCIDAD, UNA VÍA, NO HAY PASO, PARADA, NO ESTACIONAR) es `signs.<tipo>.stand3d.plate` (`face` = su dibujo); la zebra, `signs.crossing.zebra`; DÓNDE va cada una lo decide el builder (`service/signs.py`, `finish.settle_altos`) |
 | the world's palettes: estero, malecón, structures, streets, weather, piers | `src/assets/materials.json` |
 | the HUD, the minimap, the crossing card, the tide bar | `src/assets/hud.json` |
 | trees and wood mixes | `src/assets/flora.json` |
@@ -816,6 +816,30 @@ sound is a fourth continuous voice in `src/game/audio.js` beside
 `fountain`/`pool`/`waves` — and **distance is a FILTER, not a fader**:
 `sfx.dj(level)` opens the lowpass from 260 Hz to ~4 kHz as well as the gain, so
 from down the Paseo you get the kick and only at the booth the whole set.
+
+**LAS SEÑALES DE COSTA RICA SALEN DE LO QUE OSM SABE DE LA CALLE** (`service/signs.py`,
+`finish.settle_altos`, pintor `furniture3d.js → drawPlateSign3d`). OSM no trae ni un `highway=stop`,
+así que el ALTO se DERIVA (calle menor que sale a una mayor); lo que sí trae cada vía —`maxspeed`
+(213) y `oneway` (236), que ahora viajan en la calle del tile— da VELOCIDAD MÁXIMA por sentido, UNA
+VÍA en la punta de entrada y NO HAY PASO en la de salida, y cada parada sentada lleva PARADA DE
+AUTOBUSES adelante y NO ESTACIONAR atrás. Tres cosas costaron una ronda cada una:
+
+* **el ALTO va en la esquina, y eso lo decide el RÁSTER**, no el eje de la calle mayor: en una
+  avenida ancha la muestra más cercana de su eje cae lejos. `settle_altos` (en `write_world`, sobre
+  la superficie terminada) camina por la acera hasta la calzada que se cruza, retrocede una acera y
+  pega el poste al bordillo. Ahí mismo tiende la ZEBRA de la esquina —sobre la calle que para, en
+  línea con la acera de la que se cruza— si hay una escuela, iglesia, parque, plaza o mercado a
+  menos de 120 m. Corre en el emit, así que **el smoke recortado no lo ve**: se prueba contra los
+  tiles publicados con un shim de ráster, como dice más abajo;
+* **la placa va PARADA y mira al conductor que llega**; la cara es el dibujo del registro
+  (`plate.face`, con la palabra) llevado al plano de la placa con una afín, y la palabra se endereza
+  sobre su punto para no salir de cabeza. **De qué lado se la mira se pregunta a ras de calle**
+  (normal horizontal): con la placa echada 12° y la cámara a 60 m, el aparejo decía «de frente»
+  estando detrás, y la palabra salía del lado que el jugador ve como espalda. Desde atrás: espalda
+  gris. La UNA VÍA (`keepX`) es de dos caras y su flecha apunta hacia donde se anda de los dos lados;
+* **una zebra de OSM es un nodo SOBRE la vía**: se emitía con `ang` 0 y se pintaba a escuadra con la
+  pantalla. Se asienta en el eje con el rumbo y el medio ancho (`hw`) de su calle, y `drawZebra` la
+  tiende de bordillo a bordillo. `pnpm test` → `tests/test_signs.py`.
 
 **A word on emitted point features**: `signs` stay global because there are only
 ~470 and the bus logic wants to index them once. Cuadra corners are not emitted

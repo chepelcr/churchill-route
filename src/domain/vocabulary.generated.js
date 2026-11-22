@@ -173,8 +173,13 @@ export const SIGN_KIND = Object.freeze({
   TOPE: "tope",
   BANCA: "banca",
   BUS: "bus",
+  VELOCIDAD: "velocidad",
+  UNA_VIA: "una_via",
+  NO_HAY_PASO: "no_hay_paso",
+  PARADA: "parada",
+  NO_ESTACIONAR: "no_estacionar",
 });
-export const SIGN_KIND_VALUES = Object.freeze(["alto", "ceda", "semaforo", "semaforo_centered", "semaforo_overhead", "speed_limit", "crossing", "tope", "banca", "bus"]);
+export const SIGN_KIND_VALUES = Object.freeze(["alto", "ceda", "semaforo", "semaforo_centered", "semaforo_overhead", "speed_limit", "crossing", "tope", "banca", "bus", "velocidad", "una_via", "no_hay_paso", "parada", "no_estacionar"]);
 
 export const PIER_STYLE = Object.freeze({
   CONCRETE: "concrete",

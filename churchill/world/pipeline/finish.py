@@ -12,12 +12,12 @@ no drivable pad and was never a delivery target.
 import time
 
 from ..config import (
-    ACERA_CELLS, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD, CUADS_PER_VIEW,
+    ACERA_CELLS, CLS_ACERA, CLS_BOULEVARD, CLS_LAND, CLS_ROAD, CUAD, CUADS_PER_VIEW,
     DEBUG_PNG, DEBUG_SVG,
     DRIVABLE_CLASSES, GRID_CELL, KIOSK_WATER_CLEAR_PX,
     MARINE_POOL_GROUND_CLEAR_PX,
     MARINE_POOL_MIN_SPACING_PX, MARINE_POOL_RAIL_CLEAR_PX, MARINE_POOL_SCALE,
-    RAIL_ALIGN_ON, TILE_PX,
+    RAIL_ALIGN_ON, TILE_PX, px,
 )
 from ..content import CROSSING_STAGES, MARINE_BUILDING_NAMES, SITE_DECOR, STAGES
 from ..enums import SignKind
@@ -534,12 +534,94 @@ def clear_the_roadway(raster, signs, roads):
     return kept
 
 
+#: Los lugares donde la gente cruza la calle: una esquina con ALTO a menos de `ZEBRA_NEAR` de uno de
+#: éstos lleva su zebra. Medido sobre el mundo publicado: ~100 de 310 esquinas.
+ZEBRA_USES = ("school", "kinder", "campus", "church", "park", "plaza", "market")
+ZEBRA_NEAR = px(120)
+#: Una zebra derivada no se tiende a menos de esto de otra (de OSM o derivada).
+ZEBRA_MIN_GAP = 2.0 * CUAD
+#: Del bordillo de su calle al poste del ALTO: pegado, como en la esquina de verdad.
+ALTO_KERB_PAD = 0.14 * CUAD
+#: Cuántas cuadrículas, como mucho, camina un ALTO por su acera buscando la esquina.
+ALTO_WALK_CELLS = 18
+
+
+def settle_altos(raster, signs, parcels):
+    """EL ALTO VA EN LA ESQUINA. `derive_altos` lo retira de la calle que cruza midiendo contra la
+    muestra MÁS CERCANA de su eje, y en una avenida ancha —el tronco de 93 px con el riel en medio—
+    esa muestra cae lejos y el ALTO quedaba media cuadra atrás. La superficie terminada sabe dónde
+    está la esquina: se camina por la acera hacia el cruce hasta encontrar la calzada de la calle que
+    se cruza, y se retrocede el ancho de su acera — ahí termina la cuadra y ahí va el poste, PEGADO al
+    bordillo de su propia calle (`ALTO_KERB_PAD`): retirado `ALTO_SIDE_PAD` quedaba contra la pared,
+    y desde arriba eso se lee como «lejos de la esquina» aunque estuviera a su altura.
+
+    Y AHÍ VA SU ZEBRA, si la esquina está cerca de donde la gente cruza (`ZEBRA_USES`): a lo ancho de
+    la calle que para, en línea con la acera de la que se cruza, que es donde el peatón la camina.
+    El ALTO queda detrás de ella, que es donde el conductor tiene que detenerse."""
+    acera = ACERA_CELLS * GRID_CELL
+    crowd = [(p["cx"], p["cy"]) for p in parcels if p.get("use") in ZEBRA_USES and "cx" in p]
+    zebras = [s for s in signs if s["kind"] == SignKind.CROSSING]
+    near2, gap2 = ZEBRA_NEAR * ZEBRA_NEAR, ZEBRA_MIN_GAP * ZEBRA_MIN_GAP
+    moved = added = 0
+    new = []
+    import math
+    for s in signs:
+        side, hw = s.pop("_side", None), s.pop("_hw", None)
+        if s["kind"] != SignKind.ALTO or side is None:
+            continue
+        ux, uy = math.cos(s["ang"]), math.sin(s["ang"])
+        x, y = s["x"], s["y"]
+        if raster.at_px(round(x), round(y)) != CLS_ACERA:
+            continue
+        kerb = None
+        for _ in range(ALTO_WALK_CELLS):
+            nx, ny = x + ux * GRID_CELL, y + uy * GRID_CELL
+            c = raster.at_px(round(nx), round(ny))
+            if c == CLS_ACERA:
+                x, y = nx, ny
+                continue
+            if c in DRIVABLE_CLASSES:
+                kerb = (x, y)
+            break
+        if kerb is None:
+            continue
+        # en la línea donde termina la cuadra (una acera antes de la calzada que cruza) y PEGADO AL
+        # BORDILLO de su calle, no contra la pared: `side` medía desde el eje hasta el fondo de la acera
+        rx, ry = -uy, ux                                     # la derecha del que llega
+        cx = kerb[0] - ux * acera - rx * (side - hw - ALTO_KERB_PAD)
+        cy = kerb[1] - uy * acera - ry * (side - hw - ALTO_KERB_PAD)
+        if raster.at_px(round(cx), round(cy)) != CLS_ACERA:
+            cx, cy = kerb[0] - ux * acera, kerb[1] - uy * acera
+        if raster.at_px(round(cx), round(cy)) == CLS_ACERA:
+            if (round(cx), round(cy)) != (s["x"], s["y"]):
+                moved += 1
+            s["x"], s["y"] = round(cx), round(cy)
+        if not any((s["x"] - px_) ** 2 + (s["y"] - py_) ** 2 < near2 for px_, py_ in crowd):
+            continue
+        # la zebra: en línea con la acera de la calle que se cruza, sobre el eje de la que para
+        zx = kerb[0] - ux * acera * 0.5 + uy * side
+        zy = kerb[1] - uy * acera * 0.5 - ux * side
+        if raster.at_px(round(zx), round(zy)) not in DRIVABLE_CLASSES:
+            continue
+        z = {"x": round(zx), "y": round(zy), "kind": SignKind.CROSSING, "ang": s["ang"], "hw": hw}
+        if any((z["x"] - k["x"]) ** 2 + (z["y"] - k["y"]) ** 2 < gap2 for k in zebras):
+            continue
+        zebras.append(z)
+        new.append(z)
+        added += 1
+    signs.extend(new)
+    log("signs", f"{moved} ALTOs llevados a la esquina de su cuadra; {added} zebras tendidas en "
+        f"esquinas a menos de {round(ZEBRA_NEAR)} px de una escuela, iglesia, parque, plaza o mercado")
+    return signs
+
+
 def write_world(ctx, sink, *, meta, islands, land_polys, bounds_x, t0):
     if ctx.failures:
         # Never replace valid generated artifacts with a world the gate has
         # already rejected. This keeps the module's "gate before write"
         # contract literal during local iteration.
         raise SystemExit(f"[poi] BUILD INCOMPLETE — unresolved: {ctx.failures}")
+    ctx.signs[:] = settle_altos(ctx.raster, ctx.signs, ctx.parcels)
     ctx.signs[:] = clear_the_roadway(ctx.raster, ctx.signs, ctx.roads)
     # THE DRAWN SAND IS THE SAND. `ctx.beaches` are the raw OSM `natural=beach`
     # outlines the surface stage stamped from; the raster's sand is those plus

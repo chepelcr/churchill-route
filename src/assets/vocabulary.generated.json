@@ -167,7 +167,12 @@
       "crossing",
       "tope",
       "banca",
-      "bus"
+      "bus",
+      "velocidad",
+      "una_via",
+      "no_hay_paso",
+      "parada",
+      "no_estacionar"
     ],
     "PIER_STYLE": [
       "concrete",

@@ -156,6 +156,13 @@ class SignKind(StrEnum):
     TOPE = "tope"                            # hump, with its yellow hatching
     BANCA = "banca"                          # a bench
     BUS = "bus"                              # a parada's caseta
+    # LAS DE POSTE CON PLACA RECTANGULAR, como en el Manual Centroamericano: salen de lo que OSM
+    # anota de la calle (`maxspeed`, `oneway`) y de las paradas (`service/signs.py`)
+    VELOCIDAD = "velocidad"                  # VELOCIDAD MÁXIMA, con su número (`value`)
+    UNA_VIA = "una_via"                      # la flecha negra, en la punta de entrada de una vía de un sentido
+    NO_HAY_PASO = "no_hay_paso"              # …y en la de salida, mirando a quien viene al revés
+    PARADA = "parada"                        # PARADA DE AUTOBUSES, junto a la caseta
+    NO_ESTACIONAR = "no_estacionar"          # la E tachada, del otro lado de la caseta
 
 
 class PierStyle(StrEnum):

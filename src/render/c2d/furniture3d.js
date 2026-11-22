@@ -19,6 +19,7 @@ import { queueBodyLike } from "./bodies.js";
 import { ctx, mixColor } from "./gfx.js";
 import { paintParts } from "./shapes.js";
 
+
 function rigged(x, y, ang, topM, V, reach, form) {
   const ppm = PX_PER_M, sun = sunShadow(1);
   // la sombra en UN relleno, sin lienzo aparte (`rig3d.js → fillRigShadow`); `reach` ya no hace falta
@@ -67,7 +68,7 @@ export function drawBench3d(x, y, ang, V) {
  */
 export function drawPoleSign3d(rec, x, y, vars, ang = null) {
   const S = rec.stand3d;
-  if (S.plate && ang != null) return drawPlateSign3d(S, x, y, ang);
+  if (S.plate && ang != null) return drawPlateSign3d(S, x, y, ang, vars);
   const ppm = PX_PER_M, top = parallaxOffset(state.cam, x, y, S.poleM, ppm), sh = sunShadow(S.poleM);
   if (sh.alpha > 0) {
     ctx.save(); ctx.globalAlpha = sh.alpha; ctx.strokeStyle = S.shadow; ctx.lineWidth = S.poleWM * ppm; ctx.lineCap = "round";
@@ -372,33 +373,58 @@ export function drawCart3d(x, y, ang, V, look, sway = 0) {
  * cambia; sólo el texto (`shape: "text"`) gira en el plano hasta quedar lo más derecho posible en la
  * pantalla.
  */
-function drawPlateSign3d(S, x, y, ang) {
+function drawPlateSign3d(S, x, y, ang0, vars = null) {
   const Pl = S.plate, t = (Pl.tiltDeg ?? 12) * Math.PI / 180, ct = Math.cos(t), st = Math.sin(t);
-  const r = Pl.rM, n = Pl.n, rot = (Pl.rotDeg ?? 0) * Math.PI / 180, ppm = PX_PER_M;
-  const hc = S.poleM + r * ct;                      // `poleM` es la altura del borde de abajo de la placa
+  // `faceTurnDeg`: una placa que se para A LO LARGO de la calle (la UNA VÍA, que lee quien cruza)
+  const ang = ang0 + (Pl.faceTurnDeg || 0) * Math.PI / 180;
+  const ppm = PX_PER_M, rot = (Pl.rotDeg ?? 0) * Math.PI / 180;
+  // la placa: un polígono regular de radio `rM` (`n` lados) o un rectángulo de `rectM` [ancho, alto]
+  const half = Pl.rectM ? Pl.rectM[1] / 2 : Pl.rM, r = Pl.rM || Math.max(...(Pl.rectM || [1]));
+  const hc = S.poleM + half * ct;                   // `poleM` es la altura del borde de abajo de la placa
   // en el marco de la señal: u hacia donde va el conductor, v a su derecha; (cx, cy) en la placa, cy arriba
   const onPlate = (cx, cy, off = 0) => [st * cy + off * ct, cx, hc + ct * cy - off * st];
-  const ring = (k, off = 0) => { const out = []; for (let i = 0; i < n; i++) { const a = rot + (i / n) * Math.PI * 2; out.push(onPlate(Math.cos(a) * r * k, Math.sin(a) * r * k, off)); } return out; };
-  const normal = [-ct, 0, st];                      // la cara: hacia el conductor y hacia arriba
+  const outline = Pl.rectM
+    ? [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => [i * Pl.rectM[0] / 2, j * Pl.rectM[1] / 2])
+    : Array.from({ length: Pl.n }, (_, i) => { const a = rot + (i / Pl.n) * Math.PI * 2; return [Math.cos(a) * Pl.rM, Math.sin(a) * Pl.rM]; });
+  const ring = (off = 0) => outline.map(([cx, cy]) => onPlate(cx, cy, off));
+  const normal = [-ct, 0, st];                      // la cara: hacia el conductor
   const shapes = Pl.face.filter((p) => p.shape !== "text"), words = Pl.face.filter((p) => p.shape === "text");
-  const k = (r * ppm) / (Pl.faceR || r * ppm);      // el dibujo del registro, al radio de la placa
-  rigged(x, y, ang, hc + r, S, 0, (R) => {
-    R.at(hc * 0.5, () => R.line([[Pl.thickM * 1.5, 0, 0], [Pl.thickM * 1.5, 0, hc]], S.poleWM, S.pole));
-    R.at(hc + r, () => {
-      if (R.shadow) { R.poly(ring(1), S.shade.shadow); return; }
-      if (!R.faces([0, 0, hc], normal)) { R.poly(ring(1), Pl.edge); R.poly(ring(1, Pl.thickM), Pl.back); return; }
-      R.poly(ring(1, Pl.thickM), Pl.edge);         // el canto, asomando detrás
+  const k = Pl.faceR ? (r * ppm) / Pl.faceR : 1;    // el dibujo del registro, al tamaño de la placa
+  const frame = { pxPerM: ppm, X: (v) => v || 0, Y: (v) => v || 0, vars: vars || {} };
+  rigged(x, y, ang, hc + half, S, 0, (R) => {
+    R.at(hc - half, () => R.line([[Pl.thickM * 1.5, 0, 0], [Pl.thickM * 1.5, 0, hc + half * 0.6]], S.poleWM, S.pole));
+    R.at(hc + half, () => {
+      if (R.shadow) { R.poly(ring(), S.shade.shadow); return; }
+      // DE QUÉ LADO SE LA MIRA SE DECIDE A RAS DE CALLE. La placa va echada `tiltDeg` hacia atrás, y con
+      // la cámara a 60 m eso bastaba para que el aparejo dijera «de frente» aun parado detrás de ella: la
+      // palabra salía pintada del lado que el jugador ve como espalda. Lo que cuenta es de qué lado de la
+      // placa está la cámara EN EL SUELO, así que se pregunta con la normal horizontal. Desde atrás se ve
+      // la espalda gris, como en la calle; sólo una placa con flecha (`keepX`, la UNA VÍA, que en Costa
+      // Rica es de dos caras) muestra su cara de los dos lados, con la flecha hacia donde se anda.
+      const front = R.faces([0, 0, hc], [-1, 0, 0]), side = front ? 1 : -1;
+      if (!front && !Pl.keepX) { R.poly(ring(), Pl.edge); R.poly(ring(Pl.thickM), Pl.back); return; }
+      R.poly(ring(Pl.thickM * side), Pl.edge);     // el canto, asomando detrás
       // la afín: px del dibujo (x a la derecha del conductor, y hacia abajo) → el plano de la placa
-      const o = onPlate(0, 0), ex = onPlate(k / ppm, 0), ey = onPlate(0, -k / ppm);
+      // la UNA VÍA vista desde atrás: la flecha sigue apuntando hacia donde se anda y sólo las palabras
+      // se des-espejan
+      const sx = 1, wordMirror = Pl.keepX && side < 0;
+      const o = onPlate(0, 0), ex = onPlate(sx * k / ppm, 0), ey = onPlate(0, -k / ppm);
       const P0 = R.P(o[0], o[1], o[2]), PX = R.P(ex[0], ex[1], ex[2]), PY = R.P(ey[0], ey[1], ey[2]);
       ctx.save();
       ctx.transform(PX[0] - P0[0], PX[1] - P0[1], PY[0] - P0[0], PY[1] - P0[1], P0[0], P0[1]);
-      paintParts(ctx, shapes, { pxPerM: ppm, X: (v) => v || 0, Y: (v) => v || 0 });
-      if (words.length) {
-        // el «arriba» de la pantalla, llevado al plano de la placa: hacia ahí se para la palabra
-        const M = ctx.getTransform().inverse(), ux = M.c * -1, uy = M.d * -1;
-        ctx.rotate(Math.atan2(ux, -uy));
-        paintParts(ctx, words, { pxPerM: ppm, X: (v) => v || 0, Y: (v) => v || 0 });
+      // el «arriba» de la pantalla, llevado al plano de la placa: cuánto habría que girar para leerla
+      const M = ctx.getTransform().inverse(), up = Math.atan2(-M.c, M.d);
+      const flip = Math.abs(up) > Math.PI / 2 ? Math.PI : 0;
+      if (Pl.upright === "face" && flip) ctx.rotate(flip);   // la placa entera, si salía de cabeza
+      paintParts(ctx, shapes, frame);
+      for (const w of words) {
+        // la palabra se endereza sobre su propio punto: del todo en una placa simétrica (el ALTO),
+        // sólo media vuelta en las demás, para no torcerla contra su placa
+        const th = Pl.upright === "face" ? 0 : Pl.upright === "flip" ? flip : up;
+        const wx = w.x || 0, wy = w.y || 0;
+        ctx.save(); ctx.translate(wx, wy); if (wordMirror) ctx.scale(-1, 1); ctx.rotate(th);
+        paintParts(ctx, [{ ...w, x: 0, y: 0 }], frame);
+        ctx.restore();
       }
       ctx.restore();
     });

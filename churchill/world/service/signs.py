@@ -146,6 +146,24 @@ def extract_node_signs(sp, nodes_with_tags, canvas_w, canvas_h, roads=()):
         seated = seat_bus_stops(stops, roads)
         log("signs", f"{seated}/{len(stops)} paradas y semáforos sentados en la "
             f"acera de su calle (los demas quedan donde OSM los puso)")
+    # LA ZEBRA CRUZA SU CALLE. Un `highway=crossing` es un nodo SOBRE la vía y se emitía con
+    # `ang` 0: las doce zebras del mapa se pintaban a escuadra con la pantalla, cruzando la calle
+    # en diagonal o a lo largo. Se asienta en el eje de su calle, con el rumbo de la calle y su
+    # medio ancho (`hw`), que es lo que el renderer necesita para tenderla de bordillo a bordillo.
+    snapped = 0
+    for z in out:
+        if z["kind"] != SignKind.CROSSING or not roads:
+            continue
+        hit = _snap_to_road(z["x"], z["y"], roads, STOP_SNAP_R)
+        if hit is None:
+            continue
+        qx, qy, ux, uy, hw = hit
+        z["x"], z["y"] = round(qx), round(qy)
+        z["ang"] = round(math.atan2(uy, ux), 3)
+        z["hw"] = round(hw, 1)
+        snapped += 1
+    if snapped:
+        log("signs", f"{snapped} zebras de OSM asentadas a lo ancho de su calle")
     return out
 
 
@@ -209,9 +227,12 @@ def derive_altos(roads, limit=None):
             side = r.get("w", 36) / 2 + ALTO_SIDE_PAD
             bx = ex - math.cos(ang) * back
             by = ey - math.sin(ang) * back
+            # `_side`/`_hw`: lo que el asiento en la esquina (`finish.settle_altos`) necesita saber de
+            # esta calle; no se emiten
             out.append({"x": round(bx + math.cos(ang + math.pi / 2) * side),
                         "y": round(by + math.sin(ang + math.pi / 2) * side),
-                        "kind": SignKind.ALTO, "ang": round(ang, 3)})
+                        "kind": SignKind.ALTO, "ang": round(ang, 3),
+                        "_side": round(side, 1), "_hw": round(r.get("w", 36) / 2, 1)})
     # ONE ALTO PER CORNER, not one per approach that happens to end near it.
     # Where the Paseo, Avenida Centenario and the faro street all converge, a
     # dozen short ways end within a few metres of each other and each claimed
@@ -234,11 +255,135 @@ def derive_altos(roads, limit=None):
     return out
 
 
+# ─────────────────────────── las señales de poste que salen de la calle ───────────────────────────
+#: Las placas de poste se paran a esta distancia del bordillo, dentro de la acera (que mide
+#: ACERA_CELLS·GRID_CELL = 15 px); `finish.clear_the_roadway` corrige lo que caiga en la calzada.
+POLE_KERB_PAD = 0.3 * CUAD
+#: Una VELOCIDAD MÁXIMA entra a esta distancia de la punta de su vía, y se repite cada
+#: `SPEED_EVERY` en una vía larga. Dos del mismo número no se paran a menos de `SPEED_MIN_GAP`.
+SPEED_IN = 1.4 * CUAD
+SPEED_EVERY = 40 * CUAD
+SPEED_MIN_GAP = 18 * CUAD
+#: Una vía de un sentido más corta que esto es un acceso, no una calle que firmar.
+ONEWAY_MIN_LEN = 3 * CUAD
+ONEWAY_IN = 0.9 * CUAD
+#: Ninguna placa nueva a menos de esto de otra señal ya puesta: la esquina no es una tienda de rótulos.
+POLE_MIN_GAP = 0.9 * CUAD
+#: A cuánto de la caseta, a lo largo de la calle, van la de PARADA (adelante) y la de NO ESTACIONAR (atrás).
+PARADA_ALONG = 1.1 * CUAD
+#: Las calles que no se firman: un acceso de servicio o una calle peatonal no llevan velocidad.
+UNSIGNED = ("service", "pedestrian", "bridge", "paseo")
+
+
+def _along(pts, s):
+    """(x, y, ux, uy) a `s` px desde el inicio de la polilínea plana `pts`."""
+    acc = 0.0
+    for i in range(0, len(pts) - 2, 2):
+        ax, ay, bx, by = pts[i], pts[i + 1], pts[i + 2], pts[i + 3]
+        L = math.hypot(bx - ax, by - ay)
+        if L <= 0:
+            continue
+        if acc + L >= s:
+            t = (s - acc) / L
+            return ax + (bx - ax) * t, ay + (by - ay) * t, (bx - ax) / L, (by - ay) / L
+        acc += L
+    ax, ay, bx, by = pts[-4], pts[-3], pts[-2], pts[-1]
+    L = math.hypot(bx - ax, by - ay) or 1
+    return bx, by, (bx - ax) / L, (by - ay) / L
+
+
+def _length(pts):
+    return sum(math.hypot(pts[i + 2] - pts[i], pts[i + 3] - pts[i + 1]) for i in range(0, len(pts) - 2, 2))
+
+
+def _pole_at(x, y, ux, uy, hw, kind, **extra):
+    """Una placa a la DERECHA de quien viaja (ux, uy), en la acera, mirándolo."""
+    off = hw + POLE_KERB_PAD
+    # con y hacia abajo, la derecha del rumbo (ux, uy) es (-uy, ux)
+    return {"x": round(x - uy * off), "y": round(y + ux * off), "kind": kind,
+            "ang": round(math.atan2(uy, ux), 3), **extra}
+
+
+def derive_road_signs(roads, existing):
+    """Lo que un conductor lee en una calle de Costa Rica y que OSM sí sabe de ella.
+
+    * **VELOCIDAD MÁXIMA** donde la vía trae `maxspeed`: una placa al entrar a la vía en cada
+      sentido que se puede andar, y otra cada `SPEED_EVERY` en una vía larga — nunca dos del mismo
+      número a menos de `SPEED_MIN_GAP`, porque una avenida partida en treinta tramos no lleva
+      treinta placas;
+    * **UNA VÍA** en la punta de entrada de una vía de un sentido —la placa negra con su flecha,
+      parada a lo largo de la calle para que la lea quien cruza— y **NO HAY PASO** en la de salida,
+      mirando a quien venga al revés.
+
+    Todo a la derecha de quien viaja, en la acera; lo que caiga en la calzada lo corre
+    `finish.clear_the_roadway`, que tiene la superficie terminada."""
+    placed = list(existing)
+    out = []
+    gap2 = POLE_MIN_GAP * POLE_MIN_GAP
+
+    def free(s):
+        return all((s["x"] - k["x"]) ** 2 + (s["y"] - k["y"]) ** 2 >= gap2 for k in placed)
+
+    def add(s):
+        if free(s):
+            out.append(s)
+            placed.append(s)
+
+    speeds = []
+    for r in sorted(roads, key=lambda r: (r.get("cls", ""), r["pts"][:2])):
+        p = r.get("pts") or []
+        if len(p) < 4 or r.get("cls") in UNSIGNED:
+            continue
+        L, hw, ow = _length(p), r.get("w", 36) / 2, r.get("oneway", 0)
+        if r.get("maxspeed") and L > 2 * SPEED_IN:
+            for direction in ((1,) if ow == 1 else (-1,) if ow == -1 else (1, -1)):
+                s = SPEED_IN
+                while s < L - SPEED_IN:
+                    d = s if direction == 1 else L - s
+                    x, y, ux, uy = _along(p, d)
+                    if direction == -1:
+                        ux, uy = -ux, -uy
+                    cand = _pole_at(x, y, ux, uy, hw, SignKind.VELOCIDAD, value=int(r["maxspeed"]))
+                    near = any(k["value"] == cand["value"] and (k["x"] - cand["x"]) ** 2 + (k["y"] - cand["y"]) ** 2 < SPEED_MIN_GAP ** 2
+                               for k in speeds)
+                    if not near and free(cand):
+                        out.append(cand); placed.append(cand); speeds.append(cand)
+                    s += SPEED_EVERY
+        if ow and L >= ONEWAY_MIN_LEN:
+            q = p if ow == 1 else [v for i in range(len(p) - 2, -1, -2) for v in (p[i], p[i + 1])]
+            x, y, ux, uy = _along(q, ONEWAY_IN)
+            add(_pole_at(x, y, ux, uy, hw, SignKind.UNA_VIA))
+            x, y, ux, uy = _along(q, L - ONEWAY_IN)
+            # la de salida mira al que viene al revés: su rumbo es el contrario, y su derecha la otra acera
+            add(_pole_at(x, y, -ux, -uy, hw, SignKind.NO_HAY_PASO))
+    return out
+
+
+def derive_stop_signs(stops, existing):
+    """Junto a cada caseta, en su misma acera: PARADA DE AUTOBUSES adelante (en el sentido del
+    tráfico de esa acera) y NO ESTACIONAR atrás, las dos mirando al que llega."""
+    placed, out = list(existing), []
+    gap2 = POLE_MIN_GAP * POLE_MIN_GAP
+    for st in stops:
+        if "side" not in st:
+            continue
+        a = st["ang"] + (0 if st["side"] > 0 else math.pi)       # el tráfico de esa acera
+        ux, uy = math.cos(a), math.sin(a)
+        for k, kind in ((1, SignKind.PARADA), (-1, SignKind.NO_ESTACIONAR)):
+            s = {"x": round(st["x"] + ux * PARADA_ALONG * k), "y": round(st["y"] + uy * PARADA_ALONG * k),
+                 "kind": kind, "ang": round(a, 3)}
+            if all((s["x"] - q["x"]) ** 2 + (s["y"] - q["y"]) ** 2 >= gap2 for q in placed if q is not st):
+                out.append(s); placed.append(s)
+    return out
+
+
 def build_signs(sp, poi_nodes, roads, canvas_w, canvas_h, alto_limit=900):
     """Every piece of street furniture the world emits, in one list."""
     signs = extract_node_signs(sp, poi_nodes, canvas_w, canvas_h, roads)
     mapped = len(signs)
     signs += derive_altos(roads, alto_limit)
+    signs += derive_stop_signs([s for s in signs if s["kind"] == SignKind.BUS], signs)
+    signs += derive_road_signs(roads, signs)
     signs.sort(key=lambda s: (s["kind"], s["x"], s["y"]))
     # Census keyed by the STRING, not the enum member: the build log is the
     # review surface, and a `SignKind` in a dict f-string reprs as
@@ -249,6 +394,6 @@ def build_signs(sp, poi_nodes, roads, canvas_w, canvas_h, alto_limit=900):
         key = str(s["kind"])
         by[key] = by.get(key, 0) + 1
     log("signs", f"{len(signs)} pieces of street furniture "
-        f"({mapped} mapped in OSM, {len(signs) - mapped} ALTOs derived from the "
-        f"street network): {dict(sorted(by.items()))}")
+        f"({mapped} mapped in OSM, {len(signs) - mapped} derived from the street "
+        f"network and the paradas): {dict(sorted(by.items()))}")
     return signs

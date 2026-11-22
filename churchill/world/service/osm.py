@@ -102,6 +102,19 @@ def extract_roads(sp, ways, canvas_w, canvas_h):
                 r["gravel"] = 1
             if w["tags"].get("ref"):
                 r["ref"] = w["tags"]["ref"]
+            # LO QUE LA CALLE MANDA: el sentido y la velocidad que el mapeador anotó. Viajan con la
+            # calle porque de ahí salen las señales que un conductor lee en Costa Rica —UNA VÍA y NO
+            # HAY PASO en cada punta de una vía de un sentido, VELOCIDAD MÁXIMA donde OSM la dice
+            # (`service/signs.py → derive_road_signs`)— y porque el tráfico podrá usarlo después.
+            # `oneway=-1` es de un sentido CONTRA el dibujo de la vía: se emite -1 y no se da vuelta.
+            ow = (w["tags"].get("oneway") or "").lower()
+            if ow in ("yes", "true", "1"):
+                r["oneway"] = 1
+            elif ow == "-1":
+                r["oneway"] = -1
+            ms = (w["tags"].get("maxspeed") or "").split()[0] if w["tags"].get("maxspeed") else ""
+            if ms.isdigit():
+                r["maxspeed"] = int(ms)
             if w["tags"].get("bridge") == "yes" and cls != "bridge":
                 r["bridge"] = 1  # e.g. Río Barranca bridge at El Roble
             roads.append(r)

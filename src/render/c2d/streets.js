@@ -967,6 +967,7 @@ function drawSign(s) {
   // del asfalto (velocidad, cebra, tope) se queda en el piso, que es donde está.
   // el semáforo CUELGA sobre la calle: poste en la acera, brazo y cabezas (`gantry3d`)
   if (rec.gantry3d) return drawGantrySignal3d(rec.gantry3d, s);
+  if (rec.zebra && s.hw) return drawZebra(s, rec.zebra);
   if (!rec.turn && rec.stand3d) return drawPoleSign3d(rec, s.x, s.y, vars, Number.isFinite(s.ang) ? s.ang : null);
   if (!rec.turn) { paintAt(rec.parts, s.x, s.y, { g: ctx, pxPerM: PX_PER_M, prop: propParts, vars }); return; }
   const ang = (s.ang || 0) + (rec.flip === "side" && (s.side || 1) < 0 ? Math.PI : 0);
@@ -982,6 +983,23 @@ function drawSign(s) {
     prop: propParts, vars,
   });
   ctx.restore();
+}
+// LA ZEBRA, DE BORDILLO A BORDILLO (`signs.crossing.zebra`). El mundo la asienta en el eje de su calle
+// con el rumbo de la calle (`ang`) y su medio ancho (`hw`): las franjas corren A LO LARGO de la calle,
+// `lenM` de largo, y se repiten a lo ancho (`stripeM` pintado, `gapM` de asfalto) dejando `marginM` en
+// cada bordillo. Sin `hw` —una zebra de un mundo viejo— queda el dibujo fijo del registro.
+function drawZebra(s, Z) {
+  const ppm = PX_PER_M, L = Z.lenM * ppm, sw = Z.stripeM * ppm, pitch = (Z.stripeM + Z.gapM) * ppm;
+  const span = 2 * (s.hw - Z.marginM * ppm), n = Math.max(1, Math.floor((span + Z.gapM * ppm) / pitch));
+  const used = n * pitch - Z.gapM * ppm, c = Math.cos(s.ang), si = Math.sin(s.ang);
+  ctx.fillStyle = Z.ink;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const v0 = -used / 2 + i * pitch, v1 = v0 + sw;
+    const P = [[-L / 2, v0], [L / 2, v0], [L / 2, v1], [-L / 2, v1]].map(([u, v]) => [s.x + u * c - v * si, s.y + u * si + v * c]);
+    ctx.moveTo(P[0][0], P[0][1]); for (let k = 1; k < 4; k++) ctx.lineTo(P[k][0], P[k][1]);
+  }
+  ctx.fill();
 }
 // One pass over the furniture in view. `W.SIGNS` is eager in the manifest (it
 // is small), so this culls by bbox rather than by tile.

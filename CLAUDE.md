@@ -71,14 +71,14 @@ The procedure is three steps and it is not optional:
 | **de qué color es un edificio de OSM, y cómo se levanta** | `src/assets/building-styles.json`, por `cat`; su cuerpo (pisos, ventanas, techo según la forma, huellas que se pisan) en `body3d` → `structures.js → paintBuildingsInView`. Hoja: `pnpm shot:roofs` |
 | **la lluvia, sus salpicaduras y la calle encharcada** | `src/assets/hud.json` → `weather.{rain,splash,roadSplash,flood}` |
 | **cómo se ve un puesto según lo que vende** | `src/assets/world-props.json` → `landmarks["kiosk:<product>"]` |
-| **how a shadow answers the sun; how tall a building is** | `src/assets/effects.json` → `sunShadow` / `buildingHeight` |
+| **how a shadow answers the sun; how tall a building is** — y **cuánto sol hay para tirarla** (de noche, ninguna) | `src/assets/effects.json` → `sunShadow` (`phaseLight`) / `buildingHeight` |
 | **el relieve del terreno y la sombra de las nubes** | `src/assets/effects.json` → `terrainShadow` / `skyCover` (verbos: `c2d/relief.js`, `c2d/skycover.js`) |
 | what a vehicle DOES: wake, shadow, turn wind, **headlights** | `src/assets/effects.json` |
 | landmarks, signs, parcel props, scenes | `src/assets/world-props.json` |
 | the world's palettes: estero, malecón, structures, streets, weather, piers | `src/assets/materials.json` |
 | the HUD, the minimap, the crossing card, the tide bar | `src/assets/hud.json` |
 | trees and wood mixes | `src/assets/flora.json` |
-| **cómo se ve un árbol desde ARRIBA** — lóbulos, luz, palma en estrella, ramas peladas, su sombra | `src/assets/effects.json` → `flora25.topdown` (trazos: `c2d/floraTop.js`); los árboles de acera se apagan en `flora.json` → `roadside` |
+| **cómo se ve un árbol desde ARRIBA** — lóbulos, palma en estrella, ramas peladas; **en 3D**: tronco, a qué altura va cada capa de la copa, raíces del mangle, inclinación de la palmera, su sombra desde el pie | `src/assets/effects.json` → `flora25.topdown` (`kinds.*.trunkFrac/trunkWM/layerH/layerMaxR`, `byForm.*.roots`; trazos: `c2d/floraTop.js`, pinhole y sol: `c2d/flora.js → paintFlora`); los árboles de acera se apagan en `flora.json` → `roadside`. Hoja: `pnpm shot:trees3d` |
 | the feria's rides and its defaults | `src/render/c2d/feriaAssets.json` (verbs: `c2d/feriaShapes.js`); **su vista 2.5D**: `$view3d`, y por pieza `liftM`/`baseM`; lo que se MUEVE en 3D (rueda, martillo, barco, tómbola, casa del terror, escenario del DJ, carrito chocón) es una `view3d.form` con sus medidas y tintas, armada por `c2d/feriaRigs.js` sobre el aparejo `c2d/rig3d.js`; las guirnaldas cuelgan con `materials.json → feria.lighting` (`hangM`, `sagM`) |
 | spawn rates, buses, tides, the day cycle | `src/content/simulation.json` |
 | unlocks, the tutorial, **the MVP gate** | `src/content/progression.json` |
@@ -102,7 +102,7 @@ stopped being one.
 
 * **art** → a synthetic sheet, diffed: `shot-vehicles` · `shot-actors` ·
   `shot-landmarks` · `shot-signs` · `shot-parcels` · `shot-scenes` ·
-  `shot-effects` · `shot-stands` · `shot-kiosks` · `shot-lights` · `shot-feria` · `shot-rails` · `shot-roofs`, vs
+  `shot-effects` · `shot-stands` · `shot-kiosks` · `shot-lights` · `shot-feria` · `shot-rails` · `shot-roofs` · `shot-trees3d`, vs
   `tools/png-diff.mjs`. **Never diff a world scene** — the noise floor is 2 % to
   86 %. The Vite process on `:8734` is persistent: client modules, JSON and new
   imports are handled by HMR, so **do not kill it or delete
@@ -1269,6 +1269,49 @@ Three things this had to get right, and two of them cost a mistake:
   11 000) with `wnd` separating a storeyed building from a windowless shed, as a
   band table in the registry. A tag-based height needs the extractor to keep the
   tag, i.e. a rebuild.
+
+**Y DE NOCHE NO HAY SOMBRA** (`sunShadow.phaseLight`, `sun.js → sunlight`).
+`sunVector().alt` no baja de 0,16 a propósito —es un reloj de arte—, así que
+hasta el 2026-11-21 cada cosa del mundo seguía tirando su sombra a medio alpha
+en plena noche. `sunlight()` le pregunta al continuo del cielo (`skyBlend`)
+cuánto sol hay y multiplica `shadowAlpha` en `sunDirection3`: una respuesta para
+árboles, edificios, carros y gente. De día vale 1 —el arte diurno no se mueve un
+píxel y `smoke:shadows` sigue en 384/384 componentes exactos—; el último tercio
+del atardecer ya se apaga hacia la noche, y una tormenta la difumina. Una prueba
+que muestree «el atardecer» en u ≥ 0,54 va a ver una sombra lavada o ninguna, y
+eso es correcto: `smoke:sceneshadows` exige ahora que de noche NO haya tinta.
+
+**UN ÁRBOL SE LEVANTA COMO TODO LO DEMÁS** (`c2d/floraTop.js`, pinhole y sol en
+`c2d/flora.js → paintFlora`). Era una copa-calcomanía corrida 0,35 del pinhole
+mientras postes y carros se levantaban enteros, con una sombra que era la copa
+corrida por el sol, acotada para no despegarse porque nada la ataba al pie. Hoy
+son PIEZAS A UNA ALTURA: tronco del pie al arranque de la copa (`trunkFrac`),
+la copa en capas de sprite cada una a su altura (`layerH`) y corrida hacia el
+sol al blitearla, y la sombra desde el pie — la franja del tronco más la silueta
+de la copa a la altura de su centro, estirada a lo largo del sol. Tres cosas que
+costaron una captura cada una:
+
+* **la cima se topa encogiendo la altura ENTERA** (como `rig3d.makeRig`), no
+  capa por capa, o en la esquina de la pantalla todas las capas caen al mismo
+  corrimiento;
+* **una copa es un domo, no una pila**: la capa ancha va por la mitad del alto
+  (donde un domo es más ancho) y cada capa se aleja de la primera a lo sumo
+  `layerMaxR` radios — sin eso, en la esquina, pinhole más luz sacaban los
+  brillos fuera del árbol;
+* **los troncos van en su propia pasada, bajo TODAS las copas**: en orden de
+  distancia el tronco de una palmera cercana se pintaba encima de la corona de
+  la vecina. El lote es sombras → troncos → copas (de lejos a cerca).
+
+Los sprites se pintan a tamaños escalonados (2^¼) y se escalan al blitear; con
+la clave al medio píxel cada árbol del monte pedía su propio juego de lienzos.
+**Y NINGÚN SPRITE SE PONE CON `save/translate/restore`**: medido en el bosque más
+denso con la CPU frenada 4×, ese envoltorio alrededor de cada sombra costaba
+~50 ms de cuadro y un blit plano ~10. Un sprite girado o estirado compone su
+matriz con la del lienzo (`setTransform`) y la base se repone una vez. Cada
+lienzo va recortado a lo pintado: un blit cuesta su área de destino. **Y el
+tiempo por fase miente aquí**: Chrome vacía la lista de dibujo del lienzo donde
+le toca, así que `worldFlora` salta de 15 a 250 ms entre muestras sin cambiar
+nada — compará el CUADRO entero, intercalado, build contra build.
 
 **UNA ESCENA TAMBIÉN TIENE ALTURA** (`heightM` / `castsShadow` en
 `world-props.json`). Las escenas eran la mitad que faltaba: la catedral llevaba

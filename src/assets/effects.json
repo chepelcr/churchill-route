@@ -214,7 +214,7 @@
     "enabled": true,
     "heightM": 8,
     "topdown": {
-      "_note": "`byGenerator`: qué tipo de copa cenital lleva cada generador de `flora.json → forms`; uno que no está sigue en alzado. El mangle (`tidal-root-crown`) entró el 2026-11-17: era el único árbol del mundo con sombra fija (+3,+4) y un halo de barro de 1,3 copas que se leía como una sombra enorme. `kinds`: la receta de cada tipo, en fracciones del radio de la copa. `byForm`: lo que una forma cambia de su receta. `light`: de dónde viene la luz que aclara la copa (fija: el sprite se pinta una vez; la SOMBRA sí sigue al sol).",
+      "_note": "`byGenerator`: qué tipo de copa cenital lleva cada generador de `flora.json → forms`; uno que no está sigue en alzado. `kinds`: la receta de cada tipo — los lóbulos en fracciones del radio de la copa, y las PIEZAS 3D en metros o en fracciones del alto: `trunkFrac` (a qué fracción del alto arranca la copa), `trunkWM`/`trunkTaper` (grueso del tronco en el pie y cuánto se angosta), `trunkDarkK` (la mitad a la sombra del tronco, mezclada hacia `shadowInk`), `layerH` (a qué altura de la copa, 0 su arranque y 1 la cima, va cada capa del sprite: en una copa redonda la capa ancha va por la mitad, donde un domo es más ancho), `layerMaxR` (cuántos radios puede alejarse una capa de la primera, o la copa se estira como un tubo en la esquina de la pantalla) y los `*Shift` (cuánto se corre cada capa hacia el sol, en `lightR` radios). `byForm`: lo que una forma cambia de su receta. La LUZ ya no va pintada en el sprite: cada capa se corre hacia el sol al blitearla (`c2d/floraTop.js`).",
       "byGenerator": {
         "tidal-root-crown": "broadleaf",
         "crown-stack": "broadleaf",
@@ -240,18 +240,20 @@
       },
       "swaySpeed": 0.9,
       "swayRad": 0.05,
-      "parallaxK": 0.35,
+      "leanK": 1.0,
+      "_leanK": "cuánto del pinhole de los edificios se lleva un árbol (1 = el de las paredes, los postes y los carros). Era `parallaxK` 0,35: con la copa como calcomanía sin tronco, el pinhole entero la despegaba de su sombra; ahora el TRONCO la une al pie y la sombra sale del pie, así que el árbol se levanta entero como todo lo demás. La cima se topa en `parallax.maxOffsetPx` encogiendo la altura ENTERA, como `rig3d.makeRig`.",
       "variants": 4,
       "maxQ": 4,
       "cacheMax": 48,
       "shadowInk": "#10160c",
       "shadowAlpha": 0.34,
+      "shadowStretchMax": 1.8,
+      "trunkShadowTuckR": 0.8,
+      "trunkHiddenR": 0.8,
+      "lightR": 0.55,
+      "_shadow": "LA SOMBRA SALE DEL PIE (`sunShadow`, la de los edificios): la silueta de la copa a la sombra de su CENTRO, estirada a lo largo del sol por lo alto que es la copa (hasta `shadowStretchMax`), y la del tronco del pie hasta donde empieza la de la copa (`trunkShadowTuckR` radios antes de su centro, para no oscurecer la junta dos veces). El tronco no se pinta mientras su pie quede a menos de `trunkHiddenR` radios del centro de la capa ancha de la copa: ahí está entero bajo ella. Antes era la copa corrida por el sol y ACOTADA a 0,75 radios (`shadowMaxR`) para que no se despegara: sin tronco no había nada que la atara. De noche se apaga con el sol (`sunShadow.phaseLight`).",
       "kinds": {
         "broadleaf": {
-          "light": [
-            -0.55,
-            -0.6
-          ],
           "lobes": [
             6,
             8
@@ -298,13 +300,19 @@
             0.05,
             0.1
           ],
-          "branches": null
+          "branches": null,
+          "trunkFrac": 0.36,
+          "trunkWM": 0.5,
+          "trunkTaper": 0.72,
+          "trunkDarkK": 0.42,
+          "layerH": [
+            0.35,
+            0.6,
+            0.9
+          ],
+          "layerMaxR": 0.5
         },
         "palm": {
-          "light": [
-            -0.55,
-            -0.6
-          ],
           "fronds": [
             8,
             10
@@ -320,13 +328,25 @@
           ],
           "pinnae": 6,
           "pinnaW": 0.025,
-          "heartR": 0.14
+          "heartR": 0.14,
+          "trunkFrac": 0.9,
+          "trunkWM": 0.42,
+          "trunkTaper": 0.8,
+          "trunkDarkK": 0.38,
+          "layerH": [
+            0.3,
+            1.0
+          ],
+          "layerMaxR": 0.3,
+          "leanM": [
+            0.2,
+            1.4
+          ],
+          "litShift": 0.1,
+          "litWidth": 0.5,
+          "litLen": 0.86
         },
         "fan": {
-          "light": [
-            -0.55,
-            -0.6
-          ],
           "leaves": [
             6,
             8
@@ -344,23 +364,37 @@
           "pleats": 7,
           "pleatW": 0.02,
           "petioleW": 0.05,
-          "heartR": 0.16
+          "heartR": 0.16,
+          "trunkFrac": 0.82,
+          "trunkWM": 0.4,
+          "trunkTaper": 0.85,
+          "trunkDarkK": 0.38,
+          "layerH": [
+            0.5,
+            1.0
+          ],
+          "layerMaxR": 0.3,
+          "leanM": [
+            0.0,
+            0.5
+          ],
+          "litShift": 0.1,
+          "litR": 0.66,
+          "litSpread": 0.62
         },
         "conifer": {
-          "light": [
-            -0.55,
-            -0.6
-          ],
           "rings": 4,
           "points": 11,
           "innerR": 0.72,
-          "shrink": 0.62
+          "shrink": 0.62,
+          "trunkFrac": 0.12,
+          "trunkWM": 0.42,
+          "trunkTaper": 0.7,
+          "trunkDarkK": 0.42,
+          "ringShift": 0.25,
+          "layerMaxR": 0.75
         },
         "bare": {
-          "light": [
-            -0.55,
-            -0.6
-          ],
           "limbs": [
             5,
             7
@@ -387,7 +421,7 @@
           "edgeR": 0.045,
           "shine": "#d8c9a8",
           "shineAlpha": 0.45,
-          "shineShift": 0.02,
+          "shineShift": 0.06,
           "leaves": [
             "#a39553",
             "#8c8a4a",
@@ -403,11 +437,21 @@
           "leafR": [
             0.08,
             0.13
-          ]
+          ],
+          "trunkFrac": 0.45,
+          "trunkWM": 0.5,
+          "trunkTaper": 0.7,
+          "trunkDarkK": 0.4,
+          "layerH": [
+            0.35,
+            0.45,
+            1.0
+          ],
+          "layerMaxR": 0.45
         }
       },
       "byForm": {
-        "_note": "una forma que se ve distinta desde arriba: el guanacaste más ancho y abierto, el cedro con ramas asomando, el florecido con más brillo",
+        "_note": "una forma que se ve distinta desde arriba: el guanacaste más ancho y abierto, el cedro con ramas asomando, el florecido con más brillo; los mangles: arrancan la copa bajo y el rojo y el piñuela se paran en sus RAÍCES zancudas (`roots`: arcos del tronco al agua, en radios de copa y fracciones del arranque de la copa)",
         "guanacaste_umbrella": {
           "lobes": [
             8,
@@ -450,11 +494,50 @@
           ],
           "edge": "#5a2e22",
           "shine": "#e6b39b"
+        },
+        "rhizophora_tidal": {
+          "trunkFrac": 0.45,
+          "roots": {
+            "count": [
+              6,
+              9
+            ],
+            "spreadR": [
+              0.55,
+              0.9
+            ],
+            "topFrac": [
+              0.55,
+              1.0
+            ],
+            "widthM": 0.14
+          }
+        },
+        "pelliciera_tidal": {
+          "trunkFrac": 0.4,
+          "roots": {
+            "count": [
+              4,
+              6
+            ],
+            "spreadR": [
+              0.4,
+              0.7
+            ],
+            "topFrac": [
+              0.4,
+              0.8
+            ],
+            "widthM": 0.16
+          }
+        },
+        "landward_mangle_tidal": {
+          "trunkFrac": 0.3
+        },
+        "avicennia_tidal": {
+          "trunkFrac": 0.3
         }
-      },
-      "_parallaxK": "cuánto del pinhole de los edificios se lleva una copa. Entero, una copa de 11 m se iba casi su ancho hacia afuera y quedaba lejos de su sombra (que va hacia el sol): 0,35 basta para que se lea alta sin despegarse.",
-      "shadowMaxR": 0.75,
-      "_shadowMaxR": "el largo máximo de la sombra, en radios de la copa: la dirección es la del sol; el largo se acota para que la sombra quede pegada a su planta."
+      }
     }
   },
   "sunShadow": {
@@ -466,6 +549,14 @@
     "alphaAtDusk": 0.45,
     "alphaAtNoon": 1.0,
     "_alpha": "una sombra de mediodía es DURA y una de atardecer es larga y lavada. Se multiplica por el alpha propio de cada cosa, no lo reemplaza.",
+    "phaseLight": {
+      "sunny": 1.0,
+      "dawn": 0.85,
+      "sunset": 0.85,
+      "storm": 0.4,
+      "night": 0.0
+    },
+    "_phaseLight": "CUÁNTO SOL HAY PARA TIRAR UNA SOMBRA, por fase del cielo, y multiplica el alpha de TODAS (árboles, edificios, carros, gente). Antes el sol nunca se ponía para las sombras: `sunVector().alt` no baja de 0,16 a propósito, así que de noche cada cosa seguía tirando su sombra a medio alpha bajo el tinte azul — y una copa con sombra de sol en plena noche se lee como un error. Se pregunta a `skyBlend()`, el dueño del continuo (la misma pregunta que `skyCover.phaseLight` le hace para las nubes), así que la sombra se APAGA al anochecer en vez de cortarse, y un cielo de tormenta la difumina. De día (`sunny`) vale 1: el arte diurno no cambia un píxel.",
     "squashY": 0.62,
     "_squashY": "el mundo se ve desde arriba pero no en planta pura: la componente norte-sur de la sombra se acorta, o al mediodía se vería la sombra tan larga hacia el sur como hacia el este.",
     "color": "0,0,0",

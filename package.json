@@ -41,6 +41,7 @@
     "shot:kiosks": "node tools/shot-kiosks.mjs",
     "shot:rails": "node tools/shot-rails.mjs",
     "shot:roofs": "node tools/shot-roofs.mjs",
+    "shot:trees3d": "node tools/shot-trees3d.mjs",
     "smoke:railway": "node tools/smoke-railway.mjs",
     "shot:railway": "node tools/shot-railway.mjs"
   },

@@ -11,9 +11,27 @@
 // object consequently casts along `(-x/z, -y/z)` in Three, which is
 // `(-x/z, +y/z)` after converting its Y back to Canvas' downward axis.
 import EFFECTS from "../assets/effects.json" with { type: "json" };
-import { sunVector } from "../game/daynight.js";
+import { skyBlend, sunVector } from "../game/daynight.js";
 
 const SUN = EFFECTS.sunShadow;
+
+/**
+ * CUÁNTO SOL HAY PARA TIRAR UNA SOMBRA, 0..1 (`sunShadow.phaseLight`).
+ *
+ * `sun.alt` no baja de 0,16 a propósito —es un reloj de arte, no la altura del
+ * sol—, así que sin esto la noche seguía tirando sombras a medio alpha. Sale del
+ * continuo del cielo (`skyBlend`), no del nombre del clima: la sombra se apaga al
+ * anochecer al mismo ritmo con el que el suelo se pone azul, y una tormenta la
+ * difumina. Una fase que el registro no nombra vale 1.
+ */
+export function sunlight() {
+  const L = SUN.phaseLight;
+  if (!L) return 1;
+  const { from, to, k, storm = 0 } = skyBlend();
+  const w = (phase) => (L[phase] != null ? L[phase] : 1);
+  const base = w(from) + (w(to) - w(from)) * k;
+  return base + (w("storm") - base) * storm;
+}
 
 /**
  * The shared surface-to-sun direction.
@@ -21,8 +39,10 @@ const SUN = EFFECTS.sunShadow;
  * `x/y/z` is unit length. `elevationRad` is derived from that same ray rather
  * than from `sun.alt`: the latter is an art clock, not physical solar altitude.
  * The object is deliberately a six-field renderer-neutral contract.
+ * `light` is how much sun there is to cast with (`sunlight()`): it scales
+ * `shadowAlpha` only, so a night shadow keeps its direction and loses its ink.
  */
-export function sunDirection3(sun = sunVector()) {
+export function sunDirection3(sun = sunVector(), light = sunlight()) {
   const reach = SUN.reachAtNoon + (1 - sun.alt)
     * (SUN.reachAtDusk - SUN.reachAtNoon);
   const rawX = -sun.x * reach;
@@ -36,8 +56,8 @@ export function sunDirection3(sun = sunVector()) {
     y,
     z,
     reach,
-    shadowAlpha: SUN.alphaAtDusk
-      + sun.alt * (SUN.alphaAtNoon - SUN.alphaAtDusk),
+    shadowAlpha: (SUN.alphaAtDusk
+      + sun.alt * (SUN.alphaAtNoon - SUN.alphaAtDusk)) * light,
     elevationRad: Math.atan2(z, Math.hypot(x, y)),
   };
 }

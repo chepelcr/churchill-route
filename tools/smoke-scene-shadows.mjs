@@ -52,7 +52,10 @@ const out = await page.evaluate(async () => {
   Object.defineProperty(WORLD2D, "PARCELS", { value: [P], configurable: true });
 
   const rows = [];
-  for (const u of [0.06, 0.25, 0.44, 0.62]) {
+  // tres horas de SOL y una de noche (la noche es 0,60–0,88 en `simulation.json`; el último tercio del
+  // atardecer ya se va apagando hacia ella, por eso no se muestrea): de noche no hay
+  // sol que tire sombra (`sunShadow.phaseLight`), así que ahí la catedral no puede dejar tinta
+  for (const u of [0.06, 0.25, 0.44, 0.74]) {
     dn.setDayCycle(true, u);
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.fillStyle = "#cfb27a"; g.fillRect(0, 0, cv.width, cv.height);
@@ -77,8 +80,10 @@ await browser.close();
 if (errors.length) { console.error("[sweep] page errors:", errors.join(" | ")); process.exit(1); }
 for (const r of out)
   console.log(`  u=${r.u}  sun.x=${String(r.sunX).padStart(7)} alt=${r.alt}  ink centroid (${r.cx}, ${r.cy})  ${r.px}px`);
-const cxs = out.map((r) => r.cx).filter((v) => v != null);
-if (cxs.length < out.length) { console.error("[sweep] FAIL — the scene drew no shadow ink at some hour"); process.exit(1); }
+const day = out.filter((r) => r.u < 0.6), night = out.filter((r) => r.u >= 0.6);
+const cxs = day.map((r) => r.cx).filter((v) => v != null);
+if (cxs.length < day.length) { console.error("[sweep] FAIL — the scene drew no shadow ink at some daylight hour"); process.exit(1); }
+if (night.some((r) => r.px > 0)) { console.error("[sweep] FAIL — the scene still throws a shadow at night"); process.exit(1); }
 const sweep = Math.max(...cxs) - Math.min(...cxs);
 console.log(sweep > 2
   ? `[sweep] ok — la sombra de la catedral barre ${sweep.toFixed(1)} px a lo largo del día`

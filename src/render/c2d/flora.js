@@ -16,13 +16,13 @@
 import { WORLD2D as W } from "../../world2d/index.js";
 import { SURFACE } from "../../game/surfaces.js";
 import { state } from "../../game/state.js";
-import { ACERA_PX, ctx, flatPath, hash01, textureScale } from "./gfx.js";
-import { paintTopdown, topdownKind } from "./floraTop.js";
+import { ACERA_PX, ctx, flatPath, hash01, mixColor, textureScale } from "./gfx.js";
+import { paintTopdown, topdownKind, topdownRecipe } from "./floraTop.js";
 import FLORA from "../../assets/flora.json" with { type: "json" };
 import EFFECTS from "../../assets/effects.json" with { type: "json" };
 import { sunVector } from "../../game/daynight.js";
 import { sunShadow } from "./shadows.js";
-import { parallaxOffset } from "./depth.js";
+import { depthKey, parallaxOffset } from "./depth.js";
 import {
   floraSeed, paintFloraSpecies, resolveFloraMixSpecies,
 } from "./floraShapes.js";
@@ -96,31 +96,32 @@ export function onFeriaDeck(x, y, margin = 32) {
   return false;
 }
 
-// ───────────────────────── el árbol, visto desde arriba ─────────────────────────
-// VISTA CENITAL, COMO TODO LO DEMÁS. La cámara mira a plomo, así que de un
-// árbol no se ve el tronco: se ve su COPA desde arriba y su SOMBRA en el suelo,
-// que es la silueta de esa copa corrida por el sol. Lo pinta `floraTop.js`; acá
-// sólo se decide dónde va cada cosa:
+// ───────────────────────── el árbol, en 3D desde arriba ─────────────────────────
+// VISTA CENITAL, COMO TODO LO DEMÁS, Y CON CUERPO COMO TODO LO DEMÁS. Lo pinta `floraTop.js` por
+// piezas —tronco, capas de copa, sombra—; acá sólo se resuelve dónde va cada una:
 //
-// * la copa se corre con el MISMO pinhole que la tapa de un edificio, según la
-//   altura de la especie (`heightM`), así un árbol junto a una casa se inclina
-//   igual que ella — sin tronco que lo delate;
-// * la sombra sale del PIE y la corre `sunShadow(alto)`, el sol de todos: un
-//   árbol y la casa de al lado la tiran hacia el mismo lado y del largo que les
-//   da su altura.
+// * el PINHOLE de los edificios, el mismo de los postes y los carros: `parallaxOffset` a la altura de
+//   la cima, y si pasa del tope se encoge TODA la altura por el mismo factor (como `rig3d.makeRig`),
+//   así el tronco y las capas conservan su proporción y la cima cae donde caería la tapa de un
+//   edificio de ese alto. Se reparte por metro (`lift`) y `floraTop` lo multiplica por cada altura;
+// * el SOL de todos (`sunShadow(1)`, por metro): la sombra sale del pie, y de noche no hay
+//   (`sun.js → sunlight`);
+// * hacia dónde está la luz (`light`), para que las capas claras de la copa miren al sol de verdad.
 //
-// Las formas sin versión cenital (`flora25.topdown.byGenerator` dice cuáles la
-// tienen: hoy todas menos el mangle, que tiene su propio pintor) siguen en alzado.
+// Las formas sin versión cenital (`flora25.topdown.byGenerator` dice cuáles la tienen) siguen en alzado.
 const F25 = EFFECTS.flora25;
 const TOP = F25.topdown;
+const UNCAPPED = { ...(EFFECTS.parallax || {}), maxOffsetPx: 0 };
+const CAP = (EFFECTS.parallax || {}).maxOffsetPx || 0;
 
-// LA SOMBRA NO SE DESPEGA DE SU PLANTA. Una palmera de 11 m al atardecer tira su copa a quince metros
-// del pie, y con la copa corrida hacia el otro lado por el pinhole quedaban dos plantas: la de verde y
-// la de sombra. Se conserva la DIRECCIÓN del sol; el LARGO se acota a una fracción de la copa.
-function castShadow(sh, max) {
-  const L = Math.hypot(sh.dx, sh.dy);
-  if (L <= max || L < 0.01) return sh;
-  return { ...sh, dx: sh.dx * max / L, dy: sh.dy * max / L };
+/** Las tintas del tronco y de las raíces de una especie, resueltas una vez: el tronco al sol es su
+ *  `trunk`, el de la sombra esa misma tinta hacia la de las sombras; el mangle no trae `trunk` y su
+ *  corteza son sus raíces (`roots`, "r,g,b"). */
+function trunkInks(sp, P) {
+  if (sp._inks3d) return sp._inks3d;
+  const roots = sp.roots ? `rgb(${sp.roots})` : null;
+  const trunk = sp.trunk || roots || TOP.shadowInk;
+  return (sp._inks3d = { trunk, trunkDark: mixColor(trunk, TOP.shadowInk, P.trunkDarkK ?? 0.4), roots: roots || trunk });
 }
 
 function paintFlora(sp, frame) {
@@ -129,31 +130,71 @@ function paintFlora(sp, frame) {
     standing(ctx, frame.x, frame.y, (solar) => paintFloraSpecies(ctx, sp, form, { ...frame, solar }));
     return;
   }
-  const { x, y, s } = frame, h = (sp.heightM || F25.heightM) * s;
-  const o = parallaxOffset(state.cam, x, y, h, W.PX_PER_M);
+  const P = topdownRecipe(TOP, kind, sp.form);
+  const { x, y, s } = frame, ppm = W.PX_PER_M, hTop = (sp.heightM || F25.heightM) * s;
+  const hBase = hTop * (P.trunkFrac ?? 0.4);
+  // el pinhole: medido sin tope a la cima, y si pasa del tope se encoge la altura entera
+  const leanK = TOP.leanK ?? 1;
+  const raw = parallaxOffset(state.cam, x, y, hTop, ppm, UNCAPPED), rawLen = Math.hypot(raw.dx, raw.dy) * leanK;
+  const k = (CAP > 0 && rawLen > CAP ? CAP / rawLen : 1) * leanK / (hTop || 1);
+  // el sol es el mismo para todo el lote: se pregunta una vez (`sunShadow` recorre el cielo entero)
+  const sun = batch ? (batchSun ||= sunShadow(1)) : sunShadow(1), sl = Math.hypot(sun.dx, sun.dy) || 1;
+  // LA INCLINACIÓN es de la planta, no de la cámara: una palmera costera no crece a plomo. Fija por su
+  // semilla, en metros (`leanM`), hacia un lado cualquiera
+  let lean = null;
+  if (P.leanM) {
+    const a = hash01(frame.seed * 9.7 + 0.3) * Math.PI * 2, m = (P.leanM[0] + (P.leanM[1] - P.leanM[0]) * hash01(frame.seed * 4.9 + 1.1)) * s * ppm;
+    lean = { dx: Math.cos(a) * m, dy: Math.sin(a) * m };
+  }
   const spin = TOP.spin[kind] && frame.tMs != null ? Math.sin(frame.tMs * 0.001 * TOP.swaySpeed + (frame.phase || 0)) * TOP.swayRad : 0;
   const args = {
-    x, y, s, seed: frame.seed, q: textureScale(), spin,
-    crown: { dx: o.dx * TOP.parallaxK, dy: o.dy * TOP.parallaxK },
-    shadow: castShadow(sunShadow(h), sp.r * s * TOP.shadowMaxR),
+    x, y, s, seed: frame.seed, q: textureScale(), spin, ppm, hTop, hBase, lean,
+    lift: { dx: raw.dx * k, dy: raw.dy * k },
+    sun,
+    light: { x: -sun.dx / sl, y: -sun.dy / sl },
+    inks: trunkInks(sp, P),
   };
-  if (batch) { batch.push([sp, form, kind, args]); return; }
-  paintTopdown(ctx, TOP, sp, form, kind, args);
+  if (batch) { batch.push([sp, kind, P, args]); return; }
+  paintTopdown(ctx, TOP, sp, kind, P, args);
 }
 
 // EL LOTE: NINGUNA SOMBRA ENCIMA DE OTRO ÁRBOL. Pintados uno por uno, la sombra del segundo caía
 // sobre la copa del primero. Entre `beginFloraBatch` y `endFloraBatch` los árboles se juntan y se
-// pintan en dos pasadas: todas las sombras —que son suelo— y después todas las copas.
-let batch = null;
-export function beginFloraBatch() { batch = []; }
+// pintan en tres pasadas: todas las sombras —que son suelo—, todos los troncos y después todas las
+// copas, DE LEJOS A CERCA como los edificios (`depthKey`): con el tronco y las capas levantadas, la copa de uno que
+// está más cerca de la cámara tapa a la del que está más lejos, y no al revés. Las sombras de los
+// troncos van en UN camino y un relleno: donde dos se cruzan no se oscurece dos veces.
+let batch = null, batchSun = null;
+export function beginFloraBatch() { batch = []; batchSun = null; }
 /** Abre un lote si no hay uno abierto; devuelve si lo abrió (y entonces le toca cerrarlo). */
-function beginFloraBatchIfIdle() { if (batch) return false; batch = []; return true; }
+function beginFloraBatchIfIdle() { if (batch) return false; batch = []; batchSun = null; return true; }
 export function endFloraBatch() {
   const list = batch;
   batch = null;
   if (!list || !list.length) return;
-  for (const [sp, form, kind, args] of list) paintTopdown(ctx, TOP, sp, form, kind, { ...args, only: "shadow" });
-  for (const [sp, form, kind, args] of list) paintTopdown(ctx, TOP, sp, form, kind, { ...args, only: "crown" });
+  const sun = list[0][3].sun, base = ctx.getTransform();
+  if (sun.alpha > 0.002) {
+    const trunks = new Path2D(), prev = ctx.globalAlpha;
+    ctx.globalAlpha = prev * sun.alpha * TOP.shadowAlpha;
+    for (const [sp, kind, P, args] of list) paintTopdown(ctx, TOP, sp, kind, P, { ...args, only: "shadow", trunkShadows: trunks, base, shadowAlphaSet: true });
+    ctx.fillStyle = TOP.shadowInk; ctx.fill(trunks);
+    ctx.globalAlpha = prev;
+  }
+  const cam = state.cam;
+  for (const it of list) it.push(depthKey(cam, it[3].x, it[3].y));
+  list.sort((a, b) => a[4] - b[4]);
+  // los troncos y las raíces, todos antes que cualquier copa: están ABAJO de todas, y en orden de
+  // distancia el tronco de una palmera cercana se pintaba encima de la corona de la de al lado
+  const trunkPaths = new Map();
+  for (const [sp, kind, P, args] of list) paintTopdown(ctx, TOP, sp, kind, P, { ...args, only: "trunk", trunkPaths });
+  // las raíces primero (salen de abajo del tronco), después la mitad oscura de cada tronco y encima la clara
+  const groups = [...trunkPaths.values()], order = { roots: 0, dark: 1, lit: 2 };
+  groups.sort((a, b) => order[a.kind] - order[b.kind]);
+  for (const e of groups) {
+    if (e.kind === "roots") { ctx.strokeStyle = e.ink; ctx.lineWidth = e.width; ctx.lineCap = "round"; ctx.stroke(e.path); }
+    else { ctx.fillStyle = e.ink; ctx.fill(e.path); }
+  }
+  for (const [sp, kind, P, args] of list) paintTopdown(ctx, TOP, sp, kind, P, { ...args, only: "crown", base });
 }
 
 /** Draw one tree of any species. `tr.k` names it; no `k` is the almendro. */

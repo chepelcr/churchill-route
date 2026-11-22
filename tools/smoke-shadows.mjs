@@ -62,8 +62,10 @@ const out = await page.evaluate(async () => {
       return {
         dx: oldSun.x * reach,
         dy: oldSun.y * reach * model.squashY,
-        alpha: model.alphaAtDusk
-          + oldSun.alt * (model.alphaAtNoon - model.alphaAtDusk),
+        // …times how much sun there is to cast with (`sunShadow.phaseLight`): 1 by day, so the
+        // daytime components stay the same IEEE-754 values, and 0 at night.
+        alpha: (model.alphaAtDusk
+          + oldSun.alt * (model.alphaAtNoon - model.alphaAtDusk)) * solar.sunlight(),
       };
     };
     for (const [heightM, actual] of [[1.7, person], [16, block]]) {

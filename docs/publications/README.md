@@ -14,6 +14,7 @@ separaron el 2026-08-17, porque son dos cosas distintas:
 
 | archivo | estado | de qué habla |
 |---|---|---|
+| `2026-11-12-las-playitas.md` | 📝 preparada, sin publicar | afiche y brochure con tres versiones de Las Playitas |
 | `2026-07-24-puntarenas-real.md` | ✅ **PUBLICADA** | 1160 negocios reales con nombre, 308 huellas reales |
 | `2026-07-25-catedral.md` | 📝 escrita, sin publicar | la cuadra de la Catedral |
 | `2026-07-25-estadios.md` | 📝 escrita, sin publicar | las tres canchas |
@@ -80,6 +81,6 @@ Las publicaciones anteriores conservan el formato de julio —tres largos:
 `img/`, capturadas **en juego** y no del render de depuración — son para
 jugadores.
 
-**Hoy la carpeta está vacía**: sólo tiene este aviso. Las cuatro publicaciones de
-julio referencian doce imágenes que nunca se tomaron, así que sus enlaces están
-rotos. Cada archivo lleva al final la lista de las que le faltan.
+`img/2026-11-12-las-playitas/` contiene las tres versiones de Las Playitas,
+el afiche y el brochure comparativo. Las cuatro publicaciones de julio aún
+referencian doce imágenes pendientes; cada archivo lleva al final su lista.

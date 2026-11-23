@@ -346,7 +346,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     const toScreen = (wx, wy) => worldToScreen(camera, wx, wy);
     drawNightLights(vw, vh, view, C.tint, toScreen, lit);
     drawFeriaNightEffects(view, t, toScreen, camera.zoom);
-    drawPuntaNight(view, t, toScreen, camera.zoom, nightLevel());   // el haz del Faro
+    drawPuntaNight(camera, t, toScreen, nightLevel());   // el haz del Faro
   } else {
     ctx.fillStyle = C.tint; ctx.fillRect(0, 0, vw, vh);
   }

@@ -132,6 +132,44 @@ class HistoricRegistry(unittest.TestCase):
         self.assertLess(mod.BAY_V0, mod.MAIN_V0 - 3, "la bahía sale varios metros adelante de la cara del bloque")
         self.assertGreater(mod.GAP, 0, "el autor pidió concreto entre la acera de Calle 4 y la bomba")
 
+    def test_the_ice_factory_roof_meets_the_matadero_shed(self):
+        tiers = self.props["bodies"]["matadero_muro"]["tiers"]
+        factory = [tier for tier in tiers if tier.get("roof", {}).get("ink") == "mtNeighborRoof"]
+        shed = [tier for tier in tiers if tier.get("facet") and tier.get("ink") == "mtLeanTo"]
+        self.assertEqual(len(factory), 1, "la cubierta roja lleva una sola cumbrera")
+        self.assertEqual(len(shed), 1, "el cobertizo sigue el cambio de ancho en un solo faldón")
+        factory_eave = factory[0]["at"][1] - factory[0]["box"][1] / 2
+        self.assertLessEqual(factory_eave, max(v for _, v, _ in shed[0]["facet"]),
+                             "el alero de la fábrica solapa el cobertizo sin dejar una franja descubierta")
+        white = next(tier for tier in tiers if any(op["ink"] == "mtNeighborBand" for op in tier.get("openings", [])))
+        factory_end = factory[0]["at"][0] - factory[0]["box"][0] / 2
+        white_end = max(u for u, _ in white["poly"])
+
+        # En una pantalla 16:9 el encuentro puede verse a media pantalla de la cámara.
+        camera_height = load("src", "assets", "effects.json")["parallax"]["cameraHeightM"]
+        view_width = load("src", "assets", "world-units.json")["camera"]["viewWidthM"]
+        half_view_depth = view_width * 9 / 32
+        factory_eave_height = factory[0]["z"][1]
+        factory_ridge = factory_eave_height + factory[0]["roof"]["riseM"]
+        self.assertLess(white_end, factory_end - half_view_depth * factory_ridge / camera_height,
+                        "desde el norte, la cumbrera proyectada queda antes del pie del muro blanco")
+        white_top_from_south = white_end + half_view_depth * white["z"][1] / camera_height
+        factory_eave_from_south = factory_end + (half_view_depth + factory_end - white_end) * factory_eave_height / camera_height
+        self.assertLess(white_top_from_south, factory_eave_from_south,
+                        "desde la avenida, quedan separados el techo plano y el alero rojo")
+
+    def test_the_inner_slope_of_the_matadero_nave_is_continuous(self):
+        mod = load_tool("gen_matadero_body")
+        tiers = self.props["bodies"]["matadero_muro"]["tiers"]
+        ridge_v = round(mod.RIDGE_V - mod.OMV, 2)
+        slopes = [tier["facet"] for tier in tiers if tier.get("facet") and tier.get("ink") == "mtRoof"
+                  and min(v for _, v, _ in tier["facet"]) >= ridge_v]
+        self.assertEqual(len(slopes), 1, "un faldón entero entre la cumbrera y el cobertizo")
+        self.assertEqual(len(slopes[0]), 4, "el faldón va de un extremo de la nave al otro")
+        eave_depths = [v for _, v, z in slopes[0] if z == mod.EAVE_Z]
+        rear_v = round(mod.REAR_EAVE - mod.OMV, 2)
+        self.assertEqual(eave_depths, [rear_v, rear_v], "el alero va paralelo a la cumbrera")
+
     def test_the_body_verbs_have_their_knobs(self):
         centro = self.mat["centro"]
         rolls = [T for T in self.props["bodies"]["acon"]["tiers"] if T.get("roll")]

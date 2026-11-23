@@ -62,6 +62,8 @@ FB, FM = EH.frame_of(_W, PH), EH.frame_of(_W, PM)
 FM["useSlope"] = PM.get("sideSlope", 0.0)
 WALL_T, WALL_V = WA["thickM"], 0.45                  # el grueso del muro; su eje, a 0,45 m de la acera de Calle 10
 CORNER_R, LAWN = WA["cornerRM"], WA["lawnM"]
+HALL_SETBACK = HA["setbackM"]
+GATE_FRONT = 0.3                                     # retiro del portón respecto a la fachada
 
 
 def _uv(F, x, y, slope=0.0):
@@ -72,27 +74,30 @@ def _uv(F, x, y, slope=0.0):
     return dx * ux + dy * uy - slope * v, v
 
 
-def _cross_u(F_line, F_on, v_on, slope_on=0.0):
-    """la `u` de `F_on` (a `v_on` fija) donde su recta corta la línea v = 0 de `F_line`"""
+def _cross_u(F_line, F_on, v_on, slope_on=0.0, v_line=0.0):
+    """la `u` de `F_on` (a `v_on` fija) donde su recta corta la línea `v_line` de `F_line`"""
     a = EH.at(_W, {**F_on, "useSlope": slope_on}, 0.0, v_on)
     b = EH.at(_W, {**F_on, "useSlope": slope_on}, 100.0, v_on)
     da = _uv(F_line, *a)[1]
     db = _uv(F_line, *b)[1]
-    return 100.0 * da / (da - db)
+    return 100.0 * (da - v_line) / (da - db)
 
 
-U_FACADE = r2(_cross_u(FB, FM, WALL_V, FM["useSlope"]))   # en el recinto: la u de la línea de la fachada
-_px = EH.at(_W, FM, U_FACADE, WALL_V)
+U_KERB = _cross_u(FB, FM, WALL_V, FM["useSlope"])
+U_FACADE = r2(_cross_u(FB, FM, WALL_V, FM["useSlope"], HALL_SETBACK))
+U_GATE = _cross_u(FB, FM, WALL_V, FM["useSlope"], HALL_SETBACK + GATE_FRONT)
+_px = EH.at(_W, FM, U_GATE, WALL_V)
 U_GATE_E = r2(_uv(FB, *_px)[0])                           # en el salón: la u (negativa) del muro del recinto
 
 # ═════════════════════════════════════ EL SALÓN DE 1901 ═════════════════════════════════════
 LU, LV = PH["lotM"]
 OU, OV = LU / 2, LV / 2
 BH = lambda u, v: [r2(u - OU), r2(v - OV)]
+HB = lambda u, v: BH(u, v + HALL_SETBACK)
 
 
 def qh(u0, v0, u1, v1):
-    return [BH(u0, v0), BH(u1, v0), BH(u1, v1), BH(u0, v1)]
+    return [HB(u0, v0), HB(u1, v0), HB(u1, v1), HB(u0, v1)]
 
 
 GATE_W = 2.6                                          # la punta del este: el portón del costado (sigue al este, fuera del lote)
@@ -107,7 +112,7 @@ Z_FASCIA = HA["fasciaM"]
 Z_WALL, Z_RIDGE = HA["wallM"], HA["ridgeM"]
 Z_EAVE = Z_FASCIA[1]
 FW = 0.7                                              # el grueso de la fachada: la nave arranca detrás
-HV1 = r2(LV - 0.4)                                    # el muro del fondo
+HV1 = r2(LV - 0.4 - HALL_SETBACK)                     # conserva el muro del fondo antes del estero
 hall_tiers, hall_low = [], []
 
 
@@ -166,11 +171,11 @@ hall_tiers.append(note({"poly": qh(AU0 - 0.12, -0.07, AU1 + 0.12, 1.07), "z": [f
 PD = FA["pediment"]
 PU0, PU1 = fu(PD["x"][1]), fu(PD["x"][0])
 Z_PED = [fz(A["corniceY"][0]), fz(PD["baseY"])]
-hall_tiers.append(note({"box": [r2(PU1 - PU0), 0.8], "at": BH(avg(PU0, PU1), 0.5), "z": Z_PED, "wall": "mtTrim", "cap": "mtTrim",
+hall_tiers.append(note({"box": [r2(PU1 - PU0), 0.8], "at": HB(avg(PU0, PU1), 0.5), "z": Z_PED, "wall": "mtTrim", "cap": "mtTrim",
                         "roof": {"kind": "gable", "axis": "y", "riseM": r2(fz(PD["apexY"]) - Z_PED[1]), "ink": "mtTrim", "ink2": "mtWall"}},
                        "el frontón, con su punta hacia la calle", True))
 D = FA["date"]
-hall_tiers.append(note({"box": [r2((D["x"][1] - D["x"][0]) / PXF * SF), 0.3], "at": BH(fu(avg(*D["x"])), 0.45),
+hall_tiers.append(note({"box": [r2((D["x"][1] - D["x"][0]) / PXF * SF), 0.3], "at": HB(fu(avg(*D["x"])), 0.45),
                         "z": [r2(fz(PD["apexY"]) - 0.02), fz(D["y"][0])], "wall": "mtTrim", "cap": "mtTrim", "decal": {"edges": [0], "key": "anio"}},
                        "la placa con el año sobre la punta del frontón: dice 1901 (`parcels.byId.hist_matadero.inks._decal_anio`)", True))
 
@@ -192,7 +197,7 @@ E_, W_, S_, N_ = RO[0], RO[2], RO[1], RO[3]
 rE, rW, rS, rN = ru(HA["ridge"]["x"][1]), ru(HA["ridge"]["x"][0]), rv(HA["ridge"]["y"][1]), rv(HA["ridge"]["y"][0])
 cE, cW, cS, cN = ru(HA["court"]["x"][1]), ru(HA["court"]["x"][0]), rv(HA["court"]["y"][1]), rv(HA["court"]["y"][0])
 e, R = Z_EAVE, Z_RIDGE
-F3 = lambda u, v, z: [*BH(u, v), z]
+F3 = lambda u, v, z: [*HB(u, v), z]
 outer = {"sur": [F3(E_, S_, e), F3(W_, S_, e), F3(rW, rS, R), F3(rE, rS, R)],
          "oeste": [F3(W_, S_, e), F3(W_, N_, e), F3(rW, rN, R), F3(rW, rS, R)],
          "norte": [F3(W_, N_, e), F3(E_, N_, e), F3(rE, rN, R), F3(rW, rN, R)],
@@ -207,7 +212,7 @@ for i, (side, pts) in enumerate(outer.items()):
     if side == "norte":
         # EL NOMBRE sobre el faldón del fondo, en vez de una píldora (como la ACON y el DJ): el de adelante lo
         # tapa el ático. `u` corre al oeste, así que las letras se giran media vuelta para leerse desde la calle
-        t["capText"] = {"lines": ["ANTIGUO MATADERO", "MUNICIPAL"], "atM": BH(avg(rE, rW), NAME_V), "zM": r2(avg(e, R)),
+        t["capText"] = {"lines": ["ANTIGUO MATADERO", "MUNICIPAL"], "atM": HB(avg(rE, rW), NAME_V), "zM": r2(avg(e, R)),
                         "heightM": 0.95, "maxWM": r2(avg(rW - rE, W_ - E_) - 1.0), "ink": "mtFascia", "rotDeg": 180}
     hall_tiers.append(note(t, "EL TECHO (el satélite): de los cuatro aleros sube a una cumbrera en ANILLO y baja otra vez a un patio de luz — ocho faldones de zinc gris. Éste es uno de los cuatro de afuera", i == 0))
 for i, pts in enumerate(inner.values()):
@@ -221,17 +226,17 @@ gl = r2(U_GATE_E - WALL_T / 2)
 g_mid = avg(gl + 0.6, HU0)
 gops = [{"edge": 0, "f": on_edge(gl, HU0, g_mid - SG["wM"] / 2, g_mid + SG["wM"] / 2), "z": [0.05, SG["zM"]], "ink": "mtSideGate"},
         {"edge": 0, "f": on_edge(gl, HU0, g_mid - SG["wM"] / 2, g_mid + SG["wM"] / 2), "z": SG["grilleZM"], "ink": "mtIron"}]
-hall_tiers.append(note({"poly": qh(gl, 0.3, HU0, 0.3 + WALL_T), "z": [0, WA["heightM"]], "wall": "mtWall", "cap": "mtTrim",
+hall_tiers.append(note({"poly": qh(gl, GATE_FRONT, HU0, GATE_FRONT + WALL_T), "z": [0, WA["heightM"]], "wall": "mtWall", "cap": "mtTrim",
                         "bands": [[r2((WA["heightM"] - 0.18) / WA["heightM"]), 1.0, "mtTrim"]], "openings": gops},
                        "EL PORTÓN DEL COSTADO, al este de la fachada y un poco atrás (la vista de calle y la del muro, donde sale en escorzo al fondo): portón negro con su reja encima, en un muro más bajo que llega hasta el muro del recinto", True))
-hall_tiers.append(note({"box": [0.6, 0.6], "at": BH(gl + 0.3, 0.3 + WALL_T / 2), "z": [0, r2(WA["heightM"] + 0.3)], "wall": "mtWall", "cap": "mtTrim"},
+hall_tiers.append(note({"box": [0.6, 0.6], "at": HB(gl + 0.3, GATE_FRONT + WALL_T / 2), "z": [0, r2(WA["heightM"] + 0.3)], "wall": "mtWall", "cap": "mtTrim"},
                        "el pilar de la esquina, donde el muro del recinto dobla hacia el sur por Calle 10", True))
 
 hall = {
     "_note": "EL ANTIGUO MATADERO MUNICIPAL (1901), el salón que cierra la punta de Calle 10: la fachada mira al sur, por Calle 10 abajo —sus dos portones en arco, el de madera gris bajo su abanico y el de reja negra, la hornacina, los paños color durazno, y arriba el ático con el círculo blanco, el frontón y la placa de 1901—; detrás, el salón bajo un techo de zinc gris en anillo alrededor de su patio de luz, con la cenefa anaranjada; al este, el portón negro del costado, donde el muro del recinto dobla por Calle 10. CALCADO de sus imágenes (`tools/matadero_trace.json`); lo escribe `tools/gen_matadero_body.py`. El recinto es `bodies.matadero_muro`.",
     "perspective": True,
     "tiers": hall_tiers, "low": hall_low, "placeM": [0, 0],
-    "ground": {"polyM": [BH(-0.3, -0.3), BH(LU + 0.3, -0.3), BH(LU + 0.3, LV + 0.3), BH(-0.3, LV + 0.3)], "ink": "mtYard",
+    "ground": {"polyM": [BH(-0.3, -0.3), BH(LU + 1.0, -0.3), BH(LU + 1.0, LV + 0.3), BH(-0.3, LV + 0.3)], "ink": "mtYard",
                "_": "el piso de todo el lote —la acera delante de la fachada, el pasillo detrás del portón del costado—, metido 0,3 m bajo la acera de la avenida para que en el borde no asome una raya de tierra"},
 }
 if not hall["low"]:
@@ -284,78 +289,136 @@ for kind, w in WA["avenue"]:
 NB0 = r2(av_hi + 0.15)                                # donde empieza el vecino de la avenida
 tiers.append(note({"poly": qm(LAWN, av_lo, LAWN + WALL_T, av_hi), "z": [0, WH], "wall": "mtWall", "cap": "mtTrim", "bands": COPING, "openings": ops},
                   "EL MURO DE LA AVENIDA (la vista de la avenida): círculo, arco y círculo ciegos, color durazno con su borde blanco, detrás de la grama", True))
-# el muro de Calle 10: la secuencia de la esquina al portón del costado, con el cuerpo de la ventana en medio
-seq = WA["calle10"]
-L_REAL = sum(w for _, w in seq)
-c10_lo, c10_hi = CU, U_FACADE
-SW = (c10_hi - c10_lo) / L_REAL                       # metros del lote por metro de verdad
-pieces, at_, win = [[c10_lo, None, []]], c10_lo, None
-for kind, w in seq:
-    a, b = at_, at_ + w * SW
-    if kind == "window":
-        pieces[-1][1] = a
-        win = (r2(a), r2(b))
-        pieces.append([b, None, []])
-    else:
-        pieces[-1][2].append((a, b, kind))
-    at_ = b
-pieces[-1][1] = r2(U_FACADE + 0.3 + WALL_T)
-for i, (u0, u1, bays) in enumerate(pieces):
-    ops = []
-    for (a, b, kind) in bays:
-        ops += bay_ops(0, u0, u1, a, b, kind)
-    tiers.append(note({"poly": qm(r2(u0), r2(WALL_V - WALL_T / 2), r2(u1), V_IN), "z": [0, WH], "wall": "mtWall", "cap": "mtTrim", "bands": COPING, "openings": ops},
-                      "EL MURO DE CALLE 10 (las vistas de Calle 10): círculos y arcos ciegos con paños lisos entre ellos, de la esquina redonda al portón del costado del salón; al norte de la curva sigue FUERA del lote, por el borde del suelo de la Fábrica de Hielo", i == 0))
-# el cuerpo de la ventana grande: la punta de la nave larga que llega al muro, más alta que él
-WN = WA["window"]
-NV0, NV1 = r2((CA["nave"]["x"][0] - CA["wallLineX"]) / CA["pxPerM"] + WALL_V), r2((CA["nave"]["x"][1] - CA["wallLineX"]) / CA["pxPerM"] + WALL_V)
-wc = avg(*win)
-gw = WN["glassWM"] / 2
-wops = [{"edge": 0, "f": on_edge(win[0], win[1], wc - gw, wc + gw), "z": WN["glassZM"], "ink": "mtGlass", "shape": "arch", "rim": ["mtTrim", 0.3]}]
-for k in (-1, 1):
-    wops.append({"edge": 0, "f": on_edge(win[0], win[1], wc + k * 0.36 - 0.03, wc + k * 0.36 + 0.03), "z": [WN["glassZM"][0], r2(WN["glassZM"][1] - gw)], "ink": "mtFrame"})
-wops.append({"edge": 0, "f": on_edge(win[0], win[1], wc - gw, wc + gw), "z": [r2(WN["glassZM"][1] - gw - 0.05), r2(WN["glassZM"][1] - gw + 0.02)], "ink": "mtFrame"})
-tiers.append(note({"box": [r2(win[1] - win[0]), r2(NV1 - 0.2)], "at": BM(wc, r2((0.2 + NV1) / 2)), "z": [0, WN["hM"]], "wall": "mtWall", "cap": "mtRoof",
-                   "bands": [[r2((WN["hM"] - 0.2) / WN["hM"]), 1.0, "mtTrim"]], "openings": wops,
-                   "roof": {"kind": "hip", "riseM": 1.0, "ink": "mtRoof", "ink2": "mtRoofShade"}},
-                  "EL CUERPO DE LA VENTANA GRANDE (las vistas de Calle 10): la punta de la nave larga, más alta que el muro, con su ventana en arco de tres paños dentro de un marco blanco", True))
-# la nave larga detrás del muro, en dos tramos de techo a cuatro aguas que se juntan en «V» con el cuerpo de la ventana
-D0 = lambda y: r2(U_AV + (CA["avenueWallY"] - y) / CA["pxPerM"])          # una y del satélite → u del lote
-NAVE_U0 = D0(CA["lowBlocks"][0]["y"][0])
-# su punta norte, al lado del salón: en el satélite pasa 17 m la línea de la fachada, o sea la mitad del fondo
-# del salón; con el fondo del salón apretado, la misma mitad
-HALL_K = (HV1 - FW) / ((HA["y"][1] - HA["y"][0]) / ((HA["x"][1] - HA["x"][0]) / FA["widthM"]))
-NAVE_U1 = r2(U_FACADE + CA["naveNorthM"] * HALL_K)
-SEG_A = r2(NAVE_U1 - CA["naveSegmentsM"][0] * SW)
-for i, (u0, u1) in enumerate(((NAVE_U0, win[0]), (win[1], SEG_A), (SEG_A, NAVE_U1))):
-    tiers.append(note({"box": [r2(u1 - u0), r2(NV1 - NV0)], "at": BM(avg(u0, u1), avg(NV0, NV1)), "z": [0, 3.3], "wall": "mtWall", "cap": "mtRoof",
-                       "bands": [[0, 0.06, "mtPlinth"]], "windows": {"z": [1.1, 2.5], "wM": 0.8, "everyM": 3.2, "ink": "mtGlass"},
-                       "roof": {"kind": "hip", "riseM": 1.4, "ink": "mtRoof", "ink2": "mtRoofShade"}},
-                      "LA NAVE LARGA detrás del muro (el satélite: blanca, de 6,8 m de ancho a 1,3 m del muro), bajo sus techos a cuatro aguas que se juntan en «V»; se asoma apenas sobre el muro", i == 0))
-LT = CA["leanTo"]["x"]
-LV0, LV1 = NV1, r2((LT[1] - CA["wallLineX"]) / CA["pxPerM"] + WALL_V)
-tiers.append(note({"box": [r2(NAVE_U1 - NAVE_U0), r2(LV1 - LV0)], "at": BM(avg(NAVE_U0, NAVE_U1), avg(LV0, LV1)), "z": [0, 2.6], "wall": "mtWall", "cap": "mtLeanTo",
-                   "roof": {"kind": "shed", "high": "w", "riseM": 0.4, "ink": "mtLeanTo", "ink2": "mtLeanToShade", "seamsM": 0.6}},
-                  "el cobertizo de zinc oscuro contra el costado este de la nave (la franja oscura del satélite)", True))
-for i, B_ in enumerate(CA["lowBlocks"][::-1]):
-    u0, u1 = D0(B_["y"][1]), D0(B_["y"][0])
-    v0 = max(V_IN, r2((B_["x"][0] - CA["wallLineX"]) / CA["pxPerM"] + WALL_V))
-    v1 = r2((B_["x"][1] - CA["wallLineX"]) / CA["pxPerM"] + WALL_V)
-    tiers.append(note({"poly": qm(u0, v0, u1, v1), "z": [0, 3.0], "wall": "mtWall", "cap": "mtFlat", "bands": [[0.92, 1.0, "mtTrim"]],
-                       "windows": {"z": [1.1, 2.3], "wM": 0.7, "everyM": 2.6, "ink": "mtGlass"}},
-                      "los bloques bajos de techo plano al sur de la nave, contra el muro (el satélite)", i == 0))
-# al fondo, contra Calle 12: el muro alto del vecino en la avenida y los techos rojos del lado de la Fábrica de Hielo
-NEIGH_U1 = r2(LAWN + 6.5)                             # la casa del vecino: 6,5 m de fondo desde la grama
-tiers.append(note({"poly": qm(LAWN, NB0, NEIGH_U1, MV - 0.3), "z": [0, 5.2], "wall": "mtNeighborWall", "cap": "mtFlat",
-                   "bands": [[0.86, 1.0, "mtNeighborBand"]]},
-                  "EL VECINO de la avenida (la vista de la avenida): su muro alto, blanco con la banda azul, donde termina el del recinto", True))
-RED_V0 = r2(LV1 + 0.4)
-red_u0 = D0(CA["lowBlocks"][0]["y"][1])              # el patio del almendro llega hasta el fondo; los techos rojos, desde los bloques bajos
-RED = [red_u0 + (NAVE_U1 - red_u0) * k / 3 for k in range(4)]
-for i, (u0, u1) in enumerate(zip(RED, RED[1:])):
-    tiers.append(note({"box": [r2(u1 - u0 - 0.2), r2(MV - 0.3 - RED_V0)], "at": BM(avg(u0, u1), avg(RED_V0, MV - 0.3)), "z": [0, 3.4], "wall": "mtNeighborWall", "cap": "mtNeighborRoof",
-                       "roof": {"kind": "gable", "axis": "x", "riseM": 0.8, "ink": "mtNeighborRoof", "ink2": "mtNeighborRoofShade", "seamsM": 0.6}},
-                      "los techos de zinc rojo del fondo, del lado de la Fábrica de Hielo (el satélite)", i == 0))
+# Calibración del recorte aéreo entre el extremo norte del zinc y el muro de la avenida.
+SURVEY = CA["roofSurvey"]
+HALL_K = (LV - 0.4 - FW) / ((HA["y"][1] - HA["y"][0]) / ((HA["x"][1] - HA["x"][0]) / FA["widthM"]))
+NAVE_U1 = r2(U_KERB + CA["naveNorthM"] * HALL_K)
+
+
+def aerial_u(y):
+    return r2(U_AV + (NAVE_U1 - U_AV) * (SURVEY["avenueY"] - y) / (SURVEY["avenueY"] - SURVEY["northY"]))
+
+
+def aerial_span(y):
+    return aerial_u(y[1]), aerial_u(y[0])
+
+
+WIN = next(wing for wing in SURVEY["wings"] if wing.get("window"))
+win = aerial_span(WIN["y"])
+# Cada serie de arcos se mide hasta su borde del saliente.
+# El tramo hacia el salón es más bajo y llega al portón lateral.
+c10_lo = CU
+for u0, u1, end, height, bays in (
+    (CU, win[0], win[0], WH, WA["calle10South"]),
+    (win[1], r2(U_GATE + 0.15), U_GATE, WH - 0.35, WA["calle10North"]),
+):
+    scale = (end - u0) / sum(width for _, width in bays)
+    ops, start = [], u0
+    for kind, width in bays:
+        stop = start + width * scale
+        ops += bay_ops(0, u0, u1, start, stop, kind)
+        start = stop
+    tiers.append(note({"poly": qm(u0, r2(WALL_V - WALL_T / 2), u1, V_IN), "z": [0, height], "wall": "mtWall",
+                       "cap": "mtTrim", "bands": [[r2(1 - 0.18 / height), 1.0, "mtTrim"]], "openings": ops},
+                      "EL MURO DE CALLE 10: arcos y círculos ciegos, con la sección más baja camino al portón del salón", True))
+
+NAVE_U0 = aerial_u(SURVEY["spineSouthY"])
+EAVE_Z, RIDGE_Z = SURVEY["eaveZM"], SURVEY["ridgeZM"]
+STREET_EAVE, RIDGE_V = SURVEY["spineStreetM"], SURVEY["ridgeM"]
+REAR_EAVE = SURVEY["rearEaveM"]
+tiers.append({"poly": qm(NAVE_U0, STREET_EAVE, NAVE_U1, REAR_EAVE), "z": [0, EAVE_Z],
+              "wall": "mtWall", "cap": "mtRoof", "sortM": 3.5})
+
+
+def roof_face(points, roof="mtRoof", shade="mtRoofShade"):
+    tiers.append({"facet": [[*BM(u, v), z] for u, v, z in points], "ink": roof, "ink2": shade})
+
+
+# Caderas de los extremos y el faldón oriental, con el alero paralelo a la cumbrera.
+ridge_s, ridge_n = r2(NAVE_U0 + 2.3), r2(NAVE_U1 - 2.0)
+roof_face([(NAVE_U0, STREET_EAVE, EAVE_Z), (NAVE_U0, REAR_EAVE, EAVE_Z), (ridge_s, RIDGE_V, RIDGE_Z)])
+roof_face([(NAVE_U1, STREET_EAVE, EAVE_Z), (ridge_n, RIDGE_V, RIDGE_Z), (NAVE_U1, REAR_EAVE, EAVE_Z)])
+roof_face([(NAVE_U0, REAR_EAVE, EAVE_Z), (NAVE_U1, REAR_EAVE, EAVE_Z), (ridge_n, RIDGE_V, RIDGE_Z), (ridge_s, RIDGE_V, RIDGE_Z)])
+
+# Los salientes cruzan la cubierta hacia la calle. Sus limahoyas comparten los
+# mismos vértices con los faldones de la nave, dejando abiertos los retiros.
+prev_eave, prev_ridge = NAVE_U0, ridge_s
+for wing in reversed(SURVEY["wings"]):
+    u0, u1 = aerial_span(wing["y"])
+    mid = avg(u0, u1)
+    front = wing["streetM"]
+    hip = r2(front + min((u1 - u0) / 2, (STREET_EAVE - front) * 0.7))
+    roof_face([(prev_eave, STREET_EAVE, EAVE_Z), (u0, STREET_EAVE, EAVE_Z), (mid, RIDGE_V, RIDGE_Z), (prev_ridge, RIDGE_V, RIDGE_Z)])
+    roof_face([(u0, front, EAVE_Z), (u1, front, EAVE_Z), (mid, hip, RIDGE_Z)])
+    roof_face([(u0, front, EAVE_Z), (mid, hip, RIDGE_Z), (mid, RIDGE_V, RIDGE_Z), (u0, STREET_EAVE, EAVE_Z)])
+    roof_face([(u1, front, EAVE_Z), (u1, STREET_EAVE, EAVE_Z), (mid, RIDGE_V, RIDGE_Z), (mid, hip, RIDGE_Z)])
+    prev_eave, prev_ridge = u1, mid
+
+    block = {"poly": qm(u0, front, u1, STREET_EAVE + 0.02), "z": [0, EAVE_Z], "wall": "mtWall", "cap": "mtRoof",
+             "bands": [[r2(1 - 0.16 / EAVE_Z), 1.0, "mtTrim"]]}
+    if wing.get("window"):
+        window = WA["window"]
+        half = window["glassWM"] / 2
+        sill, head = window["glassZM"]
+        spring = r2(head - half)
+        glass_span = on_edge(u0, u1, mid - half, mid + half)
+        ops = [{"edge": 0, "f": glass_span, "z": [sill, head], "ink": "mtGlass", "shape": "arch", "rim": ["mtTrim", 0.14]}]
+        for off in (-0.35, 0.35):
+            ops.append({"edge": 0, "f": on_edge(u0, u1, mid + off - 0.03, mid + off + 0.03), "z": [sill, spring], "ink": "mtFrame"})
+        ops.append({"edge": 0, "f": glass_span, "z": [r2(spring - 0.035), r2(spring + 0.035)], "ink": "mtFrame"})
+        ops.append({"edge": 3, "f": [0.63, 0.87], "z": window["returnGlassZM"], "ink": "mtGlass", "rim": ["mtFrame", 0.05]})
+        block["openings"] = ops
+        block["_"] = "La ventana de tres paños en el saliente central, con el vidrio pequeño en el retorno sur"
+    tiers.append(block)
+roof_face([(prev_eave, STREET_EAVE, EAVE_Z), (NAVE_U1, STREET_EAVE, EAVE_Z), (ridge_n, RIDGE_V, RIDGE_Z), (prev_ridge, RIDGE_V, RIDGE_Z)])
+
+# El volumen bajo junto al patio tiene su propia cubierta a cuatro aguas.
+south = SURVEY["southHip"]
+u0, u1 = aerial_span(south["y"])
+v0, v1 = south["vM"]
+tiers.append(note({"box": [r2(u1 - u0), r2(v1 - v0)], "at": BM(avg(u0, u1), avg(v0, v1)), "z": [0, 3.45],
+                   "wall": "mtWall", "cap": "mtRoof", "roof": {"kind": "hip", "riseM": 1.0, "ink": "mtRoof", "ink2": "mtRoofShade"}},
+                  "El volumen blanco junto al patio sur, con los aleros escalonados respecto a los de la nave", True))
+
+RED_U0 = aerial_u(south["y"][0])
+SHED_EDGE = SURVEY["leanToRearM"]
+# Una sola agua entre la nave y la fábrica, con los dos bordes paralelos.
+tiers.append({"poly": qm(RED_U0, REAR_EAVE, NAVE_U1, SHED_EDGE), "z": [0, 2.65],
+              "wall": "mtWall", "cap": "mtLeanTo", "sortM": 2.7})
+roof_face([(RED_U0, REAR_EAVE, 3.1), (NAVE_U1, REAR_EAVE, 3.1),
+           (NAVE_U1, SHED_EDGE, 2.65), (RED_U0, SHED_EDGE, 2.65)], "mtLeanTo", "mtLeanToShade")
+
+
+def compound_u(y):
+    return r2(U_AV + (CA["avenueWallY"] - y) / CA["pxPerM"])
+
+
+def compound_v(x):
+    return r2(WALL_V + (x - CA["wallLineX"]) / CA["pxPerM"])
+
+
+for block in CA["lowBlocks"]:
+    y0, y1 = block["y"]
+    v0, v1 = map(compound_v, block["x"])
+    tiers.append({"poly": qm(compound_u(y1), v0, compound_u(y0), v1), "z": [0, 2.55], "wall": "mtWall", "cap": "mtFlat"})
+REAR_EDGE = MV - 0.3
+RED_V0 = SHED_EDGE - 0.12                               # el zinc solapa el alero del cobertizo
+red_box = [r2(NAVE_U1 - RED_U0), r2(REAR_EDGE - RED_V0)]
+red_center = BM(avg(RED_U0, NAVE_U1), avg(RED_V0, REAR_EDGE))
+tiers.append(note({"box": red_box, "at": red_center, "z": [0, 3.4], "wall": "mtNeighborWall", "cap": "mtNeighborRoof",
+                   "roof": {"kind": "gable", "axis": "x", "riseM": 0.8, "ink": "mtNeighborRoof", "ink2": "mtNeighborRoofShade", "seamsM": 0.6}},
+                  "El zinc rojo de la Fábrica de Hielo corre bajo una sola cumbrera", True))
+
+# El lado norte del edificio blanco sigue el borde real del zinc rectangular.
+# La franja de patio entre ambos deja sitio al corrimiento de los techos en perspectiva.
+NEIGH_V0 = SURVEY["avenueNeighborStreetM"]
+white_limit = r2(red_center[0] - red_box[0] / 2 - SURVEY["avenueNeighborRoofClearanceM"])
+white_front = LAWN + WALL_T + 0.35
+white = [BM(LAWN, NB0), BM(white_front, NB0), BM(white_front, NEIGH_V0),
+         [white_limit, BM(0, NEIGH_V0)[1]], [white_limit, BM(0, REAR_EDGE)[1]], BM(LAWN, REAR_EDGE)]
+tiers.append(note({"poly": white, "z": [0, 5.2], "wall": "mtNeighborWall", "cap": "mtFlat",
+                   "openings": [{"edge": 5, "f": [0, 1], "z": [4.47, 5.2], "ink": "mtNeighborBand"}]},
+                  "EL EDIFICIO BLANCO de la avenida, entre el patio verde y los techos rojos, con la banda azul hacia la avenida", True))
 # el piso: la grama de la avenida y de la esquina redonda
 lawn = [(0, NB0), (0, 0), (CU, 0), (CU, WALL_V - WALL_T / 2)]
 for k in range(1, 10):
@@ -365,17 +428,39 @@ lawn += [(LAWN, CV), (LAWN, NB0)]
 low.append(note({"poly": [BM(u, v) for u, v in lawn], "z": [0, 0.04], "wall": "mtGrass", "cap": "mtGrass"},
                 "la grama entre la acera y el muro, por la avenida y alrededor de la esquina redonda (las vistas de la esquina)", True))
 
+CENTER_COURT = aerial_span(SURVEY["centerCourtY"])
+STREET_COURT = aerial_span(SURVEY["streetCourtY"])
+SOUTH_COURT = aerial_span(SURVEY["southCourtY"])
+SOUTH_PLANTING_EDGE = V_IN + 0.45
+for (u0, u1), (v0, v1) in ((STREET_COURT, (V_IN, STREET_EAVE)), (SOUTH_COURT, (SOUTH_PLANTING_EDGE, NEIGH_V0))):
+    low.append({"poly": qm(u0, v0, u1, v1), "z": [0, 0.02], "wall": "mtCourt", "cap": "mtCourt", "noShadow": True})
+
+# Une el suelo del recinto con el del salón en ambos extremos de su linde.
+# Delante del portón, entra bajo la curva para que la acera dibuje su propio borde.
+def hall_ground_uv(u, v):
+    return _uv(FM, *EH.at(_W, FB, u, v), SLOPE)
+
+
+ground = [(-0.3, -0.5), (U_KERB - 19, -0.5), (U_KERB - 4, -9.5), hall_ground_uv(10, -1.1),
+          hall_ground_uv(9.5, 0.1), hall_ground_uv(0, 0.1), hall_ground_uv(0, LV + 0.3),
+          (MU + 0.3, -0.3), (MU + 0.3, MV + 0.3), (-0.3, MV + 0.3)]
 ALM = CA["almendro"]
 muro = {
-    "_note": "EL RECINTO DEL ANTIGUO MATADERO sobre Calle 10, de la avenida a la curva: el muro blanco de círculos y arcos ciegos color durazno con su esquina redonda y su grama, el cuerpo de la ventana grande, la nave larga de techos a cuatro aguas detrás del muro con su cobertizo, los bloques bajos, el patio con su almendro, y al fondo el muro alto del vecino y los techos rojos del lado de la Fábrica de Hielo. El muro de Calle 10 sigue fuera del lote hasta el portón del costado del salón (`bodies.matadero`). CALCADO de sus imágenes (`tools/matadero_trace.json`); lo escribe `tools/gen_matadero_body.py`.",
+    "_note": "EL RECINTO DEL ANTIGUO MATADERO: muro blanco de arcos y círculos ciegos, cubierta continua con salientes y limahoyas, ventana grande y su retorno, aleros escalonados, patios abiertos y cobertizo hacia la Fábrica de Hielo. El muro llega al portón lateral del salón. Receta de `tools/gen_matadero_body.py` con el calco de `tools/matadero_trace.json`.",
     "perspective": True,
     "tiers": tiers, "low": low, "placeM": [0, 0],
-    "trees": [{"atM": BM(D0(avg(*ALM["y"])), r2((avg(*ALM["x"]) - CA["wallLineX"]) / CA["pxPerM"] + WALL_V)), "k": "almendro", "s": 1.0,
-               "_": "el almendro del patio (el satélite)"}]
+    "trees": [{"atM": BM(avg(*SOUTH_COURT), avg(SOUTH_PLANTING_EDGE, NEIGH_V0)), "k": "almendro", "s": 1.0,
+               "_": "el almendro en el centro del patio verde sur"},
+              {"atM": BM(avg(*CENTER_COURT), avg(V_IN, STREET_EAVE)), "k": "almendro", "s": 0.45,
+               "_": "el árbol del patio central entre los dos salientes"},
+              {"atM": BM(avg(*STREET_COURT), 2.15), "k": "almendro", "s": 0.45,
+               "_": "el árbol del retiro frente a Calle 10"}]
+             + [{"atM": BM(u, v), "k": "almendro", "s": scale, "_": "árbol de la acera de Calle 10"}
+                for u, v, scale in SURVEY["sidewalkTreesM"]]
              + [{"atM": BM(r2(avg(NAVE_U1, MU) + du), dv), "k": k, "s": sc, **({"_": "EL PATIO DE ÁRBOLES DEL FONDO, detrás de la nave y al lado del salón (el satélite: copas oscuras al noreste del salón), en el suelo que tenía el cuadro de la Fábrica de Hielo"} if i == 0 else {})}
                 for i, (du, dv, k, sc) in enumerate(((-1.0, 4.6, "almendro", 0.95), (1.2, 11.2, "almendro", 0.9)))],
-    "ground": {"polyM": [BM(-0.3, -0.3), BM(MU + 0.3, -0.3), BM(MU + 0.3, MV + 0.3), BM(-0.3, MV + 0.3)], "ink": "mtYard",
-               "_": "el piso del lote: la franja de tierra contra la acera de Calle 10 y el patio, metido 0,3 m bajo las aceras"},
+    "ground": {"polyM": [BM(u, v) for u, v in ground], "ink": "mtYard",
+               "_": "el piso del recinto llega al salón y pasa por debajo de la acera en la curva"},
 }
 
 # lo que se para no se para en la calle: el muro de Calle 10 tiene que llegar a la línea de la fachada
@@ -418,8 +503,6 @@ def overlay():
     so = Image.open(os.path.join(base, "sat-south.jpg")).convert("RGB"); d = ImageDraw.Draw(so)
     d.line([CA["wallLineX"], 0, CA["wallLineX"], so.height], fill=(255, 255, 0), width=3)
     d.line([0, CA["avenueWallY"], so.width, CA["avenueWallY"]], fill=(255, 255, 0), width=3)
-    for x in (*CA["nave"]["x"], *CA["leanTo"]["x"]):
-        d.line([x, 0, x, CA["avenueWallY"]], fill=(0, 255, 255), width=2)
     for B_ in CA["lowBlocks"]:
         d.rectangle([B_["x"][0], B_["y"][0], B_["x"][1], B_["y"][1]], outline=(255, 0, 255), width=3)
     d.ellipse([ALM["x"][0], ALM["y"][0], ALM["x"][1], ALM["y"][1]], outline=(0, 255, 0), width=3)
@@ -450,10 +533,10 @@ if __name__ == "__main__":
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
     print(f"[matadero] salón: {len(hall_tiers)} bloques; fachada {r2(HU1 - HU0)} m (de verdad {FA['widthM']}, x{r2(SF)}), cornisa {Z_COR}, ático hasta "
-          f"{fz(A['corniceY'][0])}, frontón {fz(PD['apexY'])}, placa {fz(D['y'][0])}; techo: alero {e}, cumbrera {R}, salón hasta v {HV1}; "
-          f"patio u {cE}–{cW}, v {cS}–{cN}")
+          f"{fz(A['corniceY'][0])}, frontón {fz(PD['apexY'])}, placa {fz(D['y'][0])}; techo: alero {e}, cumbrera {R}, salón hasta v {r2(HV1 + HALL_SETBACK)}; "
+          f"patio u {cE}–{cW}, v {r2(cS + HALL_SETBACK)}–{r2(cN + HALL_SETBACK)}")
     print(f"[matadero] recinto: {len(tiers)} bloques, {len(low)} en el piso; muro de Calle 10 de u {c10_lo} a la fachada en u {U_FACADE} "
-          f"(x{r2(SW)} de verdad), ventana {win}, nave v {NV0}–{NV1} de u {NAVE_U0} a {NAVE_U1}; el portón del costado llega a u {U_GATE_E} del salón "
+          f"(retiro {HALL_SETBACK} m), ventana {win}, nave de u {NAVE_U0} a {NAVE_U1}; el portón del costado llega a u {U_GATE_E} del salón "
           f"-> {os.path.relpath(path)}")
     if "--overlay" in sys.argv:
         overlay()

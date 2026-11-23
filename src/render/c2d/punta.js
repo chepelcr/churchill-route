@@ -27,7 +27,7 @@ import { drawWaterAll } from "./ground.js";
 import { CANO_PX } from "./streets.js";
 import { paintMaleconPattern } from "./systemShapes.js";
 import { BALDOSA_PX } from "./malecon.js";
-import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
+import { bodyAt, bodyTopOffset, queueBody, queueBodyLike } from "./bodies.js";
 import { liftPoint, parallaxOffset } from "./depth.js";
 import { fillRigShadow, makeRig } from "./rig3d.js";
 import { drawGate3d } from "./gate3d.js";
@@ -45,6 +45,8 @@ const POOL = PROPS.scenes.pool.palette;
 const INK = M.figures.ink;
 const RAD = Math.PI / 180;
 const BENCH3D = PROPS.signs.banca.view3d;
+const FARO = PROPS.bodies.faro;
+const [LANTERN_SILL, LANTERN_HEAD] = FARO.tiers.find((tier) => tier.wall === "faroLantern").windows.z;
 
 function shape(s) {
   if (!s._path) { s._path = flatPath(s.pts, true); s._aabb = flatAABB(s.pts); }
@@ -828,26 +830,32 @@ function drawPuntaGates(view, t = 0) {
 
 // EL HAZ DEL FARO. Es luz: se pinta en pantalla, DESPUÉS de la oscuridad y sumando
 // —igual que los láseres de la feria—, o quedaría debajo del velo de la noche.
-function drawPuntaNight(view, t, toScreen, zoom, night) {
-  const P = W.PUNTA;
-  if (!P || !P.beams || night <= 0.001) return;
+function drawPuntaNight(camera, t, toScreen, night) {
+  if (!W.PUNTA?.beams?.length || night <= 0.001) return;
+  const faro = W.landmarkById("faro");
+  if (!faro) return;
+  const { view, zoom } = camera;
   const B = M.beam, ppm = W.PX_PER_M, reach = B.lengthM * ppm, half = B.halfAngleDeg * RAD;
+  // El registro del mundo habilita el haz. Su origen es el centro de los vidrios
+  // de la torre, levantado con el mismo paralaje y tope que el cuerpo.
+  const tower = bodyAt(FARO, faro.x, faro.y, 0, "faro");
+  const { dx, dy } = bodyTopOffset(tower, state.cam, ppm);
+  const lamp = (LANTERN_SILL + LANTERN_HEAD) / (2 * tower.zMax);
+  const x = tower.x + dx * lamp, y = tower.y + dy * lamp;
+  if (x + reach < view.x0 || x - reach > view.x1 || y + reach < view.y0 || y - reach > view.y1) return;
+  const [sx, sy] = toScreen(x, y), L = reach * zoom, turn = t * B.turnsPerSec * Math.PI * 2;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  for (const bm of P.beams) {
-    if (bm.x + reach < view.x0 || bm.x - reach > view.x1 || bm.y + reach < view.y0 || bm.y - reach > view.y1) continue;
-    const [sx, sy] = toScreen(bm.x, bm.y), L = reach * zoom, turn = t * B.turnsPerSec * Math.PI * 2;
-    for (const flip of [0, Math.PI]) {
-      const a = turn + flip, grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, L);
-      grad.addColorStop(0, `rgba(${B.rgb},${(B.alpha * night).toFixed(3)})`);
-      grad.addColorStop(1, `rgba(${B.rgb},0)`);
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.arc(sx, sy, L, a - half, a + half); ctx.closePath(); ctx.fill();
-    }
-    const g = B.glowM * ppm * zoom, glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, g);
-    glow.addColorStop(0, `rgba(${B.rgb},${(0.9 * night).toFixed(3)})`); glow.addColorStop(1, `rgba(${B.rgb},0)`);
-    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx, sy, g, 0, Math.PI * 2); ctx.fill();
+  for (const flip of [0, Math.PI]) {
+    const a = turn + flip, grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, L);
+    grad.addColorStop(0, `rgba(${B.rgb},${(B.alpha * night).toFixed(3)})`);
+    grad.addColorStop(1, `rgba(${B.rgb},0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.arc(sx, sy, L, a - half, a + half); ctx.closePath(); ctx.fill();
   }
+  const g = B.glowM * ppm * zoom, glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, g);
+  glow.addColorStop(0, `rgba(${B.rgb},${(0.9 * night).toFixed(3)})`); glow.addColorStop(1, `rgba(${B.rgb},0)`);
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx, sy, g, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 

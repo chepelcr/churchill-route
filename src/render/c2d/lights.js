@@ -18,10 +18,11 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { PX_PER_M } from "../../domain/units.js";
 import { ctx } from "./gfx.js";
 import { paintAt } from "./shapes.js";
-import { paintLuminaire } from "./systemShapes.js";
+import { paintDiffuseGlow, paintLuminaire } from "./systemShapes.js";
+import { registerLampSource } from "./nightlights.js";
 import { parallaxOffset } from "./depth.js";
 import { sunShadow } from "./shadows.js";
-import { hasSurfaceRole } from "../../domain/vocabulary.generated.js";
+import { hasSurfaceRole, LANDMARK_TYPE } from "../../domain/vocabulary.generated.js";
 
 const TYPES = LIGHTS.types;
 //: A light with no type, or with one the registry does not know, is a street
@@ -40,6 +41,38 @@ export const lightSpec = (type) => TYPES[type] || TYPES[FALLBACK];
  * está plomizo y no en el cuadro en que empieza a llover.
  */
 const isNight = lightLevel;
+
+const floodlights = [];
+registerLampSource(() => floodlights.flatMap(({ pool }) => pool ? [pool] : []));
+
+/** Los halos se componen después del tinte, desde la posición de la lente. */
+export function drawFloodlightGlows(toScreen, { zoom, rotation }) {
+  if (!floodlights.length) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (const { x, y, ang, radius, brightness, spec } of floodlights) {
+    const [sx, sy] = toScreen(x, y);
+    const r = radius * zoom;
+    const { alpha, widthK, sourceK } = spec.scatter;
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(ang + rotation);
+    paintDiffuseGlow(ctx, 0, 0, r * sourceK, spec.halo, alpha * brightness);
+    ctx.scale(1, widthK);
+    paintDiffuseGlow(ctx, r * 0.55, 0, r, spec.halo, alpha * brightness);
+    ctx.restore();
+  }
+  ctx.restore();
+  floodlights.length = 0;
+}
+
+function pitchBearing(x, y, fallback) {
+  let closest = (90 * PX_PER_M) ** 2, bearing = fallback;
+  for (const field of W.LANDMARKS) {
+    if (field.type !== LANDMARK_TYPE.STADIUM) continue;
+    const dx = field.x - x, dy = field.y - y, d2 = dx * dx + dy * dy;
+    if (d2 < closest) { closest = d2; bearing = Math.atan2(dy, dx); }
+  }
+  return bearing;
+}
 
 /**
  * Paint one luminaire at (x, y) in world pixels.
@@ -85,7 +118,9 @@ function armSide(lamp, ang, reach) {
 
 function paintStanding(type, spec, x, y, opts) {
   const S = spec.stand25, G = LIGHTS.stand, ppm = PX_PER_M, H = S.heightM;
-  const ang = opts.ang ?? 0, side = S.armM ? armSide(opts.lamp || { x, y }, ang, G.armProbeM * ppm) : 0;
+  const ang = spec.scatter && !opts.fieldTower
+    ? pitchBearing(x, y, opts.ang ?? 0) : opts.ang ?? 0;
+  const side = S.armM ? armSide(opts.lamp || { x, y }, ang, G.armProbeM * ppm) : 0;
   const nx = -Math.sin(ang) * side, ny = Math.cos(ang) * side, arm = S.armM * ppm;
   const hx0 = x + nx * arm, hy0 = y + ny * arm;            // la cabeza, en planta
   const top = parallaxOffset(state.cam, x, y, H, ppm), hd = parallaxOffset(state.cam, hx0, hy0, H, ppm);
@@ -122,9 +157,24 @@ function paintStanding(type, spec, x, y, opts) {
   for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.roundRect(-hl / 2 + cell * (i + 0.06), -hw * 0.42, cell * 0.88, hw * 0.84, hw * 0.3); ctx.fill(); }
   ctx.restore();
   ctx.fillStyle = S.housing; head(hx, hy);
+  const night = opts.night ?? isNight();
+  if (spec.scatter) {
+    if (night <= 0.001) return;
+    const { radiusMin, radiusMax, intensityMax } = LIGHTS.limits;
+    const radius = Math.max(radiusMin, Math.min(radiusMax, Number(opts.radius) || spec.radius));
+    const intensity = Math.max(0, Math.min(intensityMax, Number(opts.intensity ?? 1) || 0));
+    const reach = radius * spec.scatter.groundK;
+    // Las torres de la gradería se derivan en el renderer y no vienen en W.lampsIn.
+    const pool = opts.fieldTower ? {
+      x: x + Math.cos(ang) * reach, y: y + Math.sin(ang) * reach,
+      type, intensity: intensity * spec.scatter.groundStrength,
+    } : null;
+    floodlights.push({ x: lx, y: ly, ang, radius, brightness: Math.min(1, intensity * night), spec, pool });
+    return;
+  }
   // de noche el halo sale de la cabeza: el mismo de siempre, centrado donde está la lente
   const [ox, oy] = spec.haloAt;
-  paintLuminaire(ctx, LIGHTS, type, lx - ox, ly - oy, { ...opts, night: opts.night ?? isNight() }, () => {});
+  paintLuminaire(ctx, LIGHTS, type, lx - ox, ly - oy, { ...opts, night }, () => {});
 }
 
 /** An authored point light from the editor (`W.LIGHTS`). */
@@ -151,13 +201,17 @@ export function drawLight(feature) {
  * luminaria, así que rediseñar la farola de la ciudad entera es editar una
  * lista de partes. Acá sólo va DÓNDE, que es lo que el mundo emite por tile.
  *
- * El HALO no se dibuja acá: sería el mismo error que tenía la noche antes —
- * un gradiente por lámpara pintado bajo el velo que lo tapa. La luz la abre el
- * compositor, contra el tinte y no debajo.
+ * El compositor abre los pozos de luz. Los focos de cancha también encolan su
+ * halo para que el compositor lo dibuje después del tinte.
  */
 export function drawStreetLamps(view) {
   const lamps = W.lampsIn ? W.lampsIn(view, 24) : [];
-  for (const lamp of lamps) paintLight(lamp.type || "warm", lamp.x, lamp.y, { night: false, ang: lamp.ang, lamp });
+  for (const lamp of lamps) {
+    const type = lamp.type || "warm";
+    const opts = { night: false, ang: lamp.ang, lamp };
+    if (lightSpec(type).scatter) opts.night = isNight();
+    paintLight(type, lamp.x, lamp.y, opts);
+  }
 }
 
 /**
@@ -215,11 +269,14 @@ export function drawFieldTowers(lm, spec, spots = null) {
   // …y con `spots` se pintan DESPUÉS de las graderías 3D (que van en la cola de encima del carro): pintadas
   // en la pasada de hitos, las graderías les pasaban por encima y las torres quedaban debajo de los escalones
   for (const [x, y] of spots || CORNERS.map(([dx, dy]) => polyCorner(pts, dx, dy, inset))) {
+    const opts = {
+      radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity,
+      night, ang: Math.atan2(cy - y, cx - x), fieldTower: true,
+    };
     if (spots) {
-      queueOverLike({ x, y, paint: () => paintLight(type, x, y, { radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity, night, ang: Math.atan2(cy - y, cx - x) }) }, true);
-      continue;
+      queueOverLike({ x, y, paint: () => paintLight(type, x, y, opts) }, true);
+    } else {
+      paintLight(type, x, y, opts);
     }
-    // la fila de focos mira a la cancha: atraviesa la línea que va del poste al centro
-    paintLight(type, x, y, { radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity, night, ang: Math.atan2(cy - y, cx - x) });
   }
 }

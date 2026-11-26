@@ -1887,12 +1887,13 @@
     },
     "beam": {
       "_note": "EL HAZ DEL FARO, de noche: dos haces opuestos que giran, anchos y amarillos. Es luz —se suma al cuadro, por encima de la oscuridad— y se desvanece hacia la punta.",
-      "rgb": "255,226,130",
-      "alpha": 0.42,
+      "rgb": [255, 226, 130],
+      "alpha": 0.38,
       "lengthM": 110,
       "halfAngleDeg": 10,
       "turnsPerSec": 0.06,
-      "glowM": 5.5
+      "glowM": 4.0,
+      "glowAlpha": 0.25
     },
     "roofs": {
       "_note": "LOS TECHOS SIN PAREDES de La Punta: el toldo tensado (lona clara con sus limatesas al centro) y la pérgola (viguetas sobre el piso). Los edificios con paredes siguen siendo edificios.",

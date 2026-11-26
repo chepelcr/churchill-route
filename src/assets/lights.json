@@ -83,6 +83,7 @@
       "halo": [240, 248, 255],
       "radius": 100,
       "haloAt": [0, -29],
+      "scatter": { "alpha": 0.3, "widthK": 0.67, "sourceK": 0.2, "groundK": 0.32, "groundStrength": 0.64 },
       "stand25": { "heightM": 22, "armM": 0, "postPx": 3.2, "post": "#3f4648", "housing": "#4c545a", "headM": [7.0, 1.3], "lamps": 4, "lensDropM": 0.9 },
       "parts": [
         { "shape": "ellipse", "fill": "rgba(0,0,0,0.22)", "cx": 0, "cy": 8, "rx": 7, "ry": 2.6 },

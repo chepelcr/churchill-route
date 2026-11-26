@@ -25,9 +25,9 @@ import { overlayTexture } from "./materials.js";
 import { sunShadow } from "./shadows.js";
 import { drawWaterAll } from "./ground.js";
 import { CANO_PX } from "./streets.js";
-import { paintMaleconPattern } from "./systemShapes.js";
+import { paintDiffuseGlow, paintMaleconPattern, rgba } from "./systemShapes.js";
 import { BALDOSA_PX } from "./malecon.js";
-import { bodyAt, bodyTopOffset, queueBody, queueBodyLike } from "./bodies.js";
+import { bodyAt, bodyTopOffset, domeOutline, queueBody, queueBodyLike } from "./bodies.js";
 import { liftPoint, parallaxOffset } from "./depth.js";
 import { fillRigShadow, makeRig } from "./rig3d.js";
 import { drawGate3d } from "./gate3d.js";
@@ -46,7 +46,7 @@ const INK = M.figures.ink;
 const RAD = Math.PI / 180;
 const BENCH3D = PROPS.signs.banca.view3d;
 const FARO = PROPS.bodies.faro;
-const [LANTERN_SILL, LANTERN_HEAD] = FARO.tiers.find((tier) => tier.wall === "faroLantern").windows.z;
+const LANTERN = FARO.tiers.find((tier) => tier.windows);
 
 function shape(s) {
   if (!s._path) { s._path = flatPath(s.pts, true); s._aabb = flatAABB(s.pts); }
@@ -840,22 +840,33 @@ function drawPuntaNight(camera, t, toScreen, night) {
   // de la torre, levantado con el mismo paralaje y tope que el cuerpo.
   const tower = bodyAt(FARO, faro.x, faro.y, 0, "faro");
   const { dx, dy } = bodyTopOffset(tower, state.cam, ppm);
-  const lamp = (LANTERN_SILL + LANTERN_HEAD) / (2 * tower.zMax);
+  const [sill, head] = LANTERN.windows.z;
+  const lamp = (sill + head) / (2 * tower.zMax);
   const x = tower.x + dx * lamp, y = tower.y + dy * lamp;
   if (x + reach < view.x0 || x - reach > view.x1 || y + reach < view.y0 || y - reach > view.y1) return;
   const [sx, sy] = toScreen(x, y), L = reach * zoom, turn = t * B.turnsPerSec * Math.PI * 2;
+  const roof = tower.tiers[tower.tiers.length - 1];
+  const roofBase = roof.z0 / tower.zMax;
+  const [rx, ry] = toScreen(tower.x + dx * roofBase, tower.y + dy * roofBase);
+  const [tx, ty] = toScreen(tower.x + dx, tower.y + dy);
+  const outsideRoof = new Path2D();
+  outsideRoof.rect(0, 0, camera.viewportWidth, camera.viewportHeight);
+  // The beams stay above the darkness layer. The opaque dome occludes them
+  // using its own projected outline, including the lip below the eaves.
+  outsideRoof.addPath(domeOutline(rx, ry, roof.roof.smoothRadius * zoom + 1, tx - rx, ty - ry));
   ctx.save();
+  ctx.clip(outsideRoof, "evenodd");
   ctx.globalCompositeOperation = "lighter";
+  const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, L);
+  grad.addColorStop(0, rgba(B.rgb, 0));
+  grad.addColorStop(0.085, rgba(B.rgb, B.alpha * night));
+  grad.addColorStop(1, rgba(B.rgb, 0));
+  ctx.fillStyle = grad;
   for (const flip of [0, Math.PI]) {
-    const a = turn + flip, grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, L);
-    grad.addColorStop(0, `rgba(${B.rgb},${(B.alpha * night).toFixed(3)})`);
-    grad.addColorStop(1, `rgba(${B.rgb},0)`);
-    ctx.fillStyle = grad;
+    const a = turn + flip;
     ctx.beginPath(); ctx.moveTo(sx, sy); ctx.arc(sx, sy, L, a - half, a + half); ctx.closePath(); ctx.fill();
   }
-  const g = B.glowM * ppm * zoom, glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, g);
-  glow.addColorStop(0, `rgba(${B.rgb},${(0.9 * night).toFixed(3)})`); glow.addColorStop(1, `rgba(${B.rgb},0)`);
-  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx, sy, g, 0, Math.PI * 2); ctx.fill();
+  paintDiffuseGlow(ctx, sx, sy, B.glowM * ppm * zoom, B.rgb, B.glowAlpha * night);
   ctx.restore();
 }
 

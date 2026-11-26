@@ -20,6 +20,7 @@ import {
 import { drawMangroves, drawWaterAll } from "./c2d/ground.js";
 import { drawWorld2D } from "./c2d/world.js";
 import { drawNightLights, setLightZoom } from "./c2d/nightlights.js";
+import { drawFloodlightGlows } from "./c2d/lights.js";
 import { drawFloodedStreets, drawRoadSplashes } from "./c2d/downpour.js";
 import { drawTornado } from "./c2d/tornado.js";
 import { lightLevel, lightning, nightLevel, stormForce, stormLevel, wetLevel } from "../game/daynight.js";
@@ -345,6 +346,7 @@ function render(t, sharedCamera = null) { // t en SEGUNDOS (ver src/game/index.j
     setLightZoom(ZOOM);
     const toScreen = (wx, wy) => worldToScreen(camera, wx, wy);
     drawNightLights(vw, vh, view, C.tint, toScreen, lit);
+    drawFloodlightGlows(toScreen, camera);
     drawFeriaNightEffects(view, t, toScreen, camera.zoom);
     drawPuntaNight(camera, t, toScreen, nightLevel());   // el haz del Faro
   } else {

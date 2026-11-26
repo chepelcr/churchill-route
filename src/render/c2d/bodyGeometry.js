@@ -144,6 +144,7 @@ export function buildBody(spec, base, rot, F) {
         ...(t.capText ? { capText: capTextOf(t.capText, base, rot, F) } : {}) };
     }
     const uv = footprint(t, base, rot), o = { pts: flat(uv), z0: t.z[0], z1: t.z[1], wall: t.wall, cap: t.cap };
+    if (t.discTop != null) o.round = [t.disc * ppm, t.discTop * ppm];
     // `sortM`: a qué altura entra este bloque en el orden de pintado, si no es la de su tapa. Los pilotes
     // de una gradería suben hasta debajo de ella, pero se pintan PRIMERO: siempre quedan bajo el techo.
     if (t.sortM != null) o.sortZ = t.sortM;
@@ -171,6 +172,7 @@ export function buildBody(spec, base, rot, F) {
     if (t.roof) {
       const rg = ridgeOf(t, uv);
       o.roof = { kind: t.roof.kind, rise: t.roof.riseM, ink: t.roof.ink, ink2: t.roof.ink2 };
+      if (t.roof.smooth && t.disc) o.roof.smoothRadius = t.disc * ppm;
       if (rg) o.roof.ridge = [...F.at(rg[0]), ...F.at(rg[1])].map(r1);
       if (t.roof.seamsM) o.roof.seams = r1(t.roof.seamsM * ppm);
       if (t.roof.stripes) o.roof.stripes = t.roof.stripes;

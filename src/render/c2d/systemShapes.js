@@ -365,6 +365,15 @@ export function paintLightWarmPool(g, lights, spec, x, y, radius) {
   g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
 
+export function paintDiffuseGlow(g, x, y, radius, rgb, alpha) {
+  const gradient = g.createRadialGradient(x, y, 0, x, y, radius);
+  gradient.addColorStop(0, rgba(rgb, alpha));
+  gradient.addColorStop(0.42, rgba(rgb, alpha * 0.48));
+  gradient.addColorStop(1, rgba(rgb, 0));
+  g.fillStyle = gradient;
+  g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+}
+
 /**
  * LO QUE REVIENTA EN EL PARABRISAS.
  *

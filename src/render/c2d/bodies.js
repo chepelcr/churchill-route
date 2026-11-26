@@ -203,8 +203,56 @@ function paintFacet(T, at, sun) {
   if (T.capText) paintCapText(T);          // el nombre, sobre el último faldón que se pinta
 }
 
+// Silueta continua entre dos secciones circulares unidas por sus tangentes.
+function roundWallPath([x0, y0, r0], [x1, y1, r1]) {
+  const path = new Path2D();
+  const dx = x1 - x0, dy = y1 - y0, length = Math.hypot(dx, dy);
+  if (length <= Math.abs(r0 - r1)) {
+    const larger = r0 >= r1;
+    path.arc(larger ? x0 : x1, larger ? y0 : y1, Math.max(r0, r1), 0, Math.PI * 2);
+  } else {
+    const axis = Math.atan2(dy, dx), a = Math.acos((r0 - r1) / length);
+    path.arc(x0, y0, r0, axis + a, axis - a + Math.PI * 2);
+    path.arc(x1, y1, r1, axis - a, axis + a);
+  }
+  path.closePath();
+  return path;
+}
+
+function paintRoundTier(T, at, sun) {
+  const [base, top] = T.round;
+  const [cx, cy] = polyCenter(T.pts);
+  const ring = (f) => {
+    const [dx, dy] = at(T.z0 + (T.z1 - T.z0) * f);
+    return [cx + dx, cy + dy, base + (top - base) * f];
+  };
+  const bottom = ring(0), upper = ring(1);
+  const dx = upper[0] - bottom[0], dy = upper[1] - bottom[1];
+  const axis = Math.hypot(dx, dy) > 0.1 ? Math.atan2(dy, dx) + Math.PI / 2 : 0;
+  let nx = Math.cos(axis), ny = Math.sin(axis);
+  if (nx * sun.dx + ny * sun.dy > 0) { nx = -nx; ny = -ny; }
+  const paint = (path, inkKey) => {
+    const [x, y] = bottom, color = ink(inkKey);
+    const gradient = ctx.createLinearGradient(x - nx * base, y - ny * base, x + nx * base, y + ny * base);
+    gradient.addColorStop(0, shade(color, false));
+    gradient.addColorStop(0.45, color);
+    gradient.addColorStop(1, shade(color, true));
+    ctx.fillStyle = gradient;
+    ctx.fill(path);
+  };
+  paint(roundWallPath(bottom, upper), T.wall);
+  for (const [a, b, inkKey] of T.bands || []) paint(roundWallPath(ring(a), ring(b)), inkKey);
+}
+
+function polyCenter(points) {
+  let x = 0, y = 0;
+  for (let i = 0; i < points.length; i += 2) { x += points[i]; y += points[i + 1]; }
+  return [x / (points.length / 2), y / (points.length / 2)];
+}
+
 function paintTier(T, at, vis, sunlit, sun, ppm) {
   if (T.facet) { paintFacet(T, at, sun); return; }
+  if (T.round) { paintRoundTier(T, at, sun); return; }
   const h = T.z1 - T.z0, o1 = at(T.z1), pts = T.pts, n = pts.length;
   const zAt = (f) => T.z0 + h * f;
   // ---- las paredes que miran a la cámara
@@ -315,11 +363,32 @@ function paintCapText(T) {
   ctx.restore();
 }
 
-// la cúpula: la huella encogida hacia su centro mientras sube
+// Perfil de una cúpula redonda con el mismo desplazamiento que su eje.
+export function domeOutline(x, y, radius, dx, dy) {
+  const path = new Path2D(), angle = Math.atan2(dy, dx);
+  path.ellipse(x, y, Math.hypot(radius, dx, dy), radius, angle, -Math.PI / 2, Math.PI / 2);
+  path.ellipse(x, y, radius, radius, angle, Math.PI / 2, 3 * Math.PI / 2);
+  path.closePath();
+  return path;
+}
+
+// La cúpula sigue el mismo desplazamiento que su alero y su ápice.
 function paintDome(T, R, at) {
   const pts = T.pts, n = pts.length, rings = 4;
-  let cx = 0, cy = 0;
-  for (let i = 0; i < n; i += 2) { cx += pts[i] / (n / 2); cy += pts[i + 1] / (n / 2); }
+  const [cx, cy] = polyCenter(pts);
+  if (R.smoothRadius) {
+    const [ex, ey] = at(T.z1), [tx, ty] = at(T.z1 + R.rise);
+    const x = cx + ex, y = cy + ey, r = R.smoothRadius;
+    const dx = tx - ex, dy = ty - ey;
+    const glow = ctx.createRadialGradient(x + dx * 0.45, y + dy * 0.45, 0,
+      x, y, Math.hypot(r, dx, dy));
+    glow.addColorStop(0, ink(R.ink));
+    glow.addColorStop(0.5, mixColor(ink(R.ink), ink(R.ink2), 0.25));
+    glow.addColorStop(1, ink(R.ink2));
+    ctx.fillStyle = glow;
+    ctx.fill(domeOutline(x, y, r, dx, dy));
+    return;
+  }
   for (let k = 0; k <= rings; k++) {
     const a = (k / (rings + 1)) * Math.PI / 2, s = Math.cos(a), o = at(T.z1 + R.rise * Math.sin(a));
     ctx.fillStyle = mixColor(ink(R.ink), ink(R.ink2), k / rings);
@@ -519,9 +588,7 @@ function paintStructure(S, ppm, pill = null) {
       z0 = T.z0; T.z0 = T.z1 - (T.z1 - z0) * c;
     }
     // lo que se corre por el CENTRO del bloque (la cúpula, la celosía, las manchas de la tapa)
-    let tcx = 0, tcy = 0;
-    for (let i = 0; i < T.pts.length; i += 2) { tcx += T.pts[i]; tcy += T.pts[i + 1]; }
-    tcx /= T.pts.length / 2; tcy /= T.pts.length / 2;
+    const [tcx, tcy] = polyCenter(T.pts);
     const at = (z) => OFF(tcx, tcy, z);
     const vis = S.perspective ? visibleEdges(T.pts, cam) : ro.dx || ro.dy ? facingEdges(T.pts, ro.dx, ro.dy) : [];
     const sunlit = new Set(facingEdges(T.pts, sun.dx, sun.dy));

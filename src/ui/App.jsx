@@ -16,6 +16,7 @@ import PassageScreen from "./screens/PassageScreen.jsx";
 import TutorialBrief from "./screens/TutorialBrief.jsx";
 import BootScreen from "./screens/BootScreen.jsx";
 import IntroScreen, { introSeen } from "./screens/IntroScreen.jsx";
+import RotatePrompt from "./RotatePrompt.jsx";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import SupportersScreen from "./screens/SupportersScreen.jsx";
 import ShopScreen from "./screens/ShopScreen.jsx";
@@ -29,8 +30,6 @@ import { enterImmersive, needsRotation } from "./immersive.js";
 import { sfx } from "../game/audio.js";
 import { isMvpLocked } from "../game/progress.js";
 import { vehicleMedium } from "../game/vehicles.js";
-import { useT } from "../i18n/index.js";
-import Icon from "./Icon.jsx";
 import { ads } from "../monetize/ads.js";
 import { iap } from "../monetize/iap.js";
 import { analytics } from "../monetize/analytics.js";
@@ -40,7 +39,6 @@ import { analytics } from "../monetize/analytics.js";
 const MENU_SEA = 0.55;
 
 export default function App() {
-  const t = useT();
   // screens: boot (every launch) | intro (first run only) | title | stagepick |
   //          brief | playing | paused | over | settings | supporters | shop | vehpick
   const [screen, setScreen] = useState(UI_SCREEN.BOOT);
@@ -378,13 +376,7 @@ export default function App() {
         onCancel={() => { Game.declinePassage(); setScreen(UI_SCREEN.PLAYING); }} /></>}
       {screen === UI_SCREEN.PAUSED && <><HUD /><PauseScreen onResume={() => setScreen(UI_SCREEN.PLAYING)} onRestart={canRestart ? again : null} onSettings={() => openSettings(UI_SCREEN.PAUSED)} onQuit={quit} /></>}
       {(screen === UI_SCREEN.PLAYING || screen === UI_SCREEN.PAUSED) && <GameTweaks />}
-      {showRotatePrompt && (
-        <div className="rotate-overlay">
-          <div className="rotate-icon" aria-hidden="true"><Icon name="phone" size={60} /></div>
-          <p>{t("rotate.body")}</p>
-          <button type="button" className="btn gold" onClick={() => setAllowPortrait(true)}>{t("rotate.continue")}</button>
-        </div>
-      )}
+      {showRotatePrompt && <RotatePrompt onContinue={() => setAllowPortrait(true)} />}
     </>
   );
 }

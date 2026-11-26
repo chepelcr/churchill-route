@@ -13,27 +13,16 @@ import routeArt from "../../assets/branding/ruta-churchill-loading.webp?inline";
 //   phase 1 — La Ruta del Churchill art + charge bar with the muelle ferry
 //             riding the fill edge
 //   out     — the whole screen fades away, revealing the attract world
-// NOT skippable — the sequence always plays in full. On mobile web it HOLDS
-// while the rotate overlay is up (same media query) and starts fresh once
-// rotated.
-const HOLD_MQ = "(pointer: coarse) and (orientation: portrait)";
+// The sequence plays in full once the rotate prompt is cleared.
 const LOGO_MS = 2400;
 const LOAD_MS = 2600;
 const OUT_MS = 500;
 
-export default function BootScreen({ onDone }) {
+export default function BootScreen({ hold, onDone }) {
   const t = useT();
   const waterRef = useRef(null);
-  const [hold, setHold] = useState(() => typeof window !== "undefined" && window.matchMedia(HOLD_MQ).matches);
   const [phase, setPhase] = useState(0); // 0 = logo, 1 = charge screen
   const [out, setOut] = useState(false); // final fade-out before onDone
-
-  useEffect(() => {
-    const mq = window.matchMedia(HOLD_MQ);
-    const on = () => setHold(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
 
   // Pixi water behind the whole boot sequence — same recipe as the game's
   // drawWaterAll: navy gradient (CSS) + sine shimmer polylines drifting.
@@ -68,7 +57,7 @@ export default function BootScreen({ onDone }) {
   }, []);
 
   useEffect(() => {
-    if (hold) return; // portrait on mobile: freeze until rotated
+    if (hold) return;
     const tm = out
       ? setTimeout(onDone, OUT_MS)
       : setTimeout(() => (phase === 0 ? setPhase(1) : setOut(true)), phase === 0 ? LOGO_MS : LOAD_MS);
@@ -132,9 +121,7 @@ export default function BootScreen({ onDone }) {
     ),
     loading: () => <div className="boot-loading">{t("boot.loading")}</div>,
   };
-  // `hold` (retrato en móvil) apaga las DOS fases: la secuencia se congela
-  // hasta que se gire el teléfono, así que ninguna de las dos condiciones es
-  // cierta mientras tanto.
+  // El aviso de giro oculta las dos fases mientras espera una acción.
   const ctx = { showingLogo: !hold && phase === 0, showingLoad: !hold && phase === 1 };
   const slot = (region) => <Slots screen={UI_SCREEN.BOOT} region={region} ctx={ctx} slots={SLOTS} />;
 

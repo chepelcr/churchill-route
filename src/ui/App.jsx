@@ -25,7 +25,7 @@ import { content } from "../content/remote.js";
 import { applyUiContent, applyScreen } from "./theme.js";
 import TouchControls from "./TouchControls.jsx";
 import GameTweaks from "./GameTweaks.jsx";
-import { enterImmersive } from "./immersive.js";
+import { enterImmersive, needsRotation } from "./immersive.js";
 import { sfx } from "../game/audio.js";
 import { isMvpLocked } from "../game/progress.js";
 import { vehicleMedium } from "../game/vehicles.js";
@@ -44,6 +44,9 @@ export default function App() {
   // screens: boot (every launch) | intro (first run only) | title | stagepick |
   //          brief | playing | paused | over | settings | supporters | shop | vehpick
   const [screen, setScreen] = useState(UI_SCREEN.BOOT);
+  const [portrait, setPortrait] = useState(needsRotation);
+  const [allowPortrait, setAllowPortrait] = useState(false);
+  const showRotatePrompt = portrait && !allowPortrait;
   const [pendingStage, setPendingStage] = useState(null);
   const [pendingMode, setPendingMode] = useState(null); // story | arcade | explore
   const [pendingRealm, setPendingRealm] = useState(null); // ciudad | estero, Recorrer only
@@ -166,21 +169,44 @@ export default function App() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // Mobile web: rotating to landscape should land straight in fullscreen.
-  // Browsers only grant fullscreen with a user gesture, so try on the rotate
-  // event itself (works in some engines/PWA) AND on the next touch after it.
+  // Mobile web: the prompt and boot sequence share the usable viewport state.
+  // Try fullscreen when it becomes wide, and again on a touch for browsers
+  // that require a user gesture.
   useEffect(() => {
-    if (!window.matchMedia("(pointer: coarse)").matches) return;
-    const landscape = window.matchMedia("(orientation: landscape)");
-    const tryFs = () => {
-      if (landscape.matches && !document.fullscreenElement) enterImmersive();
+    const pointer = window.matchMedia("(pointer: coarse)");
+    const { visualViewport } = window;
+    const orientation = window.screen.orientation;
+    let wasPortrait = needsRotation();
+    let settleTimer;
+    const syncViewport = () => {
+      const isPortrait = needsRotation();
+      setPortrait(isPortrait);
+      if (wasPortrait && !isPortrait) enterImmersive();
+      wasPortrait = isPortrait;
     };
-    const onRotate = (e) => { if (e.matches) tryFs(); };
-    landscape.addEventListener("change", onRotate);
-    window.addEventListener("touchend", tryFs, { passive: true });
+    const onRotate = () => {
+      syncViewport();
+      // Some browsers deliver the rotate event before resizing the viewport.
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(syncViewport, 120);
+    };
+    syncViewport();
+    pointer.addEventListener?.("change", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    window.addEventListener("pageshow", syncViewport);
+    window.addEventListener("orientationchange", onRotate);
+    orientation?.addEventListener?.("change", onRotate);
+    visualViewport?.addEventListener("resize", syncViewport);
+    window.addEventListener("touchend", enterImmersive, { passive: true });
     return () => {
-      landscape.removeEventListener("change", onRotate);
-      window.removeEventListener("touchend", tryFs);
+      clearTimeout(settleTimer);
+      pointer.removeEventListener?.("change", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("pageshow", syncViewport);
+      window.removeEventListener("orientationchange", onRotate);
+      orientation?.removeEventListener?.("change", onRotate);
+      visualViewport?.removeEventListener("resize", syncViewport);
+      window.removeEventListener("touchend", enterImmersive);
     };
   }, []);
 
@@ -315,7 +341,7 @@ export default function App() {
     <>
       <canvas ref={canvasRef} id="game-canvas"></canvas>
       {screen === UI_SCREEN.RAILWAY && <RailwayMode onBack={() => setScreen(UI_SCREEN.TITLE)} />}
-      {screen === UI_SCREEN.BOOT && <BootScreen onDone={() => setScreen(introSeen() ? UI_SCREEN.TITLE : UI_SCREEN.INTRO)} />}
+      {screen === UI_SCREEN.BOOT && <BootScreen hold={showRotatePrompt} onDone={() => setScreen(introSeen() ? UI_SCREEN.TITLE : UI_SCREEN.INTRO)} />}
       {(screen === UI_SCREEN.INTRO || screen === UI_SCREEN.TITLE || screen === UI_SCREEN.STAGEPICK || screen === UI_SCREEN.BRIEF || screen === UI_SCREEN.MODEBRIEF || screen === UI_SCREEN.TUTBRIEF || screen === UI_SCREEN.OVER || screen === UI_SCREEN.SETTINGS || screen === UI_SCREEN.SUPPORTERS || screen === UI_SCREEN.SHOP || screen === UI_SCREEN.VEHPICK || screen === UI_SCREEN.REALMPICK) && (
         <div className="screen-anim" key={screen}>
           {screen === UI_SCREEN.INTRO && <IntroScreen onDone={() => setScreen(UI_SCREEN.TUTBRIEF)} />}
@@ -352,10 +378,13 @@ export default function App() {
         onCancel={() => { Game.declinePassage(); setScreen(UI_SCREEN.PLAYING); }} /></>}
       {screen === UI_SCREEN.PAUSED && <><HUD /><PauseScreen onResume={() => setScreen(UI_SCREEN.PLAYING)} onRestart={canRestart ? again : null} onSettings={() => openSettings(UI_SCREEN.PAUSED)} onQuit={quit} /></>}
       {(screen === UI_SCREEN.PLAYING || screen === UI_SCREEN.PAUSED) && <GameTweaks />}
-      <div className="rotate-overlay">
-        <div className="rotate-icon"><Icon name="phone" size={60} /></div>
-        <p>{t("rotate.body")}</p>
-      </div>
+      {showRotatePrompt && (
+        <div className="rotate-overlay">
+          <div className="rotate-icon" aria-hidden="true"><Icon name="phone" size={60} /></div>
+          <p>{t("rotate.body")}</p>
+          <button type="button" className="btn gold" onClick={() => setAllowPortrait(true)}>{t("rotate.continue")}</button>
+        </div>
+      )}
     </>
   );
 }

@@ -989,18 +989,19 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
    tablets still need the pedals. */
 @media (pointer: fine) { .touch-controls { display: none; } }
 
-/* ----- Rotate-your-device overlay (game is landscape-only on touch) ----- */
-.rotate-overlay { display: none; }
-@media (pointer: coarse) and (orientation: portrait) {
-  .rotate-overlay {
-    display: grid; place-items: center; align-content: center; gap: 14px;
-    position: fixed; inset: 0; z-index: 100; background: var(--page);
-    text-align: center; color: var(--paper);
-    font-family: var(--font-display); font-size: 15px; padding: 24px;
-  }
-  .rotate-overlay .rotate-icon { font-size: 60px; animation: rot-hint 1.6s ease-in-out infinite alternate; }
-  @keyframes rot-hint { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
+/* ----- Rotate-your-device prompt ----- */
+.rotate-overlay {
+  display: grid; place-items: center; align-content: center; gap: 14px;
+  position: fixed; inset: 0; z-index: 100; background: var(--page);
+  text-align: center; color: var(--paper);
+  font-family: var(--font-display); font-size: 15px; padding: 24px;
 }
+.rotate-overlay .btn { min-height: 44px; }
+.rotate-overlay .rotate-icon { font-size: 60px; }
+@media (prefers-reduced-motion: no-preference) {
+  .rotate-overlay .rotate-icon { animation: rot-hint 1.6s ease-in-out infinite alternate; }
+}
+@keyframes rot-hint { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
 
 /* ----- Combo flair ----- */
 .combo-badge {

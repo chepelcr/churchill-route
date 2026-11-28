@@ -15,6 +15,7 @@ dist-dbg/
 
 # The game's trailer, a HyperFrames project (private chepelcr/churchill-trailer)
 /trailer/
+/docs/publications/source/*/public/brand/
 
 # Android (Capacitor) build outputs — the android/ project itself is committed
 android/.gradle/
@@ -36,3 +37,4 @@ __pycache__/
 
 # Logs del servidor de desarrollo (./reboot-server.sh)
 logs/
+/docs/publications/source/*/node_modules

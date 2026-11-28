@@ -266,6 +266,7 @@
   "tip.arcade": "Tres minutos y todo el puerto. Si no dejás de entregar, el combo no se cae.",
   "tip.deliverTo": "Llevale a {name}.",
   "tip.delivered": "¡Pura vida! Volvé al kiosco.",
+  "tip.nextKiosk": "Entrega {current}/{target} · Recogé en {name}.",
   "tip.estero": "El estero es suyo. Seguí las boyas o salite de ellas — nadie le está tomando el tiempo.",
   "tip.estero.arrived": "Llegaste a Pitahaya. Devolvéte cuando querás.",
   "tip.explore": "Tenés {n} zonas abiertas para recorrer. Completá niveles de Historia para abrir el resto.",

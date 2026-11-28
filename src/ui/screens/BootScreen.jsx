@@ -4,13 +4,16 @@ import { useT } from "../../i18n/index.js";
 import { sfx } from "../../game/audio.js";
 import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
 import Slots from "../Slots.jsx";
+import BrandTitle from "../BrandTitle.jsx";
+import Ferry from "../../../brand/Ferry.jsx";
 import pacificLogo from "../../assets/branding/pacific-code-labs-reverse.webp?inline";
-import routeArt from "../../assets/branding/ruta-churchill-loading.webp?inline";
+import churchillLogo from "../../assets/branding/churchill-boot.webp?inline";
+import identity from "../../../brand/identity.json";
 
 // Boot sequence (Hill-Climb style), shown on every launch:
 //   phase 0 — Pacific Code Labs logo over a LIVE PIXI WATER backdrop (the same
 //             gradient + drifting sine shimmer the in-game gulf uses)
-//   phase 1 — La Ruta del Churchill art + charge bar with the muelle ferry
+//   phase 1 — La Ruta del Churchill title + charge bar with the muelle ferry
 //             riding the fill edge
 //   out     — the whole screen fades away, revealing the attract world
 // The sequence plays in full once the rotate prompt is cleared.
@@ -23,6 +26,12 @@ export default function BootScreen({ hold, onDone }) {
   const waterRef = useRef(null);
   const [phase, setPhase] = useState(0); // 0 = logo, 1 = charge screen
   const [out, setOut] = useState(false); // final fade-out before onDone
+
+  useEffect(() => {
+    // Download the title face during the studio phase without delaying boot.
+    const face = getComputedStyle(document.documentElement).getPropertyValue("--font-display");
+    document.fonts?.load(`400 1em ${face}`, identity.titleLines.join(" ")).catch(() => {});
+  }, []);
 
   // Pixi water behind the whole boot sequence — same recipe as the game's
   // drawWaterAll: navy gradient (CSS) + sine shimmer polylines drifting.
@@ -100,26 +109,24 @@ export default function BootScreen({ hold, onDone }) {
   // dos pantallas que la secuencia muestra encima.
   const SLOTS = {
     logo: () => (
-      <img className="boot-logo" src={pacificLogo} alt="Pacific Code Labs" />
+      <img className="boot-logo" src={pacificLogo} alt={identity.studio} />
     ),
     art: () => (
-      <img className="boot-art" src={routeArt} alt="La Ruta del Churchill" />
+      <div className="boot-lockup">
+        <img className="boot-emblem" src={churchillLogo} width="224" height="224" alt="" />
+        <BrandTitle className="boot-title brand-title--plain" />
+      </div>
     ),
     bar: () => (
       <div className="boot-bar-wrap">
         <div className="boot-bar"><span style={barAnim}></span></div>
         {/* the muelle ferry rides the fill edge (same art as drawBoat) */}
         <div className="boot-boat" style={barAnim}>
-          <svg width="54" height="26" viewBox="0 0 54 26" aria-hidden="true">
-            <rect x="0" y="15" width="24" height="2" fill="rgba(255,255,255,0.4)" />
-            <rect x="20" y="8" width="32" height="8" rx="1.5" fill="#fff" />
-            <rect x="20" y="13" width="32" height="3" fill="#3a3540" />
-            <rect x="33" y="2" width="6" height="8" rx="1" fill="#e85d75" />
-          </svg>
+          <Ferry />
         </div>
       </div>
     ),
-    loading: () => <div className="boot-loading">{t("boot.loading")}</div>,
+    loading: () => <div className="boot-loading" role="status">{t("boot.loading")}</div>,
   };
   // El aviso de giro oculta las dos fases mientras espera una acción.
   const ctx = { showingLogo: !hold && phase === 0, showingLoad: !hold && phase === 1 };

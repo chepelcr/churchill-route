@@ -1,4 +1,34 @@
-# La Ruta del Churchill — trabajo abierto
+# La Ruta del Churchill — corte del roadmap
+
+[El roadmap canónico vive en Pacific Code Labs Admin](https://admin.jcampos.dev/projects/churchill-route/roadmap),
+proyecto interno `churchill-route`, prefijo `LRC`. Este archivo conserva el
+texto del corte. Consultar y actualizar las incidencias mediante `pcl-admin`.
+
+## Migración del 23 de noviembre de 2026
+
+El corte de `world-2d` se tomó en el commit
+[`7d486ea9`](https://github.com/chepelcr/churchill-route/commit/7d486ea92ebf058dbeb6cce094ada26c785d9142).
+Se creó el roadmap en la versión 1 y se confirmó la importación de 197
+incidencias en la versión 2. La importación abarcó las 55 filas del roadmap,
+29 notas fechadas, 44 secciones del archivo histórico y un índice de 543
+commits alcanzables desde el corte. Cada fila conserva su fuente y marcador
+original. La relectura por MCP coincidió con el documento importado y las
+197 incidencias. El historial de Git conserva una copia íntegra de los
+documentos originales.
+
+- SHA-256 del `ROADMAP.md` original
+  `dc0b9177b4331d6b28e589da1c07d4ec54d930339caca0b4e3084a64d808468f`
+- SHA-256 del tar generado con
+  `git archive --format=tar 7d486ea92ebf058dbeb6cce094ada26c785d9142 ROADMAP.md docs/ROADMAP-ARCHIVE.md docs/changelog`
+  `4c47d42cd7bb5f846a3d28e9d2c3271a315a552451a0f1aa76bea3a1b9596c53`
+
+En el corte pasaron el build, la conducción Arcade en el preview, el smoke
+de simulación ferroviaria y la comparación de los 1.001 archivos del mundo.
+La suite Python registró un fallo de 604 pruebas en el fixture del cliente
+`c5` (`LRC-R07-04`). El smoke marítimo registró tres fallos de aserción en
+encallamiento y pescadores (`LRC-R04-05`).
+
+## Texto original al corte
 
 **Sólo lo que falta.** Todo lo hecho está en `docs/ROADMAP-ARCHIVE.md` (el
 registro de planificación, con el porqué de cada decisión) y en

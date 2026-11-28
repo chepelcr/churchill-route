@@ -1,4 +1,5 @@
 /* La Ruta del Churchill — UI styles */
+@import "../brand/brand.css";
 
 /* ---------------------------------------------------------------------------
    LOS TOKENS. Every colour and every type stack in this file comes from here,
@@ -34,16 +35,16 @@
      broken. `applyTheme` ignores ids it does not know, so an authored value
      for either is dropped rather than crashing, exactly as it was already
      being ignored. */
-  --coral: oklch(0.68 0.18 30);
+  --coral: #F36451;
   --coral-lit: oklch(0.68 0.20 30);
   --hot: oklch(0.66 0.25 0);
-  --gold: oklch(0.86 0.16 90);
+  --gold: #FACB3A;
   --teal: oklch(0.62 0.12 220);
-  --ink: oklch(0.18 0.03 280);
+  --ink: #0F101F;
   --paper: oklch(0.96 0.02 80);
-  --lemon: oklch(0.96 0.13 95);
-  --tangerine: oklch(0.72 0.20 25);
-  --magenta: oklch(0.58 0.22 350);
+  --lemon: #FFF187;
+  --tangerine: #FF6661;
+  --magenta: #D0268C;
   --crimson: oklch(0.55 0.22 0);
 
   /* ---- text: the warm paper ladder, brightest to faintest --------------- */
@@ -54,23 +55,23 @@
   --paper-pure: #fff;
 
   /* ---- accents that were loose hex ------------------------------------- */
-  --amber: #ffe06b;
-  --mint: #6fbf99;
-  --sky: #5fb0d6;
-  --rose: #ff3d80;
-  --sand: #ffce9e;
+  --amber: #FFE06B;
+  --mint: #6FBF99;
+  --sky: #5FB0D6;
+  --rose: #FF3D80;
+  --sand: #FFCE9E;
   --ember: #ffb36b;
   --straw: #f4d77a;
   --honey: #f3c969;
-  --foam: #bff0d6;
-  --ice: #9be6ff;
+  --foam: #BFF0D6;
+  --ice: #9BE6FF;
   --haze: #9adcf0;
   --grey: #777;
   --grey-dark: #555;
 
   /* ---- surfaces --------------------------------------------------------- */
-  --page: #0a0414;
-  --deep: #0b1a2e;
+  --page: #0A0414;
+  --deep: #0B1A2E;
   --deep-lit: #123049;
   --forest: #0c2418;
   --plum: oklch(0.22 0.05 280);
@@ -253,6 +254,18 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .apk-btn:hover { background: rgba(var(--mint-rgb),0.24); transform: translateY(-1px); }
 .apk-btn:active { transform: translateY(1px); }
 .apk-btn span { font-size: 14px; }
+.brand-title {
+  --brand-font-display: var(--font-display-alt);
+  --lrc-title-start: var(--lemon);
+  --lrc-title-mid: var(--tangerine);
+  --lrc-title-end: var(--magenta);
+}
+.menu-title {
+  max-width: 100%;
+  margin: clamp(6px, 1.6vh, 14px) 0 6px;
+  font-size: clamp(24px, 5.6vw, 72px);
+  overflow-wrap: anywhere;
+}
 .title-main {
   font-family: var(--font-display-alt);
   font-size: clamp(26px, 5.6vw, 72px);
@@ -266,7 +279,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 6px 0 rgba(var(--shadow-rgb),0.22)) drop-shadow(0 12px 24px oklch(var(--magenta-oklch) / 0.4));
 }
-/* the short "LA RUTA" header on the level-select stays on one line */
+/* Keep compact headers on one line when the viewport has room. */
 .shell-title { white-space: nowrap; overflow-wrap: normal; }
 .title-sub {
   font-family: var(--font-display-mono); font-size: clamp(20px, 4vw, 36px);
@@ -286,18 +299,18 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .modes { grid-template-columns: 1fr !important; }
 }
 .mode {
-  background: rgba(var(--fg-rgb),0.06); border: 1px solid rgba(var(--fg-rgb),0.16);
+  background: rgba(var(--panel-rgb),0.64); border: 1px solid rgba(var(--sky-rgb),0.32);
   border-radius: 14px; padding: 18px 14px; cursor: pointer; text-align: left;
   transition: transform 0.12s, background 0.12s, border-color 0.12s;
   color: var(--paper); font: inherit;
 }
-.mode:hover { background: rgba(var(--fg-rgb),0.12); border-color: rgba(var(--fg-rgb),0.28); transform: translateY(-2px); }
+.mode:hover { background: rgba(var(--panel-lit-rgb),0.8); border-color: rgba(var(--sky-rgb),0.72); transform: translateY(-2px); }
 .mode .mt {
   font-family: var(--font-display); font-size: 18px; letter-spacing: 0.04em;
   display: flex; align-items: center; gap: 8px;
 }
 .mode .mt .sw { width: 10px; height: 10px; border-radius: 3px; }
-.mode .ms { color: oklch(var(--warm-oklch) / 0.78); margin-top: 6px; font-size: 12.5px; line-height: 1.45; }
+.mode .ms { color: oklch(var(--warm-oklch)); margin-top: 6px; font-size: 12.5px; line-height: 1.45; }
 
 /* short landscape (phones): compress so the mode buttons stay above the fold */
 @media (max-height: 500px) {
@@ -336,16 +349,18 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   left: max(18px, env(safe-area-inset-left));
   display: flex; align-items: stretch; gap: 10px;
 }
+.hud-card, .hud-btn, .district-tab, .melt-bar {
+  background: rgba(var(--panel-rgb),0.89);
+  border: 1px solid rgba(var(--sky-rgb),0.35);
+}
 .hud-card {
-  background: rgba(var(--panel-rgb),0.75);
-  border: 1px solid rgba(var(--fg-rgb),0.12);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border-radius: 12px; padding: 8px 12px;
   font-family: var(--font-ui); font-size: 12px;
   color: var(--paper);
 }
-.hud-card .lbl { font-size: 9px; opacity: 0.55; letter-spacing: 0.18em; text-transform: uppercase; }
+.hud-card .lbl { font-size: 9px; color: var(--text-soft); letter-spacing: 0.18em; text-transform: uppercase; }
 .hud-card .val { font-family: var(--font-display); font-size: 22px; line-height: 1; }
 .hud-card.score .val { color: var(--gold); }
 .hud-card.combo .val { color: var(--hot); }
@@ -361,8 +376,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   display: flex; gap: 8px;
 }
 .hud-btn {
-  background: rgba(var(--panel-rgb),0.75);
-  border: 1px solid rgba(var(--fg-rgb),0.12);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border-radius: 12px;
@@ -386,8 +399,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   position: absolute;
   top: max(80px, calc(env(safe-area-inset-top) + 66px));
   left: max(18px, env(safe-area-inset-left));
-  background: rgba(var(--panel-rgb),0.78);
-  border: 1px solid rgba(var(--fg-rgb),0.14);
   border-radius: 999px;
   padding: 8px 16px; display: flex; align-items: center; gap: 10px;
 }
@@ -424,8 +435,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .melt-bar {
   position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
   width: min(420px, 70vw);
-  background: rgba(var(--panel-rgb),0.85);
-  border: 1px solid rgba(var(--fg-rgb),0.16);
   border-radius: 16px; padding: 10px 14px;
 }
 .melt-bar .row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
@@ -474,8 +483,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .overlay > * { margin: auto; }
 .panel {
   background: linear-gradient(180deg, var(--plum), var(--void));
-  border: 1px solid rgba(var(--fg-rgb),0.12);
-  padding: 28px 32px; border-radius: 18px;
+  border: 1px solid rgba(var(--sky-rgb),0.35);
+  padding: 28px 32px; border-radius: var(--lrc-panel-radius);
   width: min(520px, 92vw); text-align: center;
 }
 .panel h2, .page-card h2 {
@@ -487,8 +496,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 /* pause menu: 4 nowrap Bungee buttons overflow a 520px row — stack them */
 .panel .btn-row.pause-actions { flex-direction: column; align-items: stretch; }
 .btn {
-  background: var(--coral); color: var(--paper-pure); border: none; padding: 10px 18px;
-  border-radius: 10px; cursor: pointer; font: inherit;
+  background: var(--coral); color: var(--ink); border: none; padding: 10px 18px;
+  border-radius: var(--lrc-control-radius); cursor: pointer; font: inherit;
   font-family: var(--font-display); letter-spacing: 0.04em;
   font-size: 14px; box-shadow: 0 5px 0 rgba(var(--shadow-rgb),0.35);
   transition: transform 0.08s, box-shadow 0.08s, filter 0.12s;
@@ -499,17 +508,18 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .btn.gold { background: var(--gold); color: var(--ink); }
 
 /* ----- Menu focus (keyboard / gamepad navigation) ----- */
-.mode.focused, .stage-card.focused, .vchip.focused, .btn.focused {
-  outline: 2px solid var(--gold);
+.mode.focused, .stage-card.focused, .vchip.focused, .btn.focused,
+:is(.mode, .stage-card, .vchip, .btn, .tool-pill, .hud-btn, .apk-btn):focus-visible {
+  outline: var(--lrc-focus-width) solid var(--gold);
   outline-offset: 2px;
   box-shadow: 0 0 18px oklch(var(--gold-oklch) / 0.35), 0 5px 0 rgba(var(--shadow-rgb),0.35);
 }
-.mode.focused, .stage-card.focused { transform: translateY(-2px); background: rgba(var(--fg-rgb),0.12); }
+.mode.focused, .stage-card.focused { transform: translateY(-2px); background: rgba(var(--panel-lit-rgb),0.8); }
 
 /* ----- Screen transitions ----- */
 .screen-anim {
   position: absolute; inset: 0;
-  animation: screen-in 280ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation: screen-in var(--lrc-enter) var(--lrc-ease) both;
 }
 @keyframes screen-in {
   from { opacity: 0; transform: translateY(18px) scale(0.985); }
@@ -519,8 +529,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   from { opacity: 0; transform: scale(0.92); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .screen-anim, .overlay .panel, .boot-boat svg,
-  .boot-logo, .boot-art, .boot-bar-wrap, .boot-loading, .intro-slide, .intro-support { animation: none; }
+  .screen-anim, .overlay .panel, .intro-slide, .intro-support { animation: none; }
 }
 
 /* ----- Tutorial coach-marks overlay (visual only, game plays through) ----- */
@@ -669,7 +678,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   flex-wrap: wrap;
   position: relative; z-index: 2;
   padding-bottom: 12px;
-  border-bottom: 1px solid oklch(var(--fg-oklch) / 0.10);
+  border-bottom: 1px solid oklch(var(--fg-oklch) / 0.19);
   box-shadow: 0 8px 12px -10px oklch(var(--shadow-oklch) / 0.9);
   /* opaque band of its own: .page-card's blur sits BEHIND the scrolling body,
      so without this the rows scrolled to the top showed through the nav */
@@ -719,12 +728,14 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   position: absolute; inset: 0; z-index: 30;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 18px; background: var(--deep);
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+           max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }
 /* the charge screen's glow lives in ::before so the background MORPHS in
    (gradients aren't transition-able; opacity is) */
 .boot-screen::before {
   content: ""; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 42%, var(--deep-lit) 0%, var(--deep) 72%);
+  background: radial-gradient(ellipse at 50% 36%, var(--lrc-lagoon-wash), var(--lrc-lagoon) 66%, var(--sky));
   opacity: 0; transition: opacity 700ms ease;
 }
 .boot-screen.load::before { opacity: 1; }
@@ -739,7 +750,22 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   80% { opacity: 1; transform: scale(1.015); }
   100% { opacity: 0; transform: scale(1.03); }
 }
-.boot-art { width: min(86vw, 900px); max-height: 66vh; object-fit: contain; animation: boot-art-in 600ms cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+.boot-lockup {
+  display: flex; align-items: center; justify-content: center;
+  gap: clamp(12px, 3vw, 38px);
+  margin-bottom: clamp(18px, 5vh, 52px);
+  animation: boot-art-in var(--lrc-reveal) var(--lrc-ease) both;
+}
+.boot-emblem {
+  flex: none;
+  width: clamp(58px, min(18vw, 29vh), 174px);
+  height: auto;
+}
+.boot-title {
+  --brand-title-ink: var(--lrc-lagoon-ink);
+  font-size: clamp(19px, min(7.3vw, 13vh), 96px);
+  text-align: left;
+}
 @keyframes boot-art-in { from { opacity: 0; transform: translateY(14px) scale(0.985); } }
 /* live water shimmer behind the whole boot (Pixi; the navy is the CSS bg) */
 .boot-water { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -752,6 +778,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   background: rgba(var(--fg-rgb),0.12); border: 1px solid rgba(var(--fg-rgb),0.25);
   overflow: hidden;
 }
+.boot-screen.load .boot-bar { background: var(--lrc-lagoon-wash); border-color: var(--lrc-lagoon-strong); }
 .boot-bar span {
   display: block; height: 100%; width: 0; border-radius: 999px;
   background: linear-gradient(90deg, var(--gold), var(--ember));
@@ -772,8 +799,12 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   to { transform: translateY(2.5px) rotate(1.6deg); }
 }
 .boot-loading {
-  font: 12px var(--font-ui); letter-spacing: 0.22em; opacity: 0.7;
+  font: 12px var(--font-ui); letter-spacing: 0.22em; color: var(--lrc-lagoon-ink);
   animation: boot-art-in 500ms ease-out 350ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-logo, .boot-lockup, .boot-bar-wrap, .boot-loading, .boot-boat svg { animation: none; }
+  .boot-screen::before { transition: none; }
 }
 
 /* First-run lore intro: the BUTTONS advance (no tap-anywhere).
@@ -805,7 +836,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .intro-page .btn-row { margin-top: 0 !important; }
   .intro-page .btn { padding: 7px 14px; font-size: 12px; }
   .intro-page .page-head { padding-top: 2px; }
-  .boot-art { max-height: 52vh; }
   .boot-logo { width: min(56vw, 380px); }
 }
 /* bigger, full-screen-worthy type on these pages */
@@ -979,12 +1009,12 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   position: absolute;
   bottom: max(24px, env(safe-area-inset-bottom));
   width: 92px; height: 92px; border-radius: 50%;
-  background: rgba(var(--fg-rgb),0.10); border: 2px solid rgba(var(--fg-rgb),0.25);
+  background: rgba(var(--panel-rgb),0.62); border: 2px solid rgba(var(--sky-rgb),0.64);
   display: grid; place-items: center; font-family: var(--font-display); color: var(--paper-pure);
   pointer-events: auto; font-size: 26px;
   touch-action: none; -webkit-user-select: none; user-select: none;
 }
-.pedal.brake { right: max(24px, env(safe-area-inset-right)); background: rgba(var(--fg-rgb),0.18); }
+.pedal.brake { right: max(24px, env(safe-area-inset-right)); background: rgba(var(--panel-rgb),0.8); }
 /* Hide touch controls only for fine-pointer (mouse) devices — landscape
    tablets still need the pedals. */
 @media (pointer: fine) { .touch-controls { display: none; } }
@@ -1025,7 +1055,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   font-size: 14px; opacity: 0.9;
 }
 
-/* ----- Stage select: LA RUTA header + two separate glass cards, sized to
+/* ----- Stage select: title header and two cards, sized to
    the viewport (vh-clamped type/padding, rows that compress) — no scroll. */
 .stage-select-wrap {
   width: min(980px, 97vw);
@@ -1217,3 +1247,88 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 @keyframes passage-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes passage-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Light tropical surfaces for the game UI. The live world is visible through
+   the sea-glass veil, with solid cards where the player needs to read. */
+.screen-anim, .overlay, .ui-layer, .railway-page {
+  color: var(--lrc-lagoon-ink);
+  --brand-title-ink: var(--lrc-lagoon-ink);
+  --paper: var(--lrc-lagoon-ink);
+  --text-bright: var(--lrc-lagoon-ink);
+  --text-soft: var(--lrc-lagoon-muted);
+  --text-dim: var(--lrc-lagoon-muted);
+  --text-faint: var(--lrc-lagoon-muted);
+  --gold: var(--lrc-lagoon-text);
+}
+
+.title-bg, .page-card {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--lrc-lagoon-wash) 92%, transparent),
+    color-mix(in srgb, var(--lrc-lagoon) 76%, transparent) 56%, color-mix(in srgb, var(--lrc-sand-light) 85%, transparent));
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.page-head {
+  background: var(--lrc-lagoon-wash);
+  border-color: var(--lrc-lagoon-border);
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.title-main:not(.brand-title) { background: none; color: var(--lrc-lagoon-ink); filter: none; }
+.title-sub { color: var(--lrc-papaya-ink); }
+.title-pill, .tool-pill, .vchip, .info-bubble {
+  background: var(--lrc-lagoon-wash); color: var(--lrc-lagoon-ink);
+  border-color: var(--lrc-lagoon-border); box-shadow: none;
+}
+.title-pill .dot { background: var(--lrc-lagoon-strong); box-shadow: none; }
+.vchip.active { background: var(--lrc-lagoon); border-color: var(--lrc-lagoon-strong); color: var(--lrc-lagoon-ink); }
+.controls-hint kbd, .apk-btn { background: var(--lrc-lagoon-wash); border-color: var(--lrc-lagoon-border); color: var(--lrc-lagoon-ink); }
+.apk-btn:hover { background: var(--lrc-lagoon); }
+.mode, .glass-card, .carousel-arrow, .panel {
+  background: var(--lrc-cream);
+  border-color: var(--lrc-lagoon-border);
+  color: var(--lrc-lagoon-ink);
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.mode .ms { color: var(--lrc-lagoon-muted); }
+.mode:hover, .mode.focused, .stage-card.focused, .carousel-arrow:hover, .tool-pill:hover {
+  background: var(--lrc-lagoon); border-color: var(--lrc-lagoon-strong); transform: none;
+}
+.btn, .btn.secondary, .btn.gold {
+  border: 1px solid var(--lrc-lagoon-border);
+  box-shadow: none; color: var(--lrc-lagoon-ink);
+}
+.btn { background: color-mix(in srgb, var(--coral) 36%, var(--lrc-cream)); }
+.btn.secondary { background: var(--lrc-lagoon-wash); }
+.btn.gold { background: var(--lrc-gold); border-color: transparent; }
+.btn:hover, .btn:active { transform: none; box-shadow: none; }
+.mode.focused, .stage-card.focused, .vchip.focused, .btn.focused,
+:is(.mode, .stage-card, .vchip, .btn, .tool-pill, .hud-btn, .apk-btn):focus-visible {
+  outline-color: var(--lrc-lagoon-strong); box-shadow: none;
+}
+.overlay {
+  background: color-mix(in srgb, var(--lrc-lagoon-ink) 32%, transparent);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.overlay .panel { animation: screen-in var(--lrc-enter) var(--lrc-ease) both; }
+.hero-badge.no { color: var(--lrc-papaya-ink); }
+.story-shell .shell-nav { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
+.story-shell .shell-nav > :first-child { justify-self: start; }
+.story-shell .shell-nav > :last-child { justify-self: end; }
+.story-shell .shell-title { white-space: normal; font-size: clamp(15px, 3.6vw, 30px); }
+.stage-dots .dot { border-color: var(--lrc-lagoon-muted); background: var(--lrc-lagoon-wash); }
+.stage-dots .dot.on { background: var(--lrc-lagoon-strong); transform: none; box-shadow: none; }
+.hud-card, .hud-btn, .district-tab, .melt-bar, .story-tip, .district-toast {
+  background: color-mix(in srgb, var(--lrc-lagoon-wash) 94%, transparent);
+  border-color: var(--lrc-lagoon-border); color: var(--lrc-lagoon-ink);
+  box-shadow: none;
+}
+.hud-card.timer .val, .district-toast .dt-name { color: var(--lrc-lagoon-ink); }
+.hud-card.timer.urgent .val, .hud-card.combo .val { color: var(--lrc-papaya-ink); }
+.hud-btn.on, .hud-btn:active { background: var(--lrc-lagoon); border-color: var(--lrc-lagoon-strong); }
+.melt-bar .bar { background: var(--lrc-lagoon); }
+.pedal, .pedal.brake { background: var(--lrc-lagoon-wash); color: var(--lrc-lagoon-ink); border-color: var(--lrc-lagoon-strong); }
+@media (max-width: 600px) {
+  .story-shell .shell-nav { grid-template-columns: 1fr 1fr; }
+  .story-shell .shell-title { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay .panel { animation: none; }
+}

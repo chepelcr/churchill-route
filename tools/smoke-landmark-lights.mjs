@@ -66,12 +66,12 @@ async function inspect(id, weather) {
 try {
   await page.goto(url.href, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.Game?.state.running);
-  assert.equal((await inspect("estadio", "night")).halos, 6, "Lito Pérez must light all six towers");
+  assert.equal((await inspect("estadio", "night")).halos, 5, "Lito Pérez must light all five towers (the north stand keeps its two end masts, clear of its roof name)");
   assert.equal((await inspect("estadio_playitas", "night")).halos, 4, "Las Playitas must light all four towers");
   assert.equal((await inspect("estadio", "sunny")).halos, 0, "Floodlights must stay off in daylight");
   assert.equal((await inspect("faro", "night")).roofProtected, true, "The lighthouse roof must occlude its light");
   assert.deepEqual(errors, []);
-  console.log("[landmark-lights] ok — six Lito Pérez towers, four Las Playitas towers, lighthouse roof occlusion");
+  console.log("[landmark-lights] ok — five Lito Pérez towers, four Las Playitas towers, lighthouse roof occlusion");
 } finally {
   await browser.close();
 }

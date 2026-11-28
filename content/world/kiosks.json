@@ -34,6 +34,24 @@
       "dyM": 24.0
     },
     {
+      "id": "kios_paseo3",
+      "name": "Papi-carne del Paseo",
+      "district": "paseo",
+      "product": "papicarne",
+      "osm": "kioscos paseo de los turistas",
+      "dyM": 24.0
+    },
+    {
+      "id": "kios_paseo_burger",
+      "name": "Hamburguesas del Paseo",
+      "district": "paseo",
+      "product": "hamburguesa",
+      "osm": "islita drinks",
+      "ll": [9.9747696, -84.8455401],
+      "dyM": 46.0,
+      "_anchor": "Puesto ficticio sobre el malecón frente a Islita Drinks, nodo OSM 11446629069."
+    },
+    {
       "id": "kios_centro",
       "name": "El Cevichito",
       "district": "centro",

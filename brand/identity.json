@@ -1,0 +1,27 @@
+{
+  "name": "La Ruta del Churchill",
+  "titleLines": ["LA RUTA DEL", "CHURCHILL"],
+  "studio": "Pacific Code Labs",
+  "website": "churchill.jcampos.dev",
+  "revision": 1,
+  "marks": {
+    "churchill": {
+      "source": "assets/icon.png",
+      "boot": "src/assets/branding/churchill-boot.webp",
+      "bootSha256": "d956543c24dd631d75a5e89e1d665260bc14d9e7359446a1359edf6084a5190d",
+      "file": "churchill-icon.png",
+      "sha256": "83e91d6b85beb59f7da7a5f851b486648b5b11158d6d527770ca4ad1b5d05f06",
+      "width": 1024,
+      "height": 1024
+    },
+    "studio": {
+      "source": "public/branding/pacific-code-labs.png",
+      "boot": "src/assets/branding/pacific-code-labs-reverse.webp",
+      "bootSha256": "7c96b943e002aee27e1e81a90e903522e3013cac24880cda83a6582439611651",
+      "file": "pcl-reverse.png",
+      "sha256": "e624af38ebf5dc2015fca2e6e516e5feecf06a5453305c8c4ff5907281d6cc99",
+      "width": 1050,
+      "height": 440
+    }
+  }
+}

@@ -189,7 +189,9 @@
       "tagFill": "rgba(255,255,255,0.86)",
       "nameBg": "rgba(10,8,20,0.72)",
       "nameFallback": "#fff",
-      "nameFallbackNote": "cuando la categoría no tiene tono propio en `POI_TONE`."
+      "nameFallbackNote": "cuando la categoría no tiene tono propio en `POI_TONE`.",
+      "painted": ["Estadio Miguel Ángel \"Lito\" Pérez"],
+      "_painted": "lugares cuyo nombre ya va pintado en su propio edificio (el Lito Pérez lo lleva en el techo de la tribuna, `world-props.json → stadiums3d`): no llevan además la etiqueta de punto de interés, que lo repetía encima de la cancha"
     },
     "debugGrid": {
       "_note": "La retícula de depuración. Sólo se ve con el debug prendido.",

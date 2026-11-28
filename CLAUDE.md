@@ -14,13 +14,22 @@ vehicle, pick up a *churchill* (shaved-ice drink) at a kiosk, and deliver it to 
 customer before it melts. Three modes: **Historia** (7 stages), **Arcade** (3-min
 free roam), **Recorrer** (open world with unlockable districts).
 
-Design doc: `docs/GAME_DESIGN.md`. **`ROADMAP.md` is OPEN WORK ONLY** — it was
-pruned on 2026-08-14 after several of its oldest rows turned out to be false (it
-claimed the game had no audio, an all-Spanish UI and a pending 2-D map). The
-history lives in `docs/ROADMAP-ARCHIVE.md`, and the per-date release notes in
-`docs/changelog/YYYY-MM-DD.md`. **Verify a row against the tree before acting on
-it, and archive it if it has closed or rotted** — that is how the file stays
-worth reading.
+Design doc: `docs/GAME_DESIGN.md`. Planning history lives in
+`docs/ROADMAP-ARCHIVE.md`. Dated release notes live in
+`docs/changelog/YYYY-MM-DD.md`.
+
+## Roadmap
+
+The canonical roadmap is [La Ruta del Churchill in Pacific Code Labs Admin](https://admin.jcampos.dev/projects/churchill-route/roadmap),
+project `churchill-route`, issue prefix `LRC`. Before working on an issue, read
+it through the `pcl-admin` MCP with `roadmap_get` or `roadmap_get_task`.
+Save status, owner, branch, evidence, environment, and next action with the
+current `base_version`. Preserve issue IDs, prior evidence, and activity.
+On a version conflict, reread and reconcile before retrying. Verify the
+issue against the tree and record any remaining scope before closing it.
+
+`ROADMAP.md` is the migration snapshot for reference. Record backlog changes
+in Admin and keep release notes and design evidence in the repository.
 
 ## ANTES DE TOCAR CONTENIDO: ¿esto ya es data?
 

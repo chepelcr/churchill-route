@@ -1,0 +1,21 @@
+{
+  "name": "churchill-reel-recorrer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "brand:sync": "node ../../../../brand/export.mjs --out public/brand",
+    "prestudio": "npm run brand:sync",
+    "studio": "remotion studio index.jsx",
+    "capture": "node capture.mjs",
+    "prerender": "npm run brand:sync",
+    "render": "remotion render index.jsx ChurchillRecorrer ../../Kit_Instagram_Churchill/06_reel_publicacion_03/Reel_03_Como_entrar_y_recorrer.mp4 --codec=h264 --crf=18 --pixel-format=yuv420p --audio-codec=aac"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.536",
+    "@remotion/cli": "4.0.536",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.536"
+  }
+}

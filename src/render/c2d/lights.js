@@ -142,11 +142,14 @@ function paintStanding(type, spec, x, y, opts) {
     head(hx0 + sh.dx, hy0 + sh.dy);
     ctx.restore();
   }
-  // el pie, el poste y el brazo
+  // el pie, el poste y el brazo. Una torre parada DENTRO de una gradería (`baseM`, la altura de sus escalones
+  // ahí) sale de entre ellos: el poste arranca a esa altura y no hay pie a la vista
   ctx.lineCap = "round"; ctx.strokeStyle = S.post; ctx.fillStyle = S.post;
-  ctx.beginPath(); ctx.arc(x, y, S.postPx * 0.9, 0, Math.PI * 2); ctx.fill();
+  let bx = x, by = y;
+  if (opts.baseM > 0) { const b = parallaxOffset(state.cam, x, y, opts.baseM, ppm); bx = x + b.dx; by = y + b.dy; }
+  else { ctx.beginPath(); ctx.arc(x, y, S.postPx * 0.9, 0, Math.PI * 2); ctx.fill(); }
   ctx.lineWidth = S.postPx;
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
   // la cabeza vista desde arriba: la LENTE MIRA AL SUELO. Va un poco más abajo que la carcasa
   // (`lensDropM`) y se pinta primero, así lo que se ve es la carcasa oscura y apenas el borde de luz
   // que asoma del lado de la cámara — no un punto amarillo encima del poste.
@@ -163,11 +166,16 @@ function paintStanding(type, spec, x, y, opts) {
     const { radiusMin, radiusMax, intensityMax } = LIGHTS.limits;
     const radius = Math.max(radiusMin, Math.min(radiusMax, Number(opts.radius) || spec.radius));
     const intensity = Math.max(0, Math.min(intensityMax, Number(opts.intensity ?? 1) || 0));
-    const reach = radius * spec.scatter.groundK;
+    // EL POZO DE UNA TORRE NO ES EL DE UNA FAROLA: alumbra una cancha. Su radio y cuánto se adelanta hacia
+    // donde mira van en METROS (`scatter.poolM`, `scatter.reachM`; la torre puede mandar los suyos), y el
+    // pozo es `field`, así que ninguna pared del estadio lo tapa — lo que tapa es para la luz de la calle.
     // Las torres de la gradería se derivan en el renderer y no vienen en W.lampsIn.
+    const SC = spec.scatter, reachM = opts.reachM ?? SC.reachM, poolM = opts.poolM ?? SC.poolM;
+    const reach = reachM ? reachM * PX_PER_M : radius * SC.groundK;
     const pool = opts.fieldTower ? {
       x: x + Math.cos(ang) * reach, y: y + Math.sin(ang) * reach,
-      type, intensity: intensity * spec.scatter.groundStrength,
+      type, intensity: intensity * SC.groundStrength, field: true,
+      ...(poolM ? { r: poolM * PX_PER_M } : {}),
     } : null;
     floodlights.push({ x: lx, y: ly, ang, radius, brightness: Math.min(1, intensity * night), spec, pool });
     return;
@@ -268,10 +276,12 @@ export function drawFieldTowers(lm, spec, spots = null) {
   // `spots`: dónde las pone el registro del estadio (`stadiums3d.<id>.towers`), si las pone; si no, las esquinas
   // …y con `spots` se pintan DESPUÉS de las graderías 3D (que van en la cola de encima del carro): pintadas
   // en la pasada de hitos, las graderías les pasaban por encima y las torres quedaban debajo de los escalones
-  for (const [x, y] of spots || CORNERS.map(([dx, dy]) => polyCorner(pts, dx, dy, inset))) {
+  // un punto puede traer su propio rumbo (`[x, y, ang]`); si no, la torre mira al centro de la cancha
+  for (const [x, y, aim, extra] of spots || CORNERS.map(([dx, dy]) => polyCorner(pts, dx, dy, inset))) {
     const opts = {
       radius: own.radius ?? spec.radius, intensity: own.intensity ?? spec.intensity,
-      night, ang: Math.atan2(cy - y, cx - x), fieldTower: true,
+      night, ang: aim ?? Math.atan2(cy - y, cx - x), fieldTower: true,
+      poolM: extra?.poolM, reachM: extra?.reachM, baseM: extra?.baseM,
     };
     if (spots) {
       queueOverLike({ x, y, paint: () => paintLight(type, x, y, opts) }, true);

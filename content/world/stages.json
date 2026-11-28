@@ -24,18 +24,22 @@
       "num": 2,
       "name": "Paseo de los Turistas",
       "district": "paseo",
-      "brief": "El boulevard está lleno. Atravesá la peatonal esquivando turistas y comparsas de carnaval.",
+      "brief": "Hacé un reparto desde cada uno de los cuatro kioscos del Paseo. Esquivá turistas y comparsas de carnaval.",
       "kiosks": [
         "kios_paseo1",
-        "kios_paseo2"
+        "kios_paseo2",
+        "kios_paseo3",
+        "kios_paseo_burger"
       ],
+      "kioskSequence": true,
       "targetDeliveries": 4,
       "timeLimit": 150,
       "weather": "sunny",
       "customers": [
         "c3",
         "c4",
-        "c5"
+        "c5",
+        "c2"
       ],
       "unlock": "centro"
     },

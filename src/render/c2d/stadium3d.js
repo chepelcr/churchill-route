@@ -17,6 +17,11 @@
 import { buildBody } from "./bodyGeometry.js";
 import { queueBody } from "./bodies.js";
 import { PX_PER_M } from "../../domain/units.js";
+import { lastT } from "./gfx.js";
+import { registerOccluderSource } from "./nightlights.js";
+import { parallaxOffset } from "./depth.js";
+import { state } from "../../game/state.js";
+import LIGHTS from "../../assets/lights.json" with { type: "json" };
 
 const built = new Map();
 const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
@@ -89,7 +94,7 @@ function terrace(q, S, I, ppm) {
 }
 
 /** LA TRIBUNA TECHADA: el edificio de la grada principal, sobre su franja y `innerM` dentro de la cuadra. */
-function building(q, S, I, ppm) {
+function building(q, S, I, ppm, name) {
   const F = standFrame(q), inner = (S.innerM || 0) * ppm;
   const Ai = add(F.A, F.n, -inner), Bi = add(F.B, F.n, -inner), Ao = F.D, Bo = F.C;
   const poly = [Ai, Bi, Bo, Ao].map(([x, y]) => [r1(x), r1(y)]);        // aristas: 0 cancha, 1 fin B, 2 calle, 3 fin A
@@ -118,14 +123,31 @@ function building(q, S, I, ppm) {
   // …y metido `roofSetbackM` de la fachada: desde la calle se ve la tribuna de arriba, con sus columnas
   const sb = (S.roofSetbackM || 0) * ppm;
   const R = [add(Ai, F.n, -ov), add(Bi, F.n, -ov), add(Bo, F.n, -sb), add(Ao, F.n, -sb)];
-  out.push(facet([[...R[0], S.roofHighM], [...R[1], S.roofHighM], [...R[2], S.roofLowM], [...R[3], S.roofLowM]], I.roof, I.roofShade));
+  const roof = facet([[...R[0], S.roofHighM], [...R[1], S.roofHighM], [...R[2], S.roofLowM], [...R[3], S.roofLowM]], I.roof, I.roofShade);
+  // `roofName`: `true` pinta el nombre del hito; un texto pinta ese texto (el nombre completo del estadio)
+  const roofText = typeof S.roofName === "string" ? S.roofName : S.roofName && name;
+  if (roofText) {
+    const angle = Math.atan2(Bi[1] - Ai[1], Bi[0] - Ai[0]) * 180 / Math.PI;
+    // EN EL CENTRO DEL TECHO: a lo largo y de la cancha a la calle. `zM` es la altura de ese punto de la
+    // cara inclinada, para que la palabra quede pegada a la lámina y no flote.
+    const across = 0.5, along = 0.5;
+    roof.capText = {
+      lines: [roofText.toUpperCase().replaceAll(" ", "  ")],
+      atM: lerp(lerp(R[0], R[1], along), lerp(R[3], R[2], along), across),
+      zM: S.roofHighM + (S.roofLowM - S.roofHighM) * across,
+      rotDeg: ((angle + 270) % 180) - 90,
+      // The stadium's identity frame takes coordinates in world pixels.
+      heightM: 4.85 * ppm, maxWM: F.L * (S.roofNameWK ?? 0.86), weight: 900, ink: I.roofName,
+    };
+  }
+  out.push(roof);
   return out;
 }
 
 /** Arma (una vez) el estadio entero: un cuerpo por clase de grada. */
 function buildStadium(lm, quads, cfg) {
   const ppm = PX_PER_M, sides = lm.stands?.sides || quads.map(() => lm.stands?.side);
-  const groups = {};
+  const groups = {}, occluders = lm.footprint?.length >= 6 ? [lm.footprint] : [], tops = [];
   quads.forEach((q, i) => {
     const S = { roofFrom: cfg.roofFrom, ...(cfg.sides.all || {}), ...(cfg.sides[sides[i]] || {}), ...(cfg.quads?.[i] || {}) };
     // `flip`: la grada mira al otro lado —la baranda en su espalda y la espalda contra la cancha—, sobre la
@@ -133,26 +155,59 @@ function buildStadium(lm, quads, cfg) {
     // la cancha multiuso)
     if (S.flip) q = [q[6], q[7], q[4], q[5], q[2], q[3], q[0], q[1]];
     if (!S.kind) return;
+    // LO QUE TAPA LA LUZ DE LA CALLE: la franja donde se para y su TAPA tal como se ve —la grada de su borde
+    // de adelante a la espalda que vuela `overM` sobre la calle; la tribuna, su techo—. Lo de debajo del vuelo
+    // NO tapa: ahí la calle sigue alumbrada, y la luz se ve salir de abajo de la grada
+    const Fq = standFrame(q);
+    occluders.push([...Fq.A, ...Fq.B, ...Fq.C, ...Fq.D]);
+    if (S.kind === "terrace") {
+      const over = (S.overM || 0) * ppm, lo = S.frontM || 0, hi = S.backM || 0;
+      tops.push([[...Fq.A, lo], [...Fq.B, lo], [...add(Fq.C, Fq.n, over), hi], [...add(Fq.D, Fq.n, over), hi]]);
+    } else {
+      const inner = (S.innerM || 0) * ppm, hi = S.roofHighM || 0, lo = S.roofLowM || hi;
+      tops.push([[...add(Fq.A, Fq.n, -inner), hi], [...add(Fq.B, Fq.n, -inner), hi], [...Fq.C, lo], [...Fq.D, lo]]);
+    }
     const I = { ...(cfg.inks || {}), ...(S.inks || {}) };
-    (groups[S.kind] ||= []).push(...(S.kind === "building" ? building(q, S, I, ppm) : terrace(q, S, I, ppm)));
+    (groups[S.kind] ||= []).push(...(S.kind === "building" ? building(q, S, I, ppm, lm.name) : terrace(q, S, I, ppm)));
   });
   const F = { ppm, ang: 0, at: ([x, y]) => [x, y] };
   // el centro del cuerpo es el de su caja: con el marco identidad `buildBody` lo pone en (0, 0), el origen
   // del mapa, y la perspectiva —que mide el tope desde el centro— aplastaba todas las alturas a casi nada
-  return Object.values(groups).map((tiers) => {
+  const bodies = Object.values(groups).map((tiers) => {
     const S = buildBody({ tiers, perspective: true, noFade: true }, [0, 0], 0, F);
     S.x = (S.x0 + S.x1) / 2; S.y = (S.y0 + S.y1) / 2;
     return S;
   });
+  return { bodies, occluders, tops };
 }
+
+// LOS ESTADIOS ENCOLADOS EN ESTE CUADRO, con lo que tapa: `nightlights.js` no deja que el pozo de una lámpara
+// de la calle alumbre la cancha ni las graderías por encima — hay una pared. Su luz sale por debajo de la
+// grada, a la calle. Se marca con el reloj del cuadro, así uno que salió de la vista deja de tapar.
+const queuedOccluders = new Map();
+// Y LO QUE SUS TORRES ALUMBRAN: las graderías —su franja y su tapa— se encienden enteras (`lit`, la fracción
+// de `lights.json → stadium.scatter.standLitK`); la cancha conserva el degradé de sus pozos.
+const STAND_LIT = LIGHTS.types.stadium?.scatter?.standLitK || 0;
+registerOccluderSource(() => {
+  const out = [], ppm = PX_PER_M;
+  for (const [, o] of queuedOccluders) {
+    if (o.t !== lastT) continue;
+    const lit = o.towers ? STAND_LIT : 0;
+    o.polys.forEach((pts, i) => out.push({ pts, lit: i === 0 && o.hasPitch ? 0 : lit }));
+    // las tapas, levantadas con el mismo pinhole que las pinta
+    for (const top of o.tops) out.push({ pts: top.flatMap(([x, y, h]) => { const d = parallaxOffset(state.cam, x, y, h, ppm); return [x + d.dx, y + d.dy]; }), lit });
+  }
+  return out;
+});
 
 /** Encola las graderías 3D de un estadio, si el registro las tiene. Devuelve si lo hizo. */
 export function queueStadium3d(lm, quads, cfg) {
   if (!cfg || !quads?.length) return false;
-  let bodies = built.get(lm.id);
-  if (!bodies) built.set(lm.id, (bodies = buildStadium(lm, quads, cfg)));
+  let one = built.get(lm.id);
+  if (!one) built.set(lm.id, (one = buildStadium(lm, quads, cfg)));
   // la paleta del estadio que el mundo emite (`$tierA`, `$tierB`, `$structure`)
-  for (const S of bodies) queueBody(S, lm.stands?.palette || null, null, true);
+  for (const S of one.bodies) queueBody(S, lm.stands?.palette || null, null, true);
+  queuedOccluders.set(lm.id, { t: lastT, polys: one.occluders, tops: one.tops, towers: !!lm.towers, hasPitch: lm.footprint?.length >= 6 });
   return true;
 }
 
@@ -164,7 +219,23 @@ export function stadiumTowerSpots(lm, quads, cfg) {
     const i = sides.indexOf(T.side);
     if (i < 0) continue;
     const F = standFrame(quads[i]);
-    for (const f of T.at) out.push(add(lerp(F.A, F.B, f), F.n, -(T.inM || 0) * ppm));
+    // `aim`: sin él la torre mira al centro de la cancha. `"cross"` es la diagonal contraria —el rumbo al centro
+    // reflejado a lo largo del lado—: desde una punta alumbra la gradería de esa esquina y no la cancha.
+    // `poolM`/`reachM` mandan sobre los del tipo de luz (`lights.json → stadium.scatter`); `baseM` es la altura de
+    // la gradería donde está parada: el poste sale de entre los escalones, no de encima.
+    const ex = (F.B[0] - F.A[0]) / F.L, ey = (F.B[1] - F.A[1]) / F.L;
+    const extra = { poolM: T.poolM, reachM: T.reachM, baseM: T.baseM };
+    for (const f of T.at) {
+      const p = add(lerp(F.A, F.B, f), F.n, -(T.inM || 0) * ppm);
+      let ang;
+      // `"in"`: recta, sin ángulo — perpendicular a su gradería, hacia la cancha
+      if (T.aim === "in") ang = Math.atan2(-F.n[1], -F.n[0]);
+      else if (T.aim === "cross") {
+        const vx = lm.x - p[0], vy = lm.y - p[1], d = vx * ex + vy * ey;
+        ang = Math.atan2(vy - 2 * d * ey, vx - 2 * d * ex);
+      }
+      out.push([p[0], p[1], ang, extra]);
+    }
   }
   return out;
 }

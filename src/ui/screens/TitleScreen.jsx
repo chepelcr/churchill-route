@@ -8,6 +8,7 @@ import { useT } from "../../i18n/index.js";
 import CoinIcon from "../CoinIcon.jsx";
 import Icon from "../Icon.jsx";
 import Slots from "../Slots.jsx";
+import BrandTitle from "../BrandTitle.jsx";
 import { UI_SCREEN } from "../../domain/vocabulary.generated.js";
 
 // Hide the APK download in the native app (only offer it on the web).
@@ -54,7 +55,7 @@ export default function TitleScreen({ editorConfig, onPickMode, onRailway, onSet
   // because it is the card's chrome, not a block of the page.
   const SLOTS = {
     wordmark: () => <>
-      <h1 className="title-main">{editorConfig?.title || t("title.main")}</h1>
+      <BrandTitle className="menu-title brand-title--plain" title={editorConfig?.title || t("title.main")} />
       <div className="title-sub">{editorConfig?.subtitle || t("title.sub")}</div>
     </>,
     iosHint: () => (

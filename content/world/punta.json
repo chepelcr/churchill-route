@@ -314,7 +314,7 @@
   "plazaCurve": false
  },
  "cruceros": {
-  "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. El muelle se corre al norte hasta pegar con el final de su calle y mide de ancho lo que su arco. En la boca va el arco con el nombre en blanco sobre azul; la caseta azul va a la izquierda, sobre el malecón, y a los dos lados del muelle hay banderas de Costa Rica.",
+  "_note": "LA ENTRADA DEL MUELLE DE CRUCEROS. Arco blanco sobre azul, caseta sobre el malecón y banderas de varios continentes a los dos lados del muelle.",
   "pier": "muelle_nacional",
   "street": "Calle Central",
   "gate": {
@@ -335,22 +335,12 @@
   "kiosks": {
    "ids": [
     "kios_paseo1",
-    "kios_paseo2"
+    "kios_paseo2",
+    "kios_paseo3",
+    "kios_paseo_burger"
    ],
    "hiddenLanes": true,
-   "_note": "los kioscos van sobre la línea media del malecón (`cruceros.row`); sus calles auxiliares siguen manejables pero no se pintan.",
-   "add": [
-    {
-     "id": "kios_paseo3",
-     "name": "Papi-carne del Paseo",
-     "product": "papicarne",
-     "between": [
-      "kios_paseo1",
-      "kios_paseo2"
-     ],
-     "_note": "PROPUESTA: un tercer kiosco, de papi-carne, a medio camino entre el de churchill y el del vigorón. Todavía no está en kiosks.json."
-    }
-   ]
+   "_note": "los kioscos van sobre la línea media del malecón; sus calles auxiliares siguen manejables pero no se pintan."
   },
   "dropPiers": [
    "bajada_muelle_oeste",
@@ -373,6 +363,7 @@
   "_caseta": "la estructura blanca sale; la caseta azul del muelle ocupa su sitio.",
   "flags": {
    "between": "lamps",
+   "countries": ["CR", "PA", "CA", "CO", "BR", "AR", "FR", "DE", "SE", "CZ", "ZA", "CM", "NG", "JP", "ID", "BD", "PW", "FM"],
    "_note": "una bandera EN MEDIO DE CADA PAR DE LUCES DE SU LADO, de la boca a la punta (la receta de luces es `materials.json` → `pier.<estilo>.lamp`). Las luces alternan de lado, así que las banderas también: nunca quedan en parejas enfrentadas."
   },
   "caseta": {

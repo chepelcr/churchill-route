@@ -53,6 +53,10 @@ julio era una **T** y hoy es una **H**, porque le entró el tramo del frente.
 
 ## Formato
 
+Las piezas nuevas usan el emblema, la tipografía y la paleta de la
+[biblioteca de marca](../../brand/README.md). Las composiciones editables del
+tráiler regeneran esos recursos antes de abrir Studio o exportar.
+
 **Desde el 2026-11-14, un solo texto para Facebook e Instagram**, y se escribe
 junto con la pieza, sin esperar a que lo pidan. Cada publicación abre con
 `## Texto (Facebook e Instagram)` y un bloque ` ```text ` que se copia tal cual

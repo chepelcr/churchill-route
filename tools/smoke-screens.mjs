@@ -65,8 +65,10 @@ await seen(".boot-screen", 1, "boot");
 await seen(".boot-water", 1, "boot (el agua es el marco, no un slot)");
 await seen(".boot-logo", 1, "boot.logo");
 await page.waitForTimeout(2600);
-await seen(".boot-art", 1, "boot.art");
+await seen(".boot-lockup .boot-emblem", 1, "boot.art (emblema junto al nombre)");
+await seen(".boot-title .brand-title__line", 2, "boot.art (título oficial)");
 await seen(".boot-bar", 1, "boot.bar");
+await seen(".boot-boat svg", 1, "boot.bar (ferry)");
 await seen(".boot-loading", 1, "boot.loading");
 report.push("boot");
 
@@ -129,6 +131,10 @@ await page.waitForTimeout(6200);
 await click(".modes .mode", 0);          // Historia es la primera tarjeta
 await page.waitForTimeout(700);
 await seen(".stage-hero", 1, "stagepick");
+const storyTitle = await page.locator(".story-shell .shell-title").innerText();
+if (storyTitle.replace(/\s+/g, " ").trim() !== "LA RUTA DEL CHURCHILL") {
+  fail(`stagepick: el título del juego está incompleto (${storyTitle})`);
+}
 await seen(".hero-num", 1, "stagepick.badges");
 await seen(".hero-name", 1, "stagepick.name");
 await seen(".hero-brief", 1, "stagepick.brief");

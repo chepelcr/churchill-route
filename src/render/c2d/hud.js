@@ -35,6 +35,8 @@ const RAIN_CAP = SIM.day.rainCapAlpha;
 // thing saying what kind of place a tag is, since there is no room for an icon.
 const POI_TONE = Object.fromEntries(
   Object.entries(HUD.poiTags).filter(([k]) => !k.startsWith("_")));
+// un lugar con su nombre pintado en su propio edificio no lleva además la etiqueta
+const POI_PAINTED = new Set(HP.poi.painted || []);
 // In-game POI tags: the real business names at a SCREEN-CONSTANT size, so the
 // puerto reads as the real place without the labels competing with driving.
 // No pill, just an outlined name above the spot.
@@ -52,6 +54,7 @@ function drawPoiTags(view, zoom) {
   const rot = ctxRotation(ctx);
   for (const p of pois) {
     if (p.x < view.x0 || p.x > view.x1 || p.y < view.y0 || p.y > view.y1) continue;
+    if (POI_PAINTED.has(p.name)) continue;
     // el rótulo va ENCIMA de su punto en la pantalla: se endereza en el punto
     // y se sube después, o con la cámara girada queda al lado
     const stood = upright(ctx, p.x, p.y, rot);

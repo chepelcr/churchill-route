@@ -123,6 +123,10 @@ REAUTHORED = {
     "LANDMARK_DEFS[kios_play].name": "-> Puesto de Las Playitas, el puesto de la plaza",
     "LANDMARK_DEFS[kios_play].ll[0]": "-> acera sur de Las Playitas, fuera de la calzada",
     "LANDMARK_DEFS[kios_play].ll[1]": "-> acera sur de Las Playitas, fuera de la calzada",
+    "STAGES[s2].brief": "cada pedido del Paseo se recoge en un puesto distinto",
+    "STAGES[s2].kiosks": "cuatro puestos en orden de recogida",
+    "STAGES[s2].customers": "la última entrega queda cerca del puesto de hamburguesas",
+    "CUSTOMER_DEFS[c5].ll": "el Surfista canadiense pasó del mar al malecón (523c64d0)",
     "CROSSING_STAGES[s8].after":
         "la Travesía pasó de seguir a s3 a seguir a s7: iba cuarta y dejaba "
         "Las Playitas, El Cocal, Mata de Limón y Caldera detrás de la única "
@@ -154,6 +158,8 @@ def _reauthored(path):
 def deep_diff(a, b, path=""):
     if type(a) is not type(b):
         return [f"{path}: TYPE {type(a).__name__} vs {type(b).__name__}"]
+    if _reauthored(path):
+        return []
     if isinstance(a, dict):
         # A RECORD MAY HAVE GAINED A FIELD, and that is authored content, not a
         # broken loader — `openAlways` on the crossing, a `_why` note beside a
@@ -178,7 +184,7 @@ def deep_diff(a, b, path=""):
                 for d in deep_diff(x, y, f"{path}[{i}]")]
     if a == b:
         return []
-    return [] if _reauthored(path) else [f"{path}: {a!r} vs {b!r}"]
+    return [f"{path}: {a!r} vs {b!r}"]
 
 
 class MigrationTests(unittest.TestCase):
@@ -444,14 +450,19 @@ class KioskTests(unittest.TestCase):
 
     def test_paseo_kiosks_have_connectors_without_aprons(self):
         """La calle llega hasta el puesto; no se estampa una rotonda alrededor."""
-        ids = {"kios_paseo1", "kios_paseo2"}
         self.assertFalse(any(k.get("streetOnly") for k in self.kiosks))
         man = os.path.join(ROOT, "src", "world2d", "manifest.json")
         if not os.path.exists(man):
             self.skipTest("el mundo no está construido")
         with open(man, encoding="utf-8") as fh:
             world = json.load(fh)
+        paseo = next(stage for stage in world["stages"] if stage["id"] == "s2")
+        ids = paseo["kiosks"]
+        self.assertTrue(paseo["kioskSequence"])
+        self.assertEqual(paseo["targetDeliveries"], 4)
+        self.assertEqual(len(set(ids)), 4)
         landmarks = {lm["id"]: lm for lm in world["landmarks"]}
+        self.assertEqual(landmarks[ids[-1]]["product"], "hamburguesa")
         for kid in ids:
             lm = landmarks[kid]
             self.assertFalse(lm.get("streetOnly"))

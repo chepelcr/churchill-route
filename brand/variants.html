@@ -1,0 +1,78 @@
+<!doctype html>
+<!-- Generado por node brand/export.mjs -->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Variantes de marca · La Ruta del Churchill</title>
+  <link rel="stylesheet" href="./brand.css">
+  <style>
+    @font-face { font-family: "Bungee"; font-weight: 400; src: url("../node_modules/@fontsource/bungee/files/bungee-latin-400-normal.woff2") format("woff2"); }
+    @font-face { font-family: "Space Grotesk"; font-weight: 400; src: url("../node_modules/@fontsource/space-grotesk/files/space-grotesk-latin-400-normal.woff2") format("woff2"); }
+    @font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2") format("woff2"); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--lrc-page); color: var(--lrc-text); font: 400 16px var(--lrc-font-body); }
+    main { max-width: 1100px; margin: auto; padding: clamp(20px, 5vw, 56px); }
+    h1 { margin: 0 0 24px; font: 400 clamp(18px, 3.8vw, 34px) var(--lrc-font-display); }
+    .examples { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 365px), 1fr)); gap: 18px; }
+    figure { margin: 0; border: 1px solid var(--lrc-harbor-light); border-radius: var(--lrc-panel-radius); overflow: hidden; }
+    figcaption { padding: 12px 16px; color: var(--lrc-text-muted); }
+    .plate { min-height: 180px; display: grid; align-content: center; padding: 24px; background: var(--lrc-surface); }
+    .plate--wide { grid-column: 1 / -1; }
+    .plate--light { background: var(--lrc-light-surface); --brand-title-ink: var(--lrc-light-ink); }
+    .brand-title { font-size: clamp(24px, 4.6vw, 52px); }
+    .brand-title span { display: block; }
+    .plate--wide .brand-title { font-size: clamp(18px, 4vw, 44px); }
+    .marks { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 26px; }
+    .marks img { display: block; height: auto; }
+    .marks small { display: block; margin-top: 8px; font: 400 12px var(--lrc-font-mono); text-align: center; }
+    .asset-caption { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; }
+    .asset-caption a { color: var(--lrc-ice); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Variantes de marca</h1>
+    <div class="examples">
+      <figure class="plate--wide">
+        <div class="plate"><div class="brand-title"><span>LA RUTA DEL CHURCHILL</span></div></div>
+        <figcaption>Título horizontal</figcaption>
+      </figure>
+      <figure>
+        <div class="plate">
+          <div class="brand-title">
+            <span>LA RUTA DEL</span>
+            <span>CHURCHILL</span>
+          </div>
+        </div>
+        <figcaption>Título apilado</figcaption>
+      </figure>
+      <figure>
+        <div class="plate plate--light">
+          <div class="brand-title brand-title--plain">
+            <span>LA RUTA DEL</span>
+            <span>CHURCHILL</span>
+          </div>
+        </div>
+        <figcaption>Tinta sobre crema</figcaption>
+      </figure>
+      <figure>
+        <div class="plate">
+          <div class="marks">
+            <div><img src="../assets/icon.png" width="16" alt="Emblema"><small>16 px</small></div>
+            <div><img src="../assets/icon.png" width="32" alt=""><small>32 px</small></div>
+            <div><img src="../assets/icon.png" width="96" alt=""><small>96 px</small></div>
+          </div>
+        </div>
+        <figcaption class="asset-caption">Faro y Churchill <a href="../assets/icon.png" download="churchill-icon.png">Descargar PNG</a></figcaption>
+      </figure>
+      <figure>
+        <div class="plate marks">
+          <img src="../public/branding/pacific-code-labs.png" width="214" alt="Pacific Code Labs">
+        </div>
+        <figcaption class="asset-caption">Firma del estudio en reverso <a href="../public/branding/pacific-code-labs.png" download="pcl-reverse.png">Descargar PNG</a></figcaption>
+      </figure>
+    </div>
+  </main>
+</body>
+</html>

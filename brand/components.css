@@ -1,0 +1,44 @@
+.brand-title {
+  display: block;
+  margin: 0;
+  font-family: var(--brand-font-display, var(--lrc-font-display));
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--lrc-text);
+}
+
+.brand-title__line { display: block; }
+
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .brand-title:not(.brand-title--plain) {
+    background-image: linear-gradient(180deg,
+      var(--lrc-title-start, var(--lrc-lemon)),
+      var(--lrc-title-mid, var(--lrc-coral)) 60%,
+      var(--lrc-title-end, var(--lrc-magenta)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0.075em 0 rgba(10, 4, 20, 0.66))
+            drop-shadow(0 0.12em 0.32em rgba(208, 38, 140, 0.32));
+  }
+}
+
+.brand-title--plain { color: var(--brand-title-ink, var(--lrc-text)); }
+
+.brand-signature {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.56em;
+  color: var(--lrc-text);
+  font: 700 1em/1.2 var(--lrc-font-mono);
+  letter-spacing: 0.11em;
+}
+
+.brand-signature--stack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.89em;
+}

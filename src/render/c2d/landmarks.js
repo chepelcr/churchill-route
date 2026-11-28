@@ -19,6 +19,10 @@ import { shadowInk, sunShadow } from "./shadows.js";
 import { centroOwnsLandmark } from "./centro.js";
 import { bodyAt, queueBody, queueBodyLike } from "./bodies.js";
 import { queueStadium3d, stadiumTowerSpots } from "./stadium3d.js";
+import { paintClothSprite, queueFlag } from "./flag3d.js";
+import MATERIALS from "../../assets/materials.json" with { type: "json" };
+
+const PUNTA_FLAG = MATERIALS.punta.flag;
 
 // El Faro at La Punta — paved plaza on the rocky point: riprap armor on the
 // water side, red crescent shade benches, palms and the red/white tower.
@@ -131,7 +135,7 @@ function drawGreenSpace(lm, w, h, opts = {}) {
   if (opts.fountain) drawFountain(x, y);
 }
 
-// Estadio — NAME PILL ONLY. The stadium itself (grey graderías on the block's
+// Estadio. The stadium itself (grey graderías on the block's
 // real sidewalk + the pitch and its markings) is painted inside the acera pass,
 // paintStadiumCuadras in ./streets.js: it's a colour choice on ground that
 // already exists, not a structure stacked on a later layer. Drawing it here is
@@ -270,15 +274,16 @@ function drawStadium(lm) {
     areaLabel(lm.x - w / 2, lm.y - h / 2, lm.x + w / 2, lm.y + h / 2, "ESTADIO", C.pillFg, C.pillBg);
     return;
   }
-  // The stand goes down BEFORE the pill, so the name still reads over it.
   const stands = PROPS.scenes.stadium.stands;
   // LAS GRADERÍAS EN 3D (`stadium3d.js`, `world-props.json → stadiums3d`): si el registro las tiene, se
   // levantan como cuerpos sobre las mismas gradas que el mundo estampó, y las torres van donde él dice
   const S3 = PROPS.stadiums3d?.[lm.id], quads = stands ? standQuads(lm, stands) : [];
-  if (!(S3 && queueStadium3d(lm, quads, { roofFrom: stands?.roofFrom, ...S3 })) && stands) drawStands(lm, stands);
+  const hasVolume = S3 && queueStadium3d(lm, quads, { roofFrom: stands?.roofFrom, ...S3 });
+  if (!hasVolume && stands) drawStands(lm, stands);
   // …and the masts after it: a corner tower stands OUTSIDE the stand's back
   // wall, so drawing it first would put the seating on top of the pole.
   drawFieldTowers(lm, PROPS.scenes.stadium.towers, S3?.towers ? stadiumTowerSpots(lm, quads, S3) : null);
+  if (hasVolume && S3.sides.north?.roofName) return;
   const b = polyBBox(pts);
   areaLabel(b.x0, b.y0, b.x1, b.y1, (lm.name || "Estadio").toUpperCase(), C.pillFg, C.pillBg);
 }
@@ -635,18 +640,52 @@ function drawParcelLandmarkPill(lm, P) {
   label(lm.x, P.y0 - 10, txt, PARCELS.labelFg, pill ? pill.tone : PARCELS.defaultTone);
 }
 
-// A parcel that DRAWS THE BUILDING replaces the landmark's own art; a parcel
-// that is only its GROUND does not. Every building landmark owns a lot now
-// (`place_landmark_lots`), and suppressing the icon for all of them would have
-// deleted the hotel, the súper and the mercado from the map and left three name
-// pills on bare plots. So: the church/cathedral/civic/market parcels draw their
-// own building and keep the early return; a `lot` is ground, and the landmark
-// still stands on it.
-// `market` deliberately does NOT carry `drawsBuilding` yet: the Mercado owns
-// its manzana now, but nothing draws a market hall on it, so suppressing the
-// landmark art would leave bare ground under a MERCADO pill. Give the `market`
-// use a `prop` or `scene` in world-props.json, then set the flag — that is where
-// it plugs in.
+// EL RÓTULO DE UN KIOSCO ES UNA BANDERA (`world-props.json → kioskFlag`, `c2d/flag3d.js`): un asta al
+// costado del toldo con el nombre del puesto en el paño, en los colores de su toldo. El nombre se escribe
+// una vez en un lienzo, por nombre y tintas, y cada cuadro se tiende sobre el paño que flamea.
+const KF = PROPS.kioskFlag;
+const flagSprites = new Map();
+function kioskFlagSprite(name, cloth, ink) {
+  const key = `${name}|${cloth}|${ink}`;
+  let cv = flagSprites.get(key);
+  if (cv) return cv;
+  const [w, h] = KF.spritePx;
+  cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  const g = cv.getContext("2d");
+  g.fillStyle = cloth; g.fillRect(0, 0, w, h);
+  // el nombre en una línea si cabe; si no, partido donde las dos mitades quedan más parejas
+  const words = name.split(" ");
+  let lines = [name];
+  if (words.length > 1 && name.length > 12) {
+    let split = 1, best = Infinity;
+    for (let i = 1; i < words.length; i++) {
+      const d = Math.abs(words.slice(0, i).join(" ").length - words.slice(i).join(" ").length);
+      if (d < best) { best = d; split = i; }
+    }
+    lines = [words.slice(0, split).join(" "), words.slice(split).join(" ")];
+  }
+  const size = h * KF.textK * (lines.length > 1 ? 0.92 : 1.25);
+  g.font = `${KF.weight} ${size}px ${KF.font}`;
+  const widest = Math.max(...lines.map((l) => g.measureText(l).width));
+  const fit = Math.min(1, (w * 0.9) / widest);
+  g.font = `${KF.weight} ${size * fit}px ${KF.font}`;
+  g.fillStyle = ink; g.textAlign = "center"; g.textBaseline = "middle";
+  const step = size * fit * KF.lineK;
+  lines.forEach((l, i) => g.fillText(l, w / 2, h / 2 + (i - (lines.length - 1) / 2) * step));
+  flagSprites.set(key, cv);
+  return cv;
+}
+
+function queueKioskFlag(lm, ang, roofWidth, inks) {
+  const ink = (v) => (typeof v === "string" && v.startsWith("$") ? inks?.[v.slice(1)] : v) || KF.fallbackInk;
+  const sprite = kioskFlagSprite(lm.name.toUpperCase(), ink(KF.cloth), ink(KF.ink));
+  const offset = (roofWidth / 2 + KF.sideGapM) * PX_PER_M;
+  const fl = { x: lm.x + Math.cos(ang) * offset, y: lm.y + Math.sin(ang) * offset };
+  queueFlag(fl, KF, lastT / 1000, (cloth, N) => paintClothSprite(cloth, N, sprite), PUNTA_FLAG.windDeg);
+}
+
+// A parcel that draws a building owns its art. A lot that only supplies the
+// ground keeps the landmark on it, including the Mercado until it has its own hall.
 function drawLandmark(lm) {
   // la Catedral y la Casa de la Cultura las dibuja el centro cívico (`c2d/centro.js`):
   // acá queda sólo la píldora con su palabra, encima del edificio
@@ -696,7 +735,7 @@ function drawLandmark(lm) {
   if (!prop) return;
   // UN HITO QUE SE LEVANTA COMO LOS EDIFICIOS NUEVOS: su receta es un cuerpo 2.5D
   // (`world-props.json → bodies`), con las tintas del hito, y lo pinta la cola de cuerpos
-  // DESPUÉS de la gente (`c2d/bodies.js`). El rótulo va sobre su techo.
+  // DESPUÉS de la gente (`c2d/bodies.js`). Cada kiosco lleva su bandera con el nombre al costado.
   if (prop.body) {
     const spec = PROPS.bodies[prop.body];
     if (!spec) throw new Error(`[landmarks] ${lm.id}: cuerpo desconocido «${prop.body}»`);
@@ -708,9 +747,13 @@ function drawLandmark(lm) {
       if (Math.hypot(dx, dy) > 1) ang = Math.atan2(-dx, dy);
     } else if (lm.type !== "kiosk") ang = 0;
     ang += (spec.turnDeg || 0) * Math.PI / 180;
-    const pill = (prop.parts || []).find((q) => q.shape === "label");
+    const pill = lm.type !== "kiosk" && (prop.parts || []).find((q) => q.shape === "label");
     const vars = prop.decal ? { ...(prop.inks || {}), _decal: prop.decal } : (prop.inks || null);
     queueBody(bodyAt(spec, x, y, ang, prop.body), vars, pill ? { text: pill.text, fg: pill.fg, bg: pill.bg } : null, !!spec.over);
+    if (lm.type === "kiosk") {
+      const roof = spec.tiers.find(tier => tier.roof);
+      if (lm.name && roof?.box) queueKioskFlag(lm, ang, roof.box[0], prop.inks);
+    }
     return;
   }
   const ang = lm.type === "kiosk" ? (lm.ang || 0) : 0;

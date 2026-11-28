@@ -15,7 +15,7 @@
       "label": "Coral",
       "group": "Palette",
       "type": "color",
-      "default": "oklch(0.68 0.18 30)",
+      "default": "#F36451",
       "hint": ""
     },
     {
@@ -42,7 +42,7 @@
       "label": "Gold",
       "group": "Palette",
       "type": "color",
-      "default": "oklch(0.86 0.16 90)",
+      "default": "#FACB3A",
       "hint": ""
     },
     {
@@ -60,7 +60,7 @@
       "label": "Ink",
       "group": "Palette",
       "type": "color",
-      "default": "oklch(0.18 0.03 280)",
+      "default": "#0F101F",
       "hint": ""
     },
     {
@@ -78,7 +78,7 @@
       "label": "Lemon",
       "group": "Palette",
       "type": "color",
-      "default": "oklch(0.96 0.13 95)",
+      "default": "#FFF187",
       "hint": ""
     },
     {
@@ -87,7 +87,7 @@
       "label": "Tangerine",
       "group": "Palette",
       "type": "color",
-      "default": "oklch(0.72 0.20 25)",
+      "default": "#FF6661",
       "hint": ""
     },
     {
@@ -96,7 +96,7 @@
       "label": "Magenta",
       "group": "Palette",
       "type": "color",
-      "default": "oklch(0.58 0.22 350)",
+      "default": "#D0268C",
       "hint": ""
     },
     {
@@ -159,7 +159,7 @@
       "label": "Amber",
       "group": "Accents",
       "type": "color",
-      "default": "#ffe06b",
+      "default": "#FFE06B",
       "hint": ""
     },
     {
@@ -168,7 +168,7 @@
       "label": "Mint",
       "group": "Accents",
       "type": "color",
-      "default": "#6fbf99",
+      "default": "#6FBF99",
       "hint": ""
     },
     {
@@ -177,7 +177,7 @@
       "label": "Sky",
       "group": "Accents",
       "type": "color",
-      "default": "#5fb0d6",
+      "default": "#5FB0D6",
       "hint": ""
     },
     {
@@ -186,7 +186,7 @@
       "label": "Rose",
       "group": "Accents",
       "type": "color",
-      "default": "#ff3d80",
+      "default": "#FF3D80",
       "hint": ""
     },
     {
@@ -195,7 +195,7 @@
       "label": "Sand",
       "group": "Accents",
       "type": "color",
-      "default": "#ffce9e",
+      "default": "#FFCE9E",
       "hint": ""
     },
     {
@@ -231,7 +231,7 @@
       "label": "Foam",
       "group": "Accents",
       "type": "color",
-      "default": "#bff0d6",
+      "default": "#BFF0D6",
       "hint": ""
     },
     {
@@ -240,7 +240,7 @@
       "label": "Ice",
       "group": "Accents",
       "type": "color",
-      "default": "#9be6ff",
+      "default": "#9BE6FF",
       "hint": ""
     },
     {
@@ -276,7 +276,7 @@
       "label": "Page",
       "group": "Surfaces",
       "type": "color",
-      "default": "#0a0414",
+      "default": "#0A0414",
       "hint": ""
     },
     {
@@ -285,7 +285,7 @@
       "label": "Deep",
       "group": "Surfaces",
       "type": "color",
-      "default": "#0b1a2e",
+      "default": "#0B1A2E",
       "hint": ""
     },
     {

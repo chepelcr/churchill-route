@@ -28,6 +28,7 @@ from churchill.world.config import ROOT
 
 CSS = os.path.join(ROOT, "src", "styles.css")
 REGISTRY = os.path.join(ROOT, "src", "ui", "themeTokens.json")
+BRAND_CSS = os.path.join(ROOT, "brand", "brand.css")
 SRC = os.path.join(ROOT, "src")
 
 
@@ -114,7 +115,8 @@ class TokenRegistryTests(unittest.TestCase):
         # The other direction: `var(--typo)` resolves to nothing, and the
         # declaration is then INVALID AT COMPUTED-VALUE TIME — the property
         # falls back to its initial value, so a colour goes black with no error.
-        for used in var_uses():
+        shared = set(re.findall(r"^\s*(--[\w-]+):", read(BRAND_CSS), re.M))
+        for used in var_uses() - shared:
             if used.startswith("--tw-"):      # not ours
                 continue
             self.assertIn(used, self.declared,

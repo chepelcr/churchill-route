@@ -137,10 +137,15 @@ export function customerLine(customer, productId) {
   return pool[h % pool.length];
 }
 
+function stageKioskId() {
+  return state.stage?.kioskSequence ? state.stage.kiosks[state.stageDeliveries] : undefined;
+}
+
 export function activeKiosks() {
   // If stage is active, only those kiosks are valid
   if (state.stage) {
-    return state.stage.kiosks.map(id => W.landmarkById(id)).filter(Boolean);
+    const ids = state.stage.kioskSequence ? [stageKioskId()] : state.stage.kiosks;
+    return ids.map(id => W.landmarkById(id)).filter(Boolean);
   }
   return W.LANDMARKS.filter(l => l.type === "kiosk" && reachable(l));
 }
@@ -231,10 +236,15 @@ export function pickCustomer() {
   const pt = openReachablePoint(base.x, base.y);
   state.lastCustomerId = base.id || base.name;
   state.pendingOrder = { ...base, x: Math.round(pt.x), y: Math.round(pt.y) };
+  if (state.stage?.kioskSequence && kiosks[0]) {
+    state.storyTip = t("tip.nextKiosk", { current: state.stageDeliveries + 1, target: state.stageTarget, name: kiosks[0].name });
+  }
 }
 
 export function pickUpOrder(kioskLm) {
+  if (state.stage?.kioskSequence && stageKioskId() !== kioskLm.id) return;
   if (!state.pendingOrder) pickCustomer();
+  if (!state.pendingOrder) return;
   const dist = Math.hypot(state.pendingOrder.x - kioskLm.x, state.pendingOrder.y - kioskLm.y);
   // Budget must leave headroom over the real (grid-inflated) travel time —
   // dist/110 was break-even with a flawless run, so any mistake melted.

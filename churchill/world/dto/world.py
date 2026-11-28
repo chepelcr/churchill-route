@@ -135,6 +135,7 @@ class Stage(WorldModel):
     district: str
     brief: str
     kiosks: list[str]
+    kioskSequence: bool = False
     targetDeliveries: int
     timeLimit: int
     weather: Weather

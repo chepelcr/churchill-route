@@ -524,7 +524,8 @@ let capAt = null, capRow = null;
     // la bandera se para donde se para la luz: sobre el pilote, que va bajo el PIE del poste de la luz
     const LT = JSON.parse(readFileSync("src/assets/lights.json", "utf8")).types[lampSpec.type], foot = Math.max(0, ...((LT && LT.parts) || []).flatMap((p) => (p.pts || []).map((q) => Number(q[1]) || 0)));
     for (let k = 0; k + 2 < lamps.length; k++) { const side = k % 2 ? 1 : -1, d = (lamps[k] + lamps[k + 2]) / 2;
-      punta.flags.push({ x: Math.round(P0[0] + ux * d + nx * side * off), y: Math.round(P0[1] + uy * d + ny * side * off + foot) }); } }
+      const country = CR.flags.countries[k % CR.flags.countries.length];
+      punta.flags.push({ x: Math.round(P0[0] + ux * d + nx * side * off), y: Math.round(P0[1] + uy * d + ny * side * off + foot), country }); } }
   punta.gates = [{ x: cruPier.pts[0], y: cruPier.pts[1] + 10, w: cruPier.w, ang: 0, text: CR.gate.text }];
   // la Capitanía, donde OSM tiene el edificio del MOPT
   for (const [, nb] of frontTiles) {
@@ -551,19 +552,13 @@ let capAt = null, capRow = null;
     // la calle auxiliar: CORTA, del borde de la calzada derecho al kiosco, no hasta donde llegaba antes
     // contrato del juego (tests/test_content): la calle va DEL kiosco A la calle pública, y la recogida es su punta de calle
     const [kx2, ky2] = offset(i, realKerb(i) - ACERA - 12).map(Math.round);
-    if (lane) { lane.pts = [nx2, ny2, kx2, ky2]; lane.hidden = !!CR.kiosks.hiddenLanes; }
+    if (lane) { lane.pts = [nx2, ny2, kx2, ky2]; lane.surface = "paved"; lane.hidden = !!CR.kiosks.hiddenLanes; }
+    else manifest.kioskPaths.push({ pts: [nx2, ny2, kx2, ky2], surface: "paved", hidden: !!CR.kiosks.hiddenLanes });
     lm.spawn = [kx2, ky2];
     lm.x = nx2; lm.y = ny2;
   }
 }
 if (B0.simple) manifest.pois = (manifest.pois || []).filter((q) => !(inletRings.some((r) => inside(q.x, q.y, r)) || inside(q.x, q.y, groundsRaw)));
-// los kioscos nuevos: a medio camino entre dos que ya existen, sobre la misma fila
-for (const k of CR.kiosks.add || []) {
-  const [a1, a2] = k.between.map((id) => manifest.landmarks.find((q) => q.id === id));
-  const i = Math.min(eastI - 1, nearestI([(a1.x + a2.x) / 2, (a1.y + a2.y) / 2])), [x, y] = offset(i, rowD(i)).map(Math.round), sp = offset(i, realKerb(i) - ACERA - 12).map(Math.round);
-  manifest.landmarks.push({ id: k.id, name: k.name, x, y, type: "kiosk", district: a1.district, product: k.product, spawn: sp });
-  manifest.kioskPaths.push({ pts: [x, y, sp[0], sp[1]], surface: "paved", hidden: !!CR.kiosks.hiddenLanes });   // su calle auxiliar corta, del kiosco a la calle   // y su calle auxiliar corta, como los otros
-}
 // los clientes que el mar redibujado dejó en el agua: al malecón, pasada la acera, a su misma altura
 for (const id of (doc.customers && doc.customers.toMalecon) || []) {
   const c = (manifest.customers || []).find((q) => q.id === id);

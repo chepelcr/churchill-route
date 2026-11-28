@@ -6,6 +6,7 @@ import { sfx } from "../../game/audio.js";
 import { isMvpLocked } from "../../game/progress.js";
 import { useT, stageName, stageBrief } from "../../i18n/index.js";
 import FitScale from "../FitScale.jsx";
+import BrandTitle from "../BrandTitle.jsx";
 import Icon from "../Icon.jsx";
 import Slots from "../Slots.jsx";
 import { gateCount, crossingCondition } from "../../game/crossing.js";
@@ -159,10 +160,10 @@ export default function StageSelect({ onStart, onBack }) {
 
   return (
     <div className="title-bg">
-      <div className="title-shell shell-col">
+      <div className="title-shell shell-col story-shell">
         <div className="shell-nav">
           <button className="btn secondary" onClick={onBack}>{t("select.back")}</button>
-          <h1 className="title-main shell-title">LA RUTA</h1>
+          <BrandTitle className="shell-title brand-title--plain" stacked={false} />
           <span className="title-pill"><span className="dot"></span>{t("select.pill")}</span>
         </div>
         <FitScale pad={110}>

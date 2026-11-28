@@ -10,10 +10,23 @@ vehicle, pick up a *churchill* (shaved-ice drink) at a kiosk, and deliver it to 
 customer before it melts. Three modes: **Historia** (7 stages), **Arcade** (3-min
 free roam), **Recorrer** (open world with unlockable districts).
 
-Design doc: `docs/GAME_DESIGN.md`. Roadmap + milestone tracker: `ROADMAP.md`.
+Design doc: `docs/GAME_DESIGN.md`.
 Release notes: `docs/changelog/YYYY-MM-DD.md`, one file per release date
 (nothing else) — Spanish, ready-to-post copy up top and a `## 🧾 Changelog`
 section below it.
+
+## Roadmap
+
+The canonical roadmap is [La Ruta del Churchill in Pacific Code Labs Admin](https://admin.jcampos.dev/projects/churchill-route/roadmap),
+project `churchill-route`, issue prefix `LRC`. Before working on an issue, read
+the roadmap or issue through `pcl-admin` with `roadmap_get` or
+`roadmap_get_task`. Use the current `base_version` when saving status, owner,
+branch, evidence, environment, and next action. Preserve issue IDs, prior
+evidence, and activity. On a version conflict, reread and reconcile before
+retrying. Keep partial work open until its remaining criteria are verified.
+
+`ROADMAP.md` is the migration snapshot for reference. Record backlog changes
+in Admin and keep release notes and design evidence in the repository.
 
 ## Toolchain
 

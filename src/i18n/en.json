@@ -266,6 +266,7 @@
   "tip.arcade": "Three minutes and the whole port. Keep delivering and the combo never drops.",
   "tip.deliverTo": "Take it to {name}.",
   "tip.delivered": "Pura vida! Back to the kiosk.",
+  "tip.nextKiosk": "Delivery {current}/{target} · Pick up at {name}.",
   "tip.estero": "The estuary is yours. Follow the marks or leave them — nobody is timing you.",
   "tip.estero.arrived": "You made Pitahaya. Turn around whenever you like.",
   "tip.explore": "You have {n} zones open to roam. Clear story levels to open the rest.",

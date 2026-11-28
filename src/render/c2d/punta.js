@@ -23,6 +23,8 @@ import { WORLD2D as W } from "../../world2d/index.js";
 import { aabbInView, blendPalette, ctx, flatAABB, flatPath, hash01, textureScale, upright, weatherColors } from "./gfx.js";
 import { overlayTexture } from "./materials.js";
 import { sunShadow } from "./shadows.js";
+import { CRUISE_FLAGS, traceFlagShape } from "./cruiseFlags.js";
+import { queueFlag } from "./flag3d.js";
 import { drawWaterAll } from "./ground.js";
 import { CANO_PX } from "./streets.js";
 import { paintDiffuseGlow, paintMaleconPattern, rgba } from "./systemShapes.js";
@@ -777,47 +779,17 @@ function drawPunta(view, t = 0) {
 function drawPuntaGates(view, t = 0) {
   const P = W.PUNTA;
   if (!P || !P.gates) return;
-  // LAS BANDERAS DEL MUELLE, en 2.5D: el asta sube con el pinhole como un poste de luz, y el paño es una
-  // tira VERTICAL que vuela con el viento (`windDeg`) y flamea de lado (`flapM`) — desde arriba se ve su
-  // canto ondeando y, al alejarse de la cámara, la cara con sus franjas. Su sombra y la del asta van al
-  // suelo ya; lo que se levanta se pinta con los cuerpos, encima de la gente.
-  const FL = M.flag, fp = W.PX_PER_M, [fwM, fhM] = FL.sizeM, wind = (FL.windDeg || 0) * RAD, wx = Math.cos(wind), wy = Math.sin(wind);
-  const N = FL.segments || 8, n = FL.stripes.length;
+  // LAS BANDERAS DEL MUELLE, en 2.5D (`flag3d.js`): asta, paño que vuela con el viento y flamea, su
+  // sombra al sol. Cada asta lleva el país que el mundo le emitió (`cruiseFlags.js`).
+  const FL = M.flag;
   for (const fl of P.flags || []) {
     if (fl.x < view.x0 - 60 || fl.x > view.x1 + 60 || fl.y < view.y0 - 60 || fl.y > view.y1 + 60) continue;
-    const ph = t * (FL.flapHz || 1.4) * Math.PI * 2 + fl.y * 0.01 + fl.x * 0.007;
-    // un punto del paño: `u` a lo largo (0 el asta, 1 la punta libre) y `hM` de alto; `lift` dice si
-    // se levanta con la cámara (el paño) o se tumba con el sol (su sombra)
-    const at = (u, hM, lift) => {
-      const flap = Math.sin(ph - u * 3.2) * FL.flapM * fp * u, droop = u * u * (FL.droopM || 0);
-      const px = fl.x + wx * fwM * fp * u - wy * flap, py = fl.y + wy * fwM * fp * u + wx * flap, h = hM - droop;
-      const o = lift(px, py, h);
-      return [px + o.dx, py + o.dy];
-    };
-    const sun = (px, py, h) => sunShadow(h), cam = (px, py, h) => parallaxOffset(state.cam, px, py, h, fp);
-    const strip = (k, lift) => {
-      const h0 = FL.poleM - fhM * k / n, h1 = FL.poleM - fhM * (k + 1) / n;
-      ctx.beginPath();
-      for (let i = 0; i <= N; i++) { const q = at(i / N, h0, lift); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
-      for (let i = N; i >= 0; i--) { const q = at(i / N, h1, lift); ctx.lineTo(q[0], q[1]); }
-      ctx.closePath();
-    };
-    const fsh = sunShadow(FL.poleM);
-    if (fsh.alpha > 0) {
-      ctx.save(); ctx.globalAlpha = fsh.alpha; ctx.strokeStyle = FL.shadow; ctx.fillStyle = FL.shadow; ctx.lineCap = "round"; ctx.lineWidth = FL.polePx || 1.6;
-      ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(fl.x + fsh.dx, fl.y + fsh.dy); ctx.stroke();
-      for (let k = 0; k < n; k++) { strip(k, sun); ctx.fill(); }
-      ctx.restore();
-    }
-    queueBodyLike({ x: fl.x, y: fl.y, paint: () => {
-      const top = cam(fl.x, fl.y, FL.poleM + (FL.finialM || 0.3));
-      ctx.lineCap = "round"; ctx.lineWidth = FL.polePx || 1.6; ctx.strokeStyle = FL.pole;
-      ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(fl.x + top.dx, fl.y + top.dy); ctx.stroke();
-      for (let k = 0; k < n; k++) { ctx.fillStyle = FL.stripes[k]; strip(k, cam); ctx.fill(); }
-      // el canto del paño, para que se lea aunque la cámara lo vea de filo
-      ctx.strokeStyle = FL.edge; ctx.lineWidth = 0.8; strip(0, cam); ctx.stroke(); strip(n - 1, cam); ctx.stroke();
-      ctx.fillStyle = FL.finial; ctx.beginPath(); ctx.arc(fl.x + top.dx, fl.y + top.dy, (FL.polePx || 1.6) * 0.9, 0, Math.PI * 2); ctx.fill();
-    } });
+    queueFlag(fl, FL, t, (cloth, N) => {
+      for (const { ink, points } of CRUISE_FLAGS[fl.country] ?? CRUISE_FLAGS.CR) {
+        ctx.fillStyle = ink;
+        traceFlagShape(ctx, cloth, N, points); ctx.fill();
+      }
+    });
   }
   // LOS ARCOS, EN 3D (`gate3d.js`): postes y tablero con su grosor, el letrero sobre la cara que mira a
   // la cámara y su sombra al sol

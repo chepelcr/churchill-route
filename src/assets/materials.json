@@ -2015,15 +2015,7 @@
       "shadow": "rgba(40,34,28,0.24)"
     },
     "flag": {
-      "_note": "LA BANDERA DE COSTA RICA, en asta, a los lados del Muelle de Cruceros: azul, blanco, rojo doble, blanco, azul.",
-      "stripes": [
-        "#002b7f",
-        "#ffffff",
-        "#ce1126",
-        "#ce1126",
-        "#ffffff",
-        "#002b7f"
-      ],
+      "_note": "Asta y paño del Muelle de Cruceros. El país se emite por asta y el dibujo vive en c2d/cruiseFlags.js.",
       "pole": "#e9edf2",
       "shadow": "rgba(20,30,50,0.25)",
       "poleM": 5.0,

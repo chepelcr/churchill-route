@@ -2,6 +2,8 @@
 
 > *¡Pura vida, mae!* — Arcade delivery game set on the Puntarenas peninsula, Costa Rica.
 
+The [brand manual](../brand/README.md) covers the title, interface, loading sequence and promotional assets.
+
 ---
 
 ## Core Concept
@@ -50,7 +52,7 @@ Seven sequential stages unlocked one at a time. Each stage locks you to a specif
 | Stage | Name | District | Weather | Target | Time |
 |---|---|---|---|---|---|
 | 1 | El Faro | Carmen | Sunny | 3 | 90 s |
-| 2 | Paseo de los Turistas | Paseo | Sunny | 4 | 120 s |
+| 2 | Paseo de los Turistas | Paseo | Sunny | 4 | 150 s |
 | 3 | Mercado y Catedral | Centro | Sunny | 4 | 130 s |
 | 4 | Atardecer en Las Playitas | Playitas | Sunset | 5 | 140 s |
 | 5 | Tormenta en El Cocal | Cocal | Storm | 5 | 160 s |
@@ -58,6 +60,8 @@ Seven sequential stages unlocked one at a time. Each stage locks you to a specif
 | 7 | Caldera · Final | Caldera | Sunny | 4 | 170 s |
 
 Player spawns near the first kiosk of each stage. Each successful delivery in story mode extends the timer (+10 s for ≥60% cold; +5 s otherwise).
+
+The Paseo stage uses a fixed pickup order: Kiosco Doña Lela, Vigorón El Mariachi, Papi-carne del Paseo, and Hamburguesas del Paseo. The next kiosk activates after a successful delivery. A spoiled order can be picked up again at the current kiosk.
 
 ### Arcade
 
@@ -189,7 +193,9 @@ There are 29 landmarks spread across all districts. Six are active **kiosks** �
 | ID | Name | District |
 |---|---|---|
 | `kios_paseo1` | Kiosco Doña Lela | Paseo |
-| `kios_paseo2` | Churchill El Mariachi | Paseo |
+| `kios_paseo2` | Vigorón El Mariachi | Paseo |
+| `kios_paseo3` | Papi-carne del Paseo | Paseo |
+| `kios_paseo_burger` | Hamburguesas del Paseo | Paseo, across from Islita Drinks |
 | `kios_centro` | Kiosco La Porteña | Centro |
 | `kios_play` | Puesto de Las Playitas | Playitas |
 | `kios_cocal` | Kiosco El Cocal | Cocal |

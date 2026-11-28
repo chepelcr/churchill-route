@@ -44,41 +44,7 @@
         "awning2": "#ffffff"
       },
       "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
-      "decal": {
-        "box": [
-          -16,
-          -9,
-          32,
-          19
-        ],
-        "bg": "#fff",
-        "parts": [
-          {
-            "shape": "rect",
-            "fill": "rgba(255,255,255,0.9)",
-            "x": -4,
-            "y": -4,
-            "w": 8,
-            "h": 12
-          },
-          {
-            "shape": "rect",
-            "fill": "#ff3d80",
-            "x": -4,
-            "y": 0,
-            "w": 8,
-            "h": 6
-          },
-          {
-            "shape": "rect",
-            "fill": "#fff",
-            "x": -4,
-            "y": -4,
-            "w": 8,
-            "h": 3
-          }
-        ]
-      },
+      "decal": {"_": "EL CHURCHILL: vaso de plástico, el granizado rojo en domo, la bola de helado, la leche condensada chorreando y la pajilla", "box": [-16, -9, 32, 19], "bg": "#fff7f2", "parts": [{"shape": "poly", "pts": [[-6.2, -1], [6.2, -1], [4.2, 9], [-4.2, 9]], "fill": "#f3f6f8", "stroke": "#9aa3ab", "width": 0.6}, {"shape": "rect", "x": -5.6, "y": 2.5, "w": 11.2, "h": 1.6, "fill": "#2f9bd6"}, {"shape": "ellipse", "cx": 0, "cy": -1.4, "rx": 7.2, "ry": 4.6, "fill": "#e2304a"}, {"shape": "ellipse", "cx": -2.2, "cy": -2.8, "rx": 3.2, "ry": 1.6, "fill": "#f26a7c"}, {"shape": "disc", "cx": 1.2, "cy": -4.6, "r": 2.8, "fill": "#fbf1dc"}, {"shape": "stroke", "stroke": "#fffdf6", "width": 1.1, "cap": "round", "pts": [[-6.2, -0.4], [-4.2, 1.6], [-2.4, -0.2], [-0.4, 1.8], [1.8, -0.1], [3.8, 1.6], [6.0, -0.2]]}, {"shape": "stroke", "stroke": "#2f9bd6", "width": 1.4, "cap": "round", "pts": [[3.4, -3.2], [7.4, -8.4]]}]},
       "_decal": "EL ESTAMPADO: el dibujo de lo que vende —el que el puesto tenía cuando era plano— impreso en la cara del toldo que da a la calle, la que el carro ve al llegar. Una pared no sirve: desde la cámara a plomo mide tres o cuatro píxeles. `box` es su marco [x, y, ancho, alto] en las medidas de esas partes; `bg` el fondo del cartel.",
       "chinamo": {
         "chinamoBody": "#f6f1e4",
@@ -1042,42 +1008,7 @@
         "awning2": "#ffffff"
       },
       "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
-      "decal": {
-        "box": [
-          -16,
-          -9,
-          32,
-          19
-        ],
-        "bg": "#f4f1e4",
-        "parts": [
-          {
-            "_": "la hoja de plátano, doblada",
-            "shape": "ellipse",
-            "fill": "#3e9b57",
-            "cx": 0,
-            "cy": 0,
-            "rx": 9,
-            "ry": 6
-          },
-          {
-            "_": "el chicharrón",
-            "shape": "disc",
-            "fill": "#c98a3f",
-            "cx": -2,
-            "cy": -1,
-            "r": 3
-          },
-          {
-            "_": "el repollo",
-            "shape": "disc",
-            "fill": "#e6efd8",
-            "cx": 3,
-            "cy": 1,
-            "r": 2.5
-          }
-        ]
-      }
+      "decal": {"_": "EL VIGORÓN: la hoja de plátano con su nervio, la yuca, el chicharrón y el repollo con tomate", "box": [-16, -9, 32, 19], "bg": "#f4f1e4", "parts": [{"shape": "ellipse", "cx": 0, "cy": 1, "rx": 13, "ry": 7.4, "fill": "#2f7d43"}, {"shape": "ellipse", "cx": 0, "cy": 1, "rx": 11.6, "ry": 6.2, "fill": "#43a05a"}, {"shape": "stroke", "stroke": "#8fcf7a", "width": 0.7, "pts": [[-12, 1], [12, 1]]}, {"shape": "roundRect", "x": -9.5, "y": -1.5, "w": 7, "h": 3.2, "r": 1.2, "fill": "#f1e2a4", "stroke": "#cdb86d", "width": 0.5}, {"shape": "roundRect", "x": -8.5, "y": 2.2, "w": 6.4, "h": 3, "r": 1.2, "fill": "#f1e2a4", "stroke": "#cdb86d", "width": 0.5}, {"shape": "poly", "pts": [[-1.5, -3], [3.5, -3.6], [4.5, 0], [0.5, 0.8], [-2, -0.6]], "fill": "#b66a2b"}, {"shape": "stroke", "stroke": "#e2a45c", "width": 0.6, "pts": [[-0.8, -2.2], [3.4, -2.6]]}, {"shape": "stroke", "stroke": "#e2a45c", "width": 0.6, "pts": [[-0.6, -0.8], [3.8, -1.2]]}, {"shape": "ellipse", "cx": 6.8, "cy": 2.6, "rx": 4.2, "ry": 3, "fill": "#e9f2d6"}, {"shape": "stroke", "stroke": "#b9d79a", "width": 0.5, "pts": [[3.6, 2], [9.6, 1.4]]}, {"shape": "stroke", "stroke": "#b9d79a", "width": 0.5, "pts": [[3.8, 3.6], [9.8, 3.2]]}, {"shape": "disc", "cx": 5.6, "cy": 1.6, "r": 1.3, "fill": "#e2402e"}, {"shape": "disc", "cx": 8.4, "cy": 3.8, "r": 1.3, "fill": "#e2402e"}]}
     },
     "kiosk:ceviche": {
       "note": "CEVICHE: azul de mar y blanco, y en el mostrador el vaso plástico con el pescado curtido y su limón. Es el que peor aguanta el SOL, no la distancia — de ahí su `spoil`.",
@@ -1098,43 +1029,7 @@
         "awning2": "#ffffff"
       },
       "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
-      "decal": {
-        "box": [
-          -16,
-          -9,
-          32,
-          19
-        ],
-        "bg": "#f2f6f8",
-        "parts": [
-          {
-            "_": "el vaso",
-            "shape": "rect",
-            "fill": "rgba(255,255,255,0.92)",
-            "x": -5,
-            "y": -4,
-            "w": 10,
-            "h": 12
-          },
-          {
-            "_": "el ceviche",
-            "shape": "rect",
-            "fill": "#eae2cf",
-            "x": -5,
-            "y": 0,
-            "w": 10,
-            "h": 6
-          },
-          {
-            "_": "el limón",
-            "shape": "disc",
-            "fill": "#c3d94a",
-            "cx": 4,
-            "cy": -5,
-            "r": 2.4
-          }
-        ]
-      }
+      "decal": {"_": "EL CEVICHE: vaso con pescado en cubitos, cebolla morada y culantro, el limón partido y las galletas soda", "box": [-16, -9, 32, 19], "bg": "#eef6f7", "parts": [{"shape": "roundRect", "x": -14.5, "y": 0.5, "w": 7, "h": 7, "r": 0.8, "fill": "#e8c77e", "stroke": "#b8914a", "width": 0.5}, {"shape": "disc", "cx": -12.6, "cy": 2.6, "r": 0.45, "fill": "#b8914a"}, {"shape": "disc", "cx": -9.4, "cy": 2.6, "r": 0.45, "fill": "#b8914a"}, {"shape": "disc", "cx": -12.6, "cy": 5.4, "r": 0.45, "fill": "#b8914a"}, {"shape": "disc", "cx": -9.4, "cy": 5.4, "r": 0.45, "fill": "#b8914a"}, {"shape": "poly", "pts": [[-6, -3], [6, -3], [4.2, 9], [-4.2, 9]], "fill": "#f6f9fb", "stroke": "#9aa3ab", "width": 0.6}, {"shape": "ellipse", "cx": 0, "cy": -3, "rx": 6, "ry": 1.8, "fill": "#efe6d2"}, {"shape": "rect", "x": -4.2, "y": -4.0, "w": 2.2, "h": 1.8, "fill": "#fffaf0"}, {"shape": "rect", "x": -0.8, "y": -4.4, "w": 2.2, "h": 1.8, "fill": "#fffaf0"}, {"shape": "rect", "x": 2.4, "y": -3.6, "w": 2.0, "h": 1.7, "fill": "#fffaf0"}, {"shape": "arc", "cx": -1, "cy": -2.4, "r": 2.2, "start": 0.55, "end": 0.95, "stroke": "#9b3f8f", "width": 0.8}, {"shape": "arc", "cx": 2.6, "cy": -2.2, "r": 1.6, "start": 0.5, "end": 0.9, "stroke": "#9b3f8f", "width": 0.8}, {"shape": "disc", "cx": -2.6, "cy": -2.0, "r": 0.6, "fill": "#3f9a3c"}, {"shape": "disc", "cx": 1.0, "cy": -2.6, "r": 0.6, "fill": "#3f9a3c"}, {"shape": "disc", "cx": 4.4, "cy": -2.8, "r": 0.6, "fill": "#3f9a3c"}, {"shape": "rect", "x": -5.2, "y": 1.5, "w": 10.4, "h": 1.4, "fill": "#29a3a8"}, {"shape": "disc", "cx": 11, "cy": 3.5, "r": 4, "fill": "#5fa630"}, {"shape": "disc", "cx": 11, "cy": 3.5, "r": 3.1, "fill": "#d8ec7a"}, {"shape": "stroke", "stroke": "#f6fbe0", "width": 0.6, "pts": [[8.1, 3.5], [13.9, 3.5]]}, {"shape": "stroke", "stroke": "#f6fbe0", "width": 0.6, "pts": [[11, 0.6], [11, 6.4]]}]}
     },
     "kiosk:papicarne": {
       "note": "PAPI-CARNE: la soda de barrio, roja y amarilla, con su PLANCHA humeando y la caja de papas. Es el producto más repetido del mapa porque es la comida de calle de toda la zona.",
@@ -1155,53 +1050,13 @@
         "awning2": "#ffffff"
       },
       "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
-      "decal": {
-        "box": [
-          -16,
-          -9,
-          32,
-          19
-        ],
-        "bg": "#f7e9c9",
-        "parts": [
-          {
-            "_": "la plancha",
-            "shape": "rect",
-            "fill": "#4a4238",
-            "x": -12,
-            "y": -3,
-            "w": 11,
-            "h": 9
-          },
-          {
-            "_": "la carne encima",
-            "shape": "rect",
-            "fill": "#8a4a2c",
-            "x": -10,
-            "y": -1,
-            "w": 7,
-            "h": 4
-          },
-          {
-            "_": "la caja de papas",
-            "shape": "rect",
-            "fill": "#e8b93f",
-            "x": 2,
-            "y": -3,
-            "w": 9,
-            "h": 10
-          },
-          {
-            "_": "las papas asomando",
-            "shape": "rect",
-            "fill": "#f6dd8a",
-            "x": 3.5,
-            "y": -5,
-            "w": 6,
-            "h": 3
-          }
-        ]
-      }
+      "decal": {"_": "EL PAPI-CARNE: la caja roja de papas, las papas en abanico asomando y encima la carne con salsa de tomate y mayonesa", "box": [-16, -9, 32, 19], "bg": "#f7e9c9", "parts": [{"shape": "poly", "pts": [[-8.2, -4.2], [-6.499999999999999, -4.4], [-4.5, 2], [-6.2, 2]], "fill": "#f6d45c", "stroke": "#c99a22", "width": 0.4}, {"shape": "poly", "pts": [[-5.6, -7.0], [-3.8999999999999995, -7.2], [-2.7, 2], [-4.4, 2]], "fill": "#f3c94a", "stroke": "#c99a22", "width": 0.4}, {"shape": "poly", "pts": [[-2.6, -8.4], [-0.9000000000000001, -8.6], [-0.5000000000000002, 2], [-2.2, 2]], "fill": "#f6d45c", "stroke": "#c99a22", "width": 0.4}, {"shape": "poly", "pts": [[0.6, -8.2], [2.3, -8.399999999999999], [1.7, 2], [0.0, 2]], "fill": "#f3c94a", "stroke": "#c99a22", "width": 0.4}, {"shape": "poly", "pts": [[3.6, -6.8], [5.3, -7.0], [3.9000000000000004, 2], [2.2, 2]], "fill": "#f6d45c", "stroke": "#c99a22", "width": 0.4}, {"shape": "poly", "pts": [[6.4, -4.0], [8.1, -4.2], [6.1000000000000005, 2], [4.4, 2]], "fill": "#f3c94a", "stroke": "#c99a22", "width": 0.4}, {"shape": "ellipse", "cx": 0, "cy": -1.4, "rx": 6.4, "ry": 2.2, "fill": "#7b3e22"}, {"shape": "disc", "cx": -3, "cy": -2.2, "r": 1.3, "fill": "#9a5530"}, {"shape": "disc", "cx": 1.2, "cy": -2.6, "r": 1.3, "fill": "#9a5530"}, {"shape": "disc", "cx": 4, "cy": -1.4, "r": 1.1, "fill": "#9a5530"}, {"shape": "stroke", "stroke": "#d8322a", "width": 1.0, "cap": "round", "pts": [[-5.6, -1.6], [-3.4, -0.4], [-1.4, -2.4], [0.8, -0.6], [3, -2.4], [5.4, -1]]}, {"shape": "stroke", "stroke": "#fff3c8", "width": 0.8, "cap": "round", "pts": [[-4.6, -2.8], [-2.4, -1.4], [-0.2, -3.0], [2.0, -1.4], [4.4, -2.8]]}, {"shape": "poly", "pts": [[-8.6, 0.6], [8.6, 0.6], [6.6, 9.4], [-6.6, 9.4]], "fill": "#d9342b"}, {"shape": "poly", "pts": [[-8.1, 3.0], [8.1, 3.0], [7.8, 4.6], [-7.8, 4.6]], "fill": "#f6c63e"}, {"shape": "stroke", "stroke": "#a8231d", "width": 0.6, "pts": [[-8.6, 0.6], [8.6, 0.6]]}]}
+    },
+    "kiosk:hamburguesa": {
+      "note": "Puesto de hamburguesas frente a Islita Drinks; techo acanalado color mostaza y cenefa crema.",
+      "body": "kiosk",
+      "inks": {"body": "#f1ddaf", "awning": "#b9782c", "awning2": "#f2ce87"},
+      "decal": {"_": "LA HAMBURGUESA: pan con domo y ajonjolí, lechuga, queso en pico, la torta y el pan de abajo", "box": [-16, -9, 32, 19], "bg": "#f8ecd2", "parts": [{"shape": "poly", "pts": [[-9, -1], {"q": [-9, -8.4], "to": [0, -8.4]}, {"q": [9, -8.4], "to": [9, -1]}], "fill": "#d6913a"}, {"shape": "ellipse", "cx": -3.4, "cy": -5.6, "rx": 2.6, "ry": 1.1, "fill": "#e9ab55"}, {"shape": "ellipse", "cx": -4, "cy": -3.4, "rx": 0.7, "ry": 0.35, "fill": "#fff4dc"}, {"shape": "ellipse", "cx": 0, "cy": -6, "rx": 0.7, "ry": 0.35, "fill": "#fff4dc"}, {"shape": "ellipse", "cx": 3.6, "cy": -3.8, "rx": 0.7, "ry": 0.35, "fill": "#fff4dc"}, {"shape": "ellipse", "cx": 1.2, "cy": -2.6, "rx": 0.7, "ry": 0.35, "fill": "#fff4dc"}, {"shape": "ellipse", "cx": -1.6, "cy": -4.4, "rx": 0.7, "ry": 0.35, "fill": "#fff4dc"}, {"shape": "ellipse", "cx": 5.6, "cy": -5.2, "rx": 0.7, "ry": 0.35, "fill": "#fff4dc"}, {"shape": "stroke", "stroke": "#4f9a35", "width": 1.6, "cap": "round", "join": "round", "pts": [[-9.6, -0.4], [-7.2, 0.8], [-4.8, -0.4], [-2.4, 0.8], [0, -0.4], [2.4, 0.8], [4.8, -0.4], [7.2, 0.8], [9.6, -0.4]]}, {"shape": "poly", "pts": [[-8.6, 0.4], [8.6, 0.4], [6, 3.2], [3.4, 1.6], [-1, 3.4], [-4, 1.6], [-7, 2.8]], "fill": "#f5c232"}, {"shape": "roundRect", "x": -8.8, "y": 1.6, "w": 17.6, "h": 3.2, "r": 1.4, "fill": "#6b3420"}, {"shape": "roundRect", "x": -8.4, "y": 5.2, "w": 16.8, "h": 3.4, "r": 1.6, "fill": "#d6913a"}]}
     },
     "kiosk:mariscada": {
       "note": "MARISCADA: no es un puesto, es una MARISQUERÍA — por eso es ANCHA y no un cuadrito. Restaurante Tabaris ocupa un local horizontal de verdad, y un carrito de 32 px de frente no se le parecía en nada. Turquesa de local de playa, con su mostrador largo y la olla.",
@@ -1222,60 +1077,7 @@
         "awning2": "#ffffff"
       },
       "_body": "se levanta como los edificios nuevos (`bodies.kiosk`); acá quedan sus TINTAS y su rótulo. El dibujo plano que tenía (cuerpo, toldo y lo que vende sobre el mostrador) se fue: desde la cámara a plomo se ve el toldo, no el mostrador.",
-      "decal": {
-        "box": [
-          -26,
-          -9,
-          52,
-          19
-        ],
-        "bg": "#f0efe6",
-        "parts": [
-          {
-            "_": "el mostrador largo",
-            "shape": "rect",
-            "fill": "#d9d2bd",
-            "x": -24,
-            "y": 2,
-            "w": 48,
-            "h": 6
-          },
-          {
-            "_": "la olla",
-            "shape": "disc",
-            "fill": "#6f7276",
-            "cx": -13,
-            "cy": -1,
-            "r": 5
-          },
-          {
-            "_": "lo que hierve",
-            "shape": "disc",
-            "fill": "#d8683f",
-            "cx": -13,
-            "cy": -2,
-            "r": 3
-          },
-          {
-            "_": "la bandeja de pescado",
-            "shape": "rect",
-            "fill": "#e7eef0",
-            "x": 2,
-            "y": -4,
-            "w": 16,
-            "h": 9
-          },
-          {
-            "_": "el pescado",
-            "shape": "ellipse",
-            "fill": "#9aa7ad",
-            "cx": 10,
-            "cy": 0,
-            "rx": 6,
-            "ry": 2.4
-          }
-        ]
-      }
+      "decal": {"_": "LA MARISCADA: la olla humeando con sus camarones y la bandeja con el pescado entero", "box": [-26, -9, 52, 19], "bg": "#f0efe6", "parts": [{"shape": "rect", "x": -24, "y": 6, "w": 48, "h": 2.6, "fill": "#d9d2bd"}, {"shape": "poly", "pts": [[-20.5, -1], [-5.5, -1], [-6.6, 6.2], [-19.4, 6.2]], "fill": "#6f7276"}, {"shape": "rect", "x": -22.6, "y": 0, "w": 2.6, "h": 1.3, "fill": "#4c4e52"}, {"shape": "rect", "x": -6, "y": 0, "w": 2.6, "h": 1.3, "fill": "#4c4e52"}, {"shape": "ellipse", "cx": -13, "cy": -1, "rx": 7.6, "ry": 2.2, "fill": "#8a8d91"}, {"shape": "ellipse", "cx": -13, "cy": -1, "rx": 6.4, "ry": 1.6, "fill": "#d8683f"}, {"shape": "arc", "cx": -15.6, "cy": -1.2, "r": 1.4, "start": 0.55, "end": 1.2, "stroke": "#ffb08a", "width": 1}, {"shape": "arc", "cx": -10.6, "cy": -1.4, "r": 1.4, "start": 0.55, "end": 1.2, "stroke": "#ffb08a", "width": 1}, {"shape": "stroke", "stroke": "#ffffff", "width": 0.8, "cap": "round", "pts": [[-15, -3.4], {"q": [-16.4, -5.4], "to": [-15, -7.4]}]}, {"shape": "stroke", "stroke": "#ffffff", "width": 0.8, "cap": "round", "pts": [[-11, -3.4], {"q": [-9.6, -5.4], "to": [-11, -7.4]}]}, {"shape": "roundRect", "x": 0, "y": -5, "w": 23, "h": 10.6, "r": 1.8, "fill": "#e2ecef", "stroke": "#9fb2b8", "width": 0.6}, {"shape": "poly", "pts": [[3, 0.3], {"q": [9, -4.6], "to": [16, 0.3]}, {"q": [9, 5.2], "to": [3, 0.3]}], "fill": "#8d9ea6"}, {"shape": "poly", "pts": [[15.4, 0.3], [20, -3], [20, 3.6]], "fill": "#76878f"}, {"shape": "stroke", "stroke": "#c3ced2", "width": 0.6, "pts": [[5, 0.3], {"q": [9, -2], "to": [13.5, 0.3]}]}, {"shape": "disc", "cx": 5.2, "cy": -0.6, "r": 0.8, "fill": "#1f2326"}]}
     }
   },
   "_signs": "LA SEÑALIZACIÓN, keyed by SignKind. Costa Rica signs to the Manual Centroamericano de Dispositivos Uniformes, so these are the real shapes: an ALTO is a red OCTAGON carrying the word (not `STOP`), a CEDA EL PASO is an inverted white triangle with a red border, and a tope is the yellow-hatched hump every calle de barrio has. Sizes are world px at the game's framing (~20 cuadrículas across), so a sign reads at a glance without swallowing the lane it stands beside.",
@@ -4866,8 +4668,9 @@
       "_inset": "Y VAN A 0,52 DEL MARCO, NO A 0,66. El marco de una parcela es su rectángulo de medias extensiones, pero el SUELO que se pinta es el contorno trazado del interior de la manzana, que es irregular: a 0,66 las esquinas del rectángulo caen fuera del verde y el árbol queda parado en el techo de una casona. No se dibuja el canto por la misma razón — `paintParcels` ya perfila la parcela con su forma REAL, y un `strokeRect` encima es un rectángulo sobre un polígono."
     }
   },
+  "kioskFlag": {"_": "EL RÓTULO DE CADA KIOSCO ES UNA BANDERA (`c2d/flag3d.js`, puesta por `landmarks.js`): un asta al costado del toldo (`sideGapM` más allá de su punta) con un paño que vuela con el MISMO viento que las banderas del Muelle (`materials.json → punta.flag.windDeg`) y lleva el nombre del puesto. `tiltM` corre el canto de abajo de lado, como cuando el viento lo levanta: sin eso, visto desde arriba el paño es una raya y el nombre no se lee. `cloth`/`ink` son tintas del hito (`$awning`, `$awning2`), así cada kiosco ondea sus colores. `spritePx` es el lienzo donde se escribe el nombre antes de tenderlo sobre el paño, `textK` el alto de letra en fracción del paño y `lineK` el interlineado de un nombre partido en dos.", "poleM": 5.6, "sizeM": [6.4, 2.4], "tiltM": 1.6, "flapM": 0.28, "flapHz": 1.0, "droopM": 0.12, "segments": 10, "polePx": 1.5, "finialM": 0.3, "sideGapM": 1.4, "pole": "#e9edf2", "shadow": "rgba(20,30,50,0.25)", "edge": "rgba(10,20,40,0.35)", "finial": "#d9b44a", "cloth": "$awning", "ink": "$awning2", "fallbackInk": "#ffffff", "spritePx": [240, 88], "textK": 0.36, "lineK": 1.05, "font": "'Space Grotesk', sans-serif", "weight": "800"},
   "stadiums3d": {
-    "pitchInsets": {"_": "LA CANCHA, MÁS CHICA QUE SU HUELLA (`streets.js → insetPitch`): metros que se mete cada lado —por la dirección de su normal, no por índice—. Lo que queda entre la huella y el césped se pinta de concreto gris: el anillo de un estadio de verdad. En el Lito Pérez el norte se mete más para que la tribuna techada, que entra 5 m en la cuadra, no quede sobre el césped; en Playitas, los lados que quedaban escondidos entre el parque y la iglesia.", "estadio": {"north": 6.5, "east": 3.0, "south": 3.0, "west": 3.0}, "playitas_cancha": {"east": 7.0, "west": 7.0, "north": 2.0}},"_note": "LAS GRADERÍAS EN 3D, por hito (`c2d/stadium3d.js`). Una tinta `$tierA`/`$tierB`/`$structure` es la PALETA DEL ESTADIO que el mundo ya emite (`blocks.json → stands.palette`: naranja del Puntarenas F.C. en el Lito Pérez, blanco y azul en Playitas): las filas de adelante en `tierA`, las de atrás desde `scenes.stadium.stands.roofFrom` en `tierB`. Parten de las gradas que el mundo ya estampa como pared (`lm.stands.quads`); aquí va lo que cada lado ES. `terrace`: escalones de concreto que suben hacia la calle, `overM` lo que vuelan SOBRE la calle más allá de la franja estampada (el carro pasa por debajo, entre los pilotes). `building`: la tribuna techada, que no pasa sobre la calle y se mete `innerM` en la cuadra. `towers`: las torres de luz, por lado y fracción de su largo. Tintas: llaves de `materials.json → centro.inks`.", "estadio": {"_": "ESTADIO LITO PÉREZ — Street View (nov. 2024) y el satélite: al norte, sobre la Avenida Centenario (Ruta 17), la tribuna techada naranja y blanca con su frontón durazno; al oeste (Calle 17), al este (Calle 15) y al sur (Avenida 2) las graderías abiertas que vuelan sobre media calle, sostenidas por pilotes de pie blanco. Las torres de luz, sobre las graderías largas y hacia el centro, como en las sombras del satélite.", "inks": {"tread": "$tierA", "treadBack": "$tierB", "treadShade": "$tierB", "riser": "$tierB", "side": "$structure", "back": "$structure", "aisle": "litoAisle", "rail": "litoRail", "pillar": "litoPillar", "pillarFoot": "litoPillarFoot", "wall": "litoWhite", "base": "litoOrange", "slab": "litoSlab", "lattice": "litoLattice", "door": "litoDoor", "column": "litoPeach", "pediment": "litoPeach", "pedimentTop": "litoPeachDark", "roof": "litoRoof", "roofShade": "litoRoofShade"}, "sides": {"all": {"kind": "terrace", "overM": 3.4, "_overM": "MEDIA CALLE A LA VISTA: medido, la franja estampada ya llega al cordón y la línea del centro de cada calle queda 6,8–7,2 m más allá. Con 6,6 m el piso de la grada llegaba al centro, pero su espalda —alta— se inclina hacia afuera con la perspectiva y desde la cancha tapaba la calle entera. Con 3,4 m y la espalda a 6,2 m la grada se ve llegando a la mitad.", "steps": 8, "frontM": 0.9, "backM": 6.2, "underBackM": 4.2, "railM": 1.1, "pillarEveryM": 8, "pillarM": 0.8, "pillarFootK": 0.32, "midPillars": false, "aisleEveryM": 13, "aisleM": 1.2}, "north": {"kind": "building", "innerM": 5.0, "groundM": 4.2, "bayM": 3.6, "doorEvery": 5, "columnEveryM": 3.6, "columnM": 2.3, "pedimentWM": 9, "pedimentDM": 2.0, "pedimentM": 8.6, "roofHighM": 8.8, "roofLowM": 7.2, "roofOverM": 1.0, "roofSetbackM": 1.4}}, "towers": [{"side": "north", "at": [0.14, 0.5, 0.86], "inM": 6.2}, {"side": "south", "at": [0.14, 0.5, 0.86], "inM": -6.0, "_inM": "negativo: hacia AFUERA, parada sobre la gradería, como en el satélite; se pinta después de ella"}]}, "estadio_playitas": {"quads": {"0": {"flip": true, "_": "la grada oeste mira a la cancha multiuso, no a la grande"}}, "_": "PLAZA LAS PLAYITAS: sus tres graderías chicas, de concreto blanco con la baranda azul, sin volar sobre la calle.", "inks": {"tread": "$tierA", "treadBack": "$tierB", "treadShade": "$tierB", "riser": "$tierB", "side": "$structure", "back": "$structure", "aisle": "$tierB", "rail": "$structure"}, "sides": {"all": {"kind": "terrace", "overM": 0, "steps": 5, "frontM": 0.5, "backM": 2.8, "underBackM": 0, "railM": 0.9}}}},
+    "pitchInsets": {"_": "LA CANCHA, MÁS CHICA QUE SU HUELLA (`streets.js → insetPitch`): metros que se mete cada lado —por la dirección de su normal, no por índice—. Lo que queda entre la huella y el césped se pinta de concreto gris: el anillo de un estadio de verdad. En el Lito Pérez el norte se mete más para que la tribuna techada, que entra 5 m en la cuadra, no quede sobre el césped; en Playitas, los lados que quedaban escondidos entre el parque y la iglesia.", "estadio": {"north": 6.5, "east": 3.0, "south": 3.0, "west": 3.0}, "playitas_cancha": {"east": 7.0, "west": 7.0, "north": 2.0}},"_note": "LAS GRADERÍAS EN 3D, por hito (`c2d/stadium3d.js`). Una tinta `$tierA`/`$tierB`/`$structure` es la PALETA DEL ESTADIO que el mundo ya emite (`blocks.json → stands.palette`: naranja del Puntarenas F.C. en el Lito Pérez, blanco y azul en Playitas): las filas de adelante en `tierA`, las de atrás desde `scenes.stadium.stands.roofFrom` en `tierB`. Parten de las gradas que el mundo ya estampa como pared (`lm.stands.quads`); aquí va lo que cada lado ES. `terrace`: escalones de concreto que suben hacia la calle, `overM` lo que vuelan SOBRE la calle más allá de la franja estampada (el carro pasa por debajo, entre los pilotes). `building`: la tribuna techada, que no pasa sobre la calle y se mete `innerM` en la cuadra. `towers`: las torres de luz, por lado y fracción de su largo. Tintas: llaves de `materials.json → centro.inks`.", "estadio": {"_": "ESTADIO LITO PÉREZ — Street View (nov. 2024) y el satélite: al norte, sobre la Avenida Centenario (Ruta 17), la tribuna techada naranja y blanca con su frontón durazno; al oeste (Calle 17), al este (Calle 15) y al sur (Avenida 2) las graderías abiertas que vuelan sobre media calle, sostenidas por pilotes de pie blanco. Las torres de luz, sobre las graderías largas y hacia el centro, como en las sombras del satélite.", "inks": {"tread": "$tierA", "treadBack": "$tierB", "treadShade": "$tierB", "riser": "$tierB", "side": "$structure", "back": "$structure", "aisle": "litoAisle", "rail": "litoRail", "pillar": "litoPillar", "pillarFoot": "litoPillarFoot", "wall": "litoWhite", "base": "litoOrange", "slab": "litoSlab", "lattice": "litoLattice", "door": "litoDoor", "column": "litoPeach", "pediment": "litoPeach", "pedimentTop": "litoPeachDark", "roof": "litoRoof", "roofShade": "litoRoofShade", "roofName": "litoWhite"}, "sides": {"all": {"kind": "terrace", "overM": 3.4, "_overM": "MEDIA CALLE A LA VISTA: medido, la franja estampada ya llega al cordón y la línea del centro de cada calle queda 6,8–7,2 m más allá. Con 6,6 m el piso de la grada llegaba al centro, pero su espalda —alta— se inclina hacia afuera con la perspectiva y desde la cancha tapaba la calle entera. Con 3,4 m y la espalda a 6,2 m la grada se ve llegando a la mitad.", "steps": 8, "frontM": 0.9, "backM": 6.2, "underBackM": 4.2, "railM": 1.1, "pillarEveryM": 8, "pillarM": 0.8, "pillarFootK": 0.32, "midPillars": false, "aisleEveryM": 13, "aisleM": 1.2}, "north": {"kind": "building", "innerM": 5.0, "groundM": 4.2, "bayM": 3.6, "doorEvery": 5, "columnEveryM": 3.6, "columnM": 2.3, "pedimentWM": 9, "pedimentDM": 2.0, "pedimentM": 8.6, "roofHighM": 8.8, "roofLowM": 7.2, "roofOverM": 1.0, "roofSetbackM": 1.4, "roofName": "Estadio Miguel Ángel “Lito” Pérez", "roofNameWK": 0.64, "_roofNameWK": "qué fracción del largo de la tribuna ocupa la palabra como máximo: a 0,86 «PÉREZ» quedaba bajo la torre de luz del este", "_roofName": "el nombre completo del estadio, pintado al centro del techo de la tribuna; `true` pintaría el nombre corto del hito"}}, "towers": [{"side": "north", "at": [0.06, 0.94], "inM": 6.2, "aim": "cross", "poolM": 38, "reachM": 22, "_aim": "las dos del lado de la tribuna techada miran en la diagonal CONTRARIA a la del centro: cada una alumbra la gradería de su esquina (la del oeste quedaba a oscuras); las tres del sur siguen alumbrando la cancha", "_at": "sin la torre del medio: con el nombre centrado en el techo de la tribuna, su cabeza le caía encima a la palabra"}, {"side": "south", "at": [0.14, 0.5, 0.86], "inM": -6.0, "aim": "in", "baseM": 5.0, "_baseM": "parada entre los escalones de atrás de la gradería sur: el poste sale de ahí, a esa altura, y no se ve su pie sobre las gradas", "_aim": "las tres de abajo miran RECTAS a la cancha, sin ángulo", "_inM": "negativo: hacia AFUERA, parada sobre la gradería, como en el satélite; se pinta después de ella"}]}, "estadio_playitas": {"quads": {"0": {"flip": true, "_": "la grada oeste mira a la cancha multiuso, no a la grande"}}, "_": "PLAZA LAS PLAYITAS: sus tres graderías chicas, de concreto blanco con la baranda azul, sin volar sobre la calle.", "inks": {"tread": "$tierA", "treadBack": "$tierB", "treadShade": "$tierB", "riser": "$tierB", "side": "$structure", "back": "$structure", "aisle": "$tierB", "rail": "$structure"}, "sides": {"all": {"kind": "terrace", "overM": 0, "steps": 5, "frontM": 0.5, "backM": 2.8, "underBackM": 0, "railM": 0.9}}}},
   "bodies": {
     "_note": "LOS CUERPOS 2.5D DE RECETA — lo que se levanta «como los edificios nuevos» sin venir del mundo emitido: la Capitanía, los quioscos, los cañones. Mismo formato que `content/world/centro.json` (bloques en METROS que suben de `z[0]` a `z[1]`; `box`/`disc`/`poly`; `roof`, `bands`, `windows`, `openings`), mismo pintor (`c2d/bodies.js`) y misma paleta (`materials.json → centro.inks`). Una tinta `$x` la pone el hito que usa la receta (`landmarks[*].inks`): así cada quiosco tiene su color sin una receta por producto. `turnDeg` gira la receta entera respecto del hito.",
     "faro": {

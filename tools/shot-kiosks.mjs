@@ -57,10 +57,13 @@ const drew = await page.evaluate(async ({ COLS, CELL, ROW }) => {
     // —encolar y vaciar— y después el rótulo, igual que en el juego.
     if (prop.body) {
       state.cam.x = 0; state.cam.y = 0;   // la cámara a plomo sobre la celda: la hoja no depende de dónde quedó el juego
-      bodies.queueBody(bodies.bodyAt(PROPS.bodies[prop.body], 0, 0, 0, `sheet:${prop.body}`), prop.inks || null);
+      // …con el estampado del producto, como en `drawLandmark`: sin `_decal` la hoja no lo dibujaba
+      const vars = prop.decal ? { ...(prop.inks || {}), _decal: prop.decal } : (prop.inks || null);
+      bodies.queueBody(bodies.bodyAt(PROPS.bodies[prop.body], 0, 0, 0, `sheet:${prop.body}`), vars);
       bodies.flushBodies();
     }
-    sh.paintAt(prop.parts, 0, 0, { g, pxPerM: units.PX_PER_M, vars: lm.propVars(k, prop) });
+    // un puesto que es sólo cuerpo (la hamburguesa) no trae `parts`
+    if (prop.parts) sh.paintAt(prop.parts, 0, 0, { g, pxPerM: units.PX_PER_M, vars: lm.propVars(k, prop) });
     g.restore();
     g.fillStyle = "#26222c"; g.font = "11px monospace"; g.textAlign = "center";
     g.fillText(k.product || "—", cx, cy + 46);

@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node brand/export.mjs --check && vite build",
+    "brand:check": "node brand/export.mjs --check",
     "preview": "vite preview",
     "inventory": "node tools/gen-inventory.mjs",
     "world:build": "python3 tools/build_world.py && node tools/shot-punta-preview.mjs --emit && node tools/shot-centro-preview.mjs --emit && python3 tools/emit_historic.py --emit",

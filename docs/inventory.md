@@ -628,8 +628,8 @@ present: roads, rails, medians, buildings, trees, palms, mangroves, and islands.
 
 | File | Dimensions | Used by |
 |---|---:|---|
-| `public/branding/pacific-code-labs.png` | 1000×384 | boot logo and service-worker shell |
-| `public/branding/ruta-churchill-loading.png` | 1280×720 | boot/loading art and shell |
+| `public/branding/pacific-code-labs.png` | 1050×440 | Studio signature master, exported for video by `brand/export.mjs` |
+| `public/branding/ruta-churchill-loading.png` | 1280×720 | Archived loading illustration used by the Instagram kit |
 | `public/icons/apple-touch-icon.png` | 180×180 | HTML/PWA |
 | `public/icons/icon-192.png` | 192×192 | favicon/PWA |
 | `public/icons/icon-512.png` | 512×512 | maskable/PWA |

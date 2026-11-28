@@ -66,6 +66,43 @@ function poolSprite(type, radius) {
 const sources = [];
 export function registerLampSource(fn) { sources.push(fn); }
 
+//: LO QUE TAPA LA LUZ DE LA CALLE: polígonos de mundo (`[x, y, …]`) que el pozo de una lámpara no cruza
+//: — las graderías y la cancha de un estadio, que tienen pared. El pozo de una lámpara `field` (las torres
+//: del propio estadio) sí los alumbra. Mismo patrón de registro que las fuentes: este archivo no sabe qué
+//: es un estadio.
+const occluderSources = [];
+export function registerOccluderSource(fn) { occluderSources.push(fn); }
+function occludersNow() {
+  if (!occluderSources.length) return [];
+  const out = [];
+  for (const fn of occluderSources) { const got = fn(); if (got?.length) out.push(...got); }
+  return out;
+}
+// TODOS CON EL MISMO GIRO: se rellenan `nonzero`, y dos polígonos de giro contrario que se montan (la franja
+// de una grada y su tapa, la cancha y la tribuna) abrirían un hueco justo donde se tocan
+function traceOccluders(g, polys, toScreen, k) {
+  for (const it of polys) {
+    const pts = it.pts || it;
+    const n = pts.length / 2;
+    let area = 0;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      area += pts[i * 2] * pts[j * 2 + 1] - pts[j * 2] * pts[i * 2 + 1];
+    }
+    for (let m = 0; m < n; m++) {
+      const i = area >= 0 ? m : n - 1 - m;
+      const [sx, sy] = toScreen(pts[i * 2], pts[i * 2 + 1]);
+      if (m) g.lineTo(sx * k, sy * k); else g.moveTo(sx * k, sy * k);
+    }
+    g.closePath();
+  }
+}
+
+//: El color de la calle sin cruzar la pared: los pozos cálidos de la calle se suman en su propio lienzo a
+//: media resolución (son suaves), se les BORRA lo que tapa y recién entonces se suman al cuadro. Recortar
+//: «todo menos los polígonos» con `evenodd` no sirve: donde dos polígonos se montan, se vuelve a dibujar.
+let warmLayer = null, wctx = null;
+
 /** Every lamp whose pool can reach the view, from the streamed tiles. The pad
  *  is the pool's own reach: a lamp just off-screen still lights what is on it. */
 export function lampsInView(view) {
@@ -122,12 +159,34 @@ export function drawNightLights(vw, vh, view, tint, toScreen, strength = 1) {
   // frame borraría el mundo.
   lctx.globalCompositeOperation = "destination-out";
   const s = maskScale;                 // world px -> layer px
-  const r = Math.max(2, Math.round(LAMP_POOL_R * ZOOMED * s));
-  for (const lamp of lamps) {
-    const [sx, sy] = toScreen(lamp.x, lamp.y);
-    const sprite = poolSprite(lamp.type || "warm", r);
-    lctx.globalAlpha = Math.max(0, Math.min(1, (lamp.intensity ?? 1) * strength));
-    lctx.drawImage(sprite, sx * s - r, sy * s - r, r * 2, r * 2);
+  const occ = occludersNow();
+  // dos pasadas: primero la calle; lo que tapa vuelve a la oscuridad; y DESPUÉS las torres de los estadios,
+  // que sí alumbran sus graderías y su cancha
+  const punch = (field) => {
+    for (const lamp of lamps) {
+      if (!!lamp.field !== field) continue;
+      const r = Math.max(2, Math.round((lamp.r || LAMP_POOL_R) * ZOOMED * s));
+      const [sx, sy] = toScreen(lamp.x, lamp.y);
+      const sprite = poolSprite(lamp.type || "warm", r);
+      lctx.globalAlpha = Math.max(0, Math.min(1, (lamp.intensity ?? 1) * strength));
+      lctx.drawImage(sprite, sx * s - r, sy * s - r, r * 2, r * 2);
+    }
+  };
+  punch(false);
+  if (occ.length) {
+    lctx.globalCompositeOperation = "source-over"; lctx.globalAlpha = 1;
+    lctx.beginPath(); traceOccluders(lctx, occ, toScreen, s);
+    // la oscuridad de vuelta: borrar y rellenar con el tinte, o el tinte se sumaría al que quedaba
+    lctx.save(); lctx.clip(); lctx.clearRect(0, 0, w, h); lctx.fillStyle = tint; lctx.fillRect(0, 0, w, h); lctx.restore();
+    lctx.globalCompositeOperation = "destination-out";
+  }
+  punch(true);
+  // LO QUE SU PROPIA LUZ ALUMBRA ENTERO (`lit`): las graderías bajo sus torres. Su sombra cae afuera, detrás
+  // y debajo de ellas —en la calle, que queda oscura—, nunca encima
+  for (const it of occ) {
+    if (!(it.lit > 0)) continue;
+    lctx.globalAlpha = Math.min(1, it.lit * strength);
+    lctx.beginPath(); traceOccluders(lctx, [it], toScreen, s); lctx.fill();
   }
   lctx.globalCompositeOperation = "source-over";
   lctx.globalAlpha = 1;
@@ -139,13 +198,38 @@ export function drawNightLights(vw, vh, view, tint, toScreen, strength = 1) {
   // La pasada cálida: el color de la lámpara SUMADO encima, para que un pozo se
   // lea como luz de sodio y no como un hueco recortado en la noche.
   ctx.globalCompositeOperation = "lighter";
-  const warmR = LAMP_POOL_R * ZOOMED;
-  for (const lamp of lamps) {
-    const spec = LIGHTS.types[lamp.type] || LIGHTS.types.warm;
-    const [sx, sy] = toScreen(lamp.x, lamp.y);
-    ctx.globalAlpha = Math.max(0, Math.min(1, (lamp.intensity ?? 1) * strength));
-    paintLightWarmPool(ctx, LIGHTS, spec, sx * dpr, sy * dpr, warmR * dpr);
-  }
+  const warm = (field) => {
+    for (const lamp of lamps) {
+      if (!!lamp.field !== field) continue;
+      const spec = LIGHTS.types[lamp.type] || LIGHTS.types.warm;
+      const [sx, sy] = toScreen(lamp.x, lamp.y);
+      ctx.globalAlpha = Math.max(0, Math.min(1, (lamp.intensity ?? 1) * strength));
+      paintLightWarmPool(ctx, LIGHTS, spec, sx * dpr, sy * dpr, (lamp.r || LAMP_POOL_R) * ZOOMED * dpr);
+    }
+  };
+  if (occ.length) {
+    if (!warmLayer || warmLayer.width !== w || warmLayer.height !== h) {
+      warmLayer = document.createElement("canvas");
+      warmLayer.width = w; warmLayer.height = h;
+      wctx = warmLayer.getContext("2d");
+    }
+    wctx.setTransform(1, 0, 0, 1, 0, 0);
+    wctx.globalAlpha = 1; wctx.globalCompositeOperation = "source-over";
+    wctx.clearRect(0, 0, w, h);
+    wctx.globalCompositeOperation = "lighter";
+    for (const lamp of lamps) {
+      if (lamp.field) continue;
+      const spec = LIGHTS.types[lamp.type] || LIGHTS.types.warm;
+      const [sx, sy] = toScreen(lamp.x, lamp.y);
+      wctx.globalAlpha = Math.max(0, Math.min(1, (lamp.intensity ?? 1) * strength));
+      paintLightWarmPool(wctx, LIGHTS, spec, sx * s, sy * s, (lamp.r || LAMP_POOL_R) * ZOOMED * s);
+    }
+    wctx.globalAlpha = 1; wctx.globalCompositeOperation = "destination-out";
+    wctx.beginPath(); traceOccluders(wctx, occ, toScreen, s); wctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.drawImage(warmLayer, 0, 0, vw * dpr, vh * dpr);
+  } else warm(false);
+  warm(true);
   ctx.restore();
   return lamps.length;
 }

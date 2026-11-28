@@ -6,9 +6,8 @@
 //     to the cached app shell ("/") when fully offline.
 //   - cross-origin (Google Fonts, versioned CDN): cache-first.
 // Bump CACHE to invalidate old entries on deploy.
-const CACHE = "churchill-v7";
-const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png",
-  "/branding/pacific-code-labs.png", "/branding/ruta-churchill-loading.png"];
+const CACHE = "churchill-v8";
+const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(

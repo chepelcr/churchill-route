@@ -4,8 +4,25 @@
     {
       "name": "preview-8799",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "preview", "--port", "8799", "--strictPort"],
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "8799",
+        "--strictPort"
+      ],
       "port": 8799
+    },
+    {
+      "name": "dev-8736",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "8736",
+        "--strictPort"
+      ],
+      "port": 8736
     }
   ]
 }

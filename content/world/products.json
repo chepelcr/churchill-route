@@ -26,6 +26,14 @@
         "Ando con hambre de verdad."
       ]
     },
+    "hamburguesa": {
+      "name": "Hamburguesa",
+      "short": "HAMBURGUESA",
+      "spoil": "cool",
+      "budgetMul": 1.35,
+      "cargo": "box",
+      "lines": ["Con todo, porfa.", "Que llegue calientita.", "Sin cebolla, gracias."]
+    },
     "vigoron": {
       "name": "Vigorón",
       "short": "VIGORÓN",

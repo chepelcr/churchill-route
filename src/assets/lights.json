@@ -79,11 +79,22 @@
 
     "stadium": {
       "note": "LA TORRE DE CANCHA. Hasta ahora era un mástil de 18 px con una cabeza de 10×4 — la misma farola de calle, más ancha. Una torre de verdad es una estructura reticulada con una cruceta de cuatro focos arriba, y a esa altura el halo no sale del poste sino de las lámparas, por eso `haloAt` la sigue.",
-      "core": "#fff",
-      "halo": [240, 248, 255],
+      "core": "#fff6e2",
+      "halo": [255, 236, 200],
       "radius": 100,
       "haloAt": [0, -29],
-      "scatter": { "alpha": 0.3, "widthK": 0.67, "sourceK": 0.2, "groundK": 0.32, "groundStrength": 0.64 },
+      "scatter": {
+        "alpha": 0.2,
+        "widthK": 0.67,
+        "sourceK": 0.2,
+        "groundK": 0.32,
+        "groundStrength": 0.82,
+        "poolM": 40,
+        "reachM": 26,
+        "standLitK": 0.72,
+        "_standLitK": "cuánto alumbran las torres las graderías de su estadio, enteras: su sombra cae afuera, en la calle, y no encima de ellas",
+        "_pool": "el pozo que la torre abre en la noche: `poolM` de radio, adelantado `reachM` hacia donde mira. Con el de una farola (12 m) las tres torres del sur no pasaban de la primera línea de la cancha. `halo` es amarillo de halogenuro, no blanco: en blanco puro sobre la noche se leía como un hueco"
+      },
       "stand25": { "heightM": 22, "armM": 0, "postPx": 3.2, "post": "#3f4648", "housing": "#4c545a", "headM": [7.0, 1.3], "lamps": 4, "lensDropM": 0.9 },
       "parts": [
         { "shape": "ellipse", "fill": "rgba(0,0,0,0.22)", "cx": 0, "cy": 8, "rx": 7, "ry": 2.6 },
